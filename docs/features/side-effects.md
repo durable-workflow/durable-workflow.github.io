@@ -27,7 +27,7 @@ The workflow will only call `random_int()` once and save the result, even if the
 
 ## Signals and Control Flow
 
-Signals are applied before the workflow continues execution. That means a signal-mutated variable can break replays unless the control flow decision is recorded deterministically.
+Signal-mutated variables are sources of non-determinism and can break replays unless the control flow decision is recorded deterministically.
 
 Use `sideEffect()` to snapshot any signal-driven branch decision:
 
