@@ -24,6 +24,33 @@ class MyActivity extends Activity
 }
 ```
 
+## WorkflowOptions
+
+You can also set queue options at workflow start time using `WorkflowOptions`.
+
+```php
+use Workflow\WorkflowOptions;
+use Workflow\WorkflowStub;
+
+$workflow = WorkflowStub::make(MyWorkflow::class);
+
+$workflow->start(
+    'arg1',
+    WorkflowOptions::set([
+        'connection' => 'redis',
+        'queue' => 'critical',
+    ])
+);
+
+// OR
+
+$workflow->start('arg1', new WorkflowOptions('redis', 'critical'));
+```
+
+`WorkflowOptions` are consumed by the workflow engine and are not passed as arguments to your workflow `execute()` method.
+
+These options are persisted with the workflow and used for subsequent workflow/activity dispatching (including replay and continue-as-new behavior).
+
 ## Connection
 
 The `$connection` setting is used to specify which queue connection the workflow or activity should be sent to. By default, the `$connection` value is not set which will use the default connection. This can be overridden by setting the `$connection` property on the workflow or activity class.
