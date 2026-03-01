@@ -121,7 +121,7 @@ const config = {
             items: [
               {
                 label: 'LLM Docs',
-                to: 'https://durable-workflow.com/llms.txt',
+                href: 'https://durable-workflow.com/llms-full.txt',
               },
               {
                 label: 'Packagist',
