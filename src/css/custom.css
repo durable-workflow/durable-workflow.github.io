@@ -28,3 +28,43 @@
   --ifm-color-primary-lightest: #4fddbf;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
 }
+
+.navbar-github-star-link {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.5rem;
+  line-height: 1;
+  margin-right: 0.5rem;
+  padding: 0;
+  transition: color 160ms ease;
+  white-space: nowrap;
+}
+
+.navbar-github-star-link__icon {
+  display: block;
+  fill: currentColor;
+  flex-shrink: 0;
+  height: 1.375rem;
+  width: 1.375rem;
+}
+
+.navbar-github-star-link__count {
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  min-width: 4.5ch;
+  text-align: left;
+}
+
+.navbar-github-star-link:hover,
+.navbar-github-star-link:focus-visible {
+  color: var(--ifm-navbar-link-hover-color);
+  text-decoration: none;
+}
+
+.menu__link.navbar-github-star-link {
+  justify-content: center;
+  margin-right: 0;
+  margin-top: 0;
+}

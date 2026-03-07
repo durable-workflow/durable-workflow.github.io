@@ -81,9 +81,12 @@ const config = {
           },
           {to: '/blog', label: 'Blog', position: 'left'},
           {
+            type: 'custom-githubStar',
             href: 'https://github.com/durable-workflow/workflow',
-            label: 'GitHub',
+            repo: 'durable-workflow/workflow',
+            label: 'Star on GitHub',
             position: 'right',
+            'aria-label': 'Star Durable Workflow on GitHub',
           },
         ],
       },
