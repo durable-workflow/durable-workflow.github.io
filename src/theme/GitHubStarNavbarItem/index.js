@@ -120,6 +120,7 @@ function useGitHubStarCount(repo) {
 
 export default function GitHubStarNavbarItem({
   mobile = false,
+  mobileTopBar = false,
   className,
   href,
   repo = 'durable-workflow/workflow',
@@ -136,7 +137,11 @@ export default function GitHubStarNavbarItem({
   const sharedClassName = clsx(
     className,
     'navbar-github-star-link',
-    mobile ? 'menu__link' : 'navbar__item navbar__link',
+    {
+      'menu__link': mobile,
+      'navbar__item navbar__link': !mobile && !mobileTopBar,
+      'navbar__link navbar-github-star-link--mobile-topbar': mobileTopBar,
+    },
   );
 
   const content = (
