@@ -2,6 +2,7 @@ import React, {useEffect, useState} from 'react';
 import clsx from 'clsx';
 import Link from '@docusaurus/Link';
 
+// Keep the fallback close to the current real star count so first render stays credible before the live fetch completes.
 const DEFAULT_STAR_COUNT = 1172; // latest count used to avoid showing a zero-star count before the first successful fetch
 const STAR_COUNT_CACHE_TTL = 1000 * 60 * 30;
 
