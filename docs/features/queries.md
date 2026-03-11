@@ -40,6 +40,27 @@ $ready = $workflow->getReady();
 
 **Important:** Querying a workflow does not advance its execution, unlike signals.
 
+## Queries vs business reporting
+
+Queries are best for asking a workflow for its current in-memory view of progress, such as:
+
+- which step it is waiting on
+- whether a human approval has arrived
+- which IDs or timestamps have already been recorded
+
+That makes them useful for live status checks, operator tooling, and lightweight UI reads.
+
+For business reporting, do not treat workflow runtime state as the source of truth. Workflow state is technical orchestration state. Business reporting usually needs durable domain data that can be filtered, aggregated, joined, and retained even after the workflow completes.
+
+A common pattern is:
+
+1. Use the workflow to coordinate the long-running process.
+2. At important milestones, call activities that update your own tables or projections.
+3. Use queries for the current workflow snapshot.
+4. Use your application read models for dashboards, reporting, and business decisions.
+
+For example, an order workflow might keep a queryable `currentStep`, while activities update an `orders` table or reporting projection with milestones like `payment_captured`, `packed`, and `shipped`.
+
 # Updates
 
 Updates allow you to retrieve information about the current state of a workflow and mutate the workflow state at the same time. They are essentially both a query and a signal combined into one.
