@@ -2,7 +2,7 @@ import React, {useEffect, useState} from 'react';
 import clsx from 'clsx';
 import Link from '@docusaurus/Link';
 
-const DEFAULT_STAR_COUNT = 1171; // latest count used to avoid showing a zero-star count before the first successful fetch
+const DEFAULT_STAR_COUNT = 1172; // latest count used to avoid showing a zero-star count before the first successful fetch
 const STAR_COUNT_CACHE_TTL = 1000 * 60 * 30;
 
 function formatFullStarCount(count) {
