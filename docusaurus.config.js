@@ -35,10 +35,19 @@ const config = {
       ({
         docs: {
           sidebarPath: require.resolve('./sidebars.js'),
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
           editUrl:
             'https://github.com/durable-workflow/durable-workflow.github.io/edit/main/',
+          lastVersion: '1.x',
+          versions: {
+            current: {
+              label: '2.0',
+              path: '2.0',
+            },
+            '1.x': {
+              label: '1.x',
+              path: '',
+            },
+          },
         },
         blog: {
           showReadingTime: true,
@@ -78,6 +87,11 @@ const config = {
             docId: 'installation',
             position: 'left',
             label: 'Docs',
+          },
+          {
+            type: 'docsVersionDropdown',
+            position: 'left',
+            dropdownActiveClassDisabled: true,
           },
           {to: '/blog', label: 'Blog', position: 'left'},
           {

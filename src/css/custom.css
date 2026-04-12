@@ -74,6 +74,10 @@
 }
 
 @media (max-width: 996px) {
+  .navbar__items--right > .navbar-github-star-link:not(.navbar-github-star-link--mobile-topbar) {
+    display: none;
+  }
+
   .navbar-github-star-link--mobile-topbar {
     display: inline-flex;
     margin-right: 10rem;
