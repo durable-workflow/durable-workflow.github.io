@@ -58,6 +58,55 @@ do {
 
 The default page size is 200 events; the maximum is 1000. The response includes `has_more` and `next_after_sequence` for cursor-based pagination.
 
+### History Compression
+
+For workflows with very large histories, the bridge or server can compress the history events payload to reduce transfer size. Compression is opt-in: the caller must request it via an `Accept-Encoding`-style parameter.
+
+When the event count in a response exceeds the compression threshold (50 events), the bridge may return:
+
+- `history_events`: `[]` (empty array, signalling events are in the compressed key)
+- `history_events_compressed`: base64-encoded compressed payload
+- `history_events_encoding`: the algorithm used (`gzip` or `deflate`)
+
+The caller decompresses by decoding base64, inflating with the indicated algorithm, and JSON-decoding the result to recover the original `history_events` array.
+
+```php
+use Workflow\V2\Support\HistoryPayloadCompression;
+
+// Compress a history payload for transfer (bridge/server side).
+$compressed = HistoryPayloadCompression::compress($payload, 'gzip');
+
+// Decompress on the worker side.
+$original = HistoryPayloadCompression::decompress($compressed);
+```
+
+If the caller does not request compression, or the event count is below the threshold, the response contains the standard uncompressed `history_events` array.
+
+### Long-Poll Semantics
+
+Both `poll` verbs support an optional long-poll mode. When the caller includes a `timeout_seconds` parameter, the bridge or server holds the connection open for up to that duration waiting for a matching task to become ready, instead of returning an empty result immediately.
+
+| Parameter | Default | Min | Max |
+|-----------|---------|-----|-----|
+| `timeout_seconds` | 30 | 1 | 60 |
+
+Behavior:
+
+- If a task becomes ready during the wait, it is returned immediately.
+- If the timeout expires with no task, the response is an empty list.
+- The client should retry immediately on an empty long-poll response unless shutting down.
+- HTTP-level timeouts on the transport should be set above 60 seconds to avoid premature disconnects.
+
+```php
+use Workflow\V2\Support\WorkerProtocolVersion;
+
+$semantics = WorkerProtocolVersion::longPollSemantics();
+// ['default_timeout_seconds' => 30, 'min_timeout_seconds' => 1, 'max_timeout_seconds' => 60]
+
+// Clamp a caller-supplied timeout to the valid range.
+$clamped = WorkerProtocolVersion::clampLongPollTimeout($userTimeout);
+```
+
 ### Command Types
 
 When completing a workflow task, the external worker submits a list of typed commands. At most one terminal command is allowed per completion.
