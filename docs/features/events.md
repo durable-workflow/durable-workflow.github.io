@@ -195,6 +195,50 @@ Workflow\V2\Events\WorkflowFailed
 Workflow\V2\Events\FailureRecorded    (source: workflow_run)
 ```
 
+## V1 Compatibility Events
+
+V2 workflows also dispatch the legacy V1 event classes alongside V2 events. This means apps migrating from V1 to V2 continue to receive the events they already listen for — no listener changes required.
+
+The following V1 events are dispatched automatically whenever their V2 counterpart fires:
+
+| V2 Event | V1 Compatibility Event |
+|---|---|
+| `Workflow\V2\Events\WorkflowStarted` | `Workflow\Events\WorkflowStarted` |
+| `Workflow\V2\Events\WorkflowCompleted` | `Workflow\Events\WorkflowCompleted` |
+| `Workflow\V2\Events\WorkflowFailed` | `Workflow\Events\WorkflowFailed` |
+| `Workflow\V2\Events\ActivityStarted` | `Workflow\Events\ActivityStarted` |
+| `Workflow\V2\Events\ActivityCompleted` | `Workflow\Events\ActivityCompleted` |
+| `Workflow\V2\Events\ActivityFailed` | `Workflow\Events\ActivityFailed` |
+
+V1 events use the V1 field names (`workflowId`, `class`, `activityId`, `index`, `output`) mapped from V2 durable identity:
+
+- `workflowId` is the V2 `instanceId`
+- `activityId` is the V2 `activityExecutionId`
+- `index` is the V2 `sequence`
+- `output` carries the exception class and message for failure events, or an empty string for completion events
+- `arguments` is always `'[]'` (V2 does not expose serialized arguments in lifecycle events)
+
+### StateChanged
+
+The V1 `Workflow\Events\StateChanged` event is also dispatched as a compatibility adapter over V2 run-status transitions. It fires when a workflow starts (`null` → `WorkflowRunningStatus`), completes (`WorkflowRunningStatus` → `WorkflowCompletedStatus`), or fails (`WorkflowRunningStatus` → `WorkflowFailedStatus`).
+
+```php
+use Workflow\Events\StateChanged;
+
+Event::listen(StateChanged::class, function (StateChanged $event) {
+    // $event->initialState — the previous state (null for start)
+    // $event->finalState  — the new state
+    // $event->model       — the WorkflowRun model
+    // $event->field       — 'status'
+});
+```
+
+The `model` on a V2-dispatched `StateChanged` is the `WorkflowRun` Eloquent model, not the V1 stored workflow model. Listeners that access `$event->model->id` will get the run ID rather than the V1 stored workflow ID.
+
+:::tip New V2 listeners
+For new code, prefer the V2 events in `Workflow\V2\Events` — they carry richer durable identity (instance ID, run ID, workflow type, committed-at timestamp). The V1 compatibility events are provided for migration convenience.
+:::
+
 ## Event Namespace
 
-V2 events live in the `Workflow\V2\Events` namespace. The legacy V1 events in `Workflow\Events` are still available for V1 workflows but are not emitted by V2 workflows.
+V2 events live in the `Workflow\V2\Events` namespace. Legacy V1 events in `Workflow\Events` are dispatched alongside V2 events as compatibility adapters, so existing V1 listeners continue to work without changes.
