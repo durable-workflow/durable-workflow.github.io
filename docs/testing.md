@@ -25,6 +25,8 @@ The following are **not** part of the first-release `V2` fake surface and may be
 - there is no dedicated child-workflow mock or dispatch-assert helper — child workflows execute as real nested `V2` runs under fake mode, so test them through their observable output rather than mocking
 - there is no delayed-callback hook for injecting signals or updates at virtual time offsets during a single fake execution — advance time and call `WorkflowStub::runReadyTasks()` between explicit signal/update calls instead
 
+`WorkflowStub::mock()` enforces this scope at runtime: passing a `Workflow` subclass throws a `LogicException` with a clear message directing you to test child workflows through their observable output instead. Only `Activity` classes (and unresolved string keys) are accepted as mock targets.
+
 ```php
 use function Workflow\V2\activity;
 use Workflow\V2\Workflow;
