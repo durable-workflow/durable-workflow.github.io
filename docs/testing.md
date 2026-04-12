@@ -16,7 +16,14 @@ sidebar_position: 8
 - `WorkflowStub::assertSignalSent()`, `assertSignalSentTimes()`, and `assertSignalNotSent()` cover `V2` signals sent through `WorkflowStub::signal()` or `signalWithStart()`
 - `WorkflowStub::assertUpdateSent()`, `assertUpdateSentTimes()`, and `assertUpdateNotSent()` cover `V2` updates sent through `WorkflowStub::update()`, `attemptUpdate()`, or `submitUpdate()`
 - delayed timer tasks stay durable queued work until they become due; after you advance time, `WorkflowStub::runReadyTasks()` drains already-due tasks inline
-- there is currently no `V2` equivalent of the legacy `resume()` bridge, and there is no dedicated child-workflow mock or dispatch-assert helper yet
+
+### First-release testing scope
+
+The following are **not** part of the first-release `V2` fake surface and may be added as future additive contracts:
+
+- there is no `V2` equivalent of the legacy `resume()` bridge
+- there is no dedicated child-workflow mock or dispatch-assert helper — child workflows execute as real nested `V2` runs under fake mode, so test them through their observable output rather than mocking
+- there is no delayed-callback hook for injecting signals or updates at virtual time offsets during a single fake execution — advance time and call `WorkflowStub::runReadyTasks()` between explicit signal/update calls instead
 
 ```php
 use function Workflow\V2\activity;
