@@ -1,0 +1,8 @@
+{
+  "label": "Features",
+  "position": 4,
+  "link": {
+    "type": "generated-index",
+    "description": "The Workflow package provides methods for executing activities, handling errors and retries, and communicating with the workflow."
+  }
+}

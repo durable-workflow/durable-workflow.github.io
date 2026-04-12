@@ -7,37 +7,37 @@ sidebar_position: 4
 You can pass data into a workflow via the `start()` method.
 
 ```php
-use Workflow\WorkflowStub;
+use Workflow\V2\WorkflowStub;
 
 $workflow = WorkflowStub::make(MyWorkflow::class);
 $workflow->start('world');
 ```
 
-It will be passed as arguments to the workflow's `execute()` method.
+Arguments are passed to the workflow's `handle()` method.
 
 Similarly, you can pass data into an activity via the `activity()` helper function.
 
 ```php
-use function Workflow\activity;
-use Workflow\Workflow;
+use function Workflow\V2\activity;
+use Workflow\V2\Workflow;
 
 class MyWorkflow extends Workflow
 {
-    public function execute($name)
+    public function handle($name)
     {
-        return yield activity(MyActivity::class, $name);
+        return activity(MyActivity::class, $name);
     }
 }
 ```
 
-It will be passed as arguments to the activity's `execute()` method
+Arguments are passed to the activity's `handle()` method.
 
 ```php
-use Workflow\Activity;
+use Workflow\V2\Activity;
 
 class MyActivity extends Activity
 {
-    public function execute($name)
+    public function handle($name)
     {
         return "Hello, {$name}!";
     }
@@ -65,14 +65,14 @@ Passing in models works similarly to `SerializesModels`.
 
 ```php
 use App\Models\User;
-use function Workflow\activity;
-use Workflow\Workflow;
+use function Workflow\V2\activity;
+use Workflow\V2\Workflow;
 
 class MyWorkflow extends Workflow
 {
-    public function execute(User $user)
+    public function handle(User $user)
     {
-        return yield activity(MyActivity::class, $user->name);
+        return activity(MyActivity::class, $user->name);
     }
 }
 ```
@@ -92,15 +92,15 @@ When the workflow or activity runs, it will retrieve the complete model instance
 
 ## Dependency Injection
 
-In addition to passing data, you are able to type-hint dependencies on the workflow or activity `execute()` methods. The Laravel service container will automatically inject those dependencies.
+In addition to passing data, you are able to type-hint dependencies on the workflow or activity `handle()` methods. The Laravel service container will automatically inject those dependencies.
 
 ```php
 use Illuminate\Contracts\Foundation\Application;
-use Workflow\Workflow;
+use Workflow\V2\Workflow;
 
 class MyWorkflow extends Workflow
 {
-    public function execute(Application $app)
+    public function handle(Application $app)
     {
         if ($app->runningInConsole()) {
             // ...
@@ -108,3 +108,5 @@ class MyWorkflow extends Workflow
     }
 }
 ```
+
+Existing workflows that still use `execute()` continue to load through a compatibility path so older runs can still replay, but new code should use `handle()` only. Mixed `handle()`/`execute()` inheritance is rejected before the runtime can durably start a run or schedule an activity.

@@ -8,25 +8,29 @@ Since workflows can run for long periods, sometimes months or even years, it's c
 
 The `getVersion()` helper function allows you to safely introduce changes to running workflows by creating versioned branch points.
 
-```php
-use Workflow\Workflow;
-use Workflow\WorkflowStub;
-use function Workflow\{activity, getVersion};
+## Using `getVersion`
 
-class MyWorkflow extends Workflow
+`getVersion()` is a replay-safe straight-line helper. Each change point records one typed `VersionMarkerRecorded` history event for the selected run, and later workflow replay or query replay reuses that committed value instead of recalculating the branch from today's code. New runs also snapshot a start-time `workflow_definition_fingerprint` on `WorkflowStarted`, so when a run reaches a newly introduced branch point with no recorded marker yet, the runtime can distinguish "this run started before that definition existed" from "this is a fresh execution on the current definition" without relying only on the compatibility marker.
+
+```php
+use Workflow\V2\Workflow;
+use Workflow\V2\WorkflowStub;
+use function Workflow\V2\{activity, getVersion};
+
+final class MyWorkflow extends Workflow
 {
-    public function execute()
+    public function handle(): void
     {
-        $version = yield getVersion(
+        $version = getVersion(
             'my-change-id',
             WorkflowStub::DEFAULT_VERSION,
             1
         );
 
         if ($version === WorkflowStub::DEFAULT_VERSION) {
-            yield activity(OldActivity::class);
+            activity(OldActivity::class);
         } else {
-            yield activity(NewActivity::class);
+            activity(NewActivity::class);
         }
     }
 }
@@ -42,8 +46,11 @@ The `getVersion()` method takes three parameters:
 
 When a workflow encounters `getVersion()`:
 
-- **New executions** record the `maxSupported` version and return it
-- **Replaying executions** return the previously recorded version
+- **New executions** append a typed `VersionMarkerRecorded` history event with the `change_id`, chosen `version`, and supported range, then return `maxSupported`
+- **Replaying executions** return the previously recorded version from that history marker
+- **Runs without a marker yet** fall back to `WorkflowStub::DEFAULT_VERSION` when replay can prove the branch predates the current workflow definition, first by comparing the run's durably snapped `workflow_definition_fingerprint` to the current loadable workflow class and then, for older runs that predate that fingerprint snapshot, by falling back to the compatibility marker and occupied-sequence checks; that legacy fallback does not append a synthetic marker or consume a new workflow step
+- **Query methods** replay the same committed version marker before invoking the annotated method, so queries see the same branch the workflow task saw
+- **Waterline** exposes recorded markers in the selected-run timeline with `version_change_id`, `version`, `version_min_supported`, and `version_max_supported`, and selected-run detail now also surfaces `workflow_definition_fingerprint`, `workflow_definition_current_fingerprint`, and `workflow_definition_matches_current` so operators can see when a long-lived run started on an older definition even before a version marker was committed
 
 This allows new workflows to use the latest code path while existing workflows continue using their original path.
 
@@ -52,14 +59,14 @@ This allows new workflows to use the latest code path while existing workflows c
 Suppose you have an existing workflow that calls `prePatchActivity`:
 
 ```php
-use function Workflow\activity;
-use Workflow\Workflow;
+use Workflow\V2\Workflow;
+use function Workflow\V2\activity;
 
-class MyWorkflow extends Workflow
+final class MyWorkflow extends Workflow
 {
-    public function execute()
+    public function handle()
     {
-        $result = yield activity(PrePatchActivity::class);
+        $result = activity(PrePatchActivity::class);
 
         return $result;
     }
@@ -69,44 +76,46 @@ class MyWorkflow extends Workflow
 To replace it with `postPatchActivity` without breaking running workflows:
 
 ```php
-use function Workflow\{activity, getVersion};
-use Workflow\Workflow;
-use Workflow\WorkflowStub;
+use Workflow\V2\Workflow;
+use Workflow\V2\WorkflowStub;
+use function Workflow\V2\{activity, getVersion};
 
-class MyWorkflow extends Workflow
+final class MyWorkflow extends Workflow
 {
-    public function execute()
+    public function handle()
     {
-        $version = yield getVersion(
+        $version = getVersion(
             'activity-change',
             WorkflowStub::DEFAULT_VERSION,
             1
         );
 
         $result = $version === WorkflowStub::DEFAULT_VERSION
-            ? yield activity(PrePatchActivity::class)
-            : yield activity(PostPatchActivity::class);
+            ? activity(PrePatchActivity::class)
+            : activity(PostPatchActivity::class);
 
         return $result;
     }
 }
 ```
 
+When you roll out a deployment that introduces a new `getVersion()` branch point, keep rotating `WORKFLOW_V2_CURRENT_COMPATIBILITY` for that build wave. The runtime prefers the run's start-time `workflow_definition_fingerprint` when it decides whether a missing version marker belongs to a fresh execution or to an older run that should stay on `DEFAULT_VERSION`, but the compatibility marker still matters for mixed-fleet worker routing and remains the fallback for older runs whose `WorkflowStarted` history predates the fingerprint snapshot.
+
 ## Adding More Versions
 
 When you need to make additional changes, increment `maxSupported`:
 
 ```php
-$version = yield getVersion(
+$version = getVersion(
     'activity-change',
     WorkflowStub::DEFAULT_VERSION,
     2
 );
 
 $result = match($version) {
-    WorkflowStub::DEFAULT_VERSION => yield activity(PrePatchActivity::class),
-    1 => yield activity(PostPatchActivity::class),
-    2 => yield activity(AnotherPatchActivity::class),
+    WorkflowStub::DEFAULT_VERSION => activity(PrePatchActivity::class),
+    1 => activity(PostPatchActivity::class),
+    2 => activity(AnotherPatchActivity::class),
 };
 ```
 
@@ -116,39 +125,41 @@ After all workflows using an old version have completed, you can drop support by
 
 ```php
 // After all DEFAULT_VERSION workflows have completed:
-$version = yield getVersion(
+$version = getVersion(
     'activity-change',
     1,  // No longer supporting DEFAULT_VERSION
     2
 );
 
 $result = match($version) {
-    1 => yield activity(PostPatchActivity::class),
-    2 => yield activity(AnotherPatchActivity::class),
+    1 => activity(PostPatchActivity::class),
+    2 => activity(AnotherPatchActivity::class),
 };
 ```
 
-If a workflow with a version older than `minSupported` tries to replay, it will throw a `VersionNotSupportedException`.
+If a workflow with a version older than `minSupported` tries to replay, it will throw a `VersionNotSupportedException`. That includes older-compatibility runs whose safe fallback is still `WorkflowStub::DEFAULT_VERSION`.
+
+If you accidentally reuse the same `changeId` for a different branch point later, the runtime treats that as a determinism error instead of silently accepting the mismatch. Keep one stable `changeId` per logical code change.
 
 ## Multiple Change Points
 
 You can use multiple `getVersion()` calls in the same workflow for independent changes:
 
 ```php
-use function Workflow\getVersion;
-use Workflow\Workflow;
-use Workflow\WorkflowStub;
+use Workflow\V2\Workflow;
+use Workflow\V2\WorkflowStub;
+use function Workflow\V2\getVersion;
 
-class MyWorkflow extends Workflow
+final class MyWorkflow extends Workflow
 {
-    public function execute()
+    public function handle(): void
     {
-        $version1 = yield getVersion('change-1', WorkflowStub::DEFAULT_VERSION, 1);
-        $version2 = yield getVersion('change-2', WorkflowStub::DEFAULT_VERSION, 1);
+        $version1 = getVersion('change-1', WorkflowStub::DEFAULT_VERSION, 1);
+        $version2 = getVersion('change-2', WorkflowStub::DEFAULT_VERSION, 1);
 
         // Each change point is tracked independently
     }
 }
 ```
 
-**Important:** Each `changeId` should be unique within a workflow. The version is recorded in the workflow logs and will be replayed deterministically.
+**Important:** Each `changeId` should be unique within a workflow. The chosen version is recorded as typed workflow history and replayed deterministically on later workflow tasks, queries, and Waterline detail views. When Waterline shows no `VersionMarkerRecorded` entry for a change point on an older run, that means replay stayed on the legacy `DEFAULT_VERSION` path without backfilling a new marker into existing history. The selected-run detail fields `workflow_definition_fingerprint`, `workflow_definition_current_fingerprint`, and `workflow_definition_matches_current` tell you whether that run started on a different workflow definition than the one your current build can load today.

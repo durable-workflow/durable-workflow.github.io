@@ -3,28 +3,29 @@ sidebar_position: 8
 ---
 
 import ConcurrencySimulator from '@site/src/components/ConcurrencySimulator';
-import ThemedImage from '@site/src/components/ThemedImage';
 
 # Concurrency
 
-Activities can be executed in series or in parallel. In either case, you start by using `activity()` to create a new instance of an activity and return a promise that represents the execution of that activity. The activity will immediately begin executing in the background. You can then `yield` this promise to pause the execution of the workflow and wait for the result of the activity, or pass the promise into the `all()` method to wait for a group of activities to complete in parallel.
+In `Workflow\V2`, named workflows use straight-line helpers inside an ordinary `handle()` method: `activity()`, `awaitSignal()`, `timer()`, `sideEffect()`, `getVersion()`, and the other single-step helpers suspend directly under the hood instead of forcing `yield` into every workflow body. Named v2 workflows are straight-line only, so do not `yield` from the workflow body.
+
+Parallel barriers still suspend as one durable workflow step through `all([...])`. In straight-line workflows, build those barriers with explicit launch helpers such as `startActivity()`, `startChild()`, and `parallel([...])` so the runtime can see the full barrier tree before the workflow suspends. Results still come back in the original nested array shape, while Waterline keeps each durable leaf wait visible and uses `parallel_group_path` to show which outer and inner barriers that leaf belongs to.
 
 ## Series
 
 This example will execute 3 activities in series, waiting for the completion of each activity before continuing to the next one.
 
 ```php
-use function Workflow\activity;
-use Workflow\Workflow;
+use function Workflow\V2\activity;
+use Workflow\V2\Workflow;
 
 class MyWorkflow extends Workflow
 {
-    public function execute()
+    public function handle()
     {
         return [
-            yield activity(MyActivity1::class),
-            yield activity(MyActivity2::class),
-            yield activity(MyActivity3::class),
+            activity(MyActivity1::class),
+            activity(MyActivity2::class),
+            activity(MyActivity3::class),
         ];
     }
 }
@@ -45,17 +46,17 @@ class MyWorkflow extends Workflow
 This example will execute 3 activities in parallel, waiting for the completion of all activities and collecting the results.
 
 ```php
-use function Workflow\{activity, all};
-use Workflow\Workflow;
+use function Workflow\V2\{all, startActivity};
+use Workflow\V2\Workflow;
 
 class MyWorkflow extends Workflow
 {
-    public function execute()
+    public function handle()
     {
-        return yield all([
-            activity(MyActivity1::class),
-            activity(MyActivity2::class),
-            activity(MyActivity3::class),
+        return all([
+            startActivity(MyActivity1::class),
+            startActivity(MyActivity2::class),
+            startActivity(MyActivity3::class),
         ]);
     }
 }
@@ -71,71 +72,111 @@ class MyWorkflow extends Workflow
   title="Parallel Execution Simulator"
 />
 
-The main difference between the serial example and the parallel execution example is the number of `yield` statements. In the serial example, there are 3 `yield` statements, one for each activity. This means that the workflow will pause and wait for each activity to complete before continuing to the next one. In the parallel example, there is only 1 `yield` statement, which wraps all of the activities in a call to `all()`. This means that all of the activities will be executed in parallel, and the workflow will pause and wait for all of them to complete as a group before continuing.
+The main difference between the serial example and the parallel execution example is where suspension happens. In the serial example, each `activity()` call suspends and resumes the workflow directly. In the parallel example, the `startActivity()` builders describe the whole barrier first and `all()` suspends once for the whole group, so every member can run in parallel before the workflow resumes.
 
-## Mix and Match
+## Nested Barriers
 
-You can also mix serial and parallel executions as desired.
+Nested `all([...])` groups let one workflow step express a tree of durable fan-out and fan-in work. The runtime schedules every activity or child workflow as a durable leaf sequence, records the leaf's full `parallel_group_path`, waits until every enclosing barrier can make progress, and then rebuilds the original nested result shape before resuming the workflow body. During replay, an activity or child leaf from an `all([...])` step must still match that recorded group path; typed leaf history that has no group metadata is treated as incompatible older preview history instead of being guessed into the current barrier.
 
 ```php
-use function Workflow\{activity, all, async};
-use Workflow\Workflow;
+use function Workflow\V2\{all, parallel, startActivity};
+use Workflow\V2\Workflow;
 
-class MyWorkflow extends Workflow
+final class NestedWorkflow extends Workflow
 {
-    public function execute()
+    public function handle(): array
     {
-        return [
-            yield activity(MyActivity1::class),
-            yield all([
-                async(fn () => [
-                    yield activity(MyActivity2::class),
-                    yield activity(MyActivity3::class),
-                ]),
-                activity(MyActivity4::class),
-                activity(MyActivity5::class),
+        return all([
+            startActivity(BuildSummary::class),
+            parallel([
+                startActivity(BuildInvoice::class),
+                startActivity(BuildShipment::class),
             ]),
-            yield activity(MyActivity6::class),
-        ];
+        ]);
     }
 }
 ```
 
-<ConcurrencySimulator 
-  activities={[
-    { name: 'MyActivity1', duration: 1200, group: 0 },
-    { name: 'MyActivity2', duration: 1000, group: 1, subgroup: 'a' },
-    { name: 'MyActivity3', duration: 1200, group: 1, subgroup: 'a' },
-    { name: 'MyActivity4', duration: 1800, group: 1 },
-    { name: 'MyActivity5', duration: 1400, group: 1 },
-    { name: 'MyActivity6', duration: 1000, group: 2 },
-  ]}
-  mode="mix"
-  title="Mix and Match Simulator"
-/>
+In that example, Waterline exposes three open leaf waits, not one synthetic "nested" wait. The first leaf belongs only to the outer barrier, while the second and third leaves expose a two-entry `parallel_group_path` so operators can see both the outer group and the inner subgroup that is still open.
 
-<ThemedImage
-  lightSrc="https://mermaid.ink/img/pako:eNpVUstuwjAQ_BVrzwHhYBOSQyVa2kOVSIhyKsnBJYZYSmzkOG0p4t_rvFqzJ8_szKzX8hUOKucQwbFUX4eCaYN261SmEtla7ZPL6mDEpzAXnI1s3XycNDsXaPO43zayRkKiDdOsLHmZ9ZK2cqG59SqJ4u1ovbPHzy-7v4A3rgWvHXtbMXYu4GdoMnlAse9wc8fAZe6OSYijI44uoU6DDo3BPKzdD8IuSsgdoqM29jvi1clcDJkJ6VsDoiMCD05a5BAZ3XAPKq4r1kK4tsoUTMErnkJkjzk_sqY0KaTyZm1nJt-VqkanVs2pgOjIytqi5pwzw9eC2df9l9jFuH5SjTQQhV0CRFf4hojMwmmIKcYzQv1lGPjEg4ulF9NlQMKALqmP54sAk5sHP93Qme1QD3gujNJJ_2u6z3P7BSs8q2k?type=png"
-  darkSrc="https://mermaid.ink/img/pako:eNpVUstuwjAQ_JVozwElthMFHyrR0h6qREKUUxsOLjHEamIjx2lLEf9e54XMnjyzM7NeyxfYq4IDhUOlfvYl08bbrnKZS8_W8iM7L_dGfAtzDncT27SfR81Opbd-_Ni0svGE9NZMs6ri1W6QdFUIza1XSS_dTNY7e_r8sr0FvHEteOPYu0pD5wJo581mD16KHA47Bi4Ld0xGHB1xdFnkNKKxMZrHtYdBoYsycoeiSZuinnh1MuMxMyNDa0TRhMCHoxYFUKNb7kPNdc06CJdOmYMpec1zoPZYMP2VQy6v1nNi8l2perJp1R5LoAdWNRa1p4IZvhLMPm19Y7Vdi-sn1UoDNFqQPgToBX6B4jCZLyJbQYiCJMbYhzPQEAfzmJAFIihGBCdXH_76oZZGuKcICTBCSeIDL4RROhv-T_-Nrv-BIKzD?type=png"
-  lightLink="https://mermaid.live/edit#pako:eNpVUstuwjAQ_BVrzwHhYBOSQyVa2kOVSIhyKsnBJYZYSmzkOG0p4t_rvFqzJ8_szKzX8hUOKucQwbFUX4eCaYN261SmEtla7ZPL6mDEpzAXnI1s3XycNDsXaPO43zayRkKiDdOsLHmZ9ZK2cqG59SqJ4u1ovbPHzy-7v4A3rgWvHXtbMXYu4GdoMnlAse9wc8fAZe6OSYijI44uoU6DDo3BPKzdD8IuSsgdoqM29jvi1clcDJkJ6VsDoiMCD05a5BAZ3XAPKq4r1kK4tsoUTMErnkJkjzk_sqY0KaTyZm1nJt-VqkanVs2pgOjIytqi5pwzw9eC2df9l9jFuH5SjTQQhV0CRFf4hojMwmmIKcYzQv1lGPjEg4ulF9NlQMKALqmP54sAk5sHP93Qme1QD3gujNJJ_2u6z3P7BSs8q2k"
-  darkLink="https://mermaid.live/edit#pako:eNpVUstuwjAQ_JVozwElthMFHyrR0h6qREKUUxsOLjHEamIjx2lLEf9e54XMnjyzM7NeyxfYq4IDhUOlfvYl08bbrnKZS8_W8iM7L_dGfAtzDncT27SfR81Opbd-_Ni0svGE9NZMs6ri1W6QdFUIza1XSS_dTNY7e_r8sr0FvHEteOPYu0pD5wJo581mD16KHA47Bi4Ld0xGHB1xdFnkNKKxMZrHtYdBoYsycoeiSZuinnh1MuMxMyNDa0TRhMCHoxYFUKNb7kPNdc06CJdOmYMpec1zoPZYMP2VQy6v1nNi8l2perJp1R5LoAdWNRa1p4IZvhLMPm19Y7Vdi-sn1UoDNFqQPgToBX6B4jCZLyJbQYiCJMbYhzPQEAfzmJAFIihGBCdXH_76oZZGuKcICTBCSeIDL4RROhv-T_-Nrv-BIKzD"
-  alt="Mix and Match Execution Flow"
-/>
+## Async Callback
 
-Activity 1 will execute and complete before any other activities start. Activities 2 and 3 will execute in series, waiting for each to complete one after another before continuing. At the same time, activities 4 and 5 will execute together in parallel and only when they all complete will execution continue. Finally, activity 6 executes last after all others have completed.
+`async(...)` runs a serializable callback as a durable child workflow with the system type `durable-workflow.async`. Async callbacks use the same straight-line-only helper contract as named v2 workflows, so `activity()`, `awaitSignal()`, `timer()`, `sideEffect()`, and the other single-step helpers suspend directly inside the callback body without forcing `yield`.
+
+```php
+use function Workflow\V2\{activity, async};
+use Workflow\V2\Workflow;
+
+final class CustomerWorkflow extends Workflow
+{
+    public function handle(string $customerId): array
+    {
+        $profile = async(static function () use ($customerId): array {
+            $customer = activity(LoadCustomer::class, $customerId);
+
+            return [
+                'customer' => $customer,
+                'score' => activity(ScoreCustomer::class, $customer['id']),
+            ];
+        });
+
+        return ['profile' => $profile];
+    }
+}
+```
+
+The parent run sees the callback as a child wait, so command history, lineage, and Waterline detail use the same `child_call_id`, child run id, and child outcome history as an explicit `child(...)` call. The callback is serialized with Laravel's serializable-closure support, so keep it app-local and deployment-local. Use a named `child(SomeWorkflow::class, ...)` call when the work needs a stable public workflow type for cross-service routing or long-lived code evolution. `async(...)` callbacks are now straight-line only in v2, so call helpers like `activity()`, `child()`, `awaitSignal()`, `timer()`, and `all([...])` directly without `yield`.
+
+## Mixed Activity + Child Barriers
+
+The same `all()` helper can also fan in a mixed group of activities and child workflows. Results still come back in the original array order, successful members still wait for the rest of the group, and the first failed member still wakes the parent immediately.
+
+When more than one barrier member has already closed unsuccessfully by the time the parent replays, the parent receives the failure with the earliest recorded close time. If two failures have the same recorded time, the lower barrier leaf index wins, so workflow resume and query replay select the same exception. Later sibling failures do not replace the exception that has already been thrown into the parent step.
+
+```php
+use function Workflow\V2\{all, startActivity, startChild};
+use Workflow\V2\Workflow;
+
+final class OrderWorkflow extends Workflow
+{
+    public function handle(): array
+    {
+        [$charge, $shipment] = all([
+            startActivity(ChargeCustomer::class),
+            startChild(ShipOrderWorkflow::class),
+        ]);
+
+        return compact('charge', 'shipment');
+    }
+}
+```
+
+## Current Limits
+
+The current concurrency surface does not yet include:
+
+- launch handles that can be started and awaited separately from `all([...])` barriers or `async(...)`
+- built-in bounded-concurrency helpers beyond explicit nested `all([...])` groups plus `startActivity()` / `startChild()` builders
 
 ## Child Workflows in Parallel
 
-You can pass child workflows to `all()` along with other activities. It works the same way as parallel activity execution, but for child workflows. It allows you to fan out multiple child workflows and wait for all of them to complete together.
+Child workflows can also run in their own `all([...startChild(...)])` barrier. It works the same way as parallel activity execution, but for child workflows: the parent fans out several child runs durably and resumes only when the whole child barrier can make progress.
 
 ```php
-use function Workflow\{all, child};
+use function Workflow\V2\{all, startChild};
+use Workflow\V2\Workflow;
 
-$results = yield all([
-    child(MyChild1::class),
-    child(MyChild2::class),
-    child(MyChild3::class),
-]);
+final class ParentWorkflow extends Workflow
+{
+    public function handle(): array
+    {
+        return all([
+            startChild(MyChild1::class),
+            startChild(MyChild2::class),
+            startChild(MyChild3::class),
+        ]);
+    }
+}
 ```
 
 <ConcurrencySimulator 
@@ -148,4 +189,4 @@ $results = yield all([
   title="Child Workflows in Parallel Simulator"
 />
 
-This makes it easy to build hierarchical parallelism into your workflows.
+This makes it easy to build hierarchical parallelism into your workflows, including nested child-only or mixed child-plus-activity groups when one parent step needs more than one fan-in layer.
