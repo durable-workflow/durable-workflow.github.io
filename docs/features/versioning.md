@@ -152,3 +152,5 @@ class MyWorkflow extends Workflow
 ```
 
 **Important:** Each `changeId` should be unique within a workflow. The version is recorded in the workflow logs and will be replayed deterministically.
+
+In workflow v2, Waterline exposes recorded version markers in the run timeline so you can verify which branch decision a long-lived execution committed to during replay.

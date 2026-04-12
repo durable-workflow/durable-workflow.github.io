@@ -60,3 +60,5 @@ class MyWorkflow extends Workflow
 ```
 
 This keeps control flow replay-safe and avoids non-deterministic branching during signal handling.
+
+In workflow v2, Waterline shows recorded side effects directly in the run timeline so operators can see where non-deterministic values were durably captured during replay.

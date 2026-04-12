@@ -16,4 +16,6 @@ sidebar_position: 11
 
 ![workflow](https://github.com/user-attachments/assets/da685466-7747-4c2f-ae10-300041381d51)
 
+For workflow v2 runs, the Waterline timeline surfaces replay-authority and metadata events in addition to activities and failures. Side effects, version markers, and search-attribute upserts appear in the run history, including when a claimed workflow task is completed by an external worker through `Workflow\V2\Contracts\WorkflowTaskBridge`.
+
 Refer to https://github.com/durable-workflow/waterline for installation and configuration instructions.
