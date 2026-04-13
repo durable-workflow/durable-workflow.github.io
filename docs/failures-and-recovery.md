@@ -116,6 +116,23 @@ The background task watchdog also scans for non-terminal runs with expired deadl
 
 Waterline surfaces `failure_category` in the exceptions table as a dedicated **Category** column and in timeline failure detail entries. History exports include `failure_category` in the `failures[*]` array. Older failure rows that predate this classification have `failure_category = null` and are treated as unclassified in projections.
 
+To backfill `failure_category` and `non_retryable` on older failure rows:
+
+```bash
+# Preview what would be updated
+php artisan workflow:v2:backfill-failure-categories --dry-run
+
+# Backfill all unclassified failures
+php artisan workflow:v2:backfill-failure-categories
+
+# Scope to a specific run or instance
+php artisan workflow:v2:backfill-failure-categories --run-id=01HXYZ...
+php artisan workflow:v2:backfill-failure-categories --instance-id=order-123
+
+# JSON output for scripting
+php artisan workflow:v2:backfill-failure-categories --json
+```
+
 ## Activity Retries
 
 `Workflow\V2\Activity` defaults to `$tries = 1`, so an activity failure is sent back to the workflow immediately unless the activity opts into retry attempts.
@@ -145,6 +162,32 @@ When a retryable activity throws before `$tries` is exhausted, the engine closes
 The retry task records `retry_of_task_id`, `retry_after_attempt_id`, `retry_after_attempt`, and `retry_backoff_seconds` in its payload so Waterline can explain why the task is scheduled. Selected-run detail rebuilds the failed attempt in `activities[*].attempts` from typed activity history first, shows `ActivityRetryScheduled` in the timeline, and reports retrying activity counts through `operator_metrics.activities.retrying`, `operator_metrics.activities.failed_attempts`, and `operator_metrics.backlog.retrying_activities`.
 
 `Workflow\Exceptions\NonRetryableExceptionContract` still short-circuits the retry policy: throwing a non-retryable exception fails the activity execution immediately and resumes the workflow with the exception.
+
+### Non-retryable failure markers
+
+When an activity or workflow throws an exception that implements `Workflow\Exceptions\NonRetryableExceptionContract`, the engine records a `non_retryable = true` flag on the `WorkflowFailure` row and in the typed history event payload (`ActivityFailed`, `WorkflowFailed`, `UpdateCompleted`). This durable marker communicates to operators, external workers, and tooling that the failure is permanent — retrying the same operation will not succeed.
+
+The flag flows through the full visibility stack:
+
+- **Failure rows**: `workflow_failures.non_retryable` boolean column.
+- **History events**: `non_retryable` field in the typed event payload.
+- **Failure snapshots**: `non_retryable` included in `FailureSnapshots::forRun()`.
+- **Run detail view**: `non_retryable` in the exceptions array.
+- **Timeline entries**: `non_retryable` in failure detail metadata.
+- **History exports**: `non_retryable` in the `failures[*]` array.
+- **Waterline**: a "non-retryable" badge next to the failure category in the exceptions table and timeline.
+- **External worker bridge**: the `complete()` command payload accepts `non_retryable` so external workflow workers can report non-retryable failures without requiring the host process to resolve the throwable class.
+
+For failures that do not implement the contract, `non_retryable` is `false` by default. The `php artisan workflow:v2:backfill-failure-categories` command can detect and backfill the flag for older failure rows whose recorded exception class implements `NonRetryableExceptionContract` in the current codebase.
+
+```php
+use Workflow\Exceptions\NonRetryableExceptionContract;
+
+class PaymentDeclinedException extends \RuntimeException implements NonRetryableExceptionContract
+{
+    // This failure will be marked as non-retryable in the durable record.
+}
+```
 
 ## Workflow-Level Retry
 
