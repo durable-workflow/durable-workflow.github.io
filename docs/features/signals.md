@@ -75,6 +75,19 @@ Signal behavior:
 - unknown signal names reject as `rejected_unknown_signal` with `rejection_reason = unknown_signal`
 - rejected signal commands otherwise return `rejected_not_started` when the instance has no current run, `rejected_not_active` when the current run is already closed, and `rejected_invalid_arguments` with `rejection_reason = invalid_signal_arguments` when the durable signal contract rejects the payload before the command is accepted, including declared type or nullability mismatches
 
+## Message Stream Cursor
+
+Signals and updates are durably ordered within an instance-level message stream. Every accepted signal or update command receives a monotonically increasing `message_sequence` from the instance, independent of the per-run `command_sequence`. Each run tracks a `message_cursor_position` that records how far through the instance message stream it has consumed.
+
+Key properties:
+
+- **Instance-scoped ordering:** `message_sequence` provides a total order across all signals and updates for the instance's entire lifetime, not just one run.
+- **Durable cursor:** Each run's `message_cursor_position` is persisted in the database, not held in-memory. History events of type `MessageCursorAdvanced` record every cursor advancement with the stream key, previous position, and new position.
+- **Continue-as-new handoff:** When a workflow continues as new, the new run inherits the closing run's `message_cursor_position`. This means the continued run knows exactly which messages were already consumed and will not reprocess them.
+- **Idempotent advancement:** Advancing the cursor to the same or a prior position is a no-op, making replay safe.
+
+The cursor is automatically managed by the engine during signal application and update application. Workflow authors do not need to interact with it directly.
+
 ## Condition Waits
 
 `await($condition, $conditionKey = null)` provides replay-safe condition waits. Use it when the predicate depends only on workflow state that was already derived from durable inputs such as updates, activity results, or child results. If you want one named external signal value directly, prefer `awaitSignal('name')`.

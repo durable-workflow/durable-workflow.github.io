@@ -48,7 +48,7 @@ When a workflow encounters `getVersion()`:
 
 - **New executions** append a typed `VersionMarkerRecorded` history event with the `change_id`, chosen `version`, and supported range, then return `maxSupported`
 - **Replaying executions** return the previously recorded version from that history marker
-- **Runs without a marker yet** fall back to `WorkflowStub::DEFAULT_VERSION` when replay can prove the branch predates the current workflow definition, first by comparing the run's durably snapped `workflow_definition_fingerprint` to the current loadable workflow class and then, for older runs that predate that fingerprint snapshot, by falling back to the compatibility marker and occupied-sequence checks; that legacy fallback does not append a synthetic marker or consume a new workflow step
+- **Runs without a marker yet** fall back to `WorkflowStub::DEFAULT_VERSION` when the runtime determines the branch predates the current workflow definition. It first checks the run's compatibility marker against the current worker, then compares the run's durably snapped `workflow_definition_fingerprint` to the current loadable workflow class. If the fingerprints match, the run is on the same definition and the marker is recorded fresh; if they differ, the run predates the change and the fallback fires. Runs whose `WorkflowStarted` history predates the fingerprint snapshot (no recorded fingerprint) conservatively receive `DEFAULT_VERSION` because the runtime cannot prove the definition has not changed. The fallback does not append a synthetic marker or consume a new workflow step
 - **Query methods** replay the same committed version marker before invoking the annotated method, so queries see the same branch the workflow task saw
 - **Waterline** exposes recorded markers in the selected-run timeline with `version_change_id`, `version`, `version_min_supported`, and `version_max_supported`, and selected-run detail now also surfaces `workflow_definition_fingerprint`, `workflow_definition_current_fingerprint`, and `workflow_definition_matches_current` so operators can see when a long-lived run started on an older definition even before a version marker was committed
 
@@ -99,7 +99,7 @@ final class MyWorkflow extends Workflow
 }
 ```
 
-When you roll out a deployment that introduces a new `getVersion()` branch point, keep rotating `WORKFLOW_V2_CURRENT_COMPATIBILITY` for that build wave. The runtime prefers the run's start-time `workflow_definition_fingerprint` when it decides whether a missing version marker belongs to a fresh execution or to an older run that should stay on `DEFAULT_VERSION`, but the compatibility marker still matters for mixed-fleet worker routing and remains the fallback for older runs whose `WorkflowStarted` history predates the fingerprint snapshot.
+When you roll out a deployment that introduces a new `getVersion()` branch point, keep rotating `WORKFLOW_V2_CURRENT_COMPATIBILITY` for that build wave. The runtime uses the run's start-time `workflow_definition_fingerprint` as its primary authority when deciding whether a missing version marker belongs to a fresh execution or to an older run that should stay on `DEFAULT_VERSION`. The compatibility marker still matters for mixed-fleet worker routing and fires before the fingerprint check. Runs that predate the fingerprint snapshot (no recorded fingerprint) conservatively stay on `DEFAULT_VERSION` since the runtime cannot verify the definition has not changed.
 
 ## Adding More Versions
 

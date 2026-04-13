@@ -117,6 +117,7 @@ When a workflow continues as new, the new run inherits the previous run's metada
 | Visibility labels | Carried forward as-is (set once at start time) |
 | Business key | Carried forward as-is |
 | Compatibility marker | Carried forward so the new run targets the same worker build |
+| Message cursor position | Carried forward so the new run knows which inbound messages (signals/updates) were already consumed |
 
 The new run starts with the inherited metadata and can continue upserting search attributes and memo from there. This means a long-lived polling workflow can accumulate metadata across generations without losing state when it sheds history.
 
