@@ -236,6 +236,37 @@ Use `php artisan workflow:v2:repair-pass` to run one operator-triggered sweep wi
 
 Use `operator_metrics.repair.scopes[*]` when a shared workflow database has several queues or worker fleets. Each scope reports its existing-task candidates, missing-task run candidates, total candidates, selected task/run candidates for the next pass, oldest task age, oldest missing-run age, and whether that scope is affected by the global scan limit on the current snapshot. Treat `scan_pressure = true`, a hot scope with steadily growing candidate age, or a scope that never drains as a signal to increase `scan_limit`, add workers for that queue, or fix the underlying queue/backend issue before the repair backlog ages out of sight.
 
+## Task Dispatch Mode
+
+By default, the engine pushes every ready task onto the Laravel queue so that `queue:work` processes pick them up. In a standalone server deployment where no workflow or activity PHP classes are registered locally, set `task_dispatch_mode` to `poll` so that tasks are only persisted as ready rows and left for external workers to discover through the task bridges.
+
+```env
+WORKFLOW_V2_TASK_DISPATCH_MODE=poll
+```
+
+Or in `config/workflows.php`:
+
+```php
+'v2' => [
+    'task_dispatch_mode' => env('WORKFLOW_V2_TASK_DISPATCH_MODE', 'queue'),
+    // ...
+],
+```
+
+| Mode | Behavior |
+|------|----------|
+| `queue` (default) | Tasks are dispatched to the Laravel queue via `Bus::dispatch()`. Internal `queue:work` processes claim and execute them. |
+| `poll` | Tasks stay in `ready` status without a queue job. External workers discover them through `WorkflowTaskBridge::poll()` and `ActivityTaskBridge::poll()`. |
+
+In poll mode, `TaskDispatcher` records a successful dispatch timestamp so the task repair sweep does not treat the task as stuck, but no queue job is created. The task row is the sole delivery mechanism; external workers poll, claim, execute (or replay and complete), and the engine advances the workflow.
+
+Use poll mode when:
+- The standalone server hosts the durable database but no workflow PHP classes.
+- External workers (in another Laravel app or a language-neutral worker) handle replay.
+- You want to avoid the internal `queue:work` process touching workflow or activity tasks.
+
+Embedded deployments where the same Laravel app contains both the workflow classes and the queue worker should keep the default `queue` mode.
+
 ## Backend Capability Check
 
 Use the doctor command to check the configured runtime substrate before deploying workers:
