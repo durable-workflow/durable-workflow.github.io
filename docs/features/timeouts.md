@@ -178,4 +178,7 @@ Waterline displays the retry policy including all configured timeout types in th
 The following are planned but not yet implemented:
 
 - Retry policies at the workflow level
-- Typed structural-limit failures for payload size, history size, and pending fan-out
+
+### Structural limits
+
+Typed structural-limit failures for payload size, pending fan-out counts, and metadata size ceilings are enforced by the engine. See [Structural Limits](/constraints/structural-limits) for the full limit contract, configuration, and failure taxonomy.

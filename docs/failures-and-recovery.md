@@ -85,6 +85,7 @@ Every failure recorded by the engine carries a `failure_category` that classifie
 | Timeout | `timeout` | Failure caused by a timeout expiration — enforced by the engine when a workflow execution or run deadline passes. |
 | Task Failure | `task_failure` | Workflow-task execution failure such as replay errors, determinism violations, or invalid command shapes. |
 | Internal | `internal` | Server or infrastructure failure (database, queue, worker crash). |
+| Structural Limit | `structural_limit` | Failure caused by exceeding a structural limit (payload size, pending fan-out count, command batch size, metadata size). See [Structural Limits](/constraints/structural-limits). |
 
 The category is determined automatically when the failure is recorded:
 
@@ -95,6 +96,7 @@ The category is determined automatically when the failure is recorded:
   - Determinism violations (`UnsupportedWorkflowYieldException`, `StraightLineWorkflowRequiredException`) classify as `task_failure`.
   - Infrastructure exceptions (database/PDO errors, queue max-attempts exceeded) classify as `internal`.
   - Timeout-indicating exceptions (messages containing "timed out", "timeout exceeded", "execution deadline", or "run deadline") classify as `timeout`.
+  - Structural-limit exceptions (`StructuralLimitExceededException`) classify as `structural_limit`. The history event also carries `structural_limit_kind`, `structural_limit_value`, and `structural_limit_configured` metadata.
   - All other business-logic exceptions default to `application`.
 - External worker failures (submitted through the workflow task bridge HTTP protocol) use the same classification rules based on the exception class name and message strings, even though the original throwable is not available in the host process.
 
