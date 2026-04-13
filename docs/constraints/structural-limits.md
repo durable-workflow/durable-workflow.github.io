@@ -23,6 +23,28 @@ Structural limits cap the resource consumption of a single workflow run. When an
 
 All limits are enforced at the point of scheduling or recording. A value of `0` disables the check for that limit kind.
 
+## Soft-limit warnings
+
+Before a hard limit terminates a run, the engine can warn you that a resource is approaching its ceiling. When a count-based resource (pending activities, children, timers, command batch size, or history transaction events) crosses a configurable percentage of the hard limit, the executor logs a structured warning.
+
+The default warning threshold is **80%**. For example, with the default `pending_activity_count` limit of 2,000, a warning is logged when a run reaches 1,600 pending activities. The run continues executing normally — the warning gives operators time to react (scale workers, trigger continue-as-new, raise the limit) before the hard guard fails the run.
+
+Configure the threshold via `workflows.v2.structural_limits.warning_threshold_percent`:
+
+```env
+WORKFLOW_V2_LIMIT_WARNING_THRESHOLD_PERCENT=80
+```
+
+Set to `0` to disable soft-limit warnings entirely.
+
+Warning log entries include structured context:
+
+```
+[Durable Workflow] Run 42 approaching structural limit [pending_activity_count]: 1620 / 2000 (81% utilization, warning at 80%).
+```
+
+The structured log context includes `workflow_run_id`, `workflow_type`, `limit_kind`, `current`, `limit`, and `utilization_percent` for integration with log aggregation and alerting tools.
+
 ## Configuration
 
 Override any limit through `workflows.v2.structural_limits` in your config or via environment variables:
@@ -41,6 +63,7 @@ Override any limit through `workflows.v2.structural_limits` in your config or vi
         'memo_size_bytes' => (int) env('WORKFLOW_V2_LIMIT_MEMO_SIZE_BYTES', 262144),
         'search_attribute_size_bytes' => (int) env('WORKFLOW_V2_LIMIT_SEARCH_ATTRIBUTE_SIZE_BYTES', 40960),
         'history_transaction_size' => (int) env('WORKFLOW_V2_LIMIT_HISTORY_TRANSACTION_SIZE', 5000),
+        'warning_threshold_percent' => (int) env('WORKFLOW_V2_LIMIT_WARNING_THRESHOLD_PERCENT', 80),
     ],
 ],
 ```
@@ -157,7 +180,35 @@ The current structural limits configuration is included in the v2 health check s
     "payload_size_bytes": 2097152,
     "memo_size_bytes": 262144,
     "search_attribute_size_bytes": 40960,
-    "history_transaction_size": 5000
+    "history_transaction_size": 5000,
+    "warning_threshold_percent": 80
+  }
+}
+```
+
+## Backend-dependent limits
+
+The backend capabilities snapshot publishes the full structural-limit contract adjusted for the current infrastructure. Most limits are backend-independent configuration values, but certain backends impose additional constraints:
+
+- **SQS queue** — Amazon SQS caps delayed message delivery at 900 seconds, so the capability snapshot includes `max_single_timer_delay_seconds: 900`. Timers exceeding this are chunked by the transport layer.
+- **SQLite database** — SQLite serializes writes, so the snapshot notes `concurrent_write_safety: limited`. High pending-count limits may cause lock contention under concurrent worker load.
+
+The full contract is available in the `structural_limits` section of the backend capabilities response:
+
+```json
+{
+  "structural_limits": {
+    "configured": { "pending_activity_count": 2000, "..." : "..." },
+    "backend_adjustments": { "max_single_timer_delay_seconds": 900 },
+    "effective": { "pending_activity_count": 2000, "max_single_timer_delay_seconds": 900, "..." : "..." },
+    "issues": [
+      {
+        "component": "structural_limits",
+        "severity": "info",
+        "code": "queue_max_delay_constraint",
+        "message": "The [sqs] queue driver limits delayed dispatch to 900 seconds; timers exceeding this are chunked by the transport layer."
+      }
+    ]
   }
 }
 ```
