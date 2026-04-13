@@ -30,41 +30,79 @@ WATERLINE_ENGINE_SOURCE=v2
 
 `/waterline/api/stats` now includes an `engine_source` object that reports the configured mode, the resolved mode, whether Waterline is actively using v2, any surfaced readiness issues, and the required-table inspection results. When `engine_source=v2` is pinned but the v2 operator surface is incomplete, Waterline list/detail/export/saved-view/stats routes return HTTP `503` with that same `engine_source` payload instead of silently falling back to v1. Instance-scoped `/waterline/api/instances/...` routes remain v2-only; when Waterline is pinned to `v1` or `auto` falls back to v1, those routes return `404` because the legacy bridge does not expose the public instance-id contract.
 
-Waterline reads v2 selected-run detail, history-export payloads, dashboard stats, and operator metrics through `Workflow\V2\Contracts\OperatorObservabilityRepository`. The workflow package binds a default implementation that returns the built-in v2 operator contract, and applications can replace that binding when they need to front Waterline with an app-owned repository, tenancy scope, authorization policy, or cached projection layer.
+Waterline reads v2 selected-run detail, list-item projections, history-export payloads, dashboard stats, and operator metrics through `Workflow\V2\Contracts\OperatorObservabilityRepository`. The workflow package binds a default implementation that returns the built-in v2 operator contract, and applications can replace that binding when they need to front Waterline with an app-owned repository, tenancy scope, authorization policy, or cached projection layer.
 
 All v2 operator detail payloads return typed JSON values for workflow arguments, output, activity arguments, activity results, command payloads, signal arguments, update arguments, update results, query results, and exception payloads. The browser does not need to unserialize engine-internal encoding to render durable workflow truth — every value in the JSON response is already structured data that JSON clients can use directly.
 
-With `v2` enabled, the existing Waterline list, detail, and dashboard routes keep their current endpoint shapes while adding v2-specific fields such as:
+### List-item contract
 
+With `v2` enabled, the Waterline list routes (`/waterline/api/flows/{bucket}`) project each paginator row through the typed list-item contract (`RunListItemView`) instead of returning raw summary-model arrays. The contract defines exactly which fields a fleet-list consumer can rely on:
+
+- `id`
+- `workflow_instance_id`
 - `instance_id`
 - `selected_run_id`
 - `run_id`
+- `run_number`
+- `is_current_run`
+- `engine_source`
+- `class`
+- `workflow_type`
+- `namespace`
+- `business_key`
+- `compatibility`
+- `status`
+- `status_bucket`
+- `is_terminal`
+- `closed_reason`
+- `started_at`
+- `closed_at`
+- `created_at`
+- `updated_at`
+- `sort_timestamp`
+- `sort_key`
+- `duration_ms`
+- `archived_at`
+- `archive_reason`
+- `wait_kind`
+- `wait_reason`
+- `liveness_state`
+- `visibility_labels`
+- `search_attributes`
+- `repair_attention`
+- `repair_blocked_reason`
+- `repair_blocked`
+- `task_problem`
+- `task_problem_badge`
+- `declared_entry_mode`
+- `declared_contract_source`
+- `declared_contract_backfill_needed`
+- `declared_contract_backfill_available`
+- `exception_count`
+- `history_event_count`
+- `history_size_bytes`
+- `continue_as_new_recommended`
+- `connection`
+- `queue`
+
+`repair_blocked` and `task_problem_badge` are computed badge metadata (code, label, description, tone, badge_visible) generated from the stored reason and state columns — the list contract applies the same badge logic that selected-run detail uses.
+
+Fields that appear in selected-run detail but not in the list-item contract — such as `open_wait_id`, `resume_source_kind`, `resume_source_id`, `next_task_id`, `projection_schema_version`, `run_navigation`, command/signal/update/wait/task/timeline scopes, and per-run collections — are intentionally excluded from the fleet-list surface. Consumers that need those fields should fetch the selected-run detail route.
+
+### Selected-run detail fields
+
+The selected-run detail route returns a richer payload that includes everything in the list-item contract plus:
+
 - `current_run_id`
 - `current_run_source`
 - `current_run_status`
 - `current_run_status_bucket`
-- `workflow_type`
 - `declared_entry_method`
-- `declared_entry_mode`
 - `declared_entry_declaring_class`
-- `compatibility`
 - `compatibility_supported`
 - `compatibility_reason`
-- `is_current_run`
-- `engine_source`
-- `status_bucket`
-- `is_terminal`
-- `archived_at`
-- `archive_command_id`
-- `archive_reason`
-- `sort_timestamp`
-- `sort_key`
-- `closed_reason`
-- `wait_kind`
-- `wait_reason`
-- `wait_started_at`
-- `wait_deadline_at`
 - `open_wait_id`
+- `open_wait_count`
 - `resume_source_kind`
 - `resume_source_id`
 - `next_task_at`
@@ -72,13 +110,7 @@ With `v2` enabled, the existing Waterline list, detail, and dashboard routes kee
 - `next_task_type`
 - `next_task_status`
 - `next_task_lease_expires_at`
-- `liveness_state`
 - `liveness_reason`
-- `repair_blocked_reason`
-- `repair_attention`
-- `repair_blocked`
-- `task_problem`
-- `task_problem_badge`
 - `exception_count`
 - `exceptions_count`
 - `can_issue_terminal_commands`
