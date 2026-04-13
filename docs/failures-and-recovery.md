@@ -82,7 +82,7 @@ Every failure recorded by the engine carries a `failure_category` that classifie
 | Child Workflow | `child_workflow` | Terminal child workflow failure propagated to the parent workflow. |
 | Cancelled | `cancelled` | Failure resulting from an explicit cancellation command. |
 | Terminated | `terminated` | Failure resulting from an explicit termination command. |
-| Timeout | `timeout` | Failure caused by a timeout expiration (activity, workflow, or task-level). |
+| Timeout | `timeout` | Failure caused by a timeout expiration — enforced by the engine when a workflow execution or run deadline passes. |
 | Task Failure | `task_failure` | Workflow-task execution failure such as replay errors, determinism violations, or invalid command shapes. |
 | Internal | `internal` | Server or infrastructure failure (database, queue, worker crash). |
 
@@ -96,6 +96,20 @@ The category is determined automatically when the failure is recorded:
   - Infrastructure exceptions (database/PDO errors, queue max-attempts exceeded) classify as `internal`.
   - Timeout-indicating exceptions (messages containing "timed out", "timeout exceeded", "execution deadline", or "run deadline") classify as `timeout`.
   - All other business-logic exceptions default to `application`.
+
+### Workflow Timeout Enforcement
+
+When `StartOptions::withExecutionTimeout()` or `StartOptions::withRunTimeout()` is set, the engine records a deadline on the workflow run. The execution deadline spans the entire logical workflow (including continue-as-new runs), while the run deadline resets with each new run.
+
+If a deadline has passed when the engine starts a workflow task, the run is closed immediately:
+
+- All open activity executions, timers, and outstanding tasks are cancelled with typed history events (`ActivityCancelled`, `TimerCancelled`).
+- A `WorkflowFailure` row is recorded with `failure_category = timeout` and `propagation_kind = timeout`.
+- A `WorkflowTimedOut` history event is recorded with `timeout_kind` set to `execution_timeout` or `run_timeout`.
+- The run status becomes `failed` with `closed_reason = timed_out`.
+- Parent workflows waiting on the timed-out child are notified.
+
+The background task watchdog also scans for non-terminal runs with expired deadlines that have no open workflow task (for example, a run waiting on an activity or timer when the deadline passes). When it finds one, it creates a workflow task so the executor can detect and enforce the timeout on the next pass.
 
 Waterline surfaces `failure_category` in the exceptions table as a dedicated **Category** column and in timeline failure detail entries. History exports include `failure_category` in the `failures[*]` array. Older failure rows that predate this classification have `failure_category = null` and are treated as unclassified in projections.
 
