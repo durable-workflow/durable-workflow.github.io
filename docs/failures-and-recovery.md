@@ -85,7 +85,7 @@ Every failure recorded by the engine carries a `failure_category` that classifie
 | Timeout | `timeout` | Failure caused by a timeout expiration — enforced by the engine when a workflow execution or run deadline passes. |
 | Task Failure | `task_failure` | Workflow-task execution failure such as replay errors, determinism violations, or invalid command shapes. |
 | Internal | `internal` | Server or infrastructure failure (database, queue, worker crash). |
-| Structural Limit | `structural_limit` | Failure caused by exceeding a structural limit (payload size, pending fan-out count, command batch size, metadata size). See [Structural Limits](./constraints/structural-limits.md). |
+| Structural Limit | `structural_limit` | Failure caused by exceeding a structural limit (payload size, pending fan-out count, command batch size, metadata size, history transaction size). See [Structural Limits](./constraints/structural-limits.md). |
 
 The category is determined automatically when the failure is recorded:
 
@@ -145,6 +145,44 @@ When a retryable activity throws before `$tries` is exhausted, the engine closes
 The retry task records `retry_of_task_id`, `retry_after_attempt_id`, `retry_after_attempt`, and `retry_backoff_seconds` in its payload so Waterline can explain why the task is scheduled. Selected-run detail rebuilds the failed attempt in `activities[*].attempts` from typed activity history first, shows `ActivityRetryScheduled` in the timeline, and reports retrying activity counts through `operator_metrics.activities.retrying`, `operator_metrics.activities.failed_attempts`, and `operator_metrics.backlog.retrying_activities`.
 
 `Workflow\Exceptions\NonRetryableExceptionContract` still short-circuits the retry policy: throwing a non-retryable exception fails the activity execution immediately and resumes the workflow with the exception.
+
+## Workflow-Level Retry
+
+Durable Workflow v2 does **not** support automatic workflow-level retry. When a workflow run fails — whether from an unhandled exception, a structural limit, or a timeout — the run is terminal. The engine does not automatically start a new run of the same workflow instance.
+
+This is an intentional design choice:
+
+- **Activities already have retry.** Activity retry policies with configurable `$tries`, `backoff()`, and non-retryable exceptions handle transient failures at the right granularity.
+- **Workflow replay is the recovery primitive.** If a workflow task encounters a transient infrastructure failure (database error, worker crash), the durable task system re-dispatches the task, and replay resumes from committed history — no new run needed.
+- **Continue-as-new handles long-lived workflows.** Workflows that need fresh state or history compaction use `continueAsNew()` as an explicit workflow-level restart.
+- **Repair handles stuck runs.** The `repair()` command and automatic worker-loop repair recover runs where durable task transport was lost.
+
+If your application needs workflow-level retry semantics, model them explicitly:
+
+```php
+class RetryableWorkflow extends Workflow
+{
+    public function handle(string $orderId): void
+    {
+        try {
+            activity(ProcessOrderActivity::class, $orderId);
+        } catch (Throwable $e) {
+            // Record the failure, then start a new workflow
+            // for retry-at-workflow-level scenarios.
+            activity(NotifyFailureActivity::class, $orderId, $e->getMessage());
+        }
+    }
+}
+```
+
+## Reset (Reserved)
+
+The `reset` operation is reserved for a future release. Reset is distinct from `repair`:
+
+- **Repair** recreates missing durable transport (task rows, execution rows) so a stuck run can resume from its committed history. It does not discard any recorded progress.
+- **Reset** would discard committed progress beyond a chosen history point and re-execute the workflow from that earlier state. This requires careful handling of already-started activities, child workflows, and timers.
+
+Until reset ships, the supported recovery path for a workflow that has made incorrect progress is: fix the underlying issue, deploy the corrected code, and let replay or repair resume the run. For terminal runs, start a new workflow instance with the corrected logic.
 
 ## Task Recovery
 
