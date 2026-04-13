@@ -283,9 +283,9 @@ POST /webhooks/activity-attempts/{attemptId}/complete
 POST /webhooks/activity-attempts/{attemptId}/fail
 ```
 
-The poll route accepts optional `connection`, `queue`, `limit` (1–100, default 10), and `compatibility` query parameters. It returns the same task summary list as the PHP `poll()` method, wrapped in a `{"tasks": [...]}` envelope. A standalone server uses this route to discover ready activity tasks before claiming them by id.
+The poll route accepts optional `connection`, `queue`, `limit` (1–100, default 10), `compatibility`, and `namespace` query parameters. It returns the same task summary list as the PHP `poll()` method, wrapped in a `{"tasks": [...]}` envelope. A standalone server uses this route to discover ready activity tasks before claiming them by id.
 
-That HTTP surface is still the same first bridge, not a complete hosted cross-language worker service. It does not yet provide long-poll claim loops, namespaces, or service-level routing. External workers should integrate through durable task ids, execution ids, attempt ids, codec-tagged payloads, heartbeats, completion or failure records, and late-result handling. They should not depend on mirroring placeholder PHP classes or sharing queue-serialized PHP payloads as the protocol boundary.
+That HTTP surface is still the same first bridge, not a complete hosted cross-language worker service. It does not yet provide long-poll claim loops or service-level routing. Namespace scoping is supported at the package level through `poll()` and visibility filters; the HTTP poll routes accept a `namespace` query parameter. External workers should integrate through durable task ids, execution ids, attempt ids, codec-tagged payloads, heartbeats, completion or failure records, and late-result handling. They should not depend on mirroring placeholder PHP classes or sharing queue-serialized PHP payloads as the protocol boundary.
 
 ## Workflow Task Boundary
 
@@ -463,7 +463,7 @@ Serialized values (`result`, `arguments`) should match the run's `payload_codec`
 
 The default implementation is `Workflow\V2\Support\DefaultWorkflowTaskBridge`. Apps that need custom claim, lease, or execution behavior can bind their own implementation of `Workflow\V2\Contracts\WorkflowTaskBridge` in the container.
 
-The workflow task bridge uses the same backend/compatibility checks, task lease semantics, and summary projection as the default `RunWorkflowTask` queue job. It does not yet provide long-poll discovery or namespace routing.
+The workflow task bridge uses the same backend/compatibility checks, task lease semantics, and summary projection as the default `RunWorkflowTask` queue job. It supports namespace filtering through the `namespace` parameter on `poll()`. It does not yet provide long-poll discovery.
 
 ### HTTP routes
 
@@ -479,7 +479,7 @@ POST /webhooks/workflow-tasks/{taskId}/fail
 POST /webhooks/workflow-tasks/{taskId}/heartbeat
 ```
 
-**Poll** discovers ready workflow tasks. Accepts optional `connection`, `queue`, `limit` (1–100, default 10), and `compatibility` query parameters. Returns `{"tasks": [...]}` with the same task summary shape as the PHP `poll()` method.
+**Poll** discovers ready workflow tasks. Accepts optional `connection`, `queue`, `limit` (1–100, default 10), `compatibility`, and `namespace` query parameters. Returns `{"tasks": [...]}` with the same task summary shape as the PHP `poll()` method.
 
 **Claim** creates a lease on a ready workflow task. Pass an optional `lease_owner` string in the request body. Returns the claim payload on success or a rejection reason on failure:
 
@@ -564,6 +564,7 @@ Options:
 - `arguments` — codec-tagged serialized arguments (string)
 - `connection` — queue connection override
 - `queue` — queue name override
+- `namespace` — execution namespace for multi-namespace isolation (falls back to `WORKFLOW_V2_NAMESPACE` config)
 - `business_key` — caller-supplied business key
 - `labels` — visibility labels for fleet search
 - `memo` — non-indexed metadata
@@ -668,6 +669,7 @@ if ($result['found']) {
     // Instance metadata
     $result['workflow_instance_id'];  // 'order-12345'
     $result['workflow_type'];         // 'order-processing'
+    $result['namespace'];             // 'production' or null
     $result['business_key'];          // 'order-12345'
     $result['run_count'];             // 1
 

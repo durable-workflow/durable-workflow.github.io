@@ -71,6 +71,56 @@ The `$timeout` setting is used to control the maximum number of seconds an activ
 
 The `backoff` method returns an array of integers corresponding to the current attempt. The default `backoff` method decays exponentially to 2 minutes. This can be overridden by implementing the `backoff` method on the activity class.
 
+## Namespace
+
+Workflows can be scoped to a namespace for multi-namespace isolation. When a namespace is configured, it is persisted on every workflow instance, run, task, and run-summary projection created through the control plane. Task bridge polling and Waterline visibility filters can then restrict results to a single namespace.
+
+Set the default namespace via environment variable:
+
+```env
+WORKFLOW_V2_NAMESPACE=production
+```
+
+Or in `config/workflows.php`:
+
+```php
+'v2' => [
+    'namespace' => env('WORKFLOW_V2_NAMESPACE'),
+    // ...
+],
+```
+
+The control plane also accepts a per-call namespace override in the `start()` options:
+
+```php
+$controlPlane->start('order-processing', 'order-12345', [
+    'namespace' => 'staging',
+    // ...
+]);
+```
+
+When no namespace is configured and none is passed explicitly, instances have a `null` namespace and are visible to all consumers.
+
+### Waterline namespace scoping
+
+When Waterline is deployed against a shared database with multiple namespaces, set `WATERLINE_NAMESPACE` to restrict all list views to one namespace:
+
+```env
+WATERLINE_NAMESPACE=production
+```
+
+This injects a namespace filter into every visibility query so Waterline only shows workflows belonging to the configured namespace.
+
+### Task bridge namespace filtering
+
+Both the workflow and activity task bridges accept an optional `namespace` parameter on `poll()`:
+
+```php
+$tasks = $bridge->poll('redis', 'default', limit: 10, namespace: 'production');
+```
+
+When omitted, `poll()` returns tasks from all namespaces (backward-compatible with pre-namespace installations).
+
 ## Durable Type Aliases
 
 Durable type keys for workflows and activities are stored when you register them under `workflows.v2.types`. Failure payloads can use the same pattern for exception classes:
