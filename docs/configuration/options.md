@@ -109,7 +109,34 @@ When Waterline is deployed against a shared database with multiple namespaces, s
 WATERLINE_NAMESPACE=production
 ```
 
-This injects a namespace filter into every visibility query so Waterline only shows workflows belonging to the configured namespace.
+This injects a namespace filter into every visibility query so Waterline only shows workflows belonging to the configured namespace. When set, Waterline also scopes all command operations (cancel, signal, terminate, update, repair, archive, and queries) to the configured namespace — a command targeting an instance or run that belongs to a different namespace will return a 404 instead of executing.
+
+### Command namespace scoping
+
+`WorkflowStub::load()`, `loadSelection()`, and `loadRun()` accept an optional `namespace` parameter:
+
+```php
+use Workflow\V2\WorkflowStub;
+
+// Load only if the instance belongs to the given namespace
+$stub = WorkflowStub::load('order-12345', namespace: 'production');
+
+// Load a specific run, scoped to namespace
+$stub = WorkflowStub::loadRun($runId, namespace: 'production');
+
+// Load a specific selection, scoped to namespace
+$stub = WorkflowStub::loadSelection('order-12345', $runId, namespace: 'production');
+```
+
+When `namespace` is `null` (the default), loading is unscoped and works against all namespaces — this preserves backward compatibility. When a namespace is provided, the query filters by namespace at the database level and throws `ModelNotFoundException` if the workflow does not exist in that namespace.
+
+The control plane command methods (`signal`, `cancel`, `terminate`, `update`, `repair`, `archive`) also accept `namespace` in their options array:
+
+```php
+$controlPlane->cancel('order-12345', [
+    'namespace' => 'production',
+]);
+```
 
 ### Task bridge namespace filtering
 
