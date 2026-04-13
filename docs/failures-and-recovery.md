@@ -100,6 +100,21 @@ The category is determined automatically when the failure is recorded:
   - All other business-logic exceptions default to `application`.
 - External worker failures (submitted through the workflow task bridge HTTP protocol) use the same classification rules based on the exception class name and message strings, even though the original throwable is not available in the host process.
 
+### Task Failures vs Execution Failures
+
+The engine distinguishes between two kinds of workflow-task problems:
+
+**Terminal task failures** — determinism violations that cannot be recovered without a code change. When the executor encounters an `UnsupportedWorkflowYieldException` or `StraightLineWorkflowRequiredException`, the run fails terminally with `failure_category = task_failure`. A `WorkflowFailure` row is created, a `WorkflowFailed` history event is recorded, and the run closes with `status = failed`. These failures represent workflow code that violates the replay contract and must be fixed before the workflow can succeed.
+
+**Replay-blocked task failures** — non-terminal replay problems where the run stays open and repairable. When the executor encounters an `UnresolvedWorkflowFailureException` (failure class cannot be restored), `ConditionWaitDefinitionMismatchException` (condition wait fingerprint changed), or `HistoryEventShapeMismatchException` (history shape incompatible with current code), the engine marks the workflow task as failed with diagnostic metadata in the task payload (`replay_blocked = true`, `replay_blocked_reason`) but does **not** create a `WorkflowFailure` row or close the run. The run remains open and can resume after the underlying issue is corrected (e.g., registering a durable exception type, deploying compatible code) and the run is repaired.
+
+**Infrastructure task failures** — transient errors outside the executor (database errors during task claim, worker crashes during task execution). These mark the workflow task as failed with `last_error` on the task row but do not create a `WorkflowFailure` record. The durable task system re-dispatches the task, and replay resumes from committed history.
+
+Waterline surfaces all three through the `WorkflowTaskProblem` badge system:
+- `replay_blocked` (dark badge) — the run has a replay-blocked task failure
+- `active` (warning badge) — the run has missing, retried, or transport-unhealthy task work
+- `history` (secondary badge) — the run previously needed task repair or replay recovery
+
 ### Workflow Timeout Enforcement
 
 When `StartOptions::withExecutionTimeout()` or `StartOptions::withRunTimeout()` is set, the engine records a deadline on the workflow run. The execution deadline spans the entire logical workflow (including continue-as-new runs), while the run deadline resets with each new run.
