@@ -36,4 +36,14 @@ Timer behavior:
 - Waterline surfaces timer waits in run detail and dashboard payloads
 - engine-level `cancel()` and `terminate()` commands supersede open timer waits durably, and late timer jobs no-op instead of reopening the run
 
+### Transport chunking
+
+Some queue drivers impose a maximum delay on initial message delivery. For example, Amazon SQS caps `DelaySeconds` at 900 seconds (15 minutes). When a timer's duration exceeds the queue driver's limit, the engine automatically chunks the delay:
+
+1. The timer task is dispatched with the driver's maximum delay instead of the full duration.
+2. When the task arrives early (before `fire_at`), it re-releases itself with the remaining delay.
+3. This relay continues until the timer's actual fire time is reached.
+
+This is transparent to the workflow — the timer row still records the full duration and the correct `fire_at` timestamp. The chunking happens purely at the transport layer. For SQS, subsequent relay hops can use up to 43,200 seconds (12 hours) via `ChangeMessageVisibility`, so most timers complete in one or two hops.
+
 `sideEffect()` is available for replay-safe snapshots such as randomness or one-time branch inputs. A dedicated `Workflow\V2\now()` and unit-helper API is still evolving, so `timer()` remains the only time suspension helper today.

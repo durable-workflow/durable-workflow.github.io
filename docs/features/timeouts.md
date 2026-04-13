@@ -104,6 +104,25 @@ When a workflow continues as new:
 
 This means the execution timeout always measures from the original start, while each new run gets its own fresh run-timeout window.
 
+## Enforcement
+
+Workflow-level timeouts are enforced at two points:
+
+1. **At workflow task start** — every workflow task checks `deadlineExpired()` before executing the workflow. If the deadline has passed, the run is immediately timed out.
+2. **By the TaskWatchdog** — the watchdog scans for non-terminal runs whose execution or run deadline has passed but that have no open workflow task. When found, it creates a deadline-expired workflow task and dispatches it, which triggers the timeout on the next task execution.
+
+When a timeout fires, the engine:
+
+- Cancels all open tasks (activity, timer, workflow) except the current one
+- Cancels all open activity executions with `ActivityCancelled` history events
+- Cancels all pending timers with `TimerCancelled` history events
+- Records a `WorkflowFailure` with `failure_category = timeout` and a `WorkflowTimeoutException`
+- Records a terminal `WorkflowTimedOut` history event with `timeout_kind` set to `execution_timeout` or `run_timeout`
+- Applies parent-close policy to any open child workflows
+- Notifies parent workflows if this was a child run
+
+The failure row stores `Workflow\V2\Exceptions\WorkflowTimeoutException` as the exception class, carrying the `timeout_kind` and the deadline timestamp for programmatic inspection.
+
 ## Activity timeouts
 
 Activity timeouts let you bound how long individual activity executions are allowed to take. There are four activity timeout scopes:

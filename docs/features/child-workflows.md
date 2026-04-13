@@ -197,7 +197,7 @@ $results = all([
 - The policy is recorded on the `workflow_links` row (`parent_close_policy`) and in the `ChildWorkflowScheduled` history event payload.
 - When the parent run closes for any reason, the engine queries open child links with a non-abandon policy and sends the appropriate command (cancel or terminate) to each open child.
 - If the child has already closed by the time the policy is enforced, no action is taken — the command is silently skipped.
-- Policy enforcement is best-effort: if a child command is rejected (e.g. the child is already terminal), the parent's closure is not affected.
+- Policy enforcement is best-effort: if a child command is rejected (e.g. the child is already terminal), the parent's closure is not affected. When enforcement succeeds, a `ParentClosePolicyApplied` history event is recorded on the parent run. When enforcement fails, a `ParentClosePolicyFailed` history event is recorded instead, so operators can distinguish successful enforcement from silent failures.
 - Continue-as-new does **not** trigger parent-close policy, because the workflow instance remains active under a new run.
 
 ### When to use each policy
