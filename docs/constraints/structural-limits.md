@@ -76,13 +76,34 @@ foreach (array_chunk($items, 500) as $chunk) {
 
 The `all()` and `parallel()` functions check the total number of leaf operations in a single fan-out group against `command_batch_size`. This is checked before any individual activities or children are scheduled, so the run fails cleanly rather than partially scheduling a batch.
 
-### Payload size limits
+### Payload size
 
-Payload size checks apply to serialized argument data. When a serialized payload exceeds the configured `payload_size_bytes`, the engine rejects the operation.
+When the executor schedules an activity or child workflow, it serializes the argument payload and checks the byte length against `payload_size_bytes`. If the serialized payload exceeds the limit, the run fails before any database rows are created for the operation.
 
-### Metadata size limits
+This applies to:
 
-Memo and search-attribute metadata are checked against `memo_size_bytes` and `search_attribute_size_bytes` respectively when upserting metadata.
+- **Activity arguments** — checked at the point `scheduleActivity` serializes the `ActivityCall` arguments.
+- **Child workflow arguments** — checked at the point `scheduleChildWorkflow` serializes the child's start arguments, before creating the child instance or run rows.
+
+```php
+// A 3 MiB payload will fail with the default 2 MiB limit
+activity(ProcessDocumentActivity::class, $threeMegabyteBlob);
+```
+
+To work within the limit, store large data externally and pass a reference:
+
+```php
+$ref = Storage::put('docs/incoming.pdf', $blob);
+activity(ProcessDocumentActivity::class, $ref);
+```
+
+### Memo size
+
+When a workflow upserts memo entries via `upsertMemo()`, the executor merges the new entries into the existing memo map, then JSON-encodes the merged result and checks the byte length against `memo_size_bytes`. If the merged memo exceeds the limit, the run fails before the memo is persisted.
+
+### Search attribute size
+
+When a workflow upserts search attributes via `upsertSearchAttributes()`, the executor merges the new attributes into the existing set, then JSON-encodes the merged result and checks the byte length against `search_attribute_size_bytes`. If the merged attributes exceed the limit, the run fails before the attributes are persisted.
 
 ## Failure taxonomy
 

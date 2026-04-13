@@ -181,4 +181,4 @@ The following are planned but not yet implemented:
 
 ### Structural limits
 
-Typed structural-limit failures for payload size, pending fan-out counts, and metadata size ceilings are enforced by the engine. See [Structural Limits](/constraints/structural-limits) for the full limit contract, configuration, and failure taxonomy.
+Typed structural-limit failures for payload size, pending fan-out counts, and metadata size ceilings are enforced by the engine. See [Structural Limits](../constraints/structural-limits.md) for the full limit contract, configuration, and failure taxonomy.
