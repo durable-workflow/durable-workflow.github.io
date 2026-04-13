@@ -71,6 +71,30 @@ The general process to fix a failing activity is:
 
 This allows you to keep the workflow in a running status even while an activity is failing. After you fix the failing activity, the workflow will finish in a completed status. A workflow with a failed status means that all activity `$tries` have been exhausted and the exception wasn't handled.
 
+## Failure Taxonomy
+
+Every failure recorded by the engine carries a `failure_category` that classifies the nature of the failure. This taxonomy is available in failure rows, typed history events, Waterline timeline entries, history exports, and the run detail exceptions table.
+
+| Category | Value | Description |
+|---|---|---|
+| Application | `application` | Business logic exception thrown by workflow or activity code. This is the default for terminal workflow failures and failed updates. |
+| Activity | `activity` | Terminal activity failure propagated to the workflow after retries are exhausted. |
+| Child Workflow | `child_workflow` | Terminal child workflow failure propagated to the parent workflow. |
+| Cancelled | `cancelled` | Failure resulting from an explicit cancellation command. |
+| Terminated | `terminated` | Failure resulting from an explicit termination command. |
+| Timeout | `timeout` | Failure caused by a timeout expiration (activity, workflow, or task-level). |
+| Task Failure | `task_failure` | Workflow-task execution failure such as replay errors, determinism violations, or invalid command shapes. |
+| Internal | `internal` | Server or infrastructure failure (database, queue, worker crash). |
+
+The category is determined automatically when the failure is recorded:
+
+- Activity failures use `activity` when the exception exhausts the retry policy.
+- Child workflow failures use `child_workflow` when the child run terminates with a failure.
+- Terminal workflow failures and failed update handlers default to `application`.
+- `cancelled`, `terminated`, `timeout`, `task_failure`, and `internal` are reserved for future enforcement (timeouts, structural limits, and infrastructure error classification).
+
+Waterline surfaces `failure_category` in the exceptions table as a dedicated **Category** column and in timeline failure detail entries. History exports include `failure_category` in the `failures[*]` array. Older failure rows that predate this classification have `failure_category = null` and are treated as unclassified in projections.
+
 ## Activity Retries
 
 `Workflow\V2\Activity` defaults to `$tries = 1`, so an activity failure is sent back to the workflow immediately unless the activity opts into retry attempts.
