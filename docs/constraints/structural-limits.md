@@ -21,11 +21,11 @@ Structural limits cap the resource consumption of a single workflow run. When an
 | `search_attribute_size_bytes` | 40 KiB | Serialized size of indexed search-attribute metadata |
 | `history_transaction_size` | 5,000 | History events produced by a single workflow task execution |
 
-All limits are enforced at the point of scheduling or recording. A value of `0` disables the check for that limit kind.
+All limits are enforced at the point of scheduling, recording, or command intake. A value of `0` disables the check for that limit kind.
 
 ## Soft-limit warnings
 
-Before a hard limit terminates a run, the engine can warn you that a resource is approaching its ceiling. When a count-based resource (pending activities, children, timers, command batch size, or history transaction events) crosses a configurable percentage of the hard limit, the executor logs a structured warning.
+Before a hard limit terminates a run or rejects a command, the engine can warn you that a resource is approaching its ceiling. When a count-based resource (pending activities, children, timers, signals, updates, command batch size, or history transaction events) crosses a configurable percentage of the hard limit, the engine logs a structured warning.
 
 The default warning threshold is **80%**. For example, with the default `pending_activity_count` limit of 2,000, a warning is logged when a run reaches 1,600 pending activities. The run continues executing normally — the warning gives operators time to react (scale workers, trigger continue-as-new, raise the limit) before the hard guard fails the run.
 
@@ -70,7 +70,7 @@ Override any limit through `workflows.v2.structural_limits` in your config or vi
 
 ## Enforcement points
 
-### Pending count limits
+### Pending count limits (executor-side)
 
 Before the executor schedules an activity, child workflow, or timer, it counts the currently non-terminal items of that type on the run. If the count is already at or above the configured limit, the run fails immediately with a `StructuralLimitExceededException`.
 
@@ -94,6 +94,23 @@ foreach (array_chunk($items, 500) as $chunk) {
         $calls[] = startActivity(ProcessItemActivity::class, $item);
     }
     all($calls);
+}
+```
+
+### Pending count limits (intake-side)
+
+When a signal or update command arrives via the control plane, webhook, or `WorkflowStub`, the engine checks the count of unprocessed signals (`received` status) or unresolved updates (`accepted` status) on the target run before accepting the command.
+
+If the count is at or above the configured limit, the command is **rejected** with reason `structural_limit_exceeded`. The rejection response includes machine-readable metadata (`structural_limit_kind`, `structural_limit_value`, `structural_limit_configured`) so callers can identify the root cause.
+
+Unlike executor-side limits (which fail the run), intake-side limits reject the individual command without terminating the workflow. The run remains active, and the caller can retry once pending items have been processed.
+
+```php
+// If 5,000 signals are already pending, this will be rejected:
+$result = $workflow->attemptSignal('process-item', $data);
+if ($result->rejected()) {
+    // $result->rejectionReason() === 'structural_limit_exceeded'
+    // back off and retry later
 }
 ```
 
