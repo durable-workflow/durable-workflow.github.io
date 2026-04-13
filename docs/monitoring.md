@@ -32,6 +32,8 @@ WATERLINE_ENGINE_SOURCE=v2
 
 Waterline reads v2 selected-run detail, history-export payloads, dashboard stats, and operator metrics through `Workflow\V2\Contracts\OperatorObservabilityRepository`. The workflow package binds a default implementation that returns the built-in v2 operator contract, and applications can replace that binding when they need to front Waterline with an app-owned repository, tenancy scope, authorization policy, or cached projection layer.
 
+All v2 operator detail payloads return typed JSON values for workflow arguments, output, activity arguments, activity results, command payloads, signal arguments, update arguments, update results, query results, and exception payloads. The browser does not need to unserialize engine-internal encoding to render durable workflow truth — every value in the JSON response is already structured data that JSON clients can use directly.
+
 With `v2` enabled, the existing Waterline list, detail, and dashboard routes keep their current endpoint shapes while adding v2-specific fields such as:
 
 - `instance_id`
@@ -340,7 +342,7 @@ Query, Signal, and Update now sit on that same operator surface. Waterline shows
 
 Query, signal, and update requests use an explicit JSON `arguments` field on the Waterline operator routes:
 
-- query routes accept either a JSON object of named arguments or a JSON array of positional arguments, then return the query result as a serialized payload instead of recording a durable command row; when durable query targets exist but the workflow definition cannot be replayed, those POSTs now return HTTP `409 Conflict` with `blocked_reason = workflow_definition_unavailable`
+- query routes accept either a JSON object of named arguments or a JSON array of positional arguments, then return the query result as a typed JSON payload instead of recording a durable command row; when durable query targets exist but the workflow definition cannot be replayed, those POSTs now return HTTP `409 Conflict` with `blocked_reason = workflow_definition_unavailable`
 - signal routes accept either a JSON array of positional arguments or any other single JSON value, which Waterline forwards as one durable signal payload
 - signal routes also accept a JSON object of named arguments when the selected run exposes a matching declared signal contract; rejected signal commands surface machine-readable `validation_errors`, including declared type mismatches and nullability violations
 - update routes accept either a JSON object of named arguments or a JSON array of positional arguments, and rejected requests surface machine-readable `validation_errors`, including declared type mismatches and nullability violations
