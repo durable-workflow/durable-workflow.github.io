@@ -141,6 +141,81 @@ When the parent is blocked on a child, Waterline shows it as a child wait rather
 - if that parent resume workflow task row is lost after the child-resolution event, selected-run detail stays `repair_needed`, exposes a synthetic missing workflow task with `workflow_wait_kind = child`, `child_call_id`, and `child_workflow_run_id`, and manual `repair()`, `workflow:v2:repair-pass`, or worker-loop repair recreates the same child-resolution task from typed parent history
 - lineage arrays expose the durable parent/child relationship alongside continue-as-new links, and child-workflow entries now carry the same `child_call_id`
 
+## Parent-Close Policy
+
+When a parent workflow closes — whether by completing, failing, timing out, being cancelled, or being terminated — each open child workflow is affected according to its **parent-close policy**. The policy is set per child call and controls what happens to that child when the parent run exits.
+
+| Policy | Value | Behavior |
+|---|---|---|
+| Abandon | `abandon` | The child continues running independently. This is the default. |
+| Request Cancel | `request_cancel` | A cancel command is sent to the child when the parent closes. |
+| Terminate | `terminate` | A terminate command is sent to the child when the parent closes. |
+
+### Setting the policy
+
+Pass a `ChildWorkflowOptions` as the first argument to `child()` or `startChild()`:
+
+```php
+use function Workflow\V2\child;
+use Workflow\V2\Enums\ParentClosePolicy;
+use Workflow\V2\Support\ChildWorkflowOptions;
+use Workflow\V2\Workflow;
+
+final class ParentWorkflow extends Workflow
+{
+    public function handle(): array
+    {
+        $options = new ChildWorkflowOptions(
+            parentClosePolicy: ParentClosePolicy::RequestCancel,
+        );
+
+        return child(ChildWorkflow::class, $options, 'argument1');
+    }
+}
+```
+
+The same pattern works with `startChild()` for parallel barriers:
+
+```php
+use function Workflow\V2\all;
+use function Workflow\V2\startChild;
+use Workflow\V2\Enums\ParentClosePolicy;
+use Workflow\V2\Support\ChildWorkflowOptions;
+
+$cancelOptions = new ChildWorkflowOptions(
+    parentClosePolicy: ParentClosePolicy::RequestCancel,
+);
+
+$results = all([
+    startChild(FirstChild::class, $cancelOptions),
+    startChild(SecondChild::class, $cancelOptions, 'arg'),
+]);
+```
+
+### How it works
+
+- The policy is recorded on the `workflow_links` row (`parent_close_policy`) and in the `ChildWorkflowScheduled` history event payload.
+- When the parent run closes for any reason, the engine queries open child links with a non-abandon policy and sends the appropriate command (cancel or terminate) to each open child.
+- If the child has already closed by the time the policy is enforced, no action is taken — the command is silently skipped.
+- Policy enforcement is best-effort: if a child command is rejected (e.g. the child is already terminal), the parent's closure is not affected.
+- Continue-as-new does **not** trigger parent-close policy, because the workflow instance remains active under a new run.
+
+### When to use each policy
+
+**Abandon** (default) is correct when children represent independent work that should complete regardless of the parent's fate — for example, a notification workflow or a cleanup task that must finish.
+
+**Request Cancel** is correct when children should receive a graceful shutdown signal. The child can handle the cancellation and run compensation logic before closing.
+
+**Terminate** is correct when children must stop immediately. Use this for children that are purely auxiliary to the parent and have no independent value after the parent closes.
+
+### Waterline visibility
+
+Waterline shows the `parent_close_policy` in:
+
+- the child link entry on the parent run's lineage view
+- the `ChildWorkflowScheduled` timeline entry payload
+- the child's `CancelRequested` or `TerminateRequested` history event when policy enforcement fires, with a reason that names the parent closure
+
 ## Current Limitations
 
 The current surface does not include:
