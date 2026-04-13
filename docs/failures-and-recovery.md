@@ -90,8 +90,12 @@ The category is determined automatically when the failure is recorded:
 
 - Activity failures use `activity` when the exception exhausts the retry policy.
 - Child workflow failures use `child_workflow` when the child run terminates with a failure.
-- Terminal workflow failures and failed update handlers default to `application`.
-- `cancelled`, `terminated`, `timeout`, `task_failure`, and `internal` are reserved for future enforcement (timeouts, structural limits, and infrastructure error classification).
+- Cancelled and terminated workflows use `cancelled` or `terminated` respectively. These categories are also assigned when failure snapshots are reconstructed from `WorkflowCancelled`, `WorkflowTerminated`, `ChildRunCancelled`, or `ChildRunTerminated` history events.
+- Terminal workflow failures and failed update handlers inspect the throwable to refine the category:
+  - Determinism violations (`UnsupportedWorkflowYieldException`, `StraightLineWorkflowRequiredException`) classify as `task_failure`.
+  - Infrastructure exceptions (database/PDO errors, queue max-attempts exceeded) classify as `internal`.
+  - Timeout-indicating exceptions (messages containing "timed out", "timeout exceeded", "execution deadline", or "run deadline") classify as `timeout`.
+  - All other business-logic exceptions default to `application`.
 
 Waterline surfaces `failure_category` in the exceptions table as a dedicated **Category** column and in timeline failure detail entries. History exports include `failure_category` in the `failures[*]` array. Older failure rows that predate this classification have `failure_category = null` and are treated as unclassified in projections.
 
