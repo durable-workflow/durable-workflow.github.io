@@ -18,9 +18,9 @@ Durable Workflow can be used with any queue driver that Laravel supports (except
 - Database
 - Redis
 
-Each queue driver has its own [prerequisites](https://laravel.com/docs/12.x/queues#driver-prerequisites).
+Each queue driver has its own [prerequisites](https://laravel.com/docs/13.x/queues#driver-prerequisites).
 
-Durable Workflow also requires a cache driver that supports [locks](https://laravel.com/docs/12.x/cache#atomic-locks).
+Durable Workflow also requires a cache driver that supports [locks](https://laravel.com/docs/13.x/cache#atomic-locks).
 
 > ✨ SQS Support: `timer()` and `awaitWithTimeout()` work with any duration, even when using the SQS queue driver. Durable Workflow automatically handles SQS's delay limitation transparently.
 
@@ -29,7 +29,7 @@ Durable Workflow also requires a cache driver that supports [locks](https://lara
 Durable Workflow is installable via Composer. To install it, run the following command in your Laravel project:
 
 ```bash
-composer require laravel-workflow/laravel-workflow
+composer require durable-workflow/workflow
 ```
 
 After installing, you must also publish the migrations. To publish the migrations, run the following command:
@@ -46,4 +46,4 @@ php artisan migrate
 
 ## Running Workers
 
-Durable Workflow uses queues to run workflows and activities in the background. You will need to either run the `queue:work` [command](https://laravel.com/docs/12.x/queues#the-queue-work-command) or use [Horizon](https://laravel.com/docs/12.x/horizon) to run your queue workers. Without a queue worker, workflows and activities will not be processed. You cannot use the sync driver with queue workers. To run workflows and activities in parallel, you will need more than one queue worker.
+Durable Workflow uses queues to run workflows and activities in the background. You will need to either run the `queue:work` [command](https://laravel.com/docs/13.x/queues#the-queue-work-command) or use [Horizon](https://laravel.com/docs/13.x/horizon) to run your queue workers. Without a queue worker, workflows and activities will not be processed. You cannot use the sync driver with queue workers. To run workflows and activities in parallel, you will need more than one queue worker.
