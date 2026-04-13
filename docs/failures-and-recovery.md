@@ -90,7 +90,7 @@ The category is determined automatically when the failure is recorded:
 
 - Activity failures use `activity` when the exception exhausts the retry policy.
 - Child workflow failures use `child_workflow` when the child run terminates with a failure.
-- Cancelled and terminated workflows use `cancelled` or `terminated` respectively. These categories are also assigned when failure snapshots are reconstructed from `WorkflowCancelled`, `WorkflowTerminated`, `ChildRunCancelled`, or `ChildRunTerminated` history events.
+- Cancelled and terminated workflows create a dedicated `WorkflowFailure` row with `propagation_kind = cancelled` or `terminated` and `failure_category = cancelled` or `terminated` respectively. The `WorkflowCancelled` or `WorkflowTerminated` history event carries the `failure_id` and `failure_category` so failure snapshots, run detail, and history exports link directly to the failure record. Child run cancellation and termination events (`ChildRunCancelled`, `ChildRunTerminated`) also carry the child's `failure_category` when the child failure row exists.
 - Terminal workflow failures and failed update handlers inspect the throwable to refine the category:
   - Determinism violations (`UnsupportedWorkflowYieldException`, `StraightLineWorkflowRequiredException`) classify as `task_failure`.
   - Infrastructure exceptions (database/PDO errors, queue max-attempts exceeded) classify as `internal`.

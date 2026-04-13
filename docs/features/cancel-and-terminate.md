@@ -47,9 +47,10 @@ When a cancel command is accepted:
 4. All open activity executions are closed as cancelled, with `ActivityCancelled` history recorded for each.
 5. All pending timers are cancelled, with `TimerCancelled` history recorded for each.
 6. The run status transitions to `cancelled` with `closed_reason = cancelled`.
-7. `WorkflowCancelled` history is appended.
-8. If this run is a child workflow, the parent receives a resume task so it can observe the child cancellation.
-9. The run summary projection is updated.
+7. A `WorkflowFailure` row is created with `failure_category = cancelled` and `propagation_kind = cancelled`.
+8. `WorkflowCancelled` history is appended with the `failure_id` and `failure_category`.
+9. If this run is a child workflow, the parent receives a resume task so it can observe the child cancellation.
+10. The run summary projection is updated.
 
 ### Cancel is rejected when
 
@@ -81,6 +82,7 @@ $result->reason(); // "Operator emergency shutdown"
 Terminate follows the same transactional steps as cancel, but:
 
 - Records `TerminateRequested` and `WorkflowTerminated` history events instead.
+- Creates the `WorkflowFailure` row with `failure_category = terminated` and `propagation_kind = terminated`.
 - Sets `closed_reason = terminated` on the run.
 - Does not schedule any further workflow-code execution.
 
@@ -173,7 +175,7 @@ WorkflowStarted
 CancelRequested       <- reason field present when supplied
 TimerCancelled        <- for each open timer
 ActivityCancelled     <- for each open activity
-WorkflowCancelled     <- reason field present when supplied
+WorkflowCancelled     <- failure_id, failure_category, reason when supplied
 ```
 
 A terminated run produces:
@@ -185,7 +187,7 @@ WorkflowStarted
 TerminateRequested    <- reason field present when supplied
 TimerCancelled        <- for each open timer
 ActivityCancelled     <- for each open activity
-WorkflowTerminated    <- reason field present when supplied
+WorkflowTerminated    <- failure_id, failure_category, reason when supplied
 ```
 
 ## Cancel vs. terminate
@@ -198,5 +200,6 @@ WorkflowTerminated    <- reason field present when supplied
 | Reason metadata | Yes | Yes |
 | Durable command history | Yes | Yes |
 | Parent receives child outcome | Yes | Yes |
+| Failure row recorded | Yes (`cancelled`) | Yes (`terminated`) |
 | Status bucket | `failed` | `failed` |
 | Closed reason | `cancelled` | `terminated` |
