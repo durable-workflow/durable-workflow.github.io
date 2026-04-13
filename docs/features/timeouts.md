@@ -134,11 +134,11 @@ $result = activity(
 
 ### Schedule-to-start timeout
 
-The deadline is computed when the activity is scheduled. If no worker claims the activity before the deadline, the `TaskWatchdog` enforces the timeout. If retry attempts remain, a new activity task is scheduled with the snapped backoff; otherwise a terminal `ActivityTimedOut` history event is recorded and the workflow is woken.
+The deadline is computed when the activity is scheduled. If no worker claims the activity before the deadline, the `TaskWatchdog` enforces the timeout. If retry attempts remain, a new activity task is scheduled with the snapped backoff and the schedule-to-start deadline is recomputed relative to the retry's available-at time — each retry gets a fresh window. If no `scheduleToStartTimeout` was configured, the deadline is cleared on retry. If all attempts are exhausted, a terminal `ActivityTimedOut` history event is recorded and the workflow is woken.
 
 ### Start-to-close timeout
 
-The deadline is computed when a worker claims the activity task. Each retry gets a fresh deadline. If the activity does not complete before the deadline, the current attempt is closed and the same retry-or-terminal decision applies.
+The deadline is computed when a worker claims the activity task. Each retry gets a fresh start-to-close deadline. If the activity does not complete before the deadline, the current attempt is closed. If retry attempts remain, the execution returns to `Pending` with a reset schedule-to-start deadline (if configured) so the retried task is not immediately re-timed-out. If all attempts are exhausted, a terminal timeout is recorded.
 
 ### Schedule-to-close timeout
 
@@ -146,7 +146,7 @@ The deadline is computed once at scheduling time and never resets. When it expir
 
 ### Heartbeat timeout
 
-The initial deadline is computed when a worker claims the activity task. Each successful `$this->heartbeat()` call extends the deadline by the configured interval. If the activity does not call `heartbeat()` before the deadline expires, the engine assumes the worker is unresponsive. If retry attempts remain, a new attempt is scheduled; otherwise a terminal timeout is recorded.
+The initial deadline is computed when a worker claims the activity task. Each successful `$this->heartbeat()` call extends the deadline by the configured interval. If the activity does not call `heartbeat()` before the deadline expires, the engine assumes the worker is unresponsive. If retry attempts remain, a new attempt is scheduled with a reset schedule-to-start deadline (if configured); otherwise a terminal timeout is recorded.
 
 ```php
 use Workflow\V2\Activity;
