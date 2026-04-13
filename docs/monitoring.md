@@ -315,6 +315,15 @@ Each list response now also echoes the resolved filter contract under `visibilit
 - `applied`: the merged filters after Waterline resolves any saved view and overlays the current query string
 - `saved_view`: the resolved saved-view payload when the request used `?view=...`
 
+The definition also includes `projection_schema_version`, which tracks the current derived-field schema that the run-summary projector writes. Summaries projected by an older package version may have `NULL` for fields added in later schema versions; exact-match filters will not match those rows until they are re-projected. The `workflow:v2:rebuild-projections --needs-rebuild` command detects schema-outdated summaries (where `projection_schema_version` is `NULL` or lower than the current build) and re-projects them from durable runtime state.
+
+The saved-views index response also includes `mixed_fleet_policy`, which describes how visibility filters behave when workers run different package versions concurrently:
+
+- Filter normalization is idempotent regardless of the worker package version that wrote the summary projection
+- Saved views remain readable across filter version bumps; updating a deprecated saved view rewrites it onto the current version
+- Mixed-fleet operation is safe during a rollout window — older workers continue projecting with their schema version, and the rebuild command brings all rows to the current schema after rollout completes
+- The health check surfaces `schema_outdated` alongside `missing`, `orphaned`, and `stale` in the `run_summary_projection` check, with the current `projection_schema_version` reported for operator reference
+
 Waterline v2 saved views persist those same exact-match filters server-side:
 
 ```text
