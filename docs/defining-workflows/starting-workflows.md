@@ -75,6 +75,46 @@ Visibility labels are exact-match strings for operator filtering in Waterline, n
 
 `memo` is JSON-like metadata for selected-run detail and history export, not a list-filter or run-summary search field. Top-level and nested memo object keys must be non-empty strings up to 64 characters, and memo values may be scalars, `null`, arrays, or nested objects.
 
+### Search Attributes
+
+Search attributes are indexed scalar metadata for operator filtering and fleet visibility. Unlike memo, search attributes are surfaced in run list views and can be used for visibility filtering in Waterline:
+
+```php
+$workflow->start(
+    $orderId,
+    StartOptions::withVisibility(
+        businessKey: 'order-123',
+        labels: ['tenant' => 'acme'],
+    )->withSearchAttributes([
+        'priority' => 'high',
+        'status' => 'pending',
+        'amount' => '99.50',
+    ]),
+);
+```
+
+Search attribute keys follow the same rules as visibility label keys: letters, numbers, `.`, `_`, `-`, and `:`, up to 64 characters. Values must be scalars or `null`. Boolean values are cast to `"1"` or `"0"`, and `null` values are silently dropped. Empty string values after casting are also dropped.
+
+Search attributes can be upserted during workflow execution using `upsertSearchAttributes()`, which merges the new attributes into the existing set.
+
+### Execution and Run Timeouts
+
+`StartOptions` also supports execution-level and run-level timeouts:
+
+```php
+$workflow->start(
+    $orderId,
+    (new StartOptions())
+        ->withExecutionTimeout(86400)  // 24 hours across all runs
+        ->withRunTimeout(3600),        // 1 hour per individual run
+);
+```
+
+- **Execution timeout** spans the entire workflow instance lifecycle, including retries and continue-as-new runs. Once the execution deadline passes, the engine will not schedule further workflow tasks.
+- **Run timeout** applies to the current run only. It resets when a workflow continues as new.
+
+Both timeouts must be at least 1 second. Pass `null` (the default) to leave the timeout unlimited.
+
 ## Workflow Type
 
 The durable `workflow_type` for that instance comes from either:

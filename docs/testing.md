@@ -230,6 +230,96 @@ WorkflowStub::assertUpdateSent(
 );
 ```
 
+### Testing Start Outcomes and Duplicate-Start Policy
+
+Use `attemptStart()` to verify duplicate-start behavior without throwing exceptions. The `StartResult` exposes typed outcome helpers:
+
+```php
+use Workflow\V2\StartOptions;
+use Workflow\V2\WorkflowStub;
+
+public function testRejectDuplicateStart(): void
+{
+    WorkflowStub::fake();
+    WorkflowStub::mock(MyActivity::class, 'result');
+
+    $workflow = WorkflowStub::make(MyWorkflow::class, 'order-123');
+
+    $first = $workflow->start('Taylor');
+    $this->assertTrue($first->startedNew());
+
+    $second = WorkflowStub::load('order-123');
+    $duplicate = $second->attemptStart('Taylor');
+
+    $this->assertTrue($duplicate->rejected());
+    $this->assertTrue($duplicate->rejectedDuplicate());
+    $this->assertSame('instance_already_started', $duplicate->rejectionReason());
+}
+```
+
+To test the return-existing-active policy, pass `StartOptions::returnExistingActive()`:
+
+```php
+public function testReturnExistingActiveStart(): void
+{
+    WorkflowStub::fake();
+
+    $workflow = WorkflowStub::make(MySignalWorkflow::class, 'order-123');
+    $workflow->start();
+
+    $this->assertSame('waiting', $workflow->refresh()->status());
+
+    $second = WorkflowStub::load('order-123');
+    $result = $second->attemptStart(StartOptions::returnExistingActive());
+
+    $this->assertTrue($result->accepted());
+    $this->assertTrue($result->returnedExistingActive());
+    $this->assertSame($workflow->runId(), $result->runId());
+}
+```
+
+Both policies record durable command and history events, so you can also assert on `WorkflowCommand` and `WorkflowHistoryEvent` rows for deeper verification.
+
+### Testing History Budget
+
+The `HistoryBudget` fields (`history_event_count`, `history_size_bytes`, `continue_as_new_recommended`) are surfaced on the run summary projection and are available through the `RunDetailView`. In your workflow code, the `Workflow` base class exposes these as `$this->historyEventCount()`, `$this->historySizeBytes()`, and `$this->continueAsNewRecommended()`:
+
+```php
+use Workflow\V2\Workflow;
+
+final class LongRunningWorkflow extends Workflow
+{
+    public function handle(): void
+    {
+        while (true) {
+            // ... process work ...
+
+            if ($this->continueAsNewRecommended()) {
+                $this->continueAsNew($this->carryForwardState());
+            }
+        }
+    }
+}
+```
+
+To test history budget thresholds, configure the thresholds low and verify the recommendation:
+
+```php
+public function testHistoryBudgetRecommendsContinueAsNew(): void
+{
+    config()->set('workflows.v2.history_budget.continue_as_new_event_threshold', 5);
+
+    WorkflowStub::fake();
+
+    // Run a workflow that produces enough history events to trip the threshold
+    $workflow = WorkflowStub::make(ManyActivitiesWorkflow::class, 'budget-test');
+    $workflow->start();
+
+    $summary = $workflow->summary();
+    $this->assertTrue($summary->continue_as_new_recommended);
+}
+```
+
 ## Legacy `Workflow\WorkflowStub`
 
 ### Workflows
