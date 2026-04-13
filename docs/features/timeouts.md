@@ -104,11 +104,78 @@ When a workflow continues as new:
 
 This means the execution timeout always measures from the original start, while each new run gets its own fresh run-timeout window.
 
+## Activity timeouts
+
+Activity timeouts let you bound how long individual activity executions are allowed to take. There are four activity timeout scopes:
+
+- **Schedule-to-start** — caps the time from scheduling to the first worker claim. Enforced while the activity is `Pending`.
+- **Start-to-close** — caps the time from when a worker claims the activity to when it must complete. Resets on each retry attempt.
+- **Schedule-to-close** — caps the total wall-clock time from scheduling to completion across all retry attempts. This is always terminal — retrying would not help because the overall deadline has passed.
+- **Heartbeat** — caps the time between heartbeats. For long-running activities that call `$this->heartbeat()`, the engine requires a heartbeat within the configured interval or the activity is considered unresponsive.
+
+All are optional and can be combined. Configure them through `ActivityOptions` when calling an activity:
+
+```php
+use function Workflow\V2\activity;
+use Workflow\V2\Support\ActivityOptions;
+
+$result = activity(
+    LongRunningActivity::class,
+    new ActivityOptions(
+        scheduleToStartTimeout: 30,     // must be claimed within 30s
+        startToCloseTimeout: 300,       // each attempt has 5 minutes
+        scheduleToCloseTimeout: 600,    // total 10 minutes across all retries
+        heartbeatTimeout: 15,           // must heartbeat every 15 seconds
+        maxAttempts: 3,
+    ),
+    $input,
+);
+```
+
+### Schedule-to-start timeout
+
+The deadline is computed when the activity is scheduled. If no worker claims the activity before the deadline, the `TaskWatchdog` enforces the timeout. If retry attempts remain, a new activity task is scheduled with the snapped backoff; otherwise a terminal `ActivityTimedOut` history event is recorded and the workflow is woken.
+
+### Start-to-close timeout
+
+The deadline is computed when a worker claims the activity task. Each retry gets a fresh deadline. If the activity does not complete before the deadline, the current attempt is closed and the same retry-or-terminal decision applies.
+
+### Schedule-to-close timeout
+
+The deadline is computed once at scheduling time and never resets. When it expires, the activity is immediately failed as terminal — even if retry attempts remain, because the total allowed wall-clock time has passed. This is useful for bounding the overall cost of a flaky activity that might otherwise retry indefinitely within its per-attempt limits.
+
+### Heartbeat timeout
+
+The initial deadline is computed when a worker claims the activity task. Each successful `$this->heartbeat()` call extends the deadline by the configured interval. If the activity does not call `heartbeat()` before the deadline expires, the engine assumes the worker is unresponsive. If retry attempts remain, a new attempt is scheduled; otherwise a terminal timeout is recorded.
+
+```php
+use Workflow\V2\Activity;
+
+class LongRunningActivity extends Activity
+{
+    public function handle($input)
+    {
+        foreach ($items as $item) {
+            $this->heartbeat(['processed' => $count]);
+            // ... process item ...
+        }
+    }
+}
+```
+
+### Enforcement
+
+Activity timeouts are enforced by the `TaskWatchdog` on each worker-loop pass. The watchdog scans for executions whose deadline columns have passed and delegates to `ActivityTimeoutEnforcer`. Each enforcement records:
+
+- A terminal `ActivityTimedOut` history event with `timeout_kind` set to `schedule_to_start`, `start_to_close`, `schedule_to_close`, or `heartbeat`
+- A `WorkflowFailure` row with `failure_category = timeout` and `propagation_kind = timeout`
+- A workflow resume task to wake the parent workflow so it can observe the failure
+
+Waterline displays the retry policy including all configured timeout types in the activity detail view. The timeline shows the timeout kind in the activity timed-out event message.
+
 ### What is not yet covered
 
 The following are planned but not yet implemented:
 
-- Task-level timeouts (schedule-to-start, start-to-close, schedule-to-close, heartbeat)
-- Automatic timeout enforcement (firing `WorkflowTimedOut` events and terminating the run when a deadline passes)
 - Retry policies at the workflow level
 - Typed structural-limit failures for payload size, history size, and pending fan-out

@@ -40,7 +40,7 @@ $sameSelectedRun = WorkflowStub::loadRun($runId);
 
 That instance-scoped selector is useful when another system already stored the public instance id and later wants to pin a historical run without changing the outer workflow address.
 
-All three loaders accept an optional `namespace` parameter. When provided, loading is scoped to the given namespace at the query level — a workflow belonging to a different namespace will not be found. See [Namespace Scoping](/configuration/options#namespace-scoping) for details.
+All three loaders accept an optional `namespace` parameter. When provided, loading is scoped to the given namespace at the query level — a workflow belonging to a different namespace will not be found. See [Namespace](../configuration/options.md#namespace) for details.
 
 Instance-scoped current-run selection no longer trusts only the mutable `workflow_instances.current_run_id` pointer. `load($instanceId)`, `currentRunId()`, Waterline instance routes, and other instance-targeted current-run actions resolve the newest durable run in the instance chain, so continue-as-new navigation still lands on the right run even if that pointer is temporarily stale or null.
 

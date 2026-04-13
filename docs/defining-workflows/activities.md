@@ -98,8 +98,10 @@ $handle = startActivity(
 | `queue` | `string` | Queue name override |
 | `maxAttempts` | `int` | Override the activity class `$tries` |
 | `backoff` | `int\|list<int>` | Override the activity class `backoff()` |
-| `startToCloseTimeout` | `int` | Seconds from activity start to required completion |
+| `startToCloseTimeout` | `int` | Seconds from activity start to required completion (per attempt) |
 | `scheduleToStartTimeout` | `int` | Seconds from scheduling to first claim |
+| `scheduleToCloseTimeout` | `int` | Total wall-clock seconds from scheduling to completion across all retries |
+| `heartbeatTimeout` | `int` | Seconds between heartbeats before the activity is considered unresponsive |
 
 ### Resolution order
 
