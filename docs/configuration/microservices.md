@@ -527,7 +527,7 @@ Like the activity task HTTP surface, these routes are the same first bridge expo
 
 ## Control Plane
 
-A control-plane contract is exposed through `Workflow\V2\Contracts\WorkflowControlPlane`, registered as a singleton in the container. This contract lets a standalone server or external adapter start, signal, query, update, cancel, and terminate workflows using **durable type keys** instead of requiring local PHP class resolution.
+A control-plane contract is exposed through `Workflow\V2\Contracts\WorkflowControlPlane`, registered as a singleton in the container. This contract lets a standalone server or external adapter start, signal, query, update, cancel, terminate, repair, and archive workflows using **durable type keys** instead of requiring local PHP class resolution.
 
 This is the key difference from `WorkflowStub::make()` and `WorkflowStub::load()`: the control plane accepts workflow type strings and instance ids directly, so a server process that does not have the workflow PHP classes installed can still drive the full workflow lifecycle. Workers that do have the classes pick up the actual replay work through the task bridges.
 
@@ -627,6 +627,36 @@ $result = $controlPlane->terminate('order-12345', [
 
 Both return `accepted` (bool), `workflow_instance_id`, `workflow_command_id`, and `reason` (on rejection). Rejection reasons include `instance_not_found`, `instance_not_started`, and `run_not_active`.
 
+### Repairing a workflow
+
+`repair()` requests a repair of the current workflow run. Repair re-projects the run summary, detects liveness issues, and creates a new workflow task when the run is in a repairable state. Only open runs on the current instance may be repaired:
+
+```php
+$result = $controlPlane->repair('order-12345');
+
+if ($result['accepted']) {
+    // Repair was accepted and a new task was created
+}
+```
+
+Rejection reasons include `instance_not_found`, `instance_not_started`, and `run_not_active` (run is already closed).
+
+### Archiving a workflow
+
+`archive()` marks a terminal workflow run as archived. Archived runs are excluded from active fleet views and may be eligible for cold storage or cleanup. Only closed (completed, failed, cancelled, terminated) runs may be archived:
+
+```php
+$result = $controlPlane->archive('order-12345', [
+    'reason' => 'Retention period expired',
+]);
+
+if ($result['accepted']) {
+    // Run is now archived
+}
+```
+
+Archiving an already-archived run returns `accepted` with an `archive_not_needed` outcome. Rejection reasons include `instance_not_found`, `instance_not_started`, and `run_not_closed`.
+
 ### Describing a workflow
 
 `describe()` returns the current state of a workflow instance without loading the full Waterline detail view. This is the recommended path for server APIs, CLI tools, and operator dashboards that need workflow state without the overhead of the full projection tree:
@@ -659,6 +689,8 @@ if ($result['found']) {
     $result['actions']['can_update'];    // true (false for remote-only or non-current runs)
     $result['actions']['can_cancel'];    // true
     $result['actions']['can_terminate']; // true
+    $result['actions']['can_repair'];    // true (false for closed runs or non-current runs)
+    $result['actions']['can_archive'];   // false (true only for terminal runs not yet archived)
 }
 ```
 
@@ -670,7 +702,7 @@ $result = $controlPlane->describe('order-12345', [
 ]);
 ```
 
-Action availability reflects whether the operation can succeed right now: closed runs cannot accept commands, remote-only workflows cannot serve queries or updates locally, and non-current runs cannot receive signals, updates, cancellations, or terminations.
+Action availability reflects whether the operation can succeed right now: closed runs cannot accept commands, remote-only workflows cannot serve queries or updates locally, non-current runs cannot receive signals, updates, cancellations, terminations, or repairs, and only terminal runs that have not already been archived are eligible for archival.
 
 ### Contract and customization
 

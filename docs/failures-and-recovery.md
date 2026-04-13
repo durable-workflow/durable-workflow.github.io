@@ -96,6 +96,7 @@ The category is determined automatically when the failure is recorded:
   - Infrastructure exceptions (database/PDO errors, queue max-attempts exceeded) classify as `internal`.
   - Timeout-indicating exceptions (messages containing "timed out", "timeout exceeded", "execution deadline", or "run deadline") classify as `timeout`.
   - All other business-logic exceptions default to `application`.
+- External worker failures (submitted through the workflow task bridge HTTP protocol) use the same classification rules based on the exception class name and message strings, even though the original throwable is not available in the host process.
 
 ### Workflow Timeout Enforcement
 
