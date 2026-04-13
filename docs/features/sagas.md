@@ -93,6 +93,15 @@ $this->setContinueWithError(true);
 
 When enabled, the engine catches and discards exceptions from each compensation closure and continues to the next one. This is useful when compensations are independent and you want a best-effort cleanup even if some steps fail.
 
+### Combining both flags
+
+`setParallelCompensation(true)` and `setContinueWithError(true)` can be used together. When both are enabled, all compensations run concurrently through `all()`, and if any compensation throws, the error is caught so the remaining compensations still complete. Without `setContinueWithError(true)`, a parallel compensation failure propagates immediately and the workflow fails.
+
+```php
+$this->setParallelCompensation(true);
+$this->setContinueWithError(true);
+```
+
 ## How it works
 
 - `addCompensation()` registers a callable that will be invoked during `compensate()`
