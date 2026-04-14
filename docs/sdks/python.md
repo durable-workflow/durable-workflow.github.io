@@ -1,0 +1,501 @@
+---
+sidebar_position: 1
+---
+
+# Python SDK
+
+The Python SDK is a thin, async-first client for the Durable Workflow server. It lets Python processes start, observe, signal, and cancel workflows through the server's control-plane API, and register as workers that execute workflow tasks and activities.
+
+The SDK targets the same durable model as the PHP package — instance IDs, run IDs, history events, task queues, and type keys are shared across languages. A Python worker can serve activities for a PHP-authored workflow, and vice versa.
+
+## Requirements
+
+- Python 3.10 or later
+- A running [Durable Workflow server](/docs/2.0/configuration/worker-protocol)
+
+## Installation
+
+```bash
+pip install durable-workflow
+```
+
+The SDK has a single runtime dependency: [httpx](https://www.python-httpx.org/).
+
+## Quickstart
+
+This example defines a workflow with one activity, starts it against a local server, and waits for the result.
+
+```python
+import asyncio
+from durable_workflow import Client, Worker, workflow, activity
+
+@activity.defn(name="greet")
+async def greet(name: str) -> dict:
+    return {"greeting": f"Hello, {name}!", "length": len(name)}
+
+@workflow.defn(name="greeter")
+class GreeterWorkflow:
+    def run(self, ctx, *args):
+        result = yield ctx.schedule_activity("greet", list(args))
+        return result
+
+async def main():
+    async with Client("http://localhost:8080", token="your-token") as client:
+        handle = await client.start_workflow(
+            workflow_type="greeter",
+            task_queue="default",
+            workflow_id="greeting-1",
+            input=["world"],
+        )
+
+        worker = Worker(
+            client,
+            task_queue="default",
+            workflows=[GreeterWorkflow],
+            activities=[greet],
+        )
+
+        # Run the worker for a few seconds, then get the result
+        async with asyncio.TaskGroup() as tg:
+            tg.create_task(worker.run())
+            result = await handle.result(timeout=30.0)
+            await worker.stop()
+
+    print(result)  # {"greeting": "Hello, world!", "length": 5}
+
+asyncio.run(main())
+```
+
+## Client
+
+The `Client` class is the primary interface for control-plane operations. It communicates with the server over HTTP+JSON.
+
+```python
+from durable_workflow import Client
+
+client = Client(
+    "http://localhost:8080",
+    token="your-api-token",   # optional, depends on server auth config
+    namespace="default",       # namespace for all operations
+    timeout=60.0,              # HTTP request timeout in seconds
+)
+```
+
+Use the client as an async context manager to ensure the underlying HTTP connection is closed:
+
+```python
+async with Client("http://localhost:8080") as client:
+    ...
+```
+
+### Starting a Workflow
+
+```python
+handle = await client.start_workflow(
+    workflow_type="greeter",
+    task_queue="default",
+    workflow_id="greeting-1",
+    input=["world"],
+    execution_timeout_seconds=3600,
+    run_timeout_seconds=600,
+)
+```
+
+The returned `WorkflowHandle` provides methods for interacting with the running workflow.
+
+### Workflow Handle
+
+```python
+handle = client.get_workflow_handle("greeting-1")
+
+# Wait for the result
+result = await handle.result(timeout=30.0)
+
+# Describe the workflow
+execution = await handle.describe()
+print(execution.status)  # "completed", "running", etc.
+
+# Signal the workflow
+await handle.signal("my_signal", [{"key": "value"}])
+
+# Query the workflow
+answer = await handle.query("current_state")
+
+# Cancel or terminate
+await handle.cancel(reason="no longer needed")
+await handle.terminate(reason="stuck workflow")
+```
+
+### Listing Workflows
+
+```python
+workflow_list = await client.list_workflows(
+    workflow_type="greeter",
+    status="running",
+    page_size=50,
+)
+
+for execution in workflow_list.executions:
+    print(f"{execution.workflow_id}: {execution.status}")
+```
+
+### Updates
+
+Updates allow you to send a mutation to a running workflow and wait for the result:
+
+```python
+result = await client.update_workflow(
+    "my-workflow-id",
+    "approve",
+    args=[{"approved": True}],
+    wait_for="accepted",
+    wait_timeout_seconds=10,
+)
+```
+
+## Defining Workflows
+
+Workflows are Python classes decorated with `@workflow.defn`. The `run` method is a generator that yields commands to the server.
+
+```python
+from durable_workflow import workflow
+
+@workflow.defn(name="order-processing")
+class OrderWorkflow:
+    def run(self, ctx, *args):
+        order = args[0] if args else {}
+
+        # Schedule an activity and wait for the result
+        validated = yield ctx.schedule_activity(
+            "validate_order", [order]
+        )
+
+        # Start a timer (durable sleep)
+        yield ctx.start_timer(seconds=60)
+
+        # Schedule another activity
+        receipt = yield ctx.schedule_activity(
+            "process_payment", [validated]
+        )
+
+        return receipt
+```
+
+The `name` in `@workflow.defn(name="...")` is the type key used across all languages. It must be a plain string — not a Python module path or class reference.
+
+### Workflow Context
+
+The `WorkflowContext` passed to `run` provides deterministic operations:
+
+| Method | Description |
+|--------|-------------|
+| `ctx.schedule_activity(type, args)` | Schedule an activity task |
+| `ctx.start_timer(seconds)` | Durable sleep |
+| `ctx.start_child_workflow(type, args)` | Start a child workflow |
+| `ctx.side_effect(fn)` | Capture a non-deterministic value |
+| `ctx.get_version(change_id, min, max)` | Safe workflow code versioning |
+| `ctx.upsert_search_attributes(attrs)` | Update search attributes |
+| `ctx.continue_as_new(*args)` | Restart the workflow with new input |
+| `ctx.now()` | Deterministic clock (from history) |
+| `ctx.random()` | Seeded random generator |
+| `ctx.uuid4()` | Deterministic UUID |
+| `ctx.logger` | Logger that is silent during replay |
+
+### Determinism Rules
+
+Workflow code is replayed from history. It must not perform any non-deterministic operations directly:
+
+- No I/O (HTTP calls, file reads, database queries)
+- No `datetime.now()` or `time.time()` — use `ctx.now()`
+- No `random.random()` — use `ctx.random()`
+- No `uuid.uuid4()` — use `ctx.uuid4()`
+
+All non-determinism must flow through the context or be captured with `ctx.side_effect()`.
+
+### Fan-Out
+
+Yield a list of commands to run them concurrently:
+
+```python
+@workflow.defn(name="fan-out-example")
+class FanOutWorkflow:
+    def run(self, ctx, *args):
+        items = args[0]
+
+        # Schedule all activities at once
+        results = yield [
+            ctx.schedule_activity("process_item", [item])
+            for item in items
+        ]
+
+        return results  # list of results in the same order
+```
+
+### Child Workflows
+
+```python
+result = yield ctx.start_child_workflow(
+    "child-workflow-type",
+    [{"input": "data"}],
+    task_queue="child-queue",
+    parent_close_policy="terminate",
+)
+```
+
+### Continue-as-New
+
+For long-running workflows, use continue-as-new to reset the history:
+
+```python
+from durable_workflow import ContinueAsNew
+
+@workflow.defn(name="polling-workflow")
+class PollingWorkflow:
+    def run(self, ctx, *args):
+        iteration = args[0] if args else 0
+
+        result = yield ctx.schedule_activity("poll_source", [])
+
+        if result.get("done"):
+            return result
+
+        # Continue with incremented iteration
+        return ContinueAsNew(arguments=[iteration + 1])
+```
+
+## Defining Activities
+
+Activities are async Python functions decorated with `@activity.defn`. Unlike workflows, activities can perform I/O freely.
+
+```python
+from durable_workflow import activity
+
+@activity.defn(name="send_email")
+async def send_email(to: str, subject: str, body: str) -> dict:
+    # Activities can do I/O: HTTP calls, database queries, etc.
+    response = await some_email_client.send(to=to, subject=subject, body=body)
+    return {"message_id": response.id, "sent": True}
+```
+
+The `name` is the type key shared across languages. A PHP workflow can schedule an activity named `"send_email"` and a Python worker will pick it up, and vice versa.
+
+### Activity Context
+
+Inside an activity, access execution metadata and heartbeat via `activity.context()`:
+
+```python
+@activity.defn(name="long_running_task")
+async def long_running_task(items: list) -> dict:
+    ctx = activity.context()
+
+    print(f"Attempt #{ctx.info.attempt_number}")
+    print(f"Task queue: {ctx.info.task_queue}")
+
+    for i, item in enumerate(items):
+        # Check for cancellation
+        if ctx.is_cancelled:
+            return {"partial": True, "processed": i}
+
+        await process(item)
+
+        # Heartbeat to keep the task alive
+        await ctx.heartbeat({"progress": i + 1, "total": len(items)})
+
+    return {"processed": len(items)}
+```
+
+### Non-Retryable Errors
+
+Raise `NonRetryableError` to fail the activity without retries:
+
+```python
+from durable_workflow import NonRetryableError
+
+@activity.defn(name="validate")
+async def validate(data: dict) -> dict:
+    if "required_field" not in data:
+        raise NonRetryableError("Missing required_field")
+    return data
+```
+
+## Worker
+
+The `Worker` registers with the server, polls for tasks, and dispatches them to your workflow and activity implementations.
+
+```python
+from durable_workflow import Client, Worker
+
+async with Client("http://localhost:8080", token="secret") as client:
+    worker = Worker(
+        client,
+        task_queue="default",
+        workflows=[GreeterWorkflow, OrderWorkflow],
+        activities=[greet, send_email, validate],
+        max_concurrent_workflow_tasks=10,
+        max_concurrent_activity_tasks=10,
+    )
+
+    await worker.run()  # blocks until worker.stop() is called
+```
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `task_queue` | required | The task queue to poll |
+| `workflows` | `()` | Workflow classes to register |
+| `activities` | `()` | Activity functions to register |
+| `worker_id` | auto-generated | Unique worker identifier |
+| `poll_timeout` | `35.0` | Long-poll timeout in seconds |
+| `max_concurrent_workflow_tasks` | `10` | Max parallel workflow tasks |
+| `max_concurrent_activity_tasks` | `10` | Max parallel activity tasks |
+| `shutdown_timeout` | `30.0` | Seconds to drain in-flight tasks on stop |
+
+## Schedules
+
+Create and manage scheduled workflows through the client:
+
+```python
+from durable_workflow import ScheduleSpec, ScheduleAction
+
+# Create a schedule
+handle = await client.create_schedule(
+    schedule_id="hourly-report",
+    spec=ScheduleSpec(cron_expressions=["0 * * * *"]),
+    action=ScheduleAction(
+        workflow_type="generate-report",
+        task_queue="default",
+        input=[{"format": "pdf"}],
+    ),
+    overlap_policy="skip",
+    jitter_seconds=30,
+)
+
+# List all schedules
+schedule_list = await client.list_schedules()
+
+# Describe a schedule
+desc = await handle.describe()
+print(f"Next fire: {desc.next_fire_at}")
+print(f"Total fires: {desc.fires_count}")
+
+# Pause and resume
+await handle.pause(note="maintenance window")
+await handle.resume(note="maintenance complete")
+
+# Trigger immediately
+result = await handle.trigger()
+
+# Backfill missed runs
+backfill = await handle.backfill(
+    start_time="2024-01-01T00:00:00Z",
+    end_time="2024-01-02T00:00:00Z",
+)
+
+# Update the schedule
+await handle.update(
+    spec=ScheduleSpec(cron_expressions=["*/30 * * * *"]),
+    note="Changed to every 30 minutes",
+)
+
+# Delete the schedule
+await handle.delete()
+```
+
+## Synchronous Client
+
+For scripts, notebooks, and non-async contexts, use the synchronous wrapper:
+
+```python
+from durable_workflow.sync import Client as SyncClient
+
+client = SyncClient("http://localhost:8080", token="secret")
+
+handle = client.start_workflow(
+    workflow_type="greeter",
+    task_queue="default",
+    workflow_id="sync-greeting-1",
+    input=["world"],
+)
+
+execution = client.describe_workflow("sync-greeting-1")
+print(execution.status)
+```
+
+The synchronous client mirrors the async API but wraps each call with `asyncio.run`.
+
+## Error Handling
+
+The SDK maps server error codes to typed Python exceptions:
+
+| Exception | When |
+|-----------|------|
+| `WorkflowNotFound` | Workflow ID does not exist |
+| `WorkflowAlreadyStarted` | Duplicate workflow ID with conflicting policy |
+| `WorkflowFailed` | Workflow execution failed |
+| `WorkflowCancelled` | Workflow was cancelled |
+| `WorkflowTerminated` | Workflow was terminated |
+| `ActivityCancelled` | Activity was cancelled during execution |
+| `ChildWorkflowFailed` | A child workflow failed |
+| `QueryFailed` | Query handler returned an error |
+| `UpdateRejected` | Update was rejected by the workflow |
+| `ScheduleNotFound` | Schedule ID does not exist |
+| `ScheduleAlreadyExists` | Duplicate schedule ID |
+| `NamespaceNotFound` | Namespace does not exist |
+| `InvalidArgument` | Invalid request parameters |
+| `Unauthorized` | Authentication failed |
+| `ServerError` | Server returned an unexpected error |
+
+```python
+from durable_workflow import WorkflowNotFound, WorkflowAlreadyStarted
+
+try:
+    handle = await client.start_workflow(
+        workflow_type="greeter",
+        task_queue="default",
+        workflow_id="existing-id",
+        input=["world"],
+    )
+except WorkflowAlreadyStarted:
+    handle = client.get_workflow_handle("existing-id")
+except WorkflowNotFound:
+    print("Workflow type not registered on any worker")
+```
+
+## Payload Codecs
+
+All payloads are codec-tagged. The SDK uses the `json` codec exclusively — values are serialized as `{codec: "json", blob: "..."}` envelopes on the wire. The SDK never guesses the codec: if it receives a payload with an unknown codec, it raises with a clear message.
+
+This means Python workflows and activities can interoperate with PHP workers on the same task queue, as long as the data types are JSON-serializable in both languages.
+
+### Types that round-trip cleanly across Python and PHP
+
+| Python type | JSON | PHP type |
+|-------------|------|----------|
+| `str` | `"string"` | `string` |
+| `int` | `123` | `int` |
+| `float` | `1.5` | `float` |
+| `bool` | `true` | `bool` |
+| `None` | `null` | `null` |
+| `list` | `[...]` | `array` (indexed) |
+| `dict` | `{...}` | `array` (associative) |
+
+Avoid passing Python-specific types (dataclasses, sets, tuples, datetime objects) as workflow or activity inputs unless you explicitly convert them to JSON-compatible structures first.
+
+## Running Against Docker Compose
+
+The fastest way to get started is with the server's Docker Compose stack:
+
+```bash
+# Clone and start the server
+git clone https://github.com/durable-workflow/server.git
+cd server
+cp .env.example .env  # set APP_KEY and WORKFLOW_SERVER_AUTH_TOKEN
+docker compose up -d
+
+# Install the Python SDK
+pip install durable-workflow
+
+# Run your Python worker
+python my_worker.py
+```
+
+The server runs on `http://localhost:8080` by default.
