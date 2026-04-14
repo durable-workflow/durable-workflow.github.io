@@ -48,6 +48,76 @@ The `scheduleId` is a unique, user-chosen identifier for the schedule. Each trig
 | `connection` | `string\|null` | `null` | Queue connection for triggered runs (overrides the workflow class default) |
 | `queue` | `string\|null` | `null` | Queue name for triggered runs (overrides the workflow class default) |
 | `notes` | `string\|null` | `null` | Free-form operator notes |
+| `namespace` | `string\|null` | `null` | Namespace for the schedule (defaults to the configured `workflows.v2.namespace` or `'default'`) |
+
+## Interval-based schedules
+
+In addition to cron expressions, schedules support interval-based firing using ISO 8601 duration syntax. Use `ScheduleManager::createFromSpec()` for full control over the schedule spec:
+
+```php
+use Workflow\V2\Support\ScheduleManager;
+
+$schedule = ScheduleManager::createFromSpec(
+    scheduleId: 'health-check-30m',
+    spec: [
+        'intervals' => [
+            ['every' => 'PT30M'],
+        ],
+    ],
+    action: [
+        'workflow_type' => 'health-check',
+        'workflow_class' => HealthCheckWorkflow::class,
+        'input' => ['region' => 'us-east-1'],
+    ],
+);
+```
+
+### Interval spec fields
+
+| Field | Type | Description |
+|---|---|---|
+| `every` | `string` | ISO 8601 duration (e.g., `PT30M` for 30 minutes, `PT1H` for 1 hour, `P1D` for 1 day) |
+| `offset` | `string\|null` | Phase offset as ISO 8601 duration — shifts the alignment point of the interval |
+
+The offset parameter controls where in the interval cycle the schedule fires. For example, an hourly interval with a 5-minute offset fires at `:05`, `:05+1h`, etc.:
+
+```php
+$schedule = ScheduleManager::createFromSpec(
+    scheduleId: 'offset-hourly',
+    spec: [
+        'intervals' => [
+            ['every' => 'PT1H', 'offset' => 'PT5M'],
+        ],
+    ],
+    action: [
+        'workflow_type' => 'sync-workflow',
+        'workflow_class' => SyncWorkflow::class,
+        'input' => [],
+    ],
+);
+```
+
+### Mixed cron and interval specs
+
+A single schedule can combine cron expressions and intervals. The engine evaluates all specs and uses the earliest upcoming fire time:
+
+```php
+$schedule = ScheduleManager::createFromSpec(
+    scheduleId: 'mixed-schedule',
+    spec: [
+        'cron_expressions' => ['0 12 * * *'],  // noon daily
+        'intervals' => [['every' => 'PT6H']],  // every 6 hours
+        'timezone' => 'America/Chicago',
+    ],
+    action: [
+        'workflow_type' => 'report-workflow',
+        'workflow_class' => ReportWorkflow::class,
+        'input' => [],
+    ],
+);
+```
+
+The `createFromSpec` method accepts all the same lifecycle parameters as `create()` (`overlapPolicy`, `jitterSeconds`, `maxRuns`, `connection`, `queue`, `namespace`, etc.) as separate named arguments.
 
 ## Overlap policies
 
@@ -103,6 +173,7 @@ Deleting is soft — the row remains with status `deleted` and a `deleted_at` ti
 $description = ScheduleManager::describe($schedule);
 
 $description->scheduleId;      // 'daily-invoice-sync'
+$description->namespace;       // 'default'
 $description->status;          // ScheduleStatus::Active
 $description->spec;            // ['cron_expressions' => ['0 2 * * *'], 'timezone' => 'America/New_York']
 $description->overlapPolicy;   // ScheduleOverlapPolicy::Skip
@@ -110,6 +181,8 @@ $description->firesCount;      // 47
 $description->nextFireAt;      // DateTimeInterface|null
 $description->lastFiredAt;     // DateTimeInterface|null
 $description->latestInstanceId; // 'schedule:daily-invoice-sync:...'
+$description->jitterSeconds;   // 0
+$description->note;            // 'Runs every night at 2 AM ET.'
 $description->toArray();       // full array representation
 ```
 
@@ -271,6 +344,26 @@ When a trigger is skipped (due to overlap policy, non-triggerable status, or exh
 - `skipped_trigger_count` — cumulative number of skipped triggers
 
 These fields are included in `ScheduleManager::describe()` and the Waterline schedule detail API.
+
+## Namespace scoping
+
+Schedules belong to a namespace. When `namespace` is passed to `create()` or `createFromSpec()`, the schedule is scoped to that namespace. When omitted, the schedule inherits the configured `workflows.v2.namespace` (defaulting to `'default'`).
+
+Schedule IDs are unique within a namespace — the same `scheduleId` can exist in different namespaces without conflict.
+
+```php
+$schedule = ScheduleManager::create(
+    scheduleId: 'daily-sync',
+    workflowClass: SyncWorkflow::class,
+    cronExpression: '0 2 * * *',
+    namespace: 'billing',
+);
+
+// Find by schedule ID within a namespace:
+$found = ScheduleManager::findByScheduleId('daily-sync', namespace: 'billing');
+```
+
+When Waterline is configured with a namespace (`waterline.namespace`), the schedule list and detail endpoints automatically scope to that namespace. This ensures multi-tenant deployments show only the schedules belonging to the operator's namespace.
 
 ## Database
 
