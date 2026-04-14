@@ -233,6 +233,16 @@ function collectSections(docsDir, repoRawBaseUrl) {
   return sections;
 }
 
+function resolveDocsSourceDir() {
+  const versionedDocsDir = path.join(__dirname, '..', 'versioned_docs', 'version-1.x');
+
+  if (fs.existsSync(versionedDocsDir)) {
+    return versionedDocsDir;
+  }
+
+  return path.join(__dirname, '..', 'docs');
+}
+
 function renderSection(section) {
   const lines = [`## ${section.title}`, ''];
 
@@ -245,7 +255,7 @@ function renderSection(section) {
 }
 
 function main() {
-  const docsDir = path.join(__dirname, '..', 'docs');
+  const docsDir = resolveDocsSourceDir();
   const buildDir = path.join(__dirname, '..', 'build');
   const outputFile = path.join(buildDir, 'llms.txt');
   const siteBaseUrl = getSiteBaseUrl();
