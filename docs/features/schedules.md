@@ -43,7 +43,7 @@ The `scheduleId` is a unique, user-chosen identifier for the schedule. Each trig
 | `labels` | `array` | `[]` | Visibility labels applied to each triggered run |
 | `memo` | `array` | `[]` | Memo fields applied to each triggered run |
 | `searchAttributes` | `array` | `[]` | Search attributes applied to each triggered run |
-| `jitterSeconds` | `int` | `0` | Reserved for future random jitter support |
+| `jitterSeconds` | `int` | `0` | Maximum random delay in seconds added to each fire time (thundering-herd mitigation) |
 | `maxRuns` | `int\|null` | `null` | Maximum number of runs before auto-deleting the schedule |
 | `connection` | `string\|null` | `null` | Queue connection for triggered runs (overrides the workflow class default) |
 | `queue` | `string\|null` | `null` | Queue name for triggered runs (overrides the workflow class default) |
@@ -213,6 +213,25 @@ $schedule = ScheduleManager::create(
 ```
 
 The routing precedence is: schedule fields → workflow class defaults → global queue config.
+
+## Jitter
+
+When multiple schedules share the same cron expression, they all fire at the exact same instant, creating a thundering-herd spike. The `jitterSeconds` parameter spreads triggers across a random window to smooth the load.
+
+```php
+$schedule = ScheduleManager::create(
+    scheduleId: 'hourly-report',
+    workflowClass: ReportWorkflow::class,
+    cronExpression: '0 * * * *',
+    jitterSeconds: 300, // fire within 0–300 seconds after the top of the hour
+);
+```
+
+When `jitterSeconds` is set, each computed `next_fire_at` is offset by a random value between 0 and `jitterSeconds` (inclusive). The jitter is re-rolled every time the next fire time is calculated — after a trigger, after a resume, or after an update.
+
+Jitter applies only to the tick-evaluation fire time stored in the database. Backfill enumeration always uses canonical (unjittered) cron times so that backfilled occurrences land on exact cron boundaries.
+
+Setting `jitterSeconds` to `0` (the default) disables jitter entirely — fire times are exact cron matches.
 
 ## History event types
 
