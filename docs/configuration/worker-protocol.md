@@ -145,6 +145,67 @@ The `ActivityTaskBridge` contract defines how an external worker interacts with 
 
 Activity heartbeat responses include `can_continue` and `cancel_requested` fields, allowing long-running activities to respond to cancellation requests.
 
+## Payload Codecs
+
+Every payload byte string that crosses the worker-protocol boundary is tagged with a **`payload_codec`** naming the format of the accompanying blob. Codecs are language-neutral so any SDK — PHP, Python, Go, TypeScript, Rust — can encode and decode payloads without sharing a runtime or an HMAC key.
+
+### Canonical Codec Names
+
+| Codec | Description |
+|-------|-------------|
+| `json` | Raw UTF-8 JSON document (default for new workflows). No wrapping, no signing. Round-trips any JSON-representable value. |
+| `workflow-serializer-y` | PHP `SerializableClosure` with byte-escape encoding. Legacy; requires a shared `config('app.key')` between server and worker. |
+| `workflow-serializer-base64` | PHP `SerializableClosure` with base64 encoding. Legacy. |
+
+Legacy fully-qualified PHP class names (e.g. `Workflow\Serializers\Y`) are accepted as aliases so runs persisted before the codec rename keep decoding.
+
+### Wire Format: Payload Envelope
+
+On fields that carry payload bytes (`arguments`, `result`, `payload`, etc.), the worker protocol surfaces the codec alongside the opaque string. Poll responses look like:
+
+```json
+{
+  "task_id": "...",
+  "payload_codec": "json",
+  "arguments": "[\"hello\", 42]",
+  "history_events": [ ... ]
+}
+```
+
+The worker reads `payload_codec` to choose a decoder. A non-matching codec is a clear error — the worker should not attempt to sniff or guess.
+
+### Starting a Workflow
+
+`POST /api/workflows` accepts `input` in two shapes:
+
+1. **Plain JSON array** — the server JSON-encodes and tags the run with `payload_codec = "json"`.
+
+   ```json
+   { "workflow_type": "MyWorkflow", "input": ["hello", 42] }
+   ```
+
+2. **Explicit envelope** — for clients that already hold pre-encoded bytes (e.g. a PHP client with a SerializableClosure payload):
+
+   ```json
+   {
+     "workflow_type": "MyWorkflow",
+     "input": { "codec": "json", "blob": "[\"hello\", 42]" }
+   }
+   ```
+
+   The server stores the blob verbatim and tags the run with the declared codec.
+
+The chosen codec is stored on the `WorkflowRun` and **propagates for the life of the run**: activity arguments, results, signal/update arguments, and child-workflow inputs all use the same codec unless explicitly overridden.
+
+### Per-Codec Compatibility
+
+- **`json`** — portable across all SDKs. JSON-native types only (no Eloquent models, closures, or arbitrary PHP objects).
+- **`workflow-serializer-y` / `workflow-serializer-base64`** — PHP-only. Supports arbitrary PHP values (including Eloquent models, closures) but cannot be read by non-PHP workers. Use only when server and workers all run the same PHP codebase with a shared app key.
+
+### Default Codec
+
+The default codec is chosen from `config('workflows.serializer')` for installations that explicitly set it; new deployments default to `json`. Clients that omit `input` on `POST /api/workflows` inherit the default.
+
 ## Resolving the Bridges
 
 Both bridges are registered in the Laravel container and can be resolved directly:
