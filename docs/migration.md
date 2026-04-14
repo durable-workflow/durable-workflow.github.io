@@ -157,9 +157,11 @@ $workflow->start(
 v2 adds new tables and columns. The package auto-loads its migrations, so after updating:
 
 ```bash
-composer update laravel-workflow/laravel-workflow
+composer update durable-workflow/workflow
 php artisan migrate
 ```
+
+If you upgraded from an early v2 pre-release that ran migration 142 without the `memo` column on `workflow_run_summaries`, migration 158 will detect and repair the missing column automatically. No manual intervention is needed.
 
 If you previously published migration files, you may need to publish the new ones or switch to auto-loaded migrations.
 

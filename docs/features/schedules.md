@@ -57,6 +57,7 @@ When a schedule fires and the previous run is still active, the overlap policy c
 |---|---|
 | `Skip` | Do not start a new run (default) |
 | `BufferOne` | Buffer one pending trigger; skip further triggers until the buffer is drained. On the next `tick()` after the active run completes, the buffered trigger fires automatically. |
+| `BufferAll` | Buffer all pending triggers with no cap; each buffered trigger drains sequentially as previous runs complete. |
 | `AllowAll` | Start the new run regardless of the previous run's state |
 | `CancelOther` | Cancel the previous run, then start the new run |
 | `TerminateOther` | Terminate the previous run, then start the new run |
@@ -103,9 +104,12 @@ $description = ScheduleManager::describe($schedule);
 
 $description->scheduleId;      // 'daily-invoice-sync'
 $description->status;          // ScheduleStatus::Active
-$description->cronExpression;  // '0 2 * * *'
-$description->totalRuns;       // 47
-$description->nextRunAt;       // DateTimeInterface
+$description->spec;            // ['cron_expressions' => ['0 2 * * *'], 'timezone' => 'America/New_York']
+$description->overlapPolicy;   // ScheduleOverlapPolicy::Skip
+$description->firesCount;      // 47
+$description->nextFireAt;      // DateTimeInterface|null
+$description->lastFiredAt;     // DateTimeInterface|null
+$description->latestInstanceId; // 'schedule:daily-invoice-sync:...'
 $description->toArray();       // full array representation
 ```
 
@@ -180,7 +184,7 @@ $results = ScheduleManager::backfill(
 // Returns: [['schedule_id' => '...', 'instance_id' => '...|null', 'cron_time' => '...'], ...]
 ```
 
-Each missed cron occurrence is triggered sequentially. The schedule's overlap policy applies to each occurrence, or you can override it:
+Each missed cron occurrence is triggered sequentially. The schedule's overlap policy applies to each occurrence, with one exception: **buffer policies (`BufferOne`, `BufferAll`) are treated as `AllowAll` during backfill**. Buffering is a real-time flow-control mechanism that has no meaning for catch-up operations — backfill should start every missed occurrence, not queue them into a buffer that will never drain. You can also override the policy explicitly:
 
 ```php
 $results = ScheduleManager::backfill(
