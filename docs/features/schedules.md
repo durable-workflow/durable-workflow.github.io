@@ -45,8 +45,8 @@ The `scheduleId` is a unique, user-chosen identifier for the schedule. Each trig
 | `searchAttributes` | `array` | `[]` | Search attributes applied to each triggered run |
 | `jitterSeconds` | `int` | `0` | Reserved for future random jitter support |
 | `maxRuns` | `int\|null` | `null` | Maximum number of runs before auto-deleting the schedule |
-| `connection` | `string\|null` | `null` | Queue connection for triggered runs |
-| `queue` | `string\|null` | `null` | Queue name for triggered runs |
+| `connection` | `string\|null` | `null` | Queue connection for triggered runs (overrides the workflow class default) |
+| `queue` | `string\|null` | `null` | Queue name for triggered runs (overrides the workflow class default) |
 | `notes` | `string\|null` | `null` | Free-form operator notes |
 
 ## Overlap policies
@@ -56,7 +56,7 @@ When a schedule fires and the previous run is still active, the overlap policy c
 | Policy | Behavior |
 |---|---|
 | `Skip` | Do not start a new run (default) |
-| `BufferOne` | Buffer one pending trigger; skip further triggers until the active run completes |
+| `BufferOne` | Buffer one pending trigger; skip further triggers until the buffer is drained. On the next `tick()` after the active run completes, the buffered trigger fires automatically. |
 | `AllowAll` | Start the new run regardless of the previous run's state |
 | `CancelOther` | Cancel the previous run, then start the new run |
 | `TerminateOther` | Terminate the previous run, then start the new run |
@@ -195,6 +195,25 @@ Backfill respects `maxRuns` — if the schedule's remaining actions are exhauste
 
 Backfill instance IDs are deterministic: `schedule:{scheduleId}:backfill:{timestamp}`.
 
+## Queue routing
+
+When `connection` or `queue` is set on a schedule, triggered workflows dispatch to that connection and queue instead of the workflow class default:
+
+```php
+$schedule = ScheduleManager::create(
+    scheduleId: 'priority-sync',
+    workflowClass: InvoiceSyncWorkflow::class,
+    cronExpression: '0 * * * *',
+    connection: 'redis',
+    queue: 'high-priority',
+);
+
+// Every triggered run dispatches to redis/high-priority,
+// regardless of InvoiceSyncWorkflow's default routing.
+```
+
+The routing precedence is: schedule fields → workflow class defaults → global queue config.
+
 ## History event types
 
 When a schedule triggers a workflow, a `ScheduleTriggered` history event is recorded on the started workflow run. This provides lineage from the schedule to the workflow:
@@ -232,4 +251,6 @@ These fields are included in `ScheduleManager::describe()` and the Waterline sch
 
 ## Database
 
-The schedule table (`workflow_schedules`) is created by migration `2026_04_14_000157`. Skip tracking columns are added by migration `2026_04_14_000158`. The model class is configurable via `workflows.v2.schedule_model`.
+The schedule table (`workflow_schedules`) is created by migration `2026_04_14_000157`. The model class is configurable via `workflows.v2.schedule_model`.
+
+If your deployment runs package migrations alongside application migrations (e.g., the standalone server), migration 157 detects a pre-existing `workflow_schedules` table and handles it gracefully: if the table already matches the package schema it is left as-is; if it was created by an earlier shim migration with a different schema, it is replaced.
