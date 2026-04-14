@@ -166,9 +166,49 @@ $schedule = ScheduleManager::create(
 // After 3 triggers, the schedule status becomes 'deleted'.
 ```
 
+## Backfill
+
+Backfill triggers workflows for past cron occurrences that were missed (e.g., after a schedule was paused, a deployment outage, or late creation):
+
+```php
+$results = ScheduleManager::backfill(
+    $schedule,
+    from: new DateTimeImmutable('2026-04-10 00:00:00'),
+    to: new DateTimeImmutable('2026-04-14 00:00:00'),
+);
+
+// Returns: [['schedule_id' => '...', 'instance_id' => '...|null', 'cron_time' => '...'], ...]
+```
+
+Each missed cron occurrence is triggered sequentially. The schedule's overlap policy applies to each occurrence, or you can override it:
+
+```php
+$results = ScheduleManager::backfill(
+    $schedule,
+    from: new DateTimeImmutable('2026-04-10 00:00:00'),
+    to: new DateTimeImmutable('2026-04-14 00:00:00'),
+    overlapPolicyOverride: ScheduleOverlapPolicy::AllowAll,
+);
+```
+
+Backfill respects `maxRuns` — if the schedule's remaining actions are exhausted mid-backfill, the operation stops and the schedule is auto-deleted.
+
+Backfill instance IDs are deterministic: `schedule:{scheduleId}:backfill:{timestamp}`.
+
 ## History event types
 
-Schedule lifecycle operations produce typed history events for auditability:
+When a schedule triggers a workflow, a `ScheduleTriggered` history event is recorded on the started workflow run. This provides lineage from the schedule to the workflow:
+
+```php
+// The event payload includes:
+// - schedule_id: the schedule's user-facing identifier
+// - schedule_ulid: the schedule's internal ULID
+// - cron_expression, timezone, overlap_policy
+// - trigger_number: which trigger this was (1-indexed)
+// - occurrence_time: the cron occurrence time (backfill only)
+```
+
+The full set of schedule event types in the history enum:
 
 - `ScheduleCreated` — schedule was created
 - `SchedulePaused` — schedule was paused
@@ -178,6 +218,18 @@ Schedule lifecycle operations produce typed history events for auditability:
 - `ScheduleDeleted` — schedule was soft-deleted
 - `ScheduleTriggerSkipped` — a trigger was skipped due to overlap policy or exhausted actions
 
+`ScheduleTriggered` is the only event currently recorded on workflow history. The others are reserved for future schedule-level audit logging.
+
+## Skip tracking
+
+When a trigger is skipped (due to overlap policy, non-triggerable status, or exhausted actions), the schedule tracks the skip:
+
+- `last_skip_reason` — why the most recent trigger was skipped (e.g., `overlap_policy_skip`, `status_not_triggerable`, `remaining_actions_exhausted`)
+- `last_skipped_at` — when the skip occurred
+- `skipped_trigger_count` — cumulative number of skipped triggers
+
+These fields are included in `ScheduleManager::describe()` and the Waterline schedule detail API.
+
 ## Database
 
-The schedule table (`workflow_schedules`) is created by migration `2026_04_14_000157`. The model class is configurable via `workflows.v2.schedule_model`.
+The schedule table (`workflow_schedules`) is created by migration `2026_04_14_000157`. Skip tracking columns are added by migration `2026_04_14_000158`. The model class is configurable via `workflows.v2.schedule_model`.
