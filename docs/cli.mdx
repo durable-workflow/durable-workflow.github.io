@@ -1,0 +1,64 @@
+---
+sidebar_position: 3
+title: CLI
+description: Install and use the Durable Workflow command-line interface.
+---
+
+import CliInstall from '@site/src/components/CliInstall';
+
+# Durable Workflow CLI
+
+The `dw` CLI talks to a [Durable Workflow Server](https://github.com/durable-workflow/server) from your shell — start and inspect workflows, send signals, manage schedules and namespaces, run repair sweeps, and stream event history.
+
+## Install
+
+<CliInstall />
+
+### Other options
+
+- **PHAR** (requires PHP ≥ 8.4). Grab `dw.phar` from the [releases page](https://github.com/durable-workflow/cli/releases) and run it with `php dw.phar`.
+- **Composer**:
+  ```bash
+  composer global require durable-workflow/cli
+  ```
+
+### Verify
+
+```bash
+dw --version
+```
+
+## Configure
+
+Point the CLI at your server:
+
+```bash
+export DURABLE_WORKFLOW_SERVER_URL=http://localhost:8080
+export DURABLE_WORKFLOW_AUTH_TOKEN=your-token
+export DURABLE_WORKFLOW_NAMESPACE=default
+```
+
+Or pass them as options per-command:
+
+```bash
+dw --server=http://localhost:8080 --token=... workflow:list
+```
+
+## Common commands
+
+```bash
+dw server:health
+dw server:info
+
+dw workflow:start --type=order.process --input='{"order_id":123}'
+dw workflow:list --status=running
+dw workflow:describe order-123
+dw workflow:signal order-123 payment-received --input='{"amount":99.99}'
+dw workflow:history order-123 01HXYZ --follow
+
+dw schedule:create --workflow-type=reports.daily --cron="0 9 * * *"
+dw namespace:list
+dw task-queue:describe default
+```
+
+See the [CLI repository README](https://github.com/durable-workflow/cli#commands) for the full command reference.
