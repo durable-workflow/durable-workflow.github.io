@@ -37,15 +37,15 @@ const config = {
           sidebarPath: require.resolve('./sidebars.js'),
           editUrl:
             'https://github.com/durable-workflow/durable-workflow.github.io/edit/main/',
-          lastVersion: '1.x',
+          lastVersion: 'current',
           versions: {
             current: {
               label: '2.0',
-              path: '2.0',
+              path: '',
             },
             '1.x': {
               label: '1.x',
-              path: '',
+              path: '1.x',
             },
           },
         },
