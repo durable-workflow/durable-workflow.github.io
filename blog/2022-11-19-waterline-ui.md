@@ -9,6 +9,10 @@ authors:
 tags: [ui, horizon, queues, workflows]
 ---
 
+:::info V2 Update
+This post was written for Durable Workflow v1. For v2, the package name has changed from `durable-workflow/waterline` to `durable-workflow/waterline`. See the [migration guide](/docs/2.0/migration/) for details.
+:::
+
 One of the pros to using workflows is that it makes monitoring easy. Using Waterline makes it even easier!
 
 ![dashboard](https://miro.medium.com/max/1400/1*2FP4crjpM8C48kAnqAjv5A.webp)
@@ -27,10 +31,10 @@ If you’re familiar with Horizon then installing Waterline will be like déjà 
 
 ## Installation
 
-You can find the official [documentation](https://github.com/laravel-workflow/waterline) here but setup is simple.
+You can find the official [documentation](https://github.com/durable-workflow/waterline) here but setup is simple.
 
 ```bash
-composer require laravel-workflow/waterline  
+composer require durable-workflow/waterline  
   
 php artisan waterline:publish
 ```

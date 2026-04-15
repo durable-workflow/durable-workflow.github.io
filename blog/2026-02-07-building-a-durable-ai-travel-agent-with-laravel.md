@@ -193,7 +193,7 @@ The `TravelAgentActivity` bridges the AI agent and the workflow:
 ```php
 class TravelAgentActivity extends Activity
 {
-    public function execute($messages)
+    public function handle($messages)
     {
         BookHotel::$pending = [];
         BookFlight::$pending = [];
@@ -245,7 +245,7 @@ class AiWorkflow extends Workflow
         return $this->outbox->nextUnsent();
     }
 
-    public function execute($injectFailure = null)
+    public function handle($injectFailure = null)
     {
         $messages = [];
 

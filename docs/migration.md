@@ -96,7 +96,7 @@ v2 configuration is backward compatible. If you published `config/workflow.php` 
 - `projection_rebuild` — history rebuild strategies
 - `history_budget` — event count limits for continue-as-new
 
-These have sensible defaults. Only configure them if you need non-default behavior. See [Configuration](/docs/configuration/options/) for details.
+These have sensible defaults. Only configure them if you need non-default behavior. See [Configuration](/docs/2.0/configuration/options/) for details.
 
 **Environment variables:**
 
@@ -144,7 +144,7 @@ Expected output:
 ✓ All backend capabilities present
 ```
 
-If any check fails, see [Backend Requirements](/docs/installation/#requirements) for driver prerequisites.
+If any check fails, see [Backend Requirements](/docs/2.0/installation/#requirements) for driver prerequisites.
 
 **2. Verify v2 workflows start successfully**
 
@@ -412,7 +412,7 @@ php artisan workflow:v2:doctor --strict
 
 ### Configuration
 
-v2 introduces several new configuration options. See the [Configuration](/docs/configuration/options/) section for details on:
+v2 introduces several new configuration options. See the [Configuration](/docs/2.0/configuration/options/) section for details on:
 
 - Durable type aliases
 - Task repair policy
