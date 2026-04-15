@@ -161,9 +161,7 @@ composer update durable-workflow/workflow
 php artisan migrate
 ```
 
-If you upgraded from an early v2 pre-release that ran migration 142 without the `memo` column on `workflow_run_summaries`, migration 158 will detect and repair the missing column automatically. No manual intervention is needed.
-
-If you previously published migration files, you may need to publish the new ones or switch to auto-loaded migrations.
+The 2.0.0 release includes 19 clean base table migrations. If you previously published migration files, you may need to publish the new ones or switch to auto-loaded migrations.
 
 ## Backend capability check
 
