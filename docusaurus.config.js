@@ -142,7 +142,7 @@ const config = {
               },
               {
                 label: 'Packagist',
-                href: 'https://packagist.org/packages/laravel-workflow/laravel-workflow',
+                href: 'https://packagist.org/packages/durable-workflow/workflow',
               },
             ],
           },

@@ -39,7 +39,7 @@ The engine also checks backend capability at durable task publication time and a
 Durable Workflow is installable via Composer. To install it, run the following command in your Laravel project:
 
 ```bash
-composer require laravel-workflow/laravel-workflow
+composer require durable-workflow/workflow:^2.0
 ```
 
 The package auto-loads its migrations, so a normal migrate run is enough after install:
