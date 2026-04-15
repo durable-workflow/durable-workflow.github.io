@@ -233,16 +233,6 @@ function collectSections(docsDir, repoRawBaseUrl) {
   return sections;
 }
 
-function resolveDocsSourceDir() {
-  const versionedDocsDir = path.join(__dirname, '..', 'versioned_docs', 'version-1.x');
-
-  if (fs.existsSync(versionedDocsDir)) {
-    return versionedDocsDir;
-  }
-
-  return path.join(__dirname, '..', 'docs');
-}
-
 function renderSection(section) {
   const lines = [`## ${section.title}`, ''];
 
@@ -254,10 +244,7 @@ function renderSection(section) {
   return lines.join('\n');
 }
 
-function main() {
-  const docsDir = resolveDocsSourceDir();
-  const buildDir = path.join(__dirname, '..', 'build');
-  const outputFile = path.join(buildDir, 'llms.txt');
+function generateManifest(docsDir, outputPath, fullManifestUrl) {
   const siteBaseUrl = getSiteBaseUrl();
   const repoRawBaseUrl = getRepoRawBaseUrl();
   const siteTitle = config.title || 'Documentation';
@@ -268,14 +255,12 @@ function main() {
     links: [
       {
         title: `${siteTitle} full documentation bundle`,
-        url: new URL('llms-full.txt', siteBaseUrl).toString(),
+        url: fullManifestUrl,
         note: 'Single-file bundle of the complete documentation set.',
       },
     ],
   };
   const renderedSections = [...sections, optionalSection].map(renderSection).join('\n\n');
-
-  ensureDir(buildDir);
 
   const content = [
     `# ${siteTitle}`,
@@ -288,9 +273,32 @@ function main() {
     '',
   ].join('\n');
 
-  fs.writeFileSync(outputFile, content, 'utf8');
+  fs.writeFileSync(outputPath, content, 'utf8');
+}
 
-  console.log('llms.txt generated successfully:', outputFile);
+function main() {
+  const buildDir = path.join(__dirname, '..', 'build');
+  const siteBaseUrl = getSiteBaseUrl();
+
+  ensureDir(buildDir);
+
+  // Generate v1.x manifest (canonical)
+  const v1DocsDir = path.join(__dirname, '..', 'versioned_docs', 'version-1.x');
+  if (fs.existsSync(v1DocsDir)) {
+    const v1OutputFile = path.join(buildDir, 'llms.txt');
+    const v1FullUrl = new URL('llms-full.txt', siteBaseUrl).toString();
+    generateManifest(v1DocsDir, v1OutputFile, v1FullUrl);
+    console.log('v1.x llms.txt generated successfully:', v1OutputFile);
+  }
+
+  // Generate v2.0 manifest (version-specific)
+  const v2DocsDir = path.join(__dirname, '..', 'docs');
+  if (fs.existsSync(v2DocsDir)) {
+    const v2OutputFile = path.join(buildDir, 'llms-2.0.txt');
+    const v2FullUrl = new URL('llms-full-2.0.txt', siteBaseUrl).toString();
+    generateManifest(v2DocsDir, v2OutputFile, v2FullUrl);
+    console.log('v2.0 llms-2.0.txt generated successfully:', v2OutputFile);
+  }
 }
 
 main();

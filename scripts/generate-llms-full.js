@@ -222,6 +222,10 @@ function main() {
     ensureDir(v2Path);
     fs.writeFileSync(path.join(v2Path, 'llms-full.txt'), v2Content, 'utf8');
     console.log(`v2.0 manifest -> /${versions.current}/llms-full.txt`);
+
+    // Also write v2.0 version-specific manifest at root
+    fs.writeFileSync(path.join(buildDir, 'llms-full-2.0.txt'), v2Content, 'utf8');
+    console.log(`v2.0 version-specific manifest -> /llms-full-2.0.txt`);
   }
 
   // Write canonical manifest at root (based on lastVersion)
