@@ -13,7 +13,7 @@ This page documents version compatibility across Durable Workflow components. Al
 | Component | Current Version | Notes |
 |-----------|----------------|-------|
 | Workflow Package (PHP) | 1.0.75 (v1), 2.0.0 (v2) | Core workflow engine |
-| Standalone Server | 0.1.0 - 0.1.9, 2.0.0 | Language-neutral HTTP server |
+| Standalone Server | 2.0.0 | Language-neutral HTTP server |
 | CLI | 0.1.0 | Command-line interface |
 | Python SDK | 0.1.0 | Python client and worker |
 | Waterline | 1.0.16 (v1), 2.0.0 (v2) | Observability UI |
@@ -24,14 +24,11 @@ This page documents version compatibility across Durable Workflow components. Al
 
 | Server Version | CLI 0.1.x | Python SDK 0.1.x | PHP Workflow 2.0.x |
 |----------------|-----------|------------------|-------------------|
-| 0.1.x (prerelease) | ✅ Compatible | ✅ Compatible | ✅ Compatible |
 | 2.0.x (stable) | ✅ Compatible | ✅ Compatible | ✅ Compatible |
 | 1.x | ❌ Skipped | ❌ Skipped | ❌ Skipped |
 | 3.x+ (future) | ❌ Breaking | ❌ Breaking | ❌ Breaking |
 
-**Version 1.x**: Intentionally skipped. The project moved from 0.x (prerelease) directly to 2.x (stable).
-
-**Why 0.x and 2.x are compatible**: The 0.1.x server releases were pre-release versions of what became 2.0. The protocol and API shape remained stable across this transition, so clients written for 0.1.x work with 2.0.x without changes.
+**Version 1.x**: Intentionally skipped. The project moved directly to 2.x (stable).
 
 ### Workflow Package ↔ Waterline
 
@@ -50,7 +47,7 @@ The CLI validates server version on first invocation per session:
 
 ```bash
 $ dw server:health
-Server version 3.0.0 is incompatible with dw CLI 0.1.x (requires server 0.x or 2.x).
+Server version 3.0.0 is incompatible with dw CLI 0.1.x (requires server 2.x).
 Upgrade the server or use a compatible CLI version.
 ```
 
@@ -73,7 +70,7 @@ If incompatible:
 
 ```
 RuntimeError: Server version 3.0.0 is incompatible with sdk-python 0.1.x
-(requires server 0.x or 2.x). Upgrade the server or use a compatible SDK version.
+(requires server 2.x). Upgrade the server or use a compatible SDK version.
 ```
 
 ### Server
@@ -104,7 +101,7 @@ Minor versions are backward-compatible within the same major version:
 
 Example: Server 2.0.1 works with CLI 0.1.0 and Python SDK 0.1.0.
 
-### Major Version Upgrades (0.x → 2.x, 2.x → 3.x)
+### Major Version Upgrades (2.x → 3.x)
 
 Major version changes may introduce breaking changes:
 
@@ -112,8 +109,6 @@ Major version changes may introduce breaking changes:
 2. **Upgrade server first**: Deploy new server version
 3. **Validate with one client**: Test one CLI command or SDK worker
 4. **Upgrade remaining clients**: CLI, SDK, workers
-
-**Pre-release to stable (0.1.x → 2.0.x)**: This upgrade is backward-compatible. Clients written for 0.1.x work with 2.0.x without code changes.
 
 **Future major versions (2.x → 3.x)**: Will require client updates. Version validation will catch incompatibilities and provide clear error messages.
 
@@ -142,7 +137,7 @@ The server validates these headers and rejects requests with missing or incompat
 **Fix**:
 1. Check the compatibility matrix above
 2. Upgrade server or client to compatible versions
-3. If server is 0.x or 2.x and client reports incompatibility, file a bug
+3. If server is 2.x and client reports incompatibility, file a bug
 
 ### "Missing X-Durable-Workflow-Protocol-Version header"
 
@@ -154,16 +149,13 @@ The server validates these headers and rejects requests with missing or incompat
 
 **Cause**: Server and client disagree on control-plane protocol version.
 
-**Fix**: Ensure server is 0.1.x or 2.x and client is sending version 2 header.
+**Fix**: Ensure server is 2.x and client is sending version 2 header.
 
 ## Version History
 
 | Date | Server | CLI | Python SDK | Workflow | Waterline | Notes |
 |------|--------|-----|------------|----------|-----------|-------|
 | 2026-04-15 | 2.0.0 | 0.1.0 | 0.1.0 | 2.0.0 | 2.0.0 | Stable release |
-| 2026-04-12 | 0.1.9 | 0.1.0 | 0.1.0 | 2.0.0-alpha.2 | 2.0.0-alpha | Pre-release |
-| 2026-04-01 | 0.1.8 | 0.1.0 | 0.1.0 | 2.0.0-alpha.1 | 2.0.0-alpha | Pre-release |
-| 2026-03-15 | 0.1.7 | 0.1.0 | - | 1.0.75 | 1.0.16 | Python SDK not yet released |
 
 ## See Also
 
