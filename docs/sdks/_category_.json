@@ -1,6 +1,6 @@
 {
   "label": "SDKs",
-  "position": 6,
+  "position": 7,
   "link": {
     "type": "generated-index",
     "description": "Language SDKs for building workflows and activities outside of the PHP embedded package."
