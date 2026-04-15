@@ -6,7 +6,246 @@ sidebar_position: 3
 
 This guide covers the key changes when upgrading from Durable Workflow v1 to v2.
 
-## Namespace change
+## Architecture note
+
+**The standalone server, CLI, and Python SDK are v2-only components.** They did not exist in v1. This means:
+
+- **PHP package upgrade**: Existing Laravel applications using v1 embedded execution upgrade to v2 embedded execution
+- **Server/CLI adoption**: If you want to use the standalone server or CLI, these are new v2-only capabilities (no v1→v2 migration path, just adoption)
+- **No server/CLI version skew**: Since server and CLI didn't exist in v1, all server/CLI instances are v2
+
+This guide focuses on upgrading Laravel applications from v1 to v2 embedded execution. For server/CLI/Python SDK setup, see their respective installation guides.
+
+## Upgrade procedure
+
+### Before upgrading
+
+**1. Back up your database**
+
+Create a full database backup before upgrading:
+
+```bash
+# MySQL/MariaDB
+mysqldump -u root -p your_database > backup-v1-$(date +%Y%m%d-%H%M%S).sql
+
+# PostgreSQL
+pg_dump -U postgres your_database > backup-v1-$(date +%Y%m%d-%H%M%S).sql
+
+# Laravel backup package (if installed)
+php artisan backup:run --only-db
+```
+
+Store the backup in a safe location. You will need it if you need to roll back.
+
+**2. Test in staging first**
+
+**Do not upgrade production without testing in staging.** The upgrade includes:
+
+- Database schema changes (19 new tables)
+- Namespace changes requiring code updates
+- Queue worker restart (brief interruption)
+- Backend capability validation
+
+**Staging test checklist:**
+
+- [ ] Deploy v2 code to staging environment
+- [ ] Run migrations against staging database
+- [ ] Restart queue workers
+- [ ] Run `php artisan workflow:v2:doctor --strict`
+- [ ] Start a new v2 workflow and verify it completes
+- [ ] Verify v1 workflows (if any) still complete
+- [ ] Check Waterline shows both v1 and v2 workflows
+- [ ] Run your application's test suite
+- [ ] Verify no errors in logs
+
+Only proceed to production after staging validation passes.
+
+### Upgrade steps
+
+**1. Update composer dependency**
+
+```bash
+composer require durable-workflow/workflow:^2.0
+```
+
+This upgrades the package from `laravel-workflow/laravel-workflow` (v1) to `durable-workflow/workflow` (v2).
+
+**2. Run database migrations**
+
+```bash
+php artisan migrate
+```
+
+v2 adds 19 new tables:
+
+- Core: `workflow_instances`, `workflow_runs`, `workflow_history_events`, `workflow_tasks`, `workflow_commands`
+- Activity: `activity_executions`, `activity_attempts`
+- Features: `workflow_updates`, `workflow_signal_records`, `workflow_run_waits`, `workflow_run_timeline_entries`, `workflow_run_lineage_entries`, `workflow_schedules`
+- Observability: `workflow_run_summaries`, `workflow_failures`, `workflow_links`, `worker_compatibility_heartbeats`
+- Timers: `workflow_run_timers`, `workflow_run_timer_entries`
+
+v1 tables (`workflows`, `workflow_logs`, `workflow_signals`, `workflow_timers`, `workflow_exceptions`) are preserved for finish-on-v1 execution.
+
+**3. Update configuration (if needed)**
+
+v2 configuration is backward compatible. If you published `config/workflow.php` in v1, it will continue to work. New v2 options include:
+
+- `durable_types` — type aliases for language-agnostic workflow references
+- `task_repair_policy` — how to handle stuck tasks
+- `backend_capability_check` — strict vs. permissive validation
+- `projection_rebuild` — history rebuild strategies
+- `history_budget` — event count limits for continue-as-new
+
+These have sensible defaults. Only configure them if you need non-default behavior. See [Configuration](/docs/2.0/configuration/options/) for details.
+
+**Environment variables:**
+
+v2 does not introduce new required environment variables. Existing `QUEUE_CONNECTION`, `CACHE_DRIVER`, and `DB_CONNECTION` continue to work.
+
+**4. Restart queue workers**
+
+Queue workers must be restarted to load v2 code:
+
+```bash
+# If using Laravel queue workers
+php artisan queue:restart
+
+# If using Supervisor
+sudo supervisorctl restart <your-worker-group>:*
+
+# If using systemd
+sudo systemctl restart laravel-worker
+
+# If using Horizon
+php artisan horizon:terminate
+```
+
+Workers will:
+1. Finish their current job
+2. Exit gracefully
+3. Restart with v2 code loaded
+
+**Workers must restart before processing v2 workflows.** v1 workflows can complete with old or new workers (finish-on-v1 compatibility).
+
+### After upgrading
+
+**1. Verify backend capability**
+
+```bash
+php artisan workflow:v2:doctor --strict
+```
+
+Expected output:
+
+```
+✓ Database driver supports required features
+✓ Queue driver supports required features
+✓ Cache driver supports locks
+✓ All backend capabilities present
+```
+
+If any check fails, see [Backend Requirements](/docs/2.0/installation/#requirements) for driver prerequisites.
+
+**2. Verify v2 workflows start successfully**
+
+Start a test workflow using v2 API:
+
+```php
+use Workflow\V2\WorkflowStub;
+use Workflow\V2\StartOptions;
+
+$workflow = WorkflowStub::make(TestWorkflow::class, 'test-upgrade');
+$runId = $workflow->start(['test' => true], StartOptions::new());
+```
+
+Check that:
+
+- Workflow appears in Waterline
+- `workflow_instances` table has a row with matching `instance_id`
+- `workflow_runs` table has a row with matching `run_id`
+- Workflow completes or progresses as expected
+
+**3. Check v1 workflows (if any)**
+
+If you have in-flight v1 workflows:
+
+```bash
+php artisan workflow:v1:list
+```
+
+Verify they continue to progress. v1 workflows should complete on the v1 engine without errors.
+
+**4. Monitor logs for errors**
+
+Watch application logs for workflow-related errors:
+
+```bash
+tail -f storage/logs/laravel.log | grep -i workflow
+```
+
+Common issues:
+
+- Namespace errors: code still using `Workflow\Workflow` instead of `Workflow\V2\Workflow`
+- Method errors: code still using `execute()` without `handle()` fallback
+- Queue driver errors: using `sync` driver (not supported)
+
+**5. Verify Waterline observability**
+
+Open Waterline (default: `/waterline`) and verify:
+
+- v1 workflows (if any) appear with their original data
+- v2 workflows appear with full run/history/activity detail
+- No errors in Waterline rendering
+
+### Rollback procedure
+
+If the upgrade fails in production, roll back:
+
+**1. Stop queue workers**
+
+```bash
+php artisan queue:restart  # or appropriate restart command for your worker system
+```
+
+**2. Restore database backup**
+
+```bash
+# MySQL/MariaDB
+mysql -u root -p your_database < backup-v1-YYYYMMDD-HHMMSS.sql
+
+# PostgreSQL
+psql -U postgres -d your_database < backup-v1-YYYYMMDD-HHMMSS.sql
+```
+
+**3. Revert composer dependency**
+
+```bash
+composer require laravel-workflow/laravel-workflow:^1.0
+```
+
+**4. Restart queue workers**
+
+```bash
+php artisan queue:restart  # or appropriate restart command
+```
+
+**5. Verify v1 operation**
+
+- Check that v1 workflows appear in Waterline
+- Start a test v1 workflow to verify functionality
+- Monitor logs for errors
+
+**Important rollback notes:**
+
+- Rollback discards any v2 workflows started after upgrade (they exist only in v2 tables)
+- Rollback restores v1 workflows to their pre-upgrade state
+- If you must preserve v2 workflows started during the upgrade window, do not restore the database — instead fix the upgrade issue forward
+
+## Code changes
+
+The sections below detail the code-level changes needed when migrating from v1 to v2 APIs.
+
+### Namespace change
 
 All v2 classes live under `Workflow\V2`. Update your imports:
 
@@ -22,7 +261,7 @@ use Workflow\V2\Activity;
 use Workflow\V2\WorkflowStub;
 ```
 
-## Entry method
+### Entry method
 
 v2 workflows and activities use `handle()` as the entry method. If your v1 code uses `execute()`, it will still work through a compatibility path, but new code should use `handle()`:
 
@@ -51,7 +290,7 @@ class MyWorkflow extends Workflow
 
 Do not mix `handle()` and `execute()` in the same inheritance chain — the runtime rejects this.
 
-## Activity calls
+### Activity calls
 
 v2 replaces `ActivityStub::make()` and `yield` with direct function helpers:
 
@@ -67,7 +306,7 @@ $result = activity(MyActivity::class, $arg1, $arg2);
 
 Activities now have durable identity. Each scheduled activity gets an `activity_executions` row with a stable execution id, and each concrete attempt gets an `activity_attempts` row with typed history.
 
-## Workflow identity
+### Workflow identity
 
 v2 splits identity into instance id and run id:
 
@@ -76,7 +315,7 @@ v2 splits identity into instance id and run id:
 
 In v1, these were the same concept.
 
-## Signals
+### Signals
 
 v2 uses named signal waits instead of `#[SignalMethod]` attribute-based mutators:
 
@@ -96,7 +335,7 @@ $approved = awaitSignal('approve');
 
 Named signals support `awaitSignal('name')` for blocking waits and `signal()` / `attemptSignal()` for external input. Cancellation and termination are not modeled as signals — they remain explicit runtime commands.
 
-## Queries
+### Queries
 
 v2 uses replay-safe query methods instead of reading workflow properties directly:
 
@@ -114,7 +353,7 @@ use function Workflow\V2\query;
 // Queries are defined as named, replay-safe accessors
 ```
 
-## Timers and side effects
+### Timers and side effects
 
 The function-based helpers replace the v1 static methods:
 
@@ -131,7 +370,7 @@ timer(60);
 $value = sideEffect(fn() => random_int(1, 100));
 ```
 
-## Timeouts
+### Timeouts
 
 v2 adds workflow-level timeouts through `StartOptions`:
 
@@ -152,7 +391,7 @@ $workflow->start(
 - **Execution timeout** spans the entire instance, including continue-as-new transitions.
 - **Run timeout** applies to a single run and resets on continue-as-new.
 
-## Database migrations
+### Database migrations
 
 v2 adds new tables and columns. The package auto-loads its migrations, so after updating:
 
@@ -163,7 +402,7 @@ php artisan migrate
 
 The 2.0.0 release includes 19 clean base table migrations. If you previously published migration files, you may need to publish the new ones or switch to auto-loaded migrations.
 
-## Backend capability check
+### Backend capability check
 
 v2 validates that your queue, database, and cache drivers meet its requirements. Run the doctor command after upgrading:
 
@@ -171,7 +410,7 @@ v2 validates that your queue, database, and cache drivers meet its requirements.
 php artisan workflow:v2:doctor --strict
 ```
 
-## Configuration
+### Configuration
 
 v2 introduces several new configuration options. See the [Configuration](/docs/2.0/configuration/options/) section for details on:
 
@@ -181,7 +420,7 @@ v2 introduces several new configuration options. See the [Configuration](/docs/2
 - Projection rebuilds
 - History budgets and export redaction
 
-## Waterline
+### Waterline
 
 Waterline (the monitoring UI) has been updated for v2 with:
 
@@ -189,7 +428,7 @@ Waterline (the monitoring UI) has been updated for v2 with:
 - Activity attempt tracking with durable ids
 - Updated workflow status displays
 
-## Continue-as-new
+### Continue-as-new
 
 v2 adds history budgets that can automatically trigger continue-as-new when the event count exceeds a threshold. Metadata (memo, search attributes, timeouts) is carried forward across transitions.
 
@@ -227,7 +466,7 @@ Sample output:
 +--------------------------------------+---------------------+-----------+------------+
 ```
 
-### Waterline visibility
+#### Waterline visibility
 
 After upgrading to 2.0, Waterline automatically shows workflows from both engines:
 
