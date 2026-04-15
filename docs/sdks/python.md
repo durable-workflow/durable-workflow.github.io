@@ -349,6 +349,76 @@ async with Client("http://localhost:8080", token="secret") as client:
 | `max_concurrent_activity_tasks` | `10` | Max parallel activity tasks |
 | `shutdown_timeout` | `30.0` | Seconds to drain in-flight tasks on stop |
 
+## Logging
+
+The SDK uses Python's standard `logging` module with structured logger names:
+
+| Logger Name | What It Logs |
+|-------------|--------------|
+| `durable_workflow.worker` | Worker registration, task polls, task completion, errors |
+| `durable_workflow.workflow.replay` | Workflow replay events (silent during replay) |
+
+### Configuring Logging
+
+Set the logging level in your application's entry point:
+
+```python
+import logging
+
+# Show INFO-level worker events (registration, task completion)
+logging.basicConfig(level=logging.INFO)
+
+# Or configure specific loggers
+logging.getLogger("durable_workflow.worker").setLevel(logging.DEBUG)
+logging.getLogger("durable_workflow.workflow.replay").setLevel(logging.INFO)
+```
+
+### Log Levels
+
+- **INFO**: Worker registration, task starts/completions, workflow completion
+- **DEBUG**: Detailed task payloads (truncated), poll cycles
+- **WARNING**: Retryable errors (failed API calls, unknown workflow types)
+- **ERROR**: Non-retryable failures, replay crashes
+
+### Replay-Aware Logging
+
+Inside workflows, use `ctx.logger` for replay-aware logging:
+
+```python
+@workflow.defn(name="order_processor")
+class OrderProcessor:
+    def run(self, ctx, order_id: str):
+        ctx.logger.info("Processing order %s", order_id)  # Only logs during execution, not replay
+        result = yield ctx.schedule_activity("process_order", [order_id])
+        ctx.logger.info("Order processed: %s", result)
+        return result
+```
+
+Log statements are **silent during replay** to avoid duplicate log spam when workflows recover or continue execution.
+
+### Structured Logging
+
+For JSON-structured logs, configure your application's root logger with a JSON formatter:
+
+```python
+import logging
+import json
+
+class JSONFormatter(logging.Formatter):
+    def format(self, record):
+        return json.dumps({
+            "timestamp": self.formatTime(record),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        })
+
+handler = logging.StreamHandler()
+handler.setFormatter(JSONFormatter())
+logging.getLogger("durable_workflow").addHandler(handler)
+logging.getLogger("durable_workflow").setLevel(logging.INFO)
+```
+
 ## Schedules
 
 Create and manage scheduled workflows through the client:
