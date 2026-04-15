@@ -11,7 +11,7 @@ The SDK targets the same durable model as the PHP package — instance IDs, run 
 ## Requirements
 
 - Python 3.10 or later
-- A running [Durable Workflow server](/docs/2.0/configuration/worker-protocol)
+- A running [Durable Workflow server](/docs/2.0/server-setup)
 
 ## Installation
 
