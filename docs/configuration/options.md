@@ -75,6 +75,8 @@ The `backoff` method returns an array of integers corresponding to the current a
 
 Workflows can be scoped to a namespace for multi-namespace isolation. When a namespace is configured, it is persisted on every workflow instance, run, task, and run-summary projection created through the control plane. Task bridge polling and Waterline visibility filters can then restrict results to a single namespace.
 
+Namespace names must contain only lowercase alphanumeric characters, dots, underscores, and hyphens (matching `[a-z0-9._-]+`, max 128 characters). Mixed-case input is normalized to lowercase automatically.
+
 Set the default namespace via environment variable:
 
 ```env
