@@ -42,6 +42,7 @@ const config = {
             current: {
               label: '2.0',
               path: '2.0',
+              banner: 'unreleased',
             },
             '1.x': {
               label: '1.x',
