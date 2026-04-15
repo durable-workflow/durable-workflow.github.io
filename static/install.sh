@@ -7,12 +7,12 @@
 # Env vars:
 #   VERSION                  Pin a specific release tag (default: latest).
 #   DURABLE_WORKFLOW_INSTALL_DIR  Where to place the binary (default: ~/.local/bin).
-#   DURABLE_WORKFLOW_BIN_NAME     Executable name (default: durable-workflow).
+#   DURABLE_WORKFLOW_BIN_NAME     Executable name (default: dw).
 
 set -eu
 
 REPO="durable-workflow/cli"
-BIN_NAME="${DURABLE_WORKFLOW_BIN_NAME:-durable-workflow}"
+BIN_NAME="${DURABLE_WORKFLOW_BIN_NAME:-dw}"
 INSTALL_DIR="${DURABLE_WORKFLOW_INSTALL_DIR:-$HOME/.local/bin}"
 VERSION="${VERSION:-latest}"
 
@@ -37,10 +37,10 @@ esac
 
 # No macos-x86_64 binary is currently published.
 if [ "$os" = "macos" ] && [ "$arch" = "x86_64" ]; then
-    err "macos-x86_64 binaries are not currently published. Use the PHAR, or install via Homebrew once the tap is available."
+    err "macos-x86_64 binaries are not currently published. Use the PHAR with a system PHP instead."
 fi
 
-asset="durable-workflow-${os}-${arch}"
+asset="dw-${os}-${arch}"
 
 if [ "$VERSION" = "latest" ]; then
     url="https://github.com/${REPO}/releases/latest/download/${asset}"

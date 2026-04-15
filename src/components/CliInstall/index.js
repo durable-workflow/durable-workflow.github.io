@@ -9,7 +9,7 @@ const PLATFORMS = [
     shell: 'bash',
     command: 'curl -fsSL https://durable-workflow.com/install.sh | sh',
     note: 'Installs to ~/.local/bin. Set DURABLE_WORKFLOW_INSTALL_DIR to override.',
-    asset: 'durable-workflow-linux-x86_64',
+    asset: 'dw-linux-x86_64',
   },
   {
     id: 'linux-aarch64',
@@ -17,7 +17,7 @@ const PLATFORMS = [
     shell: 'bash',
     command: 'curl -fsSL https://durable-workflow.com/install.sh | sh',
     note: 'Installs to ~/.local/bin. Set DURABLE_WORKFLOW_INSTALL_DIR to override.',
-    asset: 'durable-workflow-linux-aarch64',
+    asset: 'dw-linux-aarch64',
   },
   {
     id: 'macos-aarch64',
@@ -25,7 +25,7 @@ const PLATFORMS = [
     shell: 'bash',
     command: 'curl -fsSL https://durable-workflow.com/install.sh | sh',
     note: 'Installs to ~/.local/bin. Set DURABLE_WORKFLOW_INSTALL_DIR to override.',
-    asset: 'durable-workflow-macos-aarch64',
+    asset: 'dw-macos-aarch64',
   },
   {
     id: 'windows-x86_64',
@@ -33,7 +33,7 @@ const PLATFORMS = [
     shell: 'powershell',
     command: 'irm https://durable-workflow.com/install.ps1 | iex',
     note: 'Installs to %USERPROFILE%\\.durable-workflow\\bin and adds it to your user PATH.',
-    asset: 'durable-workflow-windows-x86_64.exe',
+    asset: 'dw-windows-x86_64.exe',
   },
 ];
 

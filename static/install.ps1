@@ -10,7 +10,7 @@
 $ErrorActionPreference = 'Stop'
 
 $repo = 'durable-workflow/cli'
-$binName = 'durable-workflow.exe'
+$binName = 'dw.exe'
 $installDir = if ($env:DURABLE_WORKFLOW_INSTALL_DIR) {
     $env:DURABLE_WORKFLOW_INSTALL_DIR
 } else {
@@ -23,7 +23,7 @@ if (-not [System.Environment]::Is64BitOperatingSystem) {
 }
 
 $arch = 'x86_64'
-$asset = "durable-workflow-windows-$arch.exe"
+$asset = "dw-windows-$arch.exe"
 
 $url = if ($version -eq 'latest') {
     "https://github.com/$repo/releases/latest/download/$asset"
