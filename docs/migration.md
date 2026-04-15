@@ -2,9 +2,9 @@
 sidebar_position: 3
 ---
 
-# Migrating from v1 to v2
+# Migrating to 2.0
 
-This guide covers the key changes when upgrading from Durable Workflow v1 to v2.
+This guide covers the key changes when upgrading to Durable Workflow 2.0.
 
 ## Architecture note
 
