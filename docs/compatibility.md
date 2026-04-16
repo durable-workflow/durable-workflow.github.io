@@ -1,5 +1,5 @@
 ---
-sidebar_position: 15
+sidebar_position: 17
 title: Version Compatibility
 description: Compatibility matrix for Durable Workflow components
 ---
