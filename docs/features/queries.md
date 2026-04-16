@@ -15,7 +15,7 @@ Queries replay committed history for the current selected run and then invoke th
 ```php
 use Workflow\QueryMethod;
 use Workflow\V2\Workflow;
-use function Workflow\V2\signal;
+use function Workflow\V2\await;
 
 final class ApprovalWorkflow extends Workflow
 {
@@ -25,7 +25,7 @@ final class ApprovalWorkflow extends Workflow
     {
         $this->stage = 'waiting-for-approval';
 
-        signal('approved-by');
+        await('approved-by');
 
         $this->stage = 'approved';
     }

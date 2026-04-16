@@ -7,7 +7,7 @@ sidebar_position: 5
 A side effect is a closure containing non-deterministic code. The closure is only executed once and the result is saved. It will not execute again if the workflow is retried. Instead, it will return the saved result. This makes the workflow deterministic because replaying the workflow will always return the same stored value rather than re-running the non-deterministic code.
 
 ```php
-use function Workflow\V2\signal;
+use function Workflow\V2\await;
 use function Workflow\V2\sideEffect;
 use Workflow\V2\Attributes\Signal;
 use Workflow\V2\Workflow;
@@ -18,7 +18,7 @@ class MyWorkflow extends Workflow
     public function handle(): array
     {
         $token = sideEffect(fn () => random_int(1000, 9999));
-        $finish = signal('finish');
+        $finish = await('finish');
 
         return compact('token', 'finish');
     }

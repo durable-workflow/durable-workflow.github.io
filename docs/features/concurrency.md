@@ -6,7 +6,7 @@ import ConcurrencySimulator from '@site/src/components/ConcurrencySimulator';
 
 # Concurrency
 
-In `Workflow\V2`, named workflows use straight-line helpers inside an ordinary `handle()` method: `activity()`, `signal()`, `timer()`, `sideEffect()`, `getVersion()`, and the other single-step helpers suspend directly under the hood instead of forcing `yield` into every workflow body. Named v2 workflows are straight-line only, so do not `yield` from the workflow body.
+In `Workflow\V2`, named workflows use straight-line helpers inside an ordinary `handle()` method: `activity()`, `await()`, `timer()`, `sideEffect()`, `getVersion()`, and the other single-step helpers suspend directly under the hood instead of forcing `yield` into every workflow body. Use `await('signal-name')` for one named signal value. Named v2 workflows are straight-line only, so do not `yield` from the workflow body.
 
 Parallel barriers still suspend as one durable workflow step through `all([...])`. In straight-line workflows, build those barriers with closures such as `fn () => activity(...)` and `fn () => child(...)` so the runtime can see the full barrier tree before the workflow suspends. Results still come back in the original nested array shape, while Waterline keeps each durable leaf wait visible and uses `parallel_group_path` to show which outer and inner barriers that leaf belongs to.
 
@@ -101,7 +101,7 @@ In that example, Waterline exposes three open leaf waits, not one synthetic "nes
 
 ## Async Callback
 
-`async(...)` runs a serializable callback as a durable child workflow with the system type `durable-workflow.async`. Async callbacks use the same straight-line-only helper contract as named v2 workflows, so `activity()`, `signal()`, `timer()`, `sideEffect()`, and the other single-step helpers suspend directly inside the callback body without forcing `yield`.
+`async(...)` runs a serializable callback as a durable child workflow with the system type `durable-workflow.async`. Async callbacks use the same straight-line-only helper contract as named v2 workflows, so `activity()`, `await()`, `timer()`, `sideEffect()`, and the other single-step helpers suspend directly inside the callback body without forcing `yield`.
 
 ```php
 use function Workflow\V2\{activity, async};
@@ -125,7 +125,7 @@ final class CustomerWorkflow extends Workflow
 }
 ```
 
-The parent run sees the callback as a child wait, so command history, lineage, and Waterline detail use the same `child_call_id`, child run id, and child outcome history as an explicit `child(...)` call. The callback is serialized with Laravel's serializable-closure support, so keep it app-local and deployment-local. Use a named `child(SomeWorkflow::class, ...)` call when the work needs a stable public workflow type for cross-service routing or long-lived code evolution. `async(...)` callbacks are now straight-line only in v2, so call helpers like `activity()`, `child()`, `signal()`, `timer()`, and `all([...])` directly without `yield`.
+The parent run sees the callback as a child wait, so command history, lineage, and Waterline detail use the same `child_call_id`, child run id, and child outcome history as an explicit `child(...)` call. The callback is serialized with Laravel's serializable-closure support, so keep it app-local and deployment-local. Use a named `child(SomeWorkflow::class, ...)` call when the work needs a stable public workflow type for cross-service routing or long-lived code evolution. `async(...)` callbacks are now straight-line only in v2, so call helpers like `activity()`, `child()`, `await()`, `timer()`, and `all([...])` directly without `yield`.
 
 ## Mixed Activity + Child Barriers
 

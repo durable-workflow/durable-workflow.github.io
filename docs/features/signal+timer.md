@@ -4,7 +4,7 @@ sidebar_position: 4
 
 # Signal + Timer
 
-`Workflow\V2` supports `await($condition, timeout: $seconds, conditionKey: $key)` for timeout-backed condition waits.
+`Workflow\V2` supports both `await($condition, timeout: $seconds, conditionKey: $key)` for timeout-backed condition waits and `await('signal-name', timeout: $seconds)` for timeout-backed named signal waits.
 
 Use it when the workflow should continue as soon as some durable replayed state becomes true, but should also unblock after a deadline if that state never changes.
 
@@ -68,4 +68,4 @@ $workflow->markReady();
 
 The return value is `true` when the condition becomes true before the timeout task fires and `false` when the timeout wins.
 
-If you want to wait for one named signal value directly instead of waiting for a local predicate, keep using `signal('name')`. `Workflow\V2` does not use legacy `#[SignalMethod]` mutator methods to flip workflow state.
+For named signals, `await('name', timeout: minutes(5))` returns the signal payload when the signal arrives and `null` when the timeout wins. `null` is reserved for timeout: no-argument signals resolve to `true`, one argument resolves to that value, and multiple arguments resolve to an array. `Workflow\V2` does not use legacy `#[SignalMethod]` mutator methods to flip workflow state.

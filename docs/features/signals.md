@@ -10,13 +10,13 @@ Signals allow you to trigger events in a workflow from outside the workflow. Thi
 
 ## Named Signal Waits
 
-A workflow calls `signal('signal-name')` directly. The next accepted signal command with that name resumes the run and returns a deterministic value to the suspended workflow.
+A workflow calls `await('signal-name')` directly. The next accepted signal command with that name resumes the run and returns a deterministic value to the suspended workflow.
 
 ```php
 use Workflow\V2\Attributes\Signal;
 use Workflow\V2\Attributes\Type;
 use Workflow\V2\Workflow;
-use function Workflow\V2\signal;
+use function Workflow\V2\await;
 
 #[Type('order-approval')]
 #[Signal('approved-by', [
@@ -26,7 +26,7 @@ final class OrderApprovalWorkflow extends Workflow
 {
     public function handle(): array
     {
-        $approvedBy = signal('approved-by');
+        $approvedBy = await('approved-by');
 
         return [
             'approved_by' => $approvedBy,
@@ -65,7 +65,7 @@ Signal behavior:
 - each named wait gets its own durable `signal_wait_id`, and buffered same-name signals keep that same id across `SignalReceived`, `SignalWaitOpened`, and `SignalApplied`
 - selected-run detail exposes those lifecycle rows as `signals[*]`, with `id`, `command_id`, `command_sequence`, `workflow_sequence`, `signal_wait_id`, status, outcome, validation errors, and stored arguments
 - when a declared signal contract exists, PHP, webhook, and Waterline signal intake all accept either positional arguments or a JSON or associative object of named arguments, and invalid requests reject as `rejected_invalid_arguments` with machine-readable `validation_errors` for missing arguments, unknown arguments, declared type mismatches, or nullability violations
-- when a signal has no declared parameter contract, `signal('approved-by')` still receives `true` when no arguments were sent, the single argument when one value was sent, or the full argument array when multiple values were sent; `attemptSignalWithArguments('name', ['key' => 'value'])` keeps treating that associative array as one payload value instead of guessing named arguments
+- when a signal has no declared parameter contract, `await('approved-by')` receives `true` when no arguments were sent, the single argument when one value was sent, or the full argument array when multiple values were sent; `attemptSignalWithArguments('name', ['key' => 'value'])` keeps treating that associative array as one payload value instead of guessing named arguments
 - before a signal is accepted, Waterline projects the run as `wait_kind = signal` and `liveness_state = waiting_for_signal`, which means it is waiting healthily for external input rather than needing repair
 - once a signal command is durably accepted, that external signal wait is resolved; Waterline should then show either the backing workflow task with `workflow_wait_kind = signal`, `workflow_signal_id`, `workflow_command_id`, the open wait id, and the `workflow_signal` resume source, or, if that task disappeared before `SignalApplied`, `repair_needed` with `wait_kind = signal`, `open_wait_id = signal-application:{signal_id}` when the lifecycle row exists, and the same metadata on the repaired task
 - repeated waits with the same signal name stay distinguishable in Waterline and the typed timeline through both the workflow step `sequence` and the durable `signal_wait_id`
@@ -90,7 +90,7 @@ The cursor is automatically managed by the engine during signal application and 
 
 ## Condition Waits
 
-`await($condition, $conditionKey = null)` provides replay-safe condition waits. Use it when the predicate depends only on workflow state that was already derived from durable inputs such as updates, activity results, or child results. If you want one named external signal value directly, prefer `signal('name')`.
+`await($condition, $conditionKey = null)` provides replay-safe condition waits. Use it when the predicate depends only on workflow state that was already derived from durable inputs such as updates, activity results, or child results. If you want one named external signal value directly, call `await('name')`.
 
 Condition waits are driven by an update method instead of signal mutators:
 

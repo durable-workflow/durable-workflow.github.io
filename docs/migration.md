@@ -328,12 +328,12 @@ public function approve()
 }
 
 // v2
-use function Workflow\V2\signal;
+use function Workflow\V2\await;
 
-$approved = signal('approve');
+$approved = await('approve');
 ```
 
-Named signals support `signal('name')` for blocking waits and `signal()` / `attemptSignal()` for external input. Cancellation and termination are not modeled as signals — they remain explicit runtime commands.
+Named signals support `await('name')` for blocking workflow-code waits and `signal()` / `attemptSignal()` for external input. Cancellation and termination are not modeled as signals — they remain explicit runtime commands.
 
 ### Queries
 
