@@ -53,7 +53,7 @@ To run compensations in parallel, use `setParallelCompensation(true)`. When para
 
 ```php
 use function Workflow\V2\activity;
-use function Workflow\V2\startActivity;
+
 use Workflow\V2\Attributes\Type;
 use Workflow\V2\Workflow;
 
@@ -66,10 +66,10 @@ class ParallelSagaWorkflow extends Workflow
 
         try {
             $flightId = activity(BookFlightActivity::class);
-            $this->addCompensation(fn () => startActivity(CancelFlightActivity::class, $flightId));
+            $this->addCompensation(fn () => activity(CancelFlightActivity::class, $flightId));
 
             $hotelId = activity(BookHotelActivity::class);
-            $this->addCompensation(fn () => startActivity(CancelHotelActivity::class, $hotelId));
+            $this->addCompensation(fn () => activity(CancelHotelActivity::class, $hotelId));
 
             activity(ChargePaymentActivity::class);
         } catch (\Throwable $e) {
@@ -81,7 +81,7 @@ class ParallelSagaWorkflow extends Workflow
 }
 ```
 
-Use `startActivity()` (not `activity()`) inside parallel compensation closures. `startActivity()` returns a pending call that the engine collects and runs through `all()`, while `activity()` would block inline and defeat the purpose of parallelism.
+When parallel compensation is enabled, compensation closures return activity calls that the engine collects and runs through `all()`.
 
 ## Continue with error
 

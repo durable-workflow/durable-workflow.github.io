@@ -77,17 +77,19 @@ $result = activity(
 );
 ```
 
-The same pattern works with `startActivity()` for async activity calls:
+The same pattern works with closures inside `all()` for parallel activity calls:
 
 ```php
-use function Workflow\V2\startActivity;
+use function Workflow\V2\all;
 use Workflow\V2\Support\ActivityOptions;
 
-$handle = startActivity(
-    MyActivity::class,
-    new ActivityOptions(queue: 'batch'),
-    $name,
-);
+$results = all([
+    fn () => activity(
+        MyActivity::class,
+        new ActivityOptions(queue: 'batch'),
+        $name,
+    ),
+]);
 ```
 
 ### Available options

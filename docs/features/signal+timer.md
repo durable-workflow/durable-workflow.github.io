@@ -4,15 +4,17 @@ sidebar_position: 4
 
 # Signal + Timer
 
-`Workflow\V2` supports `awaitWithTimeout($timeout, $condition, $conditionKey = null)` for timeout-backed condition waits.
+`Workflow\V2` supports `await($condition, timeout: $seconds, conditionKey: $key)` for timeout-backed condition waits.
 
 Use it when the workflow should continue as soon as some durable replayed state becomes true, but should also unblock after a deadline if that state never changes.
 
 ```php
 use Workflow\UpdateMethod;
-use function Workflow\V2\awaitWithTimeout;
+use function Workflow\V2\await;
 use Workflow\V2\Attributes\Type;
 use Workflow\V2\Workflow;
+
+use function Workflow\V2\minutes;
 
 #[Type('approval-with-timeout')]
 class MyWorkflow extends Workflow
@@ -21,7 +23,7 @@ class MyWorkflow extends Workflow
 
     public function handle(): string
     {
-        $approved = awaitWithTimeout('5 minutes', fn () => $this->ready, 'approval.ready');
+        $approved = await(fn () => $this->ready, timeout: minutes(5), conditionKey: 'approval.ready');
 
         return $approved ? 'approved' : 'timed out';
     }
@@ -40,7 +42,7 @@ import SignalTimerSimulator from '@site/src/components/SignalTimerSimulator';
 
 <SignalTimerSimulator />
 
-`awaitWithTimeout()` works like this:
+`await()` with a `timeout:` parameter works like this:
 
 - the predicate only becomes durable when some committed workflow input changes replayed state, such as an update, an earlier activity result, or a child-workflow result
 - the optional condition key is a stable, URL-safe operator label for that wait; if a run already recorded a condition wait at that workflow step, worker and query replay validate that the current code yields the same key instead of silently treating a different predicate as the old wait. This includes the unkeyed-to-keyed case: history recorded without a key reports the recorded key as `none`, and a later build that adds a key blocks replay until compatible code is back.
@@ -51,6 +53,8 @@ import SignalTimerSimulator from '@site/src/components/SignalTimerSimulator';
 - if you supply a timeout, the engine also creates a durable timer row and timer task for the deadline, but Waterline still shows the wait itself as one condition wait rather than as a separate fake timer wait
 - if the predicate becomes true before the timer fires, the engine cancels that timeout timer, records `TimerCancelled`, and then records `ConditionWaitSatisfied`
 - if the deadline wins first, the timer records `TimerFired`, then a workflow task applies `ConditionWaitTimedOut` and the returned value resolves to `false`; once `TimerScheduled` exists for the timeout transport, a drifted live timer row marked `fired` is not enough to resolve the wait without matching `TimerFired` history. If the live timer row or the workflow task disappears after `TimerFired`, selected-run detail still shows the fired timeout from typed history and Repair recreates the workflow task rather than scheduling a second timer fire
+
+Timer sugar helpers are available for readable timeout values: `seconds()`, `minutes()`, `hours()`, `days()`, `weeks()`, `months()`, `years()`.
 
 To change the predicate durably from application code, call the declared update:
 
@@ -64,4 +68,4 @@ $workflow->markReady();
 
 The return value is `true` when the condition becomes true before the timeout task fires and `false` when the timeout wins.
 
-If you want to wait for one named signal value directly instead of waiting for a local predicate, keep using `awaitSignal('name')`. `Workflow\V2` does not use legacy `#[SignalMethod]` mutator methods to flip workflow state.
+If you want to wait for one named signal value directly instead of waiting for a local predicate, keep using `signal('name')`. `Workflow\V2` does not use legacy `#[SignalMethod]` mutator methods to flip workflow state.

@@ -115,7 +115,7 @@ Signal-waiting workflows can receive signals in fake mode. When you call `$workf
 ```php
 use function Workflow\V2\activity;
 use Workflow\V2\Attributes\Signal;
-use function Workflow\V2\awaitSignal;
+use function Workflow\V2\signal;
 use Workflow\V2\Workflow;
 use Workflow\V2\WorkflowStub;
 
@@ -124,7 +124,7 @@ final class ApprovalWorkflow extends Workflow
 {
     public function handle(): array
     {
-        $name = awaitSignal('name-provided');
+        $name = signal('name-provided');
         $greeting = activity(GreetingActivity::class, $name);
 
         return ['name' => $name, 'greeting' => $greeting];
@@ -139,7 +139,7 @@ public function testSignalWorkflow(): void
     $workflow = WorkflowStub::make(ApprovalWorkflow::class, 'approval-1');
     $workflow->start();
 
-    // Workflow suspends at awaitSignal()
+    // Workflow suspends at signal()
     $this->assertSame('waiting', $workflow->refresh()->status());
 
     // Send the signal — resumes the workflow inline
@@ -171,7 +171,7 @@ Updates also apply inline in fake mode. When you call `$workflow->attemptUpdate(
 ```php
 use Workflow\UpdateMethod;
 use Workflow\V2\Attributes\Signal;
-use function Workflow\V2\awaitSignal;
+use function Workflow\V2\signal;
 use Workflow\V2\Workflow;
 use Workflow\V2\WorkflowStub;
 
@@ -182,7 +182,7 @@ final class SettingsWorkflow extends Workflow
 
     public function handle(): array
     {
-        awaitSignal('done');
+        signal('done');
 
         return ['enabled' => $this->enabled];
     }

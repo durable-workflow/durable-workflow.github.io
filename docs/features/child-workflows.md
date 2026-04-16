@@ -44,19 +44,19 @@ final class ParentWorkflow extends Workflow
 - Parent workflows can signal the current child through that handle with `signal()`, `signalWithArguments()`, or method-call sugar such as `$this->child()?->approvedBy('Taylor')`.
 - Query replay keeps those handles read-only, while inline update application can still use the handle to emit a real child signal exactly once.
 - Waterline exposes that relationship in detail views through lineage (`parents` / `continuedWorkflows`), child wait rows in `waits`, and typed child entries in `timeline`.
-- `Workflow\V2\all()` can group child workflows by themselves or alongside `activity(...)` calls from the same parent step when you build the barrier with `startChild()` and `startActivity()`.
-- Child-only `all([...startChild(...)])` barriers, nested `parallel([...])` child groups, and mixed `startChild(...)` plus `startActivity(...)` barriers return results in the original nested array shape once every member of the group completes successfully.
+- `Workflow\V2\all()` can group child workflows by themselves or alongside `activity(...)` calls from the same parent step when you build the barrier with closures such as `fn () => child(...)` and `fn () => activity(...)`.
+- Child-only `all([fn () => child(...)])` barriers, nested child groups, and mixed `fn () => child(...)` plus `fn () => activity(...)` barriers return results in the original nested array shape once every member of the group completes successfully.
 - In any barrier that includes children, the parent wakes immediately on the first failed, cancelled, or terminated child, but successful child closures do not wake the parent until the last successful member in every enclosing group closes.
 - If several barrier members have already closed unsuccessfully by the time the parent replays, the parent-visible failure is selected by earliest recorded close time and then by the lower barrier leaf index for exact timestamp ties.
 - Once that selected child close has already been thrown into the parent step, later sibling closures stay sibling history only; they do not replace the chosen throwable or reopen the parent run.
 
 ## Parallel Child Barrier
 
-Import the helpers with `use function Workflow\V2\all;` and `use function Workflow\V2\startChild;` when you want one parent step to wait on several child workflows together.
+Import the helpers with `use function Workflow\V2\all;` and `use function Workflow\V2\child;` when you want one parent step to wait on several child workflows together.
 
 ```php
 use function Workflow\V2\all;
-use function Workflow\V2\startChild;
+use function Workflow\V2\child;
 use Workflow\V2\Workflow;
 
 final class ParentWorkflow extends Workflow
@@ -64,8 +64,8 @@ final class ParentWorkflow extends Workflow
     public function handle(): array
     {
         $children = all([
-            startChild(FirstChildWorkflow::class),
-            startChild(SecondChildWorkflow::class),
+            fn () => child(FirstChildWorkflow::class),
+            fn () => child(SecondChildWorkflow::class),
         ]);
 
         return $children;
@@ -113,7 +113,7 @@ final class ParentWorkflow extends Workflow
 
 - `$this->child()` returns the latest visible child handle or `null`.
 - `$this->children()` returns every visible handle in workflow-step order.
-- During `all([...startChild(...)])` barriers, those handles appear in the same step order as the child calls inside the barrier, and `$this->child()` returns the last visible one.
+- During `all([fn () => child(...)])` barriers, those handles appear in the same step order as the child calls inside the barrier, and `$this->child()` returns the last visible one.
 - A handle's `runId()` follows the newest parent-recorded `ChildRunStarted` in that child invocation chain, so a parent waiting on a child that used `continueAsNew()` still sees the latest child run id without losing the original `callId()`.
 
 ## Handle Availability
@@ -153,7 +153,7 @@ When a parent workflow closes — whether by completing, failing, timing out, be
 
 ### Setting the policy
 
-Pass a `ChildWorkflowOptions` as the first argument to `child()` or `startChild()`:
+Pass a `ChildWorkflowOptions` as the first argument to `child()`:
 
 ```php
 use function Workflow\V2\child;
@@ -174,11 +174,11 @@ final class ParentWorkflow extends Workflow
 }
 ```
 
-The same pattern works with `startChild()` for parallel barriers:
+The same pattern works with closures inside `all()` for parallel barriers:
 
 ```php
 use function Workflow\V2\all;
-use function Workflow\V2\startChild;
+use function Workflow\V2\child;
 use Workflow\V2\Enums\ParentClosePolicy;
 use Workflow\V2\Support\ChildWorkflowOptions;
 
@@ -187,8 +187,8 @@ $cancelOptions = new ChildWorkflowOptions(
 );
 
 $results = all([
-    startChild(FirstChild::class, $cancelOptions),
-    startChild(SecondChild::class, $cancelOptions, 'arg'),
+    fn () => child(FirstChild::class, $cancelOptions),
+    fn () => child(SecondChild::class, $cancelOptions, 'arg'),
 ]);
 ```
 
@@ -220,6 +220,6 @@ Waterline shows the `parent_close_policy` in:
 
 The current surface does not include:
 
-- built-in bounded-concurrency helpers beyond the current `all([...startChild(...)])`, `all([...startActivity(...)])`, and mixed `all([...startChild(...), startActivity(...)])` barriers
+- built-in bounded-concurrency helpers beyond the current `all([fn () => child(...)])`, `all([fn () => activity(...)])`, and mixed `all([fn () => child(...), fn () => activity(...)])` barriers
 
-In other words, durable child handles are supported for already-reached child steps, but it does not yet include higher-level launch-handle or bounded-concurrency APIs beyond today's `child(...)`, `startChild()`, and `all([...])` surface.
+In other words, durable child handles are supported for already-reached child steps, but it does not yet include higher-level launch-handle or bounded-concurrency APIs beyond today's `child(...)` and `all([...])` surface.

@@ -6,9 +6,9 @@ import ConcurrencySimulator from '@site/src/components/ConcurrencySimulator';
 
 # Concurrency
 
-In `Workflow\V2`, named workflows use straight-line helpers inside an ordinary `handle()` method: `activity()`, `awaitSignal()`, `timer()`, `sideEffect()`, `getVersion()`, and the other single-step helpers suspend directly under the hood instead of forcing `yield` into every workflow body. Named v2 workflows are straight-line only, so do not `yield` from the workflow body.
+In `Workflow\V2`, named workflows use straight-line helpers inside an ordinary `handle()` method: `activity()`, `signal()`, `timer()`, `sideEffect()`, `getVersion()`, and the other single-step helpers suspend directly under the hood instead of forcing `yield` into every workflow body. Named v2 workflows are straight-line only, so do not `yield` from the workflow body.
 
-Parallel barriers still suspend as one durable workflow step through `all([...])`. In straight-line workflows, build those barriers with explicit launch helpers such as `startActivity()`, `startChild()`, and `parallel([...])` so the runtime can see the full barrier tree before the workflow suspends. Results still come back in the original nested array shape, while Waterline keeps each durable leaf wait visible and uses `parallel_group_path` to show which outer and inner barriers that leaf belongs to.
+Parallel barriers still suspend as one durable workflow step through `all([...])`. In straight-line workflows, build those barriers with closures such as `fn () => activity(...)` and `fn () => child(...)` so the runtime can see the full barrier tree before the workflow suspends. Results still come back in the original nested array shape, while Waterline keeps each durable leaf wait visible and uses `parallel_group_path` to show which outer and inner barriers that leaf belongs to.
 
 ## Series
 
@@ -46,7 +46,7 @@ class MyWorkflow extends Workflow
 This example will execute 3 activities in parallel, waiting for the completion of all activities and collecting the results.
 
 ```php
-use function Workflow\V2\{all, startActivity};
+use function Workflow\V2\{all, activity};
 use Workflow\V2\Workflow;
 
 class MyWorkflow extends Workflow
@@ -54,9 +54,9 @@ class MyWorkflow extends Workflow
     public function handle()
     {
         return all([
-            startActivity(MyActivity1::class),
-            startActivity(MyActivity2::class),
-            startActivity(MyActivity3::class),
+            fn () => activity(MyActivity1::class),
+            fn () => activity(MyActivity2::class),
+            fn () => activity(MyActivity3::class),
         ]);
     }
 }
@@ -72,14 +72,14 @@ class MyWorkflow extends Workflow
   title="Parallel Execution Simulator"
 />
 
-The main difference between the serial example and the parallel execution example is where suspension happens. In the serial example, each `activity()` call suspends and resumes the workflow directly. In the parallel example, the `startActivity()` builders describe the whole barrier first and `all()` suspends once for the whole group, so every member can run in parallel before the workflow resumes.
+The main difference between the serial example and the parallel execution example is where suspension happens. In the serial example, each `activity()` call suspends and resumes the workflow directly. In the parallel example, the closures describe the whole barrier first and `all()` suspends once for the whole group, so every member can run in parallel before the workflow resumes.
 
 ## Nested Barriers
 
 Nested `all([...])` groups let one workflow step express a tree of durable fan-out and fan-in work. The runtime schedules every activity or child workflow as a durable leaf sequence, records the leaf's full `parallel_group_path`, waits until every enclosing barrier can make progress, and then rebuilds the original nested result shape before resuming the workflow body. During replay, an activity or child leaf from an `all([...])` step must still match that recorded group path; typed leaf history that has no group metadata is treated as incompatible older preview history instead of being guessed into the current barrier.
 
 ```php
-use function Workflow\V2\{all, parallel, startActivity};
+use function Workflow\V2\{all, activity};
 use Workflow\V2\Workflow;
 
 final class NestedWorkflow extends Workflow
@@ -87,10 +87,10 @@ final class NestedWorkflow extends Workflow
     public function handle(): array
     {
         return all([
-            startActivity(BuildSummary::class),
-            parallel([
-                startActivity(BuildInvoice::class),
-                startActivity(BuildShipment::class),
+            fn () => activity(BuildSummary::class),
+            fn () => all([
+                fn () => activity(BuildInvoice::class),
+                fn () => activity(BuildShipment::class),
             ]),
         ]);
     }
@@ -101,7 +101,7 @@ In that example, Waterline exposes three open leaf waits, not one synthetic "nes
 
 ## Async Callback
 
-`async(...)` runs a serializable callback as a durable child workflow with the system type `durable-workflow.async`. Async callbacks use the same straight-line-only helper contract as named v2 workflows, so `activity()`, `awaitSignal()`, `timer()`, `sideEffect()`, and the other single-step helpers suspend directly inside the callback body without forcing `yield`.
+`async(...)` runs a serializable callback as a durable child workflow with the system type `durable-workflow.async`. Async callbacks use the same straight-line-only helper contract as named v2 workflows, so `activity()`, `signal()`, `timer()`, `sideEffect()`, and the other single-step helpers suspend directly inside the callback body without forcing `yield`.
 
 ```php
 use function Workflow\V2\{activity, async};
@@ -125,7 +125,7 @@ final class CustomerWorkflow extends Workflow
 }
 ```
 
-The parent run sees the callback as a child wait, so command history, lineage, and Waterline detail use the same `child_call_id`, child run id, and child outcome history as an explicit `child(...)` call. The callback is serialized with Laravel's serializable-closure support, so keep it app-local and deployment-local. Use a named `child(SomeWorkflow::class, ...)` call when the work needs a stable public workflow type for cross-service routing or long-lived code evolution. `async(...)` callbacks are now straight-line only in v2, so call helpers like `activity()`, `child()`, `awaitSignal()`, `timer()`, and `all([...])` directly without `yield`.
+The parent run sees the callback as a child wait, so command history, lineage, and Waterline detail use the same `child_call_id`, child run id, and child outcome history as an explicit `child(...)` call. The callback is serialized with Laravel's serializable-closure support, so keep it app-local and deployment-local. Use a named `child(SomeWorkflow::class, ...)` call when the work needs a stable public workflow type for cross-service routing or long-lived code evolution. `async(...)` callbacks are now straight-line only in v2, so call helpers like `activity()`, `child()`, `signal()`, `timer()`, and `all([...])` directly without `yield`.
 
 ## Mixed Activity + Child Barriers
 
@@ -134,7 +134,7 @@ The same `all()` helper can also fan in a mixed group of activities and child wo
 When more than one barrier member has already closed unsuccessfully by the time the parent replays, the parent receives the failure with the earliest recorded close time. If two failures have the same recorded time, the lower barrier leaf index wins, so workflow resume and query replay select the same exception. Later sibling failures do not replace the exception that has already been thrown into the parent step.
 
 ```php
-use function Workflow\V2\{all, startActivity, startChild};
+use function Workflow\V2\{all, activity, child};
 use Workflow\V2\Workflow;
 
 final class OrderWorkflow extends Workflow
@@ -142,8 +142,8 @@ final class OrderWorkflow extends Workflow
     public function handle(): array
     {
         [$charge, $shipment] = all([
-            startActivity(ChargeCustomer::class),
-            startChild(ShipOrderWorkflow::class),
+            fn () => activity(ChargeCustomer::class),
+            fn () => child(ShipOrderWorkflow::class),
         ]);
 
         return compact('charge', 'shipment');
@@ -156,14 +156,14 @@ final class OrderWorkflow extends Workflow
 The current concurrency surface does not yet include:
 
 - launch handles that can be started and awaited separately from `all([...])` barriers or `async(...)`
-- built-in bounded-concurrency helpers beyond explicit nested `all([...])` groups plus `startActivity()` / `startChild()` builders
+- built-in bounded-concurrency helpers beyond explicit nested `all([...])` groups
 
 ## Child Workflows in Parallel
 
-Child workflows can also run in their own `all([...startChild(...)])` barrier. It works the same way as parallel activity execution, but for child workflows: the parent fans out several child runs durably and resumes only when the whole child barrier can make progress.
+Child workflows can also run in their own `all([...])` barrier. It works the same way as parallel activity execution, but for child workflows: the parent fans out several child runs durably and resumes only when the whole child barrier can make progress.
 
 ```php
-use function Workflow\V2\{all, startChild};
+use function Workflow\V2\{all, child};
 use Workflow\V2\Workflow;
 
 final class ParentWorkflow extends Workflow
@@ -171,9 +171,9 @@ final class ParentWorkflow extends Workflow
     public function handle(): array
     {
         return all([
-            startChild(MyChild1::class),
-            startChild(MyChild2::class),
-            startChild(MyChild3::class),
+            fn () => child(MyChild1::class),
+            fn () => child(MyChild2::class),
+            fn () => child(MyChild3::class),
         ]);
     }
 }

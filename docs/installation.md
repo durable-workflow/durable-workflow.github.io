@@ -26,7 +26,7 @@ Each queue driver has its own [prerequisites](https://laravel.com/docs/12.x/queu
 
 Durable Workflow also requires a cache driver that supports [locks](https://laravel.com/docs/12.x/cache#atomic-locks).
 
-> ✨ SQS Support: `timer()` and `awaitWithTimeout()` work with any duration, even when using the SQS queue driver. Durable Workflow automatically handles SQS's delay limitation transparently.
+> ✨ SQS Support: `timer()` and `await()` with `timeout:` work with any duration, even when using the SQS queue driver. Durable Workflow automatically handles SQS's delay limitation transparently.
 
 You can inspect the backend capability contract directly from the app:
 

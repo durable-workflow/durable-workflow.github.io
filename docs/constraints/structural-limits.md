@@ -15,7 +15,7 @@ Structural limits cap the resource consumption of a single workflow run. When an
 | `pending_timer_count` | 2,000 | Pending timers open simultaneously |
 | `pending_signal_count` | 5,000 | Unprocessed signals pending simultaneously |
 | `pending_update_count` | 500 | Unresolved updates pending simultaneously |
-| `command_batch_size` | 1,000 | Items in a single parallel fan-out (`all()` / `parallel()`) |
+| `command_batch_size` | 1,000 | Items in a single parallel fan-out (`all()`) |
 | `payload_size_bytes` | 2 MiB | Serialized size of a single argument payload |
 | `memo_size_bytes` | 256 KiB | Serialized size of non-indexed memo metadata |
 | `search_attribute_size_bytes` | 40 KiB | Serialized size of indexed search-attribute metadata |
@@ -80,7 +80,7 @@ This protects against patterns like unbounded parallel fan-out loops that accumu
 // This will fail if $items exceeds the pending_activity_count limit
 $calls = [];
 foreach ($items as $item) {
-    $calls[] = startActivity(ProcessItemActivity::class, $item);
+    $calls[] = fn () => activity(ProcessItemActivity::class, $item);
 }
 return all($calls); // Also checked against command_batch_size
 ```
@@ -91,7 +91,7 @@ To handle large batches within the limits, process items in bounded chunks:
 foreach (array_chunk($items, 500) as $chunk) {
     $calls = [];
     foreach ($chunk as $item) {
-        $calls[] = startActivity(ProcessItemActivity::class, $item);
+        $calls[] = fn () => activity(ProcessItemActivity::class, $item);
     }
     all($calls);
 }
@@ -116,7 +116,7 @@ if ($result->rejected()) {
 
 ### Command batch size
 
-The `all()` and `parallel()` functions check the total number of leaf operations in a single fan-out group against `command_batch_size`. This is checked before any individual activities or children are scheduled, so the run fails cleanly rather than partially scheduling a batch.
+The `all()` function checks the total number of leaf operations in a single fan-out group against `command_batch_size`. This is checked before any individual activities or children are scheduled, so the run fails cleanly rather than partially scheduling a batch.
 
 ### Payload size
 
@@ -156,7 +156,7 @@ This catches runaway loops that create unbounded events in a single task without
 foreach (array_chunk($items, 500) as $chunk) {
     $calls = [];
     foreach ($chunk as $item) {
-        $calls[] = startActivity(ProcessItemActivity::class, $item);
+        $calls[] = fn () => activity(ProcessItemActivity::class, $item);
     }
     all($calls);  // Each chunk is a separate task execution
 }

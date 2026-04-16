@@ -606,7 +606,7 @@ POST /webhooks/instances/{workflowId}/runs/{runId}/signals/{signal}
 }
 ```
 
-The `arguments` field must be an array. When it is omitted, the signal resumes `awaitSignal(...)` with `true`.
+The `arguments` field must be an array. When it is omitted, the signal resumes `signal(...)` with `true`.
 The targeted workflow class must also declare the signal name with `#[Workflow\V2\Attributes\Signal('...')]`; undeclared names are rejected durably instead of being buffered blindly.
 
 Signal example:
