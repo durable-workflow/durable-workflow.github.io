@@ -263,8 +263,14 @@ See the [server README](https://github.com/durable-workflow/server#getting-start
 The [Durable Workflow CLI](/docs/2.0/cli) provides a shell interface to the server:
 
 ```bash
-# Install
+# Install — Linux and macOS
+curl -fsSL https://durable-workflow.com/install.sh | sh
+
+# Install — macOS (Homebrew alternative)
 brew install durable-workflow/tap/dw
+
+# Install — Windows (PowerShell)
+# irm https://durable-workflow.com/install.ps1 | iex
 
 # Configure
 export DURABLE_WORKFLOW_SERVER_URL=http://localhost:8080
@@ -276,6 +282,8 @@ dw server:health
 dw workflow:list
 dw workflow:start --type=my-workflow --input='{"key":"value"}'
 ```
+
+See the [CLI install page](/docs/2.0/cli#install) for a platform-detecting installer and direct binary downloads.
 
 ## Deployment
 
