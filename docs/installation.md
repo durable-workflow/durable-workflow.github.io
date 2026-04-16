@@ -40,11 +40,19 @@ The engine also checks backend capability at durable task publication time and a
 
 ## Installing Durable Workflow
 
-Durable Workflow is installable via Composer. To install it, run the following command in your Laravel project:
+Durable Workflow is installable via Composer. Until the first stable 2.0
+is published, v2 is on Packagist as an alpha pre-release, so you need
+the `@alpha` stability flag when installing:
 
 ```bash
-composer require durable-workflow/workflow:^2.0
+composer require durable-workflow/workflow:^2.0@alpha
 ```
+
+Composer's default `minimum-stability` is `stable`, which rejects
+alpha pre-release versions. The `@alpha` flag asks for this one
+package at the alpha stability level without changing your project's
+global minimum stability. When 2.0.0 is tagged stable on Packagist,
+drop the `@alpha` and `composer update` will upgrade cleanly.
 
 The package auto-loads its migrations, so a normal migrate run is enough after install:
 

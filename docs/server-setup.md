@@ -209,8 +209,10 @@ Workers poll the server for tasks and execute workflow code or activities. See t
 PHP workers use the `durable-workflow/workflow` package in standalone server mode:
 
 ```bash
-composer require durable-workflow/workflow:^2.0
+composer require durable-workflow/workflow:^2.0@alpha
 ```
+
+The `@alpha` flag is required while 2.0 is a pre-release on Packagist; drop it once 2.0.0 is tagged stable.
 
 Configure the worker to connect to the server:
 

@@ -65,10 +65,10 @@ Only proceed to production after staging validation passes.
 **1. Update composer dependency**
 
 ```bash
-composer require durable-workflow/workflow:^2.0
+composer require durable-workflow/workflow:^2.0@alpha
 ```
 
-This upgrades the package from `laravel-workflow/laravel-workflow` (v1) to `durable-workflow/workflow` (v2).
+This upgrades the package from `laravel-workflow/laravel-workflow` (v1) to `durable-workflow/workflow` (v2). The `@alpha` stability flag is required until 2.0.0 is tagged stable on Packagist — drop it once the stable release is published.
 
 **2. Run database migrations**
 
