@@ -11,7 +11,7 @@ The SDK targets the same durable model as the PHP package — instance IDs, run 
 ## Requirements
 
 - Python 3.10 or later
-- A running [Durable Workflow server](/docs/2.0/server-setup)
+- Docker (for the local server used in this quickstart) or an existing [Durable Workflow server](/docs/2.0/server-setup)
 
 ## Installation
 
@@ -23,7 +23,33 @@ The SDK has a single runtime dependency: [httpx](https://www.python-httpx.org/).
 
 ## Quickstart
 
-This example defines a workflow with one activity, starts it against a local server, and waits for the result.
+The quickstart has two steps: start a local server, then run the Python worker against it.
+
+### 1. Start a local server
+
+The fastest path is the server's Docker Compose stack, which brings up the server plus its MySQL and Redis dependencies. The snippet below disables authentication for local development — do not use `WORKFLOW_SERVER_AUTH_DRIVER=none` in production.
+
+```bash
+git clone https://github.com/durable-workflow/server.git
+cd server
+
+# Generate an APP_KEY and disable auth for local dev.
+cp .env.example .env
+printf '\nAPP_KEY=base64:%s\nWORKFLOW_SERVER_AUTH_DRIVER=none\n' \
+  "$(head -c 32 /dev/urandom | base64)" >> .env
+
+docker compose up -d
+
+# Wait for the health check to pass.
+until curl -sf http://localhost:8080/api/health > /dev/null; do sleep 1; done
+echo "Server is ready."
+```
+
+For a full walkthrough — auth drivers, database config, production deployment — see the [server setup guide](/docs/2.0/server-setup).
+
+### 2. Run the Python worker
+
+This example defines a workflow with one activity, starts it against the local server, and waits for the result.
 
 ```python
 import asyncio
@@ -40,7 +66,9 @@ class GreeterWorkflow:
         return result
 
 async def main():
-    async with Client("http://localhost:8080", token="your-token") as client:
+    # token=None matches WORKFLOW_SERVER_AUTH_DRIVER=none in the server .env.
+    # If you set a token instead, pass token="your-token" here.
+    async with Client("http://localhost:8080") as client:
         handle = await client.start_workflow(
             workflow_type="greeter",
             task_queue="default",
@@ -550,22 +578,18 @@ This means Python workflows and activities can interoperate with PHP workers on 
 
 Avoid passing Python-specific types (dataclasses, sets, tuples, datetime objects) as workflow or activity inputs unless you explicitly convert them to JSON-compatible structures first.
 
-## Running Against Docker Compose
+## Running Against a Shared Server
 
-The fastest way to get started is with the server's Docker Compose stack:
+The [Quickstart](#quickstart) above shows how to bring up a local server via Docker Compose. In a team environment you usually point the Python worker at an existing server (staging, production, or a shared dev instance):
 
-```bash
-# Clone and start the server
-git clone https://github.com/durable-workflow/server.git
-cd server
-cp .env.example .env  # set APP_KEY and WORKFLOW_SERVER_AUTH_TOKEN
-docker compose up -d
+```python
+from durable_workflow import Client
 
-# Install the Python SDK
-pip install durable-workflow
-
-# Run your Python worker
-python my_worker.py
+client = Client(
+    "https://workflow.example.internal",
+    token="shared-server-token",
+    namespace="team-orders",
+)
 ```
 
-The server runs on `http://localhost:8080` by default.
+Set the `namespace` argument to whichever tenant namespace the shared server has provisioned for your team. The server operator manages namespace creation — see the [server setup guide](/docs/2.0/server-setup) for details.
