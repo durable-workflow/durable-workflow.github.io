@@ -1,10 +1,10 @@
 ---
-sidebar_position: 3
-title: Server Setup
+sidebar_position: 15
+title: Server
 description: Deploy and configure the Durable Workflow standalone server.
 ---
 
-# Server Setup
+# Server
 
 The Durable Workflow server is a standalone, language-neutral workflow orchestration service. It exposes the same durable execution engine as the PHP package over HTTP, letting you write workflows in Python, PHP, or any language that speaks HTTP.
 
