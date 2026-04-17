@@ -75,16 +75,7 @@ final class CreateWorkflowsTable extends Migration
     protected $connection = 'shared';
 ```
 
-Workflow v2 persists state in durable `workflow_instances`, `workflow_runs`, `workflow_tasks`, `activity_executions`, `activity_attempts`, and `workflow_history_events` tables. Point the v2 models at the shared database by setting a dedicated connection in `config/workflows.php`:
-
-```php
-// config/workflows.php
-
-'v2' => [
-    'connection' => env('WORKFLOW_V2_DB_CONNECTION', 'shared'),
-    // ...
-],
-```
+Workflow v2 persists state in durable `workflow_instances`, `workflow_runs`, `workflow_tasks`, `activity_executions`, `activity_attempts`, and `workflow_history_events` tables. Point the v2 models at the shared database by extending each base model, setting `protected $connection = 'shared';` on the subclass, and rebinding it under `workflows.v2.*_model` in `config/workflows.php`. See [Database Connection](./database-connection.md) for the full model list and the model-binding pattern — v2 database routing is controlled by the configured model subclasses and published migrations, not by a single `workflows.v2.connection` key.
 
 Update your workflow and activity classes to use the shared queue connection. Assign unique queue names to each microservice for differentiation:
 
@@ -96,8 +87,8 @@ use Workflow\V2\Workflow;
 
 class MyWorkflow extends Workflow
 {
-    public string $connection = 'shared';
-    public string $queue = 'workflow';
+    public ?string $connection = 'shared';
+    public ?string $queue = 'workflow';
 
     public function handle(string $name): string
     {
@@ -113,8 +104,8 @@ use Workflow\V2\Activity;
 
 class MyActivity extends Activity
 {
-    public string $connection = 'shared';
-    public string $queue = 'activity';
+    public ?string $connection = 'shared';
+    public ?string $queue = 'activity';
 
     public function handle(string $name): string
     {
@@ -122,6 +113,8 @@ class MyActivity extends Activity
     }
 }
 ```
+
+The base `Workflow\V2\Workflow::$connection/$queue` and `Workflow\V2\Activity::$connection/$queue` properties are declared `public ?string`. Subclass redeclarations must keep the nullable type because public-property types in PHP are invariant.
 
 Both services should register the workflow and activity type keys in `workflows.v2.types.workflows` and `workflows.v2.types.activities`. The workflow microservice needs the `MyWorkflow` class on disk; the activity microservice needs the `MyActivity` class on disk. Each service only needs the classes it actually runs — the durable type key plus the registered class binding is the contract, not PHP class autoloading. External workers that do not have the PHP package installed can instead drive the same work through the HTTP activity-task and workflow-task bridges.
 

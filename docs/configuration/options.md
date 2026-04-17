@@ -11,11 +11,10 @@ use Workflow\V2\Activity;
 
 class MyActivity extends Activity
 {
-    public string $connection = 'default';
-    public string $queue = 'default';
+    public ?string $connection = 'default';
+    public ?string $queue = 'default';
 
-    public int $tries = 0;
-    public int $timeout = 0;
+    public int $tries = 3;
 
     public function backoff(): array
     {
@@ -23,6 +22,10 @@ class MyActivity extends Activity
     }
 }
 ```
+
+The `$connection` and `$queue` properties on `Workflow\V2\Workflow` and `Workflow\V2\Activity` are declared as `public ?string` and default to `null`. Subclass overrides must keep the nullable type so PHP's invariant public-property typing rules accept the redeclaration. Use `null` when you want to inherit the application's default connection or queue instead of hard-coding a value.
+
+Activity timeouts are not configured through a class property. Use [`ActivityOptions`](#activityoptions) per-call (for example `startToCloseTimeout`) or the activity retry policy snapshot taken at schedule time. See also [Task Repair Policy](#task-repair-policy) for worker-loop timing settings.
 
 ## StartOptions
 
@@ -78,11 +81,11 @@ The `$queue` setting is used to specify which queue the workflow or activity sho
 
 ## Retries
 
-The `$tries` setting is used to control the number of retries an activity is attempted before it is considered failed. By default, the `$tries` value is set to 0 which means it will be retried forever. This can be overridden by setting the `$tries` property on the activity class.
+The `$tries` setting is used to control the total number of attempts for an activity before it is considered failed. By default, `$tries` is `1` (a single attempt, no automatic retries). Set `$tries` to a value greater than `1` to allow retries, or set it to `0` to retry forever. This can be overridden per call through `ActivityOptions::$maxAttempts`.
 
 ## Timeout
 
-The `$timeout` setting is used to control the maximum number of seconds an activity is allowed to run before it is killed. By default, the `$timeout` value is set to 0 seconds which means it can run forever. This can be overridden by setting the `$timeout` property on the activity class.
+The v2 `Activity` base class has no `$timeout` class property. Configure activity timeouts per call through [`ActivityOptions`](#activityoptions) using `startToCloseTimeout`, `scheduleToStartTimeout`, `scheduleToCloseTimeout`, or `heartbeatTimeout`. The runtime snapshots the resulting retry policy onto the activity execution when it is scheduled, so the timeout is stable for an already scheduled attempt even if a later deploy changes the activity class or options. Worker-loop level dispatch timing is controlled through [Task Repair Policy](#task-repair-policy).
 
 ## Backoff
 
