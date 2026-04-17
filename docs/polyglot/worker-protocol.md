@@ -147,17 +147,11 @@ Activity heartbeat responses include `can_continue` and `cancel_requested` field
 
 ## Payload Codecs
 
-Every payload byte string that crosses the worker-protocol boundary is tagged with a **`payload_codec`** naming the format of the accompanying blob. Codecs are language-neutral so any SDK — PHP, Python, Go, TypeScript, Rust — can encode and decode payloads without sharing a runtime or an HMAC key.
+Every payload byte string that crosses the worker-protocol boundary is tagged with a **`payload_codec`** naming the format of the accompanying blob. v2 ships with a single language-neutral codec — **`json`** — so any SDK (PHP, Python, Go, TypeScript, Rust) can encode and decode payloads without sharing a runtime or an app key.
 
-### Canonical Codec Names
+### The `json` codec
 
-| Codec | Description |
-|-------|-------------|
-| `json` | Raw UTF-8 JSON document (default for new workflows). No wrapping, no signing. Round-trips any JSON-representable value. |
-| `workflow-serializer-y` | PHP `SerializableClosure` with byte-escape encoding. Legacy; requires a shared `config('app.key')` between server and worker. |
-| `workflow-serializer-base64` | PHP `SerializableClosure` with base64 encoding. Legacy. |
-
-Legacy fully-qualified PHP class names (e.g. `Workflow\Serializers\Y`) are accepted as aliases so runs persisted before the codec rename keep decoding.
+`json` is the only codec v2 workflows should use. It is a raw UTF-8 JSON document: no wrapping, no signing, no PHP-specific framing. It round-trips any JSON-representable value.
 
 ### Wire Format: Payload Envelope
 
@@ -184,7 +178,7 @@ The worker reads `payload_codec` to choose a decoder. A non-matching codec is a 
    { "workflow_type": "MyWorkflow", "input": ["hello", 42] }
    ```
 
-2. **Explicit envelope** — for clients that already hold pre-encoded bytes (e.g. a PHP client with a SerializableClosure payload):
+2. **Explicit envelope** — for clients that already hold pre-encoded bytes:
 
    ```json
    {
@@ -195,18 +189,13 @@ The worker reads `payload_codec` to choose a decoder. A non-matching codec is a 
 
    The server stores the blob verbatim and tags the run with the declared codec.
 
-The chosen codec is stored on the `WorkflowRun` and **propagates for the life of the run**: activity arguments, results, signal/update arguments, and child-workflow inputs all use the same codec unless explicitly overridden.
+The chosen codec is stored on the `WorkflowRun` and **propagates for the life of the run**: activity arguments, results, signal/update arguments, and child-workflow inputs all use the same codec.
 
-### Per-Codec Compatibility
+### JSON Type Normalization
 
-- **`json`** — portable across all SDKs. JSON-native types only (no Eloquent models, closures, or arbitrary PHP objects).
-- **`workflow-serializer-y` / `workflow-serializer-base64`** — PHP-only. Supports arbitrary PHP values (including Eloquent models, closures) but cannot be read by non-PHP workers. Use only when server and workers all run the same PHP codebase with a shared app key.
+JSON has a single numeric type; language runtimes do not. When a payload round-trips between SDKs under the `json` codec, some type distinctions are **normalized away**. Workflows that depend on the exact runtime type of a value across a language boundary must encode the type explicitly (for example, as a string).
 
-### JSON Codec Type Normalization
-
-JSON has a single numeric type; language runtimes do not. When a payload round-trips between SDKs under the `json` codec, some type distinctions are **normalized away**. Workflows that depend on the exact runtime type of a value across a language boundary must either pick a richer codec or encode the type explicitly (for example, as a string).
-
-Known normalizations under the `json` codec:
+Known normalizations:
 
 | Source value | Round-tripped through | Becomes | Reason |
 |---|---|---|---|
@@ -217,9 +206,20 @@ Known normalizations under the `json` codec:
 
 If your workflow needs to preserve the integer-vs-float distinction across a PHP↔Python hop (for example, a schema validator that rejects `3` but accepts `3.0`), encode the value as a string (`"3.0"`) and parse it on the receiving side. This is an intrinsic property of JSON, not a bug in the codec.
 
+### Legacy codecs (v1 migration only)
+
+Older v1 deployments wrote history under two PHP-only codecs, which the package continues to read so finish-on-v1 migrations can drain:
+
+- `workflow-serializer-y` — PHP `SerializableClosure` with byte-escape encoding. Requires a shared `config('app.key')` between server and worker.
+- `workflow-serializer-base64` — PHP `SerializableClosure` with base64 encoding.
+
+These codecs are **not recommended for new workflows**: a Python or Go worker cannot decode them. v2 installations that still have `workflows.serializer` set to a legacy value will be flagged by `php artisan workflow:v2:doctor`.
+
+Legacy fully-qualified PHP class names (e.g. `Workflow\Serializers\Y`) are accepted as aliases so rows persisted before the codec rename keep decoding.
+
 ### Default Codec
 
-The default codec is chosen from `config('workflows.serializer')` for installations that explicitly set it; new deployments default to `json`. Clients that omit `input` on `POST /api/workflows` inherit the default.
+v2 defaults to `json`. Clients that omit `input` on `POST /api/workflows` and installations that do not set `workflows.serializer` both land on `json`. An explicit `workflows.serializer` setting overrides the default only when decoding v1 history; new v2 workflows should always use `json`.
 
 ## Resolving the Bridges
 

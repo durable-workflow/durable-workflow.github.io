@@ -69,21 +69,26 @@ Those overrides are not limited to reads or projection rebuilds. `WorkflowStub::
 
 Keep custom subclasses schema-compatible with the built-in models. If a subclass also changes table names or other Eloquent conventions that the package models normally infer, override the affected relations on that subclass as well so `currentRun()`, `runs()`, and similar lookups stay aligned with your custom schema.
 
-## Changing Serializer
+## Payload Codec
 
-This setting allows you to optionally use the Base64 serializer instead of Y (kind of like yEnc encoding where it only gets rid of null bytes). If you change this it will only affect new workflows and old workflows will revert to whatever they were encoded with to ensure compatibility.
-
-The default serializer setting in `workflows.php` is:
+The `serializer` config key controls the payload codec used for new workflows. v2 defaults to `json`:
 
 ```php
-'serializer' => Workflow\Serializers\Y::class,
+'serializer' => 'json',
 ```
 
-To use Base64 instead, update it to:
+`json` is the only language-neutral codec and is the recommended value for v2. A Python, Go, or TypeScript worker can decode `json` payloads without a shared runtime or app key. If you leave `serializer` unset, the default is `json`.
 
-```php
-'serializer' => Workflow\Serializers\Base64::class,
-```
+### Legacy codecs (v1 migration only)
+
+Two PHP-only codecs remain available for reading v1 history during migration:
+
+- `workflow-serializer-y` — PHP `SerializableClosure` with byte-escape encoding (the v1 default).
+- `workflow-serializer-base64` — PHP `SerializableClosure` with base64 encoding.
+
+Setting `serializer` to a legacy codec will be flagged by `php artisan workflow:v2:doctor`. New v2 workflows written with a legacy codec cannot be decoded by non-PHP workers. Only pin a legacy codec if you are still finishing v1 runs or have a specific reason to share PHP-native values between a server and PHP-only workers.
+
+Legacy fully-qualified class names (e.g. `Workflow\Serializers\Y::class`) are accepted for backwards compatibility and resolve to their canonical codec names.
 
 ## Compatibility Markers
 

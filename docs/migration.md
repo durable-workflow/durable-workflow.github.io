@@ -98,6 +98,19 @@ v2 configuration is backward compatible. If you published `config/workflow.php` 
 
 These have sensible defaults. Only configure them if you need non-default behavior. See [Configuration](/docs/2.0/configuration/options/) for details.
 
+**Payload codec default changed to `json`.** v1 defaulted to the PHP-only `Workflow\Serializers\Y::class`; v2 defaults to the language-neutral `json` codec so Python, Go, and TypeScript workers can decode payloads without a shared PHP runtime. New v2 workflows you start will be tagged with `payload_codec = "json"` unless you explicitly set `workflows.serializer`.
+
+If you have a published `config/workflows.php` from v1 with `'serializer' => Workflow\Serializers\Y::class`, your existing setting is honored and keeps working for both v1 replay and new v2 workflows. But new v2 workflows written under that legacy codec **cannot be decoded by non-PHP workers**. Run `php artisan workflow:v2:doctor` after upgrading — it will flag a legacy codec setting with a polyglot-compatibility warning.
+
+To switch to the v2 default:
+
+```php
+// config/workflows.php
+'serializer' => 'json',
+```
+
+Keep a legacy codec (`'workflow-serializer-y'` or `'workflow-serializer-base64'`) only if you need to start new workflows that share PHP-native values between a server and PHP-only workers. Legacy class names (`Workflow\Serializers\Y::class`, etc.) are still accepted as aliases for decoding v1 runs.
+
 **Environment variables:**
 
 v2 does not introduce new required environment variables. Existing `QUEUE_CONNECTION`, `CACHE_DRIVER`, and `DB_CONNECTION` continue to work.
