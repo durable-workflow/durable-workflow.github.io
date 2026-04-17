@@ -1,0 +1,114 @@
+---
+sidebar_position: 1
+title: CLI
+description: Install and use the Durable Workflow CLI to operate the standalone server.
+---
+
+import CliInstall from '@site/src/components/CliInstall';
+
+# CLI
+
+The Durable Workflow CLI (`dw`) is a shell interface to the [standalone server](/docs/2.0/polyglot/server). It lets operators start, list, signal, cancel, and terminate workflows, manage schedules, inspect task queues, and check server health — all from the command line.
+
+The same CLI works against any Durable Workflow server, regardless of which language your workflows are written in.
+
+## Install
+
+<CliInstall />
+
+### Verify
+
+```bash
+dw --version
+```
+
+## Configure
+
+Point the CLI at your server:
+
+```bash
+export DURABLE_WORKFLOW_SERVER_URL=http://localhost:8080
+export DURABLE_WORKFLOW_AUTH_TOKEN=your-token
+export DURABLE_WORKFLOW_NAMESPACE=default
+```
+
+Or pass them per-command:
+
+```bash
+dw --server=http://localhost:8080 --token=your-token workflow:list
+```
+
+## Commands
+
+### Server
+
+```bash
+dw server:health          # Check server health
+dw server:info            # Show server version, capabilities, and worker fleet
+```
+
+### Workflows
+
+```bash
+dw workflow:list                                          # List workflows
+dw workflow:start --type=MyWorkflow --input='["arg1"]'    # Start a workflow
+dw workflow:describe <workflow-id>                         # Describe a workflow
+dw workflow:signal <workflow-id> <signal-name>             # Send a signal
+dw workflow:query <workflow-id> <query-name>               # Run a query
+dw workflow:cancel <workflow-id>                           # Request cancellation
+dw workflow:terminate <workflow-id>                        # Force terminate
+dw workflow:history <workflow-id>                          # Show run history
+```
+
+### Schedules
+
+```bash
+dw schedule:list                          # List schedules
+dw schedule:create --type=MyWorkflow \
+  --cron='0 * * * *'                      # Create hourly schedule
+dw schedule:describe <schedule-id>        # Describe a schedule
+dw schedule:pause <schedule-id>           # Pause a schedule
+dw schedule:resume <schedule-id>          # Resume a schedule
+dw schedule:trigger <schedule-id>         # Trigger immediately
+dw schedule:delete <schedule-id>          # Delete a schedule
+```
+
+### Workers and Task Queues
+
+```bash
+dw worker:list                    # List registered workers
+dw worker:describe <worker-id>    # Describe a worker
+dw task-queue:list                # List active task queues
+dw task-queue:describe <queue>    # Describe a task queue
+```
+
+### Namespaces
+
+```bash
+dw namespace:list                             # List namespaces
+dw namespace:create --name=production         # Create a namespace
+dw namespace:describe <namespace>             # Describe a namespace
+```
+
+### Search Attributes
+
+```bash
+dw search-attribute:list                                  # List search attributes
+dw search-attribute:create --name=env --type=keyword      # Register an attribute
+```
+
+## Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| `0` | Success |
+| `1` | General error |
+| `2` | Usage / argument error |
+| `64` | Server unreachable |
+| `65` | Authentication failed |
+| `66` | Resource not found |
+| `78` | Server contract mismatch (version skew) |
+
+## Reference
+
+See the [CLI repository README](https://github.com/durable-workflow/cli#commands) for the full command reference, advanced flags, and release notes.

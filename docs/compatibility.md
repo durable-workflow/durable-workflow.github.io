@@ -159,7 +159,7 @@ The server validates these headers and rejects requests with missing or incompat
 
 ## See Also
 
-- [Server Setup](/docs/2.0/server-setup) — Deploying the standalone server
-- [Python SDK](/docs/2.0/sdks/python) — Python client and worker
-- [CLI](/docs/2.0/cli) — Command-line interface
+- [Server Setup](/docs/2.0/polyglot/server) — Deploying the standalone server
+- [Python SDK](/docs/2.0/polyglot/python) — Python client and worker
+- [CLI](/docs/2.0/polyglot/cli) — Command-line interface
 - [Migration Guide](/docs/2.0/migration) — Migrating from v1 to v2

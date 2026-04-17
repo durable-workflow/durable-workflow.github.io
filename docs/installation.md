@@ -6,7 +6,7 @@ sidebar_position: 2
 
 This guide covers installing the Durable Workflow PHP package for Laravel applications.
 
-**Alternative**: For polyglot environments, Python workers, or non-Laravel deployments, see [Server Setup](/docs/2.0/server-setup) to run the standalone server.
+**Alternative**: For polyglot environments, Python workers, or non-Laravel deployments, see [Server Setup](/docs/2.0/polyglot/server) to run the standalone server.
 
 ## Requirements
 

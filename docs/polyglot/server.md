@@ -1,5 +1,5 @@
 ---
-sidebar_position: 15
+sidebar_position: 2
 title: Server
 description: Deploy and configure the Durable Workflow standalone server.
 ---
@@ -203,7 +203,7 @@ Returns server version, protocol versions, and supported features:
 
 ## Connecting Workers
 
-Workers poll the server for tasks and execute workflow code or activities. See the [Worker Protocol](/docs/2.0/configuration/worker-protocol) reference for the full API contract.
+Workers poll the server for tasks and execute workflow code or activities. See the [Worker Protocol](/docs/2.0/polyglot/worker-protocol) reference for the full API contract.
 
 ### PHP Workers
 
@@ -243,7 +243,7 @@ Python workers use the `durable-workflow` SDK:
 pip install durable-workflow
 ```
 
-See the [Python SDK](/docs/2.0/sdks/python) guide for worker setup.
+See the [Python SDK](/docs/2.0/polyglot/python) guide for worker setup.
 
 ### Custom Language Workers
 
@@ -261,7 +261,7 @@ See the [server README](https://github.com/durable-workflow/server#getting-start
 
 ## CLI
 
-The [Durable Workflow CLI](/docs/2.0/cli) provides a shell interface to the server:
+The [Durable Workflow CLI](/docs/2.0/polyglot/cli) provides a shell interface to the server:
 
 ```bash
 # Install — Linux and macOS
@@ -284,7 +284,7 @@ dw workflow:list
 dw workflow:start --type=my-workflow --input='{"key":"value"}'
 ```
 
-See the [CLI install page](/docs/2.0/cli#install) for a platform-detecting installer and direct binary downloads.
+See the [CLI install page](/docs/2.0/polyglot/cli#install) for a platform-detecting installer and direct binary downloads.
 
 ## Deployment
 
@@ -405,7 +405,7 @@ Key endpoints:
 - `POST /api/worker/activity-tasks/poll` — Long-poll for activity tasks
 - `POST /api/worker/activity-tasks/{id}/complete` — Complete activity task
 
-See the [Worker Protocol](/docs/2.0/configuration/worker-protocol) reference for details.
+See the [Worker Protocol](/docs/2.0/polyglot/worker-protocol) reference for details.
 
 ### Discovery (unversioned)
 
@@ -448,7 +448,7 @@ The only endpoints that do **not** require `X-Durable-Workflow-Control-Plane-Ver
 
 ## Learn More
 
-- [Worker Protocol Reference](/docs/2.0/configuration/worker-protocol) — Full API contract for workers
-- [Python SDK](/docs/2.0/sdks/python) — Build Python workers
-- [CLI](/docs/2.0/cli) — Command-line interface
+- [Worker Protocol Reference](/docs/2.0/polyglot/worker-protocol) — Full API contract for workers
+- [Python SDK](/docs/2.0/polyglot/python) — Build Python workers
+- [CLI](/docs/2.0/polyglot/cli) — Command-line interface
 - [Server Repository](https://github.com/durable-workflow/server) — Source code, issues, releases

@@ -1,5 +1,5 @@
 ---
-sidebar_position: 1
+sidebar_position: 3
 ---
 
 # Python SDK
@@ -11,7 +11,7 @@ The SDK targets the same durable model as the PHP package — instance IDs, run 
 ## Requirements
 
 - Python 3.10 or later
-- Docker (for the local server used in this quickstart) or an existing [Durable Workflow server](/docs/2.0/server-setup)
+- Docker (for the local server used in this quickstart) or an existing [Durable Workflow server](/docs/2.0/polyglot/server)
 
 ## Installation
 
@@ -45,7 +45,7 @@ until curl -sf http://localhost:8080/api/health > /dev/null; do sleep 1; done
 echo "Server is ready."
 ```
 
-For a full walkthrough — auth drivers, database config, production deployment — see the [server setup guide](/docs/2.0/server-setup).
+For a full walkthrough — auth drivers, database config, production deployment — see the [server setup guide](/docs/2.0/polyglot/server).
 
 ### 2. Run the Python worker
 
@@ -594,4 +594,4 @@ client = Client(
 )
 ```
 
-Set the `namespace` argument to whichever tenant namespace the shared server has provisioned for your team. The server operator manages namespace creation — see the [server setup guide](/docs/2.0/server-setup) for details.
+Set the `namespace` argument to whichever tenant namespace the shared server has provisioned for your team. The server operator manages namespace creation — see the [server setup guide](/docs/2.0/polyglot/server) for details.

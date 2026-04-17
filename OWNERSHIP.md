@@ -20,8 +20,6 @@ This file maps documentation sections to the repositories and plans that own the
 |------|-------|-------|
 | `introduction.md` | **docs** | Overview, no code owner |
 | `installation.md` | **workflow** | PHP package install, Laravel integration |
-| `server-setup.md` | **server** | Standalone server deployment |
-| `cli.mdx` | **cli** | CLI installation and usage |
 | `how-it-works.md` | **workflow** | Engine internals, history replay, task ownership |
 | `migration.md` | **workflow** | v1→v2 migration guide |
 
@@ -69,7 +67,6 @@ This file maps documentation sections to the repositories and plans that own the
 | `configuration/pruning-workflows.md` | **workflow** | Retention, cleanup |
 | `configuration/ensuring-same-server.md` | **workflow** | Development config |
 | `configuration/microservices.md` | **workflow** | Multi-service orchestration |
-| `configuration/worker-protocol.md` | **server** | HTTP worker protocol specification |
 
 ### Constraints
 
@@ -90,11 +87,14 @@ This file maps documentation sections to the repositories and plans that own the
 | `monitoring.md` | **waterline** | Waterline UI, observability |
 | `sample-app.md` | **sample-app** | Sample application reference |
 
-### SDKs
+### Polyglot
 
 | Page | Owner | Notes |
 |------|-------|-------|
-| `sdks/python.md` | **sdk-python** | Python SDK installation, usage |
+| `polyglot/cli.mdx` | **cli** | CLI installation and usage |
+| `polyglot/server.md` | **server** | Standalone server deployment and configuration |
+| `polyglot/python.md` | **sdk-python** | Python SDK installation, usage |
+| `polyglot/worker-protocol.md` | **server** | HTTP worker protocol specification |
 
 ### Meta
 
