@@ -99,15 +99,33 @@ dw search-attribute:create --name=env --type=keyword      # Register an attribut
 
 ## Exit Codes
 
-| Code | Meaning |
-|------|---------|
-| `0` | Success |
-| `1` | General error |
-| `2` | Usage / argument error |
-| `64` | Server unreachable |
-| `65` | Authentication failed |
-| `66` | Resource not found |
-| `78` | Server contract mismatch (version skew) |
+The CLI uses a stable exit-code policy so scripts and CI pipelines can react
+to specific failure modes without parsing stderr. Values follow Symfony
+Console's canonical `0`/`1`/`2` for success / failure / usage, and extend
+from there.
+
+| Code | Name | Meaning |
+|------|------|---------|
+| `0` | `SUCCESS` | Operation completed successfully. |
+| `1` | `FAILURE` | Generic failure — command ran but did not succeed. |
+| `2` | `INVALID` | Invalid usage — bad arguments, unknown options, or local validation. Also returned for HTTP 4xx responses that are not covered below (e.g. 400, 422). |
+| `3` | `NETWORK` | Could not reach the server (connection refused, DNS failure, TLS handshake failure, transport error). |
+| `4` | `AUTH` | Authentication or authorization failure. Returned for HTTP `401` and `403`. |
+| `5` | `NOT_FOUND` | Resource not found. Returned for HTTP `404`. |
+| `6` | `SERVER` | Server error. Returned for HTTP `5xx`. |
+| `7` | `TIMEOUT` | Request timed out before the server responded. Also returned for HTTP `408`. |
+
+Example:
+
+```bash
+dw workflow:describe chk-does-not-exist
+echo $?  # 5 (NOT_FOUND)
+
+dw server:health --server=http://unreachable:9999
+echo $?  # 3 (NETWORK)
+```
+
+The canonical source is [`DurableWorkflow\Cli\Support\ExitCode`](https://github.com/durable-workflow/cli/blob/main/src/Support/ExitCode.php) in the CLI repository.
 
 ## Reference
 
