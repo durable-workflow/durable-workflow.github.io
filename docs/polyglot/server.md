@@ -177,29 +177,64 @@ curl http://localhost:8080/api/cluster/info \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Returns server version, protocol versions, and supported features:
+Returns the server version, supported SDK versions, engine capabilities, and
+the independently-versioned control-plane and worker-protocol manifests:
 
 ```json
 {
-  "server_version": "0.1.9",
+  "server_id": "server-1",
+  "version": "2.0.0",
+  "default_namespace": "default",
+  "supported_sdk_versions": {
+    "php": ">=1.0",
+    "python": ">=0.1"
+  },
+  "capabilities": {
+    "workflow_tasks": true,
+    "activity_tasks": true,
+    "signals": true,
+    "queries": true,
+    "updates": true,
+    "schedules": true,
+    "payload_codecs": ["avro", "json"],
+    "response_compression": ["gzip", "deflate"]
+  },
   "control_plane": {
-    "version": 2,
-    "request_contract": { ... },
-    "response_contract": { ... }
+    "version": "2",
+    "header": "X-Durable-Workflow-Control-Plane-Version",
+    "request_contract": { "schema": "durable-workflow.v2.control-plane-request.contract", "version": 1, "...": "..." },
+    "response_contract": { "schema": "durable-workflow.v2.control-plane-response.contract", "version": 1, "...": "..." }
   },
   "worker_protocol": {
     "version": "1.0",
-    "supported_workflow_task_commands": [
-      "complete_workflow",
-      "fail_workflow",
-      "continue_as_new",
-      "schedule_activity",
-      "start_timer",
-      "start_child_workflow"
-    ]
+    "server_capabilities": {
+      "long_poll_timeout": 30,
+      "supported_workflow_task_commands": [
+        "complete_workflow",
+        "fail_workflow",
+        "continue_as_new",
+        "schedule_activity",
+        "start_timer",
+        "start_child_workflow"
+      ],
+      "workflow_task_poll_request_idempotency": true,
+      "history_page_size_default": 500,
+      "history_page_size_max": 1000,
+      "response_compression": ["gzip", "deflate"],
+      "history_compression": {
+        "supported_encodings": ["gzip"],
+        "compression_threshold": 8192
+      }
+    }
   }
 }
 ```
+
+Key field notes for client code:
+
+- The app version is `version`, not `server_version`.
+- Workflow-task command capabilities live under `worker_protocol.server_capabilities.supported_workflow_task_commands`, not at the top of `worker_protocol`. The same nested object is echoed on every worker-plane response via the `server_capabilities` field.
+- Universal payload codecs (e.g. `avro`, `json`) live under `capabilities.payload_codecs`. When the server advertises engine-specific codecs that only a PHP worker can honor, those appear under `capabilities.payload_codecs_engine_specific.<engine>` — language-neutral SDKs should ignore that object unless they opt into that engine.
 
 ## Connecting Workers
 
