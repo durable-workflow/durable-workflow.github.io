@@ -147,7 +147,7 @@ Activity heartbeat responses include `can_continue` and `cancel_requested` field
 
 ## Payload Codecs
 
-Every payload byte string that crosses the worker-protocol boundary is tagged with a **`payload_codec`** naming the format of the accompanying blob. v2 ships with two language-neutral codecs — **`avro`** (the default) and **`json`** — so any SDK (PHP, Python, Go, TypeScript, Rust) can encode and decode payloads without sharing a runtime or an app key. The running server advertises its codec support on `GET /api/cluster/info`:
+Every payload byte string that crosses the worker-protocol boundary is tagged with a **`payload_codec`** naming the format of the accompanying blob. v2 ships with one language-neutral codec: **`avro`** (the default) — so any SDK (PHP, Python, Go, TypeScript, Rust) can encode and decode payloads without sharing a runtime or an app key. The `json` codec is retained for decoding existing data written during v1-to-v2 migration but is not available for new v2 workflows. The running server advertises its codec support on `GET /api/cluster/info`:
 
 - **`capabilities.payload_codecs`** — the universal codec names every SDK is expected to be able to decode. This is what polyglot clients should key their codec negotiation off.
 - **`capabilities.payload_codecs_engine_specific.<engine>`** — codec names that require a specific engine runtime to decode (e.g. PHP's legacy `SerializableClosure` codecs under `.php`). This key is only present when the server exposes engine-specific codecs, and it is deliberately namespaced so non-PHP SDKs do not advertise codecs they cannot decode.
@@ -158,9 +158,9 @@ The same split carries through the embedded control-plane request contract: `ope
 
 `avro` is the default codec for new v2 workflows. It is a compact Apache Avro binary encoding. The blob field on the wire carries the raw Avro bytes (typically transported as a base64-encoded string in JSON envelopes) and round-trips any Avro-representable value. Production deployments should leave the default in place unless they have a specific reason to prefer human-readable payloads.
 
-### The `json` codec
+### The `json` codec (decode-only, v1 migration)
 
-`json` is the alternative language-neutral codec. It is a raw UTF-8 JSON document: no wrapping, no signing, no PHP-specific framing. It round-trips any JSON-representable value and is the right choice when operators want to grep history dumps or inspect payloads by eye. Pin `workflows.serializer` to `'json'` to use it for new runs.
+`json` is a raw UTF-8 JSON document: no wrapping, no signing, no PHP-specific framing. It is retained so the runtime can decode existing data written under the `json` codec during v1-to-v2 migration. It is not available for new v2 workflows. If you have existing runs or history exports that were written with the `json` codec, the runtime will continue to read them transparently.
 
 ### Wire Format: Payload Envelope
 
@@ -169,19 +169,19 @@ On fields that carry payload bytes (`arguments`, `result`, `payload`, etc.), the
 ```json
 {
   "task_id": "...",
-  "payload_codec": "json",
-  "arguments": "[\"hello\", 42]",
+  "payload_codec": "avro",
+  "arguments": "<base64-avro-bytes>",
   "history_events": [ ... ]
 }
 ```
 
-The worker reads `payload_codec` to choose a decoder. A non-matching codec is a clear error — the worker should not attempt to sniff or guess.
+The worker reads `payload_codec` to choose a decoder. A non-matching codec is a clear error — the worker should not attempt to sniff or guess. Workers may still encounter `payload_codec: "json"` on tasks that belong to runs created before the v2 avro-only policy; the decoder path for `json` remains functional for those existing payloads.
 
 ### Starting a Workflow
 
 `POST /api/workflows` accepts `input` in two shapes:
 
-1. **Plain JSON array** — the server JSON-encodes the values and tags the run `payload_codec = "json"`. Avro requires a writer schema that a plain array cannot carry, so HTTP starts that omit `input` or send a bare array always land on the `json` codec even when the server default is `avro`. Clients that want an Avro-coded run must send the explicit envelope form.
+1. **Plain JSON array** — the server JSON-encodes the values and wraps them in the default `avro` codec using the generic-wrapper schema. Clients that already hold pre-encoded Avro bytes should use the explicit envelope form instead.
 
    ```json
    { "workflow_type": "MyWorkflow", "input": ["hello", 42] }
@@ -200,7 +200,7 @@ The worker reads `payload_codec` to choose a decoder. A non-matching codec is a 
 
 The chosen codec is stored on the `WorkflowRun` and **propagates for the life of the run**: activity arguments, results, signal/update arguments, and child-workflow inputs all use the same codec.
 
-Embedded/package starts (workflows kicked off from PHP via `WorkflowStub::make(...)->start(...)` rather than the HTTP API) follow the configured `workflows.serializer` default and can land on `avro` or `json` depending on configuration. The plain-array-is-JSON shortcut applies only to the HTTP start API.
+Embedded/package starts (workflows kicked off from PHP via `WorkflowStub::make(...)->start(...)` rather than the HTTP API) follow the configured `workflows.serializer` default, which is `avro` for all new v2 workflows.
 
 ### JSON Type Normalization
 
@@ -224,13 +224,13 @@ Older v1 deployments wrote history under two PHP-only codecs, which the package 
 - `workflow-serializer-y` — PHP `SerializableClosure` with byte-escape encoding. Requires a shared `config('app.key')` between server and worker.
 - `workflow-serializer-base64` — PHP `SerializableClosure` with base64 encoding.
 
-These codecs are **not recommended for new workflows**: a Python or Go worker cannot decode them. Any v2 installation with `workflows.serializer` still pinned to a legacy codec continues to use that codec for new runs — the runtime honors the setting, does not force a decode-only mode, and only surfaces the legacy pinning as a warning from `php artisan workflow:v2:doctor`. Polyglot fleets should either flip the setting to `'avro'` (the default for new installs) or `'json'` before registering a non-PHP worker on the task queue.
+These codecs are **not recommended for new workflows**: a Python or Go worker cannot decode them. Any v2 installation with `workflows.serializer` still pinned to a legacy codec continues to use that codec for new runs — the runtime honors the setting, does not force a decode-only mode, and only surfaces the legacy pinning as a warning from `php artisan workflow:v2:doctor`. Polyglot fleets should flip the setting to `'avro'` (the default and only supported codec for new v2 installs) before registering a non-PHP worker on the task queue.
 
 Legacy fully-qualified PHP class names (e.g. `Workflow\Serializers\Y`) are accepted as aliases so rows persisted before the codec rename keep decoding.
 
 ### Default Codec
 
-v2 defaults to `avro`. Clients that omit `input` on `POST /api/workflows` and installations that do not set `workflows.serializer` both land on `avro`. Set `workflows.serializer` to `'json'` to opt into JSON for new runs instead — both codecs are language-neutral, and the running server advertises the universal set under `capabilities.payload_codecs` on `GET /api/cluster/info`. New v2 workflows should always use a universal codec; legacy PHP-only codecs are decode-only and exist purely to drain v1 history.
+v2 defaults to `avro`. Clients that omit `input` on `POST /api/workflows` and installations that do not set `workflows.serializer` both land on `avro`. `avro` is the only supported codec for new v2 workflows. The `json` codec is retained for decoding existing data written during v1-to-v2 migration but is not available for new v2 workflows. Legacy PHP-only codecs are also decode-only and exist purely to drain v1 history.
 
 ## Resolving the Bridges
 

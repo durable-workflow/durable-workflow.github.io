@@ -77,16 +77,10 @@ The `serializer` config key controls the payload codec used for new workflows. v
 'serializer' => 'avro',
 ```
 
-`avro` and `json` are both language-neutral codecs — a Python, Go, or TypeScript worker can decode either without a shared runtime or app key.
+`avro` is the only language-neutral codec for new v2 workflows — a Python, Go, or TypeScript worker can decode it without a shared runtime or app key.
 
-- **`avro`** (default) — Apache Avro binary encoding. Compact on the wire and in storage, faster to encode/decode for large payloads, and the recommended choice for production traffic where payload size matters.
-- **`json`** — Raw UTF-8 JSON. Human-readable in storage and history exports, easier to inspect by eye, and a good fit for small payloads or when operators want to grep history dumps.
-
-Pin `serializer` to `'json'` if you prefer human-readable payloads:
-
-```php
-'serializer' => 'json',
-```
+- **`avro`** (default, required for new v2 workflows) — Apache Avro binary encoding. Compact on the wire and in storage, faster to encode/decode for large payloads, and the only supported codec for new v2 workflows.
+- **`json`** (decode-only, v1 migration) — Raw UTF-8 JSON. Retained so the runtime can read existing data written under the `json` codec during v1-to-v2 migration. Not available for new v2 workflows.
 
 If you leave `serializer` unset, the default is `avro`.
 

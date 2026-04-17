@@ -591,15 +591,6 @@ Surfaces that are still JSON-only on the Python side (tracked in [#331](https://
 
 With `durable-workflow[avro]` installed, no extra configuration is needed: the SDK reads `payload_codec` on every claim and picks the right decoder. If the server default is `avro` and the activity task arrives Avro-coded, the Python worker decodes it, runs the activity, and encodes the result back as `avro`.
 
-### Sticking to JSON for simplicity
-
-Teams that want the simplest possible setup can keep every run on the `json` codec:
-
-- **Pin the server-side default to `json`** — set `'serializer' => 'json'` in `config/workflows.php`. Every new workflow started on this server will be tagged `payload_codec = "json"`. This is the simplest path and removes the Avro install from the Python side entirely.
-- **Send an explicit JSON envelope from every client** — clients that start workflows can post the explicit `{codec: "json", blob: "..."}` envelope on `POST /api/workflows`. The Python `Client.start_workflow()` defaults to this when called without `input_envelope`.
-
-When both sides agree on `json`, Python workflows and activities interoperate cleanly with PHP workers on the same task queue, as long as the data types are JSON-serializable in both languages.
-
 ### Types that round-trip cleanly across Python and PHP
 
 | Python type | JSON | PHP type |
