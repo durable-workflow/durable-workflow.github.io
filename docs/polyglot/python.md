@@ -562,34 +562,29 @@ except WorkflowNotFound:
 
 ## Payload Codecs
 
-All payloads are codec-tagged. The Python SDK encodes and decodes the `json` codec out of the box, and the `avro` codec when the optional Avro extra is installed.
+Every payload that crosses the worker-protocol boundary is codec-tagged. v2 ships a single language-neutral codec, **`avro`**, which is the Python SDK's default for every outgoing client and worker payload — matching the server, PHP, and every other polyglot SDK.
 
-### Installing Avro support
+### Avro support is built in
 
-Avro support is optional to keep the default install minimal (only `httpx` is required for JSON-mode interop). Install the extra to opt in:
+`pip install durable-workflow` already pulls in the official Apache Avro Python bindings as a runtime dependency, so every outgoing surface (`start_workflow`, `signal_workflow`, `query_workflow`, `update_workflow`, activity result encoding, schedule actions) emits Avro-tagged payloads out of the box. There is no optional extra to install for codec interop.
 
-```sh
-pip install 'durable-workflow[avro]'
-```
-
-This pulls the `avro` package (the official Apache Avro Python bindings) and enables the SDK to encode and decode payloads tagged `payload_codec = "avro"`.
-
-### What works today (generic-wrapper surface)
+### What the SDK does today
 
 The SDK uses a generic-wrapper schema for Avro payloads — the Python value is JSON-encoded, then the resulting string is Avro-binary-framed under a `{json: string, version: int}` record. This gives schema-evolution framing and compact transport without requiring the Python developer to hand-write an Avro schema for every workflow.
 
-Supported surfaces when `durable-workflow[avro]` is installed:
+Every client and worker surface works end-to-end on the Avro default:
 
-- **Activity worker** — Avro-tagged activity arguments decode transparently. The worker echos the task's codec when completing: if a task arrives Avro-coded, the worker encodes the result as Avro; if it arrives JSON-coded, the worker returns JSON.
+- **Client starts, signals, queries, updates** — `start_workflow`, `signal_workflow`, `query_workflow`, and `update_workflow` always emit `payload_codec = "avro"` payloads via the generic-wrapper schema. A Python client can therefore drive workflows that PHP and other polyglot SDKs will replay, and vice-versa.
+- **Activity worker** — Avro-tagged activity arguments decode transparently. The worker echoes the task's codec when completing: an Avro-coded task gets an Avro-coded result back; a legacy JSON-coded task (from a pre-Avro run) gets a JSON-coded result.
 - **Workflow worker history replay** — Avro-tagged start input and activity result events are decoded during replay, so a Python workflow can participate in an Avro-coded run.
 
-Surfaces that are still JSON-only on the Python side (tracked in [#331](https://github.com/zorporation/durable-workflow/issues/331)):
+### JSON decode path for legacy runs
 
-- **Client-level codec selection for `start_workflow`, `signal_workflow`, `query_workflow`, `update_workflow`** — these always emit JSON-tagged payloads today. The Python client cannot currently start an Avro-coded run or send an Avro-coded signal/query/update; those runs are only reachable from a codec-aware PHP client or via the HTTP API with an explicit `{codec: "avro", ...}` envelope.
+The SDK still decodes `payload_codec = "json"` blobs when a task arrives from an older run that was started before Avro became the default. This is the only place JSON still appears on the wire — new runs and all outgoing client calls always use Avro, with no public flag to downgrade.
 
 ### Running a Python activity worker against an Avro-coded run
 
-With `durable-workflow[avro]` installed, no extra configuration is needed: the SDK reads `payload_codec` on every claim and picks the right decoder. If the server default is `avro` and the activity task arrives Avro-coded, the Python worker decodes it, runs the activity, and encodes the result back as `avro`.
+No extra configuration is needed: the SDK reads `payload_codec` on every claim and picks the right decoder. If the server default is `avro` and the activity task arrives Avro-coded, the Python worker decodes it, runs the activity, and encodes the result back as `avro`.
 
 ### Types that round-trip cleanly across Python and PHP
 
