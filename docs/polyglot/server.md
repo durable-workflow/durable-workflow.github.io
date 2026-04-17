@@ -177,8 +177,9 @@ curl http://localhost:8080/api/cluster/info \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Returns the server version, supported SDK versions, engine capabilities, and
-the independently-versioned control-plane and worker-protocol manifests:
+Returns the server build version, supported SDK versions, engine capabilities,
+the client compatibility policy, and the independently-versioned control-plane
+and worker-protocol manifests:
 
 ```json
 {
@@ -187,7 +188,15 @@ the independently-versioned control-plane and worker-protocol manifests:
   "default_namespace": "default",
   "supported_sdk_versions": {
     "php": ">=1.0",
-    "python": ">=0.1"
+    "python": ">=0.2,<1.0",
+    "cli": ">=0.1,<1.0"
+  },
+  "client_compatibility": {
+    "schema": "durable-workflow.v2.client-compatibility",
+    "version": 1,
+    "authority": "protocol_manifests",
+    "top_level_version_role": "informational",
+    "fail_closed": true
   },
   "capabilities": {
     "workflow_tasks": true,
@@ -229,6 +238,12 @@ the independently-versioned control-plane and worker-protocol manifests:
   }
 }
 ```
+
+Treat `client_compatibility.authority: "protocol_manifests"` as the rule for
+client checks. The top-level `version` is build identity; CLI and SDK clients
+should fail closed when `control_plane.version`,
+`control_plane.request_contract`, or `worker_protocol.version` is missing or
+unsupported.
 
 Key field notes for client code:
 

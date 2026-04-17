@@ -15,20 +15,27 @@ This page documents version compatibility across Durable Workflow components. Al
 | Workflow Package (PHP) | 1.0.75 (v1), 2.0.0 (v2) | Core workflow engine |
 | Standalone Server | 2.0.0 | Language-neutral HTTP server |
 | CLI | 0.1.0 | Command-line interface |
-| Python SDK | 0.1.0 | Python client and worker |
+| Python SDK | 0.2.0 | Python client and worker |
 | Waterline | 1.0.16 (v1), 2.0.0 (v2) | Observability UI |
 
 ## Compatibility Matrix
 
 ### Server ↔ SDK/CLI
 
-| Server Version | CLI 0.1.x | Python SDK 0.1.x | PHP Workflow 2.0.x |
+| Server Protocol Manifests | CLI 0.1.x | Python SDK 0.2.x | PHP Workflow 2.0.x |
 |----------------|-----------|------------------|-------------------|
-| 2.0.x (stable) | ✅ Compatible | ✅ Compatible | ✅ Compatible |
-| 1.x | ❌ Skipped | ❌ Skipped | ❌ Skipped |
-| 3.x+ (future) | ❌ Breaking | ❌ Breaking | ❌ Breaking |
+| `control_plane.version: "2"` + request-contract v1 + `worker_protocol.version: "1.0"` | ✅ Compatible | ✅ Compatible | ✅ Compatible |
+| Missing or unknown protocol manifests | ❌ Fail closed | ❌ Fail closed | ❌ Fail closed |
+| Future incompatible protocol versions | ❌ Breaking | ❌ Breaking | ❌ Breaking |
 
-**Version 1.x**: Intentionally skipped. The project moved directly to 2.x (stable).
+The top-level server `version` from `/api/cluster/info` is build identity, not
+the client compatibility authority. Clients must use the protocol manifests
+advertised by `/api/cluster/info`:
+
+- `control_plane.version`
+- `control_plane.request_contract.schema` and `version`
+- `worker_protocol.version` for worker SDKs
+- `client_compatibility.authority: "protocol_manifests"`
 
 ### Workflow Package ↔ Waterline
 
@@ -43,19 +50,18 @@ Waterline versions must match the workflow package major version.
 
 ### CLI
 
-The CLI validates server version on first invocation per session:
+The CLI validates the control-plane protocol manifest on first invocation per session:
 
 ```bash
 $ dw server:health
-Server version 3.0.0 is incompatible with dw CLI 0.1.x (requires server 2.x).
-Upgrade the server or use a compatible CLI version.
+Server compatibility error: unsupported control_plane.version [3]; dw CLI 0.1.x requires control_plane.version 2.
 ```
 
-Version checks are cached per CLI invocation. Starting a new CLI command re-validates.
+Compatibility checks are cached per CLI invocation. Starting a new CLI command re-validates.
 
 ### Python SDK
 
-The Python SDK validates server version when workers register:
+The Python SDK validates protocol manifests when workers register:
 
 ```python
 from durable_workflow import Client, Worker
@@ -63,26 +69,43 @@ from durable_workflow import Client, Worker
 client = Client("http://server:8080", token="...", namespace="default")
 worker = Worker(client, task_queue="default", workflows=[...])
 
-await worker.run()  # Validates server version before registering
+await worker.run()  # Validates protocol manifests before registering
 ```
 
 If incompatible:
 
 ```
-RuntimeError: Server version 3.0.0 is incompatible with sdk-python 0.1.x
-(requires server 2.x). Upgrade the server or use a compatible SDK version.
+RuntimeError: Server compatibility error: unsupported worker_protocol.version '2.0'; sdk-python 0.2.x requires '1.0'.
 ```
 
 ### Server
 
-The server returns its version and supported SDK versions in `GET /api/cluster/info`:
+The server returns its protocol manifests and compatibility policy in `GET /api/cluster/info`:
 
 ```json
 {
   "version": "2.0.0",
   "supported_sdk_versions": {
     "php": ">=1.0",
-    "python": ">=0.1"
+    "python": ">=0.2,<1.0",
+    "cli": ">=0.1,<1.0"
+  },
+  "client_compatibility": {
+    "schema": "durable-workflow.v2.client-compatibility",
+    "version": 1,
+    "authority": "protocol_manifests",
+    "top_level_version_role": "informational",
+    "fail_closed": true
+  },
+  "control_plane": {
+    "version": "2",
+    "request_contract": {
+      "schema": "durable-workflow.v2.control-plane-request.contract",
+      "version": 1
+    }
+  },
+  "worker_protocol": {
+    "version": "1.0"
   }
 }
 ```
@@ -99,7 +122,8 @@ Minor versions are backward-compatible within the same major version:
 - **CLI**: Upgrade independently
 - **Python SDK**: Upgrade independently
 
-Example: Server 2.0.1 works with CLI 0.1.0 and Python SDK 0.1.0.
+Example: Server 2.0.1 works with CLI 0.1.0 and Python SDK 0.2.0 when it
+advertises the protocol manifests listed above.
 
 ### Major Version Upgrades (2.x → 3.x)
 
@@ -130,20 +154,20 @@ The server validates these headers and rejects requests with missing or incompat
 
 ## Troubleshooting
 
-### "Server version X is incompatible with..."
+### "Server compatibility error..."
 
-**Cause**: Client and server major versions don't match.
+**Cause**: The server did not advertise the protocol manifest expected by the client.
 
 **Fix**:
 1. Check the compatibility matrix above
-2. Upgrade server or client to compatible versions
-3. If server is 2.x and client reports incompatibility, file a bug
+2. Upgrade server or client to compatible protocol versions
+3. If the server advertises the expected protocol manifests and the client reports incompatibility, file a bug
 
 ### "Missing X-Durable-Workflow-Protocol-Version header"
 
 **Cause**: Old client not sending protocol version headers.
 
-**Fix**: Upgrade CLI to 0.1.0+ or Python SDK to 0.1.0+.
+**Fix**: Upgrade CLI to 0.1.0+ or Python SDK to 0.2.0+.
 
 ### "Control plane version mismatch"
 
@@ -155,6 +179,7 @@ The server validates these headers and rejects requests with missing or incompat
 
 | Date | Server | CLI | Python SDK | Workflow | Waterline | Notes |
 |------|--------|-----|------------|----------|-----------|-------|
+| 2026-04-17 | 2.0.0 | 0.1.0 | 0.2.0 | 2.0.0 | 2.0.0 | Compatibility authority moved to protocol manifests |
 | 2026-04-15 | 2.0.0 | 0.1.0 | 0.1.0 | 2.0.0 | 2.0.0 | Stable release |
 
 ## See Also
