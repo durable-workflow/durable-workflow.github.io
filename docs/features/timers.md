@@ -46,4 +46,33 @@ Some queue drivers impose a maximum delay on initial message delivery. For examp
 
 This is transparent to the workflow — the timer row still records the full duration and the correct `fire_at` timestamp. The chunking happens purely at the transport layer. For SQS, subsequent relay hops can use up to 43,200 seconds (12 hours) via `ChangeMessageVisibility`, so most timers complete in one or two hops.
 
-`sideEffect()` is available for replay-safe snapshots such as randomness or one-time branch inputs. A dedicated `Workflow\V2\now()` and unit-helper API is still evolving, so `timer()` remains the only time suspension helper today.
+`sideEffect()` is available for replay-safe snapshots such as randomness or one-time branch inputs.
+
+## Reading deterministic time
+
+Inside a workflow body, use `Workflow::now()` (or `Workflow\V2\now()`) instead of Laravel's `now()` helper or `Carbon::now()` when you need the current time:
+
+```php
+use function Workflow\V2\activity;
+use function Workflow\V2\now;
+use Workflow\V2\Workflow;
+
+class DurationAwareWorkflow extends Workflow
+{
+    public function handle(string $name): array
+    {
+        $startedAt = Workflow::now();
+        $greeting = activity(GreetingActivity::class, $name);
+        $finishedAt = Workflow::now();
+
+        return [
+            'greeting' => $greeting,
+            'took_ms' => $finishedAt->getTimestampMs() - $startedAt->getTimestampMs(),
+        ];
+    }
+}
+```
+
+`Workflow::now()` advances as the executor replays history events — it returns `recorded_at` of the last activity completion, timer fire, signal receipt, condition resolution, or child workflow completion the replay has consumed. Before any event is consumed, it returns the run's `started_at`. Outside a workflow fiber (for example in an activity or a query method that forwards to a non-workflow helper), it falls back to wall-clock `now()`.
+
+Using `Workflow::now()` keeps your workflow deterministic: two replays of the same history produce the same time values, even if wall-clock time has advanced between them.
