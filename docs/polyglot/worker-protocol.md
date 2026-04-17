@@ -145,7 +145,6 @@ The `ActivityTaskBridge` contract defines how an external worker interacts with 
 
 Activity heartbeat responses include `can_continue` and `cancel_requested` fields, allowing long-running activities to respond to cancellation requests.
 
-
 ## Payload Codecs
 
 Every payload byte string that crosses the worker-protocol boundary is tagged with a **`payload_codec`** naming the format of the accompanying blob. v2 uses one language-neutral codec: **`avro`** — so any SDK (PHP, Python, Go, TypeScript, Rust) can encode and decode payloads without sharing a runtime or an app key. The running server advertises its codec support on `GET /api/cluster/info` under **`capabilities.payload_codecs`**.
@@ -188,15 +187,11 @@ The worker reads `payload_codec` to choose a decoder. A non-matching codec is a 
    }
    ```
 
-   The server stores the blob verbatim and tags the run with the declared codec.
+The server stores the blob verbatim and tags the run with the declared codec.
 
 The chosen codec is stored on the `WorkflowRun` and **propagates for the life of the run**: activity arguments, results, signal/update arguments, and child-workflow inputs all use the same codec.
 
 Embedded/package starts (workflows kicked off from PHP via `WorkflowStub::make(...)->start(...)` rather than the HTTP API) follow the configured `workflows.serializer` default, which is `avro` for all new v2 workflows.
-
-### Default Codec
-
-v2 uses `avro`. It is the default and the only codec for new v2 workflows.
 
 ## Resolving the Bridges
 
