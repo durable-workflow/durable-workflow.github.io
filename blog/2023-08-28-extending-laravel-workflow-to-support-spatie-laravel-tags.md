@@ -15,7 +15,7 @@ One of the strengths of the Laravel ecosystem is its flexibility, thanks to a my
 
 Before diving into the code, let’s ensure both libraries are properly installed:
 
-1. Install [Workflow](https://github.com/laravel-workflow/laravel-workflow) and [Spatie Laravel Tags](https://github.com/spatie/laravel-tags).
+1. Install [Workflow](https://github.com/durable-workflow/workflow) and [Spatie Laravel Tags](https://github.com/spatie/laravel-tags).
 ```sh
 composer require laravel-workflow/laravel-workflow spatie/laravel-tags
 ```

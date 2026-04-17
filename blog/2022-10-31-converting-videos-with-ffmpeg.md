@@ -11,14 +11,14 @@ tags: [video, ffmpeg, conversion, transcoding]
 
 [FFmpeg](https://ffmpeg.org/) is a free, open-source software project allowing you to record, convert and stream audio and video.
 
-[Laravel Queues](https://laravel.com/docs/9.x/queues) are great for long running tasks. Converting video takes a long time! With [Workflow](https://github.com/laravel-workflow/laravel-workflow), you can harness the power of queues to convert videos in the background and easily manage the process.
+[Laravel Queues](https://laravel.com/docs/9.x/queues) are great for long running tasks. Converting video takes a long time! With [Workflow](https://github.com/durable-workflow/workflow), you can harness the power of queues to convert videos in the background and easily manage the process.
 
 Requirements
 ============
 
 1.  You’ll need to [install FFmpeg](https://ffmpeg.org/download.html)
 2.  Then `composer require php-ffmpeg/php-ffmpeg` ([docs](https://github.com/PHP-FFMpeg/PHP-FFMpeg#readme))
-3.  Finally `composer require laravel-workflow/laravel-workflow` ([docs](https://github.com/laravel-workflow/laravel-workflow#laravel-workflow-))
+3.  Finally `composer require laravel-workflow/laravel-workflow` ([docs](https://github.com/durable-workflow/workflow))
 
 Workflow
 ========

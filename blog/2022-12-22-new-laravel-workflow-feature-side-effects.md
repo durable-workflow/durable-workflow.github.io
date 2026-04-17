@@ -15,7 +15,7 @@ Workflow is a powerful package for the Laravel web framework that provides tools
 
 One of the key features of any workflow engine is the ability to track the history of a workflow as it is executed which allows a workflow to be retried if it fails or encounters an error. However, this also means that your workflow code must be deterministic and any non-deterministic code has to be carefully managed.
 
-Recently, the Workflow package added support for [side effects](https://laravel-workflow.com/docs/features/side-effects), which are closures containing non-deterministic code that is only executed once and the result saved. Side effects are a useful way to introduce non-deterministic behavior into a workflow, such as generating a random number or UUID.
+Recently, the Workflow package added support for [side effects](https://durable-workflow.com/docs/features/side-effects), which are closures containing non-deterministic code that is only executed once and the result saved. Side effects are a useful way to introduce non-deterministic behavior into a workflow, such as generating a random number or UUID.
 
 Here is an example workflow that demonstrates side effects.
 

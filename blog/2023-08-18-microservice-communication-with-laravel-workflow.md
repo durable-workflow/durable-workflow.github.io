@@ -17,7 +17,7 @@ In a microservices architecture, decoupling is the name of the game. You want ea
 
 ## Workflow to the Rescue!
 
-[Workflow](https://github.com/laravel-workflow/laravel-workflow) handles the discovery and orchestration for you! With a shared database and queue connection, you can have your workflow in one Laravel app and its activity logic in another.
+[Workflow](https://github.com/durable-workflow/workflow) handles the discovery and orchestration for you! With a shared database and queue connection, you can have your workflow in one Laravel app and its activity logic in another.
 
 ### Defining Workflows and Activities
 
@@ -73,7 +73,7 @@ When working with microservices, it’s common for each service to have its dedi
 ## Step-By-Step Integration
 
 #### 1. Install `laravel-workflow` in all microservices.
-Follow the [installation guide](https://laravel-workflow.com/docs/installation/).
+Follow the [installation guide](https://durable-workflow.com/docs/installation/).
 
 #### 2. Create a shared database/redis connection in all microservices.
 ```php

@@ -167,7 +167,7 @@ $workflow->output();
 // "approved"
 ```
 
-This is the view from [Waterline](https://github.com/laravel-workflow/waterline).
+This is the view from [Waterline](https://github.com/durable-workflow/waterline).
 
 ![timeline](https://miro.medium.com/max/1400/1*m6cOftX9kjBjr6CJGpyQPA.webp)
 

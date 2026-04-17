@@ -19,7 +19,7 @@ In this post, we’ll show how to use Workflow + Prism to create an agentic loop
 - Validates the result against custom rules
 - Retries automatically until the result passes
 
-You can try this exact workflow right now in your browser with no setup or coding required. Just click the button in the Workflow [Sample App](https://github.com/laravel-workflow/sample-app) and launch a GitHub Codespace to run it.
+You can try this exact workflow right now in your browser with no setup or coding required. Just click the button in the Workflow [Sample App](https://github.com/durable-workflow/sample-app) and launch a GitHub Codespace to run it.
 
 ### What We’re Building
 
@@ -166,7 +166,7 @@ It’s perfect for AI applications where accuracy, safety, and traceability are 
 
 ### Try It Now in Your Browser
 
-We’ve bundled this workflow into the official Workflow [Sample App](https://github.com/laravel-workflow/sample-app).
+We’ve bundled this workflow into the official Workflow [Sample App](https://github.com/durable-workflow/sample-app).
 
 To try it:
 

@@ -18,7 +18,7 @@ Before we begin, let’s understand the scenario. We are building an image moder
 
 ## Workflow
 
-Workflow is designed to streamline and organize complex processes in applications. It allows developers to define, manage, and execute workflows seamlessly. You can find installation instructions [here](https://github.com/laravel-workflow/laravel-workflow).
+Workflow is designed to streamline and organize complex processes in applications. It allows developers to define, manage, and execute workflows seamlessly. You can find installation instructions [here](https://github.com/durable-workflow/workflow).
 
 ## ClarifAI API
 
@@ -211,5 +211,5 @@ $workflow->reject();
 
 ## Conclusion
 
-[Workflow](https://github.com/laravel-workflow/laravel-workflow) provides a structured approach to handle complex processes like image moderation. It supports asynchronous processing, external API integrations, and modular design for scalability. Thanks for reading!
+[Workflow](https://github.com/durable-workflow/workflow) provides a structured approach to handle complex processes like image moderation. It supports asynchronous processing, external API integrations, and modular design for scalability. Thanks for reading!
 

@@ -186,7 +186,7 @@ class ConvertVideoActivity extends Activity
 
 ## Try It Now in Your Browser
 
-You don’t need to set up anything on your local machine. Everything is already configured in the Workflow [Sample App](https://github.com/laravel-workflow/sample-app).
+You don’t need to set up anything on your local machine. Everything is already configured in the Workflow [Sample App](https://github.com/durable-workflow/sample-app).
 
 To try it:
 
