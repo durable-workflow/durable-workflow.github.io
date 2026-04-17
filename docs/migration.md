@@ -115,6 +115,18 @@ To accept the v2 default explicitly, leave `serializer` unset, or pin it:
 
 Keep a legacy codec (`'workflow-serializer-y'` or `'workflow-serializer-base64'`) only if you need to start new workflows that share PHP-native values between a server and PHP-only workers. Legacy class names (`Workflow\Serializers\Y::class`, etc.) are still accepted as aliases for decoding v1 runs.
 
+**Custom serializer classes from v1 are unsupported in v2.** v1 accepted any serializer FQCN that exposed the serializer facade methods. v2's codec registry only resolves the built-in codecs (`avro`, `json`, `workflow-serializer-y`, `workflow-serializer-base64`) and their legacy class-name aliases. A `workflows.serializer` setting pointing at your own class (e.g. `'serializer' => App\Custom\V1Serializer::class`) will be flagged by `workflow:v2:doctor` as `codec_unknown` at the `error` severity, and default-codec resolution will silently fall back to `avro` — new runs succeed, but the configured value is ignored.
+
+If you had a custom v1 serializer, pick one of:
+
+1. **Cut over to a supported codec** (recommended). Set `workflows.serializer` to `'avro'` or `'json'`. Any existing history written under your custom codec will no longer be decodable — the custom class is no longer consulted — so this is appropriate only when you have drained old runs or accept that they become opaque.
+2. **Drain v1 runs before upgrading.** Keep v1 running until every workflow that uses the custom codec has completed, then upgrade to v2 and choose a supported codec. v2's embedded replay path does not load custom serializer classes even if they exist in your codebase.
+3. **Re-encode old history before upgrading.** Write a migration pass under v1 that reads payloads via the custom serializer and re-writes them under `json` (or another supported codec). Then upgrade.
+
+Option 1 is appropriate for deployments where closed runs are not needed for replay. Option 2 is the safest for active v1 workloads. Option 3 is the right answer when you need to preserve open runs and long-lived history.
+
+Custom serializer extension points (plugin-style codec registration) are not part of v2's codec registry. If you believe your deployment needs a codec other than `avro` or `json`, open an issue with the specific type fidelity or runtime requirement you need — the likely answer is either a supported codec choice or a recommendation to encode type-sensitive values explicitly (e.g. as strings) at the workflow boundary.
+
 **Environment variables:**
 
 v2 does not introduce new required environment variables. Existing `QUEUE_CONNECTION`, `CACHE_DRIVER`, and `DB_CONNECTION` continue to work.
