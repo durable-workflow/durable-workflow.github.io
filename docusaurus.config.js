@@ -68,6 +68,35 @@ const config = {
     ],
   ],
 
+  plugins: [
+    [
+      '@docusaurus/plugin-client-redirects',
+      {
+        // TD-079: public v2 polyglot pages moved into /docs/2.0/polyglot/.
+        // Keep the prior URLs working so external links, saved references,
+        // and package metadata do not land on 404s after deploy.
+        redirects: [
+          {
+            from: '/docs/2.0/server-setup',
+            to: '/docs/2.0/polyglot/server',
+          },
+          {
+            from: '/docs/2.0/cli',
+            to: '/docs/2.0/polyglot/cli',
+          },
+          {
+            from: '/docs/2.0/sdks/python',
+            to: '/docs/2.0/polyglot/python',
+          },
+          {
+            from: '/docs/2.0/configuration/worker-protocol',
+            to: '/docs/2.0/polyglot/worker-protocol',
+          },
+        ],
+      },
+    ],
+  ],
+
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
