@@ -202,6 +202,21 @@ The chosen codec is stored on the `WorkflowRun` and **propagates for the life of
 - **`json`** — portable across all SDKs. JSON-native types only (no Eloquent models, closures, or arbitrary PHP objects).
 - **`workflow-serializer-y` / `workflow-serializer-base64`** — PHP-only. Supports arbitrary PHP values (including Eloquent models, closures) but cannot be read by non-PHP workers. Use only when server and workers all run the same PHP codebase with a shared app key.
 
+### JSON Codec Type Normalization
+
+JSON has a single numeric type; language runtimes do not. When a payload round-trips between SDKs under the `json` codec, some type distinctions are **normalized away**. Workflows that depend on the exact runtime type of a value across a language boundary must either pick a richer codec or encode the type explicitly (for example, as a string).
+
+Known normalizations under the `json` codec:
+
+| Source value | Round-tripped through | Becomes | Reason |
+|---|---|---|---|
+| `3.0` (Python `float`) | PHP | `3` (PHP `int`) | PHP's `json_decode` converts whole-number-valued floats to `int`. |
+| `3.0` (Python `float`) | Python → JSON → Python | `3.0` (`float`) preserved | Python keeps the decimal. |
+| `Decimal("3.0")` / numeric objects | any | JSON number | Non-JSON-native types must be serialized as strings to preserve the original type. |
+| `datetime`, `UUID`, timezone-aware timestamps | any | encode-as-string by the SDK | JSON has no date type; SDKs serialize to ISO-8601 strings. |
+
+If your workflow needs to preserve the integer-vs-float distinction across a PHP↔Python hop (for example, a schema validator that rejects `3` but accepts `3.0`), encode the value as a string (`"3.0"`) and parse it on the receiving side. This is an intrinsic property of JSON, not a bug in the codec.
+
 ### Default Codec
 
 The default codec is chosen from `config('workflows.serializer')` for installations that explicitly set it; new deployments default to `json`. Clients that omit `input` on `POST /api/workflows` inherit the default.
