@@ -155,7 +155,7 @@ use Workflow\V2\WorkflowStub;
 use Workflow\V2\StartOptions;
 
 $workflow = WorkflowStub::make(TestWorkflow::class, 'test-upgrade');
-$runId = $workflow->start(['test' => true], StartOptions::new());
+$runId = $workflow->start(['test' => true], new StartOptions());
 ```
 
 Check that:
@@ -400,7 +400,7 @@ composer update durable-workflow/workflow
 php artisan migrate
 ```
 
-The 2.0.0 release includes 19 clean base table migrations. If you previously published migration files, you may need to publish the new ones or switch to auto-loaded migrations.
+The 2.0.0 release includes 24 clean base table migrations. If you previously published migration files, you may need to publish the new ones or switch to auto-loaded migrations.
 
 ### Backend capability check
 
