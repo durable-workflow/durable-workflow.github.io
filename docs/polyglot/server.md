@@ -257,6 +257,10 @@ All requests require:
 - `X-Namespace: your-namespace`
 - `X-Durable-Workflow-Protocol-Version: 1.0`
 
+The server validates that the namespace exists. Register it via
+`POST /api/namespaces` before directing workers or clients at it, or the
+server returns `404` with `reason: "namespace_not_found"`.
+
 See the [server README](https://github.com/durable-workflow/server#getting-started-end-to-end-workflow) for a curl-based walkthrough.
 
 ## CLI
