@@ -172,14 +172,19 @@ use Workflow\V2\WorkflowStub;
 use Workflow\V2\StartOptions;
 
 $workflow = WorkflowStub::make(TestWorkflow::class, 'test-upgrade');
-$runId = $workflow->start(['test' => true], new StartOptions());
+$result = $workflow->start(['test' => true], new StartOptions());
+$runId = $result->runId();
 ```
+
+`WorkflowStub::start()` returns a `StartResult` object. Pull the run id off it
+with `runId()` before comparing against database rows — treating the return
+value as a scalar string will silently compare an object against a column.
 
 Check that:
 
 - Workflow appears in Waterline
-- `workflow_instances` table has a row with matching `instance_id`
-- `workflow_runs` table has a row with matching `run_id`
+- `workflow_instances` table has a row with matching `instance_id` (`$workflow->id()`)
+- `workflow_runs` table has a row with matching `run_id` (`$result->runId()`)
 - Workflow completes or progresses as expected
 
 **3. Check v1 workflows (if any)**
