@@ -41,7 +41,7 @@ Store the backup in a safe location. You will need it if you need to roll back.
 
 **Do not upgrade production without testing in staging.** The upgrade includes:
 
-- Database schema changes (19 new tables)
+- Database schema changes (24 new tables)
 - Namespace changes requiring code updates
 - Queue worker restart (brief interruption)
 - Backend capability validation
@@ -76,13 +76,14 @@ This upgrades the package from `laravel-workflow/laravel-workflow` (v1) to `dura
 php artisan migrate
 ```
 
-v2 adds 19 new tables:
+v2 adds 24 new tables:
 
 - Core: `workflow_instances`, `workflow_runs`, `workflow_history_events`, `workflow_tasks`, `workflow_commands`
 - Activity: `activity_executions`, `activity_attempts`
-- Features: `workflow_updates`, `workflow_signal_records`, `workflow_run_waits`, `workflow_run_timeline_entries`, `workflow_run_lineage_entries`, `workflow_schedules`
+- Features: `workflow_updates`, `workflow_signal_records`, `workflow_run_waits`, `workflow_run_timeline_entries`, `workflow_run_lineage_entries`, `workflow_schedules`, `workflow_schedule_history_events`
 - Observability: `workflow_run_summaries`, `workflow_failures`, `workflow_links`, `worker_compatibility_heartbeats`
 - Timers: `workflow_run_timers`, `workflow_run_timer_entries`
+- Search / memo / message / child: `workflow_search_attributes`, `workflow_memos`, `workflow_messages`, `workflow_child_calls`
 
 v1 tables (`workflows`, `workflow_logs`, `workflow_signals`, `workflow_timers`, `workflow_exceptions`) are preserved for finish-on-v1 execution.
 
