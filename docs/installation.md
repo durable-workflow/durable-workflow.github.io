@@ -15,12 +15,15 @@ Durable Workflow requires the following to run:
 - PHP 8.1 or later
 - Laravel 9 or later
 
-Durable Workflow can be used with any queue driver that Laravel supports (except the `sync` driver), including:
+Durable Workflow has two task dispatch modes, controlled by `workflows.v2.task_dispatch_mode`:
 
-- Amazon SQS
-- Beanstalkd
-- Database
-- Redis
+- **Queue mode** (default, `queue`): workflow and activity tasks are dispatched onto a Laravel queue and picked up by a `queue:work` worker in the same Laravel process. This is the standard embedded setup.
+- **Poll mode** (`poll`): external workers claim tasks over HTTP. The standalone server defaults to this mode, and the Laravel queue is not used for task delivery.
+
+Queue-driver requirements depend on the mode:
+
+- In **queue mode**, Durable Workflow requires an asynchronous driver. The `sync` driver is not supported because it executes jobs inline on the request thread, which cannot provide the worker/lease boundary durable workflows rely on. Any other driver Laravel supports works: Amazon SQS, Beanstalkd, Database, Redis.
+- In **poll mode**, the Laravel queue is unused for workflow and activity dispatch, so a `sync` driver or a missing queue connection is acceptable. Timer tasks still dispatch locally in embedded deployments, so set a real queue driver if you run timers on the same node.
 
 Each queue driver has its own [prerequisites](https://laravel.com/docs/12.x/queues#driver-prerequisites).
 
@@ -34,9 +37,9 @@ You can inspect the backend capability contract directly from the app:
 php artisan workflow:v2:doctor --strict
 ```
 
-The command checks the configured database, queue, and cache stores. `--strict` exits with a failure when a required capability is missing, such as using the `sync` queue driver. Use `--json` when you want the same capability snapshot in CI, health checks, or deployment automation.
+The command checks the configured database, queue, and cache stores. In queue mode, `--strict` exits with a failure when a required capability is missing, such as using the `sync` queue driver. In poll mode the same queue diagnostics are rendered as informational notes and `--strict` still succeeds, because the Laravel queue is not on the task-delivery path. Use `--json` when you want the same capability snapshot in CI, health checks, or deployment automation.
 
-The engine also checks backend capability at durable task publication time and again before a worker claim leases the task. If a task is routed to an unsupported queue connection, such as `sync`, the engine leaves the task in durable storage, records `last_dispatch_attempt_at` / `last_dispatch_error` for publication failures or `last_claim_failed_at` / `last_claim_error` for worker-claim failures, and lets Waterline show the run as transport-unhealthy instead of running workflow code inline.
+The engine also checks backend capability at durable task publication time and again before a worker claim leases the task. In queue mode, if a task is routed to an unsupported queue connection, such as `sync`, the engine leaves the task in durable storage, records `last_dispatch_attempt_at` / `last_dispatch_error` for publication failures or `last_claim_failed_at` / `last_claim_error` for worker-claim failures, and lets Waterline show the run as transport-unhealthy instead of running workflow code inline. Poll-mode deployments skip this publication check because tasks are delivered over HTTP instead.
 
 ## Installing Durable Workflow
 

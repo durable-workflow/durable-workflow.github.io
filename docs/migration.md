@@ -209,7 +209,7 @@ Common issues:
 
 - Namespace errors: code still using `Workflow\Workflow` instead of `Workflow\V2\Workflow`
 - Method errors: code still using `execute()` without `handle()` fallback
-- Queue driver errors: using `sync` driver (not supported)
+- Queue driver errors: using `sync` driver in queue mode (not supported); in poll mode (`workflows.v2.task_dispatch_mode=poll`) the queue is unused for task delivery and `sync` is acceptable
 
 **5. Verify Waterline observability**
 
