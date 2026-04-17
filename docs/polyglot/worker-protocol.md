@@ -50,13 +50,13 @@ $afterSequence = 0;
 $allEvents = [];
 
 do {
-    $page = $bridge->historyPayloadPaginated($taskId, $afterSequence, 200);
+    $page = $bridge->historyPayloadPaginated($taskId, $afterSequence, 500);
     $allEvents = array_merge($allEvents, $page['history_events']);
     $afterSequence = $page['next_after_sequence'] ?? $afterSequence;
 } while ($page['has_more']);
 ```
 
-The default page size is 200 events; the maximum is 1000. The response includes `has_more` and `next_after_sequence` for cursor-based pagination.
+The default page size is 500 events (matching `WorkerProtocolVersion::DEFAULT_HISTORY_PAGE_SIZE` and the `default_history_page_size` value the server publishes in its worker-protocol capabilities); the maximum is 1000. Servers can advertise a different effective default through the worker-protocol manifest, so prefer reading the published capability over hard-coding either number. The response includes `has_more` and `next_after_sequence` for cursor-based pagination.
 
 ### History Compression
 
