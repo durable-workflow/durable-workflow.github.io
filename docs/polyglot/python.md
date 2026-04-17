@@ -562,9 +562,16 @@ except WorkflowNotFound:
 
 ## Payload Codecs
 
-All payloads are codec-tagged. The SDK uses the `json` codec exclusively — values are serialized as `{codec: "json", blob: "..."}` envelopes on the wire. The SDK never guesses the codec: if it receives a payload with an unknown codec, it raises with a clear message.
+All payloads are codec-tagged. The Python SDK currently encodes and decodes the `json` codec only — values are serialized as `{codec: "json", blob: "..."}` envelopes on the wire. The SDK never guesses the codec: if it receives a payload with an unknown codec (including the server's `avro` default), it raises with a clear message.
 
-This means Python workflows and activities can interoperate with PHP workers on the same task queue, as long as the data types are JSON-serializable in both languages.
+The PHP server's default codec for new v2 workflows is `avro`. To run a Python worker against a shared server you must keep workflows the worker consumes on a JSON-tagged codec. Two ways to do that:
+
+- **Pin the server-side default to `json`** — set `'serializer' => 'json'` in `config/workflows.php`. Every new workflow that lands on this server will be tagged `payload_codec = "json"` and any Python worker can drive it.
+- **Send an explicit envelope from every client** — clients that start workflows can post the explicit `{codec: "json", blob: "..."}` envelope on `POST /api/workflows`. The Python `Client.start_workflow()` already does this, so workflows started by a Python client are always Python-readable regardless of the server-side default.
+
+Once Python adds an Avro decoder, this restriction goes away and Python workers will decode Avro-tagged tasks transparently.
+
+When both sides agree on `json`, Python workflows and activities interoperate cleanly with PHP workers on the same task queue, as long as the data types are JSON-serializable in both languages.
 
 ### Types that round-trip cleanly across Python and PHP
 

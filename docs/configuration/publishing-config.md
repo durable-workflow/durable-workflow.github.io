@@ -71,13 +71,24 @@ Keep custom subclasses schema-compatible with the built-in models. If a subclass
 
 ## Payload Codec
 
-The `serializer` config key controls the payload codec used for new workflows. v2 defaults to `json`:
+The `serializer` config key controls the payload codec used for new workflows. v2 defaults to `avro`:
+
+```php
+'serializer' => 'avro',
+```
+
+`avro` and `json` are both language-neutral codecs — a Python, Go, or TypeScript worker can decode either without a shared runtime or app key.
+
+- **`avro`** (default) — Apache Avro binary encoding. Compact on the wire and in storage, faster to encode/decode for large payloads, and the recommended choice for production traffic where payload size matters.
+- **`json`** — Raw UTF-8 JSON. Human-readable in storage and history exports, easier to inspect by eye, and a good fit for small payloads or when operators want to grep history dumps.
+
+Pin `serializer` to `'json'` if you prefer human-readable payloads:
 
 ```php
 'serializer' => 'json',
 ```
 
-`json` is the only language-neutral codec and is the recommended value for v2. A Python, Go, or TypeScript worker can decode `json` payloads without a shared runtime or app key. If you leave `serializer` unset, the default is `json`.
+If you leave `serializer` unset, the default is `avro`.
 
 ### Legacy codecs (v1 migration only)
 
