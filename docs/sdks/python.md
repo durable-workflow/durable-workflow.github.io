@@ -83,11 +83,13 @@ async def main():
             activities=[greet],
         )
 
-        # Run the worker for a few seconds, then get the result
-        async with asyncio.TaskGroup() as tg:
-            tg.create_task(worker.run())
+        # Run the worker in the background until the workflow finishes.
+        worker_task = asyncio.create_task(worker.run())
+        try:
             result = await handle.result(timeout=30.0)
+        finally:
             await worker.stop()
+            await worker_task
 
     print(result)  # {"greeting": "Hello, world!", "length": 5}
 

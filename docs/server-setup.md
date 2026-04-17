@@ -144,6 +144,7 @@ Create namespaces via the API:
 ```bash
 curl -X POST http://localhost:8080/api/namespaces \
   -H "Authorization: Bearer $TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "production",
@@ -377,7 +378,7 @@ The server exposes three API surfaces:
 
 ### Control Plane
 
-Start, describe, signal, query, update, cancel, and terminate workflows. Requires `X-Durable-Workflow-Control-Plane-Version: 2`.
+Start, describe, signal, query, update, cancel, and terminate workflows; manage namespaces, task queues, schedules, search attributes, and workers. Every control-plane request requires `X-Durable-Workflow-Control-Plane-Version: 2`. Requests without it are rejected with `missing_control_plane_version`.
 
 Key endpoints:
 - `POST /api/workflows` — Start a workflow
@@ -387,6 +388,11 @@ Key endpoints:
 - `POST /api/workflows/{id}/update/{name}` — Execute an update
 - `POST /api/workflows/{id}/cancel` — Request cancellation
 - `POST /api/workflows/{id}/terminate` — Terminate immediately
+- `GET /api/namespaces`, `POST /api/namespaces`, `GET|PUT /api/namespaces/{namespace}` — Namespace management
+- `GET /api/workers`, `GET|DELETE /api/workers/{id}` — Worker fleet management
+- `GET|POST /api/schedules`, `GET|PUT|DELETE /api/schedules/{id}`, `POST /api/schedules/{id}/{pause|resume|trigger|backfill}` — Schedule management
+- `GET|POST|DELETE /api/search-attributes` — Search attribute management
+- `POST /api/system/repair/pass`, `POST /api/system/activity-timeouts/pass`, `POST /api/system/retention/pass` — Operator passes
 
 ### Worker Protocol
 
@@ -401,24 +407,19 @@ Key endpoints:
 
 See the [Worker Protocol](/docs/2.0/configuration/worker-protocol) reference for details.
 
-### System
+### Discovery (unversioned)
 
-Health, repair, retention, and namespace management.
+The only endpoints that do **not** require `X-Durable-Workflow-Control-Plane-Version` are discovery and health probes:
 
-Key endpoints:
-- `GET /api/health` — Health check
-- `GET /api/cluster/info` — Server capabilities
-- `GET /api/namespaces` — List namespaces
-- `POST /api/namespaces` — Create namespace
-- `POST /api/system/repair/pass` — Run task repair sweep
-- `POST /api/system/activity-timeouts/pass` — Enforce activity timeouts
+- `GET /api/health` — Liveness/readiness probe (no auth required)
+- `GET /api/cluster/info` — Server capabilities, protocol versions, payload codecs. Clients should hit this first to discover which control-plane and worker-protocol versions the server supports.
 
 ## Troubleshooting
 
 ### Workers not receiving tasks
 
 **Check:**
-1. Workers registered? `curl http://localhost:8080/api/workers -H "Authorization: Bearer $TOKEN" -H "X-Namespace: default"`
+1. Workers registered? `curl http://localhost:8080/api/workers -H "Authorization: Bearer $TOKEN" -H "X-Durable-Workflow-Control-Plane-Version: 2" -H "X-Namespace: default"`
 2. Workers polling correct task queue?
 3. Workflow started with matching task queue?
 4. Cache backend shared across server instances?
