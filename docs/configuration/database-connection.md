@@ -4,79 +4,64 @@ sidebar_position: 4
 
 # Database Connection
 
-Here is an overview of the steps needed to customize the database connection used for the stored workflow models. This is *only* required if you want to use a different database connection than the default connection you specified for your Laravel application.
+Here is an overview of the steps needed to customize the database connection used for the workflow v2 durable models. This is *only* required if you want to use a different database connection than the default connection you specified for your Laravel application.
 
-1. Create classes in your app models directory that extend the base workflow model classes
+1. Create classes in your app models directory that extend the base v2 model classes
 2. Set the desired `$connection` option in each class
 3. Publish the workflow config file
-4. Update the config file to use your custom classes
+4. Update the `workflows.v2` model bindings to point at your custom classes
 
-## Extending Workflow Models
+## Extending V2 Workflow Models
 
-In `app\Models\StoredWorkflow.php` put this.
+In `app\Models\V2\WorkflowInstance.php` put this.
 
 ```php
-namespace App\Models;
+namespace App\Models\V2;
 
-use Workflow\Models\StoredWorkflow as BaseStoredWorkflow;
+use Workflow\V2\Models\WorkflowInstance as BaseWorkflowInstance;
 
-class StoredWorkflow extends BaseStoredWorkflow
+class WorkflowInstance extends BaseWorkflowInstance
 {
     protected $connection = 'mysql';
 }
 ```
 
-In `app\Models\StoredWorkflowException.php` put this.
+Repeat the pattern for each durable v2 model you need to re-route — at minimum:
 
+- `Workflow\V2\Models\WorkflowRun`
+- `Workflow\V2\Models\WorkflowHistoryEvent`
+- `Workflow\V2\Models\WorkflowTask`
+- `Workflow\V2\Models\WorkflowCommand`
+- `Workflow\V2\Models\WorkflowLink`
+- `Workflow\V2\Models\ActivityExecution`
+- `Workflow\V2\Models\ActivityAttempt`
+- `Workflow\V2\Models\WorkflowTimer`
+- `Workflow\V2\Models\WorkflowFailure`
+- `Workflow\V2\Models\WorkflowRunSummary`
+- `Workflow\V2\Models\WorkflowSchedule`
+- `Workflow\V2\Models\WorkflowScheduleHistoryEvent`
 
-```php
-namespace App\Models;
+Each subclass should declare `protected $connection = 'mysql';` (or whichever connection name you defined in `config/database.php`).
 
-use Workflow\Models\StoredWorkflowException as BaseStoredWorkflowException;
+## Registering Custom Models
 
-class StoredWorkflowException extends BaseStoredWorkflowException
-{
-    protected $connection = 'mysql';
-
-}
-```
-
-In `app\Models\StoredWorkflowLog.php` put this.
-
-
-```php
-namespace App\Models;
-
-use Workflow\Models\StoredWorkflowLog as BaseStoredWorkflowLog;
-
-class StoredWorkflowLog extends BaseStoredWorkflowLog
-{
-    protected $connection = 'mysql';
-}
-```
-
-In `app\Models\StoredWorkflowSignal.php` put this.
+Publish the workflow config file and update the `workflows.v2.*_model` bindings to point at your custom classes:
 
 ```php
-namespace App\Models;
+// config/workflows.php
 
-use Workflow\Models\StoredWorkflowSignal as BaseStoredWorkflowSignal;
-
-class StoredWorkflowSignal extends BaseStoredWorkflowSignal
-{
-    protected $connection = 'mysql';
-}
+'v2' => [
+    'instance_model' => App\Models\V2\WorkflowInstance::class,
+    'run_model' => App\Models\V2\WorkflowRun::class,
+    'history_event_model' => App\Models\V2\WorkflowHistoryEvent::class,
+    'task_model' => App\Models\V2\WorkflowTask::class,
+    'command_model' => App\Models\V2\WorkflowCommand::class,
+    // ...
+],
 ```
 
-In `app\Models\StoredWorkflowTimer.php` put this.
+The package resolves models through `Workflow\V2\Support\ConfiguredV2Models`, so any relation or query that hits a v2 model will transparently pick up the configured connection.
 
-```php
-namespace App\Models;
+## Migrations
 
-use Workflow\Models\StoredWorkflowTimer as BaseStoredWorkflowTimer;
-
-class StoredWorkflowTimer extends BaseStoredWorkflowTimer
-{
-    protected $connection = 'mysql';
-}
-```
+Workflow migrations are auto-loaded from the package (`WorkflowServiceProvider::loadMigrationsFrom`) and run against the default database connection. When you route the v2 tables at a non-default connection, publish the migrations with `php artisan vendor:publish --tag=migrations` and set `protected $connection = 'mysql';` on each published migration class so `php artisan migrate` runs them against the correct database.

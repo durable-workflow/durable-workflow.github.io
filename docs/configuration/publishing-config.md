@@ -25,9 +25,15 @@ This can be changed by updating the `workflows_folder` setting.
 'workflows_folder' => 'Workflows',
 ```
 
-## Using Custom Models
+## Using Custom Models (Legacy v1)
 
-In the `workflows.php` config file you can update the model classes to use your own.
+:::note Legacy
+
+These `stored_workflow_*` keys configure the v1 `Workflow\Models\StoredWorkflow*` classes. Workflow v2 uses the durable model overrides below — `instance_model`, `run_model`, `task_model`, and so on. Keep the v1 keys only if you are still running v1 workflows during migration.
+
+:::
+
+In the published `workflows.php` config file you can update the v1 model classes to use your own subclasses.
 
 ```php
 'stored_workflow_model' => App\Models\StoredWorkflow::class,
@@ -41,7 +47,7 @@ In the `workflows.php` config file you can update the model classes to use your 
 'stored_workflow_timer_model' => App\Models\StoredWorkflowTimer::class,
 ```
 
-## Using Model Overrides
+## Using Model Overrides (v2)
 
 The runtime also exposes model overrides for the durable instance, run, task, history, and projection tables:
 

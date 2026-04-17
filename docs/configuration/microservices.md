@@ -75,35 +75,33 @@ final class CreateWorkflowsTable extends Migration
     protected $connection = 'shared';
 ```
 
-In each microservice, extend the workflow models to use the shared connection:
+Workflow v2 persists state in durable `workflow_instances`, `workflow_runs`, `workflow_tasks`, `activity_executions`, `activity_attempts`, and `workflow_history_events` tables. Point the v2 models at the shared database by setting a dedicated connection in `config/workflows.php`:
 
 ```php
-// app\Models\StoredWorkflow.php
+// config/workflows.php
 
-class StoredWorkflow extends BaseStoredWorkflow
-{
-    protected $connection = 'shared';
+'v2' => [
+    'connection' => env('WORKFLOW_V2_DB_CONNECTION', 'shared'),
+    // ...
+],
 ```
-
-Publish the workflow config file and update it to use your custom models.
 
 Update your workflow and activity classes to use the shared queue connection. Assign unique queue names to each microservice for differentiation:
 
 ```php
 // App: workflow microservice
 
-use function Workflow\activity;
-use Workflow\Workflow;
+use function Workflow\V2\activity;
+use Workflow\V2\Workflow;
 
 class MyWorkflow extends Workflow
 {
-    public $connection = 'shared';
-    public $queue = 'workflow';
+    public string $connection = 'shared';
+    public string $queue = 'workflow';
 
-    public function execute($name)
+    public function handle(string $name): string
     {
-        $result = yield activity(MyActivity::class, $name);
-        return $result;
+        return activity(MyActivity::class, $name);
     }
 }
 ```
@@ -111,47 +109,21 @@ class MyWorkflow extends Workflow
 ```php
 // App: activity microservice
 
-use Workflow\Activity;
+use Workflow\V2\Activity;
 
 class MyActivity extends Activity
 {
-    public $connection = 'shared';
-    public $queue = 'activity';
+    public string $connection = 'shared';
+    public string $queue = 'activity';
 
-    public function execute($name)
+    public function handle(string $name): string
     {
         return "Hello, {$name}!";
     }
 }
 ```
 
-It's crucial to maintain empty duplicate classes in every microservice, ensuring they share the same namespace and class name. This precaution avoids potential exceptions due to class discrepancies:
-
-```php
-// App: workflow microservice
-
-use Workflow\Activity;
-
-class MyActivity extends Activity
-{
-    public $connection = 'shared';
-    public $queue = 'activity';
-}
-```
-
-```php
-// App: activity microservice
-
-use Workflow\Workflow;
-
-class MyWorkflow extends Workflow
-{
-    public $connection = 'shared';
-    public $queue = 'workflow';
-}
-```
-
-Note: The workflow code should exclusively reside in the workflow microservice, and the activity code should only be found in the activity microservice. The code isn't duplicated; identical class structures are merely maintained across all microservices.
+Both services should register the workflow and activity type keys in `workflows.v2.types.workflows` and `workflows.v2.types.activities`. The workflow microservice needs the `MyWorkflow` class on disk; the activity microservice needs the `MyActivity` class on disk. Each service only needs the classes it actually runs — the durable type key plus the registered class binding is the contract, not PHP class autoloading. External workers that do not have the PHP package installed can instead drive the same work through the HTTP activity-task and workflow-task bridges.
 
 To run queue workers in each microservice, use the shared connection and the respective queue names:
 

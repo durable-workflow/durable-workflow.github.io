@@ -10,15 +10,15 @@ The framework provides webhooks that allow external systems to start workflows a
 To enable webhooks, register the webhook routes in your application’s routes file (`routes/web.php` or `routes/api.php`):
 
 ```php
-use Workflow\Webhooks;
+use Workflow\V2\Webhooks;
 
-Webhooks::routes();
+Webhooks::routes([
+    App\Workflows\OrderWorkflow::class,
+    'manual-invoice' => App\Workflows\InvoiceWorkflow::class,
+]);
 ```
 
-By default, webhooks will:
-- Auto-discover workflows in the `app/Workflows` folder.
-- Expose webhooks to workflows marked with `#[Webhook]` at the class level.
-- Expose webhooks to signal methods marked with `#[Webhook]`.
+Pass the explicit map of workflow classes you want to expose. Each alias becomes the public route segment, and each workflow class must carry a stable durable type key via `#[Type(...)]` or a registered entry in `workflows.v2.types.workflows`. See the [Explicit Command And Query Webhooks](#explicit-command-and-query-webhooks) section for the full route matrix.
 
 ## Visibility Metadata
 When you register routes through `Workflow\V2\Webhooks::routes(...)`, the start route also accepts a reserved `visibility` object. Those fields are stored as workflow visibility metadata and are not passed to the workflow `handle()` method.

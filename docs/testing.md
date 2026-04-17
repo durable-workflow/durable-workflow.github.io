@@ -322,6 +322,12 @@ public function testHistoryBudgetRecommendsContinueAsNew(): void
 
 ## Legacy `Workflow\WorkflowStub`
 
+:::warning Legacy v1
+
+The examples in this section use the v1 runtime (`Workflow\Workflow`, `use function Workflow\activity`, generator-style `execute()` with `yield`, `Workflow\Models\StoredWorkflow`). Keep these patterns for tests that still exercise v1 workflows during migration. New tests should use `Workflow\V2\WorkflowStub::fake()` with `Workflow\V2\Workflow` and straight-line `handle()` methods as shown above.
+
+:::
+
 ### Workflows
 
 You can execute workflows synchronously in your test environment and mock activities and child workflows to define expected behaviors and outputs without running the actual implementations.

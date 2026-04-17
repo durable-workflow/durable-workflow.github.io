@@ -10,13 +10,13 @@ When an activity throws an exception, the workflow won't immediately be informed
 
 ```php
 use Exception;
-use Workflow\Activity;
+use Workflow\V2\Activity;
 
 class MyActivity extends Activity
 {
-    public $tries = 1;
+    public int $tries = 1;
 
-    public function execute()
+    public function handle(): void
     {
         throw new Exception();
     }
@@ -25,15 +25,15 @@ class MyActivity extends Activity
 
 ```php
 use Exception;
-use function Workflow\activity;
-use Workflow\Workflow;
+use function Workflow\V2\activity;
+use Workflow\V2\Workflow;
 
 class MyWorkflow extends Workflow
 {
-    public function execute()
+    public function handle(): void
     {
         try {
-            $result = yield activity(MyActivity::class);
+            $result = activity(MyActivity::class);
         } catch (Exception) {
             // handle the exception here
         }
@@ -46,12 +46,12 @@ class MyWorkflow extends Workflow
 In certain cases, you may encounter exceptions that should not be retried. These are referred to as non-retryable exceptions. When an activity throws a non-retryable exception, the workflow will immediately mark the activity as failed and stop retrying.
 
 ```php
-use Workflow\Activity;
+use Workflow\V2\Activity;
 use Workflow\Exceptions\NonRetryableException;
 
 class MyNonRetryableActivity extends Activity
 {
-    public function execute()
+    public function handle(): void
     {
         throw new NonRetryableException('This is a non-retryable error');
     }
@@ -218,6 +218,10 @@ This is an intentional design choice:
 If your application needs workflow-level retry semantics, model them explicitly:
 
 ```php
+use function Workflow\V2\activity;
+use Throwable;
+use Workflow\V2\Workflow;
+
 class RetryableWorkflow extends Workflow
 {
     public function handle(string $orderId): void

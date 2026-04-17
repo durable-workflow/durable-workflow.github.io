@@ -7,49 +7,66 @@ sidebar_position: 2
 There are various options available when defining your workflows and activities. These options include the number of times a workflow or activity may be attempted before it fails, the connection and queue, and the maximum number of seconds it is allowed to run.
 
 ```php
-use Workflow\Activity;
+use Workflow\V2\Activity;
 
 class MyActivity extends Activity
 {
-    public $connection = 'default';
-    public $queue = 'default';
+    public string $connection = 'default';
+    public string $queue = 'default';
 
-    public $tries = 0;
-    public $timeout = 0;
+    public int $tries = 0;
+    public int $timeout = 0;
 
-    public function backoff()
+    public function backoff(): array
     {
         return [1, 2, 5, 10, 15, 30, 60, 120];
     }
 }
 ```
 
-## WorkflowOptions
+## StartOptions
 
-You can also set queue options at workflow start time using `WorkflowOptions`.
+`Workflow\V2\StartOptions` carries visibility, deduplication, and execution timeout configuration at workflow start time. It does not select a queue — queue routing is driven by the workflow and activity class `$connection` and `$queue` properties plus per-call `ActivityOptions`.
 
 ```php
-use Workflow\WorkflowOptions;
-use Workflow\WorkflowStub;
+use Workflow\V2\StartOptions;
+use Workflow\V2\WorkflowStub;
+use Workflow\V2\Enums\DuplicateStartPolicy;
 
 $workflow = WorkflowStub::make(MyWorkflow::class);
 
 $workflow->start(
     'arg1',
-    WorkflowOptions::set([
-        'connection' => 'redis',
-        'queue' => 'critical',
-    ])
+    new StartOptions(
+        duplicateStartPolicy: DuplicateStartPolicy::ReturnExistingActive,
+        businessKey: 'order-12345',
+        labels: ['tenant' => 'acme'],
+        executionTimeoutSeconds: 3600,
+    ),
 );
-
-// OR
-
-$workflow->start('arg1', new WorkflowOptions('redis', 'critical'));
 ```
 
-`WorkflowOptions` are consumed by the workflow engine and are not passed as arguments to your workflow `execute()` method.
+`StartOptions` are consumed by the workflow engine and are not passed as arguments to your workflow `handle()` method. They are persisted with the workflow and used for subsequent workflow/activity dispatching (including replay and continue-as-new behavior).
 
-These options are persisted with the workflow and used for subsequent workflow/activity dispatching (including replay and continue-as-new behavior).
+## ActivityOptions
+
+`Workflow\V2\Support\ActivityOptions` provides per-call overrides for routing, retries, and timeouts when invoking an activity, without requiring changes to the activity class itself:
+
+```php
+use function Workflow\V2\activity;
+use Workflow\V2\Support\ActivityOptions;
+
+$result = activity(
+    ChargeCard::class,
+    new ActivityOptions(
+        connection: 'redis',
+        queue: 'critical',
+        maxAttempts: 5,
+        startToCloseTimeout: 30,
+    ),
+    $orderId,
+);
+```
 
 ## Connection
 
