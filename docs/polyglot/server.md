@@ -494,6 +494,13 @@ wrapped in that envelope; it returns the replay bundle unchanged so the bundle
 integrity checksum and optional signature cover the exact artifact received by
 the client.
 
+Validation failures return HTTP 422 with `reason: validation_failed` plus
+`errors` and `validation_errors`. Workflow operation routes also project that
+reason and validation detail into `control_plane.reason` and
+`control_plane.validation_errors`. Current run-targeted command routes project
+the URL `run_id` in the response and `control_plane.run_id`, so clients can
+distinguish instance-level commands from explicit selected-run commands.
+
 ### Worker Protocol
 
 Workers register, poll for tasks, heartbeat, and complete tasks. Requires `X-Durable-Workflow-Protocol-Version: 1.0`.
