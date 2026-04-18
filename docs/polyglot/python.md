@@ -83,18 +83,18 @@ async def main():
             activities=[greet],
         )
 
-        # Run the worker in the background until the workflow finishes.
-        worker_task = asyncio.create_task(worker.run())
-        try:
-            result = await handle.result(timeout=30.0)
-        finally:
-            await worker.stop()
-            await worker_task
+        await worker.run_until(workflow_id="greeting-1", timeout=30.0)
+        result = await handle.result(timeout=10.0)
 
     print(result)  # {"greeting": "Hello, world!", "length": 5}
 
 asyncio.run(main())
 ```
+
+For a deployable multi-step example, the SDK repository includes
+`examples/order_processing`: a Docker Compose stack that starts the server,
+runs a Python worker, and completes an order workflow through inventory,
+payment, shipment, and confirmation activities.
 
 ## Client
 
@@ -368,6 +368,11 @@ async with Client("http://localhost:8080", token="secret") as client:
 
     await worker.run()  # blocks until worker.stop() is called
 ```
+
+For smoke tests and one-workflow examples,
+`await worker.run_until(workflow_id="...", timeout=60.0)` registers the same
+worker and drives one workflow to a terminal state with sequential polling. Use
+`run()` for deployed workers that should keep polling.
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
