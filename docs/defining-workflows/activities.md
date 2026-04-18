@@ -27,26 +27,6 @@ class MyActivity extends Activity
 }
 ```
 
-## Retry Attempts
-
-Activities default to one attempt. Set `$tries` and `backoff()` when an activity should retry before the workflow receives an exception.
-
-```php
-use Workflow\V2\Activity;
-
-class MyActivity extends Activity
-{
-    public int $tries = 3;
-
-    public function backoff(): array
-    {
-        return [5, 30];
-    }
-}
-```
-
-Inside activities, `activityId()` is the durable activity execution id and the default idempotency key to send to external APIs. The `attemptId()` identifies one concrete try and should be used only when the remote system needs per-attempt correlation rather than execution-level dedupe.
-
 ## Per-Call Activity Options
 
 By default, activity routing and retry policy come from the activity class properties (`$connection`, `$queue`, `$tries`, `backoff()`). When you need to override those on a per-call basis, pass an `ActivityOptions` instance as the first argument after the activity class:
