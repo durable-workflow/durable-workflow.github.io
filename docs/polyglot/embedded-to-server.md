@@ -1,5 +1,5 @@
 ---
-sidebar_position: 5
+sidebar_position: 1
 title: Embedded to Server Migration
 description: Move a Laravel embedded v2 deployment to the standalone Durable Workflow server.
 ---
