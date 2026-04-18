@@ -33,5 +33,4 @@ You now have a workflow running through Laravel queues and durable workflow
 state. Open `/waterline/dashboard` in the sample app to inspect the run, or
 continue with the [sample app guide](/docs/2.0/sample-app).
 
-Not using Laravel? See [Polyglot](/docs/2.0/polyglot/) for the standalone
-server, CLI, and Python SDK.
+Not using Laravel? See the [standalone server](/docs/2.0/polyglot/server), [CLI](/docs/2.0/polyglot/cli), or [Python SDK](/docs/2.0/polyglot/python).
