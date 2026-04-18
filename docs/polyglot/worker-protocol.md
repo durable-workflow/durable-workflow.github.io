@@ -186,13 +186,15 @@ durable task payload:
 | `workflow_update_id` | Accepted update id when the task applies an update |
 | `workflow_signal_id` | Accepted signal id when the task applies a signal |
 | `workflow_command_id` | Control-plane command id that produced the task, when available |
+| `activity_execution_id` / `activity_attempt_id` / `activity_type` | Activity identifiers when the task resumes after a completed or failed activity |
 | `child_call_id` / `child_workflow_run_id` | Child wait identifiers when the task resolves a child workflow |
 | `timer_id` / `condition_wait_id` | Timer-backed condition or signal wait identifiers when the task resumes after a timer |
-| `workflow_sequence` / `workflow_event_type` | History sequence and event type for event-backed child resolution tasks |
+| `workflow_sequence` / `workflow_event_type` | History sequence and event type for event-backed activity, child, and timer resolution tasks |
 
 Fields that do not apply are `null`. SDK workers should prefer these fields
 over scanning history when they need to correlate a leased task with an
-accepted update, signal, child resolution, or timer-backed wait.
+accepted update, signal, activity result, child resolution, or timer-backed
+wait.
 
 ## Query Tasks
 
