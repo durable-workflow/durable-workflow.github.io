@@ -26,33 +26,7 @@ The SDK depends on [httpx](https://www.python-httpx.org/) for HTTP and Apache Av
 
 ## Quickstart
 
-The quickstart has two steps: start a local server, then run the Python worker against it.
-
-### 1. Start a local server
-
-The fastest path is the server's Docker Compose stack, which brings up the server plus its MySQL and Redis dependencies. The snippet below disables authentication for local development — do not use `WORKFLOW_SERVER_AUTH_DRIVER=none` in production.
-
-```bash
-git clone https://github.com/durable-workflow/server.git
-cd server
-
-# Generate an APP_KEY and disable auth for local dev.
-cp .env.example .env
-printf '\nAPP_KEY=base64:%s\nWORKFLOW_SERVER_AUTH_DRIVER=none\n' \
-  "$(head -c 32 /dev/urandom | base64)" >> .env
-
-docker compose up -d
-
-# Wait for the health check to pass.
-until curl -sf http://localhost:8080/api/health > /dev/null; do sleep 1; done
-echo "Server is ready."
-```
-
-For a full walkthrough — auth drivers, database config, production deployment — see the [server setup guide](/docs/2.0/polyglot/server).
-
-### 2. Run the Python worker
-
-This example defines a workflow with one activity, starts it against the local server, and waits for the result.
+Here is a complete Python program that defines a workflow with one activity, starts it against a local Durable Workflow server, and waits for the result:
 
 ```python
 import asyncio
@@ -69,8 +43,6 @@ class GreeterWorkflow:
         return result
 
 async def main():
-    # token=None matches WORKFLOW_SERVER_AUTH_DRIVER=none in the server .env.
-    # If you set a token instead, pass token="your-token" here.
     async with Client("http://localhost:8080") as client:
         handle = await client.start_workflow(
             workflow_type="greeter",
@@ -94,11 +66,23 @@ async def main():
 asyncio.run(main())
 ```
 
-For a deployable multi-step example, the SDK repository includes
-[`examples/order_processing`](https://github.com/durable-workflow/sdk-python/tree/main/examples/order_processing):
-a Docker Compose stack that starts the server, runs a Python worker, and
-completes an order workflow through inventory, payment, shipment, and
-confirmation activities.
+### Running against a local server
+
+The program above assumes a Durable Workflow server reachable at `http://localhost:8080`. If you don't have one yet, the fastest path is the server's Docker Compose stack:
+
+```bash
+git clone https://github.com/durable-workflow/server.git
+cd server
+cp .env.example .env
+printf '\nAPP_KEY=base64:%s\nWORKFLOW_SERVER_AUTH_DRIVER=none\n' \
+  "$(head -c 32 /dev/urandom | base64)" >> .env
+docker compose up -d
+until curl -sf http://localhost:8080/api/health > /dev/null; do sleep 1; done
+```
+
+`WORKFLOW_SERVER_AUTH_DRIVER=none` is local-development only. For production deployment — auth drivers, database config, TLS — see the [server setup guide](/docs/2.0/polyglot/server).
+
+For a larger example, the SDK repository includes [`examples/order_processing`](https://github.com/durable-workflow/sdk-python/tree/main/examples/order_processing), a Docker Compose stack that runs a Python worker through an order workflow end to end.
 
 ## Defining Workflows
 
