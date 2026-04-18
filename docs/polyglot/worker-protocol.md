@@ -190,6 +190,7 @@ durable task payload:
 | `activity_execution_id` / `activity_attempt_id` / `activity_type` | Activity identifiers when the task resumes after a completed or failed activity |
 | `child_call_id` / `child_workflow_run_id` | Child wait identifiers when the task resolves a child workflow |
 | `timer_id` / `condition_wait_id` | Pure timer and timer-backed condition identifiers when the task resumes after a timer |
+| `condition_key` / `condition_definition_fingerprint` | Stable condition label and predicate fingerprint when a timer-backed condition wait recorded them |
 | `workflow_sequence` / `workflow_event_type` | History sequence and event type for event-backed activity, child, and timer resolution tasks |
 
 Fields that do not apply are `null`. SDK workers should prefer these fields
@@ -200,6 +201,9 @@ wait. Pure timer resumes set `workflow_wait_kind: "timer"`,
 `timer_id`. Signal-backed resumes set `workflow_wait_kind: "signal"` plus
 `signal_name`; accepted-signal application tasks also set `workflow_signal_id`
 and timer-backed signal waits set `signal_wait_id` with the firing `timer_id`.
+Condition-timeout resumes set `workflow_wait_kind: "condition"`,
+`condition_wait_id`, and, for keyed waits, `condition_key` plus
+`condition_definition_fingerprint`.
 
 ## Query Tasks
 
