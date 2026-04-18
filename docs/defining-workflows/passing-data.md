@@ -109,4 +109,3 @@ class MyWorkflow extends Workflow
 }
 ```
 
-Existing workflows that still use `execute()` continue to load through a compatibility path so older runs can still replay, but new code should use `handle()` only. Mixed `handle()`/`execute()` inheritance is rejected before the runtime can durably start a run or schedule an activity.
