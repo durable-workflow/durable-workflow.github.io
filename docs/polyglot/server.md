@@ -14,6 +14,11 @@ Use the standalone server when you need:
 - **Centralized workflow runtime** — multiple applications sharing one workflow engine
 - **Non-Laravel environments** — use Durable Workflow outside Laravel
 
+If you already run v2 embedded in a Laravel app, use the
+[embedded-to-server migration guide](/docs/2.0/polyglot/embedded-to-server) to
+prepare type keys, deploy the server beside embedded execution, connect workers,
+and route only new workflow starts to the server.
+
 ## Quick Start
 
 ### Docker Compose
@@ -535,6 +540,7 @@ The only endpoints that do **not** require `X-Durable-Workflow-Control-Plane-Ver
 ## Learn More
 
 - [Worker Protocol Reference](/docs/2.0/polyglot/worker-protocol) — Full API contract for workers
+- [Embedded to Server Migration](/docs/2.0/polyglot/embedded-to-server) — Adopt the server from a Laravel embedded v2 app
 - [Python SDK](/docs/2.0/polyglot/python) — Build Python workers
 - [CLI](/docs/2.0/polyglot/cli) — Command-line interface
 - [Server Repository](https://github.com/durable-workflow/server) — Source code, issues, releases

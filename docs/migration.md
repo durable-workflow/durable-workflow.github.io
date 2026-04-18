@@ -16,6 +16,11 @@ This guide covers the key changes when upgrading to Durable Workflow 2.0.
 
 This guide focuses on upgrading Laravel applications from v1 to v2 embedded execution. For server/CLI/Python SDK setup, see their respective installation guides.
 
+After your app is running embedded v2, use
+[Embedded to Server Migration](/docs/2.0/polyglot/embedded-to-server) if you
+want new workflow starts to move to the standalone server while old embedded
+runs drain where they started.
+
 ## Upgrade procedure
 
 ### Before upgrading
