@@ -165,6 +165,25 @@ response also includes `can_continue: false`, `cancel_requested: true`, and a
 concrete `stop_reason` such as `run_cancelled` or `run_terminated`, so workers
 can distinguish cancellation observation from a generic lease error.
 
+Workflow-task poll responses include stable resume context copied from the
+durable task payload:
+
+| Field | Meaning |
+|------|---------|
+| `workflow_wait_kind` | The wait being applied by this task: `update`, `signal`, `child`, `condition`, or `null` for ordinary replay/start tasks |
+| `open_wait_id` | Stable wait identity such as `update:{id}` or `signal-application:{id}` |
+| `resume_source_kind` / `resume_source_id` | Durable source that woke the task, such as `workflow_update`, `workflow_signal`, `timer`, or `child_workflow_run` |
+| `workflow_update_id` | Accepted update id when the task applies an update |
+| `workflow_signal_id` | Accepted signal id when the task applies a signal |
+| `workflow_command_id` | Control-plane command id that produced the task, when available |
+| `child_call_id` / `child_workflow_run_id` | Child wait identifiers when the task resolves a child workflow |
+| `timer_id` / `condition_wait_id` | Timer-backed condition or signal wait identifiers when the task resumes after a timer |
+| `workflow_sequence` / `workflow_event_type` | History sequence and event type for event-backed child resolution tasks |
+
+Fields that do not apply are `null`. SDK workers should prefer these fields
+over scanning history when they need to correlate a leased task with an
+accepted update, signal, child resolution, or timer-backed wait.
+
 ## Activity Task Bridge
 
 The `ActivityTaskBridge` contract defines how an external worker interacts with activity tasks:
