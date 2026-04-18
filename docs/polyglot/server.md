@@ -259,6 +259,12 @@ and worker-protocol manifests:
       "workflow_task_poll_request_idempotency": true,
       "history_page_size_default": 500,
       "history_page_size_max": 1000,
+      "activity_retry_policy": true,
+      "activity_timeouts": true,
+      "child_workflow_retry_policy": true,
+      "child_workflow_timeouts": true,
+      "parent_close_policy": true,
+      "non_retryable_failures": true,
       "response_compression": ["gzip", "deflate"],
       "history_compression": {
         "supported_encodings": ["gzip"],
@@ -279,6 +285,7 @@ Key field notes for client code:
 
 - The app version is `version`, not `server_version`.
 - Workflow-task command capabilities live under `worker_protocol.server_capabilities.supported_workflow_task_commands`, not at the top of `worker_protocol`. The same nested object is echoed on every worker-plane response via the `server_capabilities` field.
+- Worker command-option capabilities, including retry policies, timeout fields, parent-close policy, and non-retryable failures, are also echoed in `server_capabilities` so workers can negotiate behavior without a separate cluster-info request.
 - Universal payload codecs live under `capabilities.payload_codecs`; final v2 advertises `avro` there. When the server advertises engine-specific codecs that only a PHP worker can honor, those appear under `capabilities.payload_codecs_engine_specific.<engine>` — language-neutral SDKs should ignore that object unless they opt into that engine.
 
 ## Connecting Workers

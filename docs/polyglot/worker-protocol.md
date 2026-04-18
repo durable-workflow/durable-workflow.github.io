@@ -22,6 +22,21 @@ $summary = WorkerProtocolVersion::describe();
 // Returns version, verb lists, command types, and pagination defaults.
 ```
 
+## Capability Discovery
+
+The standalone server publishes worker-protocol capabilities under
+`worker_protocol.server_capabilities` in `GET /api/cluster/info`. The same
+object is echoed as `server_capabilities` on worker-plane responses, including
+poll, heartbeat, complete, and fail responses.
+
+Read these fields before sending optional command fields:
+
+- `supported_workflow_task_commands`: command types accepted by workflow-task completion.
+- `activity_retry_policy` and `activity_timeouts`: activity command retry and timeout options.
+- `child_workflow_retry_policy` and `child_workflow_timeouts`: child workflow retry and timeout options.
+- `parent_close_policy`: child workflow parent-close policy support.
+- `non_retryable_failures`: workflow and activity failure metadata support.
+
 ## Workflow Task Bridge
 
 The `WorkflowTaskBridge` contract defines how an external worker interacts with durable workflow tasks:
