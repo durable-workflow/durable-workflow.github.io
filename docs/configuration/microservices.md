@@ -53,7 +53,7 @@ If the apps use a different database connection than `default`, see [Database Co
 
 ## Defining Workflows and Activities
 
-Each app only needs the classes it runs. Register type keys so the engine can route tasks by name:
+Register type keys so the engine can route tasks by name:
 
 ```php
 // App A (workflow service) — config/workflows.php
@@ -81,7 +81,7 @@ Each app only needs the classes it runs. Register type keys so the engine can ro
 ],
 ```
 
-The workflow references the activity by its type key. No shared PHP classes, no shared autoloading:
+The workflow references the activity by its type key:
 
 ```php
 // App A — app/Workflows/OrderWorkflow.php
@@ -135,7 +135,7 @@ App A's worker replays workflows and schedules activity tasks. App B's worker pi
 
 ## Activity Task Bridge
 
-The `ActivityTaskBridge` contract lets one app poll for, claim, and complete activity tasks without the activity PHP class. This is the foundation for the microservice pattern — one app schedules work, another executes it.
+The `ActivityTaskBridge` contract lets an app poll for, claim, and complete activity tasks.
 
 ```php
 use Workflow\V2\Contracts\ActivityTaskBridge;
@@ -260,7 +260,7 @@ POST /webhooks/workflow-tasks/{taskId}/heartbeat
 
 ## Control Plane
 
-The `WorkflowControlPlane` contract starts, signals, queries, updates, cancels, and terminates workflows using type keys — no PHP class resolution needed.
+The `WorkflowControlPlane` contract starts, signals, queries, updates, cancels, and terminates workflows using type keys.
 
 ```php
 use Workflow\V2\Contracts\WorkflowControlPlane;
