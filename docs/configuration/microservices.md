@@ -68,9 +68,9 @@ For consistency in the workflow database schema across services, designate only 
 If you intentionally need local editable copies of the migration classes, publish them first and then modify them to use the shared database connection:
 
 ```php
-// database/migrations/2022_01_01_000000_create_workflows_table.php
+// database/migrations/2026_04_05_000100_create_workflow_instances_table.php
 
-final class CreateWorkflowsTable extends Migration
+final class CreateWorkflowInstancesTable extends Migration
 {
     protected $connection = 'shared';
 ```
