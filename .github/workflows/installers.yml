@@ -96,6 +96,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Build fixture release
         shell: pwsh
         run: |
@@ -123,13 +127,33 @@ jobs:
           $releaseDir = Join-Path $env:RUNNER_TEMP 'release'
           $stdout = Join-Path $env:RUNNER_TEMP 'install-http.log'
           $stderr = Join-Path $env:RUNNER_TEMP 'install-http.err'
-          $server = Start-Process -FilePath python `
-            -ArgumentList @('-m', 'http.server', '18082', '--directory', $releaseDir) `
+          $python = (Get-Command python).Source
+          $server = Start-Process -FilePath $python `
+            -ArgumentList @('-m', 'http.server', '18082', '--bind', '127.0.0.1', '--directory', $releaseDir) `
             -PassThru `
             -RedirectStandardOutput $stdout `
             -RedirectStandardError $stderr
           $server.Id | Set-Content -Path (Join-Path $env:RUNNER_TEMP 'install-http.pid') -Encoding ascii
-          Start-Sleep -Seconds 2
+
+          $ready = $false
+          for ($attempt = 1; $attempt -le 15; $attempt++) {
+            try {
+              Invoke-WebRequest -Uri 'http://127.0.0.1:18082/latest/download/SHA256SUMS' -UseBasicParsing | Out-Null
+              $ready = $true
+              break
+            } catch {
+              if ($server.HasExited) {
+                Get-Content -Path $stdout, $stderr -ErrorAction SilentlyContinue
+                throw 'fixture HTTP server exited before it became ready'
+              }
+              Start-Sleep -Seconds 1
+            }
+          }
+
+          if (-not $ready) {
+            Get-Content -Path $stdout, $stderr -ErrorAction SilentlyContinue
+            throw 'fixture HTTP server did not become ready'
+          }
 
       - name: Install with verified checksum
         shell: pwsh
