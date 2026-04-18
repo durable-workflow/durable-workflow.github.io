@@ -282,7 +282,8 @@ class ApprovalWorkflow:
 ```
 
 Query and update receiver decorators are available so workflow classes can
-publish stable handler names and local tests can replay query state:
+publish stable handler names, local tests can replay query state, and Python
+workers can apply accepted updates delivered through workflow tasks:
 
 ```python
 @workflow.defn(name="approval")
@@ -305,10 +306,12 @@ class ApprovalWorkflow:
             raise ValueError("approved must be boolean")
 ```
 
-Server-routed Python query and update execution is still being completed. Until
-that worker-side transport is available in the target deployment, use these
-decorators as receiver metadata and keep production query/update traffic on
-runtimes that advertise handler execution for the workflow type.
+Python workers now complete accepted updates by replaying committed state,
+running the registered update handler, and sending `complete_update` or
+`fail_update` back to the server. Server-routed Python queries and synchronous
+pre-accept update validator routing are still being completed, so use those
+paths only with deployments that advertise support for the target workflow
+type.
 
 ### Workflow Context
 
