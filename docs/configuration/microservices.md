@@ -96,7 +96,7 @@ class OrderWorkflow extends Workflow
 
     public function handle(int $orderId): array
     {
-        $charge = activity("charge-payment", $orderId);
+        $charge = activity('charge-payment', $orderId);
         return ['order' => $orderId, 'charge' => $charge];
     }
 }
