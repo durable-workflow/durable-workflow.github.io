@@ -180,7 +180,7 @@ durable task payload:
 
 | Field | Meaning |
 |------|---------|
-| `workflow_wait_kind` | The wait being applied by this task: `update`, `signal`, `child`, `condition`, or `null` for ordinary replay/start tasks |
+| `workflow_wait_kind` | The wait being applied by this task: `update`, `signal`, `child`, `condition`, `timer`, or `null` for ordinary replay/start tasks |
 | `open_wait_id` | Stable wait identity such as `update:{id}` or `signal-application:{id}` |
 | `resume_source_kind` / `resume_source_id` | Durable source that woke the task, such as `workflow_update`, `workflow_signal`, `timer`, or `child_workflow_run` |
 | `workflow_update_id` | Accepted update id when the task applies an update |
@@ -188,13 +188,15 @@ durable task payload:
 | `workflow_command_id` | Control-plane command id that produced the task, when available |
 | `activity_execution_id` / `activity_attempt_id` / `activity_type` | Activity identifiers when the task resumes after a completed or failed activity |
 | `child_call_id` / `child_workflow_run_id` | Child wait identifiers when the task resolves a child workflow |
-| `timer_id` / `condition_wait_id` | Timer-backed condition or signal wait identifiers when the task resumes after a timer |
+| `timer_id` / `condition_wait_id` | Pure timer and timer-backed condition or signal wait identifiers when the task resumes after a timer |
 | `workflow_sequence` / `workflow_event_type` | History sequence and event type for event-backed activity, child, and timer resolution tasks |
 
 Fields that do not apply are `null`. SDK workers should prefer these fields
 over scanning history when they need to correlate a leased task with an
 accepted update, signal, activity result, child resolution, or timer-backed
-wait.
+wait. Pure timer resumes set `workflow_wait_kind: "timer"`,
+`open_wait_id: "timer:{timer_id}"`, `resume_source_kind: "timer"`, and
+`timer_id`.
 
 ## Query Tasks
 
