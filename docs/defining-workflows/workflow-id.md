@@ -13,14 +13,28 @@ use Workflow\V2\WorkflowStub;
 
 $workflow = WorkflowStub::make(MyWorkflow::class);
 
-$instanceId = $workflow->id();
+$id = $workflow->id();
 
 $workflow->start();
 
 $runId = $workflow->runId();
 ```
 
-Use the instance id when you want the stable public handle for the workflow. Use the run id when you need to inspect one concrete execution.
+Use the id when you want the stable public handle for the workflow. Use the run id when you need to inspect one concrete execution.
+
+## User-defined Instance IDs
+
+When starting a workflow you may optionally specify the id. User-defined ids must be URL-safe strings up to 191 characters using only letters, numbers, `.`, `_`, `-`, and `:`.
+
+```php
+$workflow = WorkflowStub::make(MyWorkflow::class, 'order-123');
+```
+
+Later when you want to reference the workflow, you can load it with your custom id.
+
+```php
+$workflow = WorkflowStub::load('order-123');
+```
 
 ## Accessing IDs Inside Activities and Workflows
 
@@ -33,7 +47,7 @@ class MyActivity extends Activity
 {
     public function handle(): void
     {
-        $instanceId = $this->workflowId();
+        $id = $this->workflowId();
         $runId = $this->runId();
     }
 }
