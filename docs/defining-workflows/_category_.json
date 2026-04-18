@@ -1,6 +1,6 @@
 {
   "label": "Defining Workflows",
-  "position": 4,
+  "position": 5,
   "link": {
     "type": "generated-index",
     "description": "Workflows and activities are defined as classes that extend the base Workflow and Activity classes provided by the framework."
