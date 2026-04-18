@@ -38,33 +38,7 @@ final class PollRemoteJob extends Activity
 
 Inside the activity, `activityId()`, `attemptId()`, and `attemptCount()` expose the durable execution and current-attempt identity if you need correlation keys for external work. Use `activityId()` as the default remote idempotency key; use `attemptId()` only for systems that need to distinguish separate tries of the same durable activity execution.
 
-Adapter-style activity workers can renew the same durable lease without constructing the PHP activity class by calling `Workflow\V2\ActivityTaskBridge::heartbeat($attemptId)` or `heartbeatStatus($attemptId)`. The same bridge is also exposed over authenticated HTTP/JSON through `POST /webhooks/activity-attempts/{attemptId}/heartbeat` and `GET /webhooks/activity-attempts/{attemptId}` when the worker already knows the durable attempt id. Those routes update `activity_attempts.last_heartbeat_at`, renew the leased task's expiry on successful heartbeats, and record the same typed heartbeat history as `Activity::heartbeat()`, which is the rebuild source for Waterline attempt detail.
-
-HTTP heartbeat example:
-
-```bash
-curl -X POST "https://example.com/webhooks/activity-attempts/01J.../heartbeat" \
-     -H "Content-Type: application/json" \
-     -d '{
-           "progress": {
-             "message": "Polling remote job",
-             "current": 2,
-             "total": 5,
-             "unit": "steps",
-             "details": {
-               "remote_state": "running"
-             }
-           }
-         }'
-```
-
-Status example without renewing the lease:
-
-```bash
-curl "https://example.com/webhooks/activity-attempts/01J..."
-```
-
-Those responses return the same structured stop contract as `heartbeatStatus()` and `status()`: `can_continue`, `cancel_requested`, `reason`, run or activity status, task status, lease owner, lease expiry, and `last_heartbeat_at`. When the run has already been cancelled or terminated, the worker sees `can_continue = false` and a concrete reason such as `run_cancelled` or `run_terminated` instead of a bare boolean.
+Polyglot workers can heartbeat via the HTTP worker bridge without constructing the PHP activity class — see the [worker protocol](/docs/2.0/polyglot/worker-protocol) for the endpoints.
 
 ## Progress Snapshots
 

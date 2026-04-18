@@ -6,9 +6,7 @@ import ConcurrencySimulator from '@site/src/components/ConcurrencySimulator';
 
 # Concurrency
 
-In `Workflow\V2`, named workflows use straight-line helpers inside an ordinary `handle()` method: `activity()`, `await()`, `timer()`, `sideEffect()`, `getVersion()`, and the other single-step helpers suspend directly under the hood instead of forcing `yield` into every workflow body. Use `await('signal-name')` for one named signal value. Named v2 workflows are straight-line only, so do not `yield` from the workflow body.
-
-Parallel barriers still suspend as one durable workflow step through `all([...])`. In straight-line workflows, build those barriers with closures such as `fn () => activity(...)` and `fn () => child(...)` so the runtime can see the full barrier tree before the workflow suspends. Results still come back in the original nested array shape, while Waterline keeps each durable leaf wait visible and uses `parallel_group_path` to show which outer and inner barriers that leaf belongs to.
+Parallel barriers suspend as one durable workflow step through `all([...])`. Build them with closures such as `fn () => activity(...)` and `fn () => child(...)` so the runtime can see the full barrier tree before the workflow suspends. Results come back in the original nested array shape.
 
 ## Series
 

@@ -47,14 +47,9 @@ In this example:
 
 When a workflow continues as new:
 
-- `WorkflowStub::id()` stays on the same public workflow instance id for the whole chain
-- `WorkflowStub::runId()` follows the newest run in the chain after `refresh()`
-- the continued run closes with `status = completed` and `closed_reason = continued`
-- the next run is created immediately with a fresh run id, a ready workflow task, and its own accepted `start` command with `source = workflow`
-- Waterline exposes that chain through `parents` and `continuedWorkflows` lineage arrays on the run detail payload
-- instance-targeted load, query, signal, update, repair, cancel, terminate, and Waterline current-run navigation resolve the newest durable run in that chain instead of trusting only the mutable `current_run_id` pointer
-- if the continued run is also a child workflow, the new run carries forward the primary parent context in typed start history and the parent records a fresh `ChildRunStarted` for the same `child_call_id`, so parent resume, Waterline lineage, and current-child selection stay intact even if copied link rows or the child instance’s `current_run_id` later drift
-- run summaries track `history_event_count`, `history_size_bytes`, and `continue_as_new_recommended`, so Waterline can flag long-lived runs once they cross the configured event-count or byte-size budget
+- The instance id stays stable across the chain; `WorkflowStub::runId()` moves forward to the newest run.
+- The continued run closes as `completed` / `continued` and the next run starts immediately with a fresh run id.
+- Signals, queries, updates, and operator commands always resolve the newest durable run for that instance — callers do not need to track run ids across continue-as-new boundaries.
 
 Long-lived loops can shed history without inventing a new public workflow id every time the run rolls forward.
 

@@ -39,18 +39,7 @@ The reason is persisted on the durable command record and in both the `CancelReq
 
 ### What cancel does
 
-When a cancel command is accepted:
-
-1. A durable `cancel` command is recorded with accepted outcome.
-2. `CancelRequested` history is appended to the run.
-3. All open tasks (workflow, activity, timer) are marked cancelled.
-4. All open activity executions are closed as cancelled, with `ActivityCancelled` history recorded for each.
-5. All pending timers are cancelled, with `TimerCancelled` history recorded for each.
-6. The run status transitions to `cancelled` with `closed_reason = cancelled`.
-7. A `WorkflowFailure` row is created with `failure_category = cancelled` and `propagation_kind = cancelled`.
-8. `WorkflowCancelled` history is appended with the `failure_id` and `failure_category`.
-9. If this run is a child workflow, the parent receives a resume task so it can observe the child cancellation.
-10. The run summary projection is updated.
+When a cancel command is accepted, the engine closes any open activity executions and pending timers, transitions the run to `cancelled`, and resumes a parent workflow waiting on the cancelled child so it can observe the outcome.
 
 ### Cancel is rejected when
 
