@@ -92,9 +92,10 @@ asyncio.run(main())
 ```
 
 For a deployable multi-step example, the SDK repository includes
-`examples/order_processing`: a Docker Compose stack that starts the server,
-runs a Python worker, and completes an order workflow through inventory,
-payment, shipment, and confirmation activities.
+[`examples/order_processing`](https://github.com/durable-workflow/sdk-python/tree/main/examples/order_processing):
+a Docker Compose stack that starts the server, runs a Python worker, and
+completes an order workflow through inventory, payment, shipment, and
+confirmation activities.
 
 ## Client
 
