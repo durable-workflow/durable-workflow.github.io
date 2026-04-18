@@ -8,13 +8,13 @@ An activity is a unit of work that performs a specific task or operation (e.g. m
 
 ## Scaffolding
 
-You may use the `make:activity` artisan command to generate a new activity:
+You may use the `make:activity` artisan command to create a new activity:
 
 ```php
 php artisan make:activity MyActivity
 ```
 
-The generated activity extends `Workflow\V2\Activity`:
+The created activity extends `Workflow\V2\Activity`:
 
 ```php
 use Workflow\V2\Activity;
@@ -28,10 +28,6 @@ class MyActivity extends Activity
     }
 }
 ```
-
-`handle()` is the canonical activity entry method. Existing activities that still implement `execute()` continue to load through a compatibility path for older code, but new activities should use `handle()` only.
-
-Do not mix `handle()` and `execute()` across an activity inheritance chain. The runtime rejects that hierarchy before it can schedule a durable activity execution.
 
 ## Retry Attempts
 
@@ -51,11 +47,7 @@ class MyActivity extends Activity
 }
 ```
 
-When the workflow schedules an activity, it snapshots the retry policy onto the durable `activity_executions.retry_policy` field and into the typed `ActivityScheduled` history payload. Later retries read that snapshot, so a code deploy that changes `$tries` or `backoff()` does not change the retry budget for an already scheduled execution.
-
-Each try has a durable `activity_attempts` row for runtime leasing and heartbeat state, and each start, heartbeat, retry, completion, failure, or cancellation also records typed activity history. Waterline and history exports rebuild historical attempt detail from that typed history first. When a retryable failure happens before the snapped retry budget is exhausted, the current attempt is closed as `failed`, a typed `ActivityRetryScheduled` history event is recorded with the same retry-policy snapshot, and a new activity task is scheduled for the snapped backoff time.
-
-Inside activities, `activityId()` is the durable activity execution id and the default idempotency key to send to external APIs. `attemptId()` identifies one concrete try and should be used only when the remote system needs per-attempt correlation rather than execution-level dedupe.
+Inside activities, `activityId()` is the durable activity execution id and the default idempotency key to send to external APIs. The `attemptId()` identifies one concrete try and should be used only when the remote system needs per-attempt correlation rather than execution-level dedupe.
 
 ## Per-Call Activity Options
 
@@ -113,7 +105,3 @@ Per-call options take highest priority, then activity class properties, then the
 2. Activity class `$connection`, `$queue`, `$tries`, `backoff()` properties
 3. Parent workflow run's `connection` and `queue`
 4. Laravel queue config defaults
-
-### Snapshot durability
-
-When the workflow schedules an activity, the per-call options are snapped onto the durable `activity_executions.activity_options` field and the retry policy (including any overrides) onto `activity_executions.retry_policy`. Later retries, heartbeats, and completions read from those snapshots. A code deploy that changes `ActivityOptions` values at the call site does not change the retry budget or routing for an already-scheduled execution.
