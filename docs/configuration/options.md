@@ -197,14 +197,7 @@ When an activity, update, child, or workflow failure is recorded with an excepti
 
 For older failures that were recorded before an exception alias existed, `workflows.v2.types.exception_class_aliases` can map the recorded legacy exception FQCN to the current throwable class. Durable `exceptions` type aliases still win first. The class-alias map is only a refactor bridge for already-recorded payloads with no durable `type`; new workflows should use durable exception type aliases so history is independent from PHP class names.
 
-After configuring both maps, normalize older rows that can be mapped unambiguously:
-
-```bash
-php artisan workflow:v2:backfill-failure-types --dry-run
-php artisan workflow:v2:backfill-failure-types
-```
-
-Use `--strict` in CI or release checks when any unresolved legacy failure row should fail the command. The backfill only stamps `exception_type` onto typed failure history events that are missing it and whose recorded class or class alias resolves to exactly one configured durable exception type.
+Final v2 writes durable exception aliases when the failure is recorded and no longer includes a failure-type backfill command. If preview-era rows need `exception_type` stamped before a class move, normalize them on a compatible pre-clean-slate build before upgrading.
 
 If a replayed failure cannot be resolved through the durable `exceptions` map, the class-alias map, or the recorded class, the engine does not fall back to a generic runtime exception inside workflow code. Query replay raises `UnresolvedWorkflowFailureException`, Waterline marks the failure with `exception_replay_blocked = true`, and a worker task that hits the same gap is left failed while the run stays open. Fix the mapping and repair the run rather than relying on broad `catch (RuntimeException)` blocks to handle renamed historical failures.
 

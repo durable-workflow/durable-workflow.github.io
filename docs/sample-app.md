@@ -44,29 +44,13 @@ The sample app's normal `php artisan migrate` path now picks up the workflow and
 
 Waterline defaults `engine_source` to `auto`, so published `config/waterline.php` snapshots switch onto the operator bridge automatically once the workflow package's full operator surface is installed. That means `/waterline/api/instances/...`, selected-run history export, dashboard `operator_metrics`, saved views, and `/waterline/api/stats` are available by default in the checked-out sample app after the normal install and migrate path. The stats payload also includes an `engine_source` object that reports the configured mode, resolved mode, surfaced readiness issues, and the required-table inspection results.
 
-If you are validating older data, the first compatible query, signal, update, selected-run detail, or history-export touch backfills missing command-contract snapshots automatically while the workflow class is still loadable. The background repair/watchdog loop also drains loadable untouched runs in throttled batches, and `php artisan workflow:v2:repair-pass` forces one immediate batch when you want to prove that path on demand. Use the commands below to batch-normalize untouched runs or to persist those snapshots before moving or renaming workflow classes:
+Current v2 installs write command contracts, signal/update lifecycle rows, and typed failure metadata as part of the normal runtime path. `WorkflowStarted` history is the source of truth for declared query, signal, update, and entrypoint metadata; Waterline reports `declared_contract_source = durable_history` when that final snapshot is present and `declared_contract_source = unavailable` when an old preview run is missing it. There is no final 2.0 command-contract or lifecycle backfill command. Rebuild projections when list, wait, timeline, timer, or lineage rows drift from durable runtime state:
 
 ```bash
 php artisan workflow:v2:rebuild-projections --needs-rebuild --prune-stale
-php artisan workflow:v2:backfill-command-contracts --dry-run
-php artisan workflow:v2:backfill-command-contracts
 ```
 
-Opening an older loadable run in Waterline detail or exporting its selected-run history now persists that snapshot immediately, so `declared_contract_source` should settle on `durable_history` after a compatible operator read. Untouched runs still contribute fleet pressure under `operator_metrics.command_contracts.*` and the `command_contract_snapshots` health warning until a background repair/watchdog sweep, the projection rebuild sweep, the targeted backfill command, or another compatible contract-aware touch runs. If the workflow definition is no longer loadable before that cleanup finishes, detail switches to `declared_contract_source = unavailable`; any surviving target names or parameter fragments remain compatibility-only until a compatible build persists the missing snapshot.
-
-If that older data predates first-class `workflow_signal_records` or `workflow_updates` rows, normalize those signal/update lifecycles and stamp their durable ids onto typed history before depending on selected-run detail, Waterline exports, or operator actions that expect stable lifecycle ids:
-
-```bash
-php artisan workflow:v2:backfill-command-lifecycles --dry-run
-php artisan workflow:v2:backfill-command-lifecycles
-```
-
-If the older data includes failure or handled-failure history recorded before durable exception aliases were configured, normalize those rows after configuring `workflows.v2.types.exceptions` and any needed `exception_class_aliases`:
-
-```bash
-php artisan workflow:v2:backfill-failure-types --dry-run --strict
-php artisan workflow:v2:backfill-failure-types
-```
+Preview-era databases that still need removed backfills should be normalized on a compatible pre-clean-slate build before moving onto final v2.
 
 If selected-run wait, history, timer, or lineage detail reports a `*_projection_source` ending in `_rebuilt`, or the dashboard reports non-zero `operator_metrics.projections.run_waits.needs_rebuild`, `operator_metrics.projections.run_timeline_entries.needs_rebuild`, `operator_metrics.projections.run_timer_entries.needs_rebuild`, or `operator_metrics.projections.run_lineage_entries.needs_rebuild`, rebuild the projections once so Waterline reads `workflow_run_waits`, `workflow_run_timeline_entries`, `workflow_run_timer_entries`, and `workflow_run_lineage_entries` rows for the sample data. Timer detail and history export also expose `timers_projection_rebuild_reasons`, so a rebuilt timer projection can tell you whether the read repaired `missing_projection`, `stale_projection`, or `schema_version_mismatch` rows before you decide whether one targeted rebuild pass is enough. `--needs-rebuild` covers stale selected-run wait, timeline, timer, and lineage payloads as well as missing or orphaned rows, including timer projection rows whose stored schema version does not match the current contract. The operator dashboard breaks that timer drift back out as `operator_metrics.projections.run_timer_entries.schema_version_mismatch_runs` and `schema_version_mismatch_rows`, so you can confirm whether the targeted rebuild is still needed:
 
