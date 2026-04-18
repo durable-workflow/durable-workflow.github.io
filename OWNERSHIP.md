@@ -4,13 +4,13 @@ This file maps documentation sections to the repositories and plans that own the
 
 ## Ownership Legend
 
-- **workflow** → `/home/lab/workspace-hq/repos/workflow` (v2 branch)
-- **server** → `/home/lab/workspace-hq/repos/server` (main branch)
-- **cli** → `/home/lab/workspace-hq/repos/cli` (main branch)
-- **sdk-python** → `/home/lab/workspace-hq/repos/sdk-python` (main branch)
-- **waterline** → `/home/lab/workspace-hq/repos/waterline` (v2 branch)
-- **sample-app** → `/home/lab/workspace-hq/repos/sample-app` (main branch)
-- **cloud** → `/home/lab/workspace-hq/repos/cloud` (main branch)
+- **workflow** → `durable-workflow/workflow` (v2 branch)
+- **server** → `durable-workflow/server` (main branch)
+- **cli** → `durable-workflow/cli` (main branch)
+- **sdk-python** → `durable-workflow/sdk-python` (main branch)
+- **waterline** → `durable-workflow/waterline` (v2 branch)
+- **sample-app** → `durable-workflow/sample-app` (main branch)
+- **docs** → `durable-workflow/durable-workflow.github.io` (main branch)
 
 ## Page-to-Repo Mapping
 
@@ -108,9 +108,9 @@ This file maps documentation sections to the repositories and plans that own the
 - **Workflow package plan**: workflows/features live in `workflow` v2 branch
 - **Server plan**: server setup, worker protocol in `server` main branch
 - **CLI plan**: CLI docs track `cli` main branch
-- **Python SDK plan**: `/home/lab/workspace-hq/docs/sdk-python/plan.md`
+- **Python SDK plan**: tracked in the central SDK roadmap
 - **Waterline plan**: monitoring/observability features track `waterline` v2 branch
-- **Docs plan**: `/home/lab/workspace-hq/docs/durable-workflow.github.io/plan.md`
+- **Docs plan**: tracked in the docs-site roadmap
 
 ## How to Use This Map
 
