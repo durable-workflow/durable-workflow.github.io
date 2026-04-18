@@ -158,6 +158,13 @@ do not consume child retry attempts.
 | `fail_workflow` | `message` | Mark the run as failed |
 | `continue_as_new` | — | Close the run and start a new one (optional `arguments`, `workflow_type`) |
 
+If a cancel or terminate command closes the run while a workflow task is
+leased, workflow-task `history`, `heartbeat`, `complete`, and `fail` calls keep
+the worker-protocol envelope but reject with `reason: "run_closed"`. The
+response also includes `can_continue: false`, `cancel_requested: true`, and a
+concrete `stop_reason` such as `run_cancelled` or `run_terminated`, so workers
+can distinguish cancellation observation from a generic lease error.
+
 ## Activity Task Bridge
 
 The `ActivityTaskBridge` contract defines how an external worker interacts with activity tasks:
