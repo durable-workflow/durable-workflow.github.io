@@ -126,7 +126,8 @@ function Installer() {
       <CodeBlock language={platform.shell}>{platform.command}</CodeBlock>
 
       <p style={{fontSize: '0.9rem', color: 'var(--ifm-color-emphasis-700)'}}>
-        {platform.note}
+        {platform.note} The installer verifies the release SHA256SUMS manifest
+        before writing the binary.
       </p>
 
       <details>

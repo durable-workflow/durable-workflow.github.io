@@ -1,0 +1,178 @@
+name: Installer Scripts
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install-sh:
+    name: install.sh (${{ matrix.name }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            runner: ubuntu-latest
+            asset: dw-linux-x86_64
+            port: 18080
+          - name: macos-aarch64
+            runner: macos-14
+            asset: dw-macos-aarch64
+            port: 18081
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build fixture release
+        shell: bash
+        run: |
+          set -eu
+          download_dir="$RUNNER_TEMP/release/latest/download"
+          mkdir -p "$download_dir"
+          cat > "$download_dir/${{ matrix.asset }}" <<'SH'
+          #!/usr/bin/env sh
+          echo "dw fixture 0.0.0"
+          SH
+          chmod +x "$download_dir/${{ matrix.asset }}"
+
+          cd "$download_dir"
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "${{ matrix.asset }}" > SHA256SUMS
+          else
+            shasum -a 256 "${{ matrix.asset }}" > SHA256SUMS
+          fi
+
+      - name: Serve fixture release
+        shell: bash
+        run: |
+          set -eu
+          python3 -m http.server "${{ matrix.port }}" --directory "$RUNNER_TEMP/release" \
+            > "$RUNNER_TEMP/install-http.log" 2>&1 &
+          echo "$!" > "$RUNNER_TEMP/install-http.pid"
+          sleep 2
+
+      - name: Install with verified checksum
+        shell: bash
+        env:
+          DURABLE_WORKFLOW_RELEASE_BASE_URL: http://127.0.0.1:${{ matrix.port }}
+          DURABLE_WORKFLOW_INSTALL_DIR: ${{ runner.temp }}/dw-bin
+        run: |
+          set -eu
+          sh static/install.sh
+          "$DURABLE_WORKFLOW_INSTALL_DIR/dw" --version
+
+      - name: Reject checksum mismatch
+        shell: bash
+        env:
+          DURABLE_WORKFLOW_RELEASE_BASE_URL: http://127.0.0.1:${{ matrix.port }}
+        run: |
+          set -eu
+          printf '%064d  %s\n' 0 "${{ matrix.asset }}" > "$RUNNER_TEMP/release/latest/download/SHA256SUMS"
+
+          bad_dir="$RUNNER_TEMP/dw-bad"
+          if DURABLE_WORKFLOW_INSTALL_DIR="$bad_dir" sh static/install.sh; then
+            echo "installer accepted a mismatched checksum" >&2
+            exit 1
+          fi
+
+          test ! -e "$bad_dir/dw"
+
+      - name: Stop fixture release
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "$RUNNER_TEMP/install-http.pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/install-http.pid")" 2>/dev/null || true
+          fi
+
+  install-ps1:
+    name: install.ps1 (windows-x86_64)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build fixture release
+        shell: pwsh
+        run: |
+          $downloadDir = Join-Path $env:RUNNER_TEMP 'release\latest\download'
+          $appDir = Join-Path $env:RUNNER_TEMP 'fake-dw'
+          $publishDir = Join-Path $env:RUNNER_TEMP 'fake-dw-publish'
+          New-Item -ItemType Directory -Force -Path $downloadDir | Out-Null
+
+          dotnet new console --output $appDir
+          @'
+          Console.WriteLine("dw fixture 0.0.0");
+          '@ | Set-Content -Path (Join-Path $appDir 'Program.cs') -Encoding utf8
+          dotnet publish $appDir --configuration Release --runtime win-x64 --self-contained false `
+            -p:PublishSingleFile=true --output $publishDir
+
+          $asset = Join-Path $downloadDir 'dw-windows-x86_64.exe'
+          Copy-Item -Path (Join-Path $publishDir 'fake-dw.exe') -Destination $asset
+
+          $hash = (Get-FileHash -Algorithm SHA256 -Path $asset).Hash.ToLowerInvariant()
+          "$hash  dw-windows-x86_64.exe" | Set-Content -Path (Join-Path $downloadDir 'SHA256SUMS') -Encoding ascii
+
+      - name: Serve fixture release
+        shell: pwsh
+        run: |
+          $releaseDir = Join-Path $env:RUNNER_TEMP 'release'
+          $stdout = Join-Path $env:RUNNER_TEMP 'install-http.log'
+          $stderr = Join-Path $env:RUNNER_TEMP 'install-http.err'
+          $server = Start-Process -FilePath python `
+            -ArgumentList @('-m', 'http.server', '18082', '--directory', $releaseDir) `
+            -PassThru `
+            -RedirectStandardOutput $stdout `
+            -RedirectStandardError $stderr
+          $server.Id | Set-Content -Path (Join-Path $env:RUNNER_TEMP 'install-http.pid') -Encoding ascii
+          Start-Sleep -Seconds 2
+
+      - name: Install with verified checksum
+        shell: pwsh
+        env:
+          DURABLE_WORKFLOW_RELEASE_BASE_URL: http://127.0.0.1:18082
+          DURABLE_WORKFLOW_INSTALL_DIR: ${{ runner.temp }}\dw-bin
+        run: |
+          & ./static/install.ps1
+          & (Join-Path $env:DURABLE_WORKFLOW_INSTALL_DIR 'dw.exe') --version
+
+      - name: Reject checksum mismatch
+        shell: pwsh
+        env:
+          DURABLE_WORKFLOW_RELEASE_BASE_URL: http://127.0.0.1:18082
+        run: |
+          $downloadDir = Join-Path $env:RUNNER_TEMP 'release\latest\download'
+          '0000000000000000000000000000000000000000000000000000000000000000  dw-windows-x86_64.exe' |
+            Set-Content -Path (Join-Path $downloadDir 'SHA256SUMS') -Encoding ascii
+
+          $badDir = Join-Path $env:RUNNER_TEMP 'dw-bad'
+          $env:DURABLE_WORKFLOW_INSTALL_DIR = $badDir
+          $failed = $false
+
+          try {
+            & ./static/install.ps1
+          } catch {
+            $failed = $true
+            Write-Host $_
+          }
+
+          if (-not $failed) {
+            throw 'installer accepted a mismatched checksum'
+          }
+
+          if (Test-Path (Join-Path $badDir 'dw.exe')) {
+            throw 'installer wrote dw.exe after checksum mismatch'
+          }
+
+      - name: Stop fixture release
+        if: always()
+        shell: pwsh
+        run: |
+          $pidFile = Join-Path $env:RUNNER_TEMP 'install-http.pid'
+          if (Test-Path $pidFile) {
+            Stop-Process -Id (Get-Content $pidFile) -Force -ErrorAction SilentlyContinue
+          }

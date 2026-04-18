@@ -6,10 +6,16 @@
 # Env vars:
 #   $env:VERSION                       Pin a release tag (default: latest).
 #   $env:DURABLE_WORKFLOW_INSTALL_DIR  Install directory (default: %USERPROFILE%\.durable-workflow\bin).
+#   $env:DURABLE_WORKFLOW_RELEASE_BASE_URL  Override release base URL for tests.
 
 $ErrorActionPreference = 'Stop'
 
 $repo = 'durable-workflow/cli'
+$releaseBaseUrl = if ($env:DURABLE_WORKFLOW_RELEASE_BASE_URL) {
+    ($env:DURABLE_WORKFLOW_RELEASE_BASE_URL).TrimEnd('/')
+} else {
+    "https://github.com/$repo/releases"
+}
 $binName = 'dw.exe'
 $installDir = if ($env:DURABLE_WORKFLOW_INSTALL_DIR) {
     $env:DURABLE_WORKFLOW_INSTALL_DIR
@@ -26,19 +32,58 @@ $arch = 'x86_64'
 $asset = "dw-windows-$arch.exe"
 
 $url = if ($version -eq 'latest') {
-    "https://github.com/$repo/releases/latest/download/$asset"
+    "$releaseBaseUrl/latest/download/$asset"
 } else {
-    "https://github.com/$repo/releases/download/$version/$asset"
+    "$releaseBaseUrl/download/$version/$asset"
+}
+
+$checksumUrl = if ($version -eq 'latest') {
+    "$releaseBaseUrl/latest/download/SHA256SUMS"
+} else {
+    "$releaseBaseUrl/download/$version/SHA256SUMS"
 }
 
 New-Item -ItemType Directory -Force -Path $installDir | Out-Null
 $dest = Join-Path $installDir $binName
+$tmp = New-TemporaryFile
+$sums = New-TemporaryFile
 
-Write-Host "==> Downloading $asset" -ForegroundColor Green
 try {
-    Invoke-WebRequest -Uri $url -OutFile $dest -UseBasicParsing
+    Write-Host "==> Downloading $asset" -ForegroundColor Green
+    try {
+        Invoke-WebRequest -Uri $url -OutFile $tmp -UseBasicParsing
+    } catch {
+        throw "Download failed: $url`n$_"
+    }
+
+    Write-Host '==> Verifying checksum' -ForegroundColor Green
+    try {
+        Invoke-WebRequest -Uri $checksumUrl -OutFile $sums -UseBasicParsing
+    } catch {
+        throw "Checksum download failed: $checksumUrl`n$_"
+    }
+
+    $checksumLine = Get-Content $sums | Where-Object {
+        $parts = $_ -split '\s+', 3
+        $parts.Count -ge 2 -and $parts[1].TrimStart('*') -eq $asset
+    } | Select-Object -First 1
+
+    if (-not $checksumLine) {
+        throw "Checksum for $asset not found in SHA256SUMS."
+    }
+
+    $expectedHash = (($checksumLine -split '\s+', 3)[0]).ToLowerInvariant()
+    $actualHash = (Get-FileHash -Algorithm SHA256 -Path $tmp).Hash.ToLowerInvariant()
+
+    if ($actualHash -ne $expectedHash) {
+        throw "Checksum verification failed for $asset."
+    }
+
+    Move-Item -Force -Path $tmp -Destination $dest
 } catch {
-    throw "Download failed: $url`n$_"
+    throw $_
+} finally {
+    Remove-Item -Path $tmp, $sums -Force -ErrorAction SilentlyContinue
 }
 
 Write-Host "==> Installed $binName to $installDir" -ForegroundColor Green
