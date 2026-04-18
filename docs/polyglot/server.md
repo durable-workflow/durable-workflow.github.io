@@ -233,6 +233,8 @@ and worker-protocol manifests:
     "queries": true,
     "updates": true,
     "schedules": true,
+    "child_workflow_retry_policy": true,
+    "child_workflow_timeouts": true,
     "payload_codecs": ["avro"],
     "response_compression": ["gzip", "deflate"]
   },

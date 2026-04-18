@@ -262,7 +262,7 @@ The `WorkflowContext` passed to `run` provides deterministic operations:
 |--------|-------------|
 | `ctx.schedule_activity(type, args)` | Schedule an activity task, optionally with per-call retry and timeout options |
 | `ctx.start_timer(seconds)` | Durable sleep |
-| `ctx.start_child_workflow(type, args)` | Start a child workflow |
+| `ctx.start_child_workflow(type, args)` | Start a child workflow, optionally with per-call retry and workflow timeout options |
 | `ctx.side_effect(fn)` | Capture a non-deterministic value |
 | `ctx.get_version(change_id, min, max)` | Safe workflow code versioning |
 | `ctx.upsert_search_attributes(attrs)` | Update search attributes |
@@ -337,13 +337,28 @@ class FanOutWorkflow:
 ### Child Workflows
 
 ```python
+from durable_workflow import ChildWorkflowRetryPolicy
+
 result = yield ctx.start_child_workflow(
     "child-workflow-type",
     [{"input": "data"}],
     task_queue="child-queue",
     parent_close_policy="terminate",
+    retry_policy=ChildWorkflowRetryPolicy(
+        max_attempts=3,
+        initial_interval_seconds=2,
+        backoff_coefficient=2,
+        non_retryable_error_types=["ValidationError"],
+    ),
+    execution_timeout_seconds=600,
+    run_timeout_seconds=120,
 )
 ```
+
+`execution_timeout_seconds` caps the logical child workflow execution across
+retries and continue-as-new runs. `run_timeout_seconds` caps each child run
+attempt. Retry backoff is applied after a child run fails; invalid child start
+commands are protocol errors and are not retried as child attempts.
 
 ### Continue-as-New
 

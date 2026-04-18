@@ -122,6 +122,19 @@ When completing a workflow task, the external worker submits a list of typed com
 | `record_version_marker` | `change_id`, `version`, `min_supported`, `max_supported` | Record a versioning decision |
 | `upsert_search_attributes` | `attributes` | Upsert indexed metadata on the workflow run |
 
+`schedule_activity` accepts optional `retry_policy`, `start_to_close_timeout`,
+`schedule_to_start_timeout`, `schedule_to_close_timeout`, and
+`heartbeat_timeout` fields. `retry_policy` uses `max_attempts`,
+`backoff_seconds`, and `non_retryable_error_types`.
+
+`start_child_workflow` accepts optional `parent_close_policy`, `retry_policy`,
+`execution_timeout_seconds`, and `run_timeout_seconds` fields.
+`parent_close_policy` is one of `abandon`, `request_cancel`, or `terminate`.
+Child retry policy uses the same `max_attempts`, `backoff_seconds`, and
+`non_retryable_error_types` object shape as activities. Retry backoff applies
+after a child run fails; invalid child start commands are protocol errors and
+do not consume child retry attempts.
+
 **Terminal commands** (at most one):
 
 | Type | Required Fields | Description |
