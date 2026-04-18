@@ -436,7 +436,40 @@ composer update durable-workflow/workflow
 php artisan migrate
 ```
 
-The 2.0.0 release includes 24 clean base table migrations. If you previously published migration files, you may need to publish the new ones or switch to auto-loaded migrations.
+The 2.0.0 release includes clean base table migrations. The normal path is to
+let Laravel auto-load the package migrations and run `php artisan migrate`.
+
+If you previously published Durable Workflow migrations into your application,
+choose one migration source and keep it current:
+
+- **Auto-loaded package migrations**: remove old published Durable Workflow
+  migration files from `database/migrations` and run `php artisan migrate`.
+- **Published migrations**: publish the current set before migrating:
+
+  ```bash
+  php artisan vendor:publish \
+    --provider="Workflow\Providers\WorkflowServiceProvider" \
+    --tag=migrations \
+    --force
+
+  php artisan migrate
+  ```
+
+Do not keep stale published files while also relying on newly auto-loaded
+package files; that can leave your app missing newer v2 tables or repair
+migrations.
+
+If you customized migration files, diff your local copies against the package's
+`src/migrations` directory during each upgrade. Keep the table names, columns,
+indexes, and nullable/default contracts schema-compatible with the package
+models. A customized install that routes workflow tables to a non-default
+connection should publish the migrations, set the migration `$connection`, and
+then continue carrying forward every new package migration in timestamp order.
+
+For pre-release v2 adopters, `workflow_run_summaries.memo` is repaired
+idempotently if an older published summary-table migration created
+`workflow_run_summaries` without that column. Fresh installs already create the
+column in the base summary-table migration.
 
 ### Backend capability check
 
