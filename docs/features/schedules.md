@@ -50,7 +50,11 @@ The `scheduleId` is a unique, user-chosen identifier for the schedule. Each trig
 | `notes` | `string\|null` | `null` | Free-form operator notes |
 | `namespace` | `string\|null` | `null` | Namespace for the schedule (defaults to the configured `workflows.v2.namespace` or `'default'`) |
 
-## Interval-based schedules
+## Advanced scheduling
+
+The sections below cover scheduling features you will reach for when the basic cron pattern is not enough: fixed-interval firing, mixing cron and interval specs, and overlap policies. Skip ahead unless you need one.
+
+### Interval-based schedules
 
 In addition to cron expressions, schedules support interval-based firing using ISO 8601 duration syntax. Use `ScheduleManager::createFromSpec()` for full control over the schedule spec:
 
