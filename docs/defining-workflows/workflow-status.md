@@ -37,22 +37,6 @@ When a run uses `continueAsNew()`, the old run ends with `status = completed` an
 
 `running()` returns `true` for `pending`, `running`, and `waiting`.
 
-## Signals, Updates, and Commands
-
-Named signal waits, explicit update commands, and `attemptSignal()` / `signal()` external input are supported. Cancellation and termination are not modeled as ordinary user-defined signals. They remain explicit runtime commands on `Workflow\V2\WorkflowStub`, which means Waterline and command history can distinguish a run that failed from a run that was cancelled, terminated, or updated on purpose.
-
-Those command outcomes are also exposed over webhook routes:
-
-```text
-POST /webhooks/instances/{workflowId}/updates/{update}
-POST /webhooks/instances/{workflowId}/cancel
-POST /webhooks/instances/{workflowId}/terminate
-```
-
-Accepted update commands leave the run open while mutating replay-safe workflow state. Accepted cancel and terminate commands move the run into `cancelled` or `terminated`. Rejected commands leave the run status unchanged and currently include run-state outcomes such as `rejected_not_started` and `rejected_not_active`, plus contract-validation outcomes such as `rejected_unknown_signal` and `rejected_unknown_update`.
-
-Waterline keeps the actual run `status` as `cancelled` or `terminated`, keeps `status_bucket = failed` as the compatibility bridge for both states, and also exposes `is_terminal = true` on list/detail payloads. Current Waterline builds use that raw `status` to offer dedicated `failed`, `cancelled`, and `terminated` list views, so operator-driven closures no longer have to hide inside the generic failed screen even though older bucket-oriented consumers can still rely on the shared failed bucket.
-
 ## State Machine
 
 This is the state machine for a workflow status.

@@ -10,7 +10,7 @@ The `getVersion()` helper function allows you to safely introduce changes to run
 
 ## Using `getVersion`
 
-`getVersion()` is a replay-safe straight-line helper. Each change point records one typed `VersionMarkerRecorded` history event for the selected run, and later workflow replay or query replay reuses that committed value instead of recalculating the branch from today's code. New runs also snapshot a start-time `workflow_definition_fingerprint` on `WorkflowStarted`, so when a run reaches a newly introduced branch point with no recorded marker yet, the runtime can distinguish "this run started before that definition existed" from "this is a fresh execution on the current definition" without relying only on the compatibility marker.
+`getVersion()` is a replay-safe straight-line helper. Each change point records a durable version marker for the run on first execution, and every later replay reuses that committed value instead of recalculating the branch from today's code. Old runs that predate a newly introduced branch point conservatively receive `DEFAULT_VERSION`.
 
 ```php
 use Workflow\V2\Workflow;
