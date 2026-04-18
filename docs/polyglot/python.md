@@ -260,7 +260,7 @@ The `WorkflowContext` passed to `run` provides deterministic operations:
 
 | Method | Description |
 |--------|-------------|
-| `ctx.schedule_activity(type, args)` | Schedule an activity task |
+| `ctx.schedule_activity(type, args)` | Schedule an activity task, optionally with per-call retry and timeout options |
 | `ctx.start_timer(seconds)` | Durable sleep |
 | `ctx.start_child_workflow(type, args)` | Start a child workflow |
 | `ctx.side_effect(fn)` | Capture a non-deterministic value |
@@ -271,6 +271,38 @@ The `WorkflowContext` passed to `run` provides deterministic operations:
 | `ctx.random()` | Seeded random generator |
 | `ctx.uuid4()` | Deterministic UUID |
 | `ctx.logger` | Logger that is silent during replay |
+
+### Activity Retries and Timeouts
+
+Use `ActivityRetryPolicy` and timeout keyword arguments on `ctx.schedule_activity(...)`
+when one activity call needs a different retry budget or deadline than the
+default single-attempt behavior:
+
+```python
+from durable_workflow import ActivityRetryPolicy
+
+receipt = yield ctx.schedule_activity(
+    "process_payment",
+    [validated],
+    retry_policy=ActivityRetryPolicy(
+        max_attempts=4,
+        initial_interval_seconds=1,
+        backoff_coefficient=2,
+        maximum_interval_seconds=30,
+        non_retryable_error_types=["ValidationError"],
+    ),
+    start_to_close_timeout=120,
+    schedule_to_close_timeout=300,
+    heartbeat_timeout=15,
+)
+```
+
+`start_to_close_timeout` caps one attempt after a worker starts it.
+`schedule_to_close_timeout` caps the whole activity execution across all
+attempts. `heartbeat_timeout` requires long-running activities to call
+`activity.context().heartbeat(...)` before the interval expires. The retry
+policy is snapped onto the durable activity execution when it is scheduled, so
+later deploys do not change already-running attempts.
 
 ### Determinism Rules
 
