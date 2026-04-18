@@ -8,6 +8,9 @@ The Python SDK is a thin, async-first client for the Durable Workflow server. It
 
 The SDK targets the same durable model as the PHP package — instance IDs, run IDs, history events, task queues, and type keys are shared across languages. A Python worker can serve activities for a PHP-authored workflow, and vice versa.
 
+For constructor signatures, return types, exception classes, and metric names,
+see the generated [Python API reference](/docs/2.0/polyglot/python-api-reference).
+
 ## Requirements
 
 - Python 3.10 or later
