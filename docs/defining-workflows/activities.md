@@ -12,7 +12,7 @@ You may use the `make:activity` artisan command to create a new activity:
 php artisan make:activity MyActivity
 ```
 
-The created activity extends `Workflow\V2\Activity`:
+It is defined by extending the `Activity` class and implementing the `handle()` method.
 
 ```php
 use Workflow\V2\Activity;
@@ -29,7 +29,7 @@ class MyActivity extends Activity
 
 ## Retry Attempts
 
-`Workflow\V2\Activity` defaults to one attempt. Set `$tries` and `backoff()` when an activity should retry before the workflow receives the exception.
+Activities default to one attempt. Set `$tries` and `backoff()` when an activity should retry before the workflow receives an exception.
 
 ```php
 use Workflow\V2\Activity;
