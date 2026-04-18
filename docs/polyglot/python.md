@@ -189,7 +189,7 @@ print(execution.status)  # "completed", "running", etc.
 # Signal the workflow
 await handle.signal("my_signal", [{"key": "value"}])
 
-# Query the workflow
+# Query the workflow when the target runtime advertises query support
 answer = await handle.query("current_state")
 
 # Cancel or terminate
@@ -224,6 +224,11 @@ result = await client.update_workflow(
 )
 ```
 
+Python workflow-side update execution still depends on server-routed worker
+support. The client method is available for runtimes that already advertise
+the named update handler, and Python workflows can declare update metadata as
+shown below.
+
 ## Defining Workflows
 
 Workflows are Python classes decorated with `@workflow.defn`. The `run` method is a generator that yields commands to the server.
@@ -253,6 +258,57 @@ class OrderWorkflow:
 ```
 
 The `name` in `@workflow.defn(name="...")` is the type key used across all languages. It must be a plain string — not a Python module path or class reference.
+
+### Signals, Queries, and Updates
+
+Signals are recorded in durable history and dispatched to Python handlers
+during workflow replay:
+
+```python
+@workflow.defn(name="approval")
+class ApprovalWorkflow:
+    def __init__(self) -> None:
+        self.approved = False
+        self.approved_by = None
+
+    @workflow.signal("approve")
+    def approve(self, by: str) -> None:
+        self.approved = True
+        self.approved_by = by
+
+    def run(self, ctx, *args):
+        yield ctx.schedule_activity("wait_for_approval", [])
+        return {"approved": self.approved, "approved_by": self.approved_by}
+```
+
+Query and update receiver decorators are available so workflow classes can
+publish stable handler names and local tests can replay query state:
+
+```python
+@workflow.defn(name="approval")
+class ApprovalWorkflow:
+    def __init__(self) -> None:
+        self.approved = False
+
+    @workflow.query("status")
+    def status(self) -> dict:
+        return {"approved": self.approved}
+
+    @workflow.update("set_approval")
+    def set_approval(self, approved: bool) -> dict:
+        self.approved = approved
+        return {"approved": self.approved}
+
+    @set_approval.validator
+    def validate_set_approval(self, approved: bool) -> None:
+        if not isinstance(approved, bool):
+            raise ValueError("approved must be boolean")
+```
+
+Server-routed Python query and update execution is still being completed. Until
+that worker-side transport is available in the target deployment, use these
+decorators as receiver metadata and keep production query/update traffic on
+runtimes that advertise handler execution for the workflow type.
 
 ### Workflow Context
 
