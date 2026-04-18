@@ -49,7 +49,7 @@ Run migrations from one app only:
 php artisan migrate
 ```
 
-If the apps use a different database connection than `default`, see [Database Connection](./database-connection.md) for how to point the v2 models at the shared connection.
+If the apps use a different database connection than `default`, see [Database Connection](./database-connection.md) for how to point the models at the shared connection.
 
 ## Defining Workflows and Activities
 
