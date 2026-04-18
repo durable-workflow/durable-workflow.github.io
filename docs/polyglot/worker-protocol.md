@@ -139,7 +139,7 @@ The `ActivityTaskBridge` contract defines how an external worker interacts with 
 | `poll` | Find ready activity tasks matching queue and compatibility criteria |
 | `claim` / `claimStatus` | Claim a specific activity task with lease |
 | `complete` | Record activity completion with a result |
-| `fail` | Record activity failure |
+| `fail` | Record activity failure, with optional codec-tagged `failure.details` |
 | `status` | Check liveness and cancellation state without renewing the lease |
 | `heartbeat` | Extend the lease and report optional progress |
 
@@ -161,12 +161,17 @@ On fields that carry payload bytes (`arguments`, `result`, `payload`, etc.), the
 {
   "task_id": "...",
   "payload_codec": "avro",
-  "arguments": "<base64-avro-bytes>",
+  "arguments": {
+    "codec": "avro",
+    "blob": "<base64-avro-bytes>"
+  },
   "history_events": [ ... ]
 }
 ```
 
 The worker reads `payload_codec` and confirms it is `avro` before decoding. An unrecognised codec value is an error — the worker should not attempt to sniff or guess.
+
+Activity completions send `result` as the same `{codec, blob}` envelope. Activity failures may send structured diagnostic payloads under `failure.details`; when present, `failure.details` is also a `{codec, blob}` envelope. The server stores the details blob verbatim and records `details_payload_codec` with the durable failure payload so non-PHP workers can round-trip diagnostic data without PHP serialization.
 
 ### Starting a Workflow
 

@@ -664,6 +664,7 @@ Every client and worker surface works end-to-end on the Avro default:
 
 - **Client starts, signals, queries, updates** — `start_workflow`, `signal_workflow`, `query_workflow`, and `update_workflow` always emit `payload_codec = "avro"` payloads via the generic-wrapper schema. A Python client can therefore drive workflows that PHP and other polyglot SDKs will replay, and vice-versa.
 - **Activity worker** — Avro-tagged activity arguments decode transparently. The worker echoes the task's codec when completing: an Avro-coded task gets an Avro-coded result back; a legacy JSON-coded task (from a pre-Avro run) gets a JSON-coded result.
+- **Activity failures** — `fail_activity_task(..., details=...)` sends `failure.details` as a `{codec, blob}` envelope. The server records the blob plus `details_payload_codec`, so diagnostic failure data from Python workers remains language-neutral in history exports and observability views.
 - **Workflow worker history replay** — Avro-tagged start input and activity result events are decoded during replay, so a Python workflow can participate in an Avro-coded run.
 
 ### JSON decode path for legacy runs
