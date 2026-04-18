@@ -57,5 +57,3 @@ $workflow->start(
 **Execution timeout**: spans the entire workflow instance lifecycle, including retries and continue-as-new runs. Once the execution deadline passes, the engine will not schedule further workflow tasks.
 
 **Run timeout**: applies to the current run only. It resets when a workflow continues as new.
-
-Both timeouts must be at least 1 second. Pass `null` (the default) to leave the timeout unlimited.
