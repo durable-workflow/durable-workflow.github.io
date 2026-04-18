@@ -10,7 +10,13 @@ This guide covers installing the Durable Workflow PHP package for Laravel applic
 
 - PHP 8.1 or later
 - Laravel 9 or later
-- An asynchronous queue driver (Amazon SQS, Beanstalkd, Database, Redis). The `sync` driver is not supported because it executes jobs inline on the request thread, which cannot provide the worker boundary durable workflows rely on.
+
+Durable Workflow can be used with any queue driver that Laravel supports (except the `sync` driver), including:
+
+- Amazon SQS
+- Beanstalkd
+- Database
+- Redis
 
 Each queue driver has its own [prerequisites](https://laravel.com/docs/12.x/queues#driver-prerequisites).
 
@@ -44,12 +50,6 @@ The package auto-loads its migrations, so a normal migrate run is enough after i
 
 ```bash
 php artisan migrate
-```
-
-Publishing the migration files is optional. Only do it if you intentionally need local copies of the vendor migrations for inspection or one-off customization:
-
-```bash
-php artisan vendor:publish --provider="Workflow\Providers\WorkflowServiceProvider" --tag="migrations"
 ```
 
 ## Running Workers
