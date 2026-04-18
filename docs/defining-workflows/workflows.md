@@ -14,7 +14,7 @@ You may use the `make:workflow` artisan command to generate a new workflow:
 php artisan make:workflow MyWorkflow
 ```
 
-The generated workflow extends `Workflow\V2\Workflow` and uses straight-line helper calls inside an ordinary `handle()` method:
+The workflow extends `Workflow\V2\Workflow` and uses straight-line helper calls inside an ordinary `handle()` method:
 
 ```php
 use function Workflow\V2\activity;
@@ -28,7 +28,3 @@ class MyWorkflow extends Workflow
     }
 }
 ```
-
-`handle()` is the canonical workflow entry method. Existing workflows that still implement `execute()` continue to load through a compatibility path so older code can still replay, but new code should use `handle()` only.
-
-Do not mix `handle()` and `execute()` across a workflow inheritance chain. The runtime rejects mixed hierarchies before a start, webhook dispatch, child launch, or replay path can create durable work with an ambiguous entry method.
