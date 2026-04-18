@@ -121,8 +121,11 @@ jobs:
           $hash = (Get-FileHash -Algorithm SHA256 -Path $asset).Hash.ToLowerInvariant()
           "$hash  dw-windows-x86_64.exe" | Set-Content -Path (Join-Path $downloadDir 'SHA256SUMS') -Encoding ascii
 
-      - name: Serve fixture release
+      - name: Exercise installer
         shell: pwsh
+        env:
+          DURABLE_WORKFLOW_RELEASE_BASE_URL: http://127.0.0.1:18082
+          DURABLE_WORKFLOW_INSTALL_DIR: ${{ runner.temp }}\dw-bin
         run: |
           $releaseDir = Join-Path $env:RUNNER_TEMP 'release'
           $stdout = Join-Path $env:RUNNER_TEMP 'install-http.log'
@@ -135,68 +138,52 @@ jobs:
             -RedirectStandardError $stderr
           $server.Id | Set-Content -Path (Join-Path $env:RUNNER_TEMP 'install-http.pid') -Encoding ascii
 
-          $ready = $false
-          for ($attempt = 1; $attempt -le 15; $attempt++) {
-            try {
-              Invoke-WebRequest -Uri 'http://127.0.0.1:18082/latest/download/SHA256SUMS' -UseBasicParsing | Out-Null
-              $ready = $true
-              break
-            } catch {
-              if ($server.HasExited) {
-                Get-Content -Path $stdout, $stderr -ErrorAction SilentlyContinue
-                throw 'fixture HTTP server exited before it became ready'
-              }
-              Start-Sleep -Seconds 1
-            }
-          }
-
-          if (-not $ready) {
-            Get-Content -Path $stdout, $stderr -ErrorAction SilentlyContinue
-            throw 'fixture HTTP server did not become ready'
-          }
-
-      - name: Install with verified checksum
-        shell: pwsh
-        env:
-          DURABLE_WORKFLOW_RELEASE_BASE_URL: http://127.0.0.1:18082
-          DURABLE_WORKFLOW_INSTALL_DIR: ${{ runner.temp }}\dw-bin
-        run: |
-          & ./static/install.ps1
-          & (Join-Path $env:DURABLE_WORKFLOW_INSTALL_DIR 'dw.exe') --version
-
-      - name: Reject checksum mismatch
-        shell: pwsh
-        env:
-          DURABLE_WORKFLOW_RELEASE_BASE_URL: http://127.0.0.1:18082
-        run: |
-          $downloadDir = Join-Path $env:RUNNER_TEMP 'release\latest\download'
-          '0000000000000000000000000000000000000000000000000000000000000000  dw-windows-x86_64.exe' |
-            Set-Content -Path (Join-Path $downloadDir 'SHA256SUMS') -Encoding ascii
-
-          $badDir = Join-Path $env:RUNNER_TEMP 'dw-bad'
-          $env:DURABLE_WORKFLOW_INSTALL_DIR = $badDir
-          $failed = $false
-
           try {
+            $ready = $false
+            for ($attempt = 1; $attempt -le 15; $attempt++) {
+              try {
+                Invoke-WebRequest -Uri 'http://127.0.0.1:18082/latest/download/SHA256SUMS' -UseBasicParsing | Out-Null
+                $ready = $true
+                break
+              } catch {
+                if ($server.HasExited) {
+                  Get-Content -Path $stdout, $stderr -ErrorAction SilentlyContinue
+                  throw 'fixture HTTP server exited before it became ready'
+                }
+                Start-Sleep -Seconds 1
+              }
+            }
+
+            if (-not $ready) {
+              Get-Content -Path $stdout, $stderr -ErrorAction SilentlyContinue
+              throw 'fixture HTTP server did not become ready'
+            }
+
             & ./static/install.ps1
-          } catch {
-            $failed = $true
-            Write-Host $_
-          }
+            & (Join-Path $env:DURABLE_WORKFLOW_INSTALL_DIR 'dw.exe') --version
 
-          if (-not $failed) {
-            throw 'installer accepted a mismatched checksum'
-          }
+            $downloadDir = Join-Path $env:RUNNER_TEMP 'release\latest\download'
+            '0000000000000000000000000000000000000000000000000000000000000000  dw-windows-x86_64.exe' |
+              Set-Content -Path (Join-Path $downloadDir 'SHA256SUMS') -Encoding ascii
 
-          if (Test-Path (Join-Path $badDir 'dw.exe')) {
-            throw 'installer wrote dw.exe after checksum mismatch'
-          }
+            $badDir = Join-Path $env:RUNNER_TEMP 'dw-bad'
+            $env:DURABLE_WORKFLOW_INSTALL_DIR = $badDir
+            $failed = $false
 
-      - name: Stop fixture release
-        if: always()
-        shell: pwsh
-        run: |
-          $pidFile = Join-Path $env:RUNNER_TEMP 'install-http.pid'
-          if (Test-Path $pidFile) {
-            Stop-Process -Id (Get-Content $pidFile) -Force -ErrorAction SilentlyContinue
+            try {
+              & ./static/install.ps1
+            } catch {
+              $failed = $true
+              Write-Host $_
+            }
+
+            if (-not $failed) {
+              throw 'installer accepted a mismatched checksum'
+            }
+
+            if (Test-Path (Join-Path $badDir 'dw.exe')) {
+              throw 'installer wrote dw.exe after checksum mismatch'
+            }
+          } finally {
+            Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
           }
