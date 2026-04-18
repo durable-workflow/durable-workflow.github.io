@@ -106,6 +106,8 @@ from durable_workflow import Client
 client = Client(
     "http://localhost:8080",
     token="your-api-token",   # optional, depends on server auth config
+    control_token=None,        # optional operator/admin token for control-plane calls
+    worker_token=None,         # optional worker token for worker polling/completion
     namespace="default",       # namespace for all operations
     timeout=60.0,              # HTTP request timeout in seconds
     metrics=None,              # optional metrics recorder
@@ -118,6 +120,40 @@ Use the client as an async context manager to ensure the underlying HTTP connect
 async with Client("http://localhost:8080") as client:
     ...
 ```
+
+### Authentication and namespaces
+
+The SDK sends bearer credentials with `Authorization: Bearer ...` and sends the
+configured namespace on every request as `X-Namespace`.
+
+Use `token=` for development servers or deployments that still use one shared
+server token:
+
+```python
+client = Client("http://localhost:8080", token="shared-token", namespace="default")
+```
+
+For production servers with role-scoped credentials, use plane-specific tokens
+so the same client can start workflows with an operator/admin token and run a
+worker with a worker token:
+
+```python
+client = Client(
+    "https://workflow.example.internal",
+    control_token="operator-token",
+    worker_token="worker-token",
+    namespace="orders",
+)
+```
+
+When a deployment issues namespace-scoped tokens, create one client per
+namespace and pass that namespace's token. The server must provision the
+namespace before client or worker requests target it.
+
+The server does not expose native mTLS authentication yet. Terminate TLS or mTLS
+at your ingress or service mesh today, forward only trusted traffic to the
+server, and keep bearer tokens enabled until a server-side mTLS auth driver is
+available.
 
 ### Starting a Workflow
 
@@ -660,9 +696,10 @@ from durable_workflow import Client
 
 client = Client(
     "https://workflow.example.internal",
-    token="shared-server-token",
+    control_token="team-orders-operator-token",
+    worker_token="team-orders-worker-token",
     namespace="team-orders",
 )
 ```
 
-Set the `namespace` argument to whichever tenant namespace the shared server has provisioned for your team. The server operator manages namespace creation — see the [server setup guide](/docs/2.0/polyglot/server) for details.
+Set the `namespace` argument to whichever tenant namespace the shared server has provisioned for your team, and use the credentials issued for that namespace. The server operator manages namespace creation — see the [server setup guide](/docs/2.0/polyglot/server) for details.

@@ -82,7 +82,7 @@ Cache must support [atomic locks](https://laravel.com/docs/12.x/cache#atomic-loc
 
 ### Authentication
 
-The server supports two auth drivers:
+The server supports three auth modes:
 
 **Token-based** (default):
 
@@ -93,15 +93,38 @@ WORKFLOW_SERVER_AUTH_TOKEN=your-secret-token-here
 
 All requests must send `Authorization: Bearer your-secret-token-here`.
 
+For least-privilege deployments, configure role-scoped tokens instead of one
+shared token:
+
+```bash
+WORKFLOW_SERVER_AUTH_DRIVER=token
+WORKFLOW_SERVER_WORKER_TOKEN=worker-secret
+WORKFLOW_SERVER_OPERATOR_TOKEN=operator-secret
+WORKFLOW_SERVER_ADMIN_TOKEN=admin-secret
+```
+
+Worker tokens can register workers, poll tasks, heartbeat, and complete work.
+Operator tokens can start, list, signal, query, update, cancel, terminate, and
+observe workflows. Admin tokens can use administrative endpoints such as
+namespace and retention management.
+
 **HMAC signature**:
 
 ```bash
-WORKFLOW_SERVER_AUTH_DRIVER=hmac
-WORKFLOW_SERVER_HMAC_KEY_ID=client-1
-WORKFLOW_SERVER_HMAC_SECRET=your-hmac-secret
+WORKFLOW_SERVER_AUTH_DRIVER=signature
+WORKFLOW_SERVER_SIGNATURE_KEY=your-signature-secret
 ```
 
-Requests must include `X-HMAC-Signature`, `X-HMAC-Timestamp`, and `X-HMAC-Key-ID` headers.
+Requests must include `X-Signature`, calculated as
+`hash_hmac('sha256', request_body, WORKFLOW_SERVER_SIGNATURE_KEY)`. The server
+also accepts role-scoped signature keys:
+
+```bash
+WORKFLOW_SERVER_AUTH_DRIVER=signature
+WORKFLOW_SERVER_WORKER_SIGNATURE_KEY=worker-signature-secret
+WORKFLOW_SERVER_OPERATOR_SIGNATURE_KEY=operator-signature-secret
+WORKFLOW_SERVER_ADMIN_SIGNATURE_KEY=admin-signature-secret
+```
 
 **No auth** (development only):
 
