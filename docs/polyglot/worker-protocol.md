@@ -35,6 +35,7 @@ Read these fields before sending optional command fields:
 - `activity_retry_policy` and `activity_timeouts`: activity command retry and timeout options.
 - `child_workflow_retry_policy` and `child_workflow_timeouts`: child workflow retry and timeout options.
 - `parent_close_policy`: child workflow parent-close policy support.
+- `query_tasks`: server-routed workflow query tasks for external runtimes.
 - `non_retryable_failures`: workflow and activity failure metadata support.
 
 ## Workflow Task Bridge
@@ -192,6 +193,93 @@ durable task payload:
 Fields that do not apply are `null`. SDK workers should prefer these fields
 over scanning history when they need to correlate a leased task with an
 accepted update, signal, child resolution, or timer-backed wait.
+
+## Query Tasks
+
+When a control-plane query targets a workflow whose code is owned by an
+external runtime, the standalone server cannot replay that workflow in the PHP
+process. Instead, it creates an ephemeral query task and waits for an active
+non-PHP worker on the workflow's task queue to execute it.
+
+Query tasks are read-only. Workers replay the supplied history, invoke the
+registered query handler, and then complete or fail the query task. They do not
+write durable history events and they are not retried after the caller's
+control-plane query times out.
+
+| Endpoint | Description |
+|----------|-------------|
+| `POST /api/worker/query-tasks/poll` | Long-poll for a query task on a worker's registered task queue |
+| `POST /api/worker/query-tasks/{query_task_id}/complete` | Submit the query result |
+| `POST /api/worker/query-tasks/{query_task_id}/fail` | Reject or fail the query |
+
+Poll request:
+
+```json
+{
+  "worker_id": "py-worker-1",
+  "task_queue": "orders"
+}
+```
+
+Poll response:
+
+```json
+{
+  "task": {
+    "query_task_id": "01J...",
+    "query_task_attempt": 1,
+    "workflow_id": "order-123",
+    "run_id": "01J...",
+    "workflow_type": "order-processing",
+    "query_name": "status",
+    "payload_codec": "avro",
+    "workflow_arguments": { "codec": "avro", "blob": "<base64-avro-bytes>" },
+    "query_arguments": { "codec": "avro", "blob": "<base64-avro-bytes>" },
+    "history_events": [],
+    "task_queue": "orders",
+    "lease_owner": "py-worker-1",
+    "lease_expires_at": "2026-04-18T12:00:00.000000Z"
+  },
+  "protocol_version": "1.0",
+  "server_capabilities": { "query_tasks": true }
+}
+```
+
+`task` is `null` when the poll times out. The worker must echo
+`lease_owner` and `query_task_attempt` on completion or failure; stale attempts
+and wrong lease owners are rejected.
+
+Complete request:
+
+```json
+{
+  "lease_owner": "py-worker-1",
+  "query_task_attempt": 1,
+  "result": { "status": "ready" },
+  "result_envelope": { "codec": "avro", "blob": "<base64-avro-bytes>" }
+}
+```
+
+Fail request:
+
+```json
+{
+  "lease_owner": "py-worker-1",
+  "query_task_attempt": 1,
+  "failure": {
+    "reason": "rejected_unknown_query",
+    "message": "unknown query 'status'",
+    "type": "QueryFailed"
+  }
+}
+```
+
+Use `reason: "rejected_unknown_query"` when the workflow type has no matching
+query handler; the control-plane caller receives `404`. Other worker-side
+query failures should use `reason: "query_rejected"` and return `409`.
+If no active worker can accept the query, the control plane returns
+`query_worker_unavailable`; if no result arrives before the configured timeout,
+it returns `query_worker_timeout`.
 
 ## Activity Task Bridge
 

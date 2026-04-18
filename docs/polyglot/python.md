@@ -282,8 +282,10 @@ class ApprovalWorkflow:
 ```
 
 Query and update receiver decorators are available so workflow classes can
-publish stable handler names, local tests can replay query state, and Python
-workers can apply accepted updates delivered through workflow tasks:
+publish stable handler names. Python workers execute server-routed query tasks
+by replaying the committed workflow history and invoking the registered query
+handler against that replayed state. They also apply accepted updates delivered
+through workflow tasks:
 
 ```python
 @workflow.defn(name="approval")
@@ -306,11 +308,11 @@ class ApprovalWorkflow:
             raise ValueError("approved must be boolean")
 ```
 
-Python workers now complete accepted updates by replaying committed state,
-running the registered update handler, and sending `complete_update` or
-`fail_update` back to the server. Server-routed Python queries and synchronous
-pre-accept update validator routing are still being completed, so use those
-paths only with deployments that advertise support for the target workflow
+Python workers now complete server-routed queries by returning a query-task
+result to the server, and complete accepted updates by sending
+`complete_update` or `fail_update` commands back to the server. Synchronous
+pre-accept update validator routing is still being completed, so use that path
+only with deployments that advertise validator support for the target workflow
 type.
 
 ### Workflow Context
@@ -775,6 +777,7 @@ Every client and worker surface works end-to-end on the Avro default:
 - **Activity worker** — Avro-tagged activity arguments decode transparently. The worker encodes activity results as Avro so PHP, Python, and future SDK workers share one payload boundary.
 - **Activity failures** — `fail_activity_task(..., details=...)` sends `failure.details` as a `{codec, blob}` envelope. The server records the blob plus `details_payload_codec`, so diagnostic failure data from Python workers remains language-neutral in history exports and observability views.
 - **Workflow worker history replay** — Avro-tagged start input and activity result events are decoded during replay, so a Python workflow can participate in an Avro-coded run.
+- **Workflow query tasks** — Server-routed query tasks carry Avro-tagged workflow arguments, query arguments, and replay history. The worker returns the query result as an Avro envelope.
 
 ### Running a Python activity worker against an Avro-coded run
 

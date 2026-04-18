@@ -336,8 +336,8 @@ See the [Python SDK](/docs/2.0/polyglot/python) guide for worker setup.
 
 Any language can implement a worker by:
 1. Registering with `POST /api/worker/register`
-2. Long-polling for tasks with `POST /api/worker/workflow-tasks/poll` or `POST /api/worker/activity-tasks/poll`
-3. Completing tasks with `POST /api/worker/workflow-tasks/{id}/complete` or `POST /api/worker/activity-tasks/{id}/complete`
+2. Long-polling for tasks with `POST /api/worker/workflow-tasks/poll`, `POST /api/worker/activity-tasks/poll`, or `POST /api/worker/query-tasks/poll`
+3. Completing tasks with `POST /api/worker/workflow-tasks/{id}/complete`, `POST /api/worker/activity-tasks/{id}/complete`, or `POST /api/worker/query-tasks/{id}/complete`
 
 All requests require:
 - `Authorization: Bearer $TOKEN`
@@ -509,6 +509,9 @@ Key endpoints:
 - `POST /api/worker/register` — Register a worker
 - `POST /api/worker/workflow-tasks/poll` — Long-poll for workflow tasks
 - `POST /api/worker/workflow-tasks/{id}/complete` — Complete workflow task
+- `POST /api/worker/query-tasks/poll` — Long-poll for server-routed workflow query tasks
+- `POST /api/worker/query-tasks/{id}/complete` — Complete workflow query task
+- `POST /api/worker/query-tasks/{id}/fail` — Fail or reject workflow query task
 - `POST /api/worker/activity-tasks/poll` — Long-poll for activity tasks
 - `POST /api/worker/activity-tasks/{id}/complete` — Complete activity task
 
