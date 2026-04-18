@@ -151,7 +151,7 @@ Every payload byte string that crosses the worker-protocol boundary is tagged wi
 
 ### The `avro` codec
 
-`avro` is the default codec for new v2 workflows. It is a compact Apache Avro binary encoding. The blob field on the wire carries the raw Avro bytes (typically transported as a base64-encoded string in JSON envelopes) and round-trips any Avro-representable value. Production deployments should leave the default in place unless they have a specific reason to prefer human-readable payloads.
+`avro` is the v2 payload codec. It is a compact Apache Avro binary encoding. The blob field on the wire carries the raw Avro bytes (typically transported as a base64-encoded string in JSON envelopes) and round-trips any Avro-representable value.
 
 ### Wire Format: Payload Envelope
 
@@ -166,13 +166,13 @@ On fields that carry payload bytes (`arguments`, `result`, `payload`, etc.), the
 }
 ```
 
-The worker reads `payload_codec` to choose a decoder. A non-matching codec is a clear error — the worker should not attempt to sniff or guess.
+The worker reads `payload_codec` and confirms it is `avro` before decoding. An unrecognised codec value is an error — the worker should not attempt to sniff or guess.
 
 ### Starting a Workflow
 
 `POST /api/workflows` accepts `input` in two shapes:
 
-1. **Plain JSON array** — the server encodes the values and wraps them in the default `avro` codec using the generic-wrapper schema.
+1. **Plain JSON array** — the server encodes the values into the `avro` codec using the generic-wrapper schema.
 
    ```json
    { "workflow_type": "MyWorkflow", "input": ["hello", 42] }
@@ -187,11 +187,11 @@ The worker reads `payload_codec` to choose a decoder. A non-matching codec is a 
    }
    ```
 
-The server stores the blob verbatim and tags the run with the declared codec.
+The server stores the blob verbatim and tags the run with the `avro` codec.
 
-The chosen codec is stored on the `WorkflowRun` and **propagates for the life of the run**: activity arguments, results, signal/update arguments, and child-workflow inputs all use the same codec.
+The codec is stored on the `WorkflowRun` and **propagates for the life of the run**: activity arguments, results, signal/update arguments, and child-workflow inputs are all Avro-encoded.
 
-Embedded/package starts (workflows kicked off from PHP via `WorkflowStub::make(...)->start(...)` rather than the HTTP API) follow the configured `workflows.serializer` default, which is `avro` for all new v2 workflows.
+Embedded/package starts (workflows kicked off from PHP via `WorkflowStub::make(...)->start(...)` rather than the HTTP API) use the `avro` codec via the configured `workflows.serializer` setting.
 
 ## Resolving the Bridges
 

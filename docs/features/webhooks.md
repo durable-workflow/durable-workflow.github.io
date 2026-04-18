@@ -354,7 +354,7 @@ Successful claims return the durable activity identity plus the codec-tagged sto
   "activity_type": "charge-card",
   "activity_class": "App\\Workflows\\Activities\\ChargeCardActivity",
   "idempotency_key": "01J...",
-  "payload_codec": "json",
+  "payload_codec": "avro",
   "arguments": "{\"amount\":1099}",
   "retry_policy": {
     "max_attempts": 3,
@@ -461,7 +461,7 @@ POST /webhooks/workflow-tasks/{taskId}/fail
 POST /webhooks/workflow-tasks/{taskId}/heartbeat
 ```
 
-These routes use the same `workflows.webhook_auth` policy as the other webhook routes. They bridge a standalone server or external worker that already knows a durable `taskId`; they are not a hosted long-poll or task-discovery service.
+These routes use the same `workflows.webhook_auth` policy as the other webhook routes. They bridge an external worker that already knows a durable `taskId`; they are not a hosted long-poll or task-discovery service.
 
 The **claim** route accepts one optional field:
 
@@ -481,7 +481,7 @@ Successful claims return the durable workflow identity and lease metadata:
   "workflow_instance_id": "order-123",
   "workflow_type": "order-workflow",
   "workflow_class": "App\\Workflows\\OrderWorkflow",
-  "payload_codec": "json",
+  "payload_codec": "avro",
   "connection": "redis",
   "queue": "default",
   "compatibility": null,
@@ -510,7 +510,7 @@ The **history** route returns the full typed history event list, run metadata, a
   "workflow_run_id": "01J...",
   "workflow_instance_id": "order-123",
   "workflow_type": "order-workflow",
-  "payload_codec": "json",
+  "payload_codec": "avro",
   "arguments": "{\"orderId\":123}",
   "run_status": "pending",
   "last_history_sequence": 2,
@@ -1409,7 +1409,7 @@ Current HTTP response matrix for the describe webhooks:
 
 ### Task Poll Webhooks
 
-Poll routes are available for discovering ready tasks by queue, connection, and compatibility criteria. These routes let a standalone server or external poller discover durable tasks without maintaining a separate task-discovery service.
+Poll routes are available for discovering ready tasks by queue, connection, and compatibility criteria. These routes let an external consumer discover durable tasks without maintaining a separate task-discovery service.
 
 ```text
 GET /webhooks/workflow-tasks/poll
@@ -1490,7 +1490,7 @@ The typical server polling loop calls poll, claims the first returned task by id
 
 ### Control-Plane Start Webhook
 
-A control-plane start route accepts a durable workflow type key directly, without requiring the workflow class to be locally resolvable. This is the preferred start path for a standalone server or external adapter that drives workflows through type keys rather than PHP class aliases.
+A control-plane start route accepts a durable workflow type key directly, without requiring the workflow class to be locally resolvable. This is the preferred start path for an external consumer that drives workflows through type keys rather than PHP class aliases.
 
 ```text
 POST /webhooks/control-plane/start
@@ -1542,7 +1542,7 @@ Response for a newly started workflow:
 
 When `instance_id` is omitted, the engine generates a ULID-based instance id automatically.
 
-When the workflow type key maps to a locally resolvable class through `workflows.v2.types.workflows` config or a `#[Type(...)]` attribute, the full command-contract snapshot and routing are applied at start time. When the class is not locally available, the instance is created with the type key and explicit routing from options; the command-contract snapshot and definition fingerprint are deferred to the worker that claims the first task. This means a standalone server can start workflows for type keys that only the worker fleet can resolve.
+When the workflow type key maps to a locally resolvable class through `workflows.v2.types.workflows` config or a `#[Type(...)]` attribute, the full command-contract snapshot and routing are applied at start time. When the class is not locally available, the instance is created with the type key and explicit routing from options; the command-contract snapshot and definition fingerprint are deferred to the worker that claims the first task. This means an external consumer can start workflows for type keys that only the worker fleet can resolve.
 
 Current HTTP response matrix for the control-plane start webhook:
 

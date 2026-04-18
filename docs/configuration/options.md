@@ -260,7 +260,7 @@ Use `operator_metrics.repair.scopes[*]` when a shared workflow database has seve
 
 ## Task Dispatch Mode
 
-By default, the engine pushes every ready task onto the Laravel queue so that `queue:work` processes pick them up. In a standalone server deployment where no workflow or activity PHP classes are registered locally, set `task_dispatch_mode` to `poll` so that tasks are only persisted as ready rows and left for external workers to discover through the task bridges.
+By default, the engine pushes every ready task onto the Laravel queue so that `queue:work` processes pick them up. In deployments where external workers handle tasks over HTTP and no workflow or activity PHP classes are registered locally, set `task_dispatch_mode` to `poll` so that tasks are only persisted as ready rows and left for external workers to discover through the task bridges.
 
 ```env
 WORKFLOW_V2_TASK_DISPATCH_MODE=poll
@@ -283,7 +283,7 @@ Or in `config/workflows.php`:
 In poll mode, `TaskDispatcher` records a successful dispatch timestamp so the task repair sweep does not treat the task as stuck, but no queue job is created. The task row is the sole delivery mechanism; external workers poll, claim, execute (or replay and complete), and the engine advances the workflow.
 
 Use poll mode when:
-- The standalone server hosts the durable database but no workflow PHP classes.
+- The host application serves the durable database but does not execute workflow or activity code locally.
 - External workers (in another Laravel app or a language-neutral worker) handle replay.
 - You want to avoid the internal `queue:work` process touching workflow or activity tasks.
 

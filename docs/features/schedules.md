@@ -369,4 +369,4 @@ When Waterline is configured with a namespace (`waterline.namespace`), the sched
 
 The schedule table (`workflow_schedules`) is created by migration `2026_04_14_000157`. The model class is configurable via `workflows.v2.schedule_model`.
 
-If your deployment runs package migrations alongside application migrations (e.g., the standalone server), migration 157 detects a pre-existing `workflow_schedules` table and handles it gracefully: if the table already matches the package schema it is left as-is; if it was created by an earlier shim migration with a different schema, it is replaced.
+If your deployment runs package migrations alongside application migrations, migration 157 detects a pre-existing `workflow_schedules` table and handles it gracefully: if the table already matches the package schema it is left as-is; if it was created by an earlier shim migration with a different schema, it is replaced.

@@ -7,7 +7,7 @@ Workflows can span across multiple Laravel applications. For instance, a workflo
 
 To enable seamless communication between Laravel applications, set up a shared database and queue connection across all microservices.
 
-All microservices must have identical `APP_KEY` values in their `.env` files for proper serialization and deserialization from the queue.
+Each Laravel app can use its own `APP_KEY`. Workflow v2 uses the Avro payload codec for queue serialization, which has no dependency on application encryption keys. Two Laravel apps with different `APP_KEY` values can share workflows without issue.
 
 Below is a guide on configuring a shared MySQL database and Redis connection:
 
@@ -116,7 +116,7 @@ class MyActivity extends Activity
 
 The base `Workflow\V2\Workflow::$connection/$queue` and `Workflow\V2\Activity::$connection/$queue` properties are declared `public ?string`. Subclass redeclarations must keep the nullable type because public-property types in PHP are invariant.
 
-Both services should register the workflow and activity type keys in `workflows.v2.types.workflows` and `workflows.v2.types.activities`. The workflow microservice needs the `MyWorkflow` class on disk; the activity microservice needs the `MyActivity` class on disk. Each service only needs the classes it actually runs — the durable type key plus the registered class binding is the contract, not PHP class autoloading. External workers that do not have the PHP package installed can instead drive the same work through the HTTP activity-task and workflow-task bridges.
+Both services should register the workflow and activity type keys in `workflows.v2.types.workflows` and `workflows.v2.types.activities`. The workflow microservice needs the `MyWorkflow` class on disk; the activity microservice needs the `MyActivity` class on disk. Each service only needs the classes it actually runs — the durable type key plus the registered class binding is the contract, not PHP class autoloading. Another Laravel app that has the workflow package installed can also drive the same work through the activity-task and workflow-task bridges described below.
 
 To run queue workers in each microservice, use the shared connection and the respective queue names:
 
@@ -133,7 +133,7 @@ The default activity path runs through PHP queue workers, but activity work is a
 
 The runtime also snapshots the activity retry policy when the activity is scheduled. `retry_policy.max_attempts` and `retry_policy.backoff_seconds` are stored on the activity execution, copied into `ActivityScheduled` and `ActivityRetryScheduled` history snapshots, exposed in Waterline activity detail, and included in history exports. That keeps retry behavior stable for an already scheduled activity even if another service deploys a new PHP class with different `$tries` or `backoff()` values.
 
-The activity-task worker bridge is exposed through the `Workflow\V2\Contracts\ActivityTaskBridge` contract, registered as a singleton in the container. This lets a standalone server or external adapter poll for ready activity tasks, claim a task by id, heartbeat by attempt id, then complete or fail that attempt without loading the PHP activity class.
+The activity-task worker bridge is exposed through the `Workflow\V2\Contracts\ActivityTaskBridge` contract, registered as a singleton in the container. This lets any consumer — such as another Laravel app — poll for ready activity tasks, claim a task by id, heartbeat by attempt id, then complete or fail that attempt without loading the PHP activity class.
 
 The bridge is resolved from the container:
 
@@ -248,13 +248,13 @@ POST /webhooks/activity-attempts/{attemptId}/complete
 POST /webhooks/activity-attempts/{attemptId}/fail
 ```
 
-The poll route accepts optional `connection`, `queue`, `limit` (1–100, default 10), `compatibility`, and `namespace` query parameters. It returns the same task summary list as the PHP `poll()` method, wrapped in a `{"tasks": [...]}` envelope. A standalone server uses this route to discover ready activity tasks before claiming them by id.
+The poll route accepts optional `connection`, `queue`, `limit` (1–100, default 10), `compatibility`, and `namespace` query parameters. It returns the same task summary list as the PHP `poll()` method, wrapped in a `{"tasks": [...]}` envelope. An external worker uses this route to discover ready activity tasks before claiming them by id.
 
 That HTTP surface is still the same first bridge, not a complete hosted cross-language worker service. It does not yet provide long-poll claim loops or service-level routing. Namespace scoping is supported at the package level through `poll()` and visibility filters; the HTTP poll routes accept a `namespace` query parameter. External workers should integrate through durable task ids, execution ids, attempt ids, codec-tagged payloads, heartbeats, completion or failure records, and late-result handling. They should not depend on mirroring placeholder PHP classes or sharing queue-serialized PHP payloads as the protocol boundary.
 
 ## Workflow Task Boundary
 
-A workflow-task worker bridge is exposed through the `Workflow\V2\Contracts\WorkflowTaskBridge` contract, registered as a singleton in the container. This bridge lets a standalone server or external adapter poll for ready workflow tasks, claim a task by id, retrieve the full replay/history payload, execute the task in-process using the package executor, or record failure, all without reimplementing `RunWorkflowTask` internals.
+A workflow-task worker bridge is exposed through the `Workflow\V2\Contracts\WorkflowTaskBridge` contract, registered as a singleton in the container. This bridge lets any consumer — such as another Laravel app — poll for ready workflow tasks, claim a task by id, retrieve the full replay/history payload, execute the task in-process using the package executor, or record failure, all without reimplementing `RunWorkflowTask` internals.
 
 The bridge is resolved from the container:
 
@@ -299,7 +299,7 @@ Claim checks include task existence, task type, task status, run status, backend
 
 ### History payload for replay
 
-`historyPayload()` returns the full history event list, run metadata, and serialized arguments for a claimed task. An external worker or standalone server uses this payload to replay the workflow:
+`historyPayload()` returns the full history event list, run metadata, and serialized arguments for a claimed task. An external worker uses this payload to replay the workflow:
 
 ```php
 $history = $bridge->historyPayload($taskId);
@@ -408,7 +408,7 @@ if ($result['completed']) {
 
 The task must be in `leased` status and the run must be non-terminal. On success, `complete()` records typed history events, creates durable task and entity records for each command, dispatches parent resume tasks for child workflows, and projects the run summary.
 
-The response includes a `created_task_ids` array listing every task created by the non-terminal commands and any continue-as-new workflow task. A server or external adapter can use these ids to claim newly created tasks directly without an extra poll round-trip:
+The response includes a `created_task_ids` array listing every task created by the non-terminal commands and any continue-as-new workflow task. An external worker can use these ids to claim newly created tasks directly without an extra poll round-trip:
 
 ```php
 $result = $bridge->complete($taskId, [
@@ -492,9 +492,9 @@ Like the activity task HTTP surface, these routes are the same first bridge expo
 
 ## Control Plane
 
-A control-plane contract is exposed through `Workflow\V2\Contracts\WorkflowControlPlane`, registered as a singleton in the container. This contract lets a standalone server or external adapter start, signal, query, update, cancel, terminate, repair, and archive workflows using **durable type keys** instead of requiring local PHP class resolution.
+A control-plane contract is exposed through `Workflow\V2\Contracts\WorkflowControlPlane`, registered as a singleton in the container. This contract lets any consumer — such as another Laravel app — start, signal, query, update, cancel, terminate, repair, and archive workflows using **durable type keys** instead of requiring local PHP class resolution.
 
-This is the key difference from `WorkflowStub::make()` and `WorkflowStub::load()`: the control plane accepts workflow type strings and instance ids directly, so a server process that does not have the workflow PHP classes installed can still drive the full workflow lifecycle. Workers that do have the classes pick up the actual replay work through the task bridges.
+This is the key difference from `WorkflowStub::make()` and `WorkflowStub::load()`: the control plane accepts workflow type strings and instance ids directly, so a Laravel app that does not have the workflow PHP classes on disk can still drive the full workflow lifecycle. Workers that do have the classes pick up the actual replay work through the task bridges.
 
 The control plane is resolved from the container:
 
