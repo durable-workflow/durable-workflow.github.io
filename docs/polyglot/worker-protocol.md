@@ -133,6 +133,8 @@ When completing a workflow task, the external worker submits a list of typed com
 | `schedule_activity` | `activity_type` | Schedule an activity task for execution |
 | `start_timer` | `delay_seconds` | Schedule a durable timer |
 | `start_child_workflow` | `workflow_type` | Start a child workflow instance |
+| `complete_update` | `update_id` | Mark an accepted update as applied and completed |
+| `fail_update` | `update_id`, `message` | Mark an accepted update as failed |
 | `record_side_effect` | `result` | Record a deterministic side-effect result |
 | `record_version_marker` | `change_id`, `version`, `min_supported`, `max_supported` | Record a versioning decision |
 | `upsert_search_attributes` | `attributes` | Upsert indexed metadata on the workflow run |
@@ -149,6 +151,13 @@ Child retry policy uses the same `max_attempts`, `backoff_seconds`, and
 `non_retryable_error_types` object shape as activities. Retry backoff applies
 after a child run fails; invalid child start commands are protocol errors and
 do not consume child retry attempts.
+
+`complete_update` closes the accepted update named by `update_id` after the
+worker applies the update handler. It accepts an optional `result` payload
+using the same `{codec, blob}` envelope as workflow completion results.
+`fail_update` closes the accepted update as failed and accepts optional
+`exception_class`, `exception_type`, and `non_retryable` fields in addition to
+the required `message`.
 
 **Terminal commands** (at most one):
 
