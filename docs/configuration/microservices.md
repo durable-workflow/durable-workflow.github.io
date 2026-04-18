@@ -250,7 +250,7 @@ POST /webhooks/activity-attempts/{attemptId}/fail
 
 The poll route accepts optional `connection`, `queue`, `limit` (1–100, default 10), `compatibility`, and `namespace` query parameters. It returns the same task summary list as the PHP `poll()` method, wrapped in a `{"tasks": [...]}` envelope. An external worker uses this route to discover ready activity tasks before claiming them by id.
 
-That HTTP surface is still the same first bridge, not a complete hosted cross-language worker service. It does not yet provide long-poll claim loops or service-level routing. Namespace scoping is supported at the package level through `poll()` and visibility filters; the HTTP poll routes accept a `namespace` query parameter. External workers should integrate through durable task ids, execution ids, attempt ids, codec-tagged payloads, heartbeats, completion or failure records, and late-result handling. They should not depend on mirroring placeholder PHP classes or sharing queue-serialized PHP payloads as the protocol boundary.
+That HTTP surface is still the same first bridge, not a complete hosted cross-language worker service. It does not yet provide long-poll claim loops or service-level routing. Namespace scoping is supported at the package level through `poll()` and visibility filters; the HTTP poll routes accept a `namespace` query parameter. External workers should integrate through durable task ids, execution ids, attempt ids, codec-tagged payloads, heartbeats, completion or failure records, and late-result handling. The protocol boundary is durable task ids, codec-tagged payloads, and typed history — not shared PHP classes or queue serialization.
 
 ## Workflow Task Boundary
 
@@ -376,14 +376,14 @@ At least one recognized command must be present. When only non-terminal commands
 ```php
 // Schedule activities and wait
 $result = $bridge->complete($taskId, [
-    ['type' => 'schedule_activity', 'activity_type' => 'send-email', 'arguments' => json_encode(['user@example.com'])],
+    ['type' => 'schedule_activity', 'activity_type' => 'send-email', 'arguments' => Serializer::serializeWithCodec('avro', ['user@example.com'])],
     ['type' => 'start_timer', 'delay_seconds' => 300],
 ]);
 // $result['run_status'] === 'waiting'
 
 // Workflow completed successfully
 $result = $bridge->complete($taskId, [
-    ['type' => 'complete_workflow', 'result' => json_encode('Hello, Taylor')],
+    ['type' => 'complete_workflow', 'result' => Serializer::serializeWithCodec('avro', 'Hello, Taylor')],
 ]);
 
 // Workflow failed
@@ -398,7 +398,7 @@ $result = $bridge->complete($taskId, [
 // Start a child workflow and continue as new
 $result = $bridge->complete($taskId, [
     ['type' => 'start_child_workflow', 'workflow_type' => 'cleanup-workflow'],
-    ['type' => 'continue_as_new', 'arguments' => json_encode(['next-batch'])],
+    ['type' => 'continue_as_new', 'arguments' => Serializer::serializeWithCodec('avro', ['next-batch'])],
 ]);
 
 if ($result['completed']) {
@@ -512,7 +512,7 @@ Durable type keys may contain dots for namespacing (e.g. `billing.invoice-sync`,
 
 ```php
 $result = $controlPlane->start('order-processing', 'order-12345', [
-    'arguments' => json_encode(['item_count' => 3]),
+    'arguments' => Serializer::serializeWithCodec('avro', ['item_count' => 3]),
     'connection' => 'redis',
     'queue' => 'workflows',
     'business_key' => 'order-12345',
