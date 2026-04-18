@@ -66,21 +66,10 @@ $selectedRun->currentStage();
 
 Query behavior:
 
-- query arguments are forwarded to the annotated method instead of being silently dropped
-- query methods can declare a durable public target name through `#[QueryMethod('public-name')]`, and string-targeted query APIs resolve either that durable name or the PHP method name
-- the runtime snapshots `declared_queries` plus ordered `declared_query_contracts` onto typed `WorkflowStarted` history, so later Waterline detail and operator clients can keep using the selected run's public query surface without reflecting live code every time
-- selected-run detail exposes normalized `declared_query_targets` plus `can_query` / `query_blocked_reason`, so Waterline can keep every declared query target visible while still distinguishing runs whose query surface is durably declared but not currently replayable
-- queries observe committed history only
-- `getVersion()` reuses committed `VersionMarkerRecorded` history, so query replay follows the same versioned branch the selected run already committed
-- completed activity and timer outcomes are replayed from typed history first. For activities, once a step has typed open activity history, query replay waits for `ActivityCompleted` or `ActivityFailed` and does not accept a drifted terminal `activity_executions` row; `ActivityCancelled` is the typed stop observation for cancelled or terminated in-flight activity work, and mutable activity rows are fallback only for older preview runs that have no typed activity history for that step.
-- child completions and child failures are replayed from the parent run's typed `ChildRun*` history. Terminal child history or mutable child rows may enrich lineage and diagnostics after the parent-side event exists, but they do not make a missing parent child step replayable; query replay blocks with `history_shape_mismatch` when a `child()` step has no parent typed child history.
-- handled activity failures now restore their typed durable exception payload when that payload exists, so query replay can keep the original exception class and custom properties instead of degrading everything to a generic runtime error
-- accepted-but-not-applied signals remain visible in command history, but query replay does not treat them as applied state
-- accepted-but-not-yet-applied updates submitted with `submitUpdate()` or `submitUpdateWithArguments()` remain visible in command and update history, but query replay does not treat them as applied state until the workflow worker records `UpdateApplied`
-- completed update commands are replayed from committed `UpdateApplied` history before the query method runs
-- failed update commands stay visible in command history and failure views, but they do not mutate replayed workflow state
-- instance-targeted `load($instanceId)` queries the newest durable run for that instance after refresh, even if the mutable current-run pointer drifted or is temporarily null
-- run-targeted `loadRun($runId)` queries the selected run, even after continue-as-new created a newer current run
+- Queries are replay-safe: they observe committed history only and do not mutate workflow state.
+- Arguments are forwarded to the annotated method. Declare a stable public name with `#[QueryMethod('public-name')]` so the callable survives PHP method renames.
+- `load($instanceId)` queries the newest durable run for that instance; `loadRun($runId)` targets one specific run (useful for pre–continue-as-new queries).
+- Accepted-but-not-yet-applied signals and updates are visible in command history but do not count as applied state until the worker records `SignalApplied` / `UpdateApplied`.
 
 To define a query method on a workflow, use the `QueryMethod` annotation. The optional string argument lets you freeze a public durable query name that survives PHP method renames:
 
@@ -146,19 +135,10 @@ Updates allow you to retrieve information about the current state of a workflow 
 
 Each accepted update:
 
-- records a durable `update` command row
-- records one first-class `workflow_updates` row linked to that command, returns its `update_id` through the typed `UpdateResult`, and lets callers re-read that same lifecycle later through `inspectUpdate($updateId)`
-- appends typed `UpdateAccepted` history as soon as the command is accepted
-- appends typed `UpdateApplied` and `UpdateCompleted` history entries when the update body actually runs
-- applies the update body under the run lock against replayed workflow state on the workflow worker, with `attemptUpdate*` waiting on that durable worker-applied lifecycle and `submitUpdate*` returning as soon as the command is durably accepted
-- returns either the raw update result or a typed `UpdateResult` wrapper, depending on which API you call
-- uses the declared durable update name in command history and webhook routing; if you declare `#[UpdateMethod('mark-approved')]`, Waterline and webhook payloads expose `mark-approved` instead of the PHP method name
-- snaps the ordered parameter contract into durable run metadata so webhook intake and Waterline can validate or explain the public callable shape without reflecting live code every time
-- is rejected against historical selected runs and already-closed runs instead of silently mutating the current run
-- rejects undeclared update method names as `rejected_unknown_update` with `rejection_reason = unknown_update`, using the run's durably snapped command contract when the typed `WorkflowStarted` payload already carries it
-- rejects array-shaped but contract-invalid webhook or string-targeted update arguments as `rejected_invalid_arguments` with machine-readable `validation_errors` before the update body runs
-- rejects a durably declared target as `rejected_workflow_definition_unavailable` with `rejection_reason = workflow_definition_unavailable` when the selected run's workflow definition cannot be replayed
-- does not let updates leapfrog earlier accepted signals: when the selected run already has one pending, the runtime rejects the later update as `rejected_pending_signal` until the queued workflow task applies that signal and advances durable `command_sequence` order
+- Is a request/response call against a running workflow. `attemptUpdate*()` waits for the handler to finish; `submitUpdate*()` returns as soon as the command is durably accepted and exposes `inspectUpdate($updateId)` to poll later.
+- Uses the declared durable update name in command history and webhook routing — `#[UpdateMethod('mark-approved')]` keeps the public callable name stable across PHP method renames.
+- Rejects against historical or already-closed runs rather than silently mutating the current run.
+- Rejects undeclared method names as `rejected_unknown_update` and contract-invalid arguments as `rejected_invalid_arguments` (with machine-readable `validation_errors`) before the handler runs.
 
 When the selected target run exists but the update is rejected before application, the runtime still records the rejected command row, writes a rejected `workflow_updates` row for that lifecycle, and appends one typed `UpdateRejected` history entry for that run. That keeps command history, Waterline update detail, and webhook-visible command identity aligned without letting rejected updates mutate replayed workflow state.
 

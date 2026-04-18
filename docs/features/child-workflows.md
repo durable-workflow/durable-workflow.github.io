@@ -29,26 +29,11 @@ final class ParentWorkflow extends Workflow
 
 ## Current Behavior
 
-- Import the helper with `use function Workflow\V2\child;`.
-- Calling `child(ChildWorkflow::class, ...)` creates a durable child workflow instance, a child run, typed parent-side child history, and a `child_workflow` lineage projection for Waterline and compatibility surfaces.
-- The child run records its own accepted `start` command with `source = workflow`, so Waterline can show which parent instance, parent run, workflow step, and `child_call_id` created it.
-- When the child closes, the parent records a typed child-resolution history event such as `ChildRunCompleted`, `ChildRunFailed`, `ChildRunCancelled`, or `ChildRunTerminated`, and that parent-side history is the replay source for the child outcome before the parent resume workflow task is created.
-- While the child run is `pending`, `running`, or `waiting`, the parent run stays open and projects `wait_kind = child`.
-- When the child completes, the runtime creates a new parent workflow task carrying `workflow_wait_kind = child`, `child_call_id`, `child_workflow_run_id`, and the `child_workflow_run` resume source, then replay resumes the parent with the child output.
-- When the child fails, the runtime also resumes the parent, but `child(...)` throws an exception derived from the parent-side `ChildRunFailed` history instead of returning a value.
-- If the parent catches that exception and continues, the parent run records `FailureHandled`; selected-run `exception_count`, `exceptions[*]`, timeline failure metadata, and history exports keep the child failure visible from typed history even if the child run's mutable failure row later drifts or disappears.
-- If the historical child throwable cannot be resolved through `workflows.v2.types.exceptions`, `workflows.v2.types.exception_class_aliases`, or the recorded class, query and worker replay block with `UnresolvedWorkflowFailureException` instead of delivering a generic catchable exception to broad parent catch blocks.
-- If the child uses `continueAsNew()`, the parent records another typed `ChildRunStarted` for the same `child_call_id` and follows that newest parent-recorded child run rather than freezing on the original child run id or trusting only the child instance's mutable `current_run_id`.
-- `Workflow\V2\Workflow` now exposes `$this->child()` for the latest visible child handle and `$this->children()` for every visible child handle in workflow-step order.
-- `Workflow\V2\ChildWorkflowHandle` exposes `id()` / `instanceId()`, `runId()`, and `callId()`, so parent code can distinguish the stable child instance id, the currently selected child run id, and the stable parent-issued `child_call_id`.
-- Parent workflows can signal the current child through that handle with `signal()`, `signalWithArguments()`, or method-call sugar such as `$this->child()?->approvedBy('Taylor')`.
-- Query replay keeps those handles read-only, while inline update application can still use the handle to emit a real child signal exactly once.
-- Waterline exposes that relationship in detail views through lineage (`parents` / `continuedWorkflows`), child wait rows in `waits`, and typed child entries in `timeline`.
-- `Workflow\V2\all()` can group child workflows by themselves or alongside `activity(...)` calls from the same parent step when you build the barrier with closures such as `fn () => child(...)` and `fn () => activity(...)`.
-- Child-only `all([fn () => child(...)])` barriers, nested child groups, and mixed `fn () => child(...)` plus `fn () => activity(...)` barriers return results in the original nested array shape once every member of the group completes successfully.
-- In any barrier that includes children, the parent wakes immediately on the first failed, cancelled, or terminated child, but successful child closures do not wake the parent until the last successful member in every enclosing group closes.
-- If several barrier members have already closed unsuccessfully by the time the parent replays, the parent-visible failure is selected by earliest recorded close time and then by the lower barrier leaf index for exact timestamp ties.
-- Once that selected child close has already been thrown into the parent step, later sibling closures stay sibling history only; they do not replace the chosen throwable or reopen the parent run.
+- Import the helper with `use function Workflow\V2\child;` and call `child(ChildWorkflow::class, ...)`. The call suspends the parent, creates a durable child run, and returns the child's result when the child closes.
+- A failed child throws an exception in the parent; a successful child returns its output. Cancellation and termination surface as distinct exception types.
+- `$this->child()` returns the most recent child handle; `$this->children()` returns every child handle in workflow-step order. Handles expose `id()`, `runId()`, `callId()`, and signal helpers such as `signal()` and `signalWithArguments()`.
+- If a child uses `continueAsNew()`, the parent transparently follows the newest run — `runId()` moves forward while `id()` stays stable.
+- `all()` can combine `fn () => child(...)` and `fn () => activity(...)` closures into one barrier; the parent wakes on the first child failure but waits for every successful branch to close before resuming.
 
 ## Parallel Child Barrier
 
