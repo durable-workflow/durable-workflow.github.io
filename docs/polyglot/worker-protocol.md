@@ -196,7 +196,7 @@ The server stores the blob verbatim and tags the run with the `avro` codec.
 
 The codec is stored on the `WorkflowRun` and **propagates for the life of the run**: activity arguments, results, signal/update arguments, and child-workflow inputs are all Avro-encoded.
 
-Embedded/package starts (workflows kicked off from PHP via `WorkflowStub::make(...)->start(...)` rather than the HTTP API) use the `avro` codec via the configured `workflows.serializer` setting.
+Embedded/package starts (workflows kicked off from PHP via `WorkflowStub::make(...)->start(...)` rather than the HTTP API) also resolve the new-run default through final v2's Avro-only codec contract.
 
 ## Resolving the Bridges
 

@@ -71,7 +71,7 @@ Keep custom subclasses schema-compatible with the built-in models. If a subclass
 
 ## Payload Codec
 
-The `serializer` config key controls the payload codec used for new workflows. v2 defaults to `avro`:
+v2 uses `avro` for new workflow payloads:
 
 ```php
 'serializer' => 'avro',
@@ -80,9 +80,8 @@ The `serializer` config key controls the payload codec used for new workflows. v
 `avro` is the only language-neutral codec for new v2 workflows — a Python, Go, or TypeScript worker can decode it without a shared runtime or app key.
 
 - **`avro`** (default, required for new v2 workflows) — Apache Avro binary encoding. Compact on the wire and in storage, faster to encode/decode for large payloads, and the only supported codec for new v2 workflows.
-- **`json`** (decode-only, v1 migration) — Raw UTF-8 JSON. Retained so the runtime can read existing data written under the `json` codec during v1-to-v2 migration. Not available for new v2 workflows.
 
-If you leave `serializer` unset, the default is `avro`.
+If a published v1 config still sets `serializer`, final v2 keeps reading the value for `workflow:v2:doctor` diagnostics, but new v2 payloads still resolve to Avro.
 
 ### Legacy codecs (v1 migration only)
 
@@ -91,7 +90,7 @@ Two PHP-only codecs remain available for reading v1 history during migration:
 - `workflow-serializer-y` — PHP `SerializableClosure` with byte-escape encoding (the v1 default).
 - `workflow-serializer-base64` — PHP `SerializableClosure` with base64 encoding.
 
-Setting `serializer` to a legacy codec will be flagged by `php artisan workflow:v2:doctor`. New v2 workflows written with a legacy codec cannot be decoded by non-PHP workers. Only pin a legacy codec if you are still finishing v1 runs or have a specific reason to share PHP-native values between a server and PHP-only workers.
+Setting `serializer` to a legacy codec will be flagged by `php artisan workflow:v2:doctor`. New v2 workflows still resolve to Avro; keep a legacy codec setting only while you are finishing or importing v1 runs that need PHP-native payload decoding.
 
 Legacy fully-qualified class names (e.g. `Workflow\Serializers\Y::class`) are accepted for backwards compatibility and resolve to their canonical codec names.
 

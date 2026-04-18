@@ -233,7 +233,7 @@ and worker-protocol manifests:
     "queries": true,
     "updates": true,
     "schedules": true,
-    "payload_codecs": ["avro", "json"],
+    "payload_codecs": ["avro"],
     "response_compression": ["gzip", "deflate"]
   },
   "control_plane": {
@@ -277,7 +277,7 @@ Key field notes for client code:
 
 - The app version is `version`, not `server_version`.
 - Workflow-task command capabilities live under `worker_protocol.server_capabilities.supported_workflow_task_commands`, not at the top of `worker_protocol`. The same nested object is echoed on every worker-plane response via the `server_capabilities` field.
-- Universal payload codecs (e.g. `avro`, `json`) live under `capabilities.payload_codecs`. When the server advertises engine-specific codecs that only a PHP worker can honor, those appear under `capabilities.payload_codecs_engine_specific.<engine>` — language-neutral SDKs should ignore that object unless they opt into that engine.
+- Universal payload codecs live under `capabilities.payload_codecs`; final v2 advertises `avro` there. When the server advertises engine-specific codecs that only a PHP worker can honor, those appear under `capabilities.payload_codecs_engine_specific.<engine>` — language-neutral SDKs should ignore that object unless they opt into that engine.
 
 ## Connecting Workers
 

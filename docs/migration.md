@@ -104,9 +104,9 @@ v2 configuration is backward compatible. If you published `config/workflow.php` 
 
 These have sensible defaults. Only configure them if you need non-default behavior. See [Configuration](/docs/2.0/configuration/options/) for details.
 
-**Payload codec default changed to `avro`.** v1 defaulted to the PHP-only `Workflow\Serializers\Y::class`; v2 defaults to the language-neutral `avro` codec so Python, Go, and TypeScript workers can decode payloads without a shared PHP runtime. `avro` is the only supported codec for new v2 workflows. The `json` codec is retained for reading existing data written during v1-to-v2 migration but is not available for new v2 workflows. New v2 workflows you start will be tagged with `payload_codec = "avro"`.
+**Payload codec default changed to `avro`.** v1 defaulted to the PHP-only `Workflow\Serializers\Y::class`; v2 defaults to the language-neutral `avro` codec so Python, Go, and TypeScript workers can decode payloads without a shared PHP runtime. `avro` is the only supported codec for new v2 workflows. New v2 workflows you start will be tagged with `payload_codec = "avro"`.
 
-If you have a published `config/workflows.php` from v1 with `'serializer' => Workflow\Serializers\Y::class`, your existing setting is honored and keeps working for both v1 replay and new v2 workflows. But new v2 workflows written under that legacy codec **cannot be decoded by non-PHP workers**. Run `php artisan workflow:v2:doctor` after upgrading — it will flag a legacy codec setting with a polyglot-compatibility warning.
+If you have a published `config/workflows.php` from v1 with `'serializer' => Workflow\Serializers\Y::class`, v2 still reads that value so migration diagnostics can flag it, but new v2 workflow payloads resolve to Avro. Run `php artisan workflow:v2:doctor` after upgrading — it will flag a legacy codec setting as a v1 drain/import concern.
 
 To accept the v2 default explicitly, leave `serializer` unset, or pin it:
 
@@ -115,9 +115,9 @@ To accept the v2 default explicitly, leave `serializer` unset, or pin it:
 'serializer' => 'avro',
 ```
 
-Keep a legacy codec (`'workflow-serializer-y'` or `'workflow-serializer-base64'`) only if you need to finish draining v1 runs that share PHP-native values between a server and PHP-only workers. Legacy class names (`Workflow\Serializers\Y::class`, etc.) are still accepted as aliases for decoding v1 runs. The `json` codec is retained for reading existing v1 migration data but is not available for new v2 workflows.
+Keep a legacy codec (`'workflow-serializer-y'` or `'workflow-serializer-base64'`) only if you need to finish draining v1 runs that share PHP-native values between a server and PHP-only workers. Legacy class names (`Workflow\Serializers\Y::class`, etc.) are still accepted as aliases for decoding v1 runs.
 
-**Custom serializer classes from v1 are unsupported in v2.** v1 accepted any serializer FQCN that exposed the serializer facade methods. v2's codec registry only resolves the built-in codecs (`avro`, `json`, `workflow-serializer-y`, `workflow-serializer-base64`) and their legacy class-name aliases. A `workflows.serializer` setting pointing at your own class (e.g. `'serializer' => App\Custom\V1Serializer::class`) will be flagged by `workflow:v2:doctor` as `codec_unknown` at the `error` severity, and default-codec resolution will silently fall back to `avro` — new runs succeed, but the configured value is ignored.
+**Custom serializer classes from v1 are unsupported in v2.** v1 accepted any serializer FQCN that exposed the serializer facade methods. v2's codec registry only resolves `avro` for new v2 payloads plus the legacy PHP codecs (`workflow-serializer-y`, `workflow-serializer-base64`) and their class-name aliases for v1 drain/import reads. A `workflows.serializer` setting pointing at your own class (e.g. `'serializer' => App\Custom\V1Serializer::class`) will be flagged by `workflow:v2:doctor` as `codec_unknown` at the `error` severity, and default-codec resolution will silently fall back to `avro` — new runs succeed, but the configured value is ignored.
 
 If you had a custom v1 serializer, pick one of:
 
