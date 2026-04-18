@@ -12,7 +12,7 @@ You may use the `make:workflow` artisan command to create a new workflow:
 php artisan make:workflow MyWorkflow
 ```
 
-The workflow extends `Workflow\V2\Workflow` and uses straight-line helper calls inside an ordinary `handle()` method:
+It is defined by extending the `Workflow` class and implementing the `handle()` method.
 
 ```php
 use function Workflow\V2\activity;
