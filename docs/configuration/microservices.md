@@ -81,7 +81,7 @@ Register type keys so the engine can route tasks by name:
 ],
 ```
 
-The workflow references the activity by its type key:
+The workflow schedules the activity by type key:
 
 ```php
 // App A — app/Workflows/OrderWorkflow.php
@@ -96,7 +96,7 @@ class OrderWorkflow extends Workflow
 
     public function handle(int $orderId): array
     {
-        $charge = activity(ChargePaymentActivity::class, $orderId);
+        $charge = activity("charge-payment", $orderId);
         return ['order' => $orderId, 'charge' => $charge];
     }
 }
