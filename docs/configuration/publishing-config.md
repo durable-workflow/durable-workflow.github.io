@@ -77,9 +77,7 @@ v2 uses `avro` for new workflow payloads:
 'serializer' => 'avro',
 ```
 
-`avro` is the only language-neutral codec for new v2 workflows — a Python, Go, or TypeScript worker can decode it without a shared runtime or app key.
-
-- **`avro`** (default, required for new v2 workflows) — Apache Avro binary encoding. Compact on the wire and in storage, faster to encode/decode for large payloads, and the only supported codec for new v2 workflows.
+- **`avro`** (default, required for new v2 workflows) — Apache Avro binary encoding. Compact on the wire and in storage, and faster to encode/decode for large payloads than the legacy PHP serializer.
 
 If a published v1 config still sets `serializer`, final v2 keeps reading the value for `workflow:v2:doctor` diagnostics, but new v2 payloads still resolve to Avro.
 
