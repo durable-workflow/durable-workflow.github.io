@@ -19,7 +19,7 @@ The SDK targets the same durable model as the PHP package — instance IDs, run 
 pip install durable-workflow
 ```
 
-The SDK has a single runtime dependency: [httpx](https://www.python-httpx.org/).
+The SDK depends on [httpx](https://www.python-httpx.org/) for HTTP and Apache Avro for the default language-neutral payload codec. Prometheus metrics support is optional.
 
 ## Quickstart
 
@@ -108,6 +108,7 @@ client = Client(
     token="your-api-token",   # optional, depends on server auth config
     namespace="default",       # namespace for all operations
     timeout=60.0,              # HTTP request timeout in seconds
+    metrics=None,              # optional metrics recorder
 )
 ```
 
@@ -378,6 +379,7 @@ async with Client("http://localhost:8080", token="secret") as client:
 | `max_concurrent_workflow_tasks` | `10` | Max parallel workflow tasks |
 | `max_concurrent_activity_tasks` | `10` | Max parallel activity tasks |
 | `shutdown_timeout` | `30.0` | Seconds to drain in-flight tasks on stop |
+| `metrics` | client's recorder | Optional metrics recorder for poll and task counters/histograms |
 
 ## Logging
 
@@ -448,6 +450,50 @@ handler.setFormatter(JSONFormatter())
 logging.getLogger("durable_workflow").addHandler(handler)
 logging.getLogger("durable_workflow").setLevel(logging.INFO)
 ```
+
+## Metrics
+
+`Client(metrics=...)` and `Worker(metrics=...)` accept any recorder with two methods:
+
+```python
+def increment(name: str, value: float = 1.0, tags: dict[str, str] | None = None) -> None: ...
+def record(name: str, value: float, tags: dict[str, str] | None = None) -> None: ...
+```
+
+The default recorder is no-op, so metrics collection has no setup cost. Use `InMemoryMetrics` for tests or custom exporter loops:
+
+```python
+from durable_workflow import Client, InMemoryMetrics, Worker
+
+metrics = InMemoryMetrics()
+
+async with Client("http://localhost:8080", token="secret", metrics=metrics) as client:
+    worker = Worker(client, task_queue="default", workflows=[GreeterWorkflow], activities=[greet])
+```
+
+For Prometheus, install the optional extra and pass `PrometheusMetrics`:
+
+```bash
+pip install 'durable-workflow[prometheus]'
+```
+
+```python
+from durable_workflow import Client, PrometheusMetrics
+
+metrics = PrometheusMetrics()
+client = Client("http://localhost:8080", token="secret", metrics=metrics)
+```
+
+The SDK records:
+
+| Metric | Type | Tags |
+|--------|------|------|
+| `durable_workflow_client_requests` | Counter | `method`, `route`, `plane`, `status_code`, `outcome` |
+| `durable_workflow_client_request_duration_seconds` | Histogram | `method`, `route`, `plane`, `status_code`, `outcome` |
+| `durable_workflow_worker_polls` | Counter | `task_kind`, `task_queue`, `outcome` |
+| `durable_workflow_worker_poll_duration_seconds` | Histogram | `task_kind`, `task_queue`, `outcome` |
+| `durable_workflow_worker_tasks` | Counter | `task_kind`, `task_queue`, `outcome` |
+| `durable_workflow_worker_task_duration_seconds` | Histogram | `task_kind`, `task_queue`, `outcome` |
 
 ## Schedules
 
