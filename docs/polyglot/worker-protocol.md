@@ -173,7 +173,9 @@ leased, workflow-task `history`, `heartbeat`, `complete`, and `fail` calls keep
 the worker-protocol envelope but reject with `reason: "run_closed"`. The
 response also includes `can_continue: false`, `cancel_requested: true`, and a
 concrete `stop_reason` such as `run_cancelled` or `run_terminated`, so workers
-can distinguish cancellation observation from a generic lease error.
+can distinguish cancellation observation from a generic lease error. The same
+response includes `run_closed_reason` and `run_closed_at` from the durable run
+record so workers can log the exact closure state that stopped the leased task.
 
 Workflow-task poll responses include stable resume context copied from the
 durable task payload:
@@ -305,7 +307,11 @@ The `ActivityTaskBridge` contract defines how an external worker interacts with 
 | `status` | Check liveness and cancellation state without renewing the lease |
 | `heartbeat` | Extend the lease and report optional progress |
 
-Activity heartbeat responses include `can_continue` and `cancel_requested` fields, allowing long-running activities to respond to cancellation requests.
+Activity heartbeat responses include `can_continue` and `cancel_requested`
+fields, allowing long-running activities to respond to cancellation requests.
+When a run-level cancel or terminate command stops a leased activity, heartbeat,
+complete, and fail responses also include `run_closed_reason` and
+`run_closed_at`.
 
 ## Payload Codecs
 
