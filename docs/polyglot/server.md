@@ -465,11 +465,20 @@ Key endpoints:
 - `POST /api/workflows/{id}/update/{name}` — Execute an update
 - `POST /api/workflows/{id}/cancel` — Request cancellation
 - `POST /api/workflows/{id}/terminate` — Terminate immediately
+- `GET /api/workflows/{id}/runs/{runId}/history` — List run history events
+- `GET /api/workflows/{id}/runs/{runId}/history/export` — Export a replay bundle
 - `GET /api/namespaces`, `POST /api/namespaces`, `GET|PUT /api/namespaces/{namespace}` — Namespace management
 - `GET /api/workers`, `GET|DELETE /api/workers/{id}` — Worker fleet management
 - `GET|POST /api/schedules`, `GET|PUT|DELETE /api/schedules/{id}`, `POST /api/schedules/{id}/{pause|resume|trigger|backfill}` — Schedule management
 - `GET|POST|DELETE /api/search-attributes` — Search attribute management
 - `POST /api/system/repair/pass`, `POST /api/system/activity-timeouts/pass`, `POST /api/system/retention/pass` — Operator passes
+
+Workflow control-plane responses, including run-history listing responses,
+include the nested `control_plane` contract metadata that identifies the
+operation and response contract version. History export is intentionally not
+wrapped in that envelope; it returns the replay bundle unchanged so the bundle
+integrity checksum and optional signature cover the exact artifact received by
+the client.
 
 ### Worker Protocol
 
