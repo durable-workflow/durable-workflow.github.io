@@ -26,7 +26,7 @@ Prerequisites
 
 To follow this tutorial, you should:
 
-1.  Set up a local development environment for Workflow applications in PHP or use the sample app in a GitHub [codespace](https://github.com/durable-workflow/sample-app).
+1.  Set up a local development environment for Workflow applications in PHP or use the sample app in a GitHub [codespace](https://github.com/durable-workflow/sample-app/tree/Laravel-12).
 2.  Familiarize yourself with the basics of starting a Workflow project by reviewing the [documentation](https://durable-workflow.com/docs/installation).
 3.  Review the [Saga architecture pattern](https://microservices.io/patterns/data/saga.html).
 

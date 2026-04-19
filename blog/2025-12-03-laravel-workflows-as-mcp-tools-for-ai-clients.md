@@ -436,12 +436,12 @@ This creates a seamless experience where AI assistants can orchestrate complex, 
 
 ### Try It Now in Your Browser
 
-This MCP integration is included and pre-configured in the Durable Workflow [Sample App](https://github.com/durable-workflow/sample-app).
+This MCP integration is included and pre-configured in the Durable Workflow [Sample App](https://github.com/durable-workflow/sample-app/tree/Laravel-12).
 
 To try it:
 
-1. Open the sample-app repo on GitHub
-2. Click **Code** → **Codespaces** → **Create codespace on main**
+1. Open the sample-app repo's `Laravel-12` branch on GitHub
+2. Click **Code** → **Codespaces** → **Create codespace on Laravel-12**
 3. Wait for the environment to build
 4. Setup the app and start the queue worker:
    ```bash

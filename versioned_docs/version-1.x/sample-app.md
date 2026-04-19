@@ -4,13 +4,13 @@ sidebar_position: 7
 
 # Sample App
 
-https://github.com/durable-workflow/sample-app
+https://github.com/durable-workflow/sample-app/tree/Laravel-12
 
-This is a sample Laravel 12 application with example workflows that you can run inside a GitHub codespace.
+This is a sample Laravel 12 application with example workflows that you can run inside a GitHub codespace. The `Laravel-12` branch preserves the Laravel 12 + Durable Workflow 1.x snapshot that these v1 docs describe; the repo's `main` branch now tracks Laravel 13 + Durable Workflow 2.x (see the 2.x docs).
 
 **Step 1**
 
-Create a codespace from the main branch of this repo.
+Create a codespace from the `Laravel-12` branch of this repo.
 
 ![image](https://user-images.githubusercontent.com/1130888/233664377-f300ad50-5436-4bb8-b172-c52e12047264.png)
 

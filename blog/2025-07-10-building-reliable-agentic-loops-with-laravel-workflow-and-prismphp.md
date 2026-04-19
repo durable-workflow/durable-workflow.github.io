@@ -19,7 +19,7 @@ In this post, we’ll show how to use Workflow + Prism to create an agentic loop
 - Validates the result against custom rules
 - Retries automatically until the result passes
 
-You can try this exact workflow right now in your browser with no setup or coding required. Just click the button in the Workflow [Sample App](https://github.com/durable-workflow/sample-app) and launch a GitHub Codespace to run it.
+You can try this exact workflow right now in your browser with no setup or coding required. Just click the button in the Workflow [Sample App](https://github.com/durable-workflow/sample-app/tree/Laravel-12) and launch a GitHub Codespace to run it.
 
 ### What We’re Building
 
@@ -166,12 +166,12 @@ It’s perfect for AI applications where accuracy, safety, and traceability are 
 
 ### Try It Now in Your Browser
 
-We’ve bundled this workflow into the official Workflow [Sample App](https://github.com/durable-workflow/sample-app).
+We’ve bundled this workflow into the official Workflow [Sample App](https://github.com/durable-workflow/sample-app/tree/Laravel-12).
 
 To try it:
 
-1. Open the sample-app repo on GitHub
-2. Click **Code** → **Codespaces** → **Create codespace on main**
+1. Open the sample-app repo's `Laravel-12` branch on GitHub
+2. Click **Code** → **Codespaces** → **Create codespace on Laravel-12**
 3. Wait for the environment to build
 4. Set your OPENAI_API_KEY in the .env
 5. Setup the app and start the queue worker:

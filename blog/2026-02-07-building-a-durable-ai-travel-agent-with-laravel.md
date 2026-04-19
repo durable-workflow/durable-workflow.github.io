@@ -224,7 +224,7 @@ It resets the pending arrays, passes the conversation history to the agent, prom
 
 ## The Workflow: Where It All Comes Together
 
-Here's the complete workflow. (You can also view it on [GitHub](https://github.com/durable-workflow/sample-app/blob/main/app/Workflows/Ai/AiWorkflow.php).) Read it top to bottom. It's the entire orchestration layer:
+Here's the complete workflow. (You can also view it on [GitHub](https://github.com/durable-workflow/sample-app/blob/Laravel-12/app/Workflows/Ai/AiWorkflow.php).) Read it top to bottom. It's the entire orchestration layer:
 
 ```php
 class AiWorkflow extends Workflow
@@ -564,12 +564,12 @@ No state machine tables. No cleanup crons. No orphaned bookings. No scattered ev
 
 ### Try It Now in Your Browser
 
-We’ve bundled this workflow into the official Workflow [Sample App](https://github.com/durable-workflow/sample-app).
+We’ve bundled this workflow into the official Workflow [Sample App](https://github.com/durable-workflow/sample-app/tree/Laravel-12).
 
 To try it:
 
-1. Open the sample-app repo on GitHub
-2. Click **Code** → **Codespaces** → **Create codespace on main**
+1. Open the sample-app repo's `Laravel-12` branch on GitHub
+2. Click **Code** → **Codespaces** → **Create codespace on Laravel-12**
 3. Wait for the environment to build
 4. Set your OPENAI_API_KEY in the .env
 5. Setup the app and start the queue worker:
