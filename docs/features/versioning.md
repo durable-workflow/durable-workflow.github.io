@@ -99,7 +99,7 @@ final class MyWorkflow extends Workflow
 }
 ```
 
-When you roll out a deployment that introduces a new `getVersion()` branch point, keep rotating `WORKFLOW_V2_CURRENT_COMPATIBILITY` for that build wave. The runtime uses the run's start-time `workflow_definition_fingerprint` as its primary authority when deciding whether a missing version marker belongs to a fresh execution or to an older run that should stay on `DEFAULT_VERSION`. The compatibility marker still matters for mixed-fleet worker routing and fires before the fingerprint check. Runs that predate the fingerprint snapshot (no recorded fingerprint) conservatively stay on `DEFAULT_VERSION` since the runtime cannot verify the definition has not changed.
+When you roll out a deployment that introduces a new `getVersion()` branch point, keep rotating `DW_V2_CURRENT_COMPATIBILITY` for that build wave. The runtime uses the run's start-time `workflow_definition_fingerprint` as its primary authority when deciding whether a missing version marker belongs to a fresh execution or to an older run that should stay on `DEFAULT_VERSION`. The compatibility marker still matters for mixed-fleet worker routing and fires before the fingerprint check. Runs that predate the fingerprint snapshot (no recorded fingerprint) conservatively stay on `DEFAULT_VERSION` since the runtime cannot verify the definition has not changed.
 
 ## Adding More Versions
 

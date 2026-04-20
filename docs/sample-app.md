@@ -86,7 +86,7 @@ Waterline's detail screen includes an "Export History" action for the selected r
 php artisan workflow:v2:history-export {workflow-instance-id} --run-id={workflow-run-id} --output=storage/app/workflow-history/example.json --pretty
 ```
 
-The export includes a SHA-256 integrity checksum. Set `WORKFLOW_V2_HISTORY_EXPORT_SIGNING_KEY` and `WORKFLOW_V2_HISTORY_EXPORT_SIGNING_KEY_ID` in the app environment when another system needs to verify the exported bundle with an HMAC signature.
+The export includes a SHA-256 integrity checksum. Set `DW_V2_HISTORY_EXPORT_SIGNING_KEY` and `DW_V2_HISTORY_EXPORT_SIGNING_KEY_ID` in the app environment when another system needs to verify the exported bundle with an HMAC signature.
 
 The exported `selected_run` block includes `waits_projection_source`, `timeline_projection_source`, `timers_projection_source`, and `lineage_projection_source`. The exported `links` block also includes `projection_source`, and the `links.parents` / `links.children` sections come from the selected run's typed lineage history first, so child-workflow and continue-as-new relationships remain visible in the bundle even if mutable link rows have drifted during a local experiment. When a lineage row is surviving only through older mutable compatibility data, the bundle now marks that entry with `history_authority = mutable_open_fallback` and `diagnostic_only = true` instead of silently rehydrating extra link metadata during export.
 

@@ -99,25 +99,25 @@ The runtime can stamp each new run with a compatibility marker and let workers a
 Set the marker for new runs on the current build:
 
 ```env
-WORKFLOW_V2_CURRENT_COMPATIBILITY=build-2026-04
+DW_V2_CURRENT_COMPATIBILITY=build-2026-04
 ```
 
 Optionally tell a worker to accept more than one marker during a rollout:
 
 ```env
-WORKFLOW_V2_SUPPORTED_COMPATIBILITIES=build-2026-04,build-2026-03
+DW_V2_SUPPORTED_COMPATIBILITIES=build-2026-04,build-2026-03
 ```
 
 Tune how long one worker heartbeat snapshot stays visible in the database-backed fleet view:
 
 ```env
-WORKFLOW_V2_COMPATIBILITY_HEARTBEAT_TTL=30
+DW_V2_COMPATIBILITY_HEARTBEAT_TTL=30
 ```
 
 Optionally scope that fleet view to one app or deployment namespace when several apps share the same workflow database:
 
 ```env
-WORKFLOW_V2_COMPATIBILITY_NAMESPACE=sample-app
+DW_V2_COMPATIBILITY_NAMESPACE=sample-app
 ```
 
 The published `workflows.php` config maps those values here:
@@ -125,19 +125,19 @@ The published `workflows.php` config maps those values here:
 ```php
 'v2' => [
     'compatibility' => [
-        'current' => env('WORKFLOW_V2_CURRENT_COMPATIBILITY'),
-        'supported' => env('WORKFLOW_V2_SUPPORTED_COMPATIBILITIES'),
-        'namespace' => env('WORKFLOW_V2_COMPATIBILITY_NAMESPACE'),
-        'heartbeat_ttl_seconds' => (int) env('WORKFLOW_V2_COMPATIBILITY_HEARTBEAT_TTL', 30),
+        'current' => env('DW_V2_CURRENT_COMPATIBILITY'),
+        'supported' => env('DW_V2_SUPPORTED_COMPATIBILITIES'),
+        'namespace' => env('DW_V2_COMPATIBILITY_NAMESPACE'),
+        'heartbeat_ttl_seconds' => (int) env('DW_V2_COMPATIBILITY_HEARTBEAT_TTL', 30),
     ],
 ],
 ```
 
 If `supported` is omitted, workers default to the single `current` marker. Older task and run-summary rows that were created before task-level compatibility markers existed are backfilled from their run marker during migration and again on the runtime claim or recovery path if needed. Tasks and runs that truly have no marker anywhere still remain claimable by any worker.
 
-The `getVersion()` fallback prefers the run's start-time `workflow_definition_fingerprint` when a replay reaches a newly introduced branch point that does not have a typed `VersionMarkerRecorded` event yet. That lets a same-compatibility run keep the `DEFAULT_VERSION` branch when it clearly started on an older workflow definition. Older runs whose `WorkflowStarted` history predates the fingerprint snapshot still fall back to the start-time compatibility marker and occupied-sequence checks, so you should keep rotating `WORKFLOW_V2_CURRENT_COMPATIBILITY` for deployment waves that introduce new versioned workflow code and temporarily list both the old and new markers in `WORKFLOW_V2_SUPPORTED_COMPATIBILITIES` while the mixed fleet is draining.
+The `getVersion()` fallback prefers the run's start-time `workflow_definition_fingerprint` when a replay reaches a newly introduced branch point that does not have a typed `VersionMarkerRecorded` event yet. That lets a same-compatibility run keep the `DEFAULT_VERSION` branch when it clearly started on an older workflow definition. Older runs whose `WorkflowStarted` history predates the fingerprint snapshot still fall back to the start-time compatibility marker and occupied-sequence checks, so you should keep rotating `DW_V2_CURRENT_COMPATIBILITY` for deployment waves that introduce new versioned workflow code and temporarily list both the old and new markers in `DW_V2_SUPPORTED_COMPATIBILITIES` while the mixed fleet is draining.
 
-Each queue worker also records a database-backed compatibility heartbeat snapshot during `Looping` and task handling. Waterline and the detail helpers expose both the local-build view (`compatibility_supported`, `compatibility_reason`) and the fleet view (`compatibility_namespace`, `compatibility_supported_in_fleet`, `compatibility_fleet_reason`, `compatibility_fleet`). When `WORKFLOW_V2_COMPATIBILITY_NAMESPACE` is set, database-backed heartbeat rows must match that namespace, and each database snapshot reports its own `namespace` alongside `worker_id`, queue scope, supported markers, and `source = database`. During a rolling upgrade, that fleet view also reads the older cache heartbeat format from workers that have not restarted onto the new snapshot table yet; those legacy cache rows remain visible as rollout fallback even under a configured namespace, but they surface with `namespace = null` until the older workers restart onto the namespaced snapshot path. In other words, strict namespace isolation only becomes complete after the mixed fleet has restarted onto the database-backed heartbeat path. Transport-level recovery such as re-dispatching an overdue task or recreating a missing task no longer depends on the scanning worker being able to execute that task; only the eventual claim step stays compatibility-fenced.
+Each queue worker also records a database-backed compatibility heartbeat snapshot during `Looping` and task handling. Waterline and the detail helpers expose both the local-build view (`compatibility_supported`, `compatibility_reason`) and the fleet view (`compatibility_namespace`, `compatibility_supported_in_fleet`, `compatibility_fleet_reason`, `compatibility_fleet`). When `DW_V2_COMPATIBILITY_NAMESPACE` is set, database-backed heartbeat rows must match that namespace, and each database snapshot reports its own `namespace` alongside `worker_id`, queue scope, supported markers, and `source = database`. During a rolling upgrade, that fleet view also reads the older cache heartbeat format from workers that have not restarted onto the new snapshot table yet; those legacy cache rows remain visible as rollout fallback even under a configured namespace, but they surface with `namespace = null` until the older workers restart onto the namespaced snapshot path. In other words, strict namespace isolation only becomes complete after the mixed fleet has restarted onto the database-backed heartbeat path. Transport-level recovery such as re-dispatching an overdue task or recreating a missing task no longer depends on the scanning worker being able to execute that task; only the eventual claim step stays compatibility-fenced.
 
 When an open task already exists but neither the current build nor any active worker heartbeat snapshot advertises its marker, the run stays visible as waiting for a compatible worker instead of surfacing a false `repair_needed` state on that build.
 
@@ -146,8 +146,8 @@ When an open task already exists but neither the current build nor any active wo
 Waterline uses the run-summary projection to report how large a selected run's typed history has become. These thresholds control when the projection flips `continue_as_new_recommended`:
 
 ```env
-WORKFLOW_V2_CONTINUE_AS_NEW_EVENT_THRESHOLD=10000
-WORKFLOW_V2_CONTINUE_AS_NEW_SIZE_BYTES_THRESHOLD=5242880
+DW_V2_CONTINUE_AS_NEW_EVENT_THRESHOLD=10000
+DW_V2_CONTINUE_AS_NEW_SIZE_BYTES_THRESHOLD=5242880
 ```
 
 The published `workflows.php` config maps those values here:
@@ -155,8 +155,8 @@ The published `workflows.php` config maps those values here:
 ```php
 'v2' => [
     'history_budget' => [
-        'continue_as_new_event_threshold' => (int) env('WORKFLOW_V2_CONTINUE_AS_NEW_EVENT_THRESHOLD', 10000),
-        'continue_as_new_size_bytes_threshold' => (int) env('WORKFLOW_V2_CONTINUE_AS_NEW_SIZE_BYTES_THRESHOLD', 5242880),
+        'continue_as_new_event_threshold' => (int) env('DW_V2_CONTINUE_AS_NEW_EVENT_THRESHOLD', 10000),
+        'continue_as_new_size_bytes_threshold' => (int) env('DW_V2_CONTINUE_AS_NEW_SIZE_BYTES_THRESHOLD', 5242880),
     ],
 ],
 ```
@@ -168,8 +168,8 @@ Set either threshold to `0` to disable that side of the recommendation. The flag
 Completion-waiting update APIs such as `attemptUpdate()`, the webhook update routes, and Waterline's update controls wait only up to a bounded budget before they fall back to the still-accepted update lifecycle. Configure that default budget here:
 
 ```env
-WORKFLOW_V2_UPDATE_WAIT_COMPLETION_TIMEOUT_SECONDS=10
-WORKFLOW_V2_UPDATE_WAIT_POLL_INTERVAL_MS=50
+DW_V2_UPDATE_WAIT_COMPLETION_TIMEOUT_SECONDS=10
+DW_V2_UPDATE_WAIT_POLL_INTERVAL_MS=50
 ```
 
 The published `workflows.php` config maps those values here:
@@ -177,8 +177,8 @@ The published `workflows.php` config maps those values here:
 ```php
 'v2' => [
     'update_wait' => [
-        'completion_timeout_seconds' => (int) env('WORKFLOW_V2_UPDATE_WAIT_COMPLETION_TIMEOUT_SECONDS', 10),
-        'poll_interval_milliseconds' => (int) env('WORKFLOW_V2_UPDATE_WAIT_POLL_INTERVAL_MS', 50),
+        'completion_timeout_seconds' => (int) env('DW_V2_UPDATE_WAIT_COMPLETION_TIMEOUT_SECONDS', 10),
+        'poll_interval_milliseconds' => (int) env('DW_V2_UPDATE_WAIT_POLL_INTERVAL_MS', 50),
     ],
 ],
 ```
@@ -214,8 +214,8 @@ Then register it in `config/workflows.php`:
 'v2' => [
     'history_export' => [
         'redactor' => App\Support\WorkflowHistoryExportRedactor::class,
-        'signing_key' => env('WORKFLOW_V2_HISTORY_EXPORT_SIGNING_KEY'),
-        'signing_key_id' => env('WORKFLOW_V2_HISTORY_EXPORT_SIGNING_KEY_ID'),
+        'signing_key' => env('DW_V2_HISTORY_EXPORT_SIGNING_KEY'),
+        'signing_key_id' => env('DW_V2_HISTORY_EXPORT_SIGNING_KEY_ID'),
     ],
 ],
 ```

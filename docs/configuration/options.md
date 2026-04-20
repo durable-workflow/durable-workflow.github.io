@@ -100,14 +100,14 @@ Namespace names must contain only lowercase alphanumeric characters, dots, under
 Set the default namespace via environment variable:
 
 ```env
-WORKFLOW_V2_NAMESPACE=production
+DW_V2_NAMESPACE=production
 ```
 
 Or in `config/workflows.php`:
 
 ```php
 'v2' => [
-    'namespace' => env('WORKFLOW_V2_NAMESPACE'),
+    'namespace' => env('DW_V2_NAMESPACE'),
     // ...
 ],
 ```

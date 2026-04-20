@@ -88,8 +88,8 @@ contracts. This reduces the amount of code that changes during cutover.
 5. Decide whether compatibility markers are needed.
 
    Single-fleet deployments can leave compatibility unset. Mixed fleets should
-   set `WORKFLOW_V2_CURRENT_COMPATIBILITY` and
-   `WORKFLOW_V2_SUPPORTED_COMPATIBILITIES` before cutover so workers do not
+   set `DW_V2_CURRENT_COMPATIBILITY` and
+   `DW_V2_SUPPORTED_COMPATIBILITIES` before cutover so workers do not
    claim runs from incompatible builds.
 
 ## Phase B: Deploy the Server Beside Embedded

@@ -27,9 +27,9 @@ When workflow classes are registered under `workflows.v2.types.workflows`, the p
 // config/workflows.php
 'v2' => [
     'guardrails' => [
-        'boot' => env('WORKFLOW_V2_GUARDRAILS_BOOT', 'warn'),
+        'boot' => env('DW_V2_GUARDRAILS_BOOT', 'warn'),
     ],
 ],
 ```
 
-Set `WORKFLOW_V2_GUARDRAILS_BOOT=throw` in CI to fail builds that introduce new replay-unsafe calls; keep `warn` in production so rollouts are not blocked by a latent finding.
+Set `DW_V2_GUARDRAILS_BOOT=throw` in CI to fail builds that introduce new replay-unsafe calls; keep `warn` in production so rollouts are not blocked by a latent finding.
