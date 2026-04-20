@@ -585,9 +585,9 @@ The SDK maps server error codes to typed Python exceptions:
 | `WorkflowNotFound` | Workflow ID does not exist |
 | `WorkflowAlreadyStarted` | Duplicate workflow ID with conflicting policy |
 | `WorkflowFailed` | Workflow execution failed |
-| `WorkflowCancelled` | Workflow was cancelled |
+| `WorkflowCancelled` | Workflow was cancelled (inherits from `BaseException`, not `Exception`) |
 | `WorkflowTerminated` | Workflow was terminated |
-| `ActivityCancelled` | Activity was cancelled during execution |
+| `ActivityCancelled` | Activity was cancelled during execution (inherits from `BaseException`, not `Exception`) |
 | `ChildWorkflowFailed` | A child workflow failed |
 | `QueryFailed` | Query handler returned an error |
 | `UpdateRejected` | Update was rejected by the workflow |
@@ -613,6 +613,30 @@ except WorkflowAlreadyStarted:
 except WorkflowNotFound:
     print("Workflow type not registered on any worker")
 ```
+
+### Cancellation is intentionally uncatchable by `except Exception`
+
+`WorkflowCancelled` and `ActivityCancelled` inherit from `BaseException`, not `Exception`. A generic `except Exception:` block in an activity body — or in code that awaits `client.get_result()` — will **not** catch them. This is deliberate: cancellation is a control-plane outcome, and silently swallowing it in a catch-all would let an activity report success after its workflow asked it to stop.
+
+If you need to run cleanup on cancellation, catch the class by name and re-raise:
+
+```python
+from durable_workflow import ActivityCancelled, activity
+
+@activity.defn(name="long_task")
+async def long_task(items: list) -> dict:
+    ctx = activity.context()
+    try:
+        for i, item in enumerate(items):
+            await process(item)
+            await ctx.heartbeat({"progress": i + 1})
+        return {"done": True}
+    except ActivityCancelled:
+        await cleanup_partial_state()
+        raise
+```
+
+This mirrors the standard-library precedent set by `asyncio.CancelledError` and `KeyboardInterrupt`.
 
 ## Payload Codecs
 

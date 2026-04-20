@@ -138,6 +138,34 @@ The response includes the command outcome, the public instance id, and the reaso
 }
 ```
 
+## Cancellation is not an error you catch by accident
+
+Cancellation is a control-plane outcome, not a bug. An activity or workflow that is cancelled did not fail — the caller (or an operator, or a parent workflow) asked for it to stop. To keep that signal from being swallowed by a generic catch-all, the SDKs put the cancellation exception classes **outside** the normal error hierarchy:
+
+- **Python SDK** — `WorkflowCancelled` and `ActivityCancelled` inherit from `BaseException`, not `Exception`. A bare `except Exception:` block in an activity or result handler will **not** catch them. Catch them by name when you want to distinguish cancellation from failure:
+
+  ```python
+  from durable_workflow import ActivityCancelled
+
+  @activity.defn(name="long_task")
+  async def long_task(items: list) -> dict:
+      ctx = activity.context()
+      try:
+          for i, item in enumerate(items):
+              await process(item)
+              await ctx.heartbeat({"progress": i + 1})
+          return {"done": True}
+      except ActivityCancelled:
+          await cleanup_partial_state()
+          raise  # re-raise so the worker reports cancelled, not completed
+  ```
+
+- **PHP (workflow package)** — `Workflow\V2\Exceptions\WorkflowCancelledException` extends `\Error`, not `\Exception`. A `catch (\Exception $e)` block will not catch it; use `catch (\Throwable $t)` or catch the class by name.
+
+This intentionally mirrors how `asyncio.CancelledError`, `KeyboardInterrupt`, and `\Error` behave in their respective standard libraries: cancellation propagates unless you handle it on purpose. If you need to run cleanup on cancellation, catch it explicitly and re-raise — don't rely on a catch-all.
+
+The reasoning and the upstream lesson that motivated this shape are tracked in [zorporation/durable-workflow#441](https://github.com/zorporation/durable-workflow/issues/441).
+
 ## Waterline
 
 Waterline exposes cancel and terminate as operator actions on the selected-run detail view. The detail payload includes `can_cancel` and `can_terminate` flags driven from durable state.
