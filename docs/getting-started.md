@@ -33,4 +33,9 @@ You now have a workflow running through Laravel queues and durable workflow
 state. Open `/waterline/dashboard` in the sample app to inspect the run, or
 continue with the [sample app guide](/docs/2.0/sample-app).
 
+The sample app also exposes `/mcp/workflows` for AI clients. Start with
+`list_workflows`, then use `start_workflow`, `get_workflow_result`, and
+`get_workflow_history` to operate on v2 workflow instances through structured
+JSON instead of scraping UI text.
+
 Not using Laravel? See the [standalone server](/docs/2.0/polyglot/server), [CLI](/docs/2.0/polyglot/cli), or [Python SDK](/docs/2.0/polyglot/python).

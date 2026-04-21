@@ -95,7 +95,33 @@ The exported `selected_run` block includes `waits_projection_source`, `timeline_
 Run the workflow and activity tests.
 
 ```bash
-php artisan test
+vendor/bin/phpunit
 ```
 
 That's it! You can now create and test workflows.
+
+## AI Client MCP Server
+
+The sample app also exposes a Laravel MCP server at `/mcp/workflows`. This is the reference AI-client surface for Durable Workflow v2: it gives agents structured workflow discovery, start, status, output, recent typed history, and failure facts without requiring them to scrape Waterline.
+
+The MCP server is registered from `routes/ai.php` by the Laravel MCP package. The exposed workflow keys live in `config/workflow_mcp.php`; each entry can include the workflow class plus discovery metadata such as a description, credential requirements, and expected arguments.
+
+Default tools:
+
+| Tool | Purpose |
+| --- | --- |
+| `list_workflows` | Lists configured workflow keys, credential requirements, v2 status values, and optionally recent runs. |
+| `start_workflow` | Starts a configured v2 workflow and returns `workflow_id`, `run_id`, status, business key, and command outcome. |
+| `get_workflow_result` | Polls the current or selected run and returns status, output, visibility metadata, and latest failure summary. |
+| `get_workflow_history` | Returns a bounded tail of typed v2 history events and latest durable failures for debugging. |
+
+A typical agent loop is:
+
+```json
+{"tool": "list_workflows", "arguments": {"show_recent": true, "limit": 5}}
+{"tool": "start_workflow", "arguments": {"workflow": "simple", "business_key": "demo-001"}}
+{"tool": "get_workflow_result", "arguments": {"workflow_id": "<workflow_id>"}}
+{"tool": "get_workflow_history", "arguments": {"run_id": "<run_id>", "limit": 25}}
+```
+
+Use `simple` or `elapsed` for no-credential smoke tests. The `prism` workflow is intentionally exposed as an AI example, but it requires `OPENAI_API_KEY` before a worker can complete it.
