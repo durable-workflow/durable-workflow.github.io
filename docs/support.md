@@ -55,6 +55,10 @@ Durable Workflow is designed to be useful without a sales call. The public distr
 
 We intentionally optimize the public distribution for local development, single-node production, and small clustered deployments. Kubernetes manifests are provided for teams that already operate Kubernetes. Helm charts and advanced HA/multi-region topologies are support-led because they require environment-specific sizing, database, networking, security, and upgrade decisions.
 
+See the [self-hosting deployment guide](/docs/2.0/deployment) for the
+concrete support matrix, published-image Compose recipes, raw Kubernetes
+manifest boundary, readiness checks, and where support-led work begins.
+
 That boundary keeps the self-serve path simple while leaving room for deeper help when the deployment itself becomes a distributed-systems project.
 
 ## Commercial Support (Optional)

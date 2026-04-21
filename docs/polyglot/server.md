@@ -382,89 +382,25 @@ See the [CLI install page](/docs/2.0/polyglot/cli#install) for a platform-detect
 
 ## Deployment
 
-### Docker
+Use the [self-hosting deployment guide](/docs/2.0/deployment) to choose a
+supported topology before deploying production traffic. It separates local
+development, single-node production, small clustered deployments, raw
+Kubernetes manifests, and support-led topologies.
 
-Build and run a production image:
+For self-hosted server deployments, start from published images rather than
+source-tree builds:
 
-```bash
-docker build -t my-workflow-server .
-docker run -d \
-  -p 8080:8080 \
-  -e DB_CONNECTION=mysql \
-  -e DB_HOST=your-db-host \
-  -e DW_AUTH_TOKEN=your-secret \
-  my-workflow-server
-```
+- Docker Hub: `durableworkflow/server:0.2`
+- GitHub Container Registry: `ghcr.io/durable-workflow/server:0.2`
+- Published-image Compose:
+  [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml)
+- Raw Kubernetes manifests:
+  [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s)
 
-Run migrations before starting the API:
-
-```bash
-docker run --rm \
-  -e DB_CONNECTION=mysql \
-  -e DB_HOST=your-db-host \
-  my-workflow-server \
-  php artisan migrate --force
-```
-
-### Kubernetes
-
-The server is stateless and horizontally scalable. Key considerations:
-
-- **Shared cache** — Use Redis or another networked cache for multi-node deployments. Long-poll wake-ups use cache-backed signals, so a shared cache ensures prompt task delivery.
-- **Shared queue** — Use Redis, SQS, or another networked queue backend. Do not use the `sync` driver.
-- **Database** — MySQL 8.0+, PostgreSQL 13+, or compatible. Run migrations as a Kubernetes Job before starting the API.
-- **Liveness probe** — `GET /api/health`
-- **Readiness probe** — `GET /api/health`
-
-Example deployment manifest:
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: workflow-server
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: workflow-server
-  template:
-    metadata:
-      labels:
-        app: workflow-server
-    spec:
-      containers:
-      - name: server
-        image: my-workflow-server:latest
-        ports:
-        - containerPort: 8080
-        env:
-        - name: DB_CONNECTION
-          value: mysql
-        - name: DB_HOST
-          value: mysql-service
-        - name: CACHE_STORE
-          value: redis
-        - name: REDIS_HOST
-          value: redis-service
-        - name: DW_AUTH_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: workflow-secrets
-              key: auth-token
-        livenessProbe:
-          httpGet:
-            path: /api/health
-            port: 8080
-          initialDelaySeconds: 10
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /api/health
-            port: 8080
-          initialDelaySeconds: 5
-          periodSeconds: 5
-```
+Production deployments should pin a version tag or image digest, use
+role-scoped credentials, run bootstrap/migrations before serving traffic, and
+prove readiness with `/api/ready`, `/api/cluster/info`, and worker
+registration. Do not shift production traffic based on `/api/health` alone.
 
 ## API Reference
 
