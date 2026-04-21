@@ -9,31 +9,24 @@ const ExecutionState = {
 };
 
 export default function SignalSimulator({
-  code = `use function Workflow\\await;
-use Workflow\\SignalMethod;
-use Workflow\\Workflow;
+  code = `use Workflow\\V2\\Attributes\\Signal;
+use Workflow\\V2\\Workflow;
+use function Workflow\\V2\\await;
 
+#[Signal('ready')]
 class MyWorkflow extends Workflow
 {
-    private $ready = false;
-
-    #[SignalMethod]
-    public function setReady($ready)
+    public function handle(): void
     {
-        $this->ready = $ready;
-    }
-
-    public function execute()
-    {
-        yield await(fn () => $this->ready);
+        await('ready');
     }
 }`,
   steps = [
-    { line: 17, duration: 0, label: "yield await(fn () => $this->ready)", type: 'wait' },
-    { line: 12, duration: 300, label: "$this->ready = $ready", type: 'signal' },
-    { line: 17, duration: 500, label: "await() condition satisfied", type: 'run' },
+    { line: 9, duration: 0, label: "await('ready')", type: 'wait' },
+    { line: 9, duration: 300, label: "signal 'ready' accepted", type: 'signal' },
+    { line: 9, duration: 500, label: "await() signal received", type: 'run' },
   ],
-  signalName = "setReady(true)",
+  signalName = "ready",
   title = "Signal Execution Simulator",
 }) {
   const [isExpanded, setIsExpanded] = useState(false);

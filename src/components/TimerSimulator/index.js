@@ -8,21 +8,21 @@ const ExecutionState = {
 };
 
 export default function TimerSimulator({
-  code = `use function Workflow\\timer;
-use Workflow\\Workflow;
+  code = `use function Workflow\\V2\\timer;
+use Workflow\\V2\\Workflow;
 
 class MyWorkflow extends Workflow
 {
-    public function execute()
+    public function handle(): string
     {
-        yield timer('5 seconds');
+        timer('5 seconds');
 
         return 'The workflow waited 5 seconds.';
     }
 }`,
   steps = [
-    { line: 8, duration: 5000, label: "yield timer('5 seconds')", showCountdown: true },
-    { line: 10, duration: 500, label: "return 'The workflow waited 5 seconds.'", showCountdown: false },
+    { line: 7, duration: 5000, label: "timer('5 seconds')", showCountdown: true },
+    { line: 9, duration: 500, label: "return 'The workflow waited 5 seconds.'", showCountdown: false },
   ],
   title = "Timer Execution Simulator",
 }) {

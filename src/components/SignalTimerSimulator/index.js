@@ -9,23 +9,19 @@ const ExecutionState = {
 };
 
 export default function SignalTimerSimulator({
-  code = `use function Workflow\\awaitWithTimeout;
-use Workflow\\SignalMethod;
-use Workflow\\Workflow;
+  code = `use Workflow\\V2\\Attributes\\Signal;
+use Workflow\\V2\\Workflow;
+use function Workflow\\V2\\await;
+use function Workflow\\V2\\minutes;
 
+#[Signal('ready')]
 class MyWorkflow extends Workflow
 {
-    private bool $ready = false;
-
-    #[SignalMethod]
-    public function setReady($ready)
+    public function handle(): bool
     {
-        $this->ready = $ready;
-    }
+        $result = await('ready', timeout: minutes(5));
 
-    public function execute()
-    {
-        $result = yield awaitWithTimeout('5 minutes', fn () => $this->ready);
+        return $result !== null;
     }
 }`,
   timeoutDuration = 300, // 5 minutes in seconds
@@ -59,7 +55,7 @@ class MyWorkflow extends Workflow
   const runSimulation = () => {
     resetSimulation();
     setExecutionState(ExecutionState.WAITING);
-    setCurrentLine(17); // yield awaitWithTimeout line
+    setCurrentLine(10); // await with timeout line
     setTimeRemaining(timeoutDuration);
     
     // Start countdown timer

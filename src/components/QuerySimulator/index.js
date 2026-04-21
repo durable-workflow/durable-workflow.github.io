@@ -9,11 +9,12 @@ const ExecutionState = {
 };
 
 export default function QuerySimulator({
-  code = `use function Workflow\\await;
-use Workflow\\QueryMethod;
-use Workflow\\SignalMethod;
-use Workflow\\Workflow;
+  code = `use Workflow\\QueryMethod;
+use Workflow\\V2\\Attributes\\Signal;
+use Workflow\\V2\\Workflow;
+use function Workflow\\V2\\await;
 
+#[Signal('ready')]
 class MyWorkflow extends Workflow
 {
     private bool $ready = false;
@@ -24,15 +25,9 @@ class MyWorkflow extends Workflow
         return $this->ready;
     }
 
-    #[SignalMethod]
-    public function setReady($ready)
+    public function handle(): void
     {
-        $this->ready = $ready;
-    }
-
-    public function execute()
-    {
-        yield await(fn () => $this->ready);
+        $this->ready = await('ready') === true;
     }
 }`,
   title = "Query & Signal Simulator",
@@ -67,7 +62,7 @@ class MyWorkflow extends Workflow
   const runSimulation = () => {
     resetSimulation();
     setExecutionState(ExecutionState.WAITING);
-    setCurrentLine(24); // yield await line
+    setCurrentLine(18); // await line
     
     // Start counting waiting time
     const startTime = Date.now();
@@ -84,8 +79,8 @@ class MyWorkflow extends Workflow
       clearInterval(waitingIntervalRef.current);
     }
     
-    // Flash the signal handler line
-    setCurrentLine(19); // $this->ready = $ready line
+    // Flash the line that receives the durable signal value.
+    setCurrentLine(18); // $this->ready = await('ready') === true
     setReadyValue(true);
     setExecutionState(ExecutionState.RUNNING);
     

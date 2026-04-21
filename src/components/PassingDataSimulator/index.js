@@ -7,24 +7,24 @@ const ExecutionState = {
   COMPLETED: 'completed',
 };
 
-const workflowCode = `use function Workflow\\activity;
-use Workflow\\Workflow;
+const workflowCode = `use function Workflow\\V2\\activity;
+use Workflow\\V2\\Workflow;
 
 class MyWorkflow extends Workflow
 {
-    public function execute($name)
+    public function handle(string $name): string
     {
-        $result = yield activity(MyActivity::class, $name);
+        $result = activity(MyActivity::class, $name);
 
         return $result;
     }
 }`;
 
-const activityCode = `use Workflow\\Activity;
+const activityCode = `use Workflow\\V2\\Activity;
 
 class MyActivity extends Activity
 {
-    public function execute($name)
+    public function handle(string $name): string
     {
         return "Hello, {$name}!";
     }
@@ -60,32 +60,32 @@ export default function PassingDataSimulator({
     resetSimulation();
     setExecutionState(ExecutionState.RUNNING);
     
-    // Step 1: Workflow execute() receives $name
+    // Step 1: Workflow handle() receives $name
     setCurrentFile('workflow');
-    setCurrentLine(6); // public function execute($name)
+    setCurrentLine(5); // public function handle(string $name): string
     setPassedValue(inputValue);
     await delay(800);
     
-    // Step 2: yield activity call
-    setCurrentLine(8); // $result = yield activity(...)
+    // Step 2: activity call
+    setCurrentLine(7); // $result = activity(...)
     await delay(1000);
     
     // Step 3: Switch to activity - clear line first to prevent flash
     setCurrentLine(-1);
     await delay(50); // Small delay to ensure render completes
     setCurrentFile('activity');
-    setCurrentLine(5); // public function execute($name)
+    setCurrentLine(4); // public function handle(string $name): string
     await delay(800);
     
     // Step 4: Activity returns
-    setCurrentLine(7); // return "Hello, {$name}!";
+    setCurrentLine(6); // return "Hello, {$name}!";
     await delay(1000);
     
     // Step 5: Back to workflow - clear line first to prevent flash
     setCurrentLine(-1);
     await delay(50); // Small delay to ensure render completes
     setCurrentFile('workflow');
-    setCurrentLine(10); // return $result;
+    setCurrentLine(9); // return $result;
     await delay(800);
     
     // Complete

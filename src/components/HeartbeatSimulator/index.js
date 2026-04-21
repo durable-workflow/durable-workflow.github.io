@@ -8,13 +8,13 @@ const ExecutionState = {
   FAILED: 'failed',
 };
 
-const codeWithHeartbeat = `use Workflow\\Activity;
+const codeWithHeartbeat = `use Workflow\\V2\\Activity;
 
 class MyActivity extends Activity
 {
     public $timeout = 5;
 
-    public function execute()
+    public function handle(): void
     {
       while (true) {
         sleep(1);
@@ -24,13 +24,13 @@ class MyActivity extends Activity
     }
 }`;
 
-const codeWithoutHeartbeat = `use Workflow\\Activity;
+const codeWithoutHeartbeat = `use Workflow\\V2\\Activity;
 
 class MyActivity extends Activity
 {
     public $timeout = 5;
 
-    public function execute()
+    public function handle(): void
     {
       while (true) {
         sleep(1);

@@ -112,7 +112,7 @@ $workflow->queryWithArguments('starts-with', [
 ]);
 ```
 
-Waterline uses the selected-run query contract surface. The dashboard exposes `declared_query_targets[*]` alongside signals and updates, but only shows query execution when `can_query = true`. The selected-run or current-run query operator posts JSON `arguments` to `/waterline/api/instances/{instanceId}/queries/{query}` or `/waterline/api/instances/{instanceId}/runs/{runId}/queries/{query}`. Query execution still requires a loadable workflow definition because the selected run must be replayed before the query method can run; when durable query targets exist but that definition is unavailable, selected-run detail reports `can_query = false` with `query_blocked_reason = workflow_definition_unavailable`, and query POSTs return HTTP `409 Conflict` with `blocked_reason = workflow_definition_unavailable`. If the run only has an incomplete snapshot and the current build can no longer finish backfilling it, detail reports `declared_contract_source = unavailable`; surviving query targets remain visible as compatibility-only metadata, but named query arguments still reject with `422` until a compatible build persists the missing contract.
+Waterline uses the selected-run query contract surface. The dashboard exposes `declared_query_targets[*]` alongside signals and updates, but only shows query execution when `can_query = true`. The selected-run or current-run query operator posts JSON `arguments` to `/waterline/api/instances/{instanceId}/queries/{query}` or `/waterline/api/instances/{instanceId}/runs/{runId}/queries/{query}`. Query execution still requires a loadable workflow definition because the selected run must be replayed before the query method can run; when durable query targets exist but that definition is unavailable, selected-run detail reports `can_query = false` with `query_blocked_reason = workflow_definition_unavailable`, and query POSTs return HTTP `409 Conflict` with `blocked_reason = workflow_definition_unavailable`. If the run only has an incomplete snapshot and the current build can no longer finish backfilling it, detail reports `declared_contract_source = unavailable`; surviving query targets remain visible as diagnostic metadata, but named query arguments still reject with `422` until a compatible build persists the missing contract.
 
 The public webhook bridge exposes that same replay-safe query surface outside Waterline:
 
@@ -126,4 +126,3 @@ Those webhook routes accept the same JSON `arguments` field as Waterline, return
 <QuerySimulator />
 
 **Important:** Querying a workflow does not advance its execution, unlike signals.
-

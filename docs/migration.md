@@ -197,7 +197,7 @@ tail -f storage/logs/laravel.log | grep -i workflow
 Common issues:
 
 - Namespace errors: code still using `Workflow\Workflow` instead of `Workflow\V2\Workflow`
-- Method errors: code still using `execute()` without `handle()` fallback
+- Method errors: v2 workflow or activity classes that still need to rename their entry method to `handle()`
 - Queue driver errors: using `sync` driver in queue mode (not supported); in poll mode (`workflows.v2.task_dispatch_mode=poll`) the queue is unused for task delivery and `sync` is acceptable
 
 **5. Verify Waterline observability**
@@ -274,7 +274,7 @@ use Workflow\V2\WorkflowStub;
 
 ### Entry method
 
-v2 workflows and activities use `handle()` as the entry method. If your v1 code uses `execute()`, it will still work through a compatibility path, but new code should use `handle()`:
+v2 workflows and activities use `handle()` as the entry method. Rename v1 `execute()` methods to `handle()` as part of the v2 code migration:
 
 ```php
 // v1
@@ -299,7 +299,7 @@ class MyWorkflow extends Workflow
 }
 ```
 
-Do not mix `handle()` and `execute()` in the same inheritance chain — the runtime rejects this.
+Do not leave `execute()` as the entry method on a v2 workflow or activity — the runtime rejects it.
 
 ### Activity calls
 

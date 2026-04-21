@@ -300,8 +300,8 @@ Response fields:
 - instance-targeted signal, update, repair, cancel, and terminate routes resolve the newest durable run for that instance instead of trusting only the mutable current-run pointer, so continue-as-new chains stay addressable through the same public id even if that column drifts.
 - run-targeted command routes pin one selected run under the same public instance id and reject with `target_scope = run`, `outcome = rejected_not_current`, and `rejection_reason = selected_run_not_current` if that run is no longer current; in that case `run_id` and `requested_run_id` stay on the historical selection while `resolved_run_id` points at the current run that callers should address next.
 - payload keys are matched to the workflow `handle()` parameter names in declaration order.
-- `handle()` is the canonical start contract. Older workflows that still implement `execute()` continue to load through the compatibility path, but new code should use `handle()` only.
-- mixed `handle()`/`execute()` workflow inheritance is rejected with HTTP `422` validation errors before a run is created.
+- Workflows define their start arguments on `handle()`.
+- Workflow classes that do not declare `handle()` are rejected with HTTP `422` validation errors before a run is created.
 - missing required payload keys are rejected with HTTP `422` validation errors instead of being silently dropped.
 - blank, overlong, or non-route-safe `workflow_id` values are rejected with HTTP `422` validation errors instead of falling through duplicate-start handling.
 - invalid `on_duplicate` values are rejected with HTTP `422` validation errors.
