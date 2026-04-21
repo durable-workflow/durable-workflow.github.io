@@ -140,6 +140,9 @@ A small cluster is a modest extension of the single-node model:
 
 - Run two or more API containers behind a load balancer.
 - Run one or more worker containers for each task queue.
+- Configure [task queue admission](/docs/2.0/polyglot/task-queue-admission)
+  for queues that protect a tenant, external API, database pool, or other
+  shared downstream dependency.
 - Use shared external MySQL or PostgreSQL for durable history.
 - Use shared Redis or another lock-capable network cache so long polls, queue
   wakeups, and cache locks work across hosts.

@@ -386,6 +386,12 @@ worker and drives one workflow to a terminal state with sequential polling. Use
 | `max_concurrent_workflow_tasks` | `10` | Max parallel workflow tasks |
 | `max_concurrent_activity_tasks` | `10` | Max parallel activity tasks |
 | `shutdown_timeout` | `30.0` | Seconds to drain in-flight tasks on stop |
+
+The two `max_concurrent_*` values are advertised to the server during worker
+registration and appear in task queue admission diagnostics. Treat them as the
+worker's local capacity. Use server-side
+[task queue admission](/docs/2.0/polyglot/task-queue-admission) caps when a
+namespace or queue needs a hard shared budget across multiple workers.
 | `metrics` | client's recorder | Optional metrics recorder for poll and task counters/histograms |
 
 ## Logging

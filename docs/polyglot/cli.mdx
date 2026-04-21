@@ -97,6 +97,12 @@ dw task-queue:list                # List active task queues
 dw task-queue:describe <queue>    # Describe a task queue
 ```
 
+`task-queue:list` shows admission status columns for workflow, activity, and
+query tasks. `task-queue:describe` expands the same server payload with active
+leases, remaining capacity, budget source, and query-task pending capacity.
+See [Task Queue Admission](/docs/2.0/polyglot/task-queue-admission) for the
+operator tuning contract behind those fields.
+
 ### Namespaces
 
 ```bash

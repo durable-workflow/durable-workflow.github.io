@@ -85,6 +85,11 @@ REDIS_DB=0
 
 Cache must support [atomic locks](https://laravel.com/docs/12.x/cache#atomic-locks). Queue drivers: Redis, Amazon SQS, Beanstalkd, database.
 
+Atomic cache locks are required for server-side
+[task queue admission caps](/docs/2.0/polyglot/task-queue-admission) and
+query-task backpressure. Use Redis for multi-node deployments that need
+workflow, activity, or query admission to hold across every server process.
+
 ### Authentication
 
 The server supports three auth modes:
@@ -352,6 +357,10 @@ server returns `404` with `reason: "namespace_not_found"`.
 
 See the [server README](https://github.com/durable-workflow/server#getting-started-end-to-end-workflow) for a curl-based walkthrough.
 
+See [Task Queue Admission](/docs/2.0/polyglot/task-queue-admission) to tune
+worker registration slots, server-side active lease caps, and query-task
+backpressure.
+
 ## CLI
 
 The [Durable Workflow CLI](/docs/2.0/polyglot/cli) provides a shell interface to the server:
@@ -379,6 +388,10 @@ dw workflow:start --type=my-workflow --input-file=input.json
 ```
 
 See the [CLI install page](/docs/2.0/polyglot/cli#install) for a platform-detecting installer and direct binary downloads.
+
+Task queue commands include admission status for workflow tasks, activity
+tasks, and query tasks. Use them to distinguish missing workers, saturated
+worker slots, server-side throttling, and query-task overflow.
 
 ## Deployment
 
