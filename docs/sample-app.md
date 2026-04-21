@@ -151,6 +151,10 @@ That's it! You can now create and test workflows.
 
 The sample app also exposes a Laravel MCP server at `/mcp/workflows`. This is the reference AI-client surface for Durable Workflow v2: it gives agents structured workflow discovery, start, status, output, recent typed history, and failure facts without requiring them to scrape Waterline.
 
+For the broader AI-assisted development contract, including v2 LLM manifests,
+CLI exit codes, Waterline exports, and SDK references, see
+[AI-assisted development](/docs/2.0/ai-assisted-development).
+
 The MCP server is registered from `routes/ai.php` by the Laravel MCP package. The exposed workflow keys live in `config/workflow_mcp.php`; each entry can include the workflow class plus discovery metadata such as a description, credential requirements, and expected arguments.
 
 Default tools:

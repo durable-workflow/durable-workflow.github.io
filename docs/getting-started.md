@@ -38,4 +38,7 @@ The sample app also exposes `/mcp/workflows` for AI clients. Start with
 `get_workflow_history` to operate on v2 workflow instances through structured
 JSON instead of scraping UI text.
 
+For agent-facing docs, MCP, CLI, and diagnostic handles, see
+[AI-assisted development](/docs/2.0/ai-assisted-development).
+
 Not using Laravel? See the [standalone server](/docs/2.0/polyglot/server), [CLI](/docs/2.0/polyglot/cli), or [Python SDK](/docs/2.0/polyglot/python).
