@@ -30,12 +30,18 @@ Set global caps when every queue should share the same ceiling:
 ```bash
 DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE=25
 DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE=100
+DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE=500
+DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE=2000
 DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE=600
 DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE=1200
+DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE=12000
+DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE=24000
 DW_QUERY_TASK_MAX_PENDING_PER_QUEUE=1024
 ```
 
-Use `DW_TASK_QUEUE_ADMISSION_OVERRIDES` when specific queues need different budgets. Keys are checked in this order: `namespace:task_queue`, `task_queue`, then `*`.
+Queue caps protect one task queue. Namespace caps protect the tenant-wide total across every task queue in the namespace, which is useful when a tenant can shard work across many queues but still shares one downstream quota.
+
+Use `DW_TASK_QUEUE_ADMISSION_OVERRIDES` when specific queues or namespaces need different budgets. Keys are checked in this order: `namespace:task_queue`, `namespace:*`, `task_queue`, then `*`.
 
 ```bash
 DW_TASK_QUEUE_ADMISSION_OVERRIDES='{
@@ -47,6 +53,16 @@ DW_TASK_QUEUE_ADMISSION_OVERRIDES='{
     "activity_tasks": {
       "max_active_leases_per_queue": 12,
       "max_dispatches_per_minute": 240
+    }
+  },
+  "production:*": {
+    "workflow_tasks": {
+      "max_active_leases_per_namespace": 300,
+      "max_dispatches_per_minute_per_namespace": 6000
+    },
+    "activity_tasks": {
+      "max_active_leases_per_namespace": 1200,
+      "max_dispatches_per_minute_per_namespace": 12000
     }
   },
   "email": {
@@ -125,9 +141,15 @@ An admission payload has three sections:
     "server_max_active_leases_per_queue": 8,
     "server_active_lease_count": 8,
     "server_remaining_active_lease_capacity": 0,
+    "server_max_active_leases_per_namespace": 300,
+    "server_namespace_active_lease_count": 149,
+    "server_remaining_namespace_active_lease_capacity": 151,
     "server_max_dispatches_per_minute": 120,
     "server_dispatch_count_this_minute": 120,
     "server_remaining_dispatch_capacity": 0,
+    "server_max_dispatches_per_minute_per_namespace": 6000,
+    "server_namespace_dispatch_count_this_minute": 3520,
+    "server_remaining_namespace_dispatch_capacity": 2480,
     "server_lock_required": true,
     "server_lock_supported": true,
     "budget_source": "worker_registration.max_concurrent_workflow_tasks",
@@ -170,9 +192,11 @@ An admission payload has three sections:
 
 1. Start with worker slots sized to the process: CPU-bound workflow tasks are usually lower than I/O-heavy activity tasks.
 2. Add active lease caps for queues that need an in-flight ceiling across all workers.
-3. Add dispatch-per-minute caps for queues that protect a rate-limited external API, database pool, tenant, or legacy service from bursts even when workers have free slots.
-4. Inspect `dw task-queue:describe <queue>` during load. `saturated` means add worker capacity or lower workflow fan-out. `throttled` means an active lease or dispatch-rate cap is doing its job. `no_active_workers` means the queue has no healthy poller.
-5. Keep query-task capacity large enough for normal operator reads, but low enough to fail fast during incidents. Query-task overflow is backpressure, not data loss.
+3. Add namespace-wide active lease caps when one tenant can create many queues but still needs a total in-flight ceiling.
+4. Add dispatch-per-minute caps for queues that protect a rate-limited external API, database pool, tenant, or legacy service from bursts even when workers have free slots.
+5. Add namespace-wide dispatch caps when the downstream quota is tenant-wide rather than queue-specific.
+6. Inspect `dw task-queue:describe <queue>` during load. `saturated` means add worker capacity or lower workflow fan-out. `throttled` means an active lease or dispatch-rate cap is doing its job. `no_active_workers` means the queue has no healthy poller.
+7. Keep query-task capacity large enough for normal operator reads, but low enough to fail fast during incidents. Query-task overflow is backpressure, not data loss.
 
 ## Related Guides
 
