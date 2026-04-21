@@ -10,6 +10,7 @@ Task queue admission keeps one queue, tenant, or downstream dependency from cons
 
 - worker registrations advertise local workflow and activity slots
 - the server can cap active workflow and activity leases per namespace and queue
+- the server can cap workflow and activity dispatches per minute per namespace and queue
 - query tasks have a bounded pending queue so synchronous reads fail fast instead of growing without limit
 
 Use admission controls when a queue is tied to a rate-limited dependency, tenants share the same server, or operators need to prove why a workflow is waiting.
@@ -18,7 +19,7 @@ Use admission controls when a queue is tied to a rate-limited dependency, tenant
 
 Workflow and activity polling starts with the workers that are currently registered for a namespace and task queue. Each worker advertises `max_concurrent_workflow_tasks` and `max_concurrent_activity_tasks`; the server sums active, non-stale workers to calculate the queue's registered slot capacity.
 
-Server-side active lease caps are optional. When configured, the server checks a short-lived cache lock before leasing the next workflow or activity task. If the cap is full, polling returns no task for that poll instead of exceeding the budget.
+Server-side active lease and dispatch-rate caps are optional. When configured, the server checks a short-lived cache lock before leasing the next workflow or activity task. If the active lease cap is full, polling returns no task for that poll instead of exceeding the in-flight budget. If the per-minute dispatch cap is full, polling returns no task until the next minute bucket has capacity.
 
 Query tasks are different: the control plane enqueues an ephemeral query task and waits for a worker response. `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` caps how many pending query tasks can exist for each namespace and task queue. When the queue is full, new queries return `query_task_queue_full` with HTTP `429`. If the cache store cannot provide the lock needed to mutate the query-task queue, queries return `query_task_queue_unavailable` with HTTP `503`.
 
@@ -29,6 +30,8 @@ Set global caps when every queue should share the same ceiling:
 ```bash
 DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE=25
 DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE=100
+DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE=600
+DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE=1200
 DW_QUERY_TASK_MAX_PENDING_PER_QUEUE=1024
 ```
 
@@ -37,11 +40,20 @@ Use `DW_TASK_QUEUE_ADMISSION_OVERRIDES` when specific queues need different budg
 ```bash
 DW_TASK_QUEUE_ADMISSION_OVERRIDES='{
   "production:payments": {
-    "workflow_tasks": { "max_active_leases_per_queue": 8 },
-    "activity_tasks": { "max_active_leases_per_queue": 12 }
+    "workflow_tasks": {
+      "max_active_leases_per_queue": 8,
+      "max_dispatches_per_minute": 120
+    },
+    "activity_tasks": {
+      "max_active_leases_per_queue": 12,
+      "max_dispatches_per_minute": 240
+    }
   },
   "email": {
-    "activity_tasks": { "max_active_leases_per_queue": 4 }
+    "activity_tasks": {
+      "max_active_leases_per_queue": 4,
+      "max_dispatches_per_minute": 60
+    }
   },
   "*": {
     "workflow_tasks": { "max_active_leases_per_queue": 50 }
@@ -51,7 +63,7 @@ DW_TASK_QUEUE_ADMISSION_OVERRIDES='{
 
 The override value also accepts `max_active_leases` as an alias for `max_active_leases_per_queue`.
 
-Cache must support atomic locks for server-side active lease caps and query-task admission. Redis is the recommended cache store for multi-node deployments.
+Cache must support atomic locks for server-side active lease caps, dispatch-rate caps, and query-task admission. Dispatch-rate counters are short-lived minute buckets created only for capped queues that actually lease tasks. Redis is the recommended cache store for multi-node deployments.
 
 ## Worker Slot Registration
 
@@ -113,6 +125,9 @@ An admission payload has three sections:
     "server_max_active_leases_per_queue": 8,
     "server_active_lease_count": 8,
     "server_remaining_active_lease_capacity": 0,
+    "server_max_dispatches_per_minute": 120,
+    "server_dispatch_count_this_minute": 120,
+    "server_remaining_dispatch_capacity": 0,
     "server_lock_required": true,
     "server_lock_supported": true,
     "budget_source": "worker_registration.max_concurrent_workflow_tasks",
@@ -122,7 +137,9 @@ An admission payload has three sections:
     "status": "accepting",
     "configured_slot_count": 36,
     "server_max_active_leases_per_queue": 12,
-    "server_remaining_active_lease_capacity": 4
+    "server_remaining_active_lease_capacity": 4,
+    "server_max_dispatches_per_minute": 240,
+    "server_remaining_dispatch_capacity": 197
   },
   "query_tasks": {
     "status": "accepting",
@@ -140,7 +157,7 @@ An admission payload has three sections:
 | Section | Status | Meaning |
 |---------|--------|---------|
 | Workflow/activity | `accepting` | Active workers have available slots and no server cap is full. |
-| Workflow/activity | `throttled` | The optional server-side active lease cap is full. |
+| Workflow/activity | `throttled` | The optional server-side active lease cap or dispatch-per-minute cap is full. |
 | Workflow/activity | `saturated` | Registered worker slots are all leased, even if no server cap is configured. |
 | Workflow/activity | `no_slots` | Active workers registered zero slots for that task kind. |
 | Workflow/activity | `no_active_workers` | No active, non-stale worker is polling that queue. |
@@ -152,9 +169,10 @@ An admission payload has three sections:
 ## Tuning Pattern
 
 1. Start with worker slots sized to the process: CPU-bound workflow tasks are usually lower than I/O-heavy activity tasks.
-2. Add server caps for queues that protect a tenant, external API, database pool, or legacy service.
-3. Inspect `dw task-queue:describe <queue>` during load. `saturated` means add worker capacity or lower workflow fan-out. `throttled` means the server cap is doing its job. `no_active_workers` means the queue has no healthy poller.
-4. Keep query-task capacity large enough for normal operator reads, but low enough to fail fast during incidents. Query-task overflow is backpressure, not data loss.
+2. Add active lease caps for queues that need an in-flight ceiling across all workers.
+3. Add dispatch-per-minute caps for queues that protect a rate-limited external API, database pool, tenant, or legacy service from bursts even when workers have free slots.
+4. Inspect `dw task-queue:describe <queue>` during load. `saturated` means add worker capacity or lower workflow fan-out. `throttled` means an active lease or dispatch-rate cap is doing its job. `no_active_workers` means the queue has no healthy poller.
+5. Keep query-task capacity large enough for normal operator reads, but low enough to fail fast during incidents. Query-task overflow is backpressure, not data loss.
 
 ## Related Guides
 

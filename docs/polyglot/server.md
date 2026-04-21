@@ -358,8 +358,8 @@ server returns `404` with `reason: "namespace_not_found"`.
 See the [server README](https://github.com/durable-workflow/server#getting-started-end-to-end-workflow) for a curl-based walkthrough.
 
 See [Task Queue Admission](/docs/2.0/polyglot/task-queue-admission) to tune
-worker registration slots, server-side active lease caps, and query-task
-backpressure.
+worker registration slots, server-side active lease caps, per-minute dispatch
+budgets, and query-task backpressure.
 
 ## CLI
 
@@ -391,7 +391,8 @@ See the [CLI install page](/docs/2.0/polyglot/cli#install) for a platform-detect
 
 Task queue commands include admission status for workflow tasks, activity
 tasks, and query tasks. Use them to distinguish missing workers, saturated
-worker slots, server-side throttling, and query-task overflow.
+worker slots, server-side active lease or dispatch-rate throttling, and
+query-task overflow.
 
 ## Deployment
 
