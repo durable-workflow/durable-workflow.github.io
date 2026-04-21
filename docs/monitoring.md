@@ -8,6 +8,18 @@ sidebar_position: 12
 that works alongside Horizon. Think of Waterline as being to workflows what
 Horizon is to queues.
 
+Durable Workflow has two observability planes:
+
+| Plane | Source of truth | Typical questions |
+| --- | --- | --- |
+| Durable state | Workflow database, Waterline projections, and history export | Did the workflow start? Which run is current? Which signal, update, timer, activity, retry, or failure was committed? Which operator action is safe now? |
+| Worker/runtime telemetry | Queue worker logs, SDK metrics recorders, Prometheus/OpenMetrics endpoints, and application traces | Are workers polling? How long do tasks take? Is an exporter configured? Did custom application metrics leave the worker process? |
+
+Waterline intentionally does not replace worker metrics. If a custom metric
+was recorded in activity or worker code, scrape the worker's telemetry
+endpoint. Use Waterline to correlate that runtime signal with the durable
+workflow history and current run state.
+
 ### Dashboard View
 
 ![waterline_dashboard](https://github.com/user-attachments/assets/5688a234-4c02-4d5e-84d4-5f40b5fa27c5)

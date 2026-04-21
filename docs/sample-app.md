@@ -80,6 +80,53 @@ You can view the waterline dashboard at https://[your-codespace-name]-80.preview
 
 ![image](https://user-images.githubusercontent.com/1130888/233669600-3340ada6-5f73-4602-8d82-a81a9d43f883.png)
 
+Waterline is the durable-state view. It answers whether a workflow started,
+which run is current, which typed history events were committed, which waits
+are open, and which operator actions are available. Worker-side telemetry is
+separate: poll latency, task duration, exporter setup, custom application
+metrics, and worker process errors come from the PHP worker logs or from the
+SDK metrics endpoint of an external worker.
+
+| Surface | Answers | Sample check |
+| --- | --- | --- |
+| Waterline and history export | Durable workflow status, history, retries, waits, signals, updates, failures, and operator actions | Open `/waterline/dashboard`, then export the selected run history |
+| Worker logs | PHP queue worker process errors and application log lines | Tail `storage/logs/laravel.log` while `php artisan queue:work` is running |
+| SDK metrics | External worker/client request counts, poll latency, and task duration | Scrape the SDK worker's Prometheus/OpenMetrics endpoint |
+
+For a Python worker, install the Prometheus extra and expose the worker metrics
+from that worker process:
+
+```bash
+pip install 'durable-workflow[prometheus]'
+```
+
+```python
+from prometheus_client import start_http_server
+
+from durable_workflow import Client, PrometheusMetrics, Worker
+
+metrics = PrometheusMetrics()
+start_http_server(9102)
+
+async with Client("http://localhost:8080", token="secret", metrics=metrics) as client:
+    worker = Worker(
+        client,
+        task_queue="default",
+        workflows=[GreeterWorkflow],
+        activities=[greet],
+        metrics=metrics,
+    )
+    await worker.run()
+```
+
+Replace `GreeterWorkflow` and `greet` with the workflow and activity handlers
+registered by that worker.
+
+Scrape `:9102/metrics` for `durable_workflow_worker_*` and
+`durable_workflow_client_*` series. Those metrics explain worker runtime
+performance; Waterline remains the source of truth for the committed workflow
+history.
+
 Waterline's detail screen includes an "Export History" action for the selected run. When the detail screen is showing the instance's current run, that button uses the instance-scoped current-run export route; historical run detail keeps using the explicit `/runs/{runId}/history-export` path. You can also export the same replay/debug bundle from the sample app terminal:
 
 ```bash
