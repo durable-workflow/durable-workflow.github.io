@@ -21,11 +21,7 @@ class MyWorkflow extends Workflow
         await('ready');
     }
 }`,
-  steps = [
-    { line: 9, duration: 0, label: "await('ready')", type: 'wait' },
-    { line: 9, duration: 300, label: "signal 'ready' accepted", type: 'signal' },
-    { line: 9, duration: 500, label: "await() signal received", type: 'run' },
-  ],
+  steps = null,
   signalName = "ready",
   title = "Signal Execution Simulator",
 }) {
@@ -38,6 +34,17 @@ class MyWorkflow extends Workflow
   const waitingIntervalRef = useRef(null);
 
   const codeLines = code.split('\n');
+  const findLine = (needle) => {
+    const index = codeLines.findIndex((line) => line.includes(needle));
+
+    return index >= 0 ? index + 1 : -1;
+  };
+  const awaitLine = findLine("await('ready')");
+  const simulationSteps = steps ?? [
+    { line: awaitLine, duration: 0, label: "await('ready')", type: 'wait' },
+    { line: awaitLine, duration: 300, label: "signal 'ready' accepted", type: 'signal' },
+    { line: awaitLine, duration: 500, label: "await() signal received", type: 'run' },
+  ];
 
   const resetSimulation = () => {
     setExecutionState(ExecutionState.IDLE);
@@ -59,13 +66,13 @@ class MyWorkflow extends Workflow
   };
 
   const runStep = (stepIndex) => {
-    if (stepIndex >= steps.length) {
+    if (stepIndex >= simulationSteps.length) {
       setExecutionState(ExecutionState.COMPLETED);
       setCurrentStepIndex(-1);
       return;
     }
 
-    const step = steps[stepIndex];
+    const step = simulationSteps[stepIndex];
     setCurrentStepIndex(stepIndex);
 
     if (step.type === 'wait') {
@@ -129,8 +136,8 @@ class MyWorkflow extends Workflow
   }, []);
 
   const getCurrentStep = () => {
-    if (currentStepIndex >= 0 && currentStepIndex < steps.length) {
-      return steps[currentStepIndex];
+    if (currentStepIndex >= 0 && currentStepIndex < simulationSteps.length) {
+      return simulationSteps[currentStepIndex];
     }
     return null;
   };

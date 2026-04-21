@@ -43,6 +43,14 @@ class MyWorkflow extends Workflow
   const animationRef = useRef(null);
 
   const codeLines = code.split('\n');
+  const findLine = (needle) => {
+    const index = codeLines.findIndex((line) => line.includes(needle));
+
+    return index >= 0 ? index + 1 : -1;
+  };
+  const awaitLine = findLine("$this->ready = await('ready') === true");
+  const queryStartLine = findLine('#[QueryMethod]');
+  const queryEndLine = findLine('return $this->ready;') + 1;
 
   const resetSimulation = () => {
     setExecutionState(ExecutionState.IDLE);
@@ -62,7 +70,7 @@ class MyWorkflow extends Workflow
   const runSimulation = () => {
     resetSimulation();
     setExecutionState(ExecutionState.WAITING);
-    setCurrentLine(18); // await line
+    setCurrentLine(awaitLine);
     
     // Start counting waiting time
     const startTime = Date.now();
@@ -80,12 +88,12 @@ class MyWorkflow extends Workflow
     }
     
     // Flash the line that receives the durable signal value.
-    setCurrentLine(18); // $this->ready = await('ready') === true
+    setCurrentLine(awaitLine);
     setReadyValue(true);
     setExecutionState(ExecutionState.RUNNING);
     
     setTimeout(() => {
-      setCurrentLine(24); // Back to await line briefly
+      setCurrentLine(awaitLine);
       setTimeout(() => {
         setExecutionState(ExecutionState.COMPLETED);
         setCurrentLine(-1);
@@ -153,7 +161,11 @@ class MyWorkflow extends Workflow
                 const lineNumber = index + 1;
                 const isHighlighted = currentLine === lineNumber;
                 const isWaitingLine = isHighlighted && executionState === ExecutionState.WAITING;
-                const isQueryLine = queryFlash && (lineNumber >= 10 && lineNumber <= 14);
+                const isQueryLine = queryFlash
+                  && queryStartLine > 0
+                  && queryEndLine > 0
+                  && lineNumber >= queryStartLine
+                  && lineNumber <= queryEndLine;
                 
                 return (
                   <div
