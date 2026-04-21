@@ -400,6 +400,14 @@ supported topology before deploying production traffic. It separates local
 development, single-node production, small clustered deployments, raw
 Kubernetes manifests, and support-led topologies.
 
+The self-serve small-cluster contract is deliberately narrow: 2-3 stateless API
+nodes behind a load balancer, one shared external MySQL or PostgreSQL database,
+shared Redis, independently scaled workers, exactly one scheduler or
+maintenance runner, and stop-the-world upgrades. SQLite clustering,
+Redis-less multi-node mode, duplicate schedulers, rolling upgrades,
+multi-region, Helm, and provider-specific failover are outside that contract
+until separately validated.
+
 For self-hosted server deployments, start from published images rather than
 source-tree builds:
 

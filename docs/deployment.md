@@ -20,7 +20,7 @@ pages instead.
 | --- | --- | --- | --- | --- |
 | Local development and internal non-production | [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) with `DW_SERVER_TAG=0.2` or `DW_SERVER_IMAGE=durableworkflow/server:0.2` | One developer machine, LAN demos, shared staging, SDK and worker integration tests | Internet-facing production, durable backup guarantees, strict secret rotation, multi-node failover | You want help turning a working dev stack into a production runbook |
 | Single-node production | [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) with a production env file, MySQL and Redis volumes, role-scoped tokens, backups, TLS through a reverse proxy, and pinned image tags or digests | One VM, VPS, or internal Docker host with persistent workflow state and a simple operational model | Host-level HA, automatic database failover, multi-region recovery, zero-downtime major topology changes | The deployment carries production traffic and you want review of backup, restore, auth, TLS, upgrade, or rollback procedures |
-| Small clustered deployment | Published `durableworkflow/server` or `ghcr.io/durable-workflow/server` images using the [Compose recipe](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) as the container/process template, with shared external MySQL/PostgreSQL and Redis | Horizontal API and worker capacity when one node is no longer enough | Database/cache HA design, cross-region operation, bespoke load-balancer behavior, generic "works everywhere" orchestration guarantees | You need sizing, failure-domain, rollout, or recovery planning across more than one host |
+| Small clustered deployment | Published `durableworkflow/server` or `ghcr.io/durable-workflow/server` images using the [Compose recipe](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) as the container/process template, with 2-3 API nodes, shared external MySQL/PostgreSQL, shared Redis, independently scaled workers, and exactly one scheduler/maintenance runner | Horizontal API and worker capacity when one node is no longer enough | SQLite clustering, Redis-less multi-node mode, duplicate schedulers, rolling upgrades, multi-region operation, Helm, provider-specific failover, broad HA/SLA guarantees | You need sizing, failure-domain, rollout, or recovery planning across more than one host |
 | Raw Kubernetes manifests | The server repository [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) manifests, using published server images and your existing database, Redis, ingress, and secret management | Teams that already operate Kubernetes and want inspectable manifests for API, worker, scheduler, bootstrap, service, probes, config, and secrets | Helm charts, managed-Kubernetes provider validation, advanced HA, multi-region, custom operators, environment-specific storage/networking/security decisions | You need Helm, overlays, managed-cluster validation, high availability, or provider-specific production planning |
 | Support-led topologies | A reviewed design based on your environment | Advanced HA, multi-region, bespoke security/networking, private SLOs, custom overlays, migration planning | Self-serve copy/paste operation | The topology itself is part of the product risk |
 
@@ -136,20 +136,42 @@ section.
 
 ## Small clustered deployments
 
-A small cluster is a modest extension of the single-node model:
+A small cluster is a modest extension of the single-node model. The validated
+self-serve contract is intentionally narrow:
 
-- Run two or more API containers behind a load balancer.
-- Run one or more worker containers for each task queue.
+- Run 2-3 stateless API containers behind a load balancer. Health,
+  readiness, cluster discovery, worker registration, workflow-task polling, and
+  workflow-task completion must work without sticky sessions.
+- Use one shared external MySQL or PostgreSQL database for durable history.
+  SQLite is single-node only and is not a clustered persistence backend.
+- Use shared Redis for cache, long-poll wake signals, query-task queue locks,
+  task-queue admission locks, and queue state. Redis-less multi-node mode is
+  not a supported clustered contract.
+- Scale external SDK workers independently from API nodes. Workers can run on
+  separate hosts or processes, but they should talk to the load-balanced API
+  endpoint rather than to one sticky node.
 - Configure [task queue admission](/docs/2.0/polyglot/task-queue-admission)
   for queues that protect a tenant, external API, database pool, or other
   shared downstream dependency.
-- Use shared external MySQL or PostgreSQL for durable history.
-- Use shared Redis or another lock-capable network cache so long polls, queue
-  wakeups, and cache locks work across hosts.
-- Run bootstrap/migrations once per rollout before new API and worker containers
-  accept traffic.
-- Treat the database and cache as the primary failure domains. The server
-  containers are replaceable; the persistence layer is not.
+- Run exactly one scheduler or maintenance process for schedule evaluation,
+  activity-timeout enforcement, and history pruning.
+- Run bootstrap/migrations once per rollout before new API and worker
+  containers accept traffic.
+- Use stop-the-world upgrades: drain workers, stop scheduler/maintenance,
+  replace API nodes, run bootstrap/migrations, then restart workers and the
+  scheduler. Rolling upgrades are not part of this contract yet.
+- Treat the database and Redis as the primary failure domains. The server
+  containers are replaceable; the persistence and coordination layers are not.
+
+Every API node should use the same auth tokens or signature keys, app version,
+workflow package version, payload-codec configuration, database connection, and
+Redis connection. Give each API node a unique `DW_SERVER_ID` so cluster
+discovery and logs can distinguish the nodes.
+
+The unsupported boundaries are explicit: SQLite clustering, Redis-less
+multi-node mode, duplicate schedulers, rolling upgrades, multi-region
+deployments, Helm charts, provider-specific failover, and broad HA/SLA promises
+need separate validation or support-led design before you rely on them.
 
 This path is self-serve when your team already has a clear VM, network,
 database, cache, backup, and load-balancer model. It becomes support-led when
