@@ -74,7 +74,7 @@ Supported: MySQL 8.0+, PostgreSQL 13+, SQLite 3.35+.
 ### Cache and Queue
 
 ```bash
-CACHE_DRIVER=redis
+CACHE_STORE=redis
 QUEUE_CONNECTION=redis
 
 REDIS_HOST=redis
@@ -154,17 +154,19 @@ WORKFLOW_PACKAGE_SOURCE=       # custom Git remote (optional)
 Configure how long completed workflows remain queryable:
 
 ```bash
-WORKFLOW_DEFAULT_RETENTION_DAYS=30
+DW_HISTORY_RETENTION_DAYS=30
 ```
 
 After retention expires, workflows are pruned. Configure per-namespace retention via the API.
 
 ### Namespaces
 
-The bootstrap seeds a `default` namespace. To disable:
+The `server-bootstrap` command runs migrations and seeds the `default`
+namespace. Use `DW_DEFAULT_NAMESPACE` to change the namespace used when a
+request omits the namespace header:
 
 ```bash
-WORKFLOW_BOOTSTRAP_DEFAULT_NAMESPACE=false
+DW_DEFAULT_NAMESPACE=default
 ```
 
 Create namespaces via the API:
@@ -441,7 +443,7 @@ spec:
           value: mysql
         - name: DB_HOST
           value: mysql-service
-        - name: CACHE_DRIVER
+        - name: CACHE_STORE
           value: redis
         - name: REDIS_HOST
           value: redis-service

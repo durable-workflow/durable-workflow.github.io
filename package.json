@@ -6,6 +6,7 @@
     "docusaurus": "docusaurus",
     "start": "docusaurus start",
     "build": "docusaurus build && node scripts/generate-llms.js && node scripts/generate-llms-full.js",
+    "check:server-env-docs": "node scripts/check-server-env-docs.js",
     "swizzle": "docusaurus swizzle",
     "deploy": "docusaurus deploy",
     "clear": "docusaurus clear",
