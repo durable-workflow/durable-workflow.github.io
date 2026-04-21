@@ -4,18 +4,19 @@ sidebar_position: 15
 
 # Support
 
-Durable Workflow is an open-source project and is free to use under the MIT license.
+Durable Workflow is an open-source project and is free to use under the MIT license. You do not need a commercial agreement to run it, ship it, or build production systems with it.
 
 ## Community Support
 
-The primary way to get help with Durable Workflow is through the community.
+The primary way to get help with Durable Workflow is through the community. Community support is best for public questions, design discussion, bug reports, and shared operational patterns.
 
 This is the best place for:
-- usage questions
-- workflow modeling advice
-- help understanding determinism and replay
-- sharing ideas and patterns
-- reporting bugs or unexpected behavior
+
+- Usage questions
+- Workflow modeling advice
+- Help understanding determinism and replay
+- Sharing ideas and patterns
+- Reporting bugs or unexpected behavior
 
 ### GitHub Discussions
 
@@ -26,14 +27,35 @@ https://github.com/durable-workflow/workflow/discussions
 ### Discord
 
 Discord is best for:
-- quick questions
-- informal discussion
-- early feedback
-- community collaboration
+
+- Quick questions
+- Informal discussion
+- Early feedback
+- Community collaboration
 
 https://discord.gg/xu5aDDpqVy
 
 Community support is provided on a best-effort basis and is often sufficient for development, experimentation, and many production use cases.
+
+## Deployment Support Boundary
+
+Durable Workflow is designed to be useful without a sales call. The public distribution is intentionally optimized for the deployment paths most teams need first:
+
+- **Local development and internal non-production environments**  
+  Run the package or standalone server locally, on a LAN, or in a shared staging environment so developers can throw workflows at it and iterate quickly.
+
+- **Single-node production**  
+  Run the standalone server on one VM, VPS, or internal host with a durable database, cache, reverse proxy, backups, and role-scoped credentials.
+
+- **Small clustered deployments**  
+  Run multiple server containers behind a load balancer with shared database and cache services when one node is no longer enough, while keeping the operational model understandable.
+
+- **Kubernetes manifests**  
+  Use the provided manifests when your team already operates Kubernetes and wants a Kubernetes-native starting point.
+
+We intentionally optimize the public distribution for local development, single-node production, and small clustered deployments. Kubernetes manifests are provided for teams that already operate Kubernetes. Helm charts and advanced HA/multi-region topologies are support-led because they require environment-specific sizing, database, networking, security, and upgrade decisions.
+
+That boundary keeps the self-serve path simple while leaving room for deeper help when the deployment itself becomes a distributed-systems project.
 
 ## Commercial Support (Optional)
 
@@ -41,11 +63,23 @@ For teams that need additional assurance or maintainer-level expertise, commerci
 
 Using Durable Workflow does **not** require a commercial agreement, and all functionality remains fully open source regardless of whether commercial support is used.
 
-Commercial support is intended for teams running Durable Workflow in production systems where correctness, upgrade safety, and long-running execution semantics matter.
+Commercial support is intended for teams running Durable Workflow in production systems where correctness, upgrade safety, deployment topology, and long-running execution semantics matter.
 
 ## What Commercial Support Covers
 
 Commercial support engagements are led by the project maintainer and typically include:
+
+- **Production deployment planning**  
+  Guidance on choosing between single-node, small clustered, Kubernetes, and support-led deployment models, including database, cache, reverse proxy, and worker topology.
+
+- **Sizing, reliability, and upgrade planning**  
+  Help with capacity assumptions, backup and restore strategy, bootstrap and migration order, rollout safety, and operational runbooks.
+
+- **Advanced topology support**  
+  Support-led design work for Helm charts, custom Kubernetes overlays, high-availability deployments, multi-node load balancing, and multi-region recovery plans.
+
+- **Security review**  
+  Assistance with role-scoped credentials, network exposure, internal versus public endpoints, TLS termination, and access boundaries for operators and workers.
 
 - **Workflow architecture & design reviews**  
   Guidance on modeling workflows correctly, including activity boundaries, signals, inbox/outbox usage, and long-running execution patterns.
@@ -70,7 +104,9 @@ Commercial support engagements are led by the project maintainer and typically i
 Commercial support is typically a good fit if you are:
 
 - Running Durable Workflow in **production**
+- Deploying the standalone server for **multiple teams or services**
 - Building **long-running or human-in-the-loop workflows**
+- Designing a **clustered, Kubernetes, Helm, or multi-region topology**
 - Operating in an environment where **correctness and upgrade safety matter**
 - Looking for **maintainer-level expertise** rather than generic consulting
 - Wanting to avoid forks and long-term maintenance risk
