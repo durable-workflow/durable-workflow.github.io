@@ -372,7 +372,8 @@ export DURABLE_WORKFLOW_NAMESPACE=default
 # Use
 dw server:health
 dw workflow:list
-dw workflow:start --type=my-workflow --input='{"key":"value"}'
+dw workflow:start --type=my-workflow --input='["value"]'
+dw workflow:start --type=my-workflow --input-file=input.json
 ```
 
 See the [CLI install page](/docs/2.0/polyglot/cli#install) for a platform-detecting installer and direct binary downloads.

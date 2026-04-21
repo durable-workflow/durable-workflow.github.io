@@ -52,25 +52,40 @@ dw server:info            # Show server version, capabilities, and worker fleet
 ```bash
 dw workflow:list                                          # List workflows
 dw workflow:start --type=MyWorkflow --input='["arg1"]'    # Start a workflow
+dw workflow:start --type=MyWorkflow --input-file=input.json
 dw workflow:describe <workflow-id>                         # Describe a workflow
-dw workflow:signal <workflow-id> <signal-name>             # Send a signal
+dw workflow:signal <workflow-id> <signal-name> --input='["ok"]'
 dw workflow:query <workflow-id> <query-name>               # Run a query
 dw workflow:cancel <workflow-id>                           # Request cancellation
 dw workflow:terminate <workflow-id>                        # Force terminate
 dw workflow:history <workflow-id>                          # Show run history
 ```
 
+Every command that accepts caller payloads uses the same input shape:
+`--input` for inline values, `--input-file` for a file path or `-` for stdin,
+and `--input-encoding=json|raw|base64`. JSON is the default; raw and base64
+inputs are passed as one positional workflow argument.
+
 ### Schedules
 
 ```bash
 dw schedule:list                          # List schedules
-dw schedule:create --type=MyWorkflow \
+dw schedule:create --workflow-type=MyWorkflow \
   --cron='0 * * * *'                      # Create hourly schedule
+dw schedule:update <schedule-id> --input-file=input.json
 dw schedule:describe <schedule-id>        # Describe a schedule
 dw schedule:pause <schedule-id>           # Pause a schedule
 dw schedule:resume <schedule-id>          # Resume a schedule
 dw schedule:trigger <schedule-id>         # Trigger immediately
 dw schedule:delete <schedule-id>          # Delete a schedule
+```
+
+### Activities
+
+```bash
+dw activity:complete <task-id> <attempt-id> --input='{"ok":true}'
+dw activity:complete <task-id> <attempt-id> --input-file=result.json
+dw activity:fail <task-id> <attempt-id> --message='upstream failed'
 ```
 
 ### Workers and Task Queues
