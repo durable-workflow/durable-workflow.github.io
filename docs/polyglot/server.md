@@ -92,8 +92,8 @@ The server supports three auth modes:
 **Token-based** (default):
 
 ```bash
-WORKFLOW_SERVER_AUTH_DRIVER=token
-WORKFLOW_SERVER_AUTH_TOKEN=your-secret-token-here
+DW_AUTH_DRIVER=token
+DW_AUTH_TOKEN=your-secret-token-here
 ```
 
 All requests must send `Authorization: Bearer your-secret-token-here`.
@@ -102,10 +102,10 @@ For least-privilege deployments, configure role-scoped tokens instead of one
 shared token:
 
 ```bash
-WORKFLOW_SERVER_AUTH_DRIVER=token
-WORKFLOW_SERVER_WORKER_TOKEN=worker-secret
-WORKFLOW_SERVER_OPERATOR_TOKEN=operator-secret
-WORKFLOW_SERVER_ADMIN_TOKEN=admin-secret
+DW_AUTH_DRIVER=token
+DW_WORKER_TOKEN=worker-secret
+DW_OPERATOR_TOKEN=operator-secret
+DW_ADMIN_TOKEN=admin-secret
 ```
 
 Worker tokens can register workers, poll tasks, heartbeat, and complete work.
@@ -116,25 +116,25 @@ namespace and retention management.
 **HMAC signature**:
 
 ```bash
-WORKFLOW_SERVER_AUTH_DRIVER=signature
-WORKFLOW_SERVER_SIGNATURE_KEY=your-signature-secret
+DW_AUTH_DRIVER=signature
+DW_SIGNATURE_KEY=your-signature-secret
 ```
 
 Requests must include `X-Signature`, calculated as
-`hash_hmac('sha256', request_body, WORKFLOW_SERVER_SIGNATURE_KEY)`. The server
+`hash_hmac('sha256', request_body, DW_SIGNATURE_KEY)`. The server
 also accepts role-scoped signature keys:
 
 ```bash
-WORKFLOW_SERVER_AUTH_DRIVER=signature
-WORKFLOW_SERVER_WORKER_SIGNATURE_KEY=worker-signature-secret
-WORKFLOW_SERVER_OPERATOR_SIGNATURE_KEY=operator-signature-secret
-WORKFLOW_SERVER_ADMIN_SIGNATURE_KEY=admin-signature-secret
+DW_AUTH_DRIVER=signature
+DW_WORKER_SIGNATURE_KEY=worker-signature-secret
+DW_OPERATOR_SIGNATURE_KEY=operator-signature-secret
+DW_ADMIN_SIGNATURE_KEY=admin-signature-secret
 ```
 
 **No auth** (development only):
 
 ```bash
-WORKFLOW_SERVER_AUTH_DRIVER=none
+DW_AUTH_DRIVER=none
 ```
 
 ⚠️ **Do not use `none` in production.** All endpoints become publicly accessible.
@@ -390,7 +390,7 @@ docker run -d \
   -p 8080:8080 \
   -e DB_CONNECTION=mysql \
   -e DB_HOST=your-db-host \
-  -e WORKFLOW_SERVER_AUTH_TOKEN=your-secret \
+  -e DW_AUTH_TOKEN=your-secret \
   my-workflow-server
 ```
 
@@ -445,7 +445,7 @@ spec:
           value: redis
         - name: REDIS_HOST
           value: redis-service
-        - name: WORKFLOW_SERVER_AUTH_TOKEN
+        - name: DW_AUTH_TOKEN
           valueFrom:
             secretKeyRef:
               name: workflow-secrets
@@ -553,7 +553,7 @@ The only endpoints that do **not** require `X-Durable-Workflow-Control-Plane-Ver
 ### Auth failures
 
 **Check:**
-1. `WORKFLOW_SERVER_AUTH_DRIVER` matches client auth method?
+1. `DW_AUTH_DRIVER` matches client auth method?
 2. Token/HMAC secret matches between server and client?
 3. Auth headers present? `Authorization: Bearer $TOKEN` or HMAC signature headers?
 

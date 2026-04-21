@@ -74,13 +74,12 @@ The program above assumes a Durable Workflow server reachable at `http://localho
 git clone https://github.com/durable-workflow/server.git
 cd server
 cp .env.example .env
-printf '\nAPP_KEY=base64:%s\nWORKFLOW_SERVER_AUTH_DRIVER=none\n' \
-  "$(head -c 32 /dev/urandom | base64)" >> .env
+printf '\nDW_AUTH_DRIVER=none\n' >> .env
 docker compose up -d
 until curl -sf http://localhost:8080/api/health > /dev/null; do sleep 1; done
 ```
 
-`WORKFLOW_SERVER_AUTH_DRIVER=none` is local-development only. For production deployment — auth drivers, database config, TLS — see the [server setup guide](/docs/2.0/polyglot/server).
+`DW_AUTH_DRIVER=none` is local-development only. For production deployment — auth drivers, database config, TLS — see the [server setup guide](/docs/2.0/polyglot/server).
 
 For a larger example, the SDK repository includes [`examples/order_processing`](https://github.com/durable-workflow/sdk-python/tree/main/examples/order_processing), a Docker Compose stack that runs a Python worker through an order workflow end to end.
 

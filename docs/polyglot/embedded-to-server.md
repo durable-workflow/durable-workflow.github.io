@@ -104,14 +104,14 @@ cp .env.example .env
 docker compose up -d
 ```
 
-For local development you may set `WORKFLOW_SERVER_AUTH_DRIVER=none`. For
+For local development you may set `DW_AUTH_DRIVER=none`. For
 shared environments, use role-scoped credentials:
 
 ```bash
-WORKFLOW_SERVER_AUTH_DRIVER=token
-WORKFLOW_SERVER_WORKER_TOKEN=worker-secret
-WORKFLOW_SERVER_OPERATOR_TOKEN=operator-secret
-WORKFLOW_SERVER_ADMIN_TOKEN=admin-secret
+DW_AUTH_DRIVER=token
+DW_WORKER_TOKEN=worker-secret
+DW_OPERATOR_TOKEN=operator-secret
+DW_ADMIN_TOKEN=admin-secret
 ```
 
 Verify discovery and create the namespace:
