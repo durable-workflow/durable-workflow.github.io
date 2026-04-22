@@ -134,6 +134,55 @@ async with Client(
 set, control-plane methods use `control_token` and worker-plane methods use
 `worker_token`.
 
+### External Payload Storage
+
+The SDK exports the same external-payload reference contract used by the server
+and CLI storage APIs. Use it when Python activity handlers or invocable
+carriers need to decode large payload references from workflow history, or when
+a Python process needs to create a language-neutral payload envelope without
+embedding large bytes inline.
+
+| API | Role | Failure surface |
+| --- | --- | --- |
+| `ExternalStorageDriver` | Protocol for `put(data, sha256=..., codec=...)`, `get(uri)`, and `delete(uri)`. | Driver-raised storage errors. |
+| `LocalFilesystemExternalStorage` | Dependency-free `file://` driver for local development and tests. | `ValueError` when a referenced URI escapes the configured root. |
+| `S3ExternalStorage` | Adapter for a boto3-compatible client. | `ValueError` for foreign bucket/prefix references or non-byte responses. |
+| `GCSExternalStorage` | Adapter for a google-cloud-storage-style client. | `ValueError` for foreign bucket/prefix references or non-byte responses. |
+| `AzureBlobExternalStorage` | Adapter for an Azure container client. | `ValueError` for foreign container/prefix references or non-byte responses. |
+| `ExternalPayloadReference` | Immutable wire reference with `uri`, `sha256`, `size_bytes`, `codec`, and schema. | `ValueError` when `from_dict()` receives an unsupported schema or malformed fields. |
+| `ExternalPayloadCache` | Bounded replay cache for already verified external payload bytes. | Constructor rejects non-positive entry or byte limits. |
+| `store_external_payload()` | Stores encoded bytes through a driver and returns `ExternalPayloadReference`. | Driver errors. |
+| `fetch_external_payload()` | Fetches referenced bytes, then verifies size and SHA-256 before decode. | `ExternalPayloadIntegrityError` on size/hash mismatch. |
+| `external_storage_envelope()` | Encodes a value inline until the threshold is crossed, then writes bytes through a driver. | `ValueError` when the threshold is invalid or no driver can resolve a reference. |
+
+```python
+from durable_workflow import (
+    ExternalPayloadCache,
+    LocalFilesystemExternalStorage,
+    external_storage_envelope,
+    to_avro_payload_value,
+)
+from durable_workflow.external_storage import fetch_external_payload, store_external_payload
+
+storage = LocalFilesystemExternalStorage("/var/lib/durable-workflow/payloads")
+cache = ExternalPayloadCache(max_entries=256, max_bytes=32 * 1024 * 1024)
+
+payload = to_avro_payload_value({"invoice_pdf": "x" * 1_000_000})
+envelope = external_storage_envelope(
+    payload,
+    external_storage=storage,
+    threshold_bytes=64 * 1024,
+)
+
+reference = store_external_payload(storage, b'{"archived":true}', codec="json")
+payload_bytes = fetch_external_payload(storage, reference, cache=cache)
+```
+
+The reference schema is `EXTERNAL_PAYLOAD_REFERENCE_SCHEMA`
+(`durable-workflow.v2.external-payload-reference.v1`). Object-store adapters do
+not add cloud SDK dependencies to `durable-workflow`; applications pass their
+already configured S3, GCS, or Azure clients.
+
 ### Cluster and Task Queues
 
 | Method | Returns | Notes |
