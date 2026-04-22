@@ -29,6 +29,7 @@ common phrases to the smallest useful guide.
 | `quickstart`, `install`, `first workflow` | [Getting Started](./getting-started.md) | [Sample App](./sample-app.md) |
 | `workflow stuck`, `failed activity`, `retry exhausted` | [Failures and Recovery](./failures-and-recovery.md) | [Monitoring](./monitoring.md) |
 | `Waterline`, `workflow dashboard`, `history export` | [Monitoring](./monitoring.md) | [AI-Assisted Development](./ai-assisted-development.md) |
+| `actionability`, `diagnostic_only`, `repair_state` | [Monitoring](./monitoring.md) | [Failures and Recovery](./failures-and-recovery.md) |
 | `CLI`, `dw command`, `json output` | [CLI](./polyglot/cli.mdx) | [CLI Command Reference](./polyglot/cli-reference.md) |
 | `Python`, `SDK`, `polyglot` | [Python SDK](./polyglot/python.md) | [CLI and Python Parity](./polyglot/cli-python-parity.md) |
 | `server mode`, `HTTP API`, `control plane` | [Server](./polyglot/server.md) | [Embedded to Server Migration](./polyglot/embedded-to-server.md) |

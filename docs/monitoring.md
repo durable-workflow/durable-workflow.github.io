@@ -9,6 +9,9 @@ keywords:
   - workflow monitoring
   - durable history
   - runtime telemetry
+  - waterline actionability
+  - diagnostic only evidence
+  - repair state
 ---
 
 # Monitoring
@@ -59,6 +62,45 @@ detail endpoint (`/waterline/api/flows/{id}`) return typed JSON contracts
 that you can consume directly from your own dashboards or scripts. The
 full field set is documented as part of Waterline's operator contract; it
 is not needed for reading workflows through the UI.
+
+### Actionability Contract
+
+Waterline annotates list rows, selected-run detail responses, and history
+exports with a versioned actionability contract. Consumers should treat
+`actionability_contract.schema = waterline.actionability` and
+`actionability_contract.version = 1` as the contract identifier for the fields
+below.
+
+Run-level `actionability` answers whether the selected run can be repaired:
+
+| Field | Meaning |
+| --- | --- |
+| `repair_state` | One of `repairable`, `blocked`, `not_needed`, or `unknown`. |
+| `repairable` | Boolean shorthand for `repair_state = repairable`. |
+| `blocked_reason` | Stable reason code when `repair_state = blocked`. |
+| `status_bucket` | The Waterline bucket that shaped the run-level decision. |
+| `closed_reason` | Durable close reason when the run is closed. |
+| `task_problem` | Whether Waterline saw a task-level problem on the run. |
+| `diagnostic_only_evidence` | True when at least one child evidence row is informative but not a resume source. |
+
+Evidence rows under `activities`, `waits`, `timers`, `exceptions`, `logs`, and
+timeline/export entries can also include their own `actionability` block:
+
+| Field | Meaning |
+| --- | --- |
+| `state` | `actionable` when the row is a valid repair source, otherwise `diagnostic_only`. |
+| `repair_source` | True only for rows backed by a repairable source authority. |
+| `diagnostic_only` | True when the row must not be used as a resume source. |
+| `history_authority` | Source authority, such as `typed_history`, `mutable_open_fallback`, `failure_row_fallback`, or `unsupported_terminal_without_history`. |
+| `history_unsupported_reason` | Stable reason code for unsupported fallback history. |
+
+Automation should gate repair, resume, and replay affordances from
+`actionability.repair_state`, `actionability.repairable`, and row-level
+`actionability.repair_source`. A row with `diagnostic_only = true` is never a
+durable resume source, even when it contains useful failure or fallback
+metadata. Rows with `history_authority = unsupported_terminal_without_history`
+are diagnostic evidence only; they explain why a run is blocked, but they do
+not prove enough typed history to rebuild progress safely.
 
 ## Control-plane actions from Waterline
 

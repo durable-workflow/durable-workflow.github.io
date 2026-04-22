@@ -27,6 +27,11 @@
       "aliases": ["Waterline", "durable state", "workflow detail"]
     },
     {
+      "query": "actionability diagnostic_only repair_state",
+      "target": "monitoring.md",
+      "aliases": ["waterline.actionability", "diagnostic_only", "repair_state"]
+    },
+    {
       "query": "cli dw command json output",
       "target": "polyglot/cli-reference.md",
       "related": ["polyglot/cli.mdx"],
