@@ -33,6 +33,75 @@ SDK, see [CLI and Python parity](/docs/2.0/polyglot/cli-python-parity).
 dw --version
 ```
 
+### Pinned install for CI and quickstarts
+
+CI jobs and quickstart instructions should install a specific release rather
+than `latest`, so the same command produces the same `dw` binary every time
+and upgrades only when you change the pin.
+
+Both installer scripts download `SHA256SUMS` from the release and verify the
+asset checksum before replacing `dw`, so a tampered mirror fails the install.
+
+<details>
+<summary><b>Linux and macOS</b> (shell installer)</summary>
+
+```bash
+VERSION=0.1.2 curl -fsSL https://durable-workflow.com/install.sh | sh
+dw --version
+```
+
+`VERSION` accepts any published release tag. Leave it unset to install the
+latest release. Additional environment variables:
+
+- `DURABLE_WORKFLOW_INSTALL_DIR` — install location (default `~/.local/bin`).
+- `DURABLE_WORKFLOW_BIN_NAME` — installed executable name (default `dw`).
+
+A GitHub Actions example:
+
+```yaml
+- name: Install Durable Workflow CLI
+  run: |
+    curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.2 sh
+    echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+- name: Verify
+  run: dw --version
+```
+
+</details>
+
+<details>
+<summary><b>Windows</b> (PowerShell installer)</summary>
+
+```powershell
+$env:VERSION = "0.1.2"
+irm https://durable-workflow.com/install.ps1 | iex
+dw --version
+```
+
+The installer writes `dw.exe` to `%USERPROFILE%\.durable-workflow\bin` and adds
+that directory to the user `PATH`.
+
+</details>
+
+<details>
+<summary><b>PHAR</b> (portable, requires PHP 8.2+)</summary>
+
+```bash
+VERSION=0.1.2
+curl -fsSL -o dw.phar \
+  "https://github.com/durable-workflow/cli/releases/download/${VERSION}/dw.phar"
+curl -fsSL -o SHA256SUMS \
+  "https://github.com/durable-workflow/cli/releases/download/${VERSION}/SHA256SUMS"
+sha256sum --check --ignore-missing SHA256SUMS
+chmod +x dw.phar
+./dw.phar --version
+```
+
+The PHAR works wherever PHP 8.2 or newer is already available and is the
+recommended artifact for shared CI runners that already ship PHP.
+
+</details>
+
 ## Configure
 
 Point the CLI at your server:
