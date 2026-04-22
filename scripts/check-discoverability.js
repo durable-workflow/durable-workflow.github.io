@@ -240,7 +240,7 @@ function assertQueryCovered(query, search, links, collectionName) {
   assertSearchPageCoversQuery(query, search, links, collectionName);
 }
 
-function assertZeroResultTracking(query) {
+function assertZeroResultTracking(query, search) {
   const requiredFields = ['source', 'lastReviewed', 'action'];
 
   for (const field of requiredFields) {
@@ -255,6 +255,18 @@ function assertZeroResultTracking(query) {
     throw new Error(
       `zero-result watchlist query ${JSON.stringify(query.query)} must use YYYY-MM-DD lastReviewed`
     );
+  }
+
+  const searchContent = normalize(search);
+
+  for (const field of requiredFields) {
+    const expectedValue = normalize(query[field]).trim();
+
+    if (!searchContent.includes(expectedValue)) {
+      throw new Error(
+        `docs/search-and-navigation.md must include ${field} metadata ${JSON.stringify(query[field])} for zero-result watchlist query ${JSON.stringify(query.query)}`
+      );
+    }
   }
 }
 
@@ -340,7 +352,7 @@ function main() {
   assertIncludes(search, 'Zero-Result Watchlist', 'docs/search-and-navigation.md');
 
   for (const query of zeroResultWatchlist) {
-    assertZeroResultTracking(query);
+    assertZeroResultTracking(query, search);
     assertQueryCovered(query, search, searchLinks, 'zero-result watchlist');
   }
 

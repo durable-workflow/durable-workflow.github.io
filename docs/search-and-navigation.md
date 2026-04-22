@@ -49,15 +49,15 @@ Track adjacent terms that users may type before the docs have a matching page
 title. Each phrase below is pinned in the build-time discoverability contract so
 future edits cannot silently drop the route.
 
-| Search phrase | Start here | Then use |
-| --- | --- | --- |
-| `cron`, `schedule`, `recurring jobs` | [Schedules](./features/schedules.md) | [Timers](./features/timers.md) |
-| `worker logs`, `trace id`, `metrics` | [Monitoring](./monitoring.md) | [AI-Assisted Development](./ai-assisted-development.md) |
-| `payload codec`, `PHP serialization` | [Passing Data](./defining-workflows/passing-data.md) | [Server](./polyglot/server.md) |
-| `upgrade embedded app`, `server cutover` | [Embedded to Server Migration](./polyglot/embedded-to-server.md) | [Server](./polyglot/server.md) |
-| `Helm`, `high availability`, `rolling upgrade` | [Self-Hosting Deployments](./deployment.md) | [Support Boundaries](./support.md) |
-| `webhook bridge`, `external handler`, `bridge adapter` | [External Execution Surface](./polyglot/external-execution.md) | [Webhooks](./features/webhooks.md) |
-| `dispatch budget group`, `downstream quota`, `rate limit` | [Task Queue Admission](./polyglot/task-queue-admission.md) | [Monitoring](./monitoring.md) |
+| Search phrase | Start here | Then use | Source | Last reviewed | Action |
+| --- | --- | --- | --- | --- | --- |
+| `cron`, `schedule`, `recurring jobs` | [Schedules](./features/schedules.md) | [Timers](./features/timers.md) | docs Phase 3 zero-result watchlist | 2026-04-22 | Keep mapped until schedule docs rank for cron and recurring jobs. |
+| `worker logs`, `trace id`, `metrics` | [Monitoring](./monitoring.md) | [AI-Assisted Development](./ai-assisted-development.md) | docs Phase 3 zero-result watchlist | 2026-04-22 | Keep mapped until monitoring docs rank for logs, traces, and metrics. |
+| `payload codec`, `PHP serialization` | [Passing Data](./defining-workflows/passing-data.md) | [Server](./polyglot/server.md) | docs Phase 3 zero-result watchlist | 2026-04-22 | Keep mapped until payload and codec searches land on passing-data guidance. |
+| `upgrade embedded app`, `server cutover` | [Embedded to Server Migration](./polyglot/embedded-to-server.md) | [Server](./polyglot/server.md) | docs Phase 3 zero-result watchlist | 2026-04-22 | Keep mapped until migration and cutover searches land on the embedded-to-server guide. |
+| `Helm`, `high availability`, `rolling upgrade` | [Self-Hosting Deployments](./deployment.md) | [Support Boundaries](./support.md) | docs Phase 3 zero-result watchlist | 2026-04-22 | Keep mapped until unsupported topology searches land on the deployment support matrix. |
+| `webhook bridge`, `external handler`, `bridge adapter` | [External Execution Surface](./polyglot/external-execution.md) | [Webhooks](./features/webhooks.md) | docs Phase 3 zero-result watchlist | 2026-04-22 | Keep mapped until bridge and handler searches land on the external execution contract. |
+| `dispatch budget group`, `downstream quota`, `rate limit` | [Task Queue Admission](./polyglot/task-queue-admission.md) | [Monitoring](./monitoring.md) | docs Phase 3 zero-result watchlist | 2026-04-22 | Keep mapped until downstream quota searches land on task queue admission. |
 
 ## Task Indexes
 
