@@ -118,6 +118,63 @@ Or pass them per-command:
 dw --server=http://localhost:8080 --token=your-token workflow:list
 ```
 
+## Five-Minute Operator Quickstart
+
+This path is for checking the CLI against a real standalone server without
+writing application code. It starts the published local server stack, installs
+a pinned `dw`, creates a reusable profile, starts one workflow, and watches the
+run reach the worker queue.
+
+```bash
+git clone https://github.com/durable-workflow/server.git durable-workflow-server
+cd durable-workflow-server
+
+export DW_SERVER_TAG=0.2
+export DW_AUTH_TOKEN=dev-token
+docker compose -f docker-compose.published.yml up -d --wait
+```
+
+Install the CLI in another terminal:
+
+```bash
+curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.2 sh
+export PATH="$HOME/.local/bin:$PATH"
+dw --version
+```
+
+Save the server connection once:
+
+```bash
+dw env:set local \
+  --server=http://localhost:8080 \
+  --token=dev-token \
+  --namespace=default \
+  --make-default
+
+dw doctor
+dw server:health
+```
+
+Start a workflow and inspect the run:
+
+```bash
+dw workflow:start \
+  --type=quickstart.order \
+  --workflow-id=quickstart-order-001 \
+  --task-queue=quickstart \
+  --input='{"order_id":"order-001","total":42.50}' \
+  --json
+
+dw workflow:describe quickstart-order-001
+dw workflow:history quickstart-order-001
+dw task-queue:describe quickstart
+```
+
+The run is now durable server state. Until a worker for `quickstart.order`
+polls the `quickstart` queue, `dw task-queue:describe quickstart` is the fastest
+way to see why the run is waiting. When a worker is attached, use
+`dw watch workflow quickstart-order-001` to follow the run to a terminal state.
+
 ## Commands
 
 ### Server
