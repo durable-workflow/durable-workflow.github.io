@@ -1,6 +1,53 @@
 {
   "documents": [
     {
+      "path": "waterline-operator-api.md",
+      "title": "Waterline Operator API Reference",
+      "minimumCodeFences": 2,
+      "requiredHeadings": [
+        "Base Path And Scope",
+        "Dashboard And Health",
+        "List Views",
+        "Selected-Run Detail",
+        "History Export",
+        "Actionability Contract",
+        "Operator Actions",
+        "Update Inspection",
+        "Schedules",
+        "Saved Views And Preferences",
+        "Error Contract"
+      ],
+      "requiredTerms": [
+        "HTTP+JSON API",
+        "actionability_contract.schema = waterline.actionability",
+        "diagnostic_only = true",
+        "workflow_definition_unavailable",
+        "WATERLINE_NAMESPACE"
+      ],
+      "requiredEndpoints": [
+        "/waterline/api/stats",
+        "/waterline/api/v2/health",
+        "/waterline/api/flows/running",
+        "/waterline/api/flows/{id}",
+        "/waterline/api/instances/{instanceId}",
+        "/waterline/api/instances/{instanceId}/runs/{runId}",
+        "/waterline/api/instances/{instanceId}/history-export",
+        "/waterline/api/instances/{instanceId}/runs/{runId}/history-export",
+        "/waterline/api/instances/{instanceId}/runs/{runId}/queries/{query}",
+        "/waterline/api/instances/{instanceId}/runs/{runId}/signals/{signal}",
+        "/waterline/api/instances/{instanceId}/runs/{runId}/updates/{update}",
+        "/waterline/api/instances/{instanceId}/runs/{runId}/repair",
+        "/waterline/api/instances/{instanceId}/runs/{runId}/cancel",
+        "/waterline/api/instances/{instanceId}/runs/{runId}/terminate",
+        "/waterline/api/instances/{instanceId}/runs/{runId}/archive",
+        "/waterline/api/instances/{instanceId}/runs/{runId}/updates/{updateId}",
+        "/waterline/api/v2/schedules",
+        "/waterline/api/v2/schedules/{scheduleId}/backfill",
+        "/waterline/api/saved-views",
+        "/waterline/api/preferences/{surface}"
+      ]
+    },
+    {
       "path": "polyglot/server-api-reference.md",
       "title": "Server API Reference",
       "minimumCodeFences": 4,

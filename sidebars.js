@@ -91,6 +91,7 @@ const sidebars = {
       items: [
         'deployment',
         'monitoring',
+        'waterline-operator-api',
         'compatibility',
         'failures-and-recovery',
         'support',

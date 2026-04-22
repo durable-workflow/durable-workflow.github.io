@@ -60,8 +60,9 @@ for the full installation and configuration guide.
 Waterline's list views (`/waterline/api/flows/{bucket}`) and selected-run
 detail endpoint (`/waterline/api/flows/{id}`) return typed JSON contracts
 that you can consume directly from your own dashboards or scripts. The
-full field set is documented as part of Waterline's operator contract; it
-is not needed for reading workflows through the UI.
+[Waterline Operator API Reference](./waterline-operator-api.md) documents the
+endpoint list, selected-run field families, history export, actionability,
+schedules, saved views, preferences, and operator-action contract.
 
 ### Actionability Contract
 
