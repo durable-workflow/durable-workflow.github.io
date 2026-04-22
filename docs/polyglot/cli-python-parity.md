@@ -23,6 +23,8 @@ repositories:
 | Update workflow | `tests/fixtures/control-plane/workflow-update-parity.json` |
 | Cancel workflow | `tests/fixtures/control-plane/workflow-cancel-parity.json` |
 | Workflow task history page | `tests/fixtures/control-plane/workflow-task-history-parity.json` |
+| Set namespace external storage driver | `tests/fixtures/control-plane/namespace-set-storage-driver-parity.json` |
+| Storage round-trip diagnostic | `tests/fixtures/control-plane/storage-test-parity.json` |
 
 The CLI sends JSON caller payloads directly. The Python SDK wraps the same
 semantic payload in its Avro envelope. Both target the same endpoint and
@@ -230,6 +232,87 @@ JSON request body. Both surfaces preserve the canonical server response fields:
 `history_events`, `total_history_events`, and `next_history_page_token`.
 Do not treat the control-plane aliases `events` or `next_page_token` as valid
 worker-history response fields.
+
+## Set Namespace External Storage Driver
+
+Configure the external payload storage policy that the server applies when an
+encoded workflow payload exceeds the namespace threshold. The CLI and Python
+SDK drive the same namespace-scoped control-plane endpoint.
+
+CLI:
+
+```bash
+dw namespace:set-storage-driver billing s3 \
+  --threshold-bytes=2097152 \
+  --bucket=dw-payloads \
+  --prefix=billing/ \
+  --region=us-east-1 \
+  --endpoint=https://s3.us-east-1.amazonaws.com \
+  --auth-profile=billing-prod \
+  --json
+```
+
+Python:
+
+```python
+async with client:
+    namespace = await client.set_namespace_external_storage(
+        "billing",
+        driver="s3",
+        enabled=True,
+        threshold_bytes=2_097_152,
+        config={
+            "bucket": "dw-payloads",
+            "prefix": "billing/",
+            "region": "us-east-1",
+            "endpoint": "https://s3.us-east-1.amazonaws.com",
+            "auth_profile": "billing-prod",
+        },
+    )
+```
+
+Both calls mean `PUT /namespaces/{name}/external-storage`. The response is the
+refreshed namespace description, and its `external_payload_storage` envelope
+carries the same `driver`, `enabled`, `threshold_bytes`, and `config` fields
+both surfaces sent. Use `--disable` on the CLI or `enabled=False` from Python
+to retain the policy record while switching the driver off.
+
+## Storage Round-Trip Diagnostic
+
+Ask the server to round-trip a small inline payload and an over-threshold
+payload through the namespace's configured external storage. This is the
+operator check that proves a driver is wired up end-to-end before running real
+workflow traffic through it.
+
+CLI:
+
+```bash
+dw storage:test \
+  --driver=s3 \
+  --small-bytes=128 \
+  --large-bytes=3145728 \
+  --json
+```
+
+Python:
+
+```python
+async with client:
+    result = await client.test_external_storage(
+        driver="s3",
+        small_payload_bytes=128,
+        large_payload_bytes=3_145_728,
+    )
+```
+
+Both calls mean `POST /storage/test`. The CLI reads the active namespace from
+`--namespace` or `DURABLE_WORKFLOW_NAMESPACE`; the Python SDK reads it from the
+`Client(namespace=...)` constructor. Both surfaces return the same response
+envelope: top-level `status`, `driver`, and per-payload `small_payload` /
+`large_payload` blocks that carry `status`, `bytes`, `sha256`, and (for the
+over-threshold payload) the `reference_uri` the server would embed in workflow
+history. Omit `driver` to exercise the currently configured namespace policy
+instead of overriding it for the diagnostic.
 
 ## Parity Checklist
 
