@@ -208,12 +208,41 @@ worker loops.
 | `dw namespace:create <name>` | Create a namespace. | `--description`, `--retention`, `--json` |
 | `dw namespace:describe <name>` | Describe one namespace. | `--json` |
 | `dw namespace:update <name>` | Update namespace metadata. | `--description`, `--retention`, `--json` |
+| `dw namespace:set-storage-driver <name> <driver>` | Configure the namespace external payload storage policy used when encoded payloads exceed the offload threshold. | `--threshold-bytes`, `--uri`, `--bucket`, `--prefix`, `--region`, `--endpoint`, `--auth-profile`, `--disable`, `--json` |
+| `dw storage:test` | Round-trip a small inline payload and a large offloaded payload through the selected namespace storage policy or driver override. | `--driver=local|s3|gcs|azure`, `--small-bytes`, `--large-bytes`, global options, `--json` |
 | `dw search-attribute:list` | List search attributes. | global output options |
 | `dw search-attribute:create <name> <type>` | Register a search attribute. | `--json` |
 | `dw search-attribute:delete <name>` | Delete a search attribute. | `--json` |
 
 Search attribute types are server-compatible values such as `keyword`, `text`,
 `int`, `double`, `bool`, `datetime`, and `keyword_list`.
+
+External payload storage commands call the server's namespace storage API. The
+driver argument is one of `local`, `s3`, `gcs`, or `azure`; object-store drivers
+use server-side filesystem configuration, so CLI flags describe the namespace
+policy rather than carrying provider credentials. Use `--disable` to keep the
+policy record while preventing new offloads.
+
+Examples:
+
+```bash
+dw namespace:set-storage-driver billing s3 \
+  --bucket=dw-payloads \
+  --prefix=billing/ \
+  --threshold-bytes=2097152 \
+  --json
+
+dw namespace:set-storage-driver dev local \
+  --uri=file:///var/lib/durable-workflow/payloads
+
+dw storage:test --namespace=billing --large-bytes=2097152 --json
+dw storage:test --driver=s3 --small-bytes=128 --large-bytes=3145728 --json
+```
+
+In JSON mode, `namespace:set-storage-driver` returns the namespace payload with
+its `external_payload_storage` policy. `storage:test` returns the diagnostic
+status plus `small_payload` and `large_payload` result objects; automation
+should branch on those fields instead of parsing the human table.
 
 ## System Commands
 

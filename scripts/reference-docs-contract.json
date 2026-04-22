@@ -166,6 +166,8 @@
         "dw namespace:create",
         "dw namespace:describe",
         "dw namespace:update",
+        "dw namespace:set-storage-driver",
+        "dw storage:test",
         "dw search-attribute:list",
         "dw search-attribute:create",
         "dw search-attribute:delete",
