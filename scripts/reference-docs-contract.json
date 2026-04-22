@@ -48,6 +48,31 @@
       ]
     },
     {
+      "path": "polyglot/server-config-reference.md",
+      "title": "Server Config Reference",
+      "minimumCodeFences": 2,
+      "requiredHeadings": [
+        "How The Contract Is Enforced",
+        "Server Identity And Mode",
+        "Authentication",
+        "Command Attribution",
+        "Worker Polling And Admission",
+        "Worker Protocol And Query Transport",
+        "Limits, Retention, And Metrics",
+        "Docker Bootstrap And Provenance",
+        "Workflow Package Controls",
+        "Runtime Infrastructure Variables",
+        "Migration Notes"
+      ],
+      "requiredTerms": [
+        "DW_ENV_AUDIT_STRICT",
+        "DW_TASK_QUEUE_ADMISSION_OVERRIDES",
+        "DW_V2_LIMIT_COMMAND_BATCH_SIZE",
+        "legacy names are fallback-only",
+        "Runtime infrastructure variables"
+      ]
+    },
+    {
       "path": "polyglot/server-api-reference.md",
       "title": "Server API Reference",
       "minimumCodeFences": 4,

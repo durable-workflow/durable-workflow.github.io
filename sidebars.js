@@ -124,6 +124,7 @@ const sidebars = {
       },
       items: [
         'polyglot/server',
+        'polyglot/server-config-reference',
         'polyglot/server-api-reference',
         'polyglot/namespace-auth-workers',
         'polyglot/embedded-to-server',

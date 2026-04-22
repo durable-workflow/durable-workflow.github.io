@@ -66,7 +66,9 @@ This starts:
 
 ## Configuration
 
-The server uses environment variables for configuration. Key settings:
+The server uses environment variables for configuration. Key settings are
+summarized below; the full operator-facing `DW_*` contract is documented in
+the [server config reference](/docs/2.0/polyglot/server-config-reference).
 
 ### Database
 
