@@ -96,6 +96,138 @@ until curl -sf http://localhost:8080/api/health > /dev/null; do sleep 1; done
 
 For a larger example, the SDK repository includes [`examples/order_processing`](https://github.com/durable-workflow/sdk-python/tree/main/examples/order_processing), a Docker Compose stack that runs a Python worker through an order workflow end to end.
 
+## Client API Reference
+
+The async `durable_workflow.Client` is the public entry point for control-plane
+and worker-plane HTTP calls. Use it as an async context manager so the
+underlying `httpx.AsyncClient` connection pool closes cleanly.
+
+```python
+from durable_workflow import Client
+
+async with Client(
+    "https://workflow.example.com",
+    token="shared-token",
+    namespace="default",
+    timeout=60.0,
+) as client:
+    info = await client.get_cluster_info()
+```
+
+### Constructor
+
+| Argument | Type | Default | Use when |
+| --- | --- | --- | --- |
+| `base_url` | `str` | required | Server origin, without `/api`. |
+| `token` | `str | None` | `None` | One bearer token should authorize both control-plane and worker-plane calls. |
+| `control_token` | `str | None` | `None` | Control-plane calls need a different bearer token than worker polling. |
+| `worker_token` | `str | None` | `None` | Worker-plane calls need a different bearer token than operator calls. |
+| `namespace` | `str` | `"default"` | Target a server namespace through `X-Namespace`. |
+| `timeout` | `float` | `60.0` | Override the default HTTP timeout. |
+| `retry_policy` | `TransportRetryPolicy | None` | default policy | Tune transport retries for transient HTTP failures. |
+| `metrics` | `MetricsRecorder | None` | no-op | Emit client and worker metrics to a custom recorder. |
+| `payload_size_limit_bytes` | `int` | SDK default | Match the server's max payload-byte contract. |
+| `payload_size_warning_threshold_percent` | `int` | SDK default | Warn before a payload reaches the configured limit. |
+| `payload_size_warnings` | `bool` | `True` | Disable local payload-size warnings in tests or controlled scripts. |
+
+`token` is the simplest option. If both `control_token` and `worker_token` are
+set, control-plane methods use `control_token` and worker-plane methods use
+`worker_token`.
+
+### Cluster and Task Queues
+
+| Method | Returns | Notes |
+| --- | --- | --- |
+| `await client.health()` | `dict[str, Any]` | Calls the health endpoint for readiness checks. |
+| `await client.get_cluster_info()` | `dict[str, Any]` | Reads server version, protocol, capability, and compatibility metadata. |
+| `await client.list_task_queues()` | `TaskQueueList` | Lists task queues visible in the namespace. |
+| `await client.describe_task_queue(name)` | `TaskQueueDescription` | Returns worker capacity, current leases, query admission, and dispatch-budget facts. |
+
+Task queue return types expose nested `TaskQueueAdmission`,
+`TaskQueueTaskAdmission`, and `TaskQueueQueryAdmission` dataclasses so scripts
+can check server-side capacity without parsing prose output.
+
+### Workflow Operations
+
+| Method | Returns | Failure surface |
+| --- | --- | --- |
+| `await client.start_workflow(...)` | `WorkflowHandle` | `WorkflowAlreadyStarted`, `InvalidArgument`, `Unauthorized`, `ServerError` |
+| `await client.describe_workflow(workflow_id)` | `WorkflowExecution` | `WorkflowNotFound`, auth/server errors |
+| `await client.list_workflows(...)` | `WorkflowList` | Auth/server errors |
+| `await client.list_workflow_runs(workflow_id)` | `WorkflowRunList` | `WorkflowNotFound`, auth/server errors |
+| `await client.describe_workflow_run(workflow_id, run_id)` | `WorkflowRun` | `WorkflowNotFound`, auth/server errors |
+| `await client.get_history(workflow_id, run_id)` | decoded history payload | `WorkflowNotFound`, auth/server errors |
+| `await client.export_history(workflow_id, run_id)` | decoded archival history payload | `WorkflowNotFound`, auth/server errors |
+| `await client.signal_workflow(workflow_id, signal_name, args=None)` | `None` | `WorkflowNotFound`, `InvalidArgument`, auth/server errors |
+| `await client.query_workflow(workflow_id, query_name, args=None)` | decoded query result | `QueryFailed`, `WorkflowNotFound`, auth/server errors |
+| `await client.update_workflow(workflow_id, update_name, args=None, ...)` | decoded update result | `UpdateRejected`, `WorkflowNotFound`, auth/server errors |
+| `await client.cancel_workflow(workflow_id, reason=None)` | `None` | `WorkflowNotFound`, auth/server errors |
+| `await client.terminate_workflow(workflow_id, reason=None)` | `None` | `WorkflowNotFound`, auth/server errors |
+| `await client.repair_workflow(workflow_id)` | `WorkflowCommandResult` | `WorkflowNotFound`, auth/server errors |
+| `await client.archive_workflow(workflow_id, reason=None)` | `WorkflowCommandResult` | `WorkflowNotFound`, auth/server errors |
+| `await client.get_result(handle, poll_interval=0.5, timeout=30.0)` | decoded workflow output | `WorkflowFailed`, `WorkflowCancelled`, `WorkflowTerminated`, `TimeoutError` |
+
+`start_workflow` accepts `workflow_type`, `task_queue`, optional
+`workflow_id`, optional `input`, `duplicate_policy`, `memo`,
+`search_attributes`, `business_key`, `execution_timeout_seconds`, and
+`run_timeout_seconds`. All caller payloads are Avro-enveloped before they cross
+the HTTP boundary.
+
+Use `client.get_workflow_handle(workflow_id, run_id=None, workflow_type="")`
+when a script already knows the workflow id and wants handle-style methods.
+
+| `WorkflowHandle` method | Equivalent client method |
+| --- | --- |
+| `await handle.result(...)` | `client.get_result(handle, ...)` |
+| `await handle.describe()` | `client.describe_workflow(handle.workflow_id)` |
+| `await handle.signal(name, args=None)` | `client.signal_workflow(...)` |
+| `await handle.query(name, args=None)` | `client.query_workflow(...)` |
+| `await handle.update(name, args=None, ...)` | `client.update_workflow(...)` |
+| `await handle.cancel(reason=None)` | `client.cancel_workflow(...)` |
+| `await handle.terminate(reason=None)` | `client.terminate_workflow(...)` |
+
+### Schedules
+
+Schedules use `ScheduleSpec` for calendar/interval rules and `ScheduleAction`
+for the workflow start request issued when a schedule fires.
+
+| Method | Returns | Notes |
+| --- | --- | --- |
+| `await client.create_schedule(...)` | `ScheduleHandle` | Creates a schedule and returns a handle. |
+| `await client.list_schedules()` | `ScheduleList` | Lists visible schedules. |
+| `await client.describe_schedule(schedule_id)` | `ScheduleDescription` | Reads schedule status, action, next fire, and counters. |
+| `await client.update_schedule(schedule_id, ...)` | `None` | Updates spec, action, overlap policy, jitter, memo, search attributes, or note. |
+| `await client.pause_schedule(schedule_id, note=None)` | `None` | Pauses future fires. |
+| `await client.resume_schedule(schedule_id, note=None)` | `None` | Resumes a paused schedule. |
+| `await client.trigger_schedule(schedule_id, overlap_policy=None)` | `ScheduleTriggerResult` | Requests an immediate fire. |
+| `await client.backfill_schedule(schedule_id, start_time=..., end_time=..., overlap_policy=None)` | `ScheduleBackfillResult` | Replays missed fire windows. |
+| `await client.delete_schedule(schedule_id)` | `None` | Deletes the schedule. |
+
+`client.get_schedule_handle(schedule_id)` returns a `ScheduleHandle` with
+`describe`, `update`, `pause`, `resume`, `trigger`, `backfill`, and `delete`
+methods that forward to the corresponding client methods.
+
+### Bridge Events and Worker-Plane Methods
+
+`await client.send_webhook_bridge_event(adapter, action=..., target=..., input=..., idempotency_key=..., correlation=None)`
+returns `BridgeAdapterOutcome`, the same machine-readable outcome contract used
+by `dw bridge:webhook`. It is the Python entry point for bounded ingress from
+webhook-shaped systems.
+
+The low-level worker-plane methods are public for custom workers and protocol
+tests, but normal applications should use `Worker`:
+
+| Method group | Methods |
+| --- | --- |
+| Worker registration | `register_worker` |
+| Workflow tasks | `poll_workflow_task`, `complete_workflow_task`, `fail_workflow_task`, `workflow_task_history` |
+| Query tasks | `poll_query_task`, `complete_query_task`, `fail_query_task` |
+| Activity tasks | `poll_activity_task`, `complete_activity_task`, `fail_activity_task`, `heartbeat_activity_task` |
+
+These methods send `X-Durable-Workflow-Protocol-Version` and use `worker_token`
+when one is configured. Prefer the higher-level `Worker` unless you are writing
+an SDK adapter or protocol conformance test.
+
 ## Defining Workflows
 
 Workflows are Python classes decorated with `@workflow.defn`. The `run` method is a generator that yields commands to the server.
