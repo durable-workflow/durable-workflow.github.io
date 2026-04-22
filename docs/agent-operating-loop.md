@@ -133,6 +133,7 @@ deployments, Python workers, and future client SDKs.
 ## Related Pages
 
 - [AI-Assisted Development](./ai-assisted-development.md)
+- [Agent Tooling Contract](./agent-tooling-contract.md)
 - [MCP Workflow Surface](./mcp-workflows.md)
 - [Sample App](./sample-app.md)
 - [CLI Command Reference](./polyglot/cli-reference.md)

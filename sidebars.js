@@ -156,6 +156,7 @@ const sidebars = {
         'ai-assisted-development',
         'agent-operating-loop',
         'mcp-workflows',
+        'agent-tooling-contract',
       ],
     },
     'sponsors',

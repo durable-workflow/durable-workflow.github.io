@@ -96,6 +96,7 @@ surfaces, so a human can reproduce the same run from another client.
 
 - [AI-Assisted Development](./ai-assisted-development.md)
 - [Agent Operating Loop](./agent-operating-loop.md)
+- [Agent Tooling Contract](./agent-tooling-contract.md)
 - [Sample App](./sample-app.md)
 - [CLI and Python Parity](./polyglot/cli-python-parity.md)
 - [Message Streams](./features/message-streams.md)

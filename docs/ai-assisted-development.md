@@ -68,6 +68,9 @@ Agents should prefer machine-readable surfaces over screenshots or prose:
 - The [Agent Operating Loop](/docs/2.0/agent-operating-loop) turns the v2
   docs, MCP endpoint, `dw` JSON output, Waterline history export, and SDK
   references into one repeatable discover-change-run-diagnose workflow.
+- The [Agent Tooling Contract](/docs/2.0/agent-tooling-contract) defines how
+  MCP tools, CLI JSON, server diagnostics, Waterline exports, and SDK fixtures
+  line up as one machine-operable surface.
 - `dw` commands expose stable exit codes for automation. See the
   [CLI reference](/docs/2.0/polyglot/cli#exit-codes).
 - The [CLI and Python parity guide](/docs/2.0/polyglot/cli-python-parity)

@@ -62,6 +62,7 @@
         "ai-assisted-development.md",
         "agent-operating-loop.md",
         "mcp-workflows.md",
+        "agent-tooling-contract.md",
         "polyglot/external-execution.md",
         "polyglot/cli-python-parity.md"
       ]
@@ -110,6 +111,7 @@
   "requiredTopicLinks": [
     "ai-assisted-development.md",
     "mcp-workflows.md",
+    "agent-tooling-contract.md",
     "polyglot/cli-reference.md",
     "polyglot/cli-python-parity.md",
     "polyglot/external-execution.md",
@@ -179,7 +181,14 @@
     {
       "query": "agent loop ai debugging structured diagnosis",
       "target": "agent-operating-loop.md",
+      "related": ["agent-tooling-contract.md"],
       "aliases": ["dw debug workflow", "Waterline", "typed history events"]
+    },
+    {
+      "query": "agent tooling machine readable mcp diagnostics",
+      "target": "agent-tooling-contract.md",
+      "related": ["mcp-workflows.md", "polyglot/cli-python-parity.md"],
+      "aliases": ["machine-operable", "server diagnostics", "SDK fixtures"]
     },
     {
       "query": "signals updates queries",
