@@ -192,7 +192,7 @@
       "query": "mcp ai client llms.txt",
       "target": "mcp-workflows.md",
       "related": ["ai-assisted-development.md", "sample-app.md"],
-      "aliases": ["/mcp/workflows", "llms-2.0.txt", "agents", "list_workflows"]
+      "aliases": ["/mcp/workflows", "llms-2.0.txt", "agents", "list_workflows", "payload_preview_limit_bytes"]
     },
     {
       "query": "agent loop ai debugging structured diagnosis",

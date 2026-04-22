@@ -63,6 +63,44 @@ Call `list_workflows` before any start. It is the agent's compatibility check:
 the response tells the client which workflow keys exist and whether a workflow
 can run in the current environment.
 
+## Tool Input Contract
+
+The MCP tool schemas intentionally use Durable Workflow terms instead of
+Laravel internals. Keep these fields stable when extending the sample app
+server:
+
+| Tool | Stable inputs |
+| --- | --- |
+| `list_workflows` | `show_recent`, `limit`, and optional `status` for recent-run discovery. |
+| `start_workflow` | `workflow`, ordered `arguments`, optional `instance_id`, `business_key`, `visibility_labels`, `memo`, `search_attributes`, and `duplicate_start_policy`. |
+| `get_workflow_result` | `workflow_id`, optional `run_id`, `include_recent_history`, and `history_limit`. |
+| `get_workflow_history` | `workflow_id` or `run_id`, `limit`, and `include_payloads`. |
+
+Prefer `arguments` over the legacy `args` input for new agents. `arguments`
+maps directly to the workflow `handle()` argument order, while `args` exists
+only for older object-shaped callers.
+
+Use caller-supplied `instance_id` only when an agent needs idempotency. Pair it
+with `duplicate_start_policy=return_existing_active` when a repeated smoke run
+should attach to the active workflow instead of failing as a duplicate.
+
+## Tool Result Contract
+
+Agents should treat the following result fields as the durable handles for
+cross-tool correlation:
+
+| Tool | Stable result fields |
+| --- | --- |
+| `list_workflows` | `available_workflows`, `allow_fqcn`, `workflow_id_kind`, `run_id_kind`, `status_values`, and optional `recent_workflows`. |
+| `start_workflow` | `workflow_id`, `run_id`, `workflow`, `workflow_class`, `workflow_type`, `status`, `running`, `business_key`, `duplicate_start_policy`, and `command`. |
+| `get_workflow_result` | `found`, `workflow_id`, `run_id`, `current_run_id`, `current_run_is_selected`, `status`, `running`, `output`, `error`, visibility metadata, and timestamps. |
+| `get_workflow_history` | `found`, `workflow_id`, `run_id`, `current_run_id`, `status`, `history_event_count`, `returned_event_count`, `events_are_most_recent`, `payloads_included`, `events`, and `failures`. |
+
+History payload previews are intentionally bounded. When `include_payloads` is
+true, each event preview reports `payload_preview_limit_bytes`, `size_bytes`,
+`preview_bytes`, and `truncated` so an agent can cite whether it saw the full
+payload or only a preview.
+
 ## Safe Agent Loop
 
 Use no-credential workflows first:
