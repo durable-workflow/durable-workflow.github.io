@@ -1,5 +1,15 @@
 ---
 sidebar_position: 1
+title: Signals
+description: Send typed external commands into running workflows and understand signal validation, routing, and waits.
+tags:
+  - commands
+  - signals
+  - human-in-the-loop
+keywords:
+  - workflow signals
+  - signal command
+  - human in the loop workflow
 ---
 
 import SignalSimulator from '@site/src/components/SignalSimulator';

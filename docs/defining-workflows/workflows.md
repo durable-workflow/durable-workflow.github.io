@@ -1,5 +1,15 @@
 ---
 sidebar_position: 1
+title: Workflows
+description: Define Durable Workflow v2 workflow classes and keep orchestration code deterministic.
+tags:
+  - authoring
+  - workflows
+  - determinism
+keywords:
+  - durable workflow workflow class
+  - v2 workflow authoring
+  - deterministic workflow code
 ---
 
 # Workflows

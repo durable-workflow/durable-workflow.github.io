@@ -1,5 +1,15 @@
 ---
 sidebar_position: 5
+title: Worker Protocol
+description: Implement the versioned worker-plane protocol for polling, leasing, history replay, heartbeats, completion, and external task results.
+tags:
+  - worker-protocol
+  - external-workers
+  - polyglot
+keywords:
+  - worker protocol
+  - external worker polling
+  - workflow task bridge
 ---
 
 # Worker Protocol

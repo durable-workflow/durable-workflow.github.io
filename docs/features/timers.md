@@ -1,5 +1,15 @@
 ---
 sidebar_position: 4
+title: Timers
+description: Use durable timers and deterministic workflow time without depending on wall-clock process state.
+tags:
+  - timers
+  - deterministic-time
+  - waits
+keywords:
+  - durable timers
+  - deterministic time
+  - workflow now
 ---
 
 import TimerSimulator from '@site/src/components/TimerSimulator';

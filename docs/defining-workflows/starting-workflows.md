@@ -1,5 +1,15 @@
 ---
 sidebar_position: 3
+title: Starting Workflows
+description: Start workflow instances asynchronously and attach arguments, visibility metadata, business keys, and start options.
+tags:
+  - authoring
+  - workflow-start
+  - visibility
+keywords:
+  - start workflow
+  - workflow instance id
+  - durable workflow start options
 ---
 
 # Starting Workflows

@@ -71,6 +71,10 @@ function main() {
   }
 
   assertIncludes(v2Index, 'Topics: ai, agents, llms', 'llms-2.0.txt');
+  assertIncludes(v2Index, 'Topics: authoring, workflows, determinism', 'llms-2.0.txt');
+  assertIncludes(v2Index, 'Topics: worker-protocol, external-workers, polyglot', 'llms-2.0.txt');
+  assertIncludes(v2Index, 'Define Durable Workflow v2 workflow classes and keep orchestration code deterministic.', 'llms-2.0.txt');
+  assertIncludes(v2Index, 'Implement the versioned worker-plane protocol for polling, leasing, history replay, heartbeats, completion, and external task results.', 'llms-2.0.txt');
   assertIncludes(v2Index, 'Find Durable Workflow v2 docs by task', 'llms-2.0.txt');
   assertIncludes(canonicalIndex, 'versioned_docs/version-1.x', 'llms.txt');
   assertIncludes(canonicalIndex, 'llms-full.txt', 'llms.txt');

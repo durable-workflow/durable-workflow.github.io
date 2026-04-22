@@ -1,5 +1,15 @@
 ---
 sidebar_position: 11
+title: Failures and Recovery
+description: Diagnose activity failures, non-retryable exceptions, run timeouts, cancellation cleanup, and recovery actions.
+tags:
+  - failures
+  - recovery
+  - operations
+keywords:
+  - workflow failures
+  - non retryable exception
+  - workflow recovery
 ---
 
 # Failures and Recovery
@@ -175,4 +185,3 @@ class RetryableWorkflow extends Workflow
     }
 }
 ```
-

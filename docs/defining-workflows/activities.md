@@ -1,5 +1,15 @@
 ---
 sidebar_position: 2
+title: Activities
+description: Define activity classes for non-deterministic side effects, retries, routing, and per-call options.
+tags:
+  - authoring
+  - activities
+  - retries
+keywords:
+  - durable workflow activity class
+  - activity options
+  - non deterministic side effects
 ---
 
 # Activities
