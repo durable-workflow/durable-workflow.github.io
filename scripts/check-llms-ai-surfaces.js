@@ -33,6 +33,7 @@ function main() {
 
   const requiredV2IndexSources = [
     'docs/ai-assisted-development.md',
+    'docs/agent-operating-loop.md',
     'docs/topics.md',
     'docs/search-and-navigation.md',
     'docs/sample-app.md',
@@ -52,6 +53,7 @@ function main() {
     '<!-- Source: docs/topics.md -->',
     '<!-- Source: docs/search-and-navigation.md -->',
     '# AI-Assisted Development',
+    '# Agent Operating Loop',
     'https://durable-workflow.com/llms-full-2.0.txt',
     '/mcp/workflows',
     'list_workflows',
@@ -66,6 +68,8 @@ function main() {
     'bridge adapters',
     'Python API reference',
     'humans learn the workflow/activity/replay invariant',
+    'discover-change-run-diagnose workflow',
+    'dw debug workflow <workflow-id> --output=json',
   ];
 
   for (const content of requiredV2FullContent) {
@@ -73,6 +77,7 @@ function main() {
   }
 
   assertIncludes(v2Index, 'Topics: ai, agents, llms', 'llms-2.0.txt');
+  assertIncludes(v2Index, 'Topics: ai, agents, mcp, operations', 'llms-2.0.txt');
   assertIncludes(v2Index, 'Topics: authoring, workflows, determinism', 'llms-2.0.txt');
   assertIncludes(v2Index, 'Topics: worker-protocol, external-workers, polyglot', 'llms-2.0.txt');
   assertIncludes(v2Index, 'Define Durable Workflow v2 workflow classes and keep orchestration code deterministic.', 'llms-2.0.txt');

@@ -4,6 +4,7 @@
     "polyglot/cli-reference.md",
     "polyglot/cli-python-parity.md",
     "polyglot/external-execution.md",
+    "agent-operating-loop.md",
     "sample-app.md"
   ],
   "queries": [
@@ -51,6 +52,11 @@
       "query": "mcp ai client llms.txt",
       "target": "ai-assisted-development.md",
       "aliases": ["/mcp/workflows", "llms-2.0.txt", "agents"]
+    },
+    {
+      "query": "agent loop ai debugging structured diagnosis",
+      "target": "agent-operating-loop.md",
+      "aliases": ["dw debug workflow", "Waterline", "typed history events"]
     },
     {
       "query": "signals updates queries",
