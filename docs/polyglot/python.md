@@ -277,6 +277,25 @@ These methods send `X-Durable-Workflow-Protocol-Version` and use `worker_token`
 when one is configured. Prefer the higher-level `Worker` unless you are writing
 an SDK adapter or protocol conformance test.
 
+`workflow_task_history(...)` pages replay history for one already leased
+workflow task. Call it only after `poll_workflow_task(...)` returns
+`next_history_page_token`:
+
+```python
+page = await client.workflow_task_history(
+    task_id="workflow-task-01",
+    next_history_page_token="history-page-2",
+    lease_owner="python-worker-1",
+    workflow_task_attempt=2,
+)
+```
+
+The request body uses `next_history_page_token`, `lease_owner`, and
+`workflow_task_attempt`. The decoded response uses the worker-protocol field
+names `history_events`, `total_history_events`, and
+`next_history_page_token`; it does not use the control-plane run-history names
+`events` or `next_page_token`.
+
 ## Defining Workflows
 
 Workflows are Python classes decorated with `@workflow.defn`. The `run` method is a generator that yields commands to the server.

@@ -196,9 +196,40 @@ worker loops.
 | Command | Purpose | Important options |
 | --- | --- | --- |
 | `dw workflow-task:poll <worker-id>` | Poll one workflow task. | `--task-queue`, `--build-id`, `--poll-request-id`, `--history-page-size`, `--accept-history-encoding`, `--json` |
+| `dw workflow-task:history <task-id> <page-token>` | Fetch the next history page for a leased workflow task. | `--lease-owner`, `--attempt`, `--json` |
 | `dw workflow-task:complete <task-id> <attempt>` | Complete one workflow task with command payloads. | `--lease-owner`, `--complete-result`, `--command`, `--json` |
 | `dw activity:complete <task-id> <attempt-id>` | Complete one leased activity attempt. | `--lease-owner`, input options, `--json` |
 | `dw activity:fail <task-id> <attempt-id>` | Fail one leased activity attempt. | `--lease-owner`, `--message`, `--type`, `--non-retryable`, `--json` |
+
+### Workflow Task History Pages
+
+`workflow-task:history` is the CLI diagnostic wrapper around the worker-plane
+history-page endpoint. Use it only after `workflow-task:poll` returns a leased
+workflow task with `next_history_page_token`; normal workers should let their
+SDK fetch extra history pages.
+
+```bash
+dw workflow-task:history workflow-task-01 history-page-2 \
+  --lease-owner=python-worker-1 \
+  --attempt=2 \
+  --json
+```
+
+JSON output is the server response without field renaming:
+
+```json
+{
+  "history_events": [
+    {"event_id": 2, "event_type": "ActivityScheduled", "payload": {}}
+  ],
+  "total_history_events": 4,
+  "next_history_page_token": "history-page-3"
+}
+```
+
+Automation should read `history_events`, `total_history_events`, and
+`next_history_page_token`. The worker-history endpoint does not use the
+control-plane run-history fields `events` or `next_page_token`.
 
 ## Namespace And Search Attribute Commands
 

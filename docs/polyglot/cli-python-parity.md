@@ -22,6 +22,7 @@ repositories:
 | Query workflow | `tests/fixtures/control-plane/workflow-query-parity.json` |
 | Update workflow | `tests/fixtures/control-plane/workflow-update-parity.json` |
 | Cancel workflow | `tests/fixtures/control-plane/workflow-cancel-parity.json` |
+| Workflow task history page | `tests/fixtures/control-plane/workflow-task-history-parity.json` |
 
 The CLI sends JSON caller payloads directly. The Python SDK wraps the same
 semantic payload in its Avro envelope. Both target the same endpoint and
@@ -194,6 +195,41 @@ async with client:
 Both calls mean `POST /workflows/{workflow_id}/cancel`. Cancellation is
 cooperative: workflow code can observe it and clean up. Use termination only
 for the force-stop operator path.
+
+## Workflow Task History Page
+
+Worker-history paging is a worker-plane operation, not the ordinary
+control-plane run-history listing. Use it when a workflow-task poll response
+contains `next_history_page_token` and the worker needs the next replay page
+for the same leased task.
+
+CLI:
+
+```bash
+dw workflow-task:history workflow-task-231 history-page-2 \
+  --lease-owner=polyglot-worker-231 \
+  --attempt=2 \
+  --json
+```
+
+Python:
+
+```python
+async with client:
+    page = await client.workflow_task_history(
+        task_id="workflow-task-231",
+        next_history_page_token="history-page-2",
+        lease_owner="polyglot-worker-231",
+        workflow_task_attempt=2,
+    )
+```
+
+Both calls mean `POST /worker/workflow-tasks/{task_id}/history` with
+`next_history_page_token`, `lease_owner`, and `workflow_task_attempt` in the
+JSON request body. Both surfaces preserve the canonical server response fields:
+`history_events`, `total_history_events`, and `next_history_page_token`.
+Do not treat the control-plane aliases `events` or `next_page_token` as valid
+worker-history response fields.
 
 ## Parity Checklist
 
