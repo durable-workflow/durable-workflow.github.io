@@ -52,6 +52,9 @@ Agents should prefer machine-readable surfaces over screenshots or prose:
 
 - `dw` commands expose stable exit codes for automation. See the
   [CLI reference](/docs/2.0/polyglot/cli#exit-codes).
+- The [external execution surface](/docs/2.0/polyglot/external-execution)
+  publishes the activity-grade task boundary, carrier requirements, bridge
+  outcomes, and input/result envelope paths through `/api/cluster/info`.
 - Server health, info, namespace, workflow, schedule, worker, and task-queue
   commands are the right handles for shell-based checks.
 - Waterline history export is the source for replay and failure diagnosis. It
@@ -81,8 +84,10 @@ Give coding agents explicit constraints and handles:
 Use Durable Workflow v2 docs from https://durable-workflow.com/llms-full-2.0.txt.
 Use the sample app MCP endpoint at /mcp/workflows for workflow discovery,
 start, result, and history. Prefer dw JSON/exit-code contracts and Waterline
-history exports over screenshots. Do not use 1.x Workflow\Workflow examples
-unless I ask for the stable 1.x API.
+history exports over screenshots. For external handlers or bridge adapters,
+read worker_protocol.external_execution_surface_contract from /api/cluster/info
+and preserve the external task input/result envelopes. Do not use 1.x
+Workflow\Workflow examples unless I ask for the stable 1.x API.
 ```
 
 The goal is simple: humans learn the workflow/activity/replay invariant, and

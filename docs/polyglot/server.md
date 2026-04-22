@@ -288,6 +288,13 @@ should fail closed when `control_plane.version`,
 `control_plane.request_contract`, or `worker_protocol.version` is missing or
 unsupported.
 
+For carrier-neutral external handlers, the same endpoint publishes
+`worker_protocol.external_execution_surface_contract`. That manifest names the
+[activity-grade external execution surface](/docs/2.0/polyglot/external-execution),
+links the external task input/result envelope contracts, and keeps workflow
+replay, `ContinueAsNew`, signal/update/query ordering, and event-history
+interpretation inside real runtimes.
+
 Key field notes for client code:
 
 - The app version is `version`, not `server_version`.

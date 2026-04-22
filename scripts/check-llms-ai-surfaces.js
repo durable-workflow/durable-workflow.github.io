@@ -36,6 +36,7 @@ function main() {
     'docs/sample-app.md',
     'docs/polyglot/cli.mdx',
     'docs/polyglot/server.md',
+    'docs/polyglot/external-execution.md',
     'llms-full-2.0.txt',
   ];
 
@@ -52,6 +53,9 @@ function main() {
     'get_workflow_result',
     'get_workflow_history',
     'CLI reference',
+    'activity_grade_external_execution',
+    'worker_protocol.external_execution_surface_contract',
+    'bridge adapters',
     'Python API reference',
     'humans learn the workflow/activity/replay invariant',
   ];
