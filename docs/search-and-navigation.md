@@ -53,6 +53,9 @@ future edits cannot silently drop the route.
 | `worker logs`, `trace id`, `metrics` | [Monitoring](./monitoring.md) | [AI-Assisted Development](./ai-assisted-development.md) |
 | `payload codec`, `PHP serialization` | [Passing Data](./defining-workflows/passing-data.md) | [Server](./polyglot/server.md) |
 | `upgrade embedded app`, `server cutover` | [Embedded to Server Migration](./polyglot/embedded-to-server.md) | [Server](./polyglot/server.md) |
+| `Helm`, `high availability`, `rolling upgrade` | [Self-Hosting Deployments](./deployment.md) | [Support Boundaries](./support.md) |
+| `webhook bridge`, `external handler`, `bridge adapter` | [External Execution Surface](./polyglot/external-execution.md) | [Webhooks](./features/webhooks.md) |
+| `dispatch budget group`, `downstream quota`, `rate limit` | [Task Queue Admission](./polyglot/task-queue-admission.md) | [Monitoring](./monitoring.md) |
 
 ## Task Indexes
 
@@ -76,3 +79,7 @@ discoverability contract in `scripts/discoverability-contract.json` with the
 expected target page. The build checks that each tracked query points to a real
 v2 doc and that the target document contains the search language or its listed
 aliases.
+
+Zero-result watchlist entries also carry a source, review date, and action.
+That keeps ambiguous searches such as Helm, bridge adapters, and downstream
+quota tied to an owner decision instead of becoming stale prose on this page.

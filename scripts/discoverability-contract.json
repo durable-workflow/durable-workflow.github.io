@@ -205,25 +205,64 @@
       "query": "cron schedule recurring jobs",
       "target": "features/schedules.md",
       "related": ["features/timers.md"],
-      "aliases": ["cron expressions", "recurring", "schedule"]
+      "aliases": ["cron expressions", "recurring", "schedule"],
+      "source": "docs Phase 3 zero-result watchlist",
+      "lastReviewed": "2026-04-22",
+      "action": "Keep mapped until schedule docs rank for cron and recurring jobs."
     },
     {
       "query": "worker logs trace id metrics",
       "target": "monitoring.md",
       "related": ["ai-assisted-development.md"],
-      "aliases": ["Queue worker logs", "application traces", "Prometheus"]
+      "aliases": ["Queue worker logs", "application traces", "Prometheus"],
+      "source": "docs Phase 3 zero-result watchlist",
+      "lastReviewed": "2026-04-22",
+      "action": "Keep mapped until monitoring docs rank for logs, traces, and metrics."
     },
     {
       "query": "payload codec php serialization",
       "target": "defining-workflows/passing-data.md",
       "related": ["polyglot/server.md"],
-      "aliases": ["serialized", "payload", "codec"]
+      "aliases": ["serialized", "payload", "codec"],
+      "source": "docs Phase 3 zero-result watchlist",
+      "lastReviewed": "2026-04-22",
+      "action": "Keep mapped until payload and codec searches land on passing-data guidance."
     },
     {
       "query": "upgrade embedded app to server",
       "target": "polyglot/embedded-to-server.md",
       "related": ["polyglot/server.md"],
-      "aliases": ["embedded", "standalone server", "cutover"]
+      "aliases": ["embedded", "standalone server", "cutover"],
+      "source": "docs Phase 3 zero-result watchlist",
+      "lastReviewed": "2026-04-22",
+      "action": "Keep mapped until migration and cutover searches land on the embedded-to-server guide."
+    },
+    {
+      "query": "helm high availability rolling upgrade",
+      "target": "deployment.md",
+      "related": ["support.md"],
+      "aliases": ["Helm", "HA", "rolling upgrades", "support-led"],
+      "source": "docs Phase 3 zero-result watchlist",
+      "lastReviewed": "2026-04-22",
+      "action": "Keep mapped until unsupported topology searches land on the deployment support matrix."
+    },
+    {
+      "query": "webhook bridge adapter external handler",
+      "target": "polyglot/external-execution.md",
+      "related": ["features/webhooks.md"],
+      "aliases": ["bridge adapters", "external handlers", "webhook bridge"],
+      "source": "docs Phase 3 zero-result watchlist",
+      "lastReviewed": "2026-04-22",
+      "action": "Keep mapped until bridge and handler searches land on the external execution contract."
+    },
+    {
+      "query": "dispatch budget group downstream quota",
+      "target": "polyglot/task-queue-admission.md",
+      "related": ["monitoring.md"],
+      "aliases": ["dispatch budget group", "downstream quota", "rate limit"],
+      "source": "docs Phase 3 zero-result watchlist",
+      "lastReviewed": "2026-04-22",
+      "action": "Keep mapped until downstream quota searches land on task queue admission."
     }
   ]
 }

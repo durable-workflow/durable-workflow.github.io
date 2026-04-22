@@ -240,6 +240,24 @@ function assertQueryCovered(query, search, links, collectionName) {
   assertSearchPageCoversQuery(query, search, links, collectionName);
 }
 
+function assertZeroResultTracking(query) {
+  const requiredFields = ['source', 'lastReviewed', 'action'];
+
+  for (const field of requiredFields) {
+    if (typeof query[field] !== 'string' || query[field].trim() === '') {
+      throw new Error(
+        `zero-result watchlist query ${JSON.stringify(query.query)} must include ${field}`
+      );
+    }
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(query.lastReviewed)) {
+    throw new Error(
+      `zero-result watchlist query ${JSON.stringify(query.query)} must use YYYY-MM-DD lastReviewed`
+    );
+  }
+}
+
 function headingPattern(title) {
   return new RegExp(`^##\\s+${title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'm');
 }
@@ -322,6 +340,7 @@ function main() {
   assertIncludes(search, 'Zero-Result Watchlist', 'docs/search-and-navigation.md');
 
   for (const query of zeroResultWatchlist) {
+    assertZeroResultTracking(query);
     assertQueryCovered(query, search, searchLinks, 'zero-result watchlist');
   }
 
