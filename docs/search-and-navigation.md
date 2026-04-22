@@ -35,7 +35,7 @@ common phrases to the smallest useful guide.
 | `server mode`, `HTTP API`, `control plane` | [Server](./polyglot/server.md) | [Embedded to Server Migration](./polyglot/embedded-to-server.md) |
 | `worker protocol`, `external worker`, `heartbeats` | [Worker Protocol](./polyglot/worker-protocol.md) | [External Execution Surface](./polyglot/external-execution.md) |
 | `task queue`, `rate limit`, `admission` | [Task Queue Admission](./polyglot/task-queue-admission.md) | [Monitoring](./monitoring.md) |
-| `MCP`, `AI client`, `llms.txt` | [AI-Assisted Development](./ai-assisted-development.md) | [Sample App](./sample-app.md) |
+| `MCP`, `AI client`, `llms.txt` | [MCP Workflow Surface](./mcp-workflows.md) | [AI-Assisted Development](./ai-assisted-development.md), [Sample App](./sample-app.md) |
 | `agent loop`, `AI debugging`, `structured diagnosis` | [Agent Operating Loop](./agent-operating-loop.md) | [AI-Assisted Development](./ai-assisted-development.md) |
 | `signals`, `updates`, `queries` | [Signals](./features/signals.md) | [Updates](./features/updates.md), [Queries](./features/queries.md) |
 | `timers`, `wait`, `sleep`, `condition` | [Timers](./features/timers.md) | [Condition Waits](./features/condition-waits.md), [Timeouts](./features/timeouts.md) |
@@ -66,6 +66,8 @@ future edits cannot silently drop the route.
 - [Agent Operating Loop](./agent-operating-loop.md) gives AI clients the
   concrete order for discovering workflows, making changes, running structured
   commands, diagnosing failures, and reporting facts.
+- [MCP Workflow Surface](./mcp-workflows.md) defines the sample-app MCP
+  endpoint, workflow tool contract, no-credential smoke keys, and report shape.
 
 ## Search Feedback
 

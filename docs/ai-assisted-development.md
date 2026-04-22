@@ -38,7 +38,8 @@ period, ask for the `2.0` docs or provide the v2 manifest URL directly.
 
 The [sample app](/docs/2.0/sample-app) exposes a Laravel MCP server at
 `/mcp/workflows`. It is the reference AI-client integration for local v2
-workflow development.
+workflow development. The dedicated [MCP Workflow Surface](/docs/2.0/mcp-workflows)
+page defines the endpoint, tool set, safe smoke workflows, and report shape.
 
 The MCP server gives an agent structured workflow operations instead of UI
 scraping:

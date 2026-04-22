@@ -49,6 +49,9 @@ Start in the sample app's MCP endpoint when it is available:
 /mcp/workflows
 ```
 
+See [MCP Workflow Surface](./mcp-workflows.md) for the reference tool contract,
+safe smoke workflow keys, and agent report shape.
+
 Call `list_workflows` first. The response tells the agent which workflows are
 exposed, what credentials they need, which arguments they accept, and which
 recent runs already exist. Use `simple` or `elapsed` for no-credential smoke
@@ -130,6 +133,7 @@ deployments, Python workers, and future client SDKs.
 ## Related Pages
 
 - [AI-Assisted Development](./ai-assisted-development.md)
+- [MCP Workflow Surface](./mcp-workflows.md)
 - [Sample App](./sample-app.md)
 - [CLI Command Reference](./polyglot/cli-reference.md)
 - [Worker Protocol](./polyglot/worker-protocol.md)

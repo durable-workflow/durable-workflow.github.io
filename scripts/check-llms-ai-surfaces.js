@@ -34,6 +34,7 @@ function main() {
   const requiredV2IndexSources = [
     'docs/ai-assisted-development.md',
     'docs/agent-operating-loop.md',
+    'docs/mcp-workflows.md',
     'docs/topics.md',
     'docs/search-and-navigation.md',
     'docs/sample-app.md',
@@ -54,6 +55,7 @@ function main() {
     '<!-- Source: docs/search-and-navigation.md -->',
     '# AI-Assisted Development',
     '# Agent Operating Loop',
+    '# MCP Workflow Surface',
     'https://durable-workflow.com/llms-full-2.0.txt',
     '/mcp/workflows',
     'list_workflows',
@@ -69,6 +71,7 @@ function main() {
     'Python API reference',
     'humans learn the workflow/activity/replay invariant',
     'discover-change-run-diagnose workflow',
+    'The `simple` and `elapsed` workflow keys are the preferred smoke surfaces.',
     'dw debug workflow <workflow-id> --output=json',
   ];
 
