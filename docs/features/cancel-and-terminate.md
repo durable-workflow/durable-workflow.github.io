@@ -164,8 +164,6 @@ Cancellation is a control-plane outcome, not a bug. An activity or workflow that
 
 This intentionally mirrors how `asyncio.CancelledError`, `KeyboardInterrupt`, and `\Error` behave in their respective standard libraries: cancellation propagates unless you handle it on purpose. If you need to run cleanup on cancellation, catch it explicitly and re-raise — don't rely on a catch-all.
 
-The reasoning and the upstream lesson that motivated this shape are tracked in [zorporation/durable-workflow#441](https://github.com/zorporation/durable-workflow/issues/441).
-
 ## Waterline
 
 Waterline exposes cancel and terminate as operator actions on the selected-run detail view. The detail payload includes `can_cancel` and `can_terminate` flags driven from durable state.
