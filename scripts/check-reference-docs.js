@@ -49,6 +49,12 @@ function assertPythonMethod(content, method, context) {
   }
 }
 
+function assertEndpoint(content, endpoint, context) {
+  if (!content.includes(endpoint)) {
+    throw new Error(`${context} must document endpoint ${JSON.stringify(endpoint)}`);
+  }
+}
+
 function checkDocument(document) {
   const docPath = path.join(docsDir, document.path);
 
@@ -76,6 +82,10 @@ function checkDocument(document) {
 
   for (const method of document.requiredMethods || []) {
     assertPythonMethod(content, method, context);
+  }
+
+  for (const endpoint of document.requiredEndpoints || []) {
+    assertEndpoint(content, endpoint, context);
   }
 }
 

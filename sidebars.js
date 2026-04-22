@@ -123,6 +123,7 @@ const sidebars = {
       },
       items: [
         'polyglot/server',
+        'polyglot/server-api-reference',
         'polyglot/embedded-to-server',
         'polyglot/cli',
         'polyglot/cli-reference',

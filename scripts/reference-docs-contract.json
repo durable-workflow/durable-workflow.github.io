@@ -1,6 +1,52 @@
 {
   "documents": [
     {
+      "path": "polyglot/server-api-reference.md",
+      "title": "Server API Reference",
+      "minimumCodeFences": 4,
+      "requiredHeadings": [
+        "Headers And Versioning",
+        "Discovery And Health",
+        "Workflow Control Plane",
+        "Workflow Commands",
+        "Namespace And Storage",
+        "Bridge Adapters",
+        "Worker Protocol",
+        "Fleet And Task Queue Visibility",
+        "Schedules And Search Attributes",
+        "System Operations",
+        "Error Contract"
+      ],
+      "requiredTerms": [
+        "HTTP+JSON API",
+        "X-Durable-Workflow-Control-Plane-Version: 2",
+        "X-Durable-Workflow-Protocol-Version: 1.0",
+        "reason: \"validation_failed\"",
+        "bounded-growth policy"
+      ],
+      "requiredEndpoints": [
+        "/api/health",
+        "/api/ready",
+        "/api/cluster/info",
+        "/api/workflows",
+        "/api/workflows/{workflowId}/signal/{signalName}",
+        "/api/workflows/{workflowId}/runs/{runId}/history",
+        "/api/namespaces/{namespace}/external-storage",
+        "/api/storage/test",
+        "/api/bridge-adapters/webhook/{adapter}",
+        "/api/worker/register",
+        "/api/worker/workflow-tasks/poll",
+        "/api/worker/workflow-tasks/{taskId}/complete",
+        "/api/worker/query-tasks/poll",
+        "/api/worker/activity-tasks/{taskId}/heartbeat",
+        "/api/task-queues/{taskQueue}",
+        "/api/schedules/{scheduleId}/backfill",
+        "/api/search-attributes/{name}",
+        "/api/system/metrics",
+        "/api/system/retention/pass"
+      ]
+    },
+    {
       "path": "polyglot/cli-reference.md",
       "title": "CLI Command Reference",
       "minimumCodeFences": 2,

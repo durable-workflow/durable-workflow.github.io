@@ -443,6 +443,10 @@ registration. Do not shift production traffic based on `/api/health` alone.
 
 ## API Reference
 
+For a complete endpoint-by-endpoint reference, including required headers,
+roles, worker-protocol routes, external payload storage routes, and named error
+reasons, see the [Server API Reference](/docs/2.0/polyglot/server-api-reference).
+
 The server exposes three API surfaces:
 
 ### Control Plane
