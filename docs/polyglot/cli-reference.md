@@ -277,6 +277,13 @@ its `external_payload_storage` policy. `storage:test` returns the diagnostic
 status plus `small_payload` and `large_payload` result objects; automation
 should branch on those fields instead of parsing the human table.
 
+The diagnostic is also the fastest operator check for the reference-envelope
+contract. A passing large-payload result proves the selected policy can write
+encoded bytes, return a `durable-workflow.v2.external-payload-reference.v1`
+reference, read the object back, and verify `size_bytes` plus `sha256`. A failed
+diagnostic should be treated as a storage-policy problem before workflows are
+allowed to offload payloads through that namespace.
+
 ## System Commands
 
 System commands expose server maintenance passes as explicit, scriptable

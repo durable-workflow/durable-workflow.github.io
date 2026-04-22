@@ -160,6 +160,29 @@ filesystem path. Object-storage policies such as `s3`, `gcs`, and `azure` use
 an explicitly configured filesystem disk and bucket/prefix settings on the
 server.
 
+### External Payload Reference Envelope
+
+The external payload reference is a stable wire envelope. SDKs may decode it
+into native helper types, but HTTP clients should treat these field names as
+the contract:
+
+| Field | Required | Meaning |
+| --- | --- | --- |
+| `schema` | yes | Must be `durable-workflow.v2.external-payload-reference.v1`. Unknown schemas fail closed. |
+| `uri` | yes | Driver-owned object location, such as `file:///...`, `s3://bucket/prefix/object`, `gs://bucket/prefix/object`, or `azure://container/prefix/object`. |
+| `sha256` | yes | Lowercase hex SHA-256 of the stored encoded bytes. SDKs and the server verify it before decode. |
+| `size_bytes` | yes | Byte length of the stored encoded payload. Mismatch is an integrity failure. |
+| `codec` | yes | Payload codec for the stored bytes, for example `json` or the SDK payload codec name. |
+| `expires_at` | no | ISO-8601 expiry hint for retention/GC. Missing means the namespace retention policy owns cleanup. |
+
+Payload offload is threshold-gated by the namespace storage policy. Inline
+payloads continue to use the normal payload envelope until encoded bytes exceed
+`threshold_bytes`; then the driver writes bytes and history stores the reference
+envelope. Replay and history export must fail loudly when a referenced blob is
+missing, mutated, outside the configured prefix, or owned by an unavailable
+provider. They must not silently replace a missing object with `null`, `{}`, or
+an empty byte string.
+
 For the full request-authority contract, including namespace resolution,
 role-scoped credentials, and worker registration fields, see
 [Namespace, Auth, And Worker Registration](/docs/2.0/polyglot/namespace-auth-workers).

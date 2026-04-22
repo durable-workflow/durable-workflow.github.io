@@ -151,6 +151,8 @@
         "HTTP+JSON API",
         "X-Durable-Workflow-Control-Plane-Version: 2",
         "X-Durable-Workflow-Protocol-Version: 1.0",
+        "durable-workflow.v2.external-payload-reference.v1",
+        "Replay and history export must fail loudly",
         "reason: \"validation_failed\"",
         "bounded-growth policy"
       ],
@@ -230,7 +232,8 @@
         "stable exit-code policy",
         "Output contract",
         "JSON field names are the automation contract",
-        "control-plane protocol"
+        "control-plane protocol",
+        "durable-workflow.v2.external-payload-reference.v1"
       ],
       "requiredCommands": [
         "dw --version",
@@ -319,7 +322,8 @@
         "exception classes",
         "thin, async-first client",
         "language-neutral payload codec",
-        "durable-workflow.v2.external-payload-reference.v1"
+        "durable-workflow.v2.external-payload-reference.v1",
+        "ExternalPayloadIntegrityError"
       ],
       "requiredMethods": [
         "ExternalStorageDriver",

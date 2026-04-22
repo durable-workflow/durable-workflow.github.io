@@ -184,6 +184,26 @@ The reference schema is `EXTERNAL_PAYLOAD_REFERENCE_SCHEMA`
 not add cloud SDK dependencies to `durable-workflow`; applications pass their
 already configured S3, GCS, or Azure clients.
 
+The wire envelope fields are intentionally small and stable:
+
+```json
+{
+  "schema": "durable-workflow.v2.external-payload-reference.v1",
+  "uri": "s3://dw-payloads/billing/run-001/input.json",
+  "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "size_bytes": 1048576,
+  "codec": "json",
+  "expires_at": "2026-05-22T00:00:00Z"
+}
+```
+
+`ExternalPayloadReference.from_dict()` rejects unknown schemas and malformed
+fields. `fetch_external_payload()` verifies `size_bytes` and `sha256` before
+returning bytes, and raises `ExternalPayloadIntegrityError` when the object is
+missing, truncated, or mutated. Worker replay should use `ExternalPayloadCache`
+only after verification, so repeated history reads avoid refetching the same
+blob without weakening integrity checks.
+
 ### Cluster and Task Queues
 
 | Method | Returns | Notes |
