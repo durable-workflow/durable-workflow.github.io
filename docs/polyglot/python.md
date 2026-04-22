@@ -532,6 +532,7 @@ worker and drives one workflow to a terminal state with sequential polling. Use
 | `max_concurrent_activity_tasks` | `10` | Max parallel activity tasks |
 | `shutdown_timeout` | `30.0` | Seconds to drain in-flight tasks on stop |
 | `metrics` | client's recorder | Optional metrics recorder for poll and task counters/histograms |
+| `interceptors` | `()` | Ordered worker task wrappers for instrumentation, tracing, and policy hooks |
 
 The two `max_concurrent_*` values are advertised to the server during worker
 registration and appear in task queue admission diagnostics. Treat them as the
@@ -539,6 +540,74 @@ worker's local capacity. Use server-side
 [task queue admission](/docs/2.0/polyglot/task-queue-admission) caps when a
 namespace, queue, or downstream budget group needs a hard shared budget across
 multiple workers.
+
+### Worker API Reference
+
+| Method | Returns | Use when |
+| --- | --- | --- |
+| `await worker.run()` | `None` | Long-running process supervised by systemd, Docker, Kubernetes, or a local dev shell. Registers once, then polls workflow, activity, and query tasks until stopped or cancelled. |
+| `await worker.run_until(workflow_id=..., timeout=60.0, poll_interval=0.5)` | `WorkflowExecution` | Smoke tests and examples that start one workflow and want the same process to drive it until a terminal status. |
+| `await worker.stop()` | `None` | Cooperative shutdown. Stops new polls and drains in-flight tasks up to `shutdown_timeout`. |
+
+`run()` validates server compatibility before it starts polling. The worker
+requires the server's published `control_plane.version`,
+`control_plane.request_contract`, `worker_protocol.version`, and
+`auth_composition_contract` to match the SDK's supported contract versions. A
+missing or incompatible manifest raises `RuntimeError` during registration, so
+supervisors fail fast instead of running a worker that cannot safely complete
+tasks.
+
+`run_until()` uses the same registration and dispatch path as `run()`, but
+polls sequentially and returns the final `WorkflowExecution` for the named
+workflow. It raises `TimeoutError` when the workflow is still non-terminal
+after the timeout.
+
+During task execution:
+
+- unknown workflow or activity types are reported back to the server as task
+  failures, not hidden in local logs
+- `NonRetryableError` marks activity failures as non-retryable
+- `ActivityCancelled` propagates as a cancellation outcome
+- unhandled activity exceptions are reported as retryable failures unless the
+  activity retry policy or server deadline says otherwise
+- query handler exceptions are reported as `QueryFailed`
+
+### Worker Interceptors
+
+Pass `interceptors=[...]` when worker execution needs tracing, metrics, audit
+logging, or local policy checks around tasks. Interceptors run in the order
+provided; the first interceptor is the outer wrapper and should call `next` to
+continue the chain.
+
+```python
+from durable_workflow import (
+    ActivityInterceptorContext,
+    PassthroughWorkerInterceptor,
+)
+
+class AuditInterceptor(PassthroughWorkerInterceptor):
+    async def execute_activity(self, context: ActivityInterceptorContext, next):
+        print("activity started", context.activity_type, context.worker_id)
+        return await next(context)
+
+worker = Worker(
+    client,
+    task_queue="orders",
+    workflows=[OrderWorkflow],
+    activities=[charge_card],
+    interceptors=[AuditInterceptor()],
+)
+```
+
+| Hook | Context fields | `next` returns |
+| --- | --- | --- |
+| `execute_workflow_task(context, next)` | `worker_id`, `task_queue`, `task` | workflow commands, or `None` |
+| `execute_activity(context, next)` | `worker_id`, `task_queue`, `task`, `activity_type`, `args` | decoded activity result |
+| `execute_query_task(context, next)` | `worker_id`, `task_queue`, `task` | encoded query result string |
+
+Use `PassthroughWorkerInterceptor` as a base class when you only need one
+hook. Implement `WorkerInterceptor` directly when you want type checkers to
+force all hooks to be present.
 
 ## Logging
 
