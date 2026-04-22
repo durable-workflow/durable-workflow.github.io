@@ -181,11 +181,23 @@ Use `--paused` for deploy-time registration that should not start work yet.
 | `dw worker:deregister <worker-id>` | Deregister one worker. | `--json` |
 | `dw task-queue:list` | List active task queues and admission status. | global output options |
 | `dw task-queue:describe <queue>` | Describe worker capacity, leases, dispatch budgets, and pending query-task capacity. | `--json` |
+| `dw task-queue:build-ids <queue>` | Inspect per-build-id cohort state and rollout status for one queue. | `--json` |
+| `dw task-queue:drain <queue>` | Mark a build-id cohort as draining so it stops claiming new tasks. | `--build-id <value>`, `--unversioned`, `--json` |
+| `dw task-queue:resume <queue>` | Clear a previous drain so the cohort can claim new tasks again. | `--build-id <value>`, `--unversioned`, `--json` |
 
 The task queue commands are the preferred operator view for throttling,
 capacity, and no-worker diagnoses. See
 [Task Queue Admission](/docs/2.0/polyglot/task-queue-admission) for the
-server-side policy behind those fields.
+server-side policy behind those fields and
+[Worker Build-Id Rollout](/docs/2.0/polyglot/worker-build-id-rollout) for the
+full unversioned-to-versioned cutover, canary, drain, and rollback lifecycle.
+
+`dw task-queue:drain` and `dw task-queue:resume` both require either
+`--build-id <value>` to target a specific build cohort or `--unversioned` to
+target the cohort of workers registered without a `build_id`. Combining the
+two fails fast with an invalid-option error. Both commands are idempotent:
+repeated drains do not shift the recorded `drained_at` timestamp, and
+resuming an already-active cohort is a no-op.
 
 ## Worker Protocol Commands
 

@@ -259,9 +259,17 @@ admission. They are control-plane routes.
 | `GET` | `/api/task-queues` | List task queues and admission status. |
 | `GET` | `/api/task-queues/{taskQueue}` | Describe workflow/activity/query capacity for one queue. |
 | `GET` | `/api/task-queues/{taskQueue}/build-ids` | List build ids observed for one queue. |
+| `POST` | `/api/task-queues/{taskQueue}/build-ids/drain` | Mark a build-id cohort as draining so it stops claiming new tasks. |
+| `POST` | `/api/task-queues/{taskQueue}/build-ids/resume` | Clear a previous drain so the cohort can claim new tasks again. |
 
 Use task queue responses to distinguish no-worker conditions from saturated
 worker slots, active lease caps, dispatch budgets, and query-task backpressure.
+Drain and resume take a JSON body of `{"build_id": "..."}` (or
+`{"build_id": null}` for the unversioned cohort), are idempotent, and persist
+operator intent on the cohort so rollout state stays honest even after the
+workers are removed. See
+[Worker Build-Id Rollout](/docs/2.0/polyglot/worker-build-id-rollout) for the
+full unversioned-to-versioned cutover, canary, drain, and rollback lifecycle.
 
 ## Schedules And Search Attributes
 

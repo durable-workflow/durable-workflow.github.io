@@ -146,6 +146,7 @@ const sidebars = {
         'polyglot/external-execution',
         'polyglot/worker-protocol',
         'polyglot/task-queue-admission',
+        'polyglot/worker-build-id-rollout',
         'features/webhooks',
       ],
     },
