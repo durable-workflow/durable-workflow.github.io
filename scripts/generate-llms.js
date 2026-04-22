@@ -31,7 +31,7 @@ function extractFrontmatterAndContent(filePath) {
 }
 
 function getFrontmatterValue(frontmatter, key) {
-  const pattern = new RegExp(`^${key}:\\s*(.+)$`, 'm');
+  const pattern = new RegExp(`^${key}:[^\\S\\r\\n]*(.+)$`, 'm');
   const match = frontmatter.match(pattern);
 
   if (!match) {
@@ -39,6 +39,36 @@ function getFrontmatterValue(frontmatter, key) {
   }
 
   return match[1].trim().replace(/^['"]|['"]$/g, '');
+}
+
+function getFrontmatterList(frontmatter, key) {
+  const inline = getFrontmatterValue(frontmatter, key);
+
+  if (inline) {
+    if (inline.startsWith('[') && inline.endsWith(']')) {
+      return inline
+        .slice(1, -1)
+        .split(',')
+        .map(item => item.trim().replace(/^['"]|['"]$/g, ''))
+        .filter(Boolean);
+    }
+
+    return [inline];
+  }
+
+  const blockPattern = new RegExp(`^${key}:\\s*\\r?\\n((?:\\s+-\\s+.+\\r?\\n?)+)`, 'm');
+  const block = frontmatter.match(blockPattern);
+
+  if (!block) {
+    return [];
+  }
+
+  return block[1]
+    .split(/\r?\n/)
+    .map(line => line.match(/^\s+-\s+(.+)$/))
+    .filter(Boolean)
+    .map(match => match[1].trim().replace(/^['"]|['"]$/g, ''))
+    .filter(Boolean);
 }
 
 function getSidebarPosition(frontmatter) {
@@ -113,6 +143,18 @@ function getDocTitle(filePath) {
   );
 }
 
+function getDocMetadata(filePath) {
+  const { frontmatter } = extractFrontmatterAndContent(filePath);
+
+  return {
+    description: getFrontmatterValue(frontmatter, 'description'),
+    topics: [
+      ...getFrontmatterList(frontmatter, 'tags'),
+      ...getFrontmatterList(frontmatter, 'keywords'),
+    ],
+  };
+}
+
 function sortItems(items) {
   return items.sort((a, b) => {
     const positionA = getPositionForItem(a);
@@ -158,6 +200,22 @@ function buildDocLink(filePath, repoRawBaseUrl) {
   return new URL(repoRelativePath, repoRawBaseUrl).toString();
 }
 
+function buildDocNote(filePath) {
+  const metadata = getDocMetadata(filePath);
+  const noteParts = [];
+
+  if (metadata.description) {
+    noteParts.push(metadata.description);
+  }
+
+  const topics = [...new Set(metadata.topics)].slice(0, 6);
+  if (topics.length > 0) {
+    noteParts.push(`Topics: ${topics.join(', ')}`);
+  }
+
+  return noteParts.join(' ');
+}
+
 function collectDocLinks(dirPath, repoRawBaseUrl) {
   const items = sortItems(
     fs.readdirSync(dirPath)
@@ -181,6 +239,7 @@ function collectDocLinks(dirPath, repoRawBaseUrl) {
     links.push({
       title: getDocTitle(item),
       url: buildDocLink(item, repoRawBaseUrl),
+      note: buildDocNote(item),
     });
   }
 
@@ -220,6 +279,7 @@ function collectSections(docsDir, repoRawBaseUrl) {
     rootDocs.push({
       title: getDocTitle(item),
       url: buildDocLink(item, repoRawBaseUrl),
+      note: buildDocNote(item),
     });
   }
 
@@ -268,6 +328,8 @@ function generateManifest(docsDir, outputPath, fullManifestUrl) {
     `> ${siteTagline}`,
     '',
     'This file is a curated markdown index for LLMs. Use the sections below for targeted source documents, or use the optional full bundle when you want the entire documentation set in one file.',
+    '',
+    'Each link includes frontmatter descriptions and discoverability topics when the source page provides them. Prefer those notes to pick the smallest relevant page before falling back to the full bundle.',
     '',
     renderedSections,
     '',

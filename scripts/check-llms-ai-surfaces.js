@@ -33,6 +33,7 @@ function main() {
 
   const requiredV2IndexSources = [
     'docs/ai-assisted-development.md',
+    'docs/topics.md',
     'docs/sample-app.md',
     'docs/polyglot/cli.mdx',
     'docs/polyglot/cli-python-parity.md',
@@ -46,6 +47,8 @@ function main() {
   }
 
   const requiredV2FullContent = [
+    '<!-- Source: docs/ai-assisted-development.md -->',
+    '<!-- Source: docs/topics.md -->',
     '# AI-Assisted Development',
     'https://durable-workflow.com/llms-full-2.0.txt',
     '/mcp/workflows',
@@ -67,6 +70,8 @@ function main() {
     assertIncludes(v2Full, content, 'llms-full-2.0.txt');
   }
 
+  assertIncludes(v2Index, 'Topics: ai, agents, llms', 'llms-2.0.txt');
+  assertIncludes(v2Index, 'Find Durable Workflow v2 docs by task', 'llms-2.0.txt');
   assertIncludes(canonicalIndex, 'versioned_docs/version-1.x', 'llms.txt');
   assertIncludes(canonicalIndex, 'llms-full.txt', 'llms.txt');
   assertExcludes(canonicalIndex, 'docs/ai-assisted-development.md', 'llms.txt');

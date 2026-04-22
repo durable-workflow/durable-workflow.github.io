@@ -11,6 +11,10 @@ function isDocFile(p) {
   return DOC_EXTS.has(path.extname(p));
 }
 
+function getRepoRelativePath(filePath) {
+  return path.relative(path.join(__dirname, '..'), filePath).replace(/\\/g, '/');
+}
+
 function shouldExclude(filePath) {
   const basename = path.basename(filePath);
   return ['sponsors.md', 'support.md'].includes(basename);
@@ -158,7 +162,8 @@ function collectContent(rootDir, dirPath = rootDir) {
     if (isDocFile(item)) {
       const { content } = extractFrontmatterAndContent(item);
       const cleaned = cleanContent(content);
-      combined += cleaned.trimEnd() + '\n';
+      combined += `<!-- Source: ${getRepoRelativePath(item)} -->\n`;
+      combined += cleaned.trimEnd() + '\n\n';
     }
   }
 

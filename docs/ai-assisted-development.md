@@ -2,6 +2,14 @@
 sidebar_position: 9
 title: AI-Assisted Development
 description: Use Durable Workflow's v2 docs, MCP surface, CLI output, and history exports as stable handles for coding agents.
+tags:
+  - ai
+  - agents
+  - llms
+keywords:
+  - durable workflow ai docs
+  - llms.txt
+  - ai coding assistants
 ---
 
 # AI-Assisted Development
