@@ -2,6 +2,16 @@
 sidebar_position: 4
 title: CLI Command Reference
 description: Reference for Durable Workflow CLI commands, stable output modes, common options, and failure behavior.
+tags:
+  - CLI
+  - reference
+  - control-plane
+  - automation
+keywords:
+  - dw command reference
+  - CLI output
+  - bridge webhook
+  - workflow command
 ---
 
 # CLI Command Reference

@@ -2,6 +2,15 @@
 sidebar_position: 17
 title: Version Compatibility
 description: Compatibility matrix for Durable Workflow components
+tags:
+  - compatibility
+  - operations
+  - protocols
+keywords:
+  - version compatibility
+  - protocol manifests
+  - control plane version
+  - worker protocol version
 ---
 
 # Version Compatibility

@@ -2,6 +2,15 @@
 sidebar_position: 2
 title: Getting Started
 description: Install Durable Workflow into a Laravel app and run a workflow end to end in a few minutes.
+tags:
+  - getting-started
+  - workflows
+  - Laravel
+keywords:
+  - durable workflow quickstart
+  - Laravel workflow install
+  - start workflow
+  - v2 quickstart
 ---
 
 # Getting Started

@@ -1,5 +1,15 @@
 ---
 sidebar_position: 4
+tags:
+  - Python
+  - SDK
+  - workers
+  - polyglot
+keywords:
+  - Python SDK
+  - durable_workflow Client
+  - Python worker
+  - async workflow client
 ---
 
 # Python SDK

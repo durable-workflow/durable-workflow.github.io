@@ -2,6 +2,16 @@
 sidebar_position: 2
 title: Server
 description: Deploy and configure the Durable Workflow standalone server.
+tags:
+  - server
+  - control-plane
+  - operations
+  - polyglot
+keywords:
+  - Durable Workflow server
+  - standalone server
+  - control plane API
+  - polyglot workflows
 ---
 
 # Server

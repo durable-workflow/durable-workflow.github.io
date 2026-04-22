@@ -1,5 +1,14 @@
 ---
 sidebar_position: 12
+tags:
+  - observability
+  - operations
+  - Waterline
+keywords:
+  - Waterline
+  - workflow monitoring
+  - durable history
+  - runtime telemetry
 ---
 
 # Monitoring

@@ -1,5 +1,14 @@
 ---
 sidebar_position: 1
+tags:
+  - concepts
+  - getting-started
+  - workflows
+keywords:
+  - durable workflow
+  - Laravel workflow engine
+  - durable orchestration
+  - v2 workflow concepts
 ---
 
 # Introduction

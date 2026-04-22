@@ -1,5 +1,15 @@
 ---
 sidebar_position: 8
+tags:
+  - sample-app
+  - Laravel
+  - message-streams
+  - Waterline
+keywords:
+  - sample app
+  - Laravel consumer
+  - AI workflow sample
+  - Waterline dashboard
 ---
 
 # Sample App

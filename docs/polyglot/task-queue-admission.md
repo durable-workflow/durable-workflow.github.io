@@ -2,6 +2,16 @@
 sidebar_position: 6
 title: Task Queue Admission
 description: Tune worker slots, server-side queue budgets, and query-task backpressure for the standalone server.
+tags:
+  - admission
+  - operations
+  - task-queues
+  - bounded-growth
+keywords:
+  - task queue admission
+  - dispatch budget
+  - queue limits
+  - bounded worker queues
 ---
 
 # Task Queue Admission

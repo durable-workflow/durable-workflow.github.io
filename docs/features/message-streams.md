@@ -1,5 +1,16 @@
 ---
 sidebar_position: 3.5
+tags:
+  - message-streams
+  - workflows
+  - continue-as-new
+  - AI
+keywords:
+  - message streams
+  - Workflow inbox
+  - Workflow outbox
+  - MessageStream
+  - repeated workflow messages
 ---
 
 # Message Streams

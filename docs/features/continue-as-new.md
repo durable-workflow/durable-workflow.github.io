@@ -1,5 +1,15 @@
 ---
 sidebar_position: 14
+tags:
+  - continue-as-new
+  - history
+  - message-streams
+  - workflows
+keywords:
+  - continue as new
+  - workflow history growth
+  - run handoff
+  - message stream handoff
 ---
 
 # Continue As New

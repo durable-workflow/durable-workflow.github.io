@@ -2,6 +2,16 @@
 sidebar_position: 3
 title: External Execution Surface
 description: Use the carrier-neutral activity-grade external execution contract for bounded tasks, bridges, and AI-operable handlers.
+tags:
+  - external-execution
+  - bridge-adapters
+  - worker-protocol
+  - AI
+keywords:
+  - external execution
+  - bridge adapter
+  - activity worker protocol
+  - task result envelope
 ---
 
 # External Execution Surface
