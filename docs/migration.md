@@ -1,5 +1,16 @@
 ---
 sidebar_position: 13
+title: Migrating to 2.0
+description: Upgrade an existing Laravel Workflow v1 application to Durable Workflow v2.
+tags:
+  - migration
+  - upgrade
+  - v2
+keywords:
+  - migrate to Durable Workflow v2
+  - Laravel Workflow upgrade
+  - v2 schema migration
+  - workflow v1 to v2
 ---
 
 # Migrating to 2.0

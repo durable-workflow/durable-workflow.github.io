@@ -192,6 +192,59 @@ function assertDocExists(relativePath) {
   return fullPath;
 }
 
+function extractFrontMatterTags(markdown) {
+  const frontMatter = markdown.match(/^---\n([\s\S]*?)\n---/);
+
+  if (!frontMatter) {
+    return [];
+  }
+
+  const tags = [];
+  const lines = frontMatter[1].split(/\r?\n/);
+
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!/^tags:\s*$/.test(lines[index])) {
+      continue;
+    }
+
+    for (let tagIndex = index + 1; tagIndex < lines.length; tagIndex += 1) {
+      const line = lines[tagIndex];
+
+      if (/^\S/.test(line)) {
+        break;
+      }
+
+      const tag = line.match(/^\s*-\s+(.+?)\s*$/);
+
+      if (tag) {
+        tags.push(tag[1].replace(/^['"]|['"]$/g, ''));
+      }
+    }
+  }
+
+  return tags;
+}
+
+function assertRequiredDocTags(contract) {
+  const requiredDocTags = contract.requiredDocTags || {};
+
+  if (Object.keys(requiredDocTags).length === 0) {
+    throw new Error('Discoverability contract must include required doc tag checks');
+  }
+
+  for (const [relativePath, expectedTags] of Object.entries(requiredDocTags)) {
+    const resolvedPath = resolveDocPath(relativePath);
+    const fullPath = assertDocExists(resolvedPath);
+    const tags = new Set(extractFrontMatterTags(read(fullPath)));
+
+    for (const tag of expectedTags) {
+      if (!tags.has(tag)) {
+        throw new Error(`docs/${resolvedPath} must include doc tag ${JSON.stringify(tag)}`);
+      }
+    }
+  }
+}
+
 function assertTargetContentCoversQuery(query, collectionName) {
   const fullPath = assertDocExists(query.target);
   const content = normalize(read(fullPath));
@@ -333,6 +386,7 @@ function main() {
   assertTaskGroupsCovered(contract, topics, topicLinks);
   assertSidebarMatchesTaskIa(contract);
   assertCrossReferencesCovered(contract);
+  assertRequiredDocTags(contract);
 
   for (const link of contract.requiredTopicLinks || []) {
     const resolvedLink = resolveDocPath(link);
@@ -357,7 +411,7 @@ function main() {
   }
 
   console.log(
-    `Discoverability checks passed for ${contract.queries.length} tracked queries, ${zeroResultWatchlist.length} zero-result watchlist queries, ${(contract.taskGroups || []).length} task groups, and ${(contract.crossReferences || []).length} cross-reference checks`
+    `Discoverability checks passed for ${contract.queries.length} tracked queries, ${zeroResultWatchlist.length} zero-result watchlist queries, ${(contract.taskGroups || []).length} task groups, ${(contract.crossReferences || []).length} cross-reference checks, and ${Object.keys(contract.requiredDocTags || {}).length} tagged docs`
   );
 }
 

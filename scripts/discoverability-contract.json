@@ -130,6 +130,14 @@
     "agent-operating-loop.md",
     "sample-app.md"
   ],
+  "requiredDocTags": {
+    "migration.md": ["migration", "upgrade", "v2"],
+    "monitoring.md": ["observability", "operations", "Waterline"],
+    "features/timers.md": ["timers", "deterministic-time", "waits"],
+    "failures-and-recovery.md": ["failures", "recovery", "operations"],
+    "polyglot/task-queue-admission.md": ["admission", "operations", "task-queues", "bounded-growth"],
+    "features/message-streams.md": ["message-streams", "workflows", "continue-as-new", "AI"]
+  },
   "queries": [
     {
       "query": "quickstart install first workflow",

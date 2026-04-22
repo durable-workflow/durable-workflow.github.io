@@ -80,6 +80,10 @@ future edits cannot silently drop the route.
   Waterline exports, and SDK parity fixtures.
 - [MCP Workflow Surface](./mcp-workflows.md) defines the sample-app MCP
   endpoint, workflow tool contract, no-credential smoke keys, and report shape.
+- Topic tags expose cross-page trails for [migration](/docs/2.0/tags/migration),
+  [observability](/docs/2.0/tags/observability), [timers](/docs/2.0/tags/timers),
+  [operations](/docs/2.0/tags/operations), [task queues](/docs/2.0/tags/task-queues),
+  and [message streams](/docs/2.0/tags/message-streams).
 
 ## Search Feedback
 

@@ -74,3 +74,12 @@ the sample app. The links below group those surfaces by job.
 - [CLI](./polyglot/cli.mdx) - install a pinned `dw`, save an environment profile, and run the five-minute operator quickstart.
 - [External Execution Surface](./polyglot/external-execution.md) - expose machine-readable task and result envelopes.
 - [CLI and Python Parity](./polyglot/cli-python-parity.md) - share request fixtures across automation surfaces.
+
+## Topic Tags
+
+- [Migration](/docs/2.0/tags/migration) - upgrade and rollout pages for v2 adoption.
+- [Observability](/docs/2.0/tags/observability) - Waterline, telemetry, and operator evidence.
+- [Timers](/docs/2.0/tags/timers) - durable waits, deterministic time, and schedules.
+- [Operations](/docs/2.0/tags/operations) - production diagnostics, recovery, and support boundaries.
+- [Task Queues](/docs/2.0/tags/task-queues) - worker admission, dispatch budgets, and queue health.
+- [Message Streams](/docs/2.0/tags/message-streams) - inbox/outbox authoring and repeated messages.
