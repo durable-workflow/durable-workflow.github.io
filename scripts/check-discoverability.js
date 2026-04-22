@@ -50,14 +50,33 @@ function normalizeDocLink(href, sourcePath) {
     .replace(/^\.\//, '');
 }
 
+function candidateDocPaths(relativePath) {
+  if (relativePath.endsWith('.md') || relativePath.endsWith('.mdx')) {
+    return [relativePath];
+  }
+
+  return [`${relativePath}.md`, `${relativePath}.mdx`, path.posix.join(relativePath, 'index.md'), path.posix.join(relativePath, 'index.mdx')];
+}
+
+function resolveDocPath(relativePath) {
+  for (const candidate of candidateDocPaths(relativePath)) {
+    if (fs.existsSync(path.join(docsDir, candidate))) {
+      return candidate;
+    }
+  }
+
+  return relativePath;
+}
+
 function extractDocLinks(markdown, sourcePath) {
   const links = new Set();
   let match;
 
   while ((match = DOC_LINK_PATTERN.exec(markdown)) !== null) {
-    const link = normalizeDocLink(match[1], sourcePath);
+    const rawLink = normalizeDocLink(match[1], sourcePath);
 
-    if (link) {
+    if (rawLink) {
+      const link = resolveDocPath(rawLink);
       links.add(link);
     }
   }
@@ -66,7 +85,8 @@ function extractDocLinks(markdown, sourcePath) {
 }
 
 function assertDocExists(relativePath) {
-  const fullPath = path.join(docsDir, relativePath);
+  const resolvedPath = resolveDocPath(relativePath);
+  const fullPath = path.join(docsDir, resolvedPath);
 
   if (!fs.existsSync(fullPath)) {
     throw new Error(`Discoverability target does not exist: docs/${relativePath}`);
@@ -107,9 +127,10 @@ function assertSearchPageCoversQuery(query, search, links, collectionName) {
   }
 
   for (const link of [query.target, ...(query.related || [])]) {
-    assertDocExists(link);
+    const resolvedLink = resolveDocPath(link);
+    assertDocExists(resolvedLink);
 
-    if (!links.has(link)) {
+    if (!links.has(resolvedLink)) {
       throw new Error(
         `docs/search-and-navigation.md must link to docs/${link} for ${collectionName} query ${JSON.stringify(query.query)}`
       );
@@ -122,16 +143,72 @@ function assertQueryCovered(query, search, links, collectionName) {
   assertSearchPageCoversQuery(query, search, links, collectionName);
 }
 
+function headingPattern(title) {
+  return new RegExp(`^##\\s+${title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'm');
+}
+
+function assertTaskGroupsCovered(contract, topics, topicLinks) {
+  const groups = contract.taskGroups || [];
+
+  if (groups.length === 0) {
+    throw new Error('Discoverability contract must include task-oriented docs groups');
+  }
+
+  for (const group of groups) {
+    if (!headingPattern(group.title).test(topics)) {
+      throw new Error(`docs/topics.md must include task group heading ${JSON.stringify(group.title)}`);
+    }
+
+    for (const link of group.links || []) {
+      const resolvedLink = resolveDocPath(link);
+      assertDocExists(resolvedLink);
+
+      if (!topicLinks.has(resolvedLink)) {
+        throw new Error(
+          `docs/topics.md must link to docs/${link} for task group ${JSON.stringify(group.title)}`
+        );
+      }
+    }
+  }
+}
+
+function assertCrossReferencesCovered(contract) {
+  const references = contract.crossReferences || [];
+
+  if (references.length === 0) {
+    throw new Error('Discoverability contract must include cross-reference checks');
+  }
+
+  for (const reference of references) {
+    const source = resolveDocPath(reference.source);
+    const fullPath = assertDocExists(source);
+    const links = extractDocLinks(read(fullPath), source);
+
+    for (const link of reference.links || []) {
+      const resolvedLink = resolveDocPath(link);
+      assertDocExists(resolvedLink);
+
+      if (!links.has(resolvedLink)) {
+        throw new Error(`docs/${source} must cross-link to docs/${link}`);
+      }
+    }
+  }
+}
+
 function main() {
   const contract = JSON.parse(read(contractPath));
   const topics = read(topicsPath);
   const search = read(searchPath);
+  const topicLinks = extractDocLinks(topics, 'topics.md');
   const searchLinks = extractDocLinks(search, 'search-and-navigation.md');
 
   assertIncludes(topics, './search-and-navigation.md', 'docs/topics.md');
+  assertTaskGroupsCovered(contract, topics, topicLinks);
+  assertCrossReferencesCovered(contract);
 
   for (const link of contract.requiredTopicLinks || []) {
-    assertDocExists(link);
+    const resolvedLink = resolveDocPath(link);
+    assertDocExists(resolvedLink);
     assertIncludes(search, link, 'docs/search-and-navigation.md');
   }
 
@@ -151,7 +228,7 @@ function main() {
   }
 
   console.log(
-    `Discoverability checks passed for ${contract.queries.length} tracked queries and ${zeroResultWatchlist.length} zero-result watchlist queries`
+    `Discoverability checks passed for ${contract.queries.length} tracked queries, ${zeroResultWatchlist.length} zero-result watchlist queries, ${(contract.taskGroups || []).length} task groups, and ${(contract.crossReferences || []).length} cross-reference checks`
   );
 }
 

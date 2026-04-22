@@ -185,3 +185,8 @@ class RetryableWorkflow extends Workflow
     }
 }
 ```
+
+## Related Guides
+
+- [Monitoring](./monitoring.md) explains where Waterline, history export,
+  worker logs, and runtime telemetry surface the failure facts described here.

@@ -108,3 +108,12 @@ Operators can cancel, terminate, repair, and archive workflows directly
 from the detail view. Each action maps to a `POST` on the same run id and
 returns either `200` with the resulting state or `409` when the action is
 not valid for the run's current state.
+
+## Related Guides
+
+- [Failures and Recovery](./failures-and-recovery.md) explains retry exhaustion,
+  non-retryable failures, timeouts, and repair behavior behind the dashboard
+  facts.
+- [AI-Assisted Development](./ai-assisted-development.md) names the Waterline,
+  CLI, MCP, and LLM-readable contracts that agents should use when diagnosing
+  workflow state.

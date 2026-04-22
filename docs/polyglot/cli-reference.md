@@ -265,3 +265,11 @@ All commands use the stable exit-code policy documented in the
 
 For support bundles, collect `dw doctor --output=json`, `dw server:info
 --output=json`, and `dw debug workflow <workflow-id> --output=json`.
+
+## Related Guides
+
+- [CLI](./cli.mdx) covers installation, profile setup, and exit-code behavior.
+- [Server](./server.md) documents the HTTP control plane that server-backed
+  commands call.
+- [CLI and Python Parity](./cli-python-parity.md) compares shared request
+  fixtures across CLI and SDK clients.

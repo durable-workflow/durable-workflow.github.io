@@ -1,4 +1,111 @@
 {
+  "taskGroups": [
+    {
+      "title": "Start Or Author Workflows",
+      "links": [
+        "getting-started.md",
+        "defining-workflows/workflows.md",
+        "defining-workflows/activities.md",
+        "defining-workflows/starting-workflows.md",
+        "features/message-streams.md"
+      ]
+    },
+    {
+      "title": "Run And Operate",
+      "links": [
+        "search-and-navigation.md",
+        "deployment.md",
+        "monitoring.md",
+        "compatibility.md",
+        "failures-and-recovery.md",
+        "support.md"
+      ]
+    },
+    {
+      "title": "Control Plane And Polyglot",
+      "links": [
+        "polyglot/server.md",
+        "polyglot/embedded-to-server.md",
+        "polyglot/cli.mdx",
+        "polyglot/cli-reference.md",
+        "polyglot/python.md",
+        "polyglot/cli-python-parity.md"
+      ]
+    },
+    {
+      "title": "External Execution And Ingress",
+      "links": [
+        "polyglot/external-execution.md",
+        "polyglot/worker-protocol.md",
+        "polyglot/task-queue-admission.md",
+        "features/webhooks.md",
+        "sample-app.md"
+      ]
+    },
+    {
+      "title": "Reliability Patterns",
+      "links": [
+        "features/signals.md",
+        "features/updates.md",
+        "features/queries.md",
+        "features/timers.md",
+        "features/condition-waits.md",
+        "features/timeouts.md",
+        "features/continue-as-new.md",
+        "features/sagas.md",
+        "features/cancel-and-terminate.md"
+      ]
+    },
+    {
+      "title": "AI And Automation",
+      "links": [
+        "ai-assisted-development.md",
+        "agent-operating-loop.md",
+        "polyglot/external-execution.md",
+        "polyglot/cli-python-parity.md"
+      ]
+    }
+  ],
+  "crossReferences": [
+    {
+      "source": "getting-started.md",
+      "links": [
+        "sample-app.md",
+        "ai-assisted-development.md",
+        "polyglot/server.md",
+        "polyglot/cli.mdx",
+        "polyglot/python.md"
+      ]
+    },
+    {
+      "source": "monitoring.md",
+      "links": [
+        "ai-assisted-development.md",
+        "failures-and-recovery.md"
+      ]
+    },
+    {
+      "source": "failures-and-recovery.md",
+      "links": [
+        "monitoring.md"
+      ]
+    },
+    {
+      "source": "polyglot/cli-reference.md",
+      "links": [
+        "polyglot/cli.mdx",
+        "polyglot/cli-python-parity.md",
+        "polyglot/server.md"
+      ]
+    },
+    {
+      "source": "polyglot/worker-protocol.md",
+      "links": [
+        "polyglot/external-execution.md",
+        "polyglot/server.md"
+      ]
+    }
+  ],
   "requiredTopicLinks": [
     "ai-assisted-development.md",
     "polyglot/cli-reference.md",

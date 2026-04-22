@@ -387,3 +387,11 @@ use Workflow\V2\Contracts\ActivityTaskBridge;
 $workflowBridge = app(WorkflowTaskBridge::class);
 $activityBridge = app(ActivityTaskBridge::class);
 ```
+
+## Related Guides
+
+- [Server](./server.md) documents the control-plane endpoints and deployment
+  shape that host this protocol.
+- [External Execution Surface](./external-execution.md) explains the
+  activity-grade worker, bridge, and handler contracts that build on the worker
+  protocol.
