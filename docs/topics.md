@@ -71,5 +71,6 @@ the sample app. The links below group those surfaces by job.
 - [Agent Operating Loop](./agent-operating-loop.md) - give agents a repeatable discover, change, run, diagnose, and report loop.
 - [MCP Workflow Surface](./mcp-workflows.md) - expose sample-app workflows to AI clients through structured tools.
 - [Agent Tooling Contract](./agent-tooling-contract.md) - align MCP tools, CLI JSON, server diagnostics, Waterline exports, and SDK fixtures.
+- [CLI](./polyglot/cli.mdx) - install a pinned `dw`, save an environment profile, and run the five-minute operator quickstart.
 - [External Execution Surface](./polyglot/external-execution.md) - expose machine-readable task and result envelopes.
 - [CLI and Python Parity](./polyglot/cli-python-parity.md) - share request fixtures across automation surfaces.

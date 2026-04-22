@@ -65,6 +65,7 @@
         "agent-operating-loop.md",
         "mcp-workflows.md",
         "agent-tooling-contract.md",
+        "polyglot/cli.mdx",
         "polyglot/external-execution.md",
         "polyglot/cli-python-parity.md"
       ]
@@ -158,6 +159,12 @@
       "target": "polyglot/cli-reference.md",
       "related": ["polyglot/cli.mdx"],
       "aliases": ["--output=table|json|jsonl", "exit codes", "automation"]
+    },
+    {
+      "query": "cli operator quickstart pinned install",
+      "target": "polyglot/cli.mdx",
+      "related": ["polyglot/cli-reference.md", "polyglot/server.md"],
+      "aliases": ["Five-Minute Operator Quickstart", "VERSION=0.1.2", "dw env:set local", "dw doctor"]
     },
     {
       "query": "python sdk polyglot",
