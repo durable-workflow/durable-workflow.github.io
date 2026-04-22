@@ -7,6 +7,7 @@
         "defining-workflows/workflows.md",
         "defining-workflows/activities.md",
         "defining-workflows/starting-workflows.md",
+        "defining-workflows/workflow-authoring-reference.md",
         "features/message-streams.md"
       ]
     },
@@ -211,6 +212,12 @@
       "target": "features/signals.md",
       "related": ["features/updates.md", "features/queries.md"],
       "aliases": ["Signals", "Updates", "Queries"]
+    },
+    {
+      "query": "php workflow authoring api reference",
+      "target": "defining-workflows/workflow-authoring-reference.md",
+      "related": ["defining-workflows/workflows.md", "features/message-streams.md"],
+      "aliases": ["Workflow::activity", "Workflow::await", "Workflow::inbox", "MessageStream"]
     },
     {
       "query": "timers wait sleep condition",

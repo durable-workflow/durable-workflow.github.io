@@ -31,6 +31,7 @@ const sidebars = {
             'defining-workflows/passing-data',
             'defining-workflows/workflow-id',
             'defining-workflows/workflow-status',
+            'defining-workflows/workflow-authoring-reference',
           ],
         },
         'features/message-streams',

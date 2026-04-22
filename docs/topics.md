@@ -26,6 +26,7 @@ the sample app. The links below group those surfaces by job.
 - [Workflows](./defining-workflows/workflows.md) - define a workflow class.
 - [Activities](./defining-workflows/activities.md) - move non-deterministic work out of replay.
 - [Starting Workflows](./defining-workflows/starting-workflows.md) - start runs through the Laravel API.
+- [Workflow Authoring API Reference](./defining-workflows/workflow-authoring-reference.md) - look up exact v2 PHP facade signatures, message-stream methods, and replay rules.
 - [Message Streams](./features/message-streams.md) - receive repeated messages through `inbox()` and publish ordered replies through `outbox()`.
 
 ## Run And Operate
