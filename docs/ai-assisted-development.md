@@ -46,6 +46,12 @@ Use `simple` or `elapsed` as no-credential smoke tests. Use workflows with
 external credentials only after the local environment contains the required
 keys.
 
+When an agent edits repeated AI or human-input workflows, point it at the v2
+[Message Streams](/docs/2.0/features/message-streams) contract. The stable
+authoring pattern is `Workflow::inbox()` / `Workflow::outbox()` /
+`MessageStream`; direct `MessageService`, `WorkflowMessage`, or cursor-row
+writes are runtime internals, not sample code patterns.
+
 ## Command And Diagnostic Contracts
 
 Agents should prefer machine-readable surfaces over screenshots or prose:

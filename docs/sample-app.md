@@ -137,6 +137,27 @@ The export includes a SHA-256 integrity checksum. Set `DW_V2_HISTORY_EXPORT_SIGN
 
 The exported `selected_run` block includes `waits_projection_source`, `timeline_projection_source`, `timers_projection_source`, and `lineage_projection_source`. The exported `links` block also includes `projection_source`, and the `links.parents` / `links.children` sections come from the selected run's typed lineage history first, so child-workflow and continue-as-new relationships remain visible in the bundle even if mutable link rows have drifted during a local experiment. When a lineage row is surviving only through older mutable compatibility data, the bundle now marks that entry with `history_authority = mutable_open_fallback` and `diagnostic_only = true` instead of silently rehydrating extra link metadata during export.
 
+## AI Workflow Message Streams
+
+Repeated AI or human-input workflows should use the first-class v2 message
+stream facade as their authoring pattern:
+
+```php
+$reply = $this->inbox('ai.assistant')->receiveOne();
+
+$this->outbox('ai.assistant')->sendReference(
+    targetInstanceId: $this->workflowId(),
+    payloadReference: $storedReplyReference,
+    correlationId: $requestId,
+);
+```
+
+Keep app-owned payload storage for large request/response bodies, then pass
+the stored reference through the stream. Do not teach new sample workflows to
+write `workflow_messages`, `MessageStreamCursor`, or `MessageService` calls
+directly. See [Message Streams](/docs/2.0/features/message-streams) for the
+stable v2 inbox/outbox contract.
+
 **Step 10**
 
 Run the workflow and activity tests.
