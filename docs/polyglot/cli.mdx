@@ -66,6 +66,27 @@ Every command that accepts caller payloads uses the same input shape:
 and `--input-encoding=json|raw|base64`. JSON is the default; raw and base64
 inputs are passed as one positional workflow argument.
 
+### Bridge Adapters
+
+```bash
+dw bridge:webhook stripe \
+  --action=start_workflow \
+  --idempotency-key=stripe-event-1001 \
+  --target='{"workflow_type":"orders.fulfillment","task_queue":"external-workflows"}' \
+  --input='{"order_id":"order-1001"}'
+
+dw bridge:webhook pagerduty \
+  --action=signal_workflow \
+  --idempotency-key=pd-event-3003 \
+  --target='{"workflow_id":"wf-remediation-42","signal_name":"incident_escalated"}' \
+  --input='{"severity":"critical"}' \
+  --json
+```
+
+Bridge adapters are bounded ingress tools for integration events. They return
+named bridge outcomes for accepted, duplicate, and rejected deliveries; they do
+not become workflow runtimes.
+
 ### Schedules
 
 ```bash

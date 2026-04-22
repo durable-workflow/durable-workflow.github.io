@@ -97,6 +97,21 @@ Use the same operator clarity as the rest of the control plane: stable status
 codes, named `reason` values, and enough context for `dw`, Waterline, SDKs, and
 agents to explain what happened without scraping prose.
 
+The CLI exposes the webhook bridge surface directly:
+
+```bash
+dw bridge:webhook stripe \
+  --action=start_workflow \
+  --idempotency-key=stripe-event-1001 \
+  --target='{"workflow_type":"orders.fulfillment","task_queue":"external-workflows","business_key":"order-1001"}' \
+  --input='{"order_id":"order-1001"}' \
+  --json
+```
+
+The JSON response is the same bridge-adapter outcome contract published by
+`/api/cluster/info`, including `outcome`, `reason`,
+`control_plane_outcome`, `idempotency_key`, and the redacted `target` summary.
+
 ## Agent-Operable Shape
 
 The external execution surface is part of the v2 AI-assisted development

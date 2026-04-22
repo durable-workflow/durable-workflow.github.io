@@ -111,6 +111,39 @@ dw workflow:cancel --all-matching='WorkflowType = "ImportJob"' --limit=25 --yes
 validate canonical request fields against the server-published request
 contract. Non-canonical legacy aliases are rejected before the request is sent.
 
+## Bridge Adapter Commands
+
+Bridge commands are bounded ingress and handoff tools for integration events.
+They call the server bridge-adapter surface and return the
+`durable-workflow.v2.bridge-adapter-outcome.contract` shape in JSON mode.
+They do not execute workflow code or own workflow state transitions.
+
+| Command | Purpose | Important options |
+| --- | --- | --- |
+| `dw bridge:webhook <adapter>` | Send one webhook bridge event that starts, signals, or updates a workflow through the control plane. | `--action=start_workflow|signal_workflow|update_workflow`, `--idempotency-key`, `--target`, input options, `--correlation`, `--json` |
+
+Examples:
+
+```bash
+dw bridge:webhook stripe \
+  --action=start_workflow \
+  --idempotency-key=stripe-event-1001 \
+  --target='{"workflow_type":"orders.fulfillment","task_queue":"external-workflows","business_key":"order-1001"}' \
+  --input='{"order_id":"order-1001"}' \
+  --json
+
+dw bridge:webhook pagerduty \
+  --action=signal_workflow \
+  --idempotency-key=pd-event-3003 \
+  --target='{"workflow_id":"wf-remediation-42","signal_name":"incident_escalated"}' \
+  --input='{"severity":"critical"}'
+```
+
+Use the bridge outcome fields instead of inferring behavior from HTTP status
+alone. `outcome`, `reason`, `control_plane_outcome`, `idempotency_key`, and
+the redacted `target` summary are the automation contract for duplicates,
+routing misses, malformed payloads, and accepted handoffs.
+
 ## Schedule Commands
 
 | Command | Purpose | Important options |
