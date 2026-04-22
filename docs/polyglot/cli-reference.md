@@ -208,6 +208,7 @@ history-page endpoint. Use it only after `workflow-task:poll` returns a leased
 workflow task with `next_history_page_token`; normal workers should let their
 SDK fetch extra history pages.
 
+<!-- docs-example id="cli.workflow-task-history.command" -->
 ```bash
 dw workflow-task:history workflow-task-01 history-page-2 \
   --lease-owner=python-worker-1 \
@@ -217,6 +218,7 @@ dw workflow-task:history workflow-task-01 history-page-2 \
 
 JSON output is the server response without field renaming:
 
+<!-- docs-example id="cli.workflow-task-history.response" -->
 ```json
 {
   "history_events": [

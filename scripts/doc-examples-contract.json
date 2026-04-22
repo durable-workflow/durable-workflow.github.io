@@ -1,0 +1,71 @@
+{
+  "examples": [
+    {
+      "id": "server.cluster-info.curl",
+      "path": "polyglot/server-api-reference.md",
+      "language": "bash",
+      "requiredSubstrings": [
+        "curl -sS",
+        "$DURABLE_WORKFLOW_SERVER_URL/api/cluster/info",
+        "Authorization: Bearer $DURABLE_WORKFLOW_AUTH_TOKEN",
+        "X-Namespace: default"
+      ]
+    },
+    {
+      "id": "server.workflow-start.curl",
+      "path": "polyglot/server-api-reference.md",
+      "language": "bash",
+      "requiredSubstrings": [
+        "curl -sS -X POST",
+        "$DURABLE_WORKFLOW_SERVER_URL/api/workflows",
+        "X-Durable-Workflow-Control-Plane-Version: 2",
+        "\"workflow_type\": \"orders.fulfillment\"",
+        "\"duplicate_policy\": \"reject\""
+      ],
+      "embeddedJsonAfter": "-d",
+      "requiredJsonKeys": [
+        "workflow_type",
+        "workflow_id",
+        "task_queue",
+        "input",
+        "memo",
+        "search_attributes",
+        "duplicate_policy"
+      ]
+    },
+    {
+      "id": "cli.workflow-task-history.command",
+      "path": "polyglot/cli-reference.md",
+      "language": "bash",
+      "requiredSubstrings": [
+        "dw workflow-task:history",
+        "--lease-owner=python-worker-1",
+        "--attempt=2",
+        "--json"
+      ]
+    },
+    {
+      "id": "cli.workflow-task-history.response",
+      "path": "polyglot/cli-reference.md",
+      "language": "json",
+      "requiredJsonKeys": [
+        "history_events",
+        "total_history_events",
+        "next_history_page_token"
+      ]
+    },
+    {
+      "id": "python.quickstart.worker",
+      "path": "polyglot/python.md",
+      "language": "python",
+      "requiredSubstrings": [
+        "from durable_workflow import Client, Worker, workflow, activity",
+        "@activity.defn(name=\"greet\")",
+        "@workflow.defn(name=\"greeter\")",
+        "await client.start_workflow(",
+        "await worker.run_until(",
+        "await handle.result("
+      ]
+    }
+  ]
+}

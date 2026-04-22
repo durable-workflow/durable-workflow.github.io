@@ -41,6 +41,7 @@ The SDK depends on [httpx](https://www.python-httpx.org/) for HTTP and Apache Av
 
 Here is a complete Python program that defines a workflow with one activity, starts it against a local Durable Workflow server, and waits for the result:
 
+<!-- docs-example id="python.quickstart.worker" -->
 ```python
 import asyncio
 from durable_workflow import Client, Worker, workflow, activity

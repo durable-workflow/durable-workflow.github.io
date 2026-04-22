@@ -65,6 +65,7 @@ checks.
 
 Example:
 
+<!-- docs-example id="server.cluster-info.curl" -->
 ```bash
 curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/cluster/info" \
   -H "Authorization: Bearer $DURABLE_WORKFLOW_AUTH_TOKEN" \
@@ -93,6 +94,7 @@ admin role and `X-Durable-Workflow-Control-Plane-Version: 2`.
 
 Start requests use the language-neutral control-plane shape:
 
+<!-- docs-example id="server.workflow-start.curl" -->
 ```bash
 curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/workflows" \
   -H "Authorization: Bearer $DURABLE_WORKFLOW_AUTH_TOKEN" \
