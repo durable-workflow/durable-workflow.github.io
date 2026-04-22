@@ -11,46 +11,55 @@
     {
       "query": "quickstart install first workflow",
       "target": "getting-started.md",
+      "related": ["sample-app.md"],
       "aliases": ["sample application", "queue worker", "app:workflow"]
     },
     {
       "query": "workflow stuck failed activity retry exhausted",
       "target": "failures-and-recovery.md",
+      "related": ["monitoring.md"],
       "aliases": ["exceptions", "non-retryable", "recovery"]
     },
     {
       "query": "waterline workflow dashboard history export",
       "target": "monitoring.md",
+      "related": ["ai-assisted-development.md"],
       "aliases": ["Waterline", "durable state", "workflow detail"]
     },
     {
       "query": "cli dw command json output",
       "target": "polyglot/cli-reference.md",
+      "related": ["polyglot/cli.mdx"],
       "aliases": ["--output=table|json|jsonl", "exit codes", "automation"]
     },
     {
       "query": "python sdk polyglot",
       "target": "polyglot/python.md",
+      "related": ["polyglot/cli-python-parity.md"],
       "aliases": ["Python SDK", "durable_workflow", "Client"]
     },
     {
       "query": "server mode http api control plane",
       "target": "polyglot/server.md",
+      "related": ["polyglot/embedded-to-server.md"],
       "aliases": ["standalone server", "HTTP", "control-plane"]
     },
     {
       "query": "worker protocol external worker heartbeats",
       "target": "polyglot/worker-protocol.md",
+      "related": ["polyglot/external-execution.md"],
       "aliases": ["polling", "leasing", "heartbeats"]
     },
     {
       "query": "task queue rate limit admission",
       "target": "polyglot/task-queue-admission.md",
+      "related": ["monitoring.md"],
       "aliases": ["dispatch-per-minute", "capacity", "budget"]
     },
     {
       "query": "mcp ai client llms.txt",
       "target": "ai-assisted-development.md",
+      "related": ["sample-app.md"],
       "aliases": ["/mcp/workflows", "llms-2.0.txt", "agents"]
     },
     {
@@ -61,17 +70,46 @@
     {
       "query": "signals updates queries",
       "target": "features/signals.md",
+      "related": ["features/updates.md", "features/queries.md"],
       "aliases": ["Signals", "Updates", "Queries"]
     },
     {
       "query": "timers wait sleep condition",
       "target": "features/timers.md",
+      "related": ["features/condition-waits.md", "features/timeouts.md"],
       "aliases": ["duration", "condition waits", "timeouts"]
     },
     {
       "query": "history size continue as new compaction",
       "target": "features/continue-as-new.md",
+      "related": ["support.md"],
       "aliases": ["history", "new run", "bounded"]
+    }
+  ],
+  "zeroResultWatchlist": [
+    {
+      "query": "cron schedule recurring jobs",
+      "target": "features/schedules.md",
+      "related": ["features/timers.md"],
+      "aliases": ["cron expressions", "recurring", "schedule"]
+    },
+    {
+      "query": "worker logs trace id metrics",
+      "target": "monitoring.md",
+      "related": ["ai-assisted-development.md"],
+      "aliases": ["Queue worker logs", "application traces", "Prometheus"]
+    },
+    {
+      "query": "payload codec php serialization",
+      "target": "defining-workflows/passing-data.md",
+      "related": ["polyglot/server.md"],
+      "aliases": ["serialized", "payload", "codec"]
+    },
+    {
+      "query": "upgrade embedded app to server",
+      "target": "polyglot/embedded-to-server.md",
+      "related": ["polyglot/server.md"],
+      "aliases": ["embedded", "standalone server", "cutover"]
     }
   ]
 }

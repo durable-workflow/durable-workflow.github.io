@@ -40,6 +40,19 @@ common phrases to the smallest useful guide.
 | `timers`, `wait`, `sleep`, `condition` | [Timers](./features/timers.md) | [Condition Waits](./features/condition-waits.md), [Timeouts](./features/timeouts.md) |
 | `history size`, `continue as new`, `compaction` | [Continue As New](./features/continue-as-new.md) | [Support Boundaries](./support.md) |
 
+## Zero-Result Watchlist
+
+Track adjacent terms that users may type before the docs have a matching page
+title. Each phrase below is pinned in the build-time discoverability contract so
+future edits cannot silently drop the route.
+
+| Search phrase | Start here | Then use |
+| --- | --- | --- |
+| `cron`, `schedule`, `recurring jobs` | [Schedules](./features/schedules.md) | [Timers](./features/timers.md) |
+| `worker logs`, `trace id`, `metrics` | [Monitoring](./monitoring.md) | [AI-Assisted Development](./ai-assisted-development.md) |
+| `payload codec`, `PHP serialization` | [Passing Data](./defining-workflows/passing-data.md) | [Server](./polyglot/server.md) |
+| `upgrade embedded app`, `server cutover` | [Embedded to Server Migration](./polyglot/embedded-to-server.md) | [Server](./polyglot/server.md) |
+
 ## Task Indexes
 
 - [Topics](./topics.md) groups docs by authoring, operations, control-plane,
