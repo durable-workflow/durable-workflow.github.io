@@ -34,6 +34,7 @@ function main() {
   const requiredV2IndexSources = [
     'docs/ai-assisted-development.md',
     'docs/topics.md',
+    'docs/search-and-navigation.md',
     'docs/sample-app.md',
     'docs/polyglot/cli.mdx',
     'docs/polyglot/cli-python-parity.md',
@@ -49,6 +50,7 @@ function main() {
   const requiredV2FullContent = [
     '<!-- Source: docs/ai-assisted-development.md -->',
     '<!-- Source: docs/topics.md -->',
+    '<!-- Source: docs/search-and-navigation.md -->',
     '# AI-Assisted Development',
     'https://durable-workflow.com/llms-full-2.0.txt',
     '/mcp/workflows',
@@ -76,6 +78,7 @@ function main() {
   assertIncludes(v2Index, 'Define Durable Workflow v2 workflow classes and keep orchestration code deterministic.', 'llms-2.0.txt');
   assertIncludes(v2Index, 'Implement the versioned worker-plane protocol for polling, leasing, history replay, heartbeats, completion, and external task results.', 'llms-2.0.txt');
   assertIncludes(v2Index, 'Find Durable Workflow v2 docs by task', 'llms-2.0.txt');
+  assertIncludes(v2Index, 'Map common Durable Workflow v2 search terms', 'llms-2.0.txt');
   assertIncludes(canonicalIndex, 'versioned_docs/version-1.x', 'llms.txt');
   assertIncludes(canonicalIndex, 'llms-full.txt', 'llms.txt');
   assertExcludes(canonicalIndex, 'docs/ai-assisted-development.md', 'llms.txt');

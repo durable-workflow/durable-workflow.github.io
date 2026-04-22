@@ -30,6 +30,7 @@ the sample app. The links below group those surfaces by job.
 
 ## Run And Operate
 
+- [Search and Navigation](./search-and-navigation.md) - map common query phrases to the smallest useful guide.
 - [Self-Hosting Deployments](./deployment.md) - deploy the runtime and its dependencies.
 - [Monitoring](./monitoring.md) - choose between Waterline durable state and runtime telemetry.
 - [Version Compatibility](./compatibility.md) - understand which protocol manifests and component versions are compatible.

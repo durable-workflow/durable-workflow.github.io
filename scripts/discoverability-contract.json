@@ -1,0 +1,71 @@
+{
+  "requiredTopicLinks": [
+    "ai-assisted-development.md",
+    "polyglot/cli-reference.md",
+    "polyglot/cli-python-parity.md",
+    "polyglot/external-execution.md",
+    "sample-app.md"
+  ],
+  "queries": [
+    {
+      "query": "quickstart install first workflow",
+      "target": "getting-started.md",
+      "aliases": ["sample application", "queue worker", "app:workflow"]
+    },
+    {
+      "query": "workflow stuck failed activity retry exhausted",
+      "target": "failures-and-recovery.md",
+      "aliases": ["exceptions", "non-retryable", "recovery"]
+    },
+    {
+      "query": "waterline workflow dashboard history export",
+      "target": "monitoring.md",
+      "aliases": ["Waterline", "durable state", "workflow detail"]
+    },
+    {
+      "query": "cli dw command json output",
+      "target": "polyglot/cli-reference.md",
+      "aliases": ["--output=table|json|jsonl", "exit codes", "automation"]
+    },
+    {
+      "query": "python sdk polyglot",
+      "target": "polyglot/python.md",
+      "aliases": ["Python SDK", "durable_workflow", "Client"]
+    },
+    {
+      "query": "server mode http api control plane",
+      "target": "polyglot/server.md",
+      "aliases": ["standalone server", "HTTP", "control-plane"]
+    },
+    {
+      "query": "worker protocol external worker heartbeats",
+      "target": "polyglot/worker-protocol.md",
+      "aliases": ["polling", "leasing", "heartbeats"]
+    },
+    {
+      "query": "task queue rate limit admission",
+      "target": "polyglot/task-queue-admission.md",
+      "aliases": ["dispatch-per-minute", "capacity", "budget"]
+    },
+    {
+      "query": "mcp ai client llms.txt",
+      "target": "ai-assisted-development.md",
+      "aliases": ["/mcp/workflows", "llms-2.0.txt", "agents"]
+    },
+    {
+      "query": "signals updates queries",
+      "target": "features/signals.md",
+      "aliases": ["Signals", "Updates", "Queries"]
+    },
+    {
+      "query": "timers wait sleep condition",
+      "target": "features/timers.md",
+      "aliases": ["duration", "condition waits", "timeouts"]
+    },
+    {
+      "query": "history size continue as new compaction",
+      "target": "features/continue-as-new.md",
+      "aliases": ["history", "new run", "bounded"]
+    }
+  ]
+}
