@@ -25,6 +25,7 @@
       "title": "Control Plane And Polyglot",
       "links": [
         "polyglot/server.md",
+        "polyglot/namespace-auth-workers.md",
         "polyglot/embedded-to-server.md",
         "polyglot/cli.mdx",
         "polyglot/cli-reference.md",
@@ -104,7 +105,15 @@
       "source": "polyglot/worker-protocol.md",
       "links": [
         "polyglot/external-execution.md",
-        "polyglot/server.md"
+        "polyglot/server.md",
+        "polyglot/namespace-auth-workers.md"
+      ]
+    },
+    {
+      "source": "polyglot/server-api-reference.md",
+      "links": [
+        "polyglot/namespace-auth-workers.md",
+        "polyglot/worker-protocol.md"
       ]
     }
   ],
@@ -114,6 +123,7 @@
     "agent-tooling-contract.md",
     "polyglot/cli-reference.md",
     "polyglot/cli-python-parity.md",
+    "polyglot/namespace-auth-workers.md",
     "polyglot/external-execution.md",
     "agent-operating-loop.md",
     "sample-app.md"
@@ -157,13 +167,19 @@
     {
       "query": "server mode http api control plane",
       "target": "polyglot/server.md",
-      "related": ["polyglot/embedded-to-server.md"],
+      "related": ["polyglot/embedded-to-server.md", "polyglot/namespace-auth-workers.md"],
       "aliases": ["standalone server", "HTTP", "control-plane"]
+    },
+    {
+      "query": "namespace auth worker registration",
+      "target": "polyglot/namespace-auth-workers.md",
+      "related": ["polyglot/server-api-reference.md", "polyglot/worker-protocol.md"],
+      "aliases": ["X-Namespace", "DW_WORKER_TOKEN", "worker_id", "task_queue"]
     },
     {
       "query": "worker protocol external worker heartbeats",
       "target": "polyglot/worker-protocol.md",
-      "related": ["polyglot/external-execution.md"],
+      "related": ["polyglot/external-execution.md", "polyglot/namespace-auth-workers.md"],
       "aliases": ["polling", "leasing", "heartbeats"]
     },
     {

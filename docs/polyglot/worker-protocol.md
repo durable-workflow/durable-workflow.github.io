@@ -48,6 +48,11 @@ Read these fields before sending optional command fields:
 - `query_tasks`: server-routed workflow query tasks for external runtimes.
 - `non_retryable_failures`: workflow and activity failure metadata support.
 
+Before polling, each worker must register its namespace, task queue, runtime,
+supported type keys, and local capacity through `POST /api/worker/register`.
+The [Namespace, Auth, And Worker Registration](/docs/2.0/polyglot/namespace-auth-workers)
+reference freezes that registration payload and the role-scoped auth contract.
+
 ## Workflow Task Bridge
 
 The `WorkflowTaskBridge` contract defines how an external worker interacts with durable workflow tasks:

@@ -94,6 +94,38 @@
       ]
     },
     {
+      "path": "polyglot/namespace-auth-workers.md",
+      "title": "Namespace, Auth, And Worker Registration",
+      "minimumCodeFences": 6,
+      "requiredHeadings": [
+        "Request Authority",
+        "Auth Roles",
+        "Namespace Contract",
+        "Worker Registration Contract",
+        "Polling And Visibility",
+        "Error Surface"
+      ],
+      "requiredTerms": [
+        "DW_WORKER_TOKEN",
+        "DW_OPERATOR_TOKEN",
+        "DW_ADMIN_TOKEN",
+        "X-Namespace",
+        "X-Durable-Workflow-Control-Plane-Version: 2",
+        "X-Durable-Workflow-Protocol-Version: 1.0",
+        "reason: \"namespace_not_found\"",
+        "reason: \"workflow_definition_changed\"",
+        "reason: \"task_queue_mismatch\""
+      ],
+      "requiredEndpoints": [
+        "/api/cluster/info",
+        "/api/namespaces",
+        "/api/workflows",
+        "/api/worker/register",
+        "/api/worker/workflow-tasks/poll",
+        "/api/task-queues/orders"
+      ]
+    },
+    {
       "path": "polyglot/cli-reference.md",
       "title": "CLI Command Reference",
       "minimumCodeFences": 2,

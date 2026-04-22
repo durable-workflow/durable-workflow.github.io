@@ -33,6 +33,7 @@ common phrases to the smallest useful guide.
 | `CLI`, `dw command`, `json output` | [CLI](./polyglot/cli.mdx) | [CLI Command Reference](./polyglot/cli-reference.md) |
 | `Python`, `SDK`, `polyglot` | [Python SDK](./polyglot/python.md) | [CLI and Python Parity](./polyglot/cli-python-parity.md) |
 | `server mode`, `HTTP API`, `control plane` | [Server](./polyglot/server.md) | [Embedded to Server Migration](./polyglot/embedded-to-server.md) |
+| `namespace`, `auth`, `worker registration` | [Namespace, Auth, And Worker Registration](./polyglot/namespace-auth-workers.md) | [Server API Reference](./polyglot/server-api-reference.md), [Worker Protocol](./polyglot/worker-protocol.md) |
 | `worker protocol`, `external worker`, `heartbeats` | [Worker Protocol](./polyglot/worker-protocol.md) | [External Execution Surface](./polyglot/external-execution.md) |
 | `task queue`, `rate limit`, `admission` | [Task Queue Admission](./polyglot/task-queue-admission.md) | [Monitoring](./monitoring.md) |
 | `MCP`, `AI client`, `llms.txt` | [MCP Workflow Surface](./mcp-workflows.md) | [AI-Assisted Development](./ai-assisted-development.md), [Sample App](./sample-app.md) |
@@ -64,6 +65,9 @@ future edits cannot silently drop the route.
   external execution, reliability, and AI automation work.
 - [CLI Command Reference](./polyglot/cli-reference.md) is the command lookup
   page for scripts, CI, and agents.
+- [Namespace, Auth, And Worker Registration](./polyglot/namespace-auth-workers.md)
+  is the request-authority reference for server namespaces, role-scoped
+  credentials, and worker registration.
 - [AI-Assisted Development](./ai-assisted-development.md) lists the v2 LLM
   manifests, MCP tools, CLI contracts, Waterline facts, and SDK surfaces that
   automation should use instead of guessing from screenshots.

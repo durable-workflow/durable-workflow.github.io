@@ -125,6 +125,7 @@ const sidebars = {
       items: [
         'polyglot/server',
         'polyglot/server-api-reference',
+        'polyglot/namespace-auth-workers',
         'polyglot/embedded-to-server',
         'polyglot/cli',
         'polyglot/cli-reference',

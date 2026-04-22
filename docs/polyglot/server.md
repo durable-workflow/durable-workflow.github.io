@@ -315,6 +315,9 @@ Key field notes for client code:
 ## Connecting Workers
 
 Workers poll the server for tasks and execute workflow code or activities. See the [Worker Protocol](/docs/2.0/polyglot/worker-protocol) reference for the full API contract.
+For the route role matrix, namespace lookup rules, and exact worker
+registration payload, see
+[Namespace, Auth, And Worker Registration](/docs/2.0/polyglot/namespace-auth-workers).
 
 ### PHP Workers
 

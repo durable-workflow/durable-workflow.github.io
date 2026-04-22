@@ -158,6 +158,10 @@ filesystem path. Object-storage policies such as `s3`, `gcs`, and `azure` use
 an explicitly configured filesystem disk and bucket/prefix settings on the
 server.
 
+For the full request-authority contract, including namespace resolution,
+role-scoped credentials, and worker registration fields, see
+[Namespace, Auth, And Worker Registration](/docs/2.0/polyglot/namespace-auth-workers).
+
 ## Bridge Adapters
 
 Bridge adapters are bounded ingress endpoints. They do not execute workflow
@@ -302,6 +306,7 @@ operation details into the nested `control_plane` object.
 ## See Also
 
 - [Server guide](/docs/2.0/polyglot/server)
+- [Namespace, Auth, And Worker Registration](/docs/2.0/polyglot/namespace-auth-workers)
 - [Worker Protocol](/docs/2.0/polyglot/worker-protocol)
 - [Task Queue Admission](/docs/2.0/polyglot/task-queue-admission)
 - [External Execution](/docs/2.0/polyglot/external-execution)

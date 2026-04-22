@@ -40,6 +40,8 @@ the sample app. The links below group those surfaces by job.
 ## Control Plane And Polyglot
 
 - [Server](./polyglot/server.md) - use the standalone HTTP control plane.
+- [Server API Reference](./polyglot/server-api-reference.md) - call exact HTTP control-plane and worker-plane routes.
+- [Namespace, Auth, And Worker Registration](./polyglot/namespace-auth-workers.md) - align namespace headers, role-scoped credentials, and worker registration.
 - [Embedded to Server Migration](./polyglot/embedded-to-server.md) - move from Laravel-embedded execution to server mode.
 - [CLI](./polyglot/cli.mdx) - install and configure `dw`.
 - [CLI Command Reference](./polyglot/cli-reference.md) - script exact command shapes and output modes.
