@@ -9,7 +9,7 @@ const sidebars = {
     'how-it-works',
     {
       type: 'category',
-      label: 'Define Workflows',
+      label: 'Defining Workflows',
       link: {
         type: 'generated-index',
         description: 'Author workflow and activity classes, payloads, identifiers, and status handling.',
@@ -28,7 +28,7 @@ const sidebars = {
     'testing',
     {
       type: 'category',
-      label: 'Reliability Patterns',
+      label: 'Features',
       link: {
         type: 'generated-index',
         description: 'Choose durable commands, waits, retries, versioning, and bounded-history patterns.',

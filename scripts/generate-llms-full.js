@@ -53,6 +53,10 @@ function getPositionForItem(itemPath) {
   return Infinity;
 }
 
+function stripHtmlTags(value) {
+  return value.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+}
+
 function cleanContent(content) {
   let lines = content.split('\n');
   let cleaned = [];
@@ -75,6 +79,23 @@ function cleanContent(content) {
     
     // Skip Mermaid Ink/Live blob lines
     if (/mermaid\.(ink|live)/.test(line)) {
+      i++;
+      continue;
+    }
+
+    if (/^\s*<details\b[^>]*>\s*$/.test(line) || /^\s*<\/details>\s*$/.test(line)) {
+      i++;
+      continue;
+    }
+
+    const summaryMatch = line.match(/^\s*<summary[^>]*>([\s\S]*?)<\/summary>\s*$/);
+    if (summaryMatch) {
+      const summaryText = stripHtmlTags(summaryMatch[1]);
+
+      if (summaryText) {
+        cleaned.push(`## ${summaryText}`);
+      }
+
       i++;
       continue;
     }

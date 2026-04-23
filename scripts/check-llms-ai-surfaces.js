@@ -54,6 +54,8 @@ function main() {
     '# Agent Operating Loop',
     '# MCP Workflow Surface',
     '# Agent Tooling Contract',
+    '# Workflow API',
+    'More Info for AI',
     'https://durable-workflow.com/llms-full-2.0.txt',
     '/mcp/workflows',
     'list_workflows',
@@ -99,6 +101,8 @@ function main() {
   assertExcludes(v2Full, '<!-- Source: docs/search-and-navigation.md -->', 'llms-full-2.0.txt');
   assertExcludes(v2Full, '# Topics', 'llms-full-2.0.txt');
   assertExcludes(v2Full, '# Search and Navigation', 'llms-full-2.0.txt');
+  assertExcludes(v2Full, '<details>', 'llms-full-2.0.txt');
+  assertExcludes(v2Full, '<summary>', 'llms-full-2.0.txt');
   assertIncludes(canonicalIndex, 'versioned_docs/version-1.x', 'llms.txt');
   assertIncludes(canonicalIndex, 'llms-full.txt', 'llms.txt');
   assertExcludes(canonicalIndex, 'docs/ai-assisted-development.md', 'llms.txt');

@@ -2,16 +2,12 @@
   "documents": [
     {
       "path": "defining-workflows/workflow-authoring-reference.md",
-      "title": "Workflow Authoring API Reference",
+      "title": "Workflow API",
       "minimumCodeFences": 6,
       "requiredHeadings": [
-        "Base Workflow Class",
-        "Durable Commands",
-        "Timer Helpers",
-        "Message Streams",
-        "Attributes And Contracts",
-        "Failure Surface",
-        "Determinism Rules"
+        "Read This Page When",
+        "What Most Authors Actually Use",
+        "More Info for AI"
       ],
       "requiredTerms": [
         "stable public instance id",

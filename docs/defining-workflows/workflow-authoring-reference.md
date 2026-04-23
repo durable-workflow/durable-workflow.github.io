@@ -1,7 +1,8 @@
 ---
 sidebar_position: 6
-title: Workflow Authoring API Reference
-description: Reference for the stable v2 PHP workflow authoring facade, durable waits, metadata upserts, and message streams.
+title: Workflow API
+sidebar_label: Workflow API
+description: Human-first guide to the small set of v2 workflow authoring calls most teams actually use, with exact signatures and contracts behind More Info for AI.
 tags:
   - reference
   - workflows
@@ -15,18 +16,90 @@ keywords:
   - PHP workflow authoring API
 ---
 
-# Workflow Authoring API Reference
+# Workflow API
 
-The v2 PHP authoring API is the code surface that runs inside a workflow
-fiber. Application workflows extend `Workflow\V2\Workflow`, implement a
-`handle()` entry method, and use either the static `Workflow::...` facade or
-the equivalent `Workflow\V2\...` helper functions for durable commands.
+This page is the compact lookup for the stable v2 PHP authoring surface that
+runs inside a workflow fiber. Most humans should learn the pattern first from
+the narrative pages, then come back here only when they need the exact method,
+argument shape, or return contract.
 
-This page is a signature reference. For narrative guidance, see
-[Workflows](./workflows.md), [Activities](./activities.md),
-[Signals](../features/signals.md), and [Message Streams](../features/message-streams.md).
+## Read This Page When
 
-## Base Workflow Class
+- You already know the authoring pattern and only need the exact API shape.
+- You want to confirm whether a call is a workflow helper, base-class method,
+  attribute, or `Workflow\V2\MessageStream` operation.
+- You are wiring snippets, code generation, or an AI assistant against the
+  stable v2 PHP workflow surface.
+
+If you are still choosing the pattern, start with the narrative guides instead:
+
+- [Workflows](./workflows.md) for the workflow class shape and deterministic
+  orchestration model.
+- [Activities](./activities.md) for side effects, retries, and routing.
+- [Signals](../features/signals.md), [Updates](../features/updates.md), and
+  [Queries](../features/queries.md) for workflow-facing contracts.
+- [Timers](../features/timers.md),
+  [Condition Waits](../features/condition-waits.md), and
+  [Continue As New](../features/continue-as-new.md) for long-running control
+  flow.
+- [Message Streams](../features/message-streams.md) for repeated ordered
+  messages with cursor semantics.
+
+## What Most Authors Actually Use
+
+Most teams only touch a small part of the surface on a normal workflow:
+
+| Need | API to reach for | Learn the pattern first |
+| --- | --- | --- |
+| Run side effects and wait for results | `Workflow::activity()` | [Activities](./activities.md) |
+| Wait on time, a signal, or a condition | `Workflow::timer()`, `Workflow::await()`, `Workflow::awaitSignal()` | [Timers](../features/timers.md), [Signals](../features/signals.md), [Condition Waits](../features/condition-waits.md) |
+| Start a child workflow | `Workflow::child()` | [Child Workflows](../features/child-workflows.md) |
+| Rotate a long history | `Workflow::continueAsNew()` | [Continue As New](../features/continue-as-new.md) |
+| Evolve replay-safe code | `Workflow::getVersion()`, `Workflow::patched()` | [Versioning](../features/versioning.md) |
+| Exchange repeated ordered messages | `$this->inbox()`, `$this->outbox()` | [Message Streams](../features/message-streams.md) |
+| Publish operator metadata | `Workflow::upsertSearchAttributes()`, `Workflow::upsertMemo()` | [Search Attributes](../features/search-attributes.md), [Memo](../features/memo.md) |
+
+The most common shape is still small:
+
+```php
+use Workflow\V2\Workflow;
+
+final class FulfillmentWorkflow extends Workflow
+{
+    public function handle(string $orderId): array
+    {
+        Workflow::upsertSearchAttributes([
+            'order_id' => $orderId,
+            'status' => 'packing',
+        ]);
+
+        $label = Workflow::activity(CreateShippingLabel::class, $orderId);
+        $approval = Workflow::awaitSignal('approved-by');
+        $receipt = Workflow::activity(SendReceipt::class, $orderId, $label, $approval);
+
+        return [
+            'receipt' => $receipt,
+            'workflow_id' => $this->workflowId(),
+        ];
+    }
+}
+```
+
+`workflowId()` is the stable public instance id for signals, updates, queries,
+and message streams. `runId()` is useful for diagnostics and selected-run
+tooling, but most authoring code should keep external callers on the instance
+id.
+
+## More Info for AI
+
+Most human readers can skip the disclosure below. Open it when you need exact
+signatures, return contracts, machine-operable notes, or the full PHP API
+surface in one place.
+
+<details>
+<summary><b>More Info for AI</b> — exact PHP signatures, return contracts, and durable authoring rules</summary>
+
+**Base workflow object**
 
 ```php
 use Workflow\V2\Workflow;
@@ -56,11 +129,7 @@ abstract class Workflow
 | `historySize()` | The workflow needs a byte-based history budget signal. | Approximate persisted history size in bytes. |
 | `shouldContinueAsNew()` | The workflow should rotate before history becomes expensive. | `true` when configured history budgets recommend rotation. |
 
-`workflowId()` is the public address for signals, updates, queries, and message
-streams. `runId()` is useful for diagnostics and selected-run tooling, but most
-authoring code should keep external callers on the instance id.
-
-## Durable Commands
+**Durable commands**
 
 The static facade delegates to namespaced helpers in `Workflow\V2`. The two
 forms are equivalent:
@@ -97,32 +166,7 @@ $resultFromHelper = activity(SendReceipt::class, $orderId);
 | `Workflow::upsertSearchAttributes()` | `upsertSearchAttributes()` | `upsertSearchAttributes(array $attributes): void` | Updates indexed operator-visible metadata. |
 | `Workflow::now()` | `now()` | `now(): CarbonInterface` | Reads deterministic workflow time. |
 
-```php
-use Workflow\V2\Workflow;
-
-final class FulfillmentWorkflow extends Workflow
-{
-    public function handle(string $orderId): array
-    {
-        Workflow::upsertSearchAttributes([
-            'order_id' => $orderId,
-            'status' => 'packing',
-        ]);
-
-        $label = Workflow::activity(CreateShippingLabel::class, $orderId);
-        Workflow::timer('15 minutes');
-        $receipt = Workflow::activity(SendReceipt::class, $orderId, $label);
-
-        return [
-            'receipt' => $receipt,
-            'workflow_id' => $this->workflowId(),
-            'run_id' => $this->runId(),
-        ];
-    }
-}
-```
-
-## Timer Helpers
+**Timer helpers**
 
 Timer helpers are shorthand for `timer()` and `Workflow::timer()`:
 
@@ -152,7 +196,7 @@ Use explicit `timer()` calls when the duration comes from configuration or
 workflow input. Use timer helpers when the source code should read as a fixed
 business wait.
 
-## Message Streams
+**Message streams**
 
 Open durable message streams from the workflow instance:
 
@@ -205,7 +249,7 @@ Use message streams for repeated ordered messages with cursor semantics. Use
 [Signals](../features/signals.md) for one-shot external events and
 [Updates](../features/updates.md) for request/return mutations.
 
-## Attributes And Contracts
+**Attributes and public contracts**
 
 ```php
 use Workflow\QueryMethod;
@@ -251,7 +295,7 @@ final class OrderApprovalWorkflow extends Workflow
 Signals, queries, and updates are public workflow contracts. Prefer explicit
 names so PHP method renames do not become API breaks.
 
-## Failure Surface
+**Failure surface**
 
 Authoring API failures are durable workflow failures unless the command is
 rejected before execution:
@@ -271,7 +315,7 @@ For payload and history limits, see [Structural Limits](../constraints/structura
 For command rejection responses outside PHP workflow code, see
 [Server API Reference](../polyglot/server-api-reference.md).
 
-## Determinism Rules
+**Determinism rules**
 
 Workflow code must be replay-safe. Keep irreversible or non-deterministic work
 behind durable commands:
@@ -304,3 +348,5 @@ final class DeterministicWorkflow extends Workflow
   and the side effect itself is not the business action.
 - Use `Workflow::getVersion()`, `Workflow::patched()`, and
   `Workflow::deprecatePatch()` to evolve workflow code without breaking replay.
+
+</details>

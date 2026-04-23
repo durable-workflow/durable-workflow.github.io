@@ -33,7 +33,7 @@
       ]
     },
     {
-      "title": "Reliability Patterns",
+      "title": "Features",
       "links": [
         "features/signals.md",
         "features/updates.md",
@@ -217,10 +217,10 @@
       "aliases": ["Signals", "Updates", "Queries"]
     },
     {
-      "query": "php workflow authoring api reference",
+      "query": "php workflow api",
       "target": "defining-workflows/workflow-authoring-reference.md",
       "related": ["defining-workflows/workflows.md", "features/message-streams.md"],
-      "aliases": ["Workflow::activity", "Workflow::await", "Workflow::inbox", "MessageStream"]
+      "aliases": ["Workflow::activity", "Workflow::await", "Workflow::inbox", "MessageStream", "PHP workflow authoring API"]
     },
     {
       "query": "timers wait sleep condition",
