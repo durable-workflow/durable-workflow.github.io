@@ -25,22 +25,6 @@ const sidebars = {
     },
     {
       type: 'category',
-      label: 'Constraints',
-      link: {
-        type: 'generated-index',
-        description: 'Understand deterministic workflow boundaries and structural limits.',
-      },
-      items: [
-        'constraints/overview',
-        'constraints/workflow-constraints',
-        'constraints/activity-constraints',
-        'constraints/constraints-summary',
-        'constraints/structural-limits',
-      ],
-    },
-    'how-it-works',
-    {
-      type: 'category',
       label: 'Features',
       link: {
         type: 'generated-index',
@@ -70,6 +54,22 @@ const sidebars = {
         'features/external-payload-storage',
       ],
     },
+    {
+      type: 'category',
+      label: 'Constraints',
+      link: {
+        type: 'generated-index',
+        description: 'Understand deterministic workflow boundaries and structural limits.',
+      },
+      items: [
+        'constraints/overview',
+        'constraints/workflow-constraints',
+        'constraints/activity-constraints',
+        'constraints/constraints-summary',
+        'constraints/structural-limits',
+      ],
+    },
+    'how-it-works',
     'testing',
     {
       type: 'category',
