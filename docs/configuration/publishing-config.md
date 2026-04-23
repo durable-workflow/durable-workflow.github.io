@@ -69,6 +69,11 @@ Those overrides are not limited to reads or projection rebuilds. `WorkflowStub::
 
 Keep custom subclasses schema-compatible with the built-in models. If a subclass also changes table names or other Eloquent conventions that the package models normally infer, override the affected relations on that subclass as well so `currentRun()`, `runs()`, and similar lookups stay aligned with your custom schema.
 
+See the [Customization Matrix](./customization-matrix.md) for the frozen v2
+support contract, including which overrides are safe as inherited subclasses,
+which ones need explicit relation overrides, and how serializer, repository,
+health, import, migration, and write-side behavior fit together.
+
 ## Payload Codec
 
 v2 uses `avro` for new workflow payloads:

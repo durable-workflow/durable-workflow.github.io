@@ -111,6 +111,7 @@ const sidebars = {
             'configuration/options',
             'configuration/ensuring-same-server',
             'configuration/database-connection',
+            'configuration/customization-matrix',
             'configuration/microservices',
             'configuration/pruning-workflows',
           ],

@@ -6,6 +6,10 @@ sidebar_position: 4
 
 Here is an overview of the steps needed to customize the database connection used for the workflow v2 durable models. This is *only* required if you want to use a different database connection than the default connection you specified for your Laravel application.
 
+For the full v2 override contract, including table-swapped subclasses,
+serializer rules, repository replacement, health diagnostics, and migration
+expectations, see the [Customization Matrix](./customization-matrix.md).
+
 1. Create classes in your app models directory that extend the base v2 model classes
 2. Set the desired `$connection` option in each class
 3. Publish the workflow config file
@@ -61,6 +65,11 @@ Publish the workflow config file and update the `workflows.v2.*_model` bindings 
 ```
 
 The package resolves models through `Workflow\V2\Support\ConfiguredV2Models`, so any relation or query that hits a v2 model will transparently pick up the configured connection.
+
+If you move beyond schema-compatible subclasses and change the inferred foreign
+key of your custom `instance_model`, the package now validates that the
+`runs()`, `commands()`, and `updates()` relations were overridden explicitly at
+boot.
 
 ## Migrations
 
