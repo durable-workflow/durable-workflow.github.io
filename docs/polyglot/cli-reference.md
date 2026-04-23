@@ -210,8 +210,26 @@ worker loops.
 | `dw workflow-task:poll <worker-id>` | Poll one workflow task. | `--task-queue`, `--build-id`, `--poll-request-id`, `--history-page-size`, `--accept-history-encoding`, `--json` |
 | `dw workflow-task:history <task-id> <page-token>` | Fetch the next history page for a leased workflow task. | `--lease-owner`, `--attempt`, `--json` |
 | `dw workflow-task:complete <task-id> <attempt>` | Complete one workflow task with command payloads. | `--lease-owner`, `--complete-result`, `--command`, `--json` |
+| `dw workflow-task:fail <task-id> <attempt>` | Report workflow-task execution failure for retry or diagnosis. Distinct from completing a task with a `fail_workflow` command. | `--lease-owner`, `--message`, `--type`, `--stack-trace`, `--json` |
+| `dw query-task:poll <worker-id>` | Poll and lease one routed workflow query task. | `--task-queue`, `--json` |
+| `dw query-task:complete <query-task-id> <attempt>` | Complete a leased query task with a JSON result and matching envelope. | `--lease-owner`, `--result`, `--json` |
+| `dw query-task:fail <query-task-id> <attempt>` | Report a leased query task failure with a machine-readable reason. | `--lease-owner`, `--message`, `--reason`, `--type`, `--stack-trace`, `--json` |
 | `dw activity:complete <task-id> <attempt-id>` | Complete one leased activity attempt. | `--lease-owner`, input options, `--json` |
 | `dw activity:fail <task-id> <attempt-id>` | Fail one leased activity attempt. | `--lease-owner`, `--message`, `--type`, `--non-retryable`, `--json` |
+
+Use `workflow-task:fail` for worker-side execution failures such as replay
+mismatches or deserialization errors; it targets
+`POST /worker/workflow-tasks/{taskId}/fail`. Completing a task with a workflow
+command that fails the workflow is a separate concern and goes through
+`workflow-task:complete` with the appropriate command payload.
+
+`query-task:poll`, `query-task:complete`, and `query-task:fail` drive the
+routed-query worker surface at `/worker/query-tasks/…`. Normal workers pull
+query tasks through their SDK query handler; the CLI surface is for
+diagnostics, CLI/SDK parity checks, and non-SDK worker experiments. Query-task
+failures default to `--reason=query_rejected`; use a stable reason string such
+as `unknown_query`, `decode_failure`, or a runtime-specific identifier so
+callers can distinguish expected rejections from runtime errors.
 
 ### Workflow Task History Pages
 
