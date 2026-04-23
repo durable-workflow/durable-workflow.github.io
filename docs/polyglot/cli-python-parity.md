@@ -244,6 +244,7 @@ CLI:
 ```bash
 dw namespace:set-storage-driver billing s3 \
   --threshold-bytes=2097152 \
+  --disk=external-payload-objects \
   --bucket=dw-payloads \
   --prefix=billing/ \
   --region=us-east-1 \
@@ -262,6 +263,7 @@ async with client:
         enabled=True,
         threshold_bytes=2_097_152,
         config={
+            "disk": "external-payload-objects",
             "bucket": "dw-payloads",
             "prefix": "billing/",
             "region": "us-east-1",
@@ -274,7 +276,10 @@ async with client:
 Both calls mean `PUT /namespaces/{name}/external-storage`. The response is the
 refreshed namespace description, and its `external_payload_storage` envelope
 carries the same `driver`, `enabled`, `threshold_bytes`, and `config` fields
-both surfaces sent. Use `--disable` on the CLI or `enabled=False` from Python
+both surfaces sent. The `s3`, `gcs`, and `azure` drivers also accept a
+`disk` field that names the server-side filesystem disk holding the actual
+provider credentials, so the namespace policy carries the binding without
+embedding secrets. Use `--disable` on the CLI or `enabled=False` from Python
 to retain the policy record while switching the driver off.
 
 ## Storage Round-Trip Diagnostic

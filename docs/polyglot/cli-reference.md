@@ -300,7 +300,7 @@ control-plane run-history fields `events` or `next_page_token`.
 | `dw namespace:create <name>` | Create a namespace. | `--description`, `--retention`, `--json` |
 | `dw namespace:describe <name>` | Describe one namespace. | `--json` |
 | `dw namespace:update <name>` | Update namespace metadata. | `--description`, `--retention`, `--json` |
-| `dw namespace:set-storage-driver <name> <driver>` | Configure the namespace external payload storage policy used when encoded payloads exceed the offload threshold. | `--threshold-bytes`, `--uri`, `--bucket`, `--prefix`, `--region`, `--endpoint`, `--auth-profile`, `--disable`, `--json` |
+| `dw namespace:set-storage-driver <name> <driver>` | Configure the namespace external payload storage policy used when encoded payloads exceed the offload threshold. | `--threshold-bytes`, `--uri`, `--disk`, `--bucket`, `--prefix`, `--region`, `--endpoint`, `--auth-profile`, `--disable`, `--json` |
 | `dw storage:test` | Round-trip a small inline payload and a large offloaded payload through the selected namespace storage policy or driver override. | `--driver=local|s3|gcs|azure`, `--small-bytes`, `--large-bytes`, global options, `--json` |
 | `dw search-attribute:list` | List search attributes. | global output options |
 | `dw search-attribute:create <name> <type>` | Register a search attribute. | `--json` |
@@ -312,13 +312,16 @@ Search attribute types are server-compatible values such as `keyword`, `text`,
 External payload storage commands call the server's namespace storage API. The
 driver argument is one of `local`, `s3`, `gcs`, or `azure`; object-store drivers
 use server-side filesystem configuration, so CLI flags describe the namespace
-policy rather than carrying provider credentials. Use `--disable` to keep the
-policy record while preventing new offloads.
+policy rather than carrying provider credentials. Use `--disk` to bind the
+`s3`, `gcs`, or `azure` driver to a named server-side filesystem disk that
+holds the actual provider credentials. Use `--disable` to keep the policy
+record while preventing new offloads.
 
 Examples:
 
 ```bash
 dw namespace:set-storage-driver billing s3 \
+  --disk=external-payload-objects \
   --bucket=dw-payloads \
   --prefix=billing/ \
   --threshold-bytes=2097152 \

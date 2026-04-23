@@ -154,7 +154,9 @@ embedding large bytes inline.
 | `ExternalPayloadCache` | Bounded replay cache for already verified external payload bytes. | Constructor rejects non-positive entry or byte limits. |
 | `store_external_payload()` | Stores encoded bytes through a driver and returns `ExternalPayloadReference`. | Driver errors. |
 | `fetch_external_payload()` | Fetches referenced bytes, then verifies size and SHA-256 before decode. | `ExternalPayloadIntegrityError` on size/hash mismatch. |
+| `delete_external_payload()` | Deletes the referenced object and evicts any cache entry. | Driver-raised storage errors. |
 | `external_storage_envelope()` | Encodes a value inline until the threshold is crossed, then writes bytes through a driver. | `ValueError` when the threshold is invalid or no driver can resolve a reference. |
+| `external_storage_driver_from_policy()` | Builds the matching driver from a server or Cloud `external_payload_storage` policy, given application-supplied provider clients. | `ValueError` when the policy is disabled, unsupported, or missing the required client/bucket/container. |
 
 ```python
 from durable_workflow import (
@@ -203,6 +205,27 @@ returning bytes, and raises `ExternalPayloadIntegrityError` when the object is
 missing, truncated, or mutated. Worker replay should use `ExternalPayloadCache`
 only after verification, so repeated history reads avoid refetching the same
 blob without weakening integrity checks.
+
+When the application has already read the namespace's
+`external_payload_storage` policy from the server or Cloud control plane,
+`external_storage_driver_from_policy()` returns the matching driver. Provider
+SDK clients remain application-owned, so the SDK never adds boto3,
+google-cloud-storage, or azure-storage-blob as runtime dependencies:
+
+```python
+from durable_workflow.external_storage import external_storage_driver_from_policy
+
+namespace = await client.describe_namespace("billing")
+driver = external_storage_driver_from_policy(
+    namespace.external_payload_storage,
+    s3_client=application_owned_s3_client,
+)
+```
+
+The factory raises `ValueError` when the policy is disabled, when the named
+driver is unsupported, or when the matching provider client is missing.
+Disabled policies do not return a no-op driver; callers should branch on
+`policy.enabled` before asking for a driver.
 
 ### Cluster and Task Queues
 
