@@ -947,6 +947,207 @@ async def long_task(items: list) -> dict:
 
 This mirrors the standard-library precedent set by `asyncio.CancelledError` and `KeyboardInterrupt`.
 
+## Testing
+
+Workflow authors should be able to test workflow code without a running server
+or worker. The `durable_workflow.testing` module ships two entry points:
+
+- `WorkflowEnvironment` drives a workflow to completion in a single Python
+  process against user-registered activity mocks.
+- `replay_history` and `replay_history_file` replay a captured production
+  history against current workflow code and raise on any non-determinism.
+
+Both entry points reuse the same `durable_workflow.workflow.replay` machinery
+the worker uses at runtime, so a workflow that passes its test harness behaves
+the same way under a real worker.
+
+### WorkflowEnvironment
+
+`WorkflowEnvironment` dispatches yielded workflow commands against registered
+mocks and auto-fires timers, side effects, and search-attribute upserts. Tests
+do not need a real clock, Redis, or server.
+
+```python
+from durable_workflow import workflow
+from durable_workflow.testing import WorkflowEnvironment
+
+@workflow.defn(name="greeter")
+class Greeter:
+    def run(self, ctx, name: str):
+        greeting = yield ctx.schedule_activity("greet", [name])
+        return greeting
+
+
+def test_greeter_returns_activity_result() -> None:
+    env = WorkflowEnvironment()
+    env.register_activity_result("greet", "hello, world")
+
+    result = env.execute_workflow(Greeter, "world")
+
+    assert result == "hello, world"
+```
+
+| Method | Purpose |
+| --- | --- |
+| `register_activity_result(name, result)` | Return `result` for every call to activity `name`. Use this when the test does not care about arguments. |
+| `register_activity(name, fn)` | Call `fn(*arguments)` for each scheduled invocation of activity `name`. Use this when the mock must vary with arguments or capture invocations. |
+| `register_child_workflow_result(workflow_type, result)` | Return `result` when the workflow starts a child of type `workflow_type`. |
+| `signal(name, args=None)` | Queue a signal to be delivered before the next replay iteration. The harness injects a `SignalReceived` event and dispatches it to the registered `@workflow.signal` handler. |
+| `execute_workflow(workflow_cls, *args, run_id="test-run")` | Drive the workflow to a terminal state and return its result. Raises `WorkflowFailed` when the workflow ends in the failed state. |
+
+The harness fails loudly on missing fixtures:
+
+- scheduling an activity that has no registered mock raises `KeyError`
+- starting a child workflow that has no registered mock raises `KeyError`
+- a workflow that never reaches a terminal state within the iteration limit
+  (default `1000`) raises `RuntimeError`
+
+Pass `iteration_limit=...` to `WorkflowEnvironment(...)` to tune the cap for
+workflows that legitimately iterate more than the default.
+
+#### Callable activity mocks
+
+Use `register_activity` when the mock needs to respond based on arguments or
+record calls:
+
+```python
+def test_callable_mock_captures_arguments() -> None:
+    captured: list[str] = []
+
+    def record_greet(name: str) -> str:
+        captured.append(name)
+        return f"greeted:{name}"
+
+    env = WorkflowEnvironment()
+    env.register_activity("greet", record_greet)
+
+    assert env.execute_workflow(Greeter, "alice") == "greeted:alice"
+    assert captured == ["alice"]
+```
+
+#### Signals
+
+Signals queued with `env.signal(...)` are drained before the next replay
+iteration. The signal payload is wrapped in the same `{codec, blob}` envelope
+the worker sees at runtime and dispatched to the workflow's registered
+`@workflow.signal` handler:
+
+```python
+@workflow.defn(name="approval")
+class Approval:
+    def __init__(self) -> None:
+        self.approved_by: str | None = None
+
+    @workflow.signal("approve")
+    def on_approve(self, by: str) -> None:
+        self.approved_by = by
+
+    def run(self, ctx):
+        yield ctx.schedule_activity("wait", [])
+        return {"approved_by": self.approved_by}
+
+
+def test_signal_is_delivered_before_run_returns() -> None:
+    env = WorkflowEnvironment()
+    env.register_activity_result("wait", None)
+    env.signal("approve", ["alice"])
+
+    result = env.execute_workflow(Approval)
+
+    assert result == {"approved_by": "alice"}
+```
+
+#### Timers, side effects, and search attributes
+
+The harness auto-fires the corresponding history event for each of these
+commands, so workflows do not block on wall-clock time inside tests:
+
+- `ctx.sleep(seconds)` → `TimerFired`
+- `ctx.side_effect(...)` → `SideEffectRecorded`
+- `ctx.upsert_search_attributes(...)` → `SearchAttributesUpserted`
+- `workflow.version(...)` markers → `VersionMarkerRecorded`
+
+`ContinueAsNew` is intentionally not supported in the harness; drive each run
+explicitly with a separate `execute_workflow` call to assert continue-as-new
+inputs deterministically.
+
+#### Failure assertions
+
+Workflows that raise a Python exception surface as `WorkflowFailed`:
+
+```python
+import pytest
+from durable_workflow.errors import WorkflowFailed
+
+@workflow.defn(name="failing")
+class Failing:
+    def run(self, ctx):
+        yield ctx.schedule_activity("step", [])
+        raise RuntimeError("boom")
+
+
+def test_workflow_failure_surfaces_as_workflow_failed() -> None:
+    env = WorkflowEnvironment()
+    env.register_activity_result("step", None)
+
+    with pytest.raises(WorkflowFailed) as exc_info:
+        env.execute_workflow(Failing)
+
+    assert "boom" in str(exc_info.value)
+```
+
+### Replay testing against production history
+
+Use `replay_history` to regression-test a workflow change against a real
+history captured from the server. The replayer runs the current workflow code
+against the recorded event sequence and raises if it yields a different
+command than the one history recorded — the definition of a non-determinism
+bug.
+
+```python
+from durable_workflow import Client
+from durable_workflow.testing import replay_history
+
+async with Client("http://localhost:8080") as client:
+    history = await client.get_history("order-42", run_id="...")
+
+replay_history(OrderWorkflow, history["events"], start_input=["order-42"])
+```
+
+A workflow that previously completed must still complete when replayed
+against the same history. If the workflow code changed in a way that diverges
+from the recorded sequence (reordered activity calls, removed branches,
+changed activity types), `replay_history` raises so the regression is caught
+in CI rather than in production.
+
+`replay_history_file` is a convenience wrapper that reads a JSON file in
+either of two shapes: a top-level list of events, or a dict with an `events`
+key matching the `get_history` response shape:
+
+```python
+from durable_workflow.testing import replay_history_file
+
+replay_history_file(
+    OrderWorkflow,
+    "tests/histories/order-42.json",
+    start_input=["order-42"],
+)
+```
+
+Both functions accept an optional `payload_codec` override. Leave it unset to
+use the codec the history recorded.
+
+### Test Harness Reference
+
+| Symbol | Purpose |
+| --- | --- |
+| `durable_workflow.testing.WorkflowEnvironment` | In-process test harness. Drive a workflow to completion against registered activity and child-workflow mocks. |
+| `durable_workflow.testing.replay_history(workflow_cls, events, start_input=None, *, run_id="", payload_codec=None)` | Replay a history event sequence against current workflow code. Raises on non-determinism. |
+| `durable_workflow.testing.replay_history_file(workflow_cls, path, start_input=None, *, run_id="", payload_codec=None)` | Load a JSON history from disk and replay it. Accepts either a top-level list of events or a dict with an `events` key. |
+| `durable_workflow.errors.WorkflowFailed` | Raised by `execute_workflow` when the workflow terminates in the failed state. |
+| `durable_workflow.errors.WorkflowCancelled` | Terminal state when the workflow was cancelled. Inherits from `BaseException`. |
+| `durable_workflow.errors.WorkflowTerminated` | Terminal state when the workflow was terminated by the server. Inherits from `BaseException`. |
+
 ## Payload Codecs
 
 Every payload that crosses the worker-protocol boundary is codec-tagged. v2 ships a single language-neutral codec, **`avro`**, which is the Python SDK's default for every outgoing client and worker payload — matching the server, PHP, and every other polyglot SDK.
