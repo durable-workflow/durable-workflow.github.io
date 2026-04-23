@@ -227,6 +227,40 @@ driver is unsupported, or when the matching provider client is missing.
 Disabled policies do not return a no-op driver; callers should branch on
 `policy.enabled` before asking for a driver.
 
+### Namespaces
+
+Namespaces are the tenancy boundary for workflows, schedules, search
+attributes, and external payload storage. The Client targets one namespace at a
+time through the `namespace=` constructor argument, but the operator surface
+below applies to any namespace the bearer token is authorized for.
+
+| Method | Returns | Failure surface |
+| --- | --- | --- |
+| `await client.list_namespaces()` | `NamespaceList` | Auth/server errors. |
+| `await client.describe_namespace(name)` | `NamespaceDescription` | `NamespaceNotFound`, auth/server errors. |
+| `await client.create_namespace(name, description=None, retention_days=30)` | `NamespaceDescription` | `InvalidArgument` for duplicate names or invalid retention, auth/server errors. |
+| `await client.update_namespace(name, description=None, retention_days=None)` | `NamespaceDescription` | `NamespaceNotFound`, `InvalidArgument`, auth/server errors. Only provided fields are sent. |
+| `await client.set_namespace_external_storage(name, driver=..., enabled=True, threshold_bytes=None, config=None)` | `NamespaceDescription` | `InvalidArgument` when the policy fails server validation, auth/server errors. |
+| `await client.test_external_storage(driver=None, small_payload_bytes=None, large_payload_bytes=None)` | `StorageTestResult` | `InvalidArgument` when the bound policy is missing required fields, auth/server errors. |
+
+`set_namespace_external_storage` mirrors `dw namespace:set-storage-driver`. The
+`config` dict carries driver-specific keys including the optional `disk` field
+on `s3`, `gcs`, and `azure` so credentials stay on the server. The returned
+`NamespaceDescription` reflects the policy the server actually persisted —
+including the threshold the server fell back to when no caller value was
+provided.
+
+`test_external_storage` mirrors `dw storage:test`. The server round-trips a
+small and large payload through the bound external storage driver and returns
+`StorageTestResult`, which exposes per-payload `StoragePayloadTestResult`
+records with `wrote`, `read`, `verified`, `latency_ms`, and `bytes` fields.
+
+`NamespaceDescription` carries the namespace's `external_payload_storage`
+policy as documented in [External Payload Storage](#external-payload-storage).
+Pair it with `external_storage_driver_from_policy()` to build the matching
+Python driver from the policy without re-reading credentials in application
+code.
+
 ### Cluster and Task Queues
 
 | Method | Returns | Notes |
@@ -235,10 +269,18 @@ Disabled policies do not return a no-op driver; callers should branch on
 | `await client.get_cluster_info()` | `dict[str, Any]` | Reads server version, protocol, capability, and compatibility metadata. |
 | `await client.list_task_queues()` | `TaskQueueList` | Lists task queues visible in the namespace. |
 | `await client.describe_task_queue(name)` | `TaskQueueDescription` | Returns worker capacity, current leases, query admission, and dispatch-budget facts. |
+| `await client.list_task_queue_build_ids(task_queue)` | `TaskQueueBuildIdRollout` | Snapshots the per-build-id cohort state for a queue, including unversioned workers under a cohort whose `build_id` is `None`. |
+| `await client.drain_task_queue_build_id(task_queue, build_id)` | `TaskQueueBuildIdRolloutState` | Marks a build-id cohort as draining so it stops claiming new tasks. Pass `build_id=None` to drain unversioned workers. Idempotent. |
+| `await client.resume_task_queue_build_id(task_queue, build_id)` | `TaskQueueBuildIdRolloutState` | Reverts a previous drain so the cohort can claim work again. Pass `build_id=None` to resume unversioned workers. Idempotent. |
 
 Task queue return types expose nested `TaskQueueAdmission`,
-`TaskQueueTaskAdmission`, and `TaskQueueQueryAdmission` dataclasses so scripts
-can check server-side capacity without parsing prose output.
+`TaskQueueTaskAdmission`, `TaskQueueQueryAdmission`, `TaskQueueBuildIdCohort`,
+`TaskQueueBuildIdRollout`, and `TaskQueueBuildIdRolloutState` dataclasses so
+scripts can check server-side capacity and build-id rollout without parsing
+prose output. See
+[Worker Build-Id Rollout](/docs/2.0/polyglot/worker-build-id-rollout) for the
+end-to-end rollout walkthrough; the CLI mirrors of these methods are
+`dw task-queue:build-ids`, `dw task-queue:drain`, and `dw task-queue:resume`.
 
 ### Workflow Operations
 
@@ -339,6 +381,86 @@ The request body uses `next_history_page_token`, `lease_owner`, and
 names `history_events`, `total_history_events`, and
 `next_history_page_token`; it does not use the control-plane run-history names
 `events` or `next_page_token`.
+
+### Workers
+
+The worker registry exposes which workers the server has seen recently and what
+each worker can run. Use these methods to drive build-id rollouts, find stale
+workers to deregister, and reconcile fleet capacity from operator scripts.
+
+| Method | Returns | Failure surface |
+| --- | --- | --- |
+| `await client.list_workers(task_queue=None, status=None)` | `WorkerList` | Auth/server errors. |
+| `await client.describe_worker(worker_id)` | `WorkerDescription` | `WorkerNotFound`, auth/server errors. |
+| `await client.deregister_worker(worker_id)` | `dict[str, Any]` | `WorkerNotFound`, auth/server errors. |
+
+`list_workers` filters server-side: pass `task_queue` to scope to one queue and
+`status` to a single status string the server recognizes. The default returns
+every registered worker for the namespace.
+
+`WorkerDescription` carries the worker's runtime, SDK version, build id,
+declared workflow and activity types, last heartbeat, and current task
+admission so a script can decide which cohort to drain or which workers to
+remove from the roster.
+
+`deregister_worker` is idempotent on the server side; it removes a worker that
+no longer heartbeats so capacity accounting and `list_workers` stay clean.
+It does not interrupt in-flight leases.
+
+### Search Attributes
+
+Search attributes are typed namespace metadata that appear on workflow
+executions for filtering and indexing. The Python client mirrors the same
+control-plane surface as the CLI.
+
+| Method | Returns | Failure surface |
+| --- | --- | --- |
+| `await client.list_search_attributes()` | `SearchAttributeList` | Auth/server errors. |
+| `await client.create_search_attribute(name, attribute_type)` | `dict[str, Any]` | `InvalidArgument` for duplicate names or unsupported types, auth/server errors. |
+| `await client.delete_search_attribute(name)` | `dict[str, Any]` | `SearchAttributeNotFound`, `InvalidArgument` when the attribute is system-defined, auth/server errors. |
+
+`SearchAttributeList` separates `system` and `custom` attribute definitions so
+operator scripts can verify that the engine-defined keys (workflow id, status,
+type, start time, etc.) are present before refusing to create a clashing custom
+key. Supported `attribute_type` values are `keyword`, `text`, `int`, `double`,
+`bool`, `datetime`, and `keyword_list`.
+
+### System Maintenance
+
+Operator scripts and on-call automation drive the same maintenance loops as the
+`dw system:*` commands through the Client. Each method requires the bearer
+token to carry admin scope; without it the server returns `Unauthorized`.
+
+| Method | Returns | CLI mirror |
+| --- | --- | --- |
+| `await client.repair_status()` | `dict[str, Any]` | `dw system:repair-status` |
+| `await client.repair_pass(run_ids=None, instance_id=None)` | `dict[str, Any]` | `dw system:repair-pass` |
+| `await client.retention_status()` | `dict[str, Any]` | `dw system:retention-status` |
+| `await client.retention_pass(run_ids=None, limit=None)` | `dict[str, Any]` | `dw system:retention-pass` |
+| `await client.activity_timeout_status()` | `dict[str, Any]` | `dw system:activity-timeout-status` |
+| `await client.activity_timeout_pass(execution_ids=None, limit=None)` | `dict[str, Any]` | `dw system:activity-timeout-pass` |
+
+`repair_pass` runs one task-repair sweep. With no filters the server runs a
+full-scope pass over the namespace; pass `run_ids` to narrow the sweep to a
+specific list of workflow runs, or `instance_id` to bound it to a single
+running instance.
+
+`retention_pass` enforces the namespace retention window on terminal runs.
+With no filters the server prunes expired runs up to its scan limit; pass
+`run_ids` to narrow the sweep, or `limit` to bound how many runs a single pass
+processes. The companion `retention_status()` reports the namespace retention
+window, the cutoff, and the run ids currently eligible for pruning up to the
+server's scan limit.
+
+`activity_timeout_pass` enforces start-to-close and schedule-to-close deadlines
+on activity executions that have already passed their deadline. With no
+filters the server processes any expired activity executions up to its scan
+limit; pass `execution_ids` to target a specific list, or `limit` to bound a
+single pass.
+
+These methods do not raise on empty work — repeated calls during a quiet
+period return the same `passes` / `repaired` / `pruned` counters with zero
+deltas, so they are safe to call from cron-driven operator scripts.
 
 ## Defining Workflows
 
