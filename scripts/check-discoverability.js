@@ -3,8 +3,6 @@ const path = require('path');
 
 const docsDir = path.join(__dirname, '..', 'docs');
 const contractPath = path.join(__dirname, 'discoverability-contract.json');
-const topicsPath = path.join(docsDir, 'topics.md');
-const searchPath = path.join(docsDir, 'search-and-navigation.md');
 const sidebarsPath = path.join(__dirname, '..', 'sidebars.js');
 
 const DOC_LINK_PATTERN = /\[[^\]]+\]\(([^)]+)\)/g;
@@ -15,12 +13,6 @@ function read(filePath) {
 
 function normalize(value) {
   return value.toLowerCase().replace(/[`*_#[\]().,:/|-]+/g, ' ');
-}
-
-function assertIncludes(haystack, needle, context) {
-  if (!haystack.includes(needle)) {
-    throw new Error(`${context} must include ${JSON.stringify(needle)}`);
-  }
 }
 
 function normalizeDocLink(href, sourcePath) {
@@ -262,96 +254,6 @@ function assertTargetContentCoversQuery(query, collectionName) {
   }
 }
 
-function assertSearchPageCoversQuery(query, search, links, collectionName) {
-  const searchContent = normalize(search);
-  const searchTerms = query.searchTerms || query.query.split(/\s+/);
-
-  for (const term of searchTerms) {
-    const normalizedTerm = normalize(term).trim();
-
-    if (normalizedTerm.length >= 3 && !searchContent.includes(normalizedTerm)) {
-      throw new Error(
-        `docs/search-and-navigation.md must include search term ${JSON.stringify(term)} for ${collectionName} query ${JSON.stringify(query.query)}`
-      );
-    }
-  }
-
-  for (const link of [query.target, ...(query.related || [])]) {
-    const resolvedLink = resolveDocPath(link);
-    assertDocExists(resolvedLink);
-
-    if (!links.has(resolvedLink)) {
-      throw new Error(
-        `docs/search-and-navigation.md must link to docs/${link} for ${collectionName} query ${JSON.stringify(query.query)}`
-      );
-    }
-  }
-}
-
-function assertQueryCovered(query, search, links, collectionName) {
-  assertTargetContentCoversQuery(query, collectionName);
-  assertSearchPageCoversQuery(query, search, links, collectionName);
-}
-
-function assertZeroResultTracking(query, search) {
-  const requiredFields = ['source', 'lastReviewed', 'action'];
-
-  for (const field of requiredFields) {
-    if (typeof query[field] !== 'string' || query[field].trim() === '') {
-      throw new Error(
-        `zero-result watchlist query ${JSON.stringify(query.query)} must include ${field}`
-      );
-    }
-  }
-
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(query.lastReviewed)) {
-    throw new Error(
-      `zero-result watchlist query ${JSON.stringify(query.query)} must use YYYY-MM-DD lastReviewed`
-    );
-  }
-
-  const searchContent = normalize(search);
-
-  for (const field of requiredFields) {
-    const expectedValue = normalize(query[field]).trim();
-
-    if (!searchContent.includes(expectedValue)) {
-      throw new Error(
-        `docs/search-and-navigation.md must include ${field} metadata ${JSON.stringify(query[field])} for zero-result watchlist query ${JSON.stringify(query.query)}`
-      );
-    }
-  }
-}
-
-function headingPattern(title) {
-  return new RegExp(`^##\\s+${title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'm');
-}
-
-function assertTaskGroupsCovered(contract, topics, topicLinks) {
-  const groups = contract.taskGroups || [];
-
-  if (groups.length === 0) {
-    throw new Error('Discoverability contract must include task-oriented docs groups');
-  }
-
-  for (const group of groups) {
-    if (!headingPattern(group.title).test(topics)) {
-      throw new Error(`docs/topics.md must include task group heading ${JSON.stringify(group.title)}`);
-    }
-
-    for (const link of group.links || []) {
-      const resolvedLink = resolveDocPath(link);
-      assertDocExists(resolvedLink);
-
-      if (!topicLinks.has(resolvedLink)) {
-        throw new Error(
-          `docs/topics.md must link to docs/${link} for task group ${JSON.stringify(group.title)}`
-        );
-      }
-    }
-  }
-}
-
 function assertCrossReferencesCovered(contract) {
   const references = contract.crossReferences || [];
 
@@ -377,41 +279,17 @@ function assertCrossReferencesCovered(contract) {
 
 function main() {
   const contract = JSON.parse(read(contractPath));
-  const topics = read(topicsPath);
-  const search = read(searchPath);
-  const topicLinks = extractDocLinks(topics, 'topics.md');
-  const searchLinks = extractDocLinks(search, 'search-and-navigation.md');
 
-  assertIncludes(topics, './search-and-navigation.md', 'docs/topics.md');
-  assertTaskGroupsCovered(contract, topics, topicLinks);
   assertSidebarMatchesTaskIa(contract);
   assertCrossReferencesCovered(contract);
   assertRequiredDocTags(contract);
 
-  for (const link of contract.requiredTopicLinks || []) {
-    const resolvedLink = resolveDocPath(link);
-    assertDocExists(resolvedLink);
-    assertIncludes(search, link, 'docs/search-and-navigation.md');
-  }
-
   for (const query of contract.queries || []) {
-    assertQueryCovered(query, search, searchLinks, 'tracked search');
-  }
-
-  const zeroResultWatchlist = contract.zeroResultWatchlist || [];
-  if (zeroResultWatchlist.length === 0) {
-    throw new Error('Discoverability contract must include at least one zero-result watchlist query');
-  }
-
-  assertIncludes(search, 'Zero-Result Watchlist', 'docs/search-and-navigation.md');
-
-  for (const query of zeroResultWatchlist) {
-    assertZeroResultTracking(query, search);
-    assertQueryCovered(query, search, searchLinks, 'zero-result watchlist');
+    assertTargetContentCoversQuery(query, 'tracked search');
   }
 
   console.log(
-    `Discoverability checks passed for ${contract.queries.length} tracked queries, ${zeroResultWatchlist.length} zero-result watchlist queries, ${(contract.taskGroups || []).length} task groups, ${(contract.crossReferences || []).length} cross-reference checks, and ${Object.keys(contract.requiredDocTags || {}).length} tagged docs`
+    `Discoverability checks passed for ${contract.queries.length} tracked queries, ${(contract.taskGroups || []).length} task groups, ${(contract.crossReferences || []).length} cross-reference checks, and ${Object.keys(contract.requiredDocTags || {}).length} tagged docs`
   );
 }
 

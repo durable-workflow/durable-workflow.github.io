@@ -36,8 +36,6 @@ function main() {
     'docs/agent-operating-loop.md',
     'docs/mcp-workflows.md',
     'docs/agent-tooling-contract.md',
-    'docs/topics.md',
-    'docs/search-and-navigation.md',
     'docs/sample-app.md',
     'docs/polyglot/cli.mdx',
     'docs/polyglot/cli-python-parity.md',
@@ -52,8 +50,6 @@ function main() {
 
   const requiredV2FullContent = [
     '<!-- Source: docs/ai-assisted-development.md -->',
-    '<!-- Source: docs/topics.md -->',
-    '<!-- Source: docs/search-and-navigation.md -->',
     '# AI-Assisted Development',
     '# Agent Operating Loop',
     '# MCP Workflow Surface',
@@ -79,8 +75,8 @@ function main() {
     'worker_protocol.external_execution_surface_contract',
     'bridge adapters',
     'Python API reference',
-    'machine-operable contract shared by MCP tools, CLI JSON, server diagnostics',
-    'align MCP tools, CLI JSON, server diagnostics, Waterline exports, and SDK fixtures',
+    'MCP tools, CLI JSON, server diagnostics, Waterline exports, and SDK fixtures',
+    'line up as one machine-operable surface',
     'humans learn the workflow/activity/replay invariant',
     'discover-change-run-diagnose workflow',
     'The `simple` and `elapsed` workflow keys are the preferred smoke surfaces.',
@@ -97,8 +93,12 @@ function main() {
   assertIncludes(v2Index, 'Topics: worker-protocol, external-workers, polyglot', 'llms-2.0.txt');
   assertIncludes(v2Index, 'Define Durable Workflow v2 workflow classes and keep orchestration code deterministic.', 'llms-2.0.txt');
   assertIncludes(v2Index, 'Implement the versioned worker-plane protocol for polling, leasing, history replay, heartbeats, completion, and external task results.', 'llms-2.0.txt');
-  assertIncludes(v2Index, 'Find Durable Workflow v2 docs by task', 'llms-2.0.txt');
-  assertIncludes(v2Index, 'Map common Durable Workflow v2 search terms', 'llms-2.0.txt');
+  assertExcludes(v2Index, 'docs/topics.md', 'llms-2.0.txt');
+  assertExcludes(v2Index, 'docs/search-and-navigation.md', 'llms-2.0.txt');
+  assertExcludes(v2Full, '<!-- Source: docs/topics.md -->', 'llms-full-2.0.txt');
+  assertExcludes(v2Full, '<!-- Source: docs/search-and-navigation.md -->', 'llms-full-2.0.txt');
+  assertExcludes(v2Full, '# Topics', 'llms-full-2.0.txt');
+  assertExcludes(v2Full, '# Search and Navigation', 'llms-full-2.0.txt');
   assertIncludes(canonicalIndex, 'versioned_docs/version-1.x', 'llms.txt');
   assertIncludes(canonicalIndex, 'llms-full.txt', 'llms.txt');
   assertExcludes(canonicalIndex, 'docs/ai-assisted-development.md', 'llms.txt');

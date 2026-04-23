@@ -1,20 +1,8 @@
 {
   "taskGroups": [
     {
-      "title": "Start Or Author Workflows",
-      "links": [
-        "getting-started.md",
-        "defining-workflows/workflows.md",
-        "defining-workflows/activities.md",
-        "defining-workflows/starting-workflows.md",
-        "defining-workflows/workflow-authoring-reference.md",
-        "features/message-streams.md"
-      ]
-    },
-    {
       "title": "Run And Operate",
       "links": [
-        "search-and-navigation.md",
         "deployment.md",
         "monitoring.md",
         "compatibility.md",
