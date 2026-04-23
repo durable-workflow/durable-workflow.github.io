@@ -6,7 +6,6 @@ const sidebars = {
     'introduction',
     'getting-started',
     'installation',
-    'how-it-works',
     {
       type: 'category',
       label: 'Defining Workflows',
@@ -24,16 +23,31 @@ const sidebars = {
         'defining-workflows/workflow-api',
       ],
     },
-    'features/message-streams',
-    'testing',
+    {
+      type: 'category',
+      label: 'Constraints',
+      link: {
+        type: 'generated-index',
+        description: 'Understand deterministic workflow boundaries and structural limits.',
+      },
+      items: [
+        'constraints/overview',
+        'constraints/workflow-constraints',
+        'constraints/activity-constraints',
+        'constraints/constraints-summary',
+        'constraints/structural-limits',
+      ],
+    },
+    'how-it-works',
     {
       type: 'category',
       label: 'Features',
       link: {
         type: 'generated-index',
-        description: 'Choose durable commands, waits, retries, versioning, and bounded-history patterns.',
+        description: 'Choose message streams, durable commands, waits, retries, versioning, and bounded-history patterns.',
       },
       items: [
+        'features/message-streams',
         'features/signals',
         'features/updates',
         'features/queries',
@@ -54,23 +68,9 @@ const sidebars = {
         'features/events',
         'features/versioning',
         'features/external-payload-storage',
-        {
-          type: 'category',
-          label: 'Constraints',
-          link: {
-            type: 'generated-index',
-            description: 'Understand deterministic workflow boundaries and structural limits.',
-          },
-          items: [
-            'constraints/overview',
-            'constraints/workflow-constraints',
-            'constraints/activity-constraints',
-            'constraints/constraints-summary',
-            'constraints/structural-limits',
-          ],
-        },
       ],
     },
+    'testing',
     {
       type: 'category',
       label: 'Run And Operate',
