@@ -2,36 +2,18 @@
 sidebar_position: 6
 title: Workflow API
 sidebar_label: Workflow API
-description: Human-first guide to the small set of v2 workflow authoring calls most teams actually use, with exact signatures and contracts behind More Info for AI.
+description: Workflow API reference.
 tags:
   - reference
   - workflows
-  - php
-  - v2
+  - api
 keywords:
-  - Workflow::activity
-  - Workflow::await
-  - Workflow::inbox
-  - MessageStream
-  - PHP workflow authoring API
+  - workflow API
 ---
 
 # Workflow API
 
-This page is the compact lookup for the stable v2 PHP authoring surface that
-runs inside a workflow fiber. Most humans should learn the pattern first from
-the narrative pages, then come back here only when they need the exact method,
-argument shape, or return contract.
-
-## Read This Page When
-
-- You already know the authoring pattern and only need the exact API shape.
-- You want to confirm whether a call is a workflow helper, base-class method,
-  attribute, or `Workflow\V2\MessageStream` operation.
-- You are wiring snippets, code generation, or an AI assistant against the
-  stable v2 PHP workflow surface.
-
-If you are still choosing the pattern, start with the narrative guides instead:
+This page is the complete reference. For an easier to read version, please look at the individual feature page.
 
 - [Workflows](./workflows.md) for the workflow class shape and deterministic
   orchestration model.
@@ -45,59 +27,14 @@ If you are still choosing the pattern, start with the narrative guides instead:
 - [Message Streams](../features/message-streams.md) for repeated ordered
   messages with cursor semantics.
 
-## What Most Authors Actually Use
-
-Most teams only touch a small part of the surface on a normal workflow:
-
-| Need | API to reach for | Learn the pattern first |
-| --- | --- | --- |
-| Run side effects and wait for results | `Workflow::activity()` | [Activities](./activities.md) |
-| Wait on time, a signal, or a condition | `Workflow::timer()`, `Workflow::await()`, `Workflow::awaitSignal()` | [Timers](../features/timers.md), [Signals](../features/signals.md), [Condition Waits](../features/condition-waits.md) |
-| Start a child workflow | `Workflow::child()` | [Child Workflows](../features/child-workflows.md) |
-| Rotate a long history | `Workflow::continueAsNew()` | [Continue As New](../features/continue-as-new.md) |
-| Evolve replay-safe code | `Workflow::getVersion()`, `Workflow::patched()` | [Versioning](../features/versioning.md) |
-| Exchange repeated ordered messages | `$this->inbox()`, `$this->outbox()` | [Message Streams](../features/message-streams.md) |
-| Publish operator metadata | `Workflow::upsertSearchAttributes()`, `Workflow::upsertMemo()` | [Search Attributes](../features/search-attributes.md), [Memo](../features/memo.md) |
-
-The most common shape is still small:
-
-```php
-use Workflow\V2\Workflow;
-
-final class FulfillmentWorkflow extends Workflow
-{
-    public function handle(string $orderId): array
-    {
-        Workflow::upsertSearchAttributes([
-            'order_id' => $orderId,
-            'status' => 'packing',
-        ]);
-
-        $label = Workflow::activity(CreateShippingLabel::class, $orderId);
-        $approval = Workflow::awaitSignal('approved-by');
-        $receipt = Workflow::activity(SendReceipt::class, $orderId, $label, $approval);
-
-        return [
-            'receipt' => $receipt,
-            'workflow_id' => $this->workflowId(),
-        ];
-    }
-}
-```
-
-`workflowId()` is the stable public instance id for signals, updates, queries,
-and message streams. `runId()` is useful for diagnostics and selected-run
-tooling, but most authoring code should keep external callers on the instance
-id.
-
 ## More Info for AI
 
-Most human readers can skip the disclosure below. Open it when you need exact
-signatures, return contracts, machine-operable notes, or the full PHP API
+Most readers can skip the disclosure below. Open it when you need exact
+signatures, return contracts, machine-operable notes, or the full API
 surface in one place.
 
 <details>
-<summary><b>More Info for AI</b> — exact PHP signatures, return contracts, and durable authoring rules</summary>
+<summary><b>More Info for AI</b></summary>
 
 **Base workflow object**
 
