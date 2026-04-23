@@ -54,6 +54,22 @@ curl -sS "$APP_URL/waterline/api/instances/order-1001" \
 scrape surface. Use worker SDK metrics for runtime latency and custom
 application telemetry.
 
+The [Operator Operating Envelope](./operator-operating-envelope.md) defines how
+to interpret those diagnostics during rollouts and incident response. In
+particular:
+
+| Field family | Meaning |
+| --- | --- |
+| `operator_metrics.backlog.*` | Durable runnable, delayed, leased, unhealthy, repair-needed, claim-failed, and compatibility-blocked work counts. |
+| `operator_metrics.repair.*` | Repair-loop sweep footprint, including selected candidates, candidate age, and scan pressure. |
+| `operator_metrics.projections.*` | Projection-drift counts for run summaries, waits, timelines, timers, and lineage. |
+| `operator_metrics.command_contracts.*` | Legacy WorkflowStarted contract snapshots that still need backfill. |
+| `operator_metrics.history.*` | History-size and event-count pressure plus continue-as-new recommendations. |
+| `engine_source`, `readiness_contract` | Whether Waterline is actively using the v2 operator bridge and which readiness contract governs that state. |
+
+`GET /waterline/api/v2/health` uses the same distinction: `error` is blocking,
+`warning` is advisory, and `ok` means the current v2 operator bridge is ready.
+
 ## List Views
 
 List views are bucketed by durable status:

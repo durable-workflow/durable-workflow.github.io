@@ -40,6 +40,12 @@ The dashboard shows running totals, recent-run counters, and fleet-wide
 metrics so you can tell at a glance whether work is flowing, stalling, or
 failing.
 
+Use the [Operator Operating Envelope](./operator-operating-envelope.md) when
+you need the rollout and runbook contract for those facts: which diagnostics
+block traffic, which are advisory, how queue-health facts split between
+Waterline and worker telemetry, and how to verify rebuild, export, and archive
+paths.
+
 ### Workflow View
 
 ![workflow](https://github.com/user-attachments/assets/da685466-7747-4c2f-ae10-300041381d51)
@@ -112,6 +118,9 @@ not valid for the run's current state.
 
 ## Related Guides
 
+- [Operator Operating Envelope](./operator-operating-envelope.md) ties health,
+  queue state, rebuild, export, archive, and topology expectations into one
+  operator contract.
 - [Failures and Recovery](./failures-and-recovery.md) explains retry exhaustion,
   non-retryable failures, timeouts, and repair behavior behind the dashboard
   facts.

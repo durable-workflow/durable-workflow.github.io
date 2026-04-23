@@ -92,6 +92,7 @@ const sidebars = {
       items: [
         'deployment',
         'monitoring',
+        'operator-operating-envelope',
         'waterline-operator-api',
         'compatibility',
         'failures-and-recovery',
