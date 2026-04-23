@@ -62,10 +62,39 @@ canonical `input` array.
 | `dw debug workflow <workflow-id>` | Capture stuck-run diagnostics for one workflow: state, pending tasks, queue facts, failures, and compatibility metadata. | `--run-id`, global options, `--json` |
 | `dw server:start-dev` | Start a local development server for smoke work. | `--port`, `--db=sqlite|mysql|pgsql` |
 | `dw watch workflow <workflow-id>` | Poll a workflow until terminal or until a configured polling limit. | `--run-id`, `--interval`, `--max-polls`, global options |
+| `dw upgrade` | Replace the running standalone `dw` binary with a newer (or pinned) release. Refuses to rewrite Composer vendor, Homebrew cellar, and PHAR installs. | `--version`, `--dry-run`, `--force`, `--output=table|json` |
 
 Use `server:info` when validating contract shape, `doctor` when explaining why
 a CLI cannot talk to a server, and `debug workflow` when support needs one
 machine-readable run capture.
+
+### Self-Upgrade
+
+`dw upgrade` downloads the matching platform asset from the
+`durable-workflow/cli` GitHub release, verifies it against the release's
+`SHA256SUMS`, and replaces the running binary only on a successful checksum
+match. Use `--version` to pin to a specific release tag, `--dry-run` to resolve
+the target release and print the asset URLs without downloading, and `--force`
+to re-download and replace even when the current and target versions match.
+
+The command refuses to rewrite installations managed by another tool. JSON
+output uses a stable `status` field so automation can branch without parsing
+prose:
+
+| `status` | Meaning |
+| --- | --- |
+| `upgraded` | Binary replaced with `target_version`. |
+| `noop` | `current_version` already matches `target_version`; `--force` bypasses this. |
+| `dry-run` | `--dry-run` resolved `target_version`, `asset_url`, and `checksum_url` without downloading. |
+| `refused` | Install kind is not a standalone release binary (Composer vendor, Homebrew cellar, or PHAR), or the platform has no published asset. |
+| `permission-denied` | The install directory is not writable; the payload includes a `hint` with the recommended next step. |
+| `error` | Release catalog fetch, checksum mismatch, or filesystem error. |
+
+For refusals, the JSON payload's `installation.kind` identifies the managing
+tool (`composer-vendor`, `homebrew`, `phar`, or `binary`) and `reason` names
+the right command to use instead — for example
+`composer update durable-workflow/cli` or
+`brew upgrade durable-workflow/tap/dw`.
 
 ## Environment Profiles
 

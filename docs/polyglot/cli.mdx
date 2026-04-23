@@ -102,6 +102,25 @@ recommended artifact for shared CI runners that already ship PHP.
 
 </details>
 
+### Update An Installed Binary
+
+For standalone release installs (the shell and PowerShell installers above),
+`dw upgrade` replaces the running binary with the latest published release
+after verifying the asset against the release's `SHA256SUMS`.
+
+```bash
+dw upgrade                 # upgrade to the latest release
+dw upgrade --version=0.1.5 # pin to a specific release tag
+dw upgrade --dry-run       # resolve the target release without downloading
+```
+
+`dw upgrade` refuses to rewrite Composer vendor, Homebrew cellar, and PHAR
+installs and points at the managing tool instead — for example
+`composer update durable-workflow/cli` or
+`brew upgrade durable-workflow/tap/dw`. See the
+[CLI reference](./cli-reference.md#self-upgrade) for the full stable option
+and status-field contract.
+
 ## Configure
 
 Point the CLI at your server:
