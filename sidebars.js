@@ -52,6 +52,7 @@ const sidebars = {
         'features/events',
         'features/versioning',
         'features/external-payload-storage',
+        'features/activity-execution-model',
       ],
     },
     {
