@@ -132,12 +132,20 @@ This applies to:
 activity(ProcessDocumentActivity::class, $threeMegabyteBlob);
 ```
 
-To work within the limit, store large data externally and pass a reference:
+To work within the limit, either enable
+[External Payload Storage](../features/external-payload-storage.md) on the
+namespace so the runtime transparently offloads over-threshold payloads to a
+configured object store, or store the bytes yourself and pass an
+application-level reference:
 
 ```php
 $ref = Storage::put('docs/incoming.pdf', $blob);
 activity(ProcessDocumentActivity::class, $ref);
 ```
+
+External payload storage preserves replay integrity by recording a hashed
+`durable-workflow.v2.external-payload-reference.v1` envelope in history, so
+the reference envelope becomes the payload the limit sees — not the bytes.
 
 ### Memo size
 

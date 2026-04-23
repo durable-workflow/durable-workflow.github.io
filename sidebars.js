@@ -53,6 +53,7 @@ const sidebars = {
         'features/memo',
         'features/events',
         'features/versioning',
+        'features/external-payload-storage',
         {
           type: 'category',
           label: 'Constraints',

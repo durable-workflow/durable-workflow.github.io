@@ -50,6 +50,8 @@ import PassingDataSimulator from '@site/src/components/PassingDataSimulator';
 
 In general, you should only pass small amounts of data in this manner. Rather than passing large amounts of data, you should write the data to the database, cache or file system. Then pass the key or file path to the workflow and activities. The activities can then use the key or file path to read the data.
 
+When the application genuinely needs to carry large bytes through history — documents, media blobs, serialized exports — enable [External Payload Storage](../features/external-payload-storage.md) on the namespace. The runtime offloads over-threshold payloads to a configured object store and records a verifiable reference envelope in history, keeping replay integrity while staying under the [`payload_size_bytes` structural limit](../constraints/structural-limits.md#payload-size).
+
 ## Output
 
 Once the workflow has completed, you can retrieve the output using the `output()` method.
