@@ -218,7 +218,7 @@
     },
     {
       "query": "php workflow api",
-      "target": "defining-workflows/workflow-authoring-reference.md",
+      "target": "defining-workflows/workflow-api.md",
       "related": ["defining-workflows/workflows.md", "features/message-streams.md"],
       "aliases": ["Workflow::activity", "Workflow::await", "Workflow::inbox", "MessageStream", "PHP workflow authoring API"]
     },

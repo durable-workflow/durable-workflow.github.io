@@ -1,7 +1,7 @@
 {
   "documents": [
     {
-      "path": "defining-workflows/workflow-authoring-reference.md",
+      "path": "defining-workflows/workflow-api.md",
       "title": "Workflow API",
       "minimumCodeFences": 6,
       "requiredHeadings": [
