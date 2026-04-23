@@ -163,3 +163,73 @@ final class MyWorkflow extends Workflow
 ```
 
 **Important:** Each `changeId` should be unique within a workflow. The chosen version is recorded as typed workflow history and replayed deterministically on later workflow tasks, queries, and Waterline detail views. When Waterline shows no `VersionMarkerRecorded` entry for a change point on an older run, that means replay stayed on the legacy `DEFAULT_VERSION` path without backfilling a new marker into existing history. The selected-run detail fields `workflow_definition_fingerprint`, `workflow_definition_current_fingerprint`, and `workflow_definition_matches_current` tell you whether that run started on a different workflow definition than the one your current build can load today.
+
+## `patched()` Shorthand
+
+`patched($changeId)` is a two-state shorthand for the common "did this run cross a one-time code change?" question. It records the same durable `VersionMarkerRecorded` history event as `getVersion()` and resolves to a boolean instead of an integer.
+
+```php
+use Workflow\V2\Workflow;
+use function Workflow\V2\{activity, patched};
+
+final class MyWorkflow extends Workflow
+{
+    public function handle(): string
+    {
+        if (patched('use-new-payment-activity')) {
+            return activity(NewPaymentActivity::class);
+        }
+
+        return activity(LegacyPaymentActivity::class);
+    }
+}
+```
+
+Behavior:
+
+- New runs commit the marker, take the new branch, and `patched()` returns `true`.
+- Runs that started before this `changeId` was added stay on `DEFAULT_VERSION` under the same fingerprint fallback `getVersion()` uses, and `patched()` returns `false`.
+- Replays of either kind read the previously committed marker and return the same value, so the branch decision is durable.
+
+`patched()` is exactly equivalent to `getVersion($changeId, DEFAULT_VERSION, 1) === 1`. Use it when you only have two branches and you do not need to keep the legacy branch around forever — the boolean spelling reads cleaner at the call site than a `match` over `DEFAULT_VERSION` and `1`.
+
+If you need more than two branches, or you plan to add another version of the same logical change later, use `getVersion()` with an explicit `maxSupported`. Switching from `patched()` to `getVersion()` for the same `changeId` is a determinism error because the existing marker was recorded with `maxSupported = 1`.
+
+## Removing the Legacy Branch with `deprecatePatch()`
+
+When every legacy run for a `patched()` change point has finished, you can delete the legacy branch from your workflow code. The compatible way to do that is to replace the `patched()` call with `deprecatePatch()` rather than removing the call entirely.
+
+```php
+use Workflow\V2\Workflow;
+use function Workflow\V2\{activity, deprecatePatch};
+
+final class MyWorkflow extends Workflow
+{
+    public function handle(): string
+    {
+        deprecatePatch('use-new-payment-activity');
+
+        return activity(NewPaymentActivity::class);
+    }
+}
+```
+
+`deprecatePatch()` keeps the change point on the workflow timeline so already-committed `VersionMarkerRecorded` history events still match a known call, but it returns `null` and unconditionally takes the new path. Once you ship this version:
+
+- New runs commit a `deprecate_patch` marker, take the new branch, and the `deprecatePatch()` call returns `null`.
+- Existing runs that already committed a `patched` marker for this `changeId` keep replaying that marker and resolve through the deprecated branch — which is now the only branch — without erroring.
+- Existing runs that committed `false` for `patched()` (the legacy path) are no longer in flight by assumption. If one is still running and tries to replay, the workflow will still read the legacy marker but execute the new branch — which is why the safe lifecycle is "wait for legacy runs to drain before deploying `deprecatePatch()`".
+
+Two-phase patch lifecycle and placement rules:
+
+1. **Introduce `patched()`** at the change point. Both branches stay in the workflow code. New runs take the new branch; older runs keep taking the legacy branch.
+2. **Wait for every legacy run to finish.** Use Waterline run search or `dw workflow:list` to confirm there are no open runs that could replay through the legacy branch.
+3. **Replace `patched()` with `deprecatePatch()`** at the same call site, with the same `changeId`, and delete the legacy branch from the function body. Keep the call there — do not remove it — so durable history still matches a known change point.
+4. **Optional: remove `deprecatePatch()` entirely** once you are also confident no historical replay (queries, exports, audits) will ever read history that committed this marker. That is an irreversible step; most workflows can leave `deprecatePatch()` in place indefinitely without paying any runtime cost.
+
+Placement rules:
+
+- `patched()` and `deprecatePatch()` must be called from the workflow function body, not from activities, signal handlers, or query methods. They are workflow steps and must replay deterministically.
+- Each `changeId` is one logical change point. Reusing the same `changeId` for a different branch is a determinism error.
+- A `changeId` can appear in `patched()` or `deprecatePatch()` form during its lifetime, but never both at the same time. The deploy that swaps the call must replace, not coexist.
+- `getVersion()` and `patched()` cannot coexist for the same `changeId`. Pick one model when you introduce the change point.

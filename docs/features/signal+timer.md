@@ -64,3 +64,41 @@ $workflow->markReady();
 The return value is `true` when the condition becomes true before the timeout task fires and `false` when the timeout wins.
 
 For named signals, `await('name', timeout: minutes(5))` returns the signal payload when the signal arrives and `null` when the timeout wins. `null` is reserved for timeout: no-argument signals resolve to `true`, one argument resolves to that value, and multiple arguments resolve to an array. `Workflow\V2` does not use legacy `#[SignalMethod]` mutator methods to flip workflow state.
+
+## `awaitWithTimeout()` Helper
+
+`Workflow::awaitWithTimeout($timeout, $condition, $conditionKey = null)` is a sugar wrapper for `await($condition, timeout: $timeout, conditionKey: $conditionKey)`. The argument order puts the deadline first to make the timeout intent obvious at the call site.
+
+```php
+use function Workflow\V2\{await, minutes};
+use Workflow\V2\Workflow;
+
+#[Type('approval-with-timeout')]
+class MyWorkflow extends Workflow
+{
+    private bool $ready = false;
+
+    public function handle(): string
+    {
+        $approved = Workflow::awaitWithTimeout(
+            minutes(5),
+            fn () => $this->ready,
+            'approval.ready',
+        );
+
+        return $approved ? 'approved' : 'timed out';
+    }
+
+    #[UpdateMethod]
+    public function markReady(bool $ready = true): array
+    {
+        $this->ready = $ready;
+
+        return ['ready' => $this->ready];
+    }
+}
+```
+
+Return semantics are the same as `await()` with a `timeout:` parameter: the call returns `true` when the condition wins, `false` when the deadline wins for a callable predicate, the signal payload when a named signal wins, and `null` when the deadline wins for a named signal.
+
+`awaitWithTimeout()` reads "wait at most this long for a condition" rather than "wait for a condition, with a timeout option". Use whichever spelling reads more clearly at the call site — the runtime treats them identically and they record the same workflow history.
