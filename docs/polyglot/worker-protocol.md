@@ -138,6 +138,60 @@ $semantics = WorkerProtocolVersion::longPollSemantics();
 $clamped = WorkerProtocolVersion::clampLongPollTimeout($userTimeout);
 ```
 
+### Completion, Heartbeat, and Fail Requests
+
+Workflow-task `complete`, `heartbeat`, and `fail` endpoints all require the
+worker to echo two lease-identity fields from the poll or claim response:
+
+| Field | Type | Description |
+|------|------|-------------|
+| `lease_owner` | string | Worker identity that holds the task lease. Must match the `lease_owner` returned from `poll` or `claim`. |
+| `workflow_task_attempt` | integer ≥ 1 | Attempt number of the leased task. Must match the `workflow_task_attempt` returned from `poll` or `claim`. |
+
+Stale attempts or wrong lease owners are rejected before any command is
+applied, so an expired worker cannot commit replay commands against a
+re-claimed task.
+
+Request endpoints and bodies:
+
+- `POST /api/worker/workflow-tasks/{task_id}/complete` — requires `lease_owner`, `workflow_task_attempt`, and a non-empty `commands` array. See [Command Types](#command-types) for the command shapes.
+- `POST /api/worker/workflow-tasks/{task_id}/heartbeat` — requires `lease_owner` and `workflow_task_attempt`. Returns the renewed lease expiry and current run status.
+- `POST /api/worker/workflow-tasks/{task_id}/fail` — requires `lease_owner`, `workflow_task_attempt`, and a `failure` object containing `message` (required) plus optional `type` and `stack_trace`.
+
+Example complete request:
+
+```json
+{
+  "lease_owner": "py-worker-1",
+  "workflow_task_attempt": 1,
+  "commands": [
+    { "type": "complete_workflow" }
+  ]
+}
+```
+
+Example heartbeat request:
+
+```json
+{
+  "lease_owner": "py-worker-1",
+  "workflow_task_attempt": 1
+}
+```
+
+Example fail request:
+
+```json
+{
+  "lease_owner": "py-worker-1",
+  "workflow_task_attempt": 1,
+  "failure": {
+    "message": "Replay mismatch at event 7",
+    "type": "DeterminismFailed"
+  }
+}
+```
+
 ### Command Types
 
 When completing a workflow task, the external worker submits a list of typed commands. At most one terminal command is allowed per completion.
