@@ -247,6 +247,10 @@ The invocable carrier rollout boundary is published in the same manifest:
 
 - [External Execution Surface](./external-execution.md) — the carrier-neutral
   product boundary that this carrier implements.
+- [PHP Invocable Activity Handler](./invocable-php-handler.md) — the PHP
+  helper an external process uses to parse input envelopes, dispatch
+  activity callables, and emit the structured result envelopes this carrier
+  expects.
 - [Server Config Reference](./server-config-reference.md) — environment
   variables for `DW_EXTERNAL_EXECUTOR_CONFIG_PATH` and
   `DW_EXTERNAL_EXECUTOR_CONFIG_OVERLAY`.

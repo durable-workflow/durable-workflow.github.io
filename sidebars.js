@@ -136,6 +136,7 @@ const sidebars = {
       items: [
         'polyglot/external-execution',
         'polyglot/invocable-carrier',
+        'polyglot/invocable-php-handler',
         'polyglot/worker-protocol',
         'polyglot/task-queue-admission',
         'polyglot/worker-build-id-rollout',
