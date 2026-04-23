@@ -61,16 +61,6 @@
   ],
   "crossReferences": [
     {
-      "source": "getting-started.md",
-      "links": [
-        "sample-app.md",
-        "ai-assisted-development.md",
-        "polyglot/server.md",
-        "polyglot/cli.mdx",
-        "polyglot/python.md"
-      ]
-    },
-    {
       "source": "monitoring.md",
       "links": [
         "ai-assisted-development.md",
@@ -129,7 +119,7 @@
   "queries": [
     {
       "query": "quickstart install first workflow",
-      "target": "getting-started.md",
+      "target": "sample-app.md",
       "related": ["sample-app.md"],
       "aliases": ["sample application", "queue worker", "app:workflow"]
     },
