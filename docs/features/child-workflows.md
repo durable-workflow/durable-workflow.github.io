@@ -136,6 +136,10 @@ When a parent workflow closes — whether by completing, failing, timing out, be
 | Request Cancel | `request_cancel` | A cancel command is sent to the child when the parent closes. |
 | Terminate | `terminate` | A terminate command is sent to the child when the parent closes. |
 
+### Default policy
+
+A `child()` call that does not pass a `ChildWorkflowOptions` always runs under `ParentClosePolicy::Abandon`. The source-compatible helpers — `Workflow\V2\child()`, `Workflow\V2\Workflow::child()`, and `Workflow\V2\Workflow::executeChildWorkflow()` — all construct the default options when the first argument is not a `ChildWorkflowOptions`, which sets `parentClosePolicy` to `ParentClosePolicy::Abandon`. The same default applies to every `child()` closure inside an `all([...])` barrier that omits an options argument. Override the default by passing an explicit `ChildWorkflowOptions` as shown below.
+
 ### Setting the policy
 
 Pass a `ChildWorkflowOptions` as the first argument to `child()`:
@@ -184,6 +188,19 @@ $results = all([
 - If the child has already closed by the time the policy is enforced, no action is taken — the command is silently skipped.
 - Policy enforcement is best-effort: if a child command is rejected (e.g. the child is already terminal), the parent's closure is not affected. When enforcement succeeds, a `ParentClosePolicyApplied` history event is recorded on the parent run. When enforcement fails, a `ParentClosePolicyFailed` history event is recorded instead, so operators can distinguish successful enforcement from silent failures.
 - Continue-as-new does **not** trigger parent-close policy, because the workflow instance remains active under a new run.
+
+### Parent disposition matrix
+
+Parent-close policy fires on every terminal parent disposition, and stays inert for runs that are still live or handed off to a continued run. The engine's behavior is the same for every disposition that marks the parent terminal — the policy is applied to any non-abandon, still-open child link.
+
+| Parent disposition | Policy enforced? | Notes |
+|---|---|---|
+| Completed | Yes | Fires after `WorkflowCompleted` is recorded. A straight-line `child()` call always waits for the child, so a natural completion normally has no open children; the enforcer is still called as a safety pass. |
+| Failed | Yes | Fires after `WorkflowFailed` is recorded for any terminal workflow-task failure. |
+| Timed out | Yes | Fires after `WorkflowTimedOut` is recorded for run-timeout and execution-timeout closures. |
+| Cancelled | Yes | Fires after the accepted `CancelRequested` command closes the parent run. |
+| Terminated | Yes | Fires after the accepted `TerminateRequested` command closes the parent run. |
+| Continue-as-new | No | The workflow instance stays active under the new run, so existing child links are re-pointed at the continued run with their original policy preserved. |
 
 ### When to use each policy
 

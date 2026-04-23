@@ -77,8 +77,8 @@ $resultFromHelper = activity(SendReceipt::class, $orderId);
 | --- | --- | --- | --- |
 | `Workflow::activity()` | `activity()` | `activity(string $activity, mixed ...$arguments): mixed` | Schedules an activity and waits for its result. |
 | `Workflow::executeActivity()` | `activity()` | `executeActivity(string $activity, mixed ...$arguments): mixed` | Alias for `activity()`. |
-| `Workflow::child()` | `child()` | `child(string $workflow, mixed ...$arguments): mixed` | Starts a child workflow and waits for its result. |
-| `Workflow::executeChildWorkflow()` | `child()` | `executeChildWorkflow(string $workflow, mixed ...$arguments): mixed` | Alias for `child()`. |
+| `Workflow::child()` | `child()` | `child(string $workflow, ChildWorkflowOptions? $options = null, mixed ...$arguments): mixed` | Starts a child workflow and waits for its result. Pass a `ChildWorkflowOptions` as the first argument to set the parent-close policy (default `ParentClosePolicy::Abandon`) or override child routing. |
+| `Workflow::executeChildWorkflow()` | `child()` | `executeChildWorkflow(string $workflow, ChildWorkflowOptions? $options = null, mixed ...$arguments): mixed` | Alias for `child()`. |
 | `Workflow::async()` | `async()` | `async(callable $callback): mixed` | Runs a callable as an auto-generated child workflow. |
 | `Workflow::all()` | `all()` | `all(iterable $calls): mixed` | Waits for concurrent calls and returns results in iteration order. |
 | `Workflow::parallel()` | `all()` | `parallel(iterable $calls): mixed` | Alias for `all()`. |
