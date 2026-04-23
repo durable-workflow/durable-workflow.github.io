@@ -13,6 +13,6 @@ sidebar_position: 4
 | ❌ `sleep()` | ✔️ `sleep()` |
 | ❌ non-idempotent | ❌ non-idempotent |
 
-Workflows should be deterministic because the workflow engine relies on being able to recreate the state of the workflow from its past activities in order to continue execution. If it is not deterministic, it will be impossible for the workflow engine to accurately recreate the state of the workflow and continue execution. This could lead to unexpected behavior or errors.
+Workflow code must be deterministic because the engine rebuilds a workflow's state by replaying its history of durable steps — it re-invokes the workflow body, not activities. If the body produces different decisions on replay, the engine cannot reconstruct the workflow's state and continue execution correctly.
 
-Activities should be idempotent because activities may be retried multiple times in the event of a failure. If an activity is not idempotent, it may produce unintended side effects or produce different results each time it is run, which could cause issues with the workflow. Making the activity idempotent ensures that it can be safely retried without any issues.
+Activities must be idempotent because activity execution is at-least-once. Retries, lease expiry, and redelivery can cause the same attempt to be observed more than once, and that is first-class behavior rather than an error. Making the activity body or its external target safe to repeat — with an idempotency key, a deterministic target resource, or a naturally idempotent operation — is what keeps duplicate execution from producing duplicate side effects.
