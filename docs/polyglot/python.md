@@ -240,10 +240,14 @@ below applies to any namespace the bearer token is authorized for.
 | `await client.describe_namespace(name)` | `NamespaceDescription` | `NamespaceNotFound`, auth/server errors. |
 | `await client.create_namespace(name, description=None, retention_days=30)` | `NamespaceDescription` | `InvalidArgument` for duplicate names or invalid retention, auth/server errors. |
 | `await client.update_namespace(name, description=None, retention_days=None)` | `NamespaceDescription` | `NamespaceNotFound`, `InvalidArgument`, auth/server errors. Only provided fields are sent. |
-| `await client.set_namespace_external_storage(namespace, driver=..., enabled=True, threshold_bytes=None, config=None)` | `NamespaceDescription` | `InvalidArgument` when the policy fails server validation, auth/server errors. |
+| `await client.set_namespace_external_storage(name, driver=..., enabled=True, threshold_bytes=None, config=None)` | `NamespaceDescription` | `InvalidArgument` when the policy fails server validation, auth/server errors. |
 | `await client.test_external_storage(driver=None, small_payload_bytes=None, large_payload_bytes=None)` | `StorageTestResult` | `InvalidArgument` when the bound policy is missing required fields, auth/server errors. |
 
 `set_namespace_external_storage` mirrors `dw namespace:set-storage-driver`. The
+first positional argument is the namespace `name`, matching `describe_namespace`,
+`create_namespace`, and `update_namespace`. Callers that pinned the
+`namespace=` keyword from the 0.4.0 release continue to work and now emit a
+`DeprecationWarning` until that alias is removed in a future release. The
 `config` dict carries driver-specific keys including the optional `disk` field
 on `s3`, `gcs`, and `azure` so credentials stay on the server. The returned
 `NamespaceDescription` reflects the policy the server actually persisted —
