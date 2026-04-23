@@ -42,6 +42,28 @@ curl -sS "$APP_URL/waterline/api/instances/order-1001" \
   -H "Accept: application/json" | jq '.status, .run_id, .actionability'
 ```
 
+## Authentication And CSRF
+
+Waterline routes are registered under Laravel's `web` middleware group. GET
+routes work with any authenticated session. POST routes additionally require a
+CSRF token, which is how the UI itself authenticates every operator action.
+
+For scripted operators the token requirement still applies. Two patterns work:
+
+- **Session + XSRF cookie.** Make one GET to a Waterline route with the session
+  cookie set. Laravel returns an `XSRF-TOKEN` cookie on that response. Include
+  its value in the `X-XSRF-TOKEN` header on every subsequent POST. Laravel
+  accepts that header as CSRF proof for JSON requests under the default
+  middleware.
+- **Host-app exemption.** If your operator automation owns its own identity
+  (service token, machine user), exempt Waterline's API POST routes from CSRF
+  in the host app's `App\Http\Middleware\VerifyCsrfToken` by adding the paths
+  under `$except`, for example `waterline/api/instances/*/archive`. Exempted
+  routes are then reachable with any authentication layer your app enforces.
+
+A POST without a valid CSRF token returns `419 CSRF token mismatch` before any
+Waterline controller runs, regardless of the target action.
+
 ## Dashboard And Health
 
 | Method | Path | Purpose |
