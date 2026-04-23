@@ -87,6 +87,14 @@ and serverless platform errors are transport facts. They only become workflow
 facts after the carrier maps them to the declared result envelope or to
 `malformed_output`.
 
+The first concrete carrier under this contract is the
+[invocable HTTP carrier](./invocable-carrier.md), published at
+`worker_protocol.invocable_carrier_contract`. It is activity-task only,
+requires HTTPS (with loopback HTTP allowed only for development), and resolves
+auth through the external executor configuration. Its transport-level
+`retry_policy` is distinct from the durable activity retry policy, which
+remains the server/runtime authority once a result is reported.
+
 ## Bridge Adapters
 
 Bridge adapters are bounded ingress or handoff surfaces. They can start,

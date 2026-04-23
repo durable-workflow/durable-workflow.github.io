@@ -135,6 +135,7 @@ const sidebars = {
       },
       items: [
         'polyglot/external-execution',
+        'polyglot/invocable-carrier',
         'polyglot/worker-protocol',
         'polyglot/task-queue-admission',
         'polyglot/worker-build-id-rollout',
