@@ -224,6 +224,7 @@ execute the same workflows.
 | `DW_V2_MULTI_NODE` | `false` | Declare a multi-node deployment so cache backends are validated for cross-node coordination. | `WORKFLOW_V2_MULTI_NODE` |
 | `DW_V2_VALIDATE_CACHE_BACKEND` | `true` | Validate the long-poll cache backend at boot. | `WORKFLOW_V2_VALIDATE_CACHE_BACKEND` |
 | `DW_V2_CACHE_VALIDATION_MODE` | `warn` | Cache-backend validation failure mode: `fail`, `warn`, or `silent`. | `WORKFLOW_V2_CACHE_VALIDATION_MODE` |
+| `DW_V2_FLEET_VALIDATION_MODE` | `warn` | Fleet-compatibility validation mode: `warn` logs, `fail` blocks dispatch and fails closed when no compatible worker is available. | `WORKFLOW_V2_FLEET_VALIDATION_MODE` |
 | `DW_SERIALIZER` | `avro` | Payload codec diagnostic input; final v2 resolves new-run payloads to Avro. | `WORKFLOW_SERIALIZER` |
 
 Use `DW_V2_GUARDRAILS_BOOT` in CI and deployment manifests. The older `WORKFLOW_V2_GUARDRAILS_BOOT` name is retained only so `env:audit` can point alpha-era operators at the rename; the workflow package no longer reads it as a runtime fallback.
