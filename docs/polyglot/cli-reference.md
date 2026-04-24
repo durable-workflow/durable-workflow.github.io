@@ -62,7 +62,7 @@ canonical `input` array.
 | `dw debug workflow <workflow-id>` | Capture stuck-run diagnostics for one workflow: state, pending tasks, queue facts, failures, and compatibility metadata. | `--run-id`, global options, `--json` |
 | `dw server:start-dev` | Start a local development server for smoke work. | `--port`, `--db=sqlite|mysql|pgsql` |
 | `dw watch workflow <workflow-id>` | Poll a workflow until terminal or until a configured polling limit. | `--run-id`, `--interval`, `--max-polls`, global options |
-| `dw upgrade` | Replace the running standalone `dw` binary with a newer (or pinned) release. Refuses to rewrite Composer vendor, Homebrew cellar, and PHAR installs. | `--version`, `--dry-run`, `--force`, `--output=table|json` |
+| `dw upgrade` | Replace the running standalone `dw` binary with a newer (or pinned) release. Refuses to rewrite Composer vendor, Homebrew cellar, and PHAR installs. | `--tag`, `--dry-run`, `--force`, `--output=table|json` |
 
 Use `server:info` when validating contract shape, `doctor` when explaining why
 a CLI cannot talk to a server, and `debug workflow` when support needs one
@@ -73,7 +73,7 @@ machine-readable run capture.
 `dw upgrade` downloads the matching platform asset from the
 `durable-workflow/cli` GitHub release, verifies it against the release's
 `SHA256SUMS`, and replaces the running binary only on a successful checksum
-match. Use `--version` to pin to a specific release tag, `--dry-run` to resolve
+match. Use `--tag` to pin to a specific release tag, `--dry-run` to resolve
 the target release and print the asset URLs without downloading, and `--force`
 to re-download and replace even when the current and target versions match.
 
