@@ -316,28 +316,85 @@ Setting `jitterSeconds` to `0` (the default) disables jitter entirely — fire t
 
 ## History event types
 
-When a schedule triggers a workflow, a `ScheduleTriggered` history event is recorded on the started workflow run. This provides lineage from the schedule to the workflow:
+Schedule lifecycle events are recorded on two separate event streams:
 
-```php
-// The event payload includes:
-// - schedule_id: the schedule's user-facing identifier
-// - schedule_ulid: the schedule's internal ULID
-// - cron_expression, timezone, overlap_policy
-// - trigger_number: which trigger this was (1-indexed)
-// - occurrence_time: the cron occurrence time (backfill only)
-```
+- **Workflow-run lineage.** When a schedule triggers a workflow, a
+  `ScheduleTriggered` event is appended to the started run's history
+  (`workflow_history_events`). This gives the run a verifiable link back
+  to the schedule that started it.
+- **Schedule audit stream.** Every schedule lifecycle transition is
+  recorded in the per-schedule audit log
+  (`workflow_schedule_history_events`) under a monotonically increasing
+  `sequence` field. The audit stream is authoritative for "what happened
+  to this schedule"; the run history is authoritative for "why this run
+  was started".
 
-The full set of schedule event types in the history enum:
+Both streams use the same `HistoryEventType` enum and the same
+`HistoryEventPayloadContract` payload-key registry, so event names and
+payload shapes stay in sync across streams.
 
-- `ScheduleCreated` — schedule was created
-- `SchedulePaused` — schedule was paused
-- `ScheduleResumed` — schedule was resumed
-- `ScheduleUpdated` — schedule cron, timezone, or policy was changed
-- `ScheduleTriggered` — a workflow run was started from the schedule
-- `ScheduleDeleted` — schedule was soft-deleted
-- `ScheduleTriggerSkipped` — a trigger was skipped due to overlap policy or exhausted actions
+### Run-lineage event (on the started workflow run)
 
-`ScheduleTriggered` is the only event currently recorded on workflow history. The others are reserved for future schedule-level audit logging.
+`ScheduleTriggered` is appended to the triggered workflow run's history
+with the following payload keys:
+
+- `schedule_id` — schedule's user-facing identifier.
+- `schedule_ulid` — schedule's internal ULID primary key.
+- `cron_expression`, `timezone`, `overlap_policy` — the schedule's
+  primary cron expression, IANA timezone, and active overlap policy at
+  trigger time.
+- `trigger_number` — which trigger this was (1-indexed).
+- `occurrence_time` — the canonical (unjittered) cron occurrence time.
+  Populated for backfill occurrences; null for tick-driven triggers.
+
+### Schedule audit stream (on the schedule itself)
+
+Every schedule lifecycle transition is recorded on the schedule's own
+audit stream. Sequences start at `1` for `ScheduleCreated` and increment
+monotonically per schedule.
+
+| Event | When recorded | Payload keys |
+| --- | --- | --- |
+| `ScheduleCreated` | Schedule was created | `spec`, `action`, `overlap_policy`, `next_fire_at`, `command_context` |
+| `SchedulePaused` | Schedule was paused | `reason`, `paused_at`, `command_context` |
+| `ScheduleResumed` | Schedule was resumed | `next_fire_at`, `command_context` |
+| `ScheduleUpdated` | Schedule cron, timezone, spec, action, or policy was changed | `changed_fields`, `spec`, `action`, `overlap_policy`, `next_fire_at`, `command_context` |
+| `ScheduleTriggered` | A workflow run was started from the schedule | `workflow_instance_id`, `workflow_run_id`, `outcome`, `effective_overlap_policy`, `trigger_number`, `occurrence_time`, `command_context` |
+| `ScheduleTriggerSkipped` | A trigger was skipped due to overlap policy, non-triggerable status, or exhausted actions | `reason`, `skipped_trigger_count`, `last_skipped_at`, `command_context` |
+| `ScheduleDeleted` | Schedule was soft-deleted — either by an explicit delete call or by exhausting `max_runs` (`reason: max_runs_exhausted`) | `reason`, `deleted_at`, `command_context` |
+
+`command_context` carries the principal, request id, source, and reason
+attributes recorded by `ScheduleManager` when the caller passes a
+`CommandContext`. It is optional — events recorded without a context
+omit the key rather than writing a blank value.
+
+### Payload contract stability
+
+The payload keys in both tables above are declared in
+`Workflow\V2\Support\HistoryEventPayloadContract`, asserted on every
+write, and pinned by test coverage in the workflow package. Adding a
+new key to any schedule event is a wire-format change and follows the
+history-event change rules in the
+[version compatibility contract](../compatibility.md).
+
+### Retention
+
+The audit stream is retained for the life of the schedule row. Schedule
+deletion is a soft delete that writes a final `ScheduleDeleted` event;
+the audit rows themselves are not cascaded when a schedule row is
+removed. Operators that purge historical schedules must choose an
+explicit retention strategy for their deployment — the package ships no
+built-in TTL for audit events.
+
+### Visibility
+
+Today the audit stream is queryable in-process through the
+`WorkflowSchedule::historyEvents()` Eloquent relation
+(`ConfiguredV2Models::query('schedule_history_event_model', ...)`).
+Standalone server HTTP endpoints, Waterline UI surfaces, and CLI/SDK
+helpers that expose the audit stream across the wire are tracked as
+follow-up work; the persisted events are already stable to consume from
+the database directly.
 
 ## Skip tracking
 
