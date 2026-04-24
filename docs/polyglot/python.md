@@ -1141,8 +1141,10 @@ def test_greeter_returns_activity_result() -> None:
 | `register_activity_result(name, result)` | Return `result` for every call to activity `name`. Use this when the test does not care about arguments. |
 | `register_activity(name, fn)` | Call `fn(*arguments)` for each scheduled invocation of activity `name`. Use this when the mock must vary with arguments or capture invocations. |
 | `register_child_workflow_result(workflow_type, result)` | Return `result` when the workflow starts a child of type `workflow_type`. |
-| `signal(name, args=None)` | Queue a signal to be delivered before the next replay iteration. The harness injects a `SignalReceived` event and dispatches it to the registered `@workflow.signal` handler. |
-| `execute_workflow(workflow_cls, *args, run_id="test-run")` | Drive the workflow to a terminal state and return its result. Raises `WorkflowFailed` when the workflow ends in the failed state. |
+| `signal(name, args=None, run=None)` | Queue a signal to be delivered before the next replay iteration. The harness injects a `SignalReceived` event and dispatches it to the registered `@workflow.signal` handler. Pass `run=N` to target link `N` of a continue-as-new chain. |
+| `register_workflow(workflow_cls)` | Make an additional workflow class resolvable by name. Required when a chain calls `continue_as_new(workflow_type=...)` with a type other than the starting workflow. |
+| `execute_workflow(workflow_cls, *args, run_id="test-run")` | Drive the workflow to a terminal state and return its result. Follows `continue_as_new` links to the final run and returns that run's result. Raises `WorkflowFailed` when the workflow ends in the failed state. |
+| `runs` / `run_count` | After `execute_workflow` returns, expose one `WorkflowRunRecord` per link in the chain (input, workflow type, history events, terminal command) so tests can assert on the full continuation chain. |
 
 The harness fails loudly on missing fixtures:
 
@@ -1216,9 +1218,71 @@ commands, so workflows do not block on wall-clock time inside tests:
 - `ctx.upsert_search_attributes(...)` → `SearchAttributesUpserted`
 - `workflow.version(...)` markers → `VersionMarkerRecorded`
 
-`ContinueAsNew` is intentionally not supported in the harness; drive each run
-explicitly with a separate `execute_workflow` call to assert continue-as-new
-inputs deterministically.
+#### Continue-as-new chains
+
+When a workflow returns `ctx.continue_as_new(...)`, the harness appends a
+`WorkflowContinuedAsNew` event to the completing run, resets history, and
+starts a new run with the command's arguments. The return value of
+`execute_workflow` is the terminal result of the final link.
+
+```python
+@workflow.defn(name="countdown")
+class Countdown:
+    def run(self, ctx, counter: int):
+        yield ctx.schedule_activity("emit", [counter])
+        if counter > 0:
+            return ctx.continue_as_new(counter - 1)
+        return {"final_counter": counter}
+
+
+def test_chain_returns_final_run_result() -> None:
+    env = WorkflowEnvironment()
+    env.register_activity_result("emit", None)
+
+    result = env.execute_workflow(Countdown, 3)
+
+    assert result == {"final_counter": 0}
+    assert env.run_count == 4
+    assert [r.input for r in env.runs] == [[3], [2], [1], [0]]
+```
+
+When the chain switches workflow types, register the follow-on class first:
+
+```python
+@workflow.defn(name="stage-one")
+class StageOne:
+    def run(self, ctx):
+        yield ctx.schedule_activity("stage_one", [])
+        return ctx.continue_as_new(workflow_type="stage-two")
+
+
+@workflow.defn(name="stage-two")
+class StageTwo:
+    def run(self, ctx):
+        return (yield ctx.schedule_activity("stage_two", []))
+
+
+def test_chain_can_switch_workflow_type() -> None:
+    env = WorkflowEnvironment()
+    env.register_workflow(StageTwo)
+    env.register_activity_result("stage_one", None)
+    env.register_activity_result("stage_two", "done")
+
+    assert env.execute_workflow(StageOne) == "done"
+    assert [r.workflow_type for r in env.runs] == ["stage-one", "stage-two"]
+```
+
+Target a signal at a specific link in the chain with `run=N`:
+
+```python
+env.signal("approve", ["alice"], run=2)  # delivered to the second run
+```
+
+The chain length is capped by `continue_as_new_limit` (default `50`).
+Exceeding the limit raises `RuntimeError` so tests catch runaway
+continuations instead of spinning forever; tune the limit with
+`WorkflowEnvironment(continue_as_new_limit=...)` when a chain legitimately
+runs longer.
 
 #### Failure assertions
 
