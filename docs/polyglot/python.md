@@ -1376,6 +1376,44 @@ replay_history_file(
 Both functions accept an optional `payload_codec` override. Leave it unset to
 use the codec the history recorded.
 
+#### Class-based replayer
+
+When one test pass replays histories for several different workflow types, or
+when the test should let the captured `WorkflowStarted` event decide which
+workflow to replay, use the `Replayer` class. Register every workflow class
+up front and call `replay(...)` once per captured history:
+
+```python
+from durable_workflow import Replayer, ReplayOutcome
+
+replayer = Replayer(workflows=[OrderWorkflow, RefundWorkflow])
+
+# Explicit type and input — equivalent to replay_history(OrderWorkflow, ...).
+outcome: ReplayOutcome = replayer.replay(
+    history["events"],
+    start_input=["order-42"],
+    workflow_type="order",
+)
+
+# Type and start input inferred from a WorkflowStarted event in the history.
+outcome = replayer.replay(history)  # history may be an events list or a
+                                    # dict with an "events" key
+
+for command in outcome.commands:
+    # Inspect commands the replayed workflow would have emitted next.
+    ...
+```
+
+`Replayer(workflows=[...])` rejects an empty workflow set or a duplicate
+registration with `ValueError`. `replay(...)` raises `ValueError` when a
+history asks for a workflow type that was not registered, or when multiple
+workflows are registered and the caller does not provide `workflow_type` and
+the history does not include a `WorkflowStarted` event.
+
+`ReplayOutcome.commands` is the same command list the functional
+`replay_history` helpers return; the class-based entry point exists so a test
+suite can share one registration across many histories.
+
 ### Test Harness Reference
 
 | Symbol | Purpose |
@@ -1383,6 +1421,8 @@ use the codec the history recorded.
 | `durable_workflow.testing.WorkflowEnvironment` | In-process test harness. Drive a workflow to completion against registered activity and child-workflow mocks. |
 | `durable_workflow.testing.replay_history(workflow_cls, events, start_input=None, *, run_id="", payload_codec=None)` | Replay a history event sequence against current workflow code. Raises on non-determinism. |
 | `durable_workflow.testing.replay_history_file(workflow_cls, path, start_input=None, *, run_id="", payload_codec=None)` | Load a JSON history from disk and replay it. Accepts either a top-level list of events or a dict with an `events` key. |
+| `durable_workflow.Replayer(*, workflows=[...])` | Class-based replayer. Register one or more workflow classes, then call `replay(history, start_input=None, *, workflow_type=None, workflow_id=None, run_id="", payload_codec=None)` to replay each captured history. Infers `workflow_type` and `start_input` from a `WorkflowStarted` event when the history contains one. |
+| `durable_workflow.ReplayOutcome` | Dataclass returned by `Replayer.replay`. Carries `commands: list[Command]` — the commands the replayed workflow would have emitted next. |
 | `durable_workflow.errors.WorkflowFailed` | Raised by `execute_workflow` when the workflow terminates in the failed state. |
 | `durable_workflow.errors.WorkflowCancelled` | Terminal state when the workflow was cancelled. Inherits from `BaseException`. |
 | `durable_workflow.errors.WorkflowTerminated` | Terminal state when the workflow was terminated by the server. Inherits from `BaseException`. |
