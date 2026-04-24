@@ -388,13 +388,76 @@ built-in TTL for audit events.
 
 ### Visibility
 
-Today the audit stream is queryable in-process through the
-`WorkflowSchedule::historyEvents()` Eloquent relation
-(`ConfiguredV2Models::query('schedule_history_event_model', ...)`).
-Standalone server HTTP endpoints, Waterline UI surfaces, and CLI/SDK
-helpers that expose the audit stream across the wire are tracked as
-follow-up work; the persisted events are already stable to consume from
-the database directly.
+The audit stream is exposed through every operator surface:
+
+- **In-process (Eloquent).** `WorkflowSchedule::historyEvents()`
+  (resolved through `ConfiguredV2Models::query(
+  'schedule_history_event_model', ...)`) returns the stream for a
+  schedule from within the host application.
+- **Waterline HTTP.**
+  `GET /waterline/api/v2/schedules/{scheduleId}/history` returns the
+  stream with `limit` (1–500, default 100) and `after_sequence`
+  cursor pagination. The response is scoped to the Waterline
+  namespace so multi-tenant deployments only see their tenant's
+  audit rows.
+- **Waterline UI.** The **History** action on each row in the
+  Waterline schedule registry opens a modal that renders the stream
+  for that schedule. Events are shown with their sequence, recorded
+  timestamp, event type, linked workflow instance and run IDs, and
+  formatted payload, with a **Load more** control that advances the
+  cursor in batches of 100.
+- **Standalone server HTTP.**
+  `GET /api/schedules/{scheduleId}/history` on the standalone
+  server returns the same stream with the same pagination contract
+  and the same `X-Namespace` scoping rules. History remains
+  available after a schedule is soft-deleted, since the audit trail
+  is what operators reach for to reconstruct a removed schedule.
+- **CLI.** `dw schedule:history <schedule-id>` prints the stream
+  as a table (`Seq`, `Event`, `Recorded At`, `Workflow Refs`) with
+  a **More events available** hint when `has_more` is true.
+  `--limit` and `--after-sequence` forward to the server endpoint,
+  `--all` pages through every remaining event, and
+  `--output=json` / `--output=jsonl` emit structured output
+  (`jsonl` drops the cursor envelope so each line is a
+  self-contained event).
+- **Python SDK.** `Client.get_schedule_history(schedule_id, *, limit,
+  after_sequence)` returns a single `ScheduleHistoryPage`, and
+  `Client.iter_schedule_history(schedule_id, *, page_size)` is an
+  `AsyncIterator[ScheduleHistoryEvent]` that pages through the full
+  stream. `ScheduleHandle` exposes matching `.history(...)` and
+  `.iter_history(...)` convenience methods.
+
+All of these surfaces read from the same `workflow_schedule_history_events`
+table; the payload-key contract in
+[Payload contract stability](#payload-contract-stability) applies
+regardless of which surface the operator uses.
+
+### Migration behavior for pre-audit schedules
+
+The schedule audit stream was introduced together with the
+`workflow_schedule_history_events` table. Schedules that were
+created before that migration ran have no retroactive
+`ScheduleCreated` event — `ScheduleManager` records audit events
+only as lifecycle transitions happen, and the migration does not
+synthesize a backfilled event for existing schedules.
+
+What this means for operators:
+
+- A pre-existing schedule's stream is empty until its next
+  lifecycle transition. Pausing, resuming, updating, triggering,
+  skipping a trigger, or deleting the schedule appends events as
+  normal from that point on.
+- Sequence numbers still start at `1` and increment monotonically
+  per schedule. A pre-existing schedule whose first recorded event
+  is a `SchedulePaused` will have `sequence = 1` on that row; the
+  absence of a preceding `ScheduleCreated` is expected.
+- `ScheduleTriggered` and `ScheduleTriggerSkipped` events are
+  written every time a tick evaluates the schedule, so any schedule
+  that fires on a cron cadence after the migration will accumulate
+  audit rows without operator intervention.
+- No operator action is required to opt a schedule into the audit
+  stream. The stream is always on; it simply has no rows until the
+  first post-migration event is written.
 
 ## Skip tracking
 
