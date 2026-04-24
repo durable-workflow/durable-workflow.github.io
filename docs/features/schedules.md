@@ -420,12 +420,15 @@ The audit stream is exposed through every operator surface:
   `--output=json` / `--output=jsonl` emit structured output
   (`jsonl` drops the cursor envelope so each line is a
   self-contained event).
-- **Python SDK.** `Client.get_schedule_history(schedule_id, *, limit,
-  after_sequence)` returns a single `ScheduleHistoryPage`, and
-  `Client.iter_schedule_history(schedule_id, *, page_size)` is an
-  `AsyncIterator[ScheduleHistoryEvent]` that pages through the full
-  stream. `ScheduleHandle` exposes matching `.history(...)` and
-  `.iter_history(...)` convenience methods.
+- **Python SDK.** `Client.get_schedule_history(schedule_id, *, limit=None,
+  after_sequence=None)` returns a single `ScheduleHistoryPage`, and
+  `Client.iter_schedule_history(schedule_id, *, limit=None, after_sequence=None)`
+  is an `AsyncIterator[ScheduleHistoryEvent]` that pages through the full
+  stream with the same keyword arguments. `ScheduleHandle` exposes
+  matching `.history(...)` and `.iter_history(...)` convenience methods.
+  `limit` is clamped server-side between 1 and 500 (default 100) and
+  `after_sequence` is a non-negative cursor obtained from the previous
+  page's `next_cursor`.
 
 All of these surfaces read from the same `workflow_schedule_history_events`
 table; the payload-key contract in
