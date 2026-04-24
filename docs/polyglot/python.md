@@ -340,11 +340,24 @@ for the workflow start request issued when a schedule fires.
 | `await client.resume_schedule(schedule_id, note=None)` | `None` | Resumes a paused schedule. |
 | `await client.trigger_schedule(schedule_id, overlap_policy=None)` | `ScheduleTriggerResult` | Requests an immediate fire. |
 | `await client.backfill_schedule(schedule_id, start_time=..., end_time=..., overlap_policy=None)` | `ScheduleBackfillResult` | Replays missed fire windows. |
+| `await client.get_schedule_history(schedule_id, *, limit=None, after_sequence=None)` | `ScheduleHistoryPage` | Returns one page of the schedule's audit history stream, ordered by `sequence` ascending. `limit` is clamped server-side between 1 and 500 (default 100); `after_sequence` is a non-negative cursor obtained from the previous page's `next_cursor`. Raises `ScheduleNotFound` if the schedule id is unknown. History survives a `delete_schedule` call so operators can audit why a schedule was removed. |
+| `client.iter_schedule_history(schedule_id, *, limit=None, after_sequence=None)` | `AsyncIterator[ScheduleHistoryEvent]` | Yields every audit event for the schedule, paging under the hood until the server reports `has_more=False`. Same failure surface as `get_schedule_history`. |
 | `await client.delete_schedule(schedule_id)` | `None` | Deletes the schedule. |
 
 `client.get_schedule_handle(schedule_id)` returns a `ScheduleHandle` with
-`describe`, `update`, `pause`, `resume`, `trigger`, `backfill`, and `delete`
-methods that forward to the corresponding client methods.
+`describe`, `update`, `pause`, `resume`, `trigger`, `backfill`, `history`,
+`iter_history`, and `delete` methods that forward to the corresponding client
+methods. `ScheduleHandle.history(...)` returns a `ScheduleHistoryPage` and
+`ScheduleHandle.iter_history(...)` returns an `AsyncIterator[ScheduleHistoryEvent]`.
+
+A `ScheduleHistoryPage` carries the ordered `events` list, a `has_more` flag,
+a `next_cursor` integer (or `None` on the final page), the `schedule_id`, and
+the owning `namespace`. Each `ScheduleHistoryEvent` carries `sequence`,
+`event_type` (`ScheduleCreated`, `SchedulePaused`, `ScheduleResumed`,
+`ScheduleUpdated`, `ScheduleTriggered`, `ScheduleTriggerSkipped`, or
+`ScheduleDeleted`), `recorded_at`, optional `workflow_instance_id` and
+`workflow_run_id` for fired workflows, and the raw `payload` dictionary the
+control plane recorded for the transition.
 
 ### Bridge Events and Worker-Plane Methods
 
@@ -1008,7 +1021,20 @@ await handle.update(
     note="Changed to every 30 minutes",
 )
 
-# Delete the schedule
+# Read the audit history stream (paused/resumed/triggered/updated events)
+page = await handle.history(limit=100)
+for event in page.events:
+    print(event.sequence, event.event_type, event.recorded_at)
+while page.has_more and page.next_cursor is not None:
+    page = await handle.history(limit=100, after_sequence=page.next_cursor)
+    for event in page.events:
+        print(event.sequence, event.event_type, event.recorded_at)
+
+# Or iterate every event without managing cursors
+async for event in handle.iter_history():
+    print(event.sequence, event.event_type)
+
+# Delete the schedule (history survives the delete for audit)
 await handle.delete()
 ```
 
