@@ -85,6 +85,42 @@ Apply that rule to the shipped surfaces:
   fields as operator diagnostics for dashboards and scripts, not as a metrics
   scrape endpoint.
 
+## Correctness vs acceleration checks
+
+Every v2 health check carries a `category` of either `correctness` or
+`acceleration`, and the snapshot publishes a per-category rollup so operators
+can answer two separate questions without re-aggregating the check list.
+
+- **Correctness checks** describe whether durable ready-task discovery,
+  projection freshness, command-contract backfill, history retention, worker
+  compatibility, and backend capabilities are intact. A correctness check in
+  `status = error` means safe task pickup or operator-trusted state is at
+  risk; rollouts should stop until it clears.
+- **Acceleration checks** describe whether optional wake-signal propagation
+  is keeping up. The durable pollers are the correctness path, so an
+  acceleration check in `status = warning` means cross-node wake-up latency
+  may be higher than steady state but no task is stranded.
+
+Each entry under `checks` carries its `category`, and the snapshot adds a
+`categories` rollup so dashboards can summarize both questions at a glance:
+
+```json
+{
+  "status": "warning",
+  "categories": {
+    "correctness": {"status": "ok", "check_count": 8},
+    "acceleration": {"status": "warning", "check_count": 1}
+  }
+}
+```
+
+Treat a degraded `acceleration` rollup as acceleration-only: investigate
+cache or wake backend health, but do not block traffic that depends only on
+durable ready-task discovery. A degraded `correctness` rollup is the
+blocking signal. The `long_poll_wake_acceleration` check is the canonical
+acceleration entry and never escalates above `warning`; every other check
+is a correctness entry.
+
 ## Queue-health semantics
 
 Queue health is split between durable queue state and worker/runtime telemetry.
@@ -119,6 +155,39 @@ Use worker metrics, traces, and logs for:
 Synchronous queries, live-debug tooling, and other non-durable control-plane
 calls should be labeled separately in your dashboards. They do not count as
 durable task backlog and they do not change Waterline repair counters.
+
+## Worker compatibility and rollout health
+
+`operator_metrics.workers` publishes the compatibility facts that determine
+whether the active worker fleet can safely handle the required workflow
+contract:
+
+| Fact | Meaning |
+| --- | --- |
+| `operator_metrics.workers.required_compatibility` | Compatibility markers a worker must advertise to be eligible for work in the namespace. |
+| `operator_metrics.workers.active_workers` | Count of distinct live workers seen through compatibility heartbeat. |
+| `operator_metrics.workers.active_worker_scopes` | Count of `(connection, queue)` scopes covered by those workers. |
+| `operator_metrics.workers.active_workers_supporting_required` | Workers whose advertised compatibility covers the required markers. |
+| `operator_metrics.workers.fleet` | Per-scope list of every active worker with `worker_id`, `connection`, `queue`, advertised `supported` markers, a `supports_required` flag, the heartbeat `source` (`database` or `cache`), and `recorded_at`. |
+
+Use the summary counts to detect mixed-fleet states where some workers
+cannot safely claim the required work, and drill into `fleet` to identify
+exactly which `(connection, queue)` scope is missing coverage. The Waterline
+operator dashboard renders the same fleet list under its worker
+compatibility panel so operators do not need to query the metric surface by
+hand.
+
+When `active_workers_supporting_required` reaches zero for a namespace,
+Waterline surfaces a `no_compatible_worker_for_task` run diagnostic on
+affected runs so the gap is visible on the run-detail view as well as the
+metric surface. The companion `worker_compatibility` health check fires as
+`warning` under `correctness` in the same condition, which flips the
+`correctness` category rollup to `warning` so the fleet gap is visible at
+a glance and not buried inside the check list.
+
+See [Rolling Out Worker Builds With Build IDs](./polyglot/worker-build-id-rollout.md)
+for the drain/resume flow that coordinates with these facts during a
+build-id rollout.
 
 ## Rebuild, repair, and restore expectations
 
