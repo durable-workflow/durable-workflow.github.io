@@ -217,6 +217,7 @@ execute the same workflows.
 | `DW_V2_LIMIT_HISTORY_TRANSACTION_SIZE` | `5000` | Package-level history-transaction event ceiling. | `WORKFLOW_V2_LIMIT_HISTORY_TRANSACTION_SIZE` |
 | `DW_V2_LIMIT_WARNING_THRESHOLD_PERCENT` | `80` | Percent of a structural limit at which the package emits a warning. | `WORKFLOW_V2_LIMIT_WARNING_THRESHOLD_PERCENT` |
 | `DW_V2_TASK_DISPATCH_MODE` | `queue` | Package-level task dispatch mode, usually overridden by `DW_TASK_DISPATCH_MODE` in server mode. | - |
+| `DW_V2_MATCHING_ROLE_QUEUE_WAKE` | `true` | Whether queue workers run the in-worker matching-role wake on every Looping event. Set to `false` to opt execution-only nodes out of the broad-poll wake when a dedicated `php artisan workflow:v2:repair-pass --loop` daemon owns the sweep instead. | `WORKFLOW_V2_MATCHING_ROLE_QUEUE_WAKE` |
 | `DW_V2_TASK_REPAIR_REDISPATCH_AFTER_SECONDS` | `3` | Seconds before an orphaned workflow task is redispatched by repair. | `WORKFLOW_V2_TASK_REPAIR_REDISPATCH_AFTER_SECONDS` |
 | `DW_V2_TASK_REPAIR_LOOP_THROTTLE_SECONDS` | `5` | Minimum seconds between task-repair passes per queue. | `WORKFLOW_V2_TASK_REPAIR_LOOP_THROTTLE_SECONDS` |
 | `DW_V2_TASK_REPAIR_SCAN_LIMIT` | `25` | Maximum tasks considered per task-repair pass. | `WORKFLOW_V2_TASK_REPAIR_SCAN_LIMIT` |
