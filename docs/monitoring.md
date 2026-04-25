@@ -34,7 +34,7 @@ workflow history and current run state.
 
 ### Dashboard View
 
-![waterline_dashboard](https://github.com/user-attachments/assets/5688a234-4c02-4d5e-84d4-5f40b5fa27c5)
+![Waterline dashboard](https://raw.githubusercontent.com/durable-workflow/waterline/refs/heads/v2/docs/screenshots/dashboard.png)
 
 The dashboard shows running totals, recent-run counters, and fleet-wide
 metrics so you can tell at a glance whether work is flowing, stalling, or
@@ -48,7 +48,7 @@ paths.
 
 ### Workflow View
 
-![workflow](https://github.com/user-attachments/assets/da685466-7747-4c2f-ae10-300041381d51)
+![Waterline workflow detail](https://raw.githubusercontent.com/durable-workflow/waterline/refs/heads/v2/docs/screenshots/workflow-detail.png)
 
 The workflow detail view shows the durable timeline for a single run: the
 activities, signals, timers, and child workflows that happened in order,
