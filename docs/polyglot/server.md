@@ -425,11 +425,13 @@ Kubernetes manifests, and support-led topologies.
 
 The self-serve small-cluster contract is deliberately narrow: 2-3 stateless API
 nodes behind a load balancer, one shared external MySQL or PostgreSQL database,
-shared Redis, independently scaled workers, exactly one scheduler or
-maintenance runner, and stop-the-world upgrades. SQLite clustering,
-Redis-less multi-node mode, duplicate schedulers, rolling upgrades,
-multi-region, Helm, and provider-specific failover are outside that contract
-until separately validated.
+shared Redis, independently scaled workers, and exactly one scheduler or
+maintenance runner. Choose stop-the-world upgrades or
+[rolling upgrades](/docs/2.0/rolling-upgrades) per release; the rolling-upgrade
+contract names the version-skew, schema, drain, readiness, and rollback
+guarantees that must hold. SQLite clustering, Redis-less multi-node mode,
+duplicate schedulers, multi-region, Helm, and provider-specific failover are
+outside that contract until separately validated.
 
 For self-hosted server deployments, start from published images rather than
 source-tree builds:

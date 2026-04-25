@@ -56,11 +56,12 @@ Durable Workflow is designed to be useful without a sales call. The public distr
 We intentionally optimize the public distribution for local development,
 single-node production, and the narrow small-cluster contract described in the
 self-hosting guide. Kubernetes manifests are provided for teams that already
-operate Kubernetes. Helm charts, rolling upgrades, duplicate schedulers,
-Redis-less multi-node operation, provider failover, and advanced
-HA/multi-region topologies are support-led because they require
-environment-specific sizing, database, networking, security, and upgrade
-decisions.
+operate Kubernetes. The small-cluster contract supports
+[rolling upgrades](/docs/2.0/rolling-upgrades) when every guarantee on that
+page holds. Helm charts, duplicate schedulers, Redis-less multi-node
+operation, provider failover, and advanced HA/multi-region topologies are
+support-led because they require environment-specific sizing, database,
+networking, security, and upgrade decisions.
 
 See the [self-hosting deployment guide](/docs/2.0/deployment) for the
 concrete support matrix, published-image Compose recipes, raw Kubernetes
@@ -87,7 +88,7 @@ Commercial support engagements are led by the project maintainer and typically i
   Help with capacity assumptions, backup and restore strategy, bootstrap and migration order, rollout safety, and operational runbooks.
 
 - **Advanced topology support**  
-  Support-led design work for Helm charts, custom Kubernetes overlays, rolling upgrades, duplicate scheduler designs, Redis-less multi-node mode, high-availability deployments, and multi-region recovery plans.
+  Support-led design work for Helm charts, custom Kubernetes overlays, duplicate scheduler designs, Redis-less multi-node mode, high-availability deployments, and multi-region recovery plans.
 
 - **Security review**  
   Assistance with role-scoped credentials, network exposure, internal versus public endpoints, TLS termination, and access boundaries for operators and workers.

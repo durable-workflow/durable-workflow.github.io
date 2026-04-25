@@ -265,11 +265,11 @@
     {
       "query": "helm high availability rolling upgrade",
       "target": "deployment.md",
-      "related": ["support.md"],
+      "related": ["support.md", "rolling-upgrades.md"],
       "aliases": ["Helm", "HA", "rolling upgrades", "support-led"],
       "source": "docs Phase 3 zero-result watchlist",
-      "lastReviewed": "2026-04-22",
-      "action": "Keep mapped until unsupported topology searches land on the deployment support matrix."
+      "lastReviewed": "2026-04-25",
+      "action": "Keep mapped so rolling-upgrade searches land on the rolling-upgrade contract and support-led topology searches land on the deployment support matrix."
     },
     {
       "query": "webhook bridge adapter external handler",

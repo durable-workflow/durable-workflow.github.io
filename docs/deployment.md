@@ -20,7 +20,7 @@ pages instead.
 | --- | --- | --- | --- | --- |
 | Local development and internal non-production | [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) with `DW_SERVER_TAG=0.2` or `DW_SERVER_IMAGE=durableworkflow/server:0.2` | One developer machine, LAN demos, shared staging, SDK and worker integration tests | Internet-facing production, durable backup guarantees, strict secret rotation, multi-node failover | You want help turning a working dev stack into a production runbook |
 | Single-node production | [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) with a production env file, MySQL and Redis volumes, role-scoped tokens, backups, TLS through a reverse proxy, and pinned image tags or digests | One VM, VPS, or internal Docker host with persistent workflow state and a simple operational model | Host-level HA, automatic database failover, multi-region recovery, zero-downtime major topology changes | The deployment carries production traffic and you want review of backup, restore, auth, TLS, upgrade, or rollback procedures |
-| Small clustered deployment | Published `durableworkflow/server` or `ghcr.io/durable-workflow/server` images using the [Compose recipe](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) as the container/process template, with 2-3 API nodes, shared external MySQL/PostgreSQL, shared Redis, independently scaled workers, and exactly one scheduler/maintenance runner | Horizontal API and worker capacity when one node is no longer enough | SQLite clustering, Redis-less multi-node mode, duplicate schedulers, rolling upgrades, multi-region operation, Helm, provider-specific failover, broad HA/SLA guarantees | You need sizing, failure-domain, rollout, or recovery planning across more than one host |
+| Small clustered deployment | Published `durableworkflow/server` or `ghcr.io/durable-workflow/server` images using the [Compose recipe](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) as the container/process template, with 2-3 API nodes, shared external MySQL/PostgreSQL, shared Redis, independently scaled workers, and exactly one scheduler/maintenance runner | Horizontal API and worker capacity when one node is no longer enough; rolling upgrades when every guarantee in the [rolling-upgrade contract](/docs/2.0/rolling-upgrades) holds | SQLite clustering, Redis-less multi-node mode, duplicate schedulers, multi-region operation, Helm, provider-specific failover, broad HA/SLA guarantees | You need sizing, failure-domain, rollout, or recovery planning across more than one host |
 | Raw Kubernetes manifests | The server repository [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) manifests, using published server images and your existing database, Redis, ingress, and secret management | Teams that already operate Kubernetes and want inspectable manifests for API, worker, scheduler, bootstrap, service, probes, config, and secrets | Helm charts, managed-Kubernetes provider validation, advanced HA, multi-region, custom operators, environment-specific storage/networking/security decisions | You need Helm, overlays, managed-cluster validation, high availability, or provider-specific production planning |
 | Support-led topologies | A reviewed design based on your environment | Advanced HA, multi-region, bespoke security/networking, private SLOs, custom overlays, migration planning | Self-serve copy/paste operation | The topology itself is part of the product risk |
 
@@ -157,9 +157,11 @@ self-serve contract is intentionally narrow:
   activity-timeout enforcement, and history pruning.
 - Run bootstrap/migrations once per rollout before new API and worker
   containers accept traffic.
-- Use stop-the-world upgrades: drain workers, stop scheduler/maintenance,
-  replace API nodes, run bootstrap/migrations, then restart workers and the
-  scheduler. Rolling upgrades are not part of this contract yet.
+- Choose a rollout posture for this release: stop-the-world (drain workers,
+  stop scheduler/maintenance, replace API nodes, run bootstrap/migrations,
+  then restart workers and the scheduler) or
+  [rolling upgrades](/docs/2.0/rolling-upgrades) when every guarantee on
+  that contract holds.
 - Treat the database and Redis as the primary failure domains. The server
   containers are replaceable; the persistence and coordination layers are not.
 
@@ -169,9 +171,9 @@ Redis connection. Give each API node a unique `DW_SERVER_ID` so cluster
 discovery and logs can distinguish the nodes.
 
 The unsupported boundaries are explicit: SQLite clustering, Redis-less
-multi-node mode, duplicate schedulers, rolling upgrades, multi-region
-deployments, Helm charts, provider-specific failover, and broad HA/SLA promises
-need separate validation or support-led design before you rely on them.
+multi-node mode, duplicate schedulers, multi-region deployments, Helm charts,
+provider-specific failover, and broad HA/SLA promises need separate
+validation or support-led design before you rely on them.
 
 This path is self-serve when your team already has a clear VM, network,
 database, cache, backup, and load-balancer model. It becomes support-led when

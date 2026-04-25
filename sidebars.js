@@ -80,6 +80,7 @@ const sidebars = {
       },
       items: [
         'deployment',
+        'rolling-upgrades',
         'monitoring',
         'operator-operating-envelope',
         'waterline-operator-api',
