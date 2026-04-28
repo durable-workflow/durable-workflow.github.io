@@ -172,7 +172,13 @@ topology change explicit instead of assuming every execution node will keep
 doing broad ready-task sweeps. See
 [Task Matching and Dispatch](/docs/2.0/polyglot/task-matching-dispatch) for
 the documented `workflow:v2:repair-pass --loop` plus
-`DW_V2_MATCHING_ROLE_QUEUE_WAKE=0` shape.
+`DW_V2_MATCHING_ROLE_QUEUE_WAKE=0` shape. Verify the live node contract from
+`GET /api/cluster/info`: `topology.current_process_class` should still match
+the node you are cutting over, while `topology.matching_role.shape` and
+`topology.matching_role.wake_owner` should show `in_worker` /
+`worker_loop` for the default shape or `dedicated` /
+`dedicated_repair_pass` where the dedicated matching daemon now owns broad
+ready-task discovery.
 
 ## Readiness and cutover
 
@@ -200,7 +206,11 @@ Cutover sequence for one API node:
    against the rest of the fleet.
 3. Stop the old container, start the new one.
 4. Wait for `GET /api/ready` to return 200 and for
-   `GET /api/cluster/info` to advertise the new build identity.
+   `GET /api/cluster/info` to advertise the new build identity. When the
+   rollout changes the matching topology, also confirm
+   `topology.matching_role.task_dispatch_mode`, `shape`,
+   `partition_primitives`, and `backpressure_model` match the intended
+   deployment before returning the node to traffic.
 5. Return the node to rotation.
 
 Repeat one node at a time. Do not roll the next node until the

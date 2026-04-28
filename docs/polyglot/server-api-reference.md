@@ -61,7 +61,7 @@ checks.
 | --- | --- | --- | --- |
 | `GET` | `/api/health` | no | Liveness probe for the HTTP process. |
 | `GET` | `/api/ready` | no | Readiness probe that checks runtime dependencies. |
-| `GET` | `/api/cluster/info` | yes | Server identity, supported SDK ranges, control-plane contract, worker-protocol contract, payload codecs, and feature capabilities. |
+| `GET` | `/api/cluster/info` | yes | Server identity, supported SDK ranges, role topology, coordination-health summary, control-plane contract, worker-protocol contract, payload codecs, and feature capabilities. |
 
 Example:
 
@@ -74,6 +74,40 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/cluster/info" \
 
 `/api/cluster/info` intentionally does not require the control-plane version
 header because it is the endpoint that advertises the supported versions.
+
+The same response also publishes the live topology and rollout-safety state for
+that node:
+
+- `topology.current_process_class`, `topology.current_roles`, and
+  `topology.execution_mode` tell you which role shape the node is actually
+  serving.
+- `topology.matching_role.shape`, `topology.matching_role.wake_owner`, and
+  `topology.matching_role.task_dispatch_mode` tell you whether broad ready-task
+  discovery is happening in-worker or through a dedicated matching-role sweep.
+- `topology.matching_role.partition_primitives` and
+  `topology.matching_role.backpressure_model` freeze the routing axes and
+  lease-based admission model the server expects workers and operators to
+  reason about.
+- `coordination_health` summarizes fleet-wide rollout and compatibility risk in
+  one machine-readable block.
+
+Example:
+
+<!-- docs-example id="server.cluster-info.topology.curl" -->
+```bash
+curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/cluster/info" \
+  -H "Authorization: Bearer $DURABLE_WORKFLOW_AUTH_TOKEN" \
+  -H "X-Namespace: default" | jq '{
+    current_process_class: .topology.current_process_class,
+    current_roles: .topology.current_roles,
+    execution_mode: .topology.execution_mode,
+    matching_role: .topology.matching_role,
+    coordination_health: {
+      status: .coordination_health.status,
+      http_status: .coordination_health.http_status
+    }
+  }'
+```
 
 ## Workflow Control Plane
 
