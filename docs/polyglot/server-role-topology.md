@@ -59,6 +59,13 @@ The role list is intentionally logical rather than process-shaped. One process
 may host multiple roles, and one role may later move to its own process class
 without changing the contract.
 
+`current_process_class` is the per-node bridge between those logical roles and
+the process shape that is serving them. Read it with `current_shape` and
+`current_roles`: `server_http_node`, `scheduler_node`, and `worker_node` are
+legal process classes inside `standalone_server`; `matching_node` and
+`execution_node` become legal once the topology shifts to
+`split_control_execution`.
+
 ## Supported Deployment Shapes
 
 The server publishes the supported shapes in `topology.supported_shapes`:
@@ -79,11 +86,41 @@ Two details matter in practice:
   `api_ingress`, `control_plane`, `matching`, and `history_projection`; the
   scheduler and workers are separate process classes in the same shape.
 
+`supported_topologies` is the normalized machine-readable version of this
+table. It is keyed by topology name and records the `execution_mode` plus the
+allowed process classes and roles for each shape. Use it when automation needs
+stable parsing rather than prose or list-order-sensitive traversal of
+`shape_assignments`.
+
 For rollout planning, keep the topology page paired with
 [Self-Hosting Deployments](/docs/2.0/deployment) and
 [Rolling Upgrades](/docs/2.0/rolling-upgrades). Those pages tell you which
 shape is self-serve today; the manifest tells you which roles the node is
 actually owning.
+
+## Role Catalog
+
+`role_catalog` answers a different question than `current_roles`. Instead of
+listing only the role names, it tells you for each logical role whether the
+responding node currently hosts it and what that role means operationally:
+
+- `plane` says whether the role belongs to the control plane or the execution
+  plane.
+- `hosted_by_current_node` tells you whether this node is currently serving the
+  role.
+- `runs_user_code` distinguishes operator/control roles from the role that
+  replays workflows and runs activities.
+- `accepts_external_http` tells you whether the role is expected to terminate
+  external HTTP directly.
+- `steady_state_interface` names the main interface that role serves in normal
+  operation, such as `external_http`, `control_plane_contract`,
+  `worker_poll_and_repair`, `projection_writer`, `schedule_runner`, or
+  `worker_protocol`.
+
+Use `role_catalog` when you need the role split in product terms without
+inferring it from process names. It is the quickest way to answer questions
+such as "does this node host execution-plane code?" or "which role on this
+node is expected to accept external HTTP?"
 
 ## Authority Boundaries
 
@@ -102,6 +139,22 @@ to each role. Treat it as the first guardrail before splitting a deployment:
 If a process needs a durable write surface outside the roles it claims, that is
 topology drift and should be treated as a contract problem before you scale or
 split the fleet further.
+
+`authority_surfaces` is the more detailed companion to that table. It breaks
+one durable surface into mutation families and names both the `owning_roles`
+and the `read_roles` for each mutation. Examples:
+
+- `workflow_tasks.create_retire` is owned by `control_plane` and
+  `history_projection`, while `matching` and `execution_plane` are the primary
+  readers.
+- `workflow_tasks.lease_claim_release` is owned by `matching`, while
+  `execution_plane` and `control_plane` read those lease transitions.
+- `worker_registrations.register_heartbeat` is owned by `api_ingress`, while
+  `matching`, `control_plane`, and `history_projection` consume the result.
+
+Use `authority_boundaries` when you need the coarse write-owner contract. Use
+`authority_surfaces` when tooling or rollout policy needs the mutation-level
+ownership map.
 
 ## Failure And Scaling Boundaries
 
@@ -168,15 +221,23 @@ Key fields to inspect:
 - `schema` and `version` tell you which topology manifest schema you are
   parsing. Treat `topology.version` as the manifest version, not as the server
   build version.
-- `current_shape` and `current_roles` tell you what the responding node owns
-  right now.
+- `current_process_class`, `current_shape`, and `current_roles` tell you what
+  the responding node owns right now.
 - `execution_mode` distinguishes `local_queue_worker` embedded execution from
   `remote_worker_protocol` standalone-server execution.
 - `matching_role` tells you whether the node still owns the in-worker wake path
-  or expects a dedicated repair/matching loop to do that work.
-- `shape_assignments`, `authority_boundaries`, `failure_domains`,
-  `scaling_boundaries`, and `migration_path` are the fields operators should
-  read before changing topology, rollout posture, or process ownership.
+  or expects a dedicated repair/matching loop to do that work. The same block
+  now freezes `shape`, `partition_primitives`, and `backpressure_model`, so
+  ready-task routing and lease-based admission stay legible to both workers and
+  operators.
+- `role_catalog` is the per-role node map for control-plane vs
+  execution-plane ownership.
+- `shape_assignments` and `supported_topologies` are the fields operators
+  should read before changing topology, rollout posture, or process ownership.
+- `authority_boundaries` and `authority_surfaces` tell you who owns each
+  durable write and which roles read it afterward.
+- `failure_domains`, `scaling_boundaries`, and `migration_path` complete the
+  rollout and operating contract.
 
 ## Related References
 

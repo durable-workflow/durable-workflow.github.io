@@ -329,7 +329,7 @@ container names or rollout runbooks.
 {
   "topology": {
     "schema": "durable-workflow.v2.role-topology",
-    "version": 2,
+    "version": 4,
     "supported_shapes": [
       "embedded",
       "standalone_server",
@@ -343,6 +343,7 @@ container names or rollout runbooks.
       "scheduler",
       "execution_plane"
     ],
+    "current_process_class": "server_http_node",
     "current_shape": "standalone_server",
     "current_roles": [
       "api_ingress",
@@ -353,8 +354,32 @@ container names or rollout runbooks.
     "execution_mode": "remote_worker_protocol",
     "matching_role": {
       "queue_wake_enabled": true,
+      "shape": "in_worker",
       "wake_owner": "worker_loop",
-      "task_dispatch_mode": "poll"
+      "task_dispatch_mode": "poll",
+      "partition_primitives": [
+        "connection",
+        "queue",
+        "compatibility",
+        "namespace"
+      ],
+      "backpressure_model": "lease_ownership"
+    },
+    "role_catalog": {
+      "api_ingress": {
+        "plane": "control",
+        "hosted_by_current_node": true,
+        "runs_user_code": false,
+        "accepts_external_http": true,
+        "steady_state_interface": "external_http"
+      },
+      "execution_plane": {
+        "plane": "execution",
+        "hosted_by_current_node": false,
+        "runs_user_code": true,
+        "accepts_external_http": false,
+        "steady_state_interface": "worker_protocol"
+      }
     },
     "shape_assignments": {
       "embedded": {
@@ -455,6 +480,28 @@ container names or rollout runbooks.
         "writes": ["worker_registrations"]
       }
     },
+    "authority_surfaces": {
+      "workflow_tasks": {
+        "mutations": {
+          "create_retire": {
+            "owning_roles": ["control_plane", "history_projection"],
+            "read_roles": ["matching", "execution_plane"]
+          },
+          "lease_claim_release": {
+            "owning_roles": ["matching"],
+            "read_roles": ["execution_plane", "control_plane"]
+          }
+        }
+      },
+      "worker_registrations": {
+        "mutations": {
+          "register_heartbeat": {
+            "owning_roles": ["api_ingress"],
+            "read_roles": ["matching", "control_plane", "history_projection"]
+          }
+        }
+      }
+    },
     "failure_domains": {
       "control_plane_down": {
         "effect": "workers_continue_claimed_tasks_only_until_lease_expiry",
@@ -489,6 +536,61 @@ container names or rollout runbooks.
       "scheduler": "active_schedule_count",
       "execution_plane": "workflow_and_activity_task_rate"
     },
+    "supported_topologies": {
+      "embedded": {
+        "execution_mode": "local_queue_worker",
+        "process_classes": {
+          "application_process": {
+            "roles": [
+              "control_plane",
+              "matching",
+              "history_projection",
+              "scheduler",
+              "execution_plane"
+            ]
+          }
+        }
+      },
+      "standalone_server": {
+        "execution_mode": "remote_worker_protocol",
+        "process_classes": {
+          "server_http_node": {
+            "roles": [
+              "api_ingress",
+              "control_plane",
+              "matching",
+              "history_projection"
+            ]
+          },
+          "scheduler_node": {
+            "roles": ["scheduler"]
+          },
+          "worker_node": {
+            "roles": ["execution_plane"]
+          }
+        }
+      },
+      "split_control_execution": {
+        "execution_mode": "remote_worker_protocol",
+        "process_classes": {
+          "ingress_node": {
+            "roles": ["api_ingress"]
+          },
+          "control_plane_node": {
+            "roles": ["control_plane", "history_projection"]
+          },
+          "scheduler_node": {
+            "roles": ["scheduler"]
+          },
+          "matching_node": {
+            "roles": ["matching"]
+          },
+          "execution_node": {
+            "roles": ["execution_plane"]
+          }
+        }
+      }
+    },
     "migration_path": [
       {
         "step": "audit_role_boundaries",
@@ -521,24 +623,36 @@ container names or rollout runbooks.
 
 Treat `topology.version` as the role-manifest schema version, not as a synonym
 for the top-level server build version. Automation should check that field
-before assuming v2-only keys such as `shape_assignments`,
-`authority_boundaries`, `failure_domains`, `scaling_boundaries`, or
-`migration_path`.
+before assuming v4-only keys such as `current_process_class`,
+`role_catalog`, `authority_surfaces`, `supported_topologies`,
+`shape_assignments`, `authority_boundaries`, `failure_domains`,
+`scaling_boundaries`, or `migration_path`.
 
 Read the fields as follows:
 
 - `supported_shapes` is the product contract for legal topology names. It does
   not mean every published artifact starts in every shape.
-- `current_shape` and `current_roles` describe the node you queried right now.
-  For the published standalone server distribution, API nodes report
-  `standalone_server` plus the server-owned roles they currently host.
+- `current_process_class`, `current_shape`, and `current_roles` describe the
+  node you queried right now. For the published standalone server
+  distribution, API nodes report `server_http_node` inside the
+  `standalone_server` shape plus the server-owned roles they currently host.
 - `execution_mode` distinguishes embedded local queue execution
   (`local_queue_worker`) from standalone server worker-protocol execution
   (`remote_worker_protocol`).
 - `matching_role` shows whether the node still runs the in-worker wake path or
-  expects a dedicated repair or matching loop to own that sweep.
+  expects a dedicated repair or matching loop to own that sweep. The same
+  block freezes the `shape`, `partition_primitives`, and
+  `backpressure_model` values operators should use when reasoning about ready
+  task discovery and lease-based admission.
+- `role_catalog` is the per-role capability map for the responding node. Use
+  it to see which logical roles the node hosts, whether those roles live in
+  the control plane or execution plane, whether they run user code, whether
+  they accept external HTTP, and which steady-state interface they serve.
 - `shape_assignments` maps each supported shape to the process classes and role
   bundles that shape is allowed to run.
+- `authority_surfaces` is the finer-grained mutation map. It names the durable
+  surface, the mutation family, the roles that own that mutation, and the
+  roles expected to read it.
 - `authority_boundaries` names which durable write surfaces each role is
   expected to mutate, so operators can catch cross-role drift before they split
   a deployment.
@@ -546,6 +660,10 @@ Read the fields as follows:
   a role goes down, instead of leaving that expectation implicit in a runbook.
 - `scaling_boundaries` names the main load dimension for each role when the
   topology is split.
+- `supported_topologies` is the normalized topology map for automation. Use it
+  when you need a stable machine-readable inventory of each supported shape's
+  `execution_mode` and process-class role bundles without walking the more
+  narrative `shape_assignments` list.
 - `migration_path` lists the ordered rollout steps from today's standalone
   distribution toward more isolated role boundaries without introducing a
   second engine.

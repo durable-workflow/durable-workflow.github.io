@@ -81,8 +81,9 @@ header because it is the endpoint that advertises the supported versions.
 schema `durable-workflow.v2.role-topology`. That manifest is the supported way
 to discover whether the node is currently acting as `standalone_server`,
 `embedded`, or `split_control_execution`, which roles it owns, and what the
-server expects from `matching_role`, `authority_boundaries`,
-`failure_domains`, `scaling_boundaries`, and `migration_path`. The same
+server expects from `matching_role`, `role_catalog`,
+`authority_boundaries`, `authority_surfaces`, `failure_domains`,
+`scaling_boundaries`, `supported_topologies`, and `migration_path`. The same
 response also publishes live rollout-safety state for that node.
 
 Read the manifest as follows:
@@ -98,6 +99,17 @@ Read the manifest as follows:
   `topology.matching_role.backpressure_model` freeze the routing axes and
   lease-based admission model the server expects workers and operators to
   reason about.
+- `topology.role_catalog` is the per-role node map. It tells you whether the
+  responding node currently hosts a role, whether that role belongs to the
+  control plane or execution plane, whether it runs user code, whether it
+  accepts external HTTP, and which steady-state interface it serves.
+- `topology.authority_surfaces` is the mutation-family ownership map for
+  durable surfaces such as `workflow_tasks`, `activity_executions`,
+  `worker_compatibility_heartbeats`, and `worker_registrations`. Use it when
+  rollout or tooling decisions depend on which role owns a specific write.
+- `topology.supported_topologies` is the normalized inventory of legal product
+  shapes keyed by topology name, including each shape's `execution_mode` and
+  process-class role bundles.
 - `coordination_health` summarizes fleet-wide rollout and compatibility risk in
   one machine-readable block.
 - `execution_mode` distinguishes `local_queue_worker` embedded execution from
