@@ -31,6 +31,10 @@ and route only new workflow starts to the server. That guide also freezes the
 embedded-vs-service mode contract so the cutover keeps ids, command outcomes,
 task semantics, and runtime ownership rules explicit.
 
+Use [Worker Compatibility and Routing](/docs/2.0/polyglot/worker-compatibility-routing)
+when you roll mixed-version worker fleets, drain old cohorts, or need to keep
+long-running runs pinned to compatible executors during rollback.
+
 ## Quick Start
 
 ### Docker Compose

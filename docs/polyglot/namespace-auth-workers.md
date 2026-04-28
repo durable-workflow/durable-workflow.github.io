@@ -159,7 +159,7 @@ curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/worker/register" \
 | `task_queue` | yes | Queue this worker polls. Poll requests for a different queue fail with `reason: "task_queue_mismatch"`. |
 | `runtime` | yes | One of `php`, `python`, `typescript`, `go`, or `java`. |
 | `sdk_version` | no | Runtime SDK version shown in worker visibility and diagnostics. |
-| `build_id` | no | Deploy/build identity used by task queue build-id visibility. |
+| `build_id` | no | Deploy/build identity used by task queue build-id visibility and rollout cohorts. It should stay stable for one replay-compatible worker family. |
 | `supported_workflow_types` | no | Workflow type keys this worker can replay. Empty means no workflow-type filter. |
 | `workflow_definition_fingerprints` | no | Per-workflow deterministic definition fingerprints. Active re-registration with a changed fingerprint is rejected. |
 | `supported_activity_types` | no | Activity type keys this worker can execute. Empty means no activity-type filter. |
@@ -170,6 +170,15 @@ Active re-registration with the same worker id is allowed when the advertised
 definition fingerprints are unchanged. If a running worker changes workflow
 code for an already advertised type, it must restart with a new `worker_id`;
 otherwise registration fails with `reason: "workflow_definition_changed"`.
+
+`build_id` is not just decorative metadata. It is the operator-facing cohort
+identity used by task-queue rollout APIs. Keep one `build_id` for workers that
+can safely replay the same in-flight work, and change it when a rollout creates
+a new compatibility family. See
+[Worker Compatibility and Routing](/docs/2.0/polyglot/worker-compatibility-routing)
+for the pinning and rollback contract, and
+[Worker Build-Id Rollout](/docs/2.0/polyglot/worker-build-id-rollout) for the
+drain/resume workflow.
 
 ## Polling And Visibility
 

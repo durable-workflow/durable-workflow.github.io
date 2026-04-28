@@ -197,7 +197,9 @@ a glance and not buried inside the check list.
 
 See [Rolling Out Worker Builds With Build IDs](./polyglot/worker-build-id-rollout.md)
 for the drain/resume flow that coordinates with these facts during a
-build-id rollout.
+build-id rollout, and
+[Worker Compatibility and Routing](./polyglot/worker-compatibility-routing.md)
+for the pinning contract behind those diagnostics.
 
 ## Alert semantics
 

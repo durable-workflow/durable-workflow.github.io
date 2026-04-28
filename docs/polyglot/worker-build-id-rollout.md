@@ -25,6 +25,11 @@ intent alongside the live worker rows so the next poll, CLI describe, or
 `list_task_queue_build_ids` call reflects the rollout state honestly even if
 the old workers disappear before their backlog drains.
 
+This guide is about cohort control, not the whole routing contract. Read
+[Worker Compatibility and Routing](/docs/2.0/polyglot/worker-compatibility-routing)
+for the rule that in-flight work must stay pinned to compatible executors and
+that "no compatible worker is available" is explicit operator state.
+
 The Durable Workflow server expresses a rollout on one task queue as a set of
 **build-id cohorts**. A cohort groups every worker registration that reported
 the same `build_id` when it called `POST /api/worker/register`. Workers that

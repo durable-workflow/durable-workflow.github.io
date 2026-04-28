@@ -121,6 +121,7 @@ const sidebars = {
         'polyglot/server-config-reference',
         'polyglot/server-api-reference',
         'polyglot/namespace-auth-workers',
+        'polyglot/worker-compatibility-routing',
         'polyglot/embedded-to-server',
         'polyglot/cli',
         'polyglot/cli-reference',
