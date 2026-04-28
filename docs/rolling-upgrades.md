@@ -29,6 +29,10 @@ A rolling upgrade is supported when every guarantee on this page holds.
 Outside that envelope, use the documented stop-the-world flow in the
 deployment guide instead.
 
+The role vocabulary and shape manifest behind this contract are documented in
+[Server Role Topology](/docs/2.0/polyglot/server-role-topology). This guide
+focuses on how the current `standalone_server` process classes roll in place.
+
 ## What rolling upgrade means here
 
 A **rolling upgrade** replaces processes one at a time, draining each one
@@ -36,13 +40,17 @@ before stopping it, while the rest of the fleet keeps serving traffic. The
 result is zero downtime for the deployment as a whole and a bounded
 mixed-version window where old and new processes coexist.
 
-The contract distinguishes four roles, each with its own rollout posture:
+The contract distinguishes four process classes in the current
+`standalone_server` shape, each with its own rollout posture:
 
-- **API nodes**: stateless server processes serving HTTP traffic.
+- **HTTP/API nodes**: stateless server processes serving HTTP traffic and
+  currently hosting the `api_ingress`, `control_plane`, `matching`, and
+  `history_projection` roles.
 - **Workers**: SDK processes that poll the worker plane and execute
-  activity and workflow tasks.
+  activity and workflow tasks as the `execution_plane`.
 - **Scheduler / maintenance runner**: the singleton process that fires
-  schedules and drives activity-timeout and history retention.
+  schedules and drives activity-timeout and history retention as the
+  `scheduler` role.
 - **Bootstrap**: the one-shot process that runs database migrations and
   default-namespace seeding.
 

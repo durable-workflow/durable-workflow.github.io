@@ -40,6 +40,10 @@ Use [Worker Compatibility and Routing](/docs/2.0/polyglot/worker-compatibility-r
 when you roll mixed-version worker fleets, drain old cohorts, or need to keep
 long-running runs pinned to compatible executors during rollback.
 
+Use [Server Role Topology](/docs/2.0/polyglot/server-role-topology) when you
+need the live role vocabulary, process classes, authority boundaries, failure
+domains, or migration path that `GET /api/cluster/info` publishes.
+
 ## Quick Start
 
 ### Docker Compose
