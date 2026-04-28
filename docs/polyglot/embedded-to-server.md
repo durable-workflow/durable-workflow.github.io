@@ -38,6 +38,39 @@ Not supported as an automatic operation today:
 Plan the cutover so old embedded runs drain where they started, while new runs
 start on the server.
 
+## Embedded vs Service Mode Contract
+
+Embedded mode and service mode run the same v2 engine. The difference is where
+the control plane, worker transport, and auth boundary live.
+
+| Surface | Embedded mode | Service mode | What stays the same |
+| --- | --- | --- | --- |
+| Durable workflow model | The Laravel app hosts the package directly and writes durable workflow state from inside the app runtime. | The standalone server hosts the package and writes durable workflow state behind its HTTP control plane. | Workflow ids, run ids, typed history, command outcomes, retries, repair semantics, and history export remain the same v2 contract. |
+| Workflow and activity type keys | PHP code can map aliases to local classes inside the app. | Workers advertise supported type keys over HTTP registration. | Durable public type keys should stay stable and language-neutral in both modes. Do not treat PHP FQCNs as the public contract. |
+| Workflow starts and operator commands | Starts may come from `WorkflowStub`, app code, or embedded control-plane helpers. Signals, queries, updates, cancel, and terminate execute inside the embedded runtime. | Starts and operator commands go through the server API, CLI, or SDKs with explicit auth and protocol headers. | Duplicate-start policy, command ids, run targeting, and control-plane outcomes stay the same. Route follow-up commands to the runtime that accepted the start. |
+| Task delivery | Laravel queue workers claim and execute durable workflow/activity tasks inside the app deployment. | Workers long-poll the server worker protocol and complete tasks over HTTP. | Task leases, heartbeats, compatibility markers, replay, and at-least-once activity execution keep the same semantics. |
+| Visibility and diagnostics | Waterline or app-local tooling reads the embedded app's durable state. | Waterline, CLI, SDKs, and server APIs read the server's durable state. | Search attributes, memos, run detail, queue diagnostics, and history export use the same durable facts within each runtime. |
+| Auth and tenancy boundary | App auth is whatever the Laravel host exposes around its own app endpoints. | Namespace selection plus server auth tokens or signatures are mandatory API boundaries. | Namespace names, task queues, compatibility markers, and payload-codec choices should stay stable across the cutover. |
+| Runtime discovery | The app can resolve local services in-process. | Workers and clients must target an explicit server base URL. | Do not couple the migration to shared `APP_URL`, `APP_KEY`, localhost assumptions, or same-container discovery. Server mode should be configured as an explicit remote control plane. |
+| Migration boundary | Existing embedded runs continue where they started. | New server-managed runs start under the server and stay there. | There is no automatic live migration of in-flight runs between modes. Use export for audit/debugging, not as an import path for live state. |
+
+## Cutover Invariants
+
+Keep these rules true throughout the migration:
+
+- Configure the server as an explicit remote dependency: set the base URL,
+  namespace, task queue, and auth material directly instead of inferring them
+  from Laravel app-local settings.
+- Keep workflow ids, run-targeting rules, workflow/activity type keys, payload
+  codec, and compatibility markers stable across both runtimes.
+- Route signals, queries, updates, cancel, terminate, and archive to the same
+  runtime that owns the target run.
+- Drain or retain embedded runs where they already live; do not plan on moving
+  live embedded state into the server.
+- Treat language neutrality as part of the migration contract: server-managed
+  workflows should use stable aliases and a codec such as `avro`, not PHP-only
+  class names or payload formats.
+
 ## Phase A: Prepare Embedded v2
 
 Before deploying the server, make the embedded app use language-neutral

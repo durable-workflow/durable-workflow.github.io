@@ -27,7 +27,9 @@ Use the standalone server when you need:
 If you already run v2 embedded in a Laravel app, use the
 [embedded-to-server migration guide](/docs/2.0/polyglot/embedded-to-server) to
 prepare type keys, deploy the server beside embedded execution, connect workers,
-and route only new workflow starts to the server.
+and route only new workflow starts to the server. That guide also freezes the
+embedded-vs-service mode contract so the cutover keeps ids, command outcomes,
+task semantics, and runtime ownership rules explicit.
 
 ## Quick Start
 
