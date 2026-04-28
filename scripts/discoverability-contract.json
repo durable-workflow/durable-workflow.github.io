@@ -272,6 +272,24 @@
       "action": "Keep mapped so rolling-upgrade searches land on the rolling-upgrade contract and support-led topology searches land on the deployment support matrix."
     },
     {
+      "query": "control plane execution plane split",
+      "target": "polyglot/server-role-topology.md",
+      "related": ["polyglot/server.md", "deployment.md", "rolling-upgrades.md"],
+      "aliases": ["role topology", "matching role", "split control execution"],
+      "source": "issue #582 topology-docs follow-up",
+      "lastReviewed": "2026-04-28",
+      "action": "Keep mapped until topology, role-split, and matching-role searches reliably land on the dedicated role-topology guide."
+    },
+    {
+      "query": "server node roles matching scheduler execution plane",
+      "target": "polyglot/server-role-topology.md",
+      "related": ["polyglot/server-api-reference.md", "polyglot/server.md"],
+      "aliases": ["scheduler role", "history projection", "current_roles"],
+      "source": "issue #582 topology-docs follow-up",
+      "lastReviewed": "2026-04-28",
+      "action": "Keep mapped until node-role searches land on the topology manifest contract instead of scattered deployment prose."
+    },
+    {
       "query": "webhook bridge adapter external handler",
       "target": "polyglot/external-execution.md",
       "related": ["features/webhooks.md"],

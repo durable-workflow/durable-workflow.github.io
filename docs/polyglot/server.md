@@ -308,6 +308,12 @@ unsupported.
 
 ### Role topology and deployment shape
 
+The field-by-field reference for this manifest lives on
+[Server Role Topology](/docs/2.0/polyglot/server-role-topology). Keep this
+section for the inline `cluster/info` example and use the dedicated page when
+you need the supported shapes, authority boundaries, failure domains, scaling
+boundaries, or migration-path contract in one place.
+
 `GET /api/cluster/info` also publishes a `topology` manifest. It is the
 machine-readable role map for the node that answered the request, so operators
 and automation can read one contract instead of inferring node duties from

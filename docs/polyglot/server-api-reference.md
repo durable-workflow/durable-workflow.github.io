@@ -75,12 +75,22 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/cluster/info" \
 `/api/cluster/info` intentionally does not require the control-plane version
 header because it is the endpoint that advertises the supported versions.
 
-The same response also publishes the live topology and rollout-safety state for
-that node:
+### Cluster Topology Manifest
 
-- `topology.current_process_class`, `topology.current_roles`, and
-  `topology.execution_mode` tell you which role shape the node is actually
-  serving.
+`/api/cluster/info` also returns the node's `topology` manifest under the
+schema `durable-workflow.v2.role-topology`. That manifest is the supported way
+to discover whether the node is currently acting as `standalone_server`,
+`embedded`, or `split_control_execution`, which roles it owns, and what the
+server expects from `matching_role`, `authority_boundaries`,
+`failure_domains`, `scaling_boundaries`, and `migration_path`. The same
+response also publishes live rollout-safety state for that node.
+
+Read the manifest as follows:
+
+- `topology.current_process_class`, `topology.current_shape`,
+  `topology.current_roles`, and `topology.execution_mode` tell you which role
+  shape the node is actually serving. `current_shape` and `current_roles`
+  describe the responding node, not the full fleet.
 - `topology.matching_role.shape`, `topology.matching_role.wake_owner`, and
   `topology.matching_role.task_dispatch_mode` tell you whether broad ready-task
   discovery is happening in-worker or through a dedicated matching-role sweep.
@@ -90,6 +100,10 @@ that node:
   reason about.
 - `coordination_health` summarizes fleet-wide rollout and compatibility risk in
   one machine-readable block.
+- `execution_mode` distinguishes `local_queue_worker` embedded execution from
+  `remote_worker_protocol` worker-protocol execution.
+- `split_control_execution` is a supported product topology, not a second
+  server product or a different API.
 
 Example:
 
@@ -97,8 +111,10 @@ Example:
 ```bash
 curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/cluster/info" \
   -H "Authorization: Bearer $DURABLE_WORKFLOW_AUTH_TOKEN" \
-  -H "X-Namespace: default" | jq '{
+  -H "X-Namespace: default" \
+  | jq '{
     current_process_class: .topology.current_process_class,
+    current_shape: .topology.current_shape,
     current_roles: .topology.current_roles,
     execution_mode: .topology.execution_mode,
     matching_role: .topology.matching_role,
@@ -109,6 +125,9 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/cluster/info" \
   }'
 ```
 
+For the conceptual contract behind those fields, including the role vocabulary
+and migration path, see
+[Server Role Topology](/docs/2.0/polyglot/server-role-topology).
 ## Workflow Control Plane
 
 Workflow routes are operator/control-plane routes. They require an operator or

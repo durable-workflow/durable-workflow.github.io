@@ -151,6 +151,7 @@
       "requiredHeadings": [
         "Headers And Versioning",
         "Discovery And Health",
+        "Cluster Topology Manifest",
         "Workflow Control Plane",
         "Workflow Commands",
         "Namespace And Storage",
@@ -165,6 +166,10 @@
         "HTTP+JSON API",
         "X-Durable-Workflow-Control-Plane-Version: 2",
         "X-Durable-Workflow-Protocol-Version: 1.0",
+        "durable-workflow.v2.role-topology",
+        "split_control_execution",
+        "remote_worker_protocol",
+        "local_queue_worker",
         "durable-workflow.v2.external-payload-reference.v1",
         "Replay and history export must fail loudly",
         "reason: \"validation_failed\"",
@@ -190,6 +195,36 @@
         "/api/search-attributes/{name}",
         "/api/system/metrics",
         "/api/system/retention/pass"
+      ]
+    },
+    {
+      "path": "polyglot/server-role-topology.md",
+      "title": "Server Role Topology",
+      "minimumCodeFences": 1,
+      "requiredHeadings": [
+        "Why This Manifest Exists",
+        "Role Vocabulary",
+        "Supported Deployment Shapes",
+        "Authority Boundaries",
+        "Failure And Scaling Boundaries",
+        "Migration Path",
+        "Reading The Topology Manifest",
+        "Related References"
+      ],
+      "requiredTerms": [
+        "durable-workflow.v2.role-topology",
+        "standalone_server",
+        "split_control_execution",
+        "matching_role",
+        "authority_boundaries",
+        "failure_domains",
+        "scaling_boundaries",
+        "migration_path",
+        "remote_worker_protocol",
+        "local_queue_worker"
+      ],
+      "requiredEndpoints": [
+        "/api/cluster/info"
       ]
     },
     {

@@ -159,7 +159,9 @@ self-serve contract is intentionally narrow:
   `DW_V2_MATCHING_ROLE_QUEUE_WAKE=0` to `shape: "dedicated"` and
   `wake_owner: "dedicated_repair_pass"`. The same block should continue to
   advertise `partition_primitives` of `connection`, `queue`, `compatibility`,
-  and `namespace`, plus the `lease_ownership` `backpressure_model`.
+  and `namespace`, plus the `lease_ownership` `backpressure_model`. See
+  [Server Role Topology](/docs/2.0/polyglot/server-role-topology) for the
+  field-by-field meaning of the topology manifest.
 - Scale external SDK workers independently from API nodes. Workers can run on
   separate hosts or processes, but they should talk to the load-balanced API
   endpoint rather than to one sticky node.
@@ -184,7 +186,9 @@ product topology. Treat that as one contract with different role assignments,
 not as a second server product. If you pilot a more explicit role split later,
 keep reading `topology.current_shape`, `topology.current_roles`, and
 `topology.matching_role` from `/api/cluster/info` instead of inferring duties
-from hostnames or container names.
+from hostnames or container names. The
+[Server Role Topology](/docs/2.0/polyglot/server-role-topology) page explains
+those role assignments and the migration path in one place.
 
 Every API node should use the same auth tokens or signature keys, app version,
 workflow package version, payload-codec configuration, database connection, and

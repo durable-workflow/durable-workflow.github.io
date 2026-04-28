@@ -120,6 +120,7 @@ const sidebars = {
         'polyglot/server',
         'polyglot/server-config-reference',
         'polyglot/server-api-reference',
+        'polyglot/server-role-topology',
         'polyglot/namespace-auth-workers',
         'polyglot/worker-compatibility-routing',
         'polyglot/embedded-to-server',
