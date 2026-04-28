@@ -153,6 +153,11 @@ query-task poll routes stop leasing new work to that worker. Polls fail with
 HTTP `409`, `poll_status: "draining"`, and `reason: "worker_draining"` until
 the cohort is resumed.
 
+`draining` is part of the general poll-response contract, not a special-case
+drain-only field. The same `poll_status` surface is how workers observe normal
+`leased` and `empty` polls, admission `throttled` outcomes, and typed
+`unavailable` coordination failures on other poll paths.
+
 Monitor the drain by polling `list_task_queue_build_ids` and watching
 `active_worker_count` and `draining_worker_count` fall to zero. At that point
 the cohort shows `rollout_status: "draining"` with zero worker counts, meaning

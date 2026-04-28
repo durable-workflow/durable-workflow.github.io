@@ -42,7 +42,8 @@ poll, heartbeat, complete, and fail responses.
 Read these fields before sending optional command fields:
 
 - `supported_workflow_task_commands`: command types accepted by workflow-task completion.
-- `poll_status`: poll responses distinguish `leased`, `empty`, `throttled`, and
+- `poll_status`: poll responses carry a machine-readable status even when no
+  task is leased, distinguishing `leased`, `empty`, `throttled`, and
   `unavailable` without forcing clients to infer queue state from `task: null`.
 - `activity_retry_policy` and `activity_timeouts`: activity command retry and timeout options.
 - `child_workflow_retry_policy` and `child_workflow_timeouts`: child workflow retry and timeout options.
@@ -129,8 +130,7 @@ Behavior:
 
 - If a task becomes ready during the wait, it is returned immediately.
 - If the timeout expires with no task, the response keeps the normal poll
-  envelope with `task: null` and `poll_status` describing why the worker saw no
-  lease.
+  envelope and returns `task: null` with `poll_status: "empty"`.
 - The client should retry immediately on an empty long-poll response unless shutting down.
 - HTTP-level timeouts on the transport should be set above 60 seconds to avoid premature disconnects.
 
@@ -156,6 +156,27 @@ $semantics = WorkerProtocolVersion::longPollSemantics();
 // Clamp a caller-supplied timeout to the valid range.
 $clamped = WorkerProtocolVersion::clampLongPollTimeout($userTimeout);
 ```
+
+### Poll Response Status
+
+The server keeps one poll-response contract across workflow-task,
+activity-task, and query-task polling:
+
+- `task`: the leased task payload, or `null` when the poll did not lease work.
+- `poll_status`: the machine-readable outcome for the poll attempt.
+- `protocol_version` and `server_capabilities`: the echoed worker-protocol
+  manifest fields.
+
+Workers should branch on `poll_status` before making route-specific
+assumptions about `task`:
+
+| `poll_status` | Typical HTTP status | Meaning |
+| --- | --- | --- |
+| `leased` | `200` | The server leased work and `task` contains the payload. |
+| `empty` | `200` | No matching task was ready before the poll returned. |
+| `throttled` | `200` | Queue admission limits withheld a new lease for this poll attempt. |
+| `unavailable` | `503` or `200` | The server could not safely coordinate the queue and returned a typed unavailable outcome. |
+| `draining` | `409` | The worker's build-id cohort is draining, so the server refuses to lease new work and returns `reason: "worker_draining"`. |
 
 ### Completion, Heartbeat, and Fail Requests
 

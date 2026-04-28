@@ -565,6 +565,10 @@ Key field notes for client code:
 
 - The app version is `version`, not `server_version`.
 - Workflow-task command capabilities live under `worker_protocol.server_capabilities.supported_workflow_task_commands`, not at the top of `worker_protocol`. The same nested object is echoed on every worker-plane response via the `server_capabilities` field.
+- `worker_protocol.server_capabilities.poll_status` means poll responses keep a
+  machine-readable `poll_status` field even when no task is leased, so workers
+  can distinguish `empty`, `throttled`, `unavailable`, and `draining` outcomes
+  without scraping prose error messages.
 - Worker command-option capabilities, including retry policies, timeout fields, parent-close policy, and non-retryable failures, are also echoed in `server_capabilities` so workers can negotiate behavior without a separate cluster-info request.
 - Universal payload codecs live under `capabilities.payload_codecs`; final v2 advertises `avro` there. When the server advertises engine-specific codecs that only a PHP worker can honor, those appear under `capabilities.payload_codecs_engine_specific.<engine>` — language-neutral SDKs should ignore that object unless they opt into that engine.
 

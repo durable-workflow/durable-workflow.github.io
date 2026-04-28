@@ -128,6 +128,36 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/cluster/info" \
 For the conceptual contract behind those fields, including the role vocabulary
 and migration path, see
 [Server Role Topology](/docs/2.0/polyglot/server-role-topology).
+
+### Namespace-Scoped System Health
+
+`GET /api/system/health` is the authenticated rollout-safety and coordination
+health surface for one namespace. It requires admin auth plus
+`X-Durable-Workflow-Control-Plane-Version: 2`, resolves the namespace through
+the normal control-plane request rules, and returns the exact namespace the
+server evaluated plus the current `health` snapshot:
+
+<!-- docs-example id="server.system-health.curl" -->
+```bash
+curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/system/health" \
+  -H "Authorization: Bearer $DW_ADMIN_TOKEN" \
+  -H "X-Namespace: orders-prod" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  | jq '{namespace, status: .health.status, healthy: .health.healthy}'
+```
+
+Treat the payload as:
+
+- `namespace`: the namespace whose rollout/coordination state was evaluated.
+- `health.status` and `health.healthy`: the top-level machine-readable health
+  verdict for that namespace.
+- `health.checks` and `health.categories`: per-surface readiness, compatibility,
+  projection, and coordination facts.
+- `health.operator_metrics`: the current namespace-scoped queue, worker, and
+  repair metrics bundled into the same snapshot.
+- `health.structural_limits`: the effective structural limits and any related
+  diagnostics the server is enforcing for that namespace.
+
 ## Workflow Control Plane
 
 Workflow routes are operator/control-plane routes. They require an operator or
@@ -299,6 +329,19 @@ Workers should treat lease ids, attempts, task ids, and heartbeat endpoints as
 opaque server-issued values. A stale lease or wrong task id returns a named
 worker-protocol error instead of silently completing work.
 
+When `worker_protocol.server_capabilities.poll_status` is `true`, every
+workflow-task, activity-task, and query-task poll response carries a
+machine-readable `poll_status` field. Use it as the first branch point before
+inspecting route-specific payload fields:
+
+| `poll_status` | Typical HTTP status | Meaning |
+| --- | --- | --- |
+| `leased` | `200` | The server leased a task and `task` contains the task payload. |
+| `empty` | `200` | No matching task was ready before the poll returned. |
+| `throttled` | `200` | The queue is visible, but lease or dispatch admission limits withheld a new task for this poll. |
+| `unavailable` | `503` or `200` | The server could not safely coordinate a poll path for the queue and returned a typed unavailable outcome instead of silently acting empty. |
+| `draining` | `409` | The registered worker cohort is draining, so the server refuses to lease new work and returns `reason: "worker_draining"`. |
+
 ## Fleet And Task Queue Visibility
 
 These routes expose operator diagnostics for worker fleets and queue
@@ -356,7 +399,9 @@ status routes before pass routes in automation.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
+| `GET` | `/api/system/health` | Return the namespace-scoped rollout-safety and coordination health snapshot. |
 | `GET` | `/api/system/metrics` | Return bounded JSON metrics. |
+| `GET` | `/api/system/operator-metrics` | Return the namespace-scoped operator metrics snapshot for runs, tasks, backlog, repair, workers, and structural limits. |
 | `GET` | `/api/system/repair` | Inspect workflow repair backlog. |
 | `POST` | `/api/system/repair/pass` | Run one workflow repair pass. |
 | `GET` | `/api/system/activity-timeouts` | Inspect activity-timeout backlog. |

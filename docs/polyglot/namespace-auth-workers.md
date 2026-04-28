@@ -37,7 +37,7 @@ authority. Do not infer them from workflow ids, task ids, or display labels.
 | Namespace list/describe | `operator` or `admin` | `X-Durable-Workflow-Control-Plane-Version: 2` | route target or request context |
 | Namespace create/update/storage policy | `admin` | `X-Durable-Workflow-Control-Plane-Version: 2` | route target or request body |
 | Workflow, schedule, task queue, bridge adapter, worker visibility | `operator` or `admin` | `X-Durable-Workflow-Control-Plane-Version: 2` | `X-Namespace`, `?namespace=`, then default |
-| System passes and storage tests | `admin` | `X-Durable-Workflow-Control-Plane-Version: 2` | `X-Namespace`, `?namespace=`, then default |
+| System health, metrics, passes, and storage tests | `admin` | `X-Durable-Workflow-Control-Plane-Version: 2` | `X-Namespace`, `?namespace=`, then default |
 | Worker registration, polling, heartbeats, completion | `worker` | `X-Durable-Workflow-Protocol-Version: 1.0` | `X-Namespace`, `?namespace=`, then default |
 
 The server checks the route role before namespace existence on role-gated
@@ -212,6 +212,21 @@ Task queue visibility is the first place to check when workers receive no
 tasks. It distinguishes missing workers from queue mismatches, unsupported
 workflow/activity type filters, saturated worker slots, server active-lease
 caps, dispatch-rate caps, and query-task backpressure.
+
+Poll responses themselves expose the same machine-readable outcome through
+`poll_status` when the server advertises
+`worker_protocol.server_capabilities.poll_status = true` in
+`GET /api/cluster/info`. Workflow-task, activity-task, and query-task poll
+routes keep that field even when `task` is `null`, so worker runtimes can
+branch on one stable surface:
+
+- `leased`: a task was leased successfully.
+- `empty`: no task was ready before the poll returned.
+- `throttled`: queue admission limits withheld a new task for this poll.
+- `unavailable`: the server could not safely coordinate the queue and returned
+  a typed unavailable outcome instead of pretending the queue was empty.
+- `draining`: the worker's build-id cohort is draining, so the poll fails with
+  HTTP `409` and `reason: "worker_draining"` until the cohort resumes.
 
 ## Error Surface
 
