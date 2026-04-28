@@ -17,7 +17,7 @@ keywords:
 An activity is a unit of work that performs a specific task or operation (e.g. making an API request, processing data, sending an email) and can be executed by a workflow.
 
 :::note Durable Execution Contract
-Every v2 activity runs as a durable queued task. Durable Workflow 2.0 does not ship local activities or worker sessions, and sticky execution is a replay optimization rather than a correctness contract. See [Activity Execution Model](/docs/2.0/features/activity-execution-model) for the exact stance and the recommended alternatives.
+Every v2 activity currently runs as a durable queued task. Local activities and worker sessions are not part of the current public 2.0 contract, and sticky execution is currently a replay optimization rather than a correctness contract. See [Activity Execution Model](/docs/2.0/features/activity-execution-model) for the exact stance and the recommended alternatives.
 :::
 
 You may use the `make:activity` artisan command to create a new activity:

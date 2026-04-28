@@ -17,7 +17,7 @@ keywords:
 
 # Activity Execution Model
 
-Every activity in v2 runs the same way: the workflow records an activity command on its history, the engine enqueues a durable activity task, and a worker polls that task off the queue and executes it. This page describes the execution contract that ordinary activities rely on and the product's stance on three optimizations that appear in other systems — local activities, worker sessions, and sticky execution.
+Every activity in v2 currently runs the same way: the workflow records an activity command on its history, the engine enqueues a durable activity task, and a worker polls that task off the queue and executes it. This page describes the current public execution contract that ordinary activities rely on and the product's current stance on three optimizations that appear in other systems — local activities, worker sessions, and sticky execution.
 
 ## Ordinary Queued Activities Are The Canonical Durable Contract
 
@@ -29,7 +29,7 @@ The v2 engine has one way to execute an activity:
 4. A worker process polls the queue, claims the task under a lease, runs `MyActivity::handle(...)`, and reports the outcome.
 5. The engine records `TaskCompleted`, `TaskFailed`, or a retry event on the workflow's history, then resumes the workflow from its durable state.
 
-Every activity attempt goes through the queue. There is no in-process shortcut that bypasses durable task scheduling, and there is no same-worker affinity that the workflow author can rely on for correctness. This is the canonical durable contract for v2.0.
+Every activity attempt goes through the queue. There is no in-process shortcut that bypasses durable task scheduling, and there is no same-worker affinity that the workflow author can rely on for correctness. This is the canonical durable contract in the current public 2.0 surface.
 
 The practical consequences of this contract are:
 
@@ -63,15 +63,15 @@ final class InvoiceWorkflow extends Workflow
 - Use `sideEffect(...)` when you need a non-deterministic value recorded on history exactly once.
 - Use an ordinary activity when the step touches external state, needs retries, or should survive worker loss independently of the current workflow task.
 
-## Local Activities Are Not A v2 Primitive
+## Local Activities Are Not Part Of The Current Public 2.0 Contract
 
-Some workflow systems expose a "local activity" primitive that runs in the workflow's worker process without crossing the task queue. Durable Workflow v2 does not ship that primitive.
+Some workflow systems expose a "local activity" primitive that runs in the workflow's worker process without crossing the task queue. Durable Workflow v2 does not currently expose that primitive in the public 2.0 contract.
 
 The stance is explicit:
 
 - **Ordinary activity support does not imply local activities.** Authors must not assume that a short activity will bypass the queue.
-- **There is no API for local activities in v2.0.** Every `activity(...)` call schedules a durable task and waits for a worker to pick it up.
-- **If this project adds a local-activities primitive later, it will ship with an explicit contract.** That contract would have to define same-process execution, workflow-task heartbeating during the local call, shutdown and cancellation semantics, and the specific rules for bypassing normal queueing and routing. Until such a contract is published, no activity runs "locally."
+- **There is no public API for local activities today.** Every `activity(...)` call schedules a durable task and waits for a worker to pick it up.
+- **If this project adds a local-activities primitive in a future 2.0 release or later version, it will ship with an explicit contract.** That contract would have to define same-process execution, workflow-task heartbeating during the local call, shutdown and cancellation semantics, and the specific rules for bypassing normal queueing and routing. Until such a contract is published, no activity runs "locally."
 
 What to use instead:
 
@@ -79,15 +79,15 @@ What to use instead:
 - For short side effects that need to be captured on history exactly once, use [`sideEffect(...)`](/docs/2.0/features/side-effects). It records a value on history without creating a separate activity task.
 - For actual side effects (HTTP calls, database writes, external APIs), schedule an ordinary activity. Tune `schedule_to_start_timeout`, poller concurrency, and worker count if latency matters; see [Activities](/docs/2.0/defining-workflows/activities), [Timeouts](/docs/2.0/features/timeouts), and [Operator Operating Envelope](/docs/2.0/operator-operating-envelope).
 
-## Worker Sessions Are Not A v2 Primitive
+## Worker Sessions Are Not Part Of The Current Public 2.0 Contract
 
-Other workflow systems expose "worker sessions" that pin a sequence of activities to a single worker process for things like shared local state, GPU memory, or a local filesystem. Durable Workflow v2 does not ship that primitive either.
+Other workflow systems expose "worker sessions" that pin a sequence of activities to a single worker process for things like shared local state, GPU memory, or a local filesystem. Durable Workflow v2 does not currently expose that primitive in the public 2.0 contract either.
 
 The stance is explicit:
 
 - **Dedicated queues, priority queues, and sticky caches do not imply worker sessions.** Dedicated or priority queues route work to a class of workers, not to a specific process. Sticky caches optimize replay, not activity placement.
-- **There is no session-creation API in v2.0.** Activities cannot opt into a multi-activity lease that binds them to the same worker for correctness.
-- **If worker sessions ship later, they will require explicit contracts.** Those contracts would need to cover session creation timeouts, concurrency limits, failure-detection for the holding worker, session lifetime, and the behavior when the session's worker dies mid-sequence. Until such contracts are published, activities remain independently schedulable tasks.
+- **There is no public session-creation API today.** Activities cannot opt into a multi-activity lease that binds them to the same worker for correctness.
+- **If worker sessions ship in a future 2.0 release or later version, they will require explicit contracts.** Those contracts would need to cover session creation timeouts, concurrency limits, failure-detection for the holding worker, session lifetime, and the behavior when the session's worker dies mid-sequence. Until such contracts are published, activities remain independently schedulable tasks.
 
 What to use instead:
 
@@ -120,8 +120,8 @@ The contract for sticky execution in Durable Workflow v2 is narrow:
 
 Workflow code that observes only what the engine records on history — inputs, activity outputs, signals, updates, side effects, search attributes, memo — behaves identically whether a task is served from a sticky cache or a cold replay. That is the contract the v2 engine guarantees.
 
-## When To Revisit This Stance
+## Current Contract Boundary
 
-The 2.0 release ships with ordinary queued activities as the canonical durable contract. Local activities and worker sessions are explicitly out of scope for 2.0, and sticky execution is scoped as a replay-cache optimization with ordinary replay as the correctness fallback.
+The current public 2.0 contract ships with ordinary queued activities as the canonical durable contract. Local activities and worker sessions are not part of that public contract today, and sticky execution is currently scoped as a replay-cache optimization with ordinary replay as the correctness fallback.
 
-If a future version adds any of these primitives, it will ship with a published contract covering execution semantics, timeouts, cancellation, heartbeating, and failure detection. Until then, treat these sections as the product's position: no local activities, no worker sessions, and no sticky-execution behavior that a workflow author can rely on for correctness.
+If a future 2.0 release or later version adds any of these primitives, it will ship with a published contract covering execution semantics, timeouts, cancellation, heartbeating, and failure detection. Until then, treat these sections as the current product position: no public local-activity contract, no public worker-session contract, and no sticky-execution behavior that a workflow author can rely on for correctness.
