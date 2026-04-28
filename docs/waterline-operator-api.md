@@ -96,6 +96,12 @@ counts distinct durable task rows created in the trailing 60 seconds, and
 `tasks_dispatched_last_minute` counts distinct durable task rows whose latest
 successful dispatch landed in that same window.
 
+Use the queue-flow totals with the server task-queue visibility routes rather
+than by themselves. Waterline tells you whether durable inflow is outrunning
+dispatch, while `/api/task-queues` and `/api/task-queues/{taskQueue}` tell you
+whether the hot queue is `saturated`, intentionally `throttled`,
+`no_active_workers`, or otherwise short on healthy pollers or slots.
+
 The `matching_role` fields answer a different question: which matching shape is
 this node currently serving? `shape` distinguishes `in_worker` from
 `dedicated`, `partition_primitives` freezes the routing axes as

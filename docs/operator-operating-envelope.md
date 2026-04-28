@@ -154,6 +154,14 @@ admission budgets, and per-queue `stats.tasks_added_last_minute` /
 `stats.tasks_dispatched_last_minute` flow facts. Use those queue-local fields
 to see whether one hot queue is hiding inside otherwise healthy fleet totals.
 
+Treat the queue-local admission status as the first-class slot and poller
+signal for that queue. `saturated` means live workers are present but every
+registered slot is already leased. `throttled` means a server-side lease or
+dispatch cap is intentionally holding new work. `no_slots` means workers are
+registered but exposed zero capacity for that task kind. `no_active_workers`
+means the queue has no healthy poller at all, and `unavailable` means a
+configured lock-backed admission guard cannot currently prove safety.
+
 Use `operator_metrics.starts.*` when new workflow starts appear stuck even
 though steady-state queue lag looks normal. Those facts separate control-plane
 start admission and first-task creation debt from downstream worker pickup.
@@ -237,6 +245,7 @@ window for the topology you operate.
 | Blocking readiness | `workflow:v2:doctor --strict`, `GET /waterline/api/v2/health` | Blocking | `doctor --strict` returns an error or the health endpoint returns `status = error` / HTTP `503` | Stop rollout or traffic shift, fix the blocking prerequisite, then rerun readiness and compatibility checks. |
 | Compatible-worker coverage | `operator_metrics.workers.*`, `worker_compatibility` health check, run diagnostic `no_compatible_worker_for_task` | Blocking | `active_workers_supporting_required = 0` for a namespace or required `(connection, queue)` scope | Drain incompatible workers, register compatible workers, and confirm the `correctness` rollup clears before trusting new claims. |
 | Durable queue lag | Waterline queue views, `operator_metrics.backlog.*`, worker `schedule_to_start` telemetry | Blocking when sustained; advisory when brief | The oldest ready-task age or schedule-to-start latency stays above the published topology baseline while compatible workers are available | Add worker capacity, inspect task-queue admission limits, and verify the scheduler or matching path is still making forward progress. |
+| Worker-slot or poller pressure | Server task-queue visibility routes, `dw task-queue:describe`, worker registrations | Advisory, escalating to blocking if durable lag grows | A hot queue stays `saturated`, `no_slots`, `no_active_workers`, or `unavailable`, or keeps flipping between those states while queue age climbs | Distinguish intentional `throttled` backpressure from accidental starvation, then either add worker slots, restore healthy pollers, or repair the cache-lock path before scaling other components. |
 | Workflow-start backlog | `operator_metrics.starts.*`, control-plane start telemetry, worker `schedule_to_start` telemetry for first workflow tasks | Blocking when sustained; advisory when brief | `pending_commands`, `ready_tasks`, or `max_pending_ms` stay above the published topology baseline while compatible workers and queue capacity are available | Inspect the start boundary end to end: confirm start commands are turning into durable tasks, verify matching or dispatch is creating the first task promptly, and separate start-path debt from general worker lag before scaling. |
 | Projection drift and repair debt | `run_summary_projection` / `selected_run_projections` health checks, `operator_metrics.repair.*` | Advisory | Drift warnings persist past one planned rebuild window or the max candidate age keeps climbing | Run the rebuild or repair previews, execute the repair, then verify the warning clears and stale ages return to baseline. |
 | Retry or failure storm | `operator_metrics.backlog.unhealthy_tasks`, durable run diagnostics, worker error telemetry | Advisory, escalating to blocking if it prevents durable progress | Dispatch-failed, claim-failed, expired-lease, or retry-exhaustion facts climb above the topology baseline and stay elevated | Inspect the failing task family, compare worker telemetry with durable error facts, and decide whether to drain traffic or isolate the affected queue. |
