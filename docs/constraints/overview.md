@@ -14,4 +14,9 @@ Workflows and activities live on opposite sides of the durable boundary and carr
 
 Together, determinism and idempotency let the engine resume workflows that span deployments, worker restarts, and distributed retries without losing place and without duplicating external side effects the application has already made safe to repeat.
 
-See [Workflow Constraints](./workflow-constraints.md) for the specific authoring rules that keep replay deterministic, and [Activity Constraints](./activity-constraints.md) for the idempotency guidance that keeps at-least-once activity execution safe.
+See [Execution Guarantees and Idempotency](./execution-guarantees.md) for the
+public v2 contract around replay, redelivery, lease expiry, and exactly-once
+durable history. Then use [Workflow Constraints](./workflow-constraints.md)
+for the specific authoring rules that keep replay deterministic, and
+[Activity Constraints](./activity-constraints.md) for the idempotency guidance
+that keeps at-least-once activity execution safe.

@@ -14,6 +14,17 @@ keywords:
 
 # Failures and Recovery
 
+Before you triage a failure, keep the core execution contract in mind:
+
+- workflow tasks recover by replaying committed history
+- activity execution is at-least-once and may be observed more than once
+- lease expiry and redelivery are normal recovery paths, not proof that the
+  previous worker never executed the side effect
+
+Read [Execution Guarantees and Idempotency](./constraints/execution-guarantees.md)
+first when you need the precise semantics behind retries, redelivery, and
+durable outcomes.
+
 ## Handling Exceptions
 
 When an activity throws an exception, the workflow won't immediately be informed. Instead, it waits until the number of `$tries` has been exhausted. The system will keep retrying the activity based on its retry policy. If you want the exception to be immediately sent to the workflow upon a failure, you can set the number of `$tries` to 1.
@@ -75,9 +86,10 @@ The general process to fix a failing activity is:
 1. Check the logs for the activity that is failing and look for any errors or exceptions that are being thrown.
 2. Identify the source of the error and fix it in the code.
 3. Deploy the fix to the server where the queue is running.
-4. Restart the queue worker to pick up the new code.
-5. Wait for the activity to automatically retry and ensure that it is now completing successfully without errors.
-6. If the activity continues to fail, repeat the process until the issue is resolved.
+4. Restart or roll the relevant workers so they pick up the new code and can safely reclaim work.
+5. Wait for the activity to retry or for repair/redelivery to hand the durable task to a healthy worker.
+6. Verify the durable outcome in Waterline, history export, or the server API instead of assuming that one worker log line is the authority.
+7. If the activity continues to fail, repeat the process until the issue is resolved.
 
 This allows you to keep the workflow in a running status even while an activity is failing. After you fix the failing activity, the workflow will finish in a completed status. A workflow with a failed status means that all activity `$tries` have been exhausted and the exception wasn't handled.
 
@@ -188,5 +200,8 @@ class RetryableWorkflow extends Workflow
 
 ## Related Guides
 
+- [Execution Guarantees and Idempotency](./constraints/execution-guarantees.md)
+  explains the replay, retry, lease-expiry, and redelivery contract that shapes
+  every recovery path on this page.
 - [Monitoring](./monitoring.md) explains where Waterline, history export,
   worker logs, and runtime telemetry surface the failure facts described here.

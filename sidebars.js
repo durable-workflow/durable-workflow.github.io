@@ -63,6 +63,7 @@ const sidebars = {
       },
       items: [
         'constraints/overview',
+        'constraints/execution-guarantees',
         'constraints/workflow-constraints',
         'constraints/activity-constraints',
         'constraints/constraints-summary',
