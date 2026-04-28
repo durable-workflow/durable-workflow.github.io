@@ -138,6 +138,7 @@ Use Waterline dashboard stats and queue views for durable task state:
 | `operator_metrics.backlog.tasks_dispatched_last_minute` | Distinct durable task rows whose latest successful `last_dispatched_at` landed in the trailing 60 seconds. Compare it with `tasks_added_last_minute` to tell whether durable inflow is outrunning dispatch. |
 | `operator_metrics.starts.pending_runs`, `operator_metrics.starts.pending_commands`, `operator_metrics.starts.ready_tasks`, `operator_metrics.starts.oldest_pending_start_at`, `operator_metrics.starts.max_pending_ms` | Durable workflow-start backlog. Use these facts to distinguish starts that have been accepted but have not yet become active workflow-task work from ordinary worker-side queue lag. |
 | `operator_metrics.tasks.oldest_ready_due_at`, `operator_metrics.tasks.max_ready_due_age_ms` | The oldest currently actionable task and its ready-to-dispatch age. This is the machine-readable backlog-latency pair behind "oldest ready task". |
+| `operator_metrics.tasks.dispatch_overdue`, `operator_metrics.tasks.oldest_dispatch_overdue_since`, `operator_metrics.tasks.max_dispatch_overdue_age_ms` | Ready durable tasks that still have no successful dispatch wake plus the age of the stalest example. Use these facts to spot degraded notifier acceleration without confusing it for ordinary queue growth. |
 | `operator_metrics.backlog.unhealthy_tasks` | Durable tasks with dispatch failure, claim failure, overdue dispatch, or expired lease state. |
 | `operator_metrics.backlog.repair_needed_runs` | Open runs that do not currently have a trusted durable resume path. |
 | `operator_metrics.tasks.oldest_lease_expired_at`, `operator_metrics.tasks.max_lease_expired_age_ms` | The oldest expired lease and its age. Use this pair as the primary stuck-lease and duplicate-risk age indicator. |
@@ -335,7 +336,7 @@ traffic depends on them:
 | Dimension | What to baseline | Source |
 | --- | --- | --- |
 | Projection health | Steady-state `needs_rebuild = 0`, rebuild duration after intentional drift, and stale/orphan cleanup time | `/waterline/api/v2/health`, `/waterline/api/stats`, `workflow:v2:rebuild-projections` |
-| Queue pressure | Backlog age, oldest ready task age, runnable vs delayed task counts, stale poller count | Waterline dashboard stats and queue views |
+| Queue pressure | Backlog age, oldest ready task age, runnable vs delayed task counts, task add vs dispatch rate, dispatch-overdue age, stale poller count | Waterline dashboard stats and queue views plus `operator_metrics.backlog.*` / `operator_metrics.tasks.*` |
 | Workflow-start latency | Accepted start commands waiting for first-task creation, oldest pending-start age, and first-task pickup after admission | `operator_metrics.starts.*` plus worker `schedule_to_start` telemetry |
 | Schedule-to-start latency | Workflow and activity queue wait from enqueue to start | Worker SDK metrics |
 | Timer fan-out wake-up behavior | Wake-signal propagation time and the lag between scheduled fire time and ready-task visibility during burst timers | Worker telemetry plus same-region wake coordination checks |
