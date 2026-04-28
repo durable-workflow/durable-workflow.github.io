@@ -147,6 +147,11 @@ self-serve contract is intentionally narrow:
 - Use shared Redis for cache, long-poll wake signals, query-task queue locks,
   task-queue admission locks, and queue state. Redis-less multi-node mode is
   not a supported clustered contract.
+- Check `GET /api/cluster/info` on each API node during rollout.
+  `topology.current_shape` should remain `standalone_server`,
+  `topology.current_roles` should include `api_ingress`, `control_plane`,
+  `matching`, and `history_projection`, and `topology.execution_mode` should
+  remain `remote_worker_protocol` for standalone server nodes.
 - Scale external SDK workers independently from API nodes. Workers can run on
   separate hosts or processes, but they should talk to the load-balanced API
   endpoint rather than to one sticky node.
@@ -164,6 +169,14 @@ self-serve contract is intentionally narrow:
   that contract holds.
 - Treat the database and Redis as the primary failure domains. The server
   containers are replaceable; the persistence and coordination layers are not.
+
+The published self-serve recipes start in the `standalone_server` shape even
+though cluster discovery also names `split_control_execution` as a supported
+product topology. Treat that as one contract with different role assignments,
+not as a second server product. If you pilot a more explicit role split later,
+keep reading `topology.current_shape`, `topology.current_roles`, and
+`topology.matching_role` from `/api/cluster/info` instead of inferring duties
+from hostnames or container names.
 
 Every API node should use the same auth tokens or signature keys, app version,
 workflow package version, payload-codec configuration, database connection, and

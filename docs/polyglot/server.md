@@ -306,6 +306,68 @@ should fail closed when `control_plane.version`,
 `control_plane.request_contract`, or `worker_protocol.version` is missing or
 unsupported.
 
+### Role topology and deployment shape
+
+`GET /api/cluster/info` also publishes a `topology` manifest. It is the
+machine-readable role map for the node that answered the request, so operators
+and automation can read one contract instead of inferring node duties from
+container names or rollout runbooks.
+
+```json
+{
+  "topology": {
+    "schema": "durable-workflow.v2.role-topology",
+    "version": 1,
+    "supported_shapes": [
+      "embedded",
+      "standalone_server",
+      "split_control_execution"
+    ],
+    "role_vocabulary": [
+      "api_ingress",
+      "control_plane",
+      "matching",
+      "history_projection",
+      "scheduler",
+      "execution_plane"
+    ],
+    "current_shape": "standalone_server",
+    "current_roles": [
+      "api_ingress",
+      "control_plane",
+      "matching",
+      "history_projection"
+    ],
+    "execution_mode": "remote_worker_protocol",
+    "matching_role": {
+      "queue_wake_enabled": true,
+      "wake_owner": "worker_loop",
+      "task_dispatch_mode": "poll"
+    }
+  }
+}
+```
+
+Read the fields as follows:
+
+- `supported_shapes` is the product contract for legal topology names. It does
+  not mean every published artifact starts in every shape.
+- `current_shape` and `current_roles` describe the node you queried right now.
+  For the published standalone server distribution, API nodes report
+  `standalone_server` plus the server-owned roles they currently host.
+- `execution_mode` distinguishes embedded local queue execution
+  (`local_queue_worker`) from standalone server worker-protocol execution
+  (`remote_worker_protocol`).
+- `matching_role` shows whether the node still runs the in-worker wake path or
+  expects a dedicated repair or matching loop to own that sweep.
+
+This keeps the role split as a topology change, not a second engine or a
+separate control-plane API. When a deployment evolves from a narrow
+`standalone_server` fleet toward a more explicit `split_control_execution`
+shape, operators still read the same discovery surface. The values under
+`current_shape`, `current_roles`, `execution_mode`, and `matching_role` are the
+parts that change during rollout.
+
 For carrier-neutral external handlers, the same endpoint publishes
 `worker_protocol.external_execution_surface_contract`. That manifest names the
 [activity-grade external execution surface](/docs/2.0/polyglot/external-execution),
