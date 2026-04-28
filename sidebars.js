@@ -118,6 +118,7 @@ const sidebars = {
       },
       items: [
         'polyglot/server',
+        'polyglot/deployment-modes',
         'polyglot/server-config-reference',
         'polyglot/server-api-reference',
         'polyglot/server-role-topology',

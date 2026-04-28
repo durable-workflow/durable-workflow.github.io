@@ -6,6 +6,10 @@ sidebar_position: 3
 
 This guide covers installing the Durable Workflow PHP package for Laravel applications.
 
+If you are deciding between package embedding and the standalone server, start
+with [Deployment Modes](/docs/2.0/polyglot/deployment-modes). This page covers
+the embedded Laravel path.
+
 ## Requirements
 
 - PHP 8.1 or later

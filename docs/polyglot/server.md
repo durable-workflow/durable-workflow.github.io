@@ -18,6 +18,10 @@ keywords:
 
 The Durable Workflow server is a standalone, language-neutral workflow orchestration service. It exposes the same durable execution engine as the PHP package over HTTP, letting you write workflows in Python, PHP, or any language that speaks HTTP.
 
+If you are deciding between the standalone server and package embedding, start
+with [Deployment Modes](/docs/2.0/polyglot/deployment-modes). This page covers
+the service-mode distribution.
+
 Use the standalone server when you need:
 - **Polyglot workflows** — Python workers executing PHP-authored workflows, or vice versa
 - **Microservice orchestration** — orchestrate services written in different languages
@@ -27,9 +31,10 @@ Use the standalone server when you need:
 If you already run v2 embedded in a Laravel app, use the
 [embedded-to-server migration guide](/docs/2.0/polyglot/embedded-to-server) to
 prepare type keys, deploy the server beside embedded execution, connect workers,
-and route only new workflow starts to the server. That guide also freezes the
-embedded-vs-service mode contract so the cutover keeps ids, command outcomes,
-task semantics, and runtime ownership rules explicit.
+and route only new workflow starts to the server. Keep
+[Deployment Modes](/docs/2.0/polyglot/deployment-modes) nearby during that
+cutover so ids, command outcomes, task semantics, and runtime ownership rules
+stay explicit.
 
 Use [Worker Compatibility and Routing](/docs/2.0/polyglot/worker-compatibility-routing)
 when you roll mixed-version worker fleets, drain old cohorts, or need to keep
