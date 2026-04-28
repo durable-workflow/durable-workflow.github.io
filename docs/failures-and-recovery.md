@@ -139,6 +139,28 @@ The retry task records `retry_of_task_id`, `retry_after_attempt_id`, `retry_afte
 
 `Workflow\Exceptions\NonRetryableExceptionContract` still short-circuits the retry policy: throwing a non-retryable exception fails the activity execution immediately and resumes the workflow with the exception.
 
+### Late completions after lease expiry
+
+An activity worker can finish external work, lose its lease, and then report
+completion or failure after another worker has already reclaimed the durable
+task. That is a normal distributed-systems race, not proof that the first
+worker never ran.
+
+When that happens:
+
+- treat `activity_execution_id` as the logical unit of work across retries
+- treat `activity_attempt_id` as one concrete try of that logical work
+- trust Waterline, history export, or the server API for which attempt won the
+  durable race
+- do not assume a rejected late completion means the remote side effect did not
+  happen
+- check the external system by its idempotency key before forcing manual retry
+  or repair
+
+The safest default is to make the remote side effect idempotent under
+`activity_execution_id`, then let the durable outcome tell you whether the
+engine accepted the report for that specific attempt.
+
 ### Non-retryable failure markers
 
 When an activity or workflow throws an exception that implements `Workflow\Exceptions\NonRetryableExceptionContract`, the engine records a `non_retryable = true` flag on the `WorkflowFailure` row and in the typed history event payload (`ActivityFailed`, `WorkflowFailed`, `UpdateCompleted`). This durable marker communicates to operators, external workers, and tooling that the failure is permanent — retrying the same operation will not succeed.

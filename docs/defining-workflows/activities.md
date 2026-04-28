@@ -55,6 +55,32 @@ stance on ordinary queued activities, local activities, worker sessions, and
 sticky execution, see
 [Activity Execution Model](/docs/2.0/features/activity-execution-model).
 
+## Idempotency and Durable Identity
+
+Activity execution is at-least-once. Retries, lease expiry, and redelivery can
+cause the same logical activity to be observed more than once, so the side
+effect or remote target must be safe to repeat.
+
+Inside the activity, use the runtime's durable identifiers when you need
+correlation or remote dedupe:
+
+- `activityId()` identifies one logical activity execution across retries and
+  is the default remote idempotency key.
+- `attemptId()` identifies one concrete try of that execution.
+- `attemptCount()` tells you which try is currently running.
+
+Prefer `activityId()` when the remote system should treat retries as the same
+logical request. Reach for `attemptId()` only when the remote system truly
+needs to distinguish separate tries. If a worker finishes remote work, loses
+its lease, and reports late, the engine may reject that late completion because
+another worker already won the durable race, but the remote side effect may
+still have happened.
+
+See [Execution Guarantees and Idempotency](/docs/2.0/constraints/execution-guarantees),
+[Heartbeats](/docs/2.0/features/heartbeats), and
+[Failures and Recovery](/docs/2.0/failures-and-recovery) for the operational
+model behind those identifiers.
+
 ## Per-Call Overrides
 
 Routing and retries default to the activity class's own `$connection`, `$queue`, `$tries`, and `backoff()` properties. When a single call needs to override those — for example, routing one call to a higher-priority queue or giving it more retry attempts — pass an `ActivityOptions` instance:
