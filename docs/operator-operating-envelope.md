@@ -354,6 +354,19 @@ Do not imply automatic multi-region or hands-free HA behavior unless your
 published topology contract actually proves it. For the documented self-serve
 topologies, recovery is deliberate operator work with explicit checkpoints.
 
+Treat restore rehearsal cadence as part of the public operating contract too.
+At minimum, rehearse the documented restore sequence:
+
+- before the first production rollout for a topology
+- after any change to the backup mechanism, schema/bootstrap path, auth model,
+  or deployment topology
+- on a regular recurring cadence that is published in the same runbook as the
+  backup schedule
+
+If you cannot produce the latest successful rehearsal date, elapsed restore
+time, and verification evidence, then backup and DR remain an unproven claim
+for that topology.
+
 ## Benchmark envelope
 
 Durable Workflow v2 publishes the dimensions you should benchmark for your own
@@ -372,6 +385,39 @@ traffic depends on them:
 
 These are benchmark dimensions rather than universal latency promises. Publish
 your own acceptable ranges for the topology you operate.
+
+## Long-soak evidence
+
+Benchmark snapshots are not enough on their own. Before you call a topology
+trusted for sustained traffic, keep a long-soak evidence packet that shows the
+system stayed inside its declared envelope over time.
+
+Include at least:
+
+- workload shape: topology, server image or app revision, worker build ids,
+  queue layout, cache backend, database backend, and the representative mix of
+  workflow starts, timer load, activities, queries, and exports
+- soak window: start and end time, plus enough duration to cover at least one
+  normal repair window, one retention or archive pass if applicable, and one
+  representative business-cycle traffic swing for that environment
+- durable queue stability: backlog age, ready-task age, start backlog age, task
+  add versus dispatch rate, and stale-poller counts staying within the
+  published baseline for the topology
+- correctness stability: no sustained `status = error` from
+  `GET /waterline/api/v2/health`, no unexplained growth in
+  `operator_metrics.repair.*`, and no persistent compatibility gaps in
+  `operator_metrics.workers.*`
+- process and cache stability: worker memory, CPU, event-loop or thread
+  pressure, and cache/cardinality growth staying bounded rather than climbing
+  monotonically under steady load
+- recovery evidence: the latest successful backup timestamp, latest restore
+  rehearsal timestamp, elapsed restore time, and the verification commands that
+  proved the restored environment was ready
+
+Store the packet where the same operators can retrieve the deployment runbook.
+If a topology claims published benchmark numbers, alert semantics, or recovery
+timing without a matching soak packet, treat those numbers as provisional
+rather than trusted operating-envelope evidence.
 
 ## End-to-end operator checklist
 
