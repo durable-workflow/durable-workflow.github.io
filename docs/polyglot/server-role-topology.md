@@ -188,6 +188,24 @@ This is the contract behind the public operator guidance. When the deployment
 guide says the scheduler is singleton or when the rolling-upgrade guide says
 workers and API nodes roll independently, it is relying on these boundaries.
 
+### How those failures appear in supported shapes
+
+Use the role table above to reason about ownership, then translate it through
+the process class that actually failed:
+
+| Shape or process class | First operator-visible symptom | What should still work |
+| --- | --- | --- |
+| `embedded` / `application_process` | Commands, worker execution, scheduler fire, and operator reads all stop on the same host. | Nothing in that app instance; restore the process against durable storage first. |
+| `standalone_server` / `server_http_node` | External HTTP and control-plane commands fail on the lost node, and topology drift checks fail for that replica. | Healthy worker nodes can keep polling and completing already durable work; other API nodes can still serve if they stay registered. |
+| `standalone_server` / `scheduler_node` | Schedule-fired starts and maintenance sweeps stall, and scheduler-specific diagnostics or backlog age rise. | Existing workflow and activity execution keeps progressing on healthy worker nodes. |
+| `standalone_server` / `worker_node` | Queue-local backlog, stale pollers, or compatibility gaps appear for the scopes that node served. | API ingress, control-plane commands, and other worker cohorts continue if their scopes still have healthy pollers. |
+| `split_control_execution` / `matching_node` | Ready depth rises faster than claim rate and the matching-role contract becomes the first place to inspect. | Control-plane writes, history projection, and already leased execution can continue until lease-expiry or compatibility limits intervene. |
+| `split_control_execution` / `execution_node` | Schedule-to-start and queue age rise for the scopes that lost executors. | Matching and control-plane roles can continue publishing durable work for healthy executor scopes. |
+
+The [Operator Operating Envelope](/docs/2.0/operator-operating-envelope)
+turns those role-level facts into the supported self-serve recovery contract for
+embedded, clustered, and standalone-server deployments.
+
 ## Migration Path
 
 The manifest publishes one ordered `migration_path` so a deployment can evolve

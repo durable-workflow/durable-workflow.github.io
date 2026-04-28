@@ -58,6 +58,36 @@ region-pinned behavior in the runbook for the topology you operate. The product
 contract tells you which facts to measure; your deployment contract records the
 recovery timing, manual steps, and failure domains you accept.
 
+### Failure-domain checklist by supported shape
+
+Use the topology table above as the quick summary, then write your runbook
+against these more explicit loss models:
+
+- **Embedded Laravel, single node**: One application process owns the control
+  plane, matching, projection, scheduler, and execution roles together. Losing
+  that process is a full service interruption for durable commands, workflow
+  progress, schedule firing, and operator reads until the same app returns to
+  readiness against intact durable storage.
+- **Embedded Laravel, small same-region cluster**: Losing one ordinary app node
+  should remove only a share of HTTP and worker capacity while the remaining
+  nodes keep claiming work from the shared durable store. Treat the shared
+  database, the shared cache-backed wake path, and whichever node currently
+  owns the singleton scheduler or maintenance duty as the main correctness
+  boundaries for the fleet.
+- **Standalone server distribution**: Losing one `server_http_node` should stop
+  ingress and control-plane commands only on that node; healthy worker nodes
+  can still finish leased work and other API nodes can keep serving traffic.
+  Losing one `worker_node` should raise backlog, queue age, or compatibility
+  warnings only for the affected `(connection, queue, compatibility)` scopes.
+  Losing the `scheduler_node` should pause new schedule fires and maintenance
+  sweeps without invalidating already running workflows. Database or Redis loss
+  is still a fleet-level outage until readiness, topology identity, and worker
+  registration recover.
+
+If your deployment depends on different assumptions, treat that topology as a
+separate runbook with its own validated contract instead of assuming the
+self-serve guidance still applies unchanged.
+
 ### Verify live topology identity before trusting the baseline
 
 For standalone-server and split-role deployments, confirm the node identity
