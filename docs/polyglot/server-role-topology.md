@@ -1,161 +1,168 @@
 ---
-sidebar_position: 4
 title: Server Role Topology
-description: Read the Durable Workflow server role-topology manifest and map it to supported deployment shapes, failure domains, and rollout decisions.
+description: Interpret the /api/cluster/info topology manifest for Durable Workflow server roles, scaling boundaries, failure domains, and migration steps.
 tags:
   - server
   - topology
-  - operations
+  - deployment
   - control-plane
+  - workers
 keywords:
   - Durable Workflow role topology
-  - control plane execution plane split
-  - matching role
-  - split control execution
   - cluster info topology
+  - server scaling boundaries
+  - split control execution
 ---
 
 # Server Role Topology
 
-`GET /api/cluster/info` publishes the machine-readable role map for the node
-that answered the request. Use that `topology` manifest when you need to know
-which responsibilities the node owns, which durable write surfaces belong to
-each role, and how the same product contract scales from one process to a split
-control-plane and execution-plane deployment.
-
-The manifest uses the schema `durable-workflow.v2.role-topology`. It is a
-product contract, not an internal implementation detail. Operators, SDKs, CLI
-automation, and rollout tooling should read it instead of inferring duties from
-container names, hostnames, or process labels.
-
 ## Why This Manifest Exists
 
-Durable Workflow keeps one durable engine across embedded mode, the standalone
-server distribution, and more explicit split-role deployments. The topology
-manifest makes that boundary explicit:
+`GET /api/cluster/info` publishes the server's `topology` manifest under the
+schema `durable-workflow.v2.role-topology`. Treat that manifest as the public
+contract for role names, supported deployment shapes, durable-write authority,
+failure-domain expectations, scaling boundaries, and the ordered migration path
+from today's standalone distribution toward a split control/execution topology.
 
-- it names the legal topology shapes as product terms
-- it tells you which roles the current node owns
-- it publishes the durable write boundary for each role
-- it exposes the first failure signal and main scaling driver per role
-- it preserves one migration path instead of implying a second engine
+Use this page when you need to reason about server shape from scripts,
+dashboards, runbooks, or rollout automation. Use the
+[Server API Reference](/docs/2.0/polyglot/server-api-reference) for the raw
+HTTP surface and the [Server Guide](/docs/2.0/polyglot/server) for deployment
+setup.
 
-This is how you distinguish a supported topology change from a product fork.
+## Reading The Topology Manifest
+
+The `topology` object answers eight different questions:
+
+| Field family | Question it answers |
+| --- | --- |
+| `schema`, `version` | Which topology contract revision are you reading? |
+| `supported_shapes` | Which product deployment shapes are legal? |
+| `role_vocabulary` | Which role names are valid on this contract? |
+| `current_shape`, `current_roles`, `execution_mode` | What is the responding node doing right now? |
+| `matching_role.*` | Who owns broad ready-task wake and which dispatch mode is active? |
+| `shape_assignments` | Which process classes are allowed for each supported shape? |
+| `authority_boundaries`, `failure_domains`, `scaling_boundaries` | Which role is allowed to write what, how each role fails, and what load axis each role scales on? |
+| `migration_path` | What is the ordered path from the standalone shape toward more isolated roles? |
+
+`current_shape` and `current_roles` describe the node that answered the HTTP
+request, not the full fleet. The manifest does not publish a separate
+`current_process_class`; map the node by comparing `current_roles` against the
+process-class bundles in `shape_assignments`.
+
+```bash
+curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/cluster/info" \
+  -H "Authorization: Bearer $DURABLE_WORKFLOW_AUTH_TOKEN" \
+  -H "X-Namespace: default" \
+  | jq '{
+    current_shape: .topology.current_shape,
+    current_roles: .topology.current_roles,
+    execution_mode: .topology.execution_mode,
+    matching_role: .topology.matching_role,
+    scaling_boundaries: .topology.scaling_boundaries,
+    migration_path: .topology.migration_path
+  }'
+```
 
 ## Role Vocabulary
 
-The manifest vocabulary is fixed for v2:
+The public role names are fixed by `topology.role_vocabulary`:
 
-| Role | What it owns |
+| Role | Responsibility |
 | --- | --- |
-| `api_ingress` | HTTP termination, request authentication, namespace resolution, and handing requests to the right plane. |
-| `control_plane` | Durable workflow commands such as start, signal, update, cancel, terminate, reset, repair, and archive. |
-| `matching` | Ready-task discovery, claim arbitration, dispatch publication, and wake ownership. |
-| `history_projection` | Durable history recording, run summaries, and operator-facing projection surfaces. |
-| `scheduler` | Schedule evaluation and turning schedule fire state into workflow starts. |
-| `execution_plane` | Workflow-task replay, activity execution, task heartbeats, and task completion/failure outcomes. |
+| `api_ingress` | Accept external HTTP traffic, including discovery and control-plane entrypoints. |
+| `control_plane` | Start, signal, update, cancel, terminate, and otherwise mutate workflow lifecycle state. |
+| `matching` | Discover ready work, own task leases, and coordinate dispatch pressure. |
+| `history_projection` | Persist durable history and maintain derived run summaries and exports. |
+| `scheduler` | Fire schedules and persist schedule-run state. |
+| `execution_plane` | Run workflow and activity task work. |
 
-The role list is intentionally logical rather than process-shaped. One process
-may host multiple roles, and one role may later move to its own process class
-without changing the contract.
-
-The topology manifest does not publish a separate `current_process_class`.
-Instead, read `current_shape` plus `current_roles`, then compare that role
-bundle against `shape_assignments` for the current shape. That keeps one
-public contract for node identity without inventing extra node-only keys.
+Automation should treat these exact identifiers as the stable vocabulary.
 
 ## Supported Deployment Shapes
 
-The server publishes the supported shapes in `topology.supported_shapes`:
+`topology.supported_shapes` names the legal product deployment shapes:
 
-| Shape | Process classes | Typical use |
+| Shape | Process classes published in `shape_assignments` | Contract meaning |
 | --- | --- | --- |
-| `embedded` | One `application_process` owns `control_plane`, `matching`, `history_projection`, `scheduler`, and `execution_plane`. | Laravel-app embedding with local queue workers. |
-| `standalone_server` | `server_http_node`, `scheduler_node`, and `worker_node`. | Published server image, self-hosted Compose, and the narrow small-cluster contract. |
-| `split_control_execution` | `ingress_node`, `control_plane_node`, `scheduler_node`, `matching_node`, and `execution_node`. | More explicit role isolation without introducing a second engine. |
+| `embedded` | `application_process` | One application process owns control-plane, matching, history projection, scheduler, and execution. |
+| `standalone_server` | `server_http_node`, `scheduler_node`, `worker_node` | The current standalone server distribution: HTTP ingress/control-plane on the server node, scheduler isolated as its own process class, and execution on worker nodes. |
+| `split_control_execution` | `ingress_node`, `control_plane_node`, `scheduler_node`, `matching_node`, `execution_node` | The same product contract split into narrower role-specific process classes so scaling and failure boundaries can move by subsystem. |
 
-Two details matter in practice:
-
-- The published self-hosted server artifacts start in the
-  `standalone_server` shape, even though the manifest also advertises
-  `split_control_execution` as a supported product topology.
-- `current_shape` and `current_roles` describe the node you queried right now,
-  not the whole fleet. A standalone server API node reports
-  `api_ingress`, `control_plane`, `matching`, and `history_projection`; the
-  scheduler and workers are separate process classes in the same shape.
-
-`shape_assignments` is the machine-readable version of this table. It records
-the documented process classes and their role bundles for each supported shape.
-Use it when automation needs stable parsing rather than prose or
-list-order-sensitive traversal of this page.
-
-For rollout planning, keep the topology page paired with
-[Self-Hosting Deployments](/docs/2.0/deployment) and
-[Rolling Upgrades](/docs/2.0/rolling-upgrades). Those pages tell you which
-shape is self-serve today; the manifest tells you which roles the node is
-actually owning.
+`split_control_execution` is a supported topology, not a second engine or a
+different API. The same discovery surface describes both the standalone and the
+split-role shapes.
 
 ## Current Node Identity
 
-The current node is identified by three fields working together:
+Use `current_shape`, `current_roles`, and `execution_mode` together:
 
-- `current_shape` names the topology the responding node claims to be part of.
-- `current_roles` lists the logical roles the node currently hosts.
-- `shape_assignments` tells you which documented process-class role bundles are
-  legal for that shape.
+- `current_shape` identifies the responding node's shape contract.
+- `current_roles` identifies the active role bundle on that node.
+- `execution_mode` distinguishes `remote_worker_protocol` from
+  `local_queue_worker`.
 
-Use that combination to map the node you queried back onto the supported
-topology. Examples:
+For the standalone server distribution, `current_shape` remains
+`standalone_server` even when `DW_MODE=embedded` switches execution to local
+queue workers. In that case, `execution_mode` changes to `local_queue_worker`
+while the HTTP node keeps the standalone-server role contract.
 
-- In `standalone_server`, the role bundle
-  `api_ingress` + `control_plane` + `matching` + `history_projection`
-  is the API node bundle documented as `server_http_node`.
-- In `standalone_server`, the single-role bundle `scheduler` matches the
-  documented `scheduler_node`.
-- In `standalone_server`, the single-role bundle `execution_plane` matches the
-  documented `worker_node`.
-- In `split_control_execution`, each dedicated role bundle maps to the
-  documented `ingress_node`, `control_plane_node`, `scheduler_node`,
-  `matching_node`, or `execution_node`.
+## Matching Role Contract
+
+`topology.matching_role` freezes the live matching and wake posture for the
+responding node:
+
+| Field | Meaning |
+| --- | --- |
+| `queue_wake_enabled` | Whether short-lived queue wake signals are currently enabled. |
+| `wake_owner` | Which implementation currently owns the broad wake sweep: `worker_loop` or `dedicated_repair_pass`. |
+| `task_dispatch_mode` | Whether dispatch is happening through `poll`-driven remote workers or `queue`-driven local execution. |
+
+This lets operators and automation distinguish "matching exists but wake is
+degraded" from "this node is intentionally running a different dispatch mode."
 
 ## Authority Boundaries
 
-`topology.authority_boundaries` tells you which durable write surfaces belong
-to each role. Treat it as the first guardrail before splitting a deployment:
+`topology.authority_boundaries` names the durable write surfaces each role is
+supposed to mutate:
 
-| Role | Durable write boundary |
+| Role | Published writes |
 | --- | --- |
+| `api_ingress` | `worker_registrations` |
 | `control_plane` | `workflow_instances`, `workflow_runs.status`, `workflow_tasks.lifecycle` |
-| `execution_plane` | `workflow_tasks.outcomes`, `activity_attempts`, `worker_compatibility_heartbeats` |
 | `matching` | `workflow_tasks.leases`, `activity_tasks.leases` |
 | `history_projection` | `history_events`, `workflow_run_summaries`, `workflow_history_exports` |
 | `scheduler` | `workflow_schedules.fire_state`, `workflow_starts.scheduled` |
-| `api_ingress` | `worker_registrations` |
+| `execution_plane` | `workflow_tasks.outcomes`, `activity_attempts`, `worker_compatibility_heartbeats` |
 
-If a process needs a durable write surface outside the roles it claims, that is
-topology drift and should be treated as a contract problem before you scale or
-split the fleet further.
-
-The public topology manifest stops at this role-level write-owner contract. If
-tooling needs a finer mutation-family breakdown, treat that as repo-level
-implementation detail rather than a key currently promised by
-`/api/cluster/info`.
+Use this contract to catch cross-role drift before you split processes or add
+new topology-specific automation.
 
 ## Failure And Scaling Boundaries
 
-The same manifest also publishes the first expected failure signal and the main
-scaling driver for each role:
+### Failure Domains
 
-| Role or failure | What operators should expect |
-| --- | --- |
-| `control_plane_down` | Operator commands fail fast; already-claimed work continues only until lease expiry. |
-| `execution_plane_down` | Ready tasks accumulate without loss; queue depth and schedule-to-start lag grow. |
-| `matching_down` | Claim rate falls while ready depth rises; current implementations fall back to direct ready-task discovery. |
-| `history_projection_down` | Durable writes continue, but projection reads may go stale and projection-lag health rises. |
-| `scheduler_down` | Scheduled workflows stop firing and the missed-schedule state becomes visible. |
-| `api_ingress_down` | External HTTP traffic stops at the edge even if embedded in-process calls still exist elsewhere. |
+`topology.failure_domains` names the first degraded behavior and the first
+operator-visible signal for each role outage:
 
-| Role | Main scaling driver |
+| Failure domain | `effect` | `operator_signal` |
+| --- | --- | --- |
+| `control_plane_down` | `workers_continue_claimed_tasks_only_until_lease_expiry` | `operator_commands_fail_fast` |
+| `execution_plane_down` | `ready_tasks_accumulate_without_loss` | `operators_see_ready_depth_growth` |
+| `matching_down` | `claim_falls_back_to_direct_ready_task_discovery` | `ready_depth_rises_while_claim_rate_falls` |
+| `history_projection_down` | `projection_reads_may_stale_while_durable_writes_continue` | `projection_lag_seconds_may_increase` |
+| `scheduler_down` | `scheduled_workflows_stop_firing_and_record_missed_runs` | `operators_see_missed_schedule_state` |
+| `api_ingress_down` | `external_http_traffic_stops_at_the_edge` | `embedded_in_process_calls_may_continue` |
+
+These are product-facing expectations, not internal implementation trivia. Use
+them to describe what should happen when a role is degraded before reading logs.
+
+### Scaling Boundaries
+
+`topology.scaling_boundaries` tells you which load axis each role primarily
+scales on in the split-role model:
+
+| Role | Scaling boundary |
 | --- | --- |
 | `api_ingress` | `incoming_http_request_rate` |
 | `control_plane` | `operator_commands_and_run_lifecycle_transitions` |
@@ -164,91 +171,48 @@ scaling driver for each role:
 | `scheduler` | `active_schedule_count` |
 | `execution_plane` | `workflow_and_activity_task_rate` |
 
-This is the contract behind the public operator guidance. When the deployment
-guide says the scheduler is singleton or when the rolling-upgrade guide says
-workers and API nodes roll independently, it is relying on these boundaries.
-
-### How those failures appear in supported shapes
-
-Use the role table above to reason about ownership, then translate it through
-the process class that actually failed:
-
-| Shape or process class | First operator-visible symptom | What should still work |
-| --- | --- | --- |
-| `embedded` / `application_process` | Commands, worker execution, scheduler fire, and operator reads all stop on the same host. | Nothing in that app instance; restore the process against durable storage first. |
-| `standalone_server` / `server_http_node` | External HTTP and control-plane commands fail on the lost node, and topology drift checks fail for that replica. | Healthy worker nodes can keep polling and completing already durable work; other API nodes can still serve if they stay registered. |
-| `standalone_server` / `scheduler_node` | Schedule-fired starts and maintenance sweeps stall, and scheduler-specific diagnostics or backlog age rise. | Existing workflow and activity execution keeps progressing on healthy worker nodes. |
-| `standalone_server` / `worker_node` | Queue-local backlog, stale pollers, or compatibility gaps appear for the scopes that node served. | API ingress, control-plane commands, and other worker cohorts continue if their scopes still have healthy pollers. |
-| `split_control_execution` / `matching_node` | Ready depth rises faster than claim rate and the matching-role contract becomes the first place to inspect. | Control-plane writes, history projection, and already leased execution can continue until lease-expiry or compatibility limits intervene. |
-| `split_control_execution` / `execution_node` | Schedule-to-start and queue age rise for the scopes that lost executors. | Matching and control-plane roles can continue publishing durable work for healthy executor scopes. |
-
-The [Operator Operating Envelope](/docs/2.0/operator-operating-envelope)
-turns those role-level facts into the supported self-serve recovery contract for
-embedded, clustered, and standalone-server deployments.
+This is the explicit answer to "what do we scale independently?" for the
+split-role topology.
 
 ## Migration Path
 
-The manifest publishes one ordered `migration_path` so a deployment can evolve
-without inventing a new engine:
+`topology.migration_path` is ordered. Each step preserves one durable kernel
+while isolating responsibilities more clearly:
 
-1. `audit_role_boundaries` so tooling can detect cross-role writes before
-   runtime shape changes.
-2. `expose_role_bindings` so hosts can swap adapters or run a role out of
-   process without patching the package.
-3. `introduce_dedicated_matching_shape` so matching can move out of the worker
-   loop without changing the claim contract.
-4. `split_history_projection` so history/projection work can move without
-   introducing a second writer.
-5. `split_scheduler` so schedule firing can sit behind explicit ownership while
-   single-replica deployments stay legal.
-6. `optional_execution_partitioning` so workers can partition by namespace,
-   connection, queue, and compatibility.
+1. `audit_role_boundaries`
+   Result: tooling flags cross-role writes before runtime shape changes.
+2. `expose_role_bindings`
+   Result: container seams allow out-of-process adapters without patching the package.
+3. `introduce_dedicated_matching_shape`
+   Result: matching can run as its own process class without changing the claim contract.
+4. `split_history_projection`
+   Result: history and projections can move out of process without introducing a second writer.
+5. `split_scheduler`
+   Result: schedule firing can move behind leader election while single-replica deployments stay legal.
+6. `optional_execution_partitioning`
+   Result: workers can partition by namespace, connection, queue, and compatibility.
 
-Read that sequence literally. `split_control_execution` is a topology that
-keeps the same durable kernel and discovery surface; it is not a new control
-plane, a second protocol, or a hosted-only feature fork.
+Read this list as the supported topology transition order, not as a separate
+product roadmap detached from the current engine.
 
-## Reading The Topology Manifest
+## Coordination Health
 
-Use `/api/cluster/info` to read the node's current role assignment:
+`/api/cluster/info` also publishes `coordination_health` beside `topology`.
+Keep the distinction clear:
 
-```bash
-curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/cluster/info" \
-  -H "Authorization: Bearer $DURABLE_WORKFLOW_AUTH_TOKEN" \
-  -H "X-Namespace: default" \
-  | jq '.topology | {schema, version, current_shape, current_roles, execution_mode, matching_role}'
-```
+- `topology` tells you what the node is allowed to do and how the product shape
+  is supposed to behave.
+- `coordination_health` tells you whether rollout-safety and coordination checks
+  are currently healthy across namespaces.
 
-Key fields to inspect:
-
-- `schema` and `version` tell you which topology manifest schema you are
-  parsing. Treat `topology.version` as the manifest version, not as the server
-  build version.
-- `supported_shapes` is the product vocabulary.
-- `role_vocabulary` is the fixed list of v2 role names.
-- `current_shape` and `current_roles` tell you what the responding node owns
-  right now.
-- `execution_mode` distinguishes `local_queue_worker` embedded execution from
-  `remote_worker_protocol` standalone-server execution.
-- `matching_role` tells you whether the node still owns the in-worker wake path
-  through `queue_wake_enabled`, `wake_owner`, and `task_dispatch_mode`.
-- `shape_assignments` is the field operators should read before changing
-  topology, rollout posture, or process ownership.
-- `authority_boundaries` tells you who owns each durable write surface.
-- `failure_domains`, `scaling_boundaries`, and `migration_path` complete the
-  rollout and operating contract.
+Use both surfaces together when deciding whether a topology change is both
+supported and currently safe.
 
 ## Related References
 
-- [Server](/docs/2.0/polyglot/server) for the general standalone-server guide
-  and the inline cluster-info example.
 - [Server API Reference](/docs/2.0/polyglot/server-api-reference) for the
-  discovery endpoint, route matrix, and required headers.
-- [Self-Hosting Deployments](/docs/2.0/deployment) for the supported
-  self-serve shapes and their operational boundaries.
-- [Rolling Upgrades](/docs/2.0/rolling-upgrades) for mixed-version rollout
-  behavior across API nodes, workers, and the scheduler.
-- [Task Matching and Dispatch](/docs/2.0/polyglot/task-matching-dispatch) for
-  the matching-role contract that `topology.matching_role` points at.
-- [Worker Compatibility Routing](/docs/2.0/polyglot/worker-compatibility-routing)
-  for build-id and compatibility-marker routing semantics across worker fleets.
+  authenticated `/api/cluster/info` HTTP contract.
+- [Server Guide](/docs/2.0/polyglot/server) for deployment setup and the
+  broader standalone server operating model.
+- [Deployment Modes](/docs/2.0/polyglot/deployment-modes) for when to choose
+  embedded, standalone server, or broader support-led topologies.
