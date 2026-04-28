@@ -30,6 +30,13 @@ By calling multiple activities, a workflow can orchestrate the results between e
 
 If a workflow fails, the events leading up to the failure are replayed to rebuild the current state. This allows the workflow to pick up where it left off, with the same inputs and outputs as before, ensuring determinism.
 
+Activities are always ordinary queued work in v2. There is no in-process local
+activity fast path and no worker-session pinning that a workflow author can
+rely on for correctness. If you need a replay-safe one-shot value without
+queueing an activity, use [`sideEffect(...)`](./features/side-effects.md). For
+the full contract, see
+[Activity Execution Model](./features/activity-execution-model.md).
+
 ## Queues
 
 Queued jobs are background processes that run at a later time. Laravel supports queues via Amazon SQS, Redis, or a relational database. Workflows and activities are both queued jobs, but they behave a little differently. A workflow is dispatched multiple times during normal operation: it runs, dispatches one or more activities, and then exits until the activities complete. An activity executes once during normal operation and is only retried on error.

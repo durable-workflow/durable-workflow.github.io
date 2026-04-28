@@ -41,6 +41,20 @@ class MyActivity extends Activity
 }
 ```
 
+## Execution Contract
+
+Every `activity(...)` call records an activity command on workflow history and
+creates a durable queued task for a worker to claim. Durable Workflow v2 does
+not expose a local-activity shortcut or a worker-session API, so any
+compatible worker may execute a given attempt and a retry may land on a
+different process or host.
+
+If you need a replay-safe value without scheduling queued work, use
+[`sideEffect(...)`](/docs/2.0/features/side-effects) instead. For the full
+stance on ordinary queued activities, local activities, worker sessions, and
+sticky execution, see
+[Activity Execution Model](/docs/2.0/features/activity-execution-model).
+
 ## Per-Call Overrides
 
 Routing and retries default to the activity class's own `$connection`, `$queue`, `$tries`, and `backoff()` properties. When a single call needs to override those — for example, routing one call to a higher-priority queue or giving it more retry attempts — pass an `ActivityOptions` instance:

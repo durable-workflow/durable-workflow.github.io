@@ -103,6 +103,13 @@ $resultFromHelper = activity(SendReceipt::class, $orderId);
 | `Workflow::upsertSearchAttributes()` | `upsertSearchAttributes()` | `upsertSearchAttributes(array $attributes): void` | Updates indexed operator-visible metadata. |
 | `Workflow::now()` | `now()` | `now(): CarbonInterface` | Reads deterministic workflow time. |
 
+`activity()` and `executeActivity()` always schedule ordinary queued activity
+tasks. Durable Workflow v2 does not have a local-activity or worker-session
+primitive; use `sideEffect()` for replay-safe snapshots that should not cross
+the queue, and see
+[Activity Execution Model](/docs/2.0/features/activity-execution-model) for
+the full execution contract.
+
 **Timer helpers**
 
 Timer helpers are shorthand for `timer()` and `Workflow::timer()`:
