@@ -58,6 +58,33 @@ region-pinned behavior in the runbook for the topology you operate. The product
 contract tells you which facts to measure; your deployment contract records the
 recovery timing, manual steps, and failure domains you accept.
 
+### Verify live topology identity before trusting the baseline
+
+For standalone-server and split-role deployments, confirm the node identity
+that the product itself reports before you interpret queue, scheduler, or role
+failure signals. `GET /api/cluster/info` is the source of truth for that
+identity:
+
+| Field | Use it for |
+| --- | --- |
+| `topology.current_shape` | Confirms whether the node is currently advertising `embedded`, `standalone_server`, or `split_control_execution`. |
+| `topology.current_process_class` | Confirms which node class the process believes it is serving, such as `server_http_node`, `scheduler_node`, `worker_node`, `matching_node`, or `execution_node`. |
+| `topology.current_roles` | Confirms the logical roles actually hosted by this node. |
+| `topology.role_catalog` | Confirms whether the queried node owns `api_ingress`, `control_plane`, `matching`, `history_projection`, `scheduler`, or `execution_plane`. |
+
+Use those fields as the first topology-drift check during rollouts:
+
+- In the self-serve standalone-server shape, API nodes should continue to
+  report `server_http_node` with `api_ingress`, `control_plane`, `matching`,
+  and `history_projection`; scheduler nodes should report `scheduler_node`;
+  worker nodes should report `worker_node` and `execution_plane`.
+- In the split-role shape, verify that each dedicated process class reports the
+  role it is supposed to own before you interpret backlog or scheduler lag as a
+  worker problem.
+- If `current_process_class` or `current_roles` drift from the deployment plan,
+  treat queue and failover baselines as suspect until the node identity is
+  corrected.
+
 ## Blocking and advisory diagnostics
 
 Durable Workflow v2 separates blocking diagnostics from advisory diagnostics.
@@ -166,6 +193,32 @@ Use `operator_metrics.starts.*` when new workflow starts appear stuck even
 though steady-state queue lag looks normal. Those facts separate control-plane
 start admission and first-task creation debt from downstream worker pickup.
 
+### Poller pressure and admission budgets
+
+Use task-queue detail routes or `dw task-queue:describe` when queue flow is
+degrading and you need to separate "not enough worker capacity" from
+"intentional server throttling" or "no live poller at all":
+
+| Queue status | Meaning | Treat it as |
+| --- | --- | --- |
+| `accepting` | Workers still have available slots and no server cap is full. | Healthy baseline. |
+| `saturated` | All registered worker slots are currently leased. | Worker-capacity pressure. |
+| `throttled` | A server-side active-lease or dispatch-rate cap is intentionally holding the queue back. | Advisory unless the cap is unexpected or the backlog keeps growing beyond the published baseline. |
+| `no_slots` | Active workers are registered, but none advertise slots for that task kind. | Blocking for that queue. |
+| `no_active_workers` | No healthy poller is currently serving the queue. | Blocking for that queue. |
+| `unavailable` | The queue cannot acquire the lock needed for its configured admission path. | Blocking until the admission dependency recovers. |
+
+Use these statuses with the queue-flow facts together:
+
+- `tasks_added_last_minute > tasks_dispatched_last_minute` plus `saturated`
+  means durable inflow is outrunning worker capacity.
+- The same rate imbalance plus `throttled` means the queue is being held back
+  by an explicit server cap and should be judged against that cap's intended
+  contract, not against unrestricted throughput.
+- A rising oldest-ready age plus `no_active_workers` or stale pollers means the
+  queue has lost healthy claimers and should be treated as a routing outage for
+  that scope.
+
 ### Matching-role deployment shape
 
 Use `operator_metrics.matching_role.*` when you need to confirm which
@@ -245,7 +298,7 @@ window for the topology you operate.
 | Blocking readiness | `workflow:v2:doctor --strict`, `GET /waterline/api/v2/health` | Blocking | `doctor --strict` returns an error or the health endpoint returns `status = error` / HTTP `503` | Stop rollout or traffic shift, fix the blocking prerequisite, then rerun readiness and compatibility checks. |
 | Compatible-worker coverage | `operator_metrics.workers.*`, `worker_compatibility` health check, run diagnostic `no_compatible_worker_for_task` | Blocking | `active_workers_supporting_required = 0` for a namespace or required `(connection, queue)` scope | Drain incompatible workers, register compatible workers, and confirm the `correctness` rollup clears before trusting new claims. |
 | Durable queue lag | Waterline queue views, `operator_metrics.backlog.*`, worker `schedule_to_start` telemetry | Blocking when sustained; advisory when brief | The oldest ready-task age or schedule-to-start latency stays above the published topology baseline while compatible workers are available | Add worker capacity, inspect task-queue admission limits, and verify the scheduler or matching path is still making forward progress. |
-| Worker-slot or poller pressure | Server task-queue visibility routes, `dw task-queue:describe`, worker registrations | Advisory, escalating to blocking if durable lag grows | A hot queue stays `saturated`, `no_slots`, `no_active_workers`, or `unavailable`, or keeps flipping between those states while queue age climbs | Distinguish intentional `throttled` backpressure from accidental starvation, then either add worker slots, restore healthy pollers, or repair the cache-lock path before scaling other components. |
+| Poller pressure and admission saturation | Task-queue detail routes, `dw task-queue:describe`, queue `status`, stale pollers, and queue-local add/dispatch rates | Blocking for `no_active_workers`, `no_slots`, or `unavailable`; advisory for intentional `throttled` states | One queue stays `saturated` while its oldest-ready age and add-vs-dispatch gap keep growing, or any queue flips to `no_active_workers`, `no_slots`, or `unavailable` outside a planned maintenance window | Add worker slots, restore the missing poller cohort, or confirm the server-side cap and lock dependency are behaving as designed before you scale blindly. |
 | Workflow-start backlog | `operator_metrics.starts.*`, control-plane start telemetry, worker `schedule_to_start` telemetry for first workflow tasks | Blocking when sustained; advisory when brief | `pending_commands`, `ready_tasks`, or `max_pending_ms` stay above the published topology baseline while compatible workers and queue capacity are available | Inspect the start boundary end to end: confirm start commands are turning into durable tasks, verify matching or dispatch is creating the first task promptly, and separate start-path debt from general worker lag before scaling. |
 | Projection drift and repair debt | `run_summary_projection` / `selected_run_projections` health checks, `operator_metrics.repair.*` | Advisory | Drift warnings persist past one planned rebuild window or the max candidate age keeps climbing | Run the rebuild or repair previews, execute the repair, then verify the warning clears and stale ages return to baseline. |
 | Retry or failure storm | `operator_metrics.backlog.unhealthy_tasks`, durable run diagnostics, worker error telemetry | Advisory, escalating to blocking if it prevents durable progress | Dispatch-failed, claim-failed, expired-lease, or retry-exhaustion facts climb above the topology baseline and stay elevated | Inspect the failing task family, compare worker telemetry with durable error facts, and decide whether to drain traffic or isolate the affected queue. |
@@ -376,7 +429,7 @@ traffic depends on them:
 | Dimension | What to baseline | Source |
 | --- | --- | --- |
 | Projection health | Steady-state `needs_rebuild = 0`, rebuild duration after intentional drift, and stale/orphan cleanup time | `/waterline/api/v2/health`, `/waterline/api/stats`, `workflow:v2:rebuild-projections` |
-| Queue pressure | Backlog age, oldest ready task age, runnable vs delayed task counts, task add vs dispatch rate, dispatch-overdue age, stale poller count | Waterline dashboard stats and queue views plus `operator_metrics.backlog.*` / `operator_metrics.tasks.*` |
+| Queue pressure | Backlog age, oldest ready task age, runnable vs delayed task counts, task add vs dispatch rate, dispatch-overdue age, stale poller count, and queue admission status (`accepting`, `saturated`, `throttled`, `no_slots`, `no_active_workers`) | Waterline dashboard stats and queue views plus `operator_metrics.backlog.*` / `operator_metrics.tasks.*` |
 | Workflow-start latency | Accepted start commands waiting for first-task creation, oldest pending-start age, and first-task pickup after admission | `operator_metrics.starts.*` plus worker `schedule_to_start` telemetry |
 | Schedule-to-start latency | Workflow and activity queue wait from enqueue to start | Worker SDK metrics |
 | Timer fan-out wake-up behavior | Wake-signal propagation time and the lag between scheduled fire time and ready-task visibility during burst timers | Worker telemetry plus same-region wake coordination checks |
