@@ -167,6 +167,13 @@ has not run yet, and start the new one. The window between the two is
 bounded by how long it takes the new container to come up; schedule
 firing resumes from the persisted state on next tick.
 
+If the rollout also introduces a dedicated matching-role deployment, make that
+topology change explicit instead of assuming every execution node will keep
+doing broad ready-task sweeps. See
+[Task Matching and Dispatch](/docs/2.0/polyglot/task-matching-dispatch) for
+the documented `workflow:v2:repair-pass --loop` plus
+`DW_V2_MATCHING_ROLE_QUEUE_WAKE=0` shape.
+
 ## Readiness and cutover
 
 Use the readiness contract — not just the liveness probe — to decide

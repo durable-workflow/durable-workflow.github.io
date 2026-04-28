@@ -26,6 +26,11 @@ Task queue admission keeps one queue, tenant, or downstream dependency from cons
 
 Use admission controls when a queue is tied to a rate-limited dependency, tenants share the same server, or operators need to prove why a workflow is waiting.
 
+Admission sits on top of the matching contract. Read
+[Task Matching and Dispatch](/docs/2.0/polyglot/task-matching-dispatch) for
+how ready work is discovered and leased before these budgets decide whether the
+next task is allowed through.
+
 ## How The Budget Is Applied
 
 Workflow and activity polling starts with the workers that are currently registered for a namespace and task queue. Each worker advertises `max_concurrent_workflow_tasks` and `max_concurrent_activity_tasks`; the server sums active, non-stale workers to calculate the queue's registered slot capacity.

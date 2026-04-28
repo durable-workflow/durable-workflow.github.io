@@ -230,6 +230,11 @@ execute the same workflows.
 
 Use `DW_V2_GUARDRAILS_BOOT` in CI and deployment manifests. The older `WORKFLOW_V2_GUARDRAILS_BOOT` name is retained only so `env:audit` can point alpha-era operators at the rename; the workflow package no longer reads it as a runtime fallback.
 
+Use [Task Matching and Dispatch](/docs/2.0/polyglot/task-matching-dispatch)
+when you configure `DW_V2_MATCHING_ROLE_QUEUE_WAKE` or a dedicated
+`workflow:v2:repair-pass --loop` daemon. Those settings change where
+ready-task discovery runs, not the worker-protocol contract itself.
+
 ## Runtime Infrastructure Variables
 
 Runtime infrastructure variables are framework and dependency controls. The

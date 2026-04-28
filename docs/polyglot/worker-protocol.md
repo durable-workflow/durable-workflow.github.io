@@ -52,6 +52,8 @@ Before polling, each worker must register its namespace, task queue, runtime,
 supported type keys, and local capacity through `POST /api/worker/register`.
 The [Namespace, Auth, And Worker Registration](/docs/2.0/polyglot/namespace-auth-workers)
 reference freezes that registration payload and the role-scoped auth contract.
+For the broader ready-task discovery and lease-assignment contract behind these
+verbs, see [Task Matching and Dispatch](/docs/2.0/polyglot/task-matching-dispatch).
 
 ## Workflow Task Bridge
 
