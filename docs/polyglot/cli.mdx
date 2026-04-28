@@ -200,8 +200,17 @@ way to see why the run is waiting. When a worker is attached, use
 
 ```bash
 dw server:health          # Check server health
-dw server:info            # Show server version, capabilities, and worker fleet
+dw server:info            # Show server version, role topology, protocols, and worker fleet
 ```
+
+`dw server:info` mirrors `GET /api/cluster/info`. In addition to build,
+protocol, and worker-fleet facts, it prints the server role-topology manifest:
+supported shapes, the current shape/process class/roles, matching-role wake
+and partition details, current write boundaries, scaling boundaries, and
+failure domains. Use `--output=json` when automation needs the raw
+`topology.*` fields, or read
+[Server Role Topology](./server-role-topology.md) for the field-by-field
+contract behind that output.
 
 ### Workflows
 

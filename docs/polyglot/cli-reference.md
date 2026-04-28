@@ -57,7 +57,7 @@ canonical `input` array.
 | --- | --- | --- |
 | `dw --version` | Print CLI build identity. When `DW_ENV` or `DURABLE_WORKFLOW_SERVER_URL` selects a target, also performs a short compatibility probe. | `-V`, `--version` |
 | `dw server:health` | Check server health and auth reachability. | global options, `--json` |
-| `dw server:info` | Show server version, protocol manifests, request contract, worker protocol, and compatibility metadata. | global options, `--json` |
+| `dw server:info` | Show server version, the role-topology manifest, protocol manifests, request contract, worker protocol, worker-fleet facts, and compatibility metadata. | global options, `--json` |
 | `dw doctor` | Explain the resolved profile/server/token/TLS state, remote compatibility warnings, and next steps. | global options, `--json` |
 | `dw debug workflow <workflow-id>` | Capture stuck-run diagnostics for one workflow: state, pending tasks, queue facts, failures, and compatibility metadata. | `--run-id`, global options, `--json` |
 | `dw server:start-dev` | Start a local development server for smoke work. | `--port`, `--db=sqlite|mysql|pgsql` |
@@ -67,6 +67,39 @@ canonical `input` array.
 Use `server:info` when validating contract shape, `doctor` when explaining why
 a CLI cannot talk to a server, and `debug workflow` when support needs one
 machine-readable run capture.
+
+### Server Info And Role Topology
+
+`dw server:info` is the CLI surface for `GET /api/cluster/info`. In table mode
+it includes a `Topology:` section that summarizes the role-topology contract
+the server published for the responding node:
+
+- `Supported Shapes` and `Current Shape` identify which deployment shapes are
+  legal and which one this node is serving right now.
+- `Current Process Class` and `Current Roles` name the process class and role
+  bundle on the responding node.
+- `Matching Role`, `Matching Partitions`, and `Matching Backpressure` expose
+  the matching-role shape, wake ownership, task-dispatch mode, and partition
+  primitives that determine how ready work is claimed.
+- `Current Write Boundaries` lists the durable write surfaces currently owned
+  by the roles on this node.
+- `Scaling Boundaries` and `Failure Domains` tell operators what load driver
+  or first failure signal to expect for each role.
+
+Use `--output=json` when scripts need the raw manifest. The stable machine
+fields live under `topology`, including `supported_shapes`,
+`current_shape`, `current_process_class`, `current_roles`,
+`matching_role`, `role_catalog`, `authority_boundaries`,
+`authority_surfaces`, `supported_topologies`, `scaling_boundaries`, and
+`failure_domains`.
+
+```bash
+dw server:info --output=json \
+  | jq '.topology | {current_shape, current_process_class, current_roles, matching_role, scaling_boundaries, failure_domains}'
+```
+
+For the meaning of those fields, see
+[Server Role Topology](/docs/2.0/polyglot/server-role-topology).
 
 ### Self-Upgrade
 
