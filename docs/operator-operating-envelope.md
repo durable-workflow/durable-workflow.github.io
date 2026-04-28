@@ -158,6 +158,24 @@ Use `operator_metrics.starts.*` when new workflow starts appear stuck even
 though steady-state queue lag looks normal. Those facts separate control-plane
 start admission and first-task creation debt from downstream worker pickup.
 
+### Matching-role deployment shape
+
+Use `operator_metrics.matching_role.*` when you need to confirm which
+matching/dispatch contract the current node is actually serving:
+
+| Fact | Meaning |
+| --- | --- |
+| `operator_metrics.matching_role.queue_wake_enabled` | Whether this node still runs the in-worker broad-poll wake path on queue-worker loop events. |
+| `operator_metrics.matching_role.shape` | `in_worker` when the node still owns that wake path, `dedicated` when the wake/repair sweep is expected to run under a separate `workflow:v2:repair-pass --loop` process. |
+| `operator_metrics.matching_role.task_dispatch_mode` | The dispatch mode this node is using for ready tasks: `queue` or `poll`. |
+| `operator_metrics.matching_role.partition_primitives` | The frozen routing axes, in order: `connection`, `queue`, `compatibility`, `namespace`. |
+| `operator_metrics.matching_role.backpressure_model` | The durable admission boundary the engine enforces. Current v2 reports `lease_ownership`. |
+
+These fields are node-local, not fleet-wide. In a mixed-shape rollout, read
+the snapshot from each node or pod you are cutting over so you can confirm the
+matching role moved where you intended before you interpret backlog or poller
+changes as worker health.
+
 ### Worker and SDK telemetry
 
 Use worker metrics, traces, and logs for:

@@ -83,6 +83,7 @@ particular:
 | Field family | Meaning |
 | --- | --- |
 | `operator_metrics.backlog.*` | Durable runnable, delayed, leased, unhealthy, repair-needed, claim-failed, and compatibility-blocked work counts, plus the fleet-level `tasks_added_last_minute` and `tasks_dispatched_last_minute` queue-flow facts. |
+| `operator_metrics.matching_role.*` | The node-local matching/dispatch contract for the process serving the request: `queue_wake_enabled`, deployment `shape`, `task_dispatch_mode`, frozen `partition_primitives`, and current `backpressure_model`. |
 | `operator_metrics.repair.*` | Repair-loop sweep footprint, including selected candidates, candidate age, and scan pressure. |
 | `operator_metrics.projections.*` | Projection-drift counts for run summaries, waits, timelines, timers, and lineage. |
 | `operator_metrics.command_contracts.*` | Legacy WorkflowStarted contract snapshots that still need backfill. |
@@ -94,6 +95,14 @@ input arriving faster than the system is dispatching it? `tasks_added_last_minut
 counts distinct durable task rows created in the trailing 60 seconds, and
 `tasks_dispatched_last_minute` counts distinct durable task rows whose latest
 successful dispatch landed in that same window.
+
+The `matching_role` fields answer a different question: which matching shape is
+this node currently serving? `shape` distinguishes `in_worker` from
+`dedicated`, `partition_primitives` freezes the routing axes as
+`connection`/`queue`/`compatibility`/`namespace`, and `backpressure_model`
+currently reports `lease_ownership`. Treat that block as process-local. During
+mixed-shape rollouts, compare it across nodes before assuming backlog or poll
+differences mean worker trouble.
 
 `GET /waterline/api/v2/health` uses the same distinction: `error` is blocking,
 `warning` is advisory, and `ok` means the current v2 operator bridge is ready.
