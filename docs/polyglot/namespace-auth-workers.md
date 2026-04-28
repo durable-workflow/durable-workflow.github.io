@@ -224,6 +224,7 @@ Automation should branch on named reasons rather than prose messages.
 | `namespace_not_found` | namespace-scoped route | The namespace from `X-Namespace`, query string, or server default does not exist. | Create the namespace or correct the client namespace. |
 | `namespace_already_exists` | `POST /api/namespaces` | A normalized namespace name already exists. | Reuse it or choose a distinct name. |
 | `task_queue_mismatch` | worker poll route | A worker id registered for one queue attempted to poll another. | Restart with a new worker id or poll the registered queue. |
+| `worker_draining` | worker poll route | The worker's build-id cohort is marked draining, so it may finish in-flight work but cannot claim new tasks. | Resume the cohort for rollback, or stop the worker after its current leases drain. |
 | `workflow_definition_changed` | `POST /api/worker/register` | Active worker id tried to advertise changed workflow fingerprints. | Restart the changed process with a new worker id. |
 | `validation_failed` | any JSON route | A field is missing, malformed, too large, or outside allowed bounds. | Read `errors` or `validation_errors` and correct the payload. |
 

@@ -148,6 +148,11 @@ worker registered under that `build_id` as draining on its next heartbeat.
 The call is idempotent: rerunning it does not reset `drained_at`, so you can
 safely retry it from automation.
 
+Once a worker row is marked `draining`, the workflow-task, activity-task, and
+query-task poll routes stop leasing new work to that worker. Polls fail with
+HTTP `409`, `poll_status: "draining"`, and `reason: "worker_draining"` until
+the cohort is resumed.
+
 Monitor the drain by polling `list_task_queue_build_ids` and watching
 `active_worker_count` and `draining_worker_count` fall to zero. At that point
 the cohort shows `rollout_status: "draining"` with zero worker counts, meaning

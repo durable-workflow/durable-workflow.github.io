@@ -267,7 +267,9 @@ worker slots, active lease caps, dispatch budgets, and query-task backpressure.
 Drain and resume take a JSON body of `{"build_id": "..."}` (or
 `{"build_id": null}` for the unversioned cohort), are idempotent, and persist
 operator intent on the cohort so rollout state stays honest even after the
-workers are removed. See
+workers are removed. Once a worker heartbeat observes `drain_intent:
+"draining"`, worker poll routes return HTTP `409` with `poll_status:
+"draining"` and `reason: "worker_draining"` instead of leasing new tasks. See
 [Worker Build-Id Rollout](/docs/2.0/polyglot/worker-build-id-rollout) for the
 full unversioned-to-versioned cutover, canary, drain, and rollback lifecycle.
 
