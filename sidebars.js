@@ -119,6 +119,7 @@ const sidebars = {
       items: [
         'polyglot/server',
         'polyglot/deployment-modes',
+        'polyglot/cloud-control-plane',
         'polyglot/server-config-reference',
         'polyglot/server-api-reference',
         'polyglot/server-role-topology',

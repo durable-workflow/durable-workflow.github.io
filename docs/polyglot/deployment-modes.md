@@ -101,6 +101,7 @@ Three migration rules are non-negotiable:
 
 - [Installation](/docs/2.0/installation)
 - [Server](/docs/2.0/polyglot/server)
+- [Cloud Control Plane](/docs/2.0/polyglot/cloud-control-plane)
 - [Embedded to Server Migration](/docs/2.0/polyglot/embedded-to-server)
 - [Server Role Topology](/docs/2.0/polyglot/server-role-topology)
 - [Server Config Reference](/docs/2.0/polyglot/server-config-reference)

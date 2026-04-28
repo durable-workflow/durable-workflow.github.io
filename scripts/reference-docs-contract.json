@@ -184,6 +184,30 @@
       ]
     },
     {
+      "path": "polyglot/cloud-control-plane.md",
+      "title": "Cloud Control Plane",
+      "minimumCodeFences": 2,
+      "requiredHeadings": [
+        "One Hosted Control Plane, Region-Scoped Runtime Targets",
+        "What The Runtime Target Owns",
+        "Worker Connectivity Contract",
+        "Regional Placement And Failover Boundary",
+        "Private Networking And Support-Led Topologies",
+        "Migration And Hybrid Adoption"
+      ],
+      "requiredTerms": [
+        "hosted control plane",
+        "runtime target",
+        "customer-run workers are first-class in Cloud mode",
+        "Workers connect to the runtime target",
+        "Cloud mode is a hosted control plane, not a second worker API.",
+        "Automatic multi-region runtime failover is not a self-serve 2.0 promise."
+      ],
+      "requiredEndpoints": [
+        "/api/cluster/info"
+      ]
+    },
+    {
       "path": "polyglot/server-api-reference.md",
       "title": "Server API Reference",
       "minimumCodeFences": 4,

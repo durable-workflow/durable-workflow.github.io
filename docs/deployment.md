@@ -12,7 +12,8 @@ auth, readiness, and upgrade contract explicit.
 
 This guide covers the standalone server distribution. If you run the Laravel
 package embedded in your own app, use the package installation and configuration
-pages instead.
+pages instead. If you want the hosted control-plane contract above region-scoped
+runtime targets, see [Cloud Control Plane](/docs/2.0/polyglot/cloud-control-plane).
 
 ## Deployment support matrix
 

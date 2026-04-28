@@ -290,6 +290,24 @@
       "action": "Keep mapped until node-role searches land on the topology manifest contract instead of scattered deployment prose."
     },
     {
+      "query": "cloud control plane runtime target worker connectivity",
+      "target": "polyglot/cloud-control-plane.md",
+      "related": ["polyglot/server.md", "deployment.md"],
+      "aliases": ["Durable Workflow Cloud", "runtime target", "hybrid workers"],
+      "source": "issue 97 cloud contract follow-up",
+      "lastReviewed": "2026-04-28",
+      "action": "Keep mapped until Cloud control-plane and runtime-target searches land on the dedicated contract page."
+    },
+    {
+      "query": "private networking relay multi region failover cloud",
+      "target": "polyglot/cloud-control-plane.md",
+      "related": ["deployment.md", "support.md"],
+      "aliases": ["support-led topology", "private networking", "multi-region"],
+      "source": "issue 97 cloud contract follow-up",
+      "lastReviewed": "2026-04-28",
+      "action": "Keep mapped until private-networking and failover searches land on the Cloud control-plane boundary instead of scattered support pages."
+    },
+    {
       "query": "webhook bridge adapter external handler",
       "target": "polyglot/external-execution.md",
       "related": ["features/webhooks.md"],
