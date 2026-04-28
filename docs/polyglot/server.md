@@ -500,6 +500,14 @@ container names or rollout runbooks.
             "read_roles": ["matching", "control_plane", "history_projection"]
           }
         }
+      },
+      "worker_compatibility_heartbeats": {
+        "mutations": {
+          "heartbeat": {
+            "owning_roles": ["execution_plane"],
+            "read_roles": ["matching", "history_projection", "api_ingress"]
+          }
+        }
       }
     },
     "failure_domains": {
@@ -617,6 +625,26 @@ container names or rollout runbooks.
         "result": "workers can partition by namespace, connection, queue, and compatibility"
       }
     ]
+  },
+  "coordination_health": {
+    "schema": "durable-workflow.v2.coordination-health.contract",
+    "version": 1,
+    "namespace_scope": "all_namespaces",
+    "status": "ok",
+    "http_status": 200,
+    "warning_checks": [],
+    "error_checks": [],
+    "categories": {
+      "correctness": "ok"
+    },
+    "checks": [
+      {
+        "name": "worker_compatibility",
+        "status": "ok",
+        "category": "correctness",
+        "message": null
+      }
+    ]
   }
 }
 ```
@@ -630,8 +658,9 @@ before assuming v4-only keys such as `current_process_class`,
 
 Read the fields as follows:
 
-- `supported_shapes` is the product contract for legal topology names. It does
-  not mean every published artifact starts in every shape.
+- `supported_shapes` names the legal product topologies. `supported_topologies`
+  is the richer machine-readable map when automation also needs each shape's
+  `execution_mode` and exact process-class-to-role assignments.
 - `current_process_class`, `current_shape`, and `current_roles` describe the
   node you queried right now. For the published standalone server
   distribution, API nodes report `server_http_node` inside the
@@ -639,15 +668,14 @@ Read the fields as follows:
 - `execution_mode` distinguishes embedded local queue execution
   (`local_queue_worker`) from standalone server worker-protocol execution
   (`remote_worker_protocol`).
+- `role_catalog` tells you which plane each role belongs to, whether the
+  responding node currently hosts it, whether it runs user code, whether it
+  accepts external HTTP, and which steady-state interface owns that role.
 - `matching_role` shows whether the node still runs the in-worker wake path or
   expects a dedicated repair or matching loop to own that sweep. The same
   block freezes the `shape`, `partition_primitives`, and
   `backpressure_model` values operators should use when reasoning about ready
   task discovery and lease-based admission.
-- `role_catalog` is the per-role capability map for the responding node. Use
-  it to see which logical roles the node hosts, whether those roles live in
-  the control plane or execution plane, whether they run user code, whether
-  they accept external HTTP, and which steady-state interface they serve.
 - `shape_assignments` maps each supported shape to the process classes and role
   bundles that shape is allowed to run.
 - `authority_surfaces` is the finer-grained mutation map. It names the durable
@@ -664,6 +692,10 @@ Read the fields as follows:
   when you need a stable machine-readable inventory of each supported shape's
   `execution_mode` and process-class role bundles without walking the more
   narrative `shape_assignments` list.
+- `coordination_health` is the fleet-wide rollout-safety summary published from
+  the same discovery call. It uses `all_namespaces` scope, summarizes the
+  current status and HTTP posture, and lists the normalized warning/error check
+  names that also feed readiness health.
 - `migration_path` lists the ordered rollout steps from today's standalone
   distribution toward more isolated role boundaries without introducing a
   second engine.
@@ -672,10 +704,12 @@ This keeps the role split as a topology change, not a second engine or a
 separate control-plane API. When a deployment evolves from a narrow
 `standalone_server` fleet toward a more explicit `split_control_execution`
 shape, operators still read the same discovery surface. The values under
-`current_shape`, `current_roles`, `execution_mode`, `matching_role`,
-`shape_assignments`, `authority_boundaries`, `failure_domains`,
-`scaling_boundaries`, and `migration_path` are versioned as one manifest so
-rollout tooling can reason about the same topology surface the server ships.
+`current_process_class`, `current_shape`, `current_roles`, `execution_mode`,
+`role_catalog`, `matching_role`, `shape_assignments`,
+`authority_boundaries`, `authority_surfaces`, `failure_domains`,
+`scaling_boundaries`, `supported_topologies`, and `migration_path` are
+versioned as one manifest so rollout tooling can reason about the same
+topology surface the server ships.
 
 For carrier-neutral external handlers, the same endpoint publishes
 `worker_protocol.external_execution_surface_contract`. That manifest names the

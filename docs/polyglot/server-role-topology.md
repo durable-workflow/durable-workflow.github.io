@@ -221,6 +221,8 @@ Key fields to inspect:
 - `schema` and `version` tell you which topology manifest schema you are
   parsing. Treat `topology.version` as the manifest version, not as the server
   build version.
+- `supported_shapes` is the product vocabulary; `supported_topologies` is the
+  machine-readable map of execution modes and process-class role bundles.
 - `current_process_class`, `current_shape`, and `current_roles` tell you what
   the responding node owns right now.
 - `execution_mode` distinguishes `local_queue_worker` embedded execution from
