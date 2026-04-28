@@ -82,12 +82,18 @@ particular:
 
 | Field family | Meaning |
 | --- | --- |
-| `operator_metrics.backlog.*` | Durable runnable, delayed, leased, unhealthy, repair-needed, claim-failed, and compatibility-blocked work counts. |
+| `operator_metrics.backlog.*` | Durable runnable, delayed, leased, unhealthy, repair-needed, claim-failed, and compatibility-blocked work counts, plus the fleet-level `tasks_added_last_minute` and `tasks_dispatched_last_minute` queue-flow facts. |
 | `operator_metrics.repair.*` | Repair-loop sweep footprint, including selected candidates, candidate age, and scan pressure. |
 | `operator_metrics.projections.*` | Projection-drift counts for run summaries, waits, timelines, timers, and lineage. |
 | `operator_metrics.command_contracts.*` | Legacy WorkflowStarted contract snapshots that still need backfill. |
 | `operator_metrics.history.*` | History-size and event-count pressure plus continue-as-new recommendations. |
 | `engine_source`, `readiness_contract` | Whether Waterline is actively using the v2 operator bridge and which readiness contract governs that state. |
+
+The queue-flow fields answer a specific operator question: is durable queue
+input arriving faster than the system is dispatching it? `tasks_added_last_minute`
+counts distinct durable task rows created in the trailing 60 seconds, and
+`tasks_dispatched_last_minute` counts distinct durable task rows whose latest
+successful dispatch landed in that same window.
 
 `GET /waterline/api/v2/health` uses the same distinction: `error` is blocking,
 `warning` is advisory, and `ok` means the current v2 operator bridge is ready.

@@ -134,13 +134,23 @@ Use Waterline dashboard stats and queue views for durable task state:
 | `operator_metrics.backlog.runnable_tasks` | Durable tasks that are ready to be claimed now. |
 | `operator_metrics.backlog.delayed_tasks` | Durable tasks that exist but are still waiting for `available_at`. |
 | `operator_metrics.backlog.leased_tasks` | Durable tasks currently claimed by a worker. |
+| `operator_metrics.backlog.tasks_added_last_minute` | Distinct durable task rows created in the trailing 60 seconds. Treat this as durable queue inflow, not as a transport-attempt counter. |
+| `operator_metrics.backlog.tasks_dispatched_last_minute` | Distinct durable task rows whose latest successful `last_dispatched_at` landed in the trailing 60 seconds. Compare it with `tasks_added_last_minute` to tell whether durable inflow is outrunning dispatch. |
+| `operator_metrics.tasks.oldest_ready_due_at`, `operator_metrics.tasks.max_ready_due_age_ms` | The oldest currently actionable task and its ready-to-dispatch age. This is the machine-readable backlog-latency pair behind "oldest ready task". |
 | `operator_metrics.backlog.unhealthy_tasks` | Durable tasks with dispatch failure, claim failure, overdue dispatch, or expired lease state. |
 | `operator_metrics.backlog.repair_needed_runs` | Open runs that do not currently have a trusted durable resume path. |
-| Queue backlog age / oldest ready task | The durable ready-to-dispatch lag for the oldest ready work. |
+| `operator_metrics.tasks.oldest_lease_expired_at`, `operator_metrics.tasks.max_lease_expired_age_ms` | The oldest expired lease and its age. Use this pair as the primary stuck-lease and duplicate-risk age indicator. |
+| `operator_metrics.backlog.oldest_compatibility_blocked_started_at`, `operator_metrics.backlog.max_compatibility_blocked_age_ms` | The oldest mixed-build routing block and its age. Use this when work is preserved but no compatible worker is currently eligible to claim it. |
 | Active vs stale pollers | Whether registered workers are still heartbeating for a queue. |
 | Current leases | Which workflow or activity tasks are leased right now and whether the lease is expired. |
 
 These facts describe durable workflow-task and activity-task traffic only.
+
+When you need queue-local drill-down instead of fleet totals, use the server
+task-queue visibility routes. Their per-queue `stats.tasks_added_last_minute`
+and `stats.tasks_dispatched_last_minute` fields expose the same durable
+queue-flow facts one queue at a time, which is how you tell whether a single
+hot queue is hiding inside otherwise healthy fleet totals.
 
 ### Worker and SDK telemetry
 
