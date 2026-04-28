@@ -81,6 +81,11 @@ Two details matter in practice:
 - The published self-hosted server artifacts start in the
   `standalone_server` shape, even though the manifest also advertises
   `split_control_execution` as a supported product topology.
+- Those published Compose artifacts also set
+  `DW_SERVER_PROCESS_CLASS=server_http_node`, `scheduler_node`, or
+  `worker_node` per service while keeping
+  `DW_SERVER_TOPOLOGY_SHAPE=standalone_server`. Read `/api/cluster/info` to
+  verify the runtime identity instead of inferring it from container names.
 - `current_shape` and `current_roles` describe the node you queried right now,
   not the whole fleet. A standalone server API node reports
   `api_ingress`, `control_plane`, `matching`, and `history_projection`; the

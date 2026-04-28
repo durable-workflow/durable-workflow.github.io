@@ -59,13 +59,23 @@ docker compose up -d
 
 # Verify
 curl http://localhost:8080/api/health
+curl http://localhost:8080/api/cluster/info \
+  | jq '.topology | {current_shape, current_process_class, current_roles}'
 ```
 
 This starts:
-- **server** — the API and worker services
+- **server** — the API node serving `api_ingress`, `control_plane`, `matching`, and `history_projection`
+- **worker** — the execution-plane queue worker
+- **scheduler** — the singleton schedule and maintenance runner
 - **mysql** — the workflow state database
 - **redis** — cache and queue backend
 - **bootstrap** — one-shot service that runs migrations and seeds the default namespace
+
+The published Compose stack pins `DW_SERVER_TOPOLOGY_SHAPE=standalone_server`
+for the long-running services and sets `DW_SERVER_PROCESS_CLASS` per service so
+cluster discovery can distinguish the API, scheduler, and worker processes
+without relying on container names. Keep those defaults unless you are
+intentionally testing a different supported topology shape.
 
 ### Ports
 
