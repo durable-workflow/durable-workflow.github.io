@@ -136,6 +136,7 @@ Use Waterline dashboard stats and queue views for durable task state:
 | `operator_metrics.backlog.leased_tasks` | Durable tasks currently claimed by a worker. |
 | `operator_metrics.backlog.tasks_added_last_minute` | Distinct durable task rows created in the trailing 60 seconds. Treat this as durable queue inflow, not as a transport-attempt counter. |
 | `operator_metrics.backlog.tasks_dispatched_last_minute` | Distinct durable task rows whose latest successful `last_dispatched_at` landed in the trailing 60 seconds. Compare it with `tasks_added_last_minute` to tell whether durable inflow is outrunning dispatch. |
+| `operator_metrics.starts.pending_runs`, `operator_metrics.starts.pending_commands`, `operator_metrics.starts.ready_tasks`, `operator_metrics.starts.oldest_pending_start_at`, `operator_metrics.starts.max_pending_ms` | Durable workflow-start backlog. Use these facts to distinguish starts that have been accepted but have not yet become active workflow-task work from ordinary worker-side queue lag. |
 | `operator_metrics.tasks.oldest_ready_due_at`, `operator_metrics.tasks.max_ready_due_age_ms` | The oldest currently actionable task and its ready-to-dispatch age. This is the machine-readable backlog-latency pair behind "oldest ready task". |
 | `operator_metrics.backlog.unhealthy_tasks` | Durable tasks with dispatch failure, claim failure, overdue dispatch, or expired lease state. |
 | `operator_metrics.backlog.repair_needed_runs` | Open runs that do not currently have a trusted durable resume path. |
@@ -153,6 +154,10 @@ and admission budgets. Those routes do not currently expose per-queue
 the fleet-level `operator_metrics.backlog.*` pair above to compare durable
 inflow with dispatch, then use queue-local routes to see which queue is
 building backlog or has no available worker capacity.
+
+Use `operator_metrics.starts.*` when new workflow starts appear stuck even
+though steady-state queue lag looks normal. Those facts separate control-plane
+start admission and first-task creation debt from downstream worker pickup.
 
 ### Worker and SDK telemetry
 
@@ -215,6 +220,7 @@ window for the topology you operate.
 | Blocking readiness | `workflow:v2:doctor --strict`, `GET /waterline/api/v2/health` | Blocking | `doctor --strict` returns an error or the health endpoint returns `status = error` / HTTP `503` | Stop rollout or traffic shift, fix the blocking prerequisite, then rerun readiness and compatibility checks. |
 | Compatible-worker coverage | `operator_metrics.workers.*`, `worker_compatibility` health check, run diagnostic `no_compatible_worker_for_task` | Blocking | `active_workers_supporting_required = 0` for a namespace or required `(connection, queue)` scope | Drain incompatible workers, register compatible workers, and confirm the `correctness` rollup clears before trusting new claims. |
 | Durable queue lag | Waterline queue views, `operator_metrics.backlog.*`, worker `schedule_to_start` telemetry | Blocking when sustained; advisory when brief | The oldest ready-task age or schedule-to-start latency stays above the published topology baseline while compatible workers are available | Add worker capacity, inspect task-queue admission limits, and verify the scheduler or matching path is still making forward progress. |
+| Workflow-start backlog | `operator_metrics.starts.*`, control-plane start telemetry, worker `schedule_to_start` telemetry for first workflow tasks | Blocking when sustained; advisory when brief | `pending_commands`, `ready_tasks`, or `max_pending_ms` stay above the published topology baseline while compatible workers and queue capacity are available | Inspect the start boundary end to end: confirm start commands are turning into durable tasks, verify matching or dispatch is creating the first task promptly, and separate start-path debt from general worker lag before scaling. |
 | Projection drift and repair debt | `run_summary_projection` / `selected_run_projections` health checks, `operator_metrics.repair.*` | Advisory | Drift warnings persist past one planned rebuild window or the max candidate age keeps climbing | Run the rebuild or repair previews, execute the repair, then verify the warning clears and stale ages return to baseline. |
 | Retry or failure storm | `operator_metrics.backlog.unhealthy_tasks`, durable run diagnostics, worker error telemetry | Advisory, escalating to blocking if it prevents durable progress | Dispatch-failed, claim-failed, expired-lease, or retry-exhaustion facts climb above the topology baseline and stay elevated | Inspect the failing task family, compare worker telemetry with durable error facts, and decide whether to drain traffic or isolate the affected queue. |
 | Wake acceleration degradation | `long_poll_wake_acceleration` health check and the `acceleration` category rollup | Advisory | The acceleration warning persists after cache or notifier maintenance windows | Investigate cache or wake propagation health. Do not treat this as a correctness outage unless the `correctness` rollup also degrades. |
@@ -332,6 +338,7 @@ traffic depends on them:
 | --- | --- | --- |
 | Projection health | Steady-state `needs_rebuild = 0`, rebuild duration after intentional drift, and stale/orphan cleanup time | `/waterline/api/v2/health`, `/waterline/api/stats`, `workflow:v2:rebuild-projections` |
 | Queue pressure | Backlog age, oldest ready task age, runnable vs delayed task counts, stale poller count | Waterline dashboard stats and queue views |
+| Workflow-start latency | Accepted start commands waiting for first-task creation, oldest pending-start age, and first-task pickup after admission | `operator_metrics.starts.*` plus worker `schedule_to_start` telemetry |
 | Schedule-to-start latency | Workflow and activity queue wait from enqueue to start | Worker SDK metrics |
 | Timer fan-out wake-up behavior | Wake-signal propagation time and the lag between scheduled fire time and ready-task visibility during burst timers | Worker telemetry plus same-region wake coordination checks |
 | Repair-loop sweep cost | Candidate counts, selected counts, max candidate age, max missing-run age, and scan-pressure behavior | `operator_metrics.repair.*` |
