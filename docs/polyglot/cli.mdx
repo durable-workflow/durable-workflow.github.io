@@ -280,16 +280,25 @@ expands the same server payload with pollers, current leases, queue,
 namespace, and downstream budget-group dispatch capacity, remaining capacity,
 budget source, and query-task pending capacity.
 
-For scripts, the task-queue JSON contract also includes
-`stats.approximate_backlog_count`, `stats.approximate_backlog_age_seconds`,
-`stats.tasks_added_last_minute`, and `stats.tasks_dispatched_last_minute`, so
-automation can distinguish missing workers from admission throttling or a
-queue whose durable input rate is outrunning dispatch:
+For scripts, `dw task-queue:describe --json` exposes queue-local backlog,
+lease, poller, and admission state. Use it to distinguish missing workers from
+admission throttling or a single queue that is building backlog:
 
 ```bash
 dw task-queue:describe orders --json | jq '.stats | {
   approximate_backlog_count,
   approximate_backlog_age_seconds,
+  workflow_tasks,
+  activity_tasks
+}'
+```
+
+Fleet-level durable inflow versus dispatch rates do not come from the
+task-queue JSON contract. Read them from `dw system:operator-metrics --json`
+instead:
+
+```bash
+dw system:operator-metrics --json | jq '.operator_metrics.backlog | {
   tasks_added_last_minute,
   tasks_dispatched_last_minute
 }'

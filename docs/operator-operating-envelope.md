@@ -147,10 +147,12 @@ Use Waterline dashboard stats and queue views for durable task state:
 These facts describe durable workflow-task and activity-task traffic only.
 
 When you need queue-local drill-down instead of fleet totals, use the server
-task-queue visibility routes. Their per-queue `stats.tasks_added_last_minute`
-and `stats.tasks_dispatched_last_minute` fields expose the same durable
-queue-flow facts one queue at a time, which is how you tell whether a single
-hot queue is hiding inside otherwise healthy fleet totals.
+task-queue visibility routes for backlog age, poller state, current leases,
+and admission budgets. Those routes do not currently expose per-queue
+`stats.tasks_added_last_minute` or `stats.tasks_dispatched_last_minute`; use
+the fleet-level `operator_metrics.backlog.*` pair above to compare durable
+inflow with dispatch, then use queue-local routes to see which queue is
+building backlog or has no available worker capacity.
 
 ### Worker and SDK telemetry
 
