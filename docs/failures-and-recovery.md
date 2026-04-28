@@ -139,17 +139,16 @@ The retry task records `retry_of_task_id`, `retry_after_attempt_id`, `retry_afte
 
 `Workflow\Exceptions\NonRetryableExceptionContract` still short-circuits the retry policy: throwing a non-retryable exception fails the activity execution immediately and resumes the workflow with the exception.
 
-### Late completions after lease expiry
+### Activity execution identity and idempotency
 
-An activity worker can finish external work, lose its lease, and then report
-completion or failure after another worker has already reclaimed the durable
-task. That is a normal distributed-systems race, not proof that the first
-worker never ran.
+Retry is not the only reason the same logical activity can be observed more than once. Lease expiry, worker loss, delayed completion reporting, and redelivery can all produce another attempt or a stale completion report for the same durable activity execution.
 
-When that happens:
+- `activity_execution_id` identifies the logical activity across retries and redelivery. Use it as the default idempotency key for remote side effects.
+- `activity_attempt_id` identifies one specific try of that logical activity. Use it only when a downstream system must distinguish separate attempts.
+- A late completion or failure report from a superseded attempt is normal stale-attempt behavior, not proof that the engine committed the same attempt twice.
 
-- treat `activity_execution_id` as the logical unit of work across retries
-- treat `activity_attempt_id` as one concrete try of that logical work
+When operators investigate a late completion after lease expiry:
+
 - trust Waterline, history export, or the server API for which attempt won the
   durable race
 - do not assume a rejected late completion means the remote side effect did not

@@ -115,8 +115,47 @@
         "Every activity attempt goes through the queue.",
         "There is no API for local activities in v2.0.",
         "There is no session-creation API in v2.0.",
+        "activity_execution_id",
+        "activity_attempt_id",
         "sideEffect(...)",
         "ordinary replay"
+      ]
+    },
+    {
+      "path": "how-it-works.md",
+      "title": "How It Works",
+      "minimumCodeFences": 1,
+      "requiredHeadings": [
+        "Runtime",
+        "Activities",
+        "Execution Guarantees",
+        "Queues",
+        "Determinism"
+      ],
+      "requiredTerms": [
+        "Workflow code is replayed.",
+        "Activities are at-least-once queued work.",
+        "activity_execution_id",
+        "activity_attempt_id",
+        "Activity Execution Model",
+        "Failures and Recovery"
+      ]
+    },
+    {
+      "path": "failures-and-recovery.md",
+      "title": "Failures and Recovery",
+      "minimumCodeFences": 4,
+      "requiredHeadings": [
+        "Handling Exceptions",
+        "Activity Retries",
+        "Activity execution identity and idempotency",
+        "Workflow-Level Retry"
+      ],
+      "requiredTerms": [
+        "activity_execution_id",
+        "activity_attempt_id",
+        "default idempotency key",
+        "stale-attempt behavior"
       ]
     },
     {

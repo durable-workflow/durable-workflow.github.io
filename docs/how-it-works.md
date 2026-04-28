@@ -37,9 +37,19 @@ queueing an activity, use [`sideEffect(...)`](./features/side-effects.md). For
 the full contract, see
 [Activity Execution Model](./features/activity-execution-model.md).
 
+## Execution Guarantees
+
+Workflow code and activity code have different repeat-execution semantics:
+
+- **Workflow code is replayed.** Re-delivering a workflow task rebuilds state from durable history and re-runs deterministic authoring code. Replay does not re-run external side effects.
+- **Activities are at-least-once queued work.** A logical activity may be retried, redelivered after lease expiry, or re-observed after worker loss. Duplicate delivery is a normal distributed-systems condition, not a bug by itself.
+- **Activity identity is durable.** `activity_execution_id` identifies one logical activity execution across retries and redelivery, while `activity_attempt_id` identifies an individual try. Use `activity_execution_id` as the default remote idempotency key; use `activity_attempt_id` only when a downstream system needs per-attempt correlation.
+
+See [Activity Execution Model](./features/activity-execution-model.md) and [Failures and Recovery](./failures-and-recovery.md) for the full v2 contract.
+
 ## Queues
 
-Queued jobs are background processes that run at a later time. Laravel supports queues via Amazon SQS, Redis, or a relational database. Workflows and activities are both queued jobs, but they behave a little differently. A workflow is dispatched multiple times during normal operation: it runs, dispatches one or more activities, and then exits until the activities complete. An activity executes once during normal operation and is only retried on error.
+Queued jobs are background processes that run at a later time. Laravel supports queues via Amazon SQS, Redis, or a relational database. Workflows and activities are both queued jobs, but they behave a little differently. A workflow is dispatched multiple times during normal operation: it runs, dispatches one or more activities, and then exits until the activities complete. An activity is an at-least-once queued task: the common case is one successful attempt, but retry, lease expiry, or worker loss can cause the same logical activity execution to be delivered more than once.
 
 ## Example
 
