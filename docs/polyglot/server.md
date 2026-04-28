@@ -565,13 +565,11 @@ slots, or the server is enforcing admission limits. `GET /api/task-queues`
 returns one summary entry per queue; `GET /api/task-queues/{taskQueue}`
 expands one queue with `pollers` and `current_leases`. Both routes expose
 `stats.approximate_backlog_count`, `stats.approximate_backlog_age_seconds`,
-and the per-kind `stats.workflow_tasks.*` / `stats.activity_tasks.*` readiness
-and lease counters. The detailed route also includes the `admission` object so
+`stats.tasks_added_last_minute`, `stats.tasks_dispatched_last_minute`, and the
+per-kind `stats.workflow_tasks.*` / `stats.activity_tasks.*` readiness and
+lease counters. The detailed route also includes the `admission` object so
 automation can separate worker-capacity pressure from server-side queue or
-query-task throttling. Fleet-level durable inflow versus dispatch rates live on
-the operator-metrics surfaces (`operator_metrics.backlog.tasks_added_last_minute`
-and `operator_metrics.backlog.tasks_dispatched_last_minute`), not on the
-per-queue task-queue routes.
+query-task throttling while comparing queue-local durable inflow with dispatch.
 
 ### Worker Protocol
 
