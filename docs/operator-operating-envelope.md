@@ -211,6 +211,25 @@ admission budgets, and per-queue `stats.tasks_added_last_minute` /
 `stats.tasks_dispatched_last_minute` flow facts. Use those queue-local fields
 to see whether one hot queue is hiding inside otherwise healthy fleet totals.
 
+Waterline's `GET /waterline/api/v2/health` surface publishes the same queue
+drill-down under `queue_visibility.*` for the configured namespace. Treat these
+field families as the typed queue-health contract:
+
+| Field family | Meaning |
+| --- | --- |
+| `queue_visibility.available`, `queue_visibility.reason` | Whether Waterline can currently produce queue-local visibility for the configured namespace, and why not when it cannot. |
+| `queue_visibility.task_queues[].stats.approximate_backlog_count`, `queue_visibility.task_queues[].stats.approximate_backlog_age` | Queue-local backlog count and oldest durable backlog age. |
+| `queue_visibility.task_queues[].stats.tasks_added_last_minute`, `queue_visibility.task_queues[].stats.tasks_dispatched_last_minute` | Per-queue durable inflow versus dispatch over the trailing 60 seconds. Use these when one hot queue is hidden inside healthy fleet totals. |
+| `queue_visibility.task_queues[].stats.pollers.active_count`, `queue_visibility.task_queues[].stats.pollers.stale_count`, `queue_visibility.task_queues[].stats.pollers.stale_after_seconds` | Healthy versus stale pollers on that queue and the stale-heartbeat threshold the snapshot used. |
+| `queue_visibility.task_queues[].stats.workflow_tasks.*`, `queue_visibility.task_queues[].stats.activity_tasks.*` | Queue-local ready, leased, and expired-lease counts split by workflow-task versus activity-task traffic. |
+| `queue_visibility.task_queues[].repair.candidates`, `dispatch_failed`, `expired_leases`, `dispatch_overdue` | Queue-local repair pressure: durable tasks that already need repair, are dispatch-failed, hold expired leases, or are overdue for redispatch. |
+| `queue_visibility.task_queues[].repair.oldest_dispatch_failed_at`, `max_dispatch_failed_age_ms`, `oldest_lease_expired_at`, `max_lease_expired_age_ms`, `oldest_dispatch_overdue_since`, `max_dispatch_overdue_age_ms` | Queue-local age signals for the stalest dispatch failure, expired lease, and dispatch-overdue durable task. |
+
+`coordination_alerts[]` on the same `GET /waterline/api/v2/health` payload is
+the operator roll-up for those queue-local facts plus the health-check list.
+Use it as the page-ready summary for warnings and errors, then drill into the
+matching `queue_visibility` or `checks` entries for evidence.
+
 Treat the queue-local admission status as the first-class slot and poller
 signal for that queue. `saturated` means live workers are present but every
 registered slot is already leased. `throttled` means a server-side lease or

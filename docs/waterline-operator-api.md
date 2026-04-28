@@ -88,6 +88,11 @@ particular:
 | `operator_metrics.projections.*` | Projection-drift counts for run summaries, waits, timelines, timers, and lineage. |
 | `operator_metrics.command_contracts.*` | Legacy WorkflowStarted contract snapshots that still need backfill. |
 | `operator_metrics.history.*` | History-size and event-count pressure plus continue-as-new recommendations. |
+| `queue_visibility.available`, `queue_visibility.reason` | Whether namespace-scoped queue visibility is available on this host app, and the reason when it is not. |
+| `queue_visibility.task_queues[].stats.*` | Queue-local backlog, backlog age, poller counts, workflow/activity ready-versus-leased counts, and per-queue `tasks_added_last_minute` / `tasks_dispatched_last_minute` flow facts. |
+| `queue_visibility.task_queues[].repair.*` | Queue-local repair pressure, including candidates, dispatch failures, expired leases, dispatch-overdue counts, and the oldest age for each condition. |
+| `coordination_alerts[]` | Roll-up warnings and errors derived from the health checks plus queue-visibility risks such as backlog without pollers, stale pollers, or aged repair candidates. |
+| `checks[]`, `categories.*` | Blocking versus advisory v2 health checks, with per-check `category = correctness | acceleration` and the category rollups Waterline uses on the workers surface. |
 | `engine_source`, `readiness_contract` | Whether Waterline is actively using the v2 operator bridge and which readiness contract governs that state. |
 
 The queue-flow fields answer a specific operator question: is durable queue
@@ -101,6 +106,12 @@ than by themselves. Waterline tells you whether durable inflow is outrunning
 dispatch, while `/api/task-queues` and `/api/task-queues/{taskQueue}` tell you
 whether the hot queue is `saturated`, intentionally `throttled`,
 `no_active_workers`, or otherwise short on healthy pollers or slots.
+
+`GET /waterline/api/v2/health` exposes the same queue-local evidence without
+leaving the Waterline surface. Scripts and dashboards that need one namespace's
+current queue posture should read `queue_visibility.task_queues[]` for
+per-queue stats and `coordination_alerts[]` for the summary of which queue or
+health-check condition currently needs operator attention.
 
 The `matching_role` fields answer a different question: which matching shape is
 this node currently serving? `shape` distinguishes `in_worker` from
