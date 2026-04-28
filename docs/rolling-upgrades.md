@@ -181,12 +181,14 @@ doing broad ready-task sweeps. See
 [Task Matching and Dispatch](/docs/2.0/polyglot/task-matching-dispatch) for
 the documented `workflow:v2:repair-pass --loop` plus
 `DW_V2_MATCHING_ROLE_QUEUE_WAKE=0` shape. Verify the live node contract from
-`GET /api/cluster/info`: `topology.current_process_class` should still match
-the node you are cutting over, while `topology.matching_role.shape` and
-`topology.matching_role.wake_owner` should show `in_worker` /
-`worker_loop` for the default shape or `dedicated` /
-`dedicated_repair_pass` where the dedicated matching daemon now owns broad
-ready-task discovery.
+`GET /api/cluster/info`: `topology.current_shape` should still match the
+deployment you are cutting over, `topology.current_roles` should still match
+the documented role bundle for that node, and
+`topology.matching_role.queue_wake_enabled` plus
+`topology.matching_role.wake_owner` should show the expected broad-ready-task
+owner. The default shape reports `queue_wake_enabled: true` and
+`wake_owner: "worker_loop"`; dedicated matching rollouts flip execution nodes
+to `queue_wake_enabled: false` and `wake_owner: "dedicated_repair_pass"`.
 
 ## Readiness and cutover
 
@@ -216,9 +218,12 @@ Cutover sequence for one API node:
 4. Wait for `GET /api/ready` to return 200 and for
    `GET /api/cluster/info` to advertise the new build identity. When the
    rollout changes the matching topology, also confirm
-   `topology.matching_role.task_dispatch_mode`, `shape`,
-   `partition_primitives`, and `backpressure_model` match the intended
-   deployment before returning the node to traffic.
+   `topology.matching_role.task_dispatch_mode`,
+   `topology.matching_role.queue_wake_enabled`, and
+   `topology.matching_role.wake_owner` match the intended deployment before
+   returning the node to traffic. Use `/api/system/operator-metrics` when you
+   also need the node-local `shape`, `partition_primitives`, or
+   `backpressure_model` matching contract.
 5. Return the node to rotation.
 
 Repeat one node at a time. Do not roll the next node until the

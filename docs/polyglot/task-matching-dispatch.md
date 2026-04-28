@@ -164,10 +164,9 @@ Treat these as tuning levers:
 
 Use these surfaces together:
 
-- `GET /api/cluster/info` for the per-node role topology: process class,
-  current roles, `matching_role.shape`, `wake_owner`, `task_dispatch_mode`,
-  the frozen `partition_primitives`, and the durable
-  `backpressure_model`
+- `GET /api/cluster/info` for the per-node role topology: `current_shape`,
+  current roles, and `matching_role.queue_wake_enabled`, `wake_owner`, and
+  `task_dispatch_mode`
 - task-queue visibility for ready depth, active slots, and throttling
 - worker fleet visibility for active vs stale pollers on each queue
 - `dw system:operator-metrics --json` or `/api/system/operator-metrics` for

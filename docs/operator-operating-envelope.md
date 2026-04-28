@@ -98,20 +98,20 @@ identity:
 | Field | Use it for |
 | --- | --- |
 | `topology.current_shape` | Confirms whether the node is currently advertising `embedded`, `standalone_server`, or `split_control_execution`. |
-| `topology.current_process_class` | Confirms which node class the process believes it is serving, such as `server_http_node`, `scheduler_node`, `worker_node`, `matching_node`, or `execution_node`. |
 | `topology.current_roles` | Confirms the logical roles actually hosted by this node. |
-| `topology.role_catalog` | Confirms whether the queried node owns `api_ingress`, `control_plane`, `matching`, `history_projection`, `scheduler`, or `execution_plane`. |
+| `topology.supported_shapes` | Confirms which deployment shapes the current server build publicly supports. |
+| `topology.shape_assignments` | Maps each supported shape to its documented process-class role bundles so you can compare the current role bundle against the supported topology. |
 
 Use those fields as the first topology-drift check during rollouts:
 
 - In the self-serve standalone-server shape, API nodes should continue to
-  report `server_http_node` with `api_ingress`, `control_plane`, `matching`,
-  and `history_projection`; scheduler nodes should report `scheduler_node`;
-  worker nodes should report `worker_node` and `execution_plane`.
-- In the split-role shape, verify that each dedicated process class reports the
-  role it is supposed to own before you interpret backlog or scheduler lag as a
-  worker problem.
-- If `current_process_class` or `current_roles` drift from the deployment plan,
+  report the `api_ingress`, `control_plane`, `matching`, and
+  `history_projection` role bundle; scheduler nodes should report `scheduler`;
+  worker nodes should report `execution_plane`.
+- In the split-role shape, verify that each node's `current_roles` match one of
+  the documented role bundles under `shape_assignments` before you interpret
+  backlog or scheduler lag as a worker problem.
+- If `current_roles` drift from the deployment plan,
   treat queue and failover baselines as suspect until the node identity is
   corrected.
 

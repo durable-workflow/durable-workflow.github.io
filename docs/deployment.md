@@ -150,17 +150,16 @@ self-serve contract is intentionally narrow:
   not a supported clustered contract.
 - Check `GET /api/cluster/info` on each API node during rollout.
   `topology.current_shape` should remain `standalone_server`,
-  `topology.current_process_class` should remain `server_http_node`,
   `topology.current_roles` should include `api_ingress`, `control_plane`,
   `matching`, and `history_projection`, and `topology.execution_mode` should
   remain `remote_worker_protocol` for standalone server nodes. Use
   `topology.matching_role` to confirm the matching path you actually deployed:
-  default nodes report `shape: "in_worker"` with `wake_owner: "worker_loop"`,
-  while dedicated matching rollouts flip nodes with
-  `DW_V2_MATCHING_ROLE_QUEUE_WAKE=0` to `shape: "dedicated"` and
-  `wake_owner: "dedicated_repair_pass"`. The same block should continue to
-  advertise `partition_primitives` of `connection`, `queue`, `compatibility`,
-  and `namespace`, plus the `lease_ownership` `backpressure_model`. See
+  default nodes report `queue_wake_enabled: true` with
+  `wake_owner: "worker_loop"`, while dedicated matching rollouts flip nodes
+  with `DW_V2_MATCHING_ROLE_QUEUE_WAKE=0` to
+  `queue_wake_enabled: false` and `wake_owner: "dedicated_repair_pass"`.
+  The same block should continue to advertise the intended
+  `task_dispatch_mode`. See
   [Server Role Topology](/docs/2.0/polyglot/server-role-topology) for the
   field-by-field meaning of the topology manifest.
 - Scale external SDK workers independently from API nodes. Workers can run on

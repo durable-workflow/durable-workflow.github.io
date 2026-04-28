@@ -51,8 +51,6 @@ still honors the value.
 | --- | --- | --- | --- |
 | `DW_MODE` | `service` | Server mode: `service` makes external workers poll; `embedded` dispatches locally through the Laravel queue. | `WORKFLOW_SERVER_MODE` |
 | `DW_SERVER_ID` | `gethostname()` | Unique server instance identifier used in lease ownership and worker registration. | `WORKFLOW_SERVER_ID` |
-| `DW_SERVER_TOPOLOGY_SHAPE` | `standalone_server` | Deployment shape advertised from `GET /api/cluster/info` under `topology.current_shape`. Use it to distinguish `embedded`, `standalone_server`, and `split_control_execution` nodes. | `WORKFLOW_SERVER_TOPOLOGY_SHAPE` |
-| `DW_SERVER_PROCESS_CLASS` | `server_http_node` | Process class advertised from `GET /api/cluster/info` under `topology.current_process_class`. Use it to label API, scheduler, matching, and execution nodes correctly during split-role rollouts. | `WORKFLOW_SERVER_PROCESS_CLASS` |
 | `DW_SERVER_KEY` | generated at container boot | Optional server-internal runtime key. Docker images generate one automatically when unset. | - |
 | `DW_DEFAULT_NAMESPACE` | `default` | Namespace used when a request omits the namespace header. | `WORKFLOW_SERVER_DEFAULT_NAMESPACE` |
 | `DW_TASK_DISPATCH_MODE` | unset | Overrides `workflows.v2.task_dispatch_mode`; in service mode the server defaults to `poll` unless you set a different value. | `WORKFLOW_V2_TASK_DISPATCH_MODE` |

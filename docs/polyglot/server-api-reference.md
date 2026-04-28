@@ -74,10 +74,9 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/cluster/info" \
 
 `/api/cluster/info` intentionally does not require the control-plane version
 header because it is the endpoint that advertises the supported versions. The
-same response includes `coordination_health.routing_drains`, an all-namespaces
-summary of task queues that still have draining build-id cohorts so rollout
-automation can see active drains without walking every queue-specific
-`/build-ids` endpoint.
+same response also includes `coordination_health`, the all-namespaces rollout
+and readiness summary that mirrors the checks already feeding the server's
+readiness posture.
 
 ### Cluster Topology Manifest
 
@@ -85,35 +84,25 @@ automation can see active drains without walking every queue-specific
 schema `durable-workflow.v2.role-topology`. That manifest is the supported way
 to discover whether the node is currently acting as `standalone_server`,
 `embedded`, or `split_control_execution`, which roles it owns, and what the
-server expects from `matching_role`, `role_catalog`,
-`authority_boundaries`, `authority_surfaces`, `failure_domains`,
-`scaling_boundaries`, `supported_topologies`, and `migration_path`. The same
+server expects from `matching_role`, `shape_assignments`,
+`authority_boundaries`, `failure_domains`, `scaling_boundaries`, and
+`migration_path`. The same
 response also publishes live rollout-safety state for that node.
 
 Read the manifest as follows:
 
-- `topology.current_process_class`, `topology.current_shape`,
-  `topology.current_roles`, and `topology.execution_mode` tell you which role
-  shape the node is actually serving. `current_shape` and `current_roles`
-  describe the responding node, not the full fleet.
-- `topology.matching_role.shape`, `topology.matching_role.wake_owner`, and
+- `topology.current_shape`, `topology.current_roles`, and
+  `topology.execution_mode` tell you which role shape the node is actually
+  serving. `current_shape` and `current_roles` describe the responding node,
+  not the full fleet.
+- `topology.role_vocabulary` is the fixed list of legal v2 role names.
+- `topology.matching_role.queue_wake_enabled`,
+  `topology.matching_role.wake_owner`, and
   `topology.matching_role.task_dispatch_mode` tell you whether broad ready-task
   discovery is happening in-worker or through a dedicated matching-role sweep.
-- `topology.matching_role.partition_primitives` and
-  `topology.matching_role.backpressure_model` freeze the routing axes and
-  lease-based admission model the server expects workers and operators to
-  reason about.
-- `topology.role_catalog` is the per-role node map. It tells you whether the
-  responding node currently hosts a role, whether that role belongs to the
-  control plane or execution plane, whether it runs user code, whether it
-  accepts external HTTP, and which steady-state interface it serves.
-- `topology.authority_surfaces` is the mutation-family ownership map for
-  durable surfaces such as `workflow_tasks`, `activity_executions`,
-  `worker_compatibility_heartbeats`, and `worker_registrations`. Use it when
-  rollout or tooling decisions depend on which role owns a specific write.
-- `topology.supported_topologies` is the normalized inventory of legal product
-  shapes keyed by topology name, including each shape's `execution_mode` and
-  process-class role bundles.
+- `topology.shape_assignments` is the machine-readable process-class inventory
+  for each supported shape. Compare the current role bundle against that table
+  when you need to map the responding node onto a documented process class.
 - `coordination_health` summarizes fleet-wide rollout and compatibility risk in
   one machine-readable block.
 - `execution_mode` distinguishes `local_queue_worker` embedded execution from
@@ -129,7 +118,6 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/cluster/info" \
   -H "Authorization: Bearer $DURABLE_WORKFLOW_AUTH_TOKEN" \
   -H "X-Namespace: default" \
   | jq '{
-    current_process_class: .topology.current_process_class,
     current_shape: .topology.current_shape,
     current_roles: .topology.current_roles,
     execution_mode: .topology.execution_mode,
@@ -415,7 +403,7 @@ status routes before pass routes in automation.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/api/system/health` | Return the namespace-scoped rollout-safety and coordination health snapshot, including `routing_drains`. |
+| `GET` | `/api/system/health` | Return the namespace-scoped rollout-safety and coordination health snapshot, nested under `health`. |
 | `GET` | `/api/system/metrics` | Return bounded JSON metrics. |
 | `GET` | `/api/system/operator-metrics` | Return the namespace-scoped operator metrics snapshot for runs, tasks, backlog, repair, workers, and structural limits. |
 | `GET` | `/api/system/repair` | Inspect workflow repair backlog. |
@@ -426,10 +414,10 @@ status routes before pass routes in automation.
 | `POST` | `/api/system/retention/pass` | Run one retention cleanup pass. |
 
 `/api/system/health` is the quickest way to answer whether one namespace is
-healthy enough to keep taking traffic. It returns the categorized rollout-
-safety checks, the namespace's `operator_metrics`, and a `routing_drains`
-section that lists task queues whose draining build-id cohorts still need
-attention.
+healthy enough to keep taking traffic. It returns `{namespace, health}`, where
+`health` contains the categorized rollout-safety checks, the nested
+`health.operator_metrics` snapshot, and the structural-limit summary used by
+the health surface.
 
 `/api/system/operator-metrics` is the namespace-scoped companion to
 `/api/cluster/info` when you need raw backlog counts, compatibility-blocked

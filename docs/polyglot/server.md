@@ -64,7 +64,7 @@ docker compose up -d
 # Verify
 curl http://localhost:8080/api/health
 curl http://localhost:8080/api/cluster/info \
-  | jq '.topology | {current_shape, current_process_class, current_roles}'
+  | jq '.topology | {current_shape, current_roles, execution_mode}'
 ```
 
 This starts:
@@ -75,11 +75,9 @@ This starts:
 - **redis** — cache and queue backend
 - **bootstrap** — one-shot service that runs migrations and seeds the default namespace
 
-The published Compose stack pins `DW_SERVER_TOPOLOGY_SHAPE=standalone_server`
-for the long-running services and sets `DW_SERVER_PROCESS_CLASS` per service so
-cluster discovery can distinguish the API, scheduler, and worker processes
-without relying on container names. Keep those defaults unless you are
-intentionally testing a different supported topology shape.
+The published Compose stack starts in the `standalone_server` shape. Read
+`/api/cluster/info` to confirm the API node role bundle and matching-role
+settings instead of inferring duties from container names.
 
 ### Ports
 
@@ -343,7 +341,7 @@ container names or rollout runbooks.
 {
   "topology": {
     "schema": "durable-workflow.v2.role-topology",
-    "version": 4,
+    "version": 2,
     "supported_shapes": [
       "embedded",
       "standalone_server",
@@ -357,7 +355,6 @@ container names or rollout runbooks.
       "scheduler",
       "execution_plane"
     ],
-    "current_process_class": "server_http_node",
     "current_shape": "standalone_server",
     "current_roles": [
       "api_ingress",
@@ -368,32 +365,8 @@ container names or rollout runbooks.
     "execution_mode": "remote_worker_protocol",
     "matching_role": {
       "queue_wake_enabled": true,
-      "shape": "in_worker",
       "wake_owner": "worker_loop",
-      "task_dispatch_mode": "poll",
-      "partition_primitives": [
-        "connection",
-        "queue",
-        "compatibility",
-        "namespace"
-      ],
-      "backpressure_model": "lease_ownership"
-    },
-    "role_catalog": {
-      "api_ingress": {
-        "plane": "control",
-        "hosted_by_current_node": true,
-        "runs_user_code": false,
-        "accepts_external_http": true,
-        "steady_state_interface": "external_http"
-      },
-      "execution_plane": {
-        "plane": "execution",
-        "hosted_by_current_node": false,
-        "runs_user_code": true,
-        "accepts_external_http": false,
-        "steady_state_interface": "worker_protocol"
-      }
+      "task_dispatch_mode": "poll"
     },
     "shape_assignments": {
       "embedded": {
@@ -494,37 +467,7 @@ container names or rollout runbooks.
         "writes": ["worker_registrations"]
       }
     },
-    "authority_surfaces": {
-      "workflow_tasks": {
-        "mutations": {
-          "create_retire": {
-            "owning_roles": ["control_plane", "history_projection"],
-            "read_roles": ["matching", "execution_plane"]
-          },
-          "lease_claim_release": {
-            "owning_roles": ["matching"],
-            "read_roles": ["execution_plane", "control_plane"]
-          }
-        }
-      },
-      "worker_registrations": {
-        "mutations": {
-          "register_heartbeat": {
-            "owning_roles": ["api_ingress"],
-            "read_roles": ["matching", "control_plane", "history_projection"]
-          }
-        }
-      },
-      "worker_compatibility_heartbeats": {
-        "mutations": {
-          "heartbeat": {
-            "owning_roles": ["execution_plane"],
-            "read_roles": ["matching", "history_projection", "api_ingress"]
-          }
-        }
-      }
-    },
-    "failure_domains": {
+   "failure_domains": {
       "control_plane_down": {
         "effect": "workers_continue_claimed_tasks_only_until_lease_expiry",
         "operator_signal": "operator_commands_fail_fast"
@@ -557,61 +500,6 @@ container names or rollout runbooks.
       "history_projection": "durable_event_rate",
       "scheduler": "active_schedule_count",
       "execution_plane": "workflow_and_activity_task_rate"
-    },
-    "supported_topologies": {
-      "embedded": {
-        "execution_mode": "local_queue_worker",
-        "process_classes": {
-          "application_process": {
-            "roles": [
-              "control_plane",
-              "matching",
-              "history_projection",
-              "scheduler",
-              "execution_plane"
-            ]
-          }
-        }
-      },
-      "standalone_server": {
-        "execution_mode": "remote_worker_protocol",
-        "process_classes": {
-          "server_http_node": {
-            "roles": [
-              "api_ingress",
-              "control_plane",
-              "matching",
-              "history_projection"
-            ]
-          },
-          "scheduler_node": {
-            "roles": ["scheduler"]
-          },
-          "worker_node": {
-            "roles": ["execution_plane"]
-          }
-        }
-      },
-      "split_control_execution": {
-        "execution_mode": "remote_worker_protocol",
-        "process_classes": {
-          "ingress_node": {
-            "roles": ["api_ingress"]
-          },
-          "control_plane_node": {
-            "roles": ["control_plane", "history_projection"]
-          },
-          "scheduler_node": {
-            "roles": ["scheduler"]
-          },
-          "matching_node": {
-            "roles": ["matching"]
-          },
-          "execution_node": {
-            "roles": ["execution_plane"]
-          }
-        }
-      }
     },
     "migration_path": [
       {
@@ -665,36 +553,31 @@ container names or rollout runbooks.
 
 Treat `topology.version` as the role-manifest schema version, not as a synonym
 for the top-level server build version. Automation should check that field
-before assuming v4-only keys such as `current_process_class`,
-`role_catalog`, `authority_surfaces`, `supported_topologies`,
+before assuming fields added by a newer topology manifest revision. The
+current public contract includes `supported_shapes`, `role_vocabulary`,
+`current_shape`, `current_roles`, `execution_mode`, `matching_role`,
 `shape_assignments`, `authority_boundaries`, `failure_domains`,
-`scaling_boundaries`, or `migration_path`.
+`scaling_boundaries`, and `migration_path`.
 
 Read the fields as follows:
 
-- `supported_shapes` names the legal product topologies. `supported_topologies`
-  is the richer machine-readable map when automation also needs each shape's
-  `execution_mode` and exact process-class-to-role assignments.
-- `current_process_class`, `current_shape`, and `current_roles` describe the
-  node you queried right now. For the published standalone server
-  distribution, API nodes report `server_http_node` inside the
-  `standalone_server` shape plus the server-owned roles they currently host.
+- `supported_shapes` names the legal product topologies.
+- `role_vocabulary` is the fixed list of v2 role names. Treat it as the
+  canonical vocabulary for automation and diagnostics.
+- `current_shape` and `current_roles` describe the node you queried right now.
+  The manifest does not publish a separate `current_process_class`; instead,
+  compare the current role bundle against `shape_assignments` for the current
+  shape when you need to map the node to a documented process class such as
+  `server_http_node`, `scheduler_node`, or `worker_node`.
 - `execution_mode` distinguishes embedded local queue execution
   (`local_queue_worker`) from standalone server worker-protocol execution
   (`remote_worker_protocol`).
-- `role_catalog` tells you which plane each role belongs to, whether the
-  responding node currently hosts it, whether it runs user code, whether it
-  accepts external HTTP, and which steady-state interface owns that role.
-- `matching_role` shows whether the node still runs the in-worker wake path or
-  expects a dedicated repair or matching loop to own that sweep. The same
-  block freezes the `shape`, `partition_primitives`, and
-  `backpressure_model` values operators should use when reasoning about ready
-  task discovery and lease-based admission.
+- `matching_role.queue_wake_enabled`, `matching_role.wake_owner`, and
+  `matching_role.task_dispatch_mode` tell you whether the node still runs the
+  in-worker wake path or expects a dedicated repair or matching loop to own
+  that sweep.
 - `shape_assignments` maps each supported shape to the process classes and role
   bundles that shape is allowed to run.
-- `authority_surfaces` is the finer-grained mutation map. It names the durable
-  surface, the mutation family, the roles that own that mutation, and the
-  roles expected to read it.
 - `authority_boundaries` names which durable write surfaces each role is
   expected to mutate, so operators can catch cross-role drift before they split
   a deployment.
@@ -702,10 +585,6 @@ Read the fields as follows:
   a role goes down, instead of leaving that expectation implicit in a runbook.
 - `scaling_boundaries` names the main load dimension for each role when the
   topology is split.
-- `supported_topologies` is the normalized topology map for automation. Use it
-  when you need a stable machine-readable inventory of each supported shape's
-  `execution_mode` and process-class role bundles without walking the more
-  narrative `shape_assignments` list.
 - `coordination_health` is the fleet-wide rollout-safety summary published from
   the same discovery call. It uses `all_namespaces` scope, summarizes the
   current status and HTTP posture, and lists the normalized warning/error check
@@ -718,10 +597,9 @@ This keeps the role split as a topology change, not a second engine or a
 separate control-plane API. When a deployment evolves from a narrow
 `standalone_server` fleet toward a more explicit `split_control_execution`
 shape, operators still read the same discovery surface. The values under
-`current_process_class`, `current_shape`, `current_roles`, `execution_mode`,
-`role_catalog`, `matching_role`, `shape_assignments`,
-`authority_boundaries`, `authority_surfaces`, `failure_domains`,
-`scaling_boundaries`, `supported_topologies`, and `migration_path` are
+`current_shape`, `current_roles`, `execution_mode`, `matching_role`,
+`shape_assignments`, `authority_boundaries`, `failure_domains`,
+`scaling_boundaries`, and `migration_path` are
 versioned as one manifest so rollout tooling can reason about the same
 topology surface the server ships.
 
