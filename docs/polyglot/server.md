@@ -472,6 +472,7 @@ Key endpoints:
 - `GET /api/workflows/{id}/runs/{runId}/history/export` — Export a replay bundle
 - `GET /api/namespaces`, `POST /api/namespaces`, `GET|PUT /api/namespaces/{namespace}` — Namespace management
 - `GET /api/workers`, `GET|DELETE /api/workers/{id}` — Worker fleet management
+- `GET /api/task-queues`, `GET /api/task-queues/{taskQueue}` — Task queue backlog, pollers, leases, and admission visibility
 - `GET|POST /api/schedules`, `GET|PUT|DELETE /api/schedules/{id}`, `POST /api/schedules/{id}/{pause|resume|trigger|backfill}` — Schedule management
 - `GET|POST|DELETE /api/search-attributes` — Search attribute management
 - `POST /api/system/repair/pass`, `POST /api/system/activity-timeouts/pass`, `POST /api/system/retention/pass` — Operator passes
@@ -489,6 +490,17 @@ reason and validation detail into `control_plane.reason` and
 `control_plane.validation_errors`. Current run-targeted command routes project
 the URL `run_id` in the response and `control_plane.run_id`, so clients can
 distinguish instance-level commands from explicit selected-run commands.
+
+Task queue visibility is the operator surface for deciding whether a queue is
+falling behind because work is not arriving, work is arriving faster than it is
+being dispatched, workers have no available slots, or the server is enforcing
+admission limits. `GET /api/task-queues` returns one summary entry per queue;
+`GET /api/task-queues/{taskQueue}` expands one queue with `pollers` and
+`current_leases`. Both routes expose `stats.approximate_backlog_count`,
+`stats.approximate_backlog_age_seconds`, `stats.tasks_added_last_minute`, and
+`stats.tasks_dispatched_last_minute`. The detailed route also includes the
+`admission` object so automation can separate worker-capacity pressure from
+server-side queue or query-task throttling.
 
 ### Worker Protocol
 

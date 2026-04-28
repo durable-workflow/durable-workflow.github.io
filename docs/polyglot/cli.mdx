@@ -274,10 +274,27 @@ dw task-queue:list                # List active task queues
 dw task-queue:describe <queue>    # Describe a task queue
 ```
 
-`task-queue:list` shows admission status columns for workflow, activity, and
-query tasks. `task-queue:describe` expands the same server payload with active
-leases, queue, namespace, and downstream budget-group dispatch capacity,
-remaining capacity, budget source, and query-task pending capacity.
+`dw task-queue:list` is the compact fleet view. It shows admission status
+columns for workflow, activity, and query tasks. `dw task-queue:describe`
+expands the same server payload with pollers, current leases, queue,
+namespace, and downstream budget-group dispatch capacity, remaining capacity,
+budget source, and query-task pending capacity.
+
+For scripts, the task-queue JSON contract also includes
+`stats.approximate_backlog_count`, `stats.approximate_backlog_age_seconds`,
+`stats.tasks_added_last_minute`, and `stats.tasks_dispatched_last_minute`, so
+automation can distinguish missing workers from admission throttling or a
+queue whose durable input rate is outrunning dispatch:
+
+```bash
+dw task-queue:describe orders --json | jq '.stats | {
+  approximate_backlog_count,
+  approximate_backlog_age_seconds,
+  tasks_added_last_minute,
+  tasks_dispatched_last_minute
+}'
+```
+
 See [Task Queue Admission](/docs/2.0/polyglot/task-queue-admission) for the
 operator tuning contract behind those fields.
 
