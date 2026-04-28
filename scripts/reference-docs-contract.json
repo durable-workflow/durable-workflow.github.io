@@ -193,6 +193,36 @@
       ]
     },
     {
+      "path": "polyglot/server.md",
+      "title": "Server",
+      "minimumCodeFences": 6,
+      "requiredHeadings": [
+        "Quick Start",
+        "Configuration",
+        "Health Checks",
+        "Server Capabilities",
+        "Role topology and deployment shape",
+        "Connecting Workers"
+      ],
+      "requiredTerms": [
+        "durable-workflow.v2.role-topology",
+        "split_control_execution",
+        "shape_assignments",
+        "authority_boundaries",
+        "failure_domains",
+        "scaling_boundaries",
+        "migration_path",
+        "remote_worker_protocol",
+        "local_queue_worker"
+      ],
+      "requiredEndpoints": [
+        "/api/health",
+        "/api/ready",
+        "/api/cluster/info",
+        "/api/worker/register"
+      ]
+    },
+    {
       "path": "polyglot/namespace-auth-workers.md",
       "title": "Namespace, Auth, And Worker Registration",
       "minimumCodeFences": 6,

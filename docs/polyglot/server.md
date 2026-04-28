@@ -317,7 +317,7 @@ container names or rollout runbooks.
 {
   "topology": {
     "schema": "durable-workflow.v2.role-topology",
-    "version": 1,
+    "version": 2,
     "supported_shapes": [
       "embedded",
       "standalone_server",
@@ -343,10 +343,175 @@ container names or rollout runbooks.
       "queue_wake_enabled": true,
       "wake_owner": "worker_loop",
       "task_dispatch_mode": "poll"
-    }
+    },
+    "shape_assignments": {
+      "embedded": {
+        "process_classes": [
+          {
+            "name": "application_process",
+            "roles": [
+              "control_plane",
+              "matching",
+              "history_projection",
+              "scheduler",
+              "execution_plane"
+            ]
+          }
+        ]
+      },
+      "standalone_server": {
+        "process_classes": [
+          {
+            "name": "server_http_node",
+            "roles": [
+              "api_ingress",
+              "control_plane",
+              "matching",
+              "history_projection"
+            ]
+          },
+          {
+            "name": "scheduler_node",
+            "roles": ["scheduler"]
+          },
+          {
+            "name": "worker_node",
+            "roles": ["execution_plane"]
+          }
+        ]
+      },
+      "split_control_execution": {
+        "process_classes": [
+          {
+            "name": "ingress_node",
+            "roles": ["api_ingress"]
+          },
+          {
+            "name": "control_plane_node",
+            "roles": ["control_plane", "history_projection"]
+          },
+          {
+            "name": "scheduler_node",
+            "roles": ["scheduler"]
+          },
+          {
+            "name": "matching_node",
+            "roles": ["matching"]
+          },
+          {
+            "name": "execution_node",
+            "roles": ["execution_plane"]
+          }
+        ]
+      }
+    },
+    "authority_boundaries": {
+      "control_plane": {
+        "writes": [
+          "workflow_instances",
+          "workflow_runs.status",
+          "workflow_tasks.lifecycle"
+        ]
+      },
+      "execution_plane": {
+        "writes": [
+          "workflow_tasks.outcomes",
+          "activity_attempts",
+          "worker_compatibility_heartbeats"
+        ]
+      },
+      "matching": {
+        "writes": [
+          "workflow_tasks.leases",
+          "activity_tasks.leases"
+        ]
+      },
+      "history_projection": {
+        "writes": [
+          "history_events",
+          "workflow_run_summaries",
+          "workflow_history_exports"
+        ]
+      },
+      "scheduler": {
+        "writes": [
+          "workflow_schedules.fire_state",
+          "workflow_starts.scheduled"
+        ]
+      },
+      "api_ingress": {
+        "writes": ["worker_registrations"]
+      }
+    },
+    "failure_domains": {
+      "control_plane_down": {
+        "effect": "workers_continue_claimed_tasks_only_until_lease_expiry",
+        "operator_signal": "operator_commands_fail_fast"
+      },
+      "execution_plane_down": {
+        "effect": "ready_tasks_accumulate_without_loss",
+        "operator_signal": "operators_see_ready_depth_growth"
+      },
+      "matching_down": {
+        "effect": "claim_falls_back_to_direct_ready_task_discovery",
+        "operator_signal": "ready_depth_rises_while_claim_rate_falls"
+      },
+      "history_projection_down": {
+        "effect": "projection_reads_may_stale_while_durable_writes_continue",
+        "operator_signal": "projection_lag_seconds_may_increase"
+      },
+      "scheduler_down": {
+        "effect": "scheduled_workflows_stop_firing_and_record_missed_runs",
+        "operator_signal": "operators_see_missed_schedule_state"
+      },
+      "api_ingress_down": {
+        "effect": "external_http_traffic_stops_at_the_edge",
+        "operator_signal": "embedded_in_process_calls_may_continue"
+      }
+    },
+    "scaling_boundaries": {
+      "api_ingress": "incoming_http_request_rate",
+      "control_plane": "operator_commands_and_run_lifecycle_transitions",
+      "matching": "ready_task_rate_and_poller_count",
+      "history_projection": "durable_event_rate",
+      "scheduler": "active_schedule_count",
+      "execution_plane": "workflow_and_activity_task_rate"
+    },
+    "migration_path": [
+      {
+        "step": "audit_role_boundaries",
+        "result": "tooling flags cross-role writes before runtime shape changes"
+      },
+      {
+        "step": "expose_role_bindings",
+        "result": "container seams allow out-of-process adapters without patching the package"
+      },
+      {
+        "step": "introduce_dedicated_matching_shape",
+        "result": "matching can run as its own process class without changing the claim contract"
+      },
+      {
+        "step": "split_history_projection",
+        "result": "history and projections can move out of process without introducing a second writer"
+      },
+      {
+        "step": "split_scheduler",
+        "result": "schedule firing can move behind leader election while single-replica deployments stay legal"
+      },
+      {
+        "step": "optional_execution_partitioning",
+        "result": "workers can partition by namespace, connection, queue, and compatibility"
+      }
+    ]
   }
 }
 ```
+
+Treat `topology.version` as the role-manifest schema version, not as a synonym
+for the top-level server build version. Automation should check that field
+before assuming v2-only keys such as `shape_assignments`,
+`authority_boundaries`, `failure_domains`, `scaling_boundaries`, or
+`migration_path`.
 
 Read the fields as follows:
 
@@ -360,13 +525,27 @@ Read the fields as follows:
   (`remote_worker_protocol`).
 - `matching_role` shows whether the node still runs the in-worker wake path or
   expects a dedicated repair or matching loop to own that sweep.
+- `shape_assignments` maps each supported shape to the process classes and role
+  bundles that shape is allowed to run.
+- `authority_boundaries` names which durable write surfaces each role is
+  expected to mutate, so operators can catch cross-role drift before they split
+  a deployment.
+- `failure_domains` describes the first operator-visible degradation signal when
+  a role goes down, instead of leaving that expectation implicit in a runbook.
+- `scaling_boundaries` names the main load dimension for each role when the
+  topology is split.
+- `migration_path` lists the ordered rollout steps from today's standalone
+  distribution toward more isolated role boundaries without introducing a
+  second engine.
 
 This keeps the role split as a topology change, not a second engine or a
 separate control-plane API. When a deployment evolves from a narrow
 `standalone_server` fleet toward a more explicit `split_control_execution`
 shape, operators still read the same discovery surface. The values under
-`current_shape`, `current_roles`, `execution_mode`, and `matching_role` are the
-parts that change during rollout.
+`current_shape`, `current_roles`, `execution_mode`, `matching_role`,
+`shape_assignments`, `authority_boundaries`, `failure_domains`,
+`scaling_boundaries`, and `migration_path` are versioned as one manifest so
+rollout tooling can reason about the same topology surface the server ships.
 
 For carrier-neutral external handlers, the same endpoint publishes
 `worker_protocol.external_execution_surface_contract`. That manifest names the
