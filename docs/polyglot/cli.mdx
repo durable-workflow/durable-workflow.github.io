@@ -309,6 +309,24 @@ dw system:operator-metrics --json | jq '.operator_metrics.backlog | {
 See [Task Queue Admission](/docs/2.0/polyglot/task-queue-admission) for the
 operator tuning contract behind those fields.
 
+To inspect the matching-role routing contract on the node you queried, read the
+same payload's `matching_role` block:
+
+```bash
+dw system:operator-metrics --json | jq '.operator_metrics.matching_role | {
+  queue_wake_enabled,
+  shape,
+  task_dispatch_mode,
+  partition_primitives,
+  backpressure_model
+}'
+```
+
+`partition_primitives` freezes the routing axes (`connection`, `queue`,
+`compatibility`, `namespace`) and `backpressure_model` tells you whether the
+engine is relying on lease occupancy or some other admission boundary. Current
+v2 reports `lease_ownership`.
+
 ### Namespaces
 
 ```bash

@@ -166,6 +166,10 @@ Use these surfaces together:
 
 - task-queue visibility for ready depth, active slots, and throttling
 - worker fleet visibility for active vs stale pollers on each queue
+- `dw system:operator-metrics --json` or `/api/system/operator-metrics` for
+  the node-local `matching_role` contract: deployment `shape`,
+  `task_dispatch_mode`, the frozen `partition_primitives`, and the current
+  `backpressure_model`
 - health and Waterline diagnostics for unhealthy tasks, stale leases, and
   compatible-worker gaps
 - rolling-upgrade checks when mixed versions are live and matching must block
