@@ -282,6 +282,7 @@ and worker-protocol manifests:
         "start_child_workflow"
       ],
       "workflow_task_poll_request_idempotency": true,
+      "poll_status": true,
       "history_page_size_default": 500,
       "history_page_size_max": 1000,
       "activity_retry_policy": true,

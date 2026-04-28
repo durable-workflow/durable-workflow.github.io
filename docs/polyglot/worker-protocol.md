@@ -42,6 +42,8 @@ poll, heartbeat, complete, and fail responses.
 Read these fields before sending optional command fields:
 
 - `supported_workflow_task_commands`: command types accepted by workflow-task completion.
+- `poll_status`: poll responses distinguish `leased`, `empty`, `throttled`, and
+  `unavailable` without forcing clients to infer queue state from `task: null`.
 - `activity_retry_policy` and `activity_timeouts`: activity command retry and timeout options.
 - `child_workflow_retry_policy` and `child_workflow_timeouts`: child workflow retry and timeout options.
 - `parent_close_policy`: child workflow parent-close policy support.
@@ -126,9 +128,24 @@ Both `poll` verbs support an optional long-poll mode. When the caller includes a
 Behavior:
 
 - If a task becomes ready during the wait, it is returned immediately.
-- If the timeout expires with no task, the response is an empty list.
+- If the timeout expires with no task, the response keeps the normal poll
+  envelope with `task: null` and `poll_status` describing why the worker saw no
+  lease.
 - The client should retry immediately on an empty long-poll response unless shutting down.
 - HTTP-level timeouts on the transport should be set above 60 seconds to avoid premature disconnects.
+
+Every worker poll response includes `poll_status`:
+
+| Value | Meaning |
+|------|---------|
+| `leased` | The server leased a task to this worker. |
+| `empty` | No matching task was ready before the short poll or long-poll timeout ended. |
+| `throttled` | Admission limits prevented the server from leasing work even though the queue may still have ready tasks. |
+| `unavailable` | The queue or matching path was temporarily unavailable, so the worker should treat the poll as a transient infrastructure miss. |
+
+Branch on `poll_status` before assuming an empty poll means idle capacity.
+`task: null` plus `poll_status: "throttled"` is backpressure, not absence of
+work.
 
 ```php
 use Workflow\V2\Support\WorkerProtocolVersion;
@@ -309,6 +326,7 @@ Poll response:
 
 ```json
 {
+  "poll_status": "leased",
   "task": {
     "query_task_id": "01J...",
     "query_task_attempt": 1,
@@ -329,9 +347,10 @@ Poll response:
 }
 ```
 
-`task` is `null` when the poll times out. The worker must echo
-`lease_owner` and `query_task_attempt` on completion or failure; stale attempts
-and wrong lease owners are rejected.
+`task` is `null` when the poll returns no lease. Use `poll_status` to
+distinguish an ordinary empty wait from throttling or temporary queue
+unavailability. The worker must echo `lease_owner` and `query_task_attempt` on
+completion or failure; stale attempts and wrong lease owners are rejected.
 
 Complete request:
 
