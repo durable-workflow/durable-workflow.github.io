@@ -73,7 +73,11 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/cluster/info" \
 ```
 
 `/api/cluster/info` intentionally does not require the control-plane version
-header because it is the endpoint that advertises the supported versions.
+header because it is the endpoint that advertises the supported versions. The
+same response includes `coordination_health.routing_drains`, an all-namespaces
+summary of task queues that still have draining build-id cohorts so rollout
+automation can see active drains without walking every queue-specific
+`/build-ids` endpoint.
 
 ### Cluster Topology Manifest
 
@@ -411,7 +415,7 @@ status routes before pass routes in automation.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/api/system/health` | Return the namespace-scoped rollout-safety and coordination health snapshot. |
+| `GET` | `/api/system/health` | Return the namespace-scoped rollout-safety and coordination health snapshot, including `routing_drains`. |
 | `GET` | `/api/system/metrics` | Return bounded JSON metrics. |
 | `GET` | `/api/system/operator-metrics` | Return the namespace-scoped operator metrics snapshot for runs, tasks, backlog, repair, workers, and structural limits. |
 | `GET` | `/api/system/repair` | Inspect workflow repair backlog. |
@@ -420,6 +424,17 @@ status routes before pass routes in automation.
 | `POST` | `/api/system/activity-timeouts/pass` | Run one activity-timeout enforcement pass. |
 | `GET` | `/api/system/retention` | Inspect retention cleanup backlog. |
 | `POST` | `/api/system/retention/pass` | Run one retention cleanup pass. |
+
+`/api/system/health` is the quickest way to answer whether one namespace is
+healthy enough to keep taking traffic. It returns the categorized rollout-
+safety checks, the namespace's `operator_metrics`, and a `routing_drains`
+section that lists task queues whose draining build-id cohorts still need
+attention.
+
+`/api/system/operator-metrics` is the namespace-scoped companion to
+`/api/cluster/info` when you need raw backlog counts, compatibility-blocked
+age, worker fleet detail, or other operator metrics behind the summarized
+health surface.
 
 `/api/system/metrics` is a JSON operator surface, not a Prometheus scrape
 endpoint. Metric names and dimensions are bounded by the server's
