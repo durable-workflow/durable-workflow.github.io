@@ -38,6 +38,31 @@ The practical consequences of this contract are:
 - **Replay does not re-execute side effects.** Activity output comes from recorded history, not from re-running `handle()`. If you need a value to appear on history without a full retryable activity (for example a UUID or the current time), use [`sideEffect(...)`](/docs/2.0/features/side-effects).
 - **Idempotency is the activity author's responsibility.** Duplicate delivery, retries after lease expiry, and redelivery after worker failure are all first-class. Activities must be safe to run more than once with the same input. See [Activities](/docs/2.0/defining-workflows/activities) and [Failures and Recovery](/docs/2.0/failures-and-recovery).
 
+## Choosing The Right Primitive
+
+When authors ask for "local activities," they usually want one of three things: deterministic workflow logic, a one-shot recorded value, or a retryable side effect. v2 keeps those cases separate on purpose:
+
+```php
+use Workflow\V2\Workflow;
+use function Workflow\V2\activity;
+
+final class InvoiceWorkflow extends Workflow
+{
+    public function execute(string $customerId): array
+    {
+        $billingCycle = self::now()->format('Y-m');
+        $requestId = self::sideEffect(fn () => (string) str()->uuid());
+        $quote = activity(FetchQuoteActivity::class, $customerId, $billingCycle);
+
+        return activity(CreateInvoiceActivity::class, $quote['id'], $requestId);
+    }
+}
+```
+
+- Put deterministic branching and calculations directly in workflow code.
+- Use `sideEffect(...)` when you need a non-deterministic value recorded on history exactly once.
+- Use an ordinary activity when the step touches external state, needs retries, or should survive worker loss independently of the current workflow task.
+
 ## Local Activities Are Not A v2 Primitive
 
 Some workflow systems expose a "local activity" primitive that runs in the workflow's worker process without crossing the task queue. Durable Workflow v2 does not ship that primitive.
@@ -69,6 +94,19 @@ What to use instead:
 - For work that truly needs shared state, package the entire multi-step operation as a single activity. That activity owns its own process-local resources from start to finish.
 - For work that should stay on a particular fleet (for example GPU workers, or workers with filesystem access to a staging area), route it with dedicated connections and queues. See [Microservices](/docs/2.0/configuration/microservices) and the routing fields in [Activity Options](/docs/2.0/configuration/options#activity-options).
 - For pipelines of independent steps, sequence ordinary activities in the workflow body. The workflow's history is the coordination surface, not a worker-local session.
+
+```php
+use Workflow\V2\Support\ActivityOptions;
+use function Workflow\V2\activity;
+
+$thumbnail = activity(
+    RenderVideoThumbnailActivity::class,
+    new ActivityOptions(connection: 'redis-media', queue: 'gpu-render'),
+    $videoId,
+);
+```
+
+This routes work to a fleet with the right capabilities without promising that the next activity attempt will reuse the same process or host.
 
 ## Sticky Execution Is A Replay Optimization, Not A Correctness Feature
 

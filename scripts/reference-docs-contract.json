@@ -100,6 +100,26 @@
       ]
     },
     {
+      "path": "features/activity-execution-model.md",
+      "title": "Activity Execution Model",
+      "minimumCodeFences": 2,
+      "requiredHeadings": [
+        "Ordinary Queued Activities Are The Canonical Durable Contract",
+        "Choosing The Right Primitive",
+        "Local Activities Are Not A v2 Primitive",
+        "Worker Sessions Are Not A v2 Primitive",
+        "Sticky Execution Is A Replay Optimization, Not A Correctness Feature",
+        "When To Revisit This Stance"
+      ],
+      "requiredTerms": [
+        "Every activity attempt goes through the queue.",
+        "There is no API for local activities in v2.0.",
+        "There is no session-creation API in v2.0.",
+        "sideEffect(...)",
+        "ordinary replay"
+      ]
+    },
+    {
       "path": "polyglot/server-config-reference.md",
       "title": "Server Config Reference",
       "minimumCodeFences": 2,
