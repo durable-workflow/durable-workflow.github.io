@@ -47,16 +47,16 @@ behavior inside your workers.
 
 Durable Workflow v2 supports these operator shapes:
 
-| Topology | Supported operator contract |
-| --- | --- |
-| Embedded Laravel, single node | Waterline, control-plane routes, health, rebuild, export, and archive all run from one app process against one durable database and one cache store. |
-| Embedded Laravel, small same-region cluster | Use one shared database, one shared cache backend for wake-signal coordination, identical workflow compatibility/config across nodes, and keep active nodes in the same datacenter or region so queue wake-up and timer wake-up latency stay bounded. |
-| Standalone server distribution | Use the [Self-Hosting Deployments](./deployment.md) guide for the server-specific deployment matrix, then apply the same health, stats, export, archive, and queue-health distinctions described here. |
+| Topology | Supported operator contract | Primary failure domains | Recovery and failover expectation |
+| --- | --- | --- | --- |
+| Embedded Laravel, single node | Waterline, control-plane routes, health, rebuild, export, and archive all run from one app process against one durable database and one cache store. | The Laravel app process, the durable database, and the cache store on one host. | Treat host or database loss as a full service interruption. Restore durable state first, bring one app node back to readiness, then verify worker registration before resuming traffic. |
+| Embedded Laravel, small same-region cluster | Use one shared database, one shared cache backend for wake-signal coordination, identical workflow compatibility/config across nodes, and keep active nodes in the same datacenter or region so queue wake-up and timer wake-up latency stay bounded. | Shared database, shared cache/wake coordination, load balancer routing, and the singleton scheduler or maintenance role. | One app-node loss should reduce capacity, not correctness. Database or Redis failure still blocks the fleet. Scheduler failover and upgrades remain explicit operator procedures rather than automatic HA promises. |
+| Standalone server distribution | Use the [Self-Hosting Deployments](./deployment.md) guide for the server-specific deployment matrix, then apply the same health, stats, export, archive, and queue-health distinctions described here. | Shared database, shared Redis, API container set, independently scaled workers, and the single scheduler or maintenance runner. | API containers are replaceable; the database, Redis, and singleton scheduler path define recovery order. Restore persistence first, then verify `/api/ready`, `/api/cluster/info`, and worker registration before shifting traffic back. |
 
 Publish the restore order, backup cadence, expected failover lag, and any
 region-pinned behavior in the runbook for the topology you operate. The product
 contract tells you which facts to measure; your deployment contract records the
-recovery timing and failure domains you accept.
+recovery timing, manual steps, and failure domains you accept.
 
 ## Blocking and advisory diagnostics
 
@@ -189,6 +189,26 @@ See [Rolling Out Worker Builds With Build IDs](./polyglot/worker-build-id-rollou
 for the drain/resume flow that coordinates with these facts during a
 build-id rollout.
 
+## Alert semantics
+
+Alert thresholds are deployment-specific. Publish your own numeric baselines
+for queue age, repair lag, worker coverage, and restore timing, then alert when
+the contract below stays breached longer than one normal repair or watchdog
+window for the topology you operate.
+
+| Alert family | Source | Treat as | Escalate when | Operator response |
+| --- | --- | --- | --- | --- |
+| Blocking readiness | `workflow:v2:doctor --strict`, `GET /waterline/api/v2/health` | Blocking | `doctor --strict` returns an error or the health endpoint returns `status = error` / HTTP `503` | Stop rollout or traffic shift, fix the blocking prerequisite, then rerun readiness and compatibility checks. |
+| Compatible-worker coverage | `operator_metrics.workers.*`, `worker_compatibility` health check, run diagnostic `no_compatible_worker_for_task` | Blocking | `active_workers_supporting_required = 0` for a namespace or required `(connection, queue)` scope | Drain incompatible workers, register compatible workers, and confirm the `correctness` rollup clears before trusting new claims. |
+| Durable queue lag | Waterline queue views, `operator_metrics.backlog.*`, worker `schedule_to_start` telemetry | Blocking when sustained; advisory when brief | The oldest ready-task age or schedule-to-start latency stays above the published topology baseline while compatible workers are available | Add worker capacity, inspect task-queue admission limits, and verify the scheduler or matching path is still making forward progress. |
+| Projection drift and repair debt | `run_summary_projection` / `selected_run_projections` health checks, `operator_metrics.repair.*` | Advisory | Drift warnings persist past one planned rebuild window or the max candidate age keeps climbing | Run the rebuild or repair previews, execute the repair, then verify the warning clears and stale ages return to baseline. |
+| Retry or failure storm | `operator_metrics.backlog.unhealthy_tasks`, durable run diagnostics, worker error telemetry | Advisory, escalating to blocking if it prevents durable progress | Dispatch-failed, claim-failed, expired-lease, or retry-exhaustion facts climb above the topology baseline and stay elevated | Inspect the failing task family, compare worker telemetry with durable error facts, and decide whether to drain traffic or isolate the affected queue. |
+| Wake acceleration degradation | `long_poll_wake_acceleration` health check and the `acceleration` category rollup | Advisory | The acceleration warning persists after cache or notifier maintenance windows | Investigate cache or wake propagation health. Do not treat this as a correctness outage unless the `correctness` rollup also degrades. |
+
+The goal is to page on durable contract risk, not on every transient signal.
+Queue and worker alerts should only become blocking when they threaten the
+operator contract for the topology you actually run.
+
 ## Rebuild, repair, and restore expectations
 
 Use these checks in order when the operator surface reports drift:
@@ -262,6 +282,31 @@ Use this verification sequence:
 
 For Waterline users, the matching history-export and archive routes are listed
 in the [Waterline Operator API Reference](./waterline-operator-api.md).
+
+## Backup, restore, and disaster-recovery contract
+
+Backup, restore, and disaster recovery are part of the operating envelope, not
+an optional private runbook. For every supported topology, publish and rehearse
+these facts:
+
+1. The durable backup set: database backup, server or app image reference,
+   runtime env file or config set, auth material location, and the exact
+   topology or restore notes needed to reattach workers.
+2. The recovery targets: maximum accepted restore lag, expected failover lag,
+   and who is allowed to declare traffic safe again.
+3. The restore order: restore durable persistence first, then cache, then
+   bootstrap or migrations, then the singleton scheduler or maintenance role,
+   then API readiness, then worker registration.
+4. The verification pass: `/api/ready` or `/waterline/api/v2/health`,
+   `/api/cluster/info` where applicable, one representative worker
+   registration, and one representative history export from restored state.
+5. The repair pass after restore: rebuild projections, backfill command
+   contracts if needed, and confirm queue, compatibility, and repair metrics
+   return to baseline before you call the environment healthy.
+
+Do not imply automatic multi-region or hands-free HA behavior unless your
+published topology contract actually proves it. For the documented self-serve
+topologies, recovery is deliberate operator work with explicit checkpoints.
 
 ## Benchmark envelope
 
