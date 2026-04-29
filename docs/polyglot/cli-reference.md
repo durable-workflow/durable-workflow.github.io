@@ -91,7 +91,10 @@ fields live under `topology`, including `supported_shapes`,
 `current_shape`, `current_process_class`, `current_roles`,
 `matching_role`, `role_catalog`, `authority_boundaries`,
 `authority_surfaces`, `supported_topologies`, `scaling_boundaries`, and
-`failure_domains`.
+`failure_domains`. The `topology.matching_role` block also publishes
+`partition_primitives` and `backpressure_model` so scripts can check which
+routing axes the responding node uses for ready-task discovery without
+parsing prose.
 
 ```bash
 dw server:info --output=json \
@@ -100,6 +103,38 @@ dw server:info --output=json \
 
 For the meaning of those fields, see
 [Server Role Topology](/docs/2.0/polyglot/server-role-topology).
+
+### Server Info And Coordination Health
+
+`dw server:info` also publishes the server's all-namespaces rollout-safety
+verdict so operators can read coordination health without standing up a
+separate health surface. In table mode the CLI renders a `Coordination
+Health:` section under `Topology:`. In `--output=json` the same data lives
+under `coordination_health`, with these stable machine fields:
+
+- `coordination_health.schema` and `coordination_health.version` pin the
+  manifest contract revision.
+- `coordination_health.namespace_scope` reports whether the verdict covers
+  one namespace or the whole fleet.
+- `coordination_health.status` and `coordination_health.http_status` report
+  the top-level verdict and HTTP gate the server applies to readiness.
+- `coordination_health.generated_at` records when the snapshot was taken.
+- `coordination_health.categories` summarizes per-category counts (such as
+  `correctness`, `safety`, `routing`).
+- `coordination_health.warning_checks` and `coordination_health.error_checks`
+  list the check names that pushed the verdict to warning or error so
+  scripts can branch on the failing surfaces.
+- `coordination_health.checks[]` is the per-check detail array, where each
+  entry pins `name`, `status`, `category`, and `message` automation can use
+  to explain a degraded verdict.
+
+```bash
+dw server:info --output=json \
+  | jq '.coordination_health | {status, http_status, namespace_scope, warning_checks, error_checks}'
+```
+
+For the underlying readiness contract behind these fields, see the
+[Server API Reference](/docs/2.0/polyglot/server-api-reference).
 
 ### Self-Upgrade
 
