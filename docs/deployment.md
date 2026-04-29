@@ -33,6 +33,24 @@ support-led because they depend on your database, cache, networking, security,
 runner, and upgrade choices. See the [support boundary](/docs/2.0/support) for
 the commercial support model.
 
+## Production recovery deliverables
+
+Calling a topology "production-ready" means publishing the recovery packet for
+that topology, not just starting the containers. Keep the latest evidence in
+the same runbook as the deployment commands:
+
+| Path | Minimum published recovery packet |
+| --- | --- |
+| Single-node production | Backup schedule, pinned image or digest, env/config snapshot location, maximum accepted restore lag, and the latest successful restore rehearsal timestamp plus verification evidence. |
+| Small clustered deployment | The single-node packet plus the expected impact of losing one API node, one worker node, the scheduler/maintenance runner, Redis, or the shared database; the worker re-registration steps after restore; and the documented rolling-upgrade or stop-the-world posture for the current release. |
+| Raw Kubernetes manifests | The clustered packet plus the cluster-specific storage, secret, ingress, and rollout owners that must be restored or re-applied before traffic is declared healthy again. |
+
+If you cannot produce that packet on demand, treat the environment as staging
+until the recovery contract is written down and rehearsed. The
+[Operator Operating Envelope](/docs/2.0/operator-operating-envelope) defines
+the restore order, verification pass, and rehearsal cadence those packets must
+follow.
+
 ## Published images
 
 Use published images for self-hosted server deployments:

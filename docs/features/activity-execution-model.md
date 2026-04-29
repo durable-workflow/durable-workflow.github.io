@@ -71,7 +71,7 @@ The stance is explicit:
 
 - **Ordinary activity support does not imply local activities.** Authors must not assume that a short activity will bypass the queue.
 - **There is no API for local activities in v2.0.** Every `activity(...)` call schedules a durable task and waits for a worker to pick it up.
-- **If this project adds a local-activities primitive later, it will ship with an explicit contract.** That contract would have to define same-process execution, workflow-task heartbeating during the local call, shutdown and cancellation semantics, and the specific rules for bypassing normal queueing and routing. Until such a contract is published, no activity runs "locally."
+- **If this project adds a local-activities primitive in a future 2.0 release or later version, it will ship with an explicit contract.** That contract would have to define same-process execution, workflow-task heartbeating during the local call, shutdown and cancellation semantics, and the specific rules for bypassing normal queueing and routing. Until such a contract is published, no activity runs "locally."
 
 What to use instead:
 
@@ -87,7 +87,7 @@ The stance is explicit:
 
 - **Dedicated queues, priority queues, and sticky caches do not imply worker sessions.** Dedicated or priority queues route work to a class of workers, not to a specific process. Sticky caches optimize replay, not activity placement.
 - **There is no session-creation API in v2.0.** Activities cannot opt into a multi-activity lease that binds them to the same worker for correctness.
-- **If worker sessions ship later, they will require explicit contracts.** Those contracts would need to cover session creation timeouts, concurrency limits, failure-detection for the holding worker, session lifetime, and the behavior when the session's worker dies mid-sequence. Until such contracts are published, activities remain independently schedulable tasks.
+- **If worker sessions ship in a future 2.0 release or later version, they will require explicit contracts.** Those contracts would need to cover session creation timeouts, concurrency limits, failure-detection for the holding worker, session lifetime, and the behavior when the session's worker dies mid-sequence. Until such contracts are published, activities remain independently schedulable tasks.
 
 What to use instead:
 

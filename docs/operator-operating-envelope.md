@@ -88,6 +88,20 @@ If your deployment depends on different assumptions, treat that topology as a
 separate runbook with its own validated contract instead of assuming the
 self-serve guidance still applies unchanged.
 
+### Published recovery packet by topology
+
+The supported topologies above are only production-ready when the deployment
+runbook publishes the matching recovery packet alongside them:
+
+| Topology | Publish these operator-owned facts |
+| --- | --- |
+| Embedded Laravel, single node | Backup schedule for the database, cache-preservation expectations, the exact app revision and env/config snapshot used for restore, the maximum accepted restore lag, and the latest successful restore rehearsal evidence. |
+| Embedded Laravel, small same-region cluster | Everything from the single-node packet, plus which node or process currently owns scheduler or maintenance duty, the expected impact of losing one ordinary node versus losing the shared database or cache backend, and the failover steps required to restore queue wake coordination. |
+| Standalone server distribution | Database and Redis backup cadence, pinned server image or digest, auth-material location, the expected failover behavior for `server_http_node`, `worker_node`, and `scheduler_node`, the latest `/api/ready` plus `/api/cluster/info` restore verification evidence, and the latest worker re-registration proof after restore. |
+
+If that packet is missing, stale, or untested, treat the topology as
+development-grade regardless of how many nodes are currently running.
+
 ### Verify live topology identity before trusting the baseline
 
 For standalone-server and split-role deployments, confirm the node identity
