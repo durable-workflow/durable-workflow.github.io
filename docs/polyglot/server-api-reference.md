@@ -78,6 +78,53 @@ same response also includes `coordination_health`, the all-namespaces rollout
 and readiness summary that mirrors the checks already feeding the server's
 readiness posture.
 
+### Readiness Blockers
+
+`GET /api/ready` returns a top-level `status` plus machine-readable `checks`.
+Two checks define whether the server can safely evaluate rollout-safety health:
+
+- `checks.migrations` is the bootstrap and migration gate. It publishes
+  `repository_exists`, `pending_migrations`, `adoptable_migrations`,
+  `blocking_migrations`, `missing_tables`, `operator_surface`, and
+  `readiness_contract`.
+- `adoptable_migrations` means existing workflow tables only need migration
+  history adoption. The server stays ready and reports `status: "warning"` so
+  operators can schedule the adoption before the next migrate pass.
+- `blocking_migrations` means rollout-safety migration records are still
+  required. The server fails closed with `status: "pending"` and a
+  `remediation` string instead of serving as if the fleet were current.
+- `operator_surface.available` and `operator_surface.required_tables` tell you
+  whether the v2 operator surface has the durable tables it needs to explain
+  rollout safety after boot.
+- `readiness_contract.version` pins the install and adoption contract revision
+  that scripts should expect when they parse these readiness fields.
+- `checks.workflow_v2` mirrors the all-namespaces rollout-safety verdict. When
+  readiness prerequisites are missing it reports `status: "blocked"` and adds
+  `blocked_by`, `message`, and `remediation` instead of pretending the fleet is
+  healthy.
+
+Example:
+
+<!-- docs-example id="server.ready.blockers.curl" -->
+```bash
+curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/ready" | jq '{
+  status,
+  migrations: {
+    status: .checks.migrations.status,
+    adoptable_migrations: .checks.migrations.adoptable_migrations,
+    blocking_migrations: (.checks.migrations.blocking_migrations | map(.migration)),
+    missing_tables: .checks.migrations.missing_tables,
+    operator_surface: .checks.migrations.operator_surface,
+    readiness_contract: .checks.migrations.readiness_contract
+  },
+  workflow_v2: {
+    status: .checks.workflow_v2.status,
+    blocked_by: .checks.workflow_v2.blocked_by,
+    remediation: .checks.workflow_v2.remediation
+  }
+}'
+```
+
 ### Cluster Topology Manifest
 
 `/api/cluster/info` also returns the node's `topology` manifest under the
@@ -113,7 +160,14 @@ Read the manifest as follows:
 - `topology.supported_topologies` summarizes which deployment families the
   product supports and which node classes each family expects.
 - `coordination_health` summarizes fleet-wide rollout and compatibility risk in
-  one machine-readable block.
+  one machine-readable block. Besides `status` and `http_status`, it can publish
+  `blocked_by`, `message`, and `remediation` when rollout-safety evaluation is
+  blocked by upstream readiness issues such as missing migrations or database
+  reachability.
+- `coordination_health.routing_drains` summarizes draining build-id cohorts
+  across namespaces and queues. Use `queues_with_drains` and the per-queue
+  `build_ids` entries to see where traffic is intentionally being held away from
+  draining workers.
 - `execution_mode` distinguishes `local_queue_worker` embedded execution from
   `remote_worker_protocol` worker-protocol execution.
 - `split_control_execution` is a supported product topology, not a second
@@ -133,7 +187,9 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/cluster/info" \
     matching_role: .topology.matching_role,
     coordination_health: {
       status: .coordination_health.status,
-      http_status: .coordination_health.http_status
+      http_status: .coordination_health.http_status,
+      blocked_by: .coordination_health.blocked_by,
+      queues_with_drains: .coordination_health.routing_drains.queues_with_drains
     }
   }'
 ```

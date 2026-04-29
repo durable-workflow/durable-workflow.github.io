@@ -214,6 +214,16 @@ Keep the distinction clear:
   is supposed to behave.
 - `coordination_health` tells you whether rollout-safety and coordination checks
   are currently healthy across namespaces.
+- `coordination_health.blocked_by`, `coordination_health.message`, and
+  `coordination_health.remediation` appear when the server cannot evaluate
+  rollout-safety health because readiness prerequisites such as migrations or
+  database connectivity are missing.
+- `coordination_health.routing_drains` summarizes draining build-id cohorts
+  across queues and namespaces. `queues_with_drains` tells you whether rollout
+  automation is intentionally holding traffic away from any cohort right now.
+- `coordination_health.warning_checks`, `coordination_health.error_checks`, and
+  `coordination_health.checks` remain the normalized check inventory once
+  rollout-safety evaluation is running.
 
 Use both surfaces together when deciding whether a topology change is both
 supported and currently safe.

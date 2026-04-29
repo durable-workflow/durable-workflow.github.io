@@ -240,6 +240,38 @@ Returns `200 OK` with:
 }
 ```
 
+### Readiness
+
+```bash
+curl http://localhost:8080/api/ready
+```
+
+`/api/ready` is the deployment gate. It returns `200 OK` only when bootstrap
+prerequisites and rollout-safety health are in a ready or warning state.
+
+Treat the machine-readable fields as follows:
+
+- `checks.migrations.repository_exists` and `checks.migrations.pending_migrations`
+  tell you whether the migration repository exists and which migration records
+  are still pending.
+- `checks.migrations.adoptable_migrations` lists create-table migrations that
+  only need adoption into migration history. This is a `warning`, not a
+  fail-closed outage, so the server can stay ready while operators schedule the
+  adoption.
+- `checks.migrations.blocking_migrations` lists rollout-safety migration records
+  that must land before the server should admit traffic. When this array is not
+  empty, readiness fails closed with `checks.migrations.status = "pending"`.
+- `checks.migrations.missing_tables` reports durable tables that are still
+  absent, and `checks.migrations.operator_surface` tells you whether the v2
+  operator surface is available enough to explain rollout safety once the server
+  boots.
+- `checks.migrations.readiness_contract.version` pins the boot and migration
+  adoption contract revision that scripts should parse.
+- `checks.workflow_v2` mirrors the all-namespaces rollout-safety verdict. When
+  rollout-safety cannot be evaluated yet it returns `status: "blocked"` plus
+  `blocked_by`, `message`, and `remediation` so operators can fix the upstream
+  readiness gate instead of chasing queue symptoms.
+
 ### Server Capabilities
 
 ```bash
@@ -539,7 +571,7 @@ container names or rollout runbooks.
   },
   "coordination_health": {
     "schema": "durable-workflow.v2.coordination-health.contract",
-    "version": 1,
+    "version": 2,
     "namespace_scope": "all_namespaces",
     "status": "ok",
     "http_status": 200,
@@ -555,7 +587,15 @@ container names or rollout runbooks.
         "category": "correctness",
         "message": null
       }
-    ]
+    ],
+    "routing_drains": {
+      "queues_with_drains": 0,
+      "draining_build_id_count": 0,
+      "active_worker_count": 0,
+      "draining_worker_count": 0,
+      "stale_worker_count": 0,
+      "queues": []
+    }
   }
 }
 ```
@@ -604,8 +644,13 @@ Read the fields as follows:
   topology is split.
 - `coordination_health` is the fleet-wide rollout-safety summary published from
   the same discovery call. It uses `all_namespaces` scope, summarizes the
-  current status and HTTP posture, and lists the normalized warning/error check
-  names that also feed readiness health.
+  current status and HTTP posture, lists the normalized warning/error check
+  names that also feed readiness health, and adds `blocked_by`, `message`, plus
+  `remediation` when rollout-safety evaluation is blocked by upstream readiness
+  problems.
+- `coordination_health.routing_drains` summarizes draining build-id cohorts
+  across queues and namespaces. `queues_with_drains` greater than zero means the
+  fleet is intentionally holding traffic away from at least one draining cohort.
 - `migration_path` lists the ordered rollout steps from today's standalone
   distribution toward more isolated role boundaries without introducing a
   second engine.
