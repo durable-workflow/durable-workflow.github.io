@@ -642,6 +642,12 @@ Read the fields as follows:
   a role goes down, instead of leaving that expectation implicit in a runbook.
 - `scaling_boundaries` names the main load dimension for each role when the
   topology is split.
+- authenticated hosted routes fail closed when the responding node does not
+  host the HTTP control surface. In that case the server returns `503` with
+  `reason: "topology_role_unavailable"` plus `current_shape`,
+  `current_process_class`, `current_roles`, `required_roles`, and
+  `missing_roles` so callers can reroute to a node that actually exposes the
+  requested surface.
 - `coordination_health` is the fleet-wide rollout-safety summary published from
   the same discovery call. It uses `all_namespaces` scope, summarizes the
   current status and HTTP posture, lists the normalized warning/error check
@@ -664,6 +670,12 @@ shape, operators still read the same discovery surface. The values under
 `scaling_boundaries`, and `migration_path` are
 versioned as one manifest so rollout tooling can reason about the same
 topology surface the server ships.
+
+The hosted-route gate applies only to authenticated API and worker endpoints.
+`GET /api/health`, `GET /api/ready`, and authenticated `GET /api/cluster/info`
+stay available for discovery, liveness, and topology inspection even on
+`scheduler_node`, `matching_node`, or `execution_node` processes that do not
+host the current HTTP control surface.
 
 For carrier-neutral external handlers, the same endpoint publishes
 `worker_protocol.external_execution_surface_contract`. That manifest names the

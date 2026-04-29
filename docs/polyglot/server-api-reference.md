@@ -198,6 +198,47 @@ For the conceptual contract behind those fields, including the role vocabulary
 and migration path, see
 [Server Role Topology](/docs/2.0/polyglot/server-role-topology).
 
+### Wrong-Node Topology Rejections
+
+Authenticated hosted routes fail closed when the responding node does not host
+the HTTP control surface required for that endpoint. The gate runs after role
+and protocol-version validation but before namespace resolution, so wrong-node
+requests do not leak namespace existence.
+
+When the gate blocks a request, the server returns `503` with
+`reason: "topology_role_unavailable"` plus:
+
+- `current_shape`: the responding node's advertised topology shape.
+- `current_process_class`: the responding node's declared process class, such
+  as `scheduler_node` or `execution_node`.
+- `current_roles`: the roles that node actually hosts.
+- `required_roles`: the hosted route roles the endpoint needs.
+- `missing_roles`: the subset of `required_roles` missing from the responding
+  node.
+
+Control-plane routes return that payload in the control-plane envelope. Worker
+protocol routes return the same fields in the worker-protocol envelope and keep
+the normal worker-protocol version header.
+
+Example wrong-node response from `GET /api/workflows` when the request lands on
+a scheduler-only node:
+
+```json
+{
+  "reason": "topology_role_unavailable",
+  "message": "This node does not host the topology roles required for this endpoint.",
+  "current_shape": "standalone_server",
+  "current_process_class": "scheduler_node",
+  "current_roles": ["scheduler"],
+  "required_roles": ["api_ingress", "control_plane"],
+  "missing_roles": ["api_ingress", "control_plane"]
+}
+```
+
+`GET /api/health`, `GET /api/ready`, and authenticated `GET /api/cluster/info`
+stay available for liveness and discovery even on nodes that do not host the
+current HTTP control surface.
+
 ### Namespace-Scoped System Health
 
 `GET /api/system/health` is the authenticated rollout-safety and coordination
@@ -510,6 +551,7 @@ Common statuses:
 | `409` | Duplicate or conflict, such as an already-started workflow or invalid run target. |
 | `422` | Validation failed; response includes field-level validation details. |
 | `429` | Admission or task queue capacity is full. |
+| `503` | The request reached a node that does not host the required topology roles. Hosted routes return `reason: "topology_role_unavailable"` plus `current_shape`, `current_process_class`, `current_roles`, `required_roles`, and `missing_roles`. |
 | `500` | Server failure. Treat as retryable only when the operation is idempotent or has an idempotency key. |
 
 Validation responses include `reason: "validation_failed"` plus `errors` or

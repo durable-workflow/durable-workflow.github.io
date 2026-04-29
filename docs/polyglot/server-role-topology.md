@@ -112,6 +112,30 @@ For the standalone server distribution, `current_shape` remains
 queue workers. In that case, `execution_mode` changes to `local_queue_worker`
 while the HTTP node keeps the standalone-server role contract.
 
+### Hosted Route Gating
+
+The same topology contract also tells callers when a node should reject hosted
+traffic outright. Authenticated hosted routes fail closed unless the responding
+node advertises the HTTP control bundle those routes require today:
+`api_ingress` plus `control_plane`.
+
+Wrong-node responses return `503` with
+`reason: "topology_role_unavailable"` and the topology evidence needed to
+reroute:
+
+- `current_shape`
+- `current_process_class`
+- `current_roles`
+- `required_roles`
+- `missing_roles`
+
+That gate runs before namespace resolution on hosted routes, so a request sent
+to a `scheduler_node`, `matching_node`, or `execution_node` does not learn
+whether the named namespace exists before it is redirected to the correct node
+class. `GET /api/health`, `GET /api/ready`, and authenticated
+`GET /api/cluster/info` remain available so automation can discover the node's
+shape before retrying elsewhere.
+
 ## Matching Role Contract
 
 `topology.matching_role` freezes the live matching and wake posture for the
