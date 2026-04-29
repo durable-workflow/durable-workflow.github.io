@@ -129,6 +129,12 @@ Use those fields as the first topology-drift check during rollouts:
   treat queue and failover baselines as suspect until the node identity is
   corrected.
 
+Embedded installs do not publish `/api/cluster/info`. For the package-local
+topology view, run `php artisan workflow:v2:doctor --json` and inspect the
+`topology` object. It publishes the same role-topology schema and includes the
+embedded app's `current_shape`, `current_process_class`, `current_roles`,
+`execution_mode`, and nested `matching_role` summary.
+
 ## Blocking and advisory diagnostics
 
 Durable Workflow v2 separates blocking diagnostics from advisory diagnostics.
