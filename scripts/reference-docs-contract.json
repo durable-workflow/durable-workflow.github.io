@@ -304,6 +304,7 @@
       "requiredHeadings": [
         "Headers And Versioning",
         "Discovery And Health",
+        "Public Topology Summary",
         "Cluster Topology Manifest",
         "Workflow Control Plane",
         "Workflow Commands",
@@ -354,6 +355,27 @@
         "Replay and history export must fail loudly",
         "reason: \"validation_failed\"",
         "bounded-growth policy"
+      ],
+      "requiredSectionTerms": [
+        {
+          "heading": "Public Topology Summary",
+          "terms": [
+            "GET /api/health",
+            "GET /api/ready",
+            "topology.schema",
+            "topology.version",
+            "topology.current_shape",
+            "topology.current_process_class",
+            "topology.current_roles",
+            "topology.execution_mode",
+            "topology.matching_role.queue_wake_enabled",
+            "topology.matching_role.shape",
+            "topology.matching_role.wake_owner",
+            "topology.matching_role.task_dispatch_mode",
+            "topology.matching_role.partition_primitives",
+            "topology.matching_role.backpressure_model"
+          ]
+        }
       ],
       "requiredEndpoints": [
         "/api/health",
@@ -440,6 +462,7 @@
         "Quick Start",
         "Configuration",
         "Health Checks",
+        "Public Topology Summary",
         "Server Capabilities",
         "Role topology and deployment shape",
         "Connecting Workers"
@@ -477,6 +500,27 @@
         "missing_roles",
         "remote_worker_protocol",
         "local_queue_worker"
+      ],
+      "requiredSectionTerms": [
+        {
+          "heading": "Public Topology Summary",
+          "terms": [
+            "GET /api/health",
+            "GET /api/ready",
+            "topology.schema",
+            "topology.version",
+            "topology.current_shape",
+            "topology.current_process_class",
+            "topology.current_roles",
+            "topology.execution_mode",
+            "topology.matching_role.queue_wake_enabled",
+            "topology.matching_role.shape",
+            "topology.matching_role.wake_owner",
+            "topology.matching_role.task_dispatch_mode",
+            "topology.matching_role.partition_primitives",
+            "topology.matching_role.backpressure_model"
+          ]
+        }
       ],
       "requiredEndpoints": [
         "/api/health",

@@ -236,9 +236,53 @@ Returns `200 OK` with:
 ```json
 {
   "status": "serving",
-  "timestamp": "2026-04-15T12:00:00Z"
+  "timestamp": "2026-04-15T12:00:00Z",
+  "checks": {
+    "database": "ok"
+  },
+  "topology": {
+    "schema": "durable-workflow.v2.role-topology",
+    "version": 4,
+    "current_shape": "standalone_server",
+    "current_process_class": "server_http_node",
+    "current_roles": ["api_ingress", "control_plane", "matching", "history_projection"],
+    "execution_mode": "remote_worker_protocol",
+    "matching_role": {
+      "queue_wake_enabled": true,
+      "shape": "in_worker",
+      "wake_owner": "worker_loop",
+      "task_dispatch_mode": "poll",
+      "partition_primitives": ["connection", "queue", "compatibility", "namespace"],
+      "backpressure_model": "lease_ownership"
+    }
+  }
 }
 ```
+
+### Public Topology Summary
+
+Unauthenticated `GET /api/health` and `GET /api/ready` both publish the
+responding node's `topology` summary. That public block is intentionally
+smaller than `/api/cluster/info`, but it still exposes the fields needed to
+identify split-role nodes before control-plane auth or namespace resolution:
+
+- `topology.schema`
+- `topology.version`
+- `topology.current_shape`
+- `topology.current_process_class`
+- `topology.current_roles`
+- `topology.execution_mode`
+- `topology.matching_role.queue_wake_enabled`
+- `topology.matching_role.shape`
+- `topology.matching_role.wake_owner`
+- `topology.matching_role.task_dispatch_mode`
+- `topology.matching_role.partition_primitives`
+- `topology.matching_role.backpressure_model`
+
+The same summary appears on `/api/ready` even when the deployment is not ready,
+so probes can still distinguish `server_http_node`, `scheduler_node`,
+`matching_node`, and `execution_node` responses while bootstrap blockers are
+active.
 
 ### Readiness
 
@@ -905,7 +949,8 @@ See the [Worker Protocol](/docs/2.0/polyglot/worker-protocol) reference for deta
 
 The only endpoints that do **not** require `X-Durable-Workflow-Control-Plane-Version` are discovery and health probes:
 
-- `GET /api/health` — Liveness/readiness probe (no auth required)
+- `GET /api/health` — Liveness probe plus the public `topology` summary (no auth required)
+- `GET /api/ready` — Readiness probe plus the same `topology` summary (no auth required)
 - `GET /api/cluster/info` — Server capabilities, protocol versions, payload codecs. Clients should hit this first to discover which control-plane and worker-protocol versions the server supports.
 
 ## Troubleshooting

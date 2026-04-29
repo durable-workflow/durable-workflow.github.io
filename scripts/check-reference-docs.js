@@ -55,6 +55,52 @@ function assertEndpoint(content, endpoint, context) {
   }
 }
 
+function extractSection(content, heading, context) {
+  const lines = content.split('\n');
+  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const headingPattern = new RegExp(`^(#{2,4})\\s+${escaped}\\s*$`);
+
+  let start = -1;
+  let level = 0;
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = headingPattern.exec(lines[index]);
+
+    if (!match) {
+      continue;
+    }
+
+    start = index + 1;
+    level = match[1].length;
+    break;
+  }
+
+  if (start === -1) {
+    throw new Error(`${context} must include heading ${JSON.stringify(heading)}`);
+  }
+
+  const nextHeadingPattern = new RegExp(`^#{1,${level}}\\s+`);
+  let end = lines.length;
+
+  for (let index = start; index < lines.length; index += 1) {
+    if (nextHeadingPattern.test(lines[index])) {
+      end = index;
+      break;
+    }
+  }
+
+  return lines.slice(start, end).join('\n');
+}
+
+function assertSectionTerms(content, requirement, context) {
+  const sectionContext = `${context} section ${JSON.stringify(requirement.heading)}`;
+  const sectionContent = extractSection(content, requirement.heading, context);
+
+  for (const term of requirement.terms || []) {
+    assertIncludes(sectionContent, term, sectionContext);
+  }
+}
+
 function checkDocument(document) {
   const docPath = path.join(docsDir, document.path);
 
@@ -70,6 +116,10 @@ function checkDocument(document) {
 
   for (const heading of document.requiredHeadings || []) {
     assertHeading(content, heading, context);
+  }
+
+  for (const requirement of document.requiredSectionTerms || []) {
+    assertSectionTerms(content, requirement, context);
   }
 
   for (const term of document.requiredTerms || []) {

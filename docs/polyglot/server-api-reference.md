@@ -59,8 +59,8 @@ checks.
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| `GET` | `/api/health` | no | Liveness probe for the HTTP process. |
-| `GET` | `/api/ready` | no | Readiness probe that checks runtime dependencies. |
+| `GET` | `/api/health` | no | Liveness probe plus a machine-readable topology summary for the responding node. |
+| `GET` | `/api/ready` | no | Readiness probe plus the same topology summary and rollout-safety bootstrap checks. |
 | `GET` | `/api/cluster/info` | yes | Server identity, supported SDK ranges, role topology, coordination-health summary, control-plane contract, worker-protocol contract, payload codecs, and feature capabilities. |
 
 Example:
@@ -77,6 +77,51 @@ header because it is the endpoint that advertises the supported versions. The
 same response also includes `coordination_health`, the all-namespaces rollout
 and readiness summary that mirrors the checks already feeding the server's
 readiness posture.
+
+### Public Topology Summary
+
+`GET /api/health` and `GET /api/ready` both return a top-level `topology`
+object from the landed health-summary contract. Use it when you need to
+identify which node answered a probe before control-plane auth, namespace
+resolution, or broader `/api/cluster/info` discovery succeeds.
+
+The public summary always includes:
+
+- `topology.schema`
+- `topology.version`
+- `topology.current_shape`
+- `topology.current_process_class`
+- `topology.current_roles`
+- `topology.execution_mode`
+- `topology.matching_role.queue_wake_enabled`
+- `topology.matching_role.shape`
+- `topology.matching_role.wake_owner`
+- `topology.matching_role.task_dispatch_mode`
+- `topology.matching_role.partition_primitives`
+- `topology.matching_role.backpressure_model`
+
+`/api/ready` returns the same `topology` block even when the top-level
+readiness `status` is `not_ready`, so probes can still distinguish
+`server_http_node`, `scheduler_node`, `matching_node`, and `execution_node`
+responses while bootstrap blockers are active.
+
+Example:
+
+<!-- docs-example id="server.health.topology.curl" -->
+```bash
+curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/health" | jq '{
+  status,
+  topology: {
+    schema: .topology.schema,
+    version: .topology.version,
+    current_shape: .topology.current_shape,
+    current_process_class: .topology.current_process_class,
+    current_roles: .topology.current_roles,
+    execution_mode: .topology.execution_mode,
+    matching_role: .topology.matching_role
+  }
+}'
+```
 
 ### Readiness Blockers
 
