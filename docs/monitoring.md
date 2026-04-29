@@ -32,6 +32,12 @@ was recorded in activity or worker code, scrape the worker's telemetry
 endpoint. Use Waterline to correlate that runtime signal with the durable
 workflow history and current run state.
 
+When worker telemetry shows repeated claims, late completion races, or stuck
+leases, read [Execution Guarantees and Idempotency](./constraints/execution-guarantees.md)
+alongside this guide. That contract separates at-least-once transport
+uncertainty from duplicate durable outcomes so duplicate-looking evidence does
+not turn into the wrong operational conclusion.
+
 ### Dashboard View
 
 ![Waterline dashboard](https://raw.githubusercontent.com/durable-workflow/waterline/refs/heads/v2/docs/screenshots/dashboard.png)
@@ -118,6 +124,9 @@ not valid for the run's current state.
 
 ## Related Guides
 
+- [Execution Guarantees and Idempotency](./constraints/execution-guarantees.md)
+  explains the replay, retry, lease-expiry, and durable-outcome contract that
+  shapes operator evidence.
 - [Operator Operating Envelope](./operator-operating-envelope.md) ties health,
   queue state, rebuild, export, archive, and topology expectations into one
   operator contract.

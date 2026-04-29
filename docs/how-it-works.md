@@ -45,7 +45,9 @@ Workflow code and activity code have different repeat-execution semantics:
 - **Activities are at-least-once queued work.** A logical activity may be retried, redelivered after lease expiry, or re-observed after worker loss. Duplicate delivery is a normal distributed-systems condition, not a bug by itself.
 - **Activity identity is durable.** `activity_execution_id` identifies one logical activity execution across retries and redelivery, while `activity_attempt_id` identifies an individual try. Use `activity_execution_id` as the default remote idempotency key; use `activity_attempt_id` only when a downstream system needs per-attempt correlation.
 
-See [Activity Execution Model](./features/activity-execution-model.md) and [Failures and Recovery](./failures-and-recovery.md) for the full v2 contract.
+See [Execution Guarantees and Idempotency](./constraints/execution-guarantees.md),
+[Activity Execution Model](./features/activity-execution-model.md), and
+[Failures and Recovery](./failures-and-recovery.md) for the full v2 contract.
 
 ## Queues
 

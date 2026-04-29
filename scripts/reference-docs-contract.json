@@ -122,6 +122,29 @@
       ]
     },
     {
+      "path": "constraints/execution-guarantees.md",
+      "title": "Execution Guarantees and Idempotency",
+      "minimumCodeFences": 1,
+      "requiredHeadings": [
+        "Replay Is Not Retry",
+        "Activity Execution Is At-Least-Once",
+        "What Is Exactly Once",
+        "Lease Expiry and Redelivery",
+        "Default Idempotency Surfaces",
+        "What Developers Must Make Idempotent",
+        "Operator Guidance"
+      ],
+      "requiredTerms": [
+        "Workflow code is replayed from committed history",
+        "Activity code performs side effects and is **at-least-once**.",
+        "Transport and workers are at-least-once.",
+        "Committed durable history is exactly-once per durable identifier.",
+        "activity_execution_id",
+        "activity_attempt_id",
+        "first-class behavior, not a bug"
+      ]
+    },
+    {
       "path": "how-it-works.md",
       "title": "How It Works",
       "minimumCodeFences": 1,

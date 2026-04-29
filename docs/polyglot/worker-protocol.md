@@ -58,6 +58,26 @@ reference freezes that registration payload and the role-scoped auth contract.
 For the broader ready-task discovery and lease-assignment contract behind these
 verbs, see [Task Matching and Dispatch](/docs/2.0/polyglot/task-matching-dispatch).
 
+## Execution Semantics
+
+Worker transport is at-least-once distributed coordination, not exactly-once
+delivery:
+
+- workflow-task replay rebuilds state from committed history; it is not
+  workflow-level retry
+- activity-task lease expiry can trigger redelivery to another worker
+- late completion or failure reports can be rejected as stale because another
+  attempt already won the durable race
+
+Use `activity_execution_id` as the default remote idempotency key when a
+worker or carrier talks to another system. Reach for `activity_attempt_id`
+only when the downstream system must distinguish separate tries of the same
+logical activity execution.
+
+Read [Execution Guarantees and Idempotency](/docs/2.0/constraints/execution-guarantees)
+for the authoritative replay, retry, lease-expiry, redelivery, and
+exactly-once durable-history contract behind these verbs.
+
 ## Workflow Task Bridge
 
 The `WorkflowTaskBridge` contract defines how an external worker interacts with durable workflow tasks:

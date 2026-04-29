@@ -122,6 +122,22 @@ When in doubt, use `activity_execution_id` as the default idempotency key for
 an external operation. Reach for `activity_attempt_id` only when the external
 target truly needs every retry attempt to be distinguishable.
 
+```php
+use Workflow\V2\Activity;
+
+final class ChargeCard extends Activity
+{
+    public function handle(array $payload): string
+    {
+        return app(PaymentGateway::class)->charge(
+            $payload,
+            idempotencyKey: $this->activityId(),
+            attemptCorrelation: $this->attemptId(),
+        );
+    }
+}
+```
+
 ## What Developers Must Make Idempotent
 
 You do **not** need to make workflow replay itself idempotent. The framework

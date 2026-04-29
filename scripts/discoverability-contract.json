@@ -5,6 +5,7 @@
       "links": [
         "deployment.md",
         "monitoring.md",
+        "constraints/execution-guarantees.md",
         "compatibility.md",
         "failures-and-recovery.md",
         "support.md"
@@ -64,13 +65,15 @@
       "source": "monitoring.md",
       "links": [
         "ai-assisted-development.md",
+        "constraints/execution-guarantees.md",
         "failures-and-recovery.md"
       ]
     },
     {
       "source": "failures-and-recovery.md",
       "links": [
-        "monitoring.md"
+        "monitoring.md",
+        "constraints/execution-guarantees.md"
       ]
     },
     {
@@ -86,7 +89,8 @@
       "links": [
         "polyglot/external-execution.md",
         "polyglot/server.md",
-        "polyglot/namespace-auth-workers.md"
+        "polyglot/namespace-auth-workers.md",
+        "constraints/execution-guarantees.md"
       ]
     },
     {
@@ -128,6 +132,12 @@
       "target": "failures-and-recovery.md",
       "related": ["monitoring.md"],
       "aliases": ["exceptions", "non-retryable", "recovery"]
+    },
+    {
+      "query": "workflow replay lease expiry redelivery idempotency",
+      "target": "constraints/execution-guarantees.md",
+      "related": ["failures-and-recovery.md", "polyglot/worker-protocol.md"],
+      "aliases": ["at-least-once", "exactly-once durable history", "activity_execution_id", "activity_attempt_id"]
     },
     {
       "query": "waterline workflow dashboard history export",
