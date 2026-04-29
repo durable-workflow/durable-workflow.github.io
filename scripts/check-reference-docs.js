@@ -66,7 +66,7 @@ function checkDocument(document) {
   const context = `docs/${document.path}`;
 
   assertIncludes(content, `# ${document.title}`, context);
-  assertCodeFenceCount(content, document.minimumCodeFences || 1, context);
+  assertCodeFenceCount(content, document.minimumCodeFences ?? 1, context);
 
   for (const heading of document.requiredHeadings || []) {
     assertHeading(content, heading, context);

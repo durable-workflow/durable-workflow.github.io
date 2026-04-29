@@ -231,6 +231,33 @@
       ]
     },
     {
+      "path": "polyglot/deployment-modes.md",
+      "title": "Deployment Modes",
+      "minimumCodeFences": 0,
+      "requiredHeadings": [
+        "Same Durable Engine, Different Boundary",
+        "Choose Embedded Mode When",
+        "Choose Service Mode When",
+        "Migration Tooling Between Modes",
+        "Related References"
+      ],
+      "requiredTerms": [
+        "one v2 kernel",
+        "HTTP+JSON",
+        "no mandatory gRPC",
+        "worker registration",
+        "stable type keys",
+        "explicit remote base URL",
+        "Do not couple either mode to shared `APP_URL`, `APP_KEY`, localhost assumptions, or same-container discovery.",
+        "There is no automatic live migration of in-flight runs between modes."
+      ],
+      "requiredEndpoints": [
+        "/api/cluster/info",
+        "/api/worker/register",
+        "/api/system/operator-metrics"
+      ]
+    },
+    {
       "path": "polyglot/server-api-reference.md",
       "title": "Server API Reference",
       "minimumCodeFences": 4,

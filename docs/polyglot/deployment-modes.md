@@ -32,14 +32,16 @@ stay identical across both.
 
 Embedded mode and service mode keep one v2 kernel. What changes is the hosting,
 auth, and transport boundary around it.
+Service mode keeps the same kernel behind HTTP+JSON control-plane and worker
+surfaces; there is no mandatory gRPC and no second engine.
 
 | Surface | Embedded mode | Service mode | Stable in both modes |
 | --- | --- | --- | --- |
 | Durable workflow model | A Laravel app hosts the package directly and writes workflow state inside the app runtime. | The standalone server hosts the same package and writes workflow state behind its HTTP control plane. | Workflow ids, run ids, typed history, command outcomes, retries, repair semantics, and history export remain the same v2 contract. |
-| Control plane | Starts and commands come from app code, `WorkflowStub`, or app-local operator tooling. | Starts and commands go through the server API, CLI, or SDKs with explicit auth and protocol headers. | Duplicate-start policy, run targeting, command ids, and named outcomes stay the same. Route follow-up commands to the runtime that accepted the start. |
-| Worker transport | Laravel queue workers execute workflow and activity tasks inside the app deployment. | Workers register, long-poll, heartbeat, and complete work over the HTTP worker protocol. | Task leases, compatibility markers, replay semantics, and at-least-once activity execution stay the same. |
+| Control plane | Starts and commands come from app code, `WorkflowStub`, or app-local operator tooling. | Starts and commands go through the server API, CLI, or SDKs over HTTP+JSON with explicit auth and protocol headers. | Duplicate-start policy, run targeting, command ids, and named outcomes stay the same. Route follow-up commands to the runtime that accepted the start. |
+| Worker transport | Laravel queue workers execute workflow and activity tasks inside the app deployment. | Workers register, long-poll, heartbeat, and complete work over the HTTP+JSON worker protocol. | Task leases, compatibility markers, replay semantics, and at-least-once activity execution stay the same. |
 | Task dispatch default | Tasks are normally dispatched to the Laravel queue in-process with the application. | The server defaults to `task_dispatch_mode = poll` so external workers discover work over HTTP unless you explicitly override it. | The ready/leased/repair lifecycle and durable task model stay the same. |
-| Workflow and activity type keys | PHP aliases can resolve to local classes inside the app. | Workers advertise supported type keys during registration. | Public type keys should stay stable and language-neutral. Do not make PHP FQCNs the public contract. |
+| Workflow and activity type keys | PHP aliases can resolve to local classes inside the app. | Workers advertise supported type keys during registration. | Public type keys should stay stable and language-neutral. Do not make PHP FQCNs or mirrored PHP placeholder types the public contract. |
 | Operator surface | Waterline or app-local tooling reads the embedded app's durable state. | The server API, CLI, and SDKs read the server-owned durable state. | Visibility facts such as search attributes, memos, run status, queue diagnostics, and history export are durable facts within the runtime that owns the run. |
 | Auth and tenancy boundary | App auth is whatever the Laravel host exposes around its own routes and sessions. | Namespace selection and server auth tokens or signatures are mandatory API boundaries. | Namespace names, task queues, compatibility markers, and payload-codec choices should stay stable across a cutover. |
 | Runtime discovery | The app can resolve services in-process or through app-local configuration. | Workers and clients must target an explicit remote base URL. | Do not couple either mode to shared `APP_URL`, `APP_KEY`, localhost assumptions, or same-container discovery. |
@@ -83,7 +85,10 @@ live handoff of in-flight state:
 - Use `GET /api/cluster/info` to confirm the target server build, topology, and
   capability contract before switching traffic.
 - Use `POST /api/worker/register` plus the worker protocol to prove external
-  workers can serve the stable workflow and activity type keys you chose.
+  workers can serve the stable type keys you chose.
+- Use `GET /api/system/operator-metrics`, `dw worker:list`, or Waterline
+  operator views to verify worker registration and compatible fleet coverage
+  before shifting production traffic.
 - Use [CLI and Python Parity](/docs/2.0/polyglot/cli-python-parity) when
   replacing app-local control-plane calls with server-backed automation.
 - Use Waterline or server-side history export for audit/debugging evidence; do
