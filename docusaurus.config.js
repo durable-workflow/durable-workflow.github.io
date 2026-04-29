@@ -75,6 +75,10 @@ const config = {
         // TD-079: public v2 polyglot pages moved into /docs/2.0/polyglot/.
         // Keep the prior URLs working so external links, saved references,
         // and package metadata do not land on 404s after deploy.
+        // /docs/polyglot/* aliases route unversioned references for the
+        // v2-only polyglot surfaces (server, CLI, worker protocol, Python SDK,
+        // and other v2 features) onto the published 2.0 pages. v1 never had
+        // polyglot content, so these aliases do not collide with v1.
         redirects: [
           {
             from: '/docs/2.0/server-setup',
@@ -91,6 +95,86 @@ const config = {
           {
             from: '/docs/2.0/configuration/worker-protocol',
             to: '/docs/2.0/polyglot/worker-protocol',
+          },
+          {
+            from: '/docs/polyglot/server',
+            to: '/docs/2.0/polyglot/server',
+          },
+          {
+            from: '/docs/polyglot/server-api-reference',
+            to: '/docs/2.0/polyglot/server-api-reference',
+          },
+          {
+            from: '/docs/polyglot/server-config-reference',
+            to: '/docs/2.0/polyglot/server-config-reference',
+          },
+          {
+            from: '/docs/polyglot/server-role-topology',
+            to: '/docs/2.0/polyglot/server-role-topology',
+          },
+          {
+            from: '/docs/polyglot/worker-protocol',
+            to: '/docs/2.0/polyglot/worker-protocol',
+          },
+          {
+            from: '/docs/polyglot/cli',
+            to: '/docs/2.0/polyglot/cli',
+          },
+          {
+            from: '/docs/polyglot/cli-reference',
+            to: '/docs/2.0/polyglot/cli-reference',
+          },
+          {
+            from: '/docs/polyglot/cli-python-parity',
+            to: '/docs/2.0/polyglot/cli-python-parity',
+          },
+          {
+            from: '/docs/polyglot/python',
+            to: '/docs/2.0/polyglot/python',
+          },
+          {
+            from: '/docs/polyglot/namespace-auth-workers',
+            to: '/docs/2.0/polyglot/namespace-auth-workers',
+          },
+          {
+            from: '/docs/polyglot/deployment-modes',
+            to: '/docs/2.0/polyglot/deployment-modes',
+          },
+          {
+            from: '/docs/polyglot/embedded-to-server',
+            to: '/docs/2.0/polyglot/embedded-to-server',
+          },
+          {
+            from: '/docs/polyglot/cloud-control-plane',
+            to: '/docs/2.0/polyglot/cloud-control-plane',
+          },
+          {
+            from: '/docs/polyglot/external-execution',
+            to: '/docs/2.0/polyglot/external-execution',
+          },
+          {
+            from: '/docs/polyglot/invocable-carrier',
+            to: '/docs/2.0/polyglot/invocable-carrier',
+          },
+          {
+            from: '/docs/polyglot/invocable-php-handler',
+            to: '/docs/2.0/polyglot/invocable-php-handler',
+          },
+          {
+            from: '/docs/polyglot/task-matching-dispatch',
+            to: '/docs/2.0/polyglot/task-matching-dispatch',
+          },
+          {
+            from: '/docs/polyglot/task-queue-admission',
+            to: '/docs/2.0/polyglot/task-queue-admission',
+          },
+          {
+            from: '/docs/polyglot/worker-build-id-rollout',
+            to: '/docs/2.0/polyglot/worker-build-id-rollout',
+          },
+          {
+            from: '/docs/polyglot/worker-compatibility-routing',
+            to: '/docs/2.0/polyglot/worker-compatibility-routing',
           },
         ],
       },
