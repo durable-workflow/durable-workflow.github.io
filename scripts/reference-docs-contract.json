@@ -258,6 +258,46 @@
       ]
     },
     {
+      "path": "operator-operating-envelope.md",
+      "title": "Operator Operating Envelope",
+      "minimumCodeFences": 6,
+      "requiredHeadings": [
+        "Supported topologies",
+        "Failure-domain checklist by supported shape",
+        "Verify live topology identity before trusting the baseline",
+        "Blocking and advisory diagnostics",
+        "Queue-health semantics",
+        "Alert semantics",
+        "Backup, restore, and disaster-recovery contract",
+        "Benchmark envelope",
+        "Long-soak evidence",
+        "End-to-end operator checklist"
+      ],
+      "requiredTerms": [
+        "Primary failure domains",
+        "Recovery and failover expectation",
+        "coordination_alerts[]",
+        "topology.current_shape",
+        "tasks_added_last_minute",
+        "tasks_dispatched_last_minute",
+        "schedule_to_start",
+        "Treat a degraded `acceleration` rollup as acceleration-only",
+        "Benchmark snapshots are not enough on their own."
+      ],
+      "requiredCommands": [
+        "php artisan workflow:v2:doctor --strict",
+        "php artisan workflow:v2:rebuild-projections",
+        "php artisan workflow:v2:backfill-command-contracts",
+        "php artisan workflow:v2:history-export"
+      ],
+      "requiredEndpoints": [
+        "/waterline/api/v2/health",
+        "/waterline/api/stats",
+        "/api/cluster/info",
+        "/api/ready"
+      ]
+    },
+    {
       "path": "polyglot/server-api-reference.md",
       "title": "Server API Reference",
       "minimumCodeFences": 4,
