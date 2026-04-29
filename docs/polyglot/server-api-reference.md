@@ -380,6 +380,58 @@ For the full request-authority contract, including namespace resolution,
 role-scoped credentials, and worker registration fields, see
 [Namespace, Auth, And Worker Registration](/docs/2.0/polyglot/namespace-auth-workers).
 
+## Service Catalog Admin APIs
+
+Service-catalog routes are authenticated admin control-plane routes. They use
+the same namespace resolution, topology-role gating, and
+`X-Durable-Workflow-Control-Plane-Version: 2` requirement as the rest of the
+hosted control plane.
+
+Use this route family to register namespace-scoped endpoint, service, and
+operation metadata for the cross-namespace service catalog. Names are
+case-insensitive on input and are normalized to lowercase in responses and
+lookups.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/service-endpoints` | List service endpoints for the current namespace. |
+| `POST` | `/api/service-endpoints` | Create a service endpoint. |
+| `GET` | `/api/service-endpoints/{endpointName}` | Describe one endpoint. |
+| `PUT` | `/api/service-endpoints/{endpointName}` | Update endpoint description or metadata. |
+| `DELETE` | `/api/service-endpoints/{endpointName}` | Delete an unused endpoint. |
+| `GET` | `/api/service-endpoints/{endpointName}/services` | List services registered under one endpoint. |
+| `POST` | `/api/service-endpoints/{endpointName}/services` | Create a service under one endpoint. |
+| `GET` | `/api/service-endpoints/{endpointName}/services/{serviceName}` | Describe one service. |
+| `PUT` | `/api/service-endpoints/{endpointName}/services/{serviceName}` | Update service description or metadata. |
+| `DELETE` | `/api/service-endpoints/{endpointName}/services/{serviceName}` | Delete an unused service. |
+| `GET` | `/api/service-endpoints/{endpointName}/services/{serviceName}/operations` | List operations registered under one service. |
+| `POST` | `/api/service-endpoints/{endpointName}/services/{serviceName}/operations` | Create an operation binding. |
+| `GET` | `/api/service-endpoints/{endpointName}/services/{serviceName}/operations/{operationName}` | Describe one operation. |
+| `PUT` | `/api/service-endpoints/{endpointName}/services/{serviceName}/operations/{operationName}` | Update an operation binding. |
+| `DELETE` | `/api/service-endpoints/{endpointName}/services/{serviceName}/operations/{operationName}` | Delete an unused operation. |
+
+Response collections use `service_endpoints`, `services`, or `operations`
+arrays. Individual resources include stable lowercase names plus metadata and
+timestamps:
+
+- Endpoints return `id`, `namespace`, `endpoint_name`, `description`,
+  `metadata`, `created_at`, and `updated_at`.
+- Services add `endpoint_id` and `service_name`.
+- Operations add `service_id`, `operation_name`, `operation_mode`,
+  `handler_binding_kind`, `handler_target_reference`, `handler_binding`,
+  `deadline_policy`, `idempotency_policy`, `cancellation_policy`,
+  `retry_policy`, `boundary_policy`, and `metadata`.
+
+Operation create/update requests use the same JSON field names as the response.
+`operation_mode` is `sync` or `async`. `handler_binding_kind` is one of
+`start_workflow`, `signal_workflow`, `update_workflow`, `query_workflow`,
+`activity_execution`, or `invocable_http`. New operations must provide either
+`handler_target_reference` or a non-empty `handler_binding` payload.
+
+Delete routes fail closed with HTTP `409` and a named reason when dependents
+still exist, such as `endpoint_has_services`, `service_has_operations`, or
+`operation_has_service_calls`.
+
 ## Bridge Adapters
 
 Bridge adapters are bounded ingress endpoints. They do not execute workflow

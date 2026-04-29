@@ -856,6 +856,7 @@ Key endpoints:
 - `GET /api/task-queues`, `GET /api/task-queues/{taskQueue}` — Task queue backlog, pollers, leases, and admission visibility
 - `GET|POST /api/schedules`, `GET|PUT|DELETE /api/schedules/{id}`, `POST /api/schedules/{id}/{pause|resume|trigger|backfill}` — Schedule management
 - `GET|POST|DELETE /api/search-attributes` — Search attribute management
+- `GET|POST|PUT|DELETE /api/service-endpoints...` — Admin-only service catalog endpoints, nested services, and operation bindings
 - `POST /api/system/repair/pass`, `POST /api/system/activity-timeouts/pass`, `POST /api/system/retention/pass` — Operator passes
 
 Workflow control-plane responses, including run-history listing responses,

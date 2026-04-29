@@ -280,6 +280,9 @@
         "topology_role_unavailable",
         "required_roles",
         "missing_roles",
+        "service_endpoints",
+        "operation_mode",
+        "handler_binding_kind",
         "durable-workflow.v2.external-payload-reference.v1",
         "Replay and history export must fail loudly",
         "reason: \"validation_failed\"",
@@ -303,6 +306,9 @@
         "/api/task-queues/{taskQueue}",
         "/api/schedules/{scheduleId}/backfill",
         "/api/search-attributes/{name}",
+        "/api/service-endpoints",
+        "/api/service-endpoints/{endpointName}/services",
+        "/api/service-endpoints/{endpointName}/services/{serviceName}/operations",
         "/api/system/metrics",
         "/api/system/retention/pass"
       ]
