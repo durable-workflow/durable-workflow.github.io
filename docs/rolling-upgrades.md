@@ -184,11 +184,13 @@ the documented `workflow:v2:repair-pass --loop` plus
 `GET /api/cluster/info`: `topology.current_shape` should still match the
 deployment you are cutting over, `topology.current_roles` should still match
 the documented role bundle for that node, and
-`topology.matching_role.queue_wake_enabled` plus
-`topology.matching_role.wake_owner` should show the expected broad-ready-task
-owner. The default shape reports `queue_wake_enabled: true` and
+`topology.matching_role.queue_wake_enabled`,
+`topology.matching_role.shape`, and `topology.matching_role.wake_owner`
+should show the expected broad-ready-task owner. The default shape reports
+`queue_wake_enabled: true`, `shape: "in_worker"`, and
 `wake_owner: "worker_loop"`; dedicated matching rollouts flip execution nodes
-to `queue_wake_enabled: false` and `wake_owner: "dedicated_repair_pass"`.
+to `queue_wake_enabled: false`, `shape: "dedicated"`, and
+`wake_owner: "dedicated_repair_pass"`.
 
 ## Readiness and cutover
 
@@ -219,11 +221,13 @@ Cutover sequence for one API node:
    `GET /api/cluster/info` to advertise the new build identity. When the
    rollout changes the matching topology, also confirm
    `topology.matching_role.task_dispatch_mode`,
-   `topology.matching_role.queue_wake_enabled`, and
-   `topology.matching_role.wake_owner` match the intended deployment before
-   returning the node to traffic. Use `/api/system/operator-metrics` when you
-   also need the node-local `shape`, `partition_primitives`, or
-   `backpressure_model` matching contract.
+   `topology.matching_role.queue_wake_enabled`,
+   `topology.matching_role.shape`, `topology.matching_role.wake_owner`,
+   `topology.matching_role.partition_primitives`, and
+   `topology.matching_role.backpressure_model` match the intended deployment
+   before returning the node to traffic. Use `/api/system/operator-metrics`
+   when you want the same node-local matching-role contract alongside live
+   backlog, repair, and worker counters from the responding process.
 5. Return the node to rotation.
 
 Repeat one node at a time. Do not roll the next node until the

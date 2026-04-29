@@ -164,15 +164,16 @@ Treat these as tuning levers:
 
 Use these surfaces together:
 
-- `GET /api/cluster/info` for the per-node role topology: `current_shape`,
-  current roles, and `matching_role.queue_wake_enabled`, `wake_owner`, and
-  `task_dispatch_mode`
+- `GET /api/cluster/info` for the per-node role topology:
+  `current_shape`, `current_process_class`, current roles, and the full
+  `matching_role` contract: `queue_wake_enabled`, deployment `shape`,
+  `wake_owner`, `task_dispatch_mode`, frozen `partition_primitives`, and the
+  current `backpressure_model`
 - task-queue visibility for ready depth, active slots, and throttling
 - worker fleet visibility for active vs stale pollers on each queue
 - `dw system:operator-metrics --json` or `/api/system/operator-metrics` for
-  the node-local `matching_role` contract: deployment `shape`,
-  `task_dispatch_mode`, the frozen `partition_primitives`, and the current
-  `backpressure_model`
+  the same node-local `matching_role` contract beside live backlog, repair,
+  worker, and health counters from the responding process
 - health and Waterline diagnostics for unhealthy tasks, stale leases, and
   compatible-worker gaps
 - rolling-upgrade checks when mixed versions are live and matching must block

@@ -356,6 +356,7 @@ container names or rollout runbooks.
       "execution_plane"
     ],
     "current_shape": "standalone_server",
+    "current_process_class": "server_http_node",
     "current_roles": [
       "api_ingress",
       "control_plane",
@@ -365,8 +366,16 @@ container names or rollout runbooks.
     "execution_mode": "remote_worker_protocol",
     "matching_role": {
       "queue_wake_enabled": true,
+      "shape": "in_worker",
       "wake_owner": "worker_loop",
-      "task_dispatch_mode": "poll"
+      "task_dispatch_mode": "poll",
+      "partition_primitives": [
+        "connection",
+        "queue",
+        "compatibility",
+        "namespace"
+      ],
+      "backpressure_model": "lease_ownership"
     },
     "shape_assignments": {
       "embedded": {
@@ -555,29 +564,37 @@ Treat `topology.version` as the role-manifest schema version, not as a synonym
 for the top-level server build version. Automation should check that field
 before assuming fields added by a newer topology manifest revision. The
 current public contract includes `supported_shapes`, `role_vocabulary`,
-`current_shape`, `current_roles`, `execution_mode`, `matching_role`,
-`shape_assignments`, `authority_boundaries`, `failure_domains`,
-`scaling_boundaries`, and `migration_path`.
+`current_shape`, `current_process_class`, `current_roles`, `execution_mode`,
+`matching_role`, `role_catalog`, `shape_assignments`,
+`authority_boundaries`, `authority_surfaces`, `failure_domains`,
+`supported_topologies`, `scaling_boundaries`, and `migration_path`.
 
 Read the fields as follows:
 
 - `supported_shapes` names the legal product topologies.
 - `role_vocabulary` is the fixed list of v2 role names. Treat it as the
   canonical vocabulary for automation and diagnostics.
-- `current_shape` and `current_roles` describe the node you queried right now.
-  The manifest does not publish a separate `current_process_class`; instead,
-  compare the current role bundle against `shape_assignments` for the current
-  shape when you need to map the node to a documented process class such as
-  `server_http_node`, `scheduler_node`, or `worker_node`.
+- `current_shape`, `current_process_class`, and `current_roles` describe the
+  node you queried right now. Use `current_process_class` as the node's
+  declared identity, then compare the current role bundle against
+  `shape_assignments` for the current shape when you need to validate that
+  declaration.
 - `execution_mode` distinguishes embedded local queue execution
   (`local_queue_worker`) from standalone server worker-protocol execution
   (`remote_worker_protocol`).
-- `matching_role.queue_wake_enabled`, `matching_role.wake_owner`, and
-  `matching_role.task_dispatch_mode` tell you whether the node still runs the
+- `matching_role.queue_wake_enabled`, `matching_role.shape`,
+  `matching_role.wake_owner`, `matching_role.task_dispatch_mode`,
+  `matching_role.partition_primitives`, and
+  `matching_role.backpressure_model` tell you whether the node still runs the
   in-worker wake path or expects a dedicated repair or matching loop to own
-  that sweep.
+  that sweep, which routing axes remain stable, and which durable admission
+  boundary the matching layer currently enforces.
+- `role_catalog` and `authority_surfaces` tell you which interfaces and
+  durable mutation paths each role owns on the current manifest revision.
 - `shape_assignments` maps each supported shape to the process classes and role
   bundles that shape is allowed to run.
+- `supported_topologies` summarizes the deployment families the product
+  supports and the node classes each family expects.
 - `authority_boundaries` names which durable write surfaces each role is
   expected to mutate, so operators can catch cross-role drift before they split
   a deployment.

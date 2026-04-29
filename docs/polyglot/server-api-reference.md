@@ -91,18 +91,27 @@ response also publishes live rollout-safety state for that node.
 
 Read the manifest as follows:
 
-- `topology.current_shape`, `topology.current_roles`, and
-  `topology.execution_mode` tell you which role shape the node is actually
-  serving. `current_shape` and `current_roles` describe the responding node,
-  not the full fleet.
+- `topology.current_shape`, `topology.current_process_class`,
+  `topology.current_roles`, and `topology.execution_mode` tell you which role
+  shape the node is actually serving. These fields describe the responding
+  node, not the full fleet.
 - `topology.role_vocabulary` is the fixed list of legal v2 role names.
 - `topology.matching_role.queue_wake_enabled`,
-  `topology.matching_role.wake_owner`, and
-  `topology.matching_role.task_dispatch_mode` tell you whether broad ready-task
-  discovery is happening in-worker or through a dedicated matching-role sweep.
+  `topology.matching_role.shape`, `topology.matching_role.wake_owner`,
+  `topology.matching_role.task_dispatch_mode`,
+  `topology.matching_role.partition_primitives`, and
+  `topology.matching_role.backpressure_model` tell you whether broad ready-task
+  discovery is happening in-worker or through a dedicated matching-role sweep,
+  which process owns that sweep, which routing axes stay stable, and which
+  durable admission boundary v2 enforces today.
+- `topology.role_catalog` and `topology.authority_surfaces` map those role
+  names to the interfaces, durable-write surfaces, and read paths automation
+  should expect on the responding node.
 - `topology.shape_assignments` is the machine-readable process-class inventory
   for each supported shape. Compare the current role bundle against that table
   when you need to map the responding node onto a documented process class.
+- `topology.supported_topologies` summarizes which deployment families the
+  product supports and which node classes each family expects.
 - `coordination_health` summarizes fleet-wide rollout and compatibility risk in
   one machine-readable block.
 - `execution_mode` distinguishes `local_queue_worker` embedded execution from

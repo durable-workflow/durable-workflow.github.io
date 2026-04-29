@@ -32,23 +32,25 @@ setup.
 
 ## Reading The Topology Manifest
 
-The `topology` object answers eight different questions:
+The `topology` object answers these contract questions:
 
 | Field family | Question it answers |
 | --- | --- |
 | `schema`, `version` | Which topology contract revision are you reading? |
 | `supported_shapes` | Which product deployment shapes are legal? |
 | `role_vocabulary` | Which role names are valid on this contract? |
-| `current_shape`, `current_roles`, `execution_mode` | What is the responding node doing right now? |
-| `matching_role.*` | Who owns broad ready-task wake and which dispatch mode is active? |
+| `current_shape`, `current_process_class`, `current_roles`, `execution_mode` | What is the responding node doing right now? |
+| `matching_role.*` | Who owns broad ready-task wake, which routing axes are frozen, and which dispatch/backpressure posture is active? |
+| `role_catalog`, `authority_surfaces` | Which interfaces and durable mutation surfaces belong to each role? |
 | `shape_assignments` | Which process classes are allowed for each supported shape? |
 | `authority_boundaries`, `failure_domains`, `scaling_boundaries` | Which role is allowed to write what, how each role fails, and what load axis each role scales on? |
-| `migration_path` | What is the ordered path from the standalone shape toward more isolated roles? |
+| `supported_topologies`, `migration_path` | What deployment families are product-supported, and what is the ordered path from the standalone shape toward more isolated roles? |
 
-`current_shape` and `current_roles` describe the node that answered the HTTP
-request, not the full fleet. The manifest does not publish a separate
-`current_process_class`; map the node by comparing `current_roles` against the
-process-class bundles in `shape_assignments`.
+`current_shape`, `current_process_class`, and `current_roles` describe the node
+that answered the HTTP request, not the full fleet. Use
+`current_process_class` as the node's declared identity, then compare
+`current_roles` against the process-class bundles in `shape_assignments` when
+you need to verify that declaration.
 
 ```bash
 curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/cluster/info" \
@@ -56,6 +58,7 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/cluster/info" \
   -H "X-Namespace: default" \
   | jq '{
     current_shape: .topology.current_shape,
+    current_process_class: .topology.current_process_class,
     current_roles: .topology.current_roles,
     execution_mode: .topology.execution_mode,
     matching_role: .topology.matching_role,
@@ -95,9 +98,11 @@ split-role shapes.
 
 ## Current Node Identity
 
-Use `current_shape`, `current_roles`, and `execution_mode` together:
+Use `current_shape`, `current_process_class`, `current_roles`, and
+`execution_mode` together:
 
 - `current_shape` identifies the responding node's shape contract.
+- `current_process_class` identifies the declared process class for that node.
 - `current_roles` identifies the active role bundle on that node.
 - `execution_mode` distinguishes `remote_worker_protocol` from
   `local_queue_worker`.
@@ -115,11 +120,16 @@ responding node:
 | Field | Meaning |
 | --- | --- |
 | `queue_wake_enabled` | Whether short-lived queue wake signals are currently enabled. |
+| `shape` | Which matching deployment shape this node advertises: `in_worker` or `dedicated`. |
 | `wake_owner` | Which implementation currently owns the broad wake sweep: `worker_loop` or `dedicated_repair_pass`. |
 | `task_dispatch_mode` | Whether dispatch is happening through `poll`-driven remote workers or `queue`-driven local execution. |
+| `partition_primitives` | The frozen routing axes the matching role reasons about, in order: `connection`, `queue`, `compatibility`, `namespace`. |
+| `backpressure_model` | The durable admission boundary the matching role enforces. Current v2 reports `lease_ownership`. |
 
 This lets operators and automation distinguish "matching exists but wake is
-degraded" from "this node is intentionally running a different dispatch mode."
+degraded" from "this node is intentionally running a different dispatch mode,"
+and it gives the same routing and backpressure vocabulary the server itself
+publishes in operator metrics.
 
 ## Authority Boundaries
 
