@@ -407,6 +407,7 @@ lookups.
 | `GET` | `/api/service-endpoints/{endpointName}/services/{serviceName}/operations` | List operations registered under one service. |
 | `POST` | `/api/service-endpoints/{endpointName}/services/{serviceName}/operations` | Create an operation binding. |
 | `GET` | `/api/service-endpoints/{endpointName}/services/{serviceName}/operations/{operationName}` | Describe one operation. |
+| `GET` | `/api/service-endpoints/{endpointName}/services/{serviceName}/operations/{operationName}/service-calls/{serviceCallId}` | Describe one durable service-call snapshot. |
 | `PUT` | `/api/service-endpoints/{endpointName}/services/{serviceName}/operations/{operationName}` | Update an operation binding. |
 | `DELETE` | `/api/service-endpoints/{endpointName}/services/{serviceName}/operations/{operationName}` | Delete an unused operation. |
 
@@ -421,6 +422,11 @@ timestamps:
   `handler_binding_kind`, `handler_target_reference`, `handler_binding`,
   `deadline_policy`, `idempotency_policy`, `cancellation_policy`,
   `retry_policy`, `boundary_policy`, and `metadata`.
+- Service-call snapshots add `caller_namespace`, caller and linked workflow
+  ids, `status`, `resolved_binding_kind`, `resolved_target_reference`,
+  payload references, policy snapshots, and lifecycle timestamps such as
+  `accepted_at`, `started_at`, `completed_at`, `failed_at`, and
+  `cancelled_at`.
 
 Operation create/update requests use the same JSON field names as the response.
 `operation_mode` is `sync` or `async`. `handler_binding_kind` is one of

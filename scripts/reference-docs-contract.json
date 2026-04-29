@@ -376,6 +376,7 @@
         "/api/service-endpoints",
         "/api/service-endpoints/{endpointName}/services",
         "/api/service-endpoints/{endpointName}/services/{serviceName}/operations",
+        "/api/service-endpoints/{endpointName}/services/{serviceName}/operations/{operationName}/service-calls/{serviceCallId}",
         "/api/system/metrics",
         "/api/system/retention/pass"
       ]
