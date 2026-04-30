@@ -1,0 +1,16 @@
+when:
+  - event: [push, pull_request]
+
+steps:
+  build-site:
+    image: node:22-bookworm
+    commands:
+      - npm ci
+      - npm run build
+
+  public-boundary:
+    image: node:22-bookworm
+    commands:
+      - export PUBLIC_BOUNDARY_GIT_RANGE="$${CI_COMMIT_SHA}^..$${CI_COMMIT_SHA}"
+      - if [ -n "$${CI_PREV_COMMIT_SHA:-}" ]; then export PUBLIC_BOUNDARY_GIT_RANGE="$${CI_PREV_COMMIT_SHA}..$${CI_COMMIT_SHA}"; fi
+      - scripts/check-public-boundary.sh
