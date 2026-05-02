@@ -1,50 +1,197 @@
 ---
 sidebar_position: 17
 title: Version Compatibility
-description: Compatibility matrix for Durable Workflow components
+description: Canonical compatibility and release-authority contract for Durable Workflow public surfaces.
 tags:
   - compatibility
   - operations
   - protocols
+  - api-stability
 keywords:
   - version compatibility
+  - compatibility authority
+  - release authority
+  - stability levels
   - protocol manifests
   - control plane version
   - worker protocol version
+  - surface stability contract
 ---
 
 # Version Compatibility
 
-This page documents version compatibility across Durable Workflow components. All components validate version compatibility at runtime and provide clear error messages when incompatible versions are detected.
+This page is the **canonical compatibility and release-authority contract** for
+the Durable Workflow public platform. It is the single source of truth for:
 
-## Component Versions
+- which surfaces are public,
+- the stability level of each public surface,
+- which changes may ship in a patch, minor, or major release,
+- whether a given field is part of the contract or is diagnostic-only,
+- and the runtime version-negotiation protocol clients use to fail closed when
+  the server advertises a surface they cannot speak.
 
-| Component | Current Version | Notes |
-|-----------|----------------|-------|
-| Workflow Package (PHP) | 1.0.75 (v1), 2.0.0 (v2) | Core workflow engine |
-| Standalone Server | 2.0.0 | Language-neutral HTTP server |
-| CLI | 0.1.0 | Command-line interface |
-| Python SDK | 0.2.0 | Python client and worker |
-| Waterline | 1.0.16 (v1), 2.0.0 (v2) | Observability UI |
+Per-package stability documents (for example `docs/api-stability.md` in the
+`durable-workflow/workflow` repository, the `dw` CLI reference, the Waterline
+operator API page) are **downstream** of this page. They add per-package
+detail under these rules; when a per-package document and this page disagree,
+this page wins, and the disagreement is a bug in the per-package document.
+
+The same contract is published in machine-readable form so SDKs, server
+manifests, and CI gates can validate themselves against one source of truth:
+
+- `surface_stability_contract` in the response body of
+  `GET /api/cluster/info` on the standalone Durable Workflow server, schema
+  `durable-workflow.v2.surface-stability.contract`, version `1`.
+- A frozen mirror of the same manifest in this repository at
+  `static/compatibility-contract.json`.
+- The PHP class `Workflow\V2\Support\SurfaceStabilityContract`, which is
+  the in-process source the server re-exports.
+
+A release that changes any surface listed below — its stability level, its
+field set, its breaking-change rules — must update this page, the JSON
+mirror, the PHP manifest, and any per-package stability document in the same
+change. The release-check gate in `scripts/check-compatibility-authority.js`
+fails the docs build when it detects drift between this page and the JSON
+mirror.
+
+## Stability Levels
+
+Every public surface in Durable Workflow carries exactly one of these
+stability levels. Levels are explicit; a surface that is not classified is
+not public.
+
+| Level | Meaning | When breaking changes are allowed |
+|-------|---------|-----------------------------------|
+| `frozen` | Wire-format or persisted shape that must decode the same way for the workflow lifetime. Renaming, removing, or repurposing a field is a protocol break, never a minor change. | Only by introducing a **parallel primitive** with a new type name. The original shape stays decodable indefinitely. |
+| `stable` | Public surface covered by the platform semver guarantee. Additive changes ship in minor releases. | Major release only. |
+| `prerelease` | Public surface that is feature-complete but still allowed to change before the matching `1.0.0` / `2.0.0` cut. | In clearly labelled prerelease versions; called out in the version-history table on this page. |
+| `experimental` | Public-but-unstable surface. May change in any release, including patch releases. Callers must opt in by reading the experimental flag on the surface. | Any release; release notes call out the change. |
+
+## Public Surface Families
+
+This is the complete list of public surface families. Adding, removing, or
+re-classifying a family requires a contract change (`SurfaceStabilityContract`
+version bump, this page, and the JSON mirror in the same commit).
+
+| Family | Stability | Authority manifest in `/api/cluster/info` | What it covers |
+|--------|-----------|-------------------------------------------|----------------|
+| `server_api` | `stable` | `control_plane` | Standalone server HTTP API: control-plane routes, namespace routes, schedule routes, system routes, plus `/api/health`, `/api/ready`, `/api/cluster/info`. Per-route version is governed by `control_plane.request_contract` and `control_plane.response.contract`. The top-level server `version` is build identity, not the client compatibility authority. |
+| `worker_protocol` | `stable` | `worker_protocol` | Worker-plane HTTP API used by external SDK workers to register, poll, heartbeat, complete, and fail tasks. Includes the `external_execution_surface_contract`, `external_executor_config_contract`, `invocable_carrier_contract`, `external_task_input_contract`, and `external_task_result_contract`. |
+| `cli_json` | `stable` | n/a (see CLI reference) | The `--output=json` and `--output=jsonl` shapes emitted by `dw`. JSON exit codes and JSON field names are the durable surface; the human-readable `--output=table` form is documentation, not contract. |
+| `waterline_api` | `stable` | n/a (see Waterline operator API) | Waterline observability HTTP API at `/waterline/api/v2/*`, the engine-source contract, and the dashboard JSON shapes. Waterline must match the workflow package major version. |
+| `mcp_discovery_results` | `stable` | n/a (see MCP workflows page) | The `/mcp/*` Model Context Protocol surfaces and the `llms.txt` / `llms-2.0.txt` discovery files. MCP tool names, parameter schemas, and `payload_preview_limit_bytes` semantics are part of the contract; tool descriptions and discovery hints are diagnostic. |
+| `official_sdks` | `stable` | `client_compatibility` | The first-party SDKs: PHP `durable-workflow/workflow`, `durable-workflow/server`, the `dw` CLI, and the `durable_workflow` Python SDK. Each SDK's public surface is governed by its own per-package stability document, which must defer to this page. |
+| `history_event_wire_formats` | `frozen` | n/a (frozen shapes; see workflow `docs/api-stability.md`) | The persisted shape of every row in `workflow_history_events` and `workflow_schedule_history_events`. Once a workflow writes an event, every future SDK that replays it must decode the same field set. |
+| `cluster_info_manifests` | `stable` | `surface_stability_contract`, `client_compatibility`, `control_plane`, `worker_protocol`, `auth_composition_contract`, `coordination_health` | The protocol manifests published by `GET /api/cluster/info` itself. Each nested manifest carries its own `schema` and `version` and evolves under its own contract rules. The envelope keys are stable. |
+
+### Per-package stability documents
+
+These documents add per-package detail under the rules on this page:
+
+- `durable-workflow/workflow` (PHP) — [`docs/api-stability.md`](https://github.com/durable-workflow/workflow/blob/v2/docs/api-stability.md). Authoritative for the PHP authoring API, the `Support\*` server-facing classes, and the frozen history-event wire-format tables.
+- `durable-workflow/server` — [`README.md`](https://github.com/durable-workflow/server/blob/main/README.md) and `docs/contracts/*`. Authoritative for the standalone server's request/response contracts.
+- `dw` CLI — [`/docs/2.0/polyglot/cli-reference`](/docs/2.0/polyglot/cli-reference). Authoritative for the JSON output shapes and exit codes.
+- Python SDK — `README.md` in `durable-workflow/sdk-python`. Authoritative for the `durable_workflow` package public API.
+
+## Release Rules
+
+These rules apply to every public surface family above. They are reproduced in
+the JSON mirror under `release_rules`.
+
+### Patch releases
+
+Allowed:
+- bug fixes that preserve the documented contract
+- documentation fixes
+- dependency bumps that do not change the public surface
+- changes to surfaces marked `experimental`
+
+Forbidden:
+- removing or renaming any `stable` or `frozen` field, route, command, or class
+- narrowing accepted input on any `stable` route or command
+- changing the meaning of an existing `stable` field
+
+### Minor releases
+
+Allowed:
+- adding new fields, routes, commands, or classes to a `stable` surface
+- adding new optional parameters with safe defaults
+- adding new capability flags to discovery responses
+- promoting a `prerelease` or `experimental` surface to `stable`
+
+Forbidden:
+- removing or renaming any `stable` or `frozen` field, route, command, or class
+- changing the meaning of an existing `stable` or `frozen` field
+
+### Major releases
+
+Allowed:
+- removing, renaming, or narrowing a `stable` surface
+- increasing the required `control_plane.version` or `worker_protocol.version`
+- dropping a previously supported SDK or CLI version range
+
+Required:
+- announce in the version-history table at the bottom of this page at least
+  one minor release before cutting the major
+- where feasible, ship the new surface alongside the old surface in a
+  previous minor release so callers can migrate before the major
+- document the migration path on the [migration guide](/docs/2.0/migration)
+  before publish
+
+## Diagnostic-Only Versus Guaranteed Fields
+
+Every field in every `stable` or `frozen` surface is either **guaranteed** or
+**diagnostic-only**. The two have different change rules:
+
+- **Guaranteed fields** are part of the documented contract. Producers must
+  keep emitting them in the documented shape; consumers may rely on their
+  presence and meaning. Removing or renaming a guaranteed field on a `stable`
+  surface is a major change.
+- **Diagnostic-only fields** are emitted for human triage, debugging, and
+  observability. They may be added, renamed, or removed in any minor
+  release. They must be marked `diagnostic_only: true` (or the doc-page
+  equivalent) wherever they are documented. **Consumers must not parse,
+  persist, or branch on diagnostic fields in production decision logic.**
+
+Unknown additive fields on a `stable` or `frozen` shape must be ignored by
+older consumers (forward compatibility). Unknown required fields must fail
+closed. SDKs and CLIs publish their own forward-compatibility behavior in
+their per-package stability documents.
 
 ## Compatibility Matrix
 
-### Server ↔ SDK/CLI
+This is the operational compatibility matrix. It records which client
+versions are validated against which server protocol manifests. Components
+validate the matrix at runtime via `GET /api/cluster/info` and fail closed
+when the manifests do not agree.
+
+### Component versions
+
+| Component | Current Version | Stability level | Notes |
+|-----------|-----------------|------------------|-------|
+| Workflow Package (PHP) | 1.0.75 (v1), 2.0.0 (v2) | `stable` (`official_sdks`) | Core workflow engine. v2 is published with a `@alpha` Composer stability flag while the 2.0 line ramps. |
+| Standalone Server | 2.0.0 | `stable` (`server_api`) | Language-neutral HTTP server. |
+| CLI (`dw`) | 0.1.0 | `prerelease` (`cli_json`) | Prerelease until the `1.0` cut; JSON contract is being stabilised in 0.x. |
+| Python SDK (`durable_workflow`) | 0.2.0 | `prerelease` (`official_sdks`) | Prerelease until the `1.0` cut. |
+| Waterline | 1.0.16 (v1), 2.0.0 (v2) | `stable` (`waterline_api`) | Observability UI. Major must match the workflow package major. |
+
+### Server ↔ SDK / CLI
 
 | Server Protocol Manifests | CLI 0.1.x | Python SDK 0.2.x | PHP Workflow 2.0.x |
-|----------------|-----------|------------------|-------------------|
+|---------------------------|-----------|------------------|---------------------|
 | `control_plane.version: "2"` + request-contract v1 + `worker_protocol.version: "1.0"` | ✅ Compatible | ✅ Compatible | ✅ Compatible |
 | Missing or unknown protocol manifests | ❌ Fail closed | ❌ Fail closed | ❌ Fail closed |
 | Future incompatible protocol versions | ❌ Breaking | ❌ Breaking | ❌ Breaking |
 
-The top-level server `version` from `/api/cluster/info` is build identity, not
-the client compatibility authority. Clients must use the protocol manifests
-advertised by `/api/cluster/info`:
+The top-level server `version` from `/api/cluster/info` is build identity,
+not the client compatibility authority. Clients must use the protocol
+manifests advertised by `/api/cluster/info`:
 
 - `control_plane.version`
 - `control_plane.request_contract.schema` and `version`
 - `worker_protocol.version` for worker SDKs
 - `client_compatibility.authority: "protocol_manifests"`
+- `surface_stability_contract.schema: "durable-workflow.v2.surface-stability.contract"`
 
 ### Workflow Package ↔ Waterline
 
@@ -89,7 +236,8 @@ RuntimeError: Server compatibility error: unsupported worker_protocol.version '2
 
 ### Server
 
-The server returns its protocol manifests and compatibility policy in `GET /api/cluster/info`:
+The server returns its protocol manifests, the surface-stability contract,
+and the compatibility policy in `GET /api/cluster/info`:
 
 ```json
 {
@@ -106,6 +254,11 @@ The server returns its protocol manifests and compatibility policy in `GET /api/
     "top_level_version_role": "informational",
     "fail_closed": true
   },
+  "surface_stability_contract": {
+    "schema": "durable-workflow.v2.surface-stability.contract",
+    "version": 1,
+    "authority_url": "https://durable-workflow.github.io/docs/2.0/compatibility"
+  },
   "control_plane": {
     "version": "2",
     "request_contract": {
@@ -119,7 +272,9 @@ The server returns its protocol manifests and compatibility policy in `GET /api/
 }
 ```
 
-Clients and workers query this endpoint to validate compatibility.
+The full `surface_stability_contract` body lists every public surface family,
+its stability level, and the patch/minor/major release rules. Clients and
+release-check tooling can consume the same manifest the docs build consumes.
 
 ## Upgrading
 
@@ -184,16 +339,40 @@ The server validates these headers and rejects requests with missing or incompat
 
 **Fix**: Ensure server is 2.x and client is sending version 2 header.
 
+## Release Review Checklist
+
+Every release PR must tick the following before tagging. The docs CI
+script `scripts/check-compatibility-authority.js` enforces the
+docs-side gates automatically; the rest belong to the human reviewer.
+
+- [ ] **Docs authority aligned.** This page lists every surface family in
+  `static/compatibility-contract.json` with the same stability level.
+- [ ] **JSON mirror in sync.** `static/compatibility-contract.json` matches
+  the manifest emitted by `Workflow\V2\Support\SurfaceStabilityContract`
+  (the workflow package contract test pins the manifest shape).
+- [ ] **Install docs aligned.** The [Installation](/docs/2.0/installation)
+  page and any package install snippets do not claim a stability level
+  different from the level this page assigns to the relevant SDK.
+- [ ] **Package metadata aligned.** `composer.json` / `pyproject.toml` /
+  `package.json` prerelease tags match the `stability_level` for the SDK
+  family they belong to (e.g. `0.x` Python and CLI SDKs are `prerelease`,
+  `2.0.x` server and workflow are `stable`).
+- [ ] **Version-history aligned.** The version-history table below does
+  not introduce stability claims that contradict this page.
+
 ## Version History
 
 | Date | Server | CLI | Python SDK | Workflow | Waterline | Notes |
 |------|--------|-----|------------|----------|-----------|-------|
+| 2026-05-02 | 2.0.0 | 0.1.0 | 0.2.0 | 2.0.0 | 2.0.0 | Compatibility-and-release-authority contract published. `surface_stability_contract` exposed in `/api/cluster/info`; per-package stability docs reference this page. |
 | 2026-04-17 | 2.0.0 | 0.1.0 | 0.2.0 | 2.0.0 | 2.0.0 | Compatibility authority moved to protocol manifests |
 | 2026-04-15 | 2.0.0 | 0.1.0 | 0.1.0 | 2.0.0 | 2.0.0 | Stable release |
 
 ## See Also
 
 - [Server Setup](/docs/2.0/polyglot/server) — Deploying the standalone server
+- [Server API Reference](/docs/2.0/polyglot/server-api-reference) — `GET /api/cluster/info` and the protocol manifests
 - [Python SDK](/docs/2.0/polyglot/python) — Python client and worker
 - [CLI](/docs/2.0/polyglot/cli) — Command-line interface
 - [Migration Guide](/docs/2.0/migration) — Migrating from v1 to v2
+- [PHP workflow `docs/api-stability.md`](https://github.com/durable-workflow/workflow/blob/v2/docs/api-stability.md) — per-package stability for the PHP workflow package

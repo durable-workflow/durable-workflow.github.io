@@ -34,7 +34,11 @@ Durable Workflow is installable via Composer. Use the `@alpha` stability flag wh
 composer require durable-workflow/workflow:^2.0@alpha
 ```
 
-Drop the `@alpha` once 2.0.0 is tagged stable on Packagist.
+Drop the `@alpha` once 2.0.0 is tagged stable on Packagist. See the
+[compatibility and release-authority contract](/docs/2.0/compatibility) for
+the platform-wide stability rules; the `@alpha` Composer flag is the
+prerelease ramp for the workflow package's `2.0.0` cut and does not change
+the stability of any other published surface.
 
 The package auto-loads its migrations, so a normal migrate run is enough after install:
 
