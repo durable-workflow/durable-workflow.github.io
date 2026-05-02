@@ -304,7 +304,7 @@
       "target": "polyglot/cloud-control-plane.md",
       "related": ["polyglot/server.md", "deployment.md"],
       "aliases": ["Durable Workflow Cloud", "runtime target", "hybrid workers"],
-      "source": "issue 97 cloud contract follow-up",
+      "source": "cloud contract follow-up",
       "lastReviewed": "2026-04-28",
       "action": "Keep mapped until Cloud control-plane and runtime-target searches land on the dedicated contract page."
     },
@@ -313,7 +313,7 @@
       "target": "polyglot/cloud-control-plane.md",
       "related": ["deployment.md", "support.md"],
       "aliases": ["support-led topology", "private networking", "multi-region"],
-      "source": "issue 97 cloud contract follow-up",
+      "source": "cloud contract follow-up",
       "lastReviewed": "2026-04-28",
       "action": "Keep mapped until private-networking and failover searches land on the Cloud control-plane boundary instead of scattered support pages."
     },

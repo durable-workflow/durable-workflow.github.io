@@ -34,7 +34,7 @@ metadata_patterns=(
   "$(pattern_from_hex 4064757261626c652d776f726b666c6f772e6c6f63616c)"
 )
 
-contract_issue_ref_pattern='(^|[^[:alnum:]_/-])#[0-9]+([^[:alnum:]_/-]|$)'
+contract_issue_ref_pattern='(^|[^[:alnum:]_/-])(#[0-9]+|issue[[:space:]:#_-]*[0-9]+|gh-[0-9]+)([^[:alnum:]_/-]|$)'
 
 pathspec=(
   .
@@ -65,7 +65,7 @@ if [[ ${#contract_files[@]} -gt 0 ]]; then
     [[ -n "${file:-}" ]] || continue
     printf 'public-boundary: forbidden private-tracker issue reference at %s:%s\n' "$file" "$line" >&2
     status=1
-  done < <(git grep -n -I -E -e "$contract_issue_ref_pattern" -- "${contract_files[@]}" || true)
+  done < <(git grep -n -I -E -i -e "$contract_issue_ref_pattern" -- "${contract_files[@]}" || true)
 fi
 
 if [[ -n "${PUBLIC_BOUNDARY_GIT_RANGE:-}" ]]; then
