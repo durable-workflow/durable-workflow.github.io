@@ -81,6 +81,12 @@ the server published for the responding node:
 - `Matching Role`, `Matching Partitions`, and `Matching Backpressure` expose
   the matching-role shape, wake ownership, task-dispatch mode, and partition
   primitives that determine how ready work is claimed.
+- `Matching Discovery Limits` summarizes the frozen numeric matching-role
+  contract — `poll_batch_cap`, `availability_ceiling_seconds`,
+  `wake_signal_ttl_seconds`, `workflow_task_lease_seconds`, and
+  `activity_task_lease_seconds` — so operators can verify the deployment
+  matches the documented matching-role contract without grepping the package
+  source.
 - `Current Write Boundaries` lists the durable write surfaces currently owned
   by the roles on this node.
 - `Scaling Boundaries` and `Failure Domains` tell operators what load driver
@@ -96,7 +102,12 @@ including `supported_shapes`, `current_shape`, `current_process_class`,
 `failure_domains`. The `topology.matching_role` block also publishes
 `partition_primitives` and `backpressure_model` so scripts can check which
 routing axes the responding node uses for ready-task discovery without
-parsing prose.
+parsing prose. `topology.matching_role.discovery_limits` exposes the frozen
+numeric matching-role contract — `poll_batch_cap`,
+`availability_ceiling_seconds`, `wake_signal_ttl_seconds`,
+`workflow_task_lease_seconds`, and `activity_task_lease_seconds` — so scripts
+can pin the workflow package's matching-role numbers without scraping a
+human-readable section.
 
 ```bash
 dw server:info --output=json \
@@ -128,7 +139,14 @@ under `coordination_health`, with these stable machine fields:
   scripts can branch on the failing surfaces.
 - `coordination_health.checks[]` is the per-check detail array, where each
   entry pins `name`, `status`, `category`, and `message` automation can use
-  to explain a degraded verdict.
+  to explain a degraded verdict. The frozen check inventory always includes
+  `worker_compatibility`, `task_transport`, `routing_health`,
+  `durable_resume_paths`, the projection/scheduler checks, and `activity_path`.
+  `activity_path` is the activity-side counterpart of `task_transport`: it
+  surfaces activity executions whose schedule-to-start, start-to-close,
+  schedule-to-close, or heartbeat deadline has passed without enforcement, plus
+  the sustained activity retry backlog. Renaming `activity_path` is a
+  protocol-level change.
 
 ```bash
 dw server:info --output=json \

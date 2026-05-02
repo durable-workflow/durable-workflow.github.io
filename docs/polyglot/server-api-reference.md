@@ -99,6 +99,22 @@ The public summary always includes:
 - `topology.matching_role.task_dispatch_mode`
 - `topology.matching_role.partition_primitives`
 - `topology.matching_role.backpressure_model`
+- `topology.matching_role.discovery_limits.poll_batch_cap`
+- `topology.matching_role.discovery_limits.availability_ceiling_seconds`
+- `topology.matching_role.discovery_limits.wake_signal_ttl_seconds`
+- `topology.matching_role.discovery_limits.workflow_task_lease_seconds`
+- `topology.matching_role.discovery_limits.activity_task_lease_seconds`
+
+`topology.matching_role.discovery_limits` is the frozen numeric matching-role
+contract: `poll_batch_cap` is the maximum batch of ready-task rows returned per
+poll, `availability_ceiling_seconds` is the cross-backend tolerance applied to
+`available_at` so freshly-available tasks survive sub-second timestamp drift,
+`wake_signal_ttl_seconds` is the default `CacheLongPollWakeStore` signal TTL,
+and `workflow_task_lease_seconds` / `activity_task_lease_seconds` are the
+default workflow and activity task lease durations. Tightening any of these
+values is a protocol-level change because workers and downstream tooling read
+them as the authoritative matching-role contract; renaming a field is also a
+protocol-level break.
 
 `/api/ready` returns the same `topology` block even when the top-level
 readiness `status` is `not_ready`, so probes can still distinguish
@@ -196,6 +212,13 @@ Read the manifest as follows:
   discovery is happening in-worker or through a dedicated matching-role sweep,
   which process owns that sweep, which routing axes stay stable, and which
   durable admission boundary v2 enforces today.
+- `topology.matching_role.discovery_limits` publishes the frozen numeric
+  matching-role contract values: `poll_batch_cap`,
+  `availability_ceiling_seconds`, `wake_signal_ttl_seconds`,
+  `workflow_task_lease_seconds`, and `activity_task_lease_seconds`. Use these
+  to verify the deployment matches the documented matching-role contract; the
+  package emits the same identifiers in `dw server:info`, the operator-metrics
+  snapshot, and the namespace-scoped health surface.
 - `topology.role_catalog` and `topology.authority_surfaces` map those role
   names to the interfaces, durable-write surfaces, and read paths automation
   should expect on the responding node.
@@ -209,6 +232,16 @@ Read the manifest as follows:
   `blocked_by`, `message`, and `remediation` when rollout-safety evaluation is
   blocked by upstream readiness issues such as missing migrations or database
   reachability.
+- `coordination_health.checks[]` always includes the frozen
+  `activity_path` check next to `worker_compatibility`, `task_transport`,
+  `routing_health`, `durable_resume_paths`, and the projection/scheduler checks.
+  `activity_path` is the activity-side counterpart of `task_transport`: it
+  surfaces activity executions whose schedule-to-start, start-to-close,
+  schedule-to-close, or heartbeat deadline has passed without enforcement
+  (`timeout_overdue`, `oldest_timeout_overdue_at`,
+  `max_timeout_overdue_age_ms`) and the sustained activity retry backlog
+  (`retrying`, `oldest_retrying_started_at`, `max_retrying_age_ms`). Renaming
+  the check is a protocol-level change.
 - `coordination_health.routing_drains` summarizes draining build-id cohorts
   across namespaces and queues. Use `queues_with_drains` and the per-queue
   `build_ids` entries to see where traffic is intentionally being held away from

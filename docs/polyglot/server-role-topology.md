@@ -172,11 +172,25 @@ responding node:
 | `task_dispatch_mode` | Whether dispatch is happening through `poll`-driven remote workers or `queue`-driven local execution. |
 | `partition_primitives` | The frozen routing axes the matching role reasons about, in order: `connection`, `queue`, `compatibility`, `namespace`. |
 | `backpressure_model` | The durable admission boundary the matching role enforces. Current v2 reports `lease_ownership`. |
+| `discovery_limits` | The frozen numeric matching-role contract the workflow package compiles in: `poll_batch_cap`, `availability_ceiling_seconds`, `wake_signal_ttl_seconds`, `workflow_task_lease_seconds`, and `activity_task_lease_seconds`. |
 
 This lets operators and automation distinguish "matching exists but wake is
 degraded" from "this node is intentionally running a different dispatch mode,"
 and it gives the same routing and backpressure vocabulary the server itself
 publishes in operator metrics.
+
+`discovery_limits` is the matching-role numeric contract: `poll_batch_cap`
+freezes the maximum batch of ready-task rows returned per poll,
+`availability_ceiling_seconds` freezes the cross-backend tolerance applied to
+`available_at` so freshly-available tasks survive sub-second timestamp drift,
+`wake_signal_ttl_seconds` freezes the default `CacheLongPollWakeStore` signal
+TTL, and `workflow_task_lease_seconds` / `activity_task_lease_seconds` freeze
+the default workflow and activity task lease durations. Operators read these
+values to verify the deployment matches the documented matching-role contract
+without grepping the package source. Tightening any of these is a
+protocol-level change because dispatch, worker, and acceleration timing
+elsewhere in the contract depend on them; renaming a field is also a
+protocol-level break.
 
 ## Authority Boundaries
 
@@ -271,6 +285,13 @@ Keep the distinction clear:
 - `coordination_health.warning_checks`, `coordination_health.error_checks`, and
   `coordination_health.checks` remain the normalized check inventory once
   rollout-safety evaluation is running.
+- `coordination_health.checks[]` always includes the frozen `activity_path`
+  check next to `worker_compatibility`, `task_transport`, `routing_health`,
+  `durable_resume_paths`, and the projection/scheduler checks. `activity_path`
+  is the activity-side counterpart of `task_transport`: it surfaces activity
+  executions whose schedule-to-start, start-to-close, schedule-to-close, or
+  heartbeat deadline has passed without enforcement, plus the sustained activity
+  retry backlog. Renaming the check is a protocol-level change.
 
 Use both surfaces together when deciding whether a topology change is both
 supported and currently safe.

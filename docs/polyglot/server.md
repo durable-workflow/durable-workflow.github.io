@@ -253,7 +253,14 @@ Returns `200 OK` with:
       "wake_owner": "worker_loop",
       "task_dispatch_mode": "poll",
       "partition_primitives": ["connection", "queue", "compatibility", "namespace"],
-      "backpressure_model": "lease_ownership"
+      "backpressure_model": "lease_ownership",
+      "discovery_limits": {
+        "poll_batch_cap": 100,
+        "availability_ceiling_seconds": 1,
+        "wake_signal_ttl_seconds": 60,
+        "workflow_task_lease_seconds": 300,
+        "activity_task_lease_seconds": 300
+      }
     }
   }
 }
@@ -278,6 +285,22 @@ identify split-role nodes before control-plane auth or namespace resolution:
 - `topology.matching_role.task_dispatch_mode`
 - `topology.matching_role.partition_primitives`
 - `topology.matching_role.backpressure_model`
+- `topology.matching_role.discovery_limits.poll_batch_cap`
+- `topology.matching_role.discovery_limits.availability_ceiling_seconds`
+- `topology.matching_role.discovery_limits.wake_signal_ttl_seconds`
+- `topology.matching_role.discovery_limits.workflow_task_lease_seconds`
+- `topology.matching_role.discovery_limits.activity_task_lease_seconds`
+
+`topology.matching_role.discovery_limits` is the frozen numeric matching-role
+contract that compiles into the workflow package: `poll_batch_cap` is the
+maximum batch of ready-task rows returned per poll,
+`availability_ceiling_seconds` is the cross-backend tolerance applied to
+`available_at` so freshly-available tasks survive sub-second timestamp drift,
+`wake_signal_ttl_seconds` is the default `CacheLongPollWakeStore` signal TTL,
+and `workflow_task_lease_seconds` / `activity_task_lease_seconds` are the
+default workflow and activity task lease durations. Tightening any of these
+values is a protocol-level change because workers and downstream tooling read
+them as the authoritative matching-role contract.
 
 The same summary appears on `/api/ready` even when the deployment is not ready,
 so probes can still distinguish `server_http_node`, `scheduler_node`,
@@ -494,7 +517,14 @@ container names or rollout runbooks.
         "compatibility",
         "namespace"
       ],
-      "backpressure_model": "lease_ownership"
+      "backpressure_model": "lease_ownership",
+      "discovery_limits": {
+        "poll_batch_cap": 100,
+        "availability_ceiling_seconds": 1,
+        "wake_signal_ttl_seconds": 60,
+        "workflow_task_lease_seconds": 300,
+        "activity_task_lease_seconds": 300
+      }
     },
     "shape_assignments": {
       "embedded": {
@@ -673,6 +703,12 @@ container names or rollout runbooks.
         "status": "ok",
         "category": "correctness",
         "message": null
+      },
+      {
+        "name": "activity_path",
+        "status": "ok",
+        "category": "correctness",
+        "message": null
       }
     ],
     "routing_drains": {
@@ -716,6 +752,16 @@ Read the fields as follows:
   in-worker wake path or expects a dedicated repair or matching loop to own
   that sweep, which routing axes remain stable, and which durable admission
   boundary the matching layer currently enforces.
+- `matching_role.discovery_limits` freezes the numeric matching-role contract
+  values the workflow package compiles in: `poll_batch_cap` (the maximum batch
+  of ready-task rows returned per poll), `availability_ceiling_seconds` (the
+  cross-backend tolerance applied to `available_at` so freshly-available tasks
+  survive sub-second timestamp drift), `wake_signal_ttl_seconds` (the default
+  long-poll wake-signal TTL), `workflow_task_lease_seconds` (the default
+  workflow task lease), and `activity_task_lease_seconds` (the default
+  activity task lease). Operators read these to verify the deployment matches
+  the documented matching-role contract without grepping the package source;
+  tightening any value is a protocol-level change.
 - `role_catalog` and `authority_surfaces` tell you which interfaces and
   durable mutation paths each role owns on the current manifest revision.
 - `shape_assignments` maps each supported shape to the process classes and role
@@ -741,6 +787,15 @@ Read the fields as follows:
   names that also feed readiness health, and adds `blocked_by`, `message`, plus
   `remediation` when rollout-safety evaluation is blocked by upstream readiness
   problems.
+- `coordination_health.checks[]` always includes the frozen check `activity_path`
+  next to `worker_compatibility`, `task_transport`, `routing_health`,
+  `durable_resume_paths`, and the projection/scheduler checks. `activity_path`
+  is the activity-side counterpart of `task_transport`: it surfaces activity
+  executions whose schedule-to-start, start-to-close, schedule-to-close, or
+  heartbeat deadline has passed without enforcement (`timeout_overdue`,
+  `oldest_timeout_overdue_at`, `max_timeout_overdue_age_ms`) and the sustained
+  retry backlog (`retrying`, `oldest_retrying_started_at`,
+  `max_retrying_age_ms`). Renaming the check is a protocol-level change.
 - `coordination_health.routing_drains` summarizes draining build-id cohorts
   across queues and namespaces. `queues_with_drains` greater than zero means the
   fleet is intentionally holding traffic away from at least one draining cohort.
