@@ -24,22 +24,25 @@ repair.
 
 ## 1. Pin The Docs Version
 
-Use the v2 LLM bundle when the task is about unreleased 2.0 behavior:
-
-```text
-https://durable-workflow.com/llms-full-2.0.txt
-```
-
-Use the canonical bundle only when the task is explicitly about the stable 1.x
-docs:
+Use the canonical bundle. It serves the current v2 product surface:
 
 ```text
 https://durable-workflow.com/llms-full.txt
 ```
 
-During the v2 prerelease period, canonical `/llms.txt` and `/llms-full.txt`
-remain 1.x surfaces. An agent should name `2.0` in its instructions or receive
-the v2 bundle URL directly.
+Pin the version-specific bundle when the URL itself needs to keep meaning v2
+across a future major bump:
+
+```text
+https://durable-workflow.com/llms-full-2.0.txt
+```
+
+Use the legacy 1.x bundle only when the task is explicitly about the older
+API:
+
+```text
+https://durable-workflow.com/llms-full-1.x.txt
+```
 
 ## 2. Discover The Local Workflow Surface
 

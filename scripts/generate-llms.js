@@ -344,22 +344,29 @@ function main() {
 
   ensureDir(buildDir);
 
-  // Generate v1.x manifest (canonical)
-  const v1DocsDir = path.join(__dirname, '..', 'versioned_docs', 'version-1.x');
-  if (fs.existsSync(v1DocsDir)) {
-    const v1OutputFile = path.join(buildDir, 'llms.txt');
-    const v1FullUrl = new URL('llms-full.txt', siteBaseUrl).toString();
-    generateManifest(v1DocsDir, v1OutputFile, v1FullUrl);
-    console.log('v1.x llms.txt generated successfully:', v1OutputFile);
-  }
-
-  // Generate v2.0 manifest (version-specific)
+  // v2.0 is the canonical LLM manifest source. Generate it at /llms.txt so AI
+  // tools that fetch the well-known path see the current protocol, and also at
+  // /llms-2.0.txt so version-pinned references keep resolving.
   const v2DocsDir = path.join(__dirname, '..', 'docs');
   if (fs.existsSync(v2DocsDir)) {
+    const canonicalOutputFile = path.join(buildDir, 'llms.txt');
+    const canonicalFullUrl = new URL('llms-full.txt', siteBaseUrl).toString();
+    generateManifest(v2DocsDir, canonicalOutputFile, canonicalFullUrl);
+    console.log('Canonical llms.txt generated from v2.0 docs:', canonicalOutputFile);
+
     const v2OutputFile = path.join(buildDir, 'llms-2.0.txt');
     const v2FullUrl = new URL('llms-full-2.0.txt', siteBaseUrl).toString();
     generateManifest(v2DocsDir, v2OutputFile, v2FullUrl);
     console.log('v2.0 llms-2.0.txt generated successfully:', v2OutputFile);
+  }
+
+  // v1.x stays available for clients that explicitly want the legacy index.
+  const v1DocsDir = path.join(__dirname, '..', 'versioned_docs', 'version-1.x');
+  if (fs.existsSync(v1DocsDir)) {
+    const v1OutputFile = path.join(buildDir, 'llms-1.x.txt');
+    const v1FullUrl = new URL('llms-full-1.x.txt', siteBaseUrl).toString();
+    generateManifest(v1DocsDir, v1OutputFile, v1FullUrl);
+    console.log('v1.x llms-1.x.txt generated successfully:', v1OutputFile);
   }
 }
 

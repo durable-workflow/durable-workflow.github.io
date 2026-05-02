@@ -29,7 +29,7 @@ scripts, and SDKs should preserve.
 
 | Layer | Stable handle | Contract expectation |
 | --- | --- | --- |
-| Docs retrieval | `llms-2.0.txt` and `llms-full-2.0.txt` | Agents pin the v2 docs bundle during prerelease work and cite the source page used. |
+| Docs retrieval | Canonical `llms.txt` and `llms-full.txt` (v2.0), with `llms-2.0.txt` / `llms-full-2.0.txt` as version-pinned aliases | Agents fetch the canonical bundle and cite the source page used; pin the `-2.0.txt` URLs when the URL itself must keep meaning v2 across a future major bump. |
 | Local discovery | `/mcp/workflows` `list_workflows` | The app-owned MCP allow-list names exposed workflow keys, required credentials, expected arguments, and smoke-test suitability. |
 | Workflow operations | MCP `start_workflow`, `get_workflow_result`, `get_workflow_history`; `dw` JSON commands; SDK clients | Every client reports workflow id, run id, namespace, task queue, command status, and named failure fields without scraping a UI. |
 | Server diagnostics | `/api/cluster/info`, `dw server:info --output=json`, `dw doctor --output=json`, `dw debug workflow --output=json` | Compatibility, protocol, task-queue, worker, and stuck-run facts are machine-readable and bounded. |

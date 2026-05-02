@@ -30,6 +30,8 @@ function main() {
   const v2Full = readBuildFile('llms-full-2.0.txt');
   const canonicalIndex = readBuildFile('llms.txt');
   const canonicalFull = readBuildFile('llms-full.txt');
+  const v1Index = readBuildFile('llms-1.x.txt');
+  const v1Full = readBuildFile('llms-full-1.x.txt');
 
   const requiredV2IndexSources = [
     'docs/ai-assisted-development.md',
@@ -103,11 +105,20 @@ function main() {
   assertExcludes(v2Full, '# Search and Navigation', 'llms-full-2.0.txt');
   assertExcludes(v2Full, '<details>', 'llms-full-2.0.txt');
   assertExcludes(v2Full, '<summary>', 'llms-full-2.0.txt');
-  assertIncludes(canonicalIndex, 'versioned_docs/version-1.x', 'llms.txt');
+  // Canonical /llms.txt and /llms-full.txt now serve v2 content so AI tools
+  // that fetch the well-known paths see the current protocol, not stale 1.x.
+  assertIncludes(canonicalIndex, 'docs/ai-assisted-development.md', 'llms.txt');
   assertIncludes(canonicalIndex, 'llms-full.txt', 'llms.txt');
-  assertExcludes(canonicalIndex, 'docs/ai-assisted-development.md', 'llms.txt');
+  assertExcludes(canonicalIndex, 'versioned_docs/version-1.x', 'llms.txt');
   assertExcludes(canonicalIndex, 'llms-full-2.0.txt', 'llms.txt');
-  assertExcludes(canonicalFull, '# AI-Assisted Development', 'llms-full.txt');
+  assertIncludes(canonicalFull, '# AI-Assisted Development', 'llms-full.txt');
+  assertIncludes(canonicalFull, '# Agent Operating Loop', 'llms-full.txt');
+
+  // v1.x stays reachable for clients that explicitly pin the legacy version.
+  assertIncludes(v1Index, 'versioned_docs/version-1.x', 'llms-1.x.txt');
+  assertIncludes(v1Index, 'llms-full-1.x.txt', 'llms-1.x.txt');
+  assertExcludes(v1Index, 'docs/ai-assisted-development.md', 'llms-1.x.txt');
+  assertExcludes(v1Full, '# AI-Assisted Development', 'llms-full-1.x.txt');
 
   console.log('LLM AI surface checks passed');
 }

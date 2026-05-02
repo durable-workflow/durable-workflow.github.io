@@ -191,14 +191,10 @@ function collectContent(rootDir, dirPath = rootDir) {
   return combined;
 }
 
-function getVersionConfig() {
+function getVersionPaths() {
   const configPath = path.join(__dirname, '..', 'docusaurus.config.js');
   const configContent = fs.readFileSync(configPath, 'utf8');
 
-  const lastVersionMatch = configContent.match(/lastVersion:\s*['"]([^'"]+)['"]/);
-  const lastVersion = lastVersionMatch ? lastVersionMatch[1] : 'current';
-
-  // Extract version paths from config
   const versions = {};
   const versionBlockMatch = configContent.match(/versions:\s*\{([^}]+)\}/s);
   if (versionBlockMatch) {
@@ -210,22 +206,14 @@ function getVersionConfig() {
     versions['1.x'] = v1xPathMatch ? v1xPathMatch[1] : '';
   }
 
-  return { lastVersion, versions };
+  return versions;
 }
 
 function main() {
   const buildDir = path.join(__dirname, '..', 'build');
   ensureDir(buildDir);
 
-  const { lastVersion, versions } = getVersionConfig();
-
-  // Generate manifest for v1.x (versioned docs)
-  const v1DocsDir = path.join(__dirname, '..', 'versioned_docs', 'version-1.x');
-  let v1Content = null;
-  if (fs.existsSync(v1DocsDir)) {
-    v1Content = collectContent(v1DocsDir).trimStart() + '\n';
-    console.log('Generated v1.x manifest');
-  }
+  const versions = getVersionPaths();
 
   // Generate manifest for v2.0 (current docs)
   const v2DocsDir = path.join(__dirname, '..', 'docs');
@@ -235,30 +223,35 @@ function main() {
     console.log('Generated v2.0 manifest');
   }
 
-  // Write manifests to version-specific paths
-  if (v1Content && versions['1.x']) {
-    const v1Path = versions['1.x'] ? path.join(buildDir, versions['1.x']) : buildDir;
-    ensureDir(v1Path);
-    fs.writeFileSync(path.join(v1Path, 'llms-full.txt'), v1Content, 'utf8');
-    console.log(`v1.x manifest -> /${versions['1.x']}/llms-full.txt`);
+  // Generate manifest for v1.x (versioned docs)
+  const v1DocsDir = path.join(__dirname, '..', 'versioned_docs', 'version-1.x');
+  let v1Content = null;
+  if (fs.existsSync(v1DocsDir)) {
+    v1Content = collectContent(v1DocsDir).trimStart() + '\n';
+    console.log('Generated v1.x manifest');
   }
 
-  if (v2Content && versions.current) {
-    const v2Path = versions.current ? path.join(buildDir, versions.current) : buildDir;
-    ensureDir(v2Path);
-    fs.writeFileSync(path.join(v2Path, 'llms-full.txt'), v2Content, 'utf8');
-    console.log(`v2.0 manifest -> /${versions.current}/llms-full.txt`);
+  // v2.0 is the canonical full bundle. Write to the well-known /llms-full.txt
+  // and to the version-specific alias so version-pinned URLs keep working.
+  if (v2Content) {
+    fs.writeFileSync(path.join(buildDir, 'llms-full.txt'), v2Content, 'utf8');
+    console.log('Canonical /llms-full.txt -> v2.0 content');
 
-    // Also write v2.0 version-specific manifest at root
     fs.writeFileSync(path.join(buildDir, 'llms-full-2.0.txt'), v2Content, 'utf8');
-    console.log(`v2.0 version-specific manifest -> /llms-full-2.0.txt`);
+    console.log('v2.0 version-specific manifest -> /llms-full-2.0.txt');
+
+    if (versions.current) {
+      const v2Path = path.join(buildDir, versions.current);
+      ensureDir(v2Path);
+      fs.writeFileSync(path.join(v2Path, 'llms-full.txt'), v2Content, 'utf8');
+      console.log(`v2.0 manifest -> /${versions.current}/llms-full.txt`);
+    }
   }
 
-  // Write canonical manifest at root (based on lastVersion)
-  const canonicalContent = lastVersion === '1.x' ? v1Content : v2Content;
-  if (canonicalContent) {
-    fs.writeFileSync(path.join(buildDir, 'llms-full.txt'), canonicalContent, 'utf8');
-    console.log(`Canonical /llms-full.txt -> ${lastVersion} content`);
+  // v1.x stays available at a version-specific path so legacy clients can pin.
+  if (v1Content) {
+    fs.writeFileSync(path.join(buildDir, 'llms-full-1.x.txt'), v1Content, 'utf8');
+    console.log('v1.x version-specific manifest -> /llms-full-1.x.txt');
   }
 }
 
