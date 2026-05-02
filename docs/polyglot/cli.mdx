@@ -290,23 +290,21 @@ namespace, and downstream budget-group dispatch capacity, remaining capacity,
 budget source, and query-task pending capacity.
 
 For scripts, `dw task-queue:describe --json` exposes queue-local backlog,
-lease, poller, admission, and recent durable queue-flow state. Use it to
-distinguish missing workers from admission throttling or a single queue that
-is building backlog:
+lease, poller, and admission state. Use it to distinguish missing workers from
+admission throttling or a single queue that is building backlog:
 
 ```bash
 dw task-queue:describe orders --json | jq '.stats | {
   approximate_backlog_count,
   approximate_backlog_age_seconds,
-  tasks_added_last_minute,
-  tasks_dispatched_last_minute,
   workflow_tasks,
   activity_tasks
 }'
 ```
 
-For fleet-level durable inflow versus dispatch rates across every queue, read
-`dw system:operator-metrics --json`:
+Fleet-level durable inflow versus dispatch rates do not come from the
+task-queue JSON contract. Read them from `dw system:operator-metrics --json`
+instead:
 
 ```bash
 dw system:operator-metrics --json | jq '.operator_metrics.backlog | {

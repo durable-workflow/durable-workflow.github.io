@@ -227,9 +227,11 @@ These facts describe durable workflow-task and activity-task traffic only.
 
 When you need queue-local drill-down instead of fleet totals, use the server
 task-queue visibility routes for backlog age, poller state, current leases,
-admission budgets, and per-queue `stats.tasks_added_last_minute` /
-`stats.tasks_dispatched_last_minute` flow facts. Use those queue-local fields
-to see whether one hot queue is hiding inside otherwise healthy fleet totals.
+and admission budgets. Those routes do not currently expose per-queue
+`stats.tasks_added_last_minute` or `stats.tasks_dispatched_last_minute`; use
+the fleet-level `operator_metrics.backlog.*` pair above to compare durable
+inflow with dispatch, then use queue-local routes to see which queue is
+building backlog or has no available worker capacity.
 
 Waterline's `GET /waterline/api/v2/health` surface publishes the same queue
 drill-down under `queue_visibility.*` for the configured namespace. Treat these
