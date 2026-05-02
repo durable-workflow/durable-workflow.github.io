@@ -1,0 +1,359 @@
+#!/usr/bin/env node
+//
+// Release-check gate for the platform protocol-spec catalog.
+//
+// `static/platform-protocol-specs.json` is the machine-readable mirror of
+// the platform-wide normative protocol-spec catalog that
+// `Workflow\V2\Support\PlatformProtocolSpecs` emits and the standalone
+// server re-exports under `platform_protocol_specs` in
+// `GET /api/cluster/info`. The catalog is the single source of truth for
+// which surfaces have a published machine-readable spec, what format
+// (OpenAPI / JSON Schema / AsyncAPI) the spec uses, which repository
+// owns it, and which conformance test pins it.
+//
+// Specifically the script verifies that:
+//
+// 1. `static/platform-protocol-specs.json` is well-formed and advertises
+//    the expected schema id, version, and authority URL.
+// 2. Every spec entry has the required fields with valid values:
+//    format ∈ {openapi, json_schema, asyncapi}, status ∈ {published,
+//    in_progress, planned}, owner_repo ∈ known fleet repos.
+// 3. Every spec entry's `surface_family` exists in
+//    `static/compatibility-contract.json`. The catalog cannot reference
+//    a surface family that the stability contract has not declared.
+// 4. The deliverable surface set from issue #690 (control-plane API,
+//    worker protocol API + stream, history events + export bundle +
+//    replay bundle, Waterline read API + diagnostic objects, repair /
+//    actionability objects, MCP discovery + tool results, cluster-info
+//    envelope) is fully enumerated.
+// 5. `docs/platform-protocol-specs.md` advertises itself as the catalog,
+//    references the schema id, lists every entry with its format /
+//    surface family / owner / status / breaking-change rule.
+// 6. When an entry's status is `published`, the file at `spec_path`
+//    exists in the docs site repo.
+// 7. `docs/compatibility.md` cross-links to the new catalog so callers
+//    that land on the older authority page can find the spec set.
+//
+// Drift here means a release shipped a doc or PHP-manifest change
+// without updating the JSON mirror (or vice versa). Either fix the doc
+// or bump the catalog; do not silence the check.
+
+const fs = require('fs');
+const path = require('path');
+
+const repoRoot = path.join(__dirname, '..');
+const catalogPath = path.join(repoRoot, 'static', 'platform-protocol-specs.json');
+const catalogDocPath = path.join(repoRoot, 'docs', 'platform-protocol-specs.md');
+const compatibilityDocPath = path.join(repoRoot, 'docs', 'compatibility.md');
+const surfaceContractPath = path.join(repoRoot, 'static', 'compatibility-contract.json');
+
+const EXPECTED_SCHEMA = 'durable-workflow.v2.platform-protocol-specs.catalog';
+const EXPECTED_AUTHORITY_URL =
+  'https://durable-workflow.github.io/docs/2.0/platform-protocol-specs';
+
+const ALLOWED_FORMATS = new Set(['openapi', 'json_schema', 'asyncapi']);
+const ALLOWED_STATUSES = new Set(['published', 'in_progress', 'planned']);
+const ALLOWED_OWNERS = new Set([
+  'durable-workflow/workflow',
+  'durable-workflow/server',
+  'durable-workflow/waterline',
+  'durable-workflow/durable-workflow.github.io',
+  'durable-workflow/cli',
+  'durable-workflow/sdk-python',
+]);
+
+const DELIVERABLE_SPEC_NAMES = [
+  'control_plane_api',
+  'worker_protocol_api',
+  'worker_protocol_stream',
+  'history_event_payloads',
+  'history_export_bundle',
+  'replay_bundle',
+  'waterline_read_api',
+  'waterline_diagnostic_objects',
+  'repair_actionability_objects',
+  'mcp_discovery',
+  'mcp_tool_results',
+  'cluster_info_envelope',
+];
+
+function read(file) {
+  return fs.readFileSync(file, 'utf8');
+}
+
+function loadJson(file, label) {
+  let raw;
+  try {
+    raw = read(file);
+  } catch (err) {
+    throw new Error(`${label} is missing at ${file}.`);
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    throw new Error(`${label} is not valid JSON: ${err.message}`);
+  }
+}
+
+function loadCatalog() {
+  const catalog = loadJson(catalogPath, 'static/platform-protocol-specs.json');
+
+  const expectedTopLevel = [
+    'schema',
+    'version',
+    'authority_url',
+    'formats',
+    'owner_repos',
+    'status_levels',
+    'evolution_rules',
+    'specs',
+    'release_check',
+  ];
+  for (const key of expectedTopLevel) {
+    if (!(key in catalog)) {
+      throw new Error(
+        `static/platform-protocol-specs.json must include top-level key "${key}"`,
+      );
+    }
+  }
+
+  if (catalog.schema !== EXPECTED_SCHEMA) {
+    throw new Error(
+      `static/platform-protocol-specs.json schema must be ` +
+        `"${EXPECTED_SCHEMA}" (got "${catalog.schema}")`,
+    );
+  }
+
+  if (typeof catalog.version !== 'number' || catalog.version < 1) {
+    throw new Error(
+      `static/platform-protocol-specs.json version must be a positive integer ` +
+        `(got ${JSON.stringify(catalog.version)})`,
+    );
+  }
+
+  if (catalog.authority_url !== EXPECTED_AUTHORITY_URL) {
+    throw new Error(
+      `static/platform-protocol-specs.json authority_url must point at ` +
+        `${EXPECTED_AUTHORITY_URL} (got "${catalog.authority_url}")`,
+    );
+  }
+
+  return catalog;
+}
+
+function loadSurfaceFamilies() {
+  const surfaceContract = loadJson(
+    surfaceContractPath,
+    'static/compatibility-contract.json',
+  );
+  if (!surfaceContract.surface_families) {
+    throw new Error(
+      `static/compatibility-contract.json is missing surface_families; ` +
+        `cannot validate platform-protocol-specs entries against it`,
+    );
+  }
+  return new Set(Object.keys(surfaceContract.surface_families));
+}
+
+function assertCatalogEntriesAreWellFormed(catalog, surfaceFamilies) {
+  const specs = catalog.specs;
+  if (!specs || typeof specs !== 'object') {
+    throw new Error(
+      `static/platform-protocol-specs.json must include a non-empty "specs" object`,
+    );
+  }
+
+  for (const name of DELIVERABLE_SPEC_NAMES) {
+    if (!(name in specs)) {
+      throw new Error(
+        `static/platform-protocol-specs.json must enumerate spec "${name}" ` +
+          `to cover the deliverable surface set from issue #690`,
+      );
+    }
+  }
+
+  for (const [name, entry] of Object.entries(specs)) {
+    const requiredFields = [
+      'description',
+      'format',
+      'spec_id',
+      'surface_family',
+      'authority_manifest',
+      'owner_repo',
+      'evolution_rule',
+      'breaking_change_release',
+      'conformance_test',
+      'status',
+      'spec_path',
+    ];
+    for (const field of requiredFields) {
+      if (!(field in entry)) {
+        throw new Error(
+          `platform-protocol-specs entry "${name}" is missing required field "${field}"`,
+        );
+      }
+    }
+
+    if (!ALLOWED_FORMATS.has(entry.format)) {
+      throw new Error(
+        `platform-protocol-specs entry "${name}" has format "${entry.format}"; ` +
+          `must be one of ${Array.from(ALLOWED_FORMATS).join(', ')}`,
+      );
+    }
+
+    if (!ALLOWED_STATUSES.has(entry.status)) {
+      throw new Error(
+        `platform-protocol-specs entry "${name}" has status "${entry.status}"; ` +
+          `must be one of ${Array.from(ALLOWED_STATUSES).join(', ')}`,
+      );
+    }
+
+    if (!ALLOWED_OWNERS.has(entry.owner_repo)) {
+      throw new Error(
+        `platform-protocol-specs entry "${name}" has owner_repo "${entry.owner_repo}"; ` +
+          `must be one of ${Array.from(ALLOWED_OWNERS).join(', ')}`,
+      );
+    }
+
+    if (!surfaceFamilies.has(entry.surface_family)) {
+      throw new Error(
+        `platform-protocol-specs entry "${name}" references surface_family ` +
+          `"${entry.surface_family}" which is not declared in ` +
+          `static/compatibility-contract.json. Either fix the entry or add ` +
+          `the surface family to the stability contract.`,
+      );
+    }
+
+    if (!entry.spec_id.startsWith('durable-workflow.v2.')) {
+      throw new Error(
+        `platform-protocol-specs entry "${name}" spec_id "${entry.spec_id}" ` +
+          `must live in the durable-workflow.v2.* namespace`,
+      );
+    }
+
+    if (!entry.spec_path.startsWith('static/platform-protocol-specs/')) {
+      throw new Error(
+        `platform-protocol-specs entry "${name}" spec_path "${entry.spec_path}" ` +
+          `must live under static/platform-protocol-specs/ in the docs site`,
+      );
+    }
+
+    if (entry.status === 'published') {
+      const absoluteSpecPath = path.join(repoRoot, entry.spec_path);
+      if (!fs.existsSync(absoluteSpecPath)) {
+        throw new Error(
+          `platform-protocol-specs entry "${name}" status is "published" but ` +
+            `the spec file at ${entry.spec_path} does not exist. Either ship ` +
+            `the spec, demote the status to "in_progress" or "planned", or ` +
+            `fix the spec_path.`,
+        );
+      }
+    }
+  }
+}
+
+function assertCatalogDocAlignsWithCatalog(catalog) {
+  const doc = read(catalogDocPath);
+
+  if (!doc.includes('catalog of normative machine-readable protocol\nspecifications')) {
+    throw new Error(
+      `docs/platform-protocol-specs.md must call itself the ` +
+        `"catalog of normative machine-readable protocol specifications"; ` +
+        `the JSON catalog names it as the authority, so the doc must say so explicitly.`,
+    );
+  }
+
+  if (!doc.includes(catalog.schema)) {
+    throw new Error(
+      `docs/platform-protocol-specs.md must reference the catalog schema ` +
+        `"${catalog.schema}" so callers can match the doc to the JSON mirror.`,
+    );
+  }
+
+  for (const format of Object.keys(catalog.formats)) {
+    if (!new RegExp(`\\|\\s*\`${format}\``).test(doc)) {
+      throw new Error(
+        `docs/platform-protocol-specs.md spec-format table must include row for ` +
+          `\`${format}\``,
+      );
+    }
+  }
+
+  for (const status of Object.keys(catalog.status_levels)) {
+    if (!new RegExp(`\\|\\s*\`${status}\``).test(doc)) {
+      throw new Error(
+        `docs/platform-protocol-specs.md status-level table must include row for ` +
+          `\`${status}\``,
+      );
+    }
+  }
+
+  for (const [name, entry] of Object.entries(catalog.specs)) {
+    if (!new RegExp(`### \`${name}\``).test(doc)) {
+      throw new Error(
+        `docs/platform-protocol-specs.md must include a "### \`${name}\`" ` +
+          `section to describe the catalog entry`,
+      );
+    }
+    if (!doc.includes(entry.spec_id)) {
+      throw new Error(
+        `docs/platform-protocol-specs.md must reference spec_id ` +
+          `"${entry.spec_id}" for entry "${name}"`,
+      );
+    }
+    if (!new RegExp(`\\|\\s*Format\\s*\\|\\s*\`${entry.format}\``).test(doc)) {
+      throw new Error(
+        `docs/platform-protocol-specs.md entry "${name}" must show Format = ` +
+          `\`${entry.format}\``,
+      );
+    }
+    if (!new RegExp(`\\|\\s*Status\\s*\\|\\s*\`${entry.status}\``).test(doc)) {
+      throw new Error(
+        `docs/platform-protocol-specs.md entry "${name}" must show Status = ` +
+          `\`${entry.status}\``,
+      );
+    }
+    if (
+      !new RegExp(`\\|\\s*Owner repo\\s*\\|\\s*\`${escapeRegExp(entry.owner_repo)}\``).test(
+        doc,
+      )
+    ) {
+      throw new Error(
+        `docs/platform-protocol-specs.md entry "${name}" must show Owner repo = ` +
+          `\`${entry.owner_repo}\``,
+      );
+    }
+  }
+}
+
+function assertCompatibilityDocCrossLinksCatalog() {
+  const doc = read(compatibilityDocPath);
+  if (!doc.includes('platform-protocol-specs')) {
+    throw new Error(
+      `docs/compatibility.md must cross-link to the platform-protocol-specs ` +
+        `catalog so callers that land on the stability authority can find ` +
+        `the normative spec set`,
+    );
+  }
+}
+
+function escapeRegExp(input) {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function main() {
+  const surfaceFamilies = loadSurfaceFamilies();
+  const catalog = loadCatalog();
+
+  assertCatalogEntriesAreWellFormed(catalog, surfaceFamilies);
+  assertCatalogDocAlignsWithCatalog(catalog);
+  assertCompatibilityDocCrossLinksCatalog();
+
+  const specCount = Object.keys(catalog.specs).length;
+  console.log(
+    `Platform-protocol-specs check passed: ${specCount} spec entries at ` +
+      `schema ${catalog.schema} version ${catalog.version}.`,
+  );
+}
+
+main();

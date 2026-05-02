@@ -54,6 +54,25 @@ change. The release-check gate in `scripts/check-compatibility-authority.js`
 fails the docs build when it detects drift between this page and the JSON
 mirror.
 
+## Companion: Platform Protocol Spec Catalog
+
+This page says *which* surfaces are public and *how* they may change.
+The companion [Platform Protocol Specs](/docs/2.0/platform-protocol-specs)
+catalog says *where* the normative machine-readable specification for
+each surface lives, *which format* the spec uses (OpenAPI for HTTP APIs,
+JSON Schema for object families, AsyncAPI for event-stream semantics),
+*which repository* owns the spec, and *which conformance test* pins the
+spec against drift. SDK authors, agents, and operators should validate
+against the spec catalog rather than re-reading prose for every surface.
+
+The catalog has its own machine-readable mirror at
+`platform_protocol_specs` in `GET /api/cluster/info` (schema
+`durable-workflow.v2.platform-protocol-specs.catalog`, version `1`) and
+a frozen JSON copy at `static/platform-protocol-specs.json` in this
+repository. Every catalog entry's `surface_family` must exist in the
+contract above; the release-check gate in
+`scripts/check-platform-protocol-specs.js` fails the build on drift.
+
 ## Stability Levels
 
 Every public surface in Durable Workflow carries exactly one of these

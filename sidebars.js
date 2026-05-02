@@ -86,6 +86,7 @@ const sidebars = {
         'operator-operating-envelope',
         'waterline-operator-api',
         'compatibility',
+        'platform-protocol-specs',
         'failures-and-recovery',
         'support',
         'migration',

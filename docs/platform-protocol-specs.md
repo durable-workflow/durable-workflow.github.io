@@ -1,0 +1,397 @@
+---
+sidebar_position: 18
+title: Platform Protocol Specs
+description: Catalog of normative machine-readable specifications for every public Durable Workflow surface — OpenAPI for HTTP, JSON Schema for object families, AsyncAPI for event streams.
+tags:
+  - compatibility
+  - protocols
+  - api-stability
+  - openapi
+  - json-schema
+  - asyncapi
+keywords:
+  - platform protocol specs
+  - normative spec catalog
+  - openapi
+  - asyncapi
+  - json schema
+  - control-plane spec
+  - worker protocol spec
+  - history export schema
+  - waterline read api spec
+  - repair actionability schema
+  - mcp tool result schema
+---
+
+# Platform Protocol Specs
+
+This page is the **catalog of normative machine-readable protocol
+specifications** for every public Durable Workflow surface. It is the
+single source of truth for SDK authors, agents, operators, and
+third-party tooling that need to validate against Durable contracts
+without reading prose or reverse-engineering fixtures.
+
+The companion page [Version Compatibility](/docs/2.0/compatibility) says
+*which* surfaces are public and *how* they may change. This catalog says
+*where* the normative spec for each surface lives, *which format* it
+uses, *which repository* owns it, and *which conformance test* pins it
+against drift.
+
+The same catalog is published in machine-readable form so SDK builds,
+agents, and CI gates can validate themselves against one source of
+truth:
+
+- `platform_protocol_specs` in the response body of
+  `GET /api/cluster/info` on the standalone Durable Workflow server,
+  schema `durable-workflow.v2.platform-protocol-specs.catalog`,
+  version `1`.
+- A frozen mirror of the same manifest in this repository at
+  `static/platform-protocol-specs.json`.
+- The PHP class `Workflow\V2\Support\PlatformProtocolSpecs`, which is
+  the in-process source the server re-exports.
+
+A release that adds a spec entry, changes its format, owner,
+breaking-change rule, or status, or removes an entry must update this
+page, the JSON mirror, and the PHP manifest in the same change. The
+release-check gate in `scripts/check-platform-protocol-specs.js` fails
+the docs build when it detects drift.
+
+## Spec Formats
+
+Every entry in the catalog declares one of three formats. The format is
+chosen by the shape of the contract, not by the repository that hosts
+it.
+
+| Format | When to use | File extension |
+|--------|-------------|----------------|
+| `openapi` | OpenAPI 3.1 specification document. Used for HTTP+JSON request/response surfaces where method, path, status code, and body shape are part of the contract. | yaml or json |
+| `json_schema` | JSON Schema (Draft 2020-12) document for a single object family or a small set of related object families. Used for response bodies, persisted record shapes, event payloads, and tool-result envelopes that are produced or consumed across protocol boundaries. | json |
+| `asyncapi` | AsyncAPI 2.6+ specification document. Used for event-stream and long-poll semantics where ordering, delivery, ack, and channel topology are part of the contract. | yaml or json |
+
+## Status Levels
+
+Every entry declares one of three status levels so the catalog
+enumerates the full spec set even before every spec is written.
+
+| Status | Meaning |
+|--------|---------|
+| `published` | A normative machine-readable spec exists at the listed `spec_path`, is pinned by `conformance_test`, and is referenced from public docs. SDK authors and tooling must validate against this spec. |
+| `in_progress` | The owner repo has begun publishing the spec; coverage is partial. Fields and routes that are listed are normative; routes not yet listed are still governed by the `authority_manifest` and the per-package stability document. CI enforces alignment between what the spec covers and what the manifest advertises. |
+| `planned` | The spec is planned but not yet published. The `authority_manifest` and the per-package stability document remain the normative source until the spec lands. |
+
+## Evolution Rules
+
+These rules apply to the spec entries below. They are reproduced in the
+JSON mirror under `evolution_rules`. They sit on top of the
+patch/minor/major release rules in [Version Compatibility](/docs/2.0/compatibility);
+this page only adds the per-format specifics.
+
+| Evolution rule | Meaning | Applies to |
+|----------------|---------|------------|
+| `additive_minor_breaking_major` | Additive changes (new endpoints, new optional fields, new enum cases that consumers may safely ignore) advance the spec in a minor version. Removals, renames, type narrowings, or semantic changes require a major version, ship behind a parallel route or field where feasible, and are announced one minor in advance. | `openapi`, `asyncapi`, `json_schema` |
+| `parallel_primitive_only` | The spec describes a frozen wire format. The only allowed breaking change is to introduce a parallel primitive (a new event type, command type, or schema id) alongside the existing one. The original shape stays decodable indefinitely. | `json_schema` |
+| `experimental_any_release` | Spec entries marked experimental may change in any release. Consumers must opt in by reading the experimental flag on the spec. | `openapi`, `asyncapi`, `json_schema` |
+
+## Owner Repositories
+
+Every entry names exactly one `owner_repo`. The owner repo is the
+authoritative source for advancing the spec version and for the
+conformance test that pins the spec.
+
+- `durable-workflow/workflow` — PHP workflow package, history-event
+  payloads, history-export bundle, replay bundle, repair/actionability
+  object families.
+- `durable-workflow/server` — standalone server control-plane and
+  worker-protocol APIs, MCP discovery and tool-result envelopes,
+  `cluster/info` envelope.
+- `durable-workflow/waterline` — Waterline read API and diagnostic
+  object families.
+- `durable-workflow/durable-workflow.github.io` — this catalog and the
+  human-readable mirrors of the protocol manifests.
+- `durable-workflow/cli` — `dw` CLI JSON output (governed by the CLI
+  reference page; not in this catalog because the CLI publishes its JSON
+  shape per command).
+- `durable-workflow/sdk-python` — Python SDK public surface (governed
+  by the per-package README; not in this catalog because the Python SDK
+  is a consumer, not a publisher of the protocol spec set).
+
+## Spec Catalog
+
+Each row below is the catalog entry for one public surface. The fields
+match the JSON mirror exactly.
+
+### `control_plane_api`
+
+OpenAPI specification for the standalone Durable Workflow server
+control-plane HTTP+JSON API: namespace, schedule, command, run,
+history, search, and system routes that the CLI, Python SDK, cloud
+control plane, and operator scripts call.
+
+| Field | Value |
+|-------|-------|
+| Format | `openapi` |
+| Spec id | `durable-workflow.v2.control-plane-api` |
+| Surface family | `server_api` |
+| Authority manifest | `control_plane` |
+| Owner repo | `durable-workflow/server` |
+| Owner symbol | `App\Support\ControlPlaneProtocol` and `App\Support\ControlPlaneRequestContract` |
+| Evolution rule | `additive_minor_breaking_major` |
+| Breaking-change release | `major` |
+| Discovery endpoint | `GET /api/cluster/info -> control_plane` |
+| Conformance test | `durable-workflow/server: tests/Feature/ClusterInfoCompatibilityTest.php` and `tests/Feature/Api/*` per-route contract tests |
+| Status | `in_progress` |
+| Spec path | `static/platform-protocol-specs/control-plane-api.openapi.yaml` |
+
+### `worker_protocol_api`
+
+OpenAPI specification for the worker-plane HTTP+JSON API: register,
+poll, heartbeat, complete, and fail for workflow and activity tasks.
+The companion AsyncAPI document `worker_protocol_stream` describes the
+long-poll and lease-renewal semantics.
+
+| Field | Value |
+|-------|-------|
+| Format | `openapi` |
+| Spec id | `durable-workflow.v2.worker-protocol-api` |
+| Surface family | `worker_protocol` |
+| Authority manifest | `worker_protocol` |
+| Owner repo | `durable-workflow/server` |
+| Owner symbol | `App\Support\WorkerProtocol` and `Workflow\V2\Support\WorkerProtocolVersion` |
+| Evolution rule | `additive_minor_breaking_major` |
+| Breaking-change release | `major` |
+| Discovery endpoint | `GET /api/cluster/info -> worker_protocol` |
+| Conformance test | `durable-workflow/server: tests/Feature/Api/Worker*` contract tests |
+| Status | `in_progress` |
+| Spec path | `static/platform-protocol-specs/worker-protocol-api.openapi.yaml` |
+
+### `worker_protocol_stream`
+
+AsyncAPI specification for the worker poll/heartbeat/complete/fail
+event-stream semantics: long-poll cancellation, lease renewal, queue
+routing precedence, build-id rollout drains, and graceful disconnect.
+
+| Field | Value |
+|-------|-------|
+| Format | `asyncapi` |
+| Spec id | `durable-workflow.v2.worker-protocol-stream` |
+| Surface family | `worker_protocol` |
+| Authority manifest | `worker_protocol` |
+| Owner repo | `durable-workflow/server` |
+| Owner symbol | `App\Support\WorkerProtocol` and `Workflow\V2\Support\WorkerCompatibilityFleet` |
+| Evolution rule | `additive_minor_breaking_major` |
+| Breaking-change release | `major` |
+| Discovery endpoint | `GET /api/cluster/info -> worker_protocol` |
+| Conformance test | `durable-workflow/server: tests/Feature/Api/WorkerLongPollTest.php` and `tests/Feature/Api/WorkerHeartbeatTest.php` |
+| Status | `planned` |
+| Spec path | `static/platform-protocol-specs/worker-protocol-stream.asyncapi.yaml` |
+
+### `history_event_payloads`
+
+JSON Schema set for every published `workflow_history_events` and
+`workflow_schedule_history_events` payload. Once a workflow writes an
+event, every future SDK that replays it must decode the same field set;
+the only allowed breaking change is a parallel primitive with a new
+event type name. The frozen-event tables in the workflow package
+[`docs/api-stability.md`](https://github.com/durable-workflow/workflow/blob/v2/docs/api-stability.md)
+are the per-event source of truth.
+
+| Field | Value |
+|-------|-------|
+| Format | `json_schema` |
+| Spec id | `durable-workflow.v2.history-event-payloads` |
+| Surface family | `history_event_wire_formats` |
+| Authority manifest | `history_event_payload_contract` |
+| Owner repo | `durable-workflow/workflow` |
+| Owner symbol | `Workflow\V2\Models\WorkflowHistoryEvent` and `Workflow\V2\Enums\HistoryEventType` |
+| Evolution rule | `parallel_primitive_only` |
+| Breaking-change release | `parallel_primitive_only` |
+| Conformance test | `durable-workflow/workflow: tests/Unit/V2/HistoryEventWireFormatDocumentationTest.php` and `tests/Unit/V2/VersionMarkerWireFormatTest.php` |
+| Status | `in_progress` |
+| Spec path | `static/platform-protocol-specs/history-event-payloads.schema.json` |
+
+### `history_export_bundle`
+
+JSON Schema for the history-export bundle that the server emits and
+that replay tooling consumes: ordered history events, payload
+references, payload codec metadata, lineage edges, and bundle manifest.
+
+| Field | Value |
+|-------|-------|
+| Format | `json_schema` |
+| Spec id | `durable-workflow.v2.history-export-bundle` |
+| Surface family | `history_event_wire_formats` |
+| Authority manifest | `history_event_payload_contract` |
+| Owner repo | `durable-workflow/workflow` |
+| Owner symbol | `Workflow\V2\Support\HistoryExport` |
+| Evolution rule | `additive_minor_breaking_major` |
+| Breaking-change release | `major` |
+| Conformance test | `durable-workflow/workflow: tests/Unit/V2/HistoryExportTest.php` |
+| Status | `planned` |
+| Spec path | `static/platform-protocol-specs/history-export-bundle.schema.json` |
+
+### `replay_bundle`
+
+JSON Schema for the deterministic replay bundle: workflow definition
+fingerprint, decoded history, side-effect projections, and
+replay-verification metadata. Consumed by replay tooling, debugging
+UIs, and the replay-verification contract.
+
+| Field | Value |
+|-------|-------|
+| Format | `json_schema` |
+| Spec id | `durable-workflow.v2.replay-bundle` |
+| Surface family | `history_event_wire_formats` |
+| Authority manifest | `replay_verification_contract` |
+| Owner repo | `durable-workflow/workflow` |
+| Owner symbol | `Workflow\V2\Support\WorkflowReplayer` and `Workflow\V2\Support\ReplayState` |
+| Evolution rule | `additive_minor_breaking_major` |
+| Breaking-change release | `major` |
+| Conformance test | `durable-workflow/workflow: tests/Unit/V2/WorkflowReplayer*Test.php` and `durable-workflow/server: tests/Feature/ReplayVerificationContractTest.php` |
+| Status | `planned` |
+| Spec path | `static/platform-protocol-specs/replay-bundle.schema.json` |
+
+### `waterline_read_api`
+
+OpenAPI specification for the Waterline observability read API at
+`/waterline/api/v2/*`: workflow lookup, run timeline, signal/update
+views, schedule audit, and dashboard JSON shapes.
+
+| Field | Value |
+|-------|-------|
+| Format | `openapi` |
+| Spec id | `durable-workflow.v2.waterline-read-api` |
+| Surface family | `waterline_api` |
+| Authority manifest | `waterline_operator_api` |
+| Owner repo | `durable-workflow/waterline` |
+| Owner symbol | waterline `routes/api.php` and the Waterline OperatorReadController |
+| Evolution rule | `additive_minor_breaking_major` |
+| Breaking-change release | `major` |
+| Conformance test | `durable-workflow/waterline: tests/Feature/OperatorReadApiTest.php` and contract tests under `tests/Feature/Api/` |
+| Status | `planned` |
+| Spec path | `static/platform-protocol-specs/waterline-read-api.openapi.yaml` |
+
+### `waterline_diagnostic_objects`
+
+JSON Schema for the diagnostic object families Waterline emits:
+timeline rows, lineage edges, operator hints, queue depth snapshots,
+and engine-source attribution. These are the diagnostic shapes that
+operator dashboards and external observability adapters parse.
+
+| Field | Value |
+|-------|-------|
+| Format | `json_schema` |
+| Spec id | `durable-workflow.v2.waterline-diagnostic-objects` |
+| Surface family | `waterline_api` |
+| Authority manifest | `waterline_operator_api` |
+| Owner repo | `durable-workflow/waterline` |
+| Owner symbol | waterline DiagnosticObjectContract and OperatorReadProjections |
+| Evolution rule | `additive_minor_breaking_major` |
+| Breaking-change release | `major` |
+| Conformance test | `durable-workflow/waterline: tests/Feature/DiagnosticObjectContractTest.php` |
+| Status | `planned` |
+| Spec path | `static/platform-protocol-specs/waterline-diagnostic-objects.schema.json` |
+
+### `repair_actionability_objects`
+
+JSON Schema for the repair and actionability object families:
+task-repair candidates, repair policies, actionability hints,
+operator-queue visibility entries, and the structured failure shapes
+that drive operator-led recovery.
+
+| Field | Value |
+|-------|-------|
+| Format | `json_schema` |
+| Spec id | `durable-workflow.v2.repair-actionability-objects` |
+| Surface family | `server_api` |
+| Authority manifest | `control_plane` |
+| Owner repo | `durable-workflow/workflow` |
+| Owner symbol | `Workflow\V2\Support\TaskRepairCandidates`, `Workflow\V2\Support\TaskRepairPolicy`, and `Workflow\V2\Support\OperatorQueueVisibility` |
+| Evolution rule | `additive_minor_breaking_major` |
+| Breaking-change release | `major` |
+| Conformance test | `durable-workflow/workflow: tests/Unit/V2/TaskRepair*Test.php` and `durable-workflow/server: tests/Feature/Api/RepairControllerTest.php` |
+| Status | `in_progress` |
+| Spec path | `static/platform-protocol-specs/repair-actionability-objects.schema.json` |
+
+### `mcp_discovery`
+
+JSON Schema for the Model Context Protocol discovery surface at
+`/mcp/*` and the `llms.txt` / `llms-2.0.txt` discovery files: tool
+list shape, parameter schema shape, and discovery hints.
+
+| Field | Value |
+|-------|-------|
+| Format | `json_schema` |
+| Spec id | `durable-workflow.v2.mcp-discovery` |
+| Surface family | `mcp_discovery_results` |
+| Authority manifest | `mcp_workflows` |
+| Owner repo | `durable-workflow/server` |
+| Owner symbol | `App\Mcp\Discovery` and the MCP route group in `routes/api.php` |
+| Evolution rule | `additive_minor_breaking_major` |
+| Breaking-change release | `major` |
+| Conformance test | `durable-workflow/server: tests/Feature/Mcp/DiscoveryContractTest.php` |
+| Status | `planned` |
+| Spec path | `static/platform-protocol-specs/mcp-discovery.schema.json` |
+
+### `mcp_tool_results`
+
+JSON Schema for MCP tool-result envelopes: result object shape,
+payload-preview limits, error envelope, and the
+`payload_preview_limit_bytes` semantics. Tool descriptions and
+discovery hints are diagnostic, not contract.
+
+| Field | Value |
+|-------|-------|
+| Format | `json_schema` |
+| Spec id | `durable-workflow.v2.mcp-tool-results` |
+| Surface family | `mcp_discovery_results` |
+| Authority manifest | `mcp_workflows` |
+| Owner repo | `durable-workflow/server` |
+| Owner symbol | `App\Mcp\ToolResultEnvelope` |
+| Evolution rule | `additive_minor_breaking_major` |
+| Breaking-change release | `major` |
+| Conformance test | `durable-workflow/server: tests/Feature/Mcp/ToolResultEnvelopeTest.php` |
+| Status | `planned` |
+| Spec path | `static/platform-protocol-specs/mcp-tool-results.schema.json` |
+
+### `cluster_info_envelope`
+
+JSON Schema for the `GET /api/cluster/info` envelope: identity,
+capability, topology, coordination-health, and the nested protocol
+manifests (`client_compatibility`, `control_plane`, `worker_protocol`,
+`surface_stability_contract`, `platform_protocol_specs`,
+`auth_composition_contract`, `bridge_adapter_outcome_contract`,
+`replay_verification_contract`).
+
+| Field | Value |
+|-------|-------|
+| Format | `json_schema` |
+| Spec id | `durable-workflow.v2.cluster-info-envelope` |
+| Surface family | `cluster_info_manifests` |
+| Authority manifest | `cluster_info` |
+| Owner repo | `durable-workflow/server` |
+| Owner symbol | `App\Http\Controllers\Api\HealthController::clusterInfo` |
+| Evolution rule | `additive_minor_breaking_major` |
+| Breaking-change release | `major` |
+| Conformance test | `durable-workflow/server: tests/Feature/ClusterInfoCompatibilityTest.php` |
+| Status | `in_progress` |
+| Spec path | `static/platform-protocol-specs/cluster-info-envelope.schema.json` |
+
+## Release Check
+
+Release reviewers must confirm the platform-protocol-specs catalog
+check before publish. The checks are reproduced in the JSON mirror
+under `release_check`.
+
+| Gate | Description |
+|------|-------------|
+| `catalog_aligned_with_surface_families` | Every entry's `surface_family` exists in `SurfaceStabilityContract::surfaceFamilies()`. Every `surface_family` that owns a public machine-facing surface has at least one catalog entry. |
+| `owner_repo_known` | Every entry's `owner_repo` is one of the known fleet repositories. |
+| `format_known` | Every entry's `format` is one of `openapi`, `json_schema`, or `asyncapi`. |
+| `docs_authority_aligned` | This page lists every entry in the manifest with the same format, owner, status, and breaking-change rule. |
+| `json_mirror_aligned` | `static/platform-protocol-specs.json` is byte-equivalent to the PHP `PlatformProtocolSpecs::manifest()` output. |
+| `spec_path_published_when_status_published` | When `status` is `published`, the file at `spec_path` exists in this repository and is referenced from the matching authority doc page. |
+
+The docs site CI runs `scripts/check-platform-protocol-specs.js` to
+enforce these gates. Drift here means a release shipped a doc change
+without updating the machine-readable catalog (or vice versa). Either
+fix the doc or bump the catalog; do not silence the check.
