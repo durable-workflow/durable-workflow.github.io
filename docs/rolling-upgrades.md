@@ -288,9 +288,13 @@ Verify each phase of the rollout from operator surfaces, not from logs.
 | Is the scheduler caught up? | `GET /api/system/operator-metrics` `schedules.missed` is zero and `schedules.oldest_overdue_at` is null. |
 | Are stuck runs piling up? | `GET /api/system/operator-metrics` `runs.repair_needed` and `runs.max_repair_needed_age_ms` stay near their pre-rollout baseline. |
 
-The same signals are rendered on the Waterline operator dashboard and
-on `dw system:operator-metrics`, so operators may pick whichever surface
-matches their existing workflow.
+`dw system:operator-metrics --json` exposes the same operator-metrics snapshot
+on the console for the standalone-server fleet, so operators may pick whichever
+surface matches their existing workflow. The standalone-server distribution
+does not run Waterline; embedded Laravel deployments read the matching
+dashboard signals under `/waterline/api/v2/health` and `/waterline/api/stats`,
+as documented in the
+[Operator Operating Envelope](/docs/2.0/operator-operating-envelope).
 
 ## Failure modes and what to do
 

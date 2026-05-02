@@ -20,6 +20,17 @@ keywords:
 that works alongside Horizon. Think of Waterline as being to workflows what
 Horizon is to queues.
 
+Waterline ships only with the embedded Laravel host that installs the
+`durable-workflow/workflow` package; it reads that app's durable state in
+process. The standalone server distribution does not run Waterline. Operators
+who run the [standalone server](./polyglot/server.md) read the equivalent
+durable-state facts through `GET /api/system/health`,
+`GET /api/system/operator-metrics`, and the workflow control-plane routes
+documented in the
+[Server API Reference](./polyglot/server-api-reference.md). The
+[Operator Operating Envelope](./operator-operating-envelope.md) maps the
+Waterline routes below onto their server-side counterparts.
+
 Durable Workflow has two observability planes:
 
 | Plane | Source of truth | Typical questions |

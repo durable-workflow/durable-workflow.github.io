@@ -25,8 +25,10 @@ Supported today:
 - Poll and complete workflow and activity tasks through the worker protocol.
 - Export closed-run history bundles from embedded v2 or server v2 for audit,
   debugging, and archival handoff.
-- Observe server-managed workflows through the server API, CLI, and Waterline
-  surfaces that read server state.
+- Observe server-managed workflows through the server API, CLI, and SDK
+  surfaces that read server state. Waterline keeps reading the embedded
+  Laravel app's own durable state — it is not part of the standalone-server
+  distribution and does not call out to the server.
 
 Not supported as an automatic operation today:
 

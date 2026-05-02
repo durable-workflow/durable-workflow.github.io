@@ -26,6 +26,31 @@ history export, actionability, command affordances, saved views, preferences,
 and schedule visibility. Use [Monitoring](./monitoring.md) for the conceptual
 split between Waterline durable state and worker/runtime telemetry.
 
+## Deployment Boundary
+
+Waterline runs only inside the embedded Laravel host that installs the
+`durable-workflow/workflow` package. It reads the embedded app's durable state
+directly through the package's data sources; it does not call out to the
+standalone server, and it does not appear in the standalone-server
+distribution.
+
+If you operate the [standalone server](./polyglot/server.md), use the
+server-side equivalents instead of the routes documented here:
+
+| Embedded Waterline route | Standalone-server equivalent |
+| --- | --- |
+| `GET /waterline/api/v2/health` | `GET /api/system/health` (admin auth, control-plane v2). |
+| `GET /waterline/api/stats` | `GET /api/system/operator-metrics` for the namespace-scoped operator metrics snapshot. |
+| `GET /waterline/api/flows/{bucket}` and selected-run detail routes | `GET /api/workflows`, `GET /api/workflows/{workflowId}`, and `GET /api/workflows/{workflowId}/runs/{runId}` from the [Server API Reference](./polyglot/server-api-reference.md). |
+| `POST /waterline/api/instances/{instanceId}/{cancel|terminate|repair|archive}` and signal/update/query actions | The matching `POST /api/workflows/{workflowId}/...` and `POST /api/system/repair/pass` routes. |
+| Waterline schedule routes under `/waterline/api/v2/schedules` | `GET|POST /api/schedules` and `POST /api/schedules/{scheduleId}/{pause|resume|trigger|backfill}`. |
+
+[Deployment Modes](./polyglot/deployment-modes.md) freezes the same boundary
+in product-contract terms: Waterline serves the embedded shape, while the
+standalone server publishes its own operator surface for service-mode
+deployments. Do not assume cross-mode visibility — runs stay readable from
+the runtime that owns them.
+
 ## Base Path And Scope
 
 Waterline mounts under the Laravel app's configured Waterline base path. The
