@@ -105,16 +105,17 @@ function main() {
   assertExcludes(v2Full, '# Search and Navigation', 'llms-full-2.0.txt');
   assertExcludes(v2Full, '<details>', 'llms-full-2.0.txt');
   assertExcludes(v2Full, '<summary>', 'llms-full-2.0.txt');
-  // Canonical /llms.txt and /llms-full.txt now serve v2 content so AI tools
-  // that fetch the well-known paths see the current protocol, not stale 1.x.
-  assertIncludes(canonicalIndex, 'docs/ai-assisted-development.md', 'llms.txt');
+  // Canonical /llms.txt and /llms-full.txt match the site's lastVersion ('1.x')
+  // — the same content human visitors get via /docs/. v2.0 is alpha and only
+  // reachable via the explicit /llms-2.0.txt and /llms-full-2.0.txt aliases
+  // and the /docs/2.0/ paths.
+  assertIncludes(canonicalIndex, 'versioned_docs/version-1.x', 'llms.txt');
   assertIncludes(canonicalIndex, 'llms-full.txt', 'llms.txt');
-  assertExcludes(canonicalIndex, 'versioned_docs/version-1.x', 'llms.txt');
+  assertExcludes(canonicalIndex, 'docs/ai-assisted-development.md', 'llms.txt');
   assertExcludes(canonicalIndex, 'llms-full-2.0.txt', 'llms.txt');
-  assertIncludes(canonicalFull, '# AI-Assisted Development', 'llms-full.txt');
-  assertIncludes(canonicalFull, '# Agent Operating Loop', 'llms-full.txt');
+  assertExcludes(canonicalFull, '# AI-Assisted Development', 'llms-full.txt');
 
-  // v1.x stays reachable for clients that explicitly pin the legacy version.
+  // v1.x is also reachable via the explicit pinned alias (mirrors canonical).
   assertIncludes(v1Index, 'versioned_docs/version-1.x', 'llms-1.x.txt');
   assertIncludes(v1Index, 'llms-full-1.x.txt', 'llms-1.x.txt');
   assertExcludes(v1Index, 'docs/ai-assisted-development.md', 'llms-1.x.txt');

@@ -26,17 +26,17 @@ machine-readable docs surface:
 
 | Surface | URL | Use |
 | --- | --- | --- |
-| canonical manifest | `https://durable-workflow.com/llms.txt` | Current docs index. Serves v2.0 — the supported product surface. |
-| canonical full bundle | `https://durable-workflow.com/llms-full.txt` | Single-file v2.0 docs bundle for retrieval. |
-| v2 manifest | `https://durable-workflow.com/llms-2.0.txt` | Version-pinned v2.0 index. Identical to the canonical manifest today; pin this URL when you want it to keep meaning v2 after a future major bump. |
-| v2 full bundle | `https://durable-workflow.com/llms-full-2.0.txt` | Version-pinned v2.0 bundle. |
-| v1 manifest | `https://durable-workflow.com/llms-1.x.txt` | Legacy 1.x index, kept for clients that explicitly need the older API surface. |
-| v1 full bundle | `https://durable-workflow.com/llms-full-1.x.txt` | Legacy 1.x bundle. |
+| canonical manifest | `https://durable-workflow.com/llms.txt` | Current docs index. Tracks the site's `lastVersion` (1.x today). |
+| canonical full bundle | `https://durable-workflow.com/llms-full.txt` | Single-file docs bundle matching the canonical manifest. |
+| v1 manifest | `https://durable-workflow.com/llms-1.x.txt` | Version-pinned 1.x index. Identical to the canonical today; pin this URL if you want it to keep meaning 1.x after a future major bump. |
+| v1 full bundle | `https://durable-workflow.com/llms-full-1.x.txt` | Version-pinned 1.x bundle. |
+| v2 manifest | `https://durable-workflow.com/llms-2.0.txt` | Version-pinned v2.0 (alpha) index. Use only when explicitly building against the v2 protocol. |
+| v2 full bundle | `https://durable-workflow.com/llms-full-2.0.txt` | Version-pinned v2.0 (alpha) bundle. |
 
 Default agent prompts should fetch `/llms.txt` or `/llms-full.txt`. Pin the
-`-2.0.txt` URLs only when forward-compatibility against a future major version
-matters; pin `-1.x.txt` only when the question is specifically about the
-legacy API.
+`-1.x.txt` URLs only when forward-compatibility against a future major version
+matters; pin `-2.0.txt` only when the agent is specifically building against
+the v2 alpha protocol.
 
 ## Local MCP Surface
 
@@ -109,7 +109,7 @@ action waiting for approval.
 Give coding agents explicit constraints and handles:
 
 ```text
-Use Durable Workflow docs from https://durable-workflow.com/llms-full.txt.
+Use Durable Workflow docs from https://durable-workflow.com/llms-full-2.0.txt.
 Use the sample app MCP endpoint at /mcp/workflows for workflow discovery,
 start, result, and history. Prefer dw JSON/exit-code contracts and Waterline
 history exports over screenshots. For external handlers or bridge adapters,

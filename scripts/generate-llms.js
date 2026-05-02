@@ -344,29 +344,33 @@ function main() {
 
   ensureDir(buildDir);
 
-  // v2.0 is the canonical LLM manifest source. Generate it at /llms.txt so AI
-  // tools that fetch the well-known path see the current protocol, and also at
-  // /llms-2.0.txt so version-pinned references keep resolving.
-  const v2DocsDir = path.join(__dirname, '..', 'docs');
-  if (fs.existsSync(v2DocsDir)) {
-    const canonicalOutputFile = path.join(buildDir, 'llms.txt');
-    const canonicalFullUrl = new URL('llms-full.txt', siteBaseUrl).toString();
-    generateManifest(v2DocsDir, canonicalOutputFile, canonicalFullUrl);
-    console.log('Canonical llms.txt generated from v2.0 docs:', canonicalOutputFile);
-
-    const v2OutputFile = path.join(buildDir, 'llms-2.0.txt');
-    const v2FullUrl = new URL('llms-full-2.0.txt', siteBaseUrl).toString();
-    generateManifest(v2DocsDir, v2OutputFile, v2FullUrl);
-    console.log('v2.0 llms-2.0.txt generated successfully:', v2OutputFile);
-  }
-
-  // v1.x stays available for clients that explicitly want the legacy index.
+  // The canonical /llms.txt must match the site's `lastVersion` (set to '1.x'
+  // in docusaurus.config.js) — that is what /docs/, the navbar default, and
+  // human visitors get. v2.0 is alpha and is reachable only via the explicit
+  // /docs/2.0/ paths and the /llms-2.0.txt pinned alias. Earlier the canonical
+  // was wired to v2 source; that surfaced alpha protocol surfaces to LLM tools
+  // hitting the well-known /llms.txt as if they were stable.
   const v1DocsDir = path.join(__dirname, '..', 'versioned_docs', 'version-1.x');
   if (fs.existsSync(v1DocsDir)) {
+    const canonicalOutputFile = path.join(buildDir, 'llms.txt');
+    const canonicalFullUrl = new URL('llms-full.txt', siteBaseUrl).toString();
+    generateManifest(v1DocsDir, canonicalOutputFile, canonicalFullUrl);
+    console.log('Canonical llms.txt generated from v1.x docs (matches lastVersion):', canonicalOutputFile);
+
     const v1OutputFile = path.join(buildDir, 'llms-1.x.txt');
     const v1FullUrl = new URL('llms-full-1.x.txt', siteBaseUrl).toString();
     generateManifest(v1DocsDir, v1OutputFile, v1FullUrl);
     console.log('v1.x llms-1.x.txt generated successfully:', v1OutputFile);
+  }
+
+  // v2.0 is the alpha-tracked next version. Only reachable via the explicit
+  // version-pinned URL, never canonical.
+  const v2DocsDir = path.join(__dirname, '..', 'docs');
+  if (fs.existsSync(v2DocsDir)) {
+    const v2OutputFile = path.join(buildDir, 'llms-2.0.txt');
+    const v2FullUrl = new URL('llms-full-2.0.txt', siteBaseUrl).toString();
+    generateManifest(v2DocsDir, v2OutputFile, v2FullUrl);
+    console.log('v2.0 llms-2.0.txt generated successfully (pinned alias only):', v2OutputFile);
   }
 }
 
