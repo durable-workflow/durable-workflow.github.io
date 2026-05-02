@@ -305,6 +305,7 @@
         "Headers And Versioning",
         "Discovery And Health",
         "Public Topology Summary",
+        "Workflow Bootstrap Gate",
         "Cluster Topology Manifest",
         "Workflow Control Plane",
         "Workflow Commands",
@@ -360,6 +361,7 @@
         "durable-workflow.v2.external-payload-reference.v1",
         "Replay and history export must fail loudly",
         "reason: \"validation_failed\"",
+        "workflow_v2_blocked",
         "bounded-growth policy"
       ],
       "requiredSectionTerms": [
@@ -380,6 +382,31 @@
             "topology.matching_role.task_dispatch_mode",
             "topology.matching_role.partition_primitives",
             "topology.matching_role.backpressure_model"
+          ]
+        },
+        {
+          "heading": "Workflow Bootstrap Gate",
+          "terms": [
+            "workflow_v2_blocked",
+            "blocked_by",
+            "remediation",
+            "before namespace resolution",
+            "/api/workflows",
+            "/api/schedules",
+            "POST /api/schedules",
+            "PUT /api/schedules/{scheduleId}",
+            "DELETE /api/schedules/{scheduleId}",
+            "/pause",
+            "/resume",
+            "/trigger",
+            "/backfill",
+            "/api/bridge-adapters/webhook/{adapter}",
+            "/api/worker",
+            "GET /api/schedules",
+            "GET /api/schedules/{scheduleId}",
+            "GET /api/schedules/{scheduleId}/history",
+            "worker-protocol envelope",
+            "X-Durable-Workflow-Protocol-Version"
           ]
         }
       ],
@@ -421,6 +448,7 @@
         "Failure And Scaling Boundaries",
         "Migration Path",
         "Reading The Topology Manifest",
+        "Workflow Bootstrap Gate",
         "Related References"
       ],
       "requiredTerms": [
@@ -454,7 +482,23 @@
         "required_roles",
         "missing_roles",
         "remote_worker_protocol",
-        "local_queue_worker"
+        "local_queue_worker",
+        "workflow_v2_blocked"
+      ],
+      "requiredSectionTerms": [
+        {
+          "heading": "Workflow Bootstrap Gate",
+          "terms": [
+            "workflow_v2_blocked",
+            "blocked_by",
+            "remediation",
+            "before namespace resolution",
+            "GET /api/schedules",
+            "GET /api/schedules/{scheduleId}",
+            "GET /api/schedules/{scheduleId}/history",
+            "worker-protocol envelope"
+          ]
+        }
       ],
       "requiredEndpoints": [
         "/api/cluster/info"
@@ -469,6 +513,7 @@
         "Configuration",
         "Health Checks",
         "Public Topology Summary",
+        "Workflow Bootstrap Gate",
         "Server Capabilities",
         "Role topology and deployment shape",
         "Connecting Workers"
@@ -511,7 +556,8 @@
         "required_roles",
         "missing_roles",
         "remote_worker_protocol",
-        "local_queue_worker"
+        "local_queue_worker",
+        "workflow_v2_blocked"
       ],
       "requiredSectionTerms": [
         {
@@ -531,6 +577,29 @@
             "topology.matching_role.task_dispatch_mode",
             "topology.matching_role.partition_primitives",
             "topology.matching_role.backpressure_model"
+          ]
+        },
+        {
+          "heading": "Workflow Bootstrap Gate",
+          "terms": [
+            "workflow_v2_blocked",
+            "blocked_by",
+            "remediation",
+            "before namespace resolution",
+            "/api/workflows",
+            "POST /api/schedules",
+            "PUT /api/schedules/{scheduleId}",
+            "DELETE /api/schedules/{scheduleId}",
+            "/pause",
+            "/resume",
+            "/trigger",
+            "/backfill",
+            "/api/bridge-adapters/webhook/{adapter}",
+            "/api/worker",
+            "GET /api/schedules",
+            "GET /api/schedules/{scheduleId}",
+            "GET /api/schedules/{scheduleId}/history",
+            "X-Durable-Workflow-Protocol-Version"
           ]
         }
       ],

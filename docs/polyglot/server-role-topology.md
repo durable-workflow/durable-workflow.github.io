@@ -136,6 +136,29 @@ class. `GET /api/health`, `GET /api/ready`, and authenticated
 `GET /api/cluster/info` remain available so automation can discover the node's
 shape before retrying elsewhere.
 
+### Workflow Bootstrap Gate
+
+A second route-level gate fails closed when the responding node has unresolved
+workflow v2 bootstrap blockers. While `checks.workflow_v2.status` is `blocked`,
+authenticated workflow start/mutation, schedule mutation, bridge-adapter, and
+worker-protocol routes return `503` with `reason: "workflow_v2_blocked"` plus:
+
+- `blocked_by`: the ordered list of upstream readiness blockers, for example
+  `migrations`.
+- `remediation`: the operator-facing instruction for clearing the listed
+  blockers, mirrored from `/api/ready` `checks.workflow_v2.remediation`.
+
+The bootstrap gate sits in the same slot as the hosted-route topology gate:
+after role and protocol-version validation, before namespace resolution. A
+blocked request therefore never observes namespace existence.
+
+Schedule **reads** (`GET /api/schedules`, `GET /api/schedules/{scheduleId}`,
+`GET /api/schedules/{scheduleId}/history`) are intentionally exempted so
+operators can inspect schedule state during recovery. Worker-protocol routes
+return the same bootstrap-gate payload in the worker-protocol envelope, so
+worker SDKs branch on the same machine-readable `reason: "workflow_v2_blocked"`
+the control plane returns.
+
 ## Matching Role Contract
 
 `topology.matching_role` freezes the live matching and wake posture for the

@@ -316,6 +316,49 @@ Treat the machine-readable fields as follows:
   `blocked_by`, `message`, and `remediation` so operators can fix the upstream
   readiness gate instead of chasing queue symptoms.
 
+### Workflow Bootstrap Gate
+
+`checks.workflow_v2.status: "blocked"` is also a route-level gate, not just a
+readiness signal. While workflow v2 bootstrap is blocked, the server fails
+closed on workflow start/mutation, schedule mutation, bridge-adapter, and
+worker-protocol routes with HTTP `503` and a machine-readable
+`reason: "workflow_v2_blocked"` payload. The gate runs after role and
+protocol-version validation but before namespace resolution, so blocked
+requests never observe namespace existence.
+
+The bootstrap-gate response always carries:
+
+- `reason: "workflow_v2_blocked"` so callers branch on a machine-readable name
+  instead of a prose message.
+- `blocked_by`: the ordered list of upstream readiness blockers (for example
+  `migrations`).
+- `remediation`: the operator-facing instruction for clearing the listed
+  blockers, mirrored from `/api/ready` `checks.workflow_v2.remediation`.
+
+Bootstrap-gated route families:
+
+- **Workflow start and mutation** — `/api/workflows` start, command, and
+  run-targeted command routes.
+- **Schedule mutation** — `POST /api/schedules`,
+  `PUT /api/schedules/{scheduleId}`, `DELETE /api/schedules/{scheduleId}`,
+  `POST /api/schedules/{scheduleId}/pause`,
+  `POST /api/schedules/{scheduleId}/resume`,
+  `POST /api/schedules/{scheduleId}/trigger`, and
+  `POST /api/schedules/{scheduleId}/backfill`.
+- **Bridge adapters** — `POST /api/bridge-adapters/webhook/{adapter}`.
+- **Worker protocol** — every `/api/worker` and `/api/worker/*` route, including
+  registration, heartbeat, workflow-task, query-task, and activity-task verbs.
+  Worker-protocol routes return the bootstrap-gate payload in the
+  worker-protocol envelope and keep the
+  `X-Durable-Workflow-Protocol-Version` header so worker SDKs can branch on the
+  same `reason: "workflow_v2_blocked"` field they parse from the control plane.
+
+Schedule **reads** are intentionally exempted so operators can inspect
+schedule state during recovery: `GET /api/schedules`,
+`GET /api/schedules/{scheduleId}`, and
+`GET /api/schedules/{scheduleId}/history` continue to serve while the
+bootstrap gate is blocking other routes.
+
 ### Server Capabilities
 
 ```bash

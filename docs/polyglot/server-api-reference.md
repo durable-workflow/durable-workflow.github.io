@@ -284,6 +284,69 @@ a scheduler-only node:
 stay available for liveness and discovery even on nodes that do not host the
 current HTTP control surface.
 
+### Workflow Bootstrap Gate
+
+Authenticated routes that mutate or serve workflow v2 traffic also fail closed
+when `checks.workflow_v2.status` on the responding node is `blocked`. The gate
+runs after role and protocol-version validation but before namespace
+resolution, so a request sent during a blocked rollout never observes namespace
+existence.
+
+When the gate trips, the server returns `503` with
+`reason: "workflow_v2_blocked"` plus:
+
+- `blocked_by`: the ordered list of upstream readiness blockers (for example
+  `migrations`) that are keeping workflow v2 from serving safely.
+- `remediation`: the short operator-facing instruction for clearing the listed
+  blockers, mirrored from the `/api/ready` `checks.workflow_v2.remediation`
+  field.
+
+The bootstrap-gated route families are:
+
+- **Workflow start and mutation** — every `/api/workflows` route in the start,
+  describe, command, and run-targeted command groups (for example
+  `POST /api/workflows`, `POST /api/workflows/{workflowId}/signal/{signalName}`,
+  `POST /api/workflows/{workflowId}/runs/{runId}/cancel`).
+- **Schedule mutation** — `POST /api/schedules`,
+  `PUT /api/schedules/{scheduleId}`, `DELETE /api/schedules/{scheduleId}`,
+  `POST /api/schedules/{scheduleId}/pause`,
+  `POST /api/schedules/{scheduleId}/resume`,
+  `POST /api/schedules/{scheduleId}/trigger`, and
+  `POST /api/schedules/{scheduleId}/backfill`.
+- **Bridge adapters** — `POST /api/bridge-adapters/webhook/{adapter}`.
+- **Worker protocol** — every `/api/worker` and `/api/worker/*` route, including
+  registration, heartbeat, and workflow-task, query-task, and activity-task
+  poll/complete/fail/heartbeat verbs.
+
+Schedule **reads** are intentionally exempted so operators can inspect schedule
+state during recovery: `GET /api/schedules`,
+`GET /api/schedules/{scheduleId}`, and
+`GET /api/schedules/{scheduleId}/history` continue to serve while the bootstrap
+gate is blocking other routes.
+
+Control-plane routes return the bootstrap-gate payload in the control-plane
+envelope, including the `X-Durable-Workflow-Control-Plane-Version` header.
+Worker-protocol routes return the same `reason`, `blocked_by`, and
+`remediation` fields in the worker-protocol envelope and keep the
+`X-Durable-Workflow-Protocol-Version` header so workers can branch on the
+machine-readable reason instead of inferring queue state from a bare `503`.
+
+Example bootstrap-gate response from `POST /api/workflows` while a rollout-safety
+migration is missing:
+
+```json
+{
+  "reason": "workflow_v2_blocked",
+  "message": "This node is not ready to serve workflow v2 traffic until bootstrap blockers are cleared.",
+  "blocked_by": ["migrations"],
+  "remediation": "Restore database connectivity and migrate the workflow tables before relying on workflow v2 rollout-safety health."
+}
+```
+
+The same payload is returned in the worker-protocol envelope for
+`/api/worker/*` routes, so worker SDKs can keep branching on `reason` and
+retrying after the upstream blocker clears.
+
 ### Namespace-Scoped System Health
 
 `GET /api/system/health` is the authenticated rollout-safety and coordination
@@ -654,7 +717,7 @@ Common statuses:
 | `409` | Duplicate or conflict, such as an already-started workflow or invalid run target. |
 | `422` | Validation failed; response includes field-level validation details. |
 | `429` | Admission or task queue capacity is full. |
-| `503` | The request reached a node that does not host the required topology roles. Hosted routes return `reason: "topology_role_unavailable"` plus `current_shape`, `current_process_class`, `current_roles`, `required_roles`, and `missing_roles`. |
+| `503` | The request reached a node that does not host the required topology roles. Hosted routes return `reason: "topology_role_unavailable"` plus `current_shape`, `current_process_class`, `current_roles`, `required_roles`, and `missing_roles`. The same status with `reason: "workflow_v2_blocked"` plus `blocked_by` and `remediation` covers workflow start/mutation, schedule mutation, bridge-adapter, and worker-protocol routes while workflow v2 bootstrap is blocked; schedule read routes (`GET /api/schedules`, `GET /api/schedules/{scheduleId}`, `GET /api/schedules/{scheduleId}/history`) stay available so operators can inspect schedule state during recovery. |
 | `500` | Server failure. Treat as retryable only when the operation is idempotent or has an idempotency key. |
 
 Validation responses include `reason: "validation_failed"` plus `errors` or
