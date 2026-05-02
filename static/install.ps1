@@ -3,10 +3,12 @@
 # Usage:
 #   irm https://durable-workflow.com/install.ps1 | iex
 #
-# Env vars:
-#   $env:VERSION                       Pin a release tag (default: latest).
-#   $env:DURABLE_WORKFLOW_INSTALL_DIR  Install directory (default: %USERPROFILE%\.durable-workflow\bin).
-#   $env:DURABLE_WORKFLOW_RELEASE_BASE_URL  Override release base URL for tests.
+# Environment variables:
+#   $env:VERSION                         Release tag to install (default: latest).
+#   $env:DURABLE_WORKFLOW_INSTALL_DIR    Install directory (default: %USERPROFILE%\.durable-workflow\bin).
+#   $env:DURABLE_WORKFLOW_RELEASE_BASE_URL  Release base URL override for tests.
+#   $env:DURABLE_WORKFLOW_INSTALL_VERIFY_ATTESTATIONS
+#                                        Set to 1 to verify GitHub artifact attestations with gh.
 
 $ErrorActionPreference = 'Stop'
 
@@ -23,6 +25,7 @@ $installDir = if ($env:DURABLE_WORKFLOW_INSTALL_DIR) {
     Join-Path $env:USERPROFILE '.durable-workflow\bin'
 }
 $version = if ($env:VERSION) { $env:VERSION } else { 'latest' }
+$verifyAttestations = $env:DURABLE_WORKFLOW_INSTALL_VERIFY_ATTESTATIONS -eq '1'
 
 if (-not [System.Environment]::Is64BitOperatingSystem) {
     throw 'Durable Workflow CLI requires a 64-bit operating system.'
@@ -45,8 +48,10 @@ $checksumUrl = if ($version -eq 'latest') {
 
 New-Item -ItemType Directory -Force -Path $installDir | Out-Null
 $dest = Join-Path $installDir $binName
-$tmp = New-TemporaryFile
-$sums = New-TemporaryFile
+$tmpDir = Join-Path ([System.IO.Path]::GetTempPath()) ("dw-install-" + [System.Guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Force -Path $tmpDir | Out-Null
+$tmp = Join-Path $tmpDir $asset
+$sums = Join-Path $tmpDir 'SHA256SUMS'
 
 try {
     Write-Host "==> Downloading $asset" -ForegroundColor Green
@@ -79,11 +84,21 @@ try {
         throw "Checksum verification failed for $asset."
     }
 
+    if ($verifyAttestations) {
+        if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
+            throw 'gh is required when DURABLE_WORKFLOW_INSTALL_VERIFY_ATTESTATIONS=1.'
+        }
+
+        Write-Host '==> Verifying GitHub artifact attestations' -ForegroundColor Green
+        gh attestation verify $tmp --repo $repo
+        gh attestation verify $sums --repo $repo
+    }
+
     Move-Item -Force -Path $tmp -Destination $dest
 } catch {
     throw $_
 } finally {
-    Remove-Item -Path $tmp, $sums -Force -ErrorAction SilentlyContinue
+    Remove-Item -Path $tmpDir -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 Write-Host "==> Installed $binName to $installDir" -ForegroundColor Green

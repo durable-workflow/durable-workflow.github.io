@@ -29,20 +29,33 @@ jobs:
         shell: bash
         run: |
           set -eu
-          download_dir="$RUNNER_TEMP/release/latest/download"
-          mkdir -p "$download_dir"
-          cat > "$download_dir/${{ matrix.asset }}" <<'SH'
+          fixture_root="$RUNNER_TEMP/release"
+          latest_dir="$fixture_root/latest/download"
+          tag_dir="$fixture_root/download/0.1.99"
+          mkdir -p "$latest_dir" "$tag_dir"
+
+          cat > "$latest_dir/${{ matrix.asset }}" <<'SH'
           #!/usr/bin/env sh
           echo "dw fixture 0.0.0"
           SH
-          chmod +x "$download_dir/${{ matrix.asset }}"
+          chmod +x "$latest_dir/${{ matrix.asset }}"
 
-          cd "$download_dir"
-          if command -v sha256sum >/dev/null 2>&1; then
-            sha256sum "${{ matrix.asset }}" > SHA256SUMS
-          else
-            shasum -a 256 "${{ matrix.asset }}" > SHA256SUMS
-          fi
+          cat > "$tag_dir/${{ matrix.asset }}" <<'SH'
+          #!/usr/bin/env sh
+          echo "dw fixture 0.1.99"
+          SH
+          chmod +x "$tag_dir/${{ matrix.asset }}"
+
+          for d in "$latest_dir" "$tag_dir"; do
+            (
+              cd "$d"
+              if command -v sha256sum >/dev/null 2>&1; then
+                sha256sum "${{ matrix.asset }}" > SHA256SUMS
+              else
+                shasum -a 256 "${{ matrix.asset }}" > SHA256SUMS
+              fi
+            )
+          done
 
       - name: Serve fixture release
         shell: bash
@@ -53,7 +66,7 @@ jobs:
           echo "$!" > "$RUNNER_TEMP/install-http.pid"
           sleep 2
 
-      - name: Install with verified checksum
+      - name: Install with verified checksum (latest)
         shell: bash
         env:
           DURABLE_WORKFLOW_RELEASE_BASE_URL: http://127.0.0.1:${{ matrix.port }}
@@ -62,6 +75,24 @@ jobs:
           set -eu
           sh static/install.sh
           "$DURABLE_WORKFLOW_INSTALL_DIR/dw" --version
+
+      - name: Install with VERSION-pinned tag
+        shell: bash
+        env:
+          DURABLE_WORKFLOW_RELEASE_BASE_URL: http://127.0.0.1:${{ matrix.port }}
+          DURABLE_WORKFLOW_INSTALL_DIR: ${{ runner.temp }}/dw-bin-pinned
+          VERSION: '0.1.99'
+        run: |
+          set -eu
+          sh static/install.sh
+          out=$("$DURABLE_WORKFLOW_INSTALL_DIR/dw" --version)
+          echo "$out"
+          # The pinned fixture prints "dw fixture 0.1.99"; verify the pinned
+          # asset, not the latest fixture, was actually installed.
+          case "$out" in
+            *"0.1.99"*) ;;
+            *) echo "VERSION-pinned install did not fetch the pinned tag asset: $out" >&2; exit 1 ;;
+          esac
 
       - name: Reject checksum mismatch
         shell: bash
@@ -100,10 +131,11 @@ jobs:
       - name: Build fixture release
         shell: pwsh
         run: |
-          $downloadDir = Join-Path $env:RUNNER_TEMP 'release\latest\download'
+          $latestDir = Join-Path $env:RUNNER_TEMP 'release\latest\download'
+          $tagDir = Join-Path $env:RUNNER_TEMP 'release\download\0.1.99'
           $appDir = Join-Path $env:RUNNER_TEMP 'fake-dw'
           $publishDir = Join-Path $env:RUNNER_TEMP 'fake-dw-publish'
-          New-Item -ItemType Directory -Force -Path $downloadDir | Out-Null
+          New-Item -ItemType Directory -Force -Path $latestDir, $tagDir | Out-Null
 
           dotnet new console --output $appDir
           @'
@@ -112,11 +144,16 @@ jobs:
           dotnet publish $appDir --configuration Release --runtime win-x64 --self-contained false `
             -p:PublishSingleFile=true --output $publishDir
 
-          $asset = Join-Path $downloadDir 'dw-windows-x86_64.exe'
-          Copy-Item -Path (Join-Path $publishDir 'fake-dw.exe') -Destination $asset
+          $latestAsset = Join-Path $latestDir 'dw-windows-x86_64.exe'
+          $tagAsset = Join-Path $tagDir 'dw-windows-x86_64.exe'
+          Copy-Item -Path (Join-Path $publishDir 'fake-dw.exe') -Destination $latestAsset
+          Copy-Item -Path (Join-Path $publishDir 'fake-dw.exe') -Destination $tagAsset
 
-          $hash = (Get-FileHash -Algorithm SHA256 -Path $asset).Hash.ToLowerInvariant()
-          "$hash  dw-windows-x86_64.exe" | Set-Content -Path (Join-Path $downloadDir 'SHA256SUMS') -Encoding ascii
+          foreach ($dir in @($latestDir, $tagDir)) {
+            $asset = Join-Path $dir 'dw-windows-x86_64.exe'
+            $hash = (Get-FileHash -Algorithm SHA256 -Path $asset).Hash.ToLowerInvariant()
+            "$hash  dw-windows-x86_64.exe" | Set-Content -Path (Join-Path $dir 'SHA256SUMS') -Encoding ascii
+          }
 
       - name: Exercise installer
         shell: pwsh
@@ -158,6 +195,20 @@ jobs:
 
             & ./static/install.ps1
             & (Join-Path $env:DURABLE_WORKFLOW_INSTALL_DIR 'dw.exe') --version
+
+            $pinnedDir = Join-Path $env:RUNNER_TEMP 'dw-bin-pinned'
+            $previousDir = $env:DURABLE_WORKFLOW_INSTALL_DIR
+            $env:DURABLE_WORKFLOW_INSTALL_DIR = $pinnedDir
+            $env:VERSION = '0.1.99'
+            try {
+              & ./static/install.ps1
+              if (-not (Test-Path (Join-Path $pinnedDir 'dw.exe'))) {
+                throw 'VERSION-pinned install did not write dw.exe'
+              }
+            } finally {
+              $env:VERSION = $null
+              $env:DURABLE_WORKFLOW_INSTALL_DIR = $previousDir
+            }
 
             $downloadDir = Join-Path $env:RUNNER_TEMP 'release\latest\download'
             '0000000000000000000000000000000000000000000000000000000000000000  dw-windows-x86_64.exe' |
