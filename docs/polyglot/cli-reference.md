@@ -86,10 +86,12 @@ the server published for the responding node:
 - `Scaling Boundaries` and `Failure Domains` tell operators what load driver
   or first failure signal to expect for each role.
 
-Use `--output=json` when scripts need the raw manifest. The stable machine
-fields live under `topology`, including `supported_shapes`,
-`current_shape`, `current_process_class`, `current_roles`,
-`matching_role`, `role_catalog`, `authority_boundaries`,
+Use `--output=json` when scripts need the raw manifest. `topology.schema` and
+`topology.version` pin the manifest contract revision so scripts can detect
+shape drift; `topology.execution_mode` reports the dispatch mode the
+responding node serves. The stable machine fields live under `topology`,
+including `supported_shapes`, `current_shape`, `current_process_class`,
+`current_roles`, `matching_role`, `role_catalog`, `authority_boundaries`,
 `authority_surfaces`, `supported_topologies`, `scaling_boundaries`, and
 `failure_domains`. The `topology.matching_role` block also publishes
 `partition_primitives` and `backpressure_model` so scripts can check which
