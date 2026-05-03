@@ -65,6 +65,19 @@ const ALLOWED_OWNERS = new Set([
   'durable-workflow/cli',
   'durable-workflow/sdk-python',
 ]);
+const ALLOWED_BREAKING_CHANGE_RELEASES = new Set([
+  'major',
+  'parallel_primitive_only',
+  'experimental_any_release',
+]);
+// Each evolution rule pins exactly one valid breaking_change_release.
+// Drift here would let a frozen wire format silently claim a
+// major-version break, contradicting its rule.
+const REQUIRED_BREAKING_CHANGE_RELEASE_BY_RULE = {
+  additive_minor_breaking_major: 'major',
+  parallel_primitive_only: 'parallel_primitive_only',
+  experimental_any_release: 'experimental_any_release',
+};
 
 const DELIVERABLE_SPEC_NAMES = [
   'control_plane_api',
@@ -216,6 +229,34 @@ function assertCatalogEntriesAreWellFormed(catalog, surfaceFamilies) {
       throw new Error(
         `platform-protocol-specs entry "${name}" has owner_repo "${entry.owner_repo}"; ` +
           `must be one of ${Array.from(ALLOWED_OWNERS).join(', ')}`,
+      );
+    }
+
+    if (!ALLOWED_BREAKING_CHANGE_RELEASES.has(entry.breaking_change_release)) {
+      throw new Error(
+        `platform-protocol-specs entry "${name}" has breaking_change_release ` +
+          `"${entry.breaking_change_release}"; must be one of ` +
+          `${Array.from(ALLOWED_BREAKING_CHANGE_RELEASES).join(', ')}`,
+      );
+    }
+
+    const requiredBreakingChangeRelease =
+      REQUIRED_BREAKING_CHANGE_RELEASE_BY_RULE[entry.evolution_rule];
+    if (requiredBreakingChangeRelease === undefined) {
+      throw new Error(
+        `platform-protocol-specs entry "${name}" has evolution_rule ` +
+          `"${entry.evolution_rule}" which has no required breaking_change_release ` +
+          `mapping. Either fix the rule or extend the catalog vocabulary.`,
+      );
+    }
+    if (entry.breaking_change_release !== requiredBreakingChangeRelease) {
+      throw new Error(
+        `platform-protocol-specs entry "${name}" evolution_rule ` +
+          `"${entry.evolution_rule}" requires breaking_change_release ` +
+          `"${requiredBreakingChangeRelease}" but the entry declares ` +
+          `"${entry.breaking_change_release}". Letting these diverge would ` +
+          `let a frozen wire format claim a major-version break, contradicting ` +
+          `its rule.`,
       );
     }
 

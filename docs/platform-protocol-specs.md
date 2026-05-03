@@ -44,7 +44,7 @@ truth:
 - `platform_protocol_specs` in the response body of
   `GET /api/cluster/info` on the standalone Durable Workflow server,
   schema `durable-workflow.v2.platform-protocol-specs.catalog`,
-  version `2`.
+  version `3`.
 - A frozen mirror of the same manifest in this repository at
   `static/platform-protocol-specs.json`.
 - The PHP class `Workflow\V2\Support\PlatformProtocolSpecs`, which is
@@ -401,6 +401,7 @@ under `release_check`.
 | `docs_authority_aligned` | This page lists every entry in the manifest with the same format, owner, status, and breaking-change rule. |
 | `json_mirror_aligned` | `static/platform-protocol-specs.json` is byte-equivalent to the PHP `PlatformProtocolSpecs::manifest()` output. |
 | `spec_path_published_when_status_published` | When `status` is `published`, the file at `spec_path` exists in this repository, is referenced from the matching authority doc page, parses as the format declared by the catalog entry (JSON Schema 2020-12 / OpenAPI 3.1 / AsyncAPI 2.6+), and the document's `$id` (or OpenAPI `info.title` / AsyncAPI `id`) matches the catalog `spec_id`. |
+| `breaking_change_release_consistent_with_evolution_rule` | Every entry's `breaking_change_release` is one of `major`, `parallel_primitive_only`, or `experimental_any_release`, and matches the value required by its `evolution_rule`: `additive_minor_breaking_major` → `major`, `parallel_primitive_only` → `parallel_primitive_only`, `experimental_any_release` → `experimental_any_release`. Letting these diverge would let a frozen wire format claim a major-version break, contradicting its rule. |
 
 The docs site CI runs `scripts/check-platform-protocol-specs.js` to
 enforce these gates. Drift here means a release shipped a doc change
