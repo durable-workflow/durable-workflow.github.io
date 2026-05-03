@@ -953,8 +953,12 @@ maintenance runner. Choose stop-the-world upgrades or
 [rolling upgrades](/docs/2.0/rolling-upgrades) per release; the rolling-upgrade
 contract names the version-skew, schema, drain, readiness, and rollback
 guarantees that must hold. SQLite clustering, Redis-less multi-node mode,
-duplicate schedulers, multi-region, Helm, and provider-specific failover are
-outside that contract until separately validated.
+duplicate schedulers, active/active multi-region, Helm, and provider-specific
+failover are outside that contract until separately validated. Active/passive
+multi-region with operator-driven regional failover is its own self-serve
+contract in the
+[self-hosting guide](/docs/2.0/deployment#activepassive-multi-region); each
+region still runs the validated single-region or small-cluster shape.
 
 For self-hosted server deployments, start from published images rather than
 source-tree builds:

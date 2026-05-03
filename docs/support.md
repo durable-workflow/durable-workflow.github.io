@@ -58,10 +58,14 @@ single-node production, and the narrow small-cluster contract described in the
 self-hosting guide. Kubernetes manifests are provided for teams that already
 operate Kubernetes. The small-cluster contract supports
 [rolling upgrades](/docs/2.0/rolling-upgrades) when every guarantee on that
-page holds. Helm charts, duplicate schedulers, Redis-less multi-node
-operation, provider failover, and advanced HA/multi-region topologies are
-support-led because they require environment-specific sizing, database,
-networking, security, and upgrade decisions.
+page holds. Active/passive multi-region with operator-driven regional
+failover is its own self-serve contract; see
+[Active/passive multi-region](/docs/2.0/deployment#activepassive-multi-region)
+in the self-hosting guide. Helm charts, duplicate schedulers, Redis-less
+multi-node operation, provider failover, active/active multi-region,
+automatic regional failover, and advanced HA topologies remain support-led
+because they require environment-specific sizing, database, networking,
+security, and upgrade decisions.
 
 See the [self-hosting deployment guide](/docs/2.0/deployment) for the
 concrete support matrix, published-image Compose recipes, raw Kubernetes
@@ -88,7 +92,7 @@ Commercial support engagements are led by the project maintainer and typically i
   Help with capacity assumptions, backup and restore strategy, bootstrap and migration order, rollout safety, and operational runbooks.
 
 - **Advanced topology support**  
-  Support-led design work for Helm charts, custom Kubernetes overlays, duplicate scheduler designs, Redis-less multi-node mode, high-availability deployments, and multi-region recovery plans.
+  Support-led design work for Helm charts, custom Kubernetes overlays, duplicate scheduler designs, Redis-less multi-node mode, high-availability deployments, active/active multi-region, automatic regional failover, and synchronous cross-region replication. The self-serve active/passive multi-region contract lives in the [self-hosting guide](/docs/2.0/deployment#activepassive-multi-region); commercial support helps when you need a topology beyond it.
 
 - **Security review**  
   Assistance with role-scoped credentials, network exposure, internal versus public endpoints, TLS termination, and access boundaries for operators and workers.
@@ -118,7 +122,7 @@ Commercial support is typically a good fit if you are:
 - Running Durable Workflow in **production**
 - Deploying the standalone server for **multiple teams or services**
 - Building **long-running or human-in-the-loop workflows**
-- Designing a **clustered, Kubernetes, Helm, or multi-region topology**
+- Designing a **clustered, Kubernetes, Helm, active/active multi-region, or automatic-failover topology** (active/passive multi-region with operator-driven failover is documented as a self-serve contract in the self-hosting guide)
 - Operating in an environment where **correctness and upgrade safety matter**
 - Looking for **maintainer-level expertise** rather than generic consulting
 - Wanting to avoid forks and long-term maintenance risk

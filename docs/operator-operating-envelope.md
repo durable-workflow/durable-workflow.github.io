@@ -520,7 +520,10 @@ these facts:
 
 Do not imply automatic multi-region or hands-free HA behavior unless your
 published topology contract actually proves it. For the documented self-serve
-topologies, recovery is deliberate operator work with explicit checkpoints.
+topologies — including the active/passive multi-region contract in the
+[self-hosting guide](/docs/2.0/deployment#activepassive-multi-region) —
+recovery and regional failover are deliberate operator work with explicit
+checkpoints, not automatic product behavior.
 
 Treat restore rehearsal cadence as part of the public operating contract too.
 At minimum, rehearse the documented restore sequence:

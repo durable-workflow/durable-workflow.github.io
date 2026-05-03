@@ -22,16 +22,20 @@ runtime targets, see [Cloud Control Plane](/docs/2.0/polyglot/cloud-control-plan
 | Local development and internal non-production | [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) with `DW_SERVER_TAG=0.2` or `DW_SERVER_IMAGE=durableworkflow/server:0.2` | One developer machine, LAN demos, shared staging, SDK and worker integration tests | Internet-facing production, durable backup guarantees, strict secret rotation, multi-node failover | You want help turning a working dev stack into a production runbook |
 | Single-node production | [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) with a production env file, MySQL and Redis volumes, role-scoped tokens, backups, TLS through a reverse proxy, and pinned image tags or digests | One VM, VPS, or internal Docker host with persistent workflow state and a simple operational model | Host-level HA, automatic database failover, multi-region recovery, zero-downtime major topology changes | The deployment carries production traffic and you want review of backup, restore, auth, TLS, upgrade, or rollback procedures |
 | Small clustered deployment | Published `durableworkflow/server` or `ghcr.io/durable-workflow/server` images using the [Compose recipe](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) as the container/process template, with 2-3 API nodes, shared external MySQL/PostgreSQL, shared Redis, independently scaled workers, and exactly one scheduler/maintenance runner | Horizontal API and worker capacity when one node is no longer enough; rolling upgrades when every guarantee in the [rolling-upgrade contract](/docs/2.0/rolling-upgrades) holds | SQLite clustering, Redis-less multi-node mode, duplicate schedulers, multi-region operation, Helm, provider-specific failover, broad HA/SLA guarantees | You need sizing, failure-domain, rollout, or recovery planning across more than one host |
-| Raw Kubernetes manifests | The server repository [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) manifests, using published server images and your existing database, Redis, ingress, and secret management | Teams that already operate Kubernetes and want inspectable manifests for API, worker, scheduler, bootstrap, service, probes, config, and secrets | Helm charts, managed-Kubernetes provider validation, advanced HA, multi-region, custom operators, environment-specific storage/networking/security decisions | You need Helm, overlays, managed-cluster validation, high availability, or provider-specific production planning |
-| Support-led topologies | A reviewed design based on your environment | Advanced HA, multi-region, bespoke security/networking, private SLOs, custom overlays, migration planning | Self-serve copy/paste operation | The topology itself is part of the product risk |
+| Raw Kubernetes manifests | The server repository [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) manifests, using published server images and your existing database, Redis, ingress, and secret management | Teams that already operate Kubernetes and want inspectable manifests for API, worker, scheduler, bootstrap, service, probes, config, and secrets | Helm charts, managed-Kubernetes provider validation, advanced HA, active/active multi-region, custom operators, environment-specific storage/networking/security decisions | You need Helm, overlays, managed-cluster validation, high availability, or provider-specific production planning |
+| Active/passive multi-region | A validated single-node or small-cluster deployment per region, plus asynchronous database replication from active to standby and a published failover/failback runbook | Regional disaster recovery with operator-driven failover; standby database, optional standby Redis, and idle API/worker capacity in a second region; the singleton scheduler/maintenance runner pinned to the active region | Active/active multi-region, automatic or hands-free regional failover, synchronous cross-region replication (RPO=0), cross-region active visibility or federated search, region-pinned task queues as an engine-enforced routing axis | You need a topology beyond active/passive, an automated failover controller, or an RPO=0 cross-region commitment |
+| Support-led topologies | A reviewed design based on your environment | Advanced HA, active/active multi-region, bespoke security/networking, private SLOs, custom overlays, migration planning | Self-serve copy/paste operation | The topology itself is part of the product risk |
 
 The public distribution is intentionally optimized for local development,
 single-node production, and small clustered deployments. Kubernetes manifests
-are provided for teams that already operate Kubernetes. Helm charts, advanced
-HA, multi-region, and provider-specific managed-Kubernetes validation are
-support-led because they depend on your database, cache, networking, security,
-runner, and upgrade choices. See the [support boundary](/docs/2.0/support) for
-the commercial support model.
+are provided for teams that already operate Kubernetes. Active/passive
+multi-region with operator-driven regional failover is a self-serve contract
+(see [Active/passive multi-region](#activepassive-multi-region) below). Helm
+charts, advanced HA, active/active multi-region, automatic regional failover,
+and provider-specific managed-Kubernetes validation are support-led because
+they depend on your database, cache, networking, security, runner, and upgrade
+choices. See the [support boundary](/docs/2.0/support) for the commercial
+support model.
 
 ## Production recovery deliverables
 
@@ -215,9 +219,12 @@ Redis connection. Give each API node a unique `DW_SERVER_ID` so cluster
 discovery and logs can distinguish the nodes.
 
 The unsupported boundaries are explicit: SQLite clustering, Redis-less
-multi-node mode, duplicate schedulers, multi-region deployments, Helm charts,
-provider-specific failover, and broad HA/SLA promises need separate
-validation or support-led design before you rely on them.
+multi-node mode, duplicate schedulers, active/active multi-region deployments,
+Helm charts, provider-specific failover, and broad HA/SLA promises need
+separate validation or support-led design before you rely on them.
+Active/passive multi-region with operator-driven regional failover is its
+own self-serve contract; see
+[Active/passive multi-region](#activepassive-multi-region) below.
 
 This path is self-serve when your team already has a clear VM, network,
 database, cache, backup, and load-balancer model. It becomes support-led when
@@ -258,8 +265,99 @@ curl -H "Authorization: Bearer $DW_ADMIN_TOKEN" http://localhost:8080/api/cluste
 ```
 
 Provider-specific load balancers, storage classes, network policies, managed
-database failover, Helm charts, multi-region, and advanced HA are support-led or
-tracked separately from the raw-manifest contract.
+database failover, Helm charts, active/active multi-region, and advanced HA are
+support-led or tracked separately from the raw-manifest contract.
+
+## Active/passive multi-region
+
+Active/passive multi-region with operator-driven regional failover is a
+self-serve contract. It extends the single-node, small-cluster, or raw
+Kubernetes path per region; it does not weaken any of those contracts inside
+the active region. The full contract — data authority, replication
+assumptions, namespace/task-queue/worker behavior, the failover and failback
+runbook, split-brain prevention, and the consistency/latency tradeoffs — lives
+in the workflow library at
+[`docs/deployment/multi-region.md`](https://github.com/durable-workflow/workflow/blob/v2/docs/deployment/multi-region.md)
+and the standalone server at
+[`docs/multi-region-validation.md`](https://github.com/durable-workflow/server/blob/main/docs/multi-region-validation.md).
+
+The shape this path supports:
+
+- One **active region** running the validated single-node or small-cluster
+  contract: API container(s) behind a load balancer, shared external MySQL or
+  PostgreSQL as the writable durable database, shared Redis, exactly one
+  scheduler/maintenance runner, and external workers.
+- One **standby region** holding an asynchronously replicated standby of the
+  workflow database, optional standby Redis, no scheduler/maintenance
+  process, and zero or more pre-provisioned API/worker containers that are
+  idle until promotion.
+- A **regional failover** that is explicit operator work: stop write traffic
+  to the failed region, confirm replication state against the published
+  RPO, promote the standby database, run any release-required migrations on
+  the new primary, start the singleton scheduler/maintenance runner in the
+  new active region, switch worker endpoints, switch external traffic, and
+  rebuild any derived projections. There is no automatic cross-region
+  cutover.
+- A **failback** that runs the same sequence in reverse once the original
+  region returns to service, with the recovered primary fenced (revoke
+  write user, demote with `read_only=on`, sever replication, or restore
+  from a known-good snapshot) before re-attaching as a standby.
+
+Data authority and replication assumptions:
+
+- The workflow database is the single durable source of truth and is
+  region-bound: exactly one region writes to it at any given time. The
+  standby region's database is a read replica until promotion. Recovery
+  point objective (RPO) is the asynchronous replication lag; recovery time
+  objective (RTO) is operator runbook execution time.
+- Redis is region-local acceleration. Wake signals, query-task queue
+  locks, and admission locks do not propagate across regions and must not
+  be expected to. Each region runs its own Redis; the standby's cache is
+  cold or warm at the operator's discretion and correctness does not
+  depend on it being preserved across the failover.
+- Visibility is served by the active region's database. Promote first,
+  then read.
+
+Namespace, task-queue, and worker-registration behavior:
+
+- Namespaces and task queues are stored in the workflow database and
+  survive promotion exactly as they were at the last replicated commit.
+  They are not regionally partitioned by the engine.
+- Workers in the new active region register against the local API
+  endpoint after promotion. Pre-existing registrations from the failed
+  region remain in the database and expire through the normal
+  worker-expiry path.
+- Build-id rollouts and deployment-lifecycle state survive failover
+  because they live in the workflow database.
+
+Consistency and latency tradeoffs in steady state:
+
+- Workflow starts, signals, and updates commit against the active
+  region's database; their latency is the active-region commit latency,
+  and they are refused while authority is being withdrawn during a
+  failover.
+- Workflow-task and activity-task delivery follow the single-region
+  acceleration contract inside the active region: sub-second when Redis
+  is healthy, durable poll cadence otherwise.
+- Schedules fire from the singleton scheduler in the active region and
+  pause while no scheduler is running; fires resume from durable
+  schedule rows after promotion.
+- Visibility reads are read-after-write within the active region only;
+  the engine does not provide cross-region read-your-writes or RPO=0.
+
+The disaster-recovery boundary is explicit: this contract is a
+recovery-time topology, not a substitute for backups. The recovery
+packet documented in
+[Operator Operating Envelope](/docs/2.0/operator-operating-envelope)
+remains required, with replication-lag SLO, promotion-runbook latency,
+last successful failover rehearsal date, and the fencing procedure for
+the recovered primary added on top.
+
+Active/active multi-region, automatic regional failover, synchronous
+cross-region replication (RPO=0), cross-region active visibility, and
+region-pinned task queues as an engine-enforced routing axis remain
+[support-led](/docs/2.0/support) because the topology itself is part of
+the product risk.
 
 ## Readiness contract
 
