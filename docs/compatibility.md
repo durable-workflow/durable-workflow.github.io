@@ -67,11 +67,18 @@ against the spec catalog rather than re-reading prose for every surface.
 
 The catalog has its own machine-readable mirror at
 `platform_protocol_specs` in `GET /api/cluster/info` (schema
-`durable-workflow.v2.platform-protocol-specs.catalog`, version `1`) and
+`durable-workflow.v2.platform-protocol-specs.catalog`, version `2`) and
 a frozen JSON copy at `static/platform-protocol-specs.json` in this
 repository. Every catalog entry's `surface_family` must exist in the
 contract above; the release-check gate in
 `scripts/check-platform-protocol-specs.js` fails the build on drift.
+
+The first published spec under that catalog is the
+[`cluster_info_envelope`](/docs/2.0/platform-protocol-specs#cluster_info_envelope)
+JSON Schema at
+[`static/platform-protocol-specs/cluster-info-envelope.schema.json`](pathname:///platform-protocol-specs/cluster-info-envelope.schema.json),
+which pins the discovery surface every other catalog entry can be
+reached from.
 
 ## Stability Levels
 

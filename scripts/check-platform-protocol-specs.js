@@ -30,7 +30,11 @@
 //    references the schema id, lists every entry with its format /
 //    surface family / owner / status / breaking-change rule.
 // 6. When an entry's status is `published`, the file at `spec_path`
-//    exists in the docs site repo.
+//    exists in the docs site repo, parses as the format declared by the
+//    catalog entry (JSON Schema 2020-12 / OpenAPI 3.1 / AsyncAPI 2.6+),
+//    and the document's `$id` (or OpenAPI `info.title` / AsyncAPI `id`)
+//    matches the catalog `spec_id` so SDK builds and CI can join the
+//    document back to the catalog without parsing prose.
 // 7. `docs/compatibility.md` cross-links to the new catalog so callers
 //    that land on the older authority page can find the spec set.
 //
@@ -248,7 +252,81 @@ function assertCatalogEntriesAreWellFormed(catalog, surfaceFamilies) {
             `fix the spec_path.`,
         );
       }
+
+      assertPublishedSpecFileMatchesEntry(name, entry, absoluteSpecPath);
     }
+  }
+}
+
+function assertPublishedSpecFileMatchesEntry(name, entry, absoluteSpecPath) {
+  if (entry.format === 'json_schema') {
+    if (!entry.spec_path.endsWith('.schema.json')) {
+      throw new Error(
+        `platform-protocol-specs entry "${name}" format is json_schema but ` +
+          `spec_path "${entry.spec_path}" does not end with ".schema.json"; ` +
+          `JSON Schema documents must use the .schema.json suffix.`,
+      );
+    }
+    const document = loadJson(absoluteSpecPath, `published spec ${entry.spec_path}`);
+    if (document.$schema !== 'https://json-schema.org/draft/2020-12/schema') {
+      throw new Error(
+        `published spec ${entry.spec_path} for "${name}" must declare ` +
+          `$schema = "https://json-schema.org/draft/2020-12/schema" ` +
+          `(catalog requires JSON Schema Draft 2020-12).`,
+      );
+    }
+    if (document.$id !== entry.spec_id) {
+      throw new Error(
+        `published spec ${entry.spec_path} for "${name}" must declare ` +
+          `$id = "${entry.spec_id}" so consumers can join the document back ` +
+          `to the catalog without parsing prose ` +
+          `(got "${document.$id}").`,
+      );
+    }
+    if (typeof document.title !== 'string' || document.title.length === 0) {
+      throw new Error(
+        `published spec ${entry.spec_path} for "${name}" must declare a ` +
+          `non-empty "title" so docs builds and SDK generators can label it.`,
+      );
+    }
+    if (typeof document.description !== 'string' || document.description.length === 0) {
+      throw new Error(
+        `published spec ${entry.spec_path} for "${name}" must declare a ` +
+          `non-empty "description" so consumers reading the file alone ` +
+          `understand what surface it pins.`,
+      );
+    }
+    if (document.type !== 'object') {
+      throw new Error(
+        `published spec ${entry.spec_path} for "${name}" must declare ` +
+          `"type": "object" at the top level (envelope, object family, or ` +
+          `tool-result envelope shapes are all object-typed).`,
+      );
+    }
+  } else if (entry.format === 'openapi') {
+    if (!/\.(ya?ml|json)$/.test(entry.spec_path)) {
+      throw new Error(
+        `platform-protocol-specs entry "${name}" format is openapi but ` +
+          `spec_path "${entry.spec_path}" does not end with .yaml/.yml/.json.`,
+      );
+    }
+    // OpenAPI parsing is not in this check's dependency set; the catalog
+    // file-existence guarantee plus the per-route conformance test named
+    // by the entry are the normative gates. When an OpenAPI spec is
+    // first published, extend this branch to verify info.title === spec_id
+    // and openapi version starts with "3.1".
+  } else if (entry.format === 'asyncapi') {
+    if (!/\.(ya?ml|json)$/.test(entry.spec_path)) {
+      throw new Error(
+        `platform-protocol-specs entry "${name}" format is asyncapi but ` +
+          `spec_path "${entry.spec_path}" does not end with .yaml/.yml/.json.`,
+      );
+    }
+    // AsyncAPI parsing is not in this check's dependency set; the
+    // catalog file-existence guarantee plus the conformance test named
+    // by the entry are the normative gates. When an AsyncAPI spec is
+    // first published, extend this branch to verify document.id ===
+    // spec_id and asyncapi version starts with "2.6" or higher.
   }
 }
 

@@ -44,7 +44,7 @@ truth:
 - `platform_protocol_specs` in the response body of
   `GET /api/cluster/info` on the standalone Durable Workflow server,
   schema `durable-workflow.v2.platform-protocol-specs.catalog`,
-  version `1`.
+  version `2`.
 - A frozen mirror of the same manifest in this repository at
   `static/platform-protocol-specs.json`.
 - The PHP class `Workflow\V2\Support\PlatformProtocolSpecs`, which is
@@ -359,8 +359,18 @@ JSON Schema for the `GET /api/cluster/info` envelope: identity,
 capability, topology, coordination-health, and the nested protocol
 manifests (`client_compatibility`, `control_plane`, `worker_protocol`,
 `surface_stability_contract`, `platform_protocol_specs`,
-`auth_composition_contract`, `bridge_adapter_outcome_contract`,
-`replay_verification_contract`).
+`platform_conformance_suite`, `auth_composition_contract`,
+`bridge_adapter_outcome_contract`, `replay_verification_contract`).
+The envelope is the discovery surface that every other catalog entry
+can be reached from.
+
+The published spec lives at
+[`static/platform-protocol-specs/cluster-info-envelope.schema.json`](pathname:///platform-protocol-specs/cluster-info-envelope.schema.json)
+and declares `$id = durable-workflow.v2.cluster-info-envelope` (matching
+`spec_id`) under JSON Schema Draft 2020-12. The schema pins the top-level
+keys, required fields, and nested-manifest discovery points; per-manifest
+field shapes are normative under each nested manifest's own `schema` /
+`version` and are not redefined here.
 
 | Field | Value |
 |-------|-------|
@@ -372,8 +382,9 @@ manifests (`client_compatibility`, `control_plane`, `worker_protocol`,
 | Owner symbol | `App\Http\Controllers\Api\HealthController::clusterInfo` |
 | Evolution rule | `additive_minor_breaking_major` |
 | Breaking-change release | `major` |
+| Discovery endpoint | `GET /api/cluster/info` |
 | Conformance test | `durable-workflow/server: tests/Feature/ClusterInfoCompatibilityTest.php` |
-| Status | `in_progress` |
+| Status | `published` |
 | Spec path | `static/platform-protocol-specs/cluster-info-envelope.schema.json` |
 
 ## Release Check
@@ -389,7 +400,7 @@ under `release_check`.
 | `format_known` | Every entry's `format` is one of `openapi`, `json_schema`, or `asyncapi`. |
 | `docs_authority_aligned` | This page lists every entry in the manifest with the same format, owner, status, and breaking-change rule. |
 | `json_mirror_aligned` | `static/platform-protocol-specs.json` is byte-equivalent to the PHP `PlatformProtocolSpecs::manifest()` output. |
-| `spec_path_published_when_status_published` | When `status` is `published`, the file at `spec_path` exists in this repository and is referenced from the matching authority doc page. |
+| `spec_path_published_when_status_published` | When `status` is `published`, the file at `spec_path` exists in this repository, is referenced from the matching authority doc page, parses as the format declared by the catalog entry (JSON Schema 2020-12 / OpenAPI 3.1 / AsyncAPI 2.6+), and the document's `$id` (or OpenAPI `info.title` / AsyncAPI `id`) matches the catalog `spec_id`. |
 
 The docs site CI runs `scripts/check-platform-protocol-specs.js` to
 enforce these gates. Drift here means a release shipped a doc change

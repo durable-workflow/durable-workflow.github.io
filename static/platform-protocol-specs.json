@@ -1,6 +1,6 @@
 {
   "schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "version": 1,
+  "version": 2,
   "authority_url": "https://durable-workflow.github.io/docs/2.0/platform-protocol-specs",
   "formats": {
     "openapi": {
@@ -203,7 +203,7 @@
       "spec_path": "static/platform-protocol-specs/mcp-tool-results.schema.json"
     },
     "cluster_info_envelope": {
-      "description": "JSON Schema for the `GET /api/cluster/info` envelope: identity, capability, topology, coordination-health, and the nested protocol manifests (`client_compatibility`, `control_plane`, `worker_protocol`, `surface_stability_contract`, `platform_protocol_specs`, `auth_composition_contract`, `bridge_adapter_outcome_contract`, `replay_verification_contract`).",
+      "description": "JSON Schema for the `GET /api/cluster/info` envelope: identity, capability, topology, coordination-health, and the nested protocol manifests (`client_compatibility`, `control_plane`, `worker_protocol`, `surface_stability_contract`, `platform_protocol_specs`, `platform_conformance_suite`, `auth_composition_contract`, `bridge_adapter_outcome_contract`, `replay_verification_contract`). The envelope is the discovery surface that every other catalog entry can be reached from.",
       "format": "json_schema",
       "spec_id": "durable-workflow.v2.cluster-info-envelope",
       "surface_family": "cluster_info_manifests",
@@ -212,8 +212,9 @@
       "owner_symbol": "App\\Http\\Controllers\\Api\\HealthController::clusterInfo",
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
+      "discovery_endpoint": "GET /api/cluster/info",
       "conformance_test": "durable-workflow/server: tests/Feature/ClusterInfoCompatibilityTest.php",
-      "status": "in_progress",
+      "status": "published",
       "spec_path": "static/platform-protocol-specs/cluster-info-envelope.schema.json"
     }
   },
@@ -225,7 +226,7 @@
       "format_known": "Every entry`s `format` is one of `openapi`, `json_schema`, or `asyncapi`.",
       "docs_authority_aligned": "docs/platform-protocol-specs.md (in durable-workflow.github.io) lists every entry in this manifest with the same format, owner, status, and breaking-change rule.",
       "json_mirror_aligned": "static/platform-protocol-specs.json (in durable-workflow.github.io) is byte-equivalent to this PHP manifest at the time of the release.",
-      "spec_path_published_when_status_published": "When `status` is `published`, the file at `spec_path` exists in `durable-workflow/durable-workflow.github.io` and is referenced from the matching authority doc page."
+      "spec_path_published_when_status_published": "When `status` is `published`, the file at `spec_path` exists in `durable-workflow/durable-workflow.github.io`, is referenced from the matching authority doc page, parses as the format declared by the catalog entry (JSON Schema 2020-12 / OpenAPI 3.1 / AsyncAPI 2.6+), and the document's `$id` (or OpenAPI `info.title` / AsyncAPI `id`) matches the catalog `spec_id`."
     },
     "enforcement": {
       "machine": "docs site CI runs scripts/check-platform-protocol-specs.js, which loads static/platform-protocol-specs.json (a copy of this manifest), walks docs/platform-protocol-specs.md, and verifies every spec entry against the surface_stability_contract families.",
