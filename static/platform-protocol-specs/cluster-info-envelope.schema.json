@@ -240,7 +240,7 @@
     },
     "platform_conformance_suite": {
       "type": "object",
-      "description": "Platform conformance-suite manifest. Carries its own schema id `durable-workflow.v2.platform-conformance-suite.contract`. Full shape is normative under that schema id.",
+      "description": "Platform conformance-suite manifest. Carries its own schema id `durable-workflow.v2.platform-conformance.suite`. Full shape is normative under that schema id.",
       "required": [
         "schema",
         "version",
