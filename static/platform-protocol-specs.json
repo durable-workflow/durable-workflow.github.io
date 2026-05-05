@@ -1,6 +1,6 @@
 {
   "schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "version": 4,
+  "version": 5,
   "authority_url": "https://durable-workflow.github.io/docs/2.0/platform-protocol-specs",
   "formats": {
     "openapi": {
@@ -32,15 +32,25 @@
   "evolution_rules": {
     "additive_minor_breaking_major": {
       "meaning": "Additive changes (new endpoints, new optional fields, new enum cases that consumers may safely ignore) advance the spec in a minor version. Removals, renames, type narrowings, or semantic changes require a major version, ship behind a parallel route or field where feasible, and are announced one minor in advance per `SurfaceStabilityContract::releaseRules`.",
-      "applies_to_formats": ["openapi", "asyncapi", "json_schema"]
+      "applies_to_formats": [
+        "openapi",
+        "asyncapi",
+        "json_schema"
+      ]
     },
     "parallel_primitive_only": {
       "meaning": "The spec describes a frozen wire format. The only allowed breaking change is to introduce a parallel primitive (a new event type, command type, or schema id) alongside the existing one. The original shape stays decodable indefinitely.",
-      "applies_to_formats": ["json_schema"]
+      "applies_to_formats": [
+        "json_schema"
+      ]
     },
     "experimental_any_release": {
       "meaning": "Spec entries marked experimental may change in any release. Consumers must opt in by reading the experimental flag on the spec.",
-      "applies_to_formats": ["openapi", "asyncapi", "json_schema"]
+      "applies_to_formats": [
+        "openapi",
+        "asyncapi",
+        "json_schema"
+      ]
     }
   },
   "specs": {
@@ -52,6 +62,26 @@
       "authority_manifest": "control_plane",
       "owner_repo": "durable-workflow/server",
       "owner_symbol": "App\\Support\\ControlPlaneProtocol and App\\Support\\ControlPlaneRequestContract",
+      "object_families": [
+        {
+          "name": "control_plane_request_contract",
+          "owner_repo": "durable-workflow/server",
+          "schema_authority": "App\\Support\\ControlPlaneRequestContract::SCHEMA",
+          "version_authority": "App\\Support\\ControlPlaneRequestContract::VERSION"
+        },
+        {
+          "name": "control_plane_response_envelope",
+          "owner_repo": "durable-workflow/server",
+          "schema_authority": "App\\Support\\ControlPlaneResponseContract::SCHEMA",
+          "version_authority": "App\\Support\\ControlPlaneResponseContract::VERSION"
+        },
+        {
+          "name": "control_plane_operation_contract",
+          "owner_repo": "durable-workflow/server",
+          "schema_authority": "App\\Support\\ControlPlaneResponseContract::CONTRACT_SCHEMA",
+          "version_authority": "App\\Support\\ControlPlaneResponseContract::CONTRACT_VERSION"
+        }
+      ],
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
       "discovery_endpoint": "GET /api/cluster/info -> control_plane",
@@ -67,6 +97,38 @@
       "authority_manifest": "worker_protocol",
       "owner_repo": "durable-workflow/server",
       "owner_symbol": "App\\Support\\WorkerProtocol and Workflow\\V2\\Support\\WorkerProtocolVersion",
+      "object_families": [
+        {
+          "name": "worker_registration_request",
+          "owner_repo": "durable-workflow/server",
+          "schema_authority": "App\\Http\\Controllers\\Api\\WorkerController::register",
+          "version_authority": "Workflow\\V2\\Support\\WorkerProtocolVersion::VERSION"
+        },
+        {
+          "name": "worker_task_poll_request",
+          "owner_repo": "durable-workflow/server",
+          "schema_authority": "App\\Support\\WorkflowTaskPoller and App\\Support\\ActivityTaskPoller",
+          "version_authority": "Workflow\\V2\\Support\\WorkerProtocolVersion::VERSION"
+        },
+        {
+          "name": "worker_task_result",
+          "owner_repo": "durable-workflow/server",
+          "schema_authority": "App\\Http\\Controllers\\Api\\WorkerController task completion/failure actions",
+          "version_authority": "Workflow\\V2\\Support\\WorkerProtocolVersion::VERSION"
+        },
+        {
+          "name": "external_task_input_contract",
+          "owner_repo": "durable-workflow/server",
+          "schema_authority": "App\\Support\\ExternalTaskInputContract::SCHEMA",
+          "version_authority": "App\\Support\\ExternalTaskInputContract::VERSION"
+        },
+        {
+          "name": "external_task_result_contract",
+          "owner_repo": "durable-workflow/server",
+          "schema_authority": "App\\Support\\ExternalTaskResultContract::SCHEMA",
+          "version_authority": "App\\Support\\ExternalTaskResultContract::VERSION"
+        }
+      ],
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
       "discovery_endpoint": "GET /api/cluster/info -> worker_protocol",
@@ -82,6 +144,26 @@
       "authority_manifest": "worker_protocol",
       "owner_repo": "durable-workflow/server",
       "owner_symbol": "App\\Support\\WorkerProtocol and Workflow\\V2\\Support\\WorkerCompatibilityFleet",
+      "object_families": [
+        {
+          "name": "worker_poll_stream",
+          "owner_repo": "durable-workflow/server",
+          "schema_authority": "App\\Support\\LongPoller and App\\Support\\WorkerProtocol",
+          "version_authority": "Workflow\\V2\\Support\\WorkerProtocolVersion::VERSION"
+        },
+        {
+          "name": "worker_task_lease",
+          "owner_repo": "durable-workflow/server",
+          "schema_authority": "App\\Support\\WorkflowTaskPoller and App\\Support\\ActivityTaskPoller",
+          "version_authority": "Workflow\\V2\\Support\\WorkerProtocolVersion::VERSION"
+        },
+        {
+          "name": "worker_task_heartbeat",
+          "owner_repo": "durable-workflow/server",
+          "schema_authority": "App\\Http\\Controllers\\Api\\WorkerController heartbeat actions",
+          "version_authority": "Workflow\\V2\\Support\\WorkerProtocolVersion::VERSION"
+        }
+      ],
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
       "discovery_endpoint": "GET /api/cluster/info -> worker_protocol",
@@ -97,6 +179,20 @@
       "authority_manifest": "history_event_payload_contract",
       "owner_repo": "durable-workflow/workflow",
       "owner_symbol": "Workflow\\V2\\Models\\WorkflowHistoryEvent and Workflow\\V2\\Enums\\HistoryEventType",
+      "object_families": [
+        {
+          "name": "workflow_history_events",
+          "owner_repo": "durable-workflow/workflow",
+          "schema_authority": "Workflow\\V2\\Enums\\HistoryEventType",
+          "version_authority": "durable-workflow.v2.history-event-payloads"
+        },
+        {
+          "name": "workflow_schedule_history_events",
+          "owner_repo": "durable-workflow/workflow",
+          "schema_authority": "Workflow\\V2\\Models\\WorkflowScheduleHistoryEvent",
+          "version_authority": "durable-workflow.v2.history-event-payloads"
+        }
+      ],
       "evolution_rule": "parallel_primitive_only",
       "breaking_change_release": "parallel_primitive_only",
       "conformance_test": "durable-workflow/workflow: tests/Unit/V2/HistoryEventWireFormatDocumentationTest.php and tests/Unit/V2/VersionMarkerWireFormatTest.php",
@@ -112,6 +208,14 @@
       "authority_manifest": "history_event_payload_contract",
       "owner_repo": "durable-workflow/workflow",
       "owner_symbol": "Workflow\\V2\\Support\\HistoryExport",
+      "object_families": [
+        {
+          "name": "history_export_bundle",
+          "owner_repo": "durable-workflow/workflow",
+          "schema_authority": "Workflow\\V2\\Support\\HistoryExport::SCHEMA",
+          "version_authority": "Workflow\\V2\\Support\\HistoryExport::SCHEMA_VERSION"
+        }
+      ],
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
       "conformance_test": "durable-workflow/workflow: tests/Unit/V2/HistoryExportTest.php",
@@ -126,6 +230,14 @@
       "authority_manifest": "replay_verification_contract",
       "owner_repo": "durable-workflow/workflow",
       "owner_symbol": "Workflow\\V2\\Support\\WorkflowReplayer and Workflow\\V2\\Support\\ReplayState",
+      "object_families": [
+        {
+          "name": "replay_bundle",
+          "owner_repo": "durable-workflow/workflow",
+          "schema_authority": "Workflow\\V2\\Support\\WorkflowReplayer",
+          "version_authority": "durable-workflow.v2.replay-bundle"
+        }
+      ],
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
       "conformance_test": "durable-workflow/workflow: tests/Unit/V2/WorkflowReplayer*Test.php and durable-workflow/server: tests/Feature/ReplayVerificationContractTest.php",
@@ -140,6 +252,20 @@
       "authority_manifest": "waterline_operator_api",
       "owner_repo": "durable-workflow/waterline",
       "owner_symbol": "waterline `routes/api.php` and the Waterline OperatorReadController",
+      "object_families": [
+        {
+          "name": "waterline_read_envelope",
+          "owner_repo": "durable-workflow/waterline",
+          "schema_authority": "waterline route/controller response envelopes",
+          "version_authority": "durable-workflow.v2.waterline-read-api"
+        },
+        {
+          "name": "waterline_operator_action_envelope",
+          "owner_repo": "durable-workflow/waterline",
+          "schema_authority": "waterline operator action controllers",
+          "version_authority": "durable-workflow.v2.waterline-read-api"
+        }
+      ],
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
       "conformance_test": "durable-workflow/waterline: tests/Feature/OperatorReadApiTest.php and contract tests under tests/Feature/Api/",
@@ -154,6 +280,32 @@
       "authority_manifest": "waterline_operator_api",
       "owner_repo": "durable-workflow/waterline",
       "owner_symbol": "waterline DiagnosticObjectContract and OperatorReadProjections",
+      "object_families": [
+        {
+          "name": "waterline_run_detail",
+          "owner_repo": "durable-workflow/waterline",
+          "schema_authority": "Waterline\\Http\\Controllers\\WorkflowsController",
+          "version_authority": "durable-workflow.v2.waterline-diagnostic-objects"
+        },
+        {
+          "name": "waterline_health_diagnostics",
+          "owner_repo": "durable-workflow/waterline",
+          "schema_authority": "Waterline\\Http\\Controllers\\V2HealthController",
+          "version_authority": "durable-workflow.v2.waterline-diagnostic-objects"
+        },
+        {
+          "name": "waterline_timeline_rows",
+          "owner_repo": "durable-workflow/waterline",
+          "schema_authority": "Waterline operator timeline projections",
+          "version_authority": "durable-workflow.v2.waterline-diagnostic-objects"
+        },
+        {
+          "name": "waterline_lineage_edges",
+          "owner_repo": "durable-workflow/waterline",
+          "schema_authority": "Waterline operator lineage projections",
+          "version_authority": "durable-workflow.v2.waterline-diagnostic-objects"
+        }
+      ],
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
       "conformance_test": "durable-workflow/waterline: tests/Feature/DiagnosticObjectContractTest.php",
@@ -168,6 +320,32 @@
       "authority_manifest": "control_plane",
       "owner_repo": "durable-workflow/workflow",
       "owner_symbol": "Workflow\\V2\\Support\\TaskRepairCandidates, Workflow\\V2\\Support\\TaskRepairPolicy, and Workflow\\V2\\Support\\OperatorQueueVisibility",
+      "object_families": [
+        {
+          "name": "task_repair_policy",
+          "owner_repo": "durable-workflow/workflow",
+          "schema_authority": "Workflow\\V2\\Support\\TaskRepairPolicy::snapshot",
+          "version_authority": "durable-workflow.v2.repair-actionability-objects"
+        },
+        {
+          "name": "task_repair_candidates",
+          "owner_repo": "durable-workflow/workflow",
+          "schema_authority": "Workflow\\V2\\Support\\TaskRepairCandidates::snapshot",
+          "version_authority": "durable-workflow.v2.repair-actionability-objects"
+        },
+        {
+          "name": "operator_queue_visibility",
+          "owner_repo": "durable-workflow/workflow",
+          "schema_authority": "Workflow\\V2\\Support\\OperatorQueueVisibility",
+          "version_authority": "durable-workflow.v2.repair-actionability-objects"
+        },
+        {
+          "name": "actionability",
+          "owner_repo": "durable-workflow/waterline",
+          "schema_authority": "Waterline\\Support\\ActionabilityContract",
+          "version_authority": "Waterline\\Support\\ActionabilityContract::VERSION"
+        }
+      ],
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
       "conformance_test": "durable-workflow/workflow: tests/Unit/V2/TaskRepair*Test.php and durable-workflow/server: tests/Feature/Api/RepairControllerTest.php",
@@ -182,6 +360,20 @@
       "authority_manifest": "mcp_workflows",
       "owner_repo": "durable-workflow/server",
       "owner_symbol": "App\\Mcp\\Discovery and the MCP route group in routes/api.php",
+      "object_families": [
+        {
+          "name": "mcp_tool_discovery",
+          "owner_repo": "durable-workflow/server",
+          "schema_authority": "App\\Mcp\\Discovery",
+          "version_authority": "durable-workflow.v2.mcp-discovery"
+        },
+        {
+          "name": "llms_txt_discovery",
+          "owner_repo": "durable-workflow/durable-workflow.github.io",
+          "schema_authority": "docs/mcp-workflows.md and generated llms files",
+          "version_authority": "durable-workflow.v2.mcp-discovery"
+        }
+      ],
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
       "conformance_test": "durable-workflow/server: tests/Feature/Mcp/DiscoveryContractTest.php",
@@ -196,6 +388,14 @@
       "authority_manifest": "mcp_workflows",
       "owner_repo": "durable-workflow/server",
       "owner_symbol": "App\\Mcp\\ToolResultEnvelope",
+      "object_families": [
+        {
+          "name": "mcp_tool_result_envelope",
+          "owner_repo": "durable-workflow/server",
+          "schema_authority": "App\\Mcp\\ToolResultEnvelope",
+          "version_authority": "durable-workflow.v2.mcp-tool-results"
+        }
+      ],
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
       "conformance_test": "durable-workflow/server: tests/Feature/Mcp/ToolResultEnvelopeTest.php",
@@ -210,6 +410,38 @@
       "authority_manifest": "cluster_info",
       "owner_repo": "durable-workflow/server",
       "owner_symbol": "App\\Http\\Controllers\\Api\\HealthController::clusterInfo",
+      "object_families": [
+        {
+          "name": "cluster_info_envelope",
+          "owner_repo": "durable-workflow/server",
+          "schema_authority": "App\\Http\\Controllers\\Api\\HealthController::clusterInfo",
+          "version_authority": "durable-workflow.v2.cluster-info-envelope"
+        },
+        {
+          "name": "client_compatibility_manifest",
+          "owner_repo": "durable-workflow/server",
+          "schema_authority": "App\\Support\\ClientCompatibility::SCHEMA",
+          "version_authority": "App\\Support\\ClientCompatibility::VERSION"
+        },
+        {
+          "name": "surface_stability_contract",
+          "owner_repo": "durable-workflow/workflow",
+          "schema_authority": "Workflow\\V2\\Support\\SurfaceStabilityContract::SCHEMA",
+          "version_authority": "Workflow\\V2\\Support\\SurfaceStabilityContract::VERSION"
+        },
+        {
+          "name": "platform_protocol_specs_catalog",
+          "owner_repo": "durable-workflow/workflow",
+          "schema_authority": "Workflow\\V2\\Support\\PlatformProtocolSpecs::SCHEMA",
+          "version_authority": "Workflow\\V2\\Support\\PlatformProtocolSpecs::VERSION"
+        },
+        {
+          "name": "platform_conformance_suite_manifest",
+          "owner_repo": "durable-workflow/workflow",
+          "schema_authority": "Workflow\\V2\\Support\\PlatformConformanceSuite::SCHEMA",
+          "version_authority": "Workflow\\V2\\Support\\PlatformConformanceSuite::VERSION"
+        }
+      ],
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
       "discovery_endpoint": "GET /api/cluster/info",
@@ -224,8 +456,9 @@
       "catalog_aligned_with_surface_families": "Every entry`s `surface_family` exists in `SurfaceStabilityContract::surfaceFamilies()`. Every `surface_family` that owns a public machine-facing surface has at least one catalog entry.",
       "owner_repo_known": "Every entry`s `owner_repo` is one of the known fleet repositories.",
       "format_known": "Every entry`s `format` is one of `openapi`, `json_schema`, or `asyncapi`.",
-      "docs_authority_aligned": "docs/platform-protocol-specs.md (in durable-workflow.github.io) lists every entry in this manifest with the same format, owner, status, and breaking-change rule.",
+      "docs_authority_aligned": "docs/platform-protocol-specs.md (in durable-workflow.github.io) lists every entry in this manifest with the same format, owner, object-family authority, status, and breaking-change rule.",
       "json_mirror_aligned": "static/platform-protocol-specs.json (in durable-workflow.github.io) is byte-equivalent to this PHP manifest at the time of the release.",
+      "object_family_authority_declared": "Every entry declares a non-empty `object_families` list. Each object family names the owning repo, schema authority, and version authority. Published spec files carry matching `x-durable-workflow-object-families` metadata so the file and catalog cannot drift.",
       "spec_path_published_when_status_published": "When `status` is `published`, the file at `spec_path` exists in `durable-workflow/durable-workflow.github.io`, is referenced from the matching authority doc page, parses as the format declared by the catalog entry (JSON Schema 2020-12 / OpenAPI 3.1 / AsyncAPI 2.6+), and the document's `$id` (or OpenAPI `info.title` / AsyncAPI `id`) matches the catalog `spec_id`.",
       "breaking_change_release_consistent_with_evolution_rule": "Every entry`s `breaking_change_release` is one of `major`, `parallel_primitive_only`, or `experimental_any_release`, and matches the value required by its `evolution_rule`: `additive_minor_breaking_major` -> `major`, `parallel_primitive_only` -> `parallel_primitive_only`, `experimental_any_release` -> `experimental_any_release`. Letting these diverge would let a frozen wire format claim a major-version break, contradicting its rule.",
       "deliverable_specs_published": "Every entry in the issue #690 deliverable surface set is marked `published` and has a parseable spec document."

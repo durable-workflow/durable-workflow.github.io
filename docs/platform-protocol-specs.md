@@ -34,8 +34,9 @@ without reading prose or reverse-engineering fixtures.
 The companion page [Version Compatibility](/docs/2.0/compatibility) says
 *which* surfaces are public and *how* they may change. This catalog says
 *where* the normative spec for each surface lives, *which format* it
-uses, *which repository* owns it, and *which conformance test* pins it
-against drift.
+uses, *which repository* owns it, which object families it governs, which
+schema/version authority owns those families, and *which conformance
+test* pins it against drift.
 
 The same catalog is published in machine-readable form so SDK builds,
 agents, and CI gates can validate themselves against one source of
@@ -44,23 +45,24 @@ truth:
 - `platform_protocol_specs` in the response body of
   `GET /api/cluster/info` on the standalone Durable Workflow server,
   schema `durable-workflow.v2.platform-protocol-specs.catalog`,
-  version `4`.
+  version `5`.
 - A frozen mirror of the same manifest in this repository at
   `static/platform-protocol-specs.json`.
 - The PHP class `Workflow\V2\Support\PlatformProtocolSpecs`, which is
   the in-process source the server re-exports.
 
 A release that adds a spec entry, changes its format, owner,
-breaking-change rule, or status, or removes an entry must update this
-page, the JSON mirror, and the PHP manifest in the same change. The
+object-family authority, breaking-change rule, or status, or removes an
+entry must update this page, the JSON mirror, and the PHP manifest in the
+same change. The
 release-check gate in `scripts/check-platform-protocol-specs.js` fails
 the docs build when it detects drift.
 
 ## Published Spec Files
 
 These are the authoritative machine-readable files referenced by the
-catalog. The per-entry sections below define owner, version authority,
-and breaking-change policy for each file.
+catalog. The per-entry sections below define owner, object-family
+schema/version authority, and breaking-change policy for each file.
 
 | Spec | File |
 |------|------|
@@ -162,6 +164,7 @@ control plane, and operator scripts call.
 | Conformance test | `durable-workflow/server: tests/Feature/ClusterInfoCompatibilityTest.php` and `tests/Feature/Api/*` per-route contract tests |
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/control-plane-api.openapi.yaml` |
+| Object families | `control_plane_request_contract`, `control_plane_response_envelope`, `control_plane_operation_contract` |
 
 ### `worker_protocol_api`
 
@@ -184,6 +187,7 @@ long-poll and lease-renewal semantics.
 | Conformance test | `durable-workflow/server: tests/Feature/Api/Worker*` contract tests |
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/worker-protocol-api.openapi.yaml` |
+| Object families | `worker_registration_request`, `worker_task_poll_request`, `worker_task_result`, `external_task_input_contract`, `external_task_result_contract` |
 
 ### `worker_protocol_stream`
 
@@ -205,6 +209,7 @@ routing precedence, build-id rollout drains, and graceful disconnect.
 | Conformance test | `durable-workflow/server: tests/Feature/Api/WorkerLongPollTest.php` and `tests/Feature/Api/WorkerHeartbeatTest.php` |
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/worker-protocol-stream.asyncapi.yaml` |
+| Object families | `worker_poll_stream`, `worker_task_lease`, `worker_task_heartbeat` |
 
 ### `history_event_payloads`
 
@@ -229,6 +234,7 @@ are the per-event source of truth.
 | Conformance test | `durable-workflow/workflow: tests/Unit/V2/HistoryEventWireFormatDocumentationTest.php` and `tests/Unit/V2/VersionMarkerWireFormatTest.php` |
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/history-event-payloads.schema.json` |
+| Object families | `workflow_history_events`, `workflow_schedule_history_events` |
 
 ### `history_export_bundle`
 
@@ -249,6 +255,7 @@ references, payload codec metadata, lineage edges, and bundle manifest.
 | Conformance test | `durable-workflow/workflow: tests/Unit/V2/HistoryExportTest.php` |
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/history-export-bundle.schema.json` |
+| Object families | `history_export_bundle` |
 
 ### `replay_bundle`
 
@@ -270,6 +277,7 @@ UIs, and the replay-verification contract.
 | Conformance test | `durable-workflow/workflow: tests/Unit/V2/WorkflowReplayer*Test.php` and `durable-workflow/server: tests/Feature/ReplayVerificationContractTest.php` |
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/replay-bundle.schema.json` |
+| Object families | `replay_bundle` |
 
 ### `waterline_read_api`
 
@@ -290,6 +298,7 @@ views, schedule audit, and dashboard JSON shapes.
 | Conformance test | `durable-workflow/waterline: tests/Feature/OperatorReadApiTest.php` and contract tests under `tests/Feature/Api/` |
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/waterline-read-api.openapi.yaml` |
+| Object families | `waterline_read_envelope`, `waterline_operator_action_envelope` |
 
 ### `waterline_diagnostic_objects`
 
@@ -311,6 +320,7 @@ operator dashboards and external observability adapters parse.
 | Conformance test | `durable-workflow/waterline: tests/Feature/DiagnosticObjectContractTest.php` |
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/waterline-diagnostic-objects.schema.json` |
+| Object families | `waterline_run_detail`, `waterline_health_diagnostics`, `waterline_timeline_rows`, `waterline_lineage_edges` |
 
 ### `repair_actionability_objects`
 
@@ -332,6 +342,7 @@ that drive operator-led recovery.
 | Conformance test | `durable-workflow/workflow: tests/Unit/V2/TaskRepair*Test.php` and `durable-workflow/server: tests/Feature/Api/RepairControllerTest.php` |
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/repair-actionability-objects.schema.json` |
+| Object families | `task_repair_policy`, `task_repair_candidates`, `operator_queue_visibility`, `actionability` |
 
 ### `mcp_discovery`
 
@@ -352,6 +363,7 @@ list shape, parameter schema shape, and discovery hints.
 | Conformance test | `durable-workflow/server: tests/Feature/Mcp/DiscoveryContractTest.php` |
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/mcp-discovery.schema.json` |
+| Object families | `mcp_tool_discovery`, `llms_txt_discovery` |
 
 ### `mcp_tool_results`
 
@@ -373,6 +385,7 @@ discovery hints are diagnostic, not contract.
 | Conformance test | `durable-workflow/server: tests/Feature/Mcp/ToolResultEnvelopeTest.php` |
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/mcp-tool-results.schema.json` |
+| Object families | `mcp_tool_result_envelope` |
 
 ### `cluster_info_envelope`
 
@@ -407,6 +420,7 @@ field shapes are normative under each nested manifest's own `schema` /
 | Conformance test | `durable-workflow/server: tests/Feature/ClusterInfoCompatibilityTest.php` |
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/cluster-info-envelope.schema.json` |
+| Object families | `cluster_info_envelope`, `client_compatibility_manifest`, `surface_stability_contract`, `platform_protocol_specs_catalog`, `platform_conformance_suite_manifest` |
 
 ## Release Check
 
@@ -419,8 +433,9 @@ under `release_check`.
 | `catalog_aligned_with_surface_families` | Every entry's `surface_family` exists in `SurfaceStabilityContract::surfaceFamilies()`. Every `surface_family` that owns a public machine-facing surface has at least one catalog entry. |
 | `owner_repo_known` | Every entry's `owner_repo` is one of the known fleet repositories. |
 | `format_known` | Every entry's `format` is one of `openapi`, `json_schema`, or `asyncapi`. |
-| `docs_authority_aligned` | This page lists every entry in the manifest with the same format, owner, status, and breaking-change rule. |
+| `docs_authority_aligned` | This page lists every entry in the manifest with the same format, owner, object-family authority, status, and breaking-change rule. |
 | `json_mirror_aligned` | `static/platform-protocol-specs.json` is byte-equivalent to the PHP `PlatformProtocolSpecs::manifest()` output. |
+| `object_family_authority_declared` | Every entry declares a non-empty `object_families` list. Each object family names the owning repo, schema authority, and version authority. Published spec files carry matching `x-durable-workflow-object-families` metadata so the file and catalog cannot drift. |
 | `spec_path_published_when_status_published` | When `status` is `published`, the file at `spec_path` exists in this repository, is referenced from the matching authority doc page, parses as the format declared by the catalog entry (JSON Schema 2020-12 / OpenAPI 3.1 / AsyncAPI 2.6+), and the document's `$id` (or OpenAPI `info.title` / AsyncAPI `id`) matches the catalog `spec_id`. |
 | `breaking_change_release_consistent_with_evolution_rule` | Every entry's `breaking_change_release` is one of `major`, `parallel_primitive_only`, or `experimental_any_release`, and matches the value required by its `evolution_rule`: `additive_minor_breaking_major` → `major`, `parallel_primitive_only` → `parallel_primitive_only`, `experimental_any_release` → `experimental_any_release`. Letting these diverge would let a frozen wire format claim a major-version break, contradicting its rule. |
 | `deliverable_specs_published` | Every entry in the issue #690 deliverable surface set is marked `published` and has a parseable spec document. |

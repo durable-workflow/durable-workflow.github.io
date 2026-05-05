@@ -6,7 +6,7 @@
   "type": "object",
   "x-durable-workflow-catalog-entry": "waterline_diagnostic_objects",
   "x-durable-workflow-catalog-schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "x-durable-workflow-catalog-version": 4,
+  "x-durable-workflow-catalog-version": 5,
   "x-durable-workflow-owner-symbol": "waterline DiagnosticObjectContract and OperatorReadProjections",
   "x-durable-workflow-evolution-rule": "additive_minor_breaking_major",
   "x-durable-workflow-object-families": [
@@ -20,6 +20,18 @@
       "name": "waterline_health_diagnostics",
       "owner_repo": "durable-workflow/waterline",
       "schema_authority": "Waterline\\Http\\Controllers\\V2HealthController",
+      "version_authority": "durable-workflow.v2.waterline-diagnostic-objects"
+    },
+    {
+      "name": "waterline_timeline_rows",
+      "owner_repo": "durable-workflow/waterline",
+      "schema_authority": "Waterline operator timeline projections",
+      "version_authority": "durable-workflow.v2.waterline-diagnostic-objects"
+    },
+    {
+      "name": "waterline_lineage_edges",
+      "owner_repo": "durable-workflow/waterline",
+      "schema_authority": "Waterline operator lineage projections",
       "version_authority": "durable-workflow.v2.waterline-diagnostic-objects"
     }
   ],

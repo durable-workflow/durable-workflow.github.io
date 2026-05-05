@@ -6,9 +6,41 @@
   "type": "object",
   "x-durable-workflow-catalog-entry": "cluster_info_envelope",
   "x-durable-workflow-catalog-schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "x-durable-workflow-catalog-version": 4,
+  "x-durable-workflow-catalog-version": 5,
   "x-durable-workflow-owner-symbol": "App\\Http\\Controllers\\Api\\HealthController::clusterInfo",
   "x-durable-workflow-evolution-rule": "additive_minor_breaking_major",
+  "x-durable-workflow-object-families": [
+    {
+      "name": "cluster_info_envelope",
+      "owner_repo": "durable-workflow/server",
+      "schema_authority": "App\\Http\\Controllers\\Api\\HealthController::clusterInfo",
+      "version_authority": "durable-workflow.v2.cluster-info-envelope"
+    },
+    {
+      "name": "client_compatibility_manifest",
+      "owner_repo": "durable-workflow/server",
+      "schema_authority": "App\\Support\\ClientCompatibility::SCHEMA",
+      "version_authority": "App\\Support\\ClientCompatibility::VERSION"
+    },
+    {
+      "name": "surface_stability_contract",
+      "owner_repo": "durable-workflow/workflow",
+      "schema_authority": "Workflow\\V2\\Support\\SurfaceStabilityContract::SCHEMA",
+      "version_authority": "Workflow\\V2\\Support\\SurfaceStabilityContract::VERSION"
+    },
+    {
+      "name": "platform_protocol_specs_catalog",
+      "owner_repo": "durable-workflow/workflow",
+      "schema_authority": "Workflow\\V2\\Support\\PlatformProtocolSpecs::SCHEMA",
+      "version_authority": "Workflow\\V2\\Support\\PlatformProtocolSpecs::VERSION"
+    },
+    {
+      "name": "platform_conformance_suite_manifest",
+      "owner_repo": "durable-workflow/workflow",
+      "schema_authority": "Workflow\\V2\\Support\\PlatformConformanceSuite::SCHEMA",
+      "version_authority": "Workflow\\V2\\Support\\PlatformConformanceSuite::VERSION"
+    }
+  ],
   "required": [
     "server_id",
     "version",

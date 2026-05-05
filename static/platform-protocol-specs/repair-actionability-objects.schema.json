@@ -6,7 +6,7 @@
   "type": "object",
   "x-durable-workflow-catalog-entry": "repair_actionability_objects",
   "x-durable-workflow-catalog-schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "x-durable-workflow-catalog-version": 4,
+  "x-durable-workflow-catalog-version": 5,
   "x-durable-workflow-owner-symbol": "Workflow\\V2\\Support\\TaskRepairCandidates, Workflow\\V2\\Support\\TaskRepairPolicy, and Workflow\\V2\\Support\\OperatorQueueVisibility",
   "x-durable-workflow-evolution-rule": "additive_minor_breaking_major",
   "x-durable-workflow-object-families": [
@@ -20,6 +20,12 @@
       "name": "task_repair_candidates",
       "owner_repo": "durable-workflow/workflow",
       "schema_authority": "Workflow\\V2\\Support\\TaskRepairCandidates::snapshot",
+      "version_authority": "durable-workflow.v2.repair-actionability-objects"
+    },
+    {
+      "name": "operator_queue_visibility",
+      "owner_repo": "durable-workflow/workflow",
+      "schema_authority": "Workflow\\V2\\Support\\OperatorQueueVisibility",
       "version_authority": "durable-workflow.v2.repair-actionability-objects"
     },
     {

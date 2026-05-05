@@ -61,13 +61,15 @@ The companion [Platform Protocol Specs](/docs/2.0/platform-protocol-specs)
 catalog says *where* the normative machine-readable specification for
 each surface lives, *which format* the spec uses (OpenAPI for HTTP APIs,
 JSON Schema for object families, AsyncAPI for event-stream semantics),
-*which repository* owns the spec, and *which conformance test* pins the
-spec against drift. SDK authors, agents, and operators should validate
-against the spec catalog rather than re-reading prose for every surface.
+*which repository* owns the spec, which object families it governs,
+which schema/version authority owns those families, and *which
+conformance test* pins the spec against drift. SDK authors, agents, and
+operators should validate against the spec catalog rather than
+re-reading prose for every surface.
 
 The catalog has its own machine-readable mirror at
 `platform_protocol_specs` in `GET /api/cluster/info` (schema
-`durable-workflow.v2.platform-protocol-specs.catalog`, version `4`) and
+`durable-workflow.v2.platform-protocol-specs.catalog`, version `5`) and
 a frozen JSON copy at `static/platform-protocol-specs.json` in this
 repository. Every catalog entry's `surface_family` must exist in the
 contract above; the release-check gate in

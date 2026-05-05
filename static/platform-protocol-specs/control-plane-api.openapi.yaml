@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: durable-workflow.v2.control-plane-api
-  version: "4"
+  version: "5"
   summary: Durable Workflow control-plane HTTP+JSON API
   description: >
     Normative OpenAPI specification for the standalone Durable Workflow
@@ -11,9 +11,22 @@ info:
     referenced from the platform protocol catalog.
 x-durable-workflow-catalog-entry: control_plane_api
 x-durable-workflow-catalog-schema: durable-workflow.v2.platform-protocol-specs.catalog
-x-durable-workflow-catalog-version: 4
+x-durable-workflow-catalog-version: 5
 x-durable-workflow-owner-symbol: App\Support\ControlPlaneProtocol and App\Support\ControlPlaneRequestContract
 x-durable-workflow-evolution-rule: additive_minor_breaking_major
+x-durable-workflow-object-families:
+  - name: control_plane_request_contract
+    owner_repo: durable-workflow/server
+    schema_authority: "App\\Support\\ControlPlaneRequestContract::SCHEMA"
+    version_authority: "App\\Support\\ControlPlaneRequestContract::VERSION"
+  - name: control_plane_response_envelope
+    owner_repo: durable-workflow/server
+    schema_authority: "App\\Support\\ControlPlaneResponseContract::SCHEMA"
+    version_authority: "App\\Support\\ControlPlaneResponseContract::VERSION"
+  - name: control_plane_operation_contract
+    owner_repo: durable-workflow/server
+    schema_authority: "App\\Support\\ControlPlaneResponseContract::CONTRACT_SCHEMA"
+    version_authority: "App\\Support\\ControlPlaneResponseContract::CONTRACT_VERSION"
 servers:
   - url: /api
 security:

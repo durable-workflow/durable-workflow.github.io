@@ -6,7 +6,7 @@
   "type": "object",
   "x-durable-workflow-catalog-entry": "history_event_payloads",
   "x-durable-workflow-catalog-schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "x-durable-workflow-catalog-version": 4,
+  "x-durable-workflow-catalog-version": 5,
   "x-durable-workflow-owner-symbol": "Workflow\\V2\\Models\\WorkflowHistoryEvent and Workflow\\V2\\Enums\\HistoryEventType",
   "x-durable-workflow-evolution-rule": "parallel_primitive_only",
   "x-durable-workflow-object-families": [
@@ -23,7 +23,6 @@
       "version_authority": "durable-workflow.v2.history-event-payloads"
     }
   ],
-  "required": ["event_type", "payload"],
   "additionalProperties": true,
   "properties": {
     "id": {

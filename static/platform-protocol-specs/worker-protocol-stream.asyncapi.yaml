@@ -2,7 +2,7 @@ asyncapi: 2.6.0
 id: durable-workflow.v2.worker-protocol-stream
 info:
   title: Durable Workflow worker-protocol long-poll stream semantics
-  version: "4"
+  version: "5"
   description: >
     Normative AsyncAPI description of the public worker-protocol stream
     semantics. Durable uses HTTP long-poll request/response rather than a
@@ -12,9 +12,22 @@ info:
     events, and terminal completion/failure events close the lease.
 x-durable-workflow-catalog-entry: worker_protocol_stream
 x-durable-workflow-catalog-schema: durable-workflow.v2.platform-protocol-specs.catalog
-x-durable-workflow-catalog-version: 4
+x-durable-workflow-catalog-version: 5
 x-durable-workflow-owner-symbol: App\Support\WorkerProtocol and Workflow\V2\Support\WorkerCompatibilityFleet
 x-durable-workflow-evolution-rule: additive_minor_breaking_major
+x-durable-workflow-object-families:
+  - name: worker_poll_stream
+    owner_repo: durable-workflow/server
+    schema_authority: "App\\Support\\LongPoller and App\\Support\\WorkerProtocol"
+    version_authority: "Workflow\\V2\\Support\\WorkerProtocolVersion::VERSION"
+  - name: worker_task_lease
+    owner_repo: durable-workflow/server
+    schema_authority: "App\\Support\\WorkflowTaskPoller and App\\Support\\ActivityTaskPoller"
+    version_authority: "Workflow\\V2\\Support\\WorkerProtocolVersion::VERSION"
+  - name: worker_task_heartbeat
+    owner_repo: durable-workflow/server
+    schema_authority: "App\\Http\\Controllers\\Api\\WorkerController heartbeat actions"
+    version_authority: "Workflow\\V2\\Support\\WorkerProtocolVersion::VERSION"
 defaultContentType: application/json
 channels:
   worker.workflow_tasks:

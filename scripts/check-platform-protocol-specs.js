@@ -17,7 +17,9 @@
 //    the expected schema id, version, and authority URL.
 // 2. Every spec entry has the required fields with valid values:
 //    format ∈ {openapi, json_schema, asyncapi}, status ∈ {published,
-//    in_progress, planned}, owner_repo ∈ known fleet repos.
+//    in_progress, planned}, owner_repo ∈ known fleet repos, and a
+//    non-empty object_families list that names the schema/version
+//    authority for every governed public object family.
 // 3. Every spec entry's `surface_family` exists in
 //    `static/compatibility-contract.json`. The catalog cannot reference
 //    a surface family that the stability contract has not declared.
@@ -34,7 +36,10 @@
 //    catalog entry (JSON Schema 2020-12 / OpenAPI 3.1 / AsyncAPI 2.6+),
 //    and the document's `$id` (or OpenAPI `info.title` / AsyncAPI `id`)
 //    matches the catalog `spec_id` so SDK builds and CI can join the
-//    document back to the catalog without parsing prose.
+//    document back to the catalog without parsing prose. The published
+//    file must also carry matching x-durable-workflow-object-families
+//    metadata so the spec document and catalog cannot disagree about
+//    schema/version authority.
 // 7. `docs/compatibility.md` cross-links to the new catalog so callers
 //    that land on the older authority page can find the spec set.
 //
@@ -206,6 +211,7 @@ function assertCatalogEntriesAreWellFormed(catalog, surfaceFamilies) {
       'owner_repo',
       'evolution_rule',
       'breaking_change_release',
+      'object_families',
       'conformance_test',
       'status',
       'spec_path',
@@ -276,6 +282,8 @@ function assertCatalogEntriesAreWellFormed(catalog, surfaceFamilies) {
       );
     }
 
+    assertObjectFamiliesAreWellFormed(name, entry);
+
     if (!entry.spec_id.startsWith('durable-workflow.v2.')) {
       throw new Error(
         `platform-protocol-specs entry "${name}" spec_id "${entry.spec_id}" ` +
@@ -302,6 +310,51 @@ function assertCatalogEntriesAreWellFormed(catalog, surfaceFamilies) {
       }
 
       assertPublishedSpecFileMatchesEntry(name, entry, absoluteSpecPath, catalog.version);
+    }
+  }
+}
+
+function assertObjectFamiliesAreWellFormed(name, entry) {
+  if (!Array.isArray(entry.object_families) || entry.object_families.length === 0) {
+    throw new Error(
+      `platform-protocol-specs entry "${name}" must declare a non-empty ` +
+        `object_families list so every public object family has explicit ` +
+        `schema/version authority.`,
+    );
+  }
+
+  const seen = new Set();
+  for (const family of entry.object_families) {
+    if (!family || typeof family !== 'object' || Array.isArray(family)) {
+      throw new Error(
+        `platform-protocol-specs entry "${name}" has an object_families ` +
+          `entry that is not an object.`,
+      );
+    }
+
+    for (const field of ['name', 'owner_repo', 'schema_authority', 'version_authority']) {
+      if (typeof family[field] !== 'string' || family[field].length === 0) {
+        throw new Error(
+          `platform-protocol-specs entry "${name}" object family must ` +
+            `declare non-empty string field "${field}".`,
+        );
+      }
+    }
+
+    if (seen.has(family.name)) {
+      throw new Error(
+        `platform-protocol-specs entry "${name}" declares object family ` +
+          `"${family.name}" more than once.`,
+      );
+    }
+    seen.add(family.name);
+
+    if (!ALLOWED_OWNERS.has(family.owner_repo)) {
+      throw new Error(
+        `platform-protocol-specs entry "${name}" object family ` +
+          `"${family.name}" has owner_repo "${family.owner_repo}"; must be ` +
+          `one of ${Array.from(ALLOWED_OWNERS).join(', ')}`,
+      );
     }
   }
 }
@@ -366,6 +419,12 @@ function assertPublishedSpecFileMatchesEntry(name, entry, absoluteSpecPath, cata
           `(got ${JSON.stringify(document['x-durable-workflow-evolution-rule'])}).`,
       );
     }
+    assertObjectFamiliesMatchSpecDocument(
+      name,
+      entry,
+      document['x-durable-workflow-object-families'],
+      entry.spec_path,
+    );
     if (document.type !== 'object') {
       throw new Error(
         `published spec ${entry.spec_path} for "${name}" must declare ` +
@@ -403,6 +462,7 @@ function assertPublishedSpecFileMatchesEntry(name, entry, absoluteSpecPath, cata
       entry.spec_path,
       name,
     );
+    assertYamlObjectFamilies(document, entry, entry.spec_path, name);
   } else if (entry.format === 'asyncapi') {
     if (!/\.(ya?ml|json)$/.test(entry.spec_path)) {
       throw new Error(
@@ -433,6 +493,39 @@ function assertPublishedSpecFileMatchesEntry(name, entry, absoluteSpecPath, cata
       entry.spec_path,
       name,
     );
+    assertYamlObjectFamilies(document, entry, entry.spec_path, name);
+  }
+}
+
+function assertObjectFamiliesMatchSpecDocument(name, entry, documentFamilies, specPath) {
+  if (JSON.stringify(documentFamilies) !== JSON.stringify(entry.object_families)) {
+    throw new Error(
+      `published spec ${specPath} for "${name}" must declare ` +
+        `x-durable-workflow-object-families equal to the catalog entry's ` +
+        `object_families list so schema/version authority cannot drift.`,
+    );
+  }
+}
+
+function assertYamlObjectFamilies(document, entry, specPath, name) {
+  if (!document.includes('x-durable-workflow-object-families:')) {
+    throw new Error(
+      `published spec ${specPath} for "${name}" must declare ` +
+        `x-durable-workflow-object-families metadata.`,
+    );
+  }
+
+  for (const family of entry.object_families) {
+    for (const [field, value] of Object.entries(family)) {
+      const raw = `${field}: ${value}`;
+      const quoted = `${field}: ${JSON.stringify(value)}`;
+      if (!document.includes(raw) && !document.includes(quoted)) {
+        throw new Error(
+          `published spec ${specPath} for "${name}" must include object ` +
+            `family metadata ${field} = ${value}.`,
+        );
+      }
+    }
   }
 }
 
@@ -520,6 +613,15 @@ function assertCatalogDocAlignsWithCatalog(catalog) {
         `docs/platform-protocol-specs.md entry "${name}" must show Owner repo = ` +
           `\`${entry.owner_repo}\``,
       );
+    }
+    for (const family of entry.object_families) {
+      if (!doc.includes(`\`${family.name}\``)) {
+        throw new Error(
+          `docs/platform-protocol-specs.md entry "${name}" must list ` +
+            `object family \`${family.name}\` so schema/version authority ` +
+            `is visible in the human-readable catalog.`,
+        );
+      }
     }
   }
 }

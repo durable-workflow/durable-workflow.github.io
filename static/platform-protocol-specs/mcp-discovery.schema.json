@@ -6,7 +6,7 @@
   "type": "object",
   "x-durable-workflow-catalog-entry": "mcp_discovery",
   "x-durable-workflow-catalog-schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "x-durable-workflow-catalog-version": 4,
+  "x-durable-workflow-catalog-version": 5,
   "x-durable-workflow-owner-symbol": "App\\Mcp\\Discovery and the MCP route group in routes/api.php",
   "x-durable-workflow-evolution-rule": "additive_minor_breaking_major",
   "x-durable-workflow-object-families": [
