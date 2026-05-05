@@ -134,7 +134,7 @@ The main partitioning primitives are:
 
 - **namespace** for tenant or environment boundaries
 - **connection** and **queue** for work-routing boundaries
-- **compatibility family** for mixed-version routing safety
+- **compatibility family** for compatibility-marker routing safety
 - **activity type filters** for workers that only execute selected activities
 
 Use separate queues when you want stronger isolation, independent worker pools,
@@ -176,8 +176,8 @@ Use these surfaces together:
   worker, and health counters from the responding process
 - health and Waterline diagnostics for unhealthy tasks, stale leases, and
   compatible-worker gaps
-- rolling-upgrade checks when mixed versions are live and matching must block
-  unsafe claims
+- rolling-upgrade checks when an overlap window is live and matching must
+  block unsafe claims
 
 If the oldest ready-task age grows while compatible workers are available, the
 matching path is not making forward progress quickly enough. If ready tasks are

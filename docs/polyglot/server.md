@@ -37,7 +37,7 @@ cutover so ids, command outcomes, task semantics, and runtime ownership rules
 stay explicit.
 
 Use [Worker Compatibility and Routing](/docs/2.0/polyglot/worker-compatibility-routing)
-when you roll mixed-version worker fleets, drain old cohorts, or need to keep
+when you roll worker build cohorts, drain old cohorts, or need to keep
 long-running runs pinned to compatible executors during rollback.
 
 Use [Server Role Topology](/docs/2.0/polyglot/server-role-topology) when you

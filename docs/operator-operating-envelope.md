@@ -263,7 +263,7 @@ Use Waterline dashboard stats and queue views for durable task state:
 | `operator_metrics.backlog.unhealthy_tasks` | Durable tasks with dispatch failure, claim failure, overdue dispatch, or expired lease state. |
 | `operator_metrics.backlog.repair_needed_runs` | Open runs that do not currently have a trusted durable resume path. |
 | `operator_metrics.tasks.oldest_lease_expired_at`, `operator_metrics.tasks.max_lease_expired_age_ms` | The oldest expired lease and its age. Use this pair as the primary stuck-lease and duplicate-risk age indicator. |
-| `operator_metrics.backlog.oldest_compatibility_blocked_started_at`, `operator_metrics.backlog.max_compatibility_blocked_age_ms` | The oldest mixed-build routing block and its age. Use this when work is preserved but no compatible worker is currently eligible to claim it. |
+| `operator_metrics.backlog.oldest_compatibility_blocked_started_at`, `operator_metrics.backlog.max_compatibility_blocked_age_ms` | The oldest compatibility routing block and its age. Use this when work is preserved but no compatible worker is currently eligible to claim it. |
 | Active vs stale pollers | Whether registered workers are still heartbeating for a queue. |
 | Current leases | Which workflow or activity tasks are leased right now and whether the lease is expired. |
 
@@ -380,8 +380,8 @@ contract:
 | `operator_metrics.workers.active_workers_supporting_required` | Workers whose advertised compatibility covers the required markers. |
 | `operator_metrics.workers.fleet` | Per-scope list of every active worker with `worker_id`, `connection`, `queue`, advertised `supported` markers, a `supports_required` flag, the heartbeat `source` (`database` or `cache`), and `recorded_at`. |
 
-Use the summary counts to detect mixed-fleet states where some workers
-cannot safely claim the required work, and drill into `fleet` to identify
+Use the summary counts to detect rollout states where some workers cannot
+safely claim the required work, and drill into `fleet` to identify
 exactly which `(connection, queue)` scope is missing coverage. The Waterline
 operator dashboard renders the same fleet list under its worker
 compatibility panel so operators do not need to query the metric surface by

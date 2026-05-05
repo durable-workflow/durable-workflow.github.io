@@ -9,7 +9,7 @@ tags:
   - rollback
 keywords:
   - rolling upgrade
-  - mixed-version safety
+  - rolling safety
   - worker drain
   - schema fencing
   - readiness contract
@@ -37,8 +37,8 @@ focuses on how the current `standalone_server` process classes roll in place.
 
 A **rolling upgrade** replaces processes one at a time, draining each one
 before stopping it, while the rest of the fleet keeps serving traffic. The
-result is zero downtime for the deployment as a whole and a bounded
-mixed-version window where old and new processes coexist.
+result is zero downtime for the deployment as a whole and a bounded overlap
+window where old and new processes coexist.
 
 The contract distinguishes four process classes in the current
 `standalone_server` shape, each with its own rollout posture:
@@ -60,7 +60,7 @@ deployment keeps serving traffic across that gap.
 
 ## Compatible version-skew rules
 
-The rolling-upgrade window is the time during which more than one server
+The rolling-upgrade overlap window is the time during which more than one server
 image, workflow package version, or worker SDK version is live. The
 window must satisfy every rule in this section.
 
@@ -97,7 +97,7 @@ window must satisfy every rule in this section.
   recorded at `WorkflowStarted`. A new worker that ships a different
   fingerprint for the same workflow refuses to claim those runs until
   they finish.
-- **Mixed-build admission posture.** Choose the
+- **Overlapping-build admission posture.** Choose the
   [`DW_V2_FLEET_VALIDATION_MODE`](/docs/2.0/polyglot/server-config-reference)
   posture before you start. `warn` lets the rollout proceed even when
   the required compatibility marker has no live worker;  `fail` blocks
@@ -133,9 +133,9 @@ the readiness surface. If you discover a non-additive change during
 planning, take a stop-the-world upgrade window for that release and
 return to rolling upgrades on the next one.
 
-## Drain and admission while mixed versions are live
+## Drain and admission during the overlap window
 
-Three admission surfaces enforce mixed-version safety automatically:
+Three admission surfaces enforce overlap-window safety automatically:
 
 - **Boot-time admission.** Every server process loads
   `BackendCapabilities`, `LongPollCacheValidator`, `WorkflowModeGuard`,
@@ -155,7 +155,7 @@ Three admission surfaces enforce mixed-version safety automatically:
   silently escalates to task loss; the at-least-once execution
   guarantee still applies after a routing drain.
 
-To keep the mixed-version window short on the worker side, drain old
+To keep the worker overlap window short, drain old
 worker cohorts as new workers come online. Use the
 [worker build-id rollout](/docs/2.0/polyglot/worker-build-id-rollout)
 flow:
@@ -282,7 +282,7 @@ Verify each phase of the rollout from operator surfaces, not from logs.
 | --- | --- |
 | Is bootstrap finished? | `php artisan server:bootstrap --force` exit code 0; `migrate:status` shows every migration ran. |
 | Is the new node ready? | `GET /api/ready` returns 200; `GET /api/cluster/info` reports the new build. |
-| Is mixed-build admission healthy? | `GET /api/system/operator-metrics` `workers.fleet`, `workers.active_workers`, and `workers.active_workers_supporting_required` agree on a non-zero supporter count for every required compatibility marker. |
+| Is compatibility admission healthy? | `GET /api/system/operator-metrics` `workers.fleet`, `workers.active_workers`, and `workers.active_workers_supporting_required` agree on a non-zero supporter count for every required compatibility marker. |
 | Is the worker drain progressing? | `dw task-queue:build-ids <queue> --json` shows `active_worker_count` and `draining_worker_count` falling for the draining cohort. |
 | Is routing safe? | `GET /api/system/operator-metrics` `backlog.compatibility_blocked_runs` and `backlog.max_compatibility_blocked_age_ms` stay near zero; the `worker_compatibility` health check is not in `error`. |
 | Is the scheduler caught up? | `GET /api/system/operator-metrics` `schedules.missed` is zero and `schedules.oldest_overdue_at` is null. |

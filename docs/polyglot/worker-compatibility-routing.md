@@ -1,7 +1,7 @@
 ---
 sidebar_position: 5
 title: Worker Compatibility and Routing
-description: Keep mixed-version worker fleets safe by pinning in-flight work to compatible executors and making rollout gaps explicit.
+description: Keep worker build rollouts safe by pinning in-flight work to compatible executors and making rollout gaps explicit.
 tags:
   - worker-protocol
   - compatibility
@@ -9,7 +9,7 @@ tags:
   - rollouts
 keywords:
   - worker compatibility
-  - mixed-version workers
+  - worker build rollouts
   - compatibility markers
   - build id routing
   - rollback workers
@@ -18,9 +18,9 @@ keywords:
 # Worker Compatibility and Routing
 
 Use this guide when you need to deploy a new worker build, canary one task
-queue, roll a bad build back, or keep long-running workflows alive across a
-mixed fleet. Durable Workflow v2 treats worker compatibility as a routing
-contract, not as an informal deployment convention.
+queue, roll a bad build back, or keep long-running workflows alive through a
+worker build rollout. Durable Workflow v2 treats worker compatibility as a
+routing contract, not as an informal deployment convention.
 
 The key rule is simple: a run that was started under one compatibility family
 must keep landing on workers that can safely replay and execute that run. The
@@ -80,7 +80,7 @@ Claim-time enforcement is the correctness boundary. If a worker cannot safely
 run a task, Durable Workflow rejects the claim with an explicit compatibility
 reason instead of silently reassigning ownership.
 
-That is the contract to rely on during mixed-version deploys:
+That is the contract to rely on during compatibility-affecting deploys:
 
 - tasks are never silently widened to an incompatible worker
 - lease expiry and redelivery preserve the original compatibility family
@@ -109,7 +109,7 @@ build-id rollout APIs to drain or resume cohorts intentionally.
 
 ## Safe rollout pattern
 
-Use this sequence for mixed-version changes:
+Use this sequence for compatibility-affecting worker changes:
 
 1. Start the new worker cohort with a new build id or compatibility marker.
 2. Keep the old cohort live until you confirm the new cohort can claim work.

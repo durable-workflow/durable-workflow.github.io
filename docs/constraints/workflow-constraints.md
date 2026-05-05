@@ -34,6 +34,6 @@ When workflow classes are registered under `workflows.v2.types.workflows`, the p
 
 Set `DW_V2_GUARDRAILS_BOOT=throw` in CI to fail builds that introduce new replay-unsafe calls; keep `warn` in production so rollouts are not blocked by a latent finding.
 
-First-release scope: boot-time scanning is the only blocking workflow-mode guardrail. The runtime does not rerun determinism diagnostics again at workflow-task claim time. That deferral is intentional for 2.0: boot scanning catches locally registered PHP workflows before rollout, and Waterline surfaces definition-fingerprint drift for long-lived runs without turning mixed-fleet claims into a new source of deploy failures.
+First-release scope: boot-time scanning is the only blocking workflow-mode guardrail. The runtime does not rerun determinism diagnostics again at workflow-task claim time. That deferral is intentional for 2.0: boot scanning catches locally registered PHP workflows before rollout, and Waterline surfaces definition-fingerprint drift for long-lived runs without turning cross-build claims into a new source of deploy failures.
 
 Pre-fingerprint runs also follow a conservative first-release policy. If a run reaches a new `getVersion()` branch and its `WorkflowStarted` history predates the fingerprint snapshot, the runtime keeps that run on `WorkflowStub::DEFAULT_VERSION` instead of assuming the current definition is safe. See [Versioning](../features/versioning.md).
