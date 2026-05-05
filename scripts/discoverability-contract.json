@@ -140,6 +140,12 @@
       "aliases": ["at-least-once", "exactly-once durable history", "activity_execution_id", "activity_attempt_id"]
     },
     {
+      "query": "local activities worker sessions sticky execution",
+      "target": "features/activity-execution-model.md",
+      "related": ["defining-workflows/activities.md", "constraints/execution-guarantees.md"],
+      "aliases": ["temporary stance page", "ordinary queued activities", "local activities", "worker sessions", "sticky execution"]
+    },
+    {
       "query": "waterline workflow dashboard history export",
       "target": "monitoring.md",
       "related": ["ai-assisted-development.md"],
@@ -334,6 +340,33 @@
       "source": "docs Phase 3 zero-result watchlist",
       "lastReviewed": "2026-04-22",
       "action": "Keep mapped until downstream quota searches land on task queue admission."
+    },
+    {
+      "query": "local activities same worker shortcut",
+      "target": "features/activity-execution-model.md",
+      "related": ["defining-workflows/activities.md"],
+      "aliases": ["local activities", "in-process shortcut", "ordinary queued activities"],
+      "source": "activity execution replacement gate",
+      "lastReviewed": "2026-05-05",
+      "action": "When local activities have a published runtime contract and positive docs, retarget this search to docs/features/local-activities.md and stop routing it to the temporary stance page."
+    },
+    {
+      "query": "worker sessions activity affinity",
+      "target": "features/activity-execution-model.md",
+      "related": ["defining-workflows/activities.md"],
+      "aliases": ["worker sessions", "same worker", "activity placement"],
+      "source": "activity execution replacement gate",
+      "lastReviewed": "2026-05-05",
+      "action": "When worker sessions have a published runtime contract and positive docs, retarget this search to docs/features/worker-sessions.md and stop routing it to the temporary stance page."
+    },
+    {
+      "query": "sticky execution replay cache",
+      "target": "features/activity-execution-model.md",
+      "related": ["constraints/execution-guarantees.md"],
+      "aliases": ["sticky execution", "ordinary replay", "replay optimization"],
+      "source": "activity execution replacement gate",
+      "lastReviewed": "2026-05-05",
+      "action": "When sticky execution has a published runtime contract and positive docs, retarget this search to docs/features/sticky-execution.md and stop routing it to the temporary stance page."
     }
   ]
 }

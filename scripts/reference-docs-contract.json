@@ -104,6 +104,7 @@
       "title": "Activity Execution Model",
       "minimumCodeFences": 2,
       "requiredHeadings": [
+        "Temporary Replacement Gate",
         "Ordinary Queued Activities Are The Canonical Durable Contract",
         "Choosing The Right Primitive",
         "Local Activities Are Not A v2 Primitive",
@@ -118,7 +119,16 @@
         "activity_execution_id",
         "activity_attempt_id",
         "sideEffect(...)",
-        "ordinary replay"
+        "ordinary replay",
+        "deleted or reduced to the ordinary queued-activity baseline",
+        "docs/features/local-activities.md",
+        "docs/features/worker-sessions.md",
+        "docs/features/sticky-execution.md",
+        "sidebars.js",
+        "scripts/discoverability-contract.json",
+        "scripts/check-llms-ai-surfaces.js",
+        "llms-2.0.txt",
+        "llms-full-2.0.txt"
       ]
     },
     {
