@@ -1,7 +1,7 @@
 ---
 sidebar_position: 22
 title: Activity Execution Model
-description: How Durable Workflow v2 dispatches activities, and the temporary replacement gate for local activities, worker sessions, and sticky execution.
+description: How Durable Workflow v2 dispatches activities, and how local activities, worker sessions, and sticky execution fit the v2 contract.
 tags:
   - activities
   - workers
@@ -17,23 +17,22 @@ keywords:
 
 # Activity Execution Model
 
-Every activity in v2 runs the same way: the workflow records an activity command on its history, the engine enqueues a durable activity task, and a worker polls that task off the queue and executes it. This page describes the execution contract that ordinary activities rely on and the product's current stance on three optimizations that appear in other systems — local activities, worker sessions, and sticky execution.
+Every activity in v2 runs the same way: the workflow records an activity command on its history, the engine enqueues a durable activity task, and a worker polls that task off the queue and executes it. This page describes the execution contract that ordinary activities rely on, the current stance for local activities and worker sessions, and the supported sticky execution replay optimization.
 
 :::caution Temporary stance page
-This page is the current product stance while local activities, worker sessions, and sticky execution do not have published runtime contracts. After those features exist, this page must be deleted or reduced to the ordinary queued-activity baseline, and feature discovery must point to the positive feature docs instead of this stance page.
+This page is still the product stance while local activities and worker sessions do not have published runtime contracts. Sticky execution now has a positive feature contract at [Sticky Execution](/docs/2.0/features/sticky-execution). After local activities and worker sessions also exist, this page should be deleted or reduced to the ordinary queued-activity baseline.
 :::
 
 ## Temporary Replacement Gate
 
-Keep this page only while it is the truthful public source for unsupported execution-model features. The replacement change is blocked until all three feature families have workflow-owned runtime contracts and positive public docs:
+Keep this page only while it is the truthful public source for unsupported execution-model features. The replacement change is blocked until the remaining unsupported feature families have workflow-owned runtime contracts and positive public docs:
 
 - `docs/features/local-activities.md`
 - `docs/features/worker-sessions.md`
-- `docs/features/sticky-execution.md`
 
 When those docs exist, the cleanup must:
 
-- remove or substantially rewrite the negative-support sections below for local activities, worker sessions, and sticky execution;
+- remove or substantially rewrite the negative-support sections below for local activities and worker sessions;
 - cross-link the new feature docs to their runtime contracts and from [Activities](/docs/2.0/defining-workflows/activities), [Workflow API](/docs/2.0/defining-workflows/workflow-api), and [Execution Guarantees and Idempotency](/docs/2.0/constraints/execution-guarantees);
 - update `scripts/reference-docs-contract.json` so it pins the positive feature docs instead of requiring the negative headings on this page;
 - update `scripts/discoverability-contract.json`, `sidebars.js`, and any explicit `scripts/check-llms-ai-surfaces.js` assertions so tracked searches, the docs index, `llms-2.0.txt`, and `llms-full-2.0.txt` point to supported feature docs instead of this temporary stance page;
@@ -128,22 +127,23 @@ $thumbnail = activity(
 
 This routes work to a fleet with the right capabilities without promising that the next activity attempt will reuse the same process or host.
 
-## Sticky Execution Is A Replay Optimization, Not A Correctness Feature
+## Sticky Execution Has A Supported Replay Contract
 
-"Sticky execution" means keeping a warm copy of a workflow's reconstructed state on the worker that most recently executed one of its tasks, so the next workflow task can skip part of the replay. When a workflow runs continuously on the same worker, sticky execution reduces replay cost.
+Sticky execution has a supported v2 replay contract. It keeps a warm copy of a workflow's reconstructed state on the worker that most recently completed one of its workflow tasks, then uses `worker_id` affinity so the next workflow task can prefer that warm worker.
 
-The contract for sticky execution in Durable Workflow v2 is narrow:
+The feature contract is positive but intentionally scoped:
 
-- **Sticky execution, if it is used, is an optimization only.** It exists to skip redundant replay, not to bind workflow code to a particular process.
-- **Correctness always falls back to ordinary replay.** Any workflow task may run on any worker. A sticky-cache miss, a worker restart, a routing change, or a deployment rollout causes the next task to run on a fresh worker and reconstruct state from durable history. Workflow code must remain replay-safe under that fallback.
+- **Sticky execution is an optimization only.** It exists to skip redundant replay, not to bind workflow code to a particular process.
+- **Correctness always falls back to ordinary replay.** A sticky-cache miss, a worker restart, a routing change, drain, cache eviction, or deployment rollout causes the task to reconstruct state from durable history. Workflow code must remain replay-safe under that fallback.
 - **Application authors must not rely on process-local state across workflow tasks.** In-memory variables outside workflow history do not survive a sticky-cache miss, and cannot be used as a substitute for signals, updates, side effects, or activity results.
+- **Operators have controls and diagnostics.** Sticky execution publishes enablement, TTL, worker-cache capacity, hit-rate, miss-rate, forced-cold-replay, and capacity-pressure surfaces.
 
-Workflow code that observes only what the engine records on history — inputs, activity outputs, signals, updates, side effects, search attributes, memo — behaves identically whether a task is served from a sticky cache or a cold replay. That is the contract the v2 engine guarantees.
+Workflow code that observes only what the engine records on history - inputs, activity outputs, signals, updates, side effects, search attributes, memo - behaves identically whether a task is served from a sticky cache or a cold replay. See [Sticky Execution](/docs/2.0/features/sticky-execution) for lifecycle, ownership, routing identity, fallback, deployment, controls, metrics, and replay-safe code guidance.
 
 ## When To Revisit This Stance
 
-The 2.0 release ships with ordinary queued activities as the canonical durable contract. Local activities and worker sessions are explicitly out of scope for 2.0, and sticky execution is scoped as a replay-cache optimization with ordinary replay as the correctness fallback.
+The 2.0 release ships with ordinary queued activities as the canonical durable contract. Local activities and worker sessions are explicitly out of scope for 2.0. Sticky execution is supported as a replay-cache optimization with ordinary replay as the correctness fallback.
 
-If a future version adds any of these primitives, it will ship with a published contract covering execution semantics, timeouts, cancellation, heartbeating, and failure detection. Until then, treat these sections as the product's position: no local activities, no worker sessions, and no sticky-execution behavior that a workflow author can rely on for correctness.
+If a future version adds local activities or worker sessions, those primitives will ship with published contracts covering execution semantics, timeouts, cancellation, heartbeating, and failure detection. Until then, treat these sections as the product's position: no local activities and no worker sessions.
 
-After all three primitives have positive docs, this page should stop carrying those product-position disclaimers. Either delete it or reduce it to the canonical queued-activity baseline and cross-link to the supported feature docs.
+After local activities and worker sessions have positive docs, this page should stop carrying those product-position disclaimers. Either delete it or reduce it to the canonical queued-activity baseline and cross-link to the supported feature docs.

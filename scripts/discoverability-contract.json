@@ -142,8 +142,14 @@
     {
       "query": "local activities worker sessions sticky execution",
       "target": "features/activity-execution-model.md",
-      "related": ["defining-workflows/activities.md", "constraints/execution-guarantees.md"],
+      "related": ["defining-workflows/activities.md", "constraints/execution-guarantees.md", "features/sticky-execution.md"],
       "aliases": ["temporary stance page", "ordinary queued activities", "local activities", "worker sessions", "sticky execution"]
+    },
+    {
+      "query": "sticky execution replay cache",
+      "target": "features/sticky-execution.md",
+      "related": ["constraints/execution-guarantees.md", "features/activity-execution-model.md"],
+      "aliases": ["sticky execution", "ordinary replay", "replay optimization", "sticky_worker_id", "forced_cold_replay"]
     },
     {
       "query": "waterline workflow dashboard history export",
@@ -361,12 +367,12 @@
     },
     {
       "query": "sticky execution replay cache",
-      "target": "features/activity-execution-model.md",
+      "target": "features/sticky-execution.md",
       "related": ["constraints/execution-guarantees.md"],
       "aliases": ["sticky execution", "ordinary replay", "replay optimization"],
       "source": "activity execution replacement gate",
       "lastReviewed": "2026-05-05",
-      "action": "When sticky execution has a published runtime contract and positive docs, retarget this search to docs/features/sticky-execution.md and stop routing it to the temporary stance page."
+      "action": "Keep sticky execution searches routed to the positive feature contract."
     }
   ]
 }

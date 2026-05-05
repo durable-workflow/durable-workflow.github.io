@@ -186,3 +186,5 @@ difference.
   timeout enforcement, and repair.
 - [Activity Execution Model](../features/activity-execution-model.md) explains
   why ordinary queued activities are the canonical durable contract.
+- [Sticky Execution](../features/sticky-execution.md) explains sticky replay
+  caches and why cold replay remains the correctness fallback.

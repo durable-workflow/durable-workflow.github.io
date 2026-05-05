@@ -109,7 +109,7 @@
         "Choosing The Right Primitive",
         "Local Activities Are Not A v2 Primitive",
         "Worker Sessions Are Not A v2 Primitive",
-        "Sticky Execution Is A Replay Optimization, Not A Correctness Feature",
+        "Sticky Execution Has A Supported Replay Contract",
         "When To Revisit This Stance"
       ],
       "requiredTerms": [
@@ -123,12 +123,50 @@
         "deleted or reduced to the ordinary queued-activity baseline",
         "docs/features/local-activities.md",
         "docs/features/worker-sessions.md",
-        "docs/features/sticky-execution.md",
+        "Sticky execution has a supported v2 replay contract.",
         "sidebars.js",
         "scripts/discoverability-contract.json",
         "scripts/check-llms-ai-surfaces.js",
         "llms-2.0.txt",
         "llms-full-2.0.txt"
+      ]
+    },
+    {
+      "path": "features/sticky-execution.md",
+      "title": "Sticky Execution",
+      "minimumCodeFences": 3,
+      "requiredHeadings": [
+        "Contract Summary",
+        "Sticky-Cache Lifecycle",
+        "Routing Identity",
+        "Fallback Semantics",
+        "Deployment, Drain, and Rollout",
+        "Operator Controls",
+        "Worker Protocol Fields",
+        "Metrics and Diagnostics",
+        "Replay-Safe Code"
+      ],
+      "requiredTerms": [
+        "supported Durable Workflow v2 replay optimization",
+        "process-local state for correctness",
+        "worker_id",
+        "sticky_worker_id",
+        "sticky_until",
+        "sticky_replay_mode",
+        "sticky_claimed_at",
+        "cache misses",
+        "worker restart",
+        "DW_V2_STICKY_EXECUTION_ENABLED",
+        "DW_V2_STICKY_EXECUTION_TTL_SECONDS",
+        "DW_V2_STICKY_EXECUTION_DEFAULT_CACHE_CAPACITY",
+        "DW_V2_STICKY_EXECUTION_CAPACITY_PRESSURE_RATIO",
+        "sticky_hit_expected",
+        "cold_replay",
+        "forced_cold_replay",
+        "hit_rate_last_minute",
+        "miss_rate_last_minute",
+        "forced_cold_replay_last_minute",
+        "capacity pressure"
       ]
     },
     {

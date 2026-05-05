@@ -106,6 +106,10 @@ admission caps, and bounded task dispatch budgets.
 | `DW_POLLING_CACHE_PATH` | `storage/framework/cache/server-polling/<APP_ENV>` | Directory for worker-poll coordination state when using file-backed polling cache. | `WORKFLOW_SERVER_POLLING_CACHE_PATH` |
 | `DW_WAKE_SIGNAL_TTL_SECONDS` | `max(DW_WORKER_POLL_TIMEOUT + 5, 60)` | TTL for per-queue wake signals that short-circuit a pending poll. | `WORKFLOW_SERVER_WAKE_SIGNAL_TTL_SECONDS` |
 | `DW_MAX_TASKS_PER_POLL` | `1` | Maximum tasks returned per worker poll. | `WORKFLOW_SERVER_MAX_TASKS_PER_POLL` |
+| `DW_V2_STICKY_EXECUTION_ENABLED` | `true` | Enable sticky workflow-task routing as a replay optimization; cold replay remains the correctness fallback. | `WORKFLOW_V2_STICKY_EXECUTION_ENABLED` |
+| `DW_V2_STICKY_EXECUTION_TTL_SECONDS` | `300` | Seconds a run remains sticky to the last sticky-capable worker after that worker completes a workflow task. | `WORKFLOW_V2_STICKY_EXECUTION_TTL_SECONDS` |
+| `DW_V2_STICKY_EXECUTION_DEFAULT_CACHE_CAPACITY` | `100` | Default sticky-cache capacity for workers that enable sticky execution without reporting a capacity. | `WORKFLOW_SERVER_STICKY_EXECUTION_DEFAULT_CACHE_CAPACITY` |
+| `DW_V2_STICKY_EXECUTION_CAPACITY_PRESSURE_RATIO` | `0.9` | Worker sticky-cache size/capacity ratio at which operator metrics report capacity pressure. | `WORKFLOW_SERVER_STICKY_EXECUTION_CAPACITY_PRESSURE_RATIO` |
 | `DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` | unset | Active workflow-task lease cap per namespace/task queue. | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` |
 | `DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` | unset | Active workflow-task lease cap across all queues in a namespace. | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` |
 | `DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE` | unset | Per-minute workflow-task dispatch cap per namespace/task queue. | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE` |
@@ -117,6 +121,10 @@ admission caps, and bounded task dispatch budgets.
 | `DW_TASK_QUEUE_ADMISSION_OVERRIDES` | `{}` | JSON overrides keyed by `namespace:task_queue`, `namespace:*`, `task_queue`, or `*` for active leases, dispatch rate, namespace caps, and downstream budget groups. | `WORKFLOW_SERVER_TASK_QUEUE_ADMISSION_OVERRIDES` |
 | `DW_EXPIRED_WORKFLOW_TASK_RECOVERY_SCAN_LIMIT` | `5` | Maximum expired workflow tasks recovered per pass. | `WORKFLOW_SERVER_EXPIRED_WORKFLOW_TASK_RECOVERY_SCAN_LIMIT` |
 | `DW_EXPIRED_WORKFLOW_TASK_RECOVERY_TTL_SECONDS` | `5` | Minimum seconds between expired-task recovery passes per queue. | `WORKFLOW_SERVER_EXPIRED_WORKFLOW_TASK_RECOVERY_TTL_SECONDS` |
+
+See [Sticky Execution](/docs/2.0/features/sticky-execution) for the sticky-cache
+lifecycle, worker protocol fields, replay modes, and diagnostics behind the
+sticky execution controls.
 
 Example admission override:
 

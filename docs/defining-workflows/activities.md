@@ -17,7 +17,7 @@ keywords:
 An activity is a unit of work that performs a specific task or operation (e.g. making an API request, processing data, sending an email) and can be executed by a workflow.
 
 :::note Durable Execution Contract
-Every v2 activity runs as a durable queued task. Durable Workflow 2.0 does not ship local activities or worker sessions, and sticky execution is a replay optimization rather than a correctness contract. See [Activity Execution Model](/docs/2.0/features/activity-execution-model) for the exact stance and the recommended alternatives.
+Every v2 activity runs as a durable queued task. Durable Workflow 2.0 does not ship local activities or worker sessions. Sticky execution is a supported replay optimization, not a correctness contract. See [Activity Execution Model](/docs/2.0/features/activity-execution-model) and [Sticky Execution](/docs/2.0/features/sticky-execution) for the exact contract and recommended alternatives.
 :::
 
 You may use the `make:activity` artisan command to create a new activity:
@@ -51,9 +51,10 @@ different process or host.
 
 If you need a replay-safe value without scheduling queued work, use
 [`sideEffect(...)`](/docs/2.0/features/side-effects) instead. For the full
-stance on ordinary queued activities, local activities, worker sessions, and
-sticky execution, see
-[Activity Execution Model](/docs/2.0/features/activity-execution-model).
+stance on ordinary queued activities, local activities, and worker sessions,
+see [Activity Execution Model](/docs/2.0/features/activity-execution-model).
+For sticky replay-cache behavior, see
+[Sticky Execution](/docs/2.0/features/sticky-execution).
 
 ## Idempotency and Durable Identity
 
