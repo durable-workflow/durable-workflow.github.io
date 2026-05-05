@@ -138,6 +138,50 @@ conformance test that pins the spec.
   by the per-package README; not in this catalog because the Python SDK
   is a consumer, not a publisher of the protocol spec set).
 
+## Object Family Authority Index
+
+Every public object family governed by the catalog names one schema
+authority and one version authority. This table is the human-readable
+index for the `object_families` arrays in
+`static/platform-protocol-specs.json`; the published spec files carry
+the same metadata under `x-durable-workflow-object-families`.
+
+| Spec | Object family | Owner repo | Schema authority | Version authority |
+|------|---------------|------------|------------------|-------------------|
+| `control_plane_api` | `control_plane_request_contract` | `durable-workflow/server` | `App\Support\ControlPlaneRequestContract::SCHEMA` | `App\Support\ControlPlaneRequestContract::VERSION` |
+| `control_plane_api` | `control_plane_response_envelope` | `durable-workflow/server` | `App\Support\ControlPlaneResponseContract::SCHEMA` | `App\Support\ControlPlaneResponseContract::VERSION` |
+| `control_plane_api` | `control_plane_operation_contract` | `durable-workflow/server` | `App\Support\ControlPlaneResponseContract::CONTRACT_SCHEMA` | `App\Support\ControlPlaneResponseContract::CONTRACT_VERSION` |
+| `worker_protocol_api` | `worker_registration_request` | `durable-workflow/server` | `App\Http\Controllers\Api\WorkerController::register` | `Workflow\V2\Support\WorkerProtocolVersion::VERSION` |
+| `worker_protocol_api` | `worker_task_poll_request` | `durable-workflow/server` | `App\Support\WorkflowTaskPoller and App\Support\ActivityTaskPoller` | `Workflow\V2\Support\WorkerProtocolVersion::VERSION` |
+| `worker_protocol_api` | `worker_task_result` | `durable-workflow/server` | `App\Http\Controllers\Api\WorkerController task completion/failure actions` | `Workflow\V2\Support\WorkerProtocolVersion::VERSION` |
+| `worker_protocol_api` | `external_task_input_contract` | `durable-workflow/server` | `App\Support\ExternalTaskInputContract::SCHEMA` | `App\Support\ExternalTaskInputContract::VERSION` |
+| `worker_protocol_api` | `external_task_result_contract` | `durable-workflow/server` | `App\Support\ExternalTaskResultContract::SCHEMA` | `App\Support\ExternalTaskResultContract::VERSION` |
+| `worker_protocol_stream` | `worker_poll_stream` | `durable-workflow/server` | `App\Support\LongPoller and App\Support\WorkerProtocol` | `Workflow\V2\Support\WorkerProtocolVersion::VERSION` |
+| `worker_protocol_stream` | `worker_task_lease` | `durable-workflow/server` | `App\Support\WorkflowTaskPoller and App\Support\ActivityTaskPoller` | `Workflow\V2\Support\WorkerProtocolVersion::VERSION` |
+| `worker_protocol_stream` | `worker_task_heartbeat` | `durable-workflow/server` | `App\Http\Controllers\Api\WorkerController heartbeat actions` | `Workflow\V2\Support\WorkerProtocolVersion::VERSION` |
+| `history_event_payloads` | `workflow_history_events` | `durable-workflow/workflow` | `Workflow\V2\Enums\HistoryEventType` | `durable-workflow.v2.history-event-payloads` |
+| `history_event_payloads` | `workflow_schedule_history_events` | `durable-workflow/workflow` | `Workflow\V2\Models\WorkflowScheduleHistoryEvent` | `durable-workflow.v2.history-event-payloads` |
+| `history_export_bundle` | `history_export_bundle` | `durable-workflow/workflow` | `Workflow\V2\Support\HistoryExport::SCHEMA` | `Workflow\V2\Support\HistoryExport::SCHEMA_VERSION` |
+| `replay_bundle` | `replay_bundle` | `durable-workflow/workflow` | `Workflow\V2\Support\WorkflowReplayer` | `durable-workflow.v2.replay-bundle` |
+| `waterline_read_api` | `waterline_read_envelope` | `durable-workflow/waterline` | `waterline route/controller response envelopes` | `durable-workflow.v2.waterline-read-api` |
+| `waterline_read_api` | `waterline_operator_action_envelope` | `durable-workflow/waterline` | `waterline operator action controllers` | `durable-workflow.v2.waterline-read-api` |
+| `waterline_diagnostic_objects` | `waterline_run_detail` | `durable-workflow/waterline` | `Waterline\Http\Controllers\WorkflowsController` | `durable-workflow.v2.waterline-diagnostic-objects` |
+| `waterline_diagnostic_objects` | `waterline_health_diagnostics` | `durable-workflow/waterline` | `Waterline\Http\Controllers\V2HealthController` | `durable-workflow.v2.waterline-diagnostic-objects` |
+| `waterline_diagnostic_objects` | `waterline_timeline_rows` | `durable-workflow/waterline` | `Waterline operator timeline projections` | `durable-workflow.v2.waterline-diagnostic-objects` |
+| `waterline_diagnostic_objects` | `waterline_lineage_edges` | `durable-workflow/waterline` | `Waterline operator lineage projections` | `durable-workflow.v2.waterline-diagnostic-objects` |
+| `repair_actionability_objects` | `task_repair_policy` | `durable-workflow/workflow` | `Workflow\V2\Support\TaskRepairPolicy::snapshot` | `durable-workflow.v2.repair-actionability-objects` |
+| `repair_actionability_objects` | `task_repair_candidates` | `durable-workflow/workflow` | `Workflow\V2\Support\TaskRepairCandidates::snapshot` | `durable-workflow.v2.repair-actionability-objects` |
+| `repair_actionability_objects` | `operator_queue_visibility` | `durable-workflow/workflow` | `Workflow\V2\Support\OperatorQueueVisibility` | `durable-workflow.v2.repair-actionability-objects` |
+| `repair_actionability_objects` | `actionability` | `durable-workflow/waterline` | `Waterline\Support\ActionabilityContract` | `Waterline\Support\ActionabilityContract::VERSION` |
+| `mcp_discovery` | `mcp_tool_discovery` | `durable-workflow/durable-workflow.github.io` | `docs/mcp-workflows.md and static/platform-protocol-specs/mcp-discovery.schema.json` | `durable-workflow.v2.mcp-discovery` |
+| `mcp_discovery` | `llms_txt_discovery` | `durable-workflow/durable-workflow.github.io` | `docs/mcp-workflows.md and generated llms files` | `durable-workflow.v2.mcp-discovery` |
+| `mcp_tool_results` | `mcp_tool_result_envelope` | `durable-workflow/durable-workflow.github.io` | `docs/mcp-workflows.md Tool Result Contract and static/platform-protocol-specs/mcp-tool-results.schema.json` | `durable-workflow.v2.mcp-tool-results` |
+| `cluster_info_envelope` | `cluster_info_envelope` | `durable-workflow/server` | `App\Http\Controllers\Api\HealthController::clusterInfo` | `durable-workflow.v2.cluster-info-envelope` |
+| `cluster_info_envelope` | `client_compatibility_manifest` | `durable-workflow/server` | `App\Support\ClientCompatibility::SCHEMA` | `App\Support\ClientCompatibility::VERSION` |
+| `cluster_info_envelope` | `surface_stability_contract` | `durable-workflow/workflow` | `Workflow\V2\Support\SurfaceStabilityContract::SCHEMA` | `Workflow\V2\Support\SurfaceStabilityContract::VERSION` |
+| `cluster_info_envelope` | `platform_protocol_specs_catalog` | `durable-workflow/workflow` | `Workflow\V2\Support\PlatformProtocolSpecs::SCHEMA` | `Workflow\V2\Support\PlatformProtocolSpecs::VERSION` |
+| `cluster_info_envelope` | `platform_conformance_suite_manifest` | `durable-workflow/workflow` | `Workflow\V2\Support\PlatformConformanceSuite::SCHEMA` | `Workflow\V2\Support\PlatformConformanceSuite::VERSION` |
+
 ## Spec Catalog
 
 Each row below is the catalog entry for one public surface. The fields

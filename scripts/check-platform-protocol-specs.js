@@ -622,7 +622,27 @@ function assertCatalogDocAlignsWithCatalog(catalog) {
             `is visible in the human-readable catalog.`,
         );
       }
+
+      assertCatalogDocListsObjectFamilyAuthority(doc, name, family);
     }
+  }
+}
+
+function assertCatalogDocListsObjectFamilyAuthority(doc, name, family) {
+  const row = new RegExp(
+    `\\|\\s*\`${escapeRegExp(name)}\`\\s*` +
+      `\\|\\s*\`${escapeRegExp(family.name)}\`\\s*` +
+      `\\|\\s*\`${escapeRegExp(family.owner_repo)}\`\\s*` +
+      `\\|\\s*\`${escapeRegExp(family.schema_authority)}\`\\s*` +
+      `\\|\\s*\`${escapeRegExp(family.version_authority)}\`\\s*\\|`,
+  );
+
+  if (!row.test(doc)) {
+    throw new Error(
+      `docs/platform-protocol-specs.md must include an object-family ` +
+        `authority row for ${name}/${family.name} with owner_repo, ` +
+        `schema_authority, and version_authority from the JSON catalog.`,
+    );
   }
 }
 
