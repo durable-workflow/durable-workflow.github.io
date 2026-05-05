@@ -44,7 +44,7 @@ truth:
 - `platform_protocol_specs` in the response body of
   `GET /api/cluster/info` on the standalone Durable Workflow server,
   schema `durable-workflow.v2.platform-protocol-specs.catalog`,
-  version `3`.
+  version `4`.
 - A frozen mirror of the same manifest in this repository at
   `static/platform-protocol-specs.json`.
 - The PHP class `Workflow\V2\Support\PlatformProtocolSpecs`, which is
@@ -55,6 +55,27 @@ breaking-change rule, or status, or removes an entry must update this
 page, the JSON mirror, and the PHP manifest in the same change. The
 release-check gate in `scripts/check-platform-protocol-specs.js` fails
 the docs build when it detects drift.
+
+## Published Spec Files
+
+These are the authoritative machine-readable files referenced by the
+catalog. The per-entry sections below define owner, version authority,
+and breaking-change policy for each file.
+
+| Spec | File |
+|------|------|
+| `control_plane_api` | [`control-plane-api.openapi.yaml`](pathname:///platform-protocol-specs/control-plane-api.openapi.yaml) |
+| `worker_protocol_api` | [`worker-protocol-api.openapi.yaml`](pathname:///platform-protocol-specs/worker-protocol-api.openapi.yaml) |
+| `worker_protocol_stream` | [`worker-protocol-stream.asyncapi.yaml`](pathname:///platform-protocol-specs/worker-protocol-stream.asyncapi.yaml) |
+| `history_event_payloads` | [`history-event-payloads.schema.json`](pathname:///platform-protocol-specs/history-event-payloads.schema.json) |
+| `history_export_bundle` | [`history-export-bundle.schema.json`](pathname:///platform-protocol-specs/history-export-bundle.schema.json) |
+| `replay_bundle` | [`replay-bundle.schema.json`](pathname:///platform-protocol-specs/replay-bundle.schema.json) |
+| `waterline_read_api` | [`waterline-read-api.openapi.yaml`](pathname:///platform-protocol-specs/waterline-read-api.openapi.yaml) |
+| `waterline_diagnostic_objects` | [`waterline-diagnostic-objects.schema.json`](pathname:///platform-protocol-specs/waterline-diagnostic-objects.schema.json) |
+| `repair_actionability_objects` | [`repair-actionability-objects.schema.json`](pathname:///platform-protocol-specs/repair-actionability-objects.schema.json) |
+| `mcp_discovery` | [`mcp-discovery.schema.json`](pathname:///platform-protocol-specs/mcp-discovery.schema.json) |
+| `mcp_tool_results` | [`mcp-tool-results.schema.json`](pathname:///platform-protocol-specs/mcp-tool-results.schema.json) |
+| `cluster_info_envelope` | [`cluster-info-envelope.schema.json`](pathname:///platform-protocol-specs/cluster-info-envelope.schema.json) |
 
 ## Spec Formats
 
@@ -139,7 +160,7 @@ control plane, and operator scripts call.
 | Breaking-change release | `major` |
 | Discovery endpoint | `GET /api/cluster/info -> control_plane` |
 | Conformance test | `durable-workflow/server: tests/Feature/ClusterInfoCompatibilityTest.php` and `tests/Feature/Api/*` per-route contract tests |
-| Status | `in_progress` |
+| Status | `published` |
 | Spec path | `static/platform-protocol-specs/control-plane-api.openapi.yaml` |
 
 ### `worker_protocol_api`
@@ -161,7 +182,7 @@ long-poll and lease-renewal semantics.
 | Breaking-change release | `major` |
 | Discovery endpoint | `GET /api/cluster/info -> worker_protocol` |
 | Conformance test | `durable-workflow/server: tests/Feature/Api/Worker*` contract tests |
-| Status | `in_progress` |
+| Status | `published` |
 | Spec path | `static/platform-protocol-specs/worker-protocol-api.openapi.yaml` |
 
 ### `worker_protocol_stream`
@@ -182,7 +203,7 @@ routing precedence, build-id rollout drains, and graceful disconnect.
 | Breaking-change release | `major` |
 | Discovery endpoint | `GET /api/cluster/info -> worker_protocol` |
 | Conformance test | `durable-workflow/server: tests/Feature/Api/WorkerLongPollTest.php` and `tests/Feature/Api/WorkerHeartbeatTest.php` |
-| Status | `planned` |
+| Status | `published` |
 | Spec path | `static/platform-protocol-specs/worker-protocol-stream.asyncapi.yaml` |
 
 ### `history_event_payloads`
@@ -206,7 +227,7 @@ are the per-event source of truth.
 | Evolution rule | `parallel_primitive_only` |
 | Breaking-change release | `parallel_primitive_only` |
 | Conformance test | `durable-workflow/workflow: tests/Unit/V2/HistoryEventWireFormatDocumentationTest.php` and `tests/Unit/V2/VersionMarkerWireFormatTest.php` |
-| Status | `in_progress` |
+| Status | `published` |
 | Spec path | `static/platform-protocol-specs/history-event-payloads.schema.json` |
 
 ### `history_export_bundle`
@@ -226,7 +247,7 @@ references, payload codec metadata, lineage edges, and bundle manifest.
 | Evolution rule | `additive_minor_breaking_major` |
 | Breaking-change release | `major` |
 | Conformance test | `durable-workflow/workflow: tests/Unit/V2/HistoryExportTest.php` |
-| Status | `planned` |
+| Status | `published` |
 | Spec path | `static/platform-protocol-specs/history-export-bundle.schema.json` |
 
 ### `replay_bundle`
@@ -247,7 +268,7 @@ UIs, and the replay-verification contract.
 | Evolution rule | `additive_minor_breaking_major` |
 | Breaking-change release | `major` |
 | Conformance test | `durable-workflow/workflow: tests/Unit/V2/WorkflowReplayer*Test.php` and `durable-workflow/server: tests/Feature/ReplayVerificationContractTest.php` |
-| Status | `planned` |
+| Status | `published` |
 | Spec path | `static/platform-protocol-specs/replay-bundle.schema.json` |
 
 ### `waterline_read_api`
@@ -267,7 +288,7 @@ views, schedule audit, and dashboard JSON shapes.
 | Evolution rule | `additive_minor_breaking_major` |
 | Breaking-change release | `major` |
 | Conformance test | `durable-workflow/waterline: tests/Feature/OperatorReadApiTest.php` and contract tests under `tests/Feature/Api/` |
-| Status | `planned` |
+| Status | `published` |
 | Spec path | `static/platform-protocol-specs/waterline-read-api.openapi.yaml` |
 
 ### `waterline_diagnostic_objects`
@@ -288,7 +309,7 @@ operator dashboards and external observability adapters parse.
 | Evolution rule | `additive_minor_breaking_major` |
 | Breaking-change release | `major` |
 | Conformance test | `durable-workflow/waterline: tests/Feature/DiagnosticObjectContractTest.php` |
-| Status | `planned` |
+| Status | `published` |
 | Spec path | `static/platform-protocol-specs/waterline-diagnostic-objects.schema.json` |
 
 ### `repair_actionability_objects`
@@ -309,7 +330,7 @@ that drive operator-led recovery.
 | Evolution rule | `additive_minor_breaking_major` |
 | Breaking-change release | `major` |
 | Conformance test | `durable-workflow/workflow: tests/Unit/V2/TaskRepair*Test.php` and `durable-workflow/server: tests/Feature/Api/RepairControllerTest.php` |
-| Status | `in_progress` |
+| Status | `published` |
 | Spec path | `static/platform-protocol-specs/repair-actionability-objects.schema.json` |
 
 ### `mcp_discovery`
@@ -329,7 +350,7 @@ list shape, parameter schema shape, and discovery hints.
 | Evolution rule | `additive_minor_breaking_major` |
 | Breaking-change release | `major` |
 | Conformance test | `durable-workflow/server: tests/Feature/Mcp/DiscoveryContractTest.php` |
-| Status | `planned` |
+| Status | `published` |
 | Spec path | `static/platform-protocol-specs/mcp-discovery.schema.json` |
 
 ### `mcp_tool_results`
@@ -350,7 +371,7 @@ discovery hints are diagnostic, not contract.
 | Evolution rule | `additive_minor_breaking_major` |
 | Breaking-change release | `major` |
 | Conformance test | `durable-workflow/server: tests/Feature/Mcp/ToolResultEnvelopeTest.php` |
-| Status | `planned` |
+| Status | `published` |
 | Spec path | `static/platform-protocol-specs/mcp-tool-results.schema.json` |
 
 ### `cluster_info_envelope`
@@ -402,6 +423,7 @@ under `release_check`.
 | `json_mirror_aligned` | `static/platform-protocol-specs.json` is byte-equivalent to the PHP `PlatformProtocolSpecs::manifest()` output. |
 | `spec_path_published_when_status_published` | When `status` is `published`, the file at `spec_path` exists in this repository, is referenced from the matching authority doc page, parses as the format declared by the catalog entry (JSON Schema 2020-12 / OpenAPI 3.1 / AsyncAPI 2.6+), and the document's `$id` (or OpenAPI `info.title` / AsyncAPI `id`) matches the catalog `spec_id`. |
 | `breaking_change_release_consistent_with_evolution_rule` | Every entry's `breaking_change_release` is one of `major`, `parallel_primitive_only`, or `experimental_any_release`, and matches the value required by its `evolution_rule`: `additive_minor_breaking_major` → `major`, `parallel_primitive_only` → `parallel_primitive_only`, `experimental_any_release` → `experimental_any_release`. Letting these diverge would let a frozen wire format claim a major-version break, contradicting its rule. |
+| `deliverable_specs_published` | Every entry in the issue #690 deliverable surface set is marked `published` and has a parseable spec document. |
 
 The docs site CI runs `scripts/check-platform-protocol-specs.js` to
 enforce these gates. Drift here means a release shipped a doc change

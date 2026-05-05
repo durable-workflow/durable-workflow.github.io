@@ -1,0 +1,691 @@
+openapi: 3.1.0
+info:
+  title: durable-workflow.v2.control-plane-api
+  version: "4"
+  summary: Durable Workflow control-plane HTTP+JSON API
+  description: >
+    Normative OpenAPI specification for the standalone Durable Workflow
+    server control-plane HTTP+JSON API. This document pins the public
+    route set, HTTP methods, protocol headers, request-body envelope
+    policy, and response-envelope policy. Per-object family schemas are
+    referenced from the platform protocol catalog.
+x-durable-workflow-catalog-entry: control_plane_api
+x-durable-workflow-catalog-schema: durable-workflow.v2.platform-protocol-specs.catalog
+x-durable-workflow-catalog-version: 4
+x-durable-workflow-owner-symbol: App\Support\ControlPlaneProtocol and App\Support\ControlPlaneRequestContract
+x-durable-workflow-evolution-rule: additive_minor_breaking_major
+servers:
+  - url: /api
+security:
+  - durableAuth: []
+tags:
+  - name: discovery
+  - name: namespaces
+  - name: workflows
+  - name: schedules
+  - name: task-queues
+  - name: deployments
+  - name: workers
+  - name: services
+  - name: system
+paths:
+  /health:
+    get:
+      tags: [discovery]
+      operationId: getHealth
+      security: []
+      responses:
+        "200": { $ref: "#/components/responses/JsonEnvelope" }
+        "503": { $ref: "#/components/responses/JsonEnvelope" }
+  /ready:
+    get:
+      tags: [discovery]
+      operationId: getReadiness
+      security: []
+      responses:
+        "200": { $ref: "#/components/responses/JsonEnvelope" }
+        "503": { $ref: "#/components/responses/JsonEnvelope" }
+  /cluster/info:
+    get:
+      tags: [discovery]
+      operationId: getClusterInfo
+      parameters:
+        - $ref: "#/components/parameters/NamespaceHeaderOptional"
+      responses:
+        "200":
+          description: Cluster discovery envelope.
+          content:
+            application/json:
+              schema:
+                $ref: "./cluster-info-envelope.schema.json"
+        "401": { $ref: "#/components/responses/ControlPlaneError" }
+        "403": { $ref: "#/components/responses/ControlPlaneError" }
+  /namespaces:
+    get:
+      tags: [namespaces]
+      operationId: listNamespaces
+      parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }]
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+    post:
+      tags: [namespaces]
+      operationId: createNamespace
+      parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }]
+      requestBody: { $ref: "#/components/requestBodies/JsonObject" }
+      responses:
+        "201": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "422": { $ref: "#/components/responses/ControlPlaneError" }
+  /namespaces/{namespace}:
+    get:
+      tags: [namespaces]
+      operationId: getNamespace
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/NamespacePath"
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "404": { $ref: "#/components/responses/ControlPlaneError" }
+    put:
+      tags: [namespaces]
+      operationId: updateNamespace
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/NamespacePath"
+      requestBody: { $ref: "#/components/requestBodies/JsonObject" }
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "422": { $ref: "#/components/responses/ControlPlaneError" }
+  /namespaces/{namespace}/external-storage:
+    put:
+      tags: [namespaces]
+      operationId: updateNamespaceExternalStorage
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/NamespacePath"
+      requestBody: { $ref: "#/components/requestBodies/JsonObject" }
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "422": { $ref: "#/components/responses/ControlPlaneError" }
+  /storage/test:
+    post:
+      tags: [system]
+      operationId: testExternalStorage
+      parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }]
+      requestBody: { $ref: "#/components/requestBodies/JsonObject" }
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "422": { $ref: "#/components/responses/ControlPlaneError" }
+  /workflows:
+    get:
+      tags: [workflows]
+      operationId: listWorkflows
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/PageQuery"
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+    post:
+      tags: [workflows]
+      operationId: startWorkflow
+      parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }]
+      requestBody: { $ref: "#/components/requestBodies/JsonObject" }
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "201": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "409": { $ref: "#/components/responses/ControlPlaneError" }
+        "422": { $ref: "#/components/responses/ControlPlaneError" }
+  /workflows/{workflowId}:
+    get:
+      tags: [workflows]
+      operationId: getWorkflow
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/WorkflowIdPath"
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "404": { $ref: "#/components/responses/ControlPlaneError" }
+  /workflows/{workflowId}/signal/{signalName}:
+    post:
+      tags: [workflows]
+      operationId: signalWorkflow
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/WorkflowIdPath"
+        - $ref: "#/components/parameters/SignalNamePath"
+      requestBody: { $ref: "#/components/requestBodies/CommandArguments" }
+      responses:
+        "202": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "404": { $ref: "#/components/responses/ControlPlaneError" }
+        "422": { $ref: "#/components/responses/ControlPlaneError" }
+  /workflows/{workflowId}/query/{queryName}:
+    post:
+      tags: [workflows]
+      operationId: queryWorkflow
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/WorkflowIdPath"
+        - $ref: "#/components/parameters/QueryNamePath"
+      requestBody: { $ref: "#/components/requestBodies/CommandArguments" }
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "404": { $ref: "#/components/responses/ControlPlaneError" }
+        "422": { $ref: "#/components/responses/ControlPlaneError" }
+  /workflows/{workflowId}/update/{updateName}:
+    post:
+      tags: [workflows]
+      operationId: updateWorkflow
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/WorkflowIdPath"
+        - $ref: "#/components/parameters/UpdateNamePath"
+      requestBody: { $ref: "#/components/requestBodies/CommandArguments" }
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "202": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "404": { $ref: "#/components/responses/ControlPlaneError" }
+        "422": { $ref: "#/components/responses/ControlPlaneError" }
+  /workflows/{workflowId}/cancel:
+    post:
+      tags: [workflows]
+      operationId: cancelWorkflow
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/WorkflowIdPath"
+      requestBody: { $ref: "#/components/requestBodies/ReasonObject" }
+      responses:
+        "202": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+  /workflows/{workflowId}/terminate:
+    post:
+      tags: [workflows]
+      operationId: terminateWorkflow
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/WorkflowIdPath"
+      requestBody: { $ref: "#/components/requestBodies/ReasonObject" }
+      responses:
+        "202": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+  /workflows/{workflowId}/repair:
+    post:
+      tags: [workflows]
+      operationId: repairWorkflow
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/WorkflowIdPath"
+      requestBody: { $ref: "#/components/requestBodies/JsonObject" }
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "409": { $ref: "#/components/responses/ControlPlaneError" }
+  /workflows/{workflowId}/archive:
+    post:
+      tags: [workflows]
+      operationId: archiveWorkflow
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/WorkflowIdPath"
+      requestBody: { $ref: "#/components/requestBodies/ReasonObject" }
+      responses:
+        "202": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+  /workflows/{workflowId}/runs:
+    get:
+      tags: [workflows]
+      operationId: listWorkflowRuns
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/WorkflowIdPath"
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+  /workflows/{workflowId}/debug:
+    get:
+      tags: [workflows]
+      operationId: debugWorkflow
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/WorkflowIdPath"
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+  /workflows/{workflowId}/runs/{runId}:
+    get:
+      tags: [workflows]
+      operationId: getWorkflowRun
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/WorkflowIdPath"
+        - $ref: "#/components/parameters/RunIdPath"
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+  /workflows/{workflowId}/runs/{runId}/debug:
+    get:
+      tags: [workflows]
+      operationId: debugWorkflowRun
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/WorkflowIdPath"
+        - $ref: "#/components/parameters/RunIdPath"
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+  /workflows/{workflowId}/runs/{runId}/history:
+    get:
+      tags: [workflows]
+      operationId: getWorkflowRunHistory
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/WorkflowIdPath"
+        - $ref: "#/components/parameters/RunIdPath"
+        - $ref: "#/components/parameters/PageTokenQuery"
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+  /workflows/{workflowId}/runs/{runId}/history/export:
+    get:
+      tags: [workflows]
+      operationId: exportWorkflowRunHistory
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/WorkflowIdPath"
+        - $ref: "#/components/parameters/RunIdPath"
+      responses:
+        "200":
+          description: History export bundle.
+          content:
+            application/json:
+              schema:
+                $ref: "./history-export-bundle.schema.json"
+  /workflows/{workflowId}/runs/{runId}/{command}/{name}:
+    post:
+      tags: [workflows]
+      operationId: commandWorkflowRunByName
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/WorkflowIdPath"
+        - $ref: "#/components/parameters/RunIdPath"
+        - name: command
+          in: path
+          required: true
+          schema: { type: string, enum: [signal, query, update] }
+        - name: name
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+      requestBody: { $ref: "#/components/requestBodies/CommandArguments" }
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "202": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "409": { $ref: "#/components/responses/ControlPlaneError" }
+  /workflows/{workflowId}/runs/{runId}/{terminalCommand}:
+    post:
+      tags: [workflows]
+      operationId: terminalWorkflowRunCommand
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/WorkflowIdPath"
+        - $ref: "#/components/parameters/RunIdPath"
+        - name: terminalCommand
+          in: path
+          required: true
+          schema: { type: string, enum: [cancel, terminate] }
+      requestBody: { $ref: "#/components/requestBodies/ReasonObject" }
+      responses:
+        "202": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "409": { $ref: "#/components/responses/ControlPlaneError" }
+  /bridge-adapters/webhook/{adapter}:
+    post:
+      tags: [workflows]
+      operationId: bridgeAdapterWebhook
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - name: adapter
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+      requestBody: { $ref: "#/components/requestBodies/JsonObject" }
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "202": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "422": { $ref: "#/components/responses/ControlPlaneError" }
+  /workers:
+    get:
+      tags: [workers]
+      operationId: listWorkers
+      parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }]
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+  /workers/{workerId}:
+    get:
+      tags: [workers]
+      operationId: getWorker
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - name: workerId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+    delete:
+      tags: [workers]
+      operationId: deleteWorker
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - name: workerId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+      responses:
+        "204": { description: Worker deleted. }
+  /task-queues:
+    get:
+      tags: [task-queues]
+      operationId: listTaskQueues
+      parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }]
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+  /task-queues/{taskQueue}:
+    get:
+      tags: [task-queues]
+      operationId: getTaskQueue
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/TaskQueuePath"
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+  /task-queues/{taskQueue}/build-ids:
+    get:
+      tags: [task-queues]
+      operationId: listTaskQueueBuildIds
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/TaskQueuePath"
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+  /task-queues/{taskQueue}/build-ids/{intent}:
+    post:
+      tags: [task-queues]
+      operationId: setBuildIdDrainIntent
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/TaskQueuePath"
+        - name: intent
+          in: path
+          required: true
+          schema: { type: string, enum: [drain, resume] }
+      requestBody: { $ref: "#/components/requestBodies/JsonObject" }
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+  /deployments:
+    get:
+      tags: [deployments]
+      operationId: listDeployments
+      parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }]
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+  /deployments/{name}:
+    get:
+      tags: [deployments]
+      operationId: getDeployment
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/DeploymentNamePath"
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+  /deployments/{name}/{action}:
+    post:
+      tags: [deployments]
+      operationId: runDeploymentLifecycleAction
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/DeploymentNamePath"
+        - name: action
+          in: path
+          required: true
+          schema: { type: string, enum: [promote, drain, resume, rollback] }
+      requestBody: { $ref: "#/components/requestBodies/JsonObject" }
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "409": { $ref: "#/components/responses/ControlPlaneError" }
+  /schedules:
+    get:
+      tags: [schedules]
+      operationId: listSchedules
+      parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }]
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+    post:
+      tags: [schedules]
+      operationId: createSchedule
+      parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }]
+      requestBody: { $ref: "#/components/requestBodies/JsonObject" }
+      responses:
+        "201": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+  /schedules/{scheduleId}:
+    get:
+      tags: [schedules]
+      operationId: getSchedule
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/ScheduleIdPath"
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+    put:
+      tags: [schedules]
+      operationId: updateSchedule
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/ScheduleIdPath"
+      requestBody: { $ref: "#/components/requestBodies/JsonObject" }
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+    delete:
+      tags: [schedules]
+      operationId: deleteSchedule
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/ScheduleIdPath"
+      responses:
+        "204": { description: Schedule deleted. }
+  /schedules/{scheduleId}/history:
+    get:
+      tags: [schedules]
+      operationId: getScheduleHistory
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/ScheduleIdPath"
+        - $ref: "#/components/parameters/PageQuery"
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+  /schedules/{scheduleId}/{action}:
+    post:
+      tags: [schedules]
+      operationId: scheduleAction
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/ScheduleIdPath"
+        - name: action
+          in: path
+          required: true
+          schema: { type: string, enum: [pause, resume, trigger, backfill] }
+      requestBody: { $ref: "#/components/requestBodies/JsonObject" }
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "422": { $ref: "#/components/responses/ControlPlaneError" }
+  /search-attributes:
+    get:
+      tags: [workflows]
+      operationId: listSearchAttributes
+      parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }]
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+    post:
+      tags: [workflows]
+      operationId: createSearchAttribute
+      parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }]
+      requestBody: { $ref: "#/components/requestBodies/JsonObject" }
+      responses:
+        "201": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+  /search-attributes/{name}:
+    delete:
+      tags: [workflows]
+      operationId: deleteSearchAttribute
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - name: name
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+      responses:
+        "204": { description: Search attribute deleted. }
+  /service-endpoints:
+    get: { tags: [services], operationId: listServiceEndpoints, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }], responses: { "200": { $ref: "#/components/responses/ControlPlaneEnvelope" } } }
+    post: { tags: [services], operationId: createServiceEndpoint, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }], requestBody: { $ref: "#/components/requestBodies/JsonObject" }, responses: { "201": { $ref: "#/components/responses/ControlPlaneEnvelope" } } }
+  /service-endpoints/{endpointName}:
+    get: { tags: [services], operationId: getServiceEndpoint, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }, { $ref: "#/components/parameters/EndpointNamePath" }], responses: { "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }, "404": { $ref: "#/components/responses/ControlPlaneError" } } }
+    put: { tags: [services], operationId: updateServiceEndpoint, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }, { $ref: "#/components/parameters/EndpointNamePath" }], requestBody: { $ref: "#/components/requestBodies/JsonObject" }, responses: { "200": { $ref: "#/components/responses/ControlPlaneEnvelope" } } }
+    delete: { tags: [services], operationId: deleteServiceEndpoint, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }, { $ref: "#/components/parameters/EndpointNamePath" }], responses: { "204": { description: Service endpoint deleted. } } }
+  /service-endpoints/{endpointName}/services:
+    get: { tags: [services], operationId: listServices, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }, { $ref: "#/components/parameters/EndpointNamePath" }], responses: { "200": { $ref: "#/components/responses/ControlPlaneEnvelope" } } }
+    post: { tags: [services], operationId: createService, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }, { $ref: "#/components/parameters/EndpointNamePath" }], requestBody: { $ref: "#/components/requestBodies/JsonObject" }, responses: { "201": { $ref: "#/components/responses/ControlPlaneEnvelope" } } }
+  /service-endpoints/{endpointName}/services/{serviceName}:
+    get: { tags: [services], operationId: getService, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }, { $ref: "#/components/parameters/EndpointNamePath" }, { $ref: "#/components/parameters/ServiceNamePath" }], responses: { "200": { $ref: "#/components/responses/ControlPlaneEnvelope" } } }
+    put: { tags: [services], operationId: updateService, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }, { $ref: "#/components/parameters/EndpointNamePath" }, { $ref: "#/components/parameters/ServiceNamePath" }], requestBody: { $ref: "#/components/requestBodies/JsonObject" }, responses: { "200": { $ref: "#/components/responses/ControlPlaneEnvelope" } } }
+    delete: { tags: [services], operationId: deleteService, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }, { $ref: "#/components/parameters/EndpointNamePath" }, { $ref: "#/components/parameters/ServiceNamePath" }], responses: { "204": { description: Service deleted. } } }
+  /service-endpoints/{endpointName}/services/{serviceName}/operations:
+    get: { tags: [services], operationId: listOperations, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }, { $ref: "#/components/parameters/EndpointNamePath" }, { $ref: "#/components/parameters/ServiceNamePath" }], responses: { "200": { $ref: "#/components/responses/ControlPlaneEnvelope" } } }
+    post: { tags: [services], operationId: createOperation, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }, { $ref: "#/components/parameters/EndpointNamePath" }, { $ref: "#/components/parameters/ServiceNamePath" }], requestBody: { $ref: "#/components/requestBodies/JsonObject" }, responses: { "201": { $ref: "#/components/responses/ControlPlaneEnvelope" } } }
+  /service-endpoints/{endpointName}/services/{serviceName}/operations/{operationName}:
+    get: { tags: [services], operationId: getOperation, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }, { $ref: "#/components/parameters/EndpointNamePath" }, { $ref: "#/components/parameters/ServiceNamePath" }, { $ref: "#/components/parameters/OperationNamePath" }], responses: { "200": { $ref: "#/components/responses/ControlPlaneEnvelope" } } }
+    put: { tags: [services], operationId: updateOperation, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }, { $ref: "#/components/parameters/EndpointNamePath" }, { $ref: "#/components/parameters/ServiceNamePath" }, { $ref: "#/components/parameters/OperationNamePath" }], requestBody: { $ref: "#/components/requestBodies/JsonObject" }, responses: { "200": { $ref: "#/components/responses/ControlPlaneEnvelope" } } }
+    delete: { tags: [services], operationId: deleteOperation, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }, { $ref: "#/components/parameters/EndpointNamePath" }, { $ref: "#/components/parameters/ServiceNamePath" }, { $ref: "#/components/parameters/OperationNamePath" }], responses: { "204": { description: Operation deleted. } } }
+  /service-endpoints/{endpointName}/services/{serviceName}/operations/{operationName}/execute:
+    post: { tags: [services], operationId: executeServiceOperation, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }, { $ref: "#/components/parameters/EndpointNamePath" }, { $ref: "#/components/parameters/ServiceNamePath" }, { $ref: "#/components/parameters/OperationNamePath" }], requestBody: { $ref: "#/components/requestBodies/JsonObject" }, responses: { "202": { $ref: "#/components/responses/ControlPlaneEnvelope" } } }
+  /service-endpoints/{endpointName}/services/{serviceName}/operations/{operationName}/service-calls/{serviceCallId}:
+    get: { tags: [services], operationId: getServiceCall, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }, { $ref: "#/components/parameters/EndpointNamePath" }, { $ref: "#/components/parameters/ServiceNamePath" }, { $ref: "#/components/parameters/OperationNamePath" }, { $ref: "#/components/parameters/ServiceCallIdPath" }], responses: { "200": { $ref: "#/components/responses/ControlPlaneEnvelope" } } }
+  /service-endpoints/{endpointName}/services/{serviceName}/operations/{operationName}/service-calls/{serviceCallId}/cancel:
+    post: { tags: [services], operationId: cancelServiceCall, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }, { $ref: "#/components/parameters/EndpointNamePath" }, { $ref: "#/components/parameters/ServiceNamePath" }, { $ref: "#/components/parameters/OperationNamePath" }, { $ref: "#/components/parameters/ServiceCallIdPath" }], requestBody: { $ref: "#/components/requestBodies/ReasonObject" }, responses: { "202": { $ref: "#/components/responses/ControlPlaneEnvelope" } } }
+  /system/health:
+    get: { tags: [system], operationId: getSystemHealth, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }], responses: { "200": { $ref: "#/components/responses/ControlPlaneEnvelope" } } }
+  /system/metrics:
+    get: { tags: [system], operationId: getSystemMetrics, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }], responses: { "200": { $ref: "#/components/responses/ControlPlaneEnvelope" } } }
+    post: { tags: [system], operationId: postSystemMetrics, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }], requestBody: { $ref: "#/components/requestBodies/JsonObject" }, responses: { "200": { $ref: "#/components/responses/ControlPlaneEnvelope" } } }
+  /system/operator-metrics:
+    get: { tags: [system], operationId: getOperatorMetrics, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }], responses: { "200": { $ref: "#/components/responses/ControlPlaneEnvelope" } } }
+  /system/repair:
+    get: { tags: [system], operationId: getRepairStatus, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }], responses: { "200": { content: { application/json: { schema: { $ref: "./repair-actionability-objects.schema.json" } } }, description: Repair status. } } }
+  /system/repair/pass:
+    post: { tags: [system], operationId: runRepairPass, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }], requestBody: { $ref: "#/components/requestBodies/JsonObject" }, responses: { "200": { $ref: "#/components/responses/ControlPlaneEnvelope" } } }
+  /system/activity-timeouts:
+    get: { tags: [system], operationId: getActivityTimeoutStatus, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }], responses: { "200": { $ref: "#/components/responses/ControlPlaneEnvelope" } } }
+  /system/activity-timeouts/pass:
+    post: { tags: [system], operationId: enforceActivityTimeouts, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }], requestBody: { $ref: "#/components/requestBodies/JsonObject" }, responses: { "200": { $ref: "#/components/responses/ControlPlaneEnvelope" } } }
+  /system/retention:
+    get: { tags: [system], operationId: getRetentionStatus, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }], responses: { "200": { $ref: "#/components/responses/ControlPlaneEnvelope" } } }
+  /system/retention/pass:
+    post: { tags: [system], operationId: enforceRetention, parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }], requestBody: { $ref: "#/components/requestBodies/JsonObject" }, responses: { "200": { $ref: "#/components/responses/ControlPlaneEnvelope" } } }
+components:
+  securitySchemes:
+    durableAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: Bearer token, webhook signature, or configured Durable auth provider credential.
+  parameters:
+    ControlPlaneVersionHeader:
+      name: X-Durable-Workflow-Control-Plane-Version
+      in: header
+      required: true
+      schema: { type: string, const: "2" }
+    NamespaceHeaderOptional:
+      name: X-Namespace
+      in: header
+      required: false
+      schema: { type: string, minLength: 1 }
+    NamespacePath: { name: namespace, in: path, required: true, schema: { type: string, minLength: 1 } }
+    WorkflowIdPath: { name: workflowId, in: path, required: true, schema: { type: string, minLength: 1 } }
+    RunIdPath: { name: runId, in: path, required: true, schema: { type: string, minLength: 1 } }
+    ScheduleIdPath: { name: scheduleId, in: path, required: true, schema: { type: string, minLength: 1 } }
+    TaskQueuePath: { name: taskQueue, in: path, required: true, schema: { type: string, minLength: 1 } }
+    DeploymentNamePath: { name: name, in: path, required: true, schema: { type: string, minLength: 1 } }
+    EndpointNamePath: { name: endpointName, in: path, required: true, schema: { type: string, minLength: 1 } }
+    ServiceNamePath: { name: serviceName, in: path, required: true, schema: { type: string, minLength: 1 } }
+    OperationNamePath: { name: operationName, in: path, required: true, schema: { type: string, minLength: 1 } }
+    ServiceCallIdPath: { name: serviceCallId, in: path, required: true, schema: { type: string, minLength: 1 } }
+    SignalNamePath: { name: signalName, in: path, required: true, schema: { type: string, minLength: 1 } }
+    QueryNamePath: { name: queryName, in: path, required: true, schema: { type: string, minLength: 1 } }
+    UpdateNamePath: { name: updateName, in: path, required: true, schema: { type: string, minLength: 1 } }
+    PageQuery: { name: page, in: query, required: false, schema: { type: integer, minimum: 1 } }
+    PageTokenQuery: { name: page_token, in: query, required: false, schema: { type: string } }
+  requestBodies:
+    JsonObject:
+      required: false
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/JsonObject" }
+    CommandArguments:
+      required: false
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: true
+            properties:
+              arguments:
+                type: array
+                items: true
+              idempotency_key:
+                type: [string, "null"]
+              wait:
+                type: [boolean, "null"]
+    ReasonObject:
+      required: false
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: true
+            properties:
+              reason:
+                type: [string, "null"]
+              idempotency_key:
+                type: [string, "null"]
+  responses:
+    JsonEnvelope:
+      description: JSON response envelope.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/JsonObject" }
+    ControlPlaneEnvelope:
+      description: Successful control-plane response.
+      headers:
+        X-Durable-Workflow-Control-Plane-Version:
+          schema: { type: string, const: "2" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ControlPlaneEnvelope" }
+    ControlPlaneError:
+      description: Machine-readable control-plane error.
+      headers:
+        X-Durable-Workflow-Control-Plane-Version:
+          schema: { type: string, const: "2" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ControlPlaneError" }
+  schemas:
+    JsonObject:
+      type: object
+      additionalProperties: true
+    ControlPlaneEnvelope:
+      type: object
+      additionalProperties: true
+      description: >
+        Route-specific successful envelope. Additive fields are allowed.
+        Guaranteed route-specific fields are pinned by the matching
+        per-route conformance test named in the catalog.
+    ControlPlaneError:
+      type: object
+      additionalProperties: true
+      required: [message]
+      properties:
+        message: { type: string }
+        error: { type: string }
+        reason: { type: [string, "null"] }
+        remediation: { type: [string, "null"] }
+        operation:
+          type: [object, "null"]
+          additionalProperties: true

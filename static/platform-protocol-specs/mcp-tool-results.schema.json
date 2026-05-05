@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "durable-workflow.v2.mcp-tool-results",
+  "title": "Durable Workflow MCP tool-result envelopes",
+  "description": "Normative JSON Schema for MCP tool-result envelopes returned by Durable Workflow tools. Result status, payload preview truncation, error envelope fields, and schema/version markers are contractual. Human-readable text and model hints are diagnostic.",
+  "type": "object",
+  "x-durable-workflow-catalog-entry": "mcp_tool_results",
+  "x-durable-workflow-catalog-schema": "durable-workflow.v2.platform-protocol-specs.catalog",
+  "x-durable-workflow-catalog-version": 4,
+  "x-durable-workflow-owner-symbol": "App\\Mcp\\ToolResultEnvelope",
+  "x-durable-workflow-evolution-rule": "additive_minor_breaking_major",
+  "x-durable-workflow-object-families": [
+    {
+      "name": "mcp_tool_result_envelope",
+      "owner_repo": "durable-workflow/server",
+      "schema_authority": "App\\Mcp\\ToolResultEnvelope",
+      "version_authority": "durable-workflow.v2.mcp-tool-results"
+    }
+  ],
+  "required": ["schema", "version", "status"],
+  "additionalProperties": true,
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "durable-workflow.v2.mcp-tool-result"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["ok", "error"]
+    },
+    "result": {
+      "type": ["object", "array", "string", "number", "boolean", "null"]
+    },
+    "payload_preview": {
+      "type": ["string", "null"],
+      "description": "Human-readable payload preview. The complete machine payload must live in result or be explicitly unavailable."
+    },
+    "payload_preview_truncated": {
+      "type": "boolean"
+    },
+    "payload_preview_limit_bytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "error": {
+      "$ref": "#/$defs/error"
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "content": {
+      "type": "array",
+      "description": "MCP content blocks. Tools may include these for client compatibility, but the result object remains the machine contract.",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["type"],
+        "properties": {
+          "type": { "type": "string" },
+          "text": { "type": ["string", "null"] },
+          "mimeType": { "type": ["string", "null"] }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "const": "error" } },
+        "required": ["status"]
+      },
+      "then": {
+        "required": ["error"]
+      }
+    }
+  ],
+  "$defs": {
+    "error": {
+      "type": ["object", "null"],
+      "additionalProperties": true,
+      "properties": {
+        "code": { "type": ["string", "null"] },
+        "message": { "type": ["string", "null"] },
+        "reason": { "type": ["string", "null"] },
+        "remediation": { "type": ["string", "null"] },
+        "retryable": { "type": ["boolean", "null"] },
+        "details": { "type": ["object", "null"], "additionalProperties": true }
+      }
+    }
+  }
+}

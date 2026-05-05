@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "durable-workflow.v2.mcp-discovery",
+  "title": "Durable Workflow MCP discovery",
+  "description": "Normative JSON Schema for the Model Context Protocol discovery surface used by AI clients to discover Durable Workflow tools, parameter schemas, protocol hints, and payload-preview limits. Tool descriptions are diagnostic; tool names, input schemas, output schema ids, and payload-preview semantics are contractual.",
+  "type": "object",
+  "x-durable-workflow-catalog-entry": "mcp_discovery",
+  "x-durable-workflow-catalog-schema": "durable-workflow.v2.platform-protocol-specs.catalog",
+  "x-durable-workflow-catalog-version": 4,
+  "x-durable-workflow-owner-symbol": "App\\Mcp\\Discovery and the MCP route group in routes/api.php",
+  "x-durable-workflow-evolution-rule": "additive_minor_breaking_major",
+  "x-durable-workflow-object-families": [
+    {
+      "name": "mcp_tool_discovery",
+      "owner_repo": "durable-workflow/server",
+      "schema_authority": "App\\Mcp\\Discovery",
+      "version_authority": "durable-workflow.v2.mcp-discovery"
+    },
+    {
+      "name": "llms_txt_discovery",
+      "owner_repo": "durable-workflow/durable-workflow.github.io",
+      "schema_authority": "docs/mcp-workflows.md and generated llms files",
+      "version_authority": "durable-workflow.v2.mcp-discovery"
+    }
+  ],
+  "required": ["schema", "version", "tools"],
+  "additionalProperties": true,
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "durable-workflow.v2.mcp-discovery"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "server": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "name": { "type": ["string", "null"] },
+        "version": { "type": ["string", "null"] },
+        "cluster_info_url": { "type": ["string", "null"] }
+      }
+    },
+    "payload_preview_limit_bytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "tools": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/tool"
+      }
+    }
+  },
+  "$defs": {
+    "tool": {
+      "type": "object",
+      "required": ["name", "input_schema"],
+      "additionalProperties": true,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_.:-]+$"
+        },
+        "description": {
+          "type": ["string", "null"],
+          "description": "Diagnostic text for model UX. It may change without a protocol break."
+        },
+        "input_schema": {
+          "$ref": "#/$defs/jsonSchemaObject"
+        },
+        "output_schema": {
+          "type": ["string", "null"],
+          "description": "Schema id for the tool-result envelope, usually durable-workflow.v2.mcp-tool-results."
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "durable_surface": {
+          "type": ["string", "null"],
+          "enum": [
+            "control_plane",
+            "worker_protocol",
+            "waterline",
+            "history_export",
+            "repair_actionability",
+            null
+          ]
+        }
+      }
+    },
+    "jsonSchemaObject": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": true,
+      "properties": {
+        "type": { "type": "string" },
+        "properties": { "type": "object", "additionalProperties": true },
+        "required": { "type": "array", "items": { "type": "string" } },
+        "additionalProperties": {}
+      }
+    }
+  }
+}

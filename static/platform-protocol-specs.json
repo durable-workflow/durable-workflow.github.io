@@ -1,6 +1,6 @@
 {
   "schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "version": 3,
+  "version": 4,
   "authority_url": "https://durable-workflow.github.io/docs/2.0/platform-protocol-specs",
   "formats": {
     "openapi": {
@@ -56,7 +56,7 @@
       "breaking_change_release": "major",
       "discovery_endpoint": "GET /api/cluster/info -> control_plane",
       "conformance_test": "durable-workflow/server: tests/Feature/ClusterInfoCompatibilityTest.php and tests/Feature/Api/* per-route contract tests",
-      "status": "in_progress",
+      "status": "published",
       "spec_path": "static/platform-protocol-specs/control-plane-api.openapi.yaml"
     },
     "worker_protocol_api": {
@@ -71,7 +71,7 @@
       "breaking_change_release": "major",
       "discovery_endpoint": "GET /api/cluster/info -> worker_protocol",
       "conformance_test": "durable-workflow/server: tests/Feature/Api/Worker* contract tests",
-      "status": "in_progress",
+      "status": "published",
       "spec_path": "static/platform-protocol-specs/worker-protocol-api.openapi.yaml"
     },
     "worker_protocol_stream": {
@@ -86,7 +86,7 @@
       "breaking_change_release": "major",
       "discovery_endpoint": "GET /api/cluster/info -> worker_protocol",
       "conformance_test": "durable-workflow/server: tests/Feature/Api/WorkerLongPollTest.php and tests/Feature/Api/WorkerHeartbeatTest.php",
-      "status": "planned",
+      "status": "published",
       "spec_path": "static/platform-protocol-specs/worker-protocol-stream.asyncapi.yaml"
     },
     "history_event_payloads": {
@@ -100,7 +100,7 @@
       "evolution_rule": "parallel_primitive_only",
       "breaking_change_release": "parallel_primitive_only",
       "conformance_test": "durable-workflow/workflow: tests/Unit/V2/HistoryEventWireFormatDocumentationTest.php and tests/Unit/V2/VersionMarkerWireFormatTest.php",
-      "status": "in_progress",
+      "status": "published",
       "spec_path": "static/platform-protocol-specs/history-event-payloads.schema.json",
       "companion_doc": "docs/api-stability.md frozen-event tables in `durable-workflow/workflow`"
     },
@@ -115,7 +115,7 @@
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
       "conformance_test": "durable-workflow/workflow: tests/Unit/V2/HistoryExportTest.php",
-      "status": "planned",
+      "status": "published",
       "spec_path": "static/platform-protocol-specs/history-export-bundle.schema.json"
     },
     "replay_bundle": {
@@ -129,7 +129,7 @@
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
       "conformance_test": "durable-workflow/workflow: tests/Unit/V2/WorkflowReplayer*Test.php and durable-workflow/server: tests/Feature/ReplayVerificationContractTest.php",
-      "status": "planned",
+      "status": "published",
       "spec_path": "static/platform-protocol-specs/replay-bundle.schema.json"
     },
     "waterline_read_api": {
@@ -143,7 +143,7 @@
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
       "conformance_test": "durable-workflow/waterline: tests/Feature/OperatorReadApiTest.php and contract tests under tests/Feature/Api/",
-      "status": "planned",
+      "status": "published",
       "spec_path": "static/platform-protocol-specs/waterline-read-api.openapi.yaml"
     },
     "waterline_diagnostic_objects": {
@@ -157,7 +157,7 @@
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
       "conformance_test": "durable-workflow/waterline: tests/Feature/DiagnosticObjectContractTest.php",
-      "status": "planned",
+      "status": "published",
       "spec_path": "static/platform-protocol-specs/waterline-diagnostic-objects.schema.json"
     },
     "repair_actionability_objects": {
@@ -171,7 +171,7 @@
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
       "conformance_test": "durable-workflow/workflow: tests/Unit/V2/TaskRepair*Test.php and durable-workflow/server: tests/Feature/Api/RepairControllerTest.php",
-      "status": "in_progress",
+      "status": "published",
       "spec_path": "static/platform-protocol-specs/repair-actionability-objects.schema.json"
     },
     "mcp_discovery": {
@@ -185,7 +185,7 @@
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
       "conformance_test": "durable-workflow/server: tests/Feature/Mcp/DiscoveryContractTest.php",
-      "status": "planned",
+      "status": "published",
       "spec_path": "static/platform-protocol-specs/mcp-discovery.schema.json"
     },
     "mcp_tool_results": {
@@ -199,7 +199,7 @@
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
       "conformance_test": "durable-workflow/server: tests/Feature/Mcp/ToolResultEnvelopeTest.php",
-      "status": "planned",
+      "status": "published",
       "spec_path": "static/platform-protocol-specs/mcp-tool-results.schema.json"
     },
     "cluster_info_envelope": {
@@ -227,7 +227,8 @@
       "docs_authority_aligned": "docs/platform-protocol-specs.md (in durable-workflow.github.io) lists every entry in this manifest with the same format, owner, status, and breaking-change rule.",
       "json_mirror_aligned": "static/platform-protocol-specs.json (in durable-workflow.github.io) is byte-equivalent to this PHP manifest at the time of the release.",
       "spec_path_published_when_status_published": "When `status` is `published`, the file at `spec_path` exists in `durable-workflow/durable-workflow.github.io`, is referenced from the matching authority doc page, parses as the format declared by the catalog entry (JSON Schema 2020-12 / OpenAPI 3.1 / AsyncAPI 2.6+), and the document's `$id` (or OpenAPI `info.title` / AsyncAPI `id`) matches the catalog `spec_id`.",
-      "breaking_change_release_consistent_with_evolution_rule": "Every entry`s `breaking_change_release` is one of `major`, `parallel_primitive_only`, or `experimental_any_release`, and matches the value required by its `evolution_rule`: `additive_minor_breaking_major` -> `major`, `parallel_primitive_only` -> `parallel_primitive_only`, `experimental_any_release` -> `experimental_any_release`. Letting these diverge would let a frozen wire format claim a major-version break, contradicting its rule."
+      "breaking_change_release_consistent_with_evolution_rule": "Every entry`s `breaking_change_release` is one of `major`, `parallel_primitive_only`, or `experimental_any_release`, and matches the value required by its `evolution_rule`: `additive_minor_breaking_major` -> `major`, `parallel_primitive_only` -> `parallel_primitive_only`, `experimental_any_release` -> `experimental_any_release`. Letting these diverge would let a frozen wire format claim a major-version break, contradicting its rule.",
+      "deliverable_specs_published": "Every entry in the issue #690 deliverable surface set is marked `published` and has a parseable spec document."
     },
     "enforcement": {
       "machine": "docs site CI runs scripts/check-platform-protocol-specs.js, which loads static/platform-protocol-specs.json (a copy of this manifest), walks docs/platform-protocol-specs.md, and verifies every spec entry against the surface_stability_contract families.",

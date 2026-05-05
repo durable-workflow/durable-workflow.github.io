@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "durable-workflow.v2.waterline-diagnostic-objects",
+  "title": "Waterline diagnostic object families",
+  "description": "Normative JSON Schema for Waterline diagnostic object families: workflow list rows, run detail projections, timeline rows, lineage edges, coordination alerts, queue visibility snapshots, engine-source attribution, schedule audit rows, and service catalog observer rows. Diagnostic-only fields are explicitly allowed but must not be used for production decision logic.",
+  "type": "object",
+  "x-durable-workflow-catalog-entry": "waterline_diagnostic_objects",
+  "x-durable-workflow-catalog-schema": "durable-workflow.v2.platform-protocol-specs.catalog",
+  "x-durable-workflow-catalog-version": 4,
+  "x-durable-workflow-owner-symbol": "waterline DiagnosticObjectContract and OperatorReadProjections",
+  "x-durable-workflow-evolution-rule": "additive_minor_breaking_major",
+  "x-durable-workflow-object-families": [
+    {
+      "name": "waterline_run_detail",
+      "owner_repo": "durable-workflow/waterline",
+      "schema_authority": "Waterline\\Http\\Controllers\\WorkflowsController",
+      "version_authority": "durable-workflow.v2.waterline-diagnostic-objects"
+    },
+    {
+      "name": "waterline_health_diagnostics",
+      "owner_repo": "durable-workflow/waterline",
+      "schema_authority": "Waterline\\Http\\Controllers\\V2HealthController",
+      "version_authority": "durable-workflow.v2.waterline-diagnostic-objects"
+    }
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "data": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/diagnosticRow" }
+    },
+    "workflow": {
+      "$ref": "#/$defs/workflowDiagnostic"
+    },
+    "timeline": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/timelineRow" }
+    },
+    "lineage": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/lineageEdge" }
+    },
+    "queue_visibility": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "coordination_alerts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/coordinationAlert" }
+    },
+    "engine_source": {
+      "$ref": "#/$defs/engineSource"
+    },
+    "actionability_contract": {
+      "type": ["object", "null"],
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "diagnosticRow": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": ["string", "integer", "null"] },
+        "diagnostic_only": { "type": "boolean" },
+        "history_authority": { "type": ["string", "null"] },
+        "history_unsupported_reason": { "type": ["string", "null"] },
+        "actionability": { "$ref": "./repair-actionability-objects.schema.json#/$defs/actionability" }
+      }
+    },
+    "workflowDiagnostic": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": ["string", "integer", "null"] },
+        "workflow_id": { "type": ["string", "null"] },
+        "instance_id": { "type": ["string", "null"] },
+        "run_id": { "type": ["string", "null"] },
+        "workflow_type": { "type": ["string", "null"] },
+        "status": { "type": ["string", "null"] },
+        "status_bucket": { "type": ["string", "null"] },
+        "can_query": { "type": ["boolean", "null"] },
+        "can_signal": { "type": ["boolean", "null"] },
+        "can_update": { "type": ["boolean", "null"] },
+        "can_repair": { "type": ["boolean", "null"] },
+        "repair_blocked_reason": { "type": ["string", "null"] },
+        "actionability": { "$ref": "./repair-actionability-objects.schema.json#/$defs/actionability" }
+      }
+    },
+    "timelineRow": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": true,
+      "properties": {
+        "type": { "type": "string" },
+        "sequence": { "type": ["integer", "null"], "minimum": 1 },
+        "recorded_at": { "type": ["string", "null"], "format": "date-time" },
+        "payload": { "type": ["object", "null"], "additionalProperties": true },
+        "diagnostic_only": { "type": "boolean" },
+        "actionability": { "$ref": "./repair-actionability-objects.schema.json#/$defs/actionability" }
+      }
+    },
+    "lineageEdge": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "source_run_id": { "type": ["string", "null"] },
+        "target_run_id": { "type": ["string", "null"] },
+        "relationship": { "type": ["string", "null"] },
+        "workflow_link_id": { "type": ["string", "null"] }
+      }
+    },
+    "coordinationAlert": {
+      "type": "object",
+      "required": ["key", "source", "status", "title", "summary"],
+      "additionalProperties": true,
+      "properties": {
+        "key": { "type": "string" },
+        "source": { "type": "string" },
+        "status": { "type": "string", "enum": ["warning", "error", "info"] },
+        "title": { "type": "string" },
+        "summary": { "type": "string" },
+        "details": { "type": ["string", "null"] },
+        "facts": { "type": ["object", "null"], "additionalProperties": true },
+        "category": { "type": ["string", "null"] }
+      }
+    },
+    "engineSource": {
+      "type": "object",
+      "required": ["uses_v2"],
+      "additionalProperties": true,
+      "properties": {
+        "configured": { "type": ["string", "null"] },
+        "resolved": { "type": ["string", "null"] },
+        "uses_v2": { "type": "boolean" },
+        "v2_operator_surface_available": { "type": "boolean" },
+        "message": { "type": ["string", "null"] },
+        "issues": { "type": "array", "items": { "type": "object", "additionalProperties": true } }
+      }
+    }
+  }
+}

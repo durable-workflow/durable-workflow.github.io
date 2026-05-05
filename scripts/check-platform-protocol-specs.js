@@ -187,6 +187,13 @@ function assertCatalogEntriesAreWellFormed(catalog, surfaceFamilies) {
           `to cover the deliverable surface set from issue #690`,
       );
     }
+    if (specs[name].status !== 'published') {
+      throw new Error(
+        `platform-protocol-specs entry "${name}" must be marked "published"; ` +
+          `issue #690 requires every public machine-facing surface to have ` +
+          `an authoritative machine-readable spec.`,
+      );
+    }
   }
 
   for (const [name, entry] of Object.entries(specs)) {
@@ -294,12 +301,12 @@ function assertCatalogEntriesAreWellFormed(catalog, surfaceFamilies) {
         );
       }
 
-      assertPublishedSpecFileMatchesEntry(name, entry, absoluteSpecPath);
+      assertPublishedSpecFileMatchesEntry(name, entry, absoluteSpecPath, catalog.version);
     }
   }
 }
 
-function assertPublishedSpecFileMatchesEntry(name, entry, absoluteSpecPath) {
+function assertPublishedSpecFileMatchesEntry(name, entry, absoluteSpecPath, catalogVersion) {
   if (entry.format === 'json_schema') {
     if (!entry.spec_path.endsWith('.schema.json')) {
       throw new Error(
@@ -334,7 +341,29 @@ function assertPublishedSpecFileMatchesEntry(name, entry, absoluteSpecPath) {
       throw new Error(
         `published spec ${entry.spec_path} for "${name}" must declare a ` +
           `non-empty "description" so consumers reading the file alone ` +
-          `understand what surface it pins.`,
+        `understand what surface it pins.`,
+      );
+    }
+    if (document['x-durable-workflow-catalog-entry'] !== name) {
+      throw new Error(
+        `published spec ${entry.spec_path} for "${name}" must declare ` +
+          `"x-durable-workflow-catalog-entry": "${name}" so schema files ` +
+          `cannot be moved between catalog entries accidentally.`,
+      );
+    }
+    if (document['x-durable-workflow-catalog-version'] !== catalogVersion) {
+      throw new Error(
+        `published spec ${entry.spec_path} for "${name}" declares ` +
+          `x-durable-workflow-catalog-version = ` +
+          `${document['x-durable-workflow-catalog-version']}, but the catalog ` +
+          `version is ${catalogVersion}.`,
+      );
+    }
+    if (document['x-durable-workflow-evolution-rule'] !== entry.evolution_rule) {
+      throw new Error(
+        `published spec ${entry.spec_path} for "${name}" must declare ` +
+          `x-durable-workflow-evolution-rule = "${entry.evolution_rule}" ` +
+          `(got ${JSON.stringify(document['x-durable-workflow-evolution-rule'])}).`,
       );
     }
     if (document.type !== 'object') {
@@ -351,11 +380,29 @@ function assertPublishedSpecFileMatchesEntry(name, entry, absoluteSpecPath) {
           `spec_path "${entry.spec_path}" does not end with .yaml/.yml/.json.`,
       );
     }
-    // OpenAPI parsing is not in this check's dependency set; the catalog
-    // file-existence guarantee plus the per-route conformance test named
-    // by the entry are the normative gates. When an OpenAPI spec is
-    // first published, extend this branch to verify info.title === spec_id
-    // and openapi version starts with "3.1".
+    const document = read(absoluteSpecPath);
+    if (!/^openapi:\s*["']?3\.1\b/m.test(document)) {
+      throw new Error(
+        `published OpenAPI spec ${entry.spec_path} for "${name}" must ` +
+          `declare openapi: 3.1.x.`,
+      );
+    }
+    assertYamlScalar(document, 'title', entry.spec_id, entry.spec_path, name);
+    assertYamlScalar(document, 'x-durable-workflow-catalog-entry', name, entry.spec_path, name);
+    assertYamlScalar(
+      document,
+      'x-durable-workflow-catalog-version',
+      String(catalogVersion),
+      entry.spec_path,
+      name,
+    );
+    assertYamlScalar(
+      document,
+      'x-durable-workflow-evolution-rule',
+      entry.evolution_rule,
+      entry.spec_path,
+      name,
+    );
   } else if (entry.format === 'asyncapi') {
     if (!/\.(ya?ml|json)$/.test(entry.spec_path)) {
       throw new Error(
@@ -363,11 +410,43 @@ function assertPublishedSpecFileMatchesEntry(name, entry, absoluteSpecPath) {
           `spec_path "${entry.spec_path}" does not end with .yaml/.yml/.json.`,
       );
     }
-    // AsyncAPI parsing is not in this check's dependency set; the
-    // catalog file-existence guarantee plus the conformance test named
-    // by the entry are the normative gates. When an AsyncAPI spec is
-    // first published, extend this branch to verify document.id ===
-    // spec_id and asyncapi version starts with "2.6" or higher.
+    const document = read(absoluteSpecPath);
+    if (!/^asyncapi:\s*["']?(2\.(6|[7-9])|[3-9]\.)/m.test(document)) {
+      throw new Error(
+        `published AsyncAPI spec ${entry.spec_path} for "${name}" must ` +
+          `declare asyncapi: 2.6.0 or newer.`,
+      );
+    }
+    assertYamlScalar(document, 'id', entry.spec_id, entry.spec_path, name);
+    assertYamlScalar(document, 'x-durable-workflow-catalog-entry', name, entry.spec_path, name);
+    assertYamlScalar(
+      document,
+      'x-durable-workflow-catalog-version',
+      String(catalogVersion),
+      entry.spec_path,
+      name,
+    );
+    assertYamlScalar(
+      document,
+      'x-durable-workflow-evolution-rule',
+      entry.evolution_rule,
+      entry.spec_path,
+      name,
+    );
+  }
+}
+
+function assertYamlScalar(document, key, expected, specPath, name) {
+  const re = new RegExp(
+    `^\\s*${escapeRegExp(key)}:\\s*["']?${escapeRegExp(expected)}["']?\\s*$`,
+    'm',
+  );
+  if (!re.test(document)) {
+    throw new Error(
+      `published spec ${specPath} for "${name}" must declare ${key}: ` +
+        `${expected}. This lightweight CI parser only accepts a simple ` +
+        `scalar for this required metadata field.`,
+    );
   }
 }
 

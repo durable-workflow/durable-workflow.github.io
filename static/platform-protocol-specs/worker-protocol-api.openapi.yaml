@@ -1,0 +1,424 @@
+openapi: 3.1.0
+info:
+  title: durable-workflow.v2.worker-protocol-api
+  version: "4"
+  summary: Durable Workflow worker-plane HTTP+JSON API
+  description: >
+    Normative OpenAPI specification for the worker-plane HTTP+JSON API:
+    worker registration, worker heartbeat, long-poll task acquisition,
+    task history paging, task heartbeat, task completion, and task
+    failure. Long-poll timing, cancellation, and lease semantics are
+    specified by durable-workflow.v2.worker-protocol-stream.
+x-durable-workflow-catalog-entry: worker_protocol_api
+x-durable-workflow-catalog-schema: durable-workflow.v2.platform-protocol-specs.catalog
+x-durable-workflow-catalog-version: 4
+x-durable-workflow-owner-symbol: App\Support\WorkerProtocol and Workflow\V2\Support\WorkerProtocolVersion
+x-durable-workflow-evolution-rule: additive_minor_breaking_major
+servers:
+  - url: /api
+security:
+  - durableWorkerAuth: []
+paths:
+  /worker/register:
+    post:
+      operationId: registerWorker
+      tags: [worker-lifecycle]
+      parameters: [{ $ref: "#/components/parameters/WorkerProtocolVersionHeader" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkerRegistrationRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/WorkerEnvelope" }
+        "400": { $ref: "#/components/responses/WorkerError" }
+        "409": { $ref: "#/components/responses/WorkerError" }
+        "422": { $ref: "#/components/responses/WorkerError" }
+  /worker/heartbeat:
+    post:
+      operationId: heartbeatWorker
+      tags: [worker-lifecycle]
+      parameters: [{ $ref: "#/components/parameters/WorkerProtocolVersionHeader" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkerHeartbeatRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/WorkerEnvelope" }
+        "404": { $ref: "#/components/responses/WorkerError" }
+  /worker/workflow-tasks/poll:
+    post:
+      operationId: pollWorkflowTask
+      tags: [workflow-tasks]
+      parameters: [{ $ref: "#/components/parameters/WorkerProtocolVersionHeader" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PollRequest" }
+      responses:
+        "200":
+          description: A claimed workflow task, an empty long-poll result, or a draining-worker response.
+          headers: { X-Durable-Workflow-Protocol-Version: { schema: { type: string, const: "1.0" } } }
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/WorkflowTaskClaim"
+                  - $ref: "#/components/schemas/EmptyPoll"
+                  - $ref: "#/components/schemas/DrainingPoll"
+        "400": { $ref: "#/components/responses/WorkerError" }
+  /worker/workflow-tasks/{taskId}/history:
+    post:
+      operationId: getWorkflowTaskHistoryPage
+      tags: [workflow-tasks]
+      parameters:
+        - $ref: "#/components/parameters/WorkerProtocolVersionHeader"
+        - $ref: "#/components/parameters/TaskIdPath"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/HistoryPageRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/WorkerEnvelope" }
+        "404": { $ref: "#/components/responses/WorkerError" }
+        "409": { $ref: "#/components/responses/WorkerError" }
+  /worker/workflow-tasks/{taskId}/heartbeat:
+    post:
+      operationId: heartbeatWorkflowTask
+      tags: [workflow-tasks]
+      parameters:
+        - $ref: "#/components/parameters/WorkerProtocolVersionHeader"
+        - $ref: "#/components/parameters/TaskIdPath"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TaskHeartbeatRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/WorkerEnvelope" }
+        "404": { $ref: "#/components/responses/WorkerError" }
+        "409": { $ref: "#/components/responses/WorkerError" }
+  /worker/workflow-tasks/{taskId}/complete:
+    post:
+      operationId: completeWorkflowTask
+      tags: [workflow-tasks]
+      parameters:
+        - $ref: "#/components/parameters/WorkerProtocolVersionHeader"
+        - $ref: "#/components/parameters/TaskIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkflowTaskCompleteRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/WorkerEnvelope" }
+        "409": { $ref: "#/components/responses/WorkerError" }
+        "422": { $ref: "#/components/responses/WorkerError" }
+  /worker/workflow-tasks/{taskId}/fail:
+    post:
+      operationId: failWorkflowTask
+      tags: [workflow-tasks]
+      parameters:
+        - $ref: "#/components/parameters/WorkerProtocolVersionHeader"
+        - $ref: "#/components/parameters/TaskIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TaskFailureRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/WorkerEnvelope" }
+        "409": { $ref: "#/components/responses/WorkerError" }
+  /worker/query-tasks/poll:
+    post:
+      operationId: pollQueryTask
+      tags: [query-tasks]
+      parameters: [{ $ref: "#/components/parameters/WorkerProtocolVersionHeader" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PollRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/WorkerEnvelope" }
+  /worker/query-tasks/{queryTaskId}/complete:
+    post:
+      operationId: completeQueryTask
+      tags: [query-tasks]
+      parameters:
+        - $ref: "#/components/parameters/WorkerProtocolVersionHeader"
+        - name: queryTaskId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/QueryTaskCompleteRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/WorkerEnvelope" }
+        "409": { $ref: "#/components/responses/WorkerError" }
+  /worker/query-tasks/{queryTaskId}/fail:
+    post:
+      operationId: failQueryTask
+      tags: [query-tasks]
+      parameters:
+        - $ref: "#/components/parameters/WorkerProtocolVersionHeader"
+        - name: queryTaskId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TaskFailureRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/WorkerEnvelope" }
+        "409": { $ref: "#/components/responses/WorkerError" }
+  /worker/activity-tasks/poll:
+    post:
+      operationId: pollActivityTask
+      tags: [activity-tasks]
+      parameters: [{ $ref: "#/components/parameters/WorkerProtocolVersionHeader" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PollRequest" }
+      responses:
+        "200":
+          description: A claimed activity task, an empty long-poll result, or a draining-worker response.
+          headers: { X-Durable-Workflow-Protocol-Version: { schema: { type: string, const: "1.0" } } }
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ActivityTaskClaim"
+                  - $ref: "#/components/schemas/EmptyPoll"
+                  - $ref: "#/components/schemas/DrainingPoll"
+  /worker/activity-tasks/{taskId}/heartbeat:
+    post:
+      operationId: heartbeatActivityTask
+      tags: [activity-tasks]
+      parameters:
+        - $ref: "#/components/parameters/WorkerProtocolVersionHeader"
+        - $ref: "#/components/parameters/TaskIdPath"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TaskHeartbeatRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/WorkerEnvelope" }
+        "409": { $ref: "#/components/responses/WorkerError" }
+  /worker/activity-tasks/{taskId}/complete:
+    post:
+      operationId: completeActivityTask
+      tags: [activity-tasks]
+      parameters:
+        - $ref: "#/components/parameters/WorkerProtocolVersionHeader"
+        - $ref: "#/components/parameters/TaskIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ActivityTaskCompleteRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/WorkerEnvelope" }
+        "409": { $ref: "#/components/responses/WorkerError" }
+  /worker/activity-tasks/{taskId}/fail:
+    post:
+      operationId: failActivityTask
+      tags: [activity-tasks]
+      parameters:
+        - $ref: "#/components/parameters/WorkerProtocolVersionHeader"
+        - $ref: "#/components/parameters/TaskIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TaskFailureRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/WorkerEnvelope" }
+        "409": { $ref: "#/components/responses/WorkerError" }
+components:
+  securitySchemes:
+    durableWorkerAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+  parameters:
+    WorkerProtocolVersionHeader:
+      name: X-Durable-Workflow-Protocol-Version
+      in: header
+      required: true
+      schema: { type: string, const: "1.0" }
+    TaskIdPath:
+      name: taskId
+      in: path
+      required: true
+      schema: { type: string, minLength: 1 }
+  responses:
+    WorkerEnvelope:
+      description: Worker-protocol response envelope.
+      headers:
+        X-Durable-Workflow-Protocol-Version:
+          schema: { type: string, const: "1.0" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/WorkerEnvelope" }
+    WorkerError:
+      description: Machine-readable worker-protocol error envelope.
+      headers:
+        X-Durable-Workflow-Protocol-Version:
+          schema: { type: string, const: "1.0" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/WorkerError" }
+  schemas:
+    WorkerEnvelope:
+      type: object
+      additionalProperties: true
+      required: [protocol_version, server_capabilities]
+      properties:
+        protocol_version: { type: string, const: "1.0" }
+        server_capabilities: { type: object, additionalProperties: true }
+    WorkerError:
+      type: object
+      additionalProperties: true
+      required: [protocol_version, server_capabilities]
+      properties:
+        protocol_version: { type: string, const: "1.0" }
+        error: { type: string }
+        reason: { type: [string, "null"] }
+        remediation: { type: [string, "null"] }
+        server_capabilities: { type: object, additionalProperties: true }
+    WorkerRegistrationRequest:
+      type: object
+      additionalProperties: true
+      required: [worker_id, task_queues]
+      properties:
+        worker_id: { type: string, minLength: 1 }
+        build_id: { type: [string, "null"] }
+        task_queues: { type: array, items: { type: string, minLength: 1 } }
+        workflow_types: { type: array, items: { type: string } }
+        activity_types: { type: array, items: { type: string } }
+        workflow_definition_fingerprints: { type: object, additionalProperties: { type: string } }
+    WorkerHeartbeatRequest:
+      type: object
+      additionalProperties: true
+      required: [worker_id]
+      properties:
+        worker_id: { type: string, minLength: 1 }
+        task_queues: { type: array, items: { type: string } }
+        active_slots: { type: integer, minimum: 0 }
+    PollRequest:
+      type: object
+      additionalProperties: true
+      required: [worker_id, task_queues]
+      properties:
+        worker_id: { type: string, minLength: 1 }
+        task_queues: { type: array, minItems: 1, items: { type: string, minLength: 1 } }
+        build_id: { type: [string, "null"] }
+        poll_timeout_seconds: { type: integer, minimum: 0 }
+    EmptyPoll:
+      allOf:
+        - $ref: "#/components/schemas/WorkerEnvelope"
+        - type: object
+          required: [task]
+          properties:
+            task: { type: "null" }
+            poll_status: { type: string, enum: [timeout, empty] }
+    DrainingPoll:
+      allOf:
+        - $ref: "#/components/schemas/WorkerEnvelope"
+        - type: object
+          required: [task, poll_status]
+          properties:
+            task: { type: "null" }
+            poll_status: { type: string, const: draining }
+            drain_reason: { type: [string, "null"] }
+    WorkflowTaskClaim:
+      allOf:
+        - $ref: "#/components/schemas/WorkerEnvelope"
+        - type: object
+          required: [task]
+          properties:
+            task:
+              type: object
+              additionalProperties: true
+              required: [task_id, workflow_id, run_id, history]
+              properties:
+                task_id: { type: string }
+                workflow_id: { type: string }
+                run_id: { type: string }
+                history: { type: array, items: { type: object, additionalProperties: true } }
+    ActivityTaskClaim:
+      allOf:
+        - $ref: "#/components/schemas/WorkerEnvelope"
+        - type: object
+          required: [task]
+          properties:
+            task:
+              type: object
+              additionalProperties: true
+              required: [task_id, activity_type, attempt]
+              properties:
+                task_id: { type: string }
+                activity_type: { type: string }
+                attempt: { type: integer, minimum: 1 }
+    HistoryPageRequest:
+      type: object
+      additionalProperties: true
+      properties:
+        page_token: { type: [string, "null"] }
+        page_size: { type: integer, minimum: 1 }
+    TaskHeartbeatRequest:
+      type: object
+      additionalProperties: true
+      properties:
+        worker_id: { type: string }
+        progress: true
+    WorkflowTaskCompleteRequest:
+      type: object
+      additionalProperties: true
+      required: [worker_id, commands]
+      properties:
+        worker_id: { type: string, minLength: 1 }
+        commands:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+            required: [type]
+            properties:
+              type: { type: string }
+    QueryTaskCompleteRequest:
+      type: object
+      additionalProperties: true
+      required: [worker_id]
+      properties:
+        worker_id: { type: string, minLength: 1 }
+        result: true
+    ActivityTaskCompleteRequest:
+      type: object
+      additionalProperties: true
+      required: [worker_id]
+      properties:
+        worker_id: { type: string, minLength: 1 }
+        result: true
+    TaskFailureRequest:
+      type: object
+      additionalProperties: true
+      required: [worker_id]
+      properties:
+        worker_id: { type: string, minLength: 1 }
+        error: { type: [string, "null"] }
+        exception_type: { type: [string, "null"] }
+        message: { type: [string, "null"] }
+        non_retryable: { type: [boolean, "null"] }
