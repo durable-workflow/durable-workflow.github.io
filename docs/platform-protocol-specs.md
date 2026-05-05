@@ -125,12 +125,12 @@ conformance test that pins the spec.
   payloads, history-export bundle, replay bundle, repair/actionability
   object families.
 - `durable-workflow/server` — standalone server control-plane and
-  worker-protocol APIs, MCP discovery and tool-result envelopes,
-  `cluster/info` envelope.
+  worker-protocol APIs and the `cluster/info` envelope.
 - `durable-workflow/waterline` — Waterline read API and diagnostic
   object families.
-- `durable-workflow/durable-workflow.github.io` — this catalog and the
-  human-readable mirrors of the protocol manifests.
+- `durable-workflow/durable-workflow.github.io` — this catalog, MCP
+  discovery and tool-result envelopes, and the human-readable mirrors of
+  the protocol manifests.
 - `durable-workflow/cli` — `dw` CLI JSON output (governed by the CLI
   reference page; not in this catalog because the CLI publishes its JSON
   shape per command).
