@@ -52,6 +52,12 @@ starting long-lived automation. Missing or unsupported control-plane versions
 fail closed with a named reason such as `missing_control_plane_version` or
 `unsupported_control_plane_version`.
 
+For validation, code generation, and drift checks, use the normative
+[Platform Protocol Specs](/docs/2.0/platform-protocol-specs) catalog instead
+of this prose reference. It links the control-plane OpenAPI document, worker
+protocol OpenAPI and AsyncAPI documents, the `cluster_info` JSON Schema, and
+the adjacent MCP, history, Waterline, and repair/actionability schemas.
+
 ## Discovery And Health
 
 These routes are used by load balancers, SDK bootstraps, and compatibility
