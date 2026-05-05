@@ -23,6 +23,8 @@ Supported today:
 - Start new workflows through the server control-plane API or CLI.
 - Register PHP, Python, or custom HTTP workers against the server.
 - Poll and complete workflow and activity tasks through the worker protocol.
+- Import eligible embedded v2 history-export bundles into the server as
+  server-managed workflow state.
 - Export closed-run history bundles from embedded v2 or server v2 for audit,
   debugging, and archival handoff.
 - Observe server-managed workflows through the server API, CLI, and SDK
@@ -32,13 +34,11 @@ Supported today:
 
 Not supported as an automatic operation today:
 
-- Moving in-flight v1 or embedded v2 runs into the server.
-- Importing old embedded history so it appears as live server-managed workflow
-  state.
+- Moving v1 runs into the server.
 - Replaying v1 history with non-PHP workers.
 
-Plan the cutover so old embedded runs drain where they started, while new runs
-start on the server.
+Plan the cutover so v1 runs drain where they started. Embedded v2 runs may
+either drain in place or move through the import workflow below.
 
 ## Deployment Mode Contract
 
@@ -63,8 +63,9 @@ Keep these rules true throughout the migration:
   codec, and compatibility markers stable across both runtimes.
 - Route signals, queries, updates, cancel, terminate, and archive to the same
   runtime that owns the target run.
-- Drain or retain embedded runs where they already live; do not plan on moving
-  live embedded state into the server.
+- Before importing an embedded run, pause embedded workers long enough to export
+  a quiesced bundle with no leased workflow/activity task and no running
+  activity attempt.
 - Treat language neutrality as part of the migration contract: server-managed
   workflows should use stable aliases and a codec such as `avro`, not PHP-only
   class names or payload formats.
@@ -252,9 +253,54 @@ started the workflow. A workflow started embedded should receive embedded
 commands; a workflow started on the server should receive server control-plane
 commands.
 
-## Phase E: Preserve Old History
+## Phase E: Import Eligible Embedded v2 Runs
 
-Use history export for evidence and debugging. It is not a server import path.
+Use history export as the import format. The embedded runtime remains the source
+of truth for the bundle; the server verifies it, writes durable rows inside one
+transaction, and rebuilds server projections from those rows.
+
+Eligibility:
+
+- The bundle schema must be `durable-workflow.v2.history-export` with
+  `schema_version: 1`.
+- The source run must be embedded v2 and the export must carry
+  `workflow.source_runtime: "embedded"`. v1 history remains out of scope.
+- A non-terminal run must be the current embedded run.
+- A terminal run must have `history_complete: true`.
+- Redacted bundles are rejected.
+- Leased workflow tasks, leased activity tasks, and running activity attempts
+  are rejected. Pause workers or let leases expire, then export again.
+
+Import source-of-truth rules:
+
+- `history_events` are copied as the authoritative replay and audit log.
+- Workflow identity, payloads, commands, signals, updates, tasks, activity
+  executions, timers, failures, and lineage links are reconstructed from the
+  bundle.
+- Server summary, wait, timer, timeline, and lineage projections are rebuilt
+  after import. Projection rows are not the import authority.
+- Pending workflow tasks remain claimable by compatible server workers.
+- Pending activity executions and ready activity tasks remain claimable by
+  compatible server activity workers.
+- Pending timers keep their `fire_at` timestamp and are visible to server timer
+  repair/recovery.
+
+Failure and rollback:
+
+- Import is all-or-nothing in one database transaction.
+- If the process exits or validation fails before commit, no partial run state
+  remains on the server.
+- Retrying the same bundle is idempotent by `run_id` and `dedupe_key`.
+- If a different server run already owns the same `run_id`, import is rejected.
+
+Visibility and audit:
+
+- Imported runs expose `engine_source: embedded_v2_import` in server list/detail
+  views.
+- The durable run row records `import_source=embedded_v2`, `import_id`,
+  `import_dedupe_key`, `import_contract_version`, and `imported_at`.
+
+Operator workflow:
 
 For embedded v2 runs:
 
@@ -264,7 +310,53 @@ php artisan workflow:v2:history-export order-123 \
   --pretty
 ```
 
-For server-managed runs:
+Dry-run the import on the server:
+
+```bash
+php artisan workflow:v2:history-import storage/workflow-history/order-123.json \
+  --namespace=production \
+  --dry-run \
+  --json
+```
+
+Import the bundle:
+
+```bash
+php artisan workflow:v2:history-import storage/workflow-history/order-123.json \
+  --namespace=production \
+  --import-id=orders-cutover-2026-05-05
+```
+
+Or call the HTTP operator endpoint:
+
+```bash
+curl -X POST "$SERVER/api/workflows/import/embedded-v2" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "X-Namespace: production" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "Content-Type: application/json" \
+  --data-binary @order-123-import-request.json
+```
+
+where `order-123-import-request.json` is:
+
+```json
+{
+  "import_id": "orders-cutover-2026-05-05",
+  "bundle": {
+    "schema": "durable-workflow.v2.history-export",
+    "schema_version": 1,
+    "workflow": {
+      "source_runtime": "embedded"
+    }
+  }
+}
+```
+
+The `bundle` object above is abbreviated; pass the complete
+`workflow:v2:history-export` JSON document.
+
+For server-managed runs that you only need to preserve or audit:
 
 ```bash
 curl "$SERVER/api/workflows/order-123/runs/$RUN_ID/history/export" \
@@ -311,7 +403,11 @@ HTTP implementations, use [the worker protocol reference](/docs/2.0/polyglot/wor
   registrations.
 - [ ] Old embedded starters are paused or moved so duplicate business keys do
   not start in both runtimes.
-- [ ] Closed old runs that must be retained are exported to durable storage.
+- [ ] Embedded v2 runs selected for import are exported from a quiesced embedded
+  runtime and pass `workflow:v2:history-import --dry-run`.
+- [ ] Imported runs show `engine_source: embedded_v2_import` and the expected
+  `import_id` in server detail/list surfaces.
+- [ ] Closed old runs that only need retention are exported to durable storage.
 
 ## Troubleshooting
 
@@ -323,6 +419,9 @@ HTTP implementations, use [the worker protocol reference](/docs/2.0/polyglot/wor
 | Worker polls return no task | Task queue, type key, namespace, or compatibility marker does not match | Compare workflow start payload, worker registration, and task queue visibility |
 | Payload cannot be decoded by a non-PHP worker | A legacy PHP serializer was used for new v2 work | Move new starts to `avro`; drain legacy-codec runs on PHP |
 | Old workflow does not respond to server signal/query/update | The run was started in embedded mode | Send commands through the embedded app until that run finishes |
+| Import rejects `tasks.leased_task_present` | The embedded export captured a leased task | Pause embedded workers, wait for leases to release or complete, then export again |
+| Import returns `already_imported` | The same `run_id` and `dedupe_key` are already present on the server | Treat the retry as successful and inspect the server run |
+| Imported run is visible but not claimed | Worker type key, task queue, namespace, or compatibility marker does not match the imported row | Compare the import report, run detail, and worker registration |
 
 ## Related Guides
 
