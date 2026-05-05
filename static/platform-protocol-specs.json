@@ -1,6 +1,6 @@
 {
   "schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "version": 5,
+  "version": 6,
   "authority_url": "https://durable-workflow.github.io/docs/2.0/platform-protocol-specs",
   "formats": {
     "openapi": {
@@ -85,7 +85,7 @@
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
       "discovery_endpoint": "GET /api/cluster/info -> control_plane",
-      "conformance_test": "durable-workflow/server: tests/Feature/ClusterInfoCompatibilityTest.php and tests/Feature/Api/* per-route contract tests",
+      "conformance_test": "durable-workflow/server: tests/Feature/ClusterInfoCompatibilityTest.php, tests/Feature/ControlPlaneVersionCoverageTest.php, tests/Feature/ControlPlane*ContractTest.php, and tests/Feature/WorkflowControlPlaneTest.php",
       "status": "published",
       "spec_path": "static/platform-protocol-specs/control-plane-api.openapi.yaml"
     },
@@ -132,7 +132,7 @@
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
       "discovery_endpoint": "GET /api/cluster/info -> worker_protocol",
-      "conformance_test": "durable-workflow/server: tests/Feature/Api/Worker* contract tests",
+      "conformance_test": "durable-workflow/server: tests/Feature/WorkerProtocolContractTest.php, tests/Feature/WorkerProtocolSuccessContractTest.php, tests/Feature/WorkerProtocolOwnershipErrorContractTest.php, tests/Feature/WorkerProtocolVersionCoverageTest.php, tests/Feature/WorkflowWorkerProtocolTest.php, and tests/Feature/ActivityWorkerProtocolTest.php",
       "status": "published",
       "spec_path": "static/platform-protocol-specs/worker-protocol-api.openapi.yaml"
     },
@@ -167,7 +167,7 @@
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
       "discovery_endpoint": "GET /api/cluster/info -> worker_protocol",
-      "conformance_test": "durable-workflow/server: tests/Feature/Api/WorkerLongPollTest.php and tests/Feature/Api/WorkerHeartbeatTest.php",
+      "conformance_test": "durable-workflow/server: tests/Feature/WorkerProtocolContractTest.php, tests/Feature/WorkerProtocolSuccessContractTest.php, and tests/Feature/WorkerProtocolOwnershipErrorContractTest.php",
       "status": "published",
       "spec_path": "static/platform-protocol-specs/worker-protocol-stream.asyncapi.yaml"
     },
@@ -240,7 +240,7 @@
       ],
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
-      "conformance_test": "durable-workflow/workflow: tests/Unit/V2/WorkflowReplayer*Test.php and durable-workflow/server: tests/Feature/ReplayVerificationContractTest.php",
+      "conformance_test": "durable-workflow/workflow: tests/Feature/V2/V2WorkflowReplayerTest.php, tests/Feature/V2/V2GoldenHistoryReplayTest.php, and durable-workflow/server: tests/Unit/ReplayVerificationContractTest.php",
       "status": "published",
       "spec_path": "static/platform-protocol-specs/replay-bundle.schema.json"
     },
@@ -268,7 +268,7 @@
       ],
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
-      "conformance_test": "durable-workflow/waterline: tests/Feature/OperatorReadApiTest.php and contract tests under tests/Feature/Api/",
+      "conformance_test": "durable-workflow/waterline: tests/Feature/V2DashboardWorkflowTest.php, tests/Feature/V2DashboardWorkflowListTest.php, tests/Feature/V2HealthControllerTest.php, tests/Feature/V2SchedulesHistoryControllerTest.php, tests/Feature/V2ServicesControllerTest.php, and tests/Feature/V2HistoryExportControllerTest.php",
       "status": "published",
       "spec_path": "static/platform-protocol-specs/waterline-read-api.openapi.yaml"
     },
@@ -308,7 +308,7 @@
       ],
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
-      "conformance_test": "durable-workflow/waterline: tests/Feature/DiagnosticObjectContractTest.php",
+      "conformance_test": "durable-workflow/waterline: tests/Unit/Support/V2DiagnosticsExecutionContractAlignmentTest.php, tests/Feature/V2DashboardWorkflowTest.php, and tests/Feature/V2DashboardWorkflowListTest.php",
       "status": "published",
       "spec_path": "static/platform-protocol-specs/waterline-diagnostic-objects.schema.json"
     },
@@ -348,7 +348,7 @@
       ],
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
-      "conformance_test": "durable-workflow/workflow: tests/Unit/V2/TaskRepair*Test.php and durable-workflow/server: tests/Feature/Api/RepairControllerTest.php",
+      "conformance_test": "durable-workflow/workflow: tests/Unit/Commands/V2RepairPassCommandTest.php, tests/Feature/V2/V2OperatorQueueVisibilityTest.php; durable-workflow/waterline: tests/Feature/V2DashboardWorkflowTest.php, tests/Feature/V2DashboardWorkflowListTest.php; durable-workflow/server: tests/Feature/TransportRepairTest.php",
       "status": "published",
       "spec_path": "static/platform-protocol-specs/repair-actionability-objects.schema.json"
     },
@@ -358,13 +358,13 @@
       "spec_id": "durable-workflow.v2.mcp-discovery",
       "surface_family": "mcp_discovery_results",
       "authority_manifest": "mcp_workflows",
-      "owner_repo": "durable-workflow/server",
-      "owner_symbol": "App\\Mcp\\Discovery and the MCP route group in routes/api.php",
+      "owner_repo": "durable-workflow/durable-workflow.github.io",
+      "owner_symbol": "docs/mcp-workflows.md, scripts/generate-llms.js, and scripts/generate-llms-full.js",
       "object_families": [
         {
           "name": "mcp_tool_discovery",
-          "owner_repo": "durable-workflow/server",
-          "schema_authority": "App\\Mcp\\Discovery",
+          "owner_repo": "durable-workflow/durable-workflow.github.io",
+          "schema_authority": "docs/mcp-workflows.md and static/platform-protocol-specs/mcp-discovery.schema.json",
           "version_authority": "durable-workflow.v2.mcp-discovery"
         },
         {
@@ -376,7 +376,7 @@
       ],
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
-      "conformance_test": "durable-workflow/server: tests/Feature/Mcp/DiscoveryContractTest.php",
+      "conformance_test": "durable-workflow/durable-workflow.github.io: scripts/check-discoverability.js and scripts/check-llms-ai-surfaces.js",
       "status": "published",
       "spec_path": "static/platform-protocol-specs/mcp-discovery.schema.json"
     },
@@ -386,19 +386,19 @@
       "spec_id": "durable-workflow.v2.mcp-tool-results",
       "surface_family": "mcp_discovery_results",
       "authority_manifest": "mcp_workflows",
-      "owner_repo": "durable-workflow/server",
-      "owner_symbol": "App\\Mcp\\ToolResultEnvelope",
+      "owner_repo": "durable-workflow/durable-workflow.github.io",
+      "owner_symbol": "docs/mcp-workflows.md Tool Result Contract and static/platform-protocol-specs/mcp-tool-results.schema.json",
       "object_families": [
         {
           "name": "mcp_tool_result_envelope",
-          "owner_repo": "durable-workflow/server",
-          "schema_authority": "App\\Mcp\\ToolResultEnvelope",
+          "owner_repo": "durable-workflow/durable-workflow.github.io",
+          "schema_authority": "docs/mcp-workflows.md Tool Result Contract and static/platform-protocol-specs/mcp-tool-results.schema.json",
           "version_authority": "durable-workflow.v2.mcp-tool-results"
         }
       ],
       "evolution_rule": "additive_minor_breaking_major",
       "breaking_change_release": "major",
-      "conformance_test": "durable-workflow/server: tests/Feature/Mcp/ToolResultEnvelopeTest.php",
+      "conformance_test": "durable-workflow/durable-workflow.github.io: scripts/check-llms-ai-surfaces.js and scripts/check-platform-protocol-specs.js",
       "status": "published",
       "spec_path": "static/platform-protocol-specs/mcp-tool-results.schema.json"
     },

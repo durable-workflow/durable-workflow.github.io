@@ -45,7 +45,7 @@ truth:
 - `platform_protocol_specs` in the response body of
   `GET /api/cluster/info` on the standalone Durable Workflow server,
   schema `durable-workflow.v2.platform-protocol-specs.catalog`,
-  version `5`.
+  version `6`.
 - A frozen mirror of the same manifest in this repository at
   `static/platform-protocol-specs.json`.
 - The PHP class `Workflow\V2\Support\PlatformProtocolSpecs`, which is
@@ -161,7 +161,7 @@ control plane, and operator scripts call.
 | Evolution rule | `additive_minor_breaking_major` |
 | Breaking-change release | `major` |
 | Discovery endpoint | `GET /api/cluster/info -> control_plane` |
-| Conformance test | `durable-workflow/server: tests/Feature/ClusterInfoCompatibilityTest.php` and `tests/Feature/Api/*` per-route contract tests |
+| Conformance test | `durable-workflow/server: tests/Feature/ClusterInfoCompatibilityTest.php`, `tests/Feature/ControlPlaneVersionCoverageTest.php`, `tests/Feature/ControlPlane*ContractTest.php`, and `tests/Feature/WorkflowControlPlaneTest.php` |
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/control-plane-api.openapi.yaml` |
 | Object families | `control_plane_request_contract`, `control_plane_response_envelope`, `control_plane_operation_contract` |
@@ -184,7 +184,7 @@ long-poll and lease-renewal semantics.
 | Evolution rule | `additive_minor_breaking_major` |
 | Breaking-change release | `major` |
 | Discovery endpoint | `GET /api/cluster/info -> worker_protocol` |
-| Conformance test | `durable-workflow/server: tests/Feature/Api/Worker*` contract tests |
+| Conformance test | `durable-workflow/server: tests/Feature/WorkerProtocolContractTest.php`, `tests/Feature/WorkerProtocolSuccessContractTest.php`, `tests/Feature/WorkerProtocolOwnershipErrorContractTest.php`, `tests/Feature/WorkerProtocolVersionCoverageTest.php`, `tests/Feature/WorkflowWorkerProtocolTest.php`, and `tests/Feature/ActivityWorkerProtocolTest.php` |
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/worker-protocol-api.openapi.yaml` |
 | Object families | `worker_registration_request`, `worker_task_poll_request`, `worker_task_result`, `external_task_input_contract`, `external_task_result_contract` |
@@ -206,7 +206,7 @@ routing precedence, build-id rollout drains, and graceful disconnect.
 | Evolution rule | `additive_minor_breaking_major` |
 | Breaking-change release | `major` |
 | Discovery endpoint | `GET /api/cluster/info -> worker_protocol` |
-| Conformance test | `durable-workflow/server: tests/Feature/Api/WorkerLongPollTest.php` and `tests/Feature/Api/WorkerHeartbeatTest.php` |
+| Conformance test | `durable-workflow/server: tests/Feature/WorkerProtocolContractTest.php`, `tests/Feature/WorkerProtocolSuccessContractTest.php`, and `tests/Feature/WorkerProtocolOwnershipErrorContractTest.php` |
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/worker-protocol-stream.asyncapi.yaml` |
 | Object families | `worker_poll_stream`, `worker_task_lease`, `worker_task_heartbeat` |
@@ -274,7 +274,7 @@ UIs, and the replay-verification contract.
 | Owner symbol | `Workflow\V2\Support\WorkflowReplayer` and `Workflow\V2\Support\ReplayState` |
 | Evolution rule | `additive_minor_breaking_major` |
 | Breaking-change release | `major` |
-| Conformance test | `durable-workflow/workflow: tests/Unit/V2/WorkflowReplayer*Test.php` and `durable-workflow/server: tests/Feature/ReplayVerificationContractTest.php` |
+| Conformance test | `durable-workflow/workflow: tests/Feature/V2/V2WorkflowReplayerTest.php`, `tests/Feature/V2/V2GoldenHistoryReplayTest.php`, and `durable-workflow/server: tests/Unit/ReplayVerificationContractTest.php` |
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/replay-bundle.schema.json` |
 | Object families | `replay_bundle` |
@@ -295,7 +295,7 @@ views, schedule audit, and dashboard JSON shapes.
 | Owner symbol | waterline `routes/api.php` and the Waterline OperatorReadController |
 | Evolution rule | `additive_minor_breaking_major` |
 | Breaking-change release | `major` |
-| Conformance test | `durable-workflow/waterline: tests/Feature/OperatorReadApiTest.php` and contract tests under `tests/Feature/Api/` |
+| Conformance test | `durable-workflow/waterline: tests/Feature/V2DashboardWorkflowTest.php`, `tests/Feature/V2DashboardWorkflowListTest.php`, `tests/Feature/V2HealthControllerTest.php`, `tests/Feature/V2SchedulesHistoryControllerTest.php`, `tests/Feature/V2ServicesControllerTest.php`, and `tests/Feature/V2HistoryExportControllerTest.php` |
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/waterline-read-api.openapi.yaml` |
 | Object families | `waterline_read_envelope`, `waterline_operator_action_envelope` |
@@ -317,7 +317,7 @@ operator dashboards and external observability adapters parse.
 | Owner symbol | waterline DiagnosticObjectContract and OperatorReadProjections |
 | Evolution rule | `additive_minor_breaking_major` |
 | Breaking-change release | `major` |
-| Conformance test | `durable-workflow/waterline: tests/Feature/DiagnosticObjectContractTest.php` |
+| Conformance test | `durable-workflow/waterline: tests/Unit/Support/V2DiagnosticsExecutionContractAlignmentTest.php`, `tests/Feature/V2DashboardWorkflowTest.php`, and `tests/Feature/V2DashboardWorkflowListTest.php` |
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/waterline-diagnostic-objects.schema.json` |
 | Object families | `waterline_run_detail`, `waterline_health_diagnostics`, `waterline_timeline_rows`, `waterline_lineage_edges` |
@@ -339,7 +339,7 @@ that drive operator-led recovery.
 | Owner symbol | `Workflow\V2\Support\TaskRepairCandidates`, `Workflow\V2\Support\TaskRepairPolicy`, and `Workflow\V2\Support\OperatorQueueVisibility` |
 | Evolution rule | `additive_minor_breaking_major` |
 | Breaking-change release | `major` |
-| Conformance test | `durable-workflow/workflow: tests/Unit/V2/TaskRepair*Test.php` and `durable-workflow/server: tests/Feature/Api/RepairControllerTest.php` |
+| Conformance test | `durable-workflow/workflow: tests/Unit/Commands/V2RepairPassCommandTest.php`, `tests/Feature/V2/V2OperatorQueueVisibilityTest.php`; `durable-workflow/waterline: tests/Feature/V2DashboardWorkflowTest.php`, `tests/Feature/V2DashboardWorkflowListTest.php`; `durable-workflow/server: tests/Feature/TransportRepairTest.php` |
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/repair-actionability-objects.schema.json` |
 | Object families | `task_repair_policy`, `task_repair_candidates`, `operator_queue_visibility`, `actionability` |
@@ -356,11 +356,11 @@ list shape, parameter schema shape, and discovery hints.
 | Spec id | `durable-workflow.v2.mcp-discovery` |
 | Surface family | `mcp_discovery_results` |
 | Authority manifest | `mcp_workflows` |
-| Owner repo | `durable-workflow/server` |
-| Owner symbol | `App\Mcp\Discovery` and the MCP route group in `routes/api.php` |
+| Owner repo | `durable-workflow/durable-workflow.github.io` |
+| Owner symbol | `docs/mcp-workflows.md`, `scripts/generate-llms.js`, and `scripts/generate-llms-full.js` |
 | Evolution rule | `additive_minor_breaking_major` |
 | Breaking-change release | `major` |
-| Conformance test | `durable-workflow/server: tests/Feature/Mcp/DiscoveryContractTest.php` |
+| Conformance test | `durable-workflow/durable-workflow.github.io: scripts/check-discoverability.js` and `scripts/check-llms-ai-surfaces.js` |
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/mcp-discovery.schema.json` |
 | Object families | `mcp_tool_discovery`, `llms_txt_discovery` |
@@ -378,11 +378,11 @@ discovery hints are diagnostic, not contract.
 | Spec id | `durable-workflow.v2.mcp-tool-results` |
 | Surface family | `mcp_discovery_results` |
 | Authority manifest | `mcp_workflows` |
-| Owner repo | `durable-workflow/server` |
-| Owner symbol | `App\Mcp\ToolResultEnvelope` |
+| Owner repo | `durable-workflow/durable-workflow.github.io` |
+| Owner symbol | `docs/mcp-workflows.md` Tool Result Contract and `static/platform-protocol-specs/mcp-tool-results.schema.json` |
 | Evolution rule | `additive_minor_breaking_major` |
 | Breaking-change release | `major` |
-| Conformance test | `durable-workflow/server: tests/Feature/Mcp/ToolResultEnvelopeTest.php` |
+| Conformance test | `durable-workflow/durable-workflow.github.io: scripts/check-llms-ai-surfaces.js` and `scripts/check-platform-protocol-specs.js` |
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/mcp-tool-results.schema.json` |
 | Object families | `mcp_tool_result_envelope` |

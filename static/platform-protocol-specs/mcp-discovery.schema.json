@@ -6,14 +6,14 @@
   "type": "object",
   "x-durable-workflow-catalog-entry": "mcp_discovery",
   "x-durable-workflow-catalog-schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "x-durable-workflow-catalog-version": 5,
-  "x-durable-workflow-owner-symbol": "App\\Mcp\\Discovery and the MCP route group in routes/api.php",
+  "x-durable-workflow-catalog-version": 6,
+  "x-durable-workflow-owner-symbol": "docs/mcp-workflows.md, scripts/generate-llms.js, and scripts/generate-llms-full.js",
   "x-durable-workflow-evolution-rule": "additive_minor_breaking_major",
   "x-durable-workflow-object-families": [
     {
       "name": "mcp_tool_discovery",
-      "owner_repo": "durable-workflow/server",
-      "schema_authority": "App\\Mcp\\Discovery",
+      "owner_repo": "durable-workflow/durable-workflow.github.io",
+      "schema_authority": "docs/mcp-workflows.md and static/platform-protocol-specs/mcp-discovery.schema.json",
       "version_authority": "durable-workflow.v2.mcp-discovery"
     },
     {
