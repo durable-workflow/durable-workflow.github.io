@@ -201,6 +201,7 @@ Parent-close policy fires on every terminal parent disposition, and stays inert 
 | Cancelled | Yes | Fires after the accepted `CancelRequested` command closes the parent run. |
 | Terminated | Yes | Fires after the accepted `TerminateRequested` command closes the parent run. |
 | Continue-as-new | No | The workflow instance stays active under the new run, so existing child links are re-pointed at the continued run with their original policy preserved. |
+| Reset | Not currently applicable | The v2 runtime does not expose a standalone reset command or reset terminal disposition. A future reset or repair operation that closes or replaces a parent run must define whether child ownership transfers; if the old run becomes terminal, it must apply parent-close policy before it stops owning open children. |
 
 ### When to use each policy
 
