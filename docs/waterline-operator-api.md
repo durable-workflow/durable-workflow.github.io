@@ -73,6 +73,13 @@ Waterline routes are registered under Laravel's `web` middleware group. GET
 routes work with any authenticated session. POST routes additionally require a
 CSRF token, which is how the UI itself authenticates every operator action.
 
+Waterline deliberately delegates the first operator auth boundary to the host
+Laravel application. The host app decides which guards, route middleware,
+gates, policies, SSO/OIDC/SAML session middleware, SCIM-backed directory
+groups, service tokens, and rate limits apply before a Waterline controller
+runs. Waterline then records durable command context for mutating actions
+instead of treating UI middleware as the only explanation for access.
+
 For scripted operators the token requirement still applies. Two patterns work:
 
 - **Session + XSRF cookie.** Make one GET to a Waterline route with the session
@@ -88,6 +95,11 @@ For scripted operators the token requirement still applies. Two patterns work:
 
 A POST without a valid CSRF token returns `419 CSRF token mismatch` before any
 Waterline controller runs, regardless of the target action.
+
+Host apps that expose Waterline on the public internet should document TLS,
+trusted proxy headers, session lifetime, CSRF exceptions, service-token
+rotation, and any private-network or mTLS assumptions alongside the deployment
+runbook.
 
 ## Dashboard And Health
 

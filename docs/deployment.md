@@ -61,6 +61,34 @@ until the recovery contract is written down and rehearsed. The
 the restore order, verification pass, and rehearsal cadence those packets must
 follow.
 
+## Security, Data, And Audit Posture
+
+Self-hosted Durable Workflow deployments inherit most security controls from
+the environment you operate. Publish these facts in the same release or runbook
+packet as the image tag, migration plan, and recovery evidence:
+
+| Posture area | Honest release statement |
+| --- | --- |
+| Data handling | Workflow arguments, results, history, memos, search attributes, visibility labels, command context, audit rows, exception messages, and operator notes can contain customer application data. Treat search attributes and labels as operator-visible metadata, not secret storage. |
+| Encryption | Use TLS for every production HTTP surface. At-rest encryption comes from your database, object storage, filesystem, queue, cache, and secret manager. The workflow package and server do not automatically encrypt each payload field. |
+| Compliance | The open-source package and self-hosted server provide controls and audit evidence, not a compliance certification by themselves. Claims such as SOC 2, HIPAA, PCI, ISO, or FedRAMP belong to your own program unless a hosted offering documents otherwise. |
+| Audit logs | Workflow commands, schedule audit events, history export metadata, and service-call records provide durable operational evidence. They are not a complete SIEM, DLP system, immutable external ledger, or legal-hold system unless you add those components. |
+| Support | Role-scoped credentials, TLS termination, backups, restore rehearsal, and narrow self-serve topologies are documented here. Advanced identity, mTLS rollout, private networking, custom policy engines, provider compliance, and bespoke topology review are support-led unless public docs say otherwise. |
+
+Network posture must be explicit:
+
+- **Webhook ingress:** document the public endpoint, auth method, replay or
+  idempotency strategy, timeout, payload limit, trusted proxy-header
+  configuration, and secret rotation plan.
+- **Worker-to-backend traffic:** use TLS verification, role-scoped worker
+  credentials, namespace headers, private networking or mTLS when workers cross
+  an untrusted network, and rotation that does not grant operator capabilities
+  to worker tokens.
+- **Operator surfaces:** place Waterline, standalone-server operator APIs, CLI
+  automation endpoints, and custom admin panels behind authenticated sessions
+  or role-scoped service credentials, with CSRF protection for browser
+  sessions and documented proxy/TLS boundaries.
+
 ## Published images
 
 Use published images for self-hosted server deployments:

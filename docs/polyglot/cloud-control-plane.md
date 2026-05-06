@@ -65,6 +65,29 @@ Runtime target
 That split keeps one durable engine and one worker protocol while making the
 control-plane surface hosted and multi-tenant.
 
+## Hosted Identity Boundary
+
+Cloud identity sits above namespaces:
+
+```text
+organization
+  project
+    environment
+      namespace  --->  runtime target
+```
+
+Cloud owns hosted users, service accounts, API keys, organization membership,
+project and environment roles, namespace provisioning, runtime-target
+assignment, and Cloud audit logs. A principal can be allowed to administer one
+namespace without receiving rights to sibling namespaces in the same
+organization.
+
+When Cloud initiates or forwards a runtime command, the runtime request must
+still resolve to explicit command facts: actor or service identity summary,
+capability, target namespace/resource, auth outcome, request fingerprint or
+Cloud audit id, and runtime command outcome. Cloud may map that identity to a
+runtime-target credential, but the target remains the execution authority.
+
 ## What The Runtime Target Owns
 
 The runtime target is still an ordinary Durable Workflow server from the point

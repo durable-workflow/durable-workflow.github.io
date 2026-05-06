@@ -73,6 +73,20 @@ producer is a PHP workflow, a Python SDK worker, or a direct HTTP API caller.
 For the full field contract see
 [External Payload Reference Envelope](../polyglot/server-api-reference.md#external-payload-reference-envelope).
 
+## Decode Trust Boundary
+
+Payload storage and payload decode are separate trust boundaries. An object
+store can hold encoded bytes or references, while a codec server, custom
+decoder, worker process, or history-export tool that decodes those bytes can
+see plaintext application payloads.
+
+Treat any codec server as a customer-managed trust boundary: decide where it
+runs, which network can reach it, which keys it can access, what audit logs it
+emits, and how decoded previews are redacted before they reach operator
+surfaces. Durable Workflow records codec names, reference URIs, hashes, sizes,
+schema fingerprints, and bounded previews, but those facts are not equivalent
+to end-to-end encryption.
+
 ## Driver Choices
 
 | Driver | URI scheme | Typical use |
