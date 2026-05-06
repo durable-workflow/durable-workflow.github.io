@@ -323,19 +323,19 @@ paths:
         "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
         "202": { $ref: "#/components/responses/ControlPlaneEnvelope" }
         "409": { $ref: "#/components/responses/ControlPlaneError" }
-  /workflows/{workflowId}/runs/{runId}/{terminalCommand}:
+  /workflows/{workflowId}/runs/{runId}/{command}:
     post:
       tags: [workflows]
-      operationId: terminalWorkflowRunCommand
+      operationId: commandWorkflowRun
       parameters:
         - $ref: "#/components/parameters/ControlPlaneVersionHeader"
         - $ref: "#/components/parameters/WorkflowIdPath"
         - $ref: "#/components/parameters/RunIdPath"
-        - name: terminalCommand
+        - name: command
           in: path
           required: true
-          schema: { type: string, enum: [cancel, terminate] }
-      requestBody: { $ref: "#/components/requestBodies/ReasonObject" }
+          schema: { type: string, enum: [cancel, terminate, repair, archive] }
+      requestBody: { $ref: "#/components/requestBodies/JsonObject" }
       responses:
         "202": { $ref: "#/components/responses/ControlPlaneEnvelope" }
         "409": { $ref: "#/components/responses/ControlPlaneError" }

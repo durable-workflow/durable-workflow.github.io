@@ -74,7 +74,7 @@ The public role names are fixed by `topology.role_vocabulary`:
 | Role | Responsibility |
 | --- | --- |
 | `api_ingress` | Accept external HTTP traffic, including discovery and control-plane entrypoints. |
-| `control_plane` | Start, signal, update, cancel, terminate, and otherwise mutate workflow lifecycle state. |
+| `control_plane` | Start, signal, update, repair, cancel, terminate, archive, and otherwise mutate workflow lifecycle state. |
 | `matching` | Discover ready work, own task leases, and coordinate dispatch pressure. |
 | `history_projection` | Persist durable history and maintain derived run summaries and exports. |
 | `scheduler` | Fire schedules and persist schedule-run state. |

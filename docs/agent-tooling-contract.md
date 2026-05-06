@@ -68,7 +68,7 @@ Automation should be able to move between clients without semantic drift:
 
 | Operation family | Required parity signal |
 | --- | --- |
-| start, signal, update, query, cancel, terminate | CLI and SDK request bodies match the documented control-plane shape. |
+| start, signal, update, query, repair, cancel, terminate, archive | CLI and SDK request bodies match the documented control-plane shape. |
 | history, describe, list, result | Responses preserve stable identifiers, status names, timestamps, and failure fields. |
 | task queues and workers | Capacity, leases, slots, compatibility, and worker ids remain structured facts. |
 | external execution | Input and result envelopes stay language-neutral and carry named bridge outcomes. |

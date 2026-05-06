@@ -475,6 +475,8 @@ Run-targeted command routes reject historical or wrong-run targets explicitly:
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/update/{updateName}` | Submit or execute an update only if the selected run is current. |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/cancel` | Cancel only if the selected run is current. |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/terminate` | Terminate only if the selected run is current. |
+| `POST` | `/api/workflows/{workflowId}/runs/{runId}/repair` | Repair only if the selected run is current. |
+| `POST` | `/api/workflows/{workflowId}/runs/{runId}/archive` | Archive only if the selected run is current and closed. |
 
 Commands with caller payloads use an `input` array. The Python and PHP SDKs
 encode language-neutral payload envelopes for you; direct HTTP callers must

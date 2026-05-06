@@ -99,7 +99,7 @@ Three migration rules are non-negotiable:
 1. Existing runs stay on the runtime where they started.
 2. New server-managed runs use stable type keys, namespace names, task queues,
    and payload codecs from the first cutover.
-3. Signals, queries, updates, cancel, terminate, and archive must go to the
+3. Signals, queries, updates, repair, cancel, terminate, and archive must go to the
    runtime that owns the target run.
 
 ## Related References

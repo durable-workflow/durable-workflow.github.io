@@ -149,9 +149,9 @@ DW_ADMIN_TOKEN=admin-secret
 ```
 
 Worker tokens can register workers, poll tasks, heartbeat, and complete work.
-Operator tokens can start, list, signal, query, update, cancel, terminate, and
-observe workflows. Admin tokens can use administrative endpoints such as
-namespace and retention management.
+Operator tokens can start, list, signal, query, update, repair, cancel,
+terminate, archive, and observe workflows. Admin tokens can use administrative
+endpoints such as namespace and retention management.
 
 **HMAC signature**:
 

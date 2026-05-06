@@ -49,7 +49,7 @@ adds three cutover-specific rules on top of that shared contract:
 - Existing embedded runs keep executing where they started.
 - New server-managed runs use stable type keys, namespace names, task queues,
   and payload codecs from the first cutover.
-- Signals, queries, updates, cancel, terminate, and archive must keep routing
+- Signals, queries, updates, repair, cancel, terminate, and archive must keep routing
   to the runtime that owns the target run.
 
 ## Cutover Invariants
@@ -61,7 +61,7 @@ Keep these rules true throughout the migration:
   from Laravel app-local settings.
 - Keep workflow ids, run-targeting rules, workflow/activity type keys, payload
   codec, and compatibility markers stable across both runtimes.
-- Route signals, queries, updates, cancel, terminate, and archive to the same
+- Route signals, queries, updates, repair, cancel, terminate, and archive to the same
   runtime that owns the target run.
 - Before importing an embedded run, pause embedded workers long enough to export
   a quiesced bundle with no leased workflow/activity task and no running
