@@ -26,6 +26,20 @@ const docs = fs.readFileSync(docsPath, 'utf8');
 const referencePath = path.join(repoRoot, 'docs', 'polyglot', 'server-config-reference.md');
 const reference = fs.readFileSync(referencePath, 'utf8');
 
+function referencedPublicVarsFromServerReference(source) {
+  const names = new Set();
+
+  for (const line of source.split('\n')) {
+    const match = line.match(/^\|\s*`(DW_[A-Z0-9_]+)`\s*\|/);
+
+    if (match) {
+      names.add(match[1]);
+    }
+  }
+
+  return [...names];
+}
+
 function phpArraySection(source, sectionName) {
   const start = source.indexOf(`'${sectionName}' => [`);
   if (start === -1) {
@@ -131,11 +145,25 @@ const missingFromReference = publicVars
   .filter((name) => !reference.includes(`\`${name}\``))
   .sort();
 
-if (missingFromReference.length > 0) {
-  console.error(`Missing DW_* env reference entries in ${path.relative(repoRoot, referencePath)}:`);
-  for (const name of missingFromReference) {
-    console.error(`- ${name}`);
+const extraReferenceVars = referencedPublicVarsFromServerReference(reference)
+  .filter((name) => !publicVars.includes(name))
+  .sort();
+
+if (missingFromReference.length > 0 || extraReferenceVars.length > 0) {
+  if (missingFromReference.length > 0) {
+    console.error(`Missing DW_* env reference entries in ${path.relative(repoRoot, referencePath)}:`);
+    for (const name of missingFromReference) {
+      console.error(`- ${name}`);
+    }
   }
+
+  if (extraReferenceVars.length > 0) {
+    console.error(`Unsupported DW_* env reference entries in ${path.relative(repoRoot, referencePath)}:`);
+    for (const name of extraReferenceVars) {
+      console.error(`- ${name}`);
+    }
+  }
+
   process.exit(1);
 }
 

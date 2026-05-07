@@ -116,30 +116,25 @@ route incompatible code to a run.
 
 ## Operator Controls
 
-The workflow package publishes these controls:
+Sticky execution is controlled by workflow/runtime configuration and worker
+capabilities, not by standalone server-image environment variables. The
+workflow package configuration exposes the enablement flag and affinity TTL:
 
 ```php
 'workflows' => [
     'v2' => [
         'sticky_execution' => [
-            'enabled' => env('DW_V2_STICKY_EXECUTION_ENABLED', true),
-            'ttl_seconds' => env('DW_V2_STICKY_EXECUTION_TTL_SECONDS', 300),
+            'enabled' => true,
+            'ttl_seconds' => 300,
         ],
     ],
 ],
 ```
 
-The standalone server mirrors those controls and adds worker-cache defaults:
-
-```dotenv
-DW_V2_STICKY_EXECUTION_ENABLED=true
-DW_V2_STICKY_EXECUTION_TTL_SECONDS=300
-DW_V2_STICKY_EXECUTION_DEFAULT_CACHE_CAPACITY=100
-DW_V2_STICKY_EXECUTION_CAPACITY_PRESSURE_RATIO=0.9
-```
-
-Set `DW_V2_STICKY_EXECUTION_ENABLED=false` to disable sticky routing without
-changing workflow semantics. Existing runs continue by ordinary cold replay.
+Worker cache capacity is advertised by each worker at registration and on
+heartbeat. Disable sticky routing in runtime configuration, or run workers
+without sticky-cache support, without changing workflow semantics. Existing
+runs continue by ordinary cold replay.
 
 ## Worker Protocol Fields
 
@@ -202,8 +197,8 @@ Use these diagnostics this way:
   are being replaced often, or cache capacity is too small.
 - High miss rate or high forced cold replay means correctness is protected, but
   sticky execution is not improving replay cost.
-- Capacity pressure means workers are near or above the configured
-  `DW_V2_STICKY_EXECUTION_CAPACITY_PRESSURE_RATIO` and may evict warm runs.
+- Capacity pressure means workers are near or above their reported sticky-cache
+  capacity and may evict warm runs.
 
 ## Replay-Safe Code
 
