@@ -14,7 +14,10 @@
 // Specifically the script verifies that:
 //
 // 1. `static/platform-protocol-specs.json` is well-formed and advertises
-//    the expected schema id, version, and authority URL.
+//    the expected schema id, version, and authority URL. When the
+//    workflow repo is available beside this docs checkout (or via
+//    WORKFLOW_REPO_PATH), the static mirror must also be byte-equivalent
+//    to `workflow/resources/platform-protocol-specs.json`.
 // 2. Every spec entry has the required fields with valid values:
 //    format ∈ {openapi, json_schema, asyncapi}, status ∈ {published,
 //    in_progress, planned}, owner_repo ∈ known fleet repos, and a
@@ -162,6 +165,47 @@ function loadCatalog() {
   }
 
   return catalog;
+}
+
+function workflowCatalogMirrorPath() {
+  const configuredWorkflowRepo = process.env.WORKFLOW_REPO_PATH;
+  if (configuredWorkflowRepo) {
+    return path.join(configuredWorkflowRepo, 'resources', 'platform-protocol-specs.json');
+  }
+
+  const siblingWorkflowCatalogPath = path.join(
+    repoRoot,
+    '..',
+    'workflow',
+    'resources',
+    'platform-protocol-specs.json',
+  );
+
+  return fs.existsSync(siblingWorkflowCatalogPath) ? siblingWorkflowCatalogPath : null;
+}
+
+function assertWorkflowCatalogMirrorMatchesWhenAvailable() {
+  const workflowCatalogPath = workflowCatalogMirrorPath();
+  if (workflowCatalogPath === null) {
+    return;
+  }
+
+  if (!fs.existsSync(workflowCatalogPath)) {
+    throw new Error(
+      `WORKFLOW_REPO_PATH was set, but the workflow platform protocol-spec ` +
+        `catalog mirror does not exist at ${workflowCatalogPath}.`,
+    );
+  }
+
+  const docsCatalog = read(catalogPath);
+  const workflowCatalog = read(workflowCatalogPath);
+  if (docsCatalog !== workflowCatalog) {
+    throw new Error(
+      `static/platform-protocol-specs.json must be byte-equivalent to ` +
+        `${workflowCatalogPath}. Update the docs-site mirror and the ` +
+        `workflow package mirror in the same release change.`,
+    );
+  }
 }
 
 function loadSurfaceFamilies() {
@@ -666,6 +710,7 @@ function main() {
   const surfaceFamilies = loadSurfaceFamilies();
   const catalog = loadCatalog();
 
+  assertWorkflowCatalogMirrorMatchesWhenAvailable();
   assertCatalogEntriesAreWellFormed(catalog, surfaceFamilies);
   assertCatalogDocAlignsWithCatalog(catalog);
   assertCompatibilityDocCrossLinksCatalog();

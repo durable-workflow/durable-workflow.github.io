@@ -503,13 +503,16 @@ under `release_check`.
 | `owner_repo_known` | Every entry's `owner_repo` is one of the known fleet repositories. |
 | `format_known` | Every entry's `format` is one of `openapi`, `json_schema`, or `asyncapi`. |
 | `docs_authority_aligned` | This page lists every entry in the manifest with the same format, owner, object-family authority, status, and breaking-change rule. |
-| `json_mirror_aligned` | `static/platform-protocol-specs.json` is byte-equivalent to the PHP `PlatformProtocolSpecs::manifest()` output. |
+| `json_mirror_aligned` | `static/platform-protocol-specs.json` is byte-equivalent to the workflow package catalog mirror that `PlatformProtocolSpecs::manifest()` loads. |
 | `object_family_authority_declared` | Every entry declares a non-empty `object_families` list. Each object family names the owning repo, schema authority, and version authority. Published spec files carry matching `x-durable-workflow-object-families` metadata so the file and catalog cannot drift. |
 | `spec_path_published_when_status_published` | When `status` is `published`, the file at `spec_path` exists in this repository, is referenced from the matching authority doc page, parses as the format declared by the catalog entry (JSON Schema 2020-12 / OpenAPI 3.1 / AsyncAPI 2.6+), and the document's `$id` (or OpenAPI `info.title` / AsyncAPI `id`) matches the catalog `spec_id`. |
 | `breaking_change_release_consistent_with_evolution_rule` | Every entry's `breaking_change_release` is one of `major`, `parallel_primitive_only`, or `experimental_any_release`, and matches the value required by its `evolution_rule`: `additive_minor_breaking_major` → `major`, `parallel_primitive_only` → `parallel_primitive_only`, `experimental_any_release` → `experimental_any_release`. Letting these diverge would let a frozen wire format claim a major-version break, contradicting its rule. |
 | `deliverable_specs_published` | Every entry in the platform protocol-spec deliverable surface set is marked `published` and has a parseable spec document. |
 
 The docs site CI runs `scripts/check-platform-protocol-specs.js` to
-enforce these gates. Drift here means a release shipped a doc change
-without updating the machine-readable catalog (or vice versa). Either
-fix the doc or bump the catalog; do not silence the check.
+enforce these gates. When the workflow repository is checked out beside
+the docs site, or when `WORKFLOW_REPO_PATH` points at it, the same check
+also compares the static catalog mirror byte-for-byte with the workflow
+package mirror. Drift here means a release shipped a doc change without
+updating the machine-readable catalog (or vice versa). Either fix the
+doc or bump the catalog; do not silence the check.
