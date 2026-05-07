@@ -23,11 +23,11 @@
 // 3. Every spec entry's `surface_family` exists in
 //    `static/compatibility-contract.json`. The catalog cannot reference
 //    a surface family that the stability contract has not declared.
-// 4. The deliverable surface set from issue #690 (control-plane API,
+// 4. The platform protocol-spec deliverable surface set (control-plane API,
 //    worker protocol API + stream, history events + export bundle +
 //    replay bundle, Waterline read API + diagnostic objects, repair /
-//    actionability objects, MCP discovery + tool results, cluster-info
-//    envelope) is fully enumerated.
+//    actionability objects, CLI JSON envelopes, MCP discovery + tool
+//    results, cluster-info envelope) is fully enumerated.
 // 5. `docs/platform-protocol-specs.md` advertises itself as the catalog,
 //    references the schema id, lists every entry with its format /
 //    surface family / owner / status / breaking-change rule.
@@ -94,6 +94,7 @@ const DELIVERABLE_SPEC_NAMES = [
   'waterline_read_api',
   'waterline_diagnostic_objects',
   'repair_actionability_objects',
+  'cli_json_envelopes',
   'mcp_discovery',
   'mcp_tool_results',
   'cluster_info_envelope',
@@ -189,13 +190,13 @@ function assertCatalogEntriesAreWellFormed(catalog, surfaceFamilies) {
     if (!(name in specs)) {
       throw new Error(
         `static/platform-protocol-specs.json must enumerate spec "${name}" ` +
-          `to cover the deliverable surface set from issue #690`,
+          `to cover the platform protocol-spec deliverable surface set`,
       );
     }
     if (specs[name].status !== 'published') {
       throw new Error(
         `platform-protocol-specs entry "${name}" must be marked "published"; ` +
-          `issue #690 requires every public machine-facing surface to have ` +
+          `every public machine-facing surface must have ` +
           `an authoritative machine-readable spec.`,
       );
     }

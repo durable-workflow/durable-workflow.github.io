@@ -6,7 +6,7 @@
   "type": "object",
   "x-durable-workflow-catalog-entry": "repair_actionability_objects",
   "x-durable-workflow-catalog-schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "x-durable-workflow-catalog-version": 6,
+  "x-durable-workflow-catalog-version": 7,
   "x-durable-workflow-owner-symbol": "Workflow\\V2\\Support\\TaskRepairCandidates, Workflow\\V2\\Support\\TaskRepairPolicy, and Workflow\\V2\\Support\\OperatorQueueVisibility",
   "x-durable-workflow-evolution-rule": "additive_minor_breaking_major",
   "x-durable-workflow-object-families": [

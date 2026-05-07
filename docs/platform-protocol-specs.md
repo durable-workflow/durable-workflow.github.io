@@ -45,7 +45,7 @@ truth:
 - `platform_protocol_specs` in the response body of
   `GET /api/cluster/info` on the standalone Durable Workflow server,
   schema `durable-workflow.v2.platform-protocol-specs.catalog`,
-  version `6`.
+  version `7`.
 - A frozen mirror of the same manifest in this repository at
   `static/platform-protocol-specs.json`.
 - The PHP class `Workflow\V2\Support\PlatformProtocolSpecs`, which is
@@ -75,6 +75,7 @@ schema/version authority, and breaking-change policy for each file.
 | `waterline_read_api` | [`waterline-read-api.openapi.yaml`](pathname:///platform-protocol-specs/waterline-read-api.openapi.yaml) |
 | `waterline_diagnostic_objects` | [`waterline-diagnostic-objects.schema.json`](pathname:///platform-protocol-specs/waterline-diagnostic-objects.schema.json) |
 | `repair_actionability_objects` | [`repair-actionability-objects.schema.json`](pathname:///platform-protocol-specs/repair-actionability-objects.schema.json) |
+| `cli_json_envelopes` | [`cli-json-envelopes.schema.json`](pathname:///platform-protocol-specs/cli-json-envelopes.schema.json) |
 | `mcp_discovery` | [`mcp-discovery.schema.json`](pathname:///platform-protocol-specs/mcp-discovery.schema.json) |
 | `mcp_tool_results` | [`mcp-tool-results.schema.json`](pathname:///platform-protocol-specs/mcp-tool-results.schema.json) |
 | `cluster_info_envelope` | [`cluster-info-envelope.schema.json`](pathname:///platform-protocol-specs/cluster-info-envelope.schema.json) |
@@ -132,8 +133,9 @@ conformance test that pins the spec.
   discovery and tool-result envelopes, and the human-readable mirrors of
   the protocol manifests.
 - `durable-workflow/cli` — `dw` CLI JSON output (governed by the CLI
-  reference page; not in this catalog because the CLI publishes its JSON
-  shape per command).
+  reference page and the CLI output-schema manifest; this catalog names
+  the manifest and per-command schema index as the protocol entry for
+  automation-facing CLI output).
 - `durable-workflow/sdk-python` — Python SDK public surface (governed
   by the per-package README; not in this catalog because the Python SDK
   is a consumer, not a publisher of the protocol spec set).
@@ -173,6 +175,8 @@ the same metadata under `x-durable-workflow-object-families`.
 | `repair_actionability_objects` | `task_repair_candidates` | `durable-workflow/workflow` | `Workflow\V2\Support\TaskRepairCandidates::snapshot` | `durable-workflow.v2.repair-actionability-objects` |
 | `repair_actionability_objects` | `operator_queue_visibility` | `durable-workflow/workflow` | `Workflow\V2\Support\OperatorQueueVisibility` | `durable-workflow.v2.repair-actionability-objects` |
 | `repair_actionability_objects` | `actionability` | `durable-workflow/waterline` | `Waterline\Support\ActionabilityContract` | `Waterline\Support\ActionabilityContract::VERSION` |
+| `cli_json_envelopes` | `cli_output_schema_manifest` | `durable-workflow/cli` | `DurableWorkflow\Cli\Support\OutputSchemaRegistry::manifest` | `schemas/output/manifest.json version` |
+| `cli_json_envelopes` | `cli_command_output_schema` | `durable-workflow/cli` | `schemas/output/*.schema.json via DurableWorkflow\Cli\Support\OutputSchemaRegistry` | `schemas/output/manifest.json schema_id and version metadata` |
 | `mcp_discovery` | `mcp_tool_discovery` | `durable-workflow/durable-workflow.github.io` | `docs/mcp-workflows.md and static/platform-protocol-specs/mcp-discovery.schema.json` | `durable-workflow.v2.mcp-discovery` |
 | `mcp_discovery` | `llms_txt_discovery` | `durable-workflow/durable-workflow.github.io` | `docs/mcp-workflows.md and generated llms files` | `durable-workflow.v2.mcp-discovery` |
 | `mcp_tool_results` | `mcp_tool_result_envelope` | `durable-workflow/durable-workflow.github.io` | `docs/mcp-workflows.md Tool Result Contract and static/platform-protocol-specs/mcp-tool-results.schema.json` | `durable-workflow.v2.mcp-tool-results` |
@@ -388,6 +392,27 @@ that drive operator-led recovery.
 | Spec path | `static/platform-protocol-specs/repair-actionability-objects.schema.json` |
 | Object families | `task_repair_policy`, `task_repair_candidates`, `operator_queue_visibility`, `actionability` |
 
+### `cli_json_envelopes`
+
+JSON Schema index for the `dw` CLI machine-readable output contract:
+the published output-schema manifest and the per-command JSON / JSONL
+envelope schemas that automation, agents, and operator scripts consume.
+
+| Field | Value |
+|-------|-------|
+| Format | `json_schema` |
+| Spec id | `durable-workflow.v2.cli-json-envelopes` |
+| Surface family | `cli_json` |
+| Authority manifest | `cli_reference` |
+| Owner repo | `durable-workflow/cli` |
+| Owner symbol | `DurableWorkflow\Cli\Support\OutputSchemaRegistry`, `schemas/output/manifest.json`, and `tests/Commands/OutputContractTest.php` |
+| Evolution rule | `additive_minor_breaking_major` |
+| Breaking-change release | `major` |
+| Conformance test | `durable-workflow/cli: tests/Commands/OutputContractTest.php` and `tests/Commands/ApplicationSmokeTest.php` |
+| Status | `published` |
+| Spec path | `static/platform-protocol-specs/cli-json-envelopes.schema.json` |
+| Object families | `cli_output_schema_manifest`, `cli_command_output_schema` |
+
 ### `mcp_discovery`
 
 JSON Schema for the Model Context Protocol discovery surface at
@@ -482,7 +507,7 @@ under `release_check`.
 | `object_family_authority_declared` | Every entry declares a non-empty `object_families` list. Each object family names the owning repo, schema authority, and version authority. Published spec files carry matching `x-durable-workflow-object-families` metadata so the file and catalog cannot drift. |
 | `spec_path_published_when_status_published` | When `status` is `published`, the file at `spec_path` exists in this repository, is referenced from the matching authority doc page, parses as the format declared by the catalog entry (JSON Schema 2020-12 / OpenAPI 3.1 / AsyncAPI 2.6+), and the document's `$id` (or OpenAPI `info.title` / AsyncAPI `id`) matches the catalog `spec_id`. |
 | `breaking_change_release_consistent_with_evolution_rule` | Every entry's `breaking_change_release` is one of `major`, `parallel_primitive_only`, or `experimental_any_release`, and matches the value required by its `evolution_rule`: `additive_minor_breaking_major` → `major`, `parallel_primitive_only` → `parallel_primitive_only`, `experimental_any_release` → `experimental_any_release`. Letting these diverge would let a frozen wire format claim a major-version break, contradicting its rule. |
-| `deliverable_specs_published` | Every entry in the issue #690 deliverable surface set is marked `published` and has a parseable spec document. |
+| `deliverable_specs_published` | Every entry in the platform protocol-spec deliverable surface set is marked `published` and has a parseable spec document. |
 
 The docs site CI runs `scripts/check-platform-protocol-specs.js` to
 enforce these gates. Drift here means a release shipped a doc change

@@ -69,14 +69,14 @@ re-reading prose for every surface.
 
 The catalog has its own machine-readable mirror at
 `platform_protocol_specs` in `GET /api/cluster/info` (schema
-`durable-workflow.v2.platform-protocol-specs.catalog`, version `6`) and
+`durable-workflow.v2.platform-protocol-specs.catalog`, version `7`) and
 a frozen JSON copy at `static/platform-protocol-specs.json` in this
 repository. Every catalog entry's `surface_family` must exist in the
 contract above; the release-check gate in
 `scripts/check-platform-protocol-specs.js` fails the build on drift.
 
-Every issue #690 catalog entry is now marked `published`, and each entry
-links to an OpenAPI, AsyncAPI, or JSON Schema document under
+Every platform protocol catalog entry is now marked `published`, and each
+entry links to an OpenAPI, AsyncAPI, or JSON Schema document under
 `static/platform-protocol-specs/`. The
 [`cluster_info_envelope`](/docs/2.0/platform-protocol-specs#cluster_info_envelope)
 schema pins the discovery surface every other catalog entry can be

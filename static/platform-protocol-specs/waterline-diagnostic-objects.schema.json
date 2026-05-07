@@ -6,7 +6,7 @@
   "type": "object",
   "x-durable-workflow-catalog-entry": "waterline_diagnostic_objects",
   "x-durable-workflow-catalog-schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "x-durable-workflow-catalog-version": 6,
+  "x-durable-workflow-catalog-version": 7,
   "x-durable-workflow-owner-symbol": "waterline DiagnosticObjectContract and OperatorReadProjections",
   "x-durable-workflow-evolution-rule": "additive_minor_breaking_major",
   "x-durable-workflow-object-families": [

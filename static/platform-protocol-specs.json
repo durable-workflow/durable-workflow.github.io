@@ -1,6 +1,6 @@
 {
   "schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "version": 6,
+  "version": 7,
   "authority_url": "https://durable-workflow.github.io/docs/2.0/platform-protocol-specs",
   "formats": {
     "openapi": {
@@ -352,6 +352,34 @@
       "status": "published",
       "spec_path": "static/platform-protocol-specs/repair-actionability-objects.schema.json"
     },
+    "cli_json_envelopes": {
+      "description": "JSON Schema index for the `dw` CLI machine-readable output contract: the published output-schema manifest and the per-command JSON / JSONL envelope schemas that automation, agents, and operator scripts consume.",
+      "format": "json_schema",
+      "spec_id": "durable-workflow.v2.cli-json-envelopes",
+      "surface_family": "cli_json",
+      "authority_manifest": "cli_reference",
+      "owner_repo": "durable-workflow/cli",
+      "owner_symbol": "DurableWorkflow\\Cli\\Support\\OutputSchemaRegistry, schemas/output/manifest.json, and tests/Commands/OutputContractTest.php",
+      "object_families": [
+        {
+          "name": "cli_output_schema_manifest",
+          "owner_repo": "durable-workflow/cli",
+          "schema_authority": "DurableWorkflow\\Cli\\Support\\OutputSchemaRegistry::manifest",
+          "version_authority": "schemas/output/manifest.json version"
+        },
+        {
+          "name": "cli_command_output_schema",
+          "owner_repo": "durable-workflow/cli",
+          "schema_authority": "schemas/output/*.schema.json via DurableWorkflow\\Cli\\Support\\OutputSchemaRegistry",
+          "version_authority": "schemas/output/manifest.json schema_id and version metadata"
+        }
+      ],
+      "evolution_rule": "additive_minor_breaking_major",
+      "breaking_change_release": "major",
+      "conformance_test": "durable-workflow/cli: tests/Commands/OutputContractTest.php and tests/Commands/ApplicationSmokeTest.php",
+      "status": "published",
+      "spec_path": "static/platform-protocol-specs/cli-json-envelopes.schema.json"
+    },
     "mcp_discovery": {
       "description": "JSON Schema for the Model Context Protocol discovery surface at `/mcp/*` and the `llms.txt` / `llms-2.0.txt` discovery files: tool list shape, parameter schema shape, and discovery hints.",
       "format": "json_schema",
@@ -453,15 +481,15 @@
   "release_check": {
     "description": "Release reviewers must confirm the platform-protocol-specs catalog check before publish.",
     "gates": {
-      "catalog_aligned_with_surface_families": "Every entry`s `surface_family` exists in `SurfaceStabilityContract::surfaceFamilies()`. Every `surface_family` that owns a public machine-facing surface has at least one catalog entry.",
-      "owner_repo_known": "Every entry`s `owner_repo` is one of the known fleet repositories.",
-      "format_known": "Every entry`s `format` is one of `openapi`, `json_schema`, or `asyncapi`.",
+      "catalog_aligned_with_surface_families": "Every entry's `surface_family` exists in `SurfaceStabilityContract::surfaceFamilies()`. Every `surface_family` that owns a public machine-facing surface has at least one catalog entry.",
+      "owner_repo_known": "Every entry's `owner_repo` is one of the known fleet repositories.",
+      "format_known": "Every entry's `format` is one of `openapi`, `json_schema`, or `asyncapi`.",
       "docs_authority_aligned": "docs/platform-protocol-specs.md (in durable-workflow.github.io) lists every entry in this manifest with the same format, owner, object-family authority, status, and breaking-change rule.",
       "json_mirror_aligned": "static/platform-protocol-specs.json (in durable-workflow.github.io) is byte-equivalent to this PHP manifest at the time of the release.",
       "object_family_authority_declared": "Every entry declares a non-empty `object_families` list. Each object family names the owning repo, schema authority, and version authority. Published spec files carry matching `x-durable-workflow-object-families` metadata so the file and catalog cannot drift.",
       "spec_path_published_when_status_published": "When `status` is `published`, the file at `spec_path` exists in `durable-workflow/durable-workflow.github.io`, is referenced from the matching authority doc page, parses as the format declared by the catalog entry (JSON Schema 2020-12 / OpenAPI 3.1 / AsyncAPI 2.6+), and the document's `$id` (or OpenAPI `info.title` / AsyncAPI `id`) matches the catalog `spec_id`.",
-      "breaking_change_release_consistent_with_evolution_rule": "Every entry`s `breaking_change_release` is one of `major`, `parallel_primitive_only`, or `experimental_any_release`, and matches the value required by its `evolution_rule`: `additive_minor_breaking_major` -> `major`, `parallel_primitive_only` -> `parallel_primitive_only`, `experimental_any_release` -> `experimental_any_release`. Letting these diverge would let a frozen wire format claim a major-version break, contradicting its rule.",
-      "deliverable_specs_published": "Every entry in the issue #690 deliverable surface set is marked `published` and has a parseable spec document."
+      "breaking_change_release_consistent_with_evolution_rule": "Every entry's `breaking_change_release` is one of `major`, `parallel_primitive_only`, or `experimental_any_release`, and matches the value required by its `evolution_rule`: `additive_minor_breaking_major` -> `major`, `parallel_primitive_only` -> `parallel_primitive_only`, `experimental_any_release` -> `experimental_any_release`. Letting these diverge would let a frozen wire format claim a major-version break, contradicting its rule.",
+      "deliverable_specs_published": "Every entry in the platform protocol-spec deliverable surface set is marked `published` and has a parseable spec document."
     },
     "enforcement": {
       "machine": "docs site CI runs scripts/check-platform-protocol-specs.js, which loads static/platform-protocol-specs.json (a copy of this manifest), walks docs/platform-protocol-specs.md, and verifies every spec entry against the surface_stability_contract families.",

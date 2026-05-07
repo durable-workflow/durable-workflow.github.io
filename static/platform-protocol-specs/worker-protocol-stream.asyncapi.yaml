@@ -12,7 +12,7 @@ info:
     events, and terminal completion/failure events close the lease.
 x-durable-workflow-catalog-entry: worker_protocol_stream
 x-durable-workflow-catalog-schema: durable-workflow.v2.platform-protocol-specs.catalog
-x-durable-workflow-catalog-version: 6
+x-durable-workflow-catalog-version: 7
 x-durable-workflow-owner-symbol: App\Support\WorkerProtocol and Workflow\V2\Support\WorkerCompatibilityFleet
 x-durable-workflow-evolution-rule: additive_minor_breaking_major
 x-durable-workflow-object-families:
