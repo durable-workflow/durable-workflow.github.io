@@ -11,7 +11,7 @@ info:
     and lease semantics are specified by durable-workflow.v2.worker-protocol-stream.
 x-durable-workflow-catalog-entry: worker_protocol_api
 x-durable-workflow-catalog-schema: durable-workflow.v2.platform-protocol-specs.catalog
-x-durable-workflow-catalog-version: 8
+x-durable-workflow-catalog-version: 9
 x-durable-workflow-owner-symbol: App\Support\WorkerProtocol and Workflow\V2\Support\WorkerProtocolVersion
 x-durable-workflow-evolution-rule: additive_minor_breaking_major
 x-durable-workflow-object-families:

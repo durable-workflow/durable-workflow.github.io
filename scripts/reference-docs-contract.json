@@ -152,6 +152,8 @@
         "ActivityHeartbeatRecorded",
         "retry_reason=cold_replay",
         "workflow task lease",
+        "local-activity-runtime.schema.json",
+        "Platform Protocol Specs",
         "activities.local_attempts",
         "ordinary queued activities",
         "sideEffect(...)"

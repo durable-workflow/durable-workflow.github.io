@@ -1,6 +1,6 @@
 {
   "schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "version": 8,
+  "version": 9,
   "authority_url": "https://durable-workflow.github.io/docs/2.0/platform-protocol-specs",
   "formats": {
     "openapi": {
@@ -211,6 +211,47 @@
       "conformance_test": "durable-workflow/server: tests/Feature/WorkerSessionProtocolTest.php and tests/Feature/ClusterInfoTest.php; durable-workflow/workflow: tests/Unit/V2/WorkerProtocolVersionTest.php and tests/Unit/V2/WorkerSessionOptionsTest.php",
       "status": "published",
       "spec_path": "static/platform-protocol-specs/worker-sessions-runtime.schema.json"
+    },
+    "local_activity_runtime": {
+      "description": "JSON Schema for the local activity runtime contract: the worker_protocol.server_capabilities.local_activities manifest, LocalActivityOptions snapshots, same-process execution markers, workflow-task lease heartbeats, cold-replay retry semantics, and operator visibility markers.",
+      "format": "json_schema",
+      "spec_id": "durable-workflow.v2.local-activity-runtime",
+      "surface_family": "worker_protocol",
+      "authority_manifest": "worker_protocol",
+      "owner_repo": "durable-workflow/workflow",
+      "owner_symbol": "Workflow\\V2\\Support\\LocalActivityContract and Workflow\\V2\\Support\\LocalActivityOptions",
+      "object_families": [
+        {
+          "name": "local_activity_runtime_contract",
+          "owner_repo": "durable-workflow/workflow",
+          "schema_authority": "Workflow\\V2\\Support\\LocalActivityContract::manifest",
+          "version_authority": "Workflow\\V2\\Support\\LocalActivityContract::VERSION"
+        },
+        {
+          "name": "local_activity_options",
+          "owner_repo": "durable-workflow/workflow",
+          "schema_authority": "Workflow\\V2\\Support\\LocalActivityOptions::toSnapshot",
+          "version_authority": "Workflow\\V2\\Support\\LocalActivityContract::VERSION"
+        },
+        {
+          "name": "local_activity_history_markers",
+          "owner_repo": "durable-workflow/workflow",
+          "schema_authority": "Workflow\\V2\\Support\\LocalActivityRuntime::eventPayload",
+          "version_authority": "durable-workflow.v2.history-event-payloads"
+        },
+        {
+          "name": "local_activity_visibility",
+          "owner_repo": "durable-workflow/workflow",
+          "schema_authority": "Workflow\\V2\\Support\\RunActivityView and Workflow\\V2\\Support\\OperatorMetrics",
+          "version_authority": "durable-workflow.v2.local-activity-runtime"
+        }
+      ],
+      "evolution_rule": "additive_minor_breaking_major",
+      "breaking_change_release": "major",
+      "discovery_endpoint": "GET /api/cluster/info -> worker_protocol.server_capabilities.local_activities",
+      "conformance_test": "durable-workflow/workflow: tests/Unit/V2/LocalActivitiesDocumentationTest.php, tests/Unit/V2/WorkerProtocolVersionTest.php, tests/Unit/V2/WorkflowFacadeTest.php, and tests/Feature/V2/V2LocalActivityTest.php; durable-workflow/server: tests/Feature/ClusterInfoTest.php",
+      "status": "published",
+      "spec_path": "static/platform-protocol-specs/local-activity-runtime.schema.json"
     },
     "history_event_payloads": {
       "description": "JSON Schema set for every published `workflow_history_events` and `workflow_schedule_history_events` payload. Once a workflow writes an event, every future SDK that replays it must decode the same field set; the only allowed breaking change is a parallel primitive with a new event type name.",

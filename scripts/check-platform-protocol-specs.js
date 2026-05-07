@@ -32,7 +32,8 @@
 //    a surface family that the stability contract has not declared.
 // 4. The platform protocol-spec deliverable surface set (control-plane API,
 //    worker protocol API + stream, history events + export bundle +
-//    replay bundle, worker-session runtime, Waterline read API +
+//    replay bundle, worker-session runtime, local activity runtime,
+//    Waterline read API +
 //    diagnostic objects, repair / actionability objects, CLI JSON
 //    envelopes, MCP discovery + tool results, cluster-info envelope) is
 //    fully enumerated.
@@ -97,6 +98,7 @@ const DELIVERABLE_SPEC_NAMES = [
   'worker_protocol_api',
   'worker_protocol_stream',
   'worker_sessions_runtime',
+  'local_activity_runtime',
   'history_event_payloads',
   'history_export_bundle',
   'replay_bundle',

@@ -167,6 +167,14 @@ reported:
 - operator metrics expose `activities.local`, `activities.local_open`,
   `activities.local_attempts`, and queued-vs-local activity counters.
 
+The runtime manifest is published at
+`worker_protocol.server_capabilities.local_activities` in
+`GET /api/cluster/info`. The machine-readable contract is
+[`local-activity-runtime.schema.json`](/platform-protocol-specs/local-activity-runtime.schema.json)
+and is indexed by the
+[Platform Protocol Specs](/docs/2.0/platform-protocol-specs#local_activity_runtime)
+catalog.
+
 The event names remain normal activity event names so timelines and replay
 tools preserve ordering without a parallel event family.
 

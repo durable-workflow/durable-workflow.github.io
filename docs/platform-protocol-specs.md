@@ -17,6 +17,7 @@ keywords:
   - json schema
   - control-plane spec
   - worker protocol spec
+  - local activity runtime schema
   - history export schema
   - waterline read api spec
   - repair actionability schema
@@ -45,7 +46,7 @@ truth:
 - `platform_protocol_specs` in the response body of
   `GET /api/cluster/info` on the standalone Durable Workflow server,
   schema `durable-workflow.v2.platform-protocol-specs.catalog`,
-  version `8`.
+  version `9`.
 - A frozen mirror of the same manifest in this repository at
   `static/platform-protocol-specs.json`.
 - The PHP class `Workflow\V2\Support\PlatformProtocolSpecs`, which is
@@ -70,6 +71,7 @@ schema/version authority, and breaking-change policy for each file.
 | `worker_protocol_api` | [`worker-protocol-api.openapi.yaml`](pathname:///platform-protocol-specs/worker-protocol-api.openapi.yaml) |
 | `worker_protocol_stream` | [`worker-protocol-stream.asyncapi.yaml`](pathname:///platform-protocol-specs/worker-protocol-stream.asyncapi.yaml) |
 | `worker_sessions_runtime` | [`worker-sessions-runtime.schema.json`](pathname:///platform-protocol-specs/worker-sessions-runtime.schema.json) |
+| `local_activity_runtime` | [`local-activity-runtime.schema.json`](pathname:///platform-protocol-specs/local-activity-runtime.schema.json) |
 | `history_event_payloads` | [`history-event-payloads.schema.json`](pathname:///platform-protocol-specs/history-event-payloads.schema.json) |
 | `history_export_bundle` | [`history-export-bundle.schema.json`](pathname:///platform-protocol-specs/history-export-bundle.schema.json) |
 | `replay_bundle` | [`replay-bundle.schema.json`](pathname:///platform-protocol-specs/replay-bundle.schema.json) |
@@ -123,9 +125,9 @@ Every entry names exactly one `owner_repo`. The owner repo is the
 authoritative source for advancing the spec version and for the
 conformance test that pins the spec.
 
-- `durable-workflow/workflow` — PHP workflow package, history-event
-  payloads, history-export bundle, replay bundle, repair/actionability
-  object families.
+- `durable-workflow/workflow` — PHP workflow package, local activity
+  runtime, history-event payloads, history-export bundle, replay bundle,
+  repair/actionability object families.
 - `durable-workflow/server` — standalone server control-plane and
   worker-protocol APIs and the `cluster/info` envelope.
 - `durable-workflow/waterline` — Waterline read API and diagnostic
@@ -166,6 +168,10 @@ the same metadata under `x-durable-workflow-object-families`.
 | `worker_sessions_runtime` | `worker_session_options` | `durable-workflow/workflow` | `Workflow\V2\Support\WorkerSessionOptions::toSnapshot` | `Workflow\V2\Support\WorkerProtocolVersion::VERSION` |
 | `worker_sessions_runtime` | `worker_session_lifecycle` | `durable-workflow/server` | `App\Http\Controllers\Api\WorkerSessionController and App\Support\WorkerSessionRegistry` | `Workflow\V2\Support\WorkerProtocolVersion::VERSION` |
 | `worker_sessions_runtime` | `worker_session_visibility` | `durable-workflow/server` | `App\Support\WorkerSessionRegistry::visibility` | `durable-workflow.v2.worker-sessions-runtime` |
+| `local_activity_runtime` | `local_activity_runtime_contract` | `durable-workflow/workflow` | `Workflow\V2\Support\LocalActivityContract::manifest` | `Workflow\V2\Support\LocalActivityContract::VERSION` |
+| `local_activity_runtime` | `local_activity_options` | `durable-workflow/workflow` | `Workflow\V2\Support\LocalActivityOptions::toSnapshot` | `Workflow\V2\Support\LocalActivityContract::VERSION` |
+| `local_activity_runtime` | `local_activity_history_markers` | `durable-workflow/workflow` | `Workflow\V2\Support\LocalActivityRuntime::eventPayload` | `durable-workflow.v2.history-event-payloads` |
+| `local_activity_runtime` | `local_activity_visibility` | `durable-workflow/workflow` | `Workflow\V2\Support\RunActivityView and Workflow\V2\Support\OperatorMetrics` | `durable-workflow.v2.local-activity-runtime` |
 | `history_event_payloads` | `workflow_history_events` | `durable-workflow/workflow` | `Workflow\V2\Enums\HistoryEventType` | `durable-workflow.v2.history-event-payloads` |
 | `history_event_payloads` | `workflow_schedule_history_events` | `durable-workflow/workflow` | `Workflow\V2\Models\WorkflowScheduleHistoryEvent` | `durable-workflow.v2.history-event-payloads` |
 | `history_export_bundle` | `history_export_bundle` | `durable-workflow/workflow` | `Workflow\V2\Support\HistoryExport::SCHEMA` | `Workflow\V2\Support\HistoryExport::SCHEMA_VERSION` |
@@ -288,6 +294,30 @@ visibility envelopes.
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/worker-sessions-runtime.schema.json` |
 | Object families | `worker_session_runtime_contract`, `worker_session_options`, `worker_session_lifecycle`, `worker_session_visibility` |
+
+### `local_activity_runtime`
+
+JSON Schema for the local activity runtime contract: the
+`worker_protocol.server_capabilities.local_activities` manifest,
+`LocalActivityOptions` snapshots, same-process execution markers,
+workflow-task lease heartbeats, cold-replay retry semantics, and
+operator visibility markers.
+
+| Field | Value |
+|-------|-------|
+| Format | `json_schema` |
+| Spec id | `durable-workflow.v2.local-activity-runtime` |
+| Surface family | `worker_protocol` |
+| Authority manifest | `worker_protocol` |
+| Owner repo | `durable-workflow/workflow` |
+| Owner symbol | `Workflow\V2\Support\LocalActivityContract` and `Workflow\V2\Support\LocalActivityOptions` |
+| Evolution rule | `additive_minor_breaking_major` |
+| Breaking-change release | `major` |
+| Discovery endpoint | `GET /api/cluster/info -> worker_protocol.server_capabilities.local_activities` |
+| Conformance test | `durable-workflow/workflow: tests/Unit/V2/LocalActivitiesDocumentationTest.php`, `tests/Unit/V2/WorkerProtocolVersionTest.php`, `tests/Unit/V2/WorkflowFacadeTest.php`, and `tests/Feature/V2/V2LocalActivityTest.php`; `durable-workflow/server: tests/Feature/ClusterInfoTest.php` |
+| Status | `published` |
+| Spec path | `static/platform-protocol-specs/local-activity-runtime.schema.json` |
+| Object families | `local_activity_runtime_contract`, `local_activity_options`, `local_activity_history_markers`, `local_activity_visibility` |
 
 ### `history_event_payloads`
 
