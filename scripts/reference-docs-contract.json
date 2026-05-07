@@ -104,31 +104,57 @@
       "title": "Activity Execution Model",
       "minimumCodeFences": 2,
       "requiredHeadings": [
-        "Temporary Replacement Gate",
-        "Ordinary Queued Activities Are The Canonical Durable Contract",
-        "Choosing The Right Primitive",
-        "Local Activities Are Not A v2 Primitive",
-        "Worker Sessions Have A Supported Affinity Contract",
-        "Sticky Execution Has A Supported Replay Contract",
-        "When To Revisit This Stance"
+        "Ordinary Queued Activities",
+        "Local Activities",
+        "Worker Sessions",
+        "Sticky Execution",
+        "Choosing The Right Primitive"
       ],
       "requiredTerms": [
-        "Every activity attempt goes through the queue.",
-        "There is no API for local activities in v2.0.",
-        "Worker sessions are the supported v2 activity-affinity primitive.",
+        "ordinary queued activities",
+        "localActivity(...)",
+        "execution_mode=local",
+        "local_activity=true",
+        "ActivityHeartbeatRecorded",
+        "Worker sessions do not make an activity local.",
+        "Sticky execution does not make workflow progress process-local.",
         "activity_execution_id",
         "activity_attempt_id",
         "sideEffect(...)",
-        "ordinary replay",
-        "deleted or reduced to the ordinary queued-activity baseline",
-        "docs/features/local-activities.md",
-        "Sticky execution has a supported v2 replay contract.",
+        "ordinary cold replay",
+        "Local Activities",
         "Worker Sessions",
-        "sidebars.js",
-        "scripts/discoverability-contract.json",
-        "scripts/check-llms-ai-surfaces.js",
-        "llms-2.0.txt",
-        "llms-full-2.0.txt"
+        "Sticky Execution"
+      ]
+    },
+    {
+      "path": "features/local-activities.md",
+      "title": "Local Activities",
+      "minimumCodeFences": 3,
+      "requiredHeadings": [
+        "Contract Summary",
+        "Authoring API",
+        "Execution And History",
+        "Heartbeats",
+        "Timeouts And Retries",
+        "Cancellation And Worker Loss",
+        "Visibility",
+        "Choosing The Right Primitive"
+      ],
+      "requiredTerms": [
+        "localActivity(...)",
+        "Workflow::localActivity",
+        "Workflow::executeLocalActivity",
+        "LocalActivityOptions",
+        "execution_mode=local",
+        "local_activity=true",
+        "ActivityRetryScheduled",
+        "ActivityHeartbeatRecorded",
+        "retry_reason=cold_replay",
+        "workflow task lease",
+        "activities.local_attempts",
+        "ordinary queued activities",
+        "sideEffect(...)"
       ]
     },
     {

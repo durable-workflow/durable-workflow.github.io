@@ -1,5 +1,5 @@
 ---
-sidebar_position: 23
+sidebar_position: 24
 title: Worker Sessions
 description: Pin a sequence of durable activity attempts to one worker-session lease for GPU, filesystem, or process-local state affinity.
 tags:

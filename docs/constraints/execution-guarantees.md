@@ -185,6 +185,9 @@ difference.
 - [Failures and Recovery](../failures-and-recovery.md) covers retries,
   timeout enforcement, and repair.
 - [Activity Execution Model](../features/activity-execution-model.md) explains
-  why ordinary queued activities are the canonical durable contract.
+  how queued activities, local activities, worker sessions, and sticky
+  execution fit together.
+- [Local Activities](../features/local-activities.md) explains same-process
+  activity attempts, workflow-task heartbeats, retries, and cold replay.
 - [Sticky Execution](../features/sticky-execution.md) explains sticky replay
   caches and why cold replay remains the correctness fallback.

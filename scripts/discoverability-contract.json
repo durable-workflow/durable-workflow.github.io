@@ -43,6 +43,7 @@
         "features/condition-waits.md",
         "features/timeouts.md",
         "features/activity-execution-model.md",
+        "features/local-activities.md",
         "features/worker-sessions.md",
         "features/sticky-execution.md",
         "features/continue-as-new.md",
@@ -145,9 +146,9 @@
     },
     {
       "query": "local activities worker sessions sticky execution",
-      "target": "features/activity-execution-model.md",
-      "related": ["defining-workflows/activities.md", "constraints/execution-guarantees.md", "features/worker-sessions.md", "features/sticky-execution.md"],
-      "aliases": ["ordinary queued activities", "local activities", "worker sessions", "sticky execution"]
+      "target": "features/local-activities.md",
+      "related": ["features/activity-execution-model.md", "defining-workflows/activities.md", "constraints/execution-guarantees.md", "features/worker-sessions.md", "features/sticky-execution.md"],
+      "aliases": ["localActivity", "local activities", "worker sessions", "sticky execution", "execution_mode=local"]
     },
     {
       "query": "worker sessions gpu filesystem activity affinity",
@@ -359,12 +360,12 @@
     },
     {
       "query": "local activities same worker shortcut",
-      "target": "features/activity-execution-model.md",
-      "related": ["defining-workflows/activities.md"],
-      "aliases": ["local activities", "in-process shortcut", "ordinary queued activities"],
+      "target": "features/local-activities.md",
+      "related": ["features/activity-execution-model.md", "defining-workflows/activities.md", "constraints/execution-guarantees.md"],
+      "aliases": ["local activities", "localActivity", "same-process activity", "workflow task lease"],
       "source": "activity execution replacement gate",
-      "lastReviewed": "2026-05-05",
-      "action": "When local activities have a published runtime contract and positive docs, retarget this search to docs/features/local-activities.md and stop routing it to the temporary stance page."
+      "lastReviewed": "2026-05-07",
+      "action": "Keep mapped to the positive local activities feature contract."
     },
     {
       "query": "worker sessions activity affinity",

@@ -17,7 +17,14 @@ keywords:
 An activity is a unit of work that performs a specific task or operation (e.g. making an API request, processing data, sending an email) and can be executed by a workflow.
 
 :::note Durable Execution Contract
-Every v2 activity runs as a durable queued task. Durable Workflow 2.0 does not ship local activities. Worker sessions are available when multiple durable activity steps need one worker lease, and sticky execution is a supported replay optimization, not a correctness contract. See [Activity Execution Model](/docs/2.0/features/activity-execution-model), [Worker Sessions](/docs/2.0/features/worker-sessions), and [Sticky Execution](/docs/2.0/features/sticky-execution) for the exact contracts.
+Ordinary v2 activities run as durable queued tasks. Local activities are an
+explicit same-process primitive for short activity work that still records
+durable activity history. Worker sessions are available when multiple durable
+activity steps need one worker lease, and sticky execution is a supported
+replay optimization, not a correctness contract. See [Activity Execution Model](/docs/2.0/features/activity-execution-model),
+[Local Activities](/docs/2.0/features/local-activities), [Worker Sessions](/docs/2.0/features/worker-sessions),
+and [Sticky Execution](/docs/2.0/features/sticky-execution) for the exact
+contracts.
 :::
 
 You may use the `make:activity` artisan command to create a new activity:
@@ -44,16 +51,16 @@ class MyActivity extends Activity
 ## Execution Contract
 
 Every `activity(...)` call records an activity command on workflow history and
-creates a durable queued task for a worker to claim. Durable Workflow v2 does
-not expose a local-activity shortcut. Ordinary activities may be claimed by
-any compatible worker, while [worker sessions](/docs/2.0/features/worker-sessions)
+creates a durable queued task for a worker to claim. Ordinary activities may
+be claimed by any compatible worker, while [worker sessions](/docs/2.0/features/worker-sessions)
 can pin a sequence of activity attempts to one worker-session lease when the
 workflow explicitly opts into that contract.
 
 If you need a replay-safe value without scheduling queued work, use
-[`sideEffect(...)`](/docs/2.0/features/side-effects) instead. For the full
-stance on ordinary queued activities, local activities, and worker sessions,
-see [Activity Execution Model](/docs/2.0/features/activity-execution-model).
+[`sideEffect(...)`](/docs/2.0/features/side-effects) instead. If you need a
+short retryable same-process activity with timeout, heartbeat, and activity
+history semantics, use [Local Activities](/docs/2.0/features/local-activities).
+For the full placement model, see [Activity Execution Model](/docs/2.0/features/activity-execution-model).
 For sticky replay-cache behavior, see
 [Sticky Execution](/docs/2.0/features/sticky-execution).
 
@@ -99,3 +106,25 @@ $result = activity(
 ```
 
 See [Activity options](/docs/2.0/configuration/options#activity-options) for the full list of fields, including timeouts and heartbeats.
+
+## Local Activity Calls
+
+Use `localActivity(...)` when a short idempotent side effect should run inside
+the current workflow worker process but still needs activity retry, timeout,
+heartbeat, cancellation, and history semantics:
+
+```php
+use Workflow\V2\Support\LocalActivityOptions;
+use function Workflow\V2\localActivity;
+
+$receipt = localActivity(
+    SendReceiptActivity::class,
+    new LocalActivityOptions(maxAttempts: 3, startToCloseTimeout: 10),
+    $orderId,
+);
+```
+
+Local activities reject `connection`, `queue`, worker-session routing, and
+schedule-to-start options because they do not create ordinary activity tasks.
+See [Local Activities](/docs/2.0/features/local-activities) for the complete
+contract.

@@ -18,6 +18,8 @@ This page is the complete reference. For an easier to read version, please look 
 - [Workflows](./workflows.md) for the workflow class shape and deterministic
   orchestration model.
 - [Activities](./activities.md) for side effects, retries, and routing.
+- [Local Activities](../features/local-activities.md) for short same-process
+  activity work with activity history and retry semantics.
 - [Signals](../features/signals.md), [Updates](../features/updates.md), and
   [Queries](../features/queries.md) for workflow-facing contracts.
 - [Timers](../features/timers.md),
@@ -83,6 +85,8 @@ $resultFromHelper = activity(SendReceipt::class, $orderId);
 | --- | --- | --- | --- |
 | `Workflow::activity()` | `activity()` | `activity(string $activity, mixed ...$arguments): mixed` | Schedules an activity and waits for its result. |
 | `Workflow::executeActivity()` | `activity()` | `executeActivity(string $activity, mixed ...$arguments): mixed` | Alias for `activity()`. |
+| `Workflow::localActivity()` | `localActivity()` | `localActivity(string $activity, mixed ...$arguments): mixed` | Runs a short activity in the current workflow worker process and records activity history with `execution_mode=local`. |
+| `Workflow::executeLocalActivity()` | `localActivity()` | `executeLocalActivity(string $activity, mixed ...$arguments): mixed` | Alias for `localActivity()`. |
 | `Workflow::child()` | `child()` | `child(string $workflow, ChildWorkflowOptions? $options = null, mixed ...$arguments): mixed` | Starts a child workflow and waits for its result. Pass a `ChildWorkflowOptions` as the first argument to set the parent-close policy (default `ParentClosePolicy::Abandon`) or override child routing. |
 | `Workflow::executeChildWorkflow()` | `child()` | `executeChildWorkflow(string $workflow, ChildWorkflowOptions? $options = null, mixed ...$arguments): mixed` | Alias for `child()`. |
 | `Workflow::async()` | `async()` | `async(callable $callback): mixed` | Runs a callable as an auto-generated child workflow. |
@@ -103,12 +107,15 @@ $resultFromHelper = activity(SendReceipt::class, $orderId);
 | `Workflow::upsertSearchAttributes()` | `upsertSearchAttributes()` | `upsertSearchAttributes(array $attributes): void` | Updates indexed operator-visible metadata. |
 | `Workflow::now()` | `now()` | `now(): CarbonInterface` | Reads deterministic workflow time. |
 
-`activity()` and `executeActivity()` always schedule durable queued activity
-tasks. Durable Workflow v2 does not have a local-activity primitive; use
-`sideEffect()` for replay-safe snapshots that should not cross the queue.
-Use `Workflow::workerSession()` or `Workflow\V2\workerSession()` when multiple
-activity steps need the supported worker-session affinity contract. See
-[Activity Execution Model](/docs/2.0/features/activity-execution-model) and
+`activity()` and `executeActivity()` schedule durable queued activity tasks.
+`localActivity()` and `executeLocalActivity()` run in the current workflow
+worker process and record normal activity history with the local marker. Use
+`sideEffect()` for replay-safe snapshots that should not use activity retry,
+timeout, heartbeat, or cancellation semantics. Use `Workflow::workerSession()`
+or `Workflow\V2\workerSession()` when multiple ordinary activity steps need
+the supported worker-session affinity contract. See
+[Activity Execution Model](/docs/2.0/features/activity-execution-model),
+[Local Activities](/docs/2.0/features/local-activities), and
 [Worker Sessions](/docs/2.0/features/worker-sessions) for the full execution
 contract.
 

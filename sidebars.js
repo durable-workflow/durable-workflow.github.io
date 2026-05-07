@@ -52,6 +52,7 @@ const sidebars = {
         'features/versioning',
         'features/external-payload-storage',
         'features/activity-execution-model',
+        'features/local-activities',
         'features/worker-sessions',
         'features/sticky-execution',
       ],

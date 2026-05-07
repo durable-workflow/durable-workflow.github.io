@@ -1,5 +1,5 @@
 ---
-sidebar_position: 23
+sidebar_position: 25
 title: Sticky Execution
 description: Use sticky workflow-task routing as a supported v2 replay optimization with cold replay as the correctness fallback.
 tags:
