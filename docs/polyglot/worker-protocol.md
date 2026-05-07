@@ -46,6 +46,9 @@ Read these fields before sending optional command fields:
   task is leased, distinguishing `leased`, `empty`, `throttled`, and
   `unavailable` without forcing clients to infer queue state from `task: null`.
 - `activity_retry_policy` and `activity_timeouts`: activity command retry and timeout options.
+- `worker_session_verbs` and `worker_sessions`: worker-session lifecycle verbs,
+  activity command fields, renewal behavior, failure detection, and terminal
+  statuses.
 - `child_workflow_retry_policy` and `child_workflow_timeouts`: child workflow retry and timeout options.
 - `parent_close_policy`: child workflow parent-close policy support.
 - `query_tasks`: server-routed workflow query tasks for external runtimes.
@@ -57,6 +60,8 @@ The [Namespace, Auth, And Worker Registration](/docs/2.0/polyglot/namespace-auth
 reference freezes that registration payload and the role-scoped auth contract.
 For the broader ready-task discovery and lease-assignment contract behind these
 verbs, see [Task Matching and Dispatch](/docs/2.0/polyglot/task-matching-dispatch).
+For activity affinity across multiple durable steps, see
+[Worker Sessions](/docs/2.0/features/worker-sessions).
 
 ## Execution Semantics
 

@@ -17,7 +17,7 @@ keywords:
 An activity is a unit of work that performs a specific task or operation (e.g. making an API request, processing data, sending an email) and can be executed by a workflow.
 
 :::note Durable Execution Contract
-Every v2 activity runs as a durable queued task. Durable Workflow 2.0 does not ship local activities or worker sessions. Sticky execution is a supported replay optimization, not a correctness contract. See [Activity Execution Model](/docs/2.0/features/activity-execution-model) and [Sticky Execution](/docs/2.0/features/sticky-execution) for the exact contract and recommended alternatives.
+Every v2 activity runs as a durable queued task. Durable Workflow 2.0 does not ship local activities. Worker sessions are available when multiple durable activity steps need one worker lease, and sticky execution is a supported replay optimization, not a correctness contract. See [Activity Execution Model](/docs/2.0/features/activity-execution-model), [Worker Sessions](/docs/2.0/features/worker-sessions), and [Sticky Execution](/docs/2.0/features/sticky-execution) for the exact contracts.
 :::
 
 You may use the `make:activity` artisan command to create a new activity:
@@ -45,9 +45,10 @@ class MyActivity extends Activity
 
 Every `activity(...)` call records an activity command on workflow history and
 creates a durable queued task for a worker to claim. Durable Workflow v2 does
-not expose a local-activity shortcut or a worker-session API, so any
-compatible worker may execute a given attempt and a retry may land on a
-different process or host.
+not expose a local-activity shortcut. Ordinary activities may be claimed by
+any compatible worker, while [worker sessions](/docs/2.0/features/worker-sessions)
+can pin a sequence of activity attempts to one worker-session lease when the
+workflow explicitly opts into that contract.
 
 If you need a replay-safe value without scheduling queued work, use
 [`sideEffect(...)`](/docs/2.0/features/side-effects) instead. For the full

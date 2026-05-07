@@ -108,27 +108,57 @@
         "Ordinary Queued Activities Are The Canonical Durable Contract",
         "Choosing The Right Primitive",
         "Local Activities Are Not A v2 Primitive",
-        "Worker Sessions Are Not A v2 Primitive",
+        "Worker Sessions Have A Supported Affinity Contract",
         "Sticky Execution Has A Supported Replay Contract",
         "When To Revisit This Stance"
       ],
       "requiredTerms": [
         "Every activity attempt goes through the queue.",
         "There is no API for local activities in v2.0.",
-        "There is no session-creation API in v2.0.",
+        "Worker sessions are the supported v2 activity-affinity primitive.",
         "activity_execution_id",
         "activity_attempt_id",
         "sideEffect(...)",
         "ordinary replay",
         "deleted or reduced to the ordinary queued-activity baseline",
         "docs/features/local-activities.md",
-        "docs/features/worker-sessions.md",
         "Sticky execution has a supported v2 replay contract.",
+        "Worker Sessions",
         "sidebars.js",
         "scripts/discoverability-contract.json",
         "scripts/check-llms-ai-surfaces.js",
         "llms-2.0.txt",
         "llms-full-2.0.txt"
+      ]
+    },
+    {
+      "path": "features/worker-sessions.md",
+      "title": "Worker Sessions",
+      "minimumCodeFences": 2,
+      "requiredHeadings": [
+        "Contract Summary",
+        "Authoring API",
+        "Lifecycle",
+        "Lease And Ownership",
+        "Admission And Routing",
+        "Failure, Cancellation, And Shutdown",
+        "Visibility",
+        "Choosing Worker Sessions"
+      ],
+      "requiredTerms": [
+        "Worker sessions are the v2 activity-affinity primitive.",
+        "Workflow::workerSession()",
+        "Workflow\\V2\\workerSession()",
+        "activity_options.worker_session",
+        "worker_session",
+        "POST /api/worker/sessions",
+        "DELETE /api/worker/sessions/{sessionId}",
+        "max_concurrent_worker_sessions",
+        "allow_reacquire_after_failure",
+        "gpu:nvidia-l4",
+        "orphaned",
+        "active activity count",
+        "ordinary queued activities"
       ]
     },
     {

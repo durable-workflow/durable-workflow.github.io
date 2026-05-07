@@ -42,6 +42,9 @@
         "features/timers.md",
         "features/condition-waits.md",
         "features/timeouts.md",
+        "features/activity-execution-model.md",
+        "features/worker-sessions.md",
+        "features/sticky-execution.md",
         "features/continue-as-new.md",
         "features/sagas.md",
         "features/cancel-and-terminate.md"
@@ -118,7 +121,8 @@
     "features/timers.md": ["timers", "deterministic-time", "waits"],
     "failures-and-recovery.md": ["failures", "recovery", "operations"],
     "polyglot/task-queue-admission.md": ["admission", "operations", "task-queues", "bounded-growth"],
-    "features/message-streams.md": ["message-streams", "workflows", "continue-as-new", "AI"]
+    "features/message-streams.md": ["message-streams", "workflows", "continue-as-new", "AI"],
+    "features/worker-sessions.md": ["activities", "workers", "affinity", "operations"]
   },
   "queries": [
     {
@@ -142,8 +146,14 @@
     {
       "query": "local activities worker sessions sticky execution",
       "target": "features/activity-execution-model.md",
-      "related": ["defining-workflows/activities.md", "constraints/execution-guarantees.md", "features/sticky-execution.md"],
-      "aliases": ["temporary stance page", "ordinary queued activities", "local activities", "worker sessions", "sticky execution"]
+      "related": ["defining-workflows/activities.md", "constraints/execution-guarantees.md", "features/worker-sessions.md", "features/sticky-execution.md"],
+      "aliases": ["ordinary queued activities", "local activities", "worker sessions", "sticky execution"]
+    },
+    {
+      "query": "worker sessions gpu filesystem activity affinity",
+      "target": "features/worker-sessions.md",
+      "related": ["features/activity-execution-model.md", "polyglot/worker-protocol.md", "constraints/execution-guarantees.md"],
+      "aliases": ["Workflow::workerSession", "worker_session", "gpu:nvidia-l4", "orphaned sessions"]
     },
     {
       "query": "sticky execution replay cache",
@@ -358,12 +368,12 @@
     },
     {
       "query": "worker sessions activity affinity",
-      "target": "features/activity-execution-model.md",
-      "related": ["defining-workflows/activities.md"],
-      "aliases": ["worker sessions", "same worker", "activity placement"],
-      "source": "activity execution replacement gate",
-      "lastReviewed": "2026-05-05",
-      "action": "When worker sessions have a published runtime contract and positive docs, retarget this search to docs/features/worker-sessions.md and stop routing it to the temporary stance page."
+      "target": "features/worker-sessions.md",
+      "related": ["defining-workflows/activities.md", "features/activity-execution-model.md", "polyglot/worker-protocol.md"],
+      "aliases": ["worker sessions", "same worker", "activity placement", "GPU workers", "filesystem-local workers"],
+      "source": "worker session runtime contract",
+      "lastReviewed": "2026-05-07",
+      "action": "Keep worker-session affinity searches routed to the positive feature contract."
     },
     {
       "query": "sticky execution replay cache",
