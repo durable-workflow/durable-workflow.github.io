@@ -26,17 +26,17 @@ machine-readable docs surface:
 
 | Surface | URL | Use |
 | --- | --- | --- |
-| canonical manifest | `https://durable-workflow.com/llms.txt` | Current docs index. Tracks the site's `lastVersion` (1.x today). |
-| canonical full bundle | `https://durable-workflow.com/llms-full.txt` | Single-file docs bundle matching the canonical manifest. |
-| v1 manifest | `https://durable-workflow.com/llms-1.x.txt` | Version-pinned 1.x index. Identical to the canonical today; pin this URL if you want it to keep meaning 1.x after a future major bump. |
+| canonical manifest | `https://durable-workflow.com/llms.txt` | Current v2 docs index. This is the default LLM discovery surface. |
+| canonical full bundle | `https://durable-workflow.com/llms-full.txt` | Single-file v2 docs bundle matching the canonical manifest. |
+| v1 manifest | `https://durable-workflow.com/llms-1.x.txt` | Version-pinned 1.x index for maintaining legacy applications. |
 | v1 full bundle | `https://durable-workflow.com/llms-full-1.x.txt` | Version-pinned 1.x bundle. |
-| v2 manifest | `https://durable-workflow.com/llms-2.0.txt` | Version-pinned v2.0 (alpha) index. Use only when explicitly building against the v2 protocol. |
-| v2 full bundle | `https://durable-workflow.com/llms-full-2.0.txt` | Version-pinned v2.0 (alpha) bundle. |
+| v2 manifest | `https://durable-workflow.com/llms-2.0.txt` | Version-pinned v2.0 index. Pin this when a tool needs an explicit v2 handle independent of future canonical changes. |
+| v2 full bundle | `https://durable-workflow.com/llms-full-2.0.txt` | Version-pinned v2.0 bundle. |
 
 Default agent prompts should fetch `/llms.txt` or `/llms-full.txt`. Pin the
-`-1.x.txt` URLs only when forward-compatibility against a future major version
-matters; pin `-2.0.txt` only when the agent is specifically building against
-the v2 alpha protocol.
+`-1.x.txt` URLs only for legacy v1 applications; pin `-2.0.txt` when the agent
+must keep using the v2 docs even after the canonical surface moves to a later
+major version.
 
 ## Local MCP Surface
 

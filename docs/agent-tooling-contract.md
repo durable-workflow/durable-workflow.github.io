@@ -29,7 +29,7 @@ scripts, and SDKs should preserve.
 
 | Layer | Stable handle | Contract expectation |
 | --- | --- | --- |
-| Docs retrieval | Canonical `llms.txt` and `llms-full.txt` track the site's `lastVersion` (1.x today). v2.0 is reachable via the pinned `llms-2.0.txt` / `llms-full-2.0.txt` aliases. | For v2 work pin the `-2.0.txt` URLs explicitly so an agent does not silently read 1.x stable docs from canonical. The canonical bundle is the right default for general agent prompts that should follow `lastVersion`. |
+| Docs retrieval | Canonical `llms.txt` and `llms-full.txt` expose the current v2 docs. Version-pinned 1.x and 2.0 aliases remain available as `llms-1.x.txt`, `llms-full-1.x.txt`, `llms-2.0.txt`, and `llms-full-2.0.txt`. | General agent prompts should start with the canonical bundle. Pin the 1.x aliases only for legacy applications, and pin the 2.0 aliases when a workflow needs an explicit v2 handle independent of future canonical changes. |
 | Local discovery | `/mcp/workflows` `list_workflows` | The app-owned MCP allow-list names exposed workflow keys, required credentials, expected arguments, and smoke-test suitability. |
 | Workflow operations | MCP `start_workflow`, `get_workflow_result`, `get_workflow_history`; `dw` JSON commands; SDK clients | Every client reports workflow id, run id, namespace, task queue, command status, and named failure fields without scraping a UI. |
 | Server diagnostics | `/api/cluster/info`, `dw server:info --output=json`, `dw doctor --output=json`, `dw debug workflow --output=json` | Compatibility, protocol, task-queue, worker, and stuck-run facts are machine-readable and bounded. |

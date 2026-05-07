@@ -231,19 +231,12 @@ function main() {
     console.log('Generated v1.x manifest');
   }
 
-  // Canonical /llms-full.txt must match the site's lastVersion (1.x). v2.0 is
-  // alpha and only reachable via the explicit version-pinned URL.
-  if (v1Content) {
-    fs.writeFileSync(path.join(buildDir, 'llms-full.txt'), v1Content, 'utf8');
-    console.log('Canonical /llms-full.txt -> v1.x content (matches lastVersion)');
-
-    fs.writeFileSync(path.join(buildDir, 'llms-full-1.x.txt'), v1Content, 'utf8');
-    console.log('v1.x version-specific manifest -> /llms-full-1.x.txt');
-  }
-
   if (v2Content) {
+    fs.writeFileSync(path.join(buildDir, 'llms-full.txt'), v2Content, 'utf8');
+    console.log('Canonical /llms-full.txt -> v2.0 content');
+
     fs.writeFileSync(path.join(buildDir, 'llms-full-2.0.txt'), v2Content, 'utf8');
-    console.log('v2.0 version-specific manifest -> /llms-full-2.0.txt (pinned alias only)');
+    console.log('v2.0 version-specific manifest -> /llms-full-2.0.txt');
 
     if (versions.current) {
       const v2Path = path.join(buildDir, versions.current);
@@ -251,6 +244,11 @@ function main() {
       fs.writeFileSync(path.join(v2Path, 'llms-full.txt'), v2Content, 'utf8');
       console.log(`v2.0 manifest -> /${versions.current}/llms-full.txt`);
     }
+  }
+
+  if (v1Content) {
+    fs.writeFileSync(path.join(buildDir, 'llms-full-1.x.txt'), v1Content, 'utf8');
+    console.log('v1.x version-specific manifest -> /llms-full-1.x.txt');
   }
 }
 
