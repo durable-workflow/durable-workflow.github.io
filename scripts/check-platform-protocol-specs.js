@@ -32,9 +32,10 @@
 //    a surface family that the stability contract has not declared.
 // 4. The platform protocol-spec deliverable surface set (control-plane API,
 //    worker protocol API + stream, history events + export bundle +
-//    replay bundle, Waterline read API + diagnostic objects, repair /
-//    actionability objects, CLI JSON envelopes, MCP discovery + tool
-//    results, cluster-info envelope) is fully enumerated.
+//    replay bundle, worker-session runtime, Waterline read API +
+//    diagnostic objects, repair / actionability objects, CLI JSON
+//    envelopes, MCP discovery + tool results, cluster-info envelope) is
+//    fully enumerated.
 // 5. `docs/platform-protocol-specs.md` advertises itself as the catalog,
 //    references the schema id, lists every entry with its format /
 //    surface family / owner / status / breaking-change rule.
@@ -95,6 +96,7 @@ const DELIVERABLE_SPEC_NAMES = [
   'control_plane_api',
   'worker_protocol_api',
   'worker_protocol_stream',
+  'worker_sessions_runtime',
   'history_event_payloads',
   'history_export_bundle',
   'replay_bundle',

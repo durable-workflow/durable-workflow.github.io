@@ -148,7 +148,11 @@ attempt leases.
 
 Worker-protocol capabilities advertise `worker_session_verbs` and the
 `worker_sessions` runtime contract through `GET /api/cluster/info` and every
-worker-plane response.
+worker-plane response. The machine-readable contract is published in
+[`worker-sessions-runtime.schema.json`](/platform-protocol-specs/worker-sessions-runtime.schema.json)
+and is indexed by the
+[Platform Protocol Specs](/docs/2.0/platform-protocol-specs#worker_sessions_runtime)
+catalog.
 
 Operators can list active, closed, expired, failed, and orphaned sessions at
 `GET /api/worker-sessions`. The detail surface includes session id, holder,

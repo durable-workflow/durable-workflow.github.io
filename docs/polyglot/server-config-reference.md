@@ -203,6 +203,9 @@ execute the same workflows.
 | Variable | Default | Purpose | Legacy alias |
 | --- | --- | --- | --- |
 | `DW_V2_NAMESPACE` | unset | Scope workflow instances to a namespace. | `WORKFLOW_V2_NAMESPACE` |
+| `DW_V2_TENANCY_ORGANIZATION` | unset | Optional organization segment for the workflow package tenancy hierarchy exposed to readiness, discovery, and operator surfaces. | `WORKFLOW_V2_TENANCY_ORGANIZATION` |
+| `DW_V2_TENANCY_PROJECT` | unset | Optional project segment for the workflow package tenancy hierarchy exposed to readiness, discovery, and operator surfaces. | `WORKFLOW_V2_TENANCY_PROJECT` |
+| `DW_V2_TENANCY_ENVIRONMENT` | unset | Optional environment segment for the workflow package tenancy hierarchy exposed to readiness, discovery, and operator surfaces. | `WORKFLOW_V2_TENANCY_ENVIRONMENT` |
 | `DW_V2_CURRENT_COMPATIBILITY` | unset | Worker-compatibility marker this worker advertises. | `WORKFLOW_V2_CURRENT_COMPATIBILITY` |
 | `DW_V2_SUPPORTED_COMPATIBILITIES` | unset | Comma-separated compatibility markers this worker accepts, or `*`. | `WORKFLOW_V2_SUPPORTED_COMPATIBILITIES` |
 | `DW_V2_COMPATIBILITY_NAMESPACE` | unset | Compatibility namespace for shared workflow databases with independent fleets. | `WORKFLOW_V2_COMPATIBILITY_NAMESPACE` |

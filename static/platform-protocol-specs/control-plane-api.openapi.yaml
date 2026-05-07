@@ -7,11 +7,12 @@ info:
     Normative OpenAPI specification for the standalone Durable Workflow
     server control-plane HTTP+JSON API. This document pins the public
     route set, HTTP methods, protocol headers, request-body envelope
-    policy, and response-envelope policy. Per-object family schemas are
-    referenced from the platform protocol catalog.
+    policy, response-envelope policy, and worker-session visibility
+    routes. Per-object family schemas are referenced from the platform
+    protocol catalog.
 x-durable-workflow-catalog-entry: control_plane_api
 x-durable-workflow-catalog-schema: durable-workflow.v2.platform-protocol-specs.catalog
-x-durable-workflow-catalog-version: 7
+x-durable-workflow-catalog-version: 8
 x-durable-workflow-owner-symbol: App\Support\ControlPlaneProtocol and App\Support\ControlPlaneRequestContract
 x-durable-workflow-evolution-rule: additive_minor_breaking_major
 x-durable-workflow-object-families:
@@ -394,6 +395,40 @@ paths:
           schema: { type: string, minLength: 1 }
       responses:
         "204": { description: Worker deleted. }
+  /worker-sessions:
+    get:
+      tags: [workers]
+      operationId: listWorkerSessions
+      parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }]
+      responses:
+        "200":
+          description: Worker-session visibility list for the selected namespace.
+          headers:
+            X-Durable-Workflow-Control-Plane-Version:
+              schema: { type: string, const: "2" }
+          content:
+            application/json:
+              schema: { $ref: "./worker-sessions-runtime.schema.json#/$defs/workerSessionVisibility" }
+  /worker-sessions/{sessionId}:
+    get:
+      tags: [workers]
+      operationId: getWorkerSession
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - name: sessionId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 255 }
+      responses:
+        "200":
+          description: Worker-session detail for the selected namespace.
+          headers:
+            X-Durable-Workflow-Control-Plane-Version:
+              schema: { type: string, const: "2" }
+          content:
+            application/json:
+              schema: { $ref: "./worker-sessions-runtime.schema.json#/$defs/workerSessionDetail" }
+        "404": { $ref: "#/components/responses/ControlPlaneError" }
   /task-queues:
     get:
       tags: [task-queues]

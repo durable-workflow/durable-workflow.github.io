@@ -81,12 +81,12 @@
       "notes": "Per-route version is governed by the `control_plane.request_contract` and `control_plane.response.contract` schema/version pairs published from `/api/cluster/info`. The top-level server `version` is build identity, not the client compatibility authority."
     },
     "worker_protocol": {
-      "description": "Worker-plane HTTP API used by external SDK workers to register, poll, heartbeat, complete, and fail workflow and activity tasks.",
+      "description": "Worker-plane HTTP API used by external SDK workers to register, poll, heartbeat, manage worker-session leases, complete, and fail workflow and activity tasks.",
       "stability_level": "stable",
       "authority_manifest": "worker_protocol",
       "requires_protocol_header": "X-Durable-Workflow-Protocol-Version",
       "breaking_change_release": "major",
-      "notes": "Includes the `external_execution_surface_contract`, `external_executor_config_contract`, `invocable_carrier_contract`, `external_task_input_contract`, and `external_task_result_contract` published from `/api/cluster/info`. Each nested contract carries its own schema/version and may evolve independently per its own contract rules."
+      "notes": "Includes the `worker_sessions` runtime contract, `external_execution_surface_contract`, `external_executor_config_contract`, `invocable_carrier_contract`, `external_task_input_contract`, and `external_task_result_contract` published from `/api/cluster/info`. Each nested contract carries its own schema/version and may evolve independently per its own contract rules."
     },
     "cli_json": {
       "description": "The `--output=json` and `--output=jsonl` shapes emitted by the `dw` CLI. This is the contract that automation, agents, and operator scripts depend on.",

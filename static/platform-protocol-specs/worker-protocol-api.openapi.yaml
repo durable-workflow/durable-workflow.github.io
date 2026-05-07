@@ -5,13 +5,13 @@ info:
   summary: Durable Workflow worker-plane HTTP+JSON API
   description: >
     Normative OpenAPI specification for the worker-plane HTTP+JSON API:
-    worker registration, worker heartbeat, long-poll task acquisition,
-    task history paging, task heartbeat, task completion, and task
-    failure. Long-poll timing, cancellation, and lease semantics are
-    specified by durable-workflow.v2.worker-protocol-stream.
+    worker registration, worker heartbeat, worker-session lifecycle,
+    long-poll task acquisition, task history paging, task heartbeat,
+    task completion, and task failure. Long-poll timing, cancellation,
+    and lease semantics are specified by durable-workflow.v2.worker-protocol-stream.
 x-durable-workflow-catalog-entry: worker_protocol_api
 x-durable-workflow-catalog-schema: durable-workflow.v2.platform-protocol-specs.catalog
-x-durable-workflow-catalog-version: 7
+x-durable-workflow-catalog-version: 8
 x-durable-workflow-owner-symbol: App\Support\WorkerProtocol and Workflow\V2\Support\WorkerProtocolVersion
 x-durable-workflow-evolution-rule: additive_minor_breaking_major
 x-durable-workflow-object-families:
@@ -68,6 +68,54 @@ paths:
       responses:
         "200": { $ref: "#/components/responses/WorkerEnvelope" }
         "404": { $ref: "#/components/responses/WorkerError" }
+  /worker/sessions:
+    post:
+      operationId: createWorkerSession
+      tags: [worker-sessions]
+      parameters: [{ $ref: "#/components/parameters/WorkerProtocolVersionHeader" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "./worker-sessions-runtime.schema.json#/$defs/workerSessionCreateRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/WorkerSessionOperation" }
+        "201": { $ref: "#/components/responses/WorkerSessionOperation" }
+        "409": { $ref: "#/components/responses/WorkerError" }
+        "412": { $ref: "#/components/responses/WorkerError" }
+        "422": { $ref: "#/components/responses/WorkerError" }
+  /worker/sessions/{sessionId}/heartbeat:
+    post:
+      operationId: heartbeatWorkerSession
+      tags: [worker-sessions]
+      parameters:
+        - $ref: "#/components/parameters/WorkerProtocolVersionHeader"
+        - $ref: "#/components/parameters/SessionIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "./worker-sessions-runtime.schema.json#/$defs/workerSessionHeartbeatRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/WorkerSessionOperation" }
+        "404": { $ref: "#/components/responses/WorkerError" }
+        "409": { $ref: "#/components/responses/WorkerError" }
+  /worker/sessions/{sessionId}:
+    delete:
+      operationId: closeWorkerSession
+      tags: [worker-sessions]
+      parameters:
+        - $ref: "#/components/parameters/WorkerProtocolVersionHeader"
+        - $ref: "#/components/parameters/SessionIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "./worker-sessions-runtime.schema.json#/$defs/workerSessionCloseRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/WorkerSessionOperation" }
+        "404": { $ref: "#/components/responses/WorkerError" }
+        "409": { $ref: "#/components/responses/WorkerError" }
   /worker/workflow-tasks/poll:
     post:
       operationId: pollWorkflowTask
@@ -284,6 +332,11 @@ components:
       in: path
       required: true
       schema: { type: string, minLength: 1 }
+    SessionIdPath:
+      name: sessionId
+      in: path
+      required: true
+      schema: { type: string, minLength: 1, maxLength: 255 }
   responses:
     WorkerEnvelope:
       description: Worker-protocol response envelope.
@@ -301,6 +354,17 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/WorkerError" }
+    WorkerSessionOperation:
+      description: Worker-session lifecycle admission or renewal result.
+      headers:
+        X-Durable-Workflow-Protocol-Version:
+          schema: { type: string, const: "1.0" }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/WorkerEnvelope"
+              - $ref: "./worker-sessions-runtime.schema.json#/$defs/workerSessionOperationResult"
   schemas:
     WorkerEnvelope:
       type: object
@@ -308,7 +372,7 @@ components:
       required: [protocol_version, server_capabilities]
       properties:
         protocol_version: { type: string, const: "1.0" }
-        server_capabilities: { type: object, additionalProperties: true }
+        server_capabilities: { $ref: "#/components/schemas/WorkerServerCapabilities" }
     WorkerError:
       type: object
       additionalProperties: true
@@ -318,7 +382,17 @@ components:
         error: { type: string }
         reason: { type: [string, "null"] }
         remediation: { type: [string, "null"] }
-        server_capabilities: { type: object, additionalProperties: true }
+        server_capabilities: { $ref: "#/components/schemas/WorkerServerCapabilities" }
+    WorkerServerCapabilities:
+      type: object
+      additionalProperties: true
+      properties:
+        worker_session_verbs:
+          type: array
+          items: { type: string, enum: [create, heartbeat, close] }
+          minItems: 3
+        worker_sessions:
+          $ref: "./worker-sessions-runtime.schema.json#/$defs/workerSessionRuntimeContract"
     WorkerRegistrationRequest:
       type: object
       additionalProperties: true
@@ -393,6 +467,8 @@ components:
                 task_id: { type: string }
                 activity_type: { type: string }
                 attempt: { type: integer, minimum: 1 }
+                worker_session:
+                  $ref: "./worker-sessions-runtime.schema.json#/$defs/workerSessionTaskAffinity"
     HistoryPageRequest:
       type: object
       additionalProperties: true

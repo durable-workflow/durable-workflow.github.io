@@ -45,7 +45,7 @@ truth:
 - `platform_protocol_specs` in the response body of
   `GET /api/cluster/info` on the standalone Durable Workflow server,
   schema `durable-workflow.v2.platform-protocol-specs.catalog`,
-  version `7`.
+  version `8`.
 - A frozen mirror of the same manifest in this repository at
   `static/platform-protocol-specs.json`.
 - The PHP class `Workflow\V2\Support\PlatformProtocolSpecs`, which is
@@ -69,6 +69,7 @@ schema/version authority, and breaking-change policy for each file.
 | `control_plane_api` | [`control-plane-api.openapi.yaml`](pathname:///platform-protocol-specs/control-plane-api.openapi.yaml) |
 | `worker_protocol_api` | [`worker-protocol-api.openapi.yaml`](pathname:///platform-protocol-specs/worker-protocol-api.openapi.yaml) |
 | `worker_protocol_stream` | [`worker-protocol-stream.asyncapi.yaml`](pathname:///platform-protocol-specs/worker-protocol-stream.asyncapi.yaml) |
+| `worker_sessions_runtime` | [`worker-sessions-runtime.schema.json`](pathname:///platform-protocol-specs/worker-sessions-runtime.schema.json) |
 | `history_event_payloads` | [`history-event-payloads.schema.json`](pathname:///platform-protocol-specs/history-event-payloads.schema.json) |
 | `history_export_bundle` | [`history-export-bundle.schema.json`](pathname:///platform-protocol-specs/history-export-bundle.schema.json) |
 | `replay_bundle` | [`replay-bundle.schema.json`](pathname:///platform-protocol-specs/replay-bundle.schema.json) |
@@ -161,6 +162,10 @@ the same metadata under `x-durable-workflow-object-families`.
 | `worker_protocol_stream` | `worker_poll_stream` | `durable-workflow/server` | `App\Support\LongPoller and App\Support\WorkerProtocol` | `Workflow\V2\Support\WorkerProtocolVersion::VERSION` |
 | `worker_protocol_stream` | `worker_task_lease` | `durable-workflow/server` | `App\Support\WorkflowTaskPoller and App\Support\ActivityTaskPoller` | `Workflow\V2\Support\WorkerProtocolVersion::VERSION` |
 | `worker_protocol_stream` | `worker_task_heartbeat` | `durable-workflow/server` | `App\Http\Controllers\Api\WorkerController heartbeat actions` | `Workflow\V2\Support\WorkerProtocolVersion::VERSION` |
+| `worker_sessions_runtime` | `worker_session_runtime_contract` | `durable-workflow/workflow` | `Workflow\V2\Support\WorkerProtocolVersion::workerSessionSemantics` | `Workflow\V2\Support\WorkerProtocolVersion::VERSION` |
+| `worker_sessions_runtime` | `worker_session_options` | `durable-workflow/workflow` | `Workflow\V2\Support\WorkerSessionOptions::toSnapshot` | `Workflow\V2\Support\WorkerProtocolVersion::VERSION` |
+| `worker_sessions_runtime` | `worker_session_lifecycle` | `durable-workflow/server` | `App\Http\Controllers\Api\WorkerSessionController and App\Support\WorkerSessionRegistry` | `Workflow\V2\Support\WorkerProtocolVersion::VERSION` |
+| `worker_sessions_runtime` | `worker_session_visibility` | `durable-workflow/server` | `App\Support\WorkerSessionRegistry::visibility` | `durable-workflow.v2.worker-sessions-runtime` |
 | `history_event_payloads` | `workflow_history_events` | `durable-workflow/workflow` | `Workflow\V2\Enums\HistoryEventType` | `durable-workflow.v2.history-event-payloads` |
 | `history_event_payloads` | `workflow_schedule_history_events` | `durable-workflow/workflow` | `Workflow\V2\Models\WorkflowScheduleHistoryEvent` | `durable-workflow.v2.history-event-payloads` |
 | `history_export_bundle` | `history_export_bundle` | `durable-workflow/workflow` | `Workflow\V2\Support\HistoryExport::SCHEMA` | `Workflow\V2\Support\HistoryExport::SCHEMA_VERSION` |
@@ -195,8 +200,8 @@ match the JSON mirror exactly.
 
 OpenAPI specification for the standalone Durable Workflow server
 control-plane HTTP+JSON API: namespace, schedule, command, run,
-history, search, and system routes that the CLI, Python SDK, cloud
-control plane, and operator scripts call.
+history, search, worker-session visibility, and system routes that the
+CLI, Python SDK, cloud control plane, and operator scripts call.
 
 | Field | Value |
 |-------|-------|
@@ -217,9 +222,10 @@ control plane, and operator scripts call.
 ### `worker_protocol_api`
 
 OpenAPI specification for the worker-plane HTTP+JSON API: register,
-poll, heartbeat, complete, and fail for workflow and activity tasks.
-The companion AsyncAPI document `worker_protocol_stream` describes the
-long-poll and lease-renewal semantics.
+poll, heartbeat, worker-session lifecycle, complete, and fail for
+workflow and activity tasks. The companion AsyncAPI document
+`worker_protocol_stream` describes the long-poll and lease-renewal
+semantics.
 
 | Field | Value |
 |-------|-------|
@@ -258,6 +264,30 @@ routing precedence, build-id rollout drains, and graceful disconnect.
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/worker-protocol-stream.asyncapi.yaml` |
 | Object families | `worker_poll_stream`, `worker_task_lease`, `worker_task_heartbeat` |
+
+### `worker_sessions_runtime`
+
+JSON Schema for the worker-session runtime contract: the
+`worker_protocol.server_capabilities.worker_sessions` manifest,
+`schedule_activity` `worker_session` command options, explicit lifecycle
+request/result envelopes, activity task affinity snapshots, and operator
+visibility envelopes.
+
+| Field | Value |
+|-------|-------|
+| Format | `json_schema` |
+| Spec id | `durable-workflow.v2.worker-sessions-runtime` |
+| Surface family | `worker_protocol` |
+| Authority manifest | `worker_protocol` |
+| Owner repo | `durable-workflow/server` |
+| Owner symbol | `App\Support\WorkerSessionRegistry and Workflow\V2\Support\WorkerProtocolVersion::workerSessionSemantics` |
+| Evolution rule | `additive_minor_breaking_major` |
+| Breaking-change release | `major` |
+| Discovery endpoint | `GET /api/cluster/info -> worker_protocol.server_capabilities.worker_sessions` |
+| Conformance test | `durable-workflow/server: tests/Feature/WorkerSessionProtocolTest.php` and `tests/Feature/ClusterInfoTest.php`; `durable-workflow/workflow: tests/Unit/V2/WorkerProtocolVersionTest.php` and `tests/Unit/V2/WorkerSessionOptionsTest.php` |
+| Status | `published` |
+| Spec path | `static/platform-protocol-specs/worker-sessions-runtime.schema.json` |
+| Object families | `worker_session_runtime_contract`, `worker_session_options`, `worker_session_lifecycle`, `worker_session_visibility` |
 
 ### `history_event_payloads`
 

@@ -6,7 +6,7 @@
   "type": "object",
   "x-durable-workflow-catalog-entry": "cluster_info_envelope",
   "x-durable-workflow-catalog-schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "x-durable-workflow-catalog-version": 7,
+  "x-durable-workflow-catalog-version": 8,
   "x-durable-workflow-owner-symbol": "App\\Http\\Controllers\\Api\\HealthController::clusterInfo",
   "x-durable-workflow-evolution-rule": "additive_minor_breaking_major",
   "x-durable-workflow-object-families": [
@@ -313,7 +313,22 @@
       "required": ["version"],
       "additionalProperties": true,
       "properties": {
-        "version": {"type": "integer", "minimum": 1}
+        "version": {"type": "integer", "minimum": 1},
+        "server_capabilities": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "worker_session_verbs": {
+              "type": "array",
+              "items": {"type": "string", "enum": ["create", "heartbeat", "close"]},
+              "minItems": 3,
+              "uniqueItems": true
+            },
+            "worker_sessions": {
+              "$ref": "./worker-sessions-runtime.schema.json#/$defs/workerSessionRuntimeContract"
+            }
+          }
+        }
       }
     },
     "bridge_adapter_outcome_contract": {

@@ -48,7 +48,8 @@ Read these fields before sending optional command fields:
 - `activity_retry_policy` and `activity_timeouts`: activity command retry and timeout options.
 - `worker_session_verbs` and `worker_sessions`: worker-session lifecycle verbs,
   activity command fields, renewal behavior, failure detection, and terminal
-  statuses.
+  statuses. The worker-session runtime shape is specified by
+  [`worker-sessions-runtime.schema.json`](/platform-protocol-specs/worker-sessions-runtime.schema.json).
 - `child_workflow_retry_policy` and `child_workflow_timeouts`: child workflow retry and timeout options.
 - `parent_close_policy`: child workflow parent-close policy support.
 - `query_tasks`: server-routed workflow query tasks for external runtimes.
