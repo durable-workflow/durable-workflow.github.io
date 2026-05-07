@@ -24,20 +24,23 @@ repair.
 
 ## 1. Pin The Docs Version
 
-Start with the canonical full bundle for current v2 work:
-
-```text
-https://durable-workflow.com/llms-full.txt
-```
-
-Pin the version-specific v2 bundle when the URL itself needs to keep meaning
-2.0 across a future major version:
+For v2 work, pin the version-specific bundle so you do not end up reading the
+1.x stable docs on canonical:
 
 ```text
 https://durable-workflow.com/llms-full-2.0.txt
 ```
 
-Use the explicit 1.x pin only for maintaining legacy v1 applications:
+The canonical bundle tracks the site's `lastVersion` (1.x today) and is the
+right bundle for v1 work or general agent prompts that should default to the
+stable line:
+
+```text
+https://durable-workflow.com/llms-full.txt
+```
+
+Use the explicit 1.x pin when you want the URL itself to keep meaning 1.x
+across a future major bump:
 
 ```text
 https://durable-workflow.com/llms-full-1.x.txt
