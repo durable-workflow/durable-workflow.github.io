@@ -152,6 +152,13 @@ The bootstrap gate sits in the same slot as the hosted-route topology gate:
 after role and protocol-version validation, before namespace resolution. A
 blocked request therefore never observes namespace existence.
 
+The gated route families are workflow routes such as `/api/workflows`, schedule
+mutations such as `POST /api/schedules`, `PUT /api/schedules/{scheduleId}`,
+`DELETE /api/schedules/{scheduleId}`, `/pause`, `/resume`, `/trigger`, and
+`/backfill`, bridge-adapter routes such as
+`/api/bridge-adapters/webhook/{adapter}`, and worker-protocol routes under
+`/api/worker`.
+
 Schedule **reads** (`GET /api/schedules`, `GET /api/schedules/{scheduleId}`,
 `GET /api/schedules/{scheduleId}/history`) are intentionally exempted so
 operators can inspect schedule state during recovery. Worker-protocol routes
