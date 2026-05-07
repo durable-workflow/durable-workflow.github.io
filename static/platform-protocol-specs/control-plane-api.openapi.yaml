@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: durable-workflow.v2.control-plane-api
-  version: "5"
+  version: "6"
   summary: Durable Workflow control-plane HTTP+JSON API
   description: >
     Normative OpenAPI specification for the standalone Durable Workflow
@@ -144,6 +144,16 @@ paths:
       requestBody: { $ref: "#/components/requestBodies/JsonObject" }
       responses:
         "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "201": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "409": { $ref: "#/components/responses/ControlPlaneError" }
+        "422": { $ref: "#/components/responses/ControlPlaneError" }
+  /workflows/import/embedded-v2:
+    post:
+      tags: [workflows]
+      operationId: importEmbeddedV2WorkflowHistory
+      parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }]
+      requestBody: { $ref: "#/components/requestBodies/JsonObject" }
+      responses:
         "201": { $ref: "#/components/responses/ControlPlaneEnvelope" }
         "409": { $ref: "#/components/responses/ControlPlaneError" }
         "422": { $ref: "#/components/responses/ControlPlaneError" }

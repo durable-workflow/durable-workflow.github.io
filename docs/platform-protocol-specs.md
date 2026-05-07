@@ -513,6 +513,10 @@ The docs site CI runs `scripts/check-platform-protocol-specs.js` to
 enforce these gates. When the workflow repository is checked out beside
 the docs site, or when `WORKFLOW_REPO_PATH` points at it, the same check
 also compares the static catalog mirror byte-for-byte with the workflow
-package mirror. Drift here means a release shipped a doc change without
-updating the machine-readable catalog (or vice versa). Either fix the
-doc or bump the catalog; do not silence the check.
+package mirror. When the server repository is checked out beside the docs
+site, or when `SERVER_REPO_PATH` points at it, the check also compares
+server-owned OpenAPI, AsyncAPI, and cluster-info schema files against the
+server repo's `resources/platform-protocol-specs/` copies. Drift here
+means a release shipped a doc change without updating the machine-readable
+catalog or the owning implementation repo. Either fix the doc, update the
+owner mirror, or bump the catalog; do not silence the check.

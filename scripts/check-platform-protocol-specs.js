@@ -17,7 +17,11 @@
 //    the expected schema id, version, and authority URL. When the
 //    workflow repo is available beside this docs checkout (or via
 //    WORKFLOW_REPO_PATH), the static mirror must also be byte-equivalent
-//    to `workflow/resources/platform-protocol-specs.json`.
+//    to `workflow/resources/platform-protocol-specs.json`. When the
+//    server repo is available beside this docs checkout (or via
+//    SERVER_REPO_PATH), server-owned OpenAPI / AsyncAPI / JSON Schema
+//    files must also be byte-equivalent to the server's checked-in
+//    `resources/platform-protocol-specs/*` copies.
 // 2. Every spec entry has the required fields with valid values:
 //    format ∈ {openapi, json_schema, asyncapi}, status ∈ {published,
 //    in_progress, planned}, owner_repo ∈ known fleet repos, and a
@@ -205,6 +209,64 @@ function assertWorkflowCatalogMirrorMatchesWhenAvailable() {
         `${workflowCatalogPath}. Update the docs-site mirror and the ` +
         `workflow package mirror in the same release change.`,
     );
+  }
+}
+
+function serverSpecMirrorDir() {
+  const configuredServerRepo = process.env.SERVER_REPO_PATH;
+  if (configuredServerRepo) {
+    return path.join(configuredServerRepo, 'resources', 'platform-protocol-specs');
+  }
+
+  const siblingServerSpecDir = path.join(
+    repoRoot,
+    '..',
+    'server',
+    'resources',
+    'platform-protocol-specs',
+  );
+
+  return fs.existsSync(siblingServerSpecDir) ? siblingServerSpecDir : null;
+}
+
+function assertServerOwnedSpecMirrorsMatchWhenAvailable(catalog) {
+  const serverSpecDir = serverSpecMirrorDir();
+  if (serverSpecDir === null) {
+    return;
+  }
+
+  if (!fs.existsSync(serverSpecDir)) {
+    throw new Error(
+      `SERVER_REPO_PATH was set, but the server protocol-spec mirror ` +
+        `directory does not exist at ${serverSpecDir}.`,
+    );
+  }
+
+  for (const [name, entry] of Object.entries(catalog.specs)) {
+    if (entry.owner_repo !== 'durable-workflow/server') {
+      continue;
+    }
+
+    const fileName = path.basename(entry.spec_path);
+    const docsSpecPath = path.join(repoRoot, entry.spec_path);
+    const serverSpecPath = path.join(serverSpecDir, fileName);
+
+    if (!fs.existsSync(serverSpecPath)) {
+      throw new Error(
+        `server-owned platform protocol spec "${name}" must have a ` +
+          `server repo mirror at resources/platform-protocol-specs/${fileName}.`,
+      );
+    }
+
+    const docsSpec = read(docsSpecPath);
+    const serverSpec = read(serverSpecPath);
+    if (docsSpec !== serverSpec) {
+      throw new Error(
+        `server-owned platform protocol spec "${name}" differs between ` +
+          `${entry.spec_path} and ${serverSpecPath}. Update the owner repo ` +
+          `copy and the docs-site published copy in the same release change.`,
+      );
+    }
   }
 }
 
@@ -711,6 +773,7 @@ function main() {
   const catalog = loadCatalog();
 
   assertWorkflowCatalogMirrorMatchesWhenAvailable();
+  assertServerOwnedSpecMirrorsMatchWhenAvailable(catalog);
   assertCatalogEntriesAreWellFormed(catalog, surfaceFamilies);
   assertCatalogDocAlignsWithCatalog(catalog);
   assertCompatibilityDocCrossLinksCatalog();
