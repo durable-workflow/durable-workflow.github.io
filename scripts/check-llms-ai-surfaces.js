@@ -105,6 +105,26 @@ function main() {
   assertExcludes(v2Full, '# Search and Navigation', 'llms-full-2.0.txt');
   assertExcludes(v2Full, '<details>', 'llms-full-2.0.txt');
   assertExcludes(v2Full, '<summary>', 'llms-full-2.0.txt');
+  // Structural gate: canonical manifests must originate from whichever version
+  // docusaurus.config.js declares as lastVersion. This assertion is the
+  // machine-readable form of the cutover gate — changing canonical requires
+  // advancing lastVersion in the config, not just editing these scripts.
+  {
+    const configContent = fs.readFileSync(
+      path.join(__dirname, '..', 'docusaurus.config.js'),
+      'utf8',
+    );
+    const lastVersionMatch = configContent.match(/lastVersion:\s*['"]([^'"]*)['"]/);
+    const lastVersion = lastVersionMatch ? lastVersionMatch[1] : null;
+    if (lastVersion && lastVersion !== 'current') {
+      const expectedSourcePrefix = `versioned_docs/version-${lastVersion}`;
+      assertIncludes(canonicalIndex, expectedSourcePrefix, 'llms.txt');
+      assertIncludes(canonicalFull, `<!-- Source: ${expectedSourcePrefix}`, 'llms-full.txt');
+    } else {
+      assertExcludes(canonicalIndex, 'versioned_docs/', 'llms.txt');
+    }
+  }
+
   // Canonical /llms.txt and /llms-full.txt match the site's lastVersion ('1.x')
   // — the same content human visitors get via /docs/. v2.0 is alpha and only
   // reachable via the explicit /llms-2.0.txt and /llms-full-2.0.txt aliases

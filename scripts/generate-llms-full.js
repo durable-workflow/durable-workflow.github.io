@@ -196,6 +196,9 @@ function getVersionPaths() {
   const configContent = fs.readFileSync(configPath, 'utf8');
 
   const versions = {};
+  const lastVersionMatch = configContent.match(/lastVersion:\s*['"]([^'"]*)['"]/);
+  versions.lastVersion = lastVersionMatch ? lastVersionMatch[1] : null;
+
   const versionBlockMatch = configContent.match(/versions:\s*\{([^}]+)\}/s);
   if (versionBlockMatch) {
     const versionBlock = versionBlockMatch[1];
@@ -214,6 +217,7 @@ function main() {
   ensureDir(buildDir);
 
   const versions = getVersionPaths();
+  const lastVersion = versions.lastVersion;
 
   // Generate manifest for v2.0 (current docs)
   const v2DocsDir = path.join(__dirname, '..', 'docs');
@@ -231,19 +235,27 @@ function main() {
     console.log('Generated v1.x manifest');
   }
 
-  // Canonical /llms-full.txt must match the site's lastVersion (1.x). v2.0 is
-  // alpha and only reachable via the explicit version-pinned URL.
-  if (v1Content) {
-    fs.writeFileSync(path.join(buildDir, 'llms-full.txt'), v1Content, 'utf8');
-    console.log('Canonical /llms-full.txt -> v1.x content (matches lastVersion)');
+  // Canonical /llms-full.txt tracks the site's lastVersion cutover gate in
+  // docusaurus.config.js. Advancing lastVersion to '2.0' in the config
+  // automatically promotes v2 to canonical without any change to this script.
+  const isV2Canonical = lastVersion === 'current' || !lastVersion;
+  const canonicalContent = isV2Canonical ? v2Content : v1Content;
+  if (canonicalContent) {
+    fs.writeFileSync(path.join(buildDir, 'llms-full.txt'), canonicalContent, 'utf8');
+    console.log(`Canonical /llms-full.txt -> ${lastVersion || 'current'} content (matches lastVersion)`);
 
-    fs.writeFileSync(path.join(buildDir, 'llms-full-1.x.txt'), v1Content, 'utf8');
-    console.log('v1.x version-specific manifest -> /llms-full-1.x.txt');
+    if (lastVersion && lastVersion !== 'current') {
+      fs.writeFileSync(path.join(buildDir, `llms-full-${lastVersion}.txt`), canonicalContent, 'utf8');
+      console.log(`${lastVersion} version-specific manifest -> /llms-full-${lastVersion}.txt`);
+    }
   }
 
+  // Always emit the v2.0 pinned alias so version-explicit consumers can reach
+  // it regardless of what canonical serves.
   if (v2Content) {
     fs.writeFileSync(path.join(buildDir, 'llms-full-2.0.txt'), v2Content, 'utf8');
-    console.log('v2.0 version-specific manifest -> /llms-full-2.0.txt (pinned alias only)');
+    const pinLabel = isV2Canonical ? '(matches canonical)' : '(pinned alias only)';
+    console.log(`v2.0 version-specific manifest -> /llms-full-2.0.txt ${pinLabel}`);
 
     if (versions.current) {
       const v2Path = path.join(buildDir, versions.current);

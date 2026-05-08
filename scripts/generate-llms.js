@@ -174,6 +174,28 @@ function getSiteBaseUrl() {
   return new URL(baseUrl, siteUrl).toString();
 }
 
+function getDocsConfig() {
+  const preset = Array.isArray(config.presets)
+    ? config.presets.find(entry => Array.isArray(entry) && entry[0] === 'classic')
+    : null;
+  return (preset && preset[1] && preset[1].docs) || {};
+}
+
+function getLastVersion() {
+  return getDocsConfig().lastVersion || null;
+}
+
+// Returns the docs directory for whichever version is lastVersion in the
+// docusaurus config. This is the cutover gate: promoting lastVersion from
+// '1.x' to '2.0' automatically makes canonical serve v2 docs.
+function getCanonicalDocsDir() {
+  const lastVersion = getLastVersion();
+  if (!lastVersion || lastVersion === 'current') {
+    return path.join(__dirname, '..', 'docs');
+  }
+  return path.join(__dirname, '..', 'versioned_docs', `version-${lastVersion}`);
+}
+
 function getRepoRawBaseUrl() {
   const preset = Array.isArray(config.presets)
     ? config.presets.find(entry => Array.isArray(entry) && entry[0] === 'classic')
@@ -341,36 +363,38 @@ function generateManifest(docsDir, outputPath, fullManifestUrl) {
 function main() {
   const buildDir = path.join(__dirname, '..', 'build');
   const siteBaseUrl = getSiteBaseUrl();
+  const lastVersion = getLastVersion();
 
   ensureDir(buildDir);
 
-  // The canonical /llms.txt must match the site's `lastVersion` (set to '1.x'
-  // in docusaurus.config.js) — that is what /docs/, the navbar default, and
-  // human visitors get. v2.0 is alpha and is reachable only via the explicit
-  // /docs/2.0/ paths and the /llms-2.0.txt pinned alias. Earlier the canonical
-  // was wired to v2 source; that surfaced alpha protocol surfaces to LLM tools
-  // hitting the well-known /llms.txt as if they were stable.
-  const v1DocsDir = path.join(__dirname, '..', 'versioned_docs', 'version-1.x');
-  if (fs.existsSync(v1DocsDir)) {
+  // Canonical /llms.txt tracks the site's `lastVersion` from docusaurus.config.js
+  // — the same version human visitors and /docs/ default to. The cutover gate is
+  // the lastVersion setting: advancing it to '2.0' automatically promotes v2 to
+  // canonical without any change to this script.
+  const canonicalDocsDir = getCanonicalDocsDir();
+  if (fs.existsSync(canonicalDocsDir)) {
     const canonicalOutputFile = path.join(buildDir, 'llms.txt');
     const canonicalFullUrl = new URL('llms-full.txt', siteBaseUrl).toString();
-    generateManifest(v1DocsDir, canonicalOutputFile, canonicalFullUrl);
-    console.log('Canonical llms.txt generated from v1.x docs (matches lastVersion):', canonicalOutputFile);
+    generateManifest(canonicalDocsDir, canonicalOutputFile, canonicalFullUrl);
+    console.log(`Canonical llms.txt generated from ${lastVersion || 'current'} docs (matches lastVersion):`, canonicalOutputFile);
 
-    const v1OutputFile = path.join(buildDir, 'llms-1.x.txt');
-    const v1FullUrl = new URL('llms-full-1.x.txt', siteBaseUrl).toString();
-    generateManifest(v1DocsDir, v1OutputFile, v1FullUrl);
-    console.log('v1.x llms-1.x.txt generated successfully:', v1OutputFile);
+    if (lastVersion) {
+      const pinnedOutputFile = path.join(buildDir, `llms-${lastVersion}.txt`);
+      const pinnedFullUrl = new URL(`llms-full-${lastVersion}.txt`, siteBaseUrl).toString();
+      generateManifest(canonicalDocsDir, pinnedOutputFile, pinnedFullUrl);
+      console.log(`${lastVersion} pinned alias generated:`, pinnedOutputFile);
+    }
   }
 
-  // v2.0 is the alpha-tracked next version. Only reachable via the explicit
-  // version-pinned URL, never canonical.
+  // v2.0 is the alpha-tracked next version. Always generate its pinned alias
+  // so version-explicit consumers can reach it regardless of what canonical serves.
   const v2DocsDir = path.join(__dirname, '..', 'docs');
   if (fs.existsSync(v2DocsDir)) {
     const v2OutputFile = path.join(buildDir, 'llms-2.0.txt');
     const v2FullUrl = new URL('llms-full-2.0.txt', siteBaseUrl).toString();
     generateManifest(v2DocsDir, v2OutputFile, v2FullUrl);
-    console.log('v2.0 llms-2.0.txt generated successfully (pinned alias only):', v2OutputFile);
+    const pinLabel = v2DocsDir === canonicalDocsDir ? '(matches canonical)' : '(pinned alias only)';
+    console.log(`v2.0 llms-2.0.txt generated ${pinLabel}:`, v2OutputFile);
   }
 }
 
