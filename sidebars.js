@@ -90,6 +90,7 @@ const sidebars = {
         'waterline-operator-api',
         'compatibility',
         'platform-protocol-specs',
+        'sdk-neutrality',
         'failures-and-recovery',
         'support',
         'migration',
