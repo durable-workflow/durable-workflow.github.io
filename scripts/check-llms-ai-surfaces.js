@@ -125,15 +125,12 @@ function main() {
     }
   }
 
-  // Canonical /llms.txt and /llms-full.txt match the site's lastVersion ('1.x')
-  // — the same content human visitors get via /docs/. v2.0 is alpha and only
-  // reachable via the explicit /llms-2.0.txt and /llms-full-2.0.txt aliases
-  // and the /docs/2.0/ paths.
-  assertIncludes(canonicalIndex, 'versioned_docs/version-1.x', 'llms.txt');
+  // Canonical index must reference the canonical full file and must not
+  // reference the versioned-alias form. The source-version assertion is
+  // handled above by the structural gate; no version-specific strings here.
   assertIncludes(canonicalIndex, 'llms-full.txt', 'llms.txt');
   assertExcludes(canonicalIndex, 'docs/ai-assisted-development.md', 'llms.txt');
   assertExcludes(canonicalIndex, 'llms-full-2.0.txt', 'llms.txt');
-  assertExcludes(canonicalFull, '# AI-Assisted Development', 'llms-full.txt');
 
   // v1.x is also reachable via the explicit pinned alias (mirrors canonical).
   assertIncludes(v1Index, 'versioned_docs/version-1.x', 'llms-1.x.txt');
