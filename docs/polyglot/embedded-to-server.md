@@ -119,10 +119,13 @@ contracts. This reduces the amount of code that changes during cutover.
 
 5. Decide whether compatibility markers are needed.
 
-   Single-fleet deployments can leave compatibility unset. Mixed fleets should
-   set `DW_V2_CURRENT_COMPATIBILITY` and
-   `DW_V2_SUPPORTED_COMPATIBILITIES` before cutover so workers do not
-   claim runs from incompatible builds.
+   A single-fleet deployment can leave compatibility unset. The standard
+   v2 rollout mechanics (canary, drain, rollback, replay-debug) all
+   operate inside one stable v2 contract — there is no "mixed-fleet v2"
+   adoption lane. If a build-skew window does open during the embedded
+   to server cutover, set `DW_V2_CURRENT_COMPATIBILITY` and
+   `DW_V2_SUPPORTED_COMPATIBILITIES` before the cutover so a new build
+   does not claim runs from an incompatible build during that window.
 
 ## Phase B: Deploy the Server Beside Embedded
 

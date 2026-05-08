@@ -42,7 +42,9 @@ Store the backup in a safe location. You will need it if you need to roll back.
 
 **Do not upgrade production without testing in staging.** The upgrade includes:
 
-- Database schema changes (24 new tables)
+- Database schema changes (the v2 durable kernel adds new tables; the
+  exact count is whatever `php artisan migrate` applies, and a future
+  squashed migration may consolidate the per-feature files)
 - Namespace changes requiring code updates
 - Queue worker restart (brief interruption)
 - Backend capability validation
@@ -77,7 +79,8 @@ This upgrades the package from `laravel-workflow/laravel-workflow` (v1) to `dura
 php artisan migrate
 ```
 
-v2 adds 24 new tables:
+v2 adds the durable-kernel tables that back the v2 feature contract. The
+current per-feature migrations create:
 
 - Core: `workflow_instances`, `workflow_runs`, `workflow_history_events`, `workflow_tasks`, `workflow_commands`
 - Activity: `activity_executions`, `activity_attempts`
@@ -85,6 +88,12 @@ v2 adds 24 new tables:
 - Observability: `workflow_run_summaries`, `workflow_failures`, `workflow_links`, `worker_compatibility_heartbeats`
 - Timers: `workflow_run_timers`, `workflow_run_timer_entries`
 - Search / memo / message / child: `workflow_search_attributes`, `workflow_memos`, `workflow_messages`, `workflow_child_calls`
+- Service catalog: `workflow_service_endpoints`, `workflow_services`, `workflow_service_operations`, `workflow_service_calls`
+
+A future squashed migration may consolidate these into fewer files
+without changing the durable contract. The supported way to know what
+your database actually has is to run `php artisan migrate:status` after
+the upgrade.
 
 v1 tables (`workflows`, `workflow_logs`, `workflow_signals`, `workflow_timers`, `workflow_exceptions`) are preserved for finish-on-v1 execution.
 
@@ -113,7 +122,18 @@ To accept the v2 default explicitly, leave `serializer` unset, or pin it:
 
 Keep a legacy codec (`'workflow-serializer-y'` or `'workflow-serializer-base64'`) only if you need to finish draining v1 runs that share PHP-native values between a server and PHP-only workers. Legacy class names (`Workflow\Serializers\Y::class`, etc.) are still accepted as aliases for decoding v1 runs.
 
-**Custom serializer classes from v1 are unsupported in v2.** v2 only resolves `avro`, the legacy `workflow-serializer-y`, and `workflow-serializer-base64` codecs. If you had a custom serializer, drain v1 runs before upgrading or re-encode historical payloads into `avro` — the custom class is not consulted.
+**Custom serializer classes from v1 are unsupported in v2.** v2 only resolves `avro`, the legacy `workflow-serializer-y`, and `workflow-serializer-base64` codecs. If you had a custom serializer, drain v1 runs before upgrading or re-encode historical payloads into `avro` — the custom class is not consulted. `php artisan workflow:v2:doctor` flags any other `workflows.serializer` value as migration debt; default-codec resolution silently falls back to `avro` for new runs so encode does not fail.
+
+**Custom model subclasses are supported only when they keep the package's column and key contract.** The frozen support matrix in
+[Customization Matrix](/docs/2.0/configuration/customization-matrix/) is
+authoritative: subclassing the v2 instance, run, task, history-event,
+projection, schedule, activity, failure, link, message, memo, search-attribute,
+and child-call models is supported when the subclass keeps the package
+table names, primary keys, and foreign keys. Custom table names with
+custom foreign-key column names are out of contract. Waterline reads the
+v2 projections through the
+`Workflow\V2\Contracts\OperatorObservabilityRepository` contract, so a
+schema-compatible subclass does not require a Waterline change.
 
 **Environment variables:**
 
