@@ -25,6 +25,7 @@ repositories:
 | Workflow task history page | `tests/fixtures/control-plane/workflow-task-history-parity.json` |
 | Set namespace external storage driver | `tests/fixtures/control-plane/namespace-set-storage-driver-parity.json` |
 | Storage round-trip diagnostic | `tests/fixtures/control-plane/storage-test-parity.json` |
+| Schedule audit history page | `tests/fixtures/control-plane/schedule-history-parity.json` |
 
 The CLI sends JSON caller payloads directly. The Python SDK wraps the same
 semantic payload in its Avro envelope. Both target the same endpoint and
@@ -318,6 +319,46 @@ envelope: top-level `status`, `driver`, and per-payload `small_payload` /
 over-threshold payload) the `reference_uri` the server would embed in workflow
 history. Omit `driver` to exercise the currently configured namespace policy
 instead of overriding it for the diagnostic.
+
+## Schedule Audit History Page
+
+Read the schedule's audit history stream — the lifecycle log that records
+create, pause, resume, update, trigger, trigger-skipped, and delete events
+in server-recorded order. The same paged GET works for deleted schedules,
+so post-mortem review survives the schedule's removal.
+
+CLI:
+
+```bash
+dw schedule:history daily-inventory-check \
+  --limit=100 \
+  --after-sequence=5 \
+  --json
+```
+
+Python:
+
+```python
+async with client:
+    page = await client.get_schedule_history(
+        "daily-inventory-check",
+        limit=100,
+        after_sequence=5,
+    )
+```
+
+Both calls mean
+`GET /schedules/{schedule_id}/history?limit=100&after_sequence=5`. The
+response is a one-page envelope: `events` ordered by ascending `sequence`,
+plus `has_more` and `next_cursor` so callers can resume paging without
+re-scanning. Each event carries `sequence`, `event_type`, `recorded_at`,
+optional `workflow_instance_id` / `workflow_run_id` references when the
+event was attached to a triggered run, and an event-shaped `payload`. The
+Python SDK exposes the same envelope as a `ScheduleHistoryPage` of
+`ScheduleHistoryEvent` objects, and `Client.iter_schedule_history()` walks
+the full stream by repeatedly issuing the same paged GET under the hood.
+The CLI's `--all` flag walks the same stream and collapses every page into
+one envelope before printing.
 
 ## Parity Checklist
 
