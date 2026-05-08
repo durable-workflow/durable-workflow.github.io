@@ -662,27 +662,65 @@ container names or rollout runbooks.
     "migration_path": [
       {
         "step": "audit_role_boundaries",
-        "result": "tooling flags cross-role writes before runtime shape changes"
+        "result": "tooling flags cross-role writes before runtime shape changes",
+        "reversible": true
       },
       {
         "step": "expose_role_bindings",
-        "result": "container seams allow out-of-process adapters without patching the package"
+        "result": "container seams allow out-of-process adapters without patching the package",
+        "reversible": true
       },
       {
         "step": "introduce_dedicated_matching_shape",
-        "result": "matching can run as its own process class without changing the claim contract"
+        "result": "matching can run as its own process class without changing the claim contract",
+        "reversible": true
       },
       {
         "step": "split_history_projection",
-        "result": "history and projections can move out of process without introducing a second writer"
+        "result": "history and projections can move out of process without introducing a second writer",
+        "reversible": true
       },
       {
         "step": "split_scheduler",
-        "result": "schedule firing can move behind leader election while single-replica deployments stay legal"
+        "result": "schedule firing can move behind leader election while single-replica deployments stay legal",
+        "reversible": true
       },
       {
         "step": "optional_execution_partitioning",
-        "result": "workers can partition by namespace, connection, queue, and compatibility"
+        "result": "workers can partition by namespace, connection, queue, and compatibility",
+        "reversible": true
+      }
+    ],
+    "kernel_invariants": [
+      {
+        "id": "single_persistence_engine",
+        "summary": "one workflow database backs every topology shape; role split does not introduce a second persistence engine",
+        "applies_to": ["embedded", "standalone_server", "split_control_execution"]
+      },
+      {
+        "id": "single_worker_protocol",
+        "summary": "one HTTP worker protocol carries claim, complete, fail, and heartbeat traffic across every topology; role split does not fork the worker contract",
+        "applies_to": ["embedded", "standalone_server", "split_control_execution"]
+      },
+      {
+        "id": "single_history_writer",
+        "summary": "history_events has exactly one durable writer per logical event regardless of where the history/projection role runs",
+        "applies_to": ["embedded", "standalone_server", "split_control_execution"]
+      },
+      {
+        "id": "single_control_authority_per_run",
+        "summary": "every mutation of a given workflow run routes through one control-plane authority; per-run row locks serialise transitions across replicas",
+        "applies_to": ["embedded", "standalone_server", "split_control_execution"]
+      },
+      {
+        "id": "embedded_topology_remains_supported",
+        "summary": "the embedded shape where one process fills every role MUST stay legal; existing embedded hosts are never forced to migrate",
+        "applies_to": ["embedded", "standalone_server", "split_control_execution"]
+      },
+      {
+        "id": "role_split_is_topology_only",
+        "summary": "splitting roles is a topology change, not a product fork; collapsing the roles back onto a single process is always a legal topology",
+        "applies_to": ["embedded", "standalone_server", "split_control_execution"]
       }
     ]
   },
@@ -730,7 +768,8 @@ current public contract includes `supported_shapes`, `role_vocabulary`,
 `current_shape`, `current_process_class`, `current_roles`, `execution_mode`,
 `matching_role`, `role_catalog`, `shape_assignments`,
 `authority_boundaries`, `authority_surfaces`, `failure_domains`,
-`supported_topologies`, `scaling_boundaries`, and `migration_path`.
+`supported_topologies`, `scaling_boundaries`, `migration_path`, and
+`kernel_invariants`.
 
 Read the fields as follows:
 
@@ -801,7 +840,16 @@ Read the fields as follows:
   fleet is intentionally holding traffic away from at least one draining cohort.
 - `migration_path` lists the ordered rollout steps from today's standalone
   distribution toward more isolated role boundaries without introducing a
-  second engine.
+  second engine. Each entry's `reversible: true` flag declares that
+  collapsing back to a less-isolated shape stays a legal topology.
+- `kernel_invariants` enumerates the durable-kernel guarantees the role
+  split must preserve regardless of which supported shape is running:
+  `single_persistence_engine`, `single_worker_protocol`,
+  `single_history_writer`, `single_control_authority_per_run`,
+  `embedded_topology_remains_supported`, and `role_split_is_topology_only`.
+  Each entry's `applies_to` lists the supported shapes the invariant
+  covers; rollout automation MAY use the field to assert that a candidate
+  topology change preserves the kernel before applying the shape change.
 
 This keeps the role split as a topology change, not a second engine or a
 separate control-plane API. When a deployment evolves from a narrow
@@ -812,6 +860,12 @@ shape, operators still read the same discovery surface. The values under
 `scaling_boundaries`, and `migration_path` are
 versioned as one manifest so rollout tooling can reason about the same
 topology surface the server ships.
+
+The same constraint also surfaces machine-readably through
+`topology.kernel_invariants` so rollout automation can verify that no
+candidate topology change introduces a second persistence engine, a
+forked worker protocol, a second history writer, or a non-reversible
+migration before applying the change.
 
 The hosted-route gate applies only to authenticated API and worker endpoints.
 `GET /api/health`, `GET /api/ready`, and authenticated `GET /api/cluster/info`

@@ -45,6 +45,7 @@ The `topology` object answers these contract questions:
 | `shape_assignments` | Which process classes are allowed for each supported shape? |
 | `authority_boundaries`, `failure_domains`, `scaling_boundaries` | Which role is allowed to write what, how each role fails, and what load axis each role scales on? |
 | `supported_topologies`, `migration_path` | What deployment families are product-supported, and what is the ordered path from the standalone shape toward more isolated roles? |
+| `kernel_invariants` | Which durable-kernel guarantees the role split must preserve regardless of which shape is currently running? |
 
 `current_shape`, `current_process_class`, and `current_roles` describe the node
 that answered the HTTP request, not the full fleet. Use
@@ -272,6 +273,43 @@ while isolating responsibilities more clearly:
 
 Read this list as the supported topology transition order, not as a separate
 product roadmap detached from the current engine.
+
+Each `topology.migration_path[]` entry carries an explicit
+`reversible: true` flag. Treat the migration path as bidirectional: a
+deployment that has reached `split_history_projection` MAY collapse the
+history role back into the control-plane process and remain a legal
+topology shape. Rollback is part of the contract, not an unmodelled
+edge case.
+
+## Durable Kernel Invariants
+
+`topology.kernel_invariants` enumerates the guarantees the role split
+preserves regardless of which supported shape is running. Use this list
+when validating that a candidate topology change is product-supported
+rather than a fork of the engine:
+
+| Invariant | What it guarantees |
+| --- | --- |
+| `single_persistence_engine` | One workflow database backs every topology shape; role split does not introduce a second persistence engine. |
+| `single_worker_protocol` | One HTTP worker protocol carries claim, complete, fail, and heartbeat traffic across every topology; role split does not fork the worker contract. |
+| `single_history_writer` | `history_events` has exactly one durable writer per logical event regardless of where the history/projection role runs. |
+| `single_control_authority_per_run` | Every mutation of a given workflow run routes through one control-plane authority; per-run row locks serialise transitions across replicas. |
+| `embedded_topology_remains_supported` | The embedded shape where one process fills every role MUST stay legal; existing embedded hosts are never forced to migrate. |
+| `role_split_is_topology_only` | Splitting roles is a topology change, not a product fork; collapsing the roles back onto a single process is always a legal topology. |
+
+Each entry's `applies_to` field lists the shapes the invariant covers.
+For the supported topology family, every invariant currently applies to
+`embedded`, `standalone_server`, and `split_control_execution`. If an
+upgrade adds a new shape, the invariants whose `applies_to` does not
+include it MUST be reviewed before that shape is treated as
+product-supported.
+
+```bash
+curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/cluster/info" \
+  -H "Authorization: Bearer $DURABLE_WORKFLOW_AUTH_TOKEN" \
+  -H "X-Namespace: default" \
+  | jq '.topology.kernel_invariants[] | {id, applies_to}'
+```
 
 ## Coordination Health
 
