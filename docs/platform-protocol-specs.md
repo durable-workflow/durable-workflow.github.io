@@ -46,7 +46,7 @@ truth:
 - `platform_protocol_specs` in the response body of
   `GET /api/cluster/info` on the standalone Durable Workflow server,
   schema `durable-workflow.v2.platform-protocol-specs.catalog`,
-  version `9`.
+  version `10`.
 - A frozen mirror of the same manifest in this repository at
   `static/platform-protocol-specs.json`.
 - The PHP class `Workflow\V2\Support\PlatformProtocolSpecs`, which is
@@ -196,6 +196,9 @@ the same metadata under `x-durable-workflow-object-families`.
 | `cluster_info_envelope` | `surface_stability_contract` | `durable-workflow/workflow` | `Workflow\V2\Support\SurfaceStabilityContract::SCHEMA` | `Workflow\V2\Support\SurfaceStabilityContract::VERSION` |
 | `cluster_info_envelope` | `platform_protocol_specs_catalog` | `durable-workflow/workflow` | `Workflow\V2\Support\PlatformProtocolSpecs::SCHEMA` | `Workflow\V2\Support\PlatformProtocolSpecs::VERSION` |
 | `cluster_info_envelope` | `platform_conformance_suite_manifest` | `durable-workflow/workflow` | `Workflow\V2\Support\PlatformConformanceSuite::SCHEMA` | `Workflow\V2\Support\PlatformConformanceSuite::VERSION` |
+| `invocable_carrier_execution` | `invocable_carrier_contract` | `durable-workflow/server` | `App\Support\InvocableCarrierContract::SCHEMA` | `App\Support\InvocableCarrierContract::VERSION` |
+| `invocable_carrier_execution` | `external_execution_surface_contract` | `durable-workflow/server` | `App\Support\ExternalExecutionSurfaceContract::SCHEMA` | `App\Support\ExternalExecutionSurfaceContract::VERSION` |
+| `invocable_carrier_execution` | `external_executor_config_contract` | `durable-workflow/server` | `App\Support\ExternalExecutorConfigContract::CONTRACT_SCHEMA` | `App\Support\ExternalExecutorConfigContract::CONTRACT_VERSION` |
 
 ## Spec Catalog
 
@@ -550,6 +553,32 @@ field shapes are normative under each nested manifest's own `schema` /
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/cluster-info-envelope.schema.json` |
 | Object families | `cluster_info_envelope`, `client_compatibility_manifest`, `surface_stability_contract`, `platform_protocol_specs_catalog`, `platform_conformance_suite_manifest` |
+
+### `invocable_carrier_execution`
+
+JSON Schema for the invocable HTTP carrier execution surface: the
+activity-only HTTP carrier contract, external task input and result
+envelopes, the external execution surface boundary, and the
+handler-mapping config contract that routes activity tasks to carrier
+endpoints. These wire-protocol terms define what an external activity
+handler must implement to receive and complete tasks through the
+invocable carrier.
+
+| Field | Value |
+|-------|-------|
+| Format | `json_schema` |
+| Spec id | `durable-workflow.v2.invocable-carrier-execution` |
+| Surface family | `worker_protocol` |
+| Authority manifest | `worker_protocol` |
+| Owner repo | `durable-workflow/server` |
+| Owner symbol | `App\Support\InvocableCarrierContract`, `App\Support\ExternalTaskInputContract`, `App\Support\ExternalTaskResultContract`, `App\Support\ExternalExecutionSurfaceContract`, and `App\Support\ExternalExecutorConfigContract` |
+| Evolution rule | `additive_minor_breaking_major` |
+| Breaking-change release | `major` |
+| Discovery endpoint | `GET /api/cluster/info -> worker_protocol.invocable_carrier_contract` |
+| Conformance test | `durable-workflow/server: tests/Unit/InvocableCarrierContractTest.php`, `tests/Unit/ExternalTaskInputContractTest.php`, `tests/Unit/ExternalTaskResultContractTest.php`, and `tests/Unit/ExternalExecutionSurfaceContractTest.php` |
+| Status | `in_progress` |
+| Spec path | `static/platform-protocol-specs/invocable-carrier-execution.schema.json` |
+| Object families | `invocable_carrier_contract`, `external_execution_surface_contract`, `external_executor_config_contract` |
 
 ## Release Check
 

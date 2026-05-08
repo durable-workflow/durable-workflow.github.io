@@ -1,6 +1,6 @@
 {
   "schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "version": 9,
+  "version": 10,
   "authority_url": "https://durable-workflow.github.io/docs/2.0/platform-protocol-specs",
   "formats": {
     "openapi": {
@@ -558,6 +558,41 @@
       "conformance_test": "durable-workflow/server: tests/Feature/ClusterInfoCompatibilityTest.php",
       "status": "published",
       "spec_path": "static/platform-protocol-specs/cluster-info-envelope.schema.json"
+    },
+    "invocable_carrier_execution": {
+      "description": "JSON Schema for the invocable HTTP carrier execution surface: the activity-only HTTP carrier contract, external task input and result envelopes, the external execution surface boundary, and the handler-mapping config contract that routes activity tasks to carrier endpoints. These wire-protocol terms define what an external activity handler must implement to receive and complete tasks through the invocable carrier.",
+      "format": "json_schema",
+      "spec_id": "durable-workflow.v2.invocable-carrier-execution",
+      "surface_family": "worker_protocol",
+      "authority_manifest": "worker_protocol",
+      "owner_repo": "durable-workflow/server",
+      "owner_symbol": "App\\Support\\InvocableCarrierContract, App\\Support\\ExternalTaskInputContract, App\\Support\\ExternalTaskResultContract, App\\Support\\ExternalExecutionSurfaceContract, and App\\Support\\ExternalExecutorConfigContract",
+      "object_families": [
+        {
+          "name": "invocable_carrier_contract",
+          "owner_repo": "durable-workflow/server",
+          "schema_authority": "App\\Support\\InvocableCarrierContract::SCHEMA",
+          "version_authority": "App\\Support\\InvocableCarrierContract::VERSION"
+        },
+        {
+          "name": "external_execution_surface_contract",
+          "owner_repo": "durable-workflow/server",
+          "schema_authority": "App\\Support\\ExternalExecutionSurfaceContract::SCHEMA",
+          "version_authority": "App\\Support\\ExternalExecutionSurfaceContract::VERSION"
+        },
+        {
+          "name": "external_executor_config_contract",
+          "owner_repo": "durable-workflow/server",
+          "schema_authority": "App\\Support\\ExternalExecutorConfigContract::CONTRACT_SCHEMA",
+          "version_authority": "App\\Support\\ExternalExecutorConfigContract::CONTRACT_VERSION"
+        }
+      ],
+      "evolution_rule": "additive_minor_breaking_major",
+      "breaking_change_release": "major",
+      "discovery_endpoint": "GET /api/cluster/info -> worker_protocol.invocable_carrier_contract",
+      "conformance_test": "durable-workflow/server: tests/Unit/InvocableCarrierContractTest.php, tests/Unit/ExternalTaskInputContractTest.php, tests/Unit/ExternalTaskResultContractTest.php, and tests/Unit/ExternalExecutionSurfaceContractTest.php",
+      "status": "in_progress",
+      "spec_path": "static/platform-protocol-specs/invocable-carrier-execution.schema.json"
     }
   },
   "release_check": {
