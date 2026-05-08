@@ -94,6 +94,7 @@ const sidebars = {
         'support',
         'migration',
         'sample-app',
+        'contribute-a-sample',
         {
           type: 'category',
           label: 'Configuration',

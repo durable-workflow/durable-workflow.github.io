@@ -226,3 +226,19 @@ The current surface does not include:
 - built-in bounded-concurrency helpers beyond the current `all([fn () => child(...)])`, `all([fn () => activity(...)])`, and mixed `all([fn () => child(...), fn () => activity(...)])` barriers
 
 In other words, durable child handles are supported for already-reached child steps, but it does not yet include higher-level launch-handle or bounded-concurrency APIs beyond today's `child(...)` and `all([...])` surface.
+
+## Run this pattern
+
+The microservice coordination workflow in the
+[Sample App](/docs/2.0/sample-app) is the runnable reference for
+parent–child orchestration across application boundaries:
+
+```bash
+php artisan app:microservice
+```
+
+`App\Workflows\Microservice\MicroserviceWorkflow` runs the parent on
+the main Laravel app and dispatches child work to the bundled
+microservice worker. Open Waterline while the run is in flight to see
+the child links populated under the parent run, with the close policy
+visible on the lineage view exactly as this page describes.

@@ -86,6 +86,7 @@ This file maps documentation sections to the repositories and plans that own the
 | `failures-and-recovery.md` | **workflow** | Failure handling, retries, recovery |
 | `monitoring.md` | **waterline** | Waterline UI, observability |
 | `sample-app.md` | **sample-app** | Sample application reference |
+| `contribute-a-sample.md` | **sample-app** | Contribution contract for new samples |
 
 ### Polyglot
 

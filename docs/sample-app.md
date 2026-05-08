@@ -18,7 +18,55 @@ https://github.com/durable-workflow/sample-app
 
 This is a sample Laravel 13 application built on Durable Workflow 2.0 (alpha) with example workflows that you can run inside a GitHub codespace.
 
+The sample app is the recommended starting point for "how do I learn
+Durable Workflow?". It is the first place new features get end-to-end
+coverage, the first place bugs are reproduced against a realistic
+Laravel host, and the source the docs site mirrors when it shows what
+a pattern looks like in practice. If you have a real durable-workflow
+pattern you want to share, the
+[Contribute a Sample](/docs/2.0/contribute-a-sample) guide walks
+through the submission flow.
+
 > Looking for the Laravel 12 / Durable Workflow 1.x version? It's preserved on the [`Laravel-12` branch](https://github.com/durable-workflow/sample-app/tree/Laravel-12). Older blog posts and tutorials that reference v1 patterns (e.g. `Workflow\Workflow`, `yield activity(...)`, `Workflow\Activity`) target that branch.
+
+## Sample gallery
+
+Each entry in the gallery names the pattern surface the sample teaches,
+the workflow class that exercises it, the artisan command that runs it,
+and the Waterline screen that proves the run committed. The gallery
+mirrors the README "Sample Index" in the sample-app repository — when a
+sample lands or moves, the README and this gallery move together.
+
+| Pattern | Workflow class | Command | Waterline screen |
+|---------|----------------|---------|------------------|
+| Smallest deterministic v2 workflow | `App\Workflows\Simple\SimpleWorkflow` | `php artisan app:workflow` | Run list → run detail with two activity events and a `WorkflowExecutionCompleted` event |
+| Durable elapsed-time measurement without replay drift | `App\Workflows\Elapsed\ElapsedTimeWorkflow` | `php artisan app:elapsed` | Run detail showing two `MarkerRecorded` events for `sideEffect` clock reads bracketing a `TimerFired` event |
+| Coordination across Laravel app boundaries | `App\Workflows\Microservice\MicroserviceWorkflow` | `php artisan app:microservice` | Run detail showing activity events with task-queue routing across the app and microservice workers |
+| Browser automation with captured artifacts | `App\Workflows\Playwright\CheckConsoleErrorsWorkflow` | `php artisan app:playwright` | Run detail showing the Playwright activity, the FFmpeg activity, and the cleanup activity in order |
+| Webhook-started workflow with a signal wait | `App\Workflows\Webhooks\WebhookWorkflow` | `php artisan app:webhook` | Run detail showing `WorkflowExecutionStarted` from the webhook ingress and a `WorkflowExecutionSignaled` event for `ready` |
+| AI activity loop with durable retry/validation | `App\Workflows\Prism\PrismWorkflow` | `php artisan app:prism` | Run detail showing repeated activity attempts and the `ActivityTaskCompleted` that satisfies the validator |
+| Signal-driven AI agent with saga compensation | `App\Workflows\Ai\AiWorkflow` | `php artisan app:ai` | Run detail showing a message-stream `MarkerRecorded` reference, an `Update` event, and the compensation activities recorded after a saga failure |
+
+The Waterline screen column names the events you should expect to see
+in a healthy run; if your local run is missing one, that gap is the
+fastest way to localize a worker-side or environment problem.
+
+## Pattern-page cross-links
+
+The pattern pages on this site link directly into the sample workflow
+that exercises each surface. Use this table to jump from a pattern
+page to the matching runnable workflow.
+
+| Pattern page | Sample workflow |
+|--------------|-----------------|
+| [Sagas](/docs/2.0/features/sagas) | `App\Workflows\Ai\AiWorkflow` (`php artisan app:ai`) |
+| [Signals](/docs/2.0/features/signals) | `App\Workflows\Webhooks\WebhookWorkflow` (`php artisan app:webhook`) |
+| [Message Streams](/docs/2.0/features/message-streams) | `App\Workflows\Ai\AiWorkflow` (`php artisan app:ai`) |
+| [Child Workflows](/docs/2.0/features/child-workflows) | `App\Workflows\Microservice\MicroserviceWorkflow` (`php artisan app:microservice`) |
+| [Side Effects](/docs/2.0/features/side-effects) | `App\Workflows\Elapsed\ElapsedTimeWorkflow` (`php artisan app:elapsed`) |
+| [Webhooks](/docs/2.0/features/webhooks) | `App\Workflows\Webhooks\WebhookWorkflow` (`php artisan app:webhook`) |
+| [MCP Workflows](/docs/2.0/mcp-workflows) | every gallery entry, exposed through `config/workflow_mcp.php` |
+
 
 **Step 1**
 

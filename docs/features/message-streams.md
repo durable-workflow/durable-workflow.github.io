@@ -151,3 +151,20 @@ which run currently owns the stream cursor.
 - For one-shot external events, use [Signals](./signals.md). For request/return
   state changes, use [Updates](./updates.md). Use message streams when repeated
   ordered messages need cursor semantics.
+
+## Run this pattern
+
+The travel-agent workflow in the
+[Sample App](/docs/2.0/sample-app) is the runnable reference for the
+inbox/outbox shape this page describes:
+
+```bash
+php artisan app:ai
+```
+
+`App\Workflows\Ai\AiWorkflow` stores large assistant payloads in the
+app-owned `ai_workflow_messages` table and publishes only a durable
+reference on the `ai.assistant` outbox. Replies arrive through the
+matching inbox stream via the `receive` update. Read the workflow class
+next to this page to see the same `inbox()` / `outbox()` /
+`sendReference()` calls the snippets above use, end to end.

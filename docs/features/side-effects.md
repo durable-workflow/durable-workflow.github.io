@@ -96,3 +96,20 @@ $setting = sideEffect(fn () => cache('feature.flag'));
 ```
 
 This is by design — the snapshot is intentionally frozen for determinism. If you need a value that updates over the lifetime of the workflow, use a signal or an activity.
+
+## Run this pattern
+
+The elapsed-time workflow in the
+[Sample App](/docs/2.0/sample-app) is the runnable reference for
+keeping clock reads behind `sideEffect()`:
+
+```bash
+php artisan app:elapsed
+```
+
+`App\Workflows\Elapsed\ElapsedTimeWorkflow` records start and end
+timestamps as integer values inside `sideEffect()` callbacks so the
+recorded value survives any configured payload codec on replay. The
+Waterline run detail shows two `MarkerRecorded` events bracketing the
+timer fire — that pair of markers is the on-disk evidence that the
+clock reads stayed deterministic.

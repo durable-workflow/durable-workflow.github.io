@@ -109,3 +109,18 @@ $this->setContinueWithError(true);
 - each compensation closure is a normal V2 workflow step — the activities it calls produce durable history events just like any other activity
 - compensation activities are visible in Waterline's timeline and history export
 - if the workflow succeeds, compensation closures are never invoked and produce no history
+
+## Run this pattern
+
+The signal-driven travel-agent saga in the
+[Sample App](/docs/2.0/sample-app) is the runnable reference for this
+page. Clone the sample app, set `OPENAI_API_KEY`, and run:
+
+```bash
+php artisan app:ai
+```
+
+`App\Workflows\Ai\AiWorkflow` registers compensations on every booking
+activity, so a flight failure after a successful hotel booking unwinds
+the hotel through the compensation list — the same pattern this page
+describes, with the events visible in Waterline's run timeline.

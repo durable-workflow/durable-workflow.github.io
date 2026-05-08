@@ -10,6 +10,13 @@ If you are deciding between package embedding and the standalone server, start
 with [Deployment Modes](/docs/2.0/polyglot/deployment-modes). This page covers
 the embedded Laravel path.
 
+> **Prefer to start from a working app?** The
+> [Sample App](/docs/2.0/sample-app) is a runnable Laravel 13 project on
+> Durable Workflow 2.0 with one workflow per pattern surface, a Codespaces
+> flow, and a `docker compose` flow. Clone it, run `php artisan app:init`,
+> and you have the same install applied for you. Come back here when you
+> are ready to add Durable Workflow to your own Laravel application.
+
 ## Requirements
 
 - PHP 8.1 or later

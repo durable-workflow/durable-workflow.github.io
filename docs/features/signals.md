@@ -77,3 +77,19 @@ Signal behavior:
 **Important:** The `await()` function should only be used in a workflow, not an activity.
 
 For condition waits — waiting until a predicate over durable state becomes true — see [Condition Waits](./condition-waits.md). For a timeout-backed `await`, see [Signal + Timer](./signal+timer.md). For repeated inbox/outbox flows, see [Message Streams](./message-streams.md).
+
+## Run this pattern
+
+The webhook-started workflow in the
+[Sample App](/docs/2.0/sample-app) is the runnable reference for the
+named-signal-wait pattern on this page:
+
+```bash
+php artisan app:webhook
+```
+
+`App\Workflows\Webhooks\WebhookWorkflow` starts from an HTTP webhook
+ingress and parks on `await('ready')` until the matching signal lands.
+Open Waterline while it is parked and you will see the
+`WorkflowExecutionSignaled` event materialize the moment the signal
+is accepted.
