@@ -174,7 +174,7 @@ the same metadata under `x-durable-workflow-object-families`.
 | `local_activity_runtime` | `local_activity_visibility` | `durable-workflow/workflow` | `Workflow\V2\Support\RunActivityView and Workflow\V2\Support\OperatorMetrics` | `durable-workflow.v2.local-activity-runtime` |
 | `history_event_payloads` | `workflow_history_events` | `durable-workflow/workflow` | `Workflow\V2\Enums\HistoryEventType` | `durable-workflow.v2.history-event-payloads` |
 | `history_event_payloads` | `workflow_schedule_history_events` | `durable-workflow/workflow` | `Workflow\V2\Models\WorkflowScheduleHistoryEvent` | `durable-workflow.v2.history-event-payloads` |
-| `history_export_bundle` | `history_export_bundle` | `durable-workflow/workflow` | `Workflow\V2\Support\HistoryExport::SCHEMA` | `Workflow\V2\Support\HistoryExport::SCHEMA_VERSION` |
+| `history_export_bundle` | `history_export_bundle` | `durable-workflow/workflow` | `Workflow\V2\Support\HistoryExport::SCHEMA` | `durable-workflow.v2.history-export` |
 | `replay_bundle` | `replay_bundle` | `durable-workflow/workflow` | `Workflow\V2\Support\WorkflowReplayer` | `durable-workflow.v2.replay-bundle` |
 | `waterline_read_api` | `waterline_read_envelope` | `durable-workflow/waterline` | `waterline route/controller response envelopes` | `durable-workflow.v2.waterline-read-api` |
 | `waterline_read_api` | `waterline_operator_action_envelope` | `durable-workflow/waterline` | `waterline operator action controllers` | `durable-workflow.v2.waterline-read-api` |
@@ -352,6 +352,10 @@ are the per-event source of truth.
 JSON Schema for the history-export bundle that the server emits and
 that replay tooling consumes: ordered history events, payload
 references, payload codec metadata, lineage edges, and bundle manifest.
+The schema is defined once for the v2 release; the schema id
+`durable-workflow.v2.history-export` is the canonical version anchor
+and the only allowed breaking change is a parallel primitive (a new
+schema id alongside the existing one).
 
 | Field | Value |
 |-------|-------|
@@ -361,8 +365,8 @@ references, payload codec metadata, lineage edges, and bundle manifest.
 | Authority manifest | `history_event_payload_contract` |
 | Owner repo | `durable-workflow/workflow` |
 | Owner symbol | `Workflow\V2\Support\HistoryExport` |
-| Evolution rule | `additive_minor_breaking_major` |
-| Breaking-change release | `major` |
+| Evolution rule | `parallel_primitive_only` |
+| Breaking-change release | `parallel_primitive_only` |
 | Conformance test | `durable-workflow/workflow: tests/Unit/V2/HistoryExportTest.php` |
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/history-export-bundle.schema.json` |

@@ -2,19 +2,19 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "durable-workflow.v2.history-export-bundle",
   "title": "Durable Workflow history export bundle",
-  "description": "Normative JSON Schema for the history-export bundle emitted by the server and Waterline and consumed by replay tooling, SDKs, operators, and archival systems. The bundle is versioned by its schema and schema_version fields; nested history events are governed by durable-workflow.v2.history-event-payloads.",
+  "description": "Normative JSON Schema for the history-export bundle emitted by the server and Waterline and consumed by replay tooling, SDKs, operators, and archival systems. The schema is defined once for the v2 release: the schema id `durable-workflow.v2.history-export` is the canonical version anchor, and the accompanying `schema_version` field is a frozen structural marker fixed at 1 for the lifetime of v2. There is no schema_version ladder within v2; a breaking shape change requires a parallel primitive (a new schema id alongside the existing one) under the `parallel_primitive_only` evolution rule. Nested history events are governed by durable-workflow.v2.history-event-payloads.",
   "type": "object",
   "x-durable-workflow-catalog-entry": "history_export_bundle",
   "x-durable-workflow-catalog-schema": "durable-workflow.v2.platform-protocol-specs.catalog",
   "x-durable-workflow-catalog-version": 10,
   "x-durable-workflow-owner-symbol": "Workflow\\V2\\Support\\HistoryExport",
-  "x-durable-workflow-evolution-rule": "additive_minor_breaking_major",
+  "x-durable-workflow-evolution-rule": "parallel_primitive_only",
   "x-durable-workflow-object-families": [
     {
       "name": "history_export_bundle",
       "owner_repo": "durable-workflow/workflow",
       "schema_authority": "Workflow\\V2\\Support\\HistoryExport::SCHEMA",
-      "version_authority": "Workflow\\V2\\Support\\HistoryExport::SCHEMA_VERSION"
+      "version_authority": "durable-workflow.v2.history-export"
     }
   ],
   "required": [
@@ -32,11 +32,13 @@
   "properties": {
     "schema": {
       "type": "string",
-      "const": "durable-workflow.v2.history-export"
+      "const": "durable-workflow.v2.history-export",
+      "description": "Canonical version anchor for the bundle. The schema id is the only version authority for the v2 history-export bundle; a breaking shape change ships as a parallel primitive (a new schema id) rather than as a bump within v2."
     },
     "schema_version": {
       "type": "integer",
-      "const": 1
+      "const": 1,
+      "description": "Frozen structural marker for the v2 bundle; fixed at 1 for the lifetime of v2. There is no schema_version ladder within v2."
     },
     "exported_at": {
       "type": "string",
