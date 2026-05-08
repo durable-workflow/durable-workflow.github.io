@@ -80,7 +80,7 @@ app worker` locally. Then, in two terminals:
 php artisan queue:work
 
 # terminal 2
-php artisan app:simple
+php artisan app:workflow
 ```
 
 Open `http://localhost:8000/waterline/dashboard`. There is your run.
