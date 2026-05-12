@@ -218,6 +218,190 @@ Three migration rules stay fixed:
   history export remain runtime-level facts before and after you adopt the
   hosted control plane.
 
+## Billing Usage API
+
+Cloud exposes organization-scoped billing usage for finance, operations, and
+chargeback automation. The endpoint is authenticated by a Cloud API key and
+does not accept a customer or organization id in the request; the caller's
+organization is resolved from the `dwc_` bearer token so one customer cannot
+query another customer's usage.
+
+```http
+GET /api/v1/billing/usage?period_start=2026-05-01&period_end=2026-05-31
+Authorization: Bearer dwc_...
+Accept: application/json
+```
+
+`period_start` and `period_end` are optional ISO-8601 dates. When omitted,
+Cloud returns the current calendar month. Billing usage reads and exports stay
+available even if billing restrictions pause namespace provisioning or workflow
+operations, so finance teams can still recover account standing.
+
+The response schema is `durable_workflow.cloud.billing_usage.v1`:
+
+```json
+{
+  "schema": "durable_workflow.cloud.billing_usage.v1",
+  "access_control": {
+    "scope": "organization_billing_usage",
+    "api": {"authentication": "organization_api_key"}
+  },
+  "current_period": {
+    "starts_at": "2026-05-01T00:00:00+00:00",
+    "ends_at": "2026-05-31T23:59:59+00:00"
+  },
+  "totals": {
+    "workflow_execution_count": 20,
+    "activity_execution_count": 80,
+    "timer_fire_count": 10,
+    "signal_delivery_count": 5,
+    "update_delivery_count": 3,
+    "query_task_count": 2,
+    "storage_byte_hours": 123456,
+    "billable_action_count": 120,
+    "estimated_cost_cents": 240
+  },
+  "by_action_type": [
+    {
+      "action_type": "workflow_start",
+      "raw_count": 20,
+      "billing_unit": "billable_action",
+      "billing_units": 20,
+      "estimated_cost_cents": 40
+    },
+    {
+      "action_type": "activity_execution",
+      "raw_count": 80,
+      "billing_unit": "billable_action",
+      "billing_units": 80,
+      "estimated_cost_cents": 160
+    },
+    {
+      "action_type": "timer_fire",
+      "raw_count": 10,
+      "billing_unit": "billable_action",
+      "billing_units": 10,
+      "estimated_cost_cents": 20
+    },
+    {
+      "action_type": "signal",
+      "raw_count": 5,
+      "billing_unit": "billable_action",
+      "billing_units": 5,
+      "estimated_cost_cents": 10
+    },
+    {
+      "action_type": "update",
+      "raw_count": 3,
+      "billing_unit": "billable_action",
+      "billing_units": 3,
+      "estimated_cost_cents": 6
+    },
+    {
+      "action_type": "query",
+      "raw_count": 2,
+      "billing_unit": "billable_action",
+      "billing_units": 2,
+      "estimated_cost_cents": 4
+    }
+  ],
+  "by_namespace": [
+    {
+      "namespace": "orders",
+      "project": "commerce",
+      "environment": "prod",
+      "usage": {
+        "billable_action_count": 120,
+        "estimated_cost_cents": 240
+      },
+      "action_types": [
+        {
+          "action_type": "workflow_start",
+          "raw_count": 20,
+          "billing_units": 20,
+          "estimated_cost_cents": 40
+        },
+        {
+          "action_type": "activity_execution",
+          "raw_count": 80,
+          "billing_units": 80,
+          "estimated_cost_cents": 160
+        },
+        {
+          "action_type": "timer_fire",
+          "raw_count": 10,
+          "billing_units": 10,
+          "estimated_cost_cents": 20
+        },
+        {
+          "action_type": "signal",
+          "raw_count": 5,
+          "billing_units": 5,
+          "estimated_cost_cents": 10
+        },
+        {
+          "action_type": "update",
+          "raw_count": 3,
+          "billing_units": 3,
+          "estimated_cost_cents": 6
+        },
+        {
+          "action_type": "query",
+          "raw_count": 2,
+          "billing_units": 2,
+          "estimated_cost_cents": 4
+        }
+      ]
+    }
+  ]
+}
+```
+
+The standard action types are `workflow_start`, `activity_execution`,
+`timer_fire`, `signal`, `update`, and `query`. `raw_count` is the source meter
+count. `billing_units` is the derived `billable_action` quantity used for
+chargeback, and `estimated_cost_cents` is allocated proportionally across
+action types so totals reconcile with the namespace and report totals.
+
+Export the same evidence as CSV or a JSON report when a downstream finance
+system needs a file handoff:
+
+```bash
+curl -OJ "https://cloud.durable-workflow.com/api/v1/billing/usage/export?period_start=2026-05-01&period_end=2026-05-31" \
+  -H "Authorization: Bearer dwc_..."
+
+curl -OJ "https://cloud.durable-workflow.com/api/v1/billing/usage/report?period_start=2026-05-01&period_end=2026-05-31" \
+  -H "Authorization: Bearer dwc_..."
+```
+
+For a JSON-backed dashboard panel, request the same API with the panel's time
+range:
+
+```text
+GET https://cloud.durable-workflow.com/api/v1/billing/usage?period_start=${__from:date:YYYY-MM-DD}&period_end=${__to:date:YYYY-MM-DD}
+Authorization: Bearer dwc_...
+```
+
+Then flatten namespace/action rows with:
+
+```jq
+.by_namespace[]
+| . as $namespace
+| .action_types[]
+| {
+    project: $namespace.project,
+    environment: $namespace.environment,
+    namespace: $namespace.namespace,
+    action_type,
+    raw_count,
+    billing_units,
+    estimated_cost_cents
+  }
+```
+
+Group the dashboard by `namespace` and `action_type`, sum `billing_units`, and
+plot `estimated_cost_cents / 100` as the cost series.
+
 ## Related References
 
 - [Deployment Modes](/docs/2.0/polyglot/deployment-modes)
