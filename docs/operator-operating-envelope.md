@@ -519,11 +519,16 @@ these facts:
    return to baseline before you call the environment healthy.
 
 Do not imply automatic multi-region or hands-free HA behavior unless your
-published topology contract actually proves it. For the documented self-serve
+published topology contract actually proves it. For the documented self-hosted
 topologies — including the active/passive multi-region contract in the
 [self-hosting guide](/docs/2.0/deployment#activepassive-multi-region) —
 recovery and regional failover are deliberate operator work with explicit
-checkpoints, not automatic product behavior.
+checkpoints, not automatic product behavior. Hosted Cloud multi-region
+replication v1 is scoped separately in the
+[Cloud control-plane contract](/docs/2.0/polyglot/cloud-control-plane): it can
+switch the active runtime target inside a configured primary/secondary pair,
+but it does not make arbitrary runtime-target migration or active/active writes
+a general deployment guarantee.
 
 Treat restore rehearsal cadence as part of the public operating contract too.
 At minimum, rehearse the documented restore sequence:

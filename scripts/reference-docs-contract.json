@@ -328,7 +328,7 @@
         "customer-run workers are first-class in Cloud mode",
         "Workers connect to the runtime target",
         "Cloud mode is a hosted control plane, not a second worker API.",
-        "Automatic multi-region runtime failover is not a self-serve 2.0 promise."
+        "The v1 RTO target is 20 minutes."
       ],
       "requiredEndpoints": [
         "/api/cluster/info"

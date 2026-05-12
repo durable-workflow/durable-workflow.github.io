@@ -40,9 +40,12 @@ The current 2.0 product contract is:
 - **A runtime target is the data-plane boundary.** Each runtime target is a
   Durable Workflow server endpoint with a base URL, a region label, health, and
   namespace ownership.
-- **A namespace belongs to one runtime target at a time.** Cloud can manage
-  many namespaces and many targets, but a single namespace is pinned to one
-  target for durable execution until you deliberately move it.
+- **A namespace has one active runtime authority at a time.** Standard
+  namespaces point at one runtime target until an operator deliberately
+  migrates them. Cloud multi-region replication v1 is the hosted exception: a
+  namespace is enrolled in a configured primary/secondary target pair, and
+  Cloud may change the active target during failover without turning the
+  namespace into active/active execution or an arbitrary target migration.
 - **The runtime target stays authoritative for workflow facts.** Workflow
   starts, signals, updates, cancels, worker leases, schedules, history export,
   task queues, and worker registrations remain runtime-owned facts even when
@@ -53,7 +56,8 @@ Cloud control plane
   organization
     project
       environment
-        namespace  --->  runtime target (base URL, region, health)
+        namespace  --->  active runtime target (base URL, region, health)
+                    \->  optional replication secondary in Cloud v1
 
 Runtime target
   workflow execution
@@ -73,7 +77,7 @@ Cloud identity sits above namespaces:
 organization
   project
     environment
-      namespace  --->  runtime target
+      namespace  --->  active runtime target
 ```
 
 Cloud owns hosted users, service accounts, API keys, organization membership,
@@ -142,18 +146,29 @@ second worker API.
 ## Regional Placement And Failover Boundary
 
 Cloud makes regional placement explicit by attaching each runtime target to a
-named region. That region label is part of operator reasoning, not a hidden
-implementation detail.
+named region and provider. Those labels are part of operator reasoning, not a
+hidden implementation detail.
 
 - **Region is explicit.** Operators should know which runtime target and region
   own a namespace before they route workers or operator traffic.
-- **Failover is not a silent product guarantee.** Moving a namespace from one
-  runtime target to another is a rollout operation with storage, auth,
-  compatibility, and worker-drain consequences. Treat it like a deliberate
-  migration, not like transparent live failover.
-- **Automatic multi-region runtime failover is not a self-serve 2.0 promise.**
-  Multi-region and advanced HA topologies remain support-led because they
-  depend on your storage, networking, traffic-management, and recovery design.
+- **Provider is explicit.** Multi-region namespace replication v1 pairs two
+  registered runtime targets with the same provider value and different
+  regions.
+- **Automatic failover is namespace-scoped and Cloud-hosted.** A Cloud
+  multi-region namespace has a home primary target plus one secondary target.
+  Cloud checks runtime readiness every minute, switches workflow routing to
+  the secondary when the home region is unhealthy, and switches back
+  automatically after the home region recovers. At each point, exactly one
+  runtime target is active for workflow writes.
+- **The v1 RTO target is 20 minutes.** Namespace replication state exposes the
+  current primary, home primary, secondary region, lag seconds, last successful
+  replication time, and failover/failback timestamps. Multi-cloud replication,
+  active/active writes, per-workflow region pinning, and cross-region Nexus
+  calls remain outside the v1 self-serve contract.
+- **Deliberate migrations stay deliberate.** Moving a namespace outside its
+  configured replication pair, changing providers, or moving in-flight runs to
+  a different runtime design remains a migration with storage, auth,
+  compatibility, worker-drain, and recovery consequences.
 
 The hosted control plane helps operators see target health and region posture,
 but it does not erase the underlying runtime and storage boundaries.
@@ -169,7 +184,7 @@ That means the following are **not** frozen as self-serve product guarantees in
 - Cloud-managed relays that proxy worker traffic on your behalf
 - private-network-only worker connectivity with no direct runtime-target reach
 - active/active multi-region execution
-- automatic cross-region runtime failover
+- multi-cloud namespace replication
 - bespoke ingress, VPN, VPC peering, or provider-specific private-routing
   designs
 
@@ -183,14 +198,21 @@ Cloud mode is compatible with staged adoption rather than all-at-once cutover:
 
 1. Start with embedded mode or a self-hosted server.
 2. Attach one or more runtime targets to Cloud.
-3. Pin each environment or namespace to the target that should own it.
+3. Assign each environment or namespace to the target that should own it, or
+   enroll a hosted Cloud namespace in a configured primary/secondary
+   replication pair.
 4. Keep workers pointed at the runtime target that owns their namespace.
-5. Move only new traffic or newly chosen namespaces when you are ready.
+5. Move only new traffic or newly chosen namespaces when you are ready; keep
+   deliberate target migrations separate from Cloud-managed failover inside a
+   replication pair.
 
-Two migration rules stay fixed:
+Three migration rules stay fixed:
 
 - Existing in-flight runs stay with the runtime that already owns them unless
   you perform an explicit migration plan outside the normal live-run contract.
+- Cloud multi-region replication v1 failover changes the active runtime target
+  only inside the configured primary/secondary pair. It is not a general
+  namespace migration mechanism.
 - Cloud does not change the durable runtime contract. Namespace names, task
   queues, compatibility markers, payload codecs, worker registration, and
   history export remain runtime-level facts before and after you adopt the

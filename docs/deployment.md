@@ -14,6 +14,9 @@ This guide covers the standalone server distribution. If you run the Laravel
 package embedded in your own app, use the package installation and configuration
 pages instead. If you want the hosted control-plane contract above region-scoped
 runtime targets, see [Cloud Control Plane](/docs/2.0/polyglot/cloud-control-plane).
+The automatic-failover language in this self-hosting guide refers to
+customer-operated server deployments; hosted Cloud multi-region namespace
+replication v1 is documented separately on the Cloud page.
 
 ## Deployment support matrix
 
@@ -21,10 +24,10 @@ runtime targets, see [Cloud Control Plane](/docs/2.0/polyglot/cloud-control-plan
 | --- | --- | --- | --- | --- |
 | Local development and internal non-production | [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) with `DW_SERVER_TAG=0.2` or `DW_SERVER_IMAGE=durableworkflow/server:0.2` | One developer machine, LAN demos, shared staging, SDK and worker integration tests | Internet-facing production, durable backup guarantees, strict secret rotation, multi-node failover | You want help turning a working dev stack into a production runbook |
 | Single-node production | [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) with a production env file, MySQL and Redis volumes, role-scoped tokens, backups, TLS through a reverse proxy, and pinned image tags or digests | One VM, VPS, or internal Docker host with persistent workflow state and a simple operational model | Host-level HA, automatic database failover, multi-region recovery, zero-downtime major topology changes | The deployment carries production traffic and you want review of backup, restore, auth, TLS, upgrade, or rollback procedures |
-| Small clustered deployment | Published `durableworkflow/server` or `ghcr.io/durable-workflow/server` images using the [Compose recipe](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) as the container/process template, with 2-3 API nodes, shared external MySQL/PostgreSQL, shared Redis, independently scaled workers, and exactly one scheduler/maintenance runner | Horizontal API and worker capacity when one node is no longer enough; rolling upgrades when every guarantee in the [rolling-upgrade contract](/docs/2.0/rolling-upgrades) holds; single-region HA failover (managed-database failover, managed-Redis failover, API-node loss, worker loss, scheduler-runner restart) when every guarantee in the [single-region HA contract](#single-region-high-availability-and-failover) holds | SQLite clustering, Redis-less multi-node mode, duplicate schedulers as a steady-state topology, active/active multi-writer databases, hands-free regional failover, Helm, broad "five-nines" or "zero-downtime" SLA promises | You need sizing, failure-domain, rollout, or recovery planning across more than one host |
+| Small clustered deployment | Published `durableworkflow/server` or `ghcr.io/durable-workflow/server` images using the [Compose recipe](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) as the container/process template, with 2-3 API nodes, shared external MySQL/PostgreSQL, shared Redis, independently scaled workers, and exactly one scheduler/maintenance runner | Horizontal API and worker capacity when one node is no longer enough; rolling upgrades when every guarantee in the [rolling-upgrade contract](/docs/2.0/rolling-upgrades) holds; single-region HA failover (managed-database failover, managed-Redis failover, API-node loss, worker loss, scheduler-runner restart) when every guarantee in the [single-region HA contract](#single-region-high-availability-and-failover) holds | SQLite clustering, Redis-less multi-node mode, duplicate schedulers as a steady-state topology, active/active multi-writer databases, self-hosted hands-free regional failover, Helm, broad "five-nines" or "zero-downtime" SLA promises | You need sizing, failure-domain, rollout, or recovery planning across more than one host |
 | Raw Kubernetes manifests | The server repository [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) manifests, using published server images and your existing database, Redis, ingress, and secret management | Teams that already operate Kubernetes and want inspectable manifests for API, worker, scheduler, bootstrap, service, probes, config, and secrets; the [single-region HA contract](#single-region-high-availability-and-failover) when the manifests are wired to the same readiness, singleton-scheduler, and shared-substrate rules as the small-cluster recipe | Helm charts, managed-Kubernetes provider validation, active/active multi-region, custom operators, environment-specific storage/networking/security decisions | You need Helm, overlays, managed-cluster validation, or provider-specific production planning |
-| Active/passive multi-region | A validated single-node or small-cluster deployment per region, plus asynchronous database replication from active to standby and a published failover/failback runbook | Regional disaster recovery with operator-driven failover; standby database, optional standby Redis, and idle API/worker capacity in a second region; the singleton scheduler/maintenance runner pinned to the active region; the single-region HA contract inside each region | Active/active multi-region, automatic or hands-free regional failover, synchronous cross-region replication (RPO=0), cross-region active visibility or federated search, region-pinned task queues as an engine-enforced routing axis | You need a topology beyond active/passive, an automated failover controller, or an RPO=0 cross-region commitment |
-| Support-led topologies | A reviewed design based on your environment | Active/active multi-region, hands-free regional failover, RPO=0 cross-writer replication, duplicate scheduler runners as a steady-state topology, bespoke security/networking, private SLOs, custom overlays, migration planning | Self-serve copy/paste operation | The topology itself is part of the product risk |
+| Active/passive multi-region | A validated single-node or small-cluster deployment per region, plus asynchronous database replication from active to standby and a published failover/failback runbook | Regional disaster recovery with operator-driven failover; standby database, optional standby Redis, and idle API/worker capacity in a second region; the singleton scheduler/maintenance runner pinned to the active region; the single-region HA contract inside each region | Active/active multi-region, self-hosted automatic or hands-free regional failover, synchronous cross-region replication (RPO=0), cross-region active visibility or federated search, region-pinned task queues as an engine-enforced routing axis | You need a topology beyond active/passive, an automated failover controller, or an RPO=0 cross-region commitment |
+| Support-led topologies | A reviewed design based on your environment | Self-hosted active/active multi-region, hands-free regional failover outside hosted Cloud replication v1, RPO=0 cross-writer replication, duplicate scheduler runners as a steady-state topology, bespoke security/networking, private SLOs, custom overlays, migration planning | Self-serve copy/paste operation | The topology itself is part of the product risk |
 
 The public distribution is intentionally optimized for local development,
 single-node production, and small clustered deployments. Kubernetes manifests
@@ -36,10 +39,13 @@ API-node loss, worker loss, and scheduler-runner restart inside one region —
 is also a self-serve contract layered on the small-cluster and Kubernetes
 shapes (see
 [Single-region high availability and failover](#single-region-high-availability-and-failover)
-below). Helm charts, active/active multi-region, automatic regional failover,
-duplicate scheduler runners as a steady-state topology, and provider-specific
-managed-Kubernetes validation remain support-led because they depend on your
-database, cache, networking, security, runner, and upgrade choices. See the
+below). For self-hosted server deployments, Helm charts, active/active
+multi-region, automatic regional failover, duplicate scheduler runners as a
+steady-state topology, and provider-specific managed-Kubernetes validation
+remain support-led because they depend on your database, cache, networking,
+security, runner, and upgrade choices. Hosted Cloud multi-region namespace
+replication v1 is a separate Cloud-managed contract; see
+[Cloud Control Plane](/docs/2.0/polyglot/cloud-control-plane). See the
 [support boundary](/docs/2.0/support) for the commercial support model.
 
 ## Production recovery deliverables
@@ -254,10 +260,11 @@ discovery and logs can distinguish the nodes.
 
 The unsupported boundaries are explicit: SQLite clustering, Redis-less
 multi-node mode, duplicate schedulers as a steady-state topology, active/active
-multi-writer databases, hands-free regional failover, Helm charts, and broad
-"five-nines" or "zero-downtime" SLA promises need separate validation or
-support-led design before you rely on them. Active/passive multi-region with
-operator-driven regional failover is its own self-serve contract; see
+multi-writer databases, self-hosted hands-free regional failover, Helm charts,
+and broad "five-nines" or "zero-downtime" SLA promises need separate
+validation or support-led design before you rely on them. Active/passive
+multi-region with operator-driven regional failover is its own self-serve
+contract; see
 [Active/passive multi-region](#activepassive-multi-region) below.
 Single-region HA failover — managed-database failover, managed-Redis failover,
 API-node loss, worker loss, and scheduler-runner restart inside one region —
@@ -311,8 +318,9 @@ path, provided the manifests are wired to the readiness, singleton-scheduler,
 and shared-substrate rules in
 [Single-region high availability and failover](#single-region-high-availability-and-failover)
 below. Provider-specific load balancers, storage classes, network policies,
-Helm charts, active/active multi-region, and hands-free regional failover
-remain support-led or tracked separately from the raw-manifest contract.
+Helm charts, active/active multi-region, and self-hosted hands-free regional
+failover remain support-led or tracked separately from the raw-manifest
+contract.
 
 ## Single-region high availability and failover
 
@@ -430,9 +438,11 @@ The single-region HA contract is intentionally narrow. The following remain
 topology itself is part of the product risk:
 
 - active/active multi-writer database topologies;
-- automatic or hands-free regional failover (active/passive with
-  operator-driven failover is the
-  [next section](#activepassive-multi-region));
+- automatic or hands-free regional failover for self-hosted active/passive
+  topologies (active/passive with operator-driven failover is the
+  [next section](#activepassive-multi-region); hosted Cloud multi-region
+  replication v1 is documented separately in
+  [Cloud Control Plane](/docs/2.0/polyglot/cloud-control-plane));
 - synchronous cross-region database replication (RPO=0);
 - duplicate scheduler/maintenance runners as a steady-state topology;
 - engine-enforced region-pinned task queues as a routing axis;
@@ -530,11 +540,12 @@ remains required, with replication-lag SLO, promotion-runbook latency,
 last successful failover rehearsal date, and the fencing procedure for
 the recovered primary added on top.
 
-Active/active multi-region, automatic regional failover, synchronous
-cross-region replication (RPO=0), cross-region active visibility, and
-region-pinned task queues as an engine-enforced routing axis remain
-[support-led](/docs/2.0/support) because the topology itself is part of
-the product risk.
+For self-hosted deployments, active/active multi-region, automatic regional
+failover, synchronous cross-region replication (RPO=0), cross-region active
+visibility, and region-pinned task queues as an engine-enforced routing axis
+remain [support-led](/docs/2.0/support) because the topology itself is part of
+the product risk. Hosted Cloud multi-region namespace replication v1 is scoped
+separately by the [Cloud control-plane contract](/docs/2.0/polyglot/cloud-control-plane).
 
 ## Readiness contract
 
