@@ -476,7 +476,20 @@ On fields that carry payload bytes (`arguments`, `result`, `payload`, etc.), the
 
 The worker reads `payload_codec` and confirms it is `avro` before decoding. An unrecognised codec value is an error — the worker should not attempt to sniff or guess.
 
-Activity completions send `result` as the same `{codec, blob}` envelope. Activity failures may send structured diagnostic payloads under `failure.details`; when present, `failure.details` is also a `{codec, blob}` envelope. The server stores the details blob verbatim and records `details_payload_codec` with the durable failure payload so non-PHP workers can round-trip diagnostic data without PHP serialization.
+Activity completions send `result` as the same `{codec, blob}` envelope.
+Activity failures may send structured diagnostic payloads under
+`failure.details`; when present, `failure.details` is also a `{codec, blob}`
+envelope. The server stores the details blob verbatim and records
+`details_payload_codec` with the durable failure payload so non-PHP workers can
+round-trip diagnostic data without PHP serialization.
+
+The stable cross-language failure surface is `activity_type`,
+`failure_category`, `exception_type`, `message`, `code`, `non_retryable`, and
+codec-tagged `details`. Runtime fields such as exception class names, source
+file paths, line numbers, and stack traces are diagnostics only. SDKs should
+not expose those runtime fields in their default `exception_payload`; they may
+surface them only when a worker or server explicitly records a `diagnostics` or
+`runtime_diagnostics` envelope.
 
 ### Starting a Workflow
 
