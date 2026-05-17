@@ -6,7 +6,7 @@
   "type": "object",
   "x-durable-workflow-catalog-entry": "mcp_tool_results",
   "x-durable-workflow-catalog-schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "x-durable-workflow-catalog-version": 10,
+  "x-durable-workflow-catalog-version": 13,
   "x-durable-workflow-owner-symbol": "docs/mcp-workflows.md Tool Result Contract and static/platform-protocol-specs/mcp-tool-results.schema.json",
   "x-durable-workflow-evolution-rule": "additive_minor_breaking_major",
   "x-durable-workflow-object-families": [

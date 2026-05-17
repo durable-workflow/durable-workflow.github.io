@@ -69,7 +69,7 @@ re-reading prose for every surface.
 
 The catalog has its own machine-readable mirror at
 `platform_protocol_specs` in `GET /api/cluster/info` (schema
-`durable-workflow.v2.platform-protocol-specs.catalog`, version `9`) and
+`durable-workflow.v2.platform-protocol-specs.catalog`, version `13`) and
 a frozen JSON copy at `static/platform-protocol-specs.json` in this
 repository. Every catalog entry's `surface_family` must exist in the
 contract above; the release-check gate in
@@ -104,7 +104,7 @@ version bump, this page, and the JSON mirror in the same commit).
 | Family | Stability | Authority manifest in `/api/cluster/info` | What it covers |
 |--------|-----------|-------------------------------------------|----------------|
 | `server_api` | `stable` | `control_plane` | Standalone server HTTP API: control-plane routes, namespace routes, schedule routes, system routes, plus `/api/health`, `/api/ready`, `/api/cluster/info`. Per-route version is governed by `control_plane.request_contract` and `control_plane.response.contract`. The top-level server `version` is build identity, not the client compatibility authority. |
-| `worker_protocol` | `stable` | `worker_protocol` | Worker-plane HTTP API used by external SDK workers to register, poll, heartbeat, manage worker-session leases, complete, and fail tasks. Includes the `worker_sessions` and `local_activities` runtime contracts, `external_execution_surface_contract`, `external_executor_config_contract`, `invocable_carrier_contract`, `external_task_input_contract`, and `external_task_result_contract`. |
+| `worker_protocol` | `stable` | `worker_protocol` | Worker-plane HTTP API used by external SDK workers to register, poll, heartbeat, manage worker-session leases, complete, and fail workflow, activity, and query tasks. Includes the `worker_sessions` and `local_activities` runtime contracts, `external_execution_surface_contract`, `external_executor_config_contract`, `invocable_carrier_contract`, `external_task_input_contract`, and `external_task_result_contract`. |
 | `cli_json` | `stable` | n/a (see CLI reference) | The `--output=json` and `--output=jsonl` shapes emitted by `dw`. JSON exit codes and JSON field names are the durable surface; the human-readable `--output=table` form is documentation, not contract. |
 | `waterline_api` | `stable` | n/a (see Waterline operator API) | Waterline observability HTTP API at `/waterline/api/v2/*`, the engine-source contract, and the dashboard JSON shapes. Waterline must match the workflow package major version. |
 | `mcp_discovery_results` | `stable` | n/a (see MCP workflows page) | The `/mcp/*` Model Context Protocol surfaces and the `llms.txt` / `llms-2.0.txt` discovery files. MCP tool names, parameter schemas, and `payload_preview_limit_bytes` semantics are part of the contract; tool descriptions and discovery hints are diagnostic. |

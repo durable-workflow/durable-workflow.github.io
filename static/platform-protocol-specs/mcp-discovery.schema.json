@@ -6,7 +6,7 @@
   "type": "object",
   "x-durable-workflow-catalog-entry": "mcp_discovery",
   "x-durable-workflow-catalog-schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "x-durable-workflow-catalog-version": 10,
+  "x-durable-workflow-catalog-version": 13,
   "x-durable-workflow-owner-symbol": "docs/mcp-workflows.md, scripts/generate-llms.js, and scripts/generate-llms-full.js",
   "x-durable-workflow-evolution-rule": "additive_minor_breaking_major",
   "x-durable-workflow-object-families": [

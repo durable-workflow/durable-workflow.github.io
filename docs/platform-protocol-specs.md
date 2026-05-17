@@ -46,7 +46,7 @@ truth:
 - `platform_protocol_specs` in the response body of
   `GET /api/cluster/info` on the standalone Durable Workflow server,
   schema `durable-workflow.v2.platform-protocol-specs.catalog`,
-  version `10`.
+  version `13`.
 - A frozen mirror of the same manifest in this repository at
   `static/platform-protocol-specs.json`.
 - The PHP class `Workflow\V2\Support\PlatformProtocolSpecs`, which is
@@ -159,6 +159,8 @@ the same metadata under `x-durable-workflow-object-families`.
 | `worker_protocol_api` | `worker_registration_request` | `durable-workflow/server` | `App\Http\Controllers\Api\WorkerController::register` | `Workflow\V2\Support\WorkerProtocolVersion::VERSION` |
 | `worker_protocol_api` | `worker_task_poll_request` | `durable-workflow/server` | `App\Support\WorkflowTaskPoller and App\Support\ActivityTaskPoller` | `Workflow\V2\Support\WorkerProtocolVersion::VERSION` |
 | `worker_protocol_api` | `worker_task_result` | `durable-workflow/server` | `App\Http\Controllers\Api\WorkerController task completion/failure actions` | `Workflow\V2\Support\WorkerProtocolVersion::VERSION` |
+| `worker_protocol_api` | `worker_query_task_poll_request` | `durable-workflow/server` | `App\Http\Controllers\Api\WorkerController::pollQueryTasks and App\Support\WorkflowQueryTaskBroker::poll` | `Workflow\V2\Support\WorkerProtocolVersion::VERSION` |
+| `worker_protocol_api` | `worker_query_task_result` | `durable-workflow/server` | `App\Http\Controllers\Api\WorkerController::completeQueryTask/failQueryTask and App\Support\WorkflowQueryTaskBroker terminal outcomes` | `Workflow\V2\Support\WorkerProtocolVersion::VERSION` |
 | `worker_protocol_api` | `external_task_input_contract` | `durable-workflow/server` | `App\Support\ExternalTaskInputContract::SCHEMA` | `App\Support\ExternalTaskInputContract::VERSION` |
 | `worker_protocol_api` | `external_task_result_contract` | `durable-workflow/server` | `App\Support\ExternalTaskResultContract::SCHEMA` | `App\Support\ExternalTaskResultContract::VERSION` |
 | `worker_protocol_stream` | `worker_poll_stream` | `durable-workflow/server` | `App\Support\LongPoller and App\Support\WorkerProtocol` | `Workflow\V2\Support\WorkerProtocolVersion::VERSION` |
@@ -232,9 +234,10 @@ CLI, Python SDK, cloud control plane, and operator scripts call.
 
 OpenAPI specification for the worker-plane HTTP+JSON API: register,
 poll, heartbeat, worker-session lifecycle, complete, and fail for
-workflow and activity tasks. The companion AsyncAPI document
-`worker_protocol_stream` describes the long-poll and lease-renewal
-semantics.
+workflow, activity, and query tasks. Query-task routes are lease-fenced
+request/response work and are advertised through the `query_tasks` worker
+capability. The companion AsyncAPI document `worker_protocol_stream`
+describes the long-poll and lease-renewal semantics.
 
 | Field | Value |
 |-------|-------|
@@ -247,10 +250,10 @@ semantics.
 | Evolution rule | `additive_minor_breaking_major` |
 | Breaking-change release | `major` |
 | Discovery endpoint | `GET /api/cluster/info -> worker_protocol` |
-| Conformance test | `durable-workflow/server: tests/Feature/WorkerProtocolContractTest.php`, `tests/Feature/WorkerProtocolSuccessContractTest.php`, `tests/Feature/WorkerProtocolOwnershipErrorContractTest.php`, `tests/Feature/WorkerProtocolVersionCoverageTest.php`, `tests/Feature/WorkflowWorkerProtocolTest.php`, and `tests/Feature/ActivityWorkerProtocolTest.php` |
+| Conformance test | `durable-workflow/server: tests/Feature/WorkerProtocolContractTest.php`, `tests/Feature/WorkerProtocolSuccessContractTest.php`, `tests/Feature/WorkerProtocolOwnershipErrorContractTest.php`, `tests/Feature/WorkerProtocolVersionCoverageTest.php`, `tests/Feature/WorkflowWorkerProtocolTest.php`, `tests/Feature/ActivityWorkerProtocolTest.php`, and `tests/Feature/WorkflowQueryTaskBrokerTest.php`; `durable-workflow/workflow: tests/Unit/V2/WorkerProtocolClientTest.php` and `tests/Unit/V2/WorkflowQueryTaskExecutorTest.php` |
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/worker-protocol-api.openapi.yaml` |
-| Object families | `worker_registration_request`, `worker_task_poll_request`, `worker_task_result`, `external_task_input_contract`, `external_task_result_contract` |
+| Object families | `worker_registration_request`, `worker_task_poll_request`, `worker_task_result`, `worker_query_task_poll_request`, `worker_query_task_result`, `external_task_input_contract`, `external_task_result_contract` |
 
 ### `worker_protocol_stream`
 
