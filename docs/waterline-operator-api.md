@@ -26,6 +26,24 @@ history export, actionability, command affordances, saved views, preferences,
 and schedule visibility. Use [Monitoring](./monitoring.md) for the conceptual
 split between Waterline durable state and worker/runtime telemetry.
 
+## Installation
+
+Install Waterline in the same embedded Laravel application that installs the
+workflow package:
+
+```bash
+composer require durable-workflow/waterline:^2.0@alpha
+php artisan waterline:install
+```
+
+The `@alpha` stability flag is required while Waterline is on the 2.0
+prerelease channel. After upgrading Waterline, publish the current assets:
+
+```bash
+composer update durable-workflow/waterline
+php artisan waterline:publish
+```
+
 ## Deployment Boundary
 
 Waterline runs only inside the embedded Laravel host that installs the
