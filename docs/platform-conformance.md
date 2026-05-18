@@ -1,0 +1,169 @@
+---
+sidebar_position: 19
+title: Platform Conformance Suite
+description: Public authority for the Durable Workflow v2 conformance-suite manifest, fixture catalog, harness rules, and release gates.
+tags:
+  - compatibility
+  - conformance
+  - protocols
+  - api-stability
+keywords:
+  - platform conformance suite
+  - conformance harness
+  - conformance fixtures
+  - durable workflow compatibility
+  - platform-conformance-contract
+---
+
+# Platform Conformance Suite
+
+This page is the public authority for the Durable Workflow **platform
+conformance suite**. It defines the conformance target matrix, reusable
+fixture catalog, harness contract, pass / fail rules, and release gates
+for implementations that claim Durable Workflow v2 compatibility.
+
+The machine-readable mirror is published at
+[`static/platform-conformance-contract.json`](pathname:///platform-conformance-contract.json)
+with schema `durable-workflow.v2.platform-conformance.suite`, version
+`1`. The same manifest is advertised by the standalone server from
+`GET /api/cluster/info` under `platform_conformance_suite`. The
+[Platform Protocol Specs](/docs/platform-protocol-specs) catalog names
+that nested manifest as the `platform_conformance_suite_manifest`
+object family in the `cluster_info_envelope` spec.
+
+The suite is downstream of the
+[Version Compatibility](/docs/compatibility) authority. Where the suite
+enumerates a surface family or stability rule, it must match the
+surface-stability contract. The compatibility authority defines what
+the contract is; this page defines how an implementation proves it
+follows that contract.
+
+## Target Matrix
+
+A conformance **target** is a kind of implementation that can claim
+Durable compatibility. An implementation may claim more than one target.
+For example, the standalone server claims `standalone_server`,
+`worker_protocol_implementation`, and `repair_actionability_surface`.
+
+| Target | Required surface families | Required fixture categories |
+| --- | --- | --- |
+| `standalone_server` | `server_api`, `worker_protocol`, `cluster_info_manifests` | `control_plane_request_response`, `worker_task_lifecycle`, `failure_repair_actionability` |
+| `official_sdk` | `official_sdks`, `worker_protocol`, `history_event_wire_formats` | `control_plane_request_response`, `worker_task_lifecycle`, `history_replay_bundles` |
+| `worker_protocol_implementation` | `worker_protocol`, `history_event_wire_formats` | `worker_task_lifecycle`, `history_replay_bundles` |
+| `cli_json_client` | `cli_json` | `control_plane_request_response`, `cli_json_envelopes` |
+| `waterline_contract_surface` | `waterline_api` | `waterline_observer_envelopes` |
+| `repair_actionability_surface` | `worker_protocol`, `server_api` | `failure_repair_actionability` |
+| `mcp_discovery_surface` | `mcp_discovery_results` | `mcp_discovery_envelopes` |
+
+Targets are stable. Adding a target, adding a required surface to an
+existing target, adding a required fixture category, promoting a
+provisional category to required, or changing a pass / fail rule is a
+suite contract change and must advance the manifest version.
+
+## Fixture Catalog
+
+The suite does not duplicate fixtures. It declares source-of-truth
+locations and the categories each one supplies. Harnesses load the
+declared fixtures directly from those locations.
+
+| Category | Status | Source repository | Path | Purpose |
+| --- | --- | --- | --- | --- |
+| `control_plane_request_response` | `stable` | `cli` | `tests/fixtures/control-plane/` | Frozen request bodies and response shapes for control-plane operations such as workflow start, signal, query, update, cancel, task-history, and namespace storage diagnostics. |
+| `control_plane_request_response` | `stable` | `sdk-python` | `tests/fixtures/control-plane/` | Frozen request bodies and response shapes for control-plane operations such as workflow start, signal, query, update, cancel, task-history, and namespace storage diagnostics. |
+| `worker_task_lifecycle` | `stable` | `cli` | `tests/fixtures/external-task/` | Task input envelopes and task result envelopes used by every conforming worker. |
+| `worker_task_lifecycle` | `stable` | `cli` | `tests/fixtures/external-task-input/` | Task input envelopes and task result envelopes used by every conforming worker. |
+| `worker_task_lifecycle` | `stable` | `sdk-python` | `tests/fixtures/external-task-input/` | Task input envelopes and task result envelopes used by every conforming worker. |
+| `worker_task_lifecycle` | `stable` | `sdk-python` | `tests/fixtures/external-task-result/` | Task input envelopes and task result envelopes used by every conforming worker. |
+| `history_replay_bundles` | `stable` | `workflow` | `tests/Fixtures/V2/GoldenHistory/` | Frozen history event bundles. A conforming SDK must replay each bundle and reproduce the documented final command sequence. |
+| `history_replay_bundles` | `stable` | `sdk-python` | `tests/fixtures/golden_history/` | Frozen history event bundles. A conforming SDK must replay each bundle and reproduce the documented final command sequence. |
+| `failure_repair_actionability` | `stable` | `server` | `docs/contracts/external-task-result.md` | Failure objects and repair / actionability shapes for stuck tasks, deterministic failure, and replay-mismatch surfaces. |
+| `failure_repair_actionability` | `stable` | `server` | `docs/contracts/replay-verification.md` | Failure objects and repair / actionability shapes for stuck tasks, deterministic failure, and replay-mismatch surfaces. |
+| `cli_json_envelopes` | `stable` | `cli` | `tests/fixtures/control-plane/` | The `--output=json` and `--output=jsonl` envelopes that automation depends on. |
+| `cli_json_envelopes` | `stable` | `cli` | `schemas/` | The `--output=json` and `--output=jsonl` envelopes that automation depends on. |
+| `waterline_observer_envelopes` | `provisional` | `waterline` | `tests/fixtures/observer/ (planned)` | The `/waterline/api/v2/*` shapes and operator dashboard JSON envelopes. |
+| `mcp_discovery_envelopes` | `provisional` | `workflow` | `tests/Fixtures/Mcp/ (planned)` | MCP `tools/list`, `tools/call`, and `llms-2.0.txt` discovery envelopes. |
+| `mcp_discovery_envelopes` | `provisional` | `server` | `tests/Fixtures/Mcp/ (planned)` | MCP `tools/list`, `tools/call`, and `llms-2.0.txt` discovery envelopes. |
+
+A fixture category is required for a target only when the target lists
+it and the category status is not `provisional`. Provisional categories
+emit advisory warnings and become load-bearing only when promoted to
+`stable` in a later suite version.
+
+## Pass / Fail Rules
+
+1. **`guaranteed_field_equality`.** Every field marked guaranteed in the
+   fixture schema must be present, type-correct, and value-equal in the
+   implementation response. Diagnostic-only fields are ignored.
+2. **`unknown_additive_fields_tolerated`.** Extra fields pass only if
+   they are documented diagnostic-only fields or the fixture is on a
+   stability level that allows additive evolution.
+3. **`frozen_shape_exact_match`.** Fixtures backed by a `frozen` surface
+   family must match exactly. A frozen-shape mismatch is always a
+   failure.
+4. **`required_fixtures_must_pass`.** A release that claims a target must
+   pass every required fixture category for that target. One failed
+   required fixture means the release does not conform for that target.
+5. **`provisional_categories_warn_only`.** A failed fixture in a
+   provisional category emits a warning and does not block the release.
+6. **`diagnostic_only_mismatches_pass`.** If only diagnostic-only fields
+   differ, the harness records the difference in `diagnostic_diff` and
+   the fixture passes.
+
+The harness result declares one of four conformance levels:
+
+| Level | Meaning |
+| --- | --- |
+| `full` | Every required fixture passes for every claimed target. |
+| `partial` | Every required fixture passes for at least one claimed target, but another claimed target is failing. |
+| `provisional` | Only provisional categories failed; required categories all passed. |
+| `nonconforming` | At least one required fixture failed for every claimed target. |
+
+## Harness Contract
+
+A conforming harness:
+
+- loads the suite manifest from `platform_conformance_suite` in
+  `GET /api/cluster/info`, or from the static mirror for offline runs;
+- loads each declared fixture from its source-of-truth path;
+- drives the implementation through the fixture's documented operation;
+- compares the response under the pass / fail rules above;
+- emits one result document per run with schema
+  `durable-workflow.v2.platform-conformance.result`, suite version,
+  implementation identity, per-fixture results, diagnostic diff, and
+  overall conformance level;
+- exits non-zero if and only if the conformance level is
+  `nonconforming`.
+
+The result document is an artifact. A compatibility claim is valid only
+when the result was produced against the implementation build and the
+suite version named by that build.
+
+## Release Gates
+
+| Release | Required claimed target(s) | Required artifact |
+| --- | --- | --- |
+| `durable-workflow/server` | `standalone_server`, `worker_protocol_implementation`, `repair_actionability_surface` | Harness result document attached to the release. |
+| `durable-workflow/workflow` | `official_sdk`, `worker_protocol_implementation` | Harness result document attached to the release. |
+| `durable_workflow` | `official_sdk`, `worker_protocol_implementation` | Harness result document attached to the release. |
+| `dw` | `cli_json_client` | Harness result document attached to the release. |
+| `waterline` | `waterline_contract_surface` | Harness result document attached to the release. |
+
+Release reviewers confirm that the harness result is attached, the
+conformance level is `full` or `provisional`, and the suite version in
+the result matches the version exposed by the build under test. A
+`nonconforming` result blocks the release.
+
+## Release Check
+
+The docs-site release check in
+`scripts/check-platform-conformance-authority.js` fails the build if
+the static manifest points at a missing, repo-local, version-alias-only,
+or non-docs-site authority. The same check requires this page to list
+the manifest schema, target names, fixture category names, pass / fail
+rules, and release gates from the machine-readable mirror.
+
+When the suite changes, update this page and
+`static/platform-conformance-contract.json` together. If the change
+adds a target, adds a required fixture category, promotes a provisional
+category to stable, or changes a pass / fail rule, advance the suite
+version in the same release change.

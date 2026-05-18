@@ -25,3 +25,6 @@ jobs:
 
       - name: Check platform protocol specs
         run: node scripts/check-platform-protocol-specs.js
+
+      - name: Check platform conformance authority
+        run: node scripts/check-platform-conformance-authority.js

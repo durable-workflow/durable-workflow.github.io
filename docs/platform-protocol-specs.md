@@ -545,6 +545,11 @@ keys, required fields, and nested-manifest discovery points; per-manifest
 field shapes are normative under each nested manifest's own `schema` /
 `version` and are not redefined here.
 
+The nested `platform_conformance_suite` manifest points to the public
+[Platform Conformance Suite](/docs/platform-conformance) authority and
+its static mirror at
+[`static/platform-conformance-contract.json`](pathname:///platform-conformance-contract.json).
+
 | Field | Value |
 |-------|-------|
 | Format | `json_schema` |

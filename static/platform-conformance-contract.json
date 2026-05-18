@@ -1,8 +1,8 @@
 {
   "schema": "durable-workflow.v2.platform-conformance.suite",
   "version": 1,
-  "authority_doc": "docs/architecture/platform-conformance-suite.md",
-  "authority_url": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
+  "authority_doc": "docs/platform-conformance.md",
+  "authority_url": "https://durable-workflow.github.io/docs/platform-conformance",
   "surface_stability_authority": "durable-workflow.v2.surface-stability.contract",
   "result_schema": "durable-workflow.v2.platform-conformance.result",
   "result_version": 1,
@@ -238,7 +238,7 @@
       }
     },
     "enforcement": {
-      "machine": "docs site CI runs scripts/check-compatibility-authority.js (extended to walk the platform_conformance_suite manifest in addition to the surface stability contract) and a per-repo CI job named `platform-conformance` runs the harness against the local build.",
+      "machine": "docs site CI runs scripts/check-platform-conformance-authority.js to prove the public authority route and manifest mirror stay aligned, and a per-repo CI job named `platform-conformance` runs the harness against the local build.",
       "human": "Release reviewers confirm the harness result is attached, the conformance level is `full` or `provisional`, and the suite version matches the build under test before tagging.",
       "block_on_nonconforming": true
     }
