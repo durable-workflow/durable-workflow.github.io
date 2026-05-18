@@ -212,8 +212,8 @@ random values, wall-clock reads, or any other process-local state for
 correctness. Sticky execution may preserve those values by accident on one
 task, then lose them on a cache miss, worker restart, rollout, or eviction.
 
-Use [`sideEffect(...)`](/docs/2.0/features/side-effects) for non-deterministic
+Use [`sideEffect(...)`](/docs/features/side-effects) for non-deterministic
 values that must be recorded once, and use ordinary activities for external
 side effects. See
-[Execution Guarantees and Idempotency](/docs/2.0/constraints/execution-guarantees)
+[Execution Guarantees and Idempotency](/docs/constraints/execution-guarantees)
 for the replay and durable-history contract.

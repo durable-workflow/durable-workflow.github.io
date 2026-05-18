@@ -18,14 +18,14 @@ import CliInstall from '@site/src/components/CliInstall';
 # CLI
 
 The Durable Workflow CLI (`dw`) is a shell interface to the
-[standalone server](/docs/2.0/polyglot/server). It lets operators start, list,
+[standalone server](/docs/polyglot/server). It lets operators start, list,
 signal, query, update, repair, cancel, terminate, and archive workflows, manage
 schedules, inspect task queues, and check server health — all from the command
 line.
 
 The same CLI works against any Durable Workflow server, regardless of which language your workflows are written in.
 For side-by-side examples of the same operation through `dw` and the Python
-SDK, see [CLI and Python parity](/docs/2.0/polyglot/cli-python-parity).
+SDK, see [CLI and Python parity](/docs/polyglot/cli-python-parity).
 
 ## Install
 
@@ -50,7 +50,7 @@ asset checksum before replacing `dw`, so a tampered mirror fails the install.
 <summary><b>Linux and macOS</b> (shell installer)</summary>
 
 ```bash
-VERSION=0.1.20 curl -fsSL https://durable-workflow.com/install.sh | sh
+curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.38 sh
 dw --version
 ```
 
@@ -65,7 +65,7 @@ A GitHub Actions example:
 ```yaml
 - name: Install Durable Workflow CLI
   run: |
-    curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.20 sh
+    curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.38 sh
     echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 - name: Verify
   run: dw --version
@@ -77,7 +77,7 @@ A GitHub Actions example:
 <summary><b>Windows</b> (PowerShell installer)</summary>
 
 ```powershell
-$env:VERSION = "0.1.20"
+$env:VERSION = "0.1.38"
 irm https://durable-workflow.com/install.ps1 | iex
 dw --version
 ```
@@ -91,7 +91,7 @@ that directory to the user `PATH`.
 <summary><b>PHAR</b> (portable, requires PHP 8.2+)</summary>
 
 ```bash
-VERSION=0.1.20
+VERSION=0.1.38
 curl -fsSL -o dw.phar \
   "https://github.com/durable-workflow/cli/releases/download/${VERSION}/dw.phar"
 curl -fsSL -o SHA256SUMS \
@@ -114,7 +114,7 @@ after verifying the asset against the release's `SHA256SUMS`.
 
 ```bash
 dw upgrade                 # upgrade to the latest release
-dw upgrade --tag=0.1.8     # pin to a specific release tag
+dw upgrade --tag=0.1.38     # pin to a specific release tag
 dw upgrade --dry-run       # resolve the target release without downloading
 ```
 
@@ -152,7 +152,7 @@ run reach the worker queue.
 git clone https://github.com/durable-workflow/server.git durable-workflow-server
 cd durable-workflow-server
 
-export DW_SERVER_TAG=0.2
+export DW_SERVER_TAG=0.2.125
 export DW_AUTH_TOKEN=dev-token
 docker compose -f docker-compose.published.yml up -d --wait
 ```
@@ -160,7 +160,7 @@ docker compose -f docker-compose.published.yml up -d --wait
 Install the CLI in another terminal:
 
 ```bash
-curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.20 sh
+curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.38 sh
 export PATH="$HOME/.local/bin:$PATH"
 dw --version
 ```
@@ -317,7 +317,7 @@ dw system:operator-metrics --json | jq '.operator_metrics.backlog | {
 }'
 ```
 
-See [Task Queue Admission](/docs/2.0/polyglot/task-queue-admission) for the
+See [Task Queue Admission](/docs/polyglot/task-queue-admission) for the
 operator tuning contract behind those fields.
 
 To inspect the matching-role routing contract on the node you queried, read the
@@ -385,5 +385,5 @@ The canonical source is [`DurableWorkflow\Cli\Support\ExitCode`](https://github.
 
 ## Reference
 
-See the [CLI command reference](/docs/2.0/polyglot/cli-reference) for command
+See the [CLI command reference](/docs/polyglot/cli-reference) for command
 shapes, options, output modes, and automation failure behavior.

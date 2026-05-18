@@ -70,7 +70,7 @@ function main() {
     'payload_preview_limit_bytes',
     'CLI reference',
     'Five-Minute Operator Quickstart',
-    'VERSION=0.1.2',
+    'VERSION=0.1.38',
     'dw env:set local',
     'dw doctor',
     'CLI and Python Parity',
@@ -109,27 +109,26 @@ function main() {
   // docusaurus.config.js declares as lastVersion. This assertion is the
   // machine-readable form of the cutover gate — changing canonical requires
   // advancing lastVersion in the config, not just editing these scripts.
-  {
-    const configContent = fs.readFileSync(
-      path.join(__dirname, '..', 'docusaurus.config.js'),
-      'utf8',
-    );
-    const lastVersionMatch = configContent.match(/lastVersion:\s*['"]([^'"]*)['"]/);
-    const lastVersion = lastVersionMatch ? lastVersionMatch[1] : null;
-    if (lastVersion && lastVersion !== 'current') {
-      const expectedSourcePrefix = `versioned_docs/version-${lastVersion}`;
-      assertIncludes(canonicalIndex, expectedSourcePrefix, 'llms.txt');
-      assertIncludes(canonicalFull, `<!-- Source: ${expectedSourcePrefix}`, 'llms-full.txt');
-    } else {
-      assertExcludes(canonicalIndex, 'versioned_docs/', 'llms.txt');
-    }
+  const configContent = fs.readFileSync(
+    path.join(__dirname, '..', 'docusaurus.config.js'),
+    'utf8',
+  );
+  const lastVersionMatch = configContent.match(/lastVersion:\s*['"]([^'"]*)['"]/);
+  const lastVersion = lastVersionMatch ? lastVersionMatch[1] : null;
+  if (lastVersion && lastVersion !== 'current') {
+    const expectedSourcePrefix = `versioned_docs/version-${lastVersion}`;
+    assertIncludes(canonicalIndex, expectedSourcePrefix, 'llms.txt');
+    assertIncludes(canonicalFull, `<!-- Source: ${expectedSourcePrefix}`, 'llms-full.txt');
+  } else {
+    assertExcludes(canonicalIndex, 'versioned_docs/', 'llms.txt');
+    assertIncludes(canonicalIndex, 'docs/ai-assisted-development.md', 'llms.txt');
+    assertIncludes(canonicalFull, '# AI-Assisted Development', 'llms-full.txt');
   }
 
   // Canonical index must reference the canonical full file and must not
   // reference the versioned-alias form. The source-version assertion is
   // handled above by the structural gate; no version-specific strings here.
   assertIncludes(canonicalIndex, 'llms-full.txt', 'llms.txt');
-  assertExcludes(canonicalIndex, 'docs/ai-assisted-development.md', 'llms.txt');
   assertExcludes(canonicalIndex, 'llms-full-2.0.txt', 'llms.txt');
 
   // v1.x is also reachable via the explicit pinned alias (mirrors canonical).

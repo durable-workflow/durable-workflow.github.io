@@ -105,7 +105,11 @@ admission caps, and bounded task dispatch budgets.
 | `DW_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS` | `100` | Milliseconds between wake-signal checks while a poll is held open. | `WORKFLOW_SERVER_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS` |
 | `DW_POLLING_CACHE_PATH` | `storage/framework/cache/server-polling/<APP_ENV>` | Directory for worker-poll coordination state when using file-backed polling cache. | `WORKFLOW_SERVER_POLLING_CACHE_PATH` |
 | `DW_WAKE_SIGNAL_TTL_SECONDS` | `max(DW_WORKER_POLL_TIMEOUT + 5, 60)` | TTL for per-queue wake signals that short-circuit a pending poll. | `WORKFLOW_SERVER_WAKE_SIGNAL_TTL_SECONDS` |
+| `DW_WORKER_LONG_POLL_MAX_CONCURRENT` | unset; derived for `PHP_CLI_SERVER_WORKERS` | Optional cap for concurrent held workflow/activity worker long-poll waits on this server node. Query-task polls use a separate wait budget. | `WORKFLOW_SERVER_WORKER_LONG_POLL_MAX_CONCURRENT` |
+| `DW_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS` | `2` | PHP CLI server workers reserved for health and control-plane requests when deriving the workflow/activity long-poll wait cap. | `WORKFLOW_SERVER_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS` |
 | `DW_MAX_TASKS_PER_POLL` | `1` | Maximum tasks returned per worker poll. | `WORKFLOW_SERVER_MAX_TASKS_PER_POLL` |
+| `DW_SQLITE_CLAIM_LOCK_TTL_SECONDS` | `10` | Seconds the SQLite quickstart backend holds the cache-backed worker poll claim gate before the lock expires. | `WORKFLOW_SERVER_SQLITE_CLAIM_LOCK_TTL_SECONDS` |
+| `DW_SQLITE_CLAIM_LOCK_WAIT_SECONDS` | `5` | Seconds SQLite worker poll claims wait for the cache-backed claim gate before returning backend lock pressure. | `WORKFLOW_SERVER_SQLITE_CLAIM_LOCK_WAIT_SECONDS` |
 | `DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` | unset | Active workflow-task lease cap per namespace/task queue. | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` |
 | `DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` | unset | Active workflow-task lease cap across all queues in a namespace. | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` |
 | `DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE` | unset | Per-minute workflow-task dispatch cap per namespace/task queue. | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE` |
@@ -119,7 +123,7 @@ admission caps, and bounded task dispatch budgets.
 | `DW_EXPIRED_WORKFLOW_TASK_RECOVERY_TTL_SECONDS` | `5` | Minimum seconds between expired-task recovery passes per queue. | `WORKFLOW_SERVER_EXPIRED_WORKFLOW_TASK_RECOVERY_TTL_SECONDS` |
 
 Sticky execution has no standalone server-image environment variables. See
-[Sticky Execution](/docs/2.0/features/sticky-execution) for the sticky-cache
+[Sticky Execution](/docs/features/sticky-execution) for the sticky-cache
 lifecycle, worker protocol fields, replay modes, and diagnostics.
 
 Example admission override:
@@ -154,6 +158,7 @@ Example admission override:
 | `DW_QUERY_TASK_LEASE_TIMEOUT` | `DW_WORKFLOW_TASK_TIMEOUT` | Lease timeout for ephemeral query tasks handed to workers. | `WORKFLOW_SERVER_QUERY_TASK_LEASE_TIMEOUT` |
 | `DW_QUERY_TASK_TTL_SECONDS` | `180` | How long the server retains query-task result rows before reaping them. | `WORKFLOW_SERVER_QUERY_TASK_TTL_SECONDS` |
 | `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` | `1024` | Maximum pending cache-backed query tasks per namespace/task queue before new queries are rejected. | `WORKFLOW_SERVER_QUERY_TASK_MAX_PENDING_PER_QUEUE` |
+| `DW_QUERY_TASK_POLL_MAX_CONCURRENT` | unset; derived for `PHP_CLI_SERVER_WORKERS` | Optional cap for concurrent held idle query-task worker long-poll waits on this server node. Pending query tasks can still be claimed immediately before an idle poll waits. | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT` |
 | `DW_WORKFLOW_TASK_TIMEOUT` | `60` | Default workflow-task lease timeout in seconds. | `WORKFLOW_TASK_TIMEOUT` |
 | `DW_ACTIVITY_TASK_TIMEOUT` | `300` | Default activity-task lease timeout in seconds. | `ACTIVITY_TASK_TIMEOUT` |
 | `DW_WORKER_STALE_AFTER_SECONDS` | `max(DW_WORKER_POLL_TIMEOUT * 2, 60)` | Seconds after a worker heartbeat before the worker registration is stale. | `WORKFLOW_SERVER_WORKER_STALE_AFTER_SECONDS` |
@@ -169,6 +174,9 @@ default.
 | Variable | Default | Purpose | Legacy alias |
 | --- | --- | --- | --- |
 | `DW_METRICS_WORKFLOW_TASK_FAILURE_TYPE_LIMIT` | `20` | Maximum `workflow_type` series reported by `dw_workflow_task_consecutive_failures`; excess types are summarized. | `WORKFLOW_SERVER_METRICS_WORKFLOW_TASK_FAILURE_TYPE_LIMIT` |
+| `DW_METRICS_PROMETHEUS_WORKFLOW_SERIES_LIMIT` | `100` | Maximum workflow series reported by `/api/system/prometheus-metrics` before excess series are summarized. | `WORKFLOW_SERVER_METRICS_PROMETHEUS_WORKFLOW_SERIES_LIMIT` |
+| `DW_METRICS_PROMETHEUS_ACTIVITY_SERIES_LIMIT` | `100` | Maximum activity series reported by `/api/system/prometheus-metrics` before excess series are summarized. | `WORKFLOW_SERVER_METRICS_PROMETHEUS_ACTIVITY_SERIES_LIMIT` |
+| `DW_METRICS_PROMETHEUS_TASK_QUEUE_SERIES_LIMIT` | `100` | Maximum task-queue runtime series reported by `/api/system/prometheus-metrics` before excess series are summarized. | `WORKFLOW_SERVER_METRICS_PROMETHEUS_TASK_QUEUE_SERIES_LIMIT` |
 | `DW_MAX_HISTORY_EVENTS` | `50000` | Maximum history events per workflow run before continue-as-new is enforced. | `WORKFLOW_MAX_HISTORY_EVENTS` |
 | `DW_HISTORY_RETENTION_DAYS` | `30` | Default number of days closed-run history is retained when a namespace does not override it. | `WORKFLOW_HISTORY_RETENTION_DAYS` |
 | `DW_MAX_PAYLOAD_BYTES` | `2097152` | Maximum serialized bytes for one payload. | `WORKFLOW_MAX_PAYLOAD_BYTES` |
@@ -179,6 +187,7 @@ default.
 | `DW_MAX_OPERATION_NAME_LENGTH` | `256` | Maximum byte length for a signal, update, or query name. | `WORKFLOW_MAX_OPERATION_NAME_LENGTH` |
 | `DW_MAX_PENDING_ACTIVITIES` | `2000` | Maximum pending activities per workflow run before rejecting a command batch. | `WORKFLOW_MAX_PENDING_ACTIVITIES` |
 | `DW_MAX_PENDING_CHILDREN` | `2000` | Maximum pending child workflows per run before rejecting a command batch. | `WORKFLOW_MAX_PENDING_CHILDREN` |
+| `DW_MAX_NEXUS_OPERATIONS_PER_CALLER` | `200` | Maximum Nexus operations returned per caller from the operations history surface before clients must paginate. | `WORKFLOW_MAX_NEXUS_OPERATIONS_PER_CALLER` |
 | `DW_COMPRESSION_ENABLED` | `true` | Enable JSON response compression above the minimum size threshold. | `WORKFLOW_SERVER_COMPRESSION_ENABLED` |
 
 ## Docker Bootstrap And Provenance
@@ -187,6 +196,14 @@ default.
 | --- | --- | --- | --- |
 | `DW_EXPOSE_PACKAGE_PROVENANCE` | `false` | Include `package_provenance` in `/api/cluster/info` for admin requests. | `WORKFLOW_SERVER_EXPOSE_PACKAGE_PROVENANCE` |
 | `DW_PACKAGE_PROVENANCE_PATH` | `<base_path>/.package-provenance` | Absolute path to the Docker build provenance file. | `WORKFLOW_SERVER_PACKAGE_PROVENANCE_PATH` |
+| `DW_SERVICE_BOUNDARY_CROSS_NAMESPACE_DEFAULT` | `allow` | Default service-call boundary action for cross-namespace calls when no more-specific rule matches. | `WORKFLOW_SERVER_SERVICE_BOUNDARY_CROSS_NAMESPACE_DEFAULT` |
+| `DW_SERVICE_BOUNDARY_RATE_LIMIT_PER_MINUTE` | unset | Optional per-minute service-call boundary rate limit. | `WORKFLOW_SERVER_SERVICE_BOUNDARY_RATE_LIMIT_PER_MINUTE` |
+| `DW_SERVICE_BOUNDARY_MAX_IN_FLIGHT` | unset | Optional service-call boundary concurrency limit. | `WORKFLOW_SERVER_SERVICE_BOUNDARY_MAX_IN_FLIGHT` |
+
+## Docker Bootstrap
+
+| Variable | Default | Purpose | Legacy alias |
+| --- | --- | --- | --- |
 | `DW_ENV_AUDIT_STRICT` | `0` | Fail container boot when `env:audit` finds unknown or legacy `DW_*` variables. | - |
 | `DW_BOOTSTRAP_RETRIES` | `30` | Bootstrap attempts before entrypoint gives up on migrations and default namespace seed. | `WORKFLOW_SERVER_BOOTSTRAP_RETRIES` |
 | `DW_BOOTSTRAP_DELAY_SECONDS` | `2` | Seconds between bootstrap attempts. | `WORKFLOW_SERVER_BOOTSTRAP_DELAY_SECONDS` |
@@ -240,7 +257,7 @@ execute the same workflows.
 
 Use `DW_V2_GUARDRAILS_BOOT` in CI and deployment manifests. The older `WORKFLOW_V2_GUARDRAILS_BOOT` name is retained only so `env:audit` can point alpha-era operators at the rename; the workflow package no longer reads it as a runtime fallback.
 
-Use [Task Matching and Dispatch](/docs/2.0/polyglot/task-matching-dispatch)
+Use [Task Matching and Dispatch](/docs/polyglot/task-matching-dispatch)
 when you configure `DW_V2_MATCHING_ROLE_QUEUE_WAKE` or a dedicated
 `workflow:v2:repair-pass --loop` daemon. Those settings change where
 ready-task discovery runs, not the worker-protocol contract itself.

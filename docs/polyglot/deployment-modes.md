@@ -22,7 +22,7 @@ Durable Workflow v2 ships one durable engine in two packaging shapes:
 - **Embedded mode** inside a Laravel application that installs the
   `durable-workflow/workflow` package directly.
 - **Service mode** through the standalone
-  [Durable Workflow server](/docs/2.0/polyglot/server).
+  [Durable Workflow server](/docs/polyglot/server).
 
 Use this page when deciding which shape should own a workflow fleet, planning a
 cutover between them, or documenting which parts of the product contract must
@@ -58,8 +58,8 @@ surfaces; there is no mandatory gRPC and no second engine.
 - Your operators can use Waterline or host-app tooling as the primary workflow
   surface.
 
-Start with [Installation](/docs/2.0/installation) and the configuration pages
-under [Run And Operate](/docs/2.0/category/run-and-operate).
+Start with [Installation](/docs/installation) and the configuration pages
+under [Run And Operate](/docs/category/run-and-operate).
 
 ## Choose Service Mode When
 
@@ -69,18 +69,18 @@ under [Run And Operate](/docs/2.0/category/run-and-operate).
   the workflow engine.
 - You want to scale API ingress, matching/dispatch, and workers independently
   within the supported
-  [server role topology](/docs/2.0/polyglot/server-role-topology).
+  [server role topology](/docs/polyglot/server-role-topology).
 
-Start with [Server](/docs/2.0/polyglot/server),
-[Self-Hosting Deployments](/docs/2.0/deployment), and the
-[Server API Reference](/docs/2.0/polyglot/server-api-reference).
+Start with [Server](/docs/polyglot/server),
+[Self-Hosting Deployments](/docs/deployment), and the
+[Server API Reference](/docs/polyglot/server-api-reference).
 
 ## Migration Tooling Between Modes
 
 The supported path from embedded mode to service mode is staged adoption, not a
 live handoff of in-flight state:
 
-- Use [Embedded to Server Migration](/docs/2.0/polyglot/embedded-to-server) for
+- Use [Embedded to Server Migration](/docs/polyglot/embedded-to-server) for
   the step-by-step cutover.
 - Use `GET /api/cluster/info` to confirm the target server build, topology, and
   capability contract before switching traffic.
@@ -89,7 +89,7 @@ live handoff of in-flight state:
 - Use `GET /api/system/operator-metrics`, `dw worker:list`, or Waterline
   operator views to verify worker registration and compatible fleet coverage
   before shifting production traffic.
-- Use [CLI and Python Parity](/docs/2.0/polyglot/cli-python-parity) when
+- Use [CLI and Python Parity](/docs/polyglot/cli-python-parity) when
   replacing app-local control-plane calls with server-backed automation.
 - Use Waterline or server-side history export for audit/debugging evidence; do
   not treat export bundles as an import path for live server-managed runs.
@@ -104,9 +104,9 @@ Three migration rules are non-negotiable:
 
 ## Related References
 
-- [Installation](/docs/2.0/installation)
-- [Server](/docs/2.0/polyglot/server)
-- [Cloud Control Plane](/docs/2.0/polyglot/cloud-control-plane)
-- [Embedded to Server Migration](/docs/2.0/polyglot/embedded-to-server)
-- [Server Role Topology](/docs/2.0/polyglot/server-role-topology)
-- [Server Config Reference](/docs/2.0/polyglot/server-config-reference)
+- [Installation](/docs/installation)
+- [Server](/docs/polyglot/server)
+- [Cloud Control Plane](/docs/polyglot/cloud-control-plane)
+- [Embedded to Server Migration](/docs/polyglot/embedded-to-server)
+- [Server Role Topology](/docs/polyglot/server-role-topology)
+- [Server Config Reference](/docs/polyglot/server-config-reference)

@@ -236,7 +236,7 @@ function main() {
   }
 
   // Canonical /llms-full.txt tracks the site's lastVersion cutover gate in
-  // docusaurus.config.js. Advancing lastVersion to '2.0' in the config
+  // docusaurus.config.js. Advancing lastVersion to 'current' in the config
   // automatically promotes v2 to canonical without any change to this script.
   const isV2Canonical = lastVersion === 'current' || !lastVersion;
   const canonicalContent = isV2Canonical ? v2Content : v1Content;
@@ -248,6 +248,13 @@ function main() {
       fs.writeFileSync(path.join(buildDir, `llms-full-${lastVersion}.txt`), canonicalContent, 'utf8');
       console.log(`${lastVersion} version-specific manifest -> /llms-full-${lastVersion}.txt`);
     }
+  }
+
+  // v1.x remains a version-pinned legacy alias after canonical moves to v2.
+  if (v1Content) {
+    fs.writeFileSync(path.join(buildDir, 'llms-full-1.x.txt'), v1Content, 'utf8');
+    const pinLabel = isV2Canonical ? '(pinned alias only)' : '(matches canonical)';
+    console.log(`v1.x version-specific manifest -> /llms-full-1.x.txt ${pinLabel}`);
   }
 
   // Always emit the v2.0 pinned alias so version-explicit consumers can reach

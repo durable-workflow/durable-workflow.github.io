@@ -18,8 +18,8 @@ keywords:
 
 The standalone server exposes a versioned HTTP+JSON API. Use this page when
 building SDKs, scripts, bridge adapters, or operator runbooks that call the
-server directly. Use the [server guide](/docs/2.0/polyglot/server) for
-deployment and configuration, and the [CLI command reference](/docs/2.0/polyglot/cli-reference)
+server directly. Use the [server guide](/docs/polyglot/server) for
+deployment and configuration, and the [CLI command reference](/docs/polyglot/cli-reference)
 when shelling out to `dw`.
 
 ## Headers And Versioning
@@ -53,7 +53,7 @@ fail closed with a named reason such as `missing_control_plane_version` or
 `unsupported_control_plane_version`.
 
 For validation, code generation, and drift checks, use the normative
-[Platform Protocol Specs](/docs/2.0/platform-protocol-specs) catalog instead
+[Platform Protocol Specs](/docs/platform-protocol-specs) catalog instead
 of this prose reference. It links the control-plane OpenAPI document, worker
 protocol OpenAPI and AsyncAPI documents, the `cluster_info` JSON Schema, and
 the adjacent MCP, history, Waterline, and repair/actionability schemas.
@@ -280,7 +280,7 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/cluster/info" \
 
 For the conceptual contract behind those fields, including the role vocabulary
 and migration path, see
-[Server Role Topology](/docs/2.0/polyglot/server-role-topology).
+[Server Role Topology](/docs/polyglot/server-role-topology).
 
 ### Wrong-Node Topology Rejections
 
@@ -527,7 +527,7 @@ an empty byte string.
 
 For the full request-authority contract, including namespace resolution,
 role-scoped credentials, and worker registration fields, see
-[Namespace, Auth, And Worker Registration](/docs/2.0/polyglot/namespace-auth-workers).
+[Namespace, Auth, And Worker Registration](/docs/polyglot/namespace-auth-workers).
 
 ## Service Catalog Admin APIs
 
@@ -683,7 +683,7 @@ operator intent on the cohort so rollout state stays honest even after the
 workers are removed. Once a worker heartbeat observes `drain_intent:
 "draining"`, worker poll routes return HTTP `409` with `poll_status:
 "draining"` and `reason: "worker_draining"` instead of leasing new tasks. See
-[Worker Build-Id Rollout](/docs/2.0/polyglot/worker-build-id-rollout) for the
+[Worker Build-Id Rollout](/docs/polyglot/worker-build-id-rollout) for the
 full unversioned-to-versioned cutover, canary, drain, and rollback lifecycle.
 
 ## Schedules And Search Attributes
@@ -767,9 +767,9 @@ operation details into the nested `control_plane` object.
 
 ## See Also
 
-- [Server guide](/docs/2.0/polyglot/server)
-- [Namespace, Auth, And Worker Registration](/docs/2.0/polyglot/namespace-auth-workers)
-- [Worker Protocol](/docs/2.0/polyglot/worker-protocol)
-- [Task Queue Admission](/docs/2.0/polyglot/task-queue-admission)
-- [External Execution](/docs/2.0/polyglot/external-execution)
-- [CLI Command Reference](/docs/2.0/polyglot/cli-reference)
+- [Server guide](/docs/polyglot/server)
+- [Namespace, Auth, And Worker Registration](/docs/polyglot/namespace-auth-workers)
+- [Worker Protocol](/docs/polyglot/worker-protocol)
+- [Task Queue Admission](/docs/polyglot/task-queue-admission)
+- [External Execution](/docs/polyglot/external-execution)
+- [CLI Command Reference](/docs/polyglot/cli-reference)

@@ -67,7 +67,7 @@ function checkDocsExposeContract() {
 
   // Pinned-install heading and a worked example for both installers.
   assertContains(cli, '### Pinned install for CI and quickstarts', ctx);
-  assertMatches(cli, /VERSION=\d+\.\d+\.\d+\s+curl[^\n]+install\.sh/, ctx);
+  assertMatches(cli, /curl[^\n]+install\.sh \| VERSION=\d+\.\d+\.\d+ sh/, ctx);
   assertMatches(cli, /\$env:VERSION\s*=\s*"\d+\.\d+\.\d+"/, ctx);
   assertContains(cli, 'dw --version', ctx);
 }

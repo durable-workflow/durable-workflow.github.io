@@ -32,7 +32,7 @@ Use the id when you want the stable public handle for the workflow. Use the run 
 A run id is an execution-generation identifier. Every v2 workflow generation has its own run id, and a single instance id can span many generations over time:
 
 - A fresh `start()` creates the first run and its first run id.
-- `continueAsNew(...)` closes the current run as `completed` / `continued` and starts a new run with a fresh run id under the same instance id. See [Continue As New](/docs/2.0/features/continue-as-new).
+- `continueAsNew(...)` closes the current run as `completed` / `continued` and starts a new run with a fresh run id under the same instance id. See [Continue As New](/docs/features/continue-as-new).
 
 Because a run id belongs to one generation, callers that want durable behavior across those transitions should resolve by instance id:
 

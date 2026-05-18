@@ -187,7 +187,7 @@ function getLastVersion() {
 
 // Returns the docs directory for whichever version is lastVersion in the
 // docusaurus config. This is the cutover gate: promoting lastVersion from
-// '1.x' to '2.0' automatically makes canonical serve v2 docs.
+// '1.x' to 'current' automatically makes canonical serve v2 docs.
 function getCanonicalDocsDir() {
   const lastVersion = getLastVersion();
   if (!lastVersion || lastVersion === 'current') {
@@ -369,8 +369,8 @@ function main() {
 
   // Canonical /llms.txt tracks the site's `lastVersion` from docusaurus.config.js
   // — the same version human visitors and /docs/ default to. The cutover gate is
-  // the lastVersion setting: advancing it to '2.0' automatically promotes v2 to
-  // canonical without any change to this script.
+  // the lastVersion setting: advancing it to 'current' automatically promotes
+  // v2 to canonical without any change to this script.
   const canonicalDocsDir = getCanonicalDocsDir();
   if (fs.existsSync(canonicalDocsDir)) {
     const canonicalOutputFile = path.join(buildDir, 'llms.txt');
@@ -378,7 +378,7 @@ function main() {
     generateManifest(canonicalDocsDir, canonicalOutputFile, canonicalFullUrl);
     console.log(`Canonical llms.txt generated from ${lastVersion || 'current'} docs (matches lastVersion):`, canonicalOutputFile);
 
-    if (lastVersion) {
+    if (lastVersion && lastVersion !== 'current') {
       const pinnedOutputFile = path.join(buildDir, `llms-${lastVersion}.txt`);
       const pinnedFullUrl = new URL(`llms-full-${lastVersion}.txt`, siteBaseUrl).toString();
       generateManifest(canonicalDocsDir, pinnedOutputFile, pinnedFullUrl);
@@ -386,8 +386,18 @@ function main() {
     }
   }
 
-  // v2.0 is the alpha-tracked next version. Always generate its pinned alias
-  // so version-explicit consumers can reach it regardless of what canonical serves.
+  // v1.x remains a version-pinned legacy alias after canonical moves to v2.
+  const v1DocsDir = path.join(__dirname, '..', 'versioned_docs', 'version-1.x');
+  if (fs.existsSync(v1DocsDir)) {
+    const v1OutputFile = path.join(buildDir, 'llms-1.x.txt');
+    const v1FullUrl = new URL('llms-full-1.x.txt', siteBaseUrl).toString();
+    generateManifest(v1DocsDir, v1OutputFile, v1FullUrl);
+    const pinLabel = v1DocsDir === canonicalDocsDir ? '(matches canonical)' : '(pinned alias only)';
+    console.log(`v1.x llms-1.x.txt generated ${pinLabel}:`, v1OutputFile);
+  }
+
+  // Always generate the v2.0 pinned alias so version-explicit consumers can
+  // keep a stable major-line URL regardless of what canonical serves later.
   const v2DocsDir = path.join(__dirname, '..', 'docs');
   if (fs.existsSync(v2DocsDir)) {
     const v2OutputFile = path.join(buildDir, 'llms-2.0.txt');

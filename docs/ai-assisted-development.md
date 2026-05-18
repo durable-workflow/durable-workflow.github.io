@@ -26,23 +26,22 @@ machine-readable docs surface:
 
 | Surface | URL | Use |
 | --- | --- | --- |
-| canonical manifest | `https://durable-workflow.com/llms.txt` | Current docs index. Tracks the site's `lastVersion` (1.x today). |
+| canonical manifest | `https://durable-workflow.com/llms.txt` | Current v2.0 docs index. |
 | canonical full bundle | `https://durable-workflow.com/llms-full.txt` | Single-file docs bundle matching the canonical manifest. |
-| v1 manifest | `https://durable-workflow.com/llms-1.x.txt` | Version-pinned 1.x index. Identical to the canonical today; pin this URL if you want it to keep meaning 1.x after a future major bump. |
+| v1 manifest | `https://durable-workflow.com/llms-1.x.txt` | Version-pinned 1.x index. Pin this URL if you want it to keep meaning 1.x after a future major bump. |
 | v1 full bundle | `https://durable-workflow.com/llms-full-1.x.txt` | Version-pinned 1.x bundle. |
-| v2 manifest | `https://durable-workflow.com/llms-2.0.txt` | Version-pinned v2.0 (alpha) index. Use only when explicitly building against the v2 protocol. |
-| v2 full bundle | `https://durable-workflow.com/llms-full-2.0.txt` | Version-pinned v2.0 (alpha) bundle. |
+| v2 manifest | `https://durable-workflow.com/llms-2.0.txt` | Version-pinned v2.0 index. Pin this URL when the prompt must keep meaning v2.0 after a future major bump. |
+| v2 full bundle | `https://durable-workflow.com/llms-full-2.0.txt` | Version-pinned v2.0 bundle. |
 
-Default agent prompts should fetch `/llms.txt` or `/llms-full.txt`. Pin the
-`-1.x.txt` URLs only when forward-compatibility against a future major version
-matters; pin `-2.0.txt` only when the agent is specifically building against
-the v2 alpha protocol.
+Default agent prompts should fetch `/llms.txt` or `/llms-full.txt` for current
+v2 work. Pin the `-1.x.txt` or `-2.0.txt` URLs when forward-compatibility
+against a future major version matters.
 
 ## Local MCP Surface
 
-The [sample app](/docs/2.0/sample-app) exposes a Laravel MCP server at
+The [sample app](/docs/sample-app) exposes a Laravel MCP server at
 `/mcp/workflows`. It is the reference AI-client integration for local v2
-workflow development. The dedicated [MCP Workflow Surface](/docs/2.0/mcp-workflows)
+workflow development. The dedicated [MCP Workflow Surface](/docs/mcp-workflows)
 page defines the endpoint, tool set, safe smoke workflows, and report shape.
 
 The MCP server gives an agent structured workflow operations instead of UI
@@ -60,7 +59,7 @@ external credentials only after the local environment contains the required
 keys.
 
 When an agent edits repeated AI or human-input workflows, point it at the v2
-[Message Streams](/docs/2.0/features/message-streams) contract. The stable
+[Message Streams](/docs/features/message-streams) contract. The stable
 authoring pattern is `Workflow::inbox()` / `Workflow::outbox()` /
 `MessageStream`; direct `MessageService`, `WorkflowMessage`, or cursor-row
 writes are runtime internals, not sample code patterns.
@@ -69,18 +68,18 @@ writes are runtime internals, not sample code patterns.
 
 Agents should prefer machine-readable surfaces over screenshots or prose:
 
-- The [Agent Operating Loop](/docs/2.0/agent-operating-loop) turns the v2
+- The [Agent Operating Loop](/docs/agent-operating-loop) turns the v2
   docs, MCP endpoint, `dw` JSON output, Waterline history export, and SDK
   references into one repeatable discover-change-run-diagnose workflow.
-- The [Agent Tooling Contract](/docs/2.0/agent-tooling-contract) defines how
+- The [Agent Tooling Contract](/docs/agent-tooling-contract) defines how
   MCP tools, CLI JSON, server diagnostics, Waterline exports, and SDK fixtures
   line up as one machine-operable surface.
 - `dw` commands expose stable exit codes for automation. See the
-  [CLI reference](/docs/2.0/polyglot/cli#exit-codes).
-- The [CLI and Python parity guide](/docs/2.0/polyglot/cli-python-parity)
+  [CLI reference](/docs/polyglot/cli#exit-codes).
+- The [CLI and Python parity guide](/docs/polyglot/cli-python-parity)
   shows the same start, signal, query, update, and cancel operations through
   `dw` and the Python SDK, backed by shared control-plane request fixtures.
-- The [external execution surface](/docs/2.0/polyglot/external-execution)
+- The [external execution surface](/docs/polyglot/external-execution)
   publishes the activity-grade task boundary, carrier requirements, bridge
   outcomes, and input/result envelope paths through `/api/cluster/info`.
 - Server health, info, namespace, workflow, schedule, worker, and task-queue

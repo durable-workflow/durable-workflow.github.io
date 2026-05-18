@@ -67,7 +67,7 @@ const surfaceContractPath = path.join(repoRoot, 'static', 'compatibility-contrac
 
 const EXPECTED_SCHEMA = 'durable-workflow.v2.platform-protocol-specs.catalog';
 const EXPECTED_AUTHORITY_URL =
-  'https://durable-workflow.github.io/docs/2.0/platform-protocol-specs';
+  'https://durable-workflow.github.io/docs/platform-protocol-specs';
 
 const ALLOWED_FORMATS = new Set(['openapi', 'json_schema', 'asyncapi']);
 const ALLOWED_STATUSES = new Set(['published', 'in_progress', 'planned']);

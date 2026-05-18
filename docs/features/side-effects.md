@@ -100,7 +100,7 @@ This is by design — the snapshot is intentionally frozen for determinism. If y
 ## Run this pattern
 
 The elapsed-time workflow in the
-[Sample App](/docs/2.0/sample-app) is the runnable reference for
+[Sample App](/docs/sample-app) is the runnable reference for
 keeping clock reads behind `sideEffect()`:
 
 ```bash

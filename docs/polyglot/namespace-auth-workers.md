@@ -175,9 +175,9 @@ otherwise registration fails with `reason: "workflow_definition_changed"`.
 identity used by task-queue rollout APIs. Keep one `build_id` for workers that
 can safely replay the same in-flight work, and change it when a rollout creates
 a new compatibility family. See
-[Worker Compatibility and Routing](/docs/2.0/polyglot/worker-compatibility-routing)
+[Worker Compatibility and Routing](/docs/polyglot/worker-compatibility-routing)
 for the pinning and rollback contract, and
-[Worker Build-Id Rollout](/docs/2.0/polyglot/worker-build-id-rollout) for the
+[Worker Build-Id Rollout](/docs/polyglot/worker-build-id-rollout) for the
 drain/resume workflow.
 
 ## Polling And Visibility
@@ -245,7 +245,7 @@ Automation should branch on named reasons rather than prose messages.
 
 ## See Also
 
-- [Server API Reference](/docs/2.0/polyglot/server-api-reference)
-- [Worker Protocol](/docs/2.0/polyglot/worker-protocol)
-- [Task Queue Admission](/docs/2.0/polyglot/task-queue-admission)
-- [CLI Command Reference](/docs/2.0/polyglot/cli-reference)
+- [Server API Reference](/docs/polyglot/server-api-reference)
+- [Worker Protocol](/docs/polyglot/worker-protocol)
+- [Task Queue Admission](/docs/polyglot/task-queue-admission)
+- [CLI Command Reference](/docs/polyglot/cli-reference)

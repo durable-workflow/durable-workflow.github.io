@@ -114,9 +114,9 @@ worker process and record normal activity history with the local marker. Use
 timeout, heartbeat, or cancellation semantics. Use `Workflow::workerSession()`
 or `Workflow\V2\workerSession()` when multiple ordinary activity steps need
 the supported worker-session affinity contract. See
-[Activity Execution Model](/docs/2.0/features/activity-execution-model),
-[Local Activities](/docs/2.0/features/local-activities), and
-[Worker Sessions](/docs/2.0/features/worker-sessions) for the full execution
+[Activity Execution Model](/docs/features/activity-execution-model),
+[Local Activities](/docs/features/local-activities), and
+[Worker Sessions](/docs/features/worker-sessions) for the full execution
 contract.
 
 **Timer helpers**

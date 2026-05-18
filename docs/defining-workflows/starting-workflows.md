@@ -31,4 +31,4 @@ Pass arguments to the workflow's `handle()` method through `start()`:
 $workflow->start($orderId);
 ```
 
-You can attach visibility labels, a business key, memo, or timeouts through `StartOptions`. See [Start Options](/docs/2.0/configuration/options#start-options) when you need them.
+You can attach visibility labels, a business key, memo, or timeouts through `StartOptions`. See [Start Options](/docs/configuration/options#start-options) when you need them.
