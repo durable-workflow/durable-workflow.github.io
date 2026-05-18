@@ -32,12 +32,18 @@ Install Waterline in the same embedded Laravel application that installs the
 workflow package:
 
 ```bash
-composer require durable-workflow/waterline:^2.0@alpha
+composer require \
+  durable-workflow/waterline:^2.0@alpha \
+  durable-workflow/workflow:^2.0@alpha
 php artisan waterline:install
 ```
 
-The `@alpha` stability flag is required while Waterline is on the 2.0
-prerelease channel. After upgrading Waterline, publish the current assets:
+The `@alpha` stability flags are required while Waterline and the workflow
+package are on the 2.0 prerelease channel. Composer stability flags are
+root-only, so a default stable Laravel app must either require both prerelease
+packages explicitly as shown above or set an equivalent root stability policy
+before installing Waterline. After upgrading Waterline, publish the current
+assets:
 
 ```bash
 composer update durable-workflow/waterline
