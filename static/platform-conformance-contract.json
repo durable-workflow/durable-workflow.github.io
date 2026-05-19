@@ -1,6 +1,6 @@
 {
   "schema": "durable-workflow.v2.platform-conformance.suite",
-  "version": 2,
+  "version": 3,
   "authority_doc": "docs/platform-conformance.md",
   "authority_url": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
   "surface_stability_authority": "durable-workflow.v2.surface-stability.contract",
@@ -99,8 +99,14 @@
       "status": "stable",
       "description": "Frozen request bodies and response shapes for control-plane operations: workflow.start, signal, query, update, cancel, task-history page, namespace storage driver, storage round-trip diagnostic.",
       "sources": [
-        { "repository": "cli", "path": "tests/fixtures/control-plane/" },
-        { "repository": "sdk-python", "path": "tests/fixtures/control-plane/" }
+        {
+          "repository": "cli",
+          "path": "tests/fixtures/control-plane/"
+        },
+        {
+          "repository": "sdk-python",
+          "path": "tests/fixtures/control-plane/"
+        }
       ],
       "authority_doc": "durable-workflow.github.io/docs/polyglot/cli-python-parity.md"
     },
@@ -108,10 +114,22 @@
       "status": "stable",
       "description": "Task input envelopes (poll → claim → run) and task result envelopes (complete, fail, cancel, heartbeat) used by every conforming worker.",
       "sources": [
-        { "repository": "cli", "path": "tests/fixtures/external-task/" },
-        { "repository": "cli", "path": "tests/fixtures/external-task-input/" },
-        { "repository": "sdk-python", "path": "tests/fixtures/external-task-input/" },
-        { "repository": "sdk-python", "path": "tests/fixtures/external-task-result/" }
+        {
+          "repository": "cli",
+          "path": "tests/fixtures/external-task/"
+        },
+        {
+          "repository": "cli",
+          "path": "tests/fixtures/external-task-input/"
+        },
+        {
+          "repository": "sdk-python",
+          "path": "tests/fixtures/external-task-input/"
+        },
+        {
+          "repository": "sdk-python",
+          "path": "tests/fixtures/external-task-result/"
+        }
       ],
       "authority_doc": "server/docs/contracts/external-task-input.md, server/docs/contracts/external-task-result.md"
     },
@@ -119,7 +137,10 @@
       "status": "stable",
       "description": "Live published-artifact scenarios for signal delivery and query consistency across PHP and Python workers, CLI and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility.",
       "sources": [
-        { "repository": "durable-workflow.github.io", "path": "static/platform-conformance/signal-query-runtime-scenarios.json" }
+        {
+          "repository": "durable-workflow.github.io",
+          "path": "static/platform-conformance/signal-query-runtime-scenarios.json"
+        }
       ],
       "authority_doc": "durable-workflow.github.io/docs/platform-conformance.md",
       "required_scenarios": [
@@ -140,19 +161,66 @@
     },
     "history_replay_bundles": {
       "status": "stable",
-      "description": "Frozen history event bundles. A conforming SDK must replay each bundle and reproduce the documented final command sequence.",
+      "description": "Deterministic replay coverage for frozen history bundles, worker restart replay, adversarial refusal, and in-flight signal timing across the official PHP and Python runtimes.",
       "sources": [
-        { "repository": "workflow", "path": "tests/Fixtures/V2/GoldenHistory/" },
-        { "repository": "sdk-python", "path": "tests/fixtures/golden_history/" }
+        {
+          "repository": "durable-workflow.github.io",
+          "path": "static/platform-conformance/replay-runtime-scenarios.json"
+        },
+        {
+          "repository": "workflow",
+          "path": "tests/Fixtures/V2/GoldenHistory/"
+        },
+        {
+          "repository": "sdk-python",
+          "path": "tests/fixtures/golden_history/"
+        }
       ],
-      "authority_doc": "workflow/docs/api-stability.md (frozen history-event wire formats)"
+      "authority_doc": "durable-workflow.github.io/docs/platform-conformance.md, server/docs/contracts/replay-verification.md, workflow/docs/api-stability.md",
+      "required_scenarios": [
+        "published_artifact_install_only",
+        "python_completed_history_activity_replay",
+        "python_completed_history_signal_update_replay",
+        "python_completed_history_wait_condition_replay",
+        "python_completed_history_version_marker_replay",
+        "python_completed_history_saga_compensation_replay",
+        "php_completed_history_activity_replay",
+        "php_completed_history_signal_update_replay",
+        "php_completed_history_wait_condition_replay",
+        "php_completed_history_version_marker_replay",
+        "php_completed_history_saga_compensation_replay",
+        "python_worker_restart_completed_query",
+        "python_worker_restart_activity_state",
+        "python_worker_restart_signal_update_state",
+        "python_worker_restart_wait_condition_state",
+        "python_worker_restart_version_marker_state",
+        "python_worker_restart_saga_compensation_state",
+        "php_worker_restart_completed_query",
+        "php_worker_restart_activity_state",
+        "php_worker_restart_signal_update_state",
+        "php_worker_restart_wait_condition_state",
+        "php_worker_restart_version_marker_state",
+        "php_worker_restart_saga_compensation_state",
+        "python_code_divergence_refusal",
+        "php_code_divergence_refusal",
+        "server_history_mutation_refusal",
+        "malformed_history_refusal",
+        "python_in_flight_signal_restart_timing",
+        "php_in_flight_signal_restart_timing"
+      ]
     },
     "failure_repair_actionability": {
       "status": "stable",
       "description": "Failure objects and repair / actionability shapes for stuck tasks, deterministic failure, and replay-mismatch surfaces.",
       "sources": [
-        { "repository": "server", "path": "docs/contracts/external-task-result.md" },
-        { "repository": "server", "path": "docs/contracts/replay-verification.md" }
+        {
+          "repository": "server",
+          "path": "docs/contracts/external-task-result.md"
+        },
+        {
+          "repository": "server",
+          "path": "docs/contracts/replay-verification.md"
+        }
       ],
       "authority_doc": "server/docs/contracts/external-task-result.md"
     },
@@ -160,8 +228,14 @@
       "status": "stable",
       "description": "The `--output=json` and `--output=jsonl` envelopes that automation depends on. Diagnostic-only fields are listed in the schema and excluded from the contract diff.",
       "sources": [
-        { "repository": "cli", "path": "tests/fixtures/control-plane/" },
-        { "repository": "cli", "path": "schemas/" }
+        {
+          "repository": "cli",
+          "path": "tests/fixtures/control-plane/"
+        },
+        {
+          "repository": "cli",
+          "path": "schemas/"
+        }
       ],
       "authority_doc": "durable-workflow.github.io/docs/polyglot/cli-reference.md"
     },
@@ -169,7 +243,10 @@
       "status": "provisional",
       "description": "The `/waterline/api/v2/*` shapes and operator dashboard JSON envelopes. Promoted to required when the Waterline contract slice lands its public fixture set.",
       "sources": [
-        { "repository": "waterline", "path": "tests/fixtures/observer/ (planned)" }
+        {
+          "repository": "waterline",
+          "path": "tests/fixtures/observer/ (planned)"
+        }
       ],
       "authority_doc": "waterline/CONFORMANCE.md"
     },
@@ -177,8 +254,14 @@
       "status": "provisional",
       "description": "MCP `tools/list`, `tools/call`, and `llms-2.0.txt` discovery envelopes. Promoted to required when the MCP tool surface stabilizes its public fixture set.",
       "sources": [
-        { "repository": "workflow", "path": "tests/Fixtures/Mcp/ (planned)" },
-        { "repository": "server", "path": "tests/Fixtures/Mcp/ (planned)" }
+        {
+          "repository": "workflow",
+          "path": "tests/Fixtures/Mcp/ (planned)"
+        },
+        {
+          "repository": "server",
+          "path": "tests/Fixtures/Mcp/ (planned)"
+        }
       ],
       "authority_doc": "durable-workflow.github.io/docs/polyglot/ (mcp surface, planned)"
     }
@@ -203,7 +286,8 @@
     "stable_runtime_scenario_coverage": {
       "rule": "A stable runtime fixture category passes only when every required scenario it declares records a pass, fail, or unsupported result with artifact versions and linked findings. A smoke-only subset or omitted scenario is nonconforming, not provisional.",
       "applies_to_categories": [
-        "signal_query_runtime_contract"
+        "signal_query_runtime_contract",
+        "history_replay_bundles"
       ]
     },
     "provisional_categories_warn_only": {
@@ -227,8 +311,12 @@
       "schema",
       "version",
       "suite_version",
-      { "implementation": "{ name, version, claimed_targets[] }" },
-      { "per_fixture_results": "{ category, fixture_id, status: pass|fail|warn|skipped, diagnostic_diff }" },
+      {
+        "implementation": "{ name, version, claimed_targets[] }"
+      },
+      {
+        "per_fixture_results": "{ category, fixture_id, status: pass|fail|warn|skipped, diagnostic_diff }"
+      },
       "conformance_level",
       "generated_at"
     ]
