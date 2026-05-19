@@ -148,12 +148,14 @@ Those replay scenario ids and their pass criteria are published at
    pass every required fixture category for that target. One failed
    required fixture means the release does not conform for that target.
 5. **`stable_runtime_scenario_coverage`.** A stable runtime category
-   must report every declared required scenario with one of the statuses
-   published by its runtime scenario manifest: `pass`, `fail`,
+   must report every required scenario it declares with one of the
+   statuses published by its runtime scenario manifest: `pass`, `fail`,
    `unsupported`, `not_covered`, or `runner_blocked`. Full conformance
    requires every required scenario to pass. A smoke-only subset,
    omitted scenario, unsupported public surface, uncovered cell, or
-   runner-blocked cell is nonconforming and must link the owning finding.
+   runner-blocked cell is nonconforming and must link the owning
+   finding. This status set and pass-only runtime rule are suite version
+   5 semantics.
 6. **`provisional_categories_warn_only`.** A failed fixture in a
    provisional category emits a warning and does not block the release.
 7. **`diagnostic_only_mismatches_pass`.** If only diagnostic-only fields

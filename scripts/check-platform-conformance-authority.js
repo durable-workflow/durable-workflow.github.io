@@ -22,13 +22,49 @@ const sidebarsPath = path.join(repoRoot, 'sidebars.js');
 const EXPECTED_SCHEMA = 'durable-workflow.v2.platform-conformance.suite';
 const EXPECTED_RUNTIME_SCENARIO_SCHEMA =
   'durable-workflow.v2.platform-conformance.runtime-scenarios';
-const REQUIRED_RUNTIME_SCENARIO_STATUSES = [
-  'pass',
-  'fail',
-  'unsupported',
-  'not_covered',
-  'runner_blocked',
-];
+const VERSIONED_RUNTIME_SCENARIO_STATUSES = {
+  5: [
+    'pass',
+    'fail',
+    'unsupported',
+    'not_covered',
+    'runner_blocked',
+  ],
+};
+const REQUIRED_RUNTIME_SCENARIO_STATUSES = VERSIONED_RUNTIME_SCENARIO_STATUSES[5];
+const VERSIONED_PASS_FAIL_RULES = {
+  5: {
+    guaranteed_field_equality: {
+      rule: "Every field marked guaranteed in the fixture's schema must be present, type-correct, and value-equal in the implementation's response. Diagnostic-only fields are ignored.",
+      follows: 'durable-workflow.v2.surface-stability.contract#field_visibility_rule',
+    },
+    unknown_additive_fields_tolerated: {
+      rule: 'An implementation that emits extra fields not present in the fixture passes if and only if those fields are documented diagnostic-only or the fixture is on a stability level that allows additive evolution.',
+    },
+    frozen_shape_exact_match: {
+      rule: 'Fixtures backed by a frozen surface family must match exactly. There is no diagnostic-only allowance for frozen shapes; a frozen-shape mismatch is always a fail.',
+      applies_to_categories: [
+        'history_replay_bundles',
+      ],
+    },
+    required_fixtures_must_pass: {
+      rule: 'A release that claims a target must pass every required fixture category for that target. One failed required fixture means the release does not conform for that target.',
+    },
+    stable_runtime_scenario_coverage: {
+      rule: 'A stable runtime fixture category must report every required scenario it declares with one of the statuses published by its runtime scenario manifest: pass, fail, unsupported, not_covered, or runner_blocked. Full conformance requires every required scenario to pass. A smoke-only subset, omitted scenario, unsupported public surface, uncovered cell, or runner-blocked cell is nonconforming and must link the owning finding.',
+      applies_to_categories: [
+        'signal_query_runtime_contract',
+        'history_replay_bundles',
+      ],
+    },
+    provisional_categories_warn_only: {
+      rule: 'A failed fixture in a provisional category emits a warning in the harness output and does not block the release. The category becomes load-bearing when promoted to stable in a later suite version.',
+    },
+    diagnostic_only_mismatches_pass: {
+      rule: 'If only diagnostic-only fields differ, the harness records the difference in its diagnostic_diff output and the fixture passes.',
+    },
+  },
+};
 const EXPECTED_AUTHORITY_DOC = 'docs/platform-conformance.md';
 const EXPECTED_DOC_ID = 'platform-conformance';
 
@@ -304,6 +340,70 @@ function assertArrayOfStrings(contract, key, expected) {
   }
 }
 
+function stableJson(value) {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableJson).join(',')}]`;
+  }
+
+  if (value && typeof value === 'object') {
+    const entries = Object.keys(value)
+      .sort()
+      .map(key => `${JSON.stringify(key)}:${stableJson(value[key])}`);
+
+    return `{${entries.join(',')}}`;
+  }
+
+  return JSON.stringify(value);
+}
+
+function assertJsonEqual(actual, expected, label) {
+  if (stableJson(actual) !== stableJson(expected)) {
+    throw new Error(
+      `${label} must match its suite-versioned expectation. ` +
+        `If the pass / fail rule or runtime status semantics changed, ` +
+        `advance the suite version and add a new versioned expectation.`,
+    );
+  }
+}
+
+function assertVersionedPassFailRules(contract) {
+  const expectedRules = VERSIONED_PASS_FAIL_RULES[contract.version];
+
+  if (!expectedRules) {
+    throw new Error(
+      `scripts/check-platform-conformance-authority.js must declare ` +
+        `pass / fail rule expectations for suite version ${contract.version}. ` +
+        `Add a new VERSIONED_PASS_FAIL_RULES entry when suite semantics change.`,
+    );
+  }
+
+  assertJsonEqual(
+    contract.pass_fail_rules || {},
+    expectedRules,
+    `static/platform-conformance-contract.json pass_fail_rules for suite version ${contract.version}`,
+  );
+}
+
+function assertVersionedRuntimeScenarioStatuses(contract, manifest, category, source) {
+  const expectedStatuses = VERSIONED_RUNTIME_SCENARIO_STATUSES[contract.version];
+
+  if (!expectedStatuses) {
+    throw new Error(
+      `scripts/check-platform-conformance-authority.js must declare ` +
+        `runtime scenario statuses for suite version ${contract.version}. ` +
+        `Add a new VERSIONED_RUNTIME_SCENARIO_STATUSES entry when runtime ` +
+        `result semantics change.`,
+    );
+  }
+
+  assertJsonEqual(
+    manifest.result_statuses,
+    expectedStatuses,
+    `stable runtime fixture category "${category}" scenario manifest ` +
+      `${source.repository}:${source.path} result_statuses for suite version ${contract.version}`,
+  );
+}
+
 function splitMarkdownTableRow(line) {
   const trimmed = line.trim();
   return trimmed
@@ -468,6 +568,8 @@ function assertRuntimeScenarioManifest(contract, category, entry, source) {
         `must declare the standard result_statuses set.`,
     );
   }
+
+  assertVersionedRuntimeScenarioStatuses(contract, manifest, category, source);
 
   for (const status of REQUIRED_RUNTIME_SCENARIO_STATUSES) {
     if (!manifest.result_statuses.includes(status)) {
@@ -751,6 +853,7 @@ function assertAuthorityDocMirrorsManifest(contract) {
     '# Platform Conformance Suite',
     EXPECTED_SCHEMA,
     'static/platform-conformance-contract.json',
+    `version\n\`${contract.version}\``,
     'platform_conformance_suite_manifest',
     '## Target Matrix',
     '## Fixture Catalog',
@@ -841,6 +944,7 @@ function main() {
     'provisional',
     'nonconforming',
   ]);
+  assertVersionedPassFailRules(contract);
   assertStableRuntimeSourcesArePublic(contract);
   assertAuthorityDocMirrorsManifest(contract);
   assertProtocolCatalogLinksAuthority();
