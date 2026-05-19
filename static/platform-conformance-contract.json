@@ -2,7 +2,7 @@
   "schema": "durable-workflow.v2.platform-conformance.suite",
   "version": 1,
   "authority_doc": "docs/platform-conformance.md",
-  "authority_url": "https://durable-workflow.github.io/docs/platform-conformance",
+  "authority_url": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
   "surface_stability_authority": "durable-workflow.v2.surface-stability.contract",
   "result_schema": "durable-workflow.v2.platform-conformance.result",
   "result_version": 1,

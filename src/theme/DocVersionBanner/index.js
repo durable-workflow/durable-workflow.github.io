@@ -4,27 +4,12 @@ import Link from '@docusaurus/Link';
 import {useDocsVersion} from '@docusaurus/theme-common/internal';
 
 // Docusaurus only renders the built-in banner when a version declares
-// `banner` in docusaurus.config.js. This wrapper gives readers a visual cue
-// about the current v2 release-candidate docs and the legacy v1.x snapshot.
+// `banner` in docusaurus.config.js. v2.0 already shows an "unreleased"
+// warning banner; v1.x carries no banner by default. Until v2.0 ships,
+// this wrapper renders an info banner on v1.x pages so every page gives
+// readers a visual cue about which major version they are viewing.
 export default function DocVersionBannerWrapper(props) {
   const versionMetadata = useDocsVersion();
-
-  if (versionMetadata.version === 'current') {
-    return (
-      <div
-        className="alert alert--warning margin-bottom--md"
-        role="alert">
-        <div>
-          You are viewing the <b>v2.0</b> documentation for the current
-          release-candidate line.
-        </div>
-        <div className="margin-top--md">
-          Maintaining a v1.x application?{' '}
-          <Link to="/docs/1.x/introduction">Open the v1.x documentation</Link>.
-        </div>
-      </div>
-    );
-  }
 
   if (versionMetadata.version === '1.x') {
     return (
@@ -32,11 +17,12 @@ export default function DocVersionBannerWrapper(props) {
         className="alert alert--info margin-bottom--md"
         role="alert">
         <div>
-          You are viewing the legacy <b>v1.x</b> documentation.
+          You are viewing the <b>v1.x</b> documentation (the current stable
+          release line).
         </div>
         <div className="margin-top--md">
-          Starting something new?{' '}
-          <Link to="/docs/introduction">Open the v2.0 documentation</Link>.
+          v2.0 is in active development -{' '}
+          <Link to="/docs/2.0/introduction">preview the v2.0 documentation</Link>.
         </div>
       </div>
     );

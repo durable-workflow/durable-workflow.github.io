@@ -81,7 +81,7 @@ For condition waits — waiting until a predicate over durable state becomes tru
 ## Run this pattern
 
 The webhook-started workflow in the
-[Sample App](/docs/sample-app) is the runnable reference for the
+[Sample App](/docs/2.0/sample-app) is the runnable reference for the
 named-signal-wait pattern on this page:
 
 ```bash

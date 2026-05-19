@@ -1,7 +1,7 @@
 {
   "schema": "durable-workflow.v2.platform-protocol-specs.catalog",
   "version": 13,
-  "authority_url": "https://durable-workflow.github.io/docs/platform-protocol-specs",
+  "authority_url": "https://durable-workflow.github.io/docs/2.0/platform-protocol-specs",
   "formats": {
     "openapi": {
       "meaning": "OpenAPI 3.1 specification document. Used for HTTP+JSON request/response surfaces where method, path, status code, and body shape are part of the contract.",

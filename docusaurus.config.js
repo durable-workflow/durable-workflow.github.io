@@ -3,6 +3,41 @@
 
 const lightCodeTheme = require('prism-react-renderer/themes/github');
 const darkCodeTheme = require('prism-react-renderer/themes/dracula');
+const fs = require('fs');
+const path = require('path');
+
+const stableDocsDir = path.join(__dirname, 'versioned_docs', 'version-1.x');
+const prereleaseV2CategoryRedirects = [
+  'run-and-operate',
+  'control-plane-and-polyglot',
+  'external-execution-and-ingress',
+  'ai-and-automation',
+].map(category => ({
+  from: `/docs/category/${category}`,
+  to: `/docs/2.0/category/${category}`,
+}));
+
+function docsSourceExists(rootDir, docId) {
+  const normalizedDocId = docId.replace(/\/$/, '');
+
+  if (!normalizedDocId) {
+    return true;
+  }
+
+  const candidates = [
+    path.join(rootDir, `${normalizedDocId}.md`),
+    path.join(rootDir, `${normalizedDocId}.mdx`),
+    path.join(rootDir, normalizedDocId, 'index.md'),
+    path.join(rootDir, normalizedDocId, 'index.mdx'),
+  ];
+
+  if (candidates.some(candidate => fs.existsSync(candidate))) {
+    return true;
+  }
+
+  const directory = path.join(rootDir, normalizedDocId);
+  return fs.existsSync(directory) && fs.statSync(directory).isDirectory();
+}
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -37,15 +72,16 @@ const config = {
           sidebarPath: require.resolve('./sidebars.js'),
           editUrl:
             'https://github.com/durable-workflow/durable-workflow.github.io/edit/main/',
-          lastVersion: 'current',
+          lastVersion: '1.x',
           versions: {
             current: {
               label: '2.0',
-              path: '',
+              path: '2.0',
+              banner: 'unreleased',
             },
             '1.x': {
               label: '1.x',
-              path: '1.x',
+              path: '',
             },
           },
         },
@@ -73,30 +109,43 @@ const config = {
       {
         createRedirects(existingPath) {
           if (
+            existingPath.startsWith('/docs/2.0/') &&
+            !existingPath.startsWith('/docs/2.0/category/')
+          ) {
+            const docId = existingPath.slice('/docs/2.0/'.length);
+
+            if (!docsSourceExists(stableDocsDir, docId)) {
+              return [`/docs/${docId}`];
+            }
+          }
+
+          if (
             existingPath.startsWith('/docs/') &&
+            !existingPath.startsWith('/docs/2.0/') &&
             !existingPath.startsWith('/docs/1.x/')
           ) {
-            return [existingPath.replace('/docs/', '/docs/2.0/')];
+            return [existingPath.replace('/docs/', '/docs/1.x/')];
           }
 
           return undefined;
         },
         redirects: [
+          ...prereleaseV2CategoryRedirects,
           {
             from: '/docs/2.0/server-setup',
-            to: '/docs/polyglot/server',
+            to: '/docs/2.0/polyglot/server',
           },
           {
             from: '/docs/2.0/cli',
-            to: '/docs/polyglot/cli',
+            to: '/docs/2.0/polyglot/cli',
           },
           {
             from: '/docs/2.0/sdks/python',
-            to: '/docs/polyglot/python',
+            to: '/docs/2.0/polyglot/python',
           },
           {
             from: '/docs/2.0/configuration/worker-protocol',
-            to: '/docs/polyglot/worker-protocol',
+            to: '/docs/2.0/polyglot/worker-protocol',
           },
         ],
       },

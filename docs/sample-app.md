@@ -24,7 +24,7 @@ coverage, the first place bugs are reproduced against a realistic
 Laravel host, and the source the docs site mirrors when it shows what
 a pattern looks like in practice. If you have a real durable-workflow
 pattern you want to share, the
-[Contribute a Sample](/docs/contribute-a-sample) guide walks
+[Contribute a Sample](/docs/2.0/contribute-a-sample) guide walks
 through the submission flow.
 
 > Looking for the Laravel 12 / Durable Workflow 1.x version? It's preserved on the [`Laravel-12` branch](https://github.com/durable-workflow/sample-app/tree/Laravel-12). Older blog posts and tutorials that reference v1 patterns (e.g. `Workflow\Workflow`, `yield activity(...)`, `Workflow\Activity`) target that branch.
@@ -59,13 +59,13 @@ page to the matching runnable workflow.
 
 | Pattern page | Sample workflow |
 |--------------|-----------------|
-| [Sagas](/docs/features/sagas) | `App\Workflows\Ai\AiWorkflow` (`php artisan app:ai`) |
-| [Signals](/docs/features/signals) | `App\Workflows\Webhooks\WebhookWorkflow` (`php artisan app:webhook`) |
-| [Message Streams](/docs/features/message-streams) | `App\Workflows\Ai\AiWorkflow` (`php artisan app:ai`) |
-| [Child Workflows](/docs/features/child-workflows) | `App\Workflows\Microservice\MicroserviceWorkflow` (`php artisan app:microservice`) |
-| [Side Effects](/docs/features/side-effects) | `App\Workflows\Elapsed\ElapsedTimeWorkflow` (`php artisan app:elapsed`) |
-| [Webhooks](/docs/features/webhooks) | `App\Workflows\Webhooks\WebhookWorkflow` (`php artisan app:webhook`) |
-| [MCP Workflows](/docs/mcp-workflows) | every gallery entry, exposed through `config/workflow_mcp.php` |
+| [Sagas](/docs/2.0/features/sagas) | `App\Workflows\Ai\AiWorkflow` (`php artisan app:ai`) |
+| [Signals](/docs/2.0/features/signals) | `App\Workflows\Webhooks\WebhookWorkflow` (`php artisan app:webhook`) |
+| [Message Streams](/docs/2.0/features/message-streams) | `App\Workflows\Ai\AiWorkflow` (`php artisan app:ai`) |
+| [Child Workflows](/docs/2.0/features/child-workflows) | `App\Workflows\Microservice\MicroserviceWorkflow` (`php artisan app:microservice`) |
+| [Side Effects](/docs/2.0/features/side-effects) | `App\Workflows\Elapsed\ElapsedTimeWorkflow` (`php artisan app:elapsed`) |
+| [Webhooks](/docs/2.0/features/webhooks) | `App\Workflows\Webhooks\WebhookWorkflow` (`php artisan app:webhook`) |
+| [MCP Workflows](/docs/2.0/mcp-workflows) | every gallery entry, exposed through `config/workflow_mcp.php` |
 
 
 **Step 1**
@@ -213,7 +213,7 @@ $this->outbox('ai.assistant')->sendReference(
 Keep app-owned payload storage for large request/response bodies, then pass
 the stored reference through the stream. Do not teach new sample workflows to
 write `workflow_messages`, `MessageStreamCursor`, or `MessageService` calls
-directly. See [Message Streams](/docs/features/message-streams) for the
+directly. See [Message Streams](/docs/2.0/features/message-streams) for the
 stable v2 inbox/outbox contract.
 
 **Step 10**
@@ -231,10 +231,10 @@ That's it! You can now create and test workflows.
 The sample app also exposes a Laravel MCP server at `/mcp/workflows`. This is the reference AI-client surface for Durable Workflow v2: it gives agents structured workflow discovery, start, status, output, recent typed history, and failure facts without requiring them to scrape Waterline.
 
 For the detailed MCP endpoint and tool contract, see
-[MCP Workflow Surface](/docs/mcp-workflows). For the broader AI-assisted
+[MCP Workflow Surface](/docs/2.0/mcp-workflows). For the broader AI-assisted
 development contract, including v2 LLM manifests, CLI exit codes, Waterline
 exports, and SDK references, see
-[AI-assisted development](/docs/ai-assisted-development).
+[AI-assisted development](/docs/2.0/ai-assisted-development).
 
 The MCP server is registered from `routes/ai.php` by the Laravel MCP package. The exposed workflow keys live in `config/workflow_mcp.php`; each entry can include the workflow class plus discovery metadata such as a description, credential requirements, and expected arguments.
 

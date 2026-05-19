@@ -21,11 +21,11 @@ Durable Workflow v2 now has explicit primitives for the common activity
 placement choices:
 
 - ordinary queued activities for durable, independently leased work;
-- [local activities](/docs/features/local-activities) for short
+- [local activities](/docs/2.0/features/local-activities) for short
   same-process activity work that still records activity history;
-- [worker sessions](/docs/features/worker-sessions) for durable activity
+- [worker sessions](/docs/2.0/features/worker-sessions) for durable activity
   affinity across multiple queued activity steps;
-- [sticky execution](/docs/features/sticky-execution) for workflow replay
+- [sticky execution](/docs/2.0/features/sticky-execution) for workflow replay
   cache affinity, with ordinary replay as the correctness fallback.
 
 ## Ordinary Queued Activities
@@ -82,7 +82,7 @@ workflow task lease while the local attempt runs.
 Use local activities for short, idempotent side effects that need activity
 retry, timeout, heartbeat, cancellation, and visibility semantics but do not
 need queue routing or an independent activity worker fleet. See
-[Local Activities](/docs/features/local-activities) for the API,
+[Local Activities](/docs/2.0/features/local-activities) for the API,
 timeouts, retry, shutdown, cold-replay, routing, and metrics contract.
 
 ```php
@@ -108,7 +108,7 @@ still a durable activity task with its own lease, heartbeat, timeout, retry,
 and terminal history. The session adds explicit affinity and admission rules on
 top of normal queue routing.
 
-See [Worker Sessions](/docs/features/worker-sessions) for the session API,
+See [Worker Sessions](/docs/2.0/features/worker-sessions) for the session API,
 lease lifecycle, routing, failure handling, shutdown behavior, and operator
 diagnostics.
 
@@ -123,7 +123,7 @@ always falls back to ordinary cold replay from durable history after cache
 misses, worker restart, drain, rollout, or eviction. Workflow code must not
 rely on in-memory state outside history.
 
-See [Sticky Execution](/docs/features/sticky-execution) for the sticky
+See [Sticky Execution](/docs/2.0/features/sticky-execution) for the sticky
 cache lifecycle, routing identity, fallback rules, deployment controls, and
 metrics.
 
@@ -131,17 +131,17 @@ metrics.
 
 Use workflow code directly for deterministic branching and calculations.
 
-Use [`sideEffect(...)`](/docs/features/side-effects) for a replay-safe
+Use [`sideEffect(...)`](/docs/2.0/features/side-effects) for a replay-safe
 snapshot of a non-deterministic value that does not need activity retry,
 timeout, heartbeat, or cancellation semantics.
 
-Use [local activities](/docs/features/local-activities) for short,
+Use [local activities](/docs/2.0/features/local-activities) for short,
 retryable, same-process side effects that should be visible as activity
 attempts but should not enter normal task matching.
 
-Use ordinary [activities](/docs/defining-workflows/activities) for remote
+Use ordinary [activities](/docs/2.0/defining-workflows/activities) for remote
 calls, slow I/O, CPU-heavy work, queue backpressure, dedicated worker fleets,
 or work that should continue through a separately leased activity task.
 
-Use [worker sessions](/docs/features/worker-sessions) when multiple
+Use [worker sessions](/docs/2.0/features/worker-sessions) when multiple
 ordinary activity steps need explicit worker-local affinity.

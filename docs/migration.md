@@ -107,7 +107,7 @@ v2 configuration is backward compatible. If you published `config/workflow.php` 
 - `projection_rebuild` — history rebuild strategies
 - `history_budget` — event count limits for continue-as-new
 
-These have sensible defaults. Only configure them if you need non-default behavior. See [Configuration](/docs/configuration/options/) for details.
+These have sensible defaults. Only configure them if you need non-default behavior. See [Configuration](/docs/2.0/configuration/options/) for details.
 
 **Payload codec default changed to `avro`.** v1 defaulted to the PHP-only `Workflow\Serializers\Y::class`; v2 defaults to the language-neutral `avro` codec so Python, Go, and TypeScript workers can decode payloads without a shared PHP runtime. `avro` is the only supported codec for new v2 workflows. New v2 workflows you start will be tagged with `payload_codec = "avro"`.
 
@@ -125,7 +125,7 @@ Keep a legacy codec (`'workflow-serializer-y'` or `'workflow-serializer-base64'`
 **Custom serializer classes from v1 are unsupported in v2.** v2 only resolves `avro`, the legacy `workflow-serializer-y`, and `workflow-serializer-base64` codecs. If you had a custom serializer, drain v1 runs before upgrading or re-encode historical payloads into `avro` — the custom class is not consulted. `php artisan workflow:v2:doctor` flags any other `workflows.serializer` value as migration debt; default-codec resolution silently falls back to `avro` for new runs so encode does not fail.
 
 **Custom model subclasses are supported only when they keep the package's column and key contract.** The frozen support matrix in
-[Customization Matrix](/docs/configuration/customization-matrix/) is
+[Customization Matrix](/docs/2.0/configuration/customization-matrix/) is
 authoritative: subclassing the v2 instance, run, task, history-event,
 projection, schedule, activity, failure, link, message, memo, search-attribute,
 and child-call models is supported when the subclass keeps the package
@@ -181,7 +181,7 @@ Expected output:
 ✓ All backend capabilities present
 ```
 
-If any check fails, see [Backend Requirements](/docs/installation/#requirements) for driver prerequisites.
+If any check fails, see [Backend Requirements](/docs/2.0/installation/#requirements) for driver prerequisites.
 
 **2. Verify v2 workflows start successfully**
 
@@ -487,7 +487,7 @@ php artisan workflow:v2:doctor --strict
 
 ### Configuration
 
-v2 introduces several new configuration options. See the [Configuration](/docs/configuration/options/) section for details on:
+v2 introduces several new configuration options. See the [Configuration](/docs/2.0/configuration/options/) section for details on:
 
 - Durable type aliases
 - Task repair policy

@@ -13,14 +13,13 @@ const path = require('path');
 
 const repoRoot = path.join(__dirname, '..');
 const docsDir = path.join(repoRoot, 'docs');
+const configPath = path.join(repoRoot, 'docusaurus.config.js');
 const contractPath = path.join(repoRoot, 'static', 'platform-conformance-contract.json');
 const authorityDocPath = path.join(repoRoot, 'docs', 'platform-conformance.md');
 const protocolSpecsDocPath = path.join(repoRoot, 'docs', 'platform-protocol-specs.md');
 const sidebarsPath = path.join(repoRoot, 'sidebars.js');
 
 const EXPECTED_SCHEMA = 'durable-workflow.v2.platform-conformance.suite';
-const EXPECTED_AUTHORITY_URL =
-  'https://durable-workflow.github.io/docs/platform-conformance';
 const EXPECTED_AUTHORITY_DOC = 'docs/platform-conformance.md';
 const EXPECTED_DOC_ID = 'platform-conformance';
 
@@ -59,6 +58,42 @@ function loadJson(file, label) {
   }
 }
 
+function stripTrailingSlash(value) {
+  return value.length > 1 ? value.replace(/\/$/, '') : value;
+}
+
+function joinRoute(prefix, docId) {
+  const normalizedPrefix = stripTrailingSlash(prefix);
+  const normalizedDocId = docId.replace(/^\/+/, '').replace(/\/$/, '');
+
+  if (!normalizedDocId) {
+    return normalizedPrefix;
+  }
+
+  return `${normalizedPrefix}/${normalizedDocId}`;
+}
+
+function getDocsVersionPaths() {
+  const configContent = read(configPath);
+  const versionBlockMatch = configContent.match(/versions:\s*\{([\s\S]*?)\n\s*\},\n\s*\},/);
+  const versionBlock = versionBlockMatch ? versionBlockMatch[1] : configContent;
+  const currentPathMatch = versionBlock.match(/current:\s*\{[^}]*path:\s*['"]([^'"]*)['"]/);
+
+  return {
+    current: currentPathMatch ? currentPathMatch[1] : '',
+  };
+}
+
+function currentDocsRoutePrefix() {
+  const currentPath = getDocsVersionPaths().current;
+
+  return currentPath ? `/docs/${currentPath}` : '/docs';
+}
+
+function expectedAuthorityUrl() {
+  return `https://durable-workflow.github.io${routeForDocPath(EXPECTED_AUTHORITY_DOC)}`;
+}
+
 function routeForDocPath(docPath) {
   if (!docPath.startsWith('docs/')) {
     throw new Error(
@@ -79,7 +114,7 @@ function routeForDocPath(docPath) {
     .replace(/\.(md|mdx)$/, '')
     .replace(/\/index$/, '');
 
-  return `/docs/${relative}`;
+  return joinRoute(currentDocsRoutePrefix(), relative);
 }
 
 function resolveRouteToDocPath(route) {
@@ -90,14 +125,23 @@ function resolveRouteToDocPath(route) {
     );
   }
 
-  if (route.startsWith('/docs/2.0/') || route.startsWith('/docs/1.x/')) {
+  const normalizedRoute = stripTrailingSlash(route);
+  const currentPrefix = currentDocsRoutePrefix();
+
+  if (
+    normalizedRoute !== currentPrefix &&
+    !normalizedRoute.startsWith(`${currentPrefix}/`)
+  ) {
     throw new Error(
       `static/platform-conformance-contract.json authority_url must point ` +
-        `at the canonical current docs route, not a version redirect: ${route}`,
+        `at the configured current-version docs route ${currentPrefix} ` +
+        `(got "${route}").`,
     );
   }
 
-  const docId = route.slice('/docs/'.length).replace(/\/$/, '');
+  const docId = normalizedRoute
+    .slice(currentPrefix.length)
+    .replace(/^\//, '');
   const candidates = [
     path.join(docsDir, `${docId}.md`),
     path.join(docsDir, `${docId}.mdx`),
@@ -177,10 +221,11 @@ function assertContractAuthorityResolves(contract) {
     );
   }
 
-  if (contract.authority_url !== EXPECTED_AUTHORITY_URL) {
+  const expected = expectedAuthorityUrl();
+  if (contract.authority_url !== expected) {
     throw new Error(
       `static/platform-conformance-contract.json authority_url must point at ` +
-        `${EXPECTED_AUTHORITY_URL} (got "${contract.authority_url}")`,
+        `${expected} (got "${contract.authority_url}")`,
     );
   }
 
@@ -220,7 +265,7 @@ function assertContractAuthorityResolves(contract) {
 
   for (const forbidden of [
     'docs/architecture/platform-conformance-suite.md',
-    'docs/2.0/platform-conformance',
+    'docs/1.x/platform-conformance',
     'github.com/durable-workflow/workflow/blob/v2/docs/architecture/platform-conformance-suite.md',
   ]) {
     if (
@@ -473,7 +518,7 @@ function assertProtocolCatalogLinksAuthority() {
   const doc = read(protocolSpecsDocPath);
 
   for (const required of [
-    '/docs/platform-conformance',
+    routeForDocPath(EXPECTED_AUTHORITY_DOC),
     'static/platform-conformance-contract.json',
     'platform_conformance_suite',
     'platform_conformance_suite_manifest',

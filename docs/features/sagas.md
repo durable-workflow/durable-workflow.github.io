@@ -113,7 +113,7 @@ $this->setContinueWithError(true);
 ## Run this pattern
 
 The signal-driven travel-agent saga in the
-[Sample App](/docs/sample-app) is the runnable reference for this
+[Sample App](/docs/2.0/sample-app) is the runnable reference for this
 page. Clone the sample app, set `OPENAI_API_KEY`, and run:
 
 ```bash

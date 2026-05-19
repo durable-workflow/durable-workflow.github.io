@@ -13,7 +13,7 @@ keywords:
 
 # Contribute a Sample
 
-The [Sample App](/docs/sample-app) is the canonical place to show
+The [Sample App](/docs/2.0/sample-app) is the canonical place to show
 what a Durable Workflow pattern looks like in a real Laravel project.
 If you have a pattern that would help other engineers — a saga shape we
 do not yet show, a different way of using message streams, an
@@ -83,7 +83,7 @@ Three docs surfaces move when a sample lands:
   per sample, with the goal, the workflow class, the artisan command,
   and the MCP key. This is the source of truth.
 - **Sample gallery on the docs site
-  ([`docs/sample-app.md`](/docs/sample-app))** — a mirrored row
+  ([`docs/sample-app.md`](/docs/2.0/sample-app))** — a mirrored row
   with the Waterline screen the reader should expect to see. The
   gallery exists so a reader can decide whether the sample is the one
   they want before cloning the repo.
@@ -151,7 +151,7 @@ Use this list when you open the PR:
 - [ ] Test that exercises the workflow end to end.
 - [ ] README "Sample Index" row.
 - [ ] Docs-site gallery row in
-      [`docs/sample-app.md`](/docs/sample-app).
+      [`docs/sample-app.md`](/docs/2.0/sample-app).
 - [ ] Cross-link from the matching pattern page on the docs site.
 - [ ] Public-boundary scan clean (`scripts/check-public-boundary.sh`).
 

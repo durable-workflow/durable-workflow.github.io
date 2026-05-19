@@ -41,9 +41,9 @@ the JSON mirror, and the architecture authority disagree, the
 architecture authority wins and the disagreement is a documentation bug.
 
 This contract is downstream of the
-[Version Compatibility](/docs/compatibility) authority (which says
+[Version Compatibility](/docs/2.0/compatibility) authority (which says
 *which* surfaces are public and *how* they may change) and the
-[Platform Protocol Specs](/docs/platform-protocol-specs) catalog
+[Platform Protocol Specs](/docs/2.0/platform-protocol-specs) catalog
 (which says *where* the normative spec for each surface lives). It says
 *what shape* those specs are allowed to take so that a future non-PHP,
 non-Python SDK can target them without requiring a protocol redesign.
@@ -143,7 +143,7 @@ without inspecting any first-party SDK source:
 
 - **Protocol** — the `control_plane_api`, `worker_protocol_api`, and
   `worker_protocol_stream` entries in the
-  [Platform Protocol Specs](/docs/platform-protocol-specs) catalog.
+  [Platform Protocol Specs](/docs/2.0/platform-protocol-specs) catalog.
 - **Codecs** — the universal codec set advertised by the worker
   protocol manifest under `capabilities.payload_codecs`.
 - **Error shape** — the `external_task_result_contract` failure

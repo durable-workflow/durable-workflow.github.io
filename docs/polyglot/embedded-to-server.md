@@ -8,7 +8,7 @@ description: Move a Laravel embedded v2 deployment to the standalone Durable Wor
 
 This guide is for teams already running Durable Workflow v2 inside a Laravel
 application and moving new workflow traffic to the standalone server. If the
-application is still on v1, start with [Migrating to 2.0](/docs/migration)
+application is still on v1, start with [Migrating to 2.0](/docs/2.0/migration)
 and keep existing v1 runs on the v1 engine until they finish.
 
 The migration is an adoption path, not an in-place database move. The
@@ -43,7 +43,7 @@ either drain in place or move through the import workflow below.
 ## Deployment Mode Contract
 
 For the frozen embedded-vs-service comparison, see
-[Deployment Modes](/docs/polyglot/deployment-modes). This migration guide
+[Deployment Modes](/docs/2.0/polyglot/deployment-modes). This migration guide
 adds three cutover-specific rules on top of that shared contract:
 
 - Existing embedded runs keep executing where they started.
@@ -202,7 +202,7 @@ curl -X POST "$SERVER/api/worker/register" \
 
 Then run workers in server mode for the same namespace and task queue. Python
 workers follow the same registration and poll contract through the Python SDK.
-Custom workers can use the [Worker Protocol](/docs/polyglot/worker-protocol)
+Custom workers can use the [Worker Protocol](/docs/2.0/polyglot/worker-protocol)
 directly.
 
 Check visibility before cutover:
@@ -388,8 +388,8 @@ registering the same namespace, task queue, and type keys. Keep payloads in
 `avro` and keep activity inputs and outputs language-neutral: arrays, objects,
 strings, numbers, booleans, and nulls.
 
-For Python, use [the Python SDK guide](/docs/polyglot/python). For direct
-HTTP implementations, use [the worker protocol reference](/docs/polyglot/worker-protocol).
+For Python, use [the Python SDK guide](/docs/2.0/polyglot/python). For direct
+HTTP implementations, use [the worker protocol reference](/docs/2.0/polyglot/worker-protocol).
 
 ## Cutover Checklist
 
@@ -428,7 +428,7 @@ HTTP implementations, use [the worker protocol reference](/docs/polyglot/worker-
 
 ## Related Guides
 
-- [Server setup](/docs/polyglot/server)
-- [Worker protocol](/docs/polyglot/worker-protocol)
-- [Python SDK](/docs/polyglot/python)
-- [Migrating to 2.0](/docs/migration)
+- [Server setup](/docs/2.0/polyglot/server)
+- [Worker protocol](/docs/2.0/polyglot/worker-protocol)
+- [Python SDK](/docs/2.0/polyglot/python)
+- [Migrating to 2.0](/docs/2.0/migration)

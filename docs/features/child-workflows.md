@@ -230,7 +230,7 @@ In other words, durable child handles are supported for already-reached child st
 ## Run this pattern
 
 The microservice coordination workflow in the
-[Sample App](/docs/sample-app) is the runnable reference for
+[Sample App](/docs/2.0/sample-app) is the runnable reference for
 parent–child orchestration across application boundaries:
 
 ```bash

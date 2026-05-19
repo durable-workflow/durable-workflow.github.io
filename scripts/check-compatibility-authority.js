@@ -87,11 +87,11 @@ function loadContract() {
   }
 
   if (
-    contract.authority_url !== 'https://durable-workflow.github.io/docs/compatibility'
+    contract.authority_url !== 'https://durable-workflow.github.io/docs/2.0/compatibility'
   ) {
     throw new Error(
       `static/compatibility-contract.json authority_url must point at ` +
-        `https://durable-workflow.github.io/docs/compatibility ` +
+        `https://durable-workflow.github.io/docs/2.0/compatibility ` +
         `(got "${contract.authority_url}")`,
     );
   }
