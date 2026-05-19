@@ -22,6 +22,13 @@ const sidebarsPath = path.join(repoRoot, 'sidebars.js');
 const EXPECTED_SCHEMA = 'durable-workflow.v2.platform-conformance.suite';
 const EXPECTED_RUNTIME_SCENARIO_SCHEMA =
   'durable-workflow.v2.platform-conformance.runtime-scenarios';
+const REQUIRED_RUNTIME_SCENARIO_STATUSES = [
+  'pass',
+  'fail',
+  'unsupported',
+  'not_covered',
+  'runner_blocked',
+];
 const EXPECTED_AUTHORITY_DOC = 'docs/platform-conformance.md';
 const EXPECTED_DOC_ID = 'platform-conformance';
 
@@ -450,6 +457,22 @@ function assertRuntimeScenarioManifest(contract, category, entry, source) {
       `stable runtime fixture category "${category}" scenario manifest ` +
         `${source.repository}:${source.path} must declare scenarios.`,
     );
+  }
+
+  if (!Array.isArray(manifest.result_statuses)) {
+    throw new Error(
+      `stable runtime fixture category "${category}" scenario manifest ` +
+        `${source.repository}:${source.path} must declare result_statuses.`,
+    );
+  }
+
+  for (const status of REQUIRED_RUNTIME_SCENARIO_STATUSES) {
+    if (!manifest.result_statuses.includes(status)) {
+      throw new Error(
+        `stable runtime fixture category "${category}" scenario manifest ` +
+          `${source.repository}:${source.path} must include result status "${status}".`,
+      );
+    }
   }
 
   const expectedScenarios = new Set(entry.required_scenarios || []);

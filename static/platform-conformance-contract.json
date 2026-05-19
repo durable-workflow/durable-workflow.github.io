@@ -284,7 +284,7 @@
       "rule": "A release that claims a target must pass every required fixture category for that target. One failed required fixture means the release does not conform for that target."
     },
     "stable_runtime_scenario_coverage": {
-      "rule": "A stable runtime fixture category passes only when every required scenario it declares records a pass, fail, or unsupported result with artifact versions and linked findings. A smoke-only subset or omitted scenario is nonconforming, not provisional.",
+      "rule": "A stable runtime fixture category is measurable only when every required scenario it declares records one of pass, fail, unsupported, not_covered, or runner_blocked with artifact versions and linked findings. The category passes only when every required scenario records pass; fail, unsupported, not_covered, runner_blocked, smoke-only subsets, and omitted scenarios are nonconforming, not provisional.",
       "applies_to_categories": [
         "signal_query_runtime_contract",
         "history_replay_bundles"

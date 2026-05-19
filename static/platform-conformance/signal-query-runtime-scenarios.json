@@ -9,7 +9,9 @@
   "result_statuses": [
     "pass",
     "fail",
-    "unsupported"
+    "unsupported",
+    "not_covered",
+    "runner_blocked"
   ],
   "artifact_policy": {
     "published_artifacts_only": true,

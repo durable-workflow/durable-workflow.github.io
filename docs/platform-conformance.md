@@ -93,7 +93,9 @@ emit advisory warnings and become load-bearing only when promoted to
 
 The `signal_query_runtime_contract` category is stable. A result for it
 must record the resolved published artifact versions and must name every
-required scenario as pass, fail, or unsupported with linked findings:
+required scenario as `pass`, `fail`, `unsupported`, `not_covered`, or
+`runner_blocked` with linked findings. Only `pass` cells count toward a
+passing category:
 `published_artifact_install_only`,
 `python_worker_cli_and_sdk_baseline`, `php_worker_cli_and_sdk_baseline`,
 `python_worker_php_facing_and_cli_clients`,
@@ -124,7 +126,9 @@ signal/update, wait-condition, version-marker, saga-compensation,
 explicit code-divergence refusal, server-side history mutation refusal,
 malformed history refusal, and in-flight signal restart timing. A
 golden-history smoke subset is nonconforming until every required cell is
-recorded as pass, fail, or unsupported with linked findings.
+recorded as `pass`, `fail`, `unsupported`, `not_covered`, or
+`runner_blocked` with linked findings. Only `pass` cells count toward a
+passing category.
 
 Those replay scenario ids and their pass criteria are published at
 [`static/platform-conformance/replay-runtime-scenarios.json`](pathname:///platform-conformance/replay-runtime-scenarios.json).
@@ -144,9 +148,12 @@ Those replay scenario ids and their pass criteria are published at
    pass every required fixture category for that target. One failed
    required fixture means the release does not conform for that target.
 5. **`stable_runtime_scenario_coverage`.** A stable runtime category
-   passes only when every declared required scenario records pass, fail,
-   or unsupported with artifact versions and linked findings. A smoke-only
-   subset or omitted scenario is nonconforming.
+   is measurable only when every declared required scenario records
+   `pass`, `fail`, `unsupported`, `not_covered`, or `runner_blocked`
+   with artifact versions and linked findings. It passes only when every
+   required scenario records `pass`; smoke-only, omitted, failed,
+   unsupported, not-covered, and runner-blocked scenarios are
+   nonconforming.
 6. **`provisional_categories_warn_only`.** A failed fixture in a
    provisional category emits a warning and does not block the release.
 7. **`diagnostic_only_mismatches_pass`.** If only diagnostic-only fields
