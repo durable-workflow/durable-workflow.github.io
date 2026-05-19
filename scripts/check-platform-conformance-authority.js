@@ -519,6 +519,38 @@ function assertRuntimeScenarioManifest(contract, category, entry, source) {
   }
 }
 
+function staticSourcePathToServedPath(sourcePath) {
+  if (!sourcePath.startsWith('static/')) {
+    throw new Error(
+      `docs-site scenario manifest path "${sourcePath}" must live under static/.`,
+    );
+  }
+
+  return `pathname:///${sourcePath.slice('static/'.length)}`;
+}
+
+function assertAuthorityDocLinksRuntimeScenarioManifests(contract, doc) {
+  for (const category of runtimeScenarioCategories(contract)) {
+    const entry = (contract.fixture_catalog || {})[category] || {};
+
+    for (const source of entry.sources || []) {
+      if (!isPublicRuntimeScenarioManifest(source)) {
+        continue;
+      }
+
+      const servedPath = staticSourcePathToServedPath(source.path);
+
+      if (!doc.includes(servedPath)) {
+        throw new Error(
+          `docs/platform-conformance.md must link ${source.path} using ` +
+            `${servedPath} so the published scenario manifest is resolvable ` +
+            `from the public site.`,
+        );
+      }
+    }
+  }
+}
+
 function assertStableRuntimeSourcesArePublic(contract) {
   const catalog = contract.fixture_catalog || {};
 
@@ -709,6 +741,7 @@ function assertAuthorityDocMirrorsManifest(contract) {
   }
 
   assertFixtureCatalogTableMirrorsManifest(contract, doc);
+  assertAuthorityDocLinksRuntimeScenarioManifests(contract, doc);
 
   for (const target of Object.keys(contract.targets || {})) {
     if (!doc.includes(`\`${target}\``)) {
