@@ -459,10 +459,13 @@ function assertRuntimeScenarioManifest(contract, category, entry, source) {
     );
   }
 
-  if (!Array.isArray(manifest.result_statuses)) {
+  if (
+    !Array.isArray(manifest.result_statuses) ||
+    manifest.result_statuses.length !== REQUIRED_RUNTIME_SCENARIO_STATUSES.length
+  ) {
     throw new Error(
       `stable runtime fixture category "${category}" scenario manifest ` +
-        `${source.repository}:${source.path} must declare result_statuses.`,
+        `must declare the standard result_statuses set.`,
     );
   }
 
@@ -470,7 +473,7 @@ function assertRuntimeScenarioManifest(contract, category, entry, source) {
     if (!manifest.result_statuses.includes(status)) {
       throw new Error(
         `stable runtime fixture category "${category}" scenario manifest ` +
-          `${source.repository}:${source.path} must include result status "${status}".`,
+          `result_statuses must include "${status}".`,
       );
     }
   }

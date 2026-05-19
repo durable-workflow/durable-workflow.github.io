@@ -25,7 +25,7 @@ for implementations that claim Durable Workflow v2 compatibility.
 The machine-readable mirror is published at
 [`static/platform-conformance-contract.json`](pathname:///platform-conformance-contract.json)
 with schema `durable-workflow.v2.platform-conformance.suite`, version
-`4`. The same manifest is advertised by the standalone server from
+`5`. The same manifest is advertised by the standalone server from
 `GET /api/cluster/info` under `platform_conformance_suite`. The
 [Platform Protocol Specs](/docs/2.0/platform-protocol-specs) catalog names
 that nested manifest as the `platform_conformance_suite_manifest`
@@ -148,12 +148,12 @@ Those replay scenario ids and their pass criteria are published at
    pass every required fixture category for that target. One failed
    required fixture means the release does not conform for that target.
 5. **`stable_runtime_scenario_coverage`.** A stable runtime category
-   is measurable only when every declared required scenario records
-   `pass`, `fail`, `unsupported`, `not_covered`, or `runner_blocked`
-   with artifact versions and linked findings. It passes only when every
-   required scenario records `pass`; smoke-only, omitted, failed,
-   unsupported, not-covered, and runner-blocked scenarios are
-   nonconforming.
+   must report every declared required scenario with one of the statuses
+   published by its runtime scenario manifest: `pass`, `fail`,
+   `unsupported`, `not_covered`, or `runner_blocked`. Full conformance
+   requires every required scenario to pass. A smoke-only subset,
+   omitted scenario, unsupported public surface, uncovered cell, or
+   runner-blocked cell is nonconforming and must link the owning finding.
 6. **`provisional_categories_warn_only`.** A failed fixture in a
    provisional category emits a warning and does not block the release.
 7. **`diagnostic_only_mismatches_pass`.** If only diagnostic-only fields
