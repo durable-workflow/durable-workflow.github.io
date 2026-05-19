@@ -3,7 +3,7 @@
   "version": 1,
   "category": "signal_query_runtime_contract",
   "suite_schema": "durable-workflow.v2.platform-conformance.suite",
-  "suite_version": 3,
+  "suite_version": 4,
   "description": "Public scenario manifest for the stable signal and query runtime contract. Harnesses use these scenario ids and criteria when evaluating published Durable Workflow artifacts.",
   "fixture_type": "published_artifact_runtime_scenario_manifest",
   "result_statuses": [
@@ -284,14 +284,20 @@
         "cli_client"
       ],
       "operations": [
-        "complete a workflow run",
+        "complete a workflow run cleanly with a replayable declared query handler and a known final query state",
         "attempt to signal the completed run",
-        "query the completed run through every claimed client surface"
+        "restart or detach the worker when needed so completed-run queries prove replayed state instead of live in-memory state",
+        "query the completed run through every claimed public query surface"
       ],
       "pass_criteria": [
         "signals sent to terminal runs return a stable rejection or documented no-op result",
-        "queries against terminal runs return the documented final state or stable terminal-run error",
+        "queries against a completed cleanly run with a replayable declared query handler return the documented final state through every claimed public query surface",
+        "a generic completed-run terminal error does not satisfy the completed cleanly query requirement",
         "terminal-run operations do not reopen or mutate the completed run"
+      ],
+      "allowed_terminal_state_error_cases": [
+        "queries for explicitly unsupported terminal states other than completed cleanly may return a stable terminal-state error that names the unsupported state",
+        "queries for completed runs without an available declared query handler may return a stable handler-unavailable error that names the query surface and handler"
       ]
     },
     {
