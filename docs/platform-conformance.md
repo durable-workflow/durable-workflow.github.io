@@ -25,7 +25,7 @@ for implementations that claim Durable Workflow v2 compatibility.
 The machine-readable mirror is published at
 [`static/platform-conformance-contract.json`](pathname:///platform-conformance-contract.json)
 with schema `durable-workflow.v2.platform-conformance.suite`, version
-`1`. The same manifest is advertised by the standalone server from
+`2`. The same manifest is advertised by the standalone server from
 `GET /api/cluster/info` under `platform_conformance_suite`. The
 [Platform Protocol Specs](/docs/2.0/platform-protocol-specs) catalog names
 that nested manifest as the `platform_conformance_suite_manifest`
@@ -47,11 +47,11 @@ For example, the standalone server claims `standalone_server`,
 
 | Target | Required surface families | Required fixture categories |
 | --- | --- | --- |
-| `standalone_server` | `server_api`, `worker_protocol`, `cluster_info_manifests` | `control_plane_request_response`, `worker_task_lifecycle`, `failure_repair_actionability` |
-| `official_sdk` | `official_sdks`, `worker_protocol`, `history_event_wire_formats` | `control_plane_request_response`, `worker_task_lifecycle`, `history_replay_bundles` |
-| `worker_protocol_implementation` | `worker_protocol`, `history_event_wire_formats` | `worker_task_lifecycle`, `history_replay_bundles` |
-| `cli_json_client` | `cli_json` | `control_plane_request_response`, `cli_json_envelopes` |
-| `waterline_contract_surface` | `waterline_api` | `waterline_observer_envelopes` |
+| `standalone_server` | `server_api`, `worker_protocol`, `cluster_info_manifests` | `control_plane_request_response`, `signal_query_runtime_contract`, `worker_task_lifecycle`, `failure_repair_actionability` |
+| `official_sdk` | `official_sdks`, `worker_protocol`, `history_event_wire_formats` | `control_plane_request_response`, `signal_query_runtime_contract`, `worker_task_lifecycle`, `history_replay_bundles` |
+| `worker_protocol_implementation` | `worker_protocol`, `history_event_wire_formats` | `worker_task_lifecycle`, `signal_query_runtime_contract`, `history_replay_bundles` |
+| `cli_json_client` | `cli_json` | `control_plane_request_response`, `signal_query_runtime_contract`, `cli_json_envelopes` |
+| `waterline_contract_surface` | `waterline_api` | `signal_query_runtime_contract`, `waterline_observer_envelopes` |
 | `repair_actionability_surface` | `worker_protocol`, `server_api` | `failure_repair_actionability` |
 | `mcp_discovery_surface` | `mcp_discovery_results` | `mcp_discovery_envelopes` |
 
@@ -74,6 +74,17 @@ declared fixtures directly from those locations.
 | `worker_task_lifecycle` | `stable` | `cli` | `tests/fixtures/external-task-input/` | Task input envelopes and task result envelopes used by every conforming worker. |
 | `worker_task_lifecycle` | `stable` | `sdk-python` | `tests/fixtures/external-task-input/` | Task input envelopes and task result envelopes used by every conforming worker. |
 | `worker_task_lifecycle` | `stable` | `sdk-python` | `tests/fixtures/external-task-result/` | Task input envelopes and task result envelopes used by every conforming worker. |
+| `signal_query_runtime_contract` | `stable` | `workflow` | `docs/architecture/platform-conformance-suite.md` | Live published-artifact scenarios for signal delivery and query consistency across PHP and Python workers, CLI and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility. |
+| `signal_query_runtime_contract` | `stable` | `workflow` | `docs/architecture/query-and-live-debug.md` | Live published-artifact scenarios for signal delivery and query consistency across PHP and Python workers, CLI and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility. |
+| `signal_query_runtime_contract` | `stable` | `workflow` | `tests/Feature/SignalReplayTest.php` | Live published-artifact scenarios for signal delivery and query consistency across PHP and Python workers, CLI and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility. |
+| `signal_query_runtime_contract` | `stable` | `workflow` | `tests/Feature/V2/V2QueryWorkflowTest.php` | Live published-artifact scenarios for signal delivery and query consistency across PHP and Python workers, CLI and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility. |
+| `signal_query_runtime_contract` | `stable` | `server` | `tests/Feature/WorkflowControlPlaneTest.php` | Live published-artifact scenarios for signal delivery and query consistency across PHP and Python workers, CLI and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility. |
+| `signal_query_runtime_contract` | `stable` | `server` | `tests/Feature/WorkflowQueryTaskBrokerTest.php` | Live published-artifact scenarios for signal delivery and query consistency across PHP and Python workers, CLI and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility. |
+| `signal_query_runtime_contract` | `stable` | `cli` | `tests/Commands/` | Live published-artifact scenarios for signal delivery and query consistency across PHP and Python workers, CLI and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility. |
+| `signal_query_runtime_contract` | `stable` | `sdk-python` | `tests/test_signals.py` | Live published-artifact scenarios for signal delivery and query consistency across PHP and Python workers, CLI and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility. |
+| `signal_query_runtime_contract` | `stable` | `sdk-python` | `tests/test_queries.py` | Live published-artifact scenarios for signal delivery and query consistency across PHP and Python workers, CLI and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility. |
+| `signal_query_runtime_contract` | `stable` | `sdk-python` | `tests/test_worker.py` | Live published-artifact scenarios for signal delivery and query consistency across PHP and Python workers, CLI and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility. |
+| `signal_query_runtime_contract` | `stable` | `waterline` | `CONFORMANCE.md` | Live published-artifact scenarios for signal delivery and query consistency across PHP and Python workers, CLI and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility. |
 | `history_replay_bundles` | `stable` | `workflow` | `tests/Fixtures/V2/GoldenHistory/` | Frozen history event bundles. A conforming SDK must replay each bundle and reproduce the documented final command sequence. |
 | `history_replay_bundles` | `stable` | `sdk-python` | `tests/fixtures/golden_history/` | Frozen history event bundles. A conforming SDK must replay each bundle and reproduce the documented final command sequence. |
 | `failure_repair_actionability` | `stable` | `server` | `docs/contracts/external-task-result.md` | Failure objects and repair / actionability shapes for stuck tasks, deterministic failure, and replay-mismatch surfaces. |
@@ -89,6 +100,19 @@ it and the category status is not `provisional`. Provisional categories
 emit advisory warnings and become load-bearing only when promoted to
 `stable` in a later suite version.
 
+The `signal_query_runtime_contract` category is stable. A result for it
+must record the resolved published artifact versions and must name every
+required scenario as pass, fail, or unsupported with linked findings:
+`published_artifact_install_only`,
+`python_worker_cli_and_sdk_baseline`, `php_worker_cli_and_sdk_baseline`,
+`python_worker_php_facing_and_cli_clients`,
+`php_worker_python_and_cli_clients`, `ordered_signal_delivery`,
+`dedup_contract_observation`, `signal_during_replay`,
+`query_during_replay`, `completed_run_signal_and_query`,
+`unknown_signal_and_query_errors`,
+`malformed_signal_and_query_payloads`, and
+`waterline_operator_visibility`.
+
 ## Pass / Fail Rules
 
 1. **`guaranteed_field_equality`.** Every field marked guaranteed in the
@@ -103,9 +127,13 @@ emit advisory warnings and become load-bearing only when promoted to
 4. **`required_fixtures_must_pass`.** A release that claims a target must
    pass every required fixture category for that target. One failed
    required fixture means the release does not conform for that target.
-5. **`provisional_categories_warn_only`.** A failed fixture in a
+5. **`stable_runtime_scenario_coverage`.** A stable runtime category
+   passes only when every declared required scenario records pass, fail,
+   or unsupported with artifact versions and linked findings. A smoke-only
+   subset or omitted scenario is nonconforming.
+6. **`provisional_categories_warn_only`.** A failed fixture in a
    provisional category emits a warning and does not block the release.
-6. **`diagnostic_only_mismatches_pass`.** If only diagnostic-only fields
+7. **`diagnostic_only_mismatches_pass`.** If only diagnostic-only fields
    differ, the harness records the difference in `diagnostic_diff` and
    the fixture passes.
 

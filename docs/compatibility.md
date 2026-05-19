@@ -392,6 +392,7 @@ docs-side gates automatically; the rest belong to the human reviewer.
 
 | Date | Server | CLI | Python SDK | Workflow | Waterline | Notes |
 |------|--------|-----|------------|----------|-----------|-------|
+| 2026-05-19 | 2.0.0 | 0.1.0 | 0.2.0 | 2.0.0 | 2.0.0 | Platform conformance suite version 2 adds the stable `signal_query_runtime_contract` category so published-artifact signals/query runs must cover PHP and Python workers, cross-language clients, replay timing, terminal-run behavior, malformed payloads, and operator visibility rather than passing on a smoke subset. |
 | 2026-05-02 | 2.0.0 | 0.1.0 | 0.2.0 | 2.0.0 | 2.0.0 | Compatibility-and-release-authority contract published. `surface_stability_contract` exposed in `/api/cluster/info`; per-package stability docs reference this page. |
 | 2026-04-17 | 2.0.0 | 0.1.0 | 0.2.0 | 2.0.0 | 2.0.0 | Compatibility authority moved to protocol manifests |
 | 2026-04-15 | 2.0.0 | 0.1.0 | 0.1.0 | 2.0.0 | 2.0.0 | Stable release |
