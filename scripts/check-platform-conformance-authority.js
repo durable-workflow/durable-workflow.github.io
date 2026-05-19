@@ -20,6 +20,8 @@ const protocolSpecsDocPath = path.join(repoRoot, 'docs', 'platform-protocol-spec
 const sidebarsPath = path.join(repoRoot, 'sidebars.js');
 
 const EXPECTED_SCHEMA = 'durable-workflow.v2.platform-conformance.suite';
+const EXPECTED_RUNTIME_SCENARIO_SCHEMA =
+  'durable-workflow.v2.platform-conformance.runtime-scenarios';
 const EXPECTED_AUTHORITY_DOC = 'docs/platform-conformance.md';
 const EXPECTED_DOC_ID = 'platform-conformance';
 
@@ -349,6 +351,241 @@ function formatSourceKey(key) {
   return `${repository}:${sourcePath}`;
 }
 
+function isPublicRuntimeScenarioManifest(source) {
+  return (
+    source.repository === 'durable-workflow.github.io' &&
+    /^static\/platform-conformance\/[^/]+\.json$/.test(source.path || '')
+  );
+}
+
+function isApprovedPublicRuntimeSource(source) {
+  const sourcePath = source.path || '';
+
+  return (
+    isPublicRuntimeScenarioManifest(source) ||
+    sourcePath.startsWith('tests/fixtures/') ||
+    sourcePath.startsWith('tests/Fixtures/') ||
+    sourcePath.startsWith('fixtures/')
+  );
+}
+
+function assertLocalSourcePath(source, category) {
+  const sourcePath = source.path || '';
+  const fullPath = path.join(repoRoot, sourcePath);
+  const relative = path.relative(repoRoot, fullPath);
+
+  if (relative.startsWith('..') || path.isAbsolute(relative)) {
+    throw new Error(
+      `stable runtime fixture category "${category}" source ` +
+        `${source.repository}:${sourcePath} must stay inside the docs repo.`,
+    );
+  }
+
+  if (!fs.existsSync(fullPath)) {
+    throw new Error(
+      `stable runtime fixture category "${category}" source ` +
+        `${source.repository}:${sourcePath} does not exist.`,
+    );
+  }
+
+  return fullPath;
+}
+
+function runtimeScenarioCategories(contract) {
+  const categories = new Set();
+  const coverageRule =
+    (contract.pass_fail_rules || {}).stable_runtime_scenario_coverage || {};
+
+  for (const category of coverageRule.applies_to_categories || []) {
+    categories.add(category);
+  }
+
+  for (const [category, entry] of Object.entries(contract.fixture_catalog || {})) {
+    if (Array.isArray(entry.required_scenarios)) {
+      categories.add(category);
+    }
+  }
+
+  return categories;
+}
+
+function assertRuntimeScenarioManifest(contract, category, entry, source) {
+  const manifest = loadJson(
+    assertLocalSourcePath(source, category),
+    `${source.repository}:${source.path}`,
+  );
+
+  if (manifest.schema !== EXPECTED_RUNTIME_SCENARIO_SCHEMA) {
+    throw new Error(
+      `stable runtime fixture category "${category}" scenario manifest ` +
+        `${source.repository}:${source.path} must use schema ` +
+        `"${EXPECTED_RUNTIME_SCENARIO_SCHEMA}".`,
+    );
+  }
+
+  if (manifest.category !== category) {
+    throw new Error(
+      `stable runtime fixture category "${category}" scenario manifest ` +
+        `${source.repository}:${source.path} declares category ` +
+        `"${manifest.category}".`,
+    );
+  }
+
+  if (manifest.suite_schema !== contract.schema) {
+    throw new Error(
+      `stable runtime fixture category "${category}" scenario manifest ` +
+        `must reference suite schema "${contract.schema}".`,
+    );
+  }
+
+  if (manifest.suite_version !== contract.version) {
+    throw new Error(
+      `stable runtime fixture category "${category}" scenario manifest ` +
+        `must reference suite version ${contract.version}.`,
+    );
+  }
+
+  if (!Array.isArray(manifest.scenarios) || manifest.scenarios.length === 0) {
+    throw new Error(
+      `stable runtime fixture category "${category}" scenario manifest ` +
+        `${source.repository}:${source.path} must declare scenarios.`,
+    );
+  }
+
+  const expectedScenarios = new Set(entry.required_scenarios || []);
+  const seenScenarios = new Set();
+
+  for (const [index, scenario] of manifest.scenarios.entries()) {
+    if (!scenario || typeof scenario !== 'object') {
+      throw new Error(
+        `stable runtime fixture category "${category}" scenario manifest ` +
+          `entry ${index + 1} must be an object.`,
+      );
+    }
+
+    if (typeof scenario.id !== 'string' || scenario.id.trim() === '') {
+      throw new Error(
+        `stable runtime fixture category "${category}" scenario manifest ` +
+          `entry ${index + 1} must include an id.`,
+      );
+    }
+
+    if (seenScenarios.has(scenario.id)) {
+      throw new Error(
+        `stable runtime fixture category "${category}" scenario manifest ` +
+          `repeats scenario "${scenario.id}".`,
+      );
+    }
+    seenScenarios.add(scenario.id);
+
+    for (const requiredField of ['title', 'operations', 'pass_criteria']) {
+      if (!(requiredField in scenario)) {
+        throw new Error(
+          `stable runtime fixture category "${category}" scenario ` +
+            `"${scenario.id}" must include ${requiredField}.`,
+        );
+      }
+    }
+
+    for (const arrayField of ['operations', 'pass_criteria']) {
+      if (
+        !Array.isArray(scenario[arrayField]) ||
+        scenario[arrayField].length === 0
+      ) {
+        throw new Error(
+          `stable runtime fixture category "${category}" scenario ` +
+            `"${scenario.id}" must include non-empty ${arrayField}.`,
+        );
+      }
+    }
+  }
+
+  for (const expected of expectedScenarios) {
+    if (!seenScenarios.has(expected)) {
+      throw new Error(
+        `stable runtime fixture category "${category}" scenario manifest ` +
+          `is missing required scenario "${expected}".`,
+      );
+    }
+  }
+
+  for (const actual of seenScenarios) {
+    if (!expectedScenarios.has(actual)) {
+      throw new Error(
+        `stable runtime fixture category "${category}" scenario manifest ` +
+          `declares scenario "${actual}" that is not listed in the suite manifest.`,
+      );
+    }
+  }
+}
+
+function assertStableRuntimeSourcesArePublic(contract) {
+  const catalog = contract.fixture_catalog || {};
+
+  for (const category of runtimeScenarioCategories(contract)) {
+    const entry = catalog[category];
+    if (!entry) {
+      throw new Error(
+        `stable_runtime_scenario_coverage references unknown category "${category}".`,
+      );
+    }
+
+    if (entry.status !== 'stable') {
+      throw new Error(
+        `stable runtime fixture category "${category}" must have stable status.`,
+      );
+    }
+
+    if (
+      !Array.isArray(entry.required_scenarios) ||
+      entry.required_scenarios.length === 0
+    ) {
+      throw new Error(
+        `stable runtime fixture category "${category}" must list ` +
+          `required_scenarios in the suite manifest.`,
+      );
+    }
+
+    let hasScenarioManifest = false;
+
+    for (const source of entry.sources || []) {
+      if (!source || typeof source !== 'object') {
+        throw new Error(
+          `stable runtime fixture category "${category}" has an invalid source.`,
+        );
+      }
+
+      if (!source.repository || !source.path) {
+        throw new Error(
+          `stable runtime fixture category "${category}" sources must include ` +
+            `repository and path.`,
+        );
+      }
+
+      if (!isApprovedPublicRuntimeSource(source)) {
+        throw new Error(
+          `stable runtime fixture category "${category}" source ` +
+            `${source.repository}:${source.path} must point at an approved ` +
+            `public fixture path or docs-site scenario manifest, not an ` +
+            `implementation test or raw test command directory.`,
+        );
+      }
+
+      if (isPublicRuntimeScenarioManifest(source)) {
+        hasScenarioManifest = true;
+        assertRuntimeScenarioManifest(contract, category, entry, source);
+      }
+    }
+
+    if (!hasScenarioManifest) {
+      throw new Error(
+        `stable runtime fixture category "${category}" must include a ` +
+          `docs-site JSON scenario manifest under static/platform-conformance/.`,
+      );
+    }
+  }
+}
+
 function assertFixtureCatalogTableMirrorsManifest(contract, doc) {
   const expectedHeaders = ['Category', 'Status', 'Source repository', 'Path', 'Purpose'];
   const { headers, rows } = extractMarkdownTable(doc, '## Fixture Catalog');
@@ -545,6 +782,7 @@ function main() {
     'provisional',
     'nonconforming',
   ]);
+  assertStableRuntimeSourcesArePublic(contract);
   assertAuthorityDocMirrorsManifest(contract);
   assertProtocolCatalogLinksAuthority();
   assertDocIsInSidebar();

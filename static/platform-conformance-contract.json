@@ -119,19 +119,9 @@
       "status": "stable",
       "description": "Live published-artifact scenarios for signal delivery and query consistency across PHP and Python workers, CLI and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility.",
       "sources": [
-        { "repository": "workflow", "path": "docs/architecture/platform-conformance-suite.md" },
-        { "repository": "workflow", "path": "docs/architecture/query-and-live-debug.md" },
-        { "repository": "workflow", "path": "tests/Feature/SignalReplayTest.php" },
-        { "repository": "workflow", "path": "tests/Feature/V2/V2QueryWorkflowTest.php" },
-        { "repository": "server", "path": "tests/Feature/WorkflowControlPlaneTest.php" },
-        { "repository": "server", "path": "tests/Feature/WorkflowQueryTaskBrokerTest.php" },
-        { "repository": "cli", "path": "tests/Commands/" },
-        { "repository": "sdk-python", "path": "tests/test_signals.py" },
-        { "repository": "sdk-python", "path": "tests/test_queries.py" },
-        { "repository": "sdk-python", "path": "tests/test_worker.py" },
-        { "repository": "waterline", "path": "CONFORMANCE.md" }
+        { "repository": "durable-workflow.github.io", "path": "static/platform-conformance/signal-query-runtime-scenarios.json" }
       ],
-      "authority_doc": "workflow/docs/architecture/platform-conformance-suite.md",
+      "authority_doc": "durable-workflow.github.io/docs/platform-conformance.md",
       "required_scenarios": [
         "published_artifact_install_only",
         "python_worker_cli_and_sdk_baseline",

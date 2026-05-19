@@ -74,17 +74,7 @@ declared fixtures directly from those locations.
 | `worker_task_lifecycle` | `stable` | `cli` | `tests/fixtures/external-task-input/` | Task input envelopes and task result envelopes used by every conforming worker. |
 | `worker_task_lifecycle` | `stable` | `sdk-python` | `tests/fixtures/external-task-input/` | Task input envelopes and task result envelopes used by every conforming worker. |
 | `worker_task_lifecycle` | `stable` | `sdk-python` | `tests/fixtures/external-task-result/` | Task input envelopes and task result envelopes used by every conforming worker. |
-| `signal_query_runtime_contract` | `stable` | `workflow` | `docs/architecture/platform-conformance-suite.md` | Live published-artifact scenarios for signal delivery and query consistency across PHP and Python workers, CLI and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility. |
-| `signal_query_runtime_contract` | `stable` | `workflow` | `docs/architecture/query-and-live-debug.md` | Live published-artifact scenarios for signal delivery and query consistency across PHP and Python workers, CLI and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility. |
-| `signal_query_runtime_contract` | `stable` | `workflow` | `tests/Feature/SignalReplayTest.php` | Live published-artifact scenarios for signal delivery and query consistency across PHP and Python workers, CLI and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility. |
-| `signal_query_runtime_contract` | `stable` | `workflow` | `tests/Feature/V2/V2QueryWorkflowTest.php` | Live published-artifact scenarios for signal delivery and query consistency across PHP and Python workers, CLI and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility. |
-| `signal_query_runtime_contract` | `stable` | `server` | `tests/Feature/WorkflowControlPlaneTest.php` | Live published-artifact scenarios for signal delivery and query consistency across PHP and Python workers, CLI and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility. |
-| `signal_query_runtime_contract` | `stable` | `server` | `tests/Feature/WorkflowQueryTaskBrokerTest.php` | Live published-artifact scenarios for signal delivery and query consistency across PHP and Python workers, CLI and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility. |
-| `signal_query_runtime_contract` | `stable` | `cli` | `tests/Commands/` | Live published-artifact scenarios for signal delivery and query consistency across PHP and Python workers, CLI and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility. |
-| `signal_query_runtime_contract` | `stable` | `sdk-python` | `tests/test_signals.py` | Live published-artifact scenarios for signal delivery and query consistency across PHP and Python workers, CLI and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility. |
-| `signal_query_runtime_contract` | `stable` | `sdk-python` | `tests/test_queries.py` | Live published-artifact scenarios for signal delivery and query consistency across PHP and Python workers, CLI and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility. |
-| `signal_query_runtime_contract` | `stable` | `sdk-python` | `tests/test_worker.py` | Live published-artifact scenarios for signal delivery and query consistency across PHP and Python workers, CLI and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility. |
-| `signal_query_runtime_contract` | `stable` | `waterline` | `CONFORMANCE.md` | Live published-artifact scenarios for signal delivery and query consistency across PHP and Python workers, CLI and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility. |
+| `signal_query_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/signal-query-runtime-scenarios.json` | Live published-artifact scenarios for signal delivery and query consistency across PHP and Python workers, CLI and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility. |
 | `history_replay_bundles` | `stable` | `workflow` | `tests/Fixtures/V2/GoldenHistory/` | Frozen history event bundles. A conforming SDK must replay each bundle and reproduce the documented final command sequence. |
 | `history_replay_bundles` | `stable` | `sdk-python` | `tests/fixtures/golden_history/` | Frozen history event bundles. A conforming SDK must replay each bundle and reproduce the documented final command sequence. |
 | `failure_repair_actionability` | `stable` | `server` | `docs/contracts/external-task-result.md` | Failure objects and repair / actionability shapes for stuck tasks, deterministic failure, and replay-mismatch surfaces. |
@@ -112,6 +102,12 @@ required scenario as pass, fail, or unsupported with linked findings:
 `unknown_signal_and_query_errors`,
 `malformed_signal_and_query_payloads`, and
 `waterline_operator_visibility`.
+
+Those scenario ids and their pass criteria are published as the
+machine-readable runtime scenario manifest at
+[`static/platform-conformance/signal-query-runtime-scenarios.json`](pathname:///platform-conformance/signal-query-runtime-scenarios.json).
+Implementation tests may exercise the scenarios, but they are not stable
+fixture sources for external harnesses.
 
 ## Pass / Fail Rules
 
@@ -186,9 +182,12 @@ the result matches the version exposed by the build under test. A
 The docs-site release check in
 `scripts/check-platform-conformance-authority.js` fails the build if
 the static manifest points at a missing, repo-local, version-alias-only,
-or non-docs-site authority. The same check requires this page to list
-the manifest schema, target names, fixture category names, pass / fail
-rules, and release gates from the machine-readable mirror.
+or non-docs-site authority. It also rejects stable runtime scenario
+categories that advertise implementation tests or raw command test
+directories instead of an approved public fixture or scenario manifest.
+The same check requires this page to list the manifest schema, target
+names, fixture category names, pass / fail rules, and release gates from
+the machine-readable mirror.
 
 When the suite changes, update this page and
 `static/platform-conformance-contract.json` together. If the change
