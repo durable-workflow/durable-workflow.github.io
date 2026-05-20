@@ -3,7 +3,7 @@
   "version": 1,
   "category": "child_workflow_runtime_contract",
   "suite_schema": "durable-workflow.v2.platform-conformance.suite",
-  "suite_version": 8,
+  "suite_version": 9,
   "description": "Public scenario manifest for child workflow runtime conformance. Harnesses use these scenario ids and criteria when evaluating published Durable Workflow artifacts.",
   "fixture_type": "published_artifact_runtime_scenario_manifest",
   "result_statuses": [
