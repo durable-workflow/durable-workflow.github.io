@@ -106,10 +106,12 @@ emit advisory warnings and become load-bearing only when promoted to
 `stable` in a later suite version.
 
 The `signal_query_runtime_contract` category is stable. A result for it
-must record the resolved published artifact versions and must name every
-required scenario as `pass`, `fail`, `unsupported`, `not_covered`, or
-`runner_blocked` with linked findings. Only `pass` cells count toward a
-passing category:
+must record concrete pinned published artifact versions and must name
+every required scenario as `pass`, `fail`, `unsupported`, `not_covered`,
+or `runner_blocked` with linked findings. Placeholder or unresolved
+version tokens such as `latest`, `current`, `head`, `<latest>`,
+`${VERSION}`, or `{{ version }}` fail the result gate. Only `pass` cells
+count toward a passing category:
 `published_artifact_install_only`,
 `python_worker_cli_and_sdk_baseline`, `php_worker_cli_and_sdk_baseline`,
 `python_worker_php_facing_and_cli_clients`,

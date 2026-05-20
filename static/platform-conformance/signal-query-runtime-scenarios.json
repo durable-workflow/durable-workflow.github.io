@@ -1,6 +1,6 @@
 {
   "schema": "durable-workflow.v2.platform-conformance.runtime-scenarios",
-  "version": 2,
+  "version": 3,
   "category": "signal_query_runtime_contract",
   "suite_schema": "durable-workflow.v2.platform-conformance.suite",
   "suite_version": 8,
@@ -16,6 +16,7 @@
   "artifact_policy": {
     "published_artifacts_only": true,
     "requires_resolved_versions": true,
+    "rejects_placeholder_versions": true,
     "implementation_tests_are_not_sources": true
   },
   "common_result_evidence": [
@@ -49,11 +50,12 @@
       "operations": [
         "install each claimed implementation from a released package, container, or documented download artifact",
         "start the server and at least one worker without reading from a source checkout",
-        "record the resolved artifact name and version for every actor"
+        "record the concrete pinned artifact name and version for every actor"
       ],
       "pass_criteria": [
         "all claimed actors start from published artifacts only",
-        "the result document records artifact versions for every claimed actor",
+        "the result document records concrete pinned artifact versions for every claimed actor",
+        "placeholder or unresolved artifact version tokens are rejected",
         "no scenario step depends on repository-local implementation tests"
       ],
       "unsupported_when": [

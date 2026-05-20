@@ -66,7 +66,7 @@ const VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS = {
     child_workflow_runtime_contract: 'sha256:3612fc5ce951c26382d7eb2842c368f9ce7a17ce48a246bd43d327ada2de54e2',
     history_replay_bundles: 'sha256:70658bc21f12e7b0c16306951ba18e2b2ec853487c287e81cfa64a2b40eff013',
     namespace_runtime_contract: 'sha256:aba71f98fcad2713a13801ef5430522ffdb6ea4214a160e50fca0cd7794315e5',
-    signal_query_runtime_contract: 'sha256:838cb9bf6c9a175d1f0ef281ab00f3d8d5998214261af535db135fe9b5dfe78b',
+    signal_query_runtime_contract: 'sha256:186e9a0a5bba1a094d0b8c7eb3299f0798f15e7aaab83b0d2596f0c91cc75373',
   },
 };
 const VERSIONED_PASS_FAIL_RULES = {
@@ -563,6 +563,30 @@ function assertVersionedRuntimeScenarioStatuses(contract, manifest, category, so
   return expectedStatuses;
 }
 
+function assertSignalQueryRuntimeArtifactPolicy(manifest, category, source) {
+  if (category !== 'signal_query_runtime_contract') {
+    return;
+  }
+
+  const policy = manifest.artifact_policy || {};
+
+  if (policy.requires_resolved_versions !== true) {
+    throw new Error(
+      `stable runtime fixture category "${category}" scenario manifest ` +
+        `${source.repository}:${source.path} must require resolved artifact versions.`,
+    );
+  }
+
+  if (policy.rejects_placeholder_versions !== true) {
+    throw new Error(
+      `stable runtime fixture category "${category}" scenario manifest ` +
+        `${source.repository}:${source.path} must advertise placeholder ` +
+        `artifact-version rejection so external harnesses can fail ` +
+        `unresolved tokens such as latest/current/head.`,
+    );
+  }
+}
+
 function runtimeScenarioCriteriaSnapshot(manifest) {
   const scenarios = {};
 
@@ -811,6 +835,7 @@ function assertRuntimeScenarioManifest(contract, category, entry, source) {
     category,
     source,
   );
+  assertSignalQueryRuntimeArtifactPolicy(manifest, category, source);
 
   if (
     !Array.isArray(manifest.result_statuses) ||
@@ -1114,6 +1139,7 @@ function assertAuthorityDocMirrorsManifest(contract) {
     '## Harness Contract',
     '## Release Gates',
     '## Release Check',
+    'Placeholder or unresolved',
   ]) {
     if (!doc.includes(required)) {
       throw new Error(
