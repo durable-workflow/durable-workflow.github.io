@@ -66,11 +66,16 @@ The suite does not duplicate fixtures. It declares source-of-truth
 locations and the categories each one supplies. Harnesses load the
 declared fixtures directly from those locations.
 
-Stable runtime scenario categories use this page's current-version docs
-route, `https://durable-workflow.github.io/docs/2.0/platform-conformance`,
-as their fixture-level `authority_doc`. Their machine-readable scenario
-ids and pass criteria are published in the docs-site JSON manifests
-linked from the category notes below.
+Every stable fixture category uses a canonical current-version docs-site URL
+as its fixture-level `authority_doc`. Stable runtime scenario categories use
+this page's current-version docs route,
+`https://durable-workflow.github.io/docs/2.0/platform-conformance`. Stable
+non-runtime categories point at the public docs authority for their surface:
+CLI and Python parity for control-plane fixtures, Worker Protocol for worker
+task lifecycle fixtures, Platform Protocol Specs for repair/actionability
+objects, and CLI Command Reference for CLI JSON envelopes. Their
+machine-readable scenario ids and pass criteria are published in the docs-site
+JSON manifests linked from the category notes below.
 
 | Category | Status | Source repository | Path | Purpose |
 | --- | --- | --- | --- | --- |
@@ -251,8 +256,8 @@ the result matches the version exposed by the build under test. A
 The docs-site release check in
 `scripts/check-platform-conformance-authority.js` fails the build if
 the static manifest points at a missing, repo-local, version-alias-only,
-or non-docs-site authority. It also validates stable runtime fixture-level
-`authority_doc` values as canonical current-version docs-site URLs and
+or non-docs-site authority. It also validates every stable fixture-level
+`authority_doc` value as a canonical current-version docs-site URL and
 rejects stable runtime scenario categories that advertise implementation
 tests or raw command test directories instead of an approved public
 fixture or scenario manifest.

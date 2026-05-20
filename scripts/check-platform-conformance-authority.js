@@ -647,14 +647,17 @@ function runtimeScenarioCategories(contract) {
   return categories;
 }
 
-function assertStableRuntimeFixtureAuthorityDocsResolve(contract) {
+function stableFixtureCategories(contract) {
+  return Object.entries(contract.fixture_catalog || {})
+    .filter(([, entry]) => entry && entry.status === 'stable')
+    .map(([category]) => category);
+}
+
+function assertStableFixtureAuthorityDocsResolve(contract) {
   const catalog = contract.fixture_catalog || {};
 
-  for (const category of runtimeScenarioCategories(contract)) {
+  for (const category of stableFixtureCategories(contract)) {
     const entry = catalog[category];
-    if (!entry) {
-      continue;
-    }
 
     assertCanonicalDocsSiteUrl(
       entry.authority_doc,
@@ -1093,7 +1096,7 @@ function main() {
     'nonconforming',
   ]);
   assertVersionedPassFailRules(contract);
-  assertStableRuntimeFixtureAuthorityDocsResolve(contract);
+  assertStableFixtureAuthorityDocsResolve(contract);
   assertStableRuntimeSourcesArePublic(contract);
   assertAuthorityDocMirrorsManifest(contract);
   assertProtocolCatalogLinksAuthority();

@@ -117,7 +117,7 @@
           "path": "tests/fixtures/control-plane/"
         }
       ],
-      "authority_doc": "durable-workflow.github.io/docs/polyglot/cli-python-parity.md"
+      "authority_doc": "https://durable-workflow.github.io/docs/2.0/polyglot/cli-python-parity"
     },
     "worker_task_lifecycle": {
       "status": "stable",
@@ -140,7 +140,7 @@
           "path": "tests/fixtures/external-task-result/"
         }
       ],
-      "authority_doc": "server/docs/contracts/external-task-input.md, server/docs/contracts/external-task-result.md"
+      "authority_doc": "https://durable-workflow.github.io/docs/2.0/polyglot/worker-protocol"
     },
     "signal_query_runtime_contract": {
       "status": "stable",
@@ -282,7 +282,7 @@
           "path": "docs/contracts/replay-verification.md"
         }
       ],
-      "authority_doc": "server/docs/contracts/external-task-result.md"
+      "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-protocol-specs"
     },
     "cli_json_envelopes": {
       "status": "stable",
@@ -297,7 +297,7 @@
           "path": "schemas/"
         }
       ],
-      "authority_doc": "durable-workflow.github.io/docs/polyglot/cli-reference.md"
+      "authority_doc": "https://durable-workflow.github.io/docs/2.0/polyglot/cli-reference"
     },
     "waterline_observer_envelopes": {
       "status": "provisional",
