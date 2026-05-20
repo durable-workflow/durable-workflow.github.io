@@ -27,12 +27,12 @@ The machine-readable mirror is published at
 with schema `durable-workflow.v2.platform-conformance.suite`, version
 `9`. The same manifest is advertised by the standalone server from
 `GET /api/cluster/info` under `platform_conformance_suite`. The
-[Platform Protocol Specs](/docs/2.0/platform-protocol-specs) catalog names
+[Platform Protocol Specs](/docs/platform-protocol-specs) catalog names
 that nested manifest as the `platform_conformance_suite_manifest`
 object family in the `cluster_info_envelope` spec.
 
 The suite is downstream of the
-[Version Compatibility](/docs/2.0/compatibility) authority. Where the suite
+[Version Compatibility](/docs/compatibility) authority. Where the suite
 enumerates a surface family or stability rule, it must match the
 surface-stability contract. The compatibility authority defines what
 the contract is; this page defines how an implementation proves it
@@ -70,7 +70,7 @@ declared fixtures directly from those locations.
 Every stable fixture category uses a canonical current-version docs-site URL
 as its fixture-level `authority_doc`. Stable runtime scenario categories use
 this page's current-version docs route,
-`https://durable-workflow.github.io/docs/2.0/platform-conformance`. Stable
+`https://durable-workflow.github.io/docs/platform-conformance`. Stable
 non-runtime categories point at the public docs authority for their surface:
 CLI and Python parity for control-plane fixtures, Worker Protocol for worker
 task lifecycle fixtures, Platform Protocol Specs for repair/actionability

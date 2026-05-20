@@ -22,25 +22,24 @@ handle. The loop below starts with the same invariant a human learns, then
 switches to machine-readable contracts for discovery, execution, diagnosis, and
 repair.
 
-## 1. Pin The Docs Version
+## 1. Use The Current Docs
 
-For v2 work, pin the version-specific bundle so you do not end up reading
-the 1.x stable docs on canonical:
-
-```text
-https://durable-workflow.com/llms-full-2.0.txt
-```
-
-The canonical bundle tracks the site's `lastVersion` (1.x today) and is
-the right bundle for v1 work or general agent prompts that should default
-to the stable line:
+For current 2.0 work, use the canonical bundle. It tracks the same default
+Docs path human readers reach from the public site:
 
 ```text
 https://durable-workflow.com/llms-full.txt
 ```
 
-Use the explicit 1.x pin when you want the URL itself to keep meaning 1.x
-across a future major bump:
+Use the version-specific 2.0 bundle when the URL itself must stay pinned to
+that major line:
+
+```text
+https://durable-workflow.com/llms-full-2.0.txt
+```
+
+Use the explicit 1.x pin only for legacy applications that are intentionally
+staying on the historical 1.x API:
 
 ```text
 https://durable-workflow.com/llms-full-1.x.txt

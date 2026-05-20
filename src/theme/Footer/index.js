@@ -10,16 +10,16 @@ export default function FooterWrapper(props) {
       return;
     }
 
-    // Canonical /llms-full.txt tracks the site's lastVersion (1.x). Readers
-    // on a /docs/2.0/ path are explicitly looking at v2; rewrite the footer's
-    // bundle link to the v2 pin so they don't get the 1.x bundle from the
-    // canonical link.
+    // Canonical /llms-full.txt tracks the default current docs. Readers on a
+    // versioned historical path should get the matching pinned bundle.
     const pathname = window.location.pathname;
-    const isV2Docs = pathname.startsWith('/docs/2.0/');
+    const isV1Docs = pathname.startsWith('/docs/1.x/');
+    const isV2Docs = pathname.startsWith('/docs/');
 
     const llmDocsLink = footerRef.current.querySelector('a[href*="llms-full.txt"]');
-    if (llmDocsLink && isV2Docs) {
-      llmDocsLink.setAttribute('href', 'https://durable-workflow.com/llms-full-2.0.txt');
+    if (llmDocsLink && (isV1Docs || isV2Docs)) {
+      const version = isV1Docs ? '1.x' : '2.0';
+      llmDocsLink.setAttribute('href', `https://durable-workflow.com/llms-full-${version}.txt`);
     }
   }, []);
 

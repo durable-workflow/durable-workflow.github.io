@@ -7,11 +7,11 @@ sidebar_position: 3
 This guide covers installing the Durable Workflow PHP package for Laravel applications.
 
 If you are deciding between package embedding and the standalone server, start
-with [Deployment Modes](/docs/2.0/polyglot/deployment-modes). This page covers
+with [Deployment Modes](/docs/polyglot/deployment-modes). This page covers
 the embedded Laravel path.
 
 > **Prefer to start from a working app?** The
-> [Sample App](/docs/2.0/sample-app) is a runnable Laravel 13 project on
+> [Sample App](/docs/sample-app) is a runnable Laravel 13 project on
 > Durable Workflow 2.0 with one workflow per pattern surface, a Codespaces
 > flow, and a `docker compose` flow. Clone it, run `php artisan app:init`,
 > and you have the same install applied for you. Come back here when you
@@ -42,7 +42,7 @@ composer require durable-workflow/workflow:^2.0@alpha
 ```
 
 Drop the `@alpha` once 2.0.0 is tagged stable on Packagist. See the
-[compatibility and release-authority contract](/docs/2.0/compatibility) for
+[compatibility and release-authority contract](/docs/compatibility) for
 the platform-wide stability rules; the `@alpha` Composer flag is the
 prerelease ramp for the workflow package's `2.0.0` cut and does not change
 the stability of any other published surface.

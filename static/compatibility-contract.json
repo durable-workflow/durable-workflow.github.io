@@ -1,7 +1,7 @@
 {
   "schema": "durable-workflow.v2.surface-stability.contract",
   "version": 1,
-  "authority_url": "https://durable-workflow.github.io/docs/2.0/compatibility",
+  "authority_url": "https://durable-workflow.github.io/docs/compatibility",
   "stability_levels": {
     "frozen": {
       "meaning": "Wire-format or persisted shape that must decode the same way for the workflow lifetime. Renaming, removing, or repurposing a field is a protocol break, never a minor change. Treat any new shape as a parallel primitive with a new type name.",

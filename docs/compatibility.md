@@ -57,7 +57,7 @@ mirror.
 ## Companion: Platform Protocol Spec Catalog
 
 This page says *which* surfaces are public and *how* they may change.
-The companion [Platform Protocol Specs](/docs/2.0/platform-protocol-specs)
+The companion [Platform Protocol Specs](/docs/platform-protocol-specs)
 catalog says *where* the normative machine-readable specification for
 each surface lives, *which format* the spec uses (OpenAPI for HTTP APIs,
 JSON Schema for object families, AsyncAPI for event-stream semantics),
@@ -78,7 +78,7 @@ contract above; the release-check gate in
 Every platform protocol catalog entry is now marked `published`, and each
 entry links to an OpenAPI, AsyncAPI, or JSON Schema document under
 `static/platform-protocol-specs/`. The
-[`cluster_info_envelope`](/docs/2.0/platform-protocol-specs#cluster_info_envelope)
+[`cluster_info_envelope`](/docs/platform-protocol-specs#cluster_info_envelope)
 schema pins the discovery surface every other catalog entry can be
 reached from.
 
@@ -118,7 +118,7 @@ These documents add per-package detail under the rules on this page:
 
 - `durable-workflow/workflow` (PHP) — [`docs/api-stability.md`](https://github.com/durable-workflow/workflow/blob/v2/docs/api-stability.md). Authoritative for the PHP authoring API, the `Support\*` server-facing classes, and the frozen history-event wire-format tables.
 - `durable-workflow/server` — [`README.md`](https://github.com/durable-workflow/server/blob/main/README.md) and `docs/contracts/*`. Authoritative for the standalone server's request/response contracts.
-- `dw` CLI — [`/docs/2.0/polyglot/cli-reference`](/docs/2.0/polyglot/cli-reference). Authoritative for the JSON output shapes and exit codes.
+- `dw` CLI — [`/docs/polyglot/cli-reference`](/docs/polyglot/cli-reference). Authoritative for the JSON output shapes and exit codes.
 - Python SDK — `README.md` in `durable-workflow/sdk-python`. Authoritative for the `durable_workflow` package public API.
 
 ## Release Rules
@@ -163,7 +163,7 @@ Required:
   one minor release before cutting the major
 - where feasible, ship the new surface alongside the old surface in a
   previous minor release so callers can migrate before the major
-- document the migration path on the [migration guide](/docs/2.0/migration)
+- document the migration path on the [migration guide](/docs/migration)
   before publish
 
 ## Diagnostic-Only Versus Guaranteed Fields
@@ -285,7 +285,7 @@ and the compatibility policy in `GET /api/cluster/info`:
   "surface_stability_contract": {
     "schema": "durable-workflow.v2.surface-stability.contract",
     "version": 1,
-    "authority_url": "https://durable-workflow.github.io/docs/2.0/compatibility"
+    "authority_url": "https://durable-workflow.github.io/docs/compatibility"
   },
   "control_plane": {
     "version": "2",
@@ -378,7 +378,7 @@ docs-side gates automatically; the rest belong to the human reviewer.
 - [ ] **JSON mirror in sync.** `static/compatibility-contract.json` matches
   the manifest emitted by `Workflow\V2\Support\SurfaceStabilityContract`
   (the workflow package contract test pins the manifest shape).
-- [ ] **Install docs aligned.** The [Installation](/docs/2.0/installation)
+- [ ] **Install docs aligned.** The [Installation](/docs/installation)
   page and any package install snippets do not claim a stability level
   different from the level this page assigns to the relevant SDK.
 - [ ] **Package metadata aligned.** `composer.json` / `pyproject.toml` /
@@ -403,9 +403,9 @@ docs-side gates automatically; the rest belong to the human reviewer.
 
 ## See Also
 
-- [Server Setup](/docs/2.0/polyglot/server) — Deploying the standalone server
-- [Server API Reference](/docs/2.0/polyglot/server-api-reference) — `GET /api/cluster/info` and the protocol manifests
-- [Python SDK](/docs/2.0/polyglot/python) — Python client and worker
-- [CLI](/docs/2.0/polyglot/cli) — Command-line interface
-- [Migration Guide](/docs/2.0/migration) — Migrating from v1 to v2
+- [Server Setup](/docs/polyglot/server) — Deploying the standalone server
+- [Server API Reference](/docs/polyglot/server-api-reference) — `GET /api/cluster/info` and the protocol manifests
+- [Python SDK](/docs/polyglot/python) — Python client and worker
+- [CLI](/docs/polyglot/cli) — Command-line interface
+- [Migration Guide](/docs/migration) — Migrating from v1 to v2
 - [PHP workflow `docs/api-stability.md`](https://github.com/durable-workflow/workflow/blob/v2/docs/api-stability.md) — per-package stability for the PHP workflow package

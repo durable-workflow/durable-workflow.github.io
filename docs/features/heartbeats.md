@@ -38,7 +38,7 @@ final class PollRemoteJob extends Activity
 
 Inside the activity, `activityId()`, `attemptId()`, and `attemptCount()` expose the durable execution and current-attempt identity if you need correlation keys for external work. Use `activityId()` as the default remote idempotency key; use `attemptId()` only for systems that need to distinguish separate tries of the same durable activity execution.
 
-Polyglot workers can heartbeat via the HTTP worker bridge without constructing the PHP activity class — see the [worker protocol](/docs/2.0/polyglot/worker-protocol) for the endpoints.
+Polyglot workers can heartbeat via the HTTP worker bridge without constructing the PHP activity class — see the [worker protocol](/docs/polyglot/worker-protocol) for the endpoints.
 
 ## Progress Snapshots
 

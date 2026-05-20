@@ -4,10 +4,8 @@ import Link from '@docusaurus/Link';
 import {useDocsVersion} from '@docusaurus/theme-common/internal';
 
 // Docusaurus only renders the built-in banner when a version declares
-// `banner` in docusaurus.config.js. v2.0 already shows an "unreleased"
-// warning banner; v1.x carries no banner by default. Until v2.0 ships,
-// this wrapper renders an info banner on v1.x pages so every page gives
-// readers a visual cue about which major version they are viewing.
+// `banner` in docusaurus.config.js. v1.x carries no banner by default, so this
+// wrapper renders an info banner on historical pages.
 export default function DocVersionBannerWrapper(props) {
   const versionMetadata = useDocsVersion();
 
@@ -17,12 +15,11 @@ export default function DocVersionBannerWrapper(props) {
         className="alert alert--info margin-bottom--md"
         role="alert">
         <div>
-          You are viewing the <b>v1.x</b> documentation (the current stable
-          release line).
+          You are viewing the historical <b>v1.x</b> documentation.
         </div>
         <div className="margin-top--md">
-          v2.0 is in active development -{' '}
-          <Link to="/docs/2.0/introduction">preview the v2.0 documentation</Link>.
+          Current 2.0 guidance is available in the{' '}
+          <Link to="/docs/introduction">default documentation</Link>.
         </div>
       </div>
     );

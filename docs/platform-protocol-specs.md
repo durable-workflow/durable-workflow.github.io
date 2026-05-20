@@ -32,7 +32,7 @@ single source of truth for SDK authors, agents, operators, and
 third-party tooling that need to validate against Durable contracts
 without reading prose or reverse-engineering fixtures.
 
-The companion page [Version Compatibility](/docs/2.0/compatibility) says
+The companion page [Version Compatibility](/docs/compatibility) says
 *which* surfaces are public and *how* they may change. This catalog says
 *where* the normative spec for each surface lives, *which format* it
 uses, *which repository* owns it, which object families it governs, which
@@ -110,7 +110,7 @@ enumerates the full spec set even before every spec is written.
 
 These rules apply to the spec entries below. They are reproduced in the
 JSON mirror under `evolution_rules`. They sit on top of the
-patch/minor/major release rules in [Version Compatibility](/docs/2.0/compatibility);
+patch/minor/major release rules in [Version Compatibility](/docs/compatibility);
 this page only adds the per-format specifics.
 
 | Evolution rule | Meaning | Applies to |
@@ -546,7 +546,7 @@ field shapes are normative under each nested manifest's own `schema` /
 `version` and are not redefined here.
 
 The nested `platform_conformance_suite` manifest points to the public
-[Platform Conformance Suite](/docs/2.0/platform-conformance) authority and
+[Platform Conformance Suite](/docs/platform-conformance) authority and
 its static mirror at
 [`static/platform-conformance-contract.json`](pathname:///platform-conformance-contract.json).
 

@@ -18,14 +18,14 @@ import CliInstall from '@site/src/components/CliInstall';
 # CLI
 
 The Durable Workflow CLI (`dw`) is a shell interface to the
-[standalone server](/docs/2.0/polyglot/server). It lets operators start, list,
+[standalone server](/docs/polyglot/server). It lets operators start, list,
 signal, query, update, repair, cancel, terminate, and archive workflows, manage
 schedules, inspect task queues, and check server health — all from the command
 line.
 
 The same CLI works against any Durable Workflow server, regardless of which language your workflows are written in.
 For side-by-side examples of the same operation through `dw` and the Python
-SDK, see [CLI and Python parity](/docs/2.0/polyglot/cli-python-parity).
+SDK, see [CLI and Python parity](/docs/polyglot/cli-python-parity).
 
 ## Install
 
@@ -317,7 +317,7 @@ dw system:operator-metrics --json | jq '.operator_metrics.backlog | {
 }'
 ```
 
-See [Task Queue Admission](/docs/2.0/polyglot/task-queue-admission) for the
+See [Task Queue Admission](/docs/polyglot/task-queue-admission) for the
 operator tuning contract behind those fields.
 
 To inspect the matching-role routing contract on the node you queried, read the
@@ -385,5 +385,5 @@ The canonical source is [`DurableWorkflow\Cli\Support\ExitCode`](https://github.
 
 ## Reference
 
-See the [CLI command reference](/docs/2.0/polyglot/cli-reference) for command
+See the [CLI command reference](/docs/polyglot/cli-reference) for command
 shapes, options, output modes, and automation failure behavior.

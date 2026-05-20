@@ -2,7 +2,7 @@
   "schema": "durable-workflow.v2.platform-conformance.suite",
   "version": 9,
   "authority_doc": "docs/platform-conformance.md",
-  "authority_url": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
+  "authority_url": "https://durable-workflow.github.io/docs/platform-conformance",
   "surface_stability_authority": "durable-workflow.v2.surface-stability.contract",
   "result_schema": "durable-workflow.v2.platform-conformance.result",
   "result_version": 1,
@@ -117,7 +117,7 @@
           "path": "tests/fixtures/control-plane/"
         }
       ],
-      "authority_doc": "https://durable-workflow.github.io/docs/2.0/polyglot/cli-python-parity"
+      "authority_doc": "https://durable-workflow.github.io/docs/polyglot/cli-python-parity"
     },
     "worker_task_lifecycle": {
       "status": "stable",
@@ -140,7 +140,7 @@
           "path": "tests/fixtures/external-task-result/"
         }
       ],
-      "authority_doc": "https://durable-workflow.github.io/docs/2.0/polyglot/worker-protocol"
+      "authority_doc": "https://durable-workflow.github.io/docs/polyglot/worker-protocol"
     },
     "signal_query_runtime_contract": {
       "status": "stable",
@@ -151,7 +151,7 @@
           "path": "static/platform-conformance/signal-query-runtime-scenarios.json"
         }
       ],
-      "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
+      "authority_doc": "https://durable-workflow.github.io/docs/platform-conformance",
       "required_scenarios": [
         "published_artifact_install_only",
         "python_worker_cli_and_sdk_baseline",
@@ -185,7 +185,7 @@
           "path": "tests/fixtures/golden_history/"
         }
       ],
-      "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
+      "authority_doc": "https://durable-workflow.github.io/docs/platform-conformance",
       "required_scenarios": [
         "published_artifact_install_only",
         "python_completed_history_activity_replay",
@@ -227,7 +227,7 @@
           "path": "static/platform-conformance/namespace-runtime-scenarios.json"
         }
       ],
-      "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
+      "authority_doc": "https://durable-workflow.github.io/docs/platform-conformance",
       "required_scenarios": [
         "published_artifact_install_only",
         "namespace_create_update_describe_and_list",
@@ -254,7 +254,7 @@
           "path": "static/platform-conformance/child-workflow-runtime-scenarios.json"
         }
       ],
-      "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
+      "authority_doc": "https://durable-workflow.github.io/docs/platform-conformance",
       "required_scenarios": [
         "published_artifact_install_only",
         "python_parent_python_child_baseline",
@@ -282,7 +282,7 @@
           "path": "docs/contracts/replay-verification.md"
         }
       ],
-      "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-protocol-specs"
+      "authority_doc": "https://durable-workflow.github.io/docs/platform-protocol-specs"
     },
     "cli_json_envelopes": {
       "status": "stable",
@@ -297,7 +297,7 @@
           "path": "schemas/"
         }
       ],
-      "authority_doc": "https://durable-workflow.github.io/docs/2.0/polyglot/cli-reference"
+      "authority_doc": "https://durable-workflow.github.io/docs/polyglot/cli-reference"
     },
     "waterline_observer_envelopes": {
       "status": "provisional",

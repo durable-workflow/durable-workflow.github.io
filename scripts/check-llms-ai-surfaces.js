@@ -131,7 +131,7 @@ function main() {
   assertIncludes(canonicalIndex, 'llms-full.txt', 'llms.txt');
   assertExcludes(canonicalIndex, 'llms-full-2.0.txt', 'llms.txt');
 
-  // v1.x is also reachable via the explicit pinned alias (mirrors canonical).
+  // v1.x is reachable only via the explicit pinned legacy alias.
   assertIncludes(v1Index, 'versioned_docs/version-1.x', 'llms-1.x.txt');
   assertIncludes(v1Index, 'llms-full-1.x.txt', 'llms-1.x.txt');
   assertExcludes(v1Index, 'docs/ai-assisted-development.md', 'llms-1.x.txt');

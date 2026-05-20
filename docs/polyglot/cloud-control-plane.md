@@ -404,8 +404,8 @@ plot `estimated_cost_cents / 100` as the cost series.
 
 ## Related References
 
-- [Deployment Modes](/docs/2.0/polyglot/deployment-modes)
-- [Server](/docs/2.0/polyglot/server)
-- [Server Role Topology](/docs/2.0/polyglot/server-role-topology)
-- [Self-Hosting Deployments](/docs/2.0/deployment)
-- [Support](/docs/2.0/support)
+- [Deployment Modes](/docs/polyglot/deployment-modes)
+- [Server](/docs/polyglot/server)
+- [Server Role Topology](/docs/polyglot/server-role-topology)
+- [Self-Hosting Deployments](/docs/deployment)
+- [Support](/docs/support)

@@ -26,7 +26,7 @@ intent alongside the live worker rows so the next poll, CLI describe, or
 the old workers disappear before their backlog drains.
 
 This guide is about cohort control, not the whole routing contract. Read
-[Worker Compatibility and Routing](/docs/2.0/polyglot/worker-compatibility-routing)
+[Worker Compatibility and Routing](/docs/polyglot/worker-compatibility-routing)
 for the rule that in-flight work must stay pinned to compatible executors and
 that "no compatible worker is available" is explicit operator state.
 
@@ -202,13 +202,13 @@ unversioned cohort with `--unversioned` and any other build with
 
 ## Related References
 
-- [Namespace, Auth, And Worker Registration](/docs/2.0/polyglot/namespace-auth-workers)
+- [Namespace, Auth, And Worker Registration](/docs/polyglot/namespace-auth-workers)
   for the `POST /api/worker/register` call that stamps `build_id` on every
   worker.
-- [Task Queue Admission](/docs/2.0/polyglot/task-queue-admission) for the
+- [Task Queue Admission](/docs/polyglot/task-queue-admission) for the
   worker-slot and dispatch budgets that apply alongside rollout state.
-- [Server API Reference](/docs/2.0/polyglot/server-api-reference) for the
+- [Server API Reference](/docs/polyglot/server-api-reference) for the
   full list of control-plane routes and their required roles and protocol
   headers.
-- [CLI Command Reference](/docs/2.0/polyglot/cli-reference) for the argument
+- [CLI Command Reference](/docs/polyglot/cli-reference) for the argument
   and flag shape of every `dw task-queue:*` subcommand.

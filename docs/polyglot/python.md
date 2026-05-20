@@ -19,7 +19,7 @@ The Python SDK is a thin, async-first client for the Durable Workflow server. It
 The SDK targets the same durable model as the PHP package — instance IDs, run IDs, history events, task queues, and type keys are shared across languages. A Python worker can serve activities for a PHP-authored workflow, and vice versa.
 
 For side-by-side examples of the same operation through the Python SDK and
-`dw`, see [CLI and Python parity](/docs/2.0/polyglot/cli-python-parity).
+`dw`, see [CLI and Python parity](/docs/polyglot/cli-python-parity).
 
 For constructor signatures, return types, exception classes, and metric names,
 see the generated [Python API reference](https://python.durable-workflow.com/).
@@ -27,7 +27,7 @@ see the generated [Python API reference](https://python.durable-workflow.com/).
 ## Requirements
 
 - Python 3.10 or later
-- Docker (for the local server used in this quickstart) or an existing [Durable Workflow server](/docs/2.0/polyglot/server)
+- Docker (for the local server used in this quickstart) or an existing [Durable Workflow server](/docs/polyglot/server)
 
 ## Installation
 
@@ -93,7 +93,7 @@ docker compose up -d
 until curl -sf http://localhost:8080/api/health > /dev/null; do sleep 1; done
 ```
 
-`DW_AUTH_DRIVER=none` is local-development only. For production deployment — auth drivers, database config, TLS — see the [server setup guide](/docs/2.0/polyglot/server).
+`DW_AUTH_DRIVER=none` is local-development only. For production deployment — auth drivers, database config, TLS — see the [server setup guide](/docs/polyglot/server).
 
 For a larger example, the SDK repository includes [`examples/order_processing`](https://github.com/durable-workflow/sdk-python/tree/main/examples/order_processing), a Docker Compose stack that runs a Python worker through an order workflow end to end.
 
@@ -282,7 +282,7 @@ Task queue return types expose nested `TaskQueueAdmission`,
 `TaskQueueBuildIdRollout`, and `TaskQueueBuildIdRolloutState` dataclasses so
 scripts can check server-side capacity and build-id rollout without parsing
 prose output. See
-[Worker Build-Id Rollout](/docs/2.0/polyglot/worker-build-id-rollout) for the
+[Worker Build-Id Rollout](/docs/polyglot/worker-build-id-rollout) for the
 end-to-end rollout walkthrough; the CLI mirrors of these methods are
 `dw task-queue:build-ids`, `dw task-queue:drain`, and `dw task-queue:resume`.
 
@@ -788,7 +788,7 @@ worker and drives one workflow to a terminal state with sequential polling. Use
 The two `max_concurrent_*` values are advertised to the server during worker
 registration and appear in task queue admission diagnostics. Treat them as the
 worker's local capacity. Use server-side
-[task queue admission](/docs/2.0/polyglot/task-queue-admission) caps when a
+[task queue admission](/docs/polyglot/task-queue-admission) caps when a
 namespace, queue, or downstream budget group needs a hard shared budget across
 multiple workers.
 
@@ -1480,4 +1480,4 @@ client = Client(
 )
 ```
 
-Set the `namespace` argument to whichever tenant namespace the shared server has provisioned for your team, and use the credentials issued for that namespace. The server operator manages namespace creation — see the [server setup guide](/docs/2.0/polyglot/server) for details.
+Set the `namespace` argument to whichever tenant namespace the shared server has provisioned for your team, and use the credentials issued for that namespace. The server operator manages namespace creation — see the [server setup guide](/docs/polyglot/server) for details.

@@ -30,10 +30,6 @@ function normalizeDocLink(href, sourcePath) {
     return null;
   }
 
-  if (withoutAnchor.startsWith('/docs/2.0/')) {
-    return withoutAnchor.slice('/docs/2.0/'.length);
-  }
-
   if (withoutAnchor.startsWith('/docs/')) {
     return withoutAnchor.slice('/docs/'.length);
   }
