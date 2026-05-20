@@ -276,3 +276,12 @@ category to stable, changes stable runtime scenario `operations` or
 version in the same release change. The release check pins stable
 runtime scenario criteria by suite-versioned digests so external
 harnesses cannot observe new criteria under an old suite version.
+
+Published runtime scenario criteria digest entries are append-only. To
+advance stable runtime scenario `operations` or `pass_criteria`, leave
+every existing `VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS` entry
+unchanged, increase the suite version, update the scenario manifest to
+that version, and add a new digest entry for the new current suite. The
+release check compares published digest entries from the target branch
+against the current change, so editing or deleting an older suite entry
+fails even when the current suite version adds a new digest.

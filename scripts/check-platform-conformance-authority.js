@@ -9,10 +9,13 @@
 // mirror must resolve to published docs-site content.
 
 const fs = require('fs');
+const childProcess = require('child_process');
 const crypto = require('crypto');
 const path = require('path');
+const vm = require('vm');
 
 const repoRoot = path.join(__dirname, '..');
+const thisScriptPath = path.relative(repoRoot, __filename).split(path.sep).join('/');
 const docsDir = path.join(repoRoot, 'docs');
 const configPath = path.join(repoRoot, 'docusaurus.config.js');
 const contractPath = path.join(repoRoot, 'static', 'platform-conformance-contract.json');
@@ -534,6 +537,233 @@ function assertJsonEqual(actual, expected, label) {
         `If the pass / fail rule or runtime status semantics changed, ` +
         `advance the suite version and add a new versioned expectation.`,
     );
+  }
+}
+
+function extractConstObjectLiteral(source, constName, label) {
+  const marker = `const ${constName} =`;
+  const markerIndex = source.indexOf(marker);
+  if (markerIndex === -1) {
+    throw new Error(`${label} must declare ${constName}.`);
+  }
+
+  const objectStart = source.indexOf('{', markerIndex + marker.length);
+  if (objectStart === -1) {
+    throw new Error(`${label} ${constName} declaration must be an object.`);
+  }
+
+  let depth = 0;
+  let quote = null;
+  let escaped = false;
+  let lineComment = false;
+  let blockComment = false;
+
+  for (let index = objectStart; index < source.length; index += 1) {
+    const char = source[index];
+    const next = source[index + 1];
+
+    if (lineComment) {
+      if (char === '\n') {
+        lineComment = false;
+      }
+      continue;
+    }
+
+    if (blockComment) {
+      if (char === '*' && next === '/') {
+        blockComment = false;
+        index += 1;
+      }
+      continue;
+    }
+
+    if (quote) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === '\\') {
+        escaped = true;
+      } else if (char === quote) {
+        quote = null;
+      }
+      continue;
+    }
+
+    if (char === '/' && next === '/') {
+      lineComment = true;
+      index += 1;
+      continue;
+    }
+
+    if (char === '/' && next === '*') {
+      blockComment = true;
+      index += 1;
+      continue;
+    }
+
+    if (char === '\'' || char === '"' || char === '`') {
+      quote = char;
+      continue;
+    }
+
+    if (char === '{') {
+      depth += 1;
+    } else if (char === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return source.slice(objectStart, index + 1);
+      }
+    }
+  }
+
+  throw new Error(
+    `${label} ${constName} declaration must close its object literal.`,
+  );
+}
+
+function parseConstObjectLiteral(source, constName, label) {
+  const objectLiteral = extractConstObjectLiteral(source, constName, label);
+
+  try {
+    return vm.runInNewContext(`(${objectLiteral})`, Object.create(null), {
+      timeout: 1000,
+    });
+  } catch (err) {
+    throw new Error(
+      `${label} ${constName} declaration is not parseable: ${err.message}`,
+    );
+  }
+}
+
+function normalizeRuntimeScenarioCriteriaDigestTable(table, label) {
+  if (!table || typeof table !== 'object' || Array.isArray(table)) {
+    throw new Error(`${label} must be an object keyed by suite version.`);
+  }
+
+  const normalized = {};
+  for (const [version, categories] of Object.entries(table)) {
+    if (!/^[1-9]\d*$/.test(version)) {
+      throw new Error(`${label} has invalid suite version key "${version}".`);
+    }
+
+    if (
+      !categories ||
+      typeof categories !== 'object' ||
+      Array.isArray(categories)
+    ) {
+      throw new Error(
+        `${label}.${version} must be an object keyed by fixture category.`,
+      );
+    }
+
+    normalized[version] = {};
+    for (const [category, digest] of Object.entries(categories)) {
+      if (typeof digest !== 'string' || !/^sha256:[a-f0-9]{64}$/.test(digest)) {
+        throw new Error(
+          `${label}.${version}.${category} must be a sha256 digest string.`,
+        );
+      }
+
+      normalized[version][category] = digest;
+    }
+  }
+
+  return normalized;
+}
+
+function git(args) {
+  return childProcess.execFileSync('git', args, {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+}
+
+function candidateRuntimeScenarioCriteriaBaselineRefs() {
+  const refs = [];
+
+  if (process.env.PLATFORM_CONFORMANCE_DIGEST_BASE_REF) {
+    refs.push(process.env.PLATFORM_CONFORMANCE_DIGEST_BASE_REF);
+  }
+
+  if (process.env.GITHUB_BASE_REF) {
+    refs.push(`origin/${process.env.GITHUB_BASE_REF}`);
+    refs.push(`refs/remotes/origin/${process.env.GITHUB_BASE_REF}`);
+  }
+
+  refs.push('origin/main');
+  refs.push('main');
+
+  return Array.from(new Set(refs.filter(Boolean)));
+}
+
+function loadRuntimeScenarioCriteriaDigestBaseline() {
+  const errors = [];
+  const constName = 'VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS';
+
+  for (const ref of candidateRuntimeScenarioCriteriaBaselineRefs()) {
+    try {
+      const source = git(['show', `${ref}:${thisScriptPath}`]);
+      const digests = normalizeRuntimeScenarioCriteriaDigestTable(
+        parseConstObjectLiteral(
+          source,
+          constName,
+          `published ${thisScriptPath} at ${ref}`,
+        ),
+        `published ${constName} at ${ref}`,
+      );
+
+      return { ref, digests };
+    } catch (err) {
+      errors.push(`${ref}: ${err.message}`);
+    }
+  }
+
+  if (
+    process.env.PLATFORM_CONFORMANCE_DIGEST_BASE_REF ||
+    process.env.GITHUB_BASE_REF
+  ) {
+    throw new Error(
+      `Unable to load published ${constName} baseline. ` +
+        `Ensure CI checks out the target branch history. Tried: ${errors.join('; ')}`,
+    );
+  }
+
+  return null;
+}
+
+function assertPublishedRuntimeScenarioCriteriaDigestsImmutable() {
+  const baseline = loadRuntimeScenarioCriteriaDigestBaseline();
+  if (!baseline) {
+    return;
+  }
+
+  const current = normalizeRuntimeScenarioCriteriaDigestTable(
+    VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS,
+    'VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS',
+  );
+
+  const baselineVersions = Object.keys(baseline.digests)
+    .sort((a, b) => Number(a) - Number(b));
+
+  for (const version of baselineVersions) {
+    if (!(version in current)) {
+      throw new Error(
+        `Published runtime scenario criteria digest entry for suite version ` +
+          `${version} from ${baseline.ref} must remain declared. Add a new ` +
+          `suite-version entry for changed criteria instead of deleting ` +
+          `historical entries.`,
+      );
+    }
+
+    if (stableJson(current[version]) !== stableJson(baseline.digests[version])) {
+      throw new Error(
+        `Published runtime scenario criteria digest entry for suite version ` +
+          `${version} changed from ${baseline.ref}. Keep historical ` +
+          `VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS entries immutable; ` +
+          `advance the suite version and add a new current entry for changed ` +
+          `stable runtime scenario operations or pass_criteria.`,
+      );
+    }
   }
 }
 
@@ -1230,6 +1460,7 @@ function main() {
     'static/platform-conformance-contract.json',
   );
 
+  assertPublishedRuntimeScenarioCriteriaDigestsImmutable();
   assertContractAuthorityResolves(contract);
   assertArrayOfStrings(contract, 'conformance_levels', [
     'full',
