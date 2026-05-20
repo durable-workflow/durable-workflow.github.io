@@ -1,6 +1,6 @@
 {
   "schema": "durable-workflow.v2.platform-conformance.suite",
-  "version": 6,
+  "version": 7,
   "authority_doc": "docs/platform-conformance.md",
   "authority_url": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
   "surface_stability_authority": "durable-workflow.v2.surface-stability.contract",
@@ -24,6 +24,7 @@
         "control_plane_request_response",
         "signal_query_runtime_contract",
         "namespace_runtime_contract",
+        "child_workflow_runtime_contract",
         "worker_task_lifecycle",
         "failure_repair_actionability"
       ]
@@ -39,6 +40,7 @@
         "control_plane_request_response",
         "signal_query_runtime_contract",
         "namespace_runtime_contract",
+        "child_workflow_runtime_contract",
         "worker_task_lifecycle",
         "history_replay_bundles"
       ]
@@ -53,6 +55,7 @@
         "worker_task_lifecycle",
         "signal_query_runtime_contract",
         "namespace_runtime_contract",
+        "child_workflow_runtime_contract",
         "history_replay_bundles"
       ]
     },
@@ -65,6 +68,7 @@
         "control_plane_request_response",
         "signal_query_runtime_contract",
         "namespace_runtime_contract",
+        "child_workflow_runtime_contract",
         "cli_json_envelopes"
       ]
     },
@@ -241,6 +245,30 @@
         "result_record_and_product_finding_routing"
       ]
     },
+    "child_workflow_runtime_contract": {
+      "status": "stable",
+      "description": "Live published-artifact scenarios for child workflow orchestration across PHP and Python workers, cross-language parent/child execution, failure and cancellation propagation, replay after worker restart, concurrent fan-out, and namespace behavior.",
+      "sources": [
+        {
+          "repository": "durable-workflow.github.io",
+          "path": "static/platform-conformance/child-workflow-runtime-scenarios.json"
+        }
+      ],
+      "authority_doc": "durable-workflow.github.io/docs/platform-conformance.md",
+      "required_scenarios": [
+        "published_artifact_install_only",
+        "python_parent_python_child_baseline",
+        "php_parent_php_child_baseline",
+        "php_parent_python_child_cross_language",
+        "python_parent_php_child_cross_language",
+        "child_failure_round_trip_matrix",
+        "parent_cancellation_propagates_to_child",
+        "direct_child_cancellation_observed_by_parent",
+        "worker_restart_replay_preserves_child_outcome",
+        "concurrent_child_fan_out",
+        "child_workflow_namespace_contract"
+      ]
+    },
     "failure_repair_actionability": {
       "status": "stable",
       "description": "Failure objects and repair / actionability shapes for stuck tasks, deterministic failure, and replay-mismatch surfaces.",
@@ -320,7 +348,8 @@
       "applies_to_categories": [
         "signal_query_runtime_contract",
         "history_replay_bundles",
-        "namespace_runtime_contract"
+        "namespace_runtime_contract",
+        "child_workflow_runtime_contract"
       ]
     },
     "provisional_categories_warn_only": {
