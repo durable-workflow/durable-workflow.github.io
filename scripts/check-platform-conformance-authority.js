@@ -30,8 +30,15 @@ const VERSIONED_RUNTIME_SCENARIO_STATUSES = {
     'not_covered',
     'runner_blocked',
   ],
+  6: [
+    'pass',
+    'fail',
+    'unsupported',
+    'not_covered',
+    'runner_blocked',
+  ],
 };
-const REQUIRED_RUNTIME_SCENARIO_STATUSES = VERSIONED_RUNTIME_SCENARIO_STATUSES[5];
+const REQUIRED_RUNTIME_SCENARIO_STATUSES = VERSIONED_RUNTIME_SCENARIO_STATUSES[6];
 const VERSIONED_PASS_FAIL_RULES = {
   5: {
     guaranteed_field_equality: {
@@ -55,6 +62,38 @@ const VERSIONED_PASS_FAIL_RULES = {
       applies_to_categories: [
         'signal_query_runtime_contract',
         'history_replay_bundles',
+      ],
+    },
+    provisional_categories_warn_only: {
+      rule: 'A failed fixture in a provisional category emits a warning in the harness output and does not block the release. The category becomes load-bearing when promoted to stable in a later suite version.',
+    },
+    diagnostic_only_mismatches_pass: {
+      rule: 'If only diagnostic-only fields differ, the harness records the difference in its diagnostic_diff output and the fixture passes.',
+    },
+  },
+  6: {
+    guaranteed_field_equality: {
+      rule: "Every field marked guaranteed in the fixture's schema must be present, type-correct, and value-equal in the implementation's response. Diagnostic-only fields are ignored.",
+      follows: 'durable-workflow.v2.surface-stability.contract#field_visibility_rule',
+    },
+    unknown_additive_fields_tolerated: {
+      rule: 'An implementation that emits extra fields not present in the fixture passes if and only if those fields are documented diagnostic-only or the fixture is on a stability level that allows additive evolution.',
+    },
+    frozen_shape_exact_match: {
+      rule: 'Fixtures backed by a frozen surface family must match exactly. There is no diagnostic-only allowance for frozen shapes; a frozen-shape mismatch is always a fail.',
+      applies_to_categories: [
+        'history_replay_bundles',
+      ],
+    },
+    required_fixtures_must_pass: {
+      rule: 'A release that claims a target must pass every required fixture category for that target. One failed required fixture means the release does not conform for that target.',
+    },
+    stable_runtime_scenario_coverage: {
+      rule: 'A stable runtime fixture category must report every required scenario it declares with one of the statuses published by its runtime scenario manifest: pass, fail, unsupported, not_covered, or runner_blocked. Full conformance requires every required scenario to pass. A smoke-only subset, omitted scenario, unsupported public surface, uncovered cell, or runner-blocked cell is nonconforming and must link the owning finding.',
+      applies_to_categories: [
+        'signal_query_runtime_contract',
+        'history_replay_bundles',
+        'namespace_runtime_contract',
       ],
     },
     provisional_categories_warn_only: {

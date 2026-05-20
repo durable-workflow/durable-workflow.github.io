@@ -25,7 +25,7 @@ for implementations that claim Durable Workflow v2 compatibility.
 The machine-readable mirror is published at
 [`static/platform-conformance-contract.json`](pathname:///platform-conformance-contract.json)
 with schema `durable-workflow.v2.platform-conformance.suite`, version
-`5`. The same manifest is advertised by the standalone server from
+`6`. The same manifest is advertised by the standalone server from
 `GET /api/cluster/info` under `platform_conformance_suite`. The
 [Platform Protocol Specs](/docs/2.0/platform-protocol-specs) catalog names
 that nested manifest as the `platform_conformance_suite_manifest`
@@ -47,11 +47,11 @@ For example, the standalone server claims `standalone_server`,
 
 | Target | Required surface families | Required fixture categories |
 | --- | --- | --- |
-| `standalone_server` | `server_api`, `worker_protocol`, `cluster_info_manifests` | `control_plane_request_response`, `signal_query_runtime_contract`, `worker_task_lifecycle`, `failure_repair_actionability` |
-| `official_sdk` | `official_sdks`, `worker_protocol`, `history_event_wire_formats` | `control_plane_request_response`, `signal_query_runtime_contract`, `worker_task_lifecycle`, `history_replay_bundles` |
-| `worker_protocol_implementation` | `worker_protocol`, `history_event_wire_formats` | `worker_task_lifecycle`, `signal_query_runtime_contract`, `history_replay_bundles` |
-| `cli_json_client` | `cli_json` | `control_plane_request_response`, `signal_query_runtime_contract`, `cli_json_envelopes` |
-| `waterline_contract_surface` | `waterline_api` | `signal_query_runtime_contract`, `waterline_observer_envelopes` |
+| `standalone_server` | `server_api`, `worker_protocol`, `cluster_info_manifests` | `control_plane_request_response`, `signal_query_runtime_contract`, `namespace_runtime_contract`, `worker_task_lifecycle`, `failure_repair_actionability` |
+| `official_sdk` | `official_sdks`, `worker_protocol`, `history_event_wire_formats` | `control_plane_request_response`, `signal_query_runtime_contract`, `namespace_runtime_contract`, `worker_task_lifecycle`, `history_replay_bundles` |
+| `worker_protocol_implementation` | `worker_protocol`, `history_event_wire_formats` | `worker_task_lifecycle`, `signal_query_runtime_contract`, `namespace_runtime_contract`, `history_replay_bundles` |
+| `cli_json_client` | `cli_json` | `control_plane_request_response`, `signal_query_runtime_contract`, `namespace_runtime_contract`, `cli_json_envelopes` |
+| `waterline_contract_surface` | `waterline_api` | `signal_query_runtime_contract`, `namespace_runtime_contract`, `waterline_observer_envelopes` |
 | `repair_actionability_surface` | `worker_protocol`, `server_api` | `failure_repair_actionability` |
 | `mcp_discovery_surface` | `mcp_discovery_results` | `mcp_discovery_envelopes` |
 
@@ -78,6 +78,7 @@ declared fixtures directly from those locations.
 | `history_replay_bundles` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/replay-runtime-scenarios.json` | Deterministic replay coverage for frozen history bundles, worker restart replay, adversarial refusal, and in-flight signal timing across the official PHP and Python runtimes. |
 | `history_replay_bundles` | `stable` | `workflow` | `tests/Fixtures/V2/GoldenHistory/` | Deterministic replay coverage for frozen history bundles, worker restart replay, adversarial refusal, and in-flight signal timing across the official PHP and Python runtimes. |
 | `history_replay_bundles` | `stable` | `sdk-python` | `tests/fixtures/golden_history/` | Deterministic replay coverage for frozen history bundles, worker restart replay, adversarial refusal, and in-flight signal timing across the official PHP and Python runtimes. |
+| `namespace_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/namespace-runtime-scenarios.json` | Live published-artifact scenarios for Temporal-parity namespace isolation, lifecycle cleanup, CLI and SDK namespace selection, PHP worker routing, Waterline visibility, Nexus opt-in crossing, and search-attribute value query isolation. |
 | `failure_repair_actionability` | `stable` | `server` | `docs/contracts/external-task-result.md` | Failure objects and repair / actionability shapes for stuck tasks, deterministic failure, and replay-mismatch surfaces. |
 | `failure_repair_actionability` | `stable` | `server` | `docs/contracts/replay-verification.md` | Failure objects and repair / actionability shapes for stuck tasks, deterministic failure, and replay-mismatch surfaces. |
 | `cli_json_envelopes` | `stable` | `cli` | `tests/fixtures/control-plane/` | The `--output=json` and `--output=jsonl` envelopes that automation depends on. |
@@ -133,6 +134,22 @@ passing category.
 Those replay scenario ids and their pass criteria are published at
 [`static/platform-conformance/replay-runtime-scenarios.json`](pathname:///platform-conformance/replay-runtime-scenarios.json).
 
+The `namespace_runtime_contract` category is a stable runtime scenario
+category. A result for it must use published artifacts, cover namespace
+create/update/describe/list, lifecycle cleanup and recreate, workflow
+visibility and mutation isolation, PHP worker task-queue isolation, CLI
+namespace context and default-scope behavior, SDK namespace selection
+parity, search-attribute schema and value query isolation, schedule
+isolation, Waterline/operator scoped visibility, explicit Nexus
+cross-namespace calls, reserved-name refusal, and result-record routing
+for product findings. A namespace smoke subset is nonconforming until
+every required cell is recorded as `pass`, `fail`, `unsupported`,
+`not_covered`, or `runner_blocked` with linked findings. Only `pass`
+cells count toward a passing category.
+
+Those namespace scenario ids and their pass criteria are published at
+[`static/platform-conformance/namespace-runtime-scenarios.json`](pathname:///platform-conformance/namespace-runtime-scenarios.json).
+
 ## Pass / Fail Rules
 
 1. **`guaranteed_field_equality`.** Every field marked guaranteed in the
@@ -155,7 +172,7 @@ Those replay scenario ids and their pass criteria are published at
    omitted scenario, unsupported public surface, uncovered cell, or
    runner-blocked cell is nonconforming and must link the owning
    finding. This status set and pass-only runtime rule are suite version
-   5 semantics.
+   5+ semantics.
 6. **`provisional_categories_warn_only`.** A failed fixture in a
    provisional category emits a warning and does not block the release.
 7. **`diagnostic_only_mismatches_pass`.** If only diagnostic-only fields
