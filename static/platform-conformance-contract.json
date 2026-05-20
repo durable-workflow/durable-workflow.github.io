@@ -151,7 +151,7 @@
           "path": "static/platform-conformance/signal-query-runtime-scenarios.json"
         }
       ],
-      "authority_doc": "durable-workflow.github.io/docs/platform-conformance.md",
+      "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
       "required_scenarios": [
         "published_artifact_install_only",
         "python_worker_cli_and_sdk_baseline",
@@ -185,7 +185,7 @@
           "path": "tests/fixtures/golden_history/"
         }
       ],
-      "authority_doc": "durable-workflow.github.io/docs/platform-conformance.md, server/docs/contracts/replay-verification.md, workflow/docs/api-stability.md",
+      "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
       "required_scenarios": [
         "published_artifact_install_only",
         "python_completed_history_activity_replay",
@@ -254,7 +254,7 @@
           "path": "static/platform-conformance/child-workflow-runtime-scenarios.json"
         }
       ],
-      "authority_doc": "durable-workflow.github.io/docs/platform-conformance.md",
+      "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
       "required_scenarios": [
         "published_artifact_install_only",
         "python_parent_python_child_baseline",

@@ -66,6 +66,12 @@ The suite does not duplicate fixtures. It declares source-of-truth
 locations and the categories each one supplies. Harnesses load the
 declared fixtures directly from those locations.
 
+Stable runtime scenario categories use this page's current-version docs
+route, `https://durable-workflow.github.io/docs/2.0/platform-conformance`,
+as their fixture-level `authority_doc`. Their machine-readable scenario
+ids and pass criteria are published in the docs-site JSON manifests
+linked from the category notes below.
+
 | Category | Status | Source repository | Path | Purpose |
 | --- | --- | --- | --- | --- |
 | `control_plane_request_response` | `stable` | `cli` | `tests/fixtures/control-plane/` | Frozen request bodies and response shapes for control-plane operations such as workflow start, signal, query, update, cancel, task-history, and namespace storage diagnostics. |
@@ -245,9 +251,11 @@ the result matches the version exposed by the build under test. A
 The docs-site release check in
 `scripts/check-platform-conformance-authority.js` fails the build if
 the static manifest points at a missing, repo-local, version-alias-only,
-or non-docs-site authority. It also rejects stable runtime scenario
-categories that advertise implementation tests or raw command test
-directories instead of an approved public fixture or scenario manifest.
+or non-docs-site authority. It also validates stable runtime fixture-level
+`authority_doc` values as canonical current-version docs-site URLs and
+rejects stable runtime scenario categories that advertise implementation
+tests or raw command test directories instead of an approved public
+fixture or scenario manifest.
 The same check requires this page to list the manifest schema, target
 names, fixture category names, pass / fail rules, and release gates from
 the machine-readable mirror.

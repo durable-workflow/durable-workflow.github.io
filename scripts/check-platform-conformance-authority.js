@@ -218,17 +218,20 @@ function expectedAuthorityUrl() {
   return `https://durable-workflow.github.io${routeForDocPath(EXPECTED_AUTHORITY_DOC)}`;
 }
 
-function routeForDocPath(docPath) {
+function routeForDocPath(
+  docPath,
+  label = 'static/platform-conformance-contract.json authority_doc',
+) {
   if (!docPath.startsWith('docs/')) {
     throw new Error(
-      `static/platform-conformance-contract.json authority_doc must point ` +
+      `${label} must point ` +
         `inside docs/ (got "${docPath}").`,
     );
   }
 
   if (!/\.(md|mdx)$/.test(docPath)) {
     throw new Error(
-      `static/platform-conformance-contract.json authority_doc must point ` +
+      `${label} must point ` +
         `at a Markdown docs page (got "${docPath}").`,
     );
   }
@@ -241,10 +244,13 @@ function routeForDocPath(docPath) {
   return joinRoute(currentDocsRoutePrefix(), relative);
 }
 
-function resolveRouteToDocPath(route) {
+function resolveRouteToDocPath(
+  route,
+  label = 'static/platform-conformance-contract.json authority_url',
+) {
   if (!route.startsWith('/docs/')) {
     throw new Error(
-      `static/platform-conformance-contract.json authority_url must use a ` +
+      `${label} must use a ` +
         `/docs/ route (got "${route}").`,
     );
   }
@@ -257,7 +263,7 @@ function resolveRouteToDocPath(route) {
     !normalizedRoute.startsWith(`${currentPrefix}/`)
   ) {
     throw new Error(
-      `static/platform-conformance-contract.json authority_url must point ` +
+      `${label} must point ` +
         `at the configured current-version docs route ${currentPrefix} ` +
         `(got "${route}").`,
     );
@@ -276,12 +282,58 @@ function resolveRouteToDocPath(route) {
   const resolved = candidates.find(candidate => fs.existsSync(candidate));
   if (!resolved) {
     throw new Error(
-      `static/platform-conformance-contract.json authority_url route ` +
+      `${label} route ` +
         `${route} does not resolve to a docs-site page.`,
     );
   }
 
   return path.relative(repoRoot, resolved).split(path.sep).join('/');
+}
+
+function assertCanonicalDocsSiteUrl(value, label) {
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new Error(`${label} must be a non-empty string.`);
+  }
+
+  if (value !== value.trim()) {
+    throw new Error(`${label} must not include leading or trailing whitespace.`);
+  }
+
+  let url;
+  try {
+    url = new URL(value);
+  } catch (err) {
+    throw new Error(
+      `${label} must be an absolute https://durable-workflow.github.io ` +
+        `docs URL (got "${value}").`,
+    );
+  }
+
+  if (
+    url.protocol !== 'https:' ||
+    url.hostname !== 'durable-workflow.github.io'
+  ) {
+    throw new Error(
+      `${label} must be an https://durable-workflow.github.io docs URL ` +
+        `(got "${value}").`,
+    );
+  }
+
+  if (url.search || url.hash) {
+    throw new Error(`${label} must not include query strings or fragments.`);
+  }
+
+  const docPath = resolveRouteToDocPath(url.pathname, label);
+  const canonical =
+    `https://durable-workflow.github.io${routeForDocPath(docPath, label)}`;
+
+  if (value !== canonical) {
+    throw new Error(
+      `${label} must use canonical docs URL ${canonical} (got "${value}").`,
+    );
+  }
+
+  return { docPath, url };
 }
 
 function collectSidebarDocIds(item, docIds) {
@@ -593,6 +645,23 @@ function runtimeScenarioCategories(contract) {
   }
 
   return categories;
+}
+
+function assertStableRuntimeFixtureAuthorityDocsResolve(contract) {
+  const catalog = contract.fixture_catalog || {};
+
+  for (const category of runtimeScenarioCategories(contract)) {
+    const entry = catalog[category];
+    if (!entry) {
+      continue;
+    }
+
+    assertCanonicalDocsSiteUrl(
+      entry.authority_doc,
+      `static/platform-conformance-contract.json ` +
+        `fixture_catalog.${category}.authority_doc`,
+    );
+  }
 }
 
 function assertRuntimeScenarioManifest(contract, category, entry, source) {
@@ -1024,6 +1093,7 @@ function main() {
     'nonconforming',
   ]);
   assertVersionedPassFailRules(contract);
+  assertStableRuntimeFixtureAuthorityDocsResolve(contract);
   assertStableRuntimeSourcesArePublic(contract);
   assertAuthorityDocMirrorsManifest(contract);
   assertProtocolCatalogLinksAuthority();
