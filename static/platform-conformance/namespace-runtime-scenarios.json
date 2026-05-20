@@ -271,10 +271,17 @@
       ],
       "operations": [
         "populate tenant-a with workflows, schedules, search attributes, and worker registrations",
+        "configure tenant-a and tenant-b with distinct external payload storage contexts",
+        "create cross-namespace workflow and service-call records whose caller names tenant-a while payload data is owned by tenant-b",
         "delete or retire tenant-a through the documented namespace lifecycle surface",
+        "resolve retained tenant-b payload references through the tenant-b storage context",
         "recreate tenant-a and inspect workflows, schedules, search attributes, and worker registrations"
       ],
       "pass_criteria": [
+        "namespace deletion only removes external payload references owned by the deleted namespace",
+        "tenant-b-owned cross-namespace workflow and service-call records remain readable after tenant-a deletion",
+        "tenant-b-owned payload references remain intact and resolve through tenant-b external payload storage",
+        "unsafe cleanup is refused with a typed operator-visible reason instead of deleting or resolving through the wrong namespace storage context",
         "namespace deletion or retirement removes listable workflows and schedules from the active namespace",
         "search-attribute definitions and server-side worker registration records do not survive recreate",
         "a recreated namespace does not inherit any prior tenant-a state"
