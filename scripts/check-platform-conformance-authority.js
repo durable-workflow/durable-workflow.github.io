@@ -9,6 +9,7 @@
 // mirror must resolve to published docs-site content.
 
 const fs = require('fs');
+const crypto = require('crypto');
 const path = require('path');
 
 const repoRoot = path.join(__dirname, '..');
@@ -44,8 +45,30 @@ const VERSIONED_RUNTIME_SCENARIO_STATUSES = {
     'not_covered',
     'runner_blocked',
   ],
+  8: [
+    'pass',
+    'fail',
+    'unsupported',
+    'not_covered',
+    'runner_blocked',
+  ],
 };
-const REQUIRED_RUNTIME_SCENARIO_STATUSES = VERSIONED_RUNTIME_SCENARIO_STATUSES[7];
+// Digests bind each stable scenario id's operations and pass_criteria to the
+// suite version so published harness criteria cannot drift invisibly.
+const VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS = {
+  7: {
+    child_workflow_runtime_contract: 'sha256:3612fc5ce951c26382d7eb2842c368f9ce7a17ce48a246bd43d327ada2de54e2',
+    history_replay_bundles: 'sha256:70658bc21f12e7b0c16306951ba18e2b2ec853487c287e81cfa64a2b40eff013',
+    namespace_runtime_contract: 'sha256:54a11e95f14ecd088f6f5f8f993b2fd718407c91e3f5ffb4ee4ea88daddca896',
+    signal_query_runtime_contract: 'sha256:838cb9bf6c9a175d1f0ef281ab00f3d8d5998214261af535db135fe9b5dfe78b',
+  },
+  8: {
+    child_workflow_runtime_contract: 'sha256:3612fc5ce951c26382d7eb2842c368f9ce7a17ce48a246bd43d327ada2de54e2',
+    history_replay_bundles: 'sha256:70658bc21f12e7b0c16306951ba18e2b2ec853487c287e81cfa64a2b40eff013',
+    namespace_runtime_contract: 'sha256:aba71f98fcad2713a13801ef5430522ffdb6ea4214a160e50fca0cd7794315e5',
+    signal_query_runtime_contract: 'sha256:838cb9bf6c9a175d1f0ef281ab00f3d8d5998214261af535db135fe9b5dfe78b',
+  },
+};
 const VERSIONED_PASS_FAIL_RULES = {
   5: {
     guaranteed_field_equality: {
@@ -144,6 +167,9 @@ const VERSIONED_PASS_FAIL_RULES = {
     },
   },
 };
+// Suite 8 changes runtime scenario criteria only; pass/fail rules stay at
+// suite 7 semantics.
+VERSIONED_PASS_FAIL_RULES[8] = VERSIONED_PASS_FAIL_RULES[7];
 const EXPECTED_AUTHORITY_DOC = 'docs/platform-conformance.md';
 const EXPECTED_DOC_ID = 'platform-conformance';
 
@@ -533,6 +559,75 @@ function assertVersionedRuntimeScenarioStatuses(contract, manifest, category, so
     `stable runtime fixture category "${category}" scenario manifest ` +
       `${source.repository}:${source.path} result_statuses for suite version ${contract.version}`,
   );
+
+  return expectedStatuses;
+}
+
+function runtimeScenarioCriteriaSnapshot(manifest) {
+  const scenarios = {};
+
+  for (const scenario of manifest.scenarios || []) {
+    if (
+      !scenario ||
+      typeof scenario !== 'object' ||
+      typeof scenario.id !== 'string'
+    ) {
+      continue;
+    }
+
+    scenarios[scenario.id] = {
+      operations: scenario.operations,
+      pass_criteria: scenario.pass_criteria,
+    };
+  }
+
+  return scenarios;
+}
+
+function runtimeScenarioCriteriaDigest(manifest) {
+  return (
+    'sha256:' +
+    crypto
+      .createHash('sha256')
+      .update(stableJson(runtimeScenarioCriteriaSnapshot(manifest)))
+      .digest('hex')
+  );
+}
+
+function assertVersionedRuntimeScenarioCriteria(contract, manifest, category, source) {
+  const expectedByCategory =
+    VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[contract.version];
+
+  if (!expectedByCategory) {
+    throw new Error(
+      `scripts/check-platform-conformance-authority.js must declare ` +
+        `runtime scenario operations/pass_criteria digests for suite version ` +
+        `${contract.version}. Add a new ` +
+        `VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS entry when stable ` +
+        `runtime scenario criteria change.`,
+    );
+  }
+
+  const expectedDigest = expectedByCategory[category];
+  if (!expectedDigest) {
+    throw new Error(
+      `scripts/check-platform-conformance-authority.js must declare ` +
+        `a runtime scenario operations/pass_criteria digest for category ` +
+        `"${category}" in suite version ${contract.version}.`,
+    );
+  }
+
+  const actualDigest = runtimeScenarioCriteriaDigest(manifest);
+  if (actualDigest !== expectedDigest) {
+    throw new Error(
+      `stable runtime fixture category "${category}" scenario manifest ` +
+        `${source.repository}:${source.path} operations/pass_criteria digest ` +
+        `${actualDigest} must match suite-versioned expectation ` +
+        `${expectedDigest}. Advance the suite version and add a new ` +
+        `VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS entry before changing ` +
+        `stable runtime scenario operations or pass_criteria.`,
+    );
+  }
 }
 
 function splitMarkdownTableRow(line) {
@@ -710,9 +805,16 @@ function assertRuntimeScenarioManifest(contract, category, entry, source) {
     );
   }
 
+  const expectedStatuses = assertVersionedRuntimeScenarioStatuses(
+    contract,
+    manifest,
+    category,
+    source,
+  );
+
   if (
     !Array.isArray(manifest.result_statuses) ||
-    manifest.result_statuses.length !== REQUIRED_RUNTIME_SCENARIO_STATUSES.length
+    manifest.result_statuses.length !== expectedStatuses.length
   ) {
     throw new Error(
       `stable runtime fixture category "${category}" scenario manifest ` +
@@ -720,9 +822,7 @@ function assertRuntimeScenarioManifest(contract, category, entry, source) {
     );
   }
 
-  assertVersionedRuntimeScenarioStatuses(contract, manifest, category, source);
-
-  for (const status of REQUIRED_RUNTIME_SCENARIO_STATUSES) {
+  for (const status of expectedStatuses) {
     if (!manifest.result_statuses.includes(status)) {
       throw new Error(
         `stable runtime fixture category "${category}" scenario manifest ` +
@@ -796,6 +896,8 @@ function assertRuntimeScenarioManifest(contract, category, entry, source) {
       );
     }
   }
+
+  assertVersionedRuntimeScenarioCriteria(contract, manifest, category, source);
 }
 
 function staticSourcePathToServedPath(sourcePath) {

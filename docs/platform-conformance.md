@@ -25,7 +25,7 @@ for implementations that claim Durable Workflow v2 compatibility.
 The machine-readable mirror is published at
 [`static/platform-conformance-contract.json`](pathname:///platform-conformance-contract.json)
 with schema `durable-workflow.v2.platform-conformance.suite`, version
-`7`. The same manifest is advertised by the standalone server from
+`8`. The same manifest is advertised by the standalone server from
 `GET /api/cluster/info` under `platform_conformance_suite`. The
 [Platform Protocol Specs](/docs/2.0/platform-protocol-specs) catalog names
 that nested manifest as the `platform_conformance_suite_manifest`
@@ -57,7 +57,8 @@ For example, the standalone server claims `standalone_server`,
 
 Targets are stable. Adding a target, adding a required surface to an
 existing target, adding a required fixture category, promoting a
-provisional category to required, or changing a pass / fail rule is a
+provisional category to required, changing stable runtime scenario
+`operations` or `pass_criteria`, or changing a pass / fail rule is a
 suite contract change and must advance the manifest version.
 
 ## Fixture Catalog
@@ -268,5 +269,8 @@ the machine-readable mirror.
 When the suite changes, update this page and
 `static/platform-conformance-contract.json` together. If the change
 adds a target, adds a required fixture category, promotes a provisional
-category to stable, or changes a pass / fail rule, advance the suite
-version in the same release change.
+category to stable, changes stable runtime scenario `operations` or
+`pass_criteria`, or changes a pass / fail rule, advance the suite
+version in the same release change. The release check pins stable
+runtime scenario criteria by suite-versioned digests so external
+harnesses cannot observe new criteria under an old suite version.
