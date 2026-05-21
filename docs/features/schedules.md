@@ -146,7 +146,7 @@ ScheduleManager::pause($schedule);
 // The schedule will not trigger while paused.
 
 ScheduleManager::resume($schedule);
-// next_run_at is recalculated from now.
+// next_fire_at is recalculated from now.
 ```
 
 ### Update
@@ -161,7 +161,7 @@ ScheduleManager::update(
 );
 ```
 
-Updating the cron expression or timezone recalculates `next_run_at`.
+Updating the cron expression or timezone recalculates `next_fire_at`.
 
 ### Delete
 
@@ -211,10 +211,17 @@ This immediately evaluates the overlap policy and, if allowed, starts a new work
 ```php
 $results = ScheduleManager::tick();
 
-// Returns: [['schedule_id' => '...', 'instance_id' => '...|null'], ...]
+// Returns rows with schedule_id, instance_id, outcome, occurrence_time,
+// last_fired_at, and next_fire_at when those fields apply.
 ```
 
-`tick()` finds all active schedules whose `next_run_at` is in the past and triggers them in order. After each trigger, `next_run_at` advances to the next cron occurrence.
+`tick()` finds all active schedules whose `next_fire_at` is in the past and triggers them in order. The `occurrence_time` field is the due fire time the scheduler observed. After each trigger, `next_fire_at` advances from the current clock to the next cron or interval occurrence.
+
+### Missed-fire policy
+
+Live schedule evaluation uses **fire once, then resume** semantics. If the scheduler is down across one or more nominal fire times, the first tick after recovery starts one workflow for the overdue `next_fire_at`, records that due time as `occurrence_time`, and then advances `next_fire_at` from the current clock. Additional nominal occurrences that passed while the scheduler was down are skipped by live evaluation.
+
+Use `backfill()` when every missed occurrence must run. Backfill enumerates the requested window explicitly and records each occurrence separately.
 
 ### Artisan command
 
@@ -223,6 +230,13 @@ Run a single tick from the command line:
 ```bash
 php artisan workflow:v2:schedule-tick
 php artisan workflow:v2:schedule-tick --json
+```
+
+The standalone server exposes the same evaluation pass with its own
+command:
+
+```bash
+php artisan schedule:evaluate --limit=100
 ```
 
 To evaluate schedules continuously, call this command from Laravel's task scheduler:
@@ -344,8 +358,11 @@ with the following payload keys:
   primary cron expression, IANA timezone, and active overlap policy at
   trigger time.
 - `trigger_number` — which trigger this was (1-indexed).
-- `occurrence_time` — the canonical (unjittered) cron occurrence time.
-  Populated for backfill occurrences; null for tick-driven triggers.
+- `occurrence_time` — the schedule fire time the scheduler evaluated.
+  Tick-driven triggers record the due `next_fire_at`; backfill triggers
+  record the enumerated backfill occurrence. With jitter enabled, the
+  tick-driven value includes the jittered fire time stored on the
+  schedule.
 
 ### Schedule audit stream (on the schedule itself)
 
