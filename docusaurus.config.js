@@ -19,7 +19,7 @@ const config = {
   organizationName: 'durable-workflow', // Usually your GitHub org/user name.
   projectName: 'durable-workflow.github.io', // Usually your repo name.
 
-  // Even if you don't use internalization, you can use this field to set useful
+  // Even if you don't use internationalization, you can use this field to set useful
   // metadata like html lang. For example, if your site is Chinese, you may want
   // to replace "en" with "zh-Hans".
   i18n: {
@@ -36,11 +36,11 @@ const config = {
           sidebarPath: require.resolve('./sidebars.js'),
           editUrl:
             'https://github.com/durable-workflow/durable-workflow.github.io/edit/main/',
-          lastVersion: 'current',
+          lastVersion: '1.x',
           versions: {
             current: {
               label: '2.0',
-              path: '',
+              path: '2.0',
             },
             '1.x': {
               label: '1.x',
@@ -70,16 +70,6 @@ const config = {
     [
       '@docusaurus/plugin-client-redirects',
       {
-        createRedirects(existingPath) {
-          if (
-            existingPath.startsWith('/docs/') &&
-            !existingPath.startsWith('/docs/1.x/')
-          ) {
-            return [existingPath.replace('/docs/', '/docs/2.0/')];
-          }
-
-          return undefined;
-        },
         redirects: [
           {
             from: '/docs/2.0/server-setup',

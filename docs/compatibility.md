@@ -285,7 +285,7 @@ and the compatibility policy in `GET /api/cluster/info`:
   "surface_stability_contract": {
     "schema": "durable-workflow.v2.surface-stability.contract",
     "version": 1,
-    "authority_url": "https://durable-workflow.github.io/docs/compatibility"
+    "authority_url": "https://durable-workflow.github.io/docs/2.0/compatibility"
   },
   "control_plane": {
     "version": "2",

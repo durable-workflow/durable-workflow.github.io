@@ -69,8 +69,8 @@ declared fixtures directly from those locations.
 
 Every stable fixture category uses a canonical current-version docs-site URL
 as its fixture-level `authority_doc`. Stable runtime scenario categories use
-this page's current-version docs route,
-`https://durable-workflow.github.io/docs/platform-conformance`. Stable
+this page's current docs route,
+`https://durable-workflow.github.io/docs/2.0/platform-conformance`. Stable
 non-runtime categories point at the public docs authority for their surface:
 CLI and Python parity for control-plane fixtures, Worker Protocol for worker
 task lifecycle fixtures, Platform Protocol Specs for repair/actionability
