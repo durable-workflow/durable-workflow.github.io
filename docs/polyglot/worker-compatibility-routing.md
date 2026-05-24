@@ -153,12 +153,12 @@ compatible cohort.
 
 ## Related references
 
-- [Namespace, Auth, And Worker Registration](/docs/polyglot/namespace-auth-workers)
+- [Namespace, Auth, And Worker Registration](/docs/2.0/polyglot/namespace-auth-workers)
   for the worker registration payload, including `build_id`
-- [Worker Build-Id Rollout](/docs/polyglot/worker-build-id-rollout) for
+- [Worker Build-Id Rollout](/docs/2.0/polyglot/worker-build-id-rollout) for
   drain/resume lifecycle on one task queue
-- [Server Config Reference](/docs/polyglot/server-config-reference) for
+- [Server Config Reference](/docs/2.0/polyglot/server-config-reference) for
   `DW_V2_CURRENT_COMPATIBILITY`,
   `DW_V2_SUPPORTED_COMPATIBILITIES`, and related config
-- [Operator Operating Envelope](/docs/operator-operating-envelope) for
+- [Operator Operating Envelope](/docs/2.0/operator-operating-envelope) for
   the health, metrics, and run diagnostics that expose compatibility gaps

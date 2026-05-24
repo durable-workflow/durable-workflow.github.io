@@ -44,7 +44,7 @@ const config = {
             },
             '1.x': {
               label: '1.x',
-              path: '1.x',
+              path: '',
             },
           },
         },
@@ -73,19 +73,19 @@ const config = {
         redirects: [
           {
             from: '/docs/2.0/server-setup',
-            to: '/docs/polyglot/server',
+            to: '/docs/2.0/polyglot/server',
           },
           {
             from: '/docs/2.0/cli',
-            to: '/docs/polyglot/cli',
+            to: '/docs/2.0/polyglot/cli',
           },
           {
             from: '/docs/2.0/sdks/python',
-            to: '/docs/polyglot/python',
+            to: '/docs/2.0/polyglot/python',
           },
           {
             from: '/docs/2.0/configuration/worker-protocol',
-            to: '/docs/polyglot/worker-protocol',
+            to: '/docs/2.0/polyglot/worker-protocol',
           },
         ],
       },

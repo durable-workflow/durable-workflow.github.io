@@ -20,7 +20,7 @@ keywords:
 
 Run a rolling upgrade when you want to replace API nodes, workers, or the
 scheduler without taking the deployment offline. This contract covers the
-small clustered shape from the [self-hosting deployments](/docs/deployment)
+small clustered shape from the [self-hosting deployments](/docs/2.0/deployment)
 guide: two or three API nodes behind a load balancer, shared external MySQL
 or PostgreSQL, shared Redis, independently scaled workers, and exactly one
 scheduler or maintenance runner.
@@ -30,7 +30,7 @@ Outside that envelope, use the documented stop-the-world flow in the
 deployment guide instead.
 
 The role vocabulary and shape manifest behind this contract are documented in
-[Server Role Topology](/docs/polyglot/server-role-topology). This guide
+[Server Role Topology](/docs/2.0/polyglot/server-role-topology). This guide
 focuses on how the current `standalone_server` process classes roll in place.
 
 ## What rolling upgrade means here
@@ -89,7 +89,7 @@ window must satisfy every rule in this section.
   rolling upgrade must register through `POST /api/worker/register`
   with a stable `build_id`. The unversioned cohort
   (`build_id: null`) is the pre-rollout default; the
-  [worker build-id rollout guide](/docs/polyglot/worker-build-id-rollout)
+  [worker build-id rollout guide](/docs/2.0/polyglot/worker-build-id-rollout)
   explains the first cutover.
 - **Workflow definition fingerprints stay pinned.** Server images
   carrying `DW_V2_PIN_TO_RECORDED_FINGERPRINT=true` (the default) keep
@@ -98,7 +98,7 @@ window must satisfy every rule in this section.
   fingerprint for the same workflow refuses to claim those runs until
   they finish.
 - **Overlapping-build admission posture.** Choose the
-  [`DW_V2_FLEET_VALIDATION_MODE`](/docs/polyglot/server-config-reference)
+  [`DW_V2_FLEET_VALIDATION_MODE`](/docs/2.0/polyglot/server-config-reference)
   posture before you start. `warn` lets the rollout proceed even when
   the required compatibility marker has no live worker;  `fail` blocks
   dispatch and fails the readiness contract closed during that window.
@@ -157,7 +157,7 @@ Three admission surfaces enforce overlap-window safety automatically:
 
 To keep the worker overlap window short, drain old
 worker cohorts as new workers come online. Use the
-[worker build-id rollout](/docs/polyglot/worker-build-id-rollout)
+[worker build-id rollout](/docs/2.0/polyglot/worker-build-id-rollout)
 flow:
 
 ```bash
@@ -178,7 +178,7 @@ firing resumes from the persisted state on next tick.
 If the rollout also introduces a dedicated matching-role deployment, make that
 topology change explicit instead of assuming every execution node will keep
 doing broad ready-task sweeps. See
-[Task Matching and Dispatch](/docs/polyglot/task-matching-dispatch) for
+[Task Matching and Dispatch](/docs/2.0/polyglot/task-matching-dispatch) for
 the documented `workflow:v2:repair-pass --loop` plus
 `DW_V2_MATCHING_ROLE_QUEUE_WAKE=0` shape. Verify the live node contract from
 `GET /api/cluster/info`: `topology.current_shape` should still match the
@@ -294,7 +294,7 @@ surface matches their existing workflow. The standalone-server distribution
 does not run Waterline; embedded Laravel deployments read the matching
 dashboard signals under `/waterline/api/v2/health` and `/waterline/api/stats`,
 as documented in the
-[Operator Operating Envelope](/docs/operator-operating-envelope).
+[Operator Operating Envelope](/docs/2.0/operator-operating-envelope).
 
 ## Failure modes and what to do
 
@@ -312,18 +312,18 @@ restore the previous build before debugging further.
 
 ## Related references
 
-- [Self-Hosting Deployments](/docs/deployment) for the deployment
+- [Self-Hosting Deployments](/docs/2.0/deployment) for the deployment
   shapes this contract assumes.
-- [Worker Build-Id Rollout](/docs/polyglot/worker-build-id-rollout)
+- [Worker Build-Id Rollout](/docs/2.0/polyglot/worker-build-id-rollout)
   for the per-cohort drain and resume calls.
-- [Operator Operating Envelope](/docs/operator-operating-envelope)
+- [Operator Operating Envelope](/docs/2.0/operator-operating-envelope)
   for the diagnostic, queue, and rebuild contract that operators read
   alongside the rollout signals.
-- [Server Config Reference](/docs/polyglot/server-config-reference)
+- [Server Config Reference](/docs/2.0/polyglot/server-config-reference)
   for the rollout-safety environment variables (`DW_V2_FLEET_VALIDATION_MODE`,
   `DW_V2_PIN_TO_RECORDED_FINGERPRINT`, `DW_V2_GUARDRAILS_BOOT`,
   `DW_V2_CACHE_VALIDATION_MODE`, `DW_V2_MULTI_NODE`,
   `DW_V2_VALIDATE_CACHE_BACKEND`, `DW_V2_TASK_REPAIR_*`).
-- [Server API Reference](/docs/polyglot/server-api-reference) for
+- [Server API Reference](/docs/2.0/polyglot/server-api-reference) for
   the readiness, cluster info, and operator-metrics endpoints used to
   verify each phase of the rollout.

@@ -155,7 +155,7 @@ which run currently owns the stream cursor.
 ## Run this pattern
 
 The travel-agent workflow in the
-[Sample App](/docs/sample-app) is the runnable reference for the
+[Sample App](/docs/2.0/sample-app) is the runnable reference for the
 inbox/outbox shape this page describes:
 
 ```bash

@@ -26,8 +26,8 @@ from today's standalone distribution toward a split control/execution topology.
 
 Use this page when you need to reason about server shape from scripts,
 dashboards, runbooks, or rollout automation. Use the
-[Server API Reference](/docs/polyglot/server-api-reference) for the raw
-HTTP surface and the [Server Guide](/docs/polyglot/server) for deployment
+[Server API Reference](/docs/2.0/polyglot/server-api-reference) for the raw
+HTTP surface and the [Server Guide](/docs/2.0/polyglot/server) for deployment
 setup.
 
 ## Reading The Topology Manifest
@@ -343,9 +343,9 @@ supported and currently safe.
 
 ## Related References
 
-- [Server API Reference](/docs/polyglot/server-api-reference) for the
+- [Server API Reference](/docs/2.0/polyglot/server-api-reference) for the
   authenticated `/api/cluster/info` HTTP contract.
-- [Server Guide](/docs/polyglot/server) for deployment setup and the
+- [Server Guide](/docs/2.0/polyglot/server) for deployment setup and the
   broader standalone server operating model.
-- [Deployment Modes](/docs/polyglot/deployment-modes) for when to choose
+- [Deployment Modes](/docs/2.0/polyglot/deployment-modes) for when to choose
   embedded, standalone server, or broader support-led topologies.

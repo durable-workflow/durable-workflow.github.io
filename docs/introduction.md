@@ -30,12 +30,12 @@ If your task is "run five queued jobs in order and bail on the first failure," L
 ## Want to learn by example?
 
 The fastest way to see Durable Workflow run end to end is the
-[Sample App](/docs/sample-app). It is a runnable Laravel 13
+[Sample App](/docs/2.0/sample-app). It is a runnable Laravel 13
 application with one workflow per pattern surface (deterministic
 chains, elapsed-time measurement, microservice coordination, browser
 automation, webhook-started workflows, AI activity loops, and a
 signal-driven travel-agent saga), each wired into both an artisan
 command and the MCP server. Clone it, run one command, and watch the
 run land in Waterline. When you are ready to write your own pattern,
-the [Contribute a Sample](/docs/contribute-a-sample) guide walks
+the [Contribute a Sample](/docs/2.0/contribute-a-sample) guide walks
 through the full submission flow.

@@ -31,7 +31,13 @@ function normalizeDocLink(href, sourcePath) {
   }
 
   if (withoutAnchor.startsWith('/docs/')) {
-    return withoutAnchor.slice('/docs/'.length);
+    const docPath = withoutAnchor.slice('/docs/'.length);
+
+    if (docPath.startsWith('2.0/')) {
+      return docPath.slice('2.0/'.length);
+    }
+
+    return docPath;
   }
 
   return path.posix

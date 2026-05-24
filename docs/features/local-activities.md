@@ -172,7 +172,7 @@ The runtime manifest is published at
 `GET /api/cluster/info`. The machine-readable contract is
 [`local-activity-runtime.schema.json`](/platform-protocol-specs/local-activity-runtime.schema.json)
 and is indexed by the
-[Platform Protocol Specs](/docs/platform-protocol-specs#local_activity_runtime)
+[Platform Protocol Specs](/docs/2.0/platform-protocol-specs#local_activity_runtime)
 catalog.
 
 The event names remain normal activity event names so timelines and replay
@@ -183,15 +183,15 @@ tools preserve ordering without a parallel event family.
 Use a local activity for short, retryable, idempotent side effects that are
 best executed by the workflow worker process and do not need queue routing.
 
-Use an ordinary [activity](/docs/defining-workflows/activities) for remote
+Use an ordinary [activity](/docs/2.0/defining-workflows/activities) for remote
 calls, slow I/O, CPU-heavy work, dedicated worker fleets, backpressure, or
 work that should keep making progress through a separately leased activity
 task after workflow worker loss.
 
-Use [worker sessions](/docs/features/worker-sessions) when multiple
+Use [worker sessions](/docs/2.0/features/worker-sessions) when multiple
 ordinary activity steps must reuse worker-local resources such as GPU memory
 or a mounted filesystem.
 
-Use [`sideEffect(...)`](/docs/features/side-effects) only for replay-safe
+Use [`sideEffect(...)`](/docs/2.0/features/side-effects) only for replay-safe
 snapshots that do not need activity retry, timeout, heartbeat, or cancellation
 semantics.

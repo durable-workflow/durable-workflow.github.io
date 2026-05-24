@@ -19,7 +19,7 @@ keywords:
 The Durable Workflow server is a standalone, language-neutral workflow orchestration service. It exposes the same durable execution engine as the PHP package over HTTP, letting you write workflows in Python, PHP, or any language that speaks HTTP.
 
 If you are deciding between the standalone server and package embedding, start
-with [Deployment Modes](/docs/polyglot/deployment-modes). This page covers
+with [Deployment Modes](/docs/2.0/polyglot/deployment-modes). This page covers
 the service-mode distribution.
 
 Use the standalone server when you need:
@@ -29,18 +29,18 @@ Use the standalone server when you need:
 - **Non-Laravel environments** — use Durable Workflow outside Laravel
 
 If you already run v2 embedded in a Laravel app, use the
-[embedded-to-server migration guide](/docs/polyglot/embedded-to-server) to
+[embedded-to-server migration guide](/docs/2.0/polyglot/embedded-to-server) to
 prepare type keys, deploy the server beside embedded execution, connect workers,
 and route only new workflow starts to the server. Keep
-[Deployment Modes](/docs/polyglot/deployment-modes) nearby during that
+[Deployment Modes](/docs/2.0/polyglot/deployment-modes) nearby during that
 cutover so ids, command outcomes, task semantics, and runtime ownership rules
 stay explicit.
 
-Use [Worker Compatibility and Routing](/docs/polyglot/worker-compatibility-routing)
+Use [Worker Compatibility and Routing](/docs/2.0/polyglot/worker-compatibility-routing)
 when you roll worker build cohorts, drain old cohorts, or need to keep
 long-running runs pinned to compatible executors during rollback.
 
-Use [Server Role Topology](/docs/polyglot/server-role-topology) when you
+Use [Server Role Topology](/docs/2.0/polyglot/server-role-topology) when you
 need the live role vocabulary, process classes, authority boundaries, failure
 domains, or migration path that `GET /api/cluster/info` publishes.
 
@@ -91,7 +91,7 @@ settings instead of inferring duties from container names.
 
 The server uses environment variables for configuration. Key settings are
 summarized below; the full operator-facing `DW_*` contract is documented in
-the [server config reference](/docs/polyglot/server-config-reference).
+the [server config reference](/docs/2.0/polyglot/server-config-reference).
 
 ### Database
 
@@ -121,7 +121,7 @@ REDIS_DB=0
 Cache must support [atomic locks](https://laravel.com/docs/12.x/cache#atomic-locks). Queue drivers: Redis, Amazon SQS, Beanstalkd, database.
 
 Atomic cache locks are required for server-side
-[task queue admission caps](/docs/polyglot/task-queue-admission) and
+[task queue admission caps](/docs/2.0/polyglot/task-queue-admission) and
 query-task backpressure. Use Redis for multi-node deployments that need
 workflow, activity, or query admission to hold across every server process.
 
@@ -469,7 +469,7 @@ unsupported.
 ### Role topology and deployment shape
 
 The field-by-field reference for this manifest lives on
-[Server Role Topology](/docs/polyglot/server-role-topology). Keep this
+[Server Role Topology](/docs/2.0/polyglot/server-role-topology). Keep this
 section for the inline `cluster/info` example and use the dedicated page when
 you need the supported shapes, authority boundaries, failure domains, scaling
 boundaries, or migration-path contract in one place.
@@ -875,7 +875,7 @@ host the current HTTP control surface.
 
 For carrier-neutral external handlers, the same endpoint publishes
 `worker_protocol.external_execution_surface_contract`. That manifest names the
-[activity-grade external execution surface](/docs/polyglot/external-execution),
+[activity-grade external execution surface](/docs/2.0/polyglot/external-execution),
 links the external task input/result envelope contracts, and keeps workflow
 replay, `ContinueAsNew`, signal/update/query ordering, and event-history
 interpretation inside real runtimes.
@@ -893,10 +893,10 @@ Key field notes for client code:
 
 ## Connecting Workers
 
-Workers poll the server for tasks and execute workflow code or activities. See the [Worker Protocol](/docs/polyglot/worker-protocol) reference for the full API contract.
+Workers poll the server for tasks and execute workflow code or activities. See the [Worker Protocol](/docs/2.0/polyglot/worker-protocol) reference for the full API contract.
 For the route role matrix, namespace lookup rules, and exact worker
 registration payload, see
-[Namespace, Auth, And Worker Registration](/docs/polyglot/namespace-auth-workers).
+[Namespace, Auth, And Worker Registration](/docs/2.0/polyglot/namespace-auth-workers).
 
 ### PHP Workers
 
@@ -936,7 +936,7 @@ Python workers use the `durable-workflow` SDK:
 pip install durable-workflow
 ```
 
-See the [Python SDK](/docs/polyglot/python) guide for worker setup.
+See the [Python SDK](/docs/2.0/polyglot/python) guide for worker setup.
 
 ### Custom Language Workers
 
@@ -956,13 +956,13 @@ server returns `404` with `reason: "namespace_not_found"`.
 
 See the [server README](https://github.com/durable-workflow/server#getting-started-end-to-end-workflow) for a curl-based walkthrough.
 
-See [Task Queue Admission](/docs/polyglot/task-queue-admission) to tune
+See [Task Queue Admission](/docs/2.0/polyglot/task-queue-admission) to tune
 worker registration slots, server-side active lease caps, per-minute dispatch
 budgets, and query-task backpressure.
 
 ## CLI
 
-The [Durable Workflow CLI](/docs/polyglot/cli) provides a shell interface to the server:
+The [Durable Workflow CLI](/docs/2.0/polyglot/cli) provides a shell interface to the server:
 
 ```bash
 # Install — Linux and macOS
@@ -986,7 +986,7 @@ dw workflow:start --type=my-workflow --input='["value"]'
 dw workflow:start --type=my-workflow --input-file=input.json
 ```
 
-See the [CLI install page](/docs/polyglot/cli#install) for a platform-detecting installer and direct binary downloads.
+See the [CLI install page](/docs/2.0/polyglot/cli#install) for a platform-detecting installer and direct binary downloads.
 
 Task queue commands include admission status for workflow tasks, activity
 tasks, and query tasks. Use them to distinguish missing workers, saturated
@@ -995,7 +995,7 @@ query-task overflow.
 
 ## Deployment
 
-Use the [self-hosting deployment guide](/docs/deployment) to choose a
+Use the [self-hosting deployment guide](/docs/2.0/deployment) to choose a
 supported topology before deploying production traffic. It separates local
 development, single-node production, small clustered deployments, raw
 Kubernetes manifests, and support-led topologies.
@@ -1004,14 +1004,14 @@ The self-serve small-cluster contract is deliberately narrow: 2-3 stateless API
 nodes behind a load balancer, one shared external MySQL or PostgreSQL database,
 shared Redis, independently scaled workers, and exactly one scheduler or
 maintenance runner. Choose stop-the-world upgrades or
-[rolling upgrades](/docs/rolling-upgrades) per release; the rolling-upgrade
+[rolling upgrades](/docs/2.0/rolling-upgrades) per release; the rolling-upgrade
 contract names the version-skew, schema, drain, readiness, and rollback
 guarantees that must hold. SQLite clustering, Redis-less multi-node mode,
 duplicate schedulers, active/active multi-region, Helm, and provider-specific
 failover are outside that contract until separately validated. Active/passive
 multi-region with operator-driven regional failover is its own self-serve
 contract in the
-[self-hosting guide](/docs/deployment#activepassive-multi-region); each
+[self-hosting guide](/docs/2.0/deployment#activepassive-multi-region); each
 region still runs the validated single-region or small-cluster shape.
 
 For self-hosted server deployments, start from published images rather than
@@ -1033,7 +1033,7 @@ registration. Do not shift production traffic based on `/api/health` alone.
 
 For a complete endpoint-by-endpoint reference, including required headers,
 roles, worker-protocol routes, external payload storage routes, and named error
-reasons, see the [Server API Reference](/docs/polyglot/server-api-reference).
+reasons, see the [Server API Reference](/docs/2.0/polyglot/server-api-reference).
 
 The server exposes three API surfaces:
 
@@ -1101,7 +1101,7 @@ Key endpoints:
 - `POST /api/worker/activity-tasks/poll` — Long-poll for activity tasks
 - `POST /api/worker/activity-tasks/{id}/complete` — Complete activity task
 
-See the [Worker Protocol](/docs/polyglot/worker-protocol) reference for details.
+See the [Worker Protocol](/docs/2.0/polyglot/worker-protocol) reference for details.
 
 ### Discovery (unversioned)
 
@@ -1145,8 +1145,8 @@ The only endpoints that do **not** require `X-Durable-Workflow-Control-Plane-Ver
 
 ## Learn More
 
-- [Worker Protocol Reference](/docs/polyglot/worker-protocol) — Full API contract for workers
-- [Embedded to Server Migration](/docs/polyglot/embedded-to-server) — Adopt the server from a Laravel embedded v2 app
-- [Python SDK](/docs/polyglot/python) — Build Python workers
-- [CLI](/docs/polyglot/cli) — Command-line interface
+- [Worker Protocol Reference](/docs/2.0/polyglot/worker-protocol) — Full API contract for workers
+- [Embedded to Server Migration](/docs/2.0/polyglot/embedded-to-server) — Adopt the server from a Laravel embedded v2 app
+- [Python SDK](/docs/2.0/polyglot/python) — Build Python workers
+- [CLI](/docs/2.0/polyglot/cli) — Command-line interface
 - [Server Repository](https://github.com/durable-workflow/server) — Source code, issues, releases

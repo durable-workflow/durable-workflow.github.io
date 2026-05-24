@@ -17,7 +17,7 @@ keywords:
 # CLI Command Reference
 
 This page documents the v2 `dw` command surface as an operator and automation
-contract. Use the [CLI guide](/docs/polyglot/cli) for installation and
+contract. Use the [CLI guide](/docs/2.0/polyglot/cli) for installation and
 profile setup; use this page when wiring scripts, CI jobs, runbooks, or AI
 agents to exact command shapes.
 
@@ -115,7 +115,7 @@ dw server:info --output=json \
 ```
 
 For the meaning of those fields, see
-[Server Role Topology](/docs/polyglot/server-role-topology).
+[Server Role Topology](/docs/2.0/polyglot/server-role-topology).
 
 ### Server Info And Coordination Health
 
@@ -154,7 +154,7 @@ dw server:info --output=json \
 ```
 
 For the underlying readiness contract behind these fields, see the
-[Server API Reference](/docs/polyglot/server-api-reference).
+[Server API Reference](/docs/2.0/polyglot/server-api-reference).
 
 ### Self-Upgrade
 
@@ -304,9 +304,9 @@ Use `--paused` for deploy-time registration that should not start work yet.
 
 The task queue commands are the preferred operator view for throttling,
 capacity, and no-worker diagnoses. See
-[Task Queue Admission](/docs/polyglot/task-queue-admission) for the
+[Task Queue Admission](/docs/2.0/polyglot/task-queue-admission) for the
 server-side policy behind those fields and
-[Worker Build-Id Rollout](/docs/polyglot/worker-build-id-rollout) for the
+[Worker Build-Id Rollout](/docs/2.0/polyglot/worker-build-id-rollout) for the
 full unversioned-to-versioned cutover, canary, drain, and rollback lifecycle.
 
 `dw task-queue:drain` and `dw task-queue:resume` both require either
@@ -469,7 +469,7 @@ a list command feeds a stream processor. Human tables are allowed to improve
 over time; JSON field names are the automation contract.
 
 All commands use the stable exit-code policy documented in the
-[CLI guide](/docs/polyglot/cli#exit-codes):
+[CLI guide](/docs/2.0/polyglot/cli#exit-codes):
 
 | Code | Meaning |
 | --- | --- |
