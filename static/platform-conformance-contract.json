@@ -1,6 +1,6 @@
 {
   "schema": "durable-workflow.v2.platform-conformance.suite",
-  "version": 10,
+  "version": 11,
   "authority_doc": "docs/platform-conformance.md",
   "authority_url": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
   "surface_stability_authority": "durable-workflow.v2.surface-stability.contract",
@@ -26,6 +26,7 @@
         "search_attribute_runtime_contract",
         "namespace_runtime_contract",
         "child_workflow_runtime_contract",
+        "worker_versioning_runtime_contract",
         "worker_task_lifecycle",
         "failure_repair_actionability"
       ]
@@ -43,6 +44,7 @@
         "search_attribute_runtime_contract",
         "namespace_runtime_contract",
         "child_workflow_runtime_contract",
+        "worker_versioning_runtime_contract",
         "worker_task_lifecycle",
         "history_replay_bundles"
       ]
@@ -59,6 +61,7 @@
         "search_attribute_runtime_contract",
         "namespace_runtime_contract",
         "child_workflow_runtime_contract",
+        "worker_versioning_runtime_contract",
         "history_replay_bundles"
       ]
     },
@@ -73,6 +76,7 @@
         "search_attribute_runtime_contract",
         "namespace_runtime_contract",
         "child_workflow_runtime_contract",
+        "worker_versioning_runtime_contract",
         "cli_json_envelopes"
       ]
     },
@@ -85,6 +89,7 @@
         "signal_query_runtime_contract",
         "search_attribute_runtime_contract",
         "namespace_runtime_contract",
+        "worker_versioning_runtime_contract",
         "waterline_observer_envelopes"
       ]
     },
@@ -304,6 +309,32 @@
         "child_workflow_namespace_contract"
       ]
     },
+    "worker_versioning_runtime_contract": {
+      "status": "stable",
+      "description": "Live published-artifact scenarios for safe-deploy worker versioning across build-ID registration, rollout visibility, drain/resume controls, per-run pins, compatible replay routing, no-compatible-worker diagnostics, cross-language PHP/Python pinning, adversarial no-bump behavior, and history API version pins.",
+      "sources": [
+        {
+          "repository": "durable-workflow.github.io",
+          "path": "static/platform-conformance/worker-versioning-runtime-scenarios.json"
+        }
+      ],
+      "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
+      "required_scenarios": [
+        "published_artifact_install_only",
+        "worker_registration_build_ids",
+        "operator_rollout_visibility",
+        "drain_resume_operator_controls",
+        "pin_on_start",
+        "replay_only_by_compatible_workers",
+        "new_starts_to_promoted_version",
+        "replay_across_cache_eviction",
+        "no_compatible_worker_behavior",
+        "operator_visibility_surfaces",
+        "cross_language_php_python_pinning",
+        "adversarial_no_version_bump",
+        "history_api_version_pin"
+      ]
+    },
     "failure_repair_actionability": {
       "status": "stable",
       "description": "Failure objects and repair / actionability shapes for stuck tasks, deterministic failure, and replay-mismatch surfaces.",
@@ -385,7 +416,8 @@
         "search_attribute_runtime_contract",
         "history_replay_bundles",
         "namespace_runtime_contract",
-        "child_workflow_runtime_contract"
+        "child_workflow_runtime_contract",
+        "worker_versioning_runtime_contract"
       ]
     },
     "provisional_categories_warn_only": {

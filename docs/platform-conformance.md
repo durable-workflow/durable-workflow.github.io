@@ -25,7 +25,7 @@ for implementations that claim Durable Workflow v2 compatibility.
 The machine-readable mirror is published at
 [`static/platform-conformance-contract.json`](pathname:///platform-conformance-contract.json)
 with schema `durable-workflow.v2.platform-conformance.suite`, version
-`10`. The same manifest is advertised by the standalone server from
+`11`. The same manifest is advertised by the standalone server from
 `GET /api/cluster/info` under `platform_conformance_suite`. The
 [Platform Protocol Specs](/docs/2.0/platform-protocol-specs) catalog names
 that nested manifest as the `platform_conformance_suite_manifest`
@@ -47,11 +47,11 @@ For example, the standalone server claims `standalone_server`,
 
 | Target | Required surface families | Required fixture categories |
 | --- | --- | --- |
-| `standalone_server` | `server_api`, `worker_protocol`, `cluster_info_manifests` | `control_plane_request_response`, `signal_query_runtime_contract`, `search_attribute_runtime_contract`, `namespace_runtime_contract`, `child_workflow_runtime_contract`, `worker_task_lifecycle`, `failure_repair_actionability` |
-| `official_sdk` | `official_sdks`, `worker_protocol`, `history_event_wire_formats` | `control_plane_request_response`, `signal_query_runtime_contract`, `search_attribute_runtime_contract`, `namespace_runtime_contract`, `child_workflow_runtime_contract`, `worker_task_lifecycle`, `history_replay_bundles` |
-| `worker_protocol_implementation` | `worker_protocol`, `history_event_wire_formats` | `worker_task_lifecycle`, `signal_query_runtime_contract`, `search_attribute_runtime_contract`, `namespace_runtime_contract`, `child_workflow_runtime_contract`, `history_replay_bundles` |
-| `cli_json_client` | `cli_json` | `control_plane_request_response`, `signal_query_runtime_contract`, `search_attribute_runtime_contract`, `namespace_runtime_contract`, `child_workflow_runtime_contract`, `cli_json_envelopes` |
-| `waterline_contract_surface` | `waterline_api` | `signal_query_runtime_contract`, `search_attribute_runtime_contract`, `namespace_runtime_contract`, `waterline_observer_envelopes` |
+| `standalone_server` | `server_api`, `worker_protocol`, `cluster_info_manifests` | `control_plane_request_response`, `signal_query_runtime_contract`, `search_attribute_runtime_contract`, `namespace_runtime_contract`, `child_workflow_runtime_contract`, `worker_versioning_runtime_contract`, `worker_task_lifecycle`, `failure_repair_actionability` |
+| `official_sdk` | `official_sdks`, `worker_protocol`, `history_event_wire_formats` | `control_plane_request_response`, `signal_query_runtime_contract`, `search_attribute_runtime_contract`, `namespace_runtime_contract`, `child_workflow_runtime_contract`, `worker_versioning_runtime_contract`, `worker_task_lifecycle`, `history_replay_bundles` |
+| `worker_protocol_implementation` | `worker_protocol`, `history_event_wire_formats` | `worker_task_lifecycle`, `signal_query_runtime_contract`, `search_attribute_runtime_contract`, `namespace_runtime_contract`, `child_workflow_runtime_contract`, `worker_versioning_runtime_contract`, `history_replay_bundles` |
+| `cli_json_client` | `cli_json` | `control_plane_request_response`, `signal_query_runtime_contract`, `search_attribute_runtime_contract`, `namespace_runtime_contract`, `child_workflow_runtime_contract`, `worker_versioning_runtime_contract`, `cli_json_envelopes` |
+| `waterline_contract_surface` | `waterline_api` | `signal_query_runtime_contract`, `search_attribute_runtime_contract`, `namespace_runtime_contract`, `worker_versioning_runtime_contract`, `waterline_observer_envelopes` |
 | `repair_actionability_surface` | `worker_protocol`, `server_api` | `failure_repair_actionability` |
 | `mcp_discovery_surface` | `mcp_discovery_results` | `mcp_discovery_envelopes` |
 
@@ -93,6 +93,7 @@ JSON manifests linked from the category notes below.
 | `history_replay_bundles` | `stable` | `sdk-python` | `tests/fixtures/golden_history/` | Deterministic replay coverage for frozen history bundles, worker restart replay, adversarial refusal, and in-flight signal timing across the official PHP and Python runtimes. |
 | `namespace_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/namespace-runtime-scenarios.json` | Live published-artifact scenarios for Temporal-parity namespace isolation, lifecycle cleanup, CLI and SDK namespace selection, PHP worker routing, Waterline visibility, Nexus opt-in crossing, and search-attribute value query isolation. |
 | `child_workflow_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/child-workflow-runtime-scenarios.json` | Live published-artifact scenarios for child workflow orchestration across PHP and Python workers, cross-language parent/child execution, failure and cancellation propagation, replay after worker restart, concurrent fan-out, and namespace behavior. |
+| `worker_versioning_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/worker-versioning-runtime-scenarios.json` | Live published-artifact scenarios for safe-deploy worker versioning across build-ID registration, rollout visibility, drain/resume controls, per-run pins, compatible replay routing, no-compatible-worker diagnostics, cross-language PHP/Python pinning, adversarial no-bump behavior, and history API version pins. |
 | `failure_repair_actionability` | `stable` | `server` | `docs/contracts/external-task-result.md` | Failure objects and repair / actionability shapes for stuck tasks, deterministic failure, and replay-mismatch surfaces. |
 | `failure_repair_actionability` | `stable` | `server` | `docs/contracts/replay-verification.md` | Failure objects and repair / actionability shapes for stuck tasks, deterministic failure, and replay-mismatch surfaces. |
 | `cli_json_envelopes` | `stable` | `cli` | `tests/fixtures/control-plane/` | The `--output=json` and `--output=jsonl` envelopes that automation depends on. |
@@ -197,6 +198,23 @@ passing category.
 Those child-workflow scenario ids and their pass criteria are published
 at
 [`static/platform-conformance/child-workflow-runtime-scenarios.json`](pathname:///platform-conformance/child-workflow-runtime-scenarios.json).
+
+The `worker_versioning_runtime_contract` category is a stable runtime
+scenario category. A result for it must use published artifacts and
+cover worker build-ID registration, operator rollout visibility,
+drain/resume controls, per-run compatibility pins, replay only by
+compatible workers, promoted-version routing for new starts, replay
+after cache eviction, no-compatible-worker diagnostics, CLI and
+Waterline visibility surfaces, PHP/Python cross-language pinning,
+adversarial no-version-bump behavior, and history API version pins. A
+worker-versioning smoke subset is nonconforming until every required
+cell is recorded as `pass`, `fail`, `unsupported`, `not_covered`, or
+`runner_blocked` with linked findings. Only `pass` cells count toward a
+passing category.
+
+Those worker-versioning scenario ids and their pass criteria are
+published at
+[`static/platform-conformance/worker-versioning-runtime-scenarios.json`](pathname:///platform-conformance/worker-versioning-runtime-scenarios.json).
 
 ## Pass / Fail Rules
 
