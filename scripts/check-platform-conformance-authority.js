@@ -76,6 +76,13 @@ const VERSIONED_RUNTIME_SCENARIO_STATUSES = {
     'not_covered',
     'runner_blocked',
   ],
+  12: [
+    'pass',
+    'fail',
+    'unsupported',
+    'not_covered',
+    'runner_blocked',
+  ],
 };
 // Digests bind each stable scenario id's operations and pass_criteria to the
 // suite version so published harness criteria cannot drift invisibly.
@@ -109,6 +116,15 @@ const VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS = {
     child_workflow_runtime_contract: 'sha256:3612fc5ce951c26382d7eb2842c368f9ce7a17ce48a246bd43d327ada2de54e2',
     history_replay_bundles: 'sha256:70658bc21f12e7b0c16306951ba18e2b2ec853487c287e81cfa64a2b40eff013',
     namespace_runtime_contract: 'sha256:aba71f98fcad2713a13801ef5430522ffdb6ea4214a160e50fca0cd7794315e5',
+    search_attribute_runtime_contract: 'sha256:ef28842b57295065f2de2cf973ee7c06f0bdd2f390f0ab3dcf78d9c64f72d1c5',
+    signal_query_runtime_contract: 'sha256:186e9a0a5bba1a094d0b8c7eb3299f0798f15e7aaab83b0d2596f0c91cc75373',
+    worker_versioning_runtime_contract: 'sha256:ae1bfb02b7062c6c858c81454330ae9348ca0bc06579aef90b7d648726c9415c',
+  },
+  12: {
+    child_workflow_runtime_contract: 'sha256:3612fc5ce951c26382d7eb2842c368f9ce7a17ce48a246bd43d327ada2de54e2',
+    history_replay_bundles: 'sha256:70658bc21f12e7b0c16306951ba18e2b2ec853487c287e81cfa64a2b40eff013',
+    namespace_runtime_contract: 'sha256:aba71f98fcad2713a13801ef5430522ffdb6ea4214a160e50fca0cd7794315e5',
+    saga_runtime_contract: 'sha256:6f6c04ecb67546ff2d307e9f53961f9c19ab347c6486de7fe29e0a5dddef4347',
     search_attribute_runtime_contract: 'sha256:ef28842b57295065f2de2cf973ee7c06f0bdd2f390f0ab3dcf78d9c64f72d1c5',
     signal_query_runtime_contract: 'sha256:186e9a0a5bba1a094d0b8c7eb3299f0798f15e7aaab83b0d2596f0c91cc75373',
     worker_versioning_runtime_contract: 'sha256:ae1bfb02b7062c6c858c81454330ae9348ca0bc06579aef90b7d648726c9415c',
@@ -240,6 +256,21 @@ VERSIONED_PASS_FAIL_RULES[11] = {
       'namespace_runtime_contract',
       'child_workflow_runtime_contract',
       'worker_versioning_runtime_contract',
+    ],
+  },
+};
+VERSIONED_PASS_FAIL_RULES[12] = {
+  ...VERSIONED_PASS_FAIL_RULES[11],
+  stable_runtime_scenario_coverage: {
+    ...VERSIONED_PASS_FAIL_RULES[11].stable_runtime_scenario_coverage,
+    applies_to_categories: [
+      'signal_query_runtime_contract',
+      'search_attribute_runtime_contract',
+      'history_replay_bundles',
+      'namespace_runtime_contract',
+      'child_workflow_runtime_contract',
+      'worker_versioning_runtime_contract',
+      'saga_runtime_contract',
     ],
   },
 };

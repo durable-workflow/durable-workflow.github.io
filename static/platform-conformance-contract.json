@@ -1,6 +1,6 @@
 {
   "schema": "durable-workflow.v2.platform-conformance.suite",
-  "version": 11,
+  "version": 12,
   "authority_doc": "docs/platform-conformance.md",
   "authority_url": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
   "surface_stability_authority": "durable-workflow.v2.surface-stability.contract",
@@ -26,6 +26,7 @@
         "search_attribute_runtime_contract",
         "namespace_runtime_contract",
         "child_workflow_runtime_contract",
+        "saga_runtime_contract",
         "worker_versioning_runtime_contract",
         "worker_task_lifecycle",
         "failure_repair_actionability"
@@ -44,6 +45,7 @@
         "search_attribute_runtime_contract",
         "namespace_runtime_contract",
         "child_workflow_runtime_contract",
+        "saga_runtime_contract",
         "worker_versioning_runtime_contract",
         "worker_task_lifecycle",
         "history_replay_bundles"
@@ -61,6 +63,7 @@
         "search_attribute_runtime_contract",
         "namespace_runtime_contract",
         "child_workflow_runtime_contract",
+        "saga_runtime_contract",
         "worker_versioning_runtime_contract",
         "history_replay_bundles"
       ]
@@ -76,6 +79,7 @@
         "search_attribute_runtime_contract",
         "namespace_runtime_contract",
         "child_workflow_runtime_contract",
+        "saga_runtime_contract",
         "worker_versioning_runtime_contract",
         "cli_json_envelopes"
       ]
@@ -89,6 +93,7 @@
         "signal_query_runtime_contract",
         "search_attribute_runtime_contract",
         "namespace_runtime_contract",
+        "saga_runtime_contract",
         "worker_versioning_runtime_contract",
         "waterline_observer_envelopes"
       ]
@@ -335,6 +340,31 @@
         "history_api_version_pin"
       ]
     },
+    "saga_runtime_contract": {
+      "status": "stable",
+      "description": "Live published-artifact scenarios for Temporal-parity saga compensation across forward success, reverse-order compensation after later-step failure, early failure, retry idempotence, compensation failure visibility, worker restart replay, PHP/Python cross-language compensation, typed compensation errors, and operator-visible in-progress compensation state.",
+      "sources": [
+        {
+          "repository": "durable-workflow.github.io",
+          "path": "static/platform-conformance/saga-runtime-scenarios.json"
+        }
+      ],
+      "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
+      "required_scenarios": [
+        "published_artifact_install_only",
+        "forward_success_path",
+        "failure_at_d_reverse_compensation",
+        "failure_at_c_reverse_compensation",
+        "failure_at_a_no_compensation",
+        "compensation_retry_idempotence",
+        "compensation_failure_visibility",
+        "mid_compensation_worker_restart",
+        "php_workflow_python_compensation",
+        "python_workflow_php_compensation",
+        "typed_compensation_error_round_trip",
+        "operator_visible_mid_compensation_status"
+      ]
+    },
     "failure_repair_actionability": {
       "status": "stable",
       "description": "Failure objects and repair / actionability shapes for stuck tasks, deterministic failure, and replay-mismatch surfaces.",
@@ -417,7 +447,8 @@
         "history_replay_bundles",
         "namespace_runtime_contract",
         "child_workflow_runtime_contract",
-        "worker_versioning_runtime_contract"
+        "worker_versioning_runtime_contract",
+        "saga_runtime_contract"
       ]
     },
     "provisional_categories_warn_only": {
