@@ -46,38 +46,62 @@ domains, or migration path that `GET /api/cluster/info` publishes.
 
 ## Quick Start
 
-### Docker Compose
+### Published Image + SQLite
 
-The fastest way to run the server:
+The fastest source-free way to run the server is the published Docker image.
+This quickstart uses SQLite, database queues, and file cache inside the
+container. Mount `/app/database` so bootstrap and the API server share the same
+SQLite file:
 
 ```bash
-# Clone the repository
-git clone https://github.com/durable-workflow/server.git
-cd server
+server_image=durableworkflow/server:0.2.186
+export DW_AUTH_TOKEN=dev-token
 
-# Copy environment config
-cp .env.example .env
+docker volume create durable-workflow-server-quickstart
 
-# Start the server with all dependencies
-docker compose up -d
+docker run --rm \
+  -v durable-workflow-server-quickstart:/app/database \
+  -e DW_AUTH_DRIVER=token \
+  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
+  "$server_image" server-bootstrap
 
-# Verify
+docker rm -f durable-workflow-server >/dev/null 2>&1 || true
+docker run -d --name durable-workflow-server \
+  -p 8080:8080 \
+  -v durable-workflow-server-quickstart:/app/database \
+  -e DW_AUTH_DRIVER=token \
+  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
+  "$server_image"
+
+until curl -sf http://localhost:8080/api/ready >/dev/null; do sleep 1; done
 curl http://localhost:8080/api/health
-curl http://localhost:8080/api/cluster/info \
+curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
+  http://localhost:8080/api/cluster/info \
   | jq '.topology | {current_shape, current_roles, execution_mode}'
 ```
 
-This starts:
-- **server** — the API node serving `api_ingress`, `control_plane`, `matching`, and `history_projection`
-- **worker** — the execution-plane queue worker
-- **scheduler** — the singleton schedule and maintenance runner
-- **mysql** — the workflow state database
-- **redis** — cache and queue backend
-- **bootstrap** — one-shot service that runs migrations and seeds the default namespace
+This starts one API server container and creates the default namespace. It is
+enough for local Python SDK workers and CLI checks. Use the published Compose
+path below when you want MySQL, Redis, separate worker and scheduler
+containers, or a closer production rehearsal.
 
-The published Compose stack starts in the `standalone_server` shape. Read
-`/api/cluster/info` to confirm the API node role bundle and matching-role
-settings instead of inferring duties from container names.
+### Published Image + Compose
+
+Use the published Compose artifact when you want the source-free
+multi-container stack backed by MySQL and Redis:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/main/docker-compose.published.yml
+
+server_image=durableworkflow/server:0.2.186
+export DW_AUTH_TOKEN=dev-token
+
+env DW_SERVER_IMAGE="$server_image" docker compose \
+  -f docker-compose.published.yml up -d --wait
+curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
+  http://localhost:8080/api/cluster/info \
+  | jq '.topology | {current_shape, current_roles, execution_mode}'
+```
 
 ### Ports
 
@@ -933,7 +957,7 @@ php artisan workflow:work
 Python workers use the `durable-workflow` SDK:
 
 ```bash
-pip install durable-workflow
+pip install durable-workflow==0.4.78
 ```
 
 See the [Python SDK](/docs/2.0/polyglot/python) guide for worker setup.
@@ -1017,8 +1041,8 @@ region still runs the validated single-region or small-cluster shape.
 For self-hosted server deployments, start from published images rather than
 source-tree builds:
 
-- Docker Hub: `durableworkflow/server:0.2.125`
-- GitHub Container Registry: `ghcr.io/durable-workflow/server:0.2.125`
+- Docker Hub: `durableworkflow/server:0.2.186`
+- GitHub Container Registry: `ghcr.io/durable-workflow/server:0.2.186`
 - Published-image Compose:
   [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml)
 - Raw Kubernetes manifests:

@@ -6,8 +6,10 @@ const config = require('../docusaurus.config.js');
 const STABLE_DOCS_VERSION = '1.x';
 const PRERELEASE_DOCS_VERSION = '2.0';
 const STABLE_DOCS_ROOT = '/docs/introduction/';
+const PRERELEASE_WATERLINE_ARTIFACT = 'durable-workflow/waterline:2.0.0-alpha.62@alpha';
 const PUBLIC_DISCOVERY_URLS = [
   '/docs/',
+  '/docs/2.0/quickstart/',
   '/docs/platform-conformance/',
   '/platform-conformance-contract.json',
   '/platform-conformance/signal-query-runtime-scenarios.json',
@@ -38,6 +40,20 @@ function assertIncludes(haystack, needle, label) {
 function assertExcludes(haystack, needle, label) {
   if (haystack.includes(needle)) {
     fail(`${label} must not include ${JSON.stringify(needle)}`);
+  }
+}
+
+function assertOnlyWaterlineArtifact(haystack, label) {
+  const pins = new Set(haystack.match(/durable-workflow\/waterline:2\.0\.0-alpha\.\d+@alpha/g) || []);
+
+  if (!pins.has(PRERELEASE_WATERLINE_ARTIFACT)) {
+    fail(`${label} must include ${JSON.stringify(PRERELEASE_WATERLINE_ARTIFACT)}`);
+  }
+
+  for (const pin of pins) {
+    if (pin !== PRERELEASE_WATERLINE_ARTIFACT) {
+      fail(`${label} must not include stale Waterline artifact ${JSON.stringify(pin)}`);
+    }
   }
 }
 
@@ -133,6 +149,8 @@ function assertBuiltDocsPolicy() {
   const stableIntro = readBuildFile('docs/introduction/index.html');
   const stableInstall = readBuildFile('docs/installation/index.html');
   const prereleaseIntro = readBuildFile('docs/2.0/introduction/index.html');
+  const home = readBuildFile('index.html');
+  const prereleaseQuickstart = readBuildFile('docs/2.0/quickstart/index.html');
   const canonicalIndex = readBuildFile('llms.txt');
   const canonicalFull = readBuildFile('llms-full.txt');
   const prereleaseIndex = readBuildFile('llms-2.0.txt');
@@ -146,18 +164,33 @@ function assertBuiltDocsPolicy() {
   assertIncludes(stableIntro, 'href="/docs/introduction/"', 'stable introduction navbar');
   assertExcludes(stableIntro, 'llms-full-2.0.txt', 'stable introduction page');
 
+  assertIncludes(home, '/docs/introduction', 'homepage');
+  assertIncludes(home, '/docs/2.0/quickstart/', 'homepage');
+  assertIncludes(home, '2.0 Prerelease Quickstart', 'homepage');
+
   assertIncludes(prereleaseIntro, 'name="docusaurus_version" content="current"', '2.0 introduction page');
   assertIncludes(prereleaseIntro.toLowerCase(), 'unreleased', '2.0 introduction page');
+  assertIncludes(prereleaseQuickstart, 'name="docusaurus_version" content="current"', '2.0 quickstart page');
+  assertIncludes(prereleaseQuickstart.toLowerCase(), '2.0 prerelease', '2.0 quickstart page');
+  assertIncludes(prereleaseQuickstart, 'durableworkflow/server:0.2.186', '2.0 quickstart page');
+  assertIncludes(prereleaseQuickstart, 'durable-workflow==0.4.78', '2.0 quickstart page');
+  assertIncludes(prereleaseQuickstart, 'durable-workflow/workflow:2.0.0-alpha.177@alpha', '2.0 quickstart page');
+  assertOnlyWaterlineArtifact(prereleaseQuickstart, '2.0 quickstart page');
 
   assertIncludes(canonicalIndex, 'versioned_docs/version-1.x', 'canonical llms.txt');
   assertIncludes(canonicalFull, '<!-- Source: versioned_docs/version-1.x', 'canonical llms-full.txt');
   assertExcludes(canonicalIndex, 'docs/ai-assisted-development.md', 'canonical llms.txt');
+  assertExcludes(canonicalIndex, 'docs/quickstart.md', 'canonical llms.txt');
   assertExcludes(canonicalIndex, 'llms-full-2.0.txt', 'canonical llms.txt');
 
+  assertIncludes(prereleaseIndex, 'docs/quickstart.md', 'llms-2.0.txt');
   assertIncludes(prereleaseIndex, 'prerelease guidance', 'llms-2.0.txt');
   assertIncludes(prereleaseIndex, 'not the default public docs line', 'llms-2.0.txt');
   assertIncludes(prereleaseFull, '2.0 Prerelease Documentation', 'llms-full-2.0.txt');
   assertIncludes(prereleaseFull, 'not the default public docs line', 'llms-full-2.0.txt');
+  assertIncludes(prereleaseFull, '# 2.0 Prerelease Quickstart', 'llms-full-2.0.txt');
+  assertIncludes(prereleaseFull, 'pip install durable-workflow==0.4.78', 'llms-full-2.0.txt');
+  assertOnlyWaterlineArtifact(prereleaseFull, 'llms-full-2.0.txt');
 }
 
 function assertPublicDiscoverySurface() {

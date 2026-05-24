@@ -4,6 +4,7 @@
 const sidebars = {
   tutorialSidebar: [
     'introduction',
+    'quickstart',
     'installation',
     {
       type: 'category',

@@ -20,6 +20,11 @@ function HomepageHeader() {
             to="/docs/introduction">
             Get Started - 5min ⏱️
           </Link>
+          <Link
+            className="button button--outline button--secondary button--lg"
+            to="/docs/2.0/quickstart/">
+            2.0 Prerelease Quickstart
+          </Link>
         </div>
       </div>
     </header>

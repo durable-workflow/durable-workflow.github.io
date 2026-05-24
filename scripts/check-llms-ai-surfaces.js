@@ -36,6 +36,7 @@ function main() {
   const requiredV2IndexSources = [
     'docs/ai-assisted-development.md',
     'docs/agent-operating-loop.md',
+    'docs/quickstart.md',
     'docs/mcp-workflows.md',
     'docs/agent-tooling-contract.md',
     'docs/sample-app.md',
@@ -71,7 +72,9 @@ function main() {
     'payload_preview_limit_bytes',
     'CLI reference',
     'Five-Minute Operator Quickstart',
-    'VERSION=0.1.63',
+    'VERSION=0.1.67',
+    'durableworkflow/server:0.2.186',
+    'pip install durable-workflow==0.4.78',
     'dw env:set local',
     'dw doctor',
     'CLI and Python Parity',

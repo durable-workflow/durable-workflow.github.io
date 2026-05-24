@@ -16,6 +16,10 @@ const REQUIRED_DISCOVERY_ENTRIES = [
     buildPath: 'docs/index.html',
   },
   {
+    path: '/docs/2.0/quickstart/',
+    buildPath: 'docs/2.0/quickstart/index.html',
+  },
+  {
     path: '/docs/platform-conformance/',
     buildPath: 'docs/platform-conformance/index.html',
   },

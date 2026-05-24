@@ -35,6 +35,13 @@ see the generated [Python API reference](https://python.durable-workflow.com/).
 pip install durable-workflow
 ```
 
+For the current 2.0 prerelease quickstart, pin the published SDK version used by
+the release-candidate artifact tuple:
+
+```bash
+pip install durable-workflow==0.4.78
+```
+
 The SDK depends on [httpx](https://www.python-httpx.org/) for HTTP and Apache Avro for the default language-neutral payload codec. Prometheus metrics support is optional.
 
 ## Quickstart
@@ -57,7 +64,7 @@ class GreeterWorkflow:
         return result
 
 async def main():
-    async with Client("http://localhost:8080") as client:
+    async with Client("http://localhost:8080", token="dev-token", namespace="default") as client:
         handle = await client.start_workflow(
             workflow_type="greeter",
             task_queue="default",
@@ -82,18 +89,34 @@ asyncio.run(main())
 
 ### Running against a local server
 
-The program above assumes a Durable Workflow server reachable at `http://localhost:8080`. If you don't have one yet, the fastest path is the server's Docker Compose stack:
+The program above assumes a Durable Workflow server reachable at
+`http://localhost:8080` with the local `dev-token`. If you don't have one yet,
+the fastest source-free path is the published server image:
 
 ```bash
-git clone https://github.com/durable-workflow/server.git
-cd server
-cp .env.example .env
-printf '\nDW_AUTH_DRIVER=none\n' >> .env
-docker compose up -d
-until curl -sf http://localhost:8080/api/health > /dev/null; do sleep 1; done
+export DW_SERVER_IMAGE=durableworkflow/server:0.2.186
+export DW_AUTH_TOKEN=dev-token
+
+docker volume create durable-workflow-python-quickstart
+
+docker run --rm \
+  -v durable-workflow-python-quickstart:/app/database \
+  -e DW_AUTH_DRIVER=token \
+  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
+  "$DW_SERVER_IMAGE" server-bootstrap
+
+docker rm -f durable-workflow-server >/dev/null 2>&1 || true
+docker run -d --name durable-workflow-server \
+  -p 8080:8080 \
+  -v durable-workflow-python-quickstart:/app/database \
+  -e DW_AUTH_DRIVER=token \
+  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
+  "$DW_SERVER_IMAGE"
+
+until curl -sf http://localhost:8080/api/ready > /dev/null; do sleep 1; done
 ```
 
-`DW_AUTH_DRIVER=none` is local-development only. For production deployment — auth drivers, database config, TLS — see the [server setup guide](/docs/2.0/polyglot/server).
+For production deployment — auth drivers, database config, TLS — see the [server setup guide](/docs/2.0/polyglot/server).
 
 For a larger example, the SDK repository includes [`examples/order_processing`](https://github.com/durable-workflow/sdk-python/tree/main/examples/order_processing), a Docker Compose stack that runs a Python worker through an order workflow end to end.
 
@@ -1467,7 +1490,9 @@ Avoid passing Python-specific types (dataclasses, sets, tuples, datetime objects
 
 ## Running Against a Shared Server
 
-The [Quickstart](#quickstart) above shows how to bring up a local server via Docker Compose. In a team environment you usually point the Python worker at an existing server (staging, production, or a shared dev instance):
+The [Quickstart](#quickstart) above shows how to bring up a local server with
+the published Docker image. In a team environment you usually point the Python
+worker at an existing server (staging, production, or a shared dev instance):
 
 ```python
 from durable_workflow import Client
