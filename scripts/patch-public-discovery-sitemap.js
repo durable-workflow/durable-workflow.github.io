@@ -47,6 +47,10 @@ const REQUIRED_DISCOVERY_ENTRIES = [
     path: '/platform-conformance/worker-versioning-runtime-scenarios.json',
     buildPath: 'platform-conformance/worker-versioning-runtime-scenarios.json',
   },
+  {
+    path: '/platform-conformance/saga-runtime-scenarios.json',
+    buildPath: 'platform-conformance/saga-runtime-scenarios.json',
+  },
 ];
 
 function fail(message) {
