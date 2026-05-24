@@ -6,6 +6,17 @@ const config = require('../docusaurus.config.js');
 const STABLE_DOCS_VERSION = '1.x';
 const PRERELEASE_DOCS_VERSION = '2.0';
 const STABLE_DOCS_ROOT = '/docs/introduction/';
+const PUBLIC_DISCOVERY_URLS = [
+  '/docs/',
+  '/docs/platform-conformance/',
+  '/platform-conformance-contract.json',
+  '/platform-conformance/signal-query-runtime-scenarios.json',
+  '/platform-conformance/search-attribute-runtime-scenarios.json',
+  '/platform-conformance/replay-runtime-scenarios.json',
+  '/platform-conformance/namespace-runtime-scenarios.json',
+  '/platform-conformance/child-workflow-runtime-scenarios.json',
+  '/platform-conformance/worker-versioning-runtime-scenarios.json',
+];
 
 function fail(message) {
   throw new Error(message);
@@ -148,9 +159,47 @@ function assertBuiltDocsPolicy() {
   assertIncludes(prereleaseFull, 'not the default public docs line', 'llms-full-2.0.txt');
 }
 
+function assertPublicDiscoverySurface() {
+  const sitemap = readBuildFile('sitemap.xml');
+  const siteUrl = String(config.url || '').replace(/\/+$/, '');
+
+  for (const route of PUBLIC_DISCOVERY_URLS) {
+    assertIncludes(sitemap, `<loc>${siteUrl}${route}</loc>`, 'build/sitemap.xml');
+  }
+
+  const platformConformance = readBuildFile('docs/platform-conformance/index.html');
+
+  assertIncludes(
+    platformConformance,
+    'Platform Conformance',
+    'build/docs/platform-conformance/index.html'
+  );
+  assertIncludes(
+    platformConformance,
+    '/docs/2.0/platform-conformance/',
+    'build/docs/platform-conformance/index.html'
+  );
+  assertIncludes(
+    platformConformance,
+    'href="/platform-conformance/worker-versioning-runtime-scenarios.json"',
+    'build/docs/platform-conformance/index.html'
+  );
+  assertIncludes(
+    platformConformance,
+    'href="/platform-conformance-contract.json"',
+    'build/docs/platform-conformance/index.html'
+  );
+  assertExcludes(
+    platformConformance,
+    'name="docusaurus_version" content="current"',
+    'build/docs/platform-conformance/index.html'
+  );
+}
+
 function main() {
   assertConfigPolicy();
   assertBuiltDocsPolicy();
+  assertPublicDiscoverySurface();
 
   console.log('Docs release policy checks passed');
 }

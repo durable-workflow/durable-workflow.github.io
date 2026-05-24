@@ -1,0 +1,51 @@
+---
+title: Platform Conformance
+description: Public discovery route for Durable Workflow platform conformance manifests and runtime scenario catalogs.
+---
+
+# Platform Conformance
+
+The platform conformance surface is the public contract used to validate
+shared Durable Workflow behavior across the server, worker protocol, CLI,
+official SDKs, and operator surfaces. It gives implementers a stable place
+to find the suite manifest, the runtime scenario catalogs, and the pass /
+fail vocabulary used by conformance harnesses.
+
+This route is a discovery page for the public conformance surface. It does
+not change the default documentation line: `/docs/` continues to resolve to
+the stable 1.x documentation. The full prerelease conformance authority is
+the [Platform Conformance Suite](/docs/2.0/platform-conformance/) page in
+the explicit 2.0 prerelease docs.
+
+## Public Manifests
+
+| Surface | Public URL | Purpose |
+| --- | --- | --- |
+| Suite manifest | [`/platform-conformance-contract.json`](pathname:///platform-conformance-contract.json) | Declares the conformance schema, suite version, targets, fixture categories, harness contract, and release gates. |
+| Signal and query runtime scenarios | [`/platform-conformance/signal-query-runtime-scenarios.json`](pathname:///platform-conformance/signal-query-runtime-scenarios.json) | Covers signal delivery, query consistency, replay timing, terminal runs, malformed payloads, and operator visibility. |
+| Search attribute runtime scenarios | [`/platform-conformance/search-attribute-runtime-scenarios.json`](pathname:///platform-conformance/search-attribute-runtime-scenarios.json) | Covers search-attribute schema, query grammar, indexing behavior, namespace isolation, and type safety. |
+| Replay runtime scenarios | [`/platform-conformance/replay-runtime-scenarios.json`](pathname:///platform-conformance/replay-runtime-scenarios.json) | Covers deterministic replay, restart behavior, history bundles, and replay refusal cases. |
+| Namespace runtime scenarios | [`/platform-conformance/namespace-runtime-scenarios.json`](pathname:///platform-conformance/namespace-runtime-scenarios.json) | Covers namespace lifecycle, isolation, worker routing, CLI and SDK selection, and operator visibility. |
+| Child workflow runtime scenarios | [`/platform-conformance/child-workflow-runtime-scenarios.json`](pathname:///platform-conformance/child-workflow-runtime-scenarios.json) | Covers parent and child execution across PHP and Python workers, cancellation, failures, replay, fan-out, and namespace behavior. |
+| Worker versioning runtime scenarios | [`/platform-conformance/worker-versioning-runtime-scenarios.json`](pathname:///platform-conformance/worker-versioning-runtime-scenarios.json) | Covers build-ID registration, rollout visibility, drain and resume controls, compatibility pins, routing, diagnostics, and cross-language versioning behavior. |
+
+## How Harnesses Use This Surface
+
+Conformance harnesses should fetch the suite manifest first, then load each
+runtime scenario manifest named by the fixture catalog for the implementation
+targets they claim. Runtime results should record concrete published artifact
+versions, the suite version, scenario ids, observed outputs, and one status
+per required scenario: `pass`, `fail`, `unsupported`, `not_covered`, or
+`runner_blocked`.
+
+Passing conformance for a stable runtime category requires every required
+scenario in that category to pass. A smoke subset, missing scenario, unresolved
+artifact version, unsupported claimed surface, or environment-blocked cell is
+not full conformance for that category.
+
+## Release Status
+
+Stable 1.x remains the default public documentation line. The explicit 2.0
+prerelease docs and platform conformance manifests describe the prerelease
+compatibility surface for implementations that claim those server, protocol,
+SDK, CLI, or operator contracts.
