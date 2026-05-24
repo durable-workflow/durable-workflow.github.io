@@ -71,7 +71,7 @@ function main() {
     'payload_preview_limit_bytes',
     'CLI reference',
     'Five-Minute Operator Quickstart',
-    'VERSION=0.1.38',
+    'VERSION=0.1.63',
     'dw env:set local',
     'dw doctor',
     'CLI and Python Parity',

@@ -50,7 +50,7 @@ asset checksum before replacing `dw`, so a tampered mirror fails the install.
 <summary><b>Linux and macOS</b> (shell installer)</summary>
 
 ```bash
-curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.38 sh
+curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.63 sh
 dw --version
 ```
 
@@ -65,7 +65,7 @@ A GitHub Actions example:
 ```yaml
 - name: Install Durable Workflow CLI
   run: |
-    curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.38 sh
+    curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.63 sh
     echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 - name: Verify
   run: dw --version
@@ -77,7 +77,7 @@ A GitHub Actions example:
 <summary><b>Windows</b> (PowerShell installer)</summary>
 
 ```powershell
-$env:VERSION = "0.1.38"
+$env:VERSION = "0.1.63"
 irm https://durable-workflow.com/install.ps1 | iex
 dw --version
 ```
@@ -91,7 +91,7 @@ that directory to the user `PATH`.
 <summary><b>PHAR</b> (portable, requires PHP 8.2+)</summary>
 
 ```bash
-VERSION=0.1.38
+VERSION=0.1.63
 curl -fsSL -o dw.phar \
   "https://github.com/durable-workflow/cli/releases/download/${VERSION}/dw.phar"
 curl -fsSL -o SHA256SUMS \
@@ -114,14 +114,14 @@ after verifying the asset against the release's `SHA256SUMS`.
 
 ```bash
 dw upgrade                 # upgrade to the latest release
-dw upgrade --tag=0.1.38     # pin to a specific release tag
+dw upgrade --tag=0.1.63     # pin to a specific release tag
 dw upgrade --dry-run       # resolve the target release without downloading
 ```
 
 `dw upgrade` refuses to rewrite Composer vendor, Homebrew cellar, and PHAR
-installs and points at the managing tool instead — for example
-`composer update durable-workflow/cli` or
-`brew upgrade durable-workflow/tap/dw`. See the
+installs because those paths are owned by another tool. Reinstall a pinned
+public release with the installer, update the owning package manager, or use
+`brew upgrade durable-workflow/tap/dw` for tap-managed Homebrew installs. See the
 [CLI reference](./cli-reference.md#self-upgrade) for the full stable option
 and status-field contract.
 
@@ -160,7 +160,7 @@ docker compose -f docker-compose.published.yml up -d --wait
 Install the CLI in another terminal:
 
 ```bash
-curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.38 sh
+curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.63 sh
 export PATH="$HOME/.local/bin:$PATH"
 dw --version
 ```

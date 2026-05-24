@@ -180,9 +180,9 @@ prose:
 
 For refusals, the JSON payload's `installation.kind` identifies the managing
 tool (`composer-vendor`, `homebrew`, `phar`, or `binary`) and `reason` names
-the right command to use instead — for example
-`composer update durable-workflow/cli` or
-`brew upgrade durable-workflow/tap/dw`.
+the right owner to use instead. For public, source-free automation, reinstall
+a pinned release through `https://durable-workflow.com/install.sh`; for
+tap-managed Homebrew installs, use `brew upgrade durable-workflow/tap/dw`.
 
 ## Environment Profiles
 
