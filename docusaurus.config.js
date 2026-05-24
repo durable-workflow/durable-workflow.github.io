@@ -39,8 +39,9 @@ const config = {
           lastVersion: '1.x',
           versions: {
             current: {
-              label: '2.0',
+              label: '2.0 prerelease',
               path: '2.0',
+              banner: 'unreleased',
             },
             '1.x': {
               label: '1.x',
@@ -71,6 +72,10 @@ const config = {
       '@docusaurus/plugin-client-redirects',
       {
         redirects: [
+          {
+            from: '/docs',
+            to: '/docs/introduction/',
+          },
           {
             from: '/docs/2.0/server-setup',
             to: '/docs/2.0/polyglot/server',
@@ -109,7 +114,7 @@ const config = {
         items: [
           {
             type: 'doc',
-            docId: 'installation',
+            docId: 'introduction',
             position: 'left',
             label: 'Docs',
           },

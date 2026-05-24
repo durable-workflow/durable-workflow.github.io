@@ -32,7 +32,7 @@ begins.
 
 ## One Hosted Control Plane, Region-Scoped Runtime Targets
 
-The current 2.0 product contract is:
+The 2.0 prerelease product contract is:
 
 - **Cloud hosts the control plane.** Organizations, projects, environments,
   namespaces, API keys, audit logs, and runtime-target health inventory live in

@@ -14,6 +14,14 @@ keywords:
 
 # AI-Assisted Development
 
+:::caution 2.0 prerelease
+
+This page documents unreleased 2.0 guidance. The public default docs and
+canonical LLM bundles remain on the stable 1.x line until the release status is
+explicitly changed.
+
+:::
+
 Durable Workflow v2 is designed so a person can learn the durable execution
 model, then let tools handle the repeated inspection and operation work. The
 important product surface is not a chat prompt; it is the set of stable handles
@@ -26,16 +34,16 @@ machine-readable docs surface:
 
 | Surface | URL | Use |
 | --- | --- | --- |
-| canonical manifest | `https://durable-workflow.com/llms.txt` | Current 2.0 docs index. Tracks the site's default Docs path. |
+| canonical manifest | `https://durable-workflow.com/llms.txt` | Stable 1.x docs index. Tracks the site's unversioned default Docs path. |
 | canonical full bundle | `https://durable-workflow.com/llms-full.txt` | Single-file docs bundle matching the canonical manifest. |
-| v1 manifest | `https://durable-workflow.com/llms-1.x.txt` | Version-pinned 1.x historical index. Pin this URL only for legacy 1.x work. |
-| v1 full bundle | `https://durable-workflow.com/llms-full-1.x.txt` | Version-pinned 1.x historical bundle. |
-| v2 manifest | `https://durable-workflow.com/llms-2.0.txt` | Version-pinned 2.0 index. Same current line as canonical, but with an explicit major-version URL. |
-| v2 full bundle | `https://durable-workflow.com/llms-full-2.0.txt` | Version-pinned 2.0 bundle. |
+| v1 manifest | `https://durable-workflow.com/llms-1.x.txt` | Version-pinned 1.x stable index. Equivalent to canonical while 1.x is the active release line. |
+| v1 full bundle | `https://durable-workflow.com/llms-full-1.x.txt` | Version-pinned 1.x stable bundle. |
+| v2 manifest | `https://durable-workflow.com/llms-2.0.txt` | Version-pinned 2.0 prerelease index. Use only when intentionally evaluating unreleased 2.0 guidance. |
+| v2 full bundle | `https://durable-workflow.com/llms-full-2.0.txt` | Version-pinned 2.0 prerelease bundle. |
 
-Default agent prompts should fetch `/llms.txt` or `/llms-full.txt`. Pin
-the `-1.x.txt` URLs only for legacy 1.x applications; pin `-2.0.txt` only
-when the URL itself must keep an explicit major-version meaning.
+Default agent prompts should fetch `/llms.txt` or `/llms-full.txt` for stable
+1.x applications. Pin the `-2.0.txt` URLs only when the task is explicitly
+about prerelease 2.0 behavior.
 
 ## Local MCP Surface
 
@@ -97,7 +105,8 @@ When an agent needs to explain a stuck workflow, collect these facts first:
 3. recent typed history events
 4. open waits, timers, and pending tasks
 5. worker and task-queue health
-6. the relevant docs version, usually `2.0` during prerelease work
+6. the relevant docs version, using `1.x` for default product work and `2.0`
+   only for prerelease tasks
 
 That set is enough to distinguish a durable workflow failure from a worker
 runtime failure, a missing external credential, a queue outage, or an operator
@@ -113,8 +122,8 @@ Use the sample app MCP endpoint at /mcp/workflows for workflow discovery,
 start, result, and history. Prefer dw JSON/exit-code contracts and Waterline
 history exports over screenshots. For external handlers or bridge adapters,
 read worker_protocol.external_execution_surface_contract from /api/cluster/info
-and preserve the external task input/result envelopes. Do not use 1.x
-Workflow\Workflow examples unless I ask for the legacy 1.x API.
+and preserve the external task input/result envelopes. Use stable 1.x
+Workflow\Workflow examples unless I explicitly ask for prerelease 2.0 APIs.
 ```
 
 The goal is simple: humans learn the workflow/activity/replay invariant, and

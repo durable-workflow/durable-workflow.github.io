@@ -2,6 +2,8 @@ const fs = require('fs');
 const path = require('path');
 
 const DOC_EXTS = new Set(['.md', '.mdx']);
+const V2_PRERELEASE_NOTICE =
+  'Durable Workflow 2.0 is prerelease guidance and is not the default public docs line. Use the canonical stable 1.x bundle unless you are intentionally evaluating 2.0.';
 
 function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
@@ -203,13 +205,29 @@ function getVersionPaths() {
   if (versionBlockMatch) {
     const versionBlock = versionBlockMatch[1];
     const currentPathMatch = versionBlock.match(/current:\s*\{[^}]*path:\s*['"]([^'"]*)['"]/);
+    const currentBannerMatch = versionBlock.match(/current:\s*\{[^}]*banner:\s*['"]([^'"]*)['"]/);
     const v1xPathMatch = versionBlock.match(/['"]1\.x['"]:\s*\{[^}]*path:\s*['"]([^'"]*)['"]/);
 
     versions.current = currentPathMatch ? currentPathMatch[1] : '';
+    versions.currentBanner = currentBannerMatch ? currentBannerMatch[1] : null;
     versions['1.x'] = v1xPathMatch ? v1xPathMatch[1] : '';
   }
 
   return versions;
+}
+
+function withVersionNotice(content, notice) {
+  if (!notice) {
+    return content;
+  }
+
+  return [
+    '# Durable Workflow 2.0 Prerelease Documentation',
+    '',
+    notice,
+    '',
+    content.trimStart(),
+  ].join('\n');
 }
 
 function main() {
@@ -218,6 +236,9 @@ function main() {
 
   const versions = getVersionPaths();
   const lastVersion = versions.lastVersion;
+  const v2Notice = versions.currentBanner === 'unreleased'
+    ? V2_PRERELEASE_NOTICE
+    : null;
 
   // Generate manifest for v2.0 (current docs)
   const v2DocsDir = path.join(__dirname, '..', 'docs');
@@ -260,14 +281,15 @@ function main() {
   // Always emit the v2.0 pinned alias so version-explicit consumers can reach
   // it regardless of what canonical serves.
   if (v2Content) {
-    fs.writeFileSync(path.join(buildDir, 'llms-full-2.0.txt'), v2Content, 'utf8');
+    const v2PublishedContent = withVersionNotice(v2Content, v2Notice);
+    fs.writeFileSync(path.join(buildDir, 'llms-full-2.0.txt'), v2PublishedContent, 'utf8');
     const pinLabel = isV2Canonical ? '(matches canonical)' : '(pinned alias only)';
     console.log(`v2.0 version-specific manifest -> /llms-full-2.0.txt ${pinLabel}`);
 
     if (versions.current) {
       const v2Path = path.join(buildDir, versions.current);
       ensureDir(v2Path);
-      fs.writeFileSync(path.join(v2Path, 'llms-full.txt'), v2Content, 'utf8');
+      fs.writeFileSync(path.join(v2Path, 'llms-full.txt'), v2PublishedContent, 'utf8');
       console.log(`v2.0 manifest -> /${versions.current}/llms-full.txt`);
     }
   }

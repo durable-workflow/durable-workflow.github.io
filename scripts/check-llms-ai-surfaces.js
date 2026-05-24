@@ -53,6 +53,7 @@ function main() {
   const requiredV2FullContent = [
     '<!-- Source: docs/ai-assisted-development.md -->',
     '# AI-Assisted Development',
+    '2.0 prerelease',
     '# Agent Operating Loop',
     '# MCP Workflow Surface',
     '# Agent Tooling Contract',
@@ -92,6 +93,8 @@ function main() {
   }
 
   assertIncludes(v2Index, 'Topics: ai, agents, llms', 'llms-2.0.txt');
+  assertIncludes(v2Index, 'prerelease guidance', 'llms-2.0.txt');
+  assertIncludes(v2Index, 'not the default public docs line', 'llms-2.0.txt');
   assertIncludes(v2Index, 'Topics: ai, agents, mcp, operations', 'llms-2.0.txt');
   assertIncludes(v2Index, 'Topics: authoring, workflows, determinism', 'llms-2.0.txt');
   assertIncludes(v2Index, 'Topics: worker-protocol, external-workers, polyglot', 'llms-2.0.txt');
@@ -105,6 +108,8 @@ function main() {
   assertExcludes(v2Full, '# Search and Navigation', 'llms-full-2.0.txt');
   assertExcludes(v2Full, '<details>', 'llms-full-2.0.txt');
   assertExcludes(v2Full, '<summary>', 'llms-full-2.0.txt');
+  assertIncludes(v2Full, '2.0 Prerelease Documentation', 'llms-full-2.0.txt');
+  assertIncludes(v2Full, 'not the default public docs line', 'llms-full-2.0.txt');
   // Structural gate: canonical manifests must originate from whichever version
   // docusaurus.config.js declares as lastVersion. This assertion is the
   // machine-readable form of the cutover gate — changing canonical requires
@@ -131,7 +136,7 @@ function main() {
   assertIncludes(canonicalIndex, 'llms-full.txt', 'llms.txt');
   assertExcludes(canonicalIndex, 'llms-full-2.0.txt', 'llms.txt');
 
-  // v1.x is reachable only via the explicit pinned legacy alias.
+  // v1.x is reachable via the canonical default and the explicit pinned alias.
   assertIncludes(v1Index, 'versioned_docs/version-1.x', 'llms-1.x.txt');
   assertIncludes(v1Index, 'llms-full-1.x.txt', 'llms-1.x.txt');
   assertExcludes(v1Index, 'docs/ai-assisted-development.md', 'llms-1.x.txt');

@@ -17,29 +17,36 @@ keywords:
 
 # Agent Operating Loop
 
+:::caution 2.0 prerelease
+
+This page documents unreleased 2.0 guidance. The public default docs and
+canonical LLM bundles remain on the stable 1.x line until the release status is
+explicitly changed.
+
+:::
+
 Durable Workflow v2 is easiest for agents to use when every step has a stable
 handle. The loop below starts with the same invariant a human learns, then
 switches to machine-readable contracts for discovery, execution, diagnosis, and
 repair.
 
-## 1. Use The Current Docs
+## 1. Use The Right Docs Line
 
-For current 2.0 work, use the canonical bundle. It tracks the same default
-Docs path human readers reach from the public site:
+For stable 1.x work, use the canonical bundle. It tracks the same unversioned
+default Docs path human readers reach from the public site:
 
 ```text
 https://durable-workflow.com/llms-full.txt
 ```
 
-Use the version-specific 2.0 bundle when the URL itself must stay pinned to
-that major line:
+Use the version-specific 2.0 bundle only when the task is explicitly about
+prerelease 2.0 behavior:
 
 ```text
 https://durable-workflow.com/llms-full-2.0.txt
 ```
 
-Use the explicit 1.x pin only for legacy applications that are intentionally
-staying on the historical 1.x API:
+Use the explicit 1.x pin when the URL itself must name the stable major line:
 
 ```text
 https://durable-workflow.com/llms-full-1.x.txt

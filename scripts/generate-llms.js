@@ -6,6 +6,8 @@ const config = require('../docusaurus.config.js');
 const DOC_EXTS = new Set(['.md', '.mdx']);
 const EXCLUDED_FILES = new Set(['sponsors.md', 'support.md']);
 const FALLBACK_BRANCH = 'main';
+const V2_PRERELEASE_NOTICE =
+  'Durable Workflow 2.0 is prerelease guidance and is not the default public docs line. Use the canonical stable 1.x bundle unless you are intentionally evaluating 2.0.';
 
 function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
@@ -185,6 +187,17 @@ function getLastVersion() {
   return getDocsConfig().lastVersion || null;
 }
 
+function getCurrentVersionConfig() {
+  const versions = getDocsConfig().versions || {};
+  return versions.current || {};
+}
+
+function getV2Notice() {
+  return getCurrentVersionConfig().banner === 'unreleased'
+    ? V2_PRERELEASE_NOTICE
+    : null;
+}
+
 // Returns the docs directory for whichever version is lastVersion in the
 // docusaurus config. This is the cutover gate: promoting lastVersion from
 // '1.x' to 'current' automatically makes canonical serve v2 docs.
@@ -326,11 +339,12 @@ function renderSection(section) {
   return lines.join('\n');
 }
 
-function generateManifest(docsDir, outputPath, fullManifestUrl) {
+function generateManifest(docsDir, outputPath, fullManifestUrl, options = {}) {
   const siteBaseUrl = getSiteBaseUrl();
   const repoRawBaseUrl = getRepoRawBaseUrl();
   const siteTitle = config.title || 'Documentation';
   const siteTagline = config.tagline || 'Documentation index.';
+  const versionNotice = options.versionNotice || null;
   const sections = collectSections(docsDir, repoRawBaseUrl);
   const optionalSection = {
     title: 'Optional',
@@ -344,11 +358,19 @@ function generateManifest(docsDir, outputPath, fullManifestUrl) {
   };
   const renderedSections = [...sections, optionalSection].map(renderSection).join('\n\n');
 
-  const content = [
+  const header = [
     `# ${siteTitle}`,
     '',
     `> ${siteTagline}`,
     '',
+  ];
+
+  if (versionNotice) {
+    header.push(`> ${versionNotice}`, '');
+  }
+
+  const content = [
+    ...header,
     'This file is a curated markdown index for LLMs. Use the sections below for targeted source documents, or use the optional full bundle when you want the entire documentation set in one file.',
     '',
     'Each link includes frontmatter descriptions and discoverability topics when the source page provides them. Prefer those notes to pick the smallest relevant page before falling back to the full bundle.',
@@ -364,6 +386,7 @@ function main() {
   const buildDir = path.join(__dirname, '..', 'build');
   const siteBaseUrl = getSiteBaseUrl();
   const lastVersion = getLastVersion();
+  const v2Notice = getV2Notice();
 
   ensureDir(buildDir);
 
@@ -402,7 +425,9 @@ function main() {
   if (fs.existsSync(v2DocsDir)) {
     const v2OutputFile = path.join(buildDir, 'llms-2.0.txt');
     const v2FullUrl = new URL('llms-full-2.0.txt', siteBaseUrl).toString();
-    generateManifest(v2DocsDir, v2OutputFile, v2FullUrl);
+    generateManifest(v2DocsDir, v2OutputFile, v2FullUrl, {
+      versionNotice: v2Notice,
+    });
     const pinLabel = v2DocsDir === canonicalDocsDir ? '(matches canonical)' : '(pinned alias only)';
     console.log(`v2.0 llms-2.0.txt generated ${pinLabel}:`, v2OutputFile);
   }
