@@ -1,6 +1,6 @@
 {
   "schema": "durable-workflow.v2.platform-conformance.suite",
-  "version": 9,
+  "version": 10,
   "authority_doc": "docs/platform-conformance.md",
   "authority_url": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
   "surface_stability_authority": "durable-workflow.v2.surface-stability.contract",
@@ -23,6 +23,7 @@
       "required_fixture_categories": [
         "control_plane_request_response",
         "signal_query_runtime_contract",
+        "search_attribute_runtime_contract",
         "namespace_runtime_contract",
         "child_workflow_runtime_contract",
         "worker_task_lifecycle",
@@ -39,6 +40,7 @@
       "required_fixture_categories": [
         "control_plane_request_response",
         "signal_query_runtime_contract",
+        "search_attribute_runtime_contract",
         "namespace_runtime_contract",
         "child_workflow_runtime_contract",
         "worker_task_lifecycle",
@@ -54,6 +56,7 @@
       "required_fixture_categories": [
         "worker_task_lifecycle",
         "signal_query_runtime_contract",
+        "search_attribute_runtime_contract",
         "namespace_runtime_contract",
         "child_workflow_runtime_contract",
         "history_replay_bundles"
@@ -67,6 +70,7 @@
       "required_fixture_categories": [
         "control_plane_request_response",
         "signal_query_runtime_contract",
+        "search_attribute_runtime_contract",
         "namespace_runtime_contract",
         "child_workflow_runtime_contract",
         "cli_json_envelopes"
@@ -79,6 +83,7 @@
       ],
       "required_fixture_categories": [
         "signal_query_runtime_contract",
+        "search_attribute_runtime_contract",
         "namespace_runtime_contract",
         "waterline_observer_envelopes"
       ]
@@ -166,6 +171,36 @@
         "unknown_signal_and_query_errors",
         "malformed_signal_and_query_payloads",
         "waterline_operator_visibility"
+      ]
+    },
+    "search_attribute_runtime_contract": {
+      "status": "stable",
+      "description": "Live published-artifact scenarios for Temporal-parity search attributes across PHP and Python workers, CLI query surfaces, Waterline operator visibility, cross-language codecs, load latency, boolean grammar, and adversarial query handling.",
+      "sources": [
+        {
+          "repository": "durable-workflow.github.io",
+          "path": "static/platform-conformance/search-attribute-runtime-scenarios.json"
+        }
+      ],
+      "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
+      "required_scenarios": [
+        "published_artifact_install_only",
+        "schema_definition_and_reserved_name_refusal",
+        "python_worker_start_and_upsert_visibility",
+        "php_worker_start_and_upsert_visibility",
+        "cli_query_and_error_surface",
+        "waterline_operator_visibility",
+        "python_to_php_codec_round_trip",
+        "php_to_python_codec_round_trip",
+        "equality_range_bool_query_behavior",
+        "or_not_query_grammar",
+        "keyword_list_membership",
+        "type_safety_wrong_literal",
+        "undefined_key_rejection",
+        "indexing_latency_distribution",
+        "load_and_bounded_latency",
+        "namespace_isolation",
+        "query_injection_hardening"
       ]
     },
     "history_replay_bundles": {
@@ -347,6 +382,7 @@
       "rule": "A stable runtime fixture category must report every required scenario it declares with one of the statuses published by its runtime scenario manifest: pass, fail, unsupported, not_covered, or runner_blocked. Full conformance requires every required scenario to pass. A smoke-only subset, omitted scenario, unsupported public surface, uncovered cell, or runner-blocked cell is nonconforming and must link the owning finding.",
       "applies_to_categories": [
         "signal_query_runtime_contract",
+        "search_attribute_runtime_contract",
         "history_replay_bundles",
         "namespace_runtime_contract",
         "child_workflow_runtime_contract"

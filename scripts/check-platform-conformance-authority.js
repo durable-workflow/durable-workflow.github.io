@@ -62,6 +62,13 @@ const VERSIONED_RUNTIME_SCENARIO_STATUSES = {
     'not_covered',
     'runner_blocked',
   ],
+  10: [
+    'pass',
+    'fail',
+    'unsupported',
+    'not_covered',
+    'runner_blocked',
+  ],
 };
 // Digests bind each stable scenario id's operations and pass_criteria to the
 // suite version so published harness criteria cannot drift invisibly.
@@ -82,6 +89,13 @@ const VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS = {
     child_workflow_runtime_contract: 'sha256:3612fc5ce951c26382d7eb2842c368f9ce7a17ce48a246bd43d327ada2de54e2',
     history_replay_bundles: 'sha256:70658bc21f12e7b0c16306951ba18e2b2ec853487c287e81cfa64a2b40eff013',
     namespace_runtime_contract: 'sha256:aba71f98fcad2713a13801ef5430522ffdb6ea4214a160e50fca0cd7794315e5',
+    signal_query_runtime_contract: 'sha256:186e9a0a5bba1a094d0b8c7eb3299f0798f15e7aaab83b0d2596f0c91cc75373',
+  },
+  10: {
+    child_workflow_runtime_contract: 'sha256:3612fc5ce951c26382d7eb2842c368f9ce7a17ce48a246bd43d327ada2de54e2',
+    history_replay_bundles: 'sha256:70658bc21f12e7b0c16306951ba18e2b2ec853487c287e81cfa64a2b40eff013',
+    namespace_runtime_contract: 'sha256:aba71f98fcad2713a13801ef5430522ffdb6ea4214a160e50fca0cd7794315e5',
+    search_attribute_runtime_contract: 'sha256:ef28842b57295065f2de2cf973ee7c06f0bdd2f390f0ab3dcf78d9c64f72d1c5',
     signal_query_runtime_contract: 'sha256:186e9a0a5bba1a094d0b8c7eb3299f0798f15e7aaab83b0d2596f0c91cc75373',
   },
 };
@@ -187,6 +201,19 @@ const VERSIONED_PASS_FAIL_RULES = {
 // at suite 7 semantics.
 VERSIONED_PASS_FAIL_RULES[8] = VERSIONED_PASS_FAIL_RULES[7];
 VERSIONED_PASS_FAIL_RULES[9] = VERSIONED_PASS_FAIL_RULES[8];
+VERSIONED_PASS_FAIL_RULES[10] = {
+  ...VERSIONED_PASS_FAIL_RULES[9],
+  stable_runtime_scenario_coverage: {
+    ...VERSIONED_PASS_FAIL_RULES[9].stable_runtime_scenario_coverage,
+    applies_to_categories: [
+      'signal_query_runtime_contract',
+      'search_attribute_runtime_contract',
+      'history_replay_bundles',
+      'namespace_runtime_contract',
+      'child_workflow_runtime_contract',
+    ],
+  },
+};
 const EXPECTED_AUTHORITY_DOC = 'docs/platform-conformance.md';
 const EXPECTED_DOC_ID = 'platform-conformance';
 

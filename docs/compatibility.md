@@ -392,6 +392,7 @@ docs-side gates automatically; the rest belong to the human reviewer.
 
 | Date | Server | CLI | Python SDK | Workflow | Waterline | Notes |
 |------|--------|-----|------------|----------|-----------|-------|
+| 2026-05-24 | 2.0.0 | 0.1.0 | 0.2.0 | 2.0.0 | 2.0.0 | Platform conformance suite version 10 adds stable `search_attribute_runtime_contract` coverage for PHP and Python workers, CLI query and error surfaces, Waterline operator visibility, cross-language codec round trips, load and indexing latency, OR/NOT grammar, type safety, namespace isolation, reserved-name refusal, and query injection hardening. |
 | 2026-05-20 | 2.0.0 | 0.1.0 | 0.2.0 | 2.0.0 | 2.0.0 | Platform conformance suite version 9 requires signal/query published-artifact results to record concrete pinned artifact versions and reject placeholder or unresolved version tokens. |
 | 2026-05-20 | 2.0.0 | 0.1.0 | 0.2.0 | 2.0.0 | 2.0.0 | Platform conformance suite version 8 publishes the namespace lifecycle cleanup criteria that preserve cross-namespace external payload ownership under a new suite version and pins stable runtime scenario `operations` and `pass_criteria` content in the docs-site release check. |
 | 2026-05-20 | 2.0.0 | 0.1.0 | 0.2.0 | 2.0.0 | 2.0.0 | Platform conformance suite version 7 adds stable `child_workflow_runtime_contract` coverage for same-language and cross-language child execution, failure and cancellation propagation, worker-restart replay, concurrent fan-out, and namespace behavior. |
