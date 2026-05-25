@@ -181,6 +181,15 @@ every required cell is recorded as `pass`, `fail`, `unsupported`,
 `not_covered`, or `runner_blocked` with linked findings. Only `pass`
 cells count toward a passing category.
 
+Non-normative implementation notes for Waterline/operator scoped
+visibility can come from the published Waterline artifact or a focused
+Waterline shard. Useful reviewer captures include scoped workflow list
+and detail views, schedule views when the product exposes them,
+search-attribute values, dashboard scope, operator API stats, and the
+documented verdict for any default or unscoped view advertised by the
+product; the normative pass criteria remain the
+`waterline_operator_namespace_visibility` scenario below.
+
 Those namespace scenario ids and their pass criteria are published at
 [`static/platform-conformance/namespace-runtime-scenarios.json`](pathname:///platform-conformance/namespace-runtime-scenarios.json).
 
