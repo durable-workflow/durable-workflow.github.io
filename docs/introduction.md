@@ -15,6 +15,29 @@ keywords:
 
 Durable Workflow is a Laravel-native durable orchestration engine. You write your workflow as an ordinary PHP class; it runs on your queue worker, survives process restarts, and resumes exactly where it left off.
 
+## First-time 2.0 prerelease path
+
+If you are evaluating the 2.0 prerelease for the first time, start with the
+[2.0 Prerelease Quickstart](/docs/2.0/quickstart/). It uses published
+artifacts only and walks Laravel, Python, and operator paths to an observable
+`status=completed` workflow state.
+
+The quickstart pins the current prerelease artifacts directly:
+`durable-workflow==0.4.78` for Python,
+`durableworkflow/server:0.2.188` for the standalone server, and
+`VERSION=0.1.67` for the CLI installer.
+
+```bash
+pip install durable-workflow==0.4.78
+export DW_SERVER_IMAGE=durableworkflow/server:0.2.188
+curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.67 sh
+```
+
+The persona reference pages are also versioned 2.0 pages:
+[Python SDK](/docs/2.0/polyglot/python/),
+[Standalone Server](/docs/2.0/polyglot/server/), and
+[CLI](/docs/2.0/polyglot/cli/).
+
 ## Do you need a workflow?
 
 You probably need a workflow if:

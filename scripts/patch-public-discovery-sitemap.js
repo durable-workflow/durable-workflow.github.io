@@ -20,6 +20,18 @@ const REQUIRED_DISCOVERY_ENTRIES = [
     buildPath: 'docs/2.0/quickstart/index.html',
   },
   {
+    path: '/docs/2.0/polyglot/python/',
+    buildPath: 'docs/2.0/polyglot/python/index.html',
+  },
+  {
+    path: '/docs/2.0/polyglot/server/',
+    buildPath: 'docs/2.0/polyglot/server/index.html',
+  },
+  {
+    path: '/docs/2.0/polyglot/cli/',
+    buildPath: 'docs/2.0/polyglot/cli/index.html',
+  },
+  {
     path: '/docs/platform-conformance/',
     buildPath: 'docs/platform-conformance/index.html',
   },

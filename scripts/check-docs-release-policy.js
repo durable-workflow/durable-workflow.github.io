@@ -10,6 +10,9 @@ const PRERELEASE_WATERLINE_ARTIFACT = 'durable-workflow/waterline:2.0.0-alpha.64
 const PUBLIC_DISCOVERY_URLS = [
   '/docs/',
   '/docs/2.0/quickstart/',
+  '/docs/2.0/polyglot/python/',
+  '/docs/2.0/polyglot/server/',
+  '/docs/2.0/polyglot/cli/',
   '/docs/2.0/docs-page-release-audit/',
   '/docs/platform-conformance/',
   '/docs-page-release-audit.json',
@@ -67,6 +70,14 @@ function readBuildFile(relativePath) {
   }
 
   return fs.readFileSync(filePath, 'utf8');
+}
+
+function assertMissingBuildFile(relativePath, label) {
+  const filePath = path.join(__dirname, '..', 'build', relativePath);
+
+  if (fs.existsSync(filePath)) {
+    fail(`${label} must not be generated at build/${relativePath}`);
+  }
 }
 
 function getClassicPresetOptions() {
@@ -174,6 +185,10 @@ function assertBuiltDocsPolicy() {
 
   assertIncludes(prereleaseIntro, 'name="docusaurus_version" content="current"', '2.0 introduction page');
   assertIncludes(prereleaseIntro.toLowerCase(), 'unreleased', '2.0 introduction page');
+  assertIncludes(prereleaseIntro, '/docs/2.0/quickstart/', '2.0 introduction page');
+  assertIncludes(prereleaseIntro, 'durableworkflow/server:0.2.188', '2.0 introduction page');
+  assertIncludes(prereleaseIntro, 'durable-workflow==0.4.78', '2.0 introduction page');
+  assertIncludes(prereleaseIntro, 'VERSION=0.1.67', '2.0 introduction page');
   assertIncludes(prereleaseQuickstart, 'name="docusaurus_version" content="current"', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart.toLowerCase(), '2.0 prerelease', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'durableworkflow/server:0.2.188', '2.0 quickstart page');
@@ -211,6 +226,11 @@ function assertPublicDiscoverySurface() {
   }
 
   const platformConformance = readBuildFile('docs/platform-conformance/index.html');
+
+  assertMissingBuildFile('docs/polyglot/python/index.html', 'stable-default Python polyglot route');
+  assertMissingBuildFile('docs/polyglot/server/index.html', 'stable-default server polyglot route');
+  assertExcludes(sitemap, `${siteUrl}/docs/polyglot/python/`, 'build/sitemap.xml');
+  assertExcludes(sitemap, `${siteUrl}/docs/polyglot/server/`, 'build/sitemap.xml');
 
   assertIncludes(
     platformConformance,
