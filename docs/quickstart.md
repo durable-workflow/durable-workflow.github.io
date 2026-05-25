@@ -32,9 +32,9 @@ This path uses published artifacts only:
 
 | Surface | Artifact |
 | --- | --- |
-| Standalone server | `durableworkflow/server:0.2.188` |
+| Standalone server | `durableworkflow/server:0.2.191` |
 | CLI | `dw` `0.1.67` |
-| Python SDK | `durable-workflow==0.4.78` |
+| Python SDK | `durable-workflow==0.4.79` |
 | Laravel package | `durable-workflow/workflow:2.0.0-alpha.177@alpha` |
 | Waterline | `durable-workflow/waterline:2.0.0-alpha.64@alpha` |
 
@@ -44,7 +44,7 @@ Use this server for the Python and operator paths. It runs the published server
 image with SQLite, so no source checkout, MySQL, or Redis setup is required.
 
 ```bash
-export DW_SERVER_IMAGE=durableworkflow/server:0.2.188
+export DW_SERVER_IMAGE=durableworkflow/server:0.2.191
 export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-quickstart
@@ -79,7 +79,7 @@ cd durable-workflow-python-quickstart
 
 python3 -m venv .venv
 . .venv/bin/activate
-pip install durable-workflow==0.4.78
+pip install durable-workflow==0.4.79
 ```
 
 Create `greeter.py`:

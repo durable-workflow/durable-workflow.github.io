@@ -186,13 +186,13 @@ function assertBuiltDocsPolicy() {
   assertIncludes(prereleaseIntro, 'name="docusaurus_version" content="current"', '2.0 introduction page');
   assertIncludes(prereleaseIntro.toLowerCase(), 'unreleased', '2.0 introduction page');
   assertIncludes(prereleaseIntro, '/docs/2.0/quickstart/', '2.0 introduction page');
-  assertIncludes(prereleaseIntro, 'durableworkflow/server:0.2.188', '2.0 introduction page');
-  assertIncludes(prereleaseIntro, 'durable-workflow==0.4.78', '2.0 introduction page');
+  assertIncludes(prereleaseIntro, 'durableworkflow/server:0.2.191', '2.0 introduction page');
+  assertIncludes(prereleaseIntro, 'durable-workflow==0.4.79', '2.0 introduction page');
   assertIncludes(prereleaseIntro, 'VERSION=0.1.67', '2.0 introduction page');
   assertIncludes(prereleaseQuickstart, 'name="docusaurus_version" content="current"', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart.toLowerCase(), '2.0 prerelease', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'durableworkflow/server:0.2.188', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'durable-workflow==0.4.78', '2.0 quickstart page');
+  assertIncludes(prereleaseQuickstart, 'durableworkflow/server:0.2.191', '2.0 quickstart page');
+  assertIncludes(prereleaseQuickstart, 'durable-workflow==0.4.79', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'durable-workflow/workflow:2.0.0-alpha.177@alpha', '2.0 quickstart page');
   assertOnlyWaterlineArtifact(prereleaseQuickstart, '2.0 quickstart page');
   assertIncludes(prereleasePageReleaseAudit, 'Page-level release-status verdicts', '2.0 docs page release audit');
@@ -213,7 +213,7 @@ function assertBuiltDocsPolicy() {
   assertIncludes(prereleaseFull, '2.0 Prerelease Documentation', 'llms-full-2.0.txt');
   assertIncludes(prereleaseFull, 'not the default public docs line', 'llms-full-2.0.txt');
   assertIncludes(prereleaseFull, '# 2.0 Prerelease Quickstart', 'llms-full-2.0.txt');
-  assertIncludes(prereleaseFull, 'pip install durable-workflow==0.4.78', 'llms-full-2.0.txt');
+  assertIncludes(prereleaseFull, 'pip install durable-workflow==0.4.79', 'llms-full-2.0.txt');
   assertOnlyWaterlineArtifact(prereleaseFull, 'llms-full-2.0.txt');
 }
 
