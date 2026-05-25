@@ -20,8 +20,8 @@ const VERDICTS = ['CLEAN', 'LEAK', 'MIXED'];
 const ARTIFACT_VERSIONS = {
   cli: '0.1.67',
   'sdk-python': '0.4.78',
-  server: '0.2.186',
-  waterline: '2.0.0-alpha.62',
+  server: '0.2.188',
+  waterline: '2.0.0-alpha.64',
   workflow: '2.0.0-alpha.177',
 };
 

@@ -130,7 +130,7 @@
       "query": "quickstart install first workflow",
       "target": "quickstart.md",
       "related": ["sample-app.md", "polyglot/python.md", "polyglot/server.md", "polyglot/cli.mdx"],
-      "aliases": ["2.0 prerelease quickstart", "pip install durable-workflow==0.4.78", "durableworkflow/server:0.2.186", "status=completed"]
+      "aliases": ["2.0 prerelease quickstart", "pip install durable-workflow==0.4.78", "durableworkflow/server:0.2.188", "status=completed"]
     },
     {
       "query": "workflow stuck failed activity retry exhausted",

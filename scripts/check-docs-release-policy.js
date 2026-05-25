@@ -6,7 +6,7 @@ const config = require('../docusaurus.config.js');
 const STABLE_DOCS_VERSION = '1.x';
 const PRERELEASE_DOCS_VERSION = '2.0';
 const STABLE_DOCS_ROOT = '/docs/introduction/';
-const PRERELEASE_WATERLINE_ARTIFACT = 'durable-workflow/waterline:2.0.0-alpha.62@alpha';
+const PRERELEASE_WATERLINE_ARTIFACT = 'durable-workflow/waterline:2.0.0-alpha.64@alpha';
 const PUBLIC_DISCOVERY_URLS = [
   '/docs/',
   '/docs/2.0/quickstart/',
@@ -176,7 +176,7 @@ function assertBuiltDocsPolicy() {
   assertIncludes(prereleaseIntro.toLowerCase(), 'unreleased', '2.0 introduction page');
   assertIncludes(prereleaseQuickstart, 'name="docusaurus_version" content="current"', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart.toLowerCase(), '2.0 prerelease', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'durableworkflow/server:0.2.186', '2.0 quickstart page');
+  assertIncludes(prereleaseQuickstart, 'durableworkflow/server:0.2.188', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'durable-workflow==0.4.78', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'durable-workflow/workflow:2.0.0-alpha.177@alpha', '2.0 quickstart page');
   assertOnlyWaterlineArtifact(prereleaseQuickstart, '2.0 quickstart page');

@@ -32,11 +32,11 @@ This path uses published artifacts only:
 
 | Surface | Artifact |
 | --- | --- |
-| Standalone server | `durableworkflow/server:0.2.186` |
+| Standalone server | `durableworkflow/server:0.2.188` |
 | CLI | `dw` `0.1.67` |
 | Python SDK | `durable-workflow==0.4.78` |
 | Laravel package | `durable-workflow/workflow:2.0.0-alpha.177@alpha` |
-| Waterline | `durable-workflow/waterline:2.0.0-alpha.62@alpha` |
+| Waterline | `durable-workflow/waterline:2.0.0-alpha.64@alpha` |
 
 ## Start A Local Server
 
@@ -44,7 +44,7 @@ Use this server for the Python and operator paths. It runs the published server
 image with SQLite, so no source checkout, MySQL, or Redis setup is required.
 
 ```bash
-export DW_SERVER_IMAGE=durableworkflow/server:0.2.186
+export DW_SERVER_IMAGE=durableworkflow/server:0.2.188
 export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-quickstart
@@ -190,7 +190,7 @@ cd durable-workflow-laravel-quickstart
 
 composer require \
   durable-workflow/workflow:2.0.0-alpha.177@alpha \
-  durable-workflow/waterline:2.0.0-alpha.62@alpha
+  durable-workflow/waterline:2.0.0-alpha.64@alpha
 
 printf '\nQUEUE_CONNECTION=database\nWATERLINE_ALLOW_UNAUTHENTICATED=true\n' >> .env
 php artisan key:generate
