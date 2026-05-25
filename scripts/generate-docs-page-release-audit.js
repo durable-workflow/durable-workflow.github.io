@@ -180,6 +180,13 @@ const EDGE_SURFACES = [
     edge_surface: 'public_conformance_manifest',
     note: 'Runtime scenario manifest is explicitly tied to the v2 platform conformance contract.',
   },
+  {
+    path: '/platform-conformance/migration-runtime-scenarios.json',
+    source_file: 'static/platform-conformance/migration-runtime-scenarios.json',
+    intended_release_status: 'prerelease_2_0_contract_manifest',
+    edge_surface: 'public_conformance_manifest',
+    note: 'Runtime scenario manifest is explicitly tied to the v2 platform conformance contract.',
+  },
 ];
 
 function fail(message) {

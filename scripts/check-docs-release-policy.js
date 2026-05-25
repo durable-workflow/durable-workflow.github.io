@@ -24,6 +24,7 @@ const PUBLIC_DISCOVERY_URLS = [
   '/platform-conformance/child-workflow-runtime-scenarios.json',
   '/platform-conformance/worker-versioning-runtime-scenarios.json',
   '/platform-conformance/saga-runtime-scenarios.json',
+  '/platform-conformance/migration-runtime-scenarios.json',
 ];
 
 function fail(message) {
@@ -250,6 +251,11 @@ function assertPublicDiscoverySurface() {
   assertIncludes(
     platformConformance,
     'href="/platform-conformance/saga-runtime-scenarios.json"',
+    'build/docs/platform-conformance/index.html'
+  );
+  assertIncludes(
+    platformConformance,
+    'href="/platform-conformance/migration-runtime-scenarios.json"',
     'build/docs/platform-conformance/index.html'
   );
   assertIncludes(

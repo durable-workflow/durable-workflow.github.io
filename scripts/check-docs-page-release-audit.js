@@ -34,6 +34,7 @@ const REQUIRED_EDGE_PATHS = [
   '/platform-conformance/child-workflow-runtime-scenarios.json',
   '/platform-conformance/worker-versioning-runtime-scenarios.json',
   '/platform-conformance/saga-runtime-scenarios.json',
+  '/platform-conformance/migration-runtime-scenarios.json',
 ];
 
 function fail(message) {
