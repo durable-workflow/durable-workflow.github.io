@@ -193,7 +193,7 @@ function assertBuiltDocsPolicy() {
   assertIncludes(prereleaseQuickstart.toLowerCase(), '2.0 prerelease', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'durableworkflow/server:0.2.191', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'durable-workflow==0.4.79', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'durable-workflow/workflow:2.0.0-alpha.177@alpha', '2.0 quickstart page');
+  assertIncludes(prereleaseQuickstart, 'durable-workflow/workflow:2.0.0-alpha.178@alpha', '2.0 quickstart page');
   assertOnlyWaterlineArtifact(prereleaseQuickstart, '2.0 quickstart page');
   assertIncludes(prereleasePageReleaseAudit, 'Page-level release-status verdicts', '2.0 docs page release audit');
   assertIncludes(prereleasePageReleaseAudit, '/docs-page-release-audit.json', '2.0 docs page release audit');

@@ -22,7 +22,7 @@ const ARTIFACT_VERSIONS = {
   'sdk-python': '0.4.79',
   server: '0.2.191',
   waterline: '2.0.0-alpha.64',
-  workflow: '2.0.0-alpha.177',
+  workflow: '2.0.0-alpha.178',
 };
 
 const EDGE_SURFACES = [

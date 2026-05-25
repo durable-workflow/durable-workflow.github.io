@@ -35,7 +35,7 @@ This path uses published artifacts only:
 | Standalone server | `durableworkflow/server:0.2.191` |
 | CLI | `dw` `0.1.67` |
 | Python SDK | `durable-workflow==0.4.79` |
-| Laravel package | `durable-workflow/workflow:2.0.0-alpha.177@alpha` |
+| Laravel package | `durable-workflow/workflow:2.0.0-alpha.178@alpha` |
 | Waterline | `durable-workflow/waterline:2.0.0-alpha.64@alpha` |
 
 ## Start A Local Server
@@ -189,7 +189,7 @@ composer create-project laravel/laravel durable-workflow-laravel-quickstart
 cd durable-workflow-laravel-quickstart
 
 composer require \
-  durable-workflow/workflow:2.0.0-alpha.177@alpha \
+  durable-workflow/workflow:2.0.0-alpha.178@alpha \
   durable-workflow/waterline:2.0.0-alpha.64@alpha
 
 printf '\nQUEUE_CONNECTION=database\nWATERLINE_ALLOW_UNAUTHENTICATED=true\n' >> .env
