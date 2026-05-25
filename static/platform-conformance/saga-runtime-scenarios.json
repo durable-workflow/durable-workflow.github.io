@@ -15,9 +15,26 @@
   ],
   "artifact_policy": {
     "published_artifacts_only": true,
+    "requires_published_artifact_versions": true,
     "requires_resolved_versions": true,
+    "requires_downloadable_release_assets": true,
     "rejects_placeholder_versions": true,
-    "implementation_tests_are_not_sources": true
+    "implementation_tests_are_not_sources": true,
+    "requires_artifact_sources_for_each_required_artifact": true,
+    "requires_local_product_source_checkouts_used_false": true,
+    "forbidden_sources": [
+      "local_product_source_checkout",
+      "workspace_repo_as_artifact_under_test",
+      "release_tag_without_required_assets",
+      "rolling_server_image_tag"
+    ],
+    "required_artifacts": [
+      "server",
+      "cli",
+      "workflow-php",
+      "sdk-python",
+      "waterline"
+    ]
   },
   "common_result_evidence": [
     "suite_version",
