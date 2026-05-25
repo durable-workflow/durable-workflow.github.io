@@ -25,6 +25,8 @@ const PUBLIC_DISCOVERY_URLS = [
   '/platform-conformance/worker-versioning-runtime-scenarios.json',
   '/platform-conformance/saga-runtime-scenarios.json',
   '/platform-conformance/migration-runtime-scenarios.json',
+  '/platform-conformance/skew-refusal-matrix-scenarios.json',
+  '/platform-conformance/prerelease-readiness-scenarios.json',
 ];
 
 function fail(message) {
@@ -187,14 +189,14 @@ function assertBuiltDocsPolicy() {
   assertIncludes(prereleaseIntro, 'name="docusaurus_version" content="current"', '2.0 introduction page');
   assertIncludes(prereleaseIntro.toLowerCase(), 'unreleased', '2.0 introduction page');
   assertIncludes(prereleaseIntro, '/docs/2.0/quickstart/', '2.0 introduction page');
-  assertIncludes(prereleaseIntro, 'durableworkflow/server:0.2.198', '2.0 introduction page');
-  assertIncludes(prereleaseIntro, 'durable-workflow==0.4.81', '2.0 introduction page');
-  assertIncludes(prereleaseIntro, 'VERSION=0.1.69', '2.0 introduction page');
+  assertIncludes(prereleaseIntro, 'durableworkflow/server:0.2.201', '2.0 introduction page');
+  assertIncludes(prereleaseIntro, 'durable-workflow==0.4.83', '2.0 introduction page');
+  assertIncludes(prereleaseIntro, 'VERSION=0.1.70', '2.0 introduction page');
   assertIncludes(prereleaseQuickstart, 'name="docusaurus_version" content="current"', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart.toLowerCase(), '2.0 prerelease', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'durableworkflow/server:0.2.198', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'durable-workflow==0.4.81', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'durable-workflow/workflow:2.0.0-alpha.181@alpha', '2.0 quickstart page');
+  assertIncludes(prereleaseQuickstart, 'durableworkflow/server:0.2.201', '2.0 quickstart page');
+  assertIncludes(prereleaseQuickstart, 'durable-workflow==0.4.83', '2.0 quickstart page');
+  assertIncludes(prereleaseQuickstart, 'durable-workflow/workflow:2.0.0-alpha.183@alpha', '2.0 quickstart page');
   assertOnlyWaterlineArtifact(prereleaseQuickstart, '2.0 quickstart page');
   assertIncludes(prereleasePageReleaseAudit, 'Page-level release-status verdicts', '2.0 docs page release audit');
   assertIncludes(prereleasePageReleaseAudit, '/docs-page-release-audit.json', '2.0 docs page release audit');
@@ -214,7 +216,7 @@ function assertBuiltDocsPolicy() {
   assertIncludes(prereleaseFull, '2.0 Prerelease Documentation', 'llms-full-2.0.txt');
   assertIncludes(prereleaseFull, 'not the default public docs line', 'llms-full-2.0.txt');
   assertIncludes(prereleaseFull, '# 2.0 Prerelease Quickstart', 'llms-full-2.0.txt');
-  assertIncludes(prereleaseFull, 'pip install durable-workflow==0.4.81', 'llms-full-2.0.txt');
+  assertIncludes(prereleaseFull, 'pip install durable-workflow==0.4.83', 'llms-full-2.0.txt');
   assertOnlyWaterlineArtifact(prereleaseFull, 'llms-full-2.0.txt');
 }
 

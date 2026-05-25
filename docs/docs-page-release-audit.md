@@ -45,3 +45,16 @@ and includes:
 The build fails when any covered route lacks a `CLEAN`, `LEAK`, or `MIXED`
 verdict, when canonical LLM manifests drift away from stable 1.x, or when the
 2.0 route set is not clearly marked as prerelease.
+
+Each manifest entry includes the classifier id, built artifact path, content
+hash evidence, observed evidence categories, and page-level checks used to
+derive the verdict. Every covered surface except the audit manifest itself
+carries `content_sha256_status: "verified"` with a SHA-256 hash that the build
+checker recomputes from the built artifact.
+
+The `/docs-page-release-audit.json` self-entry is the exception: it records
+`content_sha256: null`, `content_sha256_status: "self_referential_manifest"`,
+and a `content_sha256_exception` object because embedding the final manifest
+hash would change the bytes being hashed. Non-clean entries must also include
+focused finding records with the release-status category, observed evidence,
+and remediation route.

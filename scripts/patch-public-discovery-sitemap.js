@@ -75,6 +75,14 @@ const REQUIRED_DISCOVERY_ENTRIES = [
     path: '/platform-conformance/migration-runtime-scenarios.json',
     buildPath: 'platform-conformance/migration-runtime-scenarios.json',
   },
+  {
+    path: '/platform-conformance/skew-refusal-matrix-scenarios.json',
+    buildPath: 'platform-conformance/skew-refusal-matrix-scenarios.json',
+  },
+  {
+    path: '/platform-conformance/prerelease-readiness-scenarios.json',
+    buildPath: 'platform-conformance/prerelease-readiness-scenarios.json',
+  },
 ];
 
 function fail(message) {
