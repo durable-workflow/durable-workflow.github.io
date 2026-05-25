@@ -6,7 +6,7 @@ const config = require('../docusaurus.config.js');
 const STABLE_DOCS_VERSION = '1.x';
 const PRERELEASE_DOCS_VERSION = '2.0';
 const STABLE_DOCS_ROOT = '/docs/introduction/';
-const PRERELEASE_WATERLINE_ARTIFACT = 'durable-workflow/waterline:2.0.0-alpha.66@alpha';
+const PRERELEASE_WATERLINE_ARTIFACT = 'durable-workflow/waterline:2.0.0-alpha.68@alpha';
 const PUBLIC_DISCOVERY_URLS = [
   '/docs/',
   '/docs/2.0/quickstart/',
@@ -189,12 +189,12 @@ function assertBuiltDocsPolicy() {
   assertIncludes(prereleaseIntro, 'name="docusaurus_version" content="current"', '2.0 introduction page');
   assertIncludes(prereleaseIntro.toLowerCase(), 'unreleased', '2.0 introduction page');
   assertIncludes(prereleaseIntro, '/docs/2.0/quickstart/', '2.0 introduction page');
-  assertIncludes(prereleaseIntro, 'durableworkflow/server:0.2.201', '2.0 introduction page');
+  assertIncludes(prereleaseIntro, 'durableworkflow/server:0.2.202', '2.0 introduction page');
   assertIncludes(prereleaseIntro, 'durable-workflow==0.4.83', '2.0 introduction page');
   assertIncludes(prereleaseIntro, 'VERSION=0.1.70', '2.0 introduction page');
   assertIncludes(prereleaseQuickstart, 'name="docusaurus_version" content="current"', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart.toLowerCase(), '2.0 prerelease', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'durableworkflow/server:0.2.201', '2.0 quickstart page');
+  assertIncludes(prereleaseQuickstart, 'durableworkflow/server:0.2.202', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'durable-workflow==0.4.83', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'durable-workflow/workflow:2.0.0-alpha.183@alpha', '2.0 quickstart page');
   assertOnlyWaterlineArtifact(prereleaseQuickstart, '2.0 quickstart page');

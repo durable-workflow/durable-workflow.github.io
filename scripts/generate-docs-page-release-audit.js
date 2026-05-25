@@ -29,8 +29,8 @@ const SELF_HASH_EXCEPTION = {
 const ARTIFACT_VERSIONS = {
   cli: '0.1.70',
   'sdk-python': '0.4.83',
-  server: '0.2.201',
-  waterline: '2.0.0-alpha.66',
+  server: '0.2.202',
+  waterline: '2.0.0-alpha.68',
   workflow: '2.0.0-alpha.183',
 };
 
