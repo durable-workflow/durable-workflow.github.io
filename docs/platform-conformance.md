@@ -211,7 +211,9 @@ operator-visible in-progress compensation status. A saga smoke that only
 proves one happy path or one SDK is nonconforming until every required
 cell is recorded as `pass`, `fail`, `unsupported`, `not_covered`, or
 `runner_blocked` with linked findings. Only `pass` cells count toward a
-passing category.
+passing category. The PHP package is identified as `workflow-php` in the
+runtime matrix and may also be recorded as `workflow` when comparing
+against the platform release artifact set.
 
 Those saga scenario ids and their pass criteria are published at
 [`static/platform-conformance/saga-runtime-scenarios.json`](pathname:///platform-conformance/saga-runtime-scenarios.json).

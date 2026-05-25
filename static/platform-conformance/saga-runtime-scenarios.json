@@ -34,7 +34,12 @@
       "workflow-php",
       "sdk-python",
       "waterline"
-    ]
+    ],
+    "release_artifact_aliases": {
+      "workflow-php": [
+        "workflow"
+      ]
+    }
   },
   "common_result_evidence": [
     "suite_version",
