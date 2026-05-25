@@ -39,7 +39,7 @@ For the current 2.0 prerelease quickstart, pin the published SDK version used by
 the release-candidate artifact tuple:
 
 ```bash
-pip install durable-workflow==0.4.79
+pip install durable-workflow==0.4.81
 ```
 
 The SDK depends on [httpx](https://www.python-httpx.org/) for HTTP and Apache Avro for the default language-neutral payload codec. Prometheus metrics support is optional.
@@ -94,7 +94,7 @@ The program above assumes a Durable Workflow server reachable at
 the fastest source-free path is the published server image:
 
 ```bash
-export DW_SERVER_IMAGE=durableworkflow/server:0.2.191
+export DW_SERVER_IMAGE=durableworkflow/server:0.2.198
 export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-python-quickstart

@@ -18,11 +18,11 @@ const SITE_URL = String(config.url || 'https://durable-workflow.com').replace(/\
 const VERDICTS = ['CLEAN', 'LEAK', 'MIXED'];
 
 const ARTIFACT_VERSIONS = {
-  cli: '0.1.67',
-  'sdk-python': '0.4.79',
-  server: '0.2.191',
-  waterline: '2.0.0-alpha.64',
-  workflow: '2.0.0-alpha.178',
+  cli: '0.1.69',
+  'sdk-python': '0.4.81',
+  server: '0.2.198',
+  waterline: '2.0.0-alpha.66',
+  workflow: '2.0.0-alpha.181',
 };
 
 const EDGE_SURFACES = [

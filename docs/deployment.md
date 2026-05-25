@@ -22,7 +22,7 @@ replication v1 is documented separately on the Cloud page.
 
 | Path | Start from | Supported for | Not promised by this path | Commercial support starts when |
 | --- | --- | --- | --- | --- |
-| Local development and internal non-production | [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) with `DW_SERVER_TAG=0.2.191` or `DW_SERVER_IMAGE=durableworkflow/server:0.2.191` | One developer machine, LAN demos, shared staging, SDK and worker integration tests | Internet-facing production, durable backup guarantees, strict secret rotation, multi-node failover | You want help turning a working dev stack into a production runbook |
+| Local development and internal non-production | [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) with `DW_SERVER_TAG=0.2.198` or `DW_SERVER_IMAGE=durableworkflow/server:0.2.198` | One developer machine, LAN demos, shared staging, SDK and worker integration tests | Internet-facing production, durable backup guarantees, strict secret rotation, multi-node failover | You want help turning a working dev stack into a production runbook |
 | Single-node production | [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) with a production env file, MySQL and Redis volumes, role-scoped tokens, backups, TLS through a reverse proxy, and pinned image tags or digests | One VM, VPS, or internal Docker host with persistent workflow state and a simple operational model | Host-level HA, automatic database failover, multi-region recovery, zero-downtime major topology changes | The deployment carries production traffic and you want review of backup, restore, auth, TLS, upgrade, or rollback procedures |
 | Small clustered deployment | Published `durableworkflow/server` or `ghcr.io/durable-workflow/server` images using the [Compose recipe](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) as the container/process template, with 2-3 API nodes, shared external MySQL/PostgreSQL, shared Redis, independently scaled workers, and exactly one scheduler/maintenance runner | Horizontal API and worker capacity when one node is no longer enough; rolling upgrades when every guarantee in the [rolling-upgrade contract](/docs/2.0/rolling-upgrades) holds; single-region HA failover (managed-database failover, managed-Redis failover, API-node loss, worker loss, scheduler-runner restart) when every guarantee in the [single-region HA contract](#single-region-high-availability-and-failover) holds | SQLite clustering, Redis-less multi-node mode, duplicate schedulers as a steady-state topology, active/active multi-writer databases, self-hosted hands-free regional failover, Helm, broad "five-nines" or "zero-downtime" SLA promises | You need sizing, failure-domain, rollout, or recovery planning across more than one host |
 | Raw Kubernetes manifests | The server repository [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) manifests, using published server images and your existing database, Redis, ingress, and secret management | Teams that already operate Kubernetes and want inspectable manifests for API, worker, scheduler, bootstrap, service, probes, config, and secrets; the [single-region HA contract](#single-region-high-availability-and-failover) when the manifests are wired to the same readiness, singleton-scheduler, and shared-substrate rules as the small-cluster recipe | Helm charts, managed-Kubernetes provider validation, active/active multi-region, custom operators, environment-specific storage/networking/security decisions | You need Helm, overlays, managed-cluster validation, or provider-specific production planning |
@@ -99,8 +99,8 @@ Network posture must be explicit:
 
 Use published images for self-hosted server deployments:
 
-- Docker Hub: `durableworkflow/server:0.2.191`
-- GitHub Container Registry: `ghcr.io/durable-workflow/server:0.2.191`
+- Docker Hub: `durableworkflow/server:0.2.198`
+- GitHub Container Registry: `ghcr.io/durable-workflow/server:0.2.198`
 - Digest pinning: `durableworkflow/server@sha256:...` or
   `ghcr.io/durable-workflow/server@sha256:...`
 
@@ -115,7 +115,7 @@ by MySQL and Redis:
 ```bash
 curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/main/docker-compose.published.yml
 
-export DW_SERVER_TAG=0.2.191
+export DW_SERVER_TAG=0.2.198
 export DW_AUTH_TOKEN=dev-token
 
 docker compose -f docker-compose.published.yml up -d --wait
@@ -147,7 +147,7 @@ Use the same Compose artifact with production configuration outside source
 control:
 
 ```env
-DW_SERVER_IMAGE=durableworkflow/server:0.2.191
+DW_SERVER_IMAGE=durableworkflow/server:0.2.198
 SERVER_PORT=8080
 APP_ENV=production
 APP_DEBUG=false
