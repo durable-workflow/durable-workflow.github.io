@@ -10,7 +10,9 @@ const PRERELEASE_WATERLINE_ARTIFACT = 'durable-workflow/waterline:2.0.0-alpha.62
 const PUBLIC_DISCOVERY_URLS = [
   '/docs/',
   '/docs/2.0/quickstart/',
+  '/docs/2.0/docs-page-release-audit/',
   '/docs/platform-conformance/',
+  '/docs-page-release-audit.json',
   '/platform-conformance-contract.json',
   '/platform-conformance/signal-query-runtime-scenarios.json',
   '/platform-conformance/search-attribute-runtime-scenarios.json',
@@ -151,6 +153,8 @@ function assertBuiltDocsPolicy() {
   const prereleaseIntro = readBuildFile('docs/2.0/introduction/index.html');
   const home = readBuildFile('index.html');
   const prereleaseQuickstart = readBuildFile('docs/2.0/quickstart/index.html');
+  const prereleasePageReleaseAudit = readBuildFile('docs/2.0/docs-page-release-audit/index.html');
+  const pageReleaseAudit = readBuildFile('docs-page-release-audit.json');
   const canonicalIndex = readBuildFile('llms.txt');
   const canonicalFull = readBuildFile('llms-full.txt');
   const prereleaseIndex = readBuildFile('llms-2.0.txt');
@@ -176,6 +180,11 @@ function assertBuiltDocsPolicy() {
   assertIncludes(prereleaseQuickstart, 'durable-workflow==0.4.78', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'durable-workflow/workflow:2.0.0-alpha.177@alpha', '2.0 quickstart page');
   assertOnlyWaterlineArtifact(prereleaseQuickstart, '2.0 quickstart page');
+  assertIncludes(prereleasePageReleaseAudit, 'Page-level release-status verdicts', '2.0 docs page release audit');
+  assertIncludes(prereleasePageReleaseAudit, '/docs-page-release-audit.json', '2.0 docs page release audit');
+  assertIncludes(pageReleaseAudit, '"schema": "durable-workflow.docs.page-release-audit"', 'docs page release audit manifest');
+  assertIncludes(pageReleaseAudit, '"stable_default_docs_version": "1.x"', 'docs page release audit manifest');
+  assertIncludes(pageReleaseAudit, '"explicit_prerelease_docs_version": "2.0"', 'docs page release audit manifest');
 
   assertIncludes(canonicalIndex, 'versioned_docs/version-1.x', 'canonical llms.txt');
   assertIncludes(canonicalFull, '<!-- Source: versioned_docs/version-1.x', 'canonical llms-full.txt');

@@ -28,6 +28,10 @@ const REQUIRED_DISCOVERY_ENTRIES = [
     buildPath: 'platform-conformance-contract.json',
   },
   {
+    path: '/docs-page-release-audit.json',
+    buildPath: 'docs-page-release-audit.json',
+  },
+  {
     path: '/platform-conformance/signal-query-runtime-scenarios.json',
     buildPath: 'platform-conformance/signal-query-runtime-scenarios.json',
   },

@@ -946,11 +946,23 @@ return [
 ];
 ```
 
-Run the worker:
+Run the worker process from the application that registers your PHP workflow
+types. The sample app publishes the current PHP worker reference as an
+application command:
 
 ```bash
-php artisan workflow:work
+php artisan app:polyglot-worker \
+  --mode=workflow \
+  --server-url=http://localhost:8080 \
+  --token="$DURABLE_WORKFLOW_AUTH_TOKEN" \
+  --namespace=default \
+  --task-queue=polyglot-php
 ```
+
+The workflow package does not publish a package-level artisan worker command in
+the current 2.0 alpha. Embedded Laravel workers that do not use the standalone
+worker protocol continue to run package-local workflow tasks through Laravel's
+queue worker, as shown in the [2.0 quickstart](/docs/2.0/quickstart/).
 
 ### Python Workers
 
