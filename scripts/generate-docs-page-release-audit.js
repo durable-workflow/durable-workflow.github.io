@@ -31,7 +31,7 @@ const ARTIFACT_VERSIONS = {
   'sdk-python': '0.4.83',
   server: '0.2.202',
   waterline: '2.0.0-alpha.68',
-  workflow: '2.0.0-alpha.183',
+  workflow: '2.0.0-alpha.185',
 };
 
 const ARTIFACT_PIN_PATTERNS = [
