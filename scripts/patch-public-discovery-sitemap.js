@@ -60,6 +60,10 @@ const REQUIRED_DISCOVERY_ENTRIES = [
     buildPath: 'platform-conformance/namespace-runtime-scenarios.json',
   },
   {
+    path: '/platform-conformance/schedules-runtime-scenarios.json',
+    buildPath: 'platform-conformance/schedules-runtime-scenarios.json',
+  },
+  {
     path: '/platform-conformance/child-workflow-runtime-scenarios.json',
     buildPath: 'platform-conformance/child-workflow-runtime-scenarios.json',
   },
