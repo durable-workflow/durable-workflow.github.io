@@ -75,7 +75,7 @@ function main() {
     'CLI reference',
     'Five-Minute Operator Quickstart',
     'VERSION=0.1.70',
-    'durableworkflow/server:0.2.202',
+    'durableworkflow/server:0.2.203',
     'pip install durable-workflow==0.4.83',
     'dw env:set local',
     'dw doctor',

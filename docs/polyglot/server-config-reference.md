@@ -70,6 +70,7 @@ still honors the value.
 | `DW_WORKER_TOKEN` | unset | Bearer token for worker registration, polling, heartbeats, and completions. | `WORKFLOW_SERVER_WORKER_TOKEN` |
 | `DW_OPERATOR_TOKEN` | unset | Bearer token for read and operator control-plane actions. | `WORKFLOW_SERVER_OPERATOR_TOKEN` |
 | `DW_ADMIN_TOKEN` | unset | Bearer token for namespace, retention, and other administrative mutations. | `WORKFLOW_SERVER_ADMIN_TOKEN` |
+| `DW_PRINCIPAL_TOKENS` | unset | JSON token map for named bearer-token principals. Each entry supplies `token`, `subject`, `roles`, optional `tenant`, `label`, and non-secret `claims`. | `WORKFLOW_SERVER_PRINCIPAL_TOKENS` |
 | `DW_WORKER_SIGNATURE_KEY` | unset | HMAC key for worker-role requests when using signature auth. | `WORKFLOW_SERVER_WORKER_SIGNATURE_KEY` |
 | `DW_OPERATOR_SIGNATURE_KEY` | unset | HMAC key for operator-role requests when using signature auth. | `WORKFLOW_SERVER_OPERATOR_SIGNATURE_KEY` |
 | `DW_ADMIN_SIGNATURE_KEY` | unset | HMAC key for admin-role requests when using signature auth. | `WORKFLOW_SERVER_ADMIN_SIGNATURE_KEY` |
@@ -78,6 +79,10 @@ still honors the value.
 Use role-scoped credentials for production. `DW_AUTH_DRIVER=none` is only for
 local smoke work because every endpoint becomes reachable without a bearer
 token or signature.
+
+Use `DW_PRINCIPAL_TOKENS` when audit trails need stable actor subjects rather
+than role labels. The server derives the recorded principal from the matched
+token entry; clients cannot override it with request payloads or headers.
 
 ## Command Attribution
 

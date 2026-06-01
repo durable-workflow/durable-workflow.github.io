@@ -29,9 +29,9 @@ const SELF_HASH_EXCEPTION = {
 const ARTIFACT_VERSIONS = {
   cli: '0.1.70',
   'sdk-python': '0.4.83',
-  server: '0.2.202',
-  waterline: '2.0.0-alpha.68',
-  workflow: '2.0.0-alpha.185',
+  server: '0.2.203',
+  waterline: '2.0.0-alpha.69',
+  workflow: '2.0.0-alpha.186',
 };
 
 const ARTIFACT_PIN_PATTERNS = [
