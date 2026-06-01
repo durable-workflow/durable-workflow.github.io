@@ -50,7 +50,7 @@ asset checksum before replacing `dw`, so a tampered mirror fails the install.
 <summary><b>Linux and macOS</b> (shell installer)</summary>
 
 ```bash
-curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.70 sh
+curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.71 sh
 dw --version
 ```
 
@@ -65,7 +65,7 @@ A GitHub Actions example:
 ```yaml
 - name: Install Durable Workflow CLI
   run: |
-    curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.70 sh
+    curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.71 sh
     echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 - name: Verify
   run: dw --version
@@ -77,7 +77,7 @@ A GitHub Actions example:
 <summary><b>Windows</b> (PowerShell installer)</summary>
 
 ```powershell
-$env:VERSION = "0.1.70"
+$env:VERSION = "0.1.71"
 irm https://durable-workflow.com/install.ps1 | iex
 dw --version
 ```
@@ -91,7 +91,7 @@ that directory to the user `PATH`.
 <summary><b>PHAR</b> (portable, requires PHP 8.2+)</summary>
 
 ```bash
-VERSION=0.1.70
+VERSION=0.1.71
 curl -fsSL -o dw.phar \
   "https://github.com/durable-workflow/cli/releases/download/${VERSION}/dw.phar"
 curl -fsSL -o SHA256SUMS \
@@ -114,7 +114,7 @@ after verifying the asset against the release's `SHA256SUMS`.
 
 ```bash
 dw upgrade                 # upgrade to the latest release
-dw upgrade --tag=0.1.70     # pin to a specific release tag
+dw upgrade --tag=0.1.71     # pin to a specific release tag
 dw upgrade --dry-run       # resolve the target release without downloading
 ```
 
@@ -149,7 +149,7 @@ a pinned `dw`, creates a reusable profile, starts one workflow, and watches the
 run reach the worker queue.
 
 ```bash
-export DW_SERVER_IMAGE=durableworkflow/server:0.2.206
+export DW_SERVER_IMAGE=durableworkflow/server:0.2.207
 export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-cli-quickstart
@@ -174,7 +174,7 @@ until curl -sf http://localhost:8080/api/ready >/dev/null; do sleep 1; done
 Install the CLI in another terminal:
 
 ```bash
-curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.70 sh
+curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.71 sh
 export PATH="$HOME/.local/bin:$PATH"
 dw --version
 ```

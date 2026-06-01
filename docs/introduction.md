@@ -24,13 +24,13 @@ artifacts only and walks Laravel, Python, and operator paths to an observable
 
 The quickstart pins the current prerelease artifacts directly:
 `durable-workflow==0.4.83` for Python,
-`durableworkflow/server:0.2.206` for the standalone server, and
-`VERSION=0.1.70` for the CLI installer.
+`durableworkflow/server:0.2.207` for the standalone server, and
+`VERSION=0.1.71` for the CLI installer.
 
 ```bash
 pip install durable-workflow==0.4.83
-export DW_SERVER_IMAGE=durableworkflow/server:0.2.206
-curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.70 sh
+export DW_SERVER_IMAGE=durableworkflow/server:0.2.207
+curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.71 sh
 ```
 
 The persona reference pages are also versioned 2.0 pages:
