@@ -32,7 +32,7 @@ This path uses published artifacts only:
 
 | Surface | Artifact |
 | --- | --- |
-| Standalone server | `durableworkflow/server:0.2.207` |
+| Standalone server | `durableworkflow/server:0.2.209` |
 | CLI | `dw` `0.1.71` |
 | Python SDK | `durable-workflow==0.4.83` |
 | Laravel package | `durable-workflow/workflow:2.0.0-alpha.187@alpha` |
@@ -44,7 +44,7 @@ Use this server for the Python and operator paths. It runs the published server
 image with SQLite, so no source checkout, MySQL, or Redis setup is required.
 
 ```bash
-export DW_SERVER_IMAGE=durableworkflow/server:0.2.207
+export DW_SERVER_IMAGE=durableworkflow/server:0.2.209
 export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-quickstart

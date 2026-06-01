@@ -190,12 +190,12 @@ function assertBuiltDocsPolicy() {
   assertIncludes(prereleaseIntro, 'name="docusaurus_version" content="current"', '2.0 introduction page');
   assertIncludes(prereleaseIntro.toLowerCase(), 'unreleased', '2.0 introduction page');
   assertIncludes(prereleaseIntro, '/docs/2.0/quickstart/', '2.0 introduction page');
-  assertIncludes(prereleaseIntro, 'durableworkflow/server:0.2.207', '2.0 introduction page');
+  assertIncludes(prereleaseIntro, 'durableworkflow/server:0.2.209', '2.0 introduction page');
   assertIncludes(prereleaseIntro, 'durable-workflow==0.4.83', '2.0 introduction page');
   assertIncludes(prereleaseIntro, 'VERSION=0.1.71', '2.0 introduction page');
   assertIncludes(prereleaseQuickstart, 'name="docusaurus_version" content="current"', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart.toLowerCase(), '2.0 prerelease', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'durableworkflow/server:0.2.207', '2.0 quickstart page');
+  assertIncludes(prereleaseQuickstart, 'durableworkflow/server:0.2.209', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'durable-workflow==0.4.83', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'durable-workflow/workflow:2.0.0-alpha.187@alpha', '2.0 quickstart page');
   assertOnlyWaterlineArtifact(prereleaseQuickstart, '2.0 quickstart page');
