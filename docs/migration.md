@@ -68,10 +68,14 @@ Only proceed to production after staging validation passes.
 **1. Update composer dependency**
 
 ```bash
-composer require durable-workflow/workflow:^2.0@alpha
+composer require %%artifact.workflowComposerPackage%%
 ```
 
-This upgrades the package from `laravel-workflow/laravel-workflow` (v1) to `durable-workflow/workflow` (v2). The `@alpha` stability flag is required until 2.0.0 is tagged stable on Packagist — drop it once the stable release is published.
+This upgrades the package from `laravel-workflow/laravel-workflow` (v1) to
+`durable-workflow/workflow` (v2). The current public artifact pin includes the
+Composer prerelease stability suffix for the active pre-stable 2.0 package.
+Switch to `durable-workflow/workflow:^2.0` only after `2.0.0` is tagged stable
+on Packagist and the documented 2.0 cutover is authorized.
 
 **2. Run database migrations**
 

@@ -197,7 +197,7 @@ when the manifests do not agree.
 
 | Component | Current Version | Stability level | Notes |
 |-----------|-----------------|------------------|-------|
-| Workflow Package (PHP) | 1.0.75 (v1), 2.0.0 (v2) | `stable` (`official_sdks`) | Core workflow engine. v2 is published with a `@alpha` Composer stability flag while the 2.0 line ramps. |
+| Workflow Package (PHP) | 1.0.75 (v1), 2.0.0 (v2) | `stable` (`official_sdks`) | Core workflow engine. v2 is published with a Composer prerelease stability suffix derived from the public artifact tuple while the 2.0 line ramps. |
 | Standalone Server | 2.0.0 | `stable` (`server_api`) | Language-neutral HTTP server. |
 | CLI (`dw`) | 0.1.0 | `prerelease` (`cli_json`) | Prerelease until the `1.0` cut; JSON contract is being stabilised in 0.x. |
 | Python SDK (`durable_workflow`) | 0.2.0 | `prerelease` (`official_sdks`) | Prerelease until the `1.0` cut. |

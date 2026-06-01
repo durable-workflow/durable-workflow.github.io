@@ -18,8 +18,8 @@
 // 2. The schema and version named in the doc page match the contract.
 // 3. `docs/compatibility.md` documents the same set of stability levels
 //    (`frozen`, `stable`, `prerelease`, `experimental`).
-// 4. `docs/installation.md` does not introduce stability claims that
-//    contradict the contract for the PHP workflow package.
+// 4. Composer install snippets do not introduce stability claims that
+//    contradict the pre-stable 2.0 artifact tuple or the PHP workflow package.
 // 5. The version-history table on `docs/compatibility.md` does not
 //    introduce stability levels that the contract has never heard of.
 //
@@ -30,13 +30,81 @@
 const fs = require('fs');
 const path = require('path');
 
+const {
+  ARTIFACT_PINS,
+  ARTIFACT_VERSIONS,
+  replaceArtifactTokens,
+} = require('./public-artifact-versions');
+
 const repoRoot = path.join(__dirname, '..');
 const contractPath = path.join(repoRoot, 'static', 'compatibility-contract.json');
 const compatibilityDocPath = path.join(repoRoot, 'docs', 'compatibility.md');
 const installationDocPath = path.join(repoRoot, 'docs', 'installation.md');
+const composerInstallDocSurfaces = [
+  {
+    path: installationDocPath,
+    requiredPins: ['workflowComposerPackage'],
+    requiresStableCutoverGuidance: true,
+  },
+  {
+    path: path.join(repoRoot, 'docs', 'migration.md'),
+    requiredPins: ['workflowComposerPackage'],
+  },
+  {
+    path: path.join(repoRoot, 'docs', 'polyglot', 'server.md'),
+    requiredPins: ['workflowComposerPackage'],
+  },
+  {
+    path: path.join(repoRoot, 'docs', 'waterline-operator-api.md'),
+    requiredPins: ['workflowComposerPackage', 'waterlineComposerPackage'],
+  },
+];
+const composerPreStableVersionPattern = /^2\.0\.0-(alpha|beta)\.\d+$/;
 
 function read(file) {
   return fs.readFileSync(file, 'utf8');
+}
+
+function relativePath(file) {
+  return path.relative(repoRoot, file).split(path.sep).join('/');
+}
+
+function composerPrereleaseStability(artifact, version) {
+  const match = composerPreStableVersionPattern.exec(version);
+
+  if (match) {
+    return match[1];
+  }
+
+  if (version === '2.0.0') {
+    throw new Error(
+      `public artifact ${artifact} is pinned to stable 2.0.0, but the docs ` +
+        `site is still in the pre-v2-stable ramp. Stable Composer pins require ` +
+        `an explicit release-status cutover before this authority can accept them.`,
+    );
+  }
+
+  throw new Error(
+    `public artifact ${artifact} must stay on a Workflow/Waterline Composer ` +
+      `pre-stable 2.0.0-alpha.N or 2.0.0-beta.N version until the release-status ` +
+      `cutover is authorized (got ${version})`,
+  );
+}
+
+function assertComposerArtifactTupleIsPreStable() {
+  for (const artifact of ['workflow', 'waterline']) {
+    composerPrereleaseStability(artifact, ARTIFACT_VERSIONS[artifact]);
+  }
+}
+
+function stripExpectedComposerPins(content) {
+  let stripped = content;
+
+  for (const pinName of ['workflowComposerPackage', 'waterlineComposerPackage']) {
+    stripped = stripped.split(ARTIFACT_PINS[pinName]).join('');
+  }
+
+  return stripped;
 }
 
 function loadContract() {
@@ -181,8 +249,6 @@ function assertCompatibilityDocAlignsWithContract(contract) {
 }
 
 function assertInstallationDocAlignsWithContract(contract) {
-  const doc = read(installationDocPath);
-
   const phpFamily = contract.surface_families.official_sdks;
   if (!phpFamily) {
     throw new Error(
@@ -190,39 +256,59 @@ function assertInstallationDocAlignsWithContract(contract) {
     );
   }
 
-  const usesAlphaTag = /@alpha/.test(doc);
-  const tellsCallerToDropAlpha = /[Dd]rop the `@alpha`/.test(doc);
+  assertComposerArtifactTupleIsPreStable();
 
-  // The contract tags `official_sdks` as `stable` overall (the family is
-  // supported under semver) but the v2 PHP workflow package itself ships
-  // with the `@alpha` Composer stability flag while 2.0 ramps. The
-  // installation doc must therefore explicitly tell the caller this is a
-  // prerelease tag, not a stable release. The release-check gate enforces
-  // both halves:
-  //
-  // - if the install doc still uses `@alpha` we want it to also document
-  //   when to drop it,
-  // - and we don't want anyone introducing brand-new stability adjectives
-  //   (`@beta`, `@dev-master`, ...) without first updating the contract.
-  if (usesAlphaTag && !tellsCallerToDropAlpha) {
-    throw new Error(
-      `docs/installation.md uses the @alpha Composer stability flag but ` +
-        `does not tell the caller when to drop it. Add a sentence explaining ` +
-        `that the @alpha is the prerelease ramp for 2.0.0 and should be ` +
-        `removed once 2.0.0 ships stable on Packagist; otherwise the install ` +
-        `doc disagrees with the compatibility-authority contract about ` +
-        `whether the workflow package is stable.`,
-    );
-  }
+  for (const surface of composerInstallDocSurfaces) {
+    const rawDoc = read(surface.path);
+    const surfacePath = relativePath(surface.path);
 
-  const unknownStabilityTokens = doc.match(/@(beta|dev|rc|nightly|canary)\b/g) || [];
-  if (unknownStabilityTokens.length > 0) {
-    throw new Error(
-      `docs/installation.md uses Composer stability tokens not allowed by ` +
-        `the compatibility-authority contract: ` +
-        `${unknownStabilityTokens.join(', ')}. Allowed tokens are @alpha ` +
-        `(prerelease ramp) and a tagged stable version.`,
-    );
+    for (const pinName of surface.requiredPins) {
+      const token = `%%artifact.${pinName}%%`;
+
+      if (!rawDoc.includes(token)) {
+        throw new Error(
+          `${surfacePath} must use ${token} so the rendered Composer ` +
+            `stability suffix follows scripts/public-artifact-versions.json.`,
+        );
+      }
+    }
+
+    const literalStabilityTokens = rawDoc.match(/@(alpha|beta|dev|rc|nightly|canary)\b/g) || [];
+    if (literalStabilityTokens.length > 0) {
+      throw new Error(
+        `${surfacePath} hardcodes Composer stability token(s) ` +
+          `${[...new Set(literalStabilityTokens)].sort().join(', ')}. ` +
+          `Use public artifact tokens for exact pins and channel-neutral prose ` +
+          `for the pre-stable Composer ramp.`,
+      );
+    }
+
+    const renderedDoc = replaceArtifactTokens(rawDoc, surfacePath);
+    const renderedWithoutExpectedPins = stripExpectedComposerPins(renderedDoc);
+    const strayStabilityTokens =
+      renderedWithoutExpectedPins.match(/@(alpha|beta|dev|rc|nightly|canary)\b/g) || [];
+
+    if (strayStabilityTokens.length > 0) {
+      throw new Error(
+        `${surfacePath} renders Composer stability token(s) outside the ` +
+          `current public artifact pins: ` +
+          `${[...new Set(strayStabilityTokens)].sort().join(', ')}. ` +
+          `Alpha and beta Composer suffixes are allowed only as the exact ` +
+          `pre-stable pins generated from scripts/public-artifact-versions.json.`,
+      );
+    }
+
+    if (
+      surface.requiresStableCutoverGuidance &&
+      (!/2\.0\.0`?\s+is tagged stable on Packagist/.test(rawDoc) ||
+        !/cutover is authorized/.test(rawDoc))
+    ) {
+      throw new Error(
+        `${surfacePath} must explain that stable Composer constraints are ` +
+          `allowed only after 2.0.0 is tagged stable on Packagist and the ` +
+          `2.0 cutover is authorized.`,
+      );
+    }
   }
 }
 

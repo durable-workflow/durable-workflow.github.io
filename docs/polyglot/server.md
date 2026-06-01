@@ -927,10 +927,13 @@ registration payload, see
 PHP workers use the `durable-workflow/workflow` package in standalone server mode:
 
 ```bash
-composer require durable-workflow/workflow:^2.0@alpha
+composer require %%artifact.workflowComposerPackage%%
 ```
 
-The `@alpha` flag is required while 2.0 is a pre-release on Packagist; drop it once 2.0.0 is tagged stable.
+The pin includes the Composer prerelease stability suffix for the current
+public artifact tuple while 2.0 is pre-stable on Packagist. Switch to
+`durable-workflow/workflow:^2.0` only after `2.0.0` is tagged stable and the
+documented 2.0 cutover is authorized.
 
 Configure the worker to connect to the server:
 
@@ -960,7 +963,7 @@ php artisan app:polyglot-worker \
 ```
 
 The workflow package does not publish a package-level artisan worker command in
-the current 2.0 alpha. Embedded Laravel workers that do not use the standalone
+the current 2.0 prerelease. Embedded Laravel workers that do not use the standalone
 worker protocol continue to run package-local workflow tasks through Laravel's
 queue worker, as shown in the [2.0 quickstart](/docs/2.0/quickstart/).
 

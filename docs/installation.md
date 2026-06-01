@@ -35,17 +35,20 @@ Durable Workflow also requires a cache driver that supports [locks](https://lara
 
 ## Installing Durable Workflow
 
-Durable Workflow is installable via Composer. Use the `@alpha` stability flag while 2.0 is in pre-release:
+Durable Workflow is installable via Composer. During the 2.0 pre-stable ramp,
+use the current public artifact pin so Composer receives the matching
+prerelease stability suffix:
 
 ```bash
-composer require durable-workflow/workflow:^2.0@alpha
+composer require %%artifact.workflowComposerPackage%%
 ```
 
-Drop the `@alpha` once 2.0.0 is tagged stable on Packagist. See the
-[compatibility and release-authority contract](/docs/2.0/compatibility) for
-the platform-wide stability rules; the `@alpha` Composer flag is the
-prerelease ramp for the workflow package's `2.0.0` cut and does not change
-the stability of any other published surface.
+Switch to a normal stable constraint such as `durable-workflow/workflow:^2.0`
+only after `2.0.0` is tagged stable on Packagist and the documented 2.0
+cutover is authorized. See the [compatibility and release-authority
+contract](/docs/2.0/compatibility) for the platform-wide stability rules; the
+prerelease suffix on the Composer pin applies only to package install
+resolution and does not change the stability of any other published surface.
 
 The package auto-loads its migrations, so a normal migrate run is enough after install:
 

@@ -12,6 +12,18 @@ const repoRoot = path.join(__dirname, '..');
 
 const PUBLIC_DOC_PIN_SURFACES = [
   {
+    path: 'docs/installation.md',
+    requiredPins: [
+      'workflowComposerPackage',
+    ],
+  },
+  {
+    path: 'docs/migration.md',
+    requiredPins: [
+      'workflowComposerPackage',
+    ],
+  },
+  {
     path: 'docs/introduction.md',
     requiredPins: [
       'pythonPipInstallCommand',
@@ -38,6 +50,14 @@ const PUBLIC_DOC_PIN_SURFACES = [
       'serverDockerHubImage',
       'serverGhcrImage',
       'pythonPipInstallCommand',
+      'workflowComposerPackage',
+    ],
+  },
+  {
+    path: 'docs/waterline-operator-api.md',
+    requiredPins: [
+      'workflowComposerPackage',
+      'waterlineComposerPackage',
     ],
   },
   {
