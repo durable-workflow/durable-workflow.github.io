@@ -2,7 +2,10 @@ const fs = require('fs');
 const path = require('path');
 
 const config = require('../docusaurus.config.js');
-const { ARTIFACT_PINS } = require('./public-artifact-versions');
+const {
+  ARTIFACT_PIN_PATTERNS,
+  ARTIFACT_PINS,
+} = require('./public-artifact-versions');
 
 const STABLE_DOCS_VERSION = '1.x';
 const PRERELEASE_DOCS_VERSION = '2.0';
@@ -53,7 +56,15 @@ function assertExcludes(haystack, needle, label) {
 }
 
 function assertOnlyWaterlineArtifact(haystack, label) {
-  const pins = new Set(haystack.match(/durable-workflow\/waterline:2\.0\.0-alpha\.\d+@alpha/g) || []);
+  const waterlinePattern = ARTIFACT_PIN_PATTERNS
+    .find(definition => definition.category === 'waterline_artifact_pin');
+
+  if (!waterlinePattern) {
+    fail('Public artifact pin checks must define a Waterline Composer pin pattern');
+  }
+
+  const pattern = new RegExp(waterlinePattern.pattern.source, waterlinePattern.pattern.flags);
+  const pins = new Set([...haystack.matchAll(pattern)].map(match => match[0]));
 
   if (!pins.has(ARTIFACT_PINS.waterlineComposerPackage)) {
     fail(`${label} must include ${JSON.stringify(ARTIFACT_PINS.waterlineComposerPackage)}`);
