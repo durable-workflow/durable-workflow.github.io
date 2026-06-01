@@ -54,7 +54,7 @@ container. Mount `/app/database` so bootstrap and the API server share the same
 SQLite file:
 
 ```bash
-server_image=durableworkflow/server:0.2.203
+server_image=durableworkflow/server:0.2.204
 export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-server-quickstart
@@ -93,7 +93,7 @@ multi-container stack backed by MySQL and Redis:
 ```bash
 curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/main/docker-compose.published.yml
 
-server_image=durableworkflow/server:0.2.203
+server_image=durableworkflow/server:0.2.204
 export DW_AUTH_TOKEN=dev-token
 
 env DW_SERVER_IMAGE="$server_image" docker compose \
@@ -1053,8 +1053,8 @@ region still runs the validated single-region or small-cluster shape.
 For self-hosted server deployments, start from published images rather than
 source-tree builds:
 
-- Docker Hub: `durableworkflow/server:0.2.203`
-- GitHub Container Registry: `ghcr.io/durable-workflow/server:0.2.203`
+- Docker Hub: `durableworkflow/server:0.2.204`
+- GitHub Container Registry: `ghcr.io/durable-workflow/server:0.2.204`
 - Published-image Compose:
   [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml)
 - Raw Kubernetes manifests:
