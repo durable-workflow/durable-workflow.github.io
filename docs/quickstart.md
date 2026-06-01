@@ -309,6 +309,18 @@ kill "$QUICKSTART_QUEUE_PID" 2>/dev/null || true
 The successful output includes `status=completed` and `output=Hello, Laravel!`.
 To inspect the operator view, run `php artisan serve` and open `/waterline`.
 
+## Completion Criteria
+
+Before tearing the quickstart down, verify each path reached an observable
+state from published artifacts:
+
+| Path | Observable proof |
+| --- | --- |
+| Local server hosting | `curl http://localhost:8080/api/ready` succeeds, `GET /api/cluster/info` returns the standalone server topology, and the Python workflow below completes against that server. |
+| Python user | `python greeter.py` prints `status=completed`, a `quickstart-python-greeter-*` workflow id, and the activity result. |
+| Operator user | `dw workflow:describe "$QUICKSTART_WORKFLOW_ID" --output=json` and `dw workflow:list --status=completed --output=json` show the completed Python workflow on the same server profile. |
+| Laravel user | `php artisan app:quickstart-workflow` prints `status=completed` and `output=Hello, Laravel!` while the Laravel queue worker is running. |
+
 ## Clean Up
 
 ```bash
