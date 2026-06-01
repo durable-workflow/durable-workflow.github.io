@@ -1,6 +1,34 @@
 const artifactVersionSource = require('./public-artifact-versions.json');
 
-const REQUIRED_ARTIFACTS = ['cli', 'sdk-python', 'server', 'waterline', 'workflow'];
+const ARTIFACT_VERSION_REQUIREMENTS = Object.freeze({
+  cli: {
+    label: 'CLI',
+    pattern: /^0\.1\.\d+$/,
+    expected: '0.1.N',
+  },
+  'sdk-python': {
+    label: 'Python SDK',
+    pattern: /^0\.4\.\d+$/,
+    expected: '0.4.N',
+  },
+  server: {
+    label: 'server',
+    pattern: /^0\.2\.\d+$/,
+    expected: '0.2.N',
+  },
+  waterline: {
+    label: 'Waterline',
+    pattern: /^2\.0\.0-alpha\.\d+$/,
+    expected: '2.0.0-alpha.N',
+  },
+  workflow: {
+    label: 'Workflow',
+    pattern: /^2\.0\.0-alpha\.\d+$/,
+    expected: '2.0.0-alpha.N',
+  },
+});
+
+const REQUIRED_ARTIFACTS = Object.freeze(Object.keys(ARTIFACT_VERSION_REQUIREMENTS));
 
 function readArtifactVersions(source = artifactVersionSource) {
   if (!source || source.schema !== 'durable-workflow.docs.public-artifact-versions') {
@@ -12,9 +40,21 @@ function readArtifactVersions(source = artifactVersionSource) {
 
   for (const name of REQUIRED_ARTIFACTS) {
     const version = artifacts[name];
+    const requirement = ARTIFACT_VERSION_REQUIREMENTS[name];
 
     if (typeof version !== 'string' || version.trim() === '') {
       throw new Error(`public-artifact-versions.json must define artifacts.${name}`);
+    }
+
+    if (version !== version.trim()) {
+      throw new Error(`public-artifact-versions.json artifacts.${name} must not contain surrounding whitespace`);
+    }
+
+    if (!requirement.pattern.test(version)) {
+      throw new Error(
+        `public-artifact-versions.json artifacts.${name} must use ${requirement.label} version format ` +
+        `${requirement.expected}: ${version}`
+      );
     }
 
     versions[name] = version;
@@ -147,6 +187,7 @@ module.exports = {
   ARTIFACT_PINS,
   ARTIFACT_VERSIONS,
   artifactVersionRemarkPlugin,
+  readArtifactVersions,
   replaceArtifactTokens,
   resolveArtifactAlias,
 };
