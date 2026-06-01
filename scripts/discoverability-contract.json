@@ -130,7 +130,7 @@
       "query": "quickstart install first workflow",
       "target": "quickstart.md",
       "related": ["sample-app.md", "polyglot/python.md", "polyglot/server.md", "polyglot/cli.mdx"],
-      "aliases": ["2.0 prerelease quickstart", "pip install durable-workflow==0.4.83", "durableworkflow/server:0.2.209", "status=completed"]
+      "aliases": ["2.0 prerelease quickstart", "$artifact.pythonPipInstallCommand", "$artifact.serverDockerHubImage", "status=completed"]
     },
     {
       "query": "workflow stuck failed activity retry exhausted",
@@ -183,7 +183,7 @@
       "query": "cli operator quickstart pinned install",
       "target": "quickstart.md",
       "related": ["polyglot/cli.mdx", "polyglot/cli-reference.md", "polyglot/server.md"],
-      "aliases": ["Five-Minute Operator Quickstart", "VERSION=0.1.71", "dw env:set local", "dw doctor"]
+      "aliases": ["Five-Minute Operator Quickstart", "$artifact.cliInstallerEnv", "dw env:set local", "dw doctor"]
     },
     {
       "query": "python sdk polyglot",

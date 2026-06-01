@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
+const { ARTIFACT_PINS } = require('./public-artifact-versions');
+
 const buildDir = path.join(__dirname, '..', 'build');
 
 function readBuildFile(name) {
@@ -74,9 +76,9 @@ function main() {
     'payload_preview_limit_bytes',
     'CLI reference',
     'Five-Minute Operator Quickstart',
-    'VERSION=0.1.71',
-    'durableworkflow/server:0.2.209',
-    'pip install durable-workflow==0.4.83',
+    ARTIFACT_PINS.cliInstallerEnv,
+    ARTIFACT_PINS.serverDockerHubImage,
+    ARTIFACT_PINS.pythonPipInstallCommand,
     'dw env:set local',
     'dw doctor',
     'CLI and Python Parity',

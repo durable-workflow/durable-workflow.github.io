@@ -4,11 +4,18 @@ const path = require('path');
 const docsDir = path.join(__dirname, '..', 'docs');
 const contractPath = path.join(__dirname, 'discoverability-contract.json');
 const sidebarsPath = path.join(__dirname, '..', 'sidebars.js');
+const {
+  replaceArtifactTokens,
+  resolveArtifactAlias,
+} = require('./public-artifact-versions');
 
 const DOC_LINK_PATTERN = /\[[^\]]+\]\(([^)]+)\)/g;
 
 function read(filePath) {
-  return fs.readFileSync(filePath, 'utf8');
+  return replaceArtifactTokens(
+    fs.readFileSync(filePath, 'utf8'),
+    path.relative(path.join(__dirname, '..'), filePath).replace(/\\/g, '/'),
+  );
 }
 
 function normalize(value) {
@@ -243,6 +250,7 @@ function assertTargetContentCoversQuery(query, collectionName) {
   const fullPath = assertDocExists(query.target);
   const content = normalize(read(fullPath));
   const aliases = [...query.query.split(/\s+/), ...(query.aliases || [])]
+    .map(resolveArtifactAlias)
     .map(normalize)
     .map(alias => alias.trim())
     .filter(alias => alias.length >= 3);

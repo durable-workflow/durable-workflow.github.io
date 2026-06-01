@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const path = require('path');
 
 const config = require('../docusaurus.config.js');
+const { ARTIFACT_VERSIONS } = require('./public-artifact-versions');
 
 const repoRoot = path.join(__dirname, '..');
 const buildDir = path.join(repoRoot, 'build');
@@ -216,6 +217,25 @@ function assertEvidence(entry) {
   }
 }
 
+function assertArtifactVersions(audit) {
+  const actual = audit.artifact_versions || {};
+  const actualKeys = Object.keys(actual).sort();
+  const expectedKeys = Object.keys(ARTIFACT_VERSIONS).sort();
+
+  if (JSON.stringify(actualKeys) !== JSON.stringify(expectedKeys)) {
+    fail(
+      `docs-page-release-audit.json artifact_versions keys must be ${expectedKeys.join(', ')}, ` +
+      `got ${actualKeys.join(', ')}`
+    );
+  }
+
+  for (const [name, expected] of Object.entries(ARTIFACT_VERSIONS)) {
+    if (actual[name] !== expected) {
+      fail(`docs-page-release-audit.json artifact_versions.${name} must be ${expected}, got ${actual[name]}`);
+    }
+  }
+}
+
 function assertEntryCategory(entry, category, label) {
   if (!entry.categories_observed.includes(category)) {
     fail(`${entry.path} must include ${label} evidence category ${category}`);
@@ -245,6 +265,8 @@ function main() {
   if (audit.classifier !== CLASSIFIER_ID) {
     fail(`docs-page-release-audit.json classifier must be ${CLASSIFIER_ID}`);
   }
+
+  assertArtifactVersions(audit);
 
   if (getDocsLastVersion() !== '1.x') {
     fail('docusaurus.config.js lastVersion must remain 1.x until an authorized release-status cutover');

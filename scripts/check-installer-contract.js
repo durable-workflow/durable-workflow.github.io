@@ -10,12 +10,16 @@
 
 const fs = require('fs');
 const path = require('path');
+const { replaceArtifactTokens } = require('./public-artifact-versions');
 
 const staticDir = path.join(__dirname, '..', 'static');
 const docsCli = path.join(__dirname, '..', 'docs', 'polyglot', 'cli.mdx');
 
 function read(filePath) {
-  return fs.readFileSync(filePath, 'utf8');
+  return replaceArtifactTokens(
+    fs.readFileSync(filePath, 'utf8'),
+    path.relative(path.join(__dirname, '..'), filePath).replace(/\\/g, '/'),
+  );
 }
 
 function assertContains(content, needle, context) {

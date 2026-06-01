@@ -5,6 +5,11 @@ const crypto = require('crypto');
 const path = require('path');
 
 const config = require('../docusaurus.config.js');
+const {
+  ARTIFACT_PIN_PATTERNS,
+  ARTIFACT_VERSIONS,
+  replaceArtifactTokens,
+} = require('./public-artifact-versions');
 
 const repoRoot = path.join(__dirname, '..');
 const buildDir = path.join(repoRoot, 'build');
@@ -25,53 +30,6 @@ const SELF_HASH_EXCEPTION = {
   algorithm: 'sha256',
   reason: 'The audit manifest cannot embed the SHA-256 of its final bytes because that value would change the bytes being hashed.',
 };
-
-const ARTIFACT_VERSIONS = {
-  cli: '0.1.71',
-  'sdk-python': '0.4.83',
-  server: '0.2.209',
-  waterline: '2.0.0-alpha.69',
-  workflow: '2.0.0-alpha.187',
-};
-
-const ARTIFACT_PIN_PATTERNS = [
-  {
-    category: 'server_artifact_pin',
-    label: 'server container image tag',
-    pattern: /(?:durableworkflow\/server|ghcr\.io\/durable-workflow\/server):(0\.2\.\d+)/g,
-    expected: ARTIFACT_VERSIONS.server,
-  },
-  {
-    category: 'server_artifact_pin',
-    label: 'server compose tag',
-    pattern: /\bDW_SERVER_TAG=(0\.2\.\d+)\b/g,
-    expected: ARTIFACT_VERSIONS.server,
-  },
-  {
-    category: 'python_sdk_artifact_pin',
-    label: 'Python SDK package pin',
-    pattern: /durable-workflow==(0\.4\.\d+)/g,
-    expected: ARTIFACT_VERSIONS['sdk-python'],
-  },
-  {
-    category: 'cli_artifact_pin',
-    label: 'CLI version pin',
-    pattern: /(?:\bVERSION\s*=\s*["']?(0\.1\.\d+)["']?|\$env:VERSION\s*=\s*["'](0\.1\.\d+)["']|--tag=(0\.1\.\d+))/g,
-    expected: ARTIFACT_VERSIONS.cli,
-  },
-  {
-    category: 'workflow_artifact_pin',
-    label: 'Workflow Composer prerelease pin',
-    pattern: /durable-workflow\/workflow:(2\.0\.0-alpha\.\d+)@alpha/g,
-    expected: ARTIFACT_VERSIONS.workflow,
-  },
-  {
-    category: 'waterline_artifact_pin',
-    label: 'Waterline Composer prerelease pin',
-    pattern: /durable-workflow\/waterline:(2\.0\.0-alpha\.\d+)@alpha/g,
-    expected: ARTIFACT_VERSIONS.waterline,
-  },
-];
 
 const EDGE_SURFACES = [
   {
@@ -412,12 +370,13 @@ function readSourceEvidence(sourceFile) {
     return null;
   }
 
-  const content = fs.readFileSync(sourcePath, 'utf8');
+  const rawContent = fs.readFileSync(sourcePath, 'utf8');
+  const content = replaceArtifactTokens(rawContent, sourceFile);
 
   return {
     path: sourceFile,
     content,
-    sha256: sha256(content),
+    sha256: sha256(rawContent),
   };
 }
 

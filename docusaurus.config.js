@@ -3,6 +3,7 @@
 
 const lightCodeTheme = require('prism-react-renderer/themes/github');
 const darkCodeTheme = require('prism-react-renderer/themes/dracula');
+const { artifactVersionRemarkPlugin } = require('./scripts/public-artifact-versions');
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'Durable Workflow',
@@ -34,6 +35,7 @@ const config = {
       ({
         docs: {
           sidebarPath: require.resolve('./sidebars.js'),
+          remarkPlugins: [artifactVersionRemarkPlugin],
           editUrl:
             'https://github.com/durable-workflow/durable-workflow.github.io/edit/main/',
           lastVersion: '1.x',

@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const config = require('../docusaurus.config.js');
+const { replaceArtifactTokens } = require('./public-artifact-versions');
 
 const DOC_EXTS = new Set(['.md', '.mdx']);
 const EXCLUDED_FILES = new Set(['sponsors.md', 'support.md']);
@@ -22,7 +23,10 @@ function shouldExclude(filePath) {
 }
 
 function extractFrontmatterAndContent(filePath) {
-  const raw = fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, '');
+  const raw = replaceArtifactTokens(
+    fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, ''),
+    getRepoRelativePath(filePath),
+  );
   const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
 
   if (!match) {
@@ -230,8 +234,12 @@ function getRepoRawBaseUrl() {
   return `https://raw.githubusercontent.com/${owner}/${repo}/${FALLBACK_BRANCH}/`;
 }
 
+function getRepoRelativePath(filePath) {
+  return path.relative(path.join(__dirname, '..'), filePath).replace(/\\/g, '/');
+}
+
 function buildDocLink(filePath, repoRawBaseUrl) {
-  const repoRelativePath = path.relative(path.join(__dirname, '..'), filePath).replace(/\\/g, '/');
+  const repoRelativePath = getRepoRelativePath(filePath);
   return new URL(repoRelativePath, repoRawBaseUrl).toString();
 }
 

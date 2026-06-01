@@ -32,11 +32,11 @@ This path uses published artifacts only:
 
 | Surface | Artifact |
 | --- | --- |
-| Standalone server | `durableworkflow/server:0.2.209` |
-| CLI | `dw` `0.1.71` |
-| Python SDK | `durable-workflow==0.4.83` |
-| Laravel package | `durable-workflow/workflow:2.0.0-alpha.187@alpha` |
-| Waterline | `durable-workflow/waterline:2.0.0-alpha.69@alpha` |
+| Standalone server | `%%artifact.serverDockerHubImage%%` |
+| CLI | `dw` `%%artifact.cliVersion%%` |
+| Python SDK | `%%artifact.pythonPackagePin%%` |
+| Laravel package | `%%artifact.workflowComposerPackage%%` |
+| Waterline | `%%artifact.waterlineComposerPackage%%` |
 
 ## Start A Local Server
 
@@ -44,7 +44,7 @@ Use this server for the Python and operator paths. It runs the published server
 image with SQLite, so no source checkout, MySQL, or Redis setup is required.
 
 ```bash
-export DW_SERVER_IMAGE=durableworkflow/server:0.2.209
+export DW_SERVER_IMAGE=%%artifact.serverDockerHubImage%%
 export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-quickstart
@@ -79,7 +79,7 @@ cd durable-workflow-python-quickstart
 
 python3 -m venv .venv
 . .venv/bin/activate
-pip install durable-workflow==0.4.83
+pip install %%artifact.pythonPackagePin%%
 ```
 
 Create `greeter.py`:
@@ -149,7 +149,7 @@ Install the published CLI, point it at the same local server, then inspect the
 completed Python workflow.
 
 ```bash
-curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.71 sh
+curl -fsSL https://durable-workflow.com/install.sh | %%artifact.cliInstallerEnv%% sh
 export PATH="$HOME/.local/bin:$PATH"
 
 dw env:set local \
@@ -189,8 +189,8 @@ composer create-project laravel/laravel durable-workflow-laravel-quickstart
 cd durable-workflow-laravel-quickstart
 
 composer require \
-  durable-workflow/workflow:2.0.0-alpha.187@alpha \
-  durable-workflow/waterline:2.0.0-alpha.69@alpha
+  %%artifact.workflowComposerPackage%% \
+  %%artifact.waterlineComposerPackage%%
 
 printf '\nQUEUE_CONNECTION=database\nWATERLINE_ALLOW_UNAUTHENTICATED=true\n' >> .env
 php artisan key:generate

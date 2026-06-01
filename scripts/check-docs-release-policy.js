@@ -2,11 +2,11 @@ const fs = require('fs');
 const path = require('path');
 
 const config = require('../docusaurus.config.js');
+const { ARTIFACT_PINS } = require('./public-artifact-versions');
 
 const STABLE_DOCS_VERSION = '1.x';
 const PRERELEASE_DOCS_VERSION = '2.0';
 const STABLE_DOCS_ROOT = '/docs/introduction/';
-const PRERELEASE_WATERLINE_ARTIFACT = 'durable-workflow/waterline:2.0.0-alpha.69@alpha';
 const PUBLIC_DISCOVERY_URLS = [
   '/docs/',
   '/docs/2.0/quickstart/',
@@ -55,12 +55,12 @@ function assertExcludes(haystack, needle, label) {
 function assertOnlyWaterlineArtifact(haystack, label) {
   const pins = new Set(haystack.match(/durable-workflow\/waterline:2\.0\.0-alpha\.\d+@alpha/g) || []);
 
-  if (!pins.has(PRERELEASE_WATERLINE_ARTIFACT)) {
-    fail(`${label} must include ${JSON.stringify(PRERELEASE_WATERLINE_ARTIFACT)}`);
+  if (!pins.has(ARTIFACT_PINS.waterlineComposerPackage)) {
+    fail(`${label} must include ${JSON.stringify(ARTIFACT_PINS.waterlineComposerPackage)}`);
   }
 
   for (const pin of pins) {
-    if (pin !== PRERELEASE_WATERLINE_ARTIFACT) {
+    if (pin !== ARTIFACT_PINS.waterlineComposerPackage) {
       fail(`${label} must not include stale Waterline artifact ${JSON.stringify(pin)}`);
     }
   }
@@ -190,14 +190,14 @@ function assertBuiltDocsPolicy() {
   assertIncludes(prereleaseIntro, 'name="docusaurus_version" content="current"', '2.0 introduction page');
   assertIncludes(prereleaseIntro.toLowerCase(), 'unreleased', '2.0 introduction page');
   assertIncludes(prereleaseIntro, '/docs/2.0/quickstart/', '2.0 introduction page');
-  assertIncludes(prereleaseIntro, 'durableworkflow/server:0.2.209', '2.0 introduction page');
-  assertIncludes(prereleaseIntro, 'durable-workflow==0.4.83', '2.0 introduction page');
-  assertIncludes(prereleaseIntro, 'VERSION=0.1.71', '2.0 introduction page');
+  assertIncludes(prereleaseIntro, ARTIFACT_PINS.serverDockerHubImage, '2.0 introduction page');
+  assertIncludes(prereleaseIntro, ARTIFACT_PINS.pythonPackagePin, '2.0 introduction page');
+  assertIncludes(prereleaseIntro, ARTIFACT_PINS.cliInstallerEnv, '2.0 introduction page');
   assertIncludes(prereleaseQuickstart, 'name="docusaurus_version" content="current"', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart.toLowerCase(), '2.0 prerelease', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'durableworkflow/server:0.2.209', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'durable-workflow==0.4.83', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'durable-workflow/workflow:2.0.0-alpha.187@alpha', '2.0 quickstart page');
+  assertIncludes(prereleaseQuickstart, ARTIFACT_PINS.serverDockerHubImage, '2.0 quickstart page');
+  assertIncludes(prereleaseQuickstart, ARTIFACT_PINS.pythonPackagePin, '2.0 quickstart page');
+  assertIncludes(prereleaseQuickstart, ARTIFACT_PINS.workflowComposerPackage, '2.0 quickstart page');
   assertOnlyWaterlineArtifact(prereleaseQuickstart, '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'Start A Local Server', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'Python User', '2.0 quickstart page');
@@ -233,7 +233,7 @@ function assertBuiltDocsPolicy() {
   assertIncludes(prereleaseFull, '2.0 Prerelease Documentation', 'llms-full-2.0.txt');
   assertIncludes(prereleaseFull, 'not the default public docs line', 'llms-full-2.0.txt');
   assertIncludes(prereleaseFull, '# 2.0 Prerelease Quickstart', 'llms-full-2.0.txt');
-  assertIncludes(prereleaseFull, 'pip install durable-workflow==0.4.83', 'llms-full-2.0.txt');
+  assertIncludes(prereleaseFull, ARTIFACT_PINS.pythonPipInstallCommand, 'llms-full-2.0.txt');
   assertOnlyWaterlineArtifact(prereleaseFull, 'llms-full-2.0.txt');
 }
 

@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { replaceArtifactTokens } = require('./public-artifact-versions');
 
 const DOC_EXTS = new Set(['.md', '.mdx']);
 const V2_PRERELEASE_NOTICE =
@@ -23,7 +24,10 @@ function shouldExclude(filePath) {
 }
 
 function extractFrontmatterAndContent(filePath) {
-  const raw = fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, ''); // strip BOM
+  const raw = replaceArtifactTokens(
+    fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, ''),
+    getRepoRelativePath(filePath),
+  ); // strip BOM and render public artifact tokens
   const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
   if (!match) return { frontmatter: '', content: raw };
   return { frontmatter: match[1], content: match[2] };
