@@ -312,7 +312,17 @@
         "nexus_explicit_cross_namespace_invocation",
         "reserved_namespace_name_refusal",
         "result_record_and_product_finding_routing"
-      ]
+      ],
+      "host_runner_contract": {
+        "status": "required_for_passing_namespace_conformance",
+        "result_schema": "durable-workflow.v2.namespace-runtime.result",
+        "must_execute_against_published_artifacts": true,
+        "must_emit_result_for_every_required_scenario": true,
+        "smoke_summary_only_outcome": "non_passing_smoke_only",
+        "unexecuted_required_scenario_status": "not_covered",
+        "coverage_gap_finding_type": "conformance_runner_coverage_gap",
+        "coverage_gap_owner": "conformance_harness"
+      }
     },
     "child_workflow_runtime_contract": {
       "status": "stable",

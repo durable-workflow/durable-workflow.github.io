@@ -390,5 +390,22 @@
         "smoke-only namespace evidence is recorded as not_covered or fail, never as pass"
       ]
     }
-  ]
+  ],
+  "host_runner_contract": {
+    "status": "required_for_passing_namespace_conformance",
+    "result_schema": "durable-workflow.v2.namespace-runtime.result",
+    "must_execute_against_published_artifacts": true,
+    "must_emit_result_for_every_required_scenario": true,
+    "smoke_summary_only_outcome": "non_passing_smoke_only",
+    "unexecuted_required_scenario_status": "not_covered",
+    "coverage_gap_finding_type": "conformance_runner_coverage_gap",
+    "coverage_gap_owner": "conformance_harness",
+    "result_files": [
+      "pins.json",
+      "run-metadata.json",
+      "artifact-install-evidence.json",
+      "namespaces-result.json",
+      "namespaces-record.json"
+    ]
+  }
 }
