@@ -1,6 +1,6 @@
 {
   "schema": "durable-workflow.v2.platform-conformance.suite",
-  "version": 17,
+  "version": 18,
   "authority_doc": "docs/platform-conformance.md",
   "authority_url": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
   "surface_stability_authority": "durable-workflow.v2.surface-stability.contract",
@@ -448,7 +448,7 @@
     },
     "prerelease_readiness_contract": {
       "status": "stable",
-      "description": "Published-artifact scenarios for 2.0 prerelease readiness across Workflow, Waterline, server, CLI, Python SDK, sample app, public docs, and the quickstart local-server hosting path.",
+      "description": "Published-artifact scenarios for 2.0 prerelease readiness across Workflow, Waterline, server, CLI, Python SDK, sample app, public docs, and the quickstart local-server hosting and Laravel paths.",
       "sources": [
         {
           "repository": "durable-workflow.github.io",
@@ -463,6 +463,7 @@
         "workflow_public_api_stability_verdict",
         "workflow_documentation_and_config_verdict",
         "quickstart_local_server_hosted_completion",
+        "quickstart_laravel_branch_completion",
         "waterline_feature_completeness_verdict",
         "waterline_migration_and_config_verdict",
         "waterline_public_api_and_docs_verdict",

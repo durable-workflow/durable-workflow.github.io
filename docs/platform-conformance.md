@@ -25,7 +25,7 @@ for implementations that claim Durable Workflow v2 compatibility.
 The machine-readable mirror is published at
 [`static/platform-conformance-contract.json`](pathname:///platform-conformance-contract.json)
 with schema `durable-workflow.v2.platform-conformance.suite`, version
-`17`. The same manifest is advertised by the standalone server from
+`18`. The same manifest is advertised by the standalone server from
 `GET /api/cluster/info` under `platform_conformance_suite`. The
 [Platform Protocol Specs](/docs/2.0/platform-protocol-specs) catalog names
 that nested manifest as the `platform_conformance_suite_manifest`
@@ -98,7 +98,7 @@ JSON manifests linked from the category notes below.
 | `saga_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/saga-runtime-scenarios.json` | Live published-artifact scenarios for saga compensation across forward success, reverse-order compensation, early failure, retry idempotence, compensation failure visibility, worker restart replay, PHP/Python cross-language compensation, typed compensation errors, and operator-visible in-progress compensation state. |
 | `migration_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/migration-runtime-scenarios.json` | Live published-artifact scenarios for v1 to v2 migration across preserved histories, in-flight progress, activities, schedules, worker registrations, CLI access, Waterline operator visibility, new v2 starts, rollback semantics, and version-skew refusal. |
 | `skew_refusal_matrix_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/skew-refusal-matrix-scenarios.json` | Published-artifact version-skew refusal scenarios across CLI, Python SDK, PHP workflow worker, Waterline, future-version boundaries, worker registration classifications, Waterline render classifications, and per-operation request/response evidence. |
-| `prerelease_readiness_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/prerelease-readiness-scenarios.json` | Published-artifact scenarios for 2.0 prerelease readiness across Workflow, Waterline, server, CLI, Python SDK, sample app, public docs, and the quickstart local-server hosting path. |
+| `prerelease_readiness_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/prerelease-readiness-scenarios.json` | Published-artifact scenarios for 2.0 prerelease readiness across Workflow, Waterline, server, CLI, Python SDK, sample app, public docs, and the quickstart local-server hosting and Laravel paths. |
 | `failure_repair_actionability` | `stable` | `server` | `docs/contracts/external-task-result.md` | Failure objects and repair / actionability shapes for stuck tasks, deterministic failure, and replay-mismatch surfaces. |
 | `failure_repair_actionability` | `stable` | `server` | `docs/contracts/replay-verification.md` | Failure objects and repair / actionability shapes for stuck tasks, deterministic failure, and replay-mismatch surfaces. |
 | `cli_json_envelopes` | `stable` | `cli` | `tests/fixtures/control-plane/` | The `--output=json` and `--output=jsonl` envelopes that automation depends on. |
@@ -290,11 +290,13 @@ documentation accuracy, configuration understandability, and
 cross-component compatibility, and evaluate server, CLI, Python SDK,
 Workflow, Waterline, sample app, and public docs as one ecosystem tuple.
 It must also execute the versioned 2.0 quickstart local-server hosting
-branch from live public docs through an observable completed workflow
-within 10 minutes, recording the exact commands, outputs, artifact
-versions, and wall-clock timings. A discovery-only quickstart check is
-nonconforming until it records `quickstart_local_server_hosted_completion`
-as `pass`, `fail`, `unsupported`, `not_covered`, or `runner_blocked`.
+and Laravel branches from live public docs through observable completed
+workflows within 10 minutes, recording the exact commands, outputs,
+artifact versions, and wall-clock timings. A discovery-only quickstart
+check is nonconforming until it records
+`quickstart_local_server_hosted_completion` and
+`quickstart_laravel_branch_completion` as `pass`, `fail`,
+`unsupported`, `not_covered`, or `runner_blocked`.
 Any missing artifact, stale docs page, undocumented migration step,
 installability gap, API instability, cross-component breaking-change
 risk, or release-channel mismatch must be recorded as a non-pass cell

@@ -118,6 +118,13 @@ const VERSIONED_RUNTIME_SCENARIO_STATUSES = {
     'not_covered',
     'runner_blocked',
   ],
+  18: [
+    'pass',
+    'fail',
+    'unsupported',
+    'not_covered',
+    'runner_blocked',
+  ],
 };
 // Digests bind each stable scenario id's operations and pass_criteria to the
 // suite version so published harness criteria cannot drift invisibly.
@@ -215,6 +222,18 @@ const VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS = {
     migration_runtime_contract: 'sha256:530b8141abaa6d2e3b4ca66b7a07b5fa18cf0cb08c0a1348a0a0154af1d7e3c5',
     namespace_runtime_contract: 'sha256:aba71f98fcad2713a13801ef5430522ffdb6ea4214a160e50fca0cd7794315e5',
     prerelease_readiness_contract: 'sha256:804043ee65265ccb7682fe30e0f96c72debe822506bd6b49bbf191086a3f45cd',
+    saga_runtime_contract: 'sha256:6f6c04ecb67546ff2d307e9f53961f9c19ab347c6486de7fe29e0a5dddef4347',
+    search_attribute_runtime_contract: 'sha256:ef28842b57295065f2de2cf973ee7c06f0bdd2f390f0ab3dcf78d9c64f72d1c5',
+    signal_query_runtime_contract: 'sha256:186e9a0a5bba1a094d0b8c7eb3299f0798f15e7aaab83b0d2596f0c91cc75373',
+    skew_refusal_matrix_contract: 'sha256:72b63c7df1c002dade9998798d4ca93fc022a2a6c5742c88b5fdef15a40851c2',
+    worker_versioning_runtime_contract: 'sha256:a95e9150aa63886842f48bfe255c70deddba2b92238611c5292ca67597efa7bd',
+  },
+  18: {
+    child_workflow_runtime_contract: 'sha256:3612fc5ce951c26382d7eb2842c368f9ce7a17ce48a246bd43d327ada2de54e2',
+    history_replay_bundles: 'sha256:70658bc21f12e7b0c16306951ba18e2b2ec853487c287e81cfa64a2b40eff013',
+    migration_runtime_contract: 'sha256:530b8141abaa6d2e3b4ca66b7a07b5fa18cf0cb08c0a1348a0a0154af1d7e3c5',
+    namespace_runtime_contract: 'sha256:aba71f98fcad2713a13801ef5430522ffdb6ea4214a160e50fca0cd7794315e5',
+    prerelease_readiness_contract: 'sha256:ec09056f015e85053071eff8ddb8b691257ae323215e068ed6ecc498ce495e39',
     saga_runtime_contract: 'sha256:6f6c04ecb67546ff2d307e9f53961f9c19ab347c6486de7fe29e0a5dddef4347',
     search_attribute_runtime_contract: 'sha256:ef28842b57295065f2de2cf973ee7c06f0bdd2f390f0ab3dcf78d9c64f72d1c5',
     signal_query_runtime_contract: 'sha256:186e9a0a5bba1a094d0b8c7eb3299f0798f15e7aaab83b0d2596f0c91cc75373',
@@ -419,6 +438,7 @@ VERSIONED_PASS_FAIL_RULES[15] = {
 };
 VERSIONED_PASS_FAIL_RULES[16] = VERSIONED_PASS_FAIL_RULES[15];
 VERSIONED_PASS_FAIL_RULES[17] = VERSIONED_PASS_FAIL_RULES[16];
+VERSIONED_PASS_FAIL_RULES[18] = VERSIONED_PASS_FAIL_RULES[17];
 const EXPECTED_AUTHORITY_DOC = 'docs/platform-conformance.md';
 const EXPECTED_DOC_ID = 'platform-conformance';
 
