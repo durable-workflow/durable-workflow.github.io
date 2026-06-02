@@ -399,13 +399,6 @@
     "smoke_summary_only_outcome": "non_passing_smoke_only",
     "unexecuted_required_scenario_status": "not_covered",
     "coverage_gap_finding_type": "conformance_runner_coverage_gap",
-    "coverage_gap_owner": "conformance_harness",
-    "result_files": [
-      "pins.json",
-      "run-metadata.json",
-      "artifact-install-evidence.json",
-      "namespaces-result.json",
-      "namespaces-record.json"
-    ]
+    "coverage_gap_owner": "conformance_harness"
   }
 }

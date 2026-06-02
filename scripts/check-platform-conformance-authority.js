@@ -26,6 +26,20 @@ const sidebarsPath = path.join(repoRoot, 'sidebars.js');
 const EXPECTED_SCHEMA = 'durable-workflow.v2.platform-conformance.suite';
 const EXPECTED_RUNTIME_SCENARIO_SCHEMA =
   'durable-workflow.v2.platform-conformance.runtime-scenarios';
+const PUBLIC_RUNTIME_MANIFEST_FORBIDDEN_NORMATIVE_FIELDS = new Set([
+  'runner_path',
+  'runner_command',
+  'result_files',
+]);
+const PUBLIC_RUNTIME_MANIFEST_FORBIDDEN_ARTIFACT_NAME_PATTERNS = [
+  /^published-artifacts\.json$/,
+  /^pins\.json$/,
+  /^run-metadata\.json$/,
+  /^artifact-install-evidence\.json$/,
+  /^[a-z0-9-]+-(result|record|http-captures)\.json$/,
+];
+const PUBLIC_RUNTIME_MANIFEST_REPO_LOCAL_SCRIPT_PATTERN =
+  /\bscripts\/[A-Za-z0-9_./-]+/;
 const VERSIONED_RUNTIME_SCENARIO_STATUSES = {
   5: [
     'pass',
@@ -1135,6 +1149,198 @@ function assertSkewRefusalMatrixResultEvidence(manifest, category, source) {
   );
 }
 
+function formatJsonPath(segments) {
+  return segments.reduce((current, segment) => {
+    if (typeof segment === 'number') {
+      return `${current}[${segment}]`;
+    }
+
+    return `${current}.${segment}`;
+  }, '$');
+}
+
+function collectPublicRuntimeManifestInternalHarnessLeaks(value, segments = []) {
+  const leaks = [];
+
+  if (typeof value === 'string') {
+    const scriptMatch = value.match(PUBLIC_RUNTIME_MANIFEST_REPO_LOCAL_SCRIPT_PATTERN);
+    if (scriptMatch) {
+      leaks.push(`${formatJsonPath(segments)} exposes repo-local path "${scriptMatch[0]}"`);
+    }
+
+    const fileName = value.trim().split(/[\\/]/).pop();
+    if (
+      PUBLIC_RUNTIME_MANIFEST_FORBIDDEN_ARTIFACT_NAME_PATTERNS
+        .some(pattern => pattern.test(fileName))
+    ) {
+      leaks.push(`${formatJsonPath(segments)} exposes internal harness artifact "${fileName}"`);
+    }
+
+    return leaks;
+  }
+
+  if (Array.isArray(value)) {
+    value.forEach((entry, index) => {
+      leaks.push(...collectPublicRuntimeManifestInternalHarnessLeaks(
+        entry,
+        [...segments, index],
+      ));
+    });
+
+    return leaks;
+  }
+
+  if (value && typeof value === 'object') {
+    for (const [key, entry] of Object.entries(value)) {
+      const entryPath = [...segments, key];
+
+      if (PUBLIC_RUNTIME_MANIFEST_FORBIDDEN_NORMATIVE_FIELDS.has(key)) {
+        leaks.push(`${formatJsonPath(entryPath)} exposes internal harness field "${key}"`);
+      }
+
+      leaks.push(...collectPublicRuntimeManifestInternalHarnessLeaks(entry, entryPath));
+    }
+  }
+
+  return leaks;
+}
+
+function assertPublicRuntimeManifestHasNoInternalHarnessContract(
+  manifest,
+  category,
+  source,
+) {
+  if (!isPublicRuntimeScenarioManifest(source)) {
+    return;
+  }
+
+  const leaks = collectPublicRuntimeManifestInternalHarnessLeaks(manifest);
+  if (leaks.length === 0) {
+    return;
+  }
+
+  throw new Error(
+    `stable runtime fixture category "${category}" scenario manifest ` +
+      `${source.repository}:${source.path} must describe public evidence ` +
+      `requirements, not repo-local runner scripts or internal harness ` +
+      `artifact files:\n- ${leaks.join('\n- ')}`,
+  );
+}
+
+function assertArrayIncludesAll(actual, expected, label) {
+  if (!Array.isArray(actual)) {
+    throw new Error(`${label} must be an array.`);
+  }
+
+  for (const value of expected) {
+    if (!actual.includes(value)) {
+      throw new Error(`${label} must include "${value}".`);
+    }
+  }
+}
+
+function assertWorkerVersioningNoCompatibleEvidence(manifest, category, source) {
+  if (category !== 'worker_versioning_runtime_contract') {
+    return;
+  }
+
+  const label =
+    `stable runtime fixture category "${category}" scenario manifest ` +
+    `${source.repository}:${source.path}`;
+  const artifactPolicy = manifest.artifact_policy || {};
+
+  if (artifactPolicy.requires_local_product_source_checkouts_used_false !== true) {
+    throw new Error(
+      `${label} artifact_policy must require ` +
+        `local_product_source_checkouts_used=false for published-worker evidence.`,
+    );
+  }
+
+  assertArrayIncludesAll(
+    artifactPolicy.forbidden_sources || [],
+    [
+      'local_product_source_checkout',
+      'workspace_repo_as_artifact_under_test',
+      'not_exercised',
+    ],
+    `${label} artifact_policy.forbidden_sources`,
+  );
+
+  assertArrayIncludesAll(
+    manifest.common_result_evidence || [],
+    [
+      'published_artifact_install_evidence',
+      'published_worker_execution_evidence',
+      'local_product_source_checkouts_used',
+    ],
+    `${label} common_result_evidence`,
+  );
+
+  const noCompatibleFields =
+    (((manifest.scenario_requirements || {}).no_compatible_worker_behavior || {})
+      .required_fields) || [];
+
+  assertArrayIncludesAll(
+    noCompatibleFields,
+    [
+      'operator_visible_signal',
+      'pending_or_typed_error',
+      'incompatible_worker_task_count',
+      'published_artifact_worker_execution',
+      'local_product_source_checkouts_used',
+    ],
+    `${label} scenario_requirements.no_compatible_worker_behavior.required_fields`,
+  );
+
+  const evidenceContract =
+    ((manifest.host_runner_contract || {}).published_worker_execution_evidence) || {};
+
+  if (
+    evidenceContract.result_schema !==
+      'durable-workflow.v2.worker-versioning-runtime.published-worker-execution-evidence'
+  ) {
+    throw new Error(
+      `${label} host_runner_contract.published_worker_execution_evidence ` +
+        `must declare the published-worker execution evidence schema.`,
+    );
+  }
+
+  assertArrayIncludesAll(
+    evidenceContract.required_for_passing_scenarios || [],
+    [
+      'replay_only_by_compatible_workers',
+      'replay_across_cache_eviction',
+      'no_compatible_worker_behavior',
+      'cross_language_php_python_pinning',
+    ],
+    `${label} host_runner_contract.published_worker_execution_evidence.required_for_passing_scenarios`,
+  );
+
+  assertArrayIncludesAll(
+    evidenceContract.no_compatible_worker_behavior_required_fields || [],
+    [
+      'scenario_results.no_compatible_worker_behavior.observed_outputs.published_artifact_worker_execution',
+      'scenario_results.no_compatible_worker_behavior.observed_outputs.local_product_source_checkouts_used',
+      'local_product_source_checkouts_used',
+    ],
+    `${label} host_runner_contract.published_worker_execution_evidence.no_compatible_worker_behavior_required_fields`,
+  );
+
+  const sourcePolicy = evidenceContract.source_policy || {};
+  for (const field of [
+    'requires_top_level_local_product_source_checkouts_used_false',
+    'requires_scenario_local_product_source_checkouts_used_false',
+    'requires_published_worker_execution_local_product_source_checkouts_used_false',
+  ]) {
+    if (sourcePolicy[field] !== true) {
+      throw new Error(
+        `${label} host_runner_contract.published_worker_execution_evidence.` +
+          `source_policy.${field} must be true.`,
+      );
+    }
+  }
+}
+
 function runtimeScenarioCriteriaSnapshot(manifest) {
   const scenarios = {};
 
@@ -1385,6 +1591,8 @@ function assertRuntimeScenarioManifest(contract, category, entry, source) {
   );
   assertSignalQueryRuntimeArtifactPolicy(manifest, category, source);
   assertSkewRefusalMatrixResultEvidence(manifest, category, source);
+  assertPublicRuntimeManifestHasNoInternalHarnessContract(manifest, category, source);
+  assertWorkerVersioningNoCompatibleEvidence(manifest, category, source);
 
   if (
     !Array.isArray(manifest.result_statuses) ||

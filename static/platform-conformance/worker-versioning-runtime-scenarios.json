@@ -16,8 +16,15 @@
   "artifact_policy": {
     "published_artifacts_only": true,
     "requires_resolved_versions": true,
+    "requires_artifact_sources_for_each_required_artifact": true,
+    "requires_local_product_source_checkouts_used_false": true,
     "rejects_placeholder_versions": true,
-    "implementation_tests_are_not_sources": true
+    "implementation_tests_are_not_sources": true,
+    "forbidden_sources": [
+      "local_product_source_checkout",
+      "workspace_repo_as_artifact_under_test",
+      "not_exercised"
+    ]
   },
   "common_result_evidence": [
     "suite_version",
@@ -27,6 +34,11 @@
     "finished_at",
     "generated_at",
     "published_artifact_versions",
+    "resolved_artifact_versions",
+    "artifact_sources",
+    "published_artifact_install_evidence",
+    "published_worker_execution_evidence",
+    "local_product_source_checkouts_used",
     "implementation_identity",
     "runtime_matrix",
     "topology",
@@ -154,7 +166,9 @@
       "required_fields": [
         "operator_visible_signal",
         "pending_or_typed_error",
-        "incompatible_worker_task_count"
+        "incompatible_worker_task_count",
+        "published_artifact_worker_execution",
+        "local_product_source_checkouts_used"
       ]
     },
     "operator_visibility_surfaces": {
@@ -189,19 +203,37 @@
   },
   "host_runner_contract": {
     "status": "required_for_passing_worker_versioning_conformance",
+    "result_schema": "durable-workflow.v2.worker-versioning-runtime.result",
     "must_execute_against_published_artifacts": true,
     "must_record_runner_blocked_false_for_product_evidence": true,
-    "runner_path": "scripts/conformance/worker-versioning-published-artifacts.sh",
-    "runner_command": "scripts/conformance/worker-versioning-published-artifacts.sh --result-dir <result-dir>",
-    "result_files": [
-      "published-artifacts.json",
-      "worker-versioning-result.json",
-      "worker-versioning-record.json",
-      "worker-versioning-http-captures.json"
-    ],
-    "evidence_inputs": {
-      "DW_WV_ARTIFACT_INSTALL_EVIDENCE": "Optional JSON report proving required artifacts were installed and smoke-executed from published channels.",
-      "DW_WV_PUBLISHED_WORKER_EVIDENCE": "Optional JSON report from the host worker-versioning topology after published worker artifacts executed replay, cache-eviction, no-compatible-worker, or cross-language cells."
+    "must_emit_result_for_every_required_scenario": true,
+    "smoke_summary_only_outcome": "non_passing_smoke_only",
+    "unexecuted_required_scenario_status": "not_covered",
+    "coverage_gap_finding_type": "conformance_runner_coverage_gap",
+    "coverage_gap_owner": "conformance_harness",
+    "published_worker_execution_evidence": {
+      "result_schema": "durable-workflow.v2.worker-versioning-runtime.published-worker-execution-evidence",
+      "required_for_passing_scenarios": [
+        "replay_only_by_compatible_workers",
+        "replay_across_cache_eviction",
+        "no_compatible_worker_behavior",
+        "cross_language_php_python_pinning"
+      ],
+      "no_compatible_worker_behavior_required_fields": [
+        "scenario_results.no_compatible_worker_behavior.observed_outputs.published_artifact_worker_execution",
+        "scenario_results.no_compatible_worker_behavior.observed_outputs.local_product_source_checkouts_used",
+        "local_product_source_checkouts_used"
+      ],
+      "source_policy": {
+        "requires_top_level_local_product_source_checkouts_used_false": true,
+        "requires_scenario_local_product_source_checkouts_used_false": true,
+        "requires_published_worker_execution_local_product_source_checkouts_used_false": true,
+        "forbidden_artifact_sources": [
+          "local_product_source_checkout",
+          "workspace_repo_as_artifact_under_test",
+          "not_exercised"
+        ]
+      }
     },
     "evidence_shards": [
       "published_artifact_versions",
