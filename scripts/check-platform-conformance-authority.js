@@ -147,6 +147,13 @@ const VERSIONED_RUNTIME_SCENARIO_STATUSES = {
     'runner_blocked',
   ],
 };
+const VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_FIELDS = [
+  'artifact_policy',
+  'common_result_evidence',
+  'required_matrix',
+  'scenario_requirements',
+  'host_runner_contract',
+];
 // Digests bind each stable scenario id's operations and pass_criteria to the
 // suite version so published harness criteria cannot drift invisibly.
 const VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS = {
@@ -273,6 +280,25 @@ const VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS = {
     signal_query_runtime_contract: 'sha256:186e9a0a5bba1a094d0b8c7eb3299f0798f15e7aaab83b0d2596f0c91cc75373',
     skew_refusal_matrix_contract: 'sha256:72b63c7df1c002dade9998798d4ca93fc022a2a6c5742c88b5fdef15a40851c2',
     worker_versioning_runtime_contract: 'sha256:a95e9150aa63886842f48bfe255c70deddba2b92238611c5292ca67597efa7bd',
+  },
+};
+// Digests bind public top-level runtime scenario manifest requirements to the
+// suite version. These fields define artifact source policy, common evidence,
+// runtime matrices, scenario-specific required evidence, and host-runner result
+// contracts; changing them requires a new suite version.
+const VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS = {
+  19: {
+    child_workflow_runtime_contract: 'sha256:9d8db2784110771778af0ff0a03de13bf5f0243b2be6d69080e013e602476072',
+    history_replay_bundles: 'sha256:0a7b52919c7dd44b80a559324c7cdda563744385729fd67cedafe082f2af36e8',
+    migration_runtime_contract: 'sha256:ef15f359dc6bb89e21f667cf7a7812079069228a00bfccb637645dac49739890',
+    namespace_runtime_contract: 'sha256:36a4abd574cfa4a920b0838e44fe9d6a991b0b69b064bc4a8ddf8b295714c7e9',
+    prerelease_readiness_contract: 'sha256:1846068e84ca06074607d319438a95cbb13d017aec15fa4cbd5895fb1e253c9f',
+    saga_runtime_contract: 'sha256:57995ea2061611562391ab2fb625760d541167613f7ac8769b83039ca2b7c6bf',
+    schedules_runtime_contract: 'sha256:4c94261b254d49ed59b71478da33b5ed0bc72dee7055c4d3641889839bbc4a38',
+    search_attribute_runtime_contract: 'sha256:90c2e5b9fffd0a0be166a354d6d897d0b29b547f60afa00e7925ae1defc626ed',
+    signal_query_runtime_contract: 'sha256:12c2395791d1ef5897fba360f5797666bf78eaf4ae270786f294c1b80e0432dd',
+    skew_refusal_matrix_contract: 'sha256:05eafce72332f995d9a940db9c2cb45e121ff9fef5336505e7ccb84e4ef7b64f',
+    worker_versioning_runtime_contract: 'sha256:3fe961e732c338530e4a2d1b3b4d8f9e66144141eb8796f130ba77f045db5454',
   },
 };
 const VERSIONED_PASS_FAIL_RULES = {
@@ -996,6 +1022,8 @@ function candidateRuntimeScenarioCriteriaBaselineRefs() {
   }
 
   refs.push('origin/main');
+  refs.push('canonical/main');
+  refs.push('refs/remotes/canonical/main');
   refs.push('main');
 
   return Array.from(new Set(refs.filter(Boolean)));
@@ -1067,6 +1095,87 @@ function assertPublishedRuntimeScenarioCriteriaDigestsImmutable() {
           `VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS entries immutable; ` +
           `advance the suite version and add a new current entry for changed ` +
           `stable runtime scenario operations or pass_criteria.`,
+      );
+    }
+  }
+}
+
+function loadRuntimeScenarioPublicRequirementDigestBaseline() {
+  const errors = [];
+  const missingConstRefs = [];
+  const constName = 'VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS';
+
+  for (const ref of candidateRuntimeScenarioCriteriaBaselineRefs()) {
+    try {
+      const source = git(['show', `${ref}:${thisScriptPath}`]);
+      const digests = normalizeRuntimeScenarioCriteriaDigestTable(
+        parseConstObjectLiteral(
+          source,
+          constName,
+          `published ${thisScriptPath} at ${ref}`,
+        ),
+        `published ${constName} at ${ref}`,
+      );
+
+      return { ref, digests };
+    } catch (err) {
+      errors.push(`${ref}: ${err.message}`);
+      if (err.message.includes(`must declare ${constName}`)) {
+        missingConstRefs.push(ref);
+      }
+    }
+  }
+
+  if (missingConstRefs.length > 0) {
+    return null;
+  }
+
+  if (
+    process.env.PLATFORM_CONFORMANCE_DIGEST_BASE_REF ||
+    process.env.GITHUB_BASE_REF
+  ) {
+    throw new Error(
+      `Unable to load published ${constName} baseline. ` +
+        `Ensure CI checks out the target branch history. Tried: ${errors.join('; ')}`,
+    );
+  }
+
+  return null;
+}
+
+function assertPublishedRuntimeScenarioPublicRequirementDigestsImmutable() {
+  const baseline = loadRuntimeScenarioPublicRequirementDigestBaseline();
+  if (!baseline) {
+    return;
+  }
+
+  const current = normalizeRuntimeScenarioCriteriaDigestTable(
+    VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS,
+    'VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS',
+  );
+
+  const baselineVersions = Object.keys(baseline.digests)
+    .sort((a, b) => Number(a) - Number(b));
+
+  for (const version of baselineVersions) {
+    if (!(version in current)) {
+      throw new Error(
+        `Published runtime scenario public requirement digest entry for suite ` +
+          `version ${version} from ${baseline.ref} must remain declared. Add ` +
+          `a new suite-version entry for changed public requirements instead ` +
+          `of deleting historical entries.`,
+      );
+    }
+
+    if (stableJson(current[version]) !== stableJson(baseline.digests[version])) {
+      throw new Error(
+        `Published runtime scenario public requirement digest entry for suite ` +
+          `version ${version} changed from ${baseline.ref}. Keep historical ` +
+          `VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS entries ` +
+          `immutable; advance the suite version and add a new current entry ` +
+          `for changed stable runtime scenario evidence requirements, ` +
+          `artifact_policy, required_matrix, scenario_requirements, or ` +
+          `host_runner_contract.`,
       );
     }
   }
@@ -1411,6 +1520,28 @@ function runtimeScenarioCriteriaDigest(manifest) {
   );
 }
 
+function runtimeScenarioPublicRequirementSnapshot(manifest) {
+  const snapshot = {};
+
+  for (const field of VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(manifest, field)) {
+      snapshot[field] = manifest[field];
+    }
+  }
+
+  return snapshot;
+}
+
+function runtimeScenarioPublicRequirementDigest(manifest) {
+  return (
+    'sha256:' +
+    crypto
+      .createHash('sha256')
+      .update(stableJson(runtimeScenarioPublicRequirementSnapshot(manifest)))
+      .digest('hex')
+  );
+}
+
 function assertVersionedRuntimeScenarioCriteria(contract, manifest, category, source) {
   const expectedByCategory =
     VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[contract.version];
@@ -1443,6 +1574,51 @@ function assertVersionedRuntimeScenarioCriteria(contract, manifest, category, so
         `${expectedDigest}. Advance the suite version and add a new ` +
         `VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS entry before changing ` +
         `stable runtime scenario operations or pass_criteria.`,
+    );
+  }
+}
+
+function assertVersionedRuntimeScenarioPublicRequirements(
+  contract,
+  manifest,
+  category,
+  source,
+) {
+  const expectedByCategory =
+    VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[contract.version];
+
+  if (!expectedByCategory) {
+    throw new Error(
+      `scripts/check-platform-conformance-authority.js must declare ` +
+        `runtime scenario public requirement digests for suite version ` +
+        `${contract.version}. Add a new ` +
+        `VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS entry when ` +
+        `stable runtime scenario evidence requirements, artifact policy, ` +
+        `runtime matrix, scenario required fields, or host-runner contracts ` +
+        `change.`,
+    );
+  }
+
+  const expectedDigest = expectedByCategory[category];
+  if (!expectedDigest) {
+    throw new Error(
+      `scripts/check-platform-conformance-authority.js must declare ` +
+        `a runtime scenario public requirement digest for category ` +
+        `"${category}" in suite version ${contract.version}.`,
+    );
+  }
+
+  const actualDigest = runtimeScenarioPublicRequirementDigest(manifest);
+  if (actualDigest !== expectedDigest) {
+    throw new Error(
+      `stable runtime fixture category "${category}" scenario manifest ` +
+        `${source.repository}:${source.path} public requirement digest ` +
+        `${actualDigest} must match suite-versioned expectation ` +
+        `${expectedDigest}. Advance the suite version and add a new ` +
+        `VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS entry before ` +
+        `changing stable runtime scenario evidence requirements, ` +
+        `artifact_policy, required_matrix, scenario_requirements, or ` +
+        `host_runner_contract.`,
     );
   }
 }
@@ -1719,6 +1895,12 @@ function assertRuntimeScenarioManifest(contract, category, entry, source) {
   }
 
   assertVersionedRuntimeScenarioCriteria(contract, manifest, category, source);
+  assertVersionedRuntimeScenarioPublicRequirements(
+    contract,
+    manifest,
+    category,
+    source,
+  );
 }
 
 function staticSourcePathToServedPath(sourcePath) {
@@ -2013,6 +2195,7 @@ function main() {
   );
 
   assertPublishedRuntimeScenarioCriteriaDigestsImmutable();
+  assertPublishedRuntimeScenarioPublicRequirementDigestsImmutable();
   assertContractAuthorityResolves(contract);
   assertArrayOfStrings(contract, 'conformance_levels', [
     'full',
