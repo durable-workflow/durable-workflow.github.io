@@ -202,8 +202,8 @@ dw workflow:start \
   --input='{"order_id":"order-001","total":42.50}' \
   --json
 
-dw workflow:describe quickstart-order-001
-dw workflow:history quickstart-order-001
+dw workflow:describe quickstart-order-001 --output=json
+dw workflow:history quickstart-order-001 <run-id-from-start-or-describe>
 dw task-queue:describe quickstart
 ```
 
@@ -244,7 +244,7 @@ dw workflow:signal <workflow-id> <signal-name> --input='["ok"]'
 dw workflow:query <workflow-id> <query-name>               # Run a query
 dw workflow:cancel <workflow-id>                           # Request cancellation
 dw workflow:terminate <workflow-id>                        # Force terminate
-dw workflow:history <workflow-id>                          # Show run history
+dw workflow:history <workflow-id> <run-id>                 # Show run history
 ```
 
 Every command that accepts caller payloads uses the same input shape:

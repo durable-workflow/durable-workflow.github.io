@@ -164,13 +164,18 @@ dw server:info --output=json
 ```
 
 Set `QUICKSTART_WORKFLOW_ID` to the id printed by `python greeter.py`, then
-read the durable completed state:
+capture its current run id and read the durable completed state:
 
 ```bash
 export QUICKSTART_WORKFLOW_ID=quickstart-python-greeter-0000000000
 
-dw workflow:describe "$QUICKSTART_WORKFLOW_ID" --output=json
-dw workflow:history "$QUICKSTART_WORKFLOW_ID" --output=json
+dw workflow:describe "$QUICKSTART_WORKFLOW_ID" --output=json \
+  | tee quickstart-workflow.json
+export QUICKSTART_RUN_ID="$(
+  python -c 'import json; print(json.load(open("quickstart-workflow.json"))["run_id"])'
+)"
+
+dw workflow:history "$QUICKSTART_WORKFLOW_ID" "$QUICKSTART_RUN_ID" --output=json
 dw workflow:list --status=completed --output=json
 ```
 
@@ -318,7 +323,7 @@ state from published artifacts:
 | --- | --- |
 | Local server hosting | `curl http://localhost:8080/api/ready` succeeds, `GET /api/cluster/info` returns the standalone server topology, and the Python workflow below completes against that server. |
 | Python user | `python greeter.py` prints `status=completed`, a `quickstart-python-greeter-*` workflow id, and the activity result. |
-| Operator user | `dw workflow:describe "$QUICKSTART_WORKFLOW_ID" --output=json` and `dw workflow:list --status=completed --output=json` show the completed Python workflow on the same server profile. |
+| Operator user | `dw workflow:describe "$QUICKSTART_WORKFLOW_ID" --output=json` shows a `run_id`, `dw workflow:history "$QUICKSTART_WORKFLOW_ID" "$QUICKSTART_RUN_ID" --output=json` shows history for that run, and `dw workflow:list --status=completed --output=json` shows the completed Python workflow on the same server profile. |
 | Laravel user | `php artisan app:quickstart-workflow` prints `status=completed` and `output=Hello, Laravel!` while the Laravel queue worker is running. |
 
 ## Clean Up

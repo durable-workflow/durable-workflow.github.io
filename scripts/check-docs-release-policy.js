@@ -217,6 +217,7 @@ function assertBuiltDocsPolicy() {
   assertIncludes(prereleaseQuickstart, 'Completion Criteria', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'await worker.run_until', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'status=completed', '2.0 quickstart page');
+  assertIncludes(prereleaseQuickstart, 'dw workflow:history &quot;$QUICKSTART_WORKFLOW_ID&quot; &quot;$QUICKSTART_RUN_ID&quot; --output=json', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'dw workflow:list --status=completed --output=json', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'php artisan app:quickstart-workflow', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'output=Hello, Laravel!', '2.0 quickstart page');
