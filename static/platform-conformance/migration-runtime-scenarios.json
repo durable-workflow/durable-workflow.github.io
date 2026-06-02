@@ -54,8 +54,16 @@
     "started_at",
     "finished_at",
     "generated_at",
+    "outcome",
+    "runner_blocked",
     "published_artifact_versions",
+    "resolved_artifact_versions",
+    "artifact_sources",
+    "artifact_prerequisite_failures",
+    "local_product_source_checkouts_used",
     "implementation_identity",
+    "findings",
+    "finding_links",
     "migration_plan",
     "preupgrade_state_snapshot",
     "postupgrade_state_snapshot",
@@ -67,6 +75,7 @@
     "waterline_observations",
     "rollback_observations",
     "version_skew_observations",
+    "storage_connection_smoke",
     "observed_outputs",
     "linked_findings"
   ],
@@ -560,5 +569,32 @@
         "CLI, SDK, or Waterline diagnostics expose enough context for an operator to correct the mismatch"
       ]
     }
-  ]
+  ],
+  "coverage_gate": {
+    "passing_outcome_requires": [
+      "all_required_scenarios_reported",
+      "all_required_artifacts_resolved_from_published_channels",
+      "latest_supported_v1_state_seeded_with_realistic_workflows",
+      "public_migration_guide_steps_executed_verbatim",
+      "completed_history_preservation_and_replay_reported",
+      "in_flight_progress_mid_activity_retry_schedule_and_worker_cells_reported",
+      "cli_and_waterline_preupgrade_state_visibility_reported",
+      "new_v2_workflow_start_reported",
+      "rollback_or_documented_no_rollback_reported",
+      "version_skew_refusal_reported",
+      "storage_connection_smoke_is_recorded_but_not_counted_as_complete",
+      "run_timestamps_outcome_and_findings_are_recorded",
+      "declared_outcome_matches_evaluated_status",
+      "artifact_source_recorded_for_each_install_channel",
+      "artifact_prerequisite_failures_are_linked_when_artifacts_are_missing",
+      "local_product_source_checkouts_used_explicitly_false",
+      "runner_blocked_false_for_product_evidence",
+      "findings_linked_for_non_pass_scenarios"
+    ],
+    "uncovered_required_scenario_outcome": "non_passing",
+    "smoke_subset_outcome": "non_passing",
+    "storage_connection_smoke_only_outcome": "non_passing",
+    "unsupported_public_surface_outcome": "non_passing_with_root_cause_finding",
+    "runner_blocked_outcome": "non_passing_runner_blocked"
+  }
 }
