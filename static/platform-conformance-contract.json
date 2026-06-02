@@ -1,6 +1,6 @@
 {
   "schema": "durable-workflow.v2.platform-conformance.suite",
-  "version": 18,
+  "version": 19,
   "authority_doc": "docs/platform-conformance.md",
   "authority_url": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
   "surface_stability_authority": "durable-workflow.v2.surface-stability.contract",
@@ -24,6 +24,7 @@
         "control_plane_request_response",
         "signal_query_runtime_contract",
         "search_attribute_runtime_contract",
+        "schedules_runtime_contract",
         "namespace_runtime_contract",
         "child_workflow_runtime_contract",
         "saga_runtime_contract",
@@ -45,6 +46,7 @@
         "control_plane_request_response",
         "signal_query_runtime_contract",
         "search_attribute_runtime_contract",
+        "schedules_runtime_contract",
         "namespace_runtime_contract",
         "child_workflow_runtime_contract",
         "saga_runtime_contract",
@@ -65,6 +67,7 @@
         "worker_task_lifecycle",
         "signal_query_runtime_contract",
         "search_attribute_runtime_contract",
+        "schedules_runtime_contract",
         "namespace_runtime_contract",
         "child_workflow_runtime_contract",
         "saga_runtime_contract",
@@ -83,6 +86,7 @@
         "control_plane_request_response",
         "signal_query_runtime_contract",
         "search_attribute_runtime_contract",
+        "schedules_runtime_contract",
         "namespace_runtime_contract",
         "child_workflow_runtime_contract",
         "saga_runtime_contract",
@@ -235,6 +239,34 @@
         "load_and_bounded_latency",
         "namespace_isolation",
         "query_injection_hardening"
+      ]
+    },
+    "schedules_runtime_contract": {
+      "status": "stable",
+      "description": "Live published-artifact scenarios for Temporal-parity schedules across cron and fixed-rate cadence, public list and describe surfaces, pause/resume/delete controls, missed-fire policy, restart survival, CLI/Python/PHP client paths, cross-language scheduled workflow dispatch, and adversarial schedule inputs.",
+      "sources": [
+        {
+          "repository": "durable-workflow.github.io",
+          "path": "static/platform-conformance/schedules-runtime-scenarios.json"
+        }
+      ],
+      "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
+      "required_scenarios": [
+        "published_artifact_install_only",
+        "cron_cadence",
+        "fixed_rate_cadence",
+        "list_describe_visibility",
+        "pause_resume_no_fire_window",
+        "delete_stops_future_fires",
+        "missed_fire_policy",
+        "restart_survival",
+        "cli_schedule_surface",
+        "python_sdk_schedule_surface",
+        "php_schedule_surface",
+        "python_created_php_workflow",
+        "php_created_python_workflow",
+        "invalid_cron_refusal",
+        "nonexistent_workflow_type_outcome"
       ]
     },
     "history_replay_bundles": {
@@ -550,6 +582,7 @@
       "applies_to_categories": [
         "signal_query_runtime_contract",
         "search_attribute_runtime_contract",
+        "schedules_runtime_contract",
         "history_replay_bundles",
         "namespace_runtime_contract",
         "child_workflow_runtime_contract",

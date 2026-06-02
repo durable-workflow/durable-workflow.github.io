@@ -25,7 +25,7 @@ for implementations that claim Durable Workflow v2 compatibility.
 The machine-readable mirror is published at
 [`static/platform-conformance-contract.json`](pathname:///platform-conformance-contract.json)
 with schema `durable-workflow.v2.platform-conformance.suite`, version
-`18`. The same manifest is advertised by the standalone server from
+`19`. The same manifest is advertised by the standalone server from
 `GET /api/cluster/info` under `platform_conformance_suite`. The
 [Platform Protocol Specs](/docs/2.0/platform-protocol-specs) catalog names
 that nested manifest as the `platform_conformance_suite_manifest`
@@ -47,10 +47,10 @@ For example, the standalone server claims `standalone_server`,
 
 | Target | Required surface families | Required fixture categories |
 | --- | --- | --- |
-| `standalone_server` | `server_api`, `worker_protocol`, `cluster_info_manifests` | `control_plane_request_response`, `signal_query_runtime_contract`, `search_attribute_runtime_contract`, `namespace_runtime_contract`, `child_workflow_runtime_contract`, `saga_runtime_contract`, `worker_versioning_runtime_contract`, `migration_runtime_contract`, `skew_refusal_matrix_contract`, `worker_task_lifecycle`, `failure_repair_actionability` |
-| `official_sdk` | `official_sdks`, `worker_protocol`, `history_event_wire_formats` | `control_plane_request_response`, `signal_query_runtime_contract`, `search_attribute_runtime_contract`, `namespace_runtime_contract`, `child_workflow_runtime_contract`, `saga_runtime_contract`, `worker_versioning_runtime_contract`, `migration_runtime_contract`, `skew_refusal_matrix_contract`, `worker_task_lifecycle`, `history_replay_bundles` |
-| `worker_protocol_implementation` | `worker_protocol`, `history_event_wire_formats` | `worker_task_lifecycle`, `signal_query_runtime_contract`, `search_attribute_runtime_contract`, `namespace_runtime_contract`, `child_workflow_runtime_contract`, `saga_runtime_contract`, `worker_versioning_runtime_contract`, `migration_runtime_contract`, `skew_refusal_matrix_contract`, `history_replay_bundles` |
-| `cli_json_client` | `cli_json` | `control_plane_request_response`, `signal_query_runtime_contract`, `search_attribute_runtime_contract`, `namespace_runtime_contract`, `child_workflow_runtime_contract`, `saga_runtime_contract`, `worker_versioning_runtime_contract`, `migration_runtime_contract`, `skew_refusal_matrix_contract`, `cli_json_envelopes` |
+| `standalone_server` | `server_api`, `worker_protocol`, `cluster_info_manifests` | `control_plane_request_response`, `signal_query_runtime_contract`, `search_attribute_runtime_contract`, `schedules_runtime_contract`, `namespace_runtime_contract`, `child_workflow_runtime_contract`, `saga_runtime_contract`, `worker_versioning_runtime_contract`, `migration_runtime_contract`, `skew_refusal_matrix_contract`, `worker_task_lifecycle`, `failure_repair_actionability` |
+| `official_sdk` | `official_sdks`, `worker_protocol`, `history_event_wire_formats` | `control_plane_request_response`, `signal_query_runtime_contract`, `search_attribute_runtime_contract`, `schedules_runtime_contract`, `namespace_runtime_contract`, `child_workflow_runtime_contract`, `saga_runtime_contract`, `worker_versioning_runtime_contract`, `migration_runtime_contract`, `skew_refusal_matrix_contract`, `worker_task_lifecycle`, `history_replay_bundles` |
+| `worker_protocol_implementation` | `worker_protocol`, `history_event_wire_formats` | `worker_task_lifecycle`, `signal_query_runtime_contract`, `search_attribute_runtime_contract`, `schedules_runtime_contract`, `namespace_runtime_contract`, `child_workflow_runtime_contract`, `saga_runtime_contract`, `worker_versioning_runtime_contract`, `migration_runtime_contract`, `skew_refusal_matrix_contract`, `history_replay_bundles` |
+| `cli_json_client` | `cli_json` | `control_plane_request_response`, `signal_query_runtime_contract`, `search_attribute_runtime_contract`, `schedules_runtime_contract`, `namespace_runtime_contract`, `child_workflow_runtime_contract`, `saga_runtime_contract`, `worker_versioning_runtime_contract`, `migration_runtime_contract`, `skew_refusal_matrix_contract`, `cli_json_envelopes` |
 | `waterline_contract_surface` | `waterline_api` | `signal_query_runtime_contract`, `search_attribute_runtime_contract`, `namespace_runtime_contract`, `saga_runtime_contract`, `worker_versioning_runtime_contract`, `migration_runtime_contract`, `skew_refusal_matrix_contract`, `waterline_observer_envelopes` |
 | `repair_actionability_surface` | `worker_protocol`, `server_api` | `failure_repair_actionability` |
 | `mcp_discovery_surface` | `mcp_discovery_results` | `mcp_discovery_envelopes` |
@@ -89,6 +89,7 @@ JSON manifests linked from the category notes below.
 | `worker_task_lifecycle` | `stable` | `sdk-python` | `tests/fixtures/external-task-result/` | Task input envelopes and task result envelopes used by every conforming worker. |
 | `signal_query_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/signal-query-runtime-scenarios.json` | Live published-artifact scenarios for signal delivery and query consistency across PHP and Python workers, CLI and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility. |
 | `search_attribute_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/search-attribute-runtime-scenarios.json` | Live published-artifact scenarios for Temporal-parity search attributes across PHP and Python workers, CLI query surfaces, Waterline operator visibility, cross-language codecs, load latency, boolean grammar, and adversarial query handling. |
+| `schedules_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/schedules-runtime-scenarios.json` | Live published-artifact scenarios for Temporal-parity schedules across cron and fixed-rate cadence, public list and describe surfaces, pause/resume/delete controls, missed-fire policy, restart survival, CLI/Python/PHP client paths, cross-language scheduled workflow dispatch, and adversarial schedule inputs. |
 | `history_replay_bundles` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/replay-runtime-scenarios.json` | Deterministic replay coverage for frozen history bundles, worker restart replay, adversarial refusal, and in-flight signal timing across the official PHP and Python runtimes. |
 | `history_replay_bundles` | `stable` | `workflow` | `tests/Fixtures/V2/GoldenHistory/` | Deterministic replay coverage for frozen history bundles, worker restart replay, adversarial refusal, and in-flight signal timing across the official PHP and Python runtimes. |
 | `history_replay_bundles` | `stable` | `sdk-python` | `tests/fixtures/golden_history/` | Deterministic replay coverage for frozen history bundles, worker restart replay, adversarial refusal, and in-flight signal timing across the official PHP and Python runtimes. |
@@ -157,6 +158,21 @@ cells count toward a passing category.
 Those search-attribute scenario ids and their pass criteria are
 published at
 [`static/platform-conformance/search-attribute-runtime-scenarios.json`](pathname:///platform-conformance/search-attribute-runtime-scenarios.json).
+
+The `schedules_runtime_contract` category is a stable runtime scenario
+category. A result for it must use published artifacts and cover cron
+cadence, fixed-rate cadence, list and describe visibility, pause/resume
+windows with no fires, delete stopping future fires, missed-fire policy,
+restart survival, CLI schedule operations, Python SDK schedule
+operations, PHP-facing schedule operations, Python-created PHP workflow
+fires, PHP-created Python workflow fires, invalid cron refusal, and
+nonexistent workflow type outcomes. A schedule lifecycle smoke subset is
+nonconforming until every required cell is recorded as `pass`, `fail`,
+`unsupported`, `not_covered`, or `runner_blocked` with linked findings.
+Only `pass` cells count toward a passing category.
+
+Those schedules scenario ids and their pass criteria are published at
+[`static/platform-conformance/schedules-runtime-scenarios.json`](pathname:///platform-conformance/schedules-runtime-scenarios.json).
 
 The `history_replay_bundles` category is also a stable runtime scenario
 category. A result for it must use published artifacts, cover PHP and
