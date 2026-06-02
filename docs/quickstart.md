@@ -189,6 +189,7 @@ the Python worker above or a Laravel queue worker below.
 Create a fresh Laravel app, install the published prerelease packages, define
 one workflow and one activity, then let the queue worker complete the run.
 
+<!-- docs-example id="quickstart.laravel.install" -->
 ```bash
 composer create-project laravel/laravel durable-workflow-laravel-quickstart
 cd durable-workflow-laravel-quickstart
@@ -196,6 +197,8 @@ cd durable-workflow-laravel-quickstart
 composer require \
   %%artifact.workflowComposerPackage%% \
   %%artifact.waterlineComposerPackage%%
+composer show durable-workflow/workflow
+composer show durable-workflow/waterline
 
 printf '\nQUEUE_CONNECTION=database\nWATERLINE_ALLOW_UNAUTHENTICATED=true\n' >> .env
 php artisan key:generate
@@ -205,6 +208,7 @@ php artisan migrate
 
 Create the workflow and activity:
 
+<!-- docs-example id="quickstart.laravel.workflow-files" -->
 ```bash
 mkdir -p app/Workflows/Quickstart
 
@@ -250,6 +254,7 @@ PHP
 Create an artisan command that starts the workflow and waits for a terminal
 state:
 
+<!-- docs-example id="quickstart.laravel.command" -->
 ```bash
 mkdir -p app/Console/Commands
 
@@ -276,7 +281,7 @@ class RunQuickstartWorkflow extends Command
         );
 
         $workflow->start('Laravel');
-        $deadline = now()->addSeconds(60);
+        $deadline = now()->addMinutes(10);
 
         while ($workflow->refresh()->running()) {
             if (now()->greaterThan($deadline)) {
@@ -299,16 +304,28 @@ class RunQuickstartWorkflow extends Command
 PHP
 ```
 
-Run the worker and start the workflow:
+Run the worker and start the workflow, capturing the command output and elapsed
+time:
 
+<!-- docs-example id="quickstart.laravel.run" -->
 ```bash
+set -o pipefail
+
 php artisan queue:work --tries=1 --timeout=60 \
   > storage/logs/quickstart-worker.log 2>&1 &
 export QUICKSTART_QUEUE_PID=$!
+trap 'kill "$QUICKSTART_QUEUE_PID" 2>/dev/null || true' EXIT
 
-php artisan app:quickstart-workflow
+SECONDS=0
+php artisan app:quickstart-workflow 2>&1 | tee quickstart-laravel-output.log
+printf 'elapsed_seconds=%s\n' "$SECONDS"
+
+if [ -s storage/logs/quickstart-worker.log ]; then
+  sed -n '1,120p' storage/logs/quickstart-worker.log
+fi
 
 kill "$QUICKSTART_QUEUE_PID" 2>/dev/null || true
+trap - EXIT
 ```
 
 The successful output includes `status=completed` and `output=Hello, Laravel!`.
@@ -324,7 +341,7 @@ state from published artifacts:
 | Local server hosting | `curl http://localhost:8080/api/ready` succeeds, `GET /api/cluster/info` returns the standalone server topology, and the Python workflow below completes against that server. |
 | Python user | `python greeter.py` prints `status=completed`, a `quickstart-python-greeter-*` workflow id, and the activity result. |
 | Operator user | `dw workflow:describe "$QUICKSTART_WORKFLOW_ID" --output=json` shows a `run_id`, `dw workflow:history "$QUICKSTART_WORKFLOW_ID" "$QUICKSTART_RUN_ID" --output=json` shows history for that run, and `dw workflow:list --status=completed --output=json` shows the completed Python workflow on the same server profile. |
-| Laravel user | `php artisan app:quickstart-workflow` prints `status=completed` and `output=Hello, Laravel!` while the Laravel queue worker is running. |
+| Laravel user | `composer show durable-workflow/workflow` and `composer show durable-workflow/waterline` print the resolved published package versions, and `php artisan app:quickstart-workflow` prints `status=completed`, `output=Hello, Laravel!`, and `elapsed_seconds=<10 minute value>` while the Laravel queue worker is running. |
 
 ## Clean Up
 

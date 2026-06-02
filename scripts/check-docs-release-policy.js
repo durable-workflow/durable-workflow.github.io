@@ -219,7 +219,16 @@ function assertBuiltDocsPolicy() {
   assertIncludes(prereleaseQuickstart, 'status=completed', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'dw workflow:history &quot;$QUICKSTART_WORKFLOW_ID&quot; &quot;$QUICKSTART_RUN_ID&quot; --output=json', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'dw workflow:list --status=completed --output=json', '2.0 quickstart page');
+  assertIncludes(prereleaseQuickstart, 'create-project laravel/laravel durable-workflow-laravel-quickstart', '2.0 quickstart page');
+  assertIncludes(prereleaseQuickstart, 'composer show durable-workflow/workflow', '2.0 quickstart page');
+  assertIncludes(prereleaseQuickstart, 'composer show durable-workflow/waterline', '2.0 quickstart page');
+  assertIncludes(prereleaseQuickstart, 'php artisan waterline:install', '2.0 quickstart page');
+  assertIncludes(prereleaseQuickstart, '$deadline = now()-&gt;addMinutes(10);', '2.0 quickstart page');
+  assertIncludes(prereleaseQuickstart, 'php artisan queue:work --tries', '2.0 quickstart page');
+  assertIncludes(prereleaseQuickstart, '--timeout', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'php artisan app:quickstart-workflow', '2.0 quickstart page');
+  assertIncludes(prereleaseQuickstart, 'quickstart-laravel-output.log', '2.0 quickstart page');
+  assertIncludes(prereleaseQuickstart, 'elapsed_seconds=', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'output=Hello, Laravel!', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'href="/docs/2.0/polyglot/python/', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'href="/docs/2.0/polyglot/server/', '2.0 quickstart page');

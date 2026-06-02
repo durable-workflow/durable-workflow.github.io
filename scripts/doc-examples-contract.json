@@ -66,6 +66,61 @@
         "await worker.run_until(",
         "await handle.result("
       ]
+    },
+    {
+      "id": "quickstart.laravel.install",
+      "path": "quickstart.md",
+      "language": "bash",
+      "requiredSubstrings": [
+        "composer create-project laravel/laravel durable-workflow-laravel-quickstart",
+        "%%artifact.workflowComposerPackage%%",
+        "%%artifact.waterlineComposerPackage%%",
+        "composer show durable-workflow/workflow",
+        "composer show durable-workflow/waterline",
+        "QUEUE_CONNECTION=database",
+        "WATERLINE_ALLOW_UNAUTHENTICATED=true",
+        "php artisan waterline:install",
+        "php artisan migrate"
+      ]
+    },
+    {
+      "id": "quickstart.laravel.workflow-files",
+      "path": "quickstart.md",
+      "language": "bash",
+      "requiredSubstrings": [
+        "cat > app/Workflows/Quickstart/WelcomeActivity.php",
+        "#[Type('quickstart.laravel.welcome-activity')]",
+        "return \"Hello, {$name}!\";",
+        "cat > app/Workflows/Quickstart/WelcomeWorkflow.php",
+        "#[Type('quickstart.laravel.welcome')]",
+        "return activity(WelcomeActivity::class, $name);"
+      ]
+    },
+    {
+      "id": "quickstart.laravel.command",
+      "path": "quickstart.md",
+      "language": "bash",
+      "requiredSubstrings": [
+        "cat > app/Console/Commands/RunQuickstartWorkflow.php",
+        "protected $signature = 'app:quickstart-workflow';",
+        "$deadline = now()->addMinutes(10);",
+        "$this->line('status='.$workflow->status());",
+        "$this->line('output='.$workflow->output());"
+      ]
+    },
+    {
+      "id": "quickstart.laravel.run",
+      "path": "quickstart.md",
+      "language": "bash",
+      "requiredSubstrings": [
+        "php artisan queue:work --tries=1 --timeout=60",
+        "storage/logs/quickstart-worker.log",
+        "trap 'kill \"$QUICKSTART_QUEUE_PID\"",
+        "SECONDS=0",
+        "php artisan app:quickstart-workflow 2>&1 | tee quickstart-laravel-output.log",
+        "printf 'elapsed_seconds=%s\\n' \"$SECONDS\"",
+        "sed -n '1,120p' storage/logs/quickstart-worker.log"
+      ]
     }
   ]
 }
