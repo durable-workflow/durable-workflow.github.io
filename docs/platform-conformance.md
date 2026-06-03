@@ -59,8 +59,11 @@ For example, the standalone server claims `standalone_server`,
 Targets are stable. Adding a target, adding a required surface to an
 existing target, adding a required fixture category, promoting a
 provisional category to required, changing stable runtime scenario
-`operations` or `pass_criteria`, or changing a pass / fail rule is a
-suite contract change and must advance the manifest version.
+`operations` or `pass_criteria`, changing a stable runtime scenario public
+requirement field (`artifact_policy`, `common_result_evidence`,
+`required_matrix`, `scenario_requirements`, or `host_runner_contract`), or
+changing a pass / fail rule is a suite contract change and must advance the
+manifest version.
 
 ## Fixture Catalog
 
@@ -415,16 +418,26 @@ When the suite changes, update this page and
 `static/platform-conformance-contract.json` together. If the change
 adds a target, adds a required fixture category, promotes a provisional
 category to stable, changes stable runtime scenario `operations` or
-`pass_criteria`, or changes a pass / fail rule, advance the suite
-version in the same release change. The release check pins stable
-runtime scenario criteria by suite-versioned digests so external
-harnesses cannot observe new criteria under an old suite version.
+`pass_criteria`, changes a stable runtime scenario public requirement
+field (`artifact_policy`, `common_result_evidence`, `required_matrix`,
+`scenario_requirements`, or `host_runner_contract`), or changes a pass /
+fail rule, advance the suite version in the same release change. The
+release check pins stable runtime scenario criteria and public runtime
+requirement snapshots by suite-versioned digests so external harnesses
+cannot observe new criteria or evidence-policy requirements under an old
+suite version.
 
-Published runtime scenario criteria digest entries are append-only. To
-advance stable runtime scenario `operations` or `pass_criteria`, leave
-every existing `VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS` entry
-unchanged, increase the suite version, update the scenario manifest to
-that version, and add a new digest entry for the new current suite. The
-release check compares published digest entries from the target branch
-against the current change, so editing or deleting an older suite entry
-fails even when the current suite version adds a new digest.
+Published runtime scenario criteria and public requirement digest entries
+are append-only. To advance stable runtime scenario `operations` or
+`pass_criteria`, leave every existing
+`VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS` entry unchanged, increase the
+suite version, update the scenario manifest to that version, and add a new
+criteria digest entry for the new current suite. To change public runtime
+manifest evidence requirements, artifact policy, required matrix, scenario
+requirement fields, or host-runner contract fields, leave every existing
+`VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS` entry unchanged,
+advance the suite version, update the scenario manifest to that version,
+and add the corresponding public requirement digest entry for the new
+current suite. The release check compares published digest entries from the
+target branch against the current change, so editing or deleting an older
+suite entry fails even when the current suite version adds a new digest.
