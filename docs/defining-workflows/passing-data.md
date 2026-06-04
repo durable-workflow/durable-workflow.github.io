@@ -113,7 +113,9 @@ class MyWorkflow extends Workflow
 
 Dependency injection does not relax workflow determinism. A workflow may
 type-hint stable services such as the Laravel application container or
-configuration readers, but arbitrary services that perform I/O, read wall-clock
-time, generate randomness, or depend on mutable external state should run in an
-activity, local activity, side effect, or another durable API so replay observes
-the same values.
+configuration readers, but injected dependencies that do work still need the
+right durable boundary. Put external I/O, database access, service calls, or
+other work that can fail or should retry in `activity(...)` or
+`localActivity(...)`. Use `sideEffect()` only for a one-time replay-safe value
+snapshot that should be frozen in history, such as a wall-clock read, generated
+randomness, or a config value captured at decision time.
