@@ -1,6 +1,6 @@
 {
   "schema": "durable-workflow.v2.platform-conformance.suite",
-  "version": 20,
+  "version": 21,
   "authority_doc": "docs/platform-conformance.md",
   "authority_url": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
   "surface_stability_authority": "durable-workflow.v2.surface-stability.contract",
@@ -31,6 +31,7 @@
         "worker_versioning_runtime_contract",
         "migration_runtime_contract",
         "skew_refusal_matrix_contract",
+        "principal_attribution_contract",
         "worker_task_lifecycle",
         "failure_repair_actionability"
       ]
@@ -53,6 +54,7 @@
         "worker_versioning_runtime_contract",
         "migration_runtime_contract",
         "skew_refusal_matrix_contract",
+        "principal_attribution_contract",
         "worker_task_lifecycle",
         "history_replay_bundles"
       ]
@@ -93,6 +95,7 @@
         "worker_versioning_runtime_contract",
         "migration_runtime_contract",
         "skew_refusal_matrix_contract",
+        "principal_attribution_contract",
         "cli_json_envelopes"
       ]
     },
@@ -109,6 +112,7 @@
         "worker_versioning_runtime_contract",
         "migration_runtime_contract",
         "skew_refusal_matrix_contract",
+        "principal_attribution_contract",
         "waterline_observer_envelopes"
       ]
     },
@@ -142,6 +146,7 @@
       ],
       "required_fixture_categories": [
         "skew_refusal_matrix_contract",
+        "principal_attribution_contract",
         "prerelease_readiness_contract"
       ]
     }
@@ -558,6 +563,30 @@
         }
       ],
       "authority_doc": "durable-workflow.github.io/docs/polyglot/ (mcp surface, planned)"
+    },
+    "principal_attribution_contract": {
+      "status": "stable",
+      "description": "Published-artifact scenarios proving server-derived, non-spoofable principal attribution across raw HTTP, CLI, Python SDK, PHP workflow client, and Waterline operator surfaces.",
+      "sources": [
+        {
+          "repository": "durable-workflow.github.io",
+          "path": "static/platform-conformance/principal-attribution-scenarios.json"
+        }
+      ],
+      "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
+      "required_scenarios": [
+        "published_artifact_install_only",
+        "named_token_actor_matrix",
+        "start_signal_cancel_spoofing",
+        "query_attribution",
+        "completion_failure_attribution",
+        "server_originated_events",
+        "anonymous_attribution",
+        "python_sdk_visibility",
+        "php_client_visibility",
+        "cli_operator_visibility",
+        "waterline_operator_visibility"
+      ]
     }
   },
   "pass_fail_rules": {
@@ -590,6 +619,7 @@
         "saga_runtime_contract",
         "migration_runtime_contract",
         "skew_refusal_matrix_contract",
+        "principal_attribution_contract",
         "prerelease_readiness_contract"
       ]
     },
