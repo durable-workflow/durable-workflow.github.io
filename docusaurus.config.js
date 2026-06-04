@@ -79,6 +79,10 @@ const config = {
             to: '/docs/introduction/',
           },
           {
+            from: '/docs/2.0',
+            to: '/docs/2.0/introduction/',
+          },
+          {
             from: '/docs/2.0/server-setup',
             to: '/docs/2.0/polyglot/server',
           },

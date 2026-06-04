@@ -10,6 +10,7 @@ const {
 const STABLE_DOCS_VERSION = '1.x';
 const PRERELEASE_DOCS_VERSION = '2.0';
 const STABLE_DOCS_ROOT = '/docs/introduction/';
+const PRERELEASE_DOCS_ROOT = '/docs/2.0/introduction/';
 const PUBLIC_DISCOVERY_URLS = [
   '/docs/',
   '/docs/2.0/quickstart/',
@@ -133,14 +134,24 @@ function fromList(value) {
 
 function assertDocsRootRedirect() {
   const redirects = getRedirectsConfig();
-  const matchingRedirect = redirects.find(redirect => (
+  const stableRedirect = redirects.find(redirect => (
     redirect &&
     redirect.to === STABLE_DOCS_ROOT &&
     fromList(redirect.from).includes('/docs')
   ));
 
-  if (!matchingRedirect) {
+  if (!stableRedirect) {
     fail(`/docs must redirect to the stable ${STABLE_DOCS_VERSION} entrypoint ${STABLE_DOCS_ROOT}`);
+  }
+
+  const prereleaseRedirect = redirects.find(redirect => (
+    redirect &&
+    redirect.to === PRERELEASE_DOCS_ROOT &&
+    fromList(redirect.from).includes('/docs/2.0')
+  ));
+
+  if (!prereleaseRedirect) {
+    fail(`/docs/2.0 must redirect to the ${PRERELEASE_DOCS_VERSION} prerelease entrypoint ${PRERELEASE_DOCS_ROOT}`);
   }
 }
 
@@ -174,6 +185,7 @@ function assertConfigPolicy() {
 
 function assertBuiltDocsPolicy() {
   const docsRoot = readBuildFile('docs/index.html');
+  const prereleaseDocsRoot = readBuildFile('docs/2.0/index.html');
   const stableIntro = readBuildFile('docs/introduction/index.html');
   const stableInstall = readBuildFile('docs/installation/index.html');
   const prereleaseIntro = readBuildFile('docs/2.0/introduction/index.html');
@@ -188,6 +200,9 @@ function assertBuiltDocsPolicy() {
 
   assertIncludes(docsRoot, STABLE_DOCS_ROOT, 'build/docs/index.html');
   assertExcludes(docsRoot, '/docs/2.0/', 'build/docs/index.html');
+
+  assertIncludes(prereleaseDocsRoot, PRERELEASE_DOCS_ROOT, 'build/docs/2.0/index.html');
+  assertExcludes(prereleaseDocsRoot, STABLE_DOCS_ROOT, 'build/docs/2.0/index.html');
 
   assertIncludes(stableIntro, 'name="docusaurus_version" content="1.x"', 'stable introduction page');
   assertIncludes(stableInstall, 'name="docusaurus_version" content="1.x"', 'stable installation page');
