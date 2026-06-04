@@ -60,7 +60,7 @@ function assertComposerPrereleasePins(artifact, version, stability) {
 }
 
 assertComposerPrereleasePins('waterline', '2.0.0-alpha.70', 'alpha');
-assertComposerPrereleasePins('workflow', '2.0.0-alpha.195', 'alpha');
+assertComposerPrereleasePins('workflow', '2.0.0-alpha.196', 'alpha');
 assertComposerPrereleasePins('waterline', '2.0.0-beta.1', 'beta');
 assertComposerPrereleasePins('workflow', '2.0.0-beta.2', 'beta');
 
