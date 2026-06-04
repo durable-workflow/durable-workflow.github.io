@@ -111,3 +111,9 @@ class MyWorkflow extends Workflow
 }
 ```
 
+Dependency injection does not relax workflow determinism. A workflow may
+type-hint stable services such as the Laravel application container or
+configuration readers, but arbitrary services that perform I/O, read wall-clock
+time, generate randomness, or depend on mutable external state should run in an
+activity, local activity, side effect, or another durable API so replay observes
+the same values.
