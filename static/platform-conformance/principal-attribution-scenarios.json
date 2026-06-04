@@ -1,9 +1,11 @@
 {
   "schema": "durable-workflow.v2.platform-conformance.runtime-scenarios",
+  "version": 1,
   "category": "principal_attribution_contract",
   "suite_schema": "durable-workflow.v2.platform-conformance.suite",
-  "suite_version": 21,
+  "suite_version": 22,
   "description": "Published-artifact scenarios proving server-derived, non-spoofable principal attribution on workflow history and operator surfaces.",
+  "fixture_type": "published_artifact_runtime_scenario_manifest",
   "result_statuses": [
     "pass",
     "fail",
@@ -11,9 +13,92 @@
     "not_covered",
     "runner_blocked"
   ],
+  "artifact_policy": {
+    "published_artifacts_only": true,
+    "requires_published_artifact_versions": true,
+    "requires_resolved_versions": true,
+    "requires_downloadable_release_assets": true,
+    "requires_artifact_sources_for_each_required_artifact": true,
+    "requires_local_product_source_checkouts_used_false": true,
+    "rejects_placeholder_versions": true,
+    "implementation_tests_are_not_sources": true,
+    "forbidden_sources": [
+      "local_product_source_checkout",
+      "workspace_repo_as_artifact_under_test",
+      "release_tag_without_required_assets",
+      "rolling_server_image_tag"
+    ],
+    "required_artifacts": [
+      "server",
+      "cli",
+      "sdk-python",
+      "workflow",
+      "waterline"
+    ],
+    "release_artifact_aliases": {
+      "workflow": [
+        "workflow-php",
+        "durable-workflow/workflow"
+      ],
+      "sdk-python": [
+        "durable_workflow"
+      ],
+      "cli": [
+        "dw"
+      ]
+    },
+    "required_run_record_fields": [
+      "published_artifact_versions",
+      "resolved_artifact_versions",
+      "artifact_sources",
+      "local_product_source_checkouts_used",
+      "started_at",
+      "finished_at",
+      "generated_at",
+      "outcome",
+      "runner_blocked",
+      "scenario_results",
+      "findings",
+      "topology",
+      "actor_matrix",
+      "history_dumps",
+      "spoofing_attempts",
+      "spoofing_matrix",
+      "operator_visibility",
+      "anonymous_observations"
+    ]
+  },
+  "common_result_evidence": [
+    "suite_version",
+    "scenario_id",
+    "status",
+    "published_artifact_versions",
+    "resolved_artifact_versions",
+    "artifact_sources",
+    "local_product_source_checkouts_used",
+    "started_at",
+    "finished_at",
+    "generated_at",
+    "outcome",
+    "runner_blocked",
+    "scenario_results",
+    "implementation_identity",
+    "topology",
+    "actor_matrix",
+    "history_dumps",
+    "spoofing_attempts",
+    "spoofing_matrix",
+    "operator_visibility",
+    "anonymous_observations",
+    "observed_outputs",
+    "findings",
+    "finding_links"
+  ],
   "required_top_level_fields": [
     "published_artifact_versions",
     "resolved_artifact_versions",
+    "artifact_sources",
+    "local_product_source_checkouts_used",
     "started_at",
     "finished_at",
     "generated_at",
@@ -476,7 +561,5 @@
         "owner": "conformance_harness"
       }
     }
-  },
-  "version": 1,
-  "fixture_type": "runtime_scenarios"
+  }
 }
