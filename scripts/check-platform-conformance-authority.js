@@ -176,6 +176,13 @@ const VERSIONED_RUNTIME_SCENARIO_STATUSES = {
     'not_covered',
     'runner_blocked',
   ],
+  24: [
+    'pass',
+    'fail',
+    'unsupported',
+    'not_covered',
+    'runner_blocked',
+  ],
 };
 const VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_FIELDS = [
   'artifact_policy',
@@ -366,6 +373,20 @@ const VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS = {
     skew_refusal_matrix_contract: 'sha256:72b63c7df1c002dade9998798d4ca93fc022a2a6c5742c88b5fdef15a40851c2',
     worker_versioning_runtime_contract: 'sha256:a95e9150aa63886842f48bfe255c70deddba2b92238611c5292ca67597efa7bd',
   },
+  24: {
+    child_workflow_runtime_contract: 'sha256:3612fc5ce951c26382d7eb2842c368f9ce7a17ce48a246bd43d327ada2de54e2',
+    history_replay_bundles: 'sha256:70658bc21f12e7b0c16306951ba18e2b2ec853487c287e81cfa64a2b40eff013',
+    migration_runtime_contract: 'sha256:530b8141abaa6d2e3b4ca66b7a07b5fa18cf0cb08c0a1348a0a0154af1d7e3c5',
+    namespace_runtime_contract: 'sha256:aba71f98fcad2713a13801ef5430522ffdb6ea4214a160e50fca0cd7794315e5',
+    prerelease_readiness_contract: 'sha256:ec09056f015e85053071eff8ddb8b691257ae323215e068ed6ecc498ce495e39',
+    principal_attribution_contract: 'sha256:4c2c315ddffcfd14955169838785ee9d6c7e1c8373aeeea16cc31beec4b54f8d',
+    saga_runtime_contract: 'sha256:6f6c04ecb67546ff2d307e9f53961f9c19ab347c6486de7fe29e0a5dddef4347',
+    schedules_runtime_contract: 'sha256:7485146046a84c752b02081870782a268ead0cdaf6a08910e0e270530e62f43f',
+    search_attribute_runtime_contract: 'sha256:ef28842b57295065f2de2cf973ee7c06f0bdd2f390f0ab3dcf78d9c64f72d1c5',
+    signal_query_runtime_contract: 'sha256:186e9a0a5bba1a094d0b8c7eb3299f0798f15e7aaab83b0d2596f0c91cc75373',
+    skew_refusal_matrix_contract: 'sha256:72b63c7df1c002dade9998798d4ca93fc022a2a6c5742c88b5fdef15a40851c2',
+    worker_versioning_runtime_contract: 'sha256:e96de5ed97bcbdc68eeee9849145c22d52d450da23fba6f49f8ac3be736faca3',
+  },
 };
 // Digests bind public top-level runtime scenario manifest requirements to the
 // suite version. These fields define artifact source policy, common evidence,
@@ -439,6 +460,20 @@ const VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS = {
     signal_query_runtime_contract: 'sha256:12c2395791d1ef5897fba360f5797666bf78eaf4ae270786f294c1b80e0432dd',
     skew_refusal_matrix_contract: 'sha256:05eafce72332f995d9a940db9c2cb45e121ff9fef5336505e7ccb84e4ef7b64f',
     worker_versioning_runtime_contract: 'sha256:1cb69759ed48277d95404aef9701c07f998b688811b1d48ca457b65a8c1e9fdc',
+  },
+  24: {
+    child_workflow_runtime_contract: 'sha256:9d8db2784110771778af0ff0a03de13bf5f0243b2be6d69080e013e602476072',
+    history_replay_bundles: 'sha256:0a7b52919c7dd44b80a559324c7cdda563744385729fd67cedafe082f2af36e8',
+    migration_runtime_contract: 'sha256:66d72117d43560f4642c07781302f8f848a9967fd07bd5836c81a7a473c1981a',
+    namespace_runtime_contract: 'sha256:36a4abd574cfa4a920b0838e44fe9d6a991b0b69b064bc4a8ddf8b295714c7e9',
+    prerelease_readiness_contract: 'sha256:1846068e84ca06074607d319438a95cbb13d017aec15fa4cbd5895fb1e253c9f',
+    principal_attribution_contract: 'sha256:868b5750be001b4c0bd8ed6e54b7d2cf41dc6ed830b5f04c0e20b5fa24f366ff',
+    saga_runtime_contract: 'sha256:57995ea2061611562391ab2fb625760d541167613f7ac8769b83039ca2b7c6bf',
+    schedules_runtime_contract: 'sha256:4c94261b254d49ed59b71478da33b5ed0bc72dee7055c4d3641889839bbc4a38',
+    search_attribute_runtime_contract: 'sha256:90c2e5b9fffd0a0be166a354d6d897d0b29b547f60afa00e7925ae1defc626ed',
+    signal_query_runtime_contract: 'sha256:12c2395791d1ef5897fba360f5797666bf78eaf4ae270786f294c1b80e0432dd',
+    skew_refusal_matrix_contract: 'sha256:05eafce72332f995d9a940db9c2cb45e121ff9fef5336505e7ccb84e4ef7b64f',
+    worker_versioning_runtime_contract: 'sha256:894e20bff8883f96c3b71e9248edc7d9867109a69dba4ec1b585522cf7c15d72',
   },
 };
 const VERSIONED_PASS_FAIL_RULES = {
@@ -681,6 +716,7 @@ VERSIONED_PASS_FAIL_RULES[21] = {
 };
 VERSIONED_PASS_FAIL_RULES[22] = VERSIONED_PASS_FAIL_RULES[21];
 VERSIONED_PASS_FAIL_RULES[23] = VERSIONED_PASS_FAIL_RULES[22];
+VERSIONED_PASS_FAIL_RULES[24] = VERSIONED_PASS_FAIL_RULES[23];
 const EXPECTED_AUTHORITY_DOC = 'docs/platform-conformance.md';
 const EXPECTED_DOC_ID = 'platform-conformance';
 

@@ -3,7 +3,7 @@
   "version": 1,
   "category": "skew_refusal_matrix_contract",
   "suite_schema": "durable-workflow.v2.platform-conformance.suite",
-  "suite_version": 23,
+  "suite_version": 24,
   "description": "Public scenario manifest for published-artifact version-skew refusal across CLI, Python SDK, PHP workflow worker, and Waterline surfaces.",
   "fixture_type": "published_artifact_runtime_scenario_manifest",
   "result_schema": "durable-workflow.v2.skew-refusal-matrix.result",

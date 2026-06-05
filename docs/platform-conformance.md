@@ -25,7 +25,7 @@ for implementations that claim Durable Workflow v2 compatibility.
 The machine-readable mirror is published at
 [`static/platform-conformance-contract.json`](pathname:///platform-conformance-contract.json)
 with schema `durable-workflow.v2.platform-conformance.suite`, version
-`23`. The same manifest is advertised by the standalone server from
+`24`. The same manifest is advertised by the standalone server from
 `GET /api/cluster/info` under `platform_conformance_suite`. The
 [Platform Protocol Specs](/docs/2.0/platform-protocol-specs) catalog names
 that nested manifest as the `platform_conformance_suite_manifest`
@@ -263,6 +263,12 @@ worker-versioning smoke subset is nonconforming until every required
 cell is recorded as `pass`, `fail`, `unsupported`, `not_covered`, or
 `runner_blocked` with linked findings. Only `pass` cells count toward a
 passing category.
+
+Cross-language PHP/Python pinning evidence must record worker runtime
+identities, workflow and run IDs, task-queue rollout state, the public
+poll and rollout outcomes used to verify pinning, published worker
+artifact install source and version, and confirmation that no local
+product source checkout was used.
 
 Those worker-versioning scenario ids and their pass criteria are
 published at
