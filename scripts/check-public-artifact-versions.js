@@ -6,6 +6,15 @@ const {
   buildArtifactPins,
   readArtifactVersions,
 } = require('./public-artifact-versions');
+const {
+  artifactVersionsSource,
+  compatibilityHistoryRow,
+  parseRegistryNextLink,
+  parseCompatibilityHistoryRow,
+  replaceCompatibilityHistoryTopRow,
+  selectServerRegistryVersion,
+  selectLatestVersion,
+} = require('./refresh-public-artifact-versions');
 
 function cloneSource() {
   return JSON.parse(JSON.stringify(source));
@@ -23,6 +32,11 @@ function expectFailure(label, mutate, expectedMessage) {
 }
 
 assert.deepStrictEqual(readArtifactVersions(source), source.artifacts);
+assert.strictEqual(
+  artifactVersionsSource(source.artifacts),
+  `${JSON.stringify(source, null, 2)}\n`,
+  'public artifact refresh output must preserve the canonical JSON shape'
+);
 
 function extractObservedPins(definition, content) {
   const pattern = new RegExp(definition.pattern.source, definition.pattern.flags);
@@ -63,6 +77,67 @@ assertComposerPrereleasePins('waterline', '2.0.0-alpha.70', 'alpha');
 assertComposerPrereleasePins('workflow', '2.0.0-alpha.200', 'alpha');
 assertComposerPrereleasePins('waterline', '2.0.0-beta.1', 'beta');
 assertComposerPrereleasePins('workflow', '2.0.0-beta.2', 'beta');
+
+assert.strictEqual(
+  selectLatestVersion('server', ['0.2.9', '0.2.10', 'latest', '0.2.8'], 'test candidates'),
+  '0.2.10',
+  'published server versions must sort numerically'
+);
+
+assert.strictEqual(
+  selectLatestVersion('workflow', ['2.0.0-alpha.199', '2.0.0-beta.1', '2.0.0-alpha.201'], 'test candidates'),
+  '2.0.0-beta.1',
+  'Composer beta prereleases must rank after alpha prereleases'
+);
+
+assert.strictEqual(
+  parseRegistryNextLink(
+    '</v2/durable-workflow/server/tags/list?last=0.2.99&n=100>; rel="next"',
+    'https://ghcr.io/v2/durable-workflow/server/tags/list?n=100'
+  ),
+  'https://ghcr.io/v2/durable-workflow/server/tags/list?last=0.2.99&n=100',
+  'GHCR pagination links must resolve against the registry origin'
+);
+
+assert.strictEqual(
+  selectServerRegistryVersion([
+    { label: 'Docker Hub', image: 'durableworkflow/server', version: source.artifacts.server },
+    { label: 'GHCR', image: 'ghcr.io/durable-workflow/server', version: source.artifacts.server },
+  ]),
+  source.artifacts.server,
+  'server registry agreement must select the shared version'
+);
+
+assert.throws(
+  () => selectServerRegistryVersion([
+    { label: 'Docker Hub', image: 'durableworkflow/server', version: '0.2.10' },
+    { label: 'GHCR', image: 'ghcr.io/durable-workflow/server', version: '0.2.9' },
+  ]),
+  /Published server container registries disagree:[\s\S]*Docker Hub durableworkflow\/server:0\.2\.10[\s\S]*GHCR ghcr\.io\/durable-workflow\/server:0\.2\.9/,
+  'server registry disagreement must fail before selecting a docs tuple'
+);
+
+const currentHistoryRow = compatibilityHistoryRow(source.artifacts, '2026-06-11');
+const parsedHistoryRow = parseCompatibilityHistoryRow(currentHistoryRow);
+assert.strictEqual(parsedHistoryRow.server, source.artifacts.server);
+assert.strictEqual(parsedHistoryRow.cli, source.artifacts.cli);
+assert.strictEqual(parsedHistoryRow['sdk-python'], source.artifacts['sdk-python']);
+assert.strictEqual(parsedHistoryRow.workflow, source.artifacts.workflow);
+assert.strictEqual(parsedHistoryRow.waterline, source.artifacts.waterline);
+
+const staleHistoryDoc = [
+  '## Version History',
+  '',
+  '| Date | Server | CLI | Python SDK | Workflow | Waterline | Notes |',
+  '|------|--------|-----|------------|--------------|-----------|-------|',
+  '| 2026-06-10 | 0.2.364 | 0.1.77 | 0.4.85 | 2.0.0-alpha.200 | 2.0.0-alpha.84 | Previous release-audit tuple. |',
+  '| 2026-06-05 | 0.2.341 | 0.1.77 | 0.4.85 | 2.0.0-alpha.199 | 2.0.0-alpha.83 | Older release-audit tuple. |',
+  '',
+].join('\n');
+const refreshedHistoryDoc = replaceCompatibilityHistoryTopRow(staleHistoryDoc, source.artifacts, '2026-06-11');
+assert.strictEqual(refreshedHistoryDoc.changed, true);
+assert(refreshedHistoryDoc.content.includes(currentHistoryRow));
+assert(refreshedHistoryDoc.content.includes('| 2026-06-05 | 0.2.341 |'));
 
 expectFailure(
   'rejects missing artifacts',

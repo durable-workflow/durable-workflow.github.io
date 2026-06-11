@@ -1,5 +1,6 @@
 const artifactVersionSource = require('./public-artifact-versions.json');
 
+const ARTIFACT_VERSION_SCHEMA = 'durable-workflow.docs.public-artifact-versions';
 const COMPOSER_PRERELEASE_VERSION_PATTERN = /^2\.0\.0-(?:alpha|beta)\.\d+$/;
 const COMPOSER_PRERELEASE_VERSION_PATTERN_SOURCE = '2\\.0\\.0-(?:alpha|beta)\\.\\d+';
 
@@ -34,7 +35,7 @@ const ARTIFACT_VERSION_REQUIREMENTS = Object.freeze({
 const REQUIRED_ARTIFACTS = Object.freeze(Object.keys(ARTIFACT_VERSION_REQUIREMENTS));
 
 function readArtifactVersions(source = artifactVersionSource) {
-  if (!source || source.schema !== 'durable-workflow.docs.public-artifact-versions') {
+  if (!source || source.schema !== ARTIFACT_VERSION_SCHEMA) {
     throw new Error('public-artifact-versions.json must declare the durable-workflow docs artifact schema');
   }
 
@@ -213,7 +214,10 @@ function artifactVersionRemarkPlugin() {
 module.exports = {
   ARTIFACT_PIN_PATTERNS,
   ARTIFACT_PINS,
+  ARTIFACT_VERSION_REQUIREMENTS,
+  ARTIFACT_VERSION_SCHEMA,
   ARTIFACT_VERSIONS,
+  REQUIRED_ARTIFACTS,
   artifactVersionRemarkPlugin,
   buildArtifactPinPatterns,
   buildArtifactPins,
