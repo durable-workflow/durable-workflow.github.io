@@ -6,6 +6,7 @@ const path = require('path');
 
 const config = require('../docusaurus.config.js');
 const {
+  ARTIFACT_DISTRIBUTION_SURFACES,
   ARTIFACT_PIN_PATTERNS,
   ARTIFACT_VERSIONS,
   replaceArtifactTokens,
@@ -1152,6 +1153,7 @@ function main() {
     generated_from: 'production sitemap, docs build output, and content-derived release-status classifier',
     classifier: CLASSIFIER_ID,
     artifact_versions: ARTIFACT_VERSIONS,
+    artifact_distribution_surfaces: ARTIFACT_DISTRIBUTION_SURFACES,
     release_status_guardrail: {
       stable_default_docs_version: STABLE_DOCS_VERSION,
       explicit_prerelease_docs_version: PRERELEASE_DOCS_VERSION,

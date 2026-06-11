@@ -160,6 +160,31 @@ function buildArtifactPinPatterns(versions) {
 const ARTIFACT_PINS = buildArtifactPins(ARTIFACT_VERSIONS);
 const ARTIFACT_PIN_PATTERNS = buildArtifactPinPatterns(ARTIFACT_VERSIONS);
 
+function buildArtifactDistributionSurfaces(versions) {
+  return Object.freeze({
+    server: Object.freeze([
+      Object.freeze({
+        surface: 'docker_hub_container_image',
+        registry: 'docker_hub',
+        image: 'durableworkflow/server',
+        tag: versions.server,
+        reference: `durableworkflow/server:${versions.server}`,
+        verified_by: 'scripts/refresh-public-artifact-versions.js',
+      }),
+      Object.freeze({
+        surface: 'ghcr_container_image',
+        registry: 'ghcr',
+        image: 'ghcr.io/durable-workflow/server',
+        tag: versions.server,
+        reference: `ghcr.io/durable-workflow/server:${versions.server}`,
+        verified_by: 'scripts/refresh-public-artifact-versions.js',
+      }),
+    ]),
+  });
+}
+
+const ARTIFACT_DISTRIBUTION_SURFACES = buildArtifactDistributionSurfaces(ARTIFACT_VERSIONS);
+
 function resolveArtifactAlias(alias) {
   if (typeof alias !== 'string') {
     throw new Error(`Artifact aliases must be strings, got ${JSON.stringify(alias)}`);
@@ -212,6 +237,7 @@ function artifactVersionRemarkPlugin() {
 }
 
 module.exports = {
+  ARTIFACT_DISTRIBUTION_SURFACES,
   ARTIFACT_PIN_PATTERNS,
   ARTIFACT_PINS,
   ARTIFACT_VERSION_REQUIREMENTS,
@@ -219,6 +245,7 @@ module.exports = {
   ARTIFACT_VERSIONS,
   REQUIRED_ARTIFACTS,
   artifactVersionRemarkPlugin,
+  buildArtifactDistributionSurfaces,
   buildArtifactPinPatterns,
   buildArtifactPins,
   readArtifactVersions,

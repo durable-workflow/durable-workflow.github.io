@@ -5,7 +5,10 @@ const crypto = require('crypto');
 const path = require('path');
 
 const config = require('../docusaurus.config.js');
-const { ARTIFACT_VERSIONS } = require('./public-artifact-versions');
+const {
+  ARTIFACT_DISTRIBUTION_SURFACES,
+  ARTIFACT_VERSIONS,
+} = require('./public-artifact-versions');
 
 const repoRoot = path.join(__dirname, '..');
 const buildDir = path.join(repoRoot, 'build');
@@ -236,6 +239,36 @@ function assertArtifactVersions(audit) {
   }
 }
 
+function assertArtifactDistributionSurfaces(audit) {
+  const actual = audit.artifact_distribution_surfaces || {};
+  const expectedServerSurfaces = ARTIFACT_DISTRIBUTION_SURFACES.server;
+  const actualServerSurfaces = Array.isArray(actual.server) ? actual.server : [];
+
+  if (actualServerSurfaces.length !== expectedServerSurfaces.length) {
+    fail(
+      'docs-page-release-audit.json artifact_distribution_surfaces.server must cover ' +
+      `${expectedServerSurfaces.length} server image surfaces, got ${actualServerSurfaces.length}`
+    );
+  }
+
+  for (const expected of expectedServerSurfaces) {
+    const actualSurface = actualServerSurfaces.find(surface => surface.surface === expected.surface);
+
+    if (!actualSurface) {
+      fail(`docs-page-release-audit.json is missing server artifact surface ${expected.surface}`);
+    }
+
+    for (const key of ['registry', 'image', 'tag', 'reference', 'verified_by']) {
+      if (actualSurface[key] !== expected[key]) {
+        fail(
+          `docs-page-release-audit.json server surface ${expected.surface}.${key} ` +
+          `must be ${expected[key]}, got ${actualSurface[key]}`
+        );
+      }
+    }
+  }
+}
+
 function assertEntryCategory(entry, category, label) {
   if (!entry.categories_observed.includes(category)) {
     fail(`${entry.path} must include ${label} evidence category ${category}`);
@@ -267,6 +300,7 @@ function main() {
   }
 
   assertArtifactVersions(audit);
+  assertArtifactDistributionSurfaces(audit);
 
   if (getDocsLastVersion() !== '1.x') {
     fail('docusaurus.config.js lastVersion must remain 1.x until an authorized release-status cutover');
