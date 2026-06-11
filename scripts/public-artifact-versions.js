@@ -169,7 +169,6 @@ function buildArtifactDistributionSurfaces(versions) {
         image: 'durableworkflow/server',
         tag: versions.server,
         reference: `durableworkflow/server:${versions.server}`,
-        verified_by: 'scripts/refresh-public-artifact-versions.js',
       }),
       Object.freeze({
         surface: 'ghcr_container_image',
@@ -177,7 +176,6 @@ function buildArtifactDistributionSurfaces(versions) {
         image: 'ghcr.io/durable-workflow/server',
         tag: versions.server,
         reference: `ghcr.io/durable-workflow/server:${versions.server}`,
-        verified_by: 'scripts/refresh-public-artifact-versions.js',
       }),
     ]),
   });

@@ -25,6 +25,14 @@ const SELF_HASH_EXCEPTION = {
   applies_to: 'evidence.content_sha256',
   algorithm: 'sha256',
 };
+const REPO_LOCAL_ARTIFACT_METADATA_PATH_PATTERN = new RegExp([
+  String.raw`^\.{1,2}[\\/]`,
+  String.raw`^[\\/]`,
+  String.raw`^[A-Za-z]:[\\/]`,
+  String.raw`^(?:\.github|blog|build|docs|generated|scripts|src|static)[\\/]`,
+  String.raw`^(?:[^:\\/]+[\\/])+[^\\/]+\.(?:cjs|js|json|jsx|md|mdx|mjs|ps1|sh|ts|tsx|ya?ml)(?:$|[?#])`,
+  String.raw`^[^\\/]+\.(?:cjs|js|json|jsx|md|mdx|mjs|ps1|sh|ts|tsx|ya?ml)(?:$|[?#])`,
+].join('|'), 'i');
 const STATIC_REQUIRED_EDGE_PATHS = [
   '/',
   '/docs/',
@@ -239,6 +247,31 @@ function assertArtifactVersions(audit) {
   }
 }
 
+function isUrlShapedValue(value) {
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(value);
+}
+
+function assertNoRepoLocalArtifactMetadata(value, label) {
+  if (typeof value === 'string') {
+    if (!isUrlShapedValue(value) && REPO_LOCAL_ARTIFACT_METADATA_PATH_PATTERN.test(value)) {
+      fail(`${label} must not expose repo-local verifier or implementation path ${JSON.stringify(value)}`);
+    }
+
+    return;
+  }
+
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => assertNoRepoLocalArtifactMetadata(item, `${label}[${index}]`));
+    return;
+  }
+
+  if (value && typeof value === 'object') {
+    for (const [key, nestedValue] of Object.entries(value)) {
+      assertNoRepoLocalArtifactMetadata(nestedValue, `${label}.${key}`);
+    }
+  }
+}
+
 function assertArtifactDistributionSurfaces(audit) {
   const actual = audit.artifact_distribution_surfaces || {};
   const expectedServerSurfaces = ARTIFACT_DISTRIBUTION_SURFACES.server;
@@ -258,7 +291,12 @@ function assertArtifactDistributionSurfaces(audit) {
       fail(`docs-page-release-audit.json is missing server artifact surface ${expected.surface}`);
     }
 
-    for (const key of ['registry', 'image', 'tag', 'reference', 'verified_by']) {
+    assertNoRepoLocalArtifactMetadata(
+      actualSurface,
+      `docs-page-release-audit.json server surface ${expected.surface}`
+    );
+
+    for (const key of ['registry', 'image', 'tag', 'reference']) {
       if (actualSurface[key] !== expected[key]) {
         fail(
           `docs-page-release-audit.json server surface ${expected.surface}.${key} ` +
