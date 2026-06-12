@@ -3,7 +3,7 @@
   "version": 1,
   "category": "migration_runtime_contract",
   "suite_schema": "durable-workflow.v2.platform-conformance.suite",
-  "suite_version": 24,
+  "suite_version": 25,
   "description": "Public scenario manifest for v1 to v2 migration conformance. Harnesses use these scenario ids and criteria when evaluating published Durable Workflow artifacts.",
   "fixture_type": "published_artifact_runtime_scenario_manifest",
   "result_statuses": [
@@ -126,6 +126,7 @@
       "completed_history",
       "in_flight_workflow",
       "retrying_activity",
+      "signal_or_timer_wait",
       "schedule",
       "worker_registration"
     ],
@@ -155,14 +156,17 @@
         "source_release_versions",
         "seeded_workflows",
         "seeded_schedules",
-        "seeded_worker_registrations"
+        "seeded_worker_registrations",
+        "queryable_history"
       ]
     },
     "documented_migration_steps_execute": {
       "required_fields": [
         "migration_guide_revision",
+        "guide_commands",
         "commands_executed",
         "exit_codes",
+        "command_timings",
         "schema_or_storage_migration_output"
       ]
     },
@@ -294,6 +298,7 @@
       "operations": [
         "start from the documented latest supported v1 release set",
         "seed completed, running, waiting, retrying, and scheduled workflow state through public v1 surfaces",
+        "leave at least one workflow blocked on a public signal or timer wait at the upgrade boundary",
         "capture preupgrade state snapshots without reading private storage internals"
       ],
       "pass_criteria": [
@@ -317,10 +322,12 @@
       "operations": [
         "follow the published v1 to v2 migration guide in order",
         "record every command, configuration change, migration output, and process restart",
+        "prove every executed migration command came from the live public guide without local edits",
         "start the v2 server against the migrated state"
       ],
       "pass_criteria": [
         "every documented migration step exits successfully or reports an explicitly documented no-op",
+        "the executed command transcript preserves the guide order and records a timing for each command",
         "the v2 server reports healthy and ready after migration",
         "the result links the migration guide revision used for the run"
       ]
@@ -602,6 +609,10 @@
       "declared_outcome_matches_evaluated_status",
       "artifact_source_recorded_for_each_install_channel",
       "artifact_prerequisite_failures_are_linked_when_artifacts_are_missing",
+      "realistic_preupgrade_state_cells_are_recorded",
+      "signal_or_timer_state_is_recorded",
+      "migration_guide_command_timings_are_recorded",
+      "migration_guide_commands_are_executed_verbatim",
       "local_product_source_checkouts_used_explicitly_false",
       "runner_blocked_false_for_product_evidence",
       "findings_linked_for_non_pass_scenarios"

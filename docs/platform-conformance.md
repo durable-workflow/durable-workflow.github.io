@@ -25,7 +25,7 @@ for implementations that claim Durable Workflow v2 compatibility.
 The machine-readable mirror is published at
 [`static/platform-conformance-contract.json`](pathname:///platform-conformance-contract.json)
 with schema `durable-workflow.v2.platform-conformance.suite`, version
-`24`. The same manifest is advertised by the standalone server from
+`25`. The same manifest is advertised by the standalone server from
 `GET /api/cluster/info` under `platform_conformance_suite`. The
 [Platform Protocol Specs](/docs/2.0/platform-protocol-specs) catalog names
 that nested manifest as the `platform_conformance_suite_manifest`
@@ -100,7 +100,7 @@ JSON manifests linked from the category notes below.
 | `child_workflow_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/child-workflow-runtime-scenarios.json` | Live published-artifact scenarios for child workflow orchestration across PHP and Python workers, cross-language parent/child execution, failure and cancellation propagation, replay after worker restart, concurrent fan-out, and namespace behavior. |
 | `worker_versioning_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/worker-versioning-runtime-scenarios.json` | Live published-artifact scenarios for safe-deploy worker versioning across build-ID registration, rollout visibility, drain/resume controls, per-run pins, compatible replay routing, no-compatible-worker diagnostics, cross-language PHP/Python pinning, adversarial no-bump behavior, and history API version pins. |
 | `saga_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/saga-runtime-scenarios.json` | Live published-artifact scenarios for saga compensation across forward success, reverse-order compensation, early failure, retry idempotence, compensation failure visibility, worker restart replay, PHP/Python cross-language compensation, typed compensation errors, and operator-visible in-progress compensation state. |
-| `migration_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/migration-runtime-scenarios.json` | Live published-artifact scenarios for v1 to v2 migration across preserved histories, in-flight progress, activities, schedules, worker registrations, CLI access, Waterline operator visibility, new v2 starts, rollback semantics, and version-skew refusal. |
+| `migration_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/migration-runtime-scenarios.json` | Live published-artifact scenarios for v1 to v2 migration across preserved histories, in-flight progress, activities, signal-or-timer waits, schedules, worker registrations, CLI access, Waterline operator visibility, new v2 starts, rollback semantics, and version-skew refusal. |
 | `skew_refusal_matrix_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/skew-refusal-matrix-scenarios.json` | Published-artifact version-skew refusal scenarios across CLI, Python SDK, PHP workflow worker, Waterline, future-version boundaries, worker registration classifications, Waterline render classifications, and per-operation request/response evidence. |
 | `principal_attribution_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/principal-attribution-scenarios.json` | Published-artifact scenarios proving server-derived, non-spoofable principal attribution across raw HTTP, CLI, Python SDK, PHP workflow client, and Waterline operator surfaces. |
 | `prerelease_readiness_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/prerelease-readiness-scenarios.json` | Published-artifact scenarios for 2.0 prerelease readiness across Workflow, Waterline, server, CLI, Python SDK, sample app, public docs, and the quickstart local-server hosting and Laravel paths. |
@@ -278,7 +278,7 @@ The `migration_runtime_contract` category is a stable runtime scenario
 category. A result for it must use published artifacts and cover the
 latest supported v1 state setup, the documented migration steps,
 completed-history preservation and replay, in-flight workflow progress,
-mid-activity retry state, schedule cadence, worker registration
+mid-activity retry state, signal-or-timer wait state, schedule cadence, worker registration
 projection, Waterline operator visibility, CLI access to preupgrade
 state, new v2 workflow starts, rollback semantics, and loud refusal for
 unsupported version skew. A fresh-install smoke or a migration run that
@@ -286,6 +286,12 @@ does not start from realistic v1 state is nonconforming until every
 required cell is recorded as `pass`, `fail`, `unsupported`,
 `not_covered`, or `runner_blocked` with linked findings. Only `pass`
 cells count toward a passing category.
+
+The documented-steps cell must record the live guide command list, the
+commands actually executed in guide order, exit codes, and per-command
+timings. Before and after state snapshots must include observed
+completed-history, in-flight workflow, retrying-activity, signal-or-timer
+wait, schedule, and worker-registration cells.
 
 Those migration scenario ids and their pass criteria are published at
 [`static/platform-conformance/migration-runtime-scenarios.json`](pathname:///platform-conformance/migration-runtime-scenarios.json).
