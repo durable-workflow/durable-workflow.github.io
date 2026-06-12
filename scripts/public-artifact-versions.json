@@ -3,8 +3,8 @@
   "schemaVersion": 1,
   "artifacts": {
     "cli": "0.1.80",
-    "sdk-python": "0.4.87",
-    "server": "0.2.381",
+    "sdk-python": "0.4.88",
+    "server": "0.2.384",
     "waterline": "2.0.0-alpha.86",
     "workflow": "2.0.0-alpha.203"
   }
