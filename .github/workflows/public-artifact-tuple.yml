@@ -1,0 +1,186 @@
+name: Public Artifact Tuple
+
+on:
+  workflow_dispatch:
+    inputs:
+      tuple_date:
+        description: Version-history date in YYYY-MM-DD format. Defaults to the UTC run date.
+        required: false
+        type: string
+  schedule:
+    - cron: '37 6 * * *'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: public-artifact-tuple
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: Refresh release-audit tuple
+    runs-on: ubuntu-latest
+    env:
+      REFRESH_BRANCH: automation/public-artifact-tuple
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Resolve tuple date
+        id: tuple-date
+        env:
+          INPUT_TUPLE_DATE: ${{ inputs.tuple_date }}
+        run: |
+          set -euo pipefail
+
+          tuple_date="${INPUT_TUPLE_DATE:-}"
+          if [ -z "$tuple_date" ]; then
+            tuple_date="$(date -u +%F)"
+          fi
+
+          case "$tuple_date" in
+            [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;;
+            *) echo "tuple_date must use YYYY-MM-DD format: $tuple_date" >&2; exit 1 ;;
+          esac
+
+          echo "value=$tuple_date" >> "$GITHUB_OUTPUT"
+
+      - name: Refresh public artifact tuple
+        run: node scripts/refresh-public-artifact-versions.js --date "${{ steps.tuple-date.outputs.value }}"
+
+      - name: Detect tuple changes
+        id: changes
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- scripts/public-artifact-versions.json docs/compatibility.md; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git diff -- scripts/public-artifact-versions.json docs/compatibility.md
+          fi
+
+      - name: Validate refreshed docs
+        if: steps.changes.outputs.changed == 'true'
+        run: npm run build
+
+      - name: Publish refresh branch
+        if: steps.changes.outputs.changed == 'true'
+        id: publish
+        env:
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin "$REFRESH_BRANCH:refs/remotes/origin/$REFRESH_BRANCH" || true
+          git checkout -B "$REFRESH_BRANCH"
+          git add scripts/public-artifact-versions.json docs/compatibility.md
+          git commit -m "Refresh public artifact tuple"
+          git push --force-with-lease origin "$REFRESH_BRANCH"
+
+          echo "branch=$REFRESH_BRANCH" >> "$GITHUB_OUTPUT"
+          echo "base=$BASE_BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Open or update pull request
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          HEAD_BRANCH: ${{ steps.publish.outputs.branch }}
+          BASE_BRANCH: ${{ steps.publish.outputs.base }}
+        run: |
+          node <<'NODE'
+          const https = require('https');
+
+          const [owner, repo] = process.env.REPOSITORY.split('/');
+          const token = process.env.GH_TOKEN;
+          const head = process.env.HEAD_BRANCH;
+          const base = process.env.BASE_BRANCH;
+          const title = 'Refresh public artifact tuple';
+          const body = [
+            'Refreshes the public release-audit artifact tuple from the published package registries.',
+            '',
+            'The docs build verifies that stable 1.x remains the default public docs line and that 2.0 content stays on explicit prerelease surfaces.',
+          ].join('\n');
+
+          function request(method, path, payload) {
+            const bodyText = payload ? JSON.stringify(payload) : null;
+
+            return new Promise((resolve, reject) => {
+              const req = https.request({
+                hostname: 'api.github.com',
+                method,
+                path,
+                headers: {
+                  Accept: 'application/vnd.github+json',
+                  Authorization: `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                  'User-Agent': 'durable-workflow-public-artifact-tuple',
+                  'X-GitHub-Api-Version': '2022-11-28',
+                },
+              }, res => {
+                let responseText = '';
+                res.setEncoding('utf8');
+                res.on('data', chunk => { responseText += chunk; });
+                res.on('end', () => {
+                  const status = res.statusCode || 0;
+                  const parsed = responseText ? JSON.parse(responseText) : null;
+
+                  if (status < 200 || status >= 300) {
+                    reject(new Error(`GitHub API ${method} ${path} failed: HTTP ${status} ${responseText}`));
+                    return;
+                  }
+
+                  resolve(parsed);
+                });
+              });
+
+              req.on('error', reject);
+              if (bodyText) {
+                req.write(bodyText);
+              }
+              req.end();
+            });
+          }
+
+          async function main() {
+            const query = new URLSearchParams({
+              state: 'open',
+              head: `${owner}:${head}`,
+              base,
+            });
+            const pulls = await request('GET', `/repos/${owner}/${repo}/pulls?${query.toString()}`);
+
+            if (Array.isArray(pulls) && pulls.length > 0) {
+              await request('PATCH', `/repos/${owner}/${repo}/pulls/${pulls[0].number}`, { title, body });
+              console.log(`Updated pull request ${pulls[0].number}`);
+              return;
+            }
+
+            const pull = await request('POST', `/repos/${owner}/${repo}/pulls`, { title, head, base, body });
+            console.log(`Opened pull request ${pull.number}`);
+          }
+
+          main().catch(error => {
+            console.error(error.message);
+            process.exit(1);
+          });
+          NODE
+
+      - name: Report current tuple
+        if: steps.changes.outputs.changed == 'false'
+        run: node scripts/refresh-public-artifact-versions.js --check
