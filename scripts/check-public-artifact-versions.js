@@ -38,6 +38,13 @@ assert.strictEqual(
   'public artifact refresh output must preserve the canonical JSON shape'
 );
 
+const currentArtifactPins = buildArtifactPins(source.artifacts);
+assert.strictEqual(currentArtifactPins.cliVersion, source.artifacts.cli);
+assert.strictEqual(currentArtifactPins.pythonSdkVersion, source.artifacts['sdk-python']);
+assert.strictEqual(currentArtifactPins.serverVersion, source.artifacts.server);
+assert.strictEqual(currentArtifactPins.workflowVersion, source.artifacts.workflow);
+assert.strictEqual(currentArtifactPins.waterlineVersion, source.artifacts.waterline);
+
 function extractObservedPins(definition, content) {
   const pattern = new RegExp(definition.pattern.source, definition.pattern.flags);
 

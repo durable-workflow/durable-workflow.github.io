@@ -103,13 +103,17 @@ function buildArtifactPins(versions) {
     cliUpgradeCommand: `dw upgrade --tag=${versions.cli}`,
     cliUpgradeTag: `--tag=${versions.cli}`,
     cliVersion: versions.cli,
+    pythonSdkVersion: versions['sdk-python'],
     pythonPackagePin: `durable-workflow==${versions['sdk-python']}`,
     pythonPipInstallCommand: `pip install durable-workflow==${versions['sdk-python']}`,
+    serverVersion: versions.server,
     serverDockerHubImage: `durableworkflow/server:${versions.server}`,
     serverGhcrImage: `ghcr.io/durable-workflow/server:${versions.server}`,
     serverImageEnv: `DW_SERVER_IMAGE=durableworkflow/server:${versions.server}`,
     serverTagEnv: `DW_SERVER_TAG=${versions.server}`,
+    waterlineVersion: versions.waterline,
     waterlineComposerPackage: composerPackagePin('durable-workflow/waterline', versions.waterline),
+    workflowVersion: versions.workflow,
     workflowComposerPackage: composerPackagePin('durable-workflow/workflow', versions.workflow),
   });
 }

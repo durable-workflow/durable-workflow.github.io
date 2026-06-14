@@ -195,13 +195,19 @@ when the manifests do not agree.
 
 ### Component versions
 
-| Component | Current Version | Stability level | Notes |
-|-----------|-----------------|------------------|-------|
-| Workflow Package (PHP) | 1.0.75 (v1), 2.0.0 (v2) | `stable` (`official_sdks`) | Core workflow engine. v2 is published with a Composer prerelease stability suffix derived from the public artifact tuple while the 2.0 line ramps. |
-| Standalone Server | 2.0.0 | `stable` (`server_api`) | Language-neutral HTTP server. |
-| CLI (`dw`) | 0.1.0 | `prerelease` (`cli_json`) | Prerelease until the `1.0` cut; JSON contract is being stabilised in 0.x. |
-| Python SDK (`durable_workflow`) | 0.2.0 | `prerelease` (`official_sdks`) | Prerelease until the `1.0` cut. |
-| Waterline | 1.0.16 (v1), 2.0.0 (v2) | `stable` (`waterline_api`) | Observability UI. Major must match the workflow package major. |
+This table names the current installable public artifact tuple. The stability
+contract is governed by the authority column, not by a component's top-level
+package version or prerelease channel. Stable 1.x remains the default public
+docs line; the 2.0 docs line is explicit prerelease guidance until the
+release-status cutover is authorized.
+
+| Component | Current installable public artifact | Contract authority and stability | Notes |
+|-----------|-------------------------------------|----------------------------------|-------|
+| Workflow Package (PHP) | 1.0.75 (stable 1.x docs), `%%artifact.workflowVersion%%` (2.0 prerelease docs) | `official_sdks` / `stable` | Core workflow engine. The 2.0 artifact is published with a Composer prerelease stability suffix while the 2.0 line ramps. |
+| Standalone Server | `%%artifact.serverVersion%%` | `server_api` / `stable`; `control_plane` and `worker_protocol` protocol manifests | Language-neutral HTTP server. The top-level server version is build identity, not the client compatibility authority. |
+| CLI (`dw`) | `%%artifact.cliVersion%%` | `cli_json` / `stable` | The installable artifact is still a 0.x package while the JSON contract is governed by the stable CLI surface. |
+| Python SDK (`durable_workflow`) | `%%artifact.pythonSdkVersion%%` | `official_sdks` / `stable` | The installable artifact is still a 0.x package while SDK compatibility is governed by protocol manifests and the SDK stability document. |
+| Waterline | 1.0.16 (stable 1.x docs), `%%artifact.waterlineVersion%%` (2.0 prerelease docs) | `waterline_api` / `stable` | Observability UI. The 2.0 artifact is published with a Composer prerelease stability suffix while the 2.0 line ramps. Major must match the workflow package major. |
 
 ### Server ↔ SDK / CLI
 

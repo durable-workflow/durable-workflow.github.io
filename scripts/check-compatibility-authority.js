@@ -167,6 +167,93 @@ function loadContract() {
   return contract;
 }
 
+function componentVersionRows(section) {
+  return section
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line.startsWith('|') && !/^\|\s*-/.test(line));
+}
+
+function assertComponentVersionTableUsesCurrentArtifactTuple(doc) {
+  const sectionMatch = doc.match(/### Component versions\n\n([\s\S]*?)(?=\n\n### |\n\n## |$)/);
+
+  if (!sectionMatch) {
+    throw new Error(`docs/compatibility.md must include a "### Component versions" section`);
+  }
+
+  const sourceSection = sectionMatch[1];
+  const renderedSection = replaceArtifactTokens(
+    sourceSection,
+    'docs/compatibility.md component versions',
+  );
+
+  if (
+    !renderedSection.includes('Current installable public artifact') ||
+    !renderedSection.includes('Contract authority and stability')
+  ) {
+    throw new Error(
+      `docs/compatibility.md component versions table must distinguish ` +
+        `installable artifact versions from contract authority and stability.`,
+    );
+  }
+
+  const expectations = [
+    {
+      component: 'Workflow Package (PHP)',
+      artifact: 'workflow',
+      token: '%%artifact.workflowVersion%%',
+    },
+    {
+      component: 'Standalone Server',
+      artifact: 'server',
+      token: '%%artifact.serverVersion%%',
+    },
+    {
+      component: 'CLI (`dw`)',
+      artifact: 'cli',
+      token: '%%artifact.cliVersion%%',
+    },
+    {
+      component: 'Python SDK (`durable_workflow`)',
+      artifact: 'sdk-python',
+      token: '%%artifact.pythonSdkVersion%%',
+    },
+    {
+      component: 'Waterline',
+      artifact: 'waterline',
+      token: '%%artifact.waterlineVersion%%',
+    },
+  ];
+  const rows = componentVersionRows(renderedSection);
+
+  for (const expectation of expectations) {
+    if (!sourceSection.includes(expectation.token)) {
+      throw new Error(
+        `docs/compatibility.md component versions table must use ` +
+          `${expectation.token} for ${expectation.component} so it follows ` +
+          `scripts/public-artifact-versions.json.`,
+      );
+    }
+
+    const row = rows.find(candidate => candidate.includes(`| ${expectation.component} |`));
+    if (!row) {
+      throw new Error(
+        `docs/compatibility.md component versions table is missing row for ` +
+          `${expectation.component}`,
+      );
+    }
+
+    const expectedVersion = ARTIFACT_VERSIONS[expectation.artifact];
+    if (!row.includes(expectedVersion)) {
+      throw new Error(
+        `docs/compatibility.md component versions table must render ` +
+          `${expectation.component} with current public artifact version ` +
+          `${expectedVersion}`,
+      );
+    }
+  }
+}
+
 function assertCompatibilityDocAlignsWithContract(contract) {
   const doc = read(compatibilityDocPath);
 
@@ -246,6 +333,8 @@ function assertCompatibilityDocAlignsWithContract(contract) {
       );
     }
   }
+
+  assertComponentVersionTableUsesCurrentArtifactTuple(doc);
 }
 
 function assertInstallationDocAlignsWithContract(contract) {
