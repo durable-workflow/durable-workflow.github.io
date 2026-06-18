@@ -82,6 +82,11 @@ jobs:
           const childProcess = require('child_process');
           const fs = require('fs');
           const source = require('./scripts/public-artifact-versions.json');
+          const previousSource = JSON.parse(childProcess.execFileSync(
+            'git',
+            ['show', 'HEAD:scripts/public-artifact-versions.json'],
+            {encoding: 'utf8'}
+          ));
 
           const refreshCommand = 'npm run refresh:public-artifact-versions';
           const refreshFiles = [
@@ -116,6 +121,7 @@ jobs:
             changed_files: changedFiles,
             tuple_date: process.env.TUPLE_DATE,
             artifact_versions: source.artifacts,
+            previous_artifact_versions: previousSource.artifacts,
             source_check: {
               repository,
               ref: process.env.GITHUB_REF_NAME || null,
@@ -148,6 +154,8 @@ jobs:
                 'pipeline:ready-item',
                 'branch:main',
                 'state:pending',
+                'source:handoff',
+                'flow:release',
               ],
               acceptance: [
                 'The public docs release-audit JSON reports the current published artifact tuple.',
@@ -169,11 +177,11 @@ jobs:
           path: docs-artifact-tuple-handoff.json
           if-no-files-found: error
 
-      - name: Stop before public branch publication
+      - name: Route pipeline ready item
         if: steps.changes.outputs.changed == 'true'
-        run: |
-          echo "::error title=Public artifact tuple handoff required::A public artifact tuple refresh is available. Use the uploaded pipeline handoff artifact so the docs merge gate owns the update."
-          exit 1
+        env:
+          PIPELINE_GATE_URL: ${{ secrets.PIPELINE_GATE_URL }}
+        run: node scripts/route-public-artifact-tuple-handoff.js --handoff docs-artifact-tuple-handoff.json
 
       - name: Report current tuple
         if: steps.changes.outputs.changed == 'false'
