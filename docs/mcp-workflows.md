@@ -65,6 +65,11 @@ Call `list_workflows` before any start. It is the agent's compatibility check:
 the response tells the client which workflow keys exist and whether a workflow
 can run in the current environment.
 
+Discovery envelopes use the normative schema id
+`durable-workflow.v2.mcp-discovery`. Agents can use it to recognize the
+published tool list shape, parameter schemas, discovery hints, and
+`payload_preview_limit_bytes` semantics before calling a tool.
+
 ## Tool Input Contract
 
 The MCP tool schemas intentionally use Durable Workflow terms instead of
@@ -89,6 +94,11 @@ with `duplicate_start_policy=return_existing_active` when a repeated smoke run
 should attach to the active workflow instead of failing as a duplicate.
 
 ## Tool Result Contract
+
+Tool-result envelopes use the normative schema id
+`durable-workflow.v2.mcp-tool-results`. Agents can use it to parse result
+status, payload preview truncation, error fields, root-cause and remediation
+objects, safe-mutation envelopes, and schema/version markers.
 
 Agents should treat the following result fields as the durable handles for
 cross-tool correlation:
