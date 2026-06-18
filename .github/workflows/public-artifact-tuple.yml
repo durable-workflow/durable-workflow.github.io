@@ -11,8 +11,7 @@ on:
     - cron: '37 6 * * *'
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 concurrency:
   group: public-artifact-tuple
@@ -20,10 +19,8 @@ concurrency:
 
 jobs:
   refresh:
-    name: Refresh release-audit tuple
+    name: Prepare release-audit tuple handoff
     runs-on: ubuntu-latest
-    env:
-      REFRESH_BRANCH: automation/public-artifact-tuple
     steps:
       - uses: actions/checkout@v4
         with:
@@ -76,110 +73,107 @@ jobs:
         if: steps.changes.outputs.changed == 'true'
         run: npm run build
 
-      - name: Publish refresh branch
-        if: steps.changes.outputs.changed == 'true'
-        id: publish
-        env:
-          BASE_BRANCH: ${{ github.event.repository.default_branch }}
-        run: |
-          set -euo pipefail
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin "$REFRESH_BRANCH:refs/remotes/origin/$REFRESH_BRANCH" || true
-          git checkout -B "$REFRESH_BRANCH"
-          git add scripts/public-artifact-versions.json docs/compatibility.md
-          git commit -m "Refresh public artifact tuple"
-          git push --force-with-lease origin "$REFRESH_BRANCH"
-
-          echo "branch=$REFRESH_BRANCH" >> "$GITHUB_OUTPUT"
-          echo "base=$BASE_BRANCH" >> "$GITHUB_OUTPUT"
-
-      - name: Open or update pull request
+      - name: Write pipeline handoff
         if: steps.changes.outputs.changed == 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
-          REPOSITORY: ${{ github.repository }}
-          HEAD_BRANCH: ${{ steps.publish.outputs.branch }}
-          BASE_BRANCH: ${{ steps.publish.outputs.base }}
+          TUPLE_DATE: ${{ steps.tuple-date.outputs.value }}
         run: |
           node <<'NODE'
-          const https = require('https');
+          const childProcess = require('child_process');
+          const fs = require('fs');
+          const source = require('./scripts/public-artifact-versions.json');
 
-          const [owner, repo] = process.env.REPOSITORY.split('/');
-          const token = process.env.GH_TOKEN;
-          const head = process.env.HEAD_BRANCH;
-          const base = process.env.BASE_BRANCH;
-          const title = 'Refresh public artifact tuple';
-          const body = [
-            'Refreshes the public release-audit artifact tuple from the published package registries.',
-            '',
-            'The docs build verifies that stable 1.x remains the default public docs line and that 2.0 content stays on explicit prerelease surfaces.',
-          ].join('\n');
+          const refreshCommand = 'npm run refresh:public-artifact-versions';
+          const refreshFiles = [
+            'scripts/public-artifact-versions.json',
+            'docs/compatibility.md',
+          ];
+          const allChangedFiles = childProcess.execFileSync(
+            'git',
+            ['diff', '--name-only'],
+            {encoding: 'utf8'}
+          ).trim().split('\n').filter(Boolean);
+          const unexpected = allChangedFiles.filter(file => !refreshFiles.includes(file));
+          const changedFiles = allChangedFiles.filter(file => refreshFiles.includes(file));
 
-          function request(method, path, payload) {
-            const bodyText = payload ? JSON.stringify(payload) : null;
-
-            return new Promise((resolve, reject) => {
-              const req = https.request({
-                hostname: 'api.github.com',
-                method,
-                path,
-                headers: {
-                  Accept: 'application/vnd.github+json',
-                  Authorization: `Bearer ${token}`,
-                  'Content-Type': 'application/json',
-                  'User-Agent': 'durable-workflow-public-artifact-tuple',
-                  'X-GitHub-Api-Version': '2022-11-28',
-                },
-              }, res => {
-                let responseText = '';
-                res.setEncoding('utf8');
-                res.on('data', chunk => { responseText += chunk; });
-                res.on('end', () => {
-                  const status = res.statusCode || 0;
-                  const parsed = responseText ? JSON.parse(responseText) : null;
-
-                  if (status < 200 || status >= 300) {
-                    reject(new Error(`GitHub API ${method} ${path} failed: HTTP ${status} ${responseText}`));
-                    return;
-                  }
-
-                  resolve(parsed);
-                });
-              });
-
-              req.on('error', reject);
-              if (bodyText) {
-                req.write(bodyText);
-              }
-              req.end();
-            });
+          if (unexpected.length > 0) {
+            throw new Error(`Public artifact tuple handoff may only change ${refreshFiles.join(', ')}; saw ${unexpected.join(', ')}`);
           }
 
-          async function main() {
-            const query = new URLSearchParams({
-              state: 'open',
-              head: `${owner}:${head}`,
-              base,
-            });
-            const pulls = await request('GET', `/repos/${owner}/${repo}/pulls?${query.toString()}`);
+          const serverUrl = process.env.GITHUB_SERVER_URL || 'https://github.com';
+          const repository = process.env.GITHUB_REPOSITORY || null;
+          const runId = process.env.GITHUB_RUN_ID || null;
+          const handoff = {
+            schema: 'durable-workflow.docs.public-artifact-tuple-handoff',
+            schema_version: 1,
+            action: 'pipeline_ready_item',
+            reason: 'public_artifact_tuple_refresh_available',
+            repository: 'durable-workflow.github.io',
+            target_branch: 'main',
+            integration: 'pipeline',
+            refresh_command: refreshCommand,
+            refresh_files: refreshFiles,
+            changed_files: changedFiles,
+            tuple_date: process.env.TUPLE_DATE,
+            artifact_versions: source.artifacts,
+            source_check: {
+              repository,
+              ref: process.env.GITHUB_REF_NAME || null,
+              sha: process.env.GITHUB_SHA || null,
+              run_id: runId,
+              run_attempt: process.env.GITHUB_RUN_ATTEMPT || null,
+              run_url: repository && runId
+                ? `${serverUrl}/${repository}/actions/runs/${runId}`
+                : null,
+            },
+            release_status_guard: {
+              stable_default_docs_line: '1.x',
+              prerelease_docs_line: '2.0',
+              no_default_docs_cutover: true,
+              live_release_audit_assertions: [
+                'LEAK=0',
+                'MIXED=0',
+                'stable default 1.x',
+                'explicit prerelease 2.0',
+              ],
+            },
+            ready_item: {
+              title: 'Refresh public docs artifact tuple',
+              body: [
+                'Published package registries now contain a newer public artifact tuple than the docs release-audit surface.',
+                '',
+                `Run ${refreshCommand} and commit only scripts/public-artifact-versions.json plus docs/compatibility.md through the normal docs merge path.`,
+              ].join('\n'),
+              labels: [
+                'pipeline:ready-item',
+                'branch:main',
+                'state:pending',
+              ],
+              acceptance: [
+                'The public docs release-audit JSON reports the current published artifact tuple.',
+                'Stable 1.x remains the default public docs line.',
+                'The live release-audit JSON reports LEAK=0 and MIXED=0.',
+                'The refresh lands through the docs merge gate, not from a public release workflow.',
+              ],
+            },
+          };
 
-            if (Array.isArray(pulls) && pulls.length > 0) {
-              await request('PATCH', `/repos/${owner}/${repo}/pulls/${pulls[0].number}`, { title, body });
-              console.log(`Updated pull request ${pulls[0].number}`);
-              return;
-            }
-
-            const pull = await request('POST', `/repos/${owner}/${repo}/pulls`, { title, head, base, body });
-            console.log(`Opened pull request ${pull.number}`);
-          }
-
-          main().catch(error => {
-            console.error(error.message);
-            process.exit(1);
-          });
+          fs.writeFileSync('docs-artifact-tuple-handoff.json', `${JSON.stringify(handoff, null, 2)}\n`);
           NODE
+
+      - name: Upload pipeline handoff
+        if: steps.changes.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-artifact-tuple-pipeline-handoff
+          path: docs-artifact-tuple-handoff.json
+          if-no-files-found: error
+
+      - name: Stop before public branch publication
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          echo "::error title=Public artifact tuple handoff required::A public artifact tuple refresh is available. Use the uploaded pipeline handoff artifact so the docs merge gate owns the update."
+          exit 1
 
       - name: Report current tuple
         if: steps.changes.outputs.changed == 'false'
