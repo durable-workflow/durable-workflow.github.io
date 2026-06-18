@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "durable-workflow.v2.mcp-tool-results",
   "title": "Durable Workflow MCP tool-result envelopes",
-  "description": "Normative JSON Schema for MCP tool-result envelopes returned by Durable Workflow tools. Result status, payload preview truncation, error envelope fields, and schema/version markers are contractual. Human-readable text and model hints are diagnostic.",
+  "description": "Normative JSON Schema for MCP tool-result envelopes returned by Durable Workflow tools. Result status, payload preview truncation, error envelope fields, root-cause and remediation objects, safe-mutation envelopes, and schema/version markers are contractual. Human-readable text and model hints are diagnostic.",
   "type": "object",
   "x-durable-workflow-catalog-entry": "mcp_tool_results",
   "x-durable-workflow-catalog-schema": "durable-workflow.v2.platform-protocol-specs.catalog",
@@ -49,6 +49,21 @@
     "error": {
       "$ref": "#/$defs/error"
     },
+    "root_cause": {
+      "$ref": "#/$defs/rootCause"
+    },
+    "remediation": {
+      "$ref": "#/$defs/remediation"
+    },
+    "next_actions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/nextAction"
+      }
+    },
+    "mutation": {
+      "$ref": "#/$defs/safeMutation"
+    },
     "meta": {
       "type": "object",
       "additionalProperties": true
@@ -90,6 +105,89 @@
         "remediation": { "type": ["string", "null"] },
         "retryable": { "type": ["boolean", "null"] },
         "details": { "type": ["object", "null"], "additionalProperties": true }
+      }
+    },
+    "rootCause": {
+      "type": ["object", "null"],
+      "additionalProperties": true,
+      "required": ["schema", "version", "category", "reason", "source"],
+      "properties": {
+        "schema": { "type": "string", "const": "durable-workflow.v2.agent-root-cause" },
+        "version": { "type": "integer", "minimum": 1 },
+        "category": {
+          "type": "string",
+          "description": "Machine-readable classification such as activity_failure, workflow_failure, task_repair_attention, waiting_for_signal, history_growth_attention, in_progress, or none."
+        },
+        "reason": { "type": "string" },
+        "source": {
+          "type": "object",
+          "required": ["kind"],
+          "additionalProperties": true,
+          "properties": {
+            "kind": { "type": "string" },
+            "id": { "type": ["string", "null"] }
+          }
+        },
+        "retryable": { "type": ["boolean", "null"] },
+        "severity": { "type": "string", "enum": ["info", "warning", "error"] },
+        "actionable": { "type": "boolean" },
+        "failure_category": { "type": ["string", "null"] },
+        "exception_class": { "type": ["string", "null"] },
+        "handled": { "type": ["boolean", "null"] }
+      }
+    },
+    "remediation": {
+      "type": ["object", "null"],
+      "additionalProperties": true,
+      "required": ["schema", "version", "classification", "summary", "automatic_repair"],
+      "properties": {
+        "schema": { "type": "string", "const": "durable-workflow.v2.agent-remediation" },
+        "version": { "type": "integer", "minimum": 1 },
+        "classification": { "type": "string" },
+        "summary": { "type": "string" },
+        "automatic_repair": {
+          "type": "object",
+          "required": ["tool", "allowed"],
+          "additionalProperties": true,
+          "properties": {
+            "tool": { "type": "string" },
+            "allowed": { "type": "boolean" },
+            "reason": { "type": ["string", "null"] }
+          }
+        },
+        "next_actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/nextAction"
+          }
+        }
+      }
+    },
+    "nextAction": {
+      "type": "object",
+      "required": ["code", "label"],
+      "additionalProperties": true,
+      "properties": {
+        "code": { "type": "string" },
+        "label": { "type": "string" },
+        "tool": { "type": ["string", "null"] },
+        "mutation": { "type": "boolean" },
+        "allowed": { "type": ["boolean", "null"] },
+        "reason": { "type": ["string", "null"] }
+      }
+    },
+    "safeMutation": {
+      "type": ["object", "null"],
+      "additionalProperties": true,
+      "required": ["schema", "version", "tool", "operation", "safe", "applied"],
+      "properties": {
+        "schema": { "type": "string", "const": "durable-workflow.v2.safe-mutation" },
+        "version": { "type": "integer", "minimum": 1 },
+        "tool": { "type": "string" },
+        "operation": { "type": "string" },
+        "safe": { "type": "boolean" },
+        "applied": { "type": "boolean" },
+        "reason": { "type": ["string", "null"] }
       }
     }
   }

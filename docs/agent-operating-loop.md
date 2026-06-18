@@ -1,7 +1,7 @@
 ---
 sidebar_position: 9.1
 title: Agent Operating Loop
-description: Give AI agents a stable v2 workflow for discovering, changing, running, and diagnosing Durable Workflow applications.
+description: Give AI agents a stable v2 workflow for discovering, changing, running, diagnosing, and repairing Durable Workflow applications.
 tags:
   - ai
   - agents
@@ -94,6 +94,11 @@ That boundary matters more than the language surface. PHP workflow classes,
 `dw`, the Python SDK, and external workers should all describe the same control
 plane operations.
 
+When no source edit is required, the "change" step can be an explicit operating
+choice: select the exposed workflow key, provide a stable `business_key`, choose
+`duplicate_start_policy=return_existing_active` for idempotent smoke runs, or
+send the documented signal/update input that `diagnose_workflow` recommends.
+
 ## 4. Run Through Structured Handles
 
 Use the most specific handle available for the task:
@@ -101,6 +106,7 @@ Use the most specific handle available for the task:
 | Task | Preferred handle |
 | --- | --- |
 | Start a local sample workflow | `start_workflow` through `/mcp/workflows` |
+| Repair a local sample workflow | `diagnose_workflow`, then `repair_workflow` only when remediation allows it |
 | Start or command a server workflow | `dw workflow:start`, `dw workflow:signal`, `dw workflow:update`, or SDK equivalents |
 | Check compatibility | `dw server:info --output=json` and `/api/cluster/info` |
 | Inspect queue health | `dw task-queue:describe <queue> --output=json` |
@@ -121,6 +127,20 @@ dw debug workflow <workflow-id> --output=json
 dw workflow:history <workflow-id> <run-id> --output=json
 ```
 
+For the MCP sample app surface, call:
+
+```json
+{"tool": "diagnose_workflow", "arguments": {"workflow_id": "<workflow_id>"}}
+```
+
+Read `root_cause.category`, `remediation.classification`, and
+`remediation.automatic_repair.allowed`. Call `repair_workflow` only when that
+last field is true:
+
+```json
+{"tool": "repair_workflow", "arguments": {"workflow_id": "<workflow_id>"}}
+```
+
 If Waterline is available, export the selected run history. The export includes
 typed history events, selected-run context, waits, timers, lineage, projection
 source metadata, integrity checks, and durable failures. Those facts let an
@@ -135,11 +155,31 @@ Agent reports should cite stable facts, not screenshots:
 - workflow id, run id, namespace, and task queue
 - command or MCP tool called
 - JSON status, exit code, or named failure reason
+- `root_cause.category`, `remediation.classification`, and whether repair was
+  allowed or refused
 - recent typed history events and latest durable failure
 - compatibility or protocol version from `server:info` or `/api/cluster/info`
 
 That report shape is portable across local sample apps, standalone server
 deployments, Python workers, and future client SDKs.
+
+## 7. Published Proof
+
+The sample app conformance harness proves the agent loop from published
+artifacts. Its MCP shard performs:
+
+1. discover: JSON-RPC `tools/list` and `list_workflows`
+2. change: choose the no-credential `simple` workflow with an explicit
+   `business_key`
+3. run: `start_workflow`
+4. diagnose: `diagnose_workflow` with root-cause and remediation objects
+5. repair: `repair_workflow` as a safe structured mutation or refusal
+6. verify: `get_workflow_result`, `diagnose_workflow`, and
+   `get_workflow_history`
+
+The proof records tool status codes, workflow id, completion status, root-cause
+schema id, remediation schema id, safe-mutation schema id, and bounded history
+evidence in the conformance metadata.
 
 ## Related Pages
 

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "durable-workflow.v2.repair-actionability-objects",
   "title": "Durable Workflow repair and actionability objects",
-  "description": "Normative JSON Schema for task-repair policy snapshots, repair candidate snapshots, actionability hints, queue visibility rows, and structured failure/action affordance objects emitted by workflow, server, and Waterline operator surfaces.",
+  "description": "Normative JSON Schema for task-repair policy snapshots, repair candidate snapshots, actionability hints, queue visibility rows, machine-readable root-cause/remediation objects, and structured failure/action affordance objects emitted by workflow, server, Waterline, and agent-tooling surfaces.",
   "type": "object",
   "x-durable-workflow-catalog-entry": "repair_actionability_objects",
   "x-durable-workflow-catalog-schema": "durable-workflow.v2.platform-protocol-specs.catalog",
@@ -51,6 +51,12 @@
     },
     "failure": {
       "$ref": "#/$defs/structuredFailure"
+    },
+    "root_cause": {
+      "$ref": "#/$defs/rootCause"
+    },
+    "remediation": {
+      "$ref": "#/$defs/remediation"
     }
   },
   "$defs": {
@@ -182,6 +188,50 @@
         "exception_class": { "type": ["string", "null"] },
         "message": { "type": ["string", "null"] },
         "code": { "type": ["string", "integer", "null"] }
+      }
+    },
+    "rootCause": {
+      "type": "object",
+      "required": ["schema", "version", "category", "reason", "source"],
+      "additionalProperties": true,
+      "properties": {
+        "schema": { "type": "string", "const": "durable-workflow.v2.agent-root-cause" },
+        "version": { "type": "integer", "minimum": 1 },
+        "category": { "type": "string" },
+        "reason": { "type": "string" },
+        "source": {
+          "type": "object",
+          "required": ["kind"],
+          "additionalProperties": true,
+          "properties": {
+            "kind": { "type": "string" },
+            "id": { "type": ["string", "null"] }
+          }
+        },
+        "retryable": { "type": ["boolean", "null"] },
+        "severity": { "type": "string", "enum": ["info", "warning", "error"] },
+        "actionable": { "type": "boolean" }
+      }
+    },
+    "remediation": {
+      "type": "object",
+      "required": ["schema", "version", "classification", "summary", "automatic_repair"],
+      "additionalProperties": true,
+      "properties": {
+        "schema": { "type": "string", "const": "durable-workflow.v2.agent-remediation" },
+        "version": { "type": "integer", "minimum": 1 },
+        "classification": { "type": "string" },
+        "summary": { "type": "string" },
+        "automatic_repair": {
+          "type": "object",
+          "required": ["tool", "allowed"],
+          "additionalProperties": true,
+          "properties": {
+            "tool": { "type": "string" },
+            "allowed": { "type": "boolean" },
+            "reason": { "type": ["string", "null"] }
+          }
+        }
       }
     }
   }

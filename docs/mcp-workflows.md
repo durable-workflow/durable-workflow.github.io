@@ -1,7 +1,7 @@
 ---
 sidebar_position: 9.2
 title: MCP Workflow Surface
-description: Use the sample app MCP server as the reference AI-client workflow surface for discovery, starts, results, and history.
+description: Use the sample app MCP server as the reference AI-client workflow surface for discovery, starts, diagnosis, repair, results, and history.
 tags:
   - ai
   - agents
@@ -50,7 +50,7 @@ credential, but do not include the credential value or account-specific details.
 
 ## Tools
 
-The reference server exposes four workflow tools:
+The reference server exposes six workflow tools:
 
 | Tool | Use |
 | --- | --- |
@@ -58,6 +58,8 @@ The reference server exposes four workflow tools:
 | `start_workflow` | Start a configured workflow and return `workflow_id`, `run_id`, status, business key, and command outcome. |
 | `get_workflow_result` | Poll the current or selected run for status, output, visibility metadata, and latest failure summary. |
 | `get_workflow_history` | Fetch a bounded tail of typed v2 history events and recent durable failures. |
+| `diagnose_workflow` | Classify a selected run with structured facts, root cause, remediation, and next actions. |
+| `repair_workflow` | Request the built-in v2 repair command and return a structured accepted, refused, or not-needed mutation result. |
 
 Call `list_workflows` before any start. It is the agent's compatibility check:
 the response tells the client which workflow keys exist and whether a workflow
@@ -75,6 +77,8 @@ server:
 | `start_workflow` | `workflow`, ordered `arguments`, optional `instance_id`, `business_key`, `visibility_labels`, `memo`, `search_attributes`, and `duplicate_start_policy`. |
 | `get_workflow_result` | `workflow_id`, optional `run_id`, `include_recent_history`, and `history_limit`. |
 | `get_workflow_history` | `workflow_id` or `run_id`, `limit`, and `include_payloads`. |
+| `diagnose_workflow` | `workflow_id` or `run_id`, plus optional `history_limit`. |
+| `repair_workflow` | `workflow_id` or `run_id`. |
 
 Prefer `arguments` over the legacy `args` input for new agents. `arguments`
 maps directly to the workflow `handle()` argument order, while `args` exists
@@ -95,11 +99,41 @@ cross-tool correlation:
 | `start_workflow` | `workflow_id`, `run_id`, `workflow`, `workflow_class`, `workflow_type`, `status`, `running`, `business_key`, `duplicate_start_policy`, and `command`. |
 | `get_workflow_result` | `found`, `workflow_id`, `run_id`, `current_run_id`, `current_run_is_selected`, `status`, `running`, `output`, `error`, visibility metadata, and timestamps. |
 | `get_workflow_history` | `found`, `workflow_id`, `run_id`, `current_run_id`, `status`, `history_event_count`, `returned_event_count`, `events_are_most_recent`, `payloads_included`, `events`, and `failures`. |
+| `diagnose_workflow` | `found`, `workflow_id`, `run_id`, `diagnosis`, `facts`, `latest_failure`, `recent_history`, `root_cause`, `remediation`, and `next_actions`. |
+| `repair_workflow` | `found`, `workflow_id`, `run_id`, `accepted`, `status`, `mutation`, `command`, `remediation`, and `next_actions`. |
 
 History payload previews are intentionally bounded. When `include_payloads` is
 true, each event preview reports `payload_preview_limit_bytes`, `size_bytes`,
 `preview_bytes`, and `truncated` so an agent can cite whether it saw the full
 payload or only a preview.
+
+## Failure And Remediation Taxonomy
+
+`diagnose_workflow` is the machine-readable root-cause surface. Its
+`root_cause` object uses the schema id
+`durable-workflow.v2.agent-root-cause` and includes:
+
+- `category`, such as `activity_failure`, `workflow_failure`,
+  `task_repair_attention`, `waiting_for_signal`, `history_growth_attention`,
+  `in_progress`, or `none`
+- `source.kind` and `source.id` for the workflow, activity, wait, task queue,
+  or history family that produced the classification
+- `retryable`, `severity`, and `actionable`
+- failure details such as `failure_category`, `exception_class`, and `handled`
+  when a durable failure row exists
+
+The companion `remediation` object uses the schema id
+`durable-workflow.v2.agent-remediation`. It includes
+`classification`, a short `summary`, `automatic_repair.tool`, and
+`automatic_repair.allowed`. Agents should call `repair_workflow` only when
+`automatic_repair.allowed` is true. Other classifications tell the agent to
+wait, send expected input through the documented workflow command surface,
+inspect history, change workflow or activity code, or plan Continue-As-New.
+
+`repair_workflow` returns a `durable-workflow.v2.safe-mutation` envelope. The
+`mutation.applied` field says whether a repair command was accepted, while
+`command.outcome` distinguishes `repair_dispatched`, `repair_not_needed`, and
+structured refusals such as a terminal or non-current run.
 
 ## Safe Agent Loop
 
@@ -108,6 +142,8 @@ Use no-credential workflows first:
 ```json
 {"tool": "list_workflows", "arguments": {"show_recent": true, "limit": 5}}
 {"tool": "start_workflow", "arguments": {"workflow": "simple", "business_key": "demo-001"}}
+{"tool": "diagnose_workflow", "arguments": {"workflow_id": "<workflow_id>"}}
+{"tool": "repair_workflow", "arguments": {"workflow_id": "<workflow_id>"}}
 {"tool": "get_workflow_result", "arguments": {"workflow_id": "<workflow_id>"}}
 {"tool": "get_workflow_history", "arguments": {"run_id": "<run_id>", "limit": 25}}
 ```
@@ -124,6 +160,9 @@ An AI client should report MCP results with stable facts:
 - MCP endpoint and tool name
 - workflow key, `workflow_id`, and `run_id`
 - status and latest failure summary
+- `root_cause.category` and `remediation.classification`
+- whether `remediation.automatic_repair.allowed` was true before a repair
+  mutation was attempted
 - bounded history event names and timestamps
 - whether the run used a no-credential smoke workflow or a credentialed example
 

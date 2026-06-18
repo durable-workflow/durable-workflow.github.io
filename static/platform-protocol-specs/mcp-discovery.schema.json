@@ -86,7 +86,9 @@
             "worker_protocol",
             "waterline",
             "history_export",
+            "workflow_diagnostics",
             "repair_actionability",
+            "safe_mutation",
             null
           ]
         }
