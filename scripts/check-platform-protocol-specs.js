@@ -51,6 +51,8 @@
 //    schema/version authority.
 // 7. `docs/compatibility.md` cross-links to the new catalog so callers
 //    that land on the older authority page can find the spec set.
+// 8. Public JSON Schema documents that embed the same agent-tooling object
+//    schema id must describe the same machine-readable shape.
 //
 // Drift here means a release shipped a doc or PHP-manifest change
 // without updating the JSON mirror (or vice versa). Either fix the doc
@@ -109,6 +111,16 @@ const DELIVERABLE_SPEC_NAMES = [
   'mcp_discovery',
   'mcp_tool_results',
   'cluster_info_envelope',
+];
+
+const AGENT_TOOLING_SCHEMA_IDS = [
+  'durable-workflow.v2.agent-root-cause',
+  'durable-workflow.v2.agent-remediation',
+  'durable-workflow.v2.safe-mutation',
+];
+const AGENT_TOOLING_SCHEMA_SPEC_PATHS = [
+  'static/platform-protocol-specs/mcp-tool-results.schema.json',
+  'static/platform-protocol-specs/repair-actionability-objects.schema.json',
 ];
 
 function read(file) {
@@ -608,6 +620,155 @@ function assertPublishedSpecFileMatchesEntry(name, entry, absoluteSpecPath, cata
   }
 }
 
+function assertAgentToolingSchemaDefinitionsAreAligned(catalog) {
+  const recordsBySchemaId = new Map();
+  for (const schemaId of AGENT_TOOLING_SCHEMA_IDS) {
+    recordsBySchemaId.set(schemaId, []);
+  }
+
+  for (const entry of Object.values(catalog.specs)) {
+    if (entry.status !== 'published' || entry.format !== 'json_schema') {
+      continue;
+    }
+
+    const document = loadJson(
+      path.join(repoRoot, entry.spec_path),
+      `published spec ${entry.spec_path}`,
+    );
+    for (const record of collectAgentToolingSchemaDefinitions(document, entry.spec_path)) {
+      recordsBySchemaId.get(record.schemaId).push(record);
+    }
+  }
+
+  for (const schemaId of AGENT_TOOLING_SCHEMA_IDS) {
+    const records = recordsBySchemaId.get(schemaId);
+
+    for (const specPath of AGENT_TOOLING_SCHEMA_SPEC_PATHS) {
+      if (!records.some((record) => record.specPath === specPath)) {
+        throw new Error(
+          `published spec ${specPath} must embed a definition for ` +
+            `${schemaId}. Agent-tooling object schema ids are published by ` +
+            `both the MCP tool-result and repair/actionability specs, so ` +
+            `both files must expose the same machine-readable shape.`,
+        );
+      }
+    }
+
+    const [firstRecord, ...remainingRecords] = records;
+    const firstNormalized = normalizeSchemaForComparison(
+      firstRecord.node,
+      firstRecord.document,
+    );
+    const firstFingerprint = JSON.stringify(firstNormalized);
+
+    for (const record of remainingRecords) {
+      const normalized = normalizeSchemaForComparison(record.node, record.document);
+      const fingerprint = JSON.stringify(normalized);
+      if (fingerprint !== firstFingerprint) {
+        throw new Error(
+          `embedded definition for ${schemaId} differs between ` +
+            `${firstRecord.specPath}${firstRecord.pointer} and ` +
+            `${record.specPath}${record.pointer}. Keep duplicate public ` +
+            `agent-tooling schema definitions aligned. Property sets: ` +
+            `${formatPropertySet(firstNormalized)} vs ${formatPropertySet(normalized)}.`,
+        );
+      }
+    }
+  }
+}
+
+function collectAgentToolingSchemaDefinitions(document, specPath) {
+  const schemaIds = new Set(AGENT_TOOLING_SCHEMA_IDS);
+  const records = [];
+
+  function visit(node, pointer) {
+    if (node === null || typeof node !== 'object') {
+      return;
+    }
+
+    if (Array.isArray(node)) {
+      node.forEach((item, index) => visit(item, `${pointer}/${index}`));
+      return;
+    }
+
+    const schemaId = node.properties?.schema?.const;
+    if (schemaIds.has(schemaId)) {
+      records.push({ document, node, pointer, schemaId, specPath });
+    }
+
+    for (const [key, value] of Object.entries(node)) {
+      visit(value, `${pointer}/${escapeJsonPointerSegment(key)}`);
+    }
+  }
+
+  visit(document, '#');
+  return records;
+}
+
+function normalizeSchemaForComparison(node, document, seenRefs = new Set()) {
+  if (node === null || typeof node !== 'object') {
+    return node;
+  }
+
+  if (Array.isArray(node)) {
+    return node.map((item) => normalizeSchemaForComparison(item, document, seenRefs));
+  }
+
+  if (typeof node.$ref === 'string' && node.$ref.startsWith('#/')) {
+    const ref = node.$ref;
+    if (seenRefs.has(ref)) {
+      return { $ref: ref };
+    }
+    const nextSeenRefs = new Set(seenRefs);
+    nextSeenRefs.add(ref);
+    const resolved = normalizeSchemaForComparison(
+      resolveJsonPointer(document, ref),
+      document,
+      nextSeenRefs,
+    );
+
+    const siblingKeys = Object.keys(node).filter((key) => key !== '$ref');
+    if (siblingKeys.length === 0) {
+      return resolved;
+    }
+
+    const normalizedWithSiblings = { $ref: resolved };
+    for (const key of siblingKeys.sort()) {
+      normalizedWithSiblings[key] = normalizeSchemaForComparison(
+        node[key],
+        document,
+        seenRefs,
+      );
+    }
+    return normalizedWithSiblings;
+  }
+
+  const normalized = {};
+  for (const key of Object.keys(node).sort()) {
+    normalized[key] = normalizeSchemaForComparison(node[key], document, seenRefs);
+  }
+  return normalized;
+}
+
+function resolveJsonPointer(document, pointer) {
+  let current = document;
+  for (const part of pointer.slice(2).split('/').map(unescapeJsonPointerSegment)) {
+    if (current === null || typeof current !== 'object' || !(part in current)) {
+      throw new Error(`cannot resolve local JSON Schema reference ${pointer}.`);
+    }
+    current = current[part];
+  }
+  return current;
+}
+
+function formatPropertySet(schema) {
+  if (!schema.properties || typeof schema.properties !== 'object') {
+    return '(no properties)';
+  }
+
+  return Object.keys(schema.properties).sort().join(', ');
+}
+
 function assertObjectFamiliesMatchSpecDocument(name, entry, documentFamilies, specPath) {
   if (JSON.stringify(documentFamilies) !== JSON.stringify(entry.object_families)) {
     throw new Error(
@@ -772,6 +933,14 @@ function escapeRegExp(input) {
   return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function escapeJsonPointerSegment(input) {
+  return input.replace(/~/g, '~0').replace(/\//g, '~1');
+}
+
+function unescapeJsonPointerSegment(input) {
+  return input.replace(/~1/g, '/').replace(/~0/g, '~');
+}
+
 function main() {
   const surfaceFamilies = loadSurfaceFamilies();
   const catalog = loadCatalog();
@@ -779,6 +948,7 @@ function main() {
   assertWorkflowCatalogMirrorMatchesWhenAvailable();
   assertServerOwnedSpecMirrorsMatchWhenAvailable(catalog);
   assertCatalogEntriesAreWellFormed(catalog, surfaceFamilies);
+  assertAgentToolingSchemaDefinitionsAreAligned(catalog);
   assertCatalogDocAlignsWithCatalog(catalog);
   assertCompatibilityDocCrossLinksCatalog();
 

@@ -125,7 +125,8 @@ payload or only a preview.
 The companion `remediation` object uses the schema id
 `durable-workflow.v2.agent-remediation`. It includes
 `classification`, a short `summary`, `automatic_repair.tool`, and
-`automatic_repair.allowed`. Agents should call `repair_workflow` only when
+`automatic_repair.allowed`, plus `next_actions` entries for the supported
+follow-up commands. Agents should call `repair_workflow` only when
 `automatic_repair.allowed` is true. Other classifications tell the agent to
 wait, send expected input through the documented workflow command surface,
 inspect history, change workflow or activity code, or plan Continue-As-New.
