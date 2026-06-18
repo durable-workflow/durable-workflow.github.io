@@ -54,8 +54,8 @@ for (const required of [
 }
 
 for (const required of [
-  'forgejo.issue.list',
-  'forgejo.issue.create',
+  'gh.issue.list',
+  'gh.issue.create',
   'source:handoff',
   'pipeline-request-b64',
   'pipeline-files-b64',

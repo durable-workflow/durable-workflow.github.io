@@ -15,6 +15,8 @@ const EXPECTED_REFRESH_FILES = [
   'docs/compatibility.md',
 ];
 const ARTIFACT_ORDER = ['cli', 'sdk-python', 'server', 'workflow', 'waterline'];
+const GATE_ACTION_LIST_READY_ITEMS = 'gh.issue.list';
+const GATE_ACTION_CREATE_READY_ITEM = 'gh.issue.create';
 const ROUTING_LABELS = [
   'pipeline:ready-item',
   'branch:main',
@@ -30,8 +32,8 @@ function usage() {
     '  node scripts/route-public-artifact-tuple-handoff.js --handoff docs-artifact-tuple-handoff.json',
     '  node scripts/route-public-artifact-tuple-handoff.js --handoff docs-artifact-tuple-handoff.json --dry-run',
     '',
-    'Routes a validated public artifact tuple handoff into a Forgejo ready item',
-    'through PIPELINE_GATE_URL. Dry-run mode prints the issue payload without',
+    'Routes a validated public artifact tuple handoff into a pipeline ready item',
+    'through PIPELINE_GATE_URL. Dry-run mode prints the ready-item payload without',
     'calling the gate.',
   ].join('\n');
 }
@@ -395,20 +397,20 @@ function findExistingReadyItem(issues, keys) {
 }
 
 async function routeReadyItem(payload) {
-  const existingIssues = await gateAction('forgejo.issue.list', {
+  const existingReadyItems = await gateAction(GATE_ACTION_LIST_READY_ITEMS, {
     repo: payload.repo,
     labels: 'pipeline:ready-item,branch:main,source:handoff',
     state: 'open',
     limit: 50,
   });
-  const existing = findExistingReadyItem(existingIssues, payload.duplicateKeys);
+  const existing = findExistingReadyItem(existingReadyItems, payload.duplicateKeys);
 
   if (existing) {
     console.log(`Public artifact tuple handoff already routed to ready item ${existing.number}.`);
     return existing;
   }
 
-  const created = await gateAction('forgejo.issue.create', {
+  const created = await gateAction(GATE_ACTION_CREATE_READY_ITEM, {
     repo: payload.repo,
     title: payload.title,
     body: payload.body,
@@ -426,7 +428,7 @@ async function main() {
 
   if (args.dryRun) {
     console.log(JSON.stringify({
-      action: 'forgejo.issue.create',
+      action: GATE_ACTION_CREATE_READY_ITEM,
       input: {
         repo: payload.repo,
         title: payload.title,
