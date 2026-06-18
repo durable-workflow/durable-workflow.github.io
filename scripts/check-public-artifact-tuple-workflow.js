@@ -1,4 +1,5 @@
 const fs = require('fs');
+const http = require('http');
 const path = require('path');
 
 const workflowPath = path.join(__dirname, '..', '.github', 'workflows', 'public-artifact-tuple.yml');
@@ -10,6 +11,7 @@ const {
   buildReadyItemPayload,
   findExistingReadyItem,
   handoffKey,
+  routeReadyItem,
 } = require(routeScriptPath);
 
 function fail(message) {
@@ -151,15 +153,25 @@ const multiArtifactHandoff = {
 };
 const multiArtifactPayload = buildReadyItemPayload(multiArtifactHandoff);
 const requestMatch = /<!-- pipeline-request-b64: ([A-Za-z0-9+/=]+) -->/.exec(multiArtifactPayload.body);
+const filesMatch = /<!-- pipeline-files-b64: ([A-Za-z0-9+/=]+) -->/.exec(multiArtifactPayload.body);
 
 if (!requestMatch) {
   fail('public artifact tuple ready item must include an encoded refresh request');
 }
 
+if (!filesMatch) {
+  fail('public artifact tuple ready item must include encoded refresh-file metadata');
+}
+
 const decodedRequest = Buffer.from(requestMatch[1], 'base64').toString('utf8');
+const decodedFiles = JSON.parse(Buffer.from(filesMatch[1], 'base64').toString('utf8'));
 
 if (!decodedRequest.includes('npm run refresh:public-artifact-versions -- --date 2026-06-18')) {
   fail('public artifact tuple refresh request must preserve tuple_date as the docs row date');
+}
+
+if (JSON.stringify(decodedFiles) !== JSON.stringify(multiArtifactHandoff.refresh_files)) {
+  fail('public artifact tuple refresh-file metadata must preserve the focused refresh files');
 }
 
 if (multiArtifactPayload.key.includes(stableKeyHandoff.tuple_date)) {
@@ -170,4 +182,210 @@ if (multiArtifactPayload.title.includes(stableKeyHandoff.tuple_date)) {
   fail('public artifact tuple ready item title must not include tuple_date');
 }
 
-console.log('Public artifact tuple workflow routes a read-only pipeline handoff.');
+function listen(server) {
+  return new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      server.off('error', reject);
+      resolve(server.address());
+    });
+  });
+}
+
+function close(server) {
+  return new Promise((resolve, reject) => {
+    server.close(err => (err ? reject(err) : resolve()));
+  });
+}
+
+function readRequestBody(request) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    request.setEncoding('utf8');
+    request.on('data', chunk => {
+      body += chunk;
+    });
+    request.on('end', () => {
+      try {
+        resolve(body ? JSON.parse(body) : null);
+      } catch (err) {
+        reject(err);
+      }
+    });
+    request.on('error', reject);
+  });
+}
+
+async function withStubGate(issues, callback) {
+  const requests = [];
+  const server = http.createServer(async (request, response) => {
+    try {
+      if (request.method !== 'POST' || request.url !== '/api/worker/actions/execute') {
+        response.writeHead(404, {'Content-Type': 'application/json'});
+        response.end(JSON.stringify({status: 'failed', error: 'unexpected endpoint'}));
+        return;
+      }
+
+      const payload = await readRequestBody(request);
+      requests.push(payload);
+
+      if (payload.action === 'gh.issue.list') {
+        response.writeHead(200, {'Content-Type': 'application/json'});
+        response.end(JSON.stringify({status: 'completed', result: issues}));
+        return;
+      }
+
+      if (payload.action === 'gh.issue.create') {
+        response.writeHead(200, {'Content-Type': 'application/json'});
+        response.end(JSON.stringify({
+          status: 'completed',
+          result: {
+            number: 730,
+            title: payload.input.title,
+            body: payload.input.body,
+            labels: payload.input.labels.split(','),
+          },
+        }));
+        return;
+      }
+
+      response.writeHead(400, {'Content-Type': 'application/json'});
+      response.end(JSON.stringify({status: 'failed', error: `unexpected action ${payload.action}`}));
+    } catch (err) {
+      response.writeHead(500, {'Content-Type': 'application/json'});
+      response.end(JSON.stringify({status: 'failed', error: err.message}));
+    }
+  });
+
+  const address = await listen(server);
+  const previousGateUrl = process.env.PIPELINE_GATE_URL;
+  process.env.PIPELINE_GATE_URL = `http://127.0.0.1:${address.port}`;
+
+  try {
+    return await callback(requests);
+  } finally {
+    if (previousGateUrl === undefined) {
+      delete process.env.PIPELINE_GATE_URL;
+    } else {
+      process.env.PIPELINE_GATE_URL = previousGateUrl;
+    }
+    await close(server);
+  }
+}
+
+function parseLabels(labels) {
+  return labels.split(',').filter(Boolean);
+}
+
+function assertLabelSet(labels, expectedLabels, message) {
+  const actual = parseLabels(labels).sort();
+  const expected = [...expectedLabels].sort();
+
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    fail(`${message}: expected ${expected.join(', ')}, got ${actual.join(', ')}`);
+  }
+}
+
+function assertGateListPayload(request) {
+  if (!request || request.action !== 'gh.issue.list') {
+    fail('public artifact tuple router must list existing handoff ready items through the gate');
+  }
+
+  if (request.input.repo !== 'durable-workflow.github.io') {
+    fail('public artifact tuple list payload must target the docs repository');
+  }
+
+  assertLabelSet(request.input.labels, [
+    'pipeline:ready-item',
+    'branch:main',
+    'state:pending',
+    'source:handoff',
+    'flow:release',
+  ], 'public artifact tuple list payload must use the pending handoff release labels');
+
+  if (request.input.state !== 'open' || request.input.limit !== 50) {
+    fail('public artifact tuple list payload must use the bounded open-ready-item lookup');
+  }
+}
+
+function assertGateCreatePayload(request) {
+  if (!request || request.action !== 'gh.issue.create') {
+    fail('public artifact tuple router must create missing handoff ready items through the gate');
+  }
+
+  if (request.input.repo !== multiArtifactPayload.repo) {
+    fail('public artifact tuple create payload must target the docs repository');
+  }
+
+  if (request.input.title !== multiArtifactPayload.title) {
+    fail('public artifact tuple create payload must preserve the generated title');
+  }
+
+  if (!request.input.body.includes(`<!-- docs-artifact-tuple-key: ${multiArtifactPayload.key} -->`)) {
+    fail('public artifact tuple create payload must include the duplicate key marker');
+  }
+
+  if (!request.input.body.includes(filesMatch[0])) {
+    fail('public artifact tuple create payload must include focused refresh-file metadata');
+  }
+
+  assertLabelSet(request.input.labels, [
+    'pipeline:ready-item',
+    'branch:main',
+    'state:pending',
+    'source:handoff',
+    'flow:release',
+    'priority:P0',
+  ], 'public artifact tuple create payload must use the full handoff release label set');
+}
+
+async function assertStubGateCreatePath() {
+  const routed = await withStubGate([], async requests => {
+    const readyItem = await routeReadyItem(multiArtifactPayload);
+
+    if (requests.length !== 2) {
+      fail(`public artifact tuple create path must make exactly two gate requests, saw ${requests.length}`);
+    }
+
+    assertGateListPayload(requests[0]);
+    assertGateCreatePayload(requests[1]);
+
+    return readyItem;
+  });
+
+  if (!routed || routed.number !== 730) {
+    fail('public artifact tuple create path must return the created ready item');
+  }
+}
+
+async function assertStubGateDuplicatePath() {
+  const routed = await withStubGate(
+    [{number: 42, body: `<!-- docs-artifact-tuple-key: ${legacyKey} -->`}],
+    async requests => {
+      const readyItem = await routeReadyItem(multiArtifactPayload);
+
+      if (requests.length !== 1) {
+        fail(`public artifact tuple duplicate path must only list existing items, saw ${requests.length} requests`);
+      }
+
+      assertGateListPayload(requests[0]);
+
+      return readyItem;
+    }
+  );
+
+  if (!routed || routed.number !== 42) {
+    fail('public artifact tuple duplicate path must reuse an existing legacy-key handoff');
+  }
+}
+
+async function main() {
+  await assertStubGateCreatePath();
+  await assertStubGateDuplicatePath();
+
+  console.log('Public artifact tuple workflow routes a read-only pipeline handoff.');
+}
+
+main().catch(err => {
+  fail(err.stack || err.message);
+});

@@ -25,6 +25,13 @@ const ROUTING_LABELS = [
   'flow:release',
   'priority:P0',
 ];
+const READY_ITEM_LOOKUP_LABELS = [
+  'pipeline:ready-item',
+  'branch:main',
+  'state:pending',
+  'source:handoff',
+  'flow:release',
+];
 
 function usage() {
   return [
@@ -399,7 +406,7 @@ function findExistingReadyItem(issues, keys) {
 async function routeReadyItem(payload) {
   const existingReadyItems = await gateAction(GATE_ACTION_LIST_READY_ITEMS, {
     repo: payload.repo,
-    labels: 'pipeline:ready-item,branch:main,source:handoff',
+    labels: READY_ITEM_LOOKUP_LABELS.join(','),
     state: 'open',
     limit: 50,
   });
@@ -457,5 +464,6 @@ module.exports = {
   findExistingReadyItem,
   handoffDuplicateKeys,
   handoffKey,
+  routeReadyItem,
   validateHandoff,
 };
