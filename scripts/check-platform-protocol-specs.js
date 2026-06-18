@@ -51,8 +51,9 @@
 //    schema/version authority.
 // 7. `docs/compatibility.md` cross-links to the new catalog so callers
 //    that land on the older authority page can find the spec set.
-// 8. Public JSON Schema documents that embed the same agent-tooling object
-//    schema id must describe the same machine-readable shape.
+// 8. Public JSON Schema documents that embed an agent-tooling object schema
+//    id must declare matching catalog object-family authority, and duplicate
+//    embedded definitions must describe the same machine-readable shape.
 //
 // Drift here means a release shipped a doc or PHP-manifest change
 // without updating the JSON mirror (or vice versa). Either fix the doc
@@ -113,7 +114,7 @@ const DELIVERABLE_SPEC_NAMES = [
   'cluster_info_envelope',
 ];
 
-const AGENT_TOOLING_SCHEMA_IDS = [
+const REQUIRED_AGENT_TOOLING_SCHEMA_IDS = [
   'durable-workflow.v2.agent-root-cause',
   'durable-workflow.v2.agent-remediation',
   'durable-workflow.v2.safe-mutation',
@@ -622,11 +623,12 @@ function assertPublishedSpecFileMatchesEntry(name, entry, absoluteSpecPath, cata
 
 function assertAgentToolingSchemaDefinitionsAreAligned(catalog) {
   const recordsBySchemaId = new Map();
-  for (const schemaId of AGENT_TOOLING_SCHEMA_IDS) {
+  for (const schemaId of REQUIRED_AGENT_TOOLING_SCHEMA_IDS) {
     recordsBySchemaId.set(schemaId, []);
   }
+  const records = [];
 
-  for (const entry of Object.values(catalog.specs)) {
+  for (const [entryName, entry] of Object.entries(catalog.specs)) {
     if (entry.status !== 'published' || entry.format !== 'json_schema') {
       continue;
     }
@@ -636,11 +638,18 @@ function assertAgentToolingSchemaDefinitionsAreAligned(catalog) {
       `published spec ${entry.spec_path}`,
     );
     for (const record of collectAgentToolingSchemaDefinitions(document, entry.spec_path)) {
+      record.catalogEntryName = entryName;
+      records.push(record);
+      if (!recordsBySchemaId.has(record.schemaId)) {
+        recordsBySchemaId.set(record.schemaId, []);
+      }
       recordsBySchemaId.get(record.schemaId).push(record);
     }
   }
 
-  for (const schemaId of AGENT_TOOLING_SCHEMA_IDS) {
+  assertAgentToolingSchemaIdsHaveCatalogFamilies(catalog, records);
+
+  for (const schemaId of REQUIRED_AGENT_TOOLING_SCHEMA_IDS) {
     const records = recordsBySchemaId.get(schemaId);
 
     for (const specPath of AGENT_TOOLING_SCHEMA_SPEC_PATHS) {
@@ -653,7 +662,12 @@ function assertAgentToolingSchemaDefinitionsAreAligned(catalog) {
         );
       }
     }
+  }
 
+  for (const [schemaId, records] of recordsBySchemaId.entries()) {
+    if (records.length === 0) {
+      continue;
+    }
     const [firstRecord, ...remainingRecords] = records;
     const firstNormalized = normalizeSchemaForComparison(
       firstRecord.node,
@@ -678,7 +692,6 @@ function assertAgentToolingSchemaDefinitionsAreAligned(catalog) {
 }
 
 function collectAgentToolingSchemaDefinitions(document, specPath) {
-  const schemaIds = new Set(AGENT_TOOLING_SCHEMA_IDS);
   const records = [];
 
   function visit(node, pointer) {
@@ -692,7 +705,7 @@ function collectAgentToolingSchemaDefinitions(document, specPath) {
     }
 
     const schemaId = node.properties?.schema?.const;
-    if (schemaIds.has(schemaId)) {
+    if (isAgentToolingSchemaId(schemaId)) {
       records.push({ document, node, pointer, schemaId, specPath });
     }
 
@@ -703,6 +716,47 @@ function collectAgentToolingSchemaDefinitions(document, specPath) {
 
   visit(document, '#');
   return records;
+}
+
+function assertAgentToolingSchemaIdsHaveCatalogFamilies(catalog, records) {
+  for (const record of records) {
+    const expectedFamilyName = objectFamilyNameForAgentToolingSchemaId(record.schemaId);
+    const entry = catalog.specs[record.catalogEntryName];
+    const family = entry.object_families.find(
+      (candidate) => candidate.name === expectedFamilyName,
+    );
+
+    if (family === undefined) {
+      throw new Error(
+        `platform-protocol-specs entry "${record.catalogEntryName}" embeds ` +
+          `public agent-tooling schema id ${record.schemaId} at ` +
+          `${record.specPath}${record.pointer}, but object_families does not ` +
+          `declare "${expectedFamilyName}" with schema/version authority.`,
+      );
+    }
+
+    if (family.version_authority !== record.schemaId) {
+      throw new Error(
+        `platform-protocol-specs entry "${record.catalogEntryName}" object ` +
+          `family "${expectedFamilyName}" must use version_authority ` +
+          `"${record.schemaId}" because ${record.specPath}${record.pointer} ` +
+          `embeds that public agent-tooling schema id ` +
+          `(got "${family.version_authority}").`,
+      );
+    }
+  }
+}
+
+function isAgentToolingSchemaId(schemaId) {
+  return (
+    typeof schemaId === 'string' &&
+    (schemaId.startsWith('durable-workflow.v2.agent-') ||
+      schemaId.startsWith('durable-workflow.v2.safe-'))
+  );
+}
+
+function objectFamilyNameForAgentToolingSchemaId(schemaId) {
+  return schemaId.replace(/^durable-workflow\.v2\./, '').replace(/-/g, '_');
 }
 
 function normalizeSchemaForComparison(node, document, seenRefs = new Set()) {

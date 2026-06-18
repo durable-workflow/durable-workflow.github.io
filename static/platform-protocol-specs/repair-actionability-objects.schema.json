@@ -6,7 +6,7 @@
   "type": "object",
   "x-durable-workflow-catalog-entry": "repair_actionability_objects",
   "x-durable-workflow-catalog-schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "x-durable-workflow-catalog-version": 13,
+  "x-durable-workflow-catalog-version": 14,
   "x-durable-workflow-owner-symbol": "Workflow\\V2\\Support\\TaskRepairCandidates, Workflow\\V2\\Support\\TaskRepairPolicy, and Workflow\\V2\\Support\\OperatorQueueVisibility",
   "x-durable-workflow-evolution-rule": "additive_minor_breaking_major",
   "x-durable-workflow-object-families": [
@@ -33,6 +33,24 @@
       "owner_repo": "durable-workflow/waterline",
       "schema_authority": "Waterline\\Support\\ActionabilityContract",
       "version_authority": "Waterline\\Support\\ActionabilityContract::VERSION"
+    },
+    {
+      "name": "agent_root_cause",
+      "owner_repo": "durable-workflow/durable-workflow.github.io",
+      "schema_authority": "docs/agent-tooling-contract.md Root Cause And Remediation and static/platform-protocol-specs/repair-actionability-objects.schema.json",
+      "version_authority": "durable-workflow.v2.agent-root-cause"
+    },
+    {
+      "name": "agent_remediation",
+      "owner_repo": "durable-workflow/durable-workflow.github.io",
+      "schema_authority": "docs/agent-tooling-contract.md Root Cause And Remediation and static/platform-protocol-specs/repair-actionability-objects.schema.json",
+      "version_authority": "durable-workflow.v2.agent-remediation"
+    },
+    {
+      "name": "safe_mutation",
+      "owner_repo": "durable-workflow/durable-workflow.github.io",
+      "schema_authority": "docs/agent-tooling-contract.md MCP Tool Design and static/platform-protocol-specs/repair-actionability-objects.schema.json",
+      "version_authority": "durable-workflow.v2.safe-mutation"
     }
   ],
   "additionalProperties": true,

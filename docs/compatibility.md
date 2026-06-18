@@ -69,7 +69,7 @@ re-reading prose for every surface.
 
 The catalog has its own machine-readable mirror at
 `platform_protocol_specs` in `GET /api/cluster/info` (schema
-`durable-workflow.v2.platform-protocol-specs.catalog`, version `13`) and
+`durable-workflow.v2.platform-protocol-specs.catalog`, version `14`) and
 a frozen JSON copy at `static/platform-protocol-specs.json` in this
 repository. Every catalog entry's `surface_family` must exist in the
 contract above; the release-check gate in

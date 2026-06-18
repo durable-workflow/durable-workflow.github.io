@@ -46,7 +46,7 @@ truth:
 - `platform_protocol_specs` in the response body of
   `GET /api/cluster/info` on the standalone Durable Workflow server,
   schema `durable-workflow.v2.platform-protocol-specs.catalog`,
-  version `13`.
+  version `14`.
 - A frozen mirror of the same manifest in this repository at
   `static/platform-protocol-specs.json`.
 - The PHP class `Workflow\V2\Support\PlatformProtocolSpecs`, which is
@@ -188,11 +188,17 @@ the same metadata under `x-durable-workflow-object-families`.
 | `repair_actionability_objects` | `task_repair_candidates` | `durable-workflow/workflow` | `Workflow\V2\Support\TaskRepairCandidates::snapshot` | `durable-workflow.v2.repair-actionability-objects` |
 | `repair_actionability_objects` | `operator_queue_visibility` | `durable-workflow/workflow` | `Workflow\V2\Support\OperatorQueueVisibility` | `durable-workflow.v2.repair-actionability-objects` |
 | `repair_actionability_objects` | `actionability` | `durable-workflow/waterline` | `Waterline\Support\ActionabilityContract` | `Waterline\Support\ActionabilityContract::VERSION` |
+| `repair_actionability_objects` | `agent_root_cause` | `durable-workflow/durable-workflow.github.io` | `docs/agent-tooling-contract.md Root Cause And Remediation and static/platform-protocol-specs/repair-actionability-objects.schema.json` | `durable-workflow.v2.agent-root-cause` |
+| `repair_actionability_objects` | `agent_remediation` | `durable-workflow/durable-workflow.github.io` | `docs/agent-tooling-contract.md Root Cause And Remediation and static/platform-protocol-specs/repair-actionability-objects.schema.json` | `durable-workflow.v2.agent-remediation` |
+| `repair_actionability_objects` | `safe_mutation` | `durable-workflow/durable-workflow.github.io` | `docs/agent-tooling-contract.md MCP Tool Design and static/platform-protocol-specs/repair-actionability-objects.schema.json` | `durable-workflow.v2.safe-mutation` |
 | `cli_json_envelopes` | `cli_output_schema_manifest` | `durable-workflow/cli` | `DurableWorkflow\Cli\Support\OutputSchemaRegistry::manifest` | `schemas/output/manifest.json version` |
 | `cli_json_envelopes` | `cli_command_output_schema` | `durable-workflow/cli` | `schemas/output/*.schema.json via DurableWorkflow\Cli\Support\OutputSchemaRegistry` | `schemas/output/manifest.json schema_id and version metadata` |
 | `mcp_discovery` | `mcp_tool_discovery` | `durable-workflow/durable-workflow.github.io` | `docs/mcp-workflows.md and static/platform-protocol-specs/mcp-discovery.schema.json` | `durable-workflow.v2.mcp-discovery` |
 | `mcp_discovery` | `llms_txt_discovery` | `durable-workflow/durable-workflow.github.io` | `docs/mcp-workflows.md and generated llms files` | `durable-workflow.v2.mcp-discovery` |
 | `mcp_tool_results` | `mcp_tool_result_envelope` | `durable-workflow/durable-workflow.github.io` | `docs/mcp-workflows.md Tool Result Contract and static/platform-protocol-specs/mcp-tool-results.schema.json` | `durable-workflow.v2.mcp-tool-results` |
+| `mcp_tool_results` | `agent_root_cause` | `durable-workflow/durable-workflow.github.io` | `docs/mcp-workflows.md Failure And Remediation Taxonomy and static/platform-protocol-specs/mcp-tool-results.schema.json` | `durable-workflow.v2.agent-root-cause` |
+| `mcp_tool_results` | `agent_remediation` | `durable-workflow/durable-workflow.github.io` | `docs/mcp-workflows.md Failure And Remediation Taxonomy and static/platform-protocol-specs/mcp-tool-results.schema.json` | `durable-workflow.v2.agent-remediation` |
+| `mcp_tool_results` | `safe_mutation` | `durable-workflow/durable-workflow.github.io` | `docs/mcp-workflows.md Failure And Remediation Taxonomy and static/platform-protocol-specs/mcp-tool-results.schema.json` | `durable-workflow.v2.safe-mutation` |
 | `cluster_info_envelope` | `cluster_info_envelope` | `durable-workflow/server` | `App\Http\Controllers\Api\HealthController::clusterInfo` | `durable-workflow.v2.cluster-info-envelope` |
 | `cluster_info_envelope` | `client_compatibility_manifest` | `durable-workflow/server` | `App\Support\ClientCompatibility::SCHEMA` | `App\Support\ClientCompatibility::VERSION` |
 | `cluster_info_envelope` | `surface_stability_contract` | `durable-workflow/workflow` | `Workflow\V2\Support\SurfaceStabilityContract::SCHEMA` | `Workflow\V2\Support\SurfaceStabilityContract::VERSION` |
@@ -460,7 +466,7 @@ that drive operator-led recovery.
 | Conformance test | `durable-workflow/workflow: tests/Unit/Commands/V2RepairPassCommandTest.php`, `tests/Feature/V2/V2OperatorQueueVisibilityTest.php`; `durable-workflow/waterline: tests/Feature/V2DashboardWorkflowTest.php`, `tests/Feature/V2DashboardWorkflowListTest.php`; `durable-workflow/server: tests/Feature/TransportRepairTest.php` |
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/repair-actionability-objects.schema.json` |
-| Object families | `task_repair_policy`, `task_repair_candidates`, `operator_queue_visibility`, `actionability` |
+| Object families | `task_repair_policy`, `task_repair_candidates`, `operator_queue_visibility`, `actionability`, `agent_root_cause`, `agent_remediation`, `safe_mutation` |
 
 ### `cli_json_envelopes`
 
@@ -524,7 +530,7 @@ discovery hints are diagnostic, not contract.
 | Conformance test | `durable-workflow/durable-workflow.github.io: scripts/check-llms-ai-surfaces.js` and `scripts/check-platform-protocol-specs.js` |
 | Status | `published` |
 | Spec path | `static/platform-protocol-specs/mcp-tool-results.schema.json` |
-| Object families | `mcp_tool_result_envelope` |
+| Object families | `mcp_tool_result_envelope`, `agent_root_cause`, `agent_remediation`, `safe_mutation` |
 
 ### `cluster_info_envelope`
 
@@ -605,7 +611,7 @@ under `release_check`.
 | `format_known` | Every entry's `format` is one of `openapi`, `json_schema`, or `asyncapi`. |
 | `docs_authority_aligned` | This page lists every entry in the manifest with the same format, owner, object-family authority, status, and breaking-change rule. |
 | `json_mirror_aligned` | `static/platform-protocol-specs.json` is byte-equivalent to the workflow package catalog mirror that `PlatformProtocolSpecs::manifest()` loads. |
-| `object_family_authority_declared` | Every entry declares a non-empty `object_families` list. Each object family names the owning repo, schema authority, and version authority. Published spec files carry matching `x-durable-workflow-object-families` metadata so the file and catalog cannot drift. |
+| `object_family_authority_declared` | Every entry declares a non-empty `object_families` list. Each object family names the owning repo, schema authority, and version authority. Published spec files carry matching `x-durable-workflow-object-families` metadata so the file and catalog cannot drift. Embedded public agent-tooling schema ids must have matching object-family rows. |
 | `spec_path_published_when_status_published` | When `status` is `published`, the file at `spec_path` exists in this repository, is referenced from the matching authority doc page, parses as the format declared by the catalog entry (JSON Schema 2020-12 / OpenAPI 3.1 / AsyncAPI 2.6+), and the document's `$id` (or OpenAPI `info.title` / AsyncAPI `id`) matches the catalog `spec_id`. |
 | `breaking_change_release_consistent_with_evolution_rule` | Every entry's `breaking_change_release` is one of `major`, `parallel_primitive_only`, or `experimental_any_release`, and matches the value required by its `evolution_rule`: `additive_minor_breaking_major` → `major`, `parallel_primitive_only` → `parallel_primitive_only`, `experimental_any_release` → `experimental_any_release`. Letting these diverge would let a frozen wire format claim a major-version break, contradicting its rule. |
 | `deliverable_specs_published` | Every entry in the platform protocol-spec deliverable surface set is marked `published` and has a parseable spec document. |
