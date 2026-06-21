@@ -1,0 +1,499 @@
+{
+  "schema": "durable-workflow.docs.v2.quickstart-execution-contract",
+  "version": 1,
+  "release_status": "2.0_prerelease",
+  "authority_doc": "docs/quickstart.md",
+  "authority_url": "https://durable-workflow.com/docs/2.0/quickstart/",
+  "contract_url": "https://durable-workflow.com/quickstart-execution-contract.json",
+  "default_docs_guard": {
+    "stable_default_docs_version": "1.x",
+    "explicit_prerelease_docs_version": "2.0",
+    "canonical_llms_remain_stable_default": true
+  },
+  "public_source_policy": {
+    "source_checkouts_required": false,
+    "private_channels_allowed": false,
+    "allowed_channels": [
+      "docker_hub",
+      "pypi",
+      "packagist",
+      "durable_workflow_public_installer"
+    ]
+  },
+  "artifacts": {
+    "server": {
+      "channel": "docker_hub",
+      "version": "0.2.453",
+      "image": "durableworkflow/server",
+      "reference": "durableworkflow/server:0.2.453"
+    },
+    "cli": {
+      "channel": "durable_workflow_public_installer",
+      "version": "0.1.81",
+      "install_command": "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.81 sh"
+    },
+    "sdk-python": {
+      "channel": "pypi",
+      "version": "0.4.89",
+      "pip_package": "durable-workflow==0.4.89",
+      "install_command": "pip install durable-workflow==0.4.89"
+    },
+    "workflow": {
+      "channel": "packagist",
+      "version": "2.0.0-alpha.210",
+      "composer_constraint": "durable-workflow/workflow:2.0.0-alpha.210@alpha"
+    },
+    "waterline": {
+      "channel": "packagist",
+      "version": "2.0.0-alpha.111",
+      "composer_constraint": "durable-workflow/waterline:2.0.0-alpha.111@alpha"
+    }
+  },
+  "personas": [
+    {
+      "id": "python",
+      "label": "Python user",
+      "description": "Runs a Python SDK workflow worker against the local standalone server."
+    },
+    {
+      "id": "operator",
+      "label": "Operator user",
+      "description": "Uses the published CLI to inspect server health and a completed workflow run."
+    },
+    {
+      "id": "laravel",
+      "label": "Laravel user",
+      "description": "Runs a Laravel-hosted workflow with the published Composer packages and a database queue worker."
+    }
+  ],
+  "hosting_branches": [
+    {
+      "id": "standalone_server_sqlite",
+      "label": "Standalone server with SQLite",
+      "used_by_personas": [
+        "python",
+        "operator"
+      ],
+      "clean_directory_required": true,
+      "required_environment": [
+        {
+          "name": "DW_SERVER_IMAGE",
+          "value": "durableworkflow/server:0.2.453"
+        },
+        {
+          "name": "DW_AUTH_TOKEN",
+          "value": "dev-token"
+        }
+      ],
+      "required_ports": [
+        {
+          "host": 8080,
+          "container": 8080,
+          "protocol": "tcp"
+        }
+      ],
+      "setup_script_lines": [
+        "export DW_SERVER_IMAGE=durableworkflow/server:0.2.453",
+        "export DW_AUTH_TOKEN=dev-token",
+        "docker volume create durable-workflow-quickstart",
+        "docker run --rm -v durable-workflow-quickstart:/app/database -e DW_AUTH_DRIVER=token -e DW_AUTH_TOKEN=\"$DW_AUTH_TOKEN\" \"$DW_SERVER_IMAGE\" server-bootstrap",
+        "docker rm -f durable-workflow-server >/dev/null 2>&1 || true",
+        "docker run -d --name durable-workflow-server -p 8080:8080 -v durable-workflow-quickstart:/app/database -e DW_AUTH_DRIVER=token -e DW_AUTH_TOKEN=\"$DW_AUTH_TOKEN\" \"$DW_SERVER_IMAGE\"",
+        "until curl -sf http://localhost:8080/api/ready >/dev/null; do sleep 1; done",
+        "curl -H \"Authorization: Bearer $DW_AUTH_TOKEN\" http://localhost:8080/api/cluster/info"
+      ],
+      "success_probes": [
+        {
+          "id": "ready_endpoint",
+          "command": "curl -sf http://localhost:8080/api/ready",
+          "expect_exit_code": 0
+        },
+        {
+          "id": "cluster_info_endpoint",
+          "command": "curl -H \"Authorization: Bearer $DW_AUTH_TOKEN\" http://localhost:8080/api/cluster/info",
+          "expect_exit_code": 0,
+          "expect_json": true
+        }
+      ],
+      "teardown_script_lines": [
+        "docker rm -f durable-workflow-server",
+        "docker volume rm durable-workflow-quickstart"
+      ]
+    },
+    {
+      "id": "embedded_laravel_database_queue",
+      "label": "Embedded Laravel app with database queue",
+      "used_by_personas": [
+        "laravel"
+      ],
+      "clean_directory_required": true,
+      "required_environment": [
+        {
+          "name": "QUEUE_CONNECTION",
+          "value": "database"
+        },
+        {
+          "name": "WATERLINE_ALLOW_UNAUTHENTICATED",
+          "value": "true"
+        }
+      ],
+      "required_ports": [],
+      "optional_ports": [
+        {
+          "host": 8000,
+          "protocol": "tcp",
+          "purpose": "optional php artisan serve Waterline inspection"
+        }
+      ],
+      "setup_reference": "laravel_user_embedded_completion",
+      "teardown_script_lines": [
+        "cd ..",
+        "rm -rf durable-workflow-laravel-quickstart"
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "python_user_local_server_completion",
+      "persona": "python",
+      "hosting_branch": "standalone_server_sqlite",
+      "depends_on": [
+        "standalone_server_sqlite"
+      ],
+      "source_channels": [
+        "docker_hub",
+        "pypi"
+      ],
+      "working_directory": "clean parent directory",
+      "required_environment": [
+        {
+          "name": "DW_AUTH_TOKEN",
+          "value": "dev-token"
+        }
+      ],
+      "command_script_lines": [
+        "mkdir durable-workflow-python-quickstart",
+        "cd durable-workflow-python-quickstart",
+        "python3 -m venv .venv",
+        ". .venv/bin/activate",
+        "pip install durable-workflow==0.4.89",
+        "cat > greeter.py <<'PY'",
+        "import asyncio",
+        "import time",
+        "",
+        "from durable_workflow import Client, Worker, activity, workflow",
+        "",
+        "",
+        "@activity.defn(name=\"quickstart.greet\")",
+        "async def greet(name: str) -> dict:",
+        "    return {\"greeting\": f\"Hello, {name}!\", \"length\": len(name)}",
+        "",
+        "",
+        "@workflow.defn(name=\"quickstart.greeter\")",
+        "class GreeterWorkflow:",
+        "    def run(self, ctx, name):",
+        "        result = yield ctx.schedule_activity(\"quickstart.greet\", [name])",
+        "        return result",
+        "",
+        "",
+        "async def main():",
+        "    workflow_id = f\"quickstart-python-greeter-{int(time.time())}\"",
+        "",
+        "    async with Client(",
+        "        \"http://localhost:8080\",",
+        "        token=\"dev-token\",",
+        "        namespace=\"default\",",
+        "    ) as client:",
+        "        handle = await client.start_workflow(",
+        "            workflow_type=\"quickstart.greeter\",",
+        "            task_queue=\"quickstart-python\",",
+        "            workflow_id=workflow_id,",
+        "            input=[\"Python\"],",
+        "        )",
+        "",
+        "        worker = Worker(",
+        "            client,",
+        "            task_queue=\"quickstart-python\",",
+        "            workflows=[GreeterWorkflow],",
+        "            activities=[greet],",
+        "        )",
+        "",
+        "        await worker.run_until(workflow_id=workflow_id, timeout=30.0)",
+        "        result = await handle.result(timeout=10.0)",
+        "",
+        "    print(f\"workflow_id={workflow_id}\")",
+        "    print(\"status=completed\")",
+        "    print(f\"result={result}\")",
+        "",
+        "",
+        "asyncio.run(main())",
+        "PY",
+        "python greeter.py"
+      ],
+      "success_probes": [
+        {
+          "id": "python_output_status",
+          "source": "stdout",
+          "required_substrings": [
+            "workflow_id=quickstart-python-greeter-",
+            "status=completed",
+            "Hello, Python!"
+          ]
+        }
+      ],
+      "expected_completion_state": {
+        "workflow_id_pattern": "^quickstart-python-greeter-[0-9]+$",
+        "status": "completed",
+        "result_contains": "Hello, Python!",
+        "timeout_seconds": 60
+      },
+      "outputs_for_dependent_scenarios": [
+        {
+          "name": "QUICKSTART_WORKFLOW_ID",
+          "source": "stdout.workflow_id"
+        }
+      ],
+      "teardown_script_lines": [
+        "deactivate 2>/dev/null || true",
+        "cd ..",
+        "rm -rf durable-workflow-python-quickstart"
+      ]
+    },
+    {
+      "id": "operator_local_server_observation",
+      "persona": "operator",
+      "hosting_branch": "standalone_server_sqlite",
+      "depends_on": [
+        "standalone_server_sqlite",
+        "python_user_local_server_completion"
+      ],
+      "source_channels": [
+        "durable_workflow_public_installer",
+        "docker_hub"
+      ],
+      "working_directory": "same clean parent directory used for the standalone server",
+      "required_environment": [
+        {
+          "name": "QUICKSTART_WORKFLOW_ID",
+          "source": "python_user_local_server_completion.stdout.workflow_id",
+          "example": "quickstart-python-greeter-0000000000"
+        }
+      ],
+      "command_script_lines": [
+        "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.81 sh",
+        "export PATH=\"$HOME/.local/bin:$PATH\"",
+        "dw env:set local --server=http://localhost:8080 --token=dev-token --namespace=default --make-default",
+        "dw doctor",
+        "dw server:health",
+        "dw server:info --output=json",
+        "export QUICKSTART_WORKFLOW_ID=\"${QUICKSTART_WORKFLOW_ID:?set to workflow_id printed by python greeter.py}\"",
+        "dw workflow:describe \"$QUICKSTART_WORKFLOW_ID\" --output=json | tee quickstart-workflow.json",
+        "export QUICKSTART_RUN_ID=\"$(python -c 'import json; print(json.load(open(\"quickstart-workflow.json\"))[\"run_id\"])')\"",
+        "dw workflow:history \"$QUICKSTART_WORKFLOW_ID\" \"$QUICKSTART_RUN_ID\" --output=json",
+        "dw workflow:list --status=completed --output=json"
+      ],
+      "success_probes": [
+        {
+          "id": "doctor",
+          "command": "dw doctor",
+          "expect_exit_code": 0
+        },
+        {
+          "id": "server_health",
+          "command": "dw server:health",
+          "expect_exit_code": 0
+        },
+        {
+          "id": "describe_has_run_id",
+          "source": "quickstart-workflow.json",
+          "expect_json_key": "run_id"
+        },
+        {
+          "id": "completed_list_contains_workflow",
+          "source": "stdout",
+          "required_substrings": [
+            "quickstart-python-greeter-"
+          ]
+        }
+      ],
+      "expected_completion_state": {
+        "observes_workflow_from": "python_user_local_server_completion",
+        "status": "completed",
+        "operator_only_creates_workflow": false
+      },
+      "teardown_script_lines": [
+        "dw env:delete local || true",
+        "rm -f quickstart-workflow.json"
+      ]
+    },
+    {
+      "id": "laravel_user_embedded_completion",
+      "persona": "laravel",
+      "hosting_branch": "embedded_laravel_database_queue",
+      "depends_on": [],
+      "source_channels": [
+        "packagist"
+      ],
+      "working_directory": "clean parent directory",
+      "required_environment": [
+        {
+          "name": "QUEUE_CONNECTION",
+          "value": "database"
+        },
+        {
+          "name": "WATERLINE_ALLOW_UNAUTHENTICATED",
+          "value": "true"
+        }
+      ],
+      "command_script_lines": [
+        "composer create-project laravel/laravel durable-workflow-laravel-quickstart",
+        "cd durable-workflow-laravel-quickstart",
+        "composer require durable-workflow/workflow:2.0.0-alpha.210@alpha durable-workflow/waterline:2.0.0-alpha.111@alpha",
+        "composer show durable-workflow/workflow",
+        "composer show durable-workflow/waterline",
+        "printf '\\nQUEUE_CONNECTION=database\\nWATERLINE_ALLOW_UNAUTHENTICATED=true\\n' >> .env",
+        "php artisan key:generate",
+        "php artisan waterline:install",
+        "php artisan migrate",
+        "mkdir -p app/Workflows/Quickstart",
+        "cat > app/Workflows/Quickstart/WelcomeActivity.php <<'PHP'",
+        "<?php",
+        "",
+        "namespace App\\Workflows\\Quickstart;",
+        "",
+        "use Workflow\\V2\\Activity;",
+        "use Workflow\\V2\\Attributes\\Type;",
+        "",
+        "#[Type('quickstart.laravel.welcome-activity')]",
+        "class WelcomeActivity extends Activity",
+        "{",
+        "    public function handle(string $name): string",
+        "    {",
+        "        return \"Hello, {$name}!\";",
+        "    }",
+        "}",
+        "PHP",
+        "cat > app/Workflows/Quickstart/WelcomeWorkflow.php <<'PHP'",
+        "<?php",
+        "",
+        "namespace App\\Workflows\\Quickstart;",
+        "",
+        "use Workflow\\V2\\Attributes\\Type;",
+        "use Workflow\\V2\\Workflow;",
+        "",
+        "use function Workflow\\V2\\activity;",
+        "",
+        "#[Type('quickstart.laravel.welcome')]",
+        "class WelcomeWorkflow extends Workflow",
+        "{",
+        "    public function handle(string $name): string",
+        "    {",
+        "        return activity(WelcomeActivity::class, $name);",
+        "    }",
+        "}",
+        "PHP",
+        "mkdir -p app/Console/Commands",
+        "cat > app/Console/Commands/RunQuickstartWorkflow.php <<'PHP'",
+        "<?php",
+        "",
+        "namespace App\\Console\\Commands;",
+        "",
+        "use App\\Workflows\\Quickstart\\WelcomeWorkflow;",
+        "use Illuminate\\Console\\Command;",
+        "use Workflow\\V2\\WorkflowStub;",
+        "",
+        "class RunQuickstartWorkflow extends Command",
+        "{",
+        "    protected $signature = 'app:quickstart-workflow';",
+        "",
+        "    protected $description = 'Run the Durable Workflow quickstart workflow.';",
+        "",
+        "    public function handle(): int",
+        "    {",
+        "        $workflow = WorkflowStub::make(",
+        "            WelcomeWorkflow::class,",
+        "            'quickstart-laravel-'.now()->format('YmdHis')",
+        "        );",
+        "",
+        "        $workflow->start('Laravel');",
+        "        $deadline = now()->addMinutes(10);",
+        "",
+        "        while ($workflow->refresh()->running()) {",
+        "            if (now()->greaterThan($deadline)) {",
+        "                $this->error('status=timeout');",
+        "                $this->line('workflow_id='.$workflow->workflowId());",
+        "",
+        "                return self::FAILURE;",
+        "            }",
+        "",
+        "            usleep(100_000);",
+        "        }",
+        "",
+        "        $this->line('workflow_id='.$workflow->workflowId());",
+        "        $this->line('status='.$workflow->status());",
+        "        $this->line('output='.$workflow->output());",
+        "",
+        "        return $workflow->completed() ? self::SUCCESS : self::FAILURE;",
+        "    }",
+        "}",
+        "PHP",
+        "set -o pipefail",
+        "php artisan queue:work --tries=1 --timeout=60 > storage/logs/quickstart-worker.log 2>&1 &",
+        "export QUICKSTART_QUEUE_PID=$!",
+        "trap 'kill \"$QUICKSTART_QUEUE_PID\" 2>/dev/null || true' EXIT",
+        "SECONDS=0",
+        "php artisan app:quickstart-workflow 2>&1 | tee quickstart-laravel-output.log",
+        "printf 'elapsed_seconds=%s\\n' \"$SECONDS\"",
+        "if [ -s storage/logs/quickstart-worker.log ]; then",
+        "  sed -n '1,120p' storage/logs/quickstart-worker.log",
+        "fi",
+        "kill \"$QUICKSTART_QUEUE_PID\" 2>/dev/null || true",
+        "trap - EXIT"
+      ],
+      "success_probes": [
+        {
+          "id": "composer_workflow_version",
+          "source": "stdout",
+          "required_substrings": [
+            "durable-workflow/workflow",
+            "2.0.0-alpha.210"
+          ]
+        },
+        {
+          "id": "composer_waterline_version",
+          "source": "stdout",
+          "required_substrings": [
+            "durable-workflow/waterline",
+            "2.0.0-alpha.111"
+          ]
+        },
+        {
+          "id": "artisan_completion",
+          "source": "quickstart-laravel-output.log",
+          "required_substrings": [
+            "status=completed",
+            "output=Hello, Laravel!"
+          ]
+        },
+        {
+          "id": "elapsed_time_recorded",
+          "source": "stdout",
+          "required_substrings": [
+            "elapsed_seconds="
+          ]
+        }
+      ],
+      "expected_completion_state": {
+        "workflow_id_pattern": "^quickstart-laravel-[0-9]{14}$",
+        "status": "completed",
+        "result_contains": "Hello, Laravel!",
+        "timeout_seconds": 600
+      },
+      "teardown_script_lines": [
+        "kill \"$QUICKSTART_QUEUE_PID\" 2>/dev/null || true",
+        "cd ..",
+        "rm -rf durable-workflow-laravel-quickstart"
+      ]
+    }
+  ]
+}

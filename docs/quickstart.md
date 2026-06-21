@@ -38,6 +38,12 @@ This path uses published artifacts only:
 | Laravel package | `%%artifact.workflowComposerPackage%%` |
 | Waterline | `%%artifact.waterlineComposerPackage%%` |
 
+The machine-readable
+<a href="https://durable-workflow.com/quickstart-execution-contract.json">quickstart execution contract</a>
+lists the supported personas, hosting branches, public artifact sources, exact
+command scripts, success probes, completion state, and teardown steps for this
+2.0 prerelease path.
+
 ## Start A Local Server
 
 Use this server for the Python and operator paths. It runs the published server

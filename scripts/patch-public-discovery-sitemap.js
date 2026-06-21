@@ -20,6 +20,10 @@ const REQUIRED_DISCOVERY_ENTRIES = [
     buildPath: 'docs/2.0/quickstart/index.html',
   },
   {
+    path: '/quickstart-execution-contract.json',
+    buildPath: 'quickstart-execution-contract.json',
+  },
+  {
     path: '/docs/2.0/polyglot/python/',
     buildPath: 'docs/2.0/polyglot/python/index.html',
   },

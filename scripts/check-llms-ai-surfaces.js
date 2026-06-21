@@ -88,6 +88,7 @@ function main() {
     ARTIFACT_PINS.pythonPipInstallCommand,
     'dw env:set local',
     'dw doctor',
+    '/quickstart-execution-contract.json',
     'CLI and Python Parity',
     'workflow-start-parity.json',
     'activity_grade_external_execution',

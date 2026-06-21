@@ -14,6 +14,7 @@ const PRERELEASE_DOCS_ROOT = '/docs/2.0/introduction/';
 const PUBLIC_DISCOVERY_URLS = [
   '/docs/',
   '/docs/2.0/quickstart/',
+  '/quickstart-execution-contract.json',
   '/docs/2.0/polyglot/python/',
   '/docs/2.0/polyglot/server/',
   '/docs/2.0/polyglot/cli/',
@@ -191,6 +192,7 @@ function assertBuiltDocsPolicy() {
   const prereleaseIntro = readBuildFile('docs/2.0/introduction/index.html');
   const home = readBuildFile('index.html');
   const prereleaseQuickstart = readBuildFile('docs/2.0/quickstart/index.html');
+  const quickstartContract = readBuildFile('quickstart-execution-contract.json');
   const prereleasePageReleaseAudit = readBuildFile('docs/2.0/docs-page-release-audit/index.html');
   const pageReleaseAudit = readBuildFile('docs-page-release-audit.json');
   const canonicalIndex = readBuildFile('llms.txt');
@@ -230,6 +232,7 @@ function assertBuiltDocsPolicy() {
   assertIncludes(prereleaseQuickstart, 'Operator User', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'Laravel User', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'Completion Criteria', '2.0 quickstart page');
+  assertIncludes(prereleaseQuickstart, 'href="https://durable-workflow.com/quickstart-execution-contract.json"', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'await worker.run_until', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'status=completed', '2.0 quickstart page');
   assertIncludes(prereleaseQuickstart, 'dw workflow:history &quot;$QUICKSTART_WORKFLOW_ID&quot; &quot;$QUICKSTART_RUN_ID&quot; --output=json', '2.0 quickstart page');
@@ -256,6 +259,11 @@ function assertBuiltDocsPolicy() {
   assertIncludes(pageReleaseAudit, '"schema": "durable-workflow.docs.page-release-audit"', 'docs page release audit manifest');
   assertIncludes(pageReleaseAudit, '"stable_default_docs_version": "1.x"', 'docs page release audit manifest');
   assertIncludes(pageReleaseAudit, '"explicit_prerelease_docs_version": "2.0"', 'docs page release audit manifest');
+  assertIncludes(quickstartContract, '"schema": "durable-workflow.docs.v2.quickstart-execution-contract"', 'quickstart execution contract');
+  assertIncludes(quickstartContract, '"stable_default_docs_version": "1.x"', 'quickstart execution contract');
+  assertIncludes(quickstartContract, '"python_user_local_server_completion"', 'quickstart execution contract');
+  assertIncludes(quickstartContract, '"operator_local_server_observation"', 'quickstart execution contract');
+  assertIncludes(quickstartContract, '"laravel_user_embedded_completion"', 'quickstart execution contract');
 
   assertIncludes(canonicalIndex, 'versioned_docs/version-1.x', 'canonical llms.txt');
   assertIncludes(canonicalFull, '<!-- Source: versioned_docs/version-1.x', 'canonical llms-full.txt');
@@ -269,6 +277,7 @@ function assertBuiltDocsPolicy() {
   assertIncludes(prereleaseFull, '2.0 Prerelease Documentation', 'llms-full-2.0.txt');
   assertIncludes(prereleaseFull, 'not the default public docs line', 'llms-full-2.0.txt');
   assertIncludes(prereleaseFull, '# 2.0 Prerelease Quickstart', 'llms-full-2.0.txt');
+  assertIncludes(prereleaseFull, '/quickstart-execution-contract.json', 'llms-full-2.0.txt');
   assertIncludes(prereleaseFull, ARTIFACT_PINS.pythonPipInstallCommand, 'llms-full-2.0.txt');
   assertOnlyWaterlineArtifact(prereleaseFull, 'llms-full-2.0.txt');
 }
