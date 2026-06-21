@@ -6,6 +6,6 @@
     "sdk-python": "0.4.89",
     "server": "0.2.455",
     "waterline": "2.0.0-alpha.111",
-    "workflow": "2.0.0-alpha.210"
+    "workflow": "2.0.0-alpha.211"
   }
 }
