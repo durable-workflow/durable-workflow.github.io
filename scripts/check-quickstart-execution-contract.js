@@ -6,6 +6,7 @@ const path = require('path');
 const {
   ARTIFACT_PINS,
   ARTIFACT_VERSIONS,
+  replaceArtifactTokens,
 } = require('./public-artifact-versions');
 
 const repoRoot = path.join(__dirname, '..');
@@ -36,16 +37,90 @@ function assertEqual(actual, expected, label) {
   }
 }
 
+function assertDeepEqual(actual, expected, label) {
+  const actualJson = JSON.stringify(actual);
+  const expectedJson = JSON.stringify(expected);
+
+  if (actualJson === expectedJson) {
+    return;
+  }
+
+  if (Array.isArray(actual) && Array.isArray(expected)) {
+    const maxLength = Math.max(actual.length, expected.length);
+    for (let index = 0; index < maxLength; index += 1) {
+      if (actual[index] !== expected[index]) {
+        fail(
+          `${label} must match docs/quickstart.md line ${index + 1}; ` +
+            `expected ${JSON.stringify(expected[index])}, got ${JSON.stringify(actual[index])}`,
+        );
+      }
+    }
+  }
+
+  fail(`${label} must match docs/quickstart.md`);
+}
+
 function assertIncludes(haystack, needle, label) {
   if (!String(haystack).includes(needle)) {
     fail(`${label} must include ${JSON.stringify(needle)}`);
   }
 }
 
+function assertIncludesNormalizedWhitespace(haystack, needle, label) {
+  const normalizedHaystack = String(haystack).replace(/\s+/g, ' ');
+  const normalizedNeedle = String(needle).replace(/\s+/g, ' ');
+
+  assertIncludes(normalizedHaystack, normalizedNeedle, label);
+}
+
 function assertArray(value, label) {
   if (!Array.isArray(value) || value.length === 0) {
     fail(`${label} must be a non-empty array`);
   }
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function docsExamplePattern(id) {
+  return new RegExp(
+    `<!--\\s*docs-example\\s+id=["']${escapeRegExp(id)}["']\\s*-->\\s*\\n\\s*\`\`\`([A-Za-z0-9_-]+)?\\n([\\s\\S]*?)\\n\\s*\`\`\``,
+    'm',
+  );
+}
+
+function docsExampleLines(renderedQuickstart, id) {
+  const match = renderedQuickstart.match(docsExamplePattern(id));
+
+  if (!match) {
+    fail(`docs/quickstart.md must include docs-example ${JSON.stringify(id)} followed by a fenced block`);
+  }
+
+  const language = match[1] || '';
+  if (language !== 'bash') {
+    fail(`docs/quickstart.md docs-example ${id} must be a bash fenced block; found ${language || 'untyped'}`);
+  }
+
+  return match[2].replace(/\r\n/g, '\n').split('\n');
+}
+
+function concatDocsExamples(renderedQuickstart, ids) {
+  return ids.flatMap(id => docsExampleLines(renderedQuickstart, id));
+}
+
+function extractSection(content, startHeading, endHeading) {
+  const startIndex = content.indexOf(startHeading);
+  if (startIndex === -1) {
+    fail(`docs/quickstart.md must include ${JSON.stringify(startHeading)}`);
+  }
+
+  const endIndex = content.indexOf(endHeading, startIndex + startHeading.length);
+  if (endIndex === -1) {
+    fail(`docs/quickstart.md must include ${JSON.stringify(endHeading)} after ${JSON.stringify(startHeading)}`);
+  }
+
+  return content.slice(startIndex, endIndex);
 }
 
 function getDocsReleaseConfig() {
@@ -118,6 +193,174 @@ function assertScenarioShape(scenario, hostingBranches, personas) {
 
   if (!scenario.expected_completion_state || typeof scenario.expected_completion_state.status !== 'string') {
     fail(`${scenario.id}.expected_completion_state.status must be declared`);
+  }
+}
+
+function assertQuickstartScriptLinesMatchDocs(contract, renderedQuickstart) {
+  const hostingBranches = byId(contract.hosting_branches, 'hosting_branches');
+  const scenarios = byId(contract.scenarios, 'scenarios');
+  const standalone = hostingBranches.get('standalone_server_sqlite');
+  const embeddedLaravel = hostingBranches.get('embedded_laravel_database_queue');
+  const python = scenarios.get('python_user_local_server_completion');
+  const operator = scenarios.get('operator_local_server_observation');
+  const laravel = scenarios.get('laravel_user_embedded_completion');
+
+  assertDeepEqual(
+    standalone.setup_script_lines,
+    docsExampleLines(renderedQuickstart, 'quickstart.server.setup'),
+    'standalone_server_sqlite.setup_script_lines',
+  );
+  assertDeepEqual(
+    standalone.teardown_script_lines,
+    docsExampleLines(renderedQuickstart, 'quickstart.server.cleanup'),
+    'standalone_server_sqlite.teardown_script_lines',
+  );
+  assertDeepEqual(
+    embeddedLaravel.teardown_script_lines,
+    docsExampleLines(renderedQuickstart, 'quickstart.laravel.app-cleanup'),
+    'embedded_laravel_database_queue.teardown_script_lines',
+  );
+  assertDeepEqual(
+    python.command_script_lines,
+    concatDocsExamples(renderedQuickstart, [
+      'quickstart.python.install',
+      'quickstart.python.greeter',
+    ]),
+    'python_user_local_server_completion.command_script_lines',
+  );
+  assertDeepEqual(
+    python.teardown_script_lines,
+    docsExampleLines(renderedQuickstart, 'quickstart.python.cleanup'),
+    'python_user_local_server_completion.teardown_script_lines',
+  );
+  assertDeepEqual(
+    operator.command_script_lines,
+    concatDocsExamples(renderedQuickstart, [
+      'quickstart.operator.setup',
+      'quickstart.operator.observe',
+    ]),
+    'operator_local_server_observation.command_script_lines',
+  );
+  assertDeepEqual(
+    operator.teardown_script_lines,
+    docsExampleLines(renderedQuickstart, 'quickstart.operator.cleanup'),
+    'operator_local_server_observation.teardown_script_lines',
+  );
+  assertDeepEqual(
+    laravel.command_script_lines,
+    concatDocsExamples(renderedQuickstart, [
+      'quickstart.laravel.install',
+      'quickstart.laravel.workflow-files',
+      'quickstart.laravel.command',
+      'quickstart.laravel.run',
+    ]),
+    'laravel_user_embedded_completion.command_script_lines',
+  );
+  assertDeepEqual(
+    laravel.teardown_script_lines,
+    docsExampleLines(renderedQuickstart, 'quickstart.laravel.cleanup'),
+    'laravel_user_embedded_completion.teardown_script_lines',
+  );
+}
+
+function documentedWorkflowIdPattern(pattern, label) {
+  if (pattern === '^quickstart-python-greeter-[0-9]+$') {
+    return 'quickstart-python-greeter-*';
+  }
+
+  if (pattern === '^quickstart-laravel-[0-9]{14}$') {
+    return 'quickstart-laravel-*';
+  }
+
+  fail(`${label}.workflow_id_pattern has no docs wildcard mapping: ${pattern}`);
+}
+
+function assertExpectedStateDocumented(state, completionCriteria, fullQuickstart, label) {
+  if (!state) {
+    fail(`${label}.expected_completion_state must be declared`);
+  }
+
+  if (state.workflow_id_pattern) {
+    assertIncludes(
+      completionCriteria,
+      documentedWorkflowIdPattern(state.workflow_id_pattern, label),
+      `${label} completion criteria`,
+    );
+  }
+
+  if (state.status) {
+    assertIncludes(completionCriteria, state.status, `${label} completion criteria status`);
+  }
+
+  if (state.result_contains) {
+    assertIncludes(completionCriteria, state.result_contains, `${label} completion criteria result`);
+  }
+
+  if (typeof state.timeout_seconds === 'number') {
+    assertIncludes(
+      completionCriteria,
+      `${state.timeout_seconds} seconds`,
+      `${label} completion criteria timeout`,
+    );
+  }
+
+  if (state.observes_workflow_from) {
+    assertIncludes(completionCriteria, 'Python workflow', `${label} completion criteria observed workflow`);
+  }
+
+  if (state.operator_only_creates_workflow === false) {
+    assertIncludesNormalizedWhitespace(
+      fullQuickstart,
+      'does not create or complete a user workflow by itself',
+      `${label} operator-only behavior`,
+    );
+  }
+}
+
+function assertSuccessProbeDocumented(probe, completionCriteria, scriptCorpus, label) {
+  if (probe.command) {
+    assertIncludes(
+      `${completionCriteria}\n${scriptCorpus}`,
+      probe.command,
+      `${label}.${probe.id} command`,
+    );
+  }
+
+  if (probe.expect_json_key) {
+    assertIncludes(completionCriteria, probe.expect_json_key, `${label}.${probe.id} expected JSON key`);
+  }
+
+  for (const substring of probe.required_substrings || []) {
+    assertIncludes(completionCriteria, substring, `${label}.${probe.id} required substring`);
+  }
+}
+
+function assertQuickstartObservablesMatchDocs(contract, renderedQuickstart) {
+  const completionCriteria = extractSection(renderedQuickstart, '## Completion Criteria', '## Clean Up');
+  const scriptCorpus = [
+    ...contract.hosting_branches.flatMap(branch => branch.setup_script_lines || []),
+    ...contract.hosting_branches.flatMap(branch => branch.teardown_script_lines || []),
+    ...contract.scenarios.flatMap(scenario => scenario.command_script_lines || []),
+    ...contract.scenarios.flatMap(scenario => scenario.teardown_script_lines || []),
+  ].join('\n');
+
+  for (const branch of contract.hosting_branches || []) {
+    for (const probe of branch.success_probes || []) {
+      assertSuccessProbeDocumented(probe, completionCriteria, scriptCorpus, branch.id);
+    }
+  }
+
+  for (const scenario of contract.scenarios || []) {
+    for (const probe of scenario.success_probes || []) {
+      assertSuccessProbeDocumented(probe, completionCriteria, scriptCorpus, scenario.id);
+    }
+
+    assertExpectedStateDocumented(
+      scenario.expected_completion_state,
+      completionCriteria,
+      renderedQuickstart,
+      scenario.id,
+    );
   }
 }
 
@@ -198,6 +441,7 @@ function assertDocsGuard(contract) {
 function main() {
   const contract = loadJson(contractPath, 'static/quickstart-execution-contract.json');
   const quickstart = read(quickstartPath);
+  const renderedQuickstart = replaceArtifactTokens(quickstart, 'docs/quickstart.md');
 
   assertEqual(contract.schema, EXPECTED_SCHEMA, 'quickstart execution contract schema');
   assertEqual(contract.version, 1, 'quickstart execution contract version');
@@ -208,6 +452,8 @@ function main() {
   assertDocsGuard(contract);
   assertPublicArtifactPins(contract);
   assertContractCoverage(contract);
+  assertQuickstartScriptLinesMatchDocs(contract, renderedQuickstart);
+  assertQuickstartObservablesMatchDocs(contract, renderedQuickstart);
 
   console.log('Quickstart execution contract checks passed');
 }

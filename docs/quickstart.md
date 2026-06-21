@@ -49,6 +49,7 @@ command scripts, success probes, completion state, and teardown steps for this
 Use this server for the Python and operator paths. It runs the published server
 image with SQLite, so no source checkout, MySQL, or Redis setup is required.
 
+<!-- docs-example id="quickstart.server.setup" -->
 ```bash
 export DW_SERVER_IMAGE=%%artifact.serverDockerHubImage%%
 export DW_AUTH_TOKEN=dev-token
@@ -79,6 +80,7 @@ curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
 Create a clean project, install the published Python SDK, then run one workflow
 to completion against the local server.
 
+<!-- docs-example id="quickstart.python.install" -->
 ```bash
 mkdir durable-workflow-python-quickstart
 cd durable-workflow-python-quickstart
@@ -90,6 +92,7 @@ pip install %%artifact.pythonPackagePin%%
 
 Create `greeter.py`:
 
+<!-- docs-example id="quickstart.python.greeter" -->
 ```bash
 cat > greeter.py <<'PY'
 import asyncio
@@ -154,6 +157,7 @@ activity result. Keep the printed workflow id for the operator check below.
 Install the published CLI, point it at the same local server, then inspect the
 completed Python workflow.
 
+<!-- docs-example id="quickstart.operator.setup" -->
 ```bash
 curl -fsSL https://durable-workflow.com/install.sh | %%artifact.cliInstallerEnv%% sh
 export PATH="$HOME/.local/bin:$PATH"
@@ -169,11 +173,13 @@ dw server:health
 dw server:info --output=json
 ```
 
-Set `QUICKSTART_WORKFLOW_ID` to the id printed by `python greeter.py`, then
-capture its current run id and read the durable completed state:
+Set `QUICKSTART_WORKFLOW_ID` to the id printed by `python greeter.py` before
+running this block; the first line fails clearly if it is missing. Then capture
+the current run id and read the durable completed state:
 
+<!-- docs-example id="quickstart.operator.observe" -->
 ```bash
-export QUICKSTART_WORKFLOW_ID=quickstart-python-greeter-0000000000
+export QUICKSTART_WORKFLOW_ID="${QUICKSTART_WORKFLOW_ID:?set to workflow_id printed by python greeter.py}"
 
 dw workflow:describe "$QUICKSTART_WORKFLOW_ID" --output=json \
   | tee quickstart-workflow.json
@@ -186,9 +192,9 @@ dw workflow:list --status=completed --output=json
 ```
 
 An operator-only CLI session can verify server readiness, worker registration,
-task queues, and completed runs. It cannot complete a user workflow by itself:
-completion requires a worker process that implements the workflow type, such as
-the Python worker above or a Laravel queue worker below.
+task queues, and completed runs. It does not create or complete a user workflow
+by itself: completion requires a worker process that implements the workflow
+type, such as the Python worker above or a Laravel queue worker below.
 
 ## Laravel User
 
@@ -344,13 +350,52 @@ state from published artifacts:
 
 | Path | Observable proof |
 | --- | --- |
-| Local server hosting | `curl http://localhost:8080/api/ready` succeeds, `GET /api/cluster/info` returns the standalone server topology, and the Python workflow below completes against that server. |
-| Python user | `python greeter.py` prints `status=completed`, a `quickstart-python-greeter-*` workflow id, and the activity result. |
-| Operator user | `dw workflow:describe "$QUICKSTART_WORKFLOW_ID" --output=json` shows a `run_id`, `dw workflow:history "$QUICKSTART_WORKFLOW_ID" "$QUICKSTART_RUN_ID" --output=json` shows history for that run, and `dw workflow:list --status=completed --output=json` shows the completed Python workflow on the same server profile. |
-| Laravel user | `composer show durable-workflow/workflow` and `composer show durable-workflow/waterline` print the resolved published package versions, and `php artisan app:quickstart-workflow` prints `status=completed`, `output=Hello, Laravel!`, and `elapsed_seconds=<10 minute value>` while the Laravel queue worker is running. |
+| Local server hosting | `curl -sf http://localhost:8080/api/ready` succeeds, `curl -H "Authorization: Bearer $DW_AUTH_TOKEN" http://localhost:8080/api/cluster/info` returns JSON for the standalone server topology, and the Python workflow below completes against that server. |
+| Python user | `python greeter.py` prints `workflow_id=quickstart-python-greeter-*`, `status=completed`, and `Hello, Python!` before the 60 seconds contract timeout. |
+| Operator user | `dw doctor` and `dw server:health` succeed, `dw workflow:describe "$QUICKSTART_WORKFLOW_ID" --output=json` writes `run_id`, `dw workflow:history "$QUICKSTART_WORKFLOW_ID" "$QUICKSTART_RUN_ID" --output=json` shows history for that run, and `dw workflow:list --status=completed --output=json` shows the completed `quickstart-python-greeter-*` workflow on the same server profile. |
+| Laravel user | `composer show durable-workflow/workflow` prints `durable-workflow/workflow` with `%%artifact.workflowVersion%%`, `composer show durable-workflow/waterline` prints `durable-workflow/waterline` with `%%artifact.waterlineVersion%%`, and `php artisan app:quickstart-workflow` prints `workflow_id=quickstart-laravel-*`, `status=completed`, `output=Hello, Laravel!`, and `elapsed_seconds=` before the 600 seconds contract timeout while the Laravel queue worker is running. |
 
 ## Clean Up
 
+Remove the CLI profile and workflow inspection file:
+
+<!-- docs-example id="quickstart.operator.cleanup" -->
+```bash
+dw env:delete local || true
+rm -f quickstart-workflow.json
+```
+
+Remove the Python workspace:
+
+<!-- docs-example id="quickstart.python.cleanup" -->
+```bash
+deactivate 2>/dev/null || true
+cd ..
+rm -rf durable-workflow-python-quickstart
+```
+
+If you created the Laravel app but did not start the queue worker, remove the
+app directory:
+
+<!-- docs-example id="quickstart.laravel.app-cleanup" -->
+```bash
+cd ..
+rm -rf durable-workflow-laravel-quickstart
+```
+
+If the Laravel queue worker might still be running, stop it before removing the
+app directory:
+
+<!-- docs-example id="quickstart.laravel.cleanup" -->
+```bash
+kill "$QUICKSTART_QUEUE_PID" 2>/dev/null || true
+cd ..
+rm -rf durable-workflow-laravel-quickstart
+```
+
+Stop and remove the standalone server:
+
+<!-- docs-example id="quickstart.server.cleanup" -->
 ```bash
 docker rm -f durable-workflow-server
 docker volume rm durable-workflow-quickstart
