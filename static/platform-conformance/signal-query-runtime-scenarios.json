@@ -1,9 +1,9 @@
 {
   "schema": "durable-workflow.v2.platform-conformance.runtime-scenarios",
-  "version": 3,
+  "version": 4,
   "category": "signal_query_runtime_contract",
   "suite_schema": "durable-workflow.v2.platform-conformance.suite",
-  "suite_version": 25,
+  "suite_version": 26,
   "description": "Public scenario manifest for the stable signal and query runtime contract. Harnesses use these scenario ids and criteria when evaluating published Durable Workflow artifacts.",
   "fixture_type": "published_artifact_runtime_scenario_manifest",
   "result_statuses": [
@@ -81,12 +81,14 @@
         "start a signal-aware workflow on the Python worker",
         "send a signal through the Python SDK client",
         "send a signal through the CLI client",
-        "query the run through both clients"
+        "query the run through both clients",
+        "record the CLI current-query task routed by the server to the Python SDK worker"
       ],
       "pass_criteria": [
         "both signals are delivered exactly once in the observed workflow state",
         "both clients observe the same query result",
-        "CLI JSON output and SDK result envelopes identify the same run"
+        "CLI JSON output and SDK result envelopes identify the same run",
+        "the current query proof includes public query-task metadata for the expected workflow id, run id, worker id, task queue, and query task id"
       ]
     },
     {

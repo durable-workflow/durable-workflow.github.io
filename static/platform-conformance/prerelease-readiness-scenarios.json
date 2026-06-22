@@ -3,7 +3,7 @@
   "version": 1,
   "category": "prerelease_readiness_contract",
   "suite_schema": "durable-workflow.v2.platform-conformance.suite",
-  "suite_version": 25,
+  "suite_version": 26,
   "description": "Public scenario manifest for Durable Workflow 2.0 prerelease readiness. Harnesses use these scenario ids and criteria when evaluating the coordinated published artifact set, including the versioned quickstart local-server and Laravel completion branches.",
   "fixture_type": "published_artifact_runtime_scenario_manifest",
   "result_statuses": [
