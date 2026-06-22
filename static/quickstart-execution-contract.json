@@ -23,14 +23,14 @@
   "artifacts": {
     "server": {
       "channel": "docker_hub",
-      "version": "0.2.469",
+      "version": "0.2.471",
       "image": "durableworkflow/server",
-      "reference": "durableworkflow/server:0.2.469"
+      "reference": "durableworkflow/server:0.2.471"
     },
     "cli": {
       "channel": "durable_workflow_public_installer",
-      "version": "0.1.81",
-      "install_command": "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.81 sh"
+      "version": "0.1.82",
+      "install_command": "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.82 sh"
     },
     "sdk-python": {
       "channel": "pypi",
@@ -40,8 +40,8 @@
     },
     "workflow": {
       "channel": "packagist",
-      "version": "2.0.0-alpha.212",
-      "composer_constraint": "durable-workflow/workflow:2.0.0-alpha.212@alpha"
+      "version": "2.0.0-alpha.213",
+      "composer_constraint": "durable-workflow/workflow:2.0.0-alpha.213@alpha"
     },
     "waterline": {
       "channel": "packagist",
@@ -78,7 +78,7 @@
       "required_environment": [
         {
           "name": "DW_SERVER_IMAGE",
-          "value": "durableworkflow/server:0.2.469"
+          "value": "durableworkflow/server:0.2.471"
         },
         {
           "name": "DW_AUTH_TOKEN",
@@ -93,7 +93,7 @@
         }
       ],
       "setup_script_lines": [
-        "export DW_SERVER_IMAGE=durableworkflow/server:0.2.469",
+        "export DW_SERVER_IMAGE=durableworkflow/server:0.2.471",
         "export DW_AUTH_TOKEN=dev-token",
         "",
         "docker volume create durable-workflow-quickstart",
@@ -296,7 +296,7 @@
         }
       ],
       "command_script_lines": [
-        "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.81 sh",
+        "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.82 sh",
         "export PATH=\"$HOME/.local/bin:$PATH\"",
         "",
         "dw env:set local \\",
@@ -377,7 +377,7 @@
         "cd durable-workflow-laravel-quickstart",
         "",
         "composer require \\",
-        "  durable-workflow/workflow:2.0.0-alpha.212@alpha \\",
+        "  durable-workflow/workflow:2.0.0-alpha.213@alpha \\",
         "  durable-workflow/waterline:2.0.0-alpha.111@alpha",
         "composer show durable-workflow/workflow",
         "composer show durable-workflow/waterline",
@@ -495,7 +495,7 @@
           "source": "stdout",
           "required_substrings": [
             "durable-workflow/workflow",
-            "2.0.0-alpha.212"
+            "2.0.0-alpha.213"
           ]
         },
         {

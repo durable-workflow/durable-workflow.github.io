@@ -2,10 +2,10 @@
   "schema": "durable-workflow.docs.public-artifact-versions",
   "schemaVersion": 1,
   "artifacts": {
-    "cli": "0.1.81",
+    "cli": "0.1.82",
     "sdk-python": "0.4.89",
-    "server": "0.2.469",
+    "server": "0.2.471",
     "waterline": "2.0.0-alpha.111",
-    "workflow": "2.0.0-alpha.212"
+    "workflow": "2.0.0-alpha.213"
   }
 }
