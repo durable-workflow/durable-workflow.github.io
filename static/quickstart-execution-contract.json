@@ -34,9 +34,9 @@
     },
     "sdk-python": {
       "channel": "pypi",
-      "version": "0.4.89",
-      "pip_package": "durable-workflow==0.4.89",
-      "install_command": "pip install durable-workflow==0.4.89"
+      "version": "0.4.90",
+      "pip_package": "durable-workflow==0.4.90",
+      "install_command": "pip install durable-workflow==0.4.90"
     },
     "workflow": {
       "channel": "packagist",
@@ -191,7 +191,7 @@
         "",
         "python3 -m venv .venv",
         ". .venv/bin/activate",
-        "pip install durable-workflow==0.4.89",
+        "pip install durable-workflow==0.4.90",
         "cat > greeter.py <<'PY'",
         "import asyncio",
         "import time",
