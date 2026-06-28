@@ -1,4 +1,6 @@
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
 
 const source = require('./public-artifact-versions.json');
 const {
@@ -11,10 +13,13 @@ const {
   compatibilityHistoryRow,
   parseRegistryNextLink,
   parseCompatibilityHistoryRow,
+  quickstartExecutionContractSource,
   replaceCompatibilityHistoryTopRow,
   selectServerRegistryVersion,
   selectLatestVersion,
 } = require('./refresh-public-artifact-versions');
+
+const quickstartContractPath = path.join(__dirname, '..', 'static', 'quickstart-execution-contract.json');
 
 function cloneSource() {
   return JSON.parse(JSON.stringify(source));
@@ -44,6 +49,30 @@ assert.strictEqual(currentArtifactPins.pythonSdkVersion, source.artifacts['sdk-p
 assert.strictEqual(currentArtifactPins.serverVersion, source.artifacts.server);
 assert.strictEqual(currentArtifactPins.workflowVersion, source.artifacts.workflow);
 assert.strictEqual(currentArtifactPins.waterlineVersion, source.artifacts.waterline);
+
+const currentQuickstartContract = fs.readFileSync(quickstartContractPath, 'utf8');
+assert.strictEqual(
+  quickstartExecutionContractSource(currentQuickstartContract, source.artifacts),
+  currentQuickstartContract,
+  'quickstart execution contract must already match current public artifact pins'
+);
+
+let staleQuickstartContract = currentQuickstartContract;
+for (const [currentVersion, staleVersion] of [
+  [source.artifacts.cli, '0.1.81'],
+  [source.artifacts['sdk-python'], '0.4.90'],
+  [source.artifacts.server, '0.2.512'],
+  [source.artifacts.workflow, '2.0.0-alpha.223'],
+  [source.artifacts.waterline, '2.0.0-alpha.110'],
+]) {
+  staleQuickstartContract = staleQuickstartContract.replaceAll(currentVersion, staleVersion);
+}
+
+assert.strictEqual(
+  quickstartExecutionContractSource(staleQuickstartContract, source.artifacts),
+  currentQuickstartContract,
+  'public artifact refresh must regenerate static/quickstart-execution-contract.json pins'
+);
 
 function extractObservedPins(definition, content) {
   const pattern = new RegExp(definition.pattern.source, definition.pattern.flags);

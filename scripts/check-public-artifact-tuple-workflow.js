@@ -45,6 +45,7 @@ for (const required of [
   "integration: 'pipeline'",
   'scripts/public-artifact-versions.json',
   'docs/compatibility.md',
+  'static/quickstart-execution-contract.json',
   "stable_default_docs_line: '1.x'",
   "prerelease_docs_line: '2.0'",
   "'LEAK=0'",
@@ -125,10 +126,12 @@ const multiArtifactHandoff = {
   refresh_files: [
     'scripts/public-artifact-versions.json',
     'docs/compatibility.md',
+    'static/quickstart-execution-contract.json',
   ],
   changed_files: [
     'scripts/public-artifact-versions.json',
     'docs/compatibility.md',
+    'static/quickstart-execution-contract.json',
   ],
   tuple_date: stableKeyHandoff.tuple_date,
   artifact_versions: stableKeyHandoff.artifact_versions,

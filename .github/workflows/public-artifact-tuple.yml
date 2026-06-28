@@ -62,11 +62,11 @@ jobs:
         run: |
           set -euo pipefail
 
-          if git diff --quiet -- scripts/public-artifact-versions.json docs/compatibility.md; then
+          if git diff --quiet -- scripts/public-artifact-versions.json docs/compatibility.md static/quickstart-execution-contract.json; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
-            git diff -- scripts/public-artifact-versions.json docs/compatibility.md
+            git diff -- scripts/public-artifact-versions.json docs/compatibility.md static/quickstart-execution-contract.json
           fi
 
       - name: Validate refreshed docs
@@ -92,6 +92,7 @@ jobs:
           const refreshFiles = [
             'scripts/public-artifact-versions.json',
             'docs/compatibility.md',
+            'static/quickstart-execution-contract.json',
           ];
           const allChangedFiles = childProcess.execFileSync(
             'git',
@@ -148,7 +149,7 @@ jobs:
               body: [
                 'Published package registries now contain a newer public artifact tuple than the docs release-audit surface.',
                 '',
-                `Run ${refreshCommand} and commit only scripts/public-artifact-versions.json plus docs/compatibility.md through the normal docs merge path.`,
+                `Run ${refreshCommand} and commit only the generated public artifact tuple files through the normal docs merge path.`,
               ].join('\n'),
               labels: [
                 'pipeline:ready-item',

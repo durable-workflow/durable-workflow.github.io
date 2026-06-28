@@ -13,6 +13,7 @@ const EXPECTED_REFRESH_COMMAND = 'npm run refresh:public-artifact-versions';
 const EXPECTED_REFRESH_FILES = [
   'scripts/public-artifact-versions.json',
   'docs/compatibility.md',
+  'static/quickstart-execution-contract.json',
 ];
 const ARTIFACT_ORDER = ['cli', 'sdk-python', 'server', 'workflow', 'waterline'];
 const GATE_ACTION_LIST_READY_ITEMS = 'gh.issue.list';

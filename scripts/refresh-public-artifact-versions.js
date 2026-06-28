@@ -8,12 +8,19 @@ const {
   ARTIFACT_VERSION_REQUIREMENTS,
   ARTIFACT_VERSION_SCHEMA,
   REQUIRED_ARTIFACTS,
+  buildArtifactPins,
   readArtifactVersions,
 } = require('./public-artifact-versions');
 
 const repoRoot = path.join(__dirname, '..');
 const artifactVersionsPath = path.join(__dirname, 'public-artifact-versions.json');
 const compatibilityDocPath = path.join(repoRoot, 'docs', 'compatibility.md');
+const quickstartContractPath = path.join(repoRoot, 'static', 'quickstart-execution-contract.json');
+const PUBLIC_ARTIFACT_TUPLE_FILES = Object.freeze([
+  'scripts/public-artifact-versions.json',
+  'docs/compatibility.md',
+  'static/quickstart-execution-contract.json',
+]);
 
 const DEFAULT_TIMEOUT_MS = 20000;
 const MAX_REDIRECTS = 5;
@@ -88,9 +95,10 @@ function usage() {
     'Usage:',
     '  node scripts/refresh-public-artifact-versions.js [--check] [--date YYYY-MM-DD]',
     '',
-    'Default mode refreshes scripts/public-artifact-versions.json and the top',
-    'docs/compatibility.md version-history row from the current published tuple.',
-    '--check fails without writing when either source is stale.',
+    'Default mode refreshes the generated public artifact tuple files from',
+    'the current published tuple:',
+    ...PUBLIC_ARTIFACT_TUPLE_FILES.map(file => `  - ${file}`),
+    '--check fails without writing when any tuple file is stale.',
   ].join('\n');
 }
 
@@ -603,8 +611,173 @@ function mismatchMessage(title, mismatches) {
   return [
     title,
     ...mismatches.map(mismatch => `- ${mismatch.name}: docs=${mismatch.actual || '<missing>'} published=${mismatch.expected}`),
-    'Run `npm run refresh:public-artifact-versions` to update scripts/public-artifact-versions.json and docs/compatibility.md.',
+    `Run \`npm run refresh:public-artifact-versions\` to update ${PUBLIC_ARTIFACT_TUPLE_FILES.join(', ')}.`,
   ].join('\n');
+}
+
+function readQuickstartContractSource() {
+  return fs.readFileSync(quickstartContractPath, 'utf8');
+}
+
+function replaceLineContaining(lines, needle, replacement, label) {
+  const index = lines.findIndex(line => line.includes(needle));
+
+  if (index < 0) {
+    throw new Error(`static/quickstart-execution-contract.json is missing ${label}`);
+  }
+
+  if (lines[index] === replacement) {
+    return false;
+  }
+
+  lines[index] = replacement;
+  return true;
+}
+
+function replaceRequiredEnvironmentValue(entries, name, value, label) {
+  const entry = (entries || []).find(candidate => candidate && candidate.name === name);
+
+  if (!entry) {
+    throw new Error(`static/quickstart-execution-contract.json is missing ${label} environment ${name}`);
+  }
+
+  if (entry.value === value) {
+    return false;
+  }
+
+  entry.value = value;
+  return true;
+}
+
+function byId(entries, label) {
+  const match = {};
+
+  for (const entry of entries || []) {
+    if (entry && typeof entry.id === 'string') {
+      match[entry.id] = entry;
+    }
+  }
+
+  return id => {
+    if (!match[id]) {
+      throw new Error(`static/quickstart-execution-contract.json is missing ${label} ${id}`);
+    }
+
+    return match[id];
+  };
+}
+
+function applyQuickstartArtifactPins(contract, versions) {
+  const pins = buildArtifactPins(versions);
+  let changed = false;
+  const artifacts = contract.artifacts || {};
+
+  function update(pathLabel, object, key, value) {
+    if (!object || typeof object !== 'object') {
+      throw new Error(`static/quickstart-execution-contract.json is missing ${pathLabel}`);
+    }
+
+    if (object[key] === value) {
+      return;
+    }
+
+    object[key] = value;
+    changed = true;
+  }
+
+  update('artifacts.server', artifacts.server, 'version', versions.server);
+  update('artifacts.server', artifacts.server, 'reference', pins.serverDockerHubImage);
+  update('artifacts.cli', artifacts.cli, 'version', versions.cli);
+  update('artifacts.cli', artifacts.cli, 'install_command', pins.cliInstallerCommand);
+  update('artifacts.sdk-python', artifacts['sdk-python'], 'version', versions['sdk-python']);
+  update('artifacts.sdk-python', artifacts['sdk-python'], 'pip_package', pins.pythonPackagePin);
+  update('artifacts.sdk-python', artifacts['sdk-python'], 'install_command', pins.pythonPipInstallCommand);
+  update('artifacts.workflow', artifacts.workflow, 'version', versions.workflow);
+  update('artifacts.workflow', artifacts.workflow, 'composer_constraint', pins.workflowComposerPackage);
+  update('artifacts.waterline', artifacts.waterline, 'version', versions.waterline);
+  update('artifacts.waterline', artifacts.waterline, 'composer_constraint', pins.waterlineComposerPackage);
+
+  const hostingBranch = byId(contract.hosting_branches, 'hosting branch');
+  const scenario = byId(contract.scenarios, 'scenario');
+  const standalone = hostingBranch('standalone_server_sqlite');
+  const python = scenario('python_user_local_server_completion');
+  const operator = scenario('operator_local_server_observation');
+  const laravel = scenario('laravel_user_embedded_completion');
+
+  changed = replaceRequiredEnvironmentValue(
+    standalone.required_environment,
+    'DW_SERVER_IMAGE',
+    pins.serverDockerHubImage,
+    'standalone_server_sqlite'
+  ) || changed;
+
+  changed = replaceLineContaining(
+    standalone.setup_script_lines,
+    'export DW_SERVER_IMAGE=',
+    `export DW_SERVER_IMAGE=${pins.serverDockerHubImage}`,
+    'standalone server image setup line'
+  ) || changed;
+
+  changed = replaceLineContaining(
+    python.command_script_lines,
+    'pip install durable-workflow==',
+    pins.pythonPipInstallCommand,
+    'Python SDK install line'
+  ) || changed;
+
+  changed = replaceLineContaining(
+    operator.command_script_lines,
+    'curl -fsSL https://durable-workflow.com/install.sh | VERSION=',
+    pins.cliInstallerCommand,
+    'CLI install line'
+  ) || changed;
+
+  changed = replaceLineContaining(
+    laravel.command_script_lines,
+    'durable-workflow/workflow:',
+    `  ${pins.workflowComposerPackage} \\`,
+    'Workflow Composer install line'
+  ) || changed;
+
+  changed = replaceLineContaining(
+    laravel.command_script_lines,
+    'durable-workflow/waterline:',
+    `  ${pins.waterlineComposerPackage}`,
+    'Waterline Composer install line'
+  ) || changed;
+
+  const workflowProbe = (laravel.success_probes || []).find(probe => probe && probe.id === 'composer_workflow_version');
+  const waterlineProbe = (laravel.success_probes || []).find(probe => probe && probe.id === 'composer_waterline_version');
+
+  if (!workflowProbe || !Array.isArray(workflowProbe.required_substrings)) {
+    throw new Error('static/quickstart-execution-contract.json is missing composer_workflow_version required substrings');
+  }
+
+  if (!waterlineProbe || !Array.isArray(waterlineProbe.required_substrings)) {
+    throw new Error('static/quickstart-execution-contract.json is missing composer_waterline_version required substrings');
+  }
+
+  changed = replaceLineContaining(
+    workflowProbe.required_substrings,
+    '2.0.0-',
+    versions.workflow,
+    'Workflow Composer success-probe version'
+  ) || changed;
+
+  changed = replaceLineContaining(
+    waterlineProbe.required_substrings,
+    '2.0.0-',
+    versions.waterline,
+    'Waterline Composer success-probe version'
+  ) || changed;
+
+  return changed;
+}
+
+function quickstartExecutionContractSource(currentSource, versions) {
+  const contract = JSON.parse(currentSource);
+  applyQuickstartArtifactPins(contract, versions);
+  return `${JSON.stringify(contract, null, 2)}\n`;
 }
 
 async function check() {
@@ -622,6 +795,17 @@ async function check() {
 
   if (historyMismatches.length > 0) {
     throw new Error(mismatchMessage('docs/compatibility.md top version-history row is stale against the current published artifact tuple:', historyMismatches));
+  }
+
+  const quickstartContract = readQuickstartContractSource();
+  const expectedQuickstartContract = quickstartExecutionContractSource(quickstartContract, expected);
+  if (quickstartContract !== expectedQuickstartContract) {
+    throw new Error(
+      mismatchMessage(
+        'static/quickstart-execution-contract.json is stale against the current published artifact tuple:',
+        [{name: 'quickstart execution contract', actual: 'stale', expected: 'current pins'}]
+      )
+    );
   }
 
   console.log(
@@ -645,6 +829,13 @@ async function refresh(date) {
   if (replacement.changed) {
     fs.writeFileSync(compatibilityDocPath, replacement.content);
     updated.push('docs/compatibility.md');
+  }
+
+  const quickstartContract = readQuickstartContractSource();
+  const expectedQuickstartContract = quickstartExecutionContractSource(quickstartContract, expected);
+  if (quickstartContract !== expectedQuickstartContract) {
+    fs.writeFileSync(quickstartContractPath, expectedQuickstartContract);
+    updated.push('static/quickstart-execution-contract.json');
   }
 
   if (updated.length === 0) {
@@ -678,6 +869,7 @@ if (require.main === module) {
 module.exports = {
   COMPATIBILITY_HISTORY_NOTE,
   PUBLISHED_ARTIFACT_SOURCES,
+  PUBLIC_ARTIFACT_TUPLE_FILES,
   artifactMismatches,
   artifactVersionsSource,
   compareVersions,
@@ -687,6 +879,7 @@ module.exports = {
   normalizeVersion,
   parseRegistryNextLink,
   parseCompatibilityHistoryRow,
+  quickstartExecutionContractSource,
   replaceCompatibilityHistoryTopRow,
   resolvePublishedArtifactTuple,
   selectServerRegistryVersion,
