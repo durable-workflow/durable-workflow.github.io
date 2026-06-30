@@ -40,8 +40,8 @@
     },
     "workflow": {
       "channel": "packagist",
-      "version": "2.0.0-alpha.235",
-      "composer_constraint": "durable-workflow/workflow:2.0.0-alpha.235@alpha"
+      "version": "2.0.0-alpha.236",
+      "composer_constraint": "durable-workflow/workflow:2.0.0-alpha.236@alpha"
     },
     "waterline": {
       "channel": "packagist",
@@ -377,7 +377,7 @@
         "cd durable-workflow-laravel-quickstart",
         "",
         "composer require \\",
-        "  durable-workflow/workflow:2.0.0-alpha.235@alpha \\",
+        "  durable-workflow/workflow:2.0.0-alpha.236@alpha \\",
         "  durable-workflow/waterline:2.0.0-alpha.111@alpha",
         "composer show durable-workflow/workflow",
         "composer show durable-workflow/waterline",
@@ -495,7 +495,7 @@
           "source": "stdout",
           "required_substrings": [
             "durable-workflow/workflow",
-            "2.0.0-alpha.235"
+            "2.0.0-alpha.236"
           ]
         },
         {
