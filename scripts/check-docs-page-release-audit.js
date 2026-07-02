@@ -7,6 +7,7 @@ const path = require('path');
 const config = require('../docusaurus.config.js');
 const {
   ARTIFACT_DISTRIBUTION_SURFACES,
+  ARTIFACT_VERSION_SCHEMA,
   ARTIFACT_VERSIONS,
 } = require('./public-artifact-versions');
 
@@ -18,6 +19,11 @@ const sitemapPath = path.join(buildDir, 'sitemap.xml');
 const SCHEMA = 'durable-workflow.docs.page-release-audit';
 const VERDICTS = new Set(['CLEAN', 'LEAK', 'MIXED']);
 const CLASSIFIER_ID = 'content-derived-release-status-v2';
+const ARTIFACT_VERSION_SOURCE_FILE = 'scripts/public-artifact-versions.json';
+const ARTIFACT_VERSION_SYNCHRONIZED_FIELDS = Object.freeze([
+  'artifact_versions',
+  'artifact_distribution_surfaces.server',
+]);
 const SELF_HASH_EXCEPTION = {
   path: '/docs-page-release-audit.json',
   status: 'self_referential_manifest',
@@ -247,6 +253,45 @@ function assertArtifactVersions(audit) {
   }
 }
 
+function assertArtifactVersionSource(audit) {
+  const source = audit.artifact_version_source || {};
+
+  if (source.schema !== ARTIFACT_VERSION_SCHEMA) {
+    fail(`docs-page-release-audit.json artifact_version_source.schema must be ${ARTIFACT_VERSION_SCHEMA}`);
+  }
+
+  if (source.source_file !== ARTIFACT_VERSION_SOURCE_FILE) {
+    fail(
+      `docs-page-release-audit.json artifact_version_source.source_file must be ` +
+      ARTIFACT_VERSION_SOURCE_FILE
+    );
+  }
+
+  if (JSON.stringify(source.synchronized_fields) !== JSON.stringify(ARTIFACT_VERSION_SYNCHRONIZED_FIELDS)) {
+    fail(
+      'docs-page-release-audit.json artifact_version_source.synchronized_fields must be ' +
+      ARTIFACT_VERSION_SYNCHRONIZED_FIELDS.join(', ')
+    );
+  }
+
+  if (source.current_server_artifact?.version !== ARTIFACT_VERSIONS.server) {
+    fail(
+      `docs-page-release-audit.json artifact_version_source.current_server_artifact.version ` +
+      `must be ${ARTIFACT_VERSIONS.server}, got ${source.current_server_artifact?.version}`
+    );
+  }
+
+  const expectedReferences = ARTIFACT_DISTRIBUTION_SURFACES.server.map(surface => surface.reference);
+  const actualReferences = source.current_server_artifact?.references || [];
+
+  if (JSON.stringify(actualReferences) !== JSON.stringify(expectedReferences)) {
+    fail(
+      'docs-page-release-audit.json artifact_version_source.current_server_artifact.references ' +
+      `must be ${expectedReferences.join(', ')}, got ${actualReferences.join(', ')}`
+    );
+  }
+}
+
 function isUrlShapedValue(value) {
   return /^[a-z][a-z0-9+.-]*:\/\//i.test(value);
 }
@@ -338,6 +383,7 @@ function main() {
   }
 
   assertArtifactVersions(audit);
+  assertArtifactVersionSource(audit);
   assertArtifactDistributionSurfaces(audit);
 
   if (getDocsLastVersion() !== '1.x') {

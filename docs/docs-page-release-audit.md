@@ -22,6 +22,11 @@ confusion.
 
 The machine-readable audit is published at
 [`/docs-page-release-audit.json`](pathname:///docs-page-release-audit.json).
+Its `artifact_versions` and server `artifact_distribution_surfaces` fields are
+synchronized from the public artifact tuple source during the docs build. The
+manifest also records `artifact_version_source.current_server_artifact` so
+consumers can verify that the advertised server version and container image
+references came from the same tuple.
 
 ## Verdict Vocabulary
 

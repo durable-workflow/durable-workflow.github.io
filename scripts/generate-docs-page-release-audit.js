@@ -8,6 +8,7 @@ const config = require('../docusaurus.config.js');
 const {
   ARTIFACT_DISTRIBUTION_SURFACES,
   ARTIFACT_PIN_PATTERNS,
+  ARTIFACT_VERSION_SCHEMA,
   ARTIFACT_VERSIONS,
   replaceArtifactTokens,
 } = require('./public-artifact-versions');
@@ -25,6 +26,11 @@ const STABLE_DOCS_ROOT = '/docs/introduction/';
 const SITE_URL = String(config.url || 'https://durable-workflow.com').replace(/\/+$/, '');
 const VERDICTS = ['CLEAN', 'LEAK', 'MIXED'];
 const CLASSIFIER_ID = 'content-derived-release-status-v2';
+const ARTIFACT_VERSION_SOURCE_FILE = 'scripts/public-artifact-versions.json';
+const ARTIFACT_VERSION_SYNCHRONIZED_FIELDS = Object.freeze([
+  'artifact_versions',
+  'artifact_distribution_surfaces.server',
+]);
 const SELF_HASH_EXCEPTION = {
   code: 'SELF_REFERENTIAL_MANIFEST',
   applies_to: 'evidence.content_sha256',
@@ -1119,6 +1125,18 @@ function missingClassifications(entries) {
     .map(entry => entry.path);
 }
 
+function artifactVersionSourceMetadata() {
+  return {
+    schema: ARTIFACT_VERSION_SCHEMA,
+    source_file: ARTIFACT_VERSION_SOURCE_FILE,
+    synchronized_fields: ARTIFACT_VERSION_SYNCHRONIZED_FIELDS,
+    current_server_artifact: {
+      version: ARTIFACT_VERSIONS.server,
+      references: ARTIFACT_DISTRIBUTION_SURFACES.server.map(surface => surface.reference),
+    },
+  };
+}
+
 function main() {
   const sitemapPaths = readSitemapPaths();
   const docsPaths = sitemapPaths
@@ -1153,6 +1171,7 @@ function main() {
     generated_from: 'production sitemap, docs build output, and content-derived release-status classifier',
     classifier: CLASSIFIER_ID,
     artifact_versions: ARTIFACT_VERSIONS,
+    artifact_version_source: artifactVersionSourceMetadata(),
     artifact_distribution_surfaces: ARTIFACT_DISTRIBUTION_SURFACES,
     release_status_guardrail: {
       stable_default_docs_version: STABLE_DOCS_VERSION,
