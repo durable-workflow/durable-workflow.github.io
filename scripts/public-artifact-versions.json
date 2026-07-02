@@ -5,7 +5,7 @@
     "cli": "0.1.85",
     "sdk-python": "0.4.93",
     "server": "0.2.546",
-    "waterline": "2.0.0-alpha.114",
+    "waterline": "2.0.0-alpha.115",
     "workflow": "2.0.0-alpha.244"
   }
 }
