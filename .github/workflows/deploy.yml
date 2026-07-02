@@ -7,6 +7,9 @@ on:
     # Review gh actions docs if you want to further define triggers, paths, etc
     # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#on
 
+permissions:
+  contents: write
+
 jobs:
   deploy:
     name: Deploy to GitHub Pages
@@ -25,6 +28,50 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run build
 
+      - name: Verify public artifact tuple
+        run: |
+          node <<'NODE'
+          const assert = require('assert');
+          const fs = require('fs');
+
+          const expected = require('./scripts/public-artifact-versions.json').artifacts;
+          const audit = JSON.parse(fs.readFileSync('build/docs-page-release-audit.json', 'utf8'));
+          const quickstart = JSON.parse(fs.readFileSync('build/quickstart-execution-contract.json', 'utf8'));
+
+          for (const [name, version] of Object.entries(expected)) {
+            assert.strictEqual(
+              audit.artifact_versions && audit.artifact_versions[name],
+              version,
+              `docs-page-release-audit.json artifact_versions.${name}`
+            );
+
+            assert.strictEqual(
+              quickstart.artifacts && quickstart.artifacts[name] && quickstart.artifacts[name].version,
+              version,
+              `quickstart-execution-contract.json artifacts.${name}.version`
+            );
+          }
+
+          assert.strictEqual(
+            audit.release_status_guardrail &&
+              audit.release_status_guardrail.stable_default_docs_version,
+            '1.x',
+            'release audit stable default docs version'
+          );
+          assert.strictEqual(
+            quickstart.default_docs_guard &&
+              quickstart.default_docs_guard.stable_default_docs_version,
+            '1.x',
+            'quickstart stable default docs version'
+          );
+
+          console.log(
+            `Deploying public artifact tuple: ${Object.entries(expected)
+              .map(([name, version]) => `${name}=${version}`)
+              .join(', ')}`
+          );
+          NODE
+
       # Popular action to deploy to GitHub Pages:
       # Docs: https://github.com/peaceiris/actions-gh-pages#%EF%B8%8F-docusaurus
       - name: Deploy to GitHub Pages
@@ -40,3 +87,4 @@ jobs:
           # You can swap them out with your own user credentials.
           user_name: github-actions[bot]
           user_email: 41898282+github-actions[bot]@users.noreply.github.com
+          force_orphan: true
