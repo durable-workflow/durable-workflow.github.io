@@ -4,31 +4,47 @@ on:
   push:
     branches:
       - main
-    # Review gh actions docs if you want to further define triggers, paths, etc
-    # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#on
+  workflow_dispatch:
+  schedule:
+    - cron: '17 * * * *'
 
 permissions:
   contents: write
+
+concurrency:
+  group: public-docs-deploy
+  cancel-in-progress: true
 
 jobs:
   deploy:
     name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           cache: npm
 
+      - name: Plan deployment
+        id: deploy-plan
+        env:
+          DOCS_DEPLOY_EVENT_NAME: ${{ github.event_name }}
+        run: node scripts/plan-docs-deploy.js
+
       - name: Install dependencies
+        if: steps.deploy-plan.outputs.deploy == 'true'
         run: npm ci
+
       - name: Build website
+        if: steps.deploy-plan.outputs.deploy == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run build
 
       - name: Verify public artifact tuple
+        if: steps.deploy-plan.outputs.deploy == 'true'
         run: |
           node <<'NODE'
           const assert = require('assert');
@@ -75,6 +91,7 @@ jobs:
       # Popular action to deploy to GitHub Pages:
       # Docs: https://github.com/peaceiris/actions-gh-pages#%EF%B8%8F-docusaurus
       - name: Deploy to GitHub Pages
+        if: steps.deploy-plan.outputs.deploy == 'true'
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -88,3 +105,7 @@ jobs:
           user_name: github-actions[bot]
           user_email: 41898282+github-actions[bot]@users.noreply.github.com
           force_orphan: true
+
+      - name: Report current live tuple
+        if: steps.deploy-plan.outputs.deploy != 'true'
+        run: echo "Live public artifact tuple already matches main; skipping scheduled deploy."
