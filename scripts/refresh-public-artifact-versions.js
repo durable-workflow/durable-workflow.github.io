@@ -24,6 +24,7 @@ const PUBLIC_ARTIFACT_TUPLE_FILES = Object.freeze([
 
 const DEFAULT_TIMEOUT_MS = 20000;
 const MAX_REDIRECTS = 5;
+const MAX_GITHUB_RELEASE_PAGES = 10;
 const MAX_DOCKER_HUB_PAGES = 20;
 const MAX_GHCR_PAGES = 20;
 const CONTAINER_MANIFEST_ACCEPT = [
@@ -41,7 +42,7 @@ const PUBLISHED_ARTIFACT_SOURCES = Object.freeze({
   cli: {
     label: 'CLI',
     kind: 'github-release',
-    url: 'https://api.github.com/repos/durable-workflow/cli/releases/latest',
+    url: 'https://api.github.com/repos/durable-workflow/cli/releases?per_page=100',
     requiredAssets: [
       'dw.phar',
       'dw-linux-x86_64',
@@ -296,26 +297,71 @@ function parseRegistryNextLink(linkHeader, currentUrl) {
   return null;
 }
 
+function missingCliReleaseAssets(release, requiredAssets) {
+  const assets = new Set(((release && release.assets) || []).map(asset => asset.name));
+  return requiredAssets.filter(asset => !assets.has(asset));
+}
+
+function selectLatestCompleteCliRelease(releases, source) {
+  const candidates = [];
+  const incomplete = [];
+
+  for (const release of releases || []) {
+    const version = normalizeVersion('cli', release && release.tag_name);
+
+    if (!version || release.draft || release.prerelease) {
+      continue;
+    }
+
+    const missingAssets = missingCliReleaseAssets(release, source.requiredAssets);
+
+    if (missingAssets.length > 0) {
+      incomplete.push({
+        version,
+        missingAssets,
+      });
+      continue;
+    }
+
+    candidates.push(version);
+  }
+
+  if (candidates.length > 0) {
+    return selectLatestVersion('cli', candidates, source.url);
+  }
+
+  if (incomplete.length > 0) {
+    throw new Error([
+      'No complete CLI release contains all required public assets.',
+      ...incomplete.map(release => `- ${release.version}: missing ${release.missingAssets.join(', ')}`),
+    ].join('\n'));
+  }
+
+  throw new Error(`Could not find a published cli version in ${source.url}`);
+}
+
+async function listGitHubReleases(source) {
+  let url = source.url;
+  let pageCount = 0;
+  const releases = [];
+
+  while (url) {
+    pageCount += 1;
+    if (pageCount > MAX_GITHUB_RELEASE_PAGES) {
+      throw new Error(`GitHub release scan exceeded ${MAX_GITHUB_RELEASE_PAGES} pages for ${source.url}`);
+    }
+
+    const response = await requestJsonResponse(url);
+    const pageReleases = Array.isArray(response.body) ? response.body : [response.body];
+    releases.push(...pageReleases);
+    url = Array.isArray(response.body) ? parseRegistryNextLink(response.headers.link, url) : null;
+  }
+
+  return releases;
+}
+
 async function resolveCliVersion(source) {
-  const release = await requestJson(source.url);
-  const version = normalizeVersion('cli', release.tag_name);
-
-  if (!version) {
-    throw new Error(`Latest CLI release tag does not match ${ARTIFACT_VERSION_REQUIREMENTS.cli.expected}: ${release.tag_name}`);
-  }
-
-  if (release.draft || release.prerelease) {
-    throw new Error(`Latest CLI release ${version} must not be draft or prerelease`);
-  }
-
-  const assets = new Set((release.assets || []).map(asset => asset.name));
-  const missingAssets = source.requiredAssets.filter(asset => !assets.has(asset));
-
-  if (missingAssets.length > 0) {
-    throw new Error(`Latest CLI release ${version} is missing public assets: ${missingAssets.join(', ')}`);
-  }
-
-  return version;
+  return selectLatestCompleteCliRelease(await listGitHubReleases(source), source);
 }
 
 function dockerHubTagIsPublished(tag) {
@@ -882,6 +928,7 @@ module.exports = {
   quickstartExecutionContractSource,
   replaceCompatibilityHistoryTopRow,
   resolvePublishedArtifactTuple,
+  selectLatestCompleteCliRelease,
   selectServerRegistryVersion,
   selectLatestVersion,
   versionRank,

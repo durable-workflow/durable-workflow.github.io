@@ -29,8 +29,8 @@
     },
     "cli": {
       "channel": "durable_workflow_public_installer",
-      "version": "0.1.84",
-      "install_command": "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.84 sh"
+      "version": "0.1.85",
+      "install_command": "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.85 sh"
     },
     "sdk-python": {
       "channel": "pypi",
@@ -296,7 +296,7 @@
         }
       ],
       "command_script_lines": [
-        "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.84 sh",
+        "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.85 sh",
         "export PATH=\"$HOME/.local/bin:$PATH\"",
         "",
         "dw env:set local \\",

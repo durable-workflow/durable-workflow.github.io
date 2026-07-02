@@ -9,12 +9,14 @@ const {
   readArtifactVersions,
 } = require('./public-artifact-versions');
 const {
+  PUBLISHED_ARTIFACT_SOURCES,
   artifactVersionsSource,
   compatibilityHistoryRow,
   parseRegistryNextLink,
   parseCompatibilityHistoryRow,
   quickstartExecutionContractSource,
   replaceCompatibilityHistoryTopRow,
+  selectLatestCompleteCliRelease,
   selectServerRegistryVersion,
   selectLatestVersion,
 } = require('./refresh-public-artifact-versions');
@@ -124,6 +126,45 @@ assert.strictEqual(
   selectLatestVersion('workflow', ['2.0.0-alpha.199', '2.0.0-beta.1', '2.0.0-alpha.201'], 'test candidates'),
   '2.0.0-beta.1',
   'Composer beta prereleases must rank after alpha prereleases'
+);
+
+function cliRelease(tagName, assets, options = {}) {
+  return {
+    tag_name: tagName,
+    draft: Boolean(options.draft),
+    prerelease: Boolean(options.prerelease),
+    assets: assets.map(name => ({name})),
+  };
+}
+
+const requiredCliAssets = PUBLISHED_ARTIFACT_SOURCES.cli.requiredAssets;
+
+assert.strictEqual(
+  selectLatestCompleteCliRelease([
+    cliRelease('0.1.85', []),
+    cliRelease(source.artifacts.cli, requiredCliAssets),
+    cliRelease('0.1.83', requiredCliAssets),
+  ], PUBLISHED_ARTIFACT_SOURCES.cli),
+  source.artifacts.cli,
+  'CLI artifact resolution must skip newer releases until all public assets are available'
+);
+
+assert.strictEqual(
+  selectLatestCompleteCliRelease([
+    cliRelease('0.1.86', requiredCliAssets, {draft: true}),
+    cliRelease('0.1.85', requiredCliAssets, {prerelease: true}),
+    cliRelease(source.artifacts.cli, requiredCliAssets),
+  ], PUBLISHED_ARTIFACT_SOURCES.cli),
+  source.artifacts.cli,
+  'CLI artifact resolution must ignore draft and prerelease tags'
+);
+
+assert.throws(
+  () => selectLatestCompleteCliRelease([
+    cliRelease('0.1.85', []),
+  ], PUBLISHED_ARTIFACT_SOURCES.cli),
+  /No complete CLI release contains all required public assets[\s\S]*0\.1\.85: missing/,
+  'CLI artifact resolution must fail clearly when no complete release exists'
 );
 
 assert.strictEqual(
