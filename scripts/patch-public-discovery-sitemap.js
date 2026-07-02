@@ -4,6 +4,10 @@ const fs = require('fs');
 const path = require('path');
 
 const config = require('../docusaurus.config.js');
+const {
+  stableRuntimeScenarioDiscoveryEntries,
+} = require('./platform-conformance-public-discovery');
+const platformConformanceContract = require('../static/platform-conformance-contract.json');
 
 const repoRoot = path.join(__dirname, '..');
 const buildDir = path.join(repoRoot, 'build');
@@ -92,6 +96,10 @@ const REQUIRED_DISCOVERY_ENTRIES = [
     buildPath: 'platform-conformance/skew-refusal-matrix-scenarios.json',
   },
   {
+    path: '/platform-conformance/principal-attribution-scenarios.json',
+    buildPath: 'platform-conformance/principal-attribution-scenarios.json',
+  },
+  {
     path: '/platform-conformance/prerelease-readiness-scenarios.json',
     buildPath: 'platform-conformance/prerelease-readiness-scenarios.json',
   },
@@ -130,10 +138,31 @@ function sitemapEntry(url) {
   return `<url><loc>${escapeXml(url)}</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>`;
 }
 
+function assertStableRuntimeManifestEntries() {
+  const entriesByPath = new Map(REQUIRED_DISCOVERY_ENTRIES.map(entry => [entry.path, entry]));
+
+  for (const expected of stableRuntimeScenarioDiscoveryEntries(platformConformanceContract)) {
+    const actual = entriesByPath.get(expected.path);
+
+    if (!actual) {
+      fail(`REQUIRED_DISCOVERY_ENTRIES must include stable runtime scenario manifest ${expected.path}`);
+    }
+
+    if (actual.buildPath !== expected.buildPath) {
+      fail(
+        `REQUIRED_DISCOVERY_ENTRIES ${expected.path} buildPath must be ` +
+          `${expected.buildPath}, got ${actual.buildPath}`
+      );
+    }
+  }
+}
+
 function main() {
   if (!fs.existsSync(sitemapPath)) {
     fail('Missing generated sitemap: build/sitemap.xml');
   }
+
+  assertStableRuntimeManifestEntries();
 
   for (const entry of REQUIRED_DISCOVERY_ENTRIES) {
     assertBuiltArtifact(entry);

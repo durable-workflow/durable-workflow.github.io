@@ -6,6 +6,10 @@ const {
   ARTIFACT_PIN_PATTERNS,
   ARTIFACT_PINS,
 } = require('./public-artifact-versions');
+const {
+  stableRuntimeScenarioDiscoveryEntries,
+} = require('./platform-conformance-public-discovery');
+const platformConformanceContract = require('../static/platform-conformance-contract.json');
 
 const STABLE_DOCS_VERSION = '1.x';
 const PRERELEASE_DOCS_VERSION = '2.0';
@@ -33,8 +37,11 @@ const PUBLIC_DISCOVERY_URLS = [
   '/platform-conformance/saga-runtime-scenarios.json',
   '/platform-conformance/migration-runtime-scenarios.json',
   '/platform-conformance/skew-refusal-matrix-scenarios.json',
+  '/platform-conformance/principal-attribution-scenarios.json',
   '/platform-conformance/prerelease-readiness-scenarios.json',
 ];
+const STABLE_RUNTIME_SCENARIO_DISCOVERY_ENTRIES =
+  stableRuntimeScenarioDiscoveryEntries(platformConformanceContract);
 
 function fail(message) {
   throw new Error(message);
@@ -287,6 +294,12 @@ function assertPublicDiscoverySurface() {
   const sitemap = readBuildFile('sitemap.xml');
   const siteUrl = String(config.url || '').replace(/\/+$/, '');
 
+  for (const entry of STABLE_RUNTIME_SCENARIO_DISCOVERY_ENTRIES) {
+    if (!PUBLIC_DISCOVERY_URLS.includes(entry.path)) {
+      fail(`PUBLIC_DISCOVERY_URLS must include stable runtime scenario manifest ${entry.path}`);
+    }
+  }
+
   for (const route of PUBLIC_DISCOVERY_URLS) {
     assertIncludes(sitemap, `<loc>${siteUrl}${route}</loc>`, 'build/sitemap.xml');
   }
@@ -333,6 +346,13 @@ function assertPublicDiscoverySurface() {
     'href="/platform-conformance/migration-runtime-scenarios.json"',
     'build/docs/platform-conformance/index.html'
   );
+  for (const entry of STABLE_RUNTIME_SCENARIO_DISCOVERY_ENTRIES) {
+    assertIncludes(
+      platformConformance,
+      `href="${entry.path}"`,
+      'build/docs/platform-conformance/index.html'
+    );
+  }
   assertIncludes(
     platformConformance,
     'href="/platform-conformance-contract.json"',
