@@ -23,20 +23,20 @@
   "artifacts": {
     "server": {
       "channel": "docker_hub",
-      "version": "0.2.542",
+      "version": "0.2.543",
       "image": "durableworkflow/server",
-      "reference": "durableworkflow/server:0.2.542"
+      "reference": "durableworkflow/server:0.2.543"
     },
     "cli": {
       "channel": "durable_workflow_public_installer",
-      "version": "0.1.82",
-      "install_command": "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.82 sh"
+      "version": "0.1.83",
+      "install_command": "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.83 sh"
     },
     "sdk-python": {
       "channel": "pypi",
-      "version": "0.4.92",
-      "pip_package": "durable-workflow==0.4.92",
-      "install_command": "pip install durable-workflow==0.4.92"
+      "version": "0.4.93",
+      "pip_package": "durable-workflow==0.4.93",
+      "install_command": "pip install durable-workflow==0.4.93"
     },
     "workflow": {
       "channel": "packagist",
@@ -45,8 +45,8 @@
     },
     "waterline": {
       "channel": "packagist",
-      "version": "2.0.0-alpha.111",
-      "composer_constraint": "durable-workflow/waterline:2.0.0-alpha.111@alpha"
+      "version": "2.0.0-alpha.112",
+      "composer_constraint": "durable-workflow/waterline:2.0.0-alpha.112@alpha"
     }
   },
   "personas": [
@@ -78,7 +78,7 @@
       "required_environment": [
         {
           "name": "DW_SERVER_IMAGE",
-          "value": "durableworkflow/server:0.2.542"
+          "value": "durableworkflow/server:0.2.543"
         },
         {
           "name": "DW_AUTH_TOKEN",
@@ -93,7 +93,7 @@
         }
       ],
       "setup_script_lines": [
-        "export DW_SERVER_IMAGE=durableworkflow/server:0.2.542",
+        "export DW_SERVER_IMAGE=durableworkflow/server:0.2.543",
         "export DW_AUTH_TOKEN=dev-token",
         "",
         "docker volume create durable-workflow-quickstart",
@@ -191,7 +191,7 @@
         "",
         "python3 -m venv .venv",
         ". .venv/bin/activate",
-        "pip install durable-workflow==0.4.92",
+        "pip install durable-workflow==0.4.93",
         "cat > greeter.py <<'PY'",
         "import asyncio",
         "import time",
@@ -296,7 +296,7 @@
         }
       ],
       "command_script_lines": [
-        "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.82 sh",
+        "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.83 sh",
         "export PATH=\"$HOME/.local/bin:$PATH\"",
         "",
         "dw env:set local \\",
@@ -378,7 +378,7 @@
         "",
         "composer require \\",
         "  durable-workflow/workflow:2.0.0-alpha.241@alpha \\",
-        "  durable-workflow/waterline:2.0.0-alpha.111@alpha",
+        "  durable-workflow/waterline:2.0.0-alpha.112@alpha",
         "composer show durable-workflow/workflow",
         "composer show durable-workflow/waterline",
         "",
@@ -503,7 +503,7 @@
           "source": "stdout",
           "required_substrings": [
             "durable-workflow/waterline",
-            "2.0.0-alpha.111"
+            "2.0.0-alpha.112"
           ]
         },
         {
