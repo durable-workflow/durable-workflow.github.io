@@ -29,8 +29,8 @@
     },
     "cli": {
       "channel": "durable_workflow_public_installer",
-      "version": "0.1.83",
-      "install_command": "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.83 sh"
+      "version": "0.1.84",
+      "install_command": "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.84 sh"
     },
     "sdk-python": {
       "channel": "pypi",
@@ -40,13 +40,13 @@
     },
     "workflow": {
       "channel": "packagist",
-      "version": "2.0.0-alpha.241",
-      "composer_constraint": "durable-workflow/workflow:2.0.0-alpha.241@alpha"
+      "version": "2.0.0-alpha.242",
+      "composer_constraint": "durable-workflow/workflow:2.0.0-alpha.242@alpha"
     },
     "waterline": {
       "channel": "packagist",
-      "version": "2.0.0-alpha.112",
-      "composer_constraint": "durable-workflow/waterline:2.0.0-alpha.112@alpha"
+      "version": "2.0.0-alpha.113",
+      "composer_constraint": "durable-workflow/waterline:2.0.0-alpha.113@alpha"
     }
   },
   "personas": [
@@ -296,7 +296,7 @@
         }
       ],
       "command_script_lines": [
-        "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.83 sh",
+        "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.84 sh",
         "export PATH=\"$HOME/.local/bin:$PATH\"",
         "",
         "dw env:set local \\",
@@ -377,8 +377,8 @@
         "cd durable-workflow-laravel-quickstart",
         "",
         "composer require \\",
-        "  durable-workflow/workflow:2.0.0-alpha.241@alpha \\",
-        "  durable-workflow/waterline:2.0.0-alpha.112@alpha",
+        "  durable-workflow/workflow:2.0.0-alpha.242@alpha \\",
+        "  durable-workflow/waterline:2.0.0-alpha.113@alpha",
         "composer show durable-workflow/workflow",
         "composer show durable-workflow/waterline",
         "",
@@ -495,7 +495,7 @@
           "source": "stdout",
           "required_substrings": [
             "durable-workflow/workflow",
-            "2.0.0-alpha.241"
+            "2.0.0-alpha.242"
           ]
         },
         {
@@ -503,7 +503,7 @@
           "source": "stdout",
           "required_substrings": [
             "durable-workflow/waterline",
-            "2.0.0-alpha.112"
+            "2.0.0-alpha.113"
           ]
         },
         {
