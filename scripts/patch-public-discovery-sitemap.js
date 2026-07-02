@@ -52,6 +52,10 @@ const REQUIRED_DISCOVERY_ENTRIES = [
     buildPath: 'platform-conformance/signal-query-runtime-scenarios.json',
   },
   {
+    path: '/platform-conformance/workflow-update-runtime-scenarios.json',
+    buildPath: 'platform-conformance/workflow-update-runtime-scenarios.json',
+  },
+  {
     path: '/platform-conformance/search-attribute-runtime-scenarios.json',
     buildPath: 'platform-conformance/search-attribute-runtime-scenarios.json',
   },

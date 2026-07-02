@@ -23,6 +23,7 @@ const PUBLIC_DISCOVERY_URLS = [
   '/docs-page-release-audit.json',
   '/platform-conformance-contract.json',
   '/platform-conformance/signal-query-runtime-scenarios.json',
+  '/platform-conformance/workflow-update-runtime-scenarios.json',
   '/platform-conformance/search-attribute-runtime-scenarios.json',
   '/platform-conformance/replay-runtime-scenarios.json',
   '/platform-conformance/namespace-runtime-scenarios.json',
@@ -305,6 +306,11 @@ function assertPublicDiscoverySurface() {
   assertIncludes(
     platformConformance,
     '/docs/2.0/platform-conformance/',
+    'build/docs/platform-conformance/index.html'
+  );
+  assertIncludes(
+    platformConformance,
+    'href="/platform-conformance/workflow-update-runtime-scenarios.json"',
     'build/docs/platform-conformance/index.html'
   );
   assertIncludes(

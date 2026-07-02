@@ -1,6 +1,6 @@
 {
   "schema": "durable-workflow.v2.platform-conformance.suite",
-  "version": 26,
+  "version": 27,
   "authority_doc": "docs/platform-conformance.md",
   "authority_url": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
   "surface_stability_authority": "durable-workflow.v2.surface-stability.contract",
@@ -23,6 +23,7 @@
       "required_fixture_categories": [
         "control_plane_request_response",
         "signal_query_runtime_contract",
+        "workflow_update_runtime_contract",
         "search_attribute_runtime_contract",
         "schedules_runtime_contract",
         "namespace_runtime_contract",
@@ -46,6 +47,7 @@
       "required_fixture_categories": [
         "control_plane_request_response",
         "signal_query_runtime_contract",
+        "workflow_update_runtime_contract",
         "search_attribute_runtime_contract",
         "schedules_runtime_contract",
         "namespace_runtime_contract",
@@ -68,6 +70,7 @@
       "required_fixture_categories": [
         "worker_task_lifecycle",
         "signal_query_runtime_contract",
+        "workflow_update_runtime_contract",
         "search_attribute_runtime_contract",
         "schedules_runtime_contract",
         "namespace_runtime_contract",
@@ -87,6 +90,7 @@
       "required_fixture_categories": [
         "control_plane_request_response",
         "signal_query_runtime_contract",
+        "workflow_update_runtime_contract",
         "search_attribute_runtime_contract",
         "schedules_runtime_contract",
         "namespace_runtime_contract",
@@ -106,6 +110,7 @@
       ],
       "required_fixture_categories": [
         "signal_query_runtime_contract",
+        "workflow_update_runtime_contract",
         "search_attribute_runtime_contract",
         "namespace_runtime_contract",
         "saga_runtime_contract",
@@ -146,6 +151,7 @@
       ],
       "required_fixture_categories": [
         "skew_refusal_matrix_contract",
+        "workflow_update_runtime_contract",
         "principal_attribution_contract",
         "prerelease_readiness_contract"
       ]
@@ -214,6 +220,34 @@
         "unknown_signal_and_query_errors",
         "malformed_signal_and_query_payloads",
         "waterline_operator_visibility"
+      ]
+    },
+    "workflow_update_runtime_contract": {
+      "status": "stable",
+      "description": "Live published-artifact scenarios for workflow updates across declared update visibility, accepted/running/completed/failed outcomes, idempotency, refusal paths, payload envelopes, principal attribution, PHP/Python parity, and operator visibility.",
+      "sources": [
+        {
+          "repository": "durable-workflow.github.io",
+          "path": "static/platform-conformance/workflow-update-runtime-scenarios.json"
+        }
+      ],
+      "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
+      "required_scenarios": [
+        "published_artifact_install_only",
+        "declared_update_contract_visibility",
+        "accepted_update_control_plane_and_history",
+        "running_or_waiting_update_operator_visibility",
+        "completed_update_result_round_trip",
+        "failed_update_outcome",
+        "duplicate_request_idempotency",
+        "unknown_update_refusal",
+        "invalid_input_refusal",
+        "payload_envelope_round_trip",
+        "terminal_workflow_update_behavior",
+        "principal_attribution_with_auth",
+        "php_client_worker_update_surface",
+        "python_client_worker_update_surface",
+        "operator_diagnostics_surfaces"
       ]
     },
     "search_attribute_runtime_contract": {
@@ -610,6 +644,7 @@
       "rule": "A stable runtime fixture category must report every required scenario it declares with one of the statuses published by its runtime scenario manifest: pass, fail, unsupported, not_covered, or runner_blocked. Full conformance requires every required scenario to pass. A smoke-only subset, omitted scenario, unsupported public surface, uncovered cell, or runner-blocked cell is nonconforming and must link the owning finding.",
       "applies_to_categories": [
         "signal_query_runtime_contract",
+        "workflow_update_runtime_contract",
         "search_attribute_runtime_contract",
         "schedules_runtime_contract",
         "history_replay_bundles",
