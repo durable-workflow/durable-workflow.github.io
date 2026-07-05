@@ -164,6 +164,7 @@ Example admission override:
 | `DW_QUERY_TASK_LEASE_TIMEOUT` | `DW_WORKFLOW_TASK_TIMEOUT` | Lease timeout for ephemeral query tasks handed to workers. | `WORKFLOW_SERVER_QUERY_TASK_LEASE_TIMEOUT` |
 | `DW_QUERY_TASK_TTL_SECONDS` | `180` | How long the server retains query-task result rows before reaping them. | `WORKFLOW_SERVER_QUERY_TASK_TTL_SECONDS` |
 | `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` | `1024` | Maximum pending cache-backed query tasks per namespace/task queue before new queries are rejected. | `WORKFLOW_SERVER_QUERY_TASK_MAX_PENDING_PER_QUEUE` |
+| `DW_QUERY_TASK_POLL_TIMEOUT` | `5` | Maximum seconds each idle query-task worker poll waits before rechecking workflow-task pressure and control-plane availability. | `WORKFLOW_SERVER_QUERY_TASK_POLL_TIMEOUT` |
 | `DW_QUERY_TASK_POLL_MAX_CONCURRENT` | unset; derived for `PHP_CLI_SERVER_WORKERS` | Optional cap for concurrent held idle query-task worker long-poll waits on this server node. Pending query tasks can still be claimed immediately before an idle poll waits. | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT` |
 | `DW_WORKFLOW_TASK_TIMEOUT` | `60` | Default workflow-task lease timeout in seconds. | `WORKFLOW_TASK_TIMEOUT` |
 | `DW_ACTIVITY_TASK_TIMEOUT` | `300` | Default activity-task lease timeout in seconds. | `ACTIVITY_TASK_TIMEOUT` |
