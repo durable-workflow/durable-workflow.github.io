@@ -23,9 +23,9 @@
   "artifacts": {
     "server": {
       "channel": "docker_hub",
-      "version": "0.2.566",
+      "version": "0.2.567",
       "image": "durableworkflow/server",
-      "reference": "durableworkflow/server:0.2.566"
+      "reference": "durableworkflow/server:0.2.567"
     },
     "cli": {
       "channel": "durable_workflow_public_installer",
@@ -40,8 +40,8 @@
     },
     "workflow": {
       "channel": "packagist",
-      "version": "2.0.0-alpha.245",
-      "composer_constraint": "durable-workflow/workflow:2.0.0-alpha.245@alpha"
+      "version": "2.0.0-alpha.246",
+      "composer_constraint": "durable-workflow/workflow:2.0.0-alpha.246@alpha"
     },
     "waterline": {
       "channel": "packagist",
@@ -78,7 +78,7 @@
       "required_environment": [
         {
           "name": "DW_SERVER_IMAGE",
-          "value": "durableworkflow/server:0.2.566"
+          "value": "durableworkflow/server:0.2.567"
         },
         {
           "name": "DW_AUTH_TOKEN",
@@ -93,7 +93,7 @@
         }
       ],
       "setup_script_lines": [
-        "export DW_SERVER_IMAGE=durableworkflow/server:0.2.566",
+        "export DW_SERVER_IMAGE=durableworkflow/server:0.2.567",
         "export DW_AUTH_TOKEN=dev-token",
         "",
         "docker volume create durable-workflow-quickstart",
@@ -377,7 +377,7 @@
         "cd durable-workflow-laravel-quickstart",
         "",
         "composer require \\",
-        "  durable-workflow/workflow:2.0.0-alpha.245@alpha \\",
+        "  durable-workflow/workflow:2.0.0-alpha.246@alpha \\",
         "  durable-workflow/waterline:2.0.0-alpha.120@alpha",
         "composer show durable-workflow/workflow",
         "composer show durable-workflow/waterline",
@@ -495,7 +495,7 @@
           "source": "stdout",
           "required_substrings": [
             "durable-workflow/workflow",
-            "2.0.0-alpha.245"
+            "2.0.0-alpha.246"
           ]
         },
         {
