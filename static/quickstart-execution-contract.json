@@ -34,14 +34,14 @@
     },
     "sdk-python": {
       "channel": "pypi",
-      "version": "0.4.94",
-      "pip_package": "durable-workflow==0.4.94",
-      "install_command": "pip install durable-workflow==0.4.94"
+      "version": "0.4.95",
+      "pip_package": "durable-workflow==0.4.95",
+      "install_command": "pip install durable-workflow==0.4.95"
     },
     "workflow": {
       "channel": "packagist",
-      "version": "2.0.0-alpha.248",
-      "composer_constraint": "durable-workflow/workflow:2.0.0-alpha.248@alpha"
+      "version": "2.0.0-alpha.249",
+      "composer_constraint": "durable-workflow/workflow:2.0.0-alpha.249@alpha"
     },
     "waterline": {
       "channel": "packagist",
@@ -191,7 +191,7 @@
         "",
         "python3 -m venv .venv",
         ". .venv/bin/activate",
-        "pip install durable-workflow==0.4.94",
+        "pip install durable-workflow==0.4.95",
         "cat > greeter.py <<'PY'",
         "import asyncio",
         "import time",
@@ -377,7 +377,7 @@
         "cd durable-workflow-laravel-quickstart",
         "",
         "composer require \\",
-        "  durable-workflow/workflow:2.0.0-alpha.248@alpha \\",
+        "  durable-workflow/workflow:2.0.0-alpha.249@alpha \\",
         "  durable-workflow/waterline:2.0.0-alpha.120@alpha",
         "composer show durable-workflow/workflow",
         "composer show durable-workflow/waterline",
@@ -495,7 +495,7 @@
           "source": "stdout",
           "required_substrings": [
             "durable-workflow/workflow",
-            "2.0.0-alpha.248"
+            "2.0.0-alpha.249"
           ]
         },
         {
