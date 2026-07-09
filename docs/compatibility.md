@@ -398,7 +398,7 @@ docs-side gates automatically; the rest belong to the human reviewer.
 
 | Date | Server | CLI | Python SDK | Workflow | Waterline | Notes |
 |------|--------|-----|------------|----------|-----------|-------|
-| 2026-07-09 | 0.2.608 | 0.1.86 | 0.4.98 | 2.0.0-alpha.254 | 2.0.0-alpha.121 | Public release-audit evidence is aligned with the current published artifact tuple while stable 1.x remains the default docs line. |
+| 2026-07-09 | 0.2.609 | 0.1.86 | 0.4.98 | 2.0.0-alpha.254 | 2.0.0-alpha.121 | Public release-audit evidence is aligned with the current published artifact tuple while stable 1.x remains the default docs line. |
 | 2026-07-08 | 0.2.598 | 0.1.86 | 0.4.98 | 2.0.0-alpha.251 | 2.0.0-alpha.121 | Public release-audit evidence is aligned with the current published artifact tuple while stable 1.x remains the default docs line. |
 | 2026-06-05 | 0.2.341 | 0.1.77 | 0.4.85 | 2.0.0-alpha.199 | 2.0.0-alpha.83 | Platform conformance suite version 24 requires worker-versioning cross-language PHP/Python pinning evidence to include worker runtime identities, workflow and run IDs, rollout state, public poll and rollout outcomes, published worker artifact install source and version, and confirmation that no local product source checkout was used. |
 | 2026-06-05 | 0.2.341 | 0.1.77 | 0.4.85 | 2.0.0-alpha.199 | 2.0.0-alpha.83 | Public release-audit evidence is aligned with the current verified installable artifact tuple while stable 1.x remains the default docs line. |
