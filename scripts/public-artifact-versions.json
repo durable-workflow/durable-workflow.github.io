@@ -4,8 +4,8 @@
   "artifacts": {
     "cli": "0.1.86",
     "sdk-python": "0.4.98",
-    "server": "0.2.614",
+    "server": "0.2.616",
     "waterline": "2.0.0-alpha.122",
-    "workflow": "2.0.0-alpha.257"
+    "workflow": "2.0.0-alpha.258"
   }
 }
