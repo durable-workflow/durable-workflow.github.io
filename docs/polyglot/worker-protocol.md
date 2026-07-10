@@ -18,10 +18,18 @@ Durable Workflow exposes a versioned worker protocol through two bridge contract
 
 ## Protocol Version
 
-The current protocol version is **1.0**. The protocol follows semver-style numbering:
+The current server-advertised protocol version is **1.13**. The protocol
+follows semver-style numbering:
 
 - **Major** bumps when a change is backwards-incompatible (new required fields, removed verbs, changed pagination semantics).
 - **Minor** bumps for additive changes (new optional fields, new non-terminal command types).
+
+Workers may use an older minor within the same major. A server advertising
+`1.N` accepts `X-Durable-Workflow-Protocol-Version: 1.M` when `M <= N` and
+returns its advertised `1.N` on the response. The default `1.13` server
+therefore accepts request versions `1.0` through `1.13`, including Rust SDK
+`0.1.x` on `1.2`. Missing or malformed headers, different majors, and worker
+minors newer than the server fail closed.
 
 You can retrieve the full protocol description programmatically:
 
@@ -389,7 +397,7 @@ Poll response:
     "lease_owner": "py-worker-1",
     "lease_expires_at": "2026-04-18T12:00:00.000000Z"
   },
-  "protocol_version": "1.0",
+  "protocol_version": "1.13",
   "server_capabilities": { "query_tasks": true }
 }
 ```

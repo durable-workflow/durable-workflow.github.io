@@ -41,7 +41,7 @@ manifests, and CI gates can validate themselves against one source of truth:
 
 - `surface_stability_contract` in the response body of
   `GET /api/cluster/info` on the standalone Durable Workflow server, schema
-  `durable-workflow.v2.surface-stability.contract`, version `1`.
+  `durable-workflow.v2.surface-stability.contract`, version `2`.
 - A frozen mirror of the same manifest in this repository at
   `static/compatibility-contract.json`.
 - The PHP class `Workflow\V2\Support\SurfaceStabilityContract`, which is
@@ -108,7 +108,7 @@ version bump, this page, and the JSON mirror in the same commit).
 | `cli_json` | `stable` | n/a (see CLI reference) | The `--output=json` and `--output=jsonl` shapes emitted by `dw`. JSON exit codes and JSON field names are the durable surface; the human-readable `--output=table` form is documentation, not contract. |
 | `waterline_api` | `stable` | n/a (see Waterline operator API) | Waterline observability HTTP API at `/waterline/api/v2/*`, the engine-source contract, and the dashboard JSON shapes. Waterline must match the workflow package major version. |
 | `mcp_discovery_results` | `stable` | n/a (see MCP workflows page) | The `/mcp/*` Model Context Protocol surfaces and the `llms.txt` / `llms-2.0.txt` discovery files. MCP tool names, parameter schemas, and `payload_preview_limit_bytes` semantics are part of the contract; tool descriptions and discovery hints are diagnostic. |
-| `official_sdks` | `stable` | `client_compatibility` | The first-party SDKs: PHP `durable-workflow/workflow`, `durable-workflow/server`, the `dw` CLI, and the `durable_workflow` Python SDK. Each SDK's public surface is governed by its own per-package stability document, which must defer to this page. |
+| `official_sdks` | `stable` | `client_compatibility` | The first-party SDKs: PHP `durable-workflow/workflow`, `durable-workflow/server`, the `dw` CLI, the `durable_workflow` Python SDK, and the `durable-workflow` Rust SDK. Each SDK's public surface is governed by its own per-package stability document, which must defer to this page. |
 | `history_event_wire_formats` | `frozen` | n/a (frozen shapes; see workflow `docs/api-stability.md`) | The persisted shape of every row in `workflow_history_events` and `workflow_schedule_history_events`. Once a workflow writes an event, every future SDK that replays it must decode the same field set. |
 | `cluster_info_manifests` | `stable` | `surface_stability_contract`, `client_compatibility`, `control_plane`, `worker_protocol`, `auth_composition_contract`, `coordination_health` | The protocol manifests published by `GET /api/cluster/info` itself. Each nested manifest carries its own `schema` and `version` and evolves under its own contract rules. The envelope keys are stable. |
 
@@ -120,6 +120,9 @@ These documents add per-package detail under the rules on this page:
 - `durable-workflow/server` — [`README.md`](https://github.com/durable-workflow/server/blob/main/README.md) and `docs/contracts/*`. Authoritative for the standalone server's request/response contracts.
 - `dw` CLI — [`/docs/polyglot/cli-reference`](/docs/2.0/polyglot/cli-reference). Authoritative for the JSON output shapes and exit codes.
 - Python SDK — `README.md` in `durable-workflow/sdk-python`. Authoritative for the `durable_workflow` package public API.
+- Rust SDK — `README.md` and `[package.metadata.durable-workflow]` in
+  `durable-workflow/sdk-rust`. Authoritative for the `durable-workflow` crate
+  public API and its package compatibility declaration.
 
 ## Release Rules
 
@@ -212,11 +215,28 @@ release-status cutover is authorized.
 
 ### Server ↔ SDK / CLI
 
-| Server Protocol Manifests | CLI 0.1.x | Python SDK 0.2.x | PHP Workflow 2.0.x |
-|---------------------------|-----------|------------------|---------------------|
-| `control_plane.version: "2"` + request-contract v1 + `worker_protocol.version: "1.0"` | ✅ Compatible | ✅ Compatible | ✅ Compatible |
-| Missing or unknown protocol manifests | ❌ Fail closed | ❌ Fail closed | ❌ Fail closed |
-| Future incompatible protocol versions | ❌ Breaking | ❌ Breaking | ❌ Breaking |
+| Server protocol manifests and request rule | CLI 0.1.x | Python SDK 0.4.x (`1.1`) | Rust SDK 0.1.x (`1.2`) | PHP Workflow 2.0.x (`1.13` current) |
+|--------------------------------------------|-----------|----------------------------|--------------------------|-------------------------------------|
+| `control_plane.version: "2"` + request-contract v1 + advertised `worker_protocol.version: "1.13"`; worker headers `1.0` through `1.13` accepted | ✅ Compatible (control plane only) | ✅ Compatible | ✅ Compatible | ✅ Compatible |
+| Missing or malformed required protocol manifest/header | ❌ Fail closed | ❌ Fail closed | ❌ Fail closed | ❌ Fail closed |
+| Different worker-protocol major or worker minor newer than the advertised server minor | n/a | ❌ Fail closed | ❌ Fail closed | ❌ Fail closed |
+| Future incompatible control-plane or worker-protocol version | ❌ Breaking | ❌ Breaking | ❌ Breaking | ❌ Breaking |
+
+For server `0.2.x`, the worker compatibility authority is the advertised
+`worker_protocol.version`, not the server patch number. If the server
+advertises `1.N`, it accepts an incoming
+`X-Durable-Workflow-Protocol-Version: 1.M` only when `M` is less than or equal
+to `N`. It returns its advertised `1.N` in the response header and body; it
+does not echo the worker's older version. Missing or malformed headers,
+different majors, and worker minors ahead of the server fail closed.
+
+The current `0.2.x` server advertises `1.13`, so its accepted request window is
+`1.0` through `1.13`. That includes the Rust `0.1.x` header `1.2` as well as
+the Python `0.4.x` header `1.1`. The Rust package's `>=0.2,<0.3` server range
+selects the server release family; at runtime, the server must also advertise
+worker protocol `1.2` or newer in the `1.x` major. An older `0.2.x` server
+that advertises `1.0` or `1.1` rejects Rust `0.1.x` rather than silently
+weakening the protocol contract.
 
 The top-level server `version` from `/api/cluster/info` is build identity,
 not the client compatibility authority. Clients must use the protocol
@@ -266,8 +286,16 @@ await worker.run()  # Validates protocol manifests before registering
 If incompatible:
 
 ```
-RuntimeError: Server compatibility error: unsupported worker_protocol.version '2.0'; sdk-python 0.2.x requires '1.0'.
+RuntimeError: Server compatibility error: incompatible worker_protocol.version '2.0'; sdk-python requires major-equal and minor>='1.1'.
 ```
+
+### Rust SDK
+
+Rust SDK `0.1.x` sends worker protocol header `1.2` and control-plane header
+`2`. It is compatible with server `0.2.x` only when discovery advertises
+control plane `2` and worker protocol `1.N` with `N >= 2`. A current server
+advertising `1.13` accepts the Rust header and responds with `1.13`. Missing,
+malformed, different-major, and ahead-of-server versions are rejected.
 
 ### Server
 
@@ -280,6 +308,7 @@ and the compatibility policy in `GET /api/cluster/info`:
   "supported_sdk_versions": {
     "php": ">=1.0",
     "python": ">=0.2,<1.0",
+    "rust": ">=0.1,<1.0",
     "cli": ">=0.1,<1.0"
   },
   "client_compatibility": {
@@ -291,7 +320,7 @@ and the compatibility policy in `GET /api/cluster/info`:
   },
   "surface_stability_contract": {
     "schema": "durable-workflow.v2.surface-stability.contract",
-    "version": 1,
+    "version": 2,
     "authority_url": "https://durable-workflow.github.io/docs/2.0/compatibility"
   },
   "control_plane": {
@@ -302,7 +331,7 @@ and the compatibility policy in `GET /api/cluster/info`:
     }
   },
   "worker_protocol": {
-    "version": "1.0"
+    "version": "1.13"
   }
 }
 ```
@@ -320,9 +349,11 @@ Minor versions are backward-compatible within the same major version:
 - **Server**: Upgrade without client changes
 - **CLI**: Upgrade independently
 - **Python SDK**: Upgrade independently
+- **Rust SDK**: Upgrade independently within the discovered protocol window
 
-Example: Server 2.0.1 works with CLI 0.1.0 and Python SDK 0.2.0 when it
-advertises the protocol manifests listed above.
+Example: a server `0.2.x` release advertising worker protocol `1.13` works
+with CLI `0.1.x`, Python SDK `0.4.x`, and Rust SDK `0.1.x` when it advertises
+the protocol manifests listed above.
 
 ### Major Version Upgrades (2.x → 3.x)
 
@@ -344,12 +375,16 @@ All client-server communication includes protocol version headers:
 X-Durable-Workflow-Control-Plane-Version: 2
 ```
 
-**Worker protocol** (task polling, completion):
+**Worker protocol** (task polling, completion; examples by current SDK):
 ```
-X-Durable-Workflow-Protocol-Version: 1.0
+Python SDK 0.4.x: X-Durable-Workflow-Protocol-Version: 1.1
+Rust SDK 0.1.x:   X-Durable-Workflow-Protocol-Version: 1.2
+PHP Workflow:    X-Durable-Workflow-Protocol-Version: 1.13
 ```
 
-The server validates these headers and rejects requests with missing or incompatible versions.
+The server validates these headers against its advertised version using the
+same-major, worker-minor-less-than-or-equal rule above. It rejects requests
+with missing, malformed, or incompatible versions.
 
 ## Troubleshooting
 
@@ -392,6 +427,10 @@ docs-side gates automatically; the rest belong to the human reviewer.
   `package.json` prerelease tags match the `stability_level` for the SDK
   family they belong to (e.g. `0.x` Python and CLI SDKs are `prerelease`,
   `2.0.x` server and workflow are `stable`).
+- [ ] **Rust protocol authority aligned.** The released crate's
+  `[package.metadata.durable-workflow]`, the Rust guide, compatibility matrix,
+  JSON mirror, and worker OpenAPI describe the same server range, control
+  plane version, worker header, negotiation window, and fail-closed cases.
 - [ ] **Version-history aligned.** The version-history table below does
   not introduce stability claims that contradict this page.
 
@@ -399,7 +438,7 @@ docs-side gates automatically; the rest belong to the human reviewer.
 
 | Date | Server | CLI | Python SDK | Rust SDK | Workflow | Waterline | Notes |
 |------|--------|-----|------------|----------|----------|-----------|-------|
-| 2026-07-10 | 0.2.626 | 0.1.86 | 0.4.98 | 0.1.0 | 2.0.0-alpha.259 | 2.0.0-alpha.128 | Public release-audit evidence is aligned with the current published artifact tuple while stable 1.x remains the default docs line. |
+| 2026-07-10 | 0.2.627 | 0.1.86 | 0.4.98 | 0.1.0 | 2.0.0-alpha.260 | 2.0.0-alpha.129 | Public release-audit evidence is aligned with the current published artifact tuple while stable 1.x remains the default docs line. |
 | 2026-07-09 | 0.2.618 | 0.1.86 | 0.4.98 | — | 2.0.0-alpha.259 | 2.0.0-alpha.122 | Platform conformance suite version 28 requires v1-to-v2 rollback evidence to preserve external ready, delayed, and reserved queue state with SQL from one recovery cut, or report the affected executions as unrecoverable. An observed v1.0.77 Watchdog redispatch is a bounded pending-only wake path; retries, timers, and waiting/running work still require their queue or signal state. Recovery manifests record only an `APP_KEY` secret-manager reference/version, with secrets and recovery credentials separately controlled. |
 | 2026-07-09 | 0.2.617 | 0.1.86 | 0.4.98 | — | 2.0.0-alpha.258 | 2.0.0-alpha.122 | Public release-audit evidence is aligned with the current published artifact tuple while stable 1.x remains the default docs line. |
 | 2026-07-08 | 0.2.598 | 0.1.86 | 0.4.98 | — | 2.0.0-alpha.251 | 2.0.0-alpha.121 | Public release-audit evidence is aligned with the current published artifact tuple while stable 1.x remains the default docs line. |
@@ -428,6 +467,7 @@ docs-side gates automatically; the rest belong to the human reviewer.
 - [Server Setup](/docs/2.0/polyglot/server) — Deploying the standalone server
 - [Server API Reference](/docs/2.0/polyglot/server-api-reference) — `GET /api/cluster/info` and the protocol manifests
 - [Python SDK](/docs/2.0/polyglot/python) — Python client and worker
+- [Rust SDK](/docs/2.0/polyglot/rust) — Rust client and worker
 - [CLI](/docs/2.0/polyglot/cli) — Command-line interface
 - [Migration Guide](/docs/2.0/migration) — Migrating from v1 to v2
 - [PHP workflow `docs/api-stability.md`](https://github.com/durable-workflow/workflow/blob/v2/docs/api-stability.md) — per-package stability for the PHP workflow package

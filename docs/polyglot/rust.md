@@ -49,6 +49,18 @@ package metadata declares compatibility with Durable Workflow server 0.2.x,
 worker protocol 1.2, and control plane 2. During deployment, the protocol
 manifests advertised by `GET /api/cluster/info` remain authoritative.
 
+Server `0.2.x` negotiates worker-protocol headers within major `1`: a server
+advertising `1.N` accepts a worker header `1.M` only when `M <= N`. Rust SDK
+`0.1.x` sends `X-Durable-Workflow-Protocol-Version: 1.2`, so it requires a
+server in the declared `>=0.2,<0.3` package range that also advertises worker
+protocol `1.2` or newer. The current server advertises `1.13`, accepts the
+Rust header, and returns `1.13` in its response header and body.
+
+Negotiation fails closed. A missing or malformed header, a different major,
+or a worker minor newer than the server's advertised minor is rejected. The
+server version range selects the release family; it does not override the
+runtime protocol manifest.
+
 ## Start with the SDK
 
 The repository's

@@ -22,8 +22,62 @@ jobs:
         with:
           node-version: 20
 
+      - name: Resolve released Rust SDK version
+        id: rust-sdk-release
+        run: |
+          node -e "process.stdout.write('version=' + require('./scripts/public-artifact-versions.json').artifacts['sdk-rust'] + '\n')" >> "$GITHUB_OUTPUT"
+
+      - name: Download released Rust SDK metadata
+        env:
+          SDK_RUST_VERSION: ${{ steps.rust-sdk-release.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          crate_archive="${RUNNER_TEMP}/durable-workflow-${SDK_RUST_VERSION}.crate"
+          version_metadata="${RUNNER_TEMP}/durable-workflow-${SDK_RUST_VERSION}.json"
+          crate_root="${GITHUB_WORKSPACE}/released-sdk-rust"
+          user_agent="durable-workflow-docs-compatibility-check"
+
+          curl --fail --silent --show-error --location --retry 3 \
+            --header "User-Agent: ${user_agent}" \
+            --output "${version_metadata}" \
+            "https://crates.io/api/v1/crates/durable-workflow/${SDK_RUST_VERSION}"
+
+          published_version="$(node -e '
+            const metadata = require(process.argv[1]);
+            const expected = process.argv[2];
+            if (metadata.version?.num !== expected) {
+              throw new Error(`crates.io returned version ${metadata.version?.num} for ${expected}`);
+            }
+            process.stdout.write(metadata.version.num);
+          ' "${version_metadata}" "${SDK_RUST_VERSION}")"
+          published_checksum="$(node -e '
+            const metadata = require(process.argv[1]);
+            const checksum = metadata.version?.checksum;
+            if (!/^[0-9a-f]{64}$/.test(checksum ?? "")) {
+              throw new Error("crates.io returned an invalid SHA-256 checksum");
+            }
+            process.stdout.write(checksum);
+          ' "${version_metadata}")"
+          test "${published_version}" = "${SDK_RUST_VERSION}"
+
+          curl --fail --silent --show-error --location --retry 3 \
+            --header "User-Agent: ${user_agent}" \
+            --output "${crate_archive}" \
+            "https://crates.io/api/v1/crates/durable-workflow/${SDK_RUST_VERSION}/download"
+          printf '%s  %s\n' "${published_checksum}" "${crate_archive}" \
+            | sha256sum --check --strict
+
+          mkdir -p "${crate_root}"
+          tar -xzf "${crate_archive}" --strip-components=1 -C "${crate_root}"
+
       - name: Check compatibility authority
         run: node scripts/check-compatibility-authority.js
+        env:
+          SDK_RUST_REPO_PATH: ${{ github.workspace }}/released-sdk-rust
+
+      - name: Test compatibility authority drift detection
+        run: node scripts/check-compatibility-authority.test.js
 
       - name: Check platform protocol specs
         run: node scripts/check-platform-protocol-specs.js
