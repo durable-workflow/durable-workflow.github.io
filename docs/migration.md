@@ -21,7 +21,97 @@ This guide covers the key changes when upgrading an existing Laravel v1 applicat
 
 ### Before upgrading
 
-**1. Back up your database**
+**1. Inventory every v1 execution store**
+
+v1 execution state is not necessarily confined to the workflow database. In
+addition to the workflow rows and history, Laravel queue jobs can be ready,
+delayed, or reserved in Redis, a queue database, SQS, or another queue
+backend. Record all of the following before changing code:
+
+- the workflow storage connection and the actual v1 model/table mappings
+- every queue connection and queue name used by v1 workflows and activities,
+  including per-workflow or per-activity overrides
+- the queue backend's database, key prefix, region, account, and other routing
+  settings needed to restore the same queues
+- the secret-manager reference and immutable version that retrieve the exact
+  `APP_KEY`, plus any cache store used for v1 unique-job locks
+
+Do not copy the `APP_KEY` value, secret-manager recovery credentials, database
+credentials, or queue-provider credentials into this inventory. Encrypted jobs
+and serialized workflow arguments require the original key, but the recovery
+manifest should contain only its secret-manager reference and version. Keep the
+credentials that can retrieve that key separately access-controlled from the
+SQL and queue backups.
+
+The default v1 tables are `workflows`, `workflow_logs`, `workflow_signals`,
+`workflow_timers`, `workflow_exceptions`, and `workflow_relationships`.
+Published `config/workflows.php` files may replace the
+`stored_workflow_model`, `stored_workflow_log_model`,
+`stored_workflow_signal_model`, `stored_workflow_timer_model`, or
+`stored_workflow_exception_model`. A replacement model may also override its
+Eloquent `$table`; `workflow_relationships_table` separately controls the
+relationship table. Back up the tables and storage connection resolved by
+those configured models, not only the default names.
+
+**2. Choose a rollback boundary and quiesce v1 work**
+
+Prevent new workflow starts and signals while taking the recovery cut. Pause
+schedulers and stop every worker that can consume the inventoried queues after
+its current job reaches a boundary. For example:
+
+```bash
+# Horizon
+php artisan horizon:pause
+
+# Supervisor or systemd (use the names from your deployment)
+sudo supervisorctl stop <your-worker-group>:*
+sudo systemctl stop laravel-worker
+```
+
+`php artisan queue:restart` alone is not a quiesce operation when Supervisor,
+systemd, Kubernetes, or another process manager immediately starts a
+replacement worker. Confirm that no consumer can reserve another job before
+capturing state.
+
+Choose and record one of these policies:
+
+- **Drain v1:** block new v1 work, leave v1 workers running until
+  `php artisan workflow:v1:list` (when available) or an equivalent query of the
+  configured stored-workflow table reports no nonterminal workflows, then stop
+  the workers and confirm the relevant queues have no ready, delayed, or
+  reserved v1 jobs. SQL-only rollback can cover these terminal v1 workflows.
+- **Preserve in-flight v1:** stop workers at job boundaries and take an
+  application-consistent snapshot of both SQL and every durable queue backend.
+  The queue snapshot must include ready, delayed, and reserved work and must be
+  from the same recovery cut as SQL. Wait for a reserved job to finish before
+  the cut unless the backend documents how to restore its message and lease
+  safely.
+- **Accept in-flight loss:** if the backend cannot provide a restorable queue
+  cut, record the affected workflow IDs and explicitly accept that
+  queue-dependent nonterminal executions cannot be recovered by this rollback.
+  Exclude an eligible `pending` row from that disposition only after proving
+  the Watchdog path below, and exclude a genuine signal-only wait only after
+  testing its retained ingress. Do not present any other SQL row as recoverable
+  work.
+
+A signal-only wait may legitimately have no queued job if its external signal
+ingress remains available after rollback. Activity retries and timers are
+queue-backed: a `workflow_timers` row or a waiting `workflows` row does not
+recreate a missing delayed job.
+
+Supported v1.0.77 also starts its enabled-by-default `Workflow\Watchdog` from
+the queue worker loop. The Watchdog can find a `pending` workflow whose
+`updated_at` is at least five minutes old and whose serialized `arguments` are
+present, then redispatch that workflow to its recorded connection and queue.
+This is a bounded, pending-only wake path, not a replacement for queue backup.
+You may rely on it only after staging evidence shows the restored v1 worker
+loop dispatching the Watchdog, the Watchdog redispatching an eligible stale
+`pending` row, and that workflow advancing on the expected queue. It does not
+recreate activity retries or timer jobs and does not recover `waiting` or
+`running` rows. Those states still need their preserved queue job or a valid
+external signal path where the workflow is genuinely waiting for a signal.
+
+**3. Back up the rollback recovery set**
 
 Create a full database backup before upgrading:
 
@@ -36,9 +126,30 @@ pg_dump -U postgres your_database > backup-v1-$(date +%Y%m%d-%H%M%S).sql
 php artisan backup:run --only-db
 ```
 
-Store the backup in a safe location. You will need it if you need to roll back.
+Then preserve queue state according to the backend:
 
-**2. Test in staging first**
+- **Database queue:** include the queue tables and their connection in the same
+  recovery cut. They may be outside the workflow database.
+- **Redis queue:** use a restorable Redis snapshot or backup that includes the
+  exact queue database/prefix and its ready, delayed, and reserved keys. If the
+  same Redis database holds unique-job locks needed by the cut, preserve those
+  keys too. Prefer a dedicated queue database or instance; restoring a shared
+  Redis snapshot can rewind unrelated application data.
+- **SQS or another managed queue:** use a provider-supported, point-in-time
+  message restore only if it preserves available, delayed, and in-flight
+  messages consistently. SQS does not provide an arbitrary queue snapshot for
+  this procedure, so drain v1 work or classify the remaining queue-dependent
+  v1 work as unrecoverable. The only SQL-only exceptions are a proven
+  Watchdog-eligible `pending` row and a tested signal-only wait.
+
+Store the SQL backup, queue backup, non-secret inventory, and recovery timestamp
+together. That recovery manifest may name the `APP_KEY` secret-manager
+reference and version, but must not contain the key or any credentials that can
+retrieve it. Keep secret-manager, database, queue-provider, and backup recovery
+credentials separately access-controlled. Restoring SQL from one cut and queue
+state from another is not a supported in-flight rollback.
+
+**4. Test in staging first**
 
 **Do not upgrade production without testing in staging.** The upgrade includes:
 
@@ -71,11 +182,15 @@ Only proceed to production after staging validation passes.
 composer require %%artifact.workflowComposerPackage%%
 ```
 
-This upgrades the package from `laravel-workflow/laravel-workflow` (v1) to
-`durable-workflow/workflow` (v2). The current public artifact pin includes the
-Composer prerelease stability suffix for the active pre-stable 2.0 package.
-Switch to `durable-workflow/workflow:^2.0` only after `2.0.0` is tagged stable
-on Packagist and the documented 2.0 cutover is authorized.
+The maintained Composer package is `durable-workflow/workflow` for both v1 and
+v2; this command changes its version constraint to the current public v2
+artifact pin. The old `laravel-workflow/laravel-workflow` name is only a
+compatibility alias for dependency graphs created before the package rename.
+Use the maintained name for new requirements and rollback. The current public
+artifact pin includes the Composer prerelease stability suffix for the active
+pre-stable 2.0 package. Switch to `durable-workflow/workflow:^2.0` only after
+`2.0.0` is tagged stable on Packagist and the documented 2.0 cutover is
+authorized.
 
 **2. Run database migrations**
 
@@ -99,7 +214,11 @@ without changing the durable contract. The supported way to know what
 your database actually has is to run `php artisan migrate:status` after
 the upgrade.
 
-v1 tables (`workflows`, `workflow_logs`, `workflow_signals`, `workflow_timers`, `workflow_exceptions`) are preserved for finish-on-v1 execution.
+The default v1 tables (`workflows`, `workflow_logs`, `workflow_signals`,
+`workflow_timers`, `workflow_exceptions`, and `workflow_relationships`) are
+preserved for finish-on-v1 execution. If the configured v1 models override
+their tables or storage connection, those configured tables are the v1 source
+of truth instead.
 
 **3. Update configuration (if needed)**
 
@@ -245,15 +364,35 @@ Open Waterline (default: `/waterline`) and verify:
 
 ### Rollback procedure
 
-If the upgrade fails in production, roll back:
+Rollback is a recovery-set operation. Restoring the workflow SQL database alone
+does not restore in-flight v1 execution when its Laravel queue state lives in
+Redis, SQS, another database, or another external backend.
 
-**1. Stop queue workers**
+If the upgrade fails in production, roll back only to the policy and recovery
+cut selected before the upgrade:
 
-```bash
-php artisan queue:restart  # or appropriate restart command for your worker system
-```
+**1. Quiesce application ingress, schedulers, and queue workers**
 
-**2. Restore database backup**
+Use the same stop procedure as the pre-upgrade cut. Confirm that no worker can
+reserve a job and no request can start or signal a workflow while state is
+being restored.
+
+**2. Validate the recovery set**
+
+- A SQL-only recovery set is supported only when the selected cut has no
+  nonterminal v1 execution that depends on preserved queued work. An eligible
+  stale `pending` row may instead use the proven v1.0.77 Watchdog path described
+  above, and a genuine signal-only wait may use a tested external signal
+  ingress. Do not extend either exception to other states.
+- An in-flight recovery set must contain SQL plus restorable ready, delayed,
+  and reserved queue state from the same cut for retries, timers, activities,
+  and `waiting` or `running` work. Signal-only waits must retain a working
+  signal ingress; timer waits must retain their delayed queue jobs.
+- If neither condition holds, stop here. Fix forward, reconcile the recorded
+  workflows manually, or proceed under the previously documented acceptance
+  that the affected executions are unrecoverable.
+
+**3. Restore the database backup**
 
 ```bash
 # MySQL/MariaDB
@@ -263,28 +402,99 @@ mysql -u root -p your_database < backup-v1-YYYYMMDD-HHMMSS.sql
 psql -U postgres -d your_database < backup-v1-YYYYMMDD-HHMMSS.sql
 ```
 
-**3. Revert composer dependency**
+Restore every configured custom v1 model table and the
+`workflow_relationships_table`, even when they live on another connection.
+
+**4. Restore the queue recovery cut, when required**
+
+Keep consumers stopped. Follow the queue provider's restore procedure and
+restore the exact connections, queues, prefixes, ready jobs, delayed jobs, and
+reserved jobs captured with SQL. Restore required unique-job lock state when
+it was part of the recovery cut. Do not substitute an empty queue with the
+same name: it cannot wake restored retries, timers, or `waiting`/`running`
+work. An empty but writable queue is sufficient only for an eligible `pending`
+row after you prove that the v1.0.77 Watchdog bootstraps and redispatches it.
+
+**5. Revert the Composer dependency**
 
 ```bash
-composer require laravel-workflow/laravel-workflow:^1.0
+composer require durable-workflow/workflow:^1.0 --with-all-dependencies
 ```
 
-**4. Restart queue workers**
+`durable-workflow/workflow` is the maintained package name for both supported
+v1 releases and v2. `laravel-workflow/laravel-workflow` is only a legacy alias
+declared by the maintained package for compatibility with older dependency
+graphs; do not use it in rollback requirements.
+
+Retrieve the exact `APP_KEY` through the inventoried secret-manager reference
+and version, using the separately controlled recovery credentials. Restore it
+together with the workflow storage connection, queue connections, queue names,
+Redis prefixes, and custom model configuration before starting a consumer.
+Encrypted jobs and serialized model references depend on that configuration
+matching the recovery cut.
+
+**6. Restart queue workers and reopen ingress**
 
 ```bash
-php artisan queue:restart  # or appropriate restart command
+# Use the start command for your worker system, for example:
+sudo supervisorctl start <your-worker-group>:*
+sudo systemctl start laravel-worker
+php artisan horizon:continue
 ```
 
-**5. Verify v1 operation**
+**7. Verify v1 execution reachability**
 
-- Check that v1 workflows appear in Waterline
-- Start a test v1 workflow to verify functionality
-- Monitor logs for errors
+Waterline visibility proves that a row was restored; it does not prove that a
+worker can resume it. Complete this checklist before declaring rollback
+successful:
+
+- [ ] `composer show durable-workflow/workflow` reports the intended v1
+  release and workers loaded that code.
+- [ ] The actual configured v1 tables and `workflow_relationships_table` are
+  present on the expected storage connections.
+- [ ] Every nonterminal row in the configured stored-workflow table
+  (`workflows` by default) is classified by its next wake path: a
+  ready/delayed/reserved queue job, a preserved timer job, or a tested external
+  signal ingress. An eligible `pending` row may instead cite the proven
+  v1.0.77 Watchdog redispatch evidence below.
+- [ ] Queue-provider inspection confirms that each queue-backed retry, timer,
+  activity, and `waiting` or `running` workflow wake identified above exists on
+  the recorded connection and queue. A SQL timer row by itself does not satisfy
+  this check, and the Watchdog is not a substitute for these jobs.
+- [ ] If a restored `pending` row has no preserved workflow job, a v1.0.77
+  worker loop is observed enqueueing the Watchdog; after the row is stale for
+  the five-minute bound, the Watchdog enqueues that workflow on its recorded
+  connection and queue and the row advances. Without that end-to-end proof,
+  treat the row as stranded even if Waterline displays it.
+- [ ] No restored retry, timer, `waiting`, or `running` row lacks its required
+  runnable queue job or a usable external signal path for a genuine signal
+  wait. Treat such a row as stranded; pending-only Watchdog evidence does not
+  make it recoverable.
+- [ ] A restored retry or timer advances past its pre-cut marker, and a
+  controlled signal-wait can enqueue and consume its signal wake.
+- [ ] A new v1 canary workflow completes, and logs contain no missing-job,
+  decryption, model-table, connection, or queue-routing errors.
+
+With default tables, this query is a starting inventory; substitute the table
+resolved by your configured stored-workflow model when it is customized:
+
+```sql
+SELECT id, class, status
+FROM workflows
+WHERE status NOT IN ('completed', 'failed', 'cancelled');
+```
 
 **Important rollback notes:**
 
 - Rollback discards any v2 workflows started after upgrade (they exist only in v2 tables)
-- Rollback restores v1 workflows to their pre-upgrade state
+- SQL-only rollback restores v1 workflow records, not external queue messages
+- In-flight v1 execution is supported only when SQL and durable queue state are
+  restored from one application-consistent recovery cut, or when a documented
+  signal-only wait retains a usable ingress. The additional SQL-only exception
+  is an eligible stale `pending` row with proven v1.0.77 Watchdog redispatch;
+  it does not cover retries, timers, or `waiting`/`running` work
+- Replaying a pre-upgrade recovery cut can repeat external side effects; review
+  application idempotency before restoring queued activity work
 - If you must preserve v2 workflows started during the upgrade window, do not restore the database — instead fix the upgrade issue forward
 
 ## Code changes
@@ -519,10 +729,17 @@ v2 adds history budgets that can automatically trigger continue-as-new when the 
 
 When you upgrade to 2.0:
 
-1. **v1 data is preserved** — The `stored_workflows`, `workflow_logs`, `workflow_signals`, `workflow_timers`, and `workflow_exceptions` tables remain intact
+1. **v1 data is preserved** — The default `workflows`, `workflow_logs`, `workflow_signals`, `workflow_timers`, `workflow_exceptions`, and `workflow_relationships` tables remain intact; configured v1 model/table overrides remain authoritative
 2. **v1 workflows complete using v1 engine** — In-flight v1 workflows continue executing using the v1 replay engine until they reach a terminal state
 3. **v2 workflows use v2 engine** — All workflows started after upgrade use the v2 schema (`workflow_instances`, `workflow_runs`, `workflow_history_events`, etc.)
 4. **Waterline shows both** — The monitoring UI displays v1 and v2 workflows side-by-side
+
+Finish-on-v1 also depends on the Laravel queue backend. Retain every v1 queue
+connection and queue until its workflows are terminal. Database rows preserve
+history and status; they do not reconstruct lost ready, delayed, or reserved
+jobs from an external backend. The v1.0.77 Watchdog can redispatch an eligible
+stale `pending` workflow from SQL, but that bounded recovery path does not
+recreate retries, timers, or `waiting`/`running` work.
 
 ### Tracking v1 workflow completion
 

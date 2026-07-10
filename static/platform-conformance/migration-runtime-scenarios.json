@@ -3,8 +3,8 @@
   "version": 1,
   "category": "migration_runtime_contract",
   "suite_schema": "durable-workflow.v2.platform-conformance.suite",
-  "suite_version": 27,
-  "description": "Public scenario manifest for v1 to v2 migration conformance. Harnesses use these scenario ids and criteria when evaluating published Durable Workflow artifacts.",
+  "suite_version": 28,
+  "description": "Public scenario manifest for v1 to v2 migration conformance, including recovery of external v1 queue state. Harnesses use these scenario ids and criteria when evaluating published Durable Workflow artifacts.",
   "fixture_type": "published_artifact_runtime_scenario_manifest",
   "result_statuses": [
     "pass",
@@ -83,6 +83,8 @@
     "cli_observations",
     "waterline_observations",
     "rollback_observations",
+    "queue_backend_observations",
+    "watchdog_redispatch_observations",
     "version_skew_observations",
     "storage_connection_smoke",
     "observed_outputs",
@@ -238,8 +240,14 @@
       "required_fields": [
         "rollback_steps",
         "rollback_supported_state",
+        "preupgrade_queue_backend_inventory",
+        "rollback_recovery_set",
+        "queue_backend_restore_result",
         "postrollback_visibility",
-        "postrollback_execution_result"
+        "postrollback_execution_result",
+        "postrollback_wake_path_evidence",
+        "pending_watchdog_redispatch_result",
+        "unrecoverable_state_disposition"
       ]
     },
     "version_skew_refusal": {
@@ -551,13 +559,22 @@
         "waterline"
       ],
       "operations": [
-        "follow the published rollback procedure from the migration guide",
-        "record which migrated state is documented as rollback-safe or rollback-refused",
-        "inspect postrollback workflow, schedule, CLI, and Waterline surfaces"
+        "inventory every v1 workflow storage connection, model table override, queue connection, and queue name before upgrade, recording only the APP_KEY secret-manager reference and version while keeping the key and recovery credentials separately access-controlled",
+        "record ready, delayed, and reserved v1 queue work together with pending, waiting, running, signal-only, and timer states before selecting a rollback boundary",
+        "follow the published quiesce and drain, application-consistent SQL-plus-queue snapshot, or explicit in-flight-loss procedure from the migration guide",
+        "restore SQL and any required external queue state from the same recovery cut before starting v1 workers",
+        "inspect postrollback workflow, queue, signal-or-timer wake, CLI, and Waterline surfaces",
+        "when an eligible pending row is claimed as SQL-only recoverable, observe the supported v1.0.77 worker loop dispatch the default Watchdog, the Watchdog redispatch the stale row to its recorded connection and queue after the bounded age, and the workflow advance",
+        "classify every nonterminal restored v1 row by its runnable queue job, verified signal wake path, or proven pending-only Watchdog redispatch"
       ],
       "pass_criteria": [
-        "supported rollback state remains executable and inspectable after rollback",
-        "irreversible or unsupported rollback state is refused with a documented typed error",
+        "the rollback manifest records an APP_KEY secret-manager reference and version but does not co-locate the key or recovery credentials with SQL or queue backups",
+        "SQL-only rollback is reported as supported only when the recovery cut contains no nonterminal queue-dependent v1 execution except an eligible pending row with proven v1.0.77 Watchdog redispatch or a genuine signal-only wait with tested ingress",
+        "each retry, timer, activity, or waiting or running execution reported as recoverable has its ready, delayed, or reserved durable queue state restored with SQL from one application-consistent recovery cut, unless a genuine signal-only wait has tested ingress",
+        "a pending row without a preserved workflow job is recoverable only when the default v1.0.77 Watchdog is observed redispatching it after the five-minute stale bound and the workflow advances on its recorded connection and queue",
+        "each restored nonterminal v1 row has a runnable queue job, a verified signal-only wake path, or the proven pending-only Watchdog path and advances after v1 workers restart",
+        "a pending row without a runnable queue job or proven Watchdog path, and any retry, timer, waiting, or running row without its required queue or signal path, fails the rollback scenario as stranded even when visible in Waterline",
+        "queue backends without a restorable recovery cut are documented as unsupported for in-flight rollback and the affected state has an explicit unrecoverable disposition",
         "rollback does not silently mutate migrated state into an undocumented partial form"
       ]
     },
@@ -603,6 +620,8 @@
       "cli_and_waterline_preupgrade_state_visibility_reported",
       "new_v2_workflow_start_reported",
       "rollback_or_documented_no_rollback_reported",
+      "rollback_queue_backend_state_and_wake_paths_reported",
+      "pending_watchdog_redispatch_or_stranded_disposition_reported",
       "version_skew_refusal_reported",
       "storage_connection_smoke_is_recorded_but_not_counted_as_complete",
       "run_timestamps_outcome_and_findings_are_recorded",
