@@ -23,9 +23,9 @@
   "artifacts": {
     "server": {
       "channel": "docker_hub",
-      "version": "0.2.619",
+      "version": "0.2.620",
       "image": "durableworkflow/server",
-      "reference": "durableworkflow/server:0.2.619"
+      "reference": "durableworkflow/server:0.2.620"
     },
     "cli": {
       "channel": "durable_workflow_public_installer",
@@ -45,8 +45,8 @@
     },
     "waterline": {
       "channel": "packagist",
-      "version": "2.0.0-alpha.123",
-      "composer_constraint": "durable-workflow/waterline:2.0.0-alpha.123@alpha"
+      "version": "2.0.0-alpha.125",
+      "composer_constraint": "durable-workflow/waterline:2.0.0-alpha.125@alpha"
     }
   },
   "personas": [
@@ -78,7 +78,7 @@
       "required_environment": [
         {
           "name": "DW_SERVER_IMAGE",
-          "value": "durableworkflow/server:0.2.619"
+          "value": "durableworkflow/server:0.2.620"
         },
         {
           "name": "DW_AUTH_TOKEN",
@@ -93,7 +93,7 @@
         }
       ],
       "setup_script_lines": [
-        "export DW_SERVER_IMAGE=durableworkflow/server:0.2.619",
+        "export DW_SERVER_IMAGE=durableworkflow/server:0.2.620",
         "export DW_AUTH_TOKEN=dev-token",
         "",
         "docker volume create durable-workflow-quickstart",
@@ -378,7 +378,7 @@
         "",
         "composer require \\",
         "  durable-workflow/workflow:2.0.0-alpha.259@alpha \\",
-        "  durable-workflow/waterline:2.0.0-alpha.123@alpha",
+        "  durable-workflow/waterline:2.0.0-alpha.125@alpha",
         "composer show durable-workflow/workflow",
         "composer show durable-workflow/waterline",
         "",
@@ -503,7 +503,7 @@
           "source": "stdout",
           "required_substrings": [
             "durable-workflow/waterline",
-            "2.0.0-alpha.123"
+            "2.0.0-alpha.125"
           ]
         },
         {
