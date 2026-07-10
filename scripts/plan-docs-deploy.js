@@ -141,6 +141,33 @@ function compareLivePublicArtifacts(expected, audit, quickstart) {
     }
   }
 
+  const expectedRustSurfaces = ARTIFACT_DISTRIBUTION_SURFACES['sdk-rust'] || [];
+  const liveRustSurfaces = versionAtPath(audit, ['artifact_distribution_surfaces', 'sdk-rust']);
+
+  if (!Array.isArray(liveRustSurfaces)) {
+    drift.push(`${RELEASE_AUDIT_PATH} artifact_distribution_surfaces.sdk-rust: expected Rust SDK surfaces, got <missing>`);
+  } else {
+    for (const expectedSurface of expectedRustSurfaces) {
+      const liveSurface = liveRustSurfaces.find(surface => (
+        surface && surface.surface === expectedSurface.surface
+      ));
+
+      if (!liveSurface) {
+        drift.push(`${RELEASE_AUDIT_PATH} Rust SDK surface ${expectedSurface.surface}: missing`);
+        continue;
+      }
+
+      for (const [field, expectedValue] of Object.entries(expectedSurface)) {
+        if (liveSurface[field] !== expectedValue) {
+          drift.push(
+            `${RELEASE_AUDIT_PATH} Rust SDK surface ${expectedSurface.surface}.${field}: ` +
+            `expected ${expectedValue}, got ${liveSurface[field] || '<missing>'}`
+          );
+        }
+      }
+    }
+  }
+
   return drift;
 }
 

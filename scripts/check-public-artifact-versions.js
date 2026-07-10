@@ -4,6 +4,7 @@ const path = require('path');
 
 const source = require('./public-artifact-versions.json');
 const {
+  ARTIFACT_DISTRIBUTION_SURFACES,
   buildArtifactPinPatterns,
   buildArtifactPins,
   readArtifactVersions,
@@ -17,6 +18,7 @@ const {
   quickstartExecutionContractSource,
   replaceCompatibilityHistoryTopRow,
   selectLatestCompleteCliRelease,
+  selectLatestCratesIoVersion,
   selectServerRegistryVersion,
   selectLatestVersion,
 } = require('./refresh-public-artifact-versions');
@@ -48,9 +50,39 @@ assert.strictEqual(
 const currentArtifactPins = buildArtifactPins(source.artifacts);
 assert.strictEqual(currentArtifactPins.cliVersion, source.artifacts.cli);
 assert.strictEqual(currentArtifactPins.pythonSdkVersion, source.artifacts['sdk-python']);
+assert.strictEqual(currentArtifactPins.rustSdkVersion, source.artifacts['sdk-rust']);
 assert.strictEqual(currentArtifactPins.serverVersion, source.artifacts.server);
 assert.strictEqual(currentArtifactPins.workflowVersion, source.artifacts.workflow);
 assert.strictEqual(currentArtifactPins.waterlineVersion, source.artifacts.waterline);
+assert.deepStrictEqual(
+  ARTIFACT_DISTRIBUTION_SURFACES.server.map(surface => surface.reference),
+  [
+    `durableworkflow/server:${source.artifacts.server}`,
+    `ghcr.io/durable-workflow/server:${source.artifacts.server}`,
+  ],
+  'server distribution surfaces must use the current Docker Hub and GHCR tag'
+);
+assert.deepStrictEqual(
+  ARTIFACT_DISTRIBUTION_SURFACES['sdk-rust'],
+  [
+    {
+      surface: 'crates_io_package',
+      package: 'durable-workflow',
+      version: source.artifacts['sdk-rust'],
+      url: 'https://crates.io/crates/durable-workflow',
+    },
+    {
+      surface: 'source_repository',
+      repository: 'durable-workflow/sdk-rust',
+      url: 'https://github.com/durable-workflow/sdk-rust',
+    },
+    {
+      surface: 'api_documentation',
+      url: 'https://rust.durable-workflow.com/',
+    },
+  ],
+  'Rust SDK distribution surfaces must expose the crate, source repository, and API documentation'
+);
 
 const currentQuickstartContract = fs.readFileSync(quickstartContractPath, 'utf8');
 assert.strictEqual(
@@ -63,6 +95,7 @@ let staleQuickstartContract = currentQuickstartContract;
 for (const [currentVersion, staleVersion] of [
   [source.artifacts.cli, '0.1.81'],
   [source.artifacts['sdk-python'], '0.4.90'],
+  [source.artifacts['sdk-rust'], '0.1.9'],
   [source.artifacts.server, '0.2.512'],
   [source.artifacts.workflow, '2.0.0-alpha.223'],
   [source.artifacts.waterline, '2.0.0-alpha.110'],
@@ -126,6 +159,17 @@ assert.strictEqual(
   selectLatestVersion('workflow', ['2.0.0-alpha.199', '2.0.0-beta.1', '2.0.0-alpha.201'], 'test candidates'),
   '2.0.0-beta.1',
   'Composer beta prereleases must rank after alpha prereleases'
+);
+
+assert.strictEqual(
+  selectLatestCratesIoVersion({
+    versions: [
+      {num: '0.1.1', yanked: true},
+      {num: source.artifacts['sdk-rust'], yanked: false},
+    ],
+  }, PUBLISHED_ARTIFACT_SOURCES['sdk-rust']),
+  source.artifacts['sdk-rust'],
+  'Rust SDK artifact resolution must ignore yanked crates.io releases'
 );
 
 function cliRelease(tagName, assets, options = {}) {
@@ -199,16 +243,17 @@ const parsedHistoryRow = parseCompatibilityHistoryRow(currentHistoryRow);
 assert.strictEqual(parsedHistoryRow.server, source.artifacts.server);
 assert.strictEqual(parsedHistoryRow.cli, source.artifacts.cli);
 assert.strictEqual(parsedHistoryRow['sdk-python'], source.artifacts['sdk-python']);
+assert.strictEqual(parsedHistoryRow['sdk-rust'], source.artifacts['sdk-rust']);
 assert.strictEqual(parsedHistoryRow.workflow, source.artifacts.workflow);
 assert.strictEqual(parsedHistoryRow.waterline, source.artifacts.waterline);
 
 const staleHistoryDoc = [
   '## Version History',
   '',
-  '| Date | Server | CLI | Python SDK | Workflow | Waterline | Notes |',
-  '|------|--------|-----|------------|--------------|-----------|-------|',
-  '| 2026-06-10 | 0.2.364 | 0.1.77 | 0.4.85 | 2.0.0-alpha.200 | 2.0.0-alpha.84 | Previous release-audit tuple. |',
-  '| 2026-06-05 | 0.2.341 | 0.1.77 | 0.4.85 | 2.0.0-alpha.199 | 2.0.0-alpha.83 | Older release-audit tuple. |',
+  '| Date | Server | CLI | Python SDK | Rust SDK | Workflow | Waterline | Notes |',
+  '|------|--------|-----|------------|----------|----------|-----------|-------|',
+  '| 2026-06-10 | 0.2.364 | 0.1.77 | 0.4.85 | — | 2.0.0-alpha.200 | 2.0.0-alpha.84 | Previous release-audit tuple. |',
+  '| 2026-06-05 | 0.2.341 | 0.1.77 | 0.4.85 | — | 2.0.0-alpha.199 | 2.0.0-alpha.83 | Older release-audit tuple. |',
   '',
 ].join('\n');
 const refreshedHistoryDoc = replaceCompatibilityHistoryTopRow(staleHistoryDoc, source.artifacts, '2026-06-11');
@@ -235,6 +280,7 @@ expectFailure(
 const malformedVersions = [
   ['cli', '0.2.72', /artifacts\.cli must use CLI version format 0\.1\.N/],
   ['sdk-python', '0.5.84', /artifacts\.sdk-python must use Python SDK version format 0\.4\.N/],
+  ['sdk-rust', 'latest', /artifacts\.sdk-rust must use Rust SDK version format 0\.1\.N/],
   ['server', 'latest', /artifacts\.server must use server version format 0\.2\.N/],
   ['waterline', '2.0.0', /artifacts\.waterline must use Waterline version format 2\.0\.0-alpha\.N or 2\.0\.0-beta\.N/],
   ['waterline', '2.0.0-gamma.1', /artifacts\.waterline must use Waterline version format 2\.0\.0-alpha\.N or 2\.0\.0-beta\.N/],

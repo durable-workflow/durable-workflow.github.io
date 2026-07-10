@@ -139,6 +139,7 @@ const sidebars = {
         'polyglot/cli-reference',
         'polyglot/python',
         'polyglot/cli-python-parity',
+        'polyglot/rust',
       ],
     },
     {

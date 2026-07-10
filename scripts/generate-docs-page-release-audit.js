@@ -30,6 +30,7 @@ const ARTIFACT_VERSION_SOURCE_FILE = 'scripts/public-artifact-versions.json';
 const ARTIFACT_VERSION_SYNCHRONIZED_FIELDS = Object.freeze([
   'artifact_versions',
   'artifact_distribution_surfaces.server',
+  'artifact_distribution_surfaces.sdk-rust',
 ]);
 const SELF_HASH_EXCEPTION = {
   code: 'SELF_REFERENTIAL_MANIFEST',

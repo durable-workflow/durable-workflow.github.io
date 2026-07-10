@@ -15,7 +15,7 @@ const EXPECTED_REFRESH_FILES = [
   'docs/compatibility.md',
   'static/quickstart-execution-contract.json',
 ];
-const ARTIFACT_ORDER = ['cli', 'sdk-python', 'server', 'workflow', 'waterline'];
+const ARTIFACT_ORDER = ['cli', 'sdk-python', 'sdk-rust', 'server', 'waterline', 'workflow'];
 const GATE_ACTION_LIST_READY_ITEMS = 'gh.issue.list';
 const GATE_ACTION_CREATE_READY_ITEM = 'gh.issue.create';
 const ROUTING_LABELS = [
@@ -201,6 +201,7 @@ function artifactLabel(name) {
   return {
     cli: 'cli',
     'sdk-python': 'sdk-python',
+    'sdk-rust': 'sdk-rust',
     server: 'server',
     workflow: 'workflow',
     waterline: 'waterline',

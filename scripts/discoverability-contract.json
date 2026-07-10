@@ -20,7 +20,8 @@
         "polyglot/cli.mdx",
         "polyglot/cli-reference.md",
         "polyglot/python.md",
-        "polyglot/cli-python-parity.md"
+        "polyglot/cli-python-parity.md",
+        "polyglot/rust.md"
       ]
     },
     {
@@ -190,6 +191,12 @@
       "target": "polyglot/python.md",
       "related": ["polyglot/cli-python-parity.md"],
       "aliases": ["Python SDK", "durable_workflow", "Client"]
+    },
+    {
+      "query": "rust sdk crate worker",
+      "target": "polyglot/rust.md",
+      "related": ["polyglot/server.md", "polyglot/worker-protocol.md"],
+      "aliases": ["Rust SDK", "durable-workflow crate", "crates.io", "rust.durable-workflow.com", "$artifact.rustCargoAddCommand"]
     },
     {
       "query": "server mode http api control plane",

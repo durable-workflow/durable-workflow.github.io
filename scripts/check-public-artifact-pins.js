@@ -78,6 +78,17 @@ const PUBLIC_DOC_PIN_SURFACES = [
     ],
   },
   {
+    path: 'docs/polyglot/rust.md',
+    requiredPins: [
+      'rustSdkVersion',
+      'rustCargoAddCommand',
+      'rustCargoRequirement',
+      'rustCratesIoUrl',
+      'rustRepositoryUrl',
+      'rustDocumentationUrl',
+    ],
+  },
+  {
     path: 'docs/deployment.md',
     requiredPins: [
       'serverTagEnv',

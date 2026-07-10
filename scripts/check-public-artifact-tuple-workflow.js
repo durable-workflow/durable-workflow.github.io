@@ -74,6 +74,7 @@ const stableKeyHandoff = {
   artifact_versions: {
     cli: '0.2.0',
     'sdk-python': '0.2.0',
+    'sdk-rust': '0.1.0',
     server: '0.2.426',
     workflow: '0.2.0',
     waterline: '0.2.0',
@@ -138,6 +139,7 @@ const multiArtifactHandoff = {
   previous_artifact_versions: {
     cli: '0.1.99',
     'sdk-python': '0.1.99',
+    'sdk-rust': '0.1.0',
     server: '0.2.425',
     workflow: '0.1.99',
     waterline: '0.1.99',

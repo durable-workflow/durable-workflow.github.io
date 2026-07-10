@@ -23,6 +23,7 @@ const ARTIFACT_VERSION_SOURCE_FILE = 'scripts/public-artifact-versions.json';
 const ARTIFACT_VERSION_SYNCHRONIZED_FIELDS = Object.freeze([
   'artifact_versions',
   'artifact_distribution_surfaces.server',
+  'artifact_distribution_surfaces.sdk-rust',
 ]);
 const SELF_HASH_EXCEPTION = {
   path: '/docs-page-release-audit.json',
@@ -346,6 +347,38 @@ function assertArtifactDistributionSurfaces(audit) {
         fail(
           `docs-page-release-audit.json server surface ${expected.surface}.${key} ` +
           `must be ${expected[key]}, got ${actualSurface[key]}`
+        );
+      }
+    }
+  }
+
+  const expectedRustSurfaces = ARTIFACT_DISTRIBUTION_SURFACES['sdk-rust'];
+  const actualRustSurfaces = Array.isArray(actual['sdk-rust']) ? actual['sdk-rust'] : [];
+
+  if (actualRustSurfaces.length !== expectedRustSurfaces.length) {
+    fail(
+      'docs-page-release-audit.json artifact_distribution_surfaces.sdk-rust must cover ' +
+      `${expectedRustSurfaces.length} Rust package surfaces, got ${actualRustSurfaces.length}`
+    );
+  }
+
+  for (const expected of expectedRustSurfaces) {
+    const actualSurface = actualRustSurfaces.find(surface => surface.surface === expected.surface);
+
+    if (!actualSurface) {
+      fail(`docs-page-release-audit.json is missing Rust SDK artifact surface ${expected.surface}`);
+    }
+
+    assertNoRepoLocalArtifactMetadata(
+      actualSurface,
+      `docs-page-release-audit.json Rust SDK surface ${expected.surface}`
+    );
+
+    for (const [key, expectedValue] of Object.entries(expected)) {
+      if (actualSurface[key] !== expectedValue) {
+        fail(
+          `docs-page-release-audit.json Rust SDK surface ${expected.surface}.${key} ` +
+          `must be ${expectedValue}, got ${actualSurface[key]}`
         );
       }
     }

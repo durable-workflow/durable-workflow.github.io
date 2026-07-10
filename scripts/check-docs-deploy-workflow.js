@@ -38,6 +38,7 @@ function currentAudit() {
     artifact_versions: {...ARTIFACT_VERSIONS},
     artifact_distribution_surfaces: {
       server: ARTIFACT_DISTRIBUTION_SURFACES.server.map(surface => ({...surface})),
+      'sdk-rust': ARTIFACT_DISTRIBUTION_SURFACES['sdk-rust'].map(surface => ({...surface})),
     },
   };
 }
@@ -87,6 +88,7 @@ async function assertScheduledDeployRepairsStaleLiveTuple() {
   audit.artifact_versions.server = '0.2.543';
   audit.artifact_distribution_surfaces.server[0].tag = '0.2.543';
   audit.artifact_distribution_surfaces.server[0].reference = 'durableworkflow/server:0.2.543';
+  audit.artifact_distribution_surfaces['sdk-rust'][0].url = 'https://crates.io/crates/stale-package';
   quickstart.artifacts.cli.version = '0.1.84';
 
   const drift = compareLivePublicArtifacts(ARTIFACT_VERSIONS, audit, quickstart);
@@ -102,6 +104,10 @@ async function assertScheduledDeployRepairsStaleLiveTuple() {
   assert(
     drift.some(item => item.includes('server surface docker_hub_container_image.tag')),
     'server distribution surface drift must be reported'
+  );
+  assert(
+    drift.some(item => item.includes('Rust SDK surface crates_io_package.url')),
+    'Rust SDK distribution surface drift must be reported'
   );
 
   const plan = await planDeployment({

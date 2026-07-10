@@ -15,6 +15,11 @@ const ARTIFACT_VERSION_REQUIREMENTS = Object.freeze({
     pattern: /^0\.4\.\d+$/,
     expected: '0.4.N',
   },
+  'sdk-rust': {
+    label: 'Rust SDK',
+    pattern: /^0\.1\.\d+$/,
+    expected: '0.1.N',
+  },
   server: {
     label: 'server',
     pattern: /^0\.2\.\d+$/,
@@ -106,6 +111,12 @@ function buildArtifactPins(versions) {
     pythonSdkVersion: versions['sdk-python'],
     pythonPackagePin: `durable-workflow==${versions['sdk-python']}`,
     pythonPipInstallCommand: `pip install durable-workflow==${versions['sdk-python']}`,
+    rustSdkVersion: versions['sdk-rust'],
+    rustCargoAddCommand: `cargo add durable-workflow@${versions['sdk-rust']} --exact`,
+    rustCargoRequirement: `durable-workflow = "=${versions['sdk-rust']}"`,
+    rustCratesIoUrl: 'https://crates.io/crates/durable-workflow',
+    rustRepositoryUrl: 'https://github.com/durable-workflow/sdk-rust',
+    rustDocumentationUrl: 'https://rust.durable-workflow.com/',
     serverVersion: versions.server,
     serverDockerHubImage: `durableworkflow/server:${versions.server}`,
     serverGhcrImage: `ghcr.io/durable-workflow/server:${versions.server}`,
@@ -139,6 +150,12 @@ function buildArtifactPinPatterns(versions) {
       label: 'Python SDK package pin',
       pattern: /durable-workflow==(0\.4\.\d+)/g,
       expected: versions['sdk-python'],
+    },
+    {
+      category: 'rust_sdk_artifact_pin',
+      label: 'Rust SDK crate pin',
+      pattern: /(?:cargo add durable-workflow@(0\.1\.\d+)\s+--exact|durable-workflow\s*=\s*["']=(0\.1\.\d+)["'])/g,
+      expected: versions['sdk-rust'],
     },
     {
       category: 'cli_artifact_pin',
@@ -180,6 +197,23 @@ function buildArtifactDistributionSurfaces(versions) {
         image: 'ghcr.io/durable-workflow/server',
         tag: versions.server,
         reference: `ghcr.io/durable-workflow/server:${versions.server}`,
+      }),
+    ]),
+    'sdk-rust': Object.freeze([
+      Object.freeze({
+        surface: 'crates_io_package',
+        package: 'durable-workflow',
+        version: versions['sdk-rust'],
+        url: 'https://crates.io/crates/durable-workflow',
+      }),
+      Object.freeze({
+        surface: 'source_repository',
+        repository: 'durable-workflow/sdk-rust',
+        url: 'https://github.com/durable-workflow/sdk-rust',
+      }),
+      Object.freeze({
+        surface: 'api_documentation',
+        url: 'https://rust.durable-workflow.com/',
       }),
     ]),
   });

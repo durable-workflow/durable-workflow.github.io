@@ -34,7 +34,7 @@ const CONTAINER_MANIFEST_ACCEPT = [
   'application/vnd.docker.distribution.manifest.v2+json',
 ].join(', ');
 const COMPATIBILITY_HISTORY_HEADER =
-  '| Date | Server | CLI | Python SDK | Workflow | Waterline | Notes |';
+  '| Date | Server | CLI | Python SDK | Rust SDK | Workflow | Waterline | Notes |';
 const COMPATIBILITY_HISTORY_NOTE =
   'Public release-audit evidence is aligned with the current published artifact tuple while stable 1.x remains the default docs line.';
 
@@ -60,6 +60,12 @@ const PUBLISHED_ARTIFACT_SOURCES = Object.freeze({
     label: 'Python SDK',
     kind: 'pypi',
     url: 'https://pypi.org/pypi/durable-workflow/json',
+  },
+  'sdk-rust': {
+    label: 'Rust SDK',
+    kind: 'crates-io',
+    packageName: 'durable-workflow',
+    url: 'https://crates.io/api/v1/crates/durable-workflow',
   },
   server: {
     label: 'server',
@@ -502,6 +508,22 @@ async function resolvePypiVersion(source) {
   return selectLatestVersion('sdk-python', candidates, source.url);
 }
 
+function selectLatestCratesIoVersion(response, source) {
+  const candidates = (response.versions || [])
+    .filter(version => version && !version.yanked)
+    .map(version => version.num);
+
+  if (candidates.length === 0 && response.crate && response.crate.max_version) {
+    candidates.push(response.crate.max_version);
+  }
+
+  return selectLatestVersion('sdk-rust', candidates, source.url);
+}
+
+async function resolveCratesIoVersion(source) {
+  return selectLatestCratesIoVersion(await requestJson(source.url), source);
+}
+
 async function resolvePackagistVersion(source) {
   const response = await requestJson(source.url);
   const packages = response.packages || {};
@@ -524,12 +546,14 @@ async function resolvePublishedArtifactTuple(sources = PUBLISHED_ARTIFACT_SOURCE
   const [
     cli,
     sdkPython,
+    sdkRust,
     server,
     waterline,
     workflow,
   ] = await Promise.all([
     resolveCliVersion(sources.cli),
     resolvePypiVersion(sources['sdk-python']),
+    resolveCratesIoVersion(sources['sdk-rust']),
     resolveServerVersion(sources.server),
     resolvePackagistVersion(sources.waterline),
     resolvePackagistVersion(sources.workflow),
@@ -538,6 +562,7 @@ async function resolvePublishedArtifactTuple(sources = PUBLISHED_ARTIFACT_SOURCE
   const versions = {
     cli,
     'sdk-python': sdkPython,
+    'sdk-rust': sdkRust,
     server,
     waterline,
     workflow,
@@ -608,23 +633,37 @@ function parseCompatibilityHistoryRow(row) {
     throw new Error(`Malformed docs/compatibility.md version-history row: ${row}`);
   }
 
+  if (cells.length === 7) {
+    return {
+      date: cells[0],
+      server: cells[1],
+      cli: cells[2],
+      'sdk-python': cells[3],
+      'sdk-rust': null,
+      workflow: cells[4],
+      waterline: cells[5],
+      notes: cells.slice(6).join(' | '),
+    };
+  }
+
   return {
     date: cells[0],
     server: cells[1],
     cli: cells[2],
     'sdk-python': cells[3],
-    workflow: cells[4],
-    waterline: cells[5],
-    notes: cells.slice(6).join(' | '),
+    'sdk-rust': cells[4],
+    workflow: cells[5],
+    waterline: cells[6],
+    notes: cells.slice(7).join(' | '),
   };
 }
 
 function compatibilityHistoryRow(versions, date) {
-  return `| ${date} | ${versions.server} | ${versions.cli} | ${versions['sdk-python']} | ${versions.workflow} | ${versions.waterline} | ${COMPATIBILITY_HISTORY_NOTE} |`;
+  return `| ${date} | ${versions.server} | ${versions.cli} | ${versions['sdk-python']} | ${versions['sdk-rust']} | ${versions.workflow} | ${versions.waterline} | ${COMPATIBILITY_HISTORY_NOTE} |`;
 }
 
 function compatibilityHistoryMismatches(rowVersions, expected) {
-  return ['server', 'cli', 'sdk-python', 'workflow', 'waterline']
+  return ['server', 'cli', 'sdk-python', 'sdk-rust', 'workflow', 'waterline']
     .filter(name => rowVersions[name] !== expected[name])
     .map(name => ({
       name,
@@ -738,6 +777,9 @@ function applyQuickstartArtifactPins(contract, versions) {
   update('artifacts.sdk-python', artifacts['sdk-python'], 'version', versions['sdk-python']);
   update('artifacts.sdk-python', artifacts['sdk-python'], 'pip_package', pins.pythonPackagePin);
   update('artifacts.sdk-python', artifacts['sdk-python'], 'install_command', pins.pythonPipInstallCommand);
+  update('artifacts.sdk-rust', artifacts['sdk-rust'], 'version', versions['sdk-rust']);
+  update('artifacts.sdk-rust', artifacts['sdk-rust'], 'crate', 'durable-workflow');
+  update('artifacts.sdk-rust', artifacts['sdk-rust'], 'install_command', pins.rustCargoAddCommand);
   update('artifacts.workflow', artifacts.workflow, 'version', versions.workflow);
   update('artifacts.workflow', artifacts.workflow, 'composer_constraint', pins.workflowComposerPackage);
   update('artifacts.waterline', artifacts.waterline, 'version', versions.waterline);
@@ -929,6 +971,7 @@ module.exports = {
   replaceCompatibilityHistoryTopRow,
   resolvePublishedArtifactTuple,
   selectLatestCompleteCliRelease,
+  selectLatestCratesIoVersion,
   selectServerRegistryVersion,
   selectLatestVersion,
   versionRank,
