@@ -398,7 +398,7 @@ docs-side gates automatically; the rest belong to the human reviewer.
 
 | Date | Server | CLI | Python SDK | Workflow | Waterline | Notes |
 |------|--------|-----|------------|----------|-----------|-------|
-| 2026-07-10 | 0.2.621 | 0.1.86 | 0.4.98 | 2.0.0-alpha.259 | 2.0.0-alpha.125 | Public release-audit evidence is aligned with the current published artifact tuple while stable 1.x remains the default docs line. |
+| 2026-07-10 | 0.2.625 | 0.1.86 | 0.4.98 | 2.0.0-alpha.259 | 2.0.0-alpha.125 | Public release-audit evidence is aligned with the current published artifact tuple while stable 1.x remains the default docs line. |
 | 2026-07-09 | 0.2.618 | 0.1.86 | 0.4.98 | 2.0.0-alpha.259 | 2.0.0-alpha.122 | Platform conformance suite version 28 requires v1-to-v2 rollback evidence to preserve external ready, delayed, and reserved queue state with SQL from one recovery cut, or report the affected executions as unrecoverable. An observed v1.0.77 Watchdog redispatch is a bounded pending-only wake path; retries, timers, and waiting/running work still require their queue or signal state. Recovery manifests record only an `APP_KEY` secret-manager reference/version, with secrets and recovery credentials separately controlled. |
 | 2026-07-09 | 0.2.617 | 0.1.86 | 0.4.98 | 2.0.0-alpha.258 | 2.0.0-alpha.122 | Public release-audit evidence is aligned with the current published artifact tuple while stable 1.x remains the default docs line. |
 | 2026-07-08 | 0.2.598 | 0.1.86 | 0.4.98 | 2.0.0-alpha.251 | 2.0.0-alpha.121 | Public release-audit evidence is aligned with the current published artifact tuple while stable 1.x remains the default docs line. |
