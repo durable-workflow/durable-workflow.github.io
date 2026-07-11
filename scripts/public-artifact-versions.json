@@ -5,8 +5,8 @@
     "cli": "0.1.86",
     "sdk-python": "0.4.98",
     "sdk-rust": "0.1.2",
-    "server": "0.2.629",
+    "server": "0.2.630",
     "waterline": "2.0.0-alpha.129",
-    "workflow": "2.0.0-alpha.263"
+    "workflow": "2.0.0-alpha.264"
   }
 }
