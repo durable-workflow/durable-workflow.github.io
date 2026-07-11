@@ -52,6 +52,7 @@ jobs:
 
           const expected = require('./scripts/public-artifact-versions.json').artifacts;
           const audit = JSON.parse(fs.readFileSync('build/docs-page-release-audit.json', 'utf8'));
+          const narrative = JSON.parse(fs.readFileSync('build/docs-narrative-audit.json', 'utf8'));
           const quickstart = JSON.parse(fs.readFileSync('build/quickstart-execution-contract.json', 'utf8'));
 
           for (const [name, version] of Object.entries(expected)) {
@@ -66,6 +67,12 @@ jobs:
               version,
               `quickstart-execution-contract.json artifacts.${name}.version`
             );
+
+            assert.strictEqual(
+              narrative.artifact_versions && narrative.artifact_versions[name],
+              version,
+              `docs-narrative-audit.json artifact_versions.${name}`
+            );
           }
 
           assert.strictEqual(
@@ -79,6 +86,28 @@ jobs:
               quickstart.default_docs_guard.stable_default_docs_version,
             '1.x',
             'quickstart stable default docs version'
+          );
+          assert.strictEqual(
+            narrative.release_status_guardrail &&
+              narrative.release_status_guardrail.stable_default_docs_version,
+            '1.x',
+            'narrative audit stable default docs version'
+          );
+          assert.strictEqual(
+            narrative.release_status_guardrail &&
+              narrative.release_status_guardrail.explicit_prerelease_docs_version,
+            '2.0',
+            'narrative audit explicit prerelease docs version'
+          );
+          assert.strictEqual(
+            narrative.docs_revision,
+            audit.docs_revision,
+            'narrative and release audit docs revisions'
+          );
+          assert.strictEqual(
+            narrative.summary && narrative.summary.unique_markdown_sources,
+            narrative.source_reviews && narrative.source_reviews.length,
+            'narrative audit canonical Markdown source coverage matches the reviewed source rows'
           );
 
           console.log(

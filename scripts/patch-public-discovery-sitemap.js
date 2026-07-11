@@ -52,6 +52,10 @@ const REQUIRED_DISCOVERY_ENTRIES = [
     buildPath: 'docs-page-release-audit.json',
   },
   {
+    path: '/docs-narrative-audit.json',
+    buildPath: 'docs-narrative-audit.json',
+  },
+  {
     path: '/platform-conformance/signal-query-runtime-scenarios.json',
     buildPath: 'platform-conformance/signal-query-runtime-scenarios.json',
   },

@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const path = require('path');
 
 const config = require('../docusaurus.config.js');
+const {docsRevision} = require('./docs-narrative-audit-contract');
 const {
   ARTIFACT_DISTRIBUTION_SURFACES,
   ARTIFACT_VERSION_SCHEMA,
@@ -413,6 +414,10 @@ function main() {
 
   if (audit.classifier !== CLASSIFIER_ID) {
     fail(`docs-page-release-audit.json classifier must be ${CLASSIFIER_ID}`);
+  }
+
+  if (audit.docs_revision !== docsRevision(repoRoot)) {
+    fail(`docs-page-release-audit.json docs_revision must match the built Git revision`);
   }
 
   assertArtifactVersions(audit);

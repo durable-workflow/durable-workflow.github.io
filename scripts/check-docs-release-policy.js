@@ -25,6 +25,7 @@ const PUBLIC_DISCOVERY_URLS = [
   '/docs/2.0/docs-page-release-audit/',
   '/docs/platform-conformance/',
   '/docs-page-release-audit.json',
+  '/docs-narrative-audit.json',
   '/platform-conformance-contract.json',
   '/platform-conformance/signal-query-runtime-scenarios.json',
   '/platform-conformance/workflow-update-runtime-scenarios.json',
@@ -203,6 +204,7 @@ function assertBuiltDocsPolicy() {
   const quickstartContract = readBuildFile('quickstart-execution-contract.json');
   const prereleasePageReleaseAudit = readBuildFile('docs/2.0/docs-page-release-audit/index.html');
   const pageReleaseAudit = readBuildFile('docs-page-release-audit.json');
+  const narrativeAudit = readBuildFile('docs-narrative-audit.json');
   const canonicalIndex = readBuildFile('llms.txt');
   const canonicalFull = readBuildFile('llms-full.txt');
   const prereleaseIndex = readBuildFile('llms-2.0.txt');
@@ -267,6 +269,9 @@ function assertBuiltDocsPolicy() {
   assertIncludes(pageReleaseAudit, '"schema": "durable-workflow.docs.page-release-audit"', 'docs page release audit manifest');
   assertIncludes(pageReleaseAudit, '"stable_default_docs_version": "1.x"', 'docs page release audit manifest');
   assertIncludes(pageReleaseAudit, '"explicit_prerelease_docs_version": "2.0"', 'docs page release audit manifest');
+  assertIncludes(narrativeAudit, '"schema": "durable-workflow.docs.narrative-audit"', 'docs narrative audit manifest');
+  assertIncludes(narrativeAudit, '"stable_default_docs_version": "1.x"', 'docs narrative audit manifest');
+  assertIncludes(narrativeAudit, '"explicit_prerelease_docs_version": "2.0"', 'docs narrative audit manifest');
   assertIncludes(quickstartContract, '"schema": "durable-workflow.docs.v2.quickstart-execution-contract"', 'quickstart execution contract');
   assertIncludes(quickstartContract, '"stable_default_docs_version": "1.x"', 'quickstart execution contract');
   assertIncludes(quickstartContract, '"python_user_local_server_completion"', 'quickstart execution contract');

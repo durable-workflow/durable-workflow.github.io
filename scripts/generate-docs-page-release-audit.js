@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const path = require('path');
 
 const config = require('../docusaurus.config.js');
+const {docsRevision} = require('./docs-narrative-audit-contract');
 const {
   ARTIFACT_DISTRIBUTION_SURFACES,
   ARTIFACT_PIN_PATTERNS,
@@ -1171,6 +1172,7 @@ function main() {
     schema_version: SCHEMA_VERSION,
     generated_from: 'production sitemap, docs build output, and content-derived release-status classifier',
     classifier: CLASSIFIER_ID,
+    docs_revision: docsRevision(repoRoot),
     artifact_versions: ARTIFACT_VERSIONS,
     artifact_version_source: artifactVersionSourceMetadata(),
     artifact_distribution_surfaces: ARTIFACT_DISTRIBUTION_SURFACES,
