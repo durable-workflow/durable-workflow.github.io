@@ -1,9 +1,9 @@
 {
   "schema": "durable-workflow.v2.platform-conformance.runtime-scenarios",
-  "version": 4,
+  "version": 5,
   "category": "signal_query_runtime_contract",
   "suite_schema": "durable-workflow.v2.platform-conformance.suite",
-  "suite_version": 28,
+  "suite_version": 29,
   "description": "Public scenario manifest for the stable signal and query runtime contract. Harnesses use these scenario ids and criteria when evaluating published Durable Workflow artifacts.",
   "fixture_type": "published_artifact_runtime_scenario_manifest",
   "result_statuses": [
@@ -44,6 +44,7 @@
         "server",
         "workflow_php_sdk",
         "python_sdk",
+        "rust_sdk",
         "cli",
         "waterline"
       ],
@@ -173,6 +174,113 @@
       ]
     },
     {
+      "id": "rust_worker_rust_php_python_clients",
+      "title": "Rust snapshot-query worker controlled by Rust, PHP, and Python clients",
+      "claim_targets": [
+        "standalone_server",
+        "official_sdk",
+        "worker_protocol_implementation"
+      ],
+      "actors": [
+        "server",
+        "rust_worker",
+        "rust_sdk_client",
+        "php_sdk_client",
+        "python_sdk_client"
+      ],
+      "artifact": {
+        "package": "durable-workflow",
+        "version": "0.1.2",
+        "source": "crates.io",
+        "cargo_requirement": "=0.1.2"
+      },
+      "query_state_model": "snapshot_derived_transport_state",
+      "operations": [
+        "install the exact Rust SDK crate from crates.io and record Cargo registry source and checksum provenance",
+        "run a Rust worker with ordered signals and a named read-only snapshot query",
+        "exercise running and completed query state through Rust, PHP, and Python callers",
+        "send and query at least one valid Apache Avro payload and record the observed value"
+      ],
+      "pass_criteria": [
+        "all three callers observe equivalent running and completed state",
+        "the exact Cargo-resolved Rust SDK version matches worker registration evidence",
+        "the valid Avro round trip uses the SDK's resolved apache-avro dependency",
+        "repeat queries return the same answer without an intervening state change"
+      ]
+    },
+    {
+      "id": "python_worker_rust_client",
+      "title": "Python worker controlled by the Rust SDK client",
+      "claim_targets": [
+        "standalone_server",
+        "official_sdk",
+        "worker_protocol_implementation"
+      ],
+      "actors": [
+        "server",
+        "python_worker",
+        "rust_sdk_client"
+      ],
+      "operations": [
+        "send ordered Avro signals from the exact crates.io Rust client to a Python workflow",
+        "query the state repeatedly from the Rust client"
+      ],
+      "pass_criteria": [
+        "the Python worker applies the Rust client's signals in order",
+        "Rust query results equal the Python workflow state",
+        "repeat queries are consistent"
+      ]
+    },
+    {
+      "id": "php_worker_rust_client",
+      "title": "PHP worker controlled by the Rust SDK client",
+      "claim_targets": [
+        "standalone_server",
+        "official_sdk",
+        "worker_protocol_implementation"
+      ],
+      "actors": [
+        "server",
+        "php_worker",
+        "rust_sdk_client"
+      ],
+      "operations": [
+        "send ordered Avro signals from the exact crates.io Rust client to a PHP workflow",
+        "query the state repeatedly from the Rust client"
+      ],
+      "pass_criteria": [
+        "the PHP worker applies the Rust client's signals in order",
+        "Rust query results equal the PHP workflow state",
+        "repeat queries are consistent"
+      ]
+    },
+    {
+      "id": "rust_query_error_and_immutability",
+      "title": "Rust snapshot-query errors and read-only invariants",
+      "claim_targets": [
+        "standalone_server",
+        "official_sdk",
+        "worker_protocol_implementation"
+      ],
+      "actors": [
+        "server",
+        "rust_worker",
+        "rust_sdk_client"
+      ],
+      "query_state_model": "snapshot_derived_transport_state",
+      "operations": [
+        "capture history and workflow-command counts before the first successful measured query",
+        "run successful and repeat queries",
+        "exercise unknown query, malformed payload, unavailable handler, incompatible protocol, missing workflow, and terminal signal outcomes",
+        "query the known handler again after all failure paths"
+      ],
+      "pass_criteria": [
+        "every failure has a stable machine-readable reason",
+        "successful and failed queries append no history and emit no workflow commands",
+        "the answer after failure paths equals the answer recorded before them"
+      ]
+    },
+    {
       "id": "ordered_signal_delivery",
       "title": "Ordered signal delivery",
       "claim_targets": [
@@ -273,6 +381,42 @@
         "the query either returns a documented replay-safe snapshot or a documented retryable response",
         "query execution does not mutate workflow state",
         "the post-replay query returns a state consistent with the final live execution"
+      ]
+    },
+    {
+      "id": "rust_replayed_instance_state_query_after_cold_restart",
+      "title": "Rust replayed workflow-instance state query after cold restart",
+      "claim_targets": [
+        "standalone_server",
+        "official_sdk",
+        "worker_protocol_implementation"
+      ],
+      "actors": [
+        "server",
+        "rust_worker",
+        "rust_sdk_client",
+        "php_sdk_client",
+        "python_sdk_client"
+      ],
+      "artifact": {
+        "package": "durable-workflow",
+        "version": "0.1.2",
+        "source": "crates.io",
+        "cargo_requirement": "=0.1.2"
+      },
+      "query_state_model": "replayed_workflow_instance_state",
+      "operations": [
+        "register the workflow with register_replayed_workflow and its query with register_replayed_query",
+        "query running state through Rust, PHP, and Python callers",
+        "cold-stop the first Rust worker and start a fresh worker process against durable history",
+        "query restored state, complete the workflow, and query completed state through all three callers"
+      ],
+      "pass_criteria": [
+        "the fresh worker restores the committed pre-restart state from durable history",
+        "all callers observe equivalent running, restored, and completed state",
+        "successful and failed replayed queries append no history and emit no workflow commands at every checkpoint",
+        "failed queries do not alter the state returned by a later query",
+        "deterministic workflow replay evidence remains distinct from snapshot-derived transport evidence"
       ]
     },
     {

@@ -25,7 +25,7 @@ for implementations that claim Durable Workflow v2 compatibility.
 The machine-readable mirror is published at
 [`static/platform-conformance-contract.json`](pathname:///platform-conformance-contract.json)
 with schema `durable-workflow.v2.platform-conformance.suite`, version
-`28`. The same manifest is advertised by the standalone server from
+`29`. The same manifest is advertised by the standalone server from
 `GET /api/cluster/info` under `platform_conformance_suite`. The
 [Platform Protocol Specs](/docs/2.0/platform-protocol-specs) catalog names
 that nested manifest as the `platform_conformance_suite_manifest`
@@ -90,7 +90,7 @@ JSON manifests linked from the category notes below.
 | `worker_task_lifecycle` | `stable` | `cli` | `tests/fixtures/external-task-input/` | Task input envelopes and task result envelopes used by every conforming worker. |
 | `worker_task_lifecycle` | `stable` | `sdk-python` | `tests/fixtures/external-task-input/` | Task input envelopes and task result envelopes used by every conforming worker. |
 | `worker_task_lifecycle` | `stable` | `sdk-python` | `tests/fixtures/external-task-result/` | Task input envelopes and task result envelopes used by every conforming worker. |
-| `signal_query_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/signal-query-runtime-scenarios.json` | Live published-artifact scenarios for signal delivery and query consistency across PHP and Python workers, CLI and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility. |
+| `signal_query_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/signal-query-runtime-scenarios.json` | Live published-artifact scenarios for signal delivery and query consistency across PHP, Python, and Rust workers and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility. |
 | `workflow_update_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/workflow-update-runtime-scenarios.json` | Live published-artifact scenarios for workflow updates across declared update visibility, accepted/running/completed/failed outcomes, idempotency, refusal paths, payload envelopes, principal attribution, PHP/Python parity, and operator visibility. |
 | `search_attribute_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/search-attribute-runtime-scenarios.json` | Live published-artifact scenarios for Temporal-parity search attributes across PHP and Python workers, CLI query surfaces, Waterline operator visibility, cross-language codecs, load latency, boolean grammar, and adversarial query handling. |
 | `schedules_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/schedules-runtime-scenarios.json` | Live published-artifact scenarios for Temporal-parity schedules across cron and fixed-rate cadence, public list and describe surfaces, pause/resume/delete controls, missed-fire policy, restart survival, CLI/Python/PHP client paths, cross-language scheduled workflow dispatch, and adversarial schedule inputs. |
@@ -128,9 +128,14 @@ count toward a passing category:
 `published_artifact_install_only`,
 `python_worker_cli_and_sdk_baseline`, `php_worker_cli_and_sdk_baseline`,
 `python_worker_php_facing_and_cli_clients`,
-`php_worker_python_and_cli_clients`, `ordered_signal_delivery`,
+`php_worker_python_and_cli_clients`,
+`rust_worker_rust_php_python_clients`, `python_worker_rust_client`,
+`php_worker_rust_client`, `rust_query_error_and_immutability`,
+`ordered_signal_delivery`,
 `dedup_contract_observation`, `signal_during_replay`,
-`query_during_replay`, `completed_run_signal_and_query`,
+`query_during_replay`,
+`rust_replayed_instance_state_query_after_cold_restart`,
+`completed_run_signal_and_query`,
 `unknown_signal_and_query_errors`,
 `malformed_signal_and_query_payloads`, and
 `waterline_operator_visibility`.
@@ -140,6 +145,20 @@ machine-readable runtime scenario manifest at
 [`static/platform-conformance/signal-query-runtime-scenarios.json`](pathname:///platform-conformance/signal-query-runtime-scenarios.json).
 Implementation tests may exercise the scenarios, but they are not stable
 fixture sources for external harnesses.
+
+The Rust cells install `durable-workflow = "=0.1.2"` from crates.io and
+record the Cargo registry source and checksum for both the SDK and its resolved
+`apache-avro` dependency. Snapshot-derived query transport is graded by
+`rust_worker_rust_php_python_clients` and
+`rust_query_error_and_immutability`. It is not replayed workflow-instance
+state. The separate
+`rust_replayed_instance_state_query_after_cold_restart` cell uses
+`register_replayed_workflow` and `register_replayed_query`, starts a fresh Rust
+worker process after a cold stop, restores durable history, and compares
+running, restored, and completed state through Rust, PHP, and Python callers.
+Both successful and failed query sequences capture history and workflow-command
+counts before the first successful measured query and must leave those counts
+unchanged.
 
 For `completed_run_signal_and_query`, a completed cleanly run with a
 replayable declared query handler must return its final query state

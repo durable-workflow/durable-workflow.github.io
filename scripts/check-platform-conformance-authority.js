@@ -24,6 +24,9 @@ const protocolSpecsDocPath = path.join(repoRoot, 'docs', 'platform-protocol-spec
 const sidebarsPath = path.join(repoRoot, 'sidebars.js');
 
 const EXPECTED_SCHEMA = 'durable-workflow.v2.platform-conformance.suite';
+const VERSIONED_SUITE_AUTHORITY_DIGESTS = {
+  29: 'sha256:51eaaf8d034264f0f91bd13d10e3d46ca10dc8d97010719d4727c0336ad66382',
+};
 const EXPECTED_RUNTIME_SCENARIO_SCHEMA =
   'durable-workflow.v2.platform-conformance.runtime-scenarios';
 const EXPECTED_RUNTIME_SCENARIO_FIXTURE_TYPE =
@@ -205,6 +208,13 @@ const VERSIONED_RUNTIME_SCENARIO_STATUSES = {
     'runner_blocked',
   ],
   28: [
+    'pass',
+    'fail',
+    'unsupported',
+    'not_covered',
+    'runner_blocked',
+  ],
+  29: [
     'pass',
     'fail',
     'unsupported',
@@ -473,6 +483,21 @@ const VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS = {
     workflow_update_runtime_contract: 'sha256:c7de18cfd6606f72c320408dd8943526cc52d8863bf3a8c9cd9eb689cafb85bd',
     worker_versioning_runtime_contract: 'sha256:e96de5ed97bcbdc68eeee9849145c22d52d450da23fba6f49f8ac3be736faca3',
   },
+  29: {
+    child_workflow_runtime_contract: 'sha256:3612fc5ce951c26382d7eb2842c368f9ce7a17ce48a246bd43d327ada2de54e2',
+    history_replay_bundles: 'sha256:70658bc21f12e7b0c16306951ba18e2b2ec853487c287e81cfa64a2b40eff013',
+    migration_runtime_contract: 'sha256:484567df1910ff0b9b0aa1665c79c5dc851b899c48e8f245ed7574f5dc87d82a',
+    namespace_runtime_contract: 'sha256:aba71f98fcad2713a13801ef5430522ffdb6ea4214a160e50fca0cd7794315e5',
+    prerelease_readiness_contract: 'sha256:ec09056f015e85053071eff8ddb8b691257ae323215e068ed6ecc498ce495e39',
+    principal_attribution_contract: 'sha256:4c2c315ddffcfd14955169838785ee9d6c7e1c8373aeeea16cc31beec4b54f8d',
+    saga_runtime_contract: 'sha256:6f6c04ecb67546ff2d307e9f53961f9c19ab347c6486de7fe29e0a5dddef4347',
+    schedules_runtime_contract: 'sha256:7485146046a84c752b02081870782a268ead0cdaf6a08910e0e270530e62f43f',
+    search_attribute_runtime_contract: 'sha256:ef28842b57295065f2de2cf973ee7c06f0bdd2f390f0ab3dcf78d9c64f72d1c5',
+    signal_query_runtime_contract: 'sha256:9621972cfa0b7bd4f3884a3ae31e56bef3ddf8efab83deaeaf78ca2c488093e9',
+    skew_refusal_matrix_contract: 'sha256:72b63c7df1c002dade9998798d4ca93fc022a2a6c5742c88b5fdef15a40851c2',
+    workflow_update_runtime_contract: 'sha256:c7de18cfd6606f72c320408dd8943526cc52d8863bf3a8c9cd9eb689cafb85bd',
+    worker_versioning_runtime_contract: 'sha256:e96de5ed97bcbdc68eeee9849145c22d52d450da23fba6f49f8ac3be736faca3',
+  },
 };
 // Digests bind public top-level runtime scenario manifest requirements to the
 // suite version. These fields define artifact source policy, common evidence,
@@ -605,6 +630,21 @@ const VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS = {
     worker_versioning_runtime_contract: 'sha256:894e20bff8883f96c3b71e9248edc7d9867109a69dba4ec1b585522cf7c15d72',
   },
   28: {
+    child_workflow_runtime_contract: 'sha256:9d8db2784110771778af0ff0a03de13bf5f0243b2be6d69080e013e602476072',
+    history_replay_bundles: 'sha256:0a7b52919c7dd44b80a559324c7cdda563744385729fd67cedafe082f2af36e8',
+    migration_runtime_contract: 'sha256:275b32e9f0e6a9690e0dbda6a65a0056fc9f937de21183bb69071949302cfba7',
+    namespace_runtime_contract: 'sha256:36a4abd574cfa4a920b0838e44fe9d6a991b0b69b064bc4a8ddf8b295714c7e9',
+    prerelease_readiness_contract: 'sha256:1846068e84ca06074607d319438a95cbb13d017aec15fa4cbd5895fb1e253c9f',
+    principal_attribution_contract: 'sha256:868b5750be001b4c0bd8ed6e54b7d2cf41dc6ed830b5f04c0e20b5fa24f366ff',
+    saga_runtime_contract: 'sha256:57995ea2061611562391ab2fb625760d541167613f7ac8769b83039ca2b7c6bf',
+    schedules_runtime_contract: 'sha256:4c94261b254d49ed59b71478da33b5ed0bc72dee7055c4d3641889839bbc4a38',
+    search_attribute_runtime_contract: 'sha256:90c2e5b9fffd0a0be166a354d6d897d0b29b547f60afa00e7925ae1defc626ed',
+    signal_query_runtime_contract: 'sha256:12c2395791d1ef5897fba360f5797666bf78eaf4ae270786f294c1b80e0432dd',
+    skew_refusal_matrix_contract: 'sha256:05eafce72332f995d9a940db9c2cb45e121ff9fef5336505e7ccb84e4ef7b64f',
+    workflow_update_runtime_contract: 'sha256:63d351edd9b307f75b107d4bf2354523caaa6f1da89570c59e0cb55d4f8d66eb',
+    worker_versioning_runtime_contract: 'sha256:894e20bff8883f96c3b71e9248edc7d9867109a69dba4ec1b585522cf7c15d72',
+  },
+  29: {
     child_workflow_runtime_contract: 'sha256:9d8db2784110771778af0ff0a03de13bf5f0243b2be6d69080e013e602476072',
     history_replay_bundles: 'sha256:0a7b52919c7dd44b80a559324c7cdda563744385729fd67cedafe082f2af36e8',
     migration_runtime_contract: 'sha256:275b32e9f0e6a9690e0dbda6a65a0056fc9f937de21183bb69071949302cfba7',
@@ -885,6 +925,7 @@ VERSIONED_PASS_FAIL_RULES[27] = {
   },
 };
 VERSIONED_PASS_FAIL_RULES[28] = VERSIONED_PASS_FAIL_RULES[27];
+VERSIONED_PASS_FAIL_RULES[29] = VERSIONED_PASS_FAIL_RULES[28];
 const EXPECTED_AUTHORITY_DOC = 'docs/platform-conformance.md';
 const EXPECTED_DOC_ID = 'platform-conformance';
 
@@ -1212,6 +1253,113 @@ function assertArrayOfStrings(contract, key, expected) {
   }
 }
 
+function assertVersionedSuiteAuthorityDigest(contract) {
+  const expected = VERSIONED_SUITE_AUTHORITY_DIGESTS[contract.version];
+
+  if (!expected) {
+    throw new Error(
+      `scripts/check-platform-conformance-authority.js must declare a complete ` +
+        `suite authority digest for version ${contract.version}.`,
+    );
+  }
+
+  const actual =
+    'sha256:' +
+    crypto.createHash('sha256').update(stableJson(contract)).digest('hex');
+
+  if (actual !== expected) {
+    throw new Error(
+      `static/platform-conformance-contract.json semantic digest ${actual} ` +
+        `must match suite-versioned expectation ${expected}. Advance the suite ` +
+        `version and add a new digest before changing public suite semantics.`,
+    );
+  }
+}
+
+function assertRustSignalQueryAuthority(contract) {
+  const expectedArtifact = {
+    package: 'durable-workflow',
+    version: '0.1.2',
+    source: 'crates.io',
+    cargo_requirement: '=0.1.2',
+  };
+  const expectedContracts = {
+    rust_worker_rust_php_python_clients: {
+      worker_runtime: 'sdk-rust',
+      artifact: expectedArtifact,
+      query_state_model: 'snapshot_derived_transport_state',
+      caller_paths: ['sdk-rust', 'workflow-php-sdk', 'sdk-python'],
+    },
+    python_worker_rust_client: {
+      worker_runtime: 'sdk-python',
+      artifact: expectedArtifact,
+      rust_role: 'client',
+      caller_paths: ['sdk-rust'],
+    },
+    php_worker_rust_client: {
+      worker_runtime: 'workflow-php',
+      artifact: expectedArtifact,
+      rust_role: 'client',
+      caller_paths: ['sdk-rust'],
+    },
+    rust_query_error_and_immutability: {
+      worker_runtime: 'sdk-rust',
+      artifact: expectedArtifact,
+      query_state_model: 'snapshot_derived_transport_state',
+      required_assertions: [
+        'unknown_query_has_stable_outcome',
+        'malformed_query_payload_has_stable_outcome',
+        'unavailable_query_worker_has_stable_outcome',
+        'protocol_query_failure_has_stable_outcome',
+        'missing_workflow_query_has_stable_outcome',
+        'terminal_signal_has_stable_outcome',
+        'successful_query_emits_no_workflow_commands',
+        'failed_query_emits_no_workflow_commands',
+        'successful_query_appends_no_history',
+        'failed_query_appends_no_history',
+        'failed_query_does_not_change_later_answer',
+      ],
+    },
+    rust_replayed_instance_state_query_after_cold_restart: {
+      worker_runtime: 'sdk-rust',
+      artifact: expectedArtifact,
+      query_state_model: 'replayed_workflow_instance_state',
+      lifecycle: [
+        'start_running_workflow',
+        'query_running_state',
+        'cold_stop_rust_worker',
+        'start_fresh_rust_worker_process',
+        'restore_state_from_durable_history',
+        'complete_restored_workflow',
+        'query_completed_state',
+      ],
+      caller_paths: ['sdk-rust', 'workflow-php-sdk', 'sdk-python'],
+      required_assertions: [
+        'callers_observe_equivalent_state_at_each_checkpoint',
+        'restored_state_matches_committed_pre_restart_state',
+        'completed_state_matches_terminal_workflow_state',
+        'successful_replayed_query_emits_no_workflow_commands',
+        'failed_replayed_query_emits_no_workflow_commands',
+        'successful_replayed_query_appends_no_history',
+        'failed_replayed_query_appends_no_history',
+        'failed_replayed_query_does_not_change_state_returned_by_later_query',
+      ],
+    },
+  };
+  const officialSdk = contract.targets?.official_sdk;
+  const signalQuery = contract.fixture_catalog?.signal_query_runtime_contract;
+
+  if (!String(officialSdk?.description).includes('Rust SDK')) {
+    throw new Error('targets.official_sdk.description must explicitly name the Rust SDK.');
+  }
+
+  assertJsonEqual(
+    signalQuery?.required_scenario_contracts,
+    expectedContracts,
+    'fixture_catalog.signal_query_runtime_contract.required_scenario_contracts',
+  );
+}
+
 function stableJson(value) {
   if (Array.isArray(value)) {
     return `[${value.map(stableJson).join(',')}]`;
@@ -1394,6 +1542,48 @@ function candidateRuntimeScenarioCriteriaBaselineRefs() {
   refs.push('main');
 
   return Array.from(new Set(refs.filter(Boolean)));
+}
+
+function loadSuiteAuthorityDigestBaseline() {
+  const constName = 'VERSIONED_SUITE_AUTHORITY_DIGESTS';
+
+  for (const ref of candidateRuntimeScenarioCriteriaBaselineRefs()) {
+    try {
+      const source = git(['show', `${ref}:${thisScriptPath}`]);
+      const digests = parseConstObjectLiteral(
+        source,
+        constName,
+        `published ${thisScriptPath} at ${ref}`,
+      );
+
+      return {ref, digests};
+    } catch (err) {
+      if (!err.message.includes(`must declare ${constName}`)) {
+        continue;
+      }
+    }
+  }
+
+  return null;
+}
+
+function assertPublishedSuiteAuthorityDigestsImmutable() {
+  const baseline = loadSuiteAuthorityDigestBaseline();
+
+  if (!baseline) {
+    return;
+  }
+
+  for (const [version, digest] of Object.entries(baseline.digests)) {
+    if (VERSIONED_SUITE_AUTHORITY_DIGESTS[version] !== digest) {
+      throw new Error(
+        `Published complete suite authority digest for version ${version} ` +
+          `from ${baseline.ref} must remain immutable. Advance the suite ` +
+          `version and add a new digest instead of changing historical ` +
+          `target, category, or pass/fail semantics.`,
+      );
+    }
+  }
 }
 
 function loadRuntimeScenarioCriteriaDigestBaseline() {
@@ -2610,7 +2800,10 @@ function main() {
 
   assertPublishedRuntimeScenarioCriteriaDigestsImmutable();
   assertPublishedRuntimeScenarioPublicRequirementDigestsImmutable();
+  assertPublishedSuiteAuthorityDigestsImmutable();
   assertContractAuthorityResolves(contract);
+  assertVersionedSuiteAuthorityDigest(contract);
+  assertRustSignalQueryAuthority(contract);
   assertArrayOfStrings(contract, 'conformance_levels', [
     'full',
     'partial',
