@@ -146,9 +146,10 @@ machine-readable runtime scenario manifest at
 Implementation tests may exercise the scenarios, but they are not stable
 fixture sources for external harnesses.
 
-The Rust cells install `durable-workflow = "=0.1.2"` from crates.io and
-record the Cargo registry source and checksum for both the SDK and its resolved
-`apache-avro` dependency. Snapshot-derived query transport is graded by
+The Rust cells install the exact `durable-workflow` crate version declared by
+the runtime scenario manifest from crates.io and record the Cargo registry
+source and checksum for both the SDK and its resolved `apache-avro` dependency.
+Snapshot-derived query transport is graded by
 `rust_worker_rust_php_python_clients` and
 `rust_query_error_and_immutability`. It is not replayed workflow-instance
 state. The separate
