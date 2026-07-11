@@ -24,14 +24,14 @@
   "artifacts": {
     "server": {
       "channel": "docker_hub",
-      "version": "0.2.632",
+      "version": "0.2.633",
       "image": "durableworkflow/server",
-      "reference": "durableworkflow/server:0.2.632"
+      "reference": "durableworkflow/server:0.2.633"
     },
     "cli": {
       "channel": "durable_workflow_public_installer",
-      "version": "0.1.86",
-      "install_command": "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.86 sh"
+      "version": "0.1.87",
+      "install_command": "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.87 sh"
     },
     "sdk-python": {
       "channel": "pypi",
@@ -85,7 +85,7 @@
       "required_environment": [
         {
           "name": "DW_SERVER_IMAGE",
-          "value": "durableworkflow/server:0.2.632"
+          "value": "durableworkflow/server:0.2.633"
         },
         {
           "name": "DW_AUTH_TOKEN",
@@ -100,7 +100,7 @@
         }
       ],
       "setup_script_lines": [
-        "export DW_SERVER_IMAGE=durableworkflow/server:0.2.632",
+        "export DW_SERVER_IMAGE=durableworkflow/server:0.2.633",
         "export DW_AUTH_TOKEN=dev-token",
         "",
         "docker volume create durable-workflow-quickstart",
@@ -303,7 +303,7 @@
         }
       ],
       "command_script_lines": [
-        "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.86 sh",
+        "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.87 sh",
         "export PATH=\"$HOME/.local/bin:$PATH\"",
         "",
         "dw env:set local \\",
