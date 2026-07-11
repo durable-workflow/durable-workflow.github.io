@@ -52,8 +52,8 @@
     },
     "waterline": {
       "channel": "packagist",
-      "version": "2.0.0-alpha.129",
-      "composer_constraint": "durable-workflow/waterline:2.0.0-alpha.129@alpha"
+      "version": "2.0.0-alpha.130",
+      "composer_constraint": "durable-workflow/waterline:2.0.0-alpha.130@alpha"
     }
   },
   "personas": [
@@ -385,7 +385,7 @@
         "",
         "composer require \\",
         "  durable-workflow/workflow:2.0.0-alpha.264@alpha \\",
-        "  durable-workflow/waterline:2.0.0-alpha.129@alpha",
+        "  durable-workflow/waterline:2.0.0-alpha.130@alpha",
         "composer show durable-workflow/workflow",
         "composer show durable-workflow/waterline",
         "",
@@ -510,7 +510,7 @@
           "source": "stdout",
           "required_substrings": [
             "durable-workflow/waterline",
-            "2.0.0-alpha.129"
+            "2.0.0-alpha.130"
           ]
         },
         {
