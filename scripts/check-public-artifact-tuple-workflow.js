@@ -3,9 +3,19 @@ const http = require('http');
 const path = require('path');
 
 const workflowPath = path.join(__dirname, '..', '.github', 'workflows', 'public-artifact-tuple.yml');
+const deployWorkflowPath = path.join(__dirname, '..', '.github', 'workflows', 'deploy.yml');
 const routeScriptPath = path.join(__dirname, 'route-public-artifact-tuple-handoff.js');
+const packagePath = path.join(__dirname, '..', 'package.json');
 const workflow = fs.readFileSync(workflowPath, 'utf8');
+const deployWorkflow = fs.readFileSync(deployWorkflowPath, 'utf8');
 const routeScript = fs.readFileSync(routeScriptPath, 'utf8');
+const packageSource = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+const reviewContract = require('./docs-narrative-reviews');
+const {
+  sha256,
+  sourceInventory,
+  validateReviewContract,
+} = require('./docs-narrative-audit-contract');
 const {
   artifactVersionDigest,
   buildReadyItemPayload,
@@ -17,6 +27,14 @@ const {
 function fail(message) {
   console.error(message);
   process.exit(1);
+}
+
+function workflowStepPosition(name) {
+  const position = workflow.indexOf(`      - name: ${name}\n`);
+  if (position === -1) {
+    fail(`public-artifact-tuple workflow is missing step: ${name}`);
+  }
+  return position;
 }
 
 for (const forbidden of [
@@ -55,6 +73,71 @@ for (const required of [
     fail(`public-artifact-tuple workflow is missing required pipeline handoff contract: ${required}`);
   }
 }
+
+const detectPosition = workflowStepPosition('Detect tuple changes');
+const writePosition = workflowStepPosition('Write pipeline handoff');
+const uploadPosition = workflowStepPosition('Upload pipeline handoff');
+const routePosition = workflowStepPosition('Route pipeline ready item');
+const validatePosition = workflowStepPosition('Validate refreshed docs');
+
+if (!(detectPosition < writePosition && writePosition < uploadPosition && uploadPosition < routePosition)) {
+  fail('public artifact tuple handoff must be detected, written, uploaded, and routed in order');
+}
+
+if (routePosition >= validatePosition) {
+  fail('public artifact tuple handoff must route before the full docs build requires narrative review');
+}
+
+const validateStep = workflow.slice(validatePosition, workflow.indexOf('\n      - name:', validatePosition + 1));
+if (!validateStep.includes('run: npm run build')) {
+  fail('post-route public artifact tuple validation must preserve the normal docs build');
+}
+
+for (const required of [
+  'node scripts/generate-docs-narrative-audit.js',
+  'node scripts/check-docs-narrative-audit.js',
+]) {
+  if (!packageSource.scripts.build.includes(required)) {
+    fail(`normal docs build must preserve narrative review enforcement: ${required}`);
+  }
+}
+
+if (!deployWorkflow.includes('- name: Build website') || !deployWorkflow.includes('run: npm run build')) {
+  fail('docs deploy workflow must preserve the narrative-reviewed npm build');
+}
+
+function assertCompatibilityHashChangeNeedsNarrativeReview() {
+  const repoRoot = path.join(__dirname, '..');
+  const compatibilityPath = path.join(repoRoot, 'docs', 'compatibility.md');
+  const compatibility = fs.readFileSync(compatibilityPath, 'utf8');
+  const changedCompatibility = compatibility.replace(
+    /(^\| \d{4}-\d{2}-\d{2} \| )([^|]+)( \|)/m,
+    '$1generated-tuple-change$3'
+  );
+
+  if (changedCompatibility === compatibility) {
+    fail('compatibility-row hash-change fixture did not update the generated version-history row');
+  }
+
+  const inventory = sourceInventory(repoRoot).map(source => (
+    source.source_file === 'docs/compatibility.md'
+      ? {...source, source_sha256: sha256(changedCompatibility)}
+      : source
+  ));
+
+  let rejection = null;
+  try {
+    validateReviewContract(reviewContract.reviews, inventory);
+  } catch (err) {
+    rejection = err;
+  }
+
+  if (!rejection || !rejection.message.includes('docs/compatibility.md changed after editorial review')) {
+    fail('normal narrative review contract must reject a generated compatibility-row hash change');
+  }
+}
+
+assertCompatibilityHashChangeNeedsNarrativeReview();
 
 for (const required of [
   'gh.issue.list',

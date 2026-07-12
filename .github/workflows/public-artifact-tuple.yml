@@ -69,10 +69,6 @@ jobs:
             git diff -- scripts/public-artifact-versions.json docs/compatibility.md static/quickstart-execution-contract.json
           fi
 
-      - name: Validate refreshed docs
-        if: steps.changes.outputs.changed == 'true'
-        run: npm run build
-
       - name: Write pipeline handoff
         if: steps.changes.outputs.changed == 'true'
         env:
@@ -183,6 +179,10 @@ jobs:
         env:
           PIPELINE_GATE_URL: ${{ secrets.PIPELINE_GATE_URL }}
         run: node scripts/route-public-artifact-tuple-handoff.js --handoff docs-artifact-tuple-handoff.json
+
+      - name: Validate refreshed docs
+        if: steps.changes.outputs.changed == 'true'
+        run: npm run build
 
       - name: Report current tuple
         if: steps.changes.outputs.changed == 'false'
