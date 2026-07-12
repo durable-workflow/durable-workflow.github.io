@@ -35,7 +35,7 @@ const reviews = [
     'Retrieval and command guidance point to the same explicit 2.0 agent and tooling pages.',
     'Keeps generated advice subordinate to published schemas, handles, and server diagnostics.',
     'Provides both discovery paths and a concrete prompt checklist for an end-to-end assisted task.'),
-  review('docs/compatibility.md', '7436ca790fe4974e56620508e47c0881ab07c146fed589724d8a7cf48bd52ad2',
+  review('docs/compatibility.md', '75e910bf928055da96783083958b345d6b25324c9bd4b15c1e2bfa6ad8753e3d',
     'Defines stability vocabulary before matrices, validation commands, upgrade rules, and release history.',
     'Explains that package version, protocol level, and advertised server capabilities are separate inputs.',
     'Artifact pins, component tables, and release-history rows share the synchronized public tuple.',
