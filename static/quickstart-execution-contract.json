@@ -41,9 +41,9 @@
     },
     "sdk-rust": {
       "channel": "crates_io",
-      "version": "0.1.6",
+      "version": "0.1.8",
       "crate": "durable-workflow",
-      "install_command": "cargo add durable-workflow@0.1.6 --exact"
+      "install_command": "cargo add durable-workflow@0.1.8 --exact"
     },
     "workflow": {
       "channel": "packagist",
