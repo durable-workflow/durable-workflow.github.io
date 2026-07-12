@@ -68,6 +68,45 @@
       ]
     },
     {
+      "id": "rust.workflow-start-timeouts",
+      "path": "polyglot/rust.md",
+      "language": "rust",
+      "requiredSubstrings": [
+        "WorkflowStartOptions::new()",
+        ".execution_timeout_seconds(300)",
+        ".run_timeout_seconds(30)",
+        "client.start_workflow_with_options(",
+        "handle.workflow_id",
+        "handle.run_id"
+      ]
+    },
+    {
+      "id": "rust.typed-workflow-timeouts",
+      "path": "polyglot/rust.md",
+      "language": "rust",
+      "requiredSubstrings": [
+        "Error::WorkflowTimedOut(outcome)",
+        "outcome.reason.as_str()",
+        "outcome.failure_category.as_deref()",
+        "result_wait_timeout",
+        "client_timeout",
+        "execution_timeout",
+        "run_timeout",
+        "outcome.workflow_id",
+        "outcome.run_id"
+      ]
+    },
+    {
+      "id": "rust.avro-payload-envelope",
+      "path": "polyglot/rust.md",
+      "language": "rust",
+      "requiredSubstrings": [
+        "PayloadEnvelope::avro(",
+        "assert_eq!(envelope.codec, \"avro\")",
+        "decode_payload(&envelope)"
+      ]
+    },
+    {
       "id": "quickstart.laravel.install",
       "path": "quickstart.md",
       "language": "bash",

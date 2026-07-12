@@ -78,9 +78,50 @@ cargo run --example hello_world
 
 Use `TASK_QUEUE` to override the example's default `rust-workers` task queue.
 
+## Start with server-enforced workflow timeouts
+
+Rust SDK `%%artifact.rustSdkVersion%%` adds `WorkflowStartOptions` and
+`Client::start_workflow_with_options` for workflow deadlines that the server
+enforces even after the starting process exits. Execution timeout covers the
+whole workflow instance, including continue-as-new runs; run timeout covers one
+run and is recomputed when a new run begins.
+
+<!-- docs-example id="rust.workflow-start-timeouts" -->
+```rust
+use durable_workflow::{json, Client, Result, WorkflowStartOptions};
+
+async fn start(client: &Client) -> Result<()> {
+    let handle = client.start_workflow_with_options(
+        "orders.await-payment",
+        "orders",
+        "order-42",
+        WorkflowStartOptions::new()
+            .execution_timeout_seconds(300)
+            .run_timeout_seconds(30),
+        json!([{"order_id": "order-42"}]),
+    ).await?;
+
+    println!("workflow={} run={:?}", handle.workflow_id, handle.run_id);
+    Ok(())
+}
+```
+
+Both values are seconds, must be positive, and the run timeout cannot exceed
+the execution timeout. The existing `Client::start_workflow` convenience
+method uses `WorkflowStartOptions::default()`: a 3600-second execution timeout
+and a 600-second run timeout. See [Timeouts](/docs/2.0/features/timeouts) for
+the server's deadline and continue-as-new semantics.
+
+These are workflow policy, not HTTP or result-polling timeouts. In particular,
+`WorkflowResultOptions::timeout` only stops the local `result()` call from
+waiting. It does not close, cancel, or otherwise change the workflow run. The
+caller can inspect the returned identity and wait again. An execution or run
+deadline configured with `WorkflowStartOptions` is durable server state; when
+it expires, the server closes the run with a terminal `timed_out` outcome.
+
 ## Cancel, terminate, and handle terminal outcomes
 
-Rust SDK 0.1.8 and newer separates cooperative cancellation from forced
+Rust SDK 0.1.8 and newer releases separate cooperative cancellation from forced
 termination. Cancellation is the normal lifecycle operation when workflow and
 activity code should observe the stop request and clean up. Termination closes
 the run without waiting for that cleanup and should be reserved for an
@@ -109,8 +150,10 @@ is stale, `Error::WorkflowCommandRejected` exposes the stable
 target scope, HTTP status, and the response body.
 
 Successful `WorkflowHandle::result` calls continue to return the decoded JSON
-value. Match the typed terminal variants for every other outcome:
+value. Match the typed terminal variants for every other outcome. Branch on
+the stable reason and category fields instead of display text:
 
+<!-- docs-example id="rust.typed-workflow-timeouts" -->
 ```rust
 use durable_workflow::{Error, WorkflowHandle, WorkflowResultOptions};
 
@@ -126,8 +169,25 @@ match handle.result(WorkflowResultOptions::default()).await {
     Err(Error::WorkflowFailed(outcome)) => {
         println!("failure {:?}: {:?}", outcome.failure_id, outcome.exception_class);
     }
-    Err(Error::WorkflowTimedOut(outcome)) => {
-        println!("timeout: {}", outcome.reason);
+    Err(Error::WorkflowTimedOut(outcome)) => match (
+        outcome.reason.as_str(),
+        outcome.failure_category.as_deref(),
+    ) {
+        ("result_wait_timeout", Some("client_timeout")) => {
+            println!(
+                "caller deadline for {} / {:?}; the run may still be open",
+                outcome.workflow_id, outcome.run_id,
+            );
+        }
+        ("execution_timeout" | "run_timeout", category) => {
+            println!(
+                "server timeout for {} / {:?}: reason={} category={:?}",
+                outcome.workflow_id, outcome.run_id, outcome.reason, category,
+            );
+        }
+        (reason, category) => {
+            println!("other typed timeout: reason={reason} category={category:?}");
+        }
     }
     Err(error) => return Err(error),
 }
@@ -138,8 +198,42 @@ match handle.result(WorkflowResultOptions::default()).await {
 Each terminal outcome carries workflow and run identity. It also retains the
 public reason, failure category and identity, exception type and class,
 non-retryable state, message, and exception payload when the server supplies
-them. A local wait deadline has reason `result_wait_timeout`; a server timeout
-remains a distinct terminal `timed_out` run.
+them. A local wait deadline has reason `result_wait_timeout` and category
+`client_timeout`; a server timeout is a terminal `timed_out` run whose stable
+reason is `execution_timeout` or `run_timeout`.
+
+Handles returned by either start method retain the selected `run_id`.
+`WorkflowHandle::result` describes that run-specific route, so reusing the same
+workflow ID for a newer run cannot make a wait silently report the newer run's
+outcome. Preserve both `outcome.workflow_id` and `outcome.run_id` in logs,
+metrics, and retry records; use instance-level lookups only when following the
+current run is intentional.
+
+## Payload envelope
+
+Workflow input, signals, activities, queries, and results use the published
+`PayloadEnvelope` contract: a `codec` plus encoded `blob`. The SDK's default
+`avro` path uses its declared `apache-avro` dependency and the platform's
+versioned generic wrapper; do not hand-roll the blob or replace the envelope
+with an implementation-specific record.
+
+<!-- docs-example id="rust.avro-payload-envelope" -->
+```rust
+use durable_workflow::{decode_payload, json, PayloadEnvelope, Result, Value};
+
+fn round_trip() -> Result<()> {
+    let envelope = PayloadEnvelope::avro(&json!({"order_id": "order-42"}))?;
+    assert_eq!(envelope.codec, "avro");
+
+    let decoded: Value = decode_payload(&envelope)?;
+    assert_eq!(decoded["order_id"], "order-42");
+    Ok(())
+}
+```
+
+`start_workflow` and `start_workflow_with_options` apply this envelope
+automatically to their serializable input. Use the public helpers only when a
+program needs to exchange an envelope directly.
 
 Long-running activities should heartbeat and inspect `should_stop()`. On
 cancellation, release temporary files, connections, or other process-local

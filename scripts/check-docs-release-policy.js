@@ -20,6 +20,7 @@ const PUBLIC_DISCOVERY_URLS = [
   '/docs/2.0/quickstart/',
   '/quickstart-execution-contract.json',
   '/docs/2.0/polyglot/python/',
+  '/docs/2.0/polyglot/rust/',
   '/docs/2.0/polyglot/server/',
   '/docs/2.0/polyglot/cli/',
   '/docs/2.0/docs-page-release-audit/',
@@ -64,6 +65,12 @@ function assertExcludes(haystack, needle, label) {
   if (haystack.includes(needle)) {
     fail(`${label} must not include ${JSON.stringify(needle)}`);
   }
+}
+
+function renderedText(html) {
+  return html
+    .replace(/<[^>]*>/g, '')
+    .replace(/\s+/g, ' ');
 }
 
 function assertOnlyWaterlineArtifact(haystack, label) {
@@ -201,6 +208,7 @@ function assertBuiltDocsPolicy() {
   const prereleaseIntro = readBuildFile('docs/2.0/introduction/index.html');
   const home = readBuildFile('index.html');
   const prereleaseQuickstart = readBuildFile('docs/2.0/quickstart/index.html');
+  const prereleaseRust = readBuildFile('docs/2.0/polyglot/rust/index.html');
   const quickstartContract = readBuildFile('quickstart-execution-contract.json');
   const prereleasePageReleaseAudit = readBuildFile('docs/2.0/docs-page-release-audit/index.html');
   const pageReleaseAudit = readBuildFile('docs-page-release-audit.json');
@@ -264,6 +272,20 @@ function assertBuiltDocsPolicy() {
   assertExcludes(prereleaseQuickstart, 'href="/docs/polyglot/python/', '2.0 quickstart page');
   assertExcludes(prereleaseQuickstart, 'href="/docs/polyglot/server/', '2.0 quickstart page');
   assertExcludes(prereleaseQuickstart, 'href="/docs/polyglot/cli/', '2.0 quickstart page');
+  assertIncludes(prereleaseRust, 'name="docusaurus_version" content="current"', '2.0 Rust SDK page');
+  assertIncludes(prereleaseRust.toLowerCase(), '2.0 prerelease', '2.0 Rust SDK page');
+  assertIncludes(
+    renderedText(prereleaseRust),
+    ARTIFACT_PINS.rustCargoAddCommand,
+    '2.0 Rust SDK page rendered text'
+  );
+  assertIncludes(prereleaseRust, ARTIFACT_PINS.rustSdkVersion, '2.0 Rust SDK page');
+  assertIncludes(prereleaseRust, 'start_workflow_with_options', '2.0 Rust SDK page');
+  assertIncludes(prereleaseRust, 'result_wait_timeout', '2.0 Rust SDK page');
+  assertIncludes(prereleaseRust, 'client_timeout', '2.0 Rust SDK page');
+  assertIncludes(prereleaseRust, 'execution_timeout', '2.0 Rust SDK page');
+  assertIncludes(prereleaseRust, 'run_timeout', '2.0 Rust SDK page');
+  assertIncludes(prereleaseRust, 'apache-avro', '2.0 Rust SDK page');
   assertIncludes(prereleasePageReleaseAudit, 'Page-level release-status verdicts', '2.0 docs page release audit');
   assertIncludes(prereleasePageReleaseAudit, '/docs-page-release-audit.json', '2.0 docs page release audit');
   assertIncludes(pageReleaseAudit, '"schema": "durable-workflow.docs.page-release-audit"', 'docs page release audit manifest');
@@ -312,8 +334,10 @@ function assertPublicDiscoverySurface() {
   const platformConformance = readBuildFile('docs/platform-conformance/index.html');
 
   assertMissingBuildFile('docs/polyglot/python/index.html', 'stable-default Python polyglot route');
+  assertMissingBuildFile('docs/polyglot/rust/index.html', 'stable-default Rust polyglot route');
   assertMissingBuildFile('docs/polyglot/server/index.html', 'stable-default server polyglot route');
   assertExcludes(sitemap, `${siteUrl}/docs/polyglot/python/`, 'build/sitemap.xml');
+  assertExcludes(sitemap, `${siteUrl}/docs/polyglot/rust/`, 'build/sitemap.xml');
   assertExcludes(sitemap, `${siteUrl}/docs/polyglot/server/`, 'build/sitemap.xml');
 
   assertIncludes(
