@@ -388,18 +388,19 @@ for traffic admission during a failover:
 
 - Wire the load balancer to **`GET /api/ready`**, not `/api/health` alone.
   `/api/health` only proves the process is serving HTTP; `/api/ready` proves
-  the server can use its configured database and Redis. During a database
-  outage `/api/ready` correctly fails on every node — the load balancer
-  MUST tolerate the all-down state rather than fall back to a stale
-  "last known good" roster.
+  the server can use its durable database and reports whether Redis wake
+  acceleration is healthy or degraded. During a database outage `/api/ready`
+  correctly fails on every node — the load balancer MUST tolerate the all-down
+  state rather than fall back to a stale "last known good" roster.
 - Use a check interval of 5–10 seconds and a removal threshold of 2–3
   consecutive failures.
 - Do not require sticky sessions; the small-cluster smoke proves an
   external worker can poll `server-a` and complete on `server-b`.
-- During a Redis-only failover, readiness MAY remain green on every node.
-  Acceleration-layer degradation surfaces as **warnings** on
-  `backend_capabilities` and `long_poll_wake_acceleration`; do not configure
-  the load balancer to remove nodes on those warnings.
+- During a Redis-only failover, readiness remains green on every node while
+  the database-backed durable paths are available. Acceleration-layer
+  degradation surfaces as `checks.cache.status=warning` with
+  `checks.cache.degraded_capability=long_poll_wake_acceleration`; do not
+  configure the load balancer to remove nodes on that warning.
 
 After substrate recovery, the recommended verification sequence is to wait
 for at least one node's `/api/ready` to return 200, curl `/api/cluster/info`
@@ -407,6 +408,43 @@ through the load balancer with an admin token to confirm the topology
 manifest, issue `POST /api/worker/register` for a probe worker through the
 load-balanced endpoint, confirm exactly one scheduler runner is alive in
 its orchestrator, and resume external traffic.
+
+### Run the exact-artifact rehearsal
+
+The server release publishes a reusable baseline rehearsal that exercises the
+full failure matrix without building product code from a checkout. On a clean
+host with Docker Engine, Docker Compose v2, Python 3.11 or newer, and public
+registry access, run:
+
+```bash
+git clone --depth 1 https://github.com/durable-workflow/server.git
+cd server
+DW_SERVER_IMAGE=durableworkflow/server:<released-version> \
+  scripts/conformance/single-region-failover-published-artifacts.sh \
+  --result-dir ./failover-result
+```
+
+The runner requires a concrete public server tag or digest, pulls every
+supporting image, resolves all runtime images to repository digests, and
+rejects Compose build sections, product-source bind mounts, and local or
+rolling server references. It starts exactly two API nodes behind one nginx
+endpoint, one MySQL database, one Redis service, and one scheduler/maintenance
+runner.
+
+The resulting `single-region-failover-result.json` uses schema
+`durable-workflow.v2.single-region-failover.result`. It records exact artifact
+and tool versions, normalized topology, readiness transitions, measured
+recovery times and bound verdicts, workflow/run/task/schedule identities, and
+duplicate/loss assertions for cross-node completion, API-node loss, database
+interruption, Redis interruption, worker lease loss, and singleton-scheduler
+restart. External runners discover the invocation and public scenario manifest
+from `GET /api/cluster/info` at `single_region_failover_contract`.
+
+This baseline validates engine-visible interruption and recovery against the
+released image. It does not turn a local MySQL or Redis container restart into
+evidence for a cloud provider's promotion mechanism. Keep provider-native
+promotion, fencing, RPO, and elapsed-time evidence alongside the baseline
+result before claiming managed-service HA.
 
 ### Recovery packet additions
 
@@ -418,10 +456,13 @@ rehearsal evidence for each event class:
 - a managed-database failover that completes without acknowledged-write
   loss and within the bounded recovery time above;
 - a managed-Redis failover that does not flap the load-balancer rotation,
-  does not lose any acknowledged work, and surfaces only as warnings on
-  `backend_capabilities` and `long_poll_wake_acceleration`;
+  does not lose any acknowledged work, and surfaces
+  `checks.cache.status=warning` with `long_poll_wake_acceleration` as the
+  degraded capability;
 - an API-node loss event that the load balancer absorbs within the
   configured readiness interval, with no acknowledged-write loss;
+- a worker-loss event that preserves the durable run through lease expiry,
+  reclaims it after the configured repair bound, and completes it exactly once;
 - a scheduler-runner restart on a different host that fires no duplicate
   schedules and leaves no schedule unevaluated past its `next_fire_at`
   plus one tick.

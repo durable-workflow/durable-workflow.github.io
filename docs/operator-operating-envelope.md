@@ -75,7 +75,7 @@ your automation already reads.
 | Operator shape (`topology.current_shape`) | Supported operator contract | Primary failure domains | Recovery and failover expectation |
 | --- | --- | --- | --- |
 | `embedded`, single node | Waterline, control-plane routes, health, rebuild, export, and archive all run from one app process against one durable database and one cache store. | The Laravel app process, the durable database, and the cache store on one host. | Treat host or database loss as a full service interruption. Restore durable state first, bring one app node back to readiness, then verify worker registration before resuming traffic. |
-| `embedded`, small same-region cluster | Use one shared database, one shared cache backend for wake-signal coordination, identical workflow compatibility/config across nodes, and keep active nodes in the same datacenter or region so queue wake-up and timer wake-up latency stay bounded. | Shared database, shared cache/wake coordination, load balancer routing, and the singleton scheduler or maintenance role. | One app-node loss should reduce capacity, not correctness. Database or Redis failure still blocks the fleet. Scheduler failover and upgrades remain explicit operator procedures rather than automatic HA promises. |
+| `embedded`, small same-region cluster | Use one shared database, one shared cache backend for wake-signal coordination, identical workflow compatibility/config across nodes, and keep active nodes in the same datacenter or region so queue wake-up and timer wake-up latency stay bounded. | Shared database, shared cache/wake coordination, load balancer routing, and the singleton scheduler or maintenance role. | One app-node loss should reduce capacity, not correctness. Database loss blocks durable traffic; Redis-only loss degrades wake acceleration and reports a readiness warning while database polling preserves durable correctness. Scheduler failover and upgrades remain explicit operator procedures rather than automatic HA promises. |
 | `standalone_server` distribution | Use the [Self-Hosting Deployments](./deployment.md) guide for the server-specific deployment matrix, then apply the same health, stats, export, archive, and queue-health distinctions described here through the server-side `/api/system/...` and `/api/workflows/...` routes (see the surface mapping above). | Shared database, shared Redis, API container set, independently scaled workers, and the single scheduler or maintenance runner. | API containers are replaceable; the database, Redis, and singleton scheduler path define recovery order. Restore persistence first, then verify `/api/ready`, `/api/cluster/info`, and worker registration before shifting traffic back. |
 | `split_control_execution` | Same product contract as `standalone_server`, with each role isolated into its own process class (`ingress_node`, `control_plane_node`, `scheduler_node`, `matching_node`, `execution_node`). The same operator-metrics, health, and command surfaces apply per-node; route admin reads to the node that hosts the role you are interrogating. | Each role runs as its own process class, so the failure-domain checklist in [Server Role Topology](./polyglot/server-role-topology.md) governs which subsystem fails first. The shared database, Redis, and singleton scheduler election remain fleet-wide failure domains. | Recovery follows the same order as `standalone_server`, but verify `topology.current_shape`, `topology.current_process_class`, and `topology.current_roles` per node before declaring the deployment ready. Hosted routes return `503 topology_role_unavailable` when sent to the wrong node class. |
 
@@ -114,8 +114,10 @@ against these more explicit loss models:
   backlog, queue age, or compatibility warnings only for the affected
   `(connection, queue, compatibility)` scopes. Losing the `scheduler_node`
   should pause new schedule fires and maintenance sweeps without invalidating
-  already running workflows. Database or Redis loss is still a fleet-level
-  outage until readiness, topology identity, and worker registration recover.
+  already running workflows. Database loss is a fleet-level outage. Redis-only
+  loss keeps durable database polling available, reports
+  `long_poll_wake_acceleration` as degraded, and increases discovery latency
+  until Redis reconnects.
 - **Split-role server distribution (`split_control_execution`)**: Each role
   runs as its own process class — `ingress_node`, `control_plane_node`,
   `scheduler_node`, `matching_node`, and `execution_node`. Losing any one
@@ -124,8 +126,9 @@ against these more explicit loss models:
   fast while leased work continues, matching loss falls back to direct
   ready-task discovery, scheduler loss pauses schedule fires and records
   missed runs, and execution loss accumulates ready tasks without losing
-  durable state. Database or Redis loss remains a fleet-wide outage; recovery
-  requires the same restore order as the `standalone_server` shape.
+  durable state. Database loss remains a fleet-wide outage. Redis-only loss is
+  an acceleration-layer degradation with the same database-poll fallback and
+  warning readiness behavior as the `standalone_server` shape.
 
 If your deployment depends on different assumptions, treat that topology as a
 separate runbook with its own validated contract instead of assuming the
