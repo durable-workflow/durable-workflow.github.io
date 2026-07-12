@@ -24,20 +24,22 @@ replication v1 is documented separately on the Cloud page.
 | --- | --- | --- | --- | --- |
 | Local development and internal non-production | [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) with `%%artifact.serverTagEnv%%` or `%%artifact.serverImageEnv%%` | One developer machine, LAN demos, shared staging, SDK and worker integration tests | Internet-facing production, durable backup guarantees, strict secret rotation, multi-node failover | You want help turning a working dev stack into a production runbook |
 | Single-node production | [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) with a production env file, MySQL and Redis volumes, role-scoped tokens, backups, TLS through a reverse proxy, and pinned image tags or digests | One VM, VPS, or internal Docker host with persistent workflow state and a simple operational model | Host-level HA, automatic database failover, multi-region recovery, zero-downtime major topology changes | The deployment carries production traffic and you want review of backup, restore, auth, TLS, upgrade, or rollback procedures |
-| Small clustered deployment | Published `durableworkflow/server` or `ghcr.io/durable-workflow/server` images using the [Compose recipe](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) as the container/process template, with 2-3 API nodes, shared external MySQL/PostgreSQL, shared Redis, independently scaled workers, and exactly one scheduler/maintenance runner | Horizontal API and worker capacity when one node is no longer enough; rolling upgrades when every guarantee in the [rolling-upgrade contract](/docs/2.0/rolling-upgrades) holds; single-region HA failover (managed-database failover, managed-Redis failover, API-node loss, worker loss, scheduler-runner restart) when every guarantee in the [single-region HA contract](#single-region-high-availability-and-failover) holds | SQLite clustering, Redis-less multi-node mode, duplicate schedulers as a steady-state topology, active/active multi-writer databases, self-hosted hands-free regional failover, Helm, broad "five-nines" or "zero-downtime" SLA promises | You need sizing, failure-domain, rollout, or recovery planning across more than one host |
-| Raw Kubernetes manifests | The server repository [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) manifests, using published server images and your existing database, Redis, ingress, and secret management | Teams that already operate Kubernetes and want inspectable manifests for API, worker, scheduler, bootstrap, service, probes, config, and secrets; the [single-region HA contract](#single-region-high-availability-and-failover) when the manifests are wired to the same readiness, singleton-scheduler, and shared-substrate rules as the small-cluster recipe | Helm charts, managed-Kubernetes provider validation, active/active multi-region, custom operators, environment-specific storage/networking/security decisions | You need Helm, overlays, managed-cluster validation, or provider-specific production planning |
-| Active/passive multi-region | A validated single-node or small-cluster deployment per region, plus asynchronous database replication from active to standby and a published failover/failback runbook | Regional disaster recovery with operator-driven failover; standby database, optional standby Redis, and idle API/worker capacity in a second region; the singleton scheduler/maintenance runner pinned to the active region; the single-region HA contract inside each region | Active/active multi-region, self-hosted automatic or hands-free regional failover, synchronous cross-region replication (RPO=0), cross-region active visibility or federated search, region-pinned task queues as an engine-enforced routing axis | You need a topology beyond active/passive, an automated failover controller, or an RPO=0 cross-region commitment |
+| Small clustered deployment | Published `durableworkflow/server` or `ghcr.io/durable-workflow/server` images using the [Compose recipe](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) as the container/process template, with 2-3 API nodes, shared external MySQL/PostgreSQL, shared Redis, independently scaled workers, and exactly one scheduler/maintenance runner | Horizontal API and worker capacity when one node is no longer enough; rolling upgrades when every guarantee in the [rolling-upgrade contract](/docs/2.0/rolling-upgrades) holds | SQLite clustering, Redis-less multi-node mode, duplicate schedulers as a steady-state topology, active/active multi-writer databases, self-hosted hands-free regional failover, Helm, broad "five-nines" or "zero-downtime" SLA promises, and self-serve single-region HA failover until its [release-evidence gate](#release-evidence-status) passes | You need sizing, failure-domain, rollout, or recovery planning across more than one host, or you intend to claim the gated single-region HA behavior |
+| Raw Kubernetes manifests | The server repository [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) manifests, using published server images and your existing database, Redis, ingress, and secret management | Teams that already operate Kubernetes and want inspectable manifests for API, worker, scheduler, bootstrap, service, probes, config, and secrets | Helm charts, managed-Kubernetes provider validation, active/active multi-region, custom operators, environment-specific storage/networking/security decisions, and self-serve single-region HA failover until its [release-evidence gate](#release-evidence-status) passes | You need Helm, overlays, managed-cluster validation, provider-specific production planning, or intend to claim the gated single-region HA behavior |
+| Active/passive multi-region | A validated single-node or small-cluster deployment per region, plus asynchronous database replication from active to standby and a published failover/failback runbook | Regional disaster recovery with operator-driven failover; standby database, optional standby Redis, and idle API/worker capacity in a second region; the singleton scheduler/maintenance runner pinned to the active region | Active/active multi-region, self-hosted automatic or hands-free regional failover, synchronous cross-region replication (RPO=0), cross-region active visibility or federated search, region-pinned task queues as an engine-enforced routing axis, or the gated single-region HA failure matrix inside either region | You need a topology beyond active/passive, an automated failover controller, an RPO=0 cross-region commitment, or the gated single-region HA behavior inside either region |
 | Support-led topologies | A reviewed design based on your environment | Self-hosted active/active multi-region, hands-free regional failover outside hosted Cloud replication v1, RPO=0 cross-writer replication, duplicate scheduler runners as a steady-state topology, bespoke security/networking, private SLOs, custom overlays, migration planning | Self-serve copy/paste operation | The topology itself is part of the product risk |
 
 The public distribution is intentionally optimized for local development,
 single-node production, and small clustered deployments. Kubernetes manifests
 are provided for teams that already operate Kubernetes. Active/passive
 multi-region with operator-driven regional failover is a self-serve contract
-(see [Active/passive multi-region](#activepassive-multi-region) below).
+(see [Active/passive multi-region](#activepassive-multi-region) below); that
+regional runbook does not authorize the gated single-region HA failure matrix
+inside either region.
 Single-region HA failover — managed-database failover, managed-Redis failover,
 API-node loss, worker loss, and scheduler-runner restart inside one region —
-is also a self-serve contract layered on the small-cluster and Kubernetes
-shapes (see
+is currently support-led while its exact-release evidence gate remains closed
+(see
 [Single-region high availability and failover](#single-region-high-availability-and-failover)
 below). For self-hosted server deployments, Helm charts, active/active
 multi-region, automatic regional failover, duplicate scheduler runners as a
@@ -59,7 +61,7 @@ the same runbook as the deployment commands:
 | Single-node production | Backup schedule, pinned image or digest, env/config snapshot location, maximum accepted restore lag, and the latest successful restore rehearsal timestamp plus verification evidence. |
 | Small clustered deployment | The single-node packet plus the expected impact of losing one API node, one worker node, the scheduler/maintenance runner, Redis, or the shared database; the worker re-registration steps after restore; and the documented rolling-upgrade or stop-the-world posture for the current release. |
 | Raw Kubernetes manifests | The clustered packet plus the cluster-specific storage, secret, ingress, and rollout owners that must be restored or re-applied before traffic is declared healthy again. |
-| Single-region HA failover | The clustered or raw-manifest packet plus rehearsal evidence for managed-database failover, managed-Redis failover, API-node loss, worker loss, and scheduler-runner restart, each completing within the bounded recovery time published in the [Single-region HA contract](#single-region-high-availability-and-failover) without acknowledged-write loss. |
+| Single-region HA evaluation (support-led while the release-evidence gate is closed) | The clustered or raw-manifest packet plus rehearsal evidence for managed-database failover, managed-Redis failover, API-node loss, worker loss, and scheduler-runner restart, each completing within the recovery target published in the [Single-region HA contract](#single-region-high-availability-and-failover) without acknowledged-write loss. |
 
 If you cannot produce that packet on demand, treat the environment as staging
 until the recovery contract is written down and rehearsed. The
@@ -268,10 +270,11 @@ contract; see
 [Active/passive multi-region](#activepassive-multi-region) below.
 Single-region HA failover — managed-database failover, managed-Redis failover,
 API-node loss, worker loss, and scheduler-runner restart inside one region —
-is its own self-serve contract layered on this one; see
+is a support-led evaluation contract until the release-evidence gate passes;
+see
 [Single-region high availability and failover](#single-region-high-availability-and-failover)
-below for the engine recovery bounds, the readiness rules during a failover,
-and the rehearsal evidence that turns those bounds into a recovery packet.
+below for the engine recovery targets, the readiness rules during a failover,
+and the evidence required to open that gate.
 
 This path is self-serve when your team already has a clear VM, network,
 database, cache, backup, and load-balancer model. It becomes support-led when
@@ -313,9 +316,9 @@ curl -H "Authorization: Bearer $DW_ADMIN_TOKEN" http://localhost:8080/api/cluste
 
 Single-region HA failover — managed-database failover, managed-Redis failover,
 API-node loss, worker loss, and scheduler-runner restart inside one region —
-is the same self-serve contract on the raw-manifest path as on the small-cluster
-path, provided the manifests are wired to the readiness, singleton-scheduler,
-and shared-substrate rules in
+remains support-led on the raw-manifest path just as it does on the small-cluster
+path while the release-evidence gate is closed. The intended contract requires
+the readiness, singleton-scheduler, and shared-substrate rules in
 [Single-region high availability and failover](#single-region-high-availability-and-failover)
 below. Provider-specific load balancers, storage classes, network policies,
 Helm charts, active/active multi-region, and self-hosted hands-free regional
@@ -324,9 +327,10 @@ contract.
 
 ## Single-region high availability and failover
 
-Single-region HA failover is a self-serve contract layered on the small-cluster
-shape and the raw Kubernetes shape. It covers the failure modes that the
-engine survives **inside one region**: managed-database failover (RDS
+Single-region HA failover is currently an **unverified, support-led** contract
+candidate layered on the small-cluster shape and the raw Kubernetes shape. It
+targets the failure modes that the engine is designed to survive **inside one
+region**: managed-database failover (RDS
 Multi-AZ, Aurora cluster failover, Cloud SQL HA, Patroni promotion, etc.),
 managed-Redis failover (Sentinel, Elasticache replication-group failover,
 Memorystore HA, etc.), API-node loss, worker loss, and
@@ -334,18 +338,40 @@ scheduler/maintenance runner restart. Cross-region active/passive recovery is
 a different contract; see
 [Active/passive multi-region](#activepassive-multi-region) below.
 
-The full contract — engine guarantees, readiness rules, the per-event
-recovery bounds, the split-brain prevention rules, and the rehearsal
-acceptance test that operators must run — lives in the workflow library at
+The intended contract — engine behavior, readiness rules, the per-event
+recovery targets, the split-brain prevention rules, and the rehearsal
+acceptance test — lives in the workflow library at
 [`docs/deployment/ha-failover.md`](https://github.com/durable-workflow/workflow/blob/v2/docs/deployment/ha-failover.md)
 and the standalone server at
 [`docs/ha-failover-validation.md`](https://github.com/durable-workflow/server/blob/main/docs/ha-failover-validation.md).
 This section is the public surface of those documents.
 
-### Validated topology
+### Release-evidence status
 
-The HA contract applies when the deployment matches the small-cluster shape
-or the raw-manifest shape and the operator preserves three rules:
+No passing exact-release result is linked for the documented public server
+release. The recorded released-image attempt stopped during `topology_start`
+while waiting for API readiness, before any failure-matrix or recovery-bound
+claim could be established. Do not treat the runner's presence, its scenario
+manifest, or a deployment-specific rehearsal as evidence that the released
+image has passed the full matrix. Single-region HA therefore remains
+support-led.
+
+Self-serve wording is authorized only after a source-free run uses the exact
+documented server release for the image, runner, and Compose topology and
+publishes a `single-region-failover-result.json` with `outcome: "pass"`,
+`runner_blocked: false`, every entry in `phase_outcomes` at `status: "pass"`,
+every recovery-bound verdict passing, and evidence for every required scenario
+in the public
+[single-region failover scenario manifest](/platform-conformance/single-region-failover-scenarios.json).
+That public passing result must be linked from this status section and must name
+the same server image as `%%artifact.serverDockerHubImage%%`. Until all of those
+conditions hold, the recovery bounds below are evaluation targets rather than
+released-image validation claims.
+
+### Candidate topology
+
+The intended HA contract applies when the deployment matches the small-cluster
+shape or the raw-manifest shape and the operator preserves three rules:
 
 - **One writable workflow database endpoint, always.** Managed failover
   (RDS Multi-AZ, Aurora cluster failover, Cloud SQL HA, Patroni, etc.) is
@@ -367,13 +393,14 @@ or the raw-manifest shape and the operator preserves three rules:
   invariant during restart. Duplicate scheduler runners as a steady-state
   topology are not in this contract.
 
-### Per-event behavior and recovery bounds
+### Per-event behavior and recovery targets
 
-The engine commits to bounded recovery for each event class. The wall-clock
-recovery time the operator observes is the engine bound plus the managed
-service's own promotion latency.
+The intended engine contract defines bounded recovery targets for each event
+class. These are not released-image guarantees while the release-evidence gate
+is closed. The wall-clock recovery time the operator observes is the engine
+target plus the managed service's own promotion latency.
 
-| Event | Operator-visible behavior | Engine recovery bound (after substrate / runner is back) |
+| Event | Candidate engine behavior | Recovery target (after substrate / runner is back) |
 | --- | --- | --- |
 | Managed-database failover | Writes return errors and are not silently buffered. Reads return errors. `/api/ready` fails on every API node and on the scheduler. No acknowledged work is lost. | One connection-pool reconnect, plus one `task_repair` cadence (default 3s), plus one long-poll timeout (default 30s, max 60s) for in-flight pollers. |
 | Managed-Redis failover | Wake signals dropped → discovery falls back to long-poll timeout. Acceleration-layer health checks go to **warning**, not error. `/api/ready` typically stays green. | Redis client reconnect interval. |
@@ -411,20 +438,28 @@ its orchestrator, and resume external traffic.
 
 ### Run the exact-artifact rehearsal
 
-The server release publishes a reusable baseline rehearsal that exercises the
-full failure matrix without building product code from a checkout. On a clean
-host with Docker Engine, Docker Compose v2, Python 3.11 or newer, and public
-registry access, run:
+The server release includes a reusable baseline rehearsal intended to exercise
+the full failure matrix without building product code from a checkout. The
+runner and Compose topology must come from the same release tag as the server
+image; do not combine a moving default-branch checkout with an arbitrary image.
+On a clean host with Docker Engine, Docker Compose v2, Python 3.11 or newer, and
+public registry access, run:
 
+<!-- docs-example id="single-region-failover-exact-release" -->
 ```bash
-git clone --depth 1 https://github.com/durable-workflow/server.git
-cd server
-DW_SERVER_IMAGE=durableworkflow/server:<released-version> \
-  scripts/conformance/single-region-failover-published-artifacts.sh \
+export DW_SERVER_RELEASE=%%artifact.serverVersion%%
+git clone --depth 1 --single-branch --branch "$DW_SERVER_RELEASE" \
+  https://github.com/durable-workflow/server.git "server-$DW_SERVER_RELEASE"
+cd "server-$DW_SERVER_RELEASE"
+export DW_SERVER_IMAGE="durableworkflow/server:$DW_SERVER_RELEASE"
+scripts/conformance/single-region-failover-published-artifacts.sh \
   --result-dir ./failover-result
 ```
 
-The runner requires a concrete public server tag or digest, pulls every
+This path deliberately derives the checkout and `DW_SERVER_IMAGE` from one
+release variable. Do not override the image independently; select a different
+release by changing `DW_SERVER_RELEASE` before cloning. The runner requires a
+concrete public server tag or digest, pulls every
 supporting image, resolves all runtime images to repository digests, and
 rejects Compose build sections, product-source bind mounts, and local or
 rolling server references. It starts exactly two API nodes behind one nginx
@@ -440,8 +475,10 @@ interruption, Redis interruption, worker lease loss, and singleton-scheduler
 restart. External runners discover the invocation and public scenario manifest
 from `GET /api/cluster/info` at `single_region_failover_contract`.
 
-This baseline validates engine-visible interruption and recovery against the
-released image. It does not turn a local MySQL or Redis container restart into
+A result validates engine-visible interruption and recovery against the
+released image only when it passes the release-evidence gate above. A failed,
+partial, or runner-blocked result is diagnostic evidence, not validation. Even
+a passing baseline does not turn a local MySQL or Redis container restart into
 evidence for a cloud provider's promotion mechanism. Keep provider-native
 promotion, fencing, RPO, and elapsed-time evidence alongside the baseline
 result before claiming managed-service HA.
@@ -467,10 +504,12 @@ rehearsal evidence for each event class:
   schedules and leaves no schedule unevaluated past its `next_fire_at`
   plus one tick.
 
-A deployment that has not run the rehearsal is not yet self-serve under
-this contract; it remains support-led until the rehearsal evidence is
-recorded in the operator's recovery packet and refreshed on the cadence
-the Operator Operating Envelope publishes.
+While the release-evidence gate is closed, every deployment remains support-led
+even if its own rehearsal passes. After a public all-phase result opens the
+release gate, a deployment becomes self-serve under this contract only after
+its environment-specific rehearsal evidence is recorded in the operator's
+recovery packet and refreshed on the cadence the Operator Operating Envelope
+publishes.
 
 ### Boundary against unsupported HA claims
 
@@ -501,7 +540,11 @@ cross that line without dedicated validation.
 Active/passive multi-region with operator-driven regional failover is a
 self-serve contract. It extends the single-node, small-cluster, or raw
 Kubernetes path per region; it does not weaken any of those contracts inside
-the active region. The full contract — data authority, replication
+the active region. This regional contract does not imply that the gated
+single-region HA failure matrix has passed inside either region; claiming that
+additional behavior remains support-led while the
+[release-evidence gate](#release-evidence-status) is closed. The full regional
+contract — data authority, replication
 assumptions, namespace/task-queue/worker behavior, the failover and failback
 runbook, split-brain prevention, and the consistency/latency tradeoffs — lives
 in the workflow library at

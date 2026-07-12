@@ -1,6 +1,19 @@
 {
   "examples": [
     {
+      "path": "deployment.md",
+      "id": "single-region-failover-exact-release",
+      "language": "bash",
+      "requiredSubstrings": [
+        "export DW_SERVER_RELEASE=%%artifact.serverVersion%%",
+        "git clone --depth 1 --single-branch --branch \"$DW_SERVER_RELEASE\"",
+        "https://github.com/durable-workflow/server.git \"server-$DW_SERVER_RELEASE\"",
+        "cd \"server-$DW_SERVER_RELEASE\"",
+        "export DW_SERVER_IMAGE=\"durableworkflow/server:$DW_SERVER_RELEASE\"",
+        "scripts/conformance/single-region-failover-published-artifacts.sh"
+      ]
+    },
+    {
       "id": "server.cluster-info.curl",
       "path": "polyglot/server-api-reference.md",
       "language": "bash",
