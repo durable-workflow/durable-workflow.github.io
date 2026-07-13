@@ -29,11 +29,11 @@ every feature first appeared in that release.
 
 | Surface | Exact current floor | Role in this index |
 | --- | --- | --- |
-| PHP SDK and embedded engine | `%%artifact.workflowVersion%%` | First-party deterministic workflow/activity authoring, embedded Laravel host, PHP control-plane client, and reference core. |
+| CLI | `%%artifact.cliVersion%%` | Machine-readable operator and diagnostic client. |
+| PHP SDK | `%%artifact.workflowVersion%%` | First-party deterministic workflow/activity authoring, embedded Laravel host, PHP control-plane client, and reference core. |
 | Python SDK | `%%artifact.pythonSdkVersion%%` | First-party deterministic workflow/activity SDK plus operational and control-plane client. Requires Python 3.10 or newer. |
 | Rust SDK | `%%artifact.rustSdkVersion%%` | First-party deterministic workflow/activity SDK, worker service, and control-plane client. Requires Rust 1.86 or newer. |
-| Standalone server | `%%artifact.serverVersion%%` | PHP-implemented, language-neutral runtime for the v2 control-plane and worker protocols. |
-| CLI | `%%artifact.cliVersion%%` | Machine-readable operator and diagnostic client. |
+| Server | `%%artifact.serverVersion%%` | PHP-implemented, language-neutral runtime for the v2 control-plane and worker protocols. |
 | Waterline | `%%artifact.waterlineVersion%%` | Embedded-runtime observability and selected-run history export. |
 
 PHP, Python, and Rust are the three first-party SDK languages. They share
