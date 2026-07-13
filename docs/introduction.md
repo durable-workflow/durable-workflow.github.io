@@ -17,9 +17,7 @@ keywords:
 Durable Workflow 2.0 is a polyglot durable-execution platform. PHP, Python,
 and Rust applications author workflows and activities with first-party SDKs,
 share one public protocol and durable execution model, and resume from recorded
-history after workers or hosts restart. PHP is the server and core
-implementation language; it is not the worker-language or application-framework
-boundary.
+history after workers or hosts restart.
 
 ## Agent-operable by contract
 
@@ -36,17 +34,12 @@ direct [AI-agent evaluator](/docs/2.0/ai-agent-workflow-engine/).
 
 Choose the boundary that fits the application and operating model:
 
-- **Standalone server:** deploy the published PHP server as infrastructure and
-  connect PHP, Python, or Rust application workers through the public protocol.
-  Python- and Rust-only application teams do not embed Laravel. Start with the
+- **Standalone server:** deploy the published server as infrastructure and
+  connect PHP, Python, or Rust application workers through the public protocol. Start with the
   [Standalone Server](/docs/2.0/polyglot/server/).
 - **Embedded:** install the engine inside a Laravel application so its queues,
   configuration, database, and deployment own execution. See
   [Deployment Modes](/docs/2.0/polyglot/deployment-modes/).
-- **Durable Workflow Cloud:** use the hosted control plane above one or more
-  runtime targets while the runtime remains authoritative for execution,
-  workers, schedules, history, and durable visibility. The exact current
-  boundary is documented on [Cloud Control Plane](/docs/2.0/polyglot/cloud-control-plane/).
 
 ## First-party SDKs
 
