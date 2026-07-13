@@ -50,9 +50,10 @@ manifests, and CI gates can validate themselves against one source of truth:
 A release that changes any surface listed below — its stability level, its
 field set, its breaking-change rules — must update this page, the JSON
 mirror, the PHP manifest, and any per-package stability document in the same
-change. The release-check gate in `scripts/check-compatibility-authority.js`
-fails the docs build when it detects drift between this page and the JSON
-mirror.
+change. Docs CI validates the machine-readable contract, prerelease artifact
+guard, released Rust metadata when available, and worker-protocol specs.
+Editorial alignment between this page and the manifest remains an explicit
+release-review responsibility.
 
 ## Companion: Platform Protocol Spec Catalog
 
@@ -196,22 +197,18 @@ versions are validated against which server protocol manifests. Components
 validate the matrix at runtime via `GET /api/cluster/info` and fail closed
 when the manifests do not agree.
 
-### Component versions
+### Installable component versions
 
-This table names the current installable public artifact tuple. The stability
-contract is governed by the authority column, not by a component's top-level
-package version or prerelease channel. Stable 1.x remains the default public
-docs line; the 2.0 docs line is explicit prerelease guidance until the
+The generated [public release-audit JSON](pathname:///docs-page-release-audit.json)
+is the current installable artifact authority for Workflow, Server, CLI, the
+Python and Rust SDKs, and Waterline. This page deliberately does not copy that
+tuple into editorial Markdown. Stable 1.x remains the default public docs
+line; the 2.0 docs line is explicit prerelease guidance until the
 release-status cutover is authorized.
 
-| Component | Current installable public artifact | Contract authority and stability | Notes |
-|-----------|-------------------------------------|----------------------------------|-------|
-| Workflow Package (PHP) | 1.0.75 (stable 1.x docs), `%%artifact.workflowVersion%%` (2.0 prerelease docs) | `official_sdks` / `stable` | Core workflow engine. The 2.0 artifact is published with a Composer prerelease stability suffix while the 2.0 line ramps. |
-| Standalone Server | `%%artifact.serverVersion%%` | `server_api` / `stable`; `control_plane` and `worker_protocol` protocol manifests | Language-neutral HTTP server. The top-level server version is build identity, not the client compatibility authority. |
-| CLI (`dw`) | `%%artifact.cliVersion%%` | `cli_json` / `stable` | The installable artifact is still a 0.x package while the JSON contract is governed by the stable CLI surface. |
-| Python SDK (`durable_workflow`) | `%%artifact.pythonSdkVersion%%` | `official_sdks` / `stable` | The installable artifact is still a 0.x package while SDK compatibility is governed by protocol manifests and the SDK stability document. |
-| Rust SDK (`durable-workflow`) | `%%artifact.rustSdkVersion%%` | `official_sdks` / `stable` | The first-party Rust worker and control-plane client is distributed through crates.io; the 0.x package version is independent from the server build version. |
-| Waterline | 1.0.16 (stable 1.x docs), `%%artifact.waterlineVersion%%` (2.0 prerelease docs) | `waterline_api` / `stable` | Observability UI. The 2.0 artifact is published with a Composer prerelease stability suffix while the 2.0 line ramps. Major must match the workflow package major. |
+Package versions identify builds and distribution channels. Compatibility is
+governed by the stability families and protocol manifests below, not by
+assuming that two top-level package versions must match.
 
 ### Server ↔ SDK / CLI
 
@@ -411,9 +408,11 @@ with missing, malformed, or incompatible versions.
 
 ## Release Review Checklist
 
-Every release PR must tick the following before tagging. The docs CI
-script `scripts/check-compatibility-authority.js` enforces the
-docs-side gates automatically; the rest belong to the human reviewer.
+Every release PR must tick the following before tagging. Docs CI checks the
+machine-readable contract, prerelease tuple guard, Rust authority, and
+worker-protocol specifications. The editorial checks below belong to the
+human reviewer; `scripts/check-compatibility-authority.js` does not validate
+this prose or the dated history table.
 
 - [ ] **Docs authority aligned.** This page lists every surface family in
   `static/compatibility-contract.json` with the same stability level.
@@ -436,15 +435,19 @@ docs-side gates automatically; the rest belong to the human reviewer.
 
 ## Version History
 
+These rows are dated historical snapshots, not the current-version authority.
+Use the [public release-audit JSON](pathname:///docs-page-release-audit.json)
+for the current artifact tuple.
+
 | Date | Server | CLI | Python SDK | Rust SDK | Workflow | Waterline | Notes |
 |------|--------|-----|------------|----------|----------|-----------|-------|
-| 2026-07-13 | 0.2.648 | 0.1.89 | 0.4.98 | 0.1.14 | 2.0.0-alpha.274 | 2.0.0-alpha.130 | Public release-audit evidence is aligned with the current published artifact tuple while stable 1.x remains the default docs line. |
+| 2026-07-13 | 0.2.648 | 0.1.89 | 0.4.98 | 0.1.14 | 2.0.0-alpha.274 | 2.0.0-alpha.130 | Recorded a public release-audit snapshot while stable 1.x remained the default docs line. |
 | 2026-07-10 | 0.2.628 | 0.1.86 | 0.4.98 | 0.1.2 | 2.0.0-alpha.262 | 2.0.0-alpha.129 | Platform conformance suite version 29 makes the five published-artifact Rust signals/query cells mandatory, including a valid Avro path, registry checksum provenance, query immutability, and replayed workflow-instance state after a cold worker restart. |
 | 2026-07-09 | 0.2.618 | 0.1.86 | 0.4.98 | — | 2.0.0-alpha.259 | 2.0.0-alpha.122 | Platform conformance suite version 28 requires v1-to-v2 rollback evidence to preserve external ready, delayed, and reserved queue state with SQL from one recovery cut, or report the affected executions as unrecoverable. An observed v1.0.77 Watchdog redispatch is a bounded pending-only wake path; retries, timers, and waiting/running work still require their queue or signal state. Recovery manifests record only an `APP_KEY` secret-manager reference/version, with secrets and recovery credentials separately controlled. |
-| 2026-07-09 | 0.2.617 | 0.1.86 | 0.4.98 | — | 2.0.0-alpha.258 | 2.0.0-alpha.122 | Public release-audit evidence is aligned with the current published artifact tuple while stable 1.x remains the default docs line. |
-| 2026-07-08 | 0.2.598 | 0.1.86 | 0.4.98 | — | 2.0.0-alpha.251 | 2.0.0-alpha.121 | Public release-audit evidence is aligned with the current published artifact tuple while stable 1.x remains the default docs line. |
+| 2026-07-09 | 0.2.617 | 0.1.86 | 0.4.98 | — | 2.0.0-alpha.258 | 2.0.0-alpha.122 | Recorded a public release-audit snapshot while stable 1.x remained the default docs line. |
+| 2026-07-08 | 0.2.598 | 0.1.86 | 0.4.98 | — | 2.0.0-alpha.251 | 2.0.0-alpha.121 | Recorded a public release-audit snapshot while stable 1.x remained the default docs line. |
 | 2026-06-05 | 0.2.341 | 0.1.77 | 0.4.85 | — | 2.0.0-alpha.199 | 2.0.0-alpha.83 | Platform conformance suite version 24 requires worker-versioning cross-language PHP/Python pinning evidence to include worker runtime identities, workflow and run IDs, rollout state, public poll and rollout outcomes, published worker artifact install source and version, and confirmation that no local product source checkout was used. |
-| 2026-06-05 | 0.2.341 | 0.1.77 | 0.4.85 | — | 2.0.0-alpha.199 | 2.0.0-alpha.83 | Public release-audit evidence is aligned with the current verified installable artifact tuple while stable 1.x remains the default docs line. |
+| 2026-06-05 | 0.2.341 | 0.1.77 | 0.4.85 | — | 2.0.0-alpha.199 | 2.0.0-alpha.83 | Recorded a verified public release-audit snapshot while stable 1.x remained the default docs line. |
 | 2026-06-02 | 0.2.261 | 0.1.75 | 0.4.84 | — | 2.0.0-alpha.193 | 2.0.0-alpha.80 | Platform conformance suite version 20 adds a public worker-versioning evidence shard for published PHP/Python worker protocol client execution, so cross-language build-ID pinning evidence can be recorded without naming runner implementation details. It also publishes suite-versioned public runtime requirement digests for `artifact_policy`, `common_result_evidence`, `required_matrix`, `scenario_requirements`, and `host_runner_contract`. |
 | 2026-06-02 | 2.0.0 | 0.1.0 | 0.2.0 | — | 2.0.0 | 2.0.0 | Platform conformance suite version 19 adds stable `schedules_runtime_contract` coverage for published-artifact schedule scenarios, including cron and fixed-rate cadence, public list and describe surfaces, pause/resume/delete controls, missed-fire policy, restart survival, CLI/Python/PHP client paths, cross-language scheduled workflow dispatch, and adversarial schedule inputs. |
 | 2026-06-02 | 2.0.0 | 0.1.0 | 0.2.0 | — | 2.0.0 | 2.0.0 | Platform conformance suite version 18 requires prerelease readiness evidence to execute the 2.0 quickstart Laravel branch from live public docs through `status=completed` and `output=Hello, Laravel!`, with exact Composer package versions, commands, outputs, and wall-clock timing. |

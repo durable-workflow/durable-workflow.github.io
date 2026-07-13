@@ -8,6 +8,10 @@ const {
   assertOpenApiAcceptedWorkerProtocolVersions,
   expectedAcceptedWorkerVersions,
 } = require('./check-compatibility-authority');
+const artifactVersionSource = require('./public-artifact-versions.json');
+const {
+  buildArtifactVersionProjection,
+} = require('./generate-docs-page-release-audit');
 
 const openApiPath = path.join(
   __dirname,
@@ -40,5 +44,43 @@ assert.throws(
   /AcceptedWorkerProtocolRequestVersion\.enum must exactly match the computed negotiation window/,
   'narrowing the OpenAPI enum must fail compatibility-authority validation',
 );
+
+function successorVersion(version) {
+  const successor = version.replace(/(\d+)(?![\s\S]*\d)/, sequence => String(Number(sequence) + 1));
+  assert.notStrictEqual(successor, version, `test fixture must advance ${version}`);
+  return successor;
+}
+
+const successorVersions = Object.fromEntries(
+  Object.entries(artifactVersionSource.artifacts).map(([artifact, version]) => [
+    artifact,
+    successorVersion(version),
+  ]),
+);
+const successorProjection = buildArtifactVersionProjection(successorVersions);
+
+assert.deepStrictEqual(
+  successorProjection.artifact_versions,
+  successorVersions,
+  'the public release audit must project every successor tuple component from its data source',
+);
+assert.deepStrictEqual(
+  Object.keys(successorProjection.artifact_versions).sort(),
+  Object.keys(artifactVersionSource.artifacts).sort(),
+  'the successor projection regression must cover every artifact tuple component',
+);
+
+for (const [artifact, successor] of Object.entries(successorVersions)) {
+  assert.strictEqual(
+    successorProjection.artifact_versions[artifact],
+    successor,
+    `the public release audit must project the successor ${artifact} version`,
+  );
+  assert.notStrictEqual(
+    successorProjection.artifact_versions[artifact],
+    artifactVersionSource.artifacts[artifact],
+    `the public release audit must not retain the previous ${artifact} version`,
+  );
+}
 
 console.log('Compatibility-authority adversarial drift checks passed.');

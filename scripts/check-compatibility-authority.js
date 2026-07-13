@@ -461,6 +461,68 @@ function assertComposerArtifactTupleIsPreStable() {
   }
 }
 
+function assertReleaseCheckMetadata(contract) {
+  const releaseCheck = contract.release_check;
+  const expectedMachineCommands = [
+    'node scripts/check-compatibility-authority.js',
+    'node scripts/check-compatibility-authority.test.js',
+  ];
+  const expectedMachineChecks = [
+    'contract_shape_and_identity',
+    'composer_prerelease_artifact_tuple',
+    'rust_sdk_artifact_release_line',
+    'rust_sdk_published_crate_metadata_when_available',
+    'worker_protocol_negotiation_contract',
+    'worker_protocol_openapi',
+    'worker_protocol_asyncapi',
+    'rust_sdk_published_crate_workflow_contract',
+    'public_release_audit_successor_tuple_projection',
+  ];
+  const expectedMarkdownSources = [];
+  const expectedHumanChecks = [
+    'docs_authority_aligned',
+    'install_docs_aligned',
+    'package_metadata_aligned',
+    'version_history_aligned',
+  ];
+
+  for (const [field, expected] of Object.entries({
+    machine_commands: expectedMachineCommands,
+    machine_checks: expectedMachineChecks,
+    markdown_sources_checked: expectedMarkdownSources,
+    human_checks: expectedHumanChecks,
+  })) {
+    const actual = releaseCheck?.enforcement?.[field];
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+      throw new Error(
+        `static/compatibility-contract.json release_check.enforcement.${field} ` +
+          `must describe the checks that docs CI actually runs: expected ` +
+          `${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`,
+      );
+    }
+  }
+
+  if (
+    typeof releaseCheck.enforcement.machine !== 'string' ||
+    !releaseCheck.enforcement.machine.includes('does not treat editorial Markdown as machine contract data')
+  ) {
+    throw new Error(
+      `static/compatibility-contract.json release_check.enforcement.machine must state ` +
+        `that editorial Markdown is not machine contract data`,
+    );
+  }
+
+  if (
+    typeof releaseCheck.enforcement.human !== 'string' ||
+    !releaseCheck.enforcement.human.includes('not performed by the compatibility-authority scripts')
+  ) {
+    throw new Error(
+      `static/compatibility-contract.json release_check.enforcement.human must distinguish ` +
+        `the editorial checks from the compatibility-authority scripts`,
+    );
+  }
+}
+
 function loadContract() {
   let raw;
   try {
@@ -525,6 +587,7 @@ function main() {
   const contract = loadContract();
   assertRustSdkProtocolAuthority(contract);
   assertComposerArtifactTupleIsPreStable();
+  assertReleaseCheckMetadata(contract);
 
   console.log(
     `Compatibility-authority check passed: ${Object.keys(contract.surface_families).length} surface families ` +
@@ -538,5 +601,6 @@ if (require.main === module) {
 
 module.exports = {
   assertOpenApiAcceptedWorkerProtocolVersions,
+  assertReleaseCheckMetadata,
   expectedAcceptedWorkerVersions,
 };

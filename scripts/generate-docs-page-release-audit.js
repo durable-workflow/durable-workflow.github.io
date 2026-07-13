@@ -4,9 +4,9 @@ const fs = require('fs');
 const path = require('path');
 
 const {
-  ARTIFACT_DISTRIBUTION_SURFACES,
   ARTIFACT_VERSION_SCHEMA,
   ARTIFACT_VERSIONS,
+  buildArtifactDistributionSurfaces,
 } = require('./public-artifact-versions');
 const {docsRevision} = require('./docs-narrative-audit-contract');
 const {
@@ -135,15 +135,25 @@ function inventoryEntry(routePath) {
   };
 }
 
-function artifactVersionSourceMetadata() {
+function artifactVersionSourceMetadata(versions, distributionSurfaces) {
   return {
     schema: ARTIFACT_VERSION_SCHEMA,
     source_file: ARTIFACT_VERSION_SOURCE_FILE,
     synchronized_fields: ARTIFACT_VERSION_SYNCHRONIZED_FIELDS,
     current_server_artifact: {
-      version: ARTIFACT_VERSIONS.server,
-      references: ARTIFACT_DISTRIBUTION_SURFACES.server.map(surface => surface.reference),
+      version: versions.server,
+      references: distributionSurfaces.server.map(surface => surface.reference),
     },
+  };
+}
+
+function buildArtifactVersionProjection(versions = ARTIFACT_VERSIONS) {
+  const distributionSurfaces = buildArtifactDistributionSurfaces(versions);
+
+  return {
+    artifact_versions: versions,
+    artifact_version_source: artifactVersionSourceMetadata(versions, distributionSurfaces),
+    artifact_distribution_surfaces: distributionSurfaces,
   };
 }
 
@@ -161,9 +171,7 @@ function main() {
     generated_from: 'production sitemap and build artifact inventory',
     classifier: CLASSIFIER_ID,
     docs_revision: docsRevision(repoRoot),
-    artifact_versions: ARTIFACT_VERSIONS,
-    artifact_version_source: artifactVersionSourceMetadata(),
-    artifact_distribution_surfaces: ARTIFACT_DISTRIBUTION_SURFACES,
+    ...buildArtifactVersionProjection(),
     release_status_guardrail: {
       stable_default_docs_version: STABLE_DOCS_VERSION,
       explicit_prerelease_docs_version: PRERELEASE_DOCS_VERSION,
@@ -195,6 +203,7 @@ module.exports = {
   SCHEMA_VERSION,
   STABLE_DOCS_VERSION,
   PRERELEASE_DOCS_VERSION,
+  buildArtifactVersionProjection,
   buildRelativePath,
   inventoryPaths,
   routeKind,
