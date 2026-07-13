@@ -4,6 +4,10 @@ const fs = require('fs');
 const path = require('path');
 
 const config = require('../docusaurus.config.js');
+const protocolCatalog = require('../static/platform-protocol-specs.json');
+const {
+  assertModelRetrievalSurface,
+} = require('./check-platform-protocol-page');
 
 const repoRoot = path.join(__dirname, '..');
 const buildDir = path.join(repoRoot, 'build');
@@ -107,6 +111,8 @@ function main() {
   if (v2PathAlias !== v2Full) {
     throw new Error('Version-path LLM bundle must be byte-equivalent to llms-full-2.0.txt');
   }
+  assertModelRetrievalSurface(v2Full, protocolCatalog, 'llms-full-2.0.txt');
+  assertModelRetrievalSurface(v2PathAlias, protocolCatalog, '2.0/llms-full.txt');
 
   for (const [label, content] of Object.entries({
     'llms.txt': canonicalIndex,

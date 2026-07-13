@@ -19,6 +19,8 @@ keywords:
   - worker protocol spec
 ---
 
+import ProtocolCatalog from '@site/src/components/ProtocolCatalog';
+
 # Platform Protocol Specs
 
 The platform protocol catalog tells SDK authors, agents, operators, and
@@ -72,38 +74,25 @@ spec_id. They do not need source checkout access.
 
 ## Available specifications
 
-| Catalog entry | Format | Status | Owner | Public specification |
-|---|---|---|---|---|
-| control_plane_api | OpenAPI | published | durable-workflow/server | [control-plane-api.openapi.yaml](https://durable-workflow.github.io/platform-protocol-specs/control-plane-api.openapi.yaml) |
-| worker_protocol_api | OpenAPI | published | durable-workflow/server | [worker-protocol-api.openapi.yaml](https://durable-workflow.github.io/platform-protocol-specs/worker-protocol-api.openapi.yaml) |
-| worker_protocol_stream | AsyncAPI | published | durable-workflow/server | [worker-protocol-stream.asyncapi.yaml](https://durable-workflow.github.io/platform-protocol-specs/worker-protocol-stream.asyncapi.yaml) |
-| worker_sessions_runtime | JSON Schema | published | durable-workflow/server | [worker-sessions-runtime.schema.json](https://durable-workflow.github.io/platform-protocol-specs/worker-sessions-runtime.schema.json) |
-| local_activity_runtime | JSON Schema | published | durable-workflow/workflow | [local-activity-runtime.schema.json](https://durable-workflow.github.io/platform-protocol-specs/local-activity-runtime.schema.json) |
-| history_event_payloads | JSON Schema | published | durable-workflow/workflow | [history-event-payloads.schema.json](https://durable-workflow.github.io/platform-protocol-specs/history-event-payloads.schema.json) |
-| history_export_bundle | JSON Schema | published | durable-workflow/workflow | [history-export-bundle.schema.json](https://durable-workflow.github.io/platform-protocol-specs/history-export-bundle.schema.json) |
-| replay_bundle | JSON Schema | published | durable-workflow/workflow | [replay-bundle.schema.json](https://durable-workflow.github.io/platform-protocol-specs/replay-bundle.schema.json) |
-| waterline_read_api | OpenAPI | published | durable-workflow/waterline | [waterline-read-api.openapi.yaml](https://durable-workflow.github.io/platform-protocol-specs/waterline-read-api.openapi.yaml) |
-| waterline_diagnostic_objects | JSON Schema | published | durable-workflow/waterline | [waterline-diagnostic-objects.schema.json](https://durable-workflow.github.io/platform-protocol-specs/waterline-diagnostic-objects.schema.json) |
-| repair_actionability_objects | JSON Schema | published | durable-workflow/workflow | [repair-actionability-objects.schema.json](https://durable-workflow.github.io/platform-protocol-specs/repair-actionability-objects.schema.json) |
-| cli_json_envelopes | JSON Schema | published | durable-workflow/cli | [cli-json-envelopes.schema.json](https://durable-workflow.github.io/platform-protocol-specs/cli-json-envelopes.schema.json) |
-| mcp_discovery | JSON Schema | published | durable-workflow/durable-workflow.github.io | [mcp-discovery.schema.json](https://durable-workflow.github.io/platform-protocol-specs/mcp-discovery.schema.json) |
-| mcp_tool_results | JSON Schema | published | durable-workflow/durable-workflow.github.io | [mcp-tool-results.schema.json](https://durable-workflow.github.io/platform-protocol-specs/mcp-tool-results.schema.json) |
-| cluster_info_envelope | JSON Schema | published | durable-workflow/server | [cluster-info-envelope.schema.json](https://durable-workflow.github.io/platform-protocol-specs/cluster-info-envelope.schema.json) |
-| invocable_carrier_execution | JSON Schema | in progress | durable-workflow/server | [invocable-carrier-execution.schema.json](https://durable-workflow.github.io/platform-protocol-specs/invocable-carrier-execution.schema.json) |
+This inventory is rendered from the public JSON catalog. Specification
+identity, availability, public links, and object-family ownership therefore
+remain catalog data rather than a second prose authority.
 
-### worker_sessions_runtime
+<ProtocolCatalog />
+
+### Worker session runtime notes
 
 This schema covers worker-session capability discovery, lifecycle envelopes,
 task-affinity snapshots, and operator visibility. Its stable identifier is
 durable-workflow.v2.worker-sessions-runtime.
 
-### local_activity_runtime
+### Local activity runtime notes
 
 This schema covers local-activity capability discovery, option snapshots,
 history markers, retry semantics, and operator visibility. Its stable
 identifier is durable-workflow.v2.local-activity-runtime.
 
-### cluster_info_envelope
+### Cluster-info envelope notes
 
 This schema covers GET /api/cluster/info and the nested discovery manifests
 available from that endpoint. Its stable identifier is
@@ -153,13 +142,16 @@ Docs-site CI enforces the following machine checks:
 | server_owned_spec_mirrors_aligned | Server-owned published artifacts match owner-repository mirrors when those inputs are available. |
 | diagnostic_provenance_complete | Validation-only provenance covers every catalog entry and object family. |
 | object_family_metadata_declared | Catalog entries and published documents agree on object-family names and owners. |
+| rendered_retrieval_surfaces_aligned | The built 2.0 page and full 2.0 model-retrieval bundles expose every available entry's catalog identity, public URL, and object-family ownership. |
 | breaking_change_release_consistent_with_evolution_rule | Every breaking-change release value matches its evolution rule. |
 | deliverable_specs_published | Every required platform surface has a published, parseable specification. |
 
 The machine check loads the public JSON catalog, validates its vocabulary and
 consumer-safe references, parses shipped specifications, checks object-family
 and embedded-schema metadata, and compares package mirrors when available.
-The Markdown page is a consumer guide and is not parsed as a second catalog.
+After the site and model bundles are generated, a semantic check compares their
+rendered catalog values to that same JSON authority. Documentation prose and
+heading text are not part of the comparison.
 
 When the contract changes, update the packaged Workflow catalog, this public
 JSON mirror, and affected published specification artifacts together. Human

@@ -134,6 +134,7 @@ x-decoy-object-families:
     /repository-relative path/,
     'scripts paths must be rejected even when smuggled through a consumer-safe field',
   );
+
 } finally {
   fs.rmSync(fixtureRoot, {recursive: true, force: true});
 }

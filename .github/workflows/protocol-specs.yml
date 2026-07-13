@@ -88,5 +88,16 @@ jobs:
       - name: Test malformed platform protocol specs
         run: node scripts/check-platform-protocol-specs.test.js
 
+      - name: Test rendered protocol catalog associations
+        run: node scripts/check-platform-protocol-page.test.js
+
+      - name: Build rendered protocol retrieval surfaces
+        run: |
+          npm run docusaurus -- build
+          node scripts/generate-llms-full.js
+
+      - name: Check rendered protocol retrieval surfaces
+        run: node scripts/check-platform-protocol-page.js
+
       - name: Check platform conformance authority
         run: node scripts/check-platform-conformance-authority.js
