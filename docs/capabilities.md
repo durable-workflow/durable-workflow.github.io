@@ -98,7 +98,7 @@ admitting a worker.
 
 The platform contracts indexed here are public, but the product line remains
 2.0 prerelease and the installable package versions above can advance before
-the stable cut. Stable 1.x is still the default public line. Temporal is substantially more mature operationally; this index does not claim parity.
+the stable cut. Stable 1.x is still the default public line.
 Use the [AI-agent evaluator](/docs/2.0/ai-agent-workflow-engine/) for a concise
 fit decision and [Workflow engine categories](/docs/2.0/workflow-engine-categories/)
 for a neutral comparison taxonomy.
