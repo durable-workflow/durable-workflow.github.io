@@ -47,7 +47,7 @@ const reviews = [
     'Every evidence link stays on the explicit 2.0 line and SDK gaps agree with the dedicated PHP, Python, Rust, and compatibility pages.',
     'Distinguishes platform capability from per-SDK authoring breadth and avoids claiming Rust updates or schedule management.',
     'Covers the full capability inventory, exact installable tuple, codec boundary, prerelease status, and operational maturity caveat.'),
-  review('docs/compatibility.md', '017769d9ad8b6bda9ef226e6e6008a38e49a8faf4ad76919f1e3071590fe667f',
+  review('docs/compatibility.md', '8ce203bc969d7b6d3391d8ac0c12717abd960a904b687827c8fcfa6cbaf373de',
     'Defines stability vocabulary before matrices, validation commands, upgrade rules, and release history.',
     'Explains that package version, protocol level, and advertised server capabilities are separate inputs.',
     'Artifact pins, component tables, and release-history rows share the synchronized public tuple.',
