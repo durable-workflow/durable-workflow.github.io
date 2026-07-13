@@ -551,7 +551,7 @@ const reviews = [
     'Each gallery pattern maps to the same named feature page and runnable application command.',
     'Frames samples as demonstrations of supported contracts and identifies external dependencies per pattern.',
     'Provides startup paths, pattern inventory, commands, source locations, UI observation, AI examples, and MCP access.'),
-  review('docs/sdk-neutrality.md', '3624a38dbc794c62b48c0ee1a1b098111d1ffd9db9aec39bc77e516a15cd2641',
+  review('docs/sdk-neutrality.md', '613d447891c9016a0a93170de6363b32c1e7746323135b72a23f6d08fe182e0c',
     'Explains motivation before scope, official SDK breadth, neutrality rules, audits, future SDK needs, and gates.',
     'Requires the language-neutral server contracts and protocol specs before evaluating any SDK surface.',
     'The PHP, Python, and Rust first-party roster and neutrality vocabulary align with compatibility and protocol authorities.',

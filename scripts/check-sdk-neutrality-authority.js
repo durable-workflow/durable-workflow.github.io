@@ -18,7 +18,8 @@
 //    contract authorities (surface stability, protocol-spec catalog,
 //    conformance suite).
 // 2. The seven required neutrality rules are present and each rule has a
-//    `requirement`, `rationale`, `authority`, and `how_to_apply` line.
+//    `requirement`, `rationale`, `how_to_apply`, and structured public
+//    `authority` references.
 // 3. The audit checklist enumerates every neutrality rule and includes
 //    the `future_sdk_thought_experiment` step. Every audit step names a
 //    declared rule.
@@ -27,15 +28,17 @@
 //    contract). The neutrality contract cannot reference families that
 //    the stability contract has not declared.
 // 5. The SDK breadth policy marks PHP, Python, and Rust first-party SDKs as
-//    `priority` and TypeScript / Go / Java / .NET as `demand_driven`.
-//    The expansion criteria advertise an adoption-signal, a
-//    maintenance-commitment, and a no-protocol-redesign rule.
-// 6. The release-gates section enumerates the named gates and the
+//    `priority`, publishes package and conformance authorities for each, and
+//    marks TypeScript / Go / Java / .NET as `demand_driven`.
+// 6. Every catalog, protocol/schema, and conformance scenario reference
+//    resolves to a published file and identifier in this release checkout.
+//    Repository-local paths and implementation symbols are rejected.
+// 7. The release-gates section enumerates the named gates and the
 //    machine + human enforcement summary.
-// 7. The companion docs site page (`docs/sdk-neutrality.md`) advertises
+// 8. The companion docs site page (`docs/sdk-neutrality.md`) advertises
 //    itself as the public mirror, references the schema id, and lists
 //    every rule from the contract.
-// 8. When the workflow repo is available beside this docs checkout (or
+// 9. When the workflow repo is available beside this docs checkout (or
 //    via `WORKFLOW_REPO_PATH`), the static mirror must be
 //    byte-equivalent to `workflow/resources/sdk-neutrality-contract.json`
 //    when that file exists. Drift between the PHP manifest and the JSON
@@ -49,11 +52,38 @@ const path = require('path');
 const repoRoot = path.join(__dirname, '..');
 const contractPath = path.join(repoRoot, 'static', 'sdk-neutrality-contract.json');
 const surfaceContractPath = path.join(repoRoot, 'static', 'compatibility-contract.json');
+const protocolCatalogPath = path.join(repoRoot, 'static', 'platform-protocol-specs.json');
+const conformanceSuitePath = path.join(repoRoot, 'static', 'platform-conformance-contract.json');
 const neutralityDocPath = path.join(repoRoot, 'docs', 'sdk-neutrality.md');
 
 const EXPECTED_SCHEMA = 'durable-workflow.v2.sdk-neutrality.contract';
 const EXPECTED_AUTHORITY_DOC =
   'https://github.com/durable-workflow/workflow/blob/v2/docs/architecture/sdk-neutrality.md';
+const EXPECTED_AUTHORITY_URL =
+  'https://durable-workflow.github.io/sdk-neutrality-contract.json';
+const PUBLIC_SITE_ORIGIN = 'https://durable-workflow.github.io';
+const RUNTIME_SCENARIO_SCHEMA =
+  'durable-workflow.v2.platform-conformance.runtime-scenarios';
+
+const EXPECTED_PACKAGE_URLS = {
+  php_workflow_package: 'https://packagist.org/packages/durable-workflow/workflow',
+  python_sdk: 'https://pypi.org/project/durable-workflow/',
+  rust_sdk: 'https://crates.io/crates/durable-workflow',
+};
+const EXPECTED_SDK_CONFORMANCE = {
+  php_workflow_package: {
+    category: 'history_replay_bundles',
+    actorIds: ['workflow_php_runtime'],
+  },
+  python_sdk: {
+    category: 'history_replay_bundles',
+    actorIds: ['python_sdk_runtime'],
+  },
+  rust_sdk: {
+    category: 'signal_query_runtime_contract',
+    actorIds: ['rust_sdk', 'rust_worker', 'rust_sdk_client'],
+  },
+};
 
 const REQUIRED_RULES = [
   'protocol_neutrality',
@@ -65,7 +95,7 @@ const REQUIRED_RULES = [
   'documentation_neutrality',
 ];
 
-const REQUIRED_RULE_FIELDS = ['requirement', 'rationale', 'authority', 'how_to_apply'];
+const REQUIRED_RULE_FIELDS = ['requirement', 'rationale', 'how_to_apply'];
 
 const REQUIRED_AUDIT_STEPS = [
   'protocol_review',
@@ -107,6 +137,169 @@ function loadJson(file, label) {
   }
 }
 
+function assertNonEmptyString(value, label) {
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new Error(`${label} must be a non-empty string`);
+  }
+}
+
+function assertUniqueNonEmptyStrings(values, label) {
+  if (!Array.isArray(values) || values.length === 0) {
+    throw new Error(`${label} must be a non-empty array`);
+  }
+  const seen = new Set();
+  for (const value of values) {
+    assertNonEmptyString(value, `${label} entry`);
+    if (seen.has(value)) {
+      throw new Error(`${label} contains duplicate value "${value}"`);
+    }
+    seen.add(value);
+  }
+}
+
+function publicStaticPath(publicUrl, label) {
+  let parsed;
+  try {
+    parsed = new URL(publicUrl);
+  } catch (err) {
+    throw new Error(`${label} must be an absolute public URL (got ${JSON.stringify(publicUrl)})`);
+  }
+  if (parsed.origin !== PUBLIC_SITE_ORIGIN || parsed.search || parsed.hash) {
+    throw new Error(
+      `${label} must use an unqualified ${PUBLIC_SITE_ORIGIN}/ URL ` +
+        `(got "${publicUrl}")`,
+    );
+  }
+  const relativePath = decodeURIComponent(parsed.pathname).replace(/^\/+/, '');
+  const resolved = path.resolve(repoRoot, 'static', relativePath);
+  const staticRoot = path.resolve(repoRoot, 'static');
+  if (resolved !== staticRoot && !resolved.startsWith(`${staticRoot}${path.sep}`)) {
+    throw new Error(`${label} escapes the published static directory`);
+  }
+  if (!fs.existsSync(resolved) || !fs.statSync(resolved).isFile()) {
+    throw new Error(`${label} does not resolve to a published artifact at ${resolved}`);
+  }
+  return resolved;
+}
+
+function assertNoRepositoryLocalReferences(contract) {
+  const encoded = JSON.stringify(contract);
+  const forbidden = [
+    { pattern: /(^|[\s`("'])((?:\.\.?\/)?(?:tests?|src|resources|docs|static|sdk-[a-z0-9-]+)\/)/i, label: 'repository-relative path' },
+    { pattern: /https?:\/\/[^"\s]*\/(?:tests?|src|resources|static|sdk-[a-z0-9-]+)\//i, label: 'public URL with a repository-local path' },
+    { pattern: /\.php\b/i, label: 'PHP source filename' },
+    { pattern: /::/, label: 'implementation symbol' },
+    { pattern: /\\[A-Za-z_]/, label: 'namespaced implementation symbol' },
+  ];
+  for (const { pattern, label } of forbidden) {
+    if (pattern.test(encoded)) {
+      throw new Error(
+        `static/sdk-neutrality-contract.json contains a ${label}; ` +
+          `public contract authorities must use public URLs and catalog identifiers`,
+      );
+    }
+  }
+}
+
+function loadAuthorityCatalogs() {
+  const protocolCatalog = loadJson(
+    protocolCatalogPath,
+    'static/platform-protocol-specs.json',
+  );
+  const conformanceSuite = loadJson(
+    conformanceSuitePath,
+    'static/platform-conformance-contract.json',
+  );
+  const protocolSpecsById = new Map();
+  for (const [catalogKey, spec] of Object.entries(protocolCatalog.specs || {})) {
+    assertNonEmptyString(
+      spec.spec_id,
+      `static/platform-protocol-specs.json specs.${catalogKey}.spec_id`,
+    );
+    if (protocolSpecsById.has(spec.spec_id)) {
+      throw new Error(
+        `static/platform-protocol-specs.json repeats spec id "${spec.spec_id}"`,
+      );
+    }
+    protocolSpecsById.set(spec.spec_id, spec);
+  }
+  return { protocolCatalog, conformanceSuite, protocolSpecsById };
+}
+
+function loadScenarioCatalog(reference, label, conformanceSuite) {
+  const scenarioPath = publicStaticPath(reference.url, `${label}.url`);
+  const catalog = loadJson(scenarioPath, label);
+  if (catalog.schema !== RUNTIME_SCENARIO_SCHEMA || reference.id !== catalog.schema) {
+    throw new Error(
+      `${label} schema/id must resolve to "${RUNTIME_SCENARIO_SCHEMA}"`,
+    );
+  }
+  if (catalog.category !== reference.category) {
+    throw new Error(
+      `${label} category "${reference.category}" does not match the published ` +
+        `catalog category "${catalog.category}"`,
+    );
+  }
+  if (catalog.suite_schema !== conformanceSuite.schema) {
+    throw new Error(
+      `${label} suite_schema "${catalog.suite_schema}" does not match ` +
+        `static/platform-conformance-contract.json schema "${conformanceSuite.schema}"`,
+    );
+  }
+  if (!Array.isArray(catalog.scenarios) || catalog.scenarios.length === 0) {
+    throw new Error(`${label} resolves to a catalog with no scenarios`);
+  }
+  return catalog;
+}
+
+function assertPublicReference(reference, label, catalogs) {
+  if (!reference || typeof reference !== 'object' || Array.isArray(reference)) {
+    throw new Error(`${label} must be a structured public authority reference`);
+  }
+  if (!['catalog', 'protocol_spec', 'scenario_catalog'].includes(reference.kind)) {
+    throw new Error(`${label}.kind "${reference.kind}" is not supported`);
+  }
+  assertNonEmptyString(reference.id, `${label}.id`);
+  assertNonEmptyString(reference.url, `${label}.url`);
+  publicStaticPath(reference.url, `${label}.url`);
+
+  if (reference.kind === 'protocol_spec') {
+    const spec = catalogs.protocolSpecsById.get(reference.id);
+    if (!spec) {
+      throw new Error(
+        `${label}.id "${reference.id}" is not published by ` +
+          `static/platform-protocol-specs.json`,
+      );
+    }
+    if (spec.status !== 'published') {
+      throw new Error(`${label}.id "${reference.id}" is not published (status ${spec.status})`);
+    }
+    const expectedUrl = `${PUBLIC_SITE_ORIGIN}/${spec.spec_path.replace(/^static\//, '')}`;
+    if (reference.url !== expectedUrl) {
+      throw new Error(
+        `${label}.url must match the protocol catalog path for "${reference.id}" ` +
+          `(expected "${expectedUrl}")`,
+      );
+    }
+    return;
+  }
+
+  if (reference.kind === 'catalog') {
+    const catalogsById = new Map([
+      [catalogs.protocolCatalog.schema, `${PUBLIC_SITE_ORIGIN}/platform-protocol-specs.json`],
+      [catalogs.conformanceSuite.schema, `${PUBLIC_SITE_ORIGIN}/platform-conformance-contract.json`],
+    ]);
+    const expectedUrl = catalogsById.get(reference.id);
+    if (!expectedUrl || reference.url !== expectedUrl) {
+      throw new Error(`${label} does not resolve to a recognized published catalog`);
+    }
+    return;
+  }
+
+  assertNonEmptyString(reference.category, `${label}.category`);
+  loadScenarioCatalog(reference, label, catalogs.conformanceSuite);
+}
+
 function loadContract() {
   const contract = loadJson(contractPath, 'static/sdk-neutrality-contract.json');
 
@@ -114,6 +307,7 @@ function loadContract() {
     'schema',
     'version',
     'authority_doc',
+    'authority_url',
     'surface_stability_authority',
     'protocol_specs_authority',
     'conformance_suite_authority',
@@ -150,6 +344,13 @@ function loadContract() {
     throw new Error(
       `static/sdk-neutrality-contract.json authority_doc must point at ` +
         `${EXPECTED_AUTHORITY_DOC} (got "${contract.authority_doc}")`,
+    );
+  }
+
+  if (contract.authority_url !== EXPECTED_AUTHORITY_URL) {
+    throw new Error(
+      `static/sdk-neutrality-contract.json authority_url must point at ` +
+        `${EXPECTED_AUTHORITY_URL} (got "${contract.authority_url}")`,
     );
   }
 
@@ -205,7 +406,7 @@ function assertScopeNamesPriorityAndFuturePosture(contract) {
   }
 }
 
-function assertNeutralityRules(contract) {
+function assertNeutralityRules(contract, catalogs) {
   const rules = contract.neutrality_rules;
   const declared = Object.keys(rules);
   if (declared.length !== REQUIRED_RULES.length) {
@@ -230,13 +431,28 @@ function assertNeutralityRules(contract) {
         );
       }
     }
+    if (!Array.isArray(rule.authority) || rule.authority.length === 0) {
+      throw new Error(
+        `static/sdk-neutrality-contract.json neutrality rule "${required}" ` +
+          `must include at least one structured public authority reference`,
+      );
+    }
+    rule.authority.forEach((reference, index) => {
+      assertPublicReference(
+        reference,
+        `neutrality_rules.${required}.authority[${index}]`,
+        catalogs,
+      );
+    });
   }
 
   const codec = rules.codec_neutrality;
-  if (!/CodecRegistry::universal\(\)/.test(codec.authority)) {
+  if (!codec.authority.some(
+    (reference) => reference.id === 'durable-workflow.v2.worker-protocol-api',
+  )) {
     throw new Error(
       `static/sdk-neutrality-contract.json codec_neutrality.authority must ` +
-        `point at the universal codec authority (CodecRegistry::universal())`,
+        `point at the published worker protocol authority`,
     );
   }
   if (!/universal codec/.test(codec.requirement)) {
@@ -251,7 +467,27 @@ function assertNeutralityRules(contract) {
     throw new Error(
       `static/sdk-neutrality-contract.json replay_fixture_neutrality.requirement ` +
         `must reference both the history_event_payloads and replay_bundle ` +
-        `published JSON Schemas`,
+      `published JSON Schemas`,
+    );
+  }
+  for (const requiredId of [
+    'durable-workflow.v2.history-event-payloads',
+    'durable-workflow.v2.replay-bundle',
+  ]) {
+    if (!replay.authority.some((reference) => reference.id === requiredId)) {
+      throw new Error(
+        `static/sdk-neutrality-contract.json replay_fixture_neutrality.authority ` +
+          `must include published schema "${requiredId}"`,
+      );
+    }
+  }
+  if (!replay.authority.some(
+    (reference) => reference.kind === 'scenario_catalog' &&
+      reference.category === 'history_replay_bundles',
+  )) {
+    throw new Error(
+      `static/sdk-neutrality-contract.json replay_fixture_neutrality.authority ` +
+        `must include the published history_replay_bundles scenario catalog`,
     );
   }
 }
@@ -317,7 +553,7 @@ function assertAuditScopeReferencesDeclaredSurfaceFamilies(contract) {
   }
 }
 
-function assertSdkBreadthPolicy(contract) {
+function assertSdkBreadthPolicy(contract, catalogs) {
   const policy = contract.sdk_breadth_policy;
   if (!policy || typeof policy !== 'object') {
     throw new Error(
@@ -337,6 +573,70 @@ function assertSdkBreadthPolicy(contract) {
           `${sdk} must have posture "priority" (got ` +
           `"${policy.first_party[sdk].posture}")`,
       );
+    }
+    const sdkEntry = policy.first_party[sdk];
+    if (sdkEntry.package_url !== EXPECTED_PACKAGE_URLS[sdk]) {
+      throw new Error(
+        `static/sdk-neutrality-contract.json sdk_breadth_policy.first_party.${sdk}.` +
+          `package_url must be the public package registry URL ` +
+          `"${EXPECTED_PACKAGE_URLS[sdk]}"`,
+      );
+    }
+    const conformance = sdkEntry.conformance;
+    if (!conformance || typeof conformance !== 'object' || Array.isArray(conformance)) {
+      throw new Error(
+        `static/sdk-neutrality-contract.json sdk_breadth_policy.first_party.${sdk} ` +
+          `must include a public conformance authority`,
+      );
+    }
+    const scenarioReference = {
+      kind: 'scenario_catalog',
+      id: conformance.scenario_catalog_schema,
+      category: conformance.category,
+      url: conformance.scenario_catalog_url,
+    };
+    const label = `sdk_breadth_policy.first_party.${sdk}.conformance`;
+    assertPublicReference(scenarioReference, label, catalogs);
+    assertUniqueNonEmptyStrings(conformance.actor_ids, `${label}.actor_ids`);
+    assertUniqueNonEmptyStrings(conformance.scenario_ids, `${label}.scenario_ids`);
+    const expectedConformance = EXPECTED_SDK_CONFORMANCE[sdk];
+    if (conformance.category !== expectedConformance.category) {
+      throw new Error(
+        `${label}.category must be "${expectedConformance.category}" ` +
+          `(got "${conformance.category}")`,
+      );
+    }
+    for (const actorId of expectedConformance.actorIds) {
+      if (!conformance.actor_ids.includes(actorId)) {
+        throw new Error(`${label}.actor_ids must include "${actorId}"`);
+      }
+    }
+
+    const scenarioCatalog = loadScenarioCatalog(
+      scenarioReference,
+      label,
+      catalogs.conformanceSuite,
+    );
+    const scenariosById = new Map(scenarioCatalog.scenarios.map((scenario) => [scenario.id, scenario]));
+    const observedActors = new Set();
+    for (const scenarioId of conformance.scenario_ids) {
+      const scenario = scenariosById.get(scenarioId);
+      if (!scenario) {
+        throw new Error(
+          `${label}.scenario_ids references unpublished scenario "${scenarioId}"`,
+        );
+      }
+      for (const actor of scenario.actors || []) {
+        observedActors.add(actor);
+      }
+    }
+    for (const actorId of conformance.actor_ids) {
+      if (!observedActors.has(actorId)) {
+        throw new Error(
+          `${label}.actor_ids references actor "${actorId}" that does not appear ` +
+            `in the selected published scenarios`,
+        );
+      }
     }
   }
   for (const sdk of REQUIRED_DEMAND_DRIVEN_SDKS) {
@@ -383,10 +683,24 @@ function assertReleaseGates(contract) {
     }
   }
   const enforcement = releaseGates.enforcement || {};
-  if (typeof enforcement.machine !== 'string' || !/SdkNeutralityContractTest\.php/.test(enforcement.machine)) {
+  if (enforcement.machine_authority !== contract.authority_url) {
+    throw new Error(
+      `static/sdk-neutrality-contract.json release_gates.enforcement.machine_authority ` +
+        `must point at the public SDK-neutrality contract`,
+    );
+  }
+  publicStaticPath(
+    enforcement.machine_authority,
+    'release_gates.enforcement.machine_authority',
+  );
+  if (typeof enforcement.machine !== 'string' ||
+      !/authority URL/.test(enforcement.machine) ||
+      !/protocol\/schema ID/.test(enforcement.machine) ||
+      !/conformance scenario ID/.test(enforcement.machine)) {
     throw new Error(
       `static/sdk-neutrality-contract.json release_gates.enforcement.machine ` +
-        `must name the pinning test (SdkNeutralityContractTest.php)`,
+        `must require public authority URL, protocol/schema ID, and ` +
+        `conformance scenario ID resolution`,
     );
   }
   if (typeof enforcement.human !== 'string' || !/thought experiment/.test(enforcement.human)) {
@@ -484,11 +798,26 @@ function assertWorkflowMirrorMatchesWhenAvailable() {
 
 function main() {
   const contract = loadContract();
+  const catalogs = loadAuthorityCatalogs();
+  publicStaticPath(contract.authority_url, 'static/sdk-neutrality-contract.json authority_url');
+  assertNoRepositoryLocalReferences(contract);
+  if (contract.protocol_specs_authority !== catalogs.protocolCatalog.schema) {
+    throw new Error(
+      `static/sdk-neutrality-contract.json protocol_specs_authority does not ` +
+        `match the published protocol catalog schema`,
+    );
+  }
+  if (contract.conformance_suite_authority !== catalogs.conformanceSuite.schema) {
+    throw new Error(
+      `static/sdk-neutrality-contract.json conformance_suite_authority does not ` +
+        `match the published conformance suite schema`,
+    );
+  }
   assertScopeNamesPriorityAndFuturePosture(contract);
-  assertNeutralityRules(contract);
+  assertNeutralityRules(contract, catalogs);
   assertAuditChecklist(contract);
   assertAuditScopeReferencesDeclaredSurfaceFamilies(contract);
-  assertSdkBreadthPolicy(contract);
+  assertSdkBreadthPolicy(contract, catalogs);
   assertReleaseGates(contract);
   assertNeutralityDocAlignsWithContract(contract);
   assertWorkflowMirrorMatchesWhenAvailable();
@@ -499,4 +828,15 @@ function main() {
   );
 }
 
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  assertNoRepositoryLocalReferences,
+  assertNeutralityRules,
+  assertReleaseGates,
+  assertSdkBreadthPolicy,
+  loadAuthorityCatalogs,
+  loadContract,
+};
