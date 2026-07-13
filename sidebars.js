@@ -4,6 +4,8 @@
 const sidebars = {
   tutorialSidebar: [
     'introduction',
+    'capabilities',
+    'workflow-engine-categories',
     'quickstart',
     'installation',
     {
@@ -123,7 +125,7 @@ const sidebars = {
       label: 'Control Plane And Polyglot',
       link: {
         type: 'generated-index',
-        description: 'Use the server, CLI, Python SDK, and shared control-plane contracts.',
+        description: 'Use the standalone server, Cloud control plane, CLI, and first-party PHP, Python, and Rust SDK contracts.',
       },
       items: [
         'polyglot/server',
@@ -168,6 +170,7 @@ const sidebars = {
         description: 'Give coding agents and automation stable docs, manifests, commands, and workflow tools.',
       },
       items: [
+        'ai-agent-workflow-engine',
         'ai-assisted-development',
         'agent-operating-loop',
         'mcp-workflows',

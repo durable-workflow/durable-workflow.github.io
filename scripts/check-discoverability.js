@@ -41,10 +41,10 @@ function normalizeDocLink(href, sourcePath) {
     const docPath = withoutAnchor.slice('/docs/'.length);
 
     if (docPath.startsWith('2.0/')) {
-      return docPath.slice('2.0/'.length);
+      return docPath.slice('2.0/'.length).replace(/\/$/, '');
     }
 
-    return docPath;
+    return docPath.replace(/\/$/, '');
   }
 
   return path.posix

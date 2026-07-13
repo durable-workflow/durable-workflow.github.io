@@ -3,6 +3,8 @@
     {
       "title": "Run And Operate",
       "links": [
+        "capabilities.md",
+        "workflow-engine-categories.md",
         "deployment.md",
         "monitoring.md",
         "constraints/execution-guarantees.md",
@@ -55,6 +57,7 @@
     {
       "title": "AI And Automation",
       "links": [
+        "ai-agent-workflow-engine.md",
         "ai-assisted-development.md",
         "agent-operating-loop.md",
         "mcp-workflows.md",
@@ -66,6 +69,26 @@
     }
   ],
   "crossReferences": [
+    {
+      "source": "capabilities.md",
+      "links": [
+        "ai-agent-workflow-engine.md",
+        "workflow-engine-categories.md",
+        "compatibility.md",
+        "polyglot/python.md",
+        "polyglot/rust.md"
+      ]
+    },
+    {
+      "source": "ai-agent-workflow-engine.md",
+      "links": [
+        "capabilities.md",
+        "workflow-engine-categories.md",
+        "agent-tooling-contract.md",
+        "polyglot/server.md",
+        "polyglot/cloud-control-plane.md"
+      ]
+    },
     {
       "source": "monitoring.md",
       "links": [
@@ -107,6 +130,9 @@
     }
   ],
   "requiredTopicLinks": [
+    "capabilities.md",
+    "ai-agent-workflow-engine.md",
+    "workflow-engine-categories.md",
     "ai-assisted-development.md",
     "mcp-workflows.md",
     "agent-tooling-contract.md",
@@ -118,6 +144,9 @@
     "sample-app.md"
   ],
   "requiredDocTags": {
+    "capabilities.md": ["capabilities", "compatibility", "polyglot", "prerelease"],
+    "ai-agent-workflow-engine.md": ["ai", "agents", "evaluation", "polyglot"],
+    "workflow-engine-categories.md": ["evaluation", "concepts", "durable execution"],
     "migration.md": ["migration", "upgrade", "v2"],
     "monitoring.md": ["observability", "operations", "Waterline"],
     "features/timers.md": ["timers", "deterministic-time", "waits"],
@@ -127,6 +156,30 @@
     "features/worker-sessions.md": ["activities", "workers", "affinity", "operations"]
   },
   "queries": [
+    {
+      "query": "Durable Workflow 2.0 capability index PHP Python Rust feature floors",
+      "target": "capabilities.md",
+      "related": ["compatibility.md", "polyglot/python.md", "polyglot/rust.md"],
+      "aliases": ["first-party SDKs", "deterministic Rust workflows", "$artifact.workflowVersion", "$artifact.pythonSdkVersion", "$artifact.rustSdkVersion"]
+    },
+    {
+      "query": "Is Durable Workflow a good workflow engine for AI agents",
+      "target": "ai-agent-workflow-engine.md",
+      "related": ["capabilities.md", "agent-operating-loop.md", "agent-tooling-contract.md"],
+      "aliases": ["self-hostable AI agent workflow engine", "Discover Change Run Diagnose Repair", "Python Rust support", "Temporal maturity"]
+    },
+    {
+      "query": "durable execution vs job queue DAG scheduler agent framework",
+      "target": "workflow-engine-categories.md",
+      "related": ["capabilities.md", "how-it-works.md", "constraints/execution-guarantees.md"],
+      "aliases": ["checkpoint resume library", "serverless orchestration", "hosted workflow platform", "workflow engine taxonomy"]
+    },
+    {
+      "query": "Is Durable Workflow only for PHP Laravel teams",
+      "target": "polyglot/server.md",
+      "related": ["capabilities.md", "polyglot/python.md", "polyglot/rust.md", "polyglot/cloud-control-plane.md"],
+      "aliases": ["standalone server PHP implementation", "Python-only team", "Rust-only team", "no Laravel required"]
+    },
     {
       "query": "quickstart install first workflow",
       "target": "quickstart.md",

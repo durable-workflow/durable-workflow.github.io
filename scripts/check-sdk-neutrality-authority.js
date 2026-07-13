@@ -26,7 +26,7 @@
 //    `static/compatibility-contract.json` (the surface stability
 //    contract). The neutrality contract cannot reference families that
 //    the stability contract has not declared.
-// 5. The SDK breadth policy marks PHP and Python first-party SDKs as
+// 5. The SDK breadth policy marks PHP, Python, and Rust first-party SDKs as
 //    `priority` and TypeScript / Go / Java / .NET as `demand_driven`.
 //    The expansion criteria advertise an adoption-signal, a
 //    maintenance-commitment, and a no-protocol-redesign rule.
@@ -78,7 +78,7 @@ const REQUIRED_AUDIT_STEPS = [
   'future_sdk_thought_experiment',
 ];
 
-const REQUIRED_FIRST_PARTY_SDKS = ['php_workflow_package', 'python_sdk'];
+const REQUIRED_FIRST_PARTY_SDKS = ['php_workflow_package', 'python_sdk', 'rust_sdk'];
 const REQUIRED_DEMAND_DRIVEN_SDKS = ['typescript_sdk', 'go_sdk', 'java_sdk', 'dotnet_sdk'];
 
 const REQUIRED_RELEASE_GATES = [

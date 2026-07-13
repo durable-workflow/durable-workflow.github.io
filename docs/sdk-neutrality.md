@@ -45,24 +45,25 @@ This contract is downstream of the
 *which* surfaces are public and *how* they may change) and the
 [Platform Protocol Specs](/docs/2.0/platform-protocol-specs) catalog
 (which says *where* the normative spec for each surface lives). It says
-*what shape* those specs are allowed to take so that a future non-PHP,
-non-Python SDK can target them without requiring a protocol redesign.
+*what shape* those specs are allowed to take so that a future SDK outside the
+current PHP, Python, and Rust roster can target them without requiring a
+protocol redesign.
 
 ## Why this exists
 
-Durable ships two first-party SDKs: the PHP `durable-workflow/workflow`
-package and the Python `durable_workflow` package. Building or
-maintaining a wide first-party SDK roster is **not** a release goal.
+Durable ships three first-party SDKs: the PHP `durable-workflow/workflow`
+package, Python `durable_workflow` package, and Rust `durable-workflow` crate.
+Building or maintaining a wide first-party SDK roster is **not** a release goal.
 Demand for SDKs in TypeScript, Go, Java, and .NET ecosystems has not
 yet been demonstrated, and the maintenance cost of a broad official
 roster is high.
 
 What this contract protects against is a different failure mode: the
-public contracts under those two SDKs quietly hard-coding PHP-only or
-Python-only assumptions. If a future TypeScript or Go SDK becomes worth
+public contracts under those SDKs quietly hard-coding language-specific
+assumptions. If a future TypeScript or Go SDK becomes worth
 building, the work should be "write a new client against the published
-wire protocol", not "redesign the protocol so a non-PHP, non-Python
-language can speak it at all".
+wire protocol", not "redesign the protocol so another language can speak it
+at all".
 
 ## Scope
 
@@ -81,6 +82,7 @@ The official-SDK roster is intentionally narrow:
 | --- | --- | --- |
 | PHP (`durable-workflow/workflow`) | `priority` | Reference workflow authoring SDK and embedded host. |
 | Python (`durable_workflow`) | `priority` | Highest-value non-PHP SDK. Used to validate that the worker protocol, control plane, and replay fixtures behave the same way outside PHP. |
+| Rust (`durable-workflow`) | `priority` | First-party deterministic workflow, activity, worker-service, and control-plane SDK. The manifest key is `first_party.rust_sdk`. |
 | TypeScript | `demand_driven` | No first-party SDK exists. Public contracts must remain implementable in TypeScript without protocol redesign. |
 | Go | `demand_driven` | No first-party SDK exists. Public contracts must remain implementable in Go without protocol redesign. |
 | Java | `demand_driven` | No first-party SDK exists. Public contracts must remain implementable in Java without protocol redesign. |

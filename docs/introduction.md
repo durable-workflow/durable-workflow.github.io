@@ -6,14 +6,75 @@ tags:
   - workflows
 keywords:
   - durable workflow
-  - Laravel workflow engine
+  - polyglot workflow engine
+  - AI agent workflow engine
   - durable orchestration
   - v2 workflow concepts
 ---
 
 # Introduction
 
-Durable Workflow is a Laravel-native durable orchestration engine. You write your workflow as an ordinary PHP class; it runs on your queue worker, survives process restarts, and resumes exactly where it left off.
+Durable Workflow 2.0 is a polyglot durable-execution platform. PHP, Python,
+and Rust applications author workflows and activities with first-party SDKs,
+share one public protocol and durable execution model, and resume from recorded
+history after workers or hosts restart. PHP is the server and core
+implementation language; it is not the worker-language or application-framework
+boundary.
+
+## Agent-operable by contract
+
+Human operators and autonomous agents use the same machine-readable contract.
+The testable loop is **Discover -> Change -> Run -> Diagnose -> Repair**:
+version and capability manifests, explicit workflow commands, structured
+results, typed history and worker/queue diagnostics, safe mutations, and
+post-change verification. MCP is one interface in that contract, alongside the
+HTTP API, CLI JSON, SDK clients, Waterline exports, schemas, and protocol
+catalog. See [Agent Operating Loop](/docs/2.0/agent-operating-loop/) and the
+direct [AI-agent evaluator](/docs/2.0/ai-agent-workflow-engine/).
+
+## Three deployment and control-plane choices
+
+Choose the boundary that fits the application and operating model:
+
+- **Standalone server:** deploy the published PHP server as infrastructure and
+  connect PHP, Python, or Rust application workers through the public protocol.
+  Python- and Rust-only application teams do not embed Laravel. Start with the
+  [Standalone Server](/docs/2.0/polyglot/server/).
+- **Embedded:** install the engine inside a Laravel application so its queues,
+  configuration, database, and deployment own execution. See
+  [Deployment Modes](/docs/2.0/polyglot/deployment-modes/).
+- **Durable Workflow Cloud:** use the hosted control plane above one or more
+  runtime targets while the runtime remains authoritative for execution,
+  workers, schedules, history, and durable visibility. The exact current
+  boundary is documented on [Cloud Control Plane](/docs/2.0/polyglot/cloud-control-plane/).
+
+## First-party SDKs
+
+PHP, Python, and Rust are first-party SDK surfaces. They use stable string type
+names, the same durable command and history model, and the same versioned
+HTTP+JSON worker and control-plane protocols.
+
+- **PHP** is the reference workflow-authoring SDK, embedded host, and server
+  core.
+- **Python** is both a deterministic workflow/activity SDK and an
+  operational/control-plane surface.
+- **Rust** authors deterministic workflows, activities, and worker services;
+  it is a first-party workflow SDK, not merely a protocol-compatibility client.
+
+Cross-language child workflows and activities retain their payload shape
+through the shared public envelope and codec contract. The Avro path uses the
+official `apache/avro` Composer package, official `avro` Python package, and
+official `apache-avro` Rust crate. See the authoritative
+[2.0 Capability Index](/docs/2.0/capabilities/) for the current installable
+artifact floors and deliberate SDK differences.
+
+## Laravel-native embedded mode
+
+Laravel remains a differentiated first-party adoption path. A Laravel
+application can embed the PHP engine and author workflows as ordinary PHP
+classes while using its existing queue, database, configuration, and deployment
+model. That advantage does not redefine the platform category: standalone and
+Cloud-connected Python or Rust applications remain native 2.0 paths.
 
 ## First-time 2.0 prerelease path
 
@@ -35,6 +96,7 @@ curl -fsSL https://durable-workflow.com/install.sh | %%artifact.cliInstallerEnv%
 
 The persona reference pages are also versioned 2.0 pages:
 [Python SDK](/docs/2.0/polyglot/python/),
+[Rust SDK](/docs/2.0/polyglot/rust/),
 [Standalone Server](/docs/2.0/polyglot/server/), and
 [CLI](/docs/2.0/polyglot/cli/).
 

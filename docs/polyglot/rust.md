@@ -16,11 +16,23 @@ keywords:
 
 # Rust SDK
 
-The first-party Rust SDK provides async worker and control-plane clients for
-Durable Workflow. It can register workflow and activity handlers, start,
-signal, query, cancel, terminate, and await executions, report worker and
-activity heartbeats, and exchange language-neutral payloads with the
-standalone server.
+The first-party Rust SDK is a workflow-authoring surface, not only a protocol
+compatibility client. Rust authors deterministic workflows, activities, and
+long-running worker services against the same durable execution model used by
+PHP and Python. The async control-plane client starts, signals, queries,
+cancels, terminates, and awaits executions; the worker runtime replays
+workflow history, runs workflow/activity handlers, reports worker and activity
+heartbeats, and exchanges language-neutral payloads with the standalone
+server.
+
+At the current `%%artifact.rustSdkVersion%%` floor, Rust supports durable
+timers, child workflows, activity retries and timeouts, signals, replayed query
+handlers, cancellation and termination, server-enforced workflow deadlines,
+typed side effects, version markers, and typed terminal/replay failures. It
+does not yet claim the Rust authoring surface for updates or schedule
+management. Use the
+[2.0 Capability Index](/docs/2.0/capabilities/) instead of assuming every SDK
+has identical feature breadth.
 
 This page belongs to the explicit 2.0 prerelease docs line. The Rust crate is
 published independently from the stable 1.x PHP documentation line and does
@@ -118,6 +130,22 @@ waiting. It does not close, cancel, or otherwise change the workflow run. The
 caller can inspect the returned identity and wait again. An execution or run
 deadline configured with `WorkflowStartOptions` is durable server state; when
 it expires, the server closes the run with a terminal `timed_out` outcome.
+
+## Deterministic side effects and version markers
+
+Rust SDK `%%artifact.rustSdkVersion%%` records small non-deterministic values
+with `WorkflowContext::side_effect` and derives deterministic UUIDv4 values
+with `WorkflowContext::uuid_v4`. A cold replay decodes the recorded value
+instead of invoking the callback again; reordered, missing, duplicate, or
+codec-incompatible markers return a typed `Error::NonDeterministicReplay`.
+
+Use `WorkflowContext::get_version(change_id, min_supported, max_supported)` to
+keep old and new workflow branches replay-compatible during a rollout. New
+runs record `max_supported`; existing runs reuse the durable marker.
+`patched(change_id)` provides the boolean rollout form, and
+`deprecate_patch(change_id)` preserves the marker after the legacy branch has
+drained. See [Side Effects](/docs/2.0/features/side-effects/) and
+[Versioning](/docs/2.0/features/versioning/) for the shared durable semantics.
 
 ## Cancel, terminate, and handle terminal outcomes
 

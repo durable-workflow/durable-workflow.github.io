@@ -16,14 +16,46 @@ keywords:
 
 # Server
 
-The Durable Workflow server is a standalone, language-neutral workflow orchestration service. It exposes the same durable execution engine as the PHP package over HTTP, letting you write workflows in Python, PHP, or any language that speaks HTTP.
+The published Durable Workflow server is a standalone workflow-orchestration
+service implemented in PHP. It exposes the same durable engine used by the
+embedded PHP package through a language-neutral HTTP+JSON control plane and
+worker protocol. PHP is an implementation fact at this boundary, not an
+application-language requirement.
+
+## Is this only for PHP teams?
+
+No. PHP, Python, and Rust are first-party SDK surfaces. A Python- or Rust-only
+application team can deploy the published standalone server as infrastructure,
+write application workflows and activities with its native SDK, and communicate
+through the public protocol. Its application does not embed Laravel and does
+not become a Laravel application.
+
+The adoption paths are separate:
+
+- **Standalone adoption:** operators deploy the published server image and its
+  database, queue/cache, scheduler, and API roles. Application teams run PHP,
+  Python, or Rust workers against that endpoint. The server owns orchestration
+  state and the public control-plane/worker boundary.
+- **Embedded adoption:** a Laravel application installs the PHP workflow
+  package and owns the engine through its own queue, database, configuration,
+  and deployment. This is the Laravel-native advantage, not a prerequisite for
+  the standalone path.
+- **Hosted control-plane adoption:** Durable Workflow Cloud hosts the control
+  plane above one or more runtime targets. Its exact current ownership and
+  connectivity contract is documented on
+  [Cloud Control Plane](/docs/2.0/polyglot/cloud-control-plane/).
+
+All three choices use the same durable execution concepts. Standalone and
+Cloud-connected external workers use stable string workflow/activity type
+names and the shared codec envelope, so a cross-language child workflow or
+activity preserves payload shape rather than exposing PHP serialization.
 
 If you are deciding between the standalone server and package embedding, start
 with [Deployment Modes](/docs/2.0/polyglot/deployment-modes). This page covers
 the service-mode distribution.
 
 Use the standalone server when you need:
-- **Polyglot workflows** — Python workers executing PHP-authored workflows, or vice versa
+- **Polyglot workflows** — PHP, Python, and Rust workflow and activity workers sharing one durable runtime
 - **Microservice orchestration** — orchestrate services written in different languages
 - **Centralized workflow runtime** — multiple applications sharing one workflow engine
 - **Non-Laravel environments** — use Durable Workflow outside Laravel

@@ -36,6 +36,9 @@ function main() {
   const v1Full = readBuildFile('llms-full-1.x.txt');
 
   const requiredV2IndexSources = [
+    'docs/capabilities.md',
+    'docs/ai-agent-workflow-engine.md',
+    'docs/workflow-engine-categories.md',
     'docs/ai-assisted-development.md',
     'docs/agent-operating-loop.md',
     'docs/quickstart.md',
@@ -56,6 +59,16 @@ function main() {
   }
 
   const requiredV2FullContent = [
+    '<!-- Source: docs/capabilities.md -->',
+    '# Durable Workflow 2.0 Capability Index',
+    '<!-- Source: docs/ai-agent-workflow-engine.md -->',
+    '# Is Durable Workflow a good workflow engine for AI agents?',
+    '<!-- Source: docs/workflow-engine-categories.md -->',
+    '# Workflow Engine Evaluation Categories',
+    'PHP, Python, and Rust are the three first-party SDK languages',
+    'Discover -> Change -> Run -> Diagnose -> Repair',
+    'Temporal is substantially more mature operationally',
+    'Cloud Control Plane',
     '<!-- Source: docs/ai-assisted-development.md -->',
     '# AI-Assisted Development',
     '2.0 prerelease',

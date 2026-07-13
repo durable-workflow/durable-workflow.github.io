@@ -1,6 +1,6 @@
 {
   "schema": "durable-workflow.v2.sdk-neutrality.contract",
-  "version": 1,
+  "version": 2,
   "authority_doc": "https://github.com/durable-workflow/workflow/blob/v2/docs/architecture/sdk-neutrality.md",
   "surface_stability_authority": "durable-workflow.v2.surface-stability.contract",
   "protocol_specs_authority": "durable-workflow.v2.platform-protocol-specs.catalog",
@@ -25,6 +25,12 @@
         "language": "python",
         "posture": "priority",
         "role": "Highest-value non-PHP SDK. Used to validate that the worker protocol, control plane, and replay fixtures behave the same way outside PHP."
+      },
+      "rust_sdk": {
+        "package": "durable-workflow",
+        "language": "rust",
+        "posture": "priority",
+        "role": "First-party deterministic workflow, activity, worker-service, and control-plane SDK. Used to validate replay, lifecycle, and codec interoperability outside PHP and Python."
       }
     },
     "demand_driven": {
