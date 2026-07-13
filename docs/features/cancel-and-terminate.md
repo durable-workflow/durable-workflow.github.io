@@ -8,6 +8,30 @@ Cancel and terminate are first-class durable commands that close a running workf
 
 The key difference: **cancel** is a request that the workflow observe and gracefully close, while **terminate** is a direct terminal closure that does not schedule further workflow code.
 
+This page is part of the explicit 2.0 prerelease docs line. Stable 1.x remains
+the default public docs line.
+
+## Published Rust lifecycle boundary
+
+The public
+[workflow-lifecycle scenario manifest](https://durable-workflow.github.io/platform-conformance/workflow-lifecycle-scenarios.json)
+defines the released lifecycle evidence contract. Its exact Rust boundary is
+server `0.2.647` with the crates.io `durable-workflow` crate `0.1.12`.
+
+At that boundary, cancellation and termination must produce typed terminal
+outcomes with workflow and run identity. Run-scoped commands must preserve
+selected-run safety and reject a historical run with a typed stable reason.
+Activity cancellation must be visible through heartbeat state; a late
+completion must be refused after the run closes; and a worker restart during
+pending cancellation must not reclaim the cancelled activity.
+
+The exact-crate shard records Cargo registry provenance for both
+`durable-workflow` and the official `apache-avro` crate used by the SDK's Avro
+payload envelope. It does not substitute a custom codec or local product
+source for the published payload implementation. See the
+[Rust SDK lifecycle API](/docs/2.0/polyglot/rust#cancel-terminate-and-handle-terminal-outcomes)
+for the selected-run commands and typed outcome variants.
+
 ## Cancel
 
 Cancel requests that a running workflow close gracefully. Cancel immediately transitions the run to `cancelled` and records durable history.

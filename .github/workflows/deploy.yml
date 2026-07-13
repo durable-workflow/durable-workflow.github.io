@@ -135,6 +135,10 @@ jobs:
           user_email: 41898282+github-actions[bot]@users.noreply.github.com
           force_orphan: true
 
+      - name: Verify live workflow lifecycle authority
+        if: steps.deploy-plan.outputs.deploy == 'true'
+        run: node scripts/verify-workflow-lifecycle-live.js
+
       - name: Report current live tuple
         if: steps.deploy-plan.outputs.deploy != 'true'
         run: echo "Live public artifact tuple already matches main; skipping scheduled deploy."

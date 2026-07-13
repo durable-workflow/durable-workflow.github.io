@@ -113,6 +113,42 @@ JSON manifests linked from the category notes below.
 | `mcp_discovery_envelopes` | `provisional` | `workflow` | `tests/Fixtures/Mcp/ (planned)` | MCP `tools/list`, `tools/call`, and `llms-2.0.txt` discovery envelopes. |
 | `mcp_discovery_envelopes` | `provisional` | `server` | `tests/Fixtures/Mcp/ (planned)` | MCP `tools/list`, `tools/call`, and `llms-2.0.txt` discovery envelopes. |
 
+## Workflow Lifecycle Release Authority
+
+The exact released workflow-lifecycle scenario authority is
+[published as JSON](https://durable-workflow.github.io/platform-conformance/workflow-lifecycle-scenarios.json).
+It is the byte-equivalent public mirror named by server `0.2.647`, and it
+records the lifecycle requirements exercised at the published server
+`0.2.647` and `durable-workflow` crate `0.1.12` boundary. This authority is
+part of the explicit 2.0 prerelease line. It does not change stable 1.x as the
+default docs line.
+
+The Rust shard installs exactly crate `0.1.12` from crates.io and records the
+registry source and checksum for that crate and the official `apache-avro`
+crate. The payload proof uses the SDK's published Avro envelope backed by
+`apache-avro`; a custom codec implementation or local product checkout is not
+acceptable provenance.
+
+The shard must execute and report all of these cells:
+
+- `instance_cancel` and `instance_terminate` through the public SDK commands.
+- `selected_run_guard` and `stale_run_rejection` so a selected run cannot be
+  confused with the instance's current run.
+- `typed_failed`, `typed_cancelled`, `typed_terminated`, and `typed_timed_out`
+  as typed terminal outcomes carrying workflow and run identity.
+- `cancellation_heartbeat` and `late_activity_completion_refused` so activity
+  code observes cancellation and a late completion cannot overwrite the
+  terminal result.
+- `worker_restart_during_cancellation` while cancellation settlement is still
+  pending, proving that a replacement worker does not reclaim the closed
+  activity.
+
+The manifest also requires the exact artifact and server versions, cluster
+identity, install provenance, workflow identities, per-cell outcomes, stable
+reasons, payload contract, executor topology, Rust shard contract version,
+runner identity, and shard exit status. Missing, unsupported, runner-blocked,
+or unsuccessful Rust evidence cannot satisfy the lifecycle category.
+
 A fixture category is required for a target only when the target lists
 it and the category status is not `provisional`. Provisional categories
 emit advisory warnings and become load-bearing only when promoted to

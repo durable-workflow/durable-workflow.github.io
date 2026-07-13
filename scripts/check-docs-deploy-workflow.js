@@ -25,6 +25,8 @@ for (const required of [
   'id: deploy-plan',
   'DOCS_DEPLOY_EVENT_NAME: ${{ github.event_name }}',
   'run: node scripts/plan-docs-deploy.js',
+  'name: Verify live workflow lifecycle authority',
+  'run: node scripts/verify-workflow-lifecycle-live.js',
   "if: steps.deploy-plan.outputs.deploy == 'true'",
   "if: steps.deploy-plan.outputs.deploy != 'true'",
 ]) {

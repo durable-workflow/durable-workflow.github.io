@@ -64,6 +64,10 @@ const REQUIRED_DISCOVERY_ENTRIES = [
     buildPath: 'platform-conformance/workflow-update-runtime-scenarios.json',
   },
   {
+    path: '/platform-conformance/workflow-lifecycle-scenarios.json',
+    buildPath: 'platform-conformance/workflow-lifecycle-scenarios.json',
+  },
+  {
     path: '/platform-conformance/search-attribute-runtime-scenarios.json',
     buildPath: 'platform-conformance/search-attribute-runtime-scenarios.json',
   },
