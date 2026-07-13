@@ -102,12 +102,12 @@ guidance may advance before the 2.0 stable cut. Read the runtime's manifests and
 the exact [compatibility matrix](/docs/2.0/compatibility/) instead of assuming
 feature parity across SDKs or inferring capability from a top-level version.
 
-## Maturity compared with Temporal
+## Maturity and fit
 
-Temporal is substantially more mature operationally. It has a longer production
-history, a broader ecosystem and SDK portfolio, and deeper accumulated
-operating experience. Durable Workflow 2.0 should not be selected on an
-assumption of operational parity.
+Durable Workflow 2.0 remains prerelease. It should not be selected on an
+assumption of broad operational maturity, ecosystem depth, or long production
+history beyond the exact evidence published in the current docs, manifests, and
+compatibility material.
 
 Durable Workflow 2.0 is compelling where agent operability, self-hosting, a
 broadly approachable HTTP+JSON public protocol, standalone/embedded/hosted
@@ -133,8 +133,8 @@ Do not choose it yet when:
 - the team requires stable 2.0 rather than a prerelease;
 - it needs an SDK feature the [capability index](/docs/2.0/capabilities/) marks
   unavailable for its chosen language;
-- it requires Temporal's level of operational maturity, ecosystem breadth, or
-  accumulated production evidence;
+- it requires a longer production history, broader ecosystem breadth, or more
+  accumulated production evidence than the current release provides;
 - it requires managed capabilities, regions, SLAs, certifications, private
   connectivity, worker/runtime ownership, or other guarantees beyond the exact
   current [Durable Workflow Cloud contract](/docs/2.0/polyglot/cloud-control-plane/).

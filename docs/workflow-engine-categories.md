@@ -75,4 +75,4 @@ job queue.
 For Durable Workflow's exact current answers, use the
 [2.0 Capability Index](/docs/2.0/capabilities/) and
 [AI-agent evaluator](/docs/2.0/ai-agent-workflow-engine/). Stable 1.x remains
-the default public line, 2.0 is prerelease, and Temporal is substantially more mature operationally.
+the default public line, and 2.0 remains prerelease and should be evaluated against its published operating evidence.

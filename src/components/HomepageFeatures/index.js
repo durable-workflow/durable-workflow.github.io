@@ -4,29 +4,29 @@ import styles from './styles.module.css';
 
 const FeatureList = [
   {
-    title: 'Easy to Use',
+    title: 'Polyglot SDKs',
     Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
     description: (
       <>
-       Simple and intuitive syntax, with clear conventions and a clean API.
+        Run the same durable execution model through first-party PHP, Python, and Rust SDKs against one shared runtime contract.
       </>
     ),
   },
   {
-    title: 'Monitoring and Control',
+    title: 'Agent-First Operations',
     Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
     description: (
       <>
-        Fine-grained control over execution. Monitor progress and status of workflows.
+        Deterministic replay, machine-readable diagnostics, and safe lifecycle controls give both humans and autonomous agents a stable operating surface.
       </>
     ),
   },
   {
-    title: 'Powered by Laravel',
+    title: 'Laravel-native when you want it. Polyglot when you need it.',
     Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
     description: (
       <>
-        Laravel's queue system and ORM layer store and manage workflow data and state.
+        Start embedded in Laravel for a smooth application path, or move to the standalone server when your workers, operators, or deployment topology extend beyond PHP.
       </>
     ),
   },

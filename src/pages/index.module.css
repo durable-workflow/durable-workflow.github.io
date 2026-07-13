@@ -23,3 +23,10 @@
   flex-wrap: wrap;
   gap: 0.75rem;
 }
+
+.supportingLine {
+  margin: 1rem auto 0;
+  max-width: 52rem;
+  font-size: 1.1rem;
+  line-height: 1.6;
+}

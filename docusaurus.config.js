@@ -7,7 +7,7 @@ const { artifactVersionRemarkPlugin } = require('./scripts/public-artifact-versi
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'Durable Workflow',
-  tagline: 'Laravel-native durable workflows.',
+  tagline: 'Polyglot durable execution designed for applications and AI agents.',
   url: 'https://durable-workflow.com',
   baseUrl: '/',
   trailingSlash: true,
