@@ -6,33 +6,24 @@
   "type": "object",
   "x-durable-workflow-catalog-entry": "worker_sessions_runtime",
   "x-durable-workflow-catalog-schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "x-durable-workflow-catalog-version": 14,
-  "x-durable-workflow-owner-symbol": "App\\Support\\WorkerSessionRegistry and Workflow\\V2\\Support\\WorkerProtocolVersion::workerSessionSemantics",
+  "x-durable-workflow-catalog-version": 15,
   "x-durable-workflow-evolution-rule": "additive_minor_breaking_major",
   "x-durable-workflow-object-families": [
     {
       "name": "worker_session_runtime_contract",
-      "owner_repo": "durable-workflow/workflow",
-      "schema_authority": "Workflow\\V2\\Support\\WorkerProtocolVersion::workerSessionSemantics",
-      "version_authority": "Workflow\\V2\\Support\\WorkerProtocolVersion::VERSION"
+      "owner_repo": "durable-workflow/workflow"
     },
     {
       "name": "worker_session_options",
-      "owner_repo": "durable-workflow/workflow",
-      "schema_authority": "Workflow\\V2\\Support\\WorkerSessionOptions::toSnapshot",
-      "version_authority": "Workflow\\V2\\Support\\WorkerProtocolVersion::VERSION"
+      "owner_repo": "durable-workflow/workflow"
     },
     {
       "name": "worker_session_lifecycle",
-      "owner_repo": "durable-workflow/server",
-      "schema_authority": "App\\Http\\Controllers\\Api\\WorkerSessionController and App\\Support\\WorkerSessionRegistry",
-      "version_authority": "Workflow\\V2\\Support\\WorkerProtocolVersion::VERSION"
+      "owner_repo": "durable-workflow/server"
     },
     {
       "name": "worker_session_visibility",
-      "owner_repo": "durable-workflow/server",
-      "schema_authority": "App\\Support\\WorkerSessionRegistry::visibility",
-      "version_authority": "durable-workflow.v2.worker-sessions-runtime"
+      "owner_repo": "durable-workflow/server"
     }
   ],
   "additionalProperties": true,

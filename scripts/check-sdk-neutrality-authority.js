@@ -277,10 +277,15 @@ function assertPublicReference(reference, label, catalogs) {
     if (spec.status !== 'published') {
       throw new Error(`${label}.id "${reference.id}" is not published (status ${spec.status})`);
     }
-    const expectedUrl = `${PUBLIC_SITE_ORIGIN}/${spec.spec_path.replace(/^static\//, '')}`;
+    const expectedUrl = spec.spec_url;
+    assertNonEmptyString(
+      expectedUrl,
+      `static/platform-protocol-specs.json entry for "${reference.id}" spec_url`,
+    );
+    publicStaticPath(expectedUrl, `protocol catalog spec_url for "${reference.id}"`);
     if (reference.url !== expectedUrl) {
       throw new Error(
-        `${label}.url must match the protocol catalog path for "${reference.id}" ` +
+        `${label}.url must match the protocol catalog URL for "${reference.id}" ` +
           `(expected "${expectedUrl}")`,
       );
     }

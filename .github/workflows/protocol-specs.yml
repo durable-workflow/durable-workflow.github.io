@@ -22,6 +22,9 @@ jobs:
         with:
           node-version: 20
 
+      - name: Install dependencies
+        run: npm ci
+
       - name: Resolve released Rust SDK version
         id: rust-sdk-release
         run: |
@@ -81,6 +84,9 @@ jobs:
 
       - name: Check platform protocol specs
         run: node scripts/check-platform-protocol-specs.js
+
+      - name: Test malformed platform protocol specs
+        run: node scripts/check-platform-protocol-specs.test.js
 
       - name: Check platform conformance authority
         run: node scripts/check-platform-conformance-authority.js

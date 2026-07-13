@@ -2,43 +2,36 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "durable-workflow.v2.cluster-info-envelope",
   "title": "Durable Workflow cluster-info envelope",
-  "description": "Normative JSON Schema for the response body of GET /api/cluster/info on the standalone Durable Workflow server. The envelope advertises server identity, capability flags, structural and request limits, topology, coordination-health, the worker fleet, task-repair diagnostics, and the nested platform protocol manifests (client_compatibility, surface_stability_contract, platform_protocol_specs, platform_conformance_suite, auth_composition_contract, control_plane, worker_protocol, bridge_adapter_outcome_contract, replay_verification_contract). Each nested manifest carries its own schema id and version field; this envelope only pins the keys, top-level types, and required fields. Per-manifest field shapes are normative under the manifest's own spec_id and are NOT redefined here. The envelope is the discovery surface other catalog entries reference.",
+  "description": "Normative JSON Schema for the response body of GET /api/cluster/info on the standalone Durable Workflow server. The envelope advertises server identity, capability flags, structural and request limits, topology, coordination-health, the worker fleet, task-repair diagnostics, and the nested platform protocol manifests (client_compatibility, surface_stability_contract, platform_protocol_specs, platform_conformance_suite, sdk_neutrality_contract, auth_composition_contract, control_plane, worker_protocol, bridge_adapter_outcome_contract, replay_verification_contract). Each nested manifest carries its own schema id and version field; this envelope only pins the keys, top-level types, and required fields. Per-manifest field shapes are normative under the manifest's own spec_id and are NOT redefined here. The envelope is the discovery surface other catalog entries reference.",
   "type": "object",
   "x-durable-workflow-catalog-entry": "cluster_info_envelope",
   "x-durable-workflow-catalog-schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "x-durable-workflow-catalog-version": 14,
-  "x-durable-workflow-owner-symbol": "App\\Http\\Controllers\\Api\\HealthController::clusterInfo",
+  "x-durable-workflow-catalog-version": 15,
   "x-durable-workflow-evolution-rule": "additive_minor_breaking_major",
   "x-durable-workflow-object-families": [
     {
       "name": "cluster_info_envelope",
-      "owner_repo": "durable-workflow/server",
-      "schema_authority": "App\\Http\\Controllers\\Api\\HealthController::clusterInfo",
-      "version_authority": "durable-workflow.v2.cluster-info-envelope"
+      "owner_repo": "durable-workflow/server"
     },
     {
       "name": "client_compatibility_manifest",
-      "owner_repo": "durable-workflow/server",
-      "schema_authority": "App\\Support\\ClientCompatibility::SCHEMA",
-      "version_authority": "App\\Support\\ClientCompatibility::VERSION"
+      "owner_repo": "durable-workflow/server"
     },
     {
       "name": "surface_stability_contract",
-      "owner_repo": "durable-workflow/workflow",
-      "schema_authority": "Workflow\\V2\\Support\\SurfaceStabilityContract::SCHEMA",
-      "version_authority": "Workflow\\V2\\Support\\SurfaceStabilityContract::VERSION"
+      "owner_repo": "durable-workflow/workflow"
     },
     {
       "name": "platform_protocol_specs_catalog",
-      "owner_repo": "durable-workflow/workflow",
-      "schema_authority": "Workflow\\V2\\Support\\PlatformProtocolSpecs::SCHEMA",
-      "version_authority": "Workflow\\V2\\Support\\PlatformProtocolSpecs::VERSION"
+      "owner_repo": "durable-workflow/workflow"
     },
     {
       "name": "platform_conformance_suite_manifest",
-      "owner_repo": "durable-workflow/workflow",
-      "schema_authority": "Workflow\\V2\\Support\\PlatformConformanceSuite::SCHEMA",
-      "version_authority": "Workflow\\V2\\Support\\PlatformConformanceSuite::VERSION"
+      "owner_repo": "durable-workflow/workflow"
+    },
+    {
+      "name": "sdk_neutrality_contract",
+      "owner_repo": "durable-workflow/workflow"
     }
   ],
   "required": [
@@ -57,6 +50,7 @@
     "surface_stability_contract",
     "platform_protocol_specs",
     "platform_conformance_suite",
+    "sdk_neutrality_contract",
     "auth_composition_contract",
     "control_plane",
     "worker_protocol",
@@ -192,7 +186,7 @@
     },
     "structural_limits": {
       "type": "object",
-      "description": "Snapshot of structural shape limits (history budget, queue depth ceilings, etc.). Owned by App\\Support\\StructuralLimits."
+      "description": "Snapshot of structural shape limits such as history budgets and queue-depth ceilings."
     },
     "topology": {
       "type": "object",
@@ -208,7 +202,7 @@
     },
     "coordination_health": {
       "type": "object",
-      "description": "Coordination-health manifest. Carries its own schema and version. Full shape is normative under `App\\Support\\CoordinationHealthContract`.",
+      "description": "Coordination-health manifest. Carries its own schema and version; that stable schema identity is normative for the full shape.",
       "required": ["schema", "version", "status", "checks"],
       "additionalProperties": true,
       "properties": {
@@ -220,7 +214,7 @@
     },
     "client_compatibility": {
       "type": "object",
-      "description": "Client compatibility authority. Owned by `App\\Support\\ClientCompatibility::info()`.",
+      "description": "Client compatibility authority published by the server.",
       "required": ["authority"],
       "additionalProperties": true,
       "properties": {
@@ -254,6 +248,7 @@
       "required": [
         "schema",
         "version",
+        "catalog_url",
         "authority_url",
         "formats",
         "owner_repos",
@@ -266,6 +261,7 @@
       "properties": {
         "schema": {"type": "string", "const": "durable-workflow.v2.platform-protocol-specs.catalog"},
         "version": {"type": "integer", "minimum": 1},
+        "catalog_url": {"type": "string", "format": "uri"},
         "authority_url": {"type": "string", "format": "uri"},
         "specs": {"type": "object"}
       }
@@ -293,14 +289,25 @@
         "version": {"type": "integer", "minimum": 1}
       }
     },
+    "sdk_neutrality_contract": {
+      "type": "object",
+      "description": "SDK-neutrality contract. Carries its own schema id `durable-workflow.v2.sdk-neutrality.contract`; that catalog defines the full normative shape.",
+      "required": ["schema", "version", "authority_url"],
+      "additionalProperties": true,
+      "properties": {
+        "schema": {"type": "string", "const": "durable-workflow.v2.sdk-neutrality.contract"},
+        "version": {"type": "integer", "minimum": 1},
+        "authority_url": {"type": "string", "format": "uri"}
+      }
+    },
     "auth_composition_contract": {
       "type": "object",
-      "description": "Auth composition manifest. Owned by `App\\Support\\AuthCompositionContract`.",
+      "description": "Auth composition manifest published by the server.",
       "additionalProperties": true
     },
     "control_plane": {
       "type": "object",
-      "description": "Control-plane protocol manifest. Owned by `App\\Support\\ControlPlaneProtocol`. The `version` field is the per-route compatibility authority; the cluster-info `version` is build identity only.",
+      "description": "Control-plane protocol manifest. Its `version` field is the per-route compatibility authority; the cluster-info `version` is build identity only.",
       "required": ["version"],
       "additionalProperties": true,
       "properties": {
@@ -309,7 +316,7 @@
     },
     "worker_protocol": {
       "type": "object",
-      "description": "Worker-plane protocol manifest. Owned by `App\\Support\\WorkerProtocol`.",
+      "description": "Worker-plane protocol manifest published by the server.",
       "required": ["version"],
       "additionalProperties": true,
       "properties": {
@@ -336,12 +343,12 @@
     },
     "bridge_adapter_outcome_contract": {
       "type": "object",
-      "description": "Bridge adapter outcome contract. Owned by `App\\Support\\BridgeAdapterOutcomeContract`.",
+      "description": "Bridge adapter outcome contract published by the server.",
       "additionalProperties": true
     },
     "replay_verification_contract": {
       "type": "object",
-      "description": "Replay verification contract. Owned by `App\\Support\\ReplayVerificationContract`.",
+      "description": "Replay verification contract published by the server.",
       "additionalProperties": true
     },
     "package_provenance": {

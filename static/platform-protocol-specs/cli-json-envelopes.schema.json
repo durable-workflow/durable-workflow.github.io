@@ -6,21 +6,16 @@
   "type": "object",
   "x-durable-workflow-catalog-entry": "cli_json_envelopes",
   "x-durable-workflow-catalog-schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "x-durable-workflow-catalog-version": 14,
-  "x-durable-workflow-owner-symbol": "DurableWorkflow\\Cli\\Support\\OutputSchemaRegistry, schemas/output/manifest.json, and tests/Commands/OutputContractTest.php",
+  "x-durable-workflow-catalog-version": 15,
   "x-durable-workflow-evolution-rule": "additive_minor_breaking_major",
   "x-durable-workflow-object-families": [
     {
       "name": "cli_output_schema_manifest",
-      "owner_repo": "durable-workflow/cli",
-      "schema_authority": "DurableWorkflow\\Cli\\Support\\OutputSchemaRegistry::manifest",
-      "version_authority": "schemas/output/manifest.json version"
+      "owner_repo": "durable-workflow/cli"
     },
     {
       "name": "cli_command_output_schema",
-      "owner_repo": "durable-workflow/cli",
-      "schema_authority": "schemas/output/*.schema.json via DurableWorkflow\\Cli\\Support\\OutputSchemaRegistry",
-      "version_authority": "schemas/output/manifest.json schema_id and version metadata"
+      "owner_repo": "durable-workflow/cli"
     }
   ],
   "required": ["schema", "version", "json_schema_draft", "commands"],

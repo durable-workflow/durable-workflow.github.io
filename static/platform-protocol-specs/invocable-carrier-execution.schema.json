@@ -3,24 +3,22 @@
   "$id": "durable-workflow.v2.invocable-carrier-execution",
   "title": "Invocable HTTP Carrier Execution Surface",
   "description": "JSON Schema for the invocable HTTP carrier execution surface. Covers the activity-only HTTP carrier contract, external task input envelope, external task result envelope, the external execution surface boundary, and the handler-mapping config contract that routes activity tasks to carrier endpoints.",
+  "x-durable-workflow-catalog-entry": "invocable_carrier_execution",
+  "x-durable-workflow-catalog-schema": "durable-workflow.v2.platform-protocol-specs.catalog",
+  "x-durable-workflow-catalog-version": 15,
+  "x-durable-workflow-evolution-rule": "additive_minor_breaking_major",
   "x-durable-workflow-object-families": [
     {
       "name": "invocable_carrier_contract",
-      "owner_repo": "durable-workflow/server",
-      "schema_authority": "App\\Support\\InvocableCarrierContract::SCHEMA",
-      "version_authority": "App\\Support\\InvocableCarrierContract::VERSION"
+      "owner_repo": "durable-workflow/server"
     },
     {
       "name": "external_execution_surface_contract",
-      "owner_repo": "durable-workflow/server",
-      "schema_authority": "App\\Support\\ExternalExecutionSurfaceContract::SCHEMA",
-      "version_authority": "App\\Support\\ExternalExecutionSurfaceContract::VERSION"
+      "owner_repo": "durable-workflow/server"
     },
     {
       "name": "external_executor_config_contract",
-      "owner_repo": "durable-workflow/server",
-      "schema_authority": "App\\Support\\ExternalExecutorConfigContract::CONTRACT_SCHEMA",
-      "version_authority": "App\\Support\\ExternalExecutorConfigContract::CONTRACT_VERSION"
+      "owner_repo": "durable-workflow/server"
     }
   ],
   "x-status": "in_progress",

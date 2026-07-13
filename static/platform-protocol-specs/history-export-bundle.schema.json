@@ -6,15 +6,12 @@
   "type": "object",
   "x-durable-workflow-catalog-entry": "history_export_bundle",
   "x-durable-workflow-catalog-schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "x-durable-workflow-catalog-version": 14,
-  "x-durable-workflow-owner-symbol": "Workflow\\V2\\Support\\HistoryExport",
+  "x-durable-workflow-catalog-version": 15,
   "x-durable-workflow-evolution-rule": "parallel_primitive_only",
   "x-durable-workflow-object-families": [
     {
       "name": "history_export_bundle",
-      "owner_repo": "durable-workflow/workflow",
-      "schema_authority": "Workflow\\V2\\Support\\HistoryExport::SCHEMA",
-      "version_authority": "durable-workflow.v2.history-export"
+      "owner_repo": "durable-workflow/workflow"
     }
   ],
   "required": [

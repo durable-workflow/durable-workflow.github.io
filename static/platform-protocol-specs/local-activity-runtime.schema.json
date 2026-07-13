@@ -6,33 +6,24 @@
   "type": "object",
   "x-durable-workflow-catalog-entry": "local_activity_runtime",
   "x-durable-workflow-catalog-schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "x-durable-workflow-catalog-version": 14,
-  "x-durable-workflow-owner-symbol": "Workflow\\V2\\Support\\LocalActivityContract and Workflow\\V2\\Support\\LocalActivityOptions",
+  "x-durable-workflow-catalog-version": 15,
   "x-durable-workflow-evolution-rule": "additive_minor_breaking_major",
   "x-durable-workflow-object-families": [
     {
       "name": "local_activity_runtime_contract",
-      "owner_repo": "durable-workflow/workflow",
-      "schema_authority": "Workflow\\V2\\Support\\LocalActivityContract::manifest",
-      "version_authority": "Workflow\\V2\\Support\\LocalActivityContract::VERSION"
+      "owner_repo": "durable-workflow/workflow"
     },
     {
       "name": "local_activity_options",
-      "owner_repo": "durable-workflow/workflow",
-      "schema_authority": "Workflow\\V2\\Support\\LocalActivityOptions::toSnapshot",
-      "version_authority": "Workflow\\V2\\Support\\LocalActivityContract::VERSION"
+      "owner_repo": "durable-workflow/workflow"
     },
     {
       "name": "local_activity_history_markers",
-      "owner_repo": "durable-workflow/workflow",
-      "schema_authority": "Workflow\\V2\\Support\\LocalActivityRuntime::eventPayload",
-      "version_authority": "durable-workflow.v2.history-event-payloads"
+      "owner_repo": "durable-workflow/workflow"
     },
     {
       "name": "local_activity_visibility",
-      "owner_repo": "durable-workflow/workflow",
-      "schema_authority": "Workflow\\V2\\Support\\RunActivityView and Workflow\\V2\\Support\\OperatorMetrics",
-      "version_authority": "durable-workflow.v2.local-activity-runtime"
+      "owner_repo": "durable-workflow/workflow"
     }
   ],
   "additionalProperties": true,

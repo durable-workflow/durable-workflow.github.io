@@ -5,7 +5,7 @@
   "scripts": {
     "docusaurus": "docusaurus",
     "start": "docusaurus start",
-    "build": "node scripts/check-server-env-docs.js && node scripts/check-doc-examples.js && node scripts/check-public-artifact-versions.js && node scripts/refresh-public-artifact-versions.js --check && node scripts/check-public-artifact-pins.js && node scripts/check-public-artifact-pins.test.js && node scripts/check-quickstart-execution-contract.js && node scripts/check-public-artifact-tuple-workflow.js && node scripts/check-docs-deploy-workflow.js && node scripts/check-sdk-neutrality-workflow-contracts.js && node scripts/check-discoverability.js && node scripts/check-installer-contract.js && node scripts/check-compatibility-authority.js && node scripts/check-compatibility-authority.test.js && node scripts/check-platform-protocol-specs.js && node scripts/check-platform-conformance-authority.js && node scripts/check-workflow-lifecycle-authority.js && node scripts/check-sdk-neutrality-authority.js && node scripts/check-sdk-neutrality-authority.test.js && node scripts/check-docs-narrative-audit.test.js && docusaurus build && node scripts/generate-llms.js && node scripts/generate-llms-full.js && node scripts/generate-docs-page-release-audit.js && node scripts/generate-docs-narrative-audit.js && node scripts/patch-public-discovery-sitemap.js && node scripts/check-docs-release-policy.js && node scripts/check-llms-ai-surfaces.js && node scripts/check-docs-page-release-audit.js && node scripts/check-docs-narrative-audit.js",
+    "build": "node scripts/check-server-env-docs.js && node scripts/check-doc-examples.js && node scripts/check-public-artifact-versions.js && node scripts/refresh-public-artifact-versions.js --check && node scripts/check-public-artifact-pins.js && node scripts/check-public-artifact-pins.test.js && node scripts/check-quickstart-execution-contract.js && node scripts/check-public-artifact-tuple-workflow.js && node scripts/check-docs-deploy-workflow.js && node scripts/check-sdk-neutrality-workflow-contracts.js && node scripts/check-discoverability.js && node scripts/check-installer-contract.js && node scripts/check-compatibility-authority.js && node scripts/check-compatibility-authority.test.js && node scripts/check-platform-protocol-specs.js && node scripts/check-platform-protocol-specs.test.js && node scripts/check-platform-conformance-authority.js && node scripts/check-workflow-lifecycle-authority.js && node scripts/check-sdk-neutrality-authority.js && node scripts/check-sdk-neutrality-authority.test.js && node scripts/check-docs-narrative-audit.test.js && docusaurus build && node scripts/generate-llms.js && node scripts/generate-llms-full.js && node scripts/generate-docs-page-release-audit.js && node scripts/generate-docs-narrative-audit.js && node scripts/patch-public-discovery-sitemap.js && node scripts/check-docs-release-policy.js && node scripts/check-llms-ai-surfaces.js && node scripts/check-docs-page-release-audit.js && node scripts/check-docs-narrative-audit.js",
     "check:doc-examples": "node scripts/check-doc-examples.js",
     "check:discoverability": "node scripts/check-discoverability.js",
     "check:public-artifact-versions": "node scripts/check-public-artifact-versions.js",
@@ -28,6 +28,7 @@
     "check:compatibility-authority": "node scripts/check-compatibility-authority.js",
     "test:compatibility-authority": "node scripts/check-compatibility-authority.test.js",
     "check:platform-protocol-specs": "node scripts/check-platform-protocol-specs.js",
+    "test:platform-protocol-specs": "node scripts/check-platform-protocol-specs.test.js",
     "check:platform-conformance-authority": "node scripts/check-platform-conformance-authority.js",
     "check:workflow-lifecycle-authority": "node scripts/check-workflow-lifecycle-authority.js",
     "patch:public-discovery-sitemap": "node scripts/patch-public-discovery-sitemap.js",
@@ -45,6 +46,7 @@
     "@docusaurus/preset-classic": "2.2.0",
     "@mdx-js/react": "^1.6.22",
     "clsx": "^1.2.1",
+    "js-yaml": "^4.1.0",
     "prism-react-renderer": "^1.3.5",
     "react": "^17.0.2",
     "react-dom": "^17.0.2"

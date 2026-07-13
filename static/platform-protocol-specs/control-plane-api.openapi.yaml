@@ -12,22 +12,15 @@ info:
     protocol catalog.
 x-durable-workflow-catalog-entry: control_plane_api
 x-durable-workflow-catalog-schema: durable-workflow.v2.platform-protocol-specs.catalog
-x-durable-workflow-catalog-version: 14
-x-durable-workflow-owner-symbol: App\Support\ControlPlaneProtocol and App\Support\ControlPlaneRequestContract
+x-durable-workflow-catalog-version: 15
 x-durable-workflow-evolution-rule: additive_minor_breaking_major
 x-durable-workflow-object-families:
   - name: control_plane_request_contract
     owner_repo: durable-workflow/server
-    schema_authority: "App\\Support\\ControlPlaneRequestContract::SCHEMA"
-    version_authority: "App\\Support\\ControlPlaneRequestContract::VERSION"
   - name: control_plane_response_envelope
     owner_repo: durable-workflow/server
-    schema_authority: "App\\Support\\ControlPlaneResponseContract::SCHEMA"
-    version_authority: "App\\Support\\ControlPlaneResponseContract::VERSION"
   - name: control_plane_operation_contract
     owner_repo: durable-workflow/server
-    schema_authority: "App\\Support\\ControlPlaneResponseContract::CONTRACT_SCHEMA"
-    version_authority: "App\\Support\\ControlPlaneResponseContract::CONTRACT_VERSION"
 servers:
   - url: /api
 security:
@@ -734,7 +727,7 @@ components:
       description: >
         Route-specific successful envelope. Additive fields are allowed.
         Guaranteed route-specific fields are pinned by the matching
-        per-route conformance test named in the catalog.
+        operation-level compatibility checks maintained by the owning implementation.
     ControlPlaneError:
       type: object
       additionalProperties: true

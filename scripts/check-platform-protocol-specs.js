@@ -9,7 +9,7 @@
 // `GET /api/cluster/info`. The catalog is the single source of truth for
 // which surfaces have a published machine-readable spec, what format
 // (OpenAPI / JSON Schema / AsyncAPI) the spec uses, which repository
-// owns it, and which conformance test pins it.
+// owns it, and which public URL consumers can resolve.
 //
 // Specifically the script verifies that:
 //
@@ -25,8 +25,8 @@
 // 2. Every spec entry has the required fields with valid values:
 //    format ∈ {openapi, json_schema, asyncapi}, status ∈ {published,
 //    in_progress, planned}, owner_repo ∈ known fleet repos, and a
-//    non-empty object_families list that names the schema/version
-//    authority for every governed public object family.
+//    non-empty object_families list that names each governed public object
+//    family and its owning repository.
 // 3. Every spec entry's `surface_family` exists in
 //    `static/compatibility-contract.json`. The catalog cannot reference
 //    a surface family that the stability contract has not declared.
@@ -37,16 +37,21 @@
 //    diagnostic objects, repair / actionability objects, CLI JSON
 //    envelopes, MCP discovery + tool results, cluster-info envelope) is
 //    fully enumerated.
-// 5. When an entry's status is `published`, the file at `spec_path`
-//    exists in the docs site repo, parses as the format declared by the
+// 5. Every non-planned entry exposes an HTTPS `spec_url` in the public
+//    protocol-spec namespace. The URL resolves to a shipped static file,
+//    which parses as the format declared by the
 //    catalog entry (JSON Schema 2020-12 / OpenAPI 3.1 / AsyncAPI 2.6+),
 //    and the document's `$id` (or OpenAPI `info.title` / AsyncAPI `id`)
 //    matches the catalog `spec_id` so SDK builds and CI can join the
 //    document back to the catalog without parsing prose. The published
 //    file must also carry matching x-durable-workflow-object-families
 //    metadata so the spec document and catalog cannot disagree about
-//    schema/version authority.
-// 6. Public JSON Schema documents that embed an agent-tooling object schema
+//    family names and owners.
+// 6. Public catalog entries reject repository-local paths, implementation
+//    symbols, conformance fixtures, and the legacy authority fields that
+//    exposed them. Validation-only provenance retains those diagnostics
+//    outside the published static tree and covers every entry/object family.
+// 7. Public JSON Schema documents that embed an agent-tooling object schema
 //    id must declare matching catalog object-family authority, and duplicate
 //    embedded definitions must describe the same machine-readable shape.
 //
@@ -55,14 +60,26 @@
 
 const fs = require('fs');
 const path = require('path');
+const yaml = require('js-yaml');
 
 const repoRoot = path.join(__dirname, '..');
 const catalogPath = path.join(repoRoot, 'static', 'platform-protocol-specs.json');
 const surfaceContractPath = path.join(repoRoot, 'static', 'compatibility-contract.json');
+const provenancePath = path.join(
+  repoRoot,
+  'scripts',
+  'validation',
+  'platform-protocol-specs.provenance.json',
+);
 
 const EXPECTED_SCHEMA = 'durable-workflow.v2.platform-protocol-specs.catalog';
+const PUBLIC_SITE_ORIGIN = 'https://durable-workflow.github.io';
+const EXPECTED_CATALOG_URL = `${PUBLIC_SITE_ORIGIN}/platform-protocol-specs.json`;
 const EXPECTED_AUTHORITY_URL =
-  'https://durable-workflow.github.io/docs/2.0/platform-protocol-specs';
+  `${PUBLIC_SITE_ORIGIN}/docs/2.0/platform-protocol-specs`;
+const PUBLIC_SPEC_PATH_PREFIX = '/platform-protocol-specs/';
+const EXPECTED_PROVENANCE_SCHEMA =
+  'durable-workflow.validation.platform-protocol-specs.provenance';
 
 const ALLOWED_FORMATS = new Set(['openapi', 'json_schema', 'asyncapi']);
 const ALLOWED_STATUSES = new Set(['published', 'in_progress', 'planned']);
@@ -115,6 +132,41 @@ const AGENT_TOOLING_SCHEMA_SPEC_PATHS = [
   'static/platform-protocol-specs/mcp-tool-results.schema.json',
   'static/platform-protocol-specs/repair-actionability-objects.schema.json',
 ];
+const FORBIDDEN_PUBLIC_ENTRY_FIELDS = new Set([
+  'spec_path',
+  'owner_symbol',
+  'conformance_test',
+  'conformance_script',
+  'schema_authority',
+  'version_authority',
+]);
+const ALLOWED_PUBLIC_ENTRY_FIELDS = new Set([
+  'description',
+  'format',
+  'spec_id',
+  'surface_family',
+  'authority_manifest',
+  'owner_repo',
+  'object_families',
+  'evolution_rule',
+  'breaking_change_release',
+  'discovery_endpoint',
+  'status',
+  'spec_url',
+]);
+const REQUIRED_RELEASE_GATES = [
+  'catalog_aligned_with_surface_families',
+  'owner_repo_known',
+  'format_known',
+  'public_spec_references_resolve',
+  'repository_local_authority_fields_rejected',
+  'workflow_package_mirror_aligned',
+  'server_owned_spec_mirrors_aligned',
+  'diagnostic_provenance_complete',
+  'object_family_metadata_declared',
+  'breaking_change_release_consistent_with_evolution_rule',
+  'deliverable_specs_published',
+];
 
 function read(file) {
   return fs.readFileSync(file, 'utf8');
@@ -134,12 +186,35 @@ function loadJson(file, label) {
   }
 }
 
+function loadYaml(file, label) {
+  let raw;
+  try {
+    raw = read(file);
+  } catch (err) {
+    throw new Error(`${label} is missing at ${file}.`);
+  }
+
+  let document;
+  try {
+    document = yaml.load(raw, {filename: file});
+  } catch (err) {
+    throw new Error(`${label} is not valid YAML: ${err.message}`);
+  }
+
+  if (document === null || typeof document !== 'object' || Array.isArray(document)) {
+    throw new Error(`${label} must contain a YAML mapping at its document root.`);
+  }
+
+  return document;
+}
+
 function loadCatalog() {
   const catalog = loadJson(catalogPath, 'static/platform-protocol-specs.json');
 
   const expectedTopLevel = [
     'schema',
     'version',
+    'catalog_url',
     'authority_url',
     'formats',
     'owner_repos',
@@ -170,6 +245,13 @@ function loadCatalog() {
     );
   }
 
+  if (catalog.catalog_url !== EXPECTED_CATALOG_URL) {
+    throw new Error(
+      `static/platform-protocol-specs.json catalog_url must point at ` +
+        `${EXPECTED_CATALOG_URL} (got "${catalog.catalog_url}")`,
+    );
+  }
+
   if (catalog.authority_url !== EXPECTED_AUTHORITY_URL) {
     throw new Error(
       `static/platform-protocol-specs.json authority_url must point at ` +
@@ -178,6 +260,227 @@ function loadCatalog() {
   }
 
   return catalog;
+}
+
+function resolvePublicSpecReference(specUrl, label) {
+  if (typeof specUrl !== 'string' || specUrl.length === 0) {
+    throw new Error(`${label} must be a non-empty HTTPS URL.`);
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(specUrl);
+  } catch (err) {
+    throw new Error(`${label} must be an absolute HTTPS URL (got ${JSON.stringify(specUrl)}).`);
+  }
+
+  if (
+    parsed.origin !== PUBLIC_SITE_ORIGIN ||
+    parsed.username ||
+    parsed.password ||
+    parsed.search ||
+    parsed.hash
+  ) {
+    throw new Error(
+      `${label} must use an unqualified ${PUBLIC_SITE_ORIGIN} URL ` +
+        `(got "${specUrl}").`,
+    );
+  }
+
+  let publicPath;
+  try {
+    publicPath = decodeURIComponent(parsed.pathname);
+  } catch (err) {
+    throw new Error(`${label} contains invalid URL encoding.`);
+  }
+
+  if (
+    !publicPath.startsWith(PUBLIC_SPEC_PATH_PREFIX) ||
+    publicPath.slice(PUBLIC_SPEC_PATH_PREFIX.length).includes('/') ||
+    !/^\/platform-protocol-specs\/[A-Za-z0-9][A-Za-z0-9._-]*$/.test(publicPath)
+  ) {
+    throw new Error(
+      `${label} must resolve directly under ${PUBLIC_SITE_ORIGIN}` +
+        `${PUBLIC_SPEC_PATH_PREFIX} (got "${specUrl}").`,
+    );
+  }
+
+  const absolutePath = path.resolve(repoRoot, 'static', publicPath.slice(1));
+  const publicSpecRoot = path.resolve(repoRoot, 'static', 'platform-protocol-specs');
+  if (!absolutePath.startsWith(`${publicSpecRoot}${path.sep}`)) {
+    throw new Error(`${label} escapes the published protocol-spec directory.`);
+  }
+  if (!fs.existsSync(absolutePath) || !fs.statSync(absolutePath).isFile()) {
+    throw new Error(
+      `${label} does not resolve to a shipped public artifact at ${absolutePath}.`,
+    );
+  }
+
+  return {
+    absolutePath,
+    fileName: path.basename(absolutePath),
+    repoRelativePath: path.relative(repoRoot, absolutePath).split(path.sep).join('/'),
+  };
+}
+
+function assertCatalogDoesNotExposeRepositoryLocalAuthority(catalog) {
+  for (const [name, entry] of Object.entries(catalog.specs || {})) {
+    if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) {
+      continue;
+    }
+    for (const key of Object.keys(entry)) {
+      if (!ALLOWED_PUBLIC_ENTRY_FIELDS.has(key)) {
+        throw new Error(
+          `static/platform-protocol-specs.json entry "${name}" exposes ` +
+            `non-consumer field "${key}"; published entries may contain ` +
+            `only the documented consumer-safe fields.`,
+        );
+      }
+    }
+  }
+
+  function visit(value, pointer) {
+    if (Array.isArray(value)) {
+      value.forEach((item, index) => visit(item, `${pointer}/${index}`));
+      return;
+    }
+    if (value === null || typeof value !== 'object') {
+      return;
+    }
+
+    for (const [key, child] of Object.entries(value)) {
+      if (FORBIDDEN_PUBLIC_ENTRY_FIELDS.has(key)) {
+        throw new Error(
+          `static/platform-protocol-specs.json exposes repository-local ` +
+            `authority field "${key}" at ${pointer}/${key}.`,
+        );
+      }
+      visit(child, `${pointer}/${escapeJsonPointerSegment(key)}`);
+    }
+  }
+
+  visit(catalog, '#');
+
+  const encodedEntries = JSON.stringify(catalog.specs);
+  const forbiddenReferences = [
+    {pattern: /(^|[\s\x60("'])((?:\.\.?\/)?(?:tests?|scripts?|src|resources|docs|static)\/)/i, label: 'repository-relative path'},
+    {pattern: /\.php\b/i, label: 'source or test filename'},
+    {pattern: /::/, label: 'implementation symbol'},
+    {pattern: /\\[A-Za-z_]/, label: 'namespaced implementation symbol'},
+  ];
+  for (const {pattern, label} of forbiddenReferences) {
+    if (pattern.test(encodedEntries)) {
+      throw new Error(
+        `static/platform-protocol-specs.json specs contain a ${label}; ` +
+          `consumer authority must use public URLs and stable identifiers.`,
+      );
+    }
+  }
+}
+
+function loadAndValidateProvenance(catalog) {
+  const provenance = loadJson(
+    provenancePath,
+    'scripts/validation/platform-protocol-specs.provenance.json',
+  );
+  if (provenance.schema !== EXPECTED_PROVENANCE_SCHEMA) {
+    throw new Error(
+      `platform protocol-spec provenance schema must be ` +
+        `"${EXPECTED_PROVENANCE_SCHEMA}".`,
+    );
+  }
+  if (
+    provenance.catalog_schema !== catalog.schema ||
+    provenance.catalog_version !== catalog.version
+  ) {
+    throw new Error(
+      `platform protocol-spec provenance must target catalog ` +
+        `${catalog.schema} version ${catalog.version}.`,
+    );
+  }
+
+  const catalogNames = Object.keys(catalog.specs);
+  const provenanceNames = Object.keys(provenance.specs || {});
+  if (JSON.stringify(provenanceNames) !== JSON.stringify(catalogNames)) {
+    throw new Error(
+      `platform protocol-spec provenance must enumerate the same entries, ` +
+        `in the same order, as the public catalog.`,
+    );
+  }
+
+  for (const [name, entry] of Object.entries(catalog.specs)) {
+    const diagnostic = provenance.specs[name];
+    for (const field of ['owner_symbol', 'conformance_test']) {
+      if (typeof diagnostic[field] !== 'string' || diagnostic[field].length === 0) {
+        throw new Error(`provenance for "${name}" must declare non-empty ${field}.`);
+      }
+    }
+    if (!Array.isArray(diagnostic.object_families)) {
+      throw new Error(`provenance for "${name}" must declare object_families.`);
+    }
+    const diagnosticFamilies = diagnostic.object_families.map((family) => ({
+      name: family.name,
+      owner_repo: family.owner_repo,
+    }));
+    if (JSON.stringify(diagnosticFamilies) !== JSON.stringify(entry.object_families)) {
+      throw new Error(
+        `provenance object families for "${name}" must match the public catalog's ` +
+          `family names and owners.`,
+      );
+    }
+    for (const family of diagnostic.object_families) {
+      for (const field of ['schema_authority', 'version_authority']) {
+        if (typeof family[field] !== 'string' || family[field].length === 0) {
+          throw new Error(
+            `provenance for "${name}" object family "${family.name}" must ` +
+              `declare non-empty ${field}.`,
+          );
+        }
+      }
+    }
+  }
+
+  return provenance;
+}
+
+function assertReleaseCheckDescribesMachineValidation(catalog) {
+  const releaseCheck = catalog.release_check;
+  if (!releaseCheck || typeof releaseCheck !== 'object') {
+    throw new Error('static/platform-protocol-specs.json must declare release_check.');
+  }
+  const gateNames = Object.keys(releaseCheck.gates || {});
+  if (JSON.stringify(gateNames) !== JSON.stringify(REQUIRED_RELEASE_GATES)) {
+    throw new Error(
+      `platform protocol-spec release_check.gates must describe the checks ` +
+        `that scripts/check-platform-protocol-specs.js performs.`,
+    );
+  }
+  const machine = releaseCheck.enforcement?.machine;
+  if (typeof machine !== 'string' || machine.length === 0) {
+    throw new Error('platform protocol-spec release_check.enforcement.machine is required.');
+  }
+  for (const falseClaim of ['docs/platform-protocol-specs.md', 'walks the Markdown', 'walks docs/']) {
+    if (machine.includes(falseClaim)) {
+      throw new Error(
+        `platform protocol-spec machine enforcement falsely claims to inspect ` +
+          `the human-readable catalog page.`,
+      );
+    }
+  }
+  for (const requiredClaim of [
+    'loads the public JSON catalog',
+    'consumer-safe references',
+    'parses each shipped specification',
+    'checks object-family and embedded-schema metadata',
+    'compares package mirrors when their checkouts are available',
+  ]) {
+    if (!machine.includes(requiredClaim)) {
+      throw new Error(
+        `platform protocol-spec machine enforcement must describe the ` +
+          `surviving check: ${requiredClaim}.`,
+      );
+    }
+  }
 }
 
 function workflowCatalogMirrorPath() {
@@ -256,8 +559,16 @@ function assertServerOwnedSpecMirrorsMatchWhenAvailable(catalog) {
       continue;
     }
 
-    const fileName = path.basename(entry.spec_path);
-    const docsSpecPath = path.join(repoRoot, entry.spec_path);
+    if (entry.status === 'planned') {
+      continue;
+    }
+
+    const publicSpec = resolvePublicSpecReference(
+      entry.spec_url,
+      `platform-protocol-specs entry "${name}" spec_url`,
+    );
+    const fileName = publicSpec.fileName;
+    const docsSpecPath = publicSpec.absolutePath;
     const serverSpecPath = path.join(serverSpecDir, fileName);
 
     if (!fs.existsSync(serverSpecPath)) {
@@ -272,7 +583,7 @@ function assertServerOwnedSpecMirrorsMatchWhenAvailable(catalog) {
     if (docsSpec !== serverSpec) {
       throw new Error(
         `server-owned platform protocol spec "${name}" differs between ` +
-          `${entry.spec_path} and ${serverSpecPath}. Update the owner repo ` +
+          `${publicSpec.repoRelativePath} and ${serverSpecPath}. Update the owner repo ` +
           `copy and the docs-site published copy in the same release change.`,
       );
     }
@@ -328,9 +639,7 @@ function assertCatalogEntriesAreWellFormed(catalog, surfaceFamilies) {
       'evolution_rule',
       'breaking_change_release',
       'object_families',
-      'conformance_test',
       'status',
-      'spec_path',
     ];
     for (const field of requiredFields) {
       if (!(field in entry)) {
@@ -407,25 +716,24 @@ function assertCatalogEntriesAreWellFormed(catalog, surfaceFamilies) {
       );
     }
 
-    if (!entry.spec_path.startsWith('static/platform-protocol-specs/')) {
-      throw new Error(
-        `platform-protocol-specs entry "${name}" spec_path "${entry.spec_path}" ` +
-          `must live under static/platform-protocol-specs/ in the docs site`,
-      );
-    }
-
-    if (entry.status === 'published') {
-      const absoluteSpecPath = path.join(repoRoot, entry.spec_path);
-      if (!fs.existsSync(absoluteSpecPath)) {
+    if (entry.status === 'planned') {
+      if ('spec_url' in entry) {
         throw new Error(
-          `platform-protocol-specs entry "${name}" status is "published" but ` +
-            `the spec file at ${entry.spec_path} does not exist. Either ship ` +
-            `the spec, demote the status to "in_progress" or "planned", or ` +
-            `fix the spec_path.`,
+          `platform-protocol-specs entry "${name}" is planned and must not ` +
+            `advertise spec_url before a public artifact exists.`,
         );
       }
-
-      assertPublishedSpecFileMatchesEntry(name, entry, absoluteSpecPath, catalog.version);
+    } else {
+      const publicSpec = resolvePublicSpecReference(
+        entry.spec_url,
+        `platform-protocol-specs entry "${name}" spec_url`,
+      );
+      assertPublishedSpecFileMatchesEntry(
+        name,
+        entry,
+        publicSpec,
+        catalog.version,
+      );
     }
   }
 }
@@ -435,7 +743,7 @@ function assertObjectFamiliesAreWellFormed(name, entry) {
     throw new Error(
       `platform-protocol-specs entry "${name}" must declare a non-empty ` +
         `object_families list so every public object family has explicit ` +
-        `schema/version authority.`,
+        `ownership metadata.`,
     );
   }
 
@@ -448,7 +756,15 @@ function assertObjectFamiliesAreWellFormed(name, entry) {
       );
     }
 
-    for (const field of ['name', 'owner_repo', 'schema_authority', 'version_authority']) {
+    const fields = Object.keys(family);
+    if (JSON.stringify(fields) !== JSON.stringify(['name', 'owner_repo'])) {
+      throw new Error(
+        `platform-protocol-specs entry "${name}" object family must expose ` +
+          `only consumer-safe name and owner_repo fields.`,
+      );
+    }
+
+    for (const field of fields) {
       if (typeof family[field] !== 'string' || family[field].length === 0) {
         throw new Error(
           `platform-protocol-specs entry "${name}" object family must ` +
@@ -475,26 +791,27 @@ function assertObjectFamiliesAreWellFormed(name, entry) {
   }
 }
 
-function assertPublishedSpecFileMatchesEntry(name, entry, absoluteSpecPath, catalogVersion) {
+function assertPublishedSpecFileMatchesEntry(name, entry, publicSpec, catalogVersion) {
+  const {absolutePath: absoluteSpecPath, repoRelativePath: specPath} = publicSpec;
   if (entry.format === 'json_schema') {
-    if (!entry.spec_path.endsWith('.schema.json')) {
+    if (!specPath.endsWith('.schema.json')) {
       throw new Error(
         `platform-protocol-specs entry "${name}" format is json_schema but ` +
-          `spec_path "${entry.spec_path}" does not end with ".schema.json"; ` +
+          `spec_url "${entry.spec_url}" does not end with ".schema.json"; ` +
           `JSON Schema documents must use the .schema.json suffix.`,
       );
     }
-    const document = loadJson(absoluteSpecPath, `published spec ${entry.spec_path}`);
+    const document = loadJson(absoluteSpecPath, `published spec ${specPath}`);
     if (document.$schema !== 'https://json-schema.org/draft/2020-12/schema') {
       throw new Error(
-        `published spec ${entry.spec_path} for "${name}" must declare ` +
+        `published spec ${specPath} for "${name}" must declare ` +
           `$schema = "https://json-schema.org/draft/2020-12/schema" ` +
           `(catalog requires JSON Schema Draft 2020-12).`,
       );
     }
     if (document.$id !== entry.spec_id) {
       throw new Error(
-        `published spec ${entry.spec_path} for "${name}" must declare ` +
+        `published spec ${specPath} for "${name}" must declare ` +
           `$id = "${entry.spec_id}" so consumers can join the document back ` +
           `to the catalog without parsing prose ` +
           `(got "${document.$id}").`,
@@ -502,27 +819,27 @@ function assertPublishedSpecFileMatchesEntry(name, entry, absoluteSpecPath, cata
     }
     if (typeof document.title !== 'string' || document.title.length === 0) {
       throw new Error(
-        `published spec ${entry.spec_path} for "${name}" must declare a ` +
+        `published spec ${specPath} for "${name}" must declare a ` +
           `non-empty "title" so docs builds and SDK generators can label it.`,
       );
     }
     if (typeof document.description !== 'string' || document.description.length === 0) {
       throw new Error(
-        `published spec ${entry.spec_path} for "${name}" must declare a ` +
+        `published spec ${specPath} for "${name}" must declare a ` +
           `non-empty "description" so consumers reading the file alone ` +
         `understand what surface it pins.`,
       );
     }
     if (document['x-durable-workflow-catalog-entry'] !== name) {
       throw new Error(
-        `published spec ${entry.spec_path} for "${name}" must declare ` +
+        `published spec ${specPath} for "${name}" must declare ` +
           `"x-durable-workflow-catalog-entry": "${name}" so schema files ` +
           `cannot be moved between catalog entries accidentally.`,
       );
     }
     if (document['x-durable-workflow-catalog-version'] !== catalogVersion) {
       throw new Error(
-        `published spec ${entry.spec_path} for "${name}" declares ` +
+        `published spec ${specPath} for "${name}" declares ` +
           `x-durable-workflow-catalog-version = ` +
           `${document['x-durable-workflow-catalog-version']}, but the catalog ` +
           `version is ${catalogVersion}.`,
@@ -530,7 +847,7 @@ function assertPublishedSpecFileMatchesEntry(name, entry, absoluteSpecPath, cata
     }
     if (document['x-durable-workflow-evolution-rule'] !== entry.evolution_rule) {
       throw new Error(
-        `published spec ${entry.spec_path} for "${name}" must declare ` +
+        `published spec ${specPath} for "${name}" must declare ` +
           `x-durable-workflow-evolution-rule = "${entry.evolution_rule}" ` +
           `(got ${JSON.stringify(document['x-durable-workflow-evolution-rule'])}).`,
       );
@@ -539,77 +856,99 @@ function assertPublishedSpecFileMatchesEntry(name, entry, absoluteSpecPath, cata
       name,
       entry,
       document['x-durable-workflow-object-families'],
-      entry.spec_path,
+      specPath,
     );
     if (document.type !== 'object') {
       throw new Error(
-        `published spec ${entry.spec_path} for "${name}" must declare ` +
+        `published spec ${specPath} for "${name}" must declare ` +
           `"type": "object" at the top level (envelope, object family, or ` +
           `tool-result envelope shapes are all object-typed).`,
       );
     }
   } else if (entry.format === 'openapi') {
-    if (!/\.(ya?ml|json)$/.test(entry.spec_path)) {
+    if (!/\.(ya?ml|json)$/.test(specPath)) {
       throw new Error(
         `platform-protocol-specs entry "${name}" format is openapi but ` +
-          `spec_path "${entry.spec_path}" does not end with .yaml/.yml/.json.`,
+          `spec_url "${entry.spec_url}" does not end with .yaml/.yml/.json.`,
       );
     }
-    const document = read(absoluteSpecPath);
-    if (!/^openapi:\s*["']?3\.1\b/m.test(document)) {
+    const document = loadYaml(absoluteSpecPath, `published OpenAPI spec ${specPath}`);
+    if (typeof document.openapi !== 'string' || !/^3\.1\.\d+$/.test(document.openapi)) {
       throw new Error(
-        `published OpenAPI spec ${entry.spec_path} for "${name}" must ` +
+        `published OpenAPI spec ${specPath} for "${name}" must ` +
           `declare openapi: 3.1.x.`,
       );
     }
-    assertYamlScalar(document, 'title', entry.spec_id, entry.spec_path, name);
-    assertYamlScalar(document, 'x-durable-workflow-catalog-entry', name, entry.spec_path, name);
-    assertYamlScalar(
-      document,
+    assertYamlDocumentValue(document.info?.title, entry.spec_id, 'info.title', specPath, name);
+    assertYamlDocumentValue(
+      document['x-durable-workflow-catalog-entry'],
+      name,
+      'x-durable-workflow-catalog-entry',
+      specPath,
+      name,
+    );
+    assertYamlDocumentValue(
+      document['x-durable-workflow-catalog-version'],
+      catalogVersion,
       'x-durable-workflow-catalog-version',
-      String(catalogVersion),
-      entry.spec_path,
+      specPath,
       name,
     );
-    assertYamlScalar(
-      document,
-      'x-durable-workflow-evolution-rule',
+    assertYamlDocumentValue(
+      document['x-durable-workflow-evolution-rule'],
       entry.evolution_rule,
-      entry.spec_path,
+      'x-durable-workflow-evolution-rule',
+      specPath,
       name,
     );
-    assertYamlObjectFamilies(document, entry, entry.spec_path, name);
+    assertObjectFamiliesMatchSpecDocument(
+      name,
+      entry,
+      document['x-durable-workflow-object-families'],
+      specPath,
+    );
   } else if (entry.format === 'asyncapi') {
-    if (!/\.(ya?ml|json)$/.test(entry.spec_path)) {
+    if (!/\.(ya?ml|json)$/.test(specPath)) {
       throw new Error(
         `platform-protocol-specs entry "${name}" format is asyncapi but ` +
-          `spec_path "${entry.spec_path}" does not end with .yaml/.yml/.json.`,
+          `spec_url "${entry.spec_url}" does not end with .yaml/.yml/.json.`,
       );
     }
-    const document = read(absoluteSpecPath);
-    if (!/^asyncapi:\s*["']?(2\.(6|[7-9])|[3-9]\.)/m.test(document)) {
+    const document = loadYaml(absoluteSpecPath, `published AsyncAPI spec ${specPath}`);
+    if (!isSupportedAsyncApiVersion(document.asyncapi)) {
       throw new Error(
-        `published AsyncAPI spec ${entry.spec_path} for "${name}" must ` +
+        `published AsyncAPI spec ${specPath} for "${name}" must ` +
           `declare asyncapi: 2.6.0 or newer.`,
       );
     }
-    assertYamlScalar(document, 'id', entry.spec_id, entry.spec_path, name);
-    assertYamlScalar(document, 'x-durable-workflow-catalog-entry', name, entry.spec_path, name);
-    assertYamlScalar(
-      document,
+    assertYamlDocumentValue(document.id, entry.spec_id, 'id', specPath, name);
+    assertYamlDocumentValue(
+      document['x-durable-workflow-catalog-entry'],
+      name,
+      'x-durable-workflow-catalog-entry',
+      specPath,
+      name,
+    );
+    assertYamlDocumentValue(
+      document['x-durable-workflow-catalog-version'],
+      catalogVersion,
       'x-durable-workflow-catalog-version',
-      String(catalogVersion),
-      entry.spec_path,
+      specPath,
       name,
     );
-    assertYamlScalar(
-      document,
-      'x-durable-workflow-evolution-rule',
+    assertYamlDocumentValue(
+      document['x-durable-workflow-evolution-rule'],
       entry.evolution_rule,
-      entry.spec_path,
+      'x-durable-workflow-evolution-rule',
+      specPath,
       name,
     );
-    assertYamlObjectFamilies(document, entry, entry.spec_path, name);
+    assertObjectFamiliesMatchSpecDocument(
+      name,
+      entry,
+      document['x-durable-workflow-object-families'],
+      specPath,
+    );
   }
 }
 
@@ -625,11 +964,18 @@ function assertAgentToolingSchemaDefinitionsAreAligned(catalog) {
       continue;
     }
 
-    const document = loadJson(
-      path.join(repoRoot, entry.spec_path),
-      `published spec ${entry.spec_path}`,
+    const publicSpec = resolvePublicSpecReference(
+      entry.spec_url,
+      `platform-protocol-specs entry "${entryName}" spec_url`,
     );
-    for (const record of collectAgentToolingSchemaDefinitions(document, entry.spec_path)) {
+    const document = loadJson(
+      publicSpec.absolutePath,
+      `published spec ${publicSpec.repoRelativePath}`,
+    );
+    for (const record of collectAgentToolingSchemaDefinitions(
+      document,
+      publicSpec.repoRelativePath,
+    )) {
       record.catalogEntryName = entryName;
       records.push(record);
       if (!recordsBySchemaId.has(record.schemaId)) {
@@ -723,17 +1069,7 @@ function assertAgentToolingSchemaIdsHaveCatalogFamilies(catalog, records) {
         `platform-protocol-specs entry "${record.catalogEntryName}" embeds ` +
           `public agent-tooling schema id ${record.schemaId} at ` +
           `${record.specPath}${record.pointer}, but object_families does not ` +
-          `declare "${expectedFamilyName}" with schema/version authority.`,
-      );
-    }
-
-    if (family.version_authority !== record.schemaId) {
-      throw new Error(
-        `platform-protocol-specs entry "${record.catalogEntryName}" object ` +
-          `family "${expectedFamilyName}" must use version_authority ` +
-          `"${record.schemaId}" because ${record.specPath}${record.pointer} ` +
-          `embeds that public agent-tooling schema id ` +
-          `(got "${family.version_authority}").`,
+          `declare "${expectedFamilyName}".`,
       );
     }
   }
@@ -820,49 +1156,32 @@ function assertObjectFamiliesMatchSpecDocument(name, entry, documentFamilies, sp
     throw new Error(
       `published spec ${specPath} for "${name}" must declare ` +
         `x-durable-workflow-object-families equal to the catalog entry's ` +
-        `object_families list so schema/version authority cannot drift.`,
+        `object_families list so public family ownership cannot drift.`,
     );
   }
 }
 
-function assertYamlObjectFamilies(document, entry, specPath, name) {
-  if (!document.includes('x-durable-workflow-object-families:')) {
-    throw new Error(
-      `published spec ${specPath} for "${name}" must declare ` +
-        `x-durable-workflow-object-families metadata.`,
-    );
-  }
-
-  for (const family of entry.object_families) {
-    for (const [field, value] of Object.entries(family)) {
-      const raw = `${field}: ${value}`;
-      const quoted = `${field}: ${JSON.stringify(value)}`;
-      if (!document.includes(raw) && !document.includes(quoted)) {
-        throw new Error(
-          `published spec ${specPath} for "${name}" must include object ` +
-            `family metadata ${field} = ${value}.`,
-        );
-      }
-    }
-  }
-}
-
-function assertYamlScalar(document, key, expected, specPath, name) {
-  const re = new RegExp(
-    `^\\s*${escapeRegExp(key)}:\\s*["']?${escapeRegExp(expected)}["']?\\s*$`,
-    'm',
-  );
-  if (!re.test(document)) {
+function assertYamlDocumentValue(actual, expected, key, specPath, name) {
+  if (actual !== expected) {
     throw new Error(
       `published spec ${specPath} for "${name}" must declare ${key}: ` +
-        `${expected}. This lightweight CI parser only accepts a simple ` +
-        `scalar for this required metadata field.`,
+        `${expected} at the defined document location ` +
+        `(got ${JSON.stringify(actual)}).`,
     );
   }
 }
 
-function escapeRegExp(input) {
-  return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function isSupportedAsyncApiVersion(version) {
+  if (typeof version !== 'string') {
+    return false;
+  }
+  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
+  if (match === null) {
+    return false;
+  }
+  const major = Number(match[1]);
+  const minor = Number(match[2]);
+  return major > 2 || (major === 2 && minor >= 6);
 }
 
 function escapeJsonPointerSegment(input) {
@@ -877,6 +1196,9 @@ function main() {
   const surfaceFamilies = loadSurfaceFamilies();
   const catalog = loadCatalog();
 
+  assertCatalogDoesNotExposeRepositoryLocalAuthority(catalog);
+  loadAndValidateProvenance(catalog);
+  assertReleaseCheckDescribesMachineValidation(catalog);
   assertWorkflowCatalogMirrorMatchesWhenAvailable();
   assertServerOwnedSpecMirrorsMatchWhenAvailable(catalog);
   assertCatalogEntriesAreWellFormed(catalog, surfaceFamilies);
@@ -888,4 +1210,12 @@ function main() {
   );
 }
 
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  assertCatalogDoesNotExposeRepositoryLocalAuthority,
+  assertPublishedSpecFileMatchesEntry,
+  loadYaml,
+};

@@ -62,23 +62,23 @@ The companion [Platform Protocol Specs](/docs/2.0/platform-protocol-specs)
 catalog says *where* the normative machine-readable specification for
 each surface lives, *which format* the spec uses (OpenAPI for HTTP APIs,
 JSON Schema for object families, AsyncAPI for event-stream semantics),
-*which repository* owns the spec, which object families it governs,
-which schema/version authority owns those families, and *which
-conformance test* pins the spec against drift. SDK authors, agents, and
-operators should validate against the spec catalog rather than
-re-reading prose for every surface.
+*which repository* owns the spec, which object families it governs, and
+which public URL resolves the artifact. SDK authors, agents, and operators
+should validate against the spec catalog rather than re-reading prose or
+depending on repository-local implementation details.
 
 The catalog has its own machine-readable mirror at
 `platform_protocol_specs` in `GET /api/cluster/info` (schema
-`durable-workflow.v2.platform-protocol-specs.catalog`, version `14`) and
-a frozen JSON copy at `static/platform-protocol-specs.json` in this
-repository. Every catalog entry's `surface_family` must exist in the
-contract above; the release-check gate in
-`scripts/check-platform-protocol-specs.js` fails the build on drift.
+`durable-workflow.v2.platform-protocol-specs.catalog`, version `15`) and
+at the public
+[JSON catalog](https://durable-workflow.github.io/platform-protocol-specs.json).
+Every catalog entry's `surface_family` must exist in the contract above;
+docs-site CI validates the catalog, resolves each public spec URL, and rejects
+repository-local authority fields.
 
-Every platform protocol catalog entry is now marked `published`, and each
-entry links to an OpenAPI, AsyncAPI, or JSON Schema document under
-`static/platform-protocol-specs/`. The
+Every required platform protocol catalog entry is marked `published`; the
+invocable carrier entry remains `in_progress`. Every available entry links
+directly to a public OpenAPI, AsyncAPI, or JSON Schema document. The
 [`cluster_info_envelope`](/docs/2.0/platform-protocol-specs#cluster_info_envelope)
 schema pins the discovery surface every other catalog entry can be
 reached from.

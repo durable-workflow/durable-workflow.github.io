@@ -6,33 +6,24 @@
   "type": "object",
   "x-durable-workflow-catalog-entry": "mcp_tool_results",
   "x-durable-workflow-catalog-schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "x-durable-workflow-catalog-version": 14,
-  "x-durable-workflow-owner-symbol": "docs/mcp-workflows.md Tool Result Contract and static/platform-protocol-specs/mcp-tool-results.schema.json",
+  "x-durable-workflow-catalog-version": 15,
   "x-durable-workflow-evolution-rule": "additive_minor_breaking_major",
   "x-durable-workflow-object-families": [
     {
       "name": "mcp_tool_result_envelope",
-      "owner_repo": "durable-workflow/durable-workflow.github.io",
-      "schema_authority": "docs/mcp-workflows.md Tool Result Contract and static/platform-protocol-specs/mcp-tool-results.schema.json",
-      "version_authority": "durable-workflow.v2.mcp-tool-results"
+      "owner_repo": "durable-workflow/durable-workflow.github.io"
     },
     {
       "name": "agent_root_cause",
-      "owner_repo": "durable-workflow/durable-workflow.github.io",
-      "schema_authority": "docs/mcp-workflows.md Failure And Remediation Taxonomy and static/platform-protocol-specs/mcp-tool-results.schema.json",
-      "version_authority": "durable-workflow.v2.agent-root-cause"
+      "owner_repo": "durable-workflow/durable-workflow.github.io"
     },
     {
       "name": "agent_remediation",
-      "owner_repo": "durable-workflow/durable-workflow.github.io",
-      "schema_authority": "docs/mcp-workflows.md Failure And Remediation Taxonomy and static/platform-protocol-specs/mcp-tool-results.schema.json",
-      "version_authority": "durable-workflow.v2.agent-remediation"
+      "owner_repo": "durable-workflow/durable-workflow.github.io"
     },
     {
       "name": "safe_mutation",
-      "owner_repo": "durable-workflow/durable-workflow.github.io",
-      "schema_authority": "docs/mcp-workflows.md Failure And Remediation Taxonomy and static/platform-protocol-specs/mcp-tool-results.schema.json",
-      "version_authority": "durable-workflow.v2.safe-mutation"
+      "owner_repo": "durable-workflow/durable-workflow.github.io"
     }
   ],
   "required": ["schema", "version", "status"],
