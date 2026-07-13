@@ -33,7 +33,6 @@ const sidebars = {
         description: 'Choose message streams, durable commands, waits, retries, versioning, and bounded-history patterns.',
       },
       items: [
-        'features/message-streams',
         'features/signals',
         'features/updates',
         'features/queries',
@@ -51,6 +50,7 @@ const sidebars = {
         'features/schedules',
         'features/search-attributes',
         'features/memo',
+        'features/message-streams',
         'features/events',
         'features/versioning',
         'features/external-payload-storage',
