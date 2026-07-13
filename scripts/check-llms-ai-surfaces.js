@@ -1,186 +1,137 @@
+#!/usr/bin/env node
+
 const fs = require('fs');
 const path = require('path');
 
-const { ARTIFACT_PINS } = require('./public-artifact-versions');
+const config = require('../docusaurus.config.js');
 
-const buildDir = path.join(__dirname, '..', 'build');
+const repoRoot = path.join(__dirname, '..');
+const buildDir = path.join(repoRoot, 'build');
+const DOC_EXTENSIONS = new Set(['.md', '.mdx']);
+const EXCLUDED_FILES = new Set(['sponsors.md', 'support.md']);
 
 function readBuildFile(name) {
   const filePath = path.join(buildDir, name);
-
   if (!fs.existsSync(filePath)) {
-    throw new Error(`Missing generated manifest: build/${name}`);
+    throw new Error(`Missing generated LLM artifact: build/${name}`);
   }
-
   return fs.readFileSync(filePath, 'utf8');
 }
 
-function assertIncludes(haystack, needle, fileName) {
-  if (!haystack.includes(needle)) {
-    throw new Error(`Expected build/${fileName} to include ${JSON.stringify(needle)}`);
+function collectSourceFiles(directory) {
+  const files = [];
+
+  function visit(current) {
+    for (const entry of fs.readdirSync(current, {withFileTypes: true})) {
+      const absolutePath = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        visit(absolutePath);
+      } else if (
+        entry.isFile() &&
+        DOC_EXTENSIONS.has(path.extname(entry.name)) &&
+        !EXCLUDED_FILES.has(entry.name)
+      ) {
+        files.push(path.relative(repoRoot, absolutePath).split(path.sep).join('/'));
+      }
+    }
+  }
+
+  visit(directory);
+  return files.sort();
+}
+
+function sourceMarkers(content) {
+  return [...content.matchAll(/^<!-- Source: ([^ ]+\.mdx?) -->$/gm)]
+    .map(match => match[1])
+    .sort();
+}
+
+function assertSameList(actual, expected, label) {
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    throw new Error(`${label} source inventory does not match its docs directory`);
   }
 }
 
-function assertExcludes(haystack, needle, fileName) {
-  if (haystack.includes(needle)) {
-    throw new Error(`Expected build/${fileName} not to include ${JSON.stringify(needle)}`);
+function assertIndexCoversSources(index, expectedSources, label) {
+  for (const source of expectedSources) {
+    if (!index.includes(source)) {
+      throw new Error(`${label} is missing source link ${source}`);
+    }
   }
+}
+
+function assertNoUnresolvedArtifactTokens(content, label) {
+  if (/%%artifact\.[A-Za-z0-9_-]+%%/.test(content)) {
+    throw new Error(`${label} contains unresolved public artifact tokens`);
+  }
+}
+
+function docsConfig() {
+  const preset = Array.isArray(config.presets)
+    ? config.presets.find(entry => Array.isArray(entry) && entry[0] === 'classic')
+    : null;
+  return preset?.[1]?.docs || {};
 }
 
 function main() {
   const v2Index = readBuildFile('llms-2.0.txt');
   const v2Full = readBuildFile('llms-full-2.0.txt');
+  const v2PathAlias = readBuildFile('2.0/llms-full.txt');
   const canonicalIndex = readBuildFile('llms.txt');
   const canonicalFull = readBuildFile('llms-full.txt');
   const v1Index = readBuildFile('llms-1.x.txt');
   const v1Full = readBuildFile('llms-full-1.x.txt');
+  const v2Sources = collectSourceFiles(path.join(repoRoot, 'docs'));
+  const v1Sources = collectSourceFiles(path.join(repoRoot, 'versioned_docs', 'version-1.x'));
+  const lastVersion = docsConfig().lastVersion;
 
-  const requiredV2IndexSources = [
-    'docs/capabilities.md',
-    'docs/ai-agent-workflow-engine.md',
-    'docs/workflow-engine-categories.md',
-    'docs/ai-assisted-development.md',
-    'docs/agent-operating-loop.md',
-    'docs/quickstart.md',
-    'docs/mcp-workflows.md',
-    'docs/agent-tooling-contract.md',
-    'docs/docs-page-release-audit.md',
-    'docs/sample-app.md',
-    'docs/polyglot/cli.mdx',
-    'docs/polyglot/cli-python-parity.md',
-    'docs/polyglot/server.md',
-    'docs/polyglot/rust.md',
-    'docs/polyglot/external-execution.md',
-    'llms-full-2.0.txt',
-  ];
+  assertSameList(sourceMarkers(v2Full), v2Sources, 'llms-full-2.0.txt');
+  assertSameList(sourceMarkers(v1Full), v1Sources, 'llms-full-1.x.txt');
+  assertIndexCoversSources(v2Index, v2Sources, 'llms-2.0.txt');
+  assertIndexCoversSources(v1Index, v1Sources, 'llms-1.x.txt');
 
-  for (const source of requiredV2IndexSources) {
-    assertIncludes(v2Index, source, 'llms-2.0.txt');
-  }
-
-  const requiredV2FullContent = [
-    '<!-- Source: docs/capabilities.md -->',
-    '# Durable Workflow 2.0 Capability Index',
-    '<!-- Source: docs/ai-agent-workflow-engine.md -->',
-    '# Is Durable Workflow a good workflow engine for AI agents?',
-    '<!-- Source: docs/workflow-engine-categories.md -->',
-    '# Workflow Engine Evaluation Categories',
-    'PHP, Python, and Rust are the three first-party SDK languages',
-    'Discover -> Change -> Run -> Diagnose -> Repair',
-    'Temporal is substantially more mature operationally',
-    'Cloud Control Plane',
-    '<!-- Source: docs/ai-assisted-development.md -->',
-    '# AI-Assisted Development',
-    '2.0 prerelease',
-    '# Agent Operating Loop',
-    '# MCP Workflow Surface',
-    '# Agent Tooling Contract',
-    '# Docs Page Release Audit',
-    '# Workflow API',
-    'More Info for AI',
-    'https://durable-workflow.com/llms-full-2.0.txt',
-    '/mcp/workflows',
-    'list_workflows',
-    'start_workflow',
-    'get_workflow_result',
-    'get_workflow_history',
-    'diagnose_workflow',
-    'repair_workflow',
-    '## Tool Input Contract',
-    '## Tool Result Contract',
-    '## Failure And Remediation Taxonomy',
-    'durable-workflow.v2.agent-root-cause',
-    'durable-workflow.v2.agent-remediation',
-    'durable-workflow.v2.safe-mutation',
-    'remediation.automatic_repair.allowed',
-    'duplicate_start_policy=return_existing_active',
-    'payload_preview_limit_bytes',
-    'CLI reference',
-    'Five-Minute Operator Quickstart',
-    ARTIFACT_PINS.cliInstallerEnv,
-    ARTIFACT_PINS.serverDockerHubImage,
-    ARTIFACT_PINS.pythonPipInstallCommand,
-    ARTIFACT_PINS.rustCargoAddCommand,
-    ARTIFACT_PINS.rustCargoRequirement,
-    'dw env:set local',
-    'dw doctor',
-    '/quickstart-execution-contract.json',
-    'CLI and Python Parity',
-    'workflow-start-parity.json',
-    'activity_grade_external_execution',
-    'worker_protocol.external_execution_surface_contract',
-    'bridge adapters',
-    'Python API reference',
-    'Client::start_workflow_with_options',
-    'WorkflowStartOptions',
-    'result_wait_timeout',
-    'client_timeout',
-    'execution_timeout',
-    'run_timeout',
-    'apache-avro',
-    'MCP tools, CLI JSON, server diagnostics, Waterline exports, and SDK fixtures',
-    'line up as one machine-operable surface',
-    'humans learn the workflow/activity/replay invariant',
-    'discover-change-run-diagnose workflow',
-    'The `simple` and `elapsed` workflow keys are the preferred smoke surfaces.',
-    'dw debug workflow <workflow-id> --output=json',
-  ];
-
-  for (const content of requiredV2FullContent) {
-    assertIncludes(v2Full, content, 'llms-full-2.0.txt');
-  }
-
-  assertIncludes(v2Index, 'Topics: ai, agents, llms', 'llms-2.0.txt');
-  assertIncludes(v2Index, 'prerelease guidance', 'llms-2.0.txt');
-  assertIncludes(v2Index, 'not the default public docs line', 'llms-2.0.txt');
-  assertIncludes(v2Index, 'Topics: ai, agents, mcp, operations', 'llms-2.0.txt');
-  assertIncludes(v2Index, 'Topics: authoring, workflows, determinism', 'llms-2.0.txt');
-  assertIncludes(v2Index, 'Topics: worker-protocol, external-workers, polyglot', 'llms-2.0.txt');
-  assertIncludes(v2Index, 'Define Durable Workflow v2 workflow classes and keep orchestration code deterministic.', 'llms-2.0.txt');
-  assertIncludes(v2Index, 'Implement the versioned worker-plane protocol for polling, leasing, history replay, heartbeats, completion, and external task results.', 'llms-2.0.txt');
-  assertExcludes(v2Index, 'docs/topics.md', 'llms-2.0.txt');
-  assertExcludes(v2Index, 'docs/search-and-navigation.md', 'llms-2.0.txt');
-  assertExcludes(v2Full, '<!-- Source: docs/topics.md -->', 'llms-full-2.0.txt');
-  assertExcludes(v2Full, '<!-- Source: docs/search-and-navigation.md -->', 'llms-full-2.0.txt');
-  assertExcludes(v2Full, '# Topics', 'llms-full-2.0.txt');
-  assertExcludes(v2Full, '# Search and Navigation', 'llms-full-2.0.txt');
-  assertExcludes(v2Full, '<details>', 'llms-full-2.0.txt');
-  assertExcludes(v2Full, '<summary>', 'llms-full-2.0.txt');
-  assertIncludes(v2Full, '2.0 Prerelease Documentation', 'llms-full-2.0.txt');
-  assertIncludes(v2Full, 'not the default public docs line', 'llms-full-2.0.txt');
-  // Structural gate: canonical manifests must originate from whichever version
-  // docusaurus.config.js declares as lastVersion. This assertion is the
-  // machine-readable form of the cutover gate — changing canonical requires
-  // advancing lastVersion in the config, not just editing these scripts.
-  const configContent = fs.readFileSync(
-    path.join(__dirname, '..', 'docusaurus.config.js'),
-    'utf8',
-  );
-  const lastVersionMatch = configContent.match(/lastVersion:\s*['"]([^'"]*)['"]/);
-  const lastVersion = lastVersionMatch ? lastVersionMatch[1] : null;
-  if (lastVersion && lastVersion !== 'current') {
-    const expectedSourcePrefix = `versioned_docs/version-${lastVersion}`;
-    assertIncludes(canonicalIndex, expectedSourcePrefix, 'llms.txt');
-    assertIncludes(canonicalFull, `<!-- Source: ${expectedSourcePrefix}`, 'llms-full.txt');
+  if (lastVersion === 'current' || !lastVersion) {
+    assertSameList(sourceMarkers(canonicalFull), v2Sources, 'llms-full.txt');
+    assertIndexCoversSources(canonicalIndex, v2Sources, 'llms.txt');
   } else {
-    assertExcludes(canonicalIndex, 'versioned_docs/', 'llms.txt');
-    assertIncludes(canonicalIndex, 'docs/ai-assisted-development.md', 'llms.txt');
-    assertIncludes(canonicalFull, '# AI-Assisted Development', 'llms-full.txt');
+    const canonicalSources = collectSourceFiles(
+      path.join(repoRoot, 'versioned_docs', `version-${lastVersion}`),
+    );
+    assertSameList(sourceMarkers(canonicalFull), canonicalSources, 'llms-full.txt');
+    assertIndexCoversSources(canonicalIndex, canonicalSources, 'llms.txt');
   }
 
-  // Canonical index must reference the canonical full file and must not
-  // reference the versioned-alias form. The source-version assertion is
-  // handled above by the structural gate; no version-specific strings here.
-  assertIncludes(canonicalIndex, 'llms-full.txt', 'llms.txt');
-  assertExcludes(canonicalIndex, 'llms-full-2.0.txt', 'llms.txt');
+  if (lastVersion === '1.x' && canonicalFull !== v1Full) {
+    throw new Error('Canonical full LLM bundle must be byte-equivalent to the stable 1.x bundle');
+  }
+  if (v2PathAlias !== v2Full) {
+    throw new Error('Version-path LLM bundle must be byte-equivalent to llms-full-2.0.txt');
+  }
 
-  // v1.x is reachable via the canonical default and the explicit pinned alias.
-  assertIncludes(v1Index, 'versioned_docs/version-1.x', 'llms-1.x.txt');
-  assertIncludes(v1Index, 'llms-full-1.x.txt', 'llms-1.x.txt');
-  assertExcludes(v1Index, 'docs/ai-assisted-development.md', 'llms-1.x.txt');
-  assertExcludes(v1Full, '# AI-Assisted Development', 'llms-full-1.x.txt');
+  for (const [label, content] of Object.entries({
+    'llms.txt': canonicalIndex,
+    'llms-full.txt': canonicalFull,
+    'llms-1.x.txt': v1Index,
+    'llms-full-1.x.txt': v1Full,
+    'llms-2.0.txt': v2Index,
+    'llms-full-2.0.txt': v2Full,
+  })) {
+    assertNoUnresolvedArtifactTokens(content, label);
+  }
 
-  console.log('LLM AI surface checks passed');
+  if (!canonicalIndex.includes('/llms-full.txt')) {
+    throw new Error('Canonical LLM index must link to the canonical full bundle');
+  }
+  if (!v1Index.includes('/llms-full-1.x.txt')) {
+    throw new Error('Stable versioned LLM index must link to its full bundle');
+  }
+  if (!v2Index.includes('/llms-full-2.0.txt')) {
+    throw new Error('2.0 versioned LLM index must link to its full bundle');
+  }
+
+  console.log(
+    `LLM route inventories match ${v1Sources.length} stable and ${v2Sources.length} prerelease docs`,
+  );
 }
 
 main();

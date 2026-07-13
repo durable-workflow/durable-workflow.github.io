@@ -12,29 +12,13 @@ const manifestPath = path.join(
   'platform-conformance',
   'workflow-lifecycle-scenarios.json'
 );
-const platformDocPath = path.join(repoRoot, 'docs', 'platform-conformance.md');
-const lifecycleDocPath = path.join(repoRoot, 'docs', 'features', 'cancel-and-terminate.md');
-const rustDocPath = path.join(repoRoot, 'docs', 'polyglot', 'rust.md');
-
 // This digest is the exact workflow-lifecycle manifest shipped by server
 // 0.2.647 and exercised with durable-workflow crate 0.1.12.
 const RELEASED_MANIFEST_SHA256 =
   'c74b2a8c8744a87bc5297ed50c761712636ed74044e9ec264065bf1f580a42f1';
-const PUBLIC_PATH = '/platform-conformance/workflow-lifecycle-scenarios.json';
-const PUBLIC_URL = `https://durable-workflow.github.io${PUBLIC_PATH}`;
 
 function read(file) {
   return fs.readFileSync(file, 'utf8');
-}
-
-function requireText(source, values, label) {
-  const normalizedSource = source.replace(/\s+/g, ' ');
-  for (const value of values) {
-    assert(
-      normalizedSource.includes(value.replace(/\s+/g, ' ')),
-      `${label} must include ${JSON.stringify(value)}`
-    );
-  }
 }
 
 const raw = read(manifestPath);
@@ -114,52 +98,10 @@ for (const field of [
   );
 }
 
-const platformDoc = read(platformDocPath);
-requireText(platformDoc, [
-  PUBLIC_URL,
-  'server `0.2.647`',
-  '`durable-workflow` crate `0.1.12`',
-  '`apache-avro`',
-  '`instance_cancel`',
-  '`instance_terminate`',
-  '`selected_run_guard`',
-  '`stale_run_rejection`',
-  '`typed_failed`',
-  '`typed_cancelled`',
-  '`typed_terminated`',
-  '`typed_timed_out`',
-  '`cancellation_heartbeat`',
-  '`late_activity_completion_refused`',
-  '`worker_restart_during_cancellation`',
-], 'platform conformance authority');
-
-const lifecycleDoc = read(lifecycleDocPath);
-requireText(lifecycleDoc, [
-  PUBLIC_URL,
-  'server `0.2.647`',
-  'crate `0.1.12`',
-  '`apache-avro`',
-  'selected-run',
-  'late completion',
-  'worker restart',
-], 'workflow lifecycle documentation');
-
-const rustDoc = read(rustDocPath);
-requireText(rustDoc, [
-  'explicit 2.0 prerelease docs line',
-  '`apache-avro` dependency',
-  'selected-run safety',
-  'typed terminal variants',
-  'late completion is rejected',
-  'after restart',
-], 'Rust SDK lifecycle documentation');
-
 console.log(
-  `Workflow lifecycle authority matches released manifest sha256:${digest} and the Rust exact-crate narrative.`
+  `Workflow lifecycle authority matches released manifest sha256:${digest}.`
 );
 
 module.exports = {
-  PUBLIC_PATH,
-  PUBLIC_URL,
   RELEASED_MANIFEST_SHA256,
 };

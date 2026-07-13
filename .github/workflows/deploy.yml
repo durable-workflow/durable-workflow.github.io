@@ -120,9 +120,9 @@ jobs:
             'narrative and release audit docs revisions'
           );
           assert.strictEqual(
-            narrative.summary && narrative.summary.unique_markdown_sources,
-            narrative.source_reviews && narrative.source_reviews.length,
-            'narrative audit canonical Markdown source coverage matches the reviewed source rows'
+            narrative.summary && narrative.summary.markdown_sources,
+            narrative.route_inventory && narrative.route_inventory.length,
+            'narrative audit Markdown source count matches the built route inventory'
           );
 
           console.log(

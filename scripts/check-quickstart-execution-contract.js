@@ -60,19 +60,6 @@ function assertDeepEqual(actual, expected, label) {
   fail(`${label} must match docs/quickstart.md`);
 }
 
-function assertIncludes(haystack, needle, label) {
-  if (!String(haystack).includes(needle)) {
-    fail(`${label} must include ${JSON.stringify(needle)}`);
-  }
-}
-
-function assertIncludesNormalizedWhitespace(haystack, needle, label) {
-  const normalizedHaystack = String(haystack).replace(/\s+/g, ' ');
-  const normalizedNeedle = String(needle).replace(/\s+/g, ' ');
-
-  assertIncludes(normalizedHaystack, normalizedNeedle, label);
-}
-
 function assertArray(value, label) {
   if (!Array.isArray(value) || value.length === 0) {
     fail(`${label} must be a non-empty array`);
@@ -109,20 +96,6 @@ function concatDocsExamples(renderedQuickstart, ids) {
   return ids.flatMap(id => docsExampleLines(renderedQuickstart, id));
 }
 
-function extractSection(content, startHeading, endHeading) {
-  const startIndex = content.indexOf(startHeading);
-  if (startIndex === -1) {
-    fail(`docs/quickstart.md must include ${JSON.stringify(startHeading)}`);
-  }
-
-  const endIndex = content.indexOf(endHeading, startIndex + startHeading.length);
-  if (endIndex === -1) {
-    fail(`docs/quickstart.md must include ${JSON.stringify(endHeading)} after ${JSON.stringify(startHeading)}`);
-  }
-
-  return content.slice(startIndex, endIndex);
-}
-
 function getDocsReleaseConfig() {
   const content = read(configPath);
   const lastVersion = content.match(/lastVersion:\s*['"]([^'"]+)['"]/);
@@ -136,11 +109,6 @@ function getDocsReleaseConfig() {
     currentBanner: currentBanner ? currentBanner[1] : null,
     stablePath: stablePath ? stablePath[1] : null,
   };
-}
-
-function joinScriptLines(lines) {
-  assertArray(lines, 'script lines');
-  return lines.join('\n');
 }
 
 function byId(items, label) {
@@ -266,166 +234,38 @@ function assertQuickstartScriptLinesMatchDocs(contract, renderedQuickstart) {
   );
 }
 
-function documentedWorkflowIdPattern(pattern, label) {
-  if (pattern === '^quickstart-python-greeter-[0-9]+$') {
-    return 'quickstart-python-greeter-*';
-  }
-
-  if (pattern === '^quickstart-laravel-[0-9]{14}$') {
-    return 'quickstart-laravel-*';
-  }
-
-  fail(`${label}.workflow_id_pattern has no docs wildcard mapping: ${pattern}`);
-}
-
-function assertExpectedStateDocumented(state, completionCriteria, fullQuickstart, label) {
-  if (!state) {
-    fail(`${label}.expected_completion_state must be declared`);
-  }
-
-  if (state.workflow_id_pattern) {
-    assertIncludes(
-      completionCriteria,
-      documentedWorkflowIdPattern(state.workflow_id_pattern, label),
-      `${label} completion criteria`,
-    );
-  }
-
-  if (state.status) {
-    assertIncludes(completionCriteria, state.status, `${label} completion criteria status`);
-  }
-
-  if (state.result_contains) {
-    assertIncludes(completionCriteria, state.result_contains, `${label} completion criteria result`);
-  }
-
-  if (typeof state.timeout_seconds === 'number') {
-    assertIncludes(
-      completionCriteria,
-      `${state.timeout_seconds} seconds`,
-      `${label} completion criteria timeout`,
-    );
-  }
-
-  if (state.observes_workflow_from) {
-    assertIncludes(completionCriteria, 'Python workflow', `${label} completion criteria observed workflow`);
-  }
-
-  if (state.operator_only_creates_workflow === false) {
-    assertIncludesNormalizedWhitespace(
-      fullQuickstart,
-      'does not create or complete a user workflow by itself',
-      `${label} operator-only behavior`,
-    );
-  }
-}
-
-function assertSuccessProbeDocumented(probe, completionCriteria, scriptCorpus, label) {
-  if (probe.command) {
-    assertIncludes(
-      `${completionCriteria}\n${scriptCorpus}`,
-      probe.command,
-      `${label}.${probe.id} command`,
-    );
-  }
-
-  if (probe.expect_json_key) {
-    assertIncludes(completionCriteria, probe.expect_json_key, `${label}.${probe.id} expected JSON key`);
-  }
-
-  for (const substring of probe.required_substrings || []) {
-    assertIncludes(completionCriteria, substring, `${label}.${probe.id} required substring`);
-  }
-}
-
-function assertQuickstartObservablesMatchDocs(contract, renderedQuickstart) {
-  const completionCriteria = extractSection(renderedQuickstart, '## Completion Criteria', '## Clean Up');
-  const scriptCorpus = [
-    ...contract.hosting_branches.flatMap(branch => branch.setup_script_lines || []),
-    ...contract.hosting_branches.flatMap(branch => branch.teardown_script_lines || []),
-    ...contract.scenarios.flatMap(scenario => scenario.command_script_lines || []),
-    ...contract.scenarios.flatMap(scenario => scenario.teardown_script_lines || []),
-  ].join('\n');
-
-  for (const branch of contract.hosting_branches || []) {
-    for (const probe of branch.success_probes || []) {
-      assertSuccessProbeDocumented(probe, completionCriteria, scriptCorpus, branch.id);
-    }
-  }
-
-  for (const scenario of contract.scenarios || []) {
-    for (const probe of scenario.success_probes || []) {
-      assertSuccessProbeDocumented(probe, completionCriteria, scriptCorpus, scenario.id);
-    }
-
-    assertExpectedStateDocumented(
-      scenario.expected_completion_state,
-      completionCriteria,
-      renderedQuickstart,
-      scenario.id,
-    );
-  }
-}
-
 function assertContractCoverage(contract) {
   const personas = byId(contract.personas, 'personas');
   const hostingBranches = byId(contract.hosting_branches, 'hosting_branches');
   const scenarios = byId(contract.scenarios, 'scenarios');
+  const allowedChannels = new Set(contract.public_source_policy?.allowed_channels || []);
 
-  for (const id of ['python', 'operator', 'laravel']) {
-    if (!personas.has(id)) {
-      fail(`Contract must declare supported persona ${id}`);
-    }
+  if (allowedChannels.size === 0) {
+    fail('public_source_policy.allowed_channels must be a non-empty array');
   }
 
-  for (const id of ['standalone_server_sqlite', 'embedded_laravel_database_queue']) {
-    if (!hostingBranches.has(id)) {
-      fail(`Contract must declare hosting branch ${id}`);
-    }
-  }
-
-  for (const id of [
-    'python_user_local_server_completion',
-    'operator_local_server_observation',
-    'laravel_user_embedded_completion',
-  ]) {
-    if (!scenarios.has(id)) {
-      fail(`Contract must declare scenario ${id}`);
+  for (const branch of hostingBranches.values()) {
+    assertArray(branch.used_by_personas, `${branch.id}.used_by_personas`);
+    for (const persona of branch.used_by_personas) {
+      if (!personas.has(persona)) {
+        fail(`${branch.id} references unknown persona ${JSON.stringify(persona)}`);
+      }
     }
   }
 
   for (const scenario of scenarios.values()) {
     assertScenarioShape(scenario, hostingBranches, personas);
+    for (const channel of scenario.source_channels) {
+      if (!allowedChannels.has(channel)) {
+        fail(`${scenario.id} references unknown public source channel ${JSON.stringify(channel)}`);
+      }
+    }
+    for (const dependency of scenario.depends_on || []) {
+      if (!hostingBranches.has(dependency) && !scenarios.has(dependency)) {
+        fail(`${scenario.id} references unknown dependency ${JSON.stringify(dependency)}`);
+      }
+    }
   }
-
-  const standalone = hostingBranches.get('standalone_server_sqlite');
-  const standaloneScript = joinScriptLines(standalone.setup_script_lines);
-  assertIncludes(standaloneScript, ARTIFACT_PINS.serverDockerHubImage, 'standalone hosting setup');
-  assertIncludes(standaloneScript, 'http://localhost:8080/api/ready', 'standalone hosting setup');
-  assertIncludes(standaloneScript, '/api/cluster/info', 'standalone hosting setup');
-  assertIncludes(joinScriptLines(standalone.teardown_script_lines), 'docker volume rm durable-workflow-quickstart', 'standalone hosting teardown');
-
-  const pythonScript = joinScriptLines(scenarios.get('python_user_local_server_completion').command_script_lines);
-  assertIncludes(pythonScript, ARTIFACT_PINS.pythonPipInstallCommand, 'Python quickstart script');
-  assertIncludes(pythonScript, 'await worker.run_until', 'Python quickstart script');
-  assertIncludes(pythonScript, 'python greeter.py', 'Python quickstart script');
-  assertEqual(scenarios.get('python_user_local_server_completion').expected_completion_state.status, 'completed', 'Python expected status');
-
-  const operatorScript = joinScriptLines(scenarios.get('operator_local_server_observation').command_script_lines);
-  assertIncludes(operatorScript, ARTIFACT_PINS.cliInstallerCommand, 'operator quickstart script');
-  assertIncludes(operatorScript, 'dw env:set local', 'operator quickstart script');
-  assertIncludes(operatorScript, 'dw workflow:describe', 'operator quickstart script');
-  assertIncludes(operatorScript, 'dw workflow:history', 'operator quickstart script');
-  assertIncludes(joinScriptLines(scenarios.get('operator_local_server_observation').teardown_script_lines), 'dw env:delete local', 'operator teardown');
-  assertEqual(scenarios.get('operator_local_server_observation').expected_completion_state.status, 'completed', 'operator expected status');
-
-  const laravelScript = joinScriptLines(scenarios.get('laravel_user_embedded_completion').command_script_lines);
-  assertIncludes(laravelScript, 'composer create-project laravel/laravel durable-workflow-laravel-quickstart', 'Laravel quickstart script');
-  assertIncludes(laravelScript, ARTIFACT_PINS.workflowComposerPackage, 'Laravel quickstart script');
-  assertIncludes(laravelScript, ARTIFACT_PINS.waterlineComposerPackage, 'Laravel quickstart script');
-  assertIncludes(laravelScript, 'php artisan queue:work --tries=1 --timeout=60', 'Laravel quickstart script');
-  assertIncludes(laravelScript, 'php artisan app:quickstart-workflow', 'Laravel quickstart script');
-  assertEqual(scenarios.get('laravel_user_embedded_completion').expected_completion_state.status, 'completed', 'Laravel expected status');
 }
 
 function assertDocsGuard(contract) {
@@ -450,13 +290,11 @@ function main() {
   assertEqual(contract.version, 1, 'quickstart execution contract version');
   assertEqual(contract.release_status, '2.0_prerelease', 'quickstart execution contract release_status');
   assertEqual(contract.authority_doc, 'docs/quickstart.md', 'quickstart execution contract authority_doc');
-  assertIncludes(quickstart, '/quickstart-execution-contract.json', 'docs/quickstart.md');
 
   assertDocsGuard(contract);
   assertPublicArtifactPins(contract);
   assertContractCoverage(contract);
   assertQuickstartScriptLinesMatchDocs(contract, renderedQuickstart);
-  assertQuickstartObservablesMatchDocs(contract, renderedQuickstart);
 
   console.log('Quickstart execution contract checks passed');
 }

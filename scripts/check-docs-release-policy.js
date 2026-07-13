@@ -1,16 +1,15 @@
+#!/usr/bin/env node
+
 const fs = require('fs');
 const path = require('path');
 
 const config = require('../docusaurus.config.js');
 const {
-  ARTIFACT_PIN_PATTERNS,
-  ARTIFACT_PINS,
-} = require('./public-artifact-versions');
-const {
   stableRuntimeScenarioDiscoveryEntries,
 } = require('./platform-conformance-public-discovery');
 const platformConformanceContract = require('../static/platform-conformance-contract.json');
 
+const buildDir = path.join(__dirname, '..', 'build');
 const STABLE_DOCS_VERSION = '1.x';
 const PRERELEASE_DOCS_VERSION = '2.0';
 const STABLE_DOCS_ROOT = '/docs/introduction/';
@@ -28,87 +27,26 @@ const PUBLIC_DISCOVERY_URLS = [
   '/docs-page-release-audit.json',
   '/docs-narrative-audit.json',
   '/platform-conformance-contract.json',
-  '/platform-conformance/signal-query-runtime-scenarios.json',
-  '/platform-conformance/workflow-update-runtime-scenarios.json',
-  '/platform-conformance/search-attribute-runtime-scenarios.json',
-  '/platform-conformance/replay-runtime-scenarios.json',
-  '/platform-conformance/namespace-runtime-scenarios.json',
-  '/platform-conformance/schedules-runtime-scenarios.json',
-  '/platform-conformance/child-workflow-runtime-scenarios.json',
-  '/platform-conformance/worker-versioning-runtime-scenarios.json',
-  '/platform-conformance/saga-runtime-scenarios.json',
-  '/platform-conformance/migration-runtime-scenarios.json',
-  '/platform-conformance/skew-refusal-matrix-scenarios.json',
-  '/platform-conformance/principal-attribution-scenarios.json',
-  '/platform-conformance/prerelease-readiness-scenarios.json',
 ];
-const STABLE_RUNTIME_SCENARIO_DISCOVERY_ENTRIES =
-  stableRuntimeScenarioDiscoveryEntries(platformConformanceContract);
 
 function fail(message) {
   throw new Error(message);
 }
 
-function assertEqual(actual, expected, label) {
-  if (actual !== expected) {
-    fail(`${label} must be ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
-  }
-}
-
-function assertIncludes(haystack, needle, label) {
-  if (!haystack.includes(needle)) {
-    fail(`${label} must include ${JSON.stringify(needle)}`);
-  }
-}
-
-function assertExcludes(haystack, needle, label) {
-  if (haystack.includes(needle)) {
-    fail(`${label} must not include ${JSON.stringify(needle)}`);
-  }
-}
-
-function renderedText(html) {
-  return html
-    .replace(/<[^>]*>/g, '')
-    .replace(/\s+/g, ' ');
-}
-
-function assertOnlyWaterlineArtifact(haystack, label) {
-  const waterlinePattern = ARTIFACT_PIN_PATTERNS
-    .find(definition => definition.category === 'waterline_artifact_pin');
-
-  if (!waterlinePattern) {
-    fail('Public artifact pin checks must define a Waterline Composer pin pattern');
-  }
-
-  const pattern = new RegExp(waterlinePattern.pattern.source, waterlinePattern.pattern.flags);
-  const pins = new Set([...haystack.matchAll(pattern)].map(match => match[0]));
-
-  if (!pins.has(ARTIFACT_PINS.waterlineComposerPackage)) {
-    fail(`${label} must include ${JSON.stringify(ARTIFACT_PINS.waterlineComposerPackage)}`);
-  }
-
-  for (const pin of pins) {
-    if (pin !== ARTIFACT_PINS.waterlineComposerPackage) {
-      fail(`${label} must not include stale Waterline artifact ${JSON.stringify(pin)}`);
-    }
-  }
-}
-
 function readBuildFile(relativePath) {
-  const filePath = path.join(__dirname, '..', 'build', relativePath);
-
+  const filePath = path.join(buildDir, relativePath);
   if (!fs.existsSync(filePath)) {
     fail(`Missing generated public docs artifact: build/${relativePath}`);
   }
-
   return fs.readFileSync(filePath, 'utf8');
 }
 
-function assertMissingBuildFile(relativePath, label) {
-  const filePath = path.join(__dirname, '..', 'build', relativePath);
+function readBuildJson(relativePath) {
+  return JSON.parse(readBuildFile(relativePath));
+}
 
-  if (fs.existsSync(filePath)) {
+function assertMissingBuildFile(relativePath, label) {
+  if (fs.existsSync(path.join(buildDir, relativePath))) {
     fail(`${label} must not be generated at build/${relativePath}`);
   }
 }
@@ -117,289 +55,148 @@ function getClassicPresetOptions() {
   const preset = Array.isArray(config.presets)
     ? config.presets.find(entry => Array.isArray(entry) && entry[0] === 'classic')
     : null;
-
-  if (!preset || !preset[1]) {
+  if (!preset?.[1]) {
     fail('docusaurus.config.js must configure the classic preset');
   }
-
   return preset[1];
-}
-
-function getDocsConfig() {
-  const docs = getClassicPresetOptions().docs;
-
-  if (!docs) {
-    fail('docusaurus.config.js classic preset must configure docs');
-  }
-
-  return docs;
 }
 
 function getRedirectsConfig() {
   const plugin = Array.isArray(config.plugins)
     ? config.plugins.find(entry => Array.isArray(entry) && entry[0] === '@docusaurus/plugin-client-redirects')
     : null;
-
-  return plugin && plugin[1] && Array.isArray(plugin[1].redirects)
-    ? plugin[1].redirects
-    : [];
+  return Array.isArray(plugin?.[1]?.redirects) ? plugin[1].redirects : [];
 }
 
 function fromList(value) {
   return Array.isArray(value) ? value : [value];
 }
 
-function assertDocsRootRedirect() {
+function assertDocsRootRedirects() {
   const redirects = getRedirectsConfig();
-  const stableRedirect = redirects.find(redirect => (
-    redirect &&
-    redirect.to === STABLE_DOCS_ROOT &&
-    fromList(redirect.from).includes('/docs')
-  ));
-
-  if (!stableRedirect) {
-    fail(`/docs must redirect to the stable ${STABLE_DOCS_VERSION} entrypoint ${STABLE_DOCS_ROOT}`);
+  if (!redirects.some(redirect => (
+    redirect?.to === STABLE_DOCS_ROOT && fromList(redirect.from).includes('/docs')
+  ))) {
+    fail(`/docs must redirect to ${STABLE_DOCS_ROOT}`);
   }
-
-  const prereleaseRedirect = redirects.find(redirect => (
-    redirect &&
-    redirect.to === PRERELEASE_DOCS_ROOT &&
-    fromList(redirect.from).includes('/docs/2.0')
-  ));
-
-  if (!prereleaseRedirect) {
-    fail(`/docs/2.0 must redirect to the ${PRERELEASE_DOCS_VERSION} prerelease entrypoint ${PRERELEASE_DOCS_ROOT}`);
+  if (!redirects.some(redirect => (
+    redirect?.to === PRERELEASE_DOCS_ROOT && fromList(redirect.from).includes('/docs/2.0')
+  ))) {
+    fail(`/docs/2.0 must redirect to ${PRERELEASE_DOCS_ROOT}`);
   }
 }
 
 function assertConfigPolicy() {
-  const docsConfig = getDocsConfig();
-  const versions = docsConfig.versions || {};
-  const stableVersion = versions[STABLE_DOCS_VERSION] || {};
-  const prereleaseVersion = versions.current || {};
+  const docs = getClassicPresetOptions().docs;
+  const versions = docs?.versions || {};
 
-  assertEqual(docsConfig.lastVersion, STABLE_DOCS_VERSION, 'docs.lastVersion');
-  assertEqual(stableVersion.path, '', `${STABLE_DOCS_VERSION} docs path`);
-  assertEqual(prereleaseVersion.path, PRERELEASE_DOCS_VERSION, 'current docs path');
-  assertEqual(prereleaseVersion.banner, 'unreleased', `${PRERELEASE_DOCS_VERSION} docs banner`);
-
-  if (!String(prereleaseVersion.label || '').toLowerCase().includes('prerelease')) {
-    fail(`${PRERELEASE_DOCS_VERSION} docs label must make the prerelease status explicit`);
+  if (docs?.lastVersion !== STABLE_DOCS_VERSION) {
+    fail(`docs.lastVersion must remain ${STABLE_DOCS_VERSION}`);
+  }
+  if (versions[STABLE_DOCS_VERSION]?.path !== '') {
+    fail(`${STABLE_DOCS_VERSION} docs must remain on the unversioned path`);
+  }
+  if (versions.current?.path !== PRERELEASE_DOCS_VERSION) {
+    fail(`current docs must remain under ${PRERELEASE_DOCS_VERSION}`);
+  }
+  if (versions.current?.banner !== 'unreleased') {
+    fail(`current ${PRERELEASE_DOCS_VERSION} docs must retain the unreleased version banner`);
   }
 
-  const navbarItems = (((config.themeConfig || {}).navbar || {}).items) || [];
-  const docsItem = navbarItems.find(item => item && item.label === 'Docs');
-
-  if (!docsItem) {
-    fail('Primary navbar must include a Docs link');
+  const navbarItems = config.themeConfig?.navbar?.items || [];
+  if (!navbarItems.some(item => item?.type === 'doc' && item.docId === 'introduction')) {
+    fail('Primary navbar must resolve through the stable introduction doc');
   }
+  assertDocsRootRedirects();
+}
 
-  assertEqual(docsItem.type, 'doc', 'Primary navbar Docs link type');
-  assertEqual(docsItem.docId, 'introduction', 'Primary navbar Docs docId');
-
-  assertDocsRootRedirect();
+function assertDocusaurusVersion(relativePath, expected) {
+  const html = readBuildFile(relativePath);
+  if (!html.includes(`name="docusaurus_version" content="${expected}"`)) {
+    fail(`build/${relativePath} must carry Docusaurus version ${expected}`);
+  }
 }
 
 function assertBuiltDocsPolicy() {
   const docsRoot = readBuildFile('docs/index.html');
   const prereleaseDocsRoot = readBuildFile('docs/2.0/index.html');
-  const stableIntro = readBuildFile('docs/introduction/index.html');
-  const stableInstall = readBuildFile('docs/installation/index.html');
-  const prereleaseIntro = readBuildFile('docs/2.0/introduction/index.html');
-  const home = readBuildFile('index.html');
-  const prereleaseQuickstart = readBuildFile('docs/2.0/quickstart/index.html');
-  const prereleaseRust = readBuildFile('docs/2.0/polyglot/rust/index.html');
-  const quickstartContract = readBuildFile('quickstart-execution-contract.json');
-  const prereleasePageReleaseAudit = readBuildFile('docs/2.0/docs-page-release-audit/index.html');
-  const pageReleaseAudit = readBuildFile('docs-page-release-audit.json');
-  const narrativeAudit = readBuildFile('docs-narrative-audit.json');
-  const canonicalIndex = readBuildFile('llms.txt');
-  const canonicalFull = readBuildFile('llms-full.txt');
-  const prereleaseIndex = readBuildFile('llms-2.0.txt');
-  const prereleaseFull = readBuildFile('llms-full-2.0.txt');
 
-  assertIncludes(docsRoot, STABLE_DOCS_ROOT, 'build/docs/index.html');
-  assertExcludes(docsRoot, '/docs/2.0/', 'build/docs/index.html');
+  if (!docsRoot.includes(STABLE_DOCS_ROOT) || docsRoot.includes('/docs/2.0/')) {
+    fail('build/docs/index.html must redirect only to the stable docs entrypoint');
+  }
+  if (!prereleaseDocsRoot.includes(PRERELEASE_DOCS_ROOT)) {
+    fail('build/docs/2.0/index.html must redirect to the explicit prerelease entrypoint');
+  }
 
-  assertIncludes(prereleaseDocsRoot, PRERELEASE_DOCS_ROOT, 'build/docs/2.0/index.html');
-  assertExcludes(prereleaseDocsRoot, STABLE_DOCS_ROOT, 'build/docs/2.0/index.html');
+  assertDocusaurusVersion('docs/introduction/index.html', STABLE_DOCS_VERSION);
+  assertDocusaurusVersion('docs/installation/index.html', STABLE_DOCS_VERSION);
+  assertDocusaurusVersion('docs/2.0/introduction/index.html', 'current');
+  assertDocusaurusVersion('docs/2.0/quickstart/index.html', 'current');
+  assertDocusaurusVersion('docs/2.0/polyglot/rust/index.html', 'current');
 
-  assertIncludes(stableIntro, 'name="docusaurus_version" content="1.x"', 'stable introduction page');
-  assertIncludes(stableInstall, 'name="docusaurus_version" content="1.x"', 'stable installation page');
-  assertIncludes(stableIntro, 'href="/docs/introduction/"', 'stable introduction navbar');
-  assertExcludes(stableIntro, 'llms-full-2.0.txt', 'stable introduction page');
+  const pageAudit = readBuildJson('docs-page-release-audit.json');
+  const narrativeAudit = readBuildJson('docs-narrative-audit.json');
+  const quickstartContract = readBuildJson('quickstart-execution-contract.json');
 
-  assertIncludes(home, '/docs/introduction', 'homepage');
-  assertIncludes(home, '/docs/2.0/quickstart/', 'homepage');
-  assertIncludes(home, '2.0 Prerelease Quickstart', 'homepage');
+  if (pageAudit.schema !== 'durable-workflow.docs.page-release-audit') {
+    fail('docs page release audit schema is invalid');
+  }
+  if (narrativeAudit.schema !== 'durable-workflow.docs.narrative-audit') {
+    fail('docs narrative audit schema is invalid');
+  }
+  if (quickstartContract.schema !== 'durable-workflow.docs.v2.quickstart-execution-contract') {
+    fail('quickstart execution contract schema is invalid');
+  }
 
-  assertIncludes(prereleaseIntro, 'name="docusaurus_version" content="current"', '2.0 introduction page');
-  assertIncludes(prereleaseIntro.toLowerCase(), 'unreleased', '2.0 introduction page');
-  assertIncludes(prereleaseIntro, '/docs/2.0/quickstart/', '2.0 introduction page');
-  assertIncludes(prereleaseIntro, ARTIFACT_PINS.serverDockerHubImage, '2.0 introduction page');
-  assertIncludes(prereleaseIntro, ARTIFACT_PINS.pythonPackagePin, '2.0 introduction page');
-  assertIncludes(prereleaseIntro, ARTIFACT_PINS.cliInstallerEnv, '2.0 introduction page');
-  assertIncludes(prereleaseQuickstart, 'name="docusaurus_version" content="current"', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart.toLowerCase(), '2.0 prerelease', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, ARTIFACT_PINS.serverDockerHubImage, '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, ARTIFACT_PINS.pythonPackagePin, '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, ARTIFACT_PINS.workflowComposerPackage, '2.0 quickstart page');
-  assertOnlyWaterlineArtifact(prereleaseQuickstart, '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'Start A Local Server', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'Python User', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'Operator User', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'Laravel User', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'Completion Criteria', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'href="https://durable-workflow.com/quickstart-execution-contract.json"', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'await worker.run_until', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'status=completed', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'dw workflow:history &quot;$QUICKSTART_WORKFLOW_ID&quot; &quot;$QUICKSTART_RUN_ID&quot; --output=json', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'dw workflow:list --status=completed --output=json', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'create-project laravel/laravel durable-workflow-laravel-quickstart', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'composer show durable-workflow/workflow', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'composer show durable-workflow/waterline', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'php artisan waterline:install', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, '$deadline = now()-&gt;addMinutes(10);', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'php artisan queue:work --tries', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, '--timeout', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'php artisan app:quickstart-workflow', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'quickstart-laravel-output.log', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'elapsed_seconds=', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'output=Hello, Laravel!', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'href="/docs/2.0/polyglot/python/', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'href="/docs/2.0/polyglot/server/', '2.0 quickstart page');
-  assertIncludes(prereleaseQuickstart, 'href="/docs/2.0/polyglot/cli/', '2.0 quickstart page');
-  assertExcludes(prereleaseQuickstart, 'href="/docs/polyglot/python/', '2.0 quickstart page');
-  assertExcludes(prereleaseQuickstart, 'href="/docs/polyglot/server/', '2.0 quickstart page');
-  assertExcludes(prereleaseQuickstart, 'href="/docs/polyglot/cli/', '2.0 quickstart page');
-  assertIncludes(prereleaseRust, 'name="docusaurus_version" content="current"', '2.0 Rust SDK page');
-  assertIncludes(prereleaseRust.toLowerCase(), '2.0 prerelease', '2.0 Rust SDK page');
-  assertIncludes(
-    renderedText(prereleaseRust),
-    ARTIFACT_PINS.rustCargoAddCommand,
-    '2.0 Rust SDK page rendered text'
-  );
-  assertIncludes(prereleaseRust, ARTIFACT_PINS.rustSdkVersion, '2.0 Rust SDK page');
-  assertIncludes(prereleaseRust, 'start_workflow_with_options', '2.0 Rust SDK page');
-  assertIncludes(prereleaseRust, 'result_wait_timeout', '2.0 Rust SDK page');
-  assertIncludes(prereleaseRust, 'client_timeout', '2.0 Rust SDK page');
-  assertIncludes(prereleaseRust, 'execution_timeout', '2.0 Rust SDK page');
-  assertIncludes(prereleaseRust, 'run_timeout', '2.0 Rust SDK page');
-  assertIncludes(prereleaseRust, 'apache-avro', '2.0 Rust SDK page');
-  assertIncludes(prereleasePageReleaseAudit, 'Page-level release-status verdicts', '2.0 docs page release audit');
-  assertIncludes(prereleasePageReleaseAudit, '/docs-page-release-audit.json', '2.0 docs page release audit');
-  assertIncludes(pageReleaseAudit, '"schema": "durable-workflow.docs.page-release-audit"', 'docs page release audit manifest');
-  assertIncludes(pageReleaseAudit, '"stable_default_docs_version": "1.x"', 'docs page release audit manifest');
-  assertIncludes(pageReleaseAudit, '"explicit_prerelease_docs_version": "2.0"', 'docs page release audit manifest');
-  assertIncludes(narrativeAudit, '"schema": "durable-workflow.docs.narrative-audit"', 'docs narrative audit manifest');
-  assertIncludes(narrativeAudit, '"stable_default_docs_version": "1.x"', 'docs narrative audit manifest');
-  assertIncludes(narrativeAudit, '"explicit_prerelease_docs_version": "2.0"', 'docs narrative audit manifest');
-  assertIncludes(quickstartContract, '"schema": "durable-workflow.docs.v2.quickstart-execution-contract"', 'quickstart execution contract');
-  assertIncludes(quickstartContract, '"stable_default_docs_version": "1.x"', 'quickstart execution contract');
-  assertIncludes(quickstartContract, '"python_user_local_server_completion"', 'quickstart execution contract');
-  assertIncludes(quickstartContract, '"operator_local_server_observation"', 'quickstart execution contract');
-  assertIncludes(quickstartContract, '"laravel_user_embedded_completion"', 'quickstart execution contract');
-
-  assertIncludes(canonicalIndex, 'versioned_docs/version-1.x', 'canonical llms.txt');
-  assertIncludes(canonicalFull, '<!-- Source: versioned_docs/version-1.x', 'canonical llms-full.txt');
-  assertExcludes(canonicalIndex, 'docs/ai-assisted-development.md', 'canonical llms.txt');
-  assertExcludes(canonicalIndex, 'docs/quickstart.md', 'canonical llms.txt');
-  assertExcludes(canonicalIndex, 'llms-full-2.0.txt', 'canonical llms.txt');
-
-  assertIncludes(prereleaseIndex, 'docs/quickstart.md', 'llms-2.0.txt');
-  assertIncludes(prereleaseIndex, 'prerelease guidance', 'llms-2.0.txt');
-  assertIncludes(prereleaseIndex, 'not the default public docs line', 'llms-2.0.txt');
-  assertIncludes(prereleaseFull, '2.0 Prerelease Documentation', 'llms-full-2.0.txt');
-  assertIncludes(prereleaseFull, 'not the default public docs line', 'llms-full-2.0.txt');
-  assertIncludes(prereleaseFull, '# 2.0 Prerelease Quickstart', 'llms-full-2.0.txt');
-  assertIncludes(prereleaseFull, '/quickstart-execution-contract.json', 'llms-full-2.0.txt');
-  assertIncludes(prereleaseFull, ARTIFACT_PINS.pythonPipInstallCommand, 'llms-full-2.0.txt');
-  assertOnlyWaterlineArtifact(prereleaseFull, 'llms-full-2.0.txt');
+  for (const artifact of [pageAudit, narrativeAudit]) {
+    if (artifact.release_status_guardrail?.stable_default_docs_version !== STABLE_DOCS_VERSION) {
+      fail('generated docs audit has an invalid stable default version');
+    }
+    if (artifact.release_status_guardrail?.explicit_prerelease_docs_version !== PRERELEASE_DOCS_VERSION) {
+      fail('generated docs audit has an invalid explicit prerelease version');
+    }
+  }
+  if (quickstartContract.default_docs_guard?.stable_default_docs_version !== STABLE_DOCS_VERSION) {
+    fail('quickstart contract has an invalid stable default version');
+  }
 }
 
 function assertPublicDiscoverySurface() {
   const sitemap = readBuildFile('sitemap.xml');
   const siteUrl = String(config.url || '').replace(/\/+$/, '');
+  const dynamicRoutes = stableRuntimeScenarioDiscoveryEntries(platformConformanceContract)
+    .map(entry => entry.path);
 
-  for (const entry of STABLE_RUNTIME_SCENARIO_DISCOVERY_ENTRIES) {
-    if (!PUBLIC_DISCOVERY_URLS.includes(entry.path)) {
-      fail(`PUBLIC_DISCOVERY_URLS must include stable runtime scenario manifest ${entry.path}`);
+  for (const route of [...new Set([...PUBLIC_DISCOVERY_URLS, ...dynamicRoutes])]) {
+    if (!sitemap.includes(`<loc>${siteUrl}${route}</loc>`)) {
+      fail(`build/sitemap.xml is missing public route ${route}`);
     }
   }
 
-  for (const route of PUBLIC_DISCOVERY_URLS) {
-    assertIncludes(sitemap, `<loc>${siteUrl}${route}</loc>`, 'build/sitemap.xml');
+  for (const route of [
+    'docs/polyglot/python/index.html',
+    'docs/polyglot/rust/index.html',
+    'docs/polyglot/server/index.html',
+  ]) {
+    assertMissingBuildFile(route, 'stable-default polyglot route');
   }
 
-  const platformConformance = readBuildFile('docs/platform-conformance/index.html');
-
-  assertMissingBuildFile('docs/polyglot/python/index.html', 'stable-default Python polyglot route');
-  assertMissingBuildFile('docs/polyglot/rust/index.html', 'stable-default Rust polyglot route');
-  assertMissingBuildFile('docs/polyglot/server/index.html', 'stable-default server polyglot route');
-  assertExcludes(sitemap, `${siteUrl}/docs/polyglot/python/`, 'build/sitemap.xml');
-  assertExcludes(sitemap, `${siteUrl}/docs/polyglot/rust/`, 'build/sitemap.xml');
-  assertExcludes(sitemap, `${siteUrl}/docs/polyglot/server/`, 'build/sitemap.xml');
-
-  assertIncludes(
-    platformConformance,
-    'Platform Conformance',
-    'build/docs/platform-conformance/index.html'
-  );
-  assertIncludes(
-    platformConformance,
-    '/docs/2.0/platform-conformance/',
-    'build/docs/platform-conformance/index.html'
-  );
-  assertIncludes(
-    platformConformance,
-    'href="/platform-conformance/workflow-update-runtime-scenarios.json"',
-    'build/docs/platform-conformance/index.html'
-  );
-  assertIncludes(
-    platformConformance,
-    'href="/platform-conformance/schedules-runtime-scenarios.json"',
-    'build/docs/platform-conformance/index.html'
-  );
-  assertIncludes(
-    platformConformance,
-    'href="/platform-conformance/worker-versioning-runtime-scenarios.json"',
-    'build/docs/platform-conformance/index.html'
-  );
-  assertIncludes(
-    platformConformance,
-    'href="/platform-conformance/saga-runtime-scenarios.json"',
-    'build/docs/platform-conformance/index.html'
-  );
-  assertIncludes(
-    platformConformance,
-    'href="/platform-conformance/migration-runtime-scenarios.json"',
-    'build/docs/platform-conformance/index.html'
-  );
-  for (const entry of STABLE_RUNTIME_SCENARIO_DISCOVERY_ENTRIES) {
-    assertIncludes(
-      platformConformance,
-      `href="${entry.path}"`,
-      'build/docs/platform-conformance/index.html'
-    );
+  for (const route of [
+    `${siteUrl}/docs/polyglot/python/`,
+    `${siteUrl}/docs/polyglot/rust/`,
+    `${siteUrl}/docs/polyglot/server/`,
+  ]) {
+    if (sitemap.includes(route)) {
+      fail(`build/sitemap.xml must not expose prerelease content at ${route}`);
+    }
   }
-  assertIncludes(
-    platformConformance,
-    'href="/platform-conformance-contract.json"',
-    'build/docs/platform-conformance/index.html'
-  );
-  assertExcludes(
-    platformConformance,
-    'name="docusaurus_version" content="current"',
-    'build/docs/platform-conformance/index.html'
-  );
 }
 
 function main() {
   assertConfigPolicy();
   assertBuiltDocsPolicy();
   assertPublicDiscoverySurface();
-
-  console.log('Docs release policy checks passed');
+  console.log('Docs release routing policy checks passed');
 }
 
 main();

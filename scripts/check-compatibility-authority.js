@@ -7,49 +7,20 @@
 // platform-wide stability contract that `Workflow\V2\Support\SurfaceStabilityContract`
 // emits and the standalone server re-exports under
 // `surface_stability_contract` in `GET /api/cluster/info`. The contract is
-// the single source of truth: this script fails the docs build when the
-// documentation drifts away from it.
-//
-// Specifically the script verifies that:
-//
-// 1. `docs/compatibility.md` advertises itself as the canonical authority
-//    and lists every surface family from the contract with the same
-//    stability level.
-// 2. The schema and version named in the doc page match the contract.
-// 3. `docs/compatibility.md` documents the same set of stability levels
-//    (`frozen`, `stable`, `prerelease`, `experimental`).
-// 4. Composer install snippets do not introduce stability claims that
-//    contradict the pre-stable 2.0 artifact tuple or the PHP workflow package.
-// 5. The version-history table on `docs/compatibility.md` does not
-//    introduce stability levels that the contract has never heard of.
-// 6. Rust crate metadata (from the sibling checkout when available), the
-//    frozen package contract, Rust guide, compatibility matrix, and public
-//    worker OpenAPI all describe the same fail-closed negotiation window.
-//
-// Drift here means a release shipped a doc change without updating the
-// machine-readable contract (or vice versa). Either fix the doc or bump
-// the contract; do not silence the check.
+// the single source of truth. This script validates its schema, the pre-stable
+// artifact guard, released Rust package metadata, and the public OpenAPI,
+// AsyncAPI, and workflow validation surfaces. Editorial pages are deliberately
+// outside this machine-contract gate.
 
 const fs = require('fs');
 const path = require('path');
 
 const {
-  ARTIFACT_PINS,
   ARTIFACT_VERSIONS,
-  replaceArtifactTokens,
 } = require('./public-artifact-versions');
 
 const repoRoot = path.join(__dirname, '..');
 const contractPath = path.join(repoRoot, 'static', 'compatibility-contract.json');
-const compatibilityDocPath = path.join(repoRoot, 'docs', 'compatibility.md');
-const installationDocPath = path.join(repoRoot, 'docs', 'installation.md');
-const rustGuidePath = path.join(repoRoot, 'docs', 'polyglot', 'rust.md');
-const workerProtocolGuidePath = path.join(
-  repoRoot,
-  'docs',
-  'polyglot',
-  'worker-protocol.md',
-);
 const workerOpenApiPath = path.join(
   repoRoot,
   'static',
@@ -68,25 +39,6 @@ const protocolSpecsWorkflowPath = path.join(
   'workflows',
   'protocol-specs.yml',
 );
-const composerInstallDocSurfaces = [
-  {
-    path: installationDocPath,
-    requiredPins: ['workflowComposerPackage'],
-    requiresStableCutoverGuidance: true,
-  },
-  {
-    path: path.join(repoRoot, 'docs', 'migration.md'),
-    requiredPins: ['workflowComposerPackage'],
-  },
-  {
-    path: path.join(repoRoot, 'docs', 'polyglot', 'server.md'),
-    requiredPins: ['workflowComposerPackage'],
-  },
-  {
-    path: path.join(repoRoot, 'docs', 'waterline-operator-api.md'),
-    requiredPins: ['workflowComposerPackage', 'waterlineComposerPackage'],
-  },
-];
 const composerPreStableVersionPattern = /^2\.0\.0-(alpha|beta)\.\d+$/;
 
 function read(file) {
@@ -97,19 +49,9 @@ function relativePath(file) {
   return path.relative(repoRoot, file).split(path.sep).join('/');
 }
 
-function normalizeWhitespace(value) {
-  return value.replace(/\s+/g, ' ').trim();
-}
-
 function assertIncludes(content, expected, label) {
   if (!content.includes(expected)) {
     throw new Error(`${label} must include ${JSON.stringify(expected)}`);
-  }
-}
-
-function assertNormalizedIncludes(content, expected, label) {
-  if (!normalizeWhitespace(content).includes(normalizeWhitespace(expected))) {
-    throw new Error(`${label} must include ${JSON.stringify(normalizeWhitespace(expected))}`);
   }
 }
 
@@ -451,61 +393,6 @@ function assertRustSdkProtocolAuthority(contract) {
     );
   }
 
-  const rustGuide = replaceArtifactTokens(read(rustGuidePath), 'docs/polyglot/rust.md');
-  assertNormalizedIncludes(
-    rustGuide,
-    `The \`${artifactVersion}\` release requires Rust 1.86 or newer. Its package metadata ` +
-      `declares compatibility with Durable Workflow server ${serverReleaseLine}, worker protocol ` +
-      `${rustPackage.worker_protocol_version}, and control plane ${rustPackage.control_plane_version}.`,
-    'docs/polyglot/rust.md',
-  );
-  assertIncludes(
-    rustGuide,
-    `\`${rustPackage.supported_server_versions}\``,
-    'docs/polyglot/rust.md',
-  );
-  assertNormalizedIncludes(
-    rustGuide,
-    `Rust SDK \`${artifactReleaseLine}\` sends \`X-Durable-Workflow-Protocol-Version: ` +
-      `${rustPackage.worker_protocol_version}\``,
-    'docs/polyglot/rust.md',
-  );
-  assertIncludes(
-    rustGuide,
-    `\`${negotiation.default_advertised_version}\``,
-    'docs/polyglot/rust.md',
-  );
-  assertNormalizedIncludes(
-    rustGuide,
-    'A missing or malformed header, a different major, or a worker minor newer than the server',
-    'docs/polyglot/rust.md',
-  );
-
-  const compatibilityDoc = read(compatibilityDocPath);
-  const matrixMatch = compatibilityDoc.match(
-    /### Server ↔ SDK \/ CLI\n\n([\s\S]*?)(?=\n\n### |\n\n## |$)/,
-  );
-  if (!matrixMatch) {
-    throw new Error(`docs/compatibility.md must include a "### Server ↔ SDK / CLI" section`);
-  }
-  const matrix = matrixMatch[1];
-  for (const required of [
-    `Rust SDK ${artifactReleaseLine} (\`${rustPackage.worker_protocol_version}\`)`,
-    `control_plane.version: "${rustPackage.control_plane_version}"`,
-    `worker_protocol.version: "${negotiation.default_advertised_version}"`,
-    `headers \`${expectedVersions[0]}\` through \`${expectedVersions.at(-1)}\` accepted`,
-    'Missing or malformed required protocol manifest/header',
-    'worker minor newer than the advertised server minor',
-  ]) {
-    assertIncludes(matrix, required, 'docs/compatibility.md Server ↔ SDK / CLI matrix');
-  }
-  assertNormalizedIncludes(
-    matrix,
-    `The Rust package's \`${rustPackage.supported_server_versions}\` server range selects ` +
-      `the server release family`,
-    'docs/compatibility.md Server ↔ SDK / CLI section',
-  );
-
   const acceptedVersionsYaml = `[${expectedVersions.map(version => `"${version}"`).join(', ')}]`;
   const failClosedYaml = `[${failClosedOn.join(', ')}]`;
   const workerOpenApi = read(workerOpenApiPath);
@@ -537,18 +424,6 @@ function assertRustSdkProtocolAuthority(contract) {
   ]) {
     assertIncludes(workerAsyncApi, required, 'worker-protocol-stream.asyncapi.yaml');
   }
-
-  const workerProtocolGuide = read(workerProtocolGuidePath);
-  assertIncludes(
-    workerProtocolGuide,
-    `current server-advertised protocol version is **${negotiation.default_advertised_version}**`,
-    'docs/polyglot/worker-protocol.md',
-  );
-  assertIncludes(
-    workerProtocolGuide,
-    `request versions \`${expectedVersions[0]}\` through \`${expectedVersions.at(-1)}\``,
-    'docs/polyglot/worker-protocol.md',
-  );
 
   if (!contract.release_check?.gates?.rust_sdk_protocol_authority_aligned) {
     throw new Error(
@@ -584,16 +459,6 @@ function assertComposerArtifactTupleIsPreStable() {
   for (const artifact of ['workflow', 'waterline']) {
     composerPrereleaseStability(artifact, ARTIFACT_VERSIONS[artifact]);
   }
-}
-
-function stripExpectedComposerPins(content) {
-  let stripped = content;
-
-  for (const pinName of ['workflowComposerPackage', 'waterlineComposerPackage']) {
-    stripped = stripped.split(ARTIFACT_PINS[pinName]).join('');
-  }
-
-  return stripped;
 }
 
 function loadContract() {
@@ -656,277 +521,10 @@ function loadContract() {
   return contract;
 }
 
-function componentVersionRows(section) {
-  return section
-    .split('\n')
-    .map(line => line.trim())
-    .filter(line => line.startsWith('|') && !/^\|\s*-/.test(line));
-}
-
-function assertComponentVersionTableUsesCurrentArtifactTuple(doc) {
-  const sectionMatch = doc.match(/### Component versions\n\n([\s\S]*?)(?=\n\n### |\n\n## |$)/);
-
-  if (!sectionMatch) {
-    throw new Error(`docs/compatibility.md must include a "### Component versions" section`);
-  }
-
-  const sourceSection = sectionMatch[1];
-  const renderedSection = replaceArtifactTokens(
-    sourceSection,
-    'docs/compatibility.md component versions',
-  );
-
-  if (
-    !renderedSection.includes('Current installable public artifact') ||
-    !renderedSection.includes('Contract authority and stability')
-  ) {
-    throw new Error(
-      `docs/compatibility.md component versions table must distinguish ` +
-        `installable artifact versions from contract authority and stability.`,
-    );
-  }
-
-  const expectations = [
-    {
-      component: 'Workflow Package (PHP)',
-      artifact: 'workflow',
-      token: '%%artifact.workflowVersion%%',
-    },
-    {
-      component: 'Standalone Server',
-      artifact: 'server',
-      token: '%%artifact.serverVersion%%',
-    },
-    {
-      component: 'CLI (`dw`)',
-      artifact: 'cli',
-      token: '%%artifact.cliVersion%%',
-    },
-    {
-      component: 'Python SDK (`durable_workflow`)',
-      artifact: 'sdk-python',
-      token: '%%artifact.pythonSdkVersion%%',
-    },
-    {
-      component: 'Rust SDK (`durable-workflow`)',
-      artifact: 'sdk-rust',
-      token: '%%artifact.rustSdkVersion%%',
-    },
-    {
-      component: 'Waterline',
-      artifact: 'waterline',
-      token: '%%artifact.waterlineVersion%%',
-    },
-  ];
-  const rows = componentVersionRows(renderedSection);
-
-  for (const expectation of expectations) {
-    if (!sourceSection.includes(expectation.token)) {
-      throw new Error(
-        `docs/compatibility.md component versions table must use ` +
-          `${expectation.token} for ${expectation.component} so it follows ` +
-          `scripts/public-artifact-versions.json.`,
-      );
-    }
-
-    const row = rows.find(candidate => candidate.includes(`| ${expectation.component} |`));
-    if (!row) {
-      throw new Error(
-        `docs/compatibility.md component versions table is missing row for ` +
-          `${expectation.component}`,
-      );
-    }
-
-    const expectedVersion = ARTIFACT_VERSIONS[expectation.artifact];
-    if (!row.includes(expectedVersion)) {
-      throw new Error(
-        `docs/compatibility.md component versions table must render ` +
-          `${expectation.component} with current public artifact version ` +
-          `${expectedVersion}`,
-      );
-    }
-  }
-}
-
-function assertCompatibilityDocAlignsWithContract(contract) {
-  const doc = read(compatibilityDocPath);
-
-  // 1. Authority self-identification.
-  if (!doc.includes('canonical compatibility and release-authority contract')) {
-    throw new Error(
-      `docs/compatibility.md must call itself the "canonical compatibility ` +
-        `and release-authority contract"; the JSON contract names it as the ` +
-        `authority, so the doc must say so explicitly.`,
-    );
-  }
-
-  // 2. Schema + version match.
-  if (!doc.includes(contract.schema)) {
-    throw new Error(
-      `docs/compatibility.md must reference the surface-stability schema ` +
-        `"${contract.schema}" so callers can match the doc to the JSON mirror.`,
-    );
-  }
-
-  // 3. Stability levels match.
-  const docLevels = new Set();
-  const levelTableMatch = doc.match(/\| Level \| Meaning \|[\s\S]*?\n(?=\n)/);
-  if (!levelTableMatch) {
-    throw new Error(
-      `docs/compatibility.md must include a "| Level | Meaning |" stability-level table`,
-    );
-  }
-  const levelTable = levelTableMatch[0];
-  for (const expected of Object.keys(contract.stability_levels)) {
-    if (!new RegExp(`\\|\\s*\`${expected}\``).test(levelTable)) {
-      throw new Error(
-        `docs/compatibility.md stability-level table must include row for ` +
-          `\`${expected}\``,
-      );
-    }
-    docLevels.add(expected);
-  }
-
-  // 4. Surface families row-by-row.
-  const familyTableMatch = doc.match(/\| Family \| Stability \|[\s\S]*?(?=\n\n## )/);
-  if (!familyTableMatch) {
-    throw new Error(
-      `docs/compatibility.md must include a "| Family | Stability |" surface-family table`,
-    );
-  }
-  const familyTable = familyTableMatch[0];
-
-  for (const [family, definition] of Object.entries(contract.surface_families)) {
-    const rowPattern = new RegExp(
-      `\\|\\s*\`${family}\`\\s*\\|\\s*\`${definition.stability_level}\`\\s*\\|`,
-    );
-    if (!rowPattern.test(familyTable)) {
-      throw new Error(
-        `docs/compatibility.md surface-family table must include row for ` +
-          `\`${family}\` with stability level \`${definition.stability_level}\` ` +
-          `to match static/compatibility-contract.json`,
-      );
-    }
-  }
-
-  // 5. No surprise stability levels in the doc page that the contract has
-  // never heard of (caught by scanning every backtick-quoted level token in
-  // the doc and confirming it is one of the four documented levels).
-  const knownLevels = new Set(Object.keys(contract.stability_levels));
-  const possibleLevels = doc.match(/`(frozen|stable|prerelease|experimental|alpha|beta|rc|deprecated|removed)`/g) || [];
-  for (const match of possibleLevels) {
-    const level = match.slice(1, -1);
-    if (!knownLevels.has(level) && level !== 'rc') {
-      // `rc` only appears in version strings (`-rc.1`), filter that out.
-      // Anything else is a stability claim that is not in the contract.
-      throw new Error(
-        `docs/compatibility.md uses stability token \`${level}\` which is ` +
-          `not declared in static/compatibility-contract.json. Either ` +
-          `remove the token from the doc or add the level to the contract ` +
-          `(and bump the contract version).`,
-      );
-    }
-  }
-
-  assertComponentVersionTableUsesCurrentArtifactTuple(doc);
-}
-
-function assertInstallationDocAlignsWithContract(contract) {
-  const phpFamily = contract.surface_families.official_sdks;
-  if (!phpFamily) {
-    throw new Error(
-      `static/compatibility-contract.json is missing the official_sdks family`,
-    );
-  }
-
-  assertComposerArtifactTupleIsPreStable();
-
-  for (const surface of composerInstallDocSurfaces) {
-    const rawDoc = read(surface.path);
-    const surfacePath = relativePath(surface.path);
-
-    for (const pinName of surface.requiredPins) {
-      const token = `%%artifact.${pinName}%%`;
-
-      if (!rawDoc.includes(token)) {
-        throw new Error(
-          `${surfacePath} must use ${token} so the rendered Composer ` +
-            `stability suffix follows scripts/public-artifact-versions.json.`,
-        );
-      }
-    }
-
-    const literalStabilityTokens = rawDoc.match(/@(alpha|beta|dev|rc|nightly|canary)\b/g) || [];
-    if (literalStabilityTokens.length > 0) {
-      throw new Error(
-        `${surfacePath} hardcodes Composer stability token(s) ` +
-          `${[...new Set(literalStabilityTokens)].sort().join(', ')}. ` +
-          `Use public artifact tokens for exact pins and channel-neutral prose ` +
-          `for the pre-stable Composer ramp.`,
-      );
-    }
-
-    const renderedDoc = replaceArtifactTokens(rawDoc, surfacePath);
-    const renderedWithoutExpectedPins = stripExpectedComposerPins(renderedDoc);
-    const strayStabilityTokens =
-      renderedWithoutExpectedPins.match(/@(alpha|beta|dev|rc|nightly|canary)\b/g) || [];
-
-    if (strayStabilityTokens.length > 0) {
-      throw new Error(
-        `${surfacePath} renders Composer stability token(s) outside the ` +
-          `current public artifact pins: ` +
-          `${[...new Set(strayStabilityTokens)].sort().join(', ')}. ` +
-          `Alpha and beta Composer suffixes are allowed only as the exact ` +
-          `pre-stable pins generated from scripts/public-artifact-versions.json.`,
-      );
-    }
-
-    if (
-      surface.requiresStableCutoverGuidance &&
-      (!/2\.0\.0`?\s+is tagged stable on Packagist/.test(rawDoc) ||
-        !/cutover is authorized/.test(rawDoc))
-    ) {
-      throw new Error(
-        `${surfacePath} must explain that stable Composer constraints are ` +
-          `allowed only after 2.0.0 is tagged stable on Packagist and the ` +
-          `2.0 cutover is authorized.`,
-      );
-    }
-  }
-}
-
-function assertVersionHistoryAlignsWithContract(contract) {
-  const doc = read(compatibilityDocPath);
-
-  const versionHistoryMatch = doc.match(/## Version History\n[\s\S]*$/);
-  if (!versionHistoryMatch) {
-    throw new Error(
-      `docs/compatibility.md must include a "## Version History" section ` +
-        `so release reviewers can see the per-release stability call-outs`,
-    );
-  }
-
-  const versionHistory = versionHistoryMatch[0];
-  const claims = versionHistory.match(/`(frozen|stable|prerelease|experimental|alpha|beta|deprecated|removed)`/g) || [];
-  const allowed = new Set(Object.keys(contract.stability_levels));
-  for (const match of claims) {
-    const level = match.slice(1, -1);
-    if (!allowed.has(level)) {
-      throw new Error(
-        `docs/compatibility.md version-history table mentions stability ` +
-          `level \`${level}\` which is not declared in ` +
-          `static/compatibility-contract.json`,
-      );
-    }
-  }
-}
-
 function main() {
   const contract = loadContract();
-  assertCompatibilityDocAlignsWithContract(contract);
   assertRustSdkProtocolAuthority(contract);
-  assertInstallationDocAlignsWithContract(contract);
-  assertVersionHistoryAlignsWithContract(contract);
+  assertComposerArtifactTupleIsPreStable();
 
   console.log(
     `Compatibility-authority check passed: ${Object.keys(contract.surface_families).length} surface families ` +

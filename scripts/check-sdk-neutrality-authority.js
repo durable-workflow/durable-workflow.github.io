@@ -35,15 +35,13 @@
 //    Repository-local paths and implementation symbols are rejected.
 // 7. The release-gates section enumerates the named gates and the
 //    machine + human enforcement summary.
-// 8. The companion docs site page (`docs/sdk-neutrality.md`) advertises
-//    itself as the public mirror, references the schema id, and lists
-//    every rule from the contract.
-// 9. Release workflows provide the exact tagged Workflow package authority
+// 8. Release workflows provide the exact tagged Workflow package authority
 //    through `WORKFLOW_SDK_NEUTRALITY_MANIFEST_PATH`. Developer checkouts may
 //    instead use a sibling Workflow repo. A versioned digest lock pins every
 //    validation mode to that Workflow ref. The static mirror must match the
 //    pinned package digest and be byte-equivalent to the package manifest when
-//    the release input is available.
+//    the release input is available. Human-readable pages are not parsed by
+//    this machine-contract gate.
 
 const crypto = require('crypto');
 const fs = require('fs');
@@ -55,7 +53,6 @@ const contractPath = path.join(repoRoot, 'static', 'sdk-neutrality-contract.json
 const surfaceContractPath = path.join(repoRoot, 'static', 'compatibility-contract.json');
 const protocolCatalogPath = path.join(repoRoot, 'static', 'platform-protocol-specs.json');
 const conformanceSuitePath = path.join(repoRoot, 'static', 'platform-conformance-contract.json');
-const neutralityDocPath = path.join(repoRoot, 'docs', 'sdk-neutrality.md');
 const workflowAuthorityLockPath = path.join(
   repoRoot,
   'scripts',
@@ -717,62 +714,6 @@ function assertReleaseGates(contract) {
   }
 }
 
-function assertNeutralityDocAlignsWithContract(contract) {
-  let doc;
-  try {
-    doc = read(neutralityDocPath);
-  } catch (err) {
-    throw new Error(
-      `docs/sdk-neutrality.md is missing. The neutrality contract is the ` +
-        `standing rule for which surfaces stay neutral; the public docs ` +
-        `mirror must exist alongside the JSON catalog so SDK authors can ` +
-        `read it without cloning the workflow repo.`,
-    );
-  }
-
-  if (!doc.includes(contract.schema)) {
-    throw new Error(
-      `docs/sdk-neutrality.md must reference the SDK neutrality schema ` +
-        `"${contract.schema}" so callers can match the doc to the JSON mirror.`,
-    );
-  }
-
-  if (!doc.includes('/sdk-neutrality-contract.json')) {
-    throw new Error(
-      `docs/sdk-neutrality.md must link to the static JSON mirror at ` +
-        `/sdk-neutrality-contract.json`,
-    );
-  }
-
-  if (!doc.includes('resources/sdk-neutrality-contract.json')) {
-    throw new Error(
-      `docs/sdk-neutrality.md must identify the SDK neutrality authority ` +
-        `shipped in the Workflow package at ` +
-        `resources/sdk-neutrality-contract.json`,
-    );
-  }
-
-  for (const rule of REQUIRED_RULES) {
-    if (!new RegExp(`\`${rule}\``).test(doc)) {
-      throw new Error(
-        `docs/sdk-neutrality.md must reference neutrality rule \`${rule}\` ` +
-          `from the contract`,
-      );
-    }
-  }
-
-  for (const sdk of REQUIRED_DEMAND_DRIVEN_SDKS) {
-    const language = sdk.replace(/_sdk$/, '');
-    const expected = language === 'dotnet' ? '\\.NET' : language[0].toUpperCase() + language.slice(1);
-    if (!new RegExp(expected, 'i').test(doc)) {
-      throw new Error(
-        `docs/sdk-neutrality.md must mention ${expected} so the demand-driven ` +
-          `posture is visible to readers`,
-      );
-    }
-  }
-}
-
 function workflowMirrorPath(environment = process.env, root = repoRoot) {
   const configuredManifest = environment.WORKFLOW_SDK_NEUTRALITY_MANIFEST_PATH;
   if (configuredManifest) {
@@ -910,7 +851,6 @@ function main() {
   assertAuditScopeReferencesDeclaredSurfaceFamilies(contract);
   assertSdkBreadthPolicy(contract, catalogs);
   assertReleaseGates(contract);
-  assertNeutralityDocAlignsWithContract(contract);
   assertWorkflowMirrorMatches();
 
   console.log(

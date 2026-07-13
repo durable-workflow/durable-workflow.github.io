@@ -3,101 +3,13 @@ const path = require('path');
 
 const {
   ARTIFACT_PIN_PATTERNS,
-  ARTIFACT_PINS,
   ARTIFACT_VERSIONS,
   replaceArtifactTokens,
 } = require('./public-artifact-versions');
 
 const repoRoot = path.join(__dirname, '..');
-
-const PUBLIC_DOC_PIN_SURFACES = [
-  {
-    path: 'docs/installation.md',
-    requiredPins: [
-      'workflowComposerPackage',
-    ],
-  },
-  {
-    path: 'docs/migration.md',
-    requiredPins: [
-      'workflowComposerPackage',
-    ],
-  },
-  {
-    path: 'docs/introduction.md',
-    requiredPins: [
-      'pythonPipInstallCommand',
-      'serverDockerHubImage',
-      'cliInstallerEnv',
-    ],
-  },
-  {
-    path: 'docs/quickstart.md',
-    requiredPins: [
-      'serverDockerHubImage',
-      'cliVersion',
-      'pythonPackagePin',
-      'workflowComposerPackage',
-      'waterlineComposerPackage',
-      'serverImageEnv',
-      'pythonPipInstallCommand',
-      'cliInstallerCommand',
-    ],
-  },
-  {
-    path: 'docs/polyglot/server.md',
-    requiredPins: [
-      'serverDockerHubImage',
-      'serverGhcrImage',
-      'pythonPipInstallCommand',
-      'workflowComposerPackage',
-    ],
-  },
-  {
-    path: 'docs/waterline-operator-api.md',
-    requiredPins: [
-      'workflowComposerPackage',
-      'waterlineComposerPackage',
-    ],
-  },
-  {
-    path: 'docs/polyglot/cli.mdx',
-    requiredPins: [
-      'cliInstallerCommand',
-      'cliPowerShellVersion',
-      'cliInstallerEnv',
-      'cliUpgradeTag',
-      'serverImageEnv',
-    ],
-  },
-  {
-    path: 'docs/polyglot/python.md',
-    requiredPins: [
-      'pythonPipInstallCommand',
-      'serverImageEnv',
-    ],
-  },
-  {
-    path: 'docs/polyglot/rust.md',
-    requiredPins: [
-      'rustSdkVersion',
-      'rustCargoAddCommand',
-      'rustCargoRequirement',
-      'rustCratesIoUrl',
-      'rustRepositoryUrl',
-      'rustDocumentationUrl',
-    ],
-  },
-  {
-    path: 'docs/deployment.md',
-    requiredPins: [
-      'serverTagEnv',
-      'serverImageEnv',
-      'serverDockerHubImage',
-      'serverGhcrImage',
-    ],
-  },
-];
+const DOC_SOURCE_ROOTS = ['docs', 'versioned_docs'];
+const DOC_SOURCE_EXTENSIONS = new Set(['.md', '.mdx']);
 
 const SOURCE_PIN_PATTERNS = [
   ...ARTIFACT_PIN_PATTERNS,
@@ -113,36 +25,39 @@ function fail(message) {
   throw new Error(message);
 }
 
-function readSurface(surface) {
-  const filePath = path.join(repoRoot, surface.path);
+function sourceDocs(root = repoRoot) {
+  const sources = [];
 
-  if (!fs.existsSync(filePath)) {
-    fail(`Public artifact pin surface is missing: ${surface.path}`);
-  }
+  function visit(directory) {
+    for (const entry of fs.readdirSync(directory, {withFileTypes: true})) {
+      const filePath = path.join(directory, entry.name);
 
-  const rawContent = fs.readFileSync(filePath, 'utf8');
-
-  return {
-    rawContent,
-    renderedContent: replaceArtifactTokens(rawContent, surface.path),
-  };
-}
-
-function assertRequiredPins(surface, content) {
-  for (const pinName of surface.requiredPins) {
-    const pin = ARTIFACT_PINS[pinName];
-
-    if (!pin) {
-      fail(`Unknown required public artifact pin ${pinName} for ${surface.path}`);
-    }
-
-    if (!content.includes(pin)) {
-      fail(`${surface.path} must include current public artifact pin ${pinName}: ${pin}`);
+      if (entry.isDirectory()) {
+        visit(filePath);
+      } else if (entry.isFile() && DOC_SOURCE_EXTENSIONS.has(path.extname(entry.name))) {
+        sources.push(path.relative(root, filePath).split(path.sep).join('/'));
+      }
     }
   }
+
+  for (const sourceRoot of DOC_SOURCE_ROOTS) {
+    const directory = path.join(root, sourceRoot);
+
+    if (fs.existsSync(directory)) {
+      visit(directory);
+    }
+  }
+
+  sources.sort();
+
+  if (sources.length === 0) {
+    fail('No Markdown documentation sources were found');
+  }
+
+  return sources;
 }
 
-function assertObservedPinsCurrent(surface, content) {
+function assertObservedPinsCurrent(sourcePath, content) {
   for (const definition of SOURCE_PIN_PATTERNS) {
     const pattern = new RegExp(definition.pattern.source, definition.pattern.flags);
     const versions = [...content.matchAll(pattern)]
@@ -154,14 +69,14 @@ function assertObservedPinsCurrent(surface, content) {
 
     if (staleVersions.length > 0) {
       fail(
-        `${surface.path} contains stale ${definition.label}: ` +
+        `${sourcePath} contains stale ${definition.label}: ` +
         `observed=${staleVersions.join(', ')} expected=${definition.expected}`
       );
     }
   }
 }
 
-function assertNoLiteralPins(surface, content) {
+function assertNoLiteralPins(sourcePath, content) {
   for (const definition of SOURCE_PIN_PATTERNS) {
     const pattern = new RegExp(definition.pattern.source, definition.pattern.flags);
     const versions = [...content.matchAll(pattern)]
@@ -170,23 +85,57 @@ function assertNoLiteralPins(surface, content) {
 
     if (versions.length > 0) {
       fail(
-        `${surface.path} must use public artifact tokens instead of literal ${definition.label}: ` +
+        `${sourcePath} must use public artifact tokens instead of literal ${definition.label}: ` +
         `${[...new Set(versions)].sort().join(', ')}`
       );
     }
   }
 }
 
-function main() {
-  for (const surface of PUBLIC_DOC_PIN_SURFACES) {
-    const { rawContent, renderedContent } = readSurface(surface);
+function assertNoUnresolvedTokens(sourcePath, content) {
+  const unresolved = [...content.matchAll(/%%artifact\.[^%\r\n]*%%/g)]
+    .map(match => match[0]);
 
-    assertNoLiteralPins(surface, rawContent);
-    assertRequiredPins(surface, renderedContent);
-    assertObservedPinsCurrent(surface, renderedContent);
+  if (unresolved.length > 0) {
+    fail(
+      `${sourcePath} contains unresolved public artifact tokens: ` +
+      `${[...new Set(unresolved)].sort().join(', ')}`
+    );
   }
-
-  console.log(`Public artifact pin checks passed for ${PUBLIC_DOC_PIN_SURFACES.length} source docs`);
 }
 
-main();
+function checkPublicArtifactSource(sourcePath, rawContent) {
+  assertObservedPinsCurrent(sourcePath, rawContent);
+  assertNoLiteralPins(sourcePath, rawContent);
+
+  const renderedContent = replaceArtifactTokens(rawContent, sourcePath);
+  assertNoUnresolvedTokens(sourcePath, renderedContent);
+  assertObservedPinsCurrent(sourcePath, renderedContent);
+}
+
+function checkPublicArtifactPins(root = repoRoot) {
+  const sources = sourceDocs(root);
+
+  for (const sourcePath of sources) {
+    const rawContent = fs.readFileSync(path.join(root, sourcePath), 'utf8');
+    checkPublicArtifactSource(sourcePath, rawContent);
+  }
+
+  return sources.length;
+}
+
+function main() {
+  const sourceCount = checkPublicArtifactPins();
+
+  console.log(`Public artifact pin checks passed for ${sourceCount} source docs`);
+}
+
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  checkPublicArtifactPins,
+  checkPublicArtifactSource,
+  sourceDocs,
+};

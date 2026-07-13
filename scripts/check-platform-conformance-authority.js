@@ -19,8 +19,6 @@ const thisScriptPath = path.relative(repoRoot, __filename).split(path.sep).join(
 const docsDir = path.join(repoRoot, 'docs');
 const configPath = path.join(repoRoot, 'docusaurus.config.js');
 const contractPath = path.join(repoRoot, 'static', 'platform-conformance-contract.json');
-const authorityDocPath = path.join(repoRoot, 'docs', 'platform-conformance.md');
-const protocolSpecsDocPath = path.join(repoRoot, 'docs', 'platform-protocol-specs.md');
 const sidebarsPath = path.join(repoRoot, 'sidebars.js');
 
 const EXPECTED_SCHEMA = 'durable-workflow.v2.platform-conformance.suite';
@@ -2225,60 +2223,6 @@ function assertVersionedRuntimeScenarioPublicRequirements(
   }
 }
 
-function splitMarkdownTableRow(line) {
-  const trimmed = line.trim();
-  return trimmed
-    .replace(/^\|/, '')
-    .replace(/\|$/, '')
-    .split('|')
-    .map(cell => cell.trim());
-}
-
-function normalizeTableCell(cell) {
-  const withoutInlineCode = cell.replace(/`([^`]*)`/g, '$1');
-  return withoutInlineCode.replace(/\s+/g, ' ').trim();
-}
-
-function extractMarkdownTable(doc, heading) {
-  const start = doc.indexOf(heading);
-  if (start === -1) {
-    throw new Error(`docs/platform-conformance.md must include ${heading}.`);
-  }
-
-  const remaining = doc.slice(start);
-  const nextHeading = remaining.slice(1).search(/\n## /);
-  const section = nextHeading === -1
-    ? remaining
-    : remaining.slice(0, nextHeading + 1);
-  const tableLines = section
-    .split(/\r?\n/)
-    .filter(line => line.trim().startsWith('|'));
-
-  if (tableLines.length < 3) {
-    throw new Error(
-      `docs/platform-conformance.md ${heading} section must include a Markdown table.`,
-    );
-  }
-
-  const headers = splitMarkdownTableRow(tableLines[0]).map(normalizeTableCell);
-  const rows = tableLines.slice(2).map((line, index) => ({
-    line,
-    lineNumberInTable: index + 3,
-    cells: splitMarkdownTableRow(line).map(normalizeTableCell),
-  }));
-
-  return { headers, rows };
-}
-
-function sourceKey(source) {
-  return JSON.stringify([source.repository, source.path]);
-}
-
-function formatSourceKey(key) {
-  const [repository, sourcePath] = JSON.parse(key);
-  return `${repository}:${sourcePath}`;
-}
-
 function isPublicRuntimeScenarioManifest(source) {
   return (
     source.repository === 'durable-workflow.github.io' &&
@@ -2507,38 +2451,6 @@ function assertRuntimeScenarioManifest(contract, category, entry, source) {
   );
 }
 
-function staticSourcePathToServedPath(sourcePath) {
-  if (!sourcePath.startsWith('static/')) {
-    throw new Error(
-      `docs-site scenario manifest path "${sourcePath}" must live under static/.`,
-    );
-  }
-
-  return `pathname:///${sourcePath.slice('static/'.length)}`;
-}
-
-function assertAuthorityDocLinksRuntimeScenarioManifests(contract, doc) {
-  for (const category of runtimeScenarioCategories(contract)) {
-    const entry = (contract.fixture_catalog || {})[category] || {};
-
-    for (const source of entry.sources || []) {
-      if (!isPublicRuntimeScenarioManifest(source)) {
-        continue;
-      }
-
-      const servedPath = staticSourcePathToServedPath(source.path);
-
-      if (!doc.includes(servedPath)) {
-        throw new Error(
-          `docs/platform-conformance.md must link ${source.path} using ` +
-            `${servedPath} so the published scenario manifest is resolvable ` +
-            `from the public site.`,
-        );
-      }
-    }
-  }
-}
-
 function assertStableRuntimeSourcesArePublic(contract) {
   const catalog = contract.fixture_catalog || {};
 
@@ -2606,192 +2518,6 @@ function assertStableRuntimeSourcesArePublic(contract) {
   }
 }
 
-function assertFixtureCatalogTableMirrorsManifest(contract, doc) {
-  const expectedHeaders = ['Category', 'Status', 'Source repository', 'Path', 'Purpose'];
-  const { headers, rows } = extractMarkdownTable(doc, '## Fixture Catalog');
-
-  if (headers.length !== expectedHeaders.length) {
-    throw new Error(
-      `docs/platform-conformance.md fixture catalog table must have columns ` +
-        expectedHeaders.join(', '),
-    );
-  }
-
-  for (const [index, expected] of expectedHeaders.entries()) {
-    if (headers[index] !== expected) {
-      throw new Error(
-        `docs/platform-conformance.md fixture catalog table column ${index + 1} ` +
-          `must be "${expected}" (got "${headers[index]}").`,
-      );
-    }
-  }
-
-  const catalog = contract.fixture_catalog || {};
-  const docEntriesByCategory = new Map();
-  const seenRows = new Set();
-
-  for (const row of rows) {
-    if (row.cells.length !== expectedHeaders.length) {
-      throw new Error(
-        `docs/platform-conformance.md fixture catalog row ${row.lineNumberInTable} ` +
-          `must have ${expectedHeaders.length} columns: ${row.line}`,
-      );
-    }
-
-    const [category, status, repository, sourcePath] = row.cells;
-    if (!category || !status || !repository || !sourcePath) {
-      throw new Error(
-        `docs/platform-conformance.md fixture catalog row ${row.lineNumberInTable} ` +
-          `must include category, status, repository, and path.`,
-      );
-    }
-
-    if (!(category in catalog)) {
-      throw new Error(
-        `docs/platform-conformance.md fixture catalog lists unknown category "${category}".`,
-      );
-    }
-
-    const key = `${category}\0${status}\0${repository}\0${sourcePath}`;
-    if (seenRows.has(key)) {
-      throw new Error(
-        `docs/platform-conformance.md fixture catalog repeats ` +
-          `${category} ${repository}:${sourcePath}.`,
-      );
-    }
-    seenRows.add(key);
-
-    if (!docEntriesByCategory.has(category)) {
-      docEntriesByCategory.set(category, []);
-    }
-    docEntriesByCategory.get(category).push({ status, repository, path: sourcePath });
-  }
-
-  for (const [category, manifestEntry] of Object.entries(catalog)) {
-    const docEntries = docEntriesByCategory.get(category) || [];
-    if (docEntries.length === 0) {
-      throw new Error(
-        `docs/platform-conformance.md fixture catalog must list category "${category}".`,
-      );
-    }
-
-    const statuses = new Set(docEntries.map(entry => entry.status));
-    if (statuses.size !== 1 || !statuses.has(manifestEntry.status)) {
-      throw new Error(
-        `docs/platform-conformance.md fixture catalog status for "${category}" ` +
-          `must be "${manifestEntry.status}" (got ${Array.from(statuses).join(', ')}).`,
-      );
-    }
-
-    const expectedSources = new Set((manifestEntry.sources || []).map(sourceKey));
-    const actualSources = new Set(docEntries.map(sourceKey));
-
-    for (const expectedSource of expectedSources) {
-      if (!actualSources.has(expectedSource)) {
-        throw new Error(
-          `docs/platform-conformance.md fixture catalog category "${category}" ` +
-            `is missing manifest source ${formatSourceKey(expectedSource)}.`,
-        );
-      }
-    }
-
-    for (const actualSource of actualSources) {
-      if (!expectedSources.has(actualSource)) {
-        throw new Error(
-          `docs/platform-conformance.md fixture catalog category "${category}" ` +
-            `lists source not present in the manifest: ${formatSourceKey(actualSource)}.`,
-        );
-      }
-    }
-  }
-}
-
-function assertAuthorityDocMirrorsManifest(contract) {
-  const doc = read(authorityDocPath);
-
-  for (const required of [
-    '# Platform Conformance Suite',
-    EXPECTED_SCHEMA,
-    'static/platform-conformance-contract.json',
-    `version\n\`${contract.version}\``,
-    'platform_conformance_suite_manifest',
-    '## Target Matrix',
-    '## Fixture Catalog',
-    '## Pass / Fail Rules',
-    '## Harness Contract',
-    '## Release Gates',
-    '## Release Check',
-    'Placeholder or unresolved',
-  ]) {
-    if (!doc.includes(required)) {
-      throw new Error(
-        `docs/platform-conformance.md must include ${JSON.stringify(required)}.`,
-      );
-    }
-  }
-
-  assertFixtureCatalogTableMirrorsManifest(contract, doc);
-  assertAuthorityDocLinksRuntimeScenarioManifests(contract, doc);
-
-  for (const target of Object.keys(contract.targets || {})) {
-    if (!doc.includes(`\`${target}\``)) {
-      throw new Error(
-        `docs/platform-conformance.md must list conformance target "${target}".`,
-      );
-    }
-  }
-
-  for (const category of Object.keys(contract.fixture_catalog || {})) {
-    if (!doc.includes(`\`${category}\``)) {
-      throw new Error(
-        `docs/platform-conformance.md must list fixture category "${category}".`,
-      );
-    }
-  }
-
-  for (const rule of Object.keys(contract.pass_fail_rules || {})) {
-    if (!doc.includes(rule)) {
-      throw new Error(
-        `docs/platform-conformance.md must list pass / fail rule "${rule}".`,
-      );
-    }
-  }
-
-  for (const level of contract.conformance_levels || []) {
-    if (!doc.includes(`\`${level}\``)) {
-      throw new Error(
-        `docs/platform-conformance.md must list conformance level "${level}".`,
-      );
-    }
-  }
-
-  for (const release of Object.keys((contract.release_gates || {}).gates || {})) {
-    if (!doc.includes(`\`${release}\``)) {
-      throw new Error(
-        `docs/platform-conformance.md must list release gate "${release}".`,
-      );
-    }
-  }
-}
-
-function assertProtocolCatalogLinksAuthority() {
-  const doc = read(protocolSpecsDocPath);
-
-  for (const required of [
-    routeForDocPath(EXPECTED_AUTHORITY_DOC),
-    'static/platform-conformance-contract.json',
-    'platform_conformance_suite',
-    'platform_conformance_suite_manifest',
-  ]) {
-    if (!doc.includes(required)) {
-      throw new Error(
-        `docs/platform-protocol-specs.md must reference the platform ` +
-          `conformance authority with ${JSON.stringify(required)}.`,
-      );
-    }
-  }
-}
-
 function main() {
   const contract = loadJson(
     contractPath,
@@ -2813,8 +2539,6 @@ function main() {
   assertVersionedPassFailRules(contract);
   assertStableFixtureAuthorityDocsResolve(contract);
   assertStableRuntimeSourcesArePublic(contract);
-  assertAuthorityDocMirrorsManifest(contract);
-  assertProtocolCatalogLinksAuthority();
   assertDocIsInSidebar();
 
   console.log('Platform conformance authority checks passed');

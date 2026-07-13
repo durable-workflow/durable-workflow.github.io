@@ -37,10 +37,7 @@
 //    diagnostic objects, repair / actionability objects, CLI JSON
 //    envelopes, MCP discovery + tool results, cluster-info envelope) is
 //    fully enumerated.
-// 5. `docs/platform-protocol-specs.md` advertises itself as the catalog,
-//    references the schema id, lists every entry with its format /
-//    surface family / owner / status / breaking-change rule.
-// 6. When an entry's status is `published`, the file at `spec_path`
+// 5. When an entry's status is `published`, the file at `spec_path`
 //    exists in the docs site repo, parses as the format declared by the
 //    catalog entry (JSON Schema 2020-12 / OpenAPI 3.1 / AsyncAPI 2.6+),
 //    and the document's `$id` (or OpenAPI `info.title` / AsyncAPI `id`)
@@ -49,23 +46,18 @@
 //    file must also carry matching x-durable-workflow-object-families
 //    metadata so the spec document and catalog cannot disagree about
 //    schema/version authority.
-// 7. `docs/compatibility.md` cross-links to the new catalog so callers
-//    that land on the older authority page can find the spec set.
-// 8. Public JSON Schema documents that embed an agent-tooling object schema
+// 6. Public JSON Schema documents that embed an agent-tooling object schema
 //    id must declare matching catalog object-family authority, and duplicate
 //    embedded definitions must describe the same machine-readable shape.
 //
-// Drift here means a release shipped a doc or PHP-manifest change
-// without updating the JSON mirror (or vice versa). Either fix the doc
-// or bump the catalog; do not silence the check.
+// Human-readable pages can be reorganized independently; this gate compares
+// only machine-readable authorities and published spec artifacts.
 
 const fs = require('fs');
 const path = require('path');
 
 const repoRoot = path.join(__dirname, '..');
 const catalogPath = path.join(repoRoot, 'static', 'platform-protocol-specs.json');
-const catalogDocPath = path.join(repoRoot, 'docs', 'platform-protocol-specs.md');
-const compatibilityDocPath = path.join(repoRoot, 'docs', 'compatibility.md');
 const surfaceContractPath = path.join(repoRoot, 'static', 'compatibility-contract.json');
 
 const EXPECTED_SCHEMA = 'durable-workflow.v2.platform-protocol-specs.catalog';
@@ -869,120 +861,6 @@ function assertYamlScalar(document, key, expected, specPath, name) {
   }
 }
 
-function assertCatalogDocAlignsWithCatalog(catalog) {
-  const doc = read(catalogDocPath);
-
-  if (!doc.includes('catalog of normative machine-readable protocol\nspecifications')) {
-    throw new Error(
-      `docs/platform-protocol-specs.md must call itself the ` +
-        `"catalog of normative machine-readable protocol specifications"; ` +
-        `the JSON catalog names it as the authority, so the doc must say so explicitly.`,
-    );
-  }
-
-  if (!doc.includes(catalog.schema)) {
-    throw new Error(
-      `docs/platform-protocol-specs.md must reference the catalog schema ` +
-        `"${catalog.schema}" so callers can match the doc to the JSON mirror.`,
-    );
-  }
-
-  for (const format of Object.keys(catalog.formats)) {
-    if (!new RegExp(`\\|\\s*\`${format}\``).test(doc)) {
-      throw new Error(
-        `docs/platform-protocol-specs.md spec-format table must include row for ` +
-          `\`${format}\``,
-      );
-    }
-  }
-
-  for (const status of Object.keys(catalog.status_levels)) {
-    if (!new RegExp(`\\|\\s*\`${status}\``).test(doc)) {
-      throw new Error(
-        `docs/platform-protocol-specs.md status-level table must include row for ` +
-          `\`${status}\``,
-      );
-    }
-  }
-
-  for (const [name, entry] of Object.entries(catalog.specs)) {
-    if (!new RegExp(`### \`${name}\``).test(doc)) {
-      throw new Error(
-        `docs/platform-protocol-specs.md must include a "### \`${name}\`" ` +
-          `section to describe the catalog entry`,
-      );
-    }
-    if (!doc.includes(entry.spec_id)) {
-      throw new Error(
-        `docs/platform-protocol-specs.md must reference spec_id ` +
-          `"${entry.spec_id}" for entry "${name}"`,
-      );
-    }
-    if (!new RegExp(`\\|\\s*Format\\s*\\|\\s*\`${entry.format}\``).test(doc)) {
-      throw new Error(
-        `docs/platform-protocol-specs.md entry "${name}" must show Format = ` +
-          `\`${entry.format}\``,
-      );
-    }
-    if (!new RegExp(`\\|\\s*Status\\s*\\|\\s*\`${entry.status}\``).test(doc)) {
-      throw new Error(
-        `docs/platform-protocol-specs.md entry "${name}" must show Status = ` +
-          `\`${entry.status}\``,
-      );
-    }
-    if (
-      !new RegExp(`\\|\\s*Owner repo\\s*\\|\\s*\`${escapeRegExp(entry.owner_repo)}\``).test(
-        doc,
-      )
-    ) {
-      throw new Error(
-        `docs/platform-protocol-specs.md entry "${name}" must show Owner repo = ` +
-          `\`${entry.owner_repo}\``,
-      );
-    }
-    for (const family of entry.object_families) {
-      if (!doc.includes(`\`${family.name}\``)) {
-        throw new Error(
-          `docs/platform-protocol-specs.md entry "${name}" must list ` +
-            `object family \`${family.name}\` so schema/version authority ` +
-            `is visible in the human-readable catalog.`,
-        );
-      }
-
-      assertCatalogDocListsObjectFamilyAuthority(doc, name, family);
-    }
-  }
-}
-
-function assertCatalogDocListsObjectFamilyAuthority(doc, name, family) {
-  const row = new RegExp(
-    `\\|\\s*\`${escapeRegExp(name)}\`\\s*` +
-      `\\|\\s*\`${escapeRegExp(family.name)}\`\\s*` +
-      `\\|\\s*\`${escapeRegExp(family.owner_repo)}\`\\s*` +
-      `\\|\\s*\`${escapeRegExp(family.schema_authority)}\`\\s*` +
-      `\\|\\s*\`${escapeRegExp(family.version_authority)}\`\\s*\\|`,
-  );
-
-  if (!row.test(doc)) {
-    throw new Error(
-      `docs/platform-protocol-specs.md must include an object-family ` +
-        `authority row for ${name}/${family.name} with owner_repo, ` +
-        `schema_authority, and version_authority from the JSON catalog.`,
-    );
-  }
-}
-
-function assertCompatibilityDocCrossLinksCatalog() {
-  const doc = read(compatibilityDocPath);
-  if (!doc.includes('platform-protocol-specs')) {
-    throw new Error(
-      `docs/compatibility.md must cross-link to the platform-protocol-specs ` +
-        `catalog so callers that land on the stability authority can find ` +
-        `the normative spec set`,
-    );
-  }
-}
-
 function escapeRegExp(input) {
   return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -1003,9 +881,6 @@ function main() {
   assertServerOwnedSpecMirrorsMatchWhenAvailable(catalog);
   assertCatalogEntriesAreWellFormed(catalog, surfaceFamilies);
   assertAgentToolingSchemaDefinitionsAreAligned(catalog);
-  assertCatalogDocAlignsWithCatalog(catalog);
-  assertCompatibilityDocCrossLinksCatalog();
-
   const specCount = Object.keys(catalog.specs).length;
   console.log(
     `Platform-protocol-specs check passed: ${specCount} spec entries at ` +

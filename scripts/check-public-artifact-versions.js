@@ -15,12 +15,9 @@ const {
   PUBLIC_ARTIFACT_TUPLE_FILES,
   artifactVersionsSource,
   changedPublicArtifactTupleFiles,
-  compatibilityHistoryRow,
   generatedPublicArtifactTupleSources,
   parseRegistryNextLink,
-  parseCompatibilityHistoryRow,
   quickstartExecutionContractSource,
-  replaceCompatibilityHistoryTopRow,
   resolvePublishedWorkflowAuthority,
   selectLatestCompleteCliRelease,
   selectLatestCratesIoVersion,
@@ -147,7 +144,6 @@ assert.deepStrictEqual(
   unchangedManifestFiles,
   [
     'scripts/public-artifact-versions.json',
-    'docs/compatibility.md',
     'static/quickstart-execution-contract.json',
     'scripts/workflow-sdk-neutrality-authority-lock.json',
   ],
@@ -459,29 +455,6 @@ assert.throws(
   /Published server container registries disagree:[\s\S]*Docker Hub durableworkflow\/server:0\.2\.10[\s\S]*GHCR ghcr\.io\/durable-workflow\/server:0\.2\.9/,
   'server registry disagreement must fail before selecting a docs tuple'
 );
-
-const currentHistoryRow = compatibilityHistoryRow(source.artifacts, '2026-06-11');
-const parsedHistoryRow = parseCompatibilityHistoryRow(currentHistoryRow);
-assert.strictEqual(parsedHistoryRow.server, source.artifacts.server);
-assert.strictEqual(parsedHistoryRow.cli, source.artifacts.cli);
-assert.strictEqual(parsedHistoryRow['sdk-python'], source.artifacts['sdk-python']);
-assert.strictEqual(parsedHistoryRow['sdk-rust'], source.artifacts['sdk-rust']);
-assert.strictEqual(parsedHistoryRow.workflow, source.artifacts.workflow);
-assert.strictEqual(parsedHistoryRow.waterline, source.artifacts.waterline);
-
-const staleHistoryDoc = [
-  '## Version History',
-  '',
-  '| Date | Server | CLI | Python SDK | Rust SDK | Workflow | Waterline | Notes |',
-  '|------|--------|-----|------------|----------|----------|-----------|-------|',
-  '| 2026-06-10 | 0.2.364 | 0.1.77 | 0.4.85 | — | 2.0.0-alpha.200 | 2.0.0-alpha.84 | Previous release-audit tuple. |',
-  '| 2026-06-05 | 0.2.341 | 0.1.77 | 0.4.85 | — | 2.0.0-alpha.199 | 2.0.0-alpha.83 | Older release-audit tuple. |',
-  '',
-].join('\n');
-const refreshedHistoryDoc = replaceCompatibilityHistoryTopRow(staleHistoryDoc, source.artifacts, '2026-06-11');
-assert.strictEqual(refreshedHistoryDoc.changed, true);
-assert(refreshedHistoryDoc.content.includes(currentHistoryRow));
-assert(refreshedHistoryDoc.content.includes('| 2026-06-05 | 0.2.341 |'));
 
 expectFailure(
   'rejects missing artifacts',

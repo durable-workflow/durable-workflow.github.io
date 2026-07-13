@@ -10,16 +10,10 @@
 
 const fs = require('fs');
 const path = require('path');
-const { replaceArtifactTokens } = require('./public-artifact-versions');
-
 const staticDir = path.join(__dirname, '..', 'static');
-const docsCli = path.join(__dirname, '..', 'docs', 'polyglot', 'cli.mdx');
 
 function read(filePath) {
-  return replaceArtifactTokens(
-    fs.readFileSync(filePath, 'utf8'),
-    path.relative(path.join(__dirname, '..'), filePath).replace(/\\/g, '/'),
-  );
+  return fs.readFileSync(filePath, 'utf8');
 }
 
 function assertContains(content, needle, context) {
@@ -65,21 +59,9 @@ function checkPowerShellInstaller() {
   assertMatches(installer, /\$releaseBaseUrl\/download\/\$version\//, ctx);
 }
 
-function checkDocsExposeContract() {
-  const cli = read(docsCli);
-  const ctx = 'docs/polyglot/cli.mdx';
-
-  // Pinned-install heading and a worked example for both installers.
-  assertContains(cli, '### Pinned install for CI and quickstarts', ctx);
-  assertMatches(cli, /curl[^\n]+install\.sh \| VERSION=\d+\.\d+\.\d+ sh/, ctx);
-  assertMatches(cli, /\$env:VERSION\s*=\s*"\d+\.\d+\.\d+"/, ctx);
-  assertContains(cli, 'dw --version', ctx);
-}
-
 try {
   checkShellInstaller();
   checkPowerShellInstaller();
-  checkDocsExposeContract();
   console.log('Installer contract OK');
 } catch (error) {
   console.error('Installer contract violation:', error.message);

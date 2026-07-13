@@ -1,24 +1,23 @@
 ---
 sidebar_position: 9
 title: Docs Page Release Audit
-description: Page-level release-status verdicts for stable 1.x docs, explicit 2.0 prerelease docs, and public edge surfaces.
+description: Build-derived route inventory for stable 1.x docs, explicit 2.0 prerelease docs, and public artifacts.
 tags:
   - conformance
   - docs
   - release-status
 keywords:
   - docs release audit
-  - page verdicts
+  - route inventory
   - v2 prerelease docs
 ---
 
 # Docs Page Release Audit
 
 Stable 1.x remains the default public documentation line. Explicit 2.0 pages
-are prerelease guidance until the release status changes. The page-level audit
-records a verdict for every stable default docs URL, every explicit 2.0 docs
-URL, and the public edge surfaces that can otherwise create release-status
-confusion.
+remain on versioned prerelease routes. The audit records the routes and public
+artifacts produced by the documentation build so deployment automation can
+verify that boundary directly.
 
 The machine-readable audit is published at
 [`/docs-page-release-audit.json`](pathname:///docs-page-release-audit.json).
@@ -29,14 +28,6 @@ public artifact tuple source during the docs build. The manifest also records
 the advertised server version and container image references came from the
 same tuple.
 
-## Verdict Vocabulary
-
-| Verdict | Meaning |
-| --- | --- |
-| `CLEAN` | The page matches its intended release status. Stable default pages teach released 1.x behavior; explicit 2.0 pages are framed as prerelease guidance. |
-| `LEAK` | The page presents stale behavior, broken current-release guidance, or a release-status claim that conflicts with the intended line. |
-| `MIXED` | The page intentionally compares release lines, but part of the current-product framing still points at the wrong line. |
-
 ## Coverage
 
 The audit manifest is generated from the production sitemap after the docs build
@@ -45,22 +36,12 @@ and includes:
 - stable default docs routes under `/docs/`;
 - explicit prerelease routes under `/docs/2.0/`;
 - generated category and tag pages;
-- the homepage, primary docs navigation, version switcher, LLM manifests, and
-  public conformance manifest routes.
+- the homepage, LLM manifests, and public conformance artifacts.
 
-The build fails when any covered route lacks a `CLEAN`, `LEAK`, or `MIXED`
-verdict, when canonical LLM manifests drift away from stable 1.x, or when the
-2.0 route set is not clearly marked as prerelease.
+Each inventory row contains only the public path, its route classification,
+the corresponding build artifact, and Docusaurus version metadata when the
+artifact supplies it. The build checks those facts against the sitemap,
+generated files, and Docusaurus version configuration.
 
-Each manifest entry includes the classifier id, built artifact path, content
-hash evidence, observed evidence categories, and page-level checks used to
-derive the verdict. Every covered surface except the audit manifest itself
-carries `content_sha256_status: "verified"` with a SHA-256 hash that the build
-checker recomputes from the built artifact.
-
-The `/docs-page-release-audit.json` self-entry is the exception: it records
-`content_sha256: null`, `content_sha256_status: "self_referential_manifest"`,
-and a `content_sha256_exception` object because embedding the final manifest
-hash would change the bytes being hashed. Non-clean entries must also include
-focused finding records with the release-status category, observed evidence,
-and remediation route.
+Editorial wording is not part of this artifact. Prose changes do not require a
+source digest, a per-page verdict, or an update to the audit checker.

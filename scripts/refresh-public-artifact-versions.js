@@ -15,7 +15,6 @@ const {
 
 const repoRoot = path.join(__dirname, '..');
 const artifactVersionsPath = path.join(__dirname, 'public-artifact-versions.json');
-const compatibilityDocPath = path.join(repoRoot, 'docs', 'compatibility.md');
 const quickstartContractPath = path.join(repoRoot, 'static', 'quickstart-execution-contract.json');
 const workflowAuthorityLockPath = path.join(
   __dirname,
@@ -25,14 +24,12 @@ const sdkNeutralityContractPath = path.join(repoRoot, 'static', 'sdk-neutrality-
 const WORKFLOW_SDK_NEUTRALITY_RESOURCE_PATH = 'resources/sdk-neutrality-contract.json';
 const PUBLIC_ARTIFACT_TUPLE_FILES = Object.freeze([
   'scripts/public-artifact-versions.json',
-  'docs/compatibility.md',
   'static/quickstart-execution-contract.json',
   'static/sdk-neutrality-contract.json',
   'scripts/workflow-sdk-neutrality-authority-lock.json',
 ]);
 const PUBLIC_ARTIFACT_TUPLE_PATHS = Object.freeze({
   'scripts/public-artifact-versions.json': artifactVersionsPath,
-  'docs/compatibility.md': compatibilityDocPath,
   'static/quickstart-execution-contract.json': quickstartContractPath,
   'static/sdk-neutrality-contract.json': sdkNeutralityContractPath,
   'scripts/workflow-sdk-neutrality-authority-lock.json': workflowAuthorityLockPath,
@@ -49,10 +46,6 @@ const CONTAINER_MANIFEST_ACCEPT = [
   'application/vnd.oci.image.manifest.v1+json',
   'application/vnd.docker.distribution.manifest.v2+json',
 ].join(', ');
-const COMPATIBILITY_HISTORY_HEADER =
-  '| Date | Server | CLI | Python SDK | Rust SDK | Workflow | Waterline | Notes |';
-const COMPATIBILITY_HISTORY_NOTE =
-  'Public release-audit evidence is aligned with the current published artifact tuple while stable 1.x remains the default docs line.';
 
 const PUBLISHED_ARTIFACT_SOURCES = Object.freeze({
   cli: {
@@ -725,16 +718,10 @@ function readPublicArtifactTupleSources() {
 }
 
 function generatedPublicArtifactTupleSources(currentSources, versions, date, workflowManifestSource) {
-  const compatibilityReplacement = replaceCompatibilityHistoryTopRow(
-    currentSources['docs/compatibility.md'],
-    versions,
-    date,
-  );
   const quickstartSource = currentSources['static/quickstart-execution-contract.json'];
 
   return {
     'scripts/public-artifact-versions.json': artifactVersionsSource(versions),
-    'docs/compatibility.md': compatibilityReplacement.content,
     'static/quickstart-execution-contract.json': quickstartExecutionContractSource(
       quickstartSource,
       versions,
@@ -859,98 +846,6 @@ function artifactMismatches(actual, expected) {
       actual: actual[name],
       expected: expected[name],
     }));
-}
-
-function findCompatibilityHistoryTopRow(content) {
-  const lines = content.split(/\r?\n/);
-  const headerIndex = lines.findIndex(line => line.trim() === COMPATIBILITY_HISTORY_HEADER);
-
-  if (headerIndex < 0) {
-    throw new Error(`docs/compatibility.md must include the version-history header: ${COMPATIBILITY_HISTORY_HEADER}`);
-  }
-
-  const separatorIndex = headerIndex + 1;
-  if (!/^\|\s*-+/.test(lines[separatorIndex] || '')) {
-    throw new Error('docs/compatibility.md version-history table must include a separator row after the header');
-  }
-
-  const rowIndex = lines.findIndex((line, index) => index > separatorIndex && /^\|\s*\d{4}-\d{2}-\d{2}\s*\|/.test(line));
-
-  if (rowIndex < 0) {
-    throw new Error('docs/compatibility.md version-history table must include at least one dated row');
-  }
-
-  return {
-    lines,
-    row: lines[rowIndex],
-    rowIndex,
-  };
-}
-
-function parseCompatibilityHistoryRow(row) {
-  const cells = row.trim().replace(/^\||\|$/g, '').split('|').map(cell => cell.trim());
-
-  if (cells.length < 7) {
-    throw new Error(`Malformed docs/compatibility.md version-history row: ${row}`);
-  }
-
-  if (cells.length === 7) {
-    return {
-      date: cells[0],
-      server: cells[1],
-      cli: cells[2],
-      'sdk-python': cells[3],
-      'sdk-rust': null,
-      workflow: cells[4],
-      waterline: cells[5],
-      notes: cells.slice(6).join(' | '),
-    };
-  }
-
-  return {
-    date: cells[0],
-    server: cells[1],
-    cli: cells[2],
-    'sdk-python': cells[3],
-    'sdk-rust': cells[4],
-    workflow: cells[5],
-    waterline: cells[6],
-    notes: cells.slice(7).join(' | '),
-  };
-}
-
-function compatibilityHistoryRow(versions, date) {
-  return `| ${date} | ${versions.server} | ${versions.cli} | ${versions['sdk-python']} | ${versions['sdk-rust']} | ${versions.workflow} | ${versions.waterline} | ${COMPATIBILITY_HISTORY_NOTE} |`;
-}
-
-function compatibilityHistoryMismatches(rowVersions, expected) {
-  return ['server', 'cli', 'sdk-python', 'sdk-rust', 'workflow', 'waterline']
-    .filter(name => rowVersions[name] !== expected[name])
-    .map(name => ({
-      name,
-      actual: rowVersions[name],
-      expected: expected[name],
-    }));
-}
-
-function replaceCompatibilityHistoryTopRow(content, versions, date) {
-  const result = findCompatibilityHistoryTopRow(content);
-  const current = parseCompatibilityHistoryRow(result.row);
-  const mismatches = compatibilityHistoryMismatches(current, versions);
-
-  if (mismatches.length === 0) {
-    return {
-      changed: false,
-      content,
-    };
-  }
-
-  result.lines[result.rowIndex] = compatibilityHistoryRow(versions, date);
-
-  return {
-    changed: true,
-    content: result.lines.join('\n'),
-  };
 }
 
 function mismatchMessage(title, mismatches) {
@@ -1145,14 +1040,6 @@ async function check() {
     throw new Error(mismatchMessage('scripts/public-artifact-versions.json is stale against the current published artifact tuple:', sourceMismatches));
   }
 
-  const compatibilityDoc = currentSources['docs/compatibility.md'];
-  const topRow = parseCompatibilityHistoryRow(findCompatibilityHistoryTopRow(compatibilityDoc).row);
-  const historyMismatches = compatibilityHistoryMismatches(topRow, expected);
-
-  if (historyMismatches.length > 0) {
-    throw new Error(mismatchMessage('docs/compatibility.md top version-history row is stale against the current published artifact tuple:', historyMismatches));
-  }
-
   const quickstartContract = currentSources['static/quickstart-execution-contract.json'];
   const expectedQuickstartContract = desiredSources['static/quickstart-execution-contract.json'];
   if (quickstartContract !== expectedQuickstartContract) {
@@ -1244,22 +1131,16 @@ if (require.main === module) {
 }
 
 module.exports = {
-  COMPATIBILITY_HISTORY_NOTE,
   PUBLISHED_ARTIFACT_SOURCES,
   PUBLIC_ARTIFACT_TUPLE_FILES,
   artifactMismatches,
   artifactVersionsSource,
   changedPublicArtifactTupleFiles,
   compareVersions,
-  compatibilityHistoryMismatches,
-  compatibilityHistoryRow,
-  findCompatibilityHistoryTopRow,
   generatedPublicArtifactTupleSources,
   normalizeVersion,
   parseRegistryNextLink,
-  parseCompatibilityHistoryRow,
   quickstartExecutionContractSource,
-  replaceCompatibilityHistoryTopRow,
   resolvePackagistVersion,
   resolvePublishedArtifactTuple,
   resolvePublishedWorkflowAuthority,

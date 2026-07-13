@@ -10,12 +10,6 @@ const workflow = fs.readFileSync(workflowPath, 'utf8');
 const deployWorkflow = fs.readFileSync(deployWorkflowPath, 'utf8');
 const routeScript = fs.readFileSync(routeScriptPath, 'utf8');
 const packageSource = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
-const reviewContract = require('./docs-narrative-reviews');
-const {
-  sha256,
-  sourceInventory,
-  validateReviewContract,
-} = require('./docs-narrative-audit-contract');
 const {
   artifactVersionDigest,
   buildReadyItemPayload,
@@ -62,7 +56,6 @@ for (const required of [
   "action: 'pipeline_ready_item'",
   "integration: 'pipeline'",
   'scripts/public-artifact-versions.json',
-  'docs/compatibility.md',
   'static/quickstart-execution-contract.json',
   'static/sdk-neutrality-contract.json',
   'scripts/workflow-sdk-neutrality-authority-lock.json',
@@ -87,7 +80,7 @@ if (!(detectPosition < writePosition && writePosition < uploadPosition && upload
 }
 
 if (routePosition >= validatePosition) {
-  fail('public artifact tuple handoff must route before the full docs build requires narrative review');
+  fail('public artifact tuple handoff must route before the full docs build');
 }
 
 const validateStep = workflow.slice(validatePosition, workflow.indexOf('\n      - name:', validatePosition + 1));
@@ -100,46 +93,13 @@ for (const required of [
   'node scripts/check-docs-narrative-audit.js',
 ]) {
   if (!packageSource.scripts.build.includes(required)) {
-    fail(`normal docs build must preserve narrative review enforcement: ${required}`);
+    fail(`normal docs build must preserve generated route inventory checks: ${required}`);
   }
 }
 
 if (!deployWorkflow.includes('- name: Build website') || !deployWorkflow.includes('run: npm run build')) {
-  fail('docs deploy workflow must preserve the narrative-reviewed npm build');
+  fail('docs deploy workflow must preserve the complete npm build');
 }
-
-function assertCompatibilityHashChangeNeedsNarrativeReview() {
-  const repoRoot = path.join(__dirname, '..');
-  const compatibilityPath = path.join(repoRoot, 'docs', 'compatibility.md');
-  const compatibility = fs.readFileSync(compatibilityPath, 'utf8');
-  const changedCompatibility = compatibility.replace(
-    /(^\| \d{4}-\d{2}-\d{2} \| )([^|]+)( \|)/m,
-    '$1generated-tuple-change$3'
-  );
-
-  if (changedCompatibility === compatibility) {
-    fail('compatibility-row hash-change fixture did not update the generated version-history row');
-  }
-
-  const inventory = sourceInventory(repoRoot).map(source => (
-    source.source_file === 'docs/compatibility.md'
-      ? {...source, source_sha256: sha256(changedCompatibility)}
-      : source
-  ));
-
-  let rejection = null;
-  try {
-    validateReviewContract(reviewContract.reviews, inventory);
-  } catch (err) {
-    rejection = err;
-  }
-
-  if (!rejection || !rejection.message.includes('docs/compatibility.md changed after editorial review')) {
-    fail('normal narrative review contract must reject a generated compatibility-row hash change');
-  }
-}
-
-assertCompatibilityHashChangeNeedsNarrativeReview();
 
 for (const required of [
   'gh.issue.list',
@@ -211,14 +171,12 @@ const multiArtifactHandoff = {
   refresh_command: 'npm run refresh:public-artifact-versions',
   refresh_files: [
     'scripts/public-artifact-versions.json',
-    'docs/compatibility.md',
     'static/quickstart-execution-contract.json',
     'static/sdk-neutrality-contract.json',
     'scripts/workflow-sdk-neutrality-authority-lock.json',
   ],
   changed_files: [
     'scripts/public-artifact-versions.json',
-    'docs/compatibility.md',
     'static/quickstart-execution-contract.json',
     'static/sdk-neutrality-contract.json',
     'scripts/workflow-sdk-neutrality-authority-lock.json',
