@@ -38,16 +38,17 @@
 // 8. The companion docs site page (`docs/sdk-neutrality.md`) advertises
 //    itself as the public mirror, references the schema id, and lists
 //    every rule from the contract.
-// 9. When the workflow repo is available beside this docs checkout (or
-//    via `WORKFLOW_REPO_PATH`), the static mirror must be
-//    byte-equivalent to `workflow/resources/sdk-neutrality-contract.json`
-//    when that file exists. Drift between the PHP manifest and the JSON
-//    mirror means a release shipped a class change without bumping the
-//    mirror (or vice versa). Either fix the doc or bump the contract;
-//    do not silence the check.
+// 9. Release workflows provide the exact tagged Workflow package authority
+//    through `WORKFLOW_SDK_NEUTRALITY_MANIFEST_PATH`. Developer checkouts may
+//    instead use a sibling Workflow repo. A versioned digest lock provides the
+//    same exact-artifact check in deterministic standalone builds. The static
+//    mirror must be byte-equivalent to the package manifest in release CI and
+//    must match the pinned package digest everywhere else.
 
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const {ARTIFACT_VERSIONS} = require('./public-artifact-versions');
 
 const repoRoot = path.join(__dirname, '..');
 const contractPath = path.join(repoRoot, 'static', 'sdk-neutrality-contract.json');
@@ -55,6 +56,11 @@ const surfaceContractPath = path.join(repoRoot, 'static', 'compatibility-contrac
 const protocolCatalogPath = path.join(repoRoot, 'static', 'platform-protocol-specs.json');
 const conformanceSuitePath = path.join(repoRoot, 'static', 'platform-conformance-contract.json');
 const neutralityDocPath = path.join(repoRoot, 'docs', 'sdk-neutrality.md');
+const workflowAuthorityLockPath = path.join(
+  repoRoot,
+  'scripts',
+  'workflow-sdk-neutrality-authority-lock.json',
+);
 
 const EXPECTED_SCHEMA = 'durable-workflow.v2.sdk-neutrality.contract';
 const EXPECTED_AUTHORITY_DOC =
@@ -738,6 +744,14 @@ function assertNeutralityDocAlignsWithContract(contract) {
     );
   }
 
+  if (!doc.includes('resources/sdk-neutrality-contract.json')) {
+    throw new Error(
+      `docs/sdk-neutrality.md must identify the SDK neutrality authority ` +
+        `shipped in the Workflow package at ` +
+        `resources/sdk-neutrality-contract.json`,
+    );
+  }
+
   for (const rule of REQUIRED_RULES) {
     if (!new RegExp(`\`${rule}\``).test(doc)) {
       throw new Error(
@@ -759,33 +773,110 @@ function assertNeutralityDocAlignsWithContract(contract) {
   }
 }
 
-function workflowMirrorPath() {
-  const configuredWorkflowRepo = process.env.WORKFLOW_REPO_PATH;
+function workflowMirrorPath(environment = process.env, root = repoRoot) {
+  const configuredManifest = environment.WORKFLOW_SDK_NEUTRALITY_MANIFEST_PATH;
+  if (configuredManifest) {
+    return path.resolve(configuredManifest);
+  }
+
+  const configuredWorkflowRepo = environment.WORKFLOW_REPO_PATH;
   if (configuredWorkflowRepo) {
     return path.join(configuredWorkflowRepo, 'resources', 'sdk-neutrality-contract.json');
   }
   const sibling = path.join(
-    repoRoot,
+    root,
     '..',
     'workflow',
     'resources',
     'sdk-neutrality-contract.json',
   );
-  return fs.existsSync(sibling) ? sibling : null;
+  if (fs.existsSync(sibling)) {
+    return sibling;
+  }
+
+  return null;
 }
 
-function assertWorkflowMirrorMatchesWhenAvailable() {
-  const workflowPath = workflowMirrorPath();
+function sha256(source) {
+  return crypto.createHash('sha256').update(source).digest('hex');
+}
+
+function assertPinnedWorkflowAuthority(options = {}) {
+  const root = options.repoRoot || repoRoot;
+  const lockPath = options.workflowAuthorityLockPath || path.join(
+    root,
+    'scripts',
+    'workflow-sdk-neutrality-authority-lock.json',
+  );
+  const docsPath = options.contractPath || path.join(
+    root,
+    'static',
+    'sdk-neutrality-contract.json',
+  );
+  const workflowVersion = options.workflowVersion || ARTIFACT_VERSIONS.workflow;
+
+  if (!fs.existsSync(lockPath)) {
+    throw new Error(
+      `Workflow SDK neutrality authority input is required but unavailable. ` +
+        `Set WORKFLOW_SDK_NEUTRALITY_MANIFEST_PATH to the packaged ` +
+        `resources/sdk-neutrality-contract.json file, provide a sibling ` +
+        `Workflow checkout, or restore the standalone authority lock at ${lockPath}.`,
+    );
+  }
+
+  const lock = JSON.parse(read(lockPath));
+  if (lock.schema !== 'durable-workflow.docs.workflow-sdk-neutrality-authority-lock') {
+    throw new Error(`Workflow SDK neutrality authority lock has an invalid schema at ${lockPath}`);
+  }
+  if (lock.schema_version !== 1) {
+    throw new Error(`Workflow SDK neutrality authority lock has an invalid schema version at ${lockPath}`);
+  }
+  if (lock.workflow_ref !== workflowVersion) {
+    throw new Error(
+      `Workflow SDK neutrality authority lock targets ${lock.workflow_ref || '<missing>'}, ` +
+        `but scripts/public-artifact-versions.json pins ${workflowVersion}`,
+    );
+  }
+  if (lock.resource_path !== 'resources/sdk-neutrality-contract.json') {
+    throw new Error(
+      `Workflow SDK neutrality authority lock must identify ` +
+        `resources/sdk-neutrality-contract.json`,
+    );
+  }
+  if (!/^[a-f0-9]{64}$/.test(lock.sha256 || '')) {
+    throw new Error(`Workflow SDK neutrality authority lock has an invalid sha256 at ${lockPath}`);
+  }
+
+  const actualDigest = sha256(read(docsPath));
+  if (actualDigest !== lock.sha256) {
+    throw new Error(
+      `static/sdk-neutrality-contract.json must match the exact Workflow ` +
+        `${workflowVersion} authority digest ${lock.sha256}; got ${actualDigest}`,
+    );
+  }
+}
+
+function assertWorkflowMirrorMatches(options = {}) {
+  const root = options.repoRoot || repoRoot;
+  const workflowPath = workflowMirrorPath(
+    options.environment || process.env,
+    root,
+  );
   if (workflowPath === null) {
+    assertPinnedWorkflowAuthority({...options, repoRoot: root});
     return;
   }
   if (!fs.existsSync(workflowPath)) {
     throw new Error(
-      `WORKFLOW_REPO_PATH was set, but the workflow SDK neutrality mirror ` +
+      `The Workflow SDK neutrality authority ` +
         `does not exist at ${workflowPath}.`,
     );
   }
-  const docsCopy = read(contractPath);
+  const docsCopy = read(options.contractPath || path.join(
+    root,
+    'static',
+    'sdk-neutrality-contract.json',
+  ));
   const workflowCopy = read(workflowPath);
   if (docsCopy !== workflowCopy) {
     throw new Error(
@@ -820,7 +911,7 @@ function main() {
   assertSdkBreadthPolicy(contract, catalogs);
   assertReleaseGates(contract);
   assertNeutralityDocAlignsWithContract(contract);
-  assertWorkflowMirrorMatchesWhenAvailable();
+  assertWorkflowMirrorMatches();
 
   console.log(
     `SDK-neutrality-authority check passed: ${REQUIRED_RULES.length} rules ` +
@@ -835,8 +926,12 @@ if (require.main === module) {
 module.exports = {
   assertNoRepositoryLocalReferences,
   assertNeutralityRules,
+  assertPinnedWorkflowAuthority,
   assertReleaseGates,
   assertSdkBreadthPolicy,
+  assertWorkflowMirrorMatches,
   loadAuthorityCatalogs,
   loadContract,
+  workflowAuthorityLockPath,
+  workflowMirrorPath,
 };

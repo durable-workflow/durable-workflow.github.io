@@ -180,8 +180,24 @@ jobs:
           PIPELINE_GATE_URL: ${{ secrets.PIPELINE_GATE_URL }}
         run: node scripts/route-public-artifact-tuple-handoff.js --handoff docs-artifact-tuple-handoff.json
 
+      - name: Resolve Workflow authority ref
+        id: workflow-authority
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          node -e "process.stdout.write('ref=' + require('./scripts/public-artifact-versions.json').artifacts.workflow + '\n')" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout Workflow authority
+        if: steps.changes.outputs.changed == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: durable-workflow/workflow
+          ref: ${{ steps.workflow-authority.outputs.ref }}
+          path: .workflow-authority
+
       - name: Validate refreshed docs
         if: steps.changes.outputs.changed == 'true'
+        env:
+          WORKFLOW_SDK_NEUTRALITY_MANIFEST_PATH: ${{ github.workspace }}/.workflow-authority/resources/sdk-neutrality-contract.json
         run: npm run build
 
       - name: Report current tuple

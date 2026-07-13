@@ -29,11 +29,14 @@ every public Durable Workflow surface must satisfy and the standing
 language-agnosticism audit that release reviewers apply to new server,
 workflow, CLI, Waterline, and MCP surfaces.
 
-The upstream architecture authority is published at
+The upstream architecture guide is published at
 [`sdk-neutrality.md`](https://github.com/durable-workflow/workflow/blob/v2/docs/architecture/sdk-neutrality.md).
 The consumable machine-readable authority is published from this site at
 [`/sdk-neutrality-contract.json`](/sdk-neutrality-contract.json) under
-the schema id `durable-workflow.v2.sdk-neutrality.contract`. The
+the schema id `durable-workflow.v2.sdk-neutrality.contract`. The exact same
+JSON ships in the Workflow Composer package at
+`resources/sdk-neutrality-contract.json`, allowing release tools and
+third-party consumers to read the authority without inspecting PHP source. The
 standalone Durable Workflow server re-exports the same manifest from
 `GET /api/cluster/info` under `sdk_neutrality_contract`. When this page or the
 architecture guide disagrees with the published JSON contract, the JSON

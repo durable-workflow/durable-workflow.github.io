@@ -33,6 +33,20 @@ jobs:
           DOCS_DEPLOY_EVENT_NAME: ${{ github.event_name }}
         run: node scripts/plan-docs-deploy.js
 
+      - name: Resolve Workflow authority ref
+        id: workflow-authority
+        if: steps.deploy-plan.outputs.deploy == 'true'
+        run: |
+          node -e "process.stdout.write('ref=' + require('./scripts/public-artifact-versions.json').artifacts.workflow + '\n')" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout Workflow authority
+        if: steps.deploy-plan.outputs.deploy == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: durable-workflow/workflow
+          ref: ${{ steps.workflow-authority.outputs.ref }}
+          path: .workflow-authority
+
       - name: Install dependencies
         if: steps.deploy-plan.outputs.deploy == 'true'
         run: npm ci
@@ -41,6 +55,7 @@ jobs:
         if: steps.deploy-plan.outputs.deploy == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WORKFLOW_SDK_NEUTRALITY_MANIFEST_PATH: ${{ github.workspace }}/.workflow-authority/resources/sdk-neutrality-contract.json
         run: npm run build
 
       - name: Verify public artifact tuple
