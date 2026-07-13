@@ -65,8 +65,6 @@ function main() {
     'polyglot durable-execution platform',
     'Standalone server:',
     'Embedded:',
-    'Durable Workflow Cloud:',
-    '/docs/2.0/polyglot/cloud-control-plane/',
     'PHP, Python, and Rust are first-party SDK surfaces',
     '**Rust** authors deterministic workflows',
     'worker services',
