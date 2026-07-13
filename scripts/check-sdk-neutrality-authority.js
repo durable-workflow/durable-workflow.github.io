@@ -40,10 +40,10 @@
 //    every rule from the contract.
 // 9. Release workflows provide the exact tagged Workflow package authority
 //    through `WORKFLOW_SDK_NEUTRALITY_MANIFEST_PATH`. Developer checkouts may
-//    instead use a sibling Workflow repo. A versioned digest lock provides the
-//    same exact-artifact check in deterministic standalone builds. The static
-//    mirror must be byte-equivalent to the package manifest in release CI and
-//    must match the pinned package digest everywhere else.
+//    instead use a sibling Workflow repo. A versioned digest lock pins every
+//    validation mode to that Workflow ref. The static mirror must match the
+//    pinned package digest and be byte-equivalent to the package manifest when
+//    the release input is available.
 
 const crypto = require('crypto');
 const fs = require('fs');
@@ -858,12 +858,12 @@ function assertPinnedWorkflowAuthority(options = {}) {
 
 function assertWorkflowMirrorMatches(options = {}) {
   const root = options.repoRoot || repoRoot;
+  assertPinnedWorkflowAuthority({...options, repoRoot: root});
   const workflowPath = workflowMirrorPath(
     options.environment || process.env,
     root,
   );
   if (workflowPath === null) {
-    assertPinnedWorkflowAuthority({...options, repoRoot: root});
     return;
   }
   if (!fs.existsSync(workflowPath)) {

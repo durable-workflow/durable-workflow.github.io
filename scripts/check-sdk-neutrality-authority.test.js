@@ -14,6 +14,18 @@ const {
   loadAuthorityCatalogs,
   loadContract,
 } = require('./check-sdk-neutrality-authority');
+const {
+  workflowAuthorityLockSource,
+} = require('./refresh-public-artifact-versions');
+const currentWorkflowRef = require('./public-artifact-versions.json').artifacts.workflow;
+
+function nextWorkflowPrerelease(ref) {
+  return ref.replace(/\.(\d+)$/, (_, sequence) => `.${Number(sequence) + 1}`);
+}
+
+function escaped(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 function changed(contract, mutate) {
   const copy = JSON.parse(JSON.stringify(contract));
@@ -31,6 +43,19 @@ assert.doesNotThrow(() => assertReleaseGates(contract));
 
 const isolatedRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdk-neutrality-authority-'));
 try {
+  function writeAuthorityFixture(root, workflowRef, manifestSource) {
+    fs.mkdirSync(path.join(root, 'scripts'), {recursive: true});
+    fs.mkdirSync(path.join(root, 'static'), {recursive: true});
+    fs.writeFileSync(
+      path.join(root, 'static', 'sdk-neutrality-contract.json'),
+      manifestSource,
+    );
+    fs.writeFileSync(
+      path.join(root, 'scripts', 'workflow-sdk-neutrality-authority-lock.json'),
+      workflowAuthorityLockSource(workflowRef, manifestSource),
+    );
+  }
+
   const standaloneRoot = path.join(isolatedRoot, 'standalone-docs-checkout');
   fs.mkdirSync(path.join(standaloneRoot, 'scripts'), {recursive: true});
   fs.mkdirSync(path.join(standaloneRoot, 'static'), {recursive: true});
@@ -47,6 +72,112 @@ try {
     'standalone validation must use the authority digest locked to the exact Workflow artifact',
   );
 
+  const successorWorkflowRef = nextWorkflowPrerelease(currentWorkflowRef);
+  const currentManifestSource = fs.readFileSync(
+    path.join(__dirname, '..', 'static', 'sdk-neutrality-contract.json'),
+    'utf8',
+  );
+  const unchangedSuccessorRoot = path.join(isolatedRoot, 'unchanged-successor');
+  writeAuthorityFixture(unchangedSuccessorRoot, successorWorkflowRef, currentManifestSource);
+  const unchangedPublishedManifest = path.join(
+    isolatedRoot,
+    'unchanged-published-sdk-neutrality-contract.json',
+  );
+  fs.writeFileSync(unchangedPublishedManifest, currentManifestSource);
+
+  assert.doesNotThrow(
+    () => assertWorkflowMirrorMatches({
+      environment: {},
+      repoRoot: unchangedSuccessorRoot,
+      workflowVersion: successorWorkflowRef,
+    }),
+    'standalone validation must accept a successor ref whose authority bytes are unchanged',
+  );
+  assert.doesNotThrow(
+    () => assertWorkflowMirrorMatches({
+      environment: {
+        WORKFLOW_SDK_NEUTRALITY_MANIFEST_PATH: unchangedPublishedManifest,
+      },
+      repoRoot: unchangedSuccessorRoot,
+      workflowVersion: successorWorkflowRef,
+    }),
+    'release validation must accept the same successor ref and packaged authority bytes',
+  );
+
+  const staleRefRoot = path.join(isolatedRoot, 'stale-ref-successor');
+  writeAuthorityFixture(staleRefRoot, currentWorkflowRef, currentManifestSource);
+  assert.throws(
+    () => assertWorkflowMirrorMatches({
+      environment: {
+        WORKFLOW_SDK_NEUTRALITY_MANIFEST_PATH: unchangedPublishedManifest,
+      },
+      repoRoot: staleRefRoot,
+      workflowVersion: successorWorkflowRef,
+    }),
+    new RegExp(`lock targets ${escaped(currentWorkflowRef)}.*pins ${escaped(successorWorkflowRef)}`),
+    'release validation must reject a stale lock ref even when the packaged bytes match',
+  );
+
+  const staleDigestRoot = path.join(isolatedRoot, 'stale-digest-successor');
+  writeAuthorityFixture(staleDigestRoot, successorWorkflowRef, currentManifestSource);
+  const staleDigestLockPath = path.join(
+    staleDigestRoot,
+    'scripts',
+    'workflow-sdk-neutrality-authority-lock.json',
+  );
+  const staleDigestLock = JSON.parse(fs.readFileSync(staleDigestLockPath, 'utf8'));
+  staleDigestLock.sha256 = '0'.repeat(64);
+  fs.writeFileSync(staleDigestLockPath, `${JSON.stringify(staleDigestLock, null, 2)}\n`);
+  assert.throws(
+    () => assertWorkflowMirrorMatches({
+      environment: {
+        WORKFLOW_SDK_NEUTRALITY_MANIFEST_PATH: unchangedPublishedManifest,
+      },
+      repoRoot: staleDigestRoot,
+      workflowVersion: successorWorkflowRef,
+    }),
+    new RegExp(`must match the exact Workflow ${escaped(successorWorkflowRef)} authority digest`),
+    'release validation must reject a stale digest before accepting packaged bytes',
+  );
+
+  const changedManifestSource = `${currentManifestSource}\n`;
+  const changedSuccessorRoot = path.join(isolatedRoot, 'changed-successor');
+  writeAuthorityFixture(changedSuccessorRoot, successorWorkflowRef, changedManifestSource);
+  const changedPublishedManifest = path.join(
+    isolatedRoot,
+    'changed-published-sdk-neutrality-contract.json',
+  );
+  fs.writeFileSync(changedPublishedManifest, changedManifestSource);
+  assert.doesNotThrow(
+    () => assertWorkflowMirrorMatches({
+      environment: {},
+      repoRoot: changedSuccessorRoot,
+      workflowVersion: successorWorkflowRef,
+    }),
+    'standalone validation must accept refreshed successor authority bytes and digest',
+  );
+  assert.doesNotThrow(
+    () => assertWorkflowMirrorMatches({
+      environment: {
+        WORKFLOW_SDK_NEUTRALITY_MANIFEST_PATH: changedPublishedManifest,
+      },
+      repoRoot: changedSuccessorRoot,
+      workflowVersion: successorWorkflowRef,
+    }),
+    'release validation must accept refreshed successor authority bytes and digest',
+  );
+  assert.throws(
+    () => assertWorkflowMirrorMatches({
+      environment: {
+        WORKFLOW_SDK_NEUTRALITY_MANIFEST_PATH: unchangedPublishedManifest,
+      },
+      repoRoot: changedSuccessorRoot,
+      workflowVersion: successorWorkflowRef,
+    }),
+    /must be byte-equivalent/,
+    'release validation must reject stale packaged bytes for a refreshed successor digest',
+  );
+
   assert.throws(
     () => assertWorkflowMirrorMatches({
       environment: {},
@@ -59,9 +190,9 @@ try {
   assert.throws(
     () => assertPinnedWorkflowAuthority({
       repoRoot: standaloneRoot,
-      workflowVersion: '2.0.0-alpha.275',
+      workflowVersion: successorWorkflowRef,
     }),
-    /lock targets 2\.0\.0-alpha\.274.*pins 2\.0\.0-alpha\.275/,
+    new RegExp(`lock targets ${escaped(currentWorkflowRef)}.*pins ${escaped(successorWorkflowRef)}`),
     'standalone validation must reject an authority lock for a different Workflow artifact',
   );
 
@@ -80,7 +211,7 @@ try {
       contractPath: driftedStandaloneContract,
       repoRoot: standaloneRoot,
     }),
-    /must match the exact Workflow 2\.0\.0-alpha\.274 authority digest/,
+    new RegExp(`must match the exact Workflow ${escaped(currentWorkflowRef)} authority digest`),
     'standalone validation must reject byte drift from the pinned Workflow artifact',
   );
 

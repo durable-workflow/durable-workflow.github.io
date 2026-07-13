@@ -1,5 +1,6 @@
 const assert = require('assert');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const source = require('./public-artifact-versions.json');
@@ -11,18 +12,27 @@ const {
 } = require('./public-artifact-versions');
 const {
   PUBLISHED_ARTIFACT_SOURCES,
+  PUBLIC_ARTIFACT_TUPLE_FILES,
   artifactVersionsSource,
+  changedPublicArtifactTupleFiles,
   compatibilityHistoryRow,
+  generatedPublicArtifactTupleSources,
   parseRegistryNextLink,
   parseCompatibilityHistoryRow,
   quickstartExecutionContractSource,
   replaceCompatibilityHistoryTopRow,
+  resolvePublishedWorkflowAuthority,
   selectLatestCompleteCliRelease,
   selectLatestCratesIoVersion,
   selectServerRegistryVersion,
   selectLatestVersion,
+  sha256,
+  workflowAuthorityLockSource,
+  workflowAuthorityManifestUrl,
+  writePublicArtifactTupleSources,
 } = require('./refresh-public-artifact-versions');
 
+const repoRoot = path.join(__dirname, '..');
 const quickstartContractPath = path.join(__dirname, '..', 'static', 'quickstart-execution-contract.json');
 
 function cloneSource() {
@@ -108,6 +118,218 @@ assert.strictEqual(
   currentQuickstartContract,
   'public artifact refresh must regenerate static/quickstart-execution-contract.json pins'
 );
+
+const currentTupleSources = Object.fromEntries(PUBLIC_ARTIFACT_TUPLE_FILES.map(file => [
+  file,
+  fs.readFileSync(path.join(repoRoot, file), 'utf8'),
+]));
+const successorWorkflowVersion = source.artifacts.workflow.replace(
+  /\.(\d+)$/,
+  (_, sequence) => `.${Number(sequence) + 1}`,
+);
+const successorVersions = {
+  ...source.artifacts,
+  workflow: successorWorkflowVersion,
+};
+const currentWorkflowManifest = currentTupleSources['static/sdk-neutrality-contract.json'];
+const unchangedManifestTuple = generatedPublicArtifactTupleSources(
+  currentTupleSources,
+  successorVersions,
+  '2026-07-14',
+  currentWorkflowManifest,
+);
+const unchangedManifestFiles = changedPublicArtifactTupleFiles(
+  currentTupleSources,
+  unchangedManifestTuple,
+);
+
+assert.deepStrictEqual(
+  unchangedManifestFiles,
+  [
+    'scripts/public-artifact-versions.json',
+    'docs/compatibility.md',
+    'static/quickstart-execution-contract.json',
+    'scripts/workflow-sdk-neutrality-authority-lock.json',
+  ],
+  'a successor Workflow prerelease with unchanged authority bytes must refresh the tuple and versioned lock',
+);
+assert.strictEqual(
+  unchangedManifestTuple['static/sdk-neutrality-contract.json'],
+  currentWorkflowManifest,
+  'unchanged Workflow authority bytes must remain byte-equivalent in the public mirror',
+);
+const unchangedManifestLock = JSON.parse(
+  unchangedManifestTuple['scripts/workflow-sdk-neutrality-authority-lock.json'],
+);
+assert.strictEqual(unchangedManifestLock.workflow_ref, successorWorkflowVersion);
+assert.strictEqual(unchangedManifestLock.sha256, sha256(currentWorkflowManifest));
+
+const changedWorkflowManifest = `${currentWorkflowManifest}\n`;
+const changedManifestTuple = generatedPublicArtifactTupleSources(
+  currentTupleSources,
+  successorVersions,
+  '2026-07-14',
+  changedWorkflowManifest,
+);
+assert.deepStrictEqual(
+  changedPublicArtifactTupleFiles(currentTupleSources, changedManifestTuple),
+  PUBLIC_ARTIFACT_TUPLE_FILES,
+  'a successor Workflow prerelease with changed authority bytes must refresh every generated tuple file',
+);
+assert.strictEqual(
+  changedManifestTuple['static/sdk-neutrality-contract.json'],
+  changedWorkflowManifest,
+  'the public mirror must preserve the exact published Workflow manifest bytes',
+);
+const changedManifestLock = JSON.parse(
+  changedManifestTuple['scripts/workflow-sdk-neutrality-authority-lock.json'],
+);
+assert.strictEqual(changedManifestLock.workflow_ref, successorWorkflowVersion);
+assert.strictEqual(changedManifestLock.sha256, sha256(changedWorkflowManifest));
+assert.notStrictEqual(changedManifestLock.sha256, unchangedManifestLock.sha256);
+
+const tupleWriteRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'public-artifact-tuple-write-'));
+try {
+  const tuplePaths = Object.fromEntries(PUBLIC_ARTIFACT_TUPLE_FILES.map(file => [
+    file,
+    path.join(tupleWriteRoot, file),
+  ]));
+  const originalSources = Object.fromEntries(PUBLIC_ARTIFACT_TUPLE_FILES.map(file => [
+    file,
+    `original ${file}\n`,
+  ]));
+  const desiredSources = Object.fromEntries(PUBLIC_ARTIFACT_TUPLE_FILES.map(file => [
+    file,
+    `replacement ${file}\n`,
+  ]));
+
+  for (const file of PUBLIC_ARTIFACT_TUPLE_FILES) {
+    fs.mkdirSync(path.dirname(tuplePaths[file]), {recursive: true});
+    fs.writeFileSync(tuplePaths[file], originalSources[file]);
+  }
+
+  const faultingFileSystem = Object.create(fs);
+  let renameCalls = 0;
+  faultingFileSystem.renameSync = (sourcePath, targetPath) => {
+    renameCalls += 1;
+    if (renameCalls === 2) {
+      throw new Error('injected tuple promotion failure');
+    }
+    fs.renameSync(sourcePath, targetPath);
+  };
+
+  assert.throws(
+    () => writePublicArtifactTupleSources(
+      desiredSources,
+      PUBLIC_ARTIFACT_TUPLE_FILES,
+      {fileSystem: faultingFileSystem, tuplePaths},
+    ),
+    /injected tuple promotion failure/,
+    'a mid-promotion failure must be reported to the tuple refresher',
+  );
+  assert(renameCalls > 2, 'tuple write failure must invoke rollback renames');
+
+  for (const file of PUBLIC_ARTIFACT_TUPLE_FILES) {
+    assert.strictEqual(
+      fs.readFileSync(tuplePaths[file], 'utf8'),
+      originalSources[file],
+      `tuple write rollback must restore ${file}`,
+    );
+    assert.deepStrictEqual(
+      fs.readdirSync(path.dirname(tuplePaths[file])).filter(name => name.includes('.tuple-')),
+      [],
+      `tuple write rollback must clean temporary files beside ${file}`,
+    );
+  }
+
+  writePublicArtifactTupleSources(
+    desiredSources,
+    PUBLIC_ARTIFACT_TUPLE_FILES,
+    {tuplePaths},
+  );
+  for (const file of PUBLIC_ARTIFACT_TUPLE_FILES) {
+    assert.strictEqual(fs.readFileSync(tuplePaths[file], 'utf8'), desiredSources[file]);
+  }
+} finally {
+  fs.rmSync(tupleWriteRoot, {recursive: true, force: true});
+}
+
+async function assertWorkflowRegistryAuthorityResolution() {
+  const selectedReference = 'a'.repeat(40);
+  const olderReference = 'b'.repeat(40);
+  const requestedUrls = [];
+  const packagistResponse = {
+    packages: {
+      [PUBLISHED_ARTIFACT_SOURCES.workflow.packageName]: [
+        {
+          version: source.artifacts.workflow,
+          dist: {type: 'zip'},
+          source: {type: 'git', reference: olderReference},
+        },
+        {
+          version: successorWorkflowVersion,
+          dist: {type: 'zip'},
+          source: {type: 'git', reference: selectedReference},
+        },
+      ],
+    },
+  };
+  const authority = await resolvePublishedWorkflowAuthority(
+    PUBLISHED_ARTIFACT_SOURCES.workflow,
+    {
+      requestJson: async url => {
+        assert.strictEqual(url, PUBLISHED_ARTIFACT_SOURCES.workflow.url);
+        return packagistResponse;
+      },
+      requestText: async url => {
+        requestedUrls.push(url);
+        return changedWorkflowManifest;
+      },
+    },
+  );
+
+  assert.strictEqual(authority.version, successorWorkflowVersion);
+  assert.strictEqual(authority.sourceReference, selectedReference);
+  assert.strictEqual(authority.manifestSource, changedWorkflowManifest);
+  assert.deepStrictEqual(
+    requestedUrls,
+    [
+      `https://raw.githubusercontent.com/durable-workflow/workflow/${selectedReference}/resources/sdk-neutrality-contract.json`,
+    ],
+    'Workflow authority refresh must fetch by the selected Packagist source.reference SHA',
+  );
+  assert.strictEqual(requestedUrls[0], workflowAuthorityManifestUrl(selectedReference));
+  assert(!requestedUrls[0].includes(successorWorkflowVersion));
+  assert.strictEqual(
+    JSON.parse(workflowAuthorityLockSource(authority.version, authority.manifestSource)).workflow_ref,
+    successorWorkflowVersion,
+    'the authority lock must retain the selected public package version instead of its source SHA',
+  );
+
+  let invalidReferenceFetches = 0;
+  await assert.rejects(
+    () => resolvePublishedWorkflowAuthority(
+      PUBLISHED_ARTIFACT_SOURCES.workflow,
+      {
+        requestJson: async () => ({
+          packages: {
+            [PUBLISHED_ARTIFACT_SOURCES.workflow.packageName]: [{
+              version: successorWorkflowVersion,
+              source: {type: 'git', reference: 'not-a-full-commit-sha'},
+            }],
+          },
+        }),
+        requestText: async () => {
+          invalidReferenceFetches += 1;
+          return changedWorkflowManifest;
+        },
+      },
+    ),
+    /must include a full source\.reference commit SHA/,
+    'Workflow authority refresh must reject invalid selected source metadata',
+  );
+  assert.strictEqual(invalidReferenceFetches, 0);
+}
 
 function extractObservedPins(definition, content) {
   const pattern = new RegExp(definition.pattern.source, definition.pattern.flags);
@@ -308,4 +530,10 @@ for (const artifact of Object.keys(source.artifacts)) {
   );
 }
 
-console.log('Public artifact version source validation passed');
+assertWorkflowRegistryAuthorityResolution().then(
+  () => console.log('Public artifact version source validation passed'),
+  error => {
+    console.error(error);
+    process.exitCode = 1;
+  },
+);

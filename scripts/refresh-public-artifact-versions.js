@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+const crypto = require('crypto');
 const fs = require('fs');
 const https = require('https');
 const path = require('path');
@@ -16,11 +17,26 @@ const repoRoot = path.join(__dirname, '..');
 const artifactVersionsPath = path.join(__dirname, 'public-artifact-versions.json');
 const compatibilityDocPath = path.join(repoRoot, 'docs', 'compatibility.md');
 const quickstartContractPath = path.join(repoRoot, 'static', 'quickstart-execution-contract.json');
+const workflowAuthorityLockPath = path.join(
+  __dirname,
+  'workflow-sdk-neutrality-authority-lock.json',
+);
+const sdkNeutralityContractPath = path.join(repoRoot, 'static', 'sdk-neutrality-contract.json');
+const WORKFLOW_SDK_NEUTRALITY_RESOURCE_PATH = 'resources/sdk-neutrality-contract.json';
 const PUBLIC_ARTIFACT_TUPLE_FILES = Object.freeze([
   'scripts/public-artifact-versions.json',
   'docs/compatibility.md',
   'static/quickstart-execution-contract.json',
+  'static/sdk-neutrality-contract.json',
+  'scripts/workflow-sdk-neutrality-authority-lock.json',
 ]);
+const PUBLIC_ARTIFACT_TUPLE_PATHS = Object.freeze({
+  'scripts/public-artifact-versions.json': artifactVersionsPath,
+  'docs/compatibility.md': compatibilityDocPath,
+  'static/quickstart-execution-contract.json': quickstartContractPath,
+  'static/sdk-neutrality-contract.json': sdkNeutralityContractPath,
+  'scripts/workflow-sdk-neutrality-authority-lock.json': workflowAuthorityLockPath,
+});
 
 const DEFAULT_TIMEOUT_MS = 20000;
 const MAX_REDIRECTS = 5;
@@ -153,7 +169,7 @@ function parseArgs(argv) {
   return args;
 }
 
-function requestJsonResponse(url, options = {}, redirects = MAX_REDIRECTS) {
+function requestBufferResponse(url, options = {}, redirects = MAX_REDIRECTS) {
   return new Promise((resolve, reject) => {
     const requestUrl = new URL(url);
     const headers = {
@@ -185,30 +201,24 @@ function requestJsonResponse(url, options = {}, redirects = MAX_REDIRECTS) {
           }
 
           const nextUrl = new URL(res.headers.location, url).toString();
-          requestJsonResponse(nextUrl, options, redirects - 1).then(resolve, reject);
+          requestBufferResponse(nextUrl, options, redirects - 1).then(resolve, reject);
           return;
         }
 
-        let body = '';
-        res.setEncoding('utf8');
+        const chunks = [];
         res.on('data', chunk => {
-          body += chunk;
+          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
         });
         res.on('end', () => {
+          const body = Buffer.concat(chunks);
           if (status < 200 || status >= 300) {
-            reject(new Error(`Request failed for ${url}: HTTP ${status} ${body.slice(0, 200)}`));
+            reject(new Error(
+              `Request failed for ${url}: HTTP ${status} ${body.toString('utf8', 0, 200)}`,
+            ));
             return;
           }
 
-          try {
-            resolve({
-              body: JSON.parse(body),
-              headers: res.headers,
-              status,
-            });
-          } catch (err) {
-            reject(new Error(`Response from ${url} is not valid JSON: ${err.message}`));
-          }
+          resolve({body, headers: res.headers, status});
         });
       }
     );
@@ -221,9 +231,33 @@ function requestJsonResponse(url, options = {}, redirects = MAX_REDIRECTS) {
   });
 }
 
+async function requestJsonResponse(url, options = {}) {
+  const response = await requestBufferResponse(url, options);
+
+  try {
+    return {
+      ...response,
+      body: JSON.parse(response.body.toString('utf8')),
+    };
+  } catch (err) {
+    throw new Error(`Response from ${url} is not valid JSON: ${err.message}`);
+  }
+}
+
 async function requestJson(url, options = {}) {
   const response = await requestJsonResponse(url, options);
   return response.body;
+}
+
+async function requestText(url, options = {}) {
+  const response = await requestBufferResponse(url, options);
+  const source = response.body.toString('utf8');
+
+  if (!Buffer.from(source, 'utf8').equals(response.body)) {
+    throw new Error(`Response from ${url} is not valid UTF-8 text`);
+  }
+
+  return source;
 }
 
 function normalizeVersion(artifact, value) {
@@ -524,8 +558,9 @@ async function resolveCratesIoVersion(source) {
   return selectLatestCratesIoVersion(await requestJson(source.url), source);
 }
 
-async function resolvePackagistVersion(source) {
-  const response = await requestJson(source.url);
+async function resolvePackagistVersion(source, clients = {}) {
+  const getJson = clients.requestJson || requestJson;
+  const response = await getJson(source.url);
   const packages = response.packages || {};
   const entries = packages[source.packageName];
 
@@ -533,30 +568,38 @@ async function resolvePackagistVersion(source) {
     throw new Error(`Packagist response for ${source.packageName} did not include a package version list`);
   }
 
-  const candidates = entries
-    .filter(entry => entry && (entry.dist || entry.source))
-    .map(entry => entry.version);
-
   const artifact = source.packageName.endsWith('/workflow') ? 'workflow' : 'waterline';
+  const publishedEntries = entries.filter(entry => entry && (entry.dist || entry.source));
+  const version = selectLatestVersion(
+    artifact,
+    publishedEntries.map(entry => entry.version),
+    source.url,
+  );
+  const selectedEntry = publishedEntries.find(
+    entry => normalizeVersion(artifact, entry.version) === version,
+  );
 
-  return selectLatestVersion(artifact, candidates, source.url);
+  return {
+    version,
+    source: selectedEntry.source,
+  };
 }
 
-async function resolvePublishedArtifactTuple(sources = PUBLISHED_ARTIFACT_SOURCES) {
+async function resolvePublishedArtifactTupleState(sources = PUBLISHED_ARTIFACT_SOURCES) {
   const [
     cli,
     sdkPython,
     sdkRust,
     server,
-    waterline,
-    workflow,
+    waterlinePackage,
+    workflowAuthority,
   ] = await Promise.all([
     resolveCliVersion(sources.cli),
     resolvePypiVersion(sources['sdk-python']),
     resolveCratesIoVersion(sources['sdk-rust']),
     resolveServerVersion(sources.server),
     resolvePackagistVersion(sources.waterline),
-    resolvePackagistVersion(sources.workflow),
+    resolvePublishedWorkflowAuthority(sources.workflow),
   ]);
 
   const versions = {
@@ -564,8 +607,8 @@ async function resolvePublishedArtifactTuple(sources = PUBLISHED_ARTIFACT_SOURCE
     'sdk-python': sdkPython,
     'sdk-rust': sdkRust,
     server,
-    waterline,
-    workflow,
+    waterline: waterlinePackage.version,
+    workflow: workflowAuthority.version,
   };
 
   readArtifactVersions({
@@ -574,7 +617,15 @@ async function resolvePublishedArtifactTuple(sources = PUBLISHED_ARTIFACT_SOURCE
     artifacts: versions,
   });
 
-  return versions;
+  return {
+    versions,
+    workflowManifestSource: workflowAuthority.manifestSource,
+    workflowSourceReference: workflowAuthority.sourceReference,
+  };
+}
+
+async function resolvePublishedArtifactTuple(sources = PUBLISHED_ARTIFACT_SOURCES) {
+  return (await resolvePublishedArtifactTupleState(sources)).versions;
 }
 
 function artifactVersionsSource(versions) {
@@ -585,9 +636,219 @@ function artifactVersionsSource(versions) {
   }, null, 2)}\n`;
 }
 
-function loadCurrentArtifactVersions() {
-  const source = JSON.parse(fs.readFileSync(artifactVersionsPath, 'utf8'));
-  return readArtifactVersions(source);
+function sha256(source) {
+  return crypto.createHash('sha256').update(source).digest('hex');
+}
+
+function workflowAuthorityManifestUrl(sourceReference) {
+  return [
+    'https://raw.githubusercontent.com/durable-workflow/workflow',
+    encodeURIComponent(sourceReference),
+    WORKFLOW_SDK_NEUTRALITY_RESOURCE_PATH,
+  ].join('/');
+}
+
+function workflowSourceReference(release) {
+  const source = release && release.source;
+  const reference = source && source.reference;
+  const version = release && release.version ? release.version : 'selected version';
+
+  if (!source || source.type !== 'git') {
+    throw new Error(`Packagist Workflow ${version} must include git source metadata`);
+  }
+
+  if (typeof reference !== 'string' || !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/i.test(reference)) {
+    throw new Error(
+      `Packagist Workflow ${version} must include a full source.reference commit SHA`,
+    );
+  }
+
+  return reference;
+}
+
+function assertWorkflowAuthorityManifestSource(source, workflowRef) {
+  let manifest;
+
+  try {
+    manifest = JSON.parse(source);
+  } catch (err) {
+    throw new Error(
+      `Workflow ${workflowRef} ${WORKFLOW_SDK_NEUTRALITY_RESOURCE_PATH} is not valid JSON: ${err.message}`,
+    );
+  }
+
+  if (!manifest || manifest.schema !== 'durable-workflow.v2.sdk-neutrality.contract') {
+    throw new Error(
+      `Workflow ${workflowRef} ${WORKFLOW_SDK_NEUTRALITY_RESOURCE_PATH} has an invalid SDK-neutrality schema`,
+    );
+  }
+}
+
+async function resolveWorkflowAuthorityManifest(release, clients = {}) {
+  const getText = clients.requestText || requestText;
+  const sourceReference = workflowSourceReference(release);
+  const url = workflowAuthorityManifestUrl(sourceReference);
+  const source = await getText(url);
+  assertWorkflowAuthorityManifestSource(source, release.version);
+  return source;
+}
+
+async function resolvePublishedWorkflowAuthority(source, clients = {}) {
+  const release = await resolvePackagistVersion(source, clients);
+  const sourceReference = workflowSourceReference(release);
+  const manifestSource = await resolveWorkflowAuthorityManifest(release, clients);
+
+  return {
+    version: release.version,
+    sourceReference,
+    manifestSource,
+  };
+}
+
+function workflowAuthorityLockSource(workflowRef, manifestSource) {
+  assertWorkflowAuthorityManifestSource(manifestSource, workflowRef);
+
+  return `${JSON.stringify({
+    schema: 'durable-workflow.docs.workflow-sdk-neutrality-authority-lock',
+    schema_version: 1,
+    workflow_ref: workflowRef,
+    resource_path: WORKFLOW_SDK_NEUTRALITY_RESOURCE_PATH,
+    sha256: sha256(manifestSource),
+  }, null, 2)}\n`;
+}
+
+function readPublicArtifactTupleSources() {
+  return Object.fromEntries(PUBLIC_ARTIFACT_TUPLE_FILES.map(file => [
+    file,
+    fs.readFileSync(PUBLIC_ARTIFACT_TUPLE_PATHS[file], 'utf8'),
+  ]));
+}
+
+function generatedPublicArtifactTupleSources(currentSources, versions, date, workflowManifestSource) {
+  const compatibilityReplacement = replaceCompatibilityHistoryTopRow(
+    currentSources['docs/compatibility.md'],
+    versions,
+    date,
+  );
+  const quickstartSource = currentSources['static/quickstart-execution-contract.json'];
+
+  return {
+    'scripts/public-artifact-versions.json': artifactVersionsSource(versions),
+    'docs/compatibility.md': compatibilityReplacement.content,
+    'static/quickstart-execution-contract.json': quickstartExecutionContractSource(
+      quickstartSource,
+      versions,
+    ),
+    'static/sdk-neutrality-contract.json': workflowManifestSource,
+    'scripts/workflow-sdk-neutrality-authority-lock.json': workflowAuthorityLockSource(
+      versions.workflow,
+      workflowManifestSource,
+    ),
+  };
+}
+
+function changedPublicArtifactTupleFiles(currentSources, desiredSources) {
+  return PUBLIC_ARTIFACT_TUPLE_FILES.filter(
+    file => currentSources[file] !== desiredSources[file],
+  );
+}
+
+function writePublicArtifactTupleSources(desiredSources, changedFiles, options = {}) {
+  const fileSystem = options.fileSystem || fs;
+  const tuplePaths = options.tuplePaths || PUBLIC_ARTIFACT_TUPLE_PATHS;
+  const operationId = `${process.pid}-${Date.now()}-${crypto.randomBytes(6).toString('hex')}`;
+  const uniqueFiles = new Set(changedFiles);
+
+  if (uniqueFiles.size !== changedFiles.length) {
+    throw new Error('Public artifact tuple changed-file list must not contain duplicates');
+  }
+
+  const entries = changedFiles.map((file, index) => {
+    const targetPath = tuplePaths[file];
+    if (!targetPath || typeof desiredSources[file] !== 'string') {
+      throw new Error(`Cannot write unknown public artifact tuple source ${file}`);
+    }
+
+    return {
+      backupPath: `${targetPath}.tuple-backup-${operationId}-${index}`,
+      backupReady: false,
+      hadTarget: false,
+      promoted: false,
+      stagedPath: `${targetPath}.tuple-staged-${operationId}-${index}`,
+      stagedReady: false,
+      targetPath,
+      rollbackFailed: false,
+    };
+  });
+
+  function removeIfPresent(file) {
+    if (fileSystem.existsSync(file)) {
+      fileSystem.rmSync(file, {force: true});
+    }
+  }
+
+  try {
+    for (const [index, file] of changedFiles.entries()) {
+      const entry = entries[index];
+      fileSystem.writeFileSync(entry.stagedPath, desiredSources[file], {flag: 'wx'});
+      entry.stagedReady = true;
+    }
+
+    for (const entry of entries) {
+      entry.hadTarget = fileSystem.existsSync(entry.targetPath);
+      if (entry.hadTarget) {
+        fileSystem.copyFileSync(entry.targetPath, entry.backupPath, fs.constants.COPYFILE_EXCL);
+        entry.backupReady = true;
+      }
+    }
+
+    for (const entry of entries) {
+      fileSystem.renameSync(entry.stagedPath, entry.targetPath);
+      entry.stagedReady = false;
+      entry.promoted = true;
+    }
+  } catch (writeError) {
+    const rollbackErrors = [];
+
+    for (const entry of [...entries].reverse()) {
+      const replacementMayBeInstalled = entry.promoted
+        || (entry.stagedReady && !fileSystem.existsSync(entry.stagedPath));
+      if (!replacementMayBeInstalled) {
+        continue;
+      }
+
+      try {
+        if (entry.hadTarget && entry.backupReady) {
+          fileSystem.renameSync(entry.backupPath, entry.targetPath);
+          entry.backupReady = false;
+        } else if (!entry.hadTarget) {
+          removeIfPresent(entry.targetPath);
+        }
+      } catch (rollbackError) {
+        entry.rollbackFailed = true;
+        rollbackErrors.push(
+          `${entry.targetPath}: ${rollbackError.message} (backup: ${entry.backupPath})`,
+        );
+      }
+    }
+
+    if (rollbackErrors.length > 0) {
+      throw new Error([
+        `Public artifact tuple write failed: ${writeError.message}`,
+        'Rollback also failed; preserved backup files must be restored:',
+        ...rollbackErrors.map(message => `- ${message}`),
+      ].join('\n'));
+    }
+
+    throw writeError;
+  } finally {
+    for (const entry of entries) {
+      removeIfPresent(entry.stagedPath);
+      if (entry.backupReady && !entry.rollbackFailed) {
+        removeIfPresent(entry.backupPath);
+      }
+    }
+  }
 }
 
 function artifactMismatches(actual, expected) {
@@ -698,10 +959,6 @@ function mismatchMessage(title, mismatches) {
     ...mismatches.map(mismatch => `- ${mismatch.name}: docs=${mismatch.actual || '<missing>'} published=${mismatch.expected}`),
     `Run \`npm run refresh:public-artifact-versions\` to update ${PUBLIC_ARTIFACT_TUPLE_FILES.join(', ')}.`,
   ].join('\n');
-}
-
-function readQuickstartContractSource() {
-  return fs.readFileSync(quickstartContractPath, 'utf8');
 }
 
 function replaceLineContaining(lines, needle, replacement, label) {
@@ -869,15 +1126,26 @@ function quickstartExecutionContractSource(currentSource, versions) {
 }
 
 async function check() {
-  const expected = await resolvePublishedArtifactTuple();
-  const actual = loadCurrentArtifactVersions();
+  const published = await resolvePublishedArtifactTupleState();
+  const expected = published.versions;
+  const workflowManifestSource = published.workflowManifestSource;
+  const currentSources = readPublicArtifactTupleSources();
+  const desiredSources = generatedPublicArtifactTupleSources(
+    currentSources,
+    expected,
+    new Date().toISOString().slice(0, 10),
+    workflowManifestSource,
+  );
+  const actual = readArtifactVersions(JSON.parse(
+    currentSources['scripts/public-artifact-versions.json'],
+  ));
   const sourceMismatches = artifactMismatches(actual, expected);
 
   if (sourceMismatches.length > 0) {
     throw new Error(mismatchMessage('scripts/public-artifact-versions.json is stale against the current published artifact tuple:', sourceMismatches));
   }
 
-  const compatibilityDoc = fs.readFileSync(compatibilityDocPath, 'utf8');
+  const compatibilityDoc = currentSources['docs/compatibility.md'];
   const topRow = parseCompatibilityHistoryRow(findCompatibilityHistoryTopRow(compatibilityDoc).row);
   const historyMismatches = compatibilityHistoryMismatches(topRow, expected);
 
@@ -885,8 +1153,8 @@ async function check() {
     throw new Error(mismatchMessage('docs/compatibility.md top version-history row is stale against the current published artifact tuple:', historyMismatches));
   }
 
-  const quickstartContract = readQuickstartContractSource();
-  const expectedQuickstartContract = quickstartExecutionContractSource(quickstartContract, expected);
+  const quickstartContract = currentSources['static/quickstart-execution-contract.json'];
+  const expectedQuickstartContract = desiredSources['static/quickstart-execution-contract.json'];
   if (quickstartContract !== expectedQuickstartContract) {
     throw new Error(
       mismatchMessage(
@@ -896,35 +1164,55 @@ async function check() {
     );
   }
 
+  if (
+    currentSources['static/sdk-neutrality-contract.json']
+    !== desiredSources['static/sdk-neutrality-contract.json']
+  ) {
+    throw new Error(
+      mismatchMessage(
+        'static/sdk-neutrality-contract.json is stale against the exact published Workflow authority:',
+        [{
+          name: 'Workflow SDK-neutrality manifest',
+          actual: sha256(currentSources['static/sdk-neutrality-contract.json']),
+          expected: sha256(desiredSources['static/sdk-neutrality-contract.json']),
+        }],
+      ),
+    );
+  }
+
+  if (
+    currentSources['scripts/workflow-sdk-neutrality-authority-lock.json']
+    !== desiredSources['scripts/workflow-sdk-neutrality-authority-lock.json']
+  ) {
+    throw new Error(
+      mismatchMessage(
+        'scripts/workflow-sdk-neutrality-authority-lock.json is stale against the exact published Workflow authority:',
+        [{
+          name: 'Workflow SDK-neutrality authority lock',
+          actual: 'stale ref or digest',
+          expected: `${expected.workflow} ${sha256(workflowManifestSource)}`,
+        }],
+      ),
+    );
+  }
+
   console.log(
     `Public artifact tuple is current: ${REQUIRED_ARTIFACTS.map(name => `${name} ${expected[name]}`).join(', ')}`
   );
 }
 
 async function refresh(date) {
-  const expected = await resolvePublishedArtifactTuple();
-  const desiredArtifactSource = artifactVersionsSource(expected);
-  const currentArtifactSource = fs.readFileSync(artifactVersionsPath, 'utf8');
-  const updated = [];
-
-  if (currentArtifactSource !== desiredArtifactSource) {
-    fs.writeFileSync(artifactVersionsPath, desiredArtifactSource);
-    updated.push('scripts/public-artifact-versions.json');
-  }
-
-  const compatibilityDoc = fs.readFileSync(compatibilityDocPath, 'utf8');
-  const replacement = replaceCompatibilityHistoryTopRow(compatibilityDoc, expected, date);
-  if (replacement.changed) {
-    fs.writeFileSync(compatibilityDocPath, replacement.content);
-    updated.push('docs/compatibility.md');
-  }
-
-  const quickstartContract = readQuickstartContractSource();
-  const expectedQuickstartContract = quickstartExecutionContractSource(quickstartContract, expected);
-  if (quickstartContract !== expectedQuickstartContract) {
-    fs.writeFileSync(quickstartContractPath, expectedQuickstartContract);
-    updated.push('static/quickstart-execution-contract.json');
-  }
+  const published = await resolvePublishedArtifactTupleState();
+  const expected = published.versions;
+  const workflowManifestSource = published.workflowManifestSource;
+  const currentSources = readPublicArtifactTupleSources();
+  const desiredSources = generatedPublicArtifactTupleSources(
+    currentSources,
+    expected,
+    date,
+    workflowManifestSource,
+  );
+  const updated = changedPublicArtifactTupleFiles(currentSources, desiredSources);
 
   if (updated.length === 0) {
     console.log(
@@ -933,6 +1221,7 @@ async function refresh(date) {
     return;
   }
 
+  writePublicArtifactTupleSources(desiredSources, updated);
   console.log(`Updated ${updated.join(' and ')} from the current published artifact tuple.`);
 }
 
@@ -960,19 +1249,27 @@ module.exports = {
   PUBLIC_ARTIFACT_TUPLE_FILES,
   artifactMismatches,
   artifactVersionsSource,
+  changedPublicArtifactTupleFiles,
   compareVersions,
   compatibilityHistoryMismatches,
   compatibilityHistoryRow,
   findCompatibilityHistoryTopRow,
+  generatedPublicArtifactTupleSources,
   normalizeVersion,
   parseRegistryNextLink,
   parseCompatibilityHistoryRow,
   quickstartExecutionContractSource,
   replaceCompatibilityHistoryTopRow,
+  resolvePackagistVersion,
   resolvePublishedArtifactTuple,
+  resolvePublishedWorkflowAuthority,
   selectLatestCompleteCliRelease,
   selectLatestCratesIoVersion,
   selectServerRegistryVersion,
   selectLatestVersion,
+  sha256,
   versionRank,
+  workflowAuthorityLockSource,
+  workflowAuthorityManifestUrl,
+  writePublicArtifactTupleSources,
 };

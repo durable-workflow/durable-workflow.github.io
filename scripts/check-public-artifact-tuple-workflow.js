@@ -64,6 +64,8 @@ for (const required of [
   'scripts/public-artifact-versions.json',
   'docs/compatibility.md',
   'static/quickstart-execution-contract.json',
+  'static/sdk-neutrality-contract.json',
+  'scripts/workflow-sdk-neutrality-authority-lock.json',
   "stable_default_docs_line: '1.x'",
   "prerelease_docs_line: '2.0'",
   "'LEAK=0'",
@@ -159,7 +161,7 @@ const stableKeyHandoff = {
     'sdk-python': '0.2.0',
     'sdk-rust': '0.1.0',
     server: '0.2.426',
-    workflow: '0.2.0',
+    workflow: '2.0.0-alpha.275',
     waterline: '0.2.0',
   },
 };
@@ -211,11 +213,15 @@ const multiArtifactHandoff = {
     'scripts/public-artifact-versions.json',
     'docs/compatibility.md',
     'static/quickstart-execution-contract.json',
+    'static/sdk-neutrality-contract.json',
+    'scripts/workflow-sdk-neutrality-authority-lock.json',
   ],
   changed_files: [
     'scripts/public-artifact-versions.json',
     'docs/compatibility.md',
     'static/quickstart-execution-contract.json',
+    'static/sdk-neutrality-contract.json',
+    'scripts/workflow-sdk-neutrality-authority-lock.json',
   ],
   tuple_date: stableKeyHandoff.tuple_date,
   artifact_versions: stableKeyHandoff.artifact_versions,
@@ -224,7 +230,7 @@ const multiArtifactHandoff = {
     'sdk-python': '0.1.99',
     'sdk-rust': '0.1.0',
     server: '0.2.425',
-    workflow: '0.1.99',
+    workflow: '2.0.0-alpha.274',
     waterline: '0.1.99',
   },
   release_status_guard: {
@@ -260,6 +266,32 @@ if (!decodedRequest.includes('npm run refresh:public-artifact-versions -- --date
 
 if (JSON.stringify(decodedFiles) !== JSON.stringify(multiArtifactHandoff.refresh_files)) {
   fail('public artifact tuple refresh-file metadata must preserve the focused refresh files');
+}
+
+for (const authorityFile of [
+  'static/sdk-neutrality-contract.json',
+  'scripts/workflow-sdk-neutrality-authority-lock.json',
+]) {
+  if (!decodedFiles.includes(authorityFile)) {
+    fail(`public artifact tuple ready item must include generated Workflow authority file ${authorityFile}`);
+  }
+}
+
+const unchangedAuthorityBytesHandoff = {
+  ...multiArtifactHandoff,
+  changed_files: multiArtifactHandoff.changed_files.filter(
+    file => file !== 'static/sdk-neutrality-contract.json',
+  ),
+};
+const unchangedAuthorityBytesPayload = buildReadyItemPayload(unchangedAuthorityBytesHandoff);
+if (!unchangedAuthorityBytesPayload.body.includes('pipeline-files-b64')) {
+  fail('a successor Workflow ref with unchanged authority bytes must remain routable');
+}
+if (
+  unchangedAuthorityBytesPayload.key !== multiArtifactPayload.key
+  || unchangedAuthorityBytesPayload.body !== multiArtifactPayload.body
+) {
+  fail('changed and unchanged successor authority bytes must route through one tuple ready-item key');
 }
 
 if (multiArtifactPayload.key.includes(stableKeyHandoff.tuple_date)) {

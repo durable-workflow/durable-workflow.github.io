@@ -14,6 +14,8 @@ const EXPECTED_REFRESH_FILES = [
   'scripts/public-artifact-versions.json',
   'docs/compatibility.md',
   'static/quickstart-execution-contract.json',
+  'static/sdk-neutrality-contract.json',
+  'scripts/workflow-sdk-neutrality-authority-lock.json',
 ];
 const ARTIFACT_ORDER = ['cli', 'sdk-python', 'sdk-rust', 'server', 'waterline', 'workflow'];
 const GATE_ACTION_LIST_READY_ITEMS = 'gh.issue.list';

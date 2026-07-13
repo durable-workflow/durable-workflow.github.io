@@ -62,11 +62,11 @@ jobs:
         run: |
           set -euo pipefail
 
-          if git diff --quiet -- scripts/public-artifact-versions.json docs/compatibility.md static/quickstart-execution-contract.json; then
+          if git diff --quiet -- scripts/public-artifact-versions.json docs/compatibility.md static/quickstart-execution-contract.json static/sdk-neutrality-contract.json scripts/workflow-sdk-neutrality-authority-lock.json; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
-            git diff -- scripts/public-artifact-versions.json docs/compatibility.md static/quickstart-execution-contract.json
+            git diff -- scripts/public-artifact-versions.json docs/compatibility.md static/quickstart-execution-contract.json static/sdk-neutrality-contract.json scripts/workflow-sdk-neutrality-authority-lock.json
           fi
 
       - name: Write pipeline handoff
@@ -89,6 +89,8 @@ jobs:
             'scripts/public-artifact-versions.json',
             'docs/compatibility.md',
             'static/quickstart-execution-contract.json',
+            'static/sdk-neutrality-contract.json',
+            'scripts/workflow-sdk-neutrality-authority-lock.json',
           ];
           const allChangedFiles = childProcess.execFileSync(
             'git',
