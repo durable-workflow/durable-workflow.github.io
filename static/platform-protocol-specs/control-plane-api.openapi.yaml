@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: durable-workflow.v2.control-plane-api
-  version: "7"
+  version: "8"
   summary: Durable Workflow control-plane HTTP+JSON API
   description: >
     Normative OpenAPI specification for the standalone Durable Workflow
@@ -497,8 +497,20 @@ paths:
       tags: [schedules]
       operationId: listSchedules
       summary: List one deterministic page of visible schedules.
+      x-durable-workflow-namespace-routing:
+        carriers:
+          - { in: header, name: X-Namespace }
+          - { in: query, name: namespace }
+        precedence: [header, query, server_default]
+        continuation_token_scope: resolved_namespace
       description: >
         Namespace isolation and deleted-schedule exclusion are unconditional.
+        The resolved namespace comes from X-Namespace when that header is
+        present, otherwise from the namespace query parameter, otherwise from
+        the server's configured default namespace. When both request carriers
+        are present, X-Namespace takes precedence. Continuation tokens are
+        scoped to the resolved namespace and cannot be reused after selecting
+        another namespace.
         Status, workflow type, and every visibility predicate combine with AND
         semantics. Results are ordered by created_at descending and schedule_id
         ascending. Continuation tokens are opaque signed keyset cursors and
@@ -507,6 +519,8 @@ paths:
         next_page_token terminates traversal.
       parameters:
         - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/NamespaceHeaderOptional"
+        - $ref: "#/components/parameters/NamespaceQueryOptional"
         - $ref: "#/components/parameters/ScheduleStatusQuery"
         - $ref: "#/components/parameters/ScheduleWorkflowTypeQuery"
         - $ref: "#/components/parameters/ScheduleVisibilityQuery"
@@ -665,6 +679,17 @@ components:
       name: X-Namespace
       in: header
       required: false
+      description: >
+        Selects the request namespace. When the namespace query parameter is
+        also present, this header takes precedence.
+      schema: { type: string, minLength: 1 }
+    NamespaceQueryOptional:
+      name: namespace
+      in: query
+      required: false
+      description: >
+        Selects the request namespace when X-Namespace is absent. When neither
+        carrier is present, the server's configured default namespace is used.
       schema: { type: string, minLength: 1 }
     NamespacePath: { name: namespace, in: path, required: true, schema: { type: string, minLength: 1 } }
     WorkflowIdPath: { name: workflowId, in: path, required: true, schema: { type: string, minLength: 1 } }
