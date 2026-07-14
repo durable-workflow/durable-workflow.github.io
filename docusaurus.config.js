@@ -130,7 +130,7 @@ const config = {
             dropdownActiveClassDisabled: true,
           },
           {
-            label: 'SDKs',
+            label: '2.0 prerelease SDKs',
             position: 'left',
             items: [
               {

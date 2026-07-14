@@ -9,6 +9,11 @@ const repoRoot = path.join(__dirname, '..');
 const buildDir = path.join(repoRoot, 'build');
 const stableVersion = '1.x';
 const prereleaseVersion = '2.0';
+const prereleaseSdkReferenceUrls = [
+  'https://php.durable-workflow.com/',
+  'https://python.durable-workflow.com/',
+  'https://rust.durable-workflow.com/',
+];
 const prohibitedStableClaims = [
   /\bpolyglot\b/i,
   /\bstandalone server\b/i,
@@ -83,7 +88,10 @@ function taggedAnchor(html, action) {
     fail(`Homepage action ${action} is not closed`);
   }
 
-  return opening[0];
+  return {
+    tag: opening[0],
+    label: visibleText(html.slice(opening.index, closingIndex + 4)),
+  };
 }
 
 function classNames(tag) {
@@ -116,12 +124,30 @@ function assertContains(text, pattern, label) {
   }
 }
 
+function assertDoesNotContain(text, pattern, label) {
+  if (pattern.test(text || '')) {
+    fail(`${label} must not include ${pattern}`);
+  }
+}
+
 function assertNoProhibitedClaims(text, label) {
   for (const pattern of prohibitedStableClaims) {
     if (pattern.test(text || '')) {
       fail(`${label} contains a prerelease-only claim matching ${pattern}`);
     }
   }
+}
+
+function assertStableIdentity(text, label) {
+  assertContains(text, /\b(1\.x|stable)\b/i, label);
+  assertDoesNotContain(text, /\b2\.0\b/i, label);
+  assertDoesNotContain(text, /\bpre[- ]?release\b/i, label);
+}
+
+function assertPrereleaseIdentity(text, label) {
+  assertContains(text, /\b2\.0\b/i, label);
+  assertContains(text, /\bpre[- ]?release\b/i, label);
+  assertDoesNotContain(text, /\b(1\.x|stable)\b/i, label);
 }
 
 function classicDocsConfig() {
@@ -142,6 +168,27 @@ function assertRoutingConfig() {
     versions.current?.banner !== 'unreleased'
   ) {
     fail('Current documentation must remain the explicit 2.0 prerelease line');
+  }
+
+  const navbarItems = config.themeConfig?.navbar?.items || [];
+  const prereleaseSdkNavigation = navbarItems.filter(item => (
+    prereleaseSdkReferenceUrls.includes(item?.href) ||
+    (
+      Array.isArray(item?.items) &&
+      item.items.some(child => prereleaseSdkReferenceUrls.includes(child?.href))
+    )
+  ));
+  const linkedSdkReferences = new Set(prereleaseSdkNavigation.flatMap(item => (
+    Array.isArray(item?.items) ? item.items.map(child => child?.href) : [item?.href]
+  )));
+  if (!prereleaseSdkReferenceUrls.every(url => linkedSdkReferences.has(url))) {
+    fail('Navbar must retain the PHP, Python, and Rust SDK reference links');
+  }
+  for (const navigationItem of prereleaseSdkNavigation) {
+    assertPrereleaseIdentity(
+      navigationItem.label,
+      'SDK reference navigation label',
+    );
   }
 
   assertNoProhibitedClaims(config.tagline, 'Site tagline');
@@ -165,29 +212,31 @@ function assertHomepageContent(homepage) {
   assertNoProhibitedClaims(pageText, 'Stable homepage content');
 
   const stableAction = taggedAnchor(homepage, 'stable-get-started');
-  const stableClasses = classNames(stableAction);
-  if (normalizeRoute(attribute(stableAction, 'href')) !== '/docs/introduction') {
+  const stableClasses = classNames(stableAction.tag);
+  if (normalizeRoute(attribute(stableAction.tag, 'href')) !== '/docs/introduction') {
     fail('Primary homepage action must route to the stable unversioned introduction');
   }
-  if (attribute(stableAction, 'data-action-priority') !== 'primary') {
+  if (attribute(stableAction.tag, 'data-action-priority') !== 'primary') {
     fail('Stable getting-started action must remain primary');
   }
   if (!stableClasses.has('button') || stableClasses.has('button--outline')) {
     fail('Stable getting-started action must be a primary filled button');
   }
+  assertStableIdentity(stableAction.label, 'Primary homepage action');
 
   const prereleaseAction = taggedAnchor(homepage, 'prerelease-2.0');
-  const prereleaseClasses = classNames(prereleaseAction);
-  const prereleaseRoute = normalizeRoute(attribute(prereleaseAction, 'href'));
+  const prereleaseClasses = classNames(prereleaseAction.tag);
+  const prereleaseRoute = normalizeRoute(attribute(prereleaseAction.tag, 'href'));
   if (prereleaseRoute !== '/docs/2.0/introduction') {
     fail('2.0 homepage action must route to the prerelease introduction');
   }
-  if (attribute(prereleaseAction, 'data-action-priority') !== 'secondary') {
+  if (attribute(prereleaseAction.tag, 'data-action-priority') !== 'secondary') {
     fail('2.0 homepage action must remain secondary');
   }
   if (!prereleaseClasses.has('button') || !prereleaseClasses.has('button--outline')) {
     fail('2.0 homepage action must be a secondary outline button');
   }
+  assertPrereleaseIdentity(prereleaseAction.label, '2.0 homepage action');
 }
 
 function assertHomepageMetadata(homepage) {
