@@ -3,11 +3,11 @@
   "schemaVersion": 1,
   "artifacts": {
     "cli": "0.1.90",
-    "sdk-php": "0.1.4",
+    "sdk-php": "0.1.5",
     "sdk-python": "0.4.99",
     "sdk-rust": "0.1.15",
-    "server": "0.2.656",
-    "waterline": "2.0.0-alpha.132",
+    "server": "0.2.657",
+    "waterline": "2.0.0-alpha.133",
     "workflow": "2.0.0-alpha.280"
   }
 }
