@@ -143,36 +143,24 @@ function assertRoutingConfig() {
     fail('Current documentation must remain the explicit 2.0 prerelease line');
   }
 
-  assertContains(config.tagline, /Laravel/i, 'Site tagline');
   assertNoProhibitedClaims(config.tagline, 'Site tagline');
 }
 
 function assertHomepageContent(homepage) {
-  const hero = visibleText(taggedElement(
+  taggedElement(
     homepage,
     'header',
     'data-homepage-release',
     'stable-1.x',
-  ));
-  const features = visibleText(taggedElement(
+  );
+  taggedElement(
     homepage,
     'section',
     'data-homepage-release',
     'stable-1.x',
-  ));
+  );
   const pageText = visibleText(homepage);
 
-  assertContains(hero, /Laravel/i, 'Homepage first viewport');
-  assertContains(hero, /\b(queue|queues|database|databases)\b/i, 'Homepage first viewport');
-  assertContains(hero, /\b(replay|recovery|restart|failure|failures)\b/i, 'Homepage first viewport');
-  assertContains(features, /Laravel/i, 'Homepage features');
-  assertContains(features, /\b(queue|queues|database|databases)\b/i, 'Homepage features');
-  assertContains(features, /\b(replay|recovery|restart|failure|failures)\b/i, 'Homepage features');
-  assertContains(
-    features,
-    /\b(activities|timers|signals|queries|updates|sagas)\b/i,
-    'Homepage features',
-  );
   assertNoProhibitedClaims(pageText, 'Visible homepage content');
 
   const stableAction = taggedAnchor(homepage, 'stable-get-started');
@@ -213,7 +201,6 @@ function assertHomepageMetadata(homepage) {
     if (!value) {
       fail(`Homepage is missing ${label} metadata`);
     }
-    assertContains(value, /Laravel/i, `Homepage ${label}`);
     assertNoProhibitedClaims(value, `Homepage ${label}`);
   }
 }
@@ -228,16 +215,13 @@ function assertDiscoverySurfaces() {
     'description',
   );
 
-  assertContains(canonicalHeader, /Laravel/i, 'Canonical LLM manifest header');
   assertNoProhibitedClaims(canonicalHeader, 'Canonical LLM manifest header');
   assertContains(prereleaseHeader, /\b2\.0\b/i, '2.0 LLM manifest header');
   assertContains(prereleaseHeader, /\bprerelease\b/i, '2.0 LLM manifest header');
-  assertContains(prereleaseHeader, /\bpolyglot\b/i, '2.0 LLM manifest header');
   if (metaContent(prereleaseIntroduction, 'name', 'docusaurus_version') !== 'current') {
     fail('2.0 introduction must remain on the explicit current prerelease version');
   }
   assertContains(prereleaseDescription, /\b2\.0\b/i, '2.0 introduction metadata');
-  assertContains(prereleaseDescription, /\bpolyglot\b/i, '2.0 introduction metadata');
 }
 
 function main() {

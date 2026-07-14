@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: durable-workflow.v2.control-plane-api
-  version: "6"
+  version: "7"
   summary: Durable Workflow control-plane HTTP+JSON API
   description: >
     Normative OpenAPI specification for the standalone Durable Workflow
@@ -496,9 +496,28 @@ paths:
     get:
       tags: [schedules]
       operationId: listSchedules
-      parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }]
+      summary: List one deterministic page of visible schedules.
+      description: >
+        Namespace isolation and deleted-schedule exclusion are unconditional.
+        Status, workflow type, and every visibility predicate combine with AND
+        semantics. Results are ordered by created_at descending and schedule_id
+        ascending. Continuation tokens are opaque signed keyset cursors and
+        must be reused unchanged with the same namespace, status, workflow
+        type, and visibility query. Page size may change between pages. A null
+        next_page_token terminates traversal.
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/ScheduleStatusQuery"
+        - $ref: "#/components/parameters/ScheduleWorkflowTypeQuery"
+        - $ref: "#/components/parameters/ScheduleVisibilityQuery"
+        - $ref: "#/components/parameters/SchedulePageSizeQuery"
+        - $ref: "#/components/parameters/ScheduleNextPageTokenQuery"
       responses:
-        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "200": { $ref: "#/components/responses/ScheduleListEnvelope" }
+        "400": { $ref: "#/components/responses/ScheduleListError" }
+        "403": { $ref: "#/components/responses/ScheduleListError" }
+        "409": { $ref: "#/components/responses/ScheduleListError" }
+        "422": { $ref: "#/components/responses/ScheduleListError" }
     post:
       tags: [schedules]
       operationId: createSchedule
@@ -662,6 +681,48 @@ components:
     UpdateNamePath: { name: updateName, in: path, required: true, schema: { type: string, minLength: 1 } }
     PageQuery: { name: page, in: query, required: false, schema: { type: integer, minimum: 1 } }
     PageTokenQuery: { name: page_token, in: query, required: false, schema: { type: string } }
+    ScheduleStatusQuery:
+      name: status
+      in: query
+      required: false
+      description: Exact schedule lifecycle status. Deleted schedules are never visible.
+      schema: { type: string, enum: [active, paused] }
+    ScheduleWorkflowTypeQuery:
+      name: workflow_type
+      in: query
+      required: false
+      description: Exact workflow type from the schedule action.
+      schema: { type: string, minLength: 1, maxLength: 255 }
+    ScheduleVisibilityQuery:
+      name: query
+      in: query
+      required: false
+      description: >
+        Equality predicates joined by AND. Searchable system fields are
+        ScheduleId, Status, WorkflowType, TaskQueue, and Note. Namespace-
+        registered search attributes are also searchable by their exact name.
+        String and datetime literals are quoted; integer, double, and boolean
+        literals retain their JSON scalar types. Keyword-list equality means
+        membership. OR, NOT, IN, ranges, partial matching, and unknown fields
+        are rejected with typed errors.
+      schema: { type: string, minLength: 1, maxLength: 2048 }
+    SchedulePageSizeQuery:
+      name: page_size
+      in: query
+      required: false
+      description: Maximum schedules in this page. Defaults to 50.
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+    ScheduleNextPageTokenQuery:
+      name: next_page_token
+      in: query
+      required: false
+      description: >
+        Opaque token returned by the preceding page. It is bound to namespace
+        and normalized filters. A malformed token is HTTP 400; namespace
+        mismatch is 403; filter mismatch is 409. A token is stale only when its
+        original filtered anchor is absent or that anchor's created_at cursor
+        value changed. Mutations to other schedules do not make the token stale.
+      schema: { type: string, minLength: 1, maxLength: 8192 }
   requestBodies:
     JsonObject:
       required: false
@@ -717,6 +778,22 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/ControlPlaneError" }
+    ScheduleListEnvelope:
+      description: One bounded deterministic schedule page.
+      headers:
+        X-Durable-Workflow-Control-Plane-Version:
+          schema: { type: string, const: "2" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ScheduleListEnvelope" }
+    ScheduleListError:
+      description: Typed schedule filter or cursor refusal with recovery evidence.
+      headers:
+        X-Durable-Workflow-Control-Plane-Version:
+          schema: { type: string, const: "2" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ScheduleListError" }
   schemas:
     JsonObject:
       type: object
@@ -740,3 +817,64 @@ components:
         operation:
           type: [object, "null"]
           additionalProperties: true
+    ScheduleListEnvelope:
+      type: object
+      additionalProperties: true
+      required: [schedules, schedule_count, next_page_token]
+      properties:
+        schedules:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+            required: [schedule_id, namespace, status, workflow_type, created_at]
+            properties:
+              schedule_id: { type: string, minLength: 1 }
+              namespace: { type: string, minLength: 1 }
+              status: { type: string, enum: [active, paused] }
+              workflow_type: { type: [string, "null"] }
+              spec: { type: [object, "null"], additionalProperties: true }
+              action: { type: [object, "null"], additionalProperties: true }
+              search_attributes: { type: [object, "null"], additionalProperties: true }
+              created_at: { type: string, format: date-time }
+              updated_at: { type: string, format: date-time }
+        schedule_count: { type: integer, minimum: 0, maximum: 200 }
+        next_page_token: { type: [string, "null"] }
+    ScheduleListError:
+      type: object
+      additionalProperties: true
+      required: [message, reason, field, errors, validation_errors, last_safe_cursor]
+      properties:
+        message: { type: string, minLength: 1 }
+        reason:
+          type: string
+          enum:
+            - validation_failed
+            - unsupported_schedule_list_filter
+            - invalid_schedule_visibility_query
+            - unsupported_schedule_visibility_predicate
+            - unsupported_schedule_visibility_field
+            - malformed_schedule_page_token
+            - schedule_page_token_namespace_mismatch
+            - schedule_page_token_filter_mismatch
+            - stale_schedule_page_token
+        field: { type: string, minLength: 1 }
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items: { type: string }
+        validation_errors:
+          type: object
+          additionalProperties:
+            type: array
+            items: { type: string }
+        last_safe_cursor:
+          oneOf:
+            - type: "null"
+            - type: object
+              additionalProperties: false
+              required: [created_at, schedule_id]
+              properties:
+                created_at: { type: string, format: date-time }
+                schedule_id: { type: string, minLength: 1 }
