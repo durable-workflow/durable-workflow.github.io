@@ -5,7 +5,6 @@ const sidebars = {
   tutorialSidebar: [
     'introduction',
     'capabilities',
-    'workflow-engine-categories',
     'quickstart',
     'installation',
     {

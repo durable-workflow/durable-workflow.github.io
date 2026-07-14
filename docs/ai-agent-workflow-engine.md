@@ -141,6 +141,3 @@ Do not choose it yet when:
 - it requires managed capabilities, regions, SLAs, certifications, private
   connectivity, worker/runtime ownership, or other guarantees beyond the exact
   current [Durable Workflow Cloud contract](/docs/2.0/polyglot/cloud-control-plane/).
-
-Use [Workflow engine categories](/docs/2.0/workflow-engine-categories/) to make
-sure the alternative being compared is in the same product category.
