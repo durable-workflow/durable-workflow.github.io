@@ -125,10 +125,10 @@ function scheduleListNamespaceRoutingSnapshot(document, label) {
   };
 }
 
-function serverMirrorPath() {
-  if (process.env.SERVER_REPO_PATH) {
+function serverMirrorPath(serverRepoPath = process.env.SERVER_REPO_PATH) {
+  if (serverRepoPath) {
     return path.join(
-      process.env.SERVER_REPO_PATH,
+      serverRepoPath,
       'resources',
       'platform-protocol-specs',
       'control-plane-api.openapi.yaml',
@@ -147,7 +147,12 @@ function serverMirrorPath() {
   return fs.existsSync(sibling) ? sibling : null;
 }
 
-function checkScheduleListOpenApiContract() {
+function checkScheduleListOpenApiContract(options = {}) {
+  const serverRepoPath = Object.prototype.hasOwnProperty.call(options, 'serverRepoPath')
+    ? options.serverRepoPath
+    : process.env.SERVER_REPO_PATH;
+  const requireServerMirror = options.requireServerMirror === true;
+
   const docsDocument = loadOpenApiFile(
     docsSpecPath,
     'published control-plane OpenAPI',
@@ -157,7 +162,13 @@ function checkScheduleListOpenApiContract() {
     'published control-plane OpenAPI',
   );
 
-  const mirrorPath = serverMirrorPath();
+  if (requireServerMirror && !serverRepoPath) {
+    throw new Error(
+      'The authoritative schedule-list OpenAPI check requires SERVER_REPO_PATH.',
+    );
+  }
+
+  const mirrorPath = serverMirrorPath(serverRepoPath);
   if (mirrorPath !== null) {
     if (!fs.existsSync(mirrorPath)) {
       throw new Error(
@@ -178,7 +189,15 @@ function checkScheduleListOpenApiContract() {
 }
 
 if (require.main === module) {
-  checkScheduleListOpenApiContract();
+  const args = process.argv.slice(2);
+  const unknownArgs = args.filter((arg) => arg !== '--require-server-mirror');
+  if (unknownArgs.length > 0) {
+    throw new Error(`Unknown argument: ${unknownArgs[0]}`);
+  }
+
+  checkScheduleListOpenApiContract({
+    requireServerMirror: args.includes('--require-server-mirror'),
+  });
   console.log('Schedule-list OpenAPI namespace routing contract passed.');
 }
 
@@ -187,4 +206,5 @@ module.exports = {
   checkScheduleListOpenApiContract,
   loadOpenApiFile,
   scheduleListNamespaceRoutingSnapshot,
+  serverMirrorPath,
 };

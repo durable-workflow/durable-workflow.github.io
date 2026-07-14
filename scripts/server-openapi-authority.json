@@ -1,0 +1,6 @@
+{
+  "schema": "durable-workflow.docs.server-openapi-authority",
+  "schemaVersion": 1,
+  "repository": "durable-workflow/server",
+  "ref": "9b6e6380eb714db97f34ac153ab29d7818a3a5b8"
+}

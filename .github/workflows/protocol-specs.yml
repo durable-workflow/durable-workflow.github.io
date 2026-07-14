@@ -25,6 +25,31 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Resolve Server OpenAPI authority ref
+        id: server-openapi-authority
+        run: |
+          node -e "process.stdout.write('ref=' + require('./scripts/server-openapi-authority.json').ref + '\n')" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch Server OpenAPI authority
+        env:
+          GIT_TERMINAL_PROMPT: '0'
+          SERVER_OPENAPI_AUTHORITY_REF: ${{ steps.server-openapi-authority.outputs.ref }}
+        run: |
+          set -euo pipefail
+
+          authority_path="${GITHUB_WORKSPACE}/.server-openapi-authority"
+          rm -rf "${authority_path}"
+          git init "${authority_path}"
+          git -C "${authority_path}" -c credential.helper= fetch \
+            --depth=1 \
+            --no-tags \
+            https://github.com/durable-workflow/server.git \
+            "${SERVER_OPENAPI_AUTHORITY_REF}"
+          git -C "${authority_path}" checkout --detach FETCH_HEAD
+
+          actual_ref="$(git -C "${authority_path}" rev-parse HEAD)"
+          test "${actual_ref}" = "${SERVER_OPENAPI_AUTHORITY_REF}"
+
       - name: Resolve released Rust SDK version
         id: rust-sdk-release
         run: |
@@ -87,6 +112,14 @@ jobs:
 
       - name: Test malformed platform protocol specs
         run: node scripts/check-platform-protocol-specs.test.js
+
+      - name: Check schedule-list OpenAPI server mirror
+        env:
+          SERVER_REPO_PATH: ${{ github.workspace }}/.server-openapi-authority
+        run: node scripts/check-schedule-list-openapi.js --require-server-mirror
+
+      - name: Test schedule-list OpenAPI server mirror enforcement
+        run: node scripts/check-schedule-list-openapi.test.js
 
       - name: Test rendered protocol catalog associations
         run: node scripts/check-platform-protocol-page.test.js
