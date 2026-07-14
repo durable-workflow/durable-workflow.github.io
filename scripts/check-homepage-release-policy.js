@@ -83,10 +83,11 @@ function taggedAnchor(html, action) {
     fail(`Homepage action ${action} is not closed`);
   }
 
-  return {
-    tag: opening[0],
-    label: visibleText(html.slice(opening.index, closingIndex + 4)),
-  };
+  return opening[0];
+}
+
+function classNames(tag) {
+  return new Set((attribute(tag, 'class') || '').split(/\s+/).filter(Boolean));
 }
 
 function metaContent(html, keyName, keyValue) {
@@ -164,27 +165,29 @@ function assertHomepageContent(homepage) {
   assertNoProhibitedClaims(pageText, 'Visible homepage content');
 
   const stableAction = taggedAnchor(homepage, 'stable-get-started');
-  if (normalizeRoute(attribute(stableAction.tag, 'href')) !== '/docs/introduction') {
+  const stableClasses = classNames(stableAction);
+  if (normalizeRoute(attribute(stableAction, 'href')) !== '/docs/introduction') {
     fail('Primary homepage action must route to the stable unversioned introduction');
   }
-  if (attribute(stableAction.tag, 'data-action-priority') !== 'primary') {
+  if (attribute(stableAction, 'data-action-priority') !== 'primary') {
     fail('Stable getting-started action must remain primary');
   }
-  assertContains(stableAction.label, /\b(1\.x|stable)\b/i, 'Primary homepage action');
+  if (!stableClasses.has('button') || stableClasses.has('button--outline')) {
+    fail('Stable getting-started action must be a primary filled button');
+  }
 
   const prereleaseAction = taggedAnchor(homepage, 'prerelease-2.0');
-  const prereleaseRoute = normalizeRoute(attribute(prereleaseAction.tag, 'href'));
-  if (!prereleaseRoute?.startsWith('/docs/2.0/')) {
-    fail('2.0 homepage action must route below /docs/2.0/');
+  const prereleaseClasses = classNames(prereleaseAction);
+  const prereleaseRoute = normalizeRoute(attribute(prereleaseAction, 'href'));
+  if (prereleaseRoute !== '/docs/2.0/introduction') {
+    fail('2.0 homepage action must route to the prerelease introduction');
   }
-  if (attribute(prereleaseAction.tag, 'data-action-priority') !== 'secondary') {
+  if (attribute(prereleaseAction, 'data-action-priority') !== 'secondary') {
     fail('2.0 homepage action must remain secondary');
   }
-  if (/\bbutton\b/i.test(attribute(prereleaseAction.tag, 'class') || '')) {
-    fail('2.0 homepage action must remain visually subordinate to the primary button');
+  if (!prereleaseClasses.has('button') || !prereleaseClasses.has('button--outline')) {
+    fail('2.0 homepage action must be a secondary outline button');
   }
-  assertContains(prereleaseAction.label, /\b2\.0\b/i, '2.0 homepage action');
-  assertContains(prereleaseAction.label, /\bprerelease\b/i, '2.0 homepage action');
 }
 
 function assertHomepageMetadata(homepage) {

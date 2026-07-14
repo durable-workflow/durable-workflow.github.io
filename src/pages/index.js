@@ -30,7 +30,7 @@ function HomepageHeader() {
             Get Started with 1.x
           </Link>
           <Link
-            className={styles.prereleaseLink}
+            className="button button--outline button--secondary button--lg"
             data-homepage-action="prerelease-2.0"
             data-action-priority="secondary"
             to="/docs/2.0/introduction/">
