@@ -21,12 +21,6 @@ function HomepageHeader() {
       <div className="container">
         <h1 className="hero__title">{siteConfig.title}</h1>
         <p className="hero__subtitle">{siteConfig.tagline}</p>
-        <p className={styles.supportingLine}>
-          Install Durable Workflow in your Laravel application and build persistent
-          processes on the queues and database you already operate. Recorded history
-          lets interrupted workflows replay and continue safely without repeating
-          completed activities.
-        </p>
         <div className={styles.buttons}>
           <Link
             className="button button--secondary button--lg"
