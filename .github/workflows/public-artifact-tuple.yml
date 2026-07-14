@@ -69,6 +69,23 @@ jobs:
             git diff -- scripts/public-artifact-versions.json static/quickstart-execution-contract.json static/sdk-neutrality-contract.json scripts/workflow-sdk-neutrality-authority-lock.json
           fi
 
+      - name: Verify candidate server protocol catalog
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          PUBLIC_SERVER_PROTOCOL_CATALOG_EVIDENCE: public-server-protocol-catalog-conformance.json
+        run: node scripts/check-public-server-protocol-catalog.js
+
+      - name: Upload candidate server protocol catalog evidence
+        if: ${{ always() && steps.changes.outputs.changed == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-server-protocol-catalog-conformance
+          path: |
+            public-server-protocol-catalog-conformance.json
+            public-server-protocol-catalog-bootstrap.log
+            public-server-protocol-catalog-server.log
+          if-no-files-found: error
+
       - name: Write pipeline handoff
         if: steps.changes.outputs.changed == 'true'
         env:

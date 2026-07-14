@@ -71,13 +71,21 @@ for (const required of [
 }
 
 const detectPosition = workflowStepPosition('Detect tuple changes');
+const protocolCatalogPosition = workflowStepPosition('Verify candidate server protocol catalog');
+const protocolCatalogEvidencePosition = workflowStepPosition('Upload candidate server protocol catalog evidence');
 const writePosition = workflowStepPosition('Write pipeline handoff');
 const uploadPosition = workflowStepPosition('Upload pipeline handoff');
 const routePosition = workflowStepPosition('Route pipeline ready item');
 const validatePosition = workflowStepPosition('Validate refreshed docs');
 
-if (!(detectPosition < writePosition && writePosition < uploadPosition && uploadPosition < routePosition)) {
-  fail('public artifact tuple handoff must be detected, written, uploaded, and routed in order');
+if (!(
+  detectPosition < protocolCatalogPosition
+  && protocolCatalogPosition < protocolCatalogEvidencePosition
+  && protocolCatalogEvidencePosition < writePosition
+  && writePosition < uploadPosition
+  && uploadPosition < routePosition
+)) {
+  fail('public artifact tuple handoff must verify server catalog convergence before it is written, uploaded, and routed');
 }
 
 if (routePosition >= validatePosition) {
@@ -119,6 +127,38 @@ for (const required of [
 
 if (!deployWorkflow.includes('- name: Build website') || !deployWorkflow.includes('run: npm run build')) {
   fail('docs deploy workflow must preserve the complete npm build');
+}
+
+for (const required of [
+  'Verify candidate server protocol catalog',
+  'node scripts/check-public-server-protocol-catalog.js',
+  'PUBLIC_SERVER_PROTOCOL_CATALOG_EVIDENCE: public-server-protocol-catalog-conformance.json',
+  'public-server-protocol-catalog-conformance',
+  'public-server-protocol-catalog-bootstrap.log',
+  'public-server-protocol-catalog-server.log',
+]) {
+  if (!workflow.includes(required)) {
+    fail(`public-artifact-tuple workflow is missing published server catalog conformance: ${required}`);
+  }
+}
+
+for (const required of [
+  'Verify pinned server protocol catalog',
+  'node scripts/check-public-server-protocol-catalog.js',
+  'PUBLIC_SERVER_PROTOCOL_CATALOG_EVIDENCE: public-server-protocol-catalog-conformance.json',
+  'public-server-protocol-catalog-conformance',
+  'public-server-protocol-catalog-bootstrap.log',
+  'public-server-protocol-catalog-server.log',
+]) {
+  if (!deployWorkflow.includes(required)) {
+    fail(`docs deploy workflow is missing published server catalog conformance: ${required}`);
+  }
+}
+
+const deployCatalogPosition = deployWorkflow.indexOf('      - name: Verify pinned server protocol catalog\n');
+const deployBuildPosition = deployWorkflow.indexOf('      - name: Build website\n');
+if (!(deployCatalogPosition !== -1 && deployCatalogPosition < deployBuildPosition)) {
+  fail('docs deployment must verify the pinned published server catalog before building an advertisable site');
 }
 
 for (const required of [
