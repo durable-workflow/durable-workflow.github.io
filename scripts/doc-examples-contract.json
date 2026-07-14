@@ -68,6 +68,47 @@
       ]
     },
     {
+      "id": "php.sdk.install",
+      "path": "polyglot/php.md",
+      "language": "bash",
+      "requiredSubstrings": [
+        "composer require %%artifact.phpSdkComposerPackage%%"
+      ]
+    },
+    {
+      "id": "php.sdk.client",
+      "path": "polyglot/php.md",
+      "language": "php",
+      "requiredSubstrings": [
+        "use DurableWorkflow\\Auth\\TokenAuthentication;",
+        "use DurableWorkflow\\Client;",
+        "$client->startWorkflow(",
+        "$handle->signal(",
+        "$handle->query(",
+        "$handle->result("
+      ]
+    },
+    {
+      "id": "php.sdk.worker",
+      "path": "polyglot/php.md",
+      "language": "php",
+      "requiredSubstrings": [
+        "use DurableWorkflow\\Worker;",
+        "$worker->registerActivity(",
+        "$worker->registerWorkflow(",
+        "$context->activity(",
+        "$worker->run();"
+      ]
+    },
+    {
+      "id": "server.php-sdk.install",
+      "path": "polyglot/server.md",
+      "language": "bash",
+      "requiredSubstrings": [
+        "composer require %%artifact.phpSdkComposerPackage%%"
+      ]
+    },
+    {
       "id": "python.quickstart.worker",
       "path": "polyglot/python.md",
       "language": "python",

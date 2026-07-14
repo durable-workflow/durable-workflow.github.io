@@ -65,6 +65,13 @@ const PUBLISHED_ARTIFACT_SOURCES = Object.freeze({
       'SHA256SUMS',
     ],
   },
+  'sdk-php': {
+    label: 'PHP SDK',
+    kind: 'packagist-p2',
+    artifact: 'sdk-php',
+    packageName: 'durable-workflow/sdk',
+    url: 'https://repo.packagist.org/p2/durable-workflow/sdk.json',
+  },
   'sdk-python': {
     label: 'Python SDK',
     kind: 'pypi',
@@ -95,12 +102,14 @@ const PUBLISHED_ARTIFACT_SOURCES = Object.freeze({
   waterline: {
     label: 'Waterline',
     kind: 'packagist-p2',
+    artifact: 'waterline',
     packageName: 'durable-workflow/waterline',
     url: 'https://repo.packagist.org/p2/durable-workflow/waterline.json',
   },
   workflow: {
     label: 'Workflow',
     kind: 'packagist-p2',
+    artifact: 'workflow',
     packageName: 'durable-workflow/workflow',
     url: 'https://repo.packagist.org/p2/durable-workflow/workflow.json',
   },
@@ -561,7 +570,10 @@ async function resolvePackagistVersion(source, clients = {}) {
     throw new Error(`Packagist response for ${source.packageName} did not include a package version list`);
   }
 
-  const artifact = source.packageName.endsWith('/workflow') ? 'workflow' : 'waterline';
+  const artifact = source.artifact;
+  if (!artifact || !ARTIFACT_VERSION_REQUIREMENTS[artifact]) {
+    throw new Error(`Packagist source ${source.packageName} must declare a known artifact key`);
+  }
   const publishedEntries = entries.filter(entry => entry && (entry.dist || entry.source));
   const version = selectLatestVersion(
     artifact,
@@ -581,6 +593,7 @@ async function resolvePackagistVersion(source, clients = {}) {
 async function resolvePublishedArtifactTupleState(sources = PUBLISHED_ARTIFACT_SOURCES) {
   const [
     cli,
+    sdkPhpPackage,
     sdkPython,
     sdkRust,
     server,
@@ -588,6 +601,7 @@ async function resolvePublishedArtifactTupleState(sources = PUBLISHED_ARTIFACT_S
     workflowAuthority,
   ] = await Promise.all([
     resolveCliVersion(sources.cli),
+    resolvePackagistVersion(sources['sdk-php']),
     resolvePypiVersion(sources['sdk-python']),
     resolveCratesIoVersion(sources['sdk-rust']),
     resolveServerVersion(sources.server),
@@ -597,6 +611,7 @@ async function resolvePublishedArtifactTupleState(sources = PUBLISHED_ARTIFACT_S
 
   const versions = {
     cli,
+    'sdk-php': sdkPhpPackage.version,
     'sdk-python': sdkPython,
     'sdk-rust': sdkRust,
     server,
@@ -926,6 +941,9 @@ function applyQuickstartArtifactPins(contract, versions) {
   update('artifacts.server', artifacts.server, 'reference', pins.serverDockerHubImage);
   update('artifacts.cli', artifacts.cli, 'version', versions.cli);
   update('artifacts.cli', artifacts.cli, 'install_command', pins.cliInstallerCommand);
+  update('artifacts.sdk-php', artifacts['sdk-php'], 'version', versions['sdk-php']);
+  update('artifacts.sdk-php', artifacts['sdk-php'], 'composer_package', pins.phpSdkComposerPackage);
+  update('artifacts.sdk-php', artifacts['sdk-php'], 'install_command', pins.phpSdkComposerInstallCommand);
   update('artifacts.sdk-python', artifacts['sdk-python'], 'version', versions['sdk-python']);
   update('artifacts.sdk-python', artifacts['sdk-python'], 'pip_package', pins.pythonPackagePin);
   update('artifacts.sdk-python', artifacts['sdk-python'], 'install_command', pins.pythonPipInstallCommand);

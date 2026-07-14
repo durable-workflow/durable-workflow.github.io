@@ -956,48 +956,44 @@ registration payload, see
 
 ### PHP Workers
 
-PHP workers use the `durable-workflow/workflow` package in standalone server mode:
+Framework-neutral PHP applications and remote workers use the standalone-server
+SDK. They do not install Laravel or the embedded Workflow package:
 
+<!-- docs-example id="server.php-sdk.install" -->
 ```bash
-composer require %%artifact.workflowComposerPackage%%
+composer require %%artifact.phpSdkComposerPackage%%
 ```
 
-The pin includes the Composer prerelease stability suffix for the current
-public artifact tuple while 2.0 is pre-stable on Packagist. Switch to
-`durable-workflow/workflow:^2.0` only after `2.0.0` is tagged stable and the
-documented 2.0 cutover is authorized.
-
-Configure the worker to connect to the server:
+Create a client and register workflow or activity callables with a worker:
 
 ```php
-// config/workflow.php
-return [
-    'mode' => 'server',
-    'server' => [
-        'url' => env('DURABLE_WORKFLOW_SERVER_URL', 'http://localhost:8080'),
-        'token' => env('DURABLE_WORKFLOW_AUTH_TOKEN'),
-        'namespace' => env('DURABLE_WORKFLOW_NAMESPACE', 'default'),
-    ],
-];
+use DurableWorkflow\Client;
+use DurableWorkflow\Worker;
+use DurableWorkflow\Worker\WorkflowContext;
+
+$client = new Client(
+    'http://localhost:8080',
+    token: getenv('DURABLE_WORKFLOW_AUTH_TOKEN') ?: null,
+    namespace: 'default',
+);
+
+$worker = new Worker($client, taskQueue: 'polyglot-php');
+$worker->registerWorkflow(
+    'invoice',
+    static function (WorkflowContext $context, string $invoiceId): Generator {
+        yield $context->activity('charge-card', [$invoiceId]);
+
+        return ['invoice_id' => $invoiceId, 'status' => 'paid'];
+    },
+);
+$worker->run();
 ```
 
-Run the worker process from the application that registers your PHP workflow
-types. The sample app publishes the current PHP worker reference as an
-application command:
-
-```bash
-php artisan app:polyglot-worker \
-  --mode=workflow \
-  --server-url=http://localhost:8080 \
-  --token="$DURABLE_WORKFLOW_AUTH_TOKEN" \
-  --namespace=default \
-  --task-queue=polyglot-php
-```
-
-The workflow package does not publish a package-level artisan worker command in
-the current 2.0 prerelease. Embedded Laravel workers that do not use the standalone
-worker protocol continue to run package-local workflow tasks through Laravel's
-queue worker, as shown in the [2.0 quickstart](/docs/2.0/quickstart/).
+See the [PHP SDK guide](/docs/2.0/polyglot/php/) for the client, authentication,
+payload, and worker lifecycle. The separate `durable-workflow/workflow` package
+is the embedded Laravel runtime and the engine hosted inside the published
+server image. Embedded Laravel workflows run package-local tasks through the
+application's queue worker and do not require this standalone server.
 
 ### Python Workers
 

@@ -27,6 +27,7 @@ const PRERELEASE_DOCS_VERSION = '2.0';
 const ARTIFACT_VERSION_SOURCE_FILE = 'scripts/public-artifact-versions.json';
 const ARTIFACT_VERSION_SYNCHRONIZED_FIELDS = Object.freeze([
   'artifact_versions',
+  'artifact_distribution_surfaces.sdk-php',
   'artifact_distribution_surfaces.server',
   'artifact_distribution_surfaces.sdk-rust',
 ]);
@@ -53,6 +54,7 @@ const REQUIRED_ROUTE_ARTIFACTS = [
   '/docs/',
   '/docs/platform-conformance/',
   '/docs/2.0/quickstart/',
+  '/docs/2.0/polyglot/php/',
   '/docs/2.0/polyglot/python/',
   '/docs/2.0/polyglot/server/',
   '/docs/2.0/polyglot/cli/',

@@ -1,5 +1,6 @@
 ---
 sidebar_position: 1
+description: Durable Workflow 2.0 is a standalone polyglot durable-execution platform with first-party PHP, Python, and Rust SDKs.
 tags:
   - concepts
   - getting-started
@@ -14,10 +15,77 @@ keywords:
 
 # Introduction
 
-Durable Workflow 2.0 is a polyglot durable-execution platform. PHP, Python,
-and Rust applications author workflows and activities with first-party SDKs,
-share one public protocol and durable execution model, and resume from recorded
-history after workers or hosts restart.
+Durable Workflow 2.0 is a standalone polyglot durable-execution platform.
+Applications and workers written in PHP, Python, and Rust connect to the
+[Durable Workflow server](/docs/2.0/polyglot/server/) through first-party
+language SDKs. The server records workflow state and history so execution can
+resume after workers, application processes, or hosts restart.
+
+The primary 2.0 path does not require Laravel. Deploy the server, choose the
+SDK for your application, and run workflow and activity workers alongside the
+rest of your services.
+
+## Choose your SDK
+
+- **[PHP SDK](/docs/2.0/polyglot/php/):** install
+  `durable-workflow/sdk` in a framework-neutral PHP application or remote
+  worker that connects to the standalone server.
+- **[Python SDK](/docs/2.0/polyglot/python/):** author deterministic workflows
+  and activities and use the async control-plane client from Python services.
+- **[Rust SDK](/docs/2.0/polyglot/rust/):** author deterministic workflows and
+  activities and run native worker services.
+
+All three are first-party implementations of the same public server boundary.
+The [2.0 Capability Index](/docs/2.0/capabilities/) records the exact current
+artifact floors and the capabilities each SDK claims.
+
+## How a deployment fits together
+
+A standalone deployment has three parts:
+
+- **The server** owns durable state, command and history recording, task
+  matching, timers, schedules, namespaces, and the authenticated control and
+  worker protocols. Start with the
+  [Standalone Server](/docs/2.0/polyglot/server/).
+- **Application workers** run workflow and activity code through the PHP,
+  Python, or Rust SDK. Workers may be deployed with an application or as
+  independent services and can scale separately from the server.
+- **Operational tools** inspect and command the same server-owned state through
+  the HTTP API, `dw` CLI, SDK clients, machine-readable schemas, and agent
+  interfaces.
+
+See [Deployment Modes](/docs/2.0/polyglot/deployment-modes/) for the ownership,
+transport, observability, and migration boundaries between standalone and
+embedded operation.
+
+## One public durable-execution contract
+
+The first-party SDKs share versioned HTTP+JSON control-plane and worker
+protocols, registered string workflow and activity type names, and a public
+payload envelope. The envelope identifies its codec and carries portable value
+shapes instead of PHP serialization, Python pickles, or Rust implementation
+types.
+
+Workflow workers reconstruct decisions from durable command and history
+records. Activity input and results, and child-workflow input and results, can
+cross language boundaries when both workers advertise the same public codec
+and register the corresponding type names. Language-specific classes remain
+inside the SDK that owns them. Consult the
+[Capability Index](/docs/2.0/capabilities/) and runtime discovery before
+depending on a specific SDK surface.
+
+## Embedded Laravel is a specialized path
+
+Laravel applications that want the workflow runtime inside their existing
+database, queues, configuration, and deployment can install
+`durable-workflow/workflow`. That package is the embedded Laravel engine; it is
+not the framework-neutral PHP client for the standalone server. Embedded
+workflows run inside the Laravel application and do not require a standalone
+server.
+
+Start with [Embedded Installation](/docs/2.0/installation/) when that ownership
+model is intentional. The [Deployment Modes](/docs/2.0/polyglot/deployment-modes/)
+guide compares it with the standalone path.
 
 ## Agent-operable by contract
 
@@ -26,72 +94,17 @@ The testable loop is **Discover -> Change -> Run -> Diagnose -> Repair**:
 version and capability manifests, explicit workflow commands, structured
 results, typed history and worker/queue diagnostics, safe mutations, and
 post-change verification. MCP is one interface in that contract, alongside the
-HTTP API, CLI JSON, SDK clients, Waterline exports, schemas, and protocol
-catalog. See [Agent Operating Loop](/docs/2.0/agent-operating-loop/) and the
-direct [AI-agent evaluator](/docs/2.0/ai-agent-workflow-engine/).
-
-## Three deployment and control-plane choices
-
-Choose the boundary that fits the application and operating model:
-
-- **Standalone server:** deploy the published server as infrastructure and
-  connect PHP, Python, or Rust application workers through the public protocol. Start with the
-  [Standalone Server](/docs/2.0/polyglot/server/).
-- **Embedded:** install the engine inside a Laravel application so its queues,
-  configuration, database, and deployment own execution. See
-  [Deployment Modes](/docs/2.0/polyglot/deployment-modes/).
-
-## First-party SDKs
-
-PHP, Python, and Rust are first-party SDK surfaces. They use stable string type
-names, the same durable command and history model, and the same versioned
-HTTP+JSON worker and control-plane protocols.
-
-- **PHP** is the reference workflow-authoring SDK, embedded host, and server
-  core.
-- **Python** is both a deterministic workflow/activity SDK and an
-  operational/control-plane surface.
-- **Rust** authors deterministic workflows, activities, and worker services;
-  it is a first-party workflow SDK, not merely a protocol-compatibility client.
-
-Cross-language child workflows and activities retain their payload shape
-through the shared public envelope and codec contract. The Avro path uses the
-official `apache/avro` Composer package, official `avro` Python package, and
-official `apache-avro` Rust crate. See the authoritative
-[2.0 Capability Index](/docs/2.0/capabilities/) for the current installable
-artifact floors and deliberate SDK differences.
-
-## Laravel-native embedded mode
-
-Laravel remains a differentiated first-party adoption path. A Laravel
-application can embed the PHP engine and author workflows as ordinary PHP
-classes while using its existing queue, database, configuration, and deployment
-model. That advantage does not redefine the platform category: standalone and
-Cloud-connected Python or Rust applications remain native 2.0 paths.
+HTTP API, CLI JSON, SDK clients, schemas, and protocol catalog. See the
+[Agent Operating Loop](/docs/2.0/agent-operating-loop/) and the direct
+[AI-agent evaluator](/docs/2.0/ai-agent-workflow-engine/).
 
 ## First-time 2.0 prerelease path
 
-If you are evaluating the 2.0 prerelease for the first time, start with the
-[2.0 Prerelease Quickstart](/docs/2.0/quickstart/). It uses published
-artifacts only and walks Laravel, Python, and operator paths to an observable
-`status=completed` workflow state.
-
-The quickstart pins the current prerelease artifacts directly:
-`%%artifact.pythonPackagePin%%` for Python,
-`%%artifact.serverDockerHubImage%%` for the standalone server, and
-`%%artifact.cliInstallerEnv%%` for the CLI installer.
-
-```bash
-pip install %%artifact.pythonPackagePin%%
-export DW_SERVER_IMAGE=%%artifact.serverDockerHubImage%%
-curl -fsSL https://durable-workflow.com/install.sh | %%artifact.cliInstallerEnv%% sh
-```
-
-The persona reference pages are also versioned 2.0 pages:
-[Python SDK](/docs/2.0/polyglot/python/),
-[Rust SDK](/docs/2.0/polyglot/rust/),
-[Standalone Server](/docs/2.0/polyglot/server/), and
-[CLI](/docs/2.0/polyglot/cli/).
+The [2.0 Prerelease Quickstart](/docs/2.0/quickstart/) uses published artifacts
+and exact current pins. It walks through a standalone server with a Python
+worker, operator inspection through `dw`, and a separate embedded Laravel
+example, each ending in an observable `status=completed` workflow state. The
+SDK pages provide the corresponding PHP, Python, and Rust starting points.
 
 ## Do you need a workflow?
 
@@ -103,17 +116,17 @@ You probably need a workflow if:
 - You need to pause and continue later without keeping a process running
 - You need to be able to restart after a crash without causing bugs or duplicating work
 
-If your task is "run five queued jobs in order and bail on the first failure," Laravel's job chain is a better fit. Durable Workflow is for the cases where the next step depends on an external event, a wait, or a decision that can't be decided up front.
+If your task is "run five queued jobs in order and bail on the first failure,"
+a job chain is usually a better fit. Durable Workflow is for cases where the
+next step depends on an external event, a wait, or a decision that cannot be
+known up front.
 
-## Want to learn by example?
+## Learn by example
 
-The fastest way to see Durable Workflow run end to end is the
-[Sample App](/docs/2.0/sample-app). It is a runnable Laravel 13
-application with one workflow per pattern surface (deterministic
-chains, elapsed-time measurement, microservice coordination, browser
-automation, webhook-started workflows, AI activity loops, and a
-signal-driven travel-agent saga), each wired into both an artisan
-command and the MCP server. Clone it, run one command, and watch the
-run land in Waterline. When you are ready to write your own pattern,
-the [Contribute a Sample](/docs/2.0/contribute-a-sample) guide walks
-through the full submission flow.
+The [Sample App](/docs/2.0/sample-app/) is a runnable embedded Laravel 13
+application with one workflow per pattern surface, each wired into both an
+Artisan command and the MCP server. It is the best way to explore the
+Laravel-native path and watch runs land in Waterline. When you are ready to
+write your own pattern, the
+[Contribute a Sample](/docs/2.0/contribute-a-sample/) guide covers the
+submission flow.

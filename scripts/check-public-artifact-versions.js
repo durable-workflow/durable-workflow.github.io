@@ -18,6 +18,7 @@ const {
   generatedPublicArtifactTupleSources,
   parseRegistryNextLink,
   quickstartExecutionContractSource,
+  resolvePackagistVersion,
   resolvePublishedWorkflowAuthority,
   selectLatestCompleteCliRelease,
   selectLatestCratesIoVersion,
@@ -56,11 +57,41 @@ assert.strictEqual(
 
 const currentArtifactPins = buildArtifactPins(source.artifacts);
 assert.strictEqual(currentArtifactPins.cliVersion, source.artifacts.cli);
+assert.strictEqual(currentArtifactPins.phpSdkVersion, source.artifacts['sdk-php']);
+assert.strictEqual(
+  currentArtifactPins.phpSdkComposerPackage,
+  `durable-workflow/sdk:${source.artifacts['sdk-php']}`,
+);
+assert.strictEqual(
+  currentArtifactPins.phpSdkComposerInstallCommand,
+  `composer require durable-workflow/sdk:${source.artifacts['sdk-php']}`,
+);
 assert.strictEqual(currentArtifactPins.pythonSdkVersion, source.artifacts['sdk-python']);
 assert.strictEqual(currentArtifactPins.rustSdkVersion, source.artifacts['sdk-rust']);
 assert.strictEqual(currentArtifactPins.serverVersion, source.artifacts.server);
 assert.strictEqual(currentArtifactPins.workflowVersion, source.artifacts.workflow);
 assert.strictEqual(currentArtifactPins.waterlineVersion, source.artifacts.waterline);
+assert.deepStrictEqual(
+  ARTIFACT_DISTRIBUTION_SURFACES['sdk-php'],
+  [
+    {
+      surface: 'packagist_package',
+      package: 'durable-workflow/sdk',
+      version: source.artifacts['sdk-php'],
+      url: 'https://packagist.org/packages/durable-workflow/sdk',
+    },
+    {
+      surface: 'source_repository',
+      repository: 'durable-workflow/sdk-php',
+      url: 'https://github.com/durable-workflow/sdk-php',
+    },
+    {
+      surface: 'api_documentation',
+      url: 'https://php.durable-workflow.com/',
+    },
+  ],
+  'PHP SDK distribution surfaces must expose the package, source repository, and API documentation'
+);
 assert.deepStrictEqual(
   ARTIFACT_DISTRIBUTION_SURFACES.server.map(surface => surface.reference),
   [
@@ -101,6 +132,7 @@ assert.strictEqual(
 let staleQuickstartContract = currentQuickstartContract;
 for (const [currentVersion, staleVersion] of [
   [source.artifacts.cli, '0.1.81'],
+  [source.artifacts['sdk-php'], '0.1.9'],
   [source.artifacts['sdk-python'], '0.4.90'],
   [source.artifacts['sdk-rust'], '0.1.9'],
   [source.artifacts.server, '0.2.512'],
@@ -302,6 +334,28 @@ async function assertWorkflowRegistryAuthorityResolution() {
     'the authority lock must retain the selected public package version instead of its source SHA',
   );
 
+  const phpSdkRelease = await resolvePackagistVersion(
+    PUBLISHED_ARTIFACT_SOURCES['sdk-php'],
+    {
+      requestJson: async url => {
+        assert.strictEqual(url, PUBLISHED_ARTIFACT_SOURCES['sdk-php'].url);
+        return {
+          packages: {
+            [PUBLISHED_ARTIFACT_SOURCES['sdk-php'].packageName]: [
+              {version: '0.1.0', dist: {type: 'zip'}},
+              {version: source.artifacts['sdk-php'], dist: {type: 'zip'}},
+            ],
+          },
+        };
+      },
+    },
+  );
+  assert.strictEqual(
+    phpSdkRelease.version,
+    source.artifacts['sdk-php'],
+    'PHP SDK artifact resolution must select the latest published Packagist version',
+  );
+
   let invalidReferenceFetches = 0;
   await assert.rejects(
     () => resolvePublishedWorkflowAuthority(
@@ -474,6 +528,7 @@ expectFailure(
 
 const malformedVersions = [
   ['cli', '0.2.72', /artifacts\.cli must use CLI version format 0\.1\.N/],
+  ['sdk-php', '0.2.0', /artifacts\.sdk-php must use PHP SDK version format 0\.1\.N/],
   ['sdk-python', '0.5.84', /artifacts\.sdk-python must use Python SDK version format 0\.4\.N/],
   ['sdk-rust', 'latest', /artifacts\.sdk-rust must use Rust SDK version format 0\.1\.N/],
   ['server', 'latest', /artifacts\.server must use server version format 0\.2\.N/],

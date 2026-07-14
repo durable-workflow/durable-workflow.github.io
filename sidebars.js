@@ -139,6 +139,7 @@ const sidebars = {
         'polyglot/embedded-to-server',
         'polyglot/cli',
         'polyglot/cli-reference',
+        'polyglot/php',
         'polyglot/python',
         'polyglot/cli-python-parity',
         'polyglot/rust',

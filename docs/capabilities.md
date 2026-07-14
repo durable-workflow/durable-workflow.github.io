@@ -30,17 +30,19 @@ every feature first appeared in that release.
 | Surface | Exact current floor | Role in this index |
 | --- | --- | --- |
 | CLI | `%%artifact.cliVersion%%` | Machine-readable operator and diagnostic client. |
-| PHP SDK | `%%artifact.workflowVersion%%` | First-party deterministic workflow/activity authoring, embedded Laravel host, PHP control-plane client, and reference core. |
+| PHP SDK | `%%artifact.phpSdkVersion%%` | Framework-neutral `durable-workflow/sdk` client and remote workflow/activity worker for the standalone server. |
+| Embedded Laravel engine | `%%artifact.workflowVersion%%` | `durable-workflow/workflow` authoring runtime, persistence engine, queues, replay, and server-hosted core. |
 | Python SDK | `%%artifact.pythonSdkVersion%%` | First-party deterministic workflow/activity SDK plus operational and control-plane client. Requires Python 3.10 or newer. |
 | Rust SDK | `%%artifact.rustSdkVersion%%` | First-party deterministic workflow/activity SDK, worker service, and control-plane client. Requires Rust 1.86 or newer. |
 | Server | `%%artifact.serverVersion%%` | PHP-implemented, language-neutral runtime for the v2 control-plane and worker protocols. |
 | Waterline | `%%artifact.waterlineVersion%%` | Embedded-runtime observability and selected-run history export. |
 
-PHP, Python, and Rust are the three first-party SDK languages. They share
+PHP, Python, and Rust are the three first-party standalone SDK languages. They share
 stable string type names, one durable command/history model, control plane
 version `2`, worker protocol major `1`, and the public payload envelope. Rust is
 a workflow SDK: it runs deterministic workflow code, activities, and worker
-services, not only raw protocol calls. Python combines workflow authoring with
+services, not only raw protocol calls. The framework-neutral PHP SDK is
+versioned independently from the embedded Laravel engine. Python combines workflow authoring with
 namespace, schedule, worker, queue, history, repair, and other operational
 client surfaces.
 
@@ -58,8 +60,8 @@ implied to have parity.
 
 | Capability | Current 2.0 contract and first-party floor | Explicit 2.0 evidence |
 | --- | --- | --- |
-| Workflows | PHP `%%artifact.workflowVersion%%`, Python `%%artifact.pythonSdkVersion%%`, and Rust `%%artifact.rustSdkVersion%%` author deterministic workflows. | [Workflow authoring](/docs/2.0/defining-workflows/workflows/), [Python SDK](/docs/2.0/polyglot/python/), [Rust SDK](/docs/2.0/polyglot/rust/) |
-| Activities and services | All three SDKs author activities. Rust workflows and activities run in first-party worker services; Python and PHP also expose first-party control/service clients. | [Activities](/docs/2.0/defining-workflows/activities/), [Activity execution](/docs/2.0/features/activity-execution-model/), [External execution](/docs/2.0/polyglot/external-execution/) |
+| Workflows | Remote PHP `%%artifact.phpSdkVersion%%`, Python `%%artifact.pythonSdkVersion%%`, and Rust `%%artifact.rustSdkVersion%%` workers author deterministic workflows; embedded Laravel authoring uses `%%artifact.workflowVersion%%`. | [Workflow authoring](/docs/2.0/defining-workflows/workflows/), [PHP SDK](/docs/2.0/polyglot/php/), [Python SDK](/docs/2.0/polyglot/python/), [Rust SDK](/docs/2.0/polyglot/rust/) |
+| Activities and services | The embedded engine and all three standalone SDKs author activities. Rust workflows and activities run in first-party worker services; Python and PHP also expose first-party control/service clients. | [Activities](/docs/2.0/defining-workflows/activities/), [PHP SDK](/docs/2.0/polyglot/php/), [Activity execution](/docs/2.0/features/activity-execution-model/), [External execution](/docs/2.0/polyglot/external-execution/) |
 | Signals | Durable, asynchronous mutation is available to PHP, Python, and Rust workflow surfaces at their current floors. | [Signals](/docs/2.0/features/signals/), [Python SDK](/docs/2.0/polyglot/python/), [Rust SDK](/docs/2.0/polyglot/rust/) |
 | Queries | Read-only replay queries are supported. PHP, Python `%%artifact.pythonSdkVersion%%`, and Rust `%%artifact.rustSdkVersion%%` expose query handlers/clients; Rust replayed query tasks require worker protocol `1.8` or newer. | [Queries](/docs/2.0/features/queries/), [Python SDK](/docs/2.0/polyglot/python/), [Rust SDK](/docs/2.0/polyglot/rust/) |
 | Updates | The runtime records accepted durable updates. PHP and Python `%%artifact.pythonSdkVersion%%` author update handlers; synchronous Python pre-accept validators remain capability-discovery-gated. Rust `%%artifact.rustSdkVersion%%` does not claim update authoring. | [Updates](/docs/2.0/features/updates/), [Python SDK](/docs/2.0/polyglot/python/) |

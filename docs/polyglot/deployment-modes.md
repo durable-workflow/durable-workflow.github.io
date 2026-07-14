@@ -22,7 +22,8 @@ Durable Workflow v2 ships one durable engine in two packaging shapes:
 - **Embedded mode** inside a Laravel application that installs the
   `durable-workflow/workflow` package directly.
 - **Service mode** through the standalone
-  [Durable Workflow server](/docs/2.0/polyglot/server).
+  [Durable Workflow server](/docs/2.0/polyglot/server), with framework-neutral
+  PHP applications and remote workers installing `durable-workflow/sdk`.
 
 Use this page when deciding which shape should own a workflow fleet, planning a
 cutover between them, or documenting which parts of the product contract must
@@ -38,8 +39,8 @@ surfaces; there is no mandatory gRPC and no second engine.
 | Surface | Embedded mode | Service mode | Stable in both modes |
 | --- | --- | --- | --- |
 | Durable workflow model | A Laravel app hosts the package directly and writes workflow state inside the app runtime. | The standalone server hosts the same package and writes workflow state behind its HTTP control plane. | Workflow ids, run ids, typed history, command outcomes, retries, repair semantics, and history export remain the same v2 contract. |
-| Control plane | Starts and commands come from app code, `WorkflowStub`, or app-local operator tooling. | Starts and commands go through the server API, CLI, or SDKs over HTTP+JSON with explicit auth and protocol headers. | Duplicate-start policy, run targeting, command ids, and named outcomes stay the same. Route follow-up commands to the runtime that accepted the start. |
-| Worker transport | Laravel queue workers execute workflow and activity tasks inside the app deployment. | Workers register, long-poll, heartbeat, and complete work over the HTTP+JSON worker protocol. | Task leases, compatibility markers, replay semantics, and at-least-once activity execution stay the same. |
+| Control plane | Starts and commands come from app code, `WorkflowStub`, or app-local operator tooling. | Starts and commands go through the server API, CLI, or SDKs over HTTP+JSON with explicit auth and protocol headers. Framework-neutral PHP callers use `DurableWorkflow\Client` from `durable-workflow/sdk`. | Duplicate-start policy, run targeting, command ids, and named outcomes stay the same. Route follow-up commands to the runtime that accepted the start. |
+| Worker transport | Laravel queue workers execute workflow and activity tasks inside the app deployment. | Workers register, long-poll, heartbeat, and complete work over the HTTP+JSON worker protocol. PHP remote workers use `DurableWorkflow\Worker` from `durable-workflow/sdk`. | Task leases, compatibility markers, replay semantics, and at-least-once activity execution stay the same. |
 | Task dispatch default | Tasks are normally dispatched to the Laravel queue in-process with the application. | The server defaults to `task_dispatch_mode = poll` so external workers discover work over HTTP unless you explicitly override it. | The ready/leased/repair lifecycle and durable task model stay the same. |
 | Workflow and activity type keys | PHP aliases can resolve to local classes inside the app. | Workers advertise supported type keys during registration. | Public type keys should stay stable and language-neutral. Do not make PHP FQCNs or mirrored PHP placeholder types the public contract. |
 | Operator surface | Waterline or app-local tooling reads the embedded app's durable state. | The server API, CLI, and SDKs read the server-owned durable state. | Visibility facts such as search attributes, memos, run status, queue diagnostics, and history export are durable facts within the runtime that owns the run. |
@@ -72,6 +73,7 @@ under [Run And Operate](/docs/2.0/category/run-and-operate).
   [server role topology](/docs/2.0/polyglot/server-role-topology).
 
 Start with [Server](/docs/2.0/polyglot/server),
+[PHP SDK](/docs/2.0/polyglot/php),
 [Self-Hosting Deployments](/docs/2.0/deployment), and the
 [Server API Reference](/docs/2.0/polyglot/server-api-reference).
 
@@ -106,6 +108,7 @@ Three migration rules are non-negotiable:
 
 - [Installation](/docs/2.0/installation)
 - [Server](/docs/2.0/polyglot/server)
+- [PHP SDK](/docs/2.0/polyglot/php)
 - [Cloud Control Plane](/docs/2.0/polyglot/cloud-control-plane)
 - [Embedded to Server Migration](/docs/2.0/polyglot/embedded-to-server)
 - [Server Role Topology](/docs/2.0/polyglot/server-role-topology)

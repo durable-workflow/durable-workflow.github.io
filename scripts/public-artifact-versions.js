@@ -10,6 +10,11 @@ const ARTIFACT_VERSION_REQUIREMENTS = Object.freeze({
     pattern: /^0\.1\.\d+$/,
     expected: '0.1.N',
   },
+  'sdk-php': {
+    label: 'PHP SDK',
+    pattern: /^0\.1\.\d+$/,
+    expected: '0.1.N',
+  },
   'sdk-python': {
     label: 'Python SDK',
     pattern: /^0\.4\.\d+$/,
@@ -108,6 +113,9 @@ function buildArtifactPins(versions) {
     cliUpgradeCommand: `dw upgrade --tag=${versions.cli}`,
     cliUpgradeTag: `--tag=${versions.cli}`,
     cliVersion: versions.cli,
+    phpSdkVersion: versions['sdk-php'],
+    phpSdkComposerPackage: `durable-workflow/sdk:${versions['sdk-php']}`,
+    phpSdkComposerInstallCommand: `composer require durable-workflow/sdk:${versions['sdk-php']}`,
     pythonSdkVersion: versions['sdk-python'],
     pythonPackagePin: `durable-workflow==${versions['sdk-python']}`,
     pythonPipInstallCommand: `pip install durable-workflow==${versions['sdk-python']}`,
@@ -144,6 +152,12 @@ function buildArtifactPinPatterns(versions) {
       label: 'server compose tag',
       pattern: /\bDW_SERVER_TAG=(0\.2\.\d+)\b/g,
       expected: versions.server,
+    },
+    {
+      category: 'php_sdk_artifact_pin',
+      label: 'PHP SDK Composer package pin',
+      pattern: /durable-workflow\/sdk:(0\.1\.\d+)/g,
+      expected: versions['sdk-php'],
     },
     {
       category: 'python_sdk_artifact_pin',
@@ -183,6 +197,23 @@ const ARTIFACT_PIN_PATTERNS = buildArtifactPinPatterns(ARTIFACT_VERSIONS);
 
 function buildArtifactDistributionSurfaces(versions) {
   return Object.freeze({
+    'sdk-php': Object.freeze([
+      Object.freeze({
+        surface: 'packagist_package',
+        package: 'durable-workflow/sdk',
+        version: versions['sdk-php'],
+        url: 'https://packagist.org/packages/durable-workflow/sdk',
+      }),
+      Object.freeze({
+        surface: 'source_repository',
+        repository: 'durable-workflow/sdk-php',
+        url: 'https://github.com/durable-workflow/sdk-php',
+      }),
+      Object.freeze({
+        surface: 'api_documentation',
+        url: 'https://php.durable-workflow.com/',
+      }),
+    ]),
     server: Object.freeze([
       Object.freeze({
         surface: 'docker_hub_container_image',

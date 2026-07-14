@@ -3,6 +3,7 @@
   "schemaVersion": 1,
   "artifacts": {
     "cli": "0.1.89",
+    "sdk-php": "0.1.1",
     "sdk-python": "0.4.98",
     "sdk-rust": "0.1.15",
     "server": "0.2.649",

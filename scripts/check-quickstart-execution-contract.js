@@ -136,6 +136,9 @@ function assertPublicArtifactPins(contract) {
   assertEqual(artifacts.server && artifacts.server.reference, ARTIFACT_PINS.serverDockerHubImage, 'server image reference');
   assertEqual(artifacts.cli && artifacts.cli.version, ARTIFACT_VERSIONS.cli, 'CLI artifact version');
   assertEqual(artifacts.cli && artifacts.cli.install_command, ARTIFACT_PINS.cliInstallerCommand, 'CLI install command');
+  assertEqual(artifacts['sdk-php'] && artifacts['sdk-php'].version, ARTIFACT_VERSIONS['sdk-php'], 'PHP SDK artifact version');
+  assertEqual(artifacts['sdk-php'] && artifacts['sdk-php'].composer_package, ARTIFACT_PINS.phpSdkComposerPackage, 'PHP SDK Composer package pin');
+  assertEqual(artifacts['sdk-php'] && artifacts['sdk-php'].install_command, ARTIFACT_PINS.phpSdkComposerInstallCommand, 'PHP SDK install command');
   assertEqual(artifacts['sdk-python'] && artifacts['sdk-python'].version, ARTIFACT_VERSIONS['sdk-python'], 'Python SDK artifact version');
   assertEqual(artifacts['sdk-python'] && artifacts['sdk-python'].pip_package, ARTIFACT_PINS.pythonPackagePin, 'Python SDK package pin');
   assertEqual(artifacts['sdk-python'] && artifacts['sdk-python'].install_command, ARTIFACT_PINS.pythonPipInstallCommand, 'Python SDK install command');

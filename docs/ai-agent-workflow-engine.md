@@ -47,11 +47,14 @@ runbook.
 
 ## First-party SDKs and application boundary
 
-PHP `%%artifact.workflowVersion%%`, Python `%%artifact.pythonSdkVersion%%`, and
-Rust `%%artifact.rustSdkVersion%%` are first-party SDK surfaces on the current
-installable tuple.
+PHP `%%artifact.phpSdkVersion%%`, Python `%%artifact.pythonSdkVersion%%`, and
+Rust `%%artifact.rustSdkVersion%%` are first-party standalone SDK surfaces on
+the current installable tuple. Workflow `%%artifact.workflowVersion%%` is the
+separately versioned embedded Laravel engine and standalone-server core.
 
-- PHP is the reference workflow SDK, embedded host, and standalone-server core.
+- Framework-neutral PHP applications and remote workers use
+  [`durable-workflow/sdk`](/docs/2.0/polyglot/php/); embedded Laravel
+  applications use `durable-workflow/workflow`.
 - Python authors deterministic workflows and activities and is also an
   operational/control-plane surface for workflows, schedules, namespaces,
   workers, queues, history, and repair.

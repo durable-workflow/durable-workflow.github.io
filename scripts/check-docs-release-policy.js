@@ -18,6 +18,7 @@ const PUBLIC_DISCOVERY_URLS = [
   '/docs/',
   '/docs/2.0/quickstart/',
   '/quickstart-execution-contract.json',
+  '/docs/2.0/polyglot/php/',
   '/docs/2.0/polyglot/python/',
   '/docs/2.0/polyglot/rust/',
   '/docs/2.0/polyglot/server/',
@@ -132,6 +133,7 @@ function assertBuiltDocsPolicy() {
   assertDocusaurusVersion('docs/installation/index.html', STABLE_DOCS_VERSION);
   assertDocusaurusVersion('docs/2.0/introduction/index.html', 'current');
   assertDocusaurusVersion('docs/2.0/quickstart/index.html', 'current');
+  assertDocusaurusVersion('docs/2.0/polyglot/php/index.html', 'current');
   assertDocusaurusVersion('docs/2.0/polyglot/rust/index.html', 'current');
 
   const pageAudit = readBuildJson('docs-page-release-audit.json');
@@ -174,6 +176,7 @@ function assertPublicDiscoverySurface() {
   }
 
   for (const route of [
+    'docs/polyglot/php/index.html',
     'docs/polyglot/python/index.html',
     'docs/polyglot/rust/index.html',
     'docs/polyglot/server/index.html',
@@ -182,6 +185,7 @@ function assertPublicDiscoverySurface() {
   }
 
   for (const route of [
+    `${siteUrl}/docs/polyglot/php/`,
     `${siteUrl}/docs/polyglot/python/`,
     `${siteUrl}/docs/polyglot/rust/`,
     `${siteUrl}/docs/polyglot/server/`,

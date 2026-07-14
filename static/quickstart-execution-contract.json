@@ -33,6 +33,12 @@
       "version": "0.1.89",
       "install_command": "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.89 sh"
     },
+    "sdk-php": {
+      "channel": "packagist",
+      "version": "0.1.1",
+      "composer_package": "durable-workflow/sdk:0.1.1",
+      "install_command": "composer require durable-workflow/sdk:0.1.1"
+    },
     "sdk-python": {
       "channel": "pypi",
       "version": "0.4.98",
