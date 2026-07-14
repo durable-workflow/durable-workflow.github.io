@@ -3,7 +3,7 @@
   "version": 1,
   "category": "namespace_runtime_contract",
   "suite_schema": "durable-workflow.v2.platform-conformance.suite",
-  "suite_version": 29,
+  "suite_version": 30,
   "description": "Public scenario manifest for Temporal-parity namespace conformance. Harnesses use these scenario ids and criteria when evaluating published Durable Workflow artifacts.",
   "fixture_type": "published_artifact_runtime_scenario_manifest",
   "result_statuses": [
@@ -47,11 +47,11 @@
         "server",
         "cli",
         "python_sdk_runtime",
-        "workflow_php_runtime",
+        "sdk_php_runtime",
         "waterline"
       ],
       "operations": [
-        "install the server image, CLI, Python SDK, PHP workflow runtime, and Waterline from published channels",
+        "install the server image, CLI, Python SDK, PHP SDK runtime, and Waterline from published channels",
         "record the resolved artifact name and version for every actor",
         "run no product code from a local checkout"
       ],
@@ -148,7 +148,7 @@
       ],
       "actors": [
         "server",
-        "workflow_php_runtime",
+        "sdk_php_runtime",
         "php_worker_tenant_a",
         "php_worker_tenant_b"
       ],
@@ -195,7 +195,7 @@
       "actors": [
         "server",
         "python_sdk_runtime",
-        "workflow_php_runtime",
+        "sdk_php_runtime",
         "sdk_client"
       ],
       "operations": [

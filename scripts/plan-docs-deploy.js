@@ -111,6 +111,33 @@ function compareLivePublicArtifacts(expected, audit, quickstart) {
     }
   }
 
+  const expectedPhpSurfaces = ARTIFACT_DISTRIBUTION_SURFACES['sdk-php'] || [];
+  const livePhpSurfaces = versionAtPath(audit, ['artifact_distribution_surfaces', 'sdk-php']);
+
+  if (!Array.isArray(livePhpSurfaces)) {
+    drift.push(`${RELEASE_AUDIT_PATH} artifact_distribution_surfaces.sdk-php: expected PHP SDK surfaces, got <missing>`);
+  } else {
+    for (const expectedSurface of expectedPhpSurfaces) {
+      const liveSurface = livePhpSurfaces.find(surface => (
+        surface && surface.surface === expectedSurface.surface
+      ));
+
+      if (!liveSurface) {
+        drift.push(`${RELEASE_AUDIT_PATH} PHP SDK surface ${expectedSurface.surface}: missing`);
+        continue;
+      }
+
+      for (const [field, expectedValue] of Object.entries(expectedSurface)) {
+        if (liveSurface[field] !== expectedValue) {
+          drift.push(
+            `${RELEASE_AUDIT_PATH} PHP SDK surface ${expectedSurface.surface}.${field}: ` +
+            `expected ${expectedValue}, got ${liveSurface[field] || '<missing>'}`
+          );
+        }
+      }
+    }
+  }
+
   const expectedServerSurfaces = ARTIFACT_DISTRIBUTION_SURFACES.server || [];
   const liveServerSurfaces = versionAtPath(audit, ['artifact_distribution_surfaces', 'server']);
 

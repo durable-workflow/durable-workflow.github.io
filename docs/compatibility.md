@@ -41,7 +41,7 @@ manifests, and CI gates can validate themselves against one source of truth:
 
 - `surface_stability_contract` in the response body of
   `GET /api/cluster/info` on the standalone Durable Workflow server, schema
-  `durable-workflow.v2.surface-stability.contract`, version `2`.
+  `durable-workflow.v2.surface-stability.contract`, version `3`.
 - A frozen mirror of the same manifest in this repository at
   `static/compatibility-contract.json`.
 - The PHP class `Workflow\V2\Support\SurfaceStabilityContract`, which is
@@ -109,7 +109,7 @@ version bump, this page, and the JSON mirror in the same commit).
 | `cli_json` | `stable` | n/a (see CLI reference) | The `--output=json` and `--output=jsonl` shapes emitted by `dw`. JSON exit codes and JSON field names are the durable surface; the human-readable `--output=table` form is documentation, not contract. |
 | `waterline_api` | `stable` | n/a (see Waterline operator API) | Waterline observability HTTP API at `/waterline/api/v2/*`, the engine-source contract, and the dashboard JSON shapes. Waterline must match the workflow package major version. |
 | `mcp_discovery_results` | `stable` | n/a (see MCP workflows page) | The `/mcp/*` Model Context Protocol surfaces and the `llms.txt` / `llms-2.0.txt` discovery files. MCP tool names, parameter schemas, and `payload_preview_limit_bytes` semantics are part of the contract; tool descriptions and discovery hints are diagnostic. |
-| `official_sdks` | `stable` | `client_compatibility` | The first-party SDKs: PHP `durable-workflow/workflow`, `durable-workflow/server`, the `dw` CLI, the `durable_workflow` Python SDK, and the `durable-workflow` Rust SDK. Each SDK's public surface is governed by its own per-package stability document, which must defer to this page. |
+| `official_sdks` | `stable` | `client_compatibility` | The first-party SDKs: PHP `durable-workflow/sdk`, the `durable_workflow` Python SDK, and the `durable-workflow` Rust SDK. The `dw` CLI is the official command client. Each SDK's public surface is governed by its own per-package stability document, which must defer to this page. |
 | `history_event_wire_formats` | `frozen` | n/a (frozen shapes; see workflow `docs/api-stability.md`) | The persisted shape of every row in `workflow_history_events` and `workflow_schedule_history_events`. Once a workflow writes an event, every future SDK that replays it must decode the same field set. |
 | `cluster_info_manifests` | `stable` | `surface_stability_contract`, `client_compatibility`, `control_plane`, `worker_protocol`, `auth_composition_contract`, `coordination_health` | The protocol manifests published by `GET /api/cluster/info` itself. Each nested manifest carries its own `schema` and `version` and evolves under its own contract rules. The envelope keys are stable. |
 
@@ -118,6 +118,7 @@ version bump, this page, and the JSON mirror in the same commit).
 These documents add per-package detail under the rules on this page:
 
 - `durable-workflow/workflow` (PHP) — [`docs/api-stability.md`](https://github.com/durable-workflow/workflow/blob/v2/docs/api-stability.md). Authoritative for the PHP authoring API, the `Support\*` server-facing classes, and the frozen history-event wire-format tables.
+- `durable-workflow/sdk` (PHP) — [`README.md`](https://github.com/durable-workflow/sdk-php/blob/main/README.md). Authoritative for the framework-neutral remote client and worker API distributed from Packagist.
 - `durable-workflow/server` — [`README.md`](https://github.com/durable-workflow/server/blob/main/README.md) and `docs/contracts/*`. Authoritative for the standalone server's request/response contracts.
 - `dw` CLI — [`/docs/polyglot/cli-reference`](/docs/2.0/polyglot/cli-reference). Authoritative for the JSON output shapes and exit codes.
 - Python SDK — `README.md` in `durable-workflow/sdk-python`. Authoritative for the `durable_workflow` package public API.
@@ -201,8 +202,8 @@ when the manifests do not agree.
 
 The generated [public release-audit JSON](pathname:///docs-page-release-audit.json)
 is the current installable artifact authority for Workflow, Server, CLI, the
-Python and Rust SDKs, and Waterline. This page deliberately does not copy that
-tuple into editorial Markdown. Stable 1.x remains the default public docs
+PHP, Python, and Rust SDKs, and Waterline. This page deliberately does not copy
+that tuple into editorial Markdown. Stable 1.x remains the default public docs
 line; the 2.0 docs line is explicit prerelease guidance until the
 release-status cutover is authorized.
 
@@ -212,7 +213,7 @@ assuming that two top-level package versions must match.
 
 ### Server ↔ SDK / CLI
 
-| Server protocol manifests and request rule | CLI 0.1.x | Python SDK 0.4.x (`1.1`) | Rust SDK 0.1.x (`1.2`) | PHP Workflow 2.0.x (`1.13` current) |
+| Server protocol manifests and request rule | CLI 0.1.x | PHP SDK 0.1.x (`1.13`) | Python SDK 0.4.x (`1.1`) | Rust SDK 0.1.x (`1.2`) |
 |--------------------------------------------|-----------|----------------------------|--------------------------|-------------------------------------|
 | `control_plane.version: "2"` + request-contract v1 + advertised `worker_protocol.version: "1.13"`; worker headers `1.0` through `1.13` accepted | ✅ Compatible (control plane only) | ✅ Compatible | ✅ Compatible | ✅ Compatible |
 | Missing or malformed required protocol manifest/header | ❌ Fail closed | ❌ Fail closed | ❌ Fail closed | ❌ Fail closed |
@@ -317,7 +318,7 @@ and the compatibility policy in `GET /api/cluster/info`:
   },
   "surface_stability_contract": {
     "schema": "durable-workflow.v2.surface-stability.contract",
-    "version": 2,
+    "version": 3,
     "authority_url": "https://durable-workflow.github.io/docs/2.0/compatibility"
   },
   "control_plane": {
@@ -376,7 +377,7 @@ X-Durable-Workflow-Control-Plane-Version: 2
 ```
 Python SDK 0.4.x: X-Durable-Workflow-Protocol-Version: 1.1
 Rust SDK 0.1.x:   X-Durable-Workflow-Protocol-Version: 1.2
-PHP Workflow:    X-Durable-Workflow-Protocol-Version: 1.13
+PHP SDK 0.1.x:   X-Durable-Workflow-Protocol-Version: 1.13
 ```
 
 The server validates these headers against its advertised version using the
@@ -439,6 +440,11 @@ These rows are dated historical snapshots, not the current-version authority.
 Use the [public release-audit JSON](pathname:///docs-page-release-audit.json)
 for the current artifact tuple.
 
+The standalone PHP SDK first entered that canonical tuple as
+`durable-workflow/sdk` version `0.1.1` on 2026-07-13. Historical rows below
+predate the standalone package and therefore describe the embedded Workflow
+PHP runtime only.
+
 | Date | Server | CLI | Python SDK | Rust SDK | Workflow | Waterline | Notes |
 |------|--------|-----|------------|----------|----------|-----------|-------|
 | 2026-07-13 | 0.2.648 | 0.1.89 | 0.4.98 | 0.1.14 | 2.0.0-alpha.274 | 2.0.0-alpha.130 | Recorded a public release-audit snapshot while stable 1.x remained the default docs line. |
@@ -470,6 +476,7 @@ for the current artifact tuple.
 
 - [Server Setup](/docs/2.0/polyglot/server) — Deploying the standalone server
 - [Server API Reference](/docs/2.0/polyglot/server-api-reference) — `GET /api/cluster/info` and the protocol manifests
+- [PHP SDK](/docs/2.0/polyglot/php) — PHP client and worker
 - [Python SDK](/docs/2.0/polyglot/python) — Python client and worker
 - [Rust SDK](/docs/2.0/polyglot/rust) — Rust client and worker
 - [CLI](/docs/2.0/polyglot/cli) — Command-line interface

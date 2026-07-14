@@ -53,8 +53,10 @@ protocol redesign.
 
 ## Why this exists
 
-Durable ships three first-party SDKs: the PHP `durable-workflow/workflow`
+Durable ships three first-party standalone SDKs: the PHP `durable-workflow/sdk`
 package, Python `durable_workflow` package, and Rust `durable-workflow` crate.
+The separate PHP `durable-workflow/workflow` package remains the embedded
+Laravel engine and replay owner; it is not the framework-neutral PHP SDK.
 Building or maintaining a wide first-party SDK roster is **not** a release goal.
 Demand for SDKs in TypeScript, Go, Java, and .NET ecosystems has not
 yet been demonstrated, and the maintenance cost of a broad official
@@ -82,7 +84,7 @@ The official-SDK roster is intentionally narrow:
 
 | Language | Posture | Published package | Conformance authority |
 | --- | --- | --- | --- |
-| PHP | `priority` | [`durable-workflow/workflow`](https://packagist.org/packages/durable-workflow/workflow) | [`history_replay_bundles`](https://durable-workflow.github.io/platform-conformance/replay-runtime-scenarios.json), actor `workflow_php_runtime` |
+| PHP | `priority` | [`durable-workflow/sdk`](https://packagist.org/packages/durable-workflow/sdk) | [`signal_query_runtime_contract`](https://durable-workflow.github.io/platform-conformance/signal-query-runtime-scenarios.json), actors `sdk_php`, `php_sdk_client`, and `php_worker` |
 | Python | `priority` | [`durable_workflow`](https://pypi.org/project/durable-workflow/) | [`history_replay_bundles`](https://durable-workflow.github.io/platform-conformance/replay-runtime-scenarios.json), actor `python_sdk_runtime` |
 | Rust | `priority` | [`durable-workflow`](https://crates.io/crates/durable-workflow) | [`signal_query_runtime_contract`](https://durable-workflow.github.io/platform-conformance/signal-query-runtime-scenarios.json), actors `rust_sdk`, `rust_worker`, and `rust_sdk_client` |
 | TypeScript | `demand_driven` | None | Public contracts must remain implementable in TypeScript without protocol redesign. |
@@ -91,8 +93,10 @@ The official-SDK roster is intentionally narrow:
 | .NET | `demand_driven` | None | Public contracts must remain implementable in .NET without protocol redesign. |
 
 The JSON contract lists the exact `scenario_ids` that constitute coverage for
-`first_party.php_workflow_package`, `first_party.python_sdk`, and
-`first_party.rust_sdk`. Consumers can resolve those identifiers directly in
+`first_party.php_sdk`, `first_party.python_sdk`, and `first_party.rust_sdk`.
+It tracks the Laravel package separately as
+`embedded_engines.php_workflow_engine`, with replay coverage under actor
+`workflow_php_runtime`. Consumers can resolve those identifiers directly in
 the linked catalogs without cloning an SDK repository or reading its test
 suite.
 

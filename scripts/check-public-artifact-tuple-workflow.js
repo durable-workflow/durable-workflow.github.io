@@ -138,6 +138,7 @@ const stableKeyHandoff = {
   tuple_date: '2026-06-18',
   artifact_versions: {
     cli: '0.2.0',
+    'sdk-php': '0.1.1',
     'sdk-python': '0.2.0',
     'sdk-rust': '0.1.0',
     server: '0.2.426',
@@ -205,6 +206,7 @@ const multiArtifactHandoff = {
   artifact_versions: stableKeyHandoff.artifact_versions,
   previous_artifact_versions: {
     cli: '0.1.99',
+    'sdk-php': '0.1.0',
     'sdk-python': '0.1.99',
     'sdk-rust': '0.1.0',
     server: '0.2.425',

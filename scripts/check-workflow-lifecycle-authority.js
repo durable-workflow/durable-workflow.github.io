@@ -12,10 +12,9 @@ const manifestPath = path.join(
   'platform-conformance',
   'workflow-lifecycle-scenarios.json'
 );
-// This digest is the exact workflow-lifecycle manifest shipped by server
-// 0.2.647 and exercised with durable-workflow crate 0.1.12.
+// This digest pins the current prerelease workflow-lifecycle authority.
 const RELEASED_MANIFEST_SHA256 =
-  'c74b2a8c8744a87bc5297ed50c761712636ed74044e9ec264065bf1f580a42f1';
+  'eb3043d186fbe79cf6acbdfafbec9c670ecb47949cda69836aee6194adfd0f5b';
 
 function read(file) {
   return fs.readFileSync(file, 'utf8');
@@ -26,7 +25,7 @@ const digest = crypto.createHash('sha256').update(raw).digest('hex');
 assert.strictEqual(
   digest,
   RELEASED_MANIFEST_SHA256,
-  'workflow lifecycle authority must remain byte-equivalent to the released server 0.2.647 manifest'
+  'workflow lifecycle authority must remain byte-equivalent to the pinned prerelease server manifest'
 );
 
 const manifest = JSON.parse(raw);
@@ -65,6 +64,7 @@ for (const id of [
   'continue_as_new_duplicate_side_effect_prevention',
   'cancellation_public_surface_terminal_state',
   'termination_public_surface_terminal_state',
+  'php_sdk_lifecycle_surface',
   'rust_sdk_lifecycle_surface',
 ]) {
   assert(
@@ -73,11 +73,31 @@ for (const id of [
   );
 }
 
+const phpScenario = manifest.scenarios.find(({id}) => id === 'php_sdk_lifecycle_surface');
+assert(phpScenario, 'workflow lifecycle authority must define the PHP SDK scenario');
+assert.deepStrictEqual(phpScenario.actors, ['sdk-php']);
+for (const field of [
+  'artifact_version',
+  'server_version',
+  'install_provenance',
+  'apache_avro_provenance',
+  'client_processes',
+  'worker_processes',
+  'callback_counts',
+  'history_assertions',
+  'local_product_source_checkouts_used',
+]) {
+  assert(
+    phpScenario.required_evidence.includes(field),
+    `PHP lifecycle scenario must require evidence field ${field}`
+  );
+}
+
 const rustScenario = manifest.scenarios.find(({id}) => id === 'rust_sdk_lifecycle_surface');
 assert(rustScenario, 'workflow lifecycle authority must define the Rust SDK scenario');
 assert.strictEqual(
   rustScenario.required_behavior,
-  'rust_sdk_exact_crate_exercises_lifecycle_against_the_matching_published_server_image'
+  'rust_sdk_exact_crate_exercises_lifecycle_and_preserves_committed_predecessor_decisions_across_continue_as_new_redelivery_and_worker_process_replacement'
 );
 for (const field of [
   'artifact_version',

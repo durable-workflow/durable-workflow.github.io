@@ -30,7 +30,7 @@
     },
     "worker_protocol_api": {
       "owner_symbol": "App\\Support\\WorkerProtocol and Workflow\\V2\\Support\\WorkerProtocolVersion",
-      "conformance_test": "durable-workflow/server: tests/Feature/WorkerProtocolContractTest.php, tests/Feature/WorkerProtocolSuccessContractTest.php, tests/Feature/WorkerProtocolOwnershipErrorContractTest.php, tests/Feature/WorkerProtocolVersionCoverageTest.php, tests/Feature/WorkflowWorkerProtocolTest.php, tests/Feature/ActivityWorkerProtocolTest.php, and tests/Feature/WorkflowQueryTaskBrokerTest.php; durable-workflow/workflow: tests/Unit/V2/WorkerProtocolClientTest.php and tests/Unit/V2/WorkflowQueryTaskExecutorTest.php",
+      "conformance_test": "durable-workflow/server: tests/Feature/WorkerProtocolContractTest.php, tests/Feature/WorkerProtocolSuccessContractTest.php, tests/Feature/WorkerProtocolOwnershipErrorContractTest.php, tests/Feature/WorkerProtocolVersionCoverageTest.php, tests/Feature/WorkflowWorkerProtocolTest.php, tests/Feature/ActivityWorkerProtocolTest.php, and tests/Feature/WorkflowQueryTaskBrokerTest.php; durable-workflow/sdk-php: tests/ClientContractTest.php and tests/ControlPlaneParityTest.php",
       "object_families": [
         {
           "name": "worker_registration_request",

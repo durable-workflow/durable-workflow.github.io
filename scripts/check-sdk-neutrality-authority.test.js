@@ -298,4 +298,32 @@ assert.throws(
   'incomplete Rust coverage must fail the release check',
 );
 
+const workflowMisclassifiedAsPhpSdk = changed(contract, copy => {
+  copy.sdk_breadth_policy.first_party.php_sdk.package = 'durable-workflow/workflow';
+});
+assert.throws(
+  () => assertSdkBreadthPolicy(workflowMisclassifiedAsPhpSdk, catalogs),
+  /first_party\.php_sdk\.package must be "durable-workflow\/sdk"/,
+  'the embedded Workflow package must not be accepted as the standalone PHP SDK',
+);
+
+const missingEmbeddedWorkflowEngine = changed(contract, copy => {
+  delete copy.sdk_breadth_policy.embedded_engines.php_workflow_engine;
+});
+assert.throws(
+  () => assertSdkBreadthPolicy(missingEmbeddedWorkflowEngine, catalogs),
+  /embedded_engines must declare "php_workflow_engine"/,
+  'the standalone PHP SDK split must retain the embedded Workflow engine authority',
+);
+
+const standaloneRoleForEmbeddedEngine = changed(contract, copy => {
+  copy.sdk_breadth_policy.embedded_engines.php_workflow_engine.role =
+    'Framework-neutral standalone SDK.';
+});
+assert.throws(
+  () => assertSdkBreadthPolicy(standaloneRoleForEmbeddedEngine, catalogs),
+  /role must identify the embedded Laravel engine boundary/,
+  'the Workflow package must remain explicitly classified as the embedded engine',
+);
+
 console.log('SDK-neutrality-authority adversarial tests passed');

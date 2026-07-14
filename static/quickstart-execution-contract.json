@@ -24,26 +24,26 @@
   "artifacts": {
     "server": {
       "channel": "docker_hub",
-      "version": "0.2.649",
+      "version": "0.2.655",
       "image": "durableworkflow/server",
-      "reference": "durableworkflow/server:0.2.649"
+      "reference": "durableworkflow/server:0.2.655"
     },
     "cli": {
       "channel": "durable_workflow_public_installer",
-      "version": "0.1.89",
-      "install_command": "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.89 sh"
+      "version": "0.1.90",
+      "install_command": "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.90 sh"
     },
     "sdk-php": {
       "channel": "packagist",
-      "version": "0.1.1",
-      "composer_package": "durable-workflow/sdk:0.1.1",
-      "install_command": "composer require durable-workflow/sdk:0.1.1"
+      "version": "0.1.3",
+      "composer_package": "durable-workflow/sdk:0.1.3",
+      "install_command": "composer require durable-workflow/sdk:0.1.3"
     },
     "sdk-python": {
       "channel": "pypi",
-      "version": "0.4.98",
-      "pip_package": "durable-workflow==0.4.98",
-      "install_command": "pip install durable-workflow==0.4.98"
+      "version": "0.4.99",
+      "pip_package": "durable-workflow==0.4.99",
+      "install_command": "pip install durable-workflow==0.4.99"
     },
     "sdk-rust": {
       "channel": "crates_io",
@@ -53,13 +53,13 @@
     },
     "workflow": {
       "channel": "packagist",
-      "version": "2.0.0-alpha.278",
-      "composer_constraint": "durable-workflow/workflow:2.0.0-alpha.278@alpha"
+      "version": "2.0.0-alpha.280",
+      "composer_constraint": "durable-workflow/workflow:2.0.0-alpha.280@alpha"
     },
     "waterline": {
       "channel": "packagist",
-      "version": "2.0.0-alpha.130",
-      "composer_constraint": "durable-workflow/waterline:2.0.0-alpha.130@alpha"
+      "version": "2.0.0-alpha.132",
+      "composer_constraint": "durable-workflow/waterline:2.0.0-alpha.132@alpha"
     }
   },
   "personas": [
@@ -91,7 +91,7 @@
       "required_environment": [
         {
           "name": "DW_SERVER_IMAGE",
-          "value": "durableworkflow/server:0.2.649"
+          "value": "durableworkflow/server:0.2.655"
         },
         {
           "name": "DW_AUTH_TOKEN",
@@ -106,7 +106,7 @@
         }
       ],
       "setup_script_lines": [
-        "export DW_SERVER_IMAGE=durableworkflow/server:0.2.649",
+        "export DW_SERVER_IMAGE=durableworkflow/server:0.2.655",
         "export DW_AUTH_TOKEN=dev-token",
         "",
         "docker volume create durable-workflow-quickstart",
@@ -204,7 +204,7 @@
         "",
         "python3 -m venv .venv",
         ". .venv/bin/activate",
-        "pip install durable-workflow==0.4.98",
+        "pip install durable-workflow==0.4.99",
         "cat > greeter.py <<'PY'",
         "import asyncio",
         "import time",
@@ -309,7 +309,7 @@
         }
       ],
       "command_script_lines": [
-        "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.89 sh",
+        "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.90 sh",
         "export PATH=\"$HOME/.local/bin:$PATH\"",
         "",
         "dw env:set local \\",
@@ -390,8 +390,8 @@
         "cd durable-workflow-laravel-quickstart",
         "",
         "composer require \\",
-        "  durable-workflow/workflow:2.0.0-alpha.278@alpha \\",
-        "  durable-workflow/waterline:2.0.0-alpha.130@alpha",
+        "  durable-workflow/workflow:2.0.0-alpha.280@alpha \\",
+        "  durable-workflow/waterline:2.0.0-alpha.132@alpha",
         "composer show durable-workflow/workflow",
         "composer show durable-workflow/waterline",
         "",
@@ -508,7 +508,7 @@
           "source": "stdout",
           "required_substrings": [
             "durable-workflow/workflow",
-            "2.0.0-alpha.278"
+            "2.0.0-alpha.280"
           ]
         },
         {
@@ -516,7 +516,7 @@
           "source": "stdout",
           "required_substrings": [
             "durable-workflow/waterline",
-            "2.0.0-alpha.130"
+            "2.0.0-alpha.132"
           ]
         },
         {

@@ -25,7 +25,7 @@ for implementations that claim Durable Workflow v2 compatibility.
 The machine-readable mirror is published at
 [`static/platform-conformance-contract.json`](pathname:///platform-conformance-contract.json)
 with schema `durable-workflow.v2.platform-conformance.suite`, version
-`29`. The same manifest is advertised by the standalone server from
+`30`. The same manifest is advertised by the standalone server from
 `GET /api/cluster/info` under `platform_conformance_suite`. The
 [Platform Protocol Specs](/docs/2.0/platform-protocol-specs) catalog names
 that nested manifest as the `platform_conformance_suite_manifest`
@@ -48,6 +48,7 @@ For example, the standalone server claims `standalone_server`,
 | Target | Required surface families | Required fixture categories |
 | --- | --- | --- |
 | `standalone_server` | `server_api`, `worker_protocol`, `cluster_info_manifests` | `control_plane_request_response`, `signal_query_runtime_contract`, `workflow_update_runtime_contract`, `search_attribute_runtime_contract`, `schedules_runtime_contract`, `namespace_runtime_contract`, `child_workflow_runtime_contract`, `saga_runtime_contract`, `worker_versioning_runtime_contract`, `migration_runtime_contract`, `skew_refusal_matrix_contract`, `principal_attribution_contract`, `worker_task_lifecycle`, `failure_repair_actionability` |
+| `embedded_engine` | `history_event_wire_formats` | `history_replay_bundles` |
 | `official_sdk` | `official_sdks`, `worker_protocol`, `history_event_wire_formats` | `control_plane_request_response`, `signal_query_runtime_contract`, `workflow_update_runtime_contract`, `search_attribute_runtime_contract`, `schedules_runtime_contract`, `namespace_runtime_contract`, `child_workflow_runtime_contract`, `saga_runtime_contract`, `worker_versioning_runtime_contract`, `migration_runtime_contract`, `skew_refusal_matrix_contract`, `principal_attribution_contract`, `worker_task_lifecycle`, `history_replay_bundles` |
 | `worker_protocol_implementation` | `worker_protocol`, `history_event_wire_formats` | `worker_task_lifecycle`, `signal_query_runtime_contract`, `workflow_update_runtime_contract`, `search_attribute_runtime_contract`, `schedules_runtime_contract`, `namespace_runtime_contract`, `child_workflow_runtime_contract`, `saga_runtime_contract`, `worker_versioning_runtime_contract`, `migration_runtime_contract`, `skew_refusal_matrix_contract`, `history_replay_bundles` |
 | `cli_json_client` | `cli_json` | `control_plane_request_response`, `signal_query_runtime_contract`, `workflow_update_runtime_contract`, `search_attribute_runtime_contract`, `schedules_runtime_contract`, `namespace_runtime_contract`, `child_workflow_runtime_contract`, `saga_runtime_contract`, `worker_versioning_runtime_contract`, `migration_runtime_contract`, `skew_refusal_matrix_contract`, `principal_attribution_contract`, `cli_json_envelopes` |
@@ -117,19 +118,25 @@ JSON manifests linked from the category notes below.
 
 The exact released workflow-lifecycle scenario authority is
 [published as JSON](https://durable-workflow.github.io/platform-conformance/workflow-lifecycle-scenarios.json).
-It is the byte-equivalent public mirror named by server `0.2.647`, and it
-records the lifecycle requirements exercised at the published server
-`0.2.647` and `durable-workflow` crate `0.1.12` boundary. This authority is
-part of the explicit 2.0 prerelease line. It does not change stable 1.x as the
-default docs line.
+It records the lifecycle requirements exercised at the current published
+server, PHP SDK, and Rust SDK prerelease boundary. This authority is part of
+the explicit 2.0 prerelease line. It does not change stable 1.x as the default
+docs line.
 
-The Rust shard installs exactly crate `0.1.12` from crates.io and records the
-registry source and checksum for that crate and the official `apache-avro`
-crate. The payload proof uses the SDK's published Avro envelope backed by
-`apache-avro`; a custom codec implementation or local product checkout is not
-acceptable provenance.
+The PHP shard installs the exact `durable-workflow/sdk` package named by the
+current artifact tuple from Packagist into a disposable Composer project. It
+runs separate PHP client and worker processes against the matching public
+server image, records the Packagist distribution and official `apache/avro`
+provenance, and must report
+`local_product_source_checkouts_used=false`.
 
-The shard must execute and report all of these cells:
+The Rust shard installs the exact crate named by the current artifact tuple
+from crates.io and records the registry source and checksum for that crate and
+the official `apache-avro` crate. The payload proof uses the SDK's published
+Avro envelope backed by `apache-avro`; a custom codec implementation or local
+product checkout is not acceptable provenance.
+
+The Rust shard must execute and report all of these cells:
 
 - `instance_cancel` and `instance_terminate` through the public SDK commands.
 - `selected_run_guard` and `stale_run_rejection` so a selected run cannot be
@@ -206,7 +213,7 @@ for a replayable completed run.
 
 The `workflow_update_runtime_contract` category is a stable runtime
 scenario category. A result for it must use published artifacts, pin the
-server, CLI, Python SDK, PHP workflow package, and Waterline versions,
+server, CLI, Python SDK, PHP SDK, and Waterline versions,
 state whether any local product source checkouts were used, and name
 every required update scenario as `pass`, `fail`, `unsupported`,
 `not_covered`, or `runner_blocked` with linked findings. Passing update
@@ -419,7 +426,7 @@ server-originated event surfaces. It must exercise adversarial
 payload/header spoofing, alice/bob named identities, credential
 rotation, CLI operator visibility, Waterline operator visibility, and
 authenticated start or signal operations through both the Python SDK and
-the PHP `Workflow\V2\Client\WorkflowClient`. SDK cells must record the
+the PHP `DurableWorkflow\Client`. SDK cells must record the
 package version, operation outputs, history/API principal samples, and
 raw HTTP reference principals so the harness can compare principal shape
 and expected principal ids. A role-token smoke subset is nonconforming
@@ -519,7 +526,8 @@ suite version named by that build.
 | Release | Required claimed target(s) | Required artifact |
 | --- | --- | --- |
 | `durable-workflow/server` | `standalone_server`, `worker_protocol_implementation`, `repair_actionability_surface` | Harness result document attached to the release. |
-| `durable-workflow/workflow` | `official_sdk`, `worker_protocol_implementation` | Harness result document attached to the release. |
+| `durable-workflow/workflow` | `embedded_engine` | Harness result document attached to the release. |
+| `durable-workflow/sdk` | `official_sdk`, `worker_protocol_implementation` | Harness result document attached to the release. |
 | `durable_workflow` | `official_sdk`, `worker_protocol_implementation` | Harness result document attached to the release. |
 | `dw` | `cli_json_client` | Harness result document attached to the release. |
 | `waterline` | `waterline_contract_surface` | Harness result document attached to the release. |

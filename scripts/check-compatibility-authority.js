@@ -228,7 +228,7 @@ function serverReleaseLineFromRange(serverRange) {
   return `${lowerMajor}.${lowerMinor}.x`;
 }
 
-function assertRustSdkProtocolAuthority(contract) {
+function assertSdkProtocolAuthorities(contract) {
   const officialSdks = contract.surface_families.official_sdks;
   if (!officialSdks) {
     throw new Error(`static/compatibility-contract.json is missing the official_sdks family`);
@@ -236,9 +236,41 @@ function assertRustSdkProtocolAuthority(contract) {
 
   assertIncludes(
     officialSdks.description,
+    'PHP `durable-workflow/sdk`',
+    'static/compatibility-contract.json official_sdks.description',
+  );
+  assertIncludes(
+    officialSdks.description,
     '`durable-workflow` Rust SDK',
     'static/compatibility-contract.json official_sdks.description',
   );
+
+  const expectedPhpAuthority =
+    'README.md and composer metadata in `durable-workflow/sdk-php`';
+  if (
+    !officialSdks.per_package_contracts ||
+    officialSdks.per_package_contracts.php_sdk !== expectedPhpAuthority
+  ) {
+    throw new Error(
+      `static/compatibility-contract.json official_sdks.per_package_contracts.php_sdk ` +
+        `must be ${JSON.stringify(expectedPhpAuthority)}`,
+    );
+  }
+
+  const phpPackage = officialSdks.package_compatibility?.php_sdk;
+  const expectedPhpPackage = {
+    package: 'durable-workflow/sdk',
+    release_line: ARTIFACT_VERSIONS['sdk-php'].replace(/\.\d+$/, '.x'),
+    supported_server_versions: '>=0.2,<0.3',
+    worker_protocol_version: '1.13',
+    control_plane_version: '2',
+  };
+  if (JSON.stringify(phpPackage) !== JSON.stringify(expectedPhpPackage)) {
+    throw new Error(
+      `static/compatibility-contract.json official_sdks.package_compatibility.php_sdk ` +
+        `must be ${JSON.stringify(expectedPhpPackage)}`,
+    );
+  }
 
   const expectedPerPackageAuthority =
     'README.md and `[package.metadata.durable-workflow]` in `durable-workflow/sdk-rust`';
@@ -585,7 +617,7 @@ function loadContract() {
 
 function main() {
   const contract = loadContract();
-  assertRustSdkProtocolAuthority(contract);
+  assertSdkProtocolAuthorities(contract);
   assertComposerArtifactTupleIsPreStable();
   assertReleaseCheckMetadata(contract);
 

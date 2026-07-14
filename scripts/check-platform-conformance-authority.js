@@ -24,6 +24,7 @@ const sidebarsPath = path.join(repoRoot, 'sidebars.js');
 const EXPECTED_SCHEMA = 'durable-workflow.v2.platform-conformance.suite';
 const VERSIONED_SUITE_AUTHORITY_DIGESTS = {
   29: 'sha256:51eaaf8d034264f0f91bd13d10e3d46ca10dc8d97010719d4727c0336ad66382',
+  30: 'sha256:e33ced9ece7d2c32cd939d416cb76c365ba6dd05e0c041949adb7c3267072b48',
 };
 const EXPECTED_RUNTIME_SCENARIO_SCHEMA =
   'durable-workflow.v2.platform-conformance.runtime-scenarios';
@@ -213,6 +214,13 @@ const VERSIONED_RUNTIME_SCENARIO_STATUSES = {
     'runner_blocked',
   ],
   29: [
+    'pass',
+    'fail',
+    'unsupported',
+    'not_covered',
+    'runner_blocked',
+  ],
+  30: [
     'pass',
     'fail',
     'unsupported',
@@ -497,6 +505,16 @@ const VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS = {
     worker_versioning_runtime_contract: 'sha256:e96de5ed97bcbdc68eeee9849145c22d52d450da23fba6f49f8ac3be736faca3',
   },
 };
+VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[30] = {
+  ...VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[29],
+  schedules_runtime_contract: 'sha256:e6366112b3a9a72e140a8930edc6db09d11f475f683fabbeb563c72000e9db88',
+  skew_refusal_matrix_contract: 'sha256:cd41618a3375f774c1591d1d5e92ea4a0aba0160a1cfda36cc06ed1e8fce0a50',
+  worker_versioning_runtime_contract: 'sha256:8860cce6c1934c4233dd11e091e04d9f67e2cd70992aef67ee97507c13e0110d',
+  workflow_update_runtime_contract: 'sha256:3c6a8a18cfdff547eb0963c1620c435b7b52a367f78a2b6cd6ed041ebbd90d1d',
+  search_attribute_runtime_contract: 'sha256:014208f3e53a081145c4b0b8eaf84d0a178f6e9aa209101771b08f4727f8688c',
+  namespace_runtime_contract: 'sha256:f6079414cb92852d6052e1115e9bc0bd1b3e42dfe8cd108caa1eec4f983656f0',
+  principal_attribution_contract: 'sha256:f8e26d6fa05ee3095a4cdd65780e0548acc6c1116aaf18502daedebaa7294329',
+};
 // Digests bind public top-level runtime scenario manifest requirements to the
 // suite version. These fields define artifact source policy, common evidence,
 // runtime matrices, scenario-specific required evidence, and host-runner result
@@ -657,6 +675,15 @@ const VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS = {
     workflow_update_runtime_contract: 'sha256:63d351edd9b307f75b107d4bf2354523caaa6f1da89570c59e0cb55d4f8d66eb',
     worker_versioning_runtime_contract: 'sha256:894e20bff8883f96c3b71e9248edc7d9867109a69dba4ec1b585522cf7c15d72',
   },
+};
+VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[30] = {
+  ...VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[29],
+  schedules_runtime_contract: 'sha256:beb40e9a5f5ae29753bd376bf6f41e6bbb36e2f7d4f4efb5c3ed049b2a7535db',
+  skew_refusal_matrix_contract: 'sha256:70dd1330c455bbc475d2a3686828df5d9f8485c2fc7a850253615875b506127f',
+  worker_versioning_runtime_contract: 'sha256:45c19aa0fb6295fd7908fc31e50760929d60f3dd13fc6a73f8608efacd068448',
+  workflow_update_runtime_contract: 'sha256:f9f4caeaa090eb315a0999fb5d259b5f3874235d900a4919278acdf9aa3968c3',
+  saga_runtime_contract: 'sha256:180626d80b7c73e13a21f19353262872323cbc9186b07091256a3b5f7361a587',
+  migration_runtime_contract: 'sha256:3f6ff4c5576f776a2de1676c1e45bc7dc5b8d320d1126587b075a9331c27ef20',
 };
 const VERSIONED_PASS_FAIL_RULES = {
   5: {
@@ -924,6 +951,7 @@ VERSIONED_PASS_FAIL_RULES[27] = {
 };
 VERSIONED_PASS_FAIL_RULES[28] = VERSIONED_PASS_FAIL_RULES[27];
 VERSIONED_PASS_FAIL_RULES[29] = VERSIONED_PASS_FAIL_RULES[28];
+VERSIONED_PASS_FAIL_RULES[30] = VERSIONED_PASS_FAIL_RULES[29];
 const EXPECTED_AUTHORITY_DOC = 'docs/platform-conformance.md';
 const EXPECTED_DOC_ID = 'platform-conformance';
 
@@ -1286,7 +1314,7 @@ function assertRustSignalQueryAuthority(contract) {
       worker_runtime: 'sdk-rust',
       artifact: expectedArtifact,
       query_state_model: 'snapshot_derived_transport_state',
-      caller_paths: ['sdk-rust', 'workflow-php-sdk', 'sdk-python'],
+      caller_paths: ['sdk-rust', 'sdk-php', 'sdk-python'],
     },
     python_worker_rust_client: {
       worker_runtime: 'sdk-python',
@@ -1295,7 +1323,7 @@ function assertRustSignalQueryAuthority(contract) {
       caller_paths: ['sdk-rust'],
     },
     php_worker_rust_client: {
-      worker_runtime: 'workflow-php',
+      worker_runtime: 'sdk-php',
       artifact: expectedArtifact,
       rust_role: 'client',
       caller_paths: ['sdk-rust'],
@@ -1331,7 +1359,7 @@ function assertRustSignalQueryAuthority(contract) {
         'complete_restored_workflow',
         'query_completed_state',
       ],
-      caller_paths: ['sdk-rust', 'workflow-php-sdk', 'sdk-python'],
+      caller_paths: ['sdk-rust', 'sdk-php', 'sdk-python'],
       required_assertions: [
         'callers_observe_equivalent_state_at_each_checkpoint',
         'restored_state_matches_committed_pre_restart_state',

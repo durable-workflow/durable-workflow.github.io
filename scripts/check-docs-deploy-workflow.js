@@ -39,6 +39,7 @@ function currentAudit() {
   return {
     artifact_versions: {...ARTIFACT_VERSIONS},
     artifact_distribution_surfaces: {
+      'sdk-php': ARTIFACT_DISTRIBUTION_SURFACES['sdk-php'].map(surface => ({...surface})),
       server: ARTIFACT_DISTRIBUTION_SURFACES.server.map(surface => ({...surface})),
       'sdk-rust': ARTIFACT_DISTRIBUTION_SURFACES['sdk-rust'].map(surface => ({...surface})),
     },
@@ -88,6 +89,7 @@ async function assertScheduledDeployRepairsStaleLiveTuple() {
   const quickstart = currentQuickstart();
 
   audit.artifact_versions.server = '0.2.543';
+  audit.artifact_distribution_surfaces['sdk-php'][0].url = 'https://packagist.org/packages/stale/php-sdk';
   audit.artifact_distribution_surfaces.server[0].tag = '0.2.543';
   audit.artifact_distribution_surfaces.server[0].reference = 'durableworkflow/server:0.2.543';
   audit.artifact_distribution_surfaces['sdk-rust'][0].url = 'https://crates.io/crates/stale-package';
@@ -102,6 +104,10 @@ async function assertScheduledDeployRepairsStaleLiveTuple() {
   assert(
     drift.some(item => item.includes('/quickstart-execution-contract.json artifacts.cli.version')),
     'quickstart CLI artifact drift must be reported'
+  );
+  assert(
+    drift.some(item => item.includes('PHP SDK surface packagist_package.url')),
+    'PHP SDK distribution surface drift must be reported'
   );
   assert(
     drift.some(item => item.includes('server surface docker_hub_container_image.tag')),

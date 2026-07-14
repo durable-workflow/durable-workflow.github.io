@@ -3,7 +3,7 @@
   "version": 1,
   "category": "workflow_update_runtime_contract",
   "suite_schema": "durable-workflow.v2.platform-conformance.suite",
-  "suite_version": 29,
+  "suite_version": 30,
   "description": "Public scenario manifest for the stable workflow update runtime contract. Harnesses use these scenario ids and criteria when evaluating published Durable Workflow artifacts.",
   "fixture_type": "published_artifact_runtime_scenario_manifest",
   "result_statuses": [
@@ -39,13 +39,13 @@
   ],
   "required_matrix": {
     "runtimes": [
-      "workflow-php",
+      "sdk-php",
       "sdk-python"
     ],
     "client_paths": [
       "raw-api",
       "cli",
-      "workflow-php-sdk",
+      "sdk-php",
       "sdk-python"
     ],
     "observer_paths": [
@@ -59,7 +59,7 @@
       "raw-http-token",
       "cli-token",
       "sdk-python-token",
-      "workflow-php-token"
+      "sdk-php-token"
     ]
   },
   "scenario_requirements": {
@@ -182,7 +182,7 @@
     },
     "php_client_worker_update_surface": {
       "required_fields": [
-        "workflow_php_artifact_version",
+        "sdk_php_artifact_version",
         "php_worker_update_handler",
         "php_client_update_request",
         "covered_cells",
@@ -214,10 +214,65 @@
   },
   "host_runner_contract": {
     "runner_id": "workflow-updates",
-    "status": "host_runner_gap",
+    "status": "focused_server_runtime_probe_php_python_and_operator_diagnostics_shards_implemented",
+    "host_runner_implemented": true,
     "must_exercise_published_artifacts": true,
-    "must_record_runner_blocked_until_registered": true,
-    "runner_gap_acceptance": "Register and run a host workflow-updates conformance runner that installs pinned published server, CLI, PyPI, Packagist, and Waterline artifacts; starts PHP and Python update-capable workflows; drives accepted, running or waiting, completed, failed, refused, duplicate or idempotent, terminal, payload round-trip, and authenticated-principal update cells; captures control-plane, history, and Waterline evidence; and records typed unsupported SDK cells instead of using local source checkouts."
+    "must_execute_against_published_artifacts": true,
+    "must_record_runner_blocked_false_for_product_evidence": true,
+    "focused_evidence_file": "workflow-updates-focused-evidence.json",
+    "php_sidecar_evidence_file": "sdk-php-workflow-updates-evidence.json",
+    "python_sidecar_evidence_file": "python-sdk-workflow-updates-evidence.json",
+    "operator_diagnostics_evidence_file": "workflow-updates-operator-diagnostics-evidence.json",
+    "focused_probe_covers": [
+      "published_artifact_install_only",
+      "declared_update_contract_visibility",
+      "accepted_update_control_plane_and_history",
+      "running_or_waiting_update_operator_visibility",
+      "completed_update_result_round_trip",
+      "failed_update_outcome",
+      "duplicate_request_idempotency",
+      "unknown_update_refusal",
+      "invalid_input_refusal",
+      "payload_envelope_round_trip",
+      "terminal_workflow_update_behavior",
+      "principal_attribution_with_auth"
+    ],
+    "python_sidecar": {
+      "status": "implemented",
+      "runner_scope": "published_python_sdk_artifact",
+      "covers_required_scenarios": [
+        "python_client_worker_update_surface"
+      ],
+      "out_of_scope_scenario_results_are_ignored": true,
+      "must_record_runner_blocked_false_for_product_evidence": true,
+      "must_record_package_version_artifact_source_handler_request_and_cells": true,
+      "must_reject_local_product_source_checkout_and_local_artifact_sources": true
+    },
+    "php_sidecar": {
+      "status": "implemented",
+      "runner_scope": "published_packagist_sdk_php_artifact",
+      "covers_required_scenarios": [
+        "php_client_worker_update_surface"
+      ],
+      "out_of_scope_scenario_results_are_ignored": true,
+      "must_record_runner_blocked_false_for_product_evidence": true,
+      "must_record_package_version_artifact_source_handler_request_and_cells": true,
+      "must_reject_local_product_source_checkout_and_local_artifact_sources": true
+    },
+    "operator_diagnostics_sidecar": {
+      "status": "implemented",
+      "runner_scope": "published_cli_release_and_packagist_waterline_artifact",
+      "covers_required_scenarios": [
+        "operator_diagnostics_surfaces"
+      ],
+      "out_of_scope_scenario_results_are_ignored": true,
+      "must_record_runner_blocked_false_for_product_evidence": true,
+      "uses_official_cli_workflow_update_json_surface": true,
+      "uses_packagist_waterline_selected_run_update_history_surface": true,
+      "must_record_request_ids_state_outcome_reason_payload_result_error_and_history_references": true,
+      "must_reject_local_product_source_checkout_and_local_artifact_sources": true
+    },
+    "typed_coverage_gaps": {}
   },
   "scenarios": [
     {
@@ -232,7 +287,7 @@
       ],
       "actors": [
         "server",
-        "workflow_php_sdk",
+    "sdk_php",
         "python_sdk",
         "cli",
         "waterline"
@@ -536,12 +591,12 @@
         "worker_protocol_implementation"
       ],
       "actors": [
-        "workflow_php_sdk",
+        "sdk_php",
         "php_worker",
         "server"
       ],
       "operations": [
-        "run a PHP-authored update-capable workflow from the published PHP package",
+        "run a PHP-authored update-capable workflow from the exact published durable-workflow/sdk package",
         "drive supported update cells through PHP client or worker surfaces",
         "record typed unsupported evidence for any missing first-class update API"
       ],

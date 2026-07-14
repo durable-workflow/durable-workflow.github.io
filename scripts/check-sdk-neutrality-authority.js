@@ -28,8 +28,9 @@
 //    contract). The neutrality contract cannot reference families that
 //    the stability contract has not declared.
 // 5. The SDK breadth policy marks PHP, Python, and Rust first-party SDKs as
-//    `priority`, publishes package and conformance authorities for each, and
-//    marks TypeScript / Go / Java / .NET as `demand_driven`.
+//    `priority`, keeps the embedded Laravel engine in its own section, publishes
+//    package and conformance authorities for each, and marks TypeScript / Go /
+//    Java / .NET as `demand_driven`.
 // 6. Every catalog, protocol/schema, and conformance scenario reference
 //    resolves to a published file and identifier in this release checkout.
 //    Repository-local paths and implementation symbols are rejected.
@@ -69,14 +70,19 @@ const RUNTIME_SCENARIO_SCHEMA =
   'durable-workflow.v2.platform-conformance.runtime-scenarios';
 
 const EXPECTED_PACKAGE_URLS = {
-  php_workflow_package: 'https://packagist.org/packages/durable-workflow/workflow',
+  php_sdk: 'https://packagist.org/packages/durable-workflow/sdk',
   python_sdk: 'https://pypi.org/project/durable-workflow/',
   rust_sdk: 'https://crates.io/crates/durable-workflow',
 };
+const EXPECTED_PACKAGES = {
+  php_sdk: 'durable-workflow/sdk',
+  python_sdk: 'durable_workflow',
+  rust_sdk: 'durable-workflow',
+};
 const EXPECTED_SDK_CONFORMANCE = {
-  php_workflow_package: {
-    category: 'history_replay_bundles',
-    actorIds: ['workflow_php_runtime'],
+  php_sdk: {
+    category: 'signal_query_runtime_contract',
+    actorIds: ['sdk_php', 'php_sdk_client', 'php_worker'],
   },
   python_sdk: {
     category: 'history_replay_bundles',
@@ -85,6 +91,15 @@ const EXPECTED_SDK_CONFORMANCE = {
   rust_sdk: {
     category: 'signal_query_runtime_contract',
     actorIds: ['rust_sdk', 'rust_worker', 'rust_sdk_client'],
+  },
+};
+const EXPECTED_EMBEDDED_ENGINES = {
+  php_workflow_engine: {
+    package: 'durable-workflow/workflow',
+    packageUrl: 'https://packagist.org/packages/durable-workflow/workflow',
+    language: 'php',
+    category: 'history_replay_bundles',
+    actorIds: ['workflow_php_runtime'],
   },
 };
 
@@ -111,7 +126,7 @@ const REQUIRED_AUDIT_STEPS = [
   'future_sdk_thought_experiment',
 ];
 
-const REQUIRED_FIRST_PARTY_SDKS = ['php_workflow_package', 'python_sdk', 'rust_sdk'];
+const REQUIRED_FIRST_PARTY_SDKS = ['php_sdk', 'python_sdk', 'rust_sdk'];
 const REQUIRED_DEMAND_DRIVEN_SDKS = ['typescript_sdk', 'go_sdk', 'java_sdk', 'dotnet_sdk'];
 
 const REQUIRED_RELEASE_GATES = [
@@ -583,6 +598,12 @@ function assertSdkBreadthPolicy(contract, catalogs) {
       );
     }
     const sdkEntry = policy.first_party[sdk];
+    if (sdkEntry.package !== EXPECTED_PACKAGES[sdk]) {
+      throw new Error(
+        `static/sdk-neutrality-contract.json sdk_breadth_policy.first_party.${sdk}.` +
+          `package must be "${EXPECTED_PACKAGES[sdk]}"`,
+      );
+    }
     if (sdkEntry.package_url !== EXPECTED_PACKAGE_URLS[sdk]) {
       throw new Error(
         `static/sdk-neutrality-contract.json sdk_breadth_policy.first_party.${sdk}.` +
@@ -643,6 +664,86 @@ function assertSdkBreadthPolicy(contract, catalogs) {
         throw new Error(
           `${label}.actor_ids references actor "${actorId}" that does not appear ` +
             `in the selected published scenarios`,
+        );
+      }
+    }
+  }
+  for (const [engine, expected] of Object.entries(EXPECTED_EMBEDDED_ENGINES)) {
+    const engineEntry = policy.embedded_engines && policy.embedded_engines[engine];
+    if (!engineEntry) {
+      throw new Error(
+        `static/sdk-neutrality-contract.json sdk_breadth_policy.embedded_engines ` +
+          `must declare "${engine}"`,
+      );
+    }
+    const label = `sdk_breadth_policy.embedded_engines.${engine}`;
+    if (engineEntry.package !== expected.package) {
+      throw new Error(`${label}.package must be "${expected.package}"`);
+    }
+    if (engineEntry.package_url !== expected.packageUrl) {
+      throw new Error(
+        `${label}.package_url must be the public package registry URL ` +
+          `"${expected.packageUrl}"`,
+      );
+    }
+    if (engineEntry.language !== expected.language) {
+      throw new Error(`${label}.language must be "${expected.language}"`);
+    }
+    if (typeof engineEntry.role !== 'string' || !/embedded laravel/i.test(engineEntry.role)) {
+      throw new Error(`${label}.role must identify the embedded Laravel engine boundary`);
+    }
+    const conformance = engineEntry.conformance;
+    if (!conformance || typeof conformance !== 'object' || Array.isArray(conformance)) {
+      throw new Error(`${label} must include a public conformance authority`);
+    }
+    const scenarioReference = {
+      kind: 'scenario_catalog',
+      id: conformance.scenario_catalog_schema,
+      category: conformance.category,
+      url: conformance.scenario_catalog_url,
+    };
+    const conformanceLabel = `${label}.conformance`;
+    assertPublicReference(scenarioReference, conformanceLabel, catalogs);
+    assertUniqueNonEmptyStrings(conformance.actor_ids, `${conformanceLabel}.actor_ids`);
+    assertUniqueNonEmptyStrings(conformance.scenario_ids, `${conformanceLabel}.scenario_ids`);
+    if (conformance.category !== expected.category) {
+      throw new Error(
+        `${conformanceLabel}.category must be "${expected.category}" ` +
+          `(got "${conformance.category}")`,
+      );
+    }
+    for (const actorId of expected.actorIds) {
+      if (!conformance.actor_ids.includes(actorId)) {
+        throw new Error(`${conformanceLabel}.actor_ids must include "${actorId}"`);
+      }
+    }
+
+    const scenarioCatalog = loadScenarioCatalog(
+      scenarioReference,
+      conformanceLabel,
+      catalogs.conformanceSuite,
+    );
+    const scenariosById = new Map(
+      scenarioCatalog.scenarios.map((scenario) => [scenario.id, scenario]),
+    );
+    const observedActors = new Set();
+    for (const scenarioId of conformance.scenario_ids) {
+      const scenario = scenariosById.get(scenarioId);
+      if (!scenario) {
+        throw new Error(
+          `${conformanceLabel}.scenario_ids references unpublished scenario ` +
+            `"${scenarioId}"`,
+        );
+      }
+      for (const actor of scenario.actors || []) {
+        observedActors.add(actor);
+      }
+    }
+    for (const actorId of conformance.actor_ids) {
+      if (!observedActors.has(actorId)) {
+        throw new Error(
+          `${conformanceLabel}.actor_ids references actor "${actorId}" that does not ` +
+            `appear in the selected published scenarios`,
         );
       }
     }

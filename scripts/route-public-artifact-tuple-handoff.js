@@ -16,7 +16,7 @@ const EXPECTED_REFRESH_FILES = [
   'static/sdk-neutrality-contract.json',
   'scripts/workflow-sdk-neutrality-authority-lock.json',
 ];
-const ARTIFACT_ORDER = ['cli', 'sdk-python', 'sdk-rust', 'server', 'waterline', 'workflow'];
+const ARTIFACT_ORDER = ['cli', 'sdk-php', 'sdk-python', 'sdk-rust', 'server', 'waterline', 'workflow'];
 const GATE_ACTION_LIST_READY_ITEMS = 'gh.issue.list';
 const GATE_ACTION_CREATE_READY_ITEM = 'gh.issue.create';
 const ROUTING_LABELS = [
@@ -201,6 +201,7 @@ function safeBranchSegment(value) {
 function artifactLabel(name) {
   return {
     cli: 'cli',
+    'sdk-php': 'sdk-php',
     'sdk-python': 'sdk-python',
     'sdk-rust': 'sdk-rust',
     server: 'server',
