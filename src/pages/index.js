@@ -8,26 +8,39 @@ import HomepageFeatures from '@site/src/components/HomepageFeatures';
 
 import styles from './index.module.css';
 
+const homepageTitle = 'Durable Workflow for Laravel';
+const homepageDescription =
+  'A Laravel-native durable workflow engine for long-running PHP applications, powered by Laravel queues and databases with deterministic replay and crash recovery.';
+
 function HomepageHeader() {
   const {siteConfig} = useDocusaurusContext();
   return (
-    <header className={clsx('hero hero--primary', styles.heroBanner)}>
+    <header
+      className={clsx('hero hero--primary', styles.heroBanner)}
+      data-homepage-release="stable-1.x">
       <div className="container">
         <h1 className="hero__title">{siteConfig.title}</h1>
         <p className="hero__subtitle">{siteConfig.tagline}</p>
         <p className={styles.supportingLine}>
-          Run deterministic workflows in PHP, Python, and Rust against one self-hostable runtime. Start embedded in Laravel or deploy the standalone server, with structured diagnostics and safe operational controls built for humans and autonomous agents.
+          Install Durable Workflow in your Laravel application and build persistent
+          processes on the queues and database you already operate. Recorded history
+          lets interrupted workflows replay and continue safely without repeating
+          completed activities.
         </p>
         <div className={styles.buttons}>
           <Link
             className="button button--secondary button--lg"
-            to="/docs/introduction">
-            Get Started - 5min ⏱️
+            data-homepage-action="stable-get-started"
+            data-action-priority="primary"
+            to="/docs/introduction/">
+            Get Started with 1.x
           </Link>
           <Link
-            className="button button--outline button--secondary button--lg"
-            to="/docs/2.0/quickstart/">
-            2.0 Prerelease Quickstart
+            className={styles.prereleaseLink}
+            data-homepage-action="prerelease-2.0"
+            data-action-priority="secondary"
+            to="/docs/2.0/introduction/">
+            Explore the 2.0 prerelease →
           </Link>
         </div>
       </div>
@@ -39,26 +52,26 @@ export default function Home() {
   return (
     <Layout>
       <Head>
-        <title>Durable Workflow: Agent-First Durable Execution</title>
+        <title>{homepageTitle}</title>
         <meta
           property="og:title"
-          content="Durable Workflow: Agent-First Durable Execution"
+          content={homepageTitle}
         />
         <meta
           name="twitter:title"
-          content="Durable Workflow: Agent-First Durable Execution"
+          content={homepageTitle}
         />
         <meta
           name="description"
-          content="A self-hostable, polyglot durable orchestration platform for applications and AI agents, with first-party PHP, Python, and Rust SDKs, deterministic replay, and machine-readable operations."
+          content={homepageDescription}
         />
         <meta
           property="og:description"
-          content="A self-hostable, polyglot durable orchestration platform for applications and AI agents, with first-party PHP, Python, and Rust SDKs, deterministic replay, and machine-readable operations."
+          content={homepageDescription}
         />
         <meta
           name="twitter:description"
-          content="A self-hostable, polyglot durable orchestration platform for applications and AI agents, with first-party PHP, Python, and Rust SDKs, deterministic replay, and machine-readable operations."
+          content={homepageDescription}
         />
       </Head>
       <HomepageHeader />

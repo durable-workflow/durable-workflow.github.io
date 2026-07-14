@@ -9,6 +9,8 @@ const EXCLUDED_FILES = new Set(['sponsors.md', 'support.md']);
 const FALLBACK_BRANCH = 'main';
 const V2_PRERELEASE_NOTICE =
   'Durable Workflow 2.0 is prerelease guidance and is not the default public docs line. Use the canonical stable 1.x bundle unless you are intentionally evaluating 2.0.';
+const V2_PRERELEASE_TAGLINE =
+  'Prerelease 2.0 polyglot durable execution for applications and AI agents.';
 
 function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
@@ -351,7 +353,7 @@ function generateManifest(docsDir, outputPath, fullManifestUrl, options = {}) {
   const siteBaseUrl = getSiteBaseUrl();
   const repoRawBaseUrl = getRepoRawBaseUrl();
   const siteTitle = config.title || 'Documentation';
-  const siteTagline = config.tagline || 'Documentation index.';
+  const siteTagline = options.tagline || config.tagline || 'Documentation index.';
   const versionNotice = options.versionNotice || null;
   const sections = collectSections(docsDir, repoRawBaseUrl);
   const optionalSection = {
@@ -435,6 +437,7 @@ function main() {
     const v2FullUrl = new URL('llms-full-2.0.txt', siteBaseUrl).toString();
     generateManifest(v2DocsDir, v2OutputFile, v2FullUrl, {
       versionNotice: v2Notice,
+      tagline: V2_PRERELEASE_TAGLINE,
     });
     const pinLabel = v2DocsDir === canonicalDocsDir ? '(matches canonical)' : '(pinned alias only)';
     console.log(`v2.0 llms-2.0.txt generated ${pinLabel}:`, v2OutputFile);

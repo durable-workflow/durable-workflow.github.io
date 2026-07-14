@@ -24,6 +24,21 @@
   gap: 0.75rem;
 }
 
+.prereleaseLink,
+.prereleaseLink:hover {
+  color: var(--ifm-color-white);
+}
+
+.prereleaseLink {
+  font-size: 0.95rem;
+  text-decoration: underline;
+  text-underline-offset: 0.2rem;
+}
+
+.prereleaseLink:hover {
+  opacity: 0.85;
+}
+
 .supportingLine {
   margin: 1rem auto 0;
   max-width: 52rem;

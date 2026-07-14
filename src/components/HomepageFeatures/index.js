@@ -4,29 +4,32 @@ import styles from './styles.module.css';
 
 const FeatureList = [
   {
-    title: 'Polyglot SDKs',
+    title: 'Built for Laravel',
     Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
     description: (
       <>
-        Run the same durable execution model through first-party PHP, Python, and Rust SDKs against one shared runtime contract.
+        Add the Composer package to your application and keep using Laravel's
+        database, queues, service container, events, and Eloquent models.
       </>
     ),
   },
   {
-    title: 'Agent-First Operations',
+    title: 'Durable through failures',
     Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
     description: (
       <>
-        Deterministic replay, machine-readable diagnostics, and safe lifecycle controls give both humans and autonomous agents a stable operating surface.
+        Event-sourced history and deterministic replay rebuild workflow state after
+        a crash, while durable timers survive restarts and long waits.
       </>
     ),
   },
   {
-    title: 'Laravel-native when you want it. Polyglot when you need it.',
+    title: 'Coordinate long-running work',
     Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
     description: (
       <>
-        Start embedded in Laravel for a smooth application path, or move to the standalone server when your workers, operators, or deployment topology extend beyond PHP.
+        Run activities in series or parallel, then use signals, queries, updates,
+        child workflows, and sagas to model processes that evolve over time.
       </>
     ),
   },
@@ -48,7 +51,9 @@ function Feature({Svg, title, description}) {
 
 export default function HomepageFeatures() {
   return (
-    <section className={styles.features}>
+    <section
+      className={styles.features}
+      data-homepage-release="stable-1.x">
       <div className="container">
         <div className="row">
           {FeatureList.map((props, idx) => (
