@@ -10,6 +10,7 @@ const workflow = fs.readFileSync(workflowPath, 'utf8');
 const deployWorkflow = fs.readFileSync(deployWorkflowPath, 'utf8');
 const routeScript = fs.readFileSync(routeScriptPath, 'utf8');
 const packageSource = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+const registryFreshnessCommand = 'node scripts/refresh-public-artifact-versions.js --check';
 const {
   artifactVersionDigest,
   buildReadyItemPayload,
@@ -86,6 +87,25 @@ if (routePosition >= validatePosition) {
 const validateStep = workflow.slice(validatePosition, workflow.indexOf('\n      - name:', validatePosition + 1));
 if (!validateStep.includes('run: npm run build')) {
   fail('post-route public artifact tuple validation must preserve the normal docs build');
+}
+
+if (packageSource.scripts.build.includes(registryFreshnessCommand)) {
+  fail('normal docs builds must validate the committed tuple without requiring registry freshness');
+}
+
+if (packageSource.scripts['check:public-artifact-tuple'] !== registryFreshnessCommand) {
+  fail('registry freshness must remain available through the explicit tuple check command');
+}
+
+for (const required of [
+  'name: Refresh public artifact tuple',
+  'run: node scripts/refresh-public-artifact-versions.js --date',
+  'name: Report current tuple',
+  `run: ${registryFreshnessCommand}`,
+]) {
+  if (!workflow.includes(required)) {
+    fail(`public artifact tuple workflow must preserve explicit registry freshness enforcement: ${required}`);
+  }
 }
 
 for (const required of [
