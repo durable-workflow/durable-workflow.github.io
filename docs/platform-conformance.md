@@ -105,7 +105,7 @@ JSON manifests linked from the category notes below.
 | `migration_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/migration-runtime-scenarios.json` | Live published-artifact scenarios for v1 to v2 migration across preserved histories, in-flight progress, activities, signal-or-timer waits, schedules, worker registrations, CLI access, Waterline operator visibility, new v2 starts, queue-aware rollback semantics, and version-skew refusal. |
 | `skew_refusal_matrix_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/skew-refusal-matrix-scenarios.json` | Published-artifact version-skew refusal scenarios across CLI, Python SDK, the standalone PHP SDK worker, Waterline, future-version boundaries, worker registration classifications, Waterline render classifications, and per-operation request/response evidence; Workflow remains the embedded Laravel and Waterline engine. |
 | `principal_attribution_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/principal-attribution-scenarios.json` | Published-artifact scenarios proving server-derived, non-spoofable principal attribution across raw HTTP, CLI, Python SDK, the standalone PHP SDK client, and Waterline operator surfaces; Workflow remains the embedded Laravel and Waterline engine. |
-| `prerelease_readiness_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/prerelease-readiness-scenarios.json` | Published-artifact scenarios for 2.0 prerelease readiness across Workflow, Waterline, server, CLI, Python SDK, sample app, public docs, and the quickstart local-server hosting and Laravel paths. |
+| `prerelease_readiness_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/prerelease-readiness-scenarios.json` | Published-artifact scenarios for 2.0 prerelease readiness across Workflow, Waterline, server, CLI, official SDKs, sample app, public docs, the three standalone quickstart paths, and embedded Laravel. |
 | `failure_repair_actionability` | `stable` | `server` | `docs/contracts/external-task-result.md` | Failure objects and repair / actionability shapes for stuck tasks, deterministic failure, and replay-mismatch surfaces. |
 | `failure_repair_actionability` | `stable` | `server` | `docs/contracts/replay-verification.md` | Failure objects and repair / actionability shapes for stuck tasks, deterministic failure, and replay-mismatch surfaces. |
 | `cli_json_envelopes` | `stable` | `cli` | `tests/fixtures/control-plane/` | The `--output=json` and `--output=jsonl` envelopes that automation depends on. |
@@ -447,15 +447,14 @@ for it must use only published artifacts and public user-facing docs,
 record separate Workflow and Waterline GO / NO-GO verdicts, cover core
 feature completeness, migration readiness, public API stability,
 documentation accuracy, configuration understandability, and
-cross-component compatibility, and evaluate server, CLI, Python SDK,
-Workflow, Waterline, sample app, and public docs as one ecosystem tuple.
-It must also execute the versioned 2.0 quickstart local-server hosting
-and Laravel branches from live public docs through observable completed
-workflows within 10 minutes, recording the exact commands, outputs,
-artifact versions, and wall-clock timings. A discovery-only quickstart
-check is nonconforming until it records
-`quickstart_local_server_hosted_completion` and
-`quickstart_laravel_branch_completion` as `pass`, `fail`,
+cross-component compatibility, and evaluate server, CLI, PHP, Python, and
+Rust SDKs, Workflow, Waterline, sample app, and public docs as one ecosystem
+tuple. It must also execute each versioned 2.0 standalone quickstart path and
+the separate embedded Laravel path from live public docs through observable
+completed workflows within 10 minutes, recording exact commands, outputs,
+artifact versions, package provenance, and wall-clock timings. A
+discovery-only quickstart check is nonconforming until it records the PHP,
+Python, Rust, and Laravel quickstart scenarios as `pass`, `fail`,
 `unsupported`, `not_covered`, or `runner_blocked`.
 Any missing artifact, stale docs page, undocumented migration step,
 installability gap, API instability, cross-component breaking-change
@@ -466,6 +465,12 @@ make prerelease readiness green.
 Those prerelease readiness scenario ids and their pass criteria are
 published at
 [`static/platform-conformance/prerelease-readiness-scenarios.json`](pathname:///platform-conformance/prerelease-readiness-scenarios.json).
+The exact quickstart artifact matrix, public distribution channels, command
+transcripts, success probes, result shapes, and teardown steps are published
+in the
+[`quickstart execution contract`](pathname:///quickstart-execution-contract.json).
+That machine contract points back to the concise
+[2.0 quickstart](/docs/2.0/quickstart/) used for onboarding.
 
 ## Pass / Fail Rules
 

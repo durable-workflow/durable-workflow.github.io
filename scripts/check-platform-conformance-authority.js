@@ -33,6 +33,7 @@ const VERSIONED_SUITE_AUTHORITY_DIGESTS = {
   29: 'sha256:51eaaf8d034264f0f91bd13d10e3d46ca10dc8d97010719d4727c0336ad66382',
   30: 'sha256:e33ced9ece7d2c32cd939d416cb76c365ba6dd05e0c041949adb7c3267072b48',
   31: 'sha256:ccbd3a067faf685ea7d93f89e7e0721d51d44f7dd493874f00e33d971f633bee',
+  32: 'sha256:9fbd647e3ef2d32441c17c1d0fd7d23a2b4bbc2026430dfc3c852288b02b49d1',
 };
 const EXPECTED_RUNTIME_SCENARIO_SCHEMA =
   'durable-workflow.v2.platform-conformance.runtime-scenarios';
@@ -236,6 +237,13 @@ const VERSIONED_RUNTIME_SCENARIO_STATUSES = {
     'runner_blocked',
   ],
   31: [
+    'pass',
+    'fail',
+    'unsupported',
+    'not_covered',
+    'runner_blocked',
+  ],
+  32: [
     'pass',
     'fail',
     'unsupported',
@@ -535,6 +543,10 @@ VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[31] = {
   skew_refusal_matrix_contract: 'sha256:3e8aedf494b4e581db85fa8002251bc2e0b5728006cb2ff7c13789c820655562',
   principal_attribution_contract: 'sha256:57fda46bef7896ef7ce4178c665c3d64bbaa87ba5eea03217ad526b0138a1915',
 };
+VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[32] = {
+  ...VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[31],
+  prerelease_readiness_contract: 'sha256:1c5dea4b5dd1421fcb5e3baaba4f9394f1316bb461caeda7cf79e54b016da15e',
+};
 // Digests bind public top-level runtime scenario manifest requirements to the
 // suite version. These fields define artifact source policy, common evidence,
 // runtime matrices, scenario-specific required evidence, and host-runner result
@@ -709,6 +721,10 @@ VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[31] = {
   ...VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[30],
   skew_refusal_matrix_contract: 'sha256:4f753e5b742758b67587fb79520b46166ba00283636eb7ab9fbfe5a6ad938b1a',
   principal_attribution_contract: 'sha256:84ae71e4f7b1572ca4f40818119b0620aeb1ae2517130ad84c0a7a8f5d7ee181',
+};
+VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[32] = {
+  ...VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[31],
+  prerelease_readiness_contract: 'sha256:08e165a221d3fc3e42c64e8a29519d6ec8932e4383ab624c8460fc74134d814c',
 };
 const VERSIONED_PASS_FAIL_RULES = {
   5: {
@@ -978,6 +994,7 @@ VERSIONED_PASS_FAIL_RULES[28] = VERSIONED_PASS_FAIL_RULES[27];
 VERSIONED_PASS_FAIL_RULES[29] = VERSIONED_PASS_FAIL_RULES[28];
 VERSIONED_PASS_FAIL_RULES[30] = VERSIONED_PASS_FAIL_RULES[29];
 VERSIONED_PASS_FAIL_RULES[31] = VERSIONED_PASS_FAIL_RULES[30];
+VERSIONED_PASS_FAIL_RULES[32] = VERSIONED_PASS_FAIL_RULES[31];
 const EXPECTED_AUTHORITY_DOC = 'docs/platform-conformance.md';
 const EXPECTED_DOC_ID = 'platform-conformance';
 

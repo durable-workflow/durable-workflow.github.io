@@ -1,52 +1,45 @@
 ---
 sidebar_position: 2
 title: 2.0 Prerelease Quickstart
-description: A first-time path for Laravel, Python, and operator users evaluating Durable Workflow 2.0 prerelease artifacts.
+description: Complete a first Durable Workflow from PHP, Python, or Rust against the standalone 2.0 server.
 tags:
   - quickstart
   - getting-started
-  - Laravel
+  - PHP
   - Python
-  - operations
+  - Rust
   - prerelease
 keywords:
   - Durable Workflow quickstart
   - 2.0 prerelease quickstart
-  - Laravel workflow quickstart
+  - standalone PHP SDK quickstart
   - Python SDK quickstart
+  - Rust SDK quickstart
   - standalone server Docker quickstart
-  - operator quickstart
 ---
 
 # 2.0 Prerelease Quickstart
 
 :::caution 2.0 prerelease
 
-This page is for evaluating the Durable Workflow 2.0 release candidate. Stable
-1.x remains the default public documentation line. Use this guide only when you
-are intentionally testing 2.0 prerelease packages and images.
+This guide uses the explicit 2.0 prerelease docs and exact published package
+versions. Stable 1.x remains the default documentation line.
 
 :::
 
-This path uses published artifacts only:
+Start the standalone Durable Workflow server, then choose **PHP**, **Python**,
+or **Rust**. Each route creates its own project and ends by reading a completed
+workflow and its durable result from the server. You do not need Laravel for
+any of these routes.
 
-| Surface | Artifact |
-| --- | --- |
-| Standalone server | `%%artifact.serverDockerHubImage%%` |
-| CLI | `dw` `%%artifact.cliVersion%%` |
-| Python SDK | `%%artifact.pythonPackagePin%%` |
-| Laravel package | `%%artifact.workflowComposerPackage%%` |
-| Waterline | `%%artifact.waterlineComposerPackage%%` |
+The SDKs automatically use their official Apache Avro dependencies for the
+default language-neutral payload envelope: `apache/avro` for PHP, `avro` for
+Python, and `apache-avro` for Rust.
 
-The machine-readable <a href="https://durable-workflow.com/quickstart-execution-contract.json">quickstart execution contract</a>
-lists the supported personas, hosting branches, public artifact sources, exact
-command scripts, success probes, completion state, and teardown steps for this
-2.0 prerelease path.
+## Start the standalone server
 
-## Start A Local Server
-
-Use this server for the Python and operator paths. It runs the published server
-image with SQLite, so no source checkout, MySQL, or Redis setup is required.
+You need Docker and `curl`. This source-free local server uses SQLite and a
+development token. Keep it running while you complete one language route.
 
 <!-- docs-example id="quickstart.server.setup" -->
 ```bash
@@ -74,10 +67,125 @@ curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
   http://localhost:8080/api/cluster/info
 ```
 
-## Python User
+The readiness request succeeds and cluster info identifies the local
+standalone server. Now follow exactly one route below.
 
-Create a clean project, install the published Python SDK, then run one workflow
-to completion against the local server.
+## PHP
+
+Requirements: PHP 8.1 or newer and Composer. This is the framework-neutral
+`durable-workflow/sdk` package, not the embedded Laravel engine.
+
+### Install the SDK
+
+<!-- docs-example id="quickstart.php.install" -->
+```bash
+mkdir durable-workflow-php-quickstart
+cd durable-workflow-php-quickstart
+composer require %%artifact.phpSdkComposerPackage%%
+```
+
+### Create the worker
+
+The worker registers one workflow type and one activity type on its own task
+queue.
+
+<!-- docs-example id="quickstart.php.worker" -->
+```bash
+cat > worker.php <<'PHP'
+<?php
+
+declare(strict_types=1);
+
+require __DIR__.'/vendor/autoload.php';
+
+use DurableWorkflow\Client;
+use DurableWorkflow\Worker;
+use DurableWorkflow\Worker\ActivityContext;
+use DurableWorkflow\Worker\WorkflowContext;
+
+$client = new Client('http://localhost:8080', token: 'dev-token');
+$worker = new Worker($client, 'quickstart-php');
+
+$worker->registerActivity(
+    'quickstart.greet',
+    static fn (ActivityContext $context, string $name): string => "Hello, {$name}!",
+);
+
+$worker->registerWorkflow(
+    'quickstart.greeter',
+    static function (WorkflowContext $context, string $name): Generator {
+        $greeting = yield $context->activity('quickstart.greet', [$name]);
+
+        return ['greeting' => $greeting, 'language' => 'php'];
+    },
+);
+
+$worker->run();
+PHP
+```
+
+### Create the starter and result reader
+
+This client starts a uniquely named workflow, waits for its selected run, and
+then describes the durable terminal state held by the server.
+
+<!-- docs-example id="quickstart.php.client" -->
+```bash
+cat > start.php <<'PHP'
+<?php
+
+declare(strict_types=1);
+
+require __DIR__.'/vendor/autoload.php';
+
+use DurableWorkflow\Client;
+
+$client = new Client('http://localhost:8080', token: 'dev-token');
+$workflowId = 'quickstart-php-greeter-'.bin2hex(random_bytes(4));
+$handle = $client->startWorkflow(
+    workflowType: 'quickstart.greeter',
+    workflowId: $workflowId,
+    taskQueue: 'quickstart-php',
+    input: ['PHP'],
+);
+
+$result = $handle->result(timeoutSeconds: 30);
+$execution = $handle->describeSelectedRun();
+
+echo "workflow_id={$execution->workflowId}\n";
+echo "status={$execution->status}\n";
+echo 'result='.json_encode($result, JSON_THROW_ON_ERROR)."\n";
+PHP
+```
+
+### Run it
+
+<!-- docs-example id="quickstart.php.run" -->
+```bash
+php worker.php > quickstart-worker.log 2>&1 &
+export QUICKSTART_WORKER_PID=$!
+trap 'kill "$QUICKSTART_WORKER_PID" 2>/dev/null || true' EXIT
+
+php start.php
+
+kill "$QUICKSTART_WORKER_PID" 2>/dev/null || true
+trap - EXIT
+```
+
+Success looks like this: `status=completed` and a result containing
+`"greeting":"Hello, PHP!"`. You have run a standalone PHP worker and
+inspected its durable result without Laravel.
+
+Continue with the [PHP SDK guide](/docs/2.0/polyglot/php/), or return to the
+language choices and try a separate route against the same server.
+
+## Python
+
+Requirements: Python 3.10 or newer. The program keeps the worker and client in
+one process, but they still communicate with the server through the public
+worker and control-plane APIs.
+
+### Install the SDK
 
 <!-- docs-example id="quickstart.python.install" -->
 ```bash
@@ -89,7 +197,7 @@ python3 -m venv .venv
 pip install %%artifact.pythonPackagePin%%
 ```
 
-Create `greeter.py`:
+### Create the worker and starter
 
 <!-- docs-example id="quickstart.python.greeter" -->
 ```bash
@@ -102,14 +210,13 @@ from durable_workflow import Client, Worker, activity, workflow
 
 @activity.defn(name="quickstart.greet")
 async def greet(name: str) -> dict:
-    return {"greeting": f"Hello, {name}!", "length": len(name)}
+    return {"greeting": f"Hello, {name}!", "language": "python"}
 
 
 @workflow.defn(name="quickstart.greeter")
 class GreeterWorkflow:
     def run(self, ctx, name):
-        result = yield ctx.schedule_activity("quickstart.greet", [name])
-        return result
+        return (yield ctx.schedule_activity("quickstart.greet", [name]))
 
 
 async def main():
@@ -133,12 +240,13 @@ async def main():
             workflows=[GreeterWorkflow],
             activities=[greet],
         )
-
         await worker.run_until(workflow_id=workflow_id, timeout=30.0)
-        result = await handle.result(timeout=10.0)
 
-    print(f"workflow_id={workflow_id}")
-    print("status=completed")
+        result = await handle.result(timeout=10.0)
+        execution = await handle.describe_run()
+
+    print(f"workflow_id={execution.workflow_id}")
+    print(f"status={execution.status}")
     print(f"result={result}")
 
 
@@ -148,258 +256,145 @@ PY
 python greeter.py
 ```
 
-The successful output includes `status=completed`, the workflow id, and the
-activity result. Keep the printed workflow id for the operator check below.
+Success looks like this: `status=completed` and a result containing
+`Hello, Python!`. The last two SDK calls read the selected run's result and
+durable terminal state from the server.
 
-## Operator User
+Continue with the [Python SDK guide](/docs/2.0/polyglot/python/), or return to
+the language choices and try a separate route against the same server.
 
-Install the published CLI, point it at the same local server, then inspect the
-completed Python workflow.
+## Rust
 
-<!-- docs-example id="quickstart.operator.setup" -->
+Requirements: Rust 1.86 or newer. This example runs a native worker and client
+in one Tokio process.
+
+### Install the SDK
+
+<!-- docs-example id="quickstart.rust.install" -->
 ```bash
-curl -fsSL https://durable-workflow.com/install.sh | %%artifact.cliInstallerEnv%% sh
-export PATH="$HOME/.local/bin:$PATH"
-
-dw env:set local \
-  --server=http://localhost:8080 \
-  --token=dev-token \
-  --namespace=default \
-  --make-default
-
-dw doctor
-dw server:health
-dw server:info --output=json
+cargo new durable-workflow-rust-quickstart
+cd durable-workflow-rust-quickstart
+cargo add durable-workflow@=%%artifact.rustSdkVersion%%
+cargo add tokio --features macros,rt-multi-thread,time
 ```
 
-Set `QUICKSTART_WORKFLOW_ID` to the id printed by `python greeter.py` before
-running this block; the first line fails clearly if it is missing. Then capture
-the current run id and read the durable completed state:
+### Create the worker and starter
 
-<!-- docs-example id="quickstart.operator.observe" -->
+<!-- docs-example id="quickstart.rust.greeter" -->
 ```bash
-export QUICKSTART_WORKFLOW_ID="${QUICKSTART_WORKFLOW_ID:?set to workflow_id printed by python greeter.py}"
+cat > src/main.rs <<'RS'
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-dw workflow:describe "$QUICKSTART_WORKFLOW_ID" --output=json \
-  | tee quickstart-workflow.json
-export QUICKSTART_RUN_ID="$(
-  python -c 'import json; print(json.load(open("quickstart-workflow.json"))["run_id"])'
-)"
+use durable_workflow::{json, Client, Result, Worker, WorkflowResultOptions};
 
-dw workflow:history "$QUICKSTART_WORKFLOW_ID" "$QUICKSTART_RUN_ID" --output=json
-dw workflow:list --status=completed --output=json
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client = Client::builder("http://localhost:8080")
+        .token(Some("dev-token".to_string()))
+        .namespace("default")
+        .build()?;
+    let task_queue = "quickstart-rust";
+    let mut worker = Worker::new(client.clone(), task_queue);
+
+    worker.register_activity("quickstart.greet", |_context, arguments| async move {
+        let name = arguments
+            .get(0)
+            .and_then(|value| value.as_str())
+            .unwrap_or("Rust");
+        Ok(json!({"greeting": format!("Hello, {name}!"), "language": "rust"}))
+    });
+
+    worker.register_workflow("quickstart.greeter", |context, input| async move {
+        let name = input.get(0).and_then(|value| value.as_str()).unwrap_or("Rust");
+        context.activity("quickstart.greet", json!([name])).await
+    });
+
+    worker.register().await?;
+    let workflow_id = format!("quickstart-rust-greeter-{}", unique_suffix());
+    let handle = client
+        .start_workflow(
+            "quickstart.greeter",
+            task_queue,
+            &workflow_id,
+            json!(["Rust"]),
+        )
+        .await?;
+
+    let watcher = handle.clone();
+    worker
+        .run_until(async move {
+            loop {
+                if watcher.describe().await.is_ok_and(|run| run.is_terminal()) {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(500)).await;
+            }
+        })
+        .await?;
+
+    let result = handle.result(WorkflowResultOptions::default()).await?;
+    let execution = handle.describe_selected_run().await?;
+
+    println!("workflow_id={workflow_id}");
+    println!("status={}", execution.status.as_deref().unwrap_or("unknown"));
+    println!("result={result}");
+    Ok(())
+}
+
+fn unique_suffix() -> u128 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis()
+}
+RS
+
+cargo run
 ```
 
-An operator-only CLI session can verify server readiness, worker registration,
-task queues, and completed runs. It does not create or complete a user workflow
-by itself: completion requires a worker process that implements the workflow
-type, such as the Python worker above or a Laravel queue worker below.
+Success looks like this: `status=completed` and a JSON result containing
+`"greeting":"Hello, Rust!"`. The example waits for its worker to finish the
+run, then reads the selected run's durable status and decoded result.
 
-## Laravel User
+Continue with the [Rust SDK guide](/docs/2.0/polyglot/rust/).
 
-Create a fresh Laravel app, install the published prerelease packages, define
-one workflow and one activity, then let the queue worker complete the run.
+## Optional: embed the runtime in Laravel
 
-<!-- docs-example id="quickstart.laravel.install" -->
+Embedded Laravel is a separate first-party PHP deployment mode for
+applications that want workflow state, queue execution, configuration, and
+operator tooling inside their existing Laravel infrastructure. It installs
+`durable-workflow/workflow`; it does not use the standalone server or
+`durable-workflow/sdk`.
+
+Start a fresh embedded application with the published package:
+
 ```bash
 composer create-project laravel/laravel durable-workflow-laravel-quickstart
 cd durable-workflow-laravel-quickstart
-
-composer require \
-  %%artifact.workflowComposerPackage%% \
-  %%artifact.waterlineComposerPackage%%
-composer show durable-workflow/workflow
-composer show durable-workflow/waterline
-
-printf '\nQUEUE_CONNECTION=database\nWATERLINE_ALLOW_UNAUTHENTICATED=true\n' >> .env
-php artisan key:generate
-php artisan waterline:install
+composer require %%artifact.workflowComposerPackage%%
 php artisan migrate
+php artisan queue:work
 ```
 
-Create the workflow and activity:
+Continue with [Embedded Installation](/docs/2.0/installation/) to configure a
+non-`sync` Laravel queue, then [define](/docs/2.0/defining-workflows/workflows/)
+and [start](/docs/2.0/defining-workflows/starting-workflows/) an embedded
+workflow. [Deployment Modes](/docs/2.0/polyglot/deployment-modes/) compares
+this specialized route with the standalone platform.
 
-<!-- docs-example id="quickstart.laravel.workflow-files" -->
-```bash
-mkdir -p app/Workflows/Quickstart
+## Next steps
 
-cat > app/Workflows/Quickstart/WelcomeActivity.php <<'PHP'
-<?php
+- Use the [agent operating loop](/docs/2.0/agent-operating-loop/) for
+  discover, change, run, diagnose, and repair operations.
+- Add durable [timers](/docs/2.0/features/timers/) and configure activity
+  [retries and execution policy](/docs/2.0/features/activity-execution-model/).
+- Exchange [signals](/docs/2.0/features/signals/) and expose read-only
+  [queries](/docs/2.0/features/queries/).
+- Compose [child workflows](/docs/2.0/features/child-workflows/) and plan safe
+  [worker build-ID rollouts](/docs/2.0/polyglot/worker-build-id-rollout/).
 
-namespace App\Workflows\Quickstart;
-
-use Workflow\V2\Activity;
-use Workflow\V2\Attributes\Type;
-
-#[Type('quickstart.laravel.welcome-activity')]
-class WelcomeActivity extends Activity
-{
-    public function handle(string $name): string
-    {
-        return "Hello, {$name}!";
-    }
-}
-PHP
-
-cat > app/Workflows/Quickstart/WelcomeWorkflow.php <<'PHP'
-<?php
-
-namespace App\Workflows\Quickstart;
-
-use Workflow\V2\Attributes\Type;
-use Workflow\V2\Workflow;
-
-use function Workflow\V2\activity;
-
-#[Type('quickstart.laravel.welcome')]
-class WelcomeWorkflow extends Workflow
-{
-    public function handle(string $name): string
-    {
-        return activity(WelcomeActivity::class, $name);
-    }
-}
-PHP
-```
-
-Create an artisan command that starts the workflow and waits for a terminal
-state:
-
-<!-- docs-example id="quickstart.laravel.command" -->
-```bash
-mkdir -p app/Console/Commands
-
-cat > app/Console/Commands/RunQuickstartWorkflow.php <<'PHP'
-<?php
-
-namespace App\Console\Commands;
-
-use App\Workflows\Quickstart\WelcomeWorkflow;
-use Illuminate\Console\Command;
-use Workflow\V2\WorkflowStub;
-
-class RunQuickstartWorkflow extends Command
-{
-    protected $signature = 'app:quickstart-workflow';
-
-    protected $description = 'Run the Durable Workflow quickstart workflow.';
-
-    public function handle(): int
-    {
-        $workflow = WorkflowStub::make(
-            WelcomeWorkflow::class,
-            'quickstart-laravel-'.now()->format('YmdHis')
-        );
-
-        $workflow->start('Laravel');
-        $deadline = now()->addMinutes(10);
-
-        while ($workflow->refresh()->running()) {
-            if (now()->greaterThan($deadline)) {
-                $this->error('status=timeout');
-                $this->line('workflow_id='.$workflow->workflowId());
-
-                return self::FAILURE;
-            }
-
-            usleep(100_000);
-        }
-
-        $this->line('workflow_id='.$workflow->workflowId());
-        $this->line('status='.$workflow->status());
-        $this->line('output='.$workflow->output());
-
-        return $workflow->completed() ? self::SUCCESS : self::FAILURE;
-    }
-}
-PHP
-```
-
-Run the worker and start the workflow, capturing the command output and elapsed
-time:
-
-<!-- docs-example id="quickstart.laravel.run" -->
-```bash
-set -o pipefail
-
-php artisan queue:work --tries=1 --timeout=60 \
-  > storage/logs/quickstart-worker.log 2>&1 &
-export QUICKSTART_QUEUE_PID=$!
-trap 'kill "$QUICKSTART_QUEUE_PID" 2>/dev/null || true' EXIT
-
-SECONDS=0
-php artisan app:quickstart-workflow 2>&1 | tee quickstart-laravel-output.log
-printf 'elapsed_seconds=%s\n' "$SECONDS"
-
-if [ -s storage/logs/quickstart-worker.log ]; then
-  sed -n '1,120p' storage/logs/quickstart-worker.log
-fi
-
-kill "$QUICKSTART_QUEUE_PID" 2>/dev/null || true
-trap - EXIT
-```
-
-The successful output includes `status=completed` and `output=Hello, Laravel!`.
-To inspect the operator view, run `php artisan serve` and open `/waterline`.
-
-## Completion Criteria
-
-Before tearing the quickstart down, verify each path reached an observable
-state from published artifacts:
-
-| Path | Observable proof |
-| --- | --- |
-| Local server hosting | `curl -sf http://localhost:8080/api/ready` succeeds, `curl -H "Authorization: Bearer $DW_AUTH_TOKEN" http://localhost:8080/api/cluster/info` returns JSON for the standalone server topology, and the Python workflow below completes against that server. |
-| Python user | `python greeter.py` prints `workflow_id=quickstart-python-greeter-*`, `status=completed`, and `Hello, Python!` before the 60 seconds contract timeout. |
-| Operator user | `dw doctor` and `dw server:health` succeed, `dw workflow:describe "$QUICKSTART_WORKFLOW_ID" --output=json` writes `run_id`, `dw workflow:history "$QUICKSTART_WORKFLOW_ID" "$QUICKSTART_RUN_ID" --output=json` shows history for that run, and `dw workflow:list --status=completed --output=json` shows the completed `quickstart-python-greeter-*` workflow on the same server profile. |
-| Laravel user | `composer show durable-workflow/workflow` prints `durable-workflow/workflow` with `%%artifact.workflowVersion%%`, `composer show durable-workflow/waterline` prints `durable-workflow/waterline` with `%%artifact.waterlineVersion%%`, and `php artisan app:quickstart-workflow` prints `workflow_id=quickstart-laravel-*`, `status=completed`, `output=Hello, Laravel!`, and `elapsed_seconds=` before the 600 seconds contract timeout while the Laravel queue worker is running. |
-
-## Clean Up
-
-Remove the CLI profile and workflow inspection file:
-
-<!-- docs-example id="quickstart.operator.cleanup" -->
-```bash
-dw env:delete local || true
-rm -f quickstart-workflow.json
-```
-
-Remove the Python workspace:
-
-<!-- docs-example id="quickstart.python.cleanup" -->
-```bash
-deactivate 2>/dev/null || true
-cd ..
-rm -rf durable-workflow-python-quickstart
-```
-
-If you created the Laravel app but did not start the queue worker, remove the
-app directory:
-
-<!-- docs-example id="quickstart.laravel.app-cleanup" -->
-```bash
-cd ..
-rm -rf durable-workflow-laravel-quickstart
-```
-
-If the Laravel queue worker might still be running, stop it before removing the
-app directory:
-
-<!-- docs-example id="quickstart.laravel.cleanup" -->
-```bash
-kill "$QUICKSTART_QUEUE_PID" 2>/dev/null || true
-cd ..
-rm -rf durable-workflow-laravel-quickstart
-```
-
-Stop and remove the standalone server:
-
-<!-- docs-example id="quickstart.server.cleanup" -->
-```bash
-docker rm -f durable-workflow-server
-docker volume rm durable-workflow-quickstart
-```
-
-For deeper guides, continue to [Python SDK](/docs/2.0/polyglot/python),
-[Server](/docs/2.0/polyglot/server), [CLI](/docs/2.0/polyglot/cli), and
-[Waterline Operator API](/docs/2.0/waterline-operator-api).
+Release qualification is intentionally separate from this first-success
+guide. The [Platform Conformance Suite](/docs/2.0/platform-conformance/)
+contains the exact artifact matrix, public-source checks, full execution
+transcripts, wall-clock criteria, teardown, and machine-readable quickstart
+contract used for certification.

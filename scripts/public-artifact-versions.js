@@ -120,7 +120,7 @@ function buildArtifactPins(versions) {
     pythonPackagePin: `durable-workflow==${versions['sdk-python']}`,
     pythonPipInstallCommand: `pip install durable-workflow==${versions['sdk-python']}`,
     rustSdkVersion: versions['sdk-rust'],
-    rustCargoAddCommand: `cargo add durable-workflow@${versions['sdk-rust']} --exact`,
+    rustCargoAddCommand: `cargo add durable-workflow@=${versions['sdk-rust']}`,
     rustCargoRequirement: `durable-workflow = "=${versions['sdk-rust']}"`,
     rustCratesIoUrl: 'https://crates.io/crates/durable-workflow',
     rustRepositoryUrl: 'https://github.com/durable-workflow/sdk-rust',
@@ -168,7 +168,7 @@ function buildArtifactPinPatterns(versions) {
     {
       category: 'rust_sdk_artifact_pin',
       label: 'Rust SDK crate pin',
-      pattern: /(?:cargo add durable-workflow@(0\.1\.\d+)\s+--exact|durable-workflow\s*=\s*["']=(0\.1\.\d+)["'])/g,
+      pattern: /(?:cargo add durable-workflow@=(0\.1\.\d+)|durable-workflow\s*=\s*["']=(0\.1\.\d+)["'])/g,
       expected: versions['sdk-rust'],
     },
     {

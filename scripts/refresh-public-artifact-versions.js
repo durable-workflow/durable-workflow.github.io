@@ -958,7 +958,9 @@ function applyQuickstartArtifactPins(contract, versions) {
   const hostingBranch = byId(contract.hosting_branches, 'hosting branch');
   const scenario = byId(contract.scenarios, 'scenario');
   const standalone = hostingBranch('standalone_server_sqlite');
+  const php = scenario('php_user_local_server_completion');
   const python = scenario('python_user_local_server_completion');
+  const rust = scenario('rust_user_local_server_completion');
   const operator = scenario('operator_local_server_observation');
   const laravel = scenario('laravel_user_embedded_completion');
 
@@ -977,10 +979,24 @@ function applyQuickstartArtifactPins(contract, versions) {
   ) || changed;
 
   changed = replaceLineContaining(
+    php.command_script_lines,
+    'composer require durable-workflow/sdk:',
+    pins.phpSdkComposerInstallCommand,
+    'PHP SDK install line'
+  ) || changed;
+
+  changed = replaceLineContaining(
     python.command_script_lines,
     'pip install durable-workflow==',
     pins.pythonPipInstallCommand,
     'Python SDK install line'
+  ) || changed;
+
+  changed = replaceLineContaining(
+    rust.command_script_lines,
+    'cargo add durable-workflow@',
+    pins.rustCargoAddCommand,
+    'Rust SDK install line'
   ) || changed;
 
   changed = replaceLineContaining(

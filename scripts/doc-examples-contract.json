@@ -161,58 +161,75 @@
       ]
     },
     {
-      "id": "quickstart.laravel.install",
+      "id": "quickstart.server.setup",
       "path": "quickstart.md",
       "language": "bash",
       "requiredSubstrings": [
-        "composer create-project laravel/laravel durable-workflow-laravel-quickstart",
-        "%%artifact.workflowComposerPackage%%",
-        "%%artifact.waterlineComposerPackage%%",
-        "composer show durable-workflow/workflow",
-        "composer show durable-workflow/waterline",
-        "QUEUE_CONNECTION=database",
-        "WATERLINE_ALLOW_UNAUTHENTICATED=true",
-        "php artisan waterline:install",
-        "php artisan migrate"
+        "export DW_SERVER_IMAGE=%%artifact.serverDockerHubImage%%",
+        "server-bootstrap",
+        "http://localhost:8080/api/ready",
+        "http://localhost:8080/api/cluster/info"
       ]
     },
     {
-      "id": "quickstart.laravel.workflow-files",
+      "id": "quickstart.php.install",
       "path": "quickstart.md",
       "language": "bash",
       "requiredSubstrings": [
-        "cat > app/Workflows/Quickstart/WelcomeActivity.php",
-        "#[Type('quickstart.laravel.welcome-activity')]",
-        "return \"Hello, {$name}!\";",
-        "cat > app/Workflows/Quickstart/WelcomeWorkflow.php",
-        "#[Type('quickstart.laravel.welcome')]",
-        "return activity(WelcomeActivity::class, $name);"
+        "composer require %%artifact.phpSdkComposerPackage%%"
       ]
     },
     {
-      "id": "quickstart.laravel.command",
+      "id": "quickstart.php.worker",
       "path": "quickstart.md",
       "language": "bash",
       "requiredSubstrings": [
-        "cat > app/Console/Commands/RunQuickstartWorkflow.php",
-        "protected $signature = 'app:quickstart-workflow';",
-        "$deadline = now()->addMinutes(10);",
-        "$this->line('status='.$workflow->status());",
-        "$this->line('output='.$workflow->output());"
+        "use DurableWorkflow\\Worker;",
+        "$worker->registerActivity(",
+        "$worker->registerWorkflow(",
+        "$worker->run();"
       ]
     },
     {
-      "id": "quickstart.laravel.run",
+      "id": "quickstart.php.client",
       "path": "quickstart.md",
       "language": "bash",
       "requiredSubstrings": [
-        "php artisan queue:work --tries=1 --timeout=60",
-        "storage/logs/quickstart-worker.log",
-        "trap 'kill \"$QUICKSTART_QUEUE_PID\"",
-        "SECONDS=0",
-        "php artisan app:quickstart-workflow 2>&1 | tee quickstart-laravel-output.log",
-        "printf 'elapsed_seconds=%s\\n' \"$SECONDS\"",
-        "sed -n '1,120p' storage/logs/quickstart-worker.log"
+        "$client->startWorkflow(",
+        "$handle->result(",
+        "$handle->describeSelectedRun()",
+        "status={$execution->status}"
+      ]
+    },
+    {
+      "id": "quickstart.python.greeter",
+      "path": "quickstart.md",
+      "language": "bash",
+      "requiredSubstrings": [
+        "from durable_workflow import Client, Worker, activity, workflow",
+        "await worker.run_until(",
+        "await handle.result(",
+        "await handle.describe_run()"
+      ]
+    },
+    {
+      "id": "quickstart.rust.install",
+      "path": "quickstart.md",
+      "language": "bash",
+      "requiredSubstrings": [
+        "cargo add durable-workflow@=%%artifact.rustSdkVersion%%"
+      ]
+    },
+    {
+      "id": "quickstart.rust.greeter",
+      "path": "quickstart.md",
+      "language": "bash",
+      "requiredSubstrings": [
+        "Worker::new(",
+        "worker.register_activity(",
+        "worker.register_workflow(",
+        "handle.result(",
+        "handle.describe_selected_run()"
       ]
     }
   ]

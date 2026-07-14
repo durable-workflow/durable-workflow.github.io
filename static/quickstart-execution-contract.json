@@ -1,9 +1,11 @@
 {
   "schema": "durable-workflow.docs.v2.quickstart-execution-contract",
-  "version": 1,
+  "version": 2,
   "release_status": "2.0_prerelease",
-  "authority_doc": "docs/quickstart.md",
-  "authority_url": "https://durable-workflow.com/docs/2.0/quickstart/",
+  "authority_doc": "docs/platform-conformance.md",
+  "authority_url": "https://durable-workflow.com/docs/2.0/platform-conformance/",
+  "onboarding_doc": "docs/quickstart.md",
+  "onboarding_url": "https://durable-workflow.com/docs/2.0/quickstart/",
   "contract_url": "https://durable-workflow.com/quickstart-execution-contract.json",
   "default_docs_guard": {
     "stable_default_docs_version": "1.x",
@@ -49,7 +51,7 @@
       "channel": "crates_io",
       "version": "0.1.15",
       "crate": "durable-workflow",
-      "install_command": "cargo add durable-workflow@0.1.15 --exact"
+      "install_command": "cargo add durable-workflow@=0.1.15"
     },
     "workflow": {
       "channel": "packagist",
@@ -62,11 +64,62 @@
       "composer_constraint": "durable-workflow/waterline:2.0.0-alpha.132@alpha"
     }
   },
+  "primary_paths": [
+    {
+      "language": "php",
+      "scenario": "php_user_local_server_completion",
+      "sdk_artifact": "sdk-php",
+      "hosting_branch": "standalone_server_sqlite",
+      "required_outcomes": [
+        "start_server",
+        "install_published_sdk",
+        "run_worker",
+        "start_workflow",
+        "inspect_completed_result"
+      ]
+    },
+    {
+      "language": "python",
+      "scenario": "python_user_local_server_completion",
+      "sdk_artifact": "sdk-python",
+      "hosting_branch": "standalone_server_sqlite",
+      "required_outcomes": [
+        "start_server",
+        "install_published_sdk",
+        "run_worker",
+        "start_workflow",
+        "inspect_completed_result"
+      ]
+    },
+    {
+      "language": "rust",
+      "scenario": "rust_user_local_server_completion",
+      "sdk_artifact": "sdk-rust",
+      "hosting_branch": "standalone_server_sqlite",
+      "required_outcomes": [
+        "start_server",
+        "install_published_sdk",
+        "run_worker",
+        "start_workflow",
+        "inspect_completed_result"
+      ]
+    }
+  ],
   "personas": [
+    {
+      "id": "php",
+      "label": "Standalone PHP user",
+      "description": "Runs a framework-neutral PHP SDK workflow worker against the local standalone server."
+    },
     {
       "id": "python",
       "label": "Python user",
       "description": "Runs a Python SDK workflow worker against the local standalone server."
+    },
+    {
+      "id": "rust",
+      "label": "Rust user",
+      "description": "Runs a Rust SDK workflow worker against the local standalone server."
     },
     {
       "id": "operator",
@@ -84,7 +137,9 @@
       "id": "standalone_server_sqlite",
       "label": "Standalone server with SQLite",
       "used_by_personas": [
+        "php",
         "python",
+        "rust",
         "operator"
       ],
       "clean_directory_required": true,
@@ -104,6 +159,9 @@
           "container": 8080,
           "protocol": "tcp"
         }
+      ],
+      "docs_examples": [
+        "quickstart.server.setup"
       ],
       "setup_script_lines": [
         "export DW_SERVER_IMAGE=durableworkflow/server:0.2.655",
@@ -181,6 +239,127 @@
   ],
   "scenarios": [
     {
+      "id": "php_user_local_server_completion",
+      "persona": "php",
+      "hosting_branch": "standalone_server_sqlite",
+      "depends_on": [
+        "standalone_server_sqlite"
+      ],
+      "source_channels": [
+        "docker_hub",
+        "packagist"
+      ],
+      "working_directory": "clean parent directory",
+      "required_environment": [
+        {
+          "name": "DW_AUTH_TOKEN",
+          "value": "dev-token"
+        }
+      ],
+      "docs_examples": [
+        "quickstart.php.install",
+        "quickstart.php.worker",
+        "quickstart.php.client",
+        "quickstart.php.run"
+      ],
+      "command_script_lines": [
+        "mkdir durable-workflow-php-quickstart",
+        "cd durable-workflow-php-quickstart",
+        "composer require durable-workflow/sdk:0.1.3",
+        "cat > worker.php <<'PHP'",
+        "<?php",
+        "",
+        "declare(strict_types=1);",
+        "",
+        "require __DIR__.'/vendor/autoload.php';",
+        "",
+        "use DurableWorkflow\\Client;",
+        "use DurableWorkflow\\Worker;",
+        "use DurableWorkflow\\Worker\\ActivityContext;",
+        "use DurableWorkflow\\Worker\\WorkflowContext;",
+        "",
+        "$client = new Client('http://localhost:8080', token: 'dev-token');",
+        "$worker = new Worker($client, 'quickstart-php');",
+        "",
+        "$worker->registerActivity(",
+        "    'quickstart.greet',",
+        "    static fn (ActivityContext $context, string $name): string => \"Hello, {$name}!\",",
+        ");",
+        "",
+        "$worker->registerWorkflow(",
+        "    'quickstart.greeter',",
+        "    static function (WorkflowContext $context, string $name): Generator {",
+        "        $greeting = yield $context->activity('quickstart.greet', [$name]);",
+        "",
+        "        return ['greeting' => $greeting, 'language' => 'php'];",
+        "    },",
+        ");",
+        "",
+        "$worker->run();",
+        "PHP",
+        "cat > start.php <<'PHP'",
+        "<?php",
+        "",
+        "declare(strict_types=1);",
+        "",
+        "require __DIR__.'/vendor/autoload.php';",
+        "",
+        "use DurableWorkflow\\Client;",
+        "",
+        "$client = new Client('http://localhost:8080', token: 'dev-token');",
+        "$workflowId = 'quickstart-php-greeter-'.bin2hex(random_bytes(4));",
+        "$handle = $client->startWorkflow(",
+        "    workflowType: 'quickstart.greeter',",
+        "    workflowId: $workflowId,",
+        "    taskQueue: 'quickstart-php',",
+        "    input: ['PHP'],",
+        ");",
+        "",
+        "$result = $handle->result(timeoutSeconds: 30);",
+        "$execution = $handle->describeSelectedRun();",
+        "",
+        "echo \"workflow_id={$execution->workflowId}\\n\";",
+        "echo \"status={$execution->status}\\n\";",
+        "echo 'result='.json_encode($result, JSON_THROW_ON_ERROR).\"\\n\";",
+        "PHP",
+        "php worker.php > quickstart-worker.log 2>&1 &",
+        "export QUICKSTART_WORKER_PID=$!",
+        "trap 'kill \"$QUICKSTART_WORKER_PID\" 2>/dev/null || true' EXIT",
+        "",
+        "php start.php",
+        "",
+        "kill \"$QUICKSTART_WORKER_PID\" 2>/dev/null || true",
+        "trap - EXIT"
+      ],
+      "success_probes": [
+        {
+          "id": "php_output_status",
+          "source": "stdout",
+          "required_substrings": [
+            "workflow_id=quickstart-php-greeter-",
+            "status=completed",
+            "Hello, PHP!"
+          ]
+        },
+        {
+          "id": "php_official_avro_package",
+          "command": "composer show apache/avro",
+          "expect_exit_code": 0
+        }
+      ],
+      "expected_completion_state": {
+        "workflow_id_pattern": "^quickstart-php-greeter-[a-f0-9]{8}$",
+        "status": "completed",
+        "result_contains": "Hello, PHP!",
+        "timeout_seconds": 60
+      },
+      "teardown_script_lines": [
+        "kill \"$QUICKSTART_WORKER_PID\" 2>/dev/null || true",
+        "cd ..",
+        "rm -rf durable-workflow-php-quickstart"
+      ]
+    },
+    {
       "id": "python_user_local_server_completion",
       "persona": "python",
       "hosting_branch": "standalone_server_sqlite",
@@ -198,6 +377,10 @@
           "value": "dev-token"
         }
       ],
+      "docs_examples": [
+        "quickstart.python.install",
+        "quickstart.python.greeter"
+      ],
       "command_script_lines": [
         "mkdir durable-workflow-python-quickstart",
         "cd durable-workflow-python-quickstart",
@@ -214,14 +397,13 @@
         "",
         "@activity.defn(name=\"quickstart.greet\")",
         "async def greet(name: str) -> dict:",
-        "    return {\"greeting\": f\"Hello, {name}!\", \"length\": len(name)}",
+        "    return {\"greeting\": f\"Hello, {name}!\", \"language\": \"python\"}",
         "",
         "",
         "@workflow.defn(name=\"quickstart.greeter\")",
         "class GreeterWorkflow:",
         "    def run(self, ctx, name):",
-        "        result = yield ctx.schedule_activity(\"quickstart.greet\", [name])",
-        "        return result",
+        "        return (yield ctx.schedule_activity(\"quickstart.greet\", [name]))",
         "",
         "",
         "async def main():",
@@ -245,12 +427,13 @@
         "            workflows=[GreeterWorkflow],",
         "            activities=[greet],",
         "        )",
-        "",
         "        await worker.run_until(workflow_id=workflow_id, timeout=30.0)",
-        "        result = await handle.result(timeout=10.0)",
         "",
-        "    print(f\"workflow_id={workflow_id}\")",
-        "    print(\"status=completed\")",
+        "        result = await handle.result(timeout=10.0)",
+        "        execution = await handle.describe_run()",
+        "",
+        "    print(f\"workflow_id={execution.workflow_id}\")",
+        "    print(f\"status={execution.status}\")",
         "    print(f\"result={result}\")",
         "",
         "",
@@ -268,6 +451,11 @@
             "status=completed",
             "Hello, Python!"
           ]
+        },
+        {
+          "id": "python_official_avro_package",
+          "command": "pip show avro",
+          "expect_exit_code": 0
         }
       ],
       "expected_completion_state": {
@@ -286,6 +474,129 @@
         "deactivate 2>/dev/null || true",
         "cd ..",
         "rm -rf durable-workflow-python-quickstart"
+      ]
+    },
+    {
+      "id": "rust_user_local_server_completion",
+      "persona": "rust",
+      "hosting_branch": "standalone_server_sqlite",
+      "depends_on": [
+        "standalone_server_sqlite"
+      ],
+      "source_channels": [
+        "docker_hub",
+        "crates_io"
+      ],
+      "working_directory": "clean parent directory",
+      "required_environment": [
+        {
+          "name": "DW_AUTH_TOKEN",
+          "value": "dev-token"
+        }
+      ],
+      "docs_examples": [
+        "quickstart.rust.install",
+        "quickstart.rust.greeter"
+      ],
+      "command_script_lines": [
+        "cargo new durable-workflow-rust-quickstart",
+        "cd durable-workflow-rust-quickstart",
+        "cargo add durable-workflow@=0.1.15",
+        "cargo add tokio --features macros,rt-multi-thread,time",
+        "cat > src/main.rs <<'RS'",
+        "use std::time::{Duration, SystemTime, UNIX_EPOCH};",
+        "",
+        "use durable_workflow::{json, Client, Result, Worker, WorkflowResultOptions};",
+        "",
+        "#[tokio::main]",
+        "async fn main() -> Result<()> {",
+        "    let client = Client::builder(\"http://localhost:8080\")",
+        "        .token(Some(\"dev-token\".to_string()))",
+        "        .namespace(\"default\")",
+        "        .build()?;",
+        "    let task_queue = \"quickstart-rust\";",
+        "    let mut worker = Worker::new(client.clone(), task_queue);",
+        "",
+        "    worker.register_activity(\"quickstart.greet\", |_context, arguments| async move {",
+        "        let name = arguments",
+        "            .get(0)",
+        "            .and_then(|value| value.as_str())",
+        "            .unwrap_or(\"Rust\");",
+        "        Ok(json!({\"greeting\": format!(\"Hello, {name}!\"), \"language\": \"rust\"}))",
+        "    });",
+        "",
+        "    worker.register_workflow(\"quickstart.greeter\", |context, input| async move {",
+        "        let name = input.get(0).and_then(|value| value.as_str()).unwrap_or(\"Rust\");",
+        "        context.activity(\"quickstart.greet\", json!([name])).await",
+        "    });",
+        "",
+        "    worker.register().await?;",
+        "    let workflow_id = format!(\"quickstart-rust-greeter-{}\", unique_suffix());",
+        "    let handle = client",
+        "        .start_workflow(",
+        "            \"quickstart.greeter\",",
+        "            task_queue,",
+        "            &workflow_id,",
+        "            json!([\"Rust\"]),",
+        "        )",
+        "        .await?;",
+        "",
+        "    let watcher = handle.clone();",
+        "    worker",
+        "        .run_until(async move {",
+        "            loop {",
+        "                if watcher.describe().await.is_ok_and(|run| run.is_terminal()) {",
+        "                    break;",
+        "                }",
+        "                tokio::time::sleep(Duration::from_millis(500)).await;",
+        "            }",
+        "        })",
+        "        .await?;",
+        "",
+        "    let result = handle.result(WorkflowResultOptions::default()).await?;",
+        "    let execution = handle.describe_selected_run().await?;",
+        "",
+        "    println!(\"workflow_id={workflow_id}\");",
+        "    println!(\"status={}\", execution.status.as_deref().unwrap_or(\"unknown\"));",
+        "    println!(\"result={result}\");",
+        "    Ok(())",
+        "}",
+        "",
+        "fn unique_suffix() -> u128 {",
+        "    SystemTime::now()",
+        "        .duration_since(UNIX_EPOCH)",
+        "        .unwrap_or_default()",
+        "        .as_millis()",
+        "}",
+        "RS",
+        "",
+        "cargo run"
+      ],
+      "success_probes": [
+        {
+          "id": "rust_output_status",
+          "source": "stdout",
+          "required_substrings": [
+            "workflow_id=quickstart-rust-greeter-",
+            "status=completed",
+            "Hello, Rust!"
+          ]
+        },
+        {
+          "id": "rust_official_avro_package",
+          "command": "cargo tree -i apache-avro",
+          "expect_exit_code": 0
+        }
+      ],
+      "expected_completion_state": {
+        "workflow_id_pattern": "^quickstart-rust-greeter-[0-9]+$",
+        "status": "completed",
+        "result_contains": "Hello, Rust!",
+        "timeout_seconds": 180
+      },
+      "teardown_script_lines": [
+        "cd ..",
+        "rm -rf durable-workflow-rust-quickstart"
       ]
     },
     {

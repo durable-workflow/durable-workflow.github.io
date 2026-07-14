@@ -100,11 +100,11 @@ HTTP API, CLI JSON, SDK clients, schemas, and protocol catalog. See the
 
 ## First-time 2.0 prerelease path
 
-The [2.0 Prerelease Quickstart](/docs/2.0/quickstart/) uses published artifacts
-and exact current pins. It walks through a standalone server with a Python
-worker, operator inspection through `dw`, and a separate embedded Laravel
-example, each ending in an observable `status=completed` workflow state. The
-SDK pages provide the corresponding PHP, Python, and Rust starting points.
+The [2.0 Prerelease Quickstart](/docs/2.0/quickstart/) starts the standalone
+server and offers independent first-success routes for the published PHP,
+Python, and Rust SDKs. Every route runs a worker, starts a workflow, and reads
+its completed durable result. Embedded Laravel follows as a separate,
+specialized deployment option.
 
 ## Do you need a workflow?
 

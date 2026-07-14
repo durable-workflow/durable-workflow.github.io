@@ -1,10 +1,10 @@
 {
   "schema": "durable-workflow.v2.platform-conformance.runtime-scenarios",
-  "version": 1,
+  "version": 2,
   "category": "prerelease_readiness_contract",
   "suite_schema": "durable-workflow.v2.platform-conformance.suite",
-  "suite_version": 31,
-  "description": "Public scenario manifest for Durable Workflow 2.0 prerelease readiness. Harnesses use these scenario ids and criteria when evaluating the coordinated published artifact set, including the versioned quickstart local-server and Laravel completion branches.",
+  "suite_version": 32,
+  "description": "Public scenario manifest for Durable Workflow 2.0 prerelease readiness. Harnesses use these scenario ids and criteria when evaluating the coordinated published artifact set, including the standalone PHP, Python, and Rust quickstart paths and the separate embedded Laravel path.",
   "fixture_type": "published_artifact_runtime_scenario_manifest",
   "result_statuses": [
     "pass",
@@ -33,7 +33,9 @@
     "required_artifacts": [
       "server",
       "cli",
+      "sdk-php",
       "sdk-python",
+      "sdk-rust",
       "workflow",
       "waterline",
       "sample-app",
@@ -43,8 +45,14 @@
       "workflow": [
         "workflow-php"
       ],
+      "sdk-php": [
+        "durable-workflow/sdk"
+      ],
       "sdk-python": [
         "durable_workflow"
+      ],
+      "sdk-rust": [
+        "durable-workflow"
       ],
       "cli": [
         "dw"
@@ -74,7 +82,9 @@
     "configuration_observations",
     "cross_component_observations",
     "sample_app_observations",
-    "quickstart_observations",
+    "quickstart_php_observations",
+    "quickstart_python_observations",
+    "quickstart_rust_observations",
     "quickstart_laravel_observations",
     "wall_clock_times",
     "observed_outputs",
@@ -96,7 +106,9 @@
     "ecosystem_artifacts": [
       "server",
       "cli",
+      "sdk-php",
       "sdk-python",
+      "sdk-rust",
       "workflow",
       "waterline",
       "sample-app",
@@ -105,7 +117,9 @@
     "release_channels": [
       "server-release",
       "cli-release",
+      "php-package",
       "python-package",
+      "rust-crate",
       "composer-prerelease",
       "waterline-prerelease",
       "versioned-prerelease-docs"
@@ -121,14 +135,16 @@
       "actors": [
         "server",
         "cli",
+        "sdk-php",
         "sdk-python",
+        "sdk-rust",
         "workflow",
         "waterline",
         "sample-app",
         "public-docs"
       ],
       "operations": [
-        "resolve the current server release, CLI release, Python package, Workflow Composer package, Waterline Composer package, sample app release surface, and public docs routes from published channels",
+        "resolve the current server release, CLI release, standalone PHP package, Python package, Rust crate, Workflow Composer package, Waterline Composer package, sample app release surface, and public docs routes from published channels",
         "install or fetch each artifact from its public distribution channel without reading product code from a local checkout",
         "record the exact artifact name, version, source URL or package index, and generated timestamp for every artifact"
       ],
@@ -241,29 +257,78 @@
       ]
     },
     {
-      "id": "quickstart_local_server_hosted_completion",
-      "title": "Quickstart local-server hosted workflow completion",
+      "id": "quickstart_standalone_php_completion",
+      "title": "Quickstart standalone PHP workflow completion",
       "claim_targets": [
         "prerelease_release_candidate"
       ],
       "actors": [
         "server",
-        "cli",
+        "sdk-php",
+        "public-docs"
+      ],
+      "operations": [
+        "start from the live public 2.0 quickstart route and record the exact versioned URL walked without using an unversioned prerelease docs alias",
+        "resolve the server setup and php_user_local_server_completion transcript from the published quickstart execution contract, then execute it without a product source checkout",
+        "install the exact durable-workflow/sdk Composer package from Packagist, run the remote PHP worker, start the documented workflow, and inspect the selected run's durable status and decoded result",
+        "record Composer provenance for durable-workflow/sdk and its official apache/avro dependency"
+      ],
+      "pass_criteria": [
+        "the result records exact artifact versions and public sources for server, sdk-php, and public-docs, including Packagist distribution provenance for durable-workflow/sdk and apache/avro",
+        "the result records the exact commands executed, command outputs, exit statuses, and wall-clock time from server setup to completed workflow observation",
+        "/api/ready returns success and authenticated /api/cluster/info returns standalone server topology for the server that hosts the workflow run",
+        "the PHP path prints a quickstart-php-greeter workflow id, status=completed, and a result containing Hello, PHP! within 10 minutes",
+        "if completion fails, times out, requires Laravel, or needs an undocumented workaround, the result is fail with user-visible output and a focused owning finding; if the runner does not execute this path, the result is not_covered or runner_blocked rather than pass"
+      ]
+    },
+    {
+      "id": "quickstart_python_completion",
+      "title": "Quickstart Python workflow completion",
+      "claim_targets": [
+        "prerelease_release_candidate"
+      ],
+      "actors": [
+        "server",
         "sdk-python",
         "public-docs"
       ],
       "operations": [
         "start from the live public 2.0 quickstart route and record the exact versioned URL walked without using an unversioned prerelease docs alias",
-        "follow the documented Start A Local Server path using only the published server image named by the page, including server bootstrap, container start, /api/ready, and authenticated /api/cluster/info checks",
-        "keep that server running as the host for the documented Python quickstart branch, install the published Python SDK pin named by the page, run the documented workflow, and observe status=completed within 10 minutes",
-        "run the documented operator CLI checks against the same server profile and observe the completed workflow through workflow describe, history, and completed-list JSON output"
+        "resolve the server setup and python_user_local_server_completion transcript from the published quickstart execution contract, then execute it without a product source checkout",
+        "install the exact durable-workflow Python package from PyPI, run the Python worker, start the documented workflow, and inspect the selected run's durable status and decoded result",
+        "record package-index provenance for durable-workflow and its official avro dependency"
       ],
       "pass_criteria": [
-        "the result records exact artifact versions for server, CLI, sdk-python, workflow, waterline, and public-docs, plus source URLs or package channels for the published artifacts used",
-        "the result records the exact commands executed, command outputs, exit statuses, and wall-clock time from first quickstart command to completed workflow observation",
+        "the result records exact artifact versions and public sources for server, sdk-python, and public-docs, including PyPI provenance for durable-workflow and avro",
+        "the result records the exact commands executed, command outputs, exit statuses, and wall-clock time from server setup to completed workflow observation",
         "/api/ready returns success and authenticated /api/cluster/info returns standalone server topology for the server that hosts the workflow run",
-        "the documented workflow branch reaches an observable completed workflow result within 10 minutes, and the CLI operator commands observe that same completed workflow on the same local server",
-        "if completion fails, times out, or requires an undocumented workaround, the result is fail with user-visible output and a focused owning finding; if the runner does not execute this branch, the result is not_covered or runner_blocked rather than pass"
+        "the Python path prints a quickstart-python-greeter workflow id, status=completed, and a result containing Hello, Python! within 10 minutes",
+        "if completion fails, times out, requires another language's setup, or needs an undocumented workaround, the result is fail with user-visible output and a focused owning finding; if the runner does not execute this path, the result is not_covered or runner_blocked rather than pass"
+      ]
+    },
+    {
+      "id": "quickstart_rust_completion",
+      "title": "Quickstart Rust workflow completion",
+      "claim_targets": [
+        "prerelease_release_candidate"
+      ],
+      "actors": [
+        "server",
+        "sdk-rust",
+        "public-docs"
+      ],
+      "operations": [
+        "start from the live public 2.0 quickstart route and record the exact versioned URL walked without using an unversioned prerelease docs alias",
+        "resolve the server setup and rust_user_local_server_completion transcript from the published quickstart execution contract, then execute it without a product source checkout",
+        "install the exact durable-workflow crate from crates.io, run the Rust worker, start the documented workflow, and inspect the selected run's durable status and decoded result",
+        "record crates.io source and checksum provenance for durable-workflow and its official apache-avro dependency"
+      ],
+      "pass_criteria": [
+        "the result records exact artifact versions and public sources for server, sdk-rust, and public-docs, including crates.io provenance for durable-workflow and apache-avro",
+        "the result records the exact commands executed, command outputs, exit statuses, and wall-clock time from server setup to completed workflow observation",
+        "/api/ready returns success and authenticated /api/cluster/info returns standalone server topology for the server that hosts the workflow run",
+        "the Rust path prints a quickstart-rust-greeter workflow id, status=completed, and a result containing Hello, Rust! within 10 minutes",
+        "if completion fails, times out, requires another language's setup, or needs an undocumented workaround, the result is fail with user-visible output and a focused owning finding; if the runner does not execute this path, the result is not_covered or runner_blocked rather than pass"
       ]
     },
     {
@@ -279,11 +344,9 @@
       ],
       "operations": [
         "start from the live public 2.0 quickstart route and record the exact versioned URL walked without using an unversioned prerelease docs alias",
-        "create a fresh Laravel application and follow the documented Laravel User branch without reading product source from a local checkout",
-        "install the published Workflow Composer package and Waterline Composer package pins named by the page, then record separate composer show output for durable-workflow/workflow and durable-workflow/waterline",
-        "apply the documented .env, key generation, Waterline install, and migration steps exactly as written",
-        "create the documented activity, workflow, and app:quickstart-workflow artisan command files from the page",
-        "run the documented Laravel queue worker while running php artisan app:quickstart-workflow, capture command output and worker log output, and observe status=completed plus output=Hello, Laravel! within 10 minutes"
+        "confirm the page presents embedded Laravel after the standalone SDK paths and links to the embedded installation guidance without implying that Laravel is required by the standalone platform",
+        "resolve laravel_user_embedded_completion from the published quickstart execution contract and execute its full transcript without reading product source from a local checkout",
+        "install the exact Workflow and Waterline Composer package pins, create the contracted activity, workflow, and command, and run the Laravel queue worker through observable completion"
       ],
       "pass_criteria": [
         "the result records exact artifact versions for workflow, waterline, and public-docs, plus Composer package sources and the versioned public docs URL used",
@@ -377,20 +440,22 @@
       "actors": [
         "server",
         "cli",
+        "sdk-php",
         "sdk-python",
+        "sdk-rust",
         "workflow",
         "waterline",
         "sample-app",
         "public-docs"
       ],
       "operations": [
-        "evaluate the current published server, CLI, Python SDK, Workflow, Waterline, sample app, and public docs as one coordinated release-candidate tuple",
+        "evaluate the current published server, CLI, PHP, Python, and Rust SDKs, Workflow, Waterline, sample app, and public docs as one coordinated release-candidate tuple",
         "verify installability, version constraints, release-channel labels, docs links, CLI commands, SDK client paths, sample app setup, and server compatibility surfaces agree across artifacts",
         "check that no component requires an unpublished artifact, rolling tag, source checkout, or breaking Workflow or Waterline API change"
       ],
       "pass_criteria": [
         "every required artifact installs or is publicly reachable from the documented channel for the same release-candidate tuple",
-        "cross-component observations prove server, CLI, Python SDK, Workflow, Waterline, sample app, and docs are mutually compatible or link focused findings",
+        "cross-component observations prove server, CLI, PHP, Python, and Rust SDKs, Workflow, Waterline, sample app, and docs are mutually compatible or link focused findings",
         "release-channel metadata is consistent: stable 1.x remains the default docs line and explicit 2.0 guidance stays on versioned prerelease surfaces",
         "any installability gap, stale docs link, API mismatch, version constraint conflict, or release-channel mismatch is recorded as fail with an owning finding"
       ]
@@ -404,7 +469,9 @@
       "actors": [
         "server",
         "cli",
+        "sdk-php",
         "sdk-python",
+        "sdk-rust",
         "workflow",
         "waterline",
         "sample-app",

@@ -66,6 +66,16 @@ function assertArray(value, label) {
   }
 }
 
+function assertStringArrayEqual(actual, expected, label) {
+  if (
+    !Array.isArray(actual) ||
+    actual.length !== expected.length ||
+    actual.some((value, index) => value !== expected[index])
+  ) {
+    fail(`${label} must be ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+  }
+}
+
 function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -171,70 +181,82 @@ function assertScenarioShape(scenario, hostingBranches, personas) {
 }
 
 function assertQuickstartScriptLinesMatchDocs(contract, renderedQuickstart) {
-  const hostingBranches = byId(contract.hosting_branches, 'hosting_branches');
-  const scenarios = byId(contract.scenarios, 'scenarios');
-  const standalone = hostingBranches.get('standalone_server_sqlite');
-  const embeddedLaravel = hostingBranches.get('embedded_laravel_database_queue');
-  const python = scenarios.get('python_user_local_server_completion');
-  const operator = scenarios.get('operator_local_server_observation');
-  const laravel = scenarios.get('laravel_user_embedded_completion');
+  for (const branch of contract.hosting_branches || []) {
+    if (!Array.isArray(branch.docs_examples) || branch.docs_examples.length === 0) {
+      continue;
+    }
 
-  assertDeepEqual(
-    standalone.setup_script_lines,
-    docsExampleLines(renderedQuickstart, 'quickstart.server.setup'),
-    'standalone_server_sqlite.setup_script_lines',
-  );
-  assertDeepEqual(
-    standalone.teardown_script_lines,
-    docsExampleLines(renderedQuickstart, 'quickstart.server.cleanup'),
-    'standalone_server_sqlite.teardown_script_lines',
-  );
-  assertDeepEqual(
-    embeddedLaravel.teardown_script_lines,
-    docsExampleLines(renderedQuickstart, 'quickstart.laravel.app-cleanup'),
-    'embedded_laravel_database_queue.teardown_script_lines',
-  );
-  assertDeepEqual(
-    python.command_script_lines,
-    concatDocsExamples(renderedQuickstart, [
-      'quickstart.python.install',
-      'quickstart.python.greeter',
-    ]),
-    'python_user_local_server_completion.command_script_lines',
-  );
-  assertDeepEqual(
-    python.teardown_script_lines,
-    docsExampleLines(renderedQuickstart, 'quickstart.python.cleanup'),
-    'python_user_local_server_completion.teardown_script_lines',
-  );
-  assertDeepEqual(
-    operator.command_script_lines,
-    concatDocsExamples(renderedQuickstart, [
-      'quickstart.operator.setup',
-      'quickstart.operator.observe',
-    ]),
-    'operator_local_server_observation.command_script_lines',
-  );
-  assertDeepEqual(
-    operator.teardown_script_lines,
-    docsExampleLines(renderedQuickstart, 'quickstart.operator.cleanup'),
-    'operator_local_server_observation.teardown_script_lines',
-  );
-  assertDeepEqual(
-    laravel.command_script_lines,
-    concatDocsExamples(renderedQuickstart, [
-      'quickstart.laravel.install',
-      'quickstart.laravel.workflow-files',
-      'quickstart.laravel.command',
-      'quickstart.laravel.run',
-    ]),
-    'laravel_user_embedded_completion.command_script_lines',
-  );
-  assertDeepEqual(
-    laravel.teardown_script_lines,
-    docsExampleLines(renderedQuickstart, 'quickstart.laravel.cleanup'),
-    'laravel_user_embedded_completion.teardown_script_lines',
-  );
+    assertDeepEqual(
+      branch.setup_script_lines,
+      concatDocsExamples(renderedQuickstart, branch.docs_examples),
+      `${branch.id}.setup_script_lines`,
+    );
+  }
+
+  for (const scenario of contract.scenarios || []) {
+    if (!Array.isArray(scenario.docs_examples) || scenario.docs_examples.length === 0) {
+      continue;
+    }
+
+    assertDeepEqual(
+      scenario.command_script_lines,
+      concatDocsExamples(renderedQuickstart, scenario.docs_examples),
+      `${scenario.id}.command_script_lines`,
+    );
+  }
+}
+
+function assertPrimaryPaths(contract, personas, hostingBranches, scenarios) {
+  assertArray(contract.primary_paths, 'primary_paths');
+  const requiredLanguages = new Set(['php', 'python', 'rust']);
+  const seenLanguages = new Set();
+  const requiredOutcomes = [
+    'start_server',
+    'install_published_sdk',
+    'run_worker',
+    'start_workflow',
+    'inspect_completed_result',
+  ];
+
+  for (const path of contract.primary_paths) {
+    if (!requiredLanguages.has(path.language)) {
+      fail(`primary_paths contains unsupported language ${JSON.stringify(path.language)}`);
+    }
+    if (seenLanguages.has(path.language)) {
+      fail(`primary_paths contains duplicate language ${JSON.stringify(path.language)}`);
+    }
+    seenLanguages.add(path.language);
+
+    const scenario = scenarios.get(path.scenario);
+    if (!scenario) {
+      fail(`primary path ${path.language} references unknown scenario ${JSON.stringify(path.scenario)}`);
+    }
+    if (!personas.has(path.language) || scenario.persona !== path.language) {
+      fail(`primary path ${path.language} must use its matching persona`);
+    }
+    if (!hostingBranches.has(path.hosting_branch) || scenario.hosting_branch !== path.hosting_branch) {
+      fail(`primary path ${path.language} must use its declared hosting branch`);
+    }
+    if (!contract.artifacts || !contract.artifacts[path.sdk_artifact]) {
+      fail(`primary path ${path.language} references unknown SDK artifact ${JSON.stringify(path.sdk_artifact)}`);
+    }
+    assertStringArrayEqual(
+      path.required_outcomes,
+      requiredOutcomes,
+      `primary path ${path.language} required_outcomes`,
+    );
+    assertEqual(
+      scenario.expected_completion_state && scenario.expected_completion_state.status,
+      'completed',
+      `primary path ${path.language} expected status`,
+    );
+  }
+
+  for (const language of requiredLanguages) {
+    if (!seenLanguages.has(language)) {
+      fail(`primary_paths must declare ${language}`);
+    }
+  }
 }
 
 function assertContractCoverage(contract) {
@@ -269,6 +291,8 @@ function assertContractCoverage(contract) {
       }
     }
   }
+
+  assertPrimaryPaths(contract, personas, hostingBranches, scenarios);
 }
 
 function assertDocsGuard(contract) {
@@ -290,9 +314,10 @@ function main() {
   const renderedQuickstart = replaceArtifactTokens(quickstart, 'docs/quickstart.md');
 
   assertEqual(contract.schema, EXPECTED_SCHEMA, 'quickstart execution contract schema');
-  assertEqual(contract.version, 1, 'quickstart execution contract version');
+  assertEqual(contract.version, 2, 'quickstart execution contract version');
   assertEqual(contract.release_status, '2.0_prerelease', 'quickstart execution contract release_status');
-  assertEqual(contract.authority_doc, 'docs/quickstart.md', 'quickstart execution contract authority_doc');
+  assertEqual(contract.authority_doc, 'docs/platform-conformance.md', 'quickstart execution contract authority_doc');
+  assertEqual(contract.onboarding_doc, 'docs/quickstart.md', 'quickstart execution contract onboarding_doc');
 
   assertDocsGuard(contract);
   assertPublicArtifactPins(contract);
