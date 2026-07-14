@@ -25,6 +25,9 @@ workflow history, runs workflow/activity handlers, reports worker and activity
 heartbeats, and exchanges language-neutral payloads with the standalone
 server.
 
+For crate modules, structs, traits, and methods, see the generated
+[Rust SDK API reference](https://rust.durable-workflow.com/).
+
 At the current `%%artifact.rustSdkVersion%%` floor, Rust supports durable
 timers, child workflows, activity retries and timeouts, signals, replayed query
 handlers, cancellation and termination, server-enforced workflow deadlines,
@@ -42,7 +45,6 @@ not change which docs version is the public default.
 
 - [Crate on crates.io](https://crates.io/crates/durable-workflow)
 - [Source repository](https://github.com/durable-workflow/sdk-rust)
-- [Generated Rust API documentation](https://rust.durable-workflow.com/)
 
 Install the exact Rust SDK version in the current public artifact tuple:
 

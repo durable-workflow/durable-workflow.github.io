@@ -22,7 +22,7 @@ For side-by-side examples of the same operation through the Python SDK and
 `dw`, see [CLI and Python parity](/docs/2.0/polyglot/cli-python-parity).
 
 For constructor signatures, return types, exception classes, and metric names,
-see the generated [Python API reference](https://python.durable-workflow.com/).
+see the generated [Python SDK API reference](https://python.durable-workflow.com/).
 
 ## Requirements
 

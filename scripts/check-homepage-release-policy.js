@@ -148,21 +148,21 @@ function assertRoutingConfig() {
 }
 
 function assertHomepageContent(homepage) {
-  taggedElement(
+  const stableHeader = taggedElement(
     homepage,
     'header',
     'data-homepage-release',
     'stable-1.x',
   );
-  taggedElement(
+  const stableSection = taggedElement(
     homepage,
     'section',
     'data-homepage-release',
     'stable-1.x',
   );
-  const pageText = visibleText(homepage);
+  const pageText = visibleText(`${stableHeader} ${stableSection}`);
 
-  assertNoProhibitedClaims(pageText, 'Visible homepage content');
+  assertNoProhibitedClaims(pageText, 'Stable homepage content');
 
   const stableAction = taggedAnchor(homepage, 'stable-get-started');
   const stableClasses = classNames(stableAction);

@@ -21,6 +21,9 @@ framework-neutral: it provides the control-plane client, authentication,
 transport, public payload codec, replay handler, and managed remote-worker
 lifecycle without requiring Laravel or the embedded engine package.
 
+For constructor signatures, return types, and exception classes, see the
+generated [PHP SDK API reference](https://php.durable-workflow.com/).
+
 Use `durable-workflow/workflow` for the separate embedded Laravel path, where
 the application owns workflow state in its existing database and executes work
 through its Laravel queues. See [Deployment Modes](/docs/2.0/polyglot/deployment-modes/)
