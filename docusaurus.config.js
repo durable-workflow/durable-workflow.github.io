@@ -129,24 +129,6 @@ const config = {
             position: 'left',
             dropdownActiveClassDisabled: true,
           },
-          {
-            label: '2.0 prerelease SDKs',
-            position: 'left',
-            items: [
-              {
-                label: 'PHP SDK reference',
-                href: 'https://php.durable-workflow.com/',
-              },
-              {
-                label: 'Python SDK reference',
-                href: 'https://python.durable-workflow.com/',
-              },
-              {
-                label: 'Rust SDK reference',
-                href: 'https://rust.durable-workflow.com/',
-              },
-            ],
-          },
           {to: '/blog', label: 'Blog', position: 'left'},
           {
             type: 'custom-githubStar',

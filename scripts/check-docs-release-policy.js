@@ -14,6 +14,23 @@ const STABLE_DOCS_VERSION = '1.x';
 const PRERELEASE_DOCS_VERSION = '2.0';
 const STABLE_DOCS_ROOT = '/docs/introduction/';
 const PRERELEASE_DOCS_ROOT = '/docs/2.0/introduction/';
+const SDK_REFERENCE_GUIDES = [
+  {
+    language: 'PHP',
+    path: 'docs/2.0/polyglot/php/index.html',
+    url: 'https://php.durable-workflow.com/',
+  },
+  {
+    language: 'Python',
+    path: 'docs/2.0/polyglot/python/index.html',
+    url: 'https://python.durable-workflow.com/',
+  },
+  {
+    language: 'Rust',
+    path: 'docs/2.0/polyglot/rust/index.html',
+    url: 'https://rust.durable-workflow.com/',
+  },
+];
 const PUBLIC_DISCOVERY_URLS = [
   '/docs/',
   '/docs/2.0/quickstart/',
@@ -73,6 +90,13 @@ function fromList(value) {
   return Array.isArray(value) ? value : [value];
 }
 
+function flattenNavigation(items) {
+  return items.flatMap(item => [
+    item,
+    ...(Array.isArray(item?.items) ? flattenNavigation(item.items) : []),
+  ]);
+}
+
 function assertDocsRootRedirects() {
   const redirects = getRedirectsConfig();
   if (!redirects.some(redirect => (
@@ -108,6 +132,14 @@ function assertConfigPolicy() {
   if (!navbarItems.some(item => item?.type === 'doc' && item.docId === 'introduction')) {
     fail('Primary navbar must resolve through the stable introduction doc');
   }
+  for (const item of flattenNavigation(navbarItems)) {
+    if (/\bSDKs?\b/i.test(item?.label || '')) {
+      fail(`Global navigation must not include SDK item ${JSON.stringify(item.label)}`);
+    }
+    if (SDK_REFERENCE_GUIDES.some(guide => guide.url === item?.href)) {
+      fail(`SDK reference ${item.href} belongs in its 2.0 language guide, not global navigation`);
+    }
+  }
   assertDocsRootRedirects();
 }
 
@@ -115,6 +147,16 @@ function assertDocusaurusVersion(relativePath, expected) {
   const html = readBuildFile(relativePath);
   if (!html.includes(`name="docusaurus_version" content="${expected}"`)) {
     fail(`build/${relativePath} must carry Docusaurus version ${expected}`);
+  }
+}
+
+function assertExternalLink(relativePath, expectedUrl, label) {
+  const html = readBuildFile(relativePath);
+  const hrefs = new Set(
+    [...html.matchAll(/<a\b[^>]*\shref="([^"]+)"/gi)].map(match => match[1]),
+  );
+  if (!hrefs.has(expectedUrl)) {
+    fail(`build/${relativePath} must link to the ${label} API reference at ${expectedUrl}`);
   }
 }
 
@@ -133,8 +175,10 @@ function assertBuiltDocsPolicy() {
   assertDocusaurusVersion('docs/installation/index.html', STABLE_DOCS_VERSION);
   assertDocusaurusVersion('docs/2.0/introduction/index.html', 'current');
   assertDocusaurusVersion('docs/2.0/quickstart/index.html', 'current');
-  assertDocusaurusVersion('docs/2.0/polyglot/php/index.html', 'current');
-  assertDocusaurusVersion('docs/2.0/polyglot/rust/index.html', 'current');
+  for (const guide of SDK_REFERENCE_GUIDES) {
+    assertDocusaurusVersion(guide.path, 'current');
+    assertExternalLink(guide.path, guide.url, guide.language);
+  }
 
   const pageAudit = readBuildJson('docs-page-release-audit.json');
   const narrativeAudit = readBuildJson('docs-narrative-audit.json');

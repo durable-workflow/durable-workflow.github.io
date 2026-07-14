@@ -9,11 +9,6 @@ const repoRoot = path.join(__dirname, '..');
 const buildDir = path.join(repoRoot, 'build');
 const stableVersion = '1.x';
 const prereleaseVersion = '2.0';
-const prereleaseSdkReferenceUrls = [
-  'https://php.durable-workflow.com/',
-  'https://python.durable-workflow.com/',
-  'https://rust.durable-workflow.com/',
-];
 const prohibitedStableClaims = [
   /\bpolyglot\b/i,
   /\bstandalone server\b/i,
@@ -168,27 +163,6 @@ function assertRoutingConfig() {
     versions.current?.banner !== 'unreleased'
   ) {
     fail('Current documentation must remain the explicit 2.0 prerelease line');
-  }
-
-  const navbarItems = config.themeConfig?.navbar?.items || [];
-  const prereleaseSdkNavigation = navbarItems.filter(item => (
-    prereleaseSdkReferenceUrls.includes(item?.href) ||
-    (
-      Array.isArray(item?.items) &&
-      item.items.some(child => prereleaseSdkReferenceUrls.includes(child?.href))
-    )
-  ));
-  const linkedSdkReferences = new Set(prereleaseSdkNavigation.flatMap(item => (
-    Array.isArray(item?.items) ? item.items.map(child => child?.href) : [item?.href]
-  )));
-  if (!prereleaseSdkReferenceUrls.every(url => linkedSdkReferences.has(url))) {
-    fail('Navbar must retain the PHP, Python, and Rust SDK reference links');
-  }
-  for (const navigationItem of prereleaseSdkNavigation) {
-    assertPrereleaseIdentity(
-      navigationItem.label,
-      'SDK reference navigation label',
-    );
   }
 
   assertNoProhibitedClaims(config.tagline, 'Site tagline');
