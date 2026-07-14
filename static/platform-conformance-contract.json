@@ -1,6 +1,6 @@
 {
   "schema": "durable-workflow.v2.platform-conformance.suite",
-  "version": 30,
+  "version": 31,
   "authority_doc": "docs/platform-conformance.md",
   "authority_url": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
   "surface_stability_authority": "durable-workflow.v2.surface-stability.contract",
@@ -612,7 +612,7 @@
     },
     "skew_refusal_matrix_contract": {
       "status": "stable",
-      "description": "Published-artifact version-skew refusal scenarios across CLI, Python SDK, PHP workflow worker, Waterline, future-version boundaries, worker registration classifications, Waterline render classifications, and per-operation request/response evidence.",
+      "description": "Published-artifact version-skew refusal scenarios across CLI, Python SDK, the standalone PHP SDK worker, Waterline, future-version boundaries, worker registration classifications, Waterline render classifications, and per-operation request/response evidence; Workflow remains the embedded Laravel and Waterline engine.",
       "sources": [
         {
           "repository": "durable-workflow.github.io",
@@ -714,7 +714,7 @@
     },
     "principal_attribution_contract": {
       "status": "stable",
-      "description": "Published-artifact scenarios proving server-derived, non-spoofable principal attribution across raw HTTP, CLI, Python SDK, PHP workflow client, and Waterline operator surfaces.",
+      "description": "Published-artifact scenarios proving server-derived, non-spoofable principal attribution across raw HTTP, CLI, Python SDK, the standalone PHP SDK client, and Waterline operator surfaces; Workflow remains the embedded Laravel and Waterline engine.",
       "sources": [
         {
           "repository": "durable-workflow.github.io",

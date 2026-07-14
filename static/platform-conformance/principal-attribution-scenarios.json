@@ -3,7 +3,7 @@
   "version": 1,
   "category": "principal_attribution_contract",
   "suite_schema": "durable-workflow.v2.platform-conformance.suite",
-  "suite_version": 30,
+  "suite_version": 31,
   "description": "Published-artifact scenarios proving server-derived, non-spoofable principal attribution on workflow history and operator surfaces.",
   "fixture_type": "published_artifact_runtime_scenario_manifest",
   "result_statuses": [
@@ -32,6 +32,7 @@
       "server",
       "cli",
       "sdk-python",
+      "sdk-php",
       "workflow",
       "waterline"
     ],
@@ -40,12 +41,39 @@
         "workflow-php",
         "durable-workflow/workflow"
       ],
+      "sdk-php": [
+        "durable-workflow/sdk"
+      ],
       "sdk-python": [
         "durable_workflow"
       ],
       "cli": [
         "dw"
       ]
+    },
+    "required_artifact_provenance": {
+      "sdk-php": {
+        "package": "durable-workflow/sdk",
+        "source": "packagist",
+        "role": "standalone_remote_php_client_and_worker",
+        "required_fields": [
+          "resolved_version",
+          "dist_type",
+          "dist_url",
+          "dist_reference"
+        ]
+      },
+      "workflow": {
+        "package": "durable-workflow/workflow",
+        "source": "packagist",
+        "role": "embedded_laravel_and_waterline_engine",
+        "required_fields": [
+          "resolved_version",
+          "dist_type",
+          "dist_url",
+          "dist_reference"
+        ]
+      }
     },
     "required_run_record_fields": [
       "published_artifact_versions",
@@ -180,14 +208,15 @@
         "local_product_source_checkouts_used"
       ],
       "operations": [
-        "Resolve latest complete published artifact versions for server, CLI, Python SDK, PHP workflow package, and Waterline.",
-        "Install each artifact from its public release channel without using local product source checkouts.",
-        "Record resolved versions, artifact sources, and install/import smoke evidence."
+        "Resolve latest complete published artifact versions for server, CLI, Python SDK, the standalone durable-workflow/sdk PHP SDK, the durable-workflow/workflow embedded Laravel and Waterline engine, and Waterline.",
+        "Install each artifact from its public release channel without using local product source checkouts; use durable-workflow/sdk for the remote PHP client and worker, and retain durable-workflow/workflow only for embedded Laravel and Waterline execution.",
+        "Record resolved versions, artifact sources, Packagist dist type, URL, and reference for both PHP packages, and install/import smoke evidence."
       ],
       "pass_criteria": [
         "All required artifacts are pinned to concrete published versions.",
-        "Every artifact source is a public release channel, and local_product_source_checkouts_used is false.",
-        "Install/import smoke evidence is present for server, CLI, Python SDK, PHP workflow package, and Waterline."
+        "artifact_sources records the exact Packagist durable-workflow/sdk distribution used by the standalone PHP client and worker separately from durable-workflow/workflow, which is recorded only as the embedded Laravel and Waterline engine.",
+        "Every artifact source is a public release channel, both PHP package records include resolved version and dist provenance, and local_product_source_checkouts_used is false.",
+        "Install/import smoke evidence is present for server, CLI, Python SDK, PHP SDK, embedded Workflow engine, and Waterline."
       ]
     },
     {
@@ -344,7 +373,7 @@
     },
     {
       "id": "php_client_visibility",
-      "title": "PHP workflow client visibility",
+      "title": "PHP SDK client visibility",
       "required_fields": [
         "client_operation",
         "sdk_package_version",

@@ -3,7 +3,7 @@
   "version": 1,
   "category": "skew_refusal_matrix_contract",
   "suite_schema": "durable-workflow.v2.platform-conformance.suite",
-  "suite_version": 30,
+  "suite_version": 31,
   "description": "Public scenario manifest for published-artifact version-skew refusal across CLI, Python SDK, PHP SDK worker, and Waterline surfaces.",
   "fixture_type": "published_artifact_runtime_scenario_manifest",
   "result_schema": "durable-workflow.v2.skew-refusal-matrix.result",
@@ -16,9 +16,18 @@
   ],
   "artifact_policy": {
     "published_artifacts_only": true,
+    "requires_published_artifact_versions": true,
     "requires_resolved_versions": true,
+    "requires_artifact_sources_for_each_required_artifact": true,
+    "requires_local_product_source_checkouts_used_false": true,
     "rejects_placeholder_versions": true,
     "implementation_tests_are_not_sources": true,
+    "forbidden_sources": [
+      "local_product_source_checkout",
+      "workspace_repo_as_artifact_under_test",
+      "release_tag_without_required_assets",
+      "rolling_server_image_tag"
+    ],
     "required_artifacts": [
       "server",
       "cli",
@@ -27,8 +36,51 @@
       "sdk-php",
       "waterline"
     ],
+    "release_artifact_aliases": {
+      "workflow": [
+        "workflow-php",
+        "durable-workflow/workflow"
+      ],
+      "sdk-php": [
+        "durable-workflow/sdk"
+      ],
+      "sdk-python": [
+        "durable_workflow"
+      ],
+      "cli": [
+        "dw"
+      ]
+    },
+    "required_artifact_provenance": {
+      "sdk-php": {
+        "package": "durable-workflow/sdk",
+        "source": "packagist",
+        "role": "standalone_remote_php_worker",
+        "required_fields": [
+          "resolved_version",
+          "dist_type",
+          "dist_url",
+          "dist_reference"
+        ]
+      },
+      "workflow": {
+        "package": "durable-workflow/workflow",
+        "source": "packagist",
+        "role": "embedded_laravel_and_waterline_engine",
+        "required_fields": [
+          "resolved_version",
+          "dist_type",
+          "dist_url",
+          "dist_reference"
+        ]
+      }
+    },
     "required_run_record_fields": [
       "artifact_versions",
+      "published_artifact_versions",
+      "resolved_artifact_versions",
+      "artifact_sources",
+      "local_product_source_checkouts_used",
       "started_at",
       "finished_at",
       "outcome",
@@ -51,6 +103,9 @@
     "runner_blocked",
     "artifact_versions",
     "published_artifact_versions",
+    "resolved_artifact_versions",
+    "artifact_sources",
+    "local_product_source_checkouts_used",
     "implementation_identity",
     "surface_results",
     "pairing_results",
@@ -241,18 +296,20 @@
     {
       "id": "published_artifact_install_only",
       "title": "Published artifacts are pinned",
-      "summary": "Resolve and install the exact server, CLI, Python SDK, workflow, and Waterline artifacts under test from their public channels.",
+      "summary": "Resolve and install the exact server, CLI, Python SDK, standalone PHP SDK, embedded Workflow engine, and Waterline artifacts under test from their public channels.",
       "operations": [
         "resolve_published_server_artifact",
         "resolve_published_cli_artifact",
         "resolve_published_sdk_python_artifact",
+        "resolve_published_sdk_php_artifact",
         "resolve_published_workflow_artifact",
         "resolve_published_waterline_artifact"
       ],
       "pass_criteria": [
         "all required artifact versions are concrete",
         "no artifact is installed from a local product source checkout",
-        "the run record carries the resolved artifact tuple"
+        "artifact_sources records the exact Packagist durable-workflow/sdk distribution used by the standalone PHP SDK worker separately from durable-workflow/workflow, which is recorded only as the embedded Laravel and Waterline engine",
+        "both PHP package records include resolved version, Packagist dist type, URL, and reference, and the run record carries the resolved artifact tuple"
       ]
     },
     {

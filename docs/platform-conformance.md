@@ -103,8 +103,8 @@ JSON manifests linked from the category notes below.
 | `worker_versioning_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/worker-versioning-runtime-scenarios.json` | Live published-artifact scenarios for safe-deploy worker versioning across build-ID registration, rollout visibility, drain/resume controls, per-run pins, compatible replay routing, no-compatible-worker diagnostics, cross-language PHP/Python pinning, adversarial no-bump behavior, and history API version pins. |
 | `saga_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/saga-runtime-scenarios.json` | Live published-artifact scenarios for saga compensation across forward success, reverse-order compensation, early failure, retry idempotence, compensation failure visibility, worker restart replay, PHP/Python cross-language compensation, typed compensation errors, and operator-visible in-progress compensation state. |
 | `migration_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/migration-runtime-scenarios.json` | Live published-artifact scenarios for v1 to v2 migration across preserved histories, in-flight progress, activities, signal-or-timer waits, schedules, worker registrations, CLI access, Waterline operator visibility, new v2 starts, queue-aware rollback semantics, and version-skew refusal. |
-| `skew_refusal_matrix_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/skew-refusal-matrix-scenarios.json` | Published-artifact version-skew refusal scenarios across CLI, Python SDK, PHP workflow worker, Waterline, future-version boundaries, worker registration classifications, Waterline render classifications, and per-operation request/response evidence. |
-| `principal_attribution_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/principal-attribution-scenarios.json` | Published-artifact scenarios proving server-derived, non-spoofable principal attribution across raw HTTP, CLI, Python SDK, PHP workflow client, and Waterline operator surfaces. |
+| `skew_refusal_matrix_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/skew-refusal-matrix-scenarios.json` | Published-artifact version-skew refusal scenarios across CLI, Python SDK, the standalone PHP SDK worker, Waterline, future-version boundaries, worker registration classifications, Waterline render classifications, and per-operation request/response evidence; Workflow remains the embedded Laravel and Waterline engine. |
+| `principal_attribution_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/principal-attribution-scenarios.json` | Published-artifact scenarios proving server-derived, non-spoofable principal attribution across raw HTTP, CLI, Python SDK, the standalone PHP SDK client, and Waterline operator surfaces; Workflow remains the embedded Laravel and Waterline engine. |
 | `prerelease_readiness_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/prerelease-readiness-scenarios.json` | Published-artifact scenarios for 2.0 prerelease readiness across Workflow, Waterline, server, CLI, Python SDK, sample app, public docs, and the quickstart local-server hosting and Laravel paths. |
 | `failure_repair_actionability` | `stable` | `server` | `docs/contracts/external-task-result.md` | Failure objects and repair / actionability shapes for stuck tasks, deterministic failure, and replay-mismatch surfaces. |
 | `failure_repair_actionability` | `stable` | `server` | `docs/contracts/replay-verification.md` | Failure objects and repair / actionability shapes for stuck tasks, deterministic failure, and replay-mismatch surfaces. |
@@ -404,7 +404,8 @@ Those migration scenario ids and their pass criteria are published at
 The `skew_refusal_matrix_contract` category is a stable runtime scenario
 category. A result for it must use published artifacts and cover
 compatible, backward-skewed, forward-skewed, and outside-window pairings
-for CLI, Python SDK, PHP workflow worker, and Waterline surfaces. It
+for CLI, Python SDK, the standalone PHP SDK worker, and Waterline surfaces.
+Workflow is present only as the embedded Laravel and Waterline engine. It
 must also probe future-version boundaries, capture requests and
 responses for every skewed operation, classify worker skew as
 `register_refused`, `register_and_serve`, or `register_and_drop`, and
@@ -429,7 +430,10 @@ authenticated start or signal operations through both the Python SDK and
 the PHP `DurableWorkflow\Client`. SDK cells must record the
 package version, operation outputs, history/API principal samples, and
 raw HTTP reference principals so the harness can compare principal shape
-and expected principal ids. A role-token smoke subset is nonconforming
+and expected principal ids. The PHP cell must resolve `durable-workflow/sdk`
+as an exact Packagist distribution and record its dist type, URL, and
+reference. `durable-workflow/workflow` is resolved separately only for the
+embedded Laravel and Waterline engine. A role-token smoke subset is nonconforming
 until every required scenario is recorded as `pass`, `fail`,
 `unsupported`, `not_covered`, or `runner_blocked` with linked findings.
 

@@ -19,12 +19,20 @@ const thisScriptPath = path.relative(repoRoot, __filename).split(path.sep).join(
 const docsDir = path.join(repoRoot, 'docs');
 const configPath = path.join(repoRoot, 'docusaurus.config.js');
 const contractPath = path.join(repoRoot, 'static', 'platform-conformance-contract.json');
+const discoveryPagePath = path.join(
+  repoRoot,
+  'src',
+  'pages',
+  'docs',
+  'platform-conformance.mdx',
+);
 const sidebarsPath = path.join(repoRoot, 'sidebars.js');
 
 const EXPECTED_SCHEMA = 'durable-workflow.v2.platform-conformance.suite';
 const VERSIONED_SUITE_AUTHORITY_DIGESTS = {
   29: 'sha256:51eaaf8d034264f0f91bd13d10e3d46ca10dc8d97010719d4727c0336ad66382',
   30: 'sha256:e33ced9ece7d2c32cd939d416cb76c365ba6dd05e0c041949adb7c3267072b48',
+  31: 'sha256:ccbd3a067faf685ea7d93f89e7e0721d51d44f7dd493874f00e33d971f633bee',
 };
 const EXPECTED_RUNTIME_SCENARIO_SCHEMA =
   'durable-workflow.v2.platform-conformance.runtime-scenarios';
@@ -221,6 +229,13 @@ const VERSIONED_RUNTIME_SCENARIO_STATUSES = {
     'runner_blocked',
   ],
   30: [
+    'pass',
+    'fail',
+    'unsupported',
+    'not_covered',
+    'runner_blocked',
+  ],
+  31: [
     'pass',
     'fail',
     'unsupported',
@@ -515,6 +530,11 @@ VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[30] = {
   namespace_runtime_contract: 'sha256:f6079414cb92852d6052e1115e9bc0bd1b3e42dfe8cd108caa1eec4f983656f0',
   principal_attribution_contract: 'sha256:f8e26d6fa05ee3095a4cdd65780e0548acc6c1116aaf18502daedebaa7294329',
 };
+VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[31] = {
+  ...VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[30],
+  skew_refusal_matrix_contract: 'sha256:3e8aedf494b4e581db85fa8002251bc2e0b5728006cb2ff7c13789c820655562',
+  principal_attribution_contract: 'sha256:57fda46bef7896ef7ce4178c665c3d64bbaa87ba5eea03217ad526b0138a1915',
+};
 // Digests bind public top-level runtime scenario manifest requirements to the
 // suite version. These fields define artifact source policy, common evidence,
 // runtime matrices, scenario-specific required evidence, and host-runner result
@@ -684,6 +704,11 @@ VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[30] = {
   workflow_update_runtime_contract: 'sha256:f9f4caeaa090eb315a0999fb5d259b5f3874235d900a4919278acdf9aa3968c3',
   saga_runtime_contract: 'sha256:180626d80b7c73e13a21f19353262872323cbc9186b07091256a3b5f7361a587',
   migration_runtime_contract: 'sha256:3f6ff4c5576f776a2de1676c1e45bc7dc5b8d320d1126587b075a9331c27ef20',
+};
+VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[31] = {
+  ...VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[30],
+  skew_refusal_matrix_contract: 'sha256:4f753e5b742758b67587fb79520b46166ba00283636eb7ab9fbfe5a6ad938b1a',
+  principal_attribution_contract: 'sha256:84ae71e4f7b1572ca4f40818119b0620aeb1ae2517130ad84c0a7a8f5d7ee181',
 };
 const VERSIONED_PASS_FAIL_RULES = {
   5: {
@@ -952,6 +977,7 @@ VERSIONED_PASS_FAIL_RULES[27] = {
 VERSIONED_PASS_FAIL_RULES[28] = VERSIONED_PASS_FAIL_RULES[27];
 VERSIONED_PASS_FAIL_RULES[29] = VERSIONED_PASS_FAIL_RULES[28];
 VERSIONED_PASS_FAIL_RULES[30] = VERSIONED_PASS_FAIL_RULES[29];
+VERSIONED_PASS_FAIL_RULES[31] = VERSIONED_PASS_FAIL_RULES[30];
 const EXPECTED_AUTHORITY_DOC = 'docs/platform-conformance.md';
 const EXPECTED_DOC_ID = 'platform-conformance';
 
@@ -1881,6 +1907,10 @@ function assertSkewRefusalMatrixResultEvidence(manifest, category, source) {
   const commonEvidence = manifest.common_result_evidence || [];
   const requiredRunRecordFields = [
     'artifact_versions',
+    'published_artifact_versions',
+    'resolved_artifact_versions',
+    'artifact_sources',
+    'local_product_source_checkouts_used',
     'started_at',
     'finished_at',
     'outcome',
@@ -1923,6 +1953,198 @@ function assertSkewRefusalMatrixResultEvidence(manifest, category, source) {
     `stable runtime fixture category "${category}" scenario manifest ` +
       `${source.repository}:${source.path} artifact_policy.required_run_record_fields`,
   );
+}
+
+function assertPhpSdkSplitRuntimeAuthority(manifest, category, source) {
+  if (!['skew_refusal_matrix_contract', 'principal_attribution_contract'].includes(category)) {
+    return;
+  }
+
+  const label =
+    `stable runtime fixture category "${category}" scenario manifest ` +
+    `${source.repository}:${source.path}`;
+  const artifactPolicy = manifest.artifact_policy || {};
+  const requiredArtifacts = artifactPolicy.required_artifacts || [];
+
+  assertArrayIncludesAll(
+    requiredArtifacts,
+    ['sdk-php', 'workflow'],
+    `${label} artifact_policy.required_artifacts`,
+  );
+
+  const installScenario = (manifest.scenarios || []).find(
+    scenario => scenario && scenario.id === 'published_artifact_install_only',
+  );
+  const installContract = JSON.stringify({
+    summary: installScenario?.summary,
+    operations: installScenario?.operations,
+    pass_criteria: installScenario?.pass_criteria,
+  });
+
+  assertJsonEqual(
+    artifactPolicy.required_artifact_provenance,
+    {
+      'sdk-php': {
+        package: 'durable-workflow/sdk',
+        source: 'packagist',
+        role:
+          category === 'skew_refusal_matrix_contract'
+            ? 'standalone_remote_php_worker'
+            : 'standalone_remote_php_client_and_worker',
+        required_fields: [
+          'resolved_version',
+          'dist_type',
+          'dist_url',
+          'dist_reference',
+        ],
+      },
+      workflow: {
+        package: 'durable-workflow/workflow',
+        source: 'packagist',
+        role: 'embedded_laravel_and_waterline_engine',
+        required_fields: [
+          'resolved_version',
+          'dist_type',
+          'dist_url',
+          'dist_reference',
+        ],
+      },
+    },
+    `${label} artifact_policy.required_artifact_provenance`,
+  );
+
+  assertArrayIncludesAll(
+    artifactPolicy.release_artifact_aliases?.['sdk-php'] || [],
+    ['durable-workflow/sdk'],
+    `${label} artifact_policy.release_artifact_aliases.sdk-php`,
+  );
+
+  for (const requiredPolicy of [
+    'requires_published_artifact_versions',
+    'requires_resolved_versions',
+    'requires_artifact_sources_for_each_required_artifact',
+    'requires_local_product_source_checkouts_used_false',
+  ]) {
+    if (artifactPolicy[requiredPolicy] !== true) {
+      throw new Error(`${label} artifact_policy.${requiredPolicy} must be true.`);
+    }
+  }
+
+  for (const requiredText of [
+    'durable-workflow/sdk',
+    'durable-workflow/workflow',
+    'embedded Laravel and Waterline',
+    'Packagist dist type, URL, and reference',
+  ]) {
+    if (!installContract.includes(requiredText)) {
+      throw new Error(
+        `${label} published_artifact_install_only must include "${requiredText}".`,
+      );
+    }
+  }
+
+  if (category === 'skew_refusal_matrix_contract') {
+    if (!String(manifest.description).includes('PHP SDK worker')) {
+      throw new Error(`${label} description must name the standalone PHP SDK worker.`);
+    }
+
+    if (!installContract.includes('resolve_published_sdk_php_artifact')) {
+      throw new Error(
+        `${label} published_artifact_install_only must resolve the standalone PHP SDK artifact.`,
+      );
+    }
+
+    return;
+  }
+
+  const phpClientScenario = (manifest.scenarios || []).find(
+    scenario => scenario && scenario.id === 'php_client_visibility',
+  );
+  if (phpClientScenario?.title !== 'PHP SDK client visibility') {
+    throw new Error(`${label} php_client_visibility must name the PHP SDK client.`);
+  }
+}
+
+function assertPhpSdkSplitSuiteDescriptions(contract) {
+  const expectedDescriptions = {
+    skew_refusal_matrix_contract: [
+      'standalone PHP SDK worker',
+      'Workflow remains the embedded Laravel and Waterline engine',
+    ],
+    principal_attribution_contract: [
+      'standalone PHP SDK client',
+      'Workflow remains the embedded Laravel and Waterline engine',
+    ],
+  };
+
+  for (const [category, requiredPhrases] of Object.entries(expectedDescriptions)) {
+    const description = String(contract.fixture_catalog?.[category]?.description || '');
+    for (const phrase of requiredPhrases) {
+      if (!description.includes(phrase)) {
+        throw new Error(
+          `static/platform-conformance-contract.json fixture_catalog.${category}.description ` +
+            `must include "${phrase}".`,
+        );
+      }
+    }
+  }
+
+  const docs = fs.readFileSync(path.join(docsDir, 'platform-conformance.md'), 'utf8');
+  for (const phrase of [
+    'standalone PHP SDK worker',
+    'standalone PHP SDK client',
+    'exact Packagist distribution',
+    'embedded Laravel and Waterline engine',
+  ]) {
+    if (!docs.includes(phrase)) {
+      throw new Error(`docs/platform-conformance.md must include "${phrase}".`);
+    }
+  }
+
+  for (const stalePhrase of ['PHP workflow worker', 'PHP workflow client']) {
+    if (docs.includes(stalePhrase)) {
+      throw new Error(`docs/platform-conformance.md must not describe ${stalePhrase}.`);
+    }
+  }
+
+  const discoveryPage = fs.readFileSync(discoveryPagePath, 'utf8');
+  const expectedDiscoveryRows = {
+    '/platform-conformance/skew-refusal-matrix-scenarios.json': [
+      'standalone PHP SDK worker',
+      'Workflow remains the embedded Laravel and Waterline engine',
+    ],
+    '/platform-conformance/principal-attribution-scenarios.json': [
+      'standalone PHP SDK client',
+      'Workflow remains the embedded Laravel and Waterline engine',
+    ],
+  };
+
+  for (const [manifestPath, requiredPhrases] of Object.entries(expectedDiscoveryRows)) {
+    const row = discoveryPage
+      .split('\n')
+      .find(line => line.startsWith('|') && line.includes(manifestPath));
+    if (!row) {
+      throw new Error(
+        `src/pages/docs/platform-conformance.mdx must advertise ${manifestPath}.`,
+      );
+    }
+    for (const phrase of requiredPhrases) {
+      if (!row.includes(phrase)) {
+        throw new Error(
+          `src/pages/docs/platform-conformance.mdx row for ${manifestPath} ` +
+            `must include "${phrase}".`,
+        );
+      }
+    }
+  }
+
+  for (const stalePhrase of ['PHP workflow worker', 'PHP workflow client']) {
+    if (discoveryPage.includes(stalePhrase)) {
+      throw new Error(
+        `src/pages/docs/platform-conformance.mdx must not describe ${stalePhrase}.`,
+      );
+    }
+  }
 }
 
 function formatJsonPath(segments) {
@@ -2382,6 +2604,7 @@ function assertRuntimeScenarioManifest(contract, category, entry, source) {
   );
   assertSignalQueryRuntimeArtifactPolicy(manifest, category, source);
   assertSkewRefusalMatrixResultEvidence(manifest, category, source);
+  assertPhpSdkSplitRuntimeAuthority(manifest, category, source);
   assertPublicRuntimeManifestHasNoInternalHarnessContract(manifest, category, source);
   assertWorkerVersioningNoCompatibleEvidence(manifest, category, source);
 
@@ -2558,6 +2781,7 @@ function main() {
   assertContractAuthorityResolves(contract);
   assertVersionedSuiteAuthorityDigest(contract);
   assertRustSignalQueryAuthority(contract);
+  assertPhpSdkSplitSuiteDescriptions(contract);
   assertArrayOfStrings(contract, 'conformance_levels', [
     'full',
     'partial',
