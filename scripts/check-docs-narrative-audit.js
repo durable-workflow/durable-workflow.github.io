@@ -8,9 +8,12 @@ const {
   SCHEMA,
   SCHEMA_VERSION,
   docsRevision,
+  publicInventory,
   sourceInventory,
   validateInventory,
+  validatePublicInventory,
 } = require('./docs-narrative-audit-contract');
+const {assertNoRepoLocalReferences} = require('./docs-audit-public-references');
 
 const repoRoot = path.join(__dirname, '..');
 const buildDir = path.join(repoRoot, 'build');
@@ -30,6 +33,7 @@ function main() {
   const manifest = readJson('docs-narrative-audit.json');
   const releaseAudit = readJson('docs-page-release-audit.json');
   const revision = docsRevision(repoRoot);
+  const expectedPublicInventory = publicInventory(expectedInventory, revision);
 
   assert.strictEqual(manifest.schema, SCHEMA, 'narrative inventory schema');
   assert.strictEqual(manifest.schema_version, SCHEMA_VERSION, 'narrative inventory schema version');
@@ -49,11 +53,21 @@ function main() {
   assert.strictEqual(manifest.deploy_inventory.canonical_explicit_2_0_routes, expectedInventory.length);
   assert.strictEqual(manifest.summary.markdown_sources, expectedInventory.length);
   assert.strictEqual(manifest.summary.built_routes, expectedInventory.length);
-  assert.deepStrictEqual(manifest.route_inventory, expectedInventory, 'published route inventory');
-  validateInventory(manifest.route_inventory);
+  assert.deepStrictEqual(
+    manifest.route_inventory,
+    expectedPublicInventory,
+    'published route inventory',
+  );
+  validatePublicInventory(manifest.route_inventory, expectedInventory, revision);
+  assertNoRepoLocalReferences(manifest, 'docs-narrative-audit.json');
 
   for (const entry of manifest.route_inventory) {
-    assert.ok(fs.existsSync(path.join(repoRoot, entry.build_artifact)), entry.build_artifact);
+    const validationEntry = expectedInventory.find(expected => expected.route === entry.route);
+    assert.ok(validationEntry, entry.route);
+    assert.ok(
+      fs.existsSync(path.join(repoRoot, validationEntry.build_artifact)),
+      entry.artifact_route,
+    );
   }
 
   console.log(`Docs narrative route inventory checks passed for ${expectedInventory.length} Markdown sources`);

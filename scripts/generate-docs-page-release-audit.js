@@ -12,6 +12,10 @@ const {docsRevision} = require('./docs-narrative-audit-contract');
 const {
   stableRuntimeScenarioDiscoveryEntries,
 } = require('./platform-conformance-public-discovery');
+const {
+  assertNoRepoLocalReferences,
+  repositorySourceUrl,
+} = require('./docs-audit-public-references');
 const platformConformanceContract = require('../static/platform-conformance-contract.json');
 
 const repoRoot = path.join(__dirname, '..');
@@ -20,11 +24,11 @@ const sitemapPath = path.join(buildDir, 'sitemap.xml');
 const outputPath = path.join(buildDir, 'docs-page-release-audit.json');
 
 const SCHEMA = 'durable-workflow.docs.page-release-audit';
-const SCHEMA_VERSION = 3;
-const CLASSIFIER_ID = 'route-and-build-inventory-v3';
+const SCHEMA_VERSION = 4;
+const CLASSIFIER_ID = 'route-and-public-artifact-inventory-v4';
 const STABLE_DOCS_VERSION = '1.x';
 const PRERELEASE_DOCS_VERSION = '2.0';
-const ARTIFACT_VERSION_SOURCE_FILE = 'scripts/public-artifact-versions.json';
+const ARTIFACT_VERSION_SOURCE_PATH = 'scripts/public-artifact-versions.json';
 const ARTIFACT_VERSION_SYNCHRONIZED_FIELDS = Object.freeze([
   'artifact_versions',
   'artifact_distribution_surfaces.sdk-php',
@@ -132,15 +136,15 @@ function inventoryEntry(routePath) {
   return {
     path: routePath,
     route_kind: routeKind(routePath),
-    build_artifact: `build/${buildPath}`,
+    artifact_route: routePath,
     docusaurus_version: docusaurusVersion(absolutePath),
   };
 }
 
-function artifactVersionSourceMetadata(versions, distributionSurfaces) {
+function artifactVersionSourceMetadata(versions, distributionSurfaces, revision) {
   return {
     schema: ARTIFACT_VERSION_SCHEMA,
-    source_file: ARTIFACT_VERSION_SOURCE_FILE,
+    source_url: repositorySourceUrl(ARTIFACT_VERSION_SOURCE_PATH, revision),
     synchronized_fields: ARTIFACT_VERSION_SYNCHRONIZED_FIELDS,
     current_server_artifact: {
       version: versions.server,
@@ -149,17 +153,25 @@ function artifactVersionSourceMetadata(versions, distributionSurfaces) {
   };
 }
 
-function buildArtifactVersionProjection(versions = ARTIFACT_VERSIONS) {
+function buildArtifactVersionProjection(
+  versions = ARTIFACT_VERSIONS,
+  revision = docsRevision(repoRoot),
+) {
   const distributionSurfaces = buildArtifactDistributionSurfaces(versions);
 
   return {
     artifact_versions: versions,
-    artifact_version_source: artifactVersionSourceMetadata(versions, distributionSurfaces),
+    artifact_version_source: artifactVersionSourceMetadata(
+      versions,
+      distributionSurfaces,
+      revision,
+    ),
     artifact_distribution_surfaces: distributionSurfaces,
   };
 }
 
 function main() {
+  const revision = docsRevision(repoRoot);
   const pageInventory = inventoryPaths().map(inventoryEntry);
   const stableDocsCount = pageInventory
     .filter(entry => entry.route_kind === 'stable_default_docs').length;
@@ -172,8 +184,8 @@ function main() {
     generated_at: new Date().toISOString(),
     generated_from: 'production sitemap and build artifact inventory',
     classifier: CLASSIFIER_ID,
-    docs_revision: docsRevision(repoRoot),
-    ...buildArtifactVersionProjection(),
+    docs_revision: revision,
+    ...buildArtifactVersionProjection(ARTIFACT_VERSIONS, revision),
     release_status_guardrail: {
       stable_default_docs_version: STABLE_DOCS_VERSION,
       explicit_prerelease_docs_version: PRERELEASE_DOCS_VERSION,
@@ -186,6 +198,7 @@ function main() {
     page_inventory: pageInventory,
   };
 
+  assertNoRepoLocalReferences(manifest, 'docs-page-release-audit.json');
   fs.writeFileSync(outputPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   console.log(
     `Docs route inventory generated: ${stableDocsCount} stable docs, ` +
@@ -198,7 +211,7 @@ if (require.main === module) {
 }
 
 module.exports = {
-  ARTIFACT_VERSION_SOURCE_FILE,
+  ARTIFACT_VERSION_SOURCE_PATH,
   ARTIFACT_VERSION_SYNCHRONIZED_FIELDS,
   CLASSIFIER_ID,
   SCHEMA,

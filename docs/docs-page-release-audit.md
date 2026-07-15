@@ -24,10 +24,11 @@ The machine-readable audit is published at
 Its `artifact_versions`, PHP SDK package/repository/API-documentation surfaces,
 server container distribution surfaces, and Rust SDK
 package/repository/API-documentation surfaces are synchronized from the public
-artifact tuple source during the docs build. The manifest also records
-`artifact_version_source.current_server_artifact` so consumers can verify that
-the advertised server version and container image references came from the
-same tuple.
+artifact tuple source during the docs build. The manifest also records an
+immutable `artifact_version_source.source_url` and
+`artifact_version_source.current_server_artifact` so consumers can resolve the
+version source and verify that the advertised server version and container
+image references came from the same tuple.
 
 ## Coverage
 
@@ -40,9 +41,11 @@ and includes:
 - the homepage, LLM manifests, and public conformance artifacts.
 
 Each inventory row contains only the public path, its route classification,
-the corresponding build artifact, and Docusaurus version metadata when the
-artifact supplies it. The build checks those facts against the sitemap,
-generated files, and Docusaurus version configuration.
+the corresponding public artifact route, and Docusaurus version metadata when
+the artifact supplies it. Repository source files and build-output paths remain
+internal validation inputs. The build resolves the public routes back to those
+inputs and checks them against the sitemap, generated files, and Docusaurus
+version configuration before publishing the manifest.
 
 Editorial wording is not part of this artifact. Prose changes do not require a
 source digest, a per-page verdict, or an update to the audit checker.

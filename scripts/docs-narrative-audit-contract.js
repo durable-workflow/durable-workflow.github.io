@@ -1,9 +1,13 @@
 const fs = require('fs');
 const path = require('path');
 const {execFileSync} = require('child_process');
+const {
+  assertPublicReference,
+  repositorySourceUrl,
+} = require('./docs-audit-public-references');
 
 const SCHEMA = 'durable-workflow.docs.narrative-audit';
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 function routeForSource(sourceFile) {
   if (!/^docs\/.+\.mdx?$/.test(sourceFile)) {
@@ -62,6 +66,43 @@ function docsRevision(repoRoot) {
   return revision;
 }
 
+function publicInventory(inventory, revision) {
+  return inventory.map(entry => ({
+    source_url: repositorySourceUrl(entry.source_file, revision),
+    route: entry.route,
+    artifact_route: entry.route,
+  }));
+}
+
+function validatePublicInventory(inventory, validationInventory, revision) {
+  if (!Array.isArray(inventory)) {
+    throw new Error('Published narrative route inventory must be an array');
+  }
+  if (!Array.isArray(validationInventory) || inventory.length !== validationInventory.length) {
+    throw new Error('Published narrative route inventory must cover every validated source');
+  }
+
+  const routes = new Set();
+  inventory.forEach((entry, index) => {
+    const validationEntry = validationInventory[index];
+    if (!entry || typeof entry !== 'object') {
+      throw new Error('Published narrative route inventory entries must be objects');
+    }
+    if (routes.has(entry.route)) {
+      throw new Error(`Duplicate published narrative inventory route: ${entry.route}`);
+    }
+    if (entry.route !== validationEntry.route || entry.artifact_route !== entry.route) {
+      throw new Error(`${entry.route} published narrative artifact route is invalid`);
+    }
+    if (entry.source_url !== repositorySourceUrl(validationEntry.source_file, revision)) {
+      throw new Error(`${entry.route} published narrative source URL is invalid`);
+    }
+    assertPublicReference(entry.source_url, `${entry.route} source_url`);
+    assertPublicReference(entry.artifact_route, `${entry.route} artifact_route`);
+    routes.add(entry.route);
+  });
+}
+
 function validateInventory(inventory) {
   if (!Array.isArray(inventory)) {
     throw new Error('Narrative route inventory must be an array');
@@ -95,7 +136,9 @@ module.exports = {
   SCHEMA_VERSION,
   buildArtifactForRoute,
   docsRevision,
+  publicInventory,
   routeForSource,
   sourceInventory,
   validateInventory,
+  validatePublicInventory,
 };

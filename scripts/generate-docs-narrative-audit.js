@@ -7,9 +7,12 @@ const {
   SCHEMA,
   SCHEMA_VERSION,
   docsRevision,
+  publicInventory,
   sourceInventory,
   validateInventory,
+  validatePublicInventory,
 } = require('./docs-narrative-audit-contract');
+const {assertNoRepoLocalReferences} = require('./docs-audit-public-references');
 
 const repoRoot = path.join(__dirname, '..');
 const buildDir = path.join(repoRoot, 'build');
@@ -32,8 +35,8 @@ function sitemapRoutes() {
 }
 
 function main() {
-  const inventory = sourceInventory(repoRoot);
-  validateInventory(inventory);
+  const validationInventory = sourceInventory(repoRoot);
+  validateInventory(validationInventory);
 
   const releaseAudit = readJson(releaseAuditPath, 'built page release audit');
   const routes = sitemapRoutes();
@@ -45,7 +48,7 @@ function main() {
     );
   }
 
-  for (const entry of inventory) {
+  for (const entry of validationInventory) {
     if (!fs.existsSync(path.join(repoRoot, entry.build_artifact))) {
       throw new Error(`Missing built route for ${entry.source_file}: ${entry.build_artifact}`);
     }
@@ -53,6 +56,9 @@ function main() {
       throw new Error(`Sitemap is missing ${entry.route} for ${entry.source_file}`);
     }
   }
+
+  const inventory = publicInventory(validationInventory, revision);
+  validatePublicInventory(inventory, validationInventory, revision);
 
   const manifest = {
     schema: SCHEMA,
@@ -73,6 +79,7 @@ function main() {
     route_inventory: inventory,
   };
 
+  assertNoRepoLocalReferences(manifest, 'docs-narrative-audit.json');
   fs.writeFileSync(outputPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   console.log(`Docs narrative route inventory generated for ${inventory.length} Markdown sources`);
 }

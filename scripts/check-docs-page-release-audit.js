@@ -11,7 +11,7 @@ const {
   ARTIFACT_VERSIONS,
 } = require('./public-artifact-versions');
 const {
-  ARTIFACT_VERSION_SOURCE_FILE,
+  ARTIFACT_VERSION_SOURCE_PATH,
   ARTIFACT_VERSION_SYNCHRONIZED_FIELDS,
   CLASSIFIER_ID,
   PRERELEASE_DOCS_VERSION,
@@ -22,18 +22,15 @@ const {
   inventoryPaths,
   routeKind,
 } = require('./generate-docs-page-release-audit');
+const {
+  assertNoRepoLocalReferences,
+  assertPublicReference,
+  repositorySourceUrl,
+} = require('./docs-audit-public-references');
 
 const repoRoot = path.join(__dirname, '..');
 const buildDir = path.join(repoRoot, 'build');
 const auditPath = path.join(buildDir, 'docs-page-release-audit.json');
-const REPO_LOCAL_ARTIFACT_METADATA_PATH_PATTERN = new RegExp([
-  String.raw`^\.{1,2}[\\/]`,
-  String.raw`^[\\/]`,
-  String.raw`^[A-Za-z]:[\\/]`,
-  String.raw`^(?:\.github|blog|build|docs|generated|scripts|src|static)[\\/]`,
-  String.raw`^(?:[^:\\/]+[\\/])+[^\\/]+\.(?:cjs|js|json|jsx|md|mdx|mjs|ps1|sh|ts|tsx|ya?ml)(?:$|[?#])`,
-  String.raw`^[^\\/]+\.(?:cjs|js|json|jsx|md|mdx|mjs|ps1|sh|ts|tsx|ya?ml)(?:$|[?#])`,
-].join('|'), 'i');
 
 function fail(message) {
   throw new Error(message);
@@ -65,36 +62,14 @@ function assertArtifactVersions(audit) {
   if (source.schema !== ARTIFACT_VERSION_SCHEMA) {
     fail('docs-page-release-audit.json artifact version source schema is invalid');
   }
-  if (source.source_file !== ARTIFACT_VERSION_SOURCE_FILE) {
-    fail('docs-page-release-audit.json artifact version source file is invalid');
+  if (source.source_url !== repositorySourceUrl(ARTIFACT_VERSION_SOURCE_PATH, audit.docs_revision)) {
+    fail('docs-page-release-audit.json artifact version source URL is invalid');
   }
   if (JSON.stringify(source.synchronized_fields) !== JSON.stringify(ARTIFACT_VERSION_SYNCHRONIZED_FIELDS)) {
     fail('docs-page-release-audit.json synchronized artifact fields are invalid');
   }
   if (source.current_server_artifact?.version !== ARTIFACT_VERSIONS.server) {
     fail('docs-page-release-audit.json current server artifact version is stale');
-  }
-}
-
-function isUrlShapedValue(value) {
-  return /^[a-z][a-z0-9+.-]*:\/\//i.test(value);
-}
-
-function assertNoRepoLocalArtifactMetadata(value, label) {
-  if (typeof value === 'string') {
-    if (!isUrlShapedValue(value) && REPO_LOCAL_ARTIFACT_METADATA_PATH_PATTERN.test(value)) {
-      fail(`${label} exposes repo-local verifier or implementation path ${JSON.stringify(value)}`);
-    }
-    return;
-  }
-  if (Array.isArray(value)) {
-    value.forEach((item, index) => assertNoRepoLocalArtifactMetadata(item, `${label}[${index}]`));
-    return;
-  }
-  if (value && typeof value === 'object') {
-    for (const [key, nested] of Object.entries(value)) {
-      assertNoRepoLocalArtifactMetadata(nested, `${label}.${key}`);
-    }
   }
 }
 
@@ -128,10 +103,7 @@ function main() {
   }
 
   assertArtifactVersions(audit);
-  assertNoRepoLocalArtifactMetadata(
-    audit.artifact_distribution_surfaces,
-    'docs-page-release-audit.json artifact_distribution_surfaces',
-  );
+  assertNoRepoLocalReferences(audit, 'docs-page-release-audit.json');
 
   const inventory = Array.isArray(audit.page_inventory) ? audit.page_inventory : [];
   const byPath = new Map();
@@ -142,11 +114,13 @@ function main() {
     if (entry.route_kind !== routeKind(entry.path)) {
       fail(`${entry.path} has an invalid structural route classification`);
     }
-    if (entry.build_artifact !== `build/${buildRelativePath(entry.path)}`) {
-      fail(`${entry.path} has an invalid build artifact path`);
+    if (entry.artifact_route !== entry.path) {
+      fail(`${entry.path} has an invalid public artifact route`);
     }
-    if (!fs.existsSync(path.join(repoRoot, entry.build_artifact))) {
-      fail(`${entry.path} is missing built artifact ${entry.build_artifact}`);
+    assertPublicReference(entry.artifact_route, `${entry.path} artifact_route`);
+    const builtArtifact = path.join(buildDir, buildRelativePath(entry.path));
+    if (!fs.existsSync(builtArtifact)) {
+      fail(`${entry.path} is missing its built artifact`);
     }
     if (entry.route_kind === 'stable_default_docs' && entry.docusaurus_version === 'current') {
       fail(`${entry.path} leaks the current prerelease docs version onto the stable route`);
