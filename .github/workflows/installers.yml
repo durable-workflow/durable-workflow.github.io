@@ -23,7 +23,7 @@ jobs:
             asset: dw-macos-aarch64
             port: 18081
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Build fixture release
         shell: bash
@@ -122,9 +122,9 @@ jobs:
     name: install.ps1 (windows-x86_64)
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
