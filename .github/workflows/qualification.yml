@@ -1,0 +1,43 @@
+name: Documentation Qualification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: documentation-qualification-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  executable-contracts:
+    name: Executable documentation contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install documentation dependencies
+        run: npm ci
+
+      - name: Build routes and validate links
+        run: npm run docusaurus -- build
+
+      - name: Generate model retrieval surfaces
+        run: |
+          node scripts/generate-llms.js
+          node scripts/generate-llms-full.js
+
+      - name: Validate executable documentation contracts
+        run: node scripts/check-executable-docs-contracts.js
