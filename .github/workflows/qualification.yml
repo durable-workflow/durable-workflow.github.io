@@ -39,5 +39,8 @@ jobs:
           node scripts/generate-llms.js
           node scripts/generate-llms-full.js
 
+      - name: Validate model retrieval surfaces
+        run: npm run check:llms-ai-surfaces
+
       - name: Validate executable documentation contracts
         run: node scripts/check-executable-docs-contracts.js
