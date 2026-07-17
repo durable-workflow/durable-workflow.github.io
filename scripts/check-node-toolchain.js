@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const yaml = require('js-yaml');
 
 const SUPPORTED_NODE_MAJOR = 24;
 const SUPPORTED_NODE_RANGE = '>=24 <25';
@@ -12,29 +13,98 @@ const REQUIRED_NODE_WORKFLOWS = [
   '.github/workflows/qualification.yml',
 ];
 
-function declaredNodeVersions(workflow) {
-  const versions = [];
-  const pattern = /^\s*node-version:\s*(?:"([^"]+)"|'([^']+)'|([^\s#]+))\s*(?:#.*)?$/gm;
-  let match;
-
-  while ((match = pattern.exec(workflow)) !== null) {
-    versions.push(match[1] || match[2] || match[3]);
+function nodeMajor(version) {
+  if (typeof version !== 'string' && typeof version !== 'number') {
+    return null;
   }
 
-  return versions;
-}
-
-function nodeMajor(version) {
-  const match = /^(\d+)(?:$|[.x*])/.exec(version);
+  const match = /^(\d+)(?:\.(?:\d+|x|\*))*$/.exec(String(version));
   return match ? Number.parseInt(match[1], 10) : null;
 }
 
-function setupNodeActionCount(workflow) {
-  return (workflow.match(/^\s*-\s+uses:\s*actions\/setup-node@[^\s#]+/gm) || []).length;
+function isSetupNodeReference(uses) {
+  return typeof uses === 'string' && /^actions\/setup-node(?:[/@]|$)/i.test(uses);
+}
+
+function setupNodeSteps(workflowPath, source, failures) {
+  let workflow;
+
+  try {
+    workflow = yaml.load(source);
+  } catch (error) {
+    failures.push(`${workflowPath} must contain valid YAML; ${error.reason || error.message}`);
+    return null;
+  }
+
+  const matches = [];
+  const jobs = workflow?.jobs;
+  if (jobs === undefined) {
+    return matches;
+  }
+
+  if (jobs === null || typeof jobs !== 'object' || Array.isArray(jobs)) {
+    failures.push(`${workflowPath} jobs must be a mapping`);
+    return null;
+  }
+
+  for (const [jobName, job] of Object.entries(jobs)) {
+    if (job === null || typeof job !== 'object' || Array.isArray(job) || job.steps === undefined) {
+      continue;
+    }
+
+    if (!Array.isArray(job.steps)) {
+      failures.push(`${workflowPath} job ${jobName} steps must be a sequence`);
+      continue;
+    }
+
+    job.steps.forEach((step, index) => {
+      if (
+        step !== null &&
+        typeof step === 'object' &&
+        !Array.isArray(step) &&
+        isSetupNodeReference(step.uses)
+      ) {
+        matches.push({jobName, position: index + 1, step});
+      }
+    });
+  }
+
+  return matches;
 }
 
 function validateNodeToolchainPolicy({workflows, packageManifest, lockfileManifest}) {
   const failures = [];
+  const setupStepsByWorkflow = new Map();
+
+  for (const [workflowPath, workflow] of Object.entries(workflows)) {
+    const setupSteps = setupNodeSteps(workflowPath, workflow, failures);
+    setupStepsByWorkflow.set(workflowPath, setupSteps);
+
+    if (setupSteps === null) {
+      continue;
+    }
+
+    for (const {jobName, position, step} of setupSteps) {
+      const stepLocation = `${workflowPath} job ${jobName} step ${position}`;
+
+      if (step.uses !== 'actions/setup-node@v6') {
+        failures.push(
+          `${stepLocation} must use actions/setup-node@v6; found ${String(step.uses)}`,
+        );
+      }
+
+      const version = step.with?.['node-version'];
+      const major = nodeMajor(version);
+      if (major === null) {
+        const found = version === undefined ? 'no node-version' : String(version);
+        failures.push(`${stepLocation} must configure a static Node major; found ${found}`);
+      } else if (major !== SUPPORTED_NODE_MAJOR) {
+        failures.push(
+          `${stepLocation} must use Node ${SUPPORTED_NODE_MAJOR} LTS; found Node ${major}`,
+        );
+      }
+    }
+  }
 
   for (const workflowPath of REQUIRED_NODE_WORKFLOWS) {
     const workflow = workflows[workflowPath];
@@ -43,32 +113,11 @@ function validateNodeToolchainPolicy({workflows, packageManifest, lockfileManife
       continue;
     }
 
-    if (!workflow.includes('uses: actions/setup-node@v6')) {
-      failures.push(`${workflowPath} must preserve actions/setup-node@v6`);
-    }
-
-    if (declaredNodeVersions(workflow).length === 0) {
-      failures.push(`${workflowPath} must select Node ${SUPPORTED_NODE_MAJOR} LTS`);
-    }
-  }
-
-  for (const [workflowPath, workflow] of Object.entries(workflows)) {
-    const versions = declaredNodeVersions(workflow);
-    if (setupNodeActionCount(workflow) !== versions.length) {
+    const setupSteps = setupStepsByWorkflow.get(workflowPath);
+    if (setupSteps !== null && setupSteps.length === 0) {
       failures.push(
-        `${workflowPath} must configure a static node-version for every setup-node action`,
+        `${workflowPath} must include actions/setup-node@v6 with Node ${SUPPORTED_NODE_MAJOR} LTS`,
       );
-    }
-
-    for (const version of versions) {
-      const major = nodeMajor(version);
-      if (major === null) {
-        failures.push(`${workflowPath} must use a static Node major; found ${version}`);
-      } else if (major !== SUPPORTED_NODE_MAJOR) {
-        failures.push(
-          `${workflowPath} must use Node ${SUPPORTED_NODE_MAJOR} LTS; found Node ${major}`,
-        );
-      }
     }
   }
 

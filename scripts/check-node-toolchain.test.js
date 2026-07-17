@@ -7,10 +7,13 @@ const {
   validateNodeToolchainPolicy,
 } = require('./check-node-toolchain');
 
-const validWorkflow = `steps:
-  - uses: actions/setup-node@v6
-    with:
-      node-version: 24
+const validWorkflow = `jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
 `;
 const validInputs = {
   workflows: Object.fromEntries(
@@ -37,7 +40,9 @@ for (const workflowPath of REQUIRED_NODE_WORKFLOWS) {
         [workflowPath]: validWorkflow.replace('node-version: 24', 'node-version: 20'),
       },
     })),
-    new RegExp(`${workflowPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} must use Node 24 LTS; found Node 20`),
+    new RegExp(
+      `${workflowPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} job test step 1 must use Node 24 LTS; found Node 20`,
+    ),
     `${workflowPath} must reject an EOL Node toolchain major`,
   );
 }
@@ -49,7 +54,7 @@ assert.throws(
       '.github/workflows/future.yml': validWorkflow.replace('node-version: 24', 'node-version: 20'),
     },
   })),
-  /future\.yml must use Node 24 LTS; found Node 20/,
+  /future\.yml job test step 1 must use Node 24 LTS; found Node 20/,
   'new workflows must not bypass the supported Node policy',
 );
 
@@ -57,18 +62,73 @@ assert.throws(
   () => validateNodeToolchainPolicy(withOverrides({
     workflows: {
       ...validInputs.workflows,
-      '.github/workflows/matrix.yml': `strategy:
-  matrix:
-    node: [20, 24]
-steps:
-  - uses: actions/setup-node@v6
-    with:
-      node-version: \${{ matrix.node }}
+      '.github/workflows/flow-style.yaml': `jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps: [{uses: actions/setup-node@v6, with: {node-version: 20}}]
 `,
     },
   })),
-  /matrix\.yml must configure a static node-version for every setup-node action/,
+  /flow-style\.yaml job test step 1 must use Node 24 LTS; found Node 20/,
+  'flow-style setup-node steps must not bypass the supported Node policy',
+);
+
+assert.throws(
+  () => validateNodeToolchainPolicy(withOverrides({
+    workflows: {
+      ...validInputs.workflows,
+      '.github/workflows/matrix.yml': `jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [20, 24]
+    steps:
+      - name: Set up matrix Node
+        uses: actions/setup-node@v6
+        with: {node-version: '\${{ matrix.node }}'}
+`,
+    },
+  })),
+  /matrix\.yml job test step 1 must configure a static Node major; found \$\{\{ matrix\.node \}\}/,
   'matrix expressions must not hide an EOL Node toolchain major',
+);
+
+assert.throws(
+  () => validateNodeToolchainPolicy(withOverrides({
+    workflows: {
+      ...validInputs.workflows,
+      '.github/workflows/range.yml': validWorkflow.replace('node-version: 24', 'node-version: 24.x || 20'),
+    },
+  })),
+  /range\.yml job test step 1 must configure a static Node major; found 24\.x \|\| 20/,
+  'version ranges must not hide an EOL Node toolchain major',
+);
+
+assert.throws(
+  () => validateNodeToolchainPolicy(withOverrides({
+    workflows: {
+      ...validInputs.workflows,
+      [REQUIRED_NODE_WORKFLOWS[0]]: validWorkflow.replace(
+        '    steps:',
+        `    steps:
+      - {uses: actions/setup-node@v6, with: {node-version: 20}}`,
+      ),
+    },
+  })),
+  /job test step 1 must use Node 24 LTS; found Node 20/,
+  'a second flow-style setup-node step must not hide beside the required Node 24 step',
+);
+
+assert.throws(
+  () => validateNodeToolchainPolicy(withOverrides({
+    workflows: {
+      ...validInputs.workflows,
+      '.github/workflows/old-action.yml': validWorkflow.replace('setup-node@v6', 'setup-node@v5'),
+    },
+  })),
+  /old-action\.yml job test step 1 must use actions\/setup-node@v6; found actions\/setup-node@v5/,
+  'every setup-node step must pin the supported action major',
 );
 
 assert.throws(
