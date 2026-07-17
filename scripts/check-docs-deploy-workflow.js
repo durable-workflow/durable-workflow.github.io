@@ -21,7 +21,7 @@ for (const required of [
   'cancel-in-progress: true',
   'actions/checkout@v6',
   'actions/setup-node@v6',
-  'node-version: 20',
+  'node-version: 24',
   'id: deploy-plan',
   'DOCS_DEPLOY_EVENT_NAME: ${{ github.event_name }}',
   'run: node scripts/plan-docs-deploy.js',

@@ -25,8 +25,11 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
+
+      - name: Validate Node toolchain policy
+        run: npm run check:node-toolchain
 
       - name: Install documentation dependencies
         run: npm ci
