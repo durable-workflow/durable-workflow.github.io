@@ -2,7 +2,7 @@
   "schema": "durable-workflow.docs.public-artifact-versions",
   "schemaVersion": 1,
   "artifacts": {
-    "cli": "0.1.92",
+    "cli": "0.1.93",
     "sdk-php": "0.1.13",
     "sdk-python": "0.4.102",
     "sdk-rust": "0.1.17",

@@ -447,6 +447,7 @@ PHP runtime only.
 
 | Date | Server | CLI | Python SDK | Rust SDK | Workflow | Waterline | Notes |
 |------|--------|-----|------------|----------|----------|-----------|-------|
+| 2026-07-19 | 0.2.689 | 0.1.93 | 0.4.102 | 0.1.17 | 2.0.0-alpha.291 | 2.0.0-alpha.137 | Recorded a public release-audit snapshot while stable 1.x remained the default docs line. |
 | 2026-07-13 | 0.2.648 | 0.1.89 | 0.4.98 | 0.1.14 | 2.0.0-alpha.274 | 2.0.0-alpha.130 | Recorded a public release-audit snapshot while stable 1.x remained the default docs line. |
 | 2026-07-10 | 0.2.628 | 0.1.86 | 0.4.98 | 0.1.2 | 2.0.0-alpha.262 | 2.0.0-alpha.129 | Platform conformance suite version 29 makes the five published-artifact Rust signals/query cells mandatory, including a valid Avro path, registry checksum provenance, query immutability, and replayed workflow-instance state after a cold worker restart. |
 | 2026-07-09 | 0.2.618 | 0.1.86 | 0.4.98 | — | 2.0.0-alpha.259 | 2.0.0-alpha.122 | Platform conformance suite version 28 requires v1-to-v2 rollback evidence to preserve external ready, delayed, and reserved queue state with SQL from one recovery cut, or report the affected executions as unrecoverable. An observed v1.0.77 Watchdog redispatch is a bounded pending-only wake path; retries, timers, and waiting/running work still require their queue or signal state. Recovery manifests record only an `APP_KEY` secret-manager reference/version, with secrets and recovery credentials separately controlled. |

@@ -32,8 +32,8 @@
     },
     "cli": {
       "channel": "durable_workflow_public_installer",
-      "version": "0.1.92",
-      "install_command": "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.92 sh"
+      "version": "0.1.93",
+      "install_command": "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.93 sh"
     },
     "sdk-php": {
       "channel": "packagist",
@@ -620,7 +620,7 @@
         }
       ],
       "command_script_lines": [
-        "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.92 sh",
+        "curl -fsSL https://durable-workflow.com/install.sh | VERSION=0.1.93 sh",
         "export PATH=\"$HOME/.local/bin:$PATH\"",
         "",
         "dw env:set local \\",
