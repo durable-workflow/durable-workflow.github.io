@@ -3,7 +3,7 @@
   "version": 1,
   "category": "workflow_update_runtime_contract",
   "suite_schema": "durable-workflow.v2.platform-conformance.suite",
-  "suite_version": 32,
+  "suite_version": 33,
   "description": "Public scenario manifest for the stable workflow update runtime contract. Harnesses use these scenario ids and criteria when evaluating published Durable Workflow artifacts.",
   "fixture_type": "published_artifact_runtime_scenario_manifest",
   "result_statuses": [
@@ -219,10 +219,10 @@
     "must_exercise_published_artifacts": true,
     "must_execute_against_published_artifacts": true,
     "must_record_runner_blocked_false_for_product_evidence": true,
-    "focused_evidence_file": "workflow-updates-focused-evidence.json",
-    "php_sidecar_evidence_file": "sdk-php-workflow-updates-evidence.json",
-    "python_sidecar_evidence_file": "python-sdk-workflow-updates-evidence.json",
-    "operator_diagnostics_evidence_file": "workflow-updates-operator-diagnostics-evidence.json",
+    "focused_evidence_schema": "durable-workflow.v2.workflow-updates.focused-evidence",
+    "php_evidence_schema": "durable-workflow.v2.workflow-updates.php-sdk-evidence",
+    "python_evidence_schema": "durable-workflow.v2.workflow-updates.python-sdk-evidence",
+    "operator_diagnostics_evidence_schema": "durable-workflow.v2.workflow-updates.operator-diagnostics-evidence",
     "focused_probe_covers": [
       "published_artifact_install_only",
       "declared_update_contract_visibility",

@@ -1,6 +1,8 @@
 const PLATFORM_CONFORMANCE_MANIFEST_PATH_PATTERN = /^static\/platform-conformance\/[^/]+\.json$/;
+const PLATFORM_CONFORMANCE_PUBLIC_URL_PREFIX =
+  'https://durable-workflow.github.io/platform-conformance/';
 
-function stableRuntimeScenarioDiscoveryEntries(contract) {
+function stablePlatformConformanceDiscoveryEntries(contract) {
   const entriesByPath = new Map();
 
   for (const entry of Object.values(contract.fixture_catalog || {})) {
@@ -26,10 +28,40 @@ function stableRuntimeScenarioDiscoveryEntries(contract) {
     }
   }
 
+  for (const [name, authority] of Object.entries(contract.conformance_authorities || {})) {
+    if (!authority || authority.status !== 'stable') {
+      continue;
+    }
+
+    if (
+      typeof authority.url !== 'string' ||
+      !authority.url.startsWith(PLATFORM_CONFORMANCE_PUBLIC_URL_PREFIX)
+    ) {
+      throw new Error(
+        `Stable conformance authority ${name} must use a public ` +
+          `${PLATFORM_CONFORMANCE_PUBLIC_URL_PREFIX} URL`,
+      );
+    }
+
+    const publicUrl = new URL(authority.url);
+    const buildPath = publicUrl.pathname.replace(/^\//, '');
+    if (!PLATFORM_CONFORMANCE_MANIFEST_PATH_PATTERN.test(`static/${buildPath}`)) {
+      throw new Error(
+        `Stable conformance authority ${name} URL must name one JSON contract ` +
+          `directly under /platform-conformance/`,
+      );
+    }
+
+    entriesByPath.set(buildPath, {
+      path: publicUrl.pathname,
+      buildPath,
+    });
+  }
+
   return [...entriesByPath.values()]
     .sort((left, right) => left.path.localeCompare(right.path));
 }
 
 module.exports = {
-  stableRuntimeScenarioDiscoveryEntries,
+  stablePlatformConformanceDiscoveryEntries,
 };

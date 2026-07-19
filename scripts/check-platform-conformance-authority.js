@@ -11,6 +11,7 @@
 const fs = require('fs');
 const childProcess = require('child_process');
 const crypto = require('crypto');
+const net = require('net');
 const path = require('path');
 const vm = require('vm');
 
@@ -34,6 +35,7 @@ const VERSIONED_SUITE_AUTHORITY_DIGESTS = {
   30: 'sha256:e33ced9ece7d2c32cd939d416cb76c365ba6dd05e0c041949adb7c3267072b48',
   31: 'sha256:ccbd3a067faf685ea7d93f89e7e0721d51d44f7dd493874f00e33d971f633bee',
   32: 'sha256:9fbd647e3ef2d32441c17c1d0fd7d23a2b4bbc2026430dfc3c852288b02b49d1',
+  33: 'sha256:dd0f589045ac0628d3fffc6fce5b910d41e94b63301c96cacd7757523cb65f9a',
 };
 const EXPECTED_RUNTIME_SCENARIO_SCHEMA =
   'durable-workflow.v2.platform-conformance.runtime-scenarios';
@@ -43,16 +45,39 @@ const PUBLIC_RUNTIME_MANIFEST_FORBIDDEN_NORMATIVE_FIELDS = new Set([
   'runner_path',
   'runner_command',
   'result_files',
+  'host_runner_path',
+  'scenario_runner_path',
+  'scenario_runner_image_path',
+  'result_file',
+  'lifecycle_sidecar_file',
 ]);
 const PUBLIC_RUNTIME_MANIFEST_FORBIDDEN_ARTIFACT_NAME_PATTERNS = [
   /^published-artifacts\.json$/,
   /^pins\.json$/,
   /^run-metadata\.json$/,
   /^artifact-install-evidence\.json$/,
-  /^[a-z0-9-]+-(result|record|http-captures)\.json$/,
+  /^[a-z0-9-]+-(result|record|evidence|sidecar|metadata|http-captures)\.json$/,
 ];
-const PUBLIC_RUNTIME_MANIFEST_REPO_LOCAL_SCRIPT_PATTERN =
-  /\bscripts\/[A-Za-z0-9_./-]+/;
+const PUBLIC_CONFORMANCE_REPO_LOCAL_PATH_PATTERN =
+  /(?:^|[\s"'`(=])((?:\.\.?[\\/])?(?:[A-Za-z0-9_.-]+[\\/])+[A-Za-z0-9_.-]+\.[A-Za-z][A-Za-z0-9_-]*)(?=$|[\s"'`),;:])/i;
+const PUBLIC_CONFORMANCE_EXTENSIONLESS_REPO_PATH_PATTERN =
+  /(?:^|[\s"'`(=])((?:[A-Za-z0-9_.-]+[\\/]){2,}[A-Za-z0-9_.-]+)(?=$|[\s"'`),;:])/i;
+const PUBLIC_CONFORMANCE_EXACT_SLASH_IDENTIFIER_PATTERN =
+  /^((?:[A-Za-z0-9_.-]+[\\/])+[A-Za-z0-9_.-]+)$/i;
+const PUBLIC_CONFORMANCE_PUBLIC_PACKAGE_OR_REPOSITORY_PATTERN =
+  /^(?:apache|durable-workflow)\/[A-Za-z0-9_.-]+$/i;
+const PUBLIC_CONFORMANCE_HARNESS_LOCATOR_FIELD_PATTERN =
+  /(?:^|_)(?:command|directory|executable|file|location|path|runner|script)(?:_|$)/i;
+const PUBLIC_CONFORMANCE_EXPLICIT_RELATIVE_PATH_PATTERN =
+  /(?:^|[\s"'`(=])((?:\.\.?[\\/]|[A-Za-z]:\\)[A-Za-z0-9_.\\/-]+)(?=$|[\s"'`),;:])/i;
+const PUBLIC_CONFORMANCE_BARE_REPO_FILE_PATTERN =
+  /(?:^|[\s"'`(=])((?:Dockerfile|Makefile|Justfile|Procfile)(?:\.[A-Za-z0-9_-]+)?|[A-Za-z0-9_.-]+\.(?:bash|bat|c|cc|cmd|conf|cpp|css|csv|env|fish|go|h|hpp|html|ini|java|js|json|jsx|kt|lock|md|mjs|php|ps1|py|rb|rs|scss|sh|sql|toml|ts|tsx|txt|xml|ya?ml|zsh))(?=$|[\s"'`),;:])/i;
+const PUBLIC_CONFORMANCE_ABSOLUTE_FILESYSTEM_PATH_PATTERN =
+  /(?:^|[\s"'`(=:,;)])(\/(?!\/)(?:(?![(),;=:]\/)[^\s\0"'`])*)/gi;
+const PUBLIC_CONFORMANCE_API_ROUTE_PATTERN =
+  /^\/(?:api(?:\/|$)|mcp(?:\/|$)|waterline\/api(?:\/|$))/i;
+const PUBLIC_CONFORMANCE_URL_TOKEN_PATTERN =
+  /\b[a-z][a-z0-9+.-]*:(?:\/\/)?[^\s"'`),;]+/gi;
 const VERSIONED_RUNTIME_SCENARIO_STATUSES = {
   5: [
     'pass',
@@ -244,6 +269,13 @@ const VERSIONED_RUNTIME_SCENARIO_STATUSES = {
     'runner_blocked',
   ],
   32: [
+    'pass',
+    'fail',
+    'unsupported',
+    'not_covered',
+    'runner_blocked',
+  ],
+  33: [
     'pass',
     'fail',
     'unsupported',
@@ -547,6 +579,8 @@ VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[32] = {
   ...VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[31],
   prerelease_readiness_contract: 'sha256:1c5dea4b5dd1421fcb5e3baaba4f9394f1316bb461caeda7cf79e54b016da15e',
 };
+VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[33] =
+  VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[32];
 // Digests bind public top-level runtime scenario manifest requirements to the
 // suite version. These fields define artifact source policy, common evidence,
 // runtime matrices, scenario-specific required evidence, and host-runner result
@@ -725,6 +759,10 @@ VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[31] = {
 VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[32] = {
   ...VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[31],
   prerelease_readiness_contract: 'sha256:08e165a221d3fc3e42c64e8a29519d6ec8932e4383ab624c8460fc74134d814c',
+};
+VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[33] = {
+  ...VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[32],
+  workflow_update_runtime_contract: 'sha256:425f5cdd164ff5ea8d3efa5904759d1029e89acdbc0d499b779be244bc3aca02',
 };
 const VERSIONED_PASS_FAIL_RULES = {
   5: {
@@ -995,6 +1033,7 @@ VERSIONED_PASS_FAIL_RULES[29] = VERSIONED_PASS_FAIL_RULES[28];
 VERSIONED_PASS_FAIL_RULES[30] = VERSIONED_PASS_FAIL_RULES[29];
 VERSIONED_PASS_FAIL_RULES[31] = VERSIONED_PASS_FAIL_RULES[30];
 VERSIONED_PASS_FAIL_RULES[32] = VERSIONED_PASS_FAIL_RULES[31];
+VERSIONED_PASS_FAIL_RULES[33] = VERSIONED_PASS_FAIL_RULES[32];
 const EXPECTED_AUTHORITY_DOC = 'docs/platform-conformance.md';
 const EXPECTED_DOC_ID = 'platform-conformance';
 
@@ -1007,6 +1046,7 @@ const REQUIRED_TOP_LEVEL_KEYS = [
   'result_schema',
   'result_version',
   'conformance_levels',
+  'conformance_authorities',
   'targets',
   'fixture_catalog',
   'pass_fail_rules',
@@ -2174,13 +2214,155 @@ function formatJsonPath(segments) {
   }, '$');
 }
 
-function collectPublicRuntimeManifestInternalHarnessLeaks(value, segments = []) {
+function isPublicIpAddress(hostname) {
+  const address = hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  const version = net.isIP(address);
+
+  if (version === 4) {
+    const octets = address.split('.').map(Number);
+    const [first, second] = octets;
+
+    return !(
+      first === 0 ||
+      first === 10 ||
+      first === 127 ||
+      (first === 100 && second >= 64 && second <= 127) ||
+      (first === 169 && second === 254) ||
+      (first === 172 && second >= 16 && second <= 31) ||
+      (first === 192 && second === 0) ||
+      (first === 192 && second === 168) ||
+      (first === 198 && (second === 18 || second === 19)) ||
+      (first === 198 && second === 51 && octets[2] === 100) ||
+      (first === 203 && second === 0 && octets[2] === 113) ||
+      first >= 224
+    );
+  }
+
+  if (version === 6) {
+    return !(
+      address === '::' ||
+      address === '::1' ||
+      address.startsWith('::ffff:') ||
+      /^f[cd]/.test(address) ||
+      /^fe[89ab]/.test(address) ||
+      /^ff/.test(address) ||
+      /^2001:db8(?:$|:)/.test(address)
+    );
+  }
+
+  return null;
+}
+
+function isPublicResolvableUrl(value) {
+  let url;
+  try {
+    url = new URL(value);
+  } catch (err) {
+    return false;
+  }
+
+  if (
+    !['http:', 'https:'].includes(url.protocol) ||
+    url.username ||
+    url.password
+  ) {
+    return false;
+  }
+
+  const hostname = url.hostname.replace(/\.$/, '').toLowerCase();
+  const publicIp = isPublicIpAddress(hostname);
+  if (publicIp !== null) {
+    return publicIp;
+  }
+
+  return (
+    hostname.includes('.') &&
+    !/(?:^|\.)(?:home|internal|invalid|lan|local|localhost|test)$/.test(hostname)
+  );
+}
+
+function firstMatchedPath(value, pattern) {
+  const match = value.match(pattern);
+  return match ? match[1] : null;
+}
+
+function firstRepoLocalPath(value, segments) {
+  const pathMatch =
+    firstMatchedPath(value, PUBLIC_CONFORMANCE_REPO_LOCAL_PATH_PATTERN) ||
+    firstMatchedPath(value, PUBLIC_CONFORMANCE_EXTENSIONLESS_REPO_PATH_PATTERN) ||
+    firstMatchedPath(value, PUBLIC_CONFORMANCE_EXPLICIT_RELATIVE_PATH_PATTERN) ||
+    firstMatchedPath(value, PUBLIC_CONFORMANCE_BARE_REPO_FILE_PATTERN);
+  if (pathMatch) {
+    return pathMatch;
+  }
+
+  const exactSlashIdentifier = firstMatchedPath(
+    value.trim(),
+    PUBLIC_CONFORMANCE_EXACT_SLASH_IDENTIFIER_PATTERN,
+  );
+  if (!exactSlashIdentifier) {
+    return null;
+  }
+
+  const isHarnessLocator = segments.some(segment => (
+    typeof segment === 'string' &&
+    PUBLIC_CONFORMANCE_HARNESS_LOCATOR_FIELD_PATTERN.test(segment)
+  ));
+  if (
+    PUBLIC_CONFORMANCE_PUBLIC_PACKAGE_OR_REPOSITORY_PATTERN
+      .test(exactSlashIdentifier) &&
+    !isHarnessLocator
+  ) {
+    return null;
+  }
+
+  return exactSlashIdentifier;
+}
+
+function absoluteFilesystemPaths(value) {
+  return [...value.matchAll(PUBLIC_CONFORMANCE_ABSOLUTE_FILESYSTEM_PATH_PATTERN)]
+    .map(match => match[1])
+    .filter(pathMatch => !PUBLIC_CONFORMANCE_API_ROUTE_PATTERN.test(pathMatch));
+}
+
+function collectPublicConformanceContractInternalHarnessLeaks(value, segments = []) {
   const leaks = [];
 
   if (typeof value === 'string') {
-    const scriptMatch = value.match(PUBLIC_RUNTIME_MANIFEST_REPO_LOCAL_SCRIPT_PATTERN);
-    if (scriptMatch) {
-      leaks.push(`${formatJsonPath(segments)} exposes repo-local path "${scriptMatch[0]}"`);
+    const trimmed = value.trim();
+    const urlTokens = trimmed.match(PUBLIC_CONFORMANCE_URL_TOKEN_PATTERN) || [];
+    let isExactPublicUrl = false;
+
+    for (const urlToken of urlTokens) {
+      if (isPublicResolvableUrl(urlToken)) {
+        isExactPublicUrl ||= urlToken === trimmed;
+        continue;
+      }
+
+      const scheme = urlToken.slice(0, urlToken.indexOf(':')).toLowerCase();
+      if (['file', 'http', 'https'].includes(scheme)) {
+        leaks.push(
+          `${formatJsonPath(segments)} exposes non-public URL "${urlToken}"`,
+        );
+      }
+    }
+
+    if (isExactPublicUrl) {
+      return leaks;
+    }
+
+    const repoPathMatch = firstRepoLocalPath(value, segments);
+    if (repoPathMatch) {
+      leaks.push(
+        `${formatJsonPath(segments)} exposes repository path "${repoPathMatch}"`,
+      );
+    }
+
+    for (const absoluteFilesystemPathMatch of absoluteFilesystemPaths(value)) {
+      leaks.push(
+        `${formatJsonPath(segments)} exposes container path or local filesystem path ` +
+          `"${absoluteFilesystemPathMatch}"`,
+      );
     }
 
     const fileName = value.trim().split(/[\\/]/).pop();
@@ -2196,7 +2378,7 @@ function collectPublicRuntimeManifestInternalHarnessLeaks(value, segments = []) 
 
   if (Array.isArray(value)) {
     value.forEach((entry, index) => {
-      leaks.push(...collectPublicRuntimeManifestInternalHarnessLeaks(
+      leaks.push(...collectPublicConformanceContractInternalHarnessLeaks(
         entry,
         [...segments, index],
       ));
@@ -2213,11 +2395,27 @@ function collectPublicRuntimeManifestInternalHarnessLeaks(value, segments = []) 
         leaks.push(`${formatJsonPath(entryPath)} exposes internal harness field "${key}"`);
       }
 
-      leaks.push(...collectPublicRuntimeManifestInternalHarnessLeaks(entry, entryPath));
+      leaks.push(...collectPublicConformanceContractInternalHarnessLeaks(entry, entryPath));
     }
   }
 
   return leaks;
+}
+
+function assertPublicConformanceContractHasNoInternalHarnessArtifacts(
+  manifest,
+  label,
+) {
+  const leaks = collectPublicConformanceContractInternalHarnessLeaks(manifest);
+  if (leaks.length === 0) {
+    return;
+  }
+
+  throw new Error(
+    `${label} must describe public identifiers, schemas, and resolvable URLs, ` +
+      `not repository paths, container paths, or internal harness artifacts:\n- ` +
+      leaks.join('\n- '),
+  );
 }
 
 function assertPublicRuntimeManifestHasNoInternalHarnessContract(
@@ -2229,16 +2427,10 @@ function assertPublicRuntimeManifestHasNoInternalHarnessContract(
     return;
   }
 
-  const leaks = collectPublicRuntimeManifestInternalHarnessLeaks(manifest);
-  if (leaks.length === 0) {
-    return;
-  }
-
-  throw new Error(
+  assertPublicConformanceContractHasNoInternalHarnessArtifacts(
+    manifest,
     `stable runtime fixture category "${category}" scenario manifest ` +
-      `${source.repository}:${source.path} must describe public evidence ` +
-      `requirements, not repo-local runner scripts or internal harness ` +
-      `artifact files:\n- ${leaks.join('\n- ')}`,
+      `${source.repository}:${source.path}`,
   );
 }
 
@@ -2568,6 +2760,125 @@ function assertStableFixtureAuthorityDocsResolve(contract) {
   }
 }
 
+function assertPublishedConformanceAuthorities(contract) {
+  const authorities = contract.conformance_authorities || {};
+  if (!authorities.php_sdk) {
+    throw new Error(
+      'static/platform-conformance-contract.json conformance_authorities must ' +
+        'register the stable PHP SDK conformance contract.',
+    );
+  }
+
+  const discoverySurfaces = [
+    {
+      label: 'docs/platform-conformance.md',
+      content: fs.readFileSync(path.join(docsDir, 'platform-conformance.md'), 'utf8'),
+    },
+    {
+      label: 'src/pages/docs/platform-conformance.mdx',
+      content: fs.readFileSync(discoveryPagePath, 'utf8'),
+    },
+  ];
+
+  for (const [name, authority] of Object.entries(authorities)) {
+    const label =
+      `static/platform-conformance-contract.json conformance_authorities.${name}`;
+
+    if (!authority || authority.status !== 'stable') {
+      continue;
+    }
+    if (typeof authority.schema !== 'string' || authority.schema.trim() === '') {
+      throw new Error(`${label}.schema must be a non-empty public schema identity.`);
+    }
+    if (!Number.isInteger(authority.version) || authority.version < 1) {
+      throw new Error(`${label}.version must be a positive integer.`);
+    }
+
+    let publicUrl;
+    try {
+      publicUrl = new URL(authority.url);
+    } catch (err) {
+      throw new Error(`${label}.url must be a resolvable public URL.`);
+    }
+    if (
+      publicUrl.protocol !== 'https:' ||
+      publicUrl.hostname !== 'durable-workflow.github.io' ||
+      publicUrl.search ||
+      publicUrl.hash ||
+      !/^\/platform-conformance\/[a-z0-9-]+\.json$/.test(publicUrl.pathname)
+    ) {
+      throw new Error(
+        `${label}.url must name one public JSON contract directly under ` +
+          'https://durable-workflow.github.io/platform-conformance/.',
+      );
+    }
+
+    assertCanonicalDocsSiteUrl(authority.authority_doc, `${label}.authority_doc`);
+
+    const localPath = path.join(repoRoot, 'static', publicUrl.pathname);
+    const published = loadJson(localPath, `${name} public conformance contract`);
+    if (published.schema !== authority.schema) {
+      throw new Error(`${label}.schema must match ${publicUrl.pathname} schema.`);
+    }
+    if (published.version !== authority.version) {
+      throw new Error(`${label}.version must match ${publicUrl.pathname} version.`);
+    }
+    if (published.status !== authority.status) {
+      throw new Error(`${label}.status must match ${publicUrl.pathname} status.`);
+    }
+    if (published.authority_url !== authority.url) {
+      throw new Error(
+        `${publicUrl.pathname} authority_url must match the suite catalog URL.`,
+      );
+    }
+
+    assertPublicConformanceContractHasNoInternalHarnessArtifacts(
+      published,
+      `${publicUrl.pathname} public conformance contract`,
+    );
+
+    for (const surface of discoverySurfaces) {
+      if (
+        !surface.content.includes(publicUrl.pathname) ||
+        !surface.content.includes(authority.schema)
+      ) {
+        throw new Error(
+          `${surface.label} must advertise ${publicUrl.pathname} with schema ` +
+            `${authority.schema}.`,
+        );
+      }
+    }
+  }
+
+  const phpContract = loadJson(
+    path.join(repoRoot, 'static', 'platform-conformance', 'php-sdk-conformance.json'),
+    'PHP SDK conformance contract',
+  );
+  assertJsonEqual(
+    phpContract.conformance_suite,
+    {
+      schema: contract.schema,
+      url: 'https://durable-workflow.github.io/platform-conformance-contract.json',
+    },
+    'PHP SDK conformance contract conformance_suite authority',
+  );
+}
+
+function assertPublishedConformanceDirectoryBoundary() {
+  const directory = path.join(repoRoot, 'static', 'platform-conformance');
+
+  for (const name of fs.readdirSync(directory).filter(entry => entry.endsWith('.json'))) {
+    const published = loadJson(
+      path.join(directory, name),
+      `static/platform-conformance/${name}`,
+    );
+    assertPublicConformanceContractHasNoInternalHarnessArtifacts(
+      published,
+      `/platform-conformance/${name} public conformance contract`,
+    );
+  }
+}
+
 function assertRuntimeScenarioManifest(contract, category, entry, source) {
   const manifest = loadJson(
     assertLocalSourcePath(source, category),
@@ -2806,6 +3117,8 @@ function main() {
     'nonconforming',
   ]);
   assertVersionedPassFailRules(contract);
+  assertPublishedConformanceDirectoryBoundary();
+  assertPublishedConformanceAuthorities(contract);
   assertStableFixtureAuthorityDocsResolve(contract);
   assertStableRuntimeSourcesArePublic(contract);
   assertDocIsInSidebar();
@@ -2813,4 +3126,11 @@ function main() {
   console.log('Platform conformance authority checks passed');
 }
 
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  assertPublicConformanceContractHasNoInternalHarnessArtifacts,
+  collectPublicConformanceContractInternalHarnessLeaks,
+};

@@ -5,7 +5,7 @@ const path = require('path');
 
 const config = require('../docusaurus.config.js');
 const {
-  stableRuntimeScenarioDiscoveryEntries,
+  stablePlatformConformanceDiscoveryEntries,
 } = require('./platform-conformance-public-discovery');
 const platformConformanceContract = require('../static/platform-conformance-contract.json');
 
@@ -111,6 +111,10 @@ const REQUIRED_DISCOVERY_ENTRIES = [
     path: '/platform-conformance/prerelease-readiness-scenarios.json',
     buildPath: 'platform-conformance/prerelease-readiness-scenarios.json',
   },
+  {
+    path: '/platform-conformance/php-sdk-conformance.json',
+    buildPath: 'platform-conformance/php-sdk-conformance.json',
+  },
 ];
 
 function fail(message) {
@@ -146,14 +150,14 @@ function sitemapEntry(url) {
   return `<url><loc>${escapeXml(url)}</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>`;
 }
 
-function assertStableRuntimeManifestEntries() {
+function assertStablePlatformConformanceEntries() {
   const entriesByPath = new Map(REQUIRED_DISCOVERY_ENTRIES.map(entry => [entry.path, entry]));
 
-  for (const expected of stableRuntimeScenarioDiscoveryEntries(platformConformanceContract)) {
+  for (const expected of stablePlatformConformanceDiscoveryEntries(platformConformanceContract)) {
     const actual = entriesByPath.get(expected.path);
 
     if (!actual) {
-      fail(`REQUIRED_DISCOVERY_ENTRIES must include stable runtime scenario manifest ${expected.path}`);
+      fail(`REQUIRED_DISCOVERY_ENTRIES must include stable conformance artifact ${expected.path}`);
     }
 
     if (actual.buildPath !== expected.buildPath) {
@@ -170,7 +174,7 @@ function main() {
     fail('Missing generated sitemap: build/sitemap.xml');
   }
 
-  assertStableRuntimeManifestEntries();
+  assertStablePlatformConformanceEntries();
 
   for (const entry of REQUIRED_DISCOVERY_ENTRIES) {
     assertBuiltArtifact(entry);

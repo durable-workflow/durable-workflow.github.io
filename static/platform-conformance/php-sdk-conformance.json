@@ -2,6 +2,11 @@
   "schema": "durable-workflow.v2.php-sdk-conformance-contract",
   "version": 1,
   "status": "stable",
+  "authority_url": "https://durable-workflow.github.io/platform-conformance/php-sdk-conformance.json",
+  "conformance_suite": {
+    "schema": "durable-workflow.v2.platform-conformance.suite",
+    "url": "https://durable-workflow.github.io/platform-conformance-contract.json"
+  },
   "purpose": "prove_the_released_framework_neutral_php_sdk_against_the_released_standalone_server",
   "product_boundary": {
     "remote_package": "durable-workflow/sdk",
@@ -75,12 +80,10 @@
     "runner": "conformance_harness"
   },
   "host_runner_contract": {
-    "runner_id": "workflow-lifecycle",
-    "host_runner_path": "scripts/conformance/workflow-lifecycle-host-published-artifacts.sh",
-    "scenario_runner_path": "scripts/conformance/php-sdk-published-artifacts.sh",
-    "scenario_runner_image_path": "/app/scripts/conformance/php-sdk-published-artifacts.sh",
-    "result_file": "php-sdk-conformance-result.json",
-    "lifecycle_sidecar_file": "php-sdk-lifecycle-evidence.json",
+    "runner_id": "durable-workflow.v2.conformance.runner.workflow-lifecycle",
+    "scenario_runner_id": "durable-workflow.v2.conformance.runner.php-sdk-published-artifacts",
+    "result_schema": "durable-workflow.v2.php-sdk-conformance.result",
+    "lifecycle_evidence_schema": "durable-workflow.v2.php-sdk-conformance.lifecycle-evidence",
     "required_environment": [
       "DW_PHP_SDK_VERSION",
       "DW_SERVER_VERSION",

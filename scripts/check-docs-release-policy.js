@@ -5,7 +5,7 @@ const path = require('path');
 
 const config = require('../docusaurus.config.js');
 const {
-  stableRuntimeScenarioDiscoveryEntries,
+  stablePlatformConformanceDiscoveryEntries,
 } = require('./platform-conformance-public-discovery');
 const platformConformanceContract = require('../static/platform-conformance-contract.json');
 
@@ -210,7 +210,7 @@ function assertBuiltDocsPolicy() {
 function assertPublicDiscoverySurface() {
   const sitemap = readBuildFile('sitemap.xml');
   const siteUrl = String(config.url || '').replace(/\/+$/, '');
-  const dynamicRoutes = stableRuntimeScenarioDiscoveryEntries(platformConformanceContract)
+  const dynamicRoutes = stablePlatformConformanceDiscoveryEntries(platformConformanceContract)
     .map(entry => entry.path);
 
   for (const route of [...new Set([...PUBLIC_DISCOVERY_URLS, ...dynamicRoutes])]) {

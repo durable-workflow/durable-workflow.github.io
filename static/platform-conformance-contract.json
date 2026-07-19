@@ -1,6 +1,6 @@
 {
   "schema": "durable-workflow.v2.platform-conformance.suite",
-  "version": 32,
+  "version": 33,
   "authority_doc": "docs/platform-conformance.md",
   "authority_url": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
   "surface_stability_authority": "durable-workflow.v2.surface-stability.contract",
@@ -12,6 +12,15 @@
     "provisional",
     "nonconforming"
   ],
+  "conformance_authorities": {
+    "php_sdk": {
+      "status": "stable",
+      "schema": "durable-workflow.v2.php-sdk-conformance-contract",
+      "version": 1,
+      "url": "https://durable-workflow.github.io/platform-conformance/php-sdk-conformance.json",
+      "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance"
+    }
+  },
   "targets": {
     "standalone_server": {
       "description": "Implementations of the standalone Durable Workflow server: the HTTP control plane plus the worker plane plus the cluster_info manifests.",

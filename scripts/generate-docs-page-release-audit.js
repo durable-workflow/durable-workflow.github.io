@@ -10,7 +10,7 @@ const {
 } = require('./public-artifact-versions');
 const {docsRevision} = require('./docs-narrative-audit-contract');
 const {
-  stableRuntimeScenarioDiscoveryEntries,
+  stablePlatformConformanceDiscoveryEntries,
 } = require('./platform-conformance-public-discovery');
 const {
   assertNoRepoLocalReferences,
@@ -112,7 +112,7 @@ function docusaurusVersion(artifactPath) {
 }
 
 function inventoryPaths() {
-  const scenarioPaths = stableRuntimeScenarioDiscoveryEntries(platformConformanceContract)
+  const scenarioPaths = stablePlatformConformanceDiscoveryEntries(platformConformanceContract)
     .map(entry => entry.path);
   return [...new Set([
     ...readSitemapPaths(),

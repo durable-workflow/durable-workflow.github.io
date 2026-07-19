@@ -25,7 +25,7 @@ for implementations that claim Durable Workflow v2 compatibility.
 The machine-readable mirror is published at
 [`static/platform-conformance-contract.json`](pathname:///platform-conformance-contract.json)
 with schema `durable-workflow.v2.platform-conformance.suite`, version
-`30`. The same manifest is advertised by the standalone server from
+`33`. The same manifest is advertised by the standalone server from
 `GET /api/cluster/info` under `platform_conformance_suite`. The
 [Platform Protocol Specs](/docs/2.0/platform-protocol-specs) catalog names
 that nested manifest as the `platform_conformance_suite_manifest`
@@ -37,6 +37,15 @@ enumerates a surface family or stability rule, it must match the
 surface-stability contract. The compatibility authority defines what
 the contract is; this page defines how an implementation proves it
 follows that contract.
+
+## Public Conformance Authorities
+
+The suite registers stable machine-readable authorities by schema identity
+and public URL. The framework-neutral PHP SDK authority is published as
+[`durable-workflow.v2.php-sdk-conformance-contract`](pathname:///platform-conformance/php-sdk-conformance.json).
+It declares the released-package topology, scenario and evidence requirements,
+and public runner and result-schema identifiers used to evaluate
+`durable-workflow/sdk` against the released standalone server.
 
 ## Target Matrix
 
