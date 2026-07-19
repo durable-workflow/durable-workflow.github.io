@@ -73,7 +73,7 @@ const PUBLIC_CONFORMANCE_EXPLICIT_RELATIVE_PATH_PATTERN =
 const PUBLIC_CONFORMANCE_BARE_REPO_FILE_PATTERN =
   /(?:^|[\s"'`(=])((?:Dockerfile|Makefile|Justfile|Procfile)(?:\.[A-Za-z0-9_-]+)?|[A-Za-z0-9_.-]+\.(?:bash|bat|c|cc|cmd|conf|cpp|css|csv|env|fish|go|h|hpp|html|ini|java|js|json|jsx|kt|lock|md|mjs|php|ps1|py|rb|rs|scss|sh|sql|toml|ts|tsx|txt|xml|ya?ml|zsh))(?=$|[\s"'`),;:])/i;
 const PUBLIC_CONFORMANCE_ABSOLUTE_FILESYSTEM_PATH_PATTERN =
-  /(?:^|[\s"'`(=:,;)])(\/(?!\/)(?:(?![(),;=:]\/)[^\s\0"'`])*)/gi;
+  /(?:^|[^A-Za-z0-9._~@%+\/-])(\/(?!\/)(?:(?:[A-Za-z0-9._~@%+-]+|\{[A-Za-z_][A-Za-z0-9_.|+-]*\})(?:\/(?:[A-Za-z0-9._~@%+-]+|\{[A-Za-z_][A-Za-z0-9_.|+-]*\}))*\/?)?)/gi;
 const PUBLIC_CONFORMANCE_API_ROUTE_PATTERN =
   /^\/(?:api(?:\/|$)|mcp(?:\/|$)|waterline\/api(?:\/|$))/i;
 const PUBLIC_CONFORMANCE_URL_TOKEN_PATTERN =

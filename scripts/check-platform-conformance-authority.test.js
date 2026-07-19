@@ -81,6 +81,10 @@ for (const [runner, localPath] of [
   ['/api/ready,/tmp/private-runner', '/tmp/private-runner'],
   ['/api/ready;/tmp/private-runner', '/tmp/private-runner'],
   ['/api/ready)/tmp/private-runner', '/tmp/private-runner'],
+  ['/api/ready|/tmp/private-runner', '/tmp/private-runner'],
+  ['/api/ready[/tmp/private-runner]', '/tmp/private-runner'],
+  ['/api/ready{/tmp/private-runner}', '/tmp/private-runner'],
+  ['/api/ready}/tmp/private-runner{', '/tmp/private-runner'],
   [
     'public route /mcp/tools/call and local /data/runner',
     '/data/runner',
@@ -123,6 +127,8 @@ assert.doesNotThrow(
     endpoint: 'POST /api/worker/workflow-tasks/poll',
     readiness_criterion: '/api/ready returns success',
     observer_endpoint: 'GET /waterline/api/instances/{instanceId}',
+    selected_run_endpoint:
+      'GET /api/workflows/{workflowId}/runs/{runId}/history',
     mcp_endpoint: 'POST /mcp/tools/call',
   }),
   'package identifiers, schema identities, and HTTP route descriptions are not repository paths',
