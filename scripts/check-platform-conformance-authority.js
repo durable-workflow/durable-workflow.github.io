@@ -2330,6 +2330,29 @@ function slashClosesRouteTemplateSegment(value, slashIndex) {
   );
 }
 
+function slashBelongsToUrlSchemeSeparator(value, slashIndex) {
+  let separatorStart = slashIndex;
+  while (separatorStart > 0 && value[separatorStart - 1] === '/') {
+    separatorStart -= 1;
+  }
+
+  const schemeEnd = separatorStart - 1;
+  if (value[schemeEnd] !== ':') {
+    return false;
+  }
+
+  let schemeStart = schemeEnd;
+  while (schemeStart > 0 && /[A-Za-z0-9+.-]/.test(value[schemeStart - 1])) {
+    schemeStart -= 1;
+  }
+
+  const scheme = value.slice(schemeStart, schemeEnd);
+  return (
+    /^[A-Za-z][A-Za-z0-9+.-]*$/.test(scheme) &&
+    (schemeStart === 0 || !/[A-Za-z0-9_/]/.test(value[schemeStart - 1]))
+  );
+}
+
 function absoluteFilesystemPaths(value) {
   const candidates = [];
 
@@ -2341,7 +2364,9 @@ function absoluteFilesystemPaths(value) {
     const precedingCharacter = value[index - 1];
     if (
       index > 0 &&
-      (/[A-Za-z0-9/]/.test(precedingCharacter) ||
+      (/[A-Za-z0-9]/.test(precedingCharacter) ||
+        (precedingCharacter === '/' &&
+          slashBelongsToUrlSchemeSeparator(value, index)) ||
         slashClosesRouteTemplateSegment(value, index))
     ) {
       continue;

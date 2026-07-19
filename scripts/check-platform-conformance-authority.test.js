@@ -85,6 +85,8 @@ for (const [runner, localPath] of [
   ['/api/ready[/tmp/private-runner]', '/tmp/private-runner'],
   ['/api/ready{/tmp/private-runner}', '/tmp/private-runner'],
   ['/api/ready}/tmp/private-runner{', '/tmp/private-runner'],
+  ['/api/ready//tmp/private-runner', '/tmp/private-runner'],
+  ['/api/ready://tmp/private-runner', '/tmp/private-runner'],
   [
     'public route /mcp/tools/call and local /data/runner',
     '/data/runner',
