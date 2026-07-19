@@ -97,6 +97,16 @@ for (const [runner, localPath] of [
   );
 }
 
+for (const separator of ['+', '-', '_', '.', '~', '@', '%']) {
+  const localPath = '/tmp/private-runner';
+  const runner = `/api/ready${separator}${localPath}`;
+  const leaks = collectPublicConformanceContractInternalHarnessLeaks({runner});
+  assert(
+    leaks.some(leak => leak.includes(`"${localPath}"`)),
+    `token punctuation ${separator} must not extend the public API-route exemption`,
+  );
+}
+
 for (const runnerUrl of [
   'file:///app/scripts/conformance/php-sdk-published-artifacts.sh',
   'file:/app/scripts/conformance/php-sdk-published-artifacts.sh',
@@ -130,8 +140,10 @@ assert.doesNotThrow(
     selected_run_endpoint:
       'GET /api/workflows/{workflowId}/runs/{runId}/history',
     mcp_endpoint: 'POST /mcp/tools/call',
+    public_result_url:
+      'https://durable-workflow.github.io/public/result-v2.json',
   }),
-  'package identifiers, schema identities, and HTTP route descriptions are not repository paths',
+  'public identifiers, URLs, and HTTP route descriptions are not repository paths',
 );
 
 assert.throws(

@@ -73,7 +73,7 @@ const PUBLIC_CONFORMANCE_EXPLICIT_RELATIVE_PATH_PATTERN =
 const PUBLIC_CONFORMANCE_BARE_REPO_FILE_PATTERN =
   /(?:^|[\s"'`(=])((?:Dockerfile|Makefile|Justfile|Procfile)(?:\.[A-Za-z0-9_-]+)?|[A-Za-z0-9_.-]+\.(?:bash|bat|c|cc|cmd|conf|cpp|css|csv|env|fish|go|h|hpp|html|ini|java|js|json|jsx|kt|lock|md|mjs|php|ps1|py|rb|rs|scss|sh|sql|toml|ts|tsx|txt|xml|ya?ml|zsh))(?=$|[\s"'`),;:])/i;
 const PUBLIC_CONFORMANCE_ABSOLUTE_FILESYSTEM_PATH_PATTERN =
-  /(?:^|[^A-Za-z0-9._~@%+\/-])(\/(?!\/)(?:(?:[A-Za-z0-9._~@%+-]+|\{[A-Za-z_][A-Za-z0-9_.|+-]*\})(?:\/(?:[A-Za-z0-9._~@%+-]+|\{[A-Za-z_][A-Za-z0-9_.|+-]*\}))*\/?)?)/gi;
+  /^\/(?!\/)(?:(?:[A-Za-z0-9._~@%+-]+|\{[A-Za-z_][A-Za-z0-9_.|+-]*\})(?:\/(?:[A-Za-z0-9._~@%+-]+|\{[A-Za-z_][A-Za-z0-9_.|+-]*\}))*\/?)?/i;
 const PUBLIC_CONFORMANCE_API_ROUTE_PATTERN =
   /^\/(?:api(?:\/|$)|mcp(?:\/|$)|waterline\/api(?:\/|$))/i;
 const PUBLIC_CONFORMANCE_URL_TOKEN_PATTERN =
@@ -2319,10 +2319,43 @@ function firstRepoLocalPath(value, segments) {
   return exactSlashIdentifier;
 }
 
+function slashClosesRouteTemplateSegment(value, slashIndex) {
+  if (value[slashIndex - 1] !== '}') {
+    return false;
+  }
+
+  const segmentStart = value.lastIndexOf('/', slashIndex - 2) + 1;
+  return /^\{[A-Za-z_][A-Za-z0-9_.|+-]*\}$/.test(
+    value.slice(segmentStart, slashIndex),
+  );
+}
+
 function absoluteFilesystemPaths(value) {
-  return [...value.matchAll(PUBLIC_CONFORMANCE_ABSOLUTE_FILESYSTEM_PATH_PATTERN)]
-    .map(match => match[1])
-    .filter(pathMatch => !PUBLIC_CONFORMANCE_API_ROUTE_PATTERN.test(pathMatch));
+  const candidates = [];
+
+  for (let index = 0; index < value.length; index += 1) {
+    if (value[index] !== '/' || value[index + 1] === '/') {
+      continue;
+    }
+
+    const precedingCharacter = value[index - 1];
+    if (
+      index > 0 &&
+      (/[A-Za-z0-9/]/.test(precedingCharacter) ||
+        slashClosesRouteTemplateSegment(value, index))
+    ) {
+      continue;
+    }
+
+    const pathMatch = value.slice(index).match(
+      PUBLIC_CONFORMANCE_ABSOLUTE_FILESYSTEM_PATH_PATTERN,
+    );
+    if (pathMatch && !PUBLIC_CONFORMANCE_API_ROUTE_PATTERN.test(pathMatch[0])) {
+      candidates.push(pathMatch[0]);
+    }
+  }
+
+  return [...new Set(candidates)];
 }
 
 function collectPublicConformanceContractInternalHarnessLeaks(value, segments = []) {
