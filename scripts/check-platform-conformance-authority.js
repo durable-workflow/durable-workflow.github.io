@@ -78,6 +78,8 @@ const PUBLIC_CONFORMANCE_API_ROUTE_PATTERN =
   /^\/(?:api(?:\/|$)|mcp(?:\/|$)|waterline\/api(?:\/|$))/i;
 const PUBLIC_CONFORMANCE_URL_TOKEN_PATTERN =
   /\b[a-z][a-z0-9+.-]*:(?:\/\/)?[^\s"'`),;]+/gi;
+const PUBLIC_CONFORMANCE_URL_REFERENCE_FIELD_PATTERN =
+  /^(?:artifact|evidence|runner)$|(?:^|_)(?:reference|source|url|uri)$/i;
 const VERSIONED_RUNTIME_SCENARIO_STATUSES = {
   5: [
     'pass',
@@ -2331,12 +2333,7 @@ function slashClosesRouteTemplateSegment(value, slashIndex) {
 }
 
 function slashBelongsToUrlSchemeSeparator(value, slashIndex) {
-  let separatorStart = slashIndex;
-  while (separatorStart > 0 && value[separatorStart - 1] === '/') {
-    separatorStart -= 1;
-  }
-
-  const schemeEnd = separatorStart - 1;
+  const schemeEnd = slashIndex - 2;
   if (value[schemeEnd] !== ':') {
     return false;
   }
@@ -2383,6 +2380,19 @@ function absoluteFilesystemPaths(value) {
   return [...new Set(candidates)];
 }
 
+function isUrlShapedToken(value, segments) {
+  const schemeEnd = value.indexOf(':');
+  const scheme = value.slice(0, schemeEnd).toLowerCase();
+  const target = value.slice(schemeEnd + 1);
+  const field = [...segments].reverse().find(segment => typeof segment === 'string');
+
+  return (
+    ['file', 'http', 'https'].includes(scheme) ||
+    /[/?#@]/.test(target) ||
+    (field && PUBLIC_CONFORMANCE_URL_REFERENCE_FIELD_PATTERN.test(field))
+  );
+}
+
 function collectPublicConformanceContractInternalHarnessLeaks(value, segments = []) {
   const leaks = [];
 
@@ -2392,17 +2402,18 @@ function collectPublicConformanceContractInternalHarnessLeaks(value, segments = 
     let isExactPublicUrl = false;
 
     for (const urlToken of urlTokens) {
+      if (!isUrlShapedToken(urlToken, segments)) {
+        continue;
+      }
+
       if (isPublicResolvableUrl(urlToken)) {
         isExactPublicUrl ||= urlToken === trimmed;
         continue;
       }
 
-      const scheme = urlToken.slice(0, urlToken.indexOf(':')).toLowerCase();
-      if (['file', 'http', 'https'].includes(scheme)) {
-        leaks.push(
-          `${formatJsonPath(segments)} exposes non-public URL "${urlToken}"`,
-        );
-      }
+      leaks.push(
+        `${formatJsonPath(segments)} exposes non-public URL "${urlToken}"`,
+      );
     }
 
     if (isExactPublicUrl) {

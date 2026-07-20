@@ -124,13 +124,45 @@ for (const runnerUrl of [
   );
 }
 
+for (const [field, url] of [
+  ['runner_url', 'ftp://artifacts.example.com/conformance/result.json'],
+  ['evidence_url', 's3://conformance-results/php-sdk/result.json'],
+  ['artifact_url', 'packagist://durable-workflow/sdk@0.2.0'],
+  ['evidence_url', 'data:application/json;base64,e30='],
+  ['artifact_uri', 'urn:durable-workflow:private-artifact'],
+  ['runner_reference', 'javascript:runPrivateHarness()'],
+]) {
+  assert.throws(
+    () => validate({[field]: url}),
+    /non-public URL/,
+    `non-public ${field} ${url} must be rejected regardless of scheme`,
+  );
+}
+
 assert.throws(
   () => validate({
     runner_url: 'custom-local:/app/scripts/conformance/php-sdk-published-artifacts.sh',
   }),
-  /container path/,
-  'container paths must be rejected independently of URL spelling',
+  /non-public URL/,
+  'unsupported schemes must be rejected independently of URL spelling',
 );
+
+for (const runner of [
+  'custom-local:///app/scripts/private-runner',
+  '/api/ready;custom-local:///app/scripts/private-runner',
+]) {
+  const leaks = collectPublicConformanceContractInternalHarnessLeaks({runner});
+  assert(
+    leaks.some(leak => (
+      leak.includes('non-public URL "custom-local:///app/scripts/private-runner"')
+    )),
+    `triple-slash unsupported URL ${runner} must be rejected`,
+  );
+  assert(
+    leaks.some(leak => leak.includes('local filesystem path "/app/scripts/private-runner"')),
+    `triple-slash unsupported URL ${runner} must not hide its filesystem payload`,
+  );
+}
 
 assert.doesNotThrow(
   () => validate({
@@ -144,6 +176,9 @@ assert.doesNotThrow(
     mcp_endpoint: 'POST /mcp/tools/call',
     public_result_url:
       'https://durable-workflow.github.io/public/result-v2.json',
+    public_principal_id: 'auth:token',
+    public_command: 'dw workflow:describe <workflow-id>',
+    artifact_digest: 'sha256:0123456789abcdef',
   }),
   'public identifiers, URLs, and HTTP route descriptions are not repository paths',
 );

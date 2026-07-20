@@ -17,7 +17,7 @@
   },
   "artifact_policy": {
     "sdk": "Composer package durable-workflow/sdk:<exact published version>",
-    "sdk_source": "packagist://durable-workflow/sdk@<exact version>",
+    "sdk_source": "https://packagist.org/packages/durable-workflow/sdk",
     "server": "Docker image durableworkflow/server:<matching exact published version or digest>",
     "payload_dependency": "Composer package apache/avro:<resolved official version>",
     "preferred_install": "dist",
