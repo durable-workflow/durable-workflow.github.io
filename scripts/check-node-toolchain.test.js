@@ -11,7 +11,7 @@ const validWorkflow = `jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version: 24
 `;
@@ -65,7 +65,7 @@ assert.throws(
       '.github/workflows/flow-style.yaml': `jobs:
   test:
     runs-on: ubuntu-latest
-    steps: [{uses: actions/setup-node@v6, with: {node-version: 20}}]
+    steps: [{uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38, with: {node-version: 20}}]
 `,
     },
   })),
@@ -85,7 +85,7 @@ assert.throws(
         node: [20, 24]
     steps:
       - name: Set up matrix Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with: {node-version: '\${{ matrix.node }}'}
 `,
     },
@@ -112,7 +112,7 @@ assert.throws(
       [REQUIRED_NODE_WORKFLOWS[0]]: validWorkflow.replace(
         '    steps:',
         `    steps:
-      - {uses: actions/setup-node@v6, with: {node-version: 20}}`,
+      - {uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38, with: {node-version: 20}}`,
       ),
     },
   })),
@@ -124,10 +124,13 @@ assert.throws(
   () => validateNodeToolchainPolicy(withOverrides({
     workflows: {
       ...validInputs.workflows,
-      '.github/workflows/old-action.yml': validWorkflow.replace('setup-node@v6', 'setup-node@v5'),
+      '.github/workflows/old-action.yml': validWorkflow.replace(
+        'setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38',
+        'setup-node@v5',
+      ),
     },
   })),
-  /old-action\.yml job test step 1 must use actions\/setup-node@v6; found actions\/setup-node@v5/,
+  /old-action\.yml job test step 1 must use actions\/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38; found actions\/setup-node@v5/,
   'every setup-node step must pin the supported action major',
 );
 

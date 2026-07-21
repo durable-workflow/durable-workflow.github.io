@@ -1,6 +1,8 @@
+const assert = require('assert');
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
+const yaml = require('js-yaml');
 
 const workflowPath = path.join(__dirname, '..', '.github', 'workflows', 'public-artifact-tuple.yml');
 const deployWorkflowPath = path.join(__dirname, '..', '.github', 'workflows', 'deploy.yml');
@@ -11,6 +13,9 @@ const deployWorkflow = fs.readFileSync(deployWorkflowPath, 'utf8');
 const routeScript = fs.readFileSync(routeScriptPath, 'utf8');
 const packageSource = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
 const registryFreshnessCommand = 'node scripts/refresh-public-artifact-versions.js --check';
+const PROTECTED_REFRESH_SOURCE_GUARD =
+  "github.repository == 'durable-workflow/durable-workflow.github.io' && " +
+  "github.ref == 'refs/heads/main'";
 const {
   artifactVersionDigest,
   buildReadyItemPayload,
@@ -22,6 +27,41 @@ const {
 function fail(message) {
   console.error(message);
   process.exit(1);
+}
+
+function assertProtectedRefreshSource(source) {
+  const parsed = yaml.load(source);
+  const refreshJob = parsed?.jobs?.refresh;
+
+  if (!refreshJob || refreshJob.if !== PROTECTED_REFRESH_SOURCE_GUARD) {
+    throw new Error(
+      'public artifact tuple workflow must guard the credential-bearing refresh job with the ' +
+        'exact repository identity and protected main ref',
+    );
+  }
+}
+
+assertProtectedRefreshSource(workflow);
+
+for (const [label, fixture] of [
+  [
+    'non-main ref',
+    workflow.replace("github.ref == 'refs/heads/main'", "github.ref == 'refs/tags/latest'"),
+  ],
+  [
+    'different repository',
+    workflow.replace(
+      "github.repository == 'durable-workflow/durable-workflow.github.io'",
+      "github.repository == 'contributor/durable-workflow.github.io'",
+    ),
+  ],
+]) {
+  assert.notStrictEqual(fixture, workflow, `${label} fixture must mutate the workflow`);
+  assert.throws(
+    () => assertProtectedRefreshSource(fixture),
+    /exact repository identity and protected main ref/,
+    `public artifact tuple contract must reject a ${label}`,
+  );
 }
 
 function workflowStepPosition(name) {

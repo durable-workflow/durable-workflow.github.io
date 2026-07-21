@@ -87,9 +87,9 @@ function validateNodeToolchainPolicy({workflows, packageManifest, lockfileManife
     for (const {jobName, position, step} of setupSteps) {
       const stepLocation = `${workflowPath} job ${jobName} step ${position}`;
 
-      if (step.uses !== 'actions/setup-node@v6') {
+      if (step.uses !== 'actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38') {
         failures.push(
-          `${stepLocation} must use actions/setup-node@v6; found ${String(step.uses)}`,
+          `${stepLocation} must use actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38; found ${String(step.uses)}`,
         );
       }
 
@@ -116,7 +116,7 @@ function validateNodeToolchainPolicy({workflows, packageManifest, lockfileManife
     const setupSteps = setupStepsByWorkflow.get(workflowPath);
     if (setupSteps !== null && setupSteps.length === 0) {
       failures.push(
-        `${workflowPath} must include actions/setup-node@v6 with Node ${SUPPORTED_NODE_MAJOR} LTS`,
+        `${workflowPath} must include actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 with Node ${SUPPORTED_NODE_MAJOR} LTS`,
       );
     }
   }

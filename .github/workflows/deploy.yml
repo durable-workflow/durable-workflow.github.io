@@ -9,7 +9,7 @@ on:
     - cron: '17 * * * *'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: public-docs-deploy
@@ -18,11 +18,18 @@ concurrency:
 jobs:
   deploy:
     name: Deploy to GitHub Pages
+    if: >-
+      github.repository == 'durable-workflow/durable-workflow.github.io' &&
+      github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6
         with:
           node-version: 24
           cache: npm
@@ -41,11 +48,12 @@ jobs:
 
       - name: Checkout Workflow authority
         if: steps.deploy-plan.outputs.deploy == 'true'
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
         with:
           repository: durable-workflow/workflow
           ref: ${{ steps.workflow-authority.outputs.ref }}
           path: .workflow-authority
+          persist-credentials: false
 
       - name: Install dependencies
         if: steps.deploy-plan.outputs.deploy == 'true'
@@ -59,7 +67,7 @@ jobs:
 
       - name: Upload pinned server protocol catalog evidence
         if: ${{ always() && steps.deploy-plan.outputs.deploy == 'true' }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
         with:
           name: public-server-protocol-catalog-conformance
           path: |
@@ -153,7 +161,7 @@ jobs:
       # Docs: https://github.com/peaceiris/actions-gh-pages#%EF%B8%8F-docusaurus
       - name: Deploy to GitHub Pages
         if: steps.deploy-plan.outputs.deploy == 'true'
-        uses: peaceiris/actions-gh-pages@v4
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453  # v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           # Build output to publish to the `gh-pages` branch:

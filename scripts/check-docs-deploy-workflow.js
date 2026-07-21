@@ -1,6 +1,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const yaml = require('js-yaml');
 
 const workflowPath = path.join(__dirname, '..', '.github', 'workflows', 'deploy.yml');
 const workflow = fs.readFileSync(workflowPath, 'utf8');
@@ -10,8 +11,51 @@ const {
 } = require('./plan-docs-deploy');
 const { ARTIFACT_DISTRIBUTION_SURFACES, ARTIFACT_VERSIONS } = require('./public-artifact-versions');
 
+const PROTECTED_DEPLOY_SOURCE_GUARD =
+  "github.repository == 'durable-workflow/durable-workflow.github.io' && " +
+  "github.ref == 'refs/heads/main'";
+
 function fail(message) {
   throw new Error(message);
+}
+
+function assertProtectedDeploySource(source) {
+  const parsed = yaml.load(source);
+  const deployJob = parsed?.jobs?.deploy;
+
+  if (!deployJob || deployJob.if !== PROTECTED_DEPLOY_SOURCE_GUARD) {
+    fail(
+      'docs deploy workflow must guard the privileged deploy job with the exact ' +
+        'repository identity and protected main ref',
+    );
+  }
+
+  if (parsed.permissions?.contents !== 'read' || deployJob.permissions?.contents !== 'write') {
+    fail('docs deploy workflow must grant contents write only to the protected deploy job');
+  }
+}
+
+assertProtectedDeploySource(workflow);
+
+for (const [label, fixture] of [
+  [
+    'non-main ref',
+    workflow.replace("github.ref == 'refs/heads/main'", "github.ref == 'refs/tags/latest'"),
+  ],
+  [
+    'different repository',
+    workflow.replace(
+      "github.repository == 'durable-workflow/durable-workflow.github.io'",
+      "github.repository == 'contributor/durable-workflow.github.io'",
+    ),
+  ],
+]) {
+  assert.notStrictEqual(fixture, workflow, `${label} fixture must mutate the workflow`);
+  assert.throws(
+    () => assertProtectedDeploySource(fixture),
+    /exact repository identity and protected main ref/,
+    `docs deploy contract must reject a ${label}`,
+  );
 }
 
 for (const required of [
@@ -19,8 +63,8 @@ for (const required of [
   "cron: '17 * * * *'",
   'group: public-docs-deploy',
   'cancel-in-progress: true',
-  'actions/checkout@v6',
-  'actions/setup-node@v6',
+  'actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803',
+  'actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38',
   'node-version: 24',
   'id: deploy-plan',
   'DOCS_DEPLOY_EVENT_NAME: ${{ github.event_name }}',
