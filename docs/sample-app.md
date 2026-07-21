@@ -16,7 +16,7 @@ keywords:
 
 https://github.com/durable-workflow/sample-app
 
-This is a sample Laravel 13 application built on Durable Workflow 2.0 (alpha) with example workflows that you can run inside a GitHub codespace.
+This is a sample Laravel 13 application built on the Durable Workflow 2.0 beta prerelease, with example workflows that you can run inside a GitHub codespace.
 
 The sample app is the recommended starting point for "how do I learn
 Durable Workflow?". It is the first place new features get end-to-end
