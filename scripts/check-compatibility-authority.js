@@ -16,6 +16,7 @@ const fs = require('fs');
 const path = require('path');
 
 const {
+  ARTIFACT_PINS,
   ARTIFACT_VERSIONS,
 } = require('./public-artifact-versions');
 
@@ -39,7 +40,7 @@ const protocolSpecsWorkflowPath = path.join(
   'workflows',
   'protocol-specs.yml',
 );
-const composerPreStableVersionPattern = /^2\.0\.0-(alpha|beta)\.\d+$/;
+const composerPreStableVersionPattern = /^2\.0\.0-(alpha|beta|rc)\.\d+$/;
 
 function read(file) {
   return fs.readFileSync(file, 'utf8');
@@ -254,7 +255,7 @@ function assertSdkProtocolAuthorities(contract) {
   const expectedPythonPackage = {
     package: 'durable-workflow',
     release_line: ARTIFACT_VERSIONS['sdk-python'],
-    registry_version: ARTIFACT_VERSIONS['sdk-python'].replace('-beta.', 'b'),
+    registry_version: ARTIFACT_PINS.pythonRegistryVersion,
     product_train: ARTIFACT_VERSIONS['sdk-python'],
     supported_server_versions: ARTIFACT_VERSIONS.server,
     worker_protocol_version: '1.1',
@@ -483,7 +484,7 @@ function composerPrereleaseStability(artifact, version) {
 
   throw new Error(
     `public artifact ${artifact} must stay on a Workflow/Waterline Composer ` +
-      `pre-stable 2.0.0-alpha.N or 2.0.0-beta.N version until the release-status ` +
+      `pre-stable alpha, beta, or rc version until the release-status ` +
       `cutover is authorized (got ${version})`,
   );
 }
@@ -635,5 +636,6 @@ if (require.main === module) {
 module.exports = {
   assertOpenApiAcceptedWorkerProtocolVersions,
   assertReleaseCheckMetadata,
+  composerPrereleaseStability,
   expectedAcceptedWorkerVersions,
 };

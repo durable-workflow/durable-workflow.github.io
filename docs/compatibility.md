@@ -200,8 +200,8 @@ when the manifests do not agree.
 
 ### Supported 2.0 product train
 
-Durable Workflow 2.0 has one supported beta choice. Every component below uses
-the same product-train identifier; choose 2.0 once and install this tuple:
+Durable Workflow 2.0 has one supported prerelease choice. Every component below
+uses the same product-train identifier; choose 2.0 once and install this tuple:
 
 | Component | Supported version | Install identity |
 |-----------|-------------------|------------------|
@@ -213,12 +213,13 @@ the same product-train identifier; choose 2.0 once and install this tuple:
 | Python SDK | `%%artifact.pythonSdkVersion%%` | `%%artifact.pythonPackagePin%%` |
 | Rust SDK | `%%artifact.rustSdkVersion%%` | `%%artifact.rustCargoRequirement%%` |
 
-PyPI renders the Python distribution version as `2.0.0b3`; the documented
-PEP 440 install spelling `2.0.0-beta.3` resolves to that same release. This
+PyPI renders the Python distribution version as
+`%%artifact.pythonRegistryVersion%%`; the documented PEP 440 install spelling
+`%%artifact.productTrainVersion%%` resolves to that same release. This
 normalization does not create a second supported version.
 
-The beta train is coordinated as a unit. A tuple is publishable only when all
-seven entries share the same `2.0.0-beta.N` identifier, both server
+The prerelease train is coordinated as a unit. A tuple is publishable only when
+all seven entries share the same authority identifier, both server
 registries agree, and the generated quickstart contract uses those exact
 artifacts. The registry refresher fails closed instead of combining
 independently newest packages.

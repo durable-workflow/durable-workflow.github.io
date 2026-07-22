@@ -5,9 +5,11 @@ const path = require('path');
 
 const source = require('./public-artifact-versions.json');
 const {
+  ARTIFACT_PINS,
   ARTIFACT_DISTRIBUTION_SURFACES,
   buildArtifactPinPatterns,
   buildArtifactPins,
+  pypiRegistryVersion,
   readArtifactVersions,
 } = require('./public-artifact-versions');
 const {
@@ -37,6 +39,14 @@ function cloneSource() {
   return JSON.parse(JSON.stringify(source));
 }
 
+function artifactVersionsAt(version) {
+  const candidate = cloneSource();
+  for (const artifact of Object.keys(candidate.artifacts)) {
+    candidate.artifacts[artifact] = version;
+  }
+  return readArtifactVersions(candidate);
+}
+
 function expectFailure(label, mutate, expectedMessage) {
   const candidate = cloneSource();
   mutate(candidate);
@@ -56,6 +66,22 @@ assert.strictEqual(
 );
 
 const currentArtifactPins = buildArtifactPins(source.artifacts);
+assert.strictEqual(ARTIFACT_PINS.productTrainVersion, source.artifacts.server);
+assert.strictEqual(
+  ARTIFACT_PINS.pythonRegistryVersion,
+  pypiRegistryVersion(source.artifacts['sdk-python']),
+);
+assert.strictEqual(pypiRegistryVersion('2.0.0-alpha.17'), '2.0.0a17');
+assert.strictEqual(pypiRegistryVersion('2.0.0-beta.17'), '2.0.0b17');
+assert.strictEqual(pypiRegistryVersion('2.0.0-rc.4'), '2.0.0rc4');
+
+const releaseCandidatePins = buildArtifactPins(artifactVersionsAt('2.0.0-rc.4'));
+assert.strictEqual(releaseCandidatePins.productTrainVersion, '2.0.0-rc.4');
+assert.strictEqual(releaseCandidatePins.pythonRegistryVersion, '2.0.0rc4');
+assert.strictEqual(
+  releaseCandidatePins.phpSdkComposerPackage,
+  'durable-workflow/sdk:2.0.0-rc.4@rc',
+);
 assert.strictEqual(currentArtifactPins.cliVersion, source.artifacts.cli);
 assert.strictEqual(currentArtifactPins.phpSdkVersion, source.artifacts['sdk-php']);
 assert.strictEqual(
@@ -384,11 +410,7 @@ function extractObservedPins(definition, content) {
 }
 
 function assertComposerPrereleasePins(artifact, version, stability) {
-  const candidate = cloneSource();
-  for (const name of Object.keys(candidate.artifacts)) {
-    candidate.artifacts[name] = version;
-  }
-  const versions = readArtifactVersions(candidate);
+  const versions = artifactVersionsAt(version);
   const pins = buildArtifactPins(versions);
   const pinName = `${artifact}ComposerPackage`;
 
@@ -412,8 +434,9 @@ function assertComposerPrereleasePins(artifact, version, stability) {
   );
 }
 
-assertComposerPrereleasePins('waterline', '2.0.0-beta.1', 'beta');
+assertComposerPrereleasePins('waterline', '2.0.0-alpha.201', 'alpha');
 assertComposerPrereleasePins('workflow', '2.0.0-beta.3', 'beta');
+assertComposerPrereleasePins('workflow', '2.0.0-rc.4', 'rc');
 
 assert.strictEqual(
   selectLatestVersion('server', ['2.0.0-beta.9', '2.0.0-beta.10', 'latest'], 'test candidates'),
@@ -428,9 +451,21 @@ assert.strictEqual(
 );
 
 assert.strictEqual(
+  selectLatestVersion('workflow', ['2.0.0-alpha.201', '2.0.0-beta.10', '2.0.0-rc.4'], 'test candidates'),
+  '2.0.0-rc.4',
+  'release candidates must sort after alpha and beta product trains'
+);
+
+assert.strictEqual(
   selectLatestVersion('sdk-python', ['2.0.0b3', '2.0.0-beta.1'], 'test candidates'),
   '2.0.0-beta.3',
   'PyPI PEP 440 beta spelling must normalize to the shared product-train identifier'
+);
+
+assert.strictEqual(
+  selectLatestVersion('sdk-python', ['2.0.0a17', '2.0.0b3', '2.0.0rc4'], 'test candidates'),
+  '2.0.0-rc.4',
+  'PyPI alpha, beta, and release-candidate spellings must normalize to one product-train grammar'
 );
 
 assert.strictEqual(
@@ -535,13 +570,13 @@ expectFailure(
 );
 
 const malformedVersions = [
-  ['cli', '0.1.95', /artifacts\.cli must use CLI version format 2\.0\.0-beta\.N/],
-  ['sdk-php', '0.1.16', /artifacts\.sdk-php must use PHP SDK version format 2\.0\.0-beta\.N/],
-  ['sdk-python', '2.0.0b3', /artifacts\.sdk-python must use Python SDK version format 2\.0\.0-beta\.N/],
-  ['sdk-rust', 'latest', /artifacts\.sdk-rust must use Rust SDK version format 2\.0\.0-beta\.N/],
-  ['server', 'latest', /artifacts\.server must use server version format 2\.0\.0-beta\.N/],
-  ['waterline', '2.0.0-alpha.1', /artifacts\.waterline must use Waterline version format 2\.0\.0-beta\.N/],
-  ['workflow', '2.0.0', /artifacts\.workflow must use Workflow version format 2\.0\.0-beta\.N/],
+  ['cli', '0.1.95', /artifacts\.cli must use CLI version format .*2\.0\.0-rc\.N/],
+  ['sdk-php', '0.1.16', /artifacts\.sdk-php must use PHP SDK version format .*2\.0\.0-rc\.N/],
+  ['sdk-python', '2.0.0b3', /artifacts\.sdk-python must use Python SDK version format .*2\.0\.0-rc\.N/],
+  ['sdk-rust', 'latest', /artifacts\.sdk-rust must use Rust SDK version format .*2\.0\.0-rc\.N/],
+  ['server', 'latest', /artifacts\.server must use server version format .*2\.0\.0-rc\.N/],
+  ['waterline', '2.0.0-preview.1', /artifacts\.waterline must use Waterline version format .*2\.0\.0-rc\.N/],
+  ['workflow', '2.0.0', /artifacts\.workflow must use Workflow version format .*2\.0\.0-rc\.N/],
 ];
 
 for (const [artifact, version, expectedMessage] of malformedVersions) {

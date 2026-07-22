@@ -6,6 +6,7 @@ const path = require('path');
 
 const {
   assertOpenApiAcceptedWorkerProtocolVersions,
+  composerPrereleaseStability,
   expectedAcceptedWorkerVersions,
 } = require('./check-compatibility-authority');
 const artifactVersionSource = require('./public-artifact-versions.json');
@@ -43,6 +44,12 @@ assert.throws(
   () => assertOpenApiAcceptedWorkerProtocolVersions(narrowedOpenApi, expectedVersions),
   /AcceptedWorkerProtocolRequestVersion\.enum must exactly match the computed negotiation window/,
   'narrowing the OpenAPI enum must fail compatibility-authority validation',
+);
+
+assert.strictEqual(
+  composerPrereleaseStability('workflow', '2.0.0-rc.4'),
+  'rc',
+  'release-candidate Composer authorities must remain valid before the stable cutover',
 );
 
 function successorVersion(version) {

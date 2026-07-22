@@ -271,7 +271,13 @@ function normalizeVersion(artifact, value) {
   }
 
   if (artifact === 'sdk-python') {
-    version = version.replace(/^2\.0\.0b(\d+)$/, '2.0.0-beta.$1');
+    version = version.replace(
+      /^2\.0\.0(a|b|rc)(\d+)$/,
+      (_, prerelease, sequence) => {
+        const stability = {a: 'alpha', b: 'beta', rc: 'rc'}[prerelease];
+        return `2.0.0-${stability}.${sequence}`;
+      },
+    );
   }
 
   return requirement.pattern.test(version) ? version : null;
@@ -280,12 +286,12 @@ function normalizeVersion(artifact, value) {
 function versionRank(version) {
   const stable = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
   if (stable) {
-    return stable.slice(1).map(Number).concat([2, 0]);
+    return stable.slice(1).map(Number).concat([3, 0]);
   }
 
-  const prerelease = /^(\d+)\.(\d+)\.(\d+)-(alpha|beta)\.(\d+)$/.exec(version);
+  const prerelease = /^(\d+)\.(\d+)\.(\d+)-(alpha|beta|rc)\.(\d+)$/.exec(version);
   if (prerelease) {
-    const stabilityRank = prerelease[4] === 'beta' ? 1 : 0;
+    const stabilityRank = {alpha: 0, beta: 1, rc: 2}[prerelease[4]];
     return [
       Number(prerelease[1]),
       Number(prerelease[2]),

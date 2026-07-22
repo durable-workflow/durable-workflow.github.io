@@ -31,6 +31,19 @@ assert.strictEqual(passing.capability_records, 16);
 assert.strictEqual(passing.expected_workflow_package_ref, expectedWorkflowRef);
 assert.deepStrictEqual(passing.package_provenance, provenance);
 
+const releaseCandidateProvenance = {
+  ...provenance,
+  ref: '2.0.0-rc.4',
+};
+assert.doesNotThrow(
+  () => verifySnapshots(
+    catalog,
+    discovery(catalog, releaseCandidateProvenance),
+    releaseCandidateProvenance.ref,
+  ),
+  'release-candidate Workflow provenance must use the same public prerelease grammar',
+);
+
 const staleCatalog = JSON.parse(JSON.stringify(catalog));
 staleCatalog.version = 14;
 assert.throws(

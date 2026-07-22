@@ -5,6 +5,10 @@ const fs = require('fs');
 const http = require('http');
 const path = require('path');
 
+const {
+  PRODUCT_TRAIN_VERSION_PATTERN,
+} = require('./public-artifact-versions');
+
 const repoRoot = path.join(__dirname, '..');
 const catalogPath = path.join(repoRoot, 'static', 'platform-protocol-specs.json');
 const artifactVersionsPath = path.join(__dirname, 'public-artifact-versions.json');
@@ -285,7 +289,7 @@ function verifySnapshots(publicCatalog, serverDiscovery, expectedWorkflowRef) {
         message: `Workflow package source expected ${expectedWorkflowSource}, got ${printable(provenance.source)}.`,
       });
     }
-    if (!/^2\.0\.0-(?:alpha|beta)\.\d+$/.test(provenance.ref || '')) {
+    if (!PRODUCT_TRAIN_VERSION_PATTERN.test(provenance.ref || '')) {
       addFinding(findings, {
         kind: 'workflow_package_version_invalid',
         path: '$.package_provenance.ref',

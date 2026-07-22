@@ -4,6 +4,7 @@ const path = require('path');
 const {
   ARTIFACT_PIN_PATTERNS,
   ARTIFACT_VERSIONS,
+  PUBLIC_ARTIFACT_VERSION_PATTERN_SOURCE,
   replaceArtifactTokens,
 } = require('./public-artifact-versions');
 
@@ -16,7 +17,10 @@ const SOURCE_PIN_PATTERNS = [
   {
     category: 'cli_artifact_pin',
     label: 'CLI table version pin',
-    pattern: /`dw`\s+`(2\.0\.0-beta\.\d+)`/g,
+    pattern: new RegExp(
+      `\`dw\`\\s+\`(${PUBLIC_ARTIFACT_VERSION_PATTERN_SOURCE})\``,
+      'g',
+    ),
     expected: ARTIFACT_VERSIONS.cli,
   },
 ];
@@ -60,17 +64,18 @@ function sourceDocs(root = repoRoot) {
 function assertObservedPinsCurrent(sourcePath, content) {
   for (const definition of SOURCE_PIN_PATTERNS) {
     const pattern = new RegExp(definition.pattern.source, definition.pattern.flags);
+    const accepted = definition.accepted || [definition.expected];
     const versions = [...content.matchAll(pattern)]
       .map(match => match.slice(1).find(Boolean))
       .filter(Boolean);
     const staleVersions = [...new Set(versions)]
-      .filter(version => version !== definition.expected)
+      .filter(version => !accepted.includes(version))
       .sort();
 
     if (staleVersions.length > 0) {
       fail(
         `${sourcePath} contains stale ${definition.label}: ` +
-        `observed=${staleVersions.join(', ')} expected=${definition.expected}`
+        `observed=${staleVersions.join(', ')} expected=${accepted.join(' or ')}`
       );
     }
   }
