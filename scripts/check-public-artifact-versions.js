@@ -5,11 +5,14 @@ const path = require('path');
 
 const source = require('./public-artifact-versions.json');
 const {
+  ARTIFACT_RELEASE_POLICY,
   ARTIFACT_PINS,
   ARTIFACT_DISTRIBUTION_SURFACES,
   buildArtifactPinPatterns,
   buildArtifactPins,
+  isAuthorizedProductTrainVersion,
   pypiRegistryVersion,
+  readArtifactReleasePolicy,
   readArtifactVersions,
 } = require('./public-artifact-versions');
 const {
@@ -39,12 +42,16 @@ function cloneSource() {
   return JSON.parse(JSON.stringify(source));
 }
 
-function artifactVersionsAt(version) {
+function artifactVersionSourceAt(version) {
   const candidate = cloneSource();
   for (const artifact of Object.keys(candidate.artifacts)) {
     candidate.artifacts[artifact] = version;
   }
-  return readArtifactVersions(candidate);
+  return candidate;
+}
+
+function artifactVersionsAt(version) {
+  return readArtifactVersions(artifactVersionSourceAt(version));
 }
 
 function expectFailure(label, mutate, expectedMessage) {
@@ -74,13 +81,54 @@ assert.strictEqual(
 assert.strictEqual(pypiRegistryVersion('2.0.0-alpha.17'), '2.0.0a17');
 assert.strictEqual(pypiRegistryVersion('2.0.0-beta.17'), '2.0.0b17');
 assert.strictEqual(pypiRegistryVersion('2.0.0-rc.4'), '2.0.0rc4');
+assert.deepStrictEqual(
+  ARTIFACT_RELEASE_POLICY.authorized_channels,
+  ['alpha', 'beta'],
+  'the reviewed beta policy must admit alpha and beta without admitting later channels',
+);
+assert.strictEqual(ARTIFACT_RELEASE_POLICY.release_phase, 'beta');
+assert.strictEqual(ARTIFACT_PINS.releasePhase, ARTIFACT_RELEASE_POLICY.release_phase);
+assert.strictEqual(isAuthorizedProductTrainVersion('2.0.0-alpha.201'), true);
+assert.strictEqual(isAuthorizedProductTrainVersion('2.0.0-beta.10'), true);
+assert.strictEqual(isAuthorizedProductTrainVersion('2.0.0-rc.4'), false);
+assert.strictEqual(isAuthorizedProductTrainVersion('2.0.0'), false);
 
-const releaseCandidatePins = buildArtifactPins(artifactVersionsAt('2.0.0-rc.4'));
-assert.strictEqual(releaseCandidatePins.productTrainVersion, '2.0.0-rc.4');
-assert.strictEqual(releaseCandidatePins.pythonRegistryVersion, '2.0.0rc4');
+const releaseCandidatePolicy = readArtifactReleasePolicy({
+  schema: ARTIFACT_RELEASE_POLICY.schema,
+  schema_version: ARTIFACT_RELEASE_POLICY.schema_version,
+  product_train: ARTIFACT_RELEASE_POLICY.product_train,
+  release_phase: 'rc',
+  authorized_channels: ['alpha', 'beta', 'rc'],
+});
 assert.strictEqual(
-  releaseCandidatePins.phpSdkComposerPackage,
-  'durable-workflow/sdk:2.0.0-rc.4@rc',
+  readArtifactVersions(
+    artifactVersionSourceAt('2.0.0-rc.4'),
+    releaseCandidatePolicy,
+  ).workflow,
+  '2.0.0-rc.4',
+  'a release candidate becomes canonical only after an explicit release-policy transition',
+);
+assert.throws(
+  () => readArtifactReleasePolicy({
+    ...ARTIFACT_RELEASE_POLICY,
+    authorized_channels: ['alpha', 'beta', 'rc'],
+  }),
+  /authorized_channels must contain every channel through beta in release order: alpha, beta/,
+  'later channels cannot be admitted without advancing the declared release phase',
+);
+assert.strictEqual(
+  readArtifactVersions(
+    artifactVersionSourceAt('2.0.0'),
+    readArtifactReleasePolicy({
+      schema: ARTIFACT_RELEASE_POLICY.schema,
+      schema_version: ARTIFACT_RELEASE_POLICY.schema_version,
+      product_train: ARTIFACT_RELEASE_POLICY.product_train,
+      release_phase: 'stable',
+      authorized_channels: ['alpha', 'beta', 'rc', 'stable'],
+    }),
+  ).workflow,
+  '2.0.0',
+  'stable 2.0 requires a separately reviewed stable release-policy cutover',
 );
 assert.strictEqual(currentArtifactPins.cliVersion, source.artifacts.cli);
 assert.strictEqual(currentArtifactPins.phpSdkVersion, source.artifacts['sdk-php']);
@@ -176,10 +224,9 @@ const successorWorkflowVersion = source.artifacts.workflow.replace(
   /\.(\d+)$/,
   (_, sequence) => `.${Number(sequence) + 1}`,
 );
-const successorVersions = {
-  ...source.artifacts,
-  workflow: successorWorkflowVersion,
-};
+const successorVersions = Object.fromEntries(
+  Object.keys(source.artifacts).map(artifact => [artifact, successorWorkflowVersion]),
+);
 const currentWorkflowManifest = currentTupleSources['static/sdk-neutrality-contract.json'];
 const unchangedManifestTuple = generatedPublicArtifactTupleSources(
   currentTupleSources,
@@ -319,6 +366,11 @@ async function assertWorkflowRegistryAuthorityResolution() {
           dist: {type: 'zip'},
           source: {type: 'git', reference: selectedReference},
         },
+        {
+          version: '2.0.0-rc.4',
+          dist: {type: 'zip'},
+          source: {type: 'git', reference: 'c'.repeat(40)},
+        },
       ],
     },
   };
@@ -364,6 +416,8 @@ async function assertWorkflowRegistryAuthorityResolution() {
             [PUBLISHED_ARTIFACT_SOURCES['sdk-php'].packageName]: [
               {version: '2.0.0-beta.1', dist: {type: 'zip'}},
               {version: source.artifacts['sdk-php'], dist: {type: 'zip'}},
+              {version: '2.0.0-rc.4', dist: {type: 'zip'}},
+              {version: '2.0.0', dist: {type: 'zip'}},
             ],
           },
         };
@@ -436,7 +490,11 @@ function assertComposerPrereleasePins(artifact, version, stability) {
 
 assertComposerPrereleasePins('waterline', '2.0.0-alpha.201', 'alpha');
 assertComposerPrereleasePins('workflow', '2.0.0-beta.3', 'beta');
-assertComposerPrereleasePins('workflow', '2.0.0-rc.4', 'rc');
+assert.throws(
+  () => assertComposerPrereleasePins('workflow', '2.0.0-rc.4', 'rc'),
+  /authorized by the beta release phase/,
+  'release-candidate Composer pins must wait for an explicit release-policy transition',
+);
 
 assert.strictEqual(
   selectLatestVersion('server', ['2.0.0-beta.9', '2.0.0-beta.10', 'latest'], 'test candidates'),
@@ -451,9 +509,13 @@ assert.strictEqual(
 );
 
 assert.strictEqual(
-  selectLatestVersion('workflow', ['2.0.0-alpha.201', '2.0.0-beta.10', '2.0.0-rc.4'], 'test candidates'),
-  '2.0.0-rc.4',
-  'release candidates must sort after alpha and beta product trains'
+  selectLatestVersion(
+    'workflow',
+    ['2.0.0-alpha.201', '2.0.0-beta.10', '2.0.0-rc.4', '2.0.0'],
+    'test candidates',
+  ),
+  '2.0.0-beta.10',
+  'unauthorized release candidates and stable tags must not supersede the beta registry authority'
 );
 
 assert.strictEqual(
@@ -463,10 +525,25 @@ assert.strictEqual(
 );
 
 assert.strictEqual(
-  selectLatestVersion('sdk-python', ['2.0.0a17', '2.0.0b3', '2.0.0rc4'], 'test candidates'),
-  '2.0.0-rc.4',
-  'PyPI alpha, beta, and release-candidate spellings must normalize to one product-train grammar'
+  selectLatestVersion(
+    'sdk-python',
+    ['2.0.0a17', '2.0.0b3', '2.0.0rc4', '2.0.0'],
+    'test candidates',
+  ),
+  '2.0.0-beta.3',
+  'PyPI registry selection must normalize spellings before applying release-channel admission'
 );
+
+for (const artifact of Object.keys(source.artifacts)) {
+  const candidates = artifact === 'sdk-python'
+    ? ['2.0.0b3', '2.0.0rc4', '2.0.0']
+    : ['2.0.0-beta.3', '2.0.0-rc.4', '2.0.0'];
+  assert.strictEqual(
+    selectLatestVersion(artifact, candidates, 'synchronized later-channel fixture'),
+    '2.0.0-beta.3',
+    `${artifact} registry selection must remain on the authorized beta train`,
+  );
+}
 
 assert.strictEqual(
   selectLatestCratesIoVersion({
@@ -511,11 +588,11 @@ assert.strictEqual(
 
 assert.strictEqual(
   selectLatestCompleteCliRelease([
-    cliRelease('2.0.0-beta.3', requiredCliAssets, {prerelease: true}),
+    cliRelease('2.0.0-rc.4', requiredCliAssets, {prerelease: true}),
     cliRelease(source.artifacts.cli, requiredCliAssets, {prerelease: true}),
   ], PUBLISHED_ARTIFACT_SOURCES.cli),
-  '2.0.0-beta.3',
-  'CLI artifact resolution must accept published prerelease train tags'
+  source.artifacts.cli,
+  'CLI artifact resolution must ignore complete releases from unauthorized later channels'
 );
 
 assert.throws(
@@ -553,6 +630,15 @@ assert.throws(
   'server registry disagreement must fail before selecting a docs tuple'
 );
 
+assert.throws(
+  () => selectServerRegistryVersion([
+    { label: 'Docker Hub', image: 'durableworkflow/server', version: '2.0.0-rc.4' },
+    { label: 'GHCR', image: 'ghcr.io/durable-workflow/server', version: '2.0.0-rc.4' },
+  ]),
+  /not authorized by the beta release phase/,
+  'synchronized server registries must not advance the canonical tuple to release candidate',
+);
+
 expectFailure(
   'rejects missing artifacts',
   candidate => {
@@ -570,13 +656,14 @@ expectFailure(
 );
 
 const malformedVersions = [
-  ['cli', '0.1.95', /artifacts\.cli must use CLI version format .*2\.0\.0-rc\.N/],
-  ['sdk-php', '0.1.16', /artifacts\.sdk-php must use PHP SDK version format .*2\.0\.0-rc\.N/],
-  ['sdk-python', '2.0.0b3', /artifacts\.sdk-python must use Python SDK version format .*2\.0\.0-rc\.N/],
-  ['sdk-rust', 'latest', /artifacts\.sdk-rust must use Rust SDK version format .*2\.0\.0-rc\.N/],
-  ['server', 'latest', /artifacts\.server must use server version format .*2\.0\.0-rc\.N/],
-  ['waterline', '2.0.0-preview.1', /artifacts\.waterline must use Waterline version format .*2\.0\.0-rc\.N/],
-  ['workflow', '2.0.0', /artifacts\.workflow must use Workflow version format .*2\.0\.0-rc\.N/],
+  ['cli', '0.1.95', /artifacts\.cli must use a CLI version authorized by the beta release phase/],
+  ['sdk-php', '0.1.16', /artifacts\.sdk-php must use a PHP SDK version authorized by the beta release phase/],
+  ['sdk-python', '2.0.0b3', /artifacts\.sdk-python must use a Python SDK version authorized by the beta release phase/],
+  ['sdk-rust', 'latest', /artifacts\.sdk-rust must use a Rust SDK version authorized by the beta release phase/],
+  ['server', 'latest', /artifacts\.server must use a server version authorized by the beta release phase/],
+  ['waterline', '2.0.0-preview.1', /artifacts\.waterline must use a Waterline version authorized by the beta release phase/],
+  ['workflow', '2.0.0-rc.4', /artifacts\.workflow must use a Workflow version authorized by the beta release phase/],
+  ['workflow', '2.0.0', /artifacts\.workflow must use a Workflow version authorized by the beta release phase/],
 ];
 
 for (const [artifact, version, expectedMessage] of malformedVersions) {

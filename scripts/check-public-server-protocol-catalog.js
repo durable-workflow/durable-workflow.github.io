@@ -6,7 +6,8 @@ const http = require('http');
 const path = require('path');
 
 const {
-  PRODUCT_TRAIN_VERSION_PATTERN,
+  ARTIFACT_RELEASE_POLICY,
+  isAuthorizedProductTrainVersion,
 } = require('./public-artifact-versions');
 
 const repoRoot = path.join(__dirname, '..');
@@ -289,12 +290,12 @@ function verifySnapshots(publicCatalog, serverDiscovery, expectedWorkflowRef) {
         message: `Workflow package source expected ${expectedWorkflowSource}, got ${printable(provenance.source)}.`,
       });
     }
-    if (!PRODUCT_TRAIN_VERSION_PATTERN.test(provenance.ref || '')) {
+    if (!isAuthorizedProductTrainVersion(provenance.ref || '')) {
       addFinding(findings, {
         kind: 'workflow_package_version_invalid',
         path: '$.package_provenance.ref',
         actual: provenance.ref,
-        message: `Workflow package provenance must name an exact public prerelease, got ${printable(provenance.ref)}.`,
+        message: `Workflow package provenance must name a version authorized by the ${ARTIFACT_RELEASE_POLICY.release_phase} release phase, got ${printable(provenance.ref)}.`,
       });
     }
     if (provenance.ref !== expectedWorkflowRef) {

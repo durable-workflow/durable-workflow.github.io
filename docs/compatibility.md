@@ -47,11 +47,16 @@ manifests, and CI gates can validate themselves against one source of truth:
 - The PHP class `Workflow\V2\Support\SurfaceStabilityContract`, which is
   the in-process source the server re-exports.
 
+Artifact-channel admission is governed separately by
+[`/public-artifact-release-policy.json`](pathname:///public-artifact-release-policy.json).
+This independently reviewed policy controls which 2.0 channels may become the
+canonical public tuple.
+
 A release that changes any surface listed below — its stability level, its
 field set, its breaking-change rules — must update this page, the JSON
 mirror, the PHP manifest, and any per-package stability document in the same
-change. Docs CI validates the machine-readable contract, prerelease artifact
-guard, released Rust metadata when available, and worker-protocol specs.
+change. Docs CI validates the machine-readable contract, artifact release-phase
+policy, released Rust metadata when available, and worker-protocol specs.
 Editorial alignment between this page and the manifest remains an explicit
 release-review responsibility.
 
@@ -222,7 +227,9 @@ The prerelease train is coordinated as a unit. A tuple is publishable only when
 all seven entries share the same authority identifier, both server
 registries agree, and the generated quickstart contract uses those exact
 artifacts. The registry refresher fails closed instead of combining
-independently newest packages.
+independently newest packages. Its current authorized release phase is
+`%%artifact.releasePhase%%`; registry tags from later channels remain
+ineligible until the release policy is reviewed and changed.
 
 Earlier alpha and beta artifacts are historical. They are not alternative
 installation choices, and package owners should yank or de-emphasize them
@@ -234,8 +241,8 @@ Capabilities in this train are the 2.0 baseline and therefore have no
 feature-introduction version matrix. New capabilities progress through
 ordinary compatible releases: additive work advances the compatible version,
 while a breaking public-surface change waits for the next major version.
-During the prerelease period, a coordinated beta increment replaces the
-previous supported beta tuple.
+During the prerelease period, a coordinated `%%artifact.releasePhase%%`
+increment replaces the previous supported `%%artifact.releasePhase%%` tuple.
 
 Stable 1.x remains the default public docs line. This page is explicit
 prerelease guidance under `/docs/2.0/`; it does not authorize a default-docs
@@ -264,8 +271,9 @@ The server's top-level `version` is build identity. Clients must use the
 `surface_stability_contract` manifests returned by
 `GET /api/cluster/info` for protocol negotiation.
 
-Workflow and Waterline must also share the exact current beta train. Matching
-only the major version is insufficient during the 2.0 prerelease.
+Workflow and Waterline must also share the exact current
+`%%artifact.releasePhase%%` train. Matching only the major version is
+insufficient during the 2.0 prerelease.
 
 ### Runtime validation examples
 

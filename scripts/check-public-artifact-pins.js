@@ -4,7 +4,7 @@ const path = require('path');
 const {
   ARTIFACT_PIN_PATTERNS,
   ARTIFACT_VERSIONS,
-  PUBLIC_ARTIFACT_VERSION_PATTERN_SOURCE,
+  PUBLIC_ARTIFACT_SCAN_VERSION_PATTERN_SOURCE,
   replaceArtifactTokens,
 } = require('./public-artifact-versions');
 
@@ -18,7 +18,7 @@ const SOURCE_PIN_PATTERNS = [
     category: 'cli_artifact_pin',
     label: 'CLI table version pin',
     pattern: new RegExp(
-      `\`dw\`\\s+\`(${PUBLIC_ARTIFACT_VERSION_PATTERN_SOURCE})\``,
+      `\`dw\`\\s+\`(${PUBLIC_ARTIFACT_SCAN_VERSION_PATTERN_SOURCE})\``,
       'g',
     ),
     expected: ARTIFACT_VERSIONS.cli,

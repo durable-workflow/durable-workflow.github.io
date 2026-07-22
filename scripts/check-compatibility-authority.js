@@ -16,8 +16,10 @@ const fs = require('fs');
 const path = require('path');
 
 const {
+  ARTIFACT_RELEASE_POLICY,
   ARTIFACT_PINS,
   ARTIFACT_VERSIONS,
+  composerPrereleaseStability: artifactComposerPrereleaseStability,
 } = require('./public-artifact-versions');
 
 const repoRoot = path.join(__dirname, '..');
@@ -40,7 +42,6 @@ const protocolSpecsWorkflowPath = path.join(
   'workflows',
   'protocol-specs.yml',
 );
-const composerPreStableVersionPattern = /^2\.0\.0-(alpha|beta|rc)\.\d+$/;
 
 function read(file) {
   return fs.readFileSync(file, 'utf8');
@@ -468,25 +469,14 @@ function assertSdkProtocolAuthorities(contract) {
 }
 
 function composerPrereleaseStability(artifact, version) {
-  const match = composerPreStableVersionPattern.exec(version);
-
-  if (match) {
-    return match[1];
-  }
-
-  if (version === '2.0.0') {
+  try {
+    return artifactComposerPrereleaseStability(version);
+  } catch (error) {
     throw new Error(
-      `public artifact ${artifact} is pinned to stable 2.0.0, but the docs ` +
-        `site is still in the pre-v2-stable ramp. Stable Composer pins require ` +
-        `an explicit release-status cutover before this authority can accept them.`,
+      `public artifact ${artifact} is not admitted by the ` +
+      `${ARTIFACT_RELEASE_POLICY.release_phase} release phase: ${error.message}`,
     );
   }
-
-  throw new Error(
-    `public artifact ${artifact} must stay on a Workflow/Waterline Composer ` +
-      `pre-stable alpha, beta, or rc version until the release-status ` +
-      `cutover is authorized (got ${version})`,
-  );
 }
 
 function assertComposerArtifactTupleIsPreStable() {

@@ -6,10 +6,12 @@ const https = require('https');
 const path = require('path');
 
 const {
+  ARTIFACT_RELEASE_POLICY,
   ARTIFACT_VERSION_REQUIREMENTS,
   ARTIFACT_VERSION_SCHEMA,
   REQUIRED_ARTIFACTS,
   buildArtifactPins,
+  isAuthorizedProductTrainVersion,
   readArtifactVersions,
 } = require('./public-artifact-versions');
 
@@ -272,15 +274,15 @@ function normalizeVersion(artifact, value) {
 
   if (artifact === 'sdk-python') {
     version = version.replace(
-      /^2\.0\.0(a|b|rc)(\d+)$/,
-      (_, prerelease, sequence) => {
+      /^(\d+\.\d+\.\d+)(a|b|rc)(\d+)$/,
+      (_, train, prerelease, sequence) => {
         const stability = {a: 'alpha', b: 'beta', rc: 'rc'}[prerelease];
-        return `2.0.0-${stability}.${sequence}`;
+        return `${train}-${stability}.${sequence}`;
       },
     );
   }
 
-  return requirement.pattern.test(version) ? version : null;
+  return isAuthorizedProductTrainVersion(version) ? version : null;
 }
 
 function versionRank(version) {
@@ -500,13 +502,29 @@ function selectServerRegistryVersion(results) {
     throw new Error('At least one server container registry result is required');
   }
 
-  const expected = results[0].version;
-  const mismatches = results.filter(result => result.version !== expected);
+  const normalizedResults = results.map(result => ({
+    ...result,
+    observedVersion: result.version,
+    version: normalizeVersion('server', result.version),
+  }));
+  const unauthorized = normalizedResults.filter(result => result.version === null);
+
+  if (unauthorized.length > 0) {
+    throw new Error([
+      `Published server container versions are not authorized by the ${ARTIFACT_RELEASE_POLICY.release_phase} release phase:`,
+      ...unauthorized.map(result => (
+        `- ${result.label} ${result.image}:${result.observedVersion}`
+      )),
+    ].join('\n'));
+  }
+
+  const expected = normalizedResults[0].version;
+  const mismatches = normalizedResults.filter(result => result.version !== expected);
 
   if (mismatches.length > 0) {
     throw new Error([
       'Published server container registries disagree:',
-      ...results.map(result => `- ${result.label} ${result.image}:${result.version}`),
+      ...normalizedResults.map(result => `- ${result.label} ${result.image}:${result.version}`),
     ].join('\n'));
   }
 
@@ -647,11 +665,15 @@ async function resolvePublishedArtifactTuple(sources = PUBLISHED_ARTIFACT_SOURCE
 }
 
 function artifactVersionsSource(versions) {
-  return `${JSON.stringify({
+  const source = {
     schema: ARTIFACT_VERSION_SCHEMA,
     schemaVersion: 1,
     artifacts: Object.fromEntries(REQUIRED_ARTIFACTS.map(name => [name, versions[name]])),
-  }, null, 2)}\n`;
+  };
+
+  readArtifactVersions(source);
+
+  return `${JSON.stringify(source, null, 2)}\n`;
 }
 
 function sha256(source) {

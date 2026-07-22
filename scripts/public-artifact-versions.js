@@ -1,55 +1,123 @@
 const artifactVersionSource = require('./public-artifact-versions.json');
+const artifactReleasePolicySource = require('../static/public-artifact-release-policy.json');
 
 const ARTIFACT_VERSION_SCHEMA = 'durable-workflow.docs.public-artifact-versions';
-const PRODUCT_TRAIN_VERSION_PATTERN = /^2\.0\.0-(?:alpha|beta|rc)\.\d+$/;
-const PRODUCT_TRAIN_VERSION_FORMAT = '2.0.0-alpha.N, 2.0.0-beta.N, or 2.0.0-rc.N';
+const ARTIFACT_RELEASE_POLICY_SCHEMA = 'durable-workflow.docs.public-artifact-release-policy';
+const RELEASE_CHANNELS = Object.freeze(['alpha', 'beta', 'rc', 'stable']);
 const SEMVER_INSTALL_VERSION_PATTERN_SOURCE = '\\d+\\.\\d+\\.\\d+(?:-(?:alpha|beta|rc)\\.\\d+)?';
 const PYPI_REGISTRY_VERSION_PATTERN_SOURCE = '\\d+\\.\\d+\\.\\d+(?:a|b|rc)\\d+';
-const PUBLIC_ARTIFACT_VERSION_PATTERN_SOURCE =
+const PUBLIC_ARTIFACT_SCAN_VERSION_PATTERN_SOURCE =
   `(?:${SEMVER_INSTALL_VERSION_PATTERN_SOURCE}|${PYPI_REGISTRY_VERSION_PATTERN_SOURCE})`;
 const PYPI_PRERELEASE_LABELS = Object.freeze({alpha: 'a', beta: 'b', rc: 'rc'});
+
+function readArtifactReleasePolicy(source = artifactReleasePolicySource) {
+  if (!source || source.schema !== ARTIFACT_RELEASE_POLICY_SCHEMA) {
+    throw new Error(
+      'public-artifact-release-policy.json must declare the Durable Workflow artifact release-policy schema',
+    );
+  }
+
+  if (source.schema_version !== 1) {
+    throw new Error('public-artifact-release-policy.json schema_version must be 1');
+  }
+
+  if (typeof source.product_train !== 'string' || !/^\d+\.\d+\.\d+$/.test(source.product_train)) {
+    throw new Error('public-artifact-release-policy.json product_train must use MAJOR.MINOR.PATCH format');
+  }
+
+  if (!RELEASE_CHANNELS.includes(source.release_phase)) {
+    throw new Error(
+      `public-artifact-release-policy.json release_phase must be one of ${RELEASE_CHANNELS.join(', ')}`,
+    );
+  }
+
+  const phaseIndex = RELEASE_CHANNELS.indexOf(source.release_phase);
+  const expectedChannels = RELEASE_CHANNELS.slice(0, phaseIndex + 1);
+  if (JSON.stringify(source.authorized_channels) !== JSON.stringify(expectedChannels)) {
+    throw new Error(
+      'public-artifact-release-policy.json authorized_channels must contain every channel through ' +
+      `${source.release_phase} in release order: ${expectedChannels.join(', ')}`,
+    );
+  }
+
+  return Object.freeze({
+    schema: source.schema,
+    schema_version: source.schema_version,
+    product_train: source.product_train,
+    release_phase: source.release_phase,
+    authorized_channels: Object.freeze([...source.authorized_channels]),
+  });
+}
+
+const ARTIFACT_RELEASE_POLICY = readArtifactReleasePolicy();
+
+function productTrainVersionDetails(version, policy = ARTIFACT_RELEASE_POLICY) {
+  if (version === policy.product_train) {
+    return Object.freeze({channel: 'stable', sequence: null});
+  }
+
+  const escapedTrain = policy.product_train.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = new RegExp(`^${escapedTrain}-(alpha|beta|rc)\\.(\\d+)$`).exec(version);
+
+  return match
+    ? Object.freeze({channel: match[1], sequence: Number(match[2])})
+    : null;
+}
+
+function isAuthorizedProductTrainVersion(version, policy = ARTIFACT_RELEASE_POLICY) {
+  const details = productTrainVersionDetails(version, policy);
+  return details !== null && policy.authorized_channels.includes(details.channel);
+}
+
+function authorizedProductTrainVersionFormat(policy = ARTIFACT_RELEASE_POLICY) {
+  return policy.authorized_channels
+    .map(channel => channel === 'stable'
+      ? policy.product_train
+      : `${policy.product_train}-${channel}.N`)
+    .join(', ');
+}
+
+function assertAuthorizedProductTrainVersion(artifact, version, policy = ARTIFACT_RELEASE_POLICY) {
+  if (!isAuthorizedProductTrainVersion(version, policy)) {
+    throw new Error(
+      `public artifact ${artifact} version ${version} is not authorized by the ` +
+      `${policy.release_phase} release phase; expected ${authorizedProductTrainVersionFormat(policy)}`,
+    );
+  }
+
+  return version;
+}
 
 const ARTIFACT_VERSION_REQUIREMENTS = Object.freeze({
   cli: {
     label: 'CLI',
-    pattern: PRODUCT_TRAIN_VERSION_PATTERN,
-    expected: PRODUCT_TRAIN_VERSION_FORMAT,
   },
   'sdk-php': {
     label: 'PHP SDK',
-    pattern: PRODUCT_TRAIN_VERSION_PATTERN,
-    expected: PRODUCT_TRAIN_VERSION_FORMAT,
   },
   'sdk-python': {
     label: 'Python SDK',
-    pattern: PRODUCT_TRAIN_VERSION_PATTERN,
-    expected: PRODUCT_TRAIN_VERSION_FORMAT,
   },
   'sdk-rust': {
     label: 'Rust SDK',
-    pattern: PRODUCT_TRAIN_VERSION_PATTERN,
-    expected: PRODUCT_TRAIN_VERSION_FORMAT,
   },
   server: {
     label: 'server',
-    pattern: PRODUCT_TRAIN_VERSION_PATTERN,
-    expected: PRODUCT_TRAIN_VERSION_FORMAT,
   },
   waterline: {
     label: 'Waterline',
-    pattern: PRODUCT_TRAIN_VERSION_PATTERN,
-    expected: PRODUCT_TRAIN_VERSION_FORMAT,
   },
   workflow: {
     label: 'Workflow',
-    pattern: PRODUCT_TRAIN_VERSION_PATTERN,
-    expected: PRODUCT_TRAIN_VERSION_FORMAT,
   },
 });
 
 const REQUIRED_ARTIFACTS = Object.freeze(Object.keys(ARTIFACT_VERSION_REQUIREMENTS));
 
-function readArtifactVersions(source = artifactVersionSource) {
+function readArtifactVersions(
+  source = artifactVersionSource,
+  releasePolicy = ARTIFACT_RELEASE_POLICY,
+) {
   if (!source || source.schema !== ARTIFACT_VERSION_SCHEMA) {
     throw new Error('public-artifact-versions.json must declare the durable-workflow docs artifact schema');
   }
@@ -69,10 +137,11 @@ function readArtifactVersions(source = artifactVersionSource) {
       throw new Error(`public-artifact-versions.json artifacts.${name} must not contain surrounding whitespace`);
     }
 
-    if (!requirement.pattern.test(version)) {
+    if (!isAuthorizedProductTrainVersion(version, releasePolicy)) {
       throw new Error(
-        `public-artifact-versions.json artifacts.${name} must use ${requirement.label} version format ` +
-        `${requirement.expected}: ${version}`
+        `public-artifact-versions.json artifacts.${name} must use a ${requirement.label} version ` +
+        `authorized by the ${releasePolicy.release_phase} release phase ` +
+        `(${authorizedProductTrainVersionFormat(releasePolicy)}): ${version}`
       );
     }
 
@@ -100,13 +169,14 @@ function readArtifactVersions(source = artifactVersionSource) {
 const ARTIFACT_VERSIONS = readArtifactVersions();
 
 function composerPrereleaseStability(version) {
-  const match = /^2\.0\.0-(alpha|beta|rc)\.\d+$/.exec(version);
+  assertAuthorizedProductTrainVersion('Composer', version);
+  const details = productTrainVersionDetails(version);
 
-  if (!match) {
+  if (!details || details.channel === 'stable') {
     throw new Error(`Unsupported Composer prerelease version: ${version}`);
   }
 
-  return match[1];
+  return details.channel;
 }
 
 function composerPackagePin(packageName, version) {
@@ -136,6 +206,11 @@ function productTrainVersion(versions) {
 }
 
 function buildArtifactPins(versions) {
+  readArtifactVersions({
+    schema: ARTIFACT_VERSION_SCHEMA,
+    schemaVersion: 1,
+    artifacts: versions,
+  });
   const trainVersion = productTrainVersion(versions);
 
   return Object.freeze({
@@ -149,6 +224,7 @@ function buildArtifactPins(versions) {
     phpSdkComposerPackage: composerPackagePin('durable-workflow/sdk', versions['sdk-php']),
     phpSdkComposerInstallCommand: `composer require ${composerPackagePin('durable-workflow/sdk', versions['sdk-php'])}`,
     productTrainVersion: trainVersion,
+    releasePhase: ARTIFACT_RELEASE_POLICY.release_phase,
     pythonSdkVersion: versions['sdk-python'],
     pythonRegistryVersion: pypiRegistryVersion(versions['sdk-python']),
     pythonPackagePin: `durable-workflow==${versions['sdk-python']}`,
@@ -174,7 +250,7 @@ function buildArtifactPins(versions) {
 const ARTIFACT_TOKEN_PATTERN = /%%artifact\.([A-Za-z0-9]+)%%/g;
 
 function buildArtifactPinPatterns(versions) {
-  const versionPattern = PUBLIC_ARTIFACT_VERSION_PATTERN_SOURCE;
+  const versionPattern = PUBLIC_ARTIFACT_SCAN_VERSION_PATTERN_SOURCE;
   const versionBoundary = '(?![0-9A-Za-z.-])';
   const pythonVersion = versions['sdk-python'];
   const pythonRegistry = pypiRegistryVersion(pythonVersion);
@@ -327,9 +403,9 @@ function resolveArtifactAlias(alias) {
   return pin;
 }
 
-function replaceArtifactTokens(content, label = 'content') {
+function replaceArtifactTokens(content, label = 'content', pins = ARTIFACT_PINS) {
   return String(content).replace(ARTIFACT_TOKEN_PATTERN, (token, pinName) => {
-    const pin = ARTIFACT_PINS[pinName];
+    const pin = pins[pinName];
 
     if (!pin) {
       throw new Error(`${label} contains unknown artifact token ${token}`);
@@ -360,21 +436,28 @@ function artifactVersionRemarkPlugin() {
 }
 
 module.exports = {
+  ARTIFACT_RELEASE_POLICY,
+  ARTIFACT_RELEASE_POLICY_SCHEMA,
   ARTIFACT_DISTRIBUTION_SURFACES,
   ARTIFACT_PIN_PATTERNS,
   ARTIFACT_PINS,
   ARTIFACT_VERSION_REQUIREMENTS,
   ARTIFACT_VERSION_SCHEMA,
   ARTIFACT_VERSIONS,
-  PRODUCT_TRAIN_VERSION_PATTERN,
-  PUBLIC_ARTIFACT_VERSION_PATTERN_SOURCE,
+  PUBLIC_ARTIFACT_SCAN_VERSION_PATTERN_SOURCE,
   REQUIRED_ARTIFACTS,
+  assertAuthorizedProductTrainVersion,
   artifactVersionRemarkPlugin,
+  authorizedProductTrainVersionFormat,
   buildArtifactDistributionSurfaces,
   buildArtifactPinPatterns,
   buildArtifactPins,
+  composerPrereleaseStability,
   pypiRegistryVersion,
+  productTrainVersionDetails,
   productTrainVersion,
+  isAuthorizedProductTrainVersion,
+  readArtifactReleasePolicy,
   readArtifactVersions,
   replaceArtifactTokens,
   resolveArtifactAlias,

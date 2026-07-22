@@ -1,9 +1,14 @@
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
 
 const {
+  ARTIFACT_RELEASE_POLICY,
   ARTIFACT_PINS,
   ARTIFACT_VERSIONS,
+  readArtifactReleasePolicy,
   pypiRegistryVersion,
+  replaceArtifactTokens,
 } = require('./public-artifact-versions');
 const {
   checkPublicArtifactSource,
@@ -39,6 +44,7 @@ assert.doesNotThrow(
       '`pip install %%artifact.pythonPackagePin%%`',
       '`%%artifact.pythonRegistryVersion%%`',
       '`%%artifact.rustCargoAddCommand%%`',
+      '`%%artifact.releasePhase%%`',
     ].join('\n'),
   ),
   'authority tokens for every install surface must render as current pins',
@@ -53,6 +59,50 @@ assert.strictEqual(
   ARTIFACT_PINS.pythonRegistryVersion,
   pypiRegistryVersion(ARTIFACT_VERSIONS['sdk-python']),
   'the PyPI prose token must derive from the Python artifact authority',
+);
+assert.strictEqual(
+  ARTIFACT_PINS.releasePhase,
+  'beta',
+  'channel-specific documentation tokens must derive from the release-phase authority',
+);
+
+const releaseCandidatePolicy = readArtifactReleasePolicy({
+  schema: ARTIFACT_RELEASE_POLICY.schema,
+  schema_version: ARTIFACT_RELEASE_POLICY.schema_version,
+  product_train: ARTIFACT_RELEASE_POLICY.product_train,
+  release_phase: 'rc',
+  authorized_channels: ['alpha', 'beta', 'rc'],
+});
+const releaseCandidatePins = Object.freeze({
+  ...ARTIFACT_PINS,
+  releasePhase: releaseCandidatePolicy.release_phase,
+});
+const compatibilityPage = fs.readFileSync(
+  path.join(__dirname, '..', 'docs', 'compatibility.md'),
+  'utf8',
+);
+const releasePhaseToken = '%%artifact.releasePhase%%';
+const releasePhaseTokenCount = compatibilityPage.split(releasePhaseToken).length - 1;
+const releaseCandidatePage = replaceArtifactTokens(
+  compatibilityPage,
+  'release-candidate compatibility-page fixture',
+  releaseCandidatePins,
+);
+
+assert.ok(
+  releasePhaseTokenCount > 0,
+  'the transition fixture must exercise release-phase token rendering',
+);
+assert.strictEqual(
+  releaseCandidatePage.split(releaseCandidatePolicy.release_phase).length -
+    compatibilityPage.split(releaseCandidatePolicy.release_phase).length,
+  releasePhaseTokenCount,
+  'an authorized policy transition must resolve every release-phase token to the new channel',
+);
+assert.doesNotMatch(
+  releaseCandidatePage,
+  /%%artifact\.[A-Za-z0-9]+%%/,
+  'the policy-transition render must resolve every artifact token',
 );
 
 assert.throws(
@@ -100,6 +150,26 @@ const legacyPins = [
     'PHP SDK alpha',
     'composer require durable-workflow/sdk:2.0.0-alpha.12@alpha',
     /stale PHP SDK Composer package pin/,
+  ],
+  [
+    'Server release candidate',
+    'Run durableworkflow/server:2.0.0-rc.4',
+    /stale server container image tag/,
+  ],
+  [
+    'Server stable',
+    'Run durableworkflow/server:2.0.0',
+    /stale server container image tag/,
+  ],
+  [
+    'Python PEP 440 alpha',
+    'pip install durable-workflow==2.0.0a17',
+    /stale Python SDK package pin/,
+  ],
+  [
+    'Python PEP 440 release candidate',
+    'pip install durable-workflow==2.0.0rc4',
+    /stale Python SDK package pin/,
   ],
 ];
 

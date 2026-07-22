@@ -35,13 +35,18 @@ const releaseCandidateProvenance = {
   ...provenance,
   ref: '2.0.0-rc.4',
 };
-assert.doesNotThrow(
+assert.throws(
   () => verifySnapshots(
     catalog,
     discovery(catalog, releaseCandidateProvenance),
     releaseCandidateProvenance.ref,
   ),
-  'release-candidate Workflow provenance must use the same public prerelease grammar',
+  error => error instanceof CatalogConformanceError
+    && error.findings.some(finding => (
+      finding.kind === 'workflow_package_version_invalid'
+        && finding.actual === releaseCandidateProvenance.ref
+    )),
+  'release-candidate Workflow provenance must wait for release-phase authorization',
 );
 
 const staleCatalog = JSON.parse(JSON.stringify(catalog));

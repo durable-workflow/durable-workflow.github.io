@@ -11,6 +11,9 @@ const {
 } = require('./check-compatibility-authority');
 const artifactVersionSource = require('./public-artifact-versions.json');
 const {
+  ARTIFACT_RELEASE_POLICY,
+} = require('./public-artifact-versions');
+const {
   buildArtifactVersionProjection,
 } = require('./generate-docs-page-release-audit');
 
@@ -46,12 +49,19 @@ assert.throws(
   'narrowing the OpenAPI enum must fail compatibility-authority validation',
 );
 
-assert.strictEqual(
-  composerPrereleaseStability('workflow', '2.0.0-rc.4'),
-  'rc',
-  'release-candidate Composer authorities must remain valid before the stable cutover',
+assert.strictEqual(ARTIFACT_RELEASE_POLICY.release_phase, 'beta');
+assert.strictEqual(composerPrereleaseStability('workflow', '2.0.0-alpha.201'), 'alpha');
+assert.strictEqual(composerPrereleaseStability('workflow', '2.0.0-beta.3'), 'beta');
+assert.throws(
+  () => composerPrereleaseStability('workflow', '2.0.0-rc.4'),
+  /not admitted by the beta release phase/,
+  'release-candidate compatibility authorities must wait for the RC policy transition',
 );
-
+assert.throws(
+  () => composerPrereleaseStability('workflow', '2.0.0'),
+  /not admitted by the beta release phase/,
+  'stable compatibility authorities must wait for the stable cutover',
+);
 function successorVersion(version) {
   const successor = version.replace(/(\d+)(?![\s\S]*\d)/, sequence => String(Number(sequence) + 1));
   assert.notStrictEqual(successor, version, `test fixture must advance ${version}`);
