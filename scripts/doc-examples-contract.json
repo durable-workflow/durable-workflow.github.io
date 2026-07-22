@@ -217,7 +217,7 @@
       "path": "quickstart.md",
       "language": "bash",
       "requiredSubstrings": [
-        "cargo add durable-workflow@=%%artifact.rustSdkVersion%%"
+        "%%artifact.rustCargoAddCommand%%"
       ]
     },
     {

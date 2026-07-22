@@ -16,7 +16,7 @@ const SOURCE_PIN_PATTERNS = [
   {
     category: 'cli_artifact_pin',
     label: 'CLI table version pin',
-    pattern: /`dw`\s+`(0\.1\.\d+)`/g,
+    pattern: /`dw`\s+`(2\.0\.0-beta\.\d+)`/g,
     expected: ARTIFACT_VERSIONS.cli,
   },
 ];

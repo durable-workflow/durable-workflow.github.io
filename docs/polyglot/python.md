@@ -268,9 +268,8 @@ below applies to any namespace the bearer token is authorized for.
 
 `set_namespace_external_storage` mirrors `dw namespace:set-storage-driver`. The
 first positional argument is the namespace `name`, matching `describe_namespace`,
-`create_namespace`, and `update_namespace`. Callers that pinned the
-`namespace=` keyword from the 0.4.0 release continue to work and now emit a
-`DeprecationWarning` until that alias is removed in a future release. The
+`create_namespace`, and `update_namespace`. The deprecated `namespace=` alias
+emits a `DeprecationWarning`; new code should use the positional `name`. The
 `config` dict carries driver-specific keys including the optional `disk` field
 on `s3`, `gcs`, and `azure` so credentials stay on the server. The returned
 `NamespaceDescription` reflects the policy the server actually persisted —

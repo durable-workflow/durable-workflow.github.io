@@ -42,7 +42,9 @@ assert.throws(
   'current literal pins must use the version authority token',
 );
 
-const staleServerVersion = ARTIFACT_VERSIONS.server === '0.2.0' ? '0.2.1' : '0.2.0';
+const staleServerVersion = ARTIFACT_VERSIONS.server === '2.0.0-beta.1'
+  ? '2.0.0-beta.3'
+  : '2.0.0-beta.1';
 assert.throws(
   () => checkPublicArtifactSource(
     'docs/guides/stale.md',

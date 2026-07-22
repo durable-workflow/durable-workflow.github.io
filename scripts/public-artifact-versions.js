@@ -1,44 +1,44 @@
 const artifactVersionSource = require('./public-artifact-versions.json');
 
 const ARTIFACT_VERSION_SCHEMA = 'durable-workflow.docs.public-artifact-versions';
-const COMPOSER_PRERELEASE_VERSION_PATTERN = /^2\.0\.0-(?:alpha|beta)\.\d+$/;
-const COMPOSER_PRERELEASE_VERSION_PATTERN_SOURCE = '2\\.0\\.0-(?:alpha|beta)\\.\\d+';
+const PRODUCT_TRAIN_VERSION_PATTERN = /^2\.0\.0-beta\.\d+$/;
+const PRODUCT_TRAIN_VERSION_PATTERN_SOURCE = '2\\.0\\.0-beta\\.\\d+';
 
 const ARTIFACT_VERSION_REQUIREMENTS = Object.freeze({
   cli: {
     label: 'CLI',
-    pattern: /^0\.1\.\d+$/,
-    expected: '0.1.N',
+    pattern: PRODUCT_TRAIN_VERSION_PATTERN,
+    expected: '2.0.0-beta.N',
   },
   'sdk-php': {
     label: 'PHP SDK',
-    pattern: /^0\.1\.\d+$/,
-    expected: '0.1.N',
+    pattern: PRODUCT_TRAIN_VERSION_PATTERN,
+    expected: '2.0.0-beta.N',
   },
   'sdk-python': {
     label: 'Python SDK',
-    pattern: /^0\.4\.\d+$/,
-    expected: '0.4.N',
+    pattern: PRODUCT_TRAIN_VERSION_PATTERN,
+    expected: '2.0.0-beta.N',
   },
   'sdk-rust': {
     label: 'Rust SDK',
-    pattern: /^0\.1\.\d+$/,
-    expected: '0.1.N',
+    pattern: PRODUCT_TRAIN_VERSION_PATTERN,
+    expected: '2.0.0-beta.N',
   },
   server: {
     label: 'server',
-    pattern: /^0\.2\.\d+$/,
-    expected: '0.2.N',
+    pattern: PRODUCT_TRAIN_VERSION_PATTERN,
+    expected: '2.0.0-beta.N',
   },
   waterline: {
     label: 'Waterline',
-    pattern: COMPOSER_PRERELEASE_VERSION_PATTERN,
-    expected: '2.0.0-alpha.N or 2.0.0-beta.N',
+    pattern: PRODUCT_TRAIN_VERSION_PATTERN,
+    expected: '2.0.0-beta.N',
   },
   workflow: {
     label: 'Workflow',
-    pattern: COMPOSER_PRERELEASE_VERSION_PATTERN,
-    expected: '2.0.0-alpha.N or 2.0.0-beta.N',
+    pattern: PRODUCT_TRAIN_VERSION_PATTERN,
+    expected: '2.0.0-beta.N',
   },
 });
 
@@ -82,6 +82,13 @@ function readArtifactVersions(source = artifactVersionSource) {
     throw new Error(`public-artifact-versions.json contains unknown artifacts: ${unknownArtifacts.join(', ')}`);
   }
 
+  const trains = [...new Set(Object.values(versions))];
+  if (trains.length !== 1) {
+    throw new Error(
+      `public-artifact-versions.json must define one synchronized 2.0 product train; got ${trains.join(', ')}`
+    );
+  }
+
   return Object.freeze(versions);
 }
 
@@ -114,13 +121,13 @@ function buildArtifactPins(versions) {
     cliUpgradeTag: `--tag=${versions.cli}`,
     cliVersion: versions.cli,
     phpSdkVersion: versions['sdk-php'],
-    phpSdkComposerPackage: `durable-workflow/sdk:${versions['sdk-php']}`,
-    phpSdkComposerInstallCommand: `composer require durable-workflow/sdk:${versions['sdk-php']}`,
+    phpSdkComposerPackage: composerPackagePin('durable-workflow/sdk', versions['sdk-php']),
+    phpSdkComposerInstallCommand: `composer require ${composerPackagePin('durable-workflow/sdk', versions['sdk-php'])}`,
     pythonSdkVersion: versions['sdk-python'],
     pythonPackagePin: `durable-workflow==${versions['sdk-python']}`,
     pythonPipInstallCommand: `pip install durable-workflow==${versions['sdk-python']}`,
     rustSdkVersion: versions['sdk-rust'],
-    rustCargoAddCommand: `cargo add durable-workflow@=${versions['sdk-rust']}`,
+    rustCargoAddCommand: `cargo add durable-workflow@${versions['sdk-rust']} --exact`,
     rustCargoRequirement: `durable-workflow = "=${versions['sdk-rust']}"`,
     rustCratesIoUrl: 'https://crates.io/crates/durable-workflow',
     rustRepositoryUrl: 'https://github.com/durable-workflow/sdk-rust',
@@ -144,49 +151,49 @@ function buildArtifactPinPatterns(versions) {
     {
       category: 'server_artifact_pin',
       label: 'server container image tag',
-      pattern: /(?:durableworkflow\/server|ghcr\.io\/durable-workflow\/server):(0\.2\.\d+)/g,
+      pattern: new RegExp(`(?:durableworkflow\\/server|ghcr\\.io\\/durable-workflow\\/server):(${PRODUCT_TRAIN_VERSION_PATTERN_SOURCE})`, 'g'),
       expected: versions.server,
     },
     {
       category: 'server_artifact_pin',
       label: 'server compose tag',
-      pattern: /\bDW_SERVER_TAG=(0\.2\.\d+)\b/g,
+      pattern: new RegExp(`\\bDW_SERVER_TAG=(${PRODUCT_TRAIN_VERSION_PATTERN_SOURCE})\\b`, 'g'),
       expected: versions.server,
     },
     {
       category: 'php_sdk_artifact_pin',
       label: 'PHP SDK Composer package pin',
-      pattern: /durable-workflow\/sdk:(0\.1\.\d+)/g,
-      expected: versions['sdk-php'],
+      pattern: new RegExp(`durable-workflow\\/sdk:(${PRODUCT_TRAIN_VERSION_PATTERN_SOURCE}@beta)`, 'g'),
+      expected: composerPinCheckValue(versions['sdk-php']),
     },
     {
       category: 'python_sdk_artifact_pin',
       label: 'Python SDK package pin',
-      pattern: /durable-workflow==(0\.4\.\d+)/g,
+      pattern: new RegExp(`durable-workflow==(${PRODUCT_TRAIN_VERSION_PATTERN_SOURCE})`, 'g'),
       expected: versions['sdk-python'],
     },
     {
       category: 'rust_sdk_artifact_pin',
       label: 'Rust SDK crate pin',
-      pattern: /(?:cargo add durable-workflow@=(0\.1\.\d+)|durable-workflow\s*=\s*["']=(0\.1\.\d+)["'])/g,
+      pattern: new RegExp(`(?:cargo add durable-workflow@(${PRODUCT_TRAIN_VERSION_PATTERN_SOURCE}) --exact|durable-workflow\\s*=\\s*["']=(${PRODUCT_TRAIN_VERSION_PATTERN_SOURCE})["'])`, 'g'),
       expected: versions['sdk-rust'],
     },
     {
       category: 'cli_artifact_pin',
       label: 'CLI version pin',
-      pattern: /(?:\bVERSION\s*=\s*["']?(0\.1\.\d+)["']?|\$env:VERSION\s*=\s*["'](0\.1\.\d+)["']|--tag=(0\.1\.\d+))/g,
+      pattern: new RegExp(`(?:\\bVERSION\\s*=\\s*["']?(${PRODUCT_TRAIN_VERSION_PATTERN_SOURCE})["']?|\\$env:VERSION\\s*=\\s*["'](${PRODUCT_TRAIN_VERSION_PATTERN_SOURCE})["']|--tag=(${PRODUCT_TRAIN_VERSION_PATTERN_SOURCE}))`, 'g'),
       expected: versions.cli,
     },
     {
       category: 'workflow_artifact_pin',
       label: 'Workflow Composer prerelease pin',
-      pattern: new RegExp(`durable-workflow\\/workflow:(${COMPOSER_PRERELEASE_VERSION_PATTERN_SOURCE}@(alpha|beta))`, 'g'),
+      pattern: new RegExp(`durable-workflow\\/workflow:(${PRODUCT_TRAIN_VERSION_PATTERN_SOURCE}@beta)`, 'g'),
       expected: composerPinCheckValue(versions.workflow),
     },
     {
       category: 'waterline_artifact_pin',
       label: 'Waterline Composer prerelease pin',
-      pattern: new RegExp(`durable-workflow\\/waterline:(${COMPOSER_PRERELEASE_VERSION_PATTERN_SOURCE}@(alpha|beta))`, 'g'),
+      pattern: new RegExp(`durable-workflow\\/waterline:(${PRODUCT_TRAIN_VERSION_PATTERN_SOURCE}@beta)`, 'g'),
       expected: composerPinCheckValue(versions.waterline),
     },
   ]);

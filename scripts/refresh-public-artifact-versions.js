@@ -263,11 +263,15 @@ async function requestText(url, options = {}) {
 }
 
 function normalizeVersion(artifact, value) {
-  const version = String(value || '').replace(/^v/, '');
+  let version = String(value || '').replace(/^v/, '');
   const requirement = ARTIFACT_VERSION_REQUIREMENTS[artifact];
 
   if (!requirement) {
     throw new Error(`Unknown artifact ${artifact}`);
+  }
+
+  if (artifact === 'sdk-python') {
+    version = version.replace(/^2\.0\.0b(\d+)$/, '2.0.0-beta.$1');
   }
 
   return requirement.pattern.test(version) ? version : null;
@@ -351,7 +355,7 @@ function selectLatestCompleteCliRelease(releases, source) {
   for (const release of releases || []) {
     const version = normalizeVersion('cli', release && release.tag_name);
 
-    if (!version || release.draft || release.prerelease) {
+    if (!version || release.draft) {
       continue;
     }
 

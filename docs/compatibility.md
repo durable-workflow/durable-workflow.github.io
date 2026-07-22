@@ -41,7 +41,7 @@ manifests, and CI gates can validate themselves against one source of truth:
 
 - `surface_stability_contract` in the response body of
   `GET /api/cluster/info` on the standalone Durable Workflow server, schema
-  `durable-workflow.v2.surface-stability.contract`, version `3`.
+  `durable-workflow.v2.surface-stability.contract`, version `4`.
 - A frozen mirror of the same manifest in this repository at
   `static/compatibility-contract.json`.
 - The PHP class `Workflow\V2\Support\SurfaceStabilityContract`, which is
@@ -93,7 +93,7 @@ not public.
 |-------|---------|-----------------------------------|
 | `frozen` | Wire-format or persisted shape that must decode the same way for the workflow lifetime. Renaming, removing, or repurposing a field is a protocol break, never a minor change. | Only by introducing a **parallel primitive** with a new type name. The original shape stays decodable indefinitely. |
 | `stable` | Public surface covered by the platform semver guarantee. Additive changes ship in minor releases. | Major release only. |
-| `prerelease` | Public surface that is feature-complete but still allowed to change before the matching `1.0.0` / `2.0.0` cut. | In clearly labelled prerelease versions; called out in the version-history table on this page. |
+| `prerelease` | Public surface that is feature-complete but still allowed to change before the matching `1.0.0` / `2.0.0` cut. | In clearly labelled prerelease versions; called out in release notes. |
 | `experimental` | Public-but-unstable surface. May change in any release, including patch releases. Callers must opt in by reading the experimental flag on the surface. | Any release; release notes call out the change. |
 
 ## Public Surface Families
@@ -164,7 +164,7 @@ Allowed:
 - dropping a previously supported SDK or CLI version range
 
 Required:
-- announce in the version-history table at the bottom of this page at least
+- announce in release notes at least
   one minor release before cutting the major
 - where feasible, ship the new surface alongside the old surface in a
   previous minor release so callers can migrate before the major
@@ -198,280 +198,110 @@ versions are validated against which server protocol manifests. Components
 validate the matrix at runtime via `GET /api/cluster/info` and fail closed
 when the manifests do not agree.
 
-### Installable component versions
+### Supported 2.0 product train
 
-The generated [public release-audit JSON](pathname:///docs-page-release-audit.json)
-is the current installable artifact authority for Workflow, Server, CLI, the
-PHP, Python, and Rust SDKs, and Waterline. This page deliberately does not copy
-that tuple into editorial Markdown. Stable 1.x remains the default public docs
-line; the 2.0 docs line is explicit prerelease guidance until the
-release-status cutover is authorized.
+Durable Workflow 2.0 has one supported beta choice. Every component below uses
+the same product-train identifier; choose 2.0 once and install this tuple:
 
-Package versions identify builds and distribution channels. Compatibility is
-governed by the stability families and protocol manifests below, not by
-assuming that two top-level package versions must match.
+| Component | Supported version | Install identity |
+|-----------|-------------------|------------------|
+| Server | `%%artifact.serverVersion%%` | `%%artifact.serverDockerHubImage%%` |
+| CLI | `%%artifact.cliVersion%%` | `%%artifact.cliInstallerEnv%%` |
+| Workflow engine | `%%artifact.workflowVersion%%` | `%%artifact.workflowComposerPackage%%` |
+| Waterline operator | `%%artifact.waterlineVersion%%` | `%%artifact.waterlineComposerPackage%%` |
+| PHP SDK | `%%artifact.phpSdkVersion%%` | `%%artifact.phpSdkComposerPackage%%` |
+| Python SDK | `%%artifact.pythonSdkVersion%%` | `%%artifact.pythonPackagePin%%` |
+| Rust SDK | `%%artifact.rustSdkVersion%%` | `%%artifact.rustCargoRequirement%%` |
 
-### Server ↔ SDK / CLI
+PyPI renders the Python distribution version as `2.0.0b3`; the documented
+PEP 440 install spelling `2.0.0-beta.3` resolves to that same release. This
+normalization does not create a second supported version.
 
-| Server protocol manifests and request rule | CLI 0.1.x | PHP SDK 0.1.x (`1.13`) | Python SDK 0.4.x (`1.1`) | Rust SDK 0.1.x (`1.2`) |
-|--------------------------------------------|-----------|----------------------------|--------------------------|-------------------------------------|
-| `control_plane.version: "2"` + request-contract v1 + advertised `worker_protocol.version: "1.13"`; worker headers `1.0` through `1.13` accepted | ✅ Compatible (control plane only) | ✅ Compatible | ✅ Compatible | ✅ Compatible |
-| Missing or malformed required protocol manifest/header | ❌ Fail closed | ❌ Fail closed | ❌ Fail closed | ❌ Fail closed |
-| Different worker-protocol major or worker minor newer than the advertised server minor | n/a | ❌ Fail closed | ❌ Fail closed | ❌ Fail closed |
-| Future incompatible control-plane or worker-protocol version | ❌ Breaking | ❌ Breaking | ❌ Breaking | ❌ Breaking |
+The beta train is coordinated as a unit. A tuple is publishable only when all
+seven entries share the same `2.0.0-beta.N` identifier, both server
+registries agree, and the generated quickstart contract uses those exact
+artifacts. The registry refresher fails closed instead of combining
+independently newest packages.
 
-For server `0.2.x`, the worker compatibility authority is the advertised
-`worker_protocol.version`, not the server patch number. If the server
-advertises `1.N`, it accepts an incoming
-`X-Durable-Workflow-Protocol-Version: 1.M` only when `M` is less than or equal
-to `N`. It returns its advertised `1.N` in the response header and body; it
-does not echo the worker's older version. Missing or malformed headers,
-different majors, and worker minors ahead of the server fail closed.
+Earlier alpha and beta artifacts are historical. They are not alternative
+installation choices, and package owners should yank or de-emphasize them
+where their registry supports that operation without rewriting release
+history. The current train does not include compatibility shims for behavior
+from an earlier 2.0 prerelease.
 
-The current `0.2.x` server advertises `1.13`, so its accepted request window is
-`1.0` through `1.13`. That includes the Rust `0.1.x` header `1.2` as well as
-the Python `0.4.x` header `1.1`. The Rust package's `>=0.2,<0.3` server range
-selects the server release family; at runtime, the server must also advertise
-worker protocol `1.2` or newer in the `1.x` major. An older `0.2.x` server
-that advertises `1.0` or `1.1` rejects Rust `0.1.x` rather than silently
-weakening the protocol contract.
+Capabilities in this train are the 2.0 baseline and therefore have no
+feature-introduction version matrix. New capabilities progress through
+ordinary compatible releases: additive work advances the compatible version,
+while a breaking public-surface change waits for the next major version.
+During the prerelease period, a coordinated beta increment replaces the
+previous supported beta tuple.
 
-The top-level server `version` from `/api/cluster/info` is build identity,
-not the client compatibility authority. Clients must use the protocol
-manifests advertised by `/api/cluster/info`:
+Stable 1.x remains the default public docs line. This page is explicit
+prerelease guidance under `/docs/2.0/`; it does not authorize a default-docs
+cutover.
 
-- `control_plane.version`
-- `control_plane.request_contract.schema` and `version`
-- `worker_protocol.version` for worker SDKs
-- `client_compatibility.authority: "protocol_manifests"`
-- `surface_stability_contract.schema: "durable-workflow.v2.surface-stability.contract"`
+### Runtime protocol compatibility
 
-### Workflow Package ↔ Waterline
+Top-level package versions select the supported train. Runtime protocol
+manifests provide a second, fail-closed check:
 
-| Workflow Version | Waterline 1.x | Waterline 2.x |
-|------------------|---------------|---------------|
-| 1.x | ✅ Compatible | ❌ Not compatible |
-| 2.x | ❌ Not compatible | ✅ Compatible |
+| Client | Product train | Control plane | Worker protocol request |
+|--------|---------------|---------------|-------------------------|
+| CLI | `%%artifact.cliVersion%%` | `2` | n/a |
+| PHP SDK | `%%artifact.phpSdkVersion%%` | `2` | `1.13` |
+| Python SDK | `%%artifact.pythonSdkVersion%%` | `2` | `1.1` |
+| Rust SDK | `%%artifact.rustSdkVersion%%` | `2` | `1.2` |
 
-Waterline versions must match the workflow package major version.
+The server advertises worker protocol `1.13`. It accepts request headers
+from the same major with a minor less than or equal to the advertised minor,
+then returns the advertised version. Missing or malformed headers, different
+majors, and worker minors ahead of the server fail closed. The CLI validates
+`control_plane.version: "2"`.
 
-## Runtime Validation
+The server's top-level `version` is build identity. Clients must use the
+`control_plane`, `worker_protocol`, `client_compatibility`, and
+`surface_stability_contract` manifests returned by
+`GET /api/cluster/info` for protocol negotiation.
 
-### CLI
+Workflow and Waterline must also share the exact current beta train. Matching
+only the major version is insufficient during the 2.0 prerelease.
 
-The CLI validates the control-plane protocol manifest on first invocation per session:
+### Runtime validation examples
 
-```bash
-$ dw server:health
-Server compatibility error: unsupported control_plane.version [3]; dw CLI 0.1.x requires control_plane.version 2.
-```
+The SDKs validate discovery before registering a worker. An incompatible
+server produces an explicit compatibility error rather than attempting a
+legacy prerelease path. All worker requests send
+`X-Durable-Workflow-Protocol-Version`; control-plane requests send
+`X-Durable-Workflow-Control-Plane-Version: 2`.
 
-Compatibility checks are cached per CLI invocation. Starting a new CLI command re-validates.
+Before a product train is promoted, release qualification must start from a
+clean machine, install only the published artifacts named above, and complete
+the PHP, Python, and Rust conformance paths. Source checkouts and unpublished
+substitutions do not count as public-artifact evidence.
 
-### Python SDK
+### Release progression
 
-The Python SDK validates protocol manifests when workers register:
+Patch releases preserve documented stable contracts. Minor releases may add
+fields, routes, commands, classes, or optional parameters with safe defaults.
+Breaking stable changes require a major release and a documented migration
+path. Frozen history-event shapes remain decodable indefinitely; a new shape
+uses a parallel primitive rather than mutating an existing event.
 
-```python
-from durable_workflow import Client, Worker
+Every train release must keep package metadata, release notes, generated docs,
+installation commands, the quickstart execution contract, and cross-language
+examples synchronized with the machine-owned artifact tuple.
 
-client = Client("http://server:8080", token="...", namespace="default")
-worker = Worker(client, task_queue="default", workflows=[...])
+### Release review checklist
 
-await worker.run()  # Validates protocol manifests before registering
-```
-
-If incompatible:
-
-```
-RuntimeError: Server compatibility error: incompatible worker_protocol.version '2.0'; sdk-python requires major-equal and minor>='1.1'.
-```
-
-### Rust SDK
-
-Rust SDK `0.1.x` sends worker protocol header `1.2` and control-plane header
-`2`. It is compatible with server `0.2.x` only when discovery advertises
-control plane `2` and worker protocol `1.N` with `N >= 2`. A current server
-advertising `1.13` accepts the Rust header and responds with `1.13`. Missing,
-malformed, different-major, and ahead-of-server versions are rejected.
-
-### Server
-
-The server returns its protocol manifests, the surface-stability contract,
-and the compatibility policy in `GET /api/cluster/info`:
-
-```json
-{
-  "version": "2.0.0",
-  "supported_sdk_versions": {
-    "php": ">=1.0",
-    "python": ">=0.2,<1.0",
-    "rust": ">=0.1,<1.0",
-    "cli": ">=0.1,<1.0"
-  },
-  "client_compatibility": {
-    "schema": "durable-workflow.v2.client-compatibility",
-    "version": 1,
-    "authority": "protocol_manifests",
-    "top_level_version_role": "informational",
-    "fail_closed": true
-  },
-  "surface_stability_contract": {
-    "schema": "durable-workflow.v2.surface-stability.contract",
-    "version": 3,
-    "authority_url": "https://durable-workflow.github.io/docs/2.0/compatibility"
-  },
-  "control_plane": {
-    "version": "2",
-    "request_contract": {
-      "schema": "durable-workflow.v2.control-plane-request.contract",
-      "version": 1
-    }
-  },
-  "worker_protocol": {
-    "version": "1.13"
-  }
-}
-```
-
-The full `surface_stability_contract` body lists every public surface family,
-its stability level, and the patch/minor/major release rules. Clients and
-release-check tooling can consume the same manifest the docs build consumes.
-
-## Upgrading
-
-### Minor Version Upgrades (0.1.8 → 0.1.9, 2.0.0 → 2.0.1)
-
-Minor versions are backward-compatible within the same major version:
-
-- **Server**: Upgrade without client changes
-- **CLI**: Upgrade independently
-- **Python SDK**: Upgrade independently
-- **Rust SDK**: Upgrade independently within the discovered protocol window
-
-Example: a server `0.2.x` release advertising worker protocol `1.13` works
-with CLI `0.1.x`, Python SDK `0.4.x`, and Rust SDK `0.1.x` when it advertises
-the protocol manifests listed above.
-
-### Major Version Upgrades (2.x → 3.x)
-
-Major version changes may introduce breaking changes:
-
-1. **Check compatibility matrix** (above) for supported version combinations
-2. **Upgrade server first**: Deploy new server version
-3. **Validate with one client**: Test one CLI command or SDK worker
-4. **Upgrade remaining clients**: CLI, SDK, workers
-
-**Future major versions (2.x → 3.x)**: Will require client updates. Version validation will catch incompatibilities and provide clear error messages.
-
-## Version Negotiation Protocol
-
-All client-server communication includes protocol version headers:
-
-**Control plane** (workflow start, describe, signal, query, update):
-```
-X-Durable-Workflow-Control-Plane-Version: 2
-```
-
-**Worker protocol** (task polling, completion; examples by current SDK):
-```
-Python SDK 0.4.x: X-Durable-Workflow-Protocol-Version: 1.1
-Rust SDK 0.1.x:   X-Durable-Workflow-Protocol-Version: 1.2
-PHP SDK 0.1.x:   X-Durable-Workflow-Protocol-Version: 1.13
-```
-
-The server validates these headers against its advertised version using the
-same-major, worker-minor-less-than-or-equal rule above. It rejects requests
-with missing, malformed, or incompatible versions.
-
-## Troubleshooting
-
-### "Server compatibility error..."
-
-**Cause**: The server did not advertise the protocol manifest expected by the client.
-
-**Fix**:
-1. Check the compatibility matrix above
-2. Upgrade server or client to compatible protocol versions
-3. If the server advertises the expected protocol manifests and the client reports incompatibility, file a bug
-
-### "Missing X-Durable-Workflow-Protocol-Version header"
-
-**Cause**: Old client not sending protocol version headers.
-
-**Fix**: Upgrade CLI to 0.1.0+ or Python SDK to 0.2.0+.
-
-### "Control plane version mismatch"
-
-**Cause**: Server and client disagree on control-plane protocol version.
-
-**Fix**: Ensure server is 2.x and client is sending version 2 header.
-
-## Release Review Checklist
-
-Every release PR must tick the following before tagging. Docs CI checks the
-machine-readable contract, prerelease tuple guard, Rust authority, and
-worker-protocol specifications. The editorial checks below belong to the
-human reviewer; `scripts/check-compatibility-authority.js` does not validate
-this prose or the dated history table.
-
-- [ ] **Docs authority aligned.** This page lists every surface family in
-  `static/compatibility-contract.json` with the same stability level.
-- [ ] **JSON mirror in sync.** `static/compatibility-contract.json` matches
-  the manifest emitted by `Workflow\V2\Support\SurfaceStabilityContract`
-  (the workflow package contract test pins the manifest shape).
-- [ ] **Install docs aligned.** The [Installation](/docs/2.0/installation)
-  page and any package install snippets do not claim a stability level
-  different from the level this page assigns to the relevant SDK.
-- [ ] **Package metadata aligned.** `composer.json` / `pyproject.toml` /
-  `package.json` prerelease tags match the `stability_level` for the SDK
-  family they belong to (e.g. `0.x` Python and CLI SDKs are `prerelease`,
-  `2.0.x` server and workflow are `stable`).
-- [ ] **Rust protocol authority aligned.** The released crate's
-  `[package.metadata.durable-workflow]`, the Rust guide, compatibility matrix,
-  JSON mirror, and worker OpenAPI describe the same server range, control
-  plane version, worker header, negotiation window, and fail-closed cases.
-- [ ] **Version-history aligned.** The version-history table below does
-  not introduce stability claims that contradict this page.
-
-## Version History
-
-These rows are dated historical snapshots, not the current-version authority.
-Use the [public release-audit JSON](pathname:///docs-page-release-audit.json)
-for the current artifact tuple.
-
-The standalone PHP SDK first entered that canonical tuple as
-`durable-workflow/sdk` version `0.1.1` on 2026-07-13. Historical rows below
-predate the standalone package and therefore describe the embedded Workflow
-PHP runtime only.
-
-| Date | Server | CLI | Python SDK | Rust SDK | Workflow | Waterline | Notes |
-|------|--------|-----|------------|----------|----------|-----------|-------|
-| 2026-07-19 | 0.2.689 | 0.1.93 | 0.4.102 | 0.1.17 | 2.0.0-alpha.291 | 2.0.0-alpha.137 | Recorded a public release-audit snapshot while stable 1.x remained the default docs line. |
-| 2026-07-13 | 0.2.648 | 0.1.89 | 0.4.98 | 0.1.14 | 2.0.0-alpha.274 | 2.0.0-alpha.130 | Recorded a public release-audit snapshot while stable 1.x remained the default docs line. |
-| 2026-07-10 | 0.2.628 | 0.1.86 | 0.4.98 | 0.1.2 | 2.0.0-alpha.262 | 2.0.0-alpha.129 | Platform conformance suite version 29 makes the five published-artifact Rust signals/query cells mandatory, including a valid Avro path, registry checksum provenance, query immutability, and replayed workflow-instance state after a cold worker restart. |
-| 2026-07-09 | 0.2.618 | 0.1.86 | 0.4.98 | — | 2.0.0-alpha.259 | 2.0.0-alpha.122 | Platform conformance suite version 28 requires v1-to-v2 rollback evidence to preserve external ready, delayed, and reserved queue state with SQL from one recovery cut, or report the affected executions as unrecoverable. An observed v1.0.77 Watchdog redispatch is a bounded pending-only wake path; retries, timers, and waiting/running work still require their queue or signal state. Recovery manifests record only an `APP_KEY` secret-manager reference/version, with secrets and recovery credentials separately controlled. |
-| 2026-07-09 | 0.2.617 | 0.1.86 | 0.4.98 | — | 2.0.0-alpha.258 | 2.0.0-alpha.122 | Recorded a public release-audit snapshot while stable 1.x remained the default docs line. |
-| 2026-07-08 | 0.2.598 | 0.1.86 | 0.4.98 | — | 2.0.0-alpha.251 | 2.0.0-alpha.121 | Recorded a public release-audit snapshot while stable 1.x remained the default docs line. |
-| 2026-06-05 | 0.2.341 | 0.1.77 | 0.4.85 | — | 2.0.0-alpha.199 | 2.0.0-alpha.83 | Platform conformance suite version 24 requires worker-versioning cross-language PHP/Python pinning evidence to include worker runtime identities, workflow and run IDs, rollout state, public poll and rollout outcomes, published worker artifact install source and version, and confirmation that no local product source checkout was used. |
-| 2026-06-05 | 0.2.341 | 0.1.77 | 0.4.85 | — | 2.0.0-alpha.199 | 2.0.0-alpha.83 | Recorded a verified public release-audit snapshot while stable 1.x remained the default docs line. |
-| 2026-06-02 | 0.2.261 | 0.1.75 | 0.4.84 | — | 2.0.0-alpha.193 | 2.0.0-alpha.80 | Platform conformance suite version 20 adds a public worker-versioning evidence shard for published PHP/Python worker protocol client execution, so cross-language build-ID pinning evidence can be recorded without naming runner implementation details. It also publishes suite-versioned public runtime requirement digests for `artifact_policy`, `common_result_evidence`, `required_matrix`, `scenario_requirements`, and `host_runner_contract`. |
-| 2026-06-02 | 2.0.0 | 0.1.0 | 0.2.0 | — | 2.0.0 | 2.0.0 | Platform conformance suite version 19 adds stable `schedules_runtime_contract` coverage for published-artifact schedule scenarios, including cron and fixed-rate cadence, public list and describe surfaces, pause/resume/delete controls, missed-fire policy, restart survival, CLI/Python/PHP client paths, cross-language scheduled workflow dispatch, and adversarial schedule inputs. |
-| 2026-06-02 | 2.0.0 | 0.1.0 | 0.2.0 | — | 2.0.0 | 2.0.0 | Platform conformance suite version 18 requires prerelease readiness evidence to execute the 2.0 quickstart Laravel branch from live public docs through `status=completed` and `output=Hello, Laravel!`, with exact Composer package versions, commands, outputs, and wall-clock timing. |
-| 2026-06-02 | 2.0.0 | 0.1.0 | 0.2.0 | — | 2.0.0 | 2.0.0 | Platform conformance suite version 17 requires prerelease readiness evidence to execute the 2.0 quickstart local-server hosting branch from live public docs through an observable completed workflow, with exact artifact versions, commands, outputs, and wall-clock timings. |
-| 2026-05-25 | 2.0.0 | 0.1.0 | 0.2.0 | — | 2.0.0 | 2.0.0 | Platform conformance suite version 14 adds stable `prerelease_readiness_contract` coverage for published-artifact 2.0 readiness across Workflow, Waterline, server, CLI, Python SDK, sample app, public docs, migration, API stability, configuration understandability, and release-channel compatibility. |
-| 2026-05-25 | 2.0.0 | 0.1.0 | 0.2.0 | — | 2.0.0 | 2.0.0 | Platform conformance suite version 13 adds stable `migration_runtime_contract` coverage for published-artifact v1 to v2 migration scenarios, including latest supported v1 state setup, documented migration steps, completed-history replay, in-flight progress, activity retries, schedules, worker registrations, CLI and Waterline visibility, new v2 starts, rollback semantics, and version-skew refusal. |
-| 2026-05-24 | 2.0.0 | 0.1.0 | 0.2.0 | — | 2.0.0 | 2.0.0 | Platform conformance suite version 12 adds stable `saga_runtime_contract` coverage for published-artifact saga compensation scenarios, including forward success, reverse-order compensation after later-step failure, early-step failure, compensation retry idempotence, compensation failure visibility, mid-compensation worker restart, PHP/Python cross-language compensation, typed compensation error round trips, and operator-visible in-progress compensation state. |
-| 2026-05-24 | 2.0.0 | 0.1.0 | 0.2.0 | — | 2.0.0 | 2.0.0 | Platform conformance suite version 11 adds stable `worker_versioning_runtime_contract` coverage for published-artifact worker-versioning scenarios, including build-ID registration, rollout visibility, drain/resume controls, per-run pins, compatible replay routing, no-compatible-worker diagnostics, cross-language PHP/Python pinning, adversarial no-bump behavior, and history API version pins. |
-| 2026-05-24 | 2.0.0 | 0.1.0 | 0.2.0 | — | 2.0.0 | 2.0.0 | Platform conformance suite version 10 adds stable `search_attribute_runtime_contract` coverage for PHP and Python workers, CLI query and error surfaces, Waterline operator visibility, cross-language codec round trips, load and indexing latency, OR/NOT grammar, type safety, namespace isolation, reserved-name refusal, and query injection hardening. |
-| 2026-05-20 | 2.0.0 | 0.1.0 | 0.2.0 | — | 2.0.0 | 2.0.0 | Platform conformance suite version 9 requires signal/query published-artifact results to record concrete pinned artifact versions and reject placeholder or unresolved version tokens. |
-| 2026-05-20 | 2.0.0 | 0.1.0 | 0.2.0 | — | 2.0.0 | 2.0.0 | Platform conformance suite version 8 publishes the namespace lifecycle cleanup criteria that preserve cross-namespace external payload ownership under a new suite version and pins stable runtime scenario `operations` and `pass_criteria` criteria content in the docs-site release check. Later suite versions apply the same append-only release-check model to public runtime requirement digests. |
-| 2026-05-20 | 2.0.0 | 0.1.0 | 0.2.0 | — | 2.0.0 | 2.0.0 | Platform conformance suite version 7 adds stable `child_workflow_runtime_contract` coverage for same-language and cross-language child execution, failure and cancellation propagation, worker-restart replay, concurrent fan-out, and namespace behavior. |
-| 2026-05-20 | 2.0.0 | 0.1.0 | 0.2.0 | — | 2.0.0 | 2.0.0 | Platform conformance suite version 6 adds stable `namespace_runtime_contract` published-artifact scenarios for namespace lifecycle cleanup, workflow and worker isolation, CLI and SDK namespace selection, PHP worker task-queue routing, Waterline scoped visibility, Nexus opt-in crossing, reserved-name refusal, and search-attribute value query isolation. |
-| 2026-05-19 | 2.0.0 | 0.1.0 | 0.2.0 | — | 2.0.0 | 2.0.0 | Platform conformance suite versions 2-5 update published-artifact conformance: version 2 adds stable `signal_query_runtime_contract` coverage for PHP and Python workers, cross-language clients, replay timing, terminal-run behavior, malformed payloads, and operator visibility; version 3 adds stable `history_replay_bundles` runtime scenarios and requires replay coverage for frozen histories, worker restart, adversarial refusal, and in-flight signal timing across official PHP and Python runtimes; version 4 requires completed cleanly runs with replayable declared query handlers to return final query state through every claimed public query surface; version 5 standardizes runtime scenario result statuses as `pass`, `fail`, `unsupported`, `not_covered`, or `runner_blocked` and requires every required stable runtime scenario to pass for full conformance. |
-| 2026-05-02 | 2.0.0 | 0.1.0 | 0.2.0 | — | 2.0.0 | 2.0.0 | Compatibility-and-release-authority contract published. `surface_stability_contract` exposed in `/api/cluster/info`; per-package stability docs reference this page. |
-| 2026-04-17 | 2.0.0 | 0.1.0 | 0.2.0 | — | 2.0.0 | 2.0.0 | Compatibility authority moved to protocol manifests |
-| 2026-04-15 | 2.0.0 | 0.1.0 | 0.1.0 | — | 2.0.0 | 2.0.0 | Stable release |
+- Confirm the machine-readable compatibility contract matches the Workflow
+  surface-stability manifest.
+- Confirm all current artifact versions form one synchronized product train.
+- Confirm installation examples resolve tokens from the artifact authority.
+- Confirm package metadata declares the same server and product-train version.
+- Confirm clean-machine published-artifact conformance passes for PHP, Python,
+  and Rust.
+- Confirm release notes describe post-baseline additions and do not present
+  older prereleases as supported choices.
 
 ## See Also
 

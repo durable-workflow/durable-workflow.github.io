@@ -274,7 +274,7 @@ in one Tokio process.
 ```bash
 cargo new durable-workflow-rust-quickstart
 cd durable-workflow-rust-quickstart
-cargo add durable-workflow@=%%artifact.rustSdkVersion%%
+%%artifact.rustCargoAddCommand%%
 cargo add tokio --features macros,rt-multi-thread,time
 ```
 

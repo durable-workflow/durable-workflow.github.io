@@ -60,11 +60,11 @@ assert.strictEqual(currentArtifactPins.cliVersion, source.artifacts.cli);
 assert.strictEqual(currentArtifactPins.phpSdkVersion, source.artifacts['sdk-php']);
 assert.strictEqual(
   currentArtifactPins.phpSdkComposerPackage,
-  `durable-workflow/sdk:${source.artifacts['sdk-php']}`,
+  `durable-workflow/sdk:${source.artifacts['sdk-php']}@beta`,
 );
 assert.strictEqual(
   currentArtifactPins.phpSdkComposerInstallCommand,
-  `composer require durable-workflow/sdk:${source.artifacts['sdk-php']}`,
+  `composer require durable-workflow/sdk:${source.artifacts['sdk-php']}@beta`,
 );
 assert.strictEqual(currentArtifactPins.pythonSdkVersion, source.artifacts['sdk-python']);
 assert.strictEqual(currentArtifactPins.rustSdkVersion, source.artifacts['sdk-rust']);
@@ -131,13 +131,7 @@ assert.strictEqual(
 
 let staleQuickstartContract = currentQuickstartContract;
 for (const [currentVersion, staleVersion] of [
-  [source.artifacts.cli, '0.1.81'],
-  [source.artifacts['sdk-php'], '0.1.9'],
-  [source.artifacts['sdk-python'], '0.4.90'],
-  [source.artifacts['sdk-rust'], '0.1.9'],
-  [source.artifacts.server, '0.2.512'],
-  [source.artifacts.workflow, '2.0.0-alpha.223'],
-  [source.artifacts.waterline, '2.0.0-alpha.110'],
+  [source.artifacts.cli, '2.0.0-beta.1'],
 ]) {
   staleQuickstartContract = staleQuickstartContract.replaceAll(currentVersion, staleVersion);
 }
@@ -342,7 +336,7 @@ async function assertWorkflowRegistryAuthorityResolution() {
         return {
           packages: {
             [PUBLISHED_ARTIFACT_SOURCES['sdk-php'].packageName]: [
-              {version: '0.1.0', dist: {type: 'zip'}},
+              {version: '2.0.0-beta.1', dist: {type: 'zip'}},
               {version: source.artifacts['sdk-php'], dist: {type: 'zip'}},
             ],
           },
@@ -391,7 +385,9 @@ function extractObservedPins(definition, content) {
 
 function assertComposerPrereleasePins(artifact, version, stability) {
   const candidate = cloneSource();
-  candidate.artifacts[artifact] = version;
+  for (const name of Object.keys(candidate.artifacts)) {
+    candidate.artifacts[name] = version;
+  }
   const versions = readArtifactVersions(candidate);
   const pins = buildArtifactPins(versions);
   const pinName = `${artifact}ComposerPackage`;
@@ -416,27 +412,31 @@ function assertComposerPrereleasePins(artifact, version, stability) {
   );
 }
 
-assertComposerPrereleasePins('waterline', '2.0.0-alpha.70', 'alpha');
-assertComposerPrereleasePins('workflow', '2.0.0-alpha.200', 'alpha');
 assertComposerPrereleasePins('waterline', '2.0.0-beta.1', 'beta');
-assertComposerPrereleasePins('workflow', '2.0.0-beta.2', 'beta');
+assertComposerPrereleasePins('workflow', '2.0.0-beta.3', 'beta');
 
 assert.strictEqual(
-  selectLatestVersion('server', ['0.2.9', '0.2.10', 'latest', '0.2.8'], 'test candidates'),
-  '0.2.10',
+  selectLatestVersion('server', ['2.0.0-beta.9', '2.0.0-beta.10', 'latest'], 'test candidates'),
+  '2.0.0-beta.10',
   'published server versions must sort numerically'
 );
 
 assert.strictEqual(
-  selectLatestVersion('workflow', ['2.0.0-alpha.199', '2.0.0-beta.1', '2.0.0-alpha.201'], 'test candidates'),
-  '2.0.0-beta.1',
-  'Composer beta prereleases must rank after alpha prereleases'
+  selectLatestVersion('workflow', ['2.0.0-beta.9', '2.0.0-beta.10', '2.0.0-alpha.201'], 'test candidates'),
+  '2.0.0-beta.10',
+  'product train beta prereleases must sort numerically and ignore older alpha tags'
+);
+
+assert.strictEqual(
+  selectLatestVersion('sdk-python', ['2.0.0b3', '2.0.0-beta.1'], 'test candidates'),
+  '2.0.0-beta.3',
+  'PyPI PEP 440 beta spelling must normalize to the shared product-train identifier'
 );
 
 assert.strictEqual(
   selectLatestCratesIoVersion({
     versions: [
-      {num: '0.1.1', yanked: true},
+      {num: '2.0.0-beta.3', yanked: true},
       {num: source.artifacts['sdk-rust'], yanked: false},
     ],
   }, PUBLISHED_ARTIFACT_SOURCES['sdk-rust']),
@@ -457,9 +457,9 @@ const requiredCliAssets = PUBLISHED_ARTIFACT_SOURCES.cli.requiredAssets;
 
 assert.strictEqual(
   selectLatestCompleteCliRelease([
-    cliRelease('0.1.85', []),
+    cliRelease('2.0.0-beta.3', []),
     cliRelease(source.artifacts.cli, requiredCliAssets),
-    cliRelease('0.1.83', requiredCliAssets),
+    cliRelease('2.0.0-beta.1', requiredCliAssets),
   ], PUBLISHED_ARTIFACT_SOURCES.cli),
   source.artifacts.cli,
   'CLI artifact resolution must skip newer releases until all public assets are available'
@@ -467,28 +467,36 @@ assert.strictEqual(
 
 assert.strictEqual(
   selectLatestCompleteCliRelease([
-    cliRelease('0.1.86', requiredCliAssets, {draft: true}),
-    cliRelease('0.1.85', requiredCliAssets, {prerelease: true}),
+    cliRelease('2.0.0-beta.3', requiredCliAssets, {draft: true}),
     cliRelease(source.artifacts.cli, requiredCliAssets),
   ], PUBLISHED_ARTIFACT_SOURCES.cli),
   source.artifacts.cli,
-  'CLI artifact resolution must ignore draft and prerelease tags'
+  'CLI artifact resolution must ignore draft beta releases'
+);
+
+assert.strictEqual(
+  selectLatestCompleteCliRelease([
+    cliRelease('2.0.0-beta.3', requiredCliAssets, {prerelease: true}),
+    cliRelease(source.artifacts.cli, requiredCliAssets, {prerelease: true}),
+  ], PUBLISHED_ARTIFACT_SOURCES.cli),
+  '2.0.0-beta.3',
+  'CLI artifact resolution must accept published prerelease train tags'
 );
 
 assert.throws(
   () => selectLatestCompleteCliRelease([
-    cliRelease('0.1.85', []),
+    cliRelease('2.0.0-beta.3', []),
   ], PUBLISHED_ARTIFACT_SOURCES.cli),
-  /No complete CLI release contains all required public assets[\s\S]*0\.1\.85: missing/,
+  /No complete CLI release contains all required public assets[\s\S]*2\.0\.0-beta\.3: missing/,
   'CLI artifact resolution must fail clearly when no complete release exists'
 );
 
 assert.strictEqual(
   parseRegistryNextLink(
-    '</v2/durable-workflow/server/tags/list?last=0.2.99&n=100>; rel="next"',
+    '</v2/durable-workflow/server/tags/list?last=2.0.0-beta.9&n=100>; rel="next"',
     'https://ghcr.io/v2/durable-workflow/server/tags/list?n=100'
   ),
-  'https://ghcr.io/v2/durable-workflow/server/tags/list?last=0.2.99&n=100',
+  'https://ghcr.io/v2/durable-workflow/server/tags/list?last=2.0.0-beta.9&n=100',
   'GHCR pagination links must resolve against the registry origin'
 );
 
@@ -503,10 +511,10 @@ assert.strictEqual(
 
 assert.throws(
   () => selectServerRegistryVersion([
-    { label: 'Docker Hub', image: 'durableworkflow/server', version: '0.2.10' },
-    { label: 'GHCR', image: 'ghcr.io/durable-workflow/server', version: '0.2.9' },
+    { label: 'Docker Hub', image: 'durableworkflow/server', version: '2.0.0-beta.3' },
+    { label: 'GHCR', image: 'ghcr.io/durable-workflow/server', version: '2.0.0-beta.2' },
   ]),
-  /Published server container registries disagree:[\s\S]*Docker Hub durableworkflow\/server:0\.2\.10[\s\S]*GHCR ghcr\.io\/durable-workflow\/server:0\.2\.9/,
+  /Published server container registries disagree:[\s\S]*Docker Hub durableworkflow\/server:2\.0\.0-beta\.3[\s\S]*GHCR ghcr\.io\/durable-workflow\/server:2\.0\.0-beta\.2/,
   'server registry disagreement must fail before selecting a docs tuple'
 );
 
@@ -527,15 +535,13 @@ expectFailure(
 );
 
 const malformedVersions = [
-  ['cli', '0.2.72', /artifacts\.cli must use CLI version format 0\.1\.N/],
-  ['sdk-php', '0.2.0', /artifacts\.sdk-php must use PHP SDK version format 0\.1\.N/],
-  ['sdk-python', '0.5.84', /artifacts\.sdk-python must use Python SDK version format 0\.4\.N/],
-  ['sdk-rust', 'latest', /artifacts\.sdk-rust must use Rust SDK version format 0\.1\.N/],
-  ['server', 'latest', /artifacts\.server must use server version format 0\.2\.N/],
-  ['waterline', '2.0.0', /artifacts\.waterline must use Waterline version format 2\.0\.0-alpha\.N or 2\.0\.0-beta\.N/],
-  ['waterline', '2.0.0-gamma.1', /artifacts\.waterline must use Waterline version format 2\.0\.0-alpha\.N or 2\.0\.0-beta\.N/],
-  ['workflow', '2.0.0-alpha', /artifacts\.workflow must use Workflow version format 2\.0\.0-alpha\.N or 2\.0\.0-beta\.N/],
-  ['workflow', '2.0.0', /artifacts\.workflow must use Workflow version format 2\.0\.0-alpha\.N or 2\.0\.0-beta\.N/],
+  ['cli', '0.1.95', /artifacts\.cli must use CLI version format 2\.0\.0-beta\.N/],
+  ['sdk-php', '0.1.16', /artifacts\.sdk-php must use PHP SDK version format 2\.0\.0-beta\.N/],
+  ['sdk-python', '2.0.0b3', /artifacts\.sdk-python must use Python SDK version format 2\.0\.0-beta\.N/],
+  ['sdk-rust', 'latest', /artifacts\.sdk-rust must use Rust SDK version format 2\.0\.0-beta\.N/],
+  ['server', 'latest', /artifacts\.server must use server version format 2\.0\.0-beta\.N/],
+  ['waterline', '2.0.0-alpha.1', /artifacts\.waterline must use Waterline version format 2\.0\.0-beta\.N/],
+  ['workflow', '2.0.0', /artifacts\.workflow must use Workflow version format 2\.0\.0-beta\.N/],
 ];
 
 for (const [artifact, version, expectedMessage] of malformedVersions) {
@@ -547,6 +553,14 @@ for (const [artifact, version, expectedMessage] of malformedVersions) {
     expectedMessage
   );
 }
+
+expectFailure(
+  'rejects a mixed product train',
+  candidate => {
+    candidate.artifacts.server = '2.0.0-beta.2';
+  },
+  /must define one synchronized 2\.0 product train/
+);
 
 for (const artifact of Object.keys(source.artifacts)) {
   expectFailure(

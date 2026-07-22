@@ -60,14 +60,14 @@ Or pin the same version directly in `Cargo.toml`:
 ```
 
 The `%%artifact.rustSdkVersion%%` release requires Rust 1.86 or newer. Its
-package metadata declares compatibility with Durable Workflow server 0.2.x,
-worker protocol 1.2, and control plane 2. During deployment, the protocol
+package metadata declares compatibility with Durable Workflow server
+`%%artifact.serverVersion%%`, worker protocol 1.2, and control plane 2. During deployment, the protocol
 manifests advertised by `GET /api/cluster/info` remain authoritative.
 
-Server `0.2.x` negotiates worker-protocol headers within major `1`: a server
+Server `%%artifact.serverVersion%%` negotiates worker-protocol headers within major `1`: a server
 advertising `1.N` accepts a worker header `1.M` only when `M <= N`. Rust SDK
-`0.1.x` sends `X-Durable-Workflow-Protocol-Version: 1.2`, so it requires a
-server in the declared `>=0.2,<0.3` package range that also advertises worker
+`%%artifact.rustSdkVersion%%` sends `X-Durable-Workflow-Protocol-Version: 1.2`, so it requires
+the same synchronized server train, which must also advertise worker
 protocol `1.2` or newer. The current server advertises `1.13`, accepts the
 Rust header, and returns `1.13` in its response header and body.
 
@@ -151,8 +151,8 @@ drained. See [Side Effects](/docs/2.0/features/side-effects/) and
 
 ## Cancel, terminate, and handle terminal outcomes
 
-Rust SDK 0.1.8 and newer releases separate cooperative cancellation from forced
-termination. Cancellation is the normal lifecycle operation when workflow and
+The 2.0 baseline separates cooperative cancellation from forced termination.
+Cancellation is the normal lifecycle operation when workflow and
 activity code should observe the stop request and clean up. Termination closes
 the run without waiting for that cleanup and should be reserved for an
 operator-enforced stop.

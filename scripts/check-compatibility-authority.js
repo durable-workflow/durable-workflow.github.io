@@ -205,29 +205,6 @@ function assertOpenApiAcceptedWorkerProtocolVersions(workerOpenApi, expectedVers
   }
 }
 
-function serverReleaseLineFromRange(serverRange) {
-  const match = /^>=(\d+)\.(\d+),<(\d+)\.(\d+)$/.exec(serverRange);
-  if (!match) {
-    throw new Error(
-      `Rust supported_server_versions must use >=MAJOR.MINOR,<MAJOR.NEXT_MINOR ` +
-        `format (got ${JSON.stringify(serverRange)})`,
-    );
-  }
-
-  const lowerMajor = Number(match[1]);
-  const lowerMinor = Number(match[2]);
-  const upperMajor = Number(match[3]);
-  const upperMinor = Number(match[4]);
-  if (upperMajor !== lowerMajor || upperMinor !== lowerMinor + 1) {
-    throw new Error(
-      `Rust supported_server_versions must describe one server minor release line ` +
-        `(got ${JSON.stringify(serverRange)})`,
-    );
-  }
-
-  return `${lowerMajor}.${lowerMinor}.x`;
-}
-
 function assertSdkProtocolAuthorities(contract) {
   const officialSdks = contract.surface_families.official_sdks;
   if (!officialSdks) {
@@ -260,8 +237,9 @@ function assertSdkProtocolAuthorities(contract) {
   const phpPackage = officialSdks.package_compatibility?.php_sdk;
   const expectedPhpPackage = {
     package: 'durable-workflow/sdk',
-    release_line: ARTIFACT_VERSIONS['sdk-php'].replace(/\.\d+$/, '.x'),
-    supported_server_versions: '>=0.2,<0.3',
+    release_line: ARTIFACT_VERSIONS['sdk-php'],
+    product_train: ARTIFACT_VERSIONS['sdk-php'],
+    supported_server_versions: ARTIFACT_VERSIONS.server,
     worker_protocol_version: '1.13',
     control_plane_version: '2',
   };
@@ -269,6 +247,23 @@ function assertSdkProtocolAuthorities(contract) {
     throw new Error(
       `static/compatibility-contract.json official_sdks.package_compatibility.php_sdk ` +
         `must be ${JSON.stringify(expectedPhpPackage)}`,
+    );
+  }
+
+  const pythonPackage = officialSdks.package_compatibility?.python_sdk;
+  const expectedPythonPackage = {
+    package: 'durable-workflow',
+    release_line: ARTIFACT_VERSIONS['sdk-python'],
+    registry_version: ARTIFACT_VERSIONS['sdk-python'].replace('-beta.', 'b'),
+    product_train: ARTIFACT_VERSIONS['sdk-python'],
+    supported_server_versions: ARTIFACT_VERSIONS.server,
+    worker_protocol_version: '1.1',
+    control_plane_version: '2',
+  };
+  if (JSON.stringify(pythonPackage) !== JSON.stringify(expectedPythonPackage)) {
+    throw new Error(
+      `static/compatibility-contract.json official_sdks.package_compatibility.python_sdk ` +
+        `must be ${JSON.stringify(expectedPythonPackage)}`,
     );
   }
 
@@ -288,6 +283,7 @@ function assertSdkProtocolAuthorities(contract) {
   const requiredRustPackageFields = [
     'package',
     'release_line',
+    'product_train',
     'supported_server_versions',
     'worker_protocol_version',
     'control_plane_version',
@@ -309,14 +305,19 @@ function assertSdkProtocolAuthorities(contract) {
   }
 
   const artifactVersion = ARTIFACT_VERSIONS['sdk-rust'];
-  const artifactReleaseLine = artifactVersion.replace(/\.\d+$/, '.x');
-  const serverReleaseLine = serverReleaseLineFromRange(
-    rustPackage.supported_server_versions,
-  );
-  if (rustPackage.release_line !== artifactReleaseLine) {
+  if (rustPackage.release_line !== artifactVersion) {
     throw new Error(
       `Rust package compatibility release_line must match current artifact ` +
-        `${artifactVersion}: expected ${artifactReleaseLine}, got ${rustPackage.release_line}`,
+        `${artifactVersion}: got ${rustPackage.release_line}`,
+    );
+  }
+  if (rustPackage.product_train !== artifactVersion) {
+    throw new Error(`Rust package product_train must match current artifact ${artifactVersion}`);
+  }
+  if (rustPackage.supported_server_versions !== ARTIFACT_VERSIONS.server) {
+    throw new Error(
+      `Rust supported_server_versions must match the synchronized server train ` +
+        `${ARTIFACT_VERSIONS.server}`,
     );
   }
 
@@ -515,7 +516,7 @@ function assertReleaseCheckMetadata(contract) {
     'docs_authority_aligned',
     'install_docs_aligned',
     'package_metadata_aligned',
-    'version_history_aligned',
+    'release_notes_aligned',
   ];
 
   for (const [field, expected] of Object.entries({
