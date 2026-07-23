@@ -175,6 +175,10 @@ jobs:
           user_email: 41898282+github-actions[bot]@users.noreply.github.com
           force_orphan: true
 
+      - name: Verify live docs release audit
+        if: steps.deploy-plan.outputs.deploy == 'true'
+        run: node scripts/verify-docs-release-live.js
+
       - name: Verify live workflow lifecycle authority
         if: steps.deploy-plan.outputs.deploy == 'true'
         run: node scripts/verify-workflow-lifecycle-live.js

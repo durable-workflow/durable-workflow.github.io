@@ -13,6 +13,7 @@ const EXPECTED_REFRESH_COMMAND = 'npm run refresh:public-artifact-versions';
 const EXPECTED_REFRESH_FILES = [
   'scripts/public-artifact-versions.json',
   'static/quickstart-execution-contract.json',
+  'static/compatibility-contract.json',
   'static/sdk-neutrality-contract.json',
   'scripts/workflow-sdk-neutrality-authority-lock.json',
 ];

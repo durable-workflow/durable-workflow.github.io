@@ -151,26 +151,26 @@
       "package_compatibility": {
         "php_sdk": {
           "package": "durable-workflow/sdk",
-          "release_line": "2.0.0-beta.3",
-          "product_train": "2.0.0-beta.3",
-          "supported_server_versions": "2.0.0-beta.3",
+          "release_line": "2.0.0-beta.5",
+          "product_train": "2.0.0-beta.5",
+          "supported_server_versions": "2.0.0-beta.5",
           "worker_protocol_version": "1.13",
           "control_plane_version": "2"
         },
         "python_sdk": {
           "package": "durable-workflow",
-          "release_line": "2.0.0-beta.3",
-          "registry_version": "2.0.0b3",
-          "product_train": "2.0.0-beta.3",
-          "supported_server_versions": "2.0.0-beta.3",
+          "release_line": "2.0.0-beta.5",
+          "registry_version": "2.0.0b5",
+          "product_train": "2.0.0-beta.5",
+          "supported_server_versions": "2.0.0-beta.5",
           "worker_protocol_version": "1.1",
           "control_plane_version": "2"
         },
         "rust_sdk": {
           "package": "durable-workflow",
-          "release_line": "2.0.0-beta.3",
-          "product_train": "2.0.0-beta.3",
-          "supported_server_versions": "2.0.0-beta.3",
+          "release_line": "2.0.0-beta.5",
+          "product_train": "2.0.0-beta.5",
+          "supported_server_versions": "2.0.0-beta.5",
           "worker_protocol_version": "1.2",
           "control_plane_version": "2"
         }
@@ -202,7 +202,7 @@
     },
     "enforcement": {
       "machine": "Docs site CI runs scripts/check-compatibility-authority.js for the JSON, prerelease tuple, Rust, and worker-protocol contracts, then check-compatibility-authority.test.js for negotiation drift and the public release-audit successor-tuple projection. It does not treat editorial Markdown as machine contract data.",
-        "human": "Release reviewers confirm docs_authority_aligned, install_docs_aligned, package_metadata_aligned, and release_notes_aligned before tagging; those editorial checks are not performed by the compatibility-authority scripts.",
+      "human": "Release reviewers confirm docs_authority_aligned, install_docs_aligned, package_metadata_aligned, and release_notes_aligned before tagging; those editorial checks are not performed by the compatibility-authority scripts.",
       "machine_commands": [
         "node scripts/check-compatibility-authority.js",
         "node scripts/check-compatibility-authority.test.js"
@@ -223,7 +223,7 @@
         "docs_authority_aligned",
         "install_docs_aligned",
         "package_metadata_aligned",
-          "release_notes_aligned"
+        "release_notes_aligned"
       ]
     }
   }

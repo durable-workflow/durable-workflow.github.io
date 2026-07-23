@@ -20,11 +20,14 @@ const {
   PUBLIC_ARTIFACT_TUPLE_FILES,
   artifactVersionsSource,
   changedPublicArtifactTupleFiles,
+  classifyArtifactTrainChange,
+  compatibilityContractSource,
   generatedPublicArtifactTupleSources,
   parseRegistryNextLink,
   quickstartExecutionContractSource,
   resolvePackagistVersion,
   resolvePublishedWorkflowAuthority,
+  selectLatestCompleteArtifactTrain,
   selectLatestCompleteCliRelease,
   selectLatestCratesIoVersion,
   selectServerRegistryVersion,
@@ -37,6 +40,7 @@ const {
 
 const repoRoot = path.join(__dirname, '..');
 const quickstartContractPath = path.join(__dirname, '..', 'static', 'quickstart-execution-contract.json');
+const compatibilityContractPath = path.join(__dirname, '..', 'static', 'compatibility-contract.json');
 
 function cloneSource() {
   return JSON.parse(JSON.stringify(source));
@@ -216,10 +220,30 @@ assert.strictEqual(
   'public artifact refresh must regenerate static/quickstart-execution-contract.json pins'
 );
 
+const currentCompatibilityContract = fs.readFileSync(compatibilityContractPath, 'utf8');
+assert.strictEqual(
+  compatibilityContractSource(currentCompatibilityContract, source.artifacts),
+  currentCompatibilityContract,
+  'compatibility contract must already match the public artifact authority',
+);
+
 const currentTupleSources = Object.fromEntries(PUBLIC_ARTIFACT_TUPLE_FILES.map(file => [
   file,
   fs.readFileSync(path.join(repoRoot, file), 'utf8'),
 ]));
+assert.deepStrictEqual(
+  changedPublicArtifactTupleFiles(
+    currentTupleSources,
+    generatedPublicArtifactTupleSources(
+      currentTupleSources,
+      source.artifacts,
+      '2026-07-23',
+      currentTupleSources['static/sdk-neutrality-contract.json'],
+    ),
+  ),
+  [],
+  'a current coherent artifact train must produce no generated file changes',
+);
 const successorWorkflowVersion = source.artifacts.workflow.replace(
   /\.(\d+)$/,
   (_, sequence) => `.${Number(sequence) + 1}`,
@@ -244,6 +268,7 @@ assert.deepStrictEqual(
   [
     'scripts/public-artifact-versions.json',
     'static/quickstart-execution-contract.json',
+    'static/compatibility-contract.json',
     'scripts/workflow-sdk-neutrality-authority-lock.json',
   ],
   'a successor Workflow prerelease with unchanged authority bytes must refresh the tuple and versioned lock',
@@ -487,6 +512,60 @@ function assertComposerPrereleasePins(artifact, version, stability) {
     `${artifact} pin checks must reject a stale ${staleStability} stability suffix for ${version}`
   );
 }
+
+const completeTrainCandidates = Object.fromEntries(
+  Object.keys(source.artifacts).map(artifact => [
+    artifact,
+    artifact === 'sdk-python'
+      ? ['2.0.0b5', '2.0.0b6']
+      : ['2.0.0-beta.5', '2.0.0-beta.6'],
+  ]),
+);
+assert.deepStrictEqual(
+  selectLatestCompleteArtifactTrain(completeTrainCandidates, 'complete train fixture'),
+  artifactVersionsAt('2.0.0-beta.6'),
+  'complete-train selection must advance only when every artifact publishes the exact train',
+);
+
+const partialTrainCandidates = JSON.parse(JSON.stringify(completeTrainCandidates));
+partialTrainCandidates['sdk-rust'] = ['2.0.0-beta.5'];
+assert.deepStrictEqual(
+  selectLatestCompleteArtifactTrain(partialTrainCandidates, 'partial train fixture'),
+  artifactVersionsAt('2.0.0-beta.5'),
+  'partial-train selection must refuse beta.6 and retain the newest complete train',
+);
+assert.throws(
+  () => selectLatestCompleteArtifactTrain({
+    ...partialTrainCandidates,
+    'sdk-rust': ['2.0.0-beta.4'],
+  }, 'disjoint train fixture'),
+  /No fully published coherent artifact train exists/,
+  'selection must park when the registries have no complete shared train',
+);
+assert.strictEqual(
+  classifyArtifactTrainChange(
+    artifactVersionsAt('2.0.0-beta.5'),
+    artifactVersionsAt('2.0.0-beta.5'),
+  ),
+  'current',
+  'a current coherent authority must be a no-op',
+);
+assert.strictEqual(
+  classifyArtifactTrainChange(
+    artifactVersionsAt('2.0.0-beta.5'),
+    artifactVersionsAt('2.0.0-beta.6'),
+  ),
+  'advance',
+  'a newer coherent authority must be classified as an advance',
+);
+assert.throws(
+  () => classifyArtifactTrainChange(
+    artifactVersionsAt('2.0.0-beta.6'),
+    artifactVersionsAt('2.0.0-beta.5'),
+  ),
+  /Refusing to regress the public artifact train/,
+  'a registry scan must not regress an already published docs authority',
+);
 
 assertComposerPrereleasePins('waterline', '2.0.0-alpha.201', 'alpha');
 assertComposerPrereleasePins('workflow', '2.0.0-beta.3', 'beta');

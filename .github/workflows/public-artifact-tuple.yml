@@ -65,11 +65,11 @@ jobs:
         run: |
           set -euo pipefail
 
-          if git diff --quiet -- scripts/public-artifact-versions.json static/quickstart-execution-contract.json static/sdk-neutrality-contract.json scripts/workflow-sdk-neutrality-authority-lock.json; then
+          if git diff --quiet -- scripts/public-artifact-versions.json static/quickstart-execution-contract.json static/compatibility-contract.json static/sdk-neutrality-contract.json scripts/workflow-sdk-neutrality-authority-lock.json; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
-            git diff -- scripts/public-artifact-versions.json static/quickstart-execution-contract.json static/sdk-neutrality-contract.json scripts/workflow-sdk-neutrality-authority-lock.json
+            git diff -- scripts/public-artifact-versions.json static/quickstart-execution-contract.json static/compatibility-contract.json static/sdk-neutrality-contract.json scripts/workflow-sdk-neutrality-authority-lock.json
           fi
 
       - name: Verify candidate server protocol catalog
@@ -108,6 +108,7 @@ jobs:
           const refreshFiles = [
             'scripts/public-artifact-versions.json',
             'static/quickstart-execution-contract.json',
+            'static/compatibility-contract.json',
             'static/sdk-neutrality-contract.json',
             'scripts/workflow-sdk-neutrality-authority-lock.json',
           ];

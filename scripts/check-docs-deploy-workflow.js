@@ -9,6 +9,7 @@ const {
   compareLivePublicArtifacts,
   planDeployment,
 } = require('./plan-docs-deploy');
+const {assertReleaseAuditAuthority} = require('./verify-docs-release-live');
 const { ARTIFACT_DISTRIBUTION_SURFACES, ARTIFACT_VERSIONS } = require('./public-artifact-versions');
 
 const PROTECTED_DEPLOY_SOURCE_GUARD =
@@ -69,6 +70,8 @@ for (const required of [
   'id: deploy-plan',
   'DOCS_DEPLOY_EVENT_NAME: ${{ github.event_name }}',
   'run: node scripts/plan-docs-deploy.js',
+  'name: Verify live docs release audit',
+  'run: node scripts/verify-docs-release-live.js',
   'name: Verify live workflow lifecycle authority',
   'run: node scripts/verify-workflow-lifecycle-live.js',
   "if: steps.deploy-plan.outputs.deploy == 'true'",
@@ -82,6 +85,10 @@ for (const required of [
 function currentAudit() {
   return {
     artifact_versions: {...ARTIFACT_VERSIONS},
+    release_status_guardrail: {
+      stable_default_docs_version: '1.x',
+      explicit_prerelease_docs_version: '2.0',
+    },
     artifact_distribution_surfaces: {
       'sdk-php': ARTIFACT_DISTRIBUTION_SURFACES['sdk-php'].map(surface => ({...surface})),
       server: ARTIFACT_DISTRIBUTION_SURFACES.server.map(surface => ({...surface})),
@@ -89,6 +96,22 @@ function currentAudit() {
     },
   };
 }
+
+assert.doesNotThrow(
+  () => assertReleaseAuditAuthority(JSON.stringify(currentAudit())),
+  'live release-audit verification must accept the current artifact and docs-line authority',
+);
+assert.throws(
+  () => assertReleaseAuditAuthority(JSON.stringify({
+    ...currentAudit(),
+    artifact_versions: {
+      ...ARTIFACT_VERSIONS,
+      server: '2.0.0-beta.999',
+    },
+  })),
+  /artifact tuple does not match/,
+  'live release-audit verification must reject artifact drift',
+);
 
 function currentQuickstart() {
   return {

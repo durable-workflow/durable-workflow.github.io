@@ -98,6 +98,7 @@ for (const required of [
   "integration: 'pipeline'",
   'scripts/public-artifact-versions.json',
   'static/quickstart-execution-contract.json',
+  'static/compatibility-contract.json',
   'static/sdk-neutrality-contract.json',
   'scripts/workflow-sdk-neutrality-authority-lock.json',
   "stable_default_docs_line: '1.x'",
@@ -273,12 +274,14 @@ const multiArtifactHandoff = {
   refresh_files: [
     'scripts/public-artifact-versions.json',
     'static/quickstart-execution-contract.json',
+    'static/compatibility-contract.json',
     'static/sdk-neutrality-contract.json',
     'scripts/workflow-sdk-neutrality-authority-lock.json',
   ],
   changed_files: [
     'scripts/public-artifact-versions.json',
     'static/quickstart-execution-contract.json',
+    'static/compatibility-contract.json',
     'static/sdk-neutrality-contract.json',
     'scripts/workflow-sdk-neutrality-authority-lock.json',
   ],

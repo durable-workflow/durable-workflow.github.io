@@ -18,6 +18,7 @@ const {
 const repoRoot = path.join(__dirname, '..');
 const artifactVersionsPath = path.join(__dirname, 'public-artifact-versions.json');
 const quickstartContractPath = path.join(repoRoot, 'static', 'quickstart-execution-contract.json');
+const compatibilityContractPath = path.join(repoRoot, 'static', 'compatibility-contract.json');
 const workflowAuthorityLockPath = path.join(
   __dirname,
   'workflow-sdk-neutrality-authority-lock.json',
@@ -27,12 +28,14 @@ const WORKFLOW_SDK_NEUTRALITY_RESOURCE_PATH = 'resources/sdk-neutrality-contract
 const PUBLIC_ARTIFACT_TUPLE_FILES = Object.freeze([
   'scripts/public-artifact-versions.json',
   'static/quickstart-execution-contract.json',
+  'static/compatibility-contract.json',
   'static/sdk-neutrality-contract.json',
   'scripts/workflow-sdk-neutrality-authority-lock.json',
 ]);
 const PUBLIC_ARTIFACT_TUPLE_PATHS = Object.freeze({
   'scripts/public-artifact-versions.json': artifactVersionsPath,
   'static/quickstart-execution-contract.json': quickstartContractPath,
+  'static/compatibility-contract.json': compatibilityContractPath,
   'static/sdk-neutrality-contract.json': sdkNeutralityContractPath,
   'scripts/workflow-sdk-neutrality-authority-lock.json': workflowAuthorityLockPath,
 });
@@ -322,17 +325,75 @@ function compareVersions(left, right) {
 }
 
 function selectLatestVersion(artifact, candidates, context) {
+  const versions = publishedVersions(artifact, candidates, context);
+
+  return versions.at(-1);
+}
+
+function publishedVersions(artifact, candidates, context) {
   const versions = [...new Set(
     candidates
       .map(candidate => normalizeVersion(artifact, candidate))
       .filter(Boolean)
-  )];
+  )].sort(compareVersions);
 
   if (versions.length === 0) {
     throw new Error(`Could not find a published ${artifact} version in ${context}`);
   }
 
-  return versions.sort(compareVersions).at(-1);
+  return versions;
+}
+
+function selectLatestCompleteArtifactTrain(candidateVersions, context = 'public registries') {
+  const unknown = Object.keys(candidateVersions || {})
+    .filter(name => !REQUIRED_ARTIFACTS.includes(name))
+    .sort();
+  if (unknown.length > 0) {
+    throw new Error(`Published artifact candidates contain unknown artifacts: ${unknown.join(', ')}`);
+  }
+
+  const normalized = Object.fromEntries(REQUIRED_ARTIFACTS.map(name => {
+    if (!Array.isArray(candidateVersions && candidateVersions[name])) {
+      throw new Error(`Published artifact candidates must define an array for ${name}`);
+    }
+
+    return [name, publishedVersions(name, candidateVersions[name], context)];
+  }));
+  const completeVersions = normalized[REQUIRED_ARTIFACTS[0]].filter(version => (
+    REQUIRED_ARTIFACTS.every(name => normalized[name].includes(version))
+  ));
+
+  if (completeVersions.length === 0) {
+    throw new Error([
+      `No fully published coherent artifact train exists in ${context}.`,
+      ...REQUIRED_ARTIFACTS.map(name => `- ${name}: ${normalized[name].join(', ')}`),
+    ].join('\n'));
+  }
+
+  const selected = completeVersions.sort(compareVersions).at(-1);
+  return Object.freeze(Object.fromEntries(REQUIRED_ARTIFACTS.map(name => [name, selected])));
+}
+
+function classifyArtifactTrainChange(currentVersions, publishedVersions) {
+  const current = readArtifactVersions({
+    schema: ARTIFACT_VERSION_SCHEMA,
+    schemaVersion: 1,
+    artifacts: currentVersions,
+  });
+  const published = readArtifactVersions({
+    schema: ARTIFACT_VERSION_SCHEMA,
+    schemaVersion: 1,
+    artifacts: publishedVersions,
+  });
+  const comparison = compareVersions(published.server, current.server);
+
+  if (comparison < 0) {
+    throw new Error(
+      `Refusing to regress the public artifact train from ${current.server} to ${published.server}`,
+    );
+  }
+
+  return comparison === 0 ? 'current' : 'advance';
 }
 
 function parseRegistryNextLink(linkHeader, currentUrl) {
@@ -356,7 +417,7 @@ function missingCliReleaseAssets(release, requiredAssets) {
   return requiredAssets.filter(asset => !assets.has(asset));
 }
 
-function selectLatestCompleteCliRelease(releases, source) {
+function completeCliReleaseVersions(releases, source) {
   const candidates = [];
   const incomplete = [];
 
@@ -381,7 +442,7 @@ function selectLatestCompleteCliRelease(releases, source) {
   }
 
   if (candidates.length > 0) {
-    return selectLatestVersion('cli', candidates, source.url);
+    return publishedVersions('cli', candidates, source.url);
   }
 
   if (incomplete.length > 0) {
@@ -392,6 +453,10 @@ function selectLatestCompleteCliRelease(releases, source) {
   }
 
   throw new Error(`Could not find a published cli version in ${source.url}`);
+}
+
+function selectLatestCompleteCliRelease(releases, source) {
+  return completeCliReleaseVersions(releases, source).at(-1);
 }
 
 async function listGitHubReleases(source) {
@@ -418,13 +483,17 @@ async function resolveCliVersion(source) {
   return selectLatestCompleteCliRelease(await listGitHubReleases(source), source);
 }
 
+async function resolveCliVersions(source) {
+  return completeCliReleaseVersions(await listGitHubReleases(source), source);
+}
+
 function dockerHubTagIsPublished(tag) {
   const images = Array.isArray(tag.images) ? tag.images : [];
 
   return images.some(image => !image.status || image.status === 'active');
 }
 
-async function resolveDockerHubVersion(source) {
+async function resolveDockerHubVersions(source) {
   let url = source.url;
   let pageCount = 0;
   const candidates = [];
@@ -447,7 +516,11 @@ async function resolveDockerHubVersion(source) {
     url = page.next || null;
   }
 
-  return selectLatestVersion('server', candidates, source.url);
+  return publishedVersions('server', candidates, source.url);
+}
+
+async function resolveDockerHubVersion(source) {
+  return (await resolveDockerHubVersions(source)).at(-1);
 }
 
 async function requestGhcrToken(source) {
@@ -464,7 +537,7 @@ async function requestGhcrToken(source) {
   return response.token;
 }
 
-async function resolveGhcrVersion(source) {
+async function resolveGhcrVersions(source) {
   const token = await requestGhcrToken(source);
   const listHeaders = {
     Accept: 'application/json',
@@ -486,13 +559,27 @@ async function resolveGhcrVersion(source) {
     url = parseRegistryNextLink(response.headers.link, url);
   }
 
-  const version = selectLatestVersion('server', candidates, source.tagsUrl);
+  return {
+    token,
+    versions: publishedVersions('server', candidates, source.tagsUrl),
+  };
+}
+
+async function verifyGhcrVersion(source, token, version) {
   await requestJson(`${source.manifestsUrl}/${encodeURIComponent(version)}`, {
     headers: {
       Accept: CONTAINER_MANIFEST_ACCEPT,
       Authorization: `Bearer ${token}`,
     },
   });
+
+  return version;
+}
+
+async function resolveGhcrVersion(source) {
+  const {token, versions} = await resolveGhcrVersions(source);
+  const version = versions.at(-1);
+  await verifyGhcrVersion(source, token, version);
 
   return version;
 }
@@ -554,7 +641,28 @@ async function resolveServerVersion(source) {
   ]);
 }
 
-async function resolvePypiVersion(source) {
+async function resolveServerVersions(source) {
+  const [dockerHubVersions, ghcr] = await Promise.all([
+    resolveDockerHubVersions(source.dockerHub),
+    resolveGhcrVersions(source.ghcr),
+  ]);
+  const versions = dockerHubVersions.filter(version => ghcr.versions.includes(version));
+
+  if (versions.length === 0) {
+    throw new Error([
+      'Published server container registries have no shared authorized version:',
+      `- ${source.dockerHub.label} ${source.dockerHub.image}: ${dockerHubVersions.join(', ')}`,
+      `- ${source.ghcr.label} ${source.ghcr.image}: ${ghcr.versions.join(', ')}`,
+    ].join('\n'));
+  }
+
+  return {
+    ghcrToken: ghcr.token,
+    versions: versions.sort(compareVersions),
+  };
+}
+
+async function resolvePypiVersions(source) {
   const response = await requestJson(source.url);
   const releases = response.releases || {};
   const candidates = [];
@@ -569,10 +677,18 @@ async function resolvePypiVersion(source) {
     candidates.push(response.info.version);
   }
 
-  return selectLatestVersion('sdk-python', candidates, source.url);
+  return publishedVersions('sdk-python', candidates, source.url);
+}
+
+async function resolvePypiVersion(source) {
+  return (await resolvePypiVersions(source)).at(-1);
 }
 
 function selectLatestCratesIoVersion(response, source) {
+  return cratesIoVersions(response, source).at(-1);
+}
+
+function cratesIoVersions(response, source) {
   const candidates = (response.versions || [])
     .filter(version => version && !version.yanked)
     .map(version => version.num);
@@ -581,14 +697,18 @@ function selectLatestCratesIoVersion(response, source) {
     candidates.push(response.crate.max_version);
   }
 
-  return selectLatestVersion('sdk-rust', candidates, source.url);
+  return publishedVersions('sdk-rust', candidates, source.url);
 }
 
 async function resolveCratesIoVersion(source) {
   return selectLatestCratesIoVersion(await requestJson(source.url), source);
 }
 
-async function resolvePackagistVersion(source, clients = {}) {
+async function resolveCratesIoVersions(source) {
+  return cratesIoVersions(await requestJson(source.url), source);
+}
+
+async function resolvePackagistReleases(source, clients = {}) {
   const getJson = clients.requestJson || requestJson;
   const response = await getJson(source.url);
   const packages = response.packages || {};
@@ -602,56 +722,81 @@ async function resolvePackagistVersion(source, clients = {}) {
   if (!artifact || !ARTIFACT_VERSION_REQUIREMENTS[artifact]) {
     throw new Error(`Packagist source ${source.packageName} must declare a known artifact key`);
   }
-  const publishedEntries = entries.filter(entry => entry && (entry.dist || entry.source));
-  const version = selectLatestVersion(
-    artifact,
-    publishedEntries.map(entry => entry.version),
-    source.url,
-  );
-  const selectedEntry = publishedEntries.find(
-    entry => normalizeVersion(artifact, entry.version) === version,
-  );
+  const releases = entries
+    .filter(entry => entry && (entry.dist || entry.source))
+    .map(entry => ({
+      source: entry.source,
+      version: normalizeVersion(artifact, entry.version),
+    }))
+    .filter(entry => entry.version !== null);
+
+  publishedVersions(artifact, releases.map(entry => entry.version), source.url);
+  return releases;
+}
+
+function selectPackagistRelease(releases, artifact, version) {
+  const selectedEntry = releases.find(entry => entry.version === version);
+
+  if (!selectedEntry) {
+    throw new Error(`Could not find published ${artifact} release ${version}`);
+  }
 
   return {
-    version,
+    version: selectedEntry.version,
     source: selectedEntry.source,
   };
 }
 
+async function resolvePackagistVersion(source, clients = {}) {
+  const releases = await resolvePackagistReleases(source, clients);
+  const version = selectLatestVersion(
+    source.artifact,
+    releases.map(entry => entry.version),
+    source.url,
+  );
+
+  return selectPackagistRelease(releases, source.artifact, version);
+}
+
 async function resolvePublishedArtifactTupleState(sources = PUBLISHED_ARTIFACT_SOURCES) {
   const [
-    cli,
-    sdkPhpPackage,
-    sdkPython,
-    sdkRust,
-    server,
-    waterlinePackage,
-    workflowAuthority,
+    cliVersions,
+    sdkPhpReleases,
+    sdkPythonVersions,
+    sdkRustVersions,
+    serverState,
+    waterlineReleases,
+    workflowReleases,
   ] = await Promise.all([
-    resolveCliVersion(sources.cli),
-    resolvePackagistVersion(sources['sdk-php']),
-    resolvePypiVersion(sources['sdk-python']),
-    resolveCratesIoVersion(sources['sdk-rust']),
-    resolveServerVersion(sources.server),
-    resolvePackagistVersion(sources.waterline),
-    resolvePublishedWorkflowAuthority(sources.workflow),
+    resolveCliVersions(sources.cli),
+    resolvePackagistReleases(sources['sdk-php']),
+    resolvePypiVersions(sources['sdk-python']),
+    resolveCratesIoVersions(sources['sdk-rust']),
+    resolveServerVersions(sources.server),
+    resolvePackagistReleases(sources.waterline),
+    resolvePackagistReleases(sources.workflow),
   ]);
 
-  const versions = {
-    cli,
-    'sdk-php': sdkPhpPackage.version,
-    'sdk-python': sdkPython,
-    'sdk-rust': sdkRust,
-    server,
-    waterline: waterlinePackage.version,
-    workflow: workflowAuthority.version,
-  };
-
-  readArtifactVersions({
-    schema: ARTIFACT_VERSION_SCHEMA,
-    schemaVersion: 1,
-    artifacts: versions,
-  });
+  const versions = selectLatestCompleteArtifactTrain({
+    cli: cliVersions,
+    'sdk-php': sdkPhpReleases.map(release => release.version),
+    'sdk-python': sdkPythonVersions,
+    'sdk-rust': sdkRustVersions,
+    server: serverState.versions,
+    waterline: waterlineReleases.map(release => release.version),
+    workflow: workflowReleases.map(release => release.version),
+  }, 'the seven public distribution surfaces');
+  await verifyGhcrVersion(
+    sources.server.ghcr,
+    serverState.ghcrToken,
+    versions.server,
+  );
+  const workflowRelease = selectPackagistRelease(
+    workflowReleases,
+    'workflow',
+    versions.workflow,
+  );
+  const workflowAuthority = await resolveWorkflowAuthorityForRelease(workflowRelease);
 
   return {
     versions,
@@ -733,8 +878,7 @@ async function resolveWorkflowAuthorityManifest(release, clients = {}) {
   return source;
 }
 
-async function resolvePublishedWorkflowAuthority(source, clients = {}) {
-  const release = await resolvePackagistVersion(source, clients);
+async function resolveWorkflowAuthorityForRelease(release, clients = {}) {
   const sourceReference = workflowSourceReference(release);
   const manifestSource = await resolveWorkflowAuthorityManifest(release, clients);
 
@@ -743,6 +887,11 @@ async function resolvePublishedWorkflowAuthority(source, clients = {}) {
     sourceReference,
     manifestSource,
   };
+}
+
+async function resolvePublishedWorkflowAuthority(source, clients = {}) {
+  const release = await resolvePackagistVersion(source, clients);
+  return resolveWorkflowAuthorityForRelease(release, clients);
 }
 
 function workflowAuthorityLockSource(workflowRef, manifestSource) {
@@ -766,11 +915,16 @@ function readPublicArtifactTupleSources() {
 
 function generatedPublicArtifactTupleSources(currentSources, versions, date, workflowManifestSource) {
   const quickstartSource = currentSources['static/quickstart-execution-contract.json'];
+  const compatibilitySource = currentSources['static/compatibility-contract.json'];
 
   return {
     'scripts/public-artifact-versions.json': artifactVersionsSource(versions),
     'static/quickstart-execution-contract.json': quickstartExecutionContractSource(
       quickstartSource,
+      versions,
+    ),
+    'static/compatibility-contract.json': compatibilityContractSource(
+      compatibilitySource,
       versions,
     ),
     'static/sdk-neutrality-contract.json': workflowManifestSource,
@@ -1086,6 +1240,53 @@ function quickstartExecutionContractSource(currentSource, versions) {
   return `${JSON.stringify(contract, null, 2)}\n`;
 }
 
+function compatibilityContractSource(currentSource, versions) {
+  const contract = JSON.parse(currentSource);
+  const pins = buildArtifactPins(versions);
+  const packages = contract.surface_families?.official_sdks?.package_compatibility;
+
+  if (!packages || !packages.php_sdk || !packages.python_sdk || !packages.rust_sdk) {
+    throw new Error(
+      'static/compatibility-contract.json must define all official SDK package compatibility entries',
+    );
+  }
+
+  const expectedPackages = {
+    php_sdk: {
+      release_line: versions['sdk-php'],
+      product_train: versions['sdk-php'],
+      supported_server_versions: versions.server,
+    },
+    python_sdk: {
+      release_line: versions['sdk-python'],
+      registry_version: pins.pythonRegistryVersion,
+      product_train: versions['sdk-python'],
+      supported_server_versions: versions.server,
+    },
+    rust_sdk: {
+      release_line: versions['sdk-rust'],
+      product_train: versions['sdk-rust'],
+      supported_server_versions: versions.server,
+    },
+  };
+  let changed = false;
+
+  for (const [packageName, fields] of Object.entries(expectedPackages)) {
+    for (const [field, value] of Object.entries(fields)) {
+      if (packages[packageName][field] !== value) {
+        packages[packageName][field] = value;
+        changed = true;
+      }
+    }
+  }
+
+  if (!changed) {
+    return currentSource;
+  }
+
+  return `${JSON.stringify(contract, null, 2)}\n`;
+}
+
 async function check() {
   const published = await resolvePublishedArtifactTupleState();
   const expected = published.versions;
@@ -1100,6 +1301,7 @@ async function check() {
   const actual = readArtifactVersions(JSON.parse(
     currentSources['scripts/public-artifact-versions.json'],
   ));
+  classifyArtifactTrainChange(actual, expected);
   const sourceMismatches = artifactMismatches(actual, expected);
 
   if (sourceMismatches.length > 0) {
@@ -1114,6 +1316,17 @@ async function check() {
         'static/quickstart-execution-contract.json is stale against the current published artifact tuple:',
         [{name: 'quickstart execution contract', actual: 'stale', expected: 'current pins'}]
       )
+    );
+  }
+
+  const compatibilityContract = currentSources['static/compatibility-contract.json'];
+  const expectedCompatibilityContract = desiredSources['static/compatibility-contract.json'];
+  if (compatibilityContract !== expectedCompatibilityContract) {
+    throw new Error(
+      mismatchMessage(
+        'static/compatibility-contract.json is stale against the current published artifact tuple:',
+        [{name: 'compatibility contract', actual: 'stale', expected: 'current pins'}],
+      ),
     );
   }
 
@@ -1159,6 +1372,10 @@ async function refresh(date) {
   const expected = published.versions;
   const workflowManifestSource = published.workflowManifestSource;
   const currentSources = readPublicArtifactTupleSources();
+  const currentVersions = readArtifactVersions(JSON.parse(
+    currentSources['scripts/public-artifact-versions.json'],
+  ));
+  classifyArtifactTrainChange(currentVersions, expected);
   const desiredSources = generatedPublicArtifactTupleSources(
     currentSources,
     expected,
@@ -1202,7 +1419,9 @@ module.exports = {
   artifactMismatches,
   artifactVersionsSource,
   changedPublicArtifactTupleFiles,
+  classifyArtifactTrainChange,
   compareVersions,
+  compatibilityContractSource,
   generatedPublicArtifactTupleSources,
   normalizeVersion,
   parseRegistryNextLink,
@@ -1210,6 +1429,7 @@ module.exports = {
   resolvePackagistVersion,
   resolvePublishedArtifactTuple,
   resolvePublishedWorkflowAuthority,
+  selectLatestCompleteArtifactTrain,
   selectLatestCompleteCliRelease,
   selectLatestCratesIoVersion,
   selectServerRegistryVersion,
