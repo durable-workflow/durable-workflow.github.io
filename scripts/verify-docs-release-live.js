@@ -7,17 +7,17 @@ const https = require('https');
 const path = require('path');
 
 const {ARTIFACT_VERSIONS} = require('./public-artifact-versions');
+const {
+  REQUIRED_LIVE_ARTIFACT_PATHS,
+  REQUIRED_LIVE_ARTIFACTS,
+  buildArtifactPath,
+} = require('./docs-release-live-artifacts');
 
 const DEFAULT_BASE_URL = 'https://durable-workflow.com';
 const DEFAULT_ATTEMPTS = 30;
 const DEFAULT_RETRY_DELAY_MS = 10000;
 const REQUEST_TIMEOUT_MS = 15000;
-const LIVE_ARTIFACTS = Object.freeze([
-  '/docs-page-release-audit.json',
-  '/docs-narrative-audit.json',
-  '/quickstart-execution-contract.json',
-  '/compatibility-contract.json',
-]);
+const LIVE_ARTIFACTS = REQUIRED_LIVE_ARTIFACT_PATHS;
 
 function sha256(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
@@ -92,9 +92,10 @@ async function verifyLiveArtifacts(options = {}) {
   const attempts = Number(options.attempts || DEFAULT_ATTEMPTS);
   const retryDelay = Number(options.retryDelay || DEFAULT_RETRY_DELAY_MS);
   const fetcher = options.fetcher || fetchBody;
-  const expected = Object.fromEntries(LIVE_ARTIFACTS.map(route => [
-    route,
-    fs.readFileSync(path.join(__dirname, '..', 'build', route.slice(1))),
+  const repoRoot = path.join(__dirname, '..');
+  const expected = Object.fromEntries(REQUIRED_LIVE_ARTIFACTS.map(artifact => [
+    artifact.route,
+    fs.readFileSync(buildArtifactPath(repoRoot, artifact)),
   ]));
   let lastError;
 

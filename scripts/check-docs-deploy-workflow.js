@@ -9,12 +9,25 @@ const {
   compareLivePublicArtifacts,
   planDeployment,
 } = require('./plan-docs-deploy');
-const {assertReleaseAuditAuthority} = require('./verify-docs-release-live');
+const {
+  REQUIRED_LIVE_ARTIFACT_PATHS,
+} = require('./docs-release-live-artifacts');
+const {
+  LIVE_ARTIFACTS,
+  assertReleaseAuditAuthority,
+} = require('./verify-docs-release-live');
 const { ARTIFACT_DISTRIBUTION_SURFACES, ARTIFACT_VERSIONS } = require('./public-artifact-versions');
 
 const PROTECTED_DEPLOY_SOURCE_GUARD =
   "github.repository == 'durable-workflow/durable-workflow.github.io' && " +
   "github.ref == 'refs/heads/main'";
+const CURRENT_DOCS_REVISION = 'a'.repeat(40);
+const quickstartContract = JSON.parse(
+  fs.readFileSync(path.join(__dirname, '..', 'static', 'quickstart-execution-contract.json'), 'utf8'),
+);
+const compatibilityContract = JSON.parse(
+  fs.readFileSync(path.join(__dirname, '..', 'static', 'compatibility-contract.json'), 'utf8'),
+);
 
 function fail(message) {
   throw new Error(message);
@@ -84,6 +97,7 @@ for (const required of [
 
 function currentAudit() {
   return {
+    docs_revision: CURRENT_DOCS_REVISION,
     artifact_versions: {...ARTIFACT_VERSIONS},
     release_status_guardrail: {
       stable_default_docs_version: '1.x',
@@ -96,6 +110,42 @@ function currentAudit() {
     },
   };
 }
+
+function currentNarrativeAudit() {
+  return {
+    docs_revision: CURRENT_DOCS_REVISION,
+    artifact_versions: {...ARTIFACT_VERSIONS},
+    release_status_guardrail: {
+      stable_default_docs_version: '1.x',
+      explicit_prerelease_docs_version: '2.0',
+    },
+  };
+}
+
+function currentLiveArtifacts() {
+  return {
+    '/docs-page-release-audit.json': currentAudit(),
+    '/docs-narrative-audit.json': currentNarrativeAudit(),
+    '/quickstart-execution-contract.json': structuredClone(quickstartContract),
+    '/compatibility-contract.json': structuredClone(compatibilityContract),
+  };
+}
+
+assert.strictEqual(
+  LIVE_ARTIFACTS,
+  REQUIRED_LIVE_ARTIFACT_PATHS,
+  'the planner and post-deploy verifier must consume one required live-artifact inventory',
+);
+assert.deepStrictEqual(
+  REQUIRED_LIVE_ARTIFACT_PATHS,
+  [
+    '/docs-page-release-audit.json',
+    '/docs-narrative-audit.json',
+    '/quickstart-execution-contract.json',
+    '/compatibility-contract.json',
+  ],
+  'the required live-artifact inventory must cover every release-authority artifact',
+);
 
 assert.doesNotThrow(
   () => assertReleaseAuditAuthority(JSON.stringify(currentAudit())),
@@ -137,18 +187,25 @@ async function assertPushDeploysWithoutFetchingLive() {
 }
 
 async function assertScheduledDeploySkipsCurrentLiveTuple() {
+  const artifacts = currentLiveArtifacts();
+  const fetched = [];
   const plan = await planDeployment({
     eventName: 'schedule',
-    fetcher: async url => (
-      url.pathname === '/docs-page-release-audit.json'
-        ? currentAudit()
-        : currentQuickstart()
-    ),
+    expectedRevision: CURRENT_DOCS_REVISION,
+    fetcher: async url => {
+      fetched.push(url.pathname);
+      return artifacts[url.pathname];
+    },
   });
 
   assert.strictEqual(plan.deploy, false);
   assert.strictEqual(plan.reason, 'scheduled-current');
   assert.deepStrictEqual(plan.drift, []);
+  assert.deepStrictEqual(
+    fetched.sort(),
+    [...REQUIRED_LIVE_ARTIFACT_PATHS].sort(),
+    'scheduled planning must fetch every post-deploy release artifact',
+  );
 }
 
 async function assertScheduledDeployRepairsStaleLiveTuple() {
@@ -187,11 +244,13 @@ async function assertScheduledDeployRepairsStaleLiveTuple() {
 
   const plan = await planDeployment({
     eventName: 'schedule',
-    fetcher: async url => (
-      url.pathname === '/docs-page-release-audit.json'
-        ? audit
-        : quickstart
-    ),
+    expectedRevision: CURRENT_DOCS_REVISION,
+    fetcher: async url => {
+      const artifacts = currentLiveArtifacts();
+      artifacts['/docs-page-release-audit.json'] = audit;
+      artifacts['/quickstart-execution-contract.json'] = quickstart;
+      return artifacts[url.pathname];
+    },
   });
 
   assert.strictEqual(plan.deploy, true);
@@ -199,26 +258,78 @@ async function assertScheduledDeployRepairsStaleLiveTuple() {
   assert(plan.drift.length >= 3);
 }
 
-async function assertScheduledDeployRepairsLiveCheckFailure() {
+async function assertScheduledDeployRepairsStaleNarrativeAudit() {
+  const artifacts = currentLiveArtifacts();
+  artifacts['/docs-narrative-audit.json'].docs_revision = 'b'.repeat(40);
+
   const plan = await planDeployment({
     eventName: 'schedule',
-    fetcher: async () => {
-      throw new Error('live check failed');
+    expectedRevision: CURRENT_DOCS_REVISION,
+    fetcher: async url => artifacts[url.pathname],
+  });
+
+  assert.strictEqual(plan.deploy, true);
+  assert.strictEqual(plan.reason, 'scheduled-drift');
+  assert(
+    plan.drift.some(item => item.includes('/docs-narrative-audit.json docs_revision')),
+    'narrative-audit-only drift must request deployment',
+  );
+}
+
+async function assertScheduledDeployRepairsStaleCompatibilityContract() {
+  const artifacts = currentLiveArtifacts();
+  artifacts['/compatibility-contract.json'].version += 1;
+
+  const plan = await planDeployment({
+    eventName: 'schedule',
+    expectedRevision: CURRENT_DOCS_REVISION,
+    fetcher: async url => artifacts[url.pathname],
+  });
+
+  assert.strictEqual(plan.deploy, true);
+  assert.strictEqual(plan.reason, 'scheduled-drift');
+  assert(
+    plan.drift.some(item => item.includes('/compatibility-contract.json')),
+    'compatibility-contract-only drift must request deployment',
+  );
+}
+
+async function assertScheduledDeployRepairsLiveArtifactFailure(route, message) {
+  const artifacts = currentLiveArtifacts();
+  const plan = await planDeployment({
+    eventName: 'schedule',
+    expectedRevision: CURRENT_DOCS_REVISION,
+    fetcher: async url => {
+      if (url.pathname === route) {
+        throw new Error(message);
+      }
+      return artifacts[url.pathname];
     },
   });
 
   assert.strictEqual(plan.deploy, true);
   assert.strictEqual(plan.reason, 'scheduled-live-check-error');
-  assert.deepStrictEqual(plan.drift, ['live check failed']);
+  assert.deepStrictEqual(plan.drift, [message]);
 }
 
 async function main() {
   await assertPushDeploysWithoutFetchingLive();
   await assertScheduledDeploySkipsCurrentLiveTuple();
   await assertScheduledDeployRepairsStaleLiveTuple();
-  await assertScheduledDeployRepairsLiveCheckFailure();
+  await assertScheduledDeployRepairsStaleNarrativeAudit();
+  await assertScheduledDeployRepairsStaleCompatibilityContract();
+  for (const route of REQUIRED_LIVE_ARTIFACT_PATHS) {
+    await assertScheduledDeployRepairsLiveArtifactFailure(
+      route,
+      `${route} returned HTTP 404`,
+    );
+    await assertScheduledDeployRepairsLiveArtifactFailure(
+      route,
+      `${route} did not return JSON`,
+    );
+  }
 
-  console.log('Docs deploy workflow repairs stale public artifact deployment drift.');
+  console.log('Docs deploy workflow repairs drift across every verified release artifact.');
 }
 
 main().catch(err => {

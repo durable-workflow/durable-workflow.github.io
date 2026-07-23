@@ -1,16 +1,24 @@
 #!/usr/bin/env node
 
+const crypto = require('crypto');
 const fs = require('fs');
 const http = require('http');
 const https = require('https');
+const path = require('path');
 
 const { ARTIFACT_DISTRIBUTION_SURFACES, ARTIFACT_VERSIONS } = require('./public-artifact-versions');
+const {docsRevision} = require('./docs-narrative-audit-contract');
+const {
+  REQUIRED_LIVE_ARTIFACTS,
+  repositoryArtifactPath,
+} = require('./docs-release-live-artifacts');
 
 const DEFAULT_EVENT_NAME = 'push';
 const DEFAULT_LIVE_BASE_URL = 'https://durable-workflow.com';
 const DEFAULT_TIMEOUT_MS = 15000;
 const QUICKSTART_CONTRACT_PATH = '/quickstart-execution-contract.json';
 const RELEASE_AUDIT_PATH = '/docs-page-release-audit.json';
+const REPO_ROOT = path.join(__dirname, '..');
 
 function liveBaseUrl() {
   return String(process.env.DOCS_DEPLOY_LIVE_BASE_URL || DEFAULT_LIVE_BASE_URL)
@@ -93,6 +101,85 @@ function versionAtPath(source, path) {
 
 function artifactEntries(versions = ARTIFACT_VERSIONS) {
   return Object.entries(versions).sort(([left], [right]) => left.localeCompare(right));
+}
+
+function jsonDigest(value) {
+  return crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
+}
+
+function displayValue(value) {
+  if (value === undefined) {
+    return '<missing>';
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  return JSON.stringify(value);
+}
+
+function expectedInvariantValue(invariant, expectedVersions, expectedRevision) {
+  if (Object.prototype.hasOwnProperty.call(invariant, 'value')) {
+    return invariant.value;
+  }
+  if (invariant.authority === 'artifact_versions') {
+    return expectedVersions;
+  }
+  if (invariant.authority === 'docs_revision') {
+    return expectedRevision;
+  }
+
+  throw new Error(`Unknown scheduled live-artifact authority: ${invariant.authority}`);
+}
+
+function compareRequiredLiveArtifacts(
+  liveArtifacts,
+  expectedVersions,
+  expectedRevision,
+  repoRoot = REPO_ROOT,
+) {
+  const drift = [];
+
+  for (const artifact of REQUIRED_LIVE_ARTIFACTS) {
+    const live = liveArtifacts[artifact.route];
+
+    if (!live || typeof live !== 'object' || Array.isArray(live)) {
+      drift.push(`${artifact.route}: expected a JSON object`);
+      continue;
+    }
+
+    if (artifact.repositorySource) {
+      const expected = JSON.parse(
+        fs.readFileSync(repositoryArtifactPath(repoRoot, artifact), 'utf8'),
+      );
+      const liveDigest = jsonDigest(live);
+      const expectedDigest = jsonDigest(expected);
+
+      if (liveDigest !== expectedDigest) {
+        drift.push(
+          `${artifact.route}: returned JSON sha256:${liveDigest}; ` +
+          `expected repository JSON sha256:${expectedDigest}`,
+        );
+      }
+    }
+
+    for (const invariant of artifact.scheduledInvariants || []) {
+      const liveValue = versionAtPath(live, invariant.path);
+      const expectedValue = expectedInvariantValue(
+        invariant,
+        expectedVersions,
+        expectedRevision,
+      );
+
+      if (JSON.stringify(liveValue) !== JSON.stringify(expectedValue)) {
+        drift.push(
+          `${artifact.route} ${invariant.path.join('.')}: ` +
+          `expected ${displayValue(expectedValue)}, got ${displayValue(liveValue)}`,
+        );
+      }
+    }
+  }
+
+  return drift;
 }
 
 function compareLivePublicArtifacts(expected, audit, quickstart) {
@@ -208,12 +295,10 @@ async function readLivePublicArtifacts(options = {}) {
   const baseUrl = options.baseUrl || liveBaseUrl();
   const fetcher = options.fetcher || fetchJson;
 
-  const [audit, quickstart] = await Promise.all([
-    fetcher(cacheBustedUrl(baseUrl, RELEASE_AUDIT_PATH)),
-    fetcher(cacheBustedUrl(baseUrl, QUICKSTART_CONTRACT_PATH)),
-  ]);
-
-  return { audit, quickstart };
+  return Object.fromEntries(await Promise.all(REQUIRED_LIVE_ARTIFACTS.map(async artifact => [
+    artifact.route,
+    await fetcher(cacheBustedUrl(baseUrl, artifact.route)),
+  ])));
 }
 
 async function planDeployment(options = {}) {
@@ -229,8 +314,22 @@ async function planDeployment(options = {}) {
   }
 
   try {
-    const { audit, quickstart } = await readLivePublicArtifacts(options);
-    const drift = compareLivePublicArtifacts(expected, audit, quickstart);
+    const repoRoot = options.repoRoot || REPO_ROOT;
+    const expectedRevision = options.expectedRevision || docsRevision(repoRoot);
+    const liveArtifacts = await readLivePublicArtifacts(options);
+    const drift = [
+      ...compareRequiredLiveArtifacts(
+        liveArtifacts,
+        expected,
+        expectedRevision,
+        repoRoot,
+      ),
+      ...compareLivePublicArtifacts(
+        expected,
+        liveArtifacts[RELEASE_AUDIT_PATH],
+        liveArtifacts[QUICKSTART_CONTRACT_PATH],
+      ),
+    ];
 
     return {
       deploy: drift.length > 0,
@@ -274,5 +373,6 @@ module.exports = {
   QUICKSTART_CONTRACT_PATH,
   RELEASE_AUDIT_PATH,
   compareLivePublicArtifacts,
+  compareRequiredLiveArtifacts,
   planDeployment,
 };
