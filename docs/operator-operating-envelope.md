@@ -39,30 +39,31 @@ Use these surfaces together:
 | Waterline archive actions and control-plane `archive()` | Lifecycle state transitions for closed runs | Lifecycle |
 | Worker SDK metrics, traces, and logs | Schedule-to-start latency, poll success, sticky-cache behavior, and custom application telemetry | Runtime telemetry |
 
-The durable-state operator contract lives in Waterline and the workflow package.
-Worker telemetry remains the source of truth for latency and process-level
-behavior inside your workers.
+The durable-state operator contract lives in the runtime that owns each run.
+Waterline projects that contract either from the embedded workflow package or
+from a standalone server through the PHP SDK. Worker telemetry remains the
+source of truth for latency and process-level behavior inside your workers.
 
 ### Surface mapping by deployment shape
 
-The Waterline routes in the table above ship inside the embedded Laravel host
-that installs the `durable-workflow/workflow` package. Standalone-server
-deployments do not run Waterline; they publish the equivalent operator
-contracts as authenticated server endpoints and as `dw` CLI commands. Read
-each row of this guide against the surface that exists in your deployment:
+The Waterline routes in the table above are available from both Waterline
+deployment shapes. Embedded mode reads the Laravel host's durable state in
+process. Service mode runs the published Waterline image and reads one
+standalone-server namespace through the PHP SDK. The authenticated server API
+and `dw` CLI remain available directly with or without Waterline:
 
-| Operator question | Embedded shape (Waterline) | Standalone-server shape |
+| Operator question | Waterline (embedded or service mode) | Standalone-server native surface |
 | --- | --- | --- |
 | Engine-source readiness and blocking vs advisory health | `GET /waterline/api/v2/health` | `GET /api/system/health` (admin auth, control-plane v2); `dw server:health` for liveness and `dw server:info` for the topology, protocol, and rollout-safety summary |
 | Durable fleet totals, backlog, repair, worker compatibility, projection drift | `GET /waterline/api/stats` | `GET /api/system/operator-metrics` and `dw system:operator-metrics` |
 | Selected-run detail and history export | `GET /waterline/api/instances/...` and `/waterline/api/.../history-export` | `GET /api/workflows/{workflowId}`, `/runs/{runId}`, and `/runs/{runId}/history/export` (see the [Server API Reference](./polyglot/server-api-reference.md)) |
 | Operator commands (cancel, terminate, repair, archive, signal/update/query) | `POST /waterline/api/instances/.../{cancel|terminate|repair|archive}` and signal/update/query routes | `POST /api/workflows/{workflowId}/{cancel|terminate|repair|archive}` and `POST /api/system/repair/pass` |
-| Topology and node-identity discovery | `php artisan workflow:v2:doctor --json` (`topology` object) | `GET /api/cluster/info`, `GET /api/health`, `GET /api/ready` (or `dw server:info`) |
+| Topology and node-identity discovery | Embedded: `php artisan workflow:v2:doctor --json` (`topology` object); service: use the connected server's native surface | `GET /api/cluster/info`, `GET /api/health`, `GET /api/ready` (or `dw server:info`) |
 
 The field families and contract names below stay the same regardless of
-which surface you read them through. When the rest of this guide names a
-`/waterline/...` route, treat the matching server route as the equivalent
-on standalone-server deployments.
+which surface you read them through. A Waterline deployment is scoped to its
+configured runtime and namespace; it does not combine embedded and
+server-managed runs.
 
 ## Supported topologies
 
@@ -76,7 +77,7 @@ your automation already reads.
 | --- | --- | --- | --- |
 | `embedded`, single node | Waterline, control-plane routes, health, rebuild, export, and archive all run from one app process against one durable database and one cache store. | The Laravel app process, the durable database, and the cache store on one host. | Treat host or database loss as a full service interruption. Restore durable state first, bring one app node back to readiness, then verify worker registration before resuming traffic. |
 | `embedded`, small same-region cluster | Use one shared database, one shared cache backend for wake-signal coordination, identical workflow compatibility/config across nodes, and keep active nodes in the same datacenter or region so queue wake-up and timer wake-up latency stay bounded. | Shared database, shared cache/wake coordination, load balancer routing, and the singleton scheduler or maintenance role. | One app-node loss should reduce capacity, not correctness. Database loss blocks durable traffic; Redis-only loss degrades wake acceleration and reports a readiness warning while database polling preserves durable correctness. Scheduler failover and upgrades remain explicit operator procedures rather than automatic HA promises. |
-| `standalone_server` distribution | Use the [Self-Hosting Deployments](./deployment.md) guide for the server-specific deployment matrix, then apply the same health, stats, export, archive, and queue-health distinctions described here through the server-side `/api/system/...` and `/api/workflows/...` routes (see the surface mapping above). | Shared database, shared Redis, API container set, independently scaled workers, and the single scheduler or maintenance runner. | API containers are replaceable; the database, Redis, and singleton scheduler path define recovery order. Restore persistence first, then verify `/api/ready`, `/api/cluster/info`, and worker registration before shifting traffic back. |
+| `standalone_server` distribution | Use the [Self-Hosting Deployments](./deployment.md) guide for the server-specific deployment matrix, then apply the same health, stats, export, archive, and queue-health distinctions through the native `/api/system/...` and `/api/workflows/...` routes or a separately deployed Waterline service (see the surface mapping above). | Shared database, shared Redis, API container set, independently scaled workers, the optional Waterline observer, and the single scheduler or maintenance runner. | API containers are replaceable server process nodes, and the Waterline container is a replaceable observer of server-owned state. The database, Redis, and singleton scheduler path define recovery order. Restore persistence first, then verify `/api/ready`, `/api/cluster/info`, and worker registration before shifting traffic back. |
 | `split_control_execution` | Same product contract as `standalone_server`, with each role isolated into its own process class (`ingress_node`, `control_plane_node`, `scheduler_node`, `matching_node`, `execution_node`). The same operator-metrics, health, and command surfaces apply per-node; route admin reads to the node that hosts the role you are interrogating. | Each role runs as its own process class, so the failure-domain checklist in [Server Role Topology](./polyglot/server-role-topology.md) governs which subsystem fails first. The shared database, Redis, and singleton scheduler election remain fleet-wide failure domains. | Recovery follows the same order as `standalone_server`, but verify `topology.current_shape`, `topology.current_process_class`, and `topology.current_roles` per node before declaring the deployment ready. Hosted routes return `503 topology_role_unavailable` when sent to the wrong node class. |
 
 `split_control_execution` is not a separate engine or product. It is the same
@@ -85,6 +86,10 @@ named in `topology.shape_assignments`. Treat the rest of this guide as
 shape-agnostic for those two server shapes unless a section calls out a
 specific role. [Server Role Topology](./polyglot/server-role-topology.md)
 holds the role vocabulary, authority boundaries, and migration path.
+
+Waterline service mode is an observer deployment, not another server topology.
+Adding or removing it does not change `topology.current_shape`, server-native
+API or CLI availability, or the runtime that owns a run.
 
 Publish the restore order, backup cadence, expected failover lag, and any
 region-pinned behavior in the runbook for the topology you operate. The product

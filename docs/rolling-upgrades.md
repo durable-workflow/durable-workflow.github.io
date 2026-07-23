@@ -290,10 +290,13 @@ Verify each phase of the rollout from operator surfaces, not from logs.
 
 `dw system:operator-metrics --json` exposes the same operator-metrics snapshot
 on the console for the standalone-server fleet, so operators may pick whichever
-surface matches their existing workflow. The standalone-server distribution
-does not run Waterline; embedded Laravel deployments read the matching
-dashboard signals under `/waterline/api/v2/health` and `/waterline/api/stats`,
-as documented in the
+surface matches their existing workflow. A separately deployed Waterline
+service can read the same server-owned rollout state through the PHP SDK under
+`/waterline/api/v2/health` and `/waterline/api/stats`; keep its endpoint,
+namespace, and server token aligned with the fleet being rolled. Embedded
+Laravel deployments expose those Waterline routes from their in-process
+package instead. The server API and CLI remain available in either case, as
+documented in the
 [Operator Operating Envelope](/docs/2.0/operator-operating-envelope).
 
 ## Failure modes and what to do

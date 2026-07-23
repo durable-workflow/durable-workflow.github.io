@@ -43,7 +43,7 @@ surfaces; there is no mandatory gRPC and no second engine.
 | Worker transport | Laravel queue workers execute workflow and activity tasks inside the app deployment. | Workers register, long-poll, heartbeat, and complete work over the HTTP+JSON worker protocol. PHP remote workers use `DurableWorkflow\Worker` from `durable-workflow/sdk`. | Task leases, compatibility markers, replay semantics, and at-least-once activity execution stay the same. |
 | Task dispatch default | Tasks are normally dispatched to the Laravel queue in-process with the application. | The server defaults to `task_dispatch_mode = poll` so external workers discover work over HTTP unless you explicitly override it. | The ready/leased/repair lifecycle and durable task model stay the same. |
 | Workflow and activity type keys | PHP aliases can resolve to local classes inside the app. | Workers advertise supported type keys during registration. | Public type keys should stay stable and language-neutral. Do not make PHP FQCNs or mirrored PHP placeholder types the public contract. |
-| Operator surface | Waterline or app-local tooling reads the embedded app's durable state. | The server API, CLI, and SDKs read the server-owned durable state. | Visibility facts such as search attributes, memos, run status, queue diagnostics, and history export are durable facts within the runtime that owns the run. |
+| Operator surface | The embedded Waterline package or app-local tooling reads the Laravel app's durable state in process. | The server API, CLI, and SDKs read server-owned durable state directly; the published Waterline service can project the same namespace through the PHP SDK. | Visibility facts such as search attributes, memos, run status, queue diagnostics, and history export are durable facts within the runtime that owns the run. Waterline does not combine runtimes or namespaces. |
 | Auth and tenancy boundary | App auth is whatever the Laravel host exposes around its own routes and sessions. | Namespace selection and server auth tokens or signatures are mandatory API boundaries. | Namespace names, task queues, compatibility markers, and payload-codec choices should stay stable across a cutover. |
 | Runtime discovery | The app can resolve services in-process or through app-local configuration. | Workers and clients must target an explicit remote base URL. | Do not couple either mode to shared `APP_URL`, `APP_KEY`, localhost assumptions, or same-container discovery. |
 | Migration boundary | Existing embedded runs keep executing where they started. | New server-managed runs start on the server and stay there. | There is no automatic live migration of in-flight runs between modes. Export is for audit/debugging, not for importing live state. |
@@ -71,11 +71,15 @@ under [Run And Operate](/docs/2.0/category/run-and-operate).
 - You want to scale API ingress, matching/dispatch, and workers independently
   within the supported
   [server role topology](/docs/2.0/polyglot/server-role-topology).
+- You want the Waterline UI as a separately deployed observer over a
+  server-owned namespace.
 
 Start with [Server](/docs/2.0/polyglot/server),
 [PHP SDK](/docs/2.0/polyglot/php),
 [Self-Hosting Deployments](/docs/2.0/deployment), and the
-[Server API Reference](/docs/2.0/polyglot/server-api-reference).
+[Server API Reference](/docs/2.0/polyglot/server-api-reference). Use
+[Monitoring](/docs/2.0/monitoring#waterline-service) when deploying the
+Waterline service.
 
 ## Migration Tooling Between Modes
 
@@ -93,8 +97,9 @@ live handoff of in-flight state:
   before shifting production traffic.
 - Use [CLI and Python Parity](/docs/2.0/polyglot/cli-python-parity) when
   replacing app-local control-plane calls with server-backed automation.
-- Use Waterline or server-side history export for audit/debugging evidence; do
-  not treat export bundles as an import path for live server-managed runs.
+- Use the Waterline deployment attached to the owning runtime or the
+  server-native history export for audit/debugging evidence; do not treat
+  export bundles as an import path for live server-managed runs.
 
 Three migration rules are non-negotiable:
 

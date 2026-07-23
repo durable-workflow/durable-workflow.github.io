@@ -17,9 +17,10 @@ keywords:
 
 # Waterline Operator API Reference
 
-Waterline is the durable-state operator surface for embedded Laravel
-deployments. The UI uses the same HTTP+JSON API documented here, so scripts,
-dashboards, and agents can read durable workflow facts without scraping HTML.
+Waterline is the durable-state operator surface for both embedded Laravel and
+standalone-server deployments. The UI uses the same HTTP+JSON API documented
+here, so scripts, dashboards, and agents can read durable workflow facts
+without scraping HTML.
 
 Use this reference when you need typed operator evidence: selected-run detail,
 history export, actionability, command affordances, saved views, preferences,
@@ -50,30 +51,34 @@ composer update durable-workflow/waterline
 php artisan waterline:publish
 ```
 
+For the self-contained service image and its connection, authentication, and
+persistence inputs, use [Monitoring](./monitoring.md#waterline-service).
+
 ## Deployment Boundary
 
-Waterline runs only inside the embedded Laravel host that installs the
-`durable-workflow/workflow` package. It reads the embedded app's durable state
-directly through the package's data sources; it does not call out to the
-standalone server, and it does not appear in the standalone-server
-distribution.
+Waterline has two backend adapters:
 
-If you operate the [standalone server](./polyglot/server.md), use the
-server-side equivalents instead of the routes documented here:
+- Embedded mode runs inside the Laravel host and reads the workflow package's
+  durable state in process.
+- Service mode runs the published Waterline image and reads one standalone
+  server namespace through `durable-workflow/sdk` and the server's public API.
 
-| Embedded Waterline route | Standalone-server equivalent |
+Both adapters expose the Waterline routes documented on this page. Service
+mode translates those routes to the corresponding server contracts:
+
+| Waterline route family | Standalone-server contract used by service mode |
 | --- | --- |
-| `GET /waterline/api/v2/health` | `GET /api/system/health` (admin auth, control-plane v2). |
-| `GET /waterline/api/stats` | `GET /api/system/operator-metrics` for the namespace-scoped operator metrics snapshot. |
-| `GET /waterline/api/flows/{bucket}` and selected-run detail routes | `GET /api/workflows`, `GET /api/workflows/{workflowId}`, and `GET /api/workflows/{workflowId}/runs/{runId}` from the [Server API Reference](./polyglot/server-api-reference.md). |
-| `POST /waterline/api/instances/{instanceId}/{cancel|terminate|repair|archive}` and signal/update/query actions | The matching `POST /api/workflows/{workflowId}/...` and `POST /api/system/repair/pass` routes. |
-| Waterline schedule routes under `/waterline/api/v2/schedules` | `GET|POST /api/schedules` and `POST /api/schedules/{scheduleId}/{pause|resume|trigger|backfill}`. |
+| `GET /waterline/api/v2/health` | Server health, worker registration, and task-queue visibility. |
+| `GET /waterline/api/stats` | The namespace-scoped operator dashboard and metrics snapshot. |
+| Flow lists, selected-run detail, and history export | Workflow list, detail, runs, history, and diagnostics from the [Server API Reference](./polyglot/server-api-reference.md). |
+| Signal, update, query, cancel, terminate, repair, and archive actions | The matching server workflow command and repair contracts. |
+| Routes under `/waterline/api/v2/schedules` | The server schedule list, detail, history, and mutation contracts. |
 
-[Deployment Modes](./polyglot/deployment-modes.md) freezes the same boundary
-in product-contract terms: Waterline serves the embedded shape, while the
-standalone server publishes its own operator surface for service-mode
-deployments. Do not assume cross-mode visibility — runs stay readable from
-the runtime that owns them.
+The server API, CLI, and SDK surfaces remain available directly when
+Waterline is deployed. Do not assume cross-mode or cross-namespace visibility:
+runs stay readable and actionable from their owning runtime and namespace.
+[Deployment Modes](./polyglot/deployment-modes.md) defines that shared product
+boundary.
 
 ## Base Path And Scope
 
@@ -91,39 +96,31 @@ curl -sS "$APP_URL/waterline/api/instances/order-1001" \
   -H "Accept: application/json" | jq '.status, .run_id, .actionability'
 ```
 
-## Authentication And CSRF
+## Authentication
 
-Waterline routes are registered under Laravel's `web` middleware group. GET
-routes work with any authenticated session. POST routes additionally require a
-CSRF token, which is how the UI itself authenticates every operator action.
+Every Waterline UI and JSON API controller passes through Waterline's access
+check. In embedded mode, the Laravel host defines that check and decides which
+guards, route middleware, gates, policies, SSO/OIDC/SAML sessions,
+directory-backed groups, service tokens, and rate limits apply.
 
-Waterline deliberately delegates the first operator auth boundary to the host
-Laravel application. The host app decides which guards, route middleware,
-gates, policies, SSO/OIDC/SAML session middleware, SCIM-backed directory
-groups, service tokens, and rate limits apply before a Waterline controller
-runs. Waterline then records durable command context for mutating actions
-instead of treating UI middleware as the only explanation for access.
+The current JSON operator API group excludes Laravel's CSRF middleware so a
+host can apply a session or service-token boundary consistently to both reads
+and commands. The host remains responsible for authenticating those requests
+and for documenting any browser-session CSRF protections it adds around the
+API.
 
-For scripted operators the token requirement still applies. Two patterns work:
+The self-contained service image has no host-application users. Put it behind
+an authenticating reverse proxy or on a private interface before setting
+`WATERLINE_ALLOW_UNAUTHENTICATED=true`; that setting delegates the Waterline
+front-door check to the surrounding deployment. Separately,
+`WATERLINE_SERVER_TOKEN` authenticates Waterline's PHP SDK calls to the
+standalone server. Never expose that server credential to the browser.
 
-- **Session + XSRF cookie.** Make one GET to a Waterline route with the session
-  cookie set. Laravel returns an `XSRF-TOKEN` cookie on that response. Include
-  its value in the `X-XSRF-TOKEN` header on every subsequent POST. Laravel
-  accepts that header as CSRF proof for JSON requests under the default
-  middleware.
-- **Host-app exemption.** If your operator automation owns its own identity
-  (service token, machine user), exempt Waterline's API POST routes from CSRF
-  in the host app's `App\Http\Middleware\VerifyCsrfToken` by adding the paths
-  under `$except`, for example `waterline/api/instances/*/archive`. Exempted
-  routes are then reachable with any authentication layer your app enforces.
-
-A POST without a valid CSRF token returns `419 CSRF token mismatch` before any
-Waterline controller runs, regardless of the target action.
-
-Host apps that expose Waterline on the public internet should document TLS,
-trusted proxy headers, session lifetime, CSRF exceptions, service-token
-rotation, and any private-network or mTLS assumptions alongside the deployment
-runbook.
+`WATERLINE_ACCESS_MODE=read_only` blocks mutating Waterline routes locally.
+`operator` enables them, but the connected server still applies its own token
+role and namespace authorization. See
+[Monitoring](./monitoring.md#waterline-service) for the deployment example and
+the two authentication boundaries.
 
 ## Dashboard And Health
 

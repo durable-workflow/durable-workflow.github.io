@@ -20,22 +20,31 @@ keywords:
 that works alongside Horizon. Think of Waterline as being to workflows what
 Horizon is to queues.
 
-Waterline ships only with the embedded Laravel host that installs the
-`durable-workflow/workflow` package; it reads that app's durable state in
-process. The standalone server distribution does not run Waterline. Operators
-who run the [standalone server](./polyglot/server.md) read the equivalent
-durable-state facts through `GET /api/system/health`,
-`GET /api/system/operator-metrics`, and the workflow control-plane routes
-documented in the
-[Server API Reference](./polyglot/server-api-reference.md). The
-[Operator Operating Envelope](./operator-operating-envelope.md) maps the
-Waterline routes below onto their server-side counterparts.
+Waterline is one operator product with two deployment shapes:
+
+- **Embedded mode** installs the Composer package in the Laravel application
+  that owns the workflows and reads that application's durable state in
+  process.
+- **Service mode** runs the published `durableworkflow/waterline` image and
+  reads state owned by the
+  [standalone server](./polyglot/server.md) through the PHP SDK and public
+  server API.
+
+Both shapes expose the same core Waterline UI and `/waterline/api/...`
+operator route families. They do not merge runtime state: a Waterline
+deployment sees runs owned by its configured runtime and namespace. The
+server's native API, CLI, and SDK operator surfaces remain available whether
+or not you deploy Waterline. Use the
+[Server API Reference](./polyglot/server-api-reference.md) for those native
+routes and the
+[Waterline Operator API Reference](./waterline-operator-api.md) for
+Waterline's routes and response contracts.
 
 Durable Workflow has two observability planes:
 
 | Plane | Source of truth | Typical questions |
 | --- | --- | --- |
-| Durable state | Workflow database, Waterline projections, and history export | Did the workflow start? Which run is current? Which signal, update, timer, activity, retry, or failure was committed? Which operator action is safe now? |
+| Durable state | The owning runtime's workflow database and API, Waterline projections, and history export | Did the workflow start? Which run is current? Which signal, update, timer, activity, retry, or failure was committed? Which operator action is safe now? |
 | Worker/runtime telemetry | Queue worker logs, SDK metrics recorders, Prometheus/OpenMetrics endpoints, and application traces | Are workers polling? How long do tasks take? Is an exporter configured? Did custom application metrics leave the worker process? |
 
 Waterline intentionally does not replace worker metrics. If a custom metric
@@ -71,12 +80,125 @@ The workflow detail view shows the durable timeline for a single run: the
 activities, signals, timers, and child workflows that happened in order,
 each with its inputs, outputs, and timing.
 
-## Installing Waterline
+## Deploying Waterline
+
+### Embedded Laravel
 
 Install Waterline into your Laravel application alongside the workflow
 package and run its migrations. See
 [durable-workflow/waterline](https://github.com/durable-workflow/waterline)
 for the full installation and configuration guide.
+
+Embedded mode uses the host application's database connection, route
+middleware, authentication gate, and workflow package. Continue to operate the
+Laravel application, its queue workers, scheduler, migrations, and Waterline
+assets as one deployment boundary. The
+[Waterline Operator API Reference](./waterline-operator-api.md#installation)
+includes the current Composer command and asset-publishing step.
+
+### Waterline service
+
+The published image contains its own PHP and Laravel runtime. It does not need
+PHP, Composer, or the workflow package on the container host, and it never
+connects to the standalone server's database.
+
+This example binds Waterline to loopback on host port `8080`, persists its own
+UI state in a named volume, and connects it to one server namespace:
+
+```bash
+export WATERLINE_SERVER_ENDPOINT=https://workflow.example.com
+export WATERLINE_SERVER_TOKEN=replace-with-a-server-token
+
+docker run --detach \
+  --name waterline \
+  --restart unless-stopped \
+  --publish 127.0.0.1:8080:8080 \
+  --volume waterline-data:/data \
+  --env WATERLINE_SERVER_ENDPOINT \
+  --env WATERLINE_SERVER_TOKEN \
+  --env WATERLINE_NAMESPACE=orders \
+  --env WATERLINE_ACCESS_MODE=read_only \
+  --env WATERLINE_ALLOW_UNAUTHENTICATED=true \
+  --env APP_URL=https://waterline.example.com \
+  durableworkflow/waterline:%%artifact.waterlineVersion%%
+```
+
+Open `/waterline` through the URL represented by `APP_URL`. The image listens
+on container port `8080`; set `PORT` only when you intentionally change that
+internal port. `WATERLINE_PATH` changes the default `waterline` URL prefix.
+The repository also publishes a
+[Docker Compose service definition](https://github.com/durable-workflow/waterline/blob/v2/deploy/docker-compose.service.yml)
+with the same connection boundary.
+
+Service mode has two independent authentication layers:
+
+1. `WATERLINE_SERVER_TOKEN` is the bearer credential Waterline uses when the
+   PHP SDK calls `WATERLINE_SERVER_ENDPOINT`. Workflow, worker, queue, and
+   schedule observation needs a server operator role; server health and
+   operator metrics may need an admin role.
+2. Browser and Waterline API access is the deployment's front-door boundary.
+   The self-contained image has no host Laravel user directory.
+   `WATERLINE_ALLOW_UNAUTHENTICATED=true` therefore belongs only behind an
+   authenticating reverse proxy or on a private interface such as the loopback
+   binding above. Keep it `false` unless that surrounding authentication
+   boundary is in place.
+
+Set `WATERLINE_NAMESPACE` to the same namespace operators intend to inspect.
+Waterline sends it on every SDK request. `WATERLINE_ACCESS_MODE=read_only` is
+the default and blocks mutating actions in Waterline; use `operator` only with
+a server token authorized for the required commands.
+
+The `/data` volume holds Waterline-owned saved views, display preferences, and
+Laravel runtime state. With the default settings it contains a file-backed
+SQLite database at `/data/waterline.sqlite`. It never contains the server's
+workflow history. Use `DATABASE_URL` or the ordinary `DB_*` settings when
+Waterline's own state must live in MySQL or PostgreSQL.
+
+### Health and metrics
+
+Use these probes for different questions:
+
+| Surface | What it proves |
+| --- | --- |
+| `GET /up` | The Waterline HTTP process started and can answer requests. The image's Docker health check uses this route. |
+| `GET /waterline/api/v2/health` | Waterline can assemble namespace-scoped server health, worker registration, and task-queue evidence through the PHP SDK. |
+| `GET /waterline/api/stats` | Dashboard totals and the server-backed operator summary used by Waterline. |
+| `GET /api/system/health` and `GET /api/system/operator-metrics` on the server | The native server health and operator contracts, independent of Waterline. |
+
+Treat `/waterline/api/stats` as operator JSON, not as a Prometheus scrape
+endpoint. Worker SDK metrics, logs, traces, and custom application telemetry
+still come from worker processes. A healthy `/up` with an unavailable
+Waterline health or stats response points to the server connection,
+authorization, namespace, or SDK capability boundary rather than a failed
+Waterline process.
+
+### Workflow visibility and operator actions
+
+In service mode, list views, selected-run detail, history export, schedules,
+worker status, task-queue evidence, signals, updates, queries, repair, cancel,
+terminate, and archive are projected from the configured standalone server
+through the PHP SDK. The Waterline route shapes remain the ones documented in
+the [Waterline Operator API Reference](./waterline-operator-api.md); the
+underlying server contracts remain documented in the
+[Server API Reference](./polyglot/server-api-reference.md).
+
+Waterline only shows the configured namespace and the runs owned by the
+connected server. Embedded runs remain visible through their embedded
+Waterline deployment, while server-managed runs remain visible through the
+service deployment or the server's native surfaces. Changing the Waterline
+backend does not migrate or combine runs.
+
+### Troubleshooting boundaries
+
+| Symptom | Boundary to check |
+| --- | --- |
+| Container exits before serving `/up` | Check the required `WATERLINE_SERVER_ENDPOINT`, writable `/data`, valid `PORT`, database settings, and bounded startup migration logs. |
+| Waterline returns `401` or `403` from a server-backed view | Check `WATERLINE_SERVER_TOKEN` and its server role. A Waterline front-door denial is a separate proxy or `WATERLINE_ALLOW_UNAUTHENTICATED` issue. |
+| A mutating route returns `waterline_read_only` | Keep the deployment read-only or explicitly set `WATERLINE_ACCESS_MODE=operator`; the server token must still authorize the command. |
+| Expected workflows are absent | Confirm `WATERLINE_NAMESPACE`, the server endpoint, and which runtime accepted the workflow start. Waterline does not search other namespaces or embedded runtimes. |
+| `/up` passes but health, stats, or a view reports an unavailable capability | Verify the server endpoint directly with its API or CLI, then check token roles and that the published Waterline/PHP SDK tuple exposes the required method. |
+| A service-catalog route reports `backend_capability_unavailable` | Service mode does not mirror Waterline's embedded cross-namespace service catalog. Use the connected server's native service endpoints and API for that capability. |
+| A custom metric is missing from Waterline | Inspect the worker's metrics exporter. Waterline reports durable operator facts, not arbitrary process metrics. |
 
 ## List and detail API
 
@@ -132,6 +254,11 @@ Operators can cancel, terminate, repair, and archive workflows directly
 from the detail view. Each action maps to a `POST` on the same run id and
 returns either `200` with the resulting state or `409` when the action is
 not valid for the run's current state.
+
+In service mode, Waterline forwards supported commands through the PHP SDK.
+Both `WATERLINE_ACCESS_MODE=operator` and a server credential authorized for
+the command are required for mutations. Operators can always use the server
+API or CLI directly when Waterline is not deployed.
 
 ## Related Guides
 

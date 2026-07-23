@@ -35,7 +35,7 @@ every feature first appeared in that release.
 | Python SDK | `%%artifact.pythonSdkVersion%%` | First-party deterministic workflow/activity SDK plus operational and control-plane client. Requires Python 3.10 or newer. |
 | Rust SDK | `%%artifact.rustSdkVersion%%` | First-party deterministic workflow/activity SDK, worker service, and control-plane client. Requires Rust 1.86 or newer. |
 | Server | `%%artifact.serverVersion%%` | PHP-implemented, language-neutral runtime for the v2 control-plane and worker protocols. |
-| Waterline | `%%artifact.waterlineVersion%%` | Embedded-runtime observability and selected-run history export. |
+| Waterline | `%%artifact.waterlineVersion%%` | One operator UI/API: the Composer package reads embedded Laravel state in process, while the published service image reads a standalone-server namespace through the PHP SDK. |
 
 PHP, Python, and Rust are the three first-party standalone SDK languages. They share
 stable string type names, one durable command/history model, control plane

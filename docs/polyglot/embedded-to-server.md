@@ -28,9 +28,11 @@ Supported today:
 - Export closed-run history bundles from embedded v2 or server v2 for audit,
   debugging, and archival handoff.
 - Observe server-managed workflows through the server API, CLI, and SDK
-  surfaces that read server state. Waterline keeps reading the embedded
-  Laravel app's own durable state — it is not part of the standalone-server
-  distribution and does not call out to the server.
+  surfaces that read server state, or deploy
+  [Waterline service mode](/docs/2.0/monitoring#waterline-service) as a
+  separate observer connected through the PHP SDK. The Waterline package in
+  the original Laravel app continues to read only that embedded runtime's
+  state.
 
 Not supported as an automatic operation today:
 
@@ -51,6 +53,8 @@ adds three cutover-specific rules on top of that shared contract:
   and payload codecs from the first cutover.
 - Signals, queries, updates, repair, cancel, terminate, and archive must keep routing
   to the runtime that owns the target run.
+- Each Waterline deployment must keep targeting the runtime and namespace it
+  is intended to observe; it does not merge embedded and server-managed runs.
 
 ## Cutover Invariants
 
