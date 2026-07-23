@@ -35,16 +35,17 @@ workflow package:
 ```bash
 composer require \
   %%artifact.waterlineComposerPackage%% \
-  %%artifact.workflowComposerPackage%%
+  %%artifact.workflowComposerPackage%% \
+  %%artifact.phpSdkComposerPackage%%
 php artisan waterline:install
 ```
 
 The pins include the Composer prerelease stability suffixes for the current
-public artifact tuple while Waterline and the workflow package are on the 2.0
-prerelease channel. Composer stability flags are root-only, so a default stable
-Laravel app must either require both prerelease packages explicitly as shown
-above or set an equivalent root stability policy before installing Waterline.
-After upgrading Waterline, publish the current assets:
+public artifact tuple while Waterline, Workflow, and the PHP SDK are on the
+2.0 prerelease channel. Composer stability flags are root-only, so a
+default-stable Laravel app must either require all three prerelease packages
+explicitly as shown above or set an equivalent root stability policy before
+installing Waterline. After upgrading Waterline, publish the current assets:
 
 ```bash
 composer update durable-workflow/waterline

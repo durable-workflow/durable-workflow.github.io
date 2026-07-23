@@ -295,6 +295,55 @@ function assertContractCoverage(contract) {
   assertPrimaryPaths(contract, personas, hostingBranches, scenarios);
 }
 
+function assertEmbeddedLaravelInstallContract(contract) {
+  const scenarios = byId(contract.scenarios, 'scenarios');
+  const laravel = scenarios.get('laravel_user_embedded_completion');
+
+  if (!laravel) {
+    fail('scenarios must include laravel_user_embedded_completion');
+  }
+
+  const installStart = laravel.command_script_lines.indexOf('composer require \\');
+  assertStringArrayEqual(
+    laravel.command_script_lines.slice(installStart, installStart + 4),
+    [
+      'composer require \\',
+      `  ${ARTIFACT_PINS.waterlineComposerPackage} \\`,
+      `  ${ARTIFACT_PINS.workflowComposerPackage} \\`,
+      `  ${ARTIFACT_PINS.phpSdkComposerPackage}`,
+    ],
+    'laravel_user_embedded_completion Composer install command',
+  );
+  assertStringArrayEqual(
+    laravel.command_script_lines.slice(installStart + 4, installStart + 7),
+    [
+      'composer show durable-workflow/sdk',
+      'composer show durable-workflow/workflow',
+      'composer show durable-workflow/waterline',
+    ],
+    'laravel_user_embedded_completion Composer version commands',
+  );
+
+  const probes = byId(laravel.success_probes, 'laravel_user_embedded_completion.success_probes');
+  for (const [id, packageName, version] of [
+    ['composer_waterline_version', 'durable-workflow/waterline', ARTIFACT_VERSIONS.waterline],
+    ['composer_workflow_version', 'durable-workflow/workflow', ARTIFACT_VERSIONS.workflow],
+    ['composer_php_sdk_version', 'durable-workflow/sdk', ARTIFACT_VERSIONS['sdk-php']],
+  ]) {
+    const probe = probes.get(id);
+
+    if (!probe) {
+      fail(`laravel_user_embedded_completion.success_probes must include ${id}`);
+    }
+
+    assertStringArrayEqual(
+      probe.required_substrings,
+      [packageName, version],
+      `${id}.required_substrings`,
+    );
+  }
+}
+
 function assertDocsGuard(contract) {
   const releaseConfig = getDocsReleaseConfig();
 
@@ -322,6 +371,7 @@ function main() {
   assertDocsGuard(contract);
   assertPublicArtifactPins(contract);
   assertContractCoverage(contract);
+  assertEmbeddedLaravelInstallContract(contract);
   assertQuickstartScriptLinesMatchDocs(contract, renderedQuickstart);
 
   console.log('Quickstart execution contract checks passed');

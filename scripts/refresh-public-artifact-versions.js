@@ -1202,12 +1202,24 @@ function applyQuickstartArtifactPins(contract, versions) {
   changed = replaceLineContaining(
     laravel.command_script_lines,
     'durable-workflow/waterline:',
-    `  ${pins.waterlineComposerPackage}`,
+    `  ${pins.waterlineComposerPackage} \\`,
     'Waterline Composer install line'
   ) || changed;
 
+  changed = replaceLineContaining(
+    laravel.command_script_lines,
+    'durable-workflow/sdk:',
+    `  ${pins.phpSdkComposerPackage}`,
+    'PHP SDK Composer install line'
+  ) || changed;
+
+  const phpSdkProbe = (laravel.success_probes || []).find(probe => probe && probe.id === 'composer_php_sdk_version');
   const workflowProbe = (laravel.success_probes || []).find(probe => probe && probe.id === 'composer_workflow_version');
   const waterlineProbe = (laravel.success_probes || []).find(probe => probe && probe.id === 'composer_waterline_version');
+
+  if (!phpSdkProbe || !Array.isArray(phpSdkProbe.required_substrings)) {
+    throw new Error('static/quickstart-execution-contract.json is missing composer_php_sdk_version required substrings');
+  }
 
   if (!workflowProbe || !Array.isArray(workflowProbe.required_substrings)) {
     throw new Error('static/quickstart-execution-contract.json is missing composer_workflow_version required substrings');
@@ -1216,6 +1228,13 @@ function applyQuickstartArtifactPins(contract, versions) {
   if (!waterlineProbe || !Array.isArray(waterlineProbe.required_substrings)) {
     throw new Error('static/quickstart-execution-contract.json is missing composer_waterline_version required substrings');
   }
+
+  changed = replaceLineContaining(
+    phpSdkProbe.required_substrings,
+    '2.0.0-',
+    versions['sdk-php'],
+    'PHP SDK Composer success-probe version'
+  ) || changed;
 
   changed = replaceLineContaining(
     workflowProbe.required_substrings,

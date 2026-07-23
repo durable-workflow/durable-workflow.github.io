@@ -701,8 +701,10 @@
         "cd durable-workflow-laravel-quickstart",
         "",
         "composer require \\",
+        "  durable-workflow/waterline:2.0.0-beta.10@beta \\",
         "  durable-workflow/workflow:2.0.0-beta.10@beta \\",
-        "  durable-workflow/waterline:2.0.0-beta.10@beta",
+        "  durable-workflow/sdk:2.0.0-beta.10@beta",
+        "composer show durable-workflow/sdk",
         "composer show durable-workflow/workflow",
         "composer show durable-workflow/waterline",
         "",
@@ -814,6 +816,14 @@
         "trap - EXIT"
       ],
       "success_probes": [
+        {
+          "id": "composer_php_sdk_version",
+          "source": "stdout",
+          "required_substrings": [
+            "durable-workflow/sdk",
+            "2.0.0-beta.10"
+          ]
+        },
         {
           "id": "composer_workflow_version",
           "source": "stdout",
