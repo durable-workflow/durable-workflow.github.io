@@ -422,7 +422,7 @@ Once connected, you can have natural conversations with your AI assistant:
 > 
 > **AI:** *calls start_workflow* "Started workflow ID 42. I'll check its status."
 
-> **AI:** *calls get_workflow_result* "The workflow completed! Here's the generated user profile: { name: 'Elena', hobbies: [...] }"
+> **AI:** *calls get_workflow_result* "The workflow completed! Here's the generated user profile: \{ name: 'Elena', hobbies: [...] \}"
 
 This creates a seamless experience where AI assistants can orchestrate complex, long-running operations while keeping the user informed.
 

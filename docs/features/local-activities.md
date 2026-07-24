@@ -172,7 +172,7 @@ The runtime manifest is published at
 `GET /api/cluster/info`. The machine-readable contract is
 [`local-activity-runtime.schema.json`](/platform-protocol-specs/local-activity-runtime.schema.json)
 and is indexed by the
-[Platform Protocol Specs](/docs/2.0/platform-protocol-specs#local_activity_runtime)
+[Platform Protocol Specs](/docs/2.0/platform-protocol-specs#local-activity-runtime-notes)
 catalog.
 
 The event names remain normal activity event names so timelines and replay

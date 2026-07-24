@@ -151,7 +151,7 @@ Worker-protocol capabilities advertise `worker_session_verbs` and the
 worker-plane response. The machine-readable contract is published in
 [`worker-sessions-runtime.schema.json`](/platform-protocol-specs/worker-sessions-runtime.schema.json)
 and is indexed by the
-[Platform Protocol Specs](/docs/2.0/platform-protocol-specs#worker_sessions_runtime)
+[Platform Protocol Specs](/docs/2.0/platform-protocol-specs#worker-session-runtime-notes)
 catalog.
 
 Operators can list active, closed, expired, failed, and orphaned sessions at

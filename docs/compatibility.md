@@ -84,7 +84,7 @@ repository-local authority fields.
 Every required platform protocol catalog entry is marked `published`; the
 invocable carrier entry remains `in_progress`. Every available entry links
 directly to a public OpenAPI, AsyncAPI, or JSON Schema document. The
-[`cluster_info_envelope`](/docs/2.0/platform-protocol-specs#cluster_info_envelope)
+[`cluster_info_envelope`](/docs/2.0/platform-protocol-specs#cluster-info-envelope-notes)
 schema pins the discovery surface every other catalog entry can be
 reached from.
 

@@ -39,8 +39,12 @@ function assertVersionRouting() {
   if (versions.current?.path !== '2.0' || versions.current?.banner !== 'unreleased') {
     fail('Current documentation must remain on the explicit 2.0 prerelease route');
   }
-  if (config.onBrokenLinks !== 'throw' || config.onBrokenMarkdownLinks !== 'throw') {
-    fail('Documentation builds must fail on broken links');
+  if (
+    config.onBrokenAnchors !== 'throw'
+    || config.onBrokenLinks !== 'throw'
+    || config.markdown?.hooks?.onBrokenMarkdownLinks !== 'throw'
+  ) {
+    fail('Documentation builds must fail on broken links and anchors');
   }
 
   const stable = requireFile('docs/introduction/index.html');

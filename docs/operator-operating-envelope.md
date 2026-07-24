@@ -65,7 +65,7 @@ and `dw` CLI remain available directly with or without Waterline:
 | Engine-source readiness and blocking vs advisory health | `GET /waterline/api/v2/health` | `GET /api/system/health` (admin auth, control-plane v2); `dw server:health` for liveness and `dw server:info` for the topology, protocol, and rollout-safety summary |
 | Durable fleet totals, backlog, repair, worker compatibility, projection drift | `GET /waterline/api/stats` | `GET /api/system/operator-metrics` and `dw system:operator-metrics` |
 | Selected-run detail and history export | `GET /waterline/api/instances/...` and `/waterline/api/.../history-export` | `GET /api/workflows/{workflowId}`, `/runs/{runId}`, and `/runs/{runId}/history/export` (see the [Server API Reference](./polyglot/server-api-reference.md)) |
-| Operator commands (cancel, terminate, repair, archive, signal/update/query) | `POST /waterline/api/instances/.../{cancel|terminate|repair|archive}` and signal/update/query routes | `POST /api/workflows/{workflowId}/{cancel|terminate|repair|archive}` and `POST /api/system/repair/pass` |
+| Operator commands (cancel, terminate, repair, archive, signal/update/query) | `POST /waterline/api/instances/.../{cancel\|terminate\|repair\|archive}` and signal/update/query routes | `POST /api/workflows/{workflowId}/{cancel\|terminate\|repair\|archive}` and `POST /api/system/repair/pass` |
 | Topology and node-identity discovery | Embedded: `php artisan workflow:v2:doctor --json` (`topology` object); service: use the connected server's native surface | `GET /api/cluster/info`, `GET /api/health`, `GET /api/ready` (or `dw server:info`) |
 
 The field families and contract names below stay the same regardless of

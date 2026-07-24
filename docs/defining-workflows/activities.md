@@ -105,7 +105,7 @@ $result = activity(
 );
 ```
 
-See [Activity options](/docs/2.0/configuration/options#activity-options) for the full list of fields, including timeouts and heartbeats.
+See [Activity options](/docs/2.0/configuration/options#activityoptions) for the full list of fields, including timeouts and heartbeats.
 
 ## Local Activity Calls
 
