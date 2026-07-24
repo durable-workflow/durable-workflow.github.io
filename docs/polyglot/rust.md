@@ -29,9 +29,10 @@ For crate modules, structs, traits, and methods, see the generated
 [Rust SDK API reference](https://rust.durable-workflow.com/).
 
 Cloud customers configure the provisioned namespace's runtime URL and use
-separate credentials for client and worker processes. See
+separate credentials for client and worker roles, even when both roles run in
+one process. See
 [Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane) for the managed
-connection boundary; the example below uses generic local Server values.
+connection boundary and the Cloud-specific connection example below.
 
 At the current `%%artifact.rustSdkVersion%%` floor, Rust supports durable
 timers, child workflows, activity retries and timeouts, signals, replayed query
@@ -81,13 +82,64 @@ or a worker minor newer than the server's advertised minor is rejected. The
 server version range selects the release family; it does not override the
 runtime protocol manifest.
 
-## Start with the SDK
+## Connect to Durable Workflow Cloud
 
 The repository's
 [`hello_world` example](https://github.com/durable-workflow/sdk-rust/blob/main/examples/hello_world.rs)
 registers a Rust worker, starts a workflow, sends a signal, runs an activity,
-reports an activity heartbeat, and waits for the completed result. Run it
-against an existing runtime with:
+reports an activity heartbeat, and waits for the completed result. Because that
+example runs the application client and worker in one process, a Cloud
+connection must give its `Client` both role-specific credentials instead of
+setting the generic token fallback.
+
+Export the values returned when Cloud provisions the namespace and creates its
+two runtime credentials:
+
+```bash
+export DURABLE_WORKFLOW_RUNTIME_URL='https://your-runtime-url'
+export DURABLE_WORKFLOW_RUNTIME_NAMESPACE='orders'
+export DURABLE_WORKFLOW_CLIENT_TOKEN='dwr_client_credential'
+export DURABLE_WORKFLOW_WORKER_TOKEN='dwr_worker_credential'
+```
+
+In `examples/hello_world.rs`, replace the existing `server_url`, `token`, and
+`Client::builder(...)` setup with this split-token builder configuration:
+
+```rust
+let runtime_url = std::env::var("DURABLE_WORKFLOW_RUNTIME_URL")
+    .expect("DURABLE_WORKFLOW_RUNTIME_URL must be set");
+let runtime_namespace = std::env::var("DURABLE_WORKFLOW_RUNTIME_NAMESPACE")
+    .expect("DURABLE_WORKFLOW_RUNTIME_NAMESPACE must be set");
+let client_token = std::env::var("DURABLE_WORKFLOW_CLIENT_TOKEN")
+    .expect("DURABLE_WORKFLOW_CLIENT_TOKEN must be set");
+let worker_token = std::env::var("DURABLE_WORKFLOW_WORKER_TOKEN")
+    .expect("DURABLE_WORKFLOW_WORKER_TOKEN must be set");
+
+let client = Client::builder(runtime_url)
+    .namespace(runtime_namespace)
+    .control_token(Some(client_token))
+    .worker_token(Some(worker_token))
+    .build()?;
+```
+
+Then run the example normally:
+
+```bash
+cargo run --example hello_world
+```
+
+The example's workflow start, signal, describe, and result calls use
+`control_token`; its `Worker` registration, polling, heartbeat, and completion
+calls use `worker_token`. Both roles use the same Cloud-provided runtime URL,
+runtime namespace, and task queue, but they do not reuse a credential. Do not
+replace either Cloud credential with `.token(...)`: that method is the generic
+single-token fallback used by the self-hosted configuration below.
+
+## Run the combined example with self-hosted Server
+
+The unmodified `hello_world` example accepts one token for a self-hosted
+Durable Workflow Server whose authentication policy allows the same credential
+to make workflow commands and poll for work:
 
 ```bash
 DURABLE_WORKFLOW_SERVER_URL=http://127.0.0.1:8080 \
@@ -95,7 +147,9 @@ DURABLE_WORKFLOW_TOKEN=your-token \
 cargo run --example hello_world
 ```
 
-Use `TASK_QUEUE` to override the example's default `rust-workers` task queue.
+This `DURABLE_WORKFLOW_TOKEN` command is for self-hosted Server usage, not a
+Cloud namespace. Use `TASK_QUEUE` to override the example's default
+`rust-workers` task queue.
 
 ## Start with server-enforced workflow timeouts
 

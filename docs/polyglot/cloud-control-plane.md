@@ -108,8 +108,9 @@ curl -X POST \
 ```
 
 Each token is displayed once in its create response. Store it in the secret
-store used by only the corresponding client or worker processes. Rotate and
-revoke the roles independently, and never substitute a Cloud API key for either
+store used by only the corresponding role. A deliberately combined client and
+worker process receives both values as two distinct secrets. Rotate and revoke
+the roles independently, and never substitute a Cloud API key for either
 runtime credential.
 
 ### 3. Configure the SDK processes
@@ -124,11 +125,26 @@ documentation:
 - [PHP client](/docs/2.0/polyglot/php/#start-and-inspect-a-workflow) and
   [remote worker](/docs/2.0/polyglot/php/#run-a-remote-php-worker)
 - [Python client connection](/docs/2.0/polyglot/python/#running-against-a-shared-server)
-- [Rust client and worker](/docs/2.0/polyglot/rust/#start-with-the-sdk)
+- [Rust Cloud client and worker](/docs/2.0/polyglot/rust/#connect-to-durable-workflow-cloud)
 
-For Cloud, replace the local example URL, namespace, and token with the values
-issued for the namespace. Do not copy client credentials into workers or worker
-credentials into application clients.
+For Cloud, replace the local example URL and namespace with the values issued
+for the namespace, then configure both role credentials through distinct
+authentication inputs. A combined client-and-worker process may hold both
+credentials, but it must not put one credential into both role inputs.
+
+For the Rust same-process example, the replacements map directly to
+`ClientBuilder`:
+
+- pass Cloud's `runtime_url` to `Client::builder(runtime_url)`;
+- pass Cloud's `runtime_namespace` to `.namespace(runtime_namespace)`;
+- pass the client credential's token to
+  `.control_token(Some(client_token))`; and
+- pass the worker credential's token to
+  `.worker_token(Some(worker_token))`.
+
+Rust's `.token(...)` method is a generic single-token fallback for self-hosted
+Server configurations. Do not use it in place of either role-specific Cloud
+method.
 
 ### 4. Start workflows and poll for tasks
 
