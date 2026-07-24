@@ -24,6 +24,14 @@ which queue facts belong to Waterline versus worker telemetry, how to verify
 rebuild and export workflows, and which deployment shapes are part of the
 documented operating envelope.
 
+The deployment and recovery procedures here apply to embedded Laravel and
+self-hosted Server. Durable Workflow Cloud is a separate managed service: Cloud
+owns runtime persistence, placement, backup, restore, and failover, while
+customers operate SDK clients and workers through the namespace runtime URL.
+Do not use this guide to attach a Server to Cloud; use the
+[Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane) guide for that
+customer boundary.
+
 ## Source-of-truth surfaces
 
 Use these surfaces together:
@@ -533,10 +541,10 @@ topologies — including the active/passive multi-region contract in the
 recovery and regional failover are deliberate operator work with explicit
 checkpoints, not automatic product behavior. Hosted Cloud multi-region
 replication v1 is scoped separately in the
-[Cloud control-plane contract](/docs/2.0/polyglot/cloud-control-plane): it can
-switch the active runtime target inside a configured primary/secondary pair,
-but it does not make arbitrary runtime-target migration or active/active writes
-a general deployment guarantee.
+[Cloud managed-runtime contract](/docs/2.0/polyglot/cloud-control-plane). Cloud
+operates replication, failover, and failback behind one stable namespace
+runtime URL; customers do not switch deployment identifiers or endpoints.
+Active/active writes remain outside that managed-service contract.
 
 Treat restore rehearsal cadence as part of the public operating contract too.
 At minimum, rehearse the documented restore sequence:

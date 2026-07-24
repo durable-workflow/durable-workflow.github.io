@@ -85,10 +85,11 @@ There are three deployment/control-plane choices:
 2. **Embedded:** install the PHP engine into a Laravel application and reuse its
    queues, database, configuration, and deployment. This is a differentiated
    Laravel-native path, not the platform category.
-3. **Durable Workflow Cloud:** use the hosted control plane above runtime
-   targets while the runtime continues to own execution, worker polling,
-   schedules, history, and durable visibility. Evaluate only the exact
-   [Cloud Control Plane](/docs/2.0/polyglot/cloud-control-plane/) contract.
+3. **Durable Workflow Cloud:** provision a managed namespace. Cloud operates
+   the orchestration runtime, state, history, schedules, placement, and recovery
+   while application teams run SDK clients and workers. A self-hosted Server is
+   not attached to Cloud. Evaluate only the exact
+   [Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane/) contract.
 
 ## What exists now, and what remains prerelease?
 
@@ -113,10 +114,10 @@ history beyond the exact evidence published in the current docs, manifests, and
 compatibility material.
 
 Durable Workflow 2.0 is compelling where agent operability, self-hosting, a
-broadly approachable HTTP+JSON public protocol, standalone/embedded/hosted
-control-plane flexibility, or a legible PHP core are deciding factors. The
-comparison is about fit and maturity, not whether both products implement
-replay-based durable execution.
+broadly approachable HTTP+JSON public protocol, a choice among standalone,
+embedded, and managed Cloud operation, or a legible PHP core are deciding
+factors. The comparison is about fit and maturity, not whether both products
+implement replay-based durable execution.
 
 ## Who should choose it?
 
@@ -127,7 +128,7 @@ Choose Durable Workflow 2.0 for evaluation when:
 - Python, Rust, and PHP workflow/application code should share one durable
   execution model and codec contract;
 - self-hosting or choosing among standalone, Laravel-embedded, and the exact
-  current Cloud control-plane contract is valuable;
+  current Cloud managed-runtime contract is valuable;
 - the team accepts prerelease adoption and can validate its required capability
   floors against the published tuple.
 

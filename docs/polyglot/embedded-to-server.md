@@ -16,6 +16,11 @@ standalone server owns new control-plane starts, durable history, schedules,
 worker registrations, and task delivery over HTTP. Your application workers
 continue to own workflow and activity code.
 
+This is a self-hosted migration guide. It does not turn the embedded deployment
+into a Cloud namespace, and the resulting Server is not attached to Durable
+Workflow Cloud. For the separate managed-service choice, see
+[Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane).
+
 ## Current Boundary
 
 Supported today:
@@ -114,7 +119,7 @@ contracts. This reduces the amount of code that changes during cutover.
 
 4. Pick namespace and task queue names.
 
-   Choose names you can keep stable across embedded, server, and cloud:
+   Choose names you can keep stable throughout the embedded-to-Server cutover:
 
    ```bash
    export DURABLE_WORKFLOW_NAMESPACE=production
@@ -133,8 +138,8 @@ contracts. This reduces the amount of code that changes during cutover.
 
 ## Phase B: Deploy the Server Beside Embedded
 
-Run the server as a new runtime target while the Laravel app continues handling
-existing embedded runs.
+Run the standalone Server beside the Laravel app while the app continues
+handling existing embedded runs.
 
 ```bash
 git clone https://github.com/durable-workflow/server.git

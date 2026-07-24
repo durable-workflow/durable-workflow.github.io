@@ -14,7 +14,11 @@ keywords:
 
 # Python SDK
 
-The Python SDK is a thin, async-first client for the Durable Workflow server. It lets Python processes start, observe, signal, and cancel workflows through the server's control-plane API, and register as workers that execute workflow tasks and activities.
+The Python SDK is a thin, async-first client for a self-hosted Durable Workflow
+Server or Durable Workflow Cloud namespace runtime. It lets Python processes
+start, observe, signal, and cancel workflows through the runtime's
+control-plane API, and register as workers that execute workflow tasks and
+activities.
 
 The SDK targets the same durable model as the PHP package — instance IDs, run IDs, history events, task queues, and type keys are shared across languages. A Python worker can serve activities for a PHP-authored workflow, and vice versa.
 
@@ -24,10 +28,17 @@ For side-by-side examples of the same operation through the Python SDK and
 For constructor signatures, return types, exception classes, and metric names,
 see the generated [Python SDK API reference](https://python.durable-workflow.com/).
 
+Cloud customers use the provisioned namespace's runtime URL and namespace with
+separate client and worker credentials. See
+[Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane) for that
+connection boundary; the quickstart below uses local self-hosted values.
+
 ## Requirements
 
 - Python 3.10 or later
-- Docker (for the local server used in this quickstart) or an existing [Durable Workflow server](/docs/2.0/polyglot/server)
+- Docker (for the local Server used in this quickstart), an existing
+  [self-hosted Server](/docs/2.0/polyglot/server), or a provisioned
+  [Cloud namespace runtime](/docs/2.0/polyglot/cloud-control-plane)
 
 ## Installation
 
@@ -1504,4 +1515,14 @@ client = Client(
 )
 ```
 
-Set the `namespace` argument to whichever tenant namespace the shared server has provisioned for your team, and use the credentials issued for that namespace. The server operator manages namespace creation — see the [server setup guide](/docs/2.0/polyglot/server) for details.
+Set the `namespace` argument to whichever tenant namespace the shared server has
+provisioned for your team, and use the credentials issued for that namespace.
+The Server operator manages namespace creation; see the
+[Server guide](/docs/2.0/polyglot/server) for details.
+
+The same constructor supports a Cloud managed runtime. Use the namespace's
+Cloud-provided runtime URL and namespace value, set `control_token` to the
+client runtime credential, and set `worker_token` to the worker runtime
+credential. Cloud provisions the namespace; do not substitute a self-hosted
+Server address. See
+[Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane).

@@ -124,7 +124,7 @@ const sidebars = {
       label: 'Control Plane And Polyglot',
       link: {
         type: 'generated-index',
-        description: 'Use the standalone server, Cloud control plane, CLI, and first-party PHP, Python, and Rust SDK contracts.',
+        description: 'Use the standalone server, Cloud managed runtime, CLI, and first-party PHP, Python, and Rust SDK contracts.',
       },
       items: [
         'polyglot/server',

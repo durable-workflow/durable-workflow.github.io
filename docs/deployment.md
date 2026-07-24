@@ -12,11 +12,13 @@ auth, readiness, and upgrade contract explicit.
 
 This guide covers the standalone server distribution. If you run the Laravel
 package embedded in your own app, use the package installation and configuration
-pages instead. If you want the hosted control-plane contract above region-scoped
-runtime targets, see [Cloud Control Plane](/docs/2.0/polyglot/cloud-control-plane).
-The automatic-failover language in this self-hosting guide refers to
-customer-operated server deployments; hosted Cloud multi-region namespace
-replication v1 is documented separately on the Cloud page.
+pages instead. Durable Workflow Cloud is a separate managed-service choice in
+which Cloud operates the runtime, persistence, placement, and recovery; a
+self-hosted Server is never attached to Cloud. See
+[Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane). The
+automatic-failover language in this guide refers only to customer-operated
+Server deployments. Cloud multi-region failover is documented separately on
+the Cloud page.
 
 ## Deployment support matrix
 
@@ -47,7 +49,7 @@ steady-state topology, and provider-specific managed-Kubernetes validation
 remain support-led because they depend on your database, cache, networking,
 security, runner, and upgrade choices. Hosted Cloud multi-region namespace
 replication v1 is a separate Cloud-managed contract; see
-[Cloud Control Plane](/docs/2.0/polyglot/cloud-control-plane). See the
+[Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane). See the
 [support boundary](/docs/2.0/support) for the commercial support model.
 
 ## Production recovery deliverables
@@ -522,7 +524,7 @@ topology itself is part of the product risk:
   topologies (active/passive with operator-driven failover is the
   [next section](#activepassive-multi-region); hosted Cloud multi-region
   replication v1 is documented separately in
-  [Cloud Control Plane](/docs/2.0/polyglot/cloud-control-plane));
+  [Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane));
 - synchronous cross-region database replication (RPO=0);
 - duplicate scheduler/maintenance runners as a steady-state topology;
 - engine-enforced region-pinned task queues as a routing axis;
@@ -629,7 +631,7 @@ failover, synchronous cross-region replication (RPO=0), cross-region active
 visibility, and region-pinned task queues as an engine-enforced routing axis
 remain [support-led](/docs/2.0/support) because the topology itself is part of
 the product risk. Hosted Cloud multi-region namespace replication v1 is scoped
-separately by the [Cloud control-plane contract](/docs/2.0/polyglot/cloud-control-plane).
+separately by the [Cloud managed-runtime contract](/docs/2.0/polyglot/cloud-control-plane).
 
 ## Readiness contract
 

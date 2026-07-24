@@ -22,11 +22,16 @@ long-running worker services against the same durable execution model used by
 PHP and Python. The async control-plane client starts, signals, queries,
 cancels, terminates, and awaits executions; the worker runtime replays
 workflow history, runs workflow/activity handlers, reports worker and activity
-heartbeats, and exchanges language-neutral payloads with the standalone
-server.
+heartbeats, and exchanges language-neutral payloads with a self-hosted Server
+or Durable Workflow Cloud namespace runtime.
 
 For crate modules, structs, traits, and methods, see the generated
 [Rust SDK API reference](https://rust.durable-workflow.com/).
+
+Cloud customers configure the provisioned namespace's runtime URL and use
+separate credentials for client and worker processes. See
+[Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane) for the managed
+connection boundary; the example below uses generic local Server values.
 
 At the current `%%artifact.rustSdkVersion%%` floor, Rust supports durable
 timers, child workflows, activity retries and timeouts, signals, replayed query
@@ -82,7 +87,7 @@ The repository's
 [`hello_world` example](https://github.com/durable-workflow/sdk-rust/blob/main/examples/hello_world.rs)
 registers a Rust worker, starts a workflow, sends a signal, runs an activity,
 reports an activity heartbeat, and waits for the completed result. Run it
-against an existing server with:
+against an existing runtime with:
 
 ```bash
 DURABLE_WORKFLOW_SERVER_URL=http://127.0.0.1:8080 \

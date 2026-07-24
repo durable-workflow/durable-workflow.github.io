@@ -25,6 +25,12 @@ Durable Workflow v2 ships one durable engine in two packaging shapes:
   [Durable Workflow server](/docs/2.0/polyglot/server), with framework-neutral
   PHP applications and remote workers installing `durable-workflow/sdk`.
 
+Durable Workflow Cloud is a separate managed-service choice, not a third
+packaging shape for a customer Server. In Cloud, Durable Workflow operates the
+orchestration runtime and persistence while customers run SDK clients and
+workers. A self-hosted Server is not attached to Cloud; see
+[Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane).
+
 Use this page when deciding which shape should own a workflow fleet, planning a
 cutover between them, or documenting which parts of the product contract must
 stay identical across both.
@@ -114,7 +120,7 @@ Three migration rules are non-negotiable:
 - [Installation](/docs/2.0/installation)
 - [Server](/docs/2.0/polyglot/server)
 - [PHP SDK](/docs/2.0/polyglot/php)
-- [Cloud Control Plane](/docs/2.0/polyglot/cloud-control-plane)
+- [Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane)
 - [Embedded to Server Migration](/docs/2.0/polyglot/embedded-to-server)
 - [Server Role Topology](/docs/2.0/polyglot/server-role-topology)
 - [Server Config Reference](/docs/2.0/polyglot/server-config-reference)

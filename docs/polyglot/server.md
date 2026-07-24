@@ -40,13 +40,14 @@ The adoption paths are separate:
   package and owns the engine through its own queue, database, configuration,
   and deployment. This is the Laravel-native advantage, not a prerequisite for
   the standalone path.
-- **Hosted control-plane adoption:** Durable Workflow Cloud hosts the control
-  plane above one or more runtime targets. Its exact current ownership and
-  connectivity contract is documented on
-  [Cloud Control Plane](/docs/2.0/polyglot/cloud-control-plane/).
+- **Managed Cloud adoption:** Durable Workflow Cloud operates the orchestration
+  runtime, persistence, placement, and recovery. Application teams run SDK
+  clients and workers against a provisioned Cloud namespace. They do not deploy
+  this Server distribution for Cloud or attach a self-hosted Server to it. See
+  [Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane/).
 
 All three choices use the same durable execution concepts. Standalone and
-Cloud-connected external workers use stable string workflow/activity type
+Cloud-managed external workers use stable string workflow/activity type
 names and the shared codec envelope, so a cross-language child workflow or
 activity preserves payload shape rather than exposing PHP serialization.
 

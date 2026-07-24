@@ -1,7 +1,7 @@
 ---
 sidebar_position: 9
 title: PHP SDK
-description: Connect framework-neutral PHP applications and remote workers to the standalone Durable Workflow server.
+description: Connect framework-neutral PHP applications and remote workers to a self-hosted Server or Cloud managed runtime.
 tags:
   - php
   - sdk
@@ -16,13 +16,20 @@ keywords:
 # PHP SDK
 
 Use `durable-workflow/sdk` when a PHP application or remote worker connects to
-the standalone Durable Workflow server. This first-party SDK is
-framework-neutral: it provides the control-plane client, authentication,
-transport, public payload codec, replay handler, and managed remote-worker
-lifecycle without requiring Laravel or the embedded engine package.
+the standalone Durable Workflow Server or a Durable Workflow Cloud namespace
+runtime URL. This first-party SDK is framework-neutral: it provides the
+control-plane client, authentication, transport, public payload codec, replay
+handler, and managed remote-worker lifecycle without requiring Laravel or the
+embedded engine package.
 
 For constructor signatures, return types, and exception classes, see the
 generated [PHP SDK API reference](https://php.durable-workflow.com/).
+
+Cloud customers use the runtime URL and namespace returned during provisioning,
+with separate client and worker credentials. See
+[Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane) for that
+connection boundary; the examples below show the same SDK against local
+self-hosted values.
 
 Use `durable-workflow/workflow` for the separate embedded Laravel path, where
 the application owns workflow state in its existing database and executes work
@@ -32,7 +39,8 @@ for the complete ownership comparison.
 ## Requirements
 
 - PHP 8.1 or later
-- A reachable [Durable Workflow server](/docs/2.0/polyglot/server/)
+- A reachable [self-hosted Server](/docs/2.0/polyglot/server/) or provisioned
+  [Cloud namespace runtime](/docs/2.0/polyglot/cloud-control-plane)
 
 ## Install
 

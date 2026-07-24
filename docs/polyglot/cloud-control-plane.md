@@ -1,222 +1,209 @@
 ---
 sidebar_position: 3
-title: Cloud Control Plane
-description: Freeze the Durable Workflow Cloud control-plane contract, runtime-target boundary, worker connectivity model, and support-led topology edge.
+title: Cloud Managed Runtime
+description: Provision a Durable Workflow Cloud namespace and connect SDK clients and customer-run workers to its managed runtime.
 tags:
   - cloud
-  - control-plane
+  - managed-runtime
   - polyglot
   - operations
 keywords:
   - Durable Workflow Cloud
-  - runtime target
-  - control plane data plane
-  - hybrid workers
+  - namespace runtime URL
+  - runtime credentials
+  - customer-run workers
   - private networking
   - region failover
 ---
 
-# Cloud Control Plane
+# Cloud Managed Runtime
 
-Durable Workflow Cloud is the hosted control plane for Durable Workflow
-runtimes. It is not a second engine and it does not replace the standalone
-server protocol. Cloud owns tenancy, namespace placement, authentication, audit
-logs, runtime-target inventory, and operator workflows above one or more
-runtime targets. The runtime target still owns workflow execution, worker
-polling, schedules, history, and durable visibility.
+Durable Workflow Cloud is a managed orchestration service. Cloud operates both
+the hosted control plane and the orchestration runtime, including workflow
+state, history, schedules, task queues, leases, and durable visibility.
+Customers run SDK clients and workers against a provisioned Cloud namespace.
 
-Use this page when deciding whether Cloud fits a deployment, when attaching
-customer-run workers to a Cloud-managed namespace, or when reasoning about
-regional placement, hybrid adoption, and where support-led topology work
-begins.
+This is separate from self-hosting. A self-hosted Durable Workflow Server runs
+independently and is never attached to Cloud. The guidance on this page belongs
+to the explicit 2.0 prerelease docs line.
 
-## One Hosted Control Plane, Region-Scoped Runtime Targets
+## Managed Service Boundary
 
-The 2.0 prerelease product contract is:
-
-- **Cloud hosts the control plane.** Organizations, projects, environments,
-  namespaces, API keys, audit logs, and runtime-target health inventory live in
-  the hosted Cloud surface.
-- **A runtime target is the data-plane boundary.** Each runtime target is a
-  Durable Workflow server endpoint with a base URL, a region label, health, and
-  namespace ownership.
-- **A namespace has one active runtime authority at a time.** Standard
-  namespaces point at one runtime target until an operator deliberately
-  migrates them. Cloud multi-region replication v1 is the hosted exception: a
-  namespace is enrolled in a configured primary/secondary target pair, and
-  Cloud may change the active target during failover without turning the
-  namespace into active/active execution or an arbitrary target migration.
-- **The runtime target stays authoritative for workflow facts.** Workflow
-  starts, signals, updates, cancels, worker leases, schedules, history export,
-  task queues, and worker registrations remain runtime-owned facts even when
-  Cloud presents them in a hosted operator experience.
+The customer-visible boundary is one Cloud namespace:
 
 ```text
-Cloud control plane
-  organization
-    project
-      environment
-        namespace  --->  active runtime target (base URL, region, health)
-                    \->  optional replication secondary in Cloud v1
-
-Runtime target
-  workflow execution
-  worker registration + polling
-  schedules
-  history + visibility
-```
-
-That split keeps one durable engine and one worker protocol while making the
-control-plane surface hosted and multi-tenant.
-
-## Hosted Identity Boundary
-
-Cloud identity sits above namespaces:
-
-```text
-organization
+Cloud organization
   project
     environment
-      namespace  --->  active runtime target
+      namespace
+        stable runtime URL
+        client runtime credential  ---> workflow starts and commands
+        worker runtime credential  ---> registration, polling, and completion
+
+Cloud-operated runtime
+  workflow state and history
+  schedules and task queues
+  leases, matching, and visibility
 ```
 
-Cloud owns hosted users, service accounts, API keys, organization membership,
-project and environment roles, namespace provisioning, runtime-target
-assignment, and Cloud audit logs. A principal can be allowed to administer one
-namespace without receiving rights to sibling namespaces in the same
-organization.
+Cloud owns namespace provisioning, runtime operation, persistence, placement,
+replication, runtime health, and recovery. Customers own application code,
+workflow and activity implementations, and the processes that run their
+workers.
 
-When Cloud initiates or forwards a runtime command, the runtime request must
-still resolve to explicit command facts: actor or service identity summary,
-capability, target namespace/resource, auth outcome, request fingerprint or
-Cloud audit id, and runtime command outcome. Cloud may map that identity to a
-runtime-target credential, but the target remains the execution authority.
+Cloud administration and runtime traffic use different credentials:
 
-## What The Runtime Target Owns
+- A Cloud API key (`dwc_...`) manages projects, environments, namespaces,
+  billing, and runtime-credential lifecycle.
+- A client runtime credential (`dwr_...`) starts and controls workflows in one
+  managed namespace.
+- A worker runtime credential (`dwr_...`) registers workers, long-polls for
+  tasks, sends heartbeats, and settles work in that namespace.
 
-The runtime target is still an ordinary Durable Workflow server from the point
-of view of SDKs, workers, and automation:
+A Cloud API key is not accepted by the namespace runtime URL. Runtime
+credentials are scoped to one namespace and role, returned only when created,
+and omitted from later list and audit responses.
 
-- it exposes the control-plane and worker-protocol HTTP+JSON contracts
-- it publishes `GET /api/cluster/info` for topology, capability, and version
-  discovery
-- it enforces namespace, auth, worker registration, task polling, and task
-  completion semantics
-- it remains the source of truth for queue health, worker visibility, durable
-  history, and runtime health
+## Provision And Connect A Namespace
 
-Verify the target you are talking to at the runtime layer, not by inferring it
-from Cloud UI labels:
+### 1. Create and provision the namespace
+
+Create the namespace without supplying a Server URL, deployment identifier, or
+placement record:
 
 ```bash
-curl -sS "https://runtime.example.com/api/cluster/info" \
-  -H "Authorization: Bearer $DW_OPERATOR_TOKEN" \
-  -H "X-Namespace: production" \
-  -H "X-Durable-Workflow-Control-Plane-Version: 2"
+curl -X POST \
+  https://cloud.durable-workflow.com/api/v1/projects/PROJECT/environments/ENVIRONMENT/namespaces \
+  -H "Authorization: Bearer dwc_..." \
+  -H "Content-Type: application/json" \
+  -d '{"name":"orders","retention_days":30}'
+
+curl -X POST \
+  https://cloud.durable-workflow.com/api/v1/projects/PROJECT/environments/ENVIRONMENT/namespaces/orders/provision \
+  -H "Authorization: Bearer dwc_..."
 ```
 
-Cloud may cache or summarize those facts for operators, but the runtime target
-remains the authority surface that workers and automation must obey.
+After provisioning completes, the namespace response provides its stable
+`runtime_url`, its `runtime_namespace`, managed status, and customer-visible
+region information. Treat the returned URL and namespace value as configuration
+owned by Cloud; do not derive an endpoint or replace it with a self-hosted
+Server address.
 
-## Worker Connectivity Contract
+### 2. Issue separate client and worker credentials
 
-Worker placement is intentionally separate from the control-plane contract.
-What matters is reachability to the owning runtime target and conformance to
-the standard worker protocol.
+Issue the two runtime roles independently:
 
-- **Workers connect to the runtime target, not to a proprietary Cloud relay.**
-  Registration, long-polling, heartbeats, completion, and failure all stay on
-  the runtime target's HTTP+JSON worker endpoints.
-- **Customer-run workers are first-class in Cloud mode.** A worker can run in
-  your network, on your VM or container platform, or beside your application as
-  long as it can reach the runtime target and present the right auth and
-  namespace headers.
-- **Hybrid adoption is first-class.** Cloud can host the control plane while
-  workers remain customer-run, and different environments or namespaces can
-  point at different runtime targets.
-- **Worker location is not part of the durable contract.** Moving a worker from
-  one host to another does not change workflow ids, run ids, task semantics,
-  compatibility markers, or history. The protocol is the contract, not the
-  hosting venue.
+```bash
+curl -X POST \
+  https://cloud.durable-workflow.com/api/v1/projects/PROJECT/environments/ENVIRONMENT/namespaces/orders/runtime-credentials \
+  -H "Authorization: Bearer dwc_..." \
+  -H "Content-Type: application/json" \
+  -d '{"name":"orders-client","role":"client"}'
 
-If a future offering runs workers for you, those workers still need to speak
-the same runtime-owned protocol. Cloud mode is a hosted control plane, not a
-second worker API.
+curl -X POST \
+  https://cloud.durable-workflow.com/api/v1/projects/PROJECT/environments/ENVIRONMENT/namespaces/orders/runtime-credentials \
+  -H "Authorization: Bearer dwc_..." \
+  -H "Content-Type: application/json" \
+  -d '{"name":"orders-worker","role":"worker"}'
+```
 
-## Regional Placement And Failover Boundary
+Each token is displayed once in its create response. Store it in the secret
+store used by only the corresponding client or worker processes. Rotate and
+revoke the roles independently, and never substitute a Cloud API key for either
+runtime credential.
 
-Cloud makes regional placement explicit by attaching each runtime target to a
-named region and provider. Those labels are part of operator reasoning, not a
-hidden implementation detail.
+### 3. Configure the SDK processes
 
-- **Region is explicit.** Operators should know which runtime target and region
-  own a namespace before they route workers or operator traffic.
-- **Provider is explicit.** Multi-region namespace replication v1 pairs two
-  registered runtime targets with the same provider value and different
-  regions.
-- **Automatic failover is namespace-scoped and Cloud-hosted.** A Cloud
-  multi-region namespace has a home primary target plus one secondary target.
-  Cloud checks runtime readiness every minute, switches workflow routing to
-  the secondary when the home region is unhealthy, and switches back
-  automatically after the home region recovers. At each point, exactly one
-  runtime target is active for workflow writes.
-- **The v1 RTO target is 20 minutes.** Namespace replication state exposes the
-  current primary, home primary, secondary region, lag seconds, last successful
-  replication time, and failover/failback timestamps. Multi-cloud replication,
-  active/active writes, per-workflow region pinning, and cross-region Nexus
-  calls remain outside the v1 self-serve contract.
-- **Deliberate migrations stay deliberate.** Moving a namespace outside its
-  configured replication pair, changing providers, or moving in-flight runs to
-  a different runtime design remains a migration with storage, auth,
-  compatibility, worker-drain, and recovery consequences.
+Use the Cloud-provided runtime URL as the SDK's Server base URL and the
+Cloud-provided runtime namespace as its namespace. Application clients use the
+client credential; worker processes use the worker credential.
 
-The hosted control plane helps operators see target health and region posture,
-but it does not erase the underlying runtime and storage boundaries.
+Keep language-specific construction and worker examples in the SDK
+documentation:
 
-## Private Networking And Support-Led Topologies
+- [PHP client](/docs/2.0/polyglot/php/#start-and-inspect-a-workflow) and
+  [remote worker](/docs/2.0/polyglot/php/#run-a-remote-php-worker)
+- [Python client connection](/docs/2.0/polyglot/python/#running-against-a-shared-server)
+- [Rust client and worker](/docs/2.0/polyglot/rust/#start-with-the-sdk)
 
-The current self-serve Cloud contract assumes direct reachability from workers
-and automation to the runtime target's base URL.
+For Cloud, replace the local example URL, namespace, and token with the values
+issued for the namespace. Do not copy client credentials into workers or worker
+credentials into application clients.
 
-That means the following are **not** frozen as self-serve product guarantees in
-2.0:
+### 4. Start workflows and poll for tasks
 
-- Cloud-managed relays that proxy worker traffic on your behalf
-- private-network-only worker connectivity with no direct runtime-target reach
-- active/active multi-region execution
-- multi-cloud namespace replication
-- bespoke ingress, VPN, VPC peering, or provider-specific private-routing
-  designs
+The SDK client starts workflows and sends follow-up commands through the
+namespace runtime URL. Customer-run workers register and long-poll through the
+same URL using the worker role. Cloud authenticates and scopes each request,
+executes the orchestration protocol in the managed runtime, and persists the
+workflow state and history.
 
-Those are support-led topology decisions, not hidden defaults. When you need
-them, treat the design itself as part of the product risk and validate it with
-the same care as database, cache, and rollout planning.
+The customer application does not select a runtime deployment for an
+operation. Workflow IDs, run IDs, task queues, compatibility markers, and
+payload codecs remain durable application contracts within the Cloud namespace.
 
-## Migration And Hybrid Adoption
+## Customer-Run Worker Connectivity
 
-Cloud mode is compatible with staged adoption rather than all-at-once cutover:
+Workers can run in your network, VM fleet, container platform, or application
+environment. They need outbound HTTPS reachability to the namespace runtime URL
+and must allow the worker protocol's long-lived poll requests.
 
-1. Start with embedded mode or a self-hosted server.
-2. Attach one or more runtime targets to Cloud.
-3. Assign each environment or namespace to the target that should own it, or
-   enroll a hosted Cloud namespace in a configured primary/secondary
-   replication pair.
-4. Keep workers pointed at the runtime target that owns their namespace.
-5. Move only new traffic or newly chosen namespaces when you are ready; keep
-   deliberate target migrations separate from Cloud-managed failover inside a
-   replication pair.
+- No inbound connection from Cloud to a worker is required.
+- Proxies and egress gateways must not shorten long polls into a busy retry
+  loop.
+- Workers should retry transient connection failures and service-unavailable
+  responses with bounded backoff.
+- Moving a worker process does not move workflow state; Cloud retains the
+  namespace's durable state and history.
+- Credential rotation does not require changing the runtime URL, namespace, or
+  task queue.
 
-Three migration rules stay fixed:
+## Regions And Managed Failover
 
-- Existing in-flight runs stay with the runtime that already owns them unless
-  you perform an explicit migration plan outside the normal live-run contract.
-- Cloud multi-region replication v1 failover changes the active runtime target
-  only inside the configured primary/secondary pair. It is not a general
-  namespace migration mechanism.
-- Cloud does not change the durable runtime contract. Namespace names, task
-  queues, compatibility markers, payload codecs, worker registration, and
-  history export remain runtime-level facts before and after you adopt the
-  hosted control plane.
+Cloud selects and operates regional placement. The namespace surface exposes
+the region and service status customers need for residency, latency, incident,
+and recovery decisions; infrastructure deployment identities, private
+addresses, upstream credentials, and provider topology remain internal.
+
+For a namespace enrolled in Cloud multi-region replication v1:
+
+- the namespace remains one logical customer resource with one stable runtime
+  URL;
+- Cloud operates replication, readiness checks, failover, and failback while
+  keeping exactly one write authority active;
+- clients and workers keep the same runtime URL, namespace, and credentials
+  during failover rather than switching deployment identifiers or endpoints;
+- customer-visible status includes the active and standby regions, replication
+  health and lag, last successful replication, and failover/failback
+  timestamps;
+- the documented RTO target is 20 minutes and the default replication-lag
+  target is 300 seconds.
+
+Active/active writes, multi-cloud replication, per-workflow region pinning, and
+cross-region Nexus calls are outside the v1 self-serve contract. During a
+regional event, in-flight polls can fail while Cloud changes placement; workers
+should reconnect to the same namespace URL using their normal bounded retry
+policy.
+
+## Private Connectivity And Support Boundary
+
+The 2.0 self-serve Cloud contract assumes outbound access from clients and
+workers to the public namespace runtime URL. Private-only ingress, bespoke VPN
+or peering arrangements, and provider-specific private routing are support-led
+connectivity designs, not hidden defaults. Customers are never given internal
+runtime addresses or asked to route around the namespace URL.
+
+## Cloud Or Self-Hosted Server
+
+Choose Cloud when Durable Workflow should operate the orchestration runtime,
+persistence, region placement, and recovery while your team operates the SDK
+clients and workers.
+
+Choose [self-hosted Server](/docs/2.0/polyglot/server) when your team needs to
+operate the Server image, database, cache, networking, authentication, backups,
+and failover independently. A self-hosted Server cannot be registered with,
+attached to, or used as the backing runtime for a Cloud namespace. Embedded
+Laravel, self-hosted Server, and Cloud are separate deployment choices.
 
 ## Billing Usage API
 
@@ -405,7 +392,9 @@ plot `estimated_cost_cents / 100` as the cost series.
 ## Related References
 
 - [Deployment Modes](/docs/2.0/polyglot/deployment-modes)
+- [PHP SDK](/docs/2.0/polyglot/php)
+- [Python SDK](/docs/2.0/polyglot/python)
+- [Rust SDK](/docs/2.0/polyglot/rust)
 - [Server](/docs/2.0/polyglot/server)
-- [Server Role Topology](/docs/2.0/polyglot/server-role-topology)
 - [Self-Hosting Deployments](/docs/2.0/deployment)
 - [Support](/docs/2.0/support)
