@@ -146,6 +146,11 @@ assert.strictEqual(
 );
 assert.strictEqual(currentArtifactPins.pythonSdkVersion, source.artifacts['sdk-python']);
 assert.strictEqual(currentArtifactPins.rustSdkVersion, source.artifacts['sdk-rust']);
+assert.strictEqual(
+  currentArtifactPins.rustCargoAddCommand,
+  `cargo add durable-workflow@=${source.artifacts['sdk-rust']}`,
+  'the Rust install authority must use Cargo exact-requirement syntax',
+);
 assert.strictEqual(currentArtifactPins.serverVersion, source.artifacts.server);
 assert.strictEqual(currentArtifactPins.workflowVersion, source.artifacts.workflow);
 assert.strictEqual(currentArtifactPins.waterlineVersion, source.artifacts.waterline);
@@ -218,6 +223,25 @@ assert.strictEqual(
   quickstartExecutionContractSource(staleQuickstartContract, source.artifacts),
   currentQuickstartContract,
   'public artifact refresh must regenerate static/quickstart-execution-contract.json pins'
+);
+
+const unsupportedRustContract = JSON.parse(currentQuickstartContract);
+const unsupportedRustCommand = `cargo add durable-workflow@${source.artifacts['sdk-rust']} --exact`;
+unsupportedRustContract.artifacts['sdk-rust'].install_command = unsupportedRustCommand;
+const unsupportedRustScenario = unsupportedRustContract.scenarios.find(
+  scenario => scenario.id === 'rust_user_local_server_completion',
+);
+unsupportedRustScenario.command_script_lines[
+  unsupportedRustScenario.command_script_lines.indexOf(currentArtifactPins.rustCargoAddCommand)
+] = unsupportedRustCommand;
+
+assert.strictEqual(
+  quickstartExecutionContractSource(
+    `${JSON.stringify(unsupportedRustContract, null, 2)}\n`,
+    source.artifacts,
+  ),
+  currentQuickstartContract,
+  'public artifact refresh must repair unsupported Rust install commands',
 );
 
 const currentCompatibilityContract = fs.readFileSync(compatibilityContractPath, 'utf8');

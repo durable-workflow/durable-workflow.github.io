@@ -344,6 +344,33 @@ function assertEmbeddedLaravelInstallContract(contract) {
   }
 }
 
+function assertRustInstallContract(contract) {
+  const scenarios = byId(contract.scenarios, 'scenarios');
+  const rust = scenarios.get('rust_user_local_server_completion');
+
+  if (!rust) {
+    fail('scenarios must include rust_user_local_server_completion');
+  }
+
+  if (!rust.command_script_lines.includes(ARTIFACT_PINS.rustCargoAddCommand)) {
+    fail('rust_user_local_server_completion must contain the supported exact Cargo command');
+  }
+
+  const probes = byId(rust.success_probes, 'rust_user_local_server_completion.success_probes');
+  const avroProbe = probes.get('rust_official_avro_package');
+
+  if (!avroProbe) {
+    fail('rust_user_local_server_completion.success_probes must include rust_official_avro_package');
+  }
+
+  assertEqual(
+    avroProbe.command,
+    'cargo tree -i apache-avro',
+    'rust_official_avro_package.command',
+  );
+  assertEqual(avroProbe.expect_exit_code, 0, 'rust_official_avro_package.expect_exit_code');
+}
+
 function assertDocsGuard(contract) {
   const releaseConfig = getDocsReleaseConfig();
 
@@ -371,6 +398,7 @@ function main() {
   assertDocsGuard(contract);
   assertPublicArtifactPins(contract);
   assertContractCoverage(contract);
+  assertRustInstallContract(contract);
   assertEmbeddedLaravelInstallContract(contract);
   assertQuickstartScriptLinesMatchDocs(contract, renderedQuickstart);
 
