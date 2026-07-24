@@ -20,21 +20,26 @@ keywords:
 that works alongside Horizon. Think of Waterline as being to workflows what
 Horizon is to queues.
 
-Waterline is one operator product with two deployment shapes:
+Waterline is one operator product with three consumption surfaces:
 
 - **Embedded mode** installs the Composer package in the Laravel application
   that owns the workflows and reads that application's durable state in
   process.
-- **Service mode** runs the published `durableworkflow/waterline` image and
-  reads state owned by the
+- **Self-hosted service mode** runs the published
+  `durableworkflow/waterline` image and reads state owned by the
   [standalone server](./polyglot/server.md) through the PHP SDK and public
   server API.
+- **Cloud Managed Waterline** is the namespace-scoped operator experience
+  included with [Durable Workflow Cloud](./polyglot/cloud-control-plane.md).
+  Cloud operates the Waterline and Server boundary for this surface.
 
-Both shapes expose the same core Waterline UI and `/waterline/api/...`
-operator route families. They do not merge runtime state: a Waterline
-deployment sees runs owned by its configured runtime and namespace. The
-server's native API, CLI, and SDK operator surfaces remain available whether
-or not you deploy Waterline. Use the
+The embedded and self-hosted service surfaces expose the same core Waterline UI
+and `/waterline/api/...` operator route families. Cloud provides the operator
+capabilities through its managed surface instead of a customer-deployed
+Waterline route host. None of the surfaces merge runtime state: each view is
+limited to runs owned by its runtime and namespace. For self-hosted Server
+operations, the native API, CLI, and SDK operator surfaces remain available
+whether or not you deploy Waterline. Use the
 [Server API Reference](./polyglot/server-api-reference.md) for those native
 routes and the
 [Waterline Operator API Reference](./waterline-operator-api.md) for
@@ -51,6 +56,13 @@ Waterline intentionally does not replace worker metrics. If a custom metric
 was recorded in activity or worker code, scrape the worker's telemetry
 endpoint. Use Waterline to correlate that runtime signal with the durable
 workflow history and current run state.
+
+Worker and client setup also remains separate from the operator surface. Use
+the generated [PHP SDK API reference](https://php.durable-workflow.com/),
+[Python SDK API reference](https://python.durable-workflow.com/), or
+[Rust SDK API reference](https://rust.durable-workflow.com/) alongside the
+language guides when connecting application clients and workers to the runtime
+that owns the namespace.
 
 When worker telemetry shows repeated claims, late completion races, or stuck
 leases, read [Execution Guarantees and Idempotency](./constraints/execution-guarantees.md)
@@ -80,7 +92,7 @@ The workflow detail view shows the durable timeline for a single run: the
 activities, signals, timers, and child workflows that happened in order,
 each with its inputs, outputs, and timing.
 
-## Deploying Waterline
+## Waterline deployment and access
 
 ### Embedded Laravel
 
@@ -154,7 +166,7 @@ SQLite database at `/data/waterline.sqlite`. It never contains the server's
 workflow history. Use `DATABASE_URL` or the ordinary `DB_*` settings when
 Waterline's own state must live in MySQL or PostgreSQL.
 
-### Health and metrics
+#### Health and metrics
 
 Use these probes for different questions:
 
@@ -172,7 +184,7 @@ Waterline health or stats response points to the server connection,
 authorization, namespace, or SDK capability boundary rather than a failed
 Waterline process.
 
-### Workflow visibility and operator actions
+#### Workflow visibility and operator actions
 
 In service mode, list views, selected-run detail, history export, schedules,
 worker status, task-queue evidence, signals, updates, queries, repair, cancel,
@@ -188,7 +200,7 @@ Waterline deployment, while server-managed runs remain visible through the
 service deployment or the server's native surfaces. Changing the Waterline
 backend does not migrate or combine runs.
 
-### Troubleshooting boundaries
+#### Troubleshooting boundaries
 
 | Symptom | Boundary to check |
 | --- | --- |
@@ -199,6 +211,30 @@ backend does not migrate or combine runs.
 | `/up` passes but health, stats, or a view reports an unavailable capability | Verify the server endpoint directly with its API or CLI, then check token roles and that the published Waterline/PHP SDK tuple exposes the required method. |
 | A service-catalog route reports `backend_capability_unavailable` | Service mode does not mirror Waterline's embedded cross-namespace service catalog. Use the connected server's native service endpoints and API for that capability. |
 | A custom metric is missing from Waterline | Inspect the worker's metrics exporter. Waterline reports durable operator facts, not arbitrary process metrics. |
+
+### Cloud Managed Waterline
+
+Cloud customers open Cloud Managed Waterline from the namespace-scoped managed
+operator surface. They do not deploy or configure Waterline, Server, PHP, or
+internal endpoints, and they do not maintain a second Waterline login. The
+self-hosted image, `WATERLINE_*` settings, Server token, database, and
+front-door authentication instructions above do not apply to this path.
+
+The customer's Cloud authentication establishes the operator identity.
+Authorization across the Cloud organization, project, environment, and
+namespace determines which managed Waterline scope that identity can open.
+Within that boundary, operators can use workflow lists and search, run detail
+and durable history, namespace health, and the operator actions supported for
+their role. The managed surface remains limited to the selected namespace; it
+does not combine data from other environments or namespaces.
+
+Mutations are role-gated. Cloud attributes each supported operator mutation to
+the authenticated Cloud actor in its audit data, while the resulting durable
+workflow transition remains visible in workflow history. For example, a
+successful archive is attributed in Cloud audit data and records the durable
+`WorkflowArchived` history event. Operators never need a private runtime
+credential or knowledge of the managed runtime's internal deployment to use
+this surface.
 
 ## List and detail API
 
@@ -259,6 +295,11 @@ In service mode, Waterline forwards supported commands through the PHP SDK.
 Both `WATERLINE_ACCESS_MODE=operator` and a server credential authorized for
 the command are required for mutations. Operators can always use the server
 API or CLI directly when Waterline is not deployed.
+
+In Cloud Managed Waterline, Cloud role and namespace authorization gate each
+supported mutation, and the authenticated Cloud identity supplies its audit
+attribution. Customers do not configure a Waterline-to-Server credential for
+the managed surface.
 
 ## Related Guides
 
