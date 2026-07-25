@@ -198,6 +198,30 @@ for (const required of [
 
 const deployCatalogPosition = deployWorkflow.indexOf('      - name: Verify pinned server protocol catalog\n');
 const deployBuildPosition = deployWorkflow.indexOf('      - name: Build website\n');
+const deployFreshnessPosition = deployWorkflow.indexOf(
+  '      - name: Verify current public artifact tuple\n',
+);
+const deployPlanPosition = deployWorkflow.indexOf('      - name: Plan deployment\n');
+const deployFreshnessStep = deployWorkflow.slice(
+  deployFreshnessPosition,
+  deployPlanPosition,
+);
+if (
+  deployFreshnessPosition === -1
+  || !deployFreshnessStep.includes(`run: ${registryFreshnessCommand}`)
+  || !deployFreshnessStep.includes('GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}')
+) {
+  fail(
+    'docs deployment must compare the committed tuple with current public registries ' +
+      'using authenticated release metadata',
+  );
+}
+if (!(
+  deployFreshnessPosition < deployPlanPosition
+  && deployPlanPosition < deployBuildPosition
+)) {
+  fail('docs deployment must verify public registry freshness before planning or building a release');
+}
 if (!(deployCatalogPosition !== -1 && deployCatalogPosition < deployBuildPosition)) {
   fail('docs deployment must verify the pinned published server catalog before building an advertisable site');
 }

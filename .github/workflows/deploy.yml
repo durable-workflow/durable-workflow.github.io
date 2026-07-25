@@ -34,6 +34,11 @@ jobs:
           node-version: 24
           cache: npm
 
+      - name: Verify current public artifact tuple
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/refresh-public-artifact-versions.js --check
+
       - name: Plan deployment
         id: deploy-plan
         env:
