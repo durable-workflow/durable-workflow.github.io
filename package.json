@@ -4,8 +4,9 @@
   "private": true,
   "scripts": {
     "docusaurus": "docusaurus",
+    "postinstall": "patch-package",
     "start": "docusaurus start",
-    "build": "npm run check:node-toolchain && node scripts/check-server-env-docs.js && node scripts/check-doc-examples.js && node scripts/check-introduction-product-boundary.js && node scripts/check-public-artifact-versions.js && node scripts/check-public-artifact-pins.js && node scripts/check-public-artifact-pins.test.js && node scripts/check-quickstart-execution-contract.js && node scripts/check-public-artifact-tuple-workflow.js && node scripts/check-docs-deploy-workflow.js && node scripts/check-sdk-neutrality-workflow-contracts.js && node scripts/check-discoverability.js && node scripts/check-installer-contract.js && node scripts/check-compatibility-authority.js && node scripts/check-compatibility-authority.test.js && node scripts/check-platform-protocol-specs.js && node scripts/check-platform-protocol-specs.test.js && node scripts/check-public-server-protocol-catalog.test.js && node scripts/check-schedule-list-openapi.js && node scripts/check-schedule-list-openapi.test.js && node scripts/check-platform-protocol-page.test.js && node scripts/check-platform-conformance-authority.js && node scripts/check-platform-conformance-authority.test.js && node scripts/check-workflow-lifecycle-authority.js && node scripts/check-sdk-neutrality-authority.js && node scripts/check-sdk-neutrality-authority.test.js && node scripts/check-docs-narrative-audit.test.js && docusaurus build && node scripts/generate-llms.js && node scripts/generate-llms-full.js && node scripts/check-platform-protocol-page.js && node scripts/generate-docs-page-release-audit.js && node scripts/generate-docs-narrative-audit.js && node scripts/patch-public-discovery-sitemap.js && node scripts/check-homepage-release-policy.js && node scripts/check-docs-release-policy.js && node scripts/check-llms-ai-surfaces.js && node scripts/check-docs-page-release-audit.js && node scripts/check-docs-narrative-audit.js",
+    "build": "npm run check:node-toolchain && npm run check:brace-expansion-compatibility && node scripts/check-server-env-docs.js && node scripts/check-doc-examples.js && node scripts/check-introduction-product-boundary.js && node scripts/check-public-artifact-versions.js && node scripts/check-public-artifact-pins.js && node scripts/check-public-artifact-pins.test.js && node scripts/check-quickstart-execution-contract.js && node scripts/check-public-artifact-tuple-workflow.js && node scripts/check-docs-deploy-workflow.js && node scripts/check-sdk-neutrality-workflow-contracts.js && node scripts/check-discoverability.js && node scripts/check-installer-contract.js && node scripts/check-compatibility-authority.js && node scripts/check-compatibility-authority.test.js && node scripts/check-platform-protocol-specs.js && node scripts/check-platform-protocol-specs.test.js && node scripts/check-public-server-protocol-catalog.test.js && node scripts/check-schedule-list-openapi.js && node scripts/check-schedule-list-openapi.test.js && node scripts/check-platform-protocol-page.test.js && node scripts/check-platform-conformance-authority.js && node scripts/check-platform-conformance-authority.test.js && node scripts/check-workflow-lifecycle-authority.js && node scripts/check-sdk-neutrality-authority.js && node scripts/check-sdk-neutrality-authority.test.js && node scripts/check-docs-narrative-audit.test.js && docusaurus build && node scripts/generate-llms.js && node scripts/generate-llms-full.js && node scripts/check-platform-protocol-page.js && node scripts/generate-docs-page-release-audit.js && node scripts/generate-docs-narrative-audit.js && node scripts/patch-public-discovery-sitemap.js && node scripts/check-homepage-release-policy.js && node scripts/check-docs-release-policy.js && node scripts/check-llms-ai-surfaces.js && node scripts/check-docs-page-release-audit.js && node scripts/check-docs-narrative-audit.js",
     "check:doc-examples": "node scripts/check-doc-examples.js",
     "check:introduction-product-boundary": "node scripts/check-introduction-product-boundary.js",
     "check:discoverability": "node scripts/check-discoverability.js",
@@ -14,6 +15,7 @@
     "check:public-artifact-tuple-workflow": "node scripts/check-public-artifact-tuple-workflow.js",
     "check:docs-deploy-workflow": "node scripts/check-docs-deploy-workflow.js",
     "check:node-toolchain": "node scripts/check-node-toolchain.js && node scripts/check-node-toolchain.test.js",
+    "check:brace-expansion-compatibility": "node scripts/check-brace-expansion-compatibility.js",
     "check:sdk-neutrality-workflow-contracts": "node scripts/check-sdk-neutrality-workflow-contracts.js",
     "check:public-artifact-pins": "node scripts/check-public-artifact-pins.js",
     "test:public-artifact-pins": "node scripts/check-public-artifact-pins.test.js",
@@ -61,9 +63,12 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "@docusaurus/module-type-aliases": "3.10.2"
+    "@docusaurus/module-type-aliases": "3.10.2",
+    "patch-package": "8.0.1"
   },
   "overrides": {
+    "brace-expansion": "5.0.8",
+    "minimatch": "10.2.5",
     "serialize-javascript": "7.0.7",
     "uuid": "11.1.1"
   },
