@@ -132,7 +132,7 @@
     },
     "local_activity_runtime": {
       "owner_symbol": "Workflow\\V2\\Support\\LocalActivityContract and Workflow\\V2\\Support\\LocalActivityOptions",
-      "conformance_test": "durable-workflow/workflow: tests/Unit/V2/LocalActivitiesDocumentationTest.php, tests/Unit/V2/WorkerProtocolVersionTest.php, tests/Unit/V2/WorkflowFacadeTest.php, and tests/Feature/V2/V2LocalActivityTest.php; durable-workflow/server: tests/Feature/ClusterInfoTest.php",
+      "conformance_test": "durable-workflow/workflow: tests/Unit/V2/WorkerProtocolVersionTest.php, tests/Unit/V2/WorkflowFacadeTest.php, and tests/Feature/V2/V2LocalActivityTest.php; durable-workflow/server: tests/Feature/ClusterInfoTest.php",
       "object_families": [
         {
           "name": "local_activity_runtime_contract",
@@ -162,7 +162,7 @@
     },
     "history_event_payloads": {
       "owner_symbol": "Workflow\\V2\\Models\\WorkflowHistoryEvent and Workflow\\V2\\Enums\\HistoryEventType",
-      "conformance_test": "durable-workflow/workflow: tests/Unit/V2/HistoryEventWireFormatDocumentationTest.php and tests/Unit/V2/VersionMarkerWireFormatTest.php",
+      "conformance_test": "durable-workflow/workflow: tests/Unit/V2/HistoryEventPayloadContractTest.php and tests/Unit/V2/VersionMarkerWireFormatTest.php",
       "object_families": [
         {
           "name": "workflow_history_events",
