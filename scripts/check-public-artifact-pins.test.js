@@ -52,8 +52,8 @@ assert.doesNotThrow(
 
 assert.strictEqual(
   ARTIFACT_PINS.productTrainVersion,
-  ARTIFACT_VERSIONS.server,
-  'the normalized product-train prose token must derive from the synchronized authority',
+  ARTIFACT_VERSIONS['sdk-python'],
+  'the normalized Python install token must derive from the Python artifact authority',
 );
 assert.strictEqual(
   ARTIFACT_PINS.pythonRegistryVersion,

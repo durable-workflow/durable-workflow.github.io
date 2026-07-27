@@ -156,13 +156,6 @@ function readArtifactVersions(
     throw new Error(`public-artifact-versions.json contains unknown artifacts: ${unknownArtifacts.join(', ')}`);
   }
 
-  const trains = [...new Set(Object.values(versions))];
-  if (trains.length !== 1) {
-    throw new Error(
-      `public-artifact-versions.json must define one synchronized 2.0 product train; got ${trains.join(', ')}`
-    );
-  }
-
   return Object.freeze(versions);
 }
 
@@ -198,11 +191,15 @@ function pypiRegistryVersion(version) {
 }
 
 function productTrainVersion(versions) {
-  if (!versions || typeof versions.server !== 'string' || versions.server === '') {
-    throw new Error('Artifact versions must define the server product-train version');
+  if (
+    !versions
+    || typeof versions['sdk-python'] !== 'string'
+    || versions['sdk-python'] === ''
+  ) {
+    throw new Error('Artifact versions must define the Python SDK product-train version');
   }
 
-  return versions.server;
+  return versions['sdk-python'];
 }
 
 function buildArtifactPins(versions) {

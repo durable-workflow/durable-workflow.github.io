@@ -27,7 +27,7 @@ const {
   quickstartExecutionContractSource,
   resolvePackagistVersion,
   resolvePublishedWorkflowAuthority,
-  selectLatestCompleteArtifactTrain,
+  selectLatestPublishedArtifactTuple,
   selectLatestCompleteCliRelease,
   selectLatestCratesIoVersion,
   selectServerRegistryVersion,
@@ -77,7 +77,7 @@ assert.strictEqual(
 );
 
 const currentArtifactPins = buildArtifactPins(source.artifacts);
-assert.strictEqual(ARTIFACT_PINS.productTrainVersion, source.artifacts.server);
+assert.strictEqual(ARTIFACT_PINS.productTrainVersion, source.artifacts['sdk-python']);
 assert.strictEqual(
   ARTIFACT_PINS.pythonRegistryVersion,
   pypiRegistryVersion(source.artifacts['sdk-python']),
@@ -266,7 +266,7 @@ assert.deepStrictEqual(
     ),
   ),
   [],
-  'a current coherent artifact train must produce no generated file changes',
+  'a current artifact tuple must produce no generated file changes',
 );
 const successorWorkflowVersion = source.artifacts.workflow.replace(
   /\.(\d+)$/,
@@ -546,25 +546,29 @@ const completeTrainCandidates = Object.fromEntries(
   ]),
 );
 assert.deepStrictEqual(
-  selectLatestCompleteArtifactTrain(completeTrainCandidates, 'complete train fixture'),
+  selectLatestPublishedArtifactTuple(completeTrainCandidates, 'complete train fixture'),
   artifactVersionsAt('2.0.0-beta.6'),
-  'complete-train selection must advance only when every artifact publishes the exact train',
+  'tuple selection must use the latest published version from every artifact surface',
 );
 
 const partialTrainCandidates = JSON.parse(JSON.stringify(completeTrainCandidates));
 partialTrainCandidates['sdk-rust'] = ['2.0.0-beta.5'];
+const partialTrainVersions = {
+  ...artifactVersionsAt('2.0.0-beta.6'),
+  'sdk-rust': '2.0.0-beta.5',
+};
 assert.deepStrictEqual(
-  selectLatestCompleteArtifactTrain(partialTrainCandidates, 'partial train fixture'),
-  artifactVersionsAt('2.0.0-beta.5'),
-  'partial-train selection must refuse beta.6 and retain the newest complete train',
+  selectLatestPublishedArtifactTuple(partialTrainCandidates, 'partial train fixture'),
+  partialTrainVersions,
+  'tuple selection must preserve independently published artifact versions',
 );
 assert.throws(
-  () => selectLatestCompleteArtifactTrain({
+  () => selectLatestPublishedArtifactTuple({
     ...partialTrainCandidates,
-    'sdk-rust': ['2.0.0-beta.4'],
-  }, 'disjoint train fixture'),
-  /No fully published coherent artifact train exists/,
-  'selection must park when the registries have no complete shared train',
+    'sdk-rust': [],
+  }, 'missing artifact fixture'),
+  /Could not find a published sdk-rust version/,
+  'selection must fail when an artifact has no published version',
 );
 assert.strictEqual(
   classifyArtifactTrainChange(
@@ -572,7 +576,7 @@ assert.strictEqual(
     artifactVersionsAt('2.0.0-beta.5'),
   ),
   'current',
-  'a current coherent authority must be a no-op',
+  'a current artifact authority must be a no-op',
 );
 assert.strictEqual(
   classifyArtifactTrainChange(
@@ -580,14 +584,14 @@ assert.strictEqual(
     artifactVersionsAt('2.0.0-beta.6'),
   ),
   'advance',
-  'a newer coherent authority must be classified as an advance',
+  'a newer artifact authority must be classified as an advance',
 );
 assert.throws(
   () => classifyArtifactTrainChange(
     artifactVersionsAt('2.0.0-beta.6'),
     artifactVersionsAt('2.0.0-beta.5'),
   ),
-  /Refusing to regress the public artifact train/,
+  /Refusing to regress the public artifact tuple:[\s\S]*cli: docs=2\.0\.0-beta\.6 published=2\.0\.0-beta\.5/,
   'a registry scan must not regress an already published docs authority',
 );
 
@@ -779,12 +783,12 @@ for (const [artifact, version, expectedMessage] of malformedVersions) {
   );
 }
 
-expectFailure(
-  'rejects a mixed product train',
-  candidate => {
-    candidate.artifacts.server = '2.0.0-beta.2';
-  },
-  /must define one synchronized 2\.0 product train/
+const mixedArtifactTuple = cloneSource();
+mixedArtifactTuple.artifacts.server = '2.0.0-beta.19';
+assert.strictEqual(
+  readArtifactVersions(mixedArtifactTuple).server,
+  '2.0.0-beta.19',
+  'the public tuple must preserve an independently verified Server release',
 );
 
 for (const artifact of Object.keys(source.artifacts)) {

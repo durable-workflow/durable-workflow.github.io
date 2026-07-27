@@ -344,7 +344,7 @@ function publishedVersions(artifact, candidates, context) {
   return versions;
 }
 
-function selectLatestCompleteArtifactTrain(candidateVersions, context = 'public registries') {
+function selectLatestPublishedArtifactTuple(candidateVersions, context = 'public registries') {
   const unknown = Object.keys(candidateVersions || {})
     .filter(name => !REQUIRED_ARTIFACTS.includes(name))
     .sort();
@@ -352,26 +352,13 @@ function selectLatestCompleteArtifactTrain(candidateVersions, context = 'public 
     throw new Error(`Published artifact candidates contain unknown artifacts: ${unknown.join(', ')}`);
   }
 
-  const normalized = Object.fromEntries(REQUIRED_ARTIFACTS.map(name => {
+  return Object.freeze(Object.fromEntries(REQUIRED_ARTIFACTS.map(name => {
     if (!Array.isArray(candidateVersions && candidateVersions[name])) {
       throw new Error(`Published artifact candidates must define an array for ${name}`);
     }
 
-    return [name, publishedVersions(name, candidateVersions[name], context)];
-  }));
-  const completeVersions = normalized[REQUIRED_ARTIFACTS[0]].filter(version => (
-    REQUIRED_ARTIFACTS.every(name => normalized[name].includes(version))
-  ));
-
-  if (completeVersions.length === 0) {
-    throw new Error([
-      `No fully published coherent artifact train exists in ${context}.`,
-      ...REQUIRED_ARTIFACTS.map(name => `- ${name}: ${normalized[name].join(', ')}`),
-    ].join('\n'));
-  }
-
-  const selected = completeVersions.sort(compareVersions).at(-1);
-  return Object.freeze(Object.fromEntries(REQUIRED_ARTIFACTS.map(name => [name, selected])));
+    return [name, selectLatestVersion(name, candidateVersions[name], context)];
+  })));
 }
 
 function classifyArtifactTrainChange(currentVersions, publishedVersions) {
@@ -385,15 +372,26 @@ function classifyArtifactTrainChange(currentVersions, publishedVersions) {
     schemaVersion: 1,
     artifacts: publishedVersions,
   });
-  const comparison = compareVersions(published.server, current.server);
+  const regressions = REQUIRED_ARTIFACTS.filter(
+    name => compareVersions(published[name], current[name]) < 0,
+  );
 
-  if (comparison < 0) {
+  if (regressions.length > 0) {
     throw new Error(
-      `Refusing to regress the public artifact train from ${current.server} to ${published.server}`,
+      [
+        'Refusing to regress the public artifact tuple:',
+        ...regressions.map(
+          name => `- ${name}: docs=${current[name]} published=${published[name]}`,
+        ),
+      ].join('\n'),
     );
   }
 
-  return comparison === 0 ? 'current' : 'advance';
+  return REQUIRED_ARTIFACTS.some(
+    name => compareVersions(published[name], current[name]) > 0,
+  )
+    ? 'advance'
+    : 'current';
 }
 
 function parseRegistryNextLink(linkHeader, currentUrl) {
@@ -777,7 +775,7 @@ async function resolvePublishedArtifactTupleState(sources = PUBLISHED_ARTIFACT_S
     resolvePackagistReleases(sources.workflow),
   ]);
 
-  const versions = selectLatestCompleteArtifactTrain({
+  const versions = selectLatestPublishedArtifactTuple({
     cli: cliVersions,
     'sdk-php': sdkPhpReleases.map(release => release.version),
     'sdk-python': sdkPythonVersions,
@@ -1448,7 +1446,7 @@ module.exports = {
   resolvePackagistVersion,
   resolvePublishedArtifactTuple,
   resolvePublishedWorkflowAuthority,
-  selectLatestCompleteArtifactTrain,
+  selectLatestPublishedArtifactTuple,
   selectLatestCompleteCliRelease,
   selectLatestCratesIoVersion,
   selectServerRegistryVersion,

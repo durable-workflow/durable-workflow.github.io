@@ -26,9 +26,9 @@
   "artifacts": {
     "server": {
       "channel": "docker_hub",
-      "version": "2.0.0-beta.18",
+      "version": "2.0.0-beta.19",
       "image": "durableworkflow/server",
-      "reference": "durableworkflow/server:2.0.0-beta.18"
+      "reference": "durableworkflow/server:2.0.0-beta.19"
     },
     "cli": {
       "channel": "durable_workflow_public_installer",
@@ -146,7 +146,7 @@
       "required_environment": [
         {
           "name": "DW_SERVER_IMAGE",
-          "value": "durableworkflow/server:2.0.0-beta.18"
+          "value": "durableworkflow/server:2.0.0-beta.19"
         },
         {
           "name": "DW_AUTH_TOKEN",
@@ -164,7 +164,7 @@
         "quickstart.server.setup"
       ],
       "setup_script_lines": [
-        "export DW_SERVER_IMAGE=durableworkflow/server:2.0.0-beta.18",
+        "export DW_SERVER_IMAGE=durableworkflow/server:2.0.0-beta.19",
         "export DW_AUTH_TOKEN=dev-token",
         "",
         "docker volume create durable-workflow-quickstart",

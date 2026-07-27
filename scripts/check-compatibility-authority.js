@@ -325,10 +325,14 @@ function assertSdkProtocolAuthorities(contract) {
 
   const cargoMetadata = loadRustCargoMetadataWhenAvailable();
   if (cargoMetadata !== null) {
+    // The released crate records the Server version current when that SDK was
+    // published. The docs compatibility authority may advance a subsequently
+    // verified Server release without requiring an otherwise unchanged SDK
+    // republish.
     const expectedCargoValues = {
       package: rustPackage.package,
       version: artifactVersion,
-      supported_server_versions: rustPackage.supported_server_versions,
+      supported_server_versions: artifactVersion,
       worker_protocol_version: rustPackage.worker_protocol_version,
       control_plane_version: rustPackage.control_plane_version,
     };
