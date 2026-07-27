@@ -151,26 +151,26 @@
       "package_compatibility": {
         "php_sdk": {
           "package": "durable-workflow/sdk",
-          "release_line": "2.0.0-beta.18",
-          "product_train": "2.0.0-beta.18",
-          "supported_server_versions": "2.0.0-beta.18",
+          "release_line": "2.0.0-beta.21",
+          "product_train": "2.0.0-beta.21",
+          "supported_server_versions": "2.0.0-beta.21",
           "worker_protocol_version": "1.13",
           "control_plane_version": "2"
         },
         "python_sdk": {
           "package": "durable-workflow",
-          "release_line": "2.0.0-beta.18",
-          "registry_version": "2.0.0b18",
-          "product_train": "2.0.0-beta.18",
-          "supported_server_versions": "2.0.0-beta.18",
+          "release_line": "2.0.0-beta.21",
+          "registry_version": "2.0.0b21",
+          "product_train": "2.0.0-beta.21",
+          "supported_server_versions": "2.0.0-beta.21",
           "worker_protocol_version": "1.1",
           "control_plane_version": "2"
         },
         "rust_sdk": {
           "package": "durable-workflow",
-          "release_line": "2.0.0-beta.18",
-          "product_train": "2.0.0-beta.18",
-          "supported_server_versions": "2.0.0-beta.18",
+          "release_line": "2.0.0-beta.21",
+          "product_train": "2.0.0-beta.21",
+          "supported_server_versions": "2.0.0-beta.21",
           "worker_protocol_version": "1.2",
           "control_plane_version": "2"
         }

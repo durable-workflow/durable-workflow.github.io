@@ -3,43 +3,43 @@
   "schema_version": 1,
   "outcome": "pass",
   "qualified_artifact_versions": {
-    "cli": "2.0.0-beta.18",
-    "sdk-php": "2.0.0-beta.18",
-    "sdk-python": "2.0.0-beta.18",
-    "sdk-rust": "2.0.0-beta.18",
-    "server": "2.0.0-beta.18",
-    "waterline": "2.0.0-beta.18",
-    "workflow": "2.0.0-beta.18"
+    "cli": "2.0.0-beta.21",
+    "sdk-php": "2.0.0-beta.21",
+    "sdk-python": "2.0.0-beta.21",
+    "sdk-rust": "2.0.0-beta.21",
+    "server": "2.0.0-beta.21",
+    "waterline": "2.0.0-beta.21",
+    "workflow": "2.0.0-beta.21"
   },
   "sdk_server_compatibility": {
     "sdk-php": {
-      "sdk_version": "2.0.0-beta.18",
-      "supported_server_versions": "2.0.0-beta.18"
+      "sdk_version": "2.0.0-beta.21",
+      "supported_server_versions": "2.0.0-beta.21"
     },
     "sdk-python": {
-      "sdk_version": "2.0.0-beta.18",
-      "supported_server_versions": "2.0.0-beta.18"
+      "sdk_version": "2.0.0-beta.21",
+      "supported_server_versions": "2.0.0-beta.21"
     },
     "sdk-rust": {
-      "sdk_version": "2.0.0-beta.18",
-      "supported_server_versions": "2.0.0-beta.18"
+      "sdk_version": "2.0.0-beta.21",
+      "supported_server_versions": "2.0.0-beta.21"
     }
   },
   "authority": {
     "product_train": {
       "schema": "durable-workflow.product-train/v2",
-      "current": "2.0.0-beta.18",
+      "current": "2.0.0-beta.21",
       "source_url": "https://raw.githubusercontent.com/durable-workflow/.github/main/product-train/current.json",
-      "sha256": "5162570e29074d55adaedab9f2644e6066eb4710db94553e9692afc48302d336"
+      "sha256": "dc8d6273944460f3d116e59e0e9b14db68a46542f9e5ab20d9a057c96926eb59"
     },
     "release_plan": {
       "schema": "durable-workflow.release-plan/v2",
-      "tag": "release-plan/coherent-2-0-beta-18",
-      "source_url": "https://github.com/durable-workflow/.github/releases/download/release-plan%2Fcoherent-2-0-beta-18/release-plan.json",
-      "sha256": "86cc812174eec381fe4d8b08a80f57c8ece4efc67c4fce6a3622a63491c39283",
+      "tag": "release-plan/coherent-2-0-beta-21",
+      "source_url": "https://github.com/durable-workflow/.github/releases/download/release-plan%2Fcoherent-2-0-beta-21/release-plan.json",
+      "sha256": "332b61c8f6921fe5c0f6a64bc5aca5621db6d562449fde05af885449410d4f76",
       "beta_authorization": {
-        "commit": "6e350ba4a7395ffd37ceaa8003808d7f809c8fac",
-        "tag": "beta-authorization/coherent-2-0-beta-18"
+        "commit": "73985d0c906d96e6edce6915ebe8000bbc19896e",
+        "tag": "beta-authorization/coherent-2-0-beta-21"
       }
     }
   }
