@@ -139,14 +139,35 @@ function validateChangedFiles(changedFiles) {
   }
 }
 
+function isDistributionIdentity(identity) {
+  return Boolean(
+    identity
+    && Object.keys(identity).length === 3
+    && typeof identity.kind === 'string'
+    && identity.kind !== ''
+    && typeof identity.locator === 'string'
+    && identity.locator !== ''
+    && Array.isArray(identity.artifacts)
+    && identity.artifacts.length > 0
+    && identity.artifacts.every(artifact => (
+      artifact
+      && Object.keys(artifact).length === 2
+      && typeof artifact.name === 'string'
+      && artifact.name !== ''
+      && typeof artifact.sha256 === 'string'
+      && /^[0-9a-f]{64}$/.test(artifact.sha256)
+    )),
+  );
+}
+
 function validateCompatibilityEvidence(evidence, versions) {
   if (
     !evidence
     || evidence.schema !== 'durable-workflow.docs.public-artifact-compatibility-evidence'
-    || evidence.schema_version !== 1
+    || evidence.schema_version !== 2
     || evidence.outcome !== 'pass'
   ) {
-    throw new Error('handoff compatibility evidence must be a passing version 1 record');
+    throw new Error('handoff compatibility evidence must be a passing version 2 record');
   }
 
   const qualifiedVersions = evidence.qualified_artifact_versions;
@@ -165,7 +186,15 @@ function validateCompatibilityEvidence(evidence, versions) {
     if (
       !qualification
       || qualification.sdk_version !== versions[artifact]
+      || typeof qualification.sdk_source_commit !== 'string'
+      || !/^[0-9a-f]{40}$/.test(qualification.sdk_source_commit)
+      || !isDistributionIdentity(qualification.sdk_distribution)
+      || qualification.server_version !== versions.server
+      || typeof qualification.server_source_commit !== 'string'
+      || !/^[0-9a-f]{40}$/.test(qualification.server_source_commit)
+      || !isDistributionIdentity(qualification.server_distribution)
       || qualification.supported_server_versions !== versions.server
+      || qualification.outcome !== 'pass'
     ) {
       throw new Error(
         `handoff compatibility evidence must bind ${artifact} ${versions[artifact]} ` +
@@ -182,6 +211,52 @@ function validateCompatibilityEvidence(evidence, versions) {
     || !/^[0-9a-f]{64}$/.test(releasePlan.sha256)
   ) {
     throw new Error('handoff compatibility evidence must bind an immutable release plan');
+  }
+
+  const sdkServerQualification = evidence.authority?.sdk_server_qualification;
+  const conformanceEvidence = sdkServerQualification?.evidence;
+  const evidenceUrl = [
+    'https://github.com/durable-workflow/.github/releases/download',
+    conformanceEvidence?.tag,
+    'suite-result.json',
+  ].join('/');
+  const githubRun = conformanceEvidence?.github_run;
+  if (
+    !sdkServerQualification
+    || sdkServerQualification.schema !== 'durable-workflow.sdk-server-qualification/v1'
+    || typeof sdkServerQualification.source_url !== 'string'
+    || !sdkServerQualification.source_url.startsWith('https://')
+    || typeof sdkServerQualification.sha256 !== 'string'
+    || !/^[0-9a-f]{64}$/.test(sdkServerQualification.sha256)
+    || !conformanceEvidence
+    || conformanceEvidence.schema
+      !== 'durable-workflow.beta-conformance.suite-result/v2'
+    || typeof conformanceEvidence.tag !== 'string'
+    || !/^beta-conformance\/beta-[a-z0-9._-]+\/[1-9][0-9]*\.[1-9][0-9]*$/.test(
+      conformanceEvidence.tag,
+    )
+    || conformanceEvidence.source_url !== evidenceUrl
+    || typeof conformanceEvidence.sha256 !== 'string'
+    || !/^[0-9a-f]{64}$/.test(conformanceEvidence.sha256)
+    || conformanceEvidence.outcome !== 'pass'
+    || !githubRun
+    || githubRun.repository !== 'durable-workflow/.github'
+    || !Number.isInteger(githubRun.run_id)
+    || githubRun.run_id < 1
+    || !Number.isInteger(githubRun.run_attempt)
+    || githubRun.run_attempt < 1
+    || githubRun.evidence_tag !== conformanceEvidence.tag
+    || !conformanceEvidence.tag.endsWith(
+      `/${githubRun.run_id}.${githubRun.run_attempt}`,
+    )
+    || ['sdk-php', 'sdk-python', 'sdk-rust'].some(
+      artifact => evidence.sdk_server_compatibility[artifact].evidence_source
+        !== conformanceEvidence.source_url,
+    )
+  ) {
+    throw new Error(
+      'handoff compatibility evidence must bind immutable SDK-to-Server qualification evidence',
+    );
   }
 }
 

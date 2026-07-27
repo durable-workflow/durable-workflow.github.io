@@ -32,6 +32,7 @@ const {
   parseRegistryNextLink,
   quickstartExecutionContractSource,
   resolvePackagistVersion,
+  resolvePublishedArtifactCompatibilityEvidence,
   resolvePublishedWorkflowAuthority,
   selectLatestQualifiedArtifactTuple,
   selectLatestPublishedArtifactTuple,
@@ -70,10 +71,9 @@ function compatibilityEvidenceAt(versions) {
   evidence.qualified_artifact_versions = {...versions};
 
   for (const artifact of ['sdk-php', 'sdk-python', 'sdk-rust']) {
-    evidence.sdk_server_compatibility[artifact] = {
-      sdk_version: versions[artifact],
-      supported_server_versions: versions.server,
-    };
+    evidence.sdk_server_compatibility[artifact].sdk_version = versions[artifact];
+    evidence.sdk_server_compatibility[artifact].server_version = versions.server;
+    evidence.sdk_server_compatibility[artifact].supported_server_versions = versions.server;
   }
 
   return evidence;
@@ -112,6 +112,128 @@ const releasePlanFixture = {
   )),
 };
 const releasePlanFixtureSource = `${JSON.stringify(releasePlanFixture, null, 2)}\n`;
+const sdkServerQualificationUrl =
+  'https://example.test/sdk-server-qualification.json';
+const conformanceEvidenceTag =
+  'beta-conformance/beta-qualified-artifact-fixture/12345.1';
+const conformanceSuiteUrl = [
+  'https://github.com/durable-workflow/.github/releases/download',
+  conformanceEvidenceTag,
+  'suite-result.json',
+].join('/');
+const distributionFixtures = {
+  'sdk-php': {
+    kind: 'composer',
+    locator: `composer:durable-workflow/sdk@${source.artifacts['sdk-php']}`,
+    artifacts: [{name: 'durable-workflow/sdk', sha256: 'c'.repeat(64)}],
+  },
+  'sdk-python': {
+    kind: 'pypi',
+    locator: `pypi:durable-workflow@${source.artifacts['sdk-python']}`,
+    artifacts: [{name: 'sdk-python.whl', sha256: 'd'.repeat(64)}],
+  },
+  'sdk-rust': {
+    kind: 'crates.io',
+    locator: `crates.io:durable-workflow@${source.artifacts['sdk-rust']}`,
+    artifacts: [{name: 'sdk-rust.crate', sha256: 'e'.repeat(64)}],
+  },
+  server: {
+    kind: 'oci',
+    locator: `oci:docker.io/durableworkflow/server@${source.artifacts.server}`,
+    artifacts: [{name: 'manifest', sha256: 'f'.repeat(64)}],
+  },
+};
+const conformanceSuiteFixture = {
+  schema: 'durable-workflow.beta-conformance.suite-result/v2',
+  artifact_tuple: releasePlanFixture.components,
+  source_identities: Object.fromEntries(
+    Object.entries(releasePlanFixture.components).map(
+      ([artifact, identity]) => [artifact, identity.commit],
+    ),
+  ),
+  executed_distribution_identities: distributionFixtures,
+  github_run: {
+    repository: 'durable-workflow/.github',
+    run_id: 12345,
+    run_attempt: 1,
+    evidence_tag: conformanceEvidenceTag,
+  },
+  outcome: 'pass',
+  experiments: Object.fromEntries(
+    ['heartbeats', 'replay', 'signals-queries'].map(experiment => [
+      experiment,
+      {
+        outcome: 'pass',
+        classification: 'passed',
+        required_clients: ['sdk-php', 'sdk-python', 'sdk-rust'],
+        required_distributions: ['server', 'sdk-php', 'sdk-python', 'sdk-rust'],
+        result_sha256: 'a'.repeat(64),
+      },
+    ]),
+  ),
+};
+const conformanceSuiteFixtureSource =
+  `${JSON.stringify(conformanceSuiteFixture, null, 2)}\n`;
+function sdkServerQualificationAt(options = {}) {
+  const server = releasePlanFixture.components.server;
+  const qualification = {
+    schema: 'durable-workflow.sdk-server-qualification/v1',
+    release_plan: {
+      tag: `release-plan/${releasePlanFixture.plan}`,
+      sha256: sha256(releasePlanFixtureSource),
+    },
+    outcome: 'pass',
+    evidence: {
+      schema: 'durable-workflow.beta-conformance.suite-result/v2',
+      tag: conformanceEvidenceTag,
+      source_url: conformanceSuiteUrl,
+      sha256: sha256(conformanceSuiteFixtureSource),
+      outcome: 'pass',
+      github_run: {...conformanceSuiteFixture.github_run},
+    },
+    bindings: Object.fromEntries(['sdk-php', 'sdk-python', 'sdk-rust'].map(
+      artifact => [
+        artifact,
+        {
+          sdk: {
+            source: {...releasePlanFixture.components[artifact]},
+            distribution: JSON.parse(JSON.stringify(distributionFixtures[artifact])),
+          },
+          server: {
+            source: {...server},
+            distribution: JSON.parse(JSON.stringify(distributionFixtures.server)),
+          },
+          supported_server_versions: server.version,
+          outcome: 'pass',
+        },
+      ],
+    )),
+  };
+  if (options.outcome) {
+    qualification.outcome = options.outcome;
+  }
+  return qualification;
+}
+function qualificationFixtureSources(
+  qualification = sdkServerQualificationAt(),
+  conformanceSuite = conformanceSuiteFixture,
+) {
+  const qualified = JSON.parse(JSON.stringify(qualification));
+  const conformanceSuiteSource = `${JSON.stringify(conformanceSuite, null, 2)}\n`;
+  qualified.evidence.sha256 = sha256(conformanceSuiteSource);
+  const qualificationSource = `${JSON.stringify(qualified, null, 2)}\n`;
+  const productTrain = JSON.parse(JSON.stringify(productTrainFixture));
+  productTrain.trains[source.artifacts.server].sdk_server_qualification.sha256 =
+    sha256(qualificationSource);
+  return {
+    productTrainSource: `${JSON.stringify(productTrain, null, 2)}\n`,
+    qualificationSource,
+    conformanceSuiteSource,
+  };
+}
+const sdkServerQualificationFixture = sdkServerQualificationAt();
+const sdkServerQualificationFixtureSource =
+  `${JSON.stringify(sdkServerQualificationFixture, null, 2)}\n`;
 const productTrainFixture = {
   schema: 'durable-workflow.product-train/v2',
   current: source.artifacts.server,
@@ -123,6 +245,11 @@ const productTrainFixture = {
         tag: `release-plan/${releasePlanFixture.plan}`,
         sha256: sha256(releasePlanFixtureSource),
       },
+      sdk_server_qualification: {
+        schema: 'durable-workflow.sdk-server-qualification/v1',
+        source_url: sdkServerQualificationUrl,
+        sha256: sha256(sdkServerQualificationFixtureSource),
+      },
     },
   },
 };
@@ -130,6 +257,8 @@ const productTrainFixtureSource = `${JSON.stringify(productTrainFixture, null, 2
 const builtCompatibilityEvidence = buildArtifactCompatibilityEvidence(
   productTrainFixtureSource,
   releasePlanFixtureSource,
+  sdkServerQualificationFixtureSource,
+  conformanceSuiteFixtureSource,
 );
 assert.deepStrictEqual(
   builtCompatibilityEvidence.qualified_artifact_versions,
@@ -153,9 +282,160 @@ assert.throws(
         },
       },
     }, null, 2)}\n`,
+    sdkServerQualificationFixtureSource,
+    conformanceSuiteFixtureSource,
   ),
   /does not match the product-train SHA-256/,
   'modified release-plan bytes must not satisfy exact compatibility evidence',
+);
+assert.throws(
+  () => buildArtifactCompatibilityEvidence(
+    `${JSON.stringify({
+      ...productTrainFixture,
+      trains: {
+        [source.artifacts.server]: {
+          ...productTrainFixture.trains[source.artifacts.server],
+          sdk_server_qualification: undefined,
+        },
+      },
+    })}\n`,
+    releasePlanFixtureSource,
+    '',
+    '',
+  ),
+  /must bind immutable SDK-to-Server qualification evidence/,
+  'missing conformance qualification must fail closed',
+);
+const failedQualificationSources = qualificationFixtureSources(
+  sdkServerQualificationAt({outcome: 'fail'}),
+);
+assert.throws(
+  () => buildArtifactCompatibilityEvidence(
+    failedQualificationSources.productTrainSource,
+    releasePlanFixtureSource,
+    failedQualificationSources.qualificationSource,
+    failedQualificationSources.conformanceSuiteSource,
+  ),
+  /qualification evidence outcome must be pass/,
+  'failed conformance qualification must block public compatibility evidence',
+);
+const failedConformanceSuite = JSON.parse(
+  JSON.stringify(conformanceSuiteFixture),
+);
+failedConformanceSuite.outcome = 'fail';
+const failedConformanceSources = qualificationFixtureSources(
+  sdkServerQualificationAt(),
+  failedConformanceSuite,
+);
+assert.throws(
+  () => buildArtifactCompatibilityEvidence(
+    failedConformanceSources.productTrainSource,
+    releasePlanFixtureSource,
+    failedConformanceSources.qualificationSource,
+    failedConformanceSources.conformanceSuiteSource,
+  ),
+  /conformance suite must be the exact passing retained GitHub run/,
+  'a failed retained conformance suite must block public compatibility evidence',
+);
+const mutableQualification = sdkServerQualificationAt();
+mutableQualification.evidence.source_url = sdkServerQualificationUrl;
+const mutableQualificationSources = qualificationFixtureSources(
+  mutableQualification,
+);
+assert.throws(
+  () => buildArtifactCompatibilityEvidence(
+    mutableQualificationSources.productTrainSource,
+    releasePlanFixtureSource,
+    mutableQualificationSources.qualificationSource,
+    mutableQualificationSources.conformanceSuiteSource,
+  ),
+  /must identify an immutable passing suite/,
+  'a mutable qualification evidence URL must not satisfy public compatibility evidence',
+);
+const failedBindingQualification = sdkServerQualificationAt();
+failedBindingQualification.bindings['sdk-python'].outcome = 'fail';
+const failedBindingSources = qualificationFixtureSources(
+  failedBindingQualification,
+);
+assert.throws(
+  () => buildArtifactCompatibilityEvidence(
+    failedBindingSources.productTrainSource,
+    releasePlanFixtureSource,
+    failedBindingSources.qualificationSource,
+    failedBindingSources.conformanceSuiteSource,
+  ),
+  /sdk-python must be a passing exact binding/,
+  'a failed individual SDK binding must block public compatibility evidence',
+);
+const mismatchedQualification = sdkServerQualificationAt();
+mismatchedQualification.bindings['sdk-rust'].server.source.version =
+  '2.0.0-beta.17';
+const mismatchedQualificationSources = qualificationFixtureSources(
+  mismatchedQualification,
+);
+assert.throws(
+  () => buildArtifactCompatibilityEvidence(
+    mismatchedQualificationSources.productTrainSource,
+    releasePlanFixtureSource,
+    mismatchedQualificationSources.qualificationSource,
+    mismatchedQualificationSources.conformanceSuiteSource,
+  ),
+  /sdk-rust must be a passing exact binding/,
+  'tuple-mismatched conformance qualification must block public compatibility evidence',
+);
+const mismatchedDistributionQualification = sdkServerQualificationAt();
+mismatchedDistributionQualification.bindings['sdk-rust'].sdk.distribution.locator =
+  'crates.io:durable-workflow@2.0.0-beta.17';
+const mismatchedDistributionSources = qualificationFixtureSources(
+  mismatchedDistributionQualification,
+);
+assert.throws(
+  () => buildArtifactCompatibilityEvidence(
+    mismatchedDistributionSources.productTrainSource,
+    releasePlanFixtureSource,
+    mismatchedDistributionSources.qualificationSource,
+    mismatchedDistributionSources.conformanceSuiteSource,
+  ),
+  /sdk-rust must be a passing exact binding/,
+  'distribution-mismatched conformance qualification must block public evidence',
+);
+const mismatchedConformanceSuite = JSON.parse(
+  JSON.stringify(conformanceSuiteFixture),
+);
+mismatchedConformanceSuite.artifact_tuple['sdk-rust'].version =
+  '2.0.0-beta.17';
+const mismatchedConformanceSources = qualificationFixtureSources(
+  sdkServerQualificationAt(),
+  mismatchedConformanceSuite,
+);
+assert.throws(
+  () => buildArtifactCompatibilityEvidence(
+    mismatchedConformanceSources.productTrainSource,
+    releasePlanFixtureSource,
+    mismatchedConformanceSources.qualificationSource,
+    mismatchedConformanceSources.conformanceSuiteSource,
+  ),
+  /conformance suite artifact sdk-rust does not match the selected release plan/,
+  'tuple-mismatched retained conformance evidence must block public compatibility evidence',
+);
+const missingRustCoverageSuite = JSON.parse(
+  JSON.stringify(conformanceSuiteFixture),
+);
+missingRustCoverageSuite.experiments.heartbeats.required_clients =
+  ['sdk-php', 'sdk-python'];
+const missingRustCoverageSources = qualificationFixtureSources(
+  sdkServerQualificationAt(),
+  missingRustCoverageSuite,
+);
+assert.throws(
+  () => buildArtifactCompatibilityEvidence(
+    missingRustCoverageSources.productTrainSource,
+    releasePlanFixtureSource,
+    missingRustCoverageSources.qualificationSource,
+    missingRustCoverageSources.conformanceSuiteSource,
+  ),
+  /experiment heartbeats must pass for PHP, Python, Rust, and Server distributions/,
+  'suite evidence without claimed Rust client coverage must fail closed',
 );
 assert.strictEqual(
   artifactVersionsSource(source.artifacts),
@@ -595,6 +875,76 @@ async function assertWorkflowRegistryAuthorityResolution() {
   assert.strictEqual(invalidReferenceFetches, 0);
 }
 
+async function assertCompatibilityAuthorityResolution() {
+  const productTrainUrl = 'https://example.test/product-train.json';
+  const releasePlanUrl = releasePlanEvidenceUrl(
+    `release-plan/${releasePlanFixture.plan}`,
+  );
+  const sources = new Map([
+    [productTrainUrl, productTrainFixtureSource],
+    [releasePlanUrl, releasePlanFixtureSource],
+    [sdkServerQualificationUrl, sdkServerQualificationFixtureSource],
+    [conformanceSuiteUrl, conformanceSuiteFixtureSource],
+  ]);
+  const requestedUrls = [];
+  const evidence = await resolvePublishedArtifactCompatibilityEvidence(
+    {productTrainUrl},
+    {
+      requestText: async url => {
+        requestedUrls.push(url);
+        if (!sources.has(url)) {
+          throw new Error(`missing fixture for ${url}`);
+        }
+        return sources.get(url);
+      },
+    },
+  );
+
+  assert.strictEqual(evidence.outcome, 'pass');
+  assert.deepStrictEqual(
+    requestedUrls,
+    [
+      productTrainUrl,
+      releasePlanUrl,
+      sdkServerQualificationUrl,
+      conformanceSuiteUrl,
+    ],
+    'compatibility resolution must fetch the digest-bound qualification and suite records',
+  );
+
+  await assert.rejects(
+    () => resolvePublishedArtifactCompatibilityEvidence(
+      {productTrainUrl},
+      {
+        requestText: async url => {
+          if (url === sdkServerQualificationUrl) {
+            throw new Error('qualification unavailable');
+          }
+          return sources.get(url);
+        },
+      },
+    ),
+    /qualification unavailable/,
+    'missing qualification bytes must fail the public refresher closed',
+  );
+
+  await assert.rejects(
+    () => resolvePublishedArtifactCompatibilityEvidence(
+      {productTrainUrl},
+      {
+        requestText: async url => {
+          if (url === conformanceSuiteUrl) {
+            throw new Error('conformance suite unavailable');
+          }
+          return sources.get(url);
+        },
+      },
+    ),
+    /conformance suite unavailable/,
+    'missing immutable conformance suite bytes must fail the public refresher closed',
+  );
+}
+
 function extractObservedPins(definition, content) {
   const pattern = new RegExp(definition.pattern.source, definition.pattern.flags);
 
@@ -962,7 +1312,10 @@ for (const artifact of Object.keys(source.artifacts)) {
   );
 }
 
-assertWorkflowRegistryAuthorityResolution().then(
+Promise.all([
+  assertWorkflowRegistryAuthorityResolution(),
+  assertCompatibilityAuthorityResolution(),
+]).then(
   () => console.log('Public artifact version source validation passed'),
   error => {
     console.error(error);

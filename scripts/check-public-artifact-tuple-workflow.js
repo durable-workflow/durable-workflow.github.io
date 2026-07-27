@@ -253,9 +253,23 @@ const stableKeyHandoff = {
   },
 };
 function compatibilityEvidence(versions) {
+  const qualificationSource =
+    'https://example.test/sdk-server-qualification.json';
+  const evidenceTag =
+    'beta-conformance/beta-qualified-fixture/12345.1';
+  const conformanceSuiteSource = [
+    'https://github.com/durable-workflow/.github/releases/download',
+    evidenceTag,
+    'suite-result.json',
+  ].join('/');
+  const serverDistribution = {
+    kind: 'oci',
+    locator: `oci:docker.io/durableworkflow/server@${versions.server}`,
+    artifacts: [{name: 'manifest', sha256: 'e'.repeat(64)}],
+  };
   return {
     schema: 'durable-workflow.docs.public-artifact-compatibility-evidence',
-    schema_version: 1,
+    schema_version: 2,
     outcome: 'pass',
     qualified_artifact_versions: {...versions},
     sdk_server_compatibility: Object.fromEntries(
@@ -263,7 +277,18 @@ function compatibilityEvidence(versions) {
         artifact,
         {
           sdk_version: versions[artifact],
+          sdk_source_commit: 'b'.repeat(40),
+          sdk_distribution: {
+            kind: 'registry',
+            locator: `registry:${artifact}@${versions[artifact]}`,
+            artifacts: [{name: artifact, sha256: 'f'.repeat(64)}],
+          },
+          server_version: versions.server,
+          server_source_commit: 'c'.repeat(40),
+          server_distribution: serverDistribution,
           supported_server_versions: versions.server,
+          outcome: 'pass',
+          evidence_source: conformanceSuiteSource,
         },
       ]),
     ),
@@ -271,6 +296,24 @@ function compatibilityEvidence(versions) {
       release_plan: {
         tag: 'release-plan/qualified-fixture',
         sha256: 'a'.repeat(64),
+      },
+      sdk_server_qualification: {
+        schema: 'durable-workflow.sdk-server-qualification/v1',
+        source_url: qualificationSource,
+        sha256: 'd'.repeat(64),
+        evidence: {
+          schema: 'durable-workflow.beta-conformance.suite-result/v2',
+          tag: evidenceTag,
+          source_url: conformanceSuiteSource,
+          sha256: 'e'.repeat(64),
+          outcome: 'pass',
+          github_run: {
+            repository: 'durable-workflow/.github',
+            run_id: 12345,
+            run_attempt: 1,
+            evidence_tag: evidenceTag,
+          },
+        },
       },
     },
   };

@@ -13,7 +13,16 @@ const ARTIFACT_COMPATIBILITY_EVIDENCE_SCHEMA =
   'durable-workflow.docs.public-artifact-compatibility-evidence';
 const PRODUCT_TRAIN_SCHEMA = 'durable-workflow.product-train/v2';
 const RELEASE_PLAN_SCHEMA = 'durable-workflow.release-plan/v2';
+const SDK_SERVER_QUALIFICATION_SCHEMA =
+  'durable-workflow.sdk-server-qualification/v1';
+const CONFORMANCE_SUITE_SCHEMA =
+  'durable-workflow.beta-conformance.suite-result/v2';
 const REQUIRED_SDK_ARTIFACTS = Object.freeze(['sdk-php', 'sdk-python', 'sdk-rust']);
+const REQUIRED_SDK_SERVER_EXPERIMENTS = Object.freeze([
+  'heartbeats',
+  'replay',
+  'signals-queries',
+]);
 const PRODUCT_TRAIN_AUTHORITY_URL =
   'https://raw.githubusercontent.com/durable-workflow/.github/main/product-train/current.json';
 
@@ -44,6 +53,48 @@ function assertExactKeys(value, expected, label) {
   }
 }
 
+function matchesArtifactIdentity(actual, expected) {
+  return Boolean(
+    actual
+    && expected
+    && actual.version === expected.version
+    && actual.commit === expected.commit
+    && Object.keys(actual).length === 2,
+  );
+}
+
+function matchesDistributionIdentity(actual, expected) {
+  if (
+    !actual
+    || !expected
+    || Object.keys(actual).length !== 3
+    || actual.kind !== expected.kind
+    || actual.locator !== expected.locator
+    || !Array.isArray(actual.artifacts)
+    || !Array.isArray(expected.artifacts)
+    || actual.artifacts.length !== expected.artifacts.length
+  ) {
+    return false;
+  }
+
+  return actual.artifacts.every((artifact, index) => (
+    artifact
+    && Object.keys(artifact).length === 2
+    && artifact.name === expected.artifacts[index]?.name
+    && artifact.sha256 === expected.artifacts[index]?.sha256
+    && /^[0-9a-f]{64}$/.test(artifact.sha256)
+  ));
+}
+
+function frozenDistributionIdentity(identity) {
+  return Object.freeze({
+    ...identity,
+    artifacts: Object.freeze(identity.artifacts.map(
+      artifact => Object.freeze({...artifact}),
+    )),
+  });
+}
+
 function readQualifiedProductTrain(source, sourceUrl = PRODUCT_TRAIN_AUTHORITY_URL) {
   const productTrain = parseJsonSource(source, 'product-train compatibility authority');
 
@@ -69,6 +120,7 @@ function readQualifiedProductTrain(source, sourceUrl = PRODUCT_TRAIN_AUTHORITY_U
     artifacts: train.versions,
   });
   const releasePlan = train.release_plan;
+  const sdkServerQualification = train.sdk_server_qualification;
 
   if (
     !releasePlan
@@ -82,10 +134,24 @@ function readQualifiedProductTrain(source, sourceUrl = PRODUCT_TRAIN_AUTHORITY_U
         'must bind an immutable release-plan tag and SHA-256',
     );
   }
+  if (
+    !sdkServerQualification
+    || sdkServerQualification.schema !== SDK_SERVER_QUALIFICATION_SCHEMA
+    || typeof sdkServerQualification.source_url !== 'string'
+    || !sdkServerQualification.source_url.startsWith('https://')
+    || typeof sdkServerQualification.sha256 !== 'string'
+    || !/^[0-9a-f]{64}$/.test(sdkServerQualification.sha256)
+  ) {
+    throw new Error(
+      `product-train compatibility authority current train ${productTrain.current} ` +
+        'must bind immutable SDK-to-Server qualification evidence',
+    );
+  }
 
   return Object.freeze({
     current: productTrain.current,
     releasePlan: Object.freeze({...releasePlan}),
+    sdkServerQualification: Object.freeze({...sdkServerQualification}),
     schema: productTrain.schema,
     sha256: sha256(source),
     sourceUrl,
@@ -108,6 +174,8 @@ function releasePlanEvidenceUrl(tag) {
 function buildArtifactCompatibilityEvidence(
   productTrainSource,
   releasePlanSource,
+  sdkServerQualificationSource,
+  conformanceSuiteSource,
   options = {},
 ) {
   const productTrain = readQualifiedProductTrain(
@@ -120,6 +188,8 @@ function buildArtifactCompatibilityEvidence(
   );
   const releasePlanUrl = options.releasePlanUrl
     || releasePlanEvidenceUrl(productTrain.releasePlan.tag);
+  const sdkServerQualificationUrl = options.sdkServerQualificationUrl
+    || productTrain.sdkServerQualification.source_url;
 
   if (sha256(releasePlanSource) !== productTrain.releasePlan.sha256) {
     throw new Error(
@@ -177,22 +247,209 @@ function buildArtifactCompatibilityEvidence(
     );
   }
 
-  const serverVersion = productTrain.versions.server;
+  if (sha256(sdkServerQualificationSource) !== productTrain.sdkServerQualification.sha256) {
+    throw new Error(
+      'SDK-to-Server qualification evidence does not match the product-train SHA-256',
+    );
+  }
+  const sdkServerQualification = parseJsonSource(
+    sdkServerQualificationSource,
+    'SDK-to-Server qualification evidence',
+  );
+  if (sdkServerQualification.schema !== SDK_SERVER_QUALIFICATION_SCHEMA) {
+    throw new Error(
+      `SDK-to-Server qualification evidence schema must be ` +
+        `${SDK_SERVER_QUALIFICATION_SCHEMA}`,
+    );
+  }
+  if (
+    !sdkServerQualification.release_plan
+    || !Object.keys(sdkServerQualification.release_plan).every(
+      key => ['tag', 'sha256'].includes(key),
+    )
+    || Object.keys(sdkServerQualification.release_plan).length !== 2
+    || sdkServerQualification.release_plan.tag !== productTrain.releasePlan.tag
+    || sdkServerQualification.release_plan.sha256 !== productTrain.releasePlan.sha256
+  ) {
+    throw new Error(
+      'SDK-to-Server qualification evidence is stale against the selected release plan',
+    );
+  }
+  if (sdkServerQualification.outcome !== 'pass') {
+    throw new Error('SDK-to-Server qualification evidence outcome must be pass');
+  }
+
+  const conformanceEvidence = sdkServerQualification.evidence;
+  const evidenceTagPattern =
+    /^beta-conformance\/beta-[a-z0-9._-]+\/[1-9][0-9]*\.[1-9][0-9]*$/;
+  const evidenceTag = conformanceEvidence?.tag;
+  const evidenceUrl = [
+    'https://github.com/durable-workflow/.github/releases/download',
+    evidenceTag,
+    'suite-result.json',
+  ].join('/');
+  const githubRun = conformanceEvidence?.github_run;
+  if (
+    !conformanceEvidence
+    || conformanceEvidence.schema !== CONFORMANCE_SUITE_SCHEMA
+    || typeof evidenceTag !== 'string'
+    || !evidenceTagPattern.test(evidenceTag)
+    || conformanceEvidence.source_url !== evidenceUrl
+    || typeof conformanceEvidence.sha256 !== 'string'
+    || !/^[0-9a-f]{64}$/.test(conformanceEvidence.sha256)
+    || conformanceEvidence.outcome !== 'pass'
+    || !githubRun
+    || githubRun.repository !== 'durable-workflow/.github'
+    || !Number.isInteger(githubRun.run_id)
+    || githubRun.run_id < 1
+    || !Number.isInteger(githubRun.run_attempt)
+    || githubRun.run_attempt < 1
+    || githubRun.evidence_tag !== evidenceTag
+    || !evidenceTag.endsWith(`/${githubRun.run_id}.${githubRun.run_attempt}`)
+  ) {
+    throw new Error(
+      'SDK-to-Server qualification evidence must identify an immutable passing suite',
+    );
+  }
+  assertExactKeys(
+    conformanceEvidence,
+    ['schema', 'tag', 'source_url', 'sha256', 'outcome', 'github_run'],
+    'SDK-to-Server qualification conformance evidence',
+  );
+  assertExactKeys(
+    githubRun,
+    ['repository', 'run_id', 'run_attempt', 'evidence_tag'],
+    'SDK-to-Server qualification GitHub run',
+  );
+
+  if (sha256(conformanceSuiteSource) !== conformanceEvidence.sha256) {
+    throw new Error(
+      'SDK-to-Server conformance suite does not match the qualification SHA-256',
+    );
+  }
+  const conformanceSuite = parseJsonSource(
+    conformanceSuiteSource,
+    'SDK-to-Server conformance suite',
+  );
+  const suiteRun = conformanceSuite.github_run;
+  if (
+    conformanceSuite.schema !== CONFORMANCE_SUITE_SCHEMA
+    || conformanceSuite.outcome !== 'pass'
+    || !suiteRun
+    || suiteRun.repository !== githubRun.repository
+    || suiteRun.run_id !== githubRun.run_id
+    || suiteRun.run_attempt !== githubRun.run_attempt
+    || suiteRun.evidence_tag !== githubRun.evidence_tag
+  ) {
+    throw new Error(
+      'SDK-to-Server conformance suite must be the exact passing retained GitHub run',
+    );
+  }
+  assertExactKeys(
+    suiteRun,
+    ['repository', 'run_id', 'run_attempt', 'evidence_tag'],
+    'SDK-to-Server conformance suite GitHub run',
+  );
+  assertExactKeys(
+    conformanceSuite.artifact_tuple,
+    REQUIRED_ARTIFACTS,
+    'SDK-to-Server conformance suite artifact tuple',
+  );
+  assertExactKeys(
+    conformanceSuite.source_identities,
+    REQUIRED_ARTIFACTS,
+    'SDK-to-Server conformance suite source identities',
+  );
+  for (const artifact of REQUIRED_ARTIFACTS) {
+    if (!matchesArtifactIdentity(
+      conformanceSuite.artifact_tuple[artifact],
+      releasePlan.components[artifact],
+    )) {
+      throw new Error(
+        `SDK-to-Server conformance suite artifact ${artifact} does not match ` +
+          'the selected release plan',
+      );
+    }
+    if (
+      conformanceSuite.source_identities[artifact]
+      !== releasePlan.components[artifact].commit
+    ) {
+      throw new Error(
+        `SDK-to-Server conformance suite source ${artifact} does not match ` +
+          'the selected release plan',
+      );
+    }
+  }
+  for (const experimentName of REQUIRED_SDK_SERVER_EXPERIMENTS) {
+    const experiment = conformanceSuite.experiments?.[experimentName];
+    if (
+      !experiment
+      || experiment.outcome !== 'pass'
+      || experiment.classification !== 'passed'
+      || !REQUIRED_SDK_ARTIFACTS.every(
+        artifact => experiment.required_clients?.includes(artifact),
+      )
+      || !['server', ...REQUIRED_SDK_ARTIFACTS].every(
+        artifact => experiment.required_distributions?.includes(artifact),
+      )
+      || typeof experiment.result_sha256 !== 'string'
+      || !/^[0-9a-f]{64}$/.test(experiment.result_sha256)
+    ) {
+      throw new Error(
+        `SDK-to-Server conformance suite experiment ${experimentName} ` +
+          'must pass for PHP, Python, Rust, and Server distributions',
+      );
+    }
+  }
+  assertExactKeys(
+    sdkServerQualification.bindings,
+    REQUIRED_SDK_ARTIFACTS,
+    'SDK-to-Server qualification evidence bindings',
+  );
+
+  const sdkServerCompatibility = {};
+  const serverIdentity = releasePlan.components.server;
+  for (const artifact of REQUIRED_SDK_ARTIFACTS) {
+    const binding = sdkServerQualification.bindings[artifact];
+    const sdkDistribution = conformanceSuite.executed_distribution_identities?.[artifact];
+    const serverDistribution =
+      conformanceSuite.executed_distribution_identities?.server;
+    if (
+      !binding
+      || !matchesArtifactIdentity(
+        binding.sdk?.source,
+        releasePlan.components[artifact],
+      )
+      || !matchesDistributionIdentity(binding.sdk?.distribution, sdkDistribution)
+      || !matchesArtifactIdentity(binding.server?.source, serverIdentity)
+      || !matchesDistributionIdentity(binding.server?.distribution, serverDistribution)
+      || binding.supported_server_versions !== serverIdentity.version
+      || binding.outcome !== 'pass'
+    ) {
+      throw new Error(
+        `SDK-to-Server qualification evidence ${artifact} must be a passing exact ` +
+          `binding to Server ${serverIdentity.version}`,
+      );
+    }
+    sdkServerCompatibility[artifact] = Object.freeze({
+      sdk_version: binding.sdk.source.version,
+      sdk_source_commit: binding.sdk.source.commit,
+      sdk_distribution: frozenDistributionIdentity(binding.sdk.distribution),
+      server_version: binding.server.source.version,
+      server_source_commit: binding.server.source.commit,
+      server_distribution: frozenDistributionIdentity(binding.server.distribution),
+      supported_server_versions: binding.supported_server_versions,
+      outcome: binding.outcome,
+      evidence_source: conformanceEvidence.source_url,
+    });
+  }
 
   return Object.freeze({
     schema: ARTIFACT_COMPATIBILITY_EVIDENCE_SCHEMA,
-    schema_version: 1,
-    outcome: 'pass',
+    schema_version: 2,
+    outcome: sdkServerQualification.outcome,
     qualified_artifact_versions: Object.freeze({...productTrain.versions}),
-    sdk_server_compatibility: Object.freeze(Object.fromEntries(
-      REQUIRED_SDK_ARTIFACTS.map(artifact => [
-        artifact,
-        Object.freeze({
-          sdk_version: productTrain.versions[artifact],
-          supported_server_versions: serverVersion,
-        }),
-      ]),
-    )),
+    sdk_server_compatibility: Object.freeze(sdkServerCompatibility),
     authority: Object.freeze({
       product_train: Object.freeze({
         schema: productTrain.schema,
@@ -206,6 +463,12 @@ function buildArtifactCompatibilityEvidence(
         source_url: releasePlanUrl,
         sha256: productTrain.releasePlan.sha256,
         beta_authorization: Object.freeze({...authorization}),
+      }),
+      sdk_server_qualification: Object.freeze({
+        schema: sdkServerQualification.schema,
+        source_url: sdkServerQualificationUrl,
+        sha256: productTrain.sdkServerQualification.sha256,
+        evidence: Object.freeze({...conformanceEvidence}),
       }),
     }),
   });
@@ -221,8 +484,8 @@ function readArtifactCompatibilityEvidence(
         'artifact compatibility-evidence schema',
     );
   }
-  if (source.schema_version !== 1) {
-    throw new Error('public-artifact-compatibility-evidence.json schema_version must be 1');
+  if (source.schema_version !== 2) {
+    throw new Error('public-artifact-compatibility-evidence.json schema_version must be 2');
   }
   if (source.outcome !== 'pass') {
     throw new Error('public-artifact-compatibility-evidence.json outcome must be pass');
@@ -253,12 +516,68 @@ function readArtifactCompatibilityEvidence(
     'public-artifact-compatibility-evidence.json sdk_server_compatibility',
   );
   const sdkServerCompatibility = {};
+  const qualificationAuthority = source.authority?.sdk_server_qualification;
+  const conformanceEvidence = qualificationAuthority?.evidence;
+  const expectedEvidenceUrl = [
+    'https://github.com/durable-workflow/.github/releases/download',
+    conformanceEvidence?.tag,
+    'suite-result.json',
+  ].join('/');
+  const githubRun = conformanceEvidence?.github_run;
+  if (
+    !qualificationAuthority
+    || qualificationAuthority.schema !== SDK_SERVER_QUALIFICATION_SCHEMA
+    || typeof qualificationAuthority.source_url !== 'string'
+    || !qualificationAuthority.source_url.startsWith('https://')
+    || typeof qualificationAuthority.sha256 !== 'string'
+    || !/^[0-9a-f]{64}$/.test(qualificationAuthority.sha256)
+    || !conformanceEvidence
+    || conformanceEvidence.schema !== CONFORMANCE_SUITE_SCHEMA
+    || typeof conformanceEvidence.tag !== 'string'
+    || !/^beta-conformance\/beta-[a-z0-9._-]+\/[1-9][0-9]*\.[1-9][0-9]*$/.test(
+      conformanceEvidence.tag,
+    )
+    || conformanceEvidence.source_url !== expectedEvidenceUrl
+    || typeof conformanceEvidence.sha256 !== 'string'
+    || !/^[0-9a-f]{64}$/.test(conformanceEvidence.sha256)
+    || conformanceEvidence.outcome !== 'pass'
+    || !githubRun
+    || githubRun.repository !== 'durable-workflow/.github'
+    || !Number.isInteger(githubRun.run_id)
+    || githubRun.run_id < 1
+    || !Number.isInteger(githubRun.run_attempt)
+    || githubRun.run_attempt < 1
+    || githubRun.evidence_tag !== conformanceEvidence.tag
+    || !conformanceEvidence.tag.endsWith(
+      `/${githubRun.run_id}.${githubRun.run_attempt}`,
+    )
+  ) {
+    throw new Error(
+      'public-artifact-compatibility-evidence.json must bind immutable ' +
+        'SDK-to-Server qualification evidence',
+    );
+  }
   for (const artifact of REQUIRED_SDK_ARTIFACTS) {
     const qualification = source.sdk_server_compatibility[artifact];
     if (
       !qualification
       || qualification.sdk_version !== versions[artifact]
+      || typeof qualification.sdk_source_commit !== 'string'
+      || !/^[0-9a-f]{40}$/.test(qualification.sdk_source_commit)
+      || !matchesDistributionIdentity(
+        qualification.sdk_distribution,
+        qualification.sdk_distribution,
+      )
+      || qualification.server_version !== versions.server
+      || typeof qualification.server_source_commit !== 'string'
+      || !/^[0-9a-f]{40}$/.test(qualification.server_source_commit)
+      || !matchesDistributionIdentity(
+        qualification.server_distribution,
+        qualification.server_distribution,
+      )
       || qualification.supported_server_versions !== versions.server
+      || qualification.outcome !== 'pass'
+      || qualification.evidence_source !== conformanceEvidence.source_url
     ) {
       throw new Error(
         `public-artifact-compatibility-evidence.json ${artifact} must bind SDK ` +
@@ -309,6 +628,10 @@ function readArtifactCompatibilityEvidence(
         ...releasePlan,
         beta_authorization: Object.freeze({...releasePlan.beta_authorization}),
       }),
+      sdkServerQualification: Object.freeze({
+        ...qualificationAuthority,
+        evidence: Object.freeze({...qualificationAuthority.evidence}),
+      }),
     }),
     sdkServerCompatibility: Object.freeze(sdkServerCompatibility),
   });
@@ -325,6 +648,7 @@ module.exports = {
   PRODUCT_TRAIN_SCHEMA,
   RELEASE_PLAN_SCHEMA,
   REQUIRED_SDK_ARTIFACTS,
+  SDK_SERVER_QUALIFICATION_SCHEMA,
   artifactCompatibilityEvidenceJsonSource,
   artifactCompatibilityEvidenceSource,
   buildArtifactCompatibilityEvidence,

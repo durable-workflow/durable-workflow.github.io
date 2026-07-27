@@ -832,14 +832,49 @@ async function resolvePublishedArtifactCompatibilityEvidence(
     source.productTrainUrl,
   );
   const releasePlanUrl = releasePlanEvidenceUrl(productTrain.releasePlan.tag);
-  const releasePlanSource = await getText(releasePlanUrl);
+  const sdkServerQualificationUrl = productTrain.sdkServerQualification.source_url;
+  const [releasePlanSource, sdkServerQualificationSource] = await Promise.all([
+    getText(releasePlanUrl),
+    getText(sdkServerQualificationUrl),
+  ]);
+  if (
+    sha256(sdkServerQualificationSource)
+    !== productTrain.sdkServerQualification.sha256
+  ) {
+    throw new Error(
+      'SDK-to-Server qualification evidence does not match the product-train SHA-256',
+    );
+  }
+  let sdkServerQualification;
+  try {
+    sdkServerQualification = JSON.parse(sdkServerQualificationSource);
+  } catch (error) {
+    throw new Error(
+      `SDK-to-Server qualification evidence is not valid JSON: ${error.message}`,
+    );
+  }
+  const conformanceSuiteUrl = sdkServerQualification.evidence?.source_url;
+  const expectedConformanceSuiteUrl = [
+    'https://github.com/durable-workflow/.github/releases/download',
+    sdkServerQualification.evidence?.tag,
+    'suite-result.json',
+  ].join('/');
+  if (conformanceSuiteUrl !== expectedConformanceSuiteUrl) {
+    throw new Error(
+      'SDK-to-Server qualification evidence must bind an immutable conformance suite',
+    );
+  }
+  const conformanceSuiteSource = await getText(conformanceSuiteUrl);
 
   return buildArtifactCompatibilityEvidence(
     productTrainSource,
     releasePlanSource,
+    sdkServerQualificationSource,
+    conformanceSuiteSource,
     {
       productTrainUrl: source.productTrainUrl,
       releasePlanUrl,
+      sdkServerQualificationUrl,
     },
   );
 }
