@@ -2,12 +2,12 @@
   "schema": "durable-workflow.docs.public-artifact-versions",
   "schemaVersion": 1,
   "artifacts": {
-    "cli": "2.0.0-beta.17",
-    "sdk-php": "2.0.0-beta.17",
-    "sdk-python": "2.0.0-beta.17",
-    "sdk-rust": "2.0.0-beta.17",
-    "server": "2.0.0-beta.17",
-    "waterline": "2.0.0-beta.17",
-    "workflow": "2.0.0-beta.17"
+    "cli": "2.0.0-beta.18",
+    "sdk-php": "2.0.0-beta.18",
+    "sdk-python": "2.0.0-beta.18",
+    "sdk-rust": "2.0.0-beta.18",
+    "server": "2.0.0-beta.18",
+    "waterline": "2.0.0-beta.18",
+    "workflow": "2.0.0-beta.18"
   }
 }
