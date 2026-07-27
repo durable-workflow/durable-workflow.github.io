@@ -12,6 +12,7 @@ const EXPECTED_TARGET_BRANCH = 'main';
 const EXPECTED_REFRESH_COMMAND = 'npm run refresh:public-artifact-versions';
 const EXPECTED_REFRESH_FILES = [
   'scripts/public-artifact-versions.json',
+  'static/public-artifact-compatibility-evidence.json',
   'static/quickstart-execution-contract.json',
   'static/compatibility-contract.json',
   'static/sdk-neutrality-contract.json',
@@ -138,6 +139,52 @@ function validateChangedFiles(changedFiles) {
   }
 }
 
+function validateCompatibilityEvidence(evidence, versions) {
+  if (
+    !evidence
+    || evidence.schema !== 'durable-workflow.docs.public-artifact-compatibility-evidence'
+    || evidence.schema_version !== 1
+    || evidence.outcome !== 'pass'
+  ) {
+    throw new Error('handoff compatibility evidence must be a passing version 1 record');
+  }
+
+  const qualifiedVersions = evidence.qualified_artifact_versions;
+  if (
+    !qualifiedVersions
+    || ARTIFACT_ORDER.some(artifact => qualifiedVersions[artifact] !== versions[artifact])
+    || Object.keys(qualifiedVersions).some(artifact => !ARTIFACT_ORDER.includes(artifact))
+  ) {
+    throw new Error(
+      'handoff compatibility evidence must bind the exact selected artifact versions',
+    );
+  }
+
+  for (const artifact of ['sdk-php', 'sdk-python', 'sdk-rust']) {
+    const qualification = evidence.sdk_server_compatibility?.[artifact];
+    if (
+      !qualification
+      || qualification.sdk_version !== versions[artifact]
+      || qualification.supported_server_versions !== versions.server
+    ) {
+      throw new Error(
+        `handoff compatibility evidence must bind ${artifact} ${versions[artifact]} ` +
+          `to Server ${versions.server}`,
+      );
+    }
+  }
+
+  const releasePlan = evidence.authority?.release_plan;
+  if (
+    !releasePlan
+    || typeof releasePlan.tag !== 'string'
+    || typeof releasePlan.sha256 !== 'string'
+    || !/^[0-9a-f]{64}$/.test(releasePlan.sha256)
+  ) {
+    throw new Error('handoff compatibility evidence must bind an immutable release plan');
+  }
+}
+
 function validateTupleDate(tupleDate) {
   if (tupleDate === undefined || tupleDate === null || tupleDate === '') {
     return;
@@ -158,6 +205,7 @@ function validateHandoff(handoff) {
   assertArrayEquals(handoff.refresh_files, EXPECTED_REFRESH_FILES, 'handoff refresh files mismatch');
   validateChangedFiles(handoff.changed_files);
   validateArtifactVersions(handoff.artifact_versions);
+  validateCompatibilityEvidence(handoff.compatibility_evidence, handoff.artifact_versions);
   validateTupleDate(handoff.tuple_date);
 
   const guard = handoff.release_status_guard || {};
@@ -283,6 +331,7 @@ function buildRequestText(handoff) {
     '',
     'Current published tuple:',
     ...ARTIFACT_ORDER.map(name => `- ${artifactLabel(name)} ${handoff.artifact_versions[name]}`),
+    `- Compatibility evidence ${handoff.compatibility_evidence.authority.release_plan.tag}`,
     '',
     `Run \`${refreshInvocation}\` and commit only the generated public artifact tuple files:`,
     ...handoff.refresh_files.map(file => `- \`${file}\``),
@@ -303,6 +352,7 @@ function buildIssueBody(handoff, key, workerBranch, requestText) {
     '',
     '## Acceptance',
     '- The public docs artifact tuple source reports the current published releases.',
+    '- Every selected SDK version is bound to the selected Server by passing immutable compatibility evidence.',
     '- The deployed docs release-audit JSON reports the same tuple with LEAK=0 and MIXED=0.',
     '- Stable 1.x remains the default public docs line.',
     '- 2.0 remains explicit prerelease/versioned guidance.',

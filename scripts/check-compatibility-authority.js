@@ -21,6 +21,10 @@ const {
   ARTIFACT_VERSIONS,
   composerPrereleaseStability: artifactComposerPrereleaseStability,
 } = require('./public-artifact-versions');
+const {
+  artifactCompatibilityEvidenceSource,
+  readArtifactCompatibilityEvidence,
+} = require('./public-artifact-compatibility');
 
 const repoRoot = path.join(__dirname, '..');
 const contractPath = path.join(repoRoot, 'static', 'compatibility-contract.json');
@@ -208,6 +212,10 @@ function assertOpenApiAcceptedWorkerProtocolVersions(workerOpenApi, expectedVers
 }
 
 function assertSdkProtocolAuthorities(contract) {
+  const compatibilityEvidence = readArtifactCompatibilityEvidence(
+    artifactCompatibilityEvidenceSource,
+    ARTIFACT_VERSIONS,
+  );
   const officialSdks = contract.surface_families.official_sdks;
   if (!officialSdks) {
     throw new Error(`static/compatibility-contract.json is missing the official_sdks family`);
@@ -241,7 +249,8 @@ function assertSdkProtocolAuthorities(contract) {
     package: 'durable-workflow/sdk',
     release_line: ARTIFACT_VERSIONS['sdk-php'],
     product_train: ARTIFACT_VERSIONS['sdk-php'],
-    supported_server_versions: ARTIFACT_VERSIONS.server,
+    supported_server_versions:
+      compatibilityEvidence.sdkServerCompatibility['sdk-php'].supported_server_versions,
     worker_protocol_version: '1.13',
     control_plane_version: '2',
   };
@@ -258,7 +267,8 @@ function assertSdkProtocolAuthorities(contract) {
     release_line: ARTIFACT_VERSIONS['sdk-python'],
     registry_version: ARTIFACT_PINS.pythonRegistryVersion,
     product_train: ARTIFACT_VERSIONS['sdk-python'],
-    supported_server_versions: ARTIFACT_VERSIONS.server,
+    supported_server_versions:
+      compatibilityEvidence.sdkServerCompatibility['sdk-python'].supported_server_versions,
     worker_protocol_version: '1.1',
     control_plane_version: '2',
   };
@@ -316,10 +326,12 @@ function assertSdkProtocolAuthorities(contract) {
   if (rustPackage.product_train !== artifactVersion) {
     throw new Error(`Rust package product_train must match current artifact ${artifactVersion}`);
   }
-  if (rustPackage.supported_server_versions !== ARTIFACT_VERSIONS.server) {
+  const qualifiedRustServerVersions =
+    compatibilityEvidence.sdkServerCompatibility['sdk-rust'].supported_server_versions;
+  if (rustPackage.supported_server_versions !== qualifiedRustServerVersions) {
     throw new Error(
-      `Rust supported_server_versions must match the synchronized server train ` +
-        `${ARTIFACT_VERSIONS.server}`,
+      `Rust supported_server_versions must match exact compatibility evidence ` +
+        `${qualifiedRustServerVersions}`,
     );
   }
 
@@ -470,6 +482,12 @@ function assertSdkProtocolAuthorities(contract) {
         `rust_sdk_protocol_authority_aligned`,
     );
   }
+  if (!contract.release_check?.gates?.sdk_server_compatibility_evidence_aligned) {
+    throw new Error(
+      `static/compatibility-contract.json release_check.gates must include ` +
+        `sdk_server_compatibility_evidence_aligned`,
+    );
+  }
 }
 
 function composerPrereleaseStability(artifact, version) {
@@ -497,6 +515,7 @@ function assertReleaseCheckMetadata(contract) {
   ];
   const expectedMachineChecks = [
     'contract_shape_and_identity',
+    'sdk_server_compatibility_evidence',
     'composer_prerelease_artifact_tuple',
     'rust_sdk_artifact_release_line',
     'rust_sdk_published_crate_metadata_when_available',

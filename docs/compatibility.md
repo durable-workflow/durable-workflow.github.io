@@ -288,6 +288,10 @@ clean machine, install only the published artifacts named above, and complete
 the PHP, Python, and Rust conformance paths. Source checkouts and unpublished
 substitutions do not count as public-artifact evidence.
 
+The selected tuple is published with its
+[SDK and Server compatibility evidence](/public-artifact-compatibility-evidence.json).
+Registry publication alone cannot advance an SDK or Server recommendation.
+
 ### Release progression
 
 Patch releases preserve documented stable contracts. Minor releases may add
@@ -304,9 +308,11 @@ examples synchronized with the machine-owned artifact tuple.
 
 - Confirm the machine-readable compatibility contract matches the Workflow
   surface-stability manifest.
-- Confirm all current artifact versions form one synchronized product train.
+- Confirm every selected SDK version is bound to the selected Server by the
+  exact passing compatibility-evidence record.
 - Confirm installation examples resolve tokens from the artifact authority.
-- Confirm package metadata declares the same server and product-train version.
+- Confirm package metadata identifies the exact SDK release and protocol
+  versions; record later Server qualification in the compatibility evidence.
 - Confirm clean-machine published-artifact conformance passes for PHP, Python,
   and Rust.
 - Confirm release notes describe post-baseline additions and do not present

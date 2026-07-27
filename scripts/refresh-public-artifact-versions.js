@@ -14,9 +14,23 @@ const {
   isAuthorizedProductTrainVersion,
   readArtifactVersions,
 } = require('./public-artifact-versions');
+const {
+  PRODUCT_TRAIN_AUTHORITY_URL,
+  artifactCompatibilityEvidenceJsonSource,
+  artifactCompatibilityEvidenceSource,
+  buildArtifactCompatibilityEvidence,
+  readArtifactCompatibilityEvidence,
+  readQualifiedProductTrain,
+  releasePlanEvidenceUrl,
+} = require('./public-artifact-compatibility');
 
 const repoRoot = path.join(__dirname, '..');
 const artifactVersionsPath = path.join(__dirname, 'public-artifact-versions.json');
+const artifactCompatibilityEvidencePath = path.join(
+  repoRoot,
+  'static',
+  'public-artifact-compatibility-evidence.json',
+);
 const quickstartContractPath = path.join(repoRoot, 'static', 'quickstart-execution-contract.json');
 const compatibilityContractPath = path.join(repoRoot, 'static', 'compatibility-contract.json');
 const workflowAuthorityLockPath = path.join(
@@ -27,6 +41,7 @@ const sdkNeutralityContractPath = path.join(repoRoot, 'static', 'sdk-neutrality-
 const WORKFLOW_SDK_NEUTRALITY_RESOURCE_PATH = 'resources/sdk-neutrality-contract.json';
 const PUBLIC_ARTIFACT_TUPLE_FILES = Object.freeze([
   'scripts/public-artifact-versions.json',
+  'static/public-artifact-compatibility-evidence.json',
   'static/quickstart-execution-contract.json',
   'static/compatibility-contract.json',
   'static/sdk-neutrality-contract.json',
@@ -34,6 +49,7 @@ const PUBLIC_ARTIFACT_TUPLE_FILES = Object.freeze([
 ]);
 const PUBLIC_ARTIFACT_TUPLE_PATHS = Object.freeze({
   'scripts/public-artifact-versions.json': artifactVersionsPath,
+  'static/public-artifact-compatibility-evidence.json': artifactCompatibilityEvidencePath,
   'static/quickstart-execution-contract.json': quickstartContractPath,
   'static/compatibility-contract.json': compatibilityContractPath,
   'static/sdk-neutrality-contract.json': sdkNeutralityContractPath,
@@ -118,6 +134,9 @@ const PUBLISHED_ARTIFACT_SOURCES = Object.freeze({
     packageName: 'durable-workflow/workflow',
     url: 'https://repo.packagist.org/p2/durable-workflow/workflow.json',
   },
+});
+const PUBLISHED_ARTIFACT_COMPATIBILITY_SOURCE = Object.freeze({
+  productTrainUrl: PRODUCT_TRAIN_AUTHORITY_URL,
 });
 
 function usage() {
@@ -359,6 +378,52 @@ function selectLatestPublishedArtifactTuple(candidateVersions, context = 'public
 
     return [name, selectLatestVersion(name, candidateVersions[name], context)];
   })));
+}
+
+function selectLatestQualifiedArtifactTuple(
+  candidateVersions,
+  compatibilityEvidence,
+  context = 'public registries',
+) {
+  const latestVersions = selectLatestPublishedArtifactTuple(candidateVersions, context);
+  const qualification = readArtifactCompatibilityEvidence(
+    compatibilityEvidence,
+    compatibilityEvidence?.qualified_artifact_versions,
+  );
+  const qualifiedVersions = qualification.artifactVersions;
+  const unavailable = [];
+  const parkedArtifacts = [];
+
+  for (const artifact of REQUIRED_ARTIFACTS) {
+    const available = publishedVersions(artifact, candidateVersions[artifact], context);
+    if (!available.includes(qualifiedVersions[artifact])) {
+      unavailable.push(
+        `${artifact}: qualified=${qualifiedVersions[artifact]} ` +
+          `published=${available.join(', ')}`,
+      );
+      continue;
+    }
+
+    if (compareVersions(latestVersions[artifact], qualifiedVersions[artifact]) > 0) {
+      parkedArtifacts.push(Object.freeze({
+        artifact,
+        latestPublishedVersion: latestVersions[artifact],
+        qualifiedVersion: qualifiedVersions[artifact],
+      }));
+    }
+  }
+
+  if (unavailable.length > 0) {
+    throw new Error([
+      'Exact compatibility evidence names artifact versions that are not published:',
+      ...unavailable.map(message => `- ${message}`),
+    ].join('\n'));
+  }
+
+  return Object.freeze({
+    versions: qualifiedVersions,
+    parkedArtifacts: Object.freeze(parkedArtifacts),
+  });
 }
 
 function classifyArtifactTrainChange(currentVersions, publishedVersions) {
@@ -756,6 +821,29 @@ async function resolvePackagistVersion(source, clients = {}) {
   return selectPackagistRelease(releases, source.artifact, version);
 }
 
+async function resolvePublishedArtifactCompatibilityEvidence(
+  source = PUBLISHED_ARTIFACT_COMPATIBILITY_SOURCE,
+  clients = {},
+) {
+  const getText = clients.requestText || requestText;
+  const productTrainSource = await getText(source.productTrainUrl);
+  const productTrain = readQualifiedProductTrain(
+    productTrainSource,
+    source.productTrainUrl,
+  );
+  const releasePlanUrl = releasePlanEvidenceUrl(productTrain.releasePlan.tag);
+  const releasePlanSource = await getText(releasePlanUrl);
+
+  return buildArtifactCompatibilityEvidence(
+    productTrainSource,
+    releasePlanSource,
+    {
+      productTrainUrl: source.productTrainUrl,
+      releasePlanUrl,
+    },
+  );
+}
+
 async function resolvePublishedArtifactTupleState(sources = PUBLISHED_ARTIFACT_SOURCES) {
   const [
     cliVersions,
@@ -765,6 +853,7 @@ async function resolvePublishedArtifactTupleState(sources = PUBLISHED_ARTIFACT_S
     serverState,
     waterlineReleases,
     workflowReleases,
+    compatibilityEvidence,
   ] = await Promise.all([
     resolveCliVersions(sources.cli),
     resolvePackagistReleases(sources['sdk-php']),
@@ -773,9 +862,10 @@ async function resolvePublishedArtifactTupleState(sources = PUBLISHED_ARTIFACT_S
     resolveServerVersions(sources.server),
     resolvePackagistReleases(sources.waterline),
     resolvePackagistReleases(sources.workflow),
+    resolvePublishedArtifactCompatibilityEvidence(),
   ]);
 
-  const versions = selectLatestPublishedArtifactTuple({
+  const selection = selectLatestQualifiedArtifactTuple({
     cli: cliVersions,
     'sdk-php': sdkPhpReleases.map(release => release.version),
     'sdk-python': sdkPythonVersions,
@@ -783,7 +873,8 @@ async function resolvePublishedArtifactTupleState(sources = PUBLISHED_ARTIFACT_S
     server: serverState.versions,
     waterline: waterlineReleases.map(release => release.version),
     workflow: workflowReleases.map(release => release.version),
-  }, 'the seven public distribution surfaces');
+  }, compatibilityEvidence, 'the seven public distribution surfaces');
+  const versions = selection.versions;
   await verifyGhcrVersion(
     sources.server.ghcr,
     serverState.ghcrToken,
@@ -798,6 +889,8 @@ async function resolvePublishedArtifactTupleState(sources = PUBLISHED_ARTIFACT_S
 
   return {
     versions,
+    compatibilityEvidence,
+    parkedArtifacts: selection.parkedArtifacts,
     workflowManifestSource: workflowAuthority.manifestSource,
     workflowSourceReference: workflowAuthority.sourceReference,
   };
@@ -911,12 +1004,20 @@ function readPublicArtifactTupleSources() {
   ]));
 }
 
-function generatedPublicArtifactTupleSources(currentSources, versions, date, workflowManifestSource) {
+function generatedPublicArtifactTupleSources(
+  currentSources,
+  versions,
+  date,
+  workflowManifestSource,
+  compatibilityEvidence = artifactCompatibilityEvidenceSource,
+) {
   const quickstartSource = currentSources['static/quickstart-execution-contract.json'];
   const compatibilitySource = currentSources['static/compatibility-contract.json'];
 
   return {
     'scripts/public-artifact-versions.json': artifactVersionsSource(versions),
+    'static/public-artifact-compatibility-evidence.json':
+      artifactCompatibilityEvidenceJsonSource(compatibilityEvidence),
     'static/quickstart-execution-contract.json': quickstartExecutionContractSource(
       quickstartSource,
       versions,
@@ -924,6 +1025,7 @@ function generatedPublicArtifactTupleSources(currentSources, versions, date, wor
     'static/compatibility-contract.json': compatibilityContractSource(
       compatibilitySource,
       versions,
+      compatibilityEvidence,
     ),
     'static/sdk-neutrality-contract.json': workflowManifestSource,
     'scripts/workflow-sdk-neutrality-authority-lock.json': workflowAuthorityLockSource(
@@ -1257,9 +1359,17 @@ function quickstartExecutionContractSource(currentSource, versions) {
   return `${JSON.stringify(contract, null, 2)}\n`;
 }
 
-function compatibilityContractSource(currentSource, versions) {
+function compatibilityContractSource(
+  currentSource,
+  versions,
+  compatibilityEvidence = artifactCompatibilityEvidenceSource,
+) {
   const contract = JSON.parse(currentSource);
   const pins = buildArtifactPins(versions);
+  const qualification = readArtifactCompatibilityEvidence(
+    compatibilityEvidence,
+    versions,
+  );
   const packages = contract.surface_families?.official_sdks?.package_compatibility;
 
   if (!packages || !packages.php_sdk || !packages.python_sdk || !packages.rust_sdk) {
@@ -1272,18 +1382,21 @@ function compatibilityContractSource(currentSource, versions) {
     php_sdk: {
       release_line: versions['sdk-php'],
       product_train: versions['sdk-php'],
-      supported_server_versions: versions.server,
+      supported_server_versions:
+        qualification.sdkServerCompatibility['sdk-php'].supported_server_versions,
     },
     python_sdk: {
       release_line: versions['sdk-python'],
       registry_version: pins.pythonRegistryVersion,
       product_train: versions['sdk-python'],
-      supported_server_versions: versions.server,
+      supported_server_versions:
+        qualification.sdkServerCompatibility['sdk-python'].supported_server_versions,
     },
     rust_sdk: {
       release_line: versions['sdk-rust'],
       product_train: versions['sdk-rust'],
-      supported_server_versions: versions.server,
+      supported_server_versions:
+        qualification.sdkServerCompatibility['sdk-rust'].supported_server_versions,
     },
   };
   let changed = false;
@@ -1314,6 +1427,7 @@ async function check() {
     expected,
     new Date().toISOString().slice(0, 10),
     workflowManifestSource,
+    published.compatibilityEvidence,
   );
   const actual = readArtifactVersions(JSON.parse(
     currentSources['scripts/public-artifact-versions.json'],
@@ -1323,6 +1437,24 @@ async function check() {
 
   if (sourceMismatches.length > 0) {
     throw new Error(mismatchMessage('scripts/public-artifact-versions.json is stale against the current published artifact tuple:', sourceMismatches));
+  }
+
+  const compatibilityEvidence =
+    currentSources['static/public-artifact-compatibility-evidence.json'];
+  const expectedCompatibilityEvidence =
+    desiredSources['static/public-artifact-compatibility-evidence.json'];
+  if (compatibilityEvidence !== expectedCompatibilityEvidence) {
+    throw new Error(
+      mismatchMessage(
+        'static/public-artifact-compatibility-evidence.json is stale against the ' +
+          'current qualified artifact tuple:',
+        [{
+          name: 'SDK and Server compatibility evidence',
+          actual: 'stale qualification',
+          expected: 'exact immutable release-plan evidence',
+        }],
+      ),
+    );
   }
 
   const quickstartContract = currentSources['static/quickstart-execution-contract.json'];
@@ -1382,6 +1514,14 @@ async function check() {
   console.log(
     `Public artifact tuple is current: ${REQUIRED_ARTIFACTS.map(name => `${name} ${expected[name]}`).join(', ')}`
   );
+  if (published.parkedArtifacts.length > 0) {
+    console.log([
+      'Parked newer published artifacts without exact compatibility evidence:',
+      ...published.parkedArtifacts.map(entry =>
+        `- ${entry.artifact}: published=${entry.latestPublishedVersion} ` +
+          `qualified=${entry.qualifiedVersion}`),
+    ].join('\n'));
+  }
 }
 
 async function refresh(date) {
@@ -1398,6 +1538,7 @@ async function refresh(date) {
     expected,
     date,
     workflowManifestSource,
+    published.compatibilityEvidence,
   );
   const updated = changedPublicArtifactTupleFiles(currentSources, desiredSources);
 
@@ -1405,6 +1546,14 @@ async function refresh(date) {
     console.log(
       `Public artifact tuple already current: ${REQUIRED_ARTIFACTS.map(name => `${name} ${expected[name]}`).join(', ')}`
     );
+    if (published.parkedArtifacts.length > 0) {
+      console.log([
+        'Parked newer published artifacts without exact compatibility evidence:',
+        ...published.parkedArtifacts.map(entry =>
+          `- ${entry.artifact}: published=${entry.latestPublishedVersion} ` +
+            `qualified=${entry.qualifiedVersion}`),
+      ].join('\n'));
+    }
     return;
   }
 
@@ -1431,6 +1580,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  PUBLISHED_ARTIFACT_COMPATIBILITY_SOURCE,
   PUBLISHED_ARTIFACT_SOURCES,
   PUBLIC_ARTIFACT_TUPLE_FILES,
   artifactMismatches,
@@ -1444,8 +1594,10 @@ module.exports = {
   parseRegistryNextLink,
   quickstartExecutionContractSource,
   resolvePackagistVersion,
+  resolvePublishedArtifactCompatibilityEvidence,
   resolvePublishedArtifactTuple,
   resolvePublishedWorkflowAuthority,
+  selectLatestQualifiedArtifactTuple,
   selectLatestPublishedArtifactTuple,
   selectLatestCompleteCliRelease,
   selectLatestCratesIoVersion,

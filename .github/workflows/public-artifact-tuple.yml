@@ -65,11 +65,11 @@ jobs:
         run: |
           set -euo pipefail
 
-          if git diff --quiet -- scripts/public-artifact-versions.json static/quickstart-execution-contract.json static/compatibility-contract.json static/sdk-neutrality-contract.json scripts/workflow-sdk-neutrality-authority-lock.json; then
+          if git diff --quiet -- scripts/public-artifact-versions.json static/public-artifact-compatibility-evidence.json static/quickstart-execution-contract.json static/compatibility-contract.json static/sdk-neutrality-contract.json scripts/workflow-sdk-neutrality-authority-lock.json; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
-            git diff -- scripts/public-artifact-versions.json static/quickstart-execution-contract.json static/compatibility-contract.json static/sdk-neutrality-contract.json scripts/workflow-sdk-neutrality-authority-lock.json
+            git diff -- scripts/public-artifact-versions.json static/public-artifact-compatibility-evidence.json static/quickstart-execution-contract.json static/compatibility-contract.json static/sdk-neutrality-contract.json scripts/workflow-sdk-neutrality-authority-lock.json
           fi
 
       - name: Verify candidate server protocol catalog
@@ -98,6 +98,8 @@ jobs:
           const childProcess = require('child_process');
           const fs = require('fs');
           const source = require('./scripts/public-artifact-versions.json');
+          const compatibilityEvidence =
+            require('./static/public-artifact-compatibility-evidence.json');
           const previousSource = JSON.parse(childProcess.execFileSync(
             'git',
             ['show', 'HEAD:scripts/public-artifact-versions.json'],
@@ -107,6 +109,7 @@ jobs:
           const refreshCommand = 'npm run refresh:public-artifact-versions';
           const refreshFiles = [
             'scripts/public-artifact-versions.json',
+            'static/public-artifact-compatibility-evidence.json',
             'static/quickstart-execution-contract.json',
             'static/compatibility-contract.json',
             'static/sdk-neutrality-contract.json',
@@ -140,6 +143,7 @@ jobs:
             changed_files: changedFiles,
             tuple_date: process.env.TUPLE_DATE,
             artifact_versions: source.artifacts,
+            compatibility_evidence: compatibilityEvidence,
             previous_artifact_versions: previousSource.artifacts,
             source_check: {
               repository,
@@ -178,6 +182,7 @@ jobs:
               ],
               acceptance: [
                 'The public docs release-audit JSON reports the current published artifact tuple.',
+                'Every selected SDK version is bound to the selected Server by exact passing compatibility evidence.',
                 'Stable 1.x remains the default public docs line.',
                 'The live release-audit JSON reports LEAK=0 and MIXED=0.',
                 'The refresh lands through the docs merge gate, not from a public release workflow.',

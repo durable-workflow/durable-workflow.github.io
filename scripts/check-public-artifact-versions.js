@@ -16,6 +16,12 @@ const {
   readArtifactVersions,
 } = require('./public-artifact-versions');
 const {
+  artifactCompatibilityEvidenceSource,
+  buildArtifactCompatibilityEvidence,
+  readArtifactCompatibilityEvidence,
+  releasePlanEvidenceUrl,
+} = require('./public-artifact-compatibility');
+const {
   PUBLISHED_ARTIFACT_SOURCES,
   PUBLIC_ARTIFACT_TUPLE_FILES,
   artifactVersionsSource,
@@ -27,6 +33,7 @@ const {
   quickstartExecutionContractSource,
   resolvePackagistVersion,
   resolvePublishedWorkflowAuthority,
+  selectLatestQualifiedArtifactTuple,
   selectLatestPublishedArtifactTuple,
   selectLatestCompleteCliRelease,
   selectLatestCratesIoVersion,
@@ -58,6 +65,20 @@ function artifactVersionsAt(version) {
   return readArtifactVersions(artifactVersionSourceAt(version));
 }
 
+function compatibilityEvidenceAt(versions) {
+  const evidence = JSON.parse(JSON.stringify(artifactCompatibilityEvidenceSource));
+  evidence.qualified_artifact_versions = {...versions};
+
+  for (const artifact of ['sdk-php', 'sdk-python', 'sdk-rust']) {
+    evidence.sdk_server_compatibility[artifact] = {
+      sdk_version: versions[artifact],
+      supported_server_versions: versions.server,
+    };
+  }
+
+  return evidence;
+}
+
 function expectFailure(label, mutate, expectedMessage) {
   const candidate = cloneSource();
   mutate(candidate);
@@ -70,6 +91,72 @@ function expectFailure(label, mutate, expectedMessage) {
 }
 
 assert.deepStrictEqual(readArtifactVersions(source), source.artifacts);
+assert.deepStrictEqual(
+  readArtifactCompatibilityEvidence(
+    artifactCompatibilityEvidenceSource,
+    source.artifacts,
+  ).artifactVersions,
+  source.artifacts,
+  'public compatibility evidence must bind the exact selected artifact tuple',
+);
+const releasePlanFixture = {
+  schema: 'durable-workflow.release-plan/v2',
+  plan: 'qualified-artifact-fixture',
+  channel: ARTIFACT_RELEASE_POLICY.release_phase,
+  beta_authorization: {
+    tag: 'beta-authorization/qualified-artifact-fixture',
+    commit: 'a'.repeat(40),
+  },
+  components: Object.fromEntries(Object.entries(source.artifacts).map(
+    ([artifact, version]) => [artifact, {version, commit: 'b'.repeat(40)}],
+  )),
+};
+const releasePlanFixtureSource = `${JSON.stringify(releasePlanFixture, null, 2)}\n`;
+const productTrainFixture = {
+  schema: 'durable-workflow.product-train/v2',
+  current: source.artifacts.server,
+  trains: {
+    [source.artifacts.server]: {
+      status: 'supported',
+      versions: source.artifacts,
+      release_plan: {
+        tag: `release-plan/${releasePlanFixture.plan}`,
+        sha256: sha256(releasePlanFixtureSource),
+      },
+    },
+  },
+};
+const productTrainFixtureSource = `${JSON.stringify(productTrainFixture, null, 2)}\n`;
+const builtCompatibilityEvidence = buildArtifactCompatibilityEvidence(
+  productTrainFixtureSource,
+  releasePlanFixtureSource,
+);
+assert.deepStrictEqual(
+  builtCompatibilityEvidence.qualified_artifact_versions,
+  source.artifacts,
+  'supported product-train and immutable release-plan records must normalize into tuple evidence',
+);
+assert.strictEqual(
+  builtCompatibilityEvidence.authority.release_plan.source_url,
+  releasePlanEvidenceUrl(`release-plan/${releasePlanFixture.plan}`),
+);
+assert.throws(
+  () => buildArtifactCompatibilityEvidence(
+    productTrainFixtureSource,
+    `${JSON.stringify({
+      ...releasePlanFixture,
+      components: {
+        ...releasePlanFixture.components,
+        'sdk-python': {
+          ...releasePlanFixture.components['sdk-python'],
+          version: '2.0.0-beta.17',
+        },
+      },
+    }, null, 2)}\n`,
+  ),
+  /does not match the product-train SHA-256/,
+  'modified release-plan bytes must not satisfy exact compatibility evidence',
+);
 assert.strictEqual(
   artifactVersionsSource(source.artifacts),
   `${JSON.stringify(source, null, 2)}\n`,
@@ -275,12 +362,14 @@ const successorWorkflowVersion = source.artifacts.workflow.replace(
 const successorVersions = Object.fromEntries(
   Object.keys(source.artifacts).map(artifact => [artifact, successorWorkflowVersion]),
 );
+const successorCompatibilityEvidence = compatibilityEvidenceAt(successorVersions);
 const currentWorkflowManifest = currentTupleSources['static/sdk-neutrality-contract.json'];
 const unchangedManifestTuple = generatedPublicArtifactTupleSources(
   currentTupleSources,
   successorVersions,
   '2026-07-14',
   currentWorkflowManifest,
+  successorCompatibilityEvidence,
 );
 const unchangedManifestFiles = changedPublicArtifactTupleFiles(
   currentTupleSources,
@@ -291,6 +380,7 @@ assert.deepStrictEqual(
   unchangedManifestFiles,
   [
     'scripts/public-artifact-versions.json',
+    'static/public-artifact-compatibility-evidence.json',
     'static/quickstart-execution-contract.json',
     'static/compatibility-contract.json',
     'scripts/workflow-sdk-neutrality-authority-lock.json',
@@ -314,6 +404,7 @@ const changedManifestTuple = generatedPublicArtifactTupleSources(
   successorVersions,
   '2026-07-14',
   changedWorkflowManifest,
+  successorCompatibilityEvidence,
 );
 assert.deepStrictEqual(
   changedPublicArtifactTupleFiles(currentTupleSources, changedManifestTuple),
@@ -561,6 +652,76 @@ assert.deepStrictEqual(
   selectLatestPublishedArtifactTuple(partialTrainCandidates, 'partial train fixture'),
   partialTrainVersions,
   'tuple selection must preserve independently published artifact versions',
+);
+const qualifiedBetaFive = compatibilityEvidenceAt(artifactVersionsAt('2.0.0-beta.5'));
+const unqualifiedSuccessorSelection = selectLatestQualifiedArtifactTuple(
+  completeTrainCandidates,
+  qualifiedBetaFive,
+  'unqualified successor fixture',
+);
+assert.deepStrictEqual(
+  unqualifiedSuccessorSelection.versions,
+  artifactVersionsAt('2.0.0-beta.5'),
+  'a newer independently published tuple must park at the exact qualified versions',
+);
+assert.deepStrictEqual(
+  unqualifiedSuccessorSelection.parkedArtifacts.map(entry => entry.artifact),
+  Object.keys(source.artifacts),
+  'every newer artifact without matching evidence must be reported as parked',
+);
+
+const newerServerAndSdkCandidates = JSON.parse(JSON.stringify(completeTrainCandidates));
+newerServerAndSdkCandidates.server = ['2.0.0-beta.5', '2.0.0-beta.7'];
+newerServerAndSdkCandidates['sdk-python'] = ['2.0.0b5', '2.0.0b7'];
+const newerServerAndSdkSelection = selectLatestQualifiedArtifactTuple(
+  newerServerAndSdkCandidates,
+  qualifiedBetaFive,
+  'newer Server and SDK without matching evidence',
+);
+assert.deepStrictEqual(
+  newerServerAndSdkSelection.versions,
+  artifactVersionsAt('2.0.0-beta.5'),
+  'a newer Server and SDK must not become public authority without exact compatibility evidence',
+);
+assert.deepStrictEqual(
+  newerServerAndSdkSelection.parkedArtifacts
+    .filter(entry => ['server', 'sdk-python'].includes(entry.artifact))
+    .map(entry => [entry.artifact, entry.latestPublishedVersion]),
+  [
+    ['sdk-python', '2.0.0-beta.7'],
+    ['server', '2.0.0-beta.7'],
+  ],
+  'the adversarial selection must identify the unqualified newer Server and SDK',
+);
+
+const independentlyQualifiedVersions = {
+  ...artifactVersionsAt('2.0.0-beta.6'),
+  'sdk-rust': '2.0.0-beta.5',
+};
+const independentlyQualifiedSelection = selectLatestQualifiedArtifactTuple(
+  partialTrainCandidates,
+  compatibilityEvidenceAt(independentlyQualifiedVersions),
+  'qualified independent release fixture',
+);
+assert.deepStrictEqual(
+  independentlyQualifiedSelection.versions,
+  independentlyQualifiedVersions,
+  'an independently versioned tuple must advance once exact compatibility evidence exists',
+);
+assert.deepStrictEqual(independentlyQualifiedSelection.parkedArtifacts, []);
+
+const unsupportedServerVersions = {
+  ...artifactVersionsAt('2.0.0-beta.5'),
+  server: '2.0.0-beta.6',
+};
+assert.throws(
+  () => compatibilityContractSource(
+    currentCompatibilityContract,
+    unsupportedServerVersions,
+    qualifiedBetaFive,
+  ),
+  /qualified_artifact_versions must exactly match the selected public artifact tuple/,
+  'compatibility claims must not be inferred from a newer Server tag without matching evidence',
 );
 assert.throws(
   () => selectLatestPublishedArtifactTuple({

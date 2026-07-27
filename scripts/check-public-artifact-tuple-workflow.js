@@ -97,6 +97,7 @@ for (const required of [
   "action: 'pipeline_ready_item'",
   "integration: 'pipeline'",
   'scripts/public-artifact-versions.json',
+  'static/public-artifact-compatibility-evidence.json',
   'static/quickstart-execution-contract.json',
   'static/compatibility-contract.json',
   'static/sdk-neutrality-contract.json',
@@ -251,6 +252,29 @@ const stableKeyHandoff = {
     waterline: '0.2.0',
   },
 };
+function compatibilityEvidence(versions) {
+  return {
+    schema: 'durable-workflow.docs.public-artifact-compatibility-evidence',
+    schema_version: 1,
+    outcome: 'pass',
+    qualified_artifact_versions: {...versions},
+    sdk_server_compatibility: Object.fromEntries(
+      ['sdk-php', 'sdk-python', 'sdk-rust'].map(artifact => [
+        artifact,
+        {
+          sdk_version: versions[artifact],
+          supported_server_versions: versions.server,
+        },
+      ]),
+    ),
+    authority: {
+      release_plan: {
+        tag: 'release-plan/qualified-fixture',
+        sha256: 'a'.repeat(64),
+      },
+    },
+  };
+}
 const nextRunSameTuple = {
   ...stableKeyHandoff,
   tuple_date: '2026-06-19',
@@ -297,6 +321,7 @@ const multiArtifactHandoff = {
   refresh_command: 'npm run refresh:public-artifact-versions',
   refresh_files: [
     'scripts/public-artifact-versions.json',
+    'static/public-artifact-compatibility-evidence.json',
     'static/quickstart-execution-contract.json',
     'static/compatibility-contract.json',
     'static/sdk-neutrality-contract.json',
@@ -304,6 +329,7 @@ const multiArtifactHandoff = {
   ],
   changed_files: [
     'scripts/public-artifact-versions.json',
+    'static/public-artifact-compatibility-evidence.json',
     'static/quickstart-execution-contract.json',
     'static/compatibility-contract.json',
     'static/sdk-neutrality-contract.json',
@@ -311,6 +337,7 @@ const multiArtifactHandoff = {
   ],
   tuple_date: stableKeyHandoff.tuple_date,
   artifact_versions: stableKeyHandoff.artifact_versions,
+  compatibility_evidence: compatibilityEvidence(stableKeyHandoff.artifact_versions),
   previous_artifact_versions: {
     cli: '0.1.99',
     'sdk-php': '0.1.0',
@@ -356,6 +383,7 @@ if (JSON.stringify(decodedFiles) !== JSON.stringify(multiArtifactHandoff.refresh
 }
 
 for (const authorityFile of [
+  'static/public-artifact-compatibility-evidence.json',
   'static/sdk-neutrality-contract.json',
   'scripts/workflow-sdk-neutrality-authority-lock.json',
 ]) {
@@ -363,6 +391,18 @@ for (const authorityFile of [
     fail(`public artifact tuple ready item must include generated Workflow authority file ${authorityFile}`);
   }
 }
+
+assert.throws(
+  () => buildReadyItemPayload({
+    ...multiArtifactHandoff,
+    compatibility_evidence: compatibilityEvidence({
+      ...multiArtifactHandoff.artifact_versions,
+      server: '0.2.999',
+    }),
+  }),
+  /must bind the exact selected artifact versions/,
+  'the tuple router must reject compatibility evidence for a different Server tuple',
+);
 
 const unchangedAuthorityBytesHandoff = {
   ...multiArtifactHandoff,
