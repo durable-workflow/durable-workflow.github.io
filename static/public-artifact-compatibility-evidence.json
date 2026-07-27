@@ -105,7 +105,7 @@
       "schema": "durable-workflow.product-train/v2",
       "current": "2.0.0-beta.21",
       "source_url": "https://raw.githubusercontent.com/durable-workflow/.github/main/product-train/current.json",
-      "sha256": "7e85fee13269cf59e2622910e006aa2cf2816613daa07cc3007a476d25407cc3"
+      "sha256": "c8dde5340c9832bba0034371a5ebdb29f3bfac9dd4a4e6f988627a92399a690a"
     },
     "release_plan": {
       "schema": "durable-workflow.release-plan/v2",
@@ -120,7 +120,7 @@
     "sdk_server_qualification": {
       "schema": "durable-workflow.sdk-server-qualification/v1",
       "source_url": "https://raw.githubusercontent.com/durable-workflow/.github/main/product-train/sdk-server-qualification.json",
-      "sha256": "510f9766ab51909623c09f6c8fbaea5e85185540ef5989eadd1d97575c014a93",
+      "sha256": "ecf06bf5db837a97b5ff24b9f20fb6ea897be5304eadf29b2a83dd975c273897",
       "evidence": {
         "schema": "durable-workflow.beta-conformance.suite-result/v2",
         "tag": "beta-conformance/beta-coherent-2-0-beta-21/30290165822.1",
