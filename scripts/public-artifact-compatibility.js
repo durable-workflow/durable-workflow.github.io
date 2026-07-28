@@ -3,9 +3,9 @@ const crypto = require('crypto');
 const artifactCompatibilityEvidenceSource =
   require('../static/public-artifact-compatibility-evidence.json');
 const {
-  ARTIFACT_RELEASE_POLICY,
   ARTIFACT_VERSION_SCHEMA,
   REQUIRED_ARTIFACTS,
+  productTrainVersionDetails,
   readArtifactVersions,
 } = require('./public-artifact-versions');
 
@@ -202,10 +202,18 @@ function buildArtifactCompatibilityEvidence(
       `release-plan compatibility evidence schema must be ${RELEASE_PLAN_SCHEMA}`,
     );
   }
-  if (releasePlan.channel !== ARTIFACT_RELEASE_POLICY.release_phase) {
+  const qualifiedArtifactChannels = new Set(
+    REQUIRED_ARTIFACTS.map(
+      artifact => productTrainVersionDetails(productTrain.versions[artifact]).channel,
+    ),
+  );
+  if (
+    qualifiedArtifactChannels.size !== 1
+    || !qualifiedArtifactChannels.has(releasePlan.channel)
+  ) {
     throw new Error(
-      `release-plan compatibility evidence channel must be ` +
-        `${ARTIFACT_RELEASE_POLICY.release_phase}`,
+      'release-plan compatibility evidence channel must match the qualified ' +
+        `artifact tuple channel ${[...qualifiedArtifactChannels].join(', ')}`,
     );
   }
   if (`release-plan/${releasePlan.plan}` !== productTrain.releasePlan.tag) {

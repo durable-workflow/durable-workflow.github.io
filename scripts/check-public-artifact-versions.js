@@ -11,6 +11,7 @@ const {
   buildArtifactPinPatterns,
   buildArtifactPins,
   isAuthorizedProductTrainVersion,
+  productTrainVersionDetails,
   pypiRegistryVersion,
   readArtifactReleasePolicy,
   readArtifactVersions,
@@ -102,7 +103,7 @@ assert.deepStrictEqual(
 const releasePlanFixture = {
   schema: 'durable-workflow.release-plan/v2',
   plan: 'qualified-artifact-fixture',
-  channel: ARTIFACT_RELEASE_POLICY.release_phase,
+  channel: productTrainVersionDetails(source.artifacts.server).channel,
   beta_authorization: {
     tag: 'beta-authorization/qualified-artifact-fixture',
     commit: 'a'.repeat(40),
@@ -268,6 +269,26 @@ assert.deepStrictEqual(
 assert.strictEqual(
   builtCompatibilityEvidence.authority.release_plan.source_url,
   releasePlanEvidenceUrl(`release-plan/${releasePlanFixture.plan}`),
+);
+const mismatchedReleasePlanFixtureSource = `${JSON.stringify({
+  ...releasePlanFixture,
+  channel: releasePlanFixture.channel === 'beta' ? 'rc' : 'beta',
+}, null, 2)}\n`;
+const mismatchedProductTrainFixture = JSON.parse(
+  JSON.stringify(productTrainFixture),
+);
+mismatchedProductTrainFixture.trains[
+  source.artifacts.server
+].release_plan.sha256 = sha256(mismatchedReleasePlanFixtureSource);
+assert.throws(
+  () => buildArtifactCompatibilityEvidence(
+    `${JSON.stringify(mismatchedProductTrainFixture, null, 2)}\n`,
+    mismatchedReleasePlanFixtureSource,
+    sdkServerQualificationFixtureSource,
+    conformanceSuiteFixtureSource,
+  ),
+  /channel must match the qualified artifact tuple channel/,
+  'release plans must identify the channel of the qualified artifact tuple',
 );
 assert.throws(
   () => buildArtifactCompatibilityEvidence(
