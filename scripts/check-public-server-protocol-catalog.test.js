@@ -31,22 +31,22 @@ assert.strictEqual(passing.capability_records, 16);
 assert.strictEqual(passing.expected_workflow_package_ref, expectedWorkflowRef);
 assert.deepStrictEqual(passing.package_provenance, provenance);
 
-const releaseCandidateProvenance = {
+const stableProvenance = {
   ...provenance,
-  ref: '2.0.0-rc.4',
+  ref: '2.0.0',
 };
 assert.throws(
   () => verifySnapshots(
     catalog,
-    discovery(catalog, releaseCandidateProvenance),
-    releaseCandidateProvenance.ref,
+    discovery(catalog, stableProvenance),
+    stableProvenance.ref,
   ),
   error => error instanceof CatalogConformanceError
     && error.findings.some(finding => (
       finding.kind === 'workflow_package_version_invalid'
-        && finding.actual === releaseCandidateProvenance.ref
+        && finding.actual === stableProvenance.ref
     )),
-  'release-candidate Workflow provenance must wait for release-phase authorization',
+  'stable Workflow provenance must wait for release-phase authorization',
 );
 
 const staleCatalog = JSON.parse(JSON.stringify(catalog));

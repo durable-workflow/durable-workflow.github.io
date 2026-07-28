@@ -62,7 +62,7 @@ assert.strictEqual(
 );
 assert.strictEqual(
   ARTIFACT_PINS.releasePhase,
-  'beta',
+  'rc',
   'channel-specific documentation tokens must derive from the release-phase authority',
 );
 
