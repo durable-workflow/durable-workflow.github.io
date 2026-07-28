@@ -5,6 +5,7 @@ const artifactCompatibilityEvidenceSource =
 const {
   ARTIFACT_VERSION_SCHEMA,
   REQUIRED_ARTIFACTS,
+  pypiRegistryVersion,
   productTrainVersionDetails,
   readArtifactVersions,
 } = require('./public-artifact-versions');
@@ -93,6 +94,39 @@ function frozenDistributionIdentity(identity) {
       artifact => Object.freeze({...artifact}),
     )),
   });
+}
+
+function authorizedDistributionIdentity(artifact, versions) {
+  const identities = {
+    'sdk-php': {
+      kind: 'composer',
+      locator: `composer:durable-workflow/sdk@${versions['sdk-php']}`,
+    },
+    'sdk-python': {
+      kind: 'pypi',
+      locator: `pypi:durable-workflow@${pypiRegistryVersion(versions['sdk-python'])}`,
+    },
+    'sdk-rust': {
+      kind: 'crates.io',
+      locator: `crates.io:durable-workflow@${versions['sdk-rust']}`,
+    },
+    server: {
+      kind: 'oci',
+      locator: `oci:docker.io/durableworkflow/server@${versions.server}`,
+    },
+  };
+
+  return identities[artifact];
+}
+
+function matchesAuthorizedDistributionIdentity(actual, expected) {
+  return Boolean(
+    actual
+    && expected
+    && Object.keys(actual).length === 2
+    && actual.kind === expected.kind
+    && actual.locator === expected.locator,
+  );
 }
 
 function readQualifiedProductTrain(source, sourceUrl = PRODUCT_TRAIN_AUTHORITY_URL) {
@@ -492,11 +526,14 @@ function readArtifactCompatibilityEvidence(
         'artifact compatibility-evidence schema',
     );
   }
-  if (source.schema_version !== 2) {
-    throw new Error('public-artifact-compatibility-evidence.json schema_version must be 2');
+  if (![2, 3].includes(source.schema_version)) {
+    throw new Error('public-artifact-compatibility-evidence.json schema_version must be 2 or 3');
   }
-  if (source.outcome !== 'pass') {
-    throw new Error('public-artifact-compatibility-evidence.json outcome must be pass');
+  const expectedOutcome = source.schema_version === 3 ? 'authorized' : 'pass';
+  if (source.outcome !== expectedOutcome) {
+    throw new Error(
+      `public-artifact-compatibility-evidence.json outcome must be ${expectedOutcome}`,
+    );
   }
 
   const versions = readArtifactVersions({
@@ -524,6 +561,136 @@ function readArtifactCompatibilityEvidence(
     'public-artifact-compatibility-evidence.json sdk_server_compatibility',
   );
   const sdkServerCompatibility = {};
+  const productTrain = source.authority?.product_train;
+  const releasePlan = source.authority?.release_plan;
+
+  if (
+    !releasePlan
+    || releasePlan.schema !== RELEASE_PLAN_SCHEMA
+    || typeof releasePlan.tag !== 'string'
+    || !/^release-plan\/[a-z0-9][a-z0-9-]{2,79}$/.test(releasePlan.tag)
+    || releasePlan.source_url !== releasePlanEvidenceUrl(releasePlan.tag)
+    || typeof releasePlan.sha256 !== 'string'
+    || !/^[0-9a-f]{64}$/.test(releasePlan.sha256)
+    || !releasePlan.beta_authorization
+    || typeof releasePlan.beta_authorization.tag !== 'string'
+    || typeof releasePlan.beta_authorization.commit !== 'string'
+    || !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(releasePlan.beta_authorization.commit)
+  ) {
+    throw new Error(
+      'public-artifact-compatibility-evidence.json must bind the immutable release plan ' +
+        'and beta authorization',
+    );
+  }
+
+  if (source.schema_version === 3) {
+    const channels = new Set(
+      REQUIRED_ARTIFACTS.map(artifact => productTrainVersionDetails(versions[artifact]).channel),
+    );
+    if (
+      channels.size !== 1
+      || releasePlan.channel !== [...channels][0]
+    ) {
+      throw new Error(
+        'release-plan-authorized compatibility evidence must select one matching prerelease channel',
+      );
+    }
+    assertExactKeys(
+      releasePlan.components,
+      REQUIRED_ARTIFACTS,
+      'public-artifact-compatibility-evidence.json release-plan components',
+    );
+    for (const artifact of REQUIRED_ARTIFACTS) {
+      const component = releasePlan.components[artifact];
+      if (
+        !matchesArtifactIdentity(component, {
+          version: versions[artifact],
+          commit: component?.commit,
+        })
+        || !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(component?.commit)
+      ) {
+        throw new Error(
+          `public-artifact-compatibility-evidence.json release-plan component ${artifact} ` +
+            `must bind ${versions[artifact]} to a full source commit`,
+        );
+      }
+    }
+    const releasePlanPayload = {
+      beta_authorization: {
+        commit: releasePlan.beta_authorization.commit,
+        tag: releasePlan.beta_authorization.tag,
+      },
+      channel: releasePlan.channel,
+      components: Object.fromEntries(REQUIRED_ARTIFACTS.map(artifact => [
+        artifact,
+        {
+          commit: releasePlan.components[artifact].commit,
+          version: releasePlan.components[artifact].version,
+        },
+      ])),
+      foundation: {
+        commit: releasePlan.foundation?.commit,
+        tag: releasePlan.foundation?.tag,
+      },
+      plan: releasePlan.plan,
+      schema: releasePlan.schema,
+    };
+    if (
+      releasePlan.tag !== `release-plan/${releasePlan.plan}`
+      || !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(releasePlan.foundation?.commit)
+      || typeof releasePlan.foundation?.tag !== 'string'
+      || sha256(`${JSON.stringify(releasePlanPayload, null, 2)}\n`) !== releasePlan.sha256
+    ) {
+      throw new Error(
+        'release-plan-authorized compatibility evidence must embed the exact immutable plan',
+      );
+    }
+
+    for (const artifact of REQUIRED_SDK_ARTIFACTS) {
+      const qualification = source.sdk_server_compatibility[artifact];
+      if (
+        !qualification
+        || qualification.sdk_version !== versions[artifact]
+        || qualification.sdk_source_commit !== releasePlan.components[artifact].commit
+        || !matchesAuthorizedDistributionIdentity(
+          qualification.sdk_distribution,
+          authorizedDistributionIdentity(artifact, versions),
+        )
+        || qualification.server_version !== versions.server
+        || qualification.server_source_commit !== releasePlan.components.server.commit
+        || !matchesAuthorizedDistributionIdentity(
+          qualification.server_distribution,
+          authorizedDistributionIdentity('server', versions),
+        )
+        || qualification.supported_server_versions !== versions.server
+        || qualification.outcome !== 'authorized'
+        || qualification.evidence_source !== releasePlan.source_url
+      ) {
+        throw new Error(
+          `public-artifact-compatibility-evidence.json ${artifact} must bind SDK ` +
+            `${versions[artifact]} to release-plan-authorized Server ${versions.server}`,
+        );
+      }
+      sdkServerCompatibility[artifact] = Object.freeze({...qualification});
+    }
+
+    return Object.freeze({
+      artifactVersions: versions,
+      authority: Object.freeze({
+        releasePlan: Object.freeze({
+          ...releasePlan,
+          beta_authorization: Object.freeze({...releasePlan.beta_authorization}),
+          components: Object.freeze(Object.fromEntries(
+            Object.entries(releasePlan.components).map(
+              ([artifact, identity]) => [artifact, Object.freeze({...identity})],
+            ),
+          )),
+        }),
+      }),
+      sdkServerCompatibility: Object.freeze(sdkServerCompatibility),
+    });
+  }
+
   const qualificationAuthority = source.authority?.sdk_server_qualification;
   const conformanceEvidence = qualificationAuthority?.evidence;
   const expectedEvidenceUrl = [
@@ -595,8 +762,6 @@ function readArtifactCompatibilityEvidence(
     sdkServerCompatibility[artifact] = Object.freeze({...qualification});
   }
 
-  const productTrain = source.authority?.product_train;
-  const releasePlan = source.authority?.release_plan;
   if (
     !productTrain
     || productTrain.schema !== PRODUCT_TRAIN_SCHEMA
@@ -609,25 +774,6 @@ function readArtifactCompatibilityEvidence(
       'public-artifact-compatibility-evidence.json must bind the product-train authority',
     );
   }
-  if (
-    !releasePlan
-    || releasePlan.schema !== RELEASE_PLAN_SCHEMA
-    || typeof releasePlan.tag !== 'string'
-    || !/^release-plan\/[a-z0-9][a-z0-9-]{2,79}$/.test(releasePlan.tag)
-    || typeof releasePlan.source_url !== 'string'
-    || typeof releasePlan.sha256 !== 'string'
-    || !/^[0-9a-f]{64}$/.test(releasePlan.sha256)
-    || !releasePlan.beta_authorization
-    || typeof releasePlan.beta_authorization.tag !== 'string'
-    || typeof releasePlan.beta_authorization.commit !== 'string'
-    || !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(releasePlan.beta_authorization.commit)
-  ) {
-    throw new Error(
-      'public-artifact-compatibility-evidence.json must bind the immutable release plan ' +
-        'and beta authorization',
-    );
-  }
-
   return Object.freeze({
     artifactVersions: versions,
     authority: Object.freeze({

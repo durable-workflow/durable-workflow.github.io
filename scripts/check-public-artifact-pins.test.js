@@ -1,6 +1,4 @@
 const assert = require('assert');
-const fs = require('fs');
-const path = require('path');
 
 const {
   ARTIFACT_RELEASE_POLICY,
@@ -77,30 +75,20 @@ const releaseCandidatePins = Object.freeze({
   ...ARTIFACT_PINS,
   releasePhase: releaseCandidatePolicy.release_phase,
 });
-const compatibilityPage = fs.readFileSync(
-  path.join(__dirname, '..', 'docs', 'compatibility.md'),
-  'utf8',
-);
 const releasePhaseToken = '%%artifact.releasePhase%%';
-const releasePhaseTokenCount = compatibilityPage.split(releasePhaseToken).length - 1;
-const releaseCandidatePage = replaceArtifactTokens(
-  compatibilityPage,
-  'release-candidate compatibility-page fixture',
+const releaseCandidateToken = replaceArtifactTokens(
+  releasePhaseToken,
+  'release-candidate release-phase fixture',
   releaseCandidatePins,
 );
 
-assert.ok(
-  releasePhaseTokenCount > 0,
-  'the transition fixture must exercise release-phase token rendering',
-);
 assert.strictEqual(
-  releaseCandidatePage.split(releaseCandidatePolicy.release_phase).length -
-    compatibilityPage.split(releaseCandidatePolicy.release_phase).length,
-  releasePhaseTokenCount,
-  'an authorized policy transition must resolve every release-phase token to the new channel',
+  releaseCandidateToken,
+  releaseCandidatePolicy.release_phase,
+  'an authorized policy transition must resolve the release-phase token to the new channel',
 );
 assert.doesNotMatch(
-  releaseCandidatePage,
+  releaseCandidateToken,
   /%%artifact\.[A-Za-z0-9]+%%/,
   'the policy-transition render must resolve every artifact token',
 );

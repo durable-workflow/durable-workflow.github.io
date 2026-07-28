@@ -1,138 +1,114 @@
 {
   "schema": "durable-workflow.docs.public-artifact-compatibility-evidence",
-  "schema_version": 2,
-  "outcome": "pass",
+  "schema_version": 3,
+  "outcome": "authorized",
   "qualified_artifact_versions": {
-    "cli": "2.0.0-beta.21",
-    "sdk-php": "2.0.0-beta.21",
-    "sdk-python": "2.0.0-beta.21",
-    "sdk-rust": "2.0.0-beta.21",
-    "server": "2.0.0-beta.21",
-    "waterline": "2.0.0-beta.21",
-    "workflow": "2.0.0-beta.21"
+    "cli": "2.0.0-rc.1",
+    "sdk-php": "2.0.0-rc.1",
+    "sdk-python": "2.0.0-rc.1",
+    "sdk-rust": "2.0.0-rc.1",
+    "server": "2.0.0-rc.2",
+    "waterline": "2.0.0-rc.1",
+    "workflow": "2.0.0-rc.1"
   },
   "sdk_server_compatibility": {
     "sdk-php": {
-      "sdk_version": "2.0.0-beta.21",
-      "sdk_source_commit": "a53acb5b3d0faeae30cbf43d3a6f3f8099f495d6",
+      "sdk_version": "2.0.0-rc.1",
+      "sdk_source_commit": "5136659df919f80bcac788f7148135fdb373ebbd",
       "sdk_distribution": {
         "kind": "composer",
-        "locator": "composer:durable-workflow/sdk@2.0.0-beta.21",
-        "artifacts": [
-          {
-            "name": "durable-workflow/sdk",
-            "sha256": "f5bb4599d33164eba34fb4310af6ff9ebbb45848ebaad57ef9d93beeba6b74b9"
-          }
-        ]
+        "locator": "composer:durable-workflow/sdk@2.0.0-rc.1"
       },
-      "server_version": "2.0.0-beta.21",
-      "server_source_commit": "a6eb4bcf1b4758c43c55853354da557626c7d203",
+      "server_version": "2.0.0-rc.2",
+      "server_source_commit": "2627e13c0a9c52572b6732f9696f5f78681eca7b",
       "server_distribution": {
         "kind": "oci",
-        "locator": "oci:docker.io/durableworkflow/server@2.0.0-beta.21",
-        "artifacts": [
-          {
-            "name": "manifest",
-            "sha256": "563a19d1f241225586b3d62b09d03566acbdf28def95e42a9366eac036f070ff"
-          }
-        ]
+        "locator": "oci:docker.io/durableworkflow/server@2.0.0-rc.2"
       },
-      "supported_server_versions": "2.0.0-beta.21",
-      "outcome": "pass",
-      "evidence_source": "https://github.com/durable-workflow/.github/releases/download/beta-conformance/beta-coherent-2-0-beta-21/30290165822.1/suite-result.json"
+      "supported_server_versions": "2.0.0-rc.2",
+      "outcome": "authorized",
+      "evidence_source": "https://github.com/durable-workflow/.github/releases/download/release-plan%2Fcoherent-2-0-rc-1/release-plan.json"
     },
     "sdk-python": {
-      "sdk_version": "2.0.0-beta.21",
-      "sdk_source_commit": "cf64edae927b3fd139c5b60ec18ee5bfff826314",
+      "sdk_version": "2.0.0-rc.1",
+      "sdk_source_commit": "e8f21a0a886d055f662a1c893467d1edd0b50b1c",
       "sdk_distribution": {
         "kind": "pypi",
-        "locator": "pypi:durable-workflow@2.0.0b21",
-        "artifacts": [
-          {
-            "name": "durable_workflow-2.0.0b21-py3-none-any.whl",
-            "sha256": "c09c4b68a19782705fd46effd35767d033f15c480f7bbf054fe0c3636e09f53e"
-          }
-        ]
+        "locator": "pypi:durable-workflow@2.0.0rc1"
       },
-      "server_version": "2.0.0-beta.21",
-      "server_source_commit": "a6eb4bcf1b4758c43c55853354da557626c7d203",
+      "server_version": "2.0.0-rc.2",
+      "server_source_commit": "2627e13c0a9c52572b6732f9696f5f78681eca7b",
       "server_distribution": {
         "kind": "oci",
-        "locator": "oci:docker.io/durableworkflow/server@2.0.0-beta.21",
-        "artifacts": [
-          {
-            "name": "manifest",
-            "sha256": "563a19d1f241225586b3d62b09d03566acbdf28def95e42a9366eac036f070ff"
-          }
-        ]
+        "locator": "oci:docker.io/durableworkflow/server@2.0.0-rc.2"
       },
-      "supported_server_versions": "2.0.0-beta.21",
-      "outcome": "pass",
-      "evidence_source": "https://github.com/durable-workflow/.github/releases/download/beta-conformance/beta-coherent-2-0-beta-21/30290165822.1/suite-result.json"
+      "supported_server_versions": "2.0.0-rc.2",
+      "outcome": "authorized",
+      "evidence_source": "https://github.com/durable-workflow/.github/releases/download/release-plan%2Fcoherent-2-0-rc-1/release-plan.json"
     },
     "sdk-rust": {
-      "sdk_version": "2.0.0-beta.21",
-      "sdk_source_commit": "bb10d33ceff6e885414ff503f0a8f0171ccacd39",
+      "sdk_version": "2.0.0-rc.1",
+      "sdk_source_commit": "0c69fed9a17e50c041e27d427d6dd043c014df84",
       "sdk_distribution": {
         "kind": "crates.io",
-        "locator": "crates.io:durable-workflow@2.0.0-beta.21",
-        "artifacts": [
-          {
-            "name": "durable-workflow-2.0.0-beta.21.crate",
-            "sha256": "aa156e2c6c09b62a06e3d609ea3c97b5afccb6f47b191ce8d9e9f448520eabd9"
-          }
-        ]
+        "locator": "crates.io:durable-workflow@2.0.0-rc.1"
       },
-      "server_version": "2.0.0-beta.21",
-      "server_source_commit": "a6eb4bcf1b4758c43c55853354da557626c7d203",
+      "server_version": "2.0.0-rc.2",
+      "server_source_commit": "2627e13c0a9c52572b6732f9696f5f78681eca7b",
       "server_distribution": {
         "kind": "oci",
-        "locator": "oci:docker.io/durableworkflow/server@2.0.0-beta.21",
-        "artifacts": [
-          {
-            "name": "manifest",
-            "sha256": "563a19d1f241225586b3d62b09d03566acbdf28def95e42a9366eac036f070ff"
-          }
-        ]
+        "locator": "oci:docker.io/durableworkflow/server@2.0.0-rc.2"
       },
-      "supported_server_versions": "2.0.0-beta.21",
-      "outcome": "pass",
-      "evidence_source": "https://github.com/durable-workflow/.github/releases/download/beta-conformance/beta-coherent-2-0-beta-21/30290165822.1/suite-result.json"
+      "supported_server_versions": "2.0.0-rc.2",
+      "outcome": "authorized",
+      "evidence_source": "https://github.com/durable-workflow/.github/releases/download/release-plan%2Fcoherent-2-0-rc-1/release-plan.json"
     }
   },
   "authority": {
-    "product_train": {
-      "schema": "durable-workflow.product-train/v2",
-      "current": "2.0.0-beta.21",
-      "source_url": "https://raw.githubusercontent.com/durable-workflow/.github/main/product-train/current.json",
-      "sha256": "c8dde5340c9832bba0034371a5ebdb29f3bfac9dd4a4e6f988627a92399a690a"
-    },
     "release_plan": {
       "schema": "durable-workflow.release-plan/v2",
-      "tag": "release-plan/coherent-2-0-beta-21",
-      "source_url": "https://github.com/durable-workflow/.github/releases/download/release-plan%2Fcoherent-2-0-beta-21/release-plan.json",
-      "sha256": "332b61c8f6921fe5c0f6a64bc5aca5621db6d562449fde05af885449410d4f76",
+      "tag": "release-plan/coherent-2-0-rc-1",
+      "source_url": "https://github.com/durable-workflow/.github/releases/download/release-plan%2Fcoherent-2-0-rc-1/release-plan.json",
+      "sha256": "4c898828b74ee4b4339f4f91dc08e9b2ac4acf886b8a5eefce1993184048d78f",
+      "plan": "coherent-2-0-rc-1",
+      "channel": "rc",
+      "components": {
+        "cli": {
+          "version": "2.0.0-rc.1",
+          "commit": "f06ed54d3adefa686d8b5575c989268fc15f8529"
+        },
+        "sdk-php": {
+          "version": "2.0.0-rc.1",
+          "commit": "5136659df919f80bcac788f7148135fdb373ebbd"
+        },
+        "sdk-python": {
+          "version": "2.0.0-rc.1",
+          "commit": "e8f21a0a886d055f662a1c893467d1edd0b50b1c"
+        },
+        "sdk-rust": {
+          "version": "2.0.0-rc.1",
+          "commit": "0c69fed9a17e50c041e27d427d6dd043c014df84"
+        },
+        "server": {
+          "version": "2.0.0-rc.2",
+          "commit": "2627e13c0a9c52572b6732f9696f5f78681eca7b"
+        },
+        "waterline": {
+          "version": "2.0.0-rc.1",
+          "commit": "16c2fde277c19199ac3465fa79555aab97cd4115"
+        },
+        "workflow": {
+          "version": "2.0.0-rc.1",
+          "commit": "864cd6f2e11a60ddbd221548019df8ef0cd8f812"
+        }
+      },
+      "foundation": {
+        "commit": "4995052410bd4301c5796ffba54e0b6d2f490ed1",
+        "tag": "beta-candidate/beta-continuity-foundation"
+      },
       "beta_authorization": {
         "commit": "73985d0c906d96e6edce6915ebe8000bbc19896e",
         "tag": "beta-authorization/coherent-2-0-beta-21"
-      }
-    },
-    "sdk_server_qualification": {
-      "schema": "durable-workflow.sdk-server-qualification/v1",
-      "source_url": "https://raw.githubusercontent.com/durable-workflow/.github/main/product-train/sdk-server-qualification.json",
-      "sha256": "ecf06bf5db837a97b5ff24b9f20fb6ea897be5304eadf29b2a83dd975c273897",
-      "evidence": {
-        "schema": "durable-workflow.beta-conformance.suite-result/v2",
-        "tag": "beta-conformance/beta-coherent-2-0-beta-21/30290165822.1",
-        "source_url": "https://github.com/durable-workflow/.github/releases/download/beta-conformance/beta-coherent-2-0-beta-21/30290165822.1/suite-result.json",
-        "sha256": "153de1d7d4f4a13a80761c1887b77232dccdfffb34fdf0b1c6ca0f0f00bd9e65",
-        "outcome": "pass",
-        "github_run": {
-          "repository": "durable-workflow/.github",
-          "run_id": 30290165822,
-          "run_attempt": 1,
-          "evidence_tag": "beta-conformance/beta-coherent-2-0-beta-21/30290165822.1"
-        }
       }
     }
   }

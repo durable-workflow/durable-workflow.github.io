@@ -35,6 +35,7 @@ const {
   resolvePackagistVersion,
   resolvePublishedArtifactCompatibilityEvidence,
   resolvePublishedWorkflowAuthority,
+  selectPreferredCompatibilityEvidence,
   selectLatestQualifiedArtifactTuple,
   selectLatestPublishedArtifactTuple,
   selectLatestCompleteCliRelease,
@@ -70,12 +71,39 @@ function artifactVersionsAt(version) {
 function compatibilityEvidenceAt(versions) {
   const evidence = JSON.parse(JSON.stringify(artifactCompatibilityEvidenceSource));
   evidence.qualified_artifact_versions = {...versions};
+  const releasePlan = evidence.authority.release_plan;
+  releasePlan.channel = productTrainVersionDetails(versions.server).channel;
+
+  for (const artifact of Object.keys(versions)) {
+    releasePlan.components[artifact].version = versions[artifact];
+  }
 
   for (const artifact of ['sdk-php', 'sdk-python', 'sdk-rust']) {
-    evidence.sdk_server_compatibility[artifact].sdk_version = versions[artifact];
-    evidence.sdk_server_compatibility[artifact].server_version = versions.server;
-    evidence.sdk_server_compatibility[artifact].supported_server_versions = versions.server;
+    const compatibility = evidence.sdk_server_compatibility[artifact];
+    compatibility.sdk_version = versions[artifact];
+    compatibility.sdk_distribution.locator = {
+      'sdk-php': `composer:durable-workflow/sdk@${versions['sdk-php']}`,
+      'sdk-python': `pypi:durable-workflow@${pypiRegistryVersion(versions['sdk-python'])}`,
+      'sdk-rust': `crates.io:durable-workflow@${versions['sdk-rust']}`,
+    }[artifact];
+    compatibility.server_version = versions.server;
+    compatibility.server_distribution.locator =
+      `oci:docker.io/durableworkflow/server@${versions.server}`;
+    compatibility.supported_server_versions = versions.server;
   }
+  releasePlan.sha256 = sha256(`${JSON.stringify({
+    beta_authorization: releasePlan.beta_authorization,
+    channel: releasePlan.channel,
+    components: Object.fromEntries(Object.entries(releasePlan.components).map(
+      ([artifact, component]) => [
+        artifact,
+        {commit: component.commit, version: component.version},
+      ],
+    )),
+    foundation: releasePlan.foundation,
+    plan: releasePlan.plan,
+    schema: releasePlan.schema,
+  }, null, 2)}\n`);
 
   return evidence;
 }
@@ -99,6 +127,67 @@ assert.deepStrictEqual(
   ).artifactVersions,
   source.artifacts,
   'public compatibility evidence must bind the exact selected artifact tuple',
+);
+const mismatchedAuthorizedComponent = JSON.parse(
+  JSON.stringify(artifactCompatibilityEvidenceSource),
+);
+mismatchedAuthorizedComponent.authority.release_plan.components.server.version =
+  source.artifacts.workflow;
+assert.throws(
+  () => readArtifactCompatibilityEvidence(
+    mismatchedAuthorizedComponent,
+    source.artifacts,
+  ),
+  /release-plan component server must bind/,
+  'release-plan-authorized evidence must reject a mismatched component identity',
+);
+const mismatchedAuthorizedLocator = JSON.parse(
+  JSON.stringify(artifactCompatibilityEvidenceSource),
+);
+mismatchedAuthorizedLocator.sdk_server_compatibility['sdk-python']
+  .sdk_distribution.locator = 'pypi:durable-workflow@2.0.0b21';
+assert.throws(
+  () => readArtifactCompatibilityEvidence(
+    mismatchedAuthorizedLocator,
+    source.artifacts,
+  ),
+  /sdk-python must bind SDK/,
+  'release-plan-authorized evidence must reject a stale distribution locator',
+);
+const predecessorCompatibilityEvidence = compatibilityEvidenceAt(
+  artifactVersionsAt('2.0.0-beta.21'),
+);
+assert.strictEqual(
+  selectPreferredCompatibilityEvidence(
+    predecessorCompatibilityEvidence,
+    artifactCompatibilityEvidenceSource,
+  ),
+  artifactCompatibilityEvidenceSource,
+  'an immutable retained release plan must not regress to an older mutable train pointer',
+);
+const successorCompatibilityEvidence = compatibilityEvidenceAt(
+  artifactVersionsAt('2.0.0-rc.3'),
+);
+assert.strictEqual(
+  selectPreferredCompatibilityEvidence(
+    successorCompatibilityEvidence,
+    artifactCompatibilityEvidenceSource,
+  ),
+  successorCompatibilityEvidence,
+  'a newer coherent published authority must supersede retained release-plan evidence',
+);
+const incomparableCompatibilityEvidence = compatibilityEvidenceAt({
+  ...source.artifacts,
+  cli: '2.0.0-rc.2',
+  server: '2.0.0-rc.1',
+});
+assert.throws(
+  () => selectPreferredCompatibilityEvidence(
+    incomparableCompatibilityEvidence,
+    artifactCompatibilityEvidenceSource,
+  ),
+  /select incomparable artifact tuples/,
+  'mixed compatibility authorities must fail closed',
 );
 const releasePlanFixture = {
   schema: 'durable-workflow.release-plan/v2',
@@ -526,11 +615,13 @@ assert.strictEqual(currentArtifactPins.cliVersion, source.artifacts.cli);
 assert.strictEqual(currentArtifactPins.phpSdkVersion, source.artifacts['sdk-php']);
 assert.strictEqual(
   currentArtifactPins.phpSdkComposerPackage,
-  `durable-workflow/sdk:${source.artifacts['sdk-php']}@beta`,
+  `durable-workflow/sdk:${source.artifacts['sdk-php']}@` +
+    productTrainVersionDetails(source.artifacts['sdk-php']).channel,
 );
 assert.strictEqual(
   currentArtifactPins.phpSdkComposerInstallCommand,
-  `composer require durable-workflow/sdk:${source.artifacts['sdk-php']}@beta`,
+  `composer require durable-workflow/sdk:${source.artifacts['sdk-php']}@` +
+    productTrainVersionDetails(source.artifacts['sdk-php']).channel,
 );
 assert.strictEqual(currentArtifactPins.pythonSdkVersion, source.artifacts['sdk-python']);
 assert.strictEqual(currentArtifactPins.rustSdkVersion, source.artifacts['sdk-rust']);
@@ -656,18 +747,21 @@ assert.deepStrictEqual(
   [],
   'a current artifact tuple must produce no generated file changes',
 );
-const successorWorkflowVersion = '2.0.0-rc.1';
+const successorWorkflowVersion = source.artifacts.workflow.replace(
+  /(\d+)$/,
+  sequence => String(Number(sequence) + 1),
+);
 const successorVersions = Object.fromEntries(
   Object.keys(source.artifacts).map(artifact => [artifact, successorWorkflowVersion]),
 );
-const successorCompatibilityEvidence = compatibilityEvidenceAt(successorVersions);
+const successorWorkflowCompatibilityEvidence = compatibilityEvidenceAt(successorVersions);
 const currentWorkflowManifest = currentTupleSources['static/sdk-neutrality-contract.json'];
 const unchangedManifestTuple = generatedPublicArtifactTupleSources(
   currentTupleSources,
   successorVersions,
   '2026-07-14',
   currentWorkflowManifest,
-  successorCompatibilityEvidence,
+  successorWorkflowCompatibilityEvidence,
 );
 const unchangedManifestFiles = changedPublicArtifactTupleFiles(
   currentTupleSources,
@@ -702,7 +796,7 @@ const changedManifestTuple = generatedPublicArtifactTupleSources(
   successorVersions,
   '2026-07-14',
   changedWorkflowManifest,
-  successorCompatibilityEvidence,
+  successorWorkflowCompatibilityEvidence,
 );
 assert.deepStrictEqual(
   changedPublicArtifactTupleFiles(currentTupleSources, changedManifestTuple),

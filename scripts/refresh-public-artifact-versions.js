@@ -426,6 +426,44 @@ function selectLatestQualifiedArtifactTuple(
   });
 }
 
+function selectPreferredCompatibilityEvidence(
+  publishedEvidence,
+  retainedEvidence = artifactCompatibilityEvidenceSource,
+) {
+  const published = readArtifactCompatibilityEvidence(publishedEvidence);
+  const retained = readArtifactCompatibilityEvidence(retainedEvidence);
+  const comparisons = REQUIRED_ARTIFACTS.map(
+    artifact => compareVersions(
+      retained.artifactVersions[artifact],
+      published.artifactVersions[artifact],
+    ),
+  );
+
+  if (comparisons.every(comparison => comparison === 0)) {
+    return publishedEvidence;
+  }
+  if (
+    comparisons.every(comparison => comparison >= 0)
+    && comparisons.some(comparison => comparison > 0)
+  ) {
+    return retainedEvidence;
+  }
+  if (
+    comparisons.every(comparison => comparison <= 0)
+    && comparisons.some(comparison => comparison < 0)
+  ) {
+    return publishedEvidence;
+  }
+
+  throw new Error([
+    'Published and retained compatibility evidence select incomparable artifact tuples:',
+    ...REQUIRED_ARTIFACTS.map(artifact => (
+      `- ${artifact}: retained=${retained.artifactVersions[artifact]} ` +
+        `published=${published.artifactVersions[artifact]}`
+    )),
+  ].join('\n'));
+}
+
 function classifyArtifactTrainChange(currentVersions, publishedVersions) {
   const current = readArtifactVersions({
     schema: ARTIFACT_VERSION_SCHEMA,
@@ -888,7 +926,7 @@ async function resolvePublishedArtifactTupleState(sources = PUBLISHED_ARTIFACT_S
     serverState,
     waterlineReleases,
     workflowReleases,
-    compatibilityEvidence,
+    publishedCompatibilityEvidence,
   ] = await Promise.all([
     resolveCliVersions(sources.cli),
     resolvePackagistReleases(sources['sdk-php']),
@@ -899,6 +937,9 @@ async function resolvePublishedArtifactTupleState(sources = PUBLISHED_ARTIFACT_S
     resolvePackagistReleases(sources.workflow),
     resolvePublishedArtifactCompatibilityEvidence(),
   ]);
+  const compatibilityEvidence = selectPreferredCompatibilityEvidence(
+    publishedCompatibilityEvidence,
+  );
 
   const selection = selectLatestQualifiedArtifactTuple({
     cli: cliVersions,
@@ -1632,6 +1673,7 @@ module.exports = {
   resolvePublishedArtifactCompatibilityEvidence,
   resolvePublishedArtifactTuple,
   resolvePublishedWorkflowAuthority,
+  selectPreferredCompatibilityEvidence,
   selectLatestQualifiedArtifactTuple,
   selectLatestPublishedArtifactTuple,
   selectLatestCompleteCliRelease,
