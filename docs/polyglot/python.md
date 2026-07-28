@@ -1466,15 +1466,24 @@ Every payload that crosses the worker-protocol boundary is codec-tagged. v2 ship
 
 ### Avro support is built in
 
-`pip install durable-workflow` already pulls in the official Apache Avro Python bindings as a runtime dependency, so every outgoing surface (`start_workflow`, `signal_workflow`, `query_workflow`, `update_workflow`, activity result encoding, schedule actions) emits Avro-tagged payloads out of the box. There is no optional extra to install for codec interop.
+`pip install durable-workflow` pulls in `fastavro` as a runtime dependency, so
+every outgoing surface (`start_workflow`, `signal_workflow`, `query_workflow`,
+`update_workflow`, activity result encoding, schedule actions) emits
+Avro-tagged payloads through the optimized production path. There is no
+optional codec extra to install.
 
-### What the SDK does today
+### Fixed typed values
 
-The SDK uses a generic-wrapper schema for Avro payloads — the Python value is JSON-encoded, then the resulting string is Avro-binary-framed under a `{json: string, version: int}` record. This gives schema-evolution framing and compact transport without requiring the Python developer to hand-write an Avro schema for every workflow.
+The SDK explicitly selects named branches in the shared
+`durable_workflow.protocol.Value` schema. It does not JSON-encode the value
+inside Avro. Integers and doubles, strings and bytes, booleans and integers,
+and lists and maps therefore remain distinct across SDKs. The wire uses Avro
+single-object framing and the schema fingerprint; unknown fingerprints fail
+with `unsupported_payload_schema`.
 
 Every client and worker surface works end-to-end on the Avro default:
 
-- **Client starts, signals, queries, updates** — `start_workflow`, `signal_workflow`, `query_workflow`, and `update_workflow` always emit `payload_codec = "avro"` payloads via the generic-wrapper schema. A Python client can therefore drive workflows that PHP and other polyglot SDKs will replay, and vice-versa.
+- **Client starts, signals, queries, updates** — `start_workflow`, `signal_workflow`, `query_workflow`, and `update_workflow` emit `payload_codec = "avro"` payloads through the fixed Value schema. A Python client can therefore drive workflows that PHP and other polyglot SDKs will replay, and vice-versa.
 - **Activity worker** — Avro-tagged activity arguments decode transparently. The worker encodes activity results as Avro so PHP, Python, and future SDK workers share one payload boundary.
 - **Activity failures** — `fail_activity_task(..., details=...)` sends `failure.details` as a `{codec, blob}` envelope. The server records the blob plus `details_payload_codec`, so diagnostic failure data from Python workers remains language-neutral in history exports and observability views.
 - **Workflow worker history replay** — Avro-tagged start input and activity result events are decoded during replay, so a Python workflow can participate in an Avro-coded run.
@@ -1486,17 +1495,20 @@ No extra configuration is needed: the SDK reads `payload_codec` on every claim a
 
 ### Types that round-trip cleanly across Python and PHP
 
-| Python type | JSON | PHP type |
+| Python type | Avro Value branch | PHP type |
 |-------------|------|----------|
-| `str` | `"string"` | `string` |
-| `int` | `123` | `int` |
-| `float` | `1.5` | `float` |
-| `bool` | `true` | `bool` |
+| `str` | `StringValue` | `string` |
+| `bytes` | `BytesValue` | `AvroBinaryValue` |
+| `int` | `LongValue` | `int` |
+| `float` | `DoubleValue` | `float` |
+| `bool` | `BooleanValue` | `bool` |
 | `None` | `null` | `null` |
-| `list` | `[...]` | `array` (indexed) |
-| `dict` | `{...}` | `array` (associative) |
+| `list` | `ArrayValue` | `array` (list) |
+| `dict[str, ...]` | `MapValue` | `array` (string-keyed map) |
 
-Avoid passing Python-specific types (dataclasses, sets, tuples, datetime objects) as workflow or activity inputs unless you explicitly convert them to JSON-compatible structures first.
+Adapt Python-specific types such as dataclasses, sets, tuples, and datetime
+objects to canonical strings, integers, maps, or lists before using them as
+workflow or activity values.
 
 ## Running Against a Shared Server
 

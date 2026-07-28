@@ -78,7 +78,7 @@ implied to have parity.
 | Namespaces | The standalone server is namespace-scoped. PHP/Python clients and CLI manage namespaces; Rust workers/clients target a namespace but do not claim namespace administration at the current floor. | [Namespace, auth, and workers](/docs/2.0/polyglot/namespace-auth-workers/), [Server API](/docs/2.0/polyglot/server-api-reference/) |
 | Search attributes | Server `%%artifact.serverVersion%%` indexes typed search attributes. PHP and Python expose authoring/control surfaces; CLI and operator APIs expose structured discovery and filtering. | [Search attributes](/docs/2.0/features/search-attributes/), [Python SDK](/docs/2.0/polyglot/python/) |
 | Worker compatibility | SDKs register runtime, SDK version, build ID, supported types, protocol version, and capacity; the server publishes accepted versions and routing facts. | [Compatibility](/docs/2.0/compatibility/), [Worker compatibility and routing](/docs/2.0/polyglot/worker-compatibility-routing/) |
-| Codec interoperability | PHP, Python, and Rust use the public `codec` + `blob` envelope. The Avro implementation uses official `apache/avro`, `avro`, and `apache-avro` language packages. Cross-language child/activity inputs and results retain JSON value shape through the generic wrapper. | [Passing data](/docs/2.0/defining-workflows/passing-data/), [Worker protocol](/docs/2.0/polyglot/worker-protocol/), [Rust SDK](/docs/2.0/polyglot/rust/) |
+| Codec interoperability | PHP, Python, and Rust use the public `codec` + `blob` envelope and one fixed recursive Avro Value schema. Named branches preserve integers versus doubles, text versus bytes, booleans versus integers, and lists versus maps. | [Avro Value protocol](/docs/2.0/polyglot/avro-value-protocol/), [Worker protocol](/docs/2.0/polyglot/worker-protocol/), [Rust SDK](/docs/2.0/polyglot/rust/) |
 | Diagnostics | Server and CLI publish version, protocol, worker, task-queue, replay, history, typed failure, and repair facts as JSON; Waterline exports selected-run durable evidence. | [Monitoring](/docs/2.0/monitoring/), [CLI reference](/docs/2.0/polyglot/cli-reference/), [Waterline operator API](/docs/2.0/waterline-operator-api/) |
 | Agent tooling | Discover -> Change -> Run -> Diagnose -> Repair is available through public manifests, schemas, HTTP operations, CLI JSON, SDK clients, typed history/diagnostics, and safe mutations. MCP is one optional interface, not the definition. | [Agent tooling contract](/docs/2.0/agent-tooling-contract/), [Agent operating loop](/docs/2.0/agent-operating-loop/) |
 
@@ -87,8 +87,9 @@ implied to have parity.
 Cross-language workflow and activity calls do not pass serialized PHP objects,
 Python pickles, or Rust implementation types. They pass registered string type
 names and a public payload envelope. With `avro`, each first-party SDK uses the
-official language implementation and the same generic wrapper; decoded maps,
-lists, strings, numbers, booleans, and nulls preserve their value shape. A
+official language implementation and the same fixed Value schema; decoded
+maps, lists, strings, bytes, integers, doubles, booleans, and nulls preserve
+their primitive type. A
 language-specific class is reconstructed only inside its owning SDK.
 
 That contract applies to workflow input and result, child workflows, activity

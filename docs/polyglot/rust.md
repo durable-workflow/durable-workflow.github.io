@@ -303,7 +303,7 @@ current run is intentional.
 Workflow input, signals, activities, queries, and results use the published
 `PayloadEnvelope` contract: a `codec` plus encoded `blob`. The SDK's default
 `avro` path uses its declared `apache-avro` dependency and the platform's
-versioned generic wrapper; do not hand-roll the blob or replace the envelope
+fixed versioned Value schema; do not hand-roll the blob or replace the envelope
 with an implementation-specific record.
 
 <!-- docs-example id="rust.avro-payload-envelope" -->

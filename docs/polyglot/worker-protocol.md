@@ -464,7 +464,12 @@ Every payload byte string that crosses the worker-protocol boundary is tagged wi
 
 ### The `avro` codec
 
-`avro` is the v2 payload codec. It is a compact Apache Avro binary encoding. The blob field on the wire carries the raw Avro bytes (typically transported as a base64-encoded string in JSON envelopes) and round-trips any Avro-representable value.
+`avro` is the v2 typed-value codec. Every payload uses the fixed recursive
+`durable_workflow.protocol.Value` schema and standard Avro single-object
+framing. Its named branches preserve booleans, signed 64-bit integers, finite
+doubles, bytes, UTF-8 strings, lists, and string-keyed maps without
+workflow-specific schemas or a registry. See the
+[Avro Value protocol](/docs/2.0/polyglot/avro-value-protocol/).
 
 ### Wire Format: Payload Envelope
 
@@ -503,7 +508,9 @@ surface them only when a worker or server explicitly records a `diagnostics` or
 
 `POST /api/workflows` accepts `input` in two shapes:
 
-1. **Plain JSON array** — the server encodes the values into the `avro` codec using the generic-wrapper schema.
+1. **Plain JSON array** — the server adapts each JSON value to the fixed Avro
+   Value schema. JSON input cannot express the bytes branch; clients that need
+   bytes send an explicit Avro envelope.
 
    ```json
    { "workflow_type": "MyWorkflow", "input": ["hello", 42] }

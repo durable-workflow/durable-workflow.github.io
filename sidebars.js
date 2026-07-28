@@ -156,6 +156,7 @@ const sidebars = {
         'polyglot/invocable-carrier',
         'polyglot/invocable-php-handler',
         'polyglot/worker-protocol',
+        'polyglot/avro-value-protocol',
         'polyglot/task-matching-dispatch',
         'polyglot/task-queue-admission',
         'polyglot/worker-build-id-rollout',
