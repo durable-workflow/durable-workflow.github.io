@@ -52,6 +52,10 @@ const {
   workflowAuthorityManifestUrl,
   writePublicArtifactTupleSources,
 } = require('./refresh-public-artifact-versions');
+const {
+  checkOutputs: checkPlatformConformanceOutputs,
+  desiredOutputs: desiredPlatformConformanceOutputs,
+} = require('./generate-platform-conformance-ledger');
 
 const repoRoot = path.join(__dirname, '..');
 const quickstartContractPath = path.join(__dirname, '..', 'static', 'quickstart-execution-contract.json');
@@ -911,16 +915,18 @@ const refreshedRetainedEvidence = JSON.parse(
     'scripts/platform-conformance-retained-evidence.json'
   ],
 );
+const publishedServerChangedFiles = changedPublicArtifactTupleFiles(
+  currentTupleSources,
+  publishedServerRefreshTuple,
+);
 assert.deepStrictEqual(
-  changedPublicArtifactTupleFiles(
-    currentTupleSources,
-    publishedServerRefreshTuple,
-  ),
+  publishedServerChangedFiles,
   [
     'scripts/published-artifact-versions.json',
     'scripts/platform-conformance-retained-evidence.json',
+    'static/platform-conformance/run-ledger.json',
   ],
-  'an independently published release must atomically refresh the registry and ledger pointer',
+  'an independently published release must atomically refresh the registry, ledger pointer, and generated ledger',
 );
 assert.deepStrictEqual(
   refreshedRetainedEvidence.current_artifact_tuple,
@@ -945,6 +951,110 @@ assert.strictEqual(
   currentTupleSources['scripts/platform-conformance-retained-evidence.json'],
   'a current ledger pointer must remain byte-equivalent during refresh',
 );
+
+const publishedRefreshRoot = fs.mkdtempSync(
+  path.join(os.tmpdir(), 'public-artifact-supported-refresh-'),
+);
+try {
+  const tuplePaths = Object.fromEntries(PUBLIC_ARTIFACT_TUPLE_FILES.map(file => [
+    file,
+    path.join(publishedRefreshRoot, file),
+  ]));
+  const sourceEvidenceDir = path.join(
+    repoRoot,
+    'static',
+    'platform-conformance',
+    'evidence',
+  );
+  const refreshedEvidenceDir = path.join(
+    publishedRefreshRoot,
+    'static',
+    'platform-conformance',
+    'evidence',
+  );
+  const evidenceSources = Object.fromEntries(
+    fs.readdirSync(sourceEvidenceDir)
+      .filter(file => file.endsWith('.json'))
+      .map(file => [
+        file,
+        fs.readFileSync(path.join(sourceEvidenceDir, file), 'utf8'),
+      ]),
+  );
+
+  for (const file of PUBLIC_ARTIFACT_TUPLE_FILES) {
+    fs.mkdirSync(path.dirname(tuplePaths[file]), {recursive: true});
+    fs.writeFileSync(tuplePaths[file], currentTupleSources[file]);
+  }
+  fs.cpSync(sourceEvidenceDir, refreshedEvidenceDir, {recursive: true});
+
+  writePublicArtifactTupleSources(
+    publishedServerRefreshTuple,
+    publishedServerChangedFiles,
+    {tuplePaths},
+  );
+
+  const writtenRetainedEvidence = JSON.parse(fs.readFileSync(
+    tuplePaths['scripts/platform-conformance-retained-evidence.json'],
+    'utf8',
+  ));
+  const expectedOutputs = desiredPlatformConformanceOutputs(
+    writtenRetainedEvidence,
+    nextPublishedServerVersions,
+    {
+      ledgerPath: tuplePaths['static/platform-conformance/run-ledger.json'],
+      evidenceDir: refreshedEvidenceDir,
+    },
+  );
+
+  assert.doesNotThrow(
+    () => checkPlatformConformanceOutputs(
+      expectedOutputs,
+      refreshedEvidenceDir,
+    ),
+    'the supported artifact refresh must pass the generated ledger check without a follow-up generation step',
+  );
+  assert.deepStrictEqual(
+    Object.fromEntries(Object.keys(evidenceSources).map(file => [
+      file,
+      fs.readFileSync(path.join(refreshedEvidenceDir, file), 'utf8'),
+    ])),
+    evidenceSources,
+    'the supported artifact refresh must leave every retained per-run evidence file unchanged',
+  );
+
+  const previousLedger = JSON.parse(
+    currentTupleSources['static/platform-conformance/run-ledger.json'],
+  );
+  const writtenLedger = JSON.parse(fs.readFileSync(
+    tuplePaths['static/platform-conformance/run-ledger.json'],
+    'utf8',
+  ));
+  const previouslyCurrentExperiment = previousLedger.experiments.find(
+    experiment => experiment.executed_evidence.status === 'current',
+  );
+  const refreshedExperiment = writtenLedger.experiments.find(
+    experiment => experiment.id === previouslyCurrentExperiment.id,
+  );
+
+  assert.deepStrictEqual(
+    writtenLedger.current_artifact_tuple,
+    nextPublishedServerVersions,
+    'the generated public ledger must expose the refreshed published tuple',
+  );
+  assert.strictEqual(
+    refreshedExperiment.executed_evidence.status,
+    'stale',
+    'historical evidence may become stale when the current published tuple advances',
+  );
+  assert.deepStrictEqual(
+    refreshedExperiment.executed_evidence.artifact_tuple,
+    previouslyCurrentExperiment.executed_evidence.artifact_tuple,
+    'the generated ledger must not reattach a historical run to the refreshed tuple',
+  );
+} finally {
+  fs.rmSync(publishedRefreshRoot, {recursive: true, force: true});
+}
+
 const sameVersionSourceReplacementTuple = generatedPublicArtifactTupleSources(
   currentTupleSources,
   source.artifacts,
@@ -998,6 +1108,7 @@ assert.deepStrictEqual(
     'scripts/public-artifact-versions.json',
     'scripts/published-artifact-versions.json',
     'scripts/platform-conformance-retained-evidence.json',
+    'static/platform-conformance/run-ledger.json',
     'static/public-artifact-compatibility-evidence.json',
     'static/quickstart-execution-contract.json',
     'static/compatibility-contract.json',

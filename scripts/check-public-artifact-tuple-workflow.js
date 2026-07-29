@@ -135,6 +135,7 @@ for (const required of [
   'scripts/public-artifact-versions.json',
   'scripts/published-artifact-versions.json',
   'scripts/platform-conformance-retained-evidence.json',
+  'static/platform-conformance/run-ledger.json',
   'static/public-artifact-compatibility-evidence.json',
   'static/quickstart-execution-contract.json',
   'static/compatibility-contract.json',
@@ -440,6 +441,7 @@ const multiArtifactHandoff = {
     'scripts/public-artifact-versions.json',
     'scripts/published-artifact-versions.json',
     'scripts/platform-conformance-retained-evidence.json',
+    'static/platform-conformance/run-ledger.json',
     'static/public-artifact-compatibility-evidence.json',
     'static/quickstart-execution-contract.json',
     'static/compatibility-contract.json',
@@ -450,6 +452,7 @@ const multiArtifactHandoff = {
     'scripts/public-artifact-versions.json',
     'scripts/published-artifact-versions.json',
     'scripts/platform-conformance-retained-evidence.json',
+    'static/platform-conformance/run-ledger.json',
     'static/public-artifact-compatibility-evidence.json',
     'static/quickstart-execution-contract.json',
     'static/compatibility-contract.json',
@@ -669,12 +672,13 @@ if (JSON.stringify(decodedFiles) !== JSON.stringify(multiArtifactHandoff.refresh
 }
 
 for (const authorityFile of [
+  'static/platform-conformance/run-ledger.json',
   'static/public-artifact-compatibility-evidence.json',
   'static/sdk-neutrality-contract.json',
   'scripts/workflow-sdk-neutrality-authority-lock.json',
 ]) {
   if (!decodedFiles.includes(authorityFile)) {
-    fail(`public artifact tuple ready item must include generated Workflow authority file ${authorityFile}`);
+    fail(`public artifact tuple ready item must include generated refresh file ${authorityFile}`);
   }
 }
 
@@ -683,6 +687,7 @@ const publishedServerAdvanceHandoff = {
   changed_files: [
     'scripts/published-artifact-versions.json',
     'scripts/platform-conformance-retained-evidence.json',
+    'static/platform-conformance/run-ledger.json',
   ],
   published_artifact_versions: {
     ...multiArtifactHandoff.published_artifact_versions,
@@ -829,6 +834,20 @@ for (const [label, mutate, expected] of [
       handoff.previous_published_artifact_versions.unexpected = '1.0.0';
     },
     /handoff\.previous_published_artifact_versions contains unknown artifacts: unexpected/,
+  ],
+  [
+    'an unrelated changed file',
+    handoff => {
+      handoff.changed_files.push('README.md');
+    },
+    /handoff changed files may only include/,
+  ],
+  [
+    'an unrelated refresh file',
+    handoff => {
+      handoff.refresh_files.push('README.md');
+    },
+    /handoff refresh files mismatch/,
   ],
   [
     'missing SDK-neutrality authority identity',

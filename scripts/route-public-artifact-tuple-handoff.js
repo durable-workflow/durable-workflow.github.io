@@ -31,6 +31,7 @@ const EXPECTED_REFRESH_FILES = [
   'scripts/public-artifact-versions.json',
   'scripts/published-artifact-versions.json',
   'scripts/platform-conformance-retained-evidence.json',
+  'static/platform-conformance/run-ledger.json',
   'static/public-artifact-compatibility-evidence.json',
   'static/quickstart-execution-contract.json',
   'static/compatibility-contract.json',

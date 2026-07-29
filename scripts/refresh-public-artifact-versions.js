@@ -17,6 +17,7 @@ const {
   readPublishedArtifactVersions,
 } = require('./public-artifact-versions');
 const {
+  ledgerSource: platformConformanceLedgerSource,
   validateSource: validatePlatformConformanceRetainedEvidence,
 } = require('./generate-platform-conformance-ledger');
 const {
@@ -39,6 +40,12 @@ const platformConformanceRetainedEvidencePath = path.join(
   __dirname,
   'platform-conformance-retained-evidence.json',
 );
+const platformConformanceLedgerPath = path.join(
+  repoRoot,
+  'static',
+  'platform-conformance',
+  'run-ledger.json',
+);
 const artifactCompatibilityEvidencePath = path.join(
   repoRoot,
   'static',
@@ -56,6 +63,7 @@ const PUBLIC_ARTIFACT_TUPLE_FILES = Object.freeze([
   'scripts/public-artifact-versions.json',
   'scripts/published-artifact-versions.json',
   'scripts/platform-conformance-retained-evidence.json',
+  'static/platform-conformance/run-ledger.json',
   'static/public-artifact-compatibility-evidence.json',
   'static/quickstart-execution-contract.json',
   'static/compatibility-contract.json',
@@ -67,6 +75,8 @@ const PUBLIC_ARTIFACT_TUPLE_PATHS = Object.freeze({
   'scripts/published-artifact-versions.json': publishedArtifactVersionsPath,
   'scripts/platform-conformance-retained-evidence.json':
     platformConformanceRetainedEvidencePath,
+  'static/platform-conformance/run-ledger.json':
+    platformConformanceLedgerPath,
   'static/public-artifact-compatibility-evidence.json': artifactCompatibilityEvidencePath,
   'static/quickstart-execution-contract.json': quickstartContractPath,
   'static/compatibility-contract.json': compatibilityContractPath,
@@ -1151,14 +1161,21 @@ function generatedPublicArtifactTupleSources(
   const compatibilitySource = currentSources['static/compatibility-contract.json'];
   const retainedEvidenceSource =
     currentSources['scripts/platform-conformance-retained-evidence.json'];
+  const nextRetainedEvidenceSource = platformConformanceRetainedEvidenceSource(
+    retainedEvidenceSource,
+    publishedVersions,
+  );
+  const nextRetainedEvidence = JSON.parse(nextRetainedEvidenceSource);
 
   return {
     'scripts/public-artifact-versions.json': artifactVersionsSource(versions),
     'scripts/published-artifact-versions.json':
       publishedArtifactVersionsSource(publishedVersions),
     'scripts/platform-conformance-retained-evidence.json':
-      platformConformanceRetainedEvidenceSource(
-        retainedEvidenceSource,
+      nextRetainedEvidenceSource,
+    'static/platform-conformance/run-ledger.json':
+      platformConformanceLedgerSource(
+        nextRetainedEvidence,
         publishedVersions,
       ),
     'static/public-artifact-compatibility-evidence.json':
@@ -1676,6 +1693,17 @@ async function check() {
           expected: `${expected.workflow} ${sha256(workflowManifestSource)}`,
         }],
       ),
+    );
+  }
+
+  const staleGeneratedFiles = changedPublicArtifactTupleFiles(
+    currentSources,
+    desiredSources,
+  );
+  if (staleGeneratedFiles.length > 0) {
+    throw new Error(
+      `Generated public artifact tuple files are stale: ${staleGeneratedFiles.join(', ')}.\n` +
+        `Run \`npm run refresh:public-artifact-versions\` to update them.`,
     );
   }
 

@@ -554,13 +554,29 @@ function jsonSource(value) {
   return `${JSON.stringify(value, null, 2)}\n`;
 }
 
-function desiredOutputs(source) {
-  const {experimentsById} = validateSource(source);
-  const outputs = new Map([[ledgerPath, jsonSource(buildLedger(source))]]);
+function ledgerSource(
+  source,
+  publishedArtifactTuple = PUBLISHED_ARTIFACT_VERSIONS,
+) {
+  return jsonSource(buildLedger(source, publishedArtifactTuple));
+}
+
+function desiredOutputs(
+  source,
+  publishedArtifactTuple = PUBLISHED_ARTIFACT_VERSIONS,
+  options = {},
+) {
+  const outputLedgerPath = options.ledgerPath || ledgerPath;
+  const outputEvidenceDir = options.evidenceDir || evidenceDir;
+  const {experimentsById} = validateSource(source, publishedArtifactTuple);
+  const outputs = new Map([[
+    outputLedgerPath,
+    ledgerSource(source, publishedArtifactTuple),
+  ]]);
 
   for (const run of source.runs) {
     outputs.set(
-      path.join(evidenceDir, `${run.id}.json`),
+      path.join(outputEvidenceDir, `${run.id}.json`),
       jsonSource(publicRunRecord(source, run, experimentsById)),
     );
   }
@@ -568,7 +584,7 @@ function desiredOutputs(source) {
   return outputs;
 }
 
-function checkOutputs(outputs) {
+function checkOutputs(outputs, outputEvidenceDir = evidenceDir) {
   const failures = [];
 
   for (const [filePath, expected] of outputs) {
@@ -581,13 +597,13 @@ function checkOutputs(outputs) {
     }
   }
 
-  if (fs.existsSync(evidenceDir)) {
+  if (fs.existsSync(outputEvidenceDir)) {
     const expectedNames = new Set(
       [...outputs.keys()]
-        .filter(filePath => path.dirname(filePath) === evidenceDir)
+        .filter(filePath => path.dirname(filePath) === outputEvidenceDir)
         .map(filePath => path.basename(filePath)),
     );
-    for (const name of fs.readdirSync(evidenceDir)) {
+    for (const name of fs.readdirSync(outputEvidenceDir)) {
       if (name.endsWith('.json') && !expectedNames.has(name)) {
         failures.push(`unretained static/platform-conformance/evidence/${name}`);
       }
@@ -634,6 +650,9 @@ if (require.main === module) {
 module.exports = {
   ARTIFACTS,
   buildLedger,
+  checkOutputs,
+  desiredOutputs,
+  ledgerSource,
   publicRunRecord,
   validateSource,
 };
