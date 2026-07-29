@@ -134,6 +134,7 @@ for (const required of [
   'HEAD:scripts/published-artifact-versions.json',
   'scripts/public-artifact-versions.json',
   'scripts/published-artifact-versions.json',
+  'scripts/platform-conformance-retained-evidence.json',
   'static/public-artifact-compatibility-evidence.json',
   'static/quickstart-execution-contract.json',
   'static/compatibility-contract.json',
@@ -438,6 +439,7 @@ const multiArtifactHandoff = {
   refresh_files: [
     'scripts/public-artifact-versions.json',
     'scripts/published-artifact-versions.json',
+    'scripts/platform-conformance-retained-evidence.json',
     'static/public-artifact-compatibility-evidence.json',
     'static/quickstart-execution-contract.json',
     'static/compatibility-contract.json',
@@ -447,6 +449,7 @@ const multiArtifactHandoff = {
   changed_files: [
     'scripts/public-artifact-versions.json',
     'scripts/published-artifact-versions.json',
+    'scripts/platform-conformance-retained-evidence.json',
     'static/public-artifact-compatibility-evidence.json',
     'static/quickstart-execution-contract.json',
     'static/compatibility-contract.json',
@@ -677,7 +680,10 @@ for (const authorityFile of [
 
 const publishedServerAdvanceHandoff = {
   ...multiArtifactHandoff,
-  changed_files: ['scripts/published-artifact-versions.json'],
+  changed_files: [
+    'scripts/published-artifact-versions.json',
+    'scripts/platform-conformance-retained-evidence.json',
+  ],
   published_artifact_versions: {
     ...multiArtifactHandoff.published_artifact_versions,
     server: '0.2.427',

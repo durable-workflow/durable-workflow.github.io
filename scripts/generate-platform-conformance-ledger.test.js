@@ -53,6 +53,14 @@ assert.doesNotThrow(
   'the retained public evidence source must satisfy the strict schema',
 );
 
+const divergentCurrentTuple = clone(source);
+divergentCurrentTuple.current_artifact_tuple.server = '2.0.0-rc.7';
+assert.throws(
+  () => buildLedger(divergentCurrentTuple),
+  /current_artifact_tuple must exactly match[\s\S]*server: ledger=2\.0\.0-rc\.7 published=2\.0\.0-rc\.8/,
+  'ledger generation must reject drift from the published-artifact registry',
+);
+
 const ledger = buildLedger(source);
 assert.strictEqual(ledger.experiments.length, 29);
 assert.strictEqual(ledger.retention_policy.retained_run_count, 29);
@@ -75,6 +83,45 @@ assert.deepStrictEqual(
       actual: '2.0.0-rc.6',
     },
   ],
+);
+
+const historicalArtifactTuples = clone(source.artifact_tuples);
+const historicalRuns = clone(source.runs);
+const refreshedPublishedTuple = {
+  ...source.current_artifact_tuple,
+  server: '2.0.0-rc.9',
+};
+const refreshedSource = clone(source);
+refreshedSource.current_artifact_tuple = refreshedPublishedTuple;
+const refreshedLedger = buildLedger(
+  refreshedSource,
+  refreshedPublishedTuple,
+);
+assert.deepStrictEqual(
+  refreshedSource.artifact_tuples,
+  historicalArtifactTuples,
+  'a release refresh must not rewrite retained artifact tuples',
+);
+assert.deepStrictEqual(
+  refreshedSource.runs,
+  historicalRuns,
+  'a release refresh must not reattach historical runs to newer artifacts',
+);
+assert.deepStrictEqual(
+  experiment(refreshedLedger, 'cloud').executed_evidence.artifact_tuple,
+  source.artifact_tuples.current,
+  'historical executed evidence must retain its original exact artifact tuple',
+);
+assert.deepStrictEqual(
+  experiment(refreshedLedger, 'cloud').executed_evidence.stale_artifacts,
+  [
+    {
+      artifact: 'server',
+      expected: '2.0.0-rc.9',
+      actual: '2.0.0-rc.8',
+    },
+  ],
+  'a release refresh must make old evidence stale without rewriting it',
 );
 assert.strictEqual(
   experiment(ledger, 'docs').executed_evidence.product_failure,

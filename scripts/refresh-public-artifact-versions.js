@@ -17,6 +17,9 @@ const {
   readPublishedArtifactVersions,
 } = require('./public-artifact-versions');
 const {
+  validateSource: validatePlatformConformanceRetainedEvidence,
+} = require('./generate-platform-conformance-ledger');
+const {
   PRODUCT_TRAIN_AUTHORITY_URL,
   artifactCompatibilityEvidenceJsonSource,
   artifactCompatibilityEvidenceSource,
@@ -31,6 +34,10 @@ const artifactVersionsPath = path.join(__dirname, 'public-artifact-versions.json
 const publishedArtifactVersionsPath = path.join(
   __dirname,
   'published-artifact-versions.json',
+);
+const platformConformanceRetainedEvidencePath = path.join(
+  __dirname,
+  'platform-conformance-retained-evidence.json',
 );
 const artifactCompatibilityEvidencePath = path.join(
   repoRoot,
@@ -48,6 +55,7 @@ const WORKFLOW_SDK_NEUTRALITY_RESOURCE_PATH = 'resources/sdk-neutrality-contract
 const PUBLIC_ARTIFACT_TUPLE_FILES = Object.freeze([
   'scripts/public-artifact-versions.json',
   'scripts/published-artifact-versions.json',
+  'scripts/platform-conformance-retained-evidence.json',
   'static/public-artifact-compatibility-evidence.json',
   'static/quickstart-execution-contract.json',
   'static/compatibility-contract.json',
@@ -57,6 +65,8 @@ const PUBLIC_ARTIFACT_TUPLE_FILES = Object.freeze([
 const PUBLIC_ARTIFACT_TUPLE_PATHS = Object.freeze({
   'scripts/public-artifact-versions.json': artifactVersionsPath,
   'scripts/published-artifact-versions.json': publishedArtifactVersionsPath,
+  'scripts/platform-conformance-retained-evidence.json':
+    platformConformanceRetainedEvidencePath,
   'static/public-artifact-compatibility-evidence.json': artifactCompatibilityEvidencePath,
   'static/quickstart-execution-contract.json': quickstartContractPath,
   'static/compatibility-contract.json': compatibilityContractPath,
@@ -1010,6 +1020,19 @@ function publishedArtifactVersionsSource(versions) {
   return `${JSON.stringify(source, null, 2)}\n`;
 }
 
+function platformConformanceRetainedEvidenceSource(
+  currentSource,
+  publishedVersions,
+) {
+  const source = JSON.parse(currentSource);
+  source.current_artifact_tuple = Object.fromEntries(
+    REQUIRED_ARTIFACTS.map(name => [name, publishedVersions[name]]),
+  );
+  validatePlatformConformanceRetainedEvidence(source, publishedVersions);
+
+  return `${JSON.stringify(source, null, 2)}\n`;
+}
+
 function sha256(source) {
   return crypto.createHash('sha256').update(source).digest('hex');
 }
@@ -1126,11 +1149,18 @@ function generatedPublicArtifactTupleSources(
 ) {
   const quickstartSource = currentSources['static/quickstart-execution-contract.json'];
   const compatibilitySource = currentSources['static/compatibility-contract.json'];
+  const retainedEvidenceSource =
+    currentSources['scripts/platform-conformance-retained-evidence.json'];
 
   return {
     'scripts/public-artifact-versions.json': artifactVersionsSource(versions),
     'scripts/published-artifact-versions.json':
       publishedArtifactVersionsSource(publishedVersions),
+    'scripts/platform-conformance-retained-evidence.json':
+      platformConformanceRetainedEvidenceSource(
+        retainedEvidenceSource,
+        publishedVersions,
+      ),
     'static/public-artifact-compatibility-evidence.json':
       artifactCompatibilityEvidenceJsonSource(compatibilityEvidence),
     'static/quickstart-execution-contract.json': quickstartExecutionContractSource(
@@ -1742,6 +1772,7 @@ module.exports = {
   generatedPublicArtifactTupleSources,
   normalizeVersion,
   parseRegistryNextLink,
+  platformConformanceRetainedEvidenceSource,
   publishedArtifactVersionsSource,
   quickstartExecutionContractSource,
   resolvePackagistVersion,

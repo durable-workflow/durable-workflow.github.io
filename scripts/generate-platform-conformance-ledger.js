@@ -3,6 +3,10 @@
 const fs = require('fs');
 const path = require('path');
 
+const {
+  PUBLISHED_ARTIFACT_VERSIONS,
+} = require('./public-artifact-versions');
+
 const repoRoot = path.join(__dirname, '..');
 const sourcePath = path.join(
   repoRoot,
@@ -130,7 +134,10 @@ function assertNoSensitiveFields(value, label = 'retained evidence') {
   }
 }
 
-function validateSource(source) {
+function validateSource(
+  source,
+  publishedArtifactTuple = PUBLISHED_ARTIFACT_VERSIONS,
+) {
   assertExactKeys(
     source,
     [
@@ -157,6 +164,22 @@ function validateSource(source) {
   }
   assertIsoTimestamp(source.captured_at, 'retained evidence source captured_at');
   assertArtifactTuple(source.current_artifact_tuple, 'current_artifact_tuple');
+  assertArtifactTuple(
+    publishedArtifactTuple,
+    'published artifact registry',
+  );
+  const currentTupleMismatches = tupleDifferences(
+    source.current_artifact_tuple,
+    publishedArtifactTuple,
+  );
+  if (currentTupleMismatches.length > 0) {
+    fail([
+      'current_artifact_tuple must exactly match scripts/published-artifact-versions.json',
+      ...currentTupleMismatches.map(({artifact, actual, expected}) => (
+        `${artifact}: ledger=${actual} published=${expected}`
+      )),
+    ].join('\n'));
+  }
 
   assertExactKeys(
     source.retention,
@@ -379,8 +402,14 @@ function latestRunByExperiment(source) {
   return latest;
 }
 
-function buildLedger(source) {
-  const {experimentsById, runsById} = validateSource(source);
+function buildLedger(
+  source,
+  publishedArtifactTuple = PUBLISHED_ARTIFACT_VERSIONS,
+) {
+  const {experimentsById, runsById} = validateSource(
+    source,
+    publishedArtifactTuple,
+  );
   const latestRuns = latestRunByExperiment(source);
   const tiersById = new Map(source.tiers.map(tier => [tier.id, tier]));
 
@@ -419,7 +448,7 @@ function buildLedger(source) {
       const runTuple = source.artifact_tuples[run.artifact_tuple];
       const staleArtifacts = tupleDifferences(
         runTuple,
-        source.current_artifact_tuple,
+        publishedArtifactTuple,
       );
       const status = staleArtifacts.length === 0 ? 'current' : 'stale';
       const evidenceGap =
@@ -509,7 +538,7 @@ function buildLedger(source) {
     schema: 'durable-workflow.v2.platform-conformance.run-ledger',
     schema_version: 1,
     generated_at: source.captured_at,
-    current_artifact_tuple: source.current_artifact_tuple,
+    current_artifact_tuple: publishedArtifactTuple,
     retention_policy: {
       max_runs_per_experiment: source.retention.max_runs_per_experiment,
       max_regression_trails: source.retention.max_regression_trails,

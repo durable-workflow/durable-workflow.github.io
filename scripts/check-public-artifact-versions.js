@@ -34,6 +34,7 @@ const {
   compatibilityContractSource,
   generatedPublicArtifactTupleSources,
   parseRegistryNextLink,
+  platformConformanceRetainedEvidenceSource,
   publishedArtifactVersionsSource,
   quickstartExecutionContractSource,
   resolvePackagistVersion,
@@ -869,6 +870,9 @@ const currentTupleSources = Object.fromEntries(PUBLIC_ARTIFACT_TUPLE_FILES.map(f
   file,
   fs.readFileSync(path.join(repoRoot, file), 'utf8'),
 ]));
+const retainedEvidenceSource = JSON.parse(
+  currentTupleSources['scripts/platform-conformance-retained-evidence.json'],
+);
 const currentWorkflowAuthorityLock = JSON.parse(
   currentTupleSources['scripts/workflow-sdk-neutrality-authority-lock.json'],
 );
@@ -887,6 +891,59 @@ assert.deepStrictEqual(
   ),
   [],
   'a current artifact tuple must produce no generated file changes',
+);
+
+const nextPublishedServerVersions = {
+  ...publishedSource.artifacts,
+  server: incrementPrereleaseVersion(publishedSource.artifacts.server),
+};
+const publishedServerRefreshTuple = generatedPublicArtifactTupleSources(
+  currentTupleSources,
+  source.artifacts,
+  '2026-07-23',
+  currentTupleSources['static/sdk-neutrality-contract.json'],
+  undefined,
+  nextPublishedServerVersions,
+  currentWorkflowAuthorityLock.workflow_source_commit,
+);
+const refreshedRetainedEvidence = JSON.parse(
+  publishedServerRefreshTuple[
+    'scripts/platform-conformance-retained-evidence.json'
+  ],
+);
+assert.deepStrictEqual(
+  changedPublicArtifactTupleFiles(
+    currentTupleSources,
+    publishedServerRefreshTuple,
+  ),
+  [
+    'scripts/published-artifact-versions.json',
+    'scripts/platform-conformance-retained-evidence.json',
+  ],
+  'an independently published release must atomically refresh the registry and ledger pointer',
+);
+assert.deepStrictEqual(
+  refreshedRetainedEvidence.current_artifact_tuple,
+  nextPublishedServerVersions,
+  'the supported refresh must derive the ledger pointer from the published registry tuple',
+);
+assert.deepStrictEqual(
+  refreshedRetainedEvidence.artifact_tuples,
+  retainedEvidenceSource.artifact_tuples,
+  'the supported refresh must preserve retained historical artifact tuples',
+);
+assert.deepStrictEqual(
+  refreshedRetainedEvidence.runs,
+  retainedEvidenceSource.runs,
+  'the supported refresh must preserve historical run-to-artifact attachments',
+);
+assert.strictEqual(
+  platformConformanceRetainedEvidenceSource(
+    currentTupleSources['scripts/platform-conformance-retained-evidence.json'],
+    publishedSource.artifacts,
+  ),
+  currentTupleSources['scripts/platform-conformance-retained-evidence.json'],
+  'a current ledger pointer must remain byte-equivalent during refresh',
 );
 const sameVersionSourceReplacementTuple = generatedPublicArtifactTupleSources(
   currentTupleSources,
@@ -940,6 +997,7 @@ assert.deepStrictEqual(
   [
     'scripts/public-artifact-versions.json',
     'scripts/published-artifact-versions.json',
+    'scripts/platform-conformance-retained-evidence.json',
     'static/public-artifact-compatibility-evidence.json',
     'static/quickstart-execution-contract.json',
     'static/compatibility-contract.json',
