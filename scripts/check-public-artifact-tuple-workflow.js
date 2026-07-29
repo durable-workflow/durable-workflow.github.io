@@ -859,7 +859,7 @@ function readRequestBody(request) {
   });
 }
 
-async function withStubGate(issues, callback) {
+async function withStubGate(issues, callback, {repeatFirstPage = false} = {}) {
   const requests = [];
   const server = http.createServer(async (request, response) => {
     try {
@@ -874,8 +874,9 @@ async function withStubGate(issues, callback) {
 
       if (payload.action === 'gh.issue.list') {
         const requiredLabels = parseLabels(payload.input.labels);
-        const page = payload.input.page || 1;
-        const offset = (page - 1) * payload.input.limit;
+        const resultLimit = repeatFirstPage
+          ? Math.min(payload.input.limit, 50)
+          : payload.input.limit;
         const listedIssues = issues
           .filter(issue => {
             const issueLabels = Array.isArray(issue.labels)
@@ -885,7 +886,7 @@ async function withStubGate(issues, callback) {
             return (issue.state || 'open') === payload.input.state
               && requiredLabels.every(label => issueLabels.includes(label));
           })
-          .slice(offset, offset + payload.input.limit);
+          .slice(0, resultLimit);
         response.writeHead(200, {'Content-Type': 'application/json'});
         response.end(JSON.stringify({status: 'completed', result: listedIssues}));
         return;
@@ -945,7 +946,7 @@ function assertLabelSet(labels, expectedLabels, message) {
   }
 }
 
-function assertGateListPayload(request, expectedPage = 1) {
+function assertGateListPayload(request, expectedLimit = 50) {
   if (!request || request.action !== 'gh.issue.list') {
     fail('public artifact tuple router must list existing handoff ready items through the gate');
   }
@@ -967,10 +968,13 @@ function assertGateListPayload(request, expectedPage = 1) {
 
   if (
     request.input.state !== 'open'
-    || request.input.limit !== 50
-    || request.input.page !== expectedPage
+    || request.input.limit !== expectedLimit
+    || Object.hasOwn(request.input, 'page')
   ) {
-    fail(`public artifact tuple list payload must use open-ready-item page ${expectedPage}`);
+    fail(
+      'public artifact tuple list payload must use the supported open-ready-item ' +
+        `limit ${expectedLimit} without an unsupported page parameter`,
+    );
   }
 }
 
@@ -1169,8 +1173,8 @@ async function assertStubGatePaginatedActiveReplayPath() {
       fail(`a second-page handoff replay must make exactly two list requests, saw ${requests.length}`);
     }
 
-    assertGateListPayload(requests[0], 1);
-    assertGateListPayload(requests[1], 2);
+    assertGateListPayload(requests[0], 50);
+    assertGateListPayload(requests[1], 100);
 
     if (requests.some(request => request.action === 'gh.issue.create')) {
       fail('a second-page handoff replay must not create a duplicate ready item');
@@ -1195,6 +1199,59 @@ async function assertStubGatePaginatedActiveReplayPath() {
     || matchingBranches[0] !== workerBranch({body: original.body})
   ) {
     fail('a second-page handoff replay must use only the original worker branch');
+  }
+}
+
+async function assertStubGateNonAdvancingListPath() {
+  const routingLabels = [
+    'pipeline:ready-item',
+    'branch:main',
+    'state:integrating',
+    'source:handoff',
+    'flow:release',
+  ];
+  const issues = Array.from({length: 50}, (_, index) => ({
+    number: 2000 + index,
+    title: `Unrelated artifact handoff ${index + 1}`,
+    body: `<!-- docs-artifact-tuple-key: unrelated-repeat-${index + 1} -->`,
+    labels: routingLabels,
+    state: 'open',
+  }));
+  const original = {
+    number: 2050,
+    title: multiArtifactPayload.title,
+    body: multiArtifactPayload.body,
+    labels: routingLabels,
+    state: 'open',
+  };
+  issues.push(original);
+  const issuesBeforeReplay = JSON.stringify(issues);
+
+  await withStubGate(
+    issues,
+    async requests => {
+      await assert.rejects(
+        routeReadyItem(multiArtifactPayload),
+        /did not advance/,
+        'a repeated first page must fail closed',
+      );
+
+      if (requests.length !== 2) {
+        fail(`a repeated first page must stop after two list requests, saw ${requests.length}`);
+      }
+
+      assertGateListPayload(requests[0], 50);
+      assertGateListPayload(requests[1], 100);
+
+      if (requests.some(request => request.action === 'gh.issue.create')) {
+        fail('a repeated first page must not create duplicate work');
+      }
+    },
+    {repeatFirstPage: true},
+  );
+
+  if (JSON.stringify(issues) !== issuesBeforeReplay) {
+    fail('a repeated first page must not edit existing work');
   }
 }
 
@@ -1250,6 +1307,7 @@ async function main() {
   );
   await assertStubGateActiveLifecycleReplayPath();
   await assertStubGatePaginatedActiveReplayPath();
+  await assertStubGateNonAdvancingListPath();
   await assertStubGateCompletedPath();
 
   console.log('Public artifact tuple workflow routes a read-only pipeline handoff.');

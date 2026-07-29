@@ -22,7 +22,8 @@ const EXPECTED_REFRESH_FILES = [
 const ARTIFACT_ORDER = ['cli', 'sdk-php', 'sdk-python', 'sdk-rust', 'server', 'waterline', 'workflow'];
 const GATE_ACTION_LIST_READY_ITEMS = 'gh.issue.list';
 const GATE_ACTION_CREATE_READY_ITEM = 'gh.issue.create';
-const READY_ITEM_LOOKUP_PAGE_SIZE = 50;
+const READY_ITEM_LOOKUP_INITIAL_LIMIT = 50;
+const READY_ITEM_LOOKUP_MAX_LIMIT = 1000;
 const ROUTING_LABELS = [
   'pipeline:ready-item',
   'branch:main',
@@ -641,16 +642,33 @@ function findExistingReadyItem(issues, keys) {
   ));
 }
 
+function readyItemListIdentity(issue) {
+  if (
+    issue
+    && (typeof issue.number === 'number' || typeof issue.number === 'string')
+  ) {
+    return `number:${issue.number}`;
+  }
+
+  return `record:${stableStringify(issue)}`;
+}
+
 async function routeReadyItem(payload) {
-  let page = 1;
+  let limit = READY_ITEM_LOOKUP_INITIAL_LIMIT;
+  let previousIdentities = null;
+
   while (true) {
     const existingReadyItems = await gateAction(GATE_ACTION_LIST_READY_ITEMS, {
       repo: payload.repo,
       labels: READY_ITEM_LOOKUP_LABELS.join(','),
       state: 'open',
-      limit: READY_ITEM_LOOKUP_PAGE_SIZE,
-      page,
+      limit,
     });
+
+    if (!Array.isArray(existingReadyItems)) {
+      throw new Error('Public artifact tuple ready-item lookup returned an invalid result');
+    }
+
     const existing = findExistingReadyItem(existingReadyItems, payload.duplicateKeys);
 
     if (existing) {
@@ -658,14 +676,32 @@ async function routeReadyItem(payload) {
       return existing;
     }
 
+    const currentIdentities = new Set(existingReadyItems.map(readyItemListIdentity));
     if (
-      !Array.isArray(existingReadyItems)
-      || existingReadyItems.length < READY_ITEM_LOOKUP_PAGE_SIZE
+      previousIdentities !== null
+      && (
+        currentIdentities.size <= previousIdentities.size
+        || [...previousIdentities].some(identity => !currentIdentities.has(identity))
+      )
     ) {
+      throw new Error(
+        'Public artifact tuple ready-item lookup did not advance; refusing to create duplicate work',
+      );
+    }
+
+    if (existingReadyItems.length < limit) {
       break;
     }
 
-    page += 1;
+    if (limit >= READY_ITEM_LOOKUP_MAX_LIMIT) {
+      throw new Error(
+        'Public artifact tuple ready-item lookup reached its safe limit; ' +
+          'refusing to create duplicate work',
+      );
+    }
+
+    previousIdentities = currentIdentities;
+    limit = Math.min(limit * 2, READY_ITEM_LOOKUP_MAX_LIMIT);
   }
 
   const created = await gateAction(GATE_ACTION_CREATE_READY_ITEM, {
