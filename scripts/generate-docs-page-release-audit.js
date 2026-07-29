@@ -8,6 +8,10 @@ const {
   ARTIFACT_VERSIONS,
   buildArtifactDistributionSurfaces,
 } = require('./public-artifact-versions');
+const {
+  artifactCompatibilityEvidenceSource,
+  readArtifactCompatibilityEvidence,
+} = require('./public-artifact-compatibility');
 const {docsRevision} = require('./docs-narrative-audit-contract');
 const {
   stablePlatformConformanceDiscoveryEntries,
@@ -29,6 +33,8 @@ const CLASSIFIER_ID = 'route-and-public-artifact-inventory-v4';
 const STABLE_DOCS_VERSION = '1.x';
 const PRERELEASE_DOCS_VERSION = '2.0';
 const ARTIFACT_VERSION_SOURCE_PATH = 'scripts/public-artifact-versions.json';
+const ARTIFACT_COMPATIBILITY_EVIDENCE_PATH =
+  '/public-artifact-compatibility-evidence.json';
 const ARTIFACT_VERSION_SYNCHRONIZED_FIELDS = Object.freeze([
   'artifact_versions',
   'artifact_distribution_surfaces.sdk-php',
@@ -50,6 +56,7 @@ const GENERATED_AUDIT_ARTIFACTS = [
 ];
 const PUBLIC_CONTRACT_ARTIFACTS = [
   '/quickstart-execution-contract.json',
+  ARTIFACT_COMPATIBILITY_EVIDENCE_PATH,
   '/platform-conformance-contract.json',
   '/platform-conformance/workflow-lifecycle-scenarios.json',
 ];
@@ -170,6 +177,35 @@ function buildArtifactVersionProjection(
   };
 }
 
+function buildArtifactCompatibilityProjection(
+  evidence = artifactCompatibilityEvidenceSource,
+  versions = ARTIFACT_VERSIONS,
+) {
+  const qualification = readArtifactCompatibilityEvidence(evidence, versions);
+  const releasePlan = qualification.authority.releasePlan;
+  const sdkServerQualification = qualification.authority.sdkServerQualification;
+  const conformanceEvidence = sdkServerQualification.evidence;
+
+  return {
+    source_url: ARTIFACT_COMPATIBILITY_EVIDENCE_PATH,
+    schema: evidence.schema,
+    schema_version: evidence.schema_version,
+    outcome: evidence.outcome,
+    qualified_artifact_versions: qualification.artifactVersions,
+    release_plan: {
+      tag: releasePlan.tag,
+      sha256: releasePlan.sha256,
+    },
+    sdk_server_qualification: {
+      source_url: sdkServerQualification.source_url,
+      sha256: sdkServerQualification.sha256,
+      evidence_source: conformanceEvidence.source_url,
+      evidence_sha256: conformanceEvidence.sha256,
+      outcome: conformanceEvidence.outcome,
+    },
+  };
+}
+
 function main() {
   const revision = docsRevision(repoRoot);
   const pageInventory = inventoryPaths().map(inventoryEntry);
@@ -186,6 +222,7 @@ function main() {
     classifier: CLASSIFIER_ID,
     docs_revision: revision,
     ...buildArtifactVersionProjection(ARTIFACT_VERSIONS, revision),
+    artifact_compatibility_evidence: buildArtifactCompatibilityProjection(),
     release_status_guardrail: {
       stable_default_docs_version: STABLE_DOCS_VERSION,
       explicit_prerelease_docs_version: PRERELEASE_DOCS_VERSION,
@@ -211,6 +248,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  ARTIFACT_COMPATIBILITY_EVIDENCE_PATH,
   ARTIFACT_VERSION_SOURCE_PATH,
   ARTIFACT_VERSION_SYNCHRONIZED_FIELDS,
   CLASSIFIER_ID,
@@ -218,6 +256,7 @@ module.exports = {
   SCHEMA_VERSION,
   STABLE_DOCS_VERSION,
   PRERELEASE_DOCS_VERSION,
+  buildArtifactCompatibilityProjection,
   buildArtifactVersionProjection,
   buildRelativePath,
   inventoryPaths,

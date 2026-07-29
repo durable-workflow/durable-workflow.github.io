@@ -38,6 +38,10 @@ const REQUIRED_LIVE_ARTIFACTS = Object.freeze([
     route: '/compatibility-contract.json',
     repositorySource: 'static/compatibility-contract.json',
   }),
+  Object.freeze({
+    route: '/public-artifact-compatibility-evidence.json',
+    repositorySource: 'static/public-artifact-compatibility-evidence.json',
+  }),
 ]);
 
 const REQUIRED_LIVE_ARTIFACT_PATHS = Object.freeze(

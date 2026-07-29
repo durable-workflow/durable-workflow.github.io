@@ -68,15 +68,17 @@ function artifactVersionsAt(version) {
   return readArtifactVersions(artifactVersionSourceAt(version));
 }
 
+function incrementPrereleaseVersion(version) {
+  return version.replace(
+    /(\d+)$/,
+    sequence => String(Number(sequence) + 1),
+  );
+}
+
 function compatibilityEvidenceAt(versions) {
   const evidence = JSON.parse(JSON.stringify(artifactCompatibilityEvidenceSource));
   evidence.qualified_artifact_versions = {...versions};
-  const releasePlan = evidence.authority.release_plan;
-  releasePlan.channel = productTrainVersionDetails(versions.server).channel;
-
-  for (const artifact of Object.keys(versions)) {
-    releasePlan.components[artifact].version = versions[artifact];
-  }
+  evidence.authority.product_train.current = versions.server;
 
   for (const artifact of ['sdk-php', 'sdk-python', 'sdk-rust']) {
     const compatibility = evidence.sdk_server_compatibility[artifact];
@@ -91,19 +93,6 @@ function compatibilityEvidenceAt(versions) {
       `oci:docker.io/durableworkflow/server@${versions.server}`;
     compatibility.supported_server_versions = versions.server;
   }
-  releasePlan.sha256 = sha256(`${JSON.stringify({
-    beta_authorization: releasePlan.beta_authorization,
-    channel: releasePlan.channel,
-    components: Object.fromEntries(Object.entries(releasePlan.components).map(
-      ([artifact, component]) => [
-        artifact,
-        {commit: component.commit, version: component.version},
-      ],
-    )),
-    foundation: releasePlan.foundation,
-    plan: releasePlan.plan,
-    schema: releasePlan.schema,
-  }, null, 2)}\n`);
 
   return evidence;
 }
@@ -128,31 +117,32 @@ assert.deepStrictEqual(
   source.artifacts,
   'public compatibility evidence must bind the exact selected artifact tuple',
 );
-const mismatchedAuthorizedComponent = JSON.parse(
+const authorizationWithoutQualification = JSON.parse(
   JSON.stringify(artifactCompatibilityEvidenceSource),
 );
-mismatchedAuthorizedComponent.authority.release_plan.components.server.version =
-  source.artifacts.workflow;
+authorizationWithoutQualification.schema_version = 3;
+authorizationWithoutQualification.outcome = 'authorized';
+delete authorizationWithoutQualification.authority.sdk_server_qualification;
 assert.throws(
   () => readArtifactCompatibilityEvidence(
-    mismatchedAuthorizedComponent,
+    authorizationWithoutQualification,
     source.artifacts,
   ),
-  /release-plan component server must bind/,
-  'release-plan-authorized evidence must reject a mismatched component identity',
+  /release-plan authorization is not compatibility qualification/,
+  'release-plan authorization without exact qualification must fail closed',
 );
-const mismatchedAuthorizedLocator = JSON.parse(
+const mismatchedQualifiedLocator = JSON.parse(
   JSON.stringify(artifactCompatibilityEvidenceSource),
 );
-mismatchedAuthorizedLocator.sdk_server_compatibility['sdk-python']
+mismatchedQualifiedLocator.sdk_server_compatibility['sdk-python']
   .sdk_distribution.locator = 'pypi:durable-workflow@2.0.0b21';
 assert.throws(
   () => readArtifactCompatibilityEvidence(
-    mismatchedAuthorizedLocator,
+    mismatchedQualifiedLocator,
     source.artifacts,
   ),
   /sdk-python must bind SDK/,
-  'release-plan-authorized evidence must reject a stale distribution locator',
+  'qualified evidence must reject a stale distribution locator',
 );
 const predecessorCompatibilityEvidence = compatibilityEvidenceAt(
   artifactVersionsAt('2.0.0-beta.21'),
@@ -166,7 +156,9 @@ assert.strictEqual(
   'an immutable retained release plan must not regress to an older mutable train pointer',
 );
 const successorCompatibilityEvidence = compatibilityEvidenceAt(
-  artifactVersionsAt('2.0.0-rc.3'),
+  Object.fromEntries(Object.entries(source.artifacts).map(
+    ([artifact, version]) => [artifact, incrementPrereleaseVersion(version)],
+  )),
 );
 assert.strictEqual(
   selectPreferredCompatibilityEvidence(
@@ -178,8 +170,8 @@ assert.strictEqual(
 );
 const incomparableCompatibilityEvidence = compatibilityEvidenceAt({
   ...source.artifacts,
-  cli: '2.0.0-rc.2',
-  server: '2.0.0-rc.1',
+  cli: incrementPrereleaseVersion(source.artifacts.cli),
+  server: '2.0.0-beta.21',
 });
 assert.throws(
   () => selectPreferredCompatibilityEvidence(
@@ -359,6 +351,64 @@ assert.strictEqual(
   builtCompatibilityEvidence.authority.release_plan.source_url,
   releasePlanEvidenceUrl(`release-plan/${releasePlanFixture.plan}`),
 );
+const releaseCandidatePlan = {
+  ...releasePlanFixture,
+  beta_authorization: null,
+};
+const releaseCandidatePlanSource =
+  `${JSON.stringify(releaseCandidatePlan, null, 2)}\n`;
+const releaseCandidateSuite = JSON.parse(
+  JSON.stringify(conformanceSuiteFixture),
+);
+const releaseCandidateEvidenceTag =
+  'beta-conformance/rc-qualified-artifact-fixture/12345.1';
+releaseCandidateSuite.github_run.evidence_tag = releaseCandidateEvidenceTag;
+const releaseCandidateSuiteSource =
+  `${JSON.stringify(releaseCandidateSuite, null, 2)}\n`;
+const releaseCandidateQualification = sdkServerQualificationAt();
+releaseCandidateQualification.release_plan.sha256 =
+  sha256(releaseCandidatePlanSource);
+releaseCandidateQualification.evidence.tag = releaseCandidateEvidenceTag;
+releaseCandidateQualification.evidence.source_url = [
+  'https://github.com/durable-workflow/.github/releases/download',
+  releaseCandidateEvidenceTag,
+  'suite-result.json',
+].join('/');
+releaseCandidateQualification.evidence.sha256 =
+  sha256(releaseCandidateSuiteSource);
+releaseCandidateQualification.evidence.github_run.evidence_tag =
+  releaseCandidateEvidenceTag;
+const releaseCandidateQualificationSource =
+  `${JSON.stringify(releaseCandidateQualification, null, 2)}\n`;
+const releaseCandidateProductTrain = JSON.parse(
+  JSON.stringify(productTrainFixture),
+);
+releaseCandidateProductTrain.trains[
+  source.artifacts.server
+].release_plan.sha256 = sha256(releaseCandidatePlanSource);
+releaseCandidateProductTrain.trains[
+  source.artifacts.server
+].sdk_server_qualification.sha256 = sha256(releaseCandidateQualificationSource);
+const releaseCandidateCompatibilityEvidence = buildArtifactCompatibilityEvidence(
+  `${JSON.stringify(releaseCandidateProductTrain, null, 2)}\n`,
+  releaseCandidatePlanSource,
+  releaseCandidateQualificationSource,
+  releaseCandidateSuiteSource,
+);
+assert.strictEqual(
+  releaseCandidateCompatibilityEvidence.authority.sdk_server_qualification
+    .evidence.tag,
+  releaseCandidateEvidenceTag,
+  'exact RC qualification must be admissible without treating plan authorization as evidence',
+);
+assert.strictEqual(
+  Object.hasOwn(
+    releaseCandidateCompatibilityEvidence.authority.release_plan,
+    'beta_authorization',
+  ),
+  false,
+  'an aggregate-qualified RC plan does not need a beta authorization projection',
+);
 const mismatchedReleasePlanFixtureSource = `${JSON.stringify({
   ...releasePlanFixture,
   channel: releasePlanFixture.channel === 'beta' ? 'rc' : 'beta',
@@ -509,6 +559,23 @@ assert.throws(
   /sdk-rust must be a passing exact binding/,
   'distribution-mismatched conformance qualification must block public evidence',
 );
+const mismatchedDistributionDigestQualification = sdkServerQualificationAt();
+mismatchedDistributionDigestQualification.bindings[
+  'sdk-rust'
+].sdk.distribution.artifacts[0].sha256 = '9'.repeat(64);
+const mismatchedDistributionDigestSources = qualificationFixtureSources(
+  mismatchedDistributionDigestQualification,
+);
+assert.throws(
+  () => buildArtifactCompatibilityEvidence(
+    mismatchedDistributionDigestSources.productTrainSource,
+    releasePlanFixtureSource,
+    mismatchedDistributionDigestSources.qualificationSource,
+    mismatchedDistributionDigestSources.conformanceSuiteSource,
+  ),
+  /sdk-rust must be a passing exact binding/,
+  'distribution-digest-mismatched qualification must block public evidence',
+);
 const mismatchedConformanceSuite = JSON.parse(
   JSON.stringify(conformanceSuiteFixture),
 );
@@ -546,6 +613,20 @@ assert.throws(
   ),
   /experiment heartbeats must pass for PHP, Python, Rust, and Server distributions/,
   'suite evidence without claimed Rust client coverage must fail closed',
+);
+const mismatchedPublicServerDigest = JSON.parse(
+  JSON.stringify(artifactCompatibilityEvidenceSource),
+);
+mismatchedPublicServerDigest.sdk_server_compatibility[
+  'sdk-rust'
+].server_distribution.artifacts[0].sha256 = '8'.repeat(64);
+assert.throws(
+  () => readArtifactCompatibilityEvidence(
+    mismatchedPublicServerDigest,
+    source.artifacts,
+  ),
+  /SDK claims must bind the same exact Server source and distribution digests/,
+  'public SDK claims must reject inconsistent Server distribution digests',
 );
 assert.strictEqual(
   artifactVersionsSource(source.artifacts),
@@ -747,9 +828,8 @@ assert.deepStrictEqual(
   [],
   'a current artifact tuple must produce no generated file changes',
 );
-const successorWorkflowVersion = source.artifacts.workflow.replace(
-  /(\d+)$/,
-  sequence => String(Number(sequence) + 1),
+const successorWorkflowVersion = incrementPrereleaseVersion(
+  source.artifacts.workflow,
 );
 const successorVersions = Object.fromEntries(
   Object.keys(source.artifacts).map(artifact => [artifact, successorWorkflowVersion]),
@@ -1317,7 +1397,7 @@ assert.strictEqual(
     cliRelease('2.0.0-rc.4', requiredCliAssets, {prerelease: true}),
     cliRelease(source.artifacts.cli, requiredCliAssets, {prerelease: true}),
   ], PUBLISHED_ARTIFACT_SOURCES.cli),
-  '2.0.0-rc.4',
+  source.artifacts.cli,
   'CLI artifact resolution must admit complete release-candidate releases'
 );
 

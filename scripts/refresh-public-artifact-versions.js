@@ -1527,7 +1527,7 @@ async function check() {
         [{
           name: 'SDK and Server compatibility evidence',
           actual: 'stale qualification',
-          expected: 'exact immutable release-plan evidence',
+          expected: 'exact immutable SDK-to-Server qualification evidence',
         }],
       ),
     );

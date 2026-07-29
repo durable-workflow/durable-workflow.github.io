@@ -151,26 +151,26 @@
       "package_compatibility": {
         "php_sdk": {
           "package": "durable-workflow/sdk",
-          "release_line": "2.0.0-rc.1",
-          "product_train": "2.0.0-rc.1",
-          "supported_server_versions": "2.0.0-rc.2",
+          "release_line": "2.0.0-rc.5",
+          "product_train": "2.0.0-rc.5",
+          "supported_server_versions": "2.0.0-rc.5",
           "worker_protocol_version": "1.13",
           "control_plane_version": "2"
         },
         "python_sdk": {
           "package": "durable-workflow",
-          "release_line": "2.0.0-rc.1",
-          "registry_version": "2.0.0rc1",
-          "product_train": "2.0.0-rc.1",
-          "supported_server_versions": "2.0.0-rc.2",
+          "release_line": "2.0.0-rc.5",
+          "registry_version": "2.0.0rc5",
+          "product_train": "2.0.0-rc.5",
+          "supported_server_versions": "2.0.0-rc.5",
           "worker_protocol_version": "1.1",
           "control_plane_version": "2"
         },
         "rust_sdk": {
           "package": "durable-workflow",
-          "release_line": "2.0.0-rc.1",
-          "product_train": "2.0.0-rc.1",
-          "supported_server_versions": "2.0.0-rc.2",
+          "release_line": "2.0.0-rc.5",
+          "product_train": "2.0.0-rc.5",
+          "supported_server_versions": "2.0.0-rc.5",
           "worker_protocol_version": "1.2",
           "control_plane_version": "2"
         }
@@ -197,7 +197,7 @@
       "docs_authority_aligned": "Release reviewers confirm docs/compatibility.md lists every surface family in this manifest with the same stability level.",
       "install_docs_aligned": "Release reviewers confirm docs/installation.md and package install snippets do not claim a stability level different from the one this manifest assigns to the relevant SDK.",
       "package_metadata_aligned": "Release reviewers confirm package prerelease tags match the `stability_level` for the SDK family they belong to.",
-      "sdk_server_compatibility_evidence_aligned": "Docs CI verifies that the selected PHP, Python, and Rust SDK versions are bound to the selected Server version by passing immutable release-plan evidence.",
+      "sdk_server_compatibility_evidence_aligned": "Docs CI verifies that the selected PHP, Python, and Rust SDK distributions are bound to the selected Server distribution by exact immutable passing SDK-to-Server qualification evidence.",
       "rust_sdk_protocol_authority_aligned": "Docs CI verifies the current Rust artifact release line, released crate metadata when available, server negotiation contract, worker-protocol OpenAPI and AsyncAPI, and published-crate validation workflow contract agree.",
       "release_notes_aligned": "Release reviewers confirm release notes do not introduce stability claims that contradict this manifest."
     },

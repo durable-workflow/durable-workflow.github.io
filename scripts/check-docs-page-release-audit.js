@@ -18,6 +18,7 @@ const {
   SCHEMA,
   SCHEMA_VERSION,
   STABLE_DOCS_VERSION,
+  buildArtifactCompatibilityProjection,
   buildRelativePath,
   inventoryPaths,
   routeKind,
@@ -70,6 +71,15 @@ function assertArtifactVersions(audit) {
   }
   if (source.current_server_artifact?.version !== ARTIFACT_VERSIONS.server) {
     fail('docs-page-release-audit.json current server artifact version is stale');
+  }
+  if (
+    JSON.stringify(audit.artifact_compatibility_evidence)
+    !== JSON.stringify(buildArtifactCompatibilityProjection())
+  ) {
+    fail(
+      'docs-page-release-audit.json compatibility qualification must match the ' +
+        'exact public evidence authority',
+    );
   }
 }
 

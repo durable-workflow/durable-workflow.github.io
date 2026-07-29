@@ -279,13 +279,21 @@ function compatibilityEvidence(versions) {
           sdk_version: versions[artifact],
           sdk_source_commit: 'b'.repeat(40),
           sdk_distribution: {
-            kind: 'registry',
-            locator: `registry:${artifact}@${versions[artifact]}`,
+            kind: {
+              'sdk-php': 'composer',
+              'sdk-python': 'pypi',
+              'sdk-rust': 'crates.io',
+            }[artifact],
+            locator: {
+              'sdk-php': `composer:durable-workflow/sdk@${versions[artifact]}`,
+              'sdk-python': `pypi:durable-workflow@${versions[artifact]}`,
+              'sdk-rust': `crates.io:durable-workflow@${versions[artifact]}`,
+            }[artifact],
             artifacts: [{name: artifact, sha256: 'f'.repeat(64)}],
           },
           server_version: versions.server,
           server_source_commit: 'c'.repeat(40),
-          server_distribution: serverDistribution,
+          server_distribution: structuredClone(serverDistribution),
           supported_server_versions: versions.server,
           outcome: 'pass',
           evidence_source: conformanceSuiteSource,
@@ -445,6 +453,64 @@ assert.throws(
   }),
   /must bind the exact selected artifact versions/,
   'the tuple router must reject compatibility evidence for a different Server tuple',
+);
+
+const authorizationOnlyEvidence = compatibilityEvidence(
+  multiArtifactHandoff.artifact_versions,
+);
+authorizationOnlyEvidence.schema_version = 3;
+authorizationOnlyEvidence.outcome = 'authorized';
+delete authorizationOnlyEvidence.authority.sdk_server_qualification;
+assert.throws(
+  () => buildReadyItemPayload({
+    ...multiArtifactHandoff,
+    compatibility_evidence: authorizationOnlyEvidence,
+  }),
+  /must be a passing version 2 record/,
+  'the tuple router must reject release-plan authorization without qualification',
+);
+
+const failedQualificationEvidence = compatibilityEvidence(
+  multiArtifactHandoff.artifact_versions,
+);
+failedQualificationEvidence.sdk_server_compatibility['sdk-python'].outcome = 'fail';
+assert.throws(
+  () => buildReadyItemPayload({
+    ...multiArtifactHandoff,
+    compatibility_evidence: failedQualificationEvidence,
+  }),
+  /must bind sdk-python/,
+  'the tuple router must reject a failed SDK qualification',
+);
+
+const mismatchedLocatorEvidence = compatibilityEvidence(
+  multiArtifactHandoff.artifact_versions,
+);
+mismatchedLocatorEvidence.sdk_server_compatibility[
+  'sdk-rust'
+].sdk_distribution.locator = 'crates.io:durable-workflow@9.9.9';
+assert.throws(
+  () => buildReadyItemPayload({
+    ...multiArtifactHandoff,
+    compatibility_evidence: mismatchedLocatorEvidence,
+  }),
+  /must bind sdk-rust/,
+  'the tuple router must reject a mismatched SDK distribution locator',
+);
+
+const mismatchedDigestEvidence = compatibilityEvidence(
+  multiArtifactHandoff.artifact_versions,
+);
+mismatchedDigestEvidence.sdk_server_compatibility[
+  'sdk-rust'
+].server_distribution.artifacts[0].sha256 = '1'.repeat(64);
+assert.throws(
+  () => buildReadyItemPayload({
+    ...multiArtifactHandoff,
+    compatibility_evidence: mismatchedDigestEvidence,
+  }),
+  /same exact Server source and distribution digests/,
+  'the tuple router must reject mismatched Server distribution digests',
 );
 
 const unchangedAuthorityBytesHandoff = {

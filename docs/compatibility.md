@@ -290,7 +290,13 @@ substitutions do not count as public-artifact evidence.
 
 The selected tuple is published with its
 [SDK and Server compatibility evidence](/public-artifact-compatibility-evidence.json).
-Registry publication alone cannot advance an SDK or Server recommendation.
+That record names each SDK and Server distribution locator and digest, the
+immutable conformance result and digest, and the exact passing SDK-to-Server
+tuple. Registry publication, source commits, and release-plan authorization
+are release inputs; none of them can establish compatibility without the
+passing published-artifact qualification. Missing, failed, stale, or
+tuple-mismatched qualification leaves the candidate unpublished in this
+matrix.
 
 ### Release progression
 

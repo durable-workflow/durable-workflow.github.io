@@ -35,6 +35,7 @@ const PUBLIC_DISCOVERY_URLS = [
   '/docs/',
   '/docs/2.0/quickstart/',
   '/quickstart-execution-contract.json',
+  '/public-artifact-compatibility-evidence.json',
   '/docs/2.0/polyglot/php/',
   '/docs/2.0/polyglot/python/',
   '/docs/2.0/polyglot/rust/',

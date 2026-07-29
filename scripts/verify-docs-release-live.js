@@ -8,6 +8,9 @@ const path = require('path');
 
 const {ARTIFACT_VERSIONS} = require('./public-artifact-versions');
 const {
+  buildArtifactCompatibilityProjection,
+} = require('./generate-docs-page-release-audit');
+const {
   REQUIRED_LIVE_ARTIFACT_PATHS,
   REQUIRED_LIVE_ARTIFACTS,
   buildArtifactPath,
@@ -84,6 +87,14 @@ function assertReleaseAuditAuthority(source) {
   }
   if (audit.release_status_guardrail?.explicit_prerelease_docs_version !== '2.0') {
     throw new Error('live release audit does not identify 2.0 as explicit prerelease docs');
+  }
+  if (
+    JSON.stringify(audit.artifact_compatibility_evidence)
+    !== JSON.stringify(buildArtifactCompatibilityProjection())
+  ) {
+    throw new Error(
+      'live release audit does not bind the exact passing SDK-to-Server qualification',
+    );
   }
 }
 

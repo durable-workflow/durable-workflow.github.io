@@ -16,6 +16,9 @@ const {
   LIVE_ARTIFACTS,
   assertReleaseAuditAuthority,
 } = require('./verify-docs-release-live');
+const {
+  buildArtifactCompatibilityProjection,
+} = require('./generate-docs-page-release-audit');
 const { ARTIFACT_DISTRIBUTION_SURFACES, ARTIFACT_VERSIONS } = require('./public-artifact-versions');
 
 const PROTECTED_DEPLOY_SOURCE_GUARD =
@@ -27,6 +30,12 @@ const quickstartContract = JSON.parse(
 );
 const compatibilityContract = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'static', 'compatibility-contract.json'), 'utf8'),
+);
+const artifactCompatibilityEvidence = JSON.parse(
+  fs.readFileSync(
+    path.join(__dirname, '..', 'static', 'public-artifact-compatibility-evidence.json'),
+    'utf8',
+  ),
 );
 
 function fail(message) {
@@ -99,6 +108,7 @@ function currentAudit() {
   return {
     docs_revision: CURRENT_DOCS_REVISION,
     artifact_versions: {...ARTIFACT_VERSIONS},
+    artifact_compatibility_evidence: buildArtifactCompatibilityProjection(),
     release_status_guardrail: {
       stable_default_docs_version: '1.x',
       explicit_prerelease_docs_version: '2.0',
@@ -128,6 +138,8 @@ function currentLiveArtifacts() {
     '/docs-narrative-audit.json': currentNarrativeAudit(),
     '/quickstart-execution-contract.json': structuredClone(quickstartContract),
     '/compatibility-contract.json': structuredClone(compatibilityContract),
+    '/public-artifact-compatibility-evidence.json':
+      structuredClone(artifactCompatibilityEvidence),
   };
 }
 
@@ -143,6 +155,7 @@ assert.deepStrictEqual(
     '/docs-narrative-audit.json',
     '/quickstart-execution-contract.json',
     '/compatibility-contract.json',
+    '/public-artifact-compatibility-evidence.json',
   ],
   'the required live-artifact inventory must cover every release-authority artifact',
 );

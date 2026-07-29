@@ -28,6 +28,10 @@ const REQUIRED_DISCOVERY_ENTRIES = [
     buildPath: 'quickstart-execution-contract.json',
   },
   {
+    path: '/public-artifact-compatibility-evidence.json',
+    buildPath: 'public-artifact-compatibility-evidence.json',
+  },
+  {
     path: '/docs/2.0/polyglot/python/',
     buildPath: 'docs/2.0/polyglot/python/index.html',
   },

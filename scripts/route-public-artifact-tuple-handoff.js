@@ -139,14 +139,12 @@ function validateChangedFiles(changedFiles) {
   }
 }
 
-function isDistributionIdentity(identity) {
+function isDistributionIdentity(identity, expectedKind, expectedLocator) {
   return Boolean(
     identity
     && Object.keys(identity).length === 3
-    && typeof identity.kind === 'string'
-    && identity.kind !== ''
-    && typeof identity.locator === 'string'
-    && identity.locator !== ''
+    && identity.kind === expectedKind
+    && identity.locator === expectedLocator
     && Array.isArray(identity.artifacts)
     && identity.artifacts.length > 0
     && identity.artifacts.every(artifact => (
@@ -157,6 +155,15 @@ function isDistributionIdentity(identity) {
       && typeof artifact.sha256 === 'string'
       && /^[0-9a-f]{64}$/.test(artifact.sha256)
     )),
+  );
+}
+
+function pypiRegistryVersion(version) {
+  return version.replace(
+    /^(\d+\.\d+\.\d+)-(alpha|beta|rc)\.(\d+)$/,
+    (_, base, channel, sequence) => (
+      `${base}${{alpha: 'a', beta: 'b', rc: 'rc'}[channel]}${sequence}`
+    ),
   );
 }
 
@@ -181,26 +188,73 @@ function validateCompatibilityEvidence(evidence, versions) {
     );
   }
 
+  let selectedServerSourceCommit = null;
+  let selectedServerDistribution = null;
   for (const artifact of ['sdk-php', 'sdk-python', 'sdk-rust']) {
     const qualification = evidence.sdk_server_compatibility?.[artifact];
+    const sdkDistribution = {
+      'sdk-php': {
+        kind: 'composer',
+        locator: `composer:durable-workflow/sdk@${versions['sdk-php']}`,
+      },
+      'sdk-python': {
+        kind: 'pypi',
+        locator: `pypi:durable-workflow@${pypiRegistryVersion(
+          versions['sdk-python'],
+        )}`,
+      },
+      'sdk-rust': {
+        kind: 'crates.io',
+        locator: `crates.io:durable-workflow@${versions['sdk-rust']}`,
+      },
+    }[artifact];
+    const serverDistribution = {
+      kind: 'oci',
+      locator: `oci:docker.io/durableworkflow/server@${versions.server}`,
+    };
     if (
       !qualification
       || qualification.sdk_version !== versions[artifact]
       || typeof qualification.sdk_source_commit !== 'string'
       || !/^[0-9a-f]{40}$/.test(qualification.sdk_source_commit)
-      || !isDistributionIdentity(qualification.sdk_distribution)
+      || !isDistributionIdentity(
+        qualification.sdk_distribution,
+        sdkDistribution.kind,
+        sdkDistribution.locator,
+      )
       || qualification.server_version !== versions.server
       || typeof qualification.server_source_commit !== 'string'
       || !/^[0-9a-f]{40}$/.test(qualification.server_source_commit)
-      || !isDistributionIdentity(qualification.server_distribution)
+      || !isDistributionIdentity(
+        qualification.server_distribution,
+        serverDistribution.kind,
+        serverDistribution.locator,
+      )
       || qualification.supported_server_versions !== versions.server
       || qualification.outcome !== 'pass'
     ) {
       throw new Error(
         `handoff compatibility evidence must bind ${artifact} ${versions[artifact]} ` +
-          `to Server ${versions.server}`,
+        `to Server ${versions.server}`,
       );
     }
+    const serializedServerDistribution = stableStringify(
+      qualification.server_distribution,
+    );
+    if (
+      selectedServerSourceCommit !== null
+      && (
+        qualification.server_source_commit !== selectedServerSourceCommit
+        || serializedServerDistribution !== selectedServerDistribution
+      )
+    ) {
+      throw new Error(
+        'handoff compatibility evidence SDK claims must bind the same exact ' +
+          'Server source and distribution digests',
+      );
+    }
+    selectedServerSourceCommit = qualification.server_source_commit;
+    selectedServerDistribution = serializedServerDistribution;
   }
 
   const releasePlan = evidence.authority?.release_plan;
@@ -232,7 +286,7 @@ function validateCompatibilityEvidence(evidence, versions) {
     || conformanceEvidence.schema
       !== 'durable-workflow.beta-conformance.suite-result/v2'
     || typeof conformanceEvidence.tag !== 'string'
-    || !/^beta-conformance\/beta-[a-z0-9._-]+\/[1-9][0-9]*\.[1-9][0-9]*$/.test(
+    || !/^beta-conformance\/(?:beta|rc)-[a-z0-9._-]+\/[1-9][0-9]*\.[1-9][0-9]*$/.test(
       conformanceEvidence.tag,
     )
     || conformanceEvidence.source_url !== evidenceUrl
