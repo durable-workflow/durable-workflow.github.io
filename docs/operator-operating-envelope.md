@@ -73,6 +73,80 @@ which surface you read them through. A Waterline deployment is scoped to its
 configured runtime and namespace; it does not combine embedded and
 server-managed runs.
 
+## Dated 2.0 evidence snapshot
+
+This snapshot separates behavior that has been measured on released artifacts
+from procedures that the product supports but each operator must rehearse in
+their own environment. A passing row applies only to the named artifact tuple
+and topology; it is not a blanket claim for later releases, different
+substrates, or larger deployments.
+
+The proof rows use these exact release tuples:
+
+| Tuple | CLI | PHP SDK | Python SDK | Rust SDK | Server | Waterline | Workflow |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| A | `2.0.0-rc.1` | `2.0.0-rc.1` | `2.0.0-rc.1` | `2.0.0-rc.1` | `2.0.0-rc.2` | `2.0.0-rc.1` | `2.0.0-rc.1` |
+| B | `2.0.0-rc.5` | `2.0.0-rc.5` | `2.0.0-rc.6` | `2.0.0-rc.6` | `2.0.0-rc.8` | `2.0.0-rc.8` | `2.0.0-rc.6` |
+
+The current proof inventory is:
+
+| Proof and date (UTC) | Tuple | What the proof directly measured | Boundary |
+| --- | --- | --- | --- |
+| Single-region failover rehearsal, 2026-07-28 | A | Cross-node terminal completion, loss of one API node, MySQL interruption and recovery, Redis interruption and database-poll fallback, worker lease loss and reclaim, and singleton scheduler restart. The result recorded passing loss and duplicate assertions for every phase. | Two API nodes behind one shared endpoint, one MySQL instance, one Redis acceleration layer, one queue worker, and one scheduler/maintenance runner in one region. The database and Redis events were container interruptions, not managed-provider promotion tests. |
+| Timer restart matrix, 2026-07-28 | A | Sleeping workflows completed after worker restart and server restart, with one timer schedule and fire per run and no duplicate replay command. | Durable timer and replay recovery on the published-server test topology; not arbitrary process state or external side-effect recovery. |
+| Activity runtime matrix, 2026-07-29 | B | Worker-restart result recovery, retry and timeout behavior, heartbeat and cancellation observation, durable terminal result recording, and idempotent completion handling across the required published-artifact cells. | Activity-level engine behavior. Applications still own idempotency for external side effects. |
+| Workflow lifecycle matrix, 2026-07-29 | B | Terminal completion and failure states, duplicate-start and workflow-id reuse policy, timeout and retry behavior, history continuity, and duplicate side-effect prevention across the required PHP, Python, Rust, CLI, API, history, and Waterline cells. | Lifecycle correctness for the exercised scenarios; not an availability or throughput benchmark. |
+
+The first tuple is still the latest direct proof for the complete failover
+matrix. Later activity and lifecycle results do not silently upgrade that
+failover result to their newer tuple. Use the
+[Compatibility contract](./compatibility.md) for the currently recommended
+install tuple, and rerun the
+[exact-artifact rehearsal](./deployment.md#run-the-exact-artifact-rehearsal)
+before making a failover claim for a different release.
+
+### Measured guarantee vs supported procedure
+
+| Failure or outcome | Directly proven by the dated evidence | Supported operator procedure | Not established by this evidence |
+| --- | --- | --- | --- |
+| One API-node loss | The failover rehearsal killed one of two API nodes, reached the surviving node through the shared endpoint, preserved acknowledged state, and completed the run. | Remove failed nodes with `/api/ready`, retry interrupted client requests, then verify topology and worker registration before returning traffic. | Whole-fleet loss, availability-zone isolation, or arbitrary network partition behavior. |
+| Database interruption | Both API nodes became not ready, durable state survived the interruption, a replacement worker reclaimed the task after lease expiry, the run completed, and a duplicate completion was refused. | Restore the writable database first, wait for readiness, fence the stale task owner, verify one representative run, then resume traffic. Managed-service promotion needs provider-native fencing, RPO, and elapsed-time evidence in the recovery packet. | Managed database promotion, acknowledged-write behavior during split brain, or an RPO/RTO beyond the measured local interruption. |
+| Redis interruption | Readiness reported acceleration degradation while database-backed polling preserved durable state; replaying the same poll request did not create a duplicate lease; readiness recovered after Redis returned. | Keep Redis as an acceleration layer, tolerate warning readiness, restore it after durable persistence, and verify poll-discovery latency returns to the deployment baseline. | Redis dual-primary behavior, cache behavior across a network partition, or provider promotion timing. |
+| Worker restart or loss | The failover proof reclaimed and completed a leased workflow after worker loss; the newer activity matrix proved durable result recovery after worker restart and idempotent completion handling. | Let leases expire or drain workers, start a compatible replacement, verify registration and queue pickup, and keep external effects idempotent. | Recovery of process-local state that was not stored durably or exactly-once external side effects. |
+| Server or scheduler restart | The timer matrix completed sleeping workflows after a server restart without duplicate timer commands. The failover proof also preserved progress through one API-node loss and one singleton scheduler restart. | Restore persistence, bring server roles back to readiness, confirm exactly one scheduler/maintenance runner, then verify worker registration and one representative completion. | Simultaneous loss of every server and persistence node, multi-region failover, or duplicate schedulers as a steady-state topology. |
+| Duplicate delivery | Database-recovery and worker-loss phases each recorded one logical completion and rejected the duplicate completion with HTTP `409`; Redis degradation replayed the original lease without issuing a duplicate. The activity matrix separately passed its idempotent-completion cell. | Use stable request and task identities, honor stale-attempt refusals, and make activity side effects idempotent. | A universal exactly-once delivery or side-effect guarantee outside the durable engine boundary. |
+| Terminal completion | Cross-node, API-loss, database-recovery, and worker-loss workflows all reached terminal `completed` state; the newer lifecycle matrix passed completion, failure, cancellation, termination, timeout, and retry cells. | Verify the selected run and its history/export evidence before archiving or declaring recovery complete. | Completion of workload shapes, integrations, or failure combinations that were not exercised. |
+
+### Largest current load cell
+
+The largest configured server load cell starts **1,000 workflows** with start
+concurrency **8** while also running **8** concurrent polling workers for 120
+seconds. It requires at least a 98% workflow-start completion ratio and checks
+endpoint availability, cache-key drainage, sample coverage, and bounded
+resource ceilings.
+
+Treat this as a short **correctness smoke**, not a sustained production-scale
+benchmark. It does not establish a universal throughput, latency, memory, or
+maximum-concurrency promise. Establish those values with the benchmark and
+long-soak packet for the exact topology, worker mix, database, cache, and
+release you intend to operate.
+
+### Explicitly out of scope
+
+The 2.0 evidence claim does not cover:
+
+- network partitions
+- deliberate clock drift
+- multi-region operation
+- split-brain behavior
+
+Those experiments are not release prerequisites for 2.0. They are prerequisites
+only for making the corresponding partition, clock-skew, multi-region, or
+split-brain claim. The supported 2.0 release envelope remains the published
+topology plus its recovery packet and the behavior measured for the exact
+artifact tuple; unsupported chaos scenarios should not be presented as
+evidence that the documented single-region procedures are unusable.
+
 ## Supported topologies
 
 Durable Workflow v2 supports these operator shapes. The shape names in the
