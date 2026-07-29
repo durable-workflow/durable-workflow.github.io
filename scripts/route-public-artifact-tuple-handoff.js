@@ -458,7 +458,12 @@ function buildTitle(handoff, changes) {
 function buildWorkerBranch(handoff, key, changes) {
   if (changes.length === 1) {
     const change = changes[0];
-    return `seed/docs-artifact-tuple-${safeBranchSegment(change.name)}-${safeBranchSegment(change.current)}`;
+    return [
+      'seed/docs-artifact-tuple',
+      safeBranchSegment(change.name),
+      safeBranchSegment(change.current),
+      safeBranchSegment(key),
+    ].join('-');
   }
 
   return `seed/docs-artifact-tuple-${safeBranchSegment(key)}`;

@@ -29,6 +29,12 @@ function fail(message) {
   process.exit(1);
 }
 
+function workerBranch(payload) {
+  const match = /<!-- pipeline-worker-branch: ([^ ]+) -->/.exec(payload.body);
+  assert.ok(match, 'public artifact tuple ready item must include a worker branch');
+  return match[1];
+}
+
 function assertProtectedRefreshSource(source) {
   const parsed = yaml.load(source);
   const refreshJob = parsed?.jobs?.refresh;
@@ -485,6 +491,9 @@ const publishedServerAdvanceHandoff = {
 const publishedServerAdvancePayload = buildReadyItemPayload(
   publishedServerAdvanceHandoff,
 );
+const replayedPublishedServerAdvancePayload = buildReadyItemPayload(
+  structuredClone(publishedServerAdvanceHandoff),
+);
 const publishedServerRequestMatch =
   /<!-- pipeline-request-b64: ([A-Za-z0-9+/=]+) -->/.exec(
     publishedServerAdvancePayload.body,
@@ -504,10 +513,15 @@ assert.notStrictEqual(
   stableKey,
   'a published-only Server advance must receive a distinct handoff key',
 );
-assert.match(
-  publishedServerAdvancePayload.body,
-  /<!-- pipeline-worker-branch: seed\/docs-artifact-tuple-server-0\.2\.427 -->/,
-  'a published-only Server advance must route through a version-specific branch',
+assert.strictEqual(
+  workerBranch(publishedServerAdvancePayload),
+  `seed/docs-artifact-tuple-server-0.2.427-${publishedServerAdvancePayload.key}`,
+  'a published-only Server advance branch must include the full handoff identity',
+);
+assert.deepStrictEqual(
+  replayedPublishedServerAdvancePayload,
+  publishedServerAdvancePayload,
+  'an exact published-only Server handoff replay must preserve its routing identity',
 );
 for (const text of [
   '## Changed Independently Published Components\n- server 0.2.426 -> 0.2.427',
@@ -533,6 +547,42 @@ for (const text of [
     `a published-only Server advance request must include ${text}`,
   );
 }
+const advancedQualifiedVersions = {
+  ...publishedServerAdvanceHandoff.artifact_versions,
+  server: '0.2.427',
+};
+const advancedQualifiedServerHandoff = {
+  ...publishedServerAdvanceHandoff,
+  artifact_versions: advancedQualifiedVersions,
+  compatibility_evidence: compatibilityEvidence(advancedQualifiedVersions),
+};
+const advancedQualifiedServerPayload = buildReadyItemPayload(
+  advancedQualifiedServerHandoff,
+);
+const publishedServerBranch =
+  workerBranch(publishedServerAdvancePayload);
+const advancedQualifiedServerBranch =
+  workerBranch(advancedQualifiedServerPayload);
+
+assert.strictEqual(
+  advancedQualifiedServerPayload.title,
+  publishedServerAdvancePayload.title,
+  'a qualified aggregate advance must keep the single-component title readable',
+);
+assert.notStrictEqual(
+  advancedQualifiedServerPayload.key,
+  publishedServerAdvancePayload.key,
+  'different qualified aggregate recommendations must have distinct full handoff identities',
+);
+assert.notStrictEqual(
+  advancedQualifiedServerBranch,
+  publishedServerBranch,
+  'the same published Server transition with a different qualified aggregate must use a distinct branch',
+);
+assert.ok(
+  advancedQualifiedServerBranch.endsWith(advancedQualifiedServerPayload.key),
+  'the changed qualified aggregate branch must include its full handoff identity',
+);
 const legacyQualifiedKeys = [
   `versions-${artifactVersionDigest(stableKeyHandoff.artifact_versions)}`,
   legacyKey,
