@@ -7,6 +7,23 @@ const https = require('https');
 const path = require('path');
 
 const HANDOFF_SCHEMA = 'durable-workflow.docs.public-artifact-tuple-handoff';
+const SDK_NEUTRALITY_AUTHORITY_SCHEMA =
+  'durable-workflow.docs.sdk-neutrality-authority-identity';
+const SDK_NEUTRALITY_CONTRACT_SCHEMA =
+  'durable-workflow.v2.sdk-neutrality.contract';
+const SDK_NEUTRALITY_LOCK_SCHEMA =
+  'durable-workflow.docs.workflow-sdk-neutrality-authority-lock';
+const SDK_NEUTRALITY_CONTRACT_PATH = 'static/sdk-neutrality-contract.json';
+const SDK_NEUTRALITY_LOCK_PATH =
+  'scripts/workflow-sdk-neutrality-authority-lock.json';
+const SDK_NEUTRALITY_AUTHORITY_KEYS = [
+  'schema',
+  'schema_version',
+  'workflow_version',
+  'workflow_source_commit',
+  'manifest_sha256',
+  'authority_lock_sha256',
+];
 const EXPECTED_REPOSITORY = 'durable-workflow.github.io';
 const EXPECTED_TARGET_BRANCH = 'main';
 const EXPECTED_REFRESH_COMMAND = 'npm run refresh:public-artifact-versions';
@@ -93,6 +110,18 @@ function parseArgs(argv) {
 
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+}
+
+function parseJsonSource(source, label) {
+  try {
+    return JSON.parse(source);
+  } catch (error) {
+    throw new Error(`${label} must be valid JSON: ${error.message}`);
+  }
+}
+
+function sha256(source) {
+  return crypto.createHash('sha256').update(source).digest('hex');
 }
 
 function assertEqual(actual, expected, message) {
@@ -316,6 +345,179 @@ function validateCompatibilityEvidence(evidence, versions) {
   }
 }
 
+function defaultSdkNeutralityAuthoritySources() {
+  const repoRoot = path.join(__dirname, '..');
+
+  return {
+    contractSource: fs.readFileSync(
+      path.join(repoRoot, SDK_NEUTRALITY_CONTRACT_PATH),
+      'utf8',
+    ),
+    lockSource: fs.readFileSync(
+      path.join(repoRoot, SDK_NEUTRALITY_LOCK_PATH),
+      'utf8',
+    ),
+  };
+}
+
+function buildSdkNeutralityAuthorityIdentity(
+  workflowVersion,
+  contractSource,
+  lockSource,
+) {
+  if (typeof workflowVersion !== 'string' || workflowVersion.trim() === '') {
+    throw new Error(
+      'SDK-neutrality authority identity requires a qualified Workflow version',
+    );
+  }
+  if (typeof contractSource !== 'string') {
+    throw new Error(
+      `generated ${SDK_NEUTRALITY_CONTRACT_PATH} source must be a string`,
+    );
+  }
+  if (typeof lockSource !== 'string') {
+    throw new Error(
+      `generated ${SDK_NEUTRALITY_LOCK_PATH} source must be a string`,
+    );
+  }
+
+  const contract = parseJsonSource(
+    contractSource,
+    `generated ${SDK_NEUTRALITY_CONTRACT_PATH}`,
+  );
+  const lock = parseJsonSource(
+    lockSource,
+    `generated ${SDK_NEUTRALITY_LOCK_PATH}`,
+  );
+  const manifestSha256 = sha256(contractSource);
+
+  if (contract?.schema !== SDK_NEUTRALITY_CONTRACT_SCHEMA) {
+    throw new Error(
+      `generated ${SDK_NEUTRALITY_CONTRACT_PATH} has an invalid SDK-neutrality schema`,
+    );
+  }
+  if (
+    lock?.schema !== SDK_NEUTRALITY_LOCK_SCHEMA
+    || lock.schema_version !== 2
+  ) {
+    throw new Error(
+      `generated ${SDK_NEUTRALITY_LOCK_PATH} must be a version 2 authority lock`,
+    );
+  }
+  if (lock.workflow_ref !== workflowVersion) {
+    throw new Error(
+      'generated SDK-neutrality authority lock must match the qualified Workflow version',
+    );
+  }
+  if (
+    typeof lock.workflow_source_commit !== 'string'
+    || !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(
+      lock.workflow_source_commit,
+    )
+  ) {
+    throw new Error(
+      'generated SDK-neutrality authority lock must include a full Workflow source commit',
+    );
+  }
+  if (lock.resource_path !== 'resources/sdk-neutrality-contract.json') {
+    throw new Error(
+      'generated SDK-neutrality authority lock must identify the Workflow manifest resource',
+    );
+  }
+  if (
+    typeof lock.sha256 !== 'string'
+    || !/^[0-9a-f]{64}$/.test(lock.sha256)
+    || lock.sha256 !== manifestSha256
+  ) {
+    throw new Error(
+      'generated SDK-neutrality authority lock must match the generated manifest SHA-256',
+    );
+  }
+
+  return {
+    schema: SDK_NEUTRALITY_AUTHORITY_SCHEMA,
+    schema_version: 1,
+    workflow_version: workflowVersion,
+    workflow_source_commit: lock.workflow_source_commit,
+    manifest_sha256: manifestSha256,
+    authority_lock_sha256: sha256(lockSource),
+  };
+}
+
+function validateSdkNeutralityAuthorityIdentityShape(authority, workflowVersion) {
+  if (!authority || typeof authority !== 'object' || Array.isArray(authority)) {
+    throw new Error('handoff.sdk_neutrality_authority must be an object');
+  }
+
+  const actualKeys = Object.keys(authority).sort();
+  const expectedKeys = [...SDK_NEUTRALITY_AUTHORITY_KEYS].sort();
+  if (
+    actualKeys.length !== expectedKeys.length
+    || actualKeys.some((key, index) => key !== expectedKeys[index])
+  ) {
+    throw new Error(
+      'handoff.sdk_neutrality_authority must contain exactly ' +
+        SDK_NEUTRALITY_AUTHORITY_KEYS.join(', '),
+    );
+  }
+  assertEqual(
+    authority.schema,
+    SDK_NEUTRALITY_AUTHORITY_SCHEMA,
+    'handoff SDK-neutrality authority schema mismatch',
+  );
+  assertEqual(
+    authority.schema_version,
+    1,
+    'handoff SDK-neutrality authority schema version mismatch',
+  );
+  assertEqual(
+    authority.workflow_version,
+    workflowVersion,
+    'handoff SDK-neutrality authority Workflow version mismatch',
+  );
+  if (
+    typeof authority.workflow_source_commit !== 'string'
+    || !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(
+      authority.workflow_source_commit,
+    )
+  ) {
+    throw new Error(
+      'handoff SDK-neutrality authority must include a full Workflow source commit',
+    );
+  }
+  for (const field of ['manifest_sha256', 'authority_lock_sha256']) {
+    if (
+      typeof authority[field] !== 'string'
+      || !/^[0-9a-f]{64}$/.test(authority[field])
+    ) {
+      throw new Error(
+        `handoff SDK-neutrality authority ${field} must be a SHA-256`,
+      );
+    }
+  }
+}
+
+function validateSdkNeutralityAuthorityIdentity(
+  authority,
+  workflowVersion,
+  sources = defaultSdkNeutralityAuthoritySources(),
+) {
+  validateSdkNeutralityAuthorityIdentityShape(authority, workflowVersion);
+
+  const expected = buildSdkNeutralityAuthorityIdentity(
+    workflowVersion,
+    sources.contractSource,
+    sources.lockSource,
+  );
+  for (const field of SDK_NEUTRALITY_AUTHORITY_KEYS) {
+    if (authority[field] !== expected[field]) {
+      throw new Error(
+        `handoff SDK-neutrality authority ${field} must match the generated contract and lock`,
+      );
+    }
+  }
+}
+
 function validateTupleDate(tupleDate) {
   if (tupleDate === undefined || tupleDate === null || tupleDate === '') {
     return;
@@ -326,9 +528,9 @@ function validateTupleDate(tupleDate) {
   }
 }
 
-function validateHandoff(handoff) {
+function validateHandoff(handoff, options = {}) {
   assertEqual(handoff.schema, HANDOFF_SCHEMA, 'handoff schema mismatch');
-  assertEqual(handoff.schema_version, 2, 'handoff schema version mismatch');
+  assertEqual(handoff.schema_version, 3, 'handoff schema version mismatch');
   assertEqual(handoff.action, 'pipeline_ready_item', 'handoff action mismatch');
   assertEqual(handoff.repository, EXPECTED_REPOSITORY, 'handoff repository mismatch');
   assertEqual(handoff.target_branch, EXPECTED_TARGET_BRANCH, 'handoff target branch mismatch');
@@ -345,6 +547,12 @@ function validateHandoff(handoff) {
     'previous_published_artifact_versions',
   );
   validateCompatibilityEvidence(handoff.compatibility_evidence, handoff.artifact_versions);
+  validateSdkNeutralityAuthorityIdentity(
+    handoff.sdk_neutrality_authority,
+    handoff.artifact_versions.workflow,
+    options.sdkNeutralityAuthoritySources
+      || defaultSdkNeutralityAuthoritySources(),
+  );
   validateTupleDate(handoff.tuple_date);
 
   const guard = handoff.release_status_guard || {};
@@ -427,6 +635,12 @@ function compatibilityEvidenceDigest(evidence, versions) {
     .digest('hex');
 }
 
+function sdkNeutralityAuthorityDigest(authority, workflowVersion) {
+  validateSdkNeutralityAuthorityIdentityShape(authority, workflowVersion);
+
+  return sha256(stableStringify(authority));
+}
+
 function handoffKey(handoff) {
   const versionDigest = artifactVersionDigest({
     artifact_versions: handoff.artifact_versions,
@@ -436,8 +650,16 @@ function handoffKey(handoff) {
     handoff.compatibility_evidence,
     handoff.artifact_versions,
   ).slice(0, 12);
+  const authorityDigest = sdkNeutralityAuthorityDigest(
+    handoff.sdk_neutrality_authority,
+    handoff.artifact_versions.workflow,
+  ).slice(0, 12);
 
-  return `versions-${versionDigest}-evidence-${evidenceDigest}`;
+  return [
+    `versions-${versionDigest}`,
+    `evidence-${evidenceDigest}`,
+    `authority-${authorityDigest}`,
+  ].join('-');
 }
 
 function handoffDuplicateKeys(handoff) {
@@ -506,6 +728,8 @@ function buildRequestText(handoff, changes) {
     'Qualified aggregate recommendation:',
     ...ARTIFACT_ORDER.map(name => `- ${artifactLabel(name)} ${handoff.artifact_versions[name]}`),
     `- Compatibility evidence ${handoff.compatibility_evidence.authority.release_plan.tag}`,
+    `- SDK-neutrality authority Workflow ${handoff.sdk_neutrality_authority.workflow_version} source ${handoff.sdk_neutrality_authority.workflow_source_commit}`,
+    `- SDK-neutrality manifest SHA-256 ${handoff.sdk_neutrality_authority.manifest_sha256}`,
     '',
     `Run \`${refreshInvocation}\` and commit only the generated public artifact tuple files:`,
     ...handoff.refresh_files.map(file => `- \`${file}\``),
@@ -532,11 +756,14 @@ function buildIssueBody(handoff, key, workerBranch, requestText, changes) {
     '## Qualified Aggregate Recommendation',
     ...ARTIFACT_ORDER.map(name => `- ${artifactLabel(name)}: ${handoff.artifact_versions[name]}`),
     `- Compatibility evidence: ${handoff.compatibility_evidence.authority.release_plan.tag}`,
+    `- SDK-neutrality Workflow source: ${handoff.sdk_neutrality_authority.workflow_source_commit}`,
+    `- SDK-neutrality manifest SHA-256: ${handoff.sdk_neutrality_authority.manifest_sha256}`,
     '',
     '## Acceptance',
     '- The published-component source reports the newest independently published releases.',
     '- The qualified aggregate source remains the compatibility-backed recommendation.',
     '- Every SDK in the qualified recommendation is bound to its qualified Server by passing immutable compatibility evidence.',
+    '- The SDK-neutrality contract and authority lock match the qualified Workflow source commit and manifest digest.',
     '- The deployed docs release-audit JSON reports the qualified aggregate recommendation with LEAK=0 and MIXED=0.',
     '- Stable 1.x remains the default public docs line.',
     '- 2.0 remains explicit prerelease/versioned guidance.',
@@ -555,8 +782,8 @@ function buildIssueBody(handoff, key, workerBranch, requestText, changes) {
   ].join('\n');
 }
 
-function buildReadyItemPayload(handoff) {
-  validateHandoff(handoff);
+function buildReadyItemPayload(handoff, options = {}) {
+  validateHandoff(handoff, options);
 
   const changes = changedArtifacts(handoff);
   const key = handoffKey(handoff);
@@ -747,11 +974,14 @@ module.exports = {
   artifactVersionDigest,
   buildReadyItemPayload,
   buildRefreshInvocation,
+  buildSdkNeutralityAuthorityIdentity,
   changedArtifacts,
   compatibilityEvidenceDigest,
   findExistingReadyItem,
   handoffDuplicateKeys,
   handoffKey,
   routeReadyItem,
+  sdkNeutralityAuthorityDigest,
   validateHandoff,
+  validateSdkNeutralityAuthorityIdentity,
 };

@@ -9,11 +9,17 @@ const workflowPaths = [
   {
     label: 'docs deploy workflow',
     path: path.join(repoRoot, '.github', 'workflows', 'deploy.yml'),
+    authorityRefSource:
+      "require('./scripts/public-artifact-versions.json').artifacts.workflow",
+    authorityRefDescription: 'qualified Workflow version source',
     validationStep: 'Build website',
   },
   {
     label: 'public artifact tuple workflow',
     path: path.join(repoRoot, '.github', 'workflows', 'public-artifact-tuple.yml'),
+    authorityRefSource:
+      "require('./scripts/workflow-sdk-neutrality-authority-lock.json').workflow_source_commit",
+    authorityRefDescription: 'generated Workflow authority lock source commit',
     versionSourceStep: 'Refresh public artifact tuple',
     validationStep: 'Validate refreshed docs',
   },
@@ -44,13 +50,13 @@ function assertSdkNeutralityReleaseWorkflow(source, options) {
 
   for (const required of [
     'id: workflow-authority',
-    "require('./scripts/public-artifact-versions.json').artifacts.workflow",
+    options.authorityRefSource,
     '>> "$GITHUB_OUTPUT"',
   ]) {
     if (!resolveStep.includes(required)) {
       throw new Error(
-        `${options.label} must resolve the Workflow authority ref from ` +
-          `scripts/public-artifact-versions.json and publish it as a step output: ${required}`,
+        `${options.label} must resolve the Workflow authority ref from its ` +
+          `${options.authorityRefDescription} and publish it as a step output: ${required}`,
       );
     }
   }
@@ -61,7 +67,7 @@ function assertSdkNeutralityReleaseWorkflow(source, options) {
   if (!checkoutStep.includes(PINNED_REF_EXPRESSION)) {
     throw new Error(
       `${options.label} must reject a moving Workflow ref and check out the exact ` +
-        `artifacts.workflow step output`,
+        `authority step output`,
     );
   }
   if (!checkoutStep.includes('path: .workflow-authority')) {

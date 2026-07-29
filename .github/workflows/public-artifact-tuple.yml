@@ -97,10 +97,26 @@ jobs:
           node <<'NODE'
           const childProcess = require('child_process');
           const fs = require('fs');
+          const {
+            buildSdkNeutralityAuthorityIdentity,
+          } = require('./scripts/route-public-artifact-tuple-handoff');
           const source = require('./scripts/public-artifact-versions.json');
           const publishedSource = require('./scripts/published-artifact-versions.json');
           const compatibilityEvidence =
             require('./static/public-artifact-compatibility-evidence.json');
+          const sdkNeutralityContractSource = fs.readFileSync(
+            'static/sdk-neutrality-contract.json',
+            'utf8',
+          );
+          const sdkNeutralityAuthorityLockSource = fs.readFileSync(
+            'scripts/workflow-sdk-neutrality-authority-lock.json',
+            'utf8',
+          );
+          const sdkNeutralityAuthority = buildSdkNeutralityAuthorityIdentity(
+            source.artifacts.workflow,
+            sdkNeutralityContractSource,
+            sdkNeutralityAuthorityLockSource,
+          );
           const previousPublishedSource = JSON.parse(childProcess.execFileSync(
             'git',
             ['show', 'HEAD:scripts/published-artifact-versions.json'],
@@ -134,7 +150,7 @@ jobs:
           const runId = process.env.GITHUB_RUN_ID || null;
           const handoff = {
             schema: 'durable-workflow.docs.public-artifact-tuple-handoff',
-            schema_version: 2,
+            schema_version: 3,
             action: 'pipeline_ready_item',
             reason: 'public_artifact_tuple_refresh_available',
             repository: 'durable-workflow.github.io',
@@ -147,6 +163,7 @@ jobs:
             artifact_versions: source.artifacts,
             published_artifact_versions: publishedSource.artifacts,
             compatibility_evidence: compatibilityEvidence,
+            sdk_neutrality_authority: sdkNeutralityAuthority,
             previous_published_artifact_versions: previousPublishedSource.artifacts,
             source_check: {
               repository,
@@ -215,7 +232,7 @@ jobs:
         id: workflow-authority
         if: steps.changes.outputs.changed == 'true'
         run: |
-          node -e "process.stdout.write('ref=' + require('./scripts/public-artifact-versions.json').artifacts.workflow + '\n')" >> "$GITHUB_OUTPUT"
+          node -e "process.stdout.write('ref=' + require('./scripts/workflow-sdk-neutrality-authority-lock.json').workflow_source_commit + '\n')" >> "$GITHUB_OUTPUT"
 
       - name: Checkout Workflow authority
         if: steps.changes.outputs.changed == 'true'

@@ -43,7 +43,12 @@ assert.doesNotThrow(() => assertReleaseGates(contract));
 
 const isolatedRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdk-neutrality-authority-'));
 try {
-  function writeAuthorityFixture(root, workflowRef, manifestSource) {
+  function writeAuthorityFixture(
+    root,
+    workflowRef,
+    manifestSource,
+    workflowSourceCommit = 'a'.repeat(40),
+  ) {
     fs.mkdirSync(path.join(root, 'scripts'), {recursive: true});
     fs.mkdirSync(path.join(root, 'static'), {recursive: true});
     fs.writeFileSync(
@@ -52,7 +57,11 @@ try {
     );
     fs.writeFileSync(
       path.join(root, 'scripts', 'workflow-sdk-neutrality-authority-lock.json'),
-      workflowAuthorityLockSource(workflowRef, manifestSource),
+      workflowAuthorityLockSource(
+        workflowRef,
+        manifestSource,
+        workflowSourceCommit,
+      ),
     );
   }
 
@@ -138,6 +147,38 @@ try {
     }),
     new RegExp(`must match the exact Workflow ${escaped(successorWorkflowRef)} authority digest`),
     'release validation must reject a stale digest before accepting packaged bytes',
+  );
+
+  const malformedSourceCommitRoot = path.join(
+    isolatedRoot,
+    'malformed-source-commit-successor',
+  );
+  writeAuthorityFixture(
+    malformedSourceCommitRoot,
+    successorWorkflowRef,
+    currentManifestSource,
+  );
+  const malformedSourceCommitLockPath = path.join(
+    malformedSourceCommitRoot,
+    'scripts',
+    'workflow-sdk-neutrality-authority-lock.json',
+  );
+  const malformedSourceCommitLock = JSON.parse(
+    fs.readFileSync(malformedSourceCommitLockPath, 'utf8'),
+  );
+  malformedSourceCommitLock.workflow_source_commit = 'not-a-commit';
+  fs.writeFileSync(
+    malformedSourceCommitLockPath,
+    `${JSON.stringify(malformedSourceCommitLock, null, 2)}\n`,
+  );
+  assert.throws(
+    () => assertWorkflowMirrorMatches({
+      environment: {},
+      repoRoot: malformedSourceCommitRoot,
+      workflowVersion: successorWorkflowRef,
+    }),
+    /invalid workflow source commit/,
+    'standalone validation must reject a malformed Workflow source commit',
   );
 
   const changedManifestSource = `${currentManifestSource}\n`;

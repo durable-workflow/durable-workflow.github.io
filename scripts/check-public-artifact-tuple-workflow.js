@@ -19,12 +19,33 @@ const PROTECTED_REFRESH_SOURCE_GUARD =
 const {
   artifactVersionDigest,
   buildReadyItemPayload,
+  buildSdkNeutralityAuthorityIdentity,
   compatibilityEvidenceDigest,
   findExistingReadyItem,
   handoffDuplicateKeys,
   handoffKey,
   routeReadyItem,
+  sdkNeutralityAuthorityDigest,
 } = require(routeScriptPath);
+const {
+  workflowAuthorityLockSource,
+} = require('./refresh-public-artifact-versions');
+const currentArtifactVersions = require('./public-artifact-versions.json');
+const currentSdkNeutralityAuthoritySources = {
+  contractSource: fs.readFileSync(
+    path.join(__dirname, '..', 'static', 'sdk-neutrality-contract.json'),
+    'utf8',
+  ),
+  lockSource: fs.readFileSync(
+    path.join(__dirname, 'workflow-sdk-neutrality-authority-lock.json'),
+    'utf8',
+  ),
+};
+const currentSdkNeutralityAuthority = buildSdkNeutralityAuthorityIdentity(
+  currentArtifactVersions.artifacts.workflow,
+  currentSdkNeutralityAuthoritySources.contractSource,
+  currentSdkNeutralityAuthoritySources.lockSource,
+);
 
 function fail(message) {
   console.error(message);
@@ -102,10 +123,13 @@ for (const required of [
   'PIPELINE_GATE_URL',
   'scripts/route-public-artifact-tuple-handoff.js',
   "schema: 'durable-workflow.docs.public-artifact-tuple-handoff'",
-  'schema_version: 2',
+  'schema_version: 3',
   "action: 'pipeline_ready_item'",
   "integration: 'pipeline'",
   'published_artifact_versions: publishedSource.artifacts',
+  'sdk_neutrality_authority: sdkNeutralityAuthority',
+  'buildSdkNeutralityAuthorityIdentity',
+  'workflow_source_commit',
   'previous_published_artifact_versions: previousPublishedSource.artifacts',
   'HEAD:scripts/published-artifact-versions.json',
   'scripts/public-artifact-versions.json',
@@ -265,7 +289,7 @@ const stableArtifactVersions = {
   'sdk-python': '0.2.0',
   'sdk-rust': '0.1.0',
   server: '0.2.426',
-  workflow: '2.0.0-alpha.275',
+  workflow: currentArtifactVersions.artifacts.workflow,
   waterline: '0.2.0',
 };
 const stableKeyHandoff = {
@@ -350,6 +374,7 @@ function compatibilityEvidence(versions) {
 stableKeyHandoff.compatibility_evidence = compatibilityEvidence(
   stableKeyHandoff.artifact_versions,
 );
+stableKeyHandoff.sdk_neutrality_authority = currentSdkNeutralityAuthority;
 const nextRunSameTuple = {
   ...stableKeyHandoff,
   tuple_date: '2026-06-19',
@@ -405,7 +430,7 @@ if (existing) {
 
 const multiArtifactHandoff = {
   schema: 'durable-workflow.docs.public-artifact-tuple-handoff',
-  schema_version: 2,
+  schema_version: 3,
   action: 'pipeline_ready_item',
   repository: 'durable-workflow.github.io',
   target_branch: 'main',
@@ -432,6 +457,7 @@ const multiArtifactHandoff = {
   artifact_versions: stableKeyHandoff.artifact_versions,
   published_artifact_versions: stableKeyHandoff.published_artifact_versions,
   compatibility_evidence: compatibilityEvidence(stableKeyHandoff.artifact_versions),
+  sdk_neutrality_authority: currentSdkNeutralityAuthority,
   previous_published_artifact_versions: {
     cli: '0.1.99',
     'sdk-php': '0.1.0',
@@ -489,6 +515,29 @@ for (const qualification of Object.values(
 const sdkQualificationReplacementPayload = buildReadyItemPayload(
   sdkQualificationReplacementHandoff,
 );
+const sdkNeutralityReplacementContract = {
+  ...JSON.parse(currentSdkNeutralityAuthoritySources.contractSource),
+  version: JSON.parse(currentSdkNeutralityAuthoritySources.contractSource).version + 1,
+};
+const sdkNeutralityReplacementSources = {
+  contractSource: `${JSON.stringify(sdkNeutralityReplacementContract, null, 2)}\n`,
+};
+sdkNeutralityReplacementSources.lockSource = workflowAuthorityLockSource(
+  stableArtifactVersions.workflow,
+  sdkNeutralityReplacementSources.contractSource,
+  '9'.repeat(40),
+);
+const sdkNeutralityReplacementHandoff = structuredClone(multiArtifactHandoff);
+sdkNeutralityReplacementHandoff.sdk_neutrality_authority =
+  buildSdkNeutralityAuthorityIdentity(
+    stableArtifactVersions.workflow,
+    sdkNeutralityReplacementSources.contractSource,
+    sdkNeutralityReplacementSources.lockSource,
+  );
+const sdkNeutralityReplacementPayload = buildReadyItemPayload(
+  sdkNeutralityReplacementHandoff,
+  {sdkNeutralityAuthoritySources: sdkNeutralityReplacementSources},
+);
 const requestMatch = /<!-- pipeline-request-b64: ([A-Za-z0-9+/=]+) -->/.exec(multiArtifactPayload.body);
 const filesMatch = /<!-- pipeline-files-b64: ([A-Za-z0-9+/=]+) -->/.exec(multiArtifactPayload.body);
 
@@ -502,6 +551,17 @@ assert.strictEqual(
     multiArtifactHandoff.artifact_versions,
   ),
   'identical validated compatibility evidence must preserve its stable digest',
+);
+assert.strictEqual(
+  sdkNeutralityAuthorityDigest(
+    structuredClone(multiArtifactHandoff.sdk_neutrality_authority),
+    multiArtifactHandoff.artifact_versions.workflow,
+  ),
+  sdkNeutralityAuthorityDigest(
+    multiArtifactHandoff.sdk_neutrality_authority,
+    multiArtifactHandoff.artifact_versions.workflow,
+  ),
+  'identical validated SDK-neutrality authority must preserve its stable digest',
 );
 for (const [label, handoff, payload] of [
   [
@@ -542,6 +602,40 @@ for (const [label, handoff, payload] of [
   );
 }
 
+assert.deepStrictEqual(
+  sdkNeutralityReplacementHandoff.artifact_versions,
+  multiArtifactHandoff.artifact_versions,
+  'an SDK-neutrality authority replacement must keep the qualified aggregate unchanged',
+);
+assert.deepStrictEqual(
+  sdkNeutralityReplacementHandoff.published_artifact_versions,
+  multiArtifactHandoff.published_artifact_versions,
+  'an SDK-neutrality authority replacement must keep published versions unchanged',
+);
+assert.deepStrictEqual(
+  sdkNeutralityReplacementHandoff.compatibility_evidence,
+  multiArtifactHandoff.compatibility_evidence,
+  'an SDK-neutrality authority replacement must keep compatibility evidence unchanged',
+);
+assert.notStrictEqual(
+  sdkNeutralityReplacementPayload.key,
+  multiArtifactPayload.key,
+  'a same-version SDK-neutrality authority replacement must receive a distinct handoff key',
+);
+assert.notStrictEqual(
+  workerBranch(sdkNeutralityReplacementPayload),
+  workerBranch(multiArtifactPayload),
+  'a same-version SDK-neutrality authority replacement must receive a distinct worker branch',
+);
+assert.deepStrictEqual(
+  buildReadyItemPayload(
+    structuredClone(sdkNeutralityReplacementHandoff),
+    {sdkNeutralityAuthoritySources: sdkNeutralityReplacementSources},
+  ),
+  sdkNeutralityReplacementPayload,
+  'an exact SDK-neutrality authority replay must preserve its routing identity',
+);
+
 if (!requestMatch) {
   fail('public artifact tuple ready item must include an encoded refresh request');
 }
@@ -555,6 +649,16 @@ const decodedFiles = JSON.parse(Buffer.from(filesMatch[1], 'base64').toString('u
 
 if (!decodedRequest.includes('npm run refresh:public-artifact-versions -- --date 2026-06-18')) {
   fail('public artifact tuple refresh request must preserve tuple_date as the docs row date');
+}
+for (const authorityValue of [
+  multiArtifactHandoff.sdk_neutrality_authority.workflow_source_commit,
+  multiArtifactHandoff.sdk_neutrality_authority.manifest_sha256,
+]) {
+  if (!decodedRequest.includes(authorityValue)) {
+    fail(
+      `public artifact tuple refresh request must preserve SDK-neutrality authority ${authorityValue}`,
+    );
+  }
 }
 
 if (JSON.stringify(decodedFiles) !== JSON.stringify(multiArtifactHandoff.refresh_files)) {
@@ -719,6 +823,48 @@ for (const [label, mutate, expected] of [
       handoff.previous_published_artifact_versions.unexpected = '1.0.0';
     },
     /handoff\.previous_published_artifact_versions contains unknown artifacts: unexpected/,
+  ],
+  [
+    'missing SDK-neutrality authority identity',
+    handoff => {
+      delete handoff.sdk_neutrality_authority;
+    },
+    /handoff\.sdk_neutrality_authority must be an object/,
+  ],
+  [
+    'malformed SDK-neutrality Workflow source commit',
+    handoff => {
+      handoff.sdk_neutrality_authority.workflow_source_commit = 'not-a-commit';
+    },
+    /must include a full Workflow source commit/,
+  ],
+  [
+    'SDK-neutrality authority for another Workflow version',
+    handoff => {
+      handoff.sdk_neutrality_authority.workflow_version = '2.0.0-rc.999';
+    },
+    /authority Workflow version mismatch/,
+  ],
+  [
+    'SDK-neutrality authority for another Workflow source commit',
+    handoff => {
+      handoff.sdk_neutrality_authority.workflow_source_commit = '8'.repeat(40);
+    },
+    /workflow_source_commit must match the generated contract and lock/,
+  ],
+  [
+    'SDK-neutrality authority for another manifest',
+    handoff => {
+      handoff.sdk_neutrality_authority.manifest_sha256 = '7'.repeat(64);
+    },
+    /manifest_sha256 must match the generated contract and lock/,
+  ],
+  [
+    'SDK-neutrality authority for another generated lock',
+    handoff => {
+      handoff.sdk_neutrality_authority.authority_lock_sha256 = '6'.repeat(64);
+    },
+    /authority_lock_sha256 must match the generated contract and lock/,
   ],
 ]) {
   const invalidHandoff = structuredClone(multiArtifactHandoff);
@@ -1061,7 +1207,7 @@ async function assertStubGateLegacyKeyPath() {
   }
 }
 
-async function assertStubGateEvidenceReplacementPath(label, replacementPayload) {
+async function assertStubGateIdentityReplacementPath(label, replacementPayload) {
   const issues = [];
 
   await withStubGate(issues, async requests => {
@@ -1074,21 +1220,21 @@ async function assertStubGateEvidenceReplacementPath(label, replacementPayload) 
       || replacement.number !== replayedReplacement.number
       || issues.length !== 2
     ) {
-      fail(`${label} evidence replacement must route independently and replay idempotently`);
+      fail(`${label} replacement must route independently and replay idempotently`);
     }
 
     const routedBranches = new Set(
       issues.map(issue => workerBranch({body: issue.body})),
     );
     if (routedBranches.size !== 2) {
-      fail(`${label} evidence replacement must own a distinct worker branch`);
+      fail(`${label} replacement must own a distinct worker branch`);
     }
 
     const createRequests = requests.filter(
       request => request.action === 'gh.issue.create',
     );
     if (createRequests.length !== 2) {
-      fail(`${label} evidence replacement must create exactly two ready items`);
+      fail(`${label} replacement must create exactly two ready items`);
     }
   });
 }
@@ -1297,13 +1443,17 @@ async function assertStubGateCompletedPath() {
 async function main() {
   await assertStubGateCreatePath();
   await assertStubGateLegacyKeyPath();
-  await assertStubGateEvidenceReplacementPath(
-    'release-plan',
+  await assertStubGateIdentityReplacementPath(
+    'release-plan evidence',
     releasePlanReplacementPayload,
   );
-  await assertStubGateEvidenceReplacementPath(
-    'SDK-to-Server qualification',
+  await assertStubGateIdentityReplacementPath(
+    'SDK-to-Server qualification evidence',
     sdkQualificationReplacementPayload,
+  );
+  await assertStubGateIdentityReplacementPath(
+    'SDK-neutrality authority',
+    sdkNeutralityReplacementPayload,
   );
   await assertStubGateActiveLifecycleReplayPath();
   await assertStubGatePaginatedActiveReplayPath();

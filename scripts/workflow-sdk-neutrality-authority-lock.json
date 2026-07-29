@@ -1,7 +1,8 @@
 {
   "schema": "durable-workflow.docs.workflow-sdk-neutrality-authority-lock",
-  "schema_version": 1,
+  "schema_version": 2,
   "workflow_ref": "2.0.0-rc.5",
+  "workflow_source_commit": "d8356318311cf594ba47e685ec8e7654c7258a28",
   "resource_path": "resources/sdk-neutrality-contract.json",
   "sha256": "93ab20aa7c69a4994affef4b3d511c0bf99d2304828d9626615b2da3f60064fd"
 }

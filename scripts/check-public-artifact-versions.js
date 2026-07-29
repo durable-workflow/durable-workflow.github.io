@@ -869,6 +869,9 @@ const currentTupleSources = Object.fromEntries(PUBLIC_ARTIFACT_TUPLE_FILES.map(f
   file,
   fs.readFileSync(path.join(repoRoot, file), 'utf8'),
 ]));
+const currentWorkflowAuthorityLock = JSON.parse(
+  currentTupleSources['scripts/workflow-sdk-neutrality-authority-lock.json'],
+);
 assert.deepStrictEqual(
   changedPublicArtifactTupleFiles(
     currentTupleSources,
@@ -879,10 +882,36 @@ assert.deepStrictEqual(
       currentTupleSources['static/sdk-neutrality-contract.json'],
       undefined,
       publishedSource.artifacts,
+      currentWorkflowAuthorityLock.workflow_source_commit,
     ),
   ),
   [],
   'a current artifact tuple must produce no generated file changes',
+);
+const sameVersionSourceReplacementTuple = generatedPublicArtifactTupleSources(
+  currentTupleSources,
+  source.artifacts,
+  '2026-07-23',
+  currentTupleSources['static/sdk-neutrality-contract.json'],
+  undefined,
+  publishedSource.artifacts,
+  'c'.repeat(40),
+);
+assert.deepStrictEqual(
+  changedPublicArtifactTupleFiles(
+    currentTupleSources,
+    sameVersionSourceReplacementTuple,
+  ),
+  ['scripts/workflow-sdk-neutrality-authority-lock.json'],
+  'a same-version Workflow source replacement must refresh the authority lock',
+);
+assert.strictEqual(
+  JSON.parse(
+    sameVersionSourceReplacementTuple[
+      'scripts/workflow-sdk-neutrality-authority-lock.json'
+    ],
+  ).workflow_source_commit,
+  'c'.repeat(40),
 );
 const successorWorkflowVersion = incrementPrereleaseVersion(
   source.artifacts.workflow,
@@ -898,6 +927,8 @@ const unchangedManifestTuple = generatedPublicArtifactTupleSources(
   '2026-07-14',
   currentWorkflowManifest,
   successorWorkflowCompatibilityEvidence,
+  undefined,
+  'a'.repeat(40),
 );
 const unchangedManifestFiles = changedPublicArtifactTupleFiles(
   currentTupleSources,
@@ -924,7 +955,9 @@ assert.strictEqual(
 const unchangedManifestLock = JSON.parse(
   unchangedManifestTuple['scripts/workflow-sdk-neutrality-authority-lock.json'],
 );
+assert.strictEqual(unchangedManifestLock.schema_version, 2);
 assert.strictEqual(unchangedManifestLock.workflow_ref, successorWorkflowVersion);
+assert.strictEqual(unchangedManifestLock.workflow_source_commit, 'a'.repeat(40));
 assert.strictEqual(unchangedManifestLock.sha256, sha256(currentWorkflowManifest));
 
 const changedWorkflowManifest = `${currentWorkflowManifest}\n`;
@@ -934,6 +967,8 @@ const changedManifestTuple = generatedPublicArtifactTupleSources(
   '2026-07-14',
   changedWorkflowManifest,
   successorWorkflowCompatibilityEvidence,
+  undefined,
+  'b'.repeat(40),
 );
 assert.deepStrictEqual(
   changedPublicArtifactTupleFiles(currentTupleSources, changedManifestTuple),
@@ -949,6 +984,7 @@ const changedManifestLock = JSON.parse(
   changedManifestTuple['scripts/workflow-sdk-neutrality-authority-lock.json'],
 );
 assert.strictEqual(changedManifestLock.workflow_ref, successorWorkflowVersion);
+assert.strictEqual(changedManifestLock.workflow_source_commit, 'b'.repeat(40));
 assert.strictEqual(changedManifestLock.sha256, sha256(changedWorkflowManifest));
 assert.notStrictEqual(changedManifestLock.sha256, unchangedManifestLock.sha256);
 
@@ -1070,9 +1106,22 @@ async function assertWorkflowRegistryAuthorityResolution() {
   assert.strictEqual(requestedUrls[0], workflowAuthorityManifestUrl(selectedReference));
   assert(!requestedUrls[0].includes(successorWorkflowVersion));
   assert.strictEqual(
-    JSON.parse(workflowAuthorityLockSource(authority.version, authority.manifestSource)).workflow_ref,
+    JSON.parse(workflowAuthorityLockSource(
+      authority.version,
+      authority.manifestSource,
+      authority.sourceReference,
+    )).workflow_ref,
     successorWorkflowVersion,
     'the authority lock must retain the selected public package version instead of its source SHA',
+  );
+  assert.strictEqual(
+    JSON.parse(workflowAuthorityLockSource(
+      authority.version,
+      authority.manifestSource,
+      authority.sourceReference,
+    )).workflow_source_commit,
+    selectedReference,
+    'the authority lock must retain the exact selected Workflow source commit',
   );
 
   const phpSdkRelease = await resolvePackagistVersion(

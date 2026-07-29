@@ -1031,7 +1031,7 @@ function workflowSourceReference(release) {
     throw new Error(`Packagist Workflow ${version} must include git source metadata`);
   }
 
-  if (typeof reference !== 'string' || !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/i.test(reference)) {
+  if (typeof reference !== 'string' || !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(reference)) {
     throw new Error(
       `Packagist Workflow ${version} must include a full source.reference commit SHA`,
     );
@@ -1083,13 +1083,26 @@ async function resolvePublishedWorkflowAuthority(source, clients = {}) {
   return resolveWorkflowAuthorityForRelease(release, clients);
 }
 
-function workflowAuthorityLockSource(workflowRef, manifestSource) {
+function workflowAuthorityLockSource(
+  workflowRef,
+  manifestSource,
+  workflowSourceCommit,
+) {
   assertWorkflowAuthorityManifestSource(manifestSource, workflowRef);
+  if (
+    typeof workflowSourceCommit !== 'string'
+    || !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(workflowSourceCommit)
+  ) {
+    throw new Error(
+      `Workflow ${workflowRef} authority lock requires a full source commit SHA`,
+    );
+  }
 
   return `${JSON.stringify({
     schema: 'durable-workflow.docs.workflow-sdk-neutrality-authority-lock',
-    schema_version: 1,
+    schema_version: 2,
     workflow_ref: workflowRef,
+    workflow_source_commit: workflowSourceCommit,
     resource_path: WORKFLOW_SDK_NEUTRALITY_RESOURCE_PATH,
     sha256: sha256(manifestSource),
   }, null, 2)}\n`;
@@ -1109,6 +1122,7 @@ function generatedPublicArtifactTupleSources(
   workflowManifestSource,
   compatibilityEvidence = artifactCompatibilityEvidenceSource,
   publishedVersions = versions,
+  workflowSourceCommit,
 ) {
   const quickstartSource = currentSources['static/quickstart-execution-contract.json'];
   const compatibilitySource = currentSources['static/compatibility-contract.json'];
@@ -1132,6 +1146,7 @@ function generatedPublicArtifactTupleSources(
     'scripts/workflow-sdk-neutrality-authority-lock.json': workflowAuthorityLockSource(
       versions.workflow,
       workflowManifestSource,
+      workflowSourceCommit,
     ),
   };
 }
@@ -1530,6 +1545,7 @@ async function check() {
     workflowManifestSource,
     published.compatibilityEvidence,
     published.publishedVersions,
+    published.workflowSourceReference,
   );
   const actual = readArtifactVersions(JSON.parse(
     currentSources['scripts/public-artifact-versions.json'],
@@ -1669,6 +1685,7 @@ async function refresh(date) {
     workflowManifestSource,
     published.compatibilityEvidence,
     published.publishedVersions,
+    published.workflowSourceReference,
   );
   const updated = changedPublicArtifactTupleFiles(currentSources, desiredSources);
 

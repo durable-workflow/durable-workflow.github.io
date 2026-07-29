@@ -875,7 +875,7 @@ function assertPinnedWorkflowAuthority(options = {}) {
   if (lock.schema !== 'durable-workflow.docs.workflow-sdk-neutrality-authority-lock') {
     throw new Error(`Workflow SDK neutrality authority lock has an invalid schema at ${lockPath}`);
   }
-  if (lock.schema_version !== 1) {
+  if (lock.schema_version !== 2) {
     throw new Error(`Workflow SDK neutrality authority lock has an invalid schema version at ${lockPath}`);
   }
   if (lock.workflow_ref !== workflowVersion) {
@@ -888,6 +888,11 @@ function assertPinnedWorkflowAuthority(options = {}) {
     throw new Error(
       `Workflow SDK neutrality authority lock must identify ` +
         `resources/sdk-neutrality-contract.json`,
+    );
+  }
+  if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(lock.workflow_source_commit || '')) {
+    throw new Error(
+      `Workflow SDK neutrality authority lock has an invalid workflow source commit at ${lockPath}`,
     );
   }
   if (!/^[a-f0-9]{64}$/.test(lock.sha256 || '')) {
