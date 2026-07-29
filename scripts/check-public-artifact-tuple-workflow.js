@@ -391,7 +391,7 @@ const existing = findExistingReadyItem(
 );
 
 if (!existing || existing.number !== 42) {
-  fail('public artifact tuple router must match existing pending handoffs with legacy date-prefixed keys');
+  fail('public artifact tuple router must match existing active handoffs with legacy date-prefixed keys');
 }
 
 const multiArtifactHandoff = {
@@ -779,21 +779,35 @@ async function withStubGate(issues, callback) {
       requests.push(payload);
 
       if (payload.action === 'gh.issue.list') {
+        const requiredLabels = parseLabels(payload.input.labels);
+        const listedIssues = issues
+          .filter(issue => {
+            const issueLabels = Array.isArray(issue.labels)
+              ? issue.labels
+              : parseLabels(issue.labels || '');
+
+            return (issue.state || 'open') === payload.input.state
+              && requiredLabels.every(label => issueLabels.includes(label));
+          })
+          .slice(0, payload.input.limit);
         response.writeHead(200, {'Content-Type': 'application/json'});
-        response.end(JSON.stringify({status: 'completed', result: issues}));
+        response.end(JSON.stringify({status: 'completed', result: listedIssues}));
         return;
       }
 
       if (payload.action === 'gh.issue.create') {
+        const created = {
+          number: 730 + issues.length,
+          title: payload.input.title,
+          body: payload.input.body,
+          labels: payload.input.labels.split(','),
+          state: 'open',
+        };
+        issues.push(created);
         response.writeHead(200, {'Content-Type': 'application/json'});
         response.end(JSON.stringify({
           status: 'completed',
-          result: {
-            number: 730,
-            title: payload.input.title,
-            body: payload.input.body,
-            labels: payload.input.labels.split(','),
-          },
+          result: created,
         }));
         return;
       }
@@ -847,10 +861,13 @@ function assertGateListPayload(request) {
   assertLabelSet(request.input.labels, [
     'pipeline:ready-item',
     'branch:main',
-    'state:pending',
     'source:handoff',
     'flow:release',
-  ], 'public artifact tuple list payload must use the pending handoff release labels');
+  ], 'public artifact tuple list payload must use lifecycle-stable handoff release labels');
+
+  if (parseLabels(request.input.labels).some(label => label.startsWith('state:'))) {
+    fail('public artifact tuple lookup must not narrow active handoffs to one lifecycle state');
+  }
 
   if (request.input.state !== 'open' || request.input.limit !== 50) {
     fail('public artifact tuple list payload must use the bounded open-ready-item lookup');
@@ -909,7 +926,18 @@ async function assertStubGateCreatePath() {
 
 async function assertStubGateDuplicatePath() {
   const routed = await withStubGate(
-    [{number: 42, body: `<!-- docs-artifact-tuple-key: ${legacyKey} -->`}],
+    [{
+      number: 42,
+      body: `<!-- docs-artifact-tuple-key: ${legacyKey} -->`,
+      labels: [
+        'pipeline:ready-item',
+        'branch:main',
+        'state:integrating',
+        'source:handoff',
+        'flow:release',
+      ],
+      state: 'open',
+    }],
     async requests => {
       const readyItem = await routeReadyItem(multiArtifactPayload);
 
@@ -928,9 +956,98 @@ async function assertStubGateDuplicatePath() {
   }
 }
 
+async function assertStubGateActiveLifecycleReplayPath() {
+  const issues = [];
+
+  await withStubGate(issues, async requests => {
+    const created = await routeReadyItem(multiArtifactPayload);
+    const pendingReplay = await routeReadyItem(multiArtifactPayload);
+
+    if (created.number !== pendingReplay.number || issues.length !== 1) {
+      fail('an exact pending handoff replay must reuse the original ready item');
+    }
+
+    for (const activeState of [
+      'state:claimed',
+      'state:ready',
+      'state:integrating',
+      'state:integrated',
+    ]) {
+      issues[0].labels = issues[0].labels
+        .filter(label => !label.startsWith('state:'))
+        .concat(activeState);
+      const issueBeforeReplay = JSON.stringify(issues[0]);
+      const replayed = await routeReadyItem(multiArtifactPayload);
+
+      if (replayed.number !== created.number) {
+        fail(`an exact ${activeState} handoff replay must reuse the original ready item`);
+      }
+
+      if (JSON.stringify(issues[0]) !== issueBeforeReplay) {
+        fail(`an exact ${activeState} handoff replay must not edit the original ready item`);
+      }
+    }
+
+    const createRequests = requests.filter(request => request.action === 'gh.issue.create');
+    if (createRequests.length !== 1 || issues.length !== 1) {
+      fail('active lifecycle handoff replays must create exactly one ready item');
+    }
+
+    const routedBranches = new Set(issues.map(issue => workerBranch({body: issue.body})));
+    if (routedBranches.size !== 1) {
+      fail('active lifecycle handoff replays must use exactly one worker branch');
+    }
+
+    for (const request of requests.filter(request => request.action === 'gh.issue.list')) {
+      assertGateListPayload(request);
+    }
+  });
+}
+
+async function assertStubGateCompletedPath() {
+  const completedIssue = {
+    number: 42,
+    title: multiArtifactPayload.title,
+    body: multiArtifactPayload.body,
+    labels: [
+      'pipeline:ready-item',
+      'branch:main',
+      'state:completed',
+      'source:handoff',
+      'flow:release',
+    ],
+    state: 'closed',
+  };
+  const issues = [completedIssue];
+  const completedBeforeReplay = JSON.stringify(completedIssue);
+
+  const routed = await withStubGate(issues, async requests => {
+    const readyItem = await routeReadyItem(multiArtifactPayload);
+
+    if (requests.length !== 2) {
+      fail('a completed handoff must not be returned by the active ready-item lookup');
+    }
+
+    assertGateListPayload(requests[0]);
+    assertGateCreatePayload(requests[1]);
+
+    return readyItem;
+  });
+
+  if (!routed || routed.number === completedIssue.number) {
+    fail('a completed handoff must not be mistaken for the active ready item');
+  }
+
+  if (JSON.stringify(completedIssue) !== completedBeforeReplay) {
+    fail('routing after completed work must not reopen or edit the completed ready item');
+  }
+}
+
 async function main() {
   await assertStubGateCreatePath();
   await assertStubGateDuplicatePath();
+  await assertStubGateActiveLifecycleReplayPath();
+  await assertStubGateCompletedPath();
 
   console.log('Public artifact tuple workflow routes a read-only pipeline handoff.');
 }

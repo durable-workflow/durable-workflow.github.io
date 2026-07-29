@@ -33,7 +33,6 @@ const ROUTING_LABELS = [
 const READY_ITEM_LOOKUP_LABELS = [
   'pipeline:ready-item',
   'branch:main',
-  'state:pending',
   'source:handoff',
   'flow:release',
 ];
