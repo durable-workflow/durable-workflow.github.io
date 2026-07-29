@@ -52,6 +52,10 @@ const REQUIRED_DISCOVERY_ENTRIES = [
     buildPath: 'platform-conformance-contract.json',
   },
   {
+    path: '/platform-conformance/run-ledger.json',
+    buildPath: 'platform-conformance/run-ledger.json',
+  },
+  {
     path: '/docs-page-release-audit.json',
     buildPath: 'docs-page-release-audit.json',
   },

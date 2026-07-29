@@ -3,6 +3,8 @@ title: Platform Conformance
 description: Public discovery route for Durable Workflow platform conformance manifests and runtime scenario catalogs.
 ---
 
+import ConformanceRunLedger from '@site/src/components/ConformanceRunLedger';
+
 # Platform Conformance
 
 The platform conformance surface is the public contract used to validate
@@ -22,6 +24,7 @@ the explicit 2.0 prerelease docs.
 | Surface | Public URL | Purpose |
 | --- | --- | --- |
 | Suite manifest | [`/platform-conformance-contract.json`](pathname:///platform-conformance-contract.json) | Declares the conformance schema, suite version, targets, fixture categories, harness contract, and release gates. |
+| Exact-tuple run ledger | [`/platform-conformance/run-ledger.json`](pathname:///platform-conformance/run-ledger.json) | Indexes bounded, sanitized executed-run evidence by tier and experiment, including exact artifact tuples, freshness, outcome, runner-blocked state, run time, and regression proof trails. |
 | PHP SDK conformance contract | [`/platform-conformance/php-sdk-conformance.json`](pathname:///platform-conformance/php-sdk-conformance.json) | Publishes schema `durable-workflow.v2.php-sdk-conformance-contract` for proving the released framework-neutral PHP SDK against the released standalone server. |
 | Quickstart execution contract | [`/quickstart-execution-contract.json`](pathname:///quickstart-execution-contract.json) | Declares the exact PHP, Python, Rust, operator, and embedded Laravel artifact sources, execution transcripts, success probes, and teardown used for release qualification. |
 | Signal and query runtime scenarios | [`/platform-conformance/signal-query-runtime-scenarios.json`](pathname:///platform-conformance/signal-query-runtime-scenarios.json) | Covers PHP/Python/Rust signal delivery, query consistency, Rust snapshot and cold-restart replay state, terminal runs, malformed payloads, and operator visibility. |
@@ -37,6 +40,10 @@ the explicit 2.0 prerelease docs.
 | Skew refusal matrix scenarios | [`/platform-conformance/skew-refusal-matrix-scenarios.json`](pathname:///platform-conformance/skew-refusal-matrix-scenarios.json) | Covers CLI, Python SDK, the standalone PHP SDK worker, and Waterline version-pair matrices, worker registration classifications, Waterline render classifications, future-version boundaries, and request/response capture. Workflow remains the embedded Laravel and Waterline engine. |
 | Principal attribution scenarios | [`/platform-conformance/principal-attribution-scenarios.json`](pathname:///platform-conformance/principal-attribution-scenarios.json) | Covers server-derived, non-spoofable principal attribution across raw HTTP, CLI, Python SDK, the standalone PHP SDK client, and Waterline operator surfaces. Workflow remains the embedded Laravel and Waterline engine. |
 | Prerelease readiness scenarios | [`/platform-conformance/prerelease-readiness-scenarios.json`](pathname:///platform-conformance/prerelease-readiness-scenarios.json) | Covers published-artifact 2.0 readiness for Workflow, Waterline, server, CLI, official SDKs, all quickstart routes, sample app, public docs, migration, API stability, configuration, and release-channel compatibility. |
+
+## Executed Run Ledger
+
+<ConformanceRunLedger />
 
 ## How Harnesses Use This Surface
 

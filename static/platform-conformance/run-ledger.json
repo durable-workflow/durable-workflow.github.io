@@ -1,0 +1,1693 @@
+{
+  "schema": "durable-workflow.v2.platform-conformance.run-ledger",
+  "schema_version": 1,
+  "generated_at": "2026-07-29T13:59:32.249Z",
+  "current_artifact_tuple": {
+    "cli": "2.0.0-rc.5",
+    "sdk-php": "2.0.0-rc.5",
+    "sdk-python": "2.0.0-rc.7",
+    "sdk-rust": "2.0.0-rc.6",
+    "server": "2.0.0-rc.8",
+    "waterline": "2.0.0-rc.8",
+    "workflow": "2.0.0-rc.6"
+  },
+  "retention_policy": {
+    "max_runs_per_experiment": 3,
+    "max_regression_trails": 50,
+    "retained_run_count": 29
+  },
+  "tiers": [
+    {
+      "id": "core-runtime",
+      "release_critical": true,
+      "experiment_count": 15,
+      "evidence_state": {
+        "current": 0,
+        "stale": 15,
+        "missing": 0
+      },
+      "runner_blocked": 0,
+      "current_product_failures": 0,
+      "state": "evidence-gap"
+    },
+    {
+      "id": "release-readiness",
+      "release_critical": true,
+      "experiment_count": 4,
+      "evidence_state": {
+        "current": 0,
+        "stale": 4,
+        "missing": 0
+      },
+      "runner_blocked": 0,
+      "current_product_failures": 0,
+      "state": "evidence-gap"
+    },
+    {
+      "id": "ecosystem",
+      "release_critical": true,
+      "experiment_count": 4,
+      "evidence_state": {
+        "current": 1,
+        "stale": 3,
+        "missing": 0
+      },
+      "runner_blocked": 0,
+      "current_product_failures": 0,
+      "state": "evidence-gap"
+    },
+    {
+      "id": "operations-security",
+      "release_critical": true,
+      "experiment_count": 6,
+      "evidence_state": {
+        "current": 0,
+        "stale": 6,
+        "missing": 0
+      },
+      "runner_blocked": 1,
+      "current_product_failures": 0,
+      "state": "evidence-gap"
+    }
+  ],
+  "experiments": [
+    {
+      "id": "activities",
+      "tier": "core-runtime",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance-contract.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "pass",
+        "runner_blocked": false,
+        "finished_at": "2026-07-29T12:27:10.933Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.5",
+          "sdk-php": "2.0.0-rc.5",
+          "sdk-python": "2.0.0-rc.6",
+          "sdk-rust": "2.0.0-rc.6",
+          "server": "2.0.0-rc.8",
+          "waterline": "2.0.0-rc.8",
+          "workflow": "2.0.0-rc.6"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.6"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/activities-20260729t122710z.json",
+        "evidence_gap": true,
+        "gap_reason": "stale",
+        "product_failure": false
+      }
+    },
+    {
+      "id": "child-workflows",
+      "tier": "core-runtime",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance/child-workflow-runtime-scenarios.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "pass",
+        "runner_blocked": false,
+        "finished_at": "2026-07-28T05:06:47.818Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.1",
+          "sdk-php": "2.0.0-rc.1",
+          "sdk-python": "2.0.0-rc.1",
+          "sdk-rust": "2.0.0-rc.1",
+          "server": "2.0.0-rc.2",
+          "waterline": "2.0.0-rc.1",
+          "workflow": "2.0.0-rc.2"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "cli",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "server",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.2"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "workflow",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.2"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/child-workflows-20260728t050647z.json",
+        "evidence_gap": true,
+        "gap_reason": "stale",
+        "product_failure": false
+      }
+    },
+    {
+      "id": "heartbeats",
+      "tier": "core-runtime",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance-contract.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "pass",
+        "runner_blocked": false,
+        "finished_at": "2026-07-29T07:14:07.982Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.5",
+          "sdk-php": "2.0.0-rc.5",
+          "sdk-python": "2.0.0-rc.5",
+          "sdk-rust": "2.0.0-rc.6",
+          "server": "2.0.0-rc.6",
+          "waterline": "2.0.0-rc.8",
+          "workflow": "2.0.0-rc.6"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.5"
+          },
+          {
+            "artifact": "server",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.6"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/heartbeats-20260729t071407z.json",
+        "evidence_gap": true,
+        "gap_reason": "stale",
+        "product_failure": false
+      }
+    },
+    {
+      "id": "migration",
+      "tier": "core-runtime",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance/migration-runtime-scenarios.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "pass",
+        "runner_blocked": false,
+        "finished_at": "2026-07-29T12:43:06.757Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.5",
+          "sdk-php": "2.0.0-rc.5",
+          "sdk-python": "2.0.0-rc.6",
+          "sdk-rust": "2.0.0-rc.6",
+          "server": "2.0.0-rc.8",
+          "waterline": "2.0.0-rc.8",
+          "workflow": "2.0.0-rc.6"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.6"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/migration-20260729t124306z.json",
+        "evidence_gap": true,
+        "gap_reason": "stale",
+        "product_failure": false
+      }
+    },
+    {
+      "id": "namespaces",
+      "tier": "core-runtime",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance/namespace-runtime-scenarios.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "pass",
+        "runner_blocked": false,
+        "finished_at": "2026-07-28T03:07:27.984Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.1",
+          "sdk-php": "2.0.0-rc.1",
+          "sdk-python": "2.0.0-rc.1",
+          "sdk-rust": "2.0.0-rc.1",
+          "server": "2.0.0-rc.2",
+          "waterline": "2.0.0-rc.1",
+          "workflow": "2.0.0-rc.1"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "cli",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "server",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.2"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "workflow",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/namespaces-20260728t030727z.json",
+        "evidence_gap": true,
+        "gap_reason": "stale",
+        "product_failure": false
+      }
+    },
+    {
+      "id": "nexus",
+      "tier": "core-runtime",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance-contract.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "pass",
+        "runner_blocked": false,
+        "finished_at": "2026-07-28T03:12:10.233Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.1",
+          "sdk-php": "2.0.0-rc.1",
+          "sdk-python": "2.0.0-rc.1",
+          "sdk-rust": "2.0.0-rc.1",
+          "server": "2.0.0-rc.2",
+          "waterline": "2.0.0-rc.1",
+          "workflow": "2.0.0-rc.1"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "cli",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "server",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.2"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "workflow",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/nexus-20260728t031210z.json",
+        "evidence_gap": true,
+        "gap_reason": "stale",
+        "product_failure": false
+      }
+    },
+    {
+      "id": "replay",
+      "tier": "core-runtime",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance/replay-runtime-scenarios.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "pass",
+        "runner_blocked": false,
+        "finished_at": "2026-07-29T12:36:14.249Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.5",
+          "sdk-php": "2.0.0-rc.5",
+          "sdk-python": "2.0.0-rc.6",
+          "sdk-rust": "2.0.0-rc.6",
+          "server": "2.0.0-rc.8",
+          "waterline": "2.0.0-rc.8",
+          "workflow": "2.0.0-rc.6"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.6"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/replay-20260729t123614z.json",
+        "evidence_gap": true,
+        "gap_reason": "stale",
+        "product_failure": false
+      }
+    },
+    {
+      "id": "sagas",
+      "tier": "core-runtime",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance/saga-runtime-scenarios.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "pass",
+        "runner_blocked": false,
+        "finished_at": "2026-07-28T03:33:35.043Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.1",
+          "sdk-php": "2.0.0-rc.1",
+          "sdk-python": "2.0.0-rc.1",
+          "sdk-rust": "2.0.0-rc.1",
+          "server": "2.0.0-rc.2",
+          "waterline": "2.0.0-rc.1",
+          "workflow": "2.0.0-rc.1"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "cli",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "server",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.2"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "workflow",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/sagas-20260728t033335z.json",
+        "evidence_gap": true,
+        "gap_reason": "stale",
+        "product_failure": false
+      }
+    },
+    {
+      "id": "schedules",
+      "tier": "core-runtime",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance/schedules-runtime-scenarios.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "pass",
+        "runner_blocked": false,
+        "finished_at": "2026-07-28T03:55:21.482Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.1",
+          "sdk-php": "2.0.0-rc.1",
+          "sdk-python": "2.0.0-rc.1",
+          "sdk-rust": "2.0.0-rc.1",
+          "server": "2.0.0-rc.2",
+          "waterline": "2.0.0-rc.1",
+          "workflow": "2.0.0-rc.1"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "cli",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "server",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.2"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "workflow",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/schedules-20260728t035521z.json",
+        "evidence_gap": true,
+        "gap_reason": "stale",
+        "product_failure": false
+      }
+    },
+    {
+      "id": "search-attributes",
+      "tier": "core-runtime",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance/search-attribute-runtime-scenarios.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "pass",
+        "runner_blocked": false,
+        "finished_at": "2026-07-28T04:01:36.776Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.1",
+          "sdk-php": "2.0.0-rc.1",
+          "sdk-python": "2.0.0-rc.1",
+          "sdk-rust": "2.0.0-rc.1",
+          "server": "2.0.0-rc.2",
+          "waterline": "2.0.0-rc.1",
+          "workflow": "2.0.0-rc.1"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "cli",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "server",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.2"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "workflow",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/search-attributes-20260728t040136z.json",
+        "evidence_gap": true,
+        "gap_reason": "stale",
+        "product_failure": false
+      }
+    },
+    {
+      "id": "signals-queries",
+      "tier": "core-runtime",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance/signal-query-runtime-scenarios.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "pass",
+        "runner_blocked": false,
+        "finished_at": "2026-07-29T12:19:35.325Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.5",
+          "sdk-php": "2.0.0-rc.5",
+          "sdk-python": "2.0.0-rc.6",
+          "sdk-rust": "2.0.0-rc.6",
+          "server": "2.0.0-rc.8",
+          "waterline": "2.0.0-rc.8",
+          "workflow": "2.0.0-rc.6"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.6"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/signals-queries-20260729t121935z.json",
+        "evidence_gap": true,
+        "gap_reason": "stale",
+        "product_failure": false
+      }
+    },
+    {
+      "id": "timers",
+      "tier": "core-runtime",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance-contract.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "pass",
+        "runner_blocked": false,
+        "finished_at": "2026-07-28T04:13:56.709Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.1",
+          "sdk-php": "2.0.0-rc.1",
+          "sdk-python": "2.0.0-rc.1",
+          "sdk-rust": "2.0.0-rc.1",
+          "server": "2.0.0-rc.2",
+          "waterline": "2.0.0-rc.1",
+          "workflow": "2.0.0-rc.1"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "cli",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "server",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.2"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "workflow",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/timers-20260728t041356z.json",
+        "evidence_gap": true,
+        "gap_reason": "stale",
+        "product_failure": false
+      }
+    },
+    {
+      "id": "worker-versioning",
+      "tier": "core-runtime",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance/worker-versioning-runtime-scenarios.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "pass",
+        "runner_blocked": false,
+        "finished_at": "2026-07-28T04:18:09.208Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.1",
+          "sdk-php": "2.0.0-rc.1",
+          "sdk-python": "2.0.0-rc.1",
+          "sdk-rust": "2.0.0-rc.1",
+          "server": "2.0.0-rc.2",
+          "waterline": "2.0.0-rc.1",
+          "workflow": "2.0.0-rc.1"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "cli",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "server",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.2"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "workflow",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/worker-versioning-20260728t041809z.json",
+        "evidence_gap": true,
+        "gap_reason": "stale",
+        "product_failure": false
+      }
+    },
+    {
+      "id": "workflow-lifecycle",
+      "tier": "core-runtime",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance/workflow-lifecycle-scenarios.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "pass",
+        "runner_blocked": false,
+        "finished_at": "2026-07-29T12:55:21.103Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.5",
+          "sdk-php": "2.0.0-rc.5",
+          "sdk-python": "2.0.0-rc.6",
+          "sdk-rust": "2.0.0-rc.6",
+          "server": "2.0.0-rc.8",
+          "waterline": "2.0.0-rc.8",
+          "workflow": "2.0.0-rc.6"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.6"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/workflow-lifecycle-20260729t125521z.json",
+        "evidence_gap": true,
+        "gap_reason": "stale",
+        "product_failure": false
+      }
+    },
+    {
+      "id": "workflow-updates",
+      "tier": "core-runtime",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance/workflow-update-runtime-scenarios.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "pass",
+        "runner_blocked": false,
+        "finished_at": "2026-07-29T12:59:04.828Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.5",
+          "sdk-php": "2.0.0-rc.5",
+          "sdk-python": "2.0.0-rc.6",
+          "sdk-rust": "2.0.0-rc.6",
+          "server": "2.0.0-rc.8",
+          "waterline": "2.0.0-rc.8",
+          "workflow": "2.0.0-rc.6"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.6"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/workflow-updates-20260729t125904z.json",
+        "evidence_gap": true,
+        "gap_reason": "stale",
+        "product_failure": false
+      }
+    },
+    {
+      "id": "cloud",
+      "tier": "ecosystem",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance-contract.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "current",
+        "outcome": "pass",
+        "runner_blocked": false,
+        "finished_at": "2026-07-29T13:59:32.249Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.5",
+          "sdk-php": "2.0.0-rc.5",
+          "sdk-python": "2.0.0-rc.7",
+          "sdk-rust": "2.0.0-rc.6",
+          "server": "2.0.0-rc.8",
+          "waterline": "2.0.0-rc.8",
+          "workflow": "2.0.0-rc.6"
+        },
+        "stale_artifacts": [],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/cloud-20260729t135932z.json",
+        "evidence_gap": false,
+        "gap_reason": null,
+        "product_failure": false
+      }
+    },
+    {
+      "id": "polyglot",
+      "tier": "ecosystem",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance-contract.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "pass",
+        "runner_blocked": false,
+        "finished_at": "2026-07-29T11:58:37.520Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.5",
+          "sdk-php": "2.0.0-rc.5",
+          "sdk-python": "2.0.0-rc.6",
+          "sdk-rust": "2.0.0-rc.6",
+          "server": "2.0.0-rc.8",
+          "waterline": "2.0.0-rc.8",
+          "workflow": "2.0.0-rc.6"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.6"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/polyglot-20260729t115837z.json",
+        "evidence_gap": true,
+        "gap_reason": "stale",
+        "product_failure": false
+      }
+    },
+    {
+      "id": "python",
+      "tier": "ecosystem",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance-contract.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "pass",
+        "runner_blocked": false,
+        "finished_at": "2026-07-28T03:22:10.401Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.1",
+          "sdk-php": "2.0.0-rc.1",
+          "sdk-python": "2.0.0-rc.1",
+          "sdk-rust": "2.0.0-rc.1",
+          "server": "2.0.0-rc.2",
+          "waterline": "2.0.0-rc.1",
+          "workflow": "2.0.0-rc.1"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "cli",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "server",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.2"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "workflow",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/python-20260728t032210z.json",
+        "evidence_gap": true,
+        "gap_reason": "stale",
+        "product_failure": false
+      }
+    },
+    {
+      "id": "sample-app",
+      "tier": "ecosystem",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance-contract.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "pass",
+        "runner_blocked": false,
+        "finished_at": "2026-07-29T12:05:36.884Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.5",
+          "sdk-php": "2.0.0-rc.5",
+          "sdk-python": "2.0.0-rc.6",
+          "sdk-rust": "2.0.0-rc.6",
+          "server": "2.0.0-rc.8",
+          "waterline": "2.0.0-rc.8",
+          "workflow": "2.0.0-rc.6"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.6"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/sample-app-20260729t120536z.json",
+        "evidence_gap": true,
+        "gap_reason": "stale",
+        "product_failure": false
+      }
+    },
+    {
+      "id": "agent-operability",
+      "tier": "operations-security",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance-contract.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "error",
+        "runner_blocked": true,
+        "finished_at": "2026-07-28T05:01:53.663Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.1",
+          "sdk-php": "2.0.0-rc.1",
+          "sdk-python": "2.0.0-rc.1",
+          "sdk-rust": "2.0.0-rc.1",
+          "server": "2.0.0-rc.2",
+          "waterline": "2.0.0-rc.1",
+          "workflow": "2.0.0-rc.2"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "cli",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "server",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.2"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "workflow",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.2"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/agent-operability-20260728t050153z.json",
+        "evidence_gap": true,
+        "gap_reason": "runner_blocked",
+        "product_failure": false
+      }
+    },
+    {
+      "id": "leaks",
+      "tier": "operations-security",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance-contract.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "pass",
+        "runner_blocked": false,
+        "finished_at": "2026-07-28T02:51:36.860Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.1",
+          "sdk-php": "2.0.0-rc.1",
+          "sdk-python": "2.0.0-rc.1",
+          "sdk-rust": "2.0.0-rc.1",
+          "server": "2.0.0-rc.2",
+          "waterline": "2.0.0-rc.1",
+          "workflow": "2.0.0-rc.1"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "cli",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "server",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.2"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "workflow",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/leaks-20260728t025136z.json",
+        "evidence_gap": true,
+        "gap_reason": "stale",
+        "product_failure": false
+      }
+    },
+    {
+      "id": "narrative",
+      "tier": "operations-security",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance-contract.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "fail",
+        "runner_blocked": false,
+        "finished_at": "2026-07-28T03:07:46.748Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.1",
+          "sdk-php": "2.0.0-rc.1",
+          "sdk-python": "2.0.0-rc.1",
+          "sdk-rust": "2.0.0-rc.1",
+          "server": "2.0.0-rc.2",
+          "waterline": "2.0.0-rc.1",
+          "workflow": "2.0.0-rc.1"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "cli",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "server",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.2"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "workflow",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/narrative-20260728t030746z.json",
+        "evidence_gap": true,
+        "gap_reason": "stale",
+        "product_failure": false
+      }
+    },
+    {
+      "id": "operating-envelope",
+      "tier": "operations-security",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance-contract.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "pass",
+        "runner_blocked": false,
+        "finished_at": "2026-07-28T03:17:53.954Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.1",
+          "sdk-php": "2.0.0-rc.1",
+          "sdk-python": "2.0.0-rc.1",
+          "sdk-rust": "2.0.0-rc.1",
+          "server": "2.0.0-rc.2",
+          "waterline": "2.0.0-rc.1",
+          "workflow": "2.0.0-rc.1"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "cli",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "server",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.2"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "workflow",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/operating-envelope-20260728t031753z.json",
+        "evidence_gap": true,
+        "gap_reason": "stale",
+        "product_failure": false
+      }
+    },
+    {
+      "id": "principal-attribution",
+      "tier": "operations-security",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance/principal-attribution-scenarios.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "pass",
+        "runner_blocked": false,
+        "finished_at": "2026-07-28T03:19:58.203Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.1",
+          "sdk-php": "2.0.0-rc.1",
+          "sdk-python": "2.0.0-rc.1",
+          "sdk-rust": "2.0.0-rc.1",
+          "server": "2.0.0-rc.2",
+          "waterline": "2.0.0-rc.1",
+          "workflow": "2.0.0-rc.1"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "cli",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "server",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.2"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "workflow",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/principal-attribution-20260728t031958z.json",
+        "evidence_gap": true,
+        "gap_reason": "stale",
+        "product_failure": false
+      }
+    },
+    {
+      "id": "skew",
+      "tier": "operations-security",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance/skew-refusal-matrix-scenarios.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "pass",
+        "runner_blocked": false,
+        "finished_at": "2026-07-28T04:08:51.541Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.1",
+          "sdk-php": "2.0.0-rc.1",
+          "sdk-python": "2.0.0-rc.1",
+          "sdk-rust": "2.0.0-rc.1",
+          "server": "2.0.0-rc.2",
+          "waterline": "2.0.0-rc.1",
+          "workflow": "2.0.0-rc.1"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "cli",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "server",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.2"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "workflow",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/skew-20260728t040851z.json",
+        "evidence_gap": true,
+        "gap_reason": "stale",
+        "product_failure": false
+      }
+    },
+    {
+      "id": "docs",
+      "tier": "release-readiness",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance-contract.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "fail",
+        "runner_blocked": false,
+        "finished_at": "2026-07-28T02:44:39.965Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.1",
+          "sdk-php": "2.0.0-rc.1",
+          "sdk-python": "2.0.0-rc.1",
+          "sdk-rust": "2.0.0-rc.1",
+          "server": "2.0.0-rc.2",
+          "waterline": "2.0.0-rc.1",
+          "workflow": "2.0.0-rc.1"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "cli",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "server",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.2"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "workflow",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/docs-20260728t024439z.json",
+        "evidence_gap": true,
+        "gap_reason": "stale",
+        "product_failure": false
+      }
+    },
+    {
+      "id": "docs.default-version",
+      "tier": "release-readiness",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance-contract.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "pass",
+        "runner_blocked": false,
+        "finished_at": "2026-07-29T09:57:58.921Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.5",
+          "sdk-php": "2.0.0-rc.5",
+          "sdk-python": "2.0.0-rc.6",
+          "sdk-rust": "2.0.0-rc.6",
+          "server": "2.0.0-rc.6",
+          "waterline": "2.0.0-rc.8",
+          "workflow": "2.0.0-rc.6"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.6"
+          },
+          {
+            "artifact": "server",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.6"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/docs.default-version-20260729t095758z.json",
+        "evidence_gap": true,
+        "gap_reason": "stale",
+        "product_failure": false
+      }
+    },
+    {
+      "id": "prerelease",
+      "tier": "release-readiness",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance/prerelease-readiness-scenarios.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "fail",
+        "runner_blocked": false,
+        "finished_at": "2026-07-28T05:34:04.172Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.1",
+          "sdk-php": "2.0.0-rc.1",
+          "sdk-python": "2.0.0-rc.1",
+          "sdk-rust": "2.0.0-rc.1",
+          "server": "2.0.0-rc.2",
+          "waterline": "2.0.0-rc.1",
+          "workflow": "2.0.0-rc.2"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "cli",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "server",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.2"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "workflow",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.2"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/prerelease-20260728t053404z.json",
+        "evidence_gap": true,
+        "gap_reason": "stale",
+        "product_failure": false
+      }
+    },
+    {
+      "id": "quickstart",
+      "tier": "release-readiness",
+      "release_critical": true,
+      "static_contract": {
+        "evidence_kind": "static_contract",
+        "status": "published",
+        "url": "https://durable-workflow.github.io/platform-conformance-contract.json"
+      },
+      "executed_evidence": {
+        "evidence_kind": "executed_run",
+        "status": "stale",
+        "outcome": "fail",
+        "runner_blocked": false,
+        "finished_at": "2026-07-28T03:22:18.479Z",
+        "artifact_tuple": {
+          "cli": "2.0.0-rc.1",
+          "sdk-php": "2.0.0-rc.1",
+          "sdk-python": "2.0.0-rc.1",
+          "sdk-rust": "2.0.0-rc.1",
+          "server": "2.0.0-rc.2",
+          "waterline": "2.0.0-rc.1",
+          "workflow": "2.0.0-rc.1"
+        },
+        "stale_artifacts": [
+          {
+            "artifact": "cli",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.5",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "server",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.2"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "workflow",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.1"
+          }
+        ],
+        "evidence_url": "https://durable-workflow.github.io/platform-conformance/evidence/quickstart-20260728t032218z.json",
+        "evidence_gap": true,
+        "gap_reason": "stale",
+        "product_failure": false
+      }
+    }
+  ],
+  "regression_trails": []
+}

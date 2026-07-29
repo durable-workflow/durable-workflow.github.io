@@ -60,6 +60,7 @@ const PUBLIC_CONTRACT_ARTIFACTS = [
   '/quickstart-execution-contract.json',
   ARTIFACT_COMPATIBILITY_EVIDENCE_PATH,
   '/platform-conformance-contract.json',
+  '/platform-conformance/run-ledger.json',
   '/platform-conformance/workflow-lifecycle-scenarios.json',
 ];
 const REQUIRED_ROUTE_ARTIFACTS = [

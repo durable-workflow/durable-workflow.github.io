@@ -1,0 +1,21 @@
+{
+  "schema": "durable-workflow.v2.platform-conformance.run-evidence",
+  "schema_version": 1,
+  "id": "sagas-20260728t033335z",
+  "experiment": "sagas",
+  "tier": "core-runtime",
+  "release_critical": true,
+  "evidence_kind": "executed_run",
+  "artifact_tuple": {
+    "cli": "2.0.0-rc.1",
+    "sdk-php": "2.0.0-rc.1",
+    "sdk-python": "2.0.0-rc.1",
+    "sdk-rust": "2.0.0-rc.1",
+    "server": "2.0.0-rc.2",
+    "waterline": "2.0.0-rc.1",
+    "workflow": "2.0.0-rc.1"
+  },
+  "outcome": "pass",
+  "runner_blocked": false,
+  "finished_at": "2026-07-28T03:33:35.043Z"
+}

@@ -47,6 +47,13 @@ It declares the released-package topology, scenario and evidence requirements,
 and public runner and result-schema identifiers used to evaluate
 `durable-workflow/sdk` against the released standalone server.
 
+Executed published-artifact evidence is indexed separately in the
+[exact-tuple conformance run ledger](/docs/platform-conformance/#executed-run-ledger).
+The ledger keeps static contract coverage distinct from executed results,
+compares every retained run with the complete current artifact tuple, and
+marks missing, stale, or runner-blocked release evidence as an evidence gap
+rather than a product failure.
+
 ## Target Matrix
 
 A conformance **target** is a kind of implementation that can claim
