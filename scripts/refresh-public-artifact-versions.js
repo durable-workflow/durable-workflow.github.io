@@ -1156,16 +1156,39 @@ function generatedPublicArtifactTupleSources(
   compatibilityEvidence = artifactCompatibilityEvidenceSource,
   publishedVersions = versions,
   workflowSourceCommit,
+  snapshotRefreshedAt = new Date().toISOString(),
 ) {
   const quickstartSource = currentSources['static/quickstart-execution-contract.json'];
   const compatibilitySource = currentSources['static/compatibility-contract.json'];
   const retainedEvidenceSource =
     currentSources['scripts/platform-conformance-retained-evidence.json'];
+  const currentRetainedEvidence = JSON.parse(retainedEvidenceSource);
+  const publishedTupleChanged = REQUIRED_ARTIFACTS.some(
+    name => currentRetainedEvidence.current_artifact_tuple[name] !== publishedVersions[name],
+  );
   const nextRetainedEvidenceSource = platformConformanceRetainedEvidenceSource(
     retainedEvidenceSource,
     publishedVersions,
   );
   const nextRetainedEvidence = JSON.parse(nextRetainedEvidenceSource);
+  const currentLedger = JSON.parse(
+    currentSources['static/platform-conformance/run-ledger.json'],
+  );
+  if (
+    publishedTupleChanged
+    && (
+      Number.isNaN(Date.parse(snapshotRefreshedAt))
+      || Date.parse(snapshotRefreshedAt)
+        <= Date.parse(currentLedger.snapshot_refreshed_at)
+    )
+  ) {
+    throw new Error(
+      'A published artifact tuple change must advance the ledger snapshot_refreshed_at',
+    );
+  }
+  const nextSnapshotRefreshedAt = publishedTupleChanged
+    ? snapshotRefreshedAt
+    : currentLedger.snapshot_refreshed_at;
 
   return {
     'scripts/public-artifact-versions.json': artifactVersionsSource(versions),
@@ -1177,6 +1200,7 @@ function generatedPublicArtifactTupleSources(
       platformConformanceLedgerSource(
         nextRetainedEvidence,
         publishedVersions,
+        {snapshotRefreshedAt: nextSnapshotRefreshedAt},
       ),
     'static/public-artifact-compatibility-evidence.json':
       artifactCompatibilityEvidenceJsonSource(compatibilityEvidence),

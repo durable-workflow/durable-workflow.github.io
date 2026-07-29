@@ -405,11 +405,23 @@ function latestRunByExperiment(source) {
 function buildLedger(
   source,
   publishedArtifactTuple = PUBLISHED_ARTIFACT_VERSIONS,
+  options = {},
 ) {
   const {experimentsById, runsById} = validateSource(
     source,
     publishedArtifactTuple,
   );
+  const snapshotRefreshedAt =
+    options.snapshotRefreshedAt || source.captured_at;
+  assertIsoTimestamp(
+    snapshotRefreshedAt,
+    'ledger snapshot_refreshed_at',
+  );
+  if (Date.parse(snapshotRefreshedAt) < Date.parse(source.captured_at)) {
+    fail(
+      'ledger snapshot_refreshed_at must not precede retained evidence captured_at',
+    );
+  }
   const latestRuns = latestRunByExperiment(source);
   const tiersById = new Map(source.tiers.map(tier => [tier.id, tier]));
 
@@ -536,8 +548,9 @@ function buildLedger(
 
   return {
     schema: 'durable-workflow.v2.platform-conformance.run-ledger',
-    schema_version: 1,
-    generated_at: source.captured_at,
+    schema_version: 2,
+    snapshot_refreshed_at: snapshotRefreshedAt,
+    retained_evidence_captured_at: source.captured_at,
     current_artifact_tuple: publishedArtifactTuple,
     retention_policy: {
       max_runs_per_experiment: source.retention.max_runs_per_experiment,
@@ -557,8 +570,9 @@ function jsonSource(value) {
 function ledgerSource(
   source,
   publishedArtifactTuple = PUBLISHED_ARTIFACT_VERSIONS,
+  options = {},
 ) {
-  return jsonSource(buildLedger(source, publishedArtifactTuple));
+  return jsonSource(buildLedger(source, publishedArtifactTuple, options));
 }
 
 function desiredOutputs(
@@ -571,7 +585,7 @@ function desiredOutputs(
   const {experimentsById} = validateSource(source, publishedArtifactTuple);
   const outputs = new Map([[
     outputLedgerPath,
-    ledgerSource(source, publishedArtifactTuple),
+    ledgerSource(source, publishedArtifactTuple, options),
   ]]);
 
   for (const run of source.runs) {
@@ -627,7 +641,18 @@ function writeOutputs(outputs) {
 
 function main() {
   const source = JSON.parse(fs.readFileSync(sourcePath, 'utf8'));
-  const outputs = desiredOutputs(source);
+  let snapshotRefreshedAt = new Date().toISOString();
+
+  if (process.argv.includes('--check') && fs.existsSync(ledgerPath)) {
+    const currentLedger = JSON.parse(fs.readFileSync(ledgerPath, 'utf8'));
+    snapshotRefreshedAt = currentLedger.snapshot_refreshed_at;
+  }
+
+  const outputs = desiredOutputs(
+    source,
+    PUBLISHED_ARTIFACT_VERSIONS,
+    {snapshotRefreshedAt},
+  );
 
   if (process.argv.includes('--check')) {
     checkOutputs(outputs);

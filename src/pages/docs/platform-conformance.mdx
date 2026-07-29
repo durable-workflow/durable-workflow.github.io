@@ -45,6 +45,13 @@ the explicit 2.0 prerelease docs.
 
 <ConformanceRunLedger />
 
+The ledger's `snapshot_refreshed_at` records when its current artifact tuple
+and derived freshness projection were generated or refreshed.
+`retained_evidence_captured_at` records when the bounded evidence source was
+captured. Artifact-tuple refreshes advance only the snapshot timestamp; they do
+not rewrite retained runs, their `finished_at` values, artifact attachments, or
+per-run evidence documents.
+
 ## How Harnesses Use This Surface
 
 Conformance harnesses should fetch the suite manifest first, then load each

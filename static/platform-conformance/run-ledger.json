@@ -1,7 +1,8 @@
 {
   "schema": "durable-workflow.v2.platform-conformance.run-ledger",
-  "schema_version": 1,
-  "generated_at": "2026-07-29T13:59:32.249Z",
+  "schema_version": 2,
+  "snapshot_refreshed_at": "2026-07-29T15:56:45.526Z",
+  "retained_evidence_captured_at": "2026-07-29T13:59:32.249Z",
   "current_artifact_tuple": {
     "cli": "2.0.0-rc.5",
     "sdk-php": "2.0.0-rc.5",

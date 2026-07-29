@@ -62,6 +62,9 @@ assert.throws(
 );
 
 const ledger = buildLedger(source);
+assert.strictEqual(ledger.schema_version, 2);
+assert.strictEqual(ledger.snapshot_refreshed_at, source.captured_at);
+assert.strictEqual(ledger.retained_evidence_captured_at, source.captured_at);
 assert.strictEqual(ledger.experiments.length, 29);
 assert.strictEqual(ledger.retention_policy.retained_run_count, 29);
 assert.strictEqual(
@@ -96,6 +99,17 @@ refreshedSource.current_artifact_tuple = refreshedPublishedTuple;
 const refreshedLedger = buildLedger(
   refreshedSource,
   refreshedPublishedTuple,
+  {snapshotRefreshedAt: '2026-07-29T16:00:00.000Z'},
+);
+assert.strictEqual(
+  refreshedLedger.snapshot_refreshed_at,
+  '2026-07-29T16:00:00.000Z',
+  'a release refresh must identify when the ledger freshness projection changed',
+);
+assert.strictEqual(
+  refreshedLedger.retained_evidence_captured_at,
+  source.captured_at,
+  'a release refresh must preserve the retained-evidence capture time',
 );
 assert.deepStrictEqual(
   refreshedSource.artifact_tuples,

@@ -901,6 +901,7 @@ const nextPublishedServerVersions = {
   ...publishedSource.artifacts,
   server: incrementPrereleaseVersion(publishedSource.artifacts.server),
 };
+const publishedServerRefreshTime = '2026-07-29T16:00:00.000Z';
 const publishedServerRefreshTuple = generatedPublicArtifactTupleSources(
   currentTupleSources,
   source.artifacts,
@@ -909,6 +910,7 @@ const publishedServerRefreshTuple = generatedPublicArtifactTupleSources(
   undefined,
   nextPublishedServerVersions,
   currentWorkflowAuthorityLock.workflow_source_commit,
+  publishedServerRefreshTime,
 );
 const refreshedRetainedEvidence = JSON.parse(
   publishedServerRefreshTuple[
@@ -1003,6 +1005,7 @@ try {
     {
       ledgerPath: tuplePaths['static/platform-conformance/run-ledger.json'],
       evidenceDir: refreshedEvidenceDir,
+      snapshotRefreshedAt: publishedServerRefreshTime,
     },
   );
 
@@ -1040,6 +1043,21 @@ try {
     writtenLedger.current_artifact_tuple,
     nextPublishedServerVersions,
     'the generated public ledger must expose the refreshed published tuple',
+  );
+  assert.strictEqual(
+    writtenLedger.snapshot_refreshed_at,
+    publishedServerRefreshTime,
+    'the generated public ledger must timestamp the artifact refresh',
+  );
+  assert.strictEqual(
+    writtenLedger.retained_evidence_captured_at,
+    retainedEvidenceSource.captured_at,
+    'the generated public ledger must preserve the evidence capture time',
+  );
+  assert.notStrictEqual(
+    writtenLedger.snapshot_refreshed_at,
+    previousLedger.snapshot_refreshed_at,
+    'a changed artifact tuple must advance the ledger snapshot timestamp',
   );
   assert.strictEqual(
     refreshedExperiment.executed_evidence.status,

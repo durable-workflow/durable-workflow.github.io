@@ -89,7 +89,7 @@ function ExperimentTable({tier}) {
             <th>Exact artifact tuple</th>
             <th>Outcome</th>
             <th>Runner blocked</th>
-            <th>Run time (UTC)</th>
+            <th>Run finished at (UTC)</th>
           </tr>
         </thead>
         <tbody>
@@ -174,11 +174,17 @@ export default function ConformanceRunLedger() {
   return (
     <>
       <p>
-        This snapshot was generated at <code>{ledger.generated_at}</code> from
-        bounded, sanitized retained evidence. “Current” means that every
-        artifact version exactly matches the tuple below. A stale or missing
-        row is an evidence gap, not a product failure. Outcomes remain attached
-        to their historical exact tuples.
+        Ledger snapshot refreshed at <code>{ledger.snapshot_refreshed_at}</code>.
+        {' '}Retained evidence captured at{' '}
+        <code>{ledger.retained_evidence_captured_at}</code>. Refreshing the
+        snapshot updates its current artifact tuple and derived freshness
+        states, but does not change the capture time or historical run evidence.
+      </p>
+      <p>
+        “Current” means that every artifact version exactly matches the tuple
+        below. A stale or missing row is an evidence gap, not a product failure.
+        Outcomes and finish times remain attached to their historical exact
+        tuples.
       </p>
       <p>
         The ledger reports tier and experiment state directly. It does not
