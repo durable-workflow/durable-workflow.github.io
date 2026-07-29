@@ -416,29 +416,30 @@ function artifactVersionDigest(versions) {
     .slice(0, 12);
 }
 
+function compatibilityEvidenceDigest(evidence, versions) {
+  validateCompatibilityEvidence(evidence, versions);
+
+  return crypto
+    .createHash('sha256')
+    .update(stableStringify(evidence))
+    .digest('hex');
+}
+
 function handoffKey(handoff) {
-  return `versions-${artifactVersionDigest({
+  const versionDigest = artifactVersionDigest({
     artifact_versions: handoff.artifact_versions,
     published_artifact_versions: handoff.published_artifact_versions,
-  })}`;
+  });
+  const evidenceDigest = compatibilityEvidenceDigest(
+    handoff.compatibility_evidence,
+    handoff.artifact_versions,
+  ).slice(0, 12);
+
+  return `versions-${versionDigest}-evidence-${evidenceDigest}`;
 }
 
 function handoffDuplicateKeys(handoff) {
-  const keys = [handoffKey(handoff)];
-
-  if (
-    stableStringify(handoff.artifact_versions)
-      === stableStringify(handoff.published_artifact_versions)
-  ) {
-    const legacyDigest = artifactVersionDigest(handoff.artifact_versions);
-    keys.push(`versions-${legacyDigest}`);
-
-    if (handoff.tuple_date) {
-      keys.push(`${handoff.tuple_date}-${legacyDigest}`);
-    }
-  }
-
-  return keys;
+  return [handoffKey(handoff)];
 }
 
 function buildTitle(handoff, changes) {
@@ -697,6 +698,7 @@ module.exports = {
   buildReadyItemPayload,
   buildRefreshInvocation,
   changedArtifacts,
+  compatibilityEvidenceDigest,
   findExistingReadyItem,
   handoffDuplicateKeys,
   handoffKey,

@@ -19,7 +19,9 @@ const PROTECTED_REFRESH_SOURCE_GUARD =
 const {
   artifactVersionDigest,
   buildReadyItemPayload,
+  compatibilityEvidenceDigest,
   findExistingReadyItem,
+  handoffDuplicateKeys,
   handoffKey,
   routeReadyItem,
 } = require(routeScriptPath);
@@ -345,6 +347,9 @@ function compatibilityEvidence(versions) {
     },
   };
 }
+stableKeyHandoff.compatibility_evidence = compatibilityEvidence(
+  stableKeyHandoff.artifact_versions,
+);
 const nextRunSameTuple = {
   ...stableKeyHandoff,
   tuple_date: '2026-06-19',
@@ -355,6 +360,10 @@ const nextTuple = {
     ...stableKeyHandoff.artifact_versions,
     server: '0.2.427',
   },
+  compatibility_evidence: compatibilityEvidence({
+    ...stableKeyHandoff.artifact_versions,
+    server: '0.2.427',
+  }),
 };
 const nextPublishedTuple = {
   ...stableKeyHandoff,
@@ -387,11 +396,11 @@ if (stableKey.includes(stableKeyHandoff.tuple_date)) {
 const legacyKey = `${stableKeyHandoff.tuple_date}-${artifactVersionDigest(stableKeyHandoff.artifact_versions)}`;
 const existing = findExistingReadyItem(
   [{number: 42, body: `<!-- docs-artifact-tuple-key: ${legacyKey} -->`}],
-  [stableKey, legacyKey]
+  handoffDuplicateKeys(stableKeyHandoff),
 );
 
-if (!existing || existing.number !== 42) {
-  fail('public artifact tuple router must match existing active handoffs with legacy date-prefixed keys');
+if (existing) {
+  fail('evidence-bound handoffs must not deduplicate against legacy version-only keys');
 }
 
 const multiArtifactHandoff = {
@@ -445,8 +454,93 @@ const multiArtifactHandoff = {
   },
 };
 const multiArtifactPayload = buildReadyItemPayload(multiArtifactHandoff);
+const releasePlanReplacementHandoff = structuredClone(multiArtifactHandoff);
+releasePlanReplacementHandoff.compatibility_evidence.authority.release_plan.tag =
+  'release-plan/qualified-fixture-replacement';
+releasePlanReplacementHandoff.compatibility_evidence.authority.release_plan.sha256 =
+  '1'.repeat(64);
+const releasePlanReplacementPayload = buildReadyItemPayload(
+  releasePlanReplacementHandoff,
+);
+const sdkQualificationReplacementHandoff = structuredClone(multiArtifactHandoff);
+const sdkQualificationReplacement =
+  sdkQualificationReplacementHandoff.compatibility_evidence.authority
+    .sdk_server_qualification;
+const replacementEvidenceTag =
+  'beta-conformance/beta-qualified-fixture/12346.1';
+const replacementEvidenceSource = [
+  'https://github.com/durable-workflow/.github/releases/download',
+  replacementEvidenceTag,
+  'suite-result.json',
+].join('/');
+sdkQualificationReplacement.sha256 = '2'.repeat(64);
+sdkQualificationReplacement.evidence.tag = replacementEvidenceTag;
+sdkQualificationReplacement.evidence.source_url = replacementEvidenceSource;
+sdkQualificationReplacement.evidence.sha256 = '3'.repeat(64);
+sdkQualificationReplacement.evidence.github_run.run_id = 12346;
+sdkQualificationReplacement.evidence.github_run.evidence_tag =
+  replacementEvidenceTag;
+for (const qualification of Object.values(
+  sdkQualificationReplacementHandoff.compatibility_evidence
+    .sdk_server_compatibility,
+)) {
+  qualification.evidence_source = replacementEvidenceSource;
+}
+const sdkQualificationReplacementPayload = buildReadyItemPayload(
+  sdkQualificationReplacementHandoff,
+);
 const requestMatch = /<!-- pipeline-request-b64: ([A-Za-z0-9+/=]+) -->/.exec(multiArtifactPayload.body);
 const filesMatch = /<!-- pipeline-files-b64: ([A-Za-z0-9+/=]+) -->/.exec(multiArtifactPayload.body);
+
+assert.strictEqual(
+  compatibilityEvidenceDigest(
+    structuredClone(multiArtifactHandoff.compatibility_evidence),
+    multiArtifactHandoff.artifact_versions,
+  ),
+  compatibilityEvidenceDigest(
+    multiArtifactHandoff.compatibility_evidence,
+    multiArtifactHandoff.artifact_versions,
+  ),
+  'identical validated compatibility evidence must preserve its stable digest',
+);
+for (const [label, handoff, payload] of [
+  [
+    'release-plan',
+    releasePlanReplacementHandoff,
+    releasePlanReplacementPayload,
+  ],
+  [
+    'SDK-to-Server qualification',
+    sdkQualificationReplacementHandoff,
+    sdkQualificationReplacementPayload,
+  ],
+]) {
+  assert.deepStrictEqual(
+    handoff.artifact_versions,
+    multiArtifactHandoff.artifact_versions,
+    `${label} evidence replacement must keep the qualified aggregate unchanged`,
+  );
+  assert.deepStrictEqual(
+    handoff.published_artifact_versions,
+    multiArtifactHandoff.published_artifact_versions,
+    `${label} evidence replacement must keep published versions unchanged`,
+  );
+  assert.notStrictEqual(
+    payload.key,
+    multiArtifactPayload.key,
+    `${label} evidence replacement must receive a distinct handoff key`,
+  );
+  assert.notStrictEqual(
+    workerBranch(payload),
+    workerBranch(multiArtifactPayload),
+    `${label} evidence replacement must receive a distinct worker branch`,
+  );
+  assert.deepStrictEqual(
+    buildReadyItemPayload(structuredClone(handoff)),
+    payload,
+    `an exact ${label} evidence replay must preserve its routing identity`,
+  );
+}
 
 if (!requestMatch) {
   fail('public artifact tuple ready item must include an encoded refresh request');
@@ -924,7 +1018,7 @@ async function assertStubGateCreatePath() {
   }
 }
 
-async function assertStubGateDuplicatePath() {
+async function assertStubGateLegacyKeyPath() {
   const routed = await withStubGate(
     [{
       number: 42,
@@ -941,19 +1035,52 @@ async function assertStubGateDuplicatePath() {
     async requests => {
       const readyItem = await routeReadyItem(multiArtifactPayload);
 
-      if (requests.length !== 1) {
-        fail(`public artifact tuple duplicate path must only list existing items, saw ${requests.length} requests`);
+      if (requests.length !== 2) {
+        fail(`evidence-bound handoffs must not reuse a legacy version-only item, saw ${requests.length} requests`);
       }
 
       assertGateListPayload(requests[0]);
+      assertGateCreatePayload(requests[1]);
 
       return readyItem;
     }
   );
 
-  if (!routed || routed.number !== 42) {
-    fail('public artifact tuple duplicate path must reuse an existing legacy-key handoff');
+  if (!routed || routed.number === 42) {
+    fail('evidence-bound handoffs must route independently of legacy version-only work');
   }
+}
+
+async function assertStubGateEvidenceReplacementPath(label, replacementPayload) {
+  const issues = [];
+
+  await withStubGate(issues, async requests => {
+    const original = await routeReadyItem(multiArtifactPayload);
+    const replacement = await routeReadyItem(replacementPayload);
+    const replayedReplacement = await routeReadyItem(replacementPayload);
+
+    if (
+      original.number === replacement.number
+      || replacement.number !== replayedReplacement.number
+      || issues.length !== 2
+    ) {
+      fail(`${label} evidence replacement must route independently and replay idempotently`);
+    }
+
+    const routedBranches = new Set(
+      issues.map(issue => workerBranch({body: issue.body})),
+    );
+    if (routedBranches.size !== 2) {
+      fail(`${label} evidence replacement must own a distinct worker branch`);
+    }
+
+    const createRequests = requests.filter(
+      request => request.action === 'gh.issue.create',
+    );
+    if (createRequests.length !== 2) {
+      fail(`${label} evidence replacement must create exactly two ready items`);
+    }
+  });
 }
 
 async function assertStubGateActiveLifecycleReplayPath() {
@@ -1045,7 +1172,15 @@ async function assertStubGateCompletedPath() {
 
 async function main() {
   await assertStubGateCreatePath();
-  await assertStubGateDuplicatePath();
+  await assertStubGateLegacyKeyPath();
+  await assertStubGateEvidenceReplacementPath(
+    'release-plan',
+    releasePlanReplacementPayload,
+  );
+  await assertStubGateEvidenceReplacementPath(
+    'SDK-to-Server qualification',
+    sdkQualificationReplacementPayload,
+  );
   await assertStubGateActiveLifecycleReplayPath();
   await assertStubGateCompletedPath();
 
