@@ -112,20 +112,20 @@ function assertArrayEquals(actual, expected, message) {
   }
 }
 
-function validateArtifactVersions(versions) {
+function validateArtifactVersions(versions, fieldName) {
   if (!versions || typeof versions !== 'object' || Array.isArray(versions)) {
-    throw new Error('handoff.artifact_versions must be an object');
+    throw new Error(`handoff.${fieldName} must be an object`);
   }
 
   for (const artifact of ARTIFACT_ORDER) {
     if (typeof versions[artifact] !== 'string' || versions[artifact].trim() === '') {
-      throw new Error(`handoff.artifact_versions.${artifact} must be a non-empty string`);
+      throw new Error(`handoff.${fieldName}.${artifact} must be a non-empty string`);
     }
   }
 
   const unknown = Object.keys(versions).filter(artifact => !ARTIFACT_ORDER.includes(artifact));
   if (unknown.length > 0) {
-    throw new Error(`handoff.artifact_versions contains unknown artifacts: ${unknown.join(', ')}`);
+    throw new Error(`handoff.${fieldName} contains unknown artifacts: ${unknown.join(', ')}`);
   }
 }
 
@@ -327,14 +327,22 @@ function validateTupleDate(tupleDate) {
 
 function validateHandoff(handoff) {
   assertEqual(handoff.schema, HANDOFF_SCHEMA, 'handoff schema mismatch');
-  assertEqual(handoff.schema_version, 1, 'handoff schema version mismatch');
+  assertEqual(handoff.schema_version, 2, 'handoff schema version mismatch');
   assertEqual(handoff.action, 'pipeline_ready_item', 'handoff action mismatch');
   assertEqual(handoff.repository, EXPECTED_REPOSITORY, 'handoff repository mismatch');
   assertEqual(handoff.target_branch, EXPECTED_TARGET_BRANCH, 'handoff target branch mismatch');
   assertEqual(handoff.refresh_command, EXPECTED_REFRESH_COMMAND, 'handoff refresh command mismatch');
   assertArrayEquals(handoff.refresh_files, EXPECTED_REFRESH_FILES, 'handoff refresh files mismatch');
   validateChangedFiles(handoff.changed_files);
-  validateArtifactVersions(handoff.artifact_versions);
+  validateArtifactVersions(handoff.artifact_versions, 'artifact_versions');
+  validateArtifactVersions(
+    handoff.published_artifact_versions,
+    'published_artifact_versions',
+  );
+  validateArtifactVersions(
+    handoff.previous_published_artifact_versions,
+    'previous_published_artifact_versions',
+  );
   validateCompatibilityEvidence(handoff.compatibility_evidence, handoff.artifact_versions);
   validateTupleDate(handoff.tuple_date);
 
@@ -390,14 +398,14 @@ function artifactLabel(name) {
 }
 
 function changedArtifacts(handoff) {
-  const previous = handoff.previous_artifact_versions || {};
+  const previous = handoff.previous_published_artifact_versions;
 
   return ARTIFACT_ORDER
-    .filter(name => previous[name] && previous[name] !== handoff.artifact_versions[name])
+    .filter(name => previous[name] !== handoff.published_artifact_versions[name])
     .map(name => ({
       name,
       previous: previous[name],
-      current: handoff.artifact_versions[name],
+      current: handoff.published_artifact_versions[name],
     }));
 }
 
@@ -410,14 +418,25 @@ function artifactVersionDigest(versions) {
 }
 
 function handoffKey(handoff) {
-  return `versions-${artifactVersionDigest(handoff.artifact_versions)}`;
+  return `versions-${artifactVersionDigest({
+    artifact_versions: handoff.artifact_versions,
+    published_artifact_versions: handoff.published_artifact_versions,
+  })}`;
 }
 
 function handoffDuplicateKeys(handoff) {
   const keys = [handoffKey(handoff)];
 
-  if (handoff.tuple_date) {
-    keys.push(`${handoff.tuple_date}-${artifactVersionDigest(handoff.artifact_versions)}`);
+  if (
+    stableStringify(handoff.artifact_versions)
+      === stableStringify(handoff.published_artifact_versions)
+  ) {
+    const legacyDigest = artifactVersionDigest(handoff.artifact_versions);
+    keys.push(`versions-${legacyDigest}`);
+
+    if (handoff.tuple_date) {
+      keys.push(`${handoff.tuple_date}-${legacyDigest}`);
+    }
   }
 
   return keys;
@@ -453,13 +472,31 @@ function buildRefreshInvocation(handoff) {
   return handoff.refresh_command;
 }
 
-function buildRequestText(handoff) {
+function buildChangeLines(changes) {
+  if (changes.length === 0) {
+    return ['- No independently published component version changed.'];
+  }
+
+  return changes.map(change => (
+    `- ${artifactLabel(change.name)} ${change.previous} -> ${change.current}`
+  ));
+}
+
+function buildRequestText(handoff, changes) {
   const refreshInvocation = buildRefreshInvocation(handoff);
 
   return [
-    'Refresh the public docs artifact tuple for the current published releases.',
+    'Refresh the public docs artifact sources for the current independently published releases and qualified aggregate recommendation.',
     '',
-    'Current published tuple:',
+    'Changed independently published components:',
+    ...buildChangeLines(changes),
+    '',
+    'Current independently published component tuple:',
+    ...ARTIFACT_ORDER.map(
+      name => `- ${artifactLabel(name)} ${handoff.published_artifact_versions[name]}`,
+    ),
+    '',
+    'Qualified aggregate recommendation:',
     ...ARTIFACT_ORDER.map(name => `- ${artifactLabel(name)} ${handoff.artifact_versions[name]}`),
     `- Compatibility evidence ${handoff.compatibility_evidence.authority.release_plan.tag}`,
     '',
@@ -472,18 +509,28 @@ function buildRequestText(handoff) {
   ].join('\n');
 }
 
-function buildIssueBody(handoff, key, workerBranch, requestText) {
+function buildIssueBody(handoff, key, workerBranch, requestText, changes) {
   return [
     '## Context',
-    'Published package registries now contain a newer public artifact tuple than the docs release-audit surface.',
+    'Published package registries now contain newer component releases than the docs release-audit surface.',
     '',
-    '## Current Published Tuple',
+    '## Changed Independently Published Components',
+    ...buildChangeLines(changes),
+    '',
+    '## Current Independently Published Component Tuple',
+    ...ARTIFACT_ORDER.map(
+      name => `- ${artifactLabel(name)}: ${handoff.published_artifact_versions[name]}`,
+    ),
+    '',
+    '## Qualified Aggregate Recommendation',
     ...ARTIFACT_ORDER.map(name => `- ${artifactLabel(name)}: ${handoff.artifact_versions[name]}`),
+    `- Compatibility evidence: ${handoff.compatibility_evidence.authority.release_plan.tag}`,
     '',
     '## Acceptance',
-    '- The public docs artifact tuple source reports the current published releases.',
-    '- Every selected SDK version is bound to the selected Server by passing immutable compatibility evidence.',
-    '- The deployed docs release-audit JSON reports the same tuple with LEAK=0 and MIXED=0.',
+    '- The published-component source reports the newest independently published releases.',
+    '- The qualified aggregate source remains the compatibility-backed recommendation.',
+    '- Every SDK in the qualified recommendation is bound to its qualified Server by passing immutable compatibility evidence.',
+    '- The deployed docs release-audit JSON reports the qualified aggregate recommendation with LEAK=0 and MIXED=0.',
     '- Stable 1.x remains the default public docs line.',
     '- 2.0 remains explicit prerelease/versioned guidance.',
     '- The refresh lands through the normal docs merge and deploy path.',
@@ -506,13 +553,13 @@ function buildReadyItemPayload(handoff) {
 
   const changes = changedArtifacts(handoff);
   const key = handoffKey(handoff);
-  const requestText = buildRequestText(handoff);
+  const requestText = buildRequestText(handoff, changes);
   const workerBranch = buildWorkerBranch(handoff, key, changes);
 
   return {
     repo: handoff.repository,
     title: buildTitle(handoff, changes),
-    body: buildIssueBody(handoff, key, workerBranch, requestText),
+    body: buildIssueBody(handoff, key, workerBranch, requestText, changes),
     labels: ROUTING_LABELS.join(','),
     key,
     duplicateKeys: handoffDuplicateKeys(handoff),

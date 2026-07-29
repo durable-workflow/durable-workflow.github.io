@@ -101,9 +101,9 @@ jobs:
           const publishedSource = require('./scripts/published-artifact-versions.json');
           const compatibilityEvidence =
             require('./static/public-artifact-compatibility-evidence.json');
-          const previousSource = JSON.parse(childProcess.execFileSync(
+          const previousPublishedSource = JSON.parse(childProcess.execFileSync(
             'git',
-            ['show', 'HEAD:scripts/public-artifact-versions.json'],
+            ['show', 'HEAD:scripts/published-artifact-versions.json'],
             {encoding: 'utf8'}
           ));
 
@@ -134,7 +134,7 @@ jobs:
           const runId = process.env.GITHUB_RUN_ID || null;
           const handoff = {
             schema: 'durable-workflow.docs.public-artifact-tuple-handoff',
-            schema_version: 1,
+            schema_version: 2,
             action: 'pipeline_ready_item',
             reason: 'public_artifact_tuple_refresh_available',
             repository: 'durable-workflow.github.io',
@@ -147,7 +147,7 @@ jobs:
             artifact_versions: source.artifacts,
             published_artifact_versions: publishedSource.artifacts,
             compatibility_evidence: compatibilityEvidence,
-            previous_artifact_versions: previousSource.artifacts,
+            previous_published_artifact_versions: previousPublishedSource.artifacts,
             source_check: {
               repository,
               ref: process.env.GITHUB_REF_NAME || null,
@@ -172,9 +172,9 @@ jobs:
             ready_item: {
               title: 'Refresh public docs artifact tuple',
               body: [
-                'Published package registries now contain a newer public artifact tuple than the docs release-audit surface.',
+                'Published package registries now contain newer independently published components than the docs release-audit surface.',
                 '',
-                `Run ${refreshCommand} and commit only the generated public artifact tuple files through the normal docs merge path.`,
+                `Run ${refreshCommand} and commit only the generated published-component and qualified aggregate files through the normal docs merge path.`,
               ].join('\n'),
               labels: [
                 'pipeline:ready-item',
@@ -184,8 +184,9 @@ jobs:
                 'flow:release',
               ],
               acceptance: [
-                'The public docs release-audit JSON reports the current published artifact tuple.',
-                'Every selected SDK version is bound to the selected Server by exact passing compatibility evidence.',
+                'The published-component source reports the newest independently published releases.',
+                'The qualified aggregate remains the exact compatibility-backed recommendation.',
+                'Every SDK in the qualified aggregate is bound to its qualified Server by exact passing compatibility evidence.',
                 'Stable 1.x remains the default public docs line.',
                 'The live release-audit JSON reports LEAK=0 and MIXED=0.',
                 'The refresh lands through the docs merge gate, not from a public release workflow.',

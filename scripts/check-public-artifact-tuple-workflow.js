@@ -94,8 +94,12 @@ for (const required of [
   'PIPELINE_GATE_URL',
   'scripts/route-public-artifact-tuple-handoff.js',
   "schema: 'durable-workflow.docs.public-artifact-tuple-handoff'",
+  'schema_version: 2',
   "action: 'pipeline_ready_item'",
   "integration: 'pipeline'",
+  'published_artifact_versions: publishedSource.artifacts',
+  'previous_published_artifact_versions: previousPublishedSource.artifacts',
+  'HEAD:scripts/published-artifact-versions.json',
   'scripts/public-artifact-versions.json',
   'scripts/published-artifact-versions.json',
   'static/public-artifact-compatibility-evidence.json',
@@ -111,6 +115,12 @@ for (const required of [
   if (!workflow.includes(required)) {
     fail(`public-artifact-tuple workflow is missing required pipeline handoff contract: ${required}`);
   }
+}
+
+if (workflow.includes('previous_artifact_versions:')) {
+  fail(
+    'public artifact tuple handoff must compare previous published-component state, not the previous qualified aggregate',
+  );
 }
 
 const detectPosition = workflowStepPosition('Detect tuple changes');
@@ -241,17 +251,19 @@ for (const required of [
   }
 }
 
+const stableArtifactVersions = {
+  cli: '0.2.0',
+  'sdk-php': '0.1.1',
+  'sdk-python': '0.2.0',
+  'sdk-rust': '0.1.0',
+  server: '0.2.426',
+  workflow: '2.0.0-alpha.275',
+  waterline: '0.2.0',
+};
 const stableKeyHandoff = {
   tuple_date: '2026-06-18',
-  artifact_versions: {
-    cli: '0.2.0',
-    'sdk-php': '0.1.1',
-    'sdk-python': '0.2.0',
-    'sdk-rust': '0.1.0',
-    server: '0.2.426',
-    workflow: '2.0.0-alpha.275',
-    waterline: '0.2.0',
-  },
+  artifact_versions: stableArtifactVersions,
+  published_artifact_versions: {...stableArtifactVersions},
 };
 function compatibilityEvidence(versions) {
   const qualificationSource =
@@ -338,16 +350,28 @@ const nextTuple = {
     server: '0.2.427',
   },
 };
+const nextPublishedTuple = {
+  ...stableKeyHandoff,
+  published_artifact_versions: {
+    ...stableKeyHandoff.published_artifact_versions,
+    server: '0.2.427',
+  },
+};
 const stableKey = handoffKey(stableKeyHandoff);
 const sameTupleKey = handoffKey(nextRunSameTuple);
 const nextTupleKey = handoffKey(nextTuple);
+const nextPublishedTupleKey = handoffKey(nextPublishedTuple);
 
 if (stableKey !== sameTupleKey) {
   fail('public artifact tuple ready-item key must stay stable across tuple_date changes for the same artifact versions');
 }
 
 if (stableKey === nextTupleKey) {
-  fail('public artifact tuple ready-item key must change when artifact versions change');
+  fail('public artifact tuple ready-item key must change when qualified artifact versions change');
+}
+
+if (stableKey === nextPublishedTupleKey) {
+  fail('public artifact tuple ready-item key must change when published artifact versions change');
 }
 
 if (stableKey.includes(stableKeyHandoff.tuple_date)) {
@@ -366,7 +390,7 @@ if (!existing || existing.number !== 42) {
 
 const multiArtifactHandoff = {
   schema: 'durable-workflow.docs.public-artifact-tuple-handoff',
-  schema_version: 1,
+  schema_version: 2,
   action: 'pipeline_ready_item',
   repository: 'durable-workflow.github.io',
   target_branch: 'main',
@@ -391,8 +415,9 @@ const multiArtifactHandoff = {
   ],
   tuple_date: stableKeyHandoff.tuple_date,
   artifact_versions: stableKeyHandoff.artifact_versions,
+  published_artifact_versions: stableKeyHandoff.published_artifact_versions,
   compatibility_evidence: compatibilityEvidence(stableKeyHandoff.artifact_versions),
-  previous_artifact_versions: {
+  previous_published_artifact_versions: {
     cli: '0.1.99',
     'sdk-php': '0.1.0',
     'sdk-python': '0.1.99',
@@ -444,6 +469,121 @@ for (const authorityFile of [
   if (!decodedFiles.includes(authorityFile)) {
     fail(`public artifact tuple ready item must include generated Workflow authority file ${authorityFile}`);
   }
+}
+
+const publishedServerAdvanceHandoff = {
+  ...multiArtifactHandoff,
+  changed_files: ['scripts/published-artifact-versions.json'],
+  published_artifact_versions: {
+    ...multiArtifactHandoff.published_artifact_versions,
+    server: '0.2.427',
+  },
+  previous_published_artifact_versions: {
+    ...multiArtifactHandoff.published_artifact_versions,
+  },
+};
+const publishedServerAdvancePayload = buildReadyItemPayload(
+  publishedServerAdvanceHandoff,
+);
+const publishedServerRequestMatch =
+  /<!-- pipeline-request-b64: ([A-Za-z0-9+/=]+) -->/.exec(
+    publishedServerAdvancePayload.body,
+  );
+const publishedServerRequest = Buffer.from(
+  publishedServerRequestMatch[1],
+  'base64',
+).toString('utf8');
+
+assert.strictEqual(
+  publishedServerAdvancePayload.title,
+  'Refresh public docs artifact tuple for server 0.2.427',
+  'a published-only Server advance must name the independently published version',
+);
+assert.notStrictEqual(
+  publishedServerAdvancePayload.key,
+  stableKey,
+  'a published-only Server advance must receive a distinct handoff key',
+);
+assert.match(
+  publishedServerAdvancePayload.body,
+  /<!-- pipeline-worker-branch: seed\/docs-artifact-tuple-server-0\.2\.427 -->/,
+  'a published-only Server advance must route through a version-specific branch',
+);
+for (const text of [
+  '## Changed Independently Published Components\n- server 0.2.426 -> 0.2.427',
+  '## Current Independently Published Component Tuple',
+  '- server: 0.2.427',
+  '## Qualified Aggregate Recommendation',
+  '- server: 0.2.426',
+]) {
+  assert.ok(
+    publishedServerAdvancePayload.body.includes(text),
+    `a published-only Server advance body must include ${text}`,
+  );
+}
+for (const text of [
+  'Changed independently published components:\n- server 0.2.426 -> 0.2.427',
+  'Current independently published component tuple:',
+  '- server 0.2.427',
+  'Qualified aggregate recommendation:',
+  '- server 0.2.426',
+]) {
+  assert.ok(
+    publishedServerRequest.includes(text),
+    `a published-only Server advance request must include ${text}`,
+  );
+}
+const legacyQualifiedKeys = [
+  `versions-${artifactVersionDigest(stableKeyHandoff.artifact_versions)}`,
+  legacyKey,
+];
+if (
+  publishedServerAdvancePayload.duplicateKeys.some(key => (
+    legacyQualifiedKeys.includes(key)
+  ))
+) {
+  fail(
+    'a published-only advance must not deduplicate against qualified-tuple-only handoffs',
+  );
+}
+
+for (const [label, mutate, expected] of [
+  [
+    'missing current published-component state',
+    handoff => {
+      delete handoff.published_artifact_versions;
+    },
+    /handoff\.published_artifact_versions must be an object/,
+  ],
+  [
+    'malformed current published-component state',
+    handoff => {
+      handoff.published_artifact_versions.server = '';
+    },
+    /handoff\.published_artifact_versions\.server must be a non-empty string/,
+  ],
+  [
+    'missing previous published-component state',
+    handoff => {
+      delete handoff.previous_published_artifact_versions;
+    },
+    /handoff\.previous_published_artifact_versions must be an object/,
+  ],
+  [
+    'malformed previous published-component state',
+    handoff => {
+      handoff.previous_published_artifact_versions.unexpected = '1.0.0';
+    },
+    /handoff\.previous_published_artifact_versions contains unknown artifacts: unexpected/,
+  ],
+]) {
+  const invalidHandoff = structuredClone(multiArtifactHandoff);
+  mutate(invalidHandoff);
+  assert.throws(
+    () => buildReadyItemPayload(invalidHandoff),
+    expected,
+    `the tuple router must reject ${label}`,
+  );
 }
 
 assert.throws(
