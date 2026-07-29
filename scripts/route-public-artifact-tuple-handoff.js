@@ -22,6 +22,7 @@ const EXPECTED_REFRESH_FILES = [
 const ARTIFACT_ORDER = ['cli', 'sdk-php', 'sdk-python', 'sdk-rust', 'server', 'waterline', 'workflow'];
 const GATE_ACTION_LIST_READY_ITEMS = 'gh.issue.list';
 const GATE_ACTION_CREATE_READY_ITEM = 'gh.issue.create';
+const READY_ITEM_LOOKUP_PAGE_SIZE = 50;
 const ROUTING_LABELS = [
   'pipeline:ready-item',
   'branch:main',
@@ -641,17 +642,30 @@ function findExistingReadyItem(issues, keys) {
 }
 
 async function routeReadyItem(payload) {
-  const existingReadyItems = await gateAction(GATE_ACTION_LIST_READY_ITEMS, {
-    repo: payload.repo,
-    labels: READY_ITEM_LOOKUP_LABELS.join(','),
-    state: 'open',
-    limit: 50,
-  });
-  const existing = findExistingReadyItem(existingReadyItems, payload.duplicateKeys);
+  let page = 1;
+  while (true) {
+    const existingReadyItems = await gateAction(GATE_ACTION_LIST_READY_ITEMS, {
+      repo: payload.repo,
+      labels: READY_ITEM_LOOKUP_LABELS.join(','),
+      state: 'open',
+      limit: READY_ITEM_LOOKUP_PAGE_SIZE,
+      page,
+    });
+    const existing = findExistingReadyItem(existingReadyItems, payload.duplicateKeys);
 
-  if (existing) {
-    console.log(`Public artifact tuple handoff already routed to ready item ${existing.number}.`);
-    return existing;
+    if (existing) {
+      console.log(`Public artifact tuple handoff already routed to ready item ${existing.number}.`);
+      return existing;
+    }
+
+    if (
+      !Array.isArray(existingReadyItems)
+      || existingReadyItems.length < READY_ITEM_LOOKUP_PAGE_SIZE
+    ) {
+      break;
+    }
+
+    page += 1;
   }
 
   const created = await gateAction(GATE_ACTION_CREATE_READY_ITEM, {

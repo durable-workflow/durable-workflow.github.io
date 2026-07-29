@@ -874,6 +874,8 @@ async function withStubGate(issues, callback) {
 
       if (payload.action === 'gh.issue.list') {
         const requiredLabels = parseLabels(payload.input.labels);
+        const page = payload.input.page || 1;
+        const offset = (page - 1) * payload.input.limit;
         const listedIssues = issues
           .filter(issue => {
             const issueLabels = Array.isArray(issue.labels)
@@ -883,7 +885,7 @@ async function withStubGate(issues, callback) {
             return (issue.state || 'open') === payload.input.state
               && requiredLabels.every(label => issueLabels.includes(label));
           })
-          .slice(0, payload.input.limit);
+          .slice(offset, offset + payload.input.limit);
         response.writeHead(200, {'Content-Type': 'application/json'});
         response.end(JSON.stringify({status: 'completed', result: listedIssues}));
         return;
@@ -943,7 +945,7 @@ function assertLabelSet(labels, expectedLabels, message) {
   }
 }
 
-function assertGateListPayload(request) {
+function assertGateListPayload(request, expectedPage = 1) {
   if (!request || request.action !== 'gh.issue.list') {
     fail('public artifact tuple router must list existing handoff ready items through the gate');
   }
@@ -963,8 +965,12 @@ function assertGateListPayload(request) {
     fail('public artifact tuple lookup must not narrow active handoffs to one lifecycle state');
   }
 
-  if (request.input.state !== 'open' || request.input.limit !== 50) {
-    fail('public artifact tuple list payload must use the bounded open-ready-item lookup');
+  if (
+    request.input.state !== 'open'
+    || request.input.limit !== 50
+    || request.input.page !== expectedPage
+  ) {
+    fail(`public artifact tuple list payload must use open-ready-item page ${expectedPage}`);
   }
 }
 
@@ -1131,6 +1137,67 @@ async function assertStubGateActiveLifecycleReplayPath() {
   });
 }
 
+async function assertStubGatePaginatedActiveReplayPath() {
+  const routingLabels = [
+    'pipeline:ready-item',
+    'branch:main',
+    'state:integrating',
+    'source:handoff',
+    'flow:release',
+  ];
+  const issues = Array.from({length: 51}, (_, index) => ({
+    number: 1000 + index,
+    title: `Unrelated artifact handoff ${index + 1}`,
+    body: `<!-- docs-artifact-tuple-key: unrelated-${index + 1} -->`,
+    labels: routingLabels,
+    state: 'open',
+  }));
+  const original = {
+    number: 1051,
+    title: multiArtifactPayload.title,
+    body: multiArtifactPayload.body,
+    labels: routingLabels,
+    state: 'open',
+  };
+  issues.push(original);
+  const issuesBeforeReplay = JSON.stringify(issues);
+
+  const routed = await withStubGate(issues, async requests => {
+    const readyItem = await routeReadyItem(multiArtifactPayload);
+
+    if (requests.length !== 2) {
+      fail(`a second-page handoff replay must make exactly two list requests, saw ${requests.length}`);
+    }
+
+    assertGateListPayload(requests[0], 1);
+    assertGateListPayload(requests[1], 2);
+
+    if (requests.some(request => request.action === 'gh.issue.create')) {
+      fail('a second-page handoff replay must not create a duplicate ready item');
+    }
+
+    return readyItem;
+  });
+
+  if (!routed || routed.number !== original.number) {
+    fail('an exact active handoff beyond the first page must reuse its original ready item');
+  }
+
+  if (JSON.stringify(issues) !== issuesBeforeReplay) {
+    fail('a second-page handoff replay must not edit active lifecycle state');
+  }
+
+  const matchingBranches = issues
+    .filter(issue => issue.body.includes(`<!-- docs-artifact-tuple-key: ${multiArtifactPayload.key} -->`))
+    .map(issue => workerBranch({body: issue.body}));
+  if (
+    matchingBranches.length !== 1
+    || matchingBranches[0] !== workerBranch({body: original.body})
+  ) {
+    fail('a second-page handoff replay must use only the original worker branch');
+  }
+}
+
 async function assertStubGateCompletedPath() {
   const completedIssue = {
     number: 42,
@@ -1182,6 +1249,7 @@ async function main() {
     sdkQualificationReplacementPayload,
   );
   await assertStubGateActiveLifecycleReplayPath();
+  await assertStubGatePaginatedActiveReplayPath();
   await assertStubGateCompletedPath();
 
   console.log('Public artifact tuple workflow routes a read-only pipeline handoff.');
