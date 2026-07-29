@@ -54,7 +54,7 @@ jobs:
       - name: Resolve released Rust SDK version
         id: rust-sdk-release
         run: |
-          node -e "process.stdout.write('version=' + require('./scripts/public-artifact-versions.json').artifacts['sdk-rust'] + '\n')" >> "$GITHUB_OUTPUT"
+          node -e "process.stdout.write('version=' + require('./scripts/published-artifact-versions.json').artifacts['sdk-rust'] + '\n')" >> "$GITHUB_OUTPUT"
 
       - name: Download released Rust SDK metadata
         env:

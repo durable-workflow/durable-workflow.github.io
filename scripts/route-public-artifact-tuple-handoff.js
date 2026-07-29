@@ -12,6 +12,7 @@ const EXPECTED_TARGET_BRANCH = 'main';
 const EXPECTED_REFRESH_COMMAND = 'npm run refresh:public-artifact-versions';
 const EXPECTED_REFRESH_FILES = [
   'scripts/public-artifact-versions.json',
+  'scripts/published-artifact-versions.json',
   'static/public-artifact-compatibility-evidence.json',
   'static/quickstart-execution-contract.json',
   'static/compatibility-contract.json',

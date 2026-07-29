@@ -4,10 +4,12 @@ const os = require('os');
 const path = require('path');
 
 const source = require('./public-artifact-versions.json');
+const publishedSource = require('./published-artifact-versions.json');
 const {
   ARTIFACT_RELEASE_POLICY,
   ARTIFACT_PINS,
   ARTIFACT_DISTRIBUTION_SURFACES,
+  PUBLISHED_ARTIFACT_VERSIONS,
   buildArtifactPinPatterns,
   buildArtifactPins,
   isAuthorizedProductTrainVersion,
@@ -15,6 +17,7 @@ const {
   pypiRegistryVersion,
   readArtifactReleasePolicy,
   readArtifactVersions,
+  readPublishedArtifactVersions,
 } = require('./public-artifact-versions');
 const {
   artifactCompatibilityEvidenceSource,
@@ -31,6 +34,7 @@ const {
   compatibilityContractSource,
   generatedPublicArtifactTupleSources,
   parseRegistryNextLink,
+  publishedArtifactVersionsSource,
   quickstartExecutionContractSource,
   resolvePackagistVersion,
   resolvePublishedArtifactCompatibilityEvidence,
@@ -109,6 +113,14 @@ function expectFailure(label, mutate, expectedMessage) {
 }
 
 assert.deepStrictEqual(readArtifactVersions(source), source.artifacts);
+assert.deepStrictEqual(
+  readPublishedArtifactVersions(publishedSource),
+  publishedSource.artifacts,
+);
+assert.deepStrictEqual(
+  PUBLISHED_ARTIFACT_VERSIONS,
+  publishedSource.artifacts,
+);
 assert.deepStrictEqual(
   readArtifactCompatibilityEvidence(
     artifactCompatibilityEvidenceSource,
@@ -633,6 +645,11 @@ assert.strictEqual(
   `${JSON.stringify(source, null, 2)}\n`,
   'public artifact refresh output must preserve the canonical JSON shape'
 );
+assert.strictEqual(
+  publishedArtifactVersionsSource(publishedSource.artifacts),
+  `${JSON.stringify(publishedSource, null, 2)}\n`,
+  'published component refresh output must preserve the canonical JSON shape',
+);
 
 const currentArtifactPins = buildArtifactPins(source.artifacts);
 assert.strictEqual(ARTIFACT_PINS.productTrainVersion, source.artifacts['sdk-python']);
@@ -720,7 +737,7 @@ assert.deepStrictEqual(
     {
       surface: 'packagist_package',
       package: 'durable-workflow/sdk',
-      version: source.artifacts['sdk-php'],
+      version: publishedSource.artifacts['sdk-php'],
       url: 'https://packagist.org/packages/durable-workflow/sdk',
     },
     {
@@ -738,10 +755,47 @@ assert.deepStrictEqual(
 assert.deepStrictEqual(
   ARTIFACT_DISTRIBUTION_SURFACES.server.map(surface => surface.reference),
   [
-    `durableworkflow/server:${source.artifacts.server}`,
-    `ghcr.io/durable-workflow/server:${source.artifacts.server}`,
+    `durableworkflow/server:${publishedSource.artifacts.server}`,
+    `ghcr.io/durable-workflow/server:${publishedSource.artifacts.server}`,
   ],
   'server distribution surfaces must use the current Docker Hub and GHCR tag'
+);
+assert.deepStrictEqual(
+  ARTIFACT_DISTRIBUTION_SURFACES.waterline,
+  [
+    {
+      surface: 'github_release',
+      repository: 'durable-workflow/waterline',
+      tag: publishedSource.artifacts.waterline,
+      url:
+        'https://github.com/durable-workflow/waterline/releases/tag/' +
+        publishedSource.artifacts.waterline,
+    },
+    {
+      surface: 'packagist_package',
+      package: 'durable-workflow/waterline',
+      version: publishedSource.artifacts.waterline,
+      url: 'https://packagist.org/packages/durable-workflow/waterline',
+    },
+    {
+      surface: 'docker_hub_container_image',
+      registry: 'docker_hub',
+      image: 'durableworkflow/waterline',
+      tag: publishedSource.artifacts.waterline,
+      reference: `durableworkflow/waterline:${publishedSource.artifacts.waterline}`,
+    },
+  ],
+  'Waterline distribution surfaces must expose the current independent release',
+);
+assert.strictEqual(
+  source.artifacts.waterline,
+  '2.0.0-rc.5',
+  'the qualified aggregate recommendation must remain on Waterline RC5',
+);
+assert.strictEqual(
+  publishedSource.artifacts.waterline,
+  '2.0.0-rc.8',
+  'the published component authority must expose Waterline RC8',
 );
 assert.deepStrictEqual(
   ARTIFACT_DISTRIBUTION_SURFACES['sdk-rust'],
@@ -749,7 +803,7 @@ assert.deepStrictEqual(
     {
       surface: 'crates_io_package',
       package: 'durable-workflow',
-      version: source.artifacts['sdk-rust'],
+      version: publishedSource.artifacts['sdk-rust'],
       url: 'https://crates.io/crates/durable-workflow',
     },
     {
@@ -823,6 +877,8 @@ assert.deepStrictEqual(
       source.artifacts,
       '2026-07-23',
       currentTupleSources['static/sdk-neutrality-contract.json'],
+      undefined,
+      publishedSource.artifacts,
     ),
   ),
   [],
@@ -852,6 +908,7 @@ assert.deepStrictEqual(
   unchangedManifestFiles,
   [
     'scripts/public-artifact-versions.json',
+    'scripts/published-artifact-versions.json',
     'static/public-artifact-compatibility-evidence.json',
     'static/quickstart-execution-contract.json',
     'static/compatibility-contract.json',
@@ -1205,6 +1262,11 @@ assert.deepStrictEqual(
   unqualifiedSuccessorSelection.versions,
   artifactVersionsAt('2.0.0-beta.5'),
   'a newer independently published tuple must park at the exact qualified versions',
+);
+assert.deepStrictEqual(
+  unqualifiedSuccessorSelection.publishedVersions,
+  artifactVersionsAt('2.0.0-beta.6'),
+  'a newer independently published tuple must remain available to the release audit',
 );
 assert.deepStrictEqual(
   unqualifiedSuccessorSelection.parkedArtifacts.map(entry => entry.artifact),

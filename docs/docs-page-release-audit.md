@@ -21,14 +21,17 @@ verify that boundary directly.
 
 The machine-readable audit is published at
 [`/docs-page-release-audit.json`](pathname:///docs-page-release-audit.json).
-Its `artifact_versions`, PHP SDK package/repository/API-documentation surfaces,
-server container distribution surfaces, and Rust SDK
-package/repository/API-documentation surfaces are synchronized from the public
-artifact tuple source during the docs build. The manifest also records an
-immutable `artifact_version_source.source_url` and
-`artifact_version_source.current_server_artifact` so consumers can resolve the
-version source and verify that the advertised server version and container
-image references came from the same tuple.
+Its `artifact_versions` report the newest independently published component
+artifacts. The matching PHP SDK, server, Waterline, and Rust SDK distribution
+surfaces are synchronized from that source during the docs build. This is
+separate from `artifact_compatibility_evidence.qualified_artifact_versions`,
+which remains the aggregate installation recommendation until an exact
+cross-component qualification promotes a successor tuple.
+
+The manifest records immutable source URLs and current Server and Waterline
+artifact references so consumers can resolve both authorities. A newer
+component release can therefore be visible without silently changing the
+qualified quickstart pins.
 
 ## Coverage
 

@@ -19,7 +19,11 @@ const {
 const {
   buildArtifactCompatibilityProjection,
 } = require('./generate-docs-page-release-audit');
-const { ARTIFACT_DISTRIBUTION_SURFACES, ARTIFACT_VERSIONS } = require('./public-artifact-versions');
+const {
+  ARTIFACT_DISTRIBUTION_SURFACES,
+  ARTIFACT_VERSIONS,
+  PUBLISHED_ARTIFACT_VERSIONS,
+} = require('./public-artifact-versions');
 
 const PROTECTED_DEPLOY_SOURCE_GUARD =
   "github.repository == 'durable-workflow/durable-workflow.github.io' && " +
@@ -107,24 +111,25 @@ for (const required of [
 function currentAudit() {
   return {
     docs_revision: CURRENT_DOCS_REVISION,
-    artifact_versions: {...ARTIFACT_VERSIONS},
+    artifact_versions: {...PUBLISHED_ARTIFACT_VERSIONS},
     artifact_compatibility_evidence: buildArtifactCompatibilityProjection(),
     release_status_guardrail: {
       stable_default_docs_version: '1.x',
       explicit_prerelease_docs_version: '2.0',
     },
-    artifact_distribution_surfaces: {
-      'sdk-php': ARTIFACT_DISTRIBUTION_SURFACES['sdk-php'].map(surface => ({...surface})),
-      server: ARTIFACT_DISTRIBUTION_SURFACES.server.map(surface => ({...surface})),
-      'sdk-rust': ARTIFACT_DISTRIBUTION_SURFACES['sdk-rust'].map(surface => ({...surface})),
-    },
+    artifact_distribution_surfaces: Object.fromEntries(
+      Object.entries(ARTIFACT_DISTRIBUTION_SURFACES).map(([artifact, surfaces]) => [
+        artifact,
+        surfaces.map(surface => ({...surface})),
+      ]),
+    ),
   };
 }
 
 function currentNarrativeAudit() {
   return {
     docs_revision: CURRENT_DOCS_REVISION,
-    artifact_versions: {...ARTIFACT_VERSIONS},
+    artifact_versions: {...PUBLISHED_ARTIFACT_VERSIONS},
     release_status_guardrail: {
       stable_default_docs_version: '1.x',
       explicit_prerelease_docs_version: '2.0',
@@ -168,11 +173,11 @@ assert.throws(
   () => assertReleaseAuditAuthority(JSON.stringify({
     ...currentAudit(),
     artifact_versions: {
-      ...ARTIFACT_VERSIONS,
+      ...PUBLISHED_ARTIFACT_VERSIONS,
       server: '2.0.0-beta.999',
     },
   })),
-  /artifact tuple does not match/,
+  /current published-component authority/,
   'live release-audit verification must reject artifact drift',
 );
 
@@ -229,10 +234,16 @@ async function assertScheduledDeployRepairsStaleLiveTuple() {
   audit.artifact_distribution_surfaces['sdk-php'][0].url = 'https://packagist.org/packages/stale/php-sdk';
   audit.artifact_distribution_surfaces.server[0].tag = '0.2.543';
   audit.artifact_distribution_surfaces.server[0].reference = 'durableworkflow/server:0.2.543';
+  audit.artifact_distribution_surfaces.waterline[0].tag = '2.0.0-rc.5';
   audit.artifact_distribution_surfaces['sdk-rust'][0].url = 'https://crates.io/crates/stale-package';
   quickstart.artifacts.cli.version = '0.1.84';
 
-  const drift = compareLivePublicArtifacts(ARTIFACT_VERSIONS, audit, quickstart);
+  const drift = compareLivePublicArtifacts(
+    ARTIFACT_VERSIONS,
+    audit,
+    quickstart,
+    PUBLISHED_ARTIFACT_VERSIONS,
+  );
 
   assert(
     drift.some(item => item.includes('/docs-page-release-audit.json artifact_versions.server')),
@@ -249,6 +260,10 @@ async function assertScheduledDeployRepairsStaleLiveTuple() {
   assert(
     drift.some(item => item.includes('server surface docker_hub_container_image.tag')),
     'server distribution surface drift must be reported'
+  );
+  assert(
+    drift.some(item => item.includes('Waterline surface github_release.tag')),
+    'Waterline distribution surface drift must be reported',
   );
   assert(
     drift.some(item => item.includes('Rust SDK surface crates_io_package.url')),

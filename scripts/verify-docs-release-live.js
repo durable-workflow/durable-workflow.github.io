@@ -6,7 +6,9 @@ const http = require('http');
 const https = require('https');
 const path = require('path');
 
-const {ARTIFACT_VERSIONS} = require('./public-artifact-versions');
+const {
+  PUBLISHED_ARTIFACT_VERSIONS,
+} = require('./public-artifact-versions');
 const {
   buildArtifactCompatibilityProjection,
 } = require('./generate-docs-page-release-audit');
@@ -79,8 +81,13 @@ function wait(milliseconds) {
 function assertReleaseAuditAuthority(source) {
   const audit = JSON.parse(source);
 
-  if (JSON.stringify(audit.artifact_versions) !== JSON.stringify(ARTIFACT_VERSIONS)) {
-    throw new Error('live release audit artifact tuple does not match the public authority');
+  if (
+    JSON.stringify(audit.artifact_versions)
+    !== JSON.stringify(PUBLISHED_ARTIFACT_VERSIONS)
+  ) {
+    throw new Error(
+      'live release audit artifacts do not match the current published-component authority',
+    );
   }
   if (audit.release_status_guardrail?.stable_default_docs_version !== '1.x') {
     throw new Error('live release audit changed the stable default docs line');

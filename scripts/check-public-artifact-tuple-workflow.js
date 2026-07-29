@@ -97,6 +97,7 @@ for (const required of [
   "action: 'pipeline_ready_item'",
   "integration: 'pipeline'",
   'scripts/public-artifact-versions.json',
+  'scripts/published-artifact-versions.json',
   'static/public-artifact-compatibility-evidence.json',
   'static/quickstart-execution-contract.json',
   'static/compatibility-contract.json',
@@ -372,6 +373,7 @@ const multiArtifactHandoff = {
   refresh_command: 'npm run refresh:public-artifact-versions',
   refresh_files: [
     'scripts/public-artifact-versions.json',
+    'scripts/published-artifact-versions.json',
     'static/public-artifact-compatibility-evidence.json',
     'static/quickstart-execution-contract.json',
     'static/compatibility-contract.json',
@@ -380,6 +382,7 @@ const multiArtifactHandoff = {
   ],
   changed_files: [
     'scripts/public-artifact-versions.json',
+    'scripts/published-artifact-versions.json',
     'static/public-artifact-compatibility-evidence.json',
     'static/quickstart-execution-contract.json',
     'static/compatibility-contract.json',

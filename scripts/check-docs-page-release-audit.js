@@ -7,8 +7,8 @@ const config = require('../docusaurus.config.js');
 const {docsRevision} = require('./docs-narrative-audit-contract');
 const {
   ARTIFACT_DISTRIBUTION_SURFACES,
-  ARTIFACT_VERSION_SCHEMA,
-  ARTIFACT_VERSIONS,
+  PUBLISHED_ARTIFACT_VERSIONS,
+  PUBLISHED_ARTIFACT_VERSION_SCHEMA,
 } = require('./public-artifact-versions');
 const {
   ARTIFACT_VERSION_SOURCE_PATH,
@@ -52,16 +52,25 @@ function getDocsConfig() {
 }
 
 function assertArtifactVersions(audit) {
-  if (JSON.stringify(audit.artifact_versions) !== JSON.stringify(ARTIFACT_VERSIONS)) {
-    fail('docs-page-release-audit.json artifact_versions must match the public artifact authority');
+  if (
+    JSON.stringify(audit.artifact_versions)
+    !== JSON.stringify(PUBLISHED_ARTIFACT_VERSIONS)
+  ) {
+    fail(
+      'docs-page-release-audit.json artifact_versions must match the current ' +
+        'published-component authority',
+    );
   }
   if (JSON.stringify(audit.artifact_distribution_surfaces) !== JSON.stringify(ARTIFACT_DISTRIBUTION_SURFACES)) {
     fail('docs-page-release-audit.json artifact distribution surfaces must match the public artifact authority');
   }
 
   const source = audit.artifact_version_source || {};
-  if (source.schema !== ARTIFACT_VERSION_SCHEMA) {
+  if (source.schema !== PUBLISHED_ARTIFACT_VERSION_SCHEMA) {
     fail('docs-page-release-audit.json artifact version source schema is invalid');
+  }
+  if (source.role !== 'current_published_component_artifacts') {
+    fail('docs-page-release-audit.json artifact version source role is invalid');
   }
   if (source.source_url !== repositorySourceUrl(ARTIFACT_VERSION_SOURCE_PATH, audit.docs_revision)) {
     fail('docs-page-release-audit.json artifact version source URL is invalid');
@@ -69,8 +78,20 @@ function assertArtifactVersions(audit) {
   if (JSON.stringify(source.synchronized_fields) !== JSON.stringify(ARTIFACT_VERSION_SYNCHRONIZED_FIELDS)) {
     fail('docs-page-release-audit.json synchronized artifact fields are invalid');
   }
-  if (source.current_server_artifact?.version !== ARTIFACT_VERSIONS.server) {
+  if (source.current_server_artifact?.version !== PUBLISHED_ARTIFACT_VERSIONS.server) {
     fail('docs-page-release-audit.json current server artifact version is stale');
+  }
+  if (
+    source.current_waterline_artifact?.version
+    !== PUBLISHED_ARTIFACT_VERSIONS.waterline
+  ) {
+    fail('docs-page-release-audit.json current Waterline artifact version is stale');
+  }
+  if (
+    audit.artifact_compatibility_evidence?.role
+    !== 'qualified_aggregate_recommendation'
+  ) {
+    fail('docs-page-release-audit.json compatibility evidence role is invalid');
   }
   if (
     JSON.stringify(audit.artifact_compatibility_evidence)

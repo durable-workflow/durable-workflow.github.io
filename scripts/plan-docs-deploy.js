@@ -6,7 +6,11 @@ const http = require('http');
 const https = require('https');
 const path = require('path');
 
-const { ARTIFACT_DISTRIBUTION_SURFACES, ARTIFACT_VERSIONS } = require('./public-artifact-versions');
+const {
+  ARTIFACT_DISTRIBUTION_SURFACES,
+  ARTIFACT_VERSIONS,
+  PUBLISHED_ARTIFACT_VERSIONS,
+} = require('./public-artifact-versions');
 const {docsRevision} = require('./docs-narrative-audit-contract');
 const {
   REQUIRED_LIVE_ARTIFACTS,
@@ -121,7 +125,7 @@ function expectedInvariantValue(invariant, expectedVersions, expectedRevision) {
   if (Object.prototype.hasOwnProperty.call(invariant, 'value')) {
     return invariant.value;
   }
-  if (invariant.authority === 'artifact_versions') {
+  if (invariant.authority === 'published_artifact_versions') {
     return expectedVersions;
   }
   if (invariant.authority === 'docs_revision') {
@@ -182,17 +186,24 @@ function compareRequiredLiveArtifacts(
   return drift;
 }
 
-function compareLivePublicArtifacts(expected, audit, quickstart) {
+function compareLivePublicArtifacts(
+  expected,
+  audit,
+  quickstart,
+  published = PUBLISHED_ARTIFACT_VERSIONS,
+) {
   const drift = [];
 
-  for (const [name, version] of artifactEntries(expected)) {
+  for (const [name, version] of artifactEntries(published)) {
     const auditVersion = versionAtPath(audit, ['artifact_versions', name]);
-    const quickstartVersion = versionAtPath(quickstart, ['artifacts', name, 'version']);
 
     if (auditVersion !== version) {
       drift.push(`${RELEASE_AUDIT_PATH} artifact_versions.${name}: expected ${version}, got ${auditVersion || '<missing>'}`);
     }
+  }
 
+  for (const [name, version] of artifactEntries(expected)) {
+    const quickstartVersion = versionAtPath(quickstart, ['artifacts', name, 'version']);
     if (quickstartVersion !== version) {
       drift.push(`${QUICKSTART_CONTRACT_PATH} artifacts.${name}.version: expected ${version}, got ${quickstartVersion || '<missing>'}`);
     }
@@ -282,6 +293,41 @@ function compareLivePublicArtifacts(expected, audit, quickstart) {
     }
   }
 
+  const expectedWaterlineSurfaces = ARTIFACT_DISTRIBUTION_SURFACES.waterline || [];
+  const liveWaterlineSurfaces = versionAtPath(
+    audit,
+    ['artifact_distribution_surfaces', 'waterline'],
+  );
+
+  if (!Array.isArray(liveWaterlineSurfaces)) {
+    drift.push(
+      `${RELEASE_AUDIT_PATH} artifact_distribution_surfaces.waterline: ` +
+        'expected Waterline surfaces, got <missing>',
+    );
+  } else {
+    for (const expectedSurface of expectedWaterlineSurfaces) {
+      const liveSurface = liveWaterlineSurfaces.find(surface => (
+        surface && surface.surface === expectedSurface.surface
+      ));
+
+      if (!liveSurface) {
+        drift.push(
+          `${RELEASE_AUDIT_PATH} Waterline surface ${expectedSurface.surface}: missing`,
+        );
+        continue;
+      }
+
+      for (const [field, expectedValue] of Object.entries(expectedSurface)) {
+        if (liveSurface[field] !== expectedValue) {
+          drift.push(
+            `${RELEASE_AUDIT_PATH} Waterline surface ${expectedSurface.surface}.${field}: ` +
+              `expected ${expectedValue}, got ${liveSurface[field] || '<missing>'}`,
+          );
+        }
+      }
+    }
+  }
+
   return drift;
 }
 
@@ -304,6 +350,8 @@ async function readLivePublicArtifacts(options = {}) {
 async function planDeployment(options = {}) {
   const eventName = options.eventName || githubEventName();
   const expected = options.expected || ARTIFACT_VERSIONS;
+  const expectedPublished =
+    options.expectedPublished || PUBLISHED_ARTIFACT_VERSIONS;
 
   if (eventName !== 'schedule') {
     return {
@@ -320,7 +368,7 @@ async function planDeployment(options = {}) {
     const drift = [
       ...compareRequiredLiveArtifacts(
         liveArtifacts,
-        expected,
+        expectedPublished,
         expectedRevision,
         repoRoot,
       ),
@@ -328,6 +376,7 @@ async function planDeployment(options = {}) {
         expected,
         liveArtifacts[RELEASE_AUDIT_PATH],
         liveArtifacts[QUICKSTART_CONTRACT_PATH],
+        expectedPublished,
       ),
     ];
 

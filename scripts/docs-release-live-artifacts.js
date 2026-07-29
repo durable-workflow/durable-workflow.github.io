@@ -26,7 +26,7 @@ const REQUIRED_LIVE_ARTIFACTS = Object.freeze([
       ...GENERATED_RELEASE_INVARIANTS,
       Object.freeze({
         path: Object.freeze(['artifact_versions']),
-        authority: 'artifact_versions',
+        authority: 'published_artifact_versions',
       }),
     ]),
   }),

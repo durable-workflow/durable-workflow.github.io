@@ -9,7 +9,7 @@ const {
   composerPrereleaseStability,
   expectedAcceptedWorkerVersions,
 } = require('./check-compatibility-authority');
-const artifactVersionSource = require('./public-artifact-versions.json');
+const publishedArtifactVersionSource = require('./published-artifact-versions.json');
 const {
   ARTIFACT_RELEASE_POLICY,
 } = require('./public-artifact-versions');
@@ -65,7 +65,7 @@ function successorVersion(version) {
 }
 
 const successorVersions = Object.fromEntries(
-  Object.entries(artifactVersionSource.artifacts).map(([artifact, version]) => [
+  Object.entries(publishedArtifactVersionSource.artifacts).map(([artifact, version]) => [
     artifact,
     successorVersion(version),
   ]),
@@ -79,7 +79,7 @@ assert.deepStrictEqual(
 );
 assert.deepStrictEqual(
   Object.keys(successorProjection.artifact_versions).sort(),
-  Object.keys(artifactVersionSource.artifacts).sort(),
+  Object.keys(publishedArtifactVersionSource.artifacts).sort(),
   'the successor projection regression must cover every artifact tuple component',
 );
 
@@ -91,7 +91,7 @@ for (const [artifact, successor] of Object.entries(successorVersions)) {
   );
   assert.notStrictEqual(
     successorProjection.artifact_versions[artifact],
-    artifactVersionSource.artifacts[artifact],
+    publishedArtifactVersionSource.artifacts[artifact],
     `the public release audit must not retain the previous ${artifact} version`,
   );
 }

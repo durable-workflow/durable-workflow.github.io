@@ -9,10 +9,12 @@ const {
   ARTIFACT_RELEASE_POLICY,
   ARTIFACT_VERSION_REQUIREMENTS,
   ARTIFACT_VERSION_SCHEMA,
+  PUBLISHED_ARTIFACT_VERSION_SCHEMA,
   REQUIRED_ARTIFACTS,
   buildArtifactPins,
   isAuthorizedProductTrainVersion,
   readArtifactVersions,
+  readPublishedArtifactVersions,
 } = require('./public-artifact-versions');
 const {
   PRODUCT_TRAIN_AUTHORITY_URL,
@@ -26,6 +28,10 @@ const {
 
 const repoRoot = path.join(__dirname, '..');
 const artifactVersionsPath = path.join(__dirname, 'public-artifact-versions.json');
+const publishedArtifactVersionsPath = path.join(
+  __dirname,
+  'published-artifact-versions.json',
+);
 const artifactCompatibilityEvidencePath = path.join(
   repoRoot,
   'static',
@@ -41,6 +47,7 @@ const sdkNeutralityContractPath = path.join(repoRoot, 'static', 'sdk-neutrality-
 const WORKFLOW_SDK_NEUTRALITY_RESOURCE_PATH = 'resources/sdk-neutrality-contract.json';
 const PUBLIC_ARTIFACT_TUPLE_FILES = Object.freeze([
   'scripts/public-artifact-versions.json',
+  'scripts/published-artifact-versions.json',
   'static/public-artifact-compatibility-evidence.json',
   'static/quickstart-execution-contract.json',
   'static/compatibility-contract.json',
@@ -49,6 +56,7 @@ const PUBLIC_ARTIFACT_TUPLE_FILES = Object.freeze([
 ]);
 const PUBLIC_ARTIFACT_TUPLE_PATHS = Object.freeze({
   'scripts/public-artifact-versions.json': artifactVersionsPath,
+  'scripts/published-artifact-versions.json': publishedArtifactVersionsPath,
   'static/public-artifact-compatibility-evidence.json': artifactCompatibilityEvidencePath,
   'static/quickstart-execution-contract.json': quickstartContractPath,
   'static/compatibility-contract.json': compatibilityContractPath,
@@ -421,6 +429,7 @@ function selectLatestQualifiedArtifactTuple(
   }
 
   return Object.freeze({
+    publishedVersions: latestVersions,
     versions: qualifiedVersions,
     parkedArtifacts: Object.freeze(parkedArtifacts),
   });
@@ -965,6 +974,7 @@ async function resolvePublishedArtifactTupleState(sources = PUBLISHED_ARTIFACT_S
 
   return {
     versions,
+    publishedVersions: selection.publishedVersions,
     compatibilityEvidence,
     parkedArtifacts: selection.parkedArtifacts,
     workflowManifestSource: workflowAuthority.manifestSource,
@@ -984,6 +994,18 @@ function artifactVersionsSource(versions) {
   };
 
   readArtifactVersions(source);
+
+  return `${JSON.stringify(source, null, 2)}\n`;
+}
+
+function publishedArtifactVersionsSource(versions) {
+  const source = {
+    schema: PUBLISHED_ARTIFACT_VERSION_SCHEMA,
+    schemaVersion: 1,
+    artifacts: Object.fromEntries(REQUIRED_ARTIFACTS.map(name => [name, versions[name]])),
+  };
+
+  readPublishedArtifactVersions(source);
 
   return `${JSON.stringify(source, null, 2)}\n`;
 }
@@ -1086,12 +1108,15 @@ function generatedPublicArtifactTupleSources(
   date,
   workflowManifestSource,
   compatibilityEvidence = artifactCompatibilityEvidenceSource,
+  publishedVersions = versions,
 ) {
   const quickstartSource = currentSources['static/quickstart-execution-contract.json'];
   const compatibilitySource = currentSources['static/compatibility-contract.json'];
 
   return {
     'scripts/public-artifact-versions.json': artifactVersionsSource(versions),
+    'scripts/published-artifact-versions.json':
+      publishedArtifactVersionsSource(publishedVersions),
     'static/public-artifact-compatibility-evidence.json':
       artifactCompatibilityEvidenceJsonSource(compatibilityEvidence),
     'static/quickstart-execution-contract.json': quickstartExecutionContractSource(
@@ -1504,15 +1529,36 @@ async function check() {
     new Date().toISOString().slice(0, 10),
     workflowManifestSource,
     published.compatibilityEvidence,
+    published.publishedVersions,
   );
   const actual = readArtifactVersions(JSON.parse(
     currentSources['scripts/public-artifact-versions.json'],
   ));
+  const actualPublished = readPublishedArtifactVersions(JSON.parse(
+    currentSources['scripts/published-artifact-versions.json'],
+  ));
   classifyArtifactTrainChange(actual, expected);
+  classifyArtifactTrainChange(actualPublished, published.publishedVersions);
   const sourceMismatches = artifactMismatches(actual, expected);
 
   if (sourceMismatches.length > 0) {
-    throw new Error(mismatchMessage('scripts/public-artifact-versions.json is stale against the current published artifact tuple:', sourceMismatches));
+    throw new Error(mismatchMessage(
+      'scripts/public-artifact-versions.json is stale against the qualified ' +
+        'aggregate recommendation:',
+      sourceMismatches,
+    ));
+  }
+  const publishedSourceMismatches = artifactMismatches(
+    actualPublished,
+    published.publishedVersions,
+  );
+
+  if (publishedSourceMismatches.length > 0) {
+    throw new Error(mismatchMessage(
+      'scripts/published-artifact-versions.json is stale against the current ' +
+        'published component artifacts:',
+      publishedSourceMismatches,
+    ));
   }
 
   const compatibilityEvidence =
@@ -1588,7 +1634,7 @@ async function check() {
   }
 
   console.log(
-    `Public artifact tuple is current: ${REQUIRED_ARTIFACTS.map(name => `${name} ${expected[name]}`).join(', ')}`
+    `Qualified artifact tuple is current: ${REQUIRED_ARTIFACTS.map(name => `${name} ${expected[name]}`).join(', ')}`
   );
   if (published.parkedArtifacts.length > 0) {
     console.log([
@@ -1608,19 +1654,27 @@ async function refresh(date) {
   const currentVersions = readArtifactVersions(JSON.parse(
     currentSources['scripts/public-artifact-versions.json'],
   ));
+  const currentPublishedVersions = readPublishedArtifactVersions(JSON.parse(
+    currentSources['scripts/published-artifact-versions.json'],
+  ));
   classifyArtifactTrainChange(currentVersions, expected);
+  classifyArtifactTrainChange(
+    currentPublishedVersions,
+    published.publishedVersions,
+  );
   const desiredSources = generatedPublicArtifactTupleSources(
     currentSources,
     expected,
     date,
     workflowManifestSource,
     published.compatibilityEvidence,
+    published.publishedVersions,
   );
   const updated = changedPublicArtifactTupleFiles(currentSources, desiredSources);
 
   if (updated.length === 0) {
     console.log(
-      `Public artifact tuple already current: ${REQUIRED_ARTIFACTS.map(name => `${name} ${expected[name]}`).join(', ')}`
+      `Published components and qualified artifact tuple are current: ${REQUIRED_ARTIFACTS.map(name => `${name} ${expected[name]}`).join(', ')}`
     );
     if (published.parkedArtifacts.length > 0) {
       console.log([
@@ -1634,7 +1688,10 @@ async function refresh(date) {
   }
 
   writePublicArtifactTupleSources(desiredSources, updated);
-  console.log(`Updated ${updated.join(' and ')} from the current published artifact tuple.`);
+  console.log(
+    `Updated ${updated.join(' and ')} from the published component and ` +
+      'qualified aggregate authorities.',
+  );
 }
 
 async function main() {
@@ -1668,6 +1725,7 @@ module.exports = {
   generatedPublicArtifactTupleSources,
   normalizeVersion,
   parseRegistryNextLink,
+  publishedArtifactVersionsSource,
   quickstartExecutionContractSource,
   resolvePackagistVersion,
   resolvePublishedArtifactCompatibilityEvidence,

@@ -4,8 +4,9 @@ const fs = require('fs');
 const path = require('path');
 
 const {
-  ARTIFACT_VERSION_SCHEMA,
   ARTIFACT_VERSIONS,
+  PUBLISHED_ARTIFACT_VERSIONS,
+  PUBLISHED_ARTIFACT_VERSION_SCHEMA,
   buildArtifactDistributionSurfaces,
 } = require('./public-artifact-versions');
 const {
@@ -28,11 +29,11 @@ const sitemapPath = path.join(buildDir, 'sitemap.xml');
 const outputPath = path.join(buildDir, 'docs-page-release-audit.json');
 
 const SCHEMA = 'durable-workflow.docs.page-release-audit';
-const SCHEMA_VERSION = 4;
-const CLASSIFIER_ID = 'route-and-public-artifact-inventory-v4';
+const SCHEMA_VERSION = 5;
+const CLASSIFIER_ID = 'route-and-public-artifact-inventory-v5';
 const STABLE_DOCS_VERSION = '1.x';
 const PRERELEASE_DOCS_VERSION = '2.0';
-const ARTIFACT_VERSION_SOURCE_PATH = 'scripts/public-artifact-versions.json';
+const ARTIFACT_VERSION_SOURCE_PATH = 'scripts/published-artifact-versions.json';
 const ARTIFACT_COMPATIBILITY_EVIDENCE_PATH =
   '/public-artifact-compatibility-evidence.json';
 const ARTIFACT_VERSION_SYNCHRONIZED_FIELDS = Object.freeze([
@@ -40,6 +41,7 @@ const ARTIFACT_VERSION_SYNCHRONIZED_FIELDS = Object.freeze([
   'artifact_distribution_surfaces.sdk-php',
   'artifact_distribution_surfaces.server',
   'artifact_distribution_surfaces.sdk-rust',
+  'artifact_distribution_surfaces.waterline',
 ]);
 const GENERATED_TEXT_ARTIFACTS = [
   '/llms.txt',
@@ -150,18 +152,25 @@ function inventoryEntry(routePath) {
 
 function artifactVersionSourceMetadata(versions, distributionSurfaces, revision) {
   return {
-    schema: ARTIFACT_VERSION_SCHEMA,
+    schema: PUBLISHED_ARTIFACT_VERSION_SCHEMA,
+    role: 'current_published_component_artifacts',
     source_url: repositorySourceUrl(ARTIFACT_VERSION_SOURCE_PATH, revision),
     synchronized_fields: ARTIFACT_VERSION_SYNCHRONIZED_FIELDS,
     current_server_artifact: {
       version: versions.server,
       references: distributionSurfaces.server.map(surface => surface.reference),
     },
+    current_waterline_artifact: {
+      version: versions.waterline,
+      references: distributionSurfaces.waterline.map(surface => (
+        surface.reference || surface.url
+      )),
+    },
   };
 }
 
 function buildArtifactVersionProjection(
-  versions = ARTIFACT_VERSIONS,
+  versions = PUBLISHED_ARTIFACT_VERSIONS,
   revision = docsRevision(repoRoot),
 ) {
   const distributionSurfaces = buildArtifactDistributionSurfaces(versions);
@@ -187,6 +196,7 @@ function buildArtifactCompatibilityProjection(
   const conformanceEvidence = sdkServerQualification.evidence;
 
   return {
+    role: 'qualified_aggregate_recommendation',
     source_url: ARTIFACT_COMPATIBILITY_EVIDENCE_PATH,
     schema: evidence.schema,
     schema_version: evidence.schema_version,
@@ -221,7 +231,7 @@ function main() {
     generated_from: 'production sitemap and build artifact inventory',
     classifier: CLASSIFIER_ID,
     docs_revision: revision,
-    ...buildArtifactVersionProjection(ARTIFACT_VERSIONS, revision),
+    ...buildArtifactVersionProjection(PUBLISHED_ARTIFACT_VERSIONS, revision),
     artifact_compatibility_evidence: buildArtifactCompatibilityProjection(),
     release_status_guardrail: {
       stable_default_docs_version: STABLE_DOCS_VERSION,

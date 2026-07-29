@@ -19,6 +19,7 @@ const {
   ARTIFACT_RELEASE_POLICY,
   ARTIFACT_PINS,
   ARTIFACT_VERSIONS,
+  PUBLISHED_ARTIFACT_VERSIONS,
   composerPrereleaseStability: artifactComposerPrereleaseStability,
 } = require('./public-artifact-versions');
 const {
@@ -337,13 +338,12 @@ function assertSdkProtocolAuthorities(contract) {
 
   const cargoMetadata = loadRustCargoMetadataWhenAvailable();
   if (cargoMetadata !== null) {
-    // The released crate records the Server version current when that SDK was
-    // published. The docs compatibility authority may advance a subsequently
-    // verified Server release without requiring an otherwise unchanged SDK
-    // republish.
+    // The crate package version follows the current published-component
+    // authority, while its metadata records the separately qualified Server
+    // version that the aggregate recommendation retains.
     const expectedCargoValues = {
       package: rustPackage.package,
-      version: artifactVersion,
+      version: PUBLISHED_ARTIFACT_VERSIONS['sdk-rust'],
       supported_server_versions: artifactVersion,
       worker_protocol_version: rustPackage.worker_protocol_version,
       control_plane_version: rustPackage.control_plane_version,
@@ -361,7 +361,7 @@ function assertSdkProtocolAuthorities(contract) {
 
   const protocolSpecsWorkflow = read(protocolSpecsWorkflowPath);
   for (const required of [
-    "artifacts['sdk-rust']",
+    "require('./scripts/published-artifact-versions.json').artifacts['sdk-rust']",
     'SDK_RUST_VERSION: ${{ steps.rust-sdk-release.outputs.version }}',
     'https://crates.io/api/v1/crates/durable-workflow/${SDK_RUST_VERSION}',
     'https://crates.io/api/v1/crates/durable-workflow/${SDK_RUST_VERSION}/download',

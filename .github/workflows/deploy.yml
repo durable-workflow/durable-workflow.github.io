@@ -95,12 +95,13 @@ jobs:
           const assert = require('assert');
           const fs = require('fs');
 
-          const expected = require('./scripts/public-artifact-versions.json').artifacts;
+          const recommended = require('./scripts/public-artifact-versions.json').artifacts;
+          const published = require('./scripts/published-artifact-versions.json').artifacts;
           const audit = JSON.parse(fs.readFileSync('build/docs-page-release-audit.json', 'utf8'));
           const narrative = JSON.parse(fs.readFileSync('build/docs-narrative-audit.json', 'utf8'));
           const quickstart = JSON.parse(fs.readFileSync('build/quickstart-execution-contract.json', 'utf8'));
 
-          for (const [name, version] of Object.entries(expected)) {
+          for (const [name, version] of Object.entries(published)) {
             assert.strictEqual(
               audit.artifact_versions && audit.artifact_versions[name],
               version,
@@ -108,15 +109,17 @@ jobs:
             );
 
             assert.strictEqual(
-              quickstart.artifacts && quickstart.artifacts[name] && quickstart.artifacts[name].version,
-              version,
-              `quickstart-execution-contract.json artifacts.${name}.version`
-            );
-
-            assert.strictEqual(
               narrative.artifact_versions && narrative.artifact_versions[name],
               version,
               `docs-narrative-audit.json artifact_versions.${name}`
+            );
+          }
+
+          for (const [name, version] of Object.entries(recommended)) {
+            assert.strictEqual(
+              quickstart.artifacts && quickstart.artifacts[name] && quickstart.artifacts[name].version,
+              version,
+              `quickstart-execution-contract.json artifacts.${name}.version`
             );
           }
 
@@ -156,7 +159,12 @@ jobs:
           );
 
           console.log(
-            `Deploying public artifact tuple: ${Object.entries(expected)
+            `Deploying current published component artifacts: ${Object.entries(published)
+              .map(([name, version]) => `${name}=${version}`)
+              .join(', ')}`
+          );
+          console.log(
+            `Retaining qualified aggregate recommendation: ${Object.entries(recommended)
               .map(([name, version]) => `${name}=${version}`)
               .join(', ')}`
           );

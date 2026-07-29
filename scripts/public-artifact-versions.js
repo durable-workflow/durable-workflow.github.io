@@ -1,7 +1,10 @@
 const artifactVersionSource = require('./public-artifact-versions.json');
+const publishedArtifactVersionSource = require('./published-artifact-versions.json');
 const artifactReleasePolicySource = require('../static/public-artifact-release-policy.json');
 
 const ARTIFACT_VERSION_SCHEMA = 'durable-workflow.docs.public-artifact-versions';
+const PUBLISHED_ARTIFACT_VERSION_SCHEMA =
+  'durable-workflow.docs.published-artifact-versions';
 const ARTIFACT_RELEASE_POLICY_SCHEMA = 'durable-workflow.docs.public-artifact-release-policy';
 const RELEASE_CHANNELS = Object.freeze(['alpha', 'beta', 'rc', 'stable']);
 const SEMVER_INSTALL_VERSION_PATTERN_SOURCE = '\\d+\\.\\d+\\.\\d+(?:-(?:alpha|beta|rc)\\.\\d+)?';
@@ -114,14 +117,7 @@ const ARTIFACT_VERSION_REQUIREMENTS = Object.freeze({
 
 const REQUIRED_ARTIFACTS = Object.freeze(Object.keys(ARTIFACT_VERSION_REQUIREMENTS));
 
-function readArtifactVersions(
-  source = artifactVersionSource,
-  releasePolicy = ARTIFACT_RELEASE_POLICY,
-) {
-  if (!source || source.schema !== ARTIFACT_VERSION_SCHEMA) {
-    throw new Error('public-artifact-versions.json must declare the durable-workflow docs artifact schema');
-  }
-
+function readArtifactVersionMap(source, sourceLabel, releasePolicy) {
   const artifacts = source.artifacts || {};
   const versions = {};
 
@@ -130,16 +126,16 @@ function readArtifactVersions(
     const requirement = ARTIFACT_VERSION_REQUIREMENTS[name];
 
     if (typeof version !== 'string' || version.trim() === '') {
-      throw new Error(`public-artifact-versions.json must define artifacts.${name}`);
+      throw new Error(`${sourceLabel} must define artifacts.${name}`);
     }
 
     if (version !== version.trim()) {
-      throw new Error(`public-artifact-versions.json artifacts.${name} must not contain surrounding whitespace`);
+      throw new Error(`${sourceLabel} artifacts.${name} must not contain surrounding whitespace`);
     }
 
     if (!isAuthorizedProductTrainVersion(version, releasePolicy)) {
       throw new Error(
-        `public-artifact-versions.json artifacts.${name} must use a ${requirement.label} version ` +
+        `${sourceLabel} artifacts.${name} must use a ${requirement.label} version ` +
         `authorized by the ${releasePolicy.release_phase} release phase ` +
         `(${authorizedProductTrainVersionFormat(releasePolicy)}): ${version}`
       );
@@ -153,13 +149,43 @@ function readArtifactVersions(
     .sort();
 
   if (unknownArtifacts.length > 0) {
-    throw new Error(`public-artifact-versions.json contains unknown artifacts: ${unknownArtifacts.join(', ')}`);
+    throw new Error(`${sourceLabel} contains unknown artifacts: ${unknownArtifacts.join(', ')}`);
   }
 
   return Object.freeze(versions);
 }
 
+function readArtifactVersions(
+  source = artifactVersionSource,
+  releasePolicy = ARTIFACT_RELEASE_POLICY,
+) {
+  if (!source || source.schema !== ARTIFACT_VERSION_SCHEMA) {
+    throw new Error('public-artifact-versions.json must declare the durable-workflow docs artifact schema');
+  }
+
+  return readArtifactVersionMap(source, 'public-artifact-versions.json', releasePolicy);
+}
+
+function readPublishedArtifactVersions(
+  source = publishedArtifactVersionSource,
+  releasePolicy = ARTIFACT_RELEASE_POLICY,
+) {
+  if (!source || source.schema !== PUBLISHED_ARTIFACT_VERSION_SCHEMA) {
+    throw new Error(
+      'published-artifact-versions.json must declare the Durable Workflow ' +
+        'published-artifact schema',
+    );
+  }
+
+  return readArtifactVersionMap(
+    source,
+    'published-artifact-versions.json',
+    releasePolicy,
+  );
+}
+
 const ARTIFACT_VERSIONS = readArtifactVersions();
+const PUBLISHED_ARTIFACT_VERSIONS = readPublishedArtifactVersions();
 
 function composerPrereleaseStability(version) {
   assertAuthorizedProductTrainVersion('Composer', version);
@@ -359,6 +385,27 @@ function buildArtifactDistributionSurfaces(versions) {
         reference: `ghcr.io/durable-workflow/server:${versions.server}`,
       }),
     ]),
+    waterline: Object.freeze([
+      Object.freeze({
+        surface: 'github_release',
+        repository: 'durable-workflow/waterline',
+        tag: versions.waterline,
+        url: `https://github.com/durable-workflow/waterline/releases/tag/${versions.waterline}`,
+      }),
+      Object.freeze({
+        surface: 'packagist_package',
+        package: 'durable-workflow/waterline',
+        version: versions.waterline,
+        url: 'https://packagist.org/packages/durable-workflow/waterline',
+      }),
+      Object.freeze({
+        surface: 'docker_hub_container_image',
+        registry: 'docker_hub',
+        image: 'durableworkflow/waterline',
+        tag: versions.waterline,
+        reference: `durableworkflow/waterline:${versions.waterline}`,
+      }),
+    ]),
     'sdk-rust': Object.freeze([
       Object.freeze({
         surface: 'crates_io_package',
@@ -379,7 +426,8 @@ function buildArtifactDistributionSurfaces(versions) {
   });
 }
 
-const ARTIFACT_DISTRIBUTION_SURFACES = buildArtifactDistributionSurfaces(ARTIFACT_VERSIONS);
+const ARTIFACT_DISTRIBUTION_SURFACES =
+  buildArtifactDistributionSurfaces(PUBLISHED_ARTIFACT_VERSIONS);
 
 function resolveArtifactAlias(alias) {
   if (typeof alias !== 'string') {
@@ -441,6 +489,8 @@ module.exports = {
   ARTIFACT_VERSION_REQUIREMENTS,
   ARTIFACT_VERSION_SCHEMA,
   ARTIFACT_VERSIONS,
+  PUBLISHED_ARTIFACT_VERSIONS,
+  PUBLISHED_ARTIFACT_VERSION_SCHEMA,
   PUBLIC_ARTIFACT_SCAN_VERSION_PATTERN_SOURCE,
   REQUIRED_ARTIFACTS,
   assertAuthorizedProductTrainVersion,
@@ -456,6 +506,7 @@ module.exports = {
   isAuthorizedProductTrainVersion,
   readArtifactReleasePolicy,
   readArtifactVersions,
+  readPublishedArtifactVersions,
   replaceArtifactTokens,
   resolveArtifactAlias,
 };
