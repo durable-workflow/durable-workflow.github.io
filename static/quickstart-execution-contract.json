@@ -45,7 +45,10 @@
       "channel": "pypi",
       "version": "2.0.0-rc.5",
       "pip_package": "durable-workflow==2.0.0-rc.5",
-      "install_command": "pip install durable-workflow==2.0.0-rc.5"
+      "install_command": "pip install durable-workflow==2.0.0-rc.5",
+      "runtime_dependencies": {
+        "apache_avro_payload_codec": "fastavro"
+      }
     },
     "sdk-rust": {
       "channel": "crates_io",
@@ -454,7 +457,7 @@
         },
         {
           "id": "python_official_avro_package",
-          "command": "pip show avro",
+          "command": "pip show fastavro",
           "expect_exit_code": 0
         }
       ],

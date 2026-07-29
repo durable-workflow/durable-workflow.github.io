@@ -371,6 +371,39 @@ function assertRustInstallContract(contract) {
   assertEqual(avroProbe.expect_exit_code, 0, 'rust_official_avro_package.expect_exit_code');
 }
 
+function assertPythonInstallContract(contract) {
+  const pythonArtifact = contract.artifacts && contract.artifacts['sdk-python'];
+  const avroPackage =
+    pythonArtifact &&
+    pythonArtifact.runtime_dependencies &&
+    pythonArtifact.runtime_dependencies.apache_avro_payload_codec;
+
+  if (typeof avroPackage !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(avroPackage)) {
+    fail('sdk-python must declare its Apache Avro payload-codec runtime dependency package');
+  }
+
+  const scenarios = byId(contract.scenarios, 'scenarios');
+  const python = scenarios.get('python_user_local_server_completion');
+
+  if (!python) {
+    fail('scenarios must include python_user_local_server_completion');
+  }
+
+  const probes = byId(python.success_probes, 'python_user_local_server_completion.success_probes');
+  const avroProbe = probes.get('python_official_avro_package');
+
+  if (!avroProbe) {
+    fail('python_user_local_server_completion.success_probes must include python_official_avro_package');
+  }
+
+  assertEqual(
+    avroProbe.command,
+    `pip show ${avroPackage}`,
+    'python_official_avro_package.command',
+  );
+  assertEqual(avroProbe.expect_exit_code, 0, 'python_official_avro_package.expect_exit_code');
+}
+
 function assertDocsGuard(contract) {
   const releaseConfig = getDocsReleaseConfig();
 
@@ -398,6 +431,7 @@ function main() {
   assertDocsGuard(contract);
   assertPublicArtifactPins(contract);
   assertContractCoverage(contract);
+  assertPythonInstallContract(contract);
   assertRustInstallContract(contract);
   assertEmbeddedLaravelInstallContract(contract);
   assertQuickstartScriptLinesMatchDocs(contract, renderedQuickstart);

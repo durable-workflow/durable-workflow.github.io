@@ -32,9 +32,9 @@ or **Rust**. Each route creates its own project and ends by reading a completed
 workflow and its durable result from the server. You do not need Laravel for
 any of these routes.
 
-The SDKs automatically use their official Apache Avro dependencies for the
-default language-neutral payload envelope: `apache/avro` for PHP, `avro` for
-Python, and `apache-avro` for Rust.
+The SDKs encode the default language-neutral payload envelope in the Apache
+Avro wire format. Their binding packages are `apache/avro` for PHP,
+`fastavro` for Python, and `apache-avro` for Rust.
 
 ## Start the standalone server
 

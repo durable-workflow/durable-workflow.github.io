@@ -53,7 +53,9 @@ the release-candidate artifact tuple:
 pip install %%artifact.pythonPackagePin%%
 ```
 
-The SDK depends on [httpx](https://www.python-httpx.org/) for HTTP and Apache Avro for the default language-neutral payload codec. Prometheus metrics support is optional.
+The SDK depends on [httpx](https://www.python-httpx.org/) for HTTP and on the
+`fastavro` Python package to encode the Apache Avro wire format used by the
+default language-neutral payload codec. Prometheus metrics support is optional.
 
 ## Quickstart
 
