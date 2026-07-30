@@ -63,6 +63,21 @@ function assertProtectedDeploySource(source) {
   if (parsed.permissions?.contents !== 'read' || deployJob.permissions?.contents !== 'write') {
     fail('docs deploy workflow must grant contents write only to the protected deploy job');
   }
+
+  const steps = deployJob.steps || [];
+  const predeployIndex = steps.findIndex(
+    step => step.run === 'node scripts/helm-chart-release.js pre-deploy',
+  );
+  const deployIndex = steps.findIndex(
+    step => step.uses ===
+      'peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453',
+  );
+  if (predeployIndex < 0 || deployIndex < 0 || predeployIndex >= deployIndex) {
+    fail(
+      'docs deploy workflow must guard Helm chart immutability and stage the ' +
+        'guarded package before the Pages deploy action',
+    );
+  }
 }
 
 assertProtectedDeploySource(workflow);
@@ -88,6 +103,21 @@ for (const [label, fixture] of [
   );
 }
 
+const workflowWithoutPredeployGuard = workflow.replace(
+  'run: node scripts/helm-chart-release.js pre-deploy',
+  'run: node scripts/helm-chart-release.js stage-without-guard',
+);
+assert.notStrictEqual(
+  workflowWithoutPredeployGuard,
+  workflow,
+  'pre-deploy guard fixture must mutate the workflow',
+);
+assert.throws(
+  () => assertProtectedDeploySource(workflowWithoutPredeployGuard),
+  /guard Helm chart immutability.*before the Pages deploy action/,
+  'docs deploy contract must reject a missing pre-deploy Helm immutability guard',
+);
+
 for (const required of [
   'workflow_dispatch:',
   "cron: '17 * * * *'",
@@ -103,11 +133,13 @@ for (const required of [
   'run: node scripts/verify-docs-release-live.js',
   'name: Verify live workflow lifecycle authority',
   'run: node scripts/verify-workflow-lifecycle-live.js',
-  'name: Stage the public HTTPS Helm repository from anonymous OCI',
-  'run: node scripts/helm-chart-release.js stage',
+  'name: Guard Helm chart immutability and stage the HTTPS repository',
+  'run: node scripts/helm-chart-release.js pre-deploy',
   'name: Verify both public Helm release channels',
   'run: node scripts/helm-chart-release.js verify-live',
   'name: Upload public Helm validation evidence',
+  'helm-predeploy-immutability-evidence.json',
+  'helm-public-validation-evidence.json',
   "if: steps.deploy-plan.outputs.deploy == 'true'",
   "if: steps.deploy-plan.outputs.deploy != 'true'",
 ]) {

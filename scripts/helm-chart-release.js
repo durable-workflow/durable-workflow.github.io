@@ -11,6 +11,10 @@ const yaml = require('js-yaml');
 const REPO_ROOT = path.join(__dirname, '..');
 const CONTRACT_PATH = path.join(REPO_ROOT, 'static', 'charts', 'release.json');
 const DEFAULT_BUILD_DIRECTORY = path.join(REPO_ROOT, 'build');
+const DEFAULT_PREDEPLOY_EVIDENCE_PATH = path.join(
+  REPO_ROOT,
+  'helm-predeploy-immutability-evidence.json',
+);
 const SOURCE_REVISION_ANNOTATION = 'dev.durable-workflow.source-revision';
 const IMAGE_REFERENCE_ANNOTATION = 'dev.durable-workflow.image-reference';
 const SEMVER_PATTERN =
@@ -130,6 +134,10 @@ function sha256File(file) {
   return `sha256:${crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')}`;
 }
 
+function sha256Buffer(buffer) {
+  return `sha256:${crypto.createHash('sha256').update(buffer).digest('hex')}`;
+}
+
 function packageFilename(contract) {
   return `${contract.chart.name}-${contract.chart.version}.tgz`;
 }
@@ -239,17 +247,72 @@ async function fetchJson(url) {
   return response.json();
 }
 
-function stageRelease(options = {}) {
+async function fetchResource(url) {
+  const request = new URL(url);
+  request.searchParams.set('release_check', `${Date.now()}`);
+  const response = await fetch(request, {
+    redirect: 'follow',
+    signal: AbortSignal.timeout(15000),
+    headers: {
+      'Cache-Control': 'no-cache',
+      Pragma: 'no-cache',
+      'User-Agent': 'durable-workflow-helm-release-check',
+    },
+  });
+  return {
+    status: response.status,
+    body: Buffer.from(await response.arrayBuffer()),
+  };
+}
+
+function requireLiveResource(resource, url) {
+  if (resource.status < 200 || resource.status >= 300) {
+    throw new Error(`${url} returned HTTP ${resource.status}`);
+  }
+  return resource.body;
+}
+
+function parseLiveJson(resource, url) {
+  const body = requireLiveResource(resource, url);
+  try {
+    return JSON.parse(body.toString('utf8'));
+  } catch (error) {
+    throw new Error(`${url} did not return valid JSON: ${error.message}`);
+  }
+}
+
+function identityEvidence(contract, metadata, packageDigest, imageDigest) {
+  return {
+    chart: {
+      name: contract.chart.name,
+      version: contract.chart.version,
+      app_version: contract.chart.app_version,
+      source_revision: metadata.annotations[SOURCE_REVISION_ANNOTATION],
+      package_digest: packageDigest,
+    },
+    image: {
+      reference: contract.image.reference,
+      digest: imageDigest,
+    },
+  };
+}
+
+function writePredeployEvidence(evidence, evidencePath) {
+  fs.mkdirSync(path.dirname(evidencePath), {recursive: true});
+  fs.writeFileSync(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
+}
+
+function prepareCandidateRelease(options = {}) {
   const contract = validateContract(options.contract || releaseContract());
-  const buildDirectory = options.buildDirectory || DEFAULT_BUILD_DIRECTORY;
-  const chartsDirectory = path.join(buildDirectory, 'charts');
+  const run = options.execute || execute;
+  const getChartMetadata = options.chartMetadata || chartMetadata;
+  const getImageDigest = options.resolveImageDigest || resolveImageDigest;
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'durable-workflow-helm-stage-'));
   const environment = cleanHelmEnvironment(path.join(temporary, 'helm-home'));
   const pulledDirectory = path.join(temporary, 'oci');
   fs.mkdirSync(pulledDirectory, {recursive: true});
-  fs.mkdirSync(chartsDirectory, {recursive: true});
 
-  execute(
+  run(
     'helm',
     [
       'pull',
@@ -262,21 +325,285 @@ function stageRelease(options = {}) {
     {env: environment},
   );
   const sourcePackage = path.join(pulledDirectory, packageFilename(contract));
-  const metadata = chartMetadata(sourcePackage, environment);
+  const metadata = getChartMetadata(sourcePackage, environment);
   assertPackageMetadata(metadata, contract);
   const command = renderCommand(
     'docs-stage-oci-check',
     contract.channels.oci.repository,
     contract.chart.version,
   );
-  execute(command.command, command.arguments, {env: environment});
+  run(command.command, command.arguments, {env: environment});
+  const packageDigest = sha256File(sourcePackage);
+  const imageDockerConfig = path.join(temporary, 'docker-config');
+  fs.mkdirSync(imageDockerConfig, {recursive: true});
+  const imageDigest = getImageDigest(contract.image.reference, {
+    ...process.env,
+    DOCKER_CONFIG: imageDockerConfig,
+  });
 
+  return {
+    contract,
+    environment,
+    imageDigest,
+    metadata,
+    packageDigest,
+    run,
+    sourcePackage,
+    temporary,
+  };
+}
+
+function addIdentityMismatch(mismatches, field, expected, actual) {
+  const actualValues =
+    actual && typeof actual === 'object' && !Array.isArray(actual)
+      ? Object.values(actual)
+      : [actual];
+  if (actualValues.some(value => value !== expected)) {
+    mismatches.push({field, expected, actual});
+  }
+}
+
+function captureContractMismatch(mismatches, field, assertion) {
+  try {
+    assertion();
+  } catch (error) {
+    mismatches.push({field, detail: error.message});
+  }
+}
+
+async function guardChartVersionImmutability(options = {}) {
+  const candidate = options.candidate || prepareCandidateRelease(options);
+  const {contract, metadata, packageDigest, imageDigest} = candidate;
+  const getResource = options.fetchResource || fetchResource;
+  const getChartMetadata = options.chartMetadata || chartMetadata;
+  const evidencePath =
+    options.evidencePath ||
+    process.env.HELM_PREDEPLOY_IMMUTABILITY_EVIDENCE ||
+    DEFAULT_PREDEPLOY_EVIDENCE_PATH;
+  const releaseUrl = new URL(
+    'release.json',
+    contract.channels.https.repository,
+  ).href;
+  const provenanceUrl = new URL(
+    'provenance.json',
+    contract.channels.https.repository,
+  ).href;
+  const packageUrl = contract.channels.https.package_url;
+  const [remoteContractResource, remotePackageResource] = await Promise.all([
+    getResource(releaseUrl),
+    getResource(packageUrl),
+  ]);
+  let remoteContract = null;
+
+  if (remoteContractResource.status !== 404) {
+    remoteContract = parseLiveJson(remoteContractResource, releaseUrl);
+    validateContract(remoteContract);
+  }
+
+  const baseEvidence = {
+    schema: 'durable-workflow-helm-predeploy-immutability/v1',
+    candidate: identityEvidence(
+      contract,
+      metadata,
+      packageDigest,
+      imageDigest,
+    ),
+    live: {
+      contract_url: releaseUrl,
+      contract_status: remoteContractResource.status,
+      package_url: packageUrl,
+      package_status: remotePackageResource.status,
+      provenance_url: provenanceUrl,
+    },
+  };
+
+  if (remotePackageResource.status === 404) {
+    const contractClaimsVersion =
+      remoteContract?.chart?.name === contract.chart.name &&
+      remoteContract?.chart?.version === contract.chart.version;
+    if (contractClaimsVersion) {
+      const evidence = {
+        ...baseEvidence,
+        outcome: 'rejected',
+        live: {
+          ...baseEvidence.live,
+          chart_version_exists: true,
+        },
+        mismatches: [
+          {
+            field: 'package_bytes',
+            expected: packageDigest,
+            actual: 'missing from the live HTTPS repository',
+          },
+        ],
+      };
+      writePredeployEvidence(evidence, evidencePath);
+      throw new Error(
+        `Helm chart ${contract.chart.version} is already declared by the live ` +
+          'release contract but its HTTPS package is missing',
+      );
+    }
+
+    const evidence = {
+      ...baseEvidence,
+      outcome: 'first-publication',
+      live: {
+        ...baseEvidence.live,
+        chart_version_exists: false,
+        current_chart_version: remoteContract?.chart?.version || null,
+      },
+      mismatches: [],
+    };
+    writePredeployEvidence(evidence, evidencePath);
+    console.log(
+      `Helm chart ${contract.chart.version} is not present in the live HTTPS ` +
+        'repository; first publication may proceed.',
+    );
+    return {candidate, evidence};
+  }
+
+  const remotePackage = requireLiveResource(remotePackageResource, packageUrl);
+  if (!remoteContract) {
+    throw new Error(
+      `Live HTTPS package ${packageUrl} exists without a readable release contract`,
+    );
+  }
+  const remoteProvenanceResource = await getResource(provenanceUrl);
+  const remoteProvenance = parseLiveJson(remoteProvenanceResource, provenanceUrl);
+  const livePackagePath = path.join(
+    candidate.temporary,
+    'live',
+    packageFilename(contract),
+  );
+  fs.mkdirSync(path.dirname(livePackagePath), {recursive: true});
+  fs.writeFileSync(livePackagePath, remotePackage);
+  const remoteMetadata = getChartMetadata(
+    livePackagePath,
+    candidate.environment,
+  );
+  const remotePackageDigest = sha256Buffer(remotePackage);
+  const mismatches = [];
+
+  captureContractMismatch(mismatches, 'release_contract', () => {
+    validateContract(remoteContract);
+    assert.deepStrictEqual(
+      remoteContract,
+      contract,
+      'live Helm release contract must match the staged release contract',
+    );
+  });
+  captureContractMismatch(mismatches, 'package_metadata', () => {
+    assertPackageMetadata(remoteMetadata, contract);
+  });
+  captureContractMismatch(mismatches, 'provenance_contract', () => {
+    assertProvenance(
+      remoteProvenance,
+      contract,
+      metadata,
+      packageDigest,
+      imageDigest,
+    );
+  });
+  addIdentityMismatch(
+    mismatches,
+    'package_bytes',
+    packageDigest,
+    {
+      https_package: remotePackageDigest,
+      provenance_chart: remoteProvenance?.chart?.package_digest,
+      provenance_oci: remoteProvenance?.channels?.oci?.package_digest,
+      provenance_https: remoteProvenance?.channels?.https?.package_digest,
+    },
+  );
+  addIdentityMismatch(
+    mismatches,
+    'source_revision',
+    metadata.annotations[SOURCE_REVISION_ANNOTATION],
+    {
+      https_package:
+        remoteMetadata?.annotations?.[SOURCE_REVISION_ANNOTATION],
+      provenance: remoteProvenance?.chart?.source_revision,
+    },
+  );
+  addIdentityMismatch(
+    mismatches,
+    'app_version',
+    contract.chart.app_version,
+    {
+      release_contract: remoteContract?.chart?.app_version,
+      https_package: remoteMetadata?.appVersion,
+      provenance: remoteProvenance?.chart?.app_version,
+    },
+  );
+  addIdentityMismatch(
+    mismatches,
+    'image_reference',
+    contract.image.reference,
+    {
+      release_contract: remoteContract?.image?.reference,
+      https_package:
+        remoteMetadata?.annotations?.[IMAGE_REFERENCE_ANNOTATION],
+      provenance: remoteProvenance?.image?.reference,
+    },
+  );
+  addIdentityMismatch(
+    mismatches,
+    'image_digest',
+    imageDigest,
+    remoteProvenance?.image?.digest,
+  );
+
+  const liveIdentity = identityEvidence(
+    remoteContract,
+    remoteMetadata,
+    remotePackageDigest,
+    remoteProvenance?.image?.digest,
+  );
+  const evidence = {
+    ...baseEvidence,
+    outcome: mismatches.length === 0 ? 'byte-identical-reuse' : 'rejected',
+    live: {
+      ...baseEvidence.live,
+      chart_version_exists: true,
+      provenance_status: remoteProvenanceResource.status,
+      identity: liveIdentity,
+    },
+    mismatches,
+  };
+  writePredeployEvidence(evidence, evidencePath);
+
+  if (mismatches.length > 0) {
+    throw new Error(
+      `Helm chart ${contract.chart.version} immutable identity mismatch: ` +
+        mismatches.map(({field}) => field).join(', '),
+    );
+  }
+
+  console.log(
+    `Helm chart ${contract.chart.version} already exists with byte-identical ` +
+      `package and release identity ${packageDigest}; reuse may proceed.`,
+  );
+  return {candidate, evidence};
+}
+
+async function stageRelease(options = {}) {
+  const guarded = await guardChartVersionImmutability(options);
+  const {
+    contract,
+    environment,
+    imageDigest,
+    metadata,
+    packageDigest,
+    run,
+    sourcePackage,
+  } = guarded.candidate;
+  const buildDirectory = options.buildDirectory || DEFAULT_BUILD_DIRECTORY;
+  const chartsDirectory = path.join(buildDirectory, 'charts');
+  fs.mkdirSync(chartsDirectory, {recursive: true});
   const destinationPackage = path.join(chartsDirectory, packageFilename(contract));
   fs.copyFileSync(sourcePackage, destinationPackage);
-  const packageDigest = sha256File(destinationPackage);
-  const imageDigest = resolveImageDigest(contract.image.reference);
 
-  execute(
+  run(
     'helm',
     [
       'repo',
@@ -299,6 +626,7 @@ function stageRelease(options = {}) {
     `Staged Helm chart ${contract.chart.version} from anonymous OCI package ` +
       `${packageDigest} for the HTTPS repository.`,
   );
+  return guarded.evidence;
 }
 
 async function verifyLiveRelease(options = {}) {
@@ -415,11 +743,15 @@ async function main() {
     );
     console.log('Helm chart release contract is valid.');
   } else if (command === 'stage') {
-    stageRelease();
+    await stageRelease();
+  } else if (command === 'pre-deploy') {
+    await stageRelease();
   } else if (command === 'verify-live') {
     await verifyLiveRelease();
   } else {
-    throw new Error('usage: helm-chart-release.js <check|stage|verify-live>');
+    throw new Error(
+      'usage: helm-chart-release.js <check|pre-deploy|stage|verify-live>',
+    );
   }
 }
 
@@ -434,8 +766,10 @@ module.exports = {
   assertDocumentedInstallCommands,
   assertPackageMetadata,
   assertProvenance,
+  guardChartVersionImmutability,
   releaseProvenance,
   renderCommand,
+  stageRelease,
   validateContract,
   verifyLiveRelease,
 };
