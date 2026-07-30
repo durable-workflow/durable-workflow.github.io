@@ -4,6 +4,7 @@ const {
   assertPackageMetadata,
   assertProvenance,
   releaseProvenance,
+  stagingRenderCommand,
   validateContract,
 } = require('./helm-chart-release');
 const contract = require('../static/charts/release.json');
@@ -15,6 +16,52 @@ assertDocumentedInstallCommands(
     'utf8',
   ),
   contract,
+);
+
+const stageCommand = stagingRenderCommand(
+  contract.channels.oci.repository,
+  contract.chart.version,
+);
+assert.deepStrictEqual(
+  stageCommand,
+  {
+    command: 'helm',
+    arguments: [
+      'template',
+      'docs-stage-oci-check',
+      contract.channels.oci.repository,
+      '--version',
+      contract.chart.version,
+      '--namespace',
+      'durable-workflow',
+      '--set-string',
+      'externalDatabase.host=database.example.invalid',
+      '--set-string',
+      'externalDatabase.auth.username=workflow',
+      '--set-string',
+      'externalDatabase.auth.password=not-a-secret',
+      '--set-string',
+      'externalRedis.host=redis.example.invalid',
+      '--set-string',
+      'auth.serverKey=base64:bm90LWEtc2VjcmV0',
+      '--set-string',
+      'auth.workerToken=not-a-secret',
+      '--set-string',
+      'auth.operatorToken=not-a-secret',
+      '--set-string',
+      'auth.adminToken=not-a-secret',
+    ],
+  },
+  'staging must render the anonymous OCI chart without Kubernetes discovery',
+);
+assert.notStrictEqual(
+  stageCommand.arguments[0],
+  'install',
+  'staging must not install the chart',
+);
+assert(
+  !stageCommand.arguments.includes('--dry-run=client'),
+  'staging must not use the cluster-discovering install dry-run',
 );
 
 const metadata = {

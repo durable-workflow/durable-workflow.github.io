@@ -16,6 +16,24 @@ const IMAGE_REFERENCE_ANNOTATION = 'dev.durable-workflow.image-reference';
 const SEMVER_PATTERN =
   /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 const DIGEST_PATTERN = /^sha256:[0-9a-f]{64}$/;
+const RENDER_VALUE_ARGUMENTS = Object.freeze([
+  '--set-string',
+  'externalDatabase.host=database.example.invalid',
+  '--set-string',
+  'externalDatabase.auth.username=workflow',
+  '--set-string',
+  'externalDatabase.auth.password=not-a-secret',
+  '--set-string',
+  'externalRedis.host=redis.example.invalid',
+  '--set-string',
+  'auth.serverKey=base64:bm90LWEtc2VjcmV0',
+  '--set-string',
+  'auth.workerToken=not-a-secret',
+  '--set-string',
+  'auth.operatorToken=not-a-secret',
+  '--set-string',
+  'auth.adminToken=not-a-secret',
+]);
 
 function releaseContract() {
   return JSON.parse(fs.readFileSync(CONTRACT_PATH, 'utf8'));
@@ -126,23 +144,24 @@ function installArguments(releaseName, reference, version) {
     '--namespace',
     'durable-workflow',
     '--dry-run=client',
-    '--set-string',
-    'externalDatabase.host=database.example.invalid',
-    '--set-string',
-    'externalDatabase.auth.username=workflow',
-    '--set-string',
-    'externalDatabase.auth.password=not-a-secret',
-    '--set-string',
-    'externalRedis.host=redis.example.invalid',
-    '--set-string',
-    'auth.serverKey=base64:bm90LWEtc2VjcmV0',
-    '--set-string',
-    'auth.workerToken=not-a-secret',
-    '--set-string',
-    'auth.operatorToken=not-a-secret',
-    '--set-string',
-    'auth.adminToken=not-a-secret',
+    ...RENDER_VALUE_ARGUMENTS,
   ];
+}
+
+function stagingRenderCommand(reference, version) {
+  return {
+    command: 'helm',
+    arguments: [
+      'template',
+      'docs-stage-oci-check',
+      reference,
+      '--version',
+      version,
+      '--namespace',
+      'durable-workflow',
+      ...RENDER_VALUE_ARGUMENTS,
+    ],
+  };
 }
 
 function chartMetadata(packagePath, environment) {
@@ -259,15 +278,11 @@ function stageRelease(options = {}) {
   const sourcePackage = path.join(pulledDirectory, packageFilename(contract));
   const metadata = chartMetadata(sourcePackage, environment);
   assertPackageMetadata(metadata, contract);
-  execute(
-    'helm',
-    installArguments(
-      'docs-stage-oci-check',
-      contract.channels.oci.repository,
-      contract.chart.version,
-    ),
-    {env: environment},
+  const renderCommand = stagingRenderCommand(
+    contract.channels.oci.repository,
+    contract.chart.version,
   );
+  execute(renderCommand.command, renderCommand.arguments, {env: environment});
 
   const destinationPackage = path.join(chartsDirectory, packageFilename(contract));
   fs.copyFileSync(sourcePackage, destinationPackage);
@@ -435,5 +450,6 @@ module.exports = {
   assertPackageMetadata,
   assertProvenance,
   releaseProvenance,
+  stagingRenderCommand,
   validateContract,
 };
