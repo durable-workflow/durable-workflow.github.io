@@ -610,6 +610,19 @@ async function assertScheduledHelmHistoryDriftCannotSkip() {
       error: /index versions.*must exactly match durable history/,
     },
     {
+      label: 'different primary index package URL',
+      mutate: fixture => {
+        const [historicalEntry] =
+          fixture.index.entries[helmRelease.chart.name];
+        historicalEntry.urls.unshift(
+          'https://example.invalid/divergent-chart-package.tgz',
+        );
+        fixture.resources['/charts/index.yaml'].body =
+          Buffer.from(yaml.dump(fixture.index));
+      },
+      error: /primary package URL/,
+    },
+    {
       label: 'missing historical package',
       mutate: fixture => {
         fixture.resources[fixture.historicalPackagePath] = {

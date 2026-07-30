@@ -465,10 +465,10 @@ function assertHistoryIndex(index, history) {
       identity.package_digest.replace(/^sha256:/, ''),
       `live Helm index package digest for ${history.chart.name} ${version}`,
     );
-    assert(
-      Array.isArray(matches[0].urls) &&
-        matches[0].urls.includes(identity.package_url),
-      `live Helm index package URL for ${history.chart.name} ${version}`,
+    assert.strictEqual(
+      Array.isArray(matches[0].urls) ? matches[0].urls[0] : undefined,
+      identity.package_url,
+      `live Helm index primary package URL for ${history.chart.name} ${version}`,
     );
   }
 }
