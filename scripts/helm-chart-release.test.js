@@ -3,14 +3,17 @@ const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const yaml = require('js-yaml');
 const {
   assertDocumentedInstallCommands,
   assertPackageMetadata,
   assertProvenance,
+  releaseHistoryEntry,
   releaseProvenance,
   renderCommand,
   stageRelease,
   validateContract,
+  validateReleaseHistory,
   verifyLiveRelease,
 } = require('./helm-chart-release');
 const contract = require('../static/charts/release.json');
@@ -166,85 +169,135 @@ assert.throws(
   'channel package drift must fail',
 );
 
-const livePackage = 'identical chart package';
-const livePackageDigest =
-  `sha256:${crypto.createHash('sha256').update(livePackage).digest('hex')}`;
-const liveProvenance = releaseProvenance(
-  contract,
-  metadata,
-  livePackageDigest,
-  imageDigest,
-);
-const jsonResource = value => ({
-  status: 200,
-  body: Buffer.from(JSON.stringify(value)),
-});
 const missingResource = () => ({status: 404, body: Buffer.alloc(0)});
 const clone = value => structuredClone(value);
 
-async function assertLiveVerification() {
-  const temporary = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'durable-workflow-helm-live-test-'),
-  );
-  const evidencePath = path.join(
-    temporary,
-    'helm-public-validation-evidence.json',
-  );
-  const executed = [];
-  const execute = (command, arguments, options) => {
-    executed.push({command, arguments, options});
-    if (command === 'helm' && arguments[0] === 'pull') {
-      const destination = arguments[arguments.indexOf('--destination') + 1];
-      fs.writeFileSync(
-        path.join(
-          destination,
-          `${contract.chart.name}-${contract.chart.version}.tgz`,
-        ),
-        livePackage,
-      );
-    }
-    return '';
-  };
-
-  await verifyLiveRelease({
-    contract,
-    evidencePath,
-    execute,
-    fetchJson: async url => {
-      if (url.endsWith('/release.json')) {
-        return contract;
-      }
-      if (url.endsWith('/provenance.json')) {
-        return liveProvenance;
-      }
-      throw new Error(`unexpected live release URL: ${url}`);
-    },
-    chartMetadata: () => metadata,
-    resolveImageDigest: () => imageDigest,
-  });
-  const liveRenderCommands = executed
-    .filter(({command, arguments}) => command === 'helm' && arguments[0] === 'template')
-    .map(({command, arguments}) => ({command, arguments}));
-  assert.deepStrictEqual(
-    liveRenderCommands,
-    renderCommands.slice(1).map(({expected}) => expected),
-    'live verification must execute the exact OCI and HTTPS template commands',
-  );
-  assert.deepStrictEqual(
-    JSON.parse(fs.readFileSync(evidencePath, 'utf8')),
-    {
-      ...liveProvenance,
-      validation: {
-        oci_anonymous_render: 'pass',
-        https_anonymous_render: 'pass',
-        channels_identical: true,
-      },
-    },
-    'successful live verification must write public Helm validation evidence',
-  );
+function digest(body) {
+  return `sha256:${crypto.createHash('sha256').update(body).digest('hex')}`;
 }
 
-function stagingFixture(overrides = {}) {
+function fixtureContract(version, appVersion) {
+  const fixture = clone(contract);
+  fixture.chart.version = version;
+  fixture.chart.app_version = appVersion;
+  fixture.image.reference = `docker.io/durableworkflow/server:${appVersion}`;
+  fixture.channels.https.package_url =
+    `${fixture.channels.https.repository}${fixture.chart.name}-${version}.tgz`;
+  return validateContract(fixture);
+}
+
+function fixtureRelease(version, appVersion, options = {}) {
+  const releaseContract = fixtureContract(version, appVersion);
+  const sourceRevision = options.sourceRevision || version.replace(/\D/g, '').padEnd(40, 'a');
+  const packageBody = options.packageBody || `chart-package-${version}`;
+  const releaseMetadata = {
+    name: releaseContract.chart.name,
+    version,
+    appVersion,
+    annotations: {
+      'dev.durable-workflow.source-revision': sourceRevision,
+      'dev.durable-workflow.image-reference': releaseContract.image.reference,
+    },
+  };
+  const releaseImageDigest =
+    options.imageDigest || digest(`image-${appVersion}`);
+  return {
+    contract: releaseContract,
+    imageDigest: releaseImageDigest,
+    metadata: releaseMetadata,
+    packageBody,
+    packageDigest: digest(packageBody),
+    provenance: releaseProvenance(
+      releaseContract,
+      releaseMetadata,
+      digest(packageBody),
+      releaseImageDigest,
+    ),
+  };
+}
+
+function historyFor(releases) {
+  const history = {
+    schema: 'durable-workflow-helm-release-history/v1',
+    chart: {name: contract.chart.name},
+    versions: Object.fromEntries(releases.map(release => [
+      release.contract.chart.version,
+      releaseHistoryEntry(
+        release.contract,
+        release.metadata,
+        release.packageDigest,
+        release.imageDigest,
+      ),
+    ])),
+  };
+  return validateReleaseHistory(history, releases.at(-1).contract);
+}
+
+function indexFor(releases) {
+  return {
+    apiVersion: 'v1',
+    entries: {
+      [contract.chart.name]: releases.map(release => ({
+        name: contract.chart.name,
+        version: release.contract.chart.version,
+        appVersion: release.contract.chart.app_version,
+        digest: release.packageDigest.replace(/^sha256:/, ''),
+        urls: [release.contract.channels.https.package_url],
+      })),
+    },
+  };
+}
+
+function writePublishedRepository(directory, releases, options = {}) {
+  const current = releases.at(-1);
+  fs.mkdirSync(directory, {recursive: true});
+  fs.writeFileSync(
+    path.join(directory, 'release.json'),
+    `${JSON.stringify(current.contract, null, 2)}\n`,
+  );
+  fs.writeFileSync(
+    path.join(directory, 'provenance.json'),
+    `${JSON.stringify(current.provenance, null, 2)}\n`,
+  );
+  fs.writeFileSync(
+    path.join(directory, 'index.yaml'),
+    yaml.dump(indexFor(releases)),
+  );
+  if (options.includeHistory !== false) {
+    fs.writeFileSync(
+      path.join(directory, 'release-history.json'),
+      `${JSON.stringify(historyFor(releases), null, 2)}\n`,
+    );
+  }
+  for (const release of releases) {
+    fs.writeFileSync(
+      path.join(
+        directory,
+        `${contract.chart.name}-${release.contract.chart.version}.tgz`,
+      ),
+      release.packageBody,
+    );
+  }
+}
+
+function directoryFetcher(directory, overrides = {}) {
+  return async url => {
+    const pathname = new URL(url).pathname;
+    if (overrides[pathname]) {
+      return overrides[pathname]();
+    }
+    const resourcePath = path.join(directory, path.basename(pathname));
+    if (!fs.existsSync(resourcePath)) {
+      return missingResource();
+    }
+    return {
+      status: 200,
+      body: fs.readFileSync(resourcePath),
+    };
+  };
+}
+
+function stagingFixture(candidate, knownReleases, fetchResource) {
   const temporary = fs.mkdtempSync(
     path.join(os.tmpdir(), 'durable-workflow-helm-stage-test-'),
   );
@@ -253,194 +306,394 @@ function stagingFixture(overrides = {}) {
     temporary,
     'helm-predeploy-immutability-evidence.json',
   );
-  const remoteContract = overrides.remoteContract || clone(contract);
-  const remotePackage = overrides.remotePackage ?? livePackage;
-  const remoteMetadata = overrides.remoteMetadata || clone(metadata);
-  const remoteProvenance =
-    overrides.remoteProvenance ||
-    releaseProvenance(
-      remoteContract,
-      remoteMetadata,
-      `sha256:${crypto
-        .createHash('sha256')
-        .update(remotePackage)
-        .digest('hex')}`,
-      imageDigest,
-    );
+  const releasesByBody = new Map(
+    knownReleases.map(release => [release.packageBody, release]),
+  );
+  if (!releasesByBody.has(candidate.packageBody)) {
+    releasesByBody.set(candidate.packageBody, candidate);
+  }
   const execute = (command, arguments) => {
     if (command === 'helm' && arguments[0] === 'pull') {
       const destination = arguments[arguments.indexOf('--destination') + 1];
       fs.writeFileSync(
         path.join(
           destination,
-          `${contract.chart.name}-${contract.chart.version}.tgz`,
+          `${candidate.contract.chart.name}-${candidate.contract.chart.version}.tgz`,
         ),
-        livePackage,
+        candidate.packageBody,
+      );
+    }
+    if (command === 'helm' && arguments[0] === 'repo' && arguments[1] === 'index') {
+      const chartsDirectory = arguments[2];
+      const indexedReleases = fs.readdirSync(chartsDirectory)
+        .filter(filename => filename.endsWith('.tgz'))
+        .map(filename => {
+          const body = fs.readFileSync(path.join(chartsDirectory, filename), 'utf8');
+          const release = releasesByBody.get(body);
+          assert(release, `test fixture must identify staged package ${filename}`);
+          return release;
+        });
+      fs.writeFileSync(
+        path.join(chartsDirectory, 'index.yaml'),
+        yaml.dump(indexFor(indexedReleases)),
       );
     }
     return '';
   };
-  const fetchResource = async url => {
-    if (url.endsWith('/release.json')) {
-      return overrides.releaseMissing
-        ? missingResource()
-        : jsonResource(remoteContract);
+  const chartMetadata = packagePath => {
+    if (packagePath.includes(`${path.sep}oci${path.sep}`)) {
+      return candidate.metadata;
     }
-    if (url.endsWith(`/${contract.chart.name}-${contract.chart.version}.tgz`)) {
-      return overrides.packageMissing
-        ? missingResource()
-        : {status: 200, body: Buffer.from(remotePackage)};
-    }
-    if (url.endsWith('/provenance.json')) {
-      return jsonResource(remoteProvenance);
-    }
-    throw new Error(`unexpected pre-deploy release URL: ${url}`);
+    const body = fs.readFileSync(packagePath, 'utf8');
+    const release = releasesByBody.get(body);
+    assert(release, `test fixture must identify package bytes at ${packagePath}`);
+    return release.metadata;
   };
-
   return {
     buildDirectory,
     evidencePath,
     options: {
-      contract,
+      contract: candidate.contract,
       buildDirectory,
       evidencePath,
       execute,
       fetchResource,
-      chartMetadata: packagePath =>
-        packagePath.includes(`${path.sep}live${path.sep}`)
-          ? remoteMetadata
-          : metadata,
-      resolveImageDigest: () => imageDigest,
+      chartMetadata,
+      resolveImageDigest: () => candidate.imageDigest,
     },
   };
 }
 
-async function assertFirstPublicationStages() {
-  const previousContract = clone(contract);
-  previousContract.chart.version = '0.1.0';
-  previousContract.channels.https.package_url =
-    'https://durable-workflow.github.io/charts/durable-workflow-0.1.0.tgz';
-  const fixture = stagingFixture({
-    remoteContract: previousContract,
-    packageMissing: true,
-  });
-  await stageRelease(fixture.options);
-  assert(
-    fs.existsSync(
-      path.join(
-        fixture.buildDirectory,
-        'charts',
-        `${contract.chart.name}-${contract.chart.version}.tgz`,
-      ),
-    ),
-    'a chart version absent from the live HTTPS repository must stage',
+function publishFixtureBuild(fixture, candidate) {
+  const chartsDirectory = path.join(fixture.buildDirectory, 'charts');
+  fs.writeFileSync(
+    path.join(chartsDirectory, 'release.json'),
+    `${JSON.stringify(candidate.contract, null, 2)}\n`,
   );
-  const evidence = JSON.parse(fs.readFileSync(fixture.evidencePath, 'utf8'));
-  assert.strictEqual(
-    evidence.outcome,
-    'first-publication',
-    'the pre-deploy guard must identify a first publication',
-  );
-  assert.strictEqual(
-    evidence.live.current_chart_version,
-    previousContract.chart.version,
-    'first-publication evidence must retain the current live chart version',
-  );
+  return chartsDirectory;
 }
 
-async function assertByteIdenticalReuseStages() {
-  const fixture = stagingFixture();
+async function assertLegacyReleaseMigrates() {
+  const first = fixtureRelease('0.1.1', '2.0.0-rc.11');
+  const published = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'durable-workflow-helm-legacy-test-'),
+  );
+  writePublishedRepository(published, [first], {includeHistory: false});
+  const fixture = stagingFixture(
+    first,
+    [first],
+    directoryFetcher(published),
+  );
   await stageRelease(fixture.options);
-  assert.strictEqual(
+  const stagedHistory = JSON.parse(
     fs.readFileSync(
-      path.join(
-        fixture.buildDirectory,
-        'charts',
-        `${contract.chart.name}-${contract.chart.version}.tgz`,
-      ),
+      path.join(fixture.buildDirectory, 'charts', 'release-history.json'),
       'utf8',
     ),
-    livePackage,
-    'byte-identical chart reuse must stage the guarded OCI package',
   );
-  assert.strictEqual(
-    JSON.parse(fs.readFileSync(fixture.evidencePath, 'utf8')).outcome,
-    'byte-identical-reuse',
-    'the pre-deploy guard must identify byte-identical reuse',
+  assert.deepStrictEqual(
+    Object.keys(stagedHistory.versions),
+    [first.contract.chart.version],
+    'the first history-aware deployment must migrate the current live release',
   );
+  const evidence = JSON.parse(fs.readFileSync(fixture.evidencePath, 'utf8'));
+  assert.strictEqual(evidence.outcome, 'byte-identical-reuse');
+  assert.strictEqual(evidence.live.migrated_legacy_release, true);
 }
 
-async function assertChangedIdentityDoesNotStage() {
-  const differentDigest = `sha256:${'d'.repeat(64)}`;
-  const changedSourceMetadata = clone(metadata);
-  changedSourceMetadata.annotations[
-    'dev.durable-workflow.source-revision'
-  ] = 'd'.repeat(40);
-  const changedAppVersionProvenance = clone(liveProvenance);
-  changedAppVersionProvenance.chart.app_version = '0.1.2';
-  const changedImageReferenceMetadata = clone(metadata);
-  changedImageReferenceMetadata.annotations[
-    'dev.durable-workflow.image-reference'
-  ] = 'docker.io/durableworkflow/server:changed';
-  const changedImageReferenceProvenance = clone(liveProvenance);
-  changedImageReferenceProvenance.image.reference =
-    'docker.io/durableworkflow/server:changed';
-  const changedImageDigestProvenance = clone(liveProvenance);
-  changedImageDigestProvenance.image.digest = differentDigest;
-  const scenarios = [
-    {
-      field: 'package_bytes',
-      overrides: {
-        remotePackage: 'changed chart package',
-      },
+async function publishTwoSuccessiveVersions() {
+  const first = fixtureRelease('0.1.1', '2.0.0-rc.11');
+  const second = fixtureRelease('0.1.2', '2.0.0-rc.12');
+  const emptyRepository = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'durable-workflow-helm-empty-test-'),
+  );
+  const firstFixture = stagingFixture(
+    first,
+    [first, second],
+    directoryFetcher(emptyRepository),
+  );
+  await stageRelease(firstFixture.options);
+  const firstPublished = publishFixtureBuild(firstFixture, first);
+
+  const secondFixture = stagingFixture(
+    second,
+    [first, second],
+    directoryFetcher(firstPublished),
+  );
+  await stageRelease(secondFixture.options);
+  const secondPublished = publishFixtureBuild(secondFixture, second);
+  const stagedHistory = JSON.parse(
+    fs.readFileSync(path.join(secondPublished, 'release-history.json'), 'utf8'),
+  );
+  assert.deepStrictEqual(
+    Object.keys(stagedHistory.versions),
+    ['0.1.1', '0.1.2'],
+    'successive publications must retain both immutable release identities',
+  );
+  const stagedIndex = yaml.load(
+    fs.readFileSync(path.join(secondPublished, 'index.yaml'), 'utf8'),
+  );
+  assert.deepStrictEqual(
+    stagedIndex.entries[contract.chart.name]
+      .map(entry => entry.version)
+      .sort(),
+    ['0.1.1', '0.1.2'],
+    'successive publications must retain both index entries',
+  );
+  const fetchPublished = directoryFetcher(secondPublished);
+  for (const release of [first, second]) {
+    const downloaded = await fetchPublished(
+      release.contract.channels.https.package_url,
+    );
+    assert.strictEqual(
+      downloaded.status,
+      200,
+      `published chart ${release.contract.chart.version} must be anonymously downloadable`,
+    );
+    assert.strictEqual(
+      digest(downloaded.body),
+      release.packageDigest,
+      `published chart ${release.contract.chart.version} must retain its bytes`,
+    );
+  }
+  return {
+    first,
+    second,
+    published: secondPublished,
+  };
+}
+
+async function assertLiveVerification(releases, published) {
+  const current = releases.at(-1);
+  const temporary = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'durable-workflow-helm-live-test-'),
+  );
+  const evidencePath = path.join(
+    temporary,
+    'helm-public-validation-evidence.json',
+  );
+  const releasesByVersion = new Map(
+    releases.map(release => [release.contract.chart.version, release]),
+  );
+  const releasesByBody = new Map(
+    releases.map(release => [release.packageBody, release]),
+  );
+  const executed = [];
+  const execute = (command, arguments, options) => {
+    executed.push({command, arguments, options});
+    if (command === 'helm' && arguments[0] === 'pull') {
+      const version = arguments[arguments.indexOf('--version') + 1];
+      const pulled = releasesByVersion.get(version);
+      assert(pulled, `live pull fixture must know chart ${version}`);
+      const destination = arguments[arguments.indexOf('--destination') + 1];
+      fs.writeFileSync(
+        path.join(
+          destination,
+          `${contract.chart.name}-${version}.tgz`,
+        ),
+        pulled.packageBody,
+      );
+    }
+    return '';
+  };
+  const chartMetadata = packagePath => {
+    const release = releasesByBody.get(fs.readFileSync(packagePath, 'utf8'));
+    assert(release, `live metadata fixture must know ${packagePath}`);
+    return release.metadata;
+  };
+
+  await verifyLiveRelease({
+    contract: current.contract,
+    evidencePath,
+    execute,
+    fetchJson: async url => {
+      if (url.endsWith('/release.json')) {
+        return current.contract;
+      }
+      if (url.endsWith('/provenance.json')) {
+        return current.provenance;
+      }
+      throw new Error(`unexpected live release URL: ${url}`);
     },
+    fetchResource: directoryFetcher(published),
+    chartMetadata,
+    resolveImageDigest: () => current.imageDigest,
+  });
+  const liveRenderCommands = executed
+    .filter(({command, arguments}) => command === 'helm' && arguments[0] === 'template')
+    .map(({command, arguments}) => ({command, arguments}));
+  assert.deepStrictEqual(
+    liveRenderCommands,
+    [
+      renderCommand(
+        'public-oci-check',
+        current.contract.channels.oci.repository,
+        current.contract.chart.version,
+      ),
+      renderCommand(
+        'public-https-check',
+        `durable-workflow/${current.contract.chart.name}`,
+        current.contract.chart.version,
+      ),
+    ],
+    'live verification must retain exact OCI and HTTPS template commands',
+  );
+  assert.deepStrictEqual(
+    JSON.parse(fs.readFileSync(evidencePath, 'utf8')),
     {
-      field: 'source_revision',
-      overrides: {
-        remoteMetadata: changedSourceMetadata,
-        remoteProvenance: releaseProvenance(
-          contract,
-          changedSourceMetadata,
-          livePackageDigest,
-          imageDigest,
+      ...current.provenance,
+      validation: {
+        oci_anonymous_render: 'pass',
+        https_anonymous_render: 'pass',
+        channels_identical: true,
+        https_history_index: 'pass',
+        https_history_packages_anonymous: 'pass',
+        https_history_versions: releases.map(
+          release => release.contract.chart.version,
         ),
       },
     },
+    'live verification must cover current channel equality and all HTTPS history',
+  );
+}
+
+async function assertHistoricalTamperingFails(releases, published) {
+  const [first] = releases;
+  const firstPackagePath =
+    `/charts/${first.contract.chart.name}-${first.contract.chart.version}.tgz`;
+  const changedHistory = clone(historyFor(releases));
+  changedHistory.versions[first.contract.chart.version].source_revision =
+    'f'.repeat(40);
+  const historicalTampering = [
     {
-      field: 'app_version',
+      label: 'missing durable history after successive releases',
+      field: 'index_entry',
       overrides: {
-        remoteProvenance: changedAppVersionProvenance,
+        '/charts/release-history.json': missingResource,
       },
     },
     {
-      field: 'image_reference',
+      label: 'missing historical package',
+      field: 'package_bytes',
       overrides: {
-        remoteMetadata: changedImageReferenceMetadata,
-        remoteProvenance: changedImageReferenceProvenance,
+        [firstPackagePath]: missingResource,
       },
     },
     {
-      field: 'image_digest',
+      label: 'changed historical package bytes',
+      field: 'package_bytes',
       overrides: {
-        remoteProvenance: changedImageDigestProvenance,
+        [firstPackagePath]: () => ({
+          status: 200,
+          body: Buffer.from('tampered historical package'),
+        }),
+      },
+    },
+    {
+      label: 'changed historical source identity',
+      field: 'source_revision',
+      overrides: {
+        '/charts/release-history.json': () => ({
+          status: 200,
+          body: Buffer.from(JSON.stringify(changedHistory)),
+        }),
       },
     },
   ];
 
-  for (const {field, overrides} of scenarios) {
-    const fixture = stagingFixture(overrides);
+  for (const scenario of historicalTampering) {
+    const next = fixtureRelease('0.1.3', '2.0.0-rc.13');
+    const fixture = stagingFixture(
+      next,
+      releases,
+      directoryFetcher(published, scenario.overrides),
+    );
     await assert.rejects(
       () => stageRelease(fixture.options),
-      new RegExp(field),
-      `changed ${field} must fail the pre-deploy guard`,
+      new RegExp(scenario.field),
+      `${scenario.label} must fail closed`,
     );
     assert(
       !fs.existsSync(path.join(fixture.buildDirectory, 'charts')),
-      `changed ${field} must fail before build/charts is written`,
+      `${scenario.label} must fail before Pages staging`,
     );
-    const evidence = JSON.parse(
-      fs.readFileSync(fixture.evidencePath, 'utf8'),
+  }
+}
+
+async function assertByteIdenticalHistoricalReuseStages(releases, published) {
+  const [first] = releases;
+  const fixture = stagingFixture(
+    first,
+    releases,
+    directoryFetcher(published),
+  );
+  await stageRelease(fixture.options);
+  const evidence = JSON.parse(fs.readFileSync(fixture.evidencePath, 'utf8'));
+  assert.strictEqual(
+    evidence.outcome,
+    'byte-identical-reuse',
+    'an older version may be reused only with its exact recorded identity',
+  );
+  assert.deepStrictEqual(
+    fs.readdirSync(path.join(fixture.buildDirectory, 'charts'))
+      .filter(filename => filename.endsWith('.tgz'))
+      .sort(),
+    releases
+      .map(release =>
+        `${contract.chart.name}-${release.contract.chart.version}.tgz`,
+      )
+      .sort(),
+    'byte-identical historical reuse must retain every published package',
+  );
+}
+
+async function assertFirstVersionIdentityReuseFails(releases, published) {
+  const [first] = releases;
+  const scenarios = [
+    {
+      field: 'package_bytes',
+      candidate: fixtureRelease('0.1.1', '2.0.0-rc.11', {
+        packageBody: 'changed candidate package',
+      }),
+    },
+    {
+      field: 'source_revision',
+      candidate: fixtureRelease('0.1.1', '2.0.0-rc.11', {
+        packageBody: first.packageBody,
+        sourceRevision: 'd'.repeat(40),
+      }),
+    },
+    {
+      field: 'app_version',
+      candidate: fixtureRelease('0.1.1', '2.0.0-rc.99', {
+        packageBody: first.packageBody,
+      }),
+    },
+    {
+      field: 'image_digest',
+      candidate: fixtureRelease('0.1.1', '2.0.0-rc.11', {
+        packageBody: first.packageBody,
+        imageDigest: `sha256:${'e'.repeat(64)}`,
+      }),
+    },
+  ];
+
+  for (const {field, candidate} of scenarios) {
+    const fixture = stagingFixture(
+      candidate,
+      releases,
+      directoryFetcher(published),
     );
+    await assert.rejects(
+      () => stageRelease(fixture.options),
+      new RegExp(field),
+      `changed ${field} under the first version must fail the history guard`,
+    );
+    assert(
+      !fs.existsSync(path.join(fixture.buildDirectory, 'charts')),
+      `changed ${field} must fail before Pages staging`,
+    );
+    const evidence = JSON.parse(fs.readFileSync(fixture.evidencePath, 'utf8'));
     assert.strictEqual(evidence.outcome, 'rejected');
     assert(
       evidence.mismatches.some(mismatch => mismatch.field === field),
@@ -450,12 +703,27 @@ async function assertChangedIdentityDoesNotStage() {
 }
 
 async function main() {
-  await assertLiveVerification();
-  await assertFirstPublicationStages();
-  await assertByteIdenticalReuseStages();
-  await assertChangedIdentityDoesNotStage();
+  await assertLegacyReleaseMigrates();
+  const successive = await publishTwoSuccessiveVersions();
+  await assertLiveVerification(
+    [successive.first, successive.second],
+    successive.published,
+  );
+  await assertHistoricalTamperingFails(
+    [successive.first, successive.second],
+    successive.published,
+  );
+  await assertByteIdenticalHistoricalReuseStages(
+    [successive.first, successive.second],
+    successive.published,
+  );
+  await assertFirstVersionIdentityReuseFails(
+    [successive.first, successive.second],
+    successive.published,
+  );
   console.log(
-    'Helm chart release contract rejects identity drift before staging and preserves live validation evidence.',
+    'Helm release history preserves successive HTTPS versions and rejects ' +
+      'historical package or identity drift before staging.',
   );
 }
 
