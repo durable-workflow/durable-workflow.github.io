@@ -47,8 +47,8 @@ at the end of this guide.
 
 | Runtime | Choose it when | Next action |
 | --- | --- | --- |
-| Durable Workflow Cloud | You want Durable Workflow to operate the runtime and persistence. | Follow the executable [Cloud first workflow](/docs/2.0/polyglot/cloud-control-plane/#cloud-first-workflow), which maps PHP, Python, and Rust complete sources to provisioned credentials and a `completed` result. **Do not run Server.** |
-| Self-hosted Server | You want to operate the runtime yourself or run this exact local published-artifact exercise. | Continue below with Docker and `curl`. |
+| Durable Workflow Cloud | You want Durable Workflow to operate the runtime, persistence, and Managed Waterline. | Follow the executable [Cloud first workflow](/docs/2.0/polyglot/cloud-control-plane/#cloud-first-workflow), which maps PHP, Python, and Rust complete sources to provisioned credentials and a `completed` result. **Do not run Server or a separate Waterline service.** |
+| Self-hosted Server | You want to operate the runtime yourself or run this exact local published-artifact exercise. | Continue below with Docker and `curl`; deploy Waterline separately only when you want its operator UI. |
 
 The runnable source below uses a local self-hosted Server so it can be exercised
 without an account or source checkout. Cloud uses the same SDK and worker model;
@@ -443,10 +443,12 @@ Continue with [Embedded Installation](/docs/2.0/installation/) to configure a
 non-`sync` Laravel queue, then [define](/docs/2.0/defining-workflows/workflows/)
 and [start](/docs/2.0/defining-workflows/starting-workflows/) an embedded
 workflow. [Deployment Modes](/docs/2.0/polyglot/deployment-modes/) compares
-this specialized route with the standalone platform.
+this specialized route with the service-mode platform.
 
 ## Next steps
 
+- Use the [Capability Index](/docs/2.0/capabilities/) to check the exact
+  prerelease floors and supported surface for your selected runtime and SDK.
 - Continue with the service-mode [PHP SDK](/docs/2.0/polyglot/php/),
   [Python SDK](/docs/2.0/polyglot/python/), or
   [Rust SDK](/docs/2.0/polyglot/rust/) guide.

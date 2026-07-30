@@ -11,12 +11,17 @@ const sidebars = {
       label: 'Service Mode',
       link: {
         type: 'generated-index',
-        description: 'Choose Durable Workflow Cloud or a self-hosted Server, then connect CLI and first-party SDK clients and workers.',
+        description: 'Connect first-party PHP, Python, or Rust clients and workers to Durable Workflow Cloud or a self-hosted Server, then use the Waterline surface owned by that runtime.',
       },
       items: [
         'polyglot/deployment-modes',
         'polyglot/cloud-control-plane',
         'polyglot/server',
+        {
+          type: 'link',
+          label: 'Waterline ownership and monitoring',
+          href: '/docs/2.0/monitoring/',
+        },
         {
           type: 'category',
           label: 'CLI',

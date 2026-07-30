@@ -30,12 +30,14 @@ Applications use a remote durable runtime through first-party SDKs. Choose who
 operates that runtime:
 
 - **[Durable Workflow Cloud](/docs/2.0/polyglot/cloud-control-plane/)** is the
-  managed choice. Durable Workflow operates orchestration and persistence;
-  your team runs SDK clients and workers against its provisioned namespace.
-  **Cloud users do not install or run Durable Workflow Server.**
+  managed choice. Durable Workflow operates orchestration, persistence, and
+  Managed Waterline; your team runs SDK clients and workers against its
+  provisioned namespace. **Cloud users do not install or run Durable Workflow
+  Server or a separate Waterline service.**
 - **[Self-hosted Server](/docs/2.0/polyglot/server/)** gives your team the same
   service boundary while you deploy, secure, scale, back up, and upgrade the
-  runtime.
+  runtime. Waterline observation is a separate service you may deploy against
+  the Server-owned namespace.
 
 Both choices expose the same versioned HTTP+JSON control plane, worker
 protocol, namespace model, and language-neutral payload envelope. See
@@ -47,7 +49,8 @@ boundaries.
 Embedded mode is a separate deployment model for a Laravel application that
 wants workflow state, queues, configuration, and operator tooling inside its
 own infrastructure. It installs `durable-workflow/workflow` and does not
-connect to Cloud or require a separate Server.
+connect to Cloud or require a separate Server. The embedded Waterline package
+reads that application-owned state in process.
 
 Start with [Embedded Installation](/docs/2.0/installation/) only when that
 in-application ownership model is intentional.

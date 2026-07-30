@@ -5,8 +5,11 @@ const path = require('path');
 
 const repoRoot = path.join(__dirname, '..');
 const introductionPath = path.join(repoRoot, 'docs', 'introduction.md');
+const quickstartPath = path.join(repoRoot, 'docs', 'quickstart.md');
+const capabilitiesPath = path.join(repoRoot, 'docs', 'capabilities.md');
 const phpSdkPath = path.join(repoRoot, 'docs', 'polyglot', 'php.md');
 const serverPath = path.join(repoRoot, 'docs', 'polyglot', 'server.md');
+const sidebarsPath = path.join(repoRoot, 'sidebars.js');
 
 const REQUIRED_INTRO_ROUTES = Object.freeze([
   '/docs/2.0/polyglot/php/',
@@ -21,6 +24,43 @@ const REQUIRED_INTRO_ROUTES = Object.freeze([
   '/docs/2.0/quickstart/',
   '/docs/2.0/sample-app/',
 ]);
+
+const REQUIRED_QUICKSTART_ROUTES = Object.freeze([
+  '/docs/2.0/capabilities/',
+  '/docs/2.0/polyglot/php/',
+  '/docs/2.0/polyglot/python/',
+  '/docs/2.0/polyglot/rust/',
+  '/docs/2.0/polyglot/server/',
+  '/docs/2.0/polyglot/cloud-control-plane/',
+  '/docs/2.0/polyglot/deployment-modes/',
+]);
+
+const REQUIRED_CAPABILITY_ROUTES = Object.freeze([
+  '/docs/2.0/polyglot/php/',
+  '/docs/2.0/polyglot/python/',
+  '/docs/2.0/polyglot/rust/',
+  '/docs/2.0/polyglot/server/',
+  '/docs/2.0/polyglot/cloud-control-plane/',
+  '/docs/2.0/polyglot/deployment-modes/',
+  '/docs/2.0/monitoring/',
+]);
+
+const ONBOARDING_DOC_IDS = Object.freeze([
+  'introduction',
+  'quickstart',
+  'capabilities',
+]);
+
+const SERVICE_MODE_DOC_IDS = Object.freeze([
+  'polyglot/deployment-modes',
+  'polyglot/cloud-control-plane',
+  'polyglot/server',
+  'polyglot/php',
+  'polyglot/python',
+  'polyglot/rust',
+]);
+
+const MONITORING_ROUTE = '/docs/2.0/monitoring/';
 
 function fail(message) {
   throw new Error(message);
@@ -41,9 +81,9 @@ function sourceCandidatesForRoute(route) {
   ];
 }
 
-function assertRouteExists(route) {
+function assertRouteExists(route, sourceLabel) {
   if (!sourceCandidatesForRoute(route).some(candidate => fs.existsSync(candidate))) {
-    fail(`Introduction route ${route} does not map to a 2.0 documentation source`);
+    fail(`${sourceLabel} route ${route} does not map to a 2.0 documentation source`);
   }
 }
 
@@ -55,22 +95,84 @@ function firstPosition(source, value, label) {
   return position;
 }
 
-function assertIntroductionLinks(introduction) {
-  for (const route of REQUIRED_INTRO_ROUTES) {
-    assertRouteExists(route);
-    firstPosition(introduction, route, 'docs/introduction.md');
+function assertDocumentLinks(source, sourceLabel, routes) {
+  for (const route of routes) {
+    assertRouteExists(route, sourceLabel);
+    firstPosition(source, route, sourceLabel);
   }
+}
 
+function assertIntroductionPackageBoundary(introduction) {
   firstPosition(
     introduction,
     'durable-workflow/sdk',
-    'docs/introduction.md standalone PHP package boundary',
+    'docs/introduction.md service-mode PHP package boundary',
   );
   firstPosition(
     introduction,
     'durable-workflow/workflow',
     'docs/introduction.md embedded Laravel package boundary',
   );
+}
+
+function sidebarDocId(item) {
+  if (typeof item === 'string') {
+    return item;
+  }
+
+  if (item?.type === 'doc') {
+    return item.id;
+  }
+
+  return null;
+}
+
+function collectSidebarDocIds(item, docIds = []) {
+  const docId = sidebarDocId(item);
+  if (docId) {
+    docIds.push(docId);
+  }
+
+  for (const child of item?.items || []) {
+    collectSidebarDocIds(child, docIds);
+  }
+
+  return docIds;
+}
+
+function assertSidebarTopology(sidebars) {
+  const tutorialSidebar = sidebars.tutorialSidebar;
+  if (!Array.isArray(tutorialSidebar)) {
+    fail('sidebars.js must export tutorialSidebar as an array');
+  }
+
+  const onboardingDocIds = tutorialSidebar
+    .slice(0, ONBOARDING_DOC_IDS.length)
+    .map(sidebarDocId);
+  if (JSON.stringify(onboardingDocIds) !== JSON.stringify(ONBOARDING_DOC_IDS)) {
+    fail(`sidebars.js must begin with ${ONBOARDING_DOC_IDS.join(' -> ')}`);
+  }
+
+  const serviceMode = tutorialSidebar.find(
+    item => item?.type === 'category' && item.label === 'Service Mode',
+  );
+  if (!serviceMode || serviceMode.link?.type !== 'generated-index') {
+    fail('sidebars.js must expose Service Mode through a generated index');
+  }
+
+  const serviceModeDocIds = new Set(collectSidebarDocIds(serviceMode));
+  for (const docId of SERVICE_MODE_DOC_IDS) {
+    if (!serviceModeDocIds.has(docId)) {
+      fail(`Service Mode navigation is missing ${docId}`);
+    }
+  }
+
+  const monitoringLink = serviceMode.items.find(
+    item => item?.type === 'link' && item.href === MONITORING_ROUTE,
+  );
+  if (!monitoringLink) {
+    fail(`Service Mode navigation is missing ${MONITORING_ROUTE}`);
+  }
 }
 
 function assertPhpPackageBoundary(phpSdk, server) {
@@ -99,13 +201,25 @@ function assertPhpPackageBoundary(phpSdk, server) {
 
 function main() {
   const introduction = read(introductionPath);
+  const quickstart = read(quickstartPath);
+  const capabilities = read(capabilitiesPath);
   const phpSdk = read(phpSdkPath);
   const server = read(serverPath);
+  delete require.cache[require.resolve(sidebarsPath)];
+  const sidebars = require(sidebarsPath);
 
-  assertIntroductionLinks(introduction);
+  assertDocumentLinks(introduction, 'docs/introduction.md', REQUIRED_INTRO_ROUTES);
+  assertDocumentLinks(quickstart, 'docs/quickstart.md', REQUIRED_QUICKSTART_ROUTES);
+  assertDocumentLinks(capabilities, 'docs/capabilities.md', REQUIRED_CAPABILITY_ROUTES);
+  assertIntroductionPackageBoundary(introduction);
+  assertSidebarTopology(sidebars);
   assertPhpPackageBoundary(phpSdk, server);
 
-  console.log(`Introduction product-boundary checks passed for ${REQUIRED_INTRO_ROUTES.length} public routes`);
+  const routeCount =
+    REQUIRED_INTRO_ROUTES.length +
+    REQUIRED_QUICKSTART_ROUTES.length +
+    REQUIRED_CAPABILITY_ROUTES.length;
+  console.log(`Onboarding product-boundary checks passed for ${routeCount} public route references`);
 }
 
 main();
