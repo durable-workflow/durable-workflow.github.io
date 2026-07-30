@@ -13,6 +13,13 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function incrementPrereleaseVersion(version) {
+  return version.replace(
+    /(\d+)$/,
+    sequence => String(Number(sequence) + 1),
+  );
+}
+
 function experiment(ledger, id) {
   return ledger.experiments.find(entry => entry.id === id);
 }
@@ -54,17 +61,28 @@ assert.doesNotThrow(
 );
 
 const divergentCurrentTuple = clone(source);
-divergentCurrentTuple.current_artifact_tuple.server = '2.0.0-rc.7';
+const divergentServerVersion = incrementPrereleaseVersion(
+  source.current_artifact_tuple.server,
+);
+divergentCurrentTuple.current_artifact_tuple.server = divergentServerVersion;
 assert.throws(
   () => buildLedger(divergentCurrentTuple),
-  /current_artifact_tuple must exactly match[\s\S]*server: ledger=2\.0\.0-rc\.7 published=2\.0\.0-rc\.8/,
+  error => (
+    error.message.includes('current_artifact_tuple must exactly match')
+    && error.message.includes(
+      `server: ledger=${divergentServerVersion} published=${source.current_artifact_tuple.server}`,
+    )
+  ),
   'ledger generation must reject drift from the published-artifact registry',
 );
 
-const ledger = buildLedger(source);
+const baselineSource = clone(source);
+baselineSource.current_artifact_tuple = clone(source.artifact_tuples.current);
+const baselinePublishedTuple = baselineSource.current_artifact_tuple;
+const ledger = buildLedger(baselineSource, baselinePublishedTuple);
 assert.strictEqual(ledger.schema_version, 2);
-assert.strictEqual(ledger.snapshot_refreshed_at, source.captured_at);
-assert.strictEqual(ledger.retained_evidence_captured_at, source.captured_at);
+assert.strictEqual(ledger.snapshot_refreshed_at, baselineSource.captured_at);
+assert.strictEqual(ledger.retained_evidence_captured_at, baselineSource.captured_at);
 assert.strictEqual(ledger.experiments.length, 29);
 assert.strictEqual(ledger.retention_policy.retained_run_count, 29);
 assert.strictEqual(
@@ -88,13 +106,13 @@ assert.deepStrictEqual(
   ],
 );
 
-const historicalArtifactTuples = clone(source.artifact_tuples);
-const historicalRuns = clone(source.runs);
+const historicalArtifactTuples = clone(baselineSource.artifact_tuples);
+const historicalRuns = clone(baselineSource.runs);
 const refreshedPublishedTuple = {
-  ...source.current_artifact_tuple,
-  server: '2.0.0-rc.9',
+  ...baselinePublishedTuple,
+  server: incrementPrereleaseVersion(baselinePublishedTuple.server),
 };
-const refreshedSource = clone(source);
+const refreshedSource = clone(baselineSource);
 refreshedSource.current_artifact_tuple = refreshedPublishedTuple;
 const refreshedLedger = buildLedger(
   refreshedSource,
@@ -108,7 +126,7 @@ assert.strictEqual(
 );
 assert.strictEqual(
   refreshedLedger.retained_evidence_captured_at,
-  source.captured_at,
+  baselineSource.captured_at,
   'a release refresh must preserve the retained-evidence capture time',
 );
 assert.deepStrictEqual(
@@ -123,7 +141,7 @@ assert.deepStrictEqual(
 );
 assert.deepStrictEqual(
   experiment(refreshedLedger, 'cloud').executed_evidence.artifact_tuple,
-  source.artifact_tuples.current,
+  baselineSource.artifact_tuples.current,
   'historical executed evidence must retain its original exact artifact tuple',
 );
 assert.deepStrictEqual(
@@ -131,8 +149,8 @@ assert.deepStrictEqual(
   [
     {
       artifact: 'server',
-      expected: '2.0.0-rc.9',
-      actual: '2.0.0-rc.8',
+      expected: refreshedPublishedTuple.server,
+      actual: baselineSource.artifact_tuples.current.server,
     },
   ],
   'a release refresh must make old evidence stale without rewriting it',
@@ -165,9 +183,9 @@ assert.doesNotMatch(
   'the ledger must not publish an aggregate historical pass-rate field',
 );
 
-const missingEvidence = clone(source);
+const missingEvidence = clone(baselineSource);
 missingEvidence.runs = missingEvidence.runs.filter(run => run.experiment !== 'replay');
-const missingLedger = buildLedger(missingEvidence);
+const missingLedger = buildLedger(missingEvidence, baselinePublishedTuple);
 assert.deepStrictEqual(
   experiment(missingLedger, 'replay').executed_evidence,
   {
@@ -186,9 +204,9 @@ assert.deepStrictEqual(
   'missing release-critical evidence must be visible and product-neutral',
 );
 
-const currentFailure = clone(source);
+const currentFailure = clone(baselineSource);
 currentFailure.runs.find(run => run.experiment === 'cloud').outcome = 'fail';
-const currentFailureLedger = buildLedger(currentFailure);
+const currentFailureLedger = buildLedger(currentFailure, baselinePublishedTuple);
 assert.strictEqual(
   experiment(currentFailureLedger, 'cloud').executed_evidence.product_failure,
   true,
@@ -199,9 +217,9 @@ assert.strictEqual(
   'a current product failure must remain visible even when its tier also has stale evidence',
 );
 
-const regressionFixture = clone(source);
+const regressionFixture = clone(baselineSource);
 addRegressionTrail(regressionFixture);
-const regressionLedger = buildLedger(regressionFixture);
+const regressionLedger = buildLedger(regressionFixture, baselinePublishedTuple);
 assert.deepStrictEqual(regressionLedger.regression_trails, [
   {
     id: 'docs-route-regression',
@@ -220,7 +238,7 @@ assert.deepStrictEqual(regressionLedger.regression_trails, [
 const publicRecord = publicRunRecord(
   regressionFixture,
   regressionFixture.runs.at(-1),
-  validateSource(regressionFixture).experimentsById,
+  validateSource(regressionFixture, baselinePublishedTuple).experimentsById,
 );
 assert.deepStrictEqual(Object.keys(publicRecord), [
   'schema',
@@ -236,7 +254,7 @@ assert.deepStrictEqual(Object.keys(publicRecord), [
   'finished_at',
 ]);
 
-const overRetention = clone(source);
+const overRetention = clone(baselineSource);
 overRetention.retention.max_runs_per_experiment = 1;
 overRetention.runs.push({
   id: 'docs-20260729t140000z',
@@ -247,23 +265,23 @@ overRetention.runs.push({
   finished_at: '2026-07-29T14:00:00.000Z',
 });
 assert.throws(
-  () => validateSource(overRetention),
+  () => validateSource(overRetention, baselinePublishedTuple),
   /exceeds max_runs_per_experiment/,
   'retained evidence must remain bounded per experiment',
 );
 
-const sensitiveField = clone(source);
+const sensitiveField = clone(baselineSource);
 sensitiveField.current_artifact_tuple.customer_identifier = 'customer-42';
 assert.throws(
-  () => validateSource(sensitiveField),
+  () => validateSource(sensitiveField, baselinePublishedTuple),
   /forbidden sensitive field customer_identifier/,
   'customer identifiers must be rejected before public generation',
 );
 
-const unknownRunField = clone(source);
+const unknownRunField = clone(baselineSource);
 unknownRunField.runs[0].observed_output = 'private runner output';
 assert.throws(
-  () => validateSource(unknownRunField),
+  () => validateSource(unknownRunField, baselinePublishedTuple),
   /fields must be exactly/,
   'free-form diagnostics must not fit the retained run schema',
 );
@@ -272,7 +290,7 @@ const credentialUrl = clone(regressionFixture);
 credentialUrl.regression_trails[0].fix_url =
   'https://oauth-token@github.com/durable-workflow/durable-workflow.github.io/commit/0123456789abcdef0123456789abcdef01234567';
 assert.throws(
-  () => validateSource(credentialUrl),
+  () => validateSource(credentialUrl, baselinePublishedTuple),
   /must be a public durable-workflow GitHub/,
   'credential-bearing URLs must never reach the public regression trail',
 );

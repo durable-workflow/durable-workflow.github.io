@@ -901,7 +901,12 @@ const nextPublishedServerVersions = {
   ...publishedSource.artifacts,
   server: incrementPrereleaseVersion(publishedSource.artifacts.server),
 };
-const publishedServerRefreshTime = '2026-07-29T16:00:00.000Z';
+const currentLedgerSnapshot = JSON.parse(
+  currentTupleSources['static/platform-conformance/run-ledger.json'],
+).snapshot_refreshed_at;
+const publishedServerRefreshTime = new Date(
+  Date.parse(currentLedgerSnapshot) + 1,
+).toISOString();
 const publishedServerRefreshTuple = generatedPublicArtifactTupleSources(
   currentTupleSources,
   source.artifacts,
@@ -1032,11 +1037,11 @@ try {
     tuplePaths['static/platform-conformance/run-ledger.json'],
     'utf8',
   ));
-  const previouslyCurrentExperiment = previousLedger.experiments.find(
-    experiment => experiment.executed_evidence.status === 'current',
+  const retainedExperiment = previousLedger.experiments.find(
+    experiment => experiment.executed_evidence.artifact_tuple !== null,
   );
   const refreshedExperiment = writtenLedger.experiments.find(
-    experiment => experiment.id === previouslyCurrentExperiment.id,
+    experiment => experiment.id === retainedExperiment.id,
   );
 
   assert.deepStrictEqual(
@@ -1062,11 +1067,19 @@ try {
   assert.strictEqual(
     refreshedExperiment.executed_evidence.status,
     'stale',
-    'historical evidence may become stale when the current published tuple advances',
+    'historical evidence must remain stale when the current published tuple advances',
+  );
+  assert.ok(
+    refreshedExperiment.executed_evidence.stale_artifacts.some(entry => (
+      entry.artifact === 'server'
+      && entry.expected === nextPublishedServerVersions.server
+      && entry.actual === retainedExperiment.executed_evidence.artifact_tuple.server
+    )),
+    'the generated ledger must project the advanced Server artifact against retained evidence',
   );
   assert.deepStrictEqual(
     refreshedExperiment.executed_evidence.artifact_tuple,
-    previouslyCurrentExperiment.executed_evidence.artifact_tuple,
+    retainedExperiment.executed_evidence.artifact_tuple,
     'the generated ledger must not reattach a historical run to the refreshed tuple',
   );
 } finally {
