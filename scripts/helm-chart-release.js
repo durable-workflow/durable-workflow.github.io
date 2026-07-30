@@ -134,26 +134,12 @@ function packageFilename(contract) {
   return `${contract.chart.name}-${contract.chart.version}.tgz`;
 }
 
-function installArguments(releaseName, reference, version) {
-  return [
-    'install',
-    releaseName,
-    reference,
-    '--version',
-    version,
-    '--namespace',
-    'durable-workflow',
-    '--dry-run=client',
-    ...RENDER_VALUE_ARGUMENTS,
-  ];
-}
-
-function stagingRenderCommand(reference, version) {
+function renderCommand(releaseName, reference, version) {
   return {
     command: 'helm',
     arguments: [
       'template',
-      'docs-stage-oci-check',
+      releaseName,
       reference,
       '--version',
       version,
@@ -278,11 +264,12 @@ function stageRelease(options = {}) {
   const sourcePackage = path.join(pulledDirectory, packageFilename(contract));
   const metadata = chartMetadata(sourcePackage, environment);
   assertPackageMetadata(metadata, contract);
-  const renderCommand = stagingRenderCommand(
+  const command = renderCommand(
+    'docs-stage-oci-check',
     contract.channels.oci.repository,
     contract.chart.version,
   );
-  execute(renderCommand.command, renderCommand.arguments, {env: environment});
+  execute(command.command, command.arguments, {env: environment});
 
   const destinationPackage = path.join(chartsDirectory, packageFilename(contract));
   fs.copyFileSync(sourcePackage, destinationPackage);
@@ -316,7 +303,11 @@ function stageRelease(options = {}) {
 
 async function verifyLiveRelease(options = {}) {
   const contract = validateContract(options.contract || releaseContract());
-  const remoteContract = await fetchJson(
+  const run = options.execute || execute;
+  const getJson = options.fetchJson || fetchJson;
+  const getChartMetadata = options.chartMetadata || chartMetadata;
+  const getImageDigest = options.resolveImageDigest || resolveImageDigest;
+  const remoteContract = await getJson(
     new URL('release.json', contract.channels.https.repository).href,
   );
   assert.deepStrictEqual(remoteContract, contract, 'live Helm release contract');
@@ -328,7 +319,7 @@ async function verifyLiveRelease(options = {}) {
   fs.mkdirSync(ociDirectory, {recursive: true});
   fs.mkdirSync(httpsDirectory, {recursive: true});
 
-  execute(
+  run(
     'helm',
     [
       'pull',
@@ -340,13 +331,13 @@ async function verifyLiveRelease(options = {}) {
     ],
     {env: environment},
   );
-  execute(
+  run(
     'helm',
     ['repo', 'add', 'durable-workflow', contract.channels.https.repository],
     {env: environment},
   );
-  execute('helm', ['repo', 'update'], {env: environment});
-  execute(
+  run('helm', ['repo', 'update'], {env: environment});
+  run(
     'helm',
     [
       'pull',
@@ -358,24 +349,18 @@ async function verifyLiveRelease(options = {}) {
     ],
     {env: environment},
   );
-  execute(
-    'helm',
-    installArguments(
-      'public-oci-check',
-      contract.channels.oci.repository,
-      contract.chart.version,
-    ),
-    {env: environment},
+  const ociRenderCommand = renderCommand(
+    'public-oci-check',
+    contract.channels.oci.repository,
+    contract.chart.version,
   );
-  execute(
-    'helm',
-    installArguments(
-      'public-https-check',
-      `durable-workflow/${contract.chart.name}`,
-      contract.chart.version,
-    ),
-    {env: environment},
+  run(ociRenderCommand.command, ociRenderCommand.arguments, {env: environment});
+  const httpsRenderCommand = renderCommand(
+    'public-https-check',
+    `durable-workflow/${contract.chart.name}`,
+    contract.chart.version,
   );
+  run(httpsRenderCommand.command, httpsRenderCommand.arguments, {env: environment});
 
   const filename = packageFilename(contract);
   const ociPackage = path.join(ociDirectory, filename);
@@ -388,15 +373,15 @@ async function verifyLiveRelease(options = {}) {
     'OCI and HTTPS channels must return the same packaged chart bytes',
   );
 
-  const metadata = chartMetadata(ociPackage, environment);
+  const metadata = getChartMetadata(ociPackage, environment);
   assertPackageMetadata(metadata, contract);
   const imageDockerConfig = path.join(temporary, 'docker-config');
   fs.mkdirSync(imageDockerConfig, {recursive: true});
-  const imageDigest = resolveImageDigest(contract.image.reference, {
+  const imageDigest = getImageDigest(contract.image.reference, {
     ...process.env,
     DOCKER_CONFIG: imageDockerConfig,
   });
-  const provenance = await fetchJson(
+  const provenance = await getJson(
     new URL('provenance.json', contract.channels.https.repository).href,
   );
   assertProvenance(provenance, contract, metadata, ociDigest, imageDigest);
@@ -404,8 +389,8 @@ async function verifyLiveRelease(options = {}) {
   const evidence = {
     ...provenance,
     validation: {
-      oci_anonymous_install: 'pass',
-      https_anonymous_install: 'pass',
+      oci_anonymous_render: 'pass',
+      https_anonymous_render: 'pass',
       channels_identical: true,
     },
   };
@@ -415,7 +400,7 @@ async function verifyLiveRelease(options = {}) {
     path.join(REPO_ROOT, 'helm-public-validation-evidence.json');
   fs.writeFileSync(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
   console.log(
-    `Clean Helm installs passed from OCI and HTTPS for ${contract.chart.name} ` +
+    `Anonymous Helm renders passed from OCI and HTTPS for ${contract.chart.name} ` +
       `${contract.chart.version}; both returned ${ociDigest}.`,
   );
 }
@@ -450,6 +435,7 @@ module.exports = {
   assertPackageMetadata,
   assertProvenance,
   releaseProvenance,
-  stagingRenderCommand,
+  renderCommand,
   validateContract,
+  verifyLiveRelease,
 };
