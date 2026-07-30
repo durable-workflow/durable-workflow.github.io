@@ -473,6 +473,83 @@ function assertHistoryIndex(index, history) {
   }
 }
 
+async function verifyLiveHttpsReleaseHistory(options = {}) {
+  const contract = validateContract(options.contract || releaseContract());
+  const getResource = options.fetchResource || fetchResource;
+  const getChartMetadata = options.chartMetadata || chartMetadata;
+  const ownsTemporaryDirectory = !options.temporaryDirectory;
+  const temporaryDirectory =
+    options.temporaryDirectory ||
+    fs.mkdtempSync(path.join(os.tmpdir(), 'durable-workflow-helm-history-'));
+  const environment =
+    options.environment ||
+    cleanHelmEnvironment(path.join(temporaryDirectory, 'helm-home'));
+  const historyUrl = new URL(
+    RELEASE_HISTORY_FILENAME,
+    contract.channels.https.repository,
+  ).href;
+  const indexUrl = new URL(
+    'index.yaml',
+    contract.channels.https.repository,
+  ).href;
+
+  try {
+    const [historyResource, indexResource] = await Promise.all([
+      getResource(historyUrl),
+      getResource(indexUrl),
+    ]);
+    const history = validateReleaseHistory(
+      parseLiveJson(historyResource, historyUrl),
+      contract,
+    );
+    assertHistoryIndex(parseLiveYaml(indexResource, indexUrl), history);
+    assert(
+      history.versions[contract.chart.version],
+      `live Helm release history must contain current version ${contract.chart.version}`,
+    );
+
+    for (const [version, entry] of Object.entries(history.versions)) {
+      const packageResource = await getResource(entry.package_url);
+      const packageBody = requireLiveResource(packageResource, entry.package_url);
+      assert.strictEqual(
+        sha256Buffer(packageBody),
+        entry.package_digest,
+        `live Helm release history package digest for ${version}`,
+      );
+      const packagePath = path.join(
+        temporaryDirectory,
+        'packages',
+        packageFilenameForVersion(contract.chart.name, version),
+      );
+      fs.mkdirSync(path.dirname(packagePath), {recursive: true});
+      fs.writeFileSync(packagePath, packageBody);
+      const historicalContract = contractForHistoryVersion(
+        contract,
+        version,
+        entry,
+      );
+      const historicalMetadata = getChartMetadata(packagePath, environment);
+      assertPackageMetadata(historicalMetadata, historicalContract);
+      assert.deepStrictEqual(
+        releaseHistoryEntry(
+          historicalContract,
+          historicalMetadata,
+          entry.package_digest,
+          entry.image_digest,
+        ),
+        entry,
+        `live Helm release history identity for ${version}`,
+      );
+    }
+
+    return history;
+  } finally {
+    if (ownsTemporaryDirectory) {
+      fs.rmSync(temporaryDirectory, {recursive: true, force: true});
+    }
+  }
+}
+
 function writePredeployEvidence(evidence, evidencePath) {
   fs.mkdirSync(path.dirname(evidencePath), {recursive: true});
   fs.writeFileSync(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
@@ -1121,56 +1198,14 @@ async function verifyLiveRelease(options = {}) {
     new URL('provenance.json', contract.channels.https.repository).href,
   );
   assertProvenance(provenance, contract, metadata, ociDigest, imageDigest);
-  const historyUrl = new URL(
-    RELEASE_HISTORY_FILENAME,
-    contract.channels.https.repository,
-  ).href;
-  const indexUrl = new URL(
-    'index.yaml',
-    contract.channels.https.repository,
-  ).href;
-  const [historyResource, indexResource] = await Promise.all([
-    getResource(historyUrl),
-    getResource(indexUrl),
-  ]);
-  const history = validateReleaseHistory(
-    parseLiveJson(historyResource, historyUrl),
+  const history = await verifyLiveHttpsReleaseHistory({
     contract,
-  );
-  assertHistoryIndex(parseLiveYaml(indexResource, indexUrl), history);
-  assert(
-    history.versions[contract.chart.version],
-    `live Helm release history must contain current version ${contract.chart.version}`,
-  );
+    fetchResource: getResource,
+    chartMetadata: getChartMetadata,
+    temporaryDirectory: path.join(temporary, 'history'),
+    environment,
+  });
 
-  for (const [version, entry] of Object.entries(history.versions)) {
-    const packageResource = await getResource(entry.package_url);
-    const packageBody = requireLiveResource(packageResource, entry.package_url);
-    const packagePath = path.join(
-      temporary,
-      'history',
-      packageFilenameForVersion(contract.chart.name, version),
-    );
-    fs.mkdirSync(path.dirname(packagePath), {recursive: true});
-    fs.writeFileSync(packagePath, packageBody);
-    const historicalContract = contractForHistoryVersion(
-      contract,
-      version,
-      entry,
-    );
-    const historicalMetadata = getChartMetadata(packagePath, environment);
-    assertPackageMetadata(historicalMetadata, historicalContract);
-    assert.deepStrictEqual(
-      releaseHistoryEntry(
-        historicalContract,
-        historicalMetadata,
-        sha256Buffer(packageBody),
-        entry.image_digest,
-      ),
-      entry,
-      `live Helm release history identity for ${version}`,
-    );
-  }
   assert.deepStrictEqual(
     history.versions[contract.chart.version],
     releaseHistoryEntry(
@@ -1244,5 +1279,6 @@ module.exports = {
   stageRelease,
   validateContract,
   validateReleaseHistory,
+  verifyLiveHttpsReleaseHistory,
   verifyLiveRelease,
 };

@@ -1,4 +1,5 @@
 const assert = require('assert');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
@@ -65,6 +66,28 @@ function assertProtectedDeploySource(source) {
   }
 
   const steps = deployJob.steps || [];
+  const installIndex = steps.findIndex(step => step.run === 'npm ci');
+  const setupHelmIndex = steps.findIndex(
+    step => step.uses ===
+      'azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310',
+  );
+  const planIndex = steps.findIndex(
+    step => step.run === 'node scripts/plan-docs-deploy.js',
+  );
+  if (
+    installIndex < 0 ||
+    setupHelmIndex < 0 ||
+    planIndex < 0 ||
+    installIndex >= planIndex ||
+    setupHelmIndex >= planIndex ||
+    steps[installIndex].if ||
+    steps[setupHelmIndex].if
+  ) {
+    fail(
+      'docs deploy workflow must install the Helm history validation tooling ' +
+        'before scheduled planning',
+    );
+  }
   const predeployIndex = steps.findIndex(
     step => step.run === 'node scripts/helm-chart-release.js pre-deploy',
   );
@@ -206,6 +229,116 @@ function currentLiveArtifacts() {
   };
 }
 
+function currentHelmHistoryFixture(mutate = () => {}) {
+  const releases = [
+    {
+      version: '0.1.0',
+      appVersion: '2.0.0-rc.10',
+      sourceRevision: 'b'.repeat(40),
+      imageDigest: `sha256:${'c'.repeat(64)}`,
+      packageBody: Buffer.from('historical-public-chart-package'),
+    },
+    {
+      version: helmRelease.chart.version,
+      appVersion: helmRelease.chart.app_version,
+      sourceRevision: 'd'.repeat(40),
+      imageDigest: `sha256:${'e'.repeat(64)}`,
+      packageBody: Buffer.from('current-public-chart-package'),
+    },
+  ].map(release => {
+    const packageUrl = new URL(
+      `${helmRelease.chart.name}-${release.version}.tgz`,
+      helmRelease.channels.https.repository,
+    ).href;
+    return {
+      ...release,
+      imageReference: `docker.io/durableworkflow/server:${release.appVersion}`,
+      packageDigest:
+        `sha256:${crypto.createHash('sha256').update(release.packageBody).digest('hex')}`,
+      packagePath: new URL(packageUrl).pathname,
+      packageUrl,
+    };
+  });
+  const history = {
+    schema: 'durable-workflow-helm-release-history/v1',
+    chart: {
+      name: helmRelease.chart.name,
+    },
+    versions: Object.fromEntries(releases.map(release => [
+      release.version,
+      {
+        package_url: release.packageUrl,
+        package_digest: release.packageDigest,
+        source_revision: release.sourceRevision,
+        app_version: release.appVersion,
+        image_reference: release.imageReference,
+        image_digest: release.imageDigest,
+      },
+    ])),
+  };
+  const index = {
+    apiVersion: 'v1',
+    entries: {
+      [helmRelease.chart.name]: releases.map(release => ({
+        name: helmRelease.chart.name,
+        version: release.version,
+        appVersion: release.appVersion,
+        digest: release.packageDigest.replace(/^sha256:/, ''),
+        urls: [release.packageUrl],
+      })),
+    },
+  };
+  const resources = {
+    '/charts/release-history.json': {
+      status: 200,
+      body: Buffer.from(JSON.stringify(history)),
+    },
+    '/charts/index.yaml': {
+      status: 200,
+      body: Buffer.from(yaml.dump(index)),
+    },
+    ...Object.fromEntries(releases.map(release => [
+      release.packagePath,
+      {
+        status: 200,
+        body: release.packageBody,
+      },
+    ])),
+  };
+  const fixture = {
+    currentPackagePath: releases.at(-1).packagePath,
+    historicalPackagePath: releases[0].packagePath,
+    history,
+    index,
+    packagePaths: releases.map(release => release.packagePath),
+    releases,
+    resources,
+  };
+  mutate(fixture);
+
+  return {
+    ...fixture,
+    fetchResource: async url => (
+      resources[new URL(url).pathname] || {status: 404, body: Buffer.alloc(0)}
+    ),
+    chartMetadata: packagePath => {
+      const release = releases.find(
+        candidate => path.basename(packagePath) === path.basename(candidate.packagePath),
+      );
+      assert(release, `fixture metadata must identify ${packagePath}`);
+      return {
+        name: helmRelease.chart.name,
+        version: release.version,
+        appVersion: release.appVersion,
+        annotations: {
+          'dev.durable-workflow.source-revision': release.sourceRevision,
+          'dev.durable-workflow.image-reference': release.imageReference,
+        },
+      };
+    },
+  };
+}
+
 assert.strictEqual(
   LIVE_ARTIFACTS,
   REQUIRED_LIVE_ARTIFACT_PATHS,
@@ -266,6 +399,7 @@ async function assertPushDeploysWithoutFetchingLive() {
 
 async function assertScheduledDeploySkipsCurrentLiveTuple() {
   const artifacts = currentLiveArtifacts();
+  const history = currentHelmHistoryFixture();
   const fetched = [];
   const plan = await planDeployment({
     eventName: 'schedule',
@@ -274,6 +408,11 @@ async function assertScheduledDeploySkipsCurrentLiveTuple() {
       fetched.push(url.pathname);
       return artifacts[url.pathname];
     },
+    fetchResource: async url => {
+      fetched.push(new URL(url).pathname);
+      return history.fetchResource(url);
+    },
+    chartMetadata: history.chartMetadata,
   });
 
   assert.strictEqual(plan.deploy, false);
@@ -281,14 +420,20 @@ async function assertScheduledDeploySkipsCurrentLiveTuple() {
   assert.deepStrictEqual(plan.drift, []);
   assert.deepStrictEqual(
     fetched.sort(),
-    [...REQUIRED_LIVE_ARTIFACT_PATHS].sort(),
-    'scheduled planning must fetch every post-deploy release artifact',
+    [
+      ...REQUIRED_LIVE_ARTIFACT_PATHS,
+      '/charts/release-history.json',
+      '/charts/index.yaml',
+      ...history.packagePaths,
+    ].sort(),
+    'scheduled planning must fetch every release artifact and recorded Helm package',
   );
 }
 
 async function assertScheduledDeployRepairsStaleLiveTuple() {
   const audit = currentAudit();
   const quickstart = currentQuickstart();
+  const history = currentHelmHistoryFixture();
 
   audit.artifact_versions.server = '0.2.543';
   audit.artifact_distribution_surfaces['sdk-php'][0].url = 'https://packagist.org/packages/stale/php-sdk';
@@ -339,6 +484,8 @@ async function assertScheduledDeployRepairsStaleLiveTuple() {
       artifacts['/quickstart-execution-contract.json'] = quickstart;
       return artifacts[url.pathname];
     },
+    fetchResource: history.fetchResource,
+    chartMetadata: history.chartMetadata,
   });
 
   assert.strictEqual(plan.deploy, true);
@@ -348,12 +495,15 @@ async function assertScheduledDeployRepairsStaleLiveTuple() {
 
 async function assertScheduledDeployRepairsStaleNarrativeAudit() {
   const artifacts = currentLiveArtifacts();
+  const history = currentHelmHistoryFixture();
   artifacts['/docs-narrative-audit.json'].docs_revision = 'b'.repeat(40);
 
   const plan = await planDeployment({
     eventName: 'schedule',
     expectedRevision: CURRENT_DOCS_REVISION,
     fetcher: async url => artifacts[url.pathname],
+    fetchResource: history.fetchResource,
+    chartMetadata: history.chartMetadata,
   });
 
   assert.strictEqual(plan.deploy, true);
@@ -366,12 +516,15 @@ async function assertScheduledDeployRepairsStaleNarrativeAudit() {
 
 async function assertScheduledDeployRepairsStaleCompatibilityContract() {
   const artifacts = currentLiveArtifacts();
+  const history = currentHelmHistoryFixture();
   artifacts['/compatibility-contract.json'].version += 1;
 
   const plan = await planDeployment({
     eventName: 'schedule',
     expectedRevision: CURRENT_DOCS_REVISION,
     fetcher: async url => artifacts[url.pathname],
+    fetchResource: history.fetchResource,
+    chartMetadata: history.chartMetadata,
   });
 
   assert.strictEqual(plan.deploy, true);
@@ -384,6 +537,7 @@ async function assertScheduledDeployRepairsStaleCompatibilityContract() {
 
 async function assertScheduledDeployRepairsLiveArtifactFailure(route, message) {
   const artifacts = currentLiveArtifacts();
+  const history = currentHelmHistoryFixture();
   const plan = await planDeployment({
     eventName: 'schedule',
     expectedRevision: CURRENT_DOCS_REVISION,
@@ -393,11 +547,86 @@ async function assertScheduledDeployRepairsLiveArtifactFailure(route, message) {
       }
       return artifacts[url.pathname];
     },
+    fetchResource: history.fetchResource,
+    chartMetadata: history.chartMetadata,
   });
 
   assert.strictEqual(plan.deploy, true);
   assert.strictEqual(plan.reason, 'scheduled-live-check-error');
   assert.deepStrictEqual(plan.drift, [message]);
+}
+
+async function assertScheduledHelmHistoryDriftCannotSkip() {
+  const scenarios = [
+    {
+      label: 'missing history file',
+      mutate: fixture => {
+        fixture.resources['/charts/release-history.json'] = {
+          status: 404,
+          body: Buffer.alloc(0),
+        };
+      },
+      error: /release-history\.json returned HTTP 404/,
+    },
+    {
+      label: 'missing index entry',
+      mutate: fixture => {
+        fixture.index.entries[helmRelease.chart.name] =
+          fixture.index.entries[helmRelease.chart.name].filter(
+            entry => entry.version !== fixture.releases[0].version,
+          );
+        fixture.resources['/charts/index.yaml'].body =
+          Buffer.from(yaml.dump(fixture.index));
+      },
+      error: /index versions.*must exactly match durable history/,
+    },
+    {
+      label: 'missing historical package',
+      mutate: fixture => {
+        fixture.resources[fixture.historicalPackagePath] = {
+          status: 404,
+          body: Buffer.alloc(0),
+        };
+      },
+      error: /durable-workflow-.*\.tgz returned HTTP 404/,
+    },
+    {
+      label: 'changed historical package',
+      mutate: fixture => {
+        fixture.resources[fixture.historicalPackagePath].body =
+          Buffer.from('rewritten-public-chart-package');
+      },
+      error: /release history package digest/,
+    },
+  ];
+
+  for (const scenario of scenarios) {
+    const history = currentHelmHistoryFixture(scenario.mutate);
+    const artifacts = currentLiveArtifacts();
+    const plan = await planDeployment({
+      eventName: 'schedule',
+      expectedRevision: CURRENT_DOCS_REVISION,
+      fetcher: async url => artifacts[url.pathname],
+      fetchResource: history.fetchResource,
+      chartMetadata: history.chartMetadata,
+    });
+
+    assert.strictEqual(
+      plan.deploy,
+      true,
+      `${scenario.label} must request a protected deployment`,
+    );
+    assert.strictEqual(
+      plan.reason,
+      'scheduled-live-check-error',
+      `${scenario.label} must not report the repository as current`,
+    );
+    assert.match(
+      plan.drift.join('\n'),
+      scenario.error,
+      `${scenario.label} must identify the failed Helm history invariant`,
+    );
+  }
 }
 
 async function main() {
@@ -406,6 +635,7 @@ async function main() {
   await assertScheduledDeployRepairsStaleLiveTuple();
   await assertScheduledDeployRepairsStaleNarrativeAudit();
   await assertScheduledDeployRepairsStaleCompatibilityContract();
+  await assertScheduledHelmHistoryDriftCannotSkip();
   for (const route of REQUIRED_LIVE_ARTIFACT_PATHS) {
     await assertScheduledDeployRepairsLiveArtifactFailure(
       route,

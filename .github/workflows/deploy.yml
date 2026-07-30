@@ -39,6 +39,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/refresh-public-artifact-versions.js --check
 
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set up Helm
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310  # v5
+        with:
+          version: v3.16.2
+
       - name: Plan deployment
         id: deploy-plan
         env:
@@ -59,10 +67,6 @@ jobs:
           ref: ${{ steps.workflow-authority.outputs.ref }}
           path: .workflow-authority
           persist-credentials: false
-
-      - name: Install dependencies
-        if: steps.deploy-plan.outputs.deploy == 'true'
-        run: npm ci
 
       - name: Verify pinned server protocol catalog
         if: steps.deploy-plan.outputs.deploy == 'true'
@@ -87,12 +91,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WORKFLOW_SDK_NEUTRALITY_MANIFEST_PATH: ${{ github.workspace }}/.workflow-authority/resources/sdk-neutrality-contract.json
         run: npm run build
-
-      - name: Set up Helm
-        if: steps.deploy-plan.outputs.deploy == 'true'
-        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310  # v5
-        with:
-          version: v3.16.2
 
       - name: Set up Docker Buildx
         if: steps.deploy-plan.outputs.deploy == 'true'

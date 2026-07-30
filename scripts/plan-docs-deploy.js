@@ -16,6 +16,10 @@ const {
   REQUIRED_LIVE_ARTIFACTS,
   repositoryArtifactPath,
 } = require('./docs-release-live-artifacts');
+const {
+  verifyLiveHttpsReleaseHistory,
+} = require('./helm-chart-release');
+const helmRelease = require('../static/charts/release.json');
 
 const DEFAULT_EVENT_NAME = 'push';
 const DEFAULT_LIVE_BASE_URL = 'https://durable-workflow.com';
@@ -365,6 +369,11 @@ async function planDeployment(options = {}) {
     const repoRoot = options.repoRoot || REPO_ROOT;
     const expectedRevision = options.expectedRevision || docsRevision(repoRoot);
     const liveArtifacts = await readLivePublicArtifacts(options);
+    await verifyLiveHttpsReleaseHistory({
+      contract: helmRelease,
+      fetchResource: options.fetchResource,
+      chartMetadata: options.chartMetadata,
+    });
     const drift = [
       ...compareRequiredLiveArtifacts(
         liveArtifacts,
