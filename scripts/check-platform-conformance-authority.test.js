@@ -1,15 +1,18 @@
 #!/usr/bin/env node
 
 const assert = require('assert');
+const path = require('path');
 
 const {
   assertPublicConformanceContractHasNoInternalHarnessArtifacts,
+  assertWorkflowPackageMirrorMatches,
   collectPublicConformanceContractInternalHarnessLeaks,
 } = require('./check-platform-conformance-authority');
 const {
   stablePlatformConformanceDiscoveryEntries,
 } = require('./platform-conformance-public-discovery');
 const suite = require('../static/platform-conformance-contract.json');
+const suitePath = path.join(__dirname, '..', 'static', 'platform-conformance-contract.json');
 
 const validate = contract =>
   assertPublicConformanceContractHasNoInternalHarnessArtifacts(
@@ -203,13 +206,16 @@ assert(
   'the suite authority catalog must project the PHP SDK contract into public discovery',
 );
 
-const invalidAuthoritySuite = JSON.parse(JSON.stringify(suite));
-invalidAuthoritySuite.conformance_authorities.php_sdk.url =
-  'static/platform-conformance/php-sdk-conformance.json';
+assert.doesNotThrow(
+  () => assertWorkflowPackageMirrorMatches(suitePath),
+  'the package-mirror guard must accept an identical authority',
+);
 assert.throws(
-  () => stablePlatformConformanceDiscoveryEntries(invalidAuthoritySuite),
-  /must use a public https:\/\/durable-workflow\.github\.io\/platform-conformance\/ URL/,
-  'repository-local authority locations must not satisfy public discovery',
+  () => assertWorkflowPackageMirrorMatches(
+    path.join(__dirname, '..', 'static', 'sdk-neutrality-contract.json'),
+  ),
+  /must exactly match the published Workflow package mirror/,
+  'the package-mirror guard must reject stale or unrelated authority content',
 );
 
 console.log('Platform-conformance public-boundary adversarial checks passed');

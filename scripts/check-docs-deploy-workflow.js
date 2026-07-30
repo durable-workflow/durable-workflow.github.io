@@ -74,6 +74,10 @@ function assertProtectedDeploySource(source) {
   const planIndex = steps.findIndex(
     step => step.run === 'node scripts/plan-docs-deploy.js',
   );
+  const publishedWorkflowCheckoutIndex = steps.findIndex(
+    step => step.name === 'Checkout published Workflow conformance authority',
+  );
+  const buildIndex = steps.findIndex(step => step.run === 'npm run build');
   if (
     installIndex < 0 ||
     setupHelmIndex < 0 ||
@@ -86,6 +90,27 @@ function assertProtectedDeploySource(source) {
     fail(
       'docs deploy workflow must install the Helm history validation tooling ' +
         'before scheduled planning',
+    );
+  }
+  const publishedWorkflowCheckout = steps[publishedWorkflowCheckoutIndex];
+  const buildStep = steps[buildIndex];
+  if (
+    publishedWorkflowCheckoutIndex < 0 ||
+    buildIndex < 0 ||
+    publishedWorkflowCheckoutIndex >= buildIndex ||
+    publishedWorkflowCheckout.with?.['github-server-url'] !== undefined ||
+    publishedWorkflowCheckout.with?.repository !==
+      '${{ github.repository_owner }}/workflow' ||
+    publishedWorkflowCheckout.with?.ref !==
+      '${{ steps.published-workflow.outputs.ref }}' ||
+    publishedWorkflowCheckout.with?.path !== '.published-workflow-authority' ||
+    publishedWorkflowCheckout.with?.['persist-credentials'] !== false ||
+    buildStep.env?.WORKFLOW_PLATFORM_CONFORMANCE_MANIFEST_PATH !==
+      '${{ github.workspace }}/.published-workflow-authority/resources/platform-conformance-contract.json'
+  ) {
+    fail(
+      'docs deploy workflow must compare the public conformance authority with ' +
+        'the pinned published Workflow manifest before building',
     );
   }
   const predeployIndex = steps.findIndex(
@@ -156,6 +181,10 @@ for (const required of [
   'run: node scripts/verify-docs-release-live.js',
   'name: Verify live workflow lifecycle authority',
   'run: node scripts/verify-workflow-lifecycle-live.js',
+  'name: Resolve published Workflow conformance ref',
+  'name: Checkout published Workflow conformance authority',
+  'repository: ${{ github.repository_owner }}/workflow',
+  'WORKFLOW_PLATFORM_CONFORMANCE_MANIFEST_PATH: ${{ github.workspace }}/.published-workflow-authority/resources/platform-conformance-contract.json',
   'name: Guard Helm chart immutability and stage the HTTPS repository',
   'run: node scripts/helm-chart-release.js pre-deploy',
   'name: Verify both public Helm release channels',

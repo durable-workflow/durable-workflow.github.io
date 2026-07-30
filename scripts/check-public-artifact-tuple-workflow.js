@@ -6,10 +6,18 @@ const yaml = require('js-yaml');
 
 const workflowPath = path.join(__dirname, '..', '.github', 'workflows', 'public-artifact-tuple.yml');
 const deployWorkflowPath = path.join(__dirname, '..', '.github', 'workflows', 'deploy.yml');
+const qualificationWorkflowPath = path.join(
+  __dirname,
+  '..',
+  '.github',
+  'workflows',
+  'qualification.yml',
+);
 const routeScriptPath = path.join(__dirname, 'route-public-artifact-tuple-handoff.js');
 const packagePath = path.join(__dirname, '..', 'package.json');
 const workflow = fs.readFileSync(workflowPath, 'utf8');
 const deployWorkflow = fs.readFileSync(deployWorkflowPath, 'utf8');
+const qualificationWorkflow = fs.readFileSync(qualificationWorkflowPath, 'utf8');
 const routeScript = fs.readFileSync(routeScriptPath, 'utf8');
 const packageSource = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
 const registryFreshnessCommand = 'node scripts/refresh-public-artifact-versions.js --check';
@@ -71,6 +79,175 @@ function assertProtectedRefreshSource(source) {
 }
 
 assertProtectedRefreshSource(workflow);
+
+function assertPublicWorkflowCheckout(steps, context) {
+  const checkout = steps.find(
+    step => step.name === 'Checkout published Workflow conformance authority',
+  );
+
+  if (
+    !checkout ||
+    checkout.with?.['github-server-url'] !== undefined ||
+    checkout.with?.repository !== '${{ github.repository_owner }}/workflow' ||
+    checkout.with?.ref !== '${{ steps.published-workflow.outputs.ref }}' ||
+    checkout.with?.path !== '.published-workflow-authority' ||
+    checkout.with?.['persist-credentials'] !== false
+  ) {
+    throw new Error(
+      `${context} must check out the pinned Workflow conformance authority ` +
+        'from the runner-local repository owner without crossing or persisting credentials',
+    );
+  }
+}
+
+function assertQualificationChecksPublishedWorkflowAuthority(source) {
+  const parsed = yaml.load(source);
+  const steps = parsed?.jobs?.['executable-contracts']?.steps || [];
+  const repositoryCheckout = steps.find(
+    step => step.uses ===
+      'actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803',
+  );
+  const localVerify = steps.find(
+    step => step.name === 'Verify local Workflow conformance authority',
+  );
+  const resolve = steps.find(
+    step => step.name === 'Resolve published Workflow conformance ref',
+  );
+  const checkout = steps.find(
+    step => step.name === 'Checkout published Workflow conformance authority',
+  );
+  const verify = steps.find(
+    step => step.name === 'Verify published Workflow conformance authority',
+  );
+
+  assertPublicWorkflowCheckout(steps, 'documentation qualification');
+
+  if (
+    !repositoryCheckout ||
+    repositoryCheckout.with?.['fetch-depth'] !== 0
+  ) {
+    throw new Error(
+      'documentation qualification must fetch same-repository target-branch ' +
+        'history for the immutable conformance digest baseline',
+    );
+  }
+
+  if (
+    !localVerify ||
+    localVerify.if !== undefined ||
+    localVerify.env !== undefined ||
+    localVerify.run !== 'npm run check:platform-conformance-authority'
+  ) {
+    throw new Error(
+      'documentation qualification must validate the checked-in conformance ' +
+        'authority without cross-repository access',
+    );
+  }
+
+  const publicGitHubOnly = "github.server_url == 'https://github.com'";
+  if (
+    !resolve ||
+    resolve.if !== publicGitHubOnly ||
+    checkout?.if !== publicGitHubOnly ||
+    !verify ||
+    verify.if !== publicGitHubOnly ||
+    verify.run !== 'npm run check:platform-conformance-authority' ||
+    verify.env?.WORKFLOW_PLATFORM_CONFORMANCE_MANIFEST_PATH !==
+      '${{ github.workspace }}/.published-workflow-authority/resources/platform-conformance-contract.json'
+  ) {
+    throw new Error(
+      'public GitHub documentation qualification must compare the public ' +
+        'authority with the pinned published Workflow manifest',
+    );
+  }
+}
+
+assertQualificationChecksPublishedWorkflowAuthority(qualificationWorkflow);
+assertPublicWorkflowCheckout(
+  yaml.load(workflow)?.jobs?.refresh?.steps || [],
+  'public artifact tuple qualification',
+);
+for (const [label, fixture] of [
+  [
+    'hard-coded GitHub repository',
+    qualificationWorkflow.replace(
+      'repository: ${{ github.repository_owner }}/workflow',
+      'repository: durable-workflow/workflow',
+    ),
+  ],
+  [
+    'cross-host server URL',
+    qualificationWorkflow.replace(
+      'repository: ${{ github.repository_owner }}/workflow',
+      'github-server-url: https://github.com\n' +
+        '          repository: ${{ github.repository_owner }}/workflow',
+    ),
+  ],
+]) {
+  assert.notStrictEqual(
+    fixture,
+    qualificationWorkflow,
+    `${label} fixture must mutate documentation qualification`,
+  );
+  assert.throws(
+    () => assertQualificationChecksPublishedWorkflowAuthority(fixture),
+    /without crossing or persisting credentials/,
+    `documentation qualification must reject a ${label}`,
+  );
+}
+
+const qualificationWithUnconditionalWorkflowCheckout = qualificationWorkflow.replace(
+  "      - name: Checkout published Workflow conformance authority\n" +
+    "        if: github.server_url == 'https://github.com'\n",
+  '      - name: Checkout published Workflow conformance authority\n',
+);
+assert.notStrictEqual(
+  qualificationWithUnconditionalWorkflowCheckout,
+  qualificationWorkflow,
+  'unconditional checkout fixture must mutate documentation qualification',
+);
+assert.throws(
+  () => assertQualificationChecksPublishedWorkflowAuthority(
+    qualificationWithUnconditionalWorkflowCheckout,
+  ),
+  /public GitHub documentation qualification/,
+  'documentation qualification must not require cross-repository access on non-GitHub runners',
+);
+
+const qualificationWithoutLocalAuthorityCheck = qualificationWorkflow.replace(
+  "      - name: Verify local Workflow conformance authority\n" +
+    "        run: npm run check:platform-conformance-authority\n\n",
+  '',
+);
+assert.notStrictEqual(
+  qualificationWithoutLocalAuthorityCheck,
+  qualificationWorkflow,
+  'local authority check fixture must mutate documentation qualification',
+);
+assert.throws(
+  () => assertQualificationChecksPublishedWorkflowAuthority(
+    qualificationWithoutLocalAuthorityCheck,
+  ),
+  /without cross-repository access/,
+  'documentation qualification must preserve a credential-independent authority check',
+);
+
+const qualificationWithoutTargetHistory = qualificationWorkflow.replace(
+  '          fetch-depth: 0',
+  '          fetch-depth: 1',
+);
+assert.notStrictEqual(
+  qualificationWithoutTargetHistory,
+  qualificationWorkflow,
+  'shallow checkout fixture must mutate documentation qualification',
+);
+assert.throws(
+  () => assertQualificationChecksPublishedWorkflowAuthority(
+    qualificationWithoutTargetHistory,
+  ),
+  /same-repository target-branch history/,
+  'documentation qualification must retain the published digest baseline',
+);
 
 for (const [label, fixture] of [
   [
@@ -141,6 +318,10 @@ for (const required of [
   'static/compatibility-contract.json',
   'static/sdk-neutrality-contract.json',
   'scripts/workflow-sdk-neutrality-authority-lock.json',
+  'Resolve published Workflow conformance ref',
+  'Checkout published Workflow conformance authority',
+  '.published-workflow-authority/resources/platform-conformance-contract.json',
+  'WORKFLOW_PLATFORM_CONFORMANCE_MANIFEST_PATH',
   "stable_default_docs_line: '1.x'",
   "prerelease_docs_line: '2.0'",
   "'LEAK=0'",
@@ -182,6 +363,17 @@ if (routePosition >= validatePosition) {
 const validateStep = workflow.slice(validatePosition, workflow.indexOf('\n      - name:', validatePosition + 1));
 if (!validateStep.includes('run: npm run build')) {
   fail('post-route public artifact tuple validation must preserve the normal docs build');
+}
+if (
+  !validateStep.includes('WORKFLOW_PLATFORM_CONFORMANCE_MANIFEST_PATH:') ||
+  !validateStep.includes(
+    '.published-workflow-authority/resources/platform-conformance-contract.json',
+  )
+) {
+  fail(
+    'post-route public artifact tuple validation must compare the docs authority ' +
+      'with the newly published Workflow package',
+  );
 }
 
 if (packageSource.scripts.build.includes(registryFreshnessCommand)) {

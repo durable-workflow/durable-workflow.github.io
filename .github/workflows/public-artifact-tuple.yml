@@ -244,10 +244,26 @@ jobs:
           ref: ${{ steps.workflow-authority.outputs.ref }}
           path: .workflow-authority
 
+      - name: Resolve published Workflow conformance ref
+        id: published-workflow
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          node -e "process.stdout.write('ref=' + require('./scripts/published-artifact-versions.json').artifacts.workflow + '\n')" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout published Workflow conformance authority
+        if: steps.changes.outputs.changed == 'true'
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
+        with:
+          repository: ${{ github.repository_owner }}/workflow
+          ref: ${{ steps.published-workflow.outputs.ref }}
+          path: .published-workflow-authority
+          persist-credentials: false
+
       - name: Validate refreshed docs
         if: steps.changes.outputs.changed == 'true'
         env:
           WORKFLOW_SDK_NEUTRALITY_MANIFEST_PATH: ${{ github.workspace }}/.workflow-authority/resources/sdk-neutrality-contract.json
+          WORKFLOW_PLATFORM_CONFORMANCE_MANIFEST_PATH: ${{ github.workspace }}/.published-workflow-authority/resources/platform-conformance-contract.json
         run: npm run build
 
       - name: Report current tuple

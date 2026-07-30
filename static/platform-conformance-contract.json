@@ -1,26 +1,246 @@
 {
   "schema": "durable-workflow.v2.platform-conformance.suite",
-  "version": 33,
+  "version": 37,
   "authority_doc": "docs/platform-conformance.md",
   "authority_url": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
   "surface_stability_authority": "durable-workflow.v2.surface-stability.contract",
   "result_schema": "durable-workflow.v2.platform-conformance.result",
   "result_version": 1,
+  "artifact_version_history": {
+    "rust_signal_query": {
+      "history_mode": "observed_bindings_with_provenance",
+      "strict_suite_versioning_from": 37,
+      "rule": "Evidence produced before suite version 37 must be interpreted using the exact artifact tuple and authority source revision recorded for that run. Starting with suite version 37, every exact artifact change must advance the suite version and append a binding without modifying prior bindings.",
+      "bindings": [
+        {
+          "suite_version": 29,
+          "artifact": {
+            "package": "durable-workflow",
+            "version": "0.1.2",
+            "source": "crates.io",
+            "cargo_requirement": "=0.1.2"
+          },
+          "source_revision": "009c0257964f33705941466d09777172068b3a26",
+          "authority_sha256": "793c8e6f63310c51aa97380466a58bd68b4c90dc2277351a3bf7ba60be794cba"
+        },
+        {
+          "suite_version": 30,
+          "artifact": {
+            "package": "durable-workflow",
+            "version": "0.1.2",
+            "source": "crates.io",
+            "cargo_requirement": "=0.1.2"
+          },
+          "source_revision": "3fa9bff54c8ccef5537a885b167e470a629661b9",
+          "authority_sha256": "1807509b4a56463c37998e91e433ff7cf79c49c9eb9722d6f36fefb38ac615a0"
+        },
+        {
+          "suite_version": 31,
+          "artifact": {
+            "package": "durable-workflow",
+            "version": "2.0.0-beta.3",
+            "source": "crates.io",
+            "cargo_requirement": "=2.0.0-beta.3"
+          },
+          "source_revision": "4275fd11d80e88d4414383e4338144c228eb5a78",
+          "authority_sha256": "eb79b471e654b14a517a077d526b085c56ac55b17405233df2ffbdf11e32e64b"
+        },
+        {
+          "suite_version": 32,
+          "artifact": {
+            "package": "durable-workflow",
+            "version": "2.0.0-beta.4",
+            "source": "crates.io",
+            "cargo_requirement": "=2.0.0-beta.4"
+          },
+          "source_revision": "187746bb19615a8cbb25dfbe1e4e27dbbd933472",
+          "authority_sha256": "4acdcb70da1cebb77a44edb7cce68ef1d0315159d289c94af2f57f526c3cbbea"
+        },
+        {
+          "suite_version": 33,
+          "artifact": {
+            "package": "durable-workflow",
+            "version": "2.0.0-beta.5",
+            "source": "crates.io",
+            "cargo_requirement": "=2.0.0-beta.5"
+          },
+          "source_revision": "08fab5ff5c51fd31ce8306b39edb10996d5a8531",
+          "authority_sha256": "d809264b6394935c0c4b3c30e6ba50252fba0c6743a81a2c747c39a28830277d"
+        },
+        {
+          "suite_version": 34,
+          "artifact": {
+            "package": "durable-workflow",
+            "version": "2.0.0-beta.6",
+            "source": "crates.io",
+            "cargo_requirement": "=2.0.0-beta.6"
+          },
+          "source_revision": "5191a97d90e3e476c4e6a51e90faa559868e4c70",
+          "authority_sha256": "d067aa5e750a804d67fb501704a46394488309e33f6df461ba000b41530a87a0"
+        },
+        {
+          "suite_version": 34,
+          "artifact": {
+            "package": "durable-workflow",
+            "version": "2.0.0-beta.10",
+            "source": "crates.io",
+            "cargo_requirement": "=2.0.0-beta.10"
+          },
+          "source_revision": "0fddbec98b94a5b542480d746759a2c695bba2be",
+          "authority_sha256": "6a90b3ba55b43feb332fb895a23045fdaf85b23357c1bbeff2e79321cd4afca8"
+        },
+        {
+          "suite_version": 34,
+          "artifact": {
+            "package": "durable-workflow",
+            "version": "2.0.0-beta.13",
+            "source": "crates.io",
+            "cargo_requirement": "=2.0.0-beta.13"
+          },
+          "source_revision": "0561e96950c68beabb3535a2f65f7403209885a5",
+          "authority_sha256": "c2e567ba37e68354256e680a53b0890ede7e8f3b69d2ed9aede33ad8aa0af8a4"
+        },
+        {
+          "suite_version": 34,
+          "artifact": {
+            "package": "durable-workflow",
+            "version": "2.0.0-beta.14",
+            "source": "crates.io",
+            "cargo_requirement": "=2.0.0-beta.14"
+          },
+          "source_revision": "ef844b34dfec8cfe54d4bc699fc21d80574ce028",
+          "authority_sha256": "ecc7c1b8427dd89fc370f7aafdd1a5d6089c8c60559f61af112d8d92e516dece"
+        },
+        {
+          "suite_version": 34,
+          "artifact": {
+            "package": "durable-workflow",
+            "version": "2.0.0-beta.16",
+            "source": "crates.io",
+            "cargo_requirement": "=2.0.0-beta.16"
+          },
+          "source_revision": "68262eb8589e8e1142c2e158f50815950a347ef8",
+          "authority_sha256": "4f304b9d2dae9b3f71b800b49d22b7ae4c60fd69e37bece224ccca5818911222"
+        },
+        {
+          "suite_version": 34,
+          "artifact": {
+            "package": "durable-workflow",
+            "version": "2.0.0-beta.17",
+            "source": "crates.io",
+            "cargo_requirement": "=2.0.0-beta.17"
+          },
+          "source_revision": "f1ef7d4edd8b1cea28192bfe360d3a233721c0ca",
+          "authority_sha256": "86cff1043fb2c97490b08a9fee0e6ca993eb2c3f4f03b863c61e4ffd5188cbaf"
+        },
+        {
+          "suite_version": 34,
+          "artifact": {
+            "package": "durable-workflow",
+            "version": "2.0.0-beta.18",
+            "source": "crates.io",
+            "cargo_requirement": "=2.0.0-beta.18"
+          },
+          "source_revision": "8853baf7d42e2bbdf08ed101dc0ba4e7bb0f4a31",
+          "authority_sha256": "8285966e7ed1eb20942ea24bc008725e80e737a895ae43a0c69fdd13728531d5"
+        },
+        {
+          "suite_version": 34,
+          "artifact": {
+            "package": "durable-workflow",
+            "version": "2.0.0-beta.21",
+            "source": "crates.io",
+            "cargo_requirement": "=2.0.0-beta.21"
+          },
+          "source_revision": "636ff3fc90c1a01c8ee74becaa148c9e193969ea",
+          "authority_sha256": "a60b114a3ad2285c4a9796d72de29919d3ba84e713f20fb0f6fa705aa957e525"
+        },
+        {
+          "suite_version": 34,
+          "artifact": {
+            "package": "durable-workflow",
+            "version": "2.0.0-rc.1",
+            "source": "crates.io",
+            "cargo_requirement": "=2.0.0-rc.1"
+          },
+          "source_revision": "864cd6f2e11a60ddbd221548019df8ef0cd8f812",
+          "authority_sha256": "dba857beb24d0cd75adb7146d6e17b7728fb432e7d7e004a3a2553f630eb94cc"
+        },
+        {
+          "suite_version": 34,
+          "artifact": {
+            "package": "durable-workflow",
+            "version": "2.0.0-rc.2",
+            "source": "crates.io",
+            "cargo_requirement": "=2.0.0-rc.2"
+          },
+          "source_revision": "961bc3675b2c1c35577b66bccc77b2e4f4485369",
+          "authority_sha256": "087764682d0f80e6f8f329baa0cab6adec1cfe3733083383dd1d2159cc607457"
+        },
+        {
+          "suite_version": 34,
+          "artifact": {
+            "package": "durable-workflow",
+            "version": "2.0.0-rc.1",
+            "source": "crates.io",
+            "cargo_requirement": "=2.0.0-rc.1"
+          },
+          "source_revision": "6c137c89f5b0efdfc5f5720ef81005dd67751aad",
+          "authority_sha256": "dba857beb24d0cd75adb7146d6e17b7728fb432e7d7e004a3a2553f630eb94cc"
+        },
+        {
+          "suite_version": 35,
+          "artifact": {
+            "package": "durable-workflow",
+            "version": "2.0.0-rc.3",
+            "source": "crates.io",
+            "cargo_requirement": "=2.0.0-rc.3"
+          },
+          "source_revision": "2810085732928e0bae9a7ae16cc55149ad721635",
+          "authority_sha256": "fa4664b9cc826c3573e131a7b88d62b1dbee761d2b1d0e93d3aacb6a5e64cb11"
+        },
+        {
+          "suite_version": 36,
+          "artifact": {
+            "package": "durable-workflow",
+            "version": "2.0.0-rc.4",
+            "source": "crates.io",
+            "cargo_requirement": "=2.0.0-rc.4"
+          },
+          "source_revision": "dd07456686d367c215e2637f586436b9710d7b35",
+          "authority_sha256": "d256640d23b07c3d1a88e40854056074d8abd154360190712f67507c027ca8fc"
+        },
+        {
+          "suite_version": 36,
+          "artifact": {
+            "package": "durable-workflow",
+            "version": "2.0.0-rc.5",
+            "source": "crates.io",
+            "cargo_requirement": "=2.0.0-rc.5"
+          },
+          "source_revision": "257a758c4b20094246ec676f0340bb392cf867c6",
+          "authority_sha256": "4679879192043c5aa725d8e9770719c41a2b991e5dfc565ca3e5c33670ffd0b9"
+        },
+        {
+          "suite_version": 37,
+          "artifact": {
+            "package": "durable-workflow",
+            "version": "2.0.0-rc.5",
+            "source": "crates.io",
+            "cargo_requirement": "=2.0.0-rc.5"
+          },
+          "source_revision": "e779bf19aeb78bdaeb020b23ac80b576ec125af8",
+          "authority_sha256": "3469169d0df27e80386ceca489826200620d6dfc87f42e4deae0949da377652c"
+        }
+      ]
+    }
+  },
   "conformance_levels": [
     "full",
     "partial",
     "provisional",
     "nonconforming"
   ],
-  "conformance_authorities": {
-    "php_sdk": {
-      "status": "stable",
-      "schema": "durable-workflow.v2.php-sdk-conformance-contract",
-      "version": 1,
-      "url": "https://durable-workflow.github.io/platform-conformance/php-sdk-conformance.json",
-      "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance"
-    }
-  },
   "targets": {
     "standalone_server": {
       "description": "Implementations of the standalone Durable Workflow server: the HTTP control plane plus the worker plane plus the cluster_info manifests.",
@@ -249,9 +469,9 @@
           "worker_runtime": "sdk-rust",
           "artifact": {
             "package": "durable-workflow",
-            "version": "0.1.2",
+            "version": "2.0.0-rc.5",
             "source": "crates.io",
-            "cargo_requirement": "=0.1.2"
+            "cargo_requirement": "=2.0.0-rc.5"
           },
           "query_state_model": "snapshot_derived_transport_state",
           "caller_paths": [
@@ -264,9 +484,9 @@
           "worker_runtime": "sdk-python",
           "artifact": {
             "package": "durable-workflow",
-            "version": "0.1.2",
+            "version": "2.0.0-rc.5",
             "source": "crates.io",
-            "cargo_requirement": "=0.1.2"
+            "cargo_requirement": "=2.0.0-rc.5"
           },
           "rust_role": "client",
           "caller_paths": [
@@ -277,9 +497,9 @@
           "worker_runtime": "sdk-php",
           "artifact": {
             "package": "durable-workflow",
-            "version": "0.1.2",
+            "version": "2.0.0-rc.5",
             "source": "crates.io",
-            "cargo_requirement": "=0.1.2"
+            "cargo_requirement": "=2.0.0-rc.5"
           },
           "rust_role": "client",
           "caller_paths": [
@@ -290,9 +510,9 @@
           "worker_runtime": "sdk-rust",
           "artifact": {
             "package": "durable-workflow",
-            "version": "0.1.2",
+            "version": "2.0.0-rc.5",
             "source": "crates.io",
-            "cargo_requirement": "=0.1.2"
+            "cargo_requirement": "=2.0.0-rc.5"
           },
           "query_state_model": "snapshot_derived_transport_state",
           "required_assertions": [
@@ -313,9 +533,9 @@
           "worker_runtime": "sdk-rust",
           "artifact": {
             "package": "durable-workflow",
-            "version": "0.1.2",
+            "version": "2.0.0-rc.5",
             "source": "crates.io",
-            "cargo_requirement": "=0.1.2"
+            "cargo_requirement": "=2.0.0-rc.5"
           },
           "query_state_model": "replayed_workflow_instance_state",
           "lifecycle": [
@@ -621,7 +841,7 @@
     },
     "skew_refusal_matrix_contract": {
       "status": "stable",
-      "description": "Published-artifact version-skew refusal scenarios across CLI, Python SDK, the standalone PHP SDK worker, Waterline, future-version boundaries, worker registration classifications, Waterline render classifications, and per-operation request/response evidence; Workflow remains the embedded Laravel and Waterline engine.",
+      "description": "Published-artifact version-skew refusal scenarios across CLI, Python SDK, PHP workflow worker, Waterline, future-version boundaries, worker registration classifications, Waterline render classifications, and per-operation request/response evidence.",
       "sources": [
         {
           "repository": "durable-workflow.github.io",
@@ -642,7 +862,7 @@
     },
     "prerelease_readiness_contract": {
       "status": "stable",
-      "description": "Published-artifact scenarios for 2.0 prerelease readiness across Workflow, Waterline, server, CLI, PHP, Python, and Rust SDKs, sample app, public docs, the standalone quickstart paths, and embedded Laravel.",
+      "description": "Published-artifact scenarios for 2.0 prerelease readiness across Workflow, Waterline, server, CLI, Python SDK, sample app, public docs, and the quickstart local-server hosting and Laravel paths.",
       "sources": [
         {
           "repository": "durable-workflow.github.io",
@@ -656,9 +876,7 @@
         "workflow_migration_readiness_verdict",
         "workflow_public_api_stability_verdict",
         "workflow_documentation_and_config_verdict",
-        "quickstart_standalone_php_completion",
-        "quickstart_python_completion",
-        "quickstart_rust_completion",
+        "quickstart_local_server_hosted_completion",
         "quickstart_laravel_branch_completion",
         "waterline_feature_completeness_verdict",
         "waterline_migration_and_config_verdict",
@@ -725,7 +943,7 @@
     },
     "principal_attribution_contract": {
       "status": "stable",
-      "description": "Published-artifact scenarios proving server-derived, non-spoofable principal attribution across raw HTTP, CLI, Python SDK, the standalone PHP SDK client, and Waterline operator surfaces; Workflow remains the embedded Laravel and Waterline engine.",
+      "description": "Published-artifact scenarios proving server-derived, non-spoofable principal attribution across raw HTTP, CLI, Python SDK, PHP workflow client, and Waterline operator surfaces.",
       "sources": [
         {
           "repository": "durable-workflow.github.io",

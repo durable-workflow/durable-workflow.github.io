@@ -22,11 +22,37 @@ jobs:
 
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6
         with:
           node-version: 24
           cache: npm
+
+      - name: Verify local Workflow conformance authority
+        run: npm run check:platform-conformance-authority
+
+      - name: Resolve published Workflow conformance ref
+        id: published-workflow
+        if: github.server_url == 'https://github.com'
+        run: |
+          node -e "process.stdout.write('ref=' + require('./scripts/published-artifact-versions.json').artifacts.workflow + '\n')" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout published Workflow conformance authority
+        if: github.server_url == 'https://github.com'
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
+        with:
+          repository: ${{ github.repository_owner }}/workflow
+          ref: ${{ steps.published-workflow.outputs.ref }}
+          path: .published-workflow-authority
+          persist-credentials: false
+
+      - name: Verify published Workflow conformance authority
+        if: github.server_url == 'https://github.com'
+        env:
+          WORKFLOW_PLATFORM_CONFORMANCE_MANIFEST_PATH: ${{ github.workspace }}/.published-workflow-authority/resources/platform-conformance-contract.json
+        run: npm run check:platform-conformance-authority
 
       - name: Install documentation dependencies
         run: npm ci

@@ -1,6 +1,9 @@
 const PLATFORM_CONFORMANCE_MANIFEST_PATH_PATTERN = /^static\/platform-conformance\/[^/]+\.json$/;
 const PLATFORM_CONFORMANCE_PUBLIC_URL_PREFIX =
   'https://durable-workflow.github.io/platform-conformance/';
+const STANDALONE_CONFORMANCE_AUTHORITY_PATHS = [
+  'platform-conformance/php-sdk-conformance.json',
+];
 
 function stablePlatformConformanceDiscoveryEntries(contract) {
   const entriesByPath = new Map();
@@ -54,6 +57,13 @@ function stablePlatformConformanceDiscoveryEntries(contract) {
 
     entriesByPath.set(buildPath, {
       path: publicUrl.pathname,
+      buildPath,
+    });
+  }
+
+  for (const buildPath of STANDALONE_CONFORMANCE_AUTHORITY_PATHS) {
+    entriesByPath.set(buildPath, {
+      path: `/${buildPath}`,
       buildPath,
     });
   }

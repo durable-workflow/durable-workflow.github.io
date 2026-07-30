@@ -36,6 +36,7 @@ const VERSIONED_SUITE_AUTHORITY_DIGESTS = {
   31: 'sha256:ccbd3a067faf685ea7d93f89e7e0721d51d44f7dd493874f00e33d971f633bee',
   32: 'sha256:9fbd647e3ef2d32441c17c1d0fd7d23a2b4bbc2026430dfc3c852288b02b49d1',
   33: 'sha256:dd0f589045ac0628d3fffc6fce5b910d41e94b63301c96cacd7757523cb65f9a',
+  37: 'sha256:2e54a3edfb6e37a05a68525397253b6c3d660aef2296654f0bbf895fac0501b4',
 };
 const EXPECTED_RUNTIME_SCENARIO_SCHEMA =
   'durable-workflow.v2.platform-conformance.runtime-scenarios';
@@ -285,12 +286,17 @@ const VERSIONED_RUNTIME_SCENARIO_STATUSES = {
     'runner_blocked',
   ],
 };
+VERSIONED_RUNTIME_SCENARIO_STATUSES[34] = VERSIONED_RUNTIME_SCENARIO_STATUSES[33];
+VERSIONED_RUNTIME_SCENARIO_STATUSES[35] = VERSIONED_RUNTIME_SCENARIO_STATUSES[34];
+VERSIONED_RUNTIME_SCENARIO_STATUSES[36] = VERSIONED_RUNTIME_SCENARIO_STATUSES[35];
+VERSIONED_RUNTIME_SCENARIO_STATUSES[37] = VERSIONED_RUNTIME_SCENARIO_STATUSES[36];
 const VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_FIELDS = [
   'artifact_policy',
   'common_result_evidence',
   'required_matrix',
   'scenario_requirements',
   'host_runner_contract',
+  'optional_scenarios',
 ];
 // Digests bind each stable scenario id's operations and pass_criteria to the
 // suite version so published harness criteria cannot drift invisibly.
@@ -583,6 +589,17 @@ VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[32] = {
 };
 VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[33] =
   VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[32];
+VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[34] =
+  VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[33];
+VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[35] =
+  VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[34];
+VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[36] =
+  VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[35];
+VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[37] = {
+  ...VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[36],
+  prerelease_readiness_contract:
+    'sha256:c84306b3c813066673466c61aab8d010ce2589620df67f860844f8029e34444a',
+};
 // Digests bind public top-level runtime scenario manifest requirements to the
 // suite version. These fields define artifact source policy, common evidence,
 // runtime matrices, scenario-specific required evidence, and host-runner result
@@ -765,6 +782,17 @@ VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[32] = {
 VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[33] = {
   ...VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[32],
   workflow_update_runtime_contract: 'sha256:425f5cdd164ff5ea8d3efa5904759d1029e89acdbc0d499b779be244bc3aca02',
+};
+VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[34] =
+  VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[33];
+VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[35] =
+  VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[34];
+VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[36] =
+  VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[35];
+VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[37] = {
+  ...VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[36],
+  prerelease_readiness_contract:
+    'sha256:7b8e25052de6e3d6a539100b8580ba950e48f973d577f57955d57158d1493480',
 };
 const VERSIONED_PASS_FAIL_RULES = {
   5: {
@@ -1036,6 +1064,10 @@ VERSIONED_PASS_FAIL_RULES[30] = VERSIONED_PASS_FAIL_RULES[29];
 VERSIONED_PASS_FAIL_RULES[31] = VERSIONED_PASS_FAIL_RULES[30];
 VERSIONED_PASS_FAIL_RULES[32] = VERSIONED_PASS_FAIL_RULES[31];
 VERSIONED_PASS_FAIL_RULES[33] = VERSIONED_PASS_FAIL_RULES[32];
+VERSIONED_PASS_FAIL_RULES[34] = VERSIONED_PASS_FAIL_RULES[33];
+VERSIONED_PASS_FAIL_RULES[35] = VERSIONED_PASS_FAIL_RULES[34];
+VERSIONED_PASS_FAIL_RULES[36] = VERSIONED_PASS_FAIL_RULES[35];
+VERSIONED_PASS_FAIL_RULES[37] = VERSIONED_PASS_FAIL_RULES[36];
 const EXPECTED_AUTHORITY_DOC = 'docs/platform-conformance.md';
 const EXPECTED_DOC_ID = 'platform-conformance';
 
@@ -1048,7 +1080,6 @@ const REQUIRED_TOP_LEVEL_KEYS = [
   'result_schema',
   'result_version',
   'conformance_levels',
-  'conformance_authorities',
   'targets',
   'fixture_catalog',
   'pass_fail_rules',
@@ -1387,12 +1418,30 @@ function assertVersionedSuiteAuthorityDigest(contract) {
   }
 }
 
+function assertWorkflowPackageMirrorMatches(
+  workflowMirrorPath = process.env.WORKFLOW_PLATFORM_CONFORMANCE_MANIFEST_PATH,
+) {
+  if (!workflowMirrorPath) {
+    return;
+  }
+
+  const workflowMirror = read(workflowMirrorPath);
+  const publicAuthority = read(contractPath);
+
+  if (workflowMirror !== publicAuthority) {
+    throw new Error(
+      'static/platform-conformance-contract.json must exactly match the ' +
+        `published Workflow package mirror at ${workflowMirrorPath}.`,
+    );
+  }
+}
+
 function assertRustSignalQueryAuthority(contract) {
   const expectedArtifact = {
     package: 'durable-workflow',
-    version: '0.1.2',
+    version: '2.0.0-rc.5',
     source: 'crates.io',
-    cargo_requirement: '=0.1.2',
+    cargo_requirement: '=2.0.0-rc.5',
   };
   const expectedContracts = {
     rust_worker_rust_php_python_clients: {
@@ -2124,88 +2173,6 @@ function assertPhpSdkSplitRuntimeAuthority(manifest, category, source) {
   }
 }
 
-function assertPhpSdkSplitSuiteDescriptions(contract) {
-  const expectedDescriptions = {
-    skew_refusal_matrix_contract: [
-      'standalone PHP SDK worker',
-      'Workflow remains the embedded Laravel and Waterline engine',
-    ],
-    principal_attribution_contract: [
-      'standalone PHP SDK client',
-      'Workflow remains the embedded Laravel and Waterline engine',
-    ],
-  };
-
-  for (const [category, requiredPhrases] of Object.entries(expectedDescriptions)) {
-    const description = String(contract.fixture_catalog?.[category]?.description || '');
-    for (const phrase of requiredPhrases) {
-      if (!description.includes(phrase)) {
-        throw new Error(
-          `static/platform-conformance-contract.json fixture_catalog.${category}.description ` +
-            `must include "${phrase}".`,
-        );
-      }
-    }
-  }
-
-  const docs = fs.readFileSync(path.join(docsDir, 'platform-conformance.md'), 'utf8');
-  for (const phrase of [
-    'standalone PHP SDK worker',
-    'standalone PHP SDK client',
-    'exact Packagist distribution',
-    'embedded Laravel and Waterline engine',
-  ]) {
-    if (!docs.includes(phrase)) {
-      throw new Error(`docs/platform-conformance.md must include "${phrase}".`);
-    }
-  }
-
-  for (const stalePhrase of ['PHP workflow worker', 'PHP workflow client']) {
-    if (docs.includes(stalePhrase)) {
-      throw new Error(`docs/platform-conformance.md must not describe ${stalePhrase}.`);
-    }
-  }
-
-  const discoveryPage = fs.readFileSync(discoveryPagePath, 'utf8');
-  const expectedDiscoveryRows = {
-    '/platform-conformance/skew-refusal-matrix-scenarios.json': [
-      'standalone PHP SDK worker',
-      'Workflow remains the embedded Laravel and Waterline engine',
-    ],
-    '/platform-conformance/principal-attribution-scenarios.json': [
-      'standalone PHP SDK client',
-      'Workflow remains the embedded Laravel and Waterline engine',
-    ],
-  };
-
-  for (const [manifestPath, requiredPhrases] of Object.entries(expectedDiscoveryRows)) {
-    const row = discoveryPage
-      .split('\n')
-      .find(line => line.startsWith('|') && line.includes(manifestPath));
-    if (!row) {
-      throw new Error(
-        `src/pages/docs/platform-conformance.mdx must advertise ${manifestPath}.`,
-      );
-    }
-    for (const phrase of requiredPhrases) {
-      if (!row.includes(phrase)) {
-        throw new Error(
-          `src/pages/docs/platform-conformance.mdx row for ${manifestPath} ` +
-            `must include "${phrase}".`,
-        );
-      }
-    }
-  }
-
-  for (const stalePhrase of ['PHP workflow worker', 'PHP workflow client']) {
-    if (discoveryPage.includes(stalePhrase)) {
-      throw new Error(
-        `src/pages/docs/platform-conformance.mdx must not describe ${stalePhrase}.`,
-      );
-    }
-  }
-}
-
 function formatJsonPath(segments) {
   return segments.reduce((current, segment) => {
     if (typeof segment === 'number') {
@@ -2830,14 +2797,6 @@ function assertStableFixtureAuthorityDocsResolve(contract) {
 }
 
 function assertPublishedConformanceAuthorities(contract) {
-  const authorities = contract.conformance_authorities || {};
-  if (!authorities.php_sdk) {
-    throw new Error(
-      'static/platform-conformance-contract.json conformance_authorities must ' +
-        'register the stable PHP SDK conformance contract.',
-    );
-  }
-
   const discoverySurfaces = [
     {
       label: 'docs/platform-conformance.md',
@@ -2848,81 +2807,42 @@ function assertPublishedConformanceAuthorities(contract) {
       content: fs.readFileSync(discoveryPagePath, 'utf8'),
     },
   ];
-
-  for (const [name, authority] of Object.entries(authorities)) {
-    const label =
-      `static/platform-conformance-contract.json conformance_authorities.${name}`;
-
-    if (!authority || authority.status !== 'stable') {
-      continue;
-    }
-    if (typeof authority.schema !== 'string' || authority.schema.trim() === '') {
-      throw new Error(`${label}.schema must be a non-empty public schema identity.`);
-    }
-    if (!Number.isInteger(authority.version) || authority.version < 1) {
-      throw new Error(`${label}.version must be a positive integer.`);
-    }
-
-    let publicUrl;
-    try {
-      publicUrl = new URL(authority.url);
-    } catch (err) {
-      throw new Error(`${label}.url must be a resolvable public URL.`);
-    }
-    if (
-      publicUrl.protocol !== 'https:' ||
-      publicUrl.hostname !== 'durable-workflow.github.io' ||
-      publicUrl.search ||
-      publicUrl.hash ||
-      !/^\/platform-conformance\/[a-z0-9-]+\.json$/.test(publicUrl.pathname)
-    ) {
-      throw new Error(
-        `${label}.url must name one public JSON contract directly under ` +
-          'https://durable-workflow.github.io/platform-conformance/.',
-      );
-    }
-
-    assertCanonicalDocsSiteUrl(authority.authority_doc, `${label}.authority_doc`);
-
-    const localPath = path.join(repoRoot, 'static', publicUrl.pathname);
-    const published = loadJson(localPath, `${name} public conformance contract`);
-    if (published.schema !== authority.schema) {
-      throw new Error(`${label}.schema must match ${publicUrl.pathname} schema.`);
-    }
-    if (published.version !== authority.version) {
-      throw new Error(`${label}.version must match ${publicUrl.pathname} version.`);
-    }
-    if (published.status !== authority.status) {
-      throw new Error(`${label}.status must match ${publicUrl.pathname} status.`);
-    }
-    if (published.authority_url !== authority.url) {
-      throw new Error(
-        `${publicUrl.pathname} authority_url must match the suite catalog URL.`,
-      );
-    }
-
-    assertPublicConformanceContractHasNoInternalHarnessArtifacts(
-      published,
-      `${publicUrl.pathname} public conformance contract`,
-    );
-
-    for (const surface of discoverySurfaces) {
-      if (
-        !surface.content.includes(publicUrl.pathname) ||
-        !surface.content.includes(authority.schema)
-      ) {
-        throw new Error(
-          `${surface.label} must advertise ${publicUrl.pathname} with schema ` +
-            `${authority.schema}.`,
-        );
-      }
-    }
-  }
-
   const phpContract = loadJson(
     path.join(repoRoot, 'static', 'platform-conformance', 'php-sdk-conformance.json'),
     'PHP SDK conformance contract',
   );
+  const phpContractPath = '/platform-conformance/php-sdk-conformance.json';
+
+  if (
+    phpContract.schema !== 'durable-workflow.v2.php-sdk-conformance-contract' ||
+    phpContract.version !== 1 ||
+    phpContract.status !== 'stable' ||
+    phpContract.authority_url !==
+      `https://durable-workflow.github.io${phpContractPath}`
+  ) {
+    throw new Error(
+      'The public PHP SDK conformance contract must retain its stable ' +
+        'schema, version, and consumer-resolvable authority URL.',
+    );
+  }
+
+  assertPublicConformanceContractHasNoInternalHarnessArtifacts(
+    phpContract,
+    `${phpContractPath} public conformance contract`,
+  );
+
+  for (const surface of discoverySurfaces) {
+    if (
+      !surface.content.includes(phpContractPath) ||
+      !surface.content.includes(phpContract.schema)
+    ) {
+      throw new Error(
+        `${surface.label} must advertise ${phpContractPath} with schema ` +
+          `${phpContract.schema}.`,
+      );
+    }
+  }
+
   assertJsonEqual(
     phpContract.conformance_suite,
     {
@@ -3025,7 +2945,30 @@ function assertRuntimeScenarioManifest(contract, category, entry, source) {
   }
 
   const expectedScenarios = new Set(entry.required_scenarios || []);
+  const optionalScenarios = new Set(manifest.optional_scenarios || []);
   const seenScenarios = new Set();
+
+  if (
+    manifest.optional_scenarios !== undefined &&
+    (!Array.isArray(manifest.optional_scenarios) ||
+      manifest.optional_scenarios.some(
+        scenario => typeof scenario !== 'string' || scenario.trim() === '',
+      ))
+  ) {
+    throw new Error(
+      `stable runtime fixture category "${category}" scenario manifest ` +
+        'optional_scenarios must be an array of non-empty scenario ids.',
+    );
+  }
+
+  for (const optional of optionalScenarios) {
+    if (expectedScenarios.has(optional)) {
+      throw new Error(
+        `stable runtime fixture category "${category}" scenario "${optional}" ` +
+          'cannot be both required and optional.',
+      );
+    }
+  }
 
   for (const [index, scenario] of manifest.scenarios.entries()) {
     if (!scenario || typeof scenario !== 'object') {
@@ -3081,11 +3024,20 @@ function assertRuntimeScenarioManifest(contract, category, entry, source) {
     }
   }
 
-  for (const actual of seenScenarios) {
-    if (!expectedScenarios.has(actual)) {
+  for (const optional of optionalScenarios) {
+    if (!seenScenarios.has(optional)) {
       throw new Error(
         `stable runtime fixture category "${category}" scenario manifest ` +
-          `declares scenario "${actual}" that is not listed in the suite manifest.`,
+          `is missing optional scenario "${optional}".`,
+      );
+    }
+  }
+
+  for (const actual of seenScenarios) {
+    if (!expectedScenarios.has(actual) && !optionalScenarios.has(actual)) {
+      throw new Error(
+        `stable runtime fixture category "${category}" scenario manifest ` +
+          `declares scenario "${actual}" that is neither required nor optional.`,
       );
     }
   }
@@ -3176,9 +3128,9 @@ function main() {
   assertPublishedRuntimeScenarioPublicRequirementDigestsImmutable();
   assertPublishedSuiteAuthorityDigestsImmutable();
   assertContractAuthorityResolves(contract);
+  assertWorkflowPackageMirrorMatches();
   assertVersionedSuiteAuthorityDigest(contract);
   assertRustSignalQueryAuthority(contract);
-  assertPhpSdkSplitSuiteDescriptions(contract);
   assertArrayOfStrings(contract, 'conformance_levels', [
     'full',
     'partial',
@@ -3201,5 +3153,6 @@ if (require.main === module) {
 
 module.exports = {
   assertPublicConformanceContractHasNoInternalHarnessArtifacts,
+  assertWorkflowPackageMirrorMatches,
   collectPublicConformanceContractInternalHarnessLeaks,
 };
