@@ -26,7 +26,8 @@ documented operating envelope.
 
 The deployment and recovery procedures here apply to embedded Laravel and
 self-hosted Server. Durable Workflow Cloud is a separate managed service: Cloud
-owns runtime persistence, placement, backup, restore, and failover, while
+owns runtime persistence, single-region placement, backup, restore, and
+recovery, while
 customers operate SDK clients and workers through the namespace runtime URL.
 Do not use this guide to attach a Server to Cloud; use the
 [Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane) guide for that
@@ -608,17 +609,15 @@ these facts:
    contracts if needed, and confirm queue, compatibility, and repair metrics
    return to baseline before you call the environment healthy.
 
-Do not imply automatic multi-region or hands-free HA behavior unless your
-published topology contract actually proves it. For the documented self-hosted
-topologies — including the active/passive multi-region contract in the
-[self-hosting guide](/docs/2.0/deployment#activepassive-multi-region) —
-recovery and regional failover are deliberate operator work with explicit
-checkpoints, not automatic product behavior. Hosted Cloud multi-region
-replication v1 is scoped separately in the
-[Cloud managed-runtime contract](/docs/2.0/polyglot/cloud-control-plane). Cloud
-operates replication, failover, and failback behind one stable namespace
-runtime URL; customers do not switch deployment identifiers or endpoints.
-Active/active writes remain outside that managed-service contract.
+Multi-region operation and split-brain behavior remain outside the supported
+2.0 operating envelope. The
+[self-hosting guide](/docs/2.0/deployment#activepassive-multi-region) retains
+active/passive architecture and runbook material only for support-led
+evaluation; it does not establish self-serve replication, failover, failback,
+RPO, or RTO guarantees. The current
+[Cloud managed-runtime contract](/docs/2.0/polyglot/cloud-control-plane)
+operates each namespace in one managed region and likewise does not promise
+multi-region replication, regional failover, or failback.
 
 Treat restore rehearsal cadence as part of the public operating contract too.
 At minimum, rehearse the documented restore sequence:

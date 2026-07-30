@@ -94,6 +94,25 @@ var_dump($handle->result(timeoutSeconds: 30));
 Use its selected-run methods when an operation must remain guarded to one
 specific run.
 
+## Lifecycle, updates, schedules, and visibility
+
+The public rc.5 client is broader than selected-run result handling:
+
+- `WorkflowHandle` exposes `describe`, `result`, `signal`, `query`, `cancel`,
+  and `terminate`, with selected-run variants for run-specific safety.
+- `Client` exposes `listWorkflows` with server filtering and pagination,
+  `workflowHistory`, `updateWorkflow`, `cancelWorkflow`, and
+  `terminateWorkflow`.
+- Schedule methods cover create, describe, list, update, pause, resume,
+  trigger, backfill, and delete.
+- Operational visibility includes `listNamespaces`, `listWorkers`, and
+  `listTaskQueues`, with matching describe methods.
+
+Remote workers register workflow, activity, query, and update handlers through
+`registerWorkflow`, `registerActivity`, `registerQuery`, and `registerUpdate`.
+Use the generated [PHP SDK API reference](https://php.durable-workflow.com/)
+for complete parameters and return types.
+
 ## Run a remote PHP worker
 
 Workflow handlers may be ordinary callables or generators. Yielding a command

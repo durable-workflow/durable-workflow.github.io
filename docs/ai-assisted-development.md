@@ -84,9 +84,10 @@ Agents should prefer machine-readable surfaces over screenshots or prose:
   line up as one machine-operable surface.
 - `dw` commands expose stable exit codes for automation. See the
   [CLI reference](/docs/2.0/polyglot/cli#exit-codes).
-- The [CLI and Python parity guide](/docs/2.0/polyglot/cli-python-parity)
-  shows the same start, signal, query, update, and cancel operations through
-  `dw` and the Python SDK, backed by shared control-plane request fixtures.
+- [Client and Worker Capabilities](/docs/2.0/polyglot/cli-python-parity/)
+  compares lifecycle, messages, schedules, visibility, and worker execution
+  across `dw` and all three first-party SDKs, with shared request evidence
+  where it exists.
 - The [external execution surface](/docs/2.0/polyglot/external-execution)
   publishes the activity-grade task boundary, carrier requirements, bridge
   outcomes, and input/result envelope paths through `/api/cluster/info`.

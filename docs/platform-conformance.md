@@ -93,9 +93,9 @@ as its fixture-level `authority_doc`. Stable runtime scenario categories use
 this page's current docs route,
 `https://durable-workflow.github.io/docs/2.0/platform-conformance`. Stable
 non-runtime categories point at the public docs authority for their surface:
-CLI and Python parity for control-plane fixtures, Worker Protocol for worker
-task lifecycle fixtures, Platform Protocol Specs for repair/actionability
-objects, and CLI Command Reference for CLI JSON envelopes. Their
+Client and Worker Capabilities for control-plane fixtures, Worker Protocol for
+worker task lifecycle fixtures, Platform Protocol Specs for
+repair/actionability objects, and CLI Command Reference for CLI JSON envelopes. Their
 machine-readable scenario ids and pass criteria are published in the docs-site
 JSON manifests linked from the category notes below.
 

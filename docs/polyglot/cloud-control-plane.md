@@ -13,7 +13,7 @@ keywords:
   - runtime credentials
   - customer-run workers
   - private networking
-  - region failover
+  - single-region managed runtime
 ---
 
 # Cloud Managed Runtime
@@ -44,12 +44,14 @@ Cloud-operated runtime
   workflow state and history
   schedules and task queues
   leases, matching, and visibility
+  Managed Waterline
 ```
 
 Cloud owns namespace provisioning, runtime operation, persistence, placement,
-replication, runtime health, and recovery. Customers own application code,
-workflow and activity implementations, and the processes that run their
-workers.
+runtime health, recovery, and the Managed Waterline surface for the namespace.
+Customers own application code, workflow and activity implementations, and the
+processes that run their workers. Cloud customers do not deploy a separate
+Waterline service.
 
 Cloud administration and runtime traffic use different credentials:
 
@@ -113,19 +115,26 @@ worker process receives both values as two distinct secrets. Rotate and revoke
 the roles independently, and never substitute a Cloud API key for either
 runtime credential.
 
-### 3. Configure the SDK processes
+### 3. Complete a first Cloud workflow {#cloud-first-workflow}
 
 Use the Cloud-provided runtime URL as the SDK's Server base URL and the
 Cloud-provided runtime namespace as its namespace. Application clients use the
 client credential; worker processes use the worker credential.
 
-Keep language-specific construction and worker examples in the SDK
-documentation:
+Choose one complete client-and-worker program:
 
-- [PHP client](/docs/2.0/polyglot/php/#start-and-inspect-a-workflow) and
-  [remote worker](/docs/2.0/polyglot/php/#run-a-remote-php-worker)
-- [Python client connection](/docs/2.0/polyglot/python/#running-against-a-shared-server)
-- [Rust Cloud client and worker](/docs/2.0/polyglot/rust/#connect-to-durable-workflow-cloud)
+- **PHP:** use the complete
+  [client](/docs/2.0/polyglot/php/#start-and-inspect-a-workflow) and
+  [remote worker](/docs/2.0/polyglot/php/#run-a-remote-php-worker) sources,
+  constructing each `Client` with the Cloud runtime URL and its corresponding
+  role credential.
+- **Python:** use the complete
+  [quickstart program](/docs/2.0/polyglot/python/#quickstart), then apply the
+  [Cloud split-token connection](/docs/2.0/polyglot/python/#running-against-a-shared-server)
+  to that program's `Client`.
+- **Rust:** follow the
+  [Cloud client-and-worker example](/docs/2.0/polyglot/rust/#connect-to-durable-workflow-cloud),
+  which maps both credentials and runs the published `hello_world` example.
 
 For Cloud, replace the local example URL and namespace with the values issued
 for the namespace, then configure both role credentials through distinct
@@ -146,7 +155,12 @@ Rust's `.token(...)` method is a generic single-token fallback for self-hosted
 Server configurations. Do not use it in place of either role-specific Cloud
 method.
 
-### 4. Start workflows and poll for tasks
+Run the selected program. Success is a worker registration followed by a
+workflow whose result call returns and whose durable status is `completed`.
+That is the same first-success outcome as the local Server quickstart, reached
+without installing or running Server.
+
+### 4. Continue with managed operation
 
 The SDK client starts workflows and sends follow-up commands through the
 namespace runtime URL. Customer-run workers register and long-poll through the
@@ -174,32 +188,19 @@ and must allow the worker protocol's long-lived poll requests.
 - Credential rotation does not require changing the runtime URL, namespace, or
   task queue.
 
-## Regions And Managed Failover
+## Region Placement And Recovery Boundary
 
-Cloud selects and operates regional placement. The namespace surface exposes
-the region and service status customers need for residency, latency, incident,
-and recovery decisions; infrastructure deployment identities, private
-addresses, upstream credentials, and provider topology remain internal.
+The current 2.0 launch cohort provisions each namespace in one managed region.
+The namespace response exposes that region and its service status for
+residency, latency, and incident decisions; infrastructure deployment
+identities, private addresses, upstream credentials, and provider topology
+remain internal.
 
-For a namespace enrolled in Cloud multi-region replication v1:
-
-- the namespace remains one logical customer resource with one stable runtime
-  URL;
-- Cloud operates replication, readiness checks, failover, and failback while
-  keeping exactly one write authority active;
-- clients and workers keep the same runtime URL, namespace, and credentials
-  during failover rather than switching deployment identifiers or endpoints;
-- customer-visible status includes the active and standby regions, replication
-  health and lag, last successful replication, and failover/failback
-  timestamps;
-- the documented RTO target is 20 minutes and the default replication-lag
-  target is 300 seconds.
-
-Active/active writes, multi-cloud replication, per-workflow region pinning, and
-cross-region Nexus calls are outside the v1 self-serve contract. During a
-regional event, in-flight polls can fail while Cloud changes placement; workers
-should reconnect to the same namespace URL using their normal bounded retry
-policy.
+Multi-region replication, automatic regional failover or failback, and
+customer-facing RTO or replication-lag targets are not part of the current
+Cloud contract. Applications should retry transient connection failures using
+their normal bounded policy, but must not treat a stable namespace URL as a
+guarantee of automatic cross-region recovery.
 
 ## Private Connectivity And Support Boundary
 
@@ -212,8 +213,8 @@ runtime addresses or asked to route around the namespace URL.
 ## Cloud Or Self-Hosted Server
 
 Choose Cloud when Durable Workflow should operate the orchestration runtime,
-persistence, region placement, and recovery while your team operates the SDK
-clients and workers.
+persistence, single-region placement, recovery, and Managed Waterline while
+your team operates the SDK clients and workers.
 
 Choose [self-hosted Server](/docs/2.0/polyglot/server) when your team needs to
 operate the Server image, database, cache, networking, authentication, backups,

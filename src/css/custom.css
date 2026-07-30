@@ -29,6 +29,26 @@
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
 }
 
+.quickstart-language-tabs .tabs {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.quickstart-language-tabs .tabs__item {
+  flex: 1 0 6.5rem;
+  text-align: center;
+}
+
+.theme-doc-markdown table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.theme-doc-markdown details {
+  max-width: 100%;
+}
+
 .navbar-github-star-link {
   align-items: center;
   display: inline-flex;

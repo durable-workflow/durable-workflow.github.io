@@ -1,7 +1,7 @@
 ---
 sidebar_position: 2
 title: 2.0 Prerelease Quickstart
-description: Complete a first Durable Workflow from PHP, Python, or Rust against the standalone 2.0 server.
+description: Choose a service-mode runtime and complete a first workflow from PHP, Python, or Rust.
 tags:
   - quickstart
   - getting-started
@@ -18,28 +18,51 @@ keywords:
   - standalone server Docker quickstart
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # 2.0 Prerelease Quickstart
 
-:::caution 2.0 prerelease
+## Before you begin
 
-This guide uses the explicit 2.0 prerelease docs and exact published package
-versions. Stable 1.x remains the default documentation line.
+**Goal:** run one service-mode workflow and read its completed durable result
+from PHP, Python, or Rust.
 
-:::
+**Expected time:** about 15 minutes after your runtime is available.
 
-Start the standalone Durable Workflow server, then choose **PHP**, **Python**,
-or **Rust**. Each route creates its own project and ends by reading a completed
-workflow and its durable result from the server. You do not need Laravel for
-any of these routes.
+**Completed outcome:** the selected SDK starts a worker and workflow, then
+prints a workflow ID, `status=completed`, and `Hello, <language>!`.
 
-The SDKs encode the default language-neutral payload envelope in the Apache
-Avro wire format. Their binding packages are `apache/avro` for PHP,
-`fastavro` for Python, and `apache-avro` for Rust.
+**Prerequisites:**
 
-## Start the standalone server
+- `curl` and a terminal
+- Docker for the self-hosted local path, or a provisioned Durable Workflow
+  Cloud namespace
+- one language toolchain: PHP 8.1+ with Composer, Python 3.10+, or Rust 1.86+
 
-You need Docker and `curl`. This source-free local server uses SQLite and a
-development token. Keep it running while you complete one language route.
+You do not need Laravel for service mode. The embedded Laravel path is separate
+at the end of this guide.
+
+## 1. Choose your service-mode runtime
+
+| Runtime | Choose it when | Next action |
+| --- | --- | --- |
+| Durable Workflow Cloud | You want Durable Workflow to operate the runtime and persistence. | Follow the executable [Cloud first workflow](/docs/2.0/polyglot/cloud-control-plane/#cloud-first-workflow), which maps PHP, Python, and Rust complete sources to provisioned credentials and a `completed` result. **Do not run Server.** |
+| Self-hosted Server | You want to operate the runtime yourself or run this exact local published-artifact exercise. | Continue below with Docker and `curl`. |
+
+The runnable source below uses a local self-hosted Server so it can be exercised
+without an account or source checkout. Cloud uses the same SDK and worker model;
+replace the local development connection with the provisioned values shown in
+[Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane/).
+
+## 2. Start the local Server
+
+Skip this action when you chose Cloud. For the self-hosted path, expand and run
+the exact pinned setup. It starts a source-free Server with SQLite and a
+development token.
+
+<details>
+<summary>Start the pinned Server image</summary>
 
 <!-- docs-example id="quickstart.server.setup" -->
 ```bash
@@ -67,15 +90,25 @@ curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
   http://localhost:8080/api/cluster/info
 ```
 
-The readiness request succeeds and cluster info identifies the local
-standalone server. Now follow exactly one route below.
+</details>
 
-## PHP
+**Expected result:** the readiness request succeeds and cluster info identifies
+the local standalone Server. Keep it running while you complete one language
+route.
+
+## 3. Choose one language {#choose-one-language}
+
+All three first-party SDKs are available at the same level. Only the selected
+tab is shown, so you can follow one path without scrolling past two other
+programs.
+
+<Tabs groupId="quickstart-language" className="quickstart-language-tabs">
+<TabItem value="php" label="PHP" default>
 
 Requirements: PHP 8.1 or newer and Composer. This is the framework-neutral
 `durable-workflow/sdk` package, not the embedded Laravel engine.
 
-### Install the SDK
+1. **Install the SDK.**
 
 <!-- docs-example id="quickstart.php.install" -->
 ```bash
@@ -84,7 +117,11 @@ cd durable-workflow-php-quickstart
 composer require %%artifact.phpSdkComposerPackage%%
 ```
 
-### Create the worker
+2. **Add the worker and client.** Expand the complete source, then copy both
+   files into the new project.
+
+<details>
+<summary>Complete runnable PHP source</summary>
 
 The worker registers one workflow type and one activity type on its own task
 queue.
@@ -124,7 +161,7 @@ $worker->run();
 PHP
 ```
 
-### Create the starter and result reader
+#### Client and result reader
 
 This client starts a uniquely named workflow, waits for its selected run, and
 then describes the durable terminal state held by the server.
@@ -158,7 +195,9 @@ echo 'result='.json_encode($result, JSON_THROW_ON_ERROR)."\n";
 PHP
 ```
 
-### Run it
+</details>
+
+3. **Run the worker and client.**
 
 <!-- docs-example id="quickstart.php.run" -->
 ```bash
@@ -172,20 +211,20 @@ kill "$QUICKSTART_WORKER_PID" 2>/dev/null || true
 trap - EXIT
 ```
 
-Success looks like this: `status=completed` and a result containing
+**Expected result:** `status=completed` and a result containing
 `"greeting":"Hello, PHP!"`. You have run a standalone PHP worker and
 inspected its durable result without Laravel.
 
-Continue with the [PHP SDK guide](/docs/2.0/polyglot/php/), or return to the
-language choices and try a separate route against the same server.
+Continue with the [PHP SDK guide](/docs/2.0/polyglot/php/).
 
-## Python
+</TabItem>
+<TabItem value="python" label="Python">
 
 Requirements: Python 3.10 or newer. The program keeps the worker and client in
 one process, but they still communicate with the server through the public
 worker and control-plane APIs.
 
-### Install the SDK
+1. **Install the SDK.**
 
 <!-- docs-example id="quickstart.python.install" -->
 ```bash
@@ -197,7 +236,11 @@ python3 -m venv .venv
 pip install %%artifact.pythonPackagePin%%
 ```
 
-### Create the worker and starter
+2. **Create and run the worker and client.** Expand the complete program; its
+   final command runs it.
+
+<details>
+<summary>Complete runnable Python source</summary>
 
 <!-- docs-example id="quickstart.python.greeter" -->
 ```bash
@@ -256,19 +299,21 @@ PY
 python greeter.py
 ```
 
-Success looks like this: `status=completed` and a result containing
+</details>
+
+**Expected result:** `status=completed` and a result containing
 `Hello, Python!`. The last two SDK calls read the selected run's result and
 durable terminal state from the server.
 
-Continue with the [Python SDK guide](/docs/2.0/polyglot/python/), or return to
-the language choices and try a separate route against the same server.
+Continue with the [Python SDK guide](/docs/2.0/polyglot/python/).
 
-## Rust
+</TabItem>
+<TabItem value="rust" label="Rust">
 
 Requirements: Rust 1.86 or newer. This example runs a native worker and client
 in one Tokio process.
 
-### Install the SDK
+1. **Install the SDK.**
 
 <!-- docs-example id="quickstart.rust.install" -->
 ```bash
@@ -278,7 +323,11 @@ cd durable-workflow-rust-quickstart
 cargo add tokio --features macros,rt-multi-thread,time
 ```
 
-### Create the worker and starter
+2. **Create and run the worker and client.** Expand the complete program; its
+   final command compiles and runs it.
+
+<details>
+<summary>Complete runnable Rust source</summary>
 
 <!-- docs-example id="quickstart.rust.greeter" -->
 ```bash
@@ -352,13 +401,27 @@ RS
 cargo run
 ```
 
-Success looks like this: `status=completed` and a JSON result containing
+</details>
+
+**Expected result:** `status=completed` and a JSON result containing
 `"greeting":"Hello, Rust!"`. The example waits for its worker to finish the
 run, then reads the selected run's durable status and decoded result.
 
 Continue with the [Rust SDK guide](/docs/2.0/polyglot/rust/).
 
-## Optional: embed the runtime in Laravel
+</TabItem>
+</Tabs>
+
+## 4. Clean up the local Server
+
+Cloud users have no local Server to remove. For the self-hosted exercise:
+
+```bash
+docker rm -f durable-workflow-server
+docker volume rm durable-workflow-quickstart
+```
+
+## Separate path: embedded Laravel
 
 Embedded Laravel is a separate first-party PHP deployment mode for
 applications that want workflow state, queue execution, configuration, and
@@ -384,14 +447,22 @@ this specialized route with the standalone platform.
 
 ## Next steps
 
-- Use the [agent operating loop](/docs/2.0/agent-operating-loop/) for
-  discover, change, run, diagnose, and repair operations.
-- Add durable [timers](/docs/2.0/features/timers/) and configure activity
-  [retries and execution policy](/docs/2.0/features/activity-execution-model/).
-- Exchange [signals](/docs/2.0/features/signals/) and expose read-only
-  [queries](/docs/2.0/features/queries/).
-- Compose [child workflows](/docs/2.0/features/child-workflows/) and plan safe
-  [worker build-ID rollouts](/docs/2.0/polyglot/worker-build-id-rollout/).
+- Continue with the service-mode [PHP SDK](/docs/2.0/polyglot/php/),
+  [Python SDK](/docs/2.0/polyglot/python/), or
+  [Rust SDK](/docs/2.0/polyglot/rust/) guide.
+- Compare lifecycle, messages, schedules, visibility, and worker execution in
+  [Client and Worker Capabilities](/docs/2.0/polyglot/cli-python-parity/).
+- Operate the matching runtime through
+  [Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane/) or the
+  [self-hosted Server](/docs/2.0/polyglot/server/), then add the
+  [CLI](/docs/2.0/polyglot/cli/) when shell automation is useful.
+- Plan safe service-worker deployment with
+  [worker compatibility and routing](/docs/2.0/polyglot/worker-compatibility-routing/)
+  and [build-ID rollout](/docs/2.0/polyglot/worker-build-id-rollout/).
+
+For embedded Laravel authoring features such as timers, signals, queries,
+activities, and child workflows, use the separate
+[Embedded documentation](/docs/2.0/category/embedded/).
 
 Release qualification is intentionally separate from this first-success
 guide. The [Platform Conformance Suite](/docs/2.0/platform-conformance/)

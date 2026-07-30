@@ -16,14 +16,25 @@ keywords:
 
 https://github.com/durable-workflow/sample-app
 
-This is a sample Laravel 13 application built on the Durable Workflow 2.0 beta prerelease, with example workflows that you can run inside a GitHub codespace.
+This is the embedded Laravel gallery: a sample Laravel 13 application built on
+the Durable Workflow 2.0 release-candidate line, with workflows you can run in
+a GitHub Codespace. It is the right starting point when your deployment model
+is **embedded Laravel** and you want to inspect Laravel queue execution and
+Waterline together.
 
-The sample app is the recommended starting point for "how do I learn
-Durable Workflow?". It is the first place new features get end-to-end
-coverage, the first place bugs are reproduced against a realistic
-Laravel host, and the source the docs site mirrors when it shows what
-a pattern looks like in practice. If you have a real durable-workflow
-pattern you want to share, the
+Choose the examples that match your runtime:
+
+| Deployment model | Example path |
+| --- | --- |
+| Durable Workflow Cloud | Start with [Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane/), then choose the PHP, Python, or Rust SDK guide using the provisioned namespace credentials. Cloud users do not run Server. |
+| Self-hosted service mode | Use the [2.0 Prerelease Quickstart](/docs/2.0/quickstart/) for complete PHP, Python, and Rust published-artifact examples against a local Server. |
+| Embedded Laravel | Continue with this gallery and [Embedded Installation](/docs/2.0/installation/). |
+
+The gallery is end-to-end evidence for the Laravel-hosted engine, not a
+universal starter application for service-mode or polyglot deployments. It is
+the first place embedded features get realistic Laravel coverage and the source
+this site mirrors when it shows a Laravel-native pattern. If you have a
+durable-workflow pattern to share, the
 [Contribute a Sample](/docs/2.0/contribute-a-sample) guide walks
 through the submission flow.
 

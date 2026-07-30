@@ -186,5 +186,5 @@ surfaces, so a human can reproduce the same run from another client.
 - [Agent Operating Loop](./agent-operating-loop.md)
 - [Agent Tooling Contract](./agent-tooling-contract.md)
 - [Sample App](./sample-app.md)
-- [CLI and Python Parity](./polyglot/cli-python-parity.md)
+- [Client and Worker Capabilities](./polyglot/cli-python-parity.md)
 - [Message Streams](./features/message-streams.md)

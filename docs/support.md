@@ -55,10 +55,10 @@ Durable Workflow is designed to be useful without a sales call. The public distr
 
 Hosted Durable Workflow Cloud is a separate
 [managed orchestration service](/docs/2.0/polyglot/cloud-control-plane). Cloud
-operates its runtime, persistence, regional placement, and managed failover;
+operates its runtime, persistence, single-region placement, and recovery;
 customers run SDK clients and workers. Customers do not attach a self-hosted
-Server to Cloud. The self-hosting boundary below uses "automatic regional
-failover" only for customer-operated Server topologies.
+Server to Cloud. Multi-region replication, regional failover, and failback are
+not part of the current Cloud contract.
 
 We intentionally optimize the public distribution for local development,
 single-node production, and the narrow small-cluster contract described in the
@@ -66,13 +66,14 @@ self-hosting guide. Kubernetes manifests are provided for teams that already
 operate Kubernetes. The small-cluster contract supports
 [rolling upgrades](/docs/2.0/rolling-upgrades) when every guarantee on that
 page holds. Active/passive multi-region with operator-driven regional
-failover is its own self-serve contract; see
+failover remains support-led evaluation guidance; see
 [Active/passive multi-region](/docs/2.0/deployment#activepassive-multi-region)
 in the self-hosting guide. The published Helm chart is a self-serve packaging
 and rollout path; custom chart changes, provider infrastructure, duplicate
 schedulers, Redis-less
-multi-node operation, provider failover, active/active multi-region, and
-self-hosted automatic regional failover, and advanced HA topologies remain
+multi-node operation, provider failover, active/passive or active/active
+multi-region, self-hosted automatic regional failover, and advanced HA
+topologies remain
 support-led because they require environment-specific sizing, database,
 networking, security, and upgrade decisions.
 
@@ -101,7 +102,7 @@ Commercial support engagements are led by the project maintainer and typically i
   Help with capacity assumptions, backup and restore strategy, bootstrap and migration order, rollout safety, and operational runbooks.
 
 - **Advanced topology support**  
-  Support-led design work for custom Helm chart changes, provider-specific Kubernetes infrastructure, custom overlays, duplicate scheduler designs, Redis-less multi-node mode, high-availability deployments, active/active multi-region, self-hosted automatic regional failover, and synchronous cross-region replication. The published chart remains a self-serve installation path, and the self-serve active/passive multi-region contract lives in the [self-hosting guide](/docs/2.0/deployment#activepassive-multi-region). The separate [Cloud managed-runtime contract](/docs/2.0/polyglot/cloud-control-plane) documents the hosted service's customer-visible region, failover, and connectivity boundary.
+  Support-led design work for custom Helm chart changes, provider-specific Kubernetes infrastructure, custom overlays, duplicate scheduler designs, Redis-less multi-node mode, high-availability deployments, active/passive or active/active multi-region, self-hosted automatic regional failover, and synchronous cross-region replication. The published chart remains a self-serve installation path; the [self-hosting guide](/docs/2.0/deployment#activepassive-multi-region) retains active/passive architecture and runbook material for support-led evaluation. The separate [Cloud managed-runtime contract](/docs/2.0/polyglot/cloud-control-plane) documents the hosted service's single-region placement, recovery, and connectivity boundary.
 
 - **Security review**  
   Assistance with role-scoped credentials, network exposure, internal versus public endpoints, TLS termination, and access boundaries for operators and workers.
@@ -131,7 +132,7 @@ Commercial support is typically a good fit if you are:
 - Running Durable Workflow in **production**
 - Deploying the standalone server for **multiple teams or services**
 - Building **long-running or human-in-the-loop workflows**
-- Designing a **clustered, provider-specific or customized Kubernetes/Helm, active/active multi-region, or self-hosted automatic-failover topology** outside hosted Cloud replication v1 (the published chart and active/passive multi-region with operator-driven failover are documented as self-serve contracts in the self-hosting guide)
+- Designing a **clustered, provider-specific or customized Kubernetes/Helm, active/passive or active/active multi-region, or self-hosted automatic-failover topology** beyond the proven single-region 2.0 operating envelope
 - Operating in an environment where **correctness and upgrade safety matter**
 - Looking for **maintainer-level expertise** rather than generic consulting
 - Wanting to avoid forks and long-term maintenance risk

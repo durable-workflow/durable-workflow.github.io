@@ -20,10 +20,10 @@ The first-party Rust SDK is a workflow-authoring surface, not only a protocol
 compatibility client. Rust authors deterministic workflows, activities, and
 long-running worker services against the same durable execution model used by
 PHP and Python. The async control-plane client starts, signals, queries,
-cancels, terminates, and awaits executions; the worker runtime replays
-workflow history, runs workflow/activity handlers, reports worker and activity
-heartbeats, and exchanges language-neutral payloads with a self-hosted Server
-or Durable Workflow Cloud namespace runtime.
+updates, cancels, terminates, and awaits executions; the worker runtime replays
+workflow history, runs workflow/activity/update handlers, reports worker and
+activity heartbeats, and exchanges language-neutral payloads with a self-hosted
+Server or Durable Workflow Cloud namespace runtime.
 
 For crate modules, structs, traits, and methods, see the generated
 [Rust SDK API reference](https://rust.durable-workflow.com/).
@@ -37,9 +37,8 @@ connection boundary and the Cloud-specific connection example below.
 At the current `%%artifact.rustSdkVersion%%` floor, Rust supports durable
 timers, child workflows, activity retries and timeouts, signals, replayed query
 handlers, cancellation and termination, server-enforced workflow deadlines,
-typed side effects, version markers, and typed terminal/replay failures. It
-does not yet claim the Rust authoring surface for updates or schedule
-management. Use the
+typed side effects, version markers, updates, and typed terminal/replay
+failures. It does not yet claim schedule management. Use the
 [2.0 Capability Index](/docs/2.0/capabilities/) instead of assuming every SDK
 has identical feature breadth.
 
@@ -297,6 +296,19 @@ workflow ID for a newer run cannot make a wait silently report the newer run's
 outcome. Preserve both `outcome.workflow_id` and `outcome.run_id` in logs,
 metrics, and retry records; use instance-level lookups only when following the
 current run is intentional.
+
+## Workflow updates
+
+Rust supports durable updates across application-client, selected-handle, and
+worker-authoring roles. Use `Client::update_workflow` or
+`WorkflowHandle::update` for JSON-compatible values, and the matching
+`update_workflow_avro_value` or `update_avro_value` methods for explicitly
+typed Avro values.
+
+Workers register named handlers with `Worker::register_update`; use
+`register_update_avro_value` when the handler consumes and returns Avro values
+directly. An update is a durable, result-bearing workflow mutation. It is
+separate from fire-and-forget signals and read-only replayed queries.
 
 ## Payload envelope
 

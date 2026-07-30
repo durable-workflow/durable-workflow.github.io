@@ -490,5 +490,5 @@ For support bundles, collect `dw doctor --output=json`, `dw server:info
 - [CLI](./cli.mdx) covers installation, profile setup, and exit-code behavior.
 - [Server](./server.md) documents the HTTP control plane that server-backed
   commands call.
-- [CLI and Python Parity](./cli-python-parity.md) compares shared request
-  fixtures across CLI and SDK clients.
+- [Client and Worker Capabilities](./cli-python-parity.md) compares
+  CLI, PHP, Python, and Rust client and worker surfaces.

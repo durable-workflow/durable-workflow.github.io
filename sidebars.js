@@ -4,8 +4,53 @@
 const sidebars = {
   tutorialSidebar: [
     'introduction',
-    'capabilities',
     'quickstart',
+    'capabilities',
+    {
+      type: 'category',
+      label: 'Service Mode',
+      link: {
+        type: 'generated-index',
+        description: 'Choose Durable Workflow Cloud or a self-hosted Server, then connect CLI and first-party SDK clients and workers.',
+      },
+      items: [
+        'polyglot/deployment-modes',
+        'polyglot/cloud-control-plane',
+        'polyglot/server',
+        {
+          type: 'category',
+          label: 'CLI',
+          link: {
+            type: 'generated-index',
+            description: 'Install the dw operator client and look up its complete command surface.',
+          },
+          items: [
+            'polyglot/cli',
+            'polyglot/cli-reference',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'SDKs',
+          link: {
+            type: 'generated-index',
+            description: 'Build service-mode clients and workers with the first-party PHP, Python, and Rust SDKs.',
+          },
+          items: [
+            'polyglot/php',
+            'polyglot/python',
+            'polyglot/rust',
+          ],
+        },
+        'polyglot/cli-python-parity',
+        'polyglot/server-config-reference',
+        'polyglot/server-api-reference',
+        'polyglot/server-role-topology',
+        'polyglot/namespace-auth-workers',
+        'polyglot/worker-compatibility-routing',
+        'polyglot/embedded-to-server',
+      ],
+    },
     {
       type: 'category',
       label: 'Embedded',
@@ -65,6 +110,7 @@ const sidebars = {
             'features/local-activities',
             'features/worker-sessions',
             'features/sticky-execution',
+            'features/webhooks',
           ],
         },
         {
@@ -85,6 +131,8 @@ const sidebars = {
         },
         'how-it-works',
         'testing',
+        'failures-and-recovery',
+        'migration',
         {
           type: 'category',
           label: 'Configuration',
@@ -102,6 +150,8 @@ const sidebars = {
             'configuration/pruning-workflows',
           ],
         },
+        'sample-app',
+        'contribute-a-sample',
       ],
     },
     {
@@ -122,36 +172,7 @@ const sidebars = {
         'platform-conformance',
         'docs-page-release-audit',
         'sdk-neutrality',
-        'failures-and-recovery',
         'support',
-        'migration',
-        'sample-app',
-        'contribute-a-sample',
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Control Plane And Polyglot',
-      link: {
-        type: 'generated-index',
-        description: 'Use the standalone server, Cloud managed runtime, CLI, and first-party PHP, Python, and Rust SDK contracts.',
-      },
-      items: [
-        'polyglot/server',
-        'polyglot/deployment-modes',
-        'polyglot/cloud-control-plane',
-        'polyglot/server-config-reference',
-        'polyglot/server-api-reference',
-        'polyglot/server-role-topology',
-        'polyglot/namespace-auth-workers',
-        'polyglot/worker-compatibility-routing',
-        'polyglot/embedded-to-server',
-        'polyglot/cli',
-        'polyglot/cli-reference',
-        'polyglot/php',
-        'polyglot/python',
-        'polyglot/cli-python-parity',
-        'polyglot/rust',
       ],
     },
     {
@@ -170,7 +191,6 @@ const sidebars = {
         'polyglot/task-matching-dispatch',
         'polyglot/task-queue-admission',
         'polyglot/worker-build-id-rollout',
-        'features/webhooks',
       ],
     },
     {

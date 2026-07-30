@@ -13,17 +13,13 @@ const REQUIRED_INTRO_ROUTES = Object.freeze([
   '/docs/2.0/polyglot/python/',
   '/docs/2.0/polyglot/rust/',
   '/docs/2.0/polyglot/server/',
+  '/docs/2.0/polyglot/cloud-control-plane/',
   '/docs/2.0/capabilities/',
   '/docs/2.0/polyglot/deployment-modes/',
+  '/docs/2.0/polyglot/cli-python-parity/',
   '/docs/2.0/agent-operating-loop/',
   '/docs/2.0/quickstart/',
   '/docs/2.0/sample-app/',
-]);
-
-const SDK_ROUTES = Object.freeze([
-  '/docs/2.0/polyglot/php/',
-  '/docs/2.0/polyglot/python/',
-  '/docs/2.0/polyglot/rust/',
 ]);
 
 function fail(message) {
@@ -59,40 +55,22 @@ function firstPosition(source, value, label) {
   return position;
 }
 
-function assertIntroductionStructure(introduction) {
-  const routePositions = new Map();
-
+function assertIntroductionLinks(introduction) {
   for (const route of REQUIRED_INTRO_ROUTES) {
     assertRouteExists(route);
-    routePositions.set(route, firstPosition(introduction, route, 'docs/introduction.md'));
+    firstPosition(introduction, route, 'docs/introduction.md');
   }
 
-  const lastSdkRoute = Math.max(...SDK_ROUTES.map(route => routePositions.get(route)));
-  const deploymentRoute = routePositions.get('/docs/2.0/polyglot/deployment-modes/');
-  const capabilityRoute = routePositions.get('/docs/2.0/capabilities/');
-  const standalonePackage = firstPosition(
+  firstPosition(
     introduction,
     'durable-workflow/sdk',
     'docs/introduction.md standalone PHP package boundary',
   );
-  const embeddedPackage = firstPosition(
+  firstPosition(
     introduction,
     'durable-workflow/workflow',
     'docs/introduction.md embedded Laravel package boundary',
   );
-
-  if (lastSdkRoute >= deploymentRoute) {
-    fail('docs/introduction.md must present all three first-party SDK routes before deployment-mode selection');
-  }
-  if (lastSdkRoute >= capabilityRoute) {
-    fail('docs/introduction.md must present all three first-party SDK routes before the capability detail');
-  }
-  if (standalonePackage >= embeddedPackage) {
-    fail('docs/introduction.md must identify the standalone PHP SDK package before the embedded Laravel package');
-  }
-  if (embeddedPackage <= deploymentRoute || embeddedPackage <= capabilityRoute) {
-    fail('docs/introduction.md must defer the embedded Laravel package until after the standalone SDK and deployment model');
-  }
 }
 
 function assertPhpPackageBoundary(phpSdk, server) {
@@ -124,10 +102,10 @@ function main() {
   const phpSdk = read(phpSdkPath);
   const server = read(serverPath);
 
-  assertIntroductionStructure(introduction);
+  assertIntroductionLinks(introduction);
   assertPhpPackageBoundary(phpSdk, server);
 
-  console.log(`Standalone-first introduction checks passed for ${REQUIRED_INTRO_ROUTES.length} public routes`);
+  console.log(`Introduction product-boundary checks passed for ${REQUIRED_INTRO_ROUTES.length} public routes`);
 }
 
 main();

@@ -110,7 +110,7 @@ Use the most specific handle available for the task:
 | Start or command a server workflow | `dw workflow:start`, `dw workflow:signal`, `dw workflow:update`, or SDK equivalents |
 | Check compatibility | `dw server:info --output=json` and `/api/cluster/info` |
 | Inspect queue health | `dw task-queue:describe <queue> --output=json` |
-| Compare CLI and Python behavior | [CLI and Python Parity](./polyglot/cli-python-parity.md) |
+| Compare client and worker surfaces | [Client and Worker Capabilities](./polyglot/cli-python-parity.md) |
 | Implement a non-PHP worker | [Worker Protocol](./polyglot/worker-protocol.md) |
 | Implement an external handler | [External Execution Surface](./polyglot/external-execution.md) |
 

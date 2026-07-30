@@ -162,6 +162,6 @@ happened. The tooling contract gives agents stable handles for the rest.
 - [AI-Assisted Development](./ai-assisted-development.md)
 - [Agent Operating Loop](./agent-operating-loop.md)
 - [MCP Workflow Surface](./mcp-workflows.md)
-- [CLI and Python Parity](./polyglot/cli-python-parity.md)
+- [Client and Worker Capabilities](./polyglot/cli-python-parity.md)
 - [Server HTTP API Reference](./polyglot/server-api-reference.md)
 - [Monitoring](./monitoring.md)
