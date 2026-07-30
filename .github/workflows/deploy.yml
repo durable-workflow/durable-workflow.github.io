@@ -88,6 +88,20 @@ jobs:
           WORKFLOW_SDK_NEUTRALITY_MANIFEST_PATH: ${{ github.workspace }}/.workflow-authority/resources/sdk-neutrality-contract.json
         run: npm run build
 
+      - name: Set up Helm
+        if: steps.deploy-plan.outputs.deploy == 'true'
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310  # v5
+        with:
+          version: v3.16.2
+
+      - name: Set up Docker Buildx
+        if: steps.deploy-plan.outputs.deploy == 'true'
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4
+
+      - name: Stage the public HTTPS Helm repository from anonymous OCI
+        if: steps.deploy-plan.outputs.deploy == 'true'
+        run: node scripts/helm-chart-release.js stage
+
       - name: Verify public artifact tuple
         if: steps.deploy-plan.outputs.deploy == 'true'
         run: |
@@ -195,6 +209,18 @@ jobs:
       - name: Verify live workflow lifecycle authority
         if: steps.deploy-plan.outputs.deploy == 'true'
         run: node scripts/verify-workflow-lifecycle-live.js
+
+      - name: Verify both public Helm release channels
+        if: steps.deploy-plan.outputs.deploy == 'true'
+        run: node scripts/helm-chart-release.js verify-live
+
+      - name: Upload public Helm validation evidence
+        if: ${{ always() && steps.deploy-plan.outputs.deploy == 'true' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: public-helm-release-validation
+          path: helm-public-validation-evidence.json
+          if-no-files-found: error
 
       - name: Report current live tuple
         if: steps.deploy-plan.outputs.deploy != 'true'

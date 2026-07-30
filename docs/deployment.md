@@ -26,8 +26,9 @@ the Cloud page.
 | --- | --- | --- | --- | --- |
 | Local development and internal non-production | [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) with `%%artifact.serverTagEnv%%` or `%%artifact.serverImageEnv%%` | One developer machine, LAN demos, shared staging, SDK and worker integration tests | Internet-facing production, durable backup guarantees, strict secret rotation, multi-node failover | You want help turning a working dev stack into a production runbook |
 | Single-node production | [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) with a production env file, MySQL and Redis volumes, role-scoped tokens, backups, TLS through a reverse proxy, and pinned image tags or digests | One VM, VPS, or internal Docker host with persistent workflow state and a simple operational model | Host-level HA, automatic database failover, multi-region recovery, zero-downtime major topology changes | The deployment carries production traffic and you want review of backup, restore, auth, TLS, upgrade, or rollback procedures |
-| Small clustered deployment | Published `durableworkflow/server` or `ghcr.io/durable-workflow/server` images using the [Compose recipe](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) as the container/process template, with 2-3 API nodes, shared external MySQL/PostgreSQL, shared Redis, independently scaled workers, and exactly one scheduler/maintenance runner | Horizontal API and worker capacity when one node is no longer enough; rolling upgrades when every guarantee in the [rolling-upgrade contract](/docs/2.0/rolling-upgrades) holds | SQLite clustering, Redis-less multi-node mode, duplicate schedulers as a steady-state topology, active/active multi-writer databases, self-hosted hands-free regional failover, Helm, broad "five-nines" or "zero-downtime" SLA promises, and self-serve single-region HA failover until its [release-evidence gate](#release-evidence-status) passes | You need sizing, failure-domain, rollout, or recovery planning across more than one host, or you intend to claim the gated single-region HA behavior |
-| Raw Kubernetes manifests | The server repository [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) manifests, using published server images and your existing database, Redis, ingress, and secret management | Teams that already operate Kubernetes and want inspectable manifests for API, worker, scheduler, bootstrap, service, probes, config, and secrets | Helm charts, managed-Kubernetes provider validation, active/active multi-region, custom operators, environment-specific storage/networking/security decisions, and self-serve single-region HA failover until its [release-evidence gate](#release-evidence-status) passes | You need Helm, overlays, managed-cluster validation, provider-specific production planning, or intend to claim the gated single-region HA behavior |
+| Small clustered deployment | Published `durableworkflow/server` or `ghcr.io/durable-workflow/server` images using the [Compose recipe](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) as the container/process template, with 2-3 API nodes, shared external MySQL/PostgreSQL, shared Redis, independently scaled workers, and exactly one scheduler/maintenance runner | Horizontal API and worker capacity when one node is no longer enough; rolling upgrades when every guarantee in the [rolling-upgrade contract](/docs/2.0/rolling-upgrades) holds | SQLite clustering, Redis-less multi-node mode, duplicate schedulers as a steady-state topology, active/active multi-writer databases, self-hosted hands-free regional failover, broad "five-nines" or "zero-downtime" SLA promises, and self-serve single-region HA failover until its [release-evidence gate](#release-evidence-status) passes | You need sizing, failure-domain, rollout, or recovery planning across more than one host, or you intend to claim the gated single-region HA behavior |
+| Helm chart for Kubernetes | The version pinned in the [chart release contract](/charts/release.json), from `oci://ghcr.io/durable-workflow/charts/durable-workflow` or `https://durable-workflow.github.io/charts/`, with your external database, Redis, ingress, and secret management | A repeatable production install and upgrade path for the chart's server, worker, singleton scheduler, bootstrap, service, probes, and policy resources | Bundled persistence, provider-managed infrastructure, active/active multi-region, custom operators, and self-serve single-region HA failover until its [release-evidence gate](#release-evidence-status) passes | You need provider-specific architecture, capacity, recovery, or changes outside the chart's published values contract |
+| Raw Kubernetes manifests | The server repository [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) manifests, using published server images and your existing database, Redis, ingress, and secret management | Teams that already operate Kubernetes and want inspectable manifests for API, worker, scheduler, bootstrap, service, probes, config, and secrets | The separate Helm lifecycle, managed-Kubernetes provider validation, active/active multi-region, custom operators, environment-specific storage/networking/security decisions, and self-serve single-region HA failover until its [release-evidence gate](#release-evidence-status) passes | You need overlays, managed-cluster validation, provider-specific production planning, or intend to claim the gated single-region HA behavior |
 | Active/passive multi-region | A validated single-node or small-cluster deployment per region, plus asynchronous database replication from active to standby and a published failover/failback runbook | Regional disaster recovery with operator-driven failover; standby database, optional standby Redis, and idle API/worker capacity in a second region; the singleton scheduler/maintenance runner pinned to the active region | Active/active multi-region, self-hosted automatic or hands-free regional failover, synchronous cross-region replication (RPO=0), cross-region active visibility or federated search, region-pinned task queues as an engine-enforced routing axis, or the gated single-region HA failure matrix inside either region | You need a topology beyond active/passive, an automated failover controller, an RPO=0 cross-region commitment, or the gated single-region HA behavior inside either region |
 | Support-led topologies | A reviewed design based on your environment | Self-hosted active/active multi-region, hands-free regional failover outside hosted Cloud replication v1, RPO=0 cross-writer replication, duplicate scheduler runners as a steady-state topology, bespoke security/networking, private SLOs, custom overlays, migration planning | Self-serve copy/paste operation | The topology itself is part of the product risk |
 
@@ -43,12 +44,13 @@ API-node loss, worker loss, and scheduler-runner restart inside one region —
 is currently support-led while its exact-release evidence gate remains closed
 (see
 [Single-region high availability and failover](#single-region-high-availability-and-failover)
-below). For self-hosted server deployments, Helm charts, active/active
-multi-region, automatic regional failover, duplicate scheduler runners as a
-steady-state topology, and provider-specific managed-Kubernetes validation
-remain support-led because they depend on your database, cache, networking,
-security, runner, and upgrade choices. Hosted Cloud multi-region namespace
-replication v1 is a separate Cloud-managed contract; see
+below). For self-hosted server deployments, active/active multi-region,
+automatic regional failover, duplicate scheduler runners as a steady-state
+topology, and provider-specific managed-Kubernetes validation remain
+support-led because they depend on your database, cache, networking, security,
+runner, and upgrade choices. The published Helm chart is a self-serve packaging
+path within those same operator-owned boundaries. Hosted Cloud multi-region
+namespace replication v1 is a separate Cloud-managed contract; see
 [Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane). See the
 [support boundary](/docs/2.0/support) for the commercial support model.
 
@@ -62,6 +64,7 @@ the same runbook as the deployment commands:
 | --- | --- |
 | Single-node production | Backup schedule, pinned image or digest, env/config snapshot location, maximum accepted restore lag, and the latest successful restore rehearsal timestamp plus verification evidence. |
 | Small clustered deployment | The single-node packet plus the expected impact of losing one API node, one worker node, the scheduler/maintenance runner, Redis, or the shared database; the worker re-registration steps after restore; and the documented rolling-upgrade or stop-the-world posture for the current release. |
+| Helm chart for Kubernetes | The clustered packet plus chart version, values revision, image digest, cluster-specific ingress and secret owners, and the latest chart upgrade/rollback rehearsal. |
 | Raw Kubernetes manifests | The clustered packet plus the cluster-specific storage, secret, ingress, and rollout owners that must be restored or re-applied before traffic is declared healthy again. |
 | Single-region HA evaluation (support-led while the release-evidence gate is closed) | The clustered or raw-manifest packet plus rehearsal evidence for managed-database failover, managed-Redis failover, API-node loss, worker loss, and scheduler-runner restart, each completing within the recovery target published in the [Single-region HA contract](#single-region-high-availability-and-failover) without acknowledged-write loss. |
 
@@ -264,7 +267,7 @@ discovery and logs can distinguish the nodes.
 
 The unsupported boundaries are explicit: SQLite clustering, Redis-less
 multi-node mode, duplicate schedulers as a steady-state topology, active/active
-multi-writer databases, self-hosted hands-free regional failover, Helm charts,
+multi-writer databases, self-hosted hands-free regional failover,
 and broad "five-nines" or "zero-downtime" SLA promises need separate
 validation or support-led design before you rely on them. Active/passive
 multi-region with operator-driven regional failover is its own self-serve
@@ -282,6 +285,46 @@ This path is self-serve when your team already has a clear VM, network,
 database, cache, backup, and load-balancer model. It becomes support-led when
 you need help deciding those boundaries, capacity, rollout order, or recovery
 procedures.
+
+## Helm chart for Kubernetes
+
+The published chart targets the Server appVersion and anonymously pullable
+default image recorded in the [release contract](/charts/release.json). The
+[release provenance](https://durable-workflow.github.io/charts/provenance.json)
+binds the chart version, appVersion, chart-source revision, package digest, and
+image digest to the advertised endpoints.
+
+Install the exact package from the OCI registry:
+
+```bash
+helm install durable-workflow \
+  oci://ghcr.io/durable-workflow/charts/durable-workflow \
+  --version 0.1.1 \
+  --namespace durable-workflow --create-namespace \
+  -f my-values.yaml
+```
+
+Or install the same package from the HTTPS chart repository:
+
+```bash
+helm repo add durable-workflow https://durable-workflow.github.io/charts/
+helm repo update
+helm install durable-workflow durable-workflow/durable-workflow \
+  --version 0.1.1 \
+  --namespace durable-workflow --create-namespace \
+  -f my-values.yaml
+```
+
+Your values file must point to an external MySQL/PostgreSQL database and
+external Redis, provide production credentials through existing Kubernetes
+Secrets, and configure ingress/TLS for your environment. The chart does not
+create persistence or provider-managed infrastructure. Pin the image by digest
+when your change-control policy requires an immutable runtime identity.
+
+Release automation installs from both commands with a clean Helm client and
+rejects publication when the channels differ or when changed chart content
+reuses an existing chart version. Every chart change—including a changed
+appVersion or default image—therefore requires a higher chart version.
 
 ## Kubernetes manifests
 
@@ -323,9 +366,10 @@ path while the release-evidence gate is closed. The intended contract requires
 the readiness, singleton-scheduler, and shared-substrate rules in
 [Single-region high availability and failover](#single-region-high-availability-and-failover)
 below. Provider-specific load balancers, storage classes, network policies,
-Helm charts, active/active multi-region, and self-hosted hands-free regional
-failover remain support-led or tracked separately from the raw-manifest
-contract.
+active/active multi-region, and self-hosted hands-free regional failover remain
+support-led or tracked separately from the raw-manifest contract. Use the
+separately versioned Helm path above when you want Helm-managed installation
+and upgrades.
 
 ## Single-region high availability and failover
 
@@ -528,7 +572,8 @@ topology itself is part of the product risk:
 - synchronous cross-region database replication (RPO=0);
 - duplicate scheduler/maintenance runners as a steady-state topology;
 - engine-enforced region-pinned task queues as a routing axis;
-- Helm charts and provider-specific managed-Kubernetes validation;
+- provider-specific managed-Kubernetes validation beyond the published
+  chart's packaging contract;
 - broad "five-nines" or "zero-downtime" SLA promises beyond the bounded
   recovery times above.
 

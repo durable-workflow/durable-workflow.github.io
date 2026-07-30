@@ -41,6 +41,9 @@ const artifactCompatibilityEvidence = JSON.parse(
     'utf8',
   ),
 );
+const helmRelease = JSON.parse(
+  fs.readFileSync(path.join(__dirname, '..', 'static', 'charts', 'release.json'), 'utf8'),
+);
 
 function fail(message) {
   throw new Error(message);
@@ -100,6 +103,11 @@ for (const required of [
   'run: node scripts/verify-docs-release-live.js',
   'name: Verify live workflow lifecycle authority',
   'run: node scripts/verify-workflow-lifecycle-live.js',
+  'name: Stage the public HTTPS Helm repository from anonymous OCI',
+  'run: node scripts/helm-chart-release.js stage',
+  'name: Verify both public Helm release channels',
+  'run: node scripts/helm-chart-release.js verify-live',
+  'name: Upload public Helm validation evidence',
   "if: steps.deploy-plan.outputs.deploy == 'true'",
   "if: steps.deploy-plan.outputs.deploy != 'true'",
 ]) {
@@ -145,6 +153,24 @@ function currentLiveArtifacts() {
     '/compatibility-contract.json': structuredClone(compatibilityContract),
     '/public-artifact-compatibility-evidence.json':
       structuredClone(artifactCompatibilityEvidence),
+    '/charts/release.json': structuredClone(helmRelease),
+    '/charts/provenance.json': {
+      chart: {
+        version: helmRelease.chart.version,
+        app_version: helmRelease.chart.app_version,
+      },
+      image: {
+        reference: helmRelease.image.reference,
+      },
+      channels: {
+        oci: {
+          repository: helmRelease.channels.oci.repository,
+        },
+        https: {
+          repository: helmRelease.channels.https.repository,
+        },
+      },
+    },
   };
 }
 
@@ -161,8 +187,10 @@ assert.deepStrictEqual(
     '/quickstart-execution-contract.json',
     '/compatibility-contract.json',
     '/public-artifact-compatibility-evidence.json',
+    '/charts/release.json',
+    '/charts/provenance.json',
   ],
-  'the required live-artifact inventory must cover every release-authority artifact',
+  'the required live-artifact inventory must cover component and Helm release authority',
 );
 
 assert.doesNotThrow(

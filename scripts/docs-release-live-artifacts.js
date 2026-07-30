@@ -1,4 +1,5 @@
 const path = require('path');
+const helmRelease = require('../static/charts/release.json');
 
 const GENERATED_RELEASE_INVARIANTS = Object.freeze([
   Object.freeze({
@@ -41,6 +42,35 @@ const REQUIRED_LIVE_ARTIFACTS = Object.freeze([
   Object.freeze({
     route: '/public-artifact-compatibility-evidence.json',
     repositorySource: 'static/public-artifact-compatibility-evidence.json',
+  }),
+  Object.freeze({
+    route: '/charts/release.json',
+    repositorySource: 'static/charts/release.json',
+  }),
+  Object.freeze({
+    route: '/charts/provenance.json',
+    scheduledInvariants: Object.freeze([
+      Object.freeze({
+        path: Object.freeze(['chart', 'version']),
+        value: helmRelease.chart.version,
+      }),
+      Object.freeze({
+        path: Object.freeze(['chart', 'app_version']),
+        value: helmRelease.chart.app_version,
+      }),
+      Object.freeze({
+        path: Object.freeze(['image', 'reference']),
+        value: helmRelease.image.reference,
+      }),
+      Object.freeze({
+        path: Object.freeze(['channels', 'oci', 'repository']),
+        value: helmRelease.channels.oci.repository,
+      }),
+      Object.freeze({
+        path: Object.freeze(['channels', 'https', 'repository']),
+        value: helmRelease.channels.https.repository,
+      }),
+    ]),
   }),
 ]);
 
