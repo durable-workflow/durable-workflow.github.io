@@ -3,7 +3,7 @@
   "version": 1,
   "category": "principal_attribution_contract",
   "suite_schema": "durable-workflow.v2.platform-conformance.suite",
-  "suite_version": 37,
+  "suite_version": 38,
   "description": "Published-artifact scenarios proving server-derived, non-spoofable principal attribution on workflow history and operator surfaces.",
   "fixture_type": "published_artifact_runtime_scenario_manifest",
   "result_statuses": [

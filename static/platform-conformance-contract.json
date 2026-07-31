@@ -1,11 +1,37 @@
 {
   "schema": "durable-workflow.v2.platform-conformance.suite",
-  "version": 37,
+  "version": 38,
   "authority_doc": "docs/platform-conformance.md",
   "authority_url": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
   "surface_stability_authority": "durable-workflow.v2.surface-stability.contract",
   "result_schema": "durable-workflow.v2.platform-conformance.result",
   "result_version": 1,
+  "source_dependencies": {
+    "cluster-info-envelope.schema.json": {
+      "artifact_id": "durable-workflow.v2.cluster-info-envelope@catalog-15",
+      "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/cluster-info-envelope.schema.json",
+      "source_path": "resources/conformance/suite-v38/platform-protocol-specs/cluster-info-envelope.schema.json",
+      "sha256": "sha256:89bf5b7a72026890a0ae890a9437d50fd485a512837a8f291c8aeb8dc7a6b1a3"
+    },
+    "history-export-bundle.schema.json": {
+      "artifact_id": "durable-workflow.v2.history-export-bundle@catalog-15",
+      "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/history-export-bundle.schema.json",
+      "source_path": "resources/conformance/suite-v38/platform-protocol-specs/history-export-bundle.schema.json",
+      "sha256": "sha256:a198a935781ce7c031d873e99d6fb7f4ebd6da7428553c0117e25c247744e409"
+    },
+    "local-activity-runtime.schema.json": {
+      "artifact_id": "durable-workflow.v2.local-activity-runtime@catalog-15",
+      "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/local-activity-runtime.schema.json",
+      "source_path": "resources/conformance/suite-v38/platform-protocol-specs/local-activity-runtime.schema.json",
+      "sha256": "sha256:aba1b06d0775658920b1dbbd4953301ae55f671ba09d22402c67594b929150a4"
+    },
+    "worker-sessions-runtime.schema.json": {
+      "artifact_id": "durable-workflow.v2.worker-sessions-runtime@catalog-15",
+      "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/worker-sessions-runtime.schema.json",
+      "source_path": "resources/conformance/suite-v38/platform-protocol-specs/worker-sessions-runtime.schema.json",
+      "sha256": "sha256:dc7c3d62d9cd2b09088960558a19c0bc972bc16988b50cf71ca6af75dc709dc1"
+    }
+  },
   "artifact_version_history": {
     "rust_signal_query": {
       "history_mode": "observed_bindings_with_provenance",
@@ -241,6 +267,15 @@
     "provisional",
     "nonconforming"
   ],
+  "conformance_authorities": {
+    "php_sdk": {
+      "status": "stable",
+      "schema": "durable-workflow.v2.php-sdk-conformance-contract",
+      "version": 1,
+      "url": "https://durable-workflow.github.io/platform-conformance/php-sdk-conformance.json",
+      "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance"
+    }
+  },
   "targets": {
     "standalone_server": {
       "description": "Implementations of the standalone Durable Workflow server: the HTTP control plane plus the worker plane plus the cluster_info manifests.",
@@ -401,12 +436,9 @@
       "description": "Frozen request bodies and response shapes for control-plane operations: workflow.start, signal, query, update, cancel, task-history page, namespace storage driver, storage round-trip diagnostic.",
       "sources": [
         {
-          "repository": "cli",
-          "path": "tests/fixtures/control-plane/"
-        },
-        {
-          "repository": "sdk-python",
-          "path": "tests/fixtures/control-plane/"
+          "artifact_id": "durable-workflow.v2.control-plane-api@catalog-15",
+          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/control-plane-api.openapi.yaml",
+          "sha256": "sha256:3eae0fd69a79414dbc1079e9d06129884c35feba3f95439a62e73efb38543813"
         }
       ],
       "authority_doc": "https://durable-workflow.github.io/docs/2.0/polyglot/cli-python-parity"
@@ -416,20 +448,14 @@
       "description": "Task input envelopes (poll → claim → run) and task result envelopes (complete, fail, cancel, heartbeat) used by every conforming worker.",
       "sources": [
         {
-          "repository": "cli",
-          "path": "tests/fixtures/external-task/"
+          "artifact_id": "durable-workflow.v2.worker-protocol-api@catalog-15",
+          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/worker-protocol-api.openapi.yaml",
+          "sha256": "sha256:4e33be4fad463f00f5a2bf0362ca5df1181d26cf429b06108d74475ec484cdc8"
         },
         {
-          "repository": "cli",
-          "path": "tests/fixtures/external-task-input/"
-        },
-        {
-          "repository": "sdk-python",
-          "path": "tests/fixtures/external-task-input/"
-        },
-        {
-          "repository": "sdk-python",
-          "path": "tests/fixtures/external-task-result/"
+          "artifact_id": "durable-workflow.v2.worker-protocol-stream@catalog-15",
+          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/worker-protocol-stream.asyncapi.yaml",
+          "sha256": "sha256:08e9f580928e5f8946ce61f2ebdca3adb45022577a46a5c50196654b3c9350d1"
         }
       ],
       "authority_doc": "https://durable-workflow.github.io/docs/2.0/polyglot/worker-protocol"
@@ -439,8 +465,9 @@
       "description": "Live published-artifact scenarios for signal delivery and query consistency across PHP, Python, and Rust workers and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility.",
       "sources": [
         {
-          "repository": "durable-workflow.github.io",
-          "path": "static/platform-conformance/signal-query-runtime-scenarios.json"
+          "artifact_id": "durable-workflow.v2.platform-conformance.runtime-scenarios/signal_query_runtime_contract@38",
+          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/signal-query-runtime-scenarios.json",
+          "sha256": "sha256:f4104a67fdc307e5470c8272aa76971ae152fc22b526505cf149457c04a4c42d"
         }
       ],
       "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
@@ -570,8 +597,9 @@
       "description": "Live published-artifact scenarios for workflow updates across declared update visibility, accepted/running/completed/failed outcomes, idempotency, refusal paths, payload envelopes, principal attribution, PHP/Python parity, and operator visibility.",
       "sources": [
         {
-          "repository": "durable-workflow.github.io",
-          "path": "static/platform-conformance/workflow-update-runtime-scenarios.json"
+          "artifact_id": "durable-workflow.v2.platform-conformance.runtime-scenarios/workflow_update_runtime_contract@38",
+          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/workflow-update-runtime-scenarios.json",
+          "sha256": "sha256:24c0bdb1cca0ea6f7cc68daf1a62e1ca41a20bfbf0d0419aa80a3bfd5b4bb385"
         }
       ],
       "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
@@ -598,8 +626,9 @@
       "description": "Live published-artifact scenarios for Temporal-parity search attributes across PHP and Python workers, CLI query surfaces, Waterline operator visibility, cross-language codecs, load latency, boolean grammar, and adversarial query handling.",
       "sources": [
         {
-          "repository": "durable-workflow.github.io",
-          "path": "static/platform-conformance/search-attribute-runtime-scenarios.json"
+          "artifact_id": "durable-workflow.v2.platform-conformance.runtime-scenarios/search_attribute_runtime_contract@38",
+          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/search-attribute-runtime-scenarios.json",
+          "sha256": "sha256:41db9910236025878bdb2aa000d295ea58b4a53369c065a07eba037f7b256e5e"
         }
       ],
       "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
@@ -628,8 +657,9 @@
       "description": "Live published-artifact scenarios for Temporal-parity schedules across cron and fixed-rate cadence, public list and describe surfaces, pause/resume/delete controls, missed-fire policy, restart survival, CLI/Python/PHP client paths, cross-language scheduled workflow dispatch, and adversarial schedule inputs.",
       "sources": [
         {
-          "repository": "durable-workflow.github.io",
-          "path": "static/platform-conformance/schedules-runtime-scenarios.json"
+          "artifact_id": "durable-workflow.v2.platform-conformance.runtime-scenarios/schedules_runtime_contract@38",
+          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/schedules-runtime-scenarios.json",
+          "sha256": "sha256:9f4850ffb627f0f5afb3a12de41f60d7a35761b73c42868529b81d3a44e74513"
         }
       ],
       "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
@@ -656,16 +686,19 @@
       "description": "Deterministic replay coverage for frozen history bundles, worker restart replay, adversarial refusal, and in-flight signal timing across the official PHP and Python runtimes.",
       "sources": [
         {
-          "repository": "durable-workflow.github.io",
-          "path": "static/platform-conformance/replay-runtime-scenarios.json"
+          "artifact_id": "durable-workflow.v2.platform-conformance.runtime-scenarios/history_replay_bundles@38",
+          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/replay-runtime-scenarios.json",
+          "sha256": "sha256:ce540ae887e0ef4ac2065a108c60e885458563e55a2fedf7291cea8835468945"
         },
         {
-          "repository": "workflow",
-          "path": "tests/Fixtures/V2/GoldenHistory/"
+          "artifact_id": "durable-workflow.v2.history-event-payloads@catalog-15",
+          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/history-event-payloads.schema.json",
+          "sha256": "sha256:23e124f6c9efcdea44e16ab80f3b2ad525ee759b1b1c5f503e2c0135a58e9d3e"
         },
         {
-          "repository": "sdk-python",
-          "path": "tests/fixtures/golden_history/"
+          "artifact_id": "durable-workflow.v2.replay-bundle@catalog-15",
+          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/replay-bundle.schema.json",
+          "sha256": "sha256:0e49aeb7d0ef64786697e747d5378c4298c4cf04a0c5aabc218086dc02926ef7"
         }
       ],
       "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
@@ -706,8 +739,9 @@
       "description": "Live published-artifact scenarios for Temporal-parity namespace isolation, lifecycle cleanup, CLI and SDK namespace selection, PHP worker routing, Waterline visibility, Nexus opt-in crossing, and search-attribute value query isolation.",
       "sources": [
         {
-          "repository": "durable-workflow.github.io",
-          "path": "static/platform-conformance/namespace-runtime-scenarios.json"
+          "artifact_id": "durable-workflow.v2.platform-conformance.runtime-scenarios/namespace_runtime_contract@38",
+          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/namespace-runtime-scenarios.json",
+          "sha256": "sha256:78458d791b2ad1cb457c85c6e1395553ea5752ed252d8516d5b71bd0701f853d"
         }
       ],
       "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
@@ -743,8 +777,9 @@
       "description": "Live published-artifact scenarios for child workflow orchestration across PHP and Python workers, cross-language parent/child execution, failure and cancellation propagation, replay after worker restart, concurrent fan-out, and namespace behavior.",
       "sources": [
         {
-          "repository": "durable-workflow.github.io",
-          "path": "static/platform-conformance/child-workflow-runtime-scenarios.json"
+          "artifact_id": "durable-workflow.v2.platform-conformance.runtime-scenarios/child_workflow_runtime_contract@38",
+          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/child-workflow-runtime-scenarios.json",
+          "sha256": "sha256:8519047688cebc87594ab1dd185f55437f20bd9d9ec362856cb62edfe74fe9b0"
         }
       ],
       "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
@@ -767,8 +802,9 @@
       "description": "Live published-artifact scenarios for safe-deploy worker versioning across build-ID registration, rollout visibility, drain/resume controls, per-run pins, compatible replay routing, no-compatible-worker diagnostics, cross-language PHP/Python pinning, adversarial no-bump behavior, and history API version pins.",
       "sources": [
         {
-          "repository": "durable-workflow.github.io",
-          "path": "static/platform-conformance/worker-versioning-runtime-scenarios.json"
+          "artifact_id": "durable-workflow.v2.platform-conformance.runtime-scenarios/worker_versioning_runtime_contract@38",
+          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/worker-versioning-runtime-scenarios.json",
+          "sha256": "sha256:a5546f1c610bf7c34e793ff35fb28d1033a8ab37244eeba0e8aa02354cbba9a5"
         }
       ],
       "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
@@ -793,8 +829,9 @@
       "description": "Live published-artifact scenarios for Temporal-parity saga compensation across forward success, reverse-order compensation after later-step failure, early failure, retry idempotence, compensation failure visibility, worker restart replay, PHP/Python cross-language compensation, typed compensation errors, and operator-visible in-progress compensation state.",
       "sources": [
         {
-          "repository": "durable-workflow.github.io",
-          "path": "static/platform-conformance/saga-runtime-scenarios.json"
+          "artifact_id": "durable-workflow.v2.platform-conformance.runtime-scenarios/saga_runtime_contract@38",
+          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/saga-runtime-scenarios.json",
+          "sha256": "sha256:d11d7966813eed10c7869196db72e56ab994cf86ee4bb0f33c8d68a9013959af"
         }
       ],
       "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
@@ -818,8 +855,9 @@
       "description": "Live published-artifact scenarios for v1 to v2 migration across preserved histories, in-flight progress, activities, signal-or-timer waits, schedules, worker registrations, CLI access, Waterline operator visibility, new v2 starts, queue-aware rollback semantics, and version-skew refusal.",
       "sources": [
         {
-          "repository": "durable-workflow.github.io",
-          "path": "static/platform-conformance/migration-runtime-scenarios.json"
+          "artifact_id": "durable-workflow.v2.platform-conformance.runtime-scenarios/migration_runtime_contract@38",
+          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/migration-runtime-scenarios.json",
+          "sha256": "sha256:79a0ecac7afec6efdfd089326b63f20d689797cc181a7a6d441d29699f7055f7"
         }
       ],
       "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
@@ -844,8 +882,9 @@
       "description": "Published-artifact version-skew refusal scenarios across CLI, Python SDK, PHP workflow worker, Waterline, future-version boundaries, worker registration classifications, Waterline render classifications, and per-operation request/response evidence.",
       "sources": [
         {
-          "repository": "durable-workflow.github.io",
-          "path": "static/platform-conformance/skew-refusal-matrix-scenarios.json"
+          "artifact_id": "durable-workflow.v2.platform-conformance.runtime-scenarios/skew_refusal_matrix_contract@38",
+          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/skew-refusal-matrix-scenarios.json",
+          "sha256": "sha256:578a327454b83a891e73d9966546b362c7a5bf94f4a29dc35eae2b110271ea93"
         }
       ],
       "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
@@ -865,8 +904,9 @@
       "description": "Published-artifact scenarios for 2.0 prerelease readiness across Workflow, Waterline, server, CLI, Python SDK, sample app, public docs, and the quickstart local-server hosting and Laravel paths.",
       "sources": [
         {
-          "repository": "durable-workflow.github.io",
-          "path": "static/platform-conformance/prerelease-readiness-scenarios.json"
+          "artifact_id": "durable-workflow.v2.platform-conformance.runtime-scenarios/prerelease_readiness_contract@38",
+          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/prerelease-readiness-scenarios.json",
+          "sha256": "sha256:f2ee2bded2f34ceedb00b55177bfbfc03074fc86555d0b90493f75046d6a93f7"
         }
       ],
       "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
@@ -890,12 +930,9 @@
       "description": "Failure objects and repair / actionability shapes for stuck tasks, deterministic failure, and replay-mismatch surfaces.",
       "sources": [
         {
-          "repository": "server",
-          "path": "docs/contracts/external-task-result.md"
-        },
-        {
-          "repository": "server",
-          "path": "docs/contracts/replay-verification.md"
+          "artifact_id": "durable-workflow.v2.repair-actionability-objects@catalog-15",
+          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/repair-actionability-objects.schema.json",
+          "sha256": "sha256:c52238b20502e256f3e0ca681105368d642e27a6725ecfeb9f0571ccf6a01132"
         }
       ],
       "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-protocol-specs"
@@ -905,12 +942,9 @@
       "description": "The `--output=json` and `--output=jsonl` envelopes that automation depends on. Diagnostic-only fields are listed in the schema and excluded from the contract diff.",
       "sources": [
         {
-          "repository": "cli",
-          "path": "tests/fixtures/control-plane/"
-        },
-        {
-          "repository": "cli",
-          "path": "schemas/"
+          "artifact_id": "durable-workflow.v2.cli-json-envelopes@catalog-15",
+          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/cli-json-envelopes.schema.json",
+          "sha256": "sha256:af67ec2f21d905a200f603c73fd0aa038081798a99b818b2eff8ce093e4bebc9"
         }
       ],
       "authority_doc": "https://durable-workflow.github.io/docs/2.0/polyglot/cli-reference"
@@ -946,8 +980,9 @@
       "description": "Published-artifact scenarios proving server-derived, non-spoofable principal attribution across raw HTTP, CLI, Python SDK, PHP workflow client, and Waterline operator surfaces.",
       "sources": [
         {
-          "repository": "durable-workflow.github.io",
-          "path": "static/platform-conformance/principal-attribution-scenarios.json"
+          "artifact_id": "durable-workflow.v2.platform-conformance.runtime-scenarios/principal_attribution_contract@38",
+          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/principal-attribution-scenarios.json",
+          "sha256": "sha256:257dbaaa0c16b62f86f19e304a3de54347da1e0cf03642639c159e0dfac8c19f"
         }
       ],
       "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance",

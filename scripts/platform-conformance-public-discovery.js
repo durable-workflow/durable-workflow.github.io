@@ -1,9 +1,8 @@
-const PLATFORM_CONFORMANCE_MANIFEST_PATH_PATTERN = /^static\/platform-conformance\/[^/]+\.json$/;
+const PLATFORM_CONFORMANCE_MANIFEST_PATH_PATTERN = /^\/platform-conformance\/[^/]+\.json$/;
 const PLATFORM_CONFORMANCE_PUBLIC_URL_PREFIX =
   'https://durable-workflow.github.io/platform-conformance/';
-const STANDALONE_CONFORMANCE_AUTHORITY_PATHS = [
-  'platform-conformance/php-sdk-conformance.json',
-];
+const IMMUTABLE_RUNTIME_MANIFEST_PATH_PATTERN =
+  /^\/durable-workflow\/workflow\/[0-9a-f]{40}\/resources\/conformance\/suite-v[0-9]+\/platform-conformance\/([^/]+\.json)$/;
 
 function stablePlatformConformanceDiscoveryEntries(contract) {
   const entriesByPath = new Map();
@@ -14,18 +13,32 @@ function stablePlatformConformanceDiscoveryEntries(contract) {
     }
 
     for (const source of entry.sources) {
-      if (
-        !source ||
-        source.repository !== 'durable-workflow.github.io' ||
-        !PLATFORM_CONFORMANCE_MANIFEST_PATH_PATTERN.test(source.path || '')
+      let publicUrl;
+      try {
+        publicUrl = new URL(source?.resolver_url);
+      } catch (error) {
+        continue;
+      }
+
+      let pathname = publicUrl.pathname;
+      if (publicUrl.origin === 'https://raw.githubusercontent.com') {
+        const runtimeMatch = pathname.match(IMMUTABLE_RUNTIME_MANIFEST_PATH_PATTERN);
+        if (!runtimeMatch) {
+          continue;
+        }
+
+        pathname = `/platform-conformance/${runtimeMatch[1]}`;
+      } else if (
+        publicUrl.origin !== 'https://durable-workflow.github.io' ||
+        !PLATFORM_CONFORMANCE_MANIFEST_PATH_PATTERN.test(pathname)
       ) {
         continue;
       }
 
-      const buildPath = source.path.slice('static/'.length);
+      const buildPath = pathname.replace(/^\//, '');
 
       entriesByPath.set(buildPath, {
-        path: `/${buildPath}`,
+        path: pathname,
         buildPath,
       });
     }
@@ -48,7 +61,7 @@ function stablePlatformConformanceDiscoveryEntries(contract) {
 
     const publicUrl = new URL(authority.url);
     const buildPath = publicUrl.pathname.replace(/^\//, '');
-    if (!PLATFORM_CONFORMANCE_MANIFEST_PATH_PATTERN.test(`static/${buildPath}`)) {
+    if (!PLATFORM_CONFORMANCE_MANIFEST_PATH_PATTERN.test(publicUrl.pathname)) {
       throw new Error(
         `Stable conformance authority ${name} URL must name one JSON contract ` +
           `directly under /platform-conformance/`,
@@ -57,13 +70,6 @@ function stablePlatformConformanceDiscoveryEntries(contract) {
 
     entriesByPath.set(buildPath, {
       path: publicUrl.pathname,
-      buildPath,
-    });
-  }
-
-  for (const buildPath of STANDALONE_CONFORMANCE_AUTHORITY_PATHS) {
-    entriesByPath.set(buildPath, {
-      path: `/${buildPath}`,
       buildPath,
     });
   }

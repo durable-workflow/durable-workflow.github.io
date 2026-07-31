@@ -20,6 +20,11 @@ const thisScriptPath = path.relative(repoRoot, __filename).split(path.sep).join(
 const docsDir = path.join(repoRoot, 'docs');
 const configPath = path.join(repoRoot, 'docusaurus.config.js');
 const contractPath = path.join(repoRoot, 'static', 'platform-conformance-contract.json');
+const protocolCatalogPath = path.join(
+  repoRoot,
+  'static',
+  'platform-protocol-specs.json',
+);
 const discoveryPagePath = path.join(
   repoRoot,
   'src',
@@ -30,6 +35,10 @@ const discoveryPagePath = path.join(
 const sidebarsPath = path.join(repoRoot, 'sidebars.js');
 
 const EXPECTED_SCHEMA = 'durable-workflow.v2.platform-conformance.suite';
+const EXPECTED_RUNTIME_SOURCE_REVISION =
+  '75dfd5c869823409ef3d6c4b009a7882159ae9a2';
+const EXPECTED_PROTOCOL_SOURCE_REVISION =
+  '91bde245162b61d371feeef5648a4befae8d755a';
 const VERSIONED_SUITE_AUTHORITY_DIGESTS = {
   29: 'sha256:51eaaf8d034264f0f91bd13d10e3d46ca10dc8d97010719d4727c0336ad66382',
   30: 'sha256:e33ced9ece7d2c32cd939d416cb76c365ba6dd05e0c041949adb7c3267072b48',
@@ -37,6 +46,7 @@ const VERSIONED_SUITE_AUTHORITY_DIGESTS = {
   32: 'sha256:9fbd647e3ef2d32441c17c1d0fd7d23a2b4bbc2026430dfc3c852288b02b49d1',
   33: 'sha256:dd0f589045ac0628d3fffc6fce5b910d41e94b63301c96cacd7757523cb65f9a',
   37: 'sha256:2e54a3edfb6e37a05a68525397253b6c3d660aef2296654f0bbf895fac0501b4',
+  38: 'sha256:71feae0fff1a855afeda242a1ede8ab151d7d106093f2c624e88014a37c58c29',
 };
 const EXPECTED_RUNTIME_SCENARIO_SCHEMA =
   'durable-workflow.v2.platform-conformance.runtime-scenarios';
@@ -290,6 +300,7 @@ VERSIONED_RUNTIME_SCENARIO_STATUSES[34] = VERSIONED_RUNTIME_SCENARIO_STATUSES[33
 VERSIONED_RUNTIME_SCENARIO_STATUSES[35] = VERSIONED_RUNTIME_SCENARIO_STATUSES[34];
 VERSIONED_RUNTIME_SCENARIO_STATUSES[36] = VERSIONED_RUNTIME_SCENARIO_STATUSES[35];
 VERSIONED_RUNTIME_SCENARIO_STATUSES[37] = VERSIONED_RUNTIME_SCENARIO_STATUSES[36];
+VERSIONED_RUNTIME_SCENARIO_STATUSES[38] = VERSIONED_RUNTIME_SCENARIO_STATUSES[37];
 const VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_FIELDS = [
   'artifact_policy',
   'common_result_evidence',
@@ -600,6 +611,8 @@ VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[37] = {
   prerelease_readiness_contract:
     'sha256:c84306b3c813066673466c61aab8d010ce2589620df67f860844f8029e34444a',
 };
+VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[38] =
+  VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[37];
 // Digests bind public top-level runtime scenario manifest requirements to the
 // suite version. These fields define artifact source policy, common evidence,
 // runtime matrices, scenario-specific required evidence, and host-runner result
@@ -794,6 +807,8 @@ VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[37] = {
   prerelease_readiness_contract:
     'sha256:7b8e25052de6e3d6a539100b8580ba950e48f973d577f57955d57158d1493480',
 };
+VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[38] =
+  VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[37];
 const VERSIONED_PASS_FAIL_RULES = {
   5: {
     guaranteed_field_equality: {
@@ -1068,6 +1083,7 @@ VERSIONED_PASS_FAIL_RULES[34] = VERSIONED_PASS_FAIL_RULES[33];
 VERSIONED_PASS_FAIL_RULES[35] = VERSIONED_PASS_FAIL_RULES[34];
 VERSIONED_PASS_FAIL_RULES[36] = VERSIONED_PASS_FAIL_RULES[35];
 VERSIONED_PASS_FAIL_RULES[37] = VERSIONED_PASS_FAIL_RULES[36];
+VERSIONED_PASS_FAIL_RULES[38] = VERSIONED_PASS_FAIL_RULES[37];
 const EXPECTED_AUTHORITY_DOC = 'docs/platform-conformance.md';
 const EXPECTED_DOC_ID = 'platform-conformance';
 
@@ -1079,7 +1095,9 @@ const REQUIRED_TOP_LEVEL_KEYS = [
   'surface_stability_authority',
   'result_schema',
   'result_version',
+  'source_dependencies',
   'conformance_levels',
+  'conformance_authorities',
   'targets',
   'fixture_catalog',
   'pass_fail_rules',
@@ -1932,7 +1950,7 @@ function assertVersionedRuntimeScenarioStatuses(contract, manifest, category, so
     manifest.result_statuses,
     expectedStatuses,
     `stable runtime fixture category "${category}" scenario manifest ` +
-      `${source.repository}:${source.path} result_statuses for suite version ${contract.version}`,
+      `${sourceReference(source)} result_statuses for suite version ${contract.version}`,
   );
 
   return expectedStatuses;
@@ -1945,7 +1963,7 @@ function assertPublishedArtifactRuntimeScenarioManifestShape(
 ) {
   const label =
     `stable runtime fixture category "${category}" scenario manifest ` +
-    `${source.repository}:${source.path}`;
+    `${sourceReference(source)}`;
 
   if (manifest.fixture_type !== EXPECTED_RUNTIME_SCENARIO_FIXTURE_TYPE) {
     throw new Error(
@@ -1993,14 +2011,14 @@ function assertSignalQueryRuntimeArtifactPolicy(manifest, category, source) {
   if (policy.requires_resolved_versions !== true) {
     throw new Error(
       `stable runtime fixture category "${category}" scenario manifest ` +
-        `${source.repository}:${source.path} must require resolved artifact versions.`,
+        `${sourceReference(source)} must require resolved artifact versions.`,
     );
   }
 
   if (policy.rejects_placeholder_versions !== true) {
     throw new Error(
       `stable runtime fixture category "${category}" scenario manifest ` +
-        `${source.repository}:${source.path} must advertise placeholder ` +
+        `${sourceReference(source)} must advertise placeholder ` +
         `artifact-version rejection so external harnesses can fail ` +
         `unresolved tokens such as latest/current/head.`,
     );
@@ -2033,7 +2051,7 @@ function assertSkewRefusalMatrixResultEvidence(manifest, category, source) {
   if (!Array.isArray(commonEvidence)) {
     throw new Error(
       `stable runtime fixture category "${category}" scenario manifest ` +
-        `${source.repository}:${source.path} must declare common_result_evidence.`,
+        `${sourceReference(source)} must declare common_result_evidence.`,
     );
   }
 
@@ -2041,7 +2059,7 @@ function assertSkewRefusalMatrixResultEvidence(manifest, category, source) {
     if (!commonEvidence.includes(requiredField)) {
       throw new Error(
         `stable runtime fixture category "${category}" scenario manifest ` +
-          `${source.repository}:${source.path} common_result_evidence must ` +
+          `${sourceReference(source)} common_result_evidence must ` +
           `include required run record field "${requiredField}".`,
       );
     }
@@ -2050,7 +2068,7 @@ function assertSkewRefusalMatrixResultEvidence(manifest, category, source) {
   if (commonEvidence.includes('linked_findings')) {
     throw new Error(
       `stable runtime fixture category "${category}" scenario manifest ` +
-        `${source.repository}:${source.path} must use finding_links, not ` +
+        `${sourceReference(source)} must use finding_links, not ` +
         `linked_findings, for top-level run records.`,
     );
   }
@@ -2059,7 +2077,7 @@ function assertSkewRefusalMatrixResultEvidence(manifest, category, source) {
     (manifest.artifact_policy || {}).required_run_record_fields || [],
     requiredRunRecordFields,
     `stable runtime fixture category "${category}" scenario manifest ` +
-      `${source.repository}:${source.path} artifact_policy.required_run_record_fields`,
+      `${sourceReference(source)} artifact_policy.required_run_record_fields`,
   );
 }
 
@@ -2070,7 +2088,7 @@ function assertPhpSdkSplitRuntimeAuthority(manifest, category, source) {
 
   const label =
     `stable runtime fixture category "${category}" scenario manifest ` +
-    `${source.repository}:${source.path}`;
+    `${sourceReference(source)}`;
   const artifactPolicy = manifest.artifact_policy || {};
   const requiredArtifacts = artifactPolicy.required_artifacts || [];
 
@@ -2466,7 +2484,7 @@ function assertPublicRuntimeManifestHasNoInternalHarnessContract(
   assertPublicConformanceContractHasNoInternalHarnessArtifacts(
     manifest,
     `stable runtime fixture category "${category}" scenario manifest ` +
-      `${source.repository}:${source.path}`,
+      `${sourceReference(source)}`,
   );
 }
 
@@ -2489,7 +2507,7 @@ function assertWorkerVersioningNoCompatibleEvidence(manifest, category, source) 
 
   const label =
     `stable runtime fixture category "${category}" scenario manifest ` +
-    `${source.repository}:${source.path}`;
+    `${sourceReference(source)}`;
   const artifactPolicy = manifest.artifact_policy || {};
 
   if (artifactPolicy.requires_local_product_source_checkouts_used_false !== true) {
@@ -2664,7 +2682,7 @@ function assertVersionedRuntimeScenarioCriteria(contract, manifest, category, so
   if (actualDigest !== expectedDigest) {
     throw new Error(
       `stable runtime fixture category "${category}" scenario manifest ` +
-        `${source.repository}:${source.path} operations/pass_criteria digest ` +
+        `${sourceReference(source)} operations/pass_criteria digest ` +
         `${actualDigest} must match suite-versioned expectation ` +
         `${expectedDigest}. Advance the suite version and add a new ` +
         `VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS entry before changing ` +
@@ -2707,7 +2725,7 @@ function assertVersionedRuntimeScenarioPublicRequirements(
   if (actualDigest !== expectedDigest) {
     throw new Error(
       `stable runtime fixture category "${category}" scenario manifest ` +
-        `${source.repository}:${source.path} public requirement digest ` +
+        `${sourceReference(source)} public requirement digest ` +
         `${actualDigest} must match suite-versioned expectation ` +
         `${expectedDigest}. Advance the suite version and add a new ` +
         `VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS entry before ` +
@@ -2719,43 +2737,17 @@ function assertVersionedRuntimeScenarioPublicRequirements(
 }
 
 function isPublicRuntimeScenarioManifest(source) {
-  return (
-    source.repository === 'durable-workflow.github.io' &&
-    /^static\/platform-conformance\/[^/]+\.json$/.test(source.path || '')
-  );
-}
-
-function isApprovedPublicRuntimeSource(source) {
-  const sourcePath = source.path || '';
-
-  return (
-    isPublicRuntimeScenarioManifest(source) ||
-    sourcePath.startsWith('tests/fixtures/') ||
-    sourcePath.startsWith('tests/Fixtures/') ||
-    sourcePath.startsWith('fixtures/')
-  );
-}
-
-function assertLocalSourcePath(source, category) {
-  const sourcePath = source.path || '';
-  const fullPath = path.join(repoRoot, sourcePath);
-  const relative = path.relative(repoRoot, fullPath);
-
-  if (relative.startsWith('..') || path.isAbsolute(relative)) {
-    throw new Error(
-      `stable runtime fixture category "${category}" source ` +
-        `${source.repository}:${sourcePath} must stay inside the docs repo.`,
+  try {
+    const resolver = new URL(source.resolver_url);
+    return (
+      resolver.origin === 'https://raw.githubusercontent.com' &&
+      /^\/durable-workflow\/workflow\/[0-9a-f]{40}\/resources\/conformance\/suite-v[0-9]+\/platform-conformance\/[a-z0-9.-]+\.json$/.test(
+        resolver.pathname,
+      )
     );
+  } catch (err) {
+    return false;
   }
-
-  if (!fs.existsSync(fullPath)) {
-    throw new Error(
-      `stable runtime fixture category "${category}" source ` +
-        `${source.repository}:${sourcePath} does not exist.`,
-    );
-  }
-
-  return fullPath;
 }
 
 function runtimeScenarioCategories(contract) {
@@ -2782,6 +2774,368 @@ function stableFixtureCategories(contract) {
     .map(([category]) => category);
 }
 
+function sourceReference(source) {
+  return source?.resolver_url || `${source?.repository}:${source?.path}`;
+}
+
+function immutableResolverDetails(source, category, suiteVersion) {
+  const label =
+    `stable fixture category "${category}" source ${sourceReference(source)}`;
+  let resolver;
+
+  try {
+    resolver = new URL(source.resolver_url);
+  } catch (err) {
+    throw new Error(`${label} must declare an absolute HTTPS resolver_url.`);
+  }
+
+  if (
+    resolver.protocol !== 'https:' ||
+    resolver.hostname !== 'raw.githubusercontent.com' ||
+    resolver.username ||
+    resolver.password ||
+    resolver.port ||
+    resolver.search ||
+    resolver.hash ||
+    resolver.href !== source.resolver_url
+  ) {
+    throw new Error(
+      `${label} must use an immutable raw GitHub resolver without credentials, ` +
+        `a port, query string, or fragment.`,
+    );
+  }
+
+  const runtimeMatch = resolver.pathname.match(
+    /^\/durable-workflow\/workflow\/([0-9a-f]{40})\/resources\/conformance\/suite-v([0-9]+)\/platform-conformance\/([a-z0-9.-]+\.json)$/,
+  );
+  const protocolMatch = resolver.pathname.match(
+    /^\/durable-workflow\/durable-workflow\.github\.io\/([0-9a-f]{40})\/static\/platform-protocol-specs\/([a-z0-9.-]+\.(?:json|ya?ml))$/,
+  );
+
+  let kind;
+  let filename;
+  let localPath;
+  let discoveryUrl;
+
+  if (runtimeMatch) {
+    if (runtimeMatch[1] !== EXPECTED_RUNTIME_SOURCE_REVISION) {
+      throw new Error(
+        `${label} must use published Workflow source revision ` +
+          `${EXPECTED_RUNTIME_SOURCE_REVISION}.`,
+      );
+    }
+    if (Number(runtimeMatch[2]) !== suiteVersion) {
+      throw new Error(
+        `${label} must bind runtime scenario bytes to suite-v${suiteVersion}.`,
+      );
+    }
+
+    kind = 'runtime';
+    filename = runtimeMatch[3];
+    localPath = path.join(
+      repoRoot,
+      'static',
+      'platform-conformance',
+      filename,
+    );
+    discoveryUrl =
+      `https://durable-workflow.github.io/platform-conformance/${filename}`;
+  } else if (protocolMatch) {
+    if (protocolMatch[1] !== EXPECTED_PROTOCOL_SOURCE_REVISION) {
+      throw new Error(
+        `${label} must use published docs protocol source revision ` +
+          `${EXPECTED_PROTOCOL_SOURCE_REVISION}.`,
+      );
+    }
+
+    kind = 'protocol';
+    filename = protocolMatch[2];
+    localPath = path.join(
+      repoRoot,
+      'static',
+      'platform-protocol-specs',
+      filename,
+    );
+    discoveryUrl =
+      `https://durable-workflow.github.io/platform-protocol-specs/${filename}`;
+  } else {
+    throw new Error(
+      `${label} must resolve immutable bytes from a full-commit Workflow ` +
+        `suite source or docs protocol-spec source.`,
+    );
+  }
+
+  if (
+    !fs.existsSync(localPath) ||
+    !fs.statSync(localPath).isFile()
+  ) {
+    throw new Error(`${label} does not resolve to a published file.`);
+  }
+
+  return {
+    discoveryUrl,
+    filename,
+    kind,
+    localPath,
+    revision: runtimeMatch?.[1] || protocolMatch[1],
+  };
+}
+
+function localFileForResolver(source, category, suiteVersion) {
+  return immutableResolverDetails(source, category, suiteVersion).localPath;
+}
+
+function protocolSpecById(catalog, specId) {
+  return Object.values(catalog.specs || {}).find(spec => spec.spec_id === specId);
+}
+
+function assertStableFixtureSourcesResolve(contract) {
+  const catalog = contract.fixture_catalog || {};
+  const protocolCatalog = loadJson(
+    protocolCatalogPath,
+    'static/platform-protocol-specs.json',
+  );
+  const docs = read(path.join(docsDir, 'platform-conformance.md'));
+  const discoveryPage = read(discoveryPagePath);
+
+  for (const category of stableFixtureCategories(contract)) {
+    const entry = catalog[category];
+
+    if (!Array.isArray(entry.sources) || entry.sources.length === 0) {
+      throw new Error(
+        `stable fixture category "${category}" must declare at least one source.`,
+      );
+    }
+
+    for (const source of entry.sources) {
+      if (!source || typeof source !== 'object' || Array.isArray(source)) {
+        throw new Error(
+          `stable fixture category "${category}" has an invalid source.`,
+        );
+      }
+
+      for (const legacyField of ['repository', 'path']) {
+        if (legacyField in source) {
+          throw new Error(
+            `stable fixture category "${category}" source must not use ` +
+              `repository-relative ${legacyField} references.`,
+          );
+        }
+      }
+
+      if (
+        typeof source.artifact_id !== 'string' ||
+        source.artifact_id.trim() === ''
+      ) {
+        throw new Error(
+          `stable fixture category "${category}" source must declare a ` +
+            `version-bound artifact_id.`,
+        );
+      }
+      if (
+        typeof source.sha256 !== 'string' ||
+        !/^sha256:[a-f0-9]{64}$/.test(source.sha256)
+      ) {
+        throw new Error(
+          `stable fixture category "${category}" source ` +
+            `${source.artifact_id} must declare a sha256 byte binding.`,
+        );
+      }
+
+      const resolverDetails = immutableResolverDetails(
+        source,
+        category,
+        contract.version,
+      );
+      const localPath = resolverDetails.localPath;
+      const actualDigest =
+        'sha256:' +
+        crypto.createHash('sha256').update(read(localPath)).digest('hex');
+
+      if (source.sha256 !== actualDigest) {
+        throw new Error(
+          `stable fixture category "${category}" source ` +
+            `${source.artifact_id} digest ${source.sha256} must match ` +
+            `${actualDigest} at ${source.resolver_url}.`,
+        );
+      }
+
+      const runtimeArtifactPrefix =
+        `${EXPECTED_RUNTIME_SCENARIO_SCHEMA}/${category}@`;
+      if (source.artifact_id.startsWith(runtimeArtifactPrefix)) {
+        if (resolverDetails.kind !== 'runtime') {
+          throw new Error(
+            `stable fixture category "${category}" runtime source must use ` +
+              `an immutable Workflow suite resolver.`,
+          );
+        }
+
+        const expectedArtifactId = `${runtimeArtifactPrefix}${contract.version}`;
+        if (source.artifact_id !== expectedArtifactId) {
+          throw new Error(
+            `stable fixture category "${category}" runtime source must use ` +
+              `suite-bound artifact id ${expectedArtifactId}.`,
+          );
+        }
+      } else {
+        if (resolverDetails.kind !== 'protocol') {
+          throw new Error(
+            `stable fixture category "${category}" protocol source must use ` +
+              `an immutable docs protocol-spec resolver.`,
+          );
+        }
+
+        const catalogSuffix = `@catalog-${protocolCatalog.version}`;
+        if (!source.artifact_id.endsWith(catalogSuffix)) {
+          throw new Error(
+            `stable fixture category "${category}" protocol source must bind ` +
+              `artifact_id to platform protocol catalog version ` +
+              `${protocolCatalog.version}.`,
+          );
+        }
+
+        const specId = source.artifact_id.slice(0, -catalogSuffix.length);
+        const spec = protocolSpecById(protocolCatalog, specId);
+        if (!spec || spec.status !== 'published') {
+          throw new Error(
+            `stable fixture category "${category}" source ${source.artifact_id} ` +
+              `must resolve through a published platform protocol catalog entry.`,
+          );
+        }
+        if (spec.spec_url !== resolverDetails.discoveryUrl) {
+          throw new Error(
+            `stable fixture category "${category}" source ${source.artifact_id} ` +
+              `must retain catalog discovery alias ${spec.spec_url}.`,
+          );
+        }
+      }
+
+      for (const [surfaceLabel, content] of [
+        ['docs/platform-conformance.md', docs],
+        ['src/pages/docs/platform-conformance.mdx', discoveryPage],
+      ]) {
+        if (!content.includes(source.resolver_url)) {
+          throw new Error(
+            `${surfaceLabel} must link stable fixture source ` +
+              `${source.resolver_url}.`,
+          );
+        }
+      }
+    }
+  }
+}
+
+function assertStableSourceDependenciesResolve(contract) {
+  const dependencies = contract.source_dependencies;
+  const protocolCatalog = loadJson(
+    protocolCatalogPath,
+    'static/platform-protocol-specs.json',
+  );
+
+  if (
+    !dependencies ||
+    typeof dependencies !== 'object' ||
+    Array.isArray(dependencies) ||
+    Object.keys(dependencies).length === 0
+  ) {
+    throw new Error(
+      'static/platform-conformance-contract.json must declare stable ' +
+        'source_dependencies.',
+    );
+  }
+
+  for (const [filename, source] of Object.entries(dependencies)) {
+    const category = `source_dependencies.${filename}`;
+    if (
+      !/^[a-z0-9.-]+\.schema\.json$/.test(filename) ||
+      !source ||
+      typeof source !== 'object' ||
+      Array.isArray(source)
+    ) {
+      throw new Error(`stable source dependency "${filename}" is invalid.`);
+    }
+
+    if (
+      typeof source.artifact_id !== 'string' ||
+      source.artifact_id.trim() === ''
+    ) {
+      throw new Error(
+        `stable source dependency "${filename}" must declare a ` +
+          `version-bound artifact_id.`,
+      );
+    }
+    if (
+      typeof source.sha256 !== 'string' ||
+      !/^sha256:[a-f0-9]{64}$/.test(source.sha256)
+    ) {
+      throw new Error(
+        `stable source dependency "${filename}" must declare a sha256 byte binding.`,
+      );
+    }
+
+    const expectedSourcePath =
+      `resources/conformance/suite-v${contract.version}/` +
+      `platform-protocol-specs/${filename}`;
+    if (source.source_path !== expectedSourcePath) {
+      throw new Error(
+        `stable source dependency "${filename}" source_path must stay inside ` +
+          `the suite-v${contract.version} protocol carrier.`,
+      );
+    }
+
+    const resolverDetails = immutableResolverDetails(
+      source,
+      category,
+      contract.version,
+    );
+    if (
+      resolverDetails.kind !== 'protocol' ||
+      resolverDetails.filename !== filename
+    ) {
+      throw new Error(
+        `stable source dependency "${filename}" must use the matching ` +
+          `immutable docs protocol-spec resolver.`,
+      );
+    }
+
+    const actualDigest =
+      'sha256:' +
+      crypto
+        .createHash('sha256')
+        .update(read(resolverDetails.localPath))
+        .digest('hex');
+    if (source.sha256 !== actualDigest) {
+      throw new Error(
+        `stable source dependency "${filename}" digest ${source.sha256} ` +
+          `must match ${actualDigest} at ${source.resolver_url}.`,
+      );
+    }
+
+    const catalogSuffix = `@catalog-${protocolCatalog.version}`;
+    if (!source.artifact_id.endsWith(catalogSuffix)) {
+      throw new Error(
+        `stable source dependency "${filename}" artifact_id must bind ` +
+          `platform protocol catalog version ${protocolCatalog.version}.`,
+      );
+    }
+
+    const specId = source.artifact_id.slice(0, -catalogSuffix.length);
+    const spec = protocolSpecById(protocolCatalog, specId);
+    if (!spec || spec.status !== 'published') {
+      throw new Error(
+        `stable source dependency "${filename}" must resolve through a ` +
+          `published platform protocol catalog entry.`,
+      );
+    }
+    if (spec.spec_url !== resolverDetails.discoveryUrl) {
+      throw new Error(
+        `stable source dependency "${filename}" must retain catalog ` +
+          `discovery alias ${spec.spec_url}.`,
+      );
+    }
+  }
+}
+
 function assertStableFixtureAuthorityDocsResolve(contract) {
   const catalog = contract.fixture_catalog || {};
 
@@ -2797,6 +3151,7 @@ function assertStableFixtureAuthorityDocsResolve(contract) {
 }
 
 function assertPublishedConformanceAuthorities(contract) {
+  const authorities = contract.conformance_authorities || {};
   const discoverySurfaces = [
     {
       label: 'docs/platform-conformance.md',
@@ -2807,50 +3162,92 @@ function assertPublishedConformanceAuthorities(contract) {
       content: fs.readFileSync(discoveryPagePath, 'utf8'),
     },
   ];
-  const phpContract = loadJson(
-    path.join(repoRoot, 'static', 'platform-conformance', 'php-sdk-conformance.json'),
-    'PHP SDK conformance contract',
-  );
-  const phpContractPath = '/platform-conformance/php-sdk-conformance.json';
 
-  if (
-    phpContract.schema !== 'durable-workflow.v2.php-sdk-conformance-contract' ||
-    phpContract.version !== 1 ||
-    phpContract.status !== 'stable' ||
-    phpContract.authority_url !==
-      `https://durable-workflow.github.io${phpContractPath}`
-  ) {
+  if (!authorities.php_sdk || authorities.php_sdk.status !== 'stable') {
     throw new Error(
-      'The public PHP SDK conformance contract must retain its stable ' +
-        'schema, version, and consumer-resolvable authority URL.',
+      'conformance_authorities.php_sdk must register the stable public ' +
+        'PHP SDK conformance contract.',
     );
   }
 
-  assertPublicConformanceContractHasNoInternalHarnessArtifacts(
-    phpContract,
-    `${phpContractPath} public conformance contract`,
-  );
+  for (const [name, authority] of Object.entries(authorities)) {
+    const label =
+      `static/platform-conformance-contract.json ` +
+      `conformance_authorities.${name}`;
 
-  for (const surface of discoverySurfaces) {
+    if (!authority || authority.status !== 'stable') {
+      continue;
+    }
+    if (typeof authority.schema !== 'string' || authority.schema.trim() === '') {
+      throw new Error(`${label}.schema must be a non-empty public identity.`);
+    }
+    if (!Number.isInteger(authority.version) || authority.version < 1) {
+      throw new Error(`${label}.version must be a positive integer.`);
+    }
+
+    let publicUrl;
+    try {
+      publicUrl = new URL(authority.url);
+    } catch (err) {
+      throw new Error(`${label}.url must be a consumer-resolvable public URL.`);
+    }
     if (
-      !surface.content.includes(phpContractPath) ||
-      !surface.content.includes(phpContract.schema)
+      publicUrl.origin !== 'https://durable-workflow.github.io' ||
+      publicUrl.search ||
+      publicUrl.hash ||
+      !/^\/platform-conformance\/[a-z0-9-]+\.json$/.test(publicUrl.pathname)
     ) {
       throw new Error(
-        `${surface.label} must advertise ${phpContractPath} with schema ` +
-          `${phpContract.schema}.`,
+        `${label}.url must name one public JSON contract directly under ` +
+          `https://durable-workflow.github.io/platform-conformance/.`,
       );
     }
-  }
 
-  assertJsonEqual(
-    phpContract.conformance_suite,
-    {
-      schema: contract.schema,
-      url: 'https://durable-workflow.github.io/platform-conformance-contract.json',
-    },
-    'PHP SDK conformance contract conformance_suite authority',
-  );
+    assertCanonicalDocsSiteUrl(authority.authority_doc, `${label}.authority_doc`);
+
+    const published = loadJson(
+      path.join(repoRoot, 'static', publicUrl.pathname),
+      `${name} public conformance contract`,
+    );
+    for (const field of ['schema', 'version', 'status']) {
+      if (published[field] !== authority[field]) {
+        throw new Error(
+          `${label}.${field} must match ${publicUrl.pathname} ${field}.`,
+        );
+      }
+    }
+    if (published.authority_url !== authority.url) {
+      throw new Error(
+        `${publicUrl.pathname} authority_url must match ${label}.url.`,
+      );
+    }
+
+    assertPublicConformanceContractHasNoInternalHarnessArtifacts(
+      published,
+      `${publicUrl.pathname} public conformance contract`,
+    );
+
+    for (const surface of discoverySurfaces) {
+      if (
+        !surface.content.includes(publicUrl.pathname) ||
+        !surface.content.includes(authority.schema)
+      ) {
+        throw new Error(
+          `${surface.label} must advertise ${publicUrl.pathname} with schema ` +
+            `${authority.schema}.`,
+        );
+      }
+    }
+
+    assertJsonEqual(
+      published.conformance_suite,
+      {
+        schema: contract.schema,
+        url: 'https://durable-workflow.github.io/platform-conformance-contract.json',
+      },
+      `${name} public conformance contract conformance_suite authority`,
+    );
+  }
 }
 
 function assertPublishedConformanceDirectoryBoundary() {
@@ -2870,14 +3267,14 @@ function assertPublishedConformanceDirectoryBoundary() {
 
 function assertRuntimeScenarioManifest(contract, category, entry, source) {
   const manifest = loadJson(
-    assertLocalSourcePath(source, category),
-    `${source.repository}:${source.path}`,
+    localFileForResolver(source, category, contract.version),
+    sourceReference(source),
   );
 
   if (manifest.schema !== EXPECTED_RUNTIME_SCENARIO_SCHEMA) {
     throw new Error(
       `stable runtime fixture category "${category}" scenario manifest ` +
-        `${source.repository}:${source.path} must use schema ` +
+        `${sourceReference(source)} must use schema ` +
         `"${EXPECTED_RUNTIME_SCENARIO_SCHEMA}".`,
     );
   }
@@ -2885,7 +3282,7 @@ function assertRuntimeScenarioManifest(contract, category, entry, source) {
   if (manifest.category !== category) {
     throw new Error(
       `stable runtime fixture category "${category}" scenario manifest ` +
-        `${source.repository}:${source.path} declares category ` +
+        `${sourceReference(source)} declares category ` +
         `"${manifest.category}".`,
     );
   }
@@ -2909,7 +3306,7 @@ function assertRuntimeScenarioManifest(contract, category, entry, source) {
   if (!Array.isArray(manifest.scenarios) || manifest.scenarios.length === 0) {
     throw new Error(
       `stable runtime fixture category "${category}" scenario manifest ` +
-        `${source.repository}:${source.path} must declare scenarios.`,
+        `${sourceReference(source)} must declare scenarios.`,
     );
   }
 
@@ -3087,22 +3484,6 @@ function assertStableRuntimeSourcesArePublic(contract) {
         );
       }
 
-      if (!source.repository || !source.path) {
-        throw new Error(
-          `stable runtime fixture category "${category}" sources must include ` +
-            `repository and path.`,
-        );
-      }
-
-      if (!isApprovedPublicRuntimeSource(source)) {
-        throw new Error(
-          `stable runtime fixture category "${category}" source ` +
-            `${source.repository}:${source.path} must point at an approved ` +
-            `public fixture path or docs-site scenario manifest, not an ` +
-            `implementation test or raw test command directory.`,
-        );
-      }
-
       if (isPublicRuntimeScenarioManifest(source)) {
         hasScenarioManifest = true;
         assertRuntimeScenarioManifest(contract, category, entry, source);
@@ -3112,7 +3493,8 @@ function assertStableRuntimeSourcesArePublic(contract) {
     if (!hasScenarioManifest) {
       throw new Error(
         `stable runtime fixture category "${category}" must include a ` +
-          `docs-site JSON scenario manifest under static/platform-conformance/.`,
+          `consumer-resolvable runtime scenario artifact under ` +
+          `https://durable-workflow.github.io/platform-conformance/.`,
       );
     }
   }
@@ -3141,6 +3523,8 @@ function main() {
   assertPublishedConformanceDirectoryBoundary();
   assertPublishedConformanceAuthorities(contract);
   assertStableFixtureAuthorityDocsResolve(contract);
+  assertStableFixtureSourcesResolve(contract);
+  assertStableSourceDependenciesResolve(contract);
   assertStableRuntimeSourcesArePublic(contract);
   assertDocIsInSidebar();
 
@@ -3152,7 +3536,10 @@ if (require.main === module) {
 }
 
 module.exports = {
+  assertPublishedConformanceAuthorities,
   assertPublicConformanceContractHasNoInternalHarnessArtifacts,
+  assertStableFixtureSourcesResolve,
+  assertStableSourceDependenciesResolve,
   assertWorkflowPackageMirrorMatches,
   collectPublicConformanceContractInternalHarnessLeaks,
 };

@@ -4,7 +4,10 @@ const assert = require('assert');
 const path = require('path');
 
 const {
+  assertPublishedConformanceAuthorities,
   assertPublicConformanceContractHasNoInternalHarnessArtifacts,
+  assertStableFixtureSourcesResolve,
+  assertStableSourceDependenciesResolve,
   assertWorkflowPackageMirrorMatches,
   collectPublicConformanceContractInternalHarnessLeaks,
 } = require('./check-platform-conformance-authority');
@@ -12,13 +15,219 @@ const {
   stablePlatformConformanceDiscoveryEntries,
 } = require('./platform-conformance-public-discovery');
 const suite = require('../static/platform-conformance-contract.json');
-const suitePath = path.join(__dirname, '..', 'static', 'platform-conformance-contract.json');
+const suitePath = path.join(
+  __dirname,
+  '..',
+  'static',
+  'platform-conformance-contract.json',
+);
+const clone = value => JSON.parse(JSON.stringify(value));
 
 const validate = contract =>
   assertPublicConformanceContractHasNoInternalHarnessArtifacts(
     contract,
     'adversarial public conformance contract',
   );
+
+assert.doesNotThrow(
+  () => assertStableFixtureSourcesResolve(suite),
+  'every stable fixture source must resolve through a versioned public artifact',
+);
+assert.doesNotThrow(
+  () => assertPublishedConformanceAuthorities(suite),
+  'the root suite must resolve its stable standalone conformance authorities',
+);
+assert.doesNotThrow(
+  () => assertStableSourceDependenciesResolve(suite),
+  'stable transitive source dependencies must use immutable public resolvers',
+);
+
+const missingPhpSdkAuthority = clone(suite);
+delete missingPhpSdkAuthority.conformance_authorities.php_sdk;
+assert.throws(
+  () => assertPublishedConformanceAuthorities(missingPhpSdkAuthority),
+  /conformance_authorities\.php_sdk/,
+  'the stable PHP SDK contract must be discoverable from the root suite',
+);
+assert(
+  !stablePlatformConformanceDiscoveryEntries(missingPhpSdkAuthority).some(
+    entry => entry.path === '/platform-conformance/php-sdk-conformance.json',
+  ),
+  'PHP SDK discovery must be derived from the root suite relationship',
+);
+
+const mismatchedPhpSdkAuthority = clone(suite);
+mismatchedPhpSdkAuthority.conformance_authorities.php_sdk.version = 2;
+assert.throws(
+  () => assertPublishedConformanceAuthorities(mismatchedPhpSdkAuthority),
+  /must match/,
+  'the root suite identity must exactly match the standalone PHP authority',
+);
+
+for (const [category] of Object.entries(suite.fixture_catalog).filter(
+  ([, entry]) => entry.status === 'stable',
+)) {
+  const source = {
+    repository: 'workflow',
+    path: `tests/fixtures/${category}/`,
+  };
+  const candidate = clone(suite);
+  candidate.fixture_catalog[category].sources = [source];
+
+  assert.throws(
+    () => assertStableFixtureSourcesResolve(candidate),
+    /repository-relative/,
+    `stable ${category} must reject non-resolvable ${source.path} references`,
+  );
+}
+
+const missingArtifactId = clone(suite);
+delete missingArtifactId.fixture_catalog.control_plane_request_response
+  .sources[0].artifact_id;
+assert.throws(
+  () => assertStableFixtureSourcesResolve(missingArtifactId),
+  /version-bound artifact_id/,
+  'stable sources must identify the authority version used by their resolver',
+);
+
+const unversionedArtifactId = clone(suite);
+unversionedArtifactId.fixture_catalog.cli_json_envelopes
+  .sources[0].artifact_id = 'durable-workflow.v2.cli-json-envelopes';
+assert.throws(
+  () => assertStableFixtureSourcesResolve(unversionedArtifactId),
+  /catalog version/,
+  'protocol artifact identifiers must bind the public catalog version',
+);
+
+const mutableRuntimeArtifactId = clone(suite);
+mutableRuntimeArtifactId.fixture_catalog.signal_query_runtime_contract
+  .sources[0].artifact_id =
+    'durable-workflow.v2.platform-conformance.runtime-scenarios/signal_query_runtime_contract@latest';
+assert.throws(
+  () => assertStableFixtureSourcesResolve(mutableRuntimeArtifactId),
+  /suite-bound artifact id/,
+  'runtime artifact identifiers must bind the exact suite version',
+);
+
+const nonPublicResolver = clone(suite);
+nonPublicResolver.fixture_catalog.failure_repair_actionability
+  .sources[0].resolver_url =
+    'http://localhost/platform-protocol-specs/repair-actionability-objects.schema.json';
+assert.throws(
+  () => assertStableFixtureSourcesResolve(nonPublicResolver),
+  /immutable raw GitHub resolver/,
+  'stable source resolvers must use the public HTTPS authority',
+);
+
+for (const [category, mutableResolver] of [
+  [
+    'signal_query_runtime_contract',
+    'https://durable-workflow.github.io/platform-conformance/signal-query-runtime-scenarios.json',
+  ],
+  [
+    'control_plane_request_response',
+    'https://durable-workflow.github.io/platform-protocol-specs/control-plane-api.openapi.yaml',
+  ],
+]) {
+  const mutableCurrentAlias = clone(suite);
+  mutableCurrentAlias.fixture_catalog[category].sources[0].resolver_url =
+    mutableResolver;
+
+  assert.throws(
+    () => assertStableFixtureSourcesResolve(mutableCurrentAlias),
+    /immutable raw GitHub resolver/,
+    `stable ${category} must reject mutable current-only discovery aliases`,
+  );
+}
+
+const mutableBranchResolver = clone(suite);
+mutableBranchResolver.fixture_catalog.signal_query_runtime_contract
+  .sources[0].resolver_url =
+    'https://raw.githubusercontent.com/durable-workflow/workflow/v2/resources/conformance/suite-v38/platform-conformance/signal-query-runtime-scenarios.json';
+assert.throws(
+  () => assertStableFixtureSourcesResolve(mutableBranchResolver),
+  /full-commit Workflow suite source/,
+  'stable source resolvers must reject mutable Git branch references',
+);
+
+const unknownCommitResolver = clone(suite);
+unknownCommitResolver.fixture_catalog.signal_query_runtime_contract
+  .sources[0].resolver_url =
+    unknownCommitResolver.fixture_catalog.signal_query_runtime_contract
+      .sources[0].resolver_url.replace(
+        '75dfd5c869823409ef3d6c4b009a7882159ae9a2',
+        '0000000000000000000000000000000000000000',
+      );
+assert.throws(
+  () => assertStableFixtureSourcesResolve(unknownCommitResolver),
+  /published Workflow source revision/,
+  'stable source resolvers must reject unknown full-length revisions',
+);
+
+const digestDrift = clone(suite);
+digestDrift.fixture_catalog.cli_json_envelopes.sources[0].sha256 =
+  `sha256:${'0'.repeat(64)}`;
+assert.throws(
+  () => assertStableFixtureSourcesResolve(digestDrift),
+  /must match/,
+  'stable source byte bindings must reject resolver content drift',
+);
+
+const mutableSourceDependency = clone(suite);
+mutableSourceDependency.source_dependencies[
+  'cluster-info-envelope.schema.json'
+].resolver_url =
+  'https://durable-workflow.github.io/platform-protocol-specs/cluster-info-envelope.schema.json';
+assert.throws(
+  () => assertStableSourceDependenciesResolve(mutableSourceDependency),
+  /immutable raw GitHub resolver/,
+  'transitive stable source dependencies must reject mutable current aliases',
+);
+
+const unknownDependencyRevision = clone(suite);
+unknownDependencyRevision.source_dependencies[
+  'cluster-info-envelope.schema.json'
+].resolver_url = unknownDependencyRevision.source_dependencies[
+  'cluster-info-envelope.schema.json'
+].resolver_url.replace(
+  '91bde245162b61d371feeef5648a4befae8d755a',
+  '0000000000000000000000000000000000000000',
+);
+assert.throws(
+  () => assertStableSourceDependenciesResolve(unknownDependencyRevision),
+  /published docs protocol source revision/,
+  'transitive dependencies must reject unknown full-length revisions',
+);
+
+const escapedSourceDependency = clone(suite);
+escapedSourceDependency.source_dependencies[
+  'cluster-info-envelope.schema.json'
+].source_path =
+  'resources/conformance/suite-v38/platform-protocol-specs/../cluster-info-envelope.schema.json';
+assert.throws(
+  () => assertStableSourceDependenciesResolve(escapedSourceDependency),
+  /protocol carrier/,
+  'transitive stable source dependencies must stay in the versioned carrier',
+);
+
+for (const provisional of [
+  'waterline_observer_envelopes',
+  'mcp_discovery_envelopes',
+]) {
+  assert.strictEqual(
+    suite.fixture_catalog[provisional].status,
+    'provisional',
+    `${provisional} must remain explicitly non-normative`,
+  );
+
+  const accidentallyPromoted = clone(suite);
+  accidentallyPromoted.fixture_catalog[provisional].status = 'stable';
+  assert.throws(
+    () => assertStableFixtureSourcesResolve(accidentallyPromoted),
+    /repository-relative/,
+    `${provisional} cannot become stable while it still uses planned source-tree placeholders`,
+  );
+}
 
 assert.doesNotThrow(
   () => validate({
@@ -204,6 +413,15 @@ assert(
     entry.buildPath === 'platform-conformance/php-sdk-conformance.json'
   )),
   'the suite authority catalog must project the PHP SDK contract into public discovery',
+);
+assert(
+  stablePlatformConformanceDiscoveryEntries(suite).some(entry => (
+    entry.path ===
+      '/platform-conformance/signal-query-runtime-scenarios.json' &&
+    entry.buildPath ===
+      'platform-conformance/signal-query-runtime-scenarios.json'
+  )),
+  'immutable runtime sources must retain their friendly current discovery aliases',
 );
 
 assert.doesNotThrow(

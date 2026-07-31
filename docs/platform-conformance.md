@@ -25,7 +25,7 @@ for implementations that claim Durable Workflow v2 compatibility.
 The machine-readable mirror is published at
 [`static/platform-conformance-contract.json`](pathname:///platform-conformance-contract.json)
 with schema `durable-workflow.v2.platform-conformance.suite`, version
-`33`. The same manifest is advertised by the standalone server from
+`38`. The same manifest is advertised by the standalone server from
 `GET /api/cluster/info` under `platform_conformance_suite`. The
 [Platform Protocol Specs](/docs/2.0/platform-protocol-specs) catalog names
 that nested manifest as the `platform_conformance_suite_manifest`
@@ -84,51 +84,40 @@ manifest version.
 
 ## Fixture Catalog
 
-The suite does not duplicate fixtures. It declares source-of-truth
-locations and the categories each one supplies. Harnesses load the
-declared fixtures directly from those locations.
+Each stable source is a public artifact with three machine-readable bindings in
+the suite catalog: `artifact_id`, `resolver_url`, and `sha256`. Runtime artifact
+ids end in the suite version. Protocol artifact ids end in the platform
+protocol catalog version. A consumer resolves an artifact by fetching its
+`resolver_url` and accepting the bytes only when their SHA-256 digest matches
+the catalog binding.
 
-Every stable fixture category uses a canonical current-version docs-site URL
-as its fixture-level `authority_doc`. Stable runtime scenario categories use
-this page's current docs route,
-`https://durable-workflow.github.io/docs/2.0/platform-conformance`. Stable
-non-runtime categories point at the public docs authority for their surface:
-Client and Worker Capabilities for control-plane fixtures, Worker Protocol for
-worker task lifecycle fixtures, Platform Protocol Specs for
-repair/actionability objects, and CLI Command Reference for CLI JSON envelopes. Their
-machine-readable scenario ids and pass criteria are published in the docs-site
-JSON manifests linked from the category notes below.
+| Category | Status | Consumer-resolvable authority |
+| --- | --- | --- |
+| `control_plane_request_response` | `stable` | [`durable-workflow.v2.control-plane-api@catalog-15`](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/control-plane-api.openapi.yaml) |
+| `worker_task_lifecycle` | `stable` | [`durable-workflow.v2.worker-protocol-api@catalog-15`](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/worker-protocol-api.openapi.yaml) |
+| `worker_task_lifecycle` | `stable` | [`durable-workflow.v2.worker-protocol-stream@catalog-15`](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/worker-protocol-stream.asyncapi.yaml) |
+| `signal_query_runtime_contract` | `stable` | [`durable-workflow.v2.platform-conformance.runtime-scenarios/signal_query_runtime_contract@38`](https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/signal-query-runtime-scenarios.json) |
+| `workflow_update_runtime_contract` | `stable` | [`durable-workflow.v2.platform-conformance.runtime-scenarios/workflow_update_runtime_contract@38`](https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/workflow-update-runtime-scenarios.json) |
+| `search_attribute_runtime_contract` | `stable` | [`durable-workflow.v2.platform-conformance.runtime-scenarios/search_attribute_runtime_contract@38`](https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/search-attribute-runtime-scenarios.json) |
+| `schedules_runtime_contract` | `stable` | [`durable-workflow.v2.platform-conformance.runtime-scenarios/schedules_runtime_contract@38`](https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/schedules-runtime-scenarios.json) |
+| `history_replay_bundles` | `stable` | [`durable-workflow.v2.platform-conformance.runtime-scenarios/history_replay_bundles@38`](https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/replay-runtime-scenarios.json) |
+| `history_replay_bundles` | `stable` | [`durable-workflow.v2.history-event-payloads@catalog-15`](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/history-event-payloads.schema.json) |
+| `history_replay_bundles` | `stable` | [`durable-workflow.v2.replay-bundle@catalog-15`](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/replay-bundle.schema.json) |
+| `namespace_runtime_contract` | `stable` | [`durable-workflow.v2.platform-conformance.runtime-scenarios/namespace_runtime_contract@38`](https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/namespace-runtime-scenarios.json) |
+| `child_workflow_runtime_contract` | `stable` | [`durable-workflow.v2.platform-conformance.runtime-scenarios/child_workflow_runtime_contract@38`](https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/child-workflow-runtime-scenarios.json) |
+| `worker_versioning_runtime_contract` | `stable` | [`durable-workflow.v2.platform-conformance.runtime-scenarios/worker_versioning_runtime_contract@38`](https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/worker-versioning-runtime-scenarios.json) |
+| `saga_runtime_contract` | `stable` | [`durable-workflow.v2.platform-conformance.runtime-scenarios/saga_runtime_contract@38`](https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/saga-runtime-scenarios.json) |
+| `migration_runtime_contract` | `stable` | [`durable-workflow.v2.platform-conformance.runtime-scenarios/migration_runtime_contract@38`](https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/migration-runtime-scenarios.json) |
+| `skew_refusal_matrix_contract` | `stable` | [`durable-workflow.v2.platform-conformance.runtime-scenarios/skew_refusal_matrix_contract@38`](https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/skew-refusal-matrix-scenarios.json) |
+| `prerelease_readiness_contract` | `stable` | [`durable-workflow.v2.platform-conformance.runtime-scenarios/prerelease_readiness_contract@38`](https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/prerelease-readiness-scenarios.json) |
+| `failure_repair_actionability` | `stable` | [`durable-workflow.v2.repair-actionability-objects@catalog-15`](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/repair-actionability-objects.schema.json) |
+| `cli_json_envelopes` | `stable` | [`durable-workflow.v2.cli-json-envelopes@catalog-15`](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/cli-json-envelopes.schema.json) |
+| `principal_attribution_contract` | `stable` | [`durable-workflow.v2.platform-conformance.runtime-scenarios/principal_attribution_contract@38`](https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/principal-attribution-scenarios.json) |
 
-| Category | Status | Source repository | Path | Purpose |
-| --- | --- | --- | --- | --- |
-| `control_plane_request_response` | `stable` | `cli` | `tests/fixtures/control-plane/` | Frozen request bodies and response shapes for control-plane operations such as workflow start, signal, query, update, cancel, task-history, and namespace storage diagnostics. |
-| `control_plane_request_response` | `stable` | `sdk-python` | `tests/fixtures/control-plane/` | Frozen request bodies and response shapes for control-plane operations such as workflow start, signal, query, update, cancel, task-history, and namespace storage diagnostics. |
-| `worker_task_lifecycle` | `stable` | `cli` | `tests/fixtures/external-task/` | Task input envelopes and task result envelopes used by every conforming worker. |
-| `worker_task_lifecycle` | `stable` | `cli` | `tests/fixtures/external-task-input/` | Task input envelopes and task result envelopes used by every conforming worker. |
-| `worker_task_lifecycle` | `stable` | `sdk-python` | `tests/fixtures/external-task-input/` | Task input envelopes and task result envelopes used by every conforming worker. |
-| `worker_task_lifecycle` | `stable` | `sdk-python` | `tests/fixtures/external-task-result/` | Task input envelopes and task result envelopes used by every conforming worker. |
-| `signal_query_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/signal-query-runtime-scenarios.json` | Live published-artifact scenarios for signal delivery and query consistency across PHP, Python, and Rust workers and SDK clients, replay timing, terminal runs, malformed payloads, and operator visibility. |
-| `workflow_update_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/workflow-update-runtime-scenarios.json` | Live published-artifact scenarios for workflow updates across declared update visibility, accepted/running/completed/failed outcomes, idempotency, refusal paths, payload envelopes, principal attribution, PHP/Python parity, and operator visibility. |
-| `search_attribute_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/search-attribute-runtime-scenarios.json` | Live published-artifact scenarios for search attributes across PHP and Python workers, CLI query surfaces, Waterline operator visibility, cross-language codecs, load latency, boolean grammar, and adversarial query handling. |
-| `schedules_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/schedules-runtime-scenarios.json` | Live published-artifact scenarios for schedules across cron and fixed-rate cadence, public list and describe surfaces, pause/resume/delete controls, missed-fire policy, restart survival, CLI/Python/PHP client paths, cross-language scheduled workflow dispatch, and adversarial schedule inputs. |
-| `history_replay_bundles` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/replay-runtime-scenarios.json` | Deterministic replay coverage for frozen history bundles, worker restart replay, adversarial refusal, and in-flight signal timing across the official PHP and Python runtimes. |
-| `history_replay_bundles` | `stable` | `workflow` | `tests/Fixtures/V2/GoldenHistory/` | Deterministic replay coverage for frozen history bundles, worker restart replay, adversarial refusal, and in-flight signal timing across the official PHP and Python runtimes. |
-| `history_replay_bundles` | `stable` | `sdk-python` | `tests/fixtures/golden_history/` | Deterministic replay coverage for frozen history bundles, worker restart replay, adversarial refusal, and in-flight signal timing across the official PHP and Python runtimes. |
-| `namespace_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/namespace-runtime-scenarios.json` | Live published-artifact scenarios for namespace isolation, lifecycle cleanup, CLI and SDK namespace selection, PHP worker routing, Waterline visibility, Nexus opt-in crossing, and search-attribute value query isolation. |
-| `child_workflow_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/child-workflow-runtime-scenarios.json` | Live published-artifact scenarios for child workflow orchestration across PHP and Python workers, cross-language parent/child execution, failure and cancellation propagation, replay after worker restart, concurrent fan-out, and namespace behavior. |
-| `worker_versioning_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/worker-versioning-runtime-scenarios.json` | Live published-artifact scenarios for safe-deploy worker versioning across build-ID registration, rollout visibility, drain/resume controls, per-run pins, compatible replay routing, no-compatible-worker diagnostics, cross-language PHP/Python pinning, adversarial no-bump behavior, and history API version pins. |
-| `saga_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/saga-runtime-scenarios.json` | Live published-artifact scenarios for saga compensation across forward success, reverse-order compensation, early failure, retry idempotence, compensation failure visibility, worker restart replay, PHP/Python cross-language compensation, typed compensation errors, and operator-visible in-progress compensation state. |
-| `migration_runtime_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/migration-runtime-scenarios.json` | Live published-artifact scenarios for v1 to v2 migration across preserved histories, in-flight progress, activities, signal-or-timer waits, schedules, worker registrations, CLI access, Waterline operator visibility, new v2 starts, queue-aware rollback semantics, and version-skew refusal. |
-| `skew_refusal_matrix_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/skew-refusal-matrix-scenarios.json` | Published-artifact version-skew refusal scenarios across CLI, Python SDK, the standalone PHP SDK worker, Waterline, future-version boundaries, worker registration classifications, Waterline render classifications, and per-operation request/response evidence; Workflow remains the embedded Laravel and Waterline engine. |
-| `principal_attribution_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/principal-attribution-scenarios.json` | Published-artifact scenarios proving server-derived, non-spoofable principal attribution across raw HTTP, CLI, Python SDK, the standalone PHP SDK client, and Waterline operator surfaces; Workflow remains the embedded Laravel and Waterline engine. |
-| `prerelease_readiness_contract` | `stable` | `durable-workflow.github.io` | `static/platform-conformance/prerelease-readiness-scenarios.json` | Published-artifact scenarios for 2.0 prerelease readiness across Workflow, Waterline, server, CLI, official SDKs, sample app, public docs, the three standalone quickstart paths, and embedded Laravel. |
-| `failure_repair_actionability` | `stable` | `server` | `docs/contracts/external-task-result.md` | Failure objects and repair / actionability shapes for stuck tasks, deterministic failure, and replay-mismatch surfaces. |
-| `failure_repair_actionability` | `stable` | `server` | `docs/contracts/replay-verification.md` | Failure objects and repair / actionability shapes for stuck tasks, deterministic failure, and replay-mismatch surfaces. |
-| `cli_json_envelopes` | `stable` | `cli` | `tests/fixtures/control-plane/` | The `--output=json` and `--output=jsonl` envelopes that automation depends on. |
-| `cli_json_envelopes` | `stable` | `cli` | `schemas/` | The `--output=json` and `--output=jsonl` envelopes that automation depends on. |
-| `waterline_observer_envelopes` | `provisional` | `waterline` | `tests/fixtures/observer/ (planned)` | The `/waterline/api/v2/*` shapes and operator dashboard JSON envelopes. |
-| `mcp_discovery_envelopes` | `provisional` | `workflow` | `tests/Fixtures/Mcp/ (planned)` | MCP `tools/list`, `tools/call`, and `llms-2.0.txt` discovery envelopes. |
-| `mcp_discovery_envelopes` | `provisional` | `server` | `tests/Fixtures/Mcp/ (planned)` | MCP `tools/list`, `tools/call`, and `llms-2.0.txt` discovery envelopes. |
+The planned `waterline_observer_envelopes` and `mcp_discovery_envelopes`
+categories remain `provisional`. Their planned source-tree locations are
+non-normative placeholders: harnesses must not resolve them as fixtures or use
+them for a stable conformance claim.
 
 ## Workflow Lifecycle Release Authority
 
@@ -570,9 +559,10 @@ The docs-site release check in
 the static manifest points at a missing, repo-local, version-alias-only,
 or non-docs-site authority. It also validates every stable fixture-level
 `authority_doc` value as a canonical current-version docs-site URL and
-rejects stable runtime scenario categories that advertise implementation
-tests or raw command test directories instead of an approved public
-fixture or scenario manifest.
+rejects repository-relative source trees, test fixtures, documentation,
+schema directories, unversioned artifact ids, non-public resolvers, and
+incorrect byte digests in every stable fixture category. Runtime categories
+must additionally expose a suite-bound public scenario manifest.
 The same check requires this page to list the manifest schema, target
 names, fixture category names, pass / fail rules, and release gates from
 the machine-readable mirror.
