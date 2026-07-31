@@ -28,8 +28,11 @@ Durable Workflow v2 has two deployment modes:
 
 Cloud and self-hosted Server are runtime choices inside service mode, not
 components to run together. In Cloud, Durable Workflow operates orchestration
-and persistence while customers run SDK clients and workers. **Cloud customers
-do not install, deploy, or attach their own Server.**
+and persistence while customers run SDK clients and workers. Cloud includes
+Managed Waterline. **Cloud customers do not install, deploy, or attach their
+own Server or Waterline service.** A self-hosted Server does not include
+Waterline; operators can separately deploy Waterline against a Server-owned
+namespace.
 
 Use this page when deciding which shape should own a workflow fleet, planning a
 cutover between them, or documenting which parts of the product contract must
@@ -40,7 +43,7 @@ stay identical across both.
 | Runtime choice | Who operates durable state | What your team runs | Start here |
 | --- | --- | --- | --- |
 | Durable Workflow Cloud | Durable Workflow operates the managed namespace runtime, persistence, upgrades, service endpoint, and Managed Waterline. | Application clients plus PHP, Python, or Rust workers using provisioned credentials. Do not run Server or a separate Waterline service. | [Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane/) |
-| Self-hosted Server | Your team deploys, secures, scales, backs up, and upgrades the Server and its persistence. | Server plus application clients and PHP, Python, or Rust workers. | [Self-hosted Server](/docs/2.0/polyglot/server/) |
+| Self-hosted Server | Your team deploys, secures, scales, backs up, and upgrades the Server and its persistence. | Server plus application clients and PHP, Python, or Rust workers. If wanted, deploy Waterline as a separate service against the Server-owned namespace. | [Self-hosted Server](/docs/2.0/polyglot/server/) |
 
 Both choices use the same client and worker model. The difference is runtime
 operations and credentials, not workflow authoring.

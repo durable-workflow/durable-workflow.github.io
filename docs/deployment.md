@@ -20,6 +20,12 @@ Cloud contract is a single-region managed runtime and recovery boundary; it
 does not promise multi-region replication, automatic regional failover, or
 failback.
 
+The self-hosted Server distribution does not bundle or operate Waterline.
+Deploy Waterline separately only when you want its operator UI, and connect it
+to a Server-owned namespace using the
+[Waterline deployment and monitoring guide](/docs/2.0/monitoring/#waterline-service).
+Cloud instead includes Managed Waterline for its managed namespace.
+
 ## Deployment support matrix
 
 | Path | Start from | Supported for | Not promised by this path | Commercial support starts when |

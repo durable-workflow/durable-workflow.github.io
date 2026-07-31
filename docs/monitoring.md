@@ -16,9 +16,10 @@ keywords:
 
 # Monitoring
 
-[Waterline](https://github.com/durable-workflow/waterline) is a separate UI
-that works alongside Horizon. Think of Waterline as being to workflows what
-Horizon is to queues.
+[Waterline](https://github.com/durable-workflow/waterline) is the operator UI
+and API for workflow state. Its delivery follows the selected runtime boundary:
+Cloud includes Managed Waterline, while a self-hosted operator deploys
+Waterline separately when that surface is wanted.
 
 Waterline is one operator product with three consumption surfaces:
 
@@ -28,10 +29,10 @@ Waterline is one operator product with three consumption surfaces:
 - **Self-hosted service mode** runs the published
   `durableworkflow/waterline` image and reads state owned by the
   [standalone server](./polyglot/server.md) through the PHP SDK and public
-  server API.
+  server API. The Server distribution does not bundle or operate Waterline.
 - **Cloud Managed Waterline** is the namespace-scoped operator experience
   included with [Durable Workflow Cloud](./polyglot/cloud-control-plane.md).
-  Cloud operates the Waterline and Server boundary for this surface.
+  Cloud operates Managed Waterline and the namespace runtime behind it.
 
 The embedded and self-hosted service surfaces expose the same core Waterline UI
 and `/waterline/api/...` operator route families. Cloud provides the operator

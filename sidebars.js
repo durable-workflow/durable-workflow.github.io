@@ -11,7 +11,7 @@ const sidebars = {
       label: 'Service Mode',
       link: {
         type: 'generated-index',
-        description: 'Connect first-party PHP, Python, or Rust clients and workers to Durable Workflow Cloud or a self-hosted Server, then use the Waterline surface owned by that runtime.',
+        description: 'Connect first-party PHP, Python, or Rust clients and workers to Durable Workflow Cloud or a self-hosted Server. Cloud includes Managed Waterline; self-hosted operators deploy Waterline separately against a Server-owned namespace.',
       },
       items: [
         'polyglot/deployment-modes',
@@ -19,7 +19,7 @@ const sidebars = {
         'polyglot/server',
         {
           type: 'link',
-          label: 'Waterline ownership and monitoring',
+          label: 'Waterline: Cloud-managed or separately deployed',
           href: '/docs/2.0/monitoring/',
         },
         {
