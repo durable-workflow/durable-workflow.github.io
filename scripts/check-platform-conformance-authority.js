@@ -37,8 +37,13 @@ const sidebarsPath = path.join(repoRoot, 'sidebars.js');
 const EXPECTED_SCHEMA = 'durable-workflow.v2.platform-conformance.suite';
 const EXPECTED_RUNTIME_SOURCE_REVISION =
   '75dfd5c869823409ef3d6c4b009a7882159ae9a2';
+const EXPECTED_RUNTIME_FIXTURE_SUITE_VERSION = 38;
 const EXPECTED_PROTOCOL_SOURCE_REVISION =
   '91bde245162b61d371feeef5648a4befae8d755a';
+const RETAINED_CLI_MANIFEST_SHA256 = {
+  2: 'sha256:9eaccc507cb9f9affdc9ca6fe56a5ae83f528ba0c7621d31d8908cfec9b6c439',
+  3: 'sha256:1b76016fe34266f1366cd09f66ba8a868f7c1faf014802237158f2b8a16a0e38',
+};
 const VERSIONED_SUITE_AUTHORITY_DIGESTS = {
   29: 'sha256:51eaaf8d034264f0f91bd13d10e3d46ca10dc8d97010719d4727c0336ad66382',
   30: 'sha256:e33ced9ece7d2c32cd939d416cb76c365ba6dd05e0c041949adb7c3267072b48',
@@ -47,6 +52,7 @@ const VERSIONED_SUITE_AUTHORITY_DIGESTS = {
   33: 'sha256:dd0f589045ac0628d3fffc6fce5b910d41e94b63301c96cacd7757523cb65f9a',
   37: 'sha256:2e54a3edfb6e37a05a68525397253b6c3d660aef2296654f0bbf895fac0501b4',
   38: 'sha256:71feae0fff1a855afeda242a1ede8ab151d7d106093f2c624e88014a37c58c29',
+  40: 'sha256:db417d6a87ff0c8069e620a794ae4e82b5089d7be613df3bc934cdfddb7766c7',
 };
 const EXPECTED_RUNTIME_SCENARIO_SCHEMA =
   'durable-workflow.v2.platform-conformance.runtime-scenarios';
@@ -301,6 +307,8 @@ VERSIONED_RUNTIME_SCENARIO_STATUSES[35] = VERSIONED_RUNTIME_SCENARIO_STATUSES[34
 VERSIONED_RUNTIME_SCENARIO_STATUSES[36] = VERSIONED_RUNTIME_SCENARIO_STATUSES[35];
 VERSIONED_RUNTIME_SCENARIO_STATUSES[37] = VERSIONED_RUNTIME_SCENARIO_STATUSES[36];
 VERSIONED_RUNTIME_SCENARIO_STATUSES[38] = VERSIONED_RUNTIME_SCENARIO_STATUSES[37];
+VERSIONED_RUNTIME_SCENARIO_STATUSES[39] = VERSIONED_RUNTIME_SCENARIO_STATUSES[38];
+VERSIONED_RUNTIME_SCENARIO_STATUSES[40] = VERSIONED_RUNTIME_SCENARIO_STATUSES[39];
 const VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_FIELDS = [
   'artifact_policy',
   'common_result_evidence',
@@ -613,6 +621,10 @@ VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[37] = {
 };
 VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[38] =
   VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[37];
+VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[39] =
+  VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[38];
+VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[40] =
+  VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[39];
 // Digests bind public top-level runtime scenario manifest requirements to the
 // suite version. These fields define artifact source policy, common evidence,
 // runtime matrices, scenario-specific required evidence, and host-runner result
@@ -809,6 +821,10 @@ VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[37] = {
 };
 VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[38] =
   VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[37];
+VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[39] =
+  VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[38];
+VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[40] =
+  VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[39];
 const VERSIONED_PASS_FAIL_RULES = {
   5: {
     guaranteed_field_equality: {
@@ -1084,6 +1100,8 @@ VERSIONED_PASS_FAIL_RULES[35] = VERSIONED_PASS_FAIL_RULES[34];
 VERSIONED_PASS_FAIL_RULES[36] = VERSIONED_PASS_FAIL_RULES[35];
 VERSIONED_PASS_FAIL_RULES[37] = VERSIONED_PASS_FAIL_RULES[36];
 VERSIONED_PASS_FAIL_RULES[38] = VERSIONED_PASS_FAIL_RULES[37];
+VERSIONED_PASS_FAIL_RULES[39] = VERSIONED_PASS_FAIL_RULES[38];
+VERSIONED_PASS_FAIL_RULES[40] = VERSIONED_PASS_FAIL_RULES[39];
 const EXPECTED_AUTHORITY_DOC = 'docs/platform-conformance.md';
 const EXPECTED_DOC_ID = 'platform-conformance';
 
@@ -2791,7 +2809,6 @@ function immutableResolverDetails(source, category, suiteVersion) {
 
   if (
     resolver.protocol !== 'https:' ||
-    resolver.hostname !== 'raw.githubusercontent.com' ||
     resolver.username ||
     resolver.password ||
     resolver.port ||
@@ -2800,7 +2817,7 @@ function immutableResolverDetails(source, category, suiteVersion) {
     resolver.href !== source.resolver_url
   ) {
     throw new Error(
-      `${label} must use an immutable raw GitHub resolver without credentials, ` +
+      `${label} must use an immutable HTTPS resolver without credentials, ` +
         `a port, query string, or fragment.`,
     );
   }
@@ -2810,6 +2827,9 @@ function immutableResolverDetails(source, category, suiteVersion) {
   );
   const protocolMatch = resolver.pathname.match(
     /^\/durable-workflow\/durable-workflow\.github\.io\/([0-9a-f]{40})\/static\/platform-protocol-specs\/([a-z0-9.-]+\.(?:json|ya?ml))$/,
+  );
+  const cliMatch = resolver.pathname.match(
+    /^\/cli-json-envelopes\/v([0-9]+)\/(manifest\.json|schemas\/[a-z0-9.-]+\.schema\.json)$/,
   );
 
   let kind;
@@ -2824,9 +2844,10 @@ function immutableResolverDetails(source, category, suiteVersion) {
           `${EXPECTED_RUNTIME_SOURCE_REVISION}.`,
       );
     }
-    if (Number(runtimeMatch[2]) !== suiteVersion) {
+    if (Number(runtimeMatch[2]) !== EXPECTED_RUNTIME_FIXTURE_SUITE_VERSION) {
       throw new Error(
-        `${label} must bind runtime scenario bytes to suite-v${suiteVersion}.`,
+        `${label} must bind runtime scenario bytes to retained ` +
+          `suite-v${EXPECTED_RUNTIME_FIXTURE_SUITE_VERSION}.`,
       );
     }
 
@@ -2858,10 +2879,30 @@ function immutableResolverDetails(source, category, suiteVersion) {
     );
     discoveryUrl =
       `https://durable-workflow.github.io/platform-protocol-specs/${filename}`;
+  } else if (
+    resolver.hostname === 'durable-workflow.github.io' &&
+    category === 'cli_json_envelopes' &&
+    cliMatch
+  ) {
+    const revision = Number(cliMatch[1]);
+    if (revision !== 3) {
+      throw new Error(`${label} must use the current retained CLI schema revision v3.`);
+    }
+
+    kind = 'cli';
+    filename = cliMatch[2];
+    localPath = path.join(
+      repoRoot,
+      'static',
+      'cli-json-envelopes',
+      `v${revision}`,
+      filename,
+    );
+    discoveryUrl = source.resolver_url;
   } else {
     throw new Error(
       `${label} must resolve immutable bytes from a full-commit Workflow ` +
-        `suite source or docs protocol-spec source.`,
+        `suite source, docs protocol-spec source, or retained CLI schema route.`,
     );
   }
 
@@ -2877,7 +2918,7 @@ function immutableResolverDetails(source, category, suiteVersion) {
     filename,
     kind,
     localPath,
-    revision: runtimeMatch?.[1] || protocolMatch[1],
+    revision: runtimeMatch?.[1] || protocolMatch?.[1] || `v${cliMatch[1]}`,
   };
 }
 
@@ -2970,21 +3011,15 @@ function assertStableFixtureSourcesResolve(contract) {
           );
         }
 
-        const expectedArtifactId = `${runtimeArtifactPrefix}${contract.version}`;
+        const expectedArtifactId =
+          `${runtimeArtifactPrefix}${EXPECTED_RUNTIME_FIXTURE_SUITE_VERSION}`;
         if (source.artifact_id !== expectedArtifactId) {
           throw new Error(
             `stable fixture category "${category}" runtime source must use ` +
               `suite-bound artifact id ${expectedArtifactId}.`,
           );
         }
-      } else {
-        if (resolverDetails.kind !== 'protocol') {
-          throw new Error(
-            `stable fixture category "${category}" protocol source must use ` +
-              `an immutable docs protocol-spec resolver.`,
-          );
-        }
-
+      } else if (resolverDetails.kind === 'protocol') {
         const catalogSuffix = `@catalog-${protocolCatalog.version}`;
         if (!source.artifact_id.endsWith(catalogSuffix)) {
           throw new Error(
@@ -3005,9 +3040,32 @@ function assertStableFixtureSourcesResolve(contract) {
         if (spec.spec_url !== resolverDetails.discoveryUrl) {
           throw new Error(
             `stable fixture category "${category}" source ${source.artifact_id} ` +
-              `must retain catalog discovery alias ${spec.spec_url}.`,
+            `must retain catalog discovery alias ${spec.spec_url}.`,
           );
         }
+      } else if (resolverDetails.kind === 'cli') {
+        const expectedArtifactId =
+          resolverDetails.filename === 'manifest.json'
+            ? 'durable-workflow.cli.output-schema-manifest@3'
+            : `durable-workflow.cli.output-schema/` +
+              `${path.basename(resolverDetails.filename)}@3`;
+        if (source.artifact_id !== expectedArtifactId) {
+          throw new Error(
+            `stable fixture category "${category}" CLI source must use ` +
+              `revision-bound artifact id ${expectedArtifactId}.`,
+          );
+        }
+      } else {
+        throw new Error(
+          `stable fixture category "${category}" source has an unsupported retained carrier.`,
+        );
+      }
+
+      if (
+        resolverDetails.kind === 'cli' &&
+        resolverDetails.filename !== 'manifest.json'
+      ) {
+        continue;
       }
 
       for (const [surfaceLabel, content] of [
@@ -3074,12 +3132,12 @@ function assertStableSourceDependenciesResolve(contract) {
     }
 
     const expectedSourcePath =
-      `resources/conformance/suite-v${contract.version}/` +
+      `resources/conformance/suite-v${EXPECTED_RUNTIME_FIXTURE_SUITE_VERSION}/` +
       `platform-protocol-specs/${filename}`;
     if (source.source_path !== expectedSourcePath) {
       throw new Error(
         `stable source dependency "${filename}" source_path must stay inside ` +
-          `the suite-v${contract.version} protocol carrier.`,
+          `the retained suite-v${EXPECTED_RUNTIME_FIXTURE_SUITE_VERSION} protocol carrier.`,
       );
     }
 
@@ -3296,10 +3354,11 @@ function assertRuntimeScenarioManifest(contract, category, entry, source) {
 
   assertPublishedArtifactRuntimeScenarioManifestShape(manifest, category, source);
 
-  if (manifest.suite_version !== contract.version) {
+  if (manifest.suite_version !== EXPECTED_RUNTIME_FIXTURE_SUITE_VERSION) {
     throw new Error(
       `stable runtime fixture category "${category}" scenario manifest ` +
-        `must reference suite version ${contract.version}.`,
+        `must reference retained suite version ` +
+          `${EXPECTED_RUNTIME_FIXTURE_SUITE_VERSION}.`,
     );
   }
 
@@ -3500,6 +3559,223 @@ function assertStableRuntimeSourcesArePublic(contract) {
   }
 }
 
+function assertRetainedCliJsonEnvelopeRevisions(contract) {
+  for (const [revisionText, expectedManifestDigest] of Object.entries(
+    RETAINED_CLI_MANIFEST_SHA256,
+  )) {
+    const revision = Number(revisionText);
+    const baseUrl =
+      `https://durable-workflow.github.io/cli-json-envelopes/v${revision}`;
+    const directory = path.join(
+      repoRoot,
+      'static',
+      'cli-json-envelopes',
+      `v${revision}`,
+    );
+    const manifestPath = path.join(directory, 'manifest.json');
+    const manifestBytes = fs.readFileSync(manifestPath);
+    const manifestDigest =
+      'sha256:' +
+      crypto.createHash('sha256').update(manifestBytes).digest('hex');
+
+    if (manifestDigest !== expectedManifestDigest) {
+      throw new Error(
+        `retained CLI manifest v${revision} digest ${manifestDigest} must ` +
+          `remain ${expectedManifestDigest}; publish a new revision instead ` +
+          `of overwriting retained bytes.`,
+      );
+    }
+
+    const manifest = loadJson(
+      manifestPath,
+      `retained CLI output-schema manifest v${revision}`,
+    );
+    if (
+      manifest.schema !== 'durable-workflow.cli.output-schema-manifest' ||
+      manifest.version !== revision ||
+      manifest.artifact_id !==
+        `durable-workflow.cli.output-schema-manifest@${revision}` ||
+      manifest.resolver_url !== `${baseUrl}/manifest.json` ||
+      !manifest.commands ||
+      typeof manifest.commands !== 'object' ||
+      Array.isArray(manifest.commands)
+    ) {
+      throw new Error(
+        `retained CLI output-schema manifest v${revision} has an invalid identity.`,
+      );
+    }
+
+    const jsonlCommands = manifest.jsonl_commands || {};
+    if (
+      typeof jsonlCommands !== 'object' ||
+      Array.isArray(jsonlCommands)
+    ) {
+      throw new Error(
+        `retained CLI output-schema manifest v${revision} has invalid JSONL mappings.`,
+      );
+    }
+    if (
+      revision === 3 &&
+      (
+        Object.keys(manifest.commands).length !== 79 ||
+        Object.keys(jsonlCommands).length !== 12
+      )
+    ) {
+      throw new Error(
+        'retained CLI output-schema manifest v3 must bind all 79 JSON and ' +
+          '12 JSONL command mappings.',
+      );
+    }
+
+    const referencedSchemaUrls = new Map();
+    for (const [group, mappings] of [
+      ['commands', manifest.commands],
+      ['jsonl_commands', jsonlCommands],
+    ]) {
+      for (const [command, entry] of Object.entries(mappings)) {
+        if (
+          !entry ||
+          typeof entry !== 'object' ||
+          Array.isArray(entry) ||
+          !/^schemas\/output\/[a-z0-9.-]+\.schema\.json$/.test(entry.schema)
+        ) {
+          throw new Error(
+            `retained CLI manifest v${revision} ${group}.${command} ` +
+              `has an invalid schema mapping.`,
+          );
+        }
+        if (
+          group === 'jsonl_commands' &&
+          (
+            !(command in manifest.commands) ||
+            entry.output !== '--output=jsonl' ||
+            typeof entry.stream_items_from !== 'string' ||
+            entry.stream_items_from.length === 0
+          )
+        ) {
+          throw new Error(
+            `retained CLI manifest v${revision} ${group}.${command} ` +
+              `has an invalid record-level JSONL mapping.`,
+          );
+        }
+
+        const filename = path.basename(entry.schema);
+        const resolverUrl = `${baseUrl}/schemas/${filename}`;
+        if (
+          entry.schema_id !== resolverUrl ||
+          entry.resolver_url !== resolverUrl ||
+          !/^sha256:[a-f0-9]{64}$/.test(entry.sha256)
+        ) {
+          throw new Error(
+            `retained CLI manifest v${revision} ${group}.${command} ` +
+              `has an invalid resolver or digest identity.`,
+          );
+        }
+
+        const schemaPath = path.join(directory, 'schemas', filename);
+        const schemaBytes = fs.readFileSync(schemaPath);
+        const schemaDigest =
+          'sha256:' +
+          crypto.createHash('sha256').update(schemaBytes).digest('hex');
+        if (schemaDigest !== entry.sha256) {
+          throw new Error(
+            `retained CLI schema ${resolverUrl} does not match its manifest digest.`,
+          );
+        }
+
+        const schema = JSON.parse(schemaBytes);
+        if (
+          schema.$schema !== 'https://json-schema.org/draft/2020-12/schema' ||
+          schema.$id !== resolverUrl ||
+          schema.type !== 'object'
+        ) {
+          throw new Error(
+            `retained CLI schema ${resolverUrl} has an invalid JSON Schema identity.`,
+          );
+        }
+
+        if (group === 'jsonl_commands') {
+          const reference = String(schema.$ref || '').match(
+            /^([a-z0-9.-]+\.schema\.json)#\/properties\/([a-z_]+)\/items$/,
+          );
+          if (!reference || reference[2] !== entry.stream_items_from) {
+            throw new Error(
+              `retained CLI JSONL schema ${resolverUrl} must resolve its ` +
+                `emitted envelope item definition.`,
+            );
+          }
+
+          const envelopePath = path.join(directory, 'schemas', reference[1]);
+          const envelope = loadJson(
+            envelopePath,
+            `retained CLI JSONL envelope schema ${reference[1]}`,
+          );
+          if (
+            envelope?.properties?.[reference[2]]?.items?.type !== 'object'
+          ) {
+            throw new Error(
+              `retained CLI JSONL schema ${resolverUrl} references a missing ` +
+                `or non-object envelope item definition.`,
+            );
+          }
+        }
+
+        referencedSchemaUrls.set(resolverUrl, entry.sha256);
+      }
+    }
+
+    const publishedSchemaFiles = fs.readdirSync(path.join(directory, 'schemas'))
+      .filter(filename => filename.endsWith('.schema.json'))
+      .sort();
+    const referencedSchemaFiles = Array.from(referencedSchemaUrls.keys())
+      .map(resolverUrl => path.basename(new URL(resolverUrl).pathname))
+      .sort();
+    if (
+      JSON.stringify(publishedSchemaFiles) !==
+        JSON.stringify(referencedSchemaFiles)
+    ) {
+      throw new Error(
+        `retained CLI manifest v${revision} must bind its complete published ` +
+          `schema directory without missing or unadvertised files.`,
+      );
+    }
+
+    if (revision === 3) {
+      const category = contract.fixture_catalog?.cli_json_envelopes;
+      const suiteSources = new Map(
+        (category?.sources || []).map(source => [source.resolver_url, source]),
+      );
+      const expectedUrls = new Set([
+        `${baseUrl}/manifest.json`,
+        ...referencedSchemaUrls.keys(),
+      ]);
+      if (
+        category?.status !== 'stable' ||
+        suiteSources.size !== expectedUrls.size ||
+        Array.from(expectedUrls).some(url => !suiteSources.has(url))
+      ) {
+        throw new Error(
+          'the current platform suite must bind the complete retained CLI v3 closure.',
+        );
+      }
+
+      for (const [url, sha256] of referencedSchemaUrls) {
+        const source = suiteSources.get(url);
+        const filename = path.basename(new URL(url).pathname);
+        if (
+          source.artifact_id !==
+            `durable-workflow.cli.output-schema/${filename}@3` ||
+          source.sha256 !== sha256
+        ) {
+          throw new Error(
+            `the current platform suite binding for ${url} must match the CLI manifest.`,
+          );
+        }
+      }
+    }
+  }
+}
+
 function main() {
   const contract = loadJson(
     contractPath,
@@ -3526,6 +3802,7 @@ function main() {
   assertStableFixtureSourcesResolve(contract);
   assertStableSourceDependenciesResolve(contract);
   assertStableRuntimeSourcesArePublic(contract);
+  assertRetainedCliJsonEnvelopeRevisions(contract);
   assertDocIsInSidebar();
 
   console.log('Platform conformance authority checks passed');
@@ -3540,6 +3817,7 @@ module.exports = {
   assertPublicConformanceContractHasNoInternalHarnessArtifacts,
   assertStableFixtureSourcesResolve,
   assertStableSourceDependenciesResolve,
+  assertRetainedCliJsonEnvelopeRevisions,
   assertWorkflowPackageMirrorMatches,
   collectPublicConformanceContractInternalHarnessLeaks,
 };

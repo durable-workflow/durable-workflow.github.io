@@ -8,6 +8,7 @@ const {
   assertPublicConformanceContractHasNoInternalHarnessArtifacts,
   assertStableFixtureSourcesResolve,
   assertStableSourceDependenciesResolve,
+  assertRetainedCliJsonEnvelopeRevisions,
   assertWorkflowPackageMirrorMatches,
   collectPublicConformanceContractInternalHarnessLeaks,
 } = require('./check-platform-conformance-authority');
@@ -40,6 +41,10 @@ assert.doesNotThrow(
 assert.doesNotThrow(
   () => assertStableSourceDependenciesResolve(suite),
   'stable transitive source dependencies must use immutable public resolvers',
+);
+assert.doesNotThrow(
+  () => assertRetainedCliJsonEnvelopeRevisions(suite),
+  'retained CLI schema revisions and the current complete closure must remain byte-bound',
 );
 
 const missingPhpSdkAuthority = clone(suite);
@@ -92,11 +97,11 @@ assert.throws(
 
 const unversionedArtifactId = clone(suite);
 unversionedArtifactId.fixture_catalog.cli_json_envelopes
-  .sources[0].artifact_id = 'durable-workflow.v2.cli-json-envelopes';
+  .sources[0].artifact_id = 'durable-workflow.cli.output-schema-manifest';
 assert.throws(
   () => assertStableFixtureSourcesResolve(unversionedArtifactId),
-  /catalog version/,
-  'protocol artifact identifiers must bind the public catalog version',
+  /revision-bound artifact id/,
+  'CLI artifact identifiers must bind the retained schema revision',
 );
 
 const mutableRuntimeArtifactId = clone(suite);
@@ -115,7 +120,7 @@ nonPublicResolver.fixture_catalog.failure_repair_actionability
     'http://localhost/platform-protocol-specs/repair-actionability-objects.schema.json';
 assert.throws(
   () => assertStableFixtureSourcesResolve(nonPublicResolver),
-  /immutable raw GitHub resolver/,
+  /immutable HTTPS resolver/,
   'stable source resolvers must use the public HTTPS authority',
 );
 
@@ -135,7 +140,7 @@ for (const [category, mutableResolver] of [
 
   assert.throws(
     () => assertStableFixtureSourcesResolve(mutableCurrentAlias),
-    /immutable raw GitHub resolver/,
+    /must resolve immutable bytes/,
     `stable ${category} must reject mutable current-only discovery aliases`,
   );
 }
@@ -180,7 +185,7 @@ mutableSourceDependency.source_dependencies[
   'https://durable-workflow.github.io/platform-protocol-specs/cluster-info-envelope.schema.json';
 assert.throws(
   () => assertStableSourceDependenciesResolve(mutableSourceDependency),
-  /immutable raw GitHub resolver/,
+  /must resolve immutable bytes/,
   'transitive stable source dependencies must reject mutable current aliases',
 );
 

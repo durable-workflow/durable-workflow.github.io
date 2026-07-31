@@ -456,11 +456,16 @@ the pending scope before mutating server state.
 | Command | Purpose | Important options |
 | --- | --- | --- |
 | `dw schema:list` | List published machine-readable schemas. | no server connection required |
-| `dw schema:show <command-name>` | Show the bundled JSON Schema for one command output. | no server connection required |
+| `dw schema:show <command-name>` | Show the bundled JSON Schema for one command output. | `--output=json|jsonl`; no server connection required |
 | `dw schema:manifest` | Show the schema manifest. | no server connection required |
 
 Schema commands are useful when an AI client or CI job needs the current
 control-plane, response, or output contract without scraping prose docs.
+The [retained v3 manifest](https://durable-workflow.github.io/cli-json-envelopes/v3/manifest.json)
+binds every JSON envelope and record-level JSONL schema by public resolver and
+digest for CLI `2.0.0-rc.12`. The prior
+[v2 manifest](https://durable-workflow.github.io/cli-json-envelopes/v2/manifest.json)
+remains available with its original bytes for revision-pinned consumers.
 
 ## Output And Exit Contract
 
