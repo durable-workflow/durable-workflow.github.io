@@ -82,19 +82,41 @@ or a worker minor newer than the server's advertised minor is rejected. The
 server version range selects the release family; it does not override the
 runtime protocol manifest.
 
-## Connect to Durable Workflow Cloud
+## Prepare the released repository example
 
 The repository's
-[`hello_world` example](https://github.com/durable-workflow/sdk-rust/blob/main/examples/hello_world.rs)
+[`hello_world` example](https://github.com/durable-workflow/sdk-rust/blob/%%artifact.rustSdkVersion%%/examples/hello_world.rs)
 registers a Rust worker, starts a workflow, sends a signal, runs an activity,
 reports an activity heartbeat, and waits for the completed result. Because that
 example runs the application client and worker in one process, a Cloud
 connection must give its `Client` both role-specific credentials instead of
 setting the generic token fallback.
 
+Before running mode-specific commands, choose either Cloud or self-hosted
+Server. Both paths start from the same exact released SDK source, but their
+connection settings are alternatives: use the
+[Cloud path](#connect-to-durable-workflow-cloud) with a provisioned namespace,
+or use the
+[self-hosted path](#run-the-combined-example-with-self-hosted-server) after the
+local Server quickstart.
+
+Obtain the source that matches the released crate. The example directory is
+absolute so either connection path can enter it directly:
+
+<!-- docs-example id="rust.sdk.repository-source" -->
+```bash
+export DURABLE_WORKFLOW_RUST_VERSION=%%artifact.rustSdkVersion%%
+export DURABLE_WORKFLOW_RUST_EXAMPLE_DIR="$PWD/durable-workflow-rust-${DURABLE_WORKFLOW_RUST_VERSION}"
+git clone --depth 1 --single-branch --branch "$DURABLE_WORKFLOW_RUST_VERSION" \
+  https://github.com/durable-workflow/sdk-rust.git "$DURABLE_WORKFLOW_RUST_EXAMPLE_DIR"
+```
+
+## Connect to Durable Workflow Cloud
+
 Export the values returned when Cloud provisions the namespace and creates its
 two runtime credentials:
 
+<!-- docs-example id="rust.sdk.cloud.environment" -->
 ```bash
 export DURABLE_WORKFLOW_RUNTIME_URL='https://your-runtime-url'
 export DURABLE_WORKFLOW_RUNTIME_NAMESPACE='orders'
@@ -102,9 +124,11 @@ export DURABLE_WORKFLOW_CLIENT_TOKEN='dwr_client_credential'
 export DURABLE_WORKFLOW_WORKER_TOKEN='dwr_worker_credential'
 ```
 
-In `examples/hello_world.rs`, replace the existing `server_url`, `token`, and
-`Client::builder(...)` setup with this split-token builder configuration:
+In `$DURABLE_WORKFLOW_RUST_EXAMPLE_DIR/examples/hello_world.rs`, replace the
+existing `server_url`, `token`, and `Client::builder(...)` setup with this
+split-token builder configuration:
 
+<!-- docs-example id="rust.sdk.cloud.client" -->
 ```rust
 let runtime_url = std::env::var("DURABLE_WORKFLOW_RUNTIME_URL")
     .expect("DURABLE_WORKFLOW_RUNTIME_URL must be set");
@@ -124,7 +148,9 @@ let client = Client::builder(runtime_url)
 
 Then run the example normally:
 
+<!-- docs-example id="rust.sdk.cloud.run" -->
 ```bash
+cd "$DURABLE_WORKFLOW_RUST_EXAMPLE_DIR"
 cargo run --example hello_world
 ```
 
@@ -143,6 +169,7 @@ to make workflow commands and poll for work:
 
 <!-- docs-example id="rust.sdk.self-hosted" -->
 ```bash
+cd "$DURABLE_WORKFLOW_RUST_EXAMPLE_DIR"
 DURABLE_WORKFLOW_SERVER_URL=http://localhost:8080 \
 DURABLE_WORKFLOW_TOKEN=dev-token \
 cargo run --example hello_world

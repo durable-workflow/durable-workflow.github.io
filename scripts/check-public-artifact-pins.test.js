@@ -4,6 +4,7 @@ const {
   ARTIFACT_RELEASE_POLICY,
   ARTIFACT_PINS,
   ARTIFACT_VERSIONS,
+  artifactVersionRemarkPlugin,
   readArtifactReleasePolicy,
   pypiRegistryVersion,
   replaceArtifactTokens,
@@ -27,6 +28,23 @@ Continue to the [versioned guide](/docs/2.0/quickstart/).
 assert.doesNotThrow(
   () => checkPublicArtifactSource('docs/introduction.md', representativeRewrite),
   'a rewrite may remove pins that a page used to contain',
+);
+
+const artifactLinkTree = {
+  type: 'root',
+  children: [
+    {
+      type: 'link',
+      url: 'https://github.com/durable-workflow/sdk-rust/blob/%%artifact.rustSdkVersion%%/examples/hello_world.rs',
+      children: [{type: 'text', value: 'released Rust example'}],
+    },
+  ],
+};
+artifactVersionRemarkPlugin()(artifactLinkTree);
+assert.strictEqual(
+  artifactLinkTree.children[0].url,
+  `https://github.com/durable-workflow/sdk-rust/blob/${ARTIFACT_PINS.rustSdkVersion}/examples/hello_world.rs`,
+  'artifact tokens in Markdown links must resolve to the selected release',
 );
 
 assert.doesNotThrow(

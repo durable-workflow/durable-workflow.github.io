@@ -469,6 +469,10 @@ function replaceArtifactTokensInMarkdownAst(node) {
     node.value = replaceArtifactTokens(node.value, `markdown ${node.type || 'node'}`);
   }
 
+  if (typeof node.url === 'string') {
+    node.url = replaceArtifactTokens(node.url, `markdown ${node.type || 'node'} URL`);
+  }
+
   if (Array.isArray(node.children)) {
     for (const child of node.children) {
       replaceArtifactTokensInMarkdownAst(child);

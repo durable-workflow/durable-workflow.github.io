@@ -144,9 +144,60 @@
       "primaryArtifactInstall": "sdk-rust"
     },
     {
+      "id": "rust.sdk.repository-source",
+      "path": "polyglot/rust.md",
+      "language": "bash",
+      "releasedRepositorySetup": {
+        "artifact": "sdk-rust",
+        "repositoryUrl": "https://github.com/durable-workflow/sdk-rust.git",
+        "versionEnvironment": "DURABLE_WORKFLOW_RUST_VERSION",
+        "directoryEnvironment": "DURABLE_WORKFLOW_RUST_EXAMPLE_DIR",
+        "directoryTemplate": "$PWD/durable-workflow-rust-${DURABLE_WORKFLOW_RUST_VERSION}"
+      }
+    },
+    {
+      "id": "rust.sdk.cloud.environment",
+      "path": "polyglot/rust.md",
+      "language": "bash",
+      "requiredSubstrings": [
+        "DURABLE_WORKFLOW_RUNTIME_URL",
+        "DURABLE_WORKFLOW_RUNTIME_NAMESPACE",
+        "DURABLE_WORKFLOW_CLIENT_TOKEN",
+        "DURABLE_WORKFLOW_WORKER_TOKEN"
+      ]
+    },
+    {
+      "id": "rust.sdk.cloud.client",
+      "path": "polyglot/rust.md",
+      "language": "rust",
+      "requiredSubstrings": [
+        "DURABLE_WORKFLOW_RUNTIME_URL",
+        "DURABLE_WORKFLOW_RUNTIME_NAMESPACE",
+        "DURABLE_WORKFLOW_CLIENT_TOKEN",
+        "DURABLE_WORKFLOW_WORKER_TOKEN",
+        ".control_token(Some(client_token))",
+        ".worker_token(Some(worker_token))"
+      ]
+    },
+    {
+      "id": "rust.sdk.cloud.run",
+      "path": "polyglot/rust.md",
+      "language": "bash",
+      "repositoryExampleInvocation": {
+        "setupExample": "rust.sdk.repository-source",
+        "workingDirectoryEnvironment": "DURABLE_WORKFLOW_RUST_EXAMPLE_DIR",
+        "command": "cargo run --example hello_world"
+      }
+    },
+    {
       "id": "rust.sdk.self-hosted",
       "path": "polyglot/rust.md",
       "language": "bash",
+      "repositoryExampleInvocation": {
+        "setupExample": "rust.sdk.repository-source",
+        "workingDirectoryEnvironment": "DURABLE_WORKFLOW_RUST_EXAMPLE_DIR",
+        "command": "cargo run --example hello_world"
+      },
       "localConnection": {
         "hostingBranch": "standalone_server_sqlite",
         "shape": "rust_hello_world_environment"

@@ -1,6 +1,9 @@
 const fs = require('fs');
 const path = require('path');
-const {replaceArtifactTokens} = require('./public-artifact-versions');
+const {
+  ARTIFACT_DISTRIBUTION_SURFACES,
+  replaceArtifactTokens,
+} = require('./public-artifact-versions');
 
 const docsDir = path.join(__dirname, '..', 'docs');
 const contractPath = path.join(__dirname, 'doc-examples-contract.json');
@@ -45,6 +48,99 @@ function assertPrimaryArtifactInstall(block, artifactId, quickstartContract, con
     throw new Error(
       `${context} must begin with the ${artifactId} install command from the quickstart contract; ` +
         `expected ${JSON.stringify(installCommand)}, got ${JSON.stringify(firstCommand)}`,
+    );
+  }
+}
+
+function normalizedShellCommands(block) {
+  return block
+    .replace(/[ \t]*\\\r?\n[ \t]*/g, ' ')
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(line => line !== '' && !line.startsWith('#'));
+}
+
+function assertShellEnvironmentName(value, context) {
+  if (!/^[A-Z][A-Z0-9_]*$/.test(value || '')) {
+    throw new Error(`${context} must declare shell environment variable names`);
+  }
+}
+
+function assertReleasedRepositorySetup(block, requirement, quickstartContract, context) {
+  const artifact = quickstartContract.artifacts?.[requirement.artifact];
+  if (!artifact?.version) {
+    throw new Error(
+      `${context} references an artifact without a released version: ${requirement.artifact}`,
+    );
+  }
+
+  assertShellEnvironmentName(requirement.versionEnvironment, context);
+  assertShellEnvironmentName(requirement.directoryEnvironment, context);
+
+  const repositorySurface = (ARTIFACT_DISTRIBUTION_SURFACES[requirement.artifact] || [])
+    .find(surface => surface.surface === 'source_repository');
+  const allowedRepositoryUrls = repositorySurface?.url
+    ? [repositorySurface.url, `${repositorySurface.url}.git`]
+    : [];
+  if (!allowedRepositoryUrls.includes(requirement.repositoryUrl)) {
+    throw new Error(
+      `${context} must clone the source repository published for ${requirement.artifact}`,
+    );
+  }
+
+  const commands = normalizedShellCommands(replaceArtifactTokens(block, context));
+  const versionVariable = requirement.versionEnvironment;
+  const directoryVariable = requirement.directoryEnvironment;
+  const expectedCommands = [
+    `export ${versionVariable}=${artifact.version}`,
+    `export ${directoryVariable}="${requirement.directoryTemplate}"`,
+    `git clone --depth 1 --single-branch --branch "$${versionVariable}" ` +
+      `${requirement.repositoryUrl} "$${directoryVariable}"`,
+  ];
+
+  for (const command of expectedCommands) {
+    if (!commands.includes(command)) {
+      throw new Error(
+        `${context} must obtain the exact ${requirement.artifact} release with ${JSON.stringify(command)}`,
+      );
+    }
+  }
+}
+
+function assertRepositoryExampleInvocation(
+  block,
+  requirement,
+  currentExample,
+  examplesById,
+  context,
+) {
+  const setup = examplesById.get(requirement.setupExample);
+  if (!setup?.releasedRepositorySetup) {
+    throw new Error(
+      `${context} references a missing released repository setup: ${requirement.setupExample}`,
+    );
+  }
+
+  const setupRequirement = setup.releasedRepositorySetup;
+  if (setup.path !== currentExample.path) {
+    throw new Error(`${context} must keep its released repository setup in the same guide`);
+  }
+  if (requirement.workingDirectoryEnvironment !== setupRequirement.directoryEnvironment) {
+    throw new Error(`${context} must enter the directory produced by ${requirement.setupExample}`);
+  }
+
+  assertShellEnvironmentName(requirement.workingDirectoryEnvironment, context);
+  const commands = normalizedShellCommands(block);
+  const expectedDirectoryCommand = `cd "$${requirement.workingDirectoryEnvironment}"`;
+  if (commands[0] !== expectedDirectoryCommand) {
+    throw new Error(
+      `${context} must begin by entering its released source directory with ` +
+        `${JSON.stringify(expectedDirectoryCommand)}`,
+    );
+  }
+  if (!commands.slice(1).some(command => command.includes(requirement.command))) {
+    throw new Error(
+      `${context} must run ${JSON.stringify(requirement.command)} from the released source directory`,
     );
   }
 }
@@ -94,9 +190,9 @@ function localConnectionPattern(shape, connection, context) {
       const serverUrl = shellValue(connection.base_url);
       const selfHostedToken = shellValue(connection.token);
       return new RegExp(
-        `^\\s*DURABLE_WORKFLOW_SERVER_URL=${serverUrl}\\s*\\\\\\s*\\n` +
+        `DURABLE_WORKFLOW_SERVER_URL=${serverUrl}\\s*\\\\\\s*\\n` +
           `\\s*DURABLE_WORKFLOW_TOKEN=${selfHostedToken}\\s*\\\\\\s*\\n` +
-          `\\s*cargo\\s+run\\s+--example\\s+hello_world\\s*$`,
+          `\\s*cargo\\s+run\\s+--example\\s+hello_world(?:\\s|$)`,
       );
     }
     default:
@@ -158,7 +254,7 @@ function assertJsonKeys(payload, keys, context) {
   }
 }
 
-function checkExample(example, quickstartContract) {
+function checkExample(example, quickstartContract, examplesById) {
   const docPath = path.join(docsDir, example.path);
   const context = `docs/${example.path}#${example.id}`;
 
@@ -193,6 +289,25 @@ function checkExample(example, quickstartContract) {
     );
   }
 
+  if (example.releasedRepositorySetup) {
+    assertReleasedRepositorySetup(
+      block,
+      example.releasedRepositorySetup,
+      quickstartContract,
+      context,
+    );
+  }
+
+  if (example.repositoryExampleInvocation) {
+    assertRepositoryExampleInvocation(
+      block,
+      example.repositoryExampleInvocation,
+      example,
+      examplesById,
+      context,
+    );
+  }
+
   if (example.localConnection) {
     assertLocalConnection(block, example.localConnection, quickstartContract, context);
   }
@@ -213,9 +328,12 @@ function checkExample(example, quickstartContract) {
 function main() {
   const contract = JSON.parse(read(contractPath));
   const quickstartContract = JSON.parse(read(quickstartContractPath));
+  const examplesById = new Map(
+    (contract.examples || []).map(example => [example.id, example]),
+  );
 
   for (const example of contract.examples || []) {
-    checkExample(example, quickstartContract);
+    checkExample(example, quickstartContract, examplesById);
   }
 
   console.log(`Doc example checks passed for ${contract.examples.length} examples`);
