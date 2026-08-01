@@ -792,16 +792,6 @@ assert.deepStrictEqual(
   ],
   'Waterline distribution surfaces must expose the current independent release',
 );
-assert.strictEqual(
-  source.artifacts.waterline,
-  '2.0.0-rc.5',
-  'the qualified aggregate recommendation must remain on Waterline RC5',
-);
-assert.strictEqual(
-  publishedSource.artifacts.waterline,
-  '2.0.0-rc.8',
-  'the published component authority must expose Waterline RC8',
-);
 assert.deepStrictEqual(
   ARTIFACT_DISTRIBUTION_SURFACES['sdk-rust'],
   [

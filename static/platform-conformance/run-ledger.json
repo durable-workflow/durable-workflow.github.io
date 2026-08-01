@@ -1,15 +1,15 @@
 {
   "schema": "durable-workflow.v2.platform-conformance.run-ledger",
   "schema_version": 2,
-  "snapshot_refreshed_at": "2026-07-31T04:02:26.067Z",
+  "snapshot_refreshed_at": "2026-08-01T13:55:35.119Z",
   "retained_evidence_captured_at": "2026-07-29T13:59:32.249Z",
   "current_artifact_tuple": {
     "cli": "2.0.0-rc.12",
-    "sdk-php": "2.0.0-rc.5",
-    "sdk-python": "2.0.0-rc.7",
-    "sdk-rust": "2.0.0-rc.6",
-    "server": "2.0.0-rc.11",
-    "waterline": "2.0.0-rc.8",
+    "sdk-php": "2.0.0-rc.6",
+    "sdk-python": "2.0.0-rc.8",
+    "sdk-rust": "2.0.0-rc.7",
+    "server": "2.0.0-rc.13",
+    "waterline": "2.0.0-rc.9",
     "workflow": "2.0.0-rc.12"
   },
   "retention_policy": {
@@ -103,13 +103,28 @@
             "actual": "2.0.0-rc.5"
           },
           {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.5"
+          },
+          {
             "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.6"
+          },
+          {
+            "artifact": "sdk-rust",
             "expected": "2.0.0-rc.7",
             "actual": "2.0.0-rc.6"
           },
           {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
+            "actual": "2.0.0-rc.8"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.9",
             "actual": "2.0.0-rc.8"
           },
           {
@@ -156,27 +171,27 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.5",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-python",
-            "expected": "2.0.0-rc.7",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-rust",
             "expected": "2.0.0-rc.6",
             "actual": "2.0.0-rc.1"
           },
           {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.2"
           },
           {
             "artifact": "waterline",
-            "expected": "2.0.0-rc.8",
+            "expected": "2.0.0-rc.9",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -222,14 +237,29 @@
             "actual": "2.0.0-rc.5"
           },
           {
-            "artifact": "sdk-python",
-            "expected": "2.0.0-rc.7",
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.6",
             "actual": "2.0.0-rc.5"
           },
           {
-            "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.5"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.7",
             "actual": "2.0.0-rc.6"
+          },
+          {
+            "artifact": "server",
+            "expected": "2.0.0-rc.13",
+            "actual": "2.0.0-rc.6"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.9",
+            "actual": "2.0.0-rc.8"
           },
           {
             "artifact": "workflow",
@@ -274,13 +304,28 @@
             "actual": "2.0.0-rc.5"
           },
           {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.5"
+          },
+          {
             "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.6"
+          },
+          {
+            "artifact": "sdk-rust",
             "expected": "2.0.0-rc.7",
             "actual": "2.0.0-rc.6"
           },
           {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
+            "actual": "2.0.0-rc.8"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.9",
             "actual": "2.0.0-rc.8"
           },
           {
@@ -327,27 +372,27 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.5",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-python",
-            "expected": "2.0.0-rc.7",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-rust",
             "expected": "2.0.0-rc.6",
             "actual": "2.0.0-rc.1"
           },
           {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.2"
           },
           {
             "artifact": "waterline",
-            "expected": "2.0.0-rc.8",
+            "expected": "2.0.0-rc.9",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -394,27 +439,27 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.5",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-python",
-            "expected": "2.0.0-rc.7",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-rust",
             "expected": "2.0.0-rc.6",
             "actual": "2.0.0-rc.1"
           },
           {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.2"
           },
           {
             "artifact": "waterline",
-            "expected": "2.0.0-rc.8",
+            "expected": "2.0.0-rc.9",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -460,13 +505,28 @@
             "actual": "2.0.0-rc.5"
           },
           {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.5"
+          },
+          {
             "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.6"
+          },
+          {
+            "artifact": "sdk-rust",
             "expected": "2.0.0-rc.7",
             "actual": "2.0.0-rc.6"
           },
           {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
+            "actual": "2.0.0-rc.8"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.9",
             "actual": "2.0.0-rc.8"
           },
           {
@@ -513,27 +573,27 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.5",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-python",
-            "expected": "2.0.0-rc.7",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-rust",
             "expected": "2.0.0-rc.6",
             "actual": "2.0.0-rc.1"
           },
           {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.2"
           },
           {
             "artifact": "waterline",
-            "expected": "2.0.0-rc.8",
+            "expected": "2.0.0-rc.9",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -580,27 +640,27 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.5",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-python",
-            "expected": "2.0.0-rc.7",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-rust",
             "expected": "2.0.0-rc.6",
             "actual": "2.0.0-rc.1"
           },
           {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.2"
           },
           {
             "artifact": "waterline",
-            "expected": "2.0.0-rc.8",
+            "expected": "2.0.0-rc.9",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -647,27 +707,27 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.5",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-python",
-            "expected": "2.0.0-rc.7",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-rust",
             "expected": "2.0.0-rc.6",
             "actual": "2.0.0-rc.1"
           },
           {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.2"
           },
           {
             "artifact": "waterline",
-            "expected": "2.0.0-rc.8",
+            "expected": "2.0.0-rc.9",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -713,13 +773,28 @@
             "actual": "2.0.0-rc.5"
           },
           {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.5"
+          },
+          {
             "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.6"
+          },
+          {
+            "artifact": "sdk-rust",
             "expected": "2.0.0-rc.7",
             "actual": "2.0.0-rc.6"
           },
           {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
+            "actual": "2.0.0-rc.8"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.9",
             "actual": "2.0.0-rc.8"
           },
           {
@@ -766,27 +841,27 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.5",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-python",
-            "expected": "2.0.0-rc.7",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-rust",
             "expected": "2.0.0-rc.6",
             "actual": "2.0.0-rc.1"
           },
           {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.2"
           },
           {
             "artifact": "waterline",
-            "expected": "2.0.0-rc.8",
+            "expected": "2.0.0-rc.9",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -833,27 +908,27 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.5",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-python",
-            "expected": "2.0.0-rc.7",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-rust",
             "expected": "2.0.0-rc.6",
             "actual": "2.0.0-rc.1"
           },
           {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.2"
           },
           {
             "artifact": "waterline",
-            "expected": "2.0.0-rc.8",
+            "expected": "2.0.0-rc.9",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -899,13 +974,28 @@
             "actual": "2.0.0-rc.5"
           },
           {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.5"
+          },
+          {
             "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.6"
+          },
+          {
+            "artifact": "sdk-rust",
             "expected": "2.0.0-rc.7",
             "actual": "2.0.0-rc.6"
           },
           {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
+            "actual": "2.0.0-rc.8"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.9",
             "actual": "2.0.0-rc.8"
           },
           {
@@ -951,13 +1041,28 @@
             "actual": "2.0.0-rc.5"
           },
           {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.5"
+          },
+          {
             "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.6"
+          },
+          {
+            "artifact": "sdk-rust",
             "expected": "2.0.0-rc.7",
             "actual": "2.0.0-rc.6"
           },
           {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
+            "actual": "2.0.0-rc.8"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.9",
             "actual": "2.0.0-rc.8"
           },
           {
@@ -1003,8 +1108,28 @@
             "actual": "2.0.0-rc.5"
           },
           {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.5"
+          },
+          {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.7"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.6"
+          },
+          {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
+            "actual": "2.0.0-rc.8"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.9",
             "actual": "2.0.0-rc.8"
           },
           {
@@ -1050,13 +1175,28 @@
             "actual": "2.0.0-rc.5"
           },
           {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.5"
+          },
+          {
             "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.6"
+          },
+          {
+            "artifact": "sdk-rust",
             "expected": "2.0.0-rc.7",
             "actual": "2.0.0-rc.6"
           },
           {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
+            "actual": "2.0.0-rc.8"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.9",
             "actual": "2.0.0-rc.8"
           },
           {
@@ -1103,27 +1243,27 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.5",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-python",
-            "expected": "2.0.0-rc.7",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-rust",
             "expected": "2.0.0-rc.6",
             "actual": "2.0.0-rc.1"
           },
           {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.2"
           },
           {
             "artifact": "waterline",
-            "expected": "2.0.0-rc.8",
+            "expected": "2.0.0-rc.9",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1169,13 +1309,28 @@
             "actual": "2.0.0-rc.5"
           },
           {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.5"
+          },
+          {
             "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.6"
+          },
+          {
+            "artifact": "sdk-rust",
             "expected": "2.0.0-rc.7",
             "actual": "2.0.0-rc.6"
           },
           {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
+            "actual": "2.0.0-rc.8"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.9",
             "actual": "2.0.0-rc.8"
           },
           {
@@ -1222,27 +1377,27 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.5",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-python",
-            "expected": "2.0.0-rc.7",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-rust",
             "expected": "2.0.0-rc.6",
             "actual": "2.0.0-rc.1"
           },
           {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.2"
           },
           {
             "artifact": "waterline",
-            "expected": "2.0.0-rc.8",
+            "expected": "2.0.0-rc.9",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1289,27 +1444,27 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.5",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-python",
-            "expected": "2.0.0-rc.7",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-rust",
             "expected": "2.0.0-rc.6",
             "actual": "2.0.0-rc.1"
           },
           {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.2"
           },
           {
             "artifact": "waterline",
-            "expected": "2.0.0-rc.8",
+            "expected": "2.0.0-rc.9",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1356,27 +1511,27 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.5",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-python",
-            "expected": "2.0.0-rc.7",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-rust",
             "expected": "2.0.0-rc.6",
             "actual": "2.0.0-rc.1"
           },
           {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.2"
           },
           {
             "artifact": "waterline",
-            "expected": "2.0.0-rc.8",
+            "expected": "2.0.0-rc.9",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1423,27 +1578,27 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.5",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-python",
-            "expected": "2.0.0-rc.7",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-rust",
             "expected": "2.0.0-rc.6",
             "actual": "2.0.0-rc.1"
           },
           {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.2"
           },
           {
             "artifact": "waterline",
-            "expected": "2.0.0-rc.8",
+            "expected": "2.0.0-rc.9",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1490,27 +1645,27 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.5",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-python",
-            "expected": "2.0.0-rc.7",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-rust",
             "expected": "2.0.0-rc.6",
             "actual": "2.0.0-rc.1"
           },
           {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.2"
           },
           {
             "artifact": "waterline",
-            "expected": "2.0.0-rc.8",
+            "expected": "2.0.0-rc.9",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1557,27 +1712,27 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.5",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-python",
-            "expected": "2.0.0-rc.7",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-rust",
             "expected": "2.0.0-rc.6",
             "actual": "2.0.0-rc.1"
           },
           {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.2"
           },
           {
             "artifact": "waterline",
-            "expected": "2.0.0-rc.8",
+            "expected": "2.0.0-rc.9",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1624,27 +1779,27 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.5",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-python",
-            "expected": "2.0.0-rc.7",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-rust",
             "expected": "2.0.0-rc.6",
             "actual": "2.0.0-rc.1"
           },
           {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.2"
           },
           {
             "artifact": "waterline",
-            "expected": "2.0.0-rc.8",
+            "expected": "2.0.0-rc.9",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1690,14 +1845,29 @@
             "actual": "2.0.0-rc.5"
           },
           {
+            "artifact": "sdk-php",
+            "expected": "2.0.0-rc.6",
+            "actual": "2.0.0-rc.5"
+          },
+          {
             "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.6"
+          },
+          {
+            "artifact": "sdk-rust",
             "expected": "2.0.0-rc.7",
             "actual": "2.0.0-rc.6"
           },
           {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.6"
+          },
+          {
+            "artifact": "waterline",
+            "expected": "2.0.0-rc.9",
+            "actual": "2.0.0-rc.8"
           },
           {
             "artifact": "workflow",
@@ -1743,27 +1913,27 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.5",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-python",
-            "expected": "2.0.0-rc.7",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-rust",
             "expected": "2.0.0-rc.6",
             "actual": "2.0.0-rc.1"
           },
           {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.2"
           },
           {
             "artifact": "waterline",
-            "expected": "2.0.0-rc.8",
+            "expected": "2.0.0-rc.9",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1810,27 +1980,27 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.5",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-python",
-            "expected": "2.0.0-rc.7",
-            "actual": "2.0.0-rc.1"
-          },
-          {
-            "artifact": "sdk-rust",
             "expected": "2.0.0-rc.6",
             "actual": "2.0.0-rc.1"
           },
           {
+            "artifact": "sdk-python",
+            "expected": "2.0.0-rc.8",
+            "actual": "2.0.0-rc.1"
+          },
+          {
+            "artifact": "sdk-rust",
+            "expected": "2.0.0-rc.7",
+            "actual": "2.0.0-rc.1"
+          },
+          {
             "artifact": "server",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.2"
           },
           {
             "artifact": "waterline",
-            "expected": "2.0.0-rc.8",
+            "expected": "2.0.0-rc.9",
             "actual": "2.0.0-rc.1"
           },
           {

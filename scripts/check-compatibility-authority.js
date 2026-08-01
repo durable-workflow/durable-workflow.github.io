@@ -14,6 +14,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const semver = require('semver');
 
 const {
   ARTIFACT_RELEASE_POLICY,
@@ -54,6 +55,35 @@ function read(file) {
 
 function relativePath(file) {
   return path.relative(repoRoot, file).split(path.sep).join('/');
+}
+
+function assertPublishedServerSupportedByCargoRange(
+  serverVersion,
+  cargoRange,
+  source = 'released Rust metadata',
+) {
+  const normalizedRange = cargoRange
+    .split(',')
+    .map(comparator => comparator.trim())
+    .filter(Boolean)
+    .join(' ');
+  const options = {includePrerelease: true};
+
+  if (semver.valid(serverVersion, options) === null) {
+    throw new Error(`current published Server version is not valid semver: ${serverVersion}`);
+  }
+  if (semver.validRange(normalizedRange, options) === null) {
+    throw new Error(
+      `${source} supported_server_versions must be a valid Cargo semver comparator range: ` +
+        JSON.stringify(cargoRange),
+    );
+  }
+  if (!semver.satisfies(serverVersion, normalizedRange, options)) {
+    throw new Error(
+      `${source} supported_server_versions ${JSON.stringify(cargoRange)} must include ` +
+        `current published Server ${serverVersion}`,
+    );
+  }
 }
 
 function assertIncludes(content, expected, label) {
@@ -339,12 +369,11 @@ function assertSdkProtocolAuthorities(contract) {
   const cargoMetadata = loadRustCargoMetadataWhenAvailable();
   if (cargoMetadata !== null) {
     // The crate package version follows the current published-component
-    // authority, while its metadata records the separately qualified Server
-    // version that the aggregate recommendation retains.
+    // authority. Its release-specific Server support range is independent of
+    // the retained aggregate quickstart qualification checked above.
     const expectedCargoValues = {
       package: rustPackage.package,
       version: PUBLISHED_ARTIFACT_VERSIONS['sdk-rust'],
-      supported_server_versions: artifactVersion,
       worker_protocol_version: rustPackage.worker_protocol_version,
       control_plane_version: rustPackage.control_plane_version,
     };
@@ -357,6 +386,12 @@ function assertSdkProtocolAuthorities(contract) {
         );
       }
     }
+
+    assertPublishedServerSupportedByCargoRange(
+      PUBLISHED_ARTIFACT_VERSIONS.server,
+      cargoMetadata.supported_server_versions,
+      cargoMetadata.source,
+    );
   }
 
   const protocolSpecsWorkflow = read(protocolSpecsWorkflowPath);
@@ -648,6 +683,7 @@ if (require.main === module) {
 
 module.exports = {
   assertOpenApiAcceptedWorkerProtocolVersions,
+  assertPublishedServerSupportedByCargoRange,
   assertReleaseCheckMetadata,
   composerPrereleaseStability,
   expectedAcceptedWorkerVersions,

@@ -6,6 +6,7 @@ const path = require('path');
 
 const {
   assertOpenApiAcceptedWorkerProtocolVersions,
+  assertPublishedServerSupportedByCargoRange,
   composerPrereleaseStability,
   expectedAcceptedWorkerVersions,
 } = require('./check-compatibility-authority');
@@ -31,6 +32,30 @@ const advertisedVersion =
   contract.surface_families.worker_protocol.negotiation.default_advertised_version;
 const expectedVersions = expectedAcceptedWorkerVersions(advertisedVersion);
 const expectedEnum = `enum: [${expectedVersions.map(version => `"${version}"`).join(', ')}]`;
+
+assert.doesNotThrow(
+  () => assertPublishedServerSupportedByCargoRange(
+    '2.0.0-rc.13',
+    '>=2.0.0-rc.12,<2.0.0',
+  ),
+  'the current published Server must satisfy the released Rust crate range',
+);
+assert.throws(
+  () => assertPublishedServerSupportedByCargoRange(
+    '2.0.0-rc.13',
+    '>=2.0.0-rc.99,<2.0.0',
+  ),
+  /must include current published Server/,
+  'a released Rust crate range that excludes the current published Server must fail',
+);
+assert.throws(
+  () => assertPublishedServerSupportedByCargoRange(
+    '2.0.0-rc.13',
+    'not-a-range',
+  ),
+  /must be a valid Cargo semver comparator range/,
+  'malformed released Rust crate ranges must fail closed',
+);
 
 assert.doesNotThrow(
   () => assertOpenApiAcceptedWorkerProtocolVersions(openApi, expectedVersions),
