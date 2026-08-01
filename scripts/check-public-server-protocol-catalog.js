@@ -137,14 +137,15 @@ function workflowProvenanceFromComposerLock(composerLock) {
   });
 }
 
-function qualifiedServerSourceCommit(artifactVersions, compatibilityEvidenceSource) {
+function qualifiedServerIdentity(artifactVersions, compatibilityEvidenceSource) {
   const compatibility = readArtifactCompatibilityEvidence(
     compatibilityEvidenceSource,
     artifactVersions,
   );
-  const commits = new Set(Object.values(compatibility.sdkServerCompatibility).map(
-    qualification => qualification.server_source_commit,
-  ));
+  const qualifications = Object.values(compatibility.sdkServerCompatibility);
+  const commits = new Set(qualifications.map(qualification => (
+    qualification.server_source_commit
+  )));
 
   if (commits.size !== 1) {
     throw new Error(
@@ -152,7 +153,39 @@ function qualifiedServerSourceCommit(artifactVersions, compatibilityEvidenceSour
     );
   }
 
-  return [...commits][0];
+  const distribution = qualifications[0]?.server_distribution;
+  const manifests = (distribution?.artifacts || []).filter(
+    artifact => artifact.name === 'manifest' && /^[0-9a-f]{64}$/.test(artifact.sha256 || ''),
+  );
+  const locatorMatch = /^oci:([^@]+)@([^@]+)$/.exec(distribution?.locator || '');
+  if (
+    distribution?.kind !== 'oci'
+    || manifests.length !== 1
+    || !locatorMatch
+    || locatorMatch[2] !== artifactVersions.server
+  ) {
+    throw new Error(
+      'Qualified SDK-to-Server evidence must bind one exact Server OCI manifest digest.',
+    );
+  }
+
+  const digest = `sha256:${manifests[0].sha256}`;
+  const repository = locatorMatch[1];
+  return Object.freeze({
+    sourceCommit: [...commits][0],
+    version: locatorMatch[2],
+    repository,
+    selector: `${repository}:${locatorMatch[2]}`,
+    expectedDigest: digest,
+    immutableReference: `${repository}@${digest}`,
+  });
+}
+
+function qualifiedServerSourceCommit(artifactVersions, compatibilityEvidenceSource) {
+  return qualifiedServerIdentity(
+    artifactVersions,
+    compatibilityEvidenceSource,
+  ).sourceCommit;
 }
 
 function assertConsumerSafeCatalog(catalog, surface) {
@@ -476,8 +509,84 @@ function cleanupResult(result) {
   };
 }
 
+function normalizedOciRepository(value) {
+  let repository = String(value || '').replace(/^docker\.io\//, '');
+  if (!repository.includes('/')) {
+    repository = `library/${repository}`;
+  }
+  return repository;
+}
+
+function imageRepository(image) {
+  const withoutDigest = String(image || '').split('@', 1)[0];
+  const lastSlash = withoutDigest.lastIndexOf('/');
+  const lastColon = withoutDigest.lastIndexOf(':');
+  return lastColon > lastSlash ? withoutDigest.slice(0, lastColon) : withoutDigest;
+}
+
+function observedImageDigest(serverImage, immutableImage, inspectionSource) {
+  const expectedRepository = normalizedOciRepository(imageRepository(immutableImage));
+  if (normalizedOciRepository(imageRepository(serverImage)) !== expectedRepository) {
+    throw new CatalogLifecycleError(
+      'server_image_repository_mismatch',
+      'image_identity',
+      `Published image selector ${serverImage} does not name qualified repository `
+        + `${imageRepository(immutableImage)}.`,
+    );
+  }
+
+  let references;
+  try {
+    references = JSON.parse(commandOutput(inspectionSource));
+  } catch (error) {
+    throw new CatalogLifecycleError(
+      'server_image_digest_unresolved',
+      'image_identity',
+      `Published image ${serverImage} returned invalid Docker digest evidence.`,
+      error,
+    );
+  }
+  const digests = new Set((Array.isArray(references) ? references : []).flatMap(reference => {
+    if (typeof reference !== 'string') {
+      return [];
+    }
+    const separator = reference.lastIndexOf('@');
+    if (separator < 1) {
+      return [];
+    }
+    const repository = reference.slice(0, separator);
+    const digest = reference.slice(separator + 1);
+    return normalizedOciRepository(repository) === expectedRepository
+      && /^sha256:[0-9a-f]{64}$/.test(digest)
+      ? [digest]
+      : [];
+  }));
+  if (digests.size !== 1) {
+    throw new CatalogLifecycleError(
+      'server_image_digest_unresolved',
+      'image_identity',
+      `Published image ${serverImage} did not resolve to one immutable OCI manifest digest `
+        + `for ${imageRepository(immutableImage)}.`,
+    );
+  }
+  return [...digests][0];
+}
+
 async function discoverPublishedServer(serverImage, options = {}) {
   const docker = options.docker || process.env.DOCKER || 'docker';
+  const expectedImageDigest = options.expectedImageDigest;
+  const immutableServerImage = options.immutableServerImage;
+  if (
+    !/^sha256:[0-9a-f]{64}$/.test(expectedImageDigest || '')
+    || typeof immutableServerImage !== 'string'
+    || !immutableServerImage.endsWith(`@${expectedImageDigest}`)
+  ) {
+    throw new CatalogLifecycleError(
+      'invalid_image_identity_configuration',
+      'setup',
+      'Published Server discovery requires a qualified OCI digest and immutable image reference.',
+    );
+  }
   const port = options.port || process.env.PUBLIC_SERVER_PROTOCOL_CATALOG_PORT || '18081';
   const attempts = configuredInteger(
     options.attempts ?? process.env.PUBLIC_SERVER_PROTOCOL_CATALOG_ATTEMPTS,
@@ -513,6 +622,12 @@ async function discoverPublishedServer(serverImage, options = {}) {
     || 'public-server-protocol-catalog-server.log';
   const lifecycle = {
     image_pull: 'pending',
+    image_identity: {
+      expected_digest: expectedImageDigest,
+      observed_digest: null,
+      immutable_reference: immutableServerImage,
+      verification: 'pending',
+    },
     storage: {
       kind: 'isolated_docker_volume',
       name: volumeName,
@@ -550,6 +665,42 @@ async function discoverPublishedServer(serverImage, options = {}) {
     runSync(docker, ['pull', serverImage], {encoding: 'utf8'});
     lifecycle.image_pull = 'pass';
 
+    stage = 'image_identity';
+    let imageInspection;
+    try {
+      imageInspection = runSync(
+        docker,
+        ['image', 'inspect', '--format', '{{json .RepoDigests}}', serverImage],
+        {encoding: 'utf8'},
+      );
+      lifecycle.image_identity.observed_digest = observedImageDigest(
+        serverImage,
+        immutableServerImage,
+        imageInspection,
+      );
+      if (lifecycle.image_identity.observed_digest !== expectedImageDigest) {
+        lifecycle.image_identity.verification = 'fail';
+        throw new CatalogLifecycleError(
+          'server_image_digest_mismatch',
+          stage,
+          `Published image ${serverImage} resolved to `
+            + `${lifecycle.image_identity.observed_digest}, expected ${expectedImageDigest}.`,
+        );
+      }
+      lifecycle.image_identity.verification = 'pass';
+    } catch (error) {
+      lifecycle.image_identity.verification = 'fail';
+      throw error instanceof CatalogLifecycleError
+        ? error
+        : new CatalogLifecycleError(
+          'server_image_digest_unresolved',
+          stage,
+          `Could not resolve the immutable OCI identity for ${serverImage}. `
+            + `${commandFailureDetail(error)}`,
+          error,
+        );
+    }
+
     stage = 'storage_create';
     runSync(docker, ['volume', 'create', volumeName], {encoding: 'utf8'});
     volumeCreated = true;
@@ -564,7 +715,7 @@ async function discoverPublishedServer(serverImage, options = {}) {
         '--name', bootstrapContainerName,
         '--volume', `${volumeName}:/app/database`,
         '--env', 'DW_AUTH_DRIVER=none',
-        serverImage,
+        immutableServerImage,
         'server-bootstrap',
       ], {encoding: 'utf8', timeout: bootstrapTimeoutMs}));
       fs.writeFileSync(bootstrapLogPath, bootstrapLog);
@@ -598,7 +749,7 @@ async function discoverPublishedServer(serverImage, options = {}) {
         '--volume', `${volumeName}:/app/database`,
         '--env', 'DW_AUTH_DRIVER=none',
         '--env', 'DW_EXPOSE_PACKAGE_PROVENANCE=1',
-        serverImage,
+        immutableServerImage,
       ], {encoding: 'utf8'});
       serverStarted = true;
       lifecycle.server_start = 'pass';
@@ -726,7 +877,6 @@ function writeEvidence(pathname, evidence) {
 async function main() {
   const artifactVersions = JSON.parse(fs.readFileSync(artifactVersionsPath, 'utf8')).artifacts;
   const serverVersion = process.env.PUBLIC_SERVER_VERSION || artifactVersions.server;
-  const serverImage = process.env.PUBLIC_SERVER_IMAGE || `durableworkflow/server:${serverVersion}`;
   const publicCatalog = JSON.parse(fs.readFileSync(
     process.env.PUBLIC_PROTOCOL_CATALOG_PATH || catalogPath,
     'utf8',
@@ -740,16 +890,20 @@ async function main() {
   let serverDiscovery;
   let lifecycle = null;
   let diagnostics = null;
+  let qualifiedServer = null;
+  let serverImage = process.env.PUBLIC_SERVER_IMAGE || null;
 
   try {
     const compatibilityEvidenceSource = JSON.parse(fs.readFileSync(
       artifactCompatibilityEvidencePath,
       'utf8',
     ));
-    serverSourceCommit = qualifiedServerSourceCommit(
+    qualifiedServer = qualifiedServerIdentity(
       artifactVersions,
       compatibilityEvidenceSource,
     );
+    serverSourceCommit = qualifiedServer.sourceCommit;
+    serverImage = serverImage || `${qualifiedServer.repository}:${serverVersion}`;
     const checkedOutServerCommit = childProcess.execFileSync(
       'git',
       ['-C', serverSourcePath, 'rev-parse', 'HEAD'],
@@ -770,7 +924,10 @@ async function main() {
       serverDiscovery = JSON.parse(fs.readFileSync(process.env.SERVER_DISCOVERY_PATH, 'utf8'));
       lifecycle = {mode: 'provided_snapshot'};
     } else {
-      const publishedServer = await discoverPublishedServer(serverImage);
+      const publishedServer = await discoverPublishedServer(serverImage, {
+        expectedImageDigest: qualifiedServer.expectedDigest,
+        immutableServerImage: qualifiedServer.immutableReference,
+      });
       serverDiscovery = publishedServer.discovery;
       lifecycle = publishedServer.lifecycle;
       diagnostics = publishedServer.diagnostics;
@@ -782,10 +939,13 @@ async function main() {
     );
     writeEvidence(evidencePath, {
       schema: 'durable-workflow.docs.public-server-protocol-catalog-conformance',
-      schema_version: 1,
+      schema_version: 2,
       checked_at: new Date().toISOString(),
       server_version: serverVersion,
       server_image: serverImage,
+      expected_server_image_digest: qualifiedServer.expectedDigest,
+      observed_server_image_digest: lifecycle.image_identity?.observed_digest || null,
+      immutable_server_image: qualifiedServer.immutableReference,
       qualified_server_source_commit: serverSourceCommit,
       qualified_workflow_artifact_ref: qualifiedWorkflowArtifactRef,
       expected_workflow_package_ref: expectedWorkflowProvenance.ref,
@@ -800,6 +960,7 @@ async function main() {
       `Published server protocol catalog matches the public authority: `
         + `server ${serverVersion}, catalog version ${observation.version}, `
         + `${observation.capability_records} capability records, `
+        + `OCI manifest ${qualifiedServer.expectedDigest}, `
         + `embedded Workflow ${observation.package_provenance.ref} at `
         + `${observation.package_provenance.commit}; qualified standalone Workflow `
         + `${qualifiedWorkflowArtifactRef}.`,
@@ -816,10 +977,13 @@ async function main() {
     }
     writeEvidence(evidencePath, {
       schema: 'durable-workflow.docs.public-server-protocol-catalog-conformance',
-      schema_version: 1,
+      schema_version: 2,
       checked_at: new Date().toISOString(),
       server_version: serverVersion,
       server_image: serverImage,
+      expected_server_image_digest: qualifiedServer?.expectedDigest || null,
+      observed_server_image_digest: lifecycle?.image_identity?.observed_digest || null,
+      immutable_server_image: qualifiedServer?.immutableReference || null,
       qualified_server_source_commit: serverSourceCommit,
       qualified_workflow_artifact_ref: qualifiedWorkflowArtifactRef,
       expected_workflow_package_ref: expectedWorkflowProvenance
@@ -860,6 +1024,8 @@ module.exports = {
   CatalogLifecycleError,
   compareCatalogs,
   discoverPublishedServer,
+  observedImageDigest,
+  qualifiedServerIdentity,
   qualifiedServerSourceCommit,
   verifySnapshots,
   workflowProvenanceFromComposerLock,

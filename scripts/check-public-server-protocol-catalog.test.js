@@ -7,6 +7,7 @@ const {
   CatalogConformanceError,
   CatalogLifecycleError,
   discoverPublishedServer,
+  qualifiedServerIdentity,
   qualifiedServerSourceCommit,
   verifySnapshots,
   workflowProvenanceFromComposerLock,
@@ -62,10 +63,22 @@ assert.throws(
 
 const artifactVersions = require('./public-artifact-versions.json').artifacts;
 const compatibilityEvidence = require('../static/public-artifact-compatibility-evidence.json');
+const qualifiedServer = qualifiedServerIdentity(artifactVersions, compatibilityEvidence);
 assert.strictEqual(
   qualifiedServerSourceCommit(artifactVersions, compatibilityEvidence),
   compatibilityEvidence.sdk_server_compatibility['sdk-php'].server_source_commit,
   'Server source must come from exact aggregate qualification evidence',
+);
+assert.strictEqual(
+  qualifiedServer.expectedDigest,
+  `sha256:${compatibilityEvidence.sdk_server_compatibility['sdk-php']
+    .server_distribution.artifacts[0].sha256}`,
+  'Server manifest digest must come from exact aggregate qualification evidence',
+);
+assert.strictEqual(
+  qualifiedServer.immutableReference,
+  `${qualifiedServer.repository}@${qualifiedServer.expectedDigest}`,
+  'qualified Server identity must expose an immutable OCI reference',
 );
 
 const stableProvenance = {
@@ -148,15 +161,25 @@ assert.throws(
   'image provenance must match the Workflow source revision locked by Server',
 );
 
-function lifecycleOptions(tmpDir, events, failBootstrap = false) {
+function lifecycleOptions(
+  tmpDir,
+  events,
+  failBootstrap = false,
+  observedDigest = qualifiedServer.expectedDigest,
+) {
   return {
     identifier: failBootstrap ? 'bootstrap-failure-test' : 'ordering-test',
     attempts: 1,
     retryDelayMs: 0,
+    expectedImageDigest: qualifiedServer.expectedDigest,
+    immutableServerImage: qualifiedServer.immutableReference,
     bootstrapLogPath: path.join(tmpDir, 'bootstrap.log'),
     serverLogPath: path.join(tmpDir, 'server.log'),
     execFileSync(command, args) {
       events.push({operation: 'exec', command, args});
+      if (args[0] === 'image' && args[1] === 'inspect') {
+        return JSON.stringify([`durableworkflow/server@${observedDigest}`]);
+      }
       const isBootstrap = args[0] === 'run' && args.includes('server-bootstrap');
       if (isBootstrap && failBootstrap) {
         const error = new Error('bootstrap command failed');
@@ -191,7 +214,7 @@ function eventPosition(events, predicate) {
 }
 
 async function testPublishedImageLifecycle() {
-  const image = 'durableworkflow/server:9.9.9-test';
+  const image = `${qualifiedServer.repository}:retargetable-test`;
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'docs-catalog-lifecycle-'));
   try {
     const events = [];
@@ -202,6 +225,9 @@ async function testPublishedImageLifecycle() {
     const bootstrapPosition = eventPosition(events, event => (
       event.operation === 'exec' && event.args.includes('server-bootstrap')
     ));
+    const imageIdentityPosition = eventPosition(events, event => (
+      event.operation === 'exec' && event.args[0] === 'image' && event.args[1] === 'inspect'
+    ));
     const serverStartPosition = eventPosition(events, event => (
       event.operation === 'exec' && event.args[0] === 'run' && event.args.includes('--detach')
     ));
@@ -209,6 +235,7 @@ async function testPublishedImageLifecycle() {
 
     for (const [label, position] of [
       ['isolated volume creation', volumeCreatePosition],
+      ['image identity verification', imageIdentityPosition],
       ['server bootstrap', bootstrapPosition],
       ['server start', serverStartPosition],
       ['server discovery', discoveryPosition],
@@ -216,7 +243,8 @@ async function testPublishedImageLifecycle() {
       assert.notStrictEqual(position, -1, `${label} must be exercised`);
     }
     assert(
-      volumeCreatePosition < bootstrapPosition
+      imageIdentityPosition < volumeCreatePosition
+        && volumeCreatePosition < bootstrapPosition
         && bootstrapPosition < serverStartPosition
         && serverStartPosition < discoveryPosition,
       'the exact image must use isolated storage, bootstrap, start, and discovery in order',
@@ -230,11 +258,27 @@ async function testPublishedImageLifecycle() {
     assert(bootstrapMount.endsWith(':/app/database'), 'shared SQLite storage must mount at /app/database');
     assert.deepStrictEqual(
       bootstrapArgs.slice(-2),
-      [image, 'server-bootstrap'],
-      'bootstrap must execute server-bootstrap from the exact candidate image',
+      [qualifiedServer.immutableReference, 'server-bootstrap'],
+      'bootstrap must execute server-bootstrap from the qualified immutable image',
     );
-    assert.strictEqual(serverStartArgs[serverStartArgs.length - 1], image);
+    assert.strictEqual(
+      serverStartArgs[serverStartArgs.length - 1],
+      qualifiedServer.immutableReference,
+    );
     assert.deepStrictEqual(result.discovery, discovery());
+    assert.strictEqual(
+      result.lifecycle.image_identity.expected_digest,
+      qualifiedServer.expectedDigest,
+    );
+    assert.strictEqual(
+      result.lifecycle.image_identity.observed_digest,
+      qualifiedServer.expectedDigest,
+    );
+    assert.strictEqual(
+      result.lifecycle.image_identity.immutable_reference,
+      qualifiedServer.immutableReference,
+    );
+    assert.strictEqual(result.lifecycle.image_identity.verification, 'pass');
     assert.strictEqual(result.lifecycle.storage.kind, 'isolated_docker_volume');
     assert.strictEqual(result.lifecycle.bootstrap, 'pass');
     assert.strictEqual(result.lifecycle.discovery, 'pass');
@@ -275,6 +319,43 @@ async function testPublishedImageLifecycle() {
         && event.args[1] === 'rm'
         && event.args.includes('-f')
     )), 'bootstrap failure must still clean up isolated storage');
+
+    const movedDigest = `sha256:${'f'.repeat(64)}`;
+    const retargetedEvents = [];
+    let identityError = null;
+    try {
+      await discoverPublishedServer(
+        image,
+        lifecycleOptions(tmpDir, retargetedEvents, false, movedDigest),
+      );
+    } catch (error) {
+      identityError = error;
+    }
+    assert(identityError instanceof CatalogLifecycleError);
+    assert.strictEqual(identityError.kind, 'server_image_digest_mismatch');
+    assert.strictEqual(identityError.stage, 'image_identity');
+    assert.strictEqual(
+      identityError.lifecycle.image_identity.expected_digest,
+      qualifiedServer.expectedDigest,
+    );
+    assert.strictEqual(identityError.lifecycle.image_identity.observed_digest, movedDigest);
+    assert.strictEqual(
+      identityError.lifecycle.image_identity.immutable_reference,
+      qualifiedServer.immutableReference,
+    );
+    assert.strictEqual(identityError.lifecycle.image_identity.verification, 'fail');
+    assert.strictEqual(
+      eventPosition(retargetedEvents, event => (
+        event.operation === 'exec' && event.args[0] === 'volume'
+      )),
+      -1,
+      'a retargeted version tag must fail before storage or bootstrap begins',
+    );
+    assert.strictEqual(
+      eventPosition(retargetedEvents, event => event.operation === 'request'),
+      -1,
+      'matching catalog and package provenance must not mask a retargeted image tag',
+    );
   } finally {
     fs.rmSync(tmpDir, {recursive: true, force: true});
   }
