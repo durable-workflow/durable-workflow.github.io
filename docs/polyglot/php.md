@@ -96,7 +96,7 @@ specific run.
 
 ## Lifecycle, updates, schedules, and visibility
 
-The public rc.5 client is broader than selected-run result handling:
+The current public client is broader than selected-run result handling:
 
 - `WorkflowHandle` exposes `describe`, `result`, `signal`, `query`, `cancel`,
   and `terminate`, with selected-run variants for run-specific safety.

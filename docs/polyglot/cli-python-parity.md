@@ -43,7 +43,7 @@ worker-protocol commands that are intentionally not an SDK worker loop.
 ### PHP SDK
 
 The pinned PHP SDK exposes framework-neutral client and remote-worker APIs.
-Its public rc.5 surface includes workflow lifecycle and result handles,
+Its current public surface includes workflow lifecycle and result handles,
 signals, queries, updates, schedules, workflow filtering/history, namespace,
 worker, and task-queue visibility, plus registered workflow, activity, query,
 and update handlers. See the [PHP SDK guide](./php.md) and generated

@@ -26,45 +26,45 @@
   "artifacts": {
     "server": {
       "channel": "docker_hub",
-      "version": "2.0.0-rc.5",
+      "version": "2.0.0-rc.13",
       "image": "durableworkflow/server",
-      "reference": "durableworkflow/server:2.0.0-rc.5"
+      "reference": "durableworkflow/server:2.0.0-rc.13"
     },
     "cli": {
       "channel": "durable_workflow_public_installer",
-      "version": "2.0.0-rc.5",
-      "install_command": "curl -fsSL https://durable-workflow.com/install.sh | VERSION=2.0.0-rc.5 sh"
+      "version": "2.0.0-rc.12",
+      "install_command": "curl -fsSL https://durable-workflow.com/install.sh | VERSION=2.0.0-rc.12 sh"
     },
     "sdk-php": {
       "channel": "packagist",
-      "version": "2.0.0-rc.5",
-      "composer_package": "durable-workflow/sdk:2.0.0-rc.5@rc",
-      "install_command": "composer require durable-workflow/sdk:2.0.0-rc.5@rc"
+      "version": "2.0.0-rc.6",
+      "composer_package": "durable-workflow/sdk:2.0.0-rc.6@rc",
+      "install_command": "composer require durable-workflow/sdk:2.0.0-rc.6@rc"
     },
     "sdk-python": {
       "channel": "pypi",
-      "version": "2.0.0-rc.5",
-      "pip_package": "durable-workflow==2.0.0-rc.5",
-      "install_command": "pip install durable-workflow==2.0.0-rc.5",
+      "version": "2.0.0-rc.8",
+      "pip_package": "durable-workflow==2.0.0-rc.8",
+      "install_command": "pip install durable-workflow==2.0.0-rc.8",
       "runtime_dependencies": {
         "apache_avro_payload_codec": "fastavro"
       }
     },
     "sdk-rust": {
       "channel": "crates_io",
-      "version": "2.0.0-rc.5",
+      "version": "2.0.0-rc.7",
       "crate": "durable-workflow",
-      "install_command": "cargo add durable-workflow@=2.0.0-rc.5"
+      "install_command": "cargo add durable-workflow@=2.0.0-rc.7"
     },
     "workflow": {
       "channel": "packagist",
-      "version": "2.0.0-rc.5",
-      "composer_constraint": "durable-workflow/workflow:2.0.0-rc.5@rc"
+      "version": "2.0.0-rc.12",
+      "composer_constraint": "durable-workflow/workflow:2.0.0-rc.12@rc"
     },
     "waterline": {
       "channel": "packagist",
-      "version": "2.0.0-rc.5",
-      "composer_constraint": "durable-workflow/waterline:2.0.0-rc.5@rc"
+      "version": "2.0.0-rc.9",
+      "composer_constraint": "durable-workflow/waterline:2.0.0-rc.9@rc"
     }
   },
   "primary_paths": [
@@ -149,7 +149,7 @@
       "required_environment": [
         {
           "name": "DW_SERVER_IMAGE",
-          "value": "durableworkflow/server:2.0.0-rc.5"
+          "value": "durableworkflow/server:2.0.0-rc.13"
         },
         {
           "name": "DW_AUTH_TOKEN",
@@ -167,7 +167,7 @@
         "quickstart.server.setup"
       ],
       "setup_script_lines": [
-        "export DW_SERVER_IMAGE=durableworkflow/server:2.0.0-rc.5",
+        "export DW_SERVER_IMAGE=durableworkflow/server:2.0.0-rc.13",
         "export DW_AUTH_TOKEN=dev-token",
         "",
         "docker volume create durable-workflow-quickstart",
@@ -268,7 +268,7 @@
       "command_script_lines": [
         "mkdir durable-workflow-php-quickstart",
         "cd durable-workflow-php-quickstart",
-        "composer require durable-workflow/sdk:2.0.0-rc.5@rc",
+        "composer require durable-workflow/sdk:2.0.0-rc.6@rc",
         "cat > worker.php <<'PHP'",
         "<?php",
         "",
@@ -390,7 +390,7 @@
         "",
         "python3 -m venv .venv",
         ". .venv/bin/activate",
-        "pip install durable-workflow==2.0.0-rc.5",
+        "pip install durable-workflow==2.0.0-rc.8",
         "cat > greeter.py <<'PY'",
         "import asyncio",
         "import time",
@@ -504,7 +504,7 @@
       "command_script_lines": [
         "cargo new durable-workflow-rust-quickstart",
         "cd durable-workflow-rust-quickstart",
-        "cargo add durable-workflow@=2.0.0-rc.5",
+        "cargo add durable-workflow@=2.0.0-rc.7",
         "cargo add tokio --features macros,rt-multi-thread,time",
         "cat > src/main.rs <<'RS'",
         "use std::time::{Duration, SystemTime, UNIX_EPOCH};",
@@ -623,7 +623,7 @@
         }
       ],
       "command_script_lines": [
-        "curl -fsSL https://durable-workflow.com/install.sh | VERSION=2.0.0-rc.5 sh",
+        "curl -fsSL https://durable-workflow.com/install.sh | VERSION=2.0.0-rc.12 sh",
         "export PATH=\"$HOME/.local/bin:$PATH\"",
         "",
         "dw env:set local \\",
@@ -704,9 +704,9 @@
         "cd durable-workflow-laravel-quickstart",
         "",
         "composer require \\",
-        "  durable-workflow/waterline:2.0.0-rc.5@rc \\",
-        "  durable-workflow/workflow:2.0.0-rc.5@rc \\",
-        "  durable-workflow/sdk:2.0.0-rc.5@rc",
+        "  durable-workflow/waterline:2.0.0-rc.9@rc \\",
+        "  durable-workflow/workflow:2.0.0-rc.12@rc \\",
+        "  durable-workflow/sdk:2.0.0-rc.6@rc",
         "composer show durable-workflow/sdk",
         "composer show durable-workflow/workflow",
         "composer show durable-workflow/waterline",
@@ -824,7 +824,7 @@
           "source": "stdout",
           "required_substrings": [
             "durable-workflow/sdk",
-            "2.0.0-rc.5"
+            "2.0.0-rc.6"
           ]
         },
         {
@@ -832,7 +832,7 @@
           "source": "stdout",
           "required_substrings": [
             "durable-workflow/workflow",
-            "2.0.0-rc.5"
+            "2.0.0-rc.12"
           ]
         },
         {
@@ -840,7 +840,7 @@
           "source": "stdout",
           "required_substrings": [
             "durable-workflow/waterline",
-            "2.0.0-rc.5"
+            "2.0.0-rc.9"
           ]
         },
         {
