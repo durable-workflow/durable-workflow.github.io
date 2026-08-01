@@ -53,6 +53,11 @@ function quoted(value) {
   return `["']${escapeRegExp(value)}["']`;
 }
 
+function shellValue(value) {
+  const escaped = escapeRegExp(value);
+  return `(?:${escaped}|["']${escaped}["'])`;
+}
+
 function localConnectionPattern(shape, connection, context) {
   const baseUrl = quoted(connection.base_url);
   const token = quoted(connection.token);
@@ -78,6 +83,22 @@ function localConnectionPattern(shape, connection, context) {
           `namespace\\s*=\\s*${namespace}\\s*,?\\s*\\)`,
         's',
       );
+    case 'rust_hello_world_environment': {
+      if (connection.namespace !== 'default') {
+        throw new Error(
+          `${context} relies on the Rust hello_world example's default namespace; ` +
+            `the hosting branch declares ${JSON.stringify(connection.namespace)}`,
+        );
+      }
+
+      const serverUrl = shellValue(connection.base_url);
+      const selfHostedToken = shellValue(connection.token);
+      return new RegExp(
+        `^\\s*DURABLE_WORKFLOW_SERVER_URL=${serverUrl}\\s*\\\\\\s*\\n` +
+          `\\s*DURABLE_WORKFLOW_TOKEN=${selfHostedToken}\\s*\\\\\\s*\\n` +
+          `\\s*cargo\\s+run\\s+--example\\s+hello_world\\s*$`,
+      );
+    }
     default:
       throw new Error(`${context} uses unknown local connection shape ${JSON.stringify(shape)}`);
   }
@@ -100,6 +121,13 @@ function assertLocalConnection(block, requirement, quickstartContract, context) 
       `${context} must use ${connection.base_url}, token ${connection.token}, and namespace ` +
         `${connection.namespace} from hosting branch ${requirement.hostingBranch}`,
     );
+  }
+
+  if (
+    requirement.shape === 'rust_hello_world_environment' &&
+    /DURABLE_WORKFLOW_(?:CLIENT|WORKER)_TOKEN/.test(block)
+  ) {
+    throw new Error(`${context} must not reuse Cloud split credentials for self-hosted Server`);
   }
 }
 

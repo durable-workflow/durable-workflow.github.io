@@ -141,14 +141,16 @@ The unmodified `hello_world` example accepts one token for a self-hosted
 Durable Workflow Server whose authentication policy allows the same credential
 to make workflow commands and poll for work:
 
+<!-- docs-example id="rust.sdk.self-hosted" -->
 ```bash
-DURABLE_WORKFLOW_SERVER_URL=http://127.0.0.1:8080 \
-DURABLE_WORKFLOW_TOKEN=your-token \
+DURABLE_WORKFLOW_SERVER_URL=http://localhost:8080 \
+DURABLE_WORKFLOW_TOKEN=dev-token \
 cargo run --example hello_world
 ```
 
 This `DURABLE_WORKFLOW_TOKEN` command is for self-hosted Server usage, not a
-Cloud namespace. Use `TASK_QUEUE` to override the example's default
+Cloud namespace. The example's client uses the `default` namespace provisioned
+by the local Server quickstart. Use `TASK_QUEUE` to override its default
 `rust-workers` task queue.
 
 ## Start with server-enforced workflow timeouts

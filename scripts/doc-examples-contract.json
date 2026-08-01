@@ -144,6 +144,15 @@
       "primaryArtifactInstall": "sdk-rust"
     },
     {
+      "id": "rust.sdk.self-hosted",
+      "path": "polyglot/rust.md",
+      "language": "bash",
+      "localConnection": {
+        "hostingBranch": "standalone_server_sqlite",
+        "shape": "rust_hello_world_environment"
+      }
+    },
+    {
       "id": "rust.workflow-start-timeouts",
       "path": "polyglot/rust.md",
       "language": "rust",
