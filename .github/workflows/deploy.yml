@@ -53,6 +53,21 @@ jobs:
           DOCS_DEPLOY_EVENT_NAME: ${{ github.event_name }}
         run: node scripts/plan-docs-deploy.js
 
+      - name: Resolve qualified Server authority ref
+        id: server-authority
+        if: steps.deploy-plan.outputs.deploy == 'true'
+        run: |
+          node -e "process.stdout.write('ref=' + require('./scripts/public-artifact-versions.json').artifacts.server + '\n')" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout qualified Server authority
+        if: steps.deploy-plan.outputs.deploy == 'true'
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
+        with:
+          repository: ${{ github.repository_owner }}/server
+          ref: ${{ steps.server-authority.outputs.ref }}
+          path: .server-authority
+          persist-credentials: false
+
       - name: Resolve Workflow authority ref
         id: workflow-authority
         if: steps.deploy-plan.outputs.deploy == 'true'
@@ -87,6 +102,7 @@ jobs:
         if: steps.deploy-plan.outputs.deploy == 'true'
         env:
           PUBLIC_SERVER_PROTOCOL_CATALOG_EVIDENCE: public-server-protocol-catalog-conformance.json
+          PUBLIC_SERVER_SOURCE_PATH: ${{ github.workspace }}/.server-authority
         run: node scripts/check-public-server-protocol-catalog.js
 
       - name: Upload pinned server protocol catalog evidence

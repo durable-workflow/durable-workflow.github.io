@@ -7,15 +7,32 @@ const {
   CatalogConformanceError,
   CatalogLifecycleError,
   discoverPublishedServer,
+  qualifiedServerSourceCommit,
   verifySnapshots,
+  workflowProvenanceFromComposerLock,
 } = require('./check-public-server-protocol-catalog');
 
 const provenance = {
   source: 'https://github.com/durable-workflow/workflow.git',
-  ref: '2.0.0-alpha.279',
-  commit: 'f9a00e18fa21196bcb3505710489025ff93cf5e1',
+  ref: '2.0.0-rc.8',
+  commit: 'dc7b98ebf811f30fcf43e1f1c7b66021a10878d0',
 };
-const expectedWorkflowRef = provenance.ref;
+const qualifiedWorkflowArtifactRef = '2.0.0-rc.12';
+const composerLock = {
+  packages: [
+    {
+      name: 'durable-workflow/workflow',
+      version: provenance.ref,
+      source: {
+        type: 'git',
+        url: provenance.source,
+        reference: provenance.commit,
+      },
+    },
+  ],
+  'packages-dev': [],
+};
+const expectedWorkflowProvenance = workflowProvenanceFromComposerLock(composerLock);
 
 function discovery(protocolCatalog = catalog, packageProvenance = provenance) {
   return {
@@ -24,12 +41,32 @@ function discovery(protocolCatalog = catalog, packageProvenance = provenance) {
   };
 }
 
-const passing = verifySnapshots(catalog, discovery(), expectedWorkflowRef);
+assert.notStrictEqual(
+  expectedWorkflowProvenance.ref,
+  qualifiedWorkflowArtifactRef,
+  'the qualified mixed tuple must distinguish Server internals from standalone Workflow',
+);
+const passing = verifySnapshots(catalog, discovery(), expectedWorkflowProvenance);
 assert.strictEqual(passing.schema, 'durable-workflow.v2.platform-protocol-specs.catalog');
 assert.strictEqual(passing.version, 15);
 assert.strictEqual(passing.capability_records, 16);
-assert.strictEqual(passing.expected_workflow_package_ref, expectedWorkflowRef);
+assert.strictEqual(passing.expected_workflow_package_ref, provenance.ref);
+assert.deepStrictEqual(passing.expected_workflow_package_provenance, provenance);
 assert.deepStrictEqual(passing.package_provenance, provenance);
+
+assert.throws(
+  () => workflowProvenanceFromComposerLock({packages: []}),
+  /exactly one durable-workflow\/workflow package/,
+  'qualified Server source must lock one Workflow package',
+);
+
+const artifactVersions = require('./public-artifact-versions.json').artifacts;
+const compatibilityEvidence = require('../static/public-artifact-compatibility-evidence.json');
+assert.strictEqual(
+  qualifiedServerSourceCommit(artifactVersions, compatibilityEvidence),
+  compatibilityEvidence.sdk_server_compatibility['sdk-php'].server_source_commit,
+  'Server source must come from exact aggregate qualification evidence',
+);
 
 const stableProvenance = {
   ...provenance,
@@ -39,7 +76,7 @@ assert.throws(
   () => verifySnapshots(
     catalog,
     discovery(catalog, stableProvenance),
-    stableProvenance.ref,
+    stableProvenance,
   ),
   error => error instanceof CatalogConformanceError
     && error.findings.some(finding => (
@@ -52,7 +89,7 @@ assert.throws(
 const staleCatalog = JSON.parse(JSON.stringify(catalog));
 staleCatalog.version = 14;
 assert.throws(
-  () => verifySnapshots(catalog, discovery(staleCatalog), expectedWorkflowRef),
+  () => verifySnapshots(catalog, discovery(staleCatalog), expectedWorkflowProvenance),
   error => error instanceof CatalogConformanceError
     && error.findings.some(finding => finding.kind === 'value_mismatch'
       && finding.path === '$.version'
@@ -64,7 +101,7 @@ assert.throws(
 const unsafeCatalog = JSON.parse(JSON.stringify(catalog));
 unsafeCatalog.specs.control_plane_api.spec_path = 'tests/Feature/ControlPlaneTest.php';
 assert.throws(
-  () => verifySnapshots(catalog, discovery(unsafeCatalog), expectedWorkflowRef),
+  () => verifySnapshots(catalog, discovery(unsafeCatalog), expectedWorkflowProvenance),
   error => error instanceof CatalogConformanceError
     && error.findings.some(finding => finding.kind === 'field_set_mismatch'
       && finding.path === '$.specs.control_plane_api'
@@ -78,24 +115,37 @@ assert.throws(
   () => verifySnapshots(catalog, discovery(catalog, {
     ...provenance,
     commit: 'short-sha',
-  }), expectedWorkflowRef),
+  }), expectedWorkflowProvenance),
   error => error instanceof CatalogConformanceError
     && error.findings.some(finding => finding.kind === 'workflow_package_commit_invalid'),
   'image provenance must name a full Workflow source revision',
 );
 
-const differentValidWorkflowRef = '2.0.0-alpha.278';
+const differentValidWorkflowRef = '2.0.0-rc.7';
 assert.throws(
   () => verifySnapshots(catalog, discovery(catalog, {
     ...provenance,
     ref: differentValidWorkflowRef,
-  }), expectedWorkflowRef),
+  }), expectedWorkflowProvenance),
   error => error instanceof CatalogConformanceError
     && error.findings.some(finding => finding.kind === 'workflow_package_version_mismatch'
       && finding.path === '$.package_provenance.ref'
-      && finding.expected === expectedWorkflowRef
+      && finding.expected === expectedWorkflowProvenance.ref
       && finding.actual === differentValidWorkflowRef),
-  'image provenance must match the candidate tuple Workflow version exactly',
+  'image provenance must match the Workflow version locked by Server',
+);
+
+assert.throws(
+  () => verifySnapshots(catalog, discovery(catalog, {
+    ...provenance,
+    commit: 'e'.repeat(40),
+  }), expectedWorkflowProvenance),
+  error => error instanceof CatalogConformanceError
+    && error.findings.some(finding => finding.kind === 'workflow_package_commit_mismatch'
+      && finding.path === '$.package_provenance.commit'
+      && finding.expected === provenance.commit
+      && finding.actual === 'e'.repeat(40)),
+  'image provenance must match the Workflow source revision locked by Server',
 );
 
 function lifecycleOptions(tmpDir, events, failBootstrap = false) {

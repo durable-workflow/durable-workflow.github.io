@@ -100,6 +100,43 @@ function assertPublicWorkflowCheckout(steps, context) {
   }
 }
 
+function assertQualifiedServerAuthority(steps, context, condition) {
+  const resolveIndex = steps.findIndex(
+    step => step.name === 'Resolve qualified Server authority ref',
+  );
+  const checkoutIndex = steps.findIndex(
+    step => step.name === 'Checkout qualified Server authority',
+  );
+  const verifyIndex = steps.findIndex(step => (
+    step.run === 'node scripts/check-public-server-protocol-catalog.js'
+  ));
+  const resolve = steps[resolveIndex];
+  const checkout = steps[checkoutIndex];
+  const verify = steps[verifyIndex];
+
+  if (
+    resolveIndex < 0
+    || checkoutIndex < 0
+    || verifyIndex < 0
+    || !(resolveIndex < checkoutIndex && checkoutIndex < verifyIndex)
+    || resolve.id !== 'server-authority'
+    || !resolve.run.includes("require('./scripts/public-artifact-versions.json').artifacts.server")
+    || resolve.if !== condition
+    || checkout.if !== condition
+    || checkout.with?.repository !== '${{ github.repository_owner }}/server'
+    || checkout.with?.ref !== '${{ steps.server-authority.outputs.ref }}'
+    || checkout.with?.path !== '.server-authority'
+    || checkout.with?.['persist-credentials'] !== false
+    || verify.if !== condition
+    || verify.env?.PUBLIC_SERVER_SOURCE_PATH !==
+      '${{ github.workspace }}/.server-authority'
+  ) {
+    throw new Error(
+      `${context} must compare image provenance with the exact qualified Server source checkout`,
+    );
+  }
+}
+
 function assertQualificationChecksPublishedWorkflowAuthority(source) {
   const parsed = yaml.load(source);
   const steps = parsed?.jobs?.['executable-contracts']?.steps || [];
@@ -166,6 +203,16 @@ assertQualificationChecksPublishedWorkflowAuthority(qualificationWorkflow);
 assertPublicWorkflowCheckout(
   yaml.load(workflow)?.jobs?.refresh?.steps || [],
   'public artifact tuple qualification',
+);
+assertQualifiedServerAuthority(
+  yaml.load(workflow)?.jobs?.refresh?.steps || [],
+  'public artifact tuple qualification',
+  "steps.changes.outputs.changed == 'true'",
+);
+assertQualifiedServerAuthority(
+  yaml.load(deployWorkflow)?.jobs?.deploy?.steps || [],
+  'documentation deployment',
+  "steps.deploy-plan.outputs.deploy == 'true'",
 );
 for (const [label, fixture] of [
   [

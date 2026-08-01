@@ -9,10 +9,18 @@ const {
   ARTIFACT_RELEASE_POLICY,
   isAuthorizedProductTrainVersion,
 } = require('./public-artifact-versions');
+const {
+  readArtifactCompatibilityEvidence,
+} = require('./public-artifact-compatibility');
 
 const repoRoot = path.join(__dirname, '..');
 const catalogPath = path.join(repoRoot, 'static', 'platform-protocol-specs.json');
 const artifactVersionsPath = path.join(__dirname, 'public-artifact-versions.json');
+const artifactCompatibilityEvidencePath = path.join(
+  repoRoot,
+  'static',
+  'public-artifact-compatibility-evidence.json',
+);
 const expectedSchema = 'durable-workflow.v2.platform-protocol-specs.catalog';
 const expectedWorkflowSource = 'https://github.com/durable-workflow/workflow.git';
 const maxFindings = 100;
@@ -86,6 +94,65 @@ function addFinding(findings, finding) {
   if (findings.length < maxFindings) {
     findings.push(finding);
   }
+}
+
+function workflowProvenanceFromComposerLock(composerLock) {
+  if (!isRecord(composerLock)) {
+    throw new Error('Qualified Server composer.lock must be a JSON object.');
+  }
+
+  const packages = [
+    ...(Array.isArray(composerLock.packages) ? composerLock.packages : []),
+    ...(Array.isArray(composerLock['packages-dev']) ? composerLock['packages-dev'] : []),
+  ];
+  const matches = packages.filter(entry => (
+    isRecord(entry) && entry.name === 'durable-workflow/workflow'
+  ));
+
+  if (matches.length !== 1) {
+    throw new Error(
+      'Qualified Server composer.lock must contain exactly one durable-workflow/workflow package.',
+    );
+  }
+
+  const workflowPackage = matches[0];
+  const source = workflowPackage.source;
+  if (
+    !isAuthorizedProductTrainVersion(workflowPackage.version || '')
+    || !isRecord(source)
+    || source.type !== 'git'
+    || source.url !== expectedWorkflowSource
+    || !/^[0-9a-f]{40}$/.test(source.reference || '')
+  ) {
+    throw new Error(
+      'Qualified Server composer.lock must bind Workflow to an authorized public version ' +
+        'and full Git source revision.',
+    );
+  }
+
+  return Object.freeze({
+    source: source.url,
+    ref: workflowPackage.version,
+    commit: source.reference,
+  });
+}
+
+function qualifiedServerSourceCommit(artifactVersions, compatibilityEvidenceSource) {
+  const compatibility = readArtifactCompatibilityEvidence(
+    compatibilityEvidenceSource,
+    artifactVersions,
+  );
+  const commits = new Set(Object.values(compatibility.sdkServerCompatibility).map(
+    qualification => qualification.server_source_commit,
+  ));
+
+  if (commits.size !== 1) {
+    throw new Error(
+      'Qualified SDK-to-Server evidence must bind one exact Server source commit.',
+    );
+  }
+
+  return [...commits][0];
 }
 
 function assertConsumerSafeCatalog(catalog, surface) {
@@ -207,7 +274,7 @@ function compareCatalogs(publicValue, serverValue, pointer, findings) {
   }
 }
 
-function verifySnapshots(publicCatalog, serverDiscovery, expectedWorkflowRef) {
+function verifySnapshots(publicCatalog, serverDiscovery, expectedWorkflowProvenance) {
   const findings = [];
   const serverCatalog = isRecord(serverDiscovery)
     ? serverDiscovery.platform_protocol_specs
@@ -281,13 +348,13 @@ function verifySnapshots(publicCatalog, serverDiscovery, expectedWorkflowRef) {
       message: 'Published server discovery must expose Workflow package provenance during catalog conformance.',
     });
   } else {
-    if (provenance.source !== expectedWorkflowSource) {
+    if (provenance.source !== expectedWorkflowProvenance.source) {
       addFinding(findings, {
         kind: 'workflow_package_source_mismatch',
         path: '$.package_provenance.source',
-        expected: expectedWorkflowSource,
+        expected: expectedWorkflowProvenance.source,
         actual: provenance.source,
-        message: `Workflow package source expected ${expectedWorkflowSource}, got ${printable(provenance.source)}.`,
+        message: `Workflow package source expected ${expectedWorkflowProvenance.source}, got ${printable(provenance.source)}.`,
       });
     }
     if (!isAuthorizedProductTrainVersion(provenance.ref || '')) {
@@ -298,13 +365,13 @@ function verifySnapshots(publicCatalog, serverDiscovery, expectedWorkflowRef) {
         message: `Workflow package provenance must name a version authorized by the ${ARTIFACT_RELEASE_POLICY.release_phase} release phase, got ${printable(provenance.ref)}.`,
       });
     }
-    if (provenance.ref !== expectedWorkflowRef) {
+    if (provenance.ref !== expectedWorkflowProvenance.ref) {
       addFinding(findings, {
         kind: 'workflow_package_version_mismatch',
         path: '$.package_provenance.ref',
-        expected: expectedWorkflowRef,
+        expected: expectedWorkflowProvenance.ref,
         actual: provenance.ref,
-        message: `Workflow package provenance ref expected ${printable(expectedWorkflowRef)}, got ${printable(provenance.ref)}.`,
+        message: `Workflow package provenance ref expected ${printable(expectedWorkflowProvenance.ref)}, got ${printable(provenance.ref)}.`,
       });
     }
     if (!/^[0-9a-f]{40}$/.test(provenance.commit || '')) {
@@ -313,6 +380,14 @@ function verifySnapshots(publicCatalog, serverDiscovery, expectedWorkflowRef) {
         path: '$.package_provenance.commit',
         actual: provenance.commit,
         message: `Workflow package provenance must name a full source revision, got ${printable(provenance.commit)}.`,
+      });
+    } else if (provenance.commit !== expectedWorkflowProvenance.commit) {
+      addFinding(findings, {
+        kind: 'workflow_package_commit_mismatch',
+        path: '$.package_provenance.commit',
+        expected: expectedWorkflowProvenance.commit,
+        actual: provenance.commit,
+        message: `Workflow package provenance commit expected ${printable(expectedWorkflowProvenance.commit)}, got ${printable(provenance.commit)}.`,
       });
     }
   }
@@ -328,7 +403,8 @@ function verifySnapshots(publicCatalog, serverDiscovery, expectedWorkflowRef) {
     schema: publicCatalog.schema,
     version: publicCatalog.version,
     capability_records: Object.keys(publicCatalog.specs).length,
-    expected_workflow_package_ref: expectedWorkflowRef,
+    expected_workflow_package_ref: expectedWorkflowProvenance.ref,
+    expected_workflow_package_provenance: expectedWorkflowProvenance,
     package_provenance: provenance,
   };
 }
@@ -650,18 +726,46 @@ function writeEvidence(pathname, evidence) {
 async function main() {
   const artifactVersions = JSON.parse(fs.readFileSync(artifactVersionsPath, 'utf8')).artifacts;
   const serverVersion = process.env.PUBLIC_SERVER_VERSION || artifactVersions.server;
-  const expectedWorkflowRef = process.env.PUBLIC_WORKFLOW_VERSION || artifactVersions.workflow;
   const serverImage = process.env.PUBLIC_SERVER_IMAGE || `durableworkflow/server:${serverVersion}`;
   const publicCatalog = JSON.parse(fs.readFileSync(
     process.env.PUBLIC_PROTOCOL_CATALOG_PATH || catalogPath,
     'utf8',
   ));
   const evidencePath = process.env.PUBLIC_SERVER_PROTOCOL_CATALOG_EVIDENCE;
+  const serverSourcePath = process.env.PUBLIC_SERVER_SOURCE_PATH
+    || path.join(repoRoot, '.server-authority');
+  const qualifiedWorkflowArtifactRef = artifactVersions.workflow;
+  let serverSourceCommit = null;
+  let expectedWorkflowProvenance = null;
   let serverDiscovery;
   let lifecycle = null;
   let diagnostics = null;
 
   try {
+    const compatibilityEvidenceSource = JSON.parse(fs.readFileSync(
+      artifactCompatibilityEvidencePath,
+      'utf8',
+    ));
+    serverSourceCommit = qualifiedServerSourceCommit(
+      artifactVersions,
+      compatibilityEvidenceSource,
+    );
+    const checkedOutServerCommit = childProcess.execFileSync(
+      'git',
+      ['-C', serverSourcePath, 'rev-parse', 'HEAD'],
+      {encoding: 'utf8'},
+    ).trim();
+    if (checkedOutServerCommit !== serverSourceCommit) {
+      throw new CatalogLifecycleError(
+        'server_source_authority_mismatch',
+        'setup',
+        `Qualified Server source expected ${serverSourceCommit}, got ${checkedOutServerCommit}.`,
+      );
+    }
+    expectedWorkflowProvenance = workflowProvenanceFromComposerLock(JSON.parse(
+      fs.readFileSync(path.join(serverSourcePath, 'composer.lock'), 'utf8'),
+    ));
+
     if (process.env.SERVER_DISCOVERY_PATH) {
       serverDiscovery = JSON.parse(fs.readFileSync(process.env.SERVER_DISCOVERY_PATH, 'utf8'));
       lifecycle = {mode: 'provided_snapshot'};
@@ -671,14 +775,21 @@ async function main() {
       lifecycle = publishedServer.lifecycle;
       diagnostics = publishedServer.diagnostics;
     }
-    const observation = verifySnapshots(publicCatalog, serverDiscovery, expectedWorkflowRef);
+    const observation = verifySnapshots(
+      publicCatalog,
+      serverDiscovery,
+      expectedWorkflowProvenance,
+    );
     writeEvidence(evidencePath, {
       schema: 'durable-workflow.docs.public-server-protocol-catalog-conformance',
       schema_version: 1,
       checked_at: new Date().toISOString(),
       server_version: serverVersion,
       server_image: serverImage,
-      expected_workflow_package_ref: expectedWorkflowRef,
+      qualified_server_source_commit: serverSourceCommit,
+      qualified_workflow_artifact_ref: qualifiedWorkflowArtifactRef,
+      expected_workflow_package_ref: expectedWorkflowProvenance.ref,
+      expected_workflow_package_provenance: expectedWorkflowProvenance,
       outcome: 'pass',
       lifecycle,
       diagnostics,
@@ -689,7 +800,9 @@ async function main() {
       `Published server protocol catalog matches the public authority: `
         + `server ${serverVersion}, catalog version ${observation.version}, `
         + `${observation.capability_records} capability records, `
-        + `Workflow ${observation.package_provenance.ref} at ${observation.package_provenance.commit}.`,
+        + `embedded Workflow ${observation.package_provenance.ref} at `
+        + `${observation.package_provenance.commit}; qualified standalone Workflow `
+        + `${qualifiedWorkflowArtifactRef}.`,
     );
   } catch (error) {
     const findings = error instanceof CatalogConformanceError
@@ -707,7 +820,12 @@ async function main() {
       checked_at: new Date().toISOString(),
       server_version: serverVersion,
       server_image: serverImage,
-      expected_workflow_package_ref: expectedWorkflowRef,
+      qualified_server_source_commit: serverSourceCommit,
+      qualified_workflow_artifact_ref: qualifiedWorkflowArtifactRef,
+      expected_workflow_package_ref: expectedWorkflowProvenance
+        ? expectedWorkflowProvenance.ref
+        : null,
+      expected_workflow_package_provenance: expectedWorkflowProvenance,
       outcome: 'fail',
       lifecycle,
       diagnostics,
@@ -742,5 +860,7 @@ module.exports = {
   CatalogLifecycleError,
   compareCatalogs,
   discoverPublishedServer,
+  qualifiedServerSourceCommit,
   verifySnapshots,
+  workflowProvenanceFromComposerLock,
 };

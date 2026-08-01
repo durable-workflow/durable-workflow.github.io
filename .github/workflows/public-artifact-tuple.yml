@@ -72,10 +72,26 @@ jobs:
             git diff -- scripts/public-artifact-versions.json scripts/published-artifact-versions.json scripts/platform-conformance-retained-evidence.json static/platform-conformance/run-ledger.json static/public-artifact-compatibility-evidence.json static/quickstart-execution-contract.json static/compatibility-contract.json static/sdk-neutrality-contract.json scripts/workflow-sdk-neutrality-authority-lock.json
           fi
 
+      - name: Resolve qualified Server authority ref
+        id: server-authority
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          node -e "process.stdout.write('ref=' + require('./scripts/public-artifact-versions.json').artifacts.server + '\n')" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout qualified Server authority
+        if: steps.changes.outputs.changed == 'true'
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
+        with:
+          repository: ${{ github.repository_owner }}/server
+          ref: ${{ steps.server-authority.outputs.ref }}
+          path: .server-authority
+          persist-credentials: false
+
       - name: Verify candidate server protocol catalog
         if: steps.changes.outputs.changed == 'true'
         env:
           PUBLIC_SERVER_PROTOCOL_CATALOG_EVIDENCE: public-server-protocol-catalog-conformance.json
+          PUBLIC_SERVER_SOURCE_PATH: ${{ github.workspace }}/.server-authority
         run: node scripts/check-public-server-protocol-catalog.js
 
       - name: Upload candidate server protocol catalog evidence
