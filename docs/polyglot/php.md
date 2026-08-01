@@ -74,8 +74,8 @@ use DurableWorkflow\Client;
 
 $client = new Client(
     'http://localhost:8080',
-    new TokenAuthentication('operator-token'),
-    namespace: 'production',
+    new TokenAuthentication('dev-token'),
+    namespace: 'default',
 );
 
 $handle = $client->startWorkflow(
@@ -133,9 +133,9 @@ use DurableWorkflow\Worker\ActivityContext;
 use DurableWorkflow\Worker\WorkflowContext;
 
 $client = new Client(
-    'http://server:8080',
-    token: 'worker-token',
-    namespace: 'production',
+    'http://localhost:8080',
+    token: 'dev-token',
+    namespace: 'default',
 );
 $worker = new Worker($client, 'orders');
 

@@ -71,9 +71,7 @@
       "id": "php.sdk.install",
       "path": "polyglot/php.md",
       "language": "bash",
-      "requiredSubstrings": [
-        "composer require %%artifact.phpSdkComposerPackage%%"
-      ]
+      "primaryArtifactInstall": "sdk-php"
     },
     {
       "id": "php.sdk.client",
@@ -86,7 +84,11 @@
         "$handle->signal(",
         "$handle->query(",
         "$handle->result("
-      ]
+      ],
+      "localConnection": {
+        "hostingBranch": "standalone_server_sqlite",
+        "shape": "php_token_authentication"
+      }
     },
     {
       "id": "php.sdk.worker",
@@ -98,7 +100,11 @@
         "$worker->registerWorkflow(",
         "$context->activity(",
         "$worker->run();"
-      ]
+      ],
+      "localConnection": {
+        "hostingBranch": "standalone_server_sqlite",
+        "shape": "php_named_token"
+      }
     },
     {
       "id": "server.php-sdk.install",
@@ -107,6 +113,12 @@
       "requiredSubstrings": [
         "composer require %%artifact.phpSdkComposerPackage%%"
       ]
+    },
+    {
+      "id": "python.sdk.install",
+      "path": "polyglot/python.md",
+      "language": "bash",
+      "primaryArtifactInstall": "sdk-python"
     },
     {
       "id": "python.quickstart.worker",
@@ -119,7 +131,17 @@
         "await client.start_workflow(",
         "await worker.run_until(",
         "await handle.result("
-      ]
+      ],
+      "localConnection": {
+        "hostingBranch": "standalone_server_sqlite",
+        "shape": "python_client"
+      }
+    },
+    {
+      "id": "rust.sdk.install",
+      "path": "polyglot/rust.md",
+      "language": "bash",
+      "primaryArtifactInstall": "sdk-rust"
     },
     {
       "id": "rust.workflow-start-timeouts",

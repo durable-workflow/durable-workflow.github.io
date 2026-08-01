@@ -53,6 +53,7 @@ not change which docs version is the public default.
 
 Install the exact Rust SDK version in the current public artifact tuple:
 
+<!-- docs-example id="rust.sdk.install" -->
 ```bash
 %%artifact.rustCargoAddCommand%%
 ```

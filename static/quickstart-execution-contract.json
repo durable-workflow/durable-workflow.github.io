@@ -156,6 +156,12 @@
           "value": "dev-token"
         }
       ],
+      "local_connection": {
+        "base_url": "http://localhost:8080",
+        "token_environment": "DW_AUTH_TOKEN",
+        "token": "dev-token",
+        "namespace": "default"
+      },
       "required_ports": [
         {
           "host": 8080,

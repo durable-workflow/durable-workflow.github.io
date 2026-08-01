@@ -43,13 +43,10 @@ connection boundary; the quickstart below uses local self-hosted values.
 
 ## Installation
 
-```bash
-pip install durable-workflow
-```
+Install the published SDK version selected by the current 2.0 prerelease
+artifact tuple:
 
-For the current 2.0 prerelease quickstart, pin the published SDK version used by
-the release-candidate artifact tuple:
-
+<!-- docs-example id="python.sdk.install" -->
 ```bash
 pip install %%artifact.pythonPackagePin%%
 ```
@@ -1469,7 +1466,7 @@ Every payload that crosses the worker-protocol boundary is codec-tagged. v2 ship
 
 ### Avro support is built in
 
-`pip install durable-workflow` pulls in `fastavro` as a runtime dependency, so
+The pinned 2.0 SDK artifact pulls in `fastavro` as a runtime dependency, so
 every outgoing surface (`start_workflow`, `signal_workflow`, `query_workflow`,
 `update_workflow`, activity result encoding, schedule actions) emits
 Avro-tagged payloads through the optimized production path. There is no

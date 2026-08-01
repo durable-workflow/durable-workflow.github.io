@@ -404,6 +404,27 @@ function assertPythonInstallContract(contract) {
   assertEqual(avroProbe.expect_exit_code, 0, 'python_official_avro_package.expect_exit_code');
 }
 
+function assertLocalServerConnectionContract(contract) {
+  const hostingBranches = byId(contract.hosting_branches, 'hosting_branches');
+  const standalone = hostingBranches.get('standalone_server_sqlite');
+  const connection = standalone && standalone.local_connection;
+
+  if (!connection) {
+    fail('standalone_server_sqlite must declare local_connection');
+  }
+
+  assertEqual(connection.base_url, 'http://localhost:8080', 'local Server base URL');
+  assertEqual(connection.token_environment, 'DW_AUTH_TOKEN', 'local Server token environment');
+  assertEqual(connection.namespace, 'default', 'local Server namespace');
+
+  const tokenEnvironment = (standalone.required_environment || [])
+    .find(entry => entry.name === connection.token_environment);
+  if (!tokenEnvironment) {
+    fail('standalone_server_sqlite must declare its local connection token environment');
+  }
+  assertEqual(connection.token, tokenEnvironment.value, 'local Server token');
+}
+
 function assertDocsGuard(contract) {
   const releaseConfig = getDocsReleaseConfig();
 
@@ -434,6 +455,7 @@ function main() {
   assertPythonInstallContract(contract);
   assertRustInstallContract(contract);
   assertEmbeddedLaravelInstallContract(contract);
+  assertLocalServerConnectionContract(contract);
   assertQuickstartScriptLinesMatchDocs(contract, renderedQuickstart);
 
   console.log('Quickstart execution contract checks passed');
