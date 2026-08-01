@@ -241,7 +241,11 @@ Cloud returns the current calendar month. Billing usage reads and exports stay
 available even if billing restrictions pause namespace provisioning or workflow
 operations, so finance teams can still recover account standing.
 
-The response schema is `durable_workflow.cloud.billing_usage.v1`:
+The response schema is `durable_workflow.cloud.billing_usage.v1`. The
+abbreviated zero-valued response below illustrates the API shape only; it does
+not represent a plan rate or pricing quote. `estimated_cost_cents` comes from
+the caller's plan-backed usage rollup. Every usage and cost value is zero, so
+the example does not imply an action-count-to-cost rate.
 
 ```json
 {
@@ -255,105 +259,40 @@ The response schema is `durable_workflow.cloud.billing_usage.v1`:
     "ends_at": "2026-05-31T23:59:59+00:00"
   },
   "totals": {
-    "workflow_execution_count": 20,
-    "activity_execution_count": 80,
-    "timer_fire_count": 10,
-    "signal_delivery_count": 5,
-    "update_delivery_count": 3,
-    "query_task_count": 2,
-    "storage_byte_hours": 123456,
-    "billable_action_count": 120,
-    "estimated_cost_cents": 240
+    "workflow_execution_count": 0,
+    "activity_execution_count": 0,
+    "timer_fire_count": 0,
+    "signal_delivery_count": 0,
+    "update_delivery_count": 0,
+    "query_task_count": 0,
+    "storage_byte_hours": 0,
+    "billable_action_count": 0,
+    "estimated_cost_cents": 0
   },
   "by_action_type": [
     {
       "action_type": "workflow_start",
-      "raw_count": 20,
+      "raw_count": 0,
       "billing_unit": "billable_action",
-      "billing_units": 20,
-      "estimated_cost_cents": 40
-    },
-    {
-      "action_type": "activity_execution",
-      "raw_count": 80,
-      "billing_unit": "billable_action",
-      "billing_units": 80,
-      "estimated_cost_cents": 160
-    },
-    {
-      "action_type": "timer_fire",
-      "raw_count": 10,
-      "billing_unit": "billable_action",
-      "billing_units": 10,
-      "estimated_cost_cents": 20
-    },
-    {
-      "action_type": "signal",
-      "raw_count": 5,
-      "billing_unit": "billable_action",
-      "billing_units": 5,
-      "estimated_cost_cents": 10
-    },
-    {
-      "action_type": "update",
-      "raw_count": 3,
-      "billing_unit": "billable_action",
-      "billing_units": 3,
-      "estimated_cost_cents": 6
-    },
-    {
-      "action_type": "query",
-      "raw_count": 2,
-      "billing_unit": "billable_action",
-      "billing_units": 2,
-      "estimated_cost_cents": 4
+      "billing_units": 0,
+      "estimated_cost_cents": 0
     }
   ],
   "by_namespace": [
     {
-      "namespace": "orders",
-      "project": "commerce",
-      "environment": "prod",
+      "namespace": "example",
+      "project": "example",
+      "environment": "test",
       "usage": {
-        "billable_action_count": 120,
-        "estimated_cost_cents": 240
+        "billable_action_count": 0,
+        "estimated_cost_cents": 0
       },
       "action_types": [
         {
           "action_type": "workflow_start",
-          "raw_count": 20,
-          "billing_units": 20,
-          "estimated_cost_cents": 40
-        },
-        {
-          "action_type": "activity_execution",
-          "raw_count": 80,
-          "billing_units": 80,
-          "estimated_cost_cents": 160
-        },
-        {
-          "action_type": "timer_fire",
-          "raw_count": 10,
-          "billing_units": 10,
-          "estimated_cost_cents": 20
-        },
-        {
-          "action_type": "signal",
-          "raw_count": 5,
-          "billing_units": 5,
-          "estimated_cost_cents": 10
-        },
-        {
-          "action_type": "update",
-          "raw_count": 3,
-          "billing_units": 3,
-          "estimated_cost_cents": 6
-        },
-        {
-          "action_type": "query",
-          "raw_count": 2,
-          "billing_units": 2,
-          "estimated_cost_cents": 4
+          "raw_count": 0,
+          "billing_units": 0,
+          "estimated_cost_cents": 0
         }
       ]
     }
@@ -364,8 +303,9 @@ The response schema is `durable_workflow.cloud.billing_usage.v1`:
 The standard action types are `workflow_start`, `activity_execution`,
 `timer_fire`, `signal`, `update`, and `query`. `raw_count` is the source meter
 count. `billing_units` is the derived `billable_action` quantity used for
-chargeback, and `estimated_cost_cents` is allocated proportionally across
-action types so totals reconcile with the namespace and report totals.
+chargeback. The plan-backed `estimated_cost_cents` rollup is allocated
+proportionally across action types so totals reconcile with the namespace and
+report totals.
 
 Export the same evidence as CSV or a JSON report when a downstream finance
 system needs a file handoff:
