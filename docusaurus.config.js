@@ -3,6 +3,13 @@
 
 const { themes: prismThemes } = require('prism-react-renderer');
 const { artifactVersionRemarkPlugin } = require('./scripts/public-artifact-versions');
+
+const canonicalAnalytics = Object.freeze({
+  measurementId: 'G-HD1YHT442Y',
+  anonymizeIP: true,
+  consentRequired: true,
+});
+
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'Durable Workflow',
@@ -18,6 +25,16 @@ const config = {
     },
   },
   favicon: 'img/favicon.ico',
+  customFields: {
+    analytics: canonicalAnalytics,
+  },
+  scripts: [
+    {
+      src: '/analytics/analytics.js',
+      defer: true,
+    },
+  ],
+  stylesheets: ['/analytics/analytics.css'],
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
@@ -64,10 +81,6 @@ const config = {
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
-        },
-        gtag: {
-          trackingID: 'G-HD1YHT442Y',
-          anonymizeIP: true,
         },
       }),
     ],
