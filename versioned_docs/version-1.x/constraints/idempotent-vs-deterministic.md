@@ -60,6 +60,8 @@ Durable Workflow rebuilds orchestration state by replaying committed history. Wi
 
 Move those operations into activities, or use a workflow helper that records the value in history. Replay then returns the recorded activity or side-effect result instead of performing the external operation again. Determinism does not require every activity invocation to produce a universal, timeless answer; it requires replayed orchestration to make decisions that agree with its recorded history.
 
+The workflow body does not need to be idempotent. Replay may invoke it again, but the engine matches its durable decisions to recorded history instead of asking the body to deduplicate an external effect.
+
 See [Workflow Constraints](./workflow-constraints.md) for the authoring rules and [How It Works](../how-it-works.md) for the replay model.
 
 ## Why Activities and Side Effects Must Be Idempotent
@@ -77,12 +79,14 @@ An idempotency key does not make activity code deterministic, and it does not pr
 
 See [Activity Constraints](./activity-constraints.md), [Defining Activities](../defining-workflows/activities.md), and [Failures and Recovery](../failures-and-recovery.md) for stable 1.x guidance. The explicit 2.0 prerelease documentation provides the deeper [Activity Execution Model](/docs/2.0/features/activity-execution-model/) and [Execution Guarantees and Idempotency](/docs/2.0/constraints/execution-guarantees/) contracts.
 
-## One Boundary, Across Every SDK
+## One Boundary, Versioned SDK Guidance
 
-The same design applies whether the worker is written in PHP, Python, or Rust:
+The determinism-versus-idempotency boundary is language-neutral. This stable 1.x documentation line covers the Laravel/PHP package and its in-application workflow and activity model. PHP, Python, and Rust service-mode SDK guidance is part of the explicit [2.0 prerelease line](/docs/2.0/introduction/), with separate guides for the [PHP SDK](/docs/2.0/polyglot/php/), [Python SDK](/docs/2.0/polyglot/python/), and [Rust SDK](/docs/2.0/polyglot/rust/).
+
+In any documented runtime, apply the same design:
 
 1. Keep orchestration replay-safe: given the same input and history, issue the same durable commands.
 2. Put network calls, clocks, randomness, and mutable external state behind an activity boundary.
 3. Give each side-effecting activity a stable identity that the target system can deduplicate.
 
-The language syntax changes. The determinism-versus-idempotency boundary does not.
+The language syntax changes. The durable boundary does not.
