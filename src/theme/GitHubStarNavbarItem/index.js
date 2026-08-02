@@ -80,6 +80,10 @@ function useGitHubStarCount(repo) {
   });
 
   useEffect(() => {
+    if (['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)) {
+      return undefined;
+    }
+
     const controller = new AbortController();
 
     async function fetchStarCount() {
