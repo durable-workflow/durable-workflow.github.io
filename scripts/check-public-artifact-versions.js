@@ -37,6 +37,7 @@ const {
   platformConformanceRetainedEvidenceSource,
   publishedArtifactVersionsSource,
   quickstartExecutionContractSource,
+  requestBufferResponse,
   resolvePackagistVersion,
   resolvePublishedArtifactCompatibilityEvidence,
   resolvePublishedWorkflowAuthority,
@@ -1433,6 +1434,77 @@ async function assertCompatibilityAuthorityResolution() {
   );
 }
 
+async function assertTransientRequestRetry() {
+  let transientAttempts = 0;
+  let retries = 0;
+  const result = await requestBufferResponse(
+    'https://example.test/retry',
+    {},
+    undefined,
+    {
+      requestOnce: async () => {
+        transientAttempts += 1;
+        if (transientAttempts < 3) {
+          const error = new Error('read ECONNRESET');
+          error.code = 'ECONNRESET';
+          throw error;
+        }
+        return 'recovered';
+      },
+      retryOptions: {
+        maxAttempts: 3,
+        retryDelayMs: 0,
+        onRetry: () => {
+          retries += 1;
+        },
+      },
+    },
+  );
+  assert.strictEqual(result, 'recovered');
+  assert.strictEqual(transientAttempts, 3);
+  assert.strictEqual(retries, 2);
+
+  let permanentAttempts = 0;
+  await assert.rejects(
+    () => requestBufferResponse(
+      'https://example.test/permanent',
+      {},
+      undefined,
+      {
+        requestOnce: async () => {
+          permanentAttempts += 1;
+          const error = new Error('invalid response');
+          error.code = 'ERR_INVALID_RESPONSE';
+          throw error;
+        },
+        retryOptions: {maxAttempts: 3, retryDelayMs: 0, onRetry: () => {}},
+      },
+    ),
+    /invalid response/,
+  );
+  assert.strictEqual(permanentAttempts, 1);
+
+  let exhaustedAttempts = 0;
+  await assert.rejects(
+    () => requestBufferResponse(
+      'https://example.test/exhausted',
+      {},
+      undefined,
+      {
+        requestOnce: async () => {
+          exhaustedAttempts += 1;
+          const error = new Error('read ECONNRESET');
+          error.code = 'ECONNRESET';
+          throw error;
+        },
+        retryOptions: {maxAttempts: 2, retryDelayMs: 0, onRetry: () => {}},
+      },
+    ),
+    /read ECONNRESET/,
+  );
+  assert.strictEqual(exhaustedAttempts, 2);
+}
+
 function extractObservedPins(definition, content) {
   const pattern = new RegExp(definition.pattern.source, definition.pattern.flags);
 
@@ -1804,6 +1876,7 @@ for (const artifact of Object.keys(source.artifacts)) {
 Promise.all([
   assertWorkflowRegistryAuthorityResolution(),
   assertCompatibilityAuthorityResolution(),
+  assertTransientRequestRetry(),
 ]).then(
   () => console.log('Public artifact version source validation passed'),
   error => {

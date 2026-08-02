@@ -85,6 +85,8 @@ const PUBLIC_ARTIFACT_TUPLE_PATHS = Object.freeze({
 });
 
 const DEFAULT_TIMEOUT_MS = 20000;
+const DEFAULT_REQUEST_ATTEMPTS = 3;
+const DEFAULT_REQUEST_RETRY_DELAY_MS = 1000;
 const MAX_REDIRECTS = 5;
 const MAX_GITHUB_RELEASE_PAGES = 10;
 const MAX_DOCKER_HUB_PAGES = 20;
@@ -223,7 +225,53 @@ function parseArgs(argv) {
   return args;
 }
 
-function requestBufferResponse(url, options = {}, redirects = MAX_REDIRECTS) {
+const TRANSIENT_REQUEST_ERROR_CODES = new Set([
+  'EAI_AGAIN',
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'EHOSTUNREACH',
+  'ENETUNREACH',
+  'EPIPE',
+  'ETIMEDOUT',
+]);
+
+function wait(delayMs) {
+  return new Promise(resolve => setTimeout(resolve, delayMs));
+}
+
+function isTransientRequestError(error) {
+  return Boolean(error && TRANSIENT_REQUEST_ERROR_CODES.has(error.code));
+}
+
+async function requestWithTransientRetry(operation, options = {}) {
+  const maxAttempts = options.maxAttempts ?? DEFAULT_REQUEST_ATTEMPTS;
+  const retryDelayMs = options.retryDelayMs ?? DEFAULT_REQUEST_RETRY_DELAY_MS;
+  const requestLabel = options.label ? ` for ${options.label}` : '';
+  const onRetry = options.onRetry || ((error, attempt) => {
+    console.warn(
+      `Transient request failure${requestLabel} (${error.code}); ` +
+        `retrying attempt ${attempt + 1} ` +
+        `of ${maxAttempts}`,
+    );
+  });
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (!isTransientRequestError(error) || attempt === maxAttempts) {
+        throw error;
+      }
+
+      onRetry(error, attempt);
+      await wait(retryDelayMs * attempt);
+    }
+  }
+
+  throw new Error('Transient request retry loop ended without a result');
+}
+
+function requestBufferResponseOnce(url, options = {}, redirects = MAX_REDIRECTS) {
   return new Promise((resolve, reject) => {
     const requestUrl = new URL(url);
     const headers = {
@@ -255,7 +303,7 @@ function requestBufferResponse(url, options = {}, redirects = MAX_REDIRECTS) {
           }
 
           const nextUrl = new URL(res.headers.location, url).toString();
-          requestBufferResponse(nextUrl, options, redirects - 1).then(resolve, reject);
+          requestBufferResponseOnce(nextUrl, options, redirects - 1).then(resolve, reject);
           return;
         }
 
@@ -263,6 +311,7 @@ function requestBufferResponse(url, options = {}, redirects = MAX_REDIRECTS) {
         res.on('data', chunk => {
           chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
         });
+        res.on('error', reject);
         res.on('end', () => {
           const body = Buffer.concat(chunks);
           if (status < 200 || status >= 300) {
@@ -278,11 +327,26 @@ function requestBufferResponse(url, options = {}, redirects = MAX_REDIRECTS) {
     );
 
     req.on('timeout', () => {
-      req.destroy(new Error(`Timed out after ${DEFAULT_TIMEOUT_MS}ms while fetching ${url}`));
+      const error = new Error(`Timed out after ${DEFAULT_TIMEOUT_MS}ms while fetching ${url}`);
+      error.code = 'ETIMEDOUT';
+      req.destroy(error);
     });
     req.on('error', reject);
     req.end();
   });
+}
+
+function requestBufferResponse(
+  url,
+  options = {},
+  redirects = MAX_REDIRECTS,
+  clients = {},
+) {
+  const requestOnce = clients.requestOnce || requestBufferResponseOnce;
+  return requestWithTransientRetry(
+    () => requestOnce(url, options, redirects),
+    {label: url, ...(clients.retryOptions || {})},
+  );
 }
 
 async function requestJsonResponse(url, options = {}) {
@@ -1827,6 +1891,7 @@ module.exports = {
   platformConformanceRetainedEvidenceSource,
   publishedArtifactVersionsSource,
   quickstartExecutionContractSource,
+  requestBufferResponse,
   resolvePackagistVersion,
   resolvePublishedArtifactCompatibilityEvidence,
   resolvePublishedArtifactTuple,
