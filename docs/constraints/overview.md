@@ -6,6 +6,8 @@ sidebar_position: 1
 
 Workflows and activities live on opposite sides of the durable boundary and carry different constraints. Workflow code is **replayed**; activity code is **retried**. Those are not the same operation, and the rules flow from that split.
 
+Start with [Idempotent vs. Deterministic Workflows](./idempotent-vs-deterministic.md) for a direct comparison and concrete examples showing why neither property implies the other.
+
 - **Workflow authoring code must be deterministic.** The engine replays history to rebuild a workflow's state whenever it resumes — on another worker, after a restart, after a deployment, or during a long-running execution. Replay re-invokes the workflow body, not activities, so the workflow must produce the same decisions in the same order every time it sees the same history. Wall-clock reads, live cache reads, random numbers, network calls, and other sources of change are prohibited inside the workflow body; use [`Workflow::now()`](../defining-workflows/workflow-api.md), [`sideEffect(...)`](../features/side-effects.md), activities, and similar helpers to cross the durable boundary.
 
 - **Activity code must be idempotent.** Activity attempts are **at-least-once**. Retries, lease expiry, and redelivery can all cause the same logical work to be observed more than once, and that is first-class behavior — not a bug condition. The framework records at most one terminal outcome per attempt at the durable state layer, but an activity body may start executing more than once before the engine sees the winning report. Treat repeat observation as normal and use an idempotency key, a deterministic target resource, or a naturally idempotent operation when the external side effect must not duplicate.

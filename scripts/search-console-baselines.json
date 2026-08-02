@@ -1,0 +1,51 @@
+{
+  "schema": "durable-workflow.search-console-baselines",
+  "schema_version": 1,
+  "baselines": [
+    {
+      "id": "idempotency-determinism-comparison-intent-2026-07-30",
+      "window": {
+        "start": "2026-07-03",
+        "end": "2026-07-30",
+        "days": 28
+      },
+      "landing_page": "/docs/constraints/overview/",
+      "comparison_query_count": 7,
+      "totals": {
+        "impressions": 186,
+        "clicks": 0,
+        "click_through_rate": 0
+      },
+      "leading_queries": [
+        {
+          "query": "idempotent vs deterministic",
+          "impressions": 85,
+          "clicks": 0,
+          "average_position": 8.75
+        },
+        {
+          "query": "idempotency vs determinism",
+          "impressions": 42,
+          "clicks": 0,
+          "average_position": 8.86
+        },
+        {
+          "query": "deterministic vs idempotent",
+          "impressions": 31,
+          "clicks": 0,
+          "average_position": 8.23
+        }
+      ],
+      "remaining_queries": {
+        "count": 4,
+        "impressions": 28,
+        "clicks": 0
+      },
+      "follow_up": {
+        "target_route": "/docs/constraints/idempotent-vs-deterministic/",
+        "comparison_window_days": 28,
+        "metric": "click_through_rate"
+      }
+    }
+  ]
+}
