@@ -356,15 +356,14 @@ async function main() {
         state: 'initial-consent-navigation-drawer',
         prepare: openNavigationWithInitialConsent,
       }));
+      checks.push(await captureState({
+        browser,
+        baseUrl,
+        viewport,
+        state: 'completed-consent-navigation-drawer',
+        prepare: openNavigationAfterConsent,
+      }));
     }
-
-    checks.push(await captureState({
-      browser,
-      baseUrl,
-      viewport: VIEWPORTS[2],
-      state: 'completed-consent-navigation-drawer',
-      prepare: openNavigationAfterConsent,
-    }));
 
     const manifest = {
       schema: 'durable-workflow.visual-reachability-manifest/v1',
