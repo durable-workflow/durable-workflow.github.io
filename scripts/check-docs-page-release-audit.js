@@ -19,6 +19,7 @@ const {
   SCHEMA_VERSION,
   STABLE_DOCS_VERSION,
   buildArtifactCompatibilityProjection,
+  buildQuickstartQualification,
   buildRelativePath,
   inventoryPaths,
   routeKind,
@@ -99,7 +100,16 @@ function assertArtifactVersions(audit) {
   ) {
     fail(
       'docs-page-release-audit.json compatibility qualification must match the ' +
-        'exact public evidence authority',
+      'exact public evidence authority',
+    );
+  }
+  if (
+    JSON.stringify(audit.quickstart_qualification)
+    !== JSON.stringify(buildQuickstartQualification())
+  ) {
+    fail(
+      'docs-page-release-audit.json quickstart qualification must match ' +
+        'the exact retained five-scenario evidence',
     );
   }
 }

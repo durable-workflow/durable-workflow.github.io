@@ -22,6 +22,7 @@ const {
   repositorySourceUrl,
 } = require('./docs-audit-public-references');
 const platformConformanceContract = require('../static/platform-conformance-contract.json');
+const quickstartExecutionContract = require('../static/quickstart-execution-contract.json');
 
 const repoRoot = path.join(__dirname, '..');
 const buildDir = path.join(repoRoot, 'build');
@@ -29,8 +30,8 @@ const sitemapPath = path.join(buildDir, 'sitemap.xml');
 const outputPath = path.join(buildDir, 'docs-page-release-audit.json');
 
 const SCHEMA = 'durable-workflow.docs.page-release-audit';
-const SCHEMA_VERSION = 5;
-const CLASSIFIER_ID = 'route-and-public-artifact-inventory-v5';
+const SCHEMA_VERSION = 6;
+const CLASSIFIER_ID = 'route-and-public-artifact-inventory-v6';
 const STABLE_DOCS_VERSION = '1.x';
 const PRERELEASE_DOCS_VERSION = '2.0';
 const ARTIFACT_VERSION_SOURCE_PATH = 'scripts/published-artifact-versions.json';
@@ -73,6 +74,16 @@ const REQUIRED_ROUTE_ARTIFACTS = [
   '/docs/2.0/polyglot/server/',
   '/docs/2.0/polyglot/cli/',
 ];
+const QUICKSTART_EVIDENCE_DIRECTORY = path.join(
+  repoRoot,
+  'static',
+  'platform-conformance',
+  'evidence',
+);
+const QUICKSTART_CONTRACT_URL =
+  'https://durable-workflow.com/quickstart-execution-contract.json';
+const QUICKSTART_EVIDENCE_BASE_URL =
+  'https://durable-workflow.com/platform-conformance/evidence';
 
 function readSitemapPaths() {
   if (!fs.existsSync(sitemapPath)) {
@@ -217,6 +228,76 @@ function buildArtifactCompatibilityProjection(
   };
 }
 
+function quickstartQualificationFromEvidence(contract, versions, evidenceRecords) {
+  const scenarios = Array.isArray(contract?.scenarios)
+    ? contract.scenarios.map(scenario => scenario?.id)
+    : [];
+  const requiredScenarios = [
+    'php_user_local_server_completion',
+    'python_user_local_server_completion',
+    'rust_user_local_server_completion',
+    'operator_local_server_observation',
+    'laravel_user_embedded_completion',
+  ];
+  const exactArtifactTuple = tuple => (
+    tuple
+    && Object.keys(tuple).length === Object.keys(versions).length
+    && Object.entries(versions).every(([name, version]) => tuple[name] === version)
+  );
+  if (
+    contract?.schema !== 'durable-workflow.docs.v2.quickstart-execution-contract'
+    || JSON.stringify(scenarios) !== JSON.stringify(requiredScenarios)
+  ) {
+    throw new Error('quickstart execution contract must declare the exact five release scenarios');
+  }
+
+  const matching = evidenceRecords
+    .filter(evidence => (
+      evidence?.schema === 'durable-workflow.v2.platform-conformance.run-evidence'
+      && evidence.schema_version === 1
+      && evidence.experiment === 'quickstart'
+      && evidence.evidence_kind === 'executed_run'
+      && evidence.outcome === 'pass'
+      && evidence.runner_blocked === false
+      && exactArtifactTuple(evidence.artifact_tuple)
+      && typeof evidence.id === 'string'
+      && /^[a-z0-9][a-z0-9._-]+$/.test(evidence.id)
+      && typeof evidence.finished_at === 'string'
+    ))
+    .sort((left, right) => right.finished_at.localeCompare(left.finished_at));
+  const selected = matching[0] || null;
+
+  return {
+    role: 'five_scenario_exact_current',
+    outcome: selected ? 'pass' : 'incomplete',
+    contract_url: QUICKSTART_CONTRACT_URL,
+    artifact_versions: versions,
+    required_scenarios: requiredScenarios,
+    evidence: selected ? {
+      id: selected.id,
+      url: `${QUICKSTART_EVIDENCE_BASE_URL}/${selected.id}.json`,
+      outcome: selected.outcome,
+      runner_blocked: selected.runner_blocked,
+      finished_at: selected.finished_at,
+      artifact_tuple: selected.artifact_tuple,
+    } : null,
+  };
+}
+
+function buildQuickstartQualification() {
+  const evidenceRecords = fs.readdirSync(QUICKSTART_EVIDENCE_DIRECTORY)
+    .filter(filename => filename.endsWith('.json'))
+    .map(filename => JSON.parse(fs.readFileSync(
+      path.join(QUICKSTART_EVIDENCE_DIRECTORY, filename),
+      'utf8',
+    )));
+  return quickstartQualificationFromEvidence(
+    quickstartExecutionContract,
+    PUBLISHED_ARTIFACT_VERSIONS,
+    evidenceRecords,
+  );
+}
+
 function main() {
   const revision = docsRevision(repoRoot);
   const pageInventory = inventoryPaths().map(inventoryEntry);
@@ -234,6 +315,7 @@ function main() {
     docs_revision: revision,
     ...buildArtifactVersionProjection(PUBLISHED_ARTIFACT_VERSIONS, revision),
     artifact_compatibility_evidence: buildArtifactCompatibilityProjection(),
+    quickstart_qualification: buildQuickstartQualification(),
     release_status_guardrail: {
       stable_default_docs_version: STABLE_DOCS_VERSION,
       explicit_prerelease_docs_version: PRERELEASE_DOCS_VERSION,
@@ -269,7 +351,9 @@ module.exports = {
   PRERELEASE_DOCS_VERSION,
   buildArtifactCompatibilityProjection,
   buildArtifactVersionProjection,
+  buildQuickstartQualification,
   buildRelativePath,
   inventoryPaths,
+  quickstartQualificationFromEvidence,
   routeKind,
 };
