@@ -7,6 +7,7 @@ const config = require('../docusaurus.config');
 const buildDirectory = path.resolve(process.argv[2] || 'build');
 const runtimePath = path.resolve('static/analytics/analytics.js');
 const runtime = fs.readFileSync(runtimePath, 'utf8');
+const stylesheet = fs.readFileSync(path.resolve('static/analytics/analytics.css'), 'utf8');
 const analytics = config.customFields?.analytics;
 
 assert.equal(analytics?.measurementId, 'G-HD1YHT442Y');
@@ -22,10 +23,13 @@ assert.match(runtime, /cookie_domain: SITE_HOSTNAME/);
 assert.match(runtime, /PARENT_COOKIE_DOMAIN = 'durable-workflow\.com'/);
 assert.match(runtime, /new Set\(\[SITE_HOSTNAME, PARENT_COOKIE_DOMAIN\]\)/);
 assert.match(runtime, /window\.history\[method\]/);
+assert.match(runtime, /document\.body\.insertBefore\(control, document\.body\.firstChild\)/);
+assert.match(runtime, /document\.body\.appendChild\(button\)/);
+assert.doesNotMatch(stylesheet, /position:\s*fixed/, 'consent controls must not obscure page controls');
 assert.equal(fs.readFileSync(path.join(buildDirectory, 'analytics/analytics.js'), 'utf8'), runtime);
 assert.equal(
   fs.readFileSync(path.join(buildDirectory, 'analytics/analytics.css'), 'utf8'),
-  fs.readFileSync(path.resolve('static/analytics/analytics.css'), 'utf8'),
+  stylesheet,
 );
 
 const htmlFiles = [];
@@ -77,6 +81,10 @@ const makeElement = tagName => {
 const document = {
   body: {
     appendChild(element) {
+      if (element.id) elements.set(element.id, element);
+    },
+    firstChild: null,
+    insertBefore(element) {
       if (element.id) elements.set(element.id, element);
     },
   },

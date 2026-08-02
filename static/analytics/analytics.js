@@ -164,6 +164,10 @@
     document.getElementById(BANNER_ID)?.setAttribute('hidden', '');
   }
 
+  function mountConsentBanner(control) {
+    document.body.insertBefore(control, document.body.firstChild);
+  }
+
   function showPreferencesButton() {
     let button = document.getElementById(PREFERENCES_ID);
 
@@ -214,7 +218,7 @@
       banner.querySelector('[data-consent="granted"]').addEventListener('click', function () {
         chooseConsent('granted');
       });
-      document.body.appendChild(banner);
+      mountConsentBanner(banner);
     }
 
     document.getElementById(PREFERENCES_ID)?.setAttribute('hidden', '');

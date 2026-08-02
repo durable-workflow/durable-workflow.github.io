@@ -13,19 +13,13 @@
 .dw-analytics-consent {
   align-items: center;
   background: #fff;
-  border: 1px solid #d7d7dc;
-  border-radius: 8px;
-  bottom: 16px;
-  box-shadow: 0 8px 30px rgb(0 0 0 / 18%);
+  border-bottom: 1px solid #d7d7dc;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
   display: flex;
   gap: 20px;
   justify-content: space-between;
-  left: 16px;
-  max-width: 760px;
-  padding: 16px;
-  position: fixed;
-  right: 16px;
-  z-index: 2147483647;
+  padding: 12px max(16px, calc((100vw - 1080px) / 2));
+  width: 100%;
 }
 
 .dw-analytics-consent p {
@@ -54,12 +48,10 @@
 }
 
 .dw-analytics-preferences {
-  bottom: 8px;
+  display: block;
   font-size: 12px;
-  left: 8px;
+  margin: 8px max(16px, calc((100vw - 1080px) / 2));
   opacity: 0.82;
-  position: fixed;
-  z-index: 2147483646;
 }
 
 @media (max-width: 640px) {
