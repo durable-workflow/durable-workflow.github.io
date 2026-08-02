@@ -10,6 +10,15 @@ const canonicalAnalytics = Object.freeze({
   consentRequired: true,
 });
 
+function mobileNavigationReachabilityPlugin() {
+  return {
+    name: 'mobile-navigation-reachability',
+    getClientModules() {
+      return [require.resolve('./src/clientModules/mobileNavigationReachability')];
+    },
+  };
+}
+
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'Durable Workflow',
@@ -87,6 +96,7 @@ const config = {
   ],
 
   plugins: [
+    mobileNavigationReachabilityPlugin,
     [
       '@docusaurus/plugin-client-redirects',
       {

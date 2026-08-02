@@ -1,0 +1,11 @@
+#durable-workflow-analytics-consent {
+  height: var(--visual-reachability-fixture-height) !important;
+  left: var(--visual-reachability-fixture-left) !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  position: fixed !important;
+  top: var(--visual-reachability-fixture-top) !important;
+  width: var(--visual-reachability-fixture-width) !important;
+  z-index: 2147483647 !important;
+}

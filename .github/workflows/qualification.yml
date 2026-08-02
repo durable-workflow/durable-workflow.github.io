@@ -63,6 +63,21 @@ jobs:
       - name: Build routes and validate links
         run: npm run docusaurus -- build
 
+      - name: Install visual qualification browser
+        run: npx --no-install playwright install --with-deps chromium
+
+      - name: Enforce visual control reachability
+        run: npm run check:visual-reachability
+
+      - name: Upload visual qualification evidence
+        if: ${{ always() && github.server_url == 'https://github.com' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: visual-reachability
+          path: visual-reachability/
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Generate model retrieval surfaces
         run: |
           node scripts/generate-llms.js
