@@ -9,6 +9,7 @@ const {
   assertStableFixtureSourcesResolve,
   assertStableSourceDependenciesResolve,
   assertRetainedCliJsonEnvelopeRevisions,
+  assertWorkflowPackageAuthorityLock,
   assertWorkflowPackageMirrorMatches,
   collectPublicConformanceContractInternalHarnessLeaks,
 } = require('./check-platform-conformance-authority');
@@ -16,6 +17,7 @@ const {
   stablePlatformConformanceDiscoveryEntries,
 } = require('./platform-conformance-public-discovery');
 const suite = require('../static/platform-conformance-contract.json');
+const workflowAuthorityLock = require('./workflow-platform-conformance-authority-lock.json');
 const suitePath = path.join(
   __dirname,
   '..',
@@ -204,7 +206,7 @@ unknownDependencyRevision.source_dependencies[
 ].resolver_url = unknownDependencyRevision.source_dependencies[
   'cluster-info-envelope.schema.json'
 ].resolver_url.replace(
-  '91bde245162b61d371feeef5648a4befae8d755a',
+  'e990bc36731463cc5b2cb2a9175dbccfdea61704',
   '0000000000000000000000000000000000000000',
 );
 assert.throws(
@@ -442,6 +444,27 @@ assert.doesNotThrow(
   () => assertWorkflowPackageMirrorMatches(suitePath),
   'the package-mirror guard must accept an identical authority',
 );
+assert.doesNotThrow(
+  () => assertWorkflowPackageAuthorityLock(suite, workflowAuthorityLock),
+  'the Workflow authority lock must bind the checked-in manifest identity',
+);
+
+const staleWorkflowAuthorityLock = clone(workflowAuthorityLock);
+staleWorkflowAuthorityLock.manifest_sha256 = `sha256:${'0'.repeat(64)}`;
+assert.throws(
+  () => assertWorkflowPackageAuthorityLock(suite, staleWorkflowAuthorityLock),
+  /digest must match the exact Workflow package authority lock/,
+  'the Workflow authority lock must reject same-version manifest drift',
+);
+
+const mutableWorkflowAuthorityLock = clone(workflowAuthorityLock);
+mutableWorkflowAuthorityLock.workflow_source_commit = 'v2';
+assert.throws(
+  () => assertWorkflowPackageAuthorityLock(suite, mutableWorkflowAuthorityLock),
+  /immutable 40-character source commit/,
+  'the Workflow authority lock must reject mutable source refs',
+);
+
 assert.throws(
   () => assertWorkflowPackageMirrorMatches(
     path.join(__dirname, '..', 'static', 'sdk-neutrality-contract.json'),

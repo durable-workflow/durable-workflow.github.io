@@ -185,6 +185,9 @@ function assertQualificationChecksPublishedWorkflowAuthority(source) {
   if (
     !resolve ||
     resolve.if !== publicGitHubOnly ||
+    !resolve.run.includes(
+      "require('./scripts/workflow-platform-conformance-authority-lock.json').workflow_source_commit",
+    ) ||
     checkout?.if !== publicGitHubOnly ||
     !verify ||
     verify.if !== publicGitHubOnly ||
@@ -259,6 +262,23 @@ assert.throws(
   ),
   /public GitHub documentation qualification/,
   'documentation qualification must not require cross-repository access on non-GitHub runners',
+);
+
+const qualificationWithTupleWorkflowRef = qualificationWorkflow.replace(
+  "require('./scripts/workflow-platform-conformance-authority-lock.json').workflow_source_commit",
+  "require('./scripts/published-artifact-versions.json').artifacts.workflow",
+);
+assert.notStrictEqual(
+  qualificationWithTupleWorkflowRef,
+  qualificationWorkflow,
+  'tuple Workflow ref fixture must mutate documentation qualification',
+);
+assert.throws(
+  () => assertQualificationChecksPublishedWorkflowAuthority(
+    qualificationWithTupleWorkflowRef,
+  ),
+  /pinned published Workflow manifest/,
+  'documentation qualification must use the exact conformance authority commit',
 );
 
 const qualificationWithoutLocalAuthorityCheck = qualificationWorkflow.replace(

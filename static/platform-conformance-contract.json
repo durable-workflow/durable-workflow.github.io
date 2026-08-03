@@ -8,28 +8,28 @@
   "result_version": 1,
   "source_dependencies": {
     "cluster-info-envelope.schema.json": {
-      "artifact_id": "durable-workflow.v2.cluster-info-envelope@catalog-15",
-      "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/cluster-info-envelope.schema.json",
+      "artifact_id": "durable-workflow.v2.cluster-info-envelope@catalog-16",
+      "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/e990bc36731463cc5b2cb2a9175dbccfdea61704/static/platform-protocol-specs/cluster-info-envelope.schema.json",
       "source_path": "resources/conformance/suite-v38/platform-protocol-specs/cluster-info-envelope.schema.json",
-      "sha256": "sha256:89bf5b7a72026890a0ae890a9437d50fd485a512837a8f291c8aeb8dc7a6b1a3"
+      "sha256": "sha256:7f761da2eda221a6240d1250b6dd774a36c2077642405f0f036e8124121ea4bc"
     },
     "history-export-bundle.schema.json": {
-      "artifact_id": "durable-workflow.v2.history-export-bundle@catalog-15",
-      "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/history-export-bundle.schema.json",
+      "artifact_id": "durable-workflow.v2.history-export-bundle@catalog-16",
+      "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/e990bc36731463cc5b2cb2a9175dbccfdea61704/static/platform-protocol-specs/history-export-bundle.schema.json",
       "source_path": "resources/conformance/suite-v38/platform-protocol-specs/history-export-bundle.schema.json",
-      "sha256": "sha256:a198a935781ce7c031d873e99d6fb7f4ebd6da7428553c0117e25c247744e409"
+      "sha256": "sha256:e8d6ef0af49a2570007062215d1332c96910743c1449cd8ca2c702bfac6c181c"
     },
     "local-activity-runtime.schema.json": {
-      "artifact_id": "durable-workflow.v2.local-activity-runtime@catalog-15",
-      "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/local-activity-runtime.schema.json",
+      "artifact_id": "durable-workflow.v2.local-activity-runtime@catalog-16",
+      "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/e990bc36731463cc5b2cb2a9175dbccfdea61704/static/platform-protocol-specs/local-activity-runtime.schema.json",
       "source_path": "resources/conformance/suite-v38/platform-protocol-specs/local-activity-runtime.schema.json",
-      "sha256": "sha256:aba1b06d0775658920b1dbbd4953301ae55f671ba09d22402c67594b929150a4"
+      "sha256": "sha256:de74d7175cda4f761a57263aae2b32046e617783acf0677d4c5aa6c5358619ef"
     },
     "worker-sessions-runtime.schema.json": {
-      "artifact_id": "durable-workflow.v2.worker-sessions-runtime@catalog-15",
-      "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/worker-sessions-runtime.schema.json",
+      "artifact_id": "durable-workflow.v2.worker-sessions-runtime@catalog-16",
+      "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/e990bc36731463cc5b2cb2a9175dbccfdea61704/static/platform-protocol-specs/worker-sessions-runtime.schema.json",
       "source_path": "resources/conformance/suite-v38/platform-protocol-specs/worker-sessions-runtime.schema.json",
-      "sha256": "sha256:dc7c3d62d9cd2b09088960558a19c0bc972bc16988b50cf71ca6af75dc709dc1"
+      "sha256": "sha256:36b16340fe9524653baef7de0a32b2f744562bfc57e91853579a2c94dd512581"
     }
   },
   "artifact_version_history": {
@@ -436,9 +436,9 @@
       "description": "Frozen request bodies and response shapes for control-plane operations: workflow.start, signal, query, update, cancel, task-history page, namespace storage driver, storage round-trip diagnostic.",
       "sources": [
         {
-          "artifact_id": "durable-workflow.v2.control-plane-api@catalog-15",
-          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/control-plane-api.openapi.yaml",
-          "sha256": "sha256:3eae0fd69a79414dbc1079e9d06129884c35feba3f95439a62e73efb38543813"
+          "artifact_id": "durable-workflow.v2.control-plane-api@catalog-16",
+          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/e990bc36731463cc5b2cb2a9175dbccfdea61704/static/platform-protocol-specs/control-plane-api.openapi.yaml",
+          "sha256": "sha256:b5c720b7553de2598f236d41e488860e2d41e86327d7cd96a47453059278392f"
         }
       ],
       "authority_doc": "https://durable-workflow.github.io/docs/2.0/polyglot/cli-python-parity"
@@ -448,14 +448,14 @@
       "description": "Task input envelopes (poll → claim → run) and task result envelopes (complete, fail, cancel, heartbeat) used by every conforming worker.",
       "sources": [
         {
-          "artifact_id": "durable-workflow.v2.worker-protocol-api@catalog-15",
-          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/worker-protocol-api.openapi.yaml",
-          "sha256": "sha256:4e33be4fad463f00f5a2bf0362ca5df1181d26cf429b06108d74475ec484cdc8"
+          "artifact_id": "durable-workflow.v2.worker-protocol-api@catalog-16",
+          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/e990bc36731463cc5b2cb2a9175dbccfdea61704/static/platform-protocol-specs/worker-protocol-api.openapi.yaml",
+          "sha256": "sha256:3166ce8ecb4c15005f1d98b1669f1ffaf3aeff7e19d0f006454525b2b19e4035"
         },
         {
-          "artifact_id": "durable-workflow.v2.worker-protocol-stream@catalog-15",
-          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/worker-protocol-stream.asyncapi.yaml",
-          "sha256": "sha256:08e9f580928e5f8946ce61f2ebdca3adb45022577a46a5c50196654b3c9350d1"
+          "artifact_id": "durable-workflow.v2.worker-protocol-stream@catalog-16",
+          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/e990bc36731463cc5b2cb2a9175dbccfdea61704/static/platform-protocol-specs/worker-protocol-stream.asyncapi.yaml",
+          "sha256": "sha256:15bddb75d0e7183a520e861f87d5315b65e42acdc57a8137f947e00cacbac251"
         }
       ],
       "authority_doc": "https://durable-workflow.github.io/docs/2.0/polyglot/worker-protocol"
@@ -691,14 +691,14 @@
           "sha256": "sha256:ce540ae887e0ef4ac2065a108c60e885458563e55a2fedf7291cea8835468945"
         },
         {
-          "artifact_id": "durable-workflow.v2.history-event-payloads@catalog-15",
-          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/history-event-payloads.schema.json",
-          "sha256": "sha256:23e124f6c9efcdea44e16ab80f3b2ad525ee759b1b1c5f503e2c0135a58e9d3e"
+          "artifact_id": "durable-workflow.v2.history-event-payloads@catalog-16",
+          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/e990bc36731463cc5b2cb2a9175dbccfdea61704/static/platform-protocol-specs/history-event-payloads.schema.json",
+          "sha256": "sha256:e81d1f9176f47a987facd05128a5e14276253b9b62998d58247ada3b5deeeb0f"
         },
         {
-          "artifact_id": "durable-workflow.v2.replay-bundle@catalog-15",
-          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/replay-bundle.schema.json",
-          "sha256": "sha256:0e49aeb7d0ef64786697e747d5378c4298c4cf04a0c5aabc218086dc02926ef7"
+          "artifact_id": "durable-workflow.v2.replay-bundle@catalog-16",
+          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/e990bc36731463cc5b2cb2a9175dbccfdea61704/static/platform-protocol-specs/replay-bundle.schema.json",
+          "sha256": "sha256:17409f333f8a05fe41a3ca60b2f6a1b7d9a008b07aae6194b7d5f17e3c6387f2"
         }
       ],
       "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-conformance",
@@ -930,9 +930,9 @@
       "description": "Failure objects and repair / actionability shapes for stuck tasks, deterministic failure, and replay-mismatch surfaces.",
       "sources": [
         {
-          "artifact_id": "durable-workflow.v2.repair-actionability-objects@catalog-15",
-          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/91bde245162b61d371feeef5648a4befae8d755a/static/platform-protocol-specs/repair-actionability-objects.schema.json",
-          "sha256": "sha256:c52238b20502e256f3e0ca681105368d642e27a6725ecfeb9f0571ccf6a01132"
+          "artifact_id": "durable-workflow.v2.repair-actionability-objects@catalog-16",
+          "resolver_url": "https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/e990bc36731463cc5b2cb2a9175dbccfdea61704/static/platform-protocol-specs/repair-actionability-objects.schema.json",
+          "sha256": "sha256:ca4faf4cd1485c877038c794ff7fc2f92804c6e0be4072bec4f4b7f59da9eb17"
         }
       ],
       "authority_doc": "https://durable-workflow.github.io/docs/2.0/platform-protocol-specs"

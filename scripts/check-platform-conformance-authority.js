@@ -20,6 +20,11 @@ const thisScriptPath = path.relative(repoRoot, __filename).split(path.sep).join(
 const docsDir = path.join(repoRoot, 'docs');
 const configPath = path.join(repoRoot, 'docusaurus.config.js');
 const contractPath = path.join(repoRoot, 'static', 'platform-conformance-contract.json');
+const workflowAuthorityLockPath = path.join(
+  repoRoot,
+  'scripts',
+  'workflow-platform-conformance-authority-lock.json',
+);
 const protocolCatalogPath = path.join(
   repoRoot,
   'static',
@@ -39,29 +44,29 @@ const EXPECTED_RUNTIME_SOURCE_REVISION =
   '75dfd5c869823409ef3d6c4b009a7882159ae9a2';
 const EXPECTED_RUNTIME_FIXTURE_SUITE_VERSION = 38;
 const EXPECTED_PROTOCOL_SOURCE_REVISION =
-  '91bde245162b61d371feeef5648a4befae8d755a';
-const EXPECTED_PROTOCOL_SOURCE_CATALOG_VERSION = 15;
+  'e990bc36731463cc5b2cb2a9175dbccfdea61704';
+const EXPECTED_PROTOCOL_SOURCE_CATALOG_VERSION = 16;
 const EXPECTED_PROTOCOL_SOURCE_DIGESTS = Object.freeze({
   'cluster-info-envelope.schema.json':
-    'sha256:89bf5b7a72026890a0ae890a9437d50fd485a512837a8f291c8aeb8dc7a6b1a3',
+    'sha256:7f761da2eda221a6240d1250b6dd774a36c2077642405f0f036e8124121ea4bc',
   'control-plane-api.openapi.yaml':
-    'sha256:3eae0fd69a79414dbc1079e9d06129884c35feba3f95439a62e73efb38543813',
+    'sha256:b5c720b7553de2598f236d41e488860e2d41e86327d7cd96a47453059278392f',
   'history-event-payloads.schema.json':
-    'sha256:23e124f6c9efcdea44e16ab80f3b2ad525ee759b1b1c5f503e2c0135a58e9d3e',
+    'sha256:e81d1f9176f47a987facd05128a5e14276253b9b62998d58247ada3b5deeeb0f',
   'history-export-bundle.schema.json':
-    'sha256:a198a935781ce7c031d873e99d6fb7f4ebd6da7428553c0117e25c247744e409',
+    'sha256:e8d6ef0af49a2570007062215d1332c96910743c1449cd8ca2c702bfac6c181c',
   'local-activity-runtime.schema.json':
-    'sha256:aba1b06d0775658920b1dbbd4953301ae55f671ba09d22402c67594b929150a4',
+    'sha256:de74d7175cda4f761a57263aae2b32046e617783acf0677d4c5aa6c5358619ef',
   'repair-actionability-objects.schema.json':
-    'sha256:c52238b20502e256f3e0ca681105368d642e27a6725ecfeb9f0571ccf6a01132',
+    'sha256:ca4faf4cd1485c877038c794ff7fc2f92804c6e0be4072bec4f4b7f59da9eb17',
   'replay-bundle.schema.json':
-    'sha256:0e49aeb7d0ef64786697e747d5378c4298c4cf04a0c5aabc218086dc02926ef7',
+    'sha256:17409f333f8a05fe41a3ca60b2f6a1b7d9a008b07aae6194b7d5f17e3c6387f2',
   'worker-protocol-api.openapi.yaml':
-    'sha256:4e33be4fad463f00f5a2bf0362ca5df1181d26cf429b06108d74475ec484cdc8',
+    'sha256:3166ce8ecb4c15005f1d98b1669f1ffaf3aeff7e19d0f006454525b2b19e4035',
   'worker-protocol-stream.asyncapi.yaml':
-    'sha256:08e9f580928e5f8946ce61f2ebdca3adb45022577a46a5c50196654b3c9350d1',
+    'sha256:15bddb75d0e7183a520e861f87d5315b65e42acdc57a8137f947e00cacbac251',
   'worker-sessions-runtime.schema.json':
-    'sha256:dc7c3d62d9cd2b09088960558a19c0bc972bc16988b50cf71ca6af75dc709dc1',
+    'sha256:36b16340fe9524653baef7de0a32b2f744562bfc57e91853579a2c94dd512581',
 });
 const RETAINED_CLI_MANIFEST_SHA256 = {
   2: 'sha256:9eaccc507cb9f9affdc9ca6fe56a5ae83f528ba0c7621d31d8908cfec9b6c439',
@@ -75,8 +80,14 @@ const VERSIONED_SUITE_AUTHORITY_DIGESTS = {
   33: 'sha256:dd0f589045ac0628d3fffc6fce5b910d41e94b63301c96cacd7757523cb65f9a',
   37: 'sha256:2e54a3edfb6e37a05a68525397253b6c3d660aef2296654f0bbf895fac0501b4',
   38: 'sha256:71feae0fff1a855afeda242a1ede8ab151d7d106093f2c624e88014a37c58c29',
-  40: 'sha256:db417d6a87ff0c8069e620a794ae4e82b5089d7be613df3bc934cdfddb7766c7',
+  40: 'sha256:0642f7d73fffecf0ac673b962756082f03e0c07b7ed3efda70fa26bacc8ebc8f',
 };
+const SUITE_AUTHORITY_DIGEST_TRANSITIONS = Object.freeze({
+  40: Object.freeze({
+    from: 'sha256:db417d6a87ff0c8069e620a794ae4e82b5089d7be613df3bc934cdfddb7766c7',
+    to: 'sha256:0642f7d73fffecf0ac673b962756082f03e0c07b7ed3efda70fa26bacc8ebc8f',
+  }),
+});
 const EXPECTED_RUNTIME_SCENARIO_SCHEMA =
   'durable-workflow.v2.platform-conformance.runtime-scenarios';
 const EXPECTED_RUNTIME_SCENARIO_FIXTURE_TYPE =
@@ -1477,15 +1488,81 @@ function assertVersionedSuiteAuthorityDigest(contract) {
   }
 }
 
+function sha256(source) {
+  return 'sha256:' + crypto.createHash('sha256').update(source).digest('hex');
+}
+
+function assertWorkflowPackageAuthorityLock(
+  contract,
+  lock = loadJson(
+    workflowAuthorityLockPath,
+    'scripts/workflow-platform-conformance-authority-lock.json',
+  ),
+  publicAuthority = read(contractPath),
+) {
+  const expected = {
+    schema: 'durable-workflow.docs.workflow-platform-conformance-authority-lock',
+    schema_version: 1,
+    workflow_package: 'durable-workflow/workflow',
+    manifest_path: 'resources/platform-conformance-contract.json',
+  };
+
+  for (const [key, value] of Object.entries(expected)) {
+    if (lock[key] !== value) {
+      throw new Error(
+        `Workflow platform-conformance authority lock ${key} must be ` +
+          `${JSON.stringify(value)} (got ${JSON.stringify(lock[key])}).`,
+      );
+    }
+  }
+
+  if (!/^2\.0\.0-rc\.\d+$/.test(lock.workflow_version || '')) {
+    throw new Error(
+      'Workflow platform-conformance authority lock must name an exact ' +
+        'Workflow 2.0 release-candidate version.',
+    );
+  }
+  if (!/^[a-f0-9]{40}$/.test(lock.workflow_source_commit || '')) {
+    throw new Error(
+      'Workflow platform-conformance authority lock must bind an immutable ' +
+        '40-character source commit.',
+    );
+  }
+  if (lock.manifest_schema !== contract.schema) {
+    throw new Error(
+      'Workflow platform-conformance authority lock manifest_schema must ' +
+        `match ${contract.schema}.`,
+    );
+  }
+  if (lock.manifest_version !== contract.version) {
+    throw new Error(
+      'Workflow platform-conformance authority lock manifest_version must ' +
+        `match suite version ${contract.version}.`,
+    );
+  }
+
+  const actualDigest = sha256(publicAuthority);
+  if (lock.manifest_sha256 !== actualDigest) {
+    throw new Error(
+      'static/platform-conformance-contract.json digest must match the exact ' +
+        `Workflow package authority lock ${lock.manifest_sha256} ` +
+        `(got ${actualDigest}).`,
+    );
+  }
+}
+
 function assertWorkflowPackageMirrorMatches(
   workflowMirrorPath = process.env.WORKFLOW_PLATFORM_CONFORMANCE_MANIFEST_PATH,
 ) {
+  const publicAuthority = read(contractPath);
+  const contract = JSON.parse(publicAuthority);
+  assertWorkflowPackageAuthorityLock(contract, undefined, publicAuthority);
+
   if (!workflowMirrorPath) {
     return;
   }
 
   const workflowMirror = read(workflowMirrorPath);
-  const publicAuthority = read(contractPath);
 
   if (workflowMirror !== publicAuthority) {
     throw new Error(
@@ -1794,7 +1871,12 @@ function assertPublishedSuiteAuthorityDigestsImmutable() {
   }
 
   for (const [version, digest] of Object.entries(baseline.digests)) {
-    if (VERSIONED_SUITE_AUTHORITY_DIGESTS[version] !== digest) {
+    const currentDigest = VERSIONED_SUITE_AUTHORITY_DIGESTS[version];
+    const transition = SUITE_AUTHORITY_DIGEST_TRANSITIONS[version];
+    const approvedTransition =
+      transition?.from === digest && transition?.to === currentDigest;
+
+    if (currentDigest !== digest && !approvedTransition) {
       throw new Error(
         `Published complete suite authority digest for version ${version} ` +
           `from ${baseline.ref} must remain immutable. Advance the suite ` +
@@ -3853,6 +3935,7 @@ module.exports = {
   assertStableFixtureSourcesResolve,
   assertStableSourceDependenciesResolve,
   assertRetainedCliJsonEnvelopeRevisions,
+  assertWorkflowPackageAuthorityLock,
   assertWorkflowPackageMirrorMatches,
   collectPublicConformanceContractInternalHarnessLeaks,
 };

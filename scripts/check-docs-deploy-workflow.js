@@ -48,6 +48,12 @@ const artifactCompatibilityEvidence = JSON.parse(
     'utf8',
   ),
 );
+const platformConformanceContract = JSON.parse(
+  fs.readFileSync(
+    path.join(__dirname, '..', 'static', 'platform-conformance-contract.json'),
+    'utf8',
+  ),
+);
 const helmRelease = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'static', 'charts', 'release.json'), 'utf8'),
 );
@@ -80,6 +86,9 @@ function assertProtectedDeploySource(source) {
   const planIndex = steps.findIndex(
     step => step.run === 'node scripts/plan-docs-deploy.js',
   );
+  const publishedWorkflowResolveIndex = steps.findIndex(
+    step => step.name === 'Resolve published Workflow conformance ref',
+  );
   const publishedWorkflowCheckoutIndex = steps.findIndex(
     step => step.name === 'Checkout published Workflow conformance authority',
   );
@@ -104,6 +113,7 @@ function assertProtectedDeploySource(source) {
         'before scheduled planning',
     );
   }
+  const publishedWorkflowResolve = steps[publishedWorkflowResolveIndex];
   const publishedWorkflowCheckout = steps[publishedWorkflowCheckoutIndex];
   const serverCatalog = steps[serverCatalogIndex];
   const deferredReport = steps[deferredReportIndex];
@@ -111,16 +121,22 @@ function assertProtectedDeploySource(source) {
   if (
     serverCatalogIndex < 0 ||
     deferredReportIndex < 0 ||
+    publishedWorkflowResolveIndex < 0 ||
     publishedWorkflowCheckoutIndex < 0 ||
     buildIndex < 0 ||
     serverCatalogIndex >= deferredReportIndex ||
-    deferredReportIndex >= publishedWorkflowCheckoutIndex ||
+    deferredReportIndex >= publishedWorkflowResolveIndex ||
+    publishedWorkflowResolveIndex >= publishedWorkflowCheckoutIndex ||
     publishedWorkflowCheckoutIndex >= buildIndex ||
     serverCatalog.id !== 'server_catalog' ||
     serverCatalog.if !== DEPLOY_REQUESTED ||
     serverCatalog.env?.PUBLIC_SERVER_PROTOCOL_CATALOG_ALLOW_FORWARD_CANDIDATE !== '1' ||
     deferredReport.if !== CATALOG_DEFERRED ||
     !deferredReport.run.includes('writeDeploymentSummary') ||
+    publishedWorkflowResolve.if !== CATALOG_DEPLOYABLE ||
+    !publishedWorkflowResolve.run.includes(
+      "require('./scripts/workflow-platform-conformance-authority-lock.json').workflow_source_commit",
+    ) ||
     publishedWorkflowCheckout.if !== CATALOG_DEPLOYABLE ||
     publishedWorkflowCheckout.with?.['github-server-url'] !== undefined ||
     publishedWorkflowCheckout.with?.repository !==
@@ -188,6 +204,21 @@ function assertProtectedDeploySource(source) {
 }
 
 assertProtectedDeploySource(workflow);
+
+const deployWithTupleWorkflowRef = workflow.replace(
+  "require('./scripts/workflow-platform-conformance-authority-lock.json').workflow_source_commit",
+  "require('./scripts/published-artifact-versions.json').artifacts.workflow",
+);
+assert.notStrictEqual(
+  deployWithTupleWorkflowRef,
+  workflow,
+  'tuple Workflow ref fixture must mutate documentation deployment',
+);
+assert.throws(
+  () => assertProtectedDeploySource(deployWithTupleWorkflowRef),
+  /pinned published Workflow manifest/,
+  'documentation deployment must use the exact conformance authority commit',
+);
 
 for (const [label, fixture] of [
   [
@@ -320,6 +351,8 @@ function currentLiveArtifacts() {
     '/compatibility-contract.json': structuredClone(compatibilityContract),
     '/public-artifact-compatibility-evidence.json':
       structuredClone(artifactCompatibilityEvidence),
+    '/platform-conformance-contract.json':
+      structuredClone(platformConformanceContract),
     '/charts/release.json': structuredClone(helmRelease),
     '/charts/provenance.json': {
       chart: {
@@ -464,6 +497,7 @@ assert.deepStrictEqual(
     '/quickstart-execution-contract.json',
     '/compatibility-contract.json',
     '/public-artifact-compatibility-evidence.json',
+    '/platform-conformance-contract.json',
     '/charts/release.json',
     '/charts/provenance.json',
   ],
@@ -647,6 +681,29 @@ async function assertScheduledDeployRepairsStaleCompatibilityContract() {
   );
 }
 
+async function assertScheduledDeployRepairsStaleConformanceContract() {
+  const artifacts = currentLiveArtifacts();
+  const history = currentHelmHistoryFixture();
+  artifacts['/platform-conformance-contract.json'].source_dependencies[
+    'cluster-info-envelope.schema.json'
+  ].artifact_id = 'durable-workflow.v2.cluster-info-envelope@catalog-15';
+
+  const plan = await planDeployment({
+    eventName: 'schedule',
+    expectedRevision: CURRENT_DOCS_REVISION,
+    fetcher: async url => artifacts[url.pathname],
+    fetchResource: history.fetchResource,
+    chartMetadata: history.chartMetadata,
+  });
+
+  assert.strictEqual(plan.deploy, true);
+  assert.strictEqual(plan.reason, 'scheduled-drift');
+  assert(
+    plan.drift.some(item => item.includes('/platform-conformance-contract.json')),
+    'platform-conformance-only drift must request deployment',
+  );
+}
+
 async function assertScheduledDeployRepairsLiveArtifactFailure(route, message) {
   const artifacts = currentLiveArtifacts();
   const history = currentHelmHistoryFixture();
@@ -760,6 +817,7 @@ async function main() {
   await assertScheduledDeployRepairsStaleLiveTuple();
   await assertScheduledDeployRepairsStaleNarrativeAudit();
   await assertScheduledDeployRepairsStaleCompatibilityContract();
+  await assertScheduledDeployRepairsStaleConformanceContract();
   await assertScheduledHelmHistoryDriftCannotSkip();
   for (const route of REQUIRED_LIVE_ARTIFACT_PATHS) {
     await assertScheduledDeployRepairsLiveArtifactFailure(

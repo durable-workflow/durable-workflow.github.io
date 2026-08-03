@@ -135,7 +135,7 @@ jobs:
           steps.deploy-plan.outputs.deploy == 'true' &&
           steps.server_catalog.outputs.deployment_state == 'deployable'
         run: |
-          node -e "process.stdout.write('ref=' + require('./scripts/published-artifact-versions.json').artifacts.workflow + '\n')" >> "$GITHUB_OUTPUT"
+          node -e "process.stdout.write('ref=' + require('./scripts/workflow-platform-conformance-authority-lock.json').workflow_source_commit + '\n')" >> "$GITHUB_OUTPUT"
 
       - name: Checkout published Workflow conformance authority
         if: >-
