@@ -29,6 +29,12 @@ const {
 const PROTECTED_DEPLOY_SOURCE_GUARD =
   "github.repository == 'durable-workflow/durable-workflow.github.io' && " +
   "github.ref == 'refs/heads/main'";
+const DEPLOY_REQUESTED = "steps.deploy-plan.outputs.deploy == 'true'";
+const CATALOG_DEPLOYABLE =
+  `${DEPLOY_REQUESTED} && steps.server_catalog.outputs.deployment_state == 'deployable'`;
+const CATALOG_DEFERRED =
+  `${DEPLOY_REQUESTED} && steps.server_catalog.outputs.deployment_state == ` +
+  "'source-qualified-deployment-deferred'";
 const CURRENT_DOCS_REVISION = 'a'.repeat(40);
 const quickstartContract = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'static', 'quickstart-execution-contract.json'), 'utf8'),
@@ -77,6 +83,12 @@ function assertProtectedDeploySource(source) {
   const publishedWorkflowCheckoutIndex = steps.findIndex(
     step => step.name === 'Checkout published Workflow conformance authority',
   );
+  const serverCatalogIndex = steps.findIndex(
+    step => step.name === 'Verify pinned server protocol catalog',
+  );
+  const deferredReportIndex = steps.findIndex(
+    step => step.name === 'Report source-qualified deployment deferral',
+  );
   const buildIndex = steps.findIndex(step => step.run === 'npm run build');
   if (
     installIndex < 0 ||
@@ -93,11 +105,23 @@ function assertProtectedDeploySource(source) {
     );
   }
   const publishedWorkflowCheckout = steps[publishedWorkflowCheckoutIndex];
+  const serverCatalog = steps[serverCatalogIndex];
+  const deferredReport = steps[deferredReportIndex];
   const buildStep = steps[buildIndex];
   if (
+    serverCatalogIndex < 0 ||
+    deferredReportIndex < 0 ||
     publishedWorkflowCheckoutIndex < 0 ||
     buildIndex < 0 ||
+    serverCatalogIndex >= deferredReportIndex ||
+    deferredReportIndex >= publishedWorkflowCheckoutIndex ||
     publishedWorkflowCheckoutIndex >= buildIndex ||
+    serverCatalog.id !== 'server_catalog' ||
+    serverCatalog.if !== DEPLOY_REQUESTED ||
+    serverCatalog.env?.PUBLIC_SERVER_PROTOCOL_CATALOG_ALLOW_FORWARD_CANDIDATE !== '1' ||
+    deferredReport.if !== CATALOG_DEFERRED ||
+    !deferredReport.run.includes('writeDeploymentSummary') ||
+    publishedWorkflowCheckout.if !== CATALOG_DEPLOYABLE ||
     publishedWorkflowCheckout.with?.['github-server-url'] !== undefined ||
     publishedWorkflowCheckout.with?.repository !==
       '${{ github.repository_owner }}/workflow' ||
@@ -105,6 +129,7 @@ function assertProtectedDeploySource(source) {
       '${{ steps.published-workflow.outputs.ref }}' ||
     publishedWorkflowCheckout.with?.path !== '.published-workflow-authority' ||
     publishedWorkflowCheckout.with?.['persist-credentials'] !== false ||
+    buildStep.if !== CATALOG_DEPLOYABLE ||
     buildStep.env?.WORKFLOW_PLATFORM_CONFORMANCE_MANIFEST_PATH !==
       '${{ github.workspace }}/.published-workflow-authority/resources/platform-conformance-contract.json'
   ) {
@@ -124,6 +149,40 @@ function assertProtectedDeploySource(source) {
     fail(
       'docs deploy workflow must guard Helm chart immutability and stage the ' +
         'guarded package before the Pages deploy action',
+    );
+  }
+
+  for (const stepName of [
+    'Resolve Workflow authority ref',
+    'Checkout Workflow authority',
+    'Resolve published Workflow conformance ref',
+    'Checkout published Workflow conformance authority',
+    'Build website',
+    'Set up Docker Buildx',
+    'Guard Helm chart immutability and stage the HTTPS repository',
+    'Verify public artifact tuple',
+    'Deploy to GitHub Pages',
+    'Verify live docs release audit',
+    'Verify live workflow lifecycle authority',
+    'Verify both public Helm release channels',
+  ]) {
+    const step = steps.find(candidate => candidate.name === stepName);
+    if (!step || step.if !== CATALOG_DEPLOYABLE) {
+      fail(
+        `docs deploy workflow must gate ${stepName} on exact qualified Server catalog equality`,
+      );
+    }
+  }
+
+  const helmEvidence = steps.find(
+    step => step.name === 'Upload public Helm validation evidence',
+  );
+  if (
+    !helmEvidence
+    || helmEvidence.if !== `\${{ always() && ${CATALOG_DEPLOYABLE} }}`
+  ) {
+    fail(
+      'docs deploy workflow must not require or upload Helm publication evidence while deferred',
     );
   }
 }
@@ -166,6 +225,25 @@ assert.throws(
   'docs deploy contract must reject a missing pre-deploy Helm immutability guard',
 );
 
+const workflowWithDeferredBuild = workflow.replace(
+  "      - name: Build website\n" +
+    "        if: >-\n" +
+    "          steps.deploy-plan.outputs.deploy == 'true' &&\n" +
+    "          steps.server_catalog.outputs.deployment_state == 'deployable'\n",
+  "      - name: Build website\n" +
+    "        if: steps.deploy-plan.outputs.deploy == 'true'\n",
+);
+assert.notStrictEqual(
+  workflowWithDeferredBuild,
+  workflow,
+  'deferred-build fixture must mutate the workflow',
+);
+assert.throws(
+  () => assertProtectedDeploySource(workflowWithDeferredBuild),
+  /gate Build website on exact qualified Server catalog equality|conformance authority/,
+  'source-qualified catalog drift must never build or publish the website',
+);
+
 for (const required of [
   'workflow_dispatch:',
   "cron: '17 * * * *'",
@@ -192,6 +270,11 @@ for (const required of [
   'name: Upload public Helm validation evidence',
   'helm-predeploy-immutability-evidence.json',
   'helm-public-validation-evidence.json',
+  "PUBLIC_SERVER_PROTOCOL_CATALOG_ALLOW_FORWARD_CANDIDATE: '1'",
+  'name: Report source-qualified deployment deferral',
+  "steps.server_catalog.outputs.deployment_state == 'source-qualified-deployment-deferred'",
+  "steps.server_catalog.outputs.deployment_state == 'deployable'",
+  'writeDeploymentSummary',
   "if: steps.deploy-plan.outputs.deploy == 'true'",
   "if: steps.deploy-plan.outputs.deploy != 'true'",
 ]) {

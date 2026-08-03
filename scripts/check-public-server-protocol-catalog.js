@@ -24,6 +24,10 @@ const artifactCompatibilityEvidencePath = path.join(
 const expectedSchema = 'durable-workflow.v2.platform-protocol-specs.catalog';
 const expectedWorkflowSource = 'https://github.com/durable-workflow/workflow.git';
 const maxFindings = 100;
+const deploymentStates = Object.freeze({
+  deployable: 'deployable',
+  deferred: 'source-qualified-deployment-deferred',
+});
 const allowedPublicEntryFields = new Set([
   'description',
   'format',
@@ -38,6 +42,19 @@ const allowedPublicEntryFields = new Set([
   'status',
   'spec_url',
 ]);
+const requiredAddedSpecFields = [
+  'description',
+  'format',
+  'spec_id',
+  'surface_family',
+  'authority_manifest',
+  'owner_repo',
+  'object_families',
+  'evolution_rule',
+  'breaking_change_release',
+  'status',
+  'spec_url',
+];
 const forbiddenPublicAuthorityFields = new Set([
   'spec_path',
   'owner_symbol',
@@ -307,7 +324,360 @@ function compareCatalogs(publicValue, serverValue, pointer, findings) {
   }
 }
 
-function verifySnapshots(publicCatalog, serverDiscovery, expectedWorkflowProvenance) {
+function jsonEqual(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function compareFieldSets(left, right) {
+  const leftFields = Object.keys(left).sort();
+  const rightFields = Object.keys(right).sort();
+  return {
+    missing: rightFields.filter(field => !(field in left)),
+    added: leftFields.filter(field => !(field in right)),
+  };
+}
+
+function namedObjectFamilies(families, surface, specName, findings) {
+  const byName = new Map();
+  if (!Array.isArray(families)) {
+    addFinding(findings, {
+      kind: 'catalog_object_families_invalid',
+      path: `$.specs.${specName}.object_families`,
+      surface,
+      message: `${surface} catalog entry ${specName} must declare object_families as an array.`,
+    });
+    return byName;
+  }
+
+  for (const [index, family] of families.entries()) {
+    const familyPath = `$.specs.${specName}.object_families[${index}]`;
+    if (
+      !isRecord(family)
+      || typeof family.name !== 'string'
+      || family.name === ''
+      || typeof family.owner_repo !== 'string'
+      || family.owner_repo === ''
+    ) {
+      addFinding(findings, {
+        kind: 'catalog_object_family_invalid',
+        path: familyPath,
+        surface,
+        message: `${surface} catalog object family at ${familyPath} must name a family and owner repository.`,
+      });
+      continue;
+    }
+    if (byName.has(family.name)) {
+      addFinding(findings, {
+        kind: 'catalog_object_family_duplicate',
+        path: familyPath,
+        surface,
+        family: family.name,
+        message: `${surface} catalog entry ${specName} repeats object family ${family.name}.`,
+      });
+      continue;
+    }
+    byName.set(family.name, family);
+  }
+  return byName;
+}
+
+function validateForwardCatalogCandidate(publicCatalog, serverCatalog) {
+  const findings = [];
+  const publicVersion = publicCatalog.version;
+  const serverVersion = serverCatalog.version;
+  const addedSpecs = [];
+  const addedObjectFamilies = [];
+  const descriptionUpdates = [];
+
+  if (!Number.isInteger(publicVersion) || !Number.isInteger(serverVersion)) {
+    addFinding(findings, {
+      kind: 'catalog_revision_invalid',
+      path: '$.version',
+      public_version: publicVersion,
+      server_version: serverVersion,
+      message: 'A forward catalog candidate requires integer docs and qualified Server revisions.',
+    });
+  } else if (publicVersion === serverVersion) {
+    addFinding(findings, {
+      kind: 'catalog_same_revision_drift',
+      path: '$.version',
+      public_version: publicVersion,
+      server_version: serverVersion,
+      message: `Catalog revision ${publicVersion} differs from the qualified Server at the same revision.`,
+    });
+  } else if (publicVersion < serverVersion) {
+    addFinding(findings, {
+      kind: 'catalog_backward_revision',
+      path: '$.version',
+      public_version: publicVersion,
+      server_version: serverVersion,
+      message: `Docs catalog revision ${publicVersion} is behind qualified Server revision ${serverVersion}.`,
+    });
+  } else if (publicVersion !== serverVersion + 1) {
+    addFinding(findings, {
+      kind: 'catalog_revision_jump',
+      path: '$.version',
+      public_version: publicVersion,
+      server_version: serverVersion,
+      message: `Docs catalog revision ${publicVersion} must be exactly one revision ahead of qualified Server revision ${serverVersion}.`,
+    });
+  }
+
+  const publicRoot = Object.fromEntries(
+    Object.entries(publicCatalog).filter(([field]) => !['version', 'specs'].includes(field)),
+  );
+  const serverRoot = Object.fromEntries(
+    Object.entries(serverCatalog).filter(([field]) => !['version', 'specs'].includes(field)),
+  );
+  const rootFields = compareFieldSets(publicRoot, serverRoot);
+  if (rootFields.missing.length > 0 || rootFields.added.length > 0) {
+    addFinding(findings, {
+      kind: 'catalog_root_field_drift',
+      path: '$',
+      removed_fields: rootFields.missing,
+      added_fields: rootFields.added,
+      message: 'A forward catalog candidate must preserve the bounded catalog root field set.',
+    });
+  }
+  for (const field of Object.keys(serverRoot).filter(field => field in publicRoot)) {
+    if (!jsonEqual(publicRoot[field], serverRoot[field])) {
+      addFinding(findings, {
+        kind: 'catalog_root_value_drift',
+        path: `$.${field}`,
+        message: `A forward catalog candidate must preserve prior catalog root field $.${field}.`,
+      });
+    }
+  }
+
+  const publicSpecs = isRecord(publicCatalog.specs) ? publicCatalog.specs : {};
+  const serverSpecs = isRecord(serverCatalog.specs) ? serverCatalog.specs : {};
+  for (const [specName, serverEntry] of Object.entries(serverSpecs)) {
+    const publicEntry = publicSpecs[specName];
+    if (!isRecord(serverEntry) || !isRecord(publicEntry)) {
+      addFinding(findings, {
+        kind: 'catalog_spec_removed',
+        path: `$.specs.${specName}`,
+        message: `A forward catalog candidate must preserve prior spec ${specName}.`,
+      });
+      continue;
+    }
+
+    const ignoredFields = new Set(['description', 'object_families']);
+    const publicStable = Object.fromEntries(
+      Object.entries(publicEntry).filter(([field]) => !ignoredFields.has(field)),
+    );
+    const serverStable = Object.fromEntries(
+      Object.entries(serverEntry).filter(([field]) => !ignoredFields.has(field)),
+    );
+    const entryFields = compareFieldSets(publicStable, serverStable);
+    if (entryFields.missing.length > 0 || entryFields.added.length > 0) {
+      addFinding(findings, {
+        kind: 'catalog_entry_field_drift',
+        path: `$.specs.${specName}`,
+        removed_fields: entryFields.missing,
+        added_fields: entryFields.added,
+        message: `Forward candidate spec ${specName} must preserve its prior metadata field set.`,
+      });
+    }
+    for (const field of Object.keys(serverStable).filter(field => field in publicStable)) {
+      if (!jsonEqual(publicStable[field], serverStable[field])) {
+        addFinding(findings, {
+          kind: 'catalog_entry_value_drift',
+          path: `$.specs.${specName}.${field}`,
+          message: `Forward candidate spec ${specName} changed prior metadata field ${field}.`,
+        });
+      }
+    }
+
+    const publicFamilies = namedObjectFamilies(
+      publicEntry.object_families,
+      'public',
+      specName,
+      findings,
+    );
+    const serverFamilies = namedObjectFamilies(
+      serverEntry.object_families,
+      'server',
+      specName,
+      findings,
+    );
+    for (const [familyName, serverFamily] of serverFamilies) {
+      const publicFamily = publicFamilies.get(familyName);
+      if (!publicFamily || !jsonEqual(publicFamily, serverFamily)) {
+        addFinding(findings, {
+          kind: 'catalog_object_family_removed_or_changed',
+          path: `$.specs.${specName}.object_families`,
+          family: familyName,
+          message: `Forward candidate spec ${specName} must preserve prior object family ${familyName}.`,
+        });
+      }
+    }
+
+    const retainedPublicOrder = (Array.isArray(publicEntry.object_families)
+      ? publicEntry.object_families
+      : [])
+      .map(family => family?.name)
+      .filter(name => serverFamilies.has(name));
+    const serverOrder = (Array.isArray(serverEntry.object_families)
+      ? serverEntry.object_families
+      : []).map(family => family?.name);
+    if (!jsonEqual(retainedPublicOrder, serverOrder)) {
+      addFinding(findings, {
+        kind: 'catalog_object_family_order_drift',
+        path: `$.specs.${specName}.object_families`,
+        message: `Forward candidate spec ${specName} must preserve prior object-family order.`,
+      });
+    }
+
+    const specAdditions = [...publicFamilies]
+      .filter(([familyName]) => !serverFamilies.has(familyName))
+      .map(([familyName, family]) => ({
+        spec: specName,
+        name: familyName,
+        owner_repo: family.owner_repo,
+      }));
+    addedObjectFamilies.push(...specAdditions);
+
+    if (!jsonEqual(publicEntry.description, serverEntry.description)) {
+      if (
+        specAdditions.length === 0
+        || typeof publicEntry.description !== 'string'
+        || publicEntry.description.trim() === ''
+      ) {
+        addFinding(findings, {
+          kind: 'catalog_description_drift_without_surface_addition',
+          path: `$.specs.${specName}.description`,
+          message: `Forward candidate spec ${specName} changed its description without adding protocol surface.`,
+        });
+      } else {
+        descriptionUpdates.push(specName);
+      }
+    }
+  }
+
+  for (const [specName, entry] of Object.entries(publicSpecs)) {
+    if (specName in serverSpecs) {
+      continue;
+    }
+    if (!isRecord(entry)) {
+      addFinding(findings, {
+        kind: 'catalog_added_spec_invalid',
+        path: `$.specs.${specName}`,
+        message: `Added protocol spec ${specName} must be a catalog entry object.`,
+      });
+      continue;
+    }
+    const missingFields = requiredAddedSpecFields.filter(field => !(field in entry));
+    if (missingFields.length > 0) {
+      addFinding(findings, {
+        kind: 'catalog_added_spec_incomplete',
+        path: `$.specs.${specName}`,
+        missing_fields: missingFields,
+        message: `Added protocol spec ${specName} is missing required catalog metadata.`,
+      });
+    }
+    const families = namedObjectFamilies(entry.object_families, 'public', specName, findings);
+    if (families.size === 0) {
+      addFinding(findings, {
+        kind: 'catalog_added_spec_without_surface',
+        path: `$.specs.${specName}.object_families`,
+        message: `Added protocol spec ${specName} must declare at least one object family.`,
+      });
+    }
+    addedSpecs.push(specName);
+  }
+
+  if (addedSpecs.length === 0 && addedObjectFamilies.length === 0) {
+    addFinding(findings, {
+      kind: 'catalog_forward_candidate_non_additive',
+      path: '$.specs',
+      message: 'A forward catalog candidate must add a protocol spec or object family.',
+    });
+  }
+
+  if (findings.length > 0) {
+    throw new CatalogConformanceError(
+      `Forward protocol catalog qualification failed with ${findings.length} finding(s).`,
+      findings,
+    );
+  }
+
+  return Object.freeze({
+    state: deploymentStates.deferred,
+    reason: 'qualified_server_catalog_one_revision_behind_additive_source',
+    docs_catalog_version: publicVersion,
+    qualified_server_catalog_version: serverVersion,
+    structural_check: {
+      outcome: 'pass',
+      mode: 'one_revision_forward_additive',
+      preserved_specs: Object.keys(serverSpecs).length,
+      added_specs: addedSpecs,
+      added_object_families: addedObjectFamilies,
+      description_updates: descriptionUpdates,
+    },
+  });
+}
+
+function classifyCatalogDeployment(publicCatalog, serverCatalog, options = {}) {
+  const exactFindings = [];
+  compareCatalogs(publicCatalog, serverCatalog, '$', exactFindings);
+  if (exactFindings.length === 0) {
+    return Object.freeze({
+      state: deploymentStates.deployable,
+      reason: 'exact_qualified_server_catalog_match',
+      docs_catalog_version: publicCatalog.version,
+      qualified_server_catalog_version: serverCatalog.version,
+      structural_check: {
+        outcome: 'pass',
+        mode: 'exact_equality',
+        preserved_specs: Object.keys(publicCatalog.specs || {}).length,
+        added_specs: [],
+        added_object_families: [],
+        description_updates: [],
+      },
+    });
+  }
+
+  if (!options.allowForwardCandidate) {
+    throw new CatalogConformanceError(
+      `Published server protocol catalog conformance failed with ${exactFindings.length} finding(s).`,
+      exactFindings,
+    );
+  }
+
+  return validateForwardCatalogCandidate(publicCatalog, serverCatalog);
+}
+
+function writeOutput(name, value) {
+  if (!process.env.GITHUB_OUTPUT) {
+    return;
+  }
+  fs.appendFileSync(process.env.GITHUB_OUTPUT, `${name}=${value}\n`);
+}
+
+function writeDeploymentSummary(summaryPath, deployment, evidencePath) {
+  if (!summaryPath || deployment?.state !== deploymentStates.deferred) {
+    return;
+  }
+  const additions = deployment.structural_check.added_object_families
+    .map(family => `${family.spec}:${family.name}`);
+  fs.appendFileSync(summaryPath, [
+    '## Source-qualified catalog; deployment deferred',
+    '',
+    `- State: \`${deployment.state}\``,
+    `- Reason: \`${deployment.reason}\``,
+    `- Docs catalog revision: \`${deployment.docs_catalog_version}\``,
+    `- Qualified Server catalog revision: \`${deployment.qualified_server_catalog_version}\``,
+    `- Added protocol specs: ${deployment.structural_check.added_specs.length}`,
+    `- Added object families: ${additions.length > 0 ? additions.map(value => `\`${value}\``).join(', ') : 'none'}`,
+    `- Evidence artifact file: \`${path.basename(evidencePath)}\``,
+    '',
+    'The source catalog is exactly one additive revision ahead. Website build, Pages deployment, and Helm publication are deferred until the qualified Server catalog matches exactly.',
+    '',
+  ].join('\n'));
+}
+
+function verifySnapshots(publicCatalog, serverDiscovery, expectedWorkflowProvenance, options = {}) {
   const findings = [];
   const serverCatalog = isRecord(serverDiscovery)
     ? serverDiscovery.platform_protocol_specs
@@ -370,8 +740,19 @@ function verifySnapshots(publicCatalog, serverDiscovery, expectedWorkflowProvena
     }
   }
 
+  let deployment = null;
   if (isRecord(publicCatalog) && isRecord(serverCatalog)) {
-    compareCatalogs(publicCatalog, serverCatalog, '$', findings);
+    try {
+      deployment = classifyCatalogDeployment(publicCatalog, serverCatalog, options);
+    } catch (error) {
+      if (error instanceof CatalogConformanceError) {
+        for (const finding of error.findings) {
+          addFinding(findings, finding);
+        }
+      } else {
+        throw error;
+      }
+    }
   }
 
   if (!isRecord(provenance)) {
@@ -439,6 +820,7 @@ function verifySnapshots(publicCatalog, serverDiscovery, expectedWorkflowProvena
     expected_workflow_package_ref: expectedWorkflowProvenance.ref,
     expected_workflow_package_provenance: expectedWorkflowProvenance,
     package_provenance: provenance,
+    deployment,
   };
 }
 
@@ -892,6 +1274,8 @@ async function main() {
   let diagnostics = null;
   let qualifiedServer = null;
   let serverImage = process.env.PUBLIC_SERVER_IMAGE || null;
+  const allowForwardCandidate =
+    process.env.PUBLIC_SERVER_PROTOCOL_CATALOG_ALLOW_FORWARD_CANDIDATE === '1';
 
   try {
     const compatibilityEvidenceSource = JSON.parse(fs.readFileSync(
@@ -936,8 +1320,9 @@ async function main() {
       publicCatalog,
       serverDiscovery,
       expectedWorkflowProvenance,
+      {allowForwardCandidate},
     );
-    writeEvidence(evidencePath, {
+    const evidence = {
       schema: 'durable-workflow.docs.public-server-protocol-catalog-conformance',
       schema_version: 2,
       checked_at: new Date().toISOString(),
@@ -954,17 +1339,29 @@ async function main() {
       lifecycle,
       diagnostics,
       observation,
+      deployment: observation.deployment,
       findings: [],
-    });
-    console.log(
-      `Published server protocol catalog matches the public authority: `
-        + `server ${serverVersion}, catalog version ${observation.version}, `
-        + `${observation.capability_records} capability records, `
-        + `OCI manifest ${qualifiedServer.expectedDigest}, `
-        + `embedded Workflow ${observation.package_provenance.ref} at `
-        + `${observation.package_provenance.commit}; qualified standalone Workflow `
-        + `${qualifiedWorkflowArtifactRef}.`,
-    );
+    };
+    writeEvidence(evidencePath, evidence);
+    writeOutput('deployment_state', observation.deployment.state);
+    writeOutput('deployment_reason', observation.deployment.reason);
+    if (observation.deployment.state === deploymentStates.deferred) {
+      console.log(
+        `Source-qualified catalog ${observation.deployment.docs_catalog_version} is one `
+          + `additive revision ahead of qualified Server catalog `
+          + `${observation.deployment.qualified_server_catalog_version}; deployment deferred.`,
+      );
+    } else {
+      console.log(
+        `Published server protocol catalog matches the public authority: `
+          + `server ${serverVersion}, catalog version ${observation.version}, `
+          + `${observation.capability_records} capability records, `
+          + `OCI manifest ${qualifiedServer.expectedDigest}, `
+          + `embedded Workflow ${observation.package_provenance.ref} at `
+          + `${observation.package_provenance.commit}; qualified standalone Workflow `
+          + `${qualifiedWorkflowArtifactRef}.`,
+      );
+    }
   } catch (error) {
     const findings = error instanceof CatalogConformanceError
       ? error.findings
@@ -993,6 +1390,7 @@ async function main() {
       outcome: 'fail',
       lifecycle,
       diagnostics,
+      deployment: null,
       observation: isRecord(serverDiscovery) ? {
         observed_workflow_package_ref: isRecord(serverDiscovery.package_provenance)
           ? serverDiscovery.package_provenance.ref || null
@@ -1022,11 +1420,14 @@ if (require.main === module) {
 module.exports = {
   CatalogConformanceError,
   CatalogLifecycleError,
+  classifyCatalogDeployment,
   compareCatalogs,
+  deploymentStates,
   discoverPublishedServer,
   observedImageDigest,
   qualifiedServerIdentity,
   qualifiedServerSourceCommit,
   verifySnapshots,
   workflowProvenanceFromComposerLock,
+  writeDeploymentSummary,
 };

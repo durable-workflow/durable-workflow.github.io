@@ -6,11 +6,14 @@ const catalog = require('../static/platform-protocol-specs.json');
 const {
   CatalogConformanceError,
   CatalogLifecycleError,
+  classifyCatalogDeployment,
+  deploymentStates,
   discoverPublishedServer,
   qualifiedServerIdentity,
   qualifiedServerSourceCommit,
   verifySnapshots,
   workflowProvenanceFromComposerLock,
+  writeDeploymentSummary,
 } = require('./check-public-server-protocol-catalog');
 
 const provenance = {
@@ -54,6 +57,130 @@ assert.strictEqual(passing.capability_records, 16);
 assert.strictEqual(passing.expected_workflow_package_ref, provenance.ref);
 assert.deepStrictEqual(passing.expected_workflow_package_provenance, provenance);
 assert.deepStrictEqual(passing.package_provenance, provenance);
+assert.strictEqual(passing.deployment.state, deploymentStates.deployable);
+assert.strictEqual(passing.deployment.structural_check.mode, 'exact_equality');
+
+const priorCatalog = JSON.parse(JSON.stringify(catalog));
+priorCatalog.version -= 1;
+priorCatalog.specs.worker_protocol_api.object_families =
+  priorCatalog.specs.worker_protocol_api.object_families.filter(
+    family => family.name !== 'worker_deregistration_result',
+  );
+priorCatalog.specs.worker_protocol_api.description =
+  'Qualified worker protocol description before the additive lifecycle surface.';
+
+const forwardDeployment = classifyCatalogDeployment(catalog, priorCatalog, {
+  allowForwardCandidate: true,
+});
+assert.strictEqual(forwardDeployment.state, deploymentStates.deferred);
+assert.strictEqual(forwardDeployment.docs_catalog_version, 16);
+assert.strictEqual(forwardDeployment.qualified_server_catalog_version, 15);
+assert.deepStrictEqual(forwardDeployment.structural_check.added_specs, []);
+assert.deepStrictEqual(
+  forwardDeployment.structural_check.added_object_families,
+  [{
+    spec: 'worker_protocol_api',
+    name: 'worker_deregistration_result',
+    owner_repo: 'durable-workflow/server',
+  }],
+);
+assert.deepStrictEqual(
+  forwardDeployment.structural_check.description_updates,
+  ['worker_protocol_api'],
+);
+
+const forwardObservation = verifySnapshots(
+  catalog,
+  discovery(priorCatalog),
+  expectedWorkflowProvenance,
+  {allowForwardCandidate: true},
+);
+assert.strictEqual(forwardObservation.deployment.state, deploymentStates.deferred);
+
+const summaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'docs-catalog-summary-'));
+try {
+  const summaryPath = path.join(summaryDirectory, 'summary.md');
+  writeDeploymentSummary(
+    summaryPath,
+    forwardDeployment,
+    'public-server-protocol-catalog-conformance.json',
+  );
+  const summary = fs.readFileSync(summaryPath, 'utf8');
+  assert(summary.includes(deploymentStates.deferred));
+  assert(summary.includes('`16`'));
+  assert(summary.includes('`15`'));
+  assert(summary.includes('`worker_protocol_api:worker_deregistration_result`'));
+  assert(summary.includes('public-server-protocol-catalog-conformance.json'));
+} finally {
+  fs.rmSync(summaryDirectory, {recursive: true, force: true});
+}
+
+function assertForwardCandidateRejected(publicCandidate, serverCandidate, kind, message) {
+  assert.throws(
+    () => classifyCatalogDeployment(publicCandidate, serverCandidate, {
+      allowForwardCandidate: true,
+    }),
+    error => error instanceof CatalogConformanceError
+      && error.findings.some(finding => finding.kind === kind),
+    message,
+  );
+}
+
+const sameRevisionDrift = JSON.parse(JSON.stringify(priorCatalog));
+sameRevisionDrift.specs.worker_protocol_api.status = 'in_progress';
+assertForwardCandidateRejected(
+  sameRevisionDrift,
+  priorCatalog,
+  'catalog_same_revision_drift',
+  'same-revision drift must not qualify as a forward source candidate',
+);
+
+const backwardCandidate = JSON.parse(JSON.stringify(priorCatalog));
+backwardCandidate.version -= 1;
+assertForwardCandidateRejected(
+  backwardCandidate,
+  priorCatalog,
+  'catalog_backward_revision',
+  'a docs catalog behind the qualified Server must fail closed',
+);
+
+const jumpedCandidate = JSON.parse(JSON.stringify(catalog));
+jumpedCandidate.version += 1;
+assertForwardCandidateRejected(
+  jumpedCandidate,
+  priorCatalog,
+  'catalog_revision_jump',
+  'a forward candidate may advance exactly one catalog revision only',
+);
+
+const removalCandidate = JSON.parse(JSON.stringify(catalog));
+delete removalCandidate.specs.control_plane_api;
+assertForwardCandidateRejected(
+  removalCandidate,
+  priorCatalog,
+  'catalog_spec_removed',
+  'a forward catalog candidate must preserve every prior spec',
+);
+
+const mutationCandidate = JSON.parse(JSON.stringify(catalog));
+mutationCandidate.specs.worker_protocol_api.format = 'json_schema';
+assertForwardCandidateRejected(
+  mutationCandidate,
+  priorCatalog,
+  'catalog_entry_value_drift',
+  'an additive family must not mask changed prior spec metadata',
+);
+
+const nonAdditiveCandidate = JSON.parse(JSON.stringify(priorCatalog));
+nonAdditiveCandidate.version += 1;
+nonAdditiveCandidate.specs.worker_protocol_api.description =
+  'Changed description without a machine-readable protocol addition.';
+assertForwardCandidateRejected(
+  nonAdditiveCandidate,
+  priorCatalog,
+  'catalog_forward_candidate_non_additive',
+  'a version increment without added protocol surface must fail closed',
+);
 
 assert.throws(
   () => workflowProvenanceFromComposerLock({packages: []}),
