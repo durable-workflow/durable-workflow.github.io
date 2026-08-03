@@ -49,7 +49,7 @@ assert.notStrictEqual(
 );
 const passing = verifySnapshots(catalog, discovery(), expectedWorkflowProvenance);
 assert.strictEqual(passing.schema, 'durable-workflow.v2.platform-protocol-specs.catalog');
-assert.strictEqual(passing.version, 15);
+assert.strictEqual(passing.version, 16);
 assert.strictEqual(passing.capability_records, 16);
 assert.strictEqual(passing.expected_workflow_package_ref, provenance.ref);
 assert.deepStrictEqual(passing.expected_workflow_package_provenance, provenance);
@@ -106,7 +106,7 @@ assert.throws(
   error => error instanceof CatalogConformanceError
     && error.findings.some(finding => finding.kind === 'value_mismatch'
       && finding.path === '$.version'
-      && finding.public_value === 15
+      && finding.public_value === 16
       && finding.server_value === 14),
   'server catalog version drift must identify both observed versions',
 );

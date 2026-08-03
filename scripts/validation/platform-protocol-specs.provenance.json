@@ -1,7 +1,7 @@
 {
   "schema": "durable-workflow.validation.platform-protocol-specs.provenance",
   "catalog_schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "catalog_version": 15,
+  "catalog_version": 16,
   "purpose": "Repository-local diagnostic data used only by docs-site validation. This file is not published as protocol authority.",
   "specs": {
     "control_plane_api": {
@@ -36,6 +36,12 @@
           "name": "worker_registration_request",
           "owner_repo": "durable-workflow/server",
           "schema_authority": "App\\Http\\Controllers\\Api\\WorkerController::register",
+          "version_authority": "Workflow\\V2\\Support\\WorkerProtocolVersion::VERSION"
+        },
+        {
+          "name": "worker_deregistration_result",
+          "owner_repo": "durable-workflow/server",
+          "schema_authority": "DELETE /api/worker/registrations/{workerId} WorkerProtocol response envelope",
           "version_authority": "Workflow\\V2\\Support\\WorkerProtocolVersion::VERSION"
         },
         {

@@ -21,12 +21,25 @@ const entry = {
     },
   ],
 };
-const catalogVersion = 15;
+const catalogVersion = 16;
 const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'platform-protocol-specs-'));
 const fixturePath = path.join(fixtureRoot, 'control-plane-api.openapi.yaml');
 const publicSpec = {
   absolutePath: fixturePath,
   repoRelativePath: 'static/platform-protocol-specs/control-plane-api.openapi.yaml',
+};
+const realCatalog = require('../static/platform-protocol-specs.json');
+const realWorkerEntry = realCatalog.specs.worker_protocol_api;
+const realWorkerSpec = {
+  absolutePath: path.join(
+    __dirname,
+    '..',
+    'static',
+    'platform-protocol-specs',
+    'worker-protocol-api.openapi.yaml',
+  ),
+  repoRelativePath:
+    'static/platform-protocol-specs/worker-protocol-api.openapi.yaml',
 };
 
 function validateFixture(source) {
@@ -43,7 +56,7 @@ const validFixture = `openapi: 3.1.0
 info:
   title: durable-workflow.v2.control-plane-api
 x-durable-workflow-catalog-entry: control_plane_api
-x-durable-workflow-catalog-version: 15
+x-durable-workflow-catalog-version: 16
 x-durable-workflow-evolution-rule: additive_minor_breaking_major
 x-durable-workflow-object-families:
   - name: control_plane_request_contract
@@ -67,6 +80,35 @@ const safeCatalogEntry = {
 };
 
 try {
+  assert.doesNotThrow(
+    () => assertPublishedSpecFileMatchesEntry(
+      'worker_protocol_api',
+      realWorkerEntry,
+      realWorkerSpec,
+      realCatalog.version,
+    ),
+    'the real worker OpenAPI metadata must match its public catalog entry',
+  );
+
+  const mismatchedWorkerEntry = {
+    ...realWorkerEntry,
+    object_families: realWorkerEntry.object_families.map(family => (
+      family.name === 'worker_deregistration_result'
+        ? {...family, name: 'wrong_worker_object_family'}
+        : family
+    )),
+  };
+  assert.throws(
+    () => assertPublishedSpecFileMatchesEntry(
+      'worker_protocol_api',
+      mismatchedWorkerEntry,
+      realWorkerSpec,
+      realCatalog.version,
+    ),
+    /x-durable-workflow-object-families equal to the catalog entry's object_families/,
+    'the real worker OpenAPI must reject catalog object-family metadata drift',
+  );
+
   assert.doesNotThrow(
     () => validateFixture(validFixture),
     'a structurally valid OpenAPI fixture with matching metadata must pass',

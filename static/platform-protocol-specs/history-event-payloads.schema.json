@@ -6,7 +6,7 @@
   "type": "object",
   "x-durable-workflow-catalog-entry": "history_event_payloads",
   "x-durable-workflow-catalog-schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "x-durable-workflow-catalog-version": 15,
+  "x-durable-workflow-catalog-version": 16,
   "x-durable-workflow-evolution-rule": "parallel_primitive_only",
   "x-durable-workflow-object-families": [
     {

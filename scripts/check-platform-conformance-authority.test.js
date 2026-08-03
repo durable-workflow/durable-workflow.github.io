@@ -32,7 +32,7 @@ const validate = contract =>
 
 assert.doesNotThrow(
   () => assertStableFixtureSourcesResolve(suite),
-  'every stable fixture source must resolve through a versioned public artifact',
+  'every stable fixture source must resolve through its immutable versioned public artifact',
 );
 assert.doesNotThrow(
   () => assertPublishedConformanceAuthorities(suite),
@@ -176,6 +176,15 @@ assert.throws(
   () => assertStableFixtureSourcesResolve(digestDrift),
   /must match/,
   'stable source byte bindings must reject resolver content drift',
+);
+
+const retainedProtocolDigestDrift = clone(suite);
+retainedProtocolDigestDrift.fixture_catalog.worker_task_lifecycle
+  .sources[0].sha256 = `sha256:${'0'.repeat(64)}`;
+assert.throws(
+  () => assertStableFixtureSourcesResolve(retainedProtocolDigestDrift),
+  /must match/,
+  'a retained protocol revision must keep its immutable byte binding after the live catalog advances',
 );
 
 const mutableSourceDependency = clone(suite);

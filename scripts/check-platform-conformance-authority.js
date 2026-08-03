@@ -40,6 +40,29 @@ const EXPECTED_RUNTIME_SOURCE_REVISION =
 const EXPECTED_RUNTIME_FIXTURE_SUITE_VERSION = 38;
 const EXPECTED_PROTOCOL_SOURCE_REVISION =
   '91bde245162b61d371feeef5648a4befae8d755a';
+const EXPECTED_PROTOCOL_SOURCE_CATALOG_VERSION = 15;
+const EXPECTED_PROTOCOL_SOURCE_DIGESTS = Object.freeze({
+  'cluster-info-envelope.schema.json':
+    'sha256:89bf5b7a72026890a0ae890a9437d50fd485a512837a8f291c8aeb8dc7a6b1a3',
+  'control-plane-api.openapi.yaml':
+    'sha256:3eae0fd69a79414dbc1079e9d06129884c35feba3f95439a62e73efb38543813',
+  'history-event-payloads.schema.json':
+    'sha256:23e124f6c9efcdea44e16ab80f3b2ad525ee759b1b1c5f503e2c0135a58e9d3e',
+  'history-export-bundle.schema.json':
+    'sha256:a198a935781ce7c031d873e99d6fb7f4ebd6da7428553c0117e25c247744e409',
+  'local-activity-runtime.schema.json':
+    'sha256:aba1b06d0775658920b1dbbd4953301ae55f671ba09d22402c67594b929150a4',
+  'repair-actionability-objects.schema.json':
+    'sha256:c52238b20502e256f3e0ca681105368d642e27a6725ecfeb9f0571ccf6a01132',
+  'replay-bundle.schema.json':
+    'sha256:0e49aeb7d0ef64786697e747d5378c4298c4cf04a0c5aabc218086dc02926ef7',
+  'worker-protocol-api.openapi.yaml':
+    'sha256:4e33be4fad463f00f5a2bf0362ca5df1181d26cf429b06108d74475ec484cdc8',
+  'worker-protocol-stream.asyncapi.yaml':
+    'sha256:08e9f580928e5f8946ce61f2ebdca3adb45022577a46a5c50196654b3c9350d1',
+  'worker-sessions-runtime.schema.json':
+    'sha256:dc7c3d62d9cd2b09088960558a19c0bc972bc16988b50cf71ca6af75dc709dc1',
+});
 const RETAINED_CLI_MANIFEST_SHA256 = {
   2: 'sha256:9eaccc507cb9f9affdc9ca6fe56a5ae83f528ba0c7621d31d8908cfec9b6c439',
   3: 'sha256:1b76016fe34266f1366cd09f66ba8a868f7c1faf014802237158f2b8a16a0e38',
@@ -2926,6 +2949,23 @@ function localFileForResolver(source, category, suiteVersion) {
   return immutableResolverDetails(source, category, suiteVersion).localPath;
 }
 
+function resolverContentDigest(resolverDetails) {
+  if (resolverDetails.kind === 'protocol') {
+    const retainedDigest = EXPECTED_PROTOCOL_SOURCE_DIGESTS[resolverDetails.filename];
+    if (retainedDigest === undefined) {
+      throw new Error(
+        `published docs protocol source revision ${EXPECTED_PROTOCOL_SOURCE_REVISION} ` +
+          `does not pin retained bytes for ${resolverDetails.filename}.`,
+      );
+    }
+
+    return retainedDigest;
+  }
+
+  return 'sha256:' +
+    crypto.createHash('sha256').update(read(resolverDetails.localPath)).digest('hex');
+}
+
 function protocolSpecById(catalog, specId) {
   return Object.values(catalog.specs || {}).find(spec => spec.spec_id === specId);
 }
@@ -2988,10 +3028,7 @@ function assertStableFixtureSourcesResolve(contract) {
         category,
         contract.version,
       );
-      const localPath = resolverDetails.localPath;
-      const actualDigest =
-        'sha256:' +
-        crypto.createHash('sha256').update(read(localPath)).digest('hex');
+      const actualDigest = resolverContentDigest(resolverDetails);
 
       if (source.sha256 !== actualDigest) {
         throw new Error(
@@ -3020,12 +3057,13 @@ function assertStableFixtureSourcesResolve(contract) {
           );
         }
       } else if (resolverDetails.kind === 'protocol') {
-        const catalogSuffix = `@catalog-${protocolCatalog.version}`;
+        const catalogSuffix =
+          `@catalog-${EXPECTED_PROTOCOL_SOURCE_CATALOG_VERSION}`;
         if (!source.artifact_id.endsWith(catalogSuffix)) {
           throw new Error(
             `stable fixture category "${category}" protocol source must bind ` +
               `artifact_id to platform protocol catalog version ` +
-              `${protocolCatalog.version}.`,
+              `${EXPECTED_PROTOCOL_SOURCE_CATALOG_VERSION}.`,
           );
         }
 
@@ -3156,12 +3194,7 @@ function assertStableSourceDependenciesResolve(contract) {
       );
     }
 
-    const actualDigest =
-      'sha256:' +
-      crypto
-        .createHash('sha256')
-        .update(read(resolverDetails.localPath))
-        .digest('hex');
+    const actualDigest = resolverContentDigest(resolverDetails);
     if (source.sha256 !== actualDigest) {
       throw new Error(
         `stable source dependency "${filename}" digest ${source.sha256} ` +
@@ -3169,11 +3202,13 @@ function assertStableSourceDependenciesResolve(contract) {
       );
     }
 
-    const catalogSuffix = `@catalog-${protocolCatalog.version}`;
+    const catalogSuffix =
+      `@catalog-${EXPECTED_PROTOCOL_SOURCE_CATALOG_VERSION}`;
     if (!source.artifact_id.endsWith(catalogSuffix)) {
       throw new Error(
         `stable source dependency "${filename}" artifact_id must bind ` +
-          `platform protocol catalog version ${protocolCatalog.version}.`,
+          `platform protocol catalog version ` +
+          `${EXPECTED_PROTOCOL_SOURCE_CATALOG_VERSION}.`,
       );
     }
 

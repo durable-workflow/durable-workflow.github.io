@@ -1,6 +1,6 @@
 {
   "schema": "durable-workflow.v2.platform-protocol-specs.catalog",
-  "version": 15,
+  "version": 16,
   "catalog_url": "https://durable-workflow.github.io/platform-protocol-specs.json",
   "authority_url": "https://durable-workflow.github.io/docs/2.0/platform-protocol-specs",
   "formats": {
@@ -83,7 +83,7 @@
       "spec_url": "https://durable-workflow.github.io/platform-protocol-specs/control-plane-api.openapi.yaml"
     },
     "worker_protocol_api": {
-      "description": "OpenAPI specification for the worker-plane HTTP+JSON API: register, poll, heartbeat, worker-session lifecycle, complete, and fail for workflow, activity, and query tasks. Query-task routes are lease-fenced request/response work and are advertised through the `query_tasks` worker capability. The companion AsyncAPI document `worker_protocol_stream` describes the long-poll and lease-renewal semantics.",
+      "description": "OpenAPI specification for the worker-plane HTTP+JSON API: register, gracefully deregister, poll, heartbeat, worker-session lifecycle, complete, and fail for workflow, activity, and query tasks. Graceful deregistration is a worker-role lifecycle operation that recovers outstanding workflow-task leases and is distinct from administrator worker management. Query-task routes are lease-fenced request/response work and are advertised through the `query_tasks` worker capability. The companion AsyncAPI document `worker_protocol_stream` describes the long-poll and lease-renewal semantics.",
       "format": "openapi",
       "spec_id": "durable-workflow.v2.worker-protocol-api",
       "surface_family": "worker_protocol",
@@ -92,6 +92,10 @@
       "object_families": [
         {
           "name": "worker_registration_request",
+          "owner_repo": "durable-workflow/server"
+        },
+        {
+          "name": "worker_deregistration_result",
           "owner_repo": "durable-workflow/server"
         },
         {
