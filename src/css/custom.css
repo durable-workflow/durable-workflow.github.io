@@ -29,6 +29,17 @@
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
 }
 
+/* Keep the unfocused skip link off-canvas without extending the document edge. */
+a[class^='skipToContent'] {
+  left: auto;
+  right: 100%;
+}
+
+a[class^='skipToContent']:focus {
+  left: 1rem;
+  right: auto;
+}
+
 .quickstart-language-tabs .tabs {
   flex-wrap: nowrap;
   overflow-x: auto;
