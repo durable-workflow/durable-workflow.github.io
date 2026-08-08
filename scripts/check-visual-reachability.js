@@ -8,7 +8,10 @@ const {collectReachabilityGeometry} = require('./visual-reachability');
 const BUILD_DIRECTORY = path.resolve('build');
 const FIXTURE_PATH = path.resolve('scripts/fixtures/occluded-control.css');
 const FIXTURE_OVERLAY_ID = 'visual-reachability-fixture-overlay';
-const REPRESENTATIVE_ROUTE = '/docs/2.0/platform-conformance/';
+const NAVIGATION_CONFIGURATIONS = [
+  {id: 'stable-default', route: '/docs/platform-conformance/'},
+  {id: 'current-v2', route: '/docs/2.0/platform-conformance/'},
+];
 const VIEWPORTS = [
   {name: 'desktop', width: 1440, height: 900},
   {name: 'intermediate', width: 768, height: 1024},
@@ -82,7 +85,7 @@ async function settle(page) {
   await page.waitForTimeout(150);
 }
 
-async function openPage(browser, baseUrl, viewport) {
+async function openPage(browser, baseUrl, viewport, navigationConfiguration) {
   const context = await browser.newContext({
     viewport: {width: viewport.width, height: viewport.height},
     reducedMotion: 'reduce',
@@ -100,28 +103,43 @@ async function openPage(browser, baseUrl, viewport) {
   });
   page.on('pageerror', error => browserErrors.push({type: 'page', message: String(error.message || error).slice(0, 500)}));
 
-  const response = await page.goto(`${baseUrl}${REPRESENTATIVE_ROUTE}`, {waitUntil: 'networkidle'});
-  assert.equal(response?.status(), 200, 'representative documentation route must render');
+  const response = await page.goto(`${baseUrl}${navigationConfiguration.route}`, {waitUntil: 'networkidle'});
+  assert.equal(
+    response?.status(),
+    200,
+    `${navigationConfiguration.id} documentation route must render`,
+  );
   await settle(page);
 
   return {context, page, browserErrors};
 }
 
 async function exerciseNavigationDrawer(page) {
-  const drawerPanel = page.locator(
-    '.navbar-sidebar__items--show-secondary .navbar-sidebar__item',
-  ).last();
+  const drawerItems = page.locator('.navbar-sidebar__items');
+  const secondaryPanelIsActive = await drawerItems.evaluate(element =>
+    element.classList.contains('navbar-sidebar__items--show-secondary'),
+  );
+  const drawerPanel = drawerItems
+    .locator(':scope > .navbar-sidebar__item')
+    .nth(secondaryPanelIsActive ? 1 : 0);
+  const lastControlReachable = () => drawerPanel.locator('a[href], button').last().evaluate(control => {
+    const box = control.getBoundingClientRect();
+    const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+    return Boolean(hit && (hit === control || control.contains(hit)));
+  });
   const initial = await drawerPanel.evaluate(element => ({
     clientHeight: element.clientHeight,
     scrollHeight: element.scrollHeight,
     scrollTop: element.scrollTop,
   }));
   if (initial.scrollHeight <= initial.clientHeight) {
+    const lastControlIsReachable = await lastControlReachable();
+    assert.equal(lastControlIsReachable, true, 'last navigation control must be reachable');
     return {
       scrollable: false,
       initial_scroll_top: initial.scrollTop,
       maximum_scroll_top: initial.scrollTop,
-      last_control_reachable: true,
+      last_control_reachable: lastControlIsReachable,
     };
   }
 
@@ -141,24 +159,32 @@ async function exerciseNavigationDrawer(page) {
     'navigation drawer must reach the end of its navigation tree',
   );
 
-  const lastControlReachable = await drawerPanel.locator('a[href], button').last().evaluate(control => {
-    const box = control.getBoundingClientRect();
-    const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
-    return Boolean(hit && (hit === control || control.contains(hit)));
-  });
-  assert.equal(lastControlReachable, true, 'last navigation control must be reachable after scrolling');
+  const lastControlIsReachable = await lastControlReachable();
+  assert.equal(lastControlIsReachable, true, 'last navigation control must be reachable after scrolling');
 
   return {
     scrollable: true,
     initial_scroll_top: initial.scrollTop,
     maximum_scroll_top: bottom.scrollTop,
-    last_control_reachable: lastControlReachable,
+    last_control_reachable: lastControlIsReachable,
   };
 }
 
-async function captureState({browser, baseUrl, viewport, state, openNavigation = false}) {
-  const {context, page, browserErrors} = await openPage(browser, baseUrl, viewport);
-  const fileStem = `${state}-${viewport.name}`;
+async function captureState({
+  browser,
+  baseUrl,
+  navigationConfiguration,
+  viewport,
+  state,
+  openNavigation = false,
+}) {
+  const {context, page, browserErrors} = await openPage(
+    browser,
+    baseUrl,
+    viewport,
+    navigationConfiguration,
+  );
+  const fileStem = `${navigationConfiguration.id}-${state}-${viewport.name}`;
   try {
     if (openNavigation) {
       await page.locator('.navbar__toggle').click();
@@ -186,7 +212,8 @@ async function captureState({browser, baseUrl, viewport, state, openNavigation =
     const geometry = await page.evaluate(collectReachabilityGeometry);
     const report = {
       schema: 'durable-workflow.visual-reachability-report/v1',
-      route: REPRESENTATIVE_ROUTE,
+      navigation_configuration: navigationConfiguration.id,
+      route: navigationConfiguration.route,
       state,
       viewport,
       analytics_ui_absent: true,
@@ -206,9 +233,13 @@ async function captureState({browser, baseUrl, viewport, state, openNavigation =
       const activeBackgrounds = await page.locator('.navbar__inner:not([inert]), main:not([inert]), footer:not([inert])').count();
       assert.equal(activeBackgrounds, 0, 'navigation drawer must isolate background controls');
       report.navigation_drawer = await exerciseNavigationDrawer(page);
-      if (viewport.name === 'compact-height') {
+      if (
+        navigationConfiguration.id === 'current-v2' &&
+        viewport.name === 'compact-height'
+      ) {
         assert.equal(report.navigation_drawer.scrollable, true, 'short-height drawer must scroll');
       }
+      assert.deepEqual(browserErrors, [], `${fileStem} emitted browser errors`);
       writeJson(reportPath, report);
       await page.locator('.navbar-sidebar__close').click();
       await page.locator('.navbar-sidebar').waitFor({state: 'hidden'});
@@ -216,6 +247,8 @@ async function captureState({browser, baseUrl, viewport, state, openNavigation =
 
     return {
       state,
+      navigation_configuration: navigationConfiguration.id,
+      route: navigationConfiguration.route,
       viewport,
       screenshot: path.basename(screenshot),
       report: path.basename(reportPath),
@@ -228,8 +261,14 @@ async function captureState({browser, baseUrl, viewport, state, openNavigation =
 }
 
 async function exerciseOccludedControlFixture(browser, baseUrl) {
+  const navigationConfiguration = NAVIGATION_CONFIGURATIONS[0];
   const viewport = VIEWPORTS[0];
-  const {context, page, browserErrors} = await openPage(browser, baseUrl, viewport);
+  const {context, page, browserErrors} = await openPage(
+    browser,
+    baseUrl,
+    viewport,
+    navigationConfiguration,
+  );
   const state = 'fixture-occluded-control';
   const screenshot = path.join(outputDirectory, `${state}.png`);
   const reportPath = path.join(outputDirectory, `${state}.json`);
@@ -303,7 +342,8 @@ async function exerciseOccludedControlFixture(browser, baseUrl) {
       fixtureTarget.blockers.some(blocker => blocker.id === FIXTURE_OVERLAY_ID);
     const report = {
       schema: 'durable-workflow.visual-reachability-report/v1',
-      route: REPRESENTATIVE_ROUTE,
+      navigation_configuration: navigationConfiguration.id,
+      route: navigationConfiguration.route,
       state,
       viewport,
       expected_rejection: true,
@@ -329,6 +369,8 @@ async function exerciseOccludedControlFixture(browser, baseUrl) {
 
     return {
       state,
+      navigation_configuration: navigationConfiguration.id,
+      route: navigationConfiguration.route,
       viewport,
       expected_rejection: true,
       rejected: true,
@@ -343,10 +385,12 @@ async function exerciseOccludedControlFixture(browser, baseUrl) {
 
 async function main() {
   assert.ok(fs.existsSync(path.join(BUILD_DIRECTORY, 'index.html')), 'run the Docusaurus build first');
-  assert.ok(
-    fs.existsSync(path.join(BUILD_DIRECTORY, REPRESENTATIVE_ROUTE, 'index.html')),
-    'representative documentation route is missing from the Docusaurus build',
-  );
+  for (const navigationConfiguration of NAVIGATION_CONFIGURATIONS) {
+    assert.ok(
+      fs.existsSync(path.join(BUILD_DIRECTORY, navigationConfiguration.route, 'index.html')),
+      `${navigationConfiguration.id} documentation route is missing from the Docusaurus build`,
+    );
+  }
   assert.ok(fs.existsSync(FIXTURE_PATH), 'occluded-control fixture stylesheet is missing');
   fs.mkdirSync(outputDirectory, {recursive: true});
   const server = createStaticServer();
@@ -361,26 +405,37 @@ async function main() {
 
   try {
     checks.push(await exerciseOccludedControlFixture(browser, baseUrl));
-    for (const viewport of VIEWPORTS) {
-      checks.push(await captureState({browser, baseUrl, viewport, state: 'analytics-ui-removed'}));
-    }
-    for (const viewport of VIEWPORTS.slice(1)) {
-      checks.push(await captureState({
-        browser,
-        baseUrl,
-        viewport,
-        state: 'analytics-ui-removed-navigation-drawer',
-        openNavigation: true,
-      }));
+    for (const navigationConfiguration of NAVIGATION_CONFIGURATIONS) {
+      for (const viewport of VIEWPORTS) {
+        checks.push(await captureState({
+          browser,
+          baseUrl,
+          navigationConfiguration,
+          viewport,
+          state: 'default',
+        }));
+      }
+      for (const viewport of VIEWPORTS.slice(1)) {
+        checks.push(await captureState({
+          browser,
+          baseUrl,
+          navigationConfiguration,
+          viewport,
+          state: 'navigation-drawer',
+          openNavigation: true,
+        }));
+      }
     }
     writeJson(path.join(outputDirectory, 'manifest.json'), {
       schema: 'durable-workflow.visual-reachability-manifest/v1',
-      route: REPRESENTATIVE_ROUTE,
+      navigation_configurations: NAVIGATION_CONFIGURATIONS,
       generated_at: new Date().toISOString(),
       checks,
     });
     process.stdout.write(
-      `Validated ${checks.length - 1} rendered analytics-free states; the occluded-control fixture was rejected.\n`,
+      `Validated ${checks.length - 1} rendered states across ` +
+        `${NAVIGATION_CONFIGURATIONS.length} documentation navigation configurations; ` +
+        `the occluded-control fixture was rejected.\n`,
     );
   } finally {
     await browser.close();
