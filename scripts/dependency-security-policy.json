@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-08-08",
+  "minimum_versions": {
+    "js-yaml": "4.3.1",
+    "nanoid": "3.3.17"
+  },
+  "advisory_dispositions": [
+    {
+      "advisory": "GHSA-w3rx-r6r6-pgpr",
+      "dependency": "image-size",
+      "affected_versions": "<=2.0.2",
+      "locked_version": "2.0.2",
+      "disposition": "not_affected",
+      "github_dismissal_reason": "not_used",
+      "affected_parsers": ["ICNS"],
+      "execution_path": "@docusaurus/core -> @docusaurus/mdx-loader -> image-size",
+      "justification": "The affected parser is absent from the published site and is reachable only while Docusaurus measures repository-local images during a static build. The dependency security preflight rejects ICNS assets by extension and file signature before every supported docs build entry point. There is no request-time image parsing or user-upload path.",
+      "review_when": [
+        "image-size publishes a version newer than 2.0.2",
+        "Docusaurus changes the image-size dependency or image processing path",
+        "the site adds runtime or user-supplied image processing"
+      ]
+    },
+    {
+      "advisory": "GHSA-5p2g-fcmc-qvqq",
+      "dependency": "image-size",
+      "affected_versions": "<=2.0.2",
+      "locked_version": "2.0.2",
+      "disposition": "not_affected",
+      "github_dismissal_reason": "not_used",
+      "affected_parsers": ["HEIF", "JXL", "JP2"],
+      "execution_path": "@docusaurus/core -> @docusaurus/mdx-loader -> image-size",
+      "justification": "The affected parsers are absent from the published site and are reachable only while Docusaurus measures repository-local images during a static build. The dependency security preflight rejects HEIF-family, JXL, and JP2 assets by extension and file signature before every supported docs build entry point. There is no request-time image parsing or user-upload path.",
+      "review_when": [
+        "image-size publishes a version newer than 2.0.2",
+        "Docusaurus changes the image-size dependency or image processing path",
+        "the site adds runtime or user-supplied image processing"
+      ]
+    }
+  ]
+}
