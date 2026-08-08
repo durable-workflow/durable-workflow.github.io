@@ -8,7 +8,7 @@ const {collectReachabilityGeometry} = require('./visual-reachability');
 const BUILD_DIRECTORY = path.resolve('build');
 const FIXTURE_PATH = path.resolve('scripts/fixtures/occluded-control.css');
 const FIXTURE_OVERLAY_ID = 'visual-reachability-fixture-overlay';
-const REPRESENTATIVE_ROUTE = '/docs/platform-conformance/';
+const REPRESENTATIVE_ROUTE = '/docs/2.0/platform-conformance/';
 const VIEWPORTS = [
   {name: 'desktop', width: 1440, height: 900},
   {name: 'intermediate', width: 768, height: 1024},
@@ -107,6 +107,55 @@ async function openPage(browser, baseUrl, viewport) {
   return {context, page, browserErrors};
 }
 
+async function exerciseNavigationDrawer(page) {
+  const drawerPanel = page.locator(
+    '.navbar-sidebar__items--show-secondary .navbar-sidebar__item',
+  ).last();
+  const initial = await drawerPanel.evaluate(element => ({
+    clientHeight: element.clientHeight,
+    scrollHeight: element.scrollHeight,
+    scrollTop: element.scrollTop,
+  }));
+  if (initial.scrollHeight <= initial.clientHeight) {
+    return {
+      scrollable: false,
+      initial_scroll_top: initial.scrollTop,
+      maximum_scroll_top: initial.scrollTop,
+      last_control_reachable: true,
+    };
+  }
+
+  await drawerPanel.evaluate(element => {
+    element.scrollTop = element.scrollHeight;
+  });
+  await settle(page);
+
+  const bottom = await drawerPanel.evaluate(element => ({
+    clientHeight: element.clientHeight,
+    scrollHeight: element.scrollHeight,
+    scrollTop: element.scrollTop,
+  }));
+  assert.ok(bottom.scrollTop > initial.scrollTop, 'navigation drawer must scroll');
+  assert.ok(
+    Math.abs(bottom.scrollTop - (bottom.scrollHeight - bottom.clientHeight)) <= 1,
+    'navigation drawer must reach the end of its navigation tree',
+  );
+
+  const lastControlReachable = await drawerPanel.locator('a[href], button').last().evaluate(control => {
+    const box = control.getBoundingClientRect();
+    const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+    return Boolean(hit && (hit === control || control.contains(hit)));
+  });
+  assert.equal(lastControlReachable, true, 'last navigation control must be reachable after scrolling');
+
+  return {
+    scrollable: true,
+    initial_scroll_top: initial.scrollTop,
+    maximum_scroll_top: bottom.scrollTop,
+    last_control_reachable: lastControlReachable,
+  };
+}
+
 async function captureState({browser, baseUrl, viewport, state, openNavigation = false}) {
   const {context, page, browserErrors} = await openPage(browser, baseUrl, viewport);
   const fileStem = `${state}-${viewport.name}`;
@@ -156,6 +205,11 @@ async function captureState({browser, baseUrl, viewport, state, openNavigation =
     if (openNavigation) {
       const activeBackgrounds = await page.locator('.navbar__inner:not([inert]), main:not([inert]), footer:not([inert])').count();
       assert.equal(activeBackgrounds, 0, 'navigation drawer must isolate background controls');
+      report.navigation_drawer = await exerciseNavigationDrawer(page);
+      if (viewport.name === 'compact-height') {
+        assert.equal(report.navigation_drawer.scrollable, true, 'short-height drawer must scroll');
+      }
+      writeJson(reportPath, report);
       await page.locator('.navbar-sidebar__close').click();
       await page.locator('.navbar-sidebar').waitFor({state: 'hidden'});
     }

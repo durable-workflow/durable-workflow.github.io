@@ -105,6 +105,11 @@ a[class^='skipToContent']:focus {
 }
 
 @media (max-width: 996px) {
+  /* Keep fractional menu rows fully inside or outside the scrollable drawer. */
+  .navbar-sidebar__items {
+    height: calc(100% - var(--ifm-navbar-height) - 1px);
+  }
+
   .navbar__items--right > .navbar-github-star-link:not(.navbar-github-star-link--mobile-topbar) {
     display: none;
   }
