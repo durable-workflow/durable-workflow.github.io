@@ -77,10 +77,10 @@ jobs:
           PUBLIC_SERVER_SOURCE_PATH: ${{ github.workspace }}/.server-authority
         run: node scripts/check-public-server-protocol-catalog.js
 
-      - name: Report source-qualified deployment deferral
+      - name: Report source-qualified additive catalog deployment
         if: >-
           steps.deploy-plan.outputs.deploy == 'true' &&
-          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployment-deferred'
+          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable'
         env:
           PUBLIC_SERVER_PROTOCOL_CATALOG_EVIDENCE: public-server-protocol-catalog-conformance.json
         run: |
@@ -114,14 +114,16 @@ jobs:
         id: workflow-authority
         if: >-
           steps.deploy-plan.outputs.deploy == 'true' &&
-          steps.server_catalog.outputs.deployment_state == 'deployable'
+          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
+          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
         run: |
           node -e "process.stdout.write('ref=' + require('./scripts/public-artifact-versions.json').artifacts.workflow + '\n')" >> "$GITHUB_OUTPUT"
 
       - name: Checkout Workflow authority
         if: >-
           steps.deploy-plan.outputs.deploy == 'true' &&
-          steps.server_catalog.outputs.deployment_state == 'deployable'
+          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
+          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
         with:
           repository: durable-workflow/workflow
@@ -133,14 +135,16 @@ jobs:
         id: published-workflow
         if: >-
           steps.deploy-plan.outputs.deploy == 'true' &&
-          steps.server_catalog.outputs.deployment_state == 'deployable'
+          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
+          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
         run: |
           node -e "process.stdout.write('ref=' + require('./scripts/workflow-platform-conformance-authority-lock.json').workflow_source_commit + '\n')" >> "$GITHUB_OUTPUT"
 
       - name: Checkout published Workflow conformance authority
         if: >-
           steps.deploy-plan.outputs.deploy == 'true' &&
-          steps.server_catalog.outputs.deployment_state == 'deployable'
+          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
+          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
         with:
           repository: ${{ github.repository_owner }}/workflow
@@ -151,7 +155,8 @@ jobs:
       - name: Validate privacy-first analytics configuration
         if: >-
           steps.deploy-plan.outputs.deploy == 'true' &&
-          steps.server_catalog.outputs.deployment_state == 'deployable'
+          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
+          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
         env:
           CLOUDFLARE_WEB_ANALYTICS_TOKEN: ${{ vars.CLOUDFLARE_WEB_ANALYTICS_TOKEN }}
         run: |
@@ -163,7 +168,8 @@ jobs:
       - name: Build website
         if: >-
           steps.deploy-plan.outputs.deploy == 'true' &&
-          steps.server_catalog.outputs.deployment_state == 'deployable'
+          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
+          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
         env:
           CLOUDFLARE_WEB_ANALYTICS_TOKEN: ${{ vars.CLOUDFLARE_WEB_ANALYTICS_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -174,19 +180,22 @@ jobs:
       - name: Set up Docker Buildx
         if: >-
           steps.deploy-plan.outputs.deploy == 'true' &&
-          steps.server_catalog.outputs.deployment_state == 'deployable'
+          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
+          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4
 
       - name: Guard Helm chart immutability and stage the HTTPS repository
         if: >-
           steps.deploy-plan.outputs.deploy == 'true' &&
-          steps.server_catalog.outputs.deployment_state == 'deployable'
+          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
+          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
         run: node scripts/helm-chart-release.js pre-deploy
 
       - name: Verify public artifact tuple
         if: >-
           steps.deploy-plan.outputs.deploy == 'true' &&
-          steps.server_catalog.outputs.deployment_state == 'deployable'
+          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
+          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
         run: |
           node <<'NODE'
           const assert = require('assert');
@@ -272,7 +281,8 @@ jobs:
       - name: Deploy to GitHub Pages
         if: >-
           steps.deploy-plan.outputs.deploy == 'true' &&
-          steps.server_catalog.outputs.deployment_state == 'deployable'
+          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
+          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
         uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453  # v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -290,23 +300,26 @@ jobs:
       - name: Verify live docs release audit
         if: >-
           steps.deploy-plan.outputs.deploy == 'true' &&
-          steps.server_catalog.outputs.deployment_state == 'deployable'
+          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
+          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
         run: node scripts/verify-docs-release-live.js
 
       - name: Verify live workflow lifecycle authority
         if: >-
           steps.deploy-plan.outputs.deploy == 'true' &&
-          steps.server_catalog.outputs.deployment_state == 'deployable'
+          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
+          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
         run: node scripts/verify-workflow-lifecycle-live.js
 
       - name: Verify both public Helm release channels
         if: >-
           steps.deploy-plan.outputs.deploy == 'true' &&
-          steps.server_catalog.outputs.deployment_state == 'deployable'
+          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
+          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
         run: node scripts/helm-chart-release.js verify-live
 
       - name: Upload public Helm validation evidence
-        if: ${{ always() && steps.deploy-plan.outputs.deploy == 'true' && steps.server_catalog.outputs.deployment_state == 'deployable' }}
+        if: ${{ always() && steps.deploy-plan.outputs.deploy == 'true' && (steps.server_catalog.outputs.deployment_state == 'deployable' || steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable') }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
         with:
           name: public-helm-release-validation

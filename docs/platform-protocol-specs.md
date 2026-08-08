@@ -20,6 +20,7 @@ keywords:
 ---
 
 import ProtocolCatalog from '@site/src/components/ProtocolCatalog';
+import protocolCatalog from '@site/static/platform-protocol-specs.json';
 
 # Platform Protocol Specs
 
@@ -39,9 +40,8 @@ only as validation diagnostics.
 
 ## Catalog identity and discovery
 
-The catalog has schema
-durable-workflow.v2.platform-protocol-specs.catalog and version 15. It is
-available through:
+The catalog has schema <code>{protocolCatalog.schema}</code> and version
+<code>{protocolCatalog.version}</code>. It is available through:
 
 - the public JSON catalog at
   https://durable-workflow.github.io/platform-protocol-specs.json;

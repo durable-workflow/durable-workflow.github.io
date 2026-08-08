@@ -26,7 +26,7 @@ const expectedWorkflowSource = 'https://github.com/durable-workflow/workflow.git
 const maxFindings = 100;
 const deploymentStates = Object.freeze({
   deployable: 'deployable',
-  deferred: 'source-qualified-deployment-deferred',
+  forwardCandidate: 'source-qualified-deployable',
 });
 const allowedPublicEntryFields = new Set([
   'description',
@@ -603,7 +603,7 @@ function validateForwardCatalogCandidate(publicCatalog, serverCatalog) {
   }
 
   return Object.freeze({
-    state: deploymentStates.deferred,
+    state: deploymentStates.forwardCandidate,
     reason: 'qualified_server_catalog_one_revision_behind_additive_source',
     docs_catalog_version: publicVersion,
     qualified_server_catalog_version: serverVersion,
@@ -656,13 +656,13 @@ function writeOutput(name, value) {
 }
 
 function writeDeploymentSummary(summaryPath, deployment, evidencePath) {
-  if (!summaryPath || deployment?.state !== deploymentStates.deferred) {
+  if (!summaryPath || deployment?.state !== deploymentStates.forwardCandidate) {
     return;
   }
   const additions = deployment.structural_check.added_object_families
     .map(family => `${family.spec}:${family.name}`);
   fs.appendFileSync(summaryPath, [
-    '## Source-qualified catalog; deployment deferred',
+    '## Source-qualified additive catalog deployment',
     '',
     `- State: \`${deployment.state}\``,
     `- Reason: \`${deployment.reason}\``,
@@ -672,7 +672,7 @@ function writeDeploymentSummary(summaryPath, deployment, evidencePath) {
     `- Added object families: ${additions.length > 0 ? additions.map(value => `\`${value}\``).join(', ') : 'none'}`,
     `- Evidence artifact file: \`${path.basename(evidencePath)}\``,
     '',
-    'The source catalog is exactly one additive revision ahead. Website build, Pages deployment, and Helm publication are deferred until the qualified Server catalog matches exactly.',
+    'The source catalog is exactly one additive revision ahead, preserves every qualified Server catalog surface, and adds only structurally validated protocol surface. Website and Pages deployment may proceed without changing the qualified aggregate artifact recommendation.',
     '',
   ].join('\n'));
 }
@@ -1345,11 +1345,12 @@ async function main() {
     writeEvidence(evidencePath, evidence);
     writeOutput('deployment_state', observation.deployment.state);
     writeOutput('deployment_reason', observation.deployment.reason);
-    if (observation.deployment.state === deploymentStates.deferred) {
+    if (observation.deployment.state === deploymentStates.forwardCandidate) {
       console.log(
         `Source-qualified catalog ${observation.deployment.docs_catalog_version} is one `
           + `additive revision ahead of qualified Server catalog `
-          + `${observation.deployment.qualified_server_catalog_version}; deployment deferred.`,
+          + `${observation.deployment.qualified_server_catalog_version}; deployment permitted `
+          + `without advancing the qualified aggregate artifact recommendation.`,
       );
     } else {
       console.log(

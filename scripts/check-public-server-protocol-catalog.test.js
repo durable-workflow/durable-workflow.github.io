@@ -72,7 +72,7 @@ priorCatalog.specs.worker_protocol_api.description =
 const forwardDeployment = classifyCatalogDeployment(catalog, priorCatalog, {
   allowForwardCandidate: true,
 });
-assert.strictEqual(forwardDeployment.state, deploymentStates.deferred);
+assert.strictEqual(forwardDeployment.state, deploymentStates.forwardCandidate);
 assert.strictEqual(forwardDeployment.docs_catalog_version, 16);
 assert.strictEqual(forwardDeployment.qualified_server_catalog_version, 15);
 assert.deepStrictEqual(forwardDeployment.structural_check.added_specs, []);
@@ -95,7 +95,7 @@ const forwardObservation = verifySnapshots(
   expectedWorkflowProvenance,
   {allowForwardCandidate: true},
 );
-assert.strictEqual(forwardObservation.deployment.state, deploymentStates.deferred);
+assert.strictEqual(forwardObservation.deployment.state, deploymentStates.forwardCandidate);
 
 const summaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'docs-catalog-summary-'));
 try {
@@ -106,11 +106,12 @@ try {
     'public-server-protocol-catalog-conformance.json',
   );
   const summary = fs.readFileSync(summaryPath, 'utf8');
-  assert(summary.includes(deploymentStates.deferred));
+  assert(summary.includes(deploymentStates.forwardCandidate));
   assert(summary.includes('`16`'));
   assert(summary.includes('`15`'));
   assert(summary.includes('`worker_protocol_api:worker_deregistration_result`'));
   assert(summary.includes('public-server-protocol-catalog-conformance.json'));
+  assert(summary.includes('without changing the qualified aggregate artifact recommendation'));
 } finally {
   fs.rmSync(summaryDirectory, {recursive: true, force: true});
 }
