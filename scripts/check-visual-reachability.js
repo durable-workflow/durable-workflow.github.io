@@ -6,6 +6,8 @@ const {chromium} = require('playwright');
 const {collectReachabilityGeometry} = require('./visual-reachability');
 
 const BUILD_DIRECTORY = path.resolve('build');
+const FIXTURE_PATH = path.resolve('scripts/fixtures/occluded-control.css');
+const FIXTURE_OVERLAY_ID = 'visual-reachability-fixture-overlay';
 const REPRESENTATIVE_ROUTE = '/docs/platform-conformance/';
 const VIEWPORTS = [
   {name: 'desktop', width: 1440, height: 900},
@@ -80,7 +82,7 @@ async function settle(page) {
   await page.waitForTimeout(150);
 }
 
-async function captureState({browser, baseUrl, viewport, state, openNavigation = false}) {
+async function openPage(browser, baseUrl, viewport) {
   const context = await browser.newContext({
     viewport: {width: viewport.width, height: viewport.height},
     reducedMotion: 'reduce',
@@ -98,10 +100,17 @@ async function captureState({browser, baseUrl, viewport, state, openNavigation =
   });
   page.on('pageerror', error => browserErrors.push({type: 'page', message: String(error.message || error).slice(0, 500)}));
 
+  const response = await page.goto(`${baseUrl}${REPRESENTATIVE_ROUTE}`, {waitUntil: 'networkidle'});
+  assert.equal(response?.status(), 200, 'representative documentation route must render');
+  await settle(page);
+
+  return {context, page, browserErrors};
+}
+
+async function captureState({browser, baseUrl, viewport, state, openNavigation = false}) {
+  const {context, page, browserErrors} = await openPage(browser, baseUrl, viewport);
   const fileStem = `${state}-${viewport.name}`;
   try {
-    const response = await page.goto(`${baseUrl}${REPRESENTATIVE_ROUTE}`, {waitUntil: 'networkidle'});
-    assert.equal(response?.status(), 200, 'representative documentation route must render');
     if (openNavigation) {
       await page.locator('.navbar__toggle').click();
       await page.locator('.navbar-sidebar').waitFor({state: 'visible'});
@@ -164,8 +173,127 @@ async function captureState({browser, baseUrl, viewport, state, openNavigation =
   }
 }
 
+async function exerciseOccludedControlFixture(browser, baseUrl) {
+  const viewport = VIEWPORTS[0];
+  const {context, page, browserErrors} = await openPage(browser, baseUrl, viewport);
+  const state = 'fixture-occluded-control';
+  const screenshot = path.join(outputDirectory, `${state}.png`);
+  const reportPath = path.join(outputDirectory, `${state}.json`);
+
+  try {
+    const routeIsLong = await page.evaluate(() => document.documentElement.scrollHeight > innerHeight);
+    assert.equal(routeIsLong, true, 'representative documentation route must extend beyond one viewport');
+
+    const fixturePrepared = await page.evaluate(() => {
+      const main = document.querySelector('main');
+      if (!main) return false;
+
+      const fixture = document.createElement('div');
+      fixture.setAttribute('data-visual-reachability-fixture', '');
+      fixture.style.cssText = [
+        'align-items:center',
+        'display:flex',
+        'justify-content:center',
+        'min-height:12rem',
+      ].join(';');
+
+      const target = document.createElement('button');
+      target.type = 'button';
+      target.textContent = 'Reachability fixture target';
+      target.setAttribute('data-visual-reachability-fixture-target', '');
+      target.style.cssText = 'font:inherit;min-height:3rem;padding:0.75rem 1rem';
+      fixture.append(target);
+      main.append(fixture);
+      target.scrollIntoView({block: 'center'});
+      return true;
+    });
+    assert.equal(fixturePrepared, true, 'representative documentation route must render a main surface');
+    await settle(page);
+    await page.addStyleTag({path: FIXTURE_PATH});
+    await page.evaluate(overlayId => {
+      const target = document.querySelector('[data-visual-reachability-fixture-target]');
+      const box = target.getBoundingClientRect();
+      const root = document.documentElement.style;
+      root.setProperty('--visual-reachability-fixture-left', `${box.left}px`);
+      root.setProperty('--visual-reachability-fixture-top', `${box.top}px`);
+      root.setProperty('--visual-reachability-fixture-width', `${box.width}px`);
+      root.setProperty('--visual-reachability-fixture-height', `${box.height}px`);
+
+      const overlay = document.createElement('div');
+      overlay.id = overlayId;
+      overlay.setAttribute('aria-hidden', 'true');
+      overlay.setAttribute('data-visual-reachability-fixture-overlay', '');
+      overlay.textContent = 'Intentional occlusion';
+      document.body.append(overlay);
+    }, FIXTURE_OVERLAY_ID);
+    await settle(page);
+
+    const overlayPresentation = await page.evaluate(overlayId => {
+      const overlay = document.getElementById(overlayId);
+      const style = getComputedStyle(overlay);
+      const box = overlay.getBoundingClientRect();
+
+      return {
+        visible: style.display !== 'none' &&
+          style.visibility !== 'hidden' &&
+          Number.parseFloat(style.opacity) > 0 &&
+          box.width > 0 &&
+          box.height > 0,
+        pointer_events: style.pointerEvents,
+      };
+    }, FIXTURE_OVERLAY_ID);
+    const geometry = await page.evaluate(collectReachabilityGeometry);
+    const fixtureTargets = geometry.unreachable_controls.filter(control => control.fixture_target);
+    const fixtureTarget = fixtureTargets[0];
+    const fixtureRejected = fixtureTargets.length === 1 &&
+      fixtureTarget.blockers.some(blocker => blocker.id === FIXTURE_OVERLAY_ID);
+    const report = {
+      schema: 'durable-workflow.visual-reachability-report/v1',
+      route: REPRESENTATIVE_ROUTE,
+      state,
+      viewport,
+      expected_rejection: true,
+      rejected: fixtureRejected,
+      overlay_presentation: overlayPresentation,
+      geometry,
+      browser_errors: browserErrors,
+    };
+    await page.screenshot({path: screenshot, animations: 'disabled'});
+    writeJson(reportPath, report);
+
+    assert.deepEqual(browserErrors, [], `${state} emitted browser errors`);
+    assert.equal(geometry.horizontal_overflow, false, `${state} has horizontal overflow`);
+    assert.equal(overlayPresentation.visible, true, 'fixture overlay must remain visible');
+    assert.notEqual(overlayPresentation.pointer_events, 'none', 'fixture overlay must intercept pointer input');
+    assert.equal(fixtureTargets.length, 1, 'reachability collector must report the covered fixture control');
+    assert.equal(fixtureTarget.center_reachable, false, 'covered fixture control center must be unreachable');
+    assert.equal(
+      fixtureRejected,
+      true,
+      'reachability gate must attribute the fixture control occlusion to its visible overlay',
+    );
+
+    return {
+      state,
+      viewport,
+      expected_rejection: true,
+      rejected: true,
+      screenshot: path.basename(screenshot),
+      report: path.basename(reportPath),
+      unreachable_control_count: geometry.unreachable_controls.length,
+    };
+  } finally {
+    await context.close();
+  }
+}
+
 async function main() {
   assert.ok(fs.existsSync(path.join(BUILD_DIRECTORY, 'index.html')), 'run the Docusaurus build first');
+  assert.ok(
+    fs.existsSync(path.join(BUILD_DIRECTORY, REPRESENTATIVE_ROUTE, 'index.html')),
+    'representative documentation route is missing from the Docusaurus build',
+  );
+  assert.ok(fs.existsSync(FIXTURE_PATH), 'occluded-control fixture stylesheet is missing');
   fs.mkdirSync(outputDirectory, {recursive: true});
   const server = createStaticServer();
   const baseUrl = await listen(server);
@@ -178,6 +306,7 @@ async function main() {
   const checks = [];
 
   try {
+    checks.push(await exerciseOccludedControlFixture(browser, baseUrl));
     for (const viewport of VIEWPORTS) {
       checks.push(await captureState({browser, baseUrl, viewport, state: 'analytics-ui-removed'}));
     }
@@ -196,7 +325,9 @@ async function main() {
       generated_at: new Date().toISOString(),
       checks,
     });
-    process.stdout.write(`Validated ${checks.length} rendered analytics-free states.\n`);
+    process.stdout.write(
+      `Validated ${checks.length - 1} rendered analytics-free states; the occluded-control fixture was rejected.\n`,
+    );
   } finally {
     await browser.close();
     await closeServer(server);

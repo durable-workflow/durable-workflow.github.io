@@ -1,0 +1,25 @@
+[data-visual-reachability-fixture-overlay] {
+  align-items: center;
+  background: repeating-linear-gradient(
+    135deg,
+    #7f1d1d 0,
+    #7f1d1d 0.5rem,
+    #991b1b 0.5rem,
+    #991b1b 1rem
+  );
+  border: 2px solid #450a0a;
+  box-sizing: border-box;
+  color: #fff;
+  display: flex;
+  font: 700 0.75rem/1.2 sans-serif;
+  height: var(--visual-reachability-fixture-height);
+  justify-content: center;
+  left: var(--visual-reachability-fixture-left);
+  padding: 0.25rem;
+  pointer-events: auto;
+  position: fixed;
+  text-align: center;
+  top: var(--visual-reachability-fixture-top);
+  width: var(--visual-reachability-fixture-width);
+  z-index: 2147483647;
+}
