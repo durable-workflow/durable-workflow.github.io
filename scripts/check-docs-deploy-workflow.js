@@ -19,6 +19,7 @@ const {
 } = require('./verify-docs-release-live');
 const {
   buildArtifactCompatibilityProjection,
+  buildComponentReleaseQualificationProjection,
 } = require('./generate-docs-page-release-audit');
 const {
   ARTIFACT_DISTRIBUTION_SURFACES,
@@ -47,6 +48,12 @@ const compatibilityContract = JSON.parse(
 const artifactCompatibilityEvidence = JSON.parse(
   fs.readFileSync(
     path.join(__dirname, '..', 'static', 'public-artifact-compatibility-evidence.json'),
+    'utf8',
+  ),
+);
+const componentReleaseQualifications = JSON.parse(
+  fs.readFileSync(
+    path.join(__dirname, '..', 'static', 'public-component-release-qualifications.json'),
     'utf8',
   ),
 );
@@ -323,6 +330,7 @@ function currentAudit() {
     docs_revision: CURRENT_DOCS_REVISION,
     artifact_versions: {...PUBLISHED_ARTIFACT_VERSIONS},
     artifact_compatibility_evidence: buildArtifactCompatibilityProjection(),
+    component_release_qualifications: buildComponentReleaseQualificationProjection(),
     release_status_guardrail: {
       stable_default_docs_version: '1.x',
       explicit_prerelease_docs_version: '2.0',
@@ -355,6 +363,8 @@ function currentLiveArtifacts() {
     '/compatibility-contract.json': structuredClone(compatibilityContract),
     '/public-artifact-compatibility-evidence.json':
       structuredClone(artifactCompatibilityEvidence),
+    '/public-component-release-qualifications.json':
+      structuredClone(componentReleaseQualifications),
     '/platform-conformance-contract.json':
       structuredClone(platformConformanceContract),
     '/charts/release.json': structuredClone(helmRelease),
@@ -501,6 +511,7 @@ assert.deepStrictEqual(
     '/quickstart-execution-contract.json',
     '/compatibility-contract.json',
     '/public-artifact-compatibility-evidence.json',
+    '/public-component-release-qualifications.json',
     '/platform-conformance-contract.json',
     '/charts/release.json',
     '/charts/provenance.json',

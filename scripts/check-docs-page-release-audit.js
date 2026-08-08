@@ -19,6 +19,7 @@ const {
   SCHEMA_VERSION,
   STABLE_DOCS_VERSION,
   buildArtifactCompatibilityProjection,
+  buildComponentReleaseQualificationProjection,
   buildQuickstartQualification,
   buildRelativePath,
   inventoryPaths,
@@ -101,6 +102,15 @@ function assertArtifactVersions(audit) {
     fail(
       'docs-page-release-audit.json compatibility qualification must match the ' +
       'exact public evidence authority',
+    );
+  }
+  if (
+    JSON.stringify(audit.component_release_qualifications)
+    !== JSON.stringify(buildComponentReleaseQualificationProjection())
+  ) {
+    fail(
+      'docs-page-release-audit.json component release qualifications must match ' +
+        'the generated retained evidence view',
     );
   }
   if (

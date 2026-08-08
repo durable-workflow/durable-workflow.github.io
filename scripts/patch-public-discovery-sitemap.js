@@ -32,6 +32,10 @@ const REQUIRED_DISCOVERY_ENTRIES = [
     buildPath: 'public-artifact-compatibility-evidence.json',
   },
   {
+    path: '/public-component-release-qualifications.json',
+    buildPath: 'public-component-release-qualifications.json',
+  },
+  {
     path: '/docs/2.0/polyglot/python/',
     buildPath: 'docs/2.0/polyglot/python/index.html',
   },

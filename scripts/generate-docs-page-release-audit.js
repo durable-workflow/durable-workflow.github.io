@@ -13,6 +13,9 @@ const {
   artifactCompatibilityEvidenceSource,
   readArtifactCompatibilityEvidence,
 } = require('./public-artifact-compatibility');
+const {
+  readTrackedPublicComponentReleaseQualifications,
+} = require('./generate-component-release-qualifications');
 const {docsRevision} = require('./docs-narrative-audit-contract');
 const {
   stablePlatformConformanceDiscoveryEntries,
@@ -30,13 +33,15 @@ const sitemapPath = path.join(buildDir, 'sitemap.xml');
 const outputPath = path.join(buildDir, 'docs-page-release-audit.json');
 
 const SCHEMA = 'durable-workflow.docs.page-release-audit';
-const SCHEMA_VERSION = 6;
-const CLASSIFIER_ID = 'route-and-public-artifact-inventory-v6';
+const SCHEMA_VERSION = 7;
+const CLASSIFIER_ID = 'route-and-public-artifact-inventory-v7';
 const STABLE_DOCS_VERSION = '1.x';
 const PRERELEASE_DOCS_VERSION = '2.0';
 const ARTIFACT_VERSION_SOURCE_PATH = 'scripts/published-artifact-versions.json';
 const ARTIFACT_COMPATIBILITY_EVIDENCE_PATH =
   '/public-artifact-compatibility-evidence.json';
+const COMPONENT_RELEASE_QUALIFICATIONS_PATH =
+  '/public-component-release-qualifications.json';
 const ARTIFACT_VERSION_SYNCHRONIZED_FIELDS = Object.freeze([
   'artifact_versions',
   'artifact_distribution_surfaces.sdk-php',
@@ -60,6 +65,7 @@ const GENERATED_AUDIT_ARTIFACTS = [
 const PUBLIC_CONTRACT_ARTIFACTS = [
   '/quickstart-execution-contract.json',
   ARTIFACT_COMPATIBILITY_EVIDENCE_PATH,
+  COMPONENT_RELEASE_QUALIFICATIONS_PATH,
   '/platform-conformance-contract.json',
   '/platform-conformance/run-ledger.json',
   '/platform-conformance/workflow-lifecycle-scenarios.json',
@@ -228,6 +234,16 @@ function buildArtifactCompatibilityProjection(
   };
 }
 
+function buildComponentReleaseQualificationProjection(
+  evidence = readTrackedPublicComponentReleaseQualifications(),
+) {
+  return {
+    role: 'retained_component_release_qualifications',
+    source_url: COMPONENT_RELEASE_QUALIFICATIONS_PATH,
+    ...evidence,
+  };
+}
+
 function quickstartQualificationFromEvidence(contract, versions, evidenceRecords) {
   const scenarios = Array.isArray(contract?.scenarios)
     ? contract.scenarios.map(scenario => scenario?.id)
@@ -315,6 +331,7 @@ function main() {
     docs_revision: revision,
     ...buildArtifactVersionProjection(PUBLISHED_ARTIFACT_VERSIONS, revision),
     artifact_compatibility_evidence: buildArtifactCompatibilityProjection(),
+    component_release_qualifications: buildComponentReleaseQualificationProjection(),
     quickstart_qualification: buildQuickstartQualification(),
     release_status_guardrail: {
       stable_default_docs_version: STABLE_DOCS_VERSION,
@@ -342,6 +359,7 @@ if (require.main === module) {
 
 module.exports = {
   ARTIFACT_COMPATIBILITY_EVIDENCE_PATH,
+  COMPONENT_RELEASE_QUALIFICATIONS_PATH,
   ARTIFACT_VERSION_SOURCE_PATH,
   ARTIFACT_VERSION_SYNCHRONIZED_FIELDS,
   CLASSIFIER_ID,
@@ -351,6 +369,7 @@ module.exports = {
   PRERELEASE_DOCS_VERSION,
   buildArtifactCompatibilityProjection,
   buildArtifactVersionProjection,
+  buildComponentReleaseQualificationProjection,
   buildQuickstartQualification,
   buildRelativePath,
   inventoryPaths,

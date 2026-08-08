@@ -11,6 +11,7 @@ const {
 } = require('./public-artifact-versions');
 const {
   buildArtifactCompatibilityProjection,
+  buildComponentReleaseQualificationProjection,
 } = require('./generate-docs-page-release-audit');
 const {
   REQUIRED_LIVE_ARTIFACT_PATHS,
@@ -101,6 +102,14 @@ function assertReleaseAuditAuthority(source) {
   ) {
     throw new Error(
       'live release audit does not bind the exact passing SDK-to-Server qualification',
+    );
+  }
+  if (
+    JSON.stringify(audit.component_release_qualifications)
+    !== JSON.stringify(buildComponentReleaseQualificationProjection())
+  ) {
+    throw new Error(
+      'live release audit does not bind the tracked component release qualifications',
     );
   }
 }

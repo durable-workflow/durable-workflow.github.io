@@ -36,6 +36,7 @@ const PUBLIC_DISCOVERY_URLS = [
   '/docs/2.0/quickstart/',
   '/quickstart-execution-contract.json',
   '/public-artifact-compatibility-evidence.json',
+  '/public-component-release-qualifications.json',
   '/docs/2.0/polyglot/php/',
   '/docs/2.0/polyglot/python/',
   '/docs/2.0/polyglot/rust/',
@@ -184,6 +185,9 @@ function assertBuiltDocsPolicy() {
   const pageAudit = readBuildJson('docs-page-release-audit.json');
   const narrativeAudit = readBuildJson('docs-narrative-audit.json');
   const quickstartContract = readBuildJson('quickstart-execution-contract.json');
+  const componentReleaseQualifications = readBuildJson(
+    'public-component-release-qualifications.json',
+  );
 
   if (pageAudit.schema !== 'durable-workflow.docs.page-release-audit') {
     fail('docs page release audit schema is invalid');
@@ -193,6 +197,12 @@ function assertBuiltDocsPolicy() {
   }
   if (quickstartContract.schema !== 'durable-workflow.docs.v2.quickstart-execution-contract') {
     fail('quickstart execution contract schema is invalid');
+  }
+  if (
+    componentReleaseQualifications.schema
+    !== 'durable-workflow.docs.public-component-release-qualifications'
+  ) {
+    fail('component release qualification schema is invalid');
   }
 
   for (const artifact of [pageAudit, narrativeAudit]) {

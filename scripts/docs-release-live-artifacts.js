@@ -44,6 +44,10 @@ const REQUIRED_LIVE_ARTIFACTS = Object.freeze([
     repositorySource: 'static/public-artifact-compatibility-evidence.json',
   }),
   Object.freeze({
+    route: '/public-component-release-qualifications.json',
+    repositorySource: 'static/public-component-release-qualifications.json',
+  }),
+  Object.freeze({
     route: '/platform-conformance-contract.json',
     repositorySource: 'static/platform-conformance-contract.json',
   }),

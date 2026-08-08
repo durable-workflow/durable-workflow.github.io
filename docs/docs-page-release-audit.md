@@ -28,6 +28,12 @@ separate from `artifact_compatibility_evidence.qualified_artifact_versions`,
 which remains the aggregate installation recommendation until an exact
 cross-component qualification promotes a successor tuple.
 
+Component release checks are retained separately in
+[`/public-component-release-qualifications.json`](pathname:///public-component-release-qualifications.json).
+The release audit projects those generated records without changing the
+aggregate recommendation. Each record binds its exact package tuple to the
+public release source and protected qualification run that exercised it.
+
 The manifest records immutable source URLs and current Server and Waterline
 artifact references so consumers can resolve both authorities. A newer
 component release can therefore be visible without silently changing the
