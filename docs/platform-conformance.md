@@ -15,6 +15,9 @@ keywords:
   - platform-conformance-contract
 ---
 
+import PublicAuthorityIdentity from '@site/src/components/PublicAuthorityIdentity';
+import platformConformanceContract from '@site/static/platform-conformance-contract.json';
+
 # Platform Conformance Suite
 
 This page is the public authority for the Durable Workflow **platform
@@ -22,10 +25,12 @@ conformance suite**. It defines the conformance target matrix, reusable
 fixture catalog, harness contract, pass / fail rules, and release gates
 for implementations that claim Durable Workflow v2 compatibility.
 
-The machine-readable mirror is published at
-[`static/platform-conformance-contract.json`](pathname:///platform-conformance-contract.json)
-with schema `durable-workflow.v2.platform-conformance.suite`, version
-`38`. The same manifest is advertised by the standalone server from
+<PublicAuthorityIdentity
+  manifest={platformConformanceContract}
+  manifestUrl="https://durable-workflow.github.io/platform-conformance-contract.json"
+/>
+
+The same manifest is advertised by the standalone server from
 `GET /api/cluster/info` under `platform_conformance_suite`. The
 [Platform Protocol Specs](/docs/2.0/platform-protocol-specs) catalog names
 that nested manifest as the `platform_conformance_suite_manifest`

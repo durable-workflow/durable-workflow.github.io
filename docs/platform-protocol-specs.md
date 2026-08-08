@@ -19,6 +19,7 @@ keywords:
   - worker protocol spec
 ---
 
+import PublicAuthorityIdentity from '@site/src/components/PublicAuthorityIdentity';
 import ProtocolCatalog from '@site/src/components/ProtocolCatalog';
 import protocolCatalog from '@site/static/platform-protocol-specs.json';
 
@@ -40,8 +41,12 @@ only as validation diagnostics.
 
 ## Catalog identity and discovery
 
-The catalog has schema <code>{protocolCatalog.schema}</code> and version
-<code>{protocolCatalog.version}</code>. It is available through:
+<PublicAuthorityIdentity
+  manifest={protocolCatalog}
+  manifestUrl="https://durable-workflow.github.io/platform-protocol-specs.json"
+/>
+
+The catalog is also available through:
 
 - the public JSON catalog at
   https://durable-workflow.github.io/platform-protocol-specs.json;
