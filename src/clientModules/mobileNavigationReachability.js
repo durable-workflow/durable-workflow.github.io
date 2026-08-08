@@ -4,8 +4,7 @@ let observer;
 function syncNavigationIsolation() {
   const drawerOpen = Boolean(document.querySelector('.navbar-sidebar--show .navbar-sidebar'));
   const backgroundSurfaces = document.querySelectorAll(
-    '.navbar__inner, main, footer, ' +
-    '#durable-workflow-analytics-consent, #durable-workflow-analytics-preferences',
+    '.navbar__inner, main, footer',
   );
 
   for (const surface of backgroundSurfaces) {

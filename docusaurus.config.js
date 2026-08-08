@@ -4,11 +4,14 @@
 const { themes: prismThemes } = require('prism-react-renderer');
 const { artifactVersionRemarkPlugin } = require('./scripts/public-artifact-versions');
 
-const canonicalAnalytics = Object.freeze({
-  measurementId: 'G-HD1YHT442Y',
-  anonymizeIP: true,
-  consentRequired: true,
+const cloudflareWebAnalytics = Object.freeze({
+  provider: 'cloudflare-web-analytics',
+  beaconUrl: 'https://static.cloudflareinsights.com/beacon.min.js',
+  productionHostname: 'durable-workflow.com',
+  cookieFree: true,
 });
+const cloudflareWebAnalyticsToken =
+  process.env.CLOUDFLARE_WEB_ANALYTICS_TOKEN || '__CLOUDFLARE_WEB_ANALYTICS_TOKEN__';
 
 function mobileNavigationReachabilityPlugin() {
   return {
@@ -35,15 +38,15 @@ const config = {
   },
   favicon: 'img/favicon.ico',
   customFields: {
-    analytics: canonicalAnalytics,
+    analytics: cloudflareWebAnalytics,
   },
   scripts: [
     {
-      src: '/analytics/analytics.js',
-      defer: true,
+      src: '/analytics/cloudflare-web-analytics.js',
+      type: 'module',
+      'data-cloudflare-web-analytics-token': cloudflareWebAnalyticsToken,
     },
   ],
-  stylesheets: ['/analytics/analytics.css'],
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
