@@ -18,6 +18,9 @@ keywords:
   - surface stability contract
 ---
 
+import PublicAuthorityIdentity from '@site/src/components/PublicAuthorityIdentity';
+import protocolCatalog from '@site/static/platform-protocol-specs.json';
+
 # Version Compatibility
 
 This page is the **canonical compatibility and release-authority contract** for
@@ -72,11 +75,14 @@ which public URL resolves the artifact. SDK authors, agents, and operators
 should validate against the spec catalog rather than re-reading prose or
 depending on repository-local implementation details.
 
-The catalog has its own machine-readable mirror at
-`platform_protocol_specs` in `GET /api/cluster/info` (schema
-`durable-workflow.v2.platform-protocol-specs.catalog`, version `15`) and
-at the public
-[JSON catalog](https://durable-workflow.github.io/platform-protocol-specs.json).
+The catalog is advertised as `platform_protocol_specs` in
+`GET /api/cluster/info`.
+
+<PublicAuthorityIdentity
+  manifest={protocolCatalog}
+  manifestUrl="https://durable-workflow.github.io/platform-protocol-specs.json"
+/>
+
 Every catalog entry's `surface_family` must exist in the contract above;
 docs-site CI validates the catalog, resolves each public spec URL, and rejects
 repository-local authority fields.

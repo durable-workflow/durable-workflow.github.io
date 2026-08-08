@@ -7,6 +7,15 @@ const repoRoot = path.join(__dirname, '..');
 const publicOrigin = 'https://durable-workflow.github.io';
 const authorities = [
   {
+    label: 'Version Compatibility protocol catalog',
+    pagePath: 'docs/compatibility.md',
+    renderedPath: 'build/docs/2.0/compatibility/index.html',
+    manifestBinding: 'protocolCatalog',
+    manifestImport: '@site/static/platform-protocol-specs.json',
+    manifestPath: 'static/platform-protocol-specs.json',
+    manifestUrl: `${publicOrigin}/platform-protocol-specs.json`,
+  },
+  {
     label: 'Platform Conformance Suite',
     pagePath: 'docs/platform-conformance.md',
     renderedPath: 'build/docs/2.0/platform-conformance/index.html',
