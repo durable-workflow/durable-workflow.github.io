@@ -15,7 +15,7 @@ const repositoryRoot = path.join(__dirname, '..');
 const packageManifest = require(path.join(repositoryRoot, 'package.json'));
 const lockfileManifest = require(path.join(repositoryRoot, 'package-lock.json'));
 
-const REQUIRED_BRACE_EXPANSION_VERSION = '5.0.8';
+const REQUIRED_BRACE_EXPANSION_VERSION = '5.0.9';
 const REQUIRED_MINIMATCH_VERSION = '10.2.5';
 
 function lockedVersions(packageName) {
