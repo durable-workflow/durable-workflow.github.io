@@ -8,6 +8,7 @@ const {
   assertPublicConformanceContractHasNoInternalHarnessArtifacts,
   assertStableFixtureSourcesResolve,
   assertStableSourceDependenciesResolve,
+  assertWorkerProtocolArtifactHistory,
   assertRetainedCliJsonEnvelopeRevisions,
   assertWorkflowPackageAuthorityLock,
   assertWorkflowPackageMirrorMatches,
@@ -43,6 +44,10 @@ assert.doesNotThrow(
 assert.doesNotThrow(
   () => assertStableSourceDependenciesResolve(suite),
   'stable transitive source dependencies must use immutable public resolvers',
+);
+assert.doesNotThrow(
+  () => assertWorkerProtocolArtifactHistory(suite),
+  'the active worker protocol binding must be distinct from retained beta history',
 );
 assert.doesNotThrow(
   () => assertRetainedCliJsonEnvelopeRevisions(suite),
@@ -189,6 +194,37 @@ assert.throws(
   'a retained protocol revision must keep its immutable byte binding after the live catalog advances',
 );
 
+const reusedHistoricalArtifactIdentity = clone(suite);
+reusedHistoricalArtifactIdentity.artifact_version_history.worker_protocol_api
+  .bindings[0].artifact_id = 'durable-workflow.v2.worker-protocol-api@catalog-16';
+assert.throws(
+  () => assertWorkerProtocolArtifactHistory(reusedHistoricalArtifactIdentity),
+  /historical binding/,
+  'beta-worded evidence must not reuse the current catalog artifact identity',
+);
+
+const staleActiveWorkerBinding = clone(suite);
+staleActiveWorkerBinding.fixture_catalog.worker_task_lifecycle.sources[0] = {
+  ...staleActiveWorkerBinding.artifact_version_history.worker_protocol_api.bindings[0],
+};
+for (const field of ['suite_version', 'status', 'lifecycle']) {
+  delete staleActiveWorkerBinding.fixture_catalog.worker_task_lifecycle.sources[0][field];
+}
+assert.throws(
+  () => assertWorkerProtocolArtifactHistory(staleActiveWorkerBinding),
+  /exactly one active worker protocol API binding/,
+  'the active conformance category must not resolve retained beta history',
+);
+
+const betaLabeledCurrentBinding = clone(suite);
+betaLabeledCurrentBinding.artifact_version_history.worker_protocol_api
+  .bindings[1].lifecycle = 'beta';
+assert.throws(
+  () => assertWorkerProtocolArtifactHistory(betaLabeledCurrentBinding),
+  /current binding/,
+  'the active worker protocol history entry must remain lifecycle-neutral',
+);
+
 const mutableSourceDependency = clone(suite);
 mutableSourceDependency.source_dependencies[
   'cluster-info-envelope.schema.json'
@@ -206,8 +242,8 @@ unknownDependencyRevision.source_dependencies[
 ].resolver_url = unknownDependencyRevision.source_dependencies[
   'cluster-info-envelope.schema.json'
 ].resolver_url.replace(
-  'e990bc36731463cc5b2cb2a9175dbccfdea61704',
-  '0000000000000000000000000000000000000000',
+  /\/[0-9a-f]{40}\//,
+  '/0000000000000000000000000000000000000000/',
 );
 assert.throws(
   () => assertStableSourceDependenciesResolve(unknownDependencyRevision),

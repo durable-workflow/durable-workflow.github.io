@@ -44,7 +44,8 @@ const EXPECTED_RUNTIME_SOURCE_REVISION =
   '75dfd5c869823409ef3d6c4b009a7882159ae9a2';
 const EXPECTED_RUNTIME_FIXTURE_SUITE_VERSION = 38;
 const EXPECTED_PROTOCOL_SOURCE_REVISION =
-  'e990bc36731463cc5b2cb2a9175dbccfdea61704';
+  'f781ced1ae33c8697835bd527a125bdf3eaf4321';
+const EXPECTED_PROTOCOL_SOURCE_SUITE_VERSION = 41;
 const EXPECTED_PROTOCOL_SOURCE_CATALOG_VERSION = 16;
 const EXPECTED_PROTOCOL_SOURCE_DIGESTS = Object.freeze({
   'cluster-info-envelope.schema.json':
@@ -62,7 +63,7 @@ const EXPECTED_PROTOCOL_SOURCE_DIGESTS = Object.freeze({
   'replay-bundle.schema.json':
     'sha256:17409f333f8a05fe41a3ca60b2f6a1b7d9a008b07aae6194b7d5f17e3c6387f2',
   'worker-protocol-api.openapi.yaml':
-    'sha256:3166ce8ecb4c15005f1d98b1669f1ffaf3aeff7e19d0f006454525b2b19e4035',
+    'sha256:55dfede6a9742f955911786eeb588ceecaa4266cebad57b92684c2a1bacefe7b',
   'worker-protocol-stream.asyncapi.yaml':
     'sha256:15bddb75d0e7183a520e861f87d5315b65e42acdc57a8137f947e00cacbac251',
   'worker-sessions-runtime.schema.json':
@@ -81,6 +82,7 @@ const VERSIONED_SUITE_AUTHORITY_DIGESTS = {
   37: 'sha256:2e54a3edfb6e37a05a68525397253b6c3d660aef2296654f0bbf895fac0501b4',
   38: 'sha256:71feae0fff1a855afeda242a1ede8ab151d7d106093f2c624e88014a37c58c29',
   40: 'sha256:0642f7d73fffecf0ac673b962756082f03e0c07b7ed3efda70fa26bacc8ebc8f',
+  41: 'sha256:dfee9c9b419bab9504a662f22bd5b7866a2a7de50c6d31ee0a0e7b3c7067c1a1',
 };
 const SUITE_AUTHORITY_DIGEST_TRANSITIONS = Object.freeze({
   40: Object.freeze({
@@ -343,6 +345,7 @@ VERSIONED_RUNTIME_SCENARIO_STATUSES[37] = VERSIONED_RUNTIME_SCENARIO_STATUSES[36
 VERSIONED_RUNTIME_SCENARIO_STATUSES[38] = VERSIONED_RUNTIME_SCENARIO_STATUSES[37];
 VERSIONED_RUNTIME_SCENARIO_STATUSES[39] = VERSIONED_RUNTIME_SCENARIO_STATUSES[38];
 VERSIONED_RUNTIME_SCENARIO_STATUSES[40] = VERSIONED_RUNTIME_SCENARIO_STATUSES[39];
+VERSIONED_RUNTIME_SCENARIO_STATUSES[41] = VERSIONED_RUNTIME_SCENARIO_STATUSES[40];
 const VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_FIELDS = [
   'artifact_policy',
   'common_result_evidence',
@@ -659,6 +662,8 @@ VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[39] =
   VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[38];
 VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[40] =
   VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[39];
+VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[41] =
+  VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[40];
 // Digests bind public top-level runtime scenario manifest requirements to the
 // suite version. These fields define artifact source policy, common evidence,
 // runtime matrices, scenario-specific required evidence, and host-runner result
@@ -859,6 +864,8 @@ VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[39] =
   VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[38];
 VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[40] =
   VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[39];
+VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[41] =
+  VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[40];
 const VERSIONED_PASS_FAIL_RULES = {
   5: {
     guaranteed_field_equality: {
@@ -1136,6 +1143,7 @@ VERSIONED_PASS_FAIL_RULES[37] = VERSIONED_PASS_FAIL_RULES[36];
 VERSIONED_PASS_FAIL_RULES[38] = VERSIONED_PASS_FAIL_RULES[37];
 VERSIONED_PASS_FAIL_RULES[39] = VERSIONED_PASS_FAIL_RULES[38];
 VERSIONED_PASS_FAIL_RULES[40] = VERSIONED_PASS_FAIL_RULES[39];
+VERSIONED_PASS_FAIL_RULES[41] = VERSIONED_PASS_FAIL_RULES[40];
 const EXPECTED_AUTHORITY_DOC = 'docs/platform-conformance.md';
 const EXPECTED_DOC_ID = 'platform-conformance';
 
@@ -3252,12 +3260,12 @@ function assertStableSourceDependenciesResolve(contract) {
     }
 
     const expectedSourcePath =
-      `resources/conformance/suite-v${EXPECTED_RUNTIME_FIXTURE_SUITE_VERSION}/` +
+      `resources/conformance/suite-v${EXPECTED_PROTOCOL_SOURCE_SUITE_VERSION}/` +
       `platform-protocol-specs/${filename}`;
     if (source.source_path !== expectedSourcePath) {
       throw new Error(
         `stable source dependency "${filename}" source_path must stay inside ` +
-          `the retained suite-v${EXPECTED_RUNTIME_FIXTURE_SUITE_VERSION} protocol carrier.`,
+        `the current suite-v${EXPECTED_PROTOCOL_SOURCE_SUITE_VERSION} protocol carrier.`,
       );
     }
 
@@ -3309,6 +3317,89 @@ function assertStableSourceDependenciesResolve(contract) {
       );
     }
   }
+}
+
+function assertWorkerProtocolArtifactHistory(contract) {
+  const history = contract.artifact_version_history?.worker_protocol_api;
+  const bindings = history?.bindings;
+
+  if (
+    history?.history_mode !== 'immutable_lifecycle_bindings' ||
+    !Array.isArray(bindings) ||
+    bindings.length !== 2
+  ) {
+    throw new Error(
+      'worker protocol artifact history must declare exactly one historical ' +
+        'binding and one current binding.',
+    );
+  }
+
+  const [historical, current] = bindings;
+  const expectedHistorical = {
+    suite_version: 40,
+    status: 'historical',
+    lifecycle: 'beta',
+    artifact_id:
+      'durable-workflow.v2.worker-protocol-api@catalog-16-beta-history',
+    resolver_url:
+      'https://raw.githubusercontent.com/durable-workflow/' +
+      'durable-workflow.github.io/e990bc36731463cc5b2cb2a9175dbccfdea61704/' +
+      'static/platform-protocol-specs/worker-protocol-api.openapi.yaml',
+    sha256:
+      'sha256:3166ce8ecb4c15005f1d98b1669f1ffaf3aeff7e19d0f006454525b2b19e4035',
+  };
+  const expectedCurrent = {
+    suite_version: contract.version,
+    status: 'current',
+    lifecycle: 'lifecycle_neutral',
+    artifact_id: 'durable-workflow.v2.worker-protocol-api@catalog-16',
+    resolver_url:
+      `https://raw.githubusercontent.com/durable-workflow/` +
+      `durable-workflow.github.io/${EXPECTED_PROTOCOL_SOURCE_REVISION}/` +
+      'static/platform-protocol-specs/worker-protocol-api.openapi.yaml',
+    sha256: EXPECTED_PROTOCOL_SOURCE_DIGESTS['worker-protocol-api.openapi.yaml'],
+  };
+
+  assertJsonEqual(
+    historical,
+    expectedHistorical,
+    'artifact_version_history.worker_protocol_api historical binding',
+  );
+  assertJsonEqual(
+    current,
+    expectedCurrent,
+    'artifact_version_history.worker_protocol_api current binding',
+  );
+
+  if (
+    historical.artifact_id === current.artifact_id ||
+    historical.resolver_url === current.resolver_url ||
+    historical.sha256 === current.sha256
+  ) {
+    throw new Error(
+      'historical beta worker protocol evidence must not reuse the current ' +
+        'artifact identity, resolver, or byte digest.',
+    );
+  }
+
+  const activeSources = (
+    contract.fixture_catalog?.worker_task_lifecycle?.sources || []
+  ).filter(source => source?.artifact_id === expectedCurrent.artifact_id);
+  const activeCurrent = {...current};
+  delete activeCurrent.suite_version;
+  delete activeCurrent.status;
+  delete activeCurrent.lifecycle;
+
+  if (activeSources.length !== 1) {
+    throw new Error(
+      'worker_task_lifecycle must publish exactly one active worker protocol API binding.',
+    );
+  }
+  assertJsonEqual(
+    activeSources[0],
+    activeCurrent,
+    'fixture_catalog.worker_task_lifecycle current worker protocol binding',
+  );
 }
 
 function assertStableFixtureAuthorityDocsResolve(contract) {
@@ -3918,6 +4009,7 @@ function main() {
   assertStableFixtureAuthorityDocsResolve(contract);
   assertStableFixtureSourcesResolve(contract);
   assertStableSourceDependenciesResolve(contract);
+  assertWorkerProtocolArtifactHistory(contract);
   assertStableRuntimeSourcesArePublic(contract);
   assertRetainedCliJsonEnvelopeRevisions(contract);
   assertDocIsInSidebar();
@@ -3934,6 +4026,7 @@ module.exports = {
   assertPublicConformanceContractHasNoInternalHarnessArtifacts,
   assertStableFixtureSourcesResolve,
   assertStableSourceDependenciesResolve,
+  assertWorkerProtocolArtifactHistory,
   assertRetainedCliJsonEnvelopeRevisions,
   assertWorkflowPackageAuthorityLock,
   assertWorkflowPackageMirrorMatches,
