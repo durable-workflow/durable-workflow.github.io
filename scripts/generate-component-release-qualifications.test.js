@@ -10,15 +10,14 @@ const {
 } = require('./generate-component-release-qualifications');
 
 const generated = buildPublicComponentReleaseQualifications(source);
-const [waterline] = generated.qualifications;
 const [retainedWaterline] = source.records;
 
 assert.strictEqual(generated.schema, PUBLIC_SCHEMA);
 assert.strictEqual(generated.outcome, 'pass');
 assert.deepStrictEqual(
-  waterline,
-  retainedWaterline,
-  'the generated public record must project the retained identity authority exactly',
+  generated.qualifications,
+  source.records,
+  'the generated public records must project the full retained identity authority exactly',
 );
 
 function withReleasedVersions(versionTransform) {

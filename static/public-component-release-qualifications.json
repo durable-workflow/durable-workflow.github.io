@@ -2,7 +2,7 @@
   "schema": "durable-workflow.docs.public-component-release-qualifications",
   "schema_version": 1,
   "outcome": "pass",
-  "retained_evidence_captured_at": "2026-08-08T16:34:35.000Z",
+  "retained_evidence_captured_at": "2026-08-09T16:20:56.000Z",
   "qualifications": [
     {
       "id": "waterline-2.0.0-rc.11-composer",
@@ -28,6 +28,33 @@
           "run_id": 31266631910,
           "run_attempt": 2,
           "run_url": "https://github.com/durable-workflow/waterline/actions/runs/31266631910"
+        }
+      }
+    },
+    {
+      "id": "waterline-2.0.0-rc.13-composer",
+      "component": {
+        "artifact": "waterline",
+        "version": "2.0.0-rc.13"
+      },
+      "qualification": {
+        "schema": "durable-workflow.exact-current-composer-qualification/v1",
+        "outcome": "pass",
+        "packages": {
+          "waterline": "2.0.0-rc.13",
+          "sdk-php": "2.0.0-rc.11",
+          "workflow": "2.0.0-rc.13"
+        }
+      },
+      "source": {
+        "repository_url": "https://github.com/durable-workflow/waterline",
+        "release_tag": "2.0.0-rc.13",
+        "release_commit": "75ce78c8e78c47131dbcefa70ebd89d43778f25a",
+        "workflow_run": {
+          "name": "Release Docs Audit",
+          "run_id": 31323527557,
+          "run_attempt": 1,
+          "run_url": "https://github.com/durable-workflow/waterline/actions/runs/31323527557"
         }
       }
     }
