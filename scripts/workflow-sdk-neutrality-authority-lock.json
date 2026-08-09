@@ -4,5 +4,5 @@
   "workflow_ref": "2.0.0-rc.12",
   "workflow_source_commit": "9416c2a4d3fe71d85f77c2465ed8337c833a79ee",
   "resource_path": "resources/sdk-neutrality-contract.json",
-  "sha256": "93ab20aa7c69a4994affef4b3d511c0bf99d2304828d9626615b2da3f60064fd"
+  "sha256": "d9cd2ee9af3dbf1ba45b5e81cc4b3478cd36fedb303bb173ace7b8154bd1fb1e"
 }

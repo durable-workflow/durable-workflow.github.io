@@ -12,6 +12,8 @@ keywords:
   - async workflow client
 ---
 
+import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseLink';
+
 # Python SDK
 
 The Python SDK is a thin, async-first client for a self-hosted Durable Workflow
@@ -45,6 +47,11 @@ connection boundary; the quickstart below uses local self-hosted values.
 
 Install the published SDK version selected by the current 2.0 prerelease
 artifact tuple:
+
+The package authority for this docs line is the exact
+<PythonPackageReleaseLink>Python SDK %%artifact.pythonPublishedSdkVersion%%
+release</PythonPackageReleaseLink>. The install command remains pinned to the
+compatibility-qualified aggregate used by the runnable quickstart.
 
 <!-- docs-example id="python.sdk.install" -->
 ```bash

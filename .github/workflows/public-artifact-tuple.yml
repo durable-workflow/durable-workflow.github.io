@@ -38,6 +38,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify live Python package release authority
+        run: node scripts/check-python-package-release.js --live
+
       - name: Resolve tuple date
         id: tuple-date
         env:

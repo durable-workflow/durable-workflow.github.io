@@ -49,6 +49,7 @@ const {
   selectServerRegistryVersion,
   selectLatestVersion,
   sha256,
+  sdkNeutralityContractSource,
   workflowAuthorityLockSource,
   workflowAuthorityManifestUrl,
   writePublicArtifactTupleSources,
@@ -871,6 +872,22 @@ const retainedEvidenceSource = JSON.parse(
 const currentWorkflowAuthorityLock = JSON.parse(
   currentTupleSources['scripts/workflow-sdk-neutrality-authority-lock.json'],
 );
+const currentWorkflowContract = JSON.parse(
+  currentTupleSources['static/sdk-neutrality-contract.json'],
+);
+const currentWorkflowPython = currentWorkflowContract.sdk_breadth_policy.first_party.python_sdk;
+currentWorkflowPython.package_url = currentWorkflowPython.canonical_project_url;
+for (const field of [
+  'package_version',
+  'registry_version',
+  'exact_release_url',
+  'exact_release_json_url',
+  'canonical_project_url',
+  'canonical_project_url_role',
+]) {
+  delete currentWorkflowPython[field];
+}
+const currentWorkflowManifest = `${JSON.stringify(currentWorkflowContract, null, 2)}\n`;
 assert.deepStrictEqual(
   changedPublicArtifactTupleFiles(
     currentTupleSources,
@@ -878,7 +895,7 @@ assert.deepStrictEqual(
       currentTupleSources,
       source.artifacts,
       '2026-07-23',
-      currentTupleSources['static/sdk-neutrality-contract.json'],
+      currentWorkflowManifest,
       undefined,
       publishedSource.artifacts,
       currentWorkflowAuthorityLock.workflow_source_commit,
@@ -902,7 +919,7 @@ const publishedServerRefreshTuple = generatedPublicArtifactTupleSources(
   currentTupleSources,
   source.artifacts,
   '2026-07-23',
-  currentTupleSources['static/sdk-neutrality-contract.json'],
+  currentWorkflowManifest,
   undefined,
   nextPublishedServerVersions,
   currentWorkflowAuthorityLock.workflow_source_commit,
@@ -1109,7 +1126,6 @@ const successorVersions = Object.fromEntries(
   Object.keys(source.artifacts).map(artifact => [artifact, successorWorkflowVersion]),
 );
 const successorWorkflowCompatibilityEvidence = compatibilityEvidenceAt(successorVersions);
-const currentWorkflowManifest = currentTupleSources['static/sdk-neutrality-contract.json'];
 const unchangedManifestTuple = generatedPublicArtifactTupleSources(
   currentTupleSources,
   successorVersions,
@@ -1134,14 +1150,15 @@ assert.deepStrictEqual(
     'static/public-artifact-compatibility-evidence.json',
     'static/quickstart-execution-contract.json',
     'static/compatibility-contract.json',
+    'static/sdk-neutrality-contract.json',
     'scripts/workflow-sdk-neutrality-authority-lock.json',
   ],
-  'a successor Workflow prerelease with unchanged authority bytes must refresh the tuple and versioned lock',
+  'a successor tuple must refresh the Python release projection and versioned lock',
 );
 assert.strictEqual(
   unchangedManifestTuple['static/sdk-neutrality-contract.json'],
-  currentWorkflowManifest,
-  'unchanged Workflow authority bytes must remain byte-equivalent in the public mirror',
+  sdkNeutralityContractSource(currentWorkflowManifest, successorVersions),
+  'unchanged Workflow authority bytes must receive the successor published-tuple projection',
 );
 const unchangedManifestLock = JSON.parse(
   unchangedManifestTuple['scripts/workflow-sdk-neutrality-authority-lock.json'],
@@ -1149,9 +1166,15 @@ const unchangedManifestLock = JSON.parse(
 assert.strictEqual(unchangedManifestLock.schema_version, 2);
 assert.strictEqual(unchangedManifestLock.workflow_ref, successorWorkflowVersion);
 assert.strictEqual(unchangedManifestLock.workflow_source_commit, 'a'.repeat(40));
-assert.strictEqual(unchangedManifestLock.sha256, sha256(currentWorkflowManifest));
+assert.strictEqual(
+  unchangedManifestLock.sha256,
+  sha256(sdkNeutralityContractSource(currentWorkflowManifest, successorVersions)),
+);
 
-const changedWorkflowManifest = `${currentWorkflowManifest}\n`;
+const changedWorkflowContract = JSON.parse(currentWorkflowManifest);
+changedWorkflowContract.sdk_breadth_policy.first_party.python_sdk.role +=
+  ' This fixture changes the upstream authority.';
+const changedWorkflowManifest = `${JSON.stringify(changedWorkflowContract, null, 2)}\n`;
 const changedManifestTuple = generatedPublicArtifactTupleSources(
   currentTupleSources,
   successorVersions,
@@ -1168,15 +1191,18 @@ assert.deepStrictEqual(
 );
 assert.strictEqual(
   changedManifestTuple['static/sdk-neutrality-contract.json'],
-  changedWorkflowManifest,
-  'the public mirror must preserve the exact published Workflow manifest bytes',
+  sdkNeutralityContractSource(changedWorkflowManifest, successorVersions),
+  'the public contract must project the changed Workflow manifest and tuple',
 );
 const changedManifestLock = JSON.parse(
   changedManifestTuple['scripts/workflow-sdk-neutrality-authority-lock.json'],
 );
 assert.strictEqual(changedManifestLock.workflow_ref, successorWorkflowVersion);
 assert.strictEqual(changedManifestLock.workflow_source_commit, 'b'.repeat(40));
-assert.strictEqual(changedManifestLock.sha256, sha256(changedWorkflowManifest));
+assert.strictEqual(
+  changedManifestLock.sha256,
+  sha256(sdkNeutralityContractSource(changedWorkflowManifest, successorVersions)),
+);
 assert.notStrictEqual(changedManifestLock.sha256, unchangedManifestLock.sha256);
 
 const tupleWriteRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'public-artifact-tuple-write-'));

@@ -240,6 +240,41 @@ function compareLivePublicArtifacts(
     }
   }
 
+  const expectedPythonSurfaces = ARTIFACT_DISTRIBUTION_SURFACES['sdk-python'] || [];
+  const livePythonSurfaces = versionAtPath(
+    audit,
+    ['artifact_distribution_surfaces', 'sdk-python'],
+  );
+
+  if (!Array.isArray(livePythonSurfaces)) {
+    drift.push(
+      `${RELEASE_AUDIT_PATH} artifact_distribution_surfaces.sdk-python: ` +
+        'expected Python SDK surfaces, got <missing>',
+    );
+  } else {
+    for (const expectedSurface of expectedPythonSurfaces) {
+      const liveSurface = livePythonSurfaces.find(surface => (
+        surface && surface.surface === expectedSurface.surface
+      ));
+
+      if (!liveSurface) {
+        drift.push(
+          `${RELEASE_AUDIT_PATH} Python SDK surface ${expectedSurface.surface}: missing`,
+        );
+        continue;
+      }
+
+      for (const [field, expectedValue] of Object.entries(expectedSurface)) {
+        if (liveSurface[field] !== expectedValue) {
+          drift.push(
+            `${RELEASE_AUDIT_PATH} Python SDK surface ${expectedSurface.surface}.${field}: ` +
+              `expected ${expectedValue}, got ${liveSurface[field] || '<missing>'}`,
+          );
+        }
+      }
+    }
+  }
+
   const expectedServerSurfaces = ARTIFACT_DISTRIBUTION_SURFACES.server || [];
   const liveServerSurfaces = versionAtPath(audit, ['artifact_distribution_surfaces', 'server']);
 

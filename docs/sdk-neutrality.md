@@ -21,6 +21,8 @@ keywords:
   - php workflow package
 ---
 
+import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseLink';
+
 # SDK Neutrality
 
 This page is the human-readable guide to the platform-wide SDK neutrality
@@ -33,14 +35,14 @@ The upstream architecture guide is published at
 [`sdk-neutrality.md`](https://github.com/durable-workflow/workflow/blob/v2/docs/architecture/sdk-neutrality.md).
 The consumable machine-readable authority is published from this site at
 [`/sdk-neutrality-contract.json`](/sdk-neutrality-contract.json) under
-the schema id `durable-workflow.v2.sdk-neutrality.contract`. The exact same
-JSON ships in the Workflow Composer package at
-`resources/sdk-neutrality-contract.json`, allowing release tools and
-third-party consumers to read the authority without inspecting PHP source. The
-standalone Durable Workflow server re-exports the same manifest from
-`GET /api/cluster/info` under `sdk_neutrality_contract`. When this page or the
-architecture guide disagrees with the published JSON contract, the JSON
-contract wins and the disagreement is a documentation bug.
+the schema id `durable-workflow.v2.sdk-neutrality.contract`. Its protocol and
+SDK-breadth authority comes from the JSON shipped in the Workflow Composer
+package at `resources/sdk-neutrality-contract.json`. The public mirror adds
+current package-distribution metadata from the centralized docs artifact
+tuple. The standalone Durable Workflow server re-exports the packaged base
+manifest from `GET /api/cluster/info` under `sdk_neutrality_contract`. When
+this page disagrees with the published JSON contract, the JSON contract wins
+and the disagreement is a documentation bug.
 
 This contract is downstream of the
 [Version Compatibility](/docs/2.0/compatibility) authority (which says
@@ -85,7 +87,7 @@ The official-SDK roster is intentionally narrow:
 | Language | Posture | Published package | Conformance authority |
 | --- | --- | --- | --- |
 | PHP | `priority` | [`durable-workflow/sdk`](https://packagist.org/packages/durable-workflow/sdk) | [`signal_query_runtime_contract`](https://durable-workflow.github.io/platform-conformance/signal-query-runtime-scenarios.json), actors `sdk_php`, `php_sdk_client`, and `php_worker` |
-| Python | `priority` | [`durable_workflow`](https://pypi.org/project/durable-workflow/) | [`history_replay_bundles`](https://durable-workflow.github.io/platform-conformance/replay-runtime-scenarios.json), actor `python_sdk_runtime` |
+| Python | `priority` | <PythonPackageReleaseLink>`durable_workflow` %%artifact.pythonPublishedSdkVersion%%</PythonPackageReleaseLink> | [`history_replay_bundles`](https://durable-workflow.github.io/platform-conformance/replay-runtime-scenarios.json), actor `python_sdk_runtime` |
 | Rust | `priority` | [`durable-workflow`](https://crates.io/crates/durable-workflow) | [`signal_query_runtime_contract`](https://durable-workflow.github.io/platform-conformance/signal-query-runtime-scenarios.json), actors `rust_sdk`, `rust_worker`, and `rust_sdk_client` |
 | TypeScript | `demand_driven` | None | Public contracts must remain implementable in TypeScript without protocol redesign. |
 | Go | `demand_driven` | None | Public contracts must remain implementable in Go without protocol redesign. |

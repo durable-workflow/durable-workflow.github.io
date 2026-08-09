@@ -45,6 +45,7 @@ const COMPONENT_RELEASE_QUALIFICATIONS_PATH =
 const ARTIFACT_VERSION_SYNCHRONIZED_FIELDS = Object.freeze([
   'artifact_versions',
   'artifact_distribution_surfaces.sdk-php',
+  'artifact_distribution_surfaces.sdk-python',
   'artifact_distribution_surfaces.server',
   'artifact_distribution_surfaces.sdk-rust',
   'artifact_distribution_surfaces.waterline',

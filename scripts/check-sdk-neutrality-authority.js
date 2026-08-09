@@ -39,15 +39,19 @@
 // 8. Release workflows provide the exact tagged Workflow package authority
 //    through `WORKFLOW_SDK_NEUTRALITY_MANIFEST_PATH`. Developer checkouts may
 //    instead use a sibling Workflow repo. A versioned digest lock pins every
-//    validation mode to that Workflow ref. The static mirror must match the
-//    pinned package digest and be byte-equivalent to the package manifest when
-//    the release input is available. Human-readable pages are not parsed by
-//    this machine-contract gate.
+//    validation mode to the public projection of that Workflow ref and the
+//    centralized published artifact tuple. Human-readable pages are not parsed
+//    by this machine-contract gate.
 
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const {ARTIFACT_VERSIONS} = require('./public-artifact-versions');
+const {
+  ARTIFACT_VERSIONS,
+  PUBLISHED_ARTIFACT_VERSIONS,
+  PYTHON_PACKAGE_AUTHORITY,
+} = require('./public-artifact-versions');
+const {sdkNeutralityContractSource} = require('./refresh-public-artifact-versions');
 
 const repoRoot = path.join(__dirname, '..');
 const contractPath = path.join(repoRoot, 'static', 'sdk-neutrality-contract.json');
@@ -71,7 +75,7 @@ const RUNTIME_SCENARIO_SCHEMA =
 
 const EXPECTED_PACKAGE_URLS = {
   php_sdk: 'https://packagist.org/packages/durable-workflow/sdk',
-  python_sdk: 'https://pypi.org/project/durable-workflow/',
+  python_sdk: PYTHON_PACKAGE_AUTHORITY.authorityUrl,
   rust_sdk: 'https://crates.io/crates/durable-workflow',
 };
 const EXPECTED_PACKAGES = {
@@ -668,6 +672,32 @@ function assertSdkBreadthPolicy(contract, catalogs) {
       }
     }
   }
+
+  const pythonSdk = policy.first_party.python_sdk;
+  const expectedPythonFields = {
+    package_version: PYTHON_PACKAGE_AUTHORITY.version,
+    registry_version: PYTHON_PACKAGE_AUTHORITY.registryVersion,
+    exact_release_url: PYTHON_PACKAGE_AUTHORITY.exactReleaseUrl,
+    exact_release_json_url: PYTHON_PACKAGE_AUTHORITY.exactReleaseJsonUrl,
+    canonical_project_url: PYTHON_PACKAGE_AUTHORITY.canonicalProjectUrl,
+    canonical_project_url_role: 'project_identity_only',
+  };
+  for (const [field, expected] of Object.entries(expectedPythonFields)) {
+    if (pythonSdk[field] !== expected) {
+      throw new Error(
+        `static/sdk-neutrality-contract.json sdk_breadth_policy.first_party.python_sdk.` +
+          `${field} must be ${JSON.stringify(expected)} (got ${JSON.stringify(pythonSdk[field])})`,
+      );
+    }
+  }
+  if (
+    PYTHON_PACKAGE_AUTHORITY.releasePhase !== 'stable'
+    && pythonSdk.package_url === pythonSdk.canonical_project_url
+  ) {
+    throw new Error(
+      'The prerelease Python package_url must not use the canonical unversioned PyPI project page',
+    );
+  }
   for (const [engine, expected] of Object.entries(EXPECTED_EMBEDDED_ENGINES)) {
     const engineEntry = policy.embedded_engines && policy.embedded_engines[engine];
     if (!engineEntry) {
@@ -902,8 +932,8 @@ function assertPinnedWorkflowAuthority(options = {}) {
   const actualDigest = sha256(read(docsPath));
   if (actualDigest !== lock.sha256) {
     throw new Error(
-      `static/sdk-neutrality-contract.json must match the exact Workflow ` +
-        `${workflowVersion} authority digest ${lock.sha256}; got ${actualDigest}`,
+      `static/sdk-neutrality-contract.json must match the exact public projection for ` +
+        `Workflow ${workflowVersion} at digest ${lock.sha256}; got ${actualDigest}`,
     );
   }
 }
@@ -930,11 +960,14 @@ function assertWorkflowMirrorMatches(options = {}) {
     'sdk-neutrality-contract.json',
   ));
   const workflowCopy = read(workflowPath);
-  if (docsCopy !== workflowCopy) {
+  const expectedDocsCopy = sdkNeutralityContractSource(
+    workflowCopy,
+    PUBLISHED_ARTIFACT_VERSIONS,
+  );
+  if (docsCopy !== expectedDocsCopy) {
     throw new Error(
-      `static/sdk-neutrality-contract.json must be byte-equivalent to ` +
-        `${workflowPath}. Update the docs-site mirror and the workflow ` +
-        `package mirror in the same release change.`,
+      `static/sdk-neutrality-contract.json must be the exact public projection of ` +
+        `${workflowPath} and scripts/published-artifact-versions.json.`,
     );
   }
 }

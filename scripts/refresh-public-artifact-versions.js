@@ -9,9 +9,11 @@ const {
   ARTIFACT_RELEASE_POLICY,
   ARTIFACT_VERSION_REQUIREMENTS,
   ARTIFACT_VERSION_SCHEMA,
+  PUBLISHED_ARTIFACT_VERSIONS,
   PUBLISHED_ARTIFACT_VERSION_SCHEMA,
   REQUIRED_ARTIFACTS,
   buildArtifactPins,
+  buildPythonPackageAuthority,
   isAuthorizedProductTrainVersion,
   readArtifactVersions,
   readPublishedArtifactVersions,
@@ -1184,6 +1186,7 @@ function workflowAuthorityLockSource(
   workflowRef,
   manifestSource,
   workflowSourceCommit,
+  publishedVersions = PUBLISHED_ARTIFACT_VERSIONS,
 ) {
   assertWorkflowAuthorityManifestSource(manifestSource, workflowRef);
   if (
@@ -1201,8 +1204,38 @@ function workflowAuthorityLockSource(
     workflow_ref: workflowRef,
     workflow_source_commit: workflowSourceCommit,
     resource_path: WORKFLOW_SDK_NEUTRALITY_RESOURCE_PATH,
-    sha256: sha256(manifestSource),
+    sha256: sha256(sdkNeutralityContractSource(manifestSource, publishedVersions)),
   }, null, 2)}\n`;
+}
+
+function sdkNeutralityContractSource(manifestSource, publishedVersions) {
+  const contract = JSON.parse(manifestSource);
+  const pythonSdk = contract.sdk_breadth_policy?.first_party?.python_sdk;
+
+  if (!pythonSdk || typeof pythonSdk !== 'object' || Array.isArray(pythonSdk)) {
+    throw new Error(
+      'Workflow SDK-neutrality authority must define sdk_breadth_policy.first_party.python_sdk',
+    );
+  }
+
+  const authority = buildPythonPackageAuthority(publishedVersions);
+  const canonicalProjectUrl = pythonSdk.canonical_project_url || pythonSdk.package_url;
+
+  if (canonicalProjectUrl !== authority.canonicalProjectUrl) {
+    throw new Error(
+      'Workflow SDK-neutrality Python package identity must use the canonical PyPI project URL',
+    );
+  }
+
+  pythonSdk.package_url = authority.authorityUrl;
+  pythonSdk.package_version = authority.version;
+  pythonSdk.registry_version = authority.registryVersion;
+  pythonSdk.exact_release_url = authority.exactReleaseUrl;
+  pythonSdk.exact_release_json_url = authority.exactReleaseJsonUrl;
+  pythonSdk.canonical_project_url = authority.canonicalProjectUrl;
+  pythonSdk.canonical_project_url_role = 'project_identity_only';
+
+  return `${JSON.stringify(contract, null, 2)}\n`;
 }
 
 function readPublicArtifactTupleSources() {
@@ -1253,6 +1286,10 @@ function generatedPublicArtifactTupleSources(
   const nextSnapshotRefreshedAt = publishedTupleChanged
     ? snapshotRefreshedAt
     : currentLedger.snapshot_refreshed_at;
+  const sdkNeutralitySource = sdkNeutralityContractSource(
+    workflowManifestSource,
+    publishedVersions,
+  );
 
   return {
     'scripts/public-artifact-versions.json': artifactVersionsSource(versions),
@@ -1277,11 +1314,12 @@ function generatedPublicArtifactTupleSources(
       versions,
       compatibilityEvidence,
     ),
-    'static/sdk-neutrality-contract.json': workflowManifestSource,
+    'static/sdk-neutrality-contract.json': sdkNeutralitySource,
     'scripts/workflow-sdk-neutrality-authority-lock.json': workflowAuthorityLockSource(
       versions.workflow,
       workflowManifestSource,
       workflowSourceCommit,
+      publishedVersions,
     ),
   };
 }
@@ -1758,7 +1796,7 @@ async function check() {
   ) {
     throw new Error(
       mismatchMessage(
-        'static/sdk-neutrality-contract.json is stale against the exact published Workflow authority:',
+        'static/sdk-neutrality-contract.json is stale against the published Workflow authority and Python release projection:',
         [{
           name: 'Workflow SDK-neutrality manifest',
           actual: sha256(currentSources['static/sdk-neutrality-contract.json']),
@@ -1778,7 +1816,10 @@ async function check() {
         [{
           name: 'Workflow SDK-neutrality authority lock',
           actual: 'stale ref or digest',
-          expected: `${expected.workflow} ${sha256(workflowManifestSource)}`,
+          expected: `${expected.workflow} ${sha256(sdkNeutralityContractSource(
+            workflowManifestSource,
+            published.publishedVersions,
+          ))}`,
         }],
       ),
     );
@@ -1904,6 +1945,7 @@ module.exports = {
   selectServerRegistryVersion,
   selectLatestVersion,
   sha256,
+  sdkNeutralityContractSource,
   versionRank,
   workflowAuthorityLockSource,
   workflowAuthorityManifestUrl,

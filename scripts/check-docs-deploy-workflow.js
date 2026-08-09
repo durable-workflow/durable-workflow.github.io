@@ -598,6 +598,7 @@ async function assertScheduledDeployRepairsStaleLiveTuple() {
 
   audit.artifact_versions.server = '0.2.543';
   audit.artifact_distribution_surfaces['sdk-php'][0].url = 'https://packagist.org/packages/stale/php-sdk';
+  audit.artifact_distribution_surfaces['sdk-python'][0].url = 'https://pypi.org/project/durable-workflow/';
   audit.artifact_distribution_surfaces.server[0].tag = '0.2.543';
   audit.artifact_distribution_surfaces.server[0].reference = 'durableworkflow/server:0.2.543';
   audit.artifact_distribution_surfaces.waterline[0].tag = '2.0.0-rc.5';
@@ -622,6 +623,10 @@ async function assertScheduledDeployRepairsStaleLiveTuple() {
   assert(
     drift.some(item => item.includes('PHP SDK surface packagist_package.url')),
     'PHP SDK distribution surface drift must be reported'
+  );
+  assert(
+    drift.some(item => item.includes('Python SDK surface pypi_exact_release.url')),
+    'Python SDK exact release drift must be reported',
   );
   assert(
     drift.some(item => item.includes('server surface docker_hub_container_image.tag')),

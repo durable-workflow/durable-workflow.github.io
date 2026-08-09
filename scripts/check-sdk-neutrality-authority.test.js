@@ -15,6 +15,7 @@ const {
   loadContract,
 } = require('./check-sdk-neutrality-authority');
 const {
+  sdkNeutralityContractSource,
   workflowAuthorityLockSource,
 } = require('./refresh-public-artifact-versions');
 const currentWorkflowRef = require('./public-artifact-versions.json').artifacts.workflow;
@@ -53,7 +54,10 @@ try {
     fs.mkdirSync(path.join(root, 'static'), {recursive: true});
     fs.writeFileSync(
       path.join(root, 'static', 'sdk-neutrality-contract.json'),
-      manifestSource,
+      sdkNeutralityContractSource(
+        manifestSource,
+        require('./published-artifact-versions.json').artifacts,
+      ),
     );
     fs.writeFileSync(
       path.join(root, 'scripts', 'workflow-sdk-neutrality-authority-lock.json'),
@@ -145,7 +149,7 @@ try {
       repoRoot: staleDigestRoot,
       workflowVersion: successorWorkflowRef,
     }),
-    new RegExp(`must match the exact Workflow ${escaped(successorWorkflowRef)} authority digest`),
+    new RegExp(`must match the exact public projection for Workflow ${escaped(successorWorkflowRef)}`),
     'release validation must reject a stale digest before accepting packaged bytes',
   );
 
@@ -181,7 +185,10 @@ try {
     'standalone validation must reject a malformed Workflow source commit',
   );
 
-  const changedManifestSource = `${currentManifestSource}\n`;
+  const changedManifest = JSON.parse(currentManifestSource);
+  changedManifest.sdk_breadth_policy.first_party.python_sdk.role +=
+    ' This fixture changes the packaged authority.';
+  const changedManifestSource = `${JSON.stringify(changedManifest, null, 2)}\n`;
   const changedSuccessorRoot = path.join(isolatedRoot, 'changed-successor');
   writeAuthorityFixture(changedSuccessorRoot, successorWorkflowRef, changedManifestSource);
   const changedPublishedManifest = path.join(
@@ -215,7 +222,7 @@ try {
       repoRoot: changedSuccessorRoot,
       workflowVersion: successorWorkflowRef,
     }),
-    /must be byte-equivalent/,
+    /must be the exact public projection/,
     'release validation must reject stale packaged bytes for a refreshed successor digest',
   );
 
@@ -252,15 +259,18 @@ try {
       contractPath: driftedStandaloneContract,
       repoRoot: standaloneRoot,
     }),
-    new RegExp(`must match the exact Workflow ${escaped(currentWorkflowRef)} authority digest`),
+    new RegExp(`must match the exact public projection for Workflow ${escaped(currentWorkflowRef)}`),
     'standalone validation must reject byte drift from the pinned Workflow artifact',
   );
 
   const driftedWorkflow = path.join(isolatedRoot, 'workflow');
   fs.mkdirSync(path.join(driftedWorkflow, 'resources'), {recursive: true});
+  const driftedWorkflowContract = JSON.parse(JSON.stringify(contract));
+  driftedWorkflowContract.sdk_breadth_policy.first_party.python_sdk.role +=
+    ' Drifted upstream role.';
   fs.writeFileSync(
     path.join(driftedWorkflow, 'resources', 'sdk-neutrality-contract.json'),
-    `${JSON.stringify(contract, null, 2)}\n\n`,
+    `${JSON.stringify(driftedWorkflowContract, null, 2)}\n`,
   );
   assert.throws(
     () => assertWorkflowMirrorMatches({
@@ -272,8 +282,8 @@ try {
         ),
       },
     }),
-    /must be byte-equivalent/,
-    'release validation must reject byte drift from the Workflow package authority',
+    /must be the exact public projection/,
+    'release validation must reject semantic drift from the Workflow package authority',
   );
 } finally {
   fs.rmSync(isolatedRoot, {recursive: true, force: true});

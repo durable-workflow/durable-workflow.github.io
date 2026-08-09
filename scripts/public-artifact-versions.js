@@ -12,6 +12,8 @@ const PYPI_REGISTRY_VERSION_PATTERN_SOURCE = '\\d+\\.\\d+\\.\\d+(?:a|b|rc)\\d+';
 const PUBLIC_ARTIFACT_SCAN_VERSION_PATTERN_SOURCE =
   `(?:${SEMVER_INSTALL_VERSION_PATTERN_SOURCE}|${PYPI_REGISTRY_VERSION_PATTERN_SOURCE})`;
 const PYPI_PRERELEASE_LABELS = Object.freeze({alpha: 'a', beta: 'b', rc: 'rc'});
+const PYPI_PACKAGE_NAME = 'durable-workflow';
+const PYPI_PROJECT_URL = `https://pypi.org/project/${PYPI_PACKAGE_NAME}/`;
 
 function readArtifactReleasePolicy(source = artifactReleasePolicySource) {
   if (!source || source.schema !== ARTIFACT_RELEASE_POLICY_SCHEMA) {
@@ -216,6 +218,33 @@ function pypiRegistryVersion(version) {
   return `${match[1]}${PYPI_PRERELEASE_LABELS[match[2]]}${match[3]}`;
 }
 
+function buildPythonPackageAuthority(versions, policy = ARTIFACT_RELEASE_POLICY) {
+  const version = assertAuthorizedProductTrainVersion(
+    'Python SDK',
+    versions['sdk-python'],
+    policy,
+  );
+  const details = productTrainVersionDetails(version, policy);
+  const registryVersion = details.channel === 'stable'
+    ? version
+    : pypiRegistryVersion(version);
+  const exactReleaseUrl = `${PYPI_PROJECT_URL}${registryVersion}/`;
+
+  return Object.freeze({
+    package: PYPI_PACKAGE_NAME,
+    version,
+    registryVersion,
+    releasePhase: policy.release_phase,
+    exactReleaseUrl,
+    exactReleaseJsonUrl:
+      `https://pypi.org/pypi/${PYPI_PACKAGE_NAME}/${registryVersion}/json`,
+    canonicalProjectUrl: PYPI_PROJECT_URL,
+    authorityUrl: policy.release_phase === 'stable'
+      ? PYPI_PROJECT_URL
+      : exactReleaseUrl,
+  });
+}
+
 function productTrainVersion(versions) {
   if (
     !versions
@@ -272,11 +301,15 @@ function buildArtifactPins(versions) {
 
 const ARTIFACT_TOKEN_PATTERN = /%%artifact\.([A-Za-z0-9]+)%%/g;
 
-function buildArtifactPinPatterns(versions) {
+function buildArtifactPinPatterns(versions, publishedVersions = versions) {
   const versionPattern = PUBLIC_ARTIFACT_SCAN_VERSION_PATTERN_SOURCE;
   const versionBoundary = '(?![0-9A-Za-z.-])';
   const pythonVersion = versions['sdk-python'];
   const pythonRegistry = pypiRegistryVersion(pythonVersion);
+  const publishedPythonVersion = publishedVersions['sdk-python'];
+  const publishedPythonRegistry = productTrainVersionDetails(publishedPythonVersion).channel === 'stable'
+    ? publishedPythonVersion
+    : pypiRegistryVersion(publishedPythonVersion);
 
   return Object.freeze([
     {
@@ -343,14 +376,31 @@ function buildArtifactPinPatterns(versions) {
       label: 'PyPI registry version',
       pattern: new RegExp(`\\b(${PYPI_REGISTRY_VERSION_PATTERN_SOURCE})${versionBoundary}`, 'g'),
       expected: pythonRegistry,
+      accepted: Object.freeze([...new Set([pythonRegistry, publishedPythonRegistry])]),
     },
   ]);
 }
 
-const ARTIFACT_PINS = buildArtifactPins(ARTIFACT_VERSIONS);
-const ARTIFACT_PIN_PATTERNS = buildArtifactPinPatterns(ARTIFACT_VERSIONS);
+const PYTHON_PACKAGE_AUTHORITY = buildPythonPackageAuthority(
+  PUBLISHED_ARTIFACT_VERSIONS,
+);
+const ARTIFACT_PINS = Object.freeze({
+  ...buildArtifactPins(ARTIFACT_VERSIONS),
+  pythonPublishedSdkVersion: PYTHON_PACKAGE_AUTHORITY.version,
+  pythonPublishedRegistryVersion: PYTHON_PACKAGE_AUTHORITY.registryVersion,
+  pythonPypiExactReleaseUrl: PYTHON_PACKAGE_AUTHORITY.exactReleaseUrl,
+  pythonPypiExactReleaseJsonUrl: PYTHON_PACKAGE_AUTHORITY.exactReleaseJsonUrl,
+  pythonPypiCanonicalProjectUrl: PYTHON_PACKAGE_AUTHORITY.canonicalProjectUrl,
+  pythonPypiAuthorityUrl: PYTHON_PACKAGE_AUTHORITY.authorityUrl,
+});
+const ARTIFACT_PIN_PATTERNS = buildArtifactPinPatterns(
+  ARTIFACT_VERSIONS,
+  PUBLISHED_ARTIFACT_VERSIONS,
+);
 
 function buildArtifactDistributionSurfaces(versions) {
+  const pythonPackageAuthority = buildPythonPackageAuthority(versions);
+
   return Object.freeze({
     'sdk-php': Object.freeze([
       Object.freeze({
@@ -383,6 +433,31 @@ function buildArtifactDistributionSurfaces(versions) {
         image: 'ghcr.io/durable-workflow/server',
         tag: versions.server,
         reference: `ghcr.io/durable-workflow/server:${versions.server}`,
+      }),
+    ]),
+    'sdk-python': Object.freeze([
+      Object.freeze({
+        surface: 'pypi_exact_release',
+        package: pythonPackageAuthority.package,
+        version: pythonPackageAuthority.version,
+        registry_version: pythonPackageAuthority.registryVersion,
+        url: pythonPackageAuthority.exactReleaseUrl,
+        json_url: pythonPackageAuthority.exactReleaseJsonUrl,
+      }),
+      Object.freeze({
+        surface: 'pypi_canonical_project_identity',
+        package: pythonPackageAuthority.package,
+        url: pythonPackageAuthority.canonicalProjectUrl,
+        authority_role: 'project_identity_only',
+      }),
+      Object.freeze({
+        surface: 'source_repository',
+        repository: 'durable-workflow/sdk-python',
+        url: 'https://github.com/durable-workflow/sdk-python',
+      }),
+      Object.freeze({
+        surface: 'api_documentation',
+        url: 'https://python.durable-workflow.com/',
       }),
     ]),
     waterline: Object.freeze([
@@ -493,6 +568,7 @@ module.exports = {
   ARTIFACT_VERSION_REQUIREMENTS,
   ARTIFACT_VERSION_SCHEMA,
   ARTIFACT_VERSIONS,
+  PYTHON_PACKAGE_AUTHORITY,
   PUBLISHED_ARTIFACT_VERSIONS,
   PUBLISHED_ARTIFACT_VERSION_SCHEMA,
   PUBLIC_ARTIFACT_SCAN_VERSION_PATTERN_SOURCE,
@@ -503,6 +579,7 @@ module.exports = {
   buildArtifactDistributionSurfaces,
   buildArtifactPinPatterns,
   buildArtifactPins,
+  buildPythonPackageAuthority,
   composerPrereleaseStability,
   pypiRegistryVersion,
   productTrainVersionDetails,

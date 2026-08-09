@@ -20,6 +20,7 @@ keywords:
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseLink';
 
 # 2.0 Prerelease Quickstart
 
@@ -225,6 +226,11 @@ one process, but they still communicate with the server through the public
 worker and control-plane APIs.
 
 1. **Install the SDK.**
+
+   During the 2.0 prerelease, use the exact <PythonPackageReleaseLink>current
+   Python SDK %%artifact.pythonPublishedSdkVersion%%
+   release</PythonPackageReleaseLink> for package metadata. The command below
+   keeps this runnable exercise on the compatibility-qualified aggregate pin.
 
 <!-- docs-example id="quickstart.python.install" -->
 ```bash
