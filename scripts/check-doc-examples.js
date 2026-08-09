@@ -254,6 +254,91 @@ function assertJsonKeys(payload, keys, context) {
   }
 }
 
+function assertRuntimeRandomGenerator(block, requirement, language, context) {
+  const variable = requirement.variable;
+
+  if (requirement.generator === 'python_uuid4_hex' && language === 'python') {
+    if (!/^import uuid$/m.test(block)) {
+      throw new Error(`${context} must import the Python standard-library uuid module`);
+    }
+    const assignment = new RegExp(
+      `^\\s*${escapeRegExp(variable)}\\s*=\\s*f?["'][^"']*` +
+        `(?:\\{)?uuid\\.uuid4\\(\\)\\.hex(?:\\})?[^"']*["']\\s*$`,
+      'm',
+    );
+    if (!assignment.test(block)) {
+      throw new Error(`${context} must derive ${variable} from uuid.uuid4().hex`);
+    }
+    return;
+  }
+
+  if (requirement.generator === 'php_random_bytes_hex' && language === 'php') {
+    const assignment = new RegExp(
+      `^\\s*\\$${escapeRegExp(variable)}\\s*=\\s*[^;]*` +
+        `bin2hex\\(random_bytes\\((\\d+)\\)\\)[^;]*;\\s*$`,
+      'm',
+    );
+    const match = block.match(assignment);
+    if (!match || Number(match[1]) < 16) {
+      throw new Error(`${context} must derive $${variable} from at least 16 random bytes`);
+    }
+    return;
+  }
+
+  throw new Error(
+    `${context} uses unsupported workflow identity generator ` +
+      `${JSON.stringify(requirement.generator)} for ${language}`,
+  );
+}
+
+function patternOccurrences(block, source, context) {
+  try {
+    return [...block.matchAll(new RegExp(source, 'g'))].length;
+  } catch (error) {
+    throw new Error(`${context} has invalid workflow identity pattern: ${error.message}`);
+  }
+}
+
+function assertWorkflowIdentity(block, requirement, language, context) {
+  const supportedIntents = new Set([
+    'runnable_first_start',
+    'intentional_fixed_semantics',
+  ]);
+  if (!supportedIntents.has(requirement.intent)) {
+    throw new Error(`${context} has unknown workflow identity intent ${JSON.stringify(requirement.intent)}`);
+  }
+
+  if (requirement.intent === 'runnable_first_start') {
+    if (!requirement.variable) {
+      throw new Error(`${context} must declare its generated workflow ID variable`);
+    }
+    assertRuntimeRandomGenerator(block, requirement, language, context);
+    if (!(requirement.references || []).length) {
+      throw new Error(`${context} must declare generated-ID reference requirements`);
+    }
+    for (const reference of requirement.references) {
+      if (!reference.pattern || !Number.isInteger(reference.minimum) || reference.minimum < 1) {
+        throw new Error(`${context} must declare valid generated-ID reference requirements`);
+      }
+      if (patternOccurrences(block, reference.pattern, context) < reference.minimum) {
+        throw new Error(`${context} does not reuse its generated workflow ID`);
+      }
+    }
+    return;
+  }
+
+  if (!requirement.fixedId || requirement.generator || requirement.variable) {
+    throw new Error(`${context} must declare only fixedId for intentional fixed-ID semantics`);
+  }
+  const minimum = requirement.minimumOccurrences;
+  if (!Number.isInteger(minimum) || minimum < 1) {
+    throw new Error(`${context} must declare fixed-ID occurrence requirements`);
+  }
+  if (patternOccurrences(block, quoted(requirement.fixedId), context) < minimum) {
+    throw new Error(`${context} must retain its intentional fixed workflow ID`);
+  }
+}
+
 function checkExample(example, quickstartContract, examplesById) {
   const docPath = path.join(docsDir, example.path);
   const context = `docs/${example.path}#${example.id}`;
@@ -322,6 +407,10 @@ function checkExample(example, quickstartContract, examplesById) {
       example.requiredJsonKeys,
       context
     );
+  }
+
+  if (example.workflowIdentity) {
+    assertWorkflowIdentity(block, example.workflowIdentity, language, context);
   }
 }
 

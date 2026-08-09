@@ -69,6 +69,8 @@ Here is a complete Python program that defines a workflow with one activity, sta
 <!-- docs-example id="python.quickstart.worker" -->
 ```python
 import asyncio
+import uuid
+
 from durable_workflow import Client, Worker, workflow, activity
 
 @activity.defn(name="greet")
@@ -82,11 +84,13 @@ class GreeterWorkflow:
         return result
 
 async def main():
+    workflow_id = f"greeting-{uuid.uuid4().hex}"
+
     async with Client("http://localhost:8080", token="dev-token", namespace="default") as client:
         handle = await client.start_workflow(
             workflow_type="greeter",
             task_queue="default",
-            workflow_id="greeting-1",
+            workflow_id=workflow_id,
             input=["world"],
         )
 
@@ -97,7 +101,7 @@ async def main():
             activities=[greet],
         )
 
-        await worker.run_until(workflow_id="greeting-1", timeout=30.0)
+        await worker.run_until(workflow_id=workflow_id, timeout=30.0)
         result = await handle.result(timeout=10.0)
 
     print(result)  # {"greeting": "Hello, world!", "length": 5}
@@ -1086,19 +1090,23 @@ await handle.delete()
 
 For scripts, notebooks, and non-async contexts, use the synchronous wrapper:
 
+<!-- docs-example id="python.sync-client" -->
 ```python
+import uuid
+
 from durable_workflow.sync import Client as SyncClient
 
 client = SyncClient("http://localhost:8080", token="secret")
+workflow_id = f"sync-greeting-{uuid.uuid4().hex}"
 
 handle = client.start_workflow(
     workflow_type="greeter",
     task_queue="default",
-    workflow_id="sync-greeting-1",
+    workflow_id=workflow_id,
     input=["world"],
 )
 
-execution = client.describe_workflow("sync-greeting-1")
+execution = client.describe_workflow(workflow_id)
 print(execution.status)
 ```
 
@@ -1126,6 +1134,7 @@ The SDK maps server error codes to typed Python exceptions:
 | `Unauthorized` | Authentication failed |
 | `ServerError` | Server returned an unexpected error |
 
+<!-- docs-example id="python.duplicate-start-recovery" -->
 ```python
 from durable_workflow import WorkflowNotFound, WorkflowAlreadyStarted
 

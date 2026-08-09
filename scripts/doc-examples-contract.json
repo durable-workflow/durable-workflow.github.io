@@ -85,6 +85,17 @@
         "$handle->query(",
         "$handle->result("
       ],
+      "workflowIdentity": {
+        "intent": "runnable_first_start",
+        "generator": "php_random_bytes_hex",
+        "variable": "workflowId",
+        "references": [
+          {
+            "pattern": "\\bworkflowId\\s*:\\s*\\$workflowId\\b",
+            "minimum": 1
+          }
+        ]
+      },
       "localConnection": {
         "hostingBranch": "standalone_server_sqlite",
         "shape": "php_token_authentication"
@@ -132,9 +143,50 @@
         "await worker.run_until(",
         "await handle.result("
       ],
+      "workflowIdentity": {
+        "intent": "runnable_first_start",
+        "generator": "python_uuid4_hex",
+        "variable": "workflow_id",
+        "references": [
+          {
+            "pattern": "\\bworkflow_id\\s*=\\s*workflow_id\\b",
+            "minimum": 2
+          }
+        ]
+      },
       "localConnection": {
         "hostingBranch": "standalone_server_sqlite",
         "shape": "python_client"
+      }
+    },
+    {
+      "id": "python.sync-client",
+      "path": "polyglot/python.md",
+      "language": "python",
+      "workflowIdentity": {
+        "intent": "runnable_first_start",
+        "generator": "python_uuid4_hex",
+        "variable": "workflow_id",
+        "references": [
+          {
+            "pattern": "\\bworkflow_id\\s*=\\s*workflow_id\\b",
+            "minimum": 1
+          },
+          {
+            "pattern": "\\.describe_workflow\\(\\s*workflow_id\\b",
+            "minimum": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "python.duplicate-start-recovery",
+      "path": "polyglot/python.md",
+      "language": "python",
+      "workflowIdentity": {
+        "intent": "intentional_fixed_semantics",
+        "fixedId": "existing-id",
+        "minimumOccurrences": 2
       }
     },
     {

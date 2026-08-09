@@ -78,9 +78,10 @@ $client = new Client(
     namespace: 'default',
 );
 
+$workflowId = 'order-'.bin2hex(random_bytes(16));
 $handle = $client->startWorkflow(
     workflowType: 'orders.process',
-    workflowId: 'order-1001',
+    workflowId: $workflowId,
     taskQueue: 'orders',
     input: [['order_id' => '1001']],
 );
