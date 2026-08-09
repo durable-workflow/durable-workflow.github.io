@@ -104,9 +104,6 @@ async function assertCratesIoPublicationUsesRegistryAuthority() {
   const fetcher = async () => Buffer.from(liveQuickstartFixture);
   const packageFetcher = async url => {
     packageUrls.push(url.href);
-    if (url.hostname === 'crates.io') {
-      throw new Error('simulated crates.io HTML/WAF response');
-    }
     return Buffer.from('published package');
   };
   const registryResponse = release => Buffer.from(JSON.stringify({version: release}));
@@ -125,8 +122,13 @@ async function assertCratesIoPublicationUsesRegistryAuthority() {
   });
 
   assert(
-    !packageUrls.includes(rustIdentity.package_url),
-    'Rust publication verification must not dereference the human-facing crates.io link',
+    packageUrls.includes(rustIdentity.package_url),
+    'post-deploy verification must independently check the human-facing Rust link',
+  );
+  assert.strictEqual(
+    new URL(rustIdentity.package_url).hostname,
+    'docs.rs',
+    'the qualified Rust reader link must use its reachable exact docs.rs release page',
   );
   assert.deepStrictEqual(
     registryUrls,
@@ -134,6 +136,43 @@ async function assertCratesIoPublicationUsesRegistryAuthority() {
       `https://crates.io/api/v1/crates/${rustIdentity.crate}/${rustIdentity.version}`,
     ],
     'Rust publication verification must query the exact crates.io registry release',
+  );
+
+  let registryPassedBeforeReaderFailure = false;
+  await assert.rejects(
+    () => verifyLiveQuickstart('https://docs.example.test', quickstartContract, {
+      fetcher,
+      packageFetcher: async url => {
+        if (url.href === rustIdentity.package_url) {
+          throw new Error('simulated broken reader destination');
+        }
+        return Buffer.from('published package');
+      },
+      registryFetcher: async () => {
+        registryPassedBeforeReaderFailure = true;
+        return registryResponse({
+          crate: rustIdentity.crate,
+          num: rustIdentity.version,
+          yanked: false,
+        });
+      },
+    }),
+    /qualified sdk-rust reader link .* is unavailable/,
+    'a passing exact registry release must not hide a broken rendered Rust destination',
+  );
+  assert(
+    registryPassedBeforeReaderFailure,
+    'the broken-reader regression must exercise a passing exact registry assertion',
+  );
+
+  await assert.rejects(
+    () => verifyLiveQuickstart('https://docs.example.test', quickstartContract, {
+      fetcher,
+      packageFetcher,
+      registryFetcher: async () => Buffer.from('<html>registry page</html>'),
+    }),
+    /crates.io returned invalid JSON/,
+    'registry-page HTML must not count as Rust publication authority',
   );
 
   await assert.rejects(

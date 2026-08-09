@@ -160,7 +160,7 @@ function assertPublicArtifactPins(contract) {
   assertEqual(artifacts['sdk-python'] && artifacts['sdk-python'].install_command, ARTIFACT_PINS.pythonPipInstallCommand, 'Python SDK install command');
   assertEqual(artifacts['sdk-rust'] && artifacts['sdk-rust'].version, ARTIFACT_VERSIONS['sdk-rust'], 'Rust SDK artifact version');
   assertEqual(artifacts['sdk-rust'] && artifacts['sdk-rust'].package_url, ARTIFACT_PINS.rustPackageUrl, 'Rust SDK package URL');
-  assertEqual(artifacts['sdk-rust'] && artifacts['sdk-rust'].crate, 'durable-workflow', 'Rust SDK crate name');
+  assertEqual(artifacts['sdk-rust'] && artifacts['sdk-rust'].crate, ARTIFACT_PINS.rustCrate, 'Rust SDK crate name');
   assertEqual(artifacts['sdk-rust'] && artifacts['sdk-rust'].install_command, ARTIFACT_PINS.rustCargoAddCommand, 'Rust SDK install command');
   assertEqual(artifacts.workflow && artifacts.workflow.version, ARTIFACT_VERSIONS.workflow, 'Workflow artifact version');
   assertEqual(artifacts.workflow && artifacts.workflow.package_url, ARTIFACT_PINS.workflowPackageUrl, 'Workflow package URL');

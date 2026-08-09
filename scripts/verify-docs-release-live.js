@@ -197,6 +197,18 @@ async function verifyQualifiedPackagePublication(artifact, identity, options = {
   }
 }
 
+async function verifyQualifiedPackageLinkReachability(artifact, identity, options = {}) {
+  const packageFetcher = options.packageFetcher || fetchBody;
+
+  try {
+    await packageFetcher(new URL(identity.package_url));
+  } catch (error) {
+    throw new Error(
+      `qualified ${artifact} reader link ${identity.package_url} is unavailable: ${error.message}`,
+    );
+  }
+}
+
 function assertLiveQuickstartPage(html, contract) {
   const hrefs = htmlHrefs(html);
   const qualificationDate = contract.qualified_tuple?.qualified_on;
@@ -226,12 +238,21 @@ async function verifyLiveQuickstart(baseUrl, contract, options = {}) {
   const html = (await fetcher(quickstartUrl)).toString('utf8');
   assertLiveQuickstartPage(html, contract);
 
-  await Promise.all(Object.entries(contract.artifacts || {}).map(
+  const publicationAssertions = Object.entries(contract.artifacts || {}).map(
     ([artifact, identity]) => verifyQualifiedPackagePublication(artifact, identity, {
       packageFetcher,
       registryFetcher,
     }),
-  ));
+  );
+  const rustIdentity = contract.artifacts?.['sdk-rust'];
+
+  if (rustIdentity) {
+    publicationAssertions.push(
+      verifyQualifiedPackageLinkReachability('sdk-rust', rustIdentity, {packageFetcher}),
+    );
+  }
+
+  await Promise.all(publicationAssertions);
 }
 
 async function verifyLiveArtifacts(options = {}) {
@@ -320,6 +341,7 @@ module.exports = {
   assertReleaseAuditAuthority,
   cratesIoExactVersionUrl,
   qualifiedPackageUrls,
+  verifyQualifiedPackageLinkReachability,
   verifyQualifiedPackagePublication,
   verifyLiveQuickstart,
   verifyLiveArtifacts,

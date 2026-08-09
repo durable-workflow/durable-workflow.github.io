@@ -1572,7 +1572,7 @@ function applyQuickstartArtifactPins(
   update('artifacts.sdk-python', artifacts['sdk-python'], 'install_command', pins.pythonPipInstallCommand);
   update('artifacts.sdk-rust', artifacts['sdk-rust'], 'version', versions['sdk-rust']);
   update('artifacts.sdk-rust', artifacts['sdk-rust'], 'package_url', pins.rustPackageUrl);
-  update('artifacts.sdk-rust', artifacts['sdk-rust'], 'crate', 'durable-workflow');
+  update('artifacts.sdk-rust', artifacts['sdk-rust'], 'crate', pins.rustCrate);
   update('artifacts.sdk-rust', artifacts['sdk-rust'], 'install_command', pins.rustCargoAddCommand);
   update('artifacts.workflow', artifacts.workflow, 'version', versions.workflow);
   update('artifacts.workflow', artifacts.workflow, 'package_url', pins.workflowPackageUrl);

@@ -16,6 +16,7 @@ const PUBLIC_ARTIFACT_SCAN_VERSION_PATTERN_SOURCE =
 const PYPI_PRERELEASE_LABELS = Object.freeze({alpha: 'a', beta: 'b', rc: 'rc'});
 const PYPI_PACKAGE_NAME = 'durable-workflow';
 const PYPI_PROJECT_URL = `https://pypi.org/project/${PYPI_PACKAGE_NAME}/`;
+const RUST_CRATE_NAME = 'durable-workflow';
 const QUALIFIED_ARTIFACT_AUTHORITY_SCHEMA =
   'durable-workflow.docs.public-artifact-compatibility-evidence';
 const QUALIFIED_ARTIFACT_AUTHORITY_URL =
@@ -324,6 +325,22 @@ function buildPythonPackageAuthority(versions, policy = ARTIFACT_RELEASE_POLICY)
   });
 }
 
+function buildRustPackageAuthority(versions, policy = ARTIFACT_RELEASE_POLICY) {
+  const version = assertAuthorizedProductTrainVersion(
+    'Rust SDK',
+    versions['sdk-rust'],
+    policy,
+  );
+
+  return Object.freeze({
+    crate: RUST_CRATE_NAME,
+    version,
+    readerReleaseUrl: `https://docs.rs/crate/${RUST_CRATE_NAME}/${version}`,
+    registryReleaseUrl:
+      `https://crates.io/api/v1/crates/${RUST_CRATE_NAME}/${version}`,
+  });
+}
+
 function productTrainVersion(versions) {
   if (
     !versions
@@ -343,6 +360,7 @@ function buildArtifactPins(versions) {
     artifacts: versions,
   });
   const trainVersion = productTrainVersion(versions);
+  const rustPackageAuthority = buildRustPackageAuthority(versions);
 
   return Object.freeze({
     cliPackageUrl: `https://github.com/durable-workflow/cli/releases/tag/${versions.cli}`,
@@ -366,8 +384,9 @@ function buildArtifactPins(versions) {
     pythonPackagePin: `durable-workflow==${versions['sdk-python']}`,
     pythonPipInstallCommand: `pip install durable-workflow==${versions['sdk-python']}`,
     rustSdkVersion: versions['sdk-rust'],
-    rustPackageUrl:
-      `https://crates.io/crates/durable-workflow/${versions['sdk-rust']}`,
+    rustCrate: rustPackageAuthority.crate,
+    rustPackageUrl: rustPackageAuthority.readerReleaseUrl,
+    rustRegistryReleaseUrl: rustPackageAuthority.registryReleaseUrl,
     rustCargoAddCommand: `cargo add durable-workflow@=${versions['sdk-rust']}`,
     rustCargoRequirement: `durable-workflow = "=${versions['sdk-rust']}"`,
     rustCratesIoUrl: 'https://crates.io/crates/durable-workflow',
@@ -724,6 +743,7 @@ module.exports = {
   buildArtifactPinPatterns,
   buildArtifactPins,
   buildPythonPackageAuthority,
+  buildRustPackageAuthority,
   composerPrereleaseStability,
   pypiRegistryVersion,
   productTrainVersionDetails,

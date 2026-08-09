@@ -760,6 +760,17 @@ assert.strictEqual(
 );
 assert.strictEqual(currentArtifactPins.pythonSdkVersion, source.artifacts['sdk-python']);
 assert.strictEqual(currentArtifactPins.rustSdkVersion, source.artifacts['sdk-rust']);
+assert.strictEqual(currentArtifactPins.rustCrate, 'durable-workflow');
+assert.strictEqual(
+  currentArtifactPins.rustPackageUrl,
+  `https://docs.rs/crate/durable-workflow/${source.artifacts['sdk-rust']}`,
+  'the Rust reader destination must identify the exact qualified release',
+);
+assert.strictEqual(
+  currentArtifactPins.rustRegistryReleaseUrl,
+  `https://crates.io/api/v1/crates/durable-workflow/${source.artifacts['sdk-rust']}`,
+  'the Rust publication authority must identify the exact registry release',
+);
 assert.strictEqual(
   currentArtifactPins.rustCargoAddCommand,
   `cargo add durable-workflow@=${source.artifacts['sdk-rust']}`,
