@@ -24,6 +24,7 @@ const DEFAULT_ATTEMPTS = 30;
 const DEFAULT_RETRY_DELAY_MS = 10000;
 const REQUEST_TIMEOUT_MS = 15000;
 const LIVE_ARTIFACTS = REQUIRED_LIVE_ARTIFACT_PATHS;
+const QUICKSTART_ROUTE = '/docs/2.0/quickstart/';
 
 function sha256(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
@@ -114,11 +115,68 @@ function assertReleaseAuditAuthority(source) {
   }
 }
 
+function htmlHrefs(html) {
+  return new Set(
+    [...String(html).matchAll(/<a\b[^>]*\shref="([^"]+)"/gi)]
+      .map(match => match[1].replaceAll('&amp;', '&')),
+  );
+}
+
+function qualifiedPackageUrls(contract) {
+  return Object.entries(contract.artifacts || {}).map(([artifact, identity]) => {
+    if (typeof identity?.package_url !== 'string' || !/^https:\/\//.test(identity.package_url)) {
+      throw new Error(`quickstart contract artifacts.${artifact}.package_url is missing`);
+    }
+
+    return [artifact, identity.package_url];
+  });
+}
+
+function assertLiveQuickstartPage(html, contract) {
+  const hrefs = htmlHrefs(html);
+  const qualificationDate = contract.qualified_tuple?.qualified_on;
+
+  if (typeof qualificationDate !== 'string' || !String(html).includes(qualificationDate)) {
+    throw new Error('live 2.0 quickstart does not expose its qualified tuple date');
+  }
+
+  for (const [artifact, identity] of Object.entries(contract.artifacts || {})) {
+    if (!String(html).includes(identity.version)) {
+      throw new Error(`live 2.0 quickstart does not expose qualified ${artifact} ${identity.version}`);
+    }
+    if (!hrefs.has(identity.package_url)) {
+      throw new Error(
+        `live 2.0 quickstart does not link qualified ${artifact} package ${identity.package_url}`,
+      );
+    }
+  }
+}
+
+async function verifyLiveQuickstart(baseUrl, contract, options = {}) {
+  const fetcher = options.fetcher || fetchBody;
+  const packageFetcher = options.packageFetcher || fetchBody;
+  const quickstartUrl = new URL(QUICKSTART_ROUTE, `${baseUrl}/`);
+  quickstartUrl.searchParams.set('deploy_check', String(options.cacheKey || Date.now()));
+  const html = (await fetcher(quickstartUrl)).toString('utf8');
+  assertLiveQuickstartPage(html, contract);
+
+  await Promise.all(qualifiedPackageUrls(contract).map(async ([artifact, packageUrl]) => {
+    try {
+      await packageFetcher(new URL(packageUrl));
+    } catch (error) {
+      throw new Error(
+        `qualified ${artifact} package link ${packageUrl} is unavailable: ${error.message}`,
+      );
+    }
+  }));
+}
+
 async function verifyLiveArtifacts(options = {}) {
   const baseUrl = String(options.baseUrl || DEFAULT_BASE_URL).replace(/\/+$/, '');
   const attempts = Number(options.attempts || DEFAULT_ATTEMPTS);
   const retryDelay = Number(options.retryDelay || DEFAULT_RETRY_DELAY_MS);
   const fetcher = options.fetcher || fetchBody;
+  const packageFetcher = options.packageFetcher || (options.fetcher ? null : fetchBody);
   const repoRoot = path.join(__dirname, '..');
   const expected = Object.fromEntries(REQUIRED_LIVE_ARTIFACTS.map(artifact => [
     artifact.route,
@@ -148,9 +206,17 @@ async function verifyLiveArtifacts(options = {}) {
       }
 
       assertReleaseAuditAuthority(live['/docs-page-release-audit.json'].toString('utf8'));
+      const liveQuickstartContract = JSON.parse(
+        live['/quickstart-execution-contract.json'].toString('utf8'),
+      );
+      await verifyLiveQuickstart(baseUrl, liveQuickstartContract, {
+        cacheKey: `${Date.now()}-${attempt}`,
+        fetcher,
+        packageFetcher: packageFetcher || (async () => Buffer.from('fixture package link')),
+      });
       console.log(
-        `Live docs release artifacts match the deployed build at ${baseUrl}: ` +
-          LIVE_ARTIFACTS.join(', '),
+        `Live docs release artifacts and qualified quickstart package links match ` +
+          `the deployed build at ${baseUrl}: ${LIVE_ARTIFACTS.join(', ')}, ${QUICKSTART_ROUTE}`,
       );
       return;
     } catch (error) {
@@ -176,6 +242,10 @@ if (require.main === module) {
 
 module.exports = {
   LIVE_ARTIFACTS,
+  QUICKSTART_ROUTE,
+  assertLiveQuickstartPage,
   assertReleaseAuditAuthority,
+  qualifiedPackageUrls,
+  verifyLiveQuickstart,
   verifyLiveArtifacts,
 };

@@ -1,6 +1,8 @@
 const artifactVersionSource = require('./public-artifact-versions.json');
 const publishedArtifactVersionSource = require('./published-artifact-versions.json');
 const artifactReleasePolicySource = require('../static/public-artifact-release-policy.json');
+const artifactCompatibilityEvidenceSource =
+  require('../static/public-artifact-compatibility-evidence.json');
 
 const ARTIFACT_VERSION_SCHEMA = 'durable-workflow.docs.public-artifact-versions';
 const PUBLISHED_ARTIFACT_VERSION_SCHEMA =
@@ -14,6 +16,10 @@ const PUBLIC_ARTIFACT_SCAN_VERSION_PATTERN_SOURCE =
 const PYPI_PRERELEASE_LABELS = Object.freeze({alpha: 'a', beta: 'b', rc: 'rc'});
 const PYPI_PACKAGE_NAME = 'durable-workflow';
 const PYPI_PROJECT_URL = `https://pypi.org/project/${PYPI_PACKAGE_NAME}/`;
+const QUALIFIED_ARTIFACT_AUTHORITY_SCHEMA =
+  'durable-workflow.docs.public-artifact-compatibility-evidence';
+const QUALIFIED_ARTIFACT_AUTHORITY_URL =
+  'https://durable-workflow.com/public-artifact-compatibility-evidence.json';
 
 function readArtifactReleasePolicy(source = artifactReleasePolicySource) {
   if (!source || source.schema !== ARTIFACT_RELEASE_POLICY_SCHEMA) {
@@ -186,7 +192,80 @@ function readPublishedArtifactVersions(
   );
 }
 
-const ARTIFACT_VERSIONS = readArtifactVersions();
+function qualificationDateFromTag(tag) {
+  const match = /(?:^|-)2-0-(\d{4})(\d{2})(\d{2})(?:\/|$)/.exec(tag);
+
+  if (!match) {
+    throw new Error(
+      'qualified artifact release-plan tag must include its 2.0 qualification date',
+    );
+  }
+
+  return `${match[1]}-${match[2]}-${match[3]}`;
+}
+
+function readQualifiedArtifactTupleAuthority(
+  source = artifactCompatibilityEvidenceSource,
+  projectedVersions = readArtifactVersions(),
+) {
+  if (!source || source.schema !== QUALIFIED_ARTIFACT_AUTHORITY_SCHEMA) {
+    throw new Error(
+      'public artifact compatibility evidence must declare its versioned authority schema',
+    );
+  }
+  if (source.schema_version !== 2 || source.outcome !== 'pass') {
+    throw new Error(
+      'public artifact compatibility evidence must be a passing schema version 2 qualification',
+    );
+  }
+
+  const qualifiedVersions = readArtifactVersionMap(
+    {artifacts: source.qualified_artifact_versions},
+    'public-artifact-compatibility-evidence.json qualified_artifact_versions',
+    ARTIFACT_RELEASE_POLICY,
+  );
+  if (JSON.stringify(qualifiedVersions) !== JSON.stringify(projectedVersions)) {
+    throw new Error(
+      'public-artifact-versions.json must be an exact projection of the qualified artifact authority',
+    );
+  }
+
+  const releasePlan = source.authority?.release_plan;
+  const conformance = source.authority?.sdk_server_qualification?.evidence;
+  if (
+    typeof releasePlan?.tag !== 'string'
+    || typeof releasePlan?.source_url !== 'string'
+    || !/^https:\/\//.test(releasePlan.source_url)
+    || typeof releasePlan?.sha256 !== 'string'
+    || !/^[0-9a-f]{64}$/.test(releasePlan.sha256)
+  ) {
+    throw new Error('qualified artifact authority must bind an immutable release-plan handoff');
+  }
+  if (
+    conformance?.outcome !== 'pass'
+    || typeof conformance?.tag !== 'string'
+    || typeof conformance?.source_url !== 'string'
+    || !/^https:\/\//.test(conformance.source_url)
+    || typeof conformance?.sha256 !== 'string'
+    || !/^[0-9a-f]{64}$/.test(conformance.sha256)
+  ) {
+    throw new Error('qualified artifact authority must bind passing immutable conformance evidence');
+  }
+
+  return Object.freeze({
+    schema: source.schema,
+    schemaVersion: source.schema_version,
+    meaning: 'last_qualified_compatibility_tuple',
+    qualifiedOn: qualificationDateFromTag(releasePlan.tag),
+    authorityUrl: QUALIFIED_ARTIFACT_AUTHORITY_URL,
+    releasePlan: Object.freeze({...releasePlan}),
+    conformanceEvidence: Object.freeze({...conformance}),
+    artifactVersions: qualifiedVersions,
+  });
+}
+
+const QUALIFIED_ARTIFACT_TUPLE_AUTHORITY = readQualifiedArtifactTupleAuthority();
+const ARTIFACT_VERSIONS = QUALIFIED_ARTIFACT_TUPLE_AUTHORITY.artifactVersions;
 const PUBLISHED_ARTIFACT_VERSIONS = readPublishedArtifactVersions();
 
 function composerPrereleaseStability(version) {
@@ -266,6 +345,7 @@ function buildArtifactPins(versions) {
   const trainVersion = productTrainVersion(versions);
 
   return Object.freeze({
+    cliPackageUrl: `https://github.com/durable-workflow/cli/releases/tag/${versions.cli}`,
     cliInstallerCommand: `curl -fsSL https://durable-workflow.com/install.sh | VERSION=${versions.cli} sh`,
     cliInstallerEnv: `VERSION=${versions.cli}`,
     cliPowerShellVersion: `$env:VERSION = "${versions.cli}"`,
@@ -273,28 +353,40 @@ function buildArtifactPins(versions) {
     cliUpgradeTag: `--tag=${versions.cli}`,
     cliVersion: versions.cli,
     phpSdkVersion: versions['sdk-php'],
+    phpSdkPackageUrl:
+      `https://packagist.org/packages/durable-workflow/sdk#${versions['sdk-php']}`,
     phpSdkComposerPackage: composerPackagePin('durable-workflow/sdk', versions['sdk-php']),
     phpSdkComposerInstallCommand: `composer require ${composerPackagePin('durable-workflow/sdk', versions['sdk-php'])}`,
     productTrainVersion: trainVersion,
     releasePhase: ARTIFACT_RELEASE_POLICY.release_phase,
     pythonSdkVersion: versions['sdk-python'],
+    pythonQualifiedPackageUrl:
+      buildPythonPackageAuthority(versions).exactReleaseUrl,
     pythonRegistryVersion: pypiRegistryVersion(versions['sdk-python']),
     pythonPackagePin: `durable-workflow==${versions['sdk-python']}`,
     pythonPipInstallCommand: `pip install durable-workflow==${versions['sdk-python']}`,
     rustSdkVersion: versions['sdk-rust'],
+    rustPackageUrl:
+      `https://crates.io/crates/durable-workflow/${versions['sdk-rust']}`,
     rustCargoAddCommand: `cargo add durable-workflow@=${versions['sdk-rust']}`,
     rustCargoRequirement: `durable-workflow = "=${versions['sdk-rust']}"`,
     rustCratesIoUrl: 'https://crates.io/crates/durable-workflow',
     rustRepositoryUrl: 'https://github.com/durable-workflow/sdk-rust',
     rustDocumentationUrl: 'https://rust.durable-workflow.com/',
     serverVersion: versions.server,
+    serverPackageUrl:
+      `https://hub.docker.com/r/durableworkflow/server/tags?name=${versions.server}`,
     serverDockerHubImage: `durableworkflow/server:${versions.server}`,
     serverGhcrImage: `ghcr.io/durable-workflow/server:${versions.server}`,
     serverImageEnv: `DW_SERVER_IMAGE=durableworkflow/server:${versions.server}`,
     serverTagEnv: `DW_SERVER_TAG=${versions.server}`,
     waterlineVersion: versions.waterline,
+    waterlinePackageUrl:
+      `https://packagist.org/packages/durable-workflow/waterline#${versions.waterline}`,
     waterlineComposerPackage: composerPackagePin('durable-workflow/waterline', versions.waterline),
     workflowVersion: versions.workflow,
+    workflowPackageUrl:
+      `https://packagist.org/packages/durable-workflow/workflow#${versions.workflow}`,
     workflowComposerPackage: composerPackagePin('durable-workflow/workflow', versions.workflow),
   });
 }
@@ -384,8 +476,13 @@ function buildArtifactPinPatterns(versions, publishedVersions = versions) {
 const PYTHON_PACKAGE_AUTHORITY = buildPythonPackageAuthority(
   PUBLISHED_ARTIFACT_VERSIONS,
 );
+const QUALIFIED_PYTHON_PACKAGE_AUTHORITY = buildPythonPackageAuthority(
+  ARTIFACT_VERSIONS,
+);
 const ARTIFACT_PINS = Object.freeze({
   ...buildArtifactPins(ARTIFACT_VERSIONS),
+  qualificationAuthorityUrl: QUALIFIED_ARTIFACT_TUPLE_AUTHORITY.authorityUrl,
+  qualificationDate: QUALIFIED_ARTIFACT_TUPLE_AUTHORITY.qualifiedOn,
   pythonPublishedSdkVersion: PYTHON_PACKAGE_AUTHORITY.version,
   pythonPublishedRegistryVersion: PYTHON_PACKAGE_AUTHORITY.registryVersion,
   pythonPypiExactReleaseUrl: PYTHON_PACKAGE_AUTHORITY.exactReleaseUrl,
@@ -393,6 +490,50 @@ const ARTIFACT_PINS = Object.freeze({
   pythonPypiCanonicalProjectUrl: PYTHON_PACKAGE_AUTHORITY.canonicalProjectUrl,
   pythonPypiAuthorityUrl: PYTHON_PACKAGE_AUTHORITY.authorityUrl,
 });
+const QUALIFIED_ARTIFACT_INSTALL_SURFACE = Object.freeze([
+  Object.freeze({
+    artifact: 'server',
+    label: 'Server',
+    identity: ARTIFACT_PINS.serverDockerHubImage,
+    packageUrl: ARTIFACT_PINS.serverPackageUrl,
+  }),
+  Object.freeze({
+    artifact: 'cli',
+    label: 'CLI',
+    identity: ARTIFACT_PINS.cliInstallerEnv,
+    packageUrl: ARTIFACT_PINS.cliPackageUrl,
+  }),
+  Object.freeze({
+    artifact: 'workflow',
+    label: 'Workflow',
+    identity: ARTIFACT_PINS.workflowComposerPackage,
+    packageUrl: ARTIFACT_PINS.workflowPackageUrl,
+  }),
+  Object.freeze({
+    artifact: 'waterline',
+    label: 'Waterline',
+    identity: ARTIFACT_PINS.waterlineComposerPackage,
+    packageUrl: ARTIFACT_PINS.waterlinePackageUrl,
+  }),
+  Object.freeze({
+    artifact: 'sdk-php',
+    label: 'PHP SDK',
+    identity: ARTIFACT_PINS.phpSdkComposerPackage,
+    packageUrl: ARTIFACT_PINS.phpSdkPackageUrl,
+  }),
+  Object.freeze({
+    artifact: 'sdk-python',
+    label: 'Python SDK',
+    identity: ARTIFACT_PINS.pythonPackagePin,
+    packageUrl: ARTIFACT_PINS.pythonQualifiedPackageUrl,
+  }),
+  Object.freeze({
+    artifact: 'sdk-rust',
+    label: 'Rust SDK',
+    identity: ARTIFACT_PINS.rustCargoRequirement,
+    packageUrl: ARTIFACT_PINS.rustPackageUrl,
+  }),
+]);
 const ARTIFACT_PIN_PATTERNS = buildArtifactPinPatterns(
   ARTIFACT_VERSIONS,
   PUBLISHED_ARTIFACT_VERSIONS,
@@ -569,6 +710,9 @@ module.exports = {
   ARTIFACT_VERSION_SCHEMA,
   ARTIFACT_VERSIONS,
   PYTHON_PACKAGE_AUTHORITY,
+  QUALIFIED_ARTIFACT_TUPLE_AUTHORITY,
+  QUALIFIED_ARTIFACT_INSTALL_SURFACE,
+  QUALIFIED_PYTHON_PACKAGE_AUTHORITY,
   PUBLISHED_ARTIFACT_VERSIONS,
   PUBLISHED_ARTIFACT_VERSION_SCHEMA,
   PUBLIC_ARTIFACT_SCAN_VERSION_PATTERN_SOURCE,
@@ -587,6 +731,7 @@ module.exports = {
   isAuthorizedProductTrainVersion,
   readArtifactReleasePolicy,
   readArtifactVersions,
+  readQualifiedArtifactTupleAuthority,
   readPublishedArtifactVersions,
   replaceArtifactTokens,
   resolveArtifactAlias,

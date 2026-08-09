@@ -17,6 +17,7 @@ const {
   isAuthorizedProductTrainVersion,
   readArtifactVersions,
   readPublishedArtifactVersions,
+  readQualifiedArtifactTupleAuthority,
 } = require('./public-artifact-versions');
 const {
   ledgerSource: platformConformanceLedgerSource,
@@ -1319,6 +1320,7 @@ function generatedPublicArtifactTupleSources(
     'static/quickstart-execution-contract.json': quickstartExecutionContractSource(
       quickstartSource,
       versions,
+      compatibilityEvidence,
     ),
     'static/compatibility-contract.json': compatibilityContractSource(
       compatibilitySource,
@@ -1505,8 +1507,16 @@ function byId(entries, label) {
   };
 }
 
-function applyQuickstartArtifactPins(contract, versions) {
+function applyQuickstartArtifactPins(
+  contract,
+  versions,
+  compatibilityEvidence = artifactCompatibilityEvidenceSource,
+) {
   const pins = buildArtifactPins(versions);
+  const qualification = readQualifiedArtifactTupleAuthority(
+    compatibilityEvidence,
+    versions,
+  );
   let changed = false;
   const artifacts = contract.artifacts || {};
 
@@ -1523,22 +1533,52 @@ function applyQuickstartArtifactPins(contract, versions) {
     changed = true;
   }
 
+  update('quickstart contract', contract, 'version', 3);
+  const qualifiedTuple = {
+    meaning: qualification.meaning,
+    qualified_on: qualification.qualifiedOn,
+    authority: {
+      schema: qualification.schema,
+      schema_version: qualification.schemaVersion,
+      url: qualification.authorityUrl,
+    },
+    release_handoff: {
+      release_plan_tag: qualification.releasePlan.tag,
+      release_plan_url: qualification.releasePlan.source_url,
+      release_plan_sha256: qualification.releasePlan.sha256,
+      conformance_evidence_tag: qualification.conformanceEvidence.tag,
+      conformance_evidence_url: qualification.conformanceEvidence.source_url,
+      conformance_evidence_sha256: qualification.conformanceEvidence.sha256,
+    },
+  };
+  if (JSON.stringify(contract.qualified_tuple) !== JSON.stringify(qualifiedTuple)) {
+    contract.qualified_tuple = qualifiedTuple;
+    changed = true;
+  }
+
   update('artifacts.server', artifacts.server, 'version', versions.server);
+  update('artifacts.server', artifacts.server, 'package_url', pins.serverPackageUrl);
   update('artifacts.server', artifacts.server, 'reference', pins.serverDockerHubImage);
   update('artifacts.cli', artifacts.cli, 'version', versions.cli);
+  update('artifacts.cli', artifacts.cli, 'package_url', pins.cliPackageUrl);
   update('artifacts.cli', artifacts.cli, 'install_command', pins.cliInstallerCommand);
   update('artifacts.sdk-php', artifacts['sdk-php'], 'version', versions['sdk-php']);
+  update('artifacts.sdk-php', artifacts['sdk-php'], 'package_url', pins.phpSdkPackageUrl);
   update('artifacts.sdk-php', artifacts['sdk-php'], 'composer_package', pins.phpSdkComposerPackage);
   update('artifacts.sdk-php', artifacts['sdk-php'], 'install_command', pins.phpSdkComposerInstallCommand);
   update('artifacts.sdk-python', artifacts['sdk-python'], 'version', versions['sdk-python']);
+  update('artifacts.sdk-python', artifacts['sdk-python'], 'package_url', pins.pythonQualifiedPackageUrl);
   update('artifacts.sdk-python', artifacts['sdk-python'], 'pip_package', pins.pythonPackagePin);
   update('artifacts.sdk-python', artifacts['sdk-python'], 'install_command', pins.pythonPipInstallCommand);
   update('artifacts.sdk-rust', artifacts['sdk-rust'], 'version', versions['sdk-rust']);
+  update('artifacts.sdk-rust', artifacts['sdk-rust'], 'package_url', pins.rustPackageUrl);
   update('artifacts.sdk-rust', artifacts['sdk-rust'], 'crate', 'durable-workflow');
   update('artifacts.sdk-rust', artifacts['sdk-rust'], 'install_command', pins.rustCargoAddCommand);
   update('artifacts.workflow', artifacts.workflow, 'version', versions.workflow);
+  update('artifacts.workflow', artifacts.workflow, 'package_url', pins.workflowPackageUrl);
   update('artifacts.workflow', artifacts.workflow, 'composer_constraint', pins.workflowComposerPackage);
   update('artifacts.waterline', artifacts.waterline, 'version', versions.waterline);
+  update('artifacts.waterline', artifacts.waterline, 'package_url', pins.waterlinePackageUrl);
   update('artifacts.waterline', artifacts.waterline, 'composer_constraint', pins.waterlineComposerPackage);
 
   const hostingBranch = byId(contract.hosting_branches, 'hosting branch');
@@ -1653,9 +1693,13 @@ function applyQuickstartArtifactPins(contract, versions) {
   return changed;
 }
 
-function quickstartExecutionContractSource(currentSource, versions) {
+function quickstartExecutionContractSource(
+  currentSource,
+  versions,
+  compatibilityEvidence = artifactCompatibilityEvidenceSource,
+) {
   const contract = JSON.parse(currentSource);
-  applyQuickstartArtifactPins(contract, versions);
+  applyQuickstartArtifactPins(contract, versions, compatibilityEvidence);
   return `${JSON.stringify(contract, null, 2)}\n`;
 }
 

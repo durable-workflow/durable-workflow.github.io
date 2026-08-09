@@ -4,6 +4,7 @@ const {
   ARTIFACT_RELEASE_POLICY,
   PUBLISHED_ARTIFACT_VERSIONS,
   PYTHON_PACKAGE_AUTHORITY,
+  QUALIFIED_PYTHON_PACKAGE_AUTHORITY,
   buildPythonPackageAuthority,
 } = require('./public-artifact-versions');
 const {
@@ -57,6 +58,22 @@ assert.doesNotThrow(() => assertCurrentDocSource(
   'docs/example.md',
   '<PythonPackageReleaseLink>Current Python %%artifact.pythonPublishedSdkVersion%% release</PythonPackageReleaseLink>',
 ));
+assert.doesNotThrow(() => assertCurrentDocSource(
+  'docs/quickstart.md',
+  '<PythonPackageReleaseLink authority="qualified">Qualified Python %%artifact.pythonSdkVersion%% release</PythonPackageReleaseLink>',
+  QUALIFIED_PYTHON_PACKAGE_AUTHORITY,
+  'qualified',
+));
+assert.throws(
+  () => assertCurrentDocSource(
+    'docs/quickstart.md',
+    '<PythonPackageReleaseLink>Current Python %%artifact.pythonPublishedSdkVersion%% release</PythonPackageReleaseLink>',
+    QUALIFIED_PYTHON_PACKAGE_AUTHORITY,
+    'qualified',
+  ),
+  /centralized Python package authority component/,
+  'the quickstart must opt into the qualified release link explicitly',
+);
 assert.throws(
   () => assertCurrentDocSource(
     'docs/example.md',

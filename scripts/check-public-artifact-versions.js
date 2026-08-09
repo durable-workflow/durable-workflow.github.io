@@ -18,6 +18,7 @@ const {
   readArtifactReleasePolicy,
   readArtifactVersions,
   readPublishedArtifactVersions,
+  readQualifiedArtifactTupleAuthority,
 } = require('./public-artifact-versions');
 const {
   artifactCompatibilityEvidenceSource,
@@ -135,6 +136,35 @@ assert.deepStrictEqual(
   ).artifactVersions,
   source.artifacts,
   'public compatibility evidence must bind the exact selected artifact tuple',
+);
+assert.deepStrictEqual(
+  readQualifiedArtifactTupleAuthority(
+    artifactCompatibilityEvidenceSource,
+    source.artifacts,
+  ).artifactVersions,
+  source.artifacts,
+  'the active install tuple must derive from the versioned compatibility authority',
+);
+const failedQuickstartAuthority = JSON.parse(
+  JSON.stringify(artifactCompatibilityEvidenceSource),
+);
+failedQuickstartAuthority.outcome = 'fail';
+assert.throws(
+  () => readQualifiedArtifactTupleAuthority(failedQuickstartAuthority, source.artifacts),
+  /passing schema version 2 qualification/,
+  'a non-passing handoff must not refresh active quickstart identities',
+);
+const staleQuickstartProjection = {
+  ...source.artifacts,
+  cli: incrementPrereleaseVersion(source.artifacts.cli),
+};
+assert.throws(
+  () => readQualifiedArtifactTupleAuthority(
+    artifactCompatibilityEvidenceSource,
+    staleQuickstartProjection,
+  ),
+  /exact projection of the qualified artifact authority/,
+  'a manually edited active version projection must fail closed',
 );
 const authorizationWithoutQualification = JSON.parse(
   JSON.stringify(artifactCompatibilityEvidenceSource),

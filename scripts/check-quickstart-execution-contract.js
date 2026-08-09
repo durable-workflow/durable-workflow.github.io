@@ -6,6 +6,8 @@ const path = require('path');
 const {
   ARTIFACT_PINS,
   ARTIFACT_VERSIONS,
+  QUALIFIED_ARTIFACT_INSTALL_SURFACE,
+  QUALIFIED_ARTIFACT_TUPLE_AUTHORITY,
   replaceArtifactTokens,
 } = require('./public-artifact-versions');
 
@@ -143,22 +145,77 @@ function assertPublicArtifactPins(contract) {
   const artifacts = contract.artifacts || {};
 
   assertEqual(artifacts.server && artifacts.server.version, ARTIFACT_VERSIONS.server, 'server artifact version');
+  assertEqual(artifacts.server && artifacts.server.package_url, ARTIFACT_PINS.serverPackageUrl, 'server package URL');
   assertEqual(artifacts.server && artifacts.server.reference, ARTIFACT_PINS.serverDockerHubImage, 'server image reference');
   assertEqual(artifacts.cli && artifacts.cli.version, ARTIFACT_VERSIONS.cli, 'CLI artifact version');
+  assertEqual(artifacts.cli && artifacts.cli.package_url, ARTIFACT_PINS.cliPackageUrl, 'CLI package URL');
   assertEqual(artifacts.cli && artifacts.cli.install_command, ARTIFACT_PINS.cliInstallerCommand, 'CLI install command');
   assertEqual(artifacts['sdk-php'] && artifacts['sdk-php'].version, ARTIFACT_VERSIONS['sdk-php'], 'PHP SDK artifact version');
+  assertEqual(artifacts['sdk-php'] && artifacts['sdk-php'].package_url, ARTIFACT_PINS.phpSdkPackageUrl, 'PHP SDK package URL');
   assertEqual(artifacts['sdk-php'] && artifacts['sdk-php'].composer_package, ARTIFACT_PINS.phpSdkComposerPackage, 'PHP SDK Composer package pin');
   assertEqual(artifacts['sdk-php'] && artifacts['sdk-php'].install_command, ARTIFACT_PINS.phpSdkComposerInstallCommand, 'PHP SDK install command');
   assertEqual(artifacts['sdk-python'] && artifacts['sdk-python'].version, ARTIFACT_VERSIONS['sdk-python'], 'Python SDK artifact version');
+  assertEqual(artifacts['sdk-python'] && artifacts['sdk-python'].package_url, ARTIFACT_PINS.pythonQualifiedPackageUrl, 'Python SDK package URL');
   assertEqual(artifacts['sdk-python'] && artifacts['sdk-python'].pip_package, ARTIFACT_PINS.pythonPackagePin, 'Python SDK package pin');
   assertEqual(artifacts['sdk-python'] && artifacts['sdk-python'].install_command, ARTIFACT_PINS.pythonPipInstallCommand, 'Python SDK install command');
   assertEqual(artifacts['sdk-rust'] && artifacts['sdk-rust'].version, ARTIFACT_VERSIONS['sdk-rust'], 'Rust SDK artifact version');
+  assertEqual(artifacts['sdk-rust'] && artifacts['sdk-rust'].package_url, ARTIFACT_PINS.rustPackageUrl, 'Rust SDK package URL');
   assertEqual(artifacts['sdk-rust'] && artifacts['sdk-rust'].crate, 'durable-workflow', 'Rust SDK crate name');
   assertEqual(artifacts['sdk-rust'] && artifacts['sdk-rust'].install_command, ARTIFACT_PINS.rustCargoAddCommand, 'Rust SDK install command');
   assertEqual(artifacts.workflow && artifacts.workflow.version, ARTIFACT_VERSIONS.workflow, 'Workflow artifact version');
+  assertEqual(artifacts.workflow && artifacts.workflow.package_url, ARTIFACT_PINS.workflowPackageUrl, 'Workflow package URL');
   assertEqual(artifacts.workflow && artifacts.workflow.composer_constraint, ARTIFACT_PINS.workflowComposerPackage, 'Workflow Composer constraint');
   assertEqual(artifacts.waterline && artifacts.waterline.version, ARTIFACT_VERSIONS.waterline, 'Waterline artifact version');
+  assertEqual(artifacts.waterline && artifacts.waterline.package_url, ARTIFACT_PINS.waterlinePackageUrl, 'Waterline package URL');
   assertEqual(artifacts.waterline && artifacts.waterline.composer_constraint, ARTIFACT_PINS.waterlineComposerPackage, 'Waterline Composer constraint');
+}
+
+function assertQualifiedTupleAuthority(contract) {
+  const authority = QUALIFIED_ARTIFACT_TUPLE_AUTHORITY;
+  assertDeepEqual(
+    contract.qualified_tuple,
+    {
+      meaning: authority.meaning,
+      qualified_on: authority.qualifiedOn,
+      authority: {
+        schema: authority.schema,
+        schema_version: authority.schemaVersion,
+        url: authority.authorityUrl,
+      },
+      release_handoff: {
+        release_plan_tag: authority.releasePlan.tag,
+        release_plan_url: authority.releasePlan.source_url,
+        release_plan_sha256: authority.releasePlan.sha256,
+        conformance_evidence_tag: authority.conformanceEvidence.tag,
+        conformance_evidence_url: authority.conformanceEvidence.source_url,
+        conformance_evidence_sha256: authority.conformanceEvidence.sha256,
+      },
+    },
+    'quickstart qualified tuple authority',
+  );
+}
+
+function assertQualifiedTupleRenderedSurface(contract, renderedQuickstart) {
+  if (!renderedQuickstart.includes(contract.qualified_tuple.qualified_on)) {
+    fail('rendered quickstart must expose the qualification date from its authority');
+  }
+  if (!renderedQuickstart.includes('<QualifiedArtifactTuple />')) {
+    fail('quickstart must render the machine-owned qualified artifact tuple');
+  }
+
+  assertEqual(
+    QUALIFIED_ARTIFACT_INSTALL_SURFACE.length,
+    Object.keys(ARTIFACT_VERSIONS).length,
+    'qualified artifact install surface size',
+  );
+  for (const row of QUALIFIED_ARTIFACT_INSTALL_SURFACE) {
+    if (row.packageUrl !== contract.artifacts[row.artifact]?.package_url) {
+      fail(`qualified ${row.artifact} component package URL must match its contract`);
+    }
+    if (!row.identity.includes(ARTIFACT_VERSIONS[row.artifact])) {
+      fail(`qualified ${row.artifact} component identity must include its exact version`);
+    }
+  }
 }
 
 function assertScenarioShape(scenario, hostingBranches, personas) {
@@ -444,13 +501,15 @@ function main() {
   const renderedQuickstart = replaceArtifactTokens(quickstart, 'docs/quickstart.md');
 
   assertEqual(contract.schema, EXPECTED_SCHEMA, 'quickstart execution contract schema');
-  assertEqual(contract.version, 2, 'quickstart execution contract version');
+  assertEqual(contract.version, 3, 'quickstart execution contract version');
   assertEqual(contract.release_status, '2.0_prerelease', 'quickstart execution contract release_status');
   assertEqual(contract.authority_doc, 'docs/platform-conformance.md', 'quickstart execution contract authority_doc');
   assertEqual(contract.onboarding_doc, 'docs/quickstart.md', 'quickstart execution contract onboarding_doc');
 
   assertDocsGuard(contract);
+  assertQualifiedTupleAuthority(contract);
   assertPublicArtifactPins(contract);
+  assertQualifiedTupleRenderedSurface(contract, renderedQuickstart);
   assertContractCoverage(contract);
   assertPythonInstallContract(contract);
   assertRustInstallContract(contract);

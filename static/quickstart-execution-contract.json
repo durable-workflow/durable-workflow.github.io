@@ -1,12 +1,29 @@
 {
   "schema": "durable-workflow.docs.v2.quickstart-execution-contract",
-  "version": 2,
+  "version": 3,
   "release_status": "2.0_prerelease",
   "authority_doc": "docs/platform-conformance.md",
   "authority_url": "https://durable-workflow.com/docs/2.0/platform-conformance/",
   "onboarding_doc": "docs/quickstart.md",
   "onboarding_url": "https://durable-workflow.com/docs/2.0/quickstart/",
   "contract_url": "https://durable-workflow.com/quickstart-execution-contract.json",
+  "qualified_tuple": {
+    "meaning": "last_qualified_compatibility_tuple",
+    "qualified_on": "2026-08-01",
+    "authority": {
+      "schema": "durable-workflow.docs.public-artifact-compatibility-evidence",
+      "schema_version": 2,
+      "url": "https://durable-workflow.com/public-artifact-compatibility-evidence.json"
+    },
+    "release_handoff": {
+      "release_plan_tag": "release-plan/current-2-0-20260801",
+      "release_plan_url": "https://github.com/durable-workflow/.github/releases/download/release-plan%2Fcurrent-2-0-20260801/release-plan.json",
+      "release_plan_sha256": "d4f976b427939b50cd3ac590df3664d76d2b9a0018a86ce2fc16dcd528945ea8",
+      "conformance_evidence_tag": "beta-conformance/rc-current-2-0-20260801/30708509976.1",
+      "conformance_evidence_url": "https://github.com/durable-workflow/.github/releases/download/beta-conformance/rc-current-2-0-20260801/30708509976.1/suite-result.json",
+      "conformance_evidence_sha256": "ac78fbd51be97afdd1e307b7409d9c23f3d9eefdf7cae7890cae5eff5ba542c5"
+    }
+  },
   "default_docs_guard": {
     "stable_default_docs_version": "1.x",
     "explicit_prerelease_docs_version": "2.0",
@@ -27,23 +44,27 @@
     "server": {
       "channel": "docker_hub",
       "version": "2.0.0-rc.13",
+      "package_url": "https://hub.docker.com/r/durableworkflow/server/tags?name=2.0.0-rc.13",
       "image": "durableworkflow/server",
       "reference": "durableworkflow/server:2.0.0-rc.13"
     },
     "cli": {
       "channel": "durable_workflow_public_installer",
       "version": "2.0.0-rc.12",
+      "package_url": "https://github.com/durable-workflow/cli/releases/tag/2.0.0-rc.12",
       "install_command": "curl -fsSL https://durable-workflow.com/install.sh | VERSION=2.0.0-rc.12 sh"
     },
     "sdk-php": {
       "channel": "packagist",
       "version": "2.0.0-rc.6",
+      "package_url": "https://packagist.org/packages/durable-workflow/sdk#2.0.0-rc.6",
       "composer_package": "durable-workflow/sdk:2.0.0-rc.6@rc",
       "install_command": "composer require durable-workflow/sdk:2.0.0-rc.6@rc"
     },
     "sdk-python": {
       "channel": "pypi",
       "version": "2.0.0-rc.8",
+      "package_url": "https://pypi.org/project/durable-workflow/2.0.0rc8/",
       "pip_package": "durable-workflow==2.0.0-rc.8",
       "install_command": "pip install durable-workflow==2.0.0-rc.8",
       "runtime_dependencies": {
@@ -53,17 +74,20 @@
     "sdk-rust": {
       "channel": "crates_io",
       "version": "2.0.0-rc.7",
+      "package_url": "https://crates.io/crates/durable-workflow/2.0.0-rc.7",
       "crate": "durable-workflow",
       "install_command": "cargo add durable-workflow@=2.0.0-rc.7"
     },
     "workflow": {
       "channel": "packagist",
       "version": "2.0.0-rc.12",
+      "package_url": "https://packagist.org/packages/durable-workflow/workflow#2.0.0-rc.12",
       "composer_constraint": "durable-workflow/workflow:2.0.0-rc.12@rc"
     },
     "waterline": {
       "channel": "packagist",
       "version": "2.0.0-rc.9",
+      "package_url": "https://packagist.org/packages/durable-workflow/waterline#2.0.0-rc.9",
       "composer_constraint": "durable-workflow/waterline:2.0.0-rc.9@rc"
     }
   },

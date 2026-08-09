@@ -9,19 +9,23 @@ const path = require('path');
 const {
   ARTIFACT_DISTRIBUTION_SURFACES,
   ARTIFACT_RELEASE_POLICY,
+  ARTIFACT_VERSIONS,
   PUBLISHED_ARTIFACT_VERSIONS,
   PYTHON_PACKAGE_AUTHORITY,
+  QUALIFIED_PYTHON_PACKAGE_AUTHORITY,
   replaceArtifactTokens,
 } = require('./public-artifact-versions');
 
 const repoRoot = path.join(__dirname, '..');
 const CURRENT_PYTHON_DOCS = Object.freeze([
-  Object.freeze({source: 'docs/introduction.md', route: 'docs/2.0/introduction/index.html'}),
-  Object.freeze({source: 'docs/quickstart.md', route: 'docs/2.0/quickstart/index.html'}),
-  Object.freeze({source: 'docs/polyglot/python.md', route: 'docs/2.0/polyglot/python/index.html'}),
-  Object.freeze({source: 'docs/sdk-neutrality.md', route: 'docs/2.0/sdk-neutrality/index.html'}),
+  Object.freeze({source: 'docs/introduction.md', route: 'docs/2.0/introduction/index.html', authority: 'published'}),
+  Object.freeze({source: 'docs/quickstart.md', route: 'docs/2.0/quickstart/index.html', authority: 'qualified'}),
+  Object.freeze({source: 'docs/polyglot/python.md', route: 'docs/2.0/polyglot/python/index.html', authority: 'published'}),
+  Object.freeze({source: 'docs/sdk-neutrality.md', route: 'docs/2.0/sdk-neutrality/index.html', authority: 'published'}),
 ]);
 const PYPI_AUTHORITY_COMPONENT = '<PythonPackageReleaseLink>';
+const QUALIFIED_PYPI_AUTHORITY_COMPONENT =
+  '<PythonPackageReleaseLink authority="qualified">';
 
 function fail(message) {
   throw new Error(message);
@@ -93,8 +97,16 @@ function assertSdkNeutralityPackageAuthority(contract, authority = PYTHON_PACKAG
   }
 }
 
-function assertCurrentDocSource(sourcePath, raw, authority = PYTHON_PACKAGE_AUTHORITY) {
-  if (!raw.includes(PYPI_AUTHORITY_COMPONENT)) {
+function assertCurrentDocSource(
+  sourcePath,
+  raw,
+  authority = PYTHON_PACKAGE_AUTHORITY,
+  authorityRole = 'published',
+) {
+  const component = authorityRole === 'qualified'
+    ? QUALIFIED_PYPI_AUTHORITY_COMPONENT
+    : PYPI_AUTHORITY_COMPONENT;
+  if (!raw.includes(component)) {
     fail(`${sourcePath} must use the centralized Python package authority component`);
   }
   if (/https:\/\/pypi\.org\/project\/durable-workflow\//.test(raw)) {
@@ -107,10 +119,21 @@ function assertCurrentDocSource(sourcePath, raw, authority = PYTHON_PACKAGE_AUTH
   }
 }
 
-function assertCurrentDocSources(root = repoRoot, authority = PYTHON_PACKAGE_AUTHORITY) {
+function pythonAuthorityForPage(page) {
+  return page.authority === 'qualified'
+    ? QUALIFIED_PYTHON_PACKAGE_AUTHORITY
+    : PYTHON_PACKAGE_AUTHORITY;
+}
+
+function assertCurrentDocSources(root = repoRoot) {
   for (const page of CURRENT_PYTHON_DOCS) {
     const raw = fs.readFileSync(path.join(root, page.source), 'utf8');
-    assertCurrentDocSource(page.source, raw, authority);
+    assertCurrentDocSource(
+      page.source,
+      raw,
+      pythonAuthorityForPage(page),
+      page.authority,
+    );
   }
 }
 
@@ -120,8 +143,9 @@ function htmlHrefs(html) {
   );
 }
 
-function assertRenderedCurrentDocs(root = repoRoot, authority = PYTHON_PACKAGE_AUTHORITY) {
+function assertRenderedCurrentDocs(root = repoRoot) {
   for (const page of CURRENT_PYTHON_DOCS) {
+    const authority = pythonAuthorityForPage(page);
     const buildPath = path.join(root, 'build', page.route);
     if (!fs.existsSync(buildPath)) {
       fail(`Missing rendered Python package authority surface: build/${page.route}`);
@@ -271,6 +295,9 @@ function assertLocalPythonPackageAuthority(root = repoRoot) {
   }
   if (!['alpha', 'beta', 'rc', 'stable'].includes(ARTIFACT_RELEASE_POLICY.release_phase)) {
     fail('Python package authority requires a recognized release phase');
+  }
+  if (ARTIFACT_VERSIONS['sdk-python'] !== QUALIFIED_PYTHON_PACKAGE_AUTHORITY.version) {
+    fail('Qualified Python package URLs must derive from the compatibility-backed tuple');
   }
   assertPythonDistributionSurfaces();
   assertSdkNeutralityPackageAuthority(JSON.parse(fs.readFileSync(

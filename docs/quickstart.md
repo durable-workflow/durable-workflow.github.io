@@ -21,6 +21,7 @@ keywords:
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseLink';
+import QualifiedArtifactTuple from '@site/src/components/QualifiedArtifactTuple';
 
 # 2.0 Prerelease Quickstart
 
@@ -55,6 +56,22 @@ The runnable source below uses a local self-hosted Server so it can be exercised
 without an account or source checkout. Cloud uses the same SDK and worker model;
 replace the local development connection with the provisioned values shown in
 [Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane/).
+
+## Qualified install tuple
+
+This quickstart installs the last jointly qualified 2.0 compatibility tuple,
+accepted on `%%artifact.qualificationDate%%`. These are seven independently
+versioned components, not one synthetic shared release. A package registry may
+list a newer individual component, but the runnable commands remain on this
+exact tuple until a passing release handoff replaces the
+versioned qualification authority.
+
+<QualifiedArtifactTuple />
+
+Every active command below is rendered from that authority. Accepted handoffs
+refresh the table, commands, and machine-readable
+[quickstart execution contract](pathname:///quickstart-execution-contract.json)
+together; the linked qualification evidence remains immutable history.
 
 ## 2. Start the local Server
 
@@ -227,10 +244,9 @@ worker and control-plane APIs.
 
 1. **Install the SDK.**
 
-   During the 2.0 prerelease, use the exact <PythonPackageReleaseLink>current
-   Python SDK %%artifact.pythonPublishedSdkVersion%%
-   release</PythonPackageReleaseLink> for package metadata. The command below
-   keeps this runnable exercise on the compatibility-qualified aggregate pin.
+   Use the <PythonPackageReleaseLink authority="qualified">exact qualified
+   Python SDK %%artifact.pythonSdkVersion%% release</PythonPackageReleaseLink>
+   shown in the tuple above.
 
 <!-- docs-example id="quickstart.python.install" -->
 ```bash

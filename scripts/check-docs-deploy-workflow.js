@@ -15,7 +15,10 @@ const {
 } = require('./docs-release-live-artifacts');
 const {
   LIVE_ARTIFACTS,
+  QUICKSTART_ROUTE,
+  assertLiveQuickstartPage,
   assertReleaseAuditAuthority,
+  qualifiedPackageUrls,
 } = require('./verify-docs-release-live');
 const {
   buildArtifactCompatibilityProjection,
@@ -65,6 +68,32 @@ const platformConformanceContract = JSON.parse(
 );
 const helmRelease = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'static', 'charts', 'release.json'), 'utf8'),
+);
+
+const quickstartPackageLinks = qualifiedPackageUrls(quickstartContract);
+assert.strictEqual(
+  quickstartPackageLinks.length,
+  Object.keys(ARTIFACT_VERSIONS).length,
+  'post-deploy quickstart verification must cover every qualified artifact package link',
+);
+const liveQuickstartFixture = [
+  `<time>${quickstartContract.qualified_tuple.qualified_on}</time>`,
+  ...quickstartPackageLinks.map(([artifact, url]) => (
+    `<a href="${url.replaceAll('&', '&amp;')}">` +
+      `${artifact} ${quickstartContract.artifacts[artifact].version}</a>`
+  )),
+].join('\n');
+assert.doesNotThrow(
+  () => assertLiveQuickstartPage(liveQuickstartFixture, quickstartContract),
+  'post-deploy verifier must accept the coherent qualified quickstart surface',
+);
+assert.throws(
+  () => assertLiveQuickstartPage(
+    liveQuickstartFixture.replace(quickstartPackageLinks[0][1], 'https://example.invalid/stale'),
+    quickstartContract,
+  ),
+  /does not link qualified/,
+  'post-deploy verifier must reject a stale quickstart package link',
 );
 
 function fail(message) {
@@ -324,6 +353,12 @@ for (const required of [
     fail(`deploy workflow is missing required public docs deployment guard: ${required}`);
   }
 }
+
+assert.strictEqual(
+  QUICKSTART_ROUTE,
+  '/docs/2.0/quickstart/',
+  'post-deploy verification must retain the explicitly versioned prerelease quickstart route',
+);
 
 function currentAudit() {
   return {
