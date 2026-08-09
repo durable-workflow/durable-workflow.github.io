@@ -6,7 +6,7 @@
   "workflow_resource_path": "resources/sdk-neutrality-contract.json",
   "workflow_resource_sha256": "93ab20aa7c69a4994affef4b3d511c0bf99d2304828d9626615b2da3f60064fd",
   "docs_projection_path": "static/sdk-neutrality-contract.json",
-  "docs_projection_sha256": "40dc94b3beb7f0f9190289a9eb752d2f2ba57b9a03e022389ec9ad00a9b30717",
-  "python_package_version": "2.0.0-rc.21",
-  "python_registry_version": "2.0.0rc21"
+  "docs_projection_sha256": "062bbd0cd60403aa35f9983c7eb06e9c31f30558b42b8f70563f1f6ff0055265",
+  "python_package_version": "2.0.0-rc.22",
+  "python_registry_version": "2.0.0rc22"
 }
