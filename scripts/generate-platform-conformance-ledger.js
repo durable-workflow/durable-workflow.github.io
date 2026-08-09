@@ -39,6 +39,23 @@ const OUTCOMES = new Set(['pass', 'fail', 'error']);
 const PUBLIC_ORIGIN = 'https://durable-workflow.github.io';
 const IDENTIFIER_PATTERN = /^[a-z0-9]+(?:[.-][a-z0-9]+)*$/;
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
+const SHA256_PATTERN = /^[0-9a-f]{64}$/;
+const QUICKSTART_CONTRACT_SCHEMA =
+  'durable-workflow.docs.v2.quickstart-execution-contract';
+const QUICKSTART_CONTRACT_URL =
+  'https://durable-workflow.com/quickstart-execution-contract.json';
+const QUICKSTART_SCENARIOS = [
+  'php_user_local_server_completion',
+  'python_user_local_server_completion',
+  'rust_user_local_server_completion',
+  'operator_local_server_observation',
+  'laravel_user_embedded_completion',
+];
+const QUICKSTART_COMPOSER_ARTIFACTS = [
+  'sdk-php',
+  'waterline',
+  'workflow',
+];
 const PUBLIC_CONTRACT_PATH_PATTERN =
   /^\/(?:platform-conformance-contract\.json|platform-conformance\/[a-z0-9.-]+\.json)$/;
 const PUBLIC_GITHUB_URL_PATTERN =
@@ -97,6 +114,90 @@ function assertArtifactTuple(tuple, label) {
       fail(`${label}.${artifact} must be an exact public artifact version`);
     }
   }
+}
+
+function assertSha256(value, label) {
+  if (typeof value !== 'string' || !SHA256_PATTERN.test(value)) {
+    fail(`${label} must be a lowercase SHA-256 digest`);
+  }
+}
+
+function assertQuickstartQualification(qualification, artifactTuple, label) {
+  assertExactKeys(
+    qualification,
+    ['contract_identity', 'scenario_results', 'exact_composer_graph'],
+    label,
+  );
+
+  const identity = qualification.contract_identity;
+  assertExactKeys(identity, ['schema', 'version', 'url', 'sha256'], `${label}.contract_identity`);
+  if (identity.schema !== QUICKSTART_CONTRACT_SCHEMA) {
+    fail(`${label}.contract_identity.schema is unsupported`);
+  }
+  if (!Number.isInteger(identity.version) || identity.version < 1) {
+    fail(`${label}.contract_identity.version must be a positive integer`);
+  }
+  if (identity.url !== QUICKSTART_CONTRACT_URL) {
+    fail(`${label}.contract_identity.url must identify the public quickstart contract`);
+  }
+  assertSha256(identity.sha256, `${label}.contract_identity.sha256`);
+
+  if (
+    !Array.isArray(qualification.scenario_results)
+    || qualification.scenario_results.length !== QUICKSTART_SCENARIOS.length
+  ) {
+    fail(`${label}.scenario_results must prove the exact five quickstart scenarios`);
+  }
+  qualification.scenario_results.forEach((result, index) => {
+    assertExactKeys(result, ['id', 'outcome'], `${label}.scenario_results[${index}]`);
+    if (
+      result.id !== QUICKSTART_SCENARIOS[index]
+      || result.outcome !== 'pass'
+    ) {
+      fail(`${label}.scenario_results must prove every quickstart scenario passed in order`);
+    }
+  });
+
+  const composer = qualification.exact_composer_graph;
+  assertExactKeys(
+    composer,
+    [
+      'outcome',
+      'artifact_tuple',
+      'manifest_sha256',
+      'install_output_sha256',
+      'package_discovery',
+      'package_discovery_output_sha256',
+      'laravel_boot',
+    ],
+    `${label}.exact_composer_graph`,
+  );
+  if (
+    composer.outcome !== 'pass'
+    || composer.package_discovery !== 'pass'
+    || composer.laravel_boot !== 'pass'
+  ) {
+    fail(`${label}.exact_composer_graph must prove install, package discovery, and Laravel boot`);
+  }
+  assertExactKeys(
+    composer.artifact_tuple,
+    QUICKSTART_COMPOSER_ARTIFACTS,
+    `${label}.exact_composer_graph.artifact_tuple`,
+  );
+  for (const artifact of QUICKSTART_COMPOSER_ARTIFACTS) {
+    if (composer.artifact_tuple[artifact] !== artifactTuple[artifact]) {
+      fail(`${label}.exact_composer_graph must use the run's exact ${artifact} version`);
+    }
+  }
+  assertSha256(composer.manifest_sha256, `${label}.exact_composer_graph.manifest_sha256`);
+  assertSha256(
+    composer.install_output_sha256,
+    `${label}.exact_composer_graph.install_output_sha256`,
+  );
+  assertSha256(
+    composer.package_discovery_output_sha256,
+    `${label}.exact_composer_graph.package_discovery_output_sha256`,
+  );
 }
 
 function assertContractUrl(value, label) {
@@ -251,9 +352,20 @@ function validateSource(
   const runsById = new Map();
   const runCounts = new Map();
   for (const [index, run] of source.runs.entries()) {
+    const runFields = [
+      'id',
+      'experiment',
+      'artifact_tuple',
+      'outcome',
+      'runner_blocked',
+      'finished_at',
+    ];
+    if (run.qualification !== undefined) {
+      runFields.push('qualification');
+    }
     assertExactKeys(
       run,
-      ['id', 'experiment', 'artifact_tuple', 'outcome', 'runner_blocked', 'finished_at'],
+      runFields,
       `runs[${index}]`,
     );
     assertIdentifier(run.id, `runs[${index}].id`);
@@ -274,6 +386,19 @@ function validateSource(
     }
     if (run.runner_blocked && run.outcome === 'pass') {
       fail(`runner-blocked run ${run.id} cannot have outcome pass`);
+    }
+    if (run.qualification !== undefined && run.experiment !== 'quickstart') {
+      fail(`only quickstart runs may carry exact contract and Laravel qualification`);
+    }
+    if (run.experiment === 'quickstart' && run.outcome === 'pass') {
+      if (run.runner_blocked || run.qualification === undefined) {
+        fail(`passing quickstart run ${run.id} requires exact contract and Laravel qualification`);
+      }
+      assertQuickstartQualification(
+        run.qualification,
+        source.artifact_tuples[run.artifact_tuple],
+        `runs[${index}].qualification`,
+      );
     }
     if (runsById.has(run.id)) {
       fail(`runs contains duplicate id ${run.id}`);
@@ -374,7 +499,7 @@ function publicRunRecord(source, run, experimentsById) {
   const experiment = experimentsById.get(run.experiment);
   const tier = source.tiers.find(candidate => candidate.id === experiment.tier);
 
-  return {
+  const record = {
     schema: 'durable-workflow.v2.platform-conformance.run-evidence',
     schema_version: 1,
     id: run.id,
@@ -387,6 +512,10 @@ function publicRunRecord(source, run, experimentsById) {
     runner_blocked: run.runner_blocked,
     finished_at: run.finished_at,
   };
+  if (run.qualification !== undefined) {
+    record.qualification = run.qualification;
+  }
+  return record;
 }
 
 function latestRunByExperiment(source) {

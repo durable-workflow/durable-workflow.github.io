@@ -24,6 +24,37 @@ function experiment(ledger, id) {
   return ledger.experiments.find(entry => entry.id === id);
 }
 
+function quickstartQualification(artifactTuple) {
+  return {
+    contract_identity: {
+      schema: 'durable-workflow.docs.v2.quickstart-execution-contract',
+      version: 4,
+      url: 'https://durable-workflow.com/quickstart-execution-contract.json',
+      sha256: 'a'.repeat(64),
+    },
+    scenario_results: [
+      'php_user_local_server_completion',
+      'python_user_local_server_completion',
+      'rust_user_local_server_completion',
+      'operator_local_server_observation',
+      'laravel_user_embedded_completion',
+    ].map(id => ({id, outcome: 'pass'})),
+    exact_composer_graph: {
+      outcome: 'pass',
+      artifact_tuple: {
+        'sdk-php': artifactTuple['sdk-php'],
+        waterline: artifactTuple.waterline,
+        workflow: artifactTuple.workflow,
+      },
+      manifest_sha256: 'b'.repeat(64),
+      install_output_sha256: 'c'.repeat(64),
+      package_discovery: 'pass',
+      package_discovery_output_sha256: 'd'.repeat(64),
+      laravel_boot: 'pass',
+    },
+  };
+}
+
 function addRegressionTrail(fixture) {
   fixture.runs.push(
     {
@@ -253,6 +284,59 @@ assert.deepStrictEqual(Object.keys(publicRecord), [
   'runner_blocked',
   'finished_at',
 ]);
+
+const tupleOnlyQuickstartPass = clone(baselineSource);
+const tupleOnlyQuickstartRun = tupleOnlyQuickstartPass.runs.find(
+  run => run.experiment === 'quickstart',
+);
+tupleOnlyQuickstartRun.outcome = 'pass';
+assert.throws(
+  () => validateSource(tupleOnlyQuickstartPass, baselinePublishedTuple),
+  /requires exact contract and Laravel qualification/,
+  'a matching tuple alone must never produce public passing quickstart evidence',
+);
+
+const qualifiedQuickstartPass = clone(tupleOnlyQuickstartPass);
+const qualifiedQuickstartRun = qualifiedQuickstartPass.runs.find(
+  run => run.experiment === 'quickstart',
+);
+const qualifiedQuickstartTuple =
+  qualifiedQuickstartPass.artifact_tuples[qualifiedQuickstartRun.artifact_tuple];
+qualifiedQuickstartRun.qualification = quickstartQualification(qualifiedQuickstartTuple);
+const qualifiedExperiments = validateSource(
+  qualifiedQuickstartPass,
+  baselinePublishedTuple,
+).experimentsById;
+const qualifiedPublicRecord = publicRunRecord(
+  qualifiedQuickstartPass,
+  qualifiedQuickstartRun,
+  qualifiedExperiments,
+);
+assert.deepStrictEqual(
+  qualifiedPublicRecord.qualification,
+  qualifiedQuickstartRun.qualification,
+  'public quickstart evidence must retain contract, scenario, and Laravel boot proof',
+);
+
+const staleComposerQuickstartPass = clone(qualifiedQuickstartPass);
+staleComposerQuickstartPass.runs.find(
+  run => run.experiment === 'quickstart',
+).qualification.exact_composer_graph.artifact_tuple['sdk-php'] = '2.0.0-rc.99';
+assert.throws(
+  () => validateSource(staleComposerQuickstartPass, baselinePublishedTuple),
+  /must use the run's exact sdk-php version/,
+  'Laravel package discovery proof must come from the executed Composer tuple',
+);
+
+const discoveryFailedQuickstartPass = clone(qualifiedQuickstartPass);
+discoveryFailedQuickstartPass.runs.find(
+  run => run.experiment === 'quickstart',
+).qualification.exact_composer_graph.package_discovery = 'fail';
+assert.throws(
+  () => validateSource(discoveryFailedQuickstartPass, baselinePublishedTuple),
+  /must prove install, package discovery, and Laravel boot/,
+  'failed Laravel package discovery must never produce public pass evidence',
+);
 
 const overRetention = clone(baselineSource);
 overRetention.retention.max_runs_per_experiment = 1;

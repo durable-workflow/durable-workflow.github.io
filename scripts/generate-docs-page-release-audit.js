@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
@@ -31,6 +32,14 @@ const repoRoot = path.join(__dirname, '..');
 const buildDir = path.join(repoRoot, 'build');
 const sitemapPath = path.join(buildDir, 'sitemap.xml');
 const outputPath = path.join(buildDir, 'docs-page-release-audit.json');
+const quickstartExecutionContractPath = path.join(
+  repoRoot,
+  'static',
+  'quickstart-execution-contract.json',
+);
+const quickstartExecutionContractBytes = fs.readFileSync(
+  quickstartExecutionContractPath,
+);
 
 const SCHEMA = 'durable-workflow.docs.page-release-audit';
 const SCHEMA_VERSION = 7;
@@ -91,6 +100,16 @@ const QUICKSTART_CONTRACT_URL =
   'https://durable-workflow.com/quickstart-execution-contract.json';
 const QUICKSTART_EVIDENCE_BASE_URL =
   'https://durable-workflow.com/platform-conformance/evidence';
+const QUICKSTART_CONTRACT_SCHEMA =
+  'durable-workflow.docs.v2.quickstart-execution-contract';
+const QUICKSTART_EVIDENCE_SCHEMA =
+  'durable-workflow.v2.platform-conformance.run-evidence';
+const QUICKSTART_COMPOSER_ARTIFACTS = [
+  'sdk-php',
+  'waterline',
+  'workflow',
+];
+const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 
 function readSitemapPaths() {
   if (!fs.existsSync(sitemapPath)) {
@@ -245,7 +264,129 @@ function buildComponentReleaseQualificationProjection(
   };
 }
 
-function quickstartQualificationFromEvidence(contract, versions, evidenceRecords) {
+function quickstartContractArtifactTuple(contract, versions) {
+  const artifacts = contract?.artifacts;
+  const expectedNames = Object.keys(versions).sort();
+  if (
+    !artifacts
+    || typeof artifacts !== 'object'
+    || Array.isArray(artifacts)
+    || JSON.stringify(Object.keys(artifacts).sort()) !== JSON.stringify(expectedNames)
+  ) {
+    throw new Error('quickstart execution contract must bind the complete artifact tuple');
+  }
+
+  return Object.fromEntries(expectedNames.map(name => {
+    const version = artifacts[name]?.version;
+    if (typeof version !== 'string' || version.length === 0) {
+      throw new Error(`quickstart execution contract has no ${name} version`);
+    }
+    return [name, version];
+  }));
+}
+
+function exactObjectKeys(value, expectedKeys) {
+  return (
+    value
+    && typeof value === 'object'
+    && !Array.isArray(value)
+    && JSON.stringify(Object.keys(value).sort())
+      === JSON.stringify([...expectedKeys].sort())
+  );
+}
+
+function exactVersionTuple(tuple, versions) {
+  return (
+    exactObjectKeys(tuple, Object.keys(versions))
+    && Object.entries(versions).every(([name, version]) => tuple[name] === version)
+  );
+}
+
+function quickstartContractIdentity(contract, contractBytes) {
+  if (!Buffer.isBuffer(contractBytes) && typeof contractBytes !== 'string') {
+    throw new Error('quickstart execution contract identity requires the exact contract bytes');
+  }
+
+  let parsedContract;
+  try {
+    parsedContract = JSON.parse(contractBytes.toString());
+  } catch {
+    throw new Error('quickstart execution contract bytes must contain valid JSON');
+  }
+  if (JSON.stringify(parsedContract) !== JSON.stringify(contract)) {
+    throw new Error('quickstart execution contract bytes do not match the parsed contract');
+  }
+  if (
+    contract?.schema !== QUICKSTART_CONTRACT_SCHEMA
+    || !Number.isInteger(contract.version)
+    || contract.version < 1
+    || contract.contract_url !== QUICKSTART_CONTRACT_URL
+  ) {
+    throw new Error('quickstart execution contract has an invalid public identity');
+  }
+
+  return {
+    schema: contract.schema,
+    version: contract.version,
+    url: contract.contract_url,
+    sha256: crypto.createHash('sha256').update(contractBytes).digest('hex'),
+  };
+}
+
+function exactContractIdentity(identity, expectedIdentity) {
+  return (
+    expectedIdentity
+    && exactObjectKeys(identity, ['schema', 'version', 'url', 'sha256'])
+    && identity.schema === expectedIdentity.schema
+    && identity.version === expectedIdentity.version
+    && identity.url === expectedIdentity.url
+    && SHA256_PATTERN.test(identity.sha256)
+    && identity.sha256 === expectedIdentity.sha256
+  );
+}
+
+function allQuickstartScenariosPassed(results, requiredScenarios) {
+  return (
+    Array.isArray(results)
+    && results.length === requiredScenarios.length
+    && results.every((result, index) => (
+      exactObjectKeys(result, ['id', 'outcome'])
+      && result.id === requiredScenarios[index]
+      && result.outcome === 'pass'
+    ))
+  );
+}
+
+function exactComposerGraphPassed(result, executionTuple) {
+  const expectedComposerTuple = Object.fromEntries(
+    QUICKSTART_COMPOSER_ARTIFACTS.map(name => [name, executionTuple[name]]),
+  );
+  return (
+    exactObjectKeys(result, [
+      'outcome',
+      'artifact_tuple',
+      'manifest_sha256',
+      'install_output_sha256',
+      'package_discovery',
+      'package_discovery_output_sha256',
+      'laravel_boot',
+    ])
+    && result.outcome === 'pass'
+    && exactVersionTuple(result.artifact_tuple, expectedComposerTuple)
+    && SHA256_PATTERN.test(result.manifest_sha256)
+    && SHA256_PATTERN.test(result.install_output_sha256)
+    && result.package_discovery === 'pass'
+    && SHA256_PATTERN.test(result.package_discovery_output_sha256)
+    && result.laravel_boot === 'pass'
+  );
+}
+
+function quickstartQualificationFromEvidence(
+  contract,
+  versions,
+  evidenceRecords,
+  contractBytes,
+) {
   const scenarios = Array.isArray(contract?.scenarios)
     ? contract.scenarios.map(scenario => scenario?.id)
     : [];
@@ -256,13 +397,16 @@ function quickstartQualificationFromEvidence(contract, versions, evidenceRecords
     'operator_local_server_observation',
     'laravel_user_embedded_completion',
   ];
-  const exactArtifactTuple = tuple => (
-    tuple
-    && Object.keys(tuple).length === Object.keys(versions).length
-    && Object.entries(versions).every(([name, version]) => tuple[name] === version)
+  const contractArtifactVersions = quickstartContractArtifactTuple(contract, versions);
+  const contractIdentity = contractBytes === undefined
+    ? null
+    : quickstartContractIdentity(contract, contractBytes);
+  const contractMatchesPublishedTuple = exactVersionTuple(
+    contractArtifactVersions,
+    versions,
   );
   if (
-    contract?.schema !== 'durable-workflow.docs.v2.quickstart-execution-contract'
+    contract?.schema !== QUICKSTART_CONTRACT_SCHEMA
     || JSON.stringify(scenarios) !== JSON.stringify(requiredScenarios)
   ) {
     throw new Error('quickstart execution contract must declare the exact five release scenarios');
@@ -270,13 +414,27 @@ function quickstartQualificationFromEvidence(contract, versions, evidenceRecords
 
   const matching = evidenceRecords
     .filter(evidence => (
-      evidence?.schema === 'durable-workflow.v2.platform-conformance.run-evidence'
+      evidence?.schema === QUICKSTART_EVIDENCE_SCHEMA
       && evidence.schema_version === 1
       && evidence.experiment === 'quickstart'
       && evidence.evidence_kind === 'executed_run'
       && evidence.outcome === 'pass'
       && evidence.runner_blocked === false
-      && exactArtifactTuple(evidence.artifact_tuple)
+      && contractMatchesPublishedTuple
+      && exactVersionTuple(evidence.artifact_tuple, versions)
+      && exactVersionTuple(evidence.artifact_tuple, contractArtifactVersions)
+      && exactContractIdentity(
+        evidence.qualification?.contract_identity,
+        contractIdentity,
+      )
+      && allQuickstartScenariosPassed(
+        evidence.qualification?.scenario_results,
+        requiredScenarios,
+      )
+      && exactComposerGraphPassed(
+        evidence.qualification?.exact_composer_graph,
+        evidence.artifact_tuple,
+      )
       && typeof evidence.id === 'string'
       && /^[a-z0-9][a-z0-9._-]+$/.test(evidence.id)
       && typeof evidence.finished_at === 'string'
@@ -289,6 +447,9 @@ function quickstartQualificationFromEvidence(contract, versions, evidenceRecords
     outcome: selected ? 'pass' : 'incomplete',
     contract_url: QUICKSTART_CONTRACT_URL,
     artifact_versions: versions,
+    contract_identity: contractIdentity,
+    contract_artifact_versions: contractArtifactVersions,
+    execution_artifact_versions: selected ? selected.artifact_tuple : null,
     required_scenarios: requiredScenarios,
     evidence: selected ? {
       id: selected.id,
@@ -297,6 +458,7 @@ function quickstartQualificationFromEvidence(contract, versions, evidenceRecords
       runner_blocked: selected.runner_blocked,
       finished_at: selected.finished_at,
       artifact_tuple: selected.artifact_tuple,
+      qualification: selected.qualification,
     } : null,
   };
 }
@@ -312,6 +474,7 @@ function buildQuickstartQualification() {
     quickstartExecutionContract,
     PUBLISHED_ARTIFACT_VERSIONS,
     evidenceRecords,
+    quickstartExecutionContractBytes,
   );
 }
 
@@ -374,6 +537,8 @@ module.exports = {
   buildQuickstartQualification,
   buildRelativePath,
   inventoryPaths,
+  quickstartContractIdentity,
   quickstartQualificationFromEvidence,
+  quickstartContractArtifactTuple,
   routeKind,
 };
