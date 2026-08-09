@@ -6,6 +6,8 @@ const http = require('http');
 const https = require('https');
 const path = require('path');
 const publicProtocolCatalog = require('../static/platform-protocol-specs.json');
+const {buildPythonPackageAuthority} = require('./public-artifact-versions');
+const {sdkNeutralityContractSource} = require('./refresh-public-artifact-versions');
 
 const HANDOFF_SCHEMA = 'durable-workflow.docs.public-artifact-tuple-handoff';
 const PUBLISHED_SERVER_PROTOCOL_AUTHORITY_SCHEMA =
@@ -36,7 +38,12 @@ const SDK_NEUTRALITY_AUTHORITY_KEYS = [
   'schema_version',
   'workflow_version',
   'workflow_source_commit',
-  'manifest_sha256',
+  'workflow_resource_path',
+  'workflow_resource_sha256',
+  'docs_projection_path',
+  'docs_projection_sha256',
+  'python_package_version',
+  'python_registry_version',
   'authority_lock_sha256',
 ];
 const EXPECTED_REPOSITORY = 'durable-workflow.github.io';
@@ -364,6 +371,29 @@ function validateCompatibilityEvidence(evidence, versions) {
 
 function defaultSdkNeutralityAuthoritySources() {
   const repoRoot = path.join(__dirname, '..');
+  const workflowResourceCandidates = [
+    path.join(
+      repoRoot,
+      '.workflow-authority',
+      'resources',
+      'sdk-neutrality-contract.json',
+    ),
+    path.join(
+      repoRoot,
+      '..',
+      'workflow',
+      'resources',
+      'sdk-neutrality-contract.json',
+    ),
+  ];
+  const workflowResourcePath = workflowResourceCandidates.find(
+    candidate => fs.existsSync(candidate),
+  );
+  if (!workflowResourcePath) {
+    throw new Error(
+      'SDK-neutrality handoff verification requires the pinned Workflow resource bytes',
+    );
+  }
 
   return {
     contractSource: fs.readFileSync(
@@ -374,6 +404,7 @@ function defaultSdkNeutralityAuthoritySources() {
       path.join(repoRoot, SDK_NEUTRALITY_LOCK_PATH),
       'utf8',
     ),
+    workflowResourceSource: fs.readFileSync(workflowResourcePath, 'utf8'),
   };
 }
 
@@ -381,6 +412,8 @@ function buildSdkNeutralityAuthorityIdentity(
   workflowVersion,
   contractSource,
   lockSource,
+  publishedArtifactVersions,
+  workflowResourceSource,
 ) {
   if (typeof workflowVersion !== 'string' || workflowVersion.trim() === '') {
     throw new Error(
@@ -397,6 +430,11 @@ function buildSdkNeutralityAuthorityIdentity(
       `generated ${SDK_NEUTRALITY_LOCK_PATH} source must be a string`,
     );
   }
+  if (typeof workflowResourceSource !== 'string') {
+    throw new Error(
+      'SDK-neutrality authority identity requires the pinned Workflow resource bytes',
+    );
+  }
 
   const contract = parseJsonSource(
     contractSource,
@@ -406,7 +444,9 @@ function buildSdkNeutralityAuthorityIdentity(
     lockSource,
     `generated ${SDK_NEUTRALITY_LOCK_PATH}`,
   );
-  const manifestSha256 = sha256(contractSource);
+  const docsProjectionSha256 = sha256(contractSource);
+  const pythonAuthority = buildPythonPackageAuthority(publishedArtifactVersions);
+  const pythonSdk = contract?.sdk_breadth_policy?.first_party?.python_sdk;
 
   if (contract?.schema !== SDK_NEUTRALITY_CONTRACT_SCHEMA) {
     throw new Error(
@@ -415,10 +455,10 @@ function buildSdkNeutralityAuthorityIdentity(
   }
   if (
     lock?.schema !== SDK_NEUTRALITY_LOCK_SCHEMA
-    || lock.schema_version !== 2
+    || lock.schema_version !== 3
   ) {
     throw new Error(
-      `generated ${SDK_NEUTRALITY_LOCK_PATH} must be a version 2 authority lock`,
+      `generated ${SDK_NEUTRALITY_LOCK_PATH} must be a version 3 authority lock`,
     );
   }
   if (lock.workflow_ref !== workflowVersion) {
@@ -436,27 +476,83 @@ function buildSdkNeutralityAuthorityIdentity(
       'generated SDK-neutrality authority lock must include a full Workflow source commit',
     );
   }
-  if (lock.resource_path !== 'resources/sdk-neutrality-contract.json') {
+  if (lock.workflow_resource_path !== 'resources/sdk-neutrality-contract.json') {
     throw new Error(
-      'generated SDK-neutrality authority lock must identify the Workflow manifest resource',
+      'generated SDK-neutrality authority lock must identify the Workflow resource',
+    );
+  }
+  if (lock.docs_projection_path !== SDK_NEUTRALITY_CONTRACT_PATH) {
+    throw new Error(
+      'generated SDK-neutrality authority lock must identify the docs projection',
     );
   }
   if (
-    typeof lock.sha256 !== 'string'
-    || !/^[0-9a-f]{64}$/.test(lock.sha256)
-    || lock.sha256 !== manifestSha256
+    typeof lock.workflow_resource_sha256 !== 'string'
+    || !/^[0-9a-f]{64}$/.test(lock.workflow_resource_sha256)
+    || lock.workflow_resource_sha256 !== sha256(workflowResourceSource)
   ) {
     throw new Error(
-      'generated SDK-neutrality authority lock must match the generated manifest SHA-256',
+      'generated SDK-neutrality authority lock must match the Workflow resource SHA-256',
+    );
+  }
+  if (
+    typeof lock.docs_projection_sha256 !== 'string'
+    || !/^[0-9a-f]{64}$/.test(lock.docs_projection_sha256)
+    || lock.docs_projection_sha256 !== docsProjectionSha256
+  ) {
+    throw new Error(
+      'generated SDK-neutrality authority lock must match the generated docs projection SHA-256',
+    );
+  }
+  if (
+    sdkNeutralityContractSource(
+      workflowResourceSource,
+      publishedArtifactVersions,
+    ) !== contractSource
+  ) {
+    throw new Error(
+      'generated SDK-neutrality docs projection must derive from the verified Workflow resource and published Python tuple',
+    );
+  }
+  if (
+    lock.python_package_version !== pythonAuthority.version
+    || lock.python_registry_version !== pythonAuthority.registryVersion
+  ) {
+    throw new Error(
+      'generated SDK-neutrality authority lock must match the published Python tuple',
+    );
+  }
+  const expectedPythonProjection = {
+    package_url: pythonAuthority.authorityUrl,
+    package_version: pythonAuthority.version,
+    registry_version: pythonAuthority.registryVersion,
+    exact_release_url: pythonAuthority.exactReleaseUrl,
+    exact_release_json_url: pythonAuthority.exactReleaseJsonUrl,
+    canonical_project_url: pythonAuthority.canonicalProjectUrl,
+    canonical_project_url_role: 'project_identity_only',
+  };
+  if (
+    !pythonSdk
+    || Object.entries(expectedPythonProjection).some(
+      ([field, expected]) => pythonSdk[field] !== expected,
+    )
+  ) {
+    throw new Error(
+      'generated SDK-neutrality docs projection must match the published Python tuple',
     );
   }
 
   return {
     schema: SDK_NEUTRALITY_AUTHORITY_SCHEMA,
-    schema_version: 1,
+    schema_version: 2,
     workflow_version: workflowVersion,
     workflow_source_commit: lock.workflow_source_commit,
-    manifest_sha256: manifestSha256,
+    workflow_resource_path: lock.workflow_resource_path,
+    workflow_resource_sha256: lock.workflow_resource_sha256,
+    docs_projection_path: lock.docs_projection_path,
+    docs_projection_sha256: docsProjectionSha256,
+    python_package_version: lock.python_package_version,
+    python_registry_version: lock.python_registry_version,
     authority_lock_sha256: sha256(lockSource),
   };
 }
@@ -484,7 +580,7 @@ function validateSdkNeutralityAuthorityIdentityShape(authority, workflowVersion)
   );
   assertEqual(
     authority.schema_version,
-    1,
+    2,
     'handoff SDK-neutrality authority schema version mismatch',
   );
   assertEqual(
@@ -502,7 +598,21 @@ function validateSdkNeutralityAuthorityIdentityShape(authority, workflowVersion)
       'handoff SDK-neutrality authority must include a full Workflow source commit',
     );
   }
-  for (const field of ['manifest_sha256', 'authority_lock_sha256']) {
+  assertEqual(
+    authority.workflow_resource_path,
+    'resources/sdk-neutrality-contract.json',
+    'handoff SDK-neutrality Workflow resource path mismatch',
+  );
+  assertEqual(
+    authority.docs_projection_path,
+    SDK_NEUTRALITY_CONTRACT_PATH,
+    'handoff SDK-neutrality docs projection path mismatch',
+  );
+  for (const field of [
+    'workflow_resource_sha256',
+    'docs_projection_sha256',
+    'authority_lock_sha256',
+  ]) {
     if (
       typeof authority[field] !== 'string'
       || !/^[0-9a-f]{64}$/.test(authority[field])
@@ -512,11 +622,19 @@ function validateSdkNeutralityAuthorityIdentityShape(authority, workflowVersion)
       );
     }
   }
+  for (const field of ['python_package_version', 'python_registry_version']) {
+    if (typeof authority[field] !== 'string' || authority[field].length === 0) {
+      throw new Error(
+        `handoff SDK-neutrality authority ${field} must be a non-empty string`,
+      );
+    }
+  }
 }
 
 function validateSdkNeutralityAuthorityIdentity(
   authority,
   workflowVersion,
+  publishedArtifactVersions,
   sources = defaultSdkNeutralityAuthoritySources(),
 ) {
   validateSdkNeutralityAuthorityIdentityShape(authority, workflowVersion);
@@ -525,6 +643,8 @@ function validateSdkNeutralityAuthorityIdentity(
     workflowVersion,
     sources.contractSource,
     sources.lockSource,
+    publishedArtifactVersions,
+    sources.workflowResourceSource,
   );
   for (const field of SDK_NEUTRALITY_AUTHORITY_KEYS) {
     if (authority[field] !== expected[field]) {
@@ -653,6 +773,7 @@ function validateHandoff(handoff, options = {}) {
   validateSdkNeutralityAuthorityIdentity(
     handoff.sdk_neutrality_authority,
     handoff.artifact_versions.workflow,
+    handoff.published_artifact_versions,
     options.sdkNeutralityAuthoritySources
       || defaultSdkNeutralityAuthoritySources(),
   );
@@ -845,7 +966,9 @@ function buildRequestText(handoff, changes) {
     ...ARTIFACT_ORDER.map(name => `- ${artifactLabel(name)} ${handoff.artifact_versions[name]}`),
     `- Compatibility evidence ${handoff.compatibility_evidence.authority.release_plan.tag}`,
     `- SDK-neutrality authority Workflow ${handoff.sdk_neutrality_authority.workflow_version} source ${handoff.sdk_neutrality_authority.workflow_source_commit}`,
-    `- SDK-neutrality manifest SHA-256 ${handoff.sdk_neutrality_authority.manifest_sha256}`,
+    `- SDK-neutrality Workflow resource SHA-256 ${handoff.sdk_neutrality_authority.workflow_resource_sha256}`,
+    `- SDK-neutrality docs projection SHA-256 ${handoff.sdk_neutrality_authority.docs_projection_sha256}`,
+    `- SDK-neutrality Python ${handoff.sdk_neutrality_authority.python_package_version} (${handoff.sdk_neutrality_authority.python_registry_version})`,
     '',
     'Published Server protocol authority:',
     `- Server ${handoff.published_server_protocol_authority.server_version} source ${handoff.published_server_protocol_authority.server_source_commit}`,
@@ -879,7 +1002,9 @@ function buildIssueBody(handoff, key, workerBranch, requestText, changes) {
     ...ARTIFACT_ORDER.map(name => `- ${artifactLabel(name)}: ${handoff.artifact_versions[name]}`),
     `- Compatibility evidence: ${handoff.compatibility_evidence.authority.release_plan.tag}`,
     `- SDK-neutrality Workflow source: ${handoff.sdk_neutrality_authority.workflow_source_commit}`,
-    `- SDK-neutrality manifest SHA-256: ${handoff.sdk_neutrality_authority.manifest_sha256}`,
+    `- SDK-neutrality Workflow resource SHA-256: ${handoff.sdk_neutrality_authority.workflow_resource_sha256}`,
+    `- SDK-neutrality docs projection SHA-256: ${handoff.sdk_neutrality_authority.docs_projection_sha256}`,
+    `- SDK-neutrality Python: ${handoff.sdk_neutrality_authority.python_package_version} (${handoff.sdk_neutrality_authority.python_registry_version})`,
     '',
     '## Published Server Protocol Authority',
     `- Server: ${handoff.published_server_protocol_authority.server_version}`,
@@ -892,7 +1017,7 @@ function buildIssueBody(handoff, key, workerBranch, requestText, changes) {
     '- The published-component source reports the newest independently published releases.',
     '- The qualified aggregate source remains the compatibility-backed recommendation.',
     '- Every SDK in the qualified recommendation is bound to its qualified Server by passing immutable compatibility evidence.',
-    '- The SDK-neutrality contract and authority lock match the qualified Workflow source commit and manifest digest.',
+    '- The SDK-neutrality lock and handoff independently bind the qualified Workflow resource and Python-enriched docs projection digests.',
     '- Protocol-catalog qualification matches the exact independently published Server source, OCI digest, embedded Workflow provenance, and observed catalog.',
     '- The deployed docs release-audit JSON reports the qualified aggregate recommendation with LEAK=0 and MIXED=0.',
     '- Stable 1.x remains the default public docs line.',

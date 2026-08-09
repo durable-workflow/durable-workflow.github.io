@@ -34,6 +34,23 @@ function changed(contract, mutate) {
   return copy;
 }
 
+function workflowBaseSourceFromProjection(projectedContract) {
+  const base = JSON.parse(JSON.stringify(projectedContract));
+  const pythonSdk = base.sdk_breadth_policy.first_party.python_sdk;
+  pythonSdk.package_url = pythonSdk.canonical_project_url;
+  for (const field of [
+    'package_version',
+    'registry_version',
+    'exact_release_url',
+    'exact_release_json_url',
+    'canonical_project_url',
+    'canonical_project_url_role',
+  ]) {
+    delete pythonSdk[field];
+  }
+  return `${JSON.stringify(base, null, 2)}\n`;
+}
+
 const contract = loadContract();
 const catalogs = loadAuthorityCatalogs();
 
@@ -86,10 +103,7 @@ try {
   );
 
   const successorWorkflowRef = nextWorkflowPrerelease(currentWorkflowRef);
-  const currentManifestSource = fs.readFileSync(
-    path.join(__dirname, '..', 'static', 'sdk-neutrality-contract.json'),
-    'utf8',
-  );
+  const currentManifestSource = workflowBaseSourceFromProjection(contract);
   const unchangedSuccessorRoot = path.join(isolatedRoot, 'unchanged-successor');
   writeAuthorityFixture(unchangedSuccessorRoot, successorWorkflowRef, currentManifestSource);
   const unchangedPublishedManifest = path.join(
@@ -139,7 +153,7 @@ try {
     'workflow-sdk-neutrality-authority-lock.json',
   );
   const staleDigestLock = JSON.parse(fs.readFileSync(staleDigestLockPath, 'utf8'));
-  staleDigestLock.sha256 = '0'.repeat(64);
+  staleDigestLock.docs_projection_sha256 = '0'.repeat(64);
   fs.writeFileSync(staleDigestLockPath, `${JSON.stringify(staleDigestLock, null, 2)}\n`);
   assert.throws(
     () => assertWorkflowMirrorMatches({
@@ -150,7 +164,36 @@ try {
       workflowVersion: successorWorkflowRef,
     }),
     new RegExp(`must match the exact public projection for Workflow ${escaped(successorWorkflowRef)}`),
-    'release validation must reject a stale digest before accepting packaged bytes',
+    'release validation must reject a stale projection digest before accepting packaged bytes',
+  );
+
+  const stalePythonTupleRoot = path.join(isolatedRoot, 'stale-python-tuple');
+  writeAuthorityFixture(
+    stalePythonTupleRoot,
+    successorWorkflowRef,
+    currentManifestSource,
+  );
+  const stalePythonTupleLockPath = path.join(
+    stalePythonTupleRoot,
+    'scripts',
+    'workflow-sdk-neutrality-authority-lock.json',
+  );
+  const stalePythonTupleLock = JSON.parse(
+    fs.readFileSync(stalePythonTupleLockPath, 'utf8'),
+  );
+  stalePythonTupleLock.python_package_version = '2.0.0-rc.999';
+  fs.writeFileSync(
+    stalePythonTupleLockPath,
+    `${JSON.stringify(stalePythonTupleLock, null, 2)}\n`,
+  );
+  assert.throws(
+    () => assertWorkflowMirrorMatches({
+      environment: {},
+      repoRoot: stalePythonTupleRoot,
+      workflowVersion: successorWorkflowRef,
+    }),
+    /lock Python tuple must match scripts\/published-artifact-versions\.json/,
+    'standalone validation must reject Python tuple drift independently',
   );
 
   const malformedSourceCommitRoot = path.join(
@@ -222,8 +265,8 @@ try {
       repoRoot: changedSuccessorRoot,
       workflowVersion: successorWorkflowRef,
     }),
-    /must be the exact public projection/,
-    'release validation must reject stale packaged bytes for a refreshed successor digest',
+    /must match the exact tagged Workflow resource digest/,
+    'release validation must reject stale packaged base bytes for a refreshed successor digest',
   );
 
   assert.throws(
@@ -265,7 +308,7 @@ try {
 
   const driftedWorkflow = path.join(isolatedRoot, 'workflow');
   fs.mkdirSync(path.join(driftedWorkflow, 'resources'), {recursive: true});
-  const driftedWorkflowContract = JSON.parse(JSON.stringify(contract));
+  const driftedWorkflowContract = JSON.parse(currentManifestSource);
   driftedWorkflowContract.sdk_breadth_policy.first_party.python_sdk.role +=
     ' Drifted upstream role.';
   fs.writeFileSync(
@@ -282,8 +325,8 @@ try {
         ),
       },
     }),
-    /must be the exact public projection/,
-    'release validation must reject semantic drift from the Workflow package authority',
+    /must match the exact tagged Workflow resource digest/,
+    'release validation must reject upstream base-resource drift independently',
   );
 } finally {
   fs.rmSync(isolatedRoot, {recursive: true, force: true});

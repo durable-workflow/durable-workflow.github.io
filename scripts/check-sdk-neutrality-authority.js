@@ -41,7 +41,9 @@
 //    instead use a sibling Workflow repo. A versioned digest lock pins every
 //    validation mode to the public projection of that Workflow ref and the
 //    centralized published artifact tuple. Human-readable pages are not parsed
-//    by this machine-contract gate.
+//    by this machine-contract gate. The lock preserves separate byte digests
+//    for the packaged Workflow resource and the Python-enriched docs
+//    projection so consumers can verify each identity independently.
 
 const crypto = require('crypto');
 const fs = require('fs');
@@ -905,7 +907,7 @@ function assertPinnedWorkflowAuthority(options = {}) {
   if (lock.schema !== 'durable-workflow.docs.workflow-sdk-neutrality-authority-lock') {
     throw new Error(`Workflow SDK neutrality authority lock has an invalid schema at ${lockPath}`);
   }
-  if (lock.schema_version !== 2) {
+  if (lock.schema_version !== 3) {
     throw new Error(`Workflow SDK neutrality authority lock has an invalid schema version at ${lockPath}`);
   }
   if (lock.workflow_ref !== workflowVersion) {
@@ -914,10 +916,16 @@ function assertPinnedWorkflowAuthority(options = {}) {
         `but scripts/public-artifact-versions.json pins ${workflowVersion}`,
     );
   }
-  if (lock.resource_path !== 'resources/sdk-neutrality-contract.json') {
+  if (lock.workflow_resource_path !== 'resources/sdk-neutrality-contract.json') {
     throw new Error(
       `Workflow SDK neutrality authority lock must identify ` +
         `resources/sdk-neutrality-contract.json`,
+    );
+  }
+  if (lock.docs_projection_path !== 'static/sdk-neutrality-contract.json') {
+    throw new Error(
+      `Workflow SDK neutrality authority lock must identify ` +
+        `static/sdk-neutrality-contract.json as the docs projection`,
     );
   }
   if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(lock.workflow_source_commit || '')) {
@@ -925,22 +933,46 @@ function assertPinnedWorkflowAuthority(options = {}) {
       `Workflow SDK neutrality authority lock has an invalid workflow source commit at ${lockPath}`,
     );
   }
-  if (!/^[a-f0-9]{64}$/.test(lock.sha256 || '')) {
-    throw new Error(`Workflow SDK neutrality authority lock has an invalid sha256 at ${lockPath}`);
+  if (!/^[a-f0-9]{64}$/.test(lock.workflow_resource_sha256 || '')) {
+    throw new Error(
+      `Workflow SDK neutrality authority lock has an invalid ` +
+        `workflow_resource_sha256 at ${lockPath}`,
+    );
+  }
+  if (!/^[a-f0-9]{64}$/.test(lock.docs_projection_sha256 || '')) {
+    throw new Error(
+      `Workflow SDK neutrality authority lock has an invalid ` +
+        `docs_projection_sha256 at ${lockPath}`,
+    );
+  }
+  if (
+    lock.python_package_version !== PYTHON_PACKAGE_AUTHORITY.version
+    || lock.python_registry_version !== PYTHON_PACKAGE_AUTHORITY.registryVersion
+  ) {
+    throw new Error(
+      `Workflow SDK neutrality authority lock Python tuple must match ` +
+        `scripts/published-artifact-versions.json: expected ` +
+        `${PYTHON_PACKAGE_AUTHORITY.version} (${PYTHON_PACKAGE_AUTHORITY.registryVersion}), ` +
+        `got ${lock.python_package_version || '<missing>'} ` +
+        `(${lock.python_registry_version || '<missing>'})`,
+    );
   }
 
   const actualDigest = sha256(read(docsPath));
-  if (actualDigest !== lock.sha256) {
+  if (actualDigest !== lock.docs_projection_sha256) {
     throw new Error(
       `static/sdk-neutrality-contract.json must match the exact public projection for ` +
-        `Workflow ${workflowVersion} at digest ${lock.sha256}; got ${actualDigest}`,
+        `Workflow ${workflowVersion} at digest ${lock.docs_projection_sha256}; ` +
+        `got ${actualDigest}`,
     );
   }
+
+  return lock;
 }
 
 function assertWorkflowMirrorMatches(options = {}) {
   const root = options.repoRoot || repoRoot;
-  assertPinnedWorkflowAuthority({...options, repoRoot: root});
+  const lock = assertPinnedWorkflowAuthority({...options, repoRoot: root});
   const workflowPath = workflowMirrorPath(
     options.environment || process.env,
     root,
@@ -960,6 +992,13 @@ function assertWorkflowMirrorMatches(options = {}) {
     'sdk-neutrality-contract.json',
   ));
   const workflowCopy = read(workflowPath);
+  const workflowDigest = sha256(workflowCopy);
+  if (workflowDigest !== lock.workflow_resource_sha256) {
+    throw new Error(
+      `${workflowPath} must match the exact tagged Workflow resource digest ` +
+        `${lock.workflow_resource_sha256}; got ${workflowDigest}`,
+    );
+  }
   const expectedDocsCopy = sdkNeutralityContractSource(
     workflowCopy,
     PUBLISHED_ARTIFACT_VERSIONS,

@@ -26,7 +26,7 @@ const PROTECTED_REFRESH_SOURCE_GUARD =
   "github.ref == 'refs/heads/main'";
 const {
   artifactVersionDigest,
-  buildReadyItemPayload,
+  buildReadyItemPayload: buildReadyItemPayloadWithDefaults,
   buildSdkNeutralityAuthorityIdentity,
   compatibilityEvidenceDigest,
   findExistingReadyItem,
@@ -36,13 +36,33 @@ const {
   sdkNeutralityAuthorityDigest,
 } = require(routeScriptPath);
 const {
+  sdkNeutralityContractSource,
   workflowAuthorityLockSource,
 } = require('./refresh-public-artifact-versions');
 const currentArtifactVersions = require('./public-artifact-versions.json');
+const currentPublishedArtifactVersions = require('./published-artifact-versions.json');
 const currentProtocolCatalog = require('../static/platform-protocol-specs.json');
 const {
   catalogSha256,
 } = require('./check-public-server-protocol-catalog');
+
+function workflowResourceSourceFromProjection(projectionSource) {
+  const resource = JSON.parse(projectionSource);
+  const pythonSdk = resource.sdk_breadth_policy.first_party.python_sdk;
+  pythonSdk.package_url = pythonSdk.canonical_project_url;
+  for (const field of [
+    'package_version',
+    'registry_version',
+    'exact_release_url',
+    'exact_release_json_url',
+    'canonical_project_url',
+    'canonical_project_url_role',
+  ]) {
+    delete pythonSdk[field];
+  }
+  return `${JSON.stringify(resource, null, 2)}\n`;
+}
+
 const currentSdkNeutralityAuthoritySources = {
   contractSource: fs.readFileSync(
     path.join(__dirname, '..', 'static', 'sdk-neutrality-contract.json'),
@@ -53,11 +73,24 @@ const currentSdkNeutralityAuthoritySources = {
     'utf8',
   ),
 };
+currentSdkNeutralityAuthoritySources.workflowResourceSource =
+  workflowResourceSourceFromProjection(
+    currentSdkNeutralityAuthoritySources.contractSource,
+  );
 const currentSdkNeutralityAuthority = buildSdkNeutralityAuthorityIdentity(
   currentArtifactVersions.artifacts.workflow,
   currentSdkNeutralityAuthoritySources.contractSource,
   currentSdkNeutralityAuthoritySources.lockSource,
+  currentPublishedArtifactVersions.artifacts,
+  currentSdkNeutralityAuthoritySources.workflowResourceSource,
 );
+
+function buildReadyItemPayload(handoff, options = {}) {
+  return buildReadyItemPayloadWithDefaults(handoff, {
+    sdkNeutralityAuthoritySources: currentSdkNeutralityAuthoritySources,
+    ...options,
+  });
+}
 
 function fail(message) {
   console.error(message);
@@ -68,6 +101,10 @@ function workerBranch(payload) {
   const match = /<!-- pipeline-worker-branch: ([^ ]+) -->/.exec(payload.body);
   assert.ok(match, 'public artifact tuple ready item must include a worker branch');
   return match[1];
+}
+
+function incrementPrereleaseVersion(version) {
+  return version.replace(/\.(\d+)$/, (_, sequence) => `.${Number(sequence) + 1}`);
 }
 
 function assertProtectedRefreshSource(source) {
@@ -380,6 +417,7 @@ for (const required of [
   'sdk_neutrality_authority: sdkNeutralityAuthority',
   'buildSdkNeutralityAuthorityIdentity',
   'workflow_source_commit',
+  '.workflow-authority/resources/sdk-neutrality-contract.json',
   'previous_published_artifact_versions: previousPublishedSource.artifacts',
   'HEAD:scripts/published-artifact-versions.json',
   'scripts/public-artifact-versions.json',
@@ -414,6 +452,8 @@ if (workflow.includes('previous_artifact_versions:')) {
 const detectPosition = workflowStepPosition('Detect tuple changes');
 const protocolCatalogPosition = workflowStepPosition('Verify candidate server protocol catalog');
 const protocolCatalogEvidencePosition = workflowStepPosition('Upload candidate server protocol catalog evidence');
+const workflowAuthorityResolvePosition = workflowStepPosition('Resolve Workflow authority ref');
+const workflowAuthorityCheckoutPosition = workflowStepPosition('Checkout Workflow authority');
 const writePosition = workflowStepPosition('Write pipeline handoff');
 const uploadPosition = workflowStepPosition('Upload pipeline handoff');
 const routePosition = workflowStepPosition('Route pipeline ready item');
@@ -422,11 +462,13 @@ const validatePosition = workflowStepPosition('Validate refreshed docs');
 if (!(
   detectPosition < protocolCatalogPosition
   && protocolCatalogPosition < protocolCatalogEvidencePosition
-  && protocolCatalogEvidencePosition < writePosition
+  && protocolCatalogEvidencePosition < workflowAuthorityResolvePosition
+  && workflowAuthorityResolvePosition < workflowAuthorityCheckoutPosition
+  && workflowAuthorityCheckoutPosition < writePosition
   && writePosition < uploadPosition
   && uploadPosition < routePosition
 )) {
-  fail('public artifact tuple handoff must verify server catalog convergence before it is written, uploaded, and routed');
+  fail('public artifact tuple handoff must verify Server catalog and Workflow resource identities before it is written, uploaded, and routed');
 }
 
 if (routePosition >= validatePosition) {
@@ -562,7 +604,10 @@ const stableArtifactVersions = {
 const stableKeyHandoff = {
   tuple_date: '2026-06-18',
   artifact_versions: stableArtifactVersions,
-  published_artifact_versions: {...stableArtifactVersions},
+  published_artifact_versions: {
+    ...stableArtifactVersions,
+    'sdk-python': currentPublishedArtifactVersions.artifacts['sdk-python'],
+  },
 };
 function publishedServerProtocolAuthority(version) {
   const digest = `sha256:${'9'.repeat(64)}`;
@@ -819,13 +864,22 @@ const sdkNeutralityReplacementContract = {
   ...JSON.parse(currentSdkNeutralityAuthoritySources.contractSource),
   version: JSON.parse(currentSdkNeutralityAuthoritySources.contractSource).version + 1,
 };
+const sdkNeutralityReplacementResourceSource =
+  workflowResourceSourceFromProjection(
+    `${JSON.stringify(sdkNeutralityReplacementContract, null, 2)}\n`,
+  );
 const sdkNeutralityReplacementSources = {
-  contractSource: `${JSON.stringify(sdkNeutralityReplacementContract, null, 2)}\n`,
+  contractSource: sdkNeutralityContractSource(
+    sdkNeutralityReplacementResourceSource,
+    stableKeyHandoff.published_artifact_versions,
+  ),
+  workflowResourceSource: sdkNeutralityReplacementResourceSource,
 };
 sdkNeutralityReplacementSources.lockSource = workflowAuthorityLockSource(
   stableArtifactVersions.workflow,
-  sdkNeutralityReplacementSources.contractSource,
+  sdkNeutralityReplacementSources.workflowResourceSource,
   '9'.repeat(40),
+  stableKeyHandoff.published_artifact_versions,
 );
 const sdkNeutralityReplacementHandoff = structuredClone(multiArtifactHandoff);
 sdkNeutralityReplacementHandoff.sdk_neutrality_authority =
@@ -833,10 +887,45 @@ sdkNeutralityReplacementHandoff.sdk_neutrality_authority =
     stableArtifactVersions.workflow,
     sdkNeutralityReplacementSources.contractSource,
     sdkNeutralityReplacementSources.lockSource,
+    stableKeyHandoff.published_artifact_versions,
+    sdkNeutralityReplacementSources.workflowResourceSource,
   );
 const sdkNeutralityReplacementPayload = buildReadyItemPayload(
   sdkNeutralityReplacementHandoff,
   {sdkNeutralityAuthoritySources: sdkNeutralityReplacementSources},
+);
+const pythonOnlyPublishedVersions = {
+  ...multiArtifactHandoff.published_artifact_versions,
+  'sdk-python': incrementPrereleaseVersion(
+    multiArtifactHandoff.published_artifact_versions['sdk-python'],
+  ),
+};
+const pythonOnlySources = {
+  workflowResourceSource:
+    currentSdkNeutralityAuthoritySources.workflowResourceSource,
+};
+pythonOnlySources.contractSource = sdkNeutralityContractSource(
+  pythonOnlySources.workflowResourceSource,
+  pythonOnlyPublishedVersions,
+);
+pythonOnlySources.lockSource = workflowAuthorityLockSource(
+  multiArtifactHandoff.artifact_versions.workflow,
+  pythonOnlySources.workflowResourceSource,
+  multiArtifactHandoff.sdk_neutrality_authority.workflow_source_commit,
+  pythonOnlyPublishedVersions,
+);
+const pythonOnlyHandoff = structuredClone(multiArtifactHandoff);
+pythonOnlyHandoff.published_artifact_versions = pythonOnlyPublishedVersions;
+pythonOnlyHandoff.sdk_neutrality_authority = buildSdkNeutralityAuthorityIdentity(
+  pythonOnlyHandoff.artifact_versions.workflow,
+  pythonOnlySources.contractSource,
+  pythonOnlySources.lockSource,
+  pythonOnlyPublishedVersions,
+  pythonOnlySources.workflowResourceSource,
+);
+const pythonOnlyPayload = buildReadyItemPayload(
+  pythonOnlyHandoff,
+  {sdkNeutralityAuthoritySources: pythonOnlySources},
 );
 const requestMatch = /<!-- pipeline-request-b64: ([A-Za-z0-9+/=]+) -->/.exec(multiArtifactPayload.body);
 const filesMatch = /<!-- pipeline-files-b64: ([A-Za-z0-9+/=]+) -->/.exec(multiArtifactPayload.body);
@@ -922,6 +1011,21 @@ assert.notStrictEqual(
   multiArtifactPayload.key,
   'a same-version SDK-neutrality authority replacement must receive a distinct handoff key',
 );
+assert.strictEqual(
+  pythonOnlyHandoff.sdk_neutrality_authority.workflow_resource_sha256,
+  multiArtifactHandoff.sdk_neutrality_authority.workflow_resource_sha256,
+  'a Python-only handoff must preserve the verified Workflow resource identity',
+);
+assert.notStrictEqual(
+  pythonOnlyHandoff.sdk_neutrality_authority.docs_projection_sha256,
+  multiArtifactHandoff.sdk_neutrality_authority.docs_projection_sha256,
+  'a Python-only handoff must carry a new docs projection identity',
+);
+assert.notStrictEqual(
+  pythonOnlyPayload.key,
+  multiArtifactPayload.key,
+  'a Python-only release must receive a distinct independently verified handoff key',
+);
 assert.notStrictEqual(
   workerBranch(sdkNeutralityReplacementPayload),
   workerBranch(multiArtifactPayload),
@@ -952,7 +1056,10 @@ if (!decodedRequest.includes('npm run refresh:public-artifact-versions -- --date
 }
 for (const authorityValue of [
   multiArtifactHandoff.sdk_neutrality_authority.workflow_source_commit,
-  multiArtifactHandoff.sdk_neutrality_authority.manifest_sha256,
+  multiArtifactHandoff.sdk_neutrality_authority.workflow_resource_sha256,
+  multiArtifactHandoff.sdk_neutrality_authority.docs_projection_sha256,
+  multiArtifactHandoff.sdk_neutrality_authority.python_package_version,
+  multiArtifactHandoff.sdk_neutrality_authority.python_registry_version,
 ]) {
   if (!decodedRequest.includes(authorityValue)) {
     fail(
@@ -1206,11 +1313,25 @@ for (const [label, mutate, expected] of [
     /workflow_source_commit must match the generated contract and lock/,
   ],
   [
-    'SDK-neutrality authority for another manifest',
+    'SDK-neutrality authority for another Workflow resource',
     handoff => {
-      handoff.sdk_neutrality_authority.manifest_sha256 = '7'.repeat(64);
+      handoff.sdk_neutrality_authority.workflow_resource_sha256 = '7'.repeat(64);
     },
-    /manifest_sha256 must match the generated contract and lock/,
+    /workflow_resource_sha256 must match the generated contract and lock/,
+  ],
+  [
+    'SDK-neutrality authority for another docs projection',
+    handoff => {
+      handoff.sdk_neutrality_authority.docs_projection_sha256 = '5'.repeat(64);
+    },
+    /docs_projection_sha256 must match the generated contract and lock/,
+  ],
+  [
+    'SDK-neutrality authority for another Python tuple',
+    handoff => {
+      handoff.sdk_neutrality_authority.python_package_version = '2.0.0-rc.999';
+    },
+    /python_package_version must match the generated contract and lock/,
   ],
   [
     'SDK-neutrality authority for another generated lock',

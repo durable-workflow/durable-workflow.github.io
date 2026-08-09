@@ -10,8 +10,8 @@ const workflowPaths = [
     label: 'docs deploy workflow',
     path: path.join(repoRoot, '.github', 'workflows', 'deploy.yml'),
     authorityRefSource:
-      "require('./scripts/public-artifact-versions.json').artifacts.workflow",
-    authorityRefDescription: 'qualified Workflow version source',
+      "require('./scripts/workflow-sdk-neutrality-authority-lock.json').workflow_source_commit",
+    authorityRefDescription: 'generated Workflow authority lock source commit',
     validationStep: 'Build website',
   },
   {

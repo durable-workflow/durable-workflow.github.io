@@ -61,6 +61,7 @@ const workflowAuthorityLockPath = path.join(
 );
 const sdkNeutralityContractPath = path.join(repoRoot, 'static', 'sdk-neutrality-contract.json');
 const WORKFLOW_SDK_NEUTRALITY_RESOURCE_PATH = 'resources/sdk-neutrality-contract.json';
+const DOCS_SDK_NEUTRALITY_PROJECTION_PATH = 'static/sdk-neutrality-contract.json';
 const PUBLIC_ARTIFACT_TUPLE_FILES = Object.freeze([
   'scripts/public-artifact-versions.json',
   'scripts/published-artifact-versions.json',
@@ -1198,13 +1199,23 @@ function workflowAuthorityLockSource(
     );
   }
 
+  const pythonAuthority = buildPythonPackageAuthority(publishedVersions);
+  const docsProjectionSource = sdkNeutralityContractSource(
+    manifestSource,
+    publishedVersions,
+  );
+
   return `${JSON.stringify({
     schema: 'durable-workflow.docs.workflow-sdk-neutrality-authority-lock',
-    schema_version: 2,
+    schema_version: 3,
     workflow_ref: workflowRef,
     workflow_source_commit: workflowSourceCommit,
-    resource_path: WORKFLOW_SDK_NEUTRALITY_RESOURCE_PATH,
-    sha256: sha256(sdkNeutralityContractSource(manifestSource, publishedVersions)),
+    workflow_resource_path: WORKFLOW_SDK_NEUTRALITY_RESOURCE_PATH,
+    workflow_resource_sha256: sha256(manifestSource),
+    docs_projection_path: DOCS_SDK_NEUTRALITY_PROJECTION_PATH,
+    docs_projection_sha256: sha256(docsProjectionSource),
+    python_package_version: pythonAuthority.version,
+    python_registry_version: pythonAuthority.registryVersion,
   }, null, 2)}\n`;
 }
 
@@ -1798,7 +1809,7 @@ async function check() {
       mismatchMessage(
         'static/sdk-neutrality-contract.json is stale against the published Workflow authority and Python release projection:',
         [{
-          name: 'Workflow SDK-neutrality manifest',
+          name: 'Workflow SDK-neutrality docs projection',
           actual: sha256(currentSources['static/sdk-neutrality-contract.json']),
           expected: sha256(desiredSources['static/sdk-neutrality-contract.json']),
         }],
@@ -1815,11 +1826,15 @@ async function check() {
         'scripts/workflow-sdk-neutrality-authority-lock.json is stale against the exact published Workflow authority:',
         [{
           name: 'Workflow SDK-neutrality authority lock',
-          actual: 'stale ref or digest',
-          expected: `${expected.workflow} ${sha256(sdkNeutralityContractSource(
-            workflowManifestSource,
-            published.publishedVersions,
-          ))}`,
+          actual: 'stale ref, source commit, base digest, projection digest, or Python tuple',
+          expected: [
+            expected.workflow,
+            `base ${sha256(workflowManifestSource)}`,
+            `projection ${sha256(sdkNeutralityContractSource(
+              workflowManifestSource,
+              published.publishedVersions,
+            ))}`,
+          ].join(' '),
         }],
       ),
     );

@@ -1163,12 +1163,66 @@ assert.strictEqual(
 const unchangedManifestLock = JSON.parse(
   unchangedManifestTuple['scripts/workflow-sdk-neutrality-authority-lock.json'],
 );
-assert.strictEqual(unchangedManifestLock.schema_version, 2);
+assert.strictEqual(unchangedManifestLock.schema_version, 3);
 assert.strictEqual(unchangedManifestLock.workflow_ref, successorWorkflowVersion);
 assert.strictEqual(unchangedManifestLock.workflow_source_commit, 'a'.repeat(40));
 assert.strictEqual(
-  unchangedManifestLock.sha256,
+  unchangedManifestLock.workflow_resource_sha256,
+  sha256(currentWorkflowManifest),
+  'the lock must preserve the exact unchanged Workflow resource digest',
+);
+assert.strictEqual(
+  unchangedManifestLock.docs_projection_sha256,
   sha256(sdkNeutralityContractSource(currentWorkflowManifest, successorVersions)),
+  'the lock must separately preserve the generated docs projection digest',
+);
+assert.strictEqual(unchangedManifestLock.python_package_version, successorWorkflowVersion);
+assert.strictEqual(
+  unchangedManifestLock.python_registry_version,
+  pypiRegistryVersion(successorWorkflowVersion),
+);
+
+const pythonOnlyVersion = incrementPrereleaseVersion(
+  publishedSource.artifacts['sdk-python'],
+);
+const pythonOnlyPublishedVersions = {
+  ...publishedSource.artifacts,
+  'sdk-python': pythonOnlyVersion,
+};
+const currentIdentityLock = JSON.parse(workflowAuthorityLockSource(
+  source.artifacts.workflow,
+  currentWorkflowManifest,
+  currentWorkflowAuthorityLock.workflow_source_commit,
+  publishedSource.artifacts,
+));
+const pythonOnlyIdentityLock = JSON.parse(workflowAuthorityLockSource(
+  source.artifacts.workflow,
+  currentWorkflowManifest,
+  currentWorkflowAuthorityLock.workflow_source_commit,
+  pythonOnlyPublishedVersions,
+));
+assert.strictEqual(
+  pythonOnlyIdentityLock.workflow_resource_sha256,
+  currentIdentityLock.workflow_resource_sha256,
+  'a Python-only release must preserve the independently locked Workflow resource digest',
+);
+assert.notStrictEqual(
+  pythonOnlyIdentityLock.docs_projection_sha256,
+  currentIdentityLock.docs_projection_sha256,
+  'a Python-only release must change the independently locked docs projection digest',
+);
+assert.strictEqual(pythonOnlyIdentityLock.python_package_version, pythonOnlyVersion);
+assert.strictEqual(
+  pythonOnlyIdentityLock.python_registry_version,
+  pypiRegistryVersion(pythonOnlyVersion),
+);
+assert.strictEqual(
+  pythonOnlyIdentityLock.docs_projection_sha256,
+  sha256(sdkNeutralityContractSource(
+    currentWorkflowManifest,
+    pythonOnlyPublishedVersions,
+  )),
+  'the Python-only projection digest must derive from the unchanged verified base and new tuple',
 );
 
 const changedWorkflowContract = JSON.parse(currentWorkflowManifest);
@@ -1200,10 +1254,23 @@ const changedManifestLock = JSON.parse(
 assert.strictEqual(changedManifestLock.workflow_ref, successorWorkflowVersion);
 assert.strictEqual(changedManifestLock.workflow_source_commit, 'b'.repeat(40));
 assert.strictEqual(
-  changedManifestLock.sha256,
-  sha256(sdkNeutralityContractSource(changedWorkflowManifest, successorVersions)),
+  changedManifestLock.workflow_resource_sha256,
+  sha256(changedWorkflowManifest),
+  'an upstream base change must refresh the Workflow resource digest',
 );
-assert.notStrictEqual(changedManifestLock.sha256, unchangedManifestLock.sha256);
+assert.strictEqual(
+  changedManifestLock.docs_projection_sha256,
+  sha256(sdkNeutralityContractSource(changedWorkflowManifest, successorVersions)),
+  'an upstream base change must refresh the derived docs projection digest',
+);
+assert.notStrictEqual(
+  changedManifestLock.workflow_resource_sha256,
+  unchangedManifestLock.workflow_resource_sha256,
+);
+assert.notStrictEqual(
+  changedManifestLock.docs_projection_sha256,
+  unchangedManifestLock.docs_projection_sha256,
+);
 
 const tupleWriteRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'public-artifact-tuple-write-'));
 try {

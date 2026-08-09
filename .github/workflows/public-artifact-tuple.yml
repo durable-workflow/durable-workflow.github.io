@@ -108,6 +108,21 @@ jobs:
             public-server-protocol-catalog-server.log
           if-no-files-found: error
 
+      - name: Resolve Workflow authority ref
+        id: workflow-authority
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          node -e "process.stdout.write('ref=' + require('./scripts/workflow-sdk-neutrality-authority-lock.json').workflow_source_commit + '\n')" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout Workflow authority
+        if: steps.changes.outputs.changed == 'true'
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
+        with:
+          repository: durable-workflow/workflow
+          ref: ${{ steps.workflow-authority.outputs.ref }}
+          path: .workflow-authority
+          persist-credentials: false
+
       - name: Write pipeline handoff
         if: steps.changes.outputs.changed == 'true'
         env:
@@ -134,10 +149,16 @@ jobs:
             'scripts/workflow-sdk-neutrality-authority-lock.json',
             'utf8',
           );
+          const sdkNeutralityWorkflowResourceSource = fs.readFileSync(
+            '.workflow-authority/resources/sdk-neutrality-contract.json',
+            'utf8',
+          );
           const sdkNeutralityAuthority = buildSdkNeutralityAuthorityIdentity(
             source.artifacts.workflow,
             sdkNeutralityContractSource,
             sdkNeutralityAuthorityLockSource,
+            publishedSource.artifacts,
+            sdkNeutralityWorkflowResourceSource,
           );
           const previousPublishedSource = JSON.parse(childProcess.execFileSync(
             'git',
@@ -260,20 +281,6 @@ jobs:
         env:
           PIPELINE_GATE_URL: ${{ secrets.PIPELINE_GATE_URL }}
         run: node scripts/route-public-artifact-tuple-handoff.js --handoff docs-artifact-tuple-handoff.json
-
-      - name: Resolve Workflow authority ref
-        id: workflow-authority
-        if: steps.changes.outputs.changed == 'true'
-        run: |
-          node -e "process.stdout.write('ref=' + require('./scripts/workflow-sdk-neutrality-authority-lock.json').workflow_source_commit + '\n')" >> "$GITHUB_OUTPUT"
-
-      - name: Checkout Workflow authority
-        if: steps.changes.outputs.changed == 'true'
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
-        with:
-          repository: durable-workflow/workflow
-          ref: ${{ steps.workflow-authority.outputs.ref }}
-          path: .workflow-authority
 
       - name: Resolve published Workflow conformance ref
         id: published-workflow
