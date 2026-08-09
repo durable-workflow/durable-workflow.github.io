@@ -132,6 +132,71 @@ function qualifiedPackageUrls(contract) {
   });
 }
 
+function cratesIoExactVersionUrl(identity) {
+  const crateName = identity?.crate;
+  const version = identity?.version;
+
+  if (typeof crateName !== 'string' || crateName.length === 0) {
+    throw new Error('quickstart contract artifacts.sdk-rust.crate is missing');
+  }
+  if (typeof version !== 'string' || version.length === 0) {
+    throw new Error('quickstart contract artifacts.sdk-rust.version is missing');
+  }
+
+  return new URL(
+    `https://crates.io/api/v1/crates/${encodeURIComponent(crateName)}/` +
+      encodeURIComponent(version),
+  );
+}
+
+function assertCratesIoExactVersion(source, identity) {
+  let response;
+
+  try {
+    response = JSON.parse(Buffer.isBuffer(source) ? source.toString('utf8') : String(source));
+  } catch (error) {
+    throw new Error(`crates.io returned invalid JSON: ${error.message}`);
+  }
+
+  const crateName = identity.crate;
+  const version = identity.version;
+  const release = response?.version;
+
+  if (release?.crate !== crateName || release?.num !== version) {
+    throw new Error(`crates.io did not return exact ${crateName}@${version}`);
+  }
+  if (release.yanked !== false) {
+    throw new Error(`crates.io reports ${crateName}@${version} as yanked`);
+  }
+}
+
+async function verifyQualifiedPackagePublication(artifact, identity, options = {}) {
+  if (artifact === 'sdk-rust') {
+    const registryUrl = cratesIoExactVersionUrl(identity);
+    const registryFetcher = options.registryFetcher || fetchBody;
+
+    try {
+      const source = await registryFetcher(registryUrl);
+      assertCratesIoExactVersion(source, identity);
+      return;
+    } catch (error) {
+      throw new Error(
+        `qualified ${artifact} registry release ${identity.crate}@${identity.version} ` +
+          `is unavailable: ${error.message}`,
+      );
+    }
+  }
+
+  const packageFetcher = options.packageFetcher || fetchBody;
+  try {
+    await packageFetcher(new URL(identity.package_url));
+  } catch (error) {
+    throw new Error(
+      `qualified ${artifact} package link ${identity.package_url} is unavailable: ${error.message}`,
+    );
+  }
+}
+
 function assertLiveQuickstartPage(html, contract) {
   const hrefs = htmlHrefs(html);
   const qualificationDate = contract.qualified_tuple?.qualified_on;
@@ -155,20 +220,18 @@ function assertLiveQuickstartPage(html, contract) {
 async function verifyLiveQuickstart(baseUrl, contract, options = {}) {
   const fetcher = options.fetcher || fetchBody;
   const packageFetcher = options.packageFetcher || fetchBody;
+  const registryFetcher = options.registryFetcher || fetchBody;
   const quickstartUrl = new URL(QUICKSTART_ROUTE, `${baseUrl}/`);
   quickstartUrl.searchParams.set('deploy_check', String(options.cacheKey || Date.now()));
   const html = (await fetcher(quickstartUrl)).toString('utf8');
   assertLiveQuickstartPage(html, contract);
 
-  await Promise.all(qualifiedPackageUrls(contract).map(async ([artifact, packageUrl]) => {
-    try {
-      await packageFetcher(new URL(packageUrl));
-    } catch (error) {
-      throw new Error(
-        `qualified ${artifact} package link ${packageUrl} is unavailable: ${error.message}`,
-      );
-    }
-  }));
+  await Promise.all(Object.entries(contract.artifacts || {}).map(
+    ([artifact, identity]) => verifyQualifiedPackagePublication(artifact, identity, {
+      packageFetcher,
+      registryFetcher,
+    }),
+  ));
 }
 
 async function verifyLiveArtifacts(options = {}) {
@@ -177,6 +240,7 @@ async function verifyLiveArtifacts(options = {}) {
   const retryDelay = Number(options.retryDelay || DEFAULT_RETRY_DELAY_MS);
   const fetcher = options.fetcher || fetchBody;
   const packageFetcher = options.packageFetcher || (options.fetcher ? null : fetchBody);
+  const registryFetcher = options.registryFetcher || (options.fetcher ? null : fetchBody);
   const repoRoot = path.join(__dirname, '..');
   const expected = Object.fromEntries(REQUIRED_LIVE_ARTIFACTS.map(artifact => [
     artifact.route,
@@ -209,10 +273,18 @@ async function verifyLiveArtifacts(options = {}) {
       const liveQuickstartContract = JSON.parse(
         live['/quickstart-execution-contract.json'].toString('utf8'),
       );
+      const rustIdentity = liveQuickstartContract.artifacts?.['sdk-rust'];
       await verifyLiveQuickstart(baseUrl, liveQuickstartContract, {
         cacheKey: `${Date.now()}-${attempt}`,
         fetcher,
         packageFetcher: packageFetcher || (async () => Buffer.from('fixture package link')),
+        registryFetcher: registryFetcher || (async () => Buffer.from(JSON.stringify({
+          version: {
+            crate: rustIdentity?.crate,
+            num: rustIdentity?.version,
+            yanked: false,
+          },
+        }))),
       });
       console.log(
         `Live docs release artifacts and qualified quickstart package links match ` +
@@ -243,9 +315,12 @@ if (require.main === module) {
 module.exports = {
   LIVE_ARTIFACTS,
   QUICKSTART_ROUTE,
+  assertCratesIoExactVersion,
   assertLiveQuickstartPage,
   assertReleaseAuditAuthority,
+  cratesIoExactVersionUrl,
   qualifiedPackageUrls,
+  verifyQualifiedPackagePublication,
   verifyLiveQuickstart,
   verifyLiveArtifacts,
 };

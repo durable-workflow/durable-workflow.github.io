@@ -19,6 +19,7 @@ const {
   assertLiveQuickstartPage,
   assertReleaseAuditAuthority,
   qualifiedPackageUrls,
+  verifyLiveQuickstart,
 } = require('./verify-docs-release-live');
 const {
   buildArtifactCompatibilityProjection,
@@ -95,6 +96,74 @@ assert.throws(
   /does not link qualified/,
   'post-deploy verifier must reject a stale quickstart package link',
 );
+
+async function assertCratesIoPublicationUsesRegistryAuthority() {
+  const rustIdentity = quickstartContract.artifacts['sdk-rust'];
+  const packageUrls = [];
+  const registryUrls = [];
+  const fetcher = async () => Buffer.from(liveQuickstartFixture);
+  const packageFetcher = async url => {
+    packageUrls.push(url.href);
+    if (url.hostname === 'crates.io') {
+      throw new Error('simulated crates.io HTML/WAF response');
+    }
+    return Buffer.from('published package');
+  };
+  const registryResponse = release => Buffer.from(JSON.stringify({version: release}));
+
+  await verifyLiveQuickstart('https://docs.example.test', quickstartContract, {
+    fetcher,
+    packageFetcher,
+    registryFetcher: async url => {
+      registryUrls.push(url.href);
+      return registryResponse({
+        crate: rustIdentity.crate,
+        num: rustIdentity.version,
+        yanked: false,
+      });
+    },
+  });
+
+  assert(
+    !packageUrls.includes(rustIdentity.package_url),
+    'Rust publication verification must not dereference the human-facing crates.io link',
+  );
+  assert.deepStrictEqual(
+    registryUrls,
+    [
+      `https://crates.io/api/v1/crates/${rustIdentity.crate}/${rustIdentity.version}`,
+    ],
+    'Rust publication verification must query the exact crates.io registry release',
+  );
+
+  await assert.rejects(
+    () => verifyLiveQuickstart('https://docs.example.test', quickstartContract, {
+      fetcher,
+      packageFetcher,
+      registryFetcher: async () => registryResponse({
+        crate: rustIdentity.crate,
+        num: '0.0.0-absent',
+        yanked: false,
+      }),
+    }),
+    /did not return exact durable-workflow@/,
+    'Rust publication verification must reject an absent exact crates.io version',
+  );
+
+  await assert.rejects(
+    () => verifyLiveQuickstart('https://docs.example.test', quickstartContract, {
+      fetcher,
+      packageFetcher,
+      registryFetcher: async () => registryResponse({
+        crate: rustIdentity.crate,
+        num: rustIdentity.version,
+        yanked: true,
+      }),
+    }),
+    /reports durable-workflow@.* as yanked/,
+    'Rust publication verification must reject a yanked exact crates.io version',
+  );
+}
 
 function fail(message) {
   throw new Error(message);
@@ -867,6 +936,7 @@ async function assertScheduledHelmHistoryDriftCannotSkip() {
 }
 
 async function main() {
+  await assertCratesIoPublicationUsesRegistryAuthority();
   await assertPushDeploysWithoutFetchingLive();
   await assertScheduledDeploySkipsCurrentLiveTuple();
   await assertScheduledDeployRepairsStaleLiveTuple();
