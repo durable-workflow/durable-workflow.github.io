@@ -60,6 +60,15 @@ a[class^='skipToContent']:focus {
   max-width: 100%;
 }
 
+/* Generated category cards intentionally keep titles and summaries to one line. */
+.theme-doc-card-description.text--truncate,
+.theme-doc-card-title.text--truncate {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  white-space: normal;
+}
+
 .navbar-github-star-link {
   align-items: center;
   display: inline-flex;
