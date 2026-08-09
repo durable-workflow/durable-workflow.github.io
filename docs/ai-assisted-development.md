@@ -14,14 +14,6 @@ keywords:
 
 # AI-Assisted Development
 
-:::caution 2.0 prerelease
-
-This page documents unreleased 2.0 guidance. The public default docs and
-canonical LLM bundles remain on the stable 1.x line until the release status is
-explicitly changed.
-
-:::
-
 Durable Workflow v2 is designed so a person can learn the durable execution
 model, then let tools handle the repeated inspection and operation work. The
 important product surface is not a chat prompt; it is the set of stable handles

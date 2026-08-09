@@ -152,6 +152,47 @@ function assertDocusaurusVersion(relativePath, expected) {
   }
 }
 
+function openingTags(html, tagName) {
+  return [...html.matchAll(new RegExp(`<${tagName}\\b[^>]*>`, 'gi'))]
+    .map(match => match[0]);
+}
+
+function attributeValue(tag, attribute) {
+  const match = tag.match(new RegExp(`\\s${attribute}="([^"]*)"`, 'i'));
+  return match?.[1] ?? null;
+}
+
+function assertVersionBanner(relativePath, expectedVersion) {
+  const html = readBuildFile(relativePath);
+  const banners = openingTags(html, 'aside')
+    .filter(tag => attributeValue(tag, 'data-docs-release-banner-version') !== null);
+
+  if (expectedVersion === null) {
+    if (banners.length !== 0) {
+      fail(`build/${relativePath} must not render a prerelease version banner`);
+    }
+    return;
+  }
+
+  if (
+    banners.length !== 1 ||
+    attributeValue(banners[0], 'data-docs-release-banner-version') !== expectedVersion
+  ) {
+    fail(`build/${relativePath} must render one ${expectedVersion} version banner`);
+  }
+
+  const stableLinks = openingTags(html, 'a')
+    .filter(tag => attributeValue(tag, 'data-docs-stable-version') === STABLE_DOCS_VERSION);
+  if (
+    stableLinks.length !== 1 ||
+    attributeValue(stableLinks[0], 'href') !== STABLE_DOCS_ROOT
+  ) {
+    fail(
+      `build/${relativePath} version banner must link ${STABLE_DOCS_VERSION} to ${STABLE_DOCS_ROOT}`,
+    );
+  }
+}
+
 function assertExternalLink(relativePath, expectedUrl, label) {
   const html = readBuildFile(relativePath);
   const hrefs = new Set(
@@ -177,6 +218,10 @@ function assertBuiltDocsPolicy() {
   assertDocusaurusVersion('docs/installation/index.html', STABLE_DOCS_VERSION);
   assertDocusaurusVersion('docs/2.0/introduction/index.html', 'current');
   assertDocusaurusVersion('docs/2.0/quickstart/index.html', 'current');
+  assertVersionBanner('docs/introduction/index.html', null);
+  assertVersionBanner('docs/installation/index.html', null);
+  assertVersionBanner('docs/2.0/introduction/index.html', PRERELEASE_DOCS_VERSION);
+  assertVersionBanner('docs/2.0/quickstart/index.html', PRERELEASE_DOCS_VERSION);
   for (const guide of SDK_REFERENCE_GUIDES) {
     assertDocusaurusVersion(guide.path, 'current');
     assertExternalLink(guide.path, guide.url, guide.language);

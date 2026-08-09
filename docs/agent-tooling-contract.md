@@ -16,14 +16,6 @@ keywords:
 
 # Agent Tooling Contract
 
-:::caution 2.0 prerelease
-
-This page documents unreleased 2.0 guidance. The public default docs and
-canonical LLM bundles remain on the stable 1.x line until the release status is
-explicitly changed.
-
-:::
-
 Durable Workflow v2 keeps AI-assisted development boring by exposing product
 facts through stable contracts. A tool should not infer workflow state from
 HTML, parse logs as the source of truth, or guess which SDK behavior matches a

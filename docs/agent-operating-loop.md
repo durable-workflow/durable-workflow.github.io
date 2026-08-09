@@ -17,14 +17,6 @@ keywords:
 
 # Agent Operating Loop
 
-:::caution 2.0 prerelease
-
-This page documents unreleased 2.0 guidance. The public default docs and
-canonical LLM bundles remain on the stable 1.x line until the release status is
-explicitly changed.
-
-:::
-
 Durable Workflow v2 is easiest for agents to use when every step has a stable
 handle. The loop below starts with the same invariant a human learns, then
 switches to machine-readable contracts for discovery, execution, diagnosis, and
