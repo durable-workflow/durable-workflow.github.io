@@ -6,7 +6,8 @@ const path = require('path');
 const {
   ARTIFACT_PINS,
   ARTIFACT_VERSIONS,
-  QUALIFIED_ARTIFACT_INSTALL_SURFACE,
+  QUALIFIED_ARTIFACT_DEPLOYMENT_PATHS,
+  QUALIFIED_ARTIFACT_MATRIX,
   QUALIFIED_ARTIFACT_TUPLE_AUTHORITY,
   replaceArtifactTokens,
 } = require('./public-artifact-versions');
@@ -204,11 +205,11 @@ function assertQualifiedTupleRenderedSurface(contract, renderedQuickstart) {
   }
 
   assertEqual(
-    QUALIFIED_ARTIFACT_INSTALL_SURFACE.length,
+    QUALIFIED_ARTIFACT_MATRIX.length,
     Object.keys(ARTIFACT_VERSIONS).length,
-    'qualified artifact install surface size',
+    'qualified artifact matrix size',
   );
-  for (const row of QUALIFIED_ARTIFACT_INSTALL_SURFACE) {
+  for (const row of QUALIFIED_ARTIFACT_MATRIX) {
     if (row.packageUrl !== contract.artifacts[row.artifact]?.package_url) {
       fail(`qualified ${row.artifact} component package URL must match its contract`);
     }
@@ -216,6 +217,64 @@ function assertQualifiedTupleRenderedSurface(contract, renderedQuickstart) {
       fail(`qualified ${row.artifact} component identity must include its exact version`);
     }
   }
+}
+
+function assertQualifiedTupleDeploymentRoles(contract) {
+  const deploymentPaths = QUALIFIED_ARTIFACT_DEPLOYMENT_PATHS.map(path => ({
+    ...path,
+    required_artifacts: [...path.required_artifacts],
+    choose_one_artifacts: [...path.choose_one_artifacts],
+    optional_artifacts: [...path.optional_artifacts],
+    provisioned_components: [...path.provisioned_components],
+    separately_deployed_components: [...path.separately_deployed_components],
+  }));
+  assertDeepEqual(
+    contract.deployment_paths,
+    deploymentPaths,
+    'quickstart deployment path selections',
+  );
+
+  const artifactRoles = Object.fromEntries(
+    QUALIFIED_ARTIFACT_MATRIX.map(row => [
+      row.artifact,
+      {
+        role: row.role,
+        applicability: {...row.applicability},
+      },
+    ]),
+  );
+  assertDeepEqual(
+    contract.artifact_deployment_roles,
+    artifactRoles,
+    'quickstart artifact deployment roles',
+  );
+
+  const paths = byId(contract.deployment_paths, 'deployment_paths');
+  const cloud = paths.get('cloud_service');
+  const selfHosted = paths.get('self_hosted_service');
+  const embedded = paths.get('embedded_laravel');
+  const serviceSdks = ['sdk-php', 'sdk-python', 'sdk-rust'];
+
+  assertStringArrayEqual(
+    cloud.choose_one_artifacts,
+    serviceSdks,
+    'cloud_service.choose_one_artifacts',
+  );
+  assertStringArrayEqual(
+    selfHosted.choose_one_artifacts,
+    serviceSdks,
+    'self_hosted_service.choose_one_artifacts',
+  );
+  assertStringArrayEqual(
+    embedded.required_artifacts,
+    ['workflow'],
+    'embedded_laravel.required_artifacts',
+  );
+  assertStringArrayEqual(
+    embedded.optional_artifacts,
+    ['waterline'],
+    'embedded_laravel.optional_artifacts',
+  );
 }
 
 function assertScenarioShape(scenario, hostingBranches, personas) {
@@ -362,19 +421,17 @@ function assertEmbeddedLaravelInstallContract(contract) {
 
   const installStart = laravel.command_script_lines.indexOf('composer require \\');
   assertStringArrayEqual(
-    laravel.command_script_lines.slice(installStart, installStart + 4),
+    laravel.command_script_lines.slice(installStart, installStart + 3),
     [
       'composer require \\',
-      `  ${ARTIFACT_PINS.waterlineComposerPackage} \\`,
       `  ${ARTIFACT_PINS.workflowComposerPackage} \\`,
-      `  ${ARTIFACT_PINS.phpSdkComposerPackage}`,
+      `  ${ARTIFACT_PINS.waterlineComposerPackage}`,
     ],
     'laravel_user_embedded_completion Composer install command',
   );
   assertStringArrayEqual(
-    laravel.command_script_lines.slice(installStart + 4, installStart + 7),
+    laravel.command_script_lines.slice(installStart + 3, installStart + 5),
     [
-      'composer show durable-workflow/sdk',
       'composer show durable-workflow/workflow',
       'composer show durable-workflow/waterline',
     ],
@@ -385,7 +442,6 @@ function assertEmbeddedLaravelInstallContract(contract) {
   for (const [id, packageName, version] of [
     ['composer_waterline_version', 'durable-workflow/waterline', ARTIFACT_VERSIONS.waterline],
     ['composer_workflow_version', 'durable-workflow/workflow', ARTIFACT_VERSIONS.workflow],
-    ['composer_php_sdk_version', 'durable-workflow/sdk', ARTIFACT_VERSIONS['sdk-php']],
   ]) {
     const probe = probes.get(id);
 
@@ -501,7 +557,7 @@ function main() {
   const renderedQuickstart = replaceArtifactTokens(quickstart, 'docs/quickstart.md');
 
   assertEqual(contract.schema, EXPECTED_SCHEMA, 'quickstart execution contract schema');
-  assertEqual(contract.version, 3, 'quickstart execution contract version');
+  assertEqual(contract.version, 4, 'quickstart execution contract version');
   assertEqual(contract.release_status, '2.0_prerelease', 'quickstart execution contract release_status');
   assertEqual(contract.authority_doc, 'docs/platform-conformance.md', 'quickstart execution contract authority_doc');
   assertEqual(contract.onboarding_doc, 'docs/quickstart.md', 'quickstart execution contract onboarding_doc');
@@ -510,6 +566,7 @@ function main() {
   assertQualifiedTupleAuthority(contract);
   assertPublicArtifactPins(contract);
   assertQualifiedTupleRenderedSurface(contract, renderedQuickstart);
+  assertQualifiedTupleDeploymentRoles(contract);
   assertContractCoverage(contract);
   assertPythonInstallContract(contract);
   assertRustInstallContract(contract);

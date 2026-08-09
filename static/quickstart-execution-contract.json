@@ -1,6 +1,6 @@
 {
   "schema": "durable-workflow.docs.v2.quickstart-execution-contract",
-  "version": 3,
+  "version": 4,
   "release_status": "2.0_prerelease",
   "authority_doc": "docs/platform-conformance.md",
   "authority_url": "https://durable-workflow.com/docs/2.0/platform-conformance/",
@@ -22,6 +22,114 @@
       "conformance_evidence_tag": "beta-conformance/rc-current-2-0-20260801/30708509976.1",
       "conformance_evidence_url": "https://github.com/durable-workflow/.github/releases/download/beta-conformance/rc-current-2-0-20260801/30708509976.1/suite-result.json",
       "conformance_evidence_sha256": "ac78fbd51be97afdd1e307b7409d9c23f3d9eefdf7cae7890cae5eff5ba542c5"
+    }
+  },
+  "deployment_paths": [
+    {
+      "id": "cloud_service",
+      "label": "Cloud",
+      "required_artifacts": [],
+      "choose_one_artifacts": [
+        "sdk-php",
+        "sdk-python",
+        "sdk-rust"
+      ],
+      "optional_artifacts": [],
+      "provisioned_components": [
+        "server_runtime_values",
+        "managed_waterline"
+      ],
+      "separately_deployed_components": []
+    },
+    {
+      "id": "self_hosted_service",
+      "label": "Self-hosted service mode",
+      "required_artifacts": [
+        "server"
+      ],
+      "choose_one_artifacts": [
+        "sdk-php",
+        "sdk-python",
+        "sdk-rust"
+      ],
+      "optional_artifacts": [
+        "cli"
+      ],
+      "provisioned_components": [],
+      "separately_deployed_components": [
+        "waterline_service"
+      ]
+    },
+    {
+      "id": "embedded_laravel",
+      "label": "Embedded Laravel",
+      "required_artifacts": [
+        "workflow"
+      ],
+      "choose_one_artifacts": [],
+      "optional_artifacts": [
+        "waterline"
+      ],
+      "provisioned_components": [],
+      "separately_deployed_components": []
+    }
+  ],
+  "artifact_deployment_roles": {
+    "server": {
+      "role": "service_runtime",
+      "applicability": {
+        "cloud_service": "provisioned_not_installed",
+        "self_hosted_service": "required",
+        "embedded_laravel": "not_used"
+      }
+    },
+    "cli": {
+      "role": "service_operator_tool",
+      "applicability": {
+        "cloud_service": "not_in_first_success",
+        "self_hosted_service": "optional",
+        "embedded_laravel": "not_used"
+      }
+    },
+    "workflow": {
+      "role": "embedded_laravel_engine",
+      "applicability": {
+        "cloud_service": "not_used",
+        "self_hosted_service": "not_used",
+        "embedded_laravel": "required"
+      }
+    },
+    "waterline": {
+      "role": "embedded_laravel_operator_ui",
+      "applicability": {
+        "cloud_service": "managed_not_installed",
+        "self_hosted_service": "separate_service_identity",
+        "embedded_laravel": "optional"
+      }
+    },
+    "sdk-php": {
+      "role": "service_mode_sdk",
+      "applicability": {
+        "cloud_service": "choose_one",
+        "self_hosted_service": "choose_one",
+        "embedded_laravel": "not_used"
+      }
+    },
+    "sdk-python": {
+      "role": "service_mode_sdk",
+      "applicability": {
+        "cloud_service": "choose_one",
+        "self_hosted_service": "choose_one",
+        "embedded_laravel": "not_used"
+      }
+    },
+    "sdk-rust": {
+      "role": "service_mode_sdk",
+      "applicability": {
+        "cloud_service": "choose_one",
+        "self_hosted_service": "choose_one",
+        "embedded_laravel": "not_used"
+      }
     }
   },
   "default_docs_guard": {
@@ -734,10 +842,8 @@
         "cd durable-workflow-laravel-quickstart",
         "",
         "composer require \\",
-        "  durable-workflow/waterline:2.0.0-rc.9@rc \\",
         "  durable-workflow/workflow:2.0.0-rc.12@rc \\",
-        "  durable-workflow/sdk:2.0.0-rc.6@rc",
-        "composer show durable-workflow/sdk",
+        "  durable-workflow/waterline:2.0.0-rc.9@rc",
         "composer show durable-workflow/workflow",
         "composer show durable-workflow/waterline",
         "",
@@ -849,14 +955,6 @@
         "trap - EXIT"
       ],
       "success_probes": [
-        {
-          "id": "composer_php_sdk_version",
-          "source": "stdout",
-          "required_substrings": [
-            "durable-workflow/sdk",
-            "2.0.0-rc.6"
-          ]
-        },
         {
           "id": "composer_workflow_version",
           "source": "stdout",

@@ -509,48 +509,127 @@ const ARTIFACT_PINS = Object.freeze({
   pythonPypiCanonicalProjectUrl: PYTHON_PACKAGE_AUTHORITY.canonicalProjectUrl,
   pythonPypiAuthorityUrl: PYTHON_PACKAGE_AUTHORITY.authorityUrl,
 });
-const QUALIFIED_ARTIFACT_INSTALL_SURFACE = Object.freeze([
+const SERVICE_MODE_SDK_ARTIFACTS = Object.freeze([
+  'sdk-php',
+  'sdk-python',
+  'sdk-rust',
+]);
+const QUALIFIED_ARTIFACT_DEPLOYMENT_PATHS = Object.freeze([
+  Object.freeze({
+    id: 'cloud_service',
+    label: 'Cloud',
+    required_artifacts: Object.freeze([]),
+    choose_one_artifacts: SERVICE_MODE_SDK_ARTIFACTS,
+    optional_artifacts: Object.freeze([]),
+    provisioned_components: Object.freeze([
+      'server_runtime_values',
+      'managed_waterline',
+    ]),
+    separately_deployed_components: Object.freeze([]),
+  }),
+  Object.freeze({
+    id: 'self_hosted_service',
+    label: 'Self-hosted service mode',
+    required_artifacts: Object.freeze(['server']),
+    choose_one_artifacts: SERVICE_MODE_SDK_ARTIFACTS,
+    optional_artifacts: Object.freeze(['cli']),
+    provisioned_components: Object.freeze([]),
+    separately_deployed_components: Object.freeze(['waterline_service']),
+  }),
+  Object.freeze({
+    id: 'embedded_laravel',
+    label: 'Embedded Laravel',
+    required_artifacts: Object.freeze(['workflow']),
+    choose_one_artifacts: Object.freeze([]),
+    optional_artifacts: Object.freeze(['waterline']),
+    provisioned_components: Object.freeze([]),
+    separately_deployed_components: Object.freeze([]),
+  }),
+]);
+const QUALIFIED_ARTIFACT_MATRIX = Object.freeze([
   Object.freeze({
     artifact: 'server',
     label: 'Server',
+    role: 'service_runtime',
     identity: ARTIFACT_PINS.serverDockerHubImage,
     packageUrl: ARTIFACT_PINS.serverPackageUrl,
+    applicability: Object.freeze({
+      cloud_service: 'provisioned_not_installed',
+      self_hosted_service: 'required',
+      embedded_laravel: 'not_used',
+    }),
   }),
   Object.freeze({
     artifact: 'cli',
     label: 'CLI',
+    role: 'service_operator_tool',
     identity: ARTIFACT_PINS.cliInstallerEnv,
     packageUrl: ARTIFACT_PINS.cliPackageUrl,
+    applicability: Object.freeze({
+      cloud_service: 'not_in_first_success',
+      self_hosted_service: 'optional',
+      embedded_laravel: 'not_used',
+    }),
   }),
   Object.freeze({
     artifact: 'workflow',
     label: 'Workflow',
+    role: 'embedded_laravel_engine',
     identity: ARTIFACT_PINS.workflowComposerPackage,
     packageUrl: ARTIFACT_PINS.workflowPackageUrl,
+    applicability: Object.freeze({
+      cloud_service: 'not_used',
+      self_hosted_service: 'not_used',
+      embedded_laravel: 'required',
+    }),
   }),
   Object.freeze({
     artifact: 'waterline',
-    label: 'Waterline',
+    label: 'Waterline Composer package',
+    role: 'embedded_laravel_operator_ui',
     identity: ARTIFACT_PINS.waterlineComposerPackage,
     packageUrl: ARTIFACT_PINS.waterlinePackageUrl,
+    applicability: Object.freeze({
+      cloud_service: 'managed_not_installed',
+      self_hosted_service: 'separate_service_identity',
+      embedded_laravel: 'optional',
+    }),
   }),
   Object.freeze({
     artifact: 'sdk-php',
     label: 'PHP SDK',
+    role: 'service_mode_sdk',
     identity: ARTIFACT_PINS.phpSdkComposerPackage,
     packageUrl: ARTIFACT_PINS.phpSdkPackageUrl,
+    applicability: Object.freeze({
+      cloud_service: 'choose_one',
+      self_hosted_service: 'choose_one',
+      embedded_laravel: 'not_used',
+    }),
   }),
   Object.freeze({
     artifact: 'sdk-python',
     label: 'Python SDK',
+    role: 'service_mode_sdk',
     identity: ARTIFACT_PINS.pythonPackagePin,
     packageUrl: ARTIFACT_PINS.pythonQualifiedPackageUrl,
+    applicability: Object.freeze({
+      cloud_service: 'choose_one',
+      self_hosted_service: 'choose_one',
+      embedded_laravel: 'not_used',
+    }),
   }),
   Object.freeze({
     artifact: 'sdk-rust',
     label: 'Rust SDK',
+    role: 'service_mode_sdk',
     identity: ARTIFACT_PINS.rustCargoRequirement,
     packageUrl: ARTIFACT_PINS.rustPackageUrl,
+    applicability: Object.freeze({
+      cloud_service: 'choose_one',
+      self_hosted_service: 'choose_one',
+      embedded_laravel: 'not_used',
+    }),
   }),
 ]);
 const ARTIFACT_PIN_PATTERNS = buildArtifactPinPatterns(
@@ -730,7 +809,8 @@ module.exports = {
   ARTIFACT_VERSIONS,
   PYTHON_PACKAGE_AUTHORITY,
   QUALIFIED_ARTIFACT_TUPLE_AUTHORITY,
-  QUALIFIED_ARTIFACT_INSTALL_SURFACE,
+  QUALIFIED_ARTIFACT_DEPLOYMENT_PATHS,
+  QUALIFIED_ARTIFACT_MATRIX,
   QUALIFIED_PYTHON_PACKAGE_AUTHORITY,
   PUBLISHED_ARTIFACT_VERSIONS,
   PUBLISHED_ARTIFACT_VERSION_SCHEMA,

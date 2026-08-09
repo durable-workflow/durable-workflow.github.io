@@ -60,6 +60,88 @@ a[class^='skipToContent']:focus {
   max-width: 100%;
 }
 
+.qualified-artifact-paths {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 1.25rem 0;
+}
+
+.qualified-artifact-paths section {
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-card-border-radius);
+  padding: 1rem;
+}
+
+.qualified-artifact-paths h3 {
+  font-size: 1rem;
+  margin: 0 0 0.75rem;
+}
+
+.qualified-artifact-paths ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.qualified-artifact-paths li:last-child {
+  margin-bottom: 0;
+}
+
+.qualified-artifact-cell-label {
+  display: none;
+}
+
+@media (max-width: 996px) {
+  .qualified-artifact-paths {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .qualified-artifact-matrix thead {
+    border: 0;
+    clip: rect(0 0 0 0);
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+  }
+
+  .qualified-artifact-matrix,
+  .qualified-artifact-matrix tbody,
+  .qualified-artifact-matrix tr,
+  .qualified-artifact-matrix td {
+    display: block;
+    width: 100%;
+  }
+
+  .qualified-artifact-matrix tr {
+    border: 1px solid var(--ifm-table-border-color);
+    margin-bottom: 1rem;
+  }
+
+  .qualified-artifact-matrix td {
+    border: 0;
+    border-bottom: 1px solid var(--ifm-table-border-color);
+    padding: 0.75rem;
+  }
+
+  .qualified-artifact-matrix td:last-child {
+    border-bottom: 0;
+  }
+
+  .qualified-artifact-cell-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+  }
+}
+
 /* Generated category cards intentionally keep titles and summaries to one line. */
 .theme-doc-card-description.text--truncate,
 .theme-doc-card-title.text--truncate {

@@ -57,14 +57,15 @@ without an account or source checkout. Cloud uses the same SDK and worker model;
 replace the local development connection with the provisioned values shown in
 [Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane/).
 
-## Qualified install tuple
+## Qualified compatibility matrix
 
-This quickstart installs the last jointly qualified 2.0 compatibility tuple,
-accepted on `%%artifact.qualificationDate%%`. These are seven independently
-versioned components, not one synthetic shared release. A package registry may
-list a newer individual component, but the runnable commands remain on this
-exact tuple until a passing release handoff replaces the
-versioned qualification authority.
+The matrix records the last jointly qualified 2.0 compatibility tuple, accepted
+on `%%artifact.qualificationDate%%`. It is not a universal install checklist:
+choose the subset for your deployment path. The seven artifacts are versioned
+independently rather than as one synthetic release. A package registry may list
+a newer individual component, but the runnable commands remain on the selected
+path's exact identities until a passing release handoff replaces the versioned
+qualification authority.
 
 <QualifiedArtifactTuple />
 
@@ -460,6 +461,18 @@ composer require %%artifact.workflowComposerPackage%%
 php artisan migrate
 php artisan queue:work
 ```
+
+When you want the operator UI inside that same Laravel application, add the
+qualified embedded Waterline Composer package:
+
+```bash
+composer require %%artifact.waterlineComposerPackage%%
+php artisan waterline:install
+```
+
+This Composer package is not the install identity for the separately deployed
+self-hosted Waterline service. Embedded Laravel does not run Server or install
+one of the service-mode SDKs.
 
 Continue with [Embedded Installation](/docs/2.0/installation/) to configure a
 non-`sync` Laravel queue, then [define](/docs/2.0/defining-workflows/workflows/)

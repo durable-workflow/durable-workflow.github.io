@@ -11,6 +11,8 @@ const {
   ARTIFACT_VERSION_SCHEMA,
   PUBLISHED_ARTIFACT_VERSIONS,
   PUBLISHED_ARTIFACT_VERSION_SCHEMA,
+  QUALIFIED_ARTIFACT_DEPLOYMENT_PATHS,
+  QUALIFIED_ARTIFACT_MATRIX,
   REQUIRED_ARTIFACTS,
   buildArtifactPins,
   buildPythonPackageAuthority,
@@ -1533,7 +1535,7 @@ function applyQuickstartArtifactPins(
     changed = true;
   }
 
-  update('quickstart contract', contract, 'version', 3);
+  update('quickstart contract', contract, 'version', 4);
   const qualifiedTuple = {
     meaning: qualification.meaning,
     qualified_on: qualification.qualifiedOn,
@@ -1553,6 +1555,36 @@ function applyQuickstartArtifactPins(
   };
   if (JSON.stringify(contract.qualified_tuple) !== JSON.stringify(qualifiedTuple)) {
     contract.qualified_tuple = qualifiedTuple;
+    changed = true;
+  }
+
+  const deploymentPaths = QUALIFIED_ARTIFACT_DEPLOYMENT_PATHS.map(path => ({
+    ...path,
+    required_artifacts: [...path.required_artifacts],
+    choose_one_artifacts: [...path.choose_one_artifacts],
+    optional_artifacts: [...path.optional_artifacts],
+    provisioned_components: [...path.provisioned_components],
+    separately_deployed_components: [...path.separately_deployed_components],
+  }));
+  if (JSON.stringify(contract.deployment_paths) !== JSON.stringify(deploymentPaths)) {
+    contract.deployment_paths = deploymentPaths;
+    changed = true;
+  }
+
+  const artifactDeploymentRoles = Object.fromEntries(
+    QUALIFIED_ARTIFACT_MATRIX.map(row => [
+      row.artifact,
+      {
+        role: row.role,
+        applicability: {...row.applicability},
+      },
+    ]),
+  );
+  if (
+    JSON.stringify(contract.artifact_deployment_roles)
+      !== JSON.stringify(artifactDeploymentRoles)
+  ) {
+    contract.artifact_deployment_roles = artifactDeploymentRoles;
     changed = true;
   }
 
@@ -1642,24 +1674,12 @@ function applyQuickstartArtifactPins(
   changed = replaceLineContaining(
     laravel.command_script_lines,
     'durable-workflow/waterline:',
-    `  ${pins.waterlineComposerPackage} \\`,
+    `  ${pins.waterlineComposerPackage}`,
     'Waterline Composer install line'
   ) || changed;
 
-  changed = replaceLineContaining(
-    laravel.command_script_lines,
-    'durable-workflow/sdk:',
-    `  ${pins.phpSdkComposerPackage}`,
-    'PHP SDK Composer install line'
-  ) || changed;
-
-  const phpSdkProbe = (laravel.success_probes || []).find(probe => probe && probe.id === 'composer_php_sdk_version');
   const workflowProbe = (laravel.success_probes || []).find(probe => probe && probe.id === 'composer_workflow_version');
   const waterlineProbe = (laravel.success_probes || []).find(probe => probe && probe.id === 'composer_waterline_version');
-
-  if (!phpSdkProbe || !Array.isArray(phpSdkProbe.required_substrings)) {
-    throw new Error('static/quickstart-execution-contract.json is missing composer_php_sdk_version required substrings');
-  }
 
   if (!workflowProbe || !Array.isArray(workflowProbe.required_substrings)) {
     throw new Error('static/quickstart-execution-contract.json is missing composer_workflow_version required substrings');
@@ -1668,13 +1688,6 @@ function applyQuickstartArtifactPins(
   if (!waterlineProbe || !Array.isArray(waterlineProbe.required_substrings)) {
     throw new Error('static/quickstart-execution-contract.json is missing composer_waterline_version required substrings');
   }
-
-  changed = replaceLineContaining(
-    phpSdkProbe.required_substrings,
-    '2.0.0-',
-    versions['sdk-php'],
-    'PHP SDK Composer success-probe version'
-  ) || changed;
 
   changed = replaceLineContaining(
     workflowProbe.required_substrings,
