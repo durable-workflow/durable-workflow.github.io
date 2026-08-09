@@ -598,12 +598,16 @@ class ApprovalWorkflow:
             raise ValueError("approved must be boolean")
 ```
 
-Python workers now complete server-routed queries by returning a query-task
-result to the server, and complete accepted updates by sending
-`complete_update` or `fail_update` commands back to the server. Synchronous
-pre-accept update validator routing is still being completed, so use that path
-only with deployments that advertise validator support for the target workflow
-type.
+Python workers complete server-routed queries by returning a query-task result
+to the server. For a declared update validator, the worker instead receives a
+dedicated validation task, replays authoritative workflow state, and invokes
+only the validator. The server records no accepted update and dispatches no
+update handler until that validation succeeds. Validator-bearing workers refuse
+to register unless discovery advertises the synchronous pre-accept contract;
+rejection, missing or incompatible workers, worker loss, timeout, and fenced
+duplicate or stale completion remain explicit typed outcomes. PHP and Rust do
+not currently expose update-validator authoring APIs and advertise that absence
+in their workflow contracts rather than claiming validator parity.
 
 ### Workflow Context
 
