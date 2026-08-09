@@ -63,6 +63,7 @@ const EXPECTED_REFRESH_FILES = [
 const ARTIFACT_ORDER = ['cli', 'sdk-php', 'sdk-python', 'sdk-rust', 'server', 'waterline', 'workflow'];
 const GATE_ACTION_LIST_READY_ITEMS = 'gh.issue.list';
 const GATE_ACTION_CREATE_READY_ITEM = 'gh.issue.create';
+const GATE_REQUEST_TIMEOUT_MS = 10000;
 const READY_ITEM_LOOKUP_INITIAL_LIMIT = 50;
 const READY_ITEM_LOOKUP_MAX_LIMIT = 1000;
 const ROUTING_LABELS = [
@@ -84,11 +85,13 @@ function usage() {
   return [
     'Usage:',
     '  node scripts/route-public-artifact-tuple-handoff.js --handoff docs-artifact-tuple-handoff.json',
+    '  node scripts/route-public-artifact-tuple-handoff.js --handoff docs-artifact-tuple-handoff.json --optional-callback',
     '  node scripts/route-public-artifact-tuple-handoff.js --handoff docs-artifact-tuple-handoff.json --dry-run',
     '',
     'Routes a validated public artifact tuple handoff into a pipeline ready item',
-    'through PIPELINE_GATE_URL. Dry-run mode prints the ready-item payload without',
-    'calling the gate.',
+    'through PIPELINE_GATE_URL. Optional-callback mode reports delivery state and',
+    'leaves artifact recovery authoritative when no callback is configured or',
+    'delivery fails. Dry-run mode prints the ready-item payload without calling the gate.',
   ].join('\n');
 }
 
@@ -96,6 +99,7 @@ function parseArgs(argv) {
   const args = {
     dryRun: false,
     handoffPath: 'docs-artifact-tuple-handoff.json',
+    optionalCallback: false,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -103,6 +107,11 @@ function parseArgs(argv) {
 
     if (arg === '--dry-run') {
       args.dryRun = true;
+      continue;
+    }
+
+    if (arg === '--optional-callback') {
+      args.optionalCallback = true;
       continue;
     }
 
@@ -127,6 +136,10 @@ function parseArgs(argv) {
     }
 
     throw new Error(`Unknown argument: ${arg}\n\n${usage()}`);
+  }
+
+  if (args.dryRun && args.optionalCallback) {
+    throw new Error('--dry-run and --optional-callback cannot be combined');
   }
 
   return args;
@@ -1085,6 +1098,7 @@ function gateAction(action, input) {
           responseBody += chunk;
         });
         res.on('end', () => {
+          clearTimeout(requestTimeout);
           let parsed = null;
           try {
             parsed = responseBody ? JSON.parse(responseBody) : null;
@@ -1108,7 +1122,13 @@ function gateAction(action, input) {
       }
     );
 
-    req.on('error', reject);
+    const requestTimeout = setTimeout(() => {
+      req.destroy(new Error('Pipeline gate request timed out'));
+    }, GATE_REQUEST_TIMEOUT_MS);
+    req.on('error', err => {
+      clearTimeout(requestTimeout);
+      reject(err);
+    });
     req.write(body);
     req.end();
   });
@@ -1197,6 +1217,33 @@ async function routeReadyItem(payload) {
   return created;
 }
 
+async function deliverOptionalCallback(payload) {
+  if (!process.env.PIPELINE_GATE_URL) {
+    console.log(
+      'Optional direct callback is not configured; the handoff artifact remains available for recovery.',
+    );
+    return {state: 'not_configured'};
+  }
+
+  try {
+    const readyItem = await routeReadyItem(payload);
+    return {state: 'delivered', readyItem};
+  } catch {
+    console.error(
+      'Optional direct callback was not delivered; the handoff artifact remains available for recovery.',
+    );
+    return {state: 'failed'};
+  }
+}
+
+function writeOutput(name, value) {
+  if (!process.env.GITHUB_OUTPUT) {
+    return;
+  }
+
+  fs.appendFileSync(process.env.GITHUB_OUTPUT, `${name}=${value}\n`);
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const handoff = readJson(path.resolve(args.handoffPath));
@@ -1212,6 +1259,12 @@ async function main() {
         labels: payload.labels,
       },
     }, null, 2));
+    return;
+  }
+
+  if (args.optionalCallback) {
+    const delivery = await deliverOptionalCallback(payload);
+    writeOutput('delivery_state', delivery.state);
     return;
   }
 
@@ -1232,6 +1285,7 @@ module.exports = {
   buildSdkNeutralityAuthorityIdentity,
   changedArtifacts,
   compatibilityEvidenceDigest,
+  deliverOptionalCallback,
   findExistingReadyItem,
   handoffDuplicateKeys,
   handoffKey,

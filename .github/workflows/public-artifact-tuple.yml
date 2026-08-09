@@ -276,11 +276,15 @@ jobs:
           path: docs-artifact-tuple-handoff.json
           if-no-files-found: error
 
-      - name: Route pipeline ready item
+      - name: Attempt optional direct callback
+        id: direct-callback
         if: steps.changes.outputs.changed == 'true'
         env:
           PIPELINE_GATE_URL: ${{ secrets.PIPELINE_GATE_URL }}
-        run: node scripts/route-public-artifact-tuple-handoff.js --handoff docs-artifact-tuple-handoff.json
+        run: >-
+          node scripts/route-public-artifact-tuple-handoff.js
+          --handoff docs-artifact-tuple-handoff.json
+          --optional-callback
 
       - name: Resolve published Workflow conformance ref
         id: published-workflow
@@ -303,6 +307,19 @@ jobs:
           WORKFLOW_SDK_NEUTRALITY_MANIFEST_PATH: ${{ github.workspace }}/.workflow-authority/resources/sdk-neutrality-contract.json
           WORKFLOW_PLATFORM_CONFORMANCE_MANIFEST_PATH: ${{ github.workspace }}/.published-workflow-authority/resources/platform-conformance-contract.json
         run: npm run build
+
+      - name: Report optional direct callback state
+        if: ${{ always() && steps.changes.outputs.changed == 'true' }}
+        env:
+          DIRECT_CALLBACK_STATE: ${{ steps.direct-callback.outputs.delivery_state }}
+        run: |
+          case "$DIRECT_CALLBACK_STATE" in
+            delivered|not_configured|failed) ;;
+            *) DIRECT_CALLBACK_STATE=failed ;;
+          esac
+
+          echo "Optional direct callback: ${DIRECT_CALLBACK_STATE}" >> "$GITHUB_STEP_SUMMARY"
+          echo "The uploaded handoff artifact remains the authoritative recovery path." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Report current tuple
         if: steps.changes.outputs.changed == 'false'

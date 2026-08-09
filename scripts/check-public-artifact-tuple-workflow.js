@@ -29,6 +29,7 @@ const {
   buildReadyItemPayload: buildReadyItemPayloadWithDefaults,
   buildSdkNeutralityAuthorityIdentity,
   compatibilityEvidenceDigest,
+  deliverOptionalCallback,
   findExistingReadyItem,
   handoffDuplicateKeys,
   handoffKey,
@@ -404,8 +405,10 @@ for (const required of [
   'contents: read',
   'docs-artifact-tuple-handoff.json',
   'public-artifact-tuple-pipeline-handoff',
-  'Route pipeline ready item',
+  'Attempt optional direct callback',
+  'Report optional direct callback state',
   'PIPELINE_GATE_URL',
+  '--optional-callback',
   'scripts/route-public-artifact-tuple-handoff.js',
   "schema: 'durable-workflow.docs.public-artifact-tuple-handoff'",
   'schema_version: 4',
@@ -456,8 +459,9 @@ const workflowAuthorityResolvePosition = workflowStepPosition('Resolve Workflow 
 const workflowAuthorityCheckoutPosition = workflowStepPosition('Checkout Workflow authority');
 const writePosition = workflowStepPosition('Write pipeline handoff');
 const uploadPosition = workflowStepPosition('Upload pipeline handoff');
-const routePosition = workflowStepPosition('Route pipeline ready item');
+const callbackPosition = workflowStepPosition('Attempt optional direct callback');
 const validatePosition = workflowStepPosition('Validate refreshed docs');
+const callbackReportPosition = workflowStepPosition('Report optional direct callback state');
 
 if (!(
   detectPosition < protocolCatalogPosition
@@ -466,18 +470,39 @@ if (!(
   && workflowAuthorityResolvePosition < workflowAuthorityCheckoutPosition
   && workflowAuthorityCheckoutPosition < writePosition
   && writePosition < uploadPosition
-  && uploadPosition < routePosition
+  && uploadPosition < callbackPosition
 )) {
   fail('public artifact tuple handoff must verify Server catalog and Workflow resource identities before it is written, uploaded, and routed');
 }
 
-if (routePosition >= validatePosition) {
-  fail('public artifact tuple handoff must route before the full docs build');
+if (!(callbackPosition < validatePosition && validatePosition < callbackReportPosition)) {
+  fail('public artifact tuple workflow must validate refreshed docs independently before reporting optional callback state');
+}
+
+const parsedWorkflowSteps = yaml.load(workflow)?.jobs?.refresh?.steps || [];
+const callbackStep = parsedWorkflowSteps.find(
+  step => step.name === 'Attempt optional direct callback',
+);
+const callbackReportStep = parsedWorkflowSteps.find(
+  step => step.name === 'Report optional direct callback state',
+);
+if (
+  !callbackStep
+  || callbackStep.id !== 'direct-callback'
+  || callbackStep.if !== "steps.changes.outputs.changed == 'true'"
+  || callbackStep.env?.PIPELINE_GATE_URL !== '${{ secrets.PIPELINE_GATE_URL }}'
+  || !callbackStep.run.includes('--optional-callback')
+  || !callbackReportStep
+  || callbackReportStep.if !== "${{ always() && steps.changes.outputs.changed == 'true' }}"
+  || callbackReportStep.env?.DIRECT_CALLBACK_STATE !==
+    '${{ steps.direct-callback.outputs.delivery_state }}'
+) {
+  fail('public artifact tuple workflow must isolate and report optional direct callback delivery');
 }
 
 const validateStep = workflow.slice(validatePosition, workflow.indexOf('\n      - name:', validatePosition + 1));
 if (!validateStep.includes('run: npm run build')) {
-  fail('post-route public artifact tuple validation must preserve the normal docs build');
+  fail('refreshed public artifact tuple validation must preserve the normal docs build');
 }
 if (
   !validateStep.includes('WORKFLOW_PLATFORM_CONFORMANCE_MANIFEST_PATH:') ||
@@ -486,7 +511,7 @@ if (
   )
 ) {
   fail(
-    'post-route public artifact tuple validation must compare the docs authority ' +
+    'refreshed public artifact tuple validation must compare the docs authority ' +
       'with the newly published Workflow package',
   );
 }
@@ -586,6 +611,9 @@ for (const required of [
   'pipeline-request-b64',
   'pipeline-files-b64',
   'docs-artifact-tuple-key',
+  "writeOutput('delivery_state'",
+  'const GATE_REQUEST_TIMEOUT_MS = 10000',
+  '}, GATE_REQUEST_TIMEOUT_MS)',
 ]) {
   if (!routeScript.includes(required)) {
     fail(`public-artifact-tuple router is missing required pipeline routing contract: ${required}`);
@@ -1479,7 +1507,11 @@ function readRequestBody(request) {
   });
 }
 
-async function withStubGate(issues, callback, {repeatFirstPage = false} = {}) {
+async function withStubGate(
+  issues,
+  callback,
+  {failWith = null, repeatFirstPage = false} = {},
+) {
   const requests = [];
   const server = http.createServer(async (request, response) => {
     try {
@@ -1491,6 +1523,12 @@ async function withStubGate(issues, callback, {repeatFirstPage = false} = {}) {
 
       const payload = await readRequestBody(request);
       requests.push(payload);
+
+      if (failWith !== null) {
+        response.writeHead(503, {'Content-Type': 'application/json'});
+        response.end(JSON.stringify({status: 'failed', error: failWith}));
+        return;
+      }
 
       if (payload.action === 'gh.issue.list') {
         const requiredLabels = parseLabels(payload.input.labels);
@@ -1645,6 +1683,83 @@ async function assertStubGateCreatePath() {
 
   if (!routed || routed.number !== 730) {
     fail('public artifact tuple create path must return the created ready item');
+  }
+}
+
+async function assertOptionalCallbackAbsentPath() {
+  const previousGateUrl = process.env.PIPELINE_GATE_URL;
+  delete process.env.PIPELINE_GATE_URL;
+
+  try {
+    const delivery = await deliverOptionalCallback(multiArtifactPayload);
+    assert.deepStrictEqual(
+      delivery,
+      {state: 'not_configured'},
+      'an absent direct callback must leave artifact recovery authoritative',
+    );
+  } finally {
+    if (previousGateUrl === undefined) {
+      delete process.env.PIPELINE_GATE_URL;
+    } else {
+      process.env.PIPELINE_GATE_URL = previousGateUrl;
+    }
+  }
+}
+
+async function assertOptionalCallbackPresentPath() {
+  const delivery = await withStubGate([], async requests => {
+    const result = await deliverOptionalCallback(multiArtifactPayload);
+
+    if (requests.length !== 2) {
+      fail(
+        `a configured direct callback must perform duplicate lookup and creation, saw ${requests.length} requests`,
+      );
+    }
+
+    assertGateListPayload(requests[0]);
+    assertGateCreatePayload(requests[1]);
+    return result;
+  });
+
+  if (delivery.state !== 'delivered' || delivery.readyItem?.number !== 730) {
+    fail('a configured direct callback must report successful bounded delivery');
+  }
+}
+
+async function assertOptionalCallbackFailurePath() {
+  const privateResponse = 'private callback detail must not be printed';
+  const logged = [];
+  const originalConsoleError = console.error;
+  console.error = message => logged.push(String(message));
+
+  try {
+    const delivery = await withStubGate(
+      [],
+      async requests => {
+        const result = await deliverOptionalCallback(multiArtifactPayload);
+
+        if (requests.length !== 1) {
+          fail(`a rejected optional callback must stop after one request, saw ${requests.length}`);
+        }
+
+        return result;
+      },
+      {failWith: privateResponse},
+    );
+
+    if (delivery.state !== 'failed') {
+      fail('a rejected optional callback must report failed delivery without failing recovery');
+    }
+  } finally {
+    console.error = originalConsoleError;
+  }
+
+  if (
+    logged.length !== 1
+    || logged[0].includes(privateResponse)
+    || logged[0].includes('127.0.0.1')
+  ) {
+    fail('optional callback failure reporting must not disclose private endpoint details');
   }
 }
 
@@ -1915,6 +2030,9 @@ async function assertStubGateCompletedPath() {
 }
 
 async function main() {
+  await assertOptionalCallbackAbsentPath();
+  await assertOptionalCallbackPresentPath();
+  await assertOptionalCallbackFailurePath();
   await assertStubGateCreatePath();
   await assertStubGateLegacyKeyPath();
   await assertStubGateIdentityReplacementPath(
