@@ -72,26 +72,26 @@ jobs:
             git diff -- scripts/public-artifact-versions.json scripts/published-artifact-versions.json scripts/platform-conformance-retained-evidence.json static/platform-conformance/run-ledger.json static/public-artifact-compatibility-evidence.json static/quickstart-execution-contract.json static/compatibility-contract.json static/sdk-neutrality-contract.json scripts/workflow-sdk-neutrality-authority-lock.json
           fi
 
-      - name: Resolve qualified Server authority ref
-        id: server-authority
+      - name: Resolve published Server protocol authority ref
+        id: published-server-authority
         if: steps.changes.outputs.changed == 'true'
         run: |
-          node -e "process.stdout.write('ref=' + require('./scripts/public-artifact-versions.json').artifacts.server + '\n')" >> "$GITHUB_OUTPUT"
+          node -e "process.stdout.write('ref=' + require('./scripts/published-artifact-versions.json').artifacts.server + '\n')" >> "$GITHUB_OUTPUT"
 
-      - name: Checkout qualified Server authority
+      - name: Checkout published Server protocol authority
         if: steps.changes.outputs.changed == 'true'
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
         with:
           repository: ${{ github.repository_owner }}/server
-          ref: ${{ steps.server-authority.outputs.ref }}
-          path: .server-authority
+          ref: ${{ steps.published-server-authority.outputs.ref }}
+          path: .published-server-protocol-authority
           persist-credentials: false
 
       - name: Verify candidate server protocol catalog
         if: steps.changes.outputs.changed == 'true'
         env:
           PUBLIC_SERVER_PROTOCOL_CATALOG_EVIDENCE: public-server-protocol-catalog-conformance.json
-          PUBLIC_SERVER_SOURCE_PATH: ${{ github.workspace }}/.server-authority
+          PUBLIC_SERVER_SOURCE_PATH: ${{ github.workspace }}/.published-server-protocol-authority
         run: node scripts/check-public-server-protocol-catalog.js
 
       - name: Upload candidate server protocol catalog evidence
@@ -113,6 +113,9 @@ jobs:
           node <<'NODE'
           const childProcess = require('child_process');
           const fs = require('fs');
+          const {
+            buildPublishedServerProtocolAuthority,
+          } = require('./scripts/check-public-server-protocol-catalog');
           const {
             buildSdkNeutralityAuthorityIdentity,
           } = require('./scripts/route-public-artifact-tuple-handoff');
@@ -138,6 +141,14 @@ jobs:
             ['show', 'HEAD:scripts/published-artifact-versions.json'],
             {encoding: 'utf8'}
           ));
+          const serverProtocolAuthority = buildPublishedServerProtocolAuthority(
+            JSON.parse(fs.readFileSync(
+              'public-server-protocol-catalog-conformance.json',
+              'utf8',
+            )),
+            publishedSource.artifacts.server,
+            require('./static/platform-protocol-specs.json'),
+          );
 
           const refreshCommand = 'npm run refresh:public-artifact-versions';
           const refreshFiles = [
@@ -168,7 +179,7 @@ jobs:
           const runId = process.env.GITHUB_RUN_ID || null;
           const handoff = {
             schema: 'durable-workflow.docs.public-artifact-tuple-handoff',
-            schema_version: 3,
+            schema_version: 4,
             action: 'pipeline_ready_item',
             reason: 'public_artifact_tuple_refresh_available',
             repository: 'durable-workflow.github.io',
@@ -181,6 +192,7 @@ jobs:
             artifact_versions: source.artifacts,
             published_artifact_versions: publishedSource.artifacts,
             compatibility_evidence: compatibilityEvidence,
+            published_server_protocol_authority: serverProtocolAuthority,
             sdk_neutrality_authority: sdkNeutralityAuthority,
             previous_published_artifact_versions: previousPublishedSource.artifacts,
             source_check: {

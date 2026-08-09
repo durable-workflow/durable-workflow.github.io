@@ -39,6 +39,10 @@ const {
   workflowAuthorityLockSource,
 } = require('./refresh-public-artifact-versions');
 const currentArtifactVersions = require('./public-artifact-versions.json');
+const currentProtocolCatalog = require('../static/platform-protocol-specs.json');
+const {
+  catalogSha256,
+} = require('./check-public-server-protocol-catalog');
 const currentSdkNeutralityAuthoritySources = {
   contractSource: fs.readFileSync(
     path.join(__dirname, '..', 'static', 'sdk-neutrality-contract.json'),
@@ -100,12 +104,12 @@ function assertPublicWorkflowCheckout(steps, context) {
   }
 }
 
-function assertQualifiedServerAuthority(steps, context, condition) {
+function assertPublishedServerProtocolAuthority(steps, context, condition) {
   const resolveIndex = steps.findIndex(
-    step => step.name === 'Resolve qualified Server authority ref',
+    step => step.name === 'Resolve published Server protocol authority ref',
   );
   const checkoutIndex = steps.findIndex(
-    step => step.name === 'Checkout qualified Server authority',
+    step => step.name === 'Checkout published Server protocol authority',
   );
   const verifyIndex = steps.findIndex(step => (
     step.run === 'node scripts/check-public-server-protocol-catalog.js'
@@ -119,20 +123,20 @@ function assertQualifiedServerAuthority(steps, context, condition) {
     || checkoutIndex < 0
     || verifyIndex < 0
     || !(resolveIndex < checkoutIndex && checkoutIndex < verifyIndex)
-    || resolve.id !== 'server-authority'
-    || !resolve.run.includes("require('./scripts/public-artifact-versions.json').artifacts.server")
+    || resolve.id !== 'published-server-authority'
+    || !resolve.run.includes("require('./scripts/published-artifact-versions.json').artifacts.server")
     || resolve.if !== condition
     || checkout.if !== condition
     || checkout.with?.repository !== '${{ github.repository_owner }}/server'
-    || checkout.with?.ref !== '${{ steps.server-authority.outputs.ref }}'
-    || checkout.with?.path !== '.server-authority'
+    || checkout.with?.ref !== '${{ steps.published-server-authority.outputs.ref }}'
+    || checkout.with?.path !== '.published-server-protocol-authority'
     || checkout.with?.['persist-credentials'] !== false
     || verify.if !== condition
     || verify.env?.PUBLIC_SERVER_SOURCE_PATH !==
-      '${{ github.workspace }}/.server-authority'
+      '${{ github.workspace }}/.published-server-protocol-authority'
   ) {
     throw new Error(
-      `${context} must compare image provenance with the exact qualified Server source checkout`,
+      `${context} must compare the catalog with the exact published Server source checkout`,
     );
   }
 }
@@ -207,12 +211,12 @@ assertPublicWorkflowCheckout(
   yaml.load(workflow)?.jobs?.refresh?.steps || [],
   'public artifact tuple qualification',
 );
-assertQualifiedServerAuthority(
+assertPublishedServerProtocolAuthority(
   yaml.load(workflow)?.jobs?.refresh?.steps || [],
   'public artifact tuple qualification',
   "steps.changes.outputs.changed == 'true'",
 );
-assertQualifiedServerAuthority(
+assertPublishedServerProtocolAuthority(
   yaml.load(deployWorkflow)?.jobs?.deploy?.steps || [],
   'documentation deployment',
   "steps.deploy-plan.outputs.deploy == 'true'",
@@ -367,10 +371,12 @@ for (const required of [
   'PIPELINE_GATE_URL',
   'scripts/route-public-artifact-tuple-handoff.js',
   "schema: 'durable-workflow.docs.public-artifact-tuple-handoff'",
-  'schema_version: 3',
+  'schema_version: 4',
   "action: 'pipeline_ready_item'",
   "integration: 'pipeline'",
   'published_artifact_versions: publishedSource.artifacts',
+  'published_server_protocol_authority: serverProtocolAuthority',
+  'buildPublishedServerProtocolAuthority',
   'sdk_neutrality_authority: sdkNeutralityAuthority',
   'buildSdkNeutralityAuthorityIdentity',
   'workflow_source_commit',
@@ -558,6 +564,29 @@ const stableKeyHandoff = {
   artifact_versions: stableArtifactVersions,
   published_artifact_versions: {...stableArtifactVersions},
 };
+function publishedServerProtocolAuthority(version) {
+  const digest = `sha256:${'9'.repeat(64)}`;
+  return {
+    schema: 'durable-workflow.docs.published-server-protocol-authority',
+    schema_version: 1,
+    server_version: version,
+    server_source_ref: version,
+    server_source_commit: '8'.repeat(40),
+    server_image: `durableworkflow/server:${version}`,
+    server_image_digest: digest,
+    immutable_server_image: `durableworkflow/server@${digest}`,
+    workflow_package_provenance: {
+      source: 'https://github.com/durable-workflow/workflow.git',
+      ref: currentArtifactVersions.artifacts.workflow,
+      commit: '7'.repeat(40),
+    },
+    catalog: {
+      schema: currentProtocolCatalog.schema,
+      version: currentProtocolCatalog.version,
+      sha256: catalogSha256(currentProtocolCatalog),
+    },
+  };
+}
 function compatibilityEvidence(versions) {
   const qualificationSource =
     'https://example.test/sdk-server-qualification.json';
@@ -635,6 +664,8 @@ function compatibilityEvidence(versions) {
 stableKeyHandoff.compatibility_evidence = compatibilityEvidence(
   stableKeyHandoff.artifact_versions,
 );
+stableKeyHandoff.published_server_protocol_authority =
+  publishedServerProtocolAuthority(stableKeyHandoff.published_artifact_versions.server);
 stableKeyHandoff.sdk_neutrality_authority = currentSdkNeutralityAuthority;
 const nextRunSameTuple = {
   ...stableKeyHandoff,
@@ -657,6 +688,7 @@ const nextPublishedTuple = {
     ...stableKeyHandoff.published_artifact_versions,
     server: '0.2.427',
   },
+  published_server_protocol_authority: publishedServerProtocolAuthority('0.2.427'),
 };
 const stableKey = handoffKey(stableKeyHandoff);
 const sameTupleKey = handoffKey(nextRunSameTuple);
@@ -691,7 +723,7 @@ if (existing) {
 
 const multiArtifactHandoff = {
   schema: 'durable-workflow.docs.public-artifact-tuple-handoff',
-  schema_version: 3,
+  schema_version: 4,
   action: 'pipeline_ready_item',
   repository: 'durable-workflow.github.io',
   target_branch: 'main',
@@ -722,6 +754,9 @@ const multiArtifactHandoff = {
   artifact_versions: stableKeyHandoff.artifact_versions,
   published_artifact_versions: stableKeyHandoff.published_artifact_versions,
   compatibility_evidence: compatibilityEvidence(stableKeyHandoff.artifact_versions),
+  published_server_protocol_authority: publishedServerProtocolAuthority(
+    stableKeyHandoff.published_artifact_versions.server,
+  ),
   sdk_neutrality_authority: currentSdkNeutralityAuthority,
   previous_published_artifact_versions: {
     cli: '0.1.99',
@@ -952,6 +987,7 @@ const publishedServerAdvanceHandoff = {
     ...multiArtifactHandoff.published_artifact_versions,
     server: '0.2.427',
   },
+  published_server_protocol_authority: publishedServerProtocolAuthority('0.2.427'),
   previous_published_artifact_versions: {
     ...multiArtifactHandoff.published_artifact_versions,
   },
@@ -997,6 +1033,8 @@ for (const text of [
   '- server: 0.2.427',
   '## Qualified Aggregate Recommendation',
   '- server: 0.2.426',
+  '## Published Server Protocol Authority',
+  '- Server: 0.2.427',
 ]) {
   assert.ok(
     publishedServerAdvancePayload.body.includes(text),
@@ -1009,6 +1047,8 @@ for (const text of [
   '- server 0.2.427',
   'Qualified aggregate recommendation:',
   '- server 0.2.426',
+  'Published Server protocol authority:',
+  '- Server 0.2.427 source',
 ]) {
   assert.ok(
     publishedServerRequest.includes(text),
@@ -1107,6 +1147,35 @@ for (const [label, mutate, expected] of [
       handoff.refresh_files.push('README.md');
     },
     /handoff refresh files mismatch/,
+  ],
+  [
+    'missing published Server protocol authority',
+    handoff => {
+      delete handoff.published_server_protocol_authority;
+    },
+    /published_server_protocol_authority must be an object/,
+  ],
+  [
+    'published Server protocol authority for another release',
+    handoff => {
+      handoff.published_server_protocol_authority.server_version = '0.2.999';
+    },
+    /authority version mismatch/,
+  ],
+  [
+    'retargeted published Server protocol image',
+    handoff => {
+      handoff.published_server_protocol_authority.immutable_server_image =
+        `durableworkflow/server@sha256:${'5'.repeat(64)}`;
+    },
+    /immutable image mismatch/,
+  ],
+  [
+    'published Server protocol authority with another catalog',
+    handoff => {
+      handoff.published_server_protocol_authority.catalog.version = 15;
+    },
+    /bind the observed catalog/,
   ],
   [
     'missing SDK-neutrality authority identity',

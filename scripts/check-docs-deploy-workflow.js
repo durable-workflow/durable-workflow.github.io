@@ -194,7 +194,7 @@ function assertProtectedDeploySource(source) {
     const step = steps.find(candidate => candidate.name === stepName);
     if (!step || step.if !== CATALOG_PUBLISHABLE) {
       fail(
-        `docs deploy workflow must gate ${stepName} on an exact qualified Server catalog ` +
+        `docs deploy workflow must gate ${stepName} on an exact published Server catalog ` +
           'match or a structurally validated one-revision additive source catalog',
       );
     }
@@ -282,7 +282,7 @@ assert.notStrictEqual(
 );
 assert.throws(
   () => assertProtectedDeploySource(workflowWithUnqualifiedBuild),
-  /gate Build website on an exact qualified Server catalog|conformance authority/,
+  /gate Build website on an exact published Server catalog|conformance authority/,
   'unqualified catalog drift must never build or publish the website',
 );
 

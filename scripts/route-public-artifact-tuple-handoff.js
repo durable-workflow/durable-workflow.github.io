@@ -5,8 +5,23 @@ const fs = require('fs');
 const http = require('http');
 const https = require('https');
 const path = require('path');
+const publicProtocolCatalog = require('../static/platform-protocol-specs.json');
 
 const HANDOFF_SCHEMA = 'durable-workflow.docs.public-artifact-tuple-handoff';
+const PUBLISHED_SERVER_PROTOCOL_AUTHORITY_SCHEMA =
+  'durable-workflow.docs.published-server-protocol-authority';
+const PUBLISHED_SERVER_PROTOCOL_AUTHORITY_KEYS = [
+  'schema',
+  'schema_version',
+  'server_version',
+  'server_source_ref',
+  'server_source_commit',
+  'server_image',
+  'server_image_digest',
+  'immutable_server_image',
+  'workflow_package_provenance',
+  'catalog',
+];
 const SDK_NEUTRALITY_AUTHORITY_SCHEMA =
   'durable-workflow.docs.sdk-neutrality-authority-identity';
 const SDK_NEUTRALITY_CONTRACT_SCHEMA =
@@ -530,9 +545,91 @@ function validateTupleDate(tupleDate) {
   }
 }
 
+function validatePublishedServerProtocolAuthority(authority, serverVersion) {
+  if (!authority || typeof authority !== 'object' || Array.isArray(authority)) {
+    throw new Error('handoff.published_server_protocol_authority must be an object');
+  }
+  const actualKeys = Object.keys(authority).sort();
+  const expectedKeys = [...PUBLISHED_SERVER_PROTOCOL_AUTHORITY_KEYS].sort();
+  if (
+    actualKeys.length !== expectedKeys.length
+    || actualKeys.some((key, index) => key !== expectedKeys[index])
+  ) {
+    throw new Error(
+      'handoff.published_server_protocol_authority must contain exactly '
+        + PUBLISHED_SERVER_PROTOCOL_AUTHORITY_KEYS.join(', '),
+    );
+  }
+  assertEqual(
+    authority.schema,
+    PUBLISHED_SERVER_PROTOCOL_AUTHORITY_SCHEMA,
+    'handoff published Server protocol authority schema mismatch',
+  );
+  assertEqual(
+    authority.schema_version,
+    1,
+    'handoff published Server protocol authority schema version mismatch',
+  );
+  assertEqual(
+    authority.server_version,
+    serverVersion,
+    'handoff published Server protocol authority version mismatch',
+  );
+  assertEqual(
+    authority.server_source_ref,
+    serverVersion,
+    'handoff published Server protocol authority source ref mismatch',
+  );
+  if (!/^[0-9a-f]{40}$/.test(authority.server_source_commit || '')) {
+    throw new Error(
+      'handoff published Server protocol authority must include a full source commit',
+    );
+  }
+  assertEqual(
+    authority.server_image,
+    `durableworkflow/server:${serverVersion}`,
+    'handoff published Server protocol authority image mismatch',
+  );
+  if (!/^sha256:[0-9a-f]{64}$/.test(authority.server_image_digest || '')) {
+    throw new Error(
+      'handoff published Server protocol authority must include an OCI digest',
+    );
+  }
+  assertEqual(
+    authority.immutable_server_image,
+    `durableworkflow/server@${authority.server_image_digest}`,
+    'handoff published Server protocol authority immutable image mismatch',
+  );
+  const provenance = authority.workflow_package_provenance;
+  if (
+    !provenance
+    || Object.keys(provenance).length !== 3
+    || provenance.source !== 'https://github.com/durable-workflow/workflow.git'
+    || typeof provenance.ref !== 'string'
+    || provenance.ref === ''
+    || !/^[0-9a-f]{40}$/.test(provenance.commit || '')
+  ) {
+    throw new Error(
+      'handoff published Server protocol authority must bind Workflow package provenance',
+    );
+  }
+  const catalog = authority.catalog;
+  if (
+    !catalog
+    || Object.keys(catalog).length !== 3
+    || catalog.schema !== 'durable-workflow.v2.platform-protocol-specs.catalog'
+    || catalog.version !== publicProtocolCatalog.version
+    || catalog.sha256 !== sha256(stableStringify(publicProtocolCatalog))
+  ) {
+    throw new Error(
+      'handoff published Server protocol authority must bind the observed catalog',
+    );
+  }
+}
+
 function validateHandoff(handoff, options = {}) {
   assertEqual(handoff.schema, HANDOFF_SCHEMA, 'handoff schema mismatch');
-  assertEqual(handoff.schema_version, 3, 'handoff schema version mismatch');
+  assertEqual(handoff.schema_version, 4, 'handoff schema version mismatch');
   assertEqual(handoff.action, 'pipeline_ready_item', 'handoff action mismatch');
   assertEqual(handoff.repository, EXPECTED_REPOSITORY, 'handoff repository mismatch');
   assertEqual(handoff.target_branch, EXPECTED_TARGET_BRANCH, 'handoff target branch mismatch');
@@ -549,6 +646,10 @@ function validateHandoff(handoff, options = {}) {
     'previous_published_artifact_versions',
   );
   validateCompatibilityEvidence(handoff.compatibility_evidence, handoff.artifact_versions);
+  validatePublishedServerProtocolAuthority(
+    handoff.published_server_protocol_authority,
+    handoff.published_artifact_versions.server,
+  );
   validateSdkNeutralityAuthorityIdentity(
     handoff.sdk_neutrality_authority,
     handoff.artifact_versions.workflow,
@@ -643,6 +744,11 @@ function sdkNeutralityAuthorityDigest(authority, workflowVersion) {
   return sha256(stableStringify(authority));
 }
 
+function publishedServerProtocolAuthorityDigest(authority, serverVersion) {
+  validatePublishedServerProtocolAuthority(authority, serverVersion);
+  return sha256(stableStringify(authority));
+}
+
 function handoffKey(handoff) {
   const versionDigest = artifactVersionDigest({
     artifact_versions: handoff.artifact_versions,
@@ -652,10 +758,18 @@ function handoffKey(handoff) {
     handoff.compatibility_evidence,
     handoff.artifact_versions,
   ).slice(0, 12);
-  const authorityDigest = sdkNeutralityAuthorityDigest(
+  const sdkAuthorityDigest = sdkNeutralityAuthorityDigest(
     handoff.sdk_neutrality_authority,
     handoff.artifact_versions.workflow,
-  ).slice(0, 12);
+  );
+  const serverAuthorityDigest = publishedServerProtocolAuthorityDigest(
+    handoff.published_server_protocol_authority,
+    handoff.published_artifact_versions.server,
+  );
+  const authorityDigest = sha256(stableStringify({
+    published_server_protocol_authority: serverAuthorityDigest,
+    sdk_neutrality_authority: sdkAuthorityDigest,
+  })).slice(0, 12);
 
   return [
     `versions-${versionDigest}`,
@@ -733,6 +847,12 @@ function buildRequestText(handoff, changes) {
     `- SDK-neutrality authority Workflow ${handoff.sdk_neutrality_authority.workflow_version} source ${handoff.sdk_neutrality_authority.workflow_source_commit}`,
     `- SDK-neutrality manifest SHA-256 ${handoff.sdk_neutrality_authority.manifest_sha256}`,
     '',
+    'Published Server protocol authority:',
+    `- Server ${handoff.published_server_protocol_authority.server_version} source ${handoff.published_server_protocol_authority.server_source_commit}`,
+    `- OCI image ${handoff.published_server_protocol_authority.immutable_server_image}`,
+    `- Embedded Workflow ${handoff.published_server_protocol_authority.workflow_package_provenance.ref} source ${handoff.published_server_protocol_authority.workflow_package_provenance.commit}`,
+    `- Protocol catalog ${handoff.published_server_protocol_authority.catalog.version} SHA-256 ${handoff.published_server_protocol_authority.catalog.sha256}`,
+    '',
     `Run \`${refreshInvocation}\` and commit only the generated public artifact tuple files:`,
     ...handoff.refresh_files.map(file => `- \`${file}\``),
     '',
@@ -761,11 +881,19 @@ function buildIssueBody(handoff, key, workerBranch, requestText, changes) {
     `- SDK-neutrality Workflow source: ${handoff.sdk_neutrality_authority.workflow_source_commit}`,
     `- SDK-neutrality manifest SHA-256: ${handoff.sdk_neutrality_authority.manifest_sha256}`,
     '',
+    '## Published Server Protocol Authority',
+    `- Server: ${handoff.published_server_protocol_authority.server_version}`,
+    `- Source commit: ${handoff.published_server_protocol_authority.server_source_commit}`,
+    `- Immutable image: ${handoff.published_server_protocol_authority.immutable_server_image}`,
+    `- Embedded Workflow: ${handoff.published_server_protocol_authority.workflow_package_provenance.ref} at ${handoff.published_server_protocol_authority.workflow_package_provenance.commit}`,
+    `- Protocol catalog: ${handoff.published_server_protocol_authority.catalog.version} (${handoff.published_server_protocol_authority.catalog.sha256})`,
+    '',
     '## Acceptance',
     '- The published-component source reports the newest independently published releases.',
     '- The qualified aggregate source remains the compatibility-backed recommendation.',
     '- Every SDK in the qualified recommendation is bound to its qualified Server by passing immutable compatibility evidence.',
     '- The SDK-neutrality contract and authority lock match the qualified Workflow source commit and manifest digest.',
+    '- Protocol-catalog qualification matches the exact independently published Server source, OCI digest, embedded Workflow provenance, and observed catalog.',
     '- The deployed docs release-audit JSON reports the qualified aggregate recommendation with LEAK=0 and MIXED=0.',
     '- Stable 1.x remains the default public docs line.',
     '- 2.0 remains explicit prerelease/versioned guidance.',
@@ -982,6 +1110,7 @@ module.exports = {
   findExistingReadyItem,
   handoffDuplicateKeys,
   handoffKey,
+  publishedServerProtocolAuthorityDigest,
   routeReadyItem,
   sdkNeutralityAuthorityDigest,
   validateHandoff,

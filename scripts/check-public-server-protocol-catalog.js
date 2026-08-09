@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const childProcess = require('child_process');
+const crypto = require('crypto');
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
@@ -16,10 +17,9 @@ const {
 const repoRoot = path.join(__dirname, '..');
 const catalogPath = path.join(repoRoot, 'static', 'platform-protocol-specs.json');
 const artifactVersionsPath = path.join(__dirname, 'public-artifact-versions.json');
-const artifactCompatibilityEvidencePath = path.join(
-  repoRoot,
-  'static',
-  'public-artifact-compatibility-evidence.json',
+const publishedArtifactVersionsPath = path.join(
+  __dirname,
+  'published-artifact-versions.json',
 );
 const expectedSchema = 'durable-workflow.v2.platform-protocol-specs.catalog';
 const expectedWorkflowSource = 'https://github.com/durable-workflow/workflow.git';
@@ -107,6 +107,26 @@ function printable(value) {
   return encoded.length > 240 ? `${encoded.slice(0, 237)}...` : encoded;
 }
 
+function sha256(value) {
+  return crypto.createHash('sha256').update(value).digest('hex');
+}
+
+function stableStringify(value) {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(',')}]`;
+  }
+  if (isRecord(value)) {
+    return `{${Object.keys(value).sort().map(key => (
+      `${JSON.stringify(key)}:${stableStringify(value[key])}`
+    )).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function catalogSha256(catalog) {
+  return sha256(stableStringify(catalog));
+}
+
 function addFinding(findings, finding) {
   if (findings.length < maxFindings) {
     findings.push(finding);
@@ -115,7 +135,7 @@ function addFinding(findings, finding) {
 
 function workflowProvenanceFromComposerLock(composerLock) {
   if (!isRecord(composerLock)) {
-    throw new Error('Qualified Server composer.lock must be a JSON object.');
+    throw new Error('Server authority composer.lock must be a JSON object.');
   }
 
   const packages = [
@@ -128,7 +148,7 @@ function workflowProvenanceFromComposerLock(composerLock) {
 
   if (matches.length !== 1) {
     throw new Error(
-      'Qualified Server composer.lock must contain exactly one durable-workflow/workflow package.',
+      'Server authority composer.lock must contain exactly one durable-workflow/workflow package.',
     );
   }
 
@@ -142,7 +162,7 @@ function workflowProvenanceFromComposerLock(composerLock) {
     || !/^[0-9a-f]{40}$/.test(source.reference || '')
   ) {
     throw new Error(
-      'Qualified Server composer.lock must bind Workflow to an authorized public version ' +
+      'Server authority composer.lock must bind Workflow to an authorized public version ' +
         'and full Git source revision.',
     );
   }
@@ -395,7 +415,7 @@ function validateForwardCatalogCandidate(publicCatalog, serverCatalog) {
       path: '$.version',
       public_version: publicVersion,
       server_version: serverVersion,
-      message: 'A forward catalog candidate requires integer docs and qualified Server revisions.',
+      message: 'A forward catalog candidate requires integer docs and published Server revisions.',
     });
   } else if (publicVersion === serverVersion) {
     addFinding(findings, {
@@ -403,7 +423,7 @@ function validateForwardCatalogCandidate(publicCatalog, serverCatalog) {
       path: '$.version',
       public_version: publicVersion,
       server_version: serverVersion,
-      message: `Catalog revision ${publicVersion} differs from the qualified Server at the same revision.`,
+      message: `Catalog revision ${publicVersion} differs from the published Server at the same revision.`,
     });
   } else if (publicVersion < serverVersion) {
     addFinding(findings, {
@@ -411,7 +431,7 @@ function validateForwardCatalogCandidate(publicCatalog, serverCatalog) {
       path: '$.version',
       public_version: publicVersion,
       server_version: serverVersion,
-      message: `Docs catalog revision ${publicVersion} is behind qualified Server revision ${serverVersion}.`,
+      message: `Docs catalog revision ${publicVersion} is behind published Server revision ${serverVersion}.`,
     });
   } else if (publicVersion !== serverVersion + 1) {
     addFinding(findings, {
@@ -419,7 +439,7 @@ function validateForwardCatalogCandidate(publicCatalog, serverCatalog) {
       path: '$.version',
       public_version: publicVersion,
       server_version: serverVersion,
-      message: `Docs catalog revision ${publicVersion} must be exactly one revision ahead of qualified Server revision ${serverVersion}.`,
+      message: `Docs catalog revision ${publicVersion} must be exactly one revision ahead of published Server revision ${serverVersion}.`,
     });
   }
 
@@ -604,9 +624,9 @@ function validateForwardCatalogCandidate(publicCatalog, serverCatalog) {
 
   return Object.freeze({
     state: deploymentStates.forwardCandidate,
-    reason: 'qualified_server_catalog_one_revision_behind_additive_source',
+    reason: 'published_server_catalog_one_revision_behind_additive_source',
     docs_catalog_version: publicVersion,
-    qualified_server_catalog_version: serverVersion,
+    published_server_catalog_version: serverVersion,
     structural_check: {
       outcome: 'pass',
       mode: 'one_revision_forward_additive',
@@ -624,9 +644,9 @@ function classifyCatalogDeployment(publicCatalog, serverCatalog, options = {}) {
   if (exactFindings.length === 0) {
     return Object.freeze({
       state: deploymentStates.deployable,
-      reason: 'exact_qualified_server_catalog_match',
+      reason: 'exact_published_server_catalog_match',
       docs_catalog_version: publicCatalog.version,
-      qualified_server_catalog_version: serverCatalog.version,
+      published_server_catalog_version: serverCatalog.version,
       structural_check: {
         outcome: 'pass',
         mode: 'exact_equality',
@@ -667,12 +687,12 @@ function writeDeploymentSummary(summaryPath, deployment, evidencePath) {
     `- State: \`${deployment.state}\``,
     `- Reason: \`${deployment.reason}\``,
     `- Docs catalog revision: \`${deployment.docs_catalog_version}\``,
-    `- Qualified Server catalog revision: \`${deployment.qualified_server_catalog_version}\``,
+    `- Published Server catalog revision: \`${deployment.published_server_catalog_version}\``,
     `- Added protocol specs: ${deployment.structural_check.added_specs.length}`,
     `- Added object families: ${additions.length > 0 ? additions.map(value => `\`${value}\``).join(', ') : 'none'}`,
     `- Evidence artifact file: \`${path.basename(evidencePath)}\``,
     '',
-    'The source catalog is exactly one additive revision ahead, preserves every qualified Server catalog surface, and adds only structurally validated protocol surface. Website and Pages deployment may proceed without changing the qualified aggregate artifact recommendation.',
+    'The source catalog is exactly one additive revision ahead, preserves every published Server catalog surface, and adds only structurally validated protocol surface. Website and Pages deployment may proceed without changing the qualified aggregate artifact recommendation.',
     '',
   ].join('\n'));
 }
@@ -912,7 +932,7 @@ function observedImageDigest(serverImage, immutableImage, inspectionSource) {
     throw new CatalogLifecycleError(
       'server_image_repository_mismatch',
       'image_identity',
-      `Published image selector ${serverImage} does not name qualified repository `
+      `Published image selector ${serverImage} does not name the authority repository `
         + `${imageRepository(immutableImage)}.`,
     );
   }
@@ -954,19 +974,56 @@ function observedImageDigest(serverImage, immutableImage, inspectionSource) {
   return [...digests][0];
 }
 
+function observedImageSourceCommit(serverImage, inspectionSource) {
+  let labels;
+  try {
+    labels = JSON.parse(commandOutput(inspectionSource));
+  } catch (error) {
+    throw new CatalogLifecycleError(
+      'server_image_source_unresolved',
+      'image_identity',
+      `Published image ${serverImage} returned invalid OCI label evidence.`,
+      error,
+    );
+  }
+
+  const sourceCommit = isRecord(labels)
+    ? labels['org.opencontainers.image.revision']
+    : null;
+  if (typeof sourceCommit !== 'string' || !/^[0-9a-f]{40}$/.test(sourceCommit)) {
+    throw new CatalogLifecycleError(
+      'server_image_source_unresolved',
+      'image_identity',
+      `Published image ${serverImage} does not expose one full source commit in `
+        + 'org.opencontainers.image.revision.',
+    );
+  }
+
+  return sourceCommit;
+}
+
 async function discoverPublishedServer(serverImage, options = {}) {
   const docker = options.docker || process.env.DOCKER || 'docker';
-  const expectedImageDigest = options.expectedImageDigest;
-  const immutableServerImage = options.immutableServerImage;
+  let expectedImageDigest = options.expectedImageDigest || null;
+  let immutableServerImage = options.immutableServerImage || null;
+  const mirrorServerImage = options.mirrorServerImage || null;
+  const expectedSourceCommit = options.expectedSourceCommit || null;
   if (
-    !/^sha256:[0-9a-f]{64}$/.test(expectedImageDigest || '')
-    || typeof immutableServerImage !== 'string'
-    || !immutableServerImage.endsWith(`@${expectedImageDigest}`)
+    (expectedImageDigest !== null
+      && !/^sha256:[0-9a-f]{64}$/.test(expectedImageDigest))
+    || (immutableServerImage !== null
+      && (
+        expectedImageDigest === null
+        || typeof immutableServerImage !== 'string'
+        || !immutableServerImage.endsWith(`@${expectedImageDigest}`)
+      ))
+    || (expectedSourceCommit !== null
+      && !/^[0-9a-f]{40}$/.test(expectedSourceCommit))
   ) {
     throw new CatalogLifecycleError(
       'invalid_image_identity_configuration',
       'setup',
-      'Published Server discovery requires a qualified OCI digest and immutable image reference.',
+      'Published Server discovery received an invalid immutable image or source identity.',
     );
   }
   const port = options.port || process.env.PUBLIC_SERVER_PROTOCOL_CATALOG_PORT || '18081';
@@ -1004,10 +1061,16 @@ async function discoverPublishedServer(serverImage, options = {}) {
     || 'public-server-protocol-catalog-server.log';
   const lifecycle = {
     image_pull: 'pending',
+    mirror_image_pull: mirrorServerImage ? 'pending' : 'not_requested',
     image_identity: {
       expected_digest: expectedImageDigest,
       observed_digest: null,
       immutable_reference: immutableServerImage,
+      mirror_selector: mirrorServerImage,
+      mirror_digest: null,
+      expected_source_commit: expectedSourceCommit,
+      observed_source_commit: null,
+      mirror_source_commit: null,
       verification: 'pending',
     },
     storage: {
@@ -1046,21 +1109,28 @@ async function discoverPublishedServer(serverImage, options = {}) {
     stage = 'image_pull';
     runSync(docker, ['pull', serverImage], {encoding: 'utf8'});
     lifecycle.image_pull = 'pass';
+    if (mirrorServerImage) {
+      stage = 'mirror_image_pull';
+      runSync(docker, ['pull', mirrorServerImage], {encoding: 'utf8'});
+      lifecycle.mirror_image_pull = 'pass';
+    }
 
     stage = 'image_identity';
-    let imageInspection;
     try {
-      imageInspection = runSync(
+      const imageInspection = runSync(
         docker,
         ['image', 'inspect', '--format', '{{json .RepoDigests}}', serverImage],
         {encoding: 'utf8'},
       );
       lifecycle.image_identity.observed_digest = observedImageDigest(
         serverImage,
-        immutableServerImage,
+        immutableServerImage || serverImage,
         imageInspection,
       );
-      if (lifecycle.image_identity.observed_digest !== expectedImageDigest) {
+      if (
+        expectedImageDigest !== null
+        && lifecycle.image_identity.observed_digest !== expectedImageDigest
+      ) {
         lifecycle.image_identity.verification = 'fail';
         throw new CatalogLifecycleError(
           'server_image_digest_mismatch',
@@ -1069,6 +1139,83 @@ async function discoverPublishedServer(serverImage, options = {}) {
             + `${lifecycle.image_identity.observed_digest}, expected ${expectedImageDigest}.`,
         );
       }
+
+      if (mirrorServerImage) {
+        const mirrorInspection = runSync(
+          docker,
+          ['image', 'inspect', '--format', '{{json .RepoDigests}}', mirrorServerImage],
+          {encoding: 'utf8'},
+        );
+        lifecycle.image_identity.mirror_digest = observedImageDigest(
+          mirrorServerImage,
+          mirrorServerImage,
+          mirrorInspection,
+        );
+        if (
+          lifecycle.image_identity.mirror_digest
+            !== lifecycle.image_identity.observed_digest
+        ) {
+          throw new CatalogLifecycleError(
+            'server_image_registry_digest_mismatch',
+            stage,
+            `Published Server registries disagree for ${serverImage} and `
+              + `${mirrorServerImage}: ${lifecycle.image_identity.observed_digest} `
+              + `versus ${lifecycle.image_identity.mirror_digest}.`,
+          );
+        }
+      }
+
+      const sourceInspection = runSync(
+        docker,
+        ['image', 'inspect', '--format', '{{json .Config.Labels}}', serverImage],
+        {encoding: 'utf8'},
+      );
+      lifecycle.image_identity.observed_source_commit = observedImageSourceCommit(
+        serverImage,
+        sourceInspection,
+      );
+      if (
+        expectedSourceCommit !== null
+        && lifecycle.image_identity.observed_source_commit !== expectedSourceCommit
+      ) {
+        throw new CatalogLifecycleError(
+          'server_image_source_mismatch',
+          stage,
+          `Published image ${serverImage} names source commit `
+            + `${lifecycle.image_identity.observed_source_commit}, expected `
+            + `${expectedSourceCommit}.`,
+        );
+      }
+
+      if (mirrorServerImage) {
+        const mirrorSourceInspection = runSync(
+          docker,
+          ['image', 'inspect', '--format', '{{json .Config.Labels}}', mirrorServerImage],
+          {encoding: 'utf8'},
+        );
+        lifecycle.image_identity.mirror_source_commit = observedImageSourceCommit(
+          mirrorServerImage,
+          mirrorSourceInspection,
+        );
+        if (
+          lifecycle.image_identity.mirror_source_commit
+            !== lifecycle.image_identity.observed_source_commit
+        ) {
+          throw new CatalogLifecycleError(
+            'server_image_registry_source_mismatch',
+            stage,
+            `Published Server registries disagree on source commit for ${serverImage} `
+              + `and ${mirrorServerImage}.`,
+          );
+        }
+      }
+
+      expectedImageDigest = expectedImageDigest
+        || lifecycle.image_identity.observed_digest;
+      immutableServerImage = immutableServerImage
+        || `${imageRepository(serverImage)}@${expectedImageDigest}`;
+      lifecycle.image_identity.expected_digest = expectedImageDigest;
+      lifecycle.image_identity.immutable_reference = immutableServerImage;
       lifecycle.image_identity.verification = 'pass';
     } catch (error) {
       lifecycle.image_identity.verification = 'fail';
@@ -1173,12 +1320,18 @@ async function discoverPublishedServer(serverImage, options = {}) {
       );
     }
   } catch (error) {
-    if (stage === 'image_pull') {
-      lifecycle.image_pull = 'fail';
+    if (stage === 'image_pull' || stage === 'mirror_image_pull') {
+      if (stage === 'mirror_image_pull') {
+        lifecycle.mirror_image_pull = 'fail';
+      } else {
+        lifecycle.image_pull = 'fail';
+      }
       failure = new CatalogLifecycleError(
         'published_image_pull_failed',
         stage,
-        `Could not pull exact published image ${serverImage}. ${commandFailureDetail(error)}`,
+        `Could not pull exact published image `
+          + `${stage === 'mirror_image_pull' ? mirrorServerImage : serverImage}. `
+          + `${commandFailureDetail(error)}`,
         error,
       );
     } else if (stage === 'storage_create') {
@@ -1250,6 +1403,98 @@ async function discoverPublishedServer(serverImage, options = {}) {
   return {discovery, lifecycle, diagnostics};
 }
 
+function buildPublishedServerProtocolAuthority(
+  evidence,
+  publishedServerVersion,
+  publicCatalog,
+) {
+  if (!isRecord(evidence)) {
+    throw new Error('Published Server protocol authority evidence must be an object.');
+  }
+  if (
+    evidence.schema !== 'durable-workflow.docs.public-server-protocol-catalog-conformance'
+    || evidence.schema_version !== 3
+    || evidence.outcome !== 'pass'
+  ) {
+    throw new Error(
+      'Published Server protocol authority requires passing version 3 conformance evidence.',
+    );
+  }
+  if (
+    evidence.server_version !== publishedServerVersion
+    || evidence.server_source_ref !== publishedServerVersion
+  ) {
+    throw new Error(
+      'Published Server protocol authority evidence must match the published-component version.',
+    );
+  }
+  if (!/^[0-9a-f]{40}$/.test(evidence.published_server_source_commit || '')) {
+    throw new Error('Published Server protocol authority requires a full source commit.');
+  }
+  const imageIdentity = evidence.lifecycle?.image_identity;
+  if (
+    !/^sha256:[0-9a-f]{64}$/.test(evidence.expected_server_image_digest || '')
+    || evidence.observed_server_image_digest !== evidence.expected_server_image_digest
+    || typeof evidence.immutable_server_image !== 'string'
+    || !evidence.immutable_server_image.endsWith(
+      `@${evidence.expected_server_image_digest}`,
+    )
+    || !isRecord(imageIdentity)
+    || imageIdentity.verification !== 'pass'
+    || imageIdentity.expected_digest !== evidence.expected_server_image_digest
+    || imageIdentity.observed_digest !== evidence.expected_server_image_digest
+    || imageIdentity.mirror_digest !== evidence.expected_server_image_digest
+  ) {
+    throw new Error(
+      'Published Server protocol authority requires one matching immutable OCI digest.',
+    );
+  }
+  if (
+    imageIdentity.expected_source_commit !== evidence.published_server_source_commit
+    || imageIdentity.observed_source_commit !== evidence.published_server_source_commit
+    || imageIdentity.mirror_source_commit !== evidence.published_server_source_commit
+  ) {
+    throw new Error(
+      'Published Server protocol authority source checkout and image labels must agree.',
+    );
+  }
+  if (
+    !isRecord(evidence.expected_workflow_package_provenance)
+    || !isRecord(evidence.observation?.package_provenance)
+    || stableStringify(evidence.expected_workflow_package_provenance)
+      !== stableStringify(evidence.observation.package_provenance)
+  ) {
+    throw new Error(
+      'Published Server protocol authority package provenance must match its source lock.',
+    );
+  }
+  const observedCatalog = evidence.observed_server_catalog;
+  const expectedCatalogSha256 = catalogSha256(publicCatalog);
+  if (
+    !isRecord(observedCatalog)
+    || observedCatalog.schema !== publicCatalog.schema
+    || observedCatalog.version !== publicCatalog.version
+    || observedCatalog.sha256 !== expectedCatalogSha256
+  ) {
+    throw new Error(
+      'Published Server protocol authority observed catalog must match the public catalog.',
+    );
+  }
+
+  return {
+    schema: 'durable-workflow.docs.published-server-protocol-authority',
+    schema_version: 1,
+    server_version: publishedServerVersion,
+    server_source_ref: evidence.server_source_ref,
+    server_source_commit: evidence.published_server_source_commit,
+    server_image: evidence.server_image,
+    server_image_digest: evidence.expected_server_image_digest,
+    immutable_server_image: evidence.immutable_server_image,
+    workflow_package_provenance: evidence.expected_workflow_package_provenance,
+    catalog: observedCatalog,
+  };
+}
+
 function writeEvidence(pathname, evidence) {
   if (pathname) {
     fs.writeFileSync(pathname, `${JSON.stringify(evidence, null, 2)}\n`);
@@ -1258,46 +1503,43 @@ function writeEvidence(pathname, evidence) {
 
 async function main() {
   const artifactVersions = JSON.parse(fs.readFileSync(artifactVersionsPath, 'utf8')).artifacts;
-  const serverVersion = process.env.PUBLIC_SERVER_VERSION || artifactVersions.server;
+  const publishedArtifactVersions = JSON.parse(fs.readFileSync(
+    publishedArtifactVersionsPath,
+    'utf8',
+  )).artifacts;
+  const serverVersion = process.env.PUBLIC_SERVER_VERSION
+    || publishedArtifactVersions.server;
   const publicCatalog = JSON.parse(fs.readFileSync(
     process.env.PUBLIC_PROTOCOL_CATALOG_PATH || catalogPath,
     'utf8',
   ));
   const evidencePath = process.env.PUBLIC_SERVER_PROTOCOL_CATALOG_EVIDENCE;
   const serverSourcePath = process.env.PUBLIC_SERVER_SOURCE_PATH
-    || path.join(repoRoot, '.server-authority');
+    || path.join(repoRoot, '.published-server-protocol-authority');
   const qualifiedWorkflowArtifactRef = artifactVersions.workflow;
   let serverSourceCommit = null;
   let expectedWorkflowProvenance = null;
   let serverDiscovery;
   let lifecycle = null;
   let diagnostics = null;
-  let qualifiedServer = null;
-  let serverImage = process.env.PUBLIC_SERVER_IMAGE || null;
+  const serverImage = process.env.PUBLIC_SERVER_IMAGE
+    || `durableworkflow/server:${serverVersion}`;
+  const mirrorServerImage = process.env.PUBLIC_SERVER_MIRROR_IMAGE
+    || `ghcr.io/durable-workflow/server:${serverVersion}`;
   const allowForwardCandidate =
     process.env.PUBLIC_SERVER_PROTOCOL_CATALOG_ALLOW_FORWARD_CANDIDATE === '1';
 
   try {
-    const compatibilityEvidenceSource = JSON.parse(fs.readFileSync(
-      artifactCompatibilityEvidencePath,
-      'utf8',
-    ));
-    qualifiedServer = qualifiedServerIdentity(
-      artifactVersions,
-      compatibilityEvidenceSource,
-    );
-    serverSourceCommit = qualifiedServer.sourceCommit;
-    serverImage = serverImage || `${qualifiedServer.repository}:${serverVersion}`;
-    const checkedOutServerCommit = childProcess.execFileSync(
+    serverSourceCommit = childProcess.execFileSync(
       'git',
       ['-C', serverSourcePath, 'rev-parse', 'HEAD'],
       {encoding: 'utf8'},
     ).trim();
-    if (checkedOutServerCommit !== serverSourceCommit) {
+    if (!/^[0-9a-f]{40}$/.test(serverSourceCommit)) {
       throw new CatalogLifecycleError(
-        'server_source_authority_mismatch',
+        'server_source_authority_invalid',
         'setup',
-        `Qualified Server source expected ${serverSourceCommit}, got ${checkedOutServerCommit}.`,
+        `Published Server source ref ${serverVersion} did not resolve to a full commit.`,
       );
     }
     expectedWorkflowProvenance = workflowProvenanceFromComposerLock(JSON.parse(
@@ -1309,8 +1551,8 @@ async function main() {
       lifecycle = {mode: 'provided_snapshot'};
     } else {
       const publishedServer = await discoverPublishedServer(serverImage, {
-        expectedImageDigest: qualifiedServer.expectedDigest,
-        immutableServerImage: qualifiedServer.immutableReference,
+        mirrorServerImage,
+        expectedSourceCommit: serverSourceCommit,
       });
       serverDiscovery = publishedServer.discovery;
       lifecycle = publishedServer.lifecycle;
@@ -1324,14 +1566,16 @@ async function main() {
     );
     const evidence = {
       schema: 'durable-workflow.docs.public-server-protocol-catalog-conformance',
-      schema_version: 2,
+      schema_version: 3,
       checked_at: new Date().toISOString(),
       server_version: serverVersion,
+      server_source_ref: serverVersion,
       server_image: serverImage,
-      expected_server_image_digest: qualifiedServer.expectedDigest,
+      server_mirror_image: mirrorServerImage,
+      expected_server_image_digest: lifecycle.image_identity?.expected_digest || null,
       observed_server_image_digest: lifecycle.image_identity?.observed_digest || null,
-      immutable_server_image: qualifiedServer.immutableReference,
-      qualified_server_source_commit: serverSourceCommit,
+      immutable_server_image: lifecycle.image_identity?.immutable_reference || null,
+      published_server_source_commit: serverSourceCommit,
       qualified_workflow_artifact_ref: qualifiedWorkflowArtifactRef,
       expected_workflow_package_ref: expectedWorkflowProvenance.ref,
       expected_workflow_package_provenance: expectedWorkflowProvenance,
@@ -1339,6 +1583,11 @@ async function main() {
       lifecycle,
       diagnostics,
       observation,
+      observed_server_catalog: {
+        schema: serverDiscovery.platform_protocol_specs.schema,
+        version: serverDiscovery.platform_protocol_specs.version,
+        sha256: catalogSha256(serverDiscovery.platform_protocol_specs),
+      },
       deployment: observation.deployment,
       findings: [],
     };
@@ -1348,8 +1597,8 @@ async function main() {
     if (observation.deployment.state === deploymentStates.forwardCandidate) {
       console.log(
         `Source-qualified catalog ${observation.deployment.docs_catalog_version} is one `
-          + `additive revision ahead of qualified Server catalog `
-          + `${observation.deployment.qualified_server_catalog_version}; deployment permitted `
+          + `additive revision ahead of published Server catalog `
+          + `${observation.deployment.published_server_catalog_version}; deployment permitted `
           + `without advancing the qualified aggregate artifact recommendation.`,
       );
     } else {
@@ -1357,7 +1606,7 @@ async function main() {
         `Published server protocol catalog matches the public authority: `
           + `server ${serverVersion}, catalog version ${observation.version}, `
           + `${observation.capability_records} capability records, `
-          + `OCI manifest ${qualifiedServer.expectedDigest}, `
+          + `OCI manifest ${lifecycle.image_identity.expected_digest}, `
           + `embedded Workflow ${observation.package_provenance.ref} at `
           + `${observation.package_provenance.commit}; qualified standalone Workflow `
           + `${qualifiedWorkflowArtifactRef}.`,
@@ -1375,14 +1624,16 @@ async function main() {
     }
     writeEvidence(evidencePath, {
       schema: 'durable-workflow.docs.public-server-protocol-catalog-conformance',
-      schema_version: 2,
+      schema_version: 3,
       checked_at: new Date().toISOString(),
       server_version: serverVersion,
+      server_source_ref: serverVersion,
       server_image: serverImage,
-      expected_server_image_digest: qualifiedServer?.expectedDigest || null,
+      server_mirror_image: mirrorServerImage,
+      expected_server_image_digest: lifecycle?.image_identity?.expected_digest || null,
       observed_server_image_digest: lifecycle?.image_identity?.observed_digest || null,
-      immutable_server_image: qualifiedServer?.immutableReference || null,
-      qualified_server_source_commit: serverSourceCommit,
+      immutable_server_image: lifecycle?.image_identity?.immutable_reference || null,
+      published_server_source_commit: serverSourceCommit,
       qualified_workflow_artifact_ref: qualifiedWorkflowArtifactRef,
       expected_workflow_package_ref: expectedWorkflowProvenance
         ? expectedWorkflowProvenance.ref
@@ -1404,6 +1655,11 @@ async function main() {
           ? serverDiscovery.platform_protocol_specs.version
           : null,
       } : null,
+      observed_server_catalog: isRecord(serverDiscovery?.platform_protocol_specs) ? {
+        schema: serverDiscovery.platform_protocol_specs.schema || null,
+        version: serverDiscovery.platform_protocol_specs.version || null,
+        sha256: catalogSha256(serverDiscovery.platform_protocol_specs),
+      } : null,
       findings,
     });
     console.error(error.message);
@@ -1421,11 +1677,14 @@ if (require.main === module) {
 module.exports = {
   CatalogConformanceError,
   CatalogLifecycleError,
+  buildPublishedServerProtocolAuthority,
+  catalogSha256,
   classifyCatalogDeployment,
   compareCatalogs,
   deploymentStates,
   discoverPublishedServer,
   observedImageDigest,
+  observedImageSourceCommit,
   qualifiedServerIdentity,
   qualifiedServerSourceCommit,
   verifySnapshots,

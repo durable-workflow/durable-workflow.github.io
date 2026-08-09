@@ -6,6 +6,8 @@ const catalog = require('../static/platform-protocol-specs.json');
 const {
   CatalogConformanceError,
   CatalogLifecycleError,
+  buildPublishedServerProtocolAuthority,
+  catalogSha256,
   classifyCatalogDeployment,
   deploymentStates,
   discoverPublishedServer,
@@ -74,7 +76,7 @@ const forwardDeployment = classifyCatalogDeployment(catalog, priorCatalog, {
 });
 assert.strictEqual(forwardDeployment.state, deploymentStates.forwardCandidate);
 assert.strictEqual(forwardDeployment.docs_catalog_version, 16);
-assert.strictEqual(forwardDeployment.qualified_server_catalog_version, 15);
+assert.strictEqual(forwardDeployment.published_server_catalog_version, 15);
 assert.deepStrictEqual(forwardDeployment.structural_check.added_specs, []);
 assert.deepStrictEqual(
   forwardDeployment.structural_check.added_object_families,
@@ -142,7 +144,7 @@ assertForwardCandidateRejected(
   backwardCandidate,
   priorCatalog,
   'catalog_backward_revision',
-  'a docs catalog behind the qualified Server must fail closed',
+  'a docs catalog behind the published Server must fail closed',
 );
 
 const jumpedCandidate = JSON.parse(JSON.stringify(catalog));
@@ -186,7 +188,7 @@ assertForwardCandidateRejected(
 assert.throws(
   () => workflowProvenanceFromComposerLock({packages: []}),
   /exactly one durable-workflow\/workflow package/,
-  'qualified Server source must lock one Workflow package',
+  'Server authority source must lock one Workflow package',
 );
 
 const artifactVersions = require('./public-artifact-versions.json').artifacts;
@@ -208,6 +210,97 @@ assert.strictEqual(
   `${qualifiedServer.repository}@${qualifiedServer.expectedDigest}`,
   'qualified Server identity must expose an immutable OCI reference',
 );
+
+const publishedServerVersion = '2.0.0-rc.19';
+const publishedServerDigest = `sha256:${'9'.repeat(64)}`;
+const publishedServerSourceCommit = '8'.repeat(40);
+const publishedServerEvidence = {
+  schema: 'durable-workflow.docs.public-server-protocol-catalog-conformance',
+  schema_version: 3,
+  outcome: 'pass',
+  server_version: publishedServerVersion,
+  server_source_ref: publishedServerVersion,
+  published_server_source_commit: publishedServerSourceCommit,
+  server_image: `durableworkflow/server:${publishedServerVersion}`,
+  expected_server_image_digest: publishedServerDigest,
+  observed_server_image_digest: publishedServerDigest,
+  immutable_server_image: `durableworkflow/server@${publishedServerDigest}`,
+  lifecycle: {
+    image_identity: {
+      verification: 'pass',
+      expected_digest: publishedServerDigest,
+      observed_digest: publishedServerDigest,
+      mirror_digest: publishedServerDigest,
+      expected_source_commit: publishedServerSourceCommit,
+      observed_source_commit: publishedServerSourceCommit,
+      mirror_source_commit: publishedServerSourceCommit,
+    },
+  },
+  expected_workflow_package_provenance: {...provenance},
+  observation: {package_provenance: {...provenance}},
+  observed_server_catalog: {
+    schema: catalog.schema,
+    version: catalog.version,
+    sha256: catalogSha256(catalog),
+  },
+};
+const publishedServerAuthority = buildPublishedServerProtocolAuthority(
+  publishedServerEvidence,
+  publishedServerVersion,
+  catalog,
+);
+assert.notStrictEqual(
+  publishedServerAuthority.server_version,
+  qualifiedServer.version,
+  'public catalog authority may advance independently of the recommended aggregate Server',
+);
+assert.strictEqual(publishedServerAuthority.catalog.version, 16);
+assert.strictEqual(
+  publishedServerAuthority.server_image_digest,
+  publishedServerDigest,
+);
+for (const [label, mutate, expected] of [
+  [
+    'retargeted image',
+    evidence => {
+      evidence.observed_server_image_digest = `sha256:${'7'.repeat(64)}`;
+    },
+    /matching immutable OCI digest/,
+  ],
+  [
+    'different embedded package',
+    evidence => {
+      evidence.observation.package_provenance.commit = '6'.repeat(40);
+    },
+    /package provenance must match/,
+  ],
+  [
+    'different image source label',
+    evidence => {
+      evidence.lifecycle.image_identity.mirror_source_commit = '5'.repeat(40);
+    },
+    /source checkout and image labels must agree/,
+  ],
+  [
+    'different observed catalog',
+    evidence => {
+      evidence.observed_server_catalog.version -= 1;
+    },
+    /observed catalog must match/,
+  ],
+]) {
+  const fixture = structuredClone(publishedServerEvidence);
+  mutate(fixture);
+  assert.throws(
+    () => buildPublishedServerProtocolAuthority(
+      fixture,
+      publishedServerVersion,
+      catalog,
+    ),
+    expected,
+    `${label} must fail published Server protocol authority qualification`,
+  );
+}
 
 const stableProvenance = {
   ...provenance,
@@ -300,12 +393,18 @@ function lifecycleOptions(
     attempts: 1,
     retryDelayMs: 0,
     expectedImageDigest: qualifiedServer.expectedDigest,
+    expectedSourceCommit: qualifiedServer.sourceCommit,
     immutableServerImage: qualifiedServer.immutableReference,
     bootstrapLogPath: path.join(tmpDir, 'bootstrap.log'),
     serverLogPath: path.join(tmpDir, 'server.log'),
     execFileSync(command, args) {
       events.push({operation: 'exec', command, args});
       if (args[0] === 'image' && args[1] === 'inspect') {
+        if (args.includes('{{json .Config.Labels}}')) {
+          return JSON.stringify({
+            'org.opencontainers.image.revision': qualifiedServer.sourceCommit,
+          });
+        }
         return JSON.stringify([`durableworkflow/server@${observedDigest}`]);
       }
       const isBootstrap = args[0] === 'run' && args.includes('server-bootstrap');
@@ -343,6 +442,7 @@ function eventPosition(events, predicate) {
 
 async function testPublishedImageLifecycle() {
   const image = `${qualifiedServer.repository}:retargetable-test`;
+  const mirrorImage = 'ghcr.io/durable-workflow/server:retargetable-test';
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'docs-catalog-lifecycle-'));
   try {
     const events = [];
@@ -412,6 +512,91 @@ async function testPublishedImageLifecycle() {
     assert.strictEqual(result.lifecycle.discovery, 'pass');
     assert.strictEqual(result.lifecycle.cleanup.server_container.exit_code, 0);
     assert.strictEqual(result.lifecycle.cleanup.storage_volume.exit_code, 0);
+
+    function publishedAuthorityLifecycleOptions(
+      authorityEvents,
+      mirrorDigest = qualifiedServer.expectedDigest,
+      mirrorSourceCommit = qualifiedServer.sourceCommit,
+    ) {
+      const options = lifecycleOptions(tmpDir, authorityEvents);
+      delete options.expectedImageDigest;
+      delete options.immutableServerImage;
+      options.mirrorServerImage = mirrorImage;
+      options.expectedSourceCommit = qualifiedServer.sourceCommit;
+      const baseExec = options.execFileSync;
+      options.execFileSync = (command, args) => {
+        if (args[0] === 'image' && args[1] === 'inspect') {
+          authorityEvents.push({operation: 'exec', command, args});
+          const selector = args.at(-1);
+          if (args.includes('{{json .Config.Labels}}')) {
+            return JSON.stringify({
+              'org.opencontainers.image.revision': selector === mirrorImage
+                ? mirrorSourceCommit
+                : qualifiedServer.sourceCommit,
+            });
+          }
+          const repository = selector === mirrorImage
+            ? 'ghcr.io/durable-workflow/server'
+            : qualifiedServer.repository;
+          const digest = selector === mirrorImage
+            ? mirrorDigest
+            : qualifiedServer.expectedDigest;
+          return JSON.stringify([`${repository}@${digest}`]);
+        }
+        return baseExec(command, args);
+      };
+      return options;
+    }
+
+    const publishedAuthorityEvents = [];
+    const publishedAuthorityResult = await discoverPublishedServer(
+      image,
+      publishedAuthorityLifecycleOptions(publishedAuthorityEvents),
+    );
+    assert.strictEqual(
+      publishedAuthorityResult.lifecycle.image_identity.expected_digest,
+      qualifiedServer.expectedDigest,
+      'matching public registries must bind the observed digest for immutable execution',
+    );
+    assert.strictEqual(
+      publishedAuthorityResult.lifecycle.image_identity.mirror_digest,
+      qualifiedServer.expectedDigest,
+    );
+    assert.strictEqual(
+      publishedAuthorityResult.lifecycle.image_identity.observed_source_commit,
+      qualifiedServer.sourceCommit,
+    );
+    assert.strictEqual(
+      publishedAuthorityResult.lifecycle.image_identity.mirror_source_commit,
+      qualifiedServer.sourceCommit,
+    );
+
+    for (const [label, options, expectedKind] of [
+      [
+        'registry digest disagreement',
+        publishedAuthorityLifecycleOptions(
+          [],
+          `sha256:${'5'.repeat(64)}`,
+        ),
+        'server_image_registry_digest_mismatch',
+      ],
+      [
+        'registry source disagreement',
+        publishedAuthorityLifecycleOptions(
+          [],
+          qualifiedServer.expectedDigest,
+          '4'.repeat(40),
+        ),
+        'server_image_registry_source_mismatch',
+      ],
+    ]) {
+      await assert.rejects(
+        () => discoverPublishedServer(image, options),
+        error => error instanceof CatalogLifecycleError
+          && error.kind === expectedKind,
+        `${label} must fail closed before starting the Server`,
+      );
+    }
 
     const failureEvents = [];
     let lifecycleError = null;
