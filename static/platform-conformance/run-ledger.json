@@ -1,13 +1,13 @@
 {
   "schema": "durable-workflow.v2.platform-conformance.run-ledger",
   "schema_version": 2,
-  "snapshot_refreshed_at": "2026-08-09T10:07:59.668Z",
+  "snapshot_refreshed_at": "2026-08-09T17:23:06.456Z",
   "retained_evidence_captured_at": "2026-07-29T13:59:32.249Z",
   "current_artifact_tuple": {
     "cli": "2.0.0-rc.12",
-    "sdk-php": "2.0.0-rc.11",
+    "sdk-php": "2.0.0-rc.13",
     "sdk-python": "2.0.0-rc.22",
-    "sdk-rust": "2.0.0-rc.9",
+    "sdk-rust": "2.0.0-rc.11",
     "server": "2.0.0-rc.21",
     "waterline": "2.0.0-rc.13",
     "workflow": "2.0.0-rc.13"
@@ -104,7 +104,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.5"
           },
           {
@@ -114,7 +114,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.6"
           },
           {
@@ -171,7 +171,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -181,7 +181,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -238,7 +238,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.5"
           },
           {
@@ -248,7 +248,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.6"
           },
           {
@@ -305,7 +305,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.5"
           },
           {
@@ -315,7 +315,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.6"
           },
           {
@@ -372,7 +372,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -382,7 +382,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -439,7 +439,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -449,7 +449,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -506,7 +506,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.5"
           },
           {
@@ -516,7 +516,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.6"
           },
           {
@@ -573,7 +573,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -583,7 +583,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -640,7 +640,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -650,7 +650,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -707,7 +707,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -717,7 +717,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -774,7 +774,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.5"
           },
           {
@@ -784,7 +784,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.6"
           },
           {
@@ -841,7 +841,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -851,7 +851,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -908,7 +908,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -918,7 +918,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -975,7 +975,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.5"
           },
           {
@@ -985,7 +985,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.6"
           },
           {
@@ -1042,7 +1042,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.5"
           },
           {
@@ -1052,7 +1052,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.6"
           },
           {
@@ -1109,7 +1109,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.5"
           },
           {
@@ -1119,7 +1119,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.6"
           },
           {
@@ -1176,7 +1176,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.5"
           },
           {
@@ -1186,7 +1186,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.6"
           },
           {
@@ -1243,7 +1243,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1253,7 +1253,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1310,7 +1310,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.5"
           },
           {
@@ -1320,7 +1320,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.6"
           },
           {
@@ -1377,7 +1377,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1387,7 +1387,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1444,7 +1444,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1454,7 +1454,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1511,7 +1511,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1521,7 +1521,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1578,7 +1578,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1588,7 +1588,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1645,7 +1645,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1655,7 +1655,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1712,7 +1712,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1722,7 +1722,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1779,7 +1779,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1789,7 +1789,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1846,7 +1846,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.5"
           },
           {
@@ -1856,7 +1856,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.6"
           },
           {
@@ -1913,7 +1913,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1923,7 +1923,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1980,7 +1980,7 @@
           },
           {
             "artifact": "sdk-php",
-            "expected": "2.0.0-rc.11",
+            "expected": "2.0.0-rc.13",
             "actual": "2.0.0-rc.1"
           },
           {
@@ -1990,7 +1990,7 @@
           },
           {
             "artifact": "sdk-rust",
-            "expected": "2.0.0-rc.9",
+            "expected": "2.0.0-rc.11",
             "actual": "2.0.0-rc.1"
           },
           {
