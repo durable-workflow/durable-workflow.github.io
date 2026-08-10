@@ -30,7 +30,7 @@
     },
     "worker_protocol_api": {
       "owner_symbol": "App\\Support\\WorkerProtocol and Workflow\\V2\\Support\\WorkerProtocolVersion",
-      "conformance_test": "durable-workflow/server: tests/Feature/WorkerProtocolContractTest.php, tests/Feature/WorkerProtocolSuccessContractTest.php, tests/Feature/WorkerProtocolOwnershipErrorContractTest.php, tests/Feature/WorkerProtocolVersionCoverageTest.php, tests/Feature/WorkflowWorkerProtocolTest.php, tests/Feature/ActivityWorkerProtocolTest.php, and tests/Feature/WorkflowQueryTaskBrokerTest.php; durable-workflow/sdk-php: tests/ClientContractTest.php and tests/ControlPlaneParityTest.php",
+      "conformance_test": "durable-workflow/server: tests/Feature/WorkerProtocolContractTest.php, tests/Feature/WorkerProtocolSuccessContractTest.php, tests/Feature/WorkerProtocolOwnershipErrorContractTest.php, tests/Feature/WorkerProtocolVersionCoverageTest.php, tests/Feature/WorkflowWorkerProtocolTest.php, tests/Feature/WorkflowUpdateValidationTaskTest.php, tests/Feature/ActivityWorkerProtocolTest.php, and tests/Feature/WorkflowQueryTaskBrokerTest.php; durable-workflow/durable-workflow.github.io: scripts/check-update-validation-openapi.test.js; durable-workflow/sdk-php: tests/ClientContractTest.php and tests/ControlPlaneParityTest.php",
       "object_families": [
         {
           "name": "worker_registration_request",
@@ -47,14 +47,14 @@
         {
           "name": "worker_task_poll_request",
           "owner_repo": "durable-workflow/server",
-          "schema_authority": "App\\Support\\WorkflowTaskPoller and App\\Support\\ActivityTaskPoller",
-          "version_authority": "Workflow\\V2\\Support\\WorkerProtocolVersion::VERSION"
+          "schema_authority": "App\\Http\\Controllers\\Api\\WorkerController::pollWorkflowTasks, App\\Support\\WorkflowTaskPoller, and App\\Support\\ActivityTaskPoller",
+          "version_authority": "App\\Support\\WorkerProtocol::VERSION"
         },
         {
           "name": "worker_task_result",
           "owner_repo": "durable-workflow/server",
-          "schema_authority": "App\\Http\\Controllers\\Api\\WorkerController task completion/failure actions",
-          "version_authority": "Workflow\\V2\\Support\\WorkerProtocolVersion::VERSION"
+          "schema_authority": "App\\Http\\Controllers\\Api\\WorkerController task and update-validation completion/failure actions",
+          "version_authority": "App\\Support\\WorkerProtocol::VERSION"
         },
         {
           "name": "worker_query_task_poll_request",
