@@ -36,6 +36,7 @@
     "check:homepage-release-policy": "node scripts/check-homepage-release-policy.js",
     "check:analytics": "node scripts/check-analytics.js",
     "check:cloud-promotions": "node scripts/check-cloud-promotions.js",
+    "check:cloud-promotion-browser": "node scripts/check-cloud-promotion-browser.js",
     "check:visual-reachability": "node scripts/check-visual-reachability.js",
     "check:installer-contract": "node scripts/check-installer-contract.js",
     "check:compatibility-authority": "node scripts/check-compatibility-authority.js",

@@ -1,29 +1,28 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const {
+  BROWSER_EVIDENCE_PATHS,
+  requiresBrowserEvidence,
+} = require('./classify-cloud-promotion-browser-evidence');
+const {
+  CLOUD_EARLY_ACCESS_URL,
+  PROMOTION_PLACEMENTS,
+} = require('./cloud-promotion-contract');
 
 const buildDirectory = path.resolve(process.argv[2] || 'build');
-const earlyAccessUrl = 'https://cloud.durable-workflow.com/early-access';
-const placements = new Map([
-  ['index.html', 'docs-homepage'],
-  ['docs/2.0/polyglot/deployment-modes/index.html', 'docs-v2-deployment-modes'],
-  ['docs/2.0/polyglot/cloud-control-plane/index.html', 'docs-v2-cloud-runtime'],
-  ['docs/2.0/polyglot/php/index.html', 'docs-v2-php-sdk'],
-  ['docs/2.0/polyglot/python/index.html', 'docs-v2-python-sdk'],
-  ['docs/2.0/polyglot/rust/index.html', 'docs-v2-rust-sdk'],
-]);
 
-for (const [relativePath, source] of placements) {
-  const html = fs.readFileSync(path.join(buildDirectory, relativePath), 'utf8');
+for (const {buildPath, source} of PROMOTION_PLACEMENTS) {
+  const html = fs.readFileSync(path.join(buildDirectory, buildPath), 'utf8');
   assert.equal(
     (html.match(new RegExp(`data-promotion-source="${source}"`, 'g')) || []).length,
     1,
-    `${relativePath} must render one bounded ${source} placement`,
+    `${buildPath} must render one bounded ${source} placement`,
   );
   assert.match(
     html,
-    new RegExp(`href="${earlyAccessUrl.replaceAll('/', '\\/')}#source=${source}"`),
-    `${relativePath} promotion must resolve to the public early-access form`,
+    new RegExp(`href="${CLOUD_EARLY_ACCESS_URL.replaceAll('/', '\\/')}#source=${source}"`),
+    `${buildPath} promotion must resolve to the public early-access form`,
   );
 }
 
@@ -42,9 +41,14 @@ const styles = fs.readFileSync(
   'utf8',
 );
 assert.match(runtime, /credentials: 'omit'/);
-assert.match(runtime, /referrerPolicy: 'no-referrer'/);
+assert.match(runtime, /referrer: ''/);
+assert.match(runtime, /referrerPolicy: 'strict-origin-when-cross-origin'/);
 assert.match(runtime, /JSON\.stringify\(\{source, event\}\)/);
 assert.doesNotMatch(runtime, /document\.cookie|localStorage|sessionStorage|user[_-]?id|location\.search/i);
 assert.match(styles, /\.eyebrow\s*\{[^}]*letter-spacing:\s*0;/s);
+assert.equal(requiresBrowserEvidence(['src/components/ProductPromotion/index.js']), true);
+assert.equal(requiresBrowserEvidence(['scripts/cloud-promotion-contract.js']), true);
+assert.equal(requiresBrowserEvidence(['docs/introduction.md']), false);
+assert.ok(BROWSER_EVIDENCE_PATHS.includes('scripts/check-cloud-promotion-browser.js'));
 
-console.log(`Validated ${placements.size} bounded Cloud promotion placements without changing the stable docs default.`);
+console.log(`Validated ${PROMOTION_PLACEMENTS.length} bounded Cloud promotion placements without changing the stable docs default.`);

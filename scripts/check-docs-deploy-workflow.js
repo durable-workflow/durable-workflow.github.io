@@ -307,10 +307,35 @@ function assertProtectedDeploySource(source) {
     step => step.uses ===
       'peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453',
   );
+  const installPromotionBrowserIndex = steps.findIndex(
+    step => step.name === 'Install Cloud promotion browser',
+  );
+  const verifyLiveDocsIndex = steps.findIndex(
+    step => step.name === 'Verify live docs release audit',
+  );
+  const verifyPromotionBrowserIndex = steps.findIndex(
+    step => step.name === 'Verify live Cloud promotion browser transport',
+  );
   if (predeployIndex < 0 || deployIndex < 0 || predeployIndex >= deployIndex) {
     fail(
       'docs deploy workflow must guard Helm chart immutability and stage the ' +
         'guarded package before the Pages deploy action',
+    );
+  }
+  if (
+    installPromotionBrowserIndex < 0
+    || verifyPromotionBrowserIndex < 0
+    || installPromotionBrowserIndex >= deployIndex
+    || deployIndex >= verifyLiveDocsIndex
+    || verifyLiveDocsIndex >= verifyPromotionBrowserIndex
+    || steps[installPromotionBrowserIndex].run !==
+      'npx --no-install playwright install --with-deps chromium'
+    || steps[verifyPromotionBrowserIndex].run !==
+      'npm run check:cloud-promotion-browser -- --live --output cloud-promotion-browser-evidence'
+  ) {
+    fail(
+      'docs deploy workflow must exercise the live Cloud promotion browser transport ' +
+        'after publishing the Pages candidate',
     );
   }
 
@@ -323,9 +348,11 @@ function assertProtectedDeploySource(source) {
     'Set up Docker Buildx',
     'Guard Helm chart immutability and stage the HTTPS repository',
     'Verify public artifact tuple',
+    'Install Cloud promotion browser',
     'Deploy to GitHub Pages',
     'Verify live docs release audit',
     'Verify live workflow lifecycle authority',
+    'Verify live Cloud promotion browser transport',
     'Verify both public Helm release channels',
   ]) {
     const step = steps.find(candidate => candidate.name === stepName);
@@ -346,6 +373,18 @@ function assertProtectedDeploySource(source) {
   ) {
     fail(
       'docs deploy workflow must upload Helm publication evidence for every permitted deployment',
+    );
+  }
+  const promotionEvidence = steps.find(
+    step => step.name === 'Upload live Cloud promotion browser evidence',
+  );
+  if (
+    !promotionEvidence
+    || promotionEvidence.if !== `\${{ always() && ${CATALOG_PUBLISHABLE} }}`
+    || promotionEvidence.with?.path !== 'cloud-promotion-browser-evidence/'
+  ) {
+    fail(
+      'docs deploy workflow must retain live Cloud promotion browser evidence for every deployment',
     );
   }
 }
@@ -438,6 +477,9 @@ for (const required of [
   'run: node scripts/verify-docs-release-live.js',
   'name: Verify live workflow lifecycle authority',
   'run: node scripts/verify-workflow-lifecycle-live.js',
+  'name: Verify live Cloud promotion browser transport',
+  'run: npm run check:cloud-promotion-browser -- --live --output cloud-promotion-browser-evidence',
+  'name: Upload live Cloud promotion browser evidence',
   'name: Resolve published Workflow conformance ref',
   'name: Checkout published Workflow conformance authority',
   'repository: ${{ github.repository_owner }}/workflow',

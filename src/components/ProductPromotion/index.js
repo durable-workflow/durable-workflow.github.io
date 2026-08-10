@@ -17,7 +17,8 @@ function sendPromotionEvent(source, event) {
     mode: 'cors',
     credentials: 'omit',
     keepalive: true,
-    referrerPolicy: 'no-referrer',
+    referrer: '',
+    referrerPolicy: 'strict-origin-when-cross-origin',
     headers: {'Content-Type': 'text/plain'},
     body: JSON.stringify({source, event}),
   }).catch(() => {});

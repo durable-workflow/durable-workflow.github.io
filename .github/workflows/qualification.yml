@@ -30,6 +30,18 @@ jobs:
           node-version: 24
           cache: npm
 
+      - name: Classify Cloud promotion browser evidence
+        id: cloud-promotion-classification
+        env:
+          CLOUD_PROMOTION_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          classification_args=(--output cloud-promotion-browser-classification.json)
+          if [[ "$CLOUD_PROMOTION_BASE_REF" =~ ^[0-9a-f]{40}$ ]] && \
+            git cat-file -e "${CLOUD_PROMOTION_BASE_REF}^{commit}" 2>/dev/null; then
+            classification_args+=(--base-ref "$CLOUD_PROMOTION_BASE_REF")
+          fi
+          node scripts/classify-cloud-promotion-browser-evidence.js "${classification_args[@]}"
+
       - name: Verify local Workflow conformance authority
         run: npm run check:platform-conformance-authority
 
@@ -71,6 +83,21 @@ jobs:
 
       - name: Enforce visual control reachability
         run: npm run check:visual-reachability
+
+      - name: Exercise Cloud promotion browser transport
+        if: steps.cloud-promotion-classification.outputs.required == 'true'
+        run: npm run check:cloud-promotion-browser
+
+      - name: Upload Cloud promotion browser evidence
+        if: ${{ always() && steps.cloud-promotion-classification.outputs.required == 'true' && github.server_url == 'https://github.com' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: cloud-promotion-browser-${{ github.sha }}
+          path: |
+            cloud-promotion-browser-classification.json
+            cloud-promotion-browser-evidence/
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Upload visual qualification evidence
         if: ${{ always() && github.server_url == 'https://github.com' }}

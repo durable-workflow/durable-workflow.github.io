@@ -279,6 +279,13 @@ jobs:
           );
           NODE
 
+      - name: Install Cloud promotion browser
+        if: >-
+          steps.deploy-plan.outputs.deploy == 'true' &&
+          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
+          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
+        run: npx --no-install playwright install --with-deps chromium
+
       # Popular action to deploy to GitHub Pages:
       # Docs: https://github.com/peaceiris/actions-gh-pages#%EF%B8%8F-docusaurus
       - name: Deploy to GitHub Pages
@@ -313,6 +320,22 @@ jobs:
           (steps.server_catalog.outputs.deployment_state == 'deployable' ||
           steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
         run: node scripts/verify-workflow-lifecycle-live.js
+
+      - name: Verify live Cloud promotion browser transport
+        if: >-
+          steps.deploy-plan.outputs.deploy == 'true' &&
+          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
+          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
+        run: npm run check:cloud-promotion-browser -- --live --output cloud-promotion-browser-evidence
+
+      - name: Upload live Cloud promotion browser evidence
+        if: ${{ always() && steps.deploy-plan.outputs.deploy == 'true' && (steps.server_catalog.outputs.deployment_state == 'deployable' || steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable') }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: live-cloud-promotion-browser-${{ github.sha }}
+          path: cloud-promotion-browser-evidence/
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Verify both public Helm release channels
         if: >-
