@@ -4,11 +4,11 @@
   "captured_at": "2026-07-29T13:59:32.249Z",
   "current_artifact_tuple": {
     "cli": "2.0.0-rc.12",
-    "sdk-php": "2.0.0-rc.13",
+    "sdk-php": "2.0.0-rc.14",
     "sdk-python": "2.0.0-rc.24",
     "sdk-rust": "2.0.0-rc.11",
     "server": "2.0.0-rc.23",
-    "waterline": "2.0.0-rc.13",
+    "waterline": "2.0.0-rc.14",
     "workflow": "2.0.0-rc.14"
   },
   "retention": {
