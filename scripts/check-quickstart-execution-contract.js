@@ -551,6 +551,34 @@ function assertDocsGuard(contract) {
   assertEqual(contract.default_docs_guard && contract.default_docs_guard.canonical_llms_remain_stable_default, true, 'contract canonical LLM default guard');
 }
 
+function assertSdkOnboarding(contract) {
+  const php = contract.sdk_onboarding && contract.sdk_onboarding['sdk-php'];
+  if (!php) {
+    fail('quickstart contract must point agents to the tested PHP SDK onboarding path');
+  }
+  assertStringArrayEqual(
+    php.deployment_paths,
+    ['cloud_service', 'self_hosted_service'],
+    'PHP SDK onboarding deployment paths',
+  );
+  assertEqual(php.guide_url, 'https://php.durable-workflow.com/', 'PHP SDK onboarding guide URL');
+  assertEqual(
+    php.executable_contract_url,
+    'https://php.durable-workflow.com/quickstart-contract.json',
+    'PHP SDK executable contract URL',
+  );
+  assertEqual(
+    php.source_root_url,
+    'https://github.com/durable-workflow/sdk-php/tree/main/examples',
+    'PHP SDK quickstart source URL',
+  );
+  assertEqual(
+    php.published_smoke_url,
+    'https://github.com/durable-workflow/sdk-php/actions/workflows/service-mode-published-smoke.yml',
+    'PHP SDK published smoke URL',
+  );
+}
+
 function main() {
   const contract = loadJson(contractPath, 'static/quickstart-execution-contract.json');
   const quickstart = read(quickstartPath);
@@ -563,6 +591,7 @@ function main() {
   assertEqual(contract.onboarding_doc, 'docs/quickstart.md', 'quickstart execution contract onboarding_doc');
 
   assertDocsGuard(contract);
+  assertSdkOnboarding(contract);
   assertQualifiedTupleAuthority(contract);
   assertPublicArtifactPins(contract);
   assertQualifiedTupleRenderedSurface(contract, renderedQuickstart);

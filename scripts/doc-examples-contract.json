@@ -74,50 +74,6 @@
       "primaryArtifactInstall": "sdk-php"
     },
     {
-      "id": "php.sdk.client",
-      "path": "polyglot/php.md",
-      "language": "php",
-      "requiredSubstrings": [
-        "use DurableWorkflow\\Auth\\TokenAuthentication;",
-        "use DurableWorkflow\\Client;",
-        "$client->startWorkflow(",
-        "$handle->signal(",
-        "$handle->query(",
-        "$handle->result("
-      ],
-      "workflowIdentity": {
-        "intent": "runnable_first_start",
-        "generator": "php_random_bytes_hex",
-        "variable": "workflowId",
-        "references": [
-          {
-            "pattern": "\\bworkflowId\\s*:\\s*\\$workflowId\\b",
-            "minimum": 1
-          }
-        ]
-      },
-      "localConnection": {
-        "hostingBranch": "standalone_server_sqlite",
-        "shape": "php_token_authentication"
-      }
-    },
-    {
-      "id": "php.sdk.worker",
-      "path": "polyglot/php.md",
-      "language": "php",
-      "requiredSubstrings": [
-        "use DurableWorkflow\\Worker;",
-        "$worker->registerActivity(",
-        "$worker->registerWorkflow(",
-        "$context->activity(",
-        "$worker->run();"
-      ],
-      "localConnection": {
-        "hostingBranch": "standalone_server_sqlite",
-        "shape": "php_named_token"
-      }
-    },
-    {
       "id": "server.php-sdk.install",
       "path": "polyglot/server.md",
       "language": "bash",

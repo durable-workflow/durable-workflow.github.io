@@ -22,8 +22,12 @@ control-plane client, authentication, transport, public payload codec, replay
 handler, and managed remote-worker lifecycle without requiring Laravel or the
 embedded engine package.
 
-For constructor signatures, return types, and exception classes, see the
-generated [PHP SDK API reference](https://php.durable-workflow.com/).
+Start with the executable [PHP SDK quickstart](https://php.durable-workflow.com/).
+That documentation root presents the clean Composer-project journey before its
+generated API reference. Its
+[machine-readable contract](https://php.durable-workflow.com/quickstart-contract.json)
+identifies the package, runtime forms, role credentials, shipped source files,
+expected result, and published-artifact smoke as one tested path.
 
 Cloud customers use the runtime URL and namespace returned during provisioning,
 with separate client and worker credentials. See
@@ -57,39 +61,31 @@ envelope. Its production dependency graph excludes Laravel, Illuminate,
 
 ## Start and inspect a workflow
 
-Create a client for the standalone server, start a workflow by its registered
-string type name, and keep the returned handle for signals, queries, and the
-eventual result:
+The SDK-owned quickstart creates a clean Composer project, defines one
+attributed workflow and activity, starts the worker, starts a unique workflow,
+and waits for the result. The same shipped `bootstrap.php`, `worker.php`, and
+`client.php` files are installed from the package and executed by the protected
+published-artifact smoke, so this page does not maintain a second code listing.
 
-<!-- docs-example id="php.sdk.client" -->
-```php
-<?php
+Choose only the runtime connection value:
 
-declare(strict_types=1);
+| Runtime | Value passed to `Client` | SDK request path behavior |
+| --- | --- | --- |
+| Self-hosted Server | Bare origin such as `http://localhost:8080` | Adds one `/api` segment; callers do not append `/api`. |
+| Durable Workflow Cloud | Complete provisioned URI such as `https://cloud.example/api/runtime/v1/namespaces/<runtime-id>` | Preserves the namespace runtime path and appends endpoint `/api` after it. |
 
-require __DIR__.'/vendor/autoload.php';
+Open the [tested PHP path](https://php.durable-workflow.com/) for the exact
+commands and visible source. Client operations read
+`DURABLE_WORKFLOW_CLIENT_TOKEN`; worker polling reads
+`DURABLE_WORKFLOW_WORKER_TOKEN`. The guide keeps those credentials in separate
+processes without echoing or committing either value.
 
-use DurableWorkflow\Auth\TokenAuthentication;
-use DurableWorkflow\Client;
-
-$client = new Client(
-    'http://localhost:8080',
-    new TokenAuthentication('dev-token'),
-    namespace: 'default',
-);
-
-$workflowId = 'order-'.bin2hex(random_bytes(16));
-$handle = $client->startWorkflow(
-    workflowType: 'orders.process',
-    workflowId: $workflowId,
-    taskQueue: 'orders',
-    input: [['order_id' => '1001']],
-);
-
-$handle->signal('approve', ['reviewer' => 'Ada']);
-var_dump($handle->query('status'));
-var_dump($handle->result(timeoutSeconds: 30));
-```
+`Worker::register()` discovers `#[Workflow]` and `#[Activity]` handlers in the
+same source file. The guide also documents the direct
+`registerWorkflow()`/`registerActivity()` alternative for callable-first code.
+The bootstrap removes autoloader-path selection from users when those shipped
+files run in a standalone project, SDK checkout, installed package, or a
+playground/container that places them beside its Composer `vendor/` directory.
 
 `WorkflowHandle` follows the current run after a continue-as-new transition.
 Use its selected-run methods when an operation must remain guarded to one
@@ -118,52 +114,26 @@ for complete parameters and return types.
 
 Workflow handlers may be ordinary callables or generators. Yielding a command
 from `WorkflowContext` records a durable decision; replay sends the recorded
-value back into the generator without repeating the external activity.
-
-<!-- docs-example id="php.sdk.worker" -->
-```php
-<?php
-
-declare(strict_types=1);
-
-require __DIR__.'/vendor/autoload.php';
-
-use DurableWorkflow\Client;
-use DurableWorkflow\Worker;
-use DurableWorkflow\Worker\ActivityContext;
-use DurableWorkflow\Worker\WorkflowContext;
-
-$client = new Client(
-    'http://localhost:8080',
-    token: 'dev-token',
-    namespace: 'default',
-);
-$worker = new Worker($client, 'orders');
-
-$worker->registerActivity(
-    'orders.reserve-inventory',
-    static fn (ActivityContext $context, string $orderId): array => [
-        'order_id' => $orderId,
-        'reserved' => true,
-    ],
-);
-
-$worker->registerWorkflow(
-    'orders.process',
-    static function (WorkflowContext $context, array $input): Generator {
-        return yield $context->activity(
-            'orders.reserve-inventory',
-            [$input['order_id']],
-        );
-    },
-);
-
-$worker->run();
-```
-
-The worker registers its workflow and activity type names, polls the public
+value back into the generator without repeating the external activity. The
+managed worker registers its workflow and activity type names, polls the public
 worker protocol, heartbeats, completes or fails tasks, and handles graceful
 shutdown when `pcntl` is available.
+
+## Framework service mode and embedded Laravel
+
+The same package ships first-party
+[Laravel service-mode](https://github.com/durable-workflow/sdk-php#laravel-service-mode)
+and
+[Symfony service-mode](https://github.com/durable-workflow/sdk-php#symfony-service-mode)
+bridges. They retain framework dependency injection, configuration, logging,
+console workers, and test fakes while connecting to Cloud or Server.
+
+Those bridges are distinct from
+[embedded Laravel workflows](/docs/2.0/installation/), where
+`durable-workflow/workflow` makes the Laravel application itself own durable
+state and execute through Laravel queues. See
+[Deployment Modes](/docs/2.0/polyglot/deployment-modes/) before choosing a
+runtime boundary.
 
 ## Protocol and release boundary
 
@@ -184,4 +154,5 @@ when moving between pre-1.0 SDK releases; no cross-release shim is implied.
 - [Worker Protocol](/docs/2.0/polyglot/worker-protocol/)
 - [Capability Index](/docs/2.0/capabilities/)
 - [PHP API reference](https://php.durable-workflow.com/)
+- [PHP executable quickstart contract](https://php.durable-workflow.com/quickstart-contract.json)
 - [PHP SDK source](https://github.com/durable-workflow/sdk-php)

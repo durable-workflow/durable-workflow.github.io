@@ -132,6 +132,18 @@
       }
     }
   },
+  "sdk_onboarding": {
+    "sdk-php": {
+      "deployment_paths": [
+        "cloud_service",
+        "self_hosted_service"
+      ],
+      "guide_url": "https://php.durable-workflow.com/",
+      "executable_contract_url": "https://php.durable-workflow.com/quickstart-contract.json",
+      "source_root_url": "https://github.com/durable-workflow/sdk-php/tree/main/examples",
+      "published_smoke_url": "https://github.com/durable-workflow/sdk-php/actions/workflows/service-mode-published-smoke.yml"
+    }
+  },
   "default_docs_guard": {
     "stable_default_docs_version": "1.x",
     "explicit_prerelease_docs_version": "2.0",
