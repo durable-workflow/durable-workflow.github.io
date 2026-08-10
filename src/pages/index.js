@@ -5,6 +5,7 @@ import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import HomepageFeatures from '@site/src/components/HomepageFeatures';
+import ProductPromotion from '@site/src/components/ProductPromotion';
 
 import styles from './index.module.css';
 
@@ -70,6 +71,12 @@ export default function Home() {
       </Head>
       <HomepageHeader />
       <main>
+        <section className="container" aria-label="Durable Workflow Cloud">
+          <ProductPromotion source="docs-homepage">
+            Run PHP, Python, or Rust workers against a managed namespace while
+            Durable Workflow operates the orchestration runtime.
+          </ProductPromotion>
+        </section>
         <HomepageFeatures />
       </main>
     </Layout>

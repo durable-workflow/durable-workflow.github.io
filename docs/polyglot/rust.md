@@ -14,7 +14,14 @@ keywords:
   - crates.io
 ---
 
+import ProductPromotion from '@site/src/components/ProductPromotion';
+
 # Rust SDK
+
+<ProductPromotion source="docs-v2-rust-sdk">
+Run Rust clients and workers against a Cloud-managed namespace with separate
+role-scoped credentials.
+</ProductPromotion>
 
 The first-party Rust SDK is a workflow-authoring surface, not only a protocol
 compatibility client. Rust authors deterministic workflows, activities, and

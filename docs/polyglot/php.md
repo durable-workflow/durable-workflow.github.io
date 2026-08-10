@@ -13,7 +13,14 @@ keywords:
   - PHP standalone server client
 ---
 
+import ProductPromotion from '@site/src/components/ProductPromotion';
+
 # PHP SDK
+
+<ProductPromotion source="docs-v2-php-sdk">
+Run PHP clients and workers against a Cloud-managed namespace with separate
+role-scoped credentials.
+</ProductPromotion>
 
 Use `durable-workflow/sdk` when a PHP application or remote worker connects to
 the standalone Durable Workflow Server or a Durable Workflow Cloud namespace

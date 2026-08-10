@@ -16,7 +16,14 @@ keywords:
   - single-region managed runtime
 ---
 
+import ProductPromotion from '@site/src/components/ProductPromotion';
+
 # Cloud Managed Runtime
+
+<ProductPromotion source="docs-v2-cloud-runtime">
+Request a managed namespace for a real workload and share feedback during the
+launch cohort.
+</ProductPromotion>
 
 Durable Workflow Cloud is a managed orchestration service. Cloud operates both
 the hosted control plane and the orchestration runtime, including workflow

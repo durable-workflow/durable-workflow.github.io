@@ -16,7 +16,14 @@ keywords:
   - Cloud vs self-hosted
 ---
 
+import ProductPromotion from '@site/src/components/ProductPromotion';
+
 # Deployment Modes
+
+<ProductPromotion source="docs-v2-deployment-modes">
+Choose managed service mode for your PHP, Python, or Rust workers without
+operating the orchestration runtime yourself.
+</ProductPromotion>
 
 Durable Workflow v2 has two deployment modes:
 

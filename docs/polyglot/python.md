@@ -12,9 +12,15 @@ keywords:
   - async workflow client
 ---
 
+import ProductPromotion from '@site/src/components/ProductPromotion';
 import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseLink';
 
 # Python SDK
+
+<ProductPromotion source="docs-v2-python-sdk">
+Run Python clients and workers against a Cloud-managed namespace with separate
+role-scoped credentials.
+</ProductPromotion>
 
 The Python SDK is a thin, async-first client for a self-hosted Durable Workflow
 Server or Durable Workflow Cloud namespace runtime. It lets Python processes
