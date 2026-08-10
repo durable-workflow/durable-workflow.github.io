@@ -217,6 +217,35 @@ const samePollRequestConflict = envelope({
 const pollConflictResponse = operationSchema(multiplexRoute, '409');
 validate(pollConflictResponse, samePollRequestConflict);
 
+const legacyCachedTaskConflict = envelope({
+  task: null,
+  poll_status: 'conflict',
+  reason: 'poll_cached_task_kind_conflict',
+  error: 'Cached poll result has no task-kind discriminator and cannot be replayed safely.',
+  poll_request_id: 'poll-legacy-1',
+  requested_task_kinds: ['workflow'],
+  cached_task_kind: null,
+  cached_task_kind_state: 'legacy_missing_discriminator',
+});
+validate(pollConflictResponse, legacyCachedTaskConflict);
+
+validate(pollConflictResponse, {
+  ...legacyCachedTaskConflict,
+  error: 'Cached poll result has an unrequested task-kind discriminator and cannot be replayed safely.',
+  requested_task_kinds: ['update_validation'],
+  cached_task_kind: 'workflow',
+  cached_task_kind_state: 'unrequested_discriminator',
+});
+
+assert.throws(
+  () => validate(pollConflictResponse, {
+    ...legacyCachedTaskConflict,
+    cached_task_kind: 'workflow',
+  }),
+  /exactly one union branch/,
+  'a legacy cached-task conflict must not pair a known task kind with the missing-discriminator state',
+);
+
 assert.throws(
   () => validate(pollConflictResponse, {
     ...samePollRequestConflict,
@@ -293,4 +322,4 @@ assert.strictEqual(
   'task.task_kind',
 );
 
-process.stdout.write('Multiplexed update-validation OpenAPI requests, responses, discriminator, completion fences, and typed conflicts validated.\n');
+process.stdout.write('Multiplexed update-validation OpenAPI requests, responses, discriminator, cache replay fences, completion fences, and typed conflicts validated.\n');
