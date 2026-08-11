@@ -1,6 +1,7 @@
 const assert = require('assert');
+const crypto = require('crypto');
 const fs = require('fs');
-const http = require('http');
+const os = require('os');
 const path = require('path');
 const yaml = require('js-yaml');
 
@@ -28,11 +29,13 @@ const {
   artifactVersionDigest,
   buildReadyItemPayload: buildReadyItemPayloadWithDefaults,
   buildSdkNeutralityAuthorityIdentity,
+  callbackConfiguration,
   compatibilityEvidenceDigest,
-  deliverOptionalCallback,
+  createSignedCallback,
   findExistingReadyItem,
   handoffDuplicateKeys,
   handoffKey,
+  publishHandoff,
   routeReadyItem,
   sdkNeutralityAuthorityDigest,
 } = require(routeScriptPath);
@@ -401,14 +404,25 @@ for (const forbidden of [
   }
 }
 
+for (const forbidden of [
+  'PIPELINE_GATE_URL',
+  '/api/worker/actions/execute',
+]) {
+  if (workflow.includes(forbidden) || routeScript.includes(forbidden)) {
+    fail(`public artifact tuple publication must not expose private gate ingress: ${forbidden}`);
+  }
+}
+
 for (const required of [
   'contents: read',
   'docs-artifact-tuple-handoff.json',
   'public-artifact-tuple-pipeline-handoff',
-  'Attempt optional direct callback',
-  'Report optional direct callback state',
-  'PIPELINE_GATE_URL',
-  '--optional-callback',
+  'Route or defer pipeline handoff',
+  'PUBLIC_ARTIFACT_TUPLE_CALLBACK_URL',
+  'PUBLIC_ARTIFACT_TUPLE_CALLBACK_KEY_ID',
+  'PUBLIC_ARTIFACT_TUPLE_CALLBACK_HMAC_KEY',
+  'HANDOFF_ARTIFACT_ID',
+  'HANDOFF_ARTIFACT_SHA256',
   'scripts/route-public-artifact-tuple-handoff.js',
   "schema: 'durable-workflow.docs.public-artifact-tuple-handoff'",
   'schema_version: 4',
@@ -459,9 +473,8 @@ const workflowAuthorityResolvePosition = workflowStepPosition('Resolve Workflow 
 const workflowAuthorityCheckoutPosition = workflowStepPosition('Checkout Workflow authority');
 const writePosition = workflowStepPosition('Write pipeline handoff');
 const uploadPosition = workflowStepPosition('Upload pipeline handoff');
-const callbackPosition = workflowStepPosition('Attempt optional direct callback');
+const routePosition = workflowStepPosition('Route or defer pipeline handoff');
 const validatePosition = workflowStepPosition('Validate refreshed docs');
-const callbackReportPosition = workflowStepPosition('Report optional direct callback state');
 
 if (!(
   detectPosition < protocolCatalogPosition
@@ -470,39 +483,55 @@ if (!(
   && workflowAuthorityResolvePosition < workflowAuthorityCheckoutPosition
   && workflowAuthorityCheckoutPosition < writePosition
   && writePosition < uploadPosition
-  && uploadPosition < callbackPosition
+  && uploadPosition < routePosition
 )) {
   fail('public artifact tuple handoff must verify Server catalog and Workflow resource identities before it is written, uploaded, and routed');
 }
 
-if (!(callbackPosition < validatePosition && validatePosition < callbackReportPosition)) {
-  fail('public artifact tuple workflow must validate refreshed docs independently before reporting optional callback state');
+if (routePosition >= validatePosition) {
+  fail('public artifact tuple handoff must route or defer before the full docs build');
 }
 
-const parsedWorkflowSteps = yaml.load(workflow)?.jobs?.refresh?.steps || [];
-const callbackStep = parsedWorkflowSteps.find(
-  step => step.name === 'Attempt optional direct callback',
+const parsedWorkflow = yaml.load(workflow);
+const refreshSteps = parsedWorkflow?.jobs?.refresh?.steps || [];
+const uploadHandoffStep = refreshSteps.find(step => step.name === 'Upload pipeline handoff');
+const routeHandoffStep = refreshSteps.find(
+  step => step.name === 'Route or defer pipeline handoff',
 );
-const callbackReportStep = parsedWorkflowSteps.find(
-  step => step.name === 'Report optional direct callback state',
-);
+
 if (
-  !callbackStep
-  || callbackStep.id !== 'direct-callback'
-  || callbackStep.if !== "steps.changes.outputs.changed == 'true'"
-  || callbackStep.env?.PIPELINE_GATE_URL !== '${{ secrets.PIPELINE_GATE_URL }}'
-  || !callbackStep.run.includes('--optional-callback')
-  || !callbackReportStep
-  || callbackReportStep.if !== "${{ always() && steps.changes.outputs.changed == 'true' }}"
-  || callbackReportStep.env?.DIRECT_CALLBACK_STATE !==
-    '${{ steps.direct-callback.outputs.delivery_state }}'
+  !uploadHandoffStep
+  || uploadHandoffStep.id !== 'handoff-artifact'
+  || uploadHandoffStep.with?.name !== 'public-artifact-tuple-pipeline-handoff'
+  || uploadHandoffStep.with?.path !== 'docs-artifact-tuple-handoff.json'
+  || uploadHandoffStep.with?.['if-no-files-found'] !== 'error'
+  || uploadHandoffStep.with?.overwrite !== false
+  || uploadHandoffStep.with?.['retention-days'] !== 30
 ) {
-  fail('public artifact tuple workflow must isolate and report optional direct callback delivery');
+  fail('public artifact tuple workflow must retain an immutable handoff artifact for pull intake');
+}
+
+if (
+  !routeHandoffStep
+  || routeHandoffStep.id !== 'handoff-routing'
+  || routeHandoffStep['continue-on-error'] !== undefined
+  || routeHandoffStep.env?.PUBLIC_ARTIFACT_TUPLE_CALLBACK_URL !==
+    '${{ secrets.PUBLIC_ARTIFACT_TUPLE_CALLBACK_URL }}'
+  || routeHandoffStep.env?.PUBLIC_ARTIFACT_TUPLE_CALLBACK_KEY_ID !==
+    '${{ secrets.PUBLIC_ARTIFACT_TUPLE_CALLBACK_KEY_ID }}'
+  || routeHandoffStep.env?.PUBLIC_ARTIFACT_TUPLE_CALLBACK_HMAC_KEY !==
+    '${{ secrets.PUBLIC_ARTIFACT_TUPLE_CALLBACK_HMAC_KEY }}'
+  || routeHandoffStep.env?.HANDOFF_ARTIFACT_ID !==
+    '${{ steps.handoff-artifact.outputs.artifact-id }}'
+  || routeHandoffStep.env?.HANDOFF_ARTIFACT_SHA256 !==
+    '${{ steps.handoff-artifact.outputs.artifact-digest }}'
+) {
+  fail('public artifact tuple callback must bind the uploaded immutable artifact and fail closed');
 }
 
 const validateStep = workflow.slice(validatePosition, workflow.indexOf('\n      - name:', validatePosition + 1));
 if (!validateStep.includes('run: npm run build')) {
-  fail('refreshed public artifact tuple validation must preserve the normal docs build');
+  fail('post-route public artifact tuple validation must preserve the normal docs build');
 }
 if (
   !validateStep.includes('WORKFLOW_PLATFORM_CONFORMANCE_MANIFEST_PATH:') ||
@@ -511,7 +540,7 @@ if (
   )
 ) {
   fail(
-    'refreshed public artifact tuple validation must compare the docs authority ' +
+    'post-route public artifact tuple validation must compare the docs authority ' +
       'with the newly published Workflow package',
   );
 }
@@ -611,9 +640,6 @@ for (const required of [
   'pipeline-request-b64',
   'pipeline-files-b64',
   'docs-artifact-tuple-key',
-  "writeOutput('delivery_state'",
-  'const GATE_REQUEST_TIMEOUT_MS = 10000',
-  '}, GATE_REQUEST_TIMEOUT_MS)',
 ]) {
   if (!routeScript.includes(required)) {
     fail(`public-artifact-tuple router is missing required pipeline routing contract: ${required}`);
@@ -1473,122 +1499,45 @@ if (multiArtifactPayload.title.includes(stableKeyHandoff.tuple_date)) {
   fail('public artifact tuple ready item title must not include tuple_date');
 }
 
-function listen(server) {
-  return new Promise((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', () => {
-      server.off('error', reject);
-      resolve(server.address());
-    });
-  });
-}
-
-function close(server) {
-  return new Promise((resolve, reject) => {
-    server.close(err => (err ? reject(err) : resolve()));
-  });
-}
-
-function readRequestBody(request) {
-  return new Promise((resolve, reject) => {
-    let body = '';
-    request.setEncoding('utf8');
-    request.on('data', chunk => {
-      body += chunk;
-    });
-    request.on('end', () => {
-      try {
-        resolve(body ? JSON.parse(body) : null);
-      } catch (err) {
-        reject(err);
-      }
-    });
-    request.on('error', reject);
-  });
-}
-
-async function withStubGate(
-  issues,
-  callback,
-  {failWith = null, repeatFirstPage = false} = {},
-) {
+async function withStubGate(issues, callback, {repeatFirstPage = false} = {}) {
   const requests = [];
-  const server = http.createServer(async (request, response) => {
-    try {
-      if (request.method !== 'POST' || request.url !== '/api/worker/actions/execute') {
-        response.writeHead(404, {'Content-Type': 'application/json'});
-        response.end(JSON.stringify({status: 'failed', error: 'unexpected endpoint'}));
-        return;
-      }
+  const executeAction = async (action, input) => {
+    requests.push({action, input});
 
-      const payload = await readRequestBody(request);
-      requests.push(payload);
+    if (action === 'gh.issue.list') {
+      const requiredLabels = parseLabels(input.labels);
+      const resultLimit = repeatFirstPage
+        ? Math.min(input.limit, 50)
+        : input.limit;
+      const listedIssues = issues
+        .filter(issue => {
+          const issueLabels = Array.isArray(issue.labels)
+            ? issue.labels
+            : parseLabels(issue.labels || '');
 
-      if (failWith !== null) {
-        response.writeHead(503, {'Content-Type': 'application/json'});
-        response.end(JSON.stringify({status: 'failed', error: failWith}));
-        return;
-      }
-
-      if (payload.action === 'gh.issue.list') {
-        const requiredLabels = parseLabels(payload.input.labels);
-        const resultLimit = repeatFirstPage
-          ? Math.min(payload.input.limit, 50)
-          : payload.input.limit;
-        const listedIssues = issues
-          .filter(issue => {
-            const issueLabels = Array.isArray(issue.labels)
-              ? issue.labels
-              : parseLabels(issue.labels || '');
-
-            return (issue.state || 'open') === payload.input.state
-              && requiredLabels.every(label => issueLabels.includes(label));
-          })
-          .slice(0, resultLimit);
-        response.writeHead(200, {'Content-Type': 'application/json'});
-        response.end(JSON.stringify({status: 'completed', result: listedIssues}));
-        return;
-      }
-
-      if (payload.action === 'gh.issue.create') {
-        const created = {
-          number: 730 + issues.length,
-          title: payload.input.title,
-          body: payload.input.body,
-          labels: payload.input.labels.split(','),
-          state: 'open',
-        };
-        issues.push(created);
-        response.writeHead(200, {'Content-Type': 'application/json'});
-        response.end(JSON.stringify({
-          status: 'completed',
-          result: created,
-        }));
-        return;
-      }
-
-      response.writeHead(400, {'Content-Type': 'application/json'});
-      response.end(JSON.stringify({status: 'failed', error: `unexpected action ${payload.action}`}));
-    } catch (err) {
-      response.writeHead(500, {'Content-Type': 'application/json'});
-      response.end(JSON.stringify({status: 'failed', error: err.message}));
+          return (issue.state || 'open') === input.state
+            && requiredLabels.every(label => issueLabels.includes(label));
+        })
+        .slice(0, resultLimit);
+      return listedIssues;
     }
-  });
 
-  const address = await listen(server);
-  const previousGateUrl = process.env.PIPELINE_GATE_URL;
-  process.env.PIPELINE_GATE_URL = `http://127.0.0.1:${address.port}`;
-
-  try {
-    return await callback(requests);
-  } finally {
-    if (previousGateUrl === undefined) {
-      delete process.env.PIPELINE_GATE_URL;
-    } else {
-      process.env.PIPELINE_GATE_URL = previousGateUrl;
+    if (action === 'gh.issue.create') {
+      const created = {
+        number: 730 + issues.length,
+        title: input.title,
+        body: input.body,
+        labels: input.labels.split(','),
+        state: 'open',
+      };
+      issues.push(created);
+      return created;
     }
-    await close(server);
-  }
+
+    throw new Error(`unexpected action ${action}`);
+  };
+
+  return callback(requests, executeAction);
 }
 
 function parseLabels(labels) {
@@ -1668,8 +1617,8 @@ function assertGateCreatePayload(request) {
 }
 
 async function assertStubGateCreatePath() {
-  const routed = await withStubGate([], async requests => {
-    const readyItem = await routeReadyItem(multiArtifactPayload);
+  const routed = await withStubGate([], async (requests, executeAction) => {
+    const readyItem = await routeReadyItem(multiArtifactPayload, executeAction);
 
     if (requests.length !== 2) {
       fail(`public artifact tuple create path must make exactly two gate requests, saw ${requests.length}`);
@@ -1683,83 +1632,6 @@ async function assertStubGateCreatePath() {
 
   if (!routed || routed.number !== 730) {
     fail('public artifact tuple create path must return the created ready item');
-  }
-}
-
-async function assertOptionalCallbackAbsentPath() {
-  const previousGateUrl = process.env.PIPELINE_GATE_URL;
-  delete process.env.PIPELINE_GATE_URL;
-
-  try {
-    const delivery = await deliverOptionalCallback(multiArtifactPayload);
-    assert.deepStrictEqual(
-      delivery,
-      {state: 'not_configured'},
-      'an absent direct callback must leave artifact recovery authoritative',
-    );
-  } finally {
-    if (previousGateUrl === undefined) {
-      delete process.env.PIPELINE_GATE_URL;
-    } else {
-      process.env.PIPELINE_GATE_URL = previousGateUrl;
-    }
-  }
-}
-
-async function assertOptionalCallbackPresentPath() {
-  const delivery = await withStubGate([], async requests => {
-    const result = await deliverOptionalCallback(multiArtifactPayload);
-
-    if (requests.length !== 2) {
-      fail(
-        `a configured direct callback must perform duplicate lookup and creation, saw ${requests.length} requests`,
-      );
-    }
-
-    assertGateListPayload(requests[0]);
-    assertGateCreatePayload(requests[1]);
-    return result;
-  });
-
-  if (delivery.state !== 'delivered' || delivery.readyItem?.number !== 730) {
-    fail('a configured direct callback must report successful bounded delivery');
-  }
-}
-
-async function assertOptionalCallbackFailurePath() {
-  const privateResponse = 'private callback detail must not be printed';
-  const logged = [];
-  const originalConsoleError = console.error;
-  console.error = message => logged.push(String(message));
-
-  try {
-    const delivery = await withStubGate(
-      [],
-      async requests => {
-        const result = await deliverOptionalCallback(multiArtifactPayload);
-
-        if (requests.length !== 1) {
-          fail(`a rejected optional callback must stop after one request, saw ${requests.length}`);
-        }
-
-        return result;
-      },
-      {failWith: privateResponse},
-    );
-
-    if (delivery.state !== 'failed') {
-      fail('a rejected optional callback must report failed delivery without failing recovery');
-    }
-  } finally {
-    console.error = originalConsoleError;
-  }
-
-  if (
-    logged.length !== 1
-    || logged[0].includes(privateResponse)
-    || logged[0].includes('127.0.0.1')
-  ) {
-    fail('optional callback failure reporting must not disclose private endpoint details');
   }
 }
 
@@ -1777,8 +1649,8 @@ async function assertStubGateLegacyKeyPath() {
       ],
       state: 'open',
     }],
-    async requests => {
-      const readyItem = await routeReadyItem(multiArtifactPayload);
+    async (requests, executeAction) => {
+      const readyItem = await routeReadyItem(multiArtifactPayload, executeAction);
 
       if (requests.length !== 2) {
         fail(`evidence-bound handoffs must not reuse a legacy version-only item, saw ${requests.length} requests`);
@@ -1799,10 +1671,10 @@ async function assertStubGateLegacyKeyPath() {
 async function assertStubGateIdentityReplacementPath(label, replacementPayload) {
   const issues = [];
 
-  await withStubGate(issues, async requests => {
-    const original = await routeReadyItem(multiArtifactPayload);
-    const replacement = await routeReadyItem(replacementPayload);
-    const replayedReplacement = await routeReadyItem(replacementPayload);
+  await withStubGate(issues, async (requests, executeAction) => {
+    const original = await routeReadyItem(multiArtifactPayload, executeAction);
+    const replacement = await routeReadyItem(replacementPayload, executeAction);
+    const replayedReplacement = await routeReadyItem(replacementPayload, executeAction);
 
     if (
       original.number === replacement.number
@@ -1831,9 +1703,9 @@ async function assertStubGateIdentityReplacementPath(label, replacementPayload) 
 async function assertStubGateActiveLifecycleReplayPath() {
   const issues = [];
 
-  await withStubGate(issues, async requests => {
-    const created = await routeReadyItem(multiArtifactPayload);
-    const pendingReplay = await routeReadyItem(multiArtifactPayload);
+  await withStubGate(issues, async (requests, executeAction) => {
+    const created = await routeReadyItem(multiArtifactPayload, executeAction);
+    const pendingReplay = await routeReadyItem(multiArtifactPayload, executeAction);
 
     if (created.number !== pendingReplay.number || issues.length !== 1) {
       fail('an exact pending handoff replay must reuse the original ready item');
@@ -1849,7 +1721,7 @@ async function assertStubGateActiveLifecycleReplayPath() {
         .filter(label => !label.startsWith('state:'))
         .concat(activeState);
       const issueBeforeReplay = JSON.stringify(issues[0]);
-      const replayed = await routeReadyItem(multiArtifactPayload);
+      const replayed = await routeReadyItem(multiArtifactPayload, executeAction);
 
       if (replayed.number !== created.number) {
         fail(`an exact ${activeState} handoff replay must reuse the original ready item`);
@@ -1901,8 +1773,8 @@ async function assertStubGatePaginatedActiveReplayPath() {
   issues.push(original);
   const issuesBeforeReplay = JSON.stringify(issues);
 
-  const routed = await withStubGate(issues, async requests => {
-    const readyItem = await routeReadyItem(multiArtifactPayload);
+  const routed = await withStubGate(issues, async (requests, executeAction) => {
+    const readyItem = await routeReadyItem(multiArtifactPayload, executeAction);
 
     if (requests.length !== 2) {
       fail(`a second-page handoff replay must make exactly two list requests, saw ${requests.length}`);
@@ -1964,9 +1836,9 @@ async function assertStubGateNonAdvancingListPath() {
 
   await withStubGate(
     issues,
-    async requests => {
+    async (requests, executeAction) => {
       await assert.rejects(
-        routeReadyItem(multiArtifactPayload),
+        routeReadyItem(multiArtifactPayload, executeAction),
         /did not advance/,
         'a repeated first page must fail closed',
       );
@@ -2007,8 +1879,8 @@ async function assertStubGateCompletedPath() {
   const issues = [completedIssue];
   const completedBeforeReplay = JSON.stringify(completedIssue);
 
-  const routed = await withStubGate(issues, async requests => {
-    const readyItem = await routeReadyItem(multiArtifactPayload);
+  const routed = await withStubGate(issues, async (requests, executeAction) => {
+    const readyItem = await routeReadyItem(multiArtifactPayload, executeAction);
 
     if (requests.length !== 2) {
       fail('a completed handoff must not be returned by the active ready-item lookup');
@@ -2029,10 +1901,249 @@ async function assertStubGateCompletedPath() {
   }
 }
 
+function callbackEnvironment(overrides = {}) {
+  return {
+    PUBLIC_ARTIFACT_TUPLE_CALLBACK_URL: 'https://intake.example.test/v1/handoffs?source=docs',
+    PUBLIC_ARTIFACT_TUPLE_CALLBACK_KEY_ID: 'docs-artifact-tuple-v1',
+    PUBLIC_ARTIFACT_TUPLE_CALLBACK_HMAC_KEY: Buffer.alloc(32, 0x5a).toString('base64'),
+    GITHUB_REPOSITORY: 'durable-workflow/durable-workflow.github.io',
+    GITHUB_RUN_ID: '31288553670',
+    GITHUB_RUN_ATTEMPT: '1',
+    HANDOFF_ARTIFACT_ID: '5544332211',
+    HANDOFF_ARTIFACT_SHA256: 'a'.repeat(64),
+    ...overrides,
+  };
+}
+
+async function assertDeferredPullIntakePath() {
+  assert.strictEqual(
+    callbackConfiguration({}),
+    null,
+    'unset callback configuration must select authenticated pull intake',
+  );
+
+  const temporaryDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'public-artifact-tuple-pull-intake-'),
+  );
+  const handoffPath = path.join(temporaryDirectory, 'docs-artifact-tuple-handoff.json');
+  const summaryPath = path.join(temporaryDirectory, 'summary.md');
+  const outputPath = path.join(temporaryDirectory, 'output.txt');
+  const handoffSource = `${JSON.stringify(multiArtifactHandoff, null, 2)}\n`;
+  fs.writeFileSync(handoffPath, handoffSource);
+
+  try {
+    let callbackAttempted = false;
+    const result = await publishHandoff(
+      JSON.parse(fs.readFileSync(handoffPath, 'utf8')),
+      {
+        environment: {
+          GITHUB_STEP_SUMMARY: summaryPath,
+          GITHUB_OUTPUT: outputPath,
+        },
+        log: () => {},
+        postCallback: async () => {
+          callbackAttempted = true;
+          throw new Error('unset callback configuration must not attempt push delivery');
+        },
+      },
+    );
+
+    assert.deepStrictEqual(
+      result,
+      {mode: 'pull', deliveryId: multiArtifactPayload.key},
+      'unset callback configuration must complete in pull-intake mode',
+    );
+    assert.strictEqual(callbackAttempted, false, 'pull intake must not make a callback request');
+    assert.strictEqual(
+      fs.readFileSync(handoffPath, 'utf8'),
+      handoffSource,
+      'deferring routing must leave the uploaded handoff bytes available',
+    );
+    assert.match(
+      fs.readFileSync(summaryPath, 'utf8'),
+      /deferred to authenticated GitHub artifact pull intake/,
+      'the workflow summary must record authenticated pull intake',
+    );
+    assert.match(
+      fs.readFileSync(outputPath, 'utf8'),
+      new RegExp(`delivery_mode=pull\\ndelivery_id=${multiArtifactPayload.key}\\n`),
+      'the route step must expose its deterministic pull-intake identity',
+    );
+
+    const issues = [];
+    await withStubGate(issues, async (requests, executeAction) => {
+      const pulledHandoff = JSON.parse(fs.readFileSync(handoffPath, 'utf8'));
+      const pulledPayload = buildReadyItemPayload(pulledHandoff);
+      const first = await routeReadyItem(pulledPayload, executeAction);
+      const replay = await routeReadyItem(pulledPayload, executeAction);
+
+      assert.strictEqual(
+        first.number,
+        replay.number,
+        'an exact pull replay must reuse the ready item created by the first ingestion',
+      );
+      assert.strictEqual(
+        requests.filter(request => request.action === 'gh.issue.create').length,
+        1,
+        'pull ingestion must create exactly one ready item',
+      );
+      assert.strictEqual(issues.length, 1, 'pull ingestion must retain one routed identity');
+    });
+  } finally {
+    fs.rmSync(temporaryDirectory, {recursive: true});
+  }
+}
+
+async function assertAuthenticatedPushCallbackPath() {
+  const environment = callbackEnvironment();
+  const configuration = callbackConfiguration(environment);
+  const nonceBytes = Buffer.alloc(32, 0x31);
+  const artifact = {
+    repository: environment.GITHUB_REPOSITORY,
+    run_id: environment.GITHUB_RUN_ID,
+    run_attempt: environment.GITHUB_RUN_ATTEMPT,
+    artifact_name: 'public-artifact-tuple-pipeline-handoff',
+    artifact_id: environment.HANDOFF_ARTIFACT_ID,
+    artifact_sha256: environment.HANDOFF_ARTIFACT_SHA256,
+  };
+  const signed = createSignedCallback(
+    multiArtifactHandoff,
+    configuration,
+    artifact,
+    {now: 1_786_233_600_000, nonceBytes},
+  );
+  const signedBody = JSON.parse(signed.body);
+  const signatureInput = [
+    'POST',
+    '/v1/handoffs?source=docs',
+    environment.PUBLIC_ARTIFACT_TUPLE_CALLBACK_KEY_ID,
+    signed.headers['X-Durable-Workflow-Issued-At'],
+    signed.headers['X-Durable-Workflow-Nonce'],
+    signed.headers['X-Durable-Workflow-Content-SHA256'],
+  ].join('\n');
+  const expectedSignature = crypto
+    .createHmac(
+      'sha256',
+      Buffer.from(environment.PUBLIC_ARTIFACT_TUPLE_CALLBACK_HMAC_KEY, 'base64'),
+    )
+    .update(signatureInput)
+    .digest('hex');
+
+  assert.strictEqual(signedBody.schema_version, 1, 'callback envelope must be versioned');
+  assert.strictEqual(
+    signedBody.delivery_id,
+    multiArtifactPayload.key,
+    'callback delivery ID must use the pull-intake deduplication key',
+  );
+  assert.deepStrictEqual(
+    signedBody.artifact,
+    artifact,
+    'callback envelope must bind the uploaded immutable artifact identity',
+  );
+  assert.strictEqual(
+    signed.headers['X-Durable-Workflow-Signature'],
+    `v1=${expectedSignature}`,
+    'callback signature must bind the method, request target, key, timestamp, nonce, and body',
+  );
+  assert.strictEqual(
+    signed.headers['X-Durable-Workflow-Content-SHA256'],
+    crypto.createHash('sha256').update(signed.body).digest('hex'),
+    'callback content digest must bind the exact request bytes',
+  );
+
+  const secondSigned = createSignedCallback(
+    multiArtifactHandoff,
+    configuration,
+    artifact,
+    {now: 1_786_233_600_000, nonceBytes: Buffer.alloc(32, 0x32)},
+  );
+  assert.strictEqual(
+    secondSigned.deliveryId,
+    signed.deliveryId,
+    'callback retries must retain one exactly-once delivery identity',
+  );
+  assert.notStrictEqual(
+    secondSigned.headers['X-Durable-Workflow-Nonce'],
+    signed.headers['X-Durable-Workflow-Nonce'],
+    'callback attempts must carry distinct replay-resistant nonces',
+  );
+
+  let capturedRequest;
+  const routed = await publishHandoff(multiArtifactHandoff, {
+    environment,
+    log: () => {},
+    now: 1_786_233_600_000,
+    nonceBytes,
+    postCallback: async request => {
+      capturedRequest = request;
+      return {
+        schema: 'durable-workflow.docs.public-artifact-tuple-callback-ack',
+        schema_version: 1,
+        delivery_id: request.deliveryId,
+        handoff_sha256: request.handoffSha256,
+        status: 'accepted',
+      };
+    },
+  });
+  assert.strictEqual(routed.mode, 'push', 'complete callback configuration must use push mode');
+  assert.strictEqual(
+    capturedRequest.deliveryId,
+    multiArtifactPayload.key,
+    'push mode must send the deterministic handoff identity',
+  );
+
+  await assert.rejects(
+    publishHandoff(multiArtifactHandoff, {
+      environment,
+      log: () => {},
+      nonceBytes,
+      postCallback: async () => ({status: 'accepted'}),
+    }),
+    /acknowledgement must bind/,
+    'push mode must fail closed on an unbound acknowledgement',
+  );
+}
+
+function assertInvalidCallbackConfigurationFailsClosed() {
+  for (const environment of [
+    {PUBLIC_ARTIFACT_TUPLE_CALLBACK_URL: 'https://intake.example.test/handoff'},
+    {PUBLIC_ARTIFACT_TUPLE_CALLBACK_KEY_ID: 'docs-key'},
+    {PUBLIC_ARTIFACT_TUPLE_CALLBACK_HMAC_KEY: Buffer.alloc(32).toString('base64')},
+  ]) {
+    assert.throws(
+      () => callbackConfiguration(environment),
+      /configuration is incomplete/,
+      'partial callback configuration must fail closed',
+    );
+  }
+
+  assert.throws(
+    () => callbackConfiguration(callbackEnvironment({
+      PUBLIC_ARTIFACT_TUPLE_CALLBACK_URL: 'http://intake.example.test/handoff',
+    })),
+    /must use HTTPS/,
+    'an unauthenticated transport must fail closed',
+  );
+  assert.throws(
+    () => callbackConfiguration(callbackEnvironment({
+      PUBLIC_ARTIFACT_TUPLE_CALLBACK_HMAC_KEY: Buffer.alloc(16).toString('base64'),
+    })),
+    /32-128 bytes/,
+    'a weak callback key must fail closed',
+  );
+  assert.throws(
+    () => callbackConfiguration(callbackEnvironment({
+      PUBLIC_ARTIFACT_TUPLE_CALLBACK_KEY_ID: 'invalid key id',
+    })),
+    /key ID must use/,
+    'an ambiguous callback key ID must fail closed',
+  );
+}
+
 async function main() {
-  await assertOptionalCallbackAbsentPath();
-  await assertOptionalCallbackPresentPath();
-  await assertOptionalCallbackFailurePath();
+  assertInvalidCallbackConfigurationFailsClosed();
+  await assertDeferredPullIntakePath();
+  await assertAuthenticatedPushCallbackPath();
   await assertStubGateCreatePath();
   await assertStubGateLegacyKeyPath();
   await assertStubGateIdentityReplacementPath(
@@ -2052,7 +2163,7 @@ async function main() {
   await assertStubGateNonAdvancingListPath();
   await assertStubGateCompletedPath();
 
-  console.log('Public artifact tuple workflow routes a read-only pipeline handoff.');
+  console.log('Public artifact tuple workflow publishes an immutable authenticated handoff.');
 }
 
 main().catch(err => {

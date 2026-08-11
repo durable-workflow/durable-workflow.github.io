@@ -269,22 +269,26 @@ jobs:
           NODE
 
       - name: Upload pipeline handoff
+        id: handoff-artifact
         if: steps.changes.outputs.changed == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
         with:
           name: public-artifact-tuple-pipeline-handoff
           path: docs-artifact-tuple-handoff.json
           if-no-files-found: error
+          retention-days: 30
+          overwrite: false
 
-      - name: Attempt optional direct callback
-        id: direct-callback
+      - name: Route or defer pipeline handoff
+        id: handoff-routing
         if: steps.changes.outputs.changed == 'true'
         env:
-          PIPELINE_GATE_URL: ${{ secrets.PIPELINE_GATE_URL }}
-        run: >-
-          node scripts/route-public-artifact-tuple-handoff.js
-          --handoff docs-artifact-tuple-handoff.json
-          --optional-callback
+          PUBLIC_ARTIFACT_TUPLE_CALLBACK_URL: ${{ secrets.PUBLIC_ARTIFACT_TUPLE_CALLBACK_URL }}
+          PUBLIC_ARTIFACT_TUPLE_CALLBACK_KEY_ID: ${{ secrets.PUBLIC_ARTIFACT_TUPLE_CALLBACK_KEY_ID }}
+          PUBLIC_ARTIFACT_TUPLE_CALLBACK_HMAC_KEY: ${{ secrets.PUBLIC_ARTIFACT_TUPLE_CALLBACK_HMAC_KEY }}
+          HANDOFF_ARTIFACT_ID: ${{ steps.handoff-artifact.outputs.artifact-id }}
+          HANDOFF_ARTIFACT_SHA256: ${{ steps.handoff-artifact.outputs.artifact-digest }}
+        run: node scripts/route-public-artifact-tuple-handoff.js --handoff docs-artifact-tuple-handoff.json
 
       - name: Resolve published Workflow conformance ref
         id: published-workflow
@@ -307,19 +311,6 @@ jobs:
           WORKFLOW_SDK_NEUTRALITY_MANIFEST_PATH: ${{ github.workspace }}/.workflow-authority/resources/sdk-neutrality-contract.json
           WORKFLOW_PLATFORM_CONFORMANCE_MANIFEST_PATH: ${{ github.workspace }}/.published-workflow-authority/resources/platform-conformance-contract.json
         run: npm run build
-
-      - name: Report optional direct callback state
-        if: ${{ always() && steps.changes.outputs.changed == 'true' }}
-        env:
-          DIRECT_CALLBACK_STATE: ${{ steps.direct-callback.outputs.delivery_state }}
-        run: |
-          case "$DIRECT_CALLBACK_STATE" in
-            delivered|not_configured|failed) ;;
-            *) DIRECT_CALLBACK_STATE=failed ;;
-          esac
-
-          echo "Optional direct callback: ${DIRECT_CALLBACK_STATE}" >> "$GITHUB_STEP_SUMMARY"
-          echo "The uploaded handoff artifact remains the authoritative recovery path." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Report current tuple
         if: steps.changes.outputs.changed == 'false'

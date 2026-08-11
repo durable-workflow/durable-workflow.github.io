@@ -2,7 +2,6 @@
 
 const crypto = require('crypto');
 const fs = require('fs');
-const http = require('http');
 const https = require('https');
 const path = require('path');
 const publicProtocolCatalog = require('../static/platform-protocol-specs.json');
@@ -10,6 +9,14 @@ const {buildPythonPackageAuthority} = require('./public-artifact-versions');
 const {sdkNeutralityContractSource} = require('./refresh-public-artifact-versions');
 
 const HANDOFF_SCHEMA = 'durable-workflow.docs.public-artifact-tuple-handoff';
+const CALLBACK_SCHEMA = 'durable-workflow.docs.public-artifact-tuple-callback';
+const CALLBACK_ACK_SCHEMA = 'durable-workflow.docs.public-artifact-tuple-callback-ack';
+const CALLBACK_ENV = {
+  url: 'PUBLIC_ARTIFACT_TUPLE_CALLBACK_URL',
+  keyId: 'PUBLIC_ARTIFACT_TUPLE_CALLBACK_KEY_ID',
+  hmacKey: 'PUBLIC_ARTIFACT_TUPLE_CALLBACK_HMAC_KEY',
+};
+const HANDOFF_ARTIFACT_NAME = 'public-artifact-tuple-pipeline-handoff';
 const PUBLISHED_SERVER_PROTOCOL_AUTHORITY_SCHEMA =
   'durable-workflow.docs.published-server-protocol-authority';
 const PUBLISHED_SERVER_PROTOCOL_AUTHORITY_KEYS = [
@@ -63,7 +70,6 @@ const EXPECTED_REFRESH_FILES = [
 const ARTIFACT_ORDER = ['cli', 'sdk-php', 'sdk-python', 'sdk-rust', 'server', 'waterline', 'workflow'];
 const GATE_ACTION_LIST_READY_ITEMS = 'gh.issue.list';
 const GATE_ACTION_CREATE_READY_ITEM = 'gh.issue.create';
-const GATE_REQUEST_TIMEOUT_MS = 10000;
 const READY_ITEM_LOOKUP_INITIAL_LIMIT = 50;
 const READY_ITEM_LOOKUP_MAX_LIMIT = 1000;
 const ROUTING_LABELS = [
@@ -85,13 +91,11 @@ function usage() {
   return [
     'Usage:',
     '  node scripts/route-public-artifact-tuple-handoff.js --handoff docs-artifact-tuple-handoff.json',
-    '  node scripts/route-public-artifact-tuple-handoff.js --handoff docs-artifact-tuple-handoff.json --optional-callback',
     '  node scripts/route-public-artifact-tuple-handoff.js --handoff docs-artifact-tuple-handoff.json --dry-run',
     '',
-    'Routes a validated public artifact tuple handoff into a pipeline ready item',
-    'through PIPELINE_GATE_URL. Optional-callback mode reports delivery state and',
-    'leaves artifact recovery authoritative when no callback is configured or',
-    'delivery fails. Dry-run mode prints the ready-item payload without calling the gate.',
+    'Publishes a validated public artifact tuple handoff notification. With no',
+    'callback configuration, the uploaded artifact is left for authenticated pull',
+    'intake. Dry-run mode prints the deterministic ready-item payload.',
   ].join('\n');
 }
 
@@ -99,7 +103,6 @@ function parseArgs(argv) {
   const args = {
     dryRun: false,
     handoffPath: 'docs-artifact-tuple-handoff.json',
-    optionalCallback: false,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -107,11 +110,6 @@ function parseArgs(argv) {
 
     if (arg === '--dry-run') {
       args.dryRun = true;
-      continue;
-    }
-
-    if (arg === '--optional-callback') {
-      args.optionalCallback = true;
       continue;
     }
 
@@ -136,10 +134,6 @@ function parseArgs(argv) {
     }
 
     throw new Error(`Unknown argument: ${arg}\n\n${usage()}`);
-  }
-
-  if (args.dryRun && args.optionalCallback) {
-    throw new Error('--dry-run and --optional-callback cannot be combined');
   }
 
   return args;
@@ -1068,70 +1062,277 @@ function buildReadyItemPayload(handoff, options = {}) {
   };
 }
 
-function gateEndpoint() {
-  if (!process.env.PIPELINE_GATE_URL) {
-    throw new Error('PIPELINE_GATE_URL is required to route the public artifact tuple handoff');
+function callbackConfiguration(environment = process.env) {
+  const configured = Object.fromEntries(
+    Object.entries(CALLBACK_ENV).map(([name, environmentName]) => [
+      name,
+      typeof environment[environmentName] === 'string'
+        ? environment[environmentName].trim()
+        : '',
+    ]),
+  );
+  const configuredCount = Object.values(configured).filter(Boolean).length;
+
+  if (configuredCount === 0) {
+    return null;
   }
 
-  return new URL('/api/worker/actions/execute', process.env.PIPELINE_GATE_URL);
+  if (configuredCount !== Object.keys(CALLBACK_ENV).length) {
+    throw new Error(
+      'Authenticated push callback configuration is incomplete; URL, key ID, and HMAC key are all required',
+    );
+  }
+
+  let url;
+  try {
+    url = new URL(configured.url);
+  } catch (error) {
+    throw new Error(`Authenticated push callback URL is invalid: ${error.message}`);
+  }
+
+  if (
+    url.protocol !== 'https:'
+    || url.username !== ''
+    || url.password !== ''
+    || url.hash !== ''
+  ) {
+    throw new Error(
+      'Authenticated push callback URL must use HTTPS without credentials or a fragment',
+    );
+  }
+
+  if (!/^[A-Za-z0-9._-]{1,64}$/.test(configured.keyId)) {
+    throw new Error(
+      'Authenticated push callback key ID must use 1-64 letters, digits, dots, underscores, or hyphens',
+    );
+  }
+
+  if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(configured.hmacKey)) {
+    throw new Error('Authenticated push callback HMAC key must be canonical base64');
+  }
+
+  const hmacKey = Buffer.from(configured.hmacKey, 'base64');
+  if (
+    hmacKey.length < 32
+    || hmacKey.length > 128
+    || hmacKey.toString('base64') !== configured.hmacKey
+  ) {
+    throw new Error(
+      'Authenticated push callback HMAC key must be canonical base64 encoding 32-128 bytes',
+    );
+  }
+
+  return {
+    url,
+    keyId: configured.keyId,
+    hmacKey,
+  };
 }
 
-function gateAction(action, input) {
-  const endpoint = gateEndpoint();
-  const client = endpoint.protocol === 'https:' ? https : http;
-  const body = JSON.stringify({ action, input });
+function callbackArtifactIdentity(environment = process.env) {
+  const identity = {
+    repository: environment.GITHUB_REPOSITORY || '',
+    run_id: environment.GITHUB_RUN_ID || '',
+    run_attempt: environment.GITHUB_RUN_ATTEMPT || '',
+    artifact_name: HANDOFF_ARTIFACT_NAME,
+    artifact_id: environment.HANDOFF_ARTIFACT_ID || '',
+    artifact_sha256: (environment.HANDOFF_ARTIFACT_SHA256 || '').replace(/^sha256:/, ''),
+  };
 
+  if (identity.repository !== 'durable-workflow/durable-workflow.github.io') {
+    throw new Error('Authenticated push callback must identify the trusted docs repository');
+  }
+
+  for (const field of ['run_id', 'run_attempt', 'artifact_id']) {
+    if (!/^[1-9][0-9]*$/.test(identity[field])) {
+      throw new Error(`Authenticated push callback artifact ${field} must be a positive integer`);
+    }
+  }
+
+  if (!/^[0-9a-f]{64}$/.test(identity.artifact_sha256)) {
+    throw new Error(
+      'Authenticated push callback artifact_sha256 must identify the uploaded artifact bytes',
+    );
+  }
+
+  return identity;
+}
+
+function createSignedCallback(handoff, configuration, artifact, options = {}) {
+  validateHandoff(handoff);
+
+  const issuedAt = Math.floor((options.now || Date.now()) / 1000);
+  const nonceBytes = options.nonceBytes || crypto.randomBytes(32);
+  if (!Buffer.isBuffer(nonceBytes) || nonceBytes.length < 16) {
+    throw new Error('Authenticated push callback nonce must contain at least 16 random bytes');
+  }
+
+  const deliveryId = handoffKey(handoff);
+  const handoffSha256 = sha256(stableStringify(handoff));
+  const nonce = nonceBytes.toString('base64url');
+  const body = JSON.stringify({
+    schema: CALLBACK_SCHEMA,
+    schema_version: 1,
+    delivery_id: deliveryId,
+    issued_at: issuedAt,
+    nonce,
+    handoff_sha256: handoffSha256,
+    artifact,
+    handoff,
+  });
+  const contentSha256 = sha256(body);
+  const requestTarget = `${configuration.url.pathname}${configuration.url.search}`;
+  const signatureInput = [
+    'POST',
+    requestTarget,
+    configuration.keyId,
+    String(issuedAt),
+    nonce,
+    contentSha256,
+  ].join('\n');
+  const signature = crypto
+    .createHmac('sha256', configuration.hmacKey)
+    .update(signatureInput)
+    .digest('hex');
+
+  return {
+    url: configuration.url,
+    body,
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': String(Buffer.byteLength(body)),
+      'X-Durable-Workflow-Key-Id': configuration.keyId,
+      'X-Durable-Workflow-Issued-At': String(issuedAt),
+      'X-Durable-Workflow-Nonce': nonce,
+      'X-Durable-Workflow-Content-SHA256': contentSha256,
+      'X-Durable-Workflow-Signature': `v1=${signature}`,
+    },
+    deliveryId,
+    handoffSha256,
+  };
+}
+
+function postSignedCallback(request) {
   return new Promise((resolve, reject) => {
-    const req = client.request(
-      endpoint,
+    const callbackRequest = https.request(
+      request.url,
       {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(body),
-        },
+        headers: request.headers,
+        timeout: 15_000,
       },
-      res => {
+      response => {
         let responseBody = '';
-        res.setEncoding('utf8');
-        res.on('data', chunk => {
+        response.setEncoding('utf8');
+        response.on('data', chunk => {
           responseBody += chunk;
+          if (Buffer.byteLength(responseBody) > 1024 * 1024) {
+            callbackRequest.destroy(new Error('Authenticated push callback response is too large'));
+          }
         });
-        res.on('end', () => {
-          clearTimeout(requestTimeout);
-          let parsed = null;
+        response.on('end', () => {
+          if ((response.statusCode || 0) < 200 || (response.statusCode || 0) >= 300) {
+            reject(new Error(
+              `Authenticated push callback failed with HTTP ${response.statusCode}`,
+            ));
+            return;
+          }
+
           try {
-            parsed = responseBody ? JSON.parse(responseBody) : null;
-          } catch (err) {
-            reject(new Error(`Pipeline gate response is not valid JSON: ${err.message}`));
-            return;
+            resolve(JSON.parse(responseBody));
+          } catch (error) {
+            reject(new Error(
+              `Authenticated push callback acknowledgement is not valid JSON: ${error.message}`,
+            ));
           }
-
-          if ((res.statusCode || 0) < 200 || (res.statusCode || 0) >= 300) {
-            reject(new Error(`Pipeline gate ${action} failed with HTTP ${res.statusCode}: ${responseBody}`));
-            return;
-          }
-
-          if (!parsed || parsed.status !== 'completed') {
-            reject(new Error(`Pipeline gate ${action} did not complete: ${responseBody}`));
-            return;
-          }
-
-          resolve(parsed.result);
         });
-      }
+      },
     );
 
-    const requestTimeout = setTimeout(() => {
-      req.destroy(new Error('Pipeline gate request timed out'));
-    }, GATE_REQUEST_TIMEOUT_MS);
-    req.on('error', err => {
-      clearTimeout(requestTimeout);
-      reject(err);
+    callbackRequest.on('timeout', () => {
+      callbackRequest.destroy(new Error('Authenticated push callback timed out'));
     });
-    req.write(body);
-    req.end();
+    callbackRequest.on('error', reject);
+    callbackRequest.write(request.body);
+    callbackRequest.end();
   });
+}
+
+function validateCallbackAcknowledgement(acknowledgement, request) {
+  if (
+    !acknowledgement
+    || acknowledgement.schema !== CALLBACK_ACK_SCHEMA
+    || acknowledgement.schema_version !== 1
+    || acknowledgement.delivery_id !== request.deliveryId
+    || acknowledgement.handoff_sha256 !== request.handoffSha256
+    || !['accepted', 'duplicate'].includes(acknowledgement.status)
+  ) {
+    throw new Error(
+      'Authenticated push callback acknowledgement must bind the delivery ID, handoff digest, and ingestion status',
+    );
+  }
+
+  return acknowledgement;
+}
+
+function appendWorkflowRecord(environment, lines) {
+  if (environment.GITHUB_STEP_SUMMARY) {
+    fs.appendFileSync(environment.GITHUB_STEP_SUMMARY, `${lines.join('\n')}\n`);
+  }
+}
+
+function appendWorkflowOutputs(environment, mode, deliveryId) {
+  if (environment.GITHUB_OUTPUT) {
+    fs.appendFileSync(
+      environment.GITHUB_OUTPUT,
+      `delivery_mode=${mode}\ndelivery_id=${deliveryId}\n`,
+    );
+  }
+}
+
+async function publishHandoff(handoff, options = {}) {
+  const environment = options.environment || process.env;
+  const log = options.log || console.log;
+  const payload = buildReadyItemPayload(handoff);
+  const configuration = callbackConfiguration(environment);
+
+  if (configuration === null) {
+    appendWorkflowOutputs(environment, 'pull', payload.key);
+    appendWorkflowRecord(environment, [
+      '### Public artifact tuple handoff',
+      '',
+      `- Immutable artifact: \`${HANDOFF_ARTIFACT_NAME}\``,
+      '- Routing: deferred to authenticated GitHub artifact pull intake',
+      `- Delivery ID: \`${payload.key}\``,
+    ]);
+    log(
+      `Public artifact tuple routing deferred to authenticated pull intake (${payload.key}).`,
+    );
+    return {mode: 'pull', deliveryId: payload.key};
+  }
+
+  const artifact = callbackArtifactIdentity(environment);
+  const request = createSignedCallback(handoff, configuration, artifact, options);
+  const acknowledgement = validateCallbackAcknowledgement(
+    await (options.postCallback || postSignedCallback)(request),
+    request,
+  );
+
+  appendWorkflowOutputs(environment, 'push', payload.key);
+  appendWorkflowRecord(environment, [
+    '### Public artifact tuple handoff',
+    '',
+    `- Immutable artifact: \`${HANDOFF_ARTIFACT_NAME}\``,
+    `- Routing: authenticated push callback acknowledged (\`${acknowledgement.status}\`)`,
+    `- Delivery ID: \`${payload.key}\``,
+  ]);
+  log(`Authenticated public artifact tuple callback acknowledged (${payload.key}).`);
+
+  return {
+    mode: 'push',
+    deliveryId: payload.key,
+    status: acknowledgement.status,
+  };
 }
 
 function findExistingReadyItem(issues, keys) {
@@ -1155,12 +1356,16 @@ function readyItemListIdentity(issue) {
   return `record:${stableStringify(issue)}`;
 }
 
-async function routeReadyItem(payload) {
+async function routeReadyItem(payload, executeAction) {
+  if (typeof executeAction !== 'function') {
+    throw new Error('Ready-item routing requires an injected authenticated action client');
+  }
+
   let limit = READY_ITEM_LOOKUP_INITIAL_LIMIT;
   let previousIdentities = null;
 
   while (true) {
-    const existingReadyItems = await gateAction(GATE_ACTION_LIST_READY_ITEMS, {
+    const existingReadyItems = await executeAction(GATE_ACTION_LIST_READY_ITEMS, {
       repo: payload.repo,
       labels: READY_ITEM_LOOKUP_LABELS.join(','),
       state: 'open',
@@ -1206,7 +1411,7 @@ async function routeReadyItem(payload) {
     limit = Math.min(limit * 2, READY_ITEM_LOOKUP_MAX_LIMIT);
   }
 
-  const created = await gateAction(GATE_ACTION_CREATE_READY_ITEM, {
+  const created = await executeAction(GATE_ACTION_CREATE_READY_ITEM, {
     repo: payload.repo,
     title: payload.title,
     body: payload.body,
@@ -1215,33 +1420,6 @@ async function routeReadyItem(payload) {
 
   console.log(`Public artifact tuple handoff routed to ready item ${created.number}.`);
   return created;
-}
-
-async function deliverOptionalCallback(payload) {
-  if (!process.env.PIPELINE_GATE_URL) {
-    console.log(
-      'Optional direct callback is not configured; the handoff artifact remains available for recovery.',
-    );
-    return {state: 'not_configured'};
-  }
-
-  try {
-    const readyItem = await routeReadyItem(payload);
-    return {state: 'delivered', readyItem};
-  } catch {
-    console.error(
-      'Optional direct callback was not delivered; the handoff artifact remains available for recovery.',
-    );
-    return {state: 'failed'};
-  }
-}
-
-function writeOutput(name, value) {
-  if (!process.env.GITHUB_OUTPUT) {
-    return;
-  }
-
-  fs.appendFileSync(process.env.GITHUB_OUTPUT, `${name}=${value}\n`);
 }
 
 async function main() {
@@ -1262,13 +1440,7 @@ async function main() {
     return;
   }
 
-  if (args.optionalCallback) {
-    const delivery = await deliverOptionalCallback(payload);
-    writeOutput('delivery_state', delivery.state);
-    return;
-  }
-
-  await routeReadyItem(payload);
+  await publishHandoff(handoff);
 }
 
 if (require.main === module) {
@@ -1283,15 +1455,19 @@ module.exports = {
   buildReadyItemPayload,
   buildRefreshInvocation,
   buildSdkNeutralityAuthorityIdentity,
+  callbackArtifactIdentity,
+  callbackConfiguration,
   changedArtifacts,
   compatibilityEvidenceDigest,
-  deliverOptionalCallback,
+  createSignedCallback,
   findExistingReadyItem,
   handoffDuplicateKeys,
   handoffKey,
   publishedServerProtocolAuthorityDigest,
+  publishHandoff,
   routeReadyItem,
   sdkNeutralityAuthorityDigest,
+  validateCallbackAcknowledgement,
   validateHandoff,
   validateSdkNeutralityAuthorityIdentity,
 };
