@@ -160,6 +160,8 @@ Example admission override:
 | `DW_WORKER_PROTOCOL_VERSION` | `WorkerProtocolVersion::VERSION` | Worker-protocol version advertised on worker-plane responses. | `WORKFLOW_SERVER_WORKER_PROTOCOL_VERSION` |
 | `DW_HISTORY_PAGE_SIZE_DEFAULT` | `WorkerProtocolVersion::DEFAULT_HISTORY_PAGE_SIZE` | Default page size for worker history reads. | `WORKFLOW_SERVER_HISTORY_PAGE_SIZE_DEFAULT` |
 | `DW_HISTORY_PAGE_SIZE_MAX` | `WorkerProtocolVersion::MAX_HISTORY_PAGE_SIZE` | Maximum page size honored on worker history reads. | `WORKFLOW_SERVER_HISTORY_PAGE_SIZE_MAX` |
+| `DW_UPDATE_VALIDATION_TIMEOUT` | `10` | Seconds the control plane waits for a synchronous pre-accept update validator result. | `WORKFLOW_SERVER_UPDATE_VALIDATION_TIMEOUT` |
+| `DW_UPDATE_VALIDATION_LEASE_TIMEOUT` | `5` | Seconds an update-validation task lease remains owned before a replacement validator-capable worker may retry it. | `WORKFLOW_SERVER_UPDATE_VALIDATION_LEASE_TIMEOUT` |
 | `DW_QUERY_TASK_TIMEOUT` | `DW_WORKER_POLL_TIMEOUT` | Seconds the control plane waits for a query task response from the worker. | `WORKFLOW_SERVER_QUERY_TASK_TIMEOUT` |
 | `DW_QUERY_TASK_LEASE_TIMEOUT` | `DW_WORKFLOW_TASK_TIMEOUT` | Lease timeout for ephemeral query tasks handed to workers. | `WORKFLOW_SERVER_QUERY_TASK_LEASE_TIMEOUT` |
 | `DW_QUERY_TASK_TTL_SECONDS` | `180` | How long the server retains query-task result rows before reaping them. | `WORKFLOW_SERVER_QUERY_TASK_TTL_SECONDS` |
