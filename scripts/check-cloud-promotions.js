@@ -41,13 +41,14 @@ const styles = fs.readFileSync(
   'utf8',
 );
 assert.match(runtime, /credentials: 'omit'/);
-assert.match(runtime, /referrer: ''/);
-assert.match(runtime, /referrerPolicy: 'strict-origin-when-cross-origin'/);
+assert.doesNotMatch(runtime, /\breferrer\s*:/);
+assert.match(runtime, /referrerPolicy: 'no-referrer'/);
 assert.match(runtime, /JSON\.stringify\(\{source, event\}\)/);
 assert.doesNotMatch(runtime, /document\.cookie|localStorage|sessionStorage|user[_-]?id|location\.search/i);
 assert.match(styles, /\.eyebrow\s*\{[^}]*letter-spacing:\s*0;/s);
 assert.equal(requiresBrowserEvidence(['src/components/ProductPromotion/index.js']), true);
 assert.equal(requiresBrowserEvidence(['scripts/cloud-promotion-contract.js']), true);
+assert.equal(requiresBrowserEvidence(['scripts/check-cloud-promotion-browser.test.js']), true);
 assert.equal(requiresBrowserEvidence(['docs/introduction.md']), false);
 assert.ok(BROWSER_EVIDENCE_PATHS.includes('scripts/check-cloud-promotion-browser.js'));
 

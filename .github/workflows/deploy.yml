@@ -326,7 +326,7 @@ jobs:
           steps.deploy-plan.outputs.deploy == 'true' &&
           (steps.server_catalog.outputs.deployment_state == 'deployable' ||
           steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
-        run: npm run check:cloud-promotion-browser -- --live --output cloud-promotion-browser-evidence
+        run: npm run check:cloud-promotion-browser -- --live --wait-for-candidate --output cloud-promotion-browser-evidence
 
       - name: Upload live Cloud promotion browser evidence
         if: ${{ always() && steps.deploy-plan.outputs.deploy == 'true' && (steps.server_catalog.outputs.deployment_state == 'deployable' || steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable') }}

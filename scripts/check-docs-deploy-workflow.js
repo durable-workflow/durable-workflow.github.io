@@ -331,7 +331,8 @@ function assertProtectedDeploySource(source) {
     || steps[installPromotionBrowserIndex].run !==
       'npx --no-install playwright install --with-deps chromium'
     || steps[verifyPromotionBrowserIndex].run !==
-      'npm run check:cloud-promotion-browser -- --live --output cloud-promotion-browser-evidence'
+      'npm run check:cloud-promotion-browser -- --live --wait-for-candidate ' +
+        '--output cloud-promotion-browser-evidence'
   ) {
     fail(
       'docs deploy workflow must exercise the live Cloud promotion browser transport ' +
@@ -478,7 +479,7 @@ for (const required of [
   'name: Verify live workflow lifecycle authority',
   'run: node scripts/verify-workflow-lifecycle-live.js',
   'name: Verify live Cloud promotion browser transport',
-  'run: npm run check:cloud-promotion-browser -- --live --output cloud-promotion-browser-evidence',
+  'run: npm run check:cloud-promotion-browser -- --live --wait-for-candidate --output cloud-promotion-browser-evidence',
   'name: Upload live Cloud promotion browser evidence',
   'name: Resolve published Workflow conformance ref',
   'name: Checkout published Workflow conformance authority',

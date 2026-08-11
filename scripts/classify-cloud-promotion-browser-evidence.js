@@ -6,6 +6,7 @@ const BROWSER_EVIDENCE_PATHS = Object.freeze([
   '.github/workflows/deploy.yml',
   '.github/workflows/qualification.yml',
   'scripts/check-cloud-promotion-browser.js',
+  'scripts/check-cloud-promotion-browser.test.js',
   'scripts/check-cloud-promotions.js',
   'scripts/classify-cloud-promotion-browser-evidence.js',
   'scripts/cloud-promotion-contract.js',
