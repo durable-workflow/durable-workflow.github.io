@@ -11,6 +11,7 @@
 #   DURABLE_WORKFLOW_RELEASE_BASE_URL    Release base URL override for tests.
 #   DURABLE_WORKFLOW_INSTALL_VERIFY_ATTESTATIONS
 #                                        Set to 1 to verify GitHub artifact attestations with gh.
+#   DURABLE_WORKFLOW_INSTALL_OUTPUT      Result format: human (default) or json.
 
 set -eu
 
@@ -21,10 +22,22 @@ VERSION="${VERSION:-latest}"
 RELEASE_BASE_URL="${DURABLE_WORKFLOW_RELEASE_BASE_URL:-https://github.com/${REPO}/releases}"
 RELEASE_BASE_URL="${RELEASE_BASE_URL%/}"
 VERIFY_ATTESTATIONS="${DURABLE_WORKFLOW_INSTALL_VERIFY_ATTESTATIONS:-0}"
+OUTPUT_MODE="${DURABLE_WORKFLOW_INSTALL_OUTPUT:-human}"
 
 err() { printf '\033[31merror:\033[0m %s\n' "$*" >&2; exit 1; }
-info() { printf '\033[32m==>\033[0m %s\n' "$*"; }
+info() {
+    if [ "$OUTPUT_MODE" = "json" ]; then
+        printf '==> %s\n' "$*" >&2
+    else
+        printf '\033[32m==>\033[0m %s\n' "$*"
+    fi
+}
 warn() { printf '\033[33mwarning:\033[0m %s\n' "$*" >&2; }
+
+case "$OUTPUT_MODE" in
+    human|json) ;;
+    *) err "DURABLE_WORKFLOW_INSTALL_OUTPUT must be human or json" ;;
+esac
 
 uname_s=$(uname -s)
 uname_m=$(uname -m)
@@ -72,6 +85,9 @@ sha256_file() {
 }
 
 mkdir -p "$INSTALL_DIR"
+if ! INSTALL_DIR=$(CDPATH= cd "$INSTALL_DIR" 2>/dev/null && pwd -P); then
+    err "could not resolve install directory: $INSTALL_DIR"
+fi
 tmpdir=$(mktemp -d)
 tmp="$tmpdir/$asset"
 sums="$tmpdir/SHA256SUMS"
@@ -107,23 +123,224 @@ if [ "$VERIFY_ATTESTATIONS" = "1" ]; then
     command -v gh >/dev/null 2>&1 || err "gh is required when DURABLE_WORKFLOW_INSTALL_VERIFY_ATTESTATIONS=1"
 
     info "Verifying GitHub artifact attestations"
-    gh attestation verify "$tmp" --repo "$REPO"
-    gh attestation verify "$sums" --repo "$REPO"
+    if [ "$OUTPUT_MODE" = "json" ]; then
+        gh attestation verify "$tmp" --repo "$REPO" >&2
+        gh attestation verify "$sums" --repo "$REPO" >&2
+    else
+        gh attestation verify "$tmp" --repo "$REPO"
+        gh attestation verify "$sums" --repo "$REPO"
+    fi
 fi
 
 chmod +x "$tmp"
+installed_path="$INSTALL_DIR/$BIN_NAME"
+
+# Remember what a fresh lookup selected before the new file existed. When Bash
+# launched this installer after invoking that command, its parent-process hash
+# can continue to select this path even though the installer's own lookup sees
+# the newly written file. A child process cannot inspect or clear that cache.
+pre_install_path=""
+hash -r 2>/dev/null || :
+if resolved_path=$(command -v "$BIN_NAME" 2>/dev/null); then
+    pre_install_path="$resolved_path"
+    case "$pre_install_path" in
+        */*)
+            pre_install_dir=${pre_install_path%/*}
+            pre_install_name=${pre_install_path##*/}
+            [ -n "$pre_install_dir" ] || pre_install_dir="/"
+            if canonical_pre_install_dir=$(CDPATH= cd "$pre_install_dir" 2>/dev/null && pwd -P); then
+                pre_install_path="$canonical_pre_install_dir/$pre_install_name"
+            fi
+            ;;
+    esac
+fi
+
 mv "$tmp" "$INSTALL_DIR/$BIN_NAME"
 rm -rf "$tmpdir"
 trap - EXIT
 
-info "Installed $BIN_NAME to $INSTALL_DIR"
+read_version() {
+    version_output=$("$1" --version 2>/dev/null) || return 1
+    version_output=$(printf '%s\n' "$version_output" | awk 'NR == 1 { sub(/\r$/, ""); print; exit }')
+    [ -n "$version_output" ] || return 1
+    printf '%s\n' "$version_output"
+}
 
-case ":$PATH:" in
-    *":$INSTALL_DIR:"*) ;;
+shell_quote() {
+    printf "'"
+    printf '%s' "$1" | sed "s/'/'\\\\''/g"
+    printf "'"
+}
+
+json_quote() {
+    printf '%s' "$1" | awk '
+        BEGIN { ORS = ""; printf "\"" }
+        {
+            if (NR > 1) printf "\\n"
+            for (i = 1; i <= length($0); i++) {
+                char = substr($0, i, 1)
+                if (char == "\\") printf "\\\\"
+                else if (char == "\"") printf "\\\""
+                else if (char == "\r") printf "\\r"
+                else if (char == "\t") printf "\\t"
+                else printf "%s", char
+            }
+        }
+        END { printf "\"" }
+    '
+}
+
+installed_version=""
+if ! installed_version=$(read_version "$installed_path"); then
+    install_status="installed-version-unavailable"
+else
+    install_status="ready"
+fi
+
+# A directory merely occurring in PATH is not enough: resolve the command the
+# invoking environment will actually select. Clear this child shell's command
+# cache first so replacement of an existing path is observed deterministically.
+hash -r 2>/dev/null || :
+active_path=""
+if resolved_path=$(command -v "$BIN_NAME" 2>/dev/null); then
+    active_path="$resolved_path"
+    case "$active_path" in
+        */*)
+            active_dir=${active_path%/*}
+            active_name=${active_path##*/}
+            [ -n "$active_dir" ] || active_dir="/"
+            if canonical_active_dir=$(CDPATH= cd "$active_dir" 2>/dev/null && pwd -P); then
+                active_path="$canonical_active_dir/$active_name"
+            fi
+            ;;
+    esac
+fi
+
+active_version=""
+active_selects_installed="false"
+if [ -n "$active_path" ]; then
+    if [ "$active_path" = "$installed_path" ] || [ "$active_path" -ef "$installed_path" ] 2>/dev/null; then
+        active_selects_installed="true"
+    fi
+
+    if [ "$active_selects_installed" = "true" ] && [ -n "$installed_version" ]; then
+        active_version="$installed_version"
+    else
+        active_version=$(read_version "$active_path") || active_version=""
+    fi
+fi
+
+if [ -z "$installed_version" ]; then
+    install_status="installed-version-unavailable"
+elif [ -z "$active_path" ]; then
+    install_status="not-on-path"
+elif [ "$active_selects_installed" != "true" ]; then
+    install_status="path-shadowed"
+elif [ -z "$active_version" ]; then
+    install_status="active-version-unavailable"
+elif [ "$active_version" != "$installed_version" ]; then
+    install_status="active-version-mismatch"
+else
+    install_status="ready"
+fi
+
+quoted_install_dir=$(shell_quote "$INSTALL_DIR")
+quoted_bin_name=$(shell_quote "$BIN_NAME")
+shell_path=${SHELL:-/bin/sh}
+shell_name=${shell_path##*/}
+case "$shell_name" in
+    bash)
+        shell_profile="$HOME/.bashrc"
+        current_shell_command="export PATH=${quoted_install_dir}:\"\$PATH\"; hash -d ${quoted_bin_name} 2>/dev/null || :"
+        persistent_shell_line="export PATH=${quoted_install_dir}:\"\$PATH\""
+        ;;
+    zsh)
+        shell_profile="$HOME/.zshrc"
+        current_shell_command="export PATH=${quoted_install_dir}:\"\$PATH\"; rehash"
+        persistent_shell_line="export PATH=${quoted_install_dir}:\"\$PATH\""
+        ;;
+    fish)
+        shell_profile="$HOME/.config/fish/config.fish"
+        current_shell_command="set -gx PATH ${quoted_install_dir} \$PATH"
+        persistent_shell_line="fish_add_path --prepend ${quoted_install_dir}"
+        ;;
     *)
-        warn "$INSTALL_DIR is not in your PATH. Add this to your shell profile:"
-        printf '    export PATH="%s:$PATH"\n' "$INSTALL_DIR"
+        shell_profile="$HOME/.profile"
+        current_shell_command="export PATH=${quoted_install_dir}:\"\$PATH\"; hash -r"
+        persistent_shell_line="export PATH=${quoted_install_dir}:\"\$PATH\""
         ;;
 esac
 
-"$INSTALL_DIR/$BIN_NAME" --version || true
+# `command -v` above runs in this installer process. If its Bash parent could
+# have cached a different pre-install path, require a targeted refresh in that
+# invoking shell instead of claiming that the installation is already ready.
+parent_shell_name=""
+if [ -n "${PPID:-}" ] && parent_command=$(ps -p "$PPID" -o comm= 2>/dev/null); then
+    parent_command=${parent_command##*/}
+    parent_command=${parent_command#-}
+    case "$parent_command" in
+        bash) parent_shell_name="bash" ;;
+    esac
+fi
+
+if [ "$install_status" = "ready" ] \
+    && [ "$parent_shell_name" = "bash" ] \
+    && [ -n "$pre_install_path" ] \
+    && [ "$pre_install_path" != "$installed_path" ]; then
+    install_status="shell-cache-refresh-required"
+    active_path="$pre_install_path"
+    active_version=$(read_version "$active_path") || active_version=""
+    current_shell_command="hash -d ${quoted_bin_name} 2>/dev/null || :"
+    shell_profile=""
+    persistent_shell_line=""
+fi
+
+if [ "$OUTPUT_MODE" = "json" ]; then
+    active_path_json="null"
+    active_version_json="null"
+    [ -n "$active_path" ] && active_path_json=$(json_quote "$active_path")
+    [ -n "$active_version" ] && active_version_json=$(json_quote "$active_version")
+
+    if [ "$install_status" = "ready" ]; then
+        remediation_json="null"
+    else
+        shell_profile_json="null"
+        persistent_shell_line_json="null"
+        [ -n "$shell_profile" ] && shell_profile_json=$(json_quote "$shell_profile")
+        [ -n "$persistent_shell_line" ] && persistent_shell_line_json=$(json_quote "$persistent_shell_line")
+        remediation_json=$(printf '{"current_shell":%s,"shell_profile":%s,"persistent_line":%s}' \
+            "$(json_quote "$current_shell_command")" \
+            "$shell_profile_json" \
+            "$persistent_shell_line_json")
+    fi
+
+    printf '{"schema":"durable-workflow.cli.install.v1","status":%s,"installed_path":%s,"active_path":%s,"installed_version":%s,"active_version":%s,"remediation":%s}\n' \
+        "$(json_quote "$install_status")" \
+        "$(json_quote "$installed_path")" \
+        "$active_path_json" \
+        "$(json_quote "$installed_version")" \
+        "$active_version_json" \
+        "$remediation_json"
+else
+    printf 'Installed path: %s\n' "$installed_path"
+    printf 'Resolved active path: %s\n' "${active_path:-not found}"
+    printf 'Installed version: %s\n' "${installed_version:-unavailable}"
+    printf 'Active version: %s\n' "${active_version:-unavailable}"
+
+    case "$install_status" in
+        ready)
+            info "Installation ready: ordinary $BIN_NAME invocations use the installed release."
+            ;;
+        shell-cache-refresh-required)
+            warn "Installation is not ready: the invoking Bash may still cache the pre-install $BIN_NAME path."
+            printf 'For this Bash shell, run:\n    %s\n' "$current_shell_command" >&2
+            ;;
+        *)
+            warn "Installation is not ready: ordinary $BIN_NAME invocations do not select the installed release ($install_status)."
+            printf 'For this %s shell, run:\n    %s\n' "${shell_name:-POSIX}" "$current_shell_command" >&2
+            printf 'For new %s shells, add this exact line to %s:\n    %s\n' "${shell_name:-POSIX}" "$shell_profile" "$persistent_shell_line" >&2
+            ;;
+    esac
+fi
+
+[ "$install_status" = "ready" ] || exit 1

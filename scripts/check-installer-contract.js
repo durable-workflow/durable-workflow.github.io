@@ -36,6 +36,11 @@ function checkShellInstaller() {
   assertContains(installer, 'SHA256SUMS', ctx);
   assertContains(installer, 'checksum verification failed', ctx);
   assertContains(installer, 'DURABLE_WORKFLOW_INSTALL_VERIFY_ATTESTATIONS', ctx);
+  assertContains(installer, 'DURABLE_WORKFLOW_INSTALL_OUTPUT', ctx);
+  assertContains(installer, 'durable-workflow.cli.install.v1', ctx);
+  assertContains(installer, 'command -v "$BIN_NAME"', ctx);
+  assertContains(installer, 'install_status="path-shadowed"', ctx);
+  assertContains(installer, 'install_status="shell-cache-refresh-required"', ctx);
   assertContains(installer, 'gh attestation verify "$tmp" --repo "$REPO"', ctx);
   assertContains(installer, 'gh attestation verify "$sums" --repo "$REPO"', ctx);
   // Confirms the pinned-tag URL path is wired (not just `latest/download`).

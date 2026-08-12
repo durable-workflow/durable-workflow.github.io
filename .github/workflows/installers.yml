@@ -73,8 +73,10 @@ jobs:
           DURABLE_WORKFLOW_INSTALL_DIR: ${{ runner.temp }}/dw-bin
         run: |
           set -eu
+          export PATH="$DURABLE_WORKFLOW_INSTALL_DIR:$PATH"
           sh static/install.sh
-          "$DURABLE_WORKFLOW_INSTALL_DIR/dw" --version
+          command -v dw
+          dw --version
 
       - name: Install with VERSION-pinned tag
         shell: bash
@@ -84,8 +86,10 @@ jobs:
           VERSION: '0.1.99'
         run: |
           set -eu
+          export PATH="$DURABLE_WORKFLOW_INSTALL_DIR:$PATH"
           sh static/install.sh
-          out=$("$DURABLE_WORKFLOW_INSTALL_DIR/dw" --version)
+          command -v dw
+          out=$(dw --version)
           echo "$out"
           # The pinned fixture prints "dw fixture 0.1.99"; verify the pinned
           # asset, not the latest fixture, was actually installed.
@@ -93,6 +97,121 @@ jobs:
             *"0.1.99"*) ;;
             *) echo "VERSION-pinned install did not fetch the pinned tag asset: $out" >&2; exit 1 ;;
           esac
+
+      - name: Reject a shadowed user install and verify remediation
+        shell: bash
+        env:
+          DURABLE_WORKFLOW_RELEASE_BASE_URL: http://127.0.0.1:${{ matrix.port }}
+        run: |
+          set -eu
+          system_bin="$RUNNER_TEMP/dw-shadowed-system"
+          user_bin="$RUNNER_TEMP/dw-shadowed-user"
+          result="$RUNNER_TEMP/dw-shadowed-result.json"
+          remediated="$RUNNER_TEMP/dw-remediated.txt"
+          mkdir -p "$system_bin" "$user_bin"
+          cat > "$system_bin/dw" <<'SH'
+          #!/usr/bin/env sh
+          echo "dw fixture old"
+          SH
+          chmod 0555 "$system_bin" "$system_bin/dw"
+
+          shadow_path="$system_bin:$user_bin:$PATH"
+          if PATH="$shadow_path" SHELL=/bin/bash \
+            DURABLE_WORKFLOW_INSTALL_DIR="$user_bin" \
+            DURABLE_WORKFLOW_INSTALL_OUTPUT=json \
+            sh static/install.sh > "$result"; then
+            echo "installer reported a shadowed user binary as ready" >&2
+            exit 1
+          fi
+
+          python3 - "$result" "$system_bin/dw" "$user_bin/dw" <<'PY'
+          import json
+          import pathlib
+          import stat
+          import sys
+
+          result = json.loads(pathlib.Path(sys.argv[1]).read_text())
+          system_binary = pathlib.Path(sys.argv[2])
+          user_binary = pathlib.Path(sys.argv[3])
+          assert result['schema'] == 'durable-workflow.cli.install.v1'
+          assert result['status'] == 'path-shadowed'
+          assert result['installed_path'] == str(user_binary)
+          assert result['active_path'] == str(system_binary)
+          assert result['installed_version'] == 'dw fixture 0.0.0'
+          assert result['active_version'] == 'dw fixture old'
+          assert result['remediation']['current_shell'].endswith("; hash -d 'dw' 2>/dev/null || :")
+          assert stat.S_IMODE(system_binary.parent.stat().st_mode) == 0o555
+          assert system_binary.read_text().endswith('dw fixture old\n')
+          PY
+
+          current_shell="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["remediation"]["current_shell"])' "$result")"
+          PATH="$shadow_path" /bin/bash -c "$current_shell; command -v dw; dw --version" > "$remediated"
+          test "$(sed -n '1p' "$remediated")" = "$user_bin/dw"
+          test "$(sed -n '2p' "$remediated")" = "dw fixture 0.0.0"
+
+      - name: Require parent Bash cache remediation
+        shell: bash
+        env:
+          DURABLE_WORKFLOW_RELEASE_BASE_URL: http://127.0.0.1:${{ matrix.port }}
+        run: |
+          set -eu
+          system_bin="$RUNNER_TEMP/dw-hashed-system"
+          user_bin="$RUNNER_TEMP/dw-hashed-user"
+          result="$RUNNER_TEMP/dw-hashed-result.json"
+          active_before="$RUNNER_TEMP/dw-hashed-before.txt"
+          active_after="$RUNNER_TEMP/dw-hashed-after.txt"
+          mkdir -p "$system_bin" "$user_bin"
+          cat > "$system_bin/dw" <<'SH'
+          #!/usr/bin/env sh
+          echo "dw fixture old"
+          SH
+          chmod 0555 "$system_bin" "$system_bin/dw"
+
+          export PATH="$user_bin:$system_bin:$PATH"
+          dw --version > "$active_before"
+          test "$(hash -t dw)" = "$system_bin/dw"
+
+          if SHELL=/bin/bash \
+            DURABLE_WORKFLOW_INSTALL_DIR="$user_bin" \
+            DURABLE_WORKFLOW_INSTALL_OUTPUT=json \
+            sh static/install.sh > "$result"; then
+            echo "installer reported ready despite an unverifiable parent Bash cache" >&2
+            exit 1
+          fi
+
+          test "$(command -v dw)" = "$system_bin/dw"
+          dw --version > "$active_after"
+          test "$(cat "$active_before")" = "dw fixture old"
+          test "$(cat "$active_after")" = "dw fixture old"
+
+          python3 - "$result" "$system_bin/dw" "$user_bin/dw" <<'PY'
+          import json
+          import pathlib
+          import stat
+          import sys
+
+          result = json.loads(pathlib.Path(sys.argv[1]).read_text())
+          system_binary = pathlib.Path(sys.argv[2])
+          user_binary = pathlib.Path(sys.argv[3])
+          assert result['schema'] == 'durable-workflow.cli.install.v1'
+          assert result['status'] == 'shell-cache-refresh-required'
+          assert result['installed_path'] == str(user_binary)
+          assert result['active_path'] == str(system_binary)
+          assert result['installed_version'] == 'dw fixture 0.0.0'
+          assert result['active_version'] == 'dw fixture old'
+          assert result['remediation'] == {
+              'current_shell': "hash -d 'dw' 2>/dev/null || :",
+              'shell_profile': None,
+              'persistent_line': None,
+          }
+          assert stat.S_IMODE(system_binary.parent.stat().st_mode) == 0o555
+          assert system_binary.read_text().endswith('dw fixture old\n')
+          PY
+
+          current_shell="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["remediation"]["current_shell"])' "$result")"
+          eval "$current_shell"
+          test "$(command -v dw)" = "$user_bin/dw"
+          test "$(dw --version)" = "dw fixture 0.0.0"
 
       - name: Reject checksum mismatch
         shell: bash

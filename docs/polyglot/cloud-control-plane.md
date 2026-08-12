@@ -73,6 +73,12 @@ A Cloud API key is not accepted by the namespace runtime URL. Runtime
 credentials are scoped to one namespace and role, returned only when created,
 and omitted from later list and audit responses.
 
+If Cloud onboarding uses the CLI, install it from the [CLI guide](./cli.mdx)
+and update an existing standalone installation explicitly with `dw upgrade`.
+The CLI never updates in the background. After installing or upgrading, run
+`command -v dw` and `dw --version`; resolve any installer `PATH` remediation
+before using Cloud credentials so the selected release is the active binary.
+
 ## Provision And Connect A Namespace
 
 ### 1. Create and provision the namespace
