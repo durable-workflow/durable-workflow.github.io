@@ -264,7 +264,7 @@ async function waitForEvent(records, event) {
   const deadline = Date.now() + EVENT_TIMEOUT_MS;
   while (Date.now() < deadline) {
     const matches = records.filter(record => record.payload?.event === event);
-    if (matches.some(record => record.status !== null || record.failure !== null)) return;
+    if (matches.some(record => record.finished || record.failure !== null)) return;
     await new Promise(resolve => setTimeout(resolve, 50));
   }
   assert.fail(`timed out waiting for ${event} promotion event`);
@@ -284,6 +284,7 @@ async function validateEvent(record, expectedOrigin, source, event) {
   const payload = record.payload;
 
   assert.equal(record.failure, null, `${source} ${event} request failed`);
+  assert.equal(record.finished, true, `${source} ${event} request did not finish`);
   assert.equal(record.status, 204, `${source} ${event} must receive HTTP 204`);
   assert.equal(record.request.method(), 'POST', `${source} ${event} must use POST`);
   assert.equal(url.origin + url.pathname, PROMOTION_EVENT_URL);
@@ -307,6 +308,7 @@ async function validateEvent(record, expectedOrigin, source, event) {
   return {
     event,
     status: record.status,
+    request_finished: record.finished,
     content_type: headers['content-type'],
     credentials_omitted: headers.authorization === undefined && headers.cookie === undefined,
     origin_header: headers.origin || null,
@@ -325,6 +327,27 @@ async function exercisePlacement(browser, baseUrl, placement, candidate) {
     reducedMotion: 'reduce',
     serviceWorkers: 'block',
   });
+  await context.addInitScript(({eventUrl}) => {
+    const nativeFetch = window.fetch.bind(window);
+    window.__cloudPromotionTransport = [];
+    window.fetch = (input, init = {}) => {
+      const requestUrl = typeof input === 'string' ? input : input?.url;
+      if (requestUrl === eventUrl) {
+        let payload = null;
+        try {
+          payload = JSON.parse(init.body || '');
+        } catch {
+          // The request contract assertion reports an invalid payload below.
+        }
+        window.__cloudPromotionTransport.push({
+          event: payload?.event || null,
+          source: payload?.source || null,
+          keepalive: init.keepalive === true,
+        });
+      }
+      return nativeFetch(input, init);
+    };
+  }, {eventUrl: PROMOTION_EVENT_URL});
   const page = await context.newPage();
   const records = [];
   const consoleErrors = [];
@@ -336,6 +359,7 @@ async function exercisePlacement(browser, baseUrl, placement, candidate) {
   let pageResponse = null;
   let destinationResponse = null;
   let eventEvidence = null;
+  let transportEvidence = null;
 
   const placementEvidence = () => ({
     route: placement.route,
@@ -348,8 +372,10 @@ async function exercisePlacement(browser, baseUrl, placement, candidate) {
       source: record.payload?.source || null,
       payload_fields: Object.keys(record.payload || {}).sort(),
       status: record.status,
+      request_finished: record.finished,
       failure: record.failure,
     })),
+    client_transport: transportEvidence || [],
     candidate_bundle: {
       expected_path: candidatePlacement.bundle.path,
       expected_sha256: candidatePlacement.bundle.sha256,
@@ -377,6 +403,7 @@ async function exercisePlacement(browser, baseUrl, placement, candidate) {
           request,
           payload: payloadForRequest(request),
           status: 204,
+          finished: false,
           failure: null,
         };
         records.push(record);
@@ -413,6 +440,7 @@ async function exercisePlacement(browser, baseUrl, placement, candidate) {
           request,
           payload: payloadForRequest(request),
           status: null,
+          finished: false,
           failure: null,
         });
       }
@@ -433,10 +461,13 @@ async function exercisePlacement(browser, baseUrl, placement, candidate) {
       const record = records.find(candidate => candidate.request === response.request());
       if (record) record.status = response.status();
     });
+    context.on('requestfinished', request => {
+      const record = records.find(candidate => candidate.request === request);
+      if (record) record.finished = true;
+    });
     context.on('requestfailed', request => {
       const failure = request.failure()?.errorText || 'unknown request failure';
       const record = records.find(candidate => candidate.request === request);
-      if (!LIVE_MODE && record?.status === 204) return;
       requestFailures.push({failure, url: request.url()});
       if (record) record.failure = failure;
     });
@@ -504,6 +535,13 @@ async function exercisePlacement(browser, baseUrl, placement, candidate) {
       `${placement.source} must record one click`,
     );
     await page.waitForTimeout(200);
+
+    transportEvidence = await page.evaluate(() => window.__cloudPromotionTransport || []);
+    assert.deepEqual(
+      transportEvidence,
+      PROMOTION_EVENTS.map(event => ({event, source: placement.source, keepalive: true})),
+      `${placement.source} must preserve navigation-safe promotion fetches`,
+    );
 
     assert.deepEqual(consoleErrors, [], `${placement.source} emitted console errors`);
     assert.deepEqual(httpErrors, [], `${placement.source} received HTTP errors`);

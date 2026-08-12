@@ -20,7 +20,7 @@ function sendPromotionEvent(source, event) {
     referrerPolicy: 'no-referrer',
     headers: {'Content-Type': 'text/plain'},
     body: JSON.stringify({source, event}),
-  }).catch(() => {});
+  }).then(response => response.arrayBuffer()).catch(() => {});
 }
 
 export default function ProductPromotion({source, children}) {
