@@ -1323,6 +1323,7 @@ function generatedPublicArtifactTupleSources(
       quickstartSource,
       versions,
       compatibilityEvidence,
+      publishedVersions,
     ),
     'static/compatibility-contract.json': compatibilityContractSource(
       compatibilitySource,
@@ -1513,6 +1514,7 @@ function applyQuickstartArtifactPins(
   contract,
   versions,
   compatibilityEvidence = artifactCompatibilityEvidenceSource,
+  publishedVersions = PUBLISHED_ARTIFACT_VERSIONS,
 ) {
   const pins = buildArtifactPins(versions);
   const qualification = readQualifiedArtifactTupleAuthority(
@@ -1535,7 +1537,7 @@ function applyQuickstartArtifactPins(
     changed = true;
   }
 
-  update('quickstart contract', contract, 'version', 4);
+  update('quickstart contract', contract, 'version', 5);
   const qualifiedTuple = {
     meaning: qualification.meaning,
     qualified_on: qualification.qualifiedOn,
@@ -1619,6 +1621,7 @@ function applyQuickstartArtifactPins(
   const php = scenario('php_user_local_server_completion');
   const python = scenario('python_user_local_server_completion');
   const rust = scenario('rust_user_local_server_completion');
+  const rustCloud = scenario('rust_user_cloud_completion');
   const operator = scenario('operator_local_server_observation');
   const laravel = scenario('laravel_user_embedded_completion');
 
@@ -1655,6 +1658,36 @@ function applyQuickstartArtifactPins(
     'cargo add durable-workflow@',
     pins.rustCargoAddCommand,
     'Rust SDK install line'
+  ) || changed;
+
+  update(
+    'rust_user_cloud_completion.exact_artifact_versions',
+    rustCloud.exact_artifact_versions,
+    'sdk-rust',
+    publishedVersions['sdk-rust'],
+  );
+  update(
+    'rust_user_cloud_completion.exact_artifact_versions',
+    rustCloud.exact_artifact_versions,
+    'cli',
+    publishedVersions.cli,
+  );
+
+  const rustCloudProbe = byId(
+    rustCloud.success_probes,
+    'rust_user_cloud_completion success probe',
+  );
+  changed = replaceLineContaining(
+    rustCloudProbe('rust_cloud_sdk_version').required_substrings,
+    'durable-workflow v',
+    `durable-workflow v${publishedVersions['sdk-rust']}`,
+    'Rust Cloud SDK success-probe version',
+  ) || changed;
+  changed = replaceLineContaining(
+    rustCloudProbe('rust_cloud_cli_version').required_substrings,
+    '2.0.0-',
+    publishedVersions.cli,
+    'Rust Cloud CLI success-probe version',
   ) || changed;
 
   changed = replaceLineContaining(
@@ -1710,9 +1743,15 @@ function quickstartExecutionContractSource(
   currentSource,
   versions,
   compatibilityEvidence = artifactCompatibilityEvidenceSource,
+  publishedVersions = PUBLISHED_ARTIFACT_VERSIONS,
 ) {
   const contract = JSON.parse(currentSource);
-  applyQuickstartArtifactPins(contract, versions, compatibilityEvidence);
+  applyQuickstartArtifactPins(
+    contract,
+    versions,
+    compatibilityEvidence,
+    publishedVersions,
+  );
   return `${JSON.stringify(contract, null, 2)}\n`;
 }
 

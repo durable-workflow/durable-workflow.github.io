@@ -28,7 +28,7 @@ function quickstartQualification(artifactTuple) {
   return {
     contract_identity: {
       schema: 'durable-workflow.docs.v2.quickstart-execution-contract',
-      version: 4,
+      version: 5,
       url: 'https://durable-workflow.com/quickstart-execution-contract.json',
       sha256: 'a'.repeat(64),
     },
@@ -36,6 +36,7 @@ function quickstartQualification(artifactTuple) {
       'php_user_local_server_completion',
       'python_user_local_server_completion',
       'rust_user_local_server_completion',
+      'rust_user_cloud_completion',
       'operator_local_server_observation',
       'laravel_user_embedded_completion',
     ].map(id => ({id, outcome: 'pass'})),

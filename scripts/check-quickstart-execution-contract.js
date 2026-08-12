@@ -6,6 +6,7 @@ const path = require('path');
 const {
   ARTIFACT_PINS,
   ARTIFACT_VERSIONS,
+  PUBLISHED_ARTIFACT_VERSIONS,
   QUALIFIED_ARTIFACT_DEPLOYMENT_PATHS,
   QUALIFIED_ARTIFACT_MATRIX,
   QUALIFIED_ARTIFACT_TUPLE_AUTHORITY,
@@ -577,6 +578,121 @@ function assertSdkOnboarding(contract) {
     'https://github.com/durable-workflow/sdk-php/actions/workflows/service-mode-published-smoke.yml',
     'PHP SDK published smoke URL',
   );
+
+  const rust = contract.sdk_onboarding && contract.sdk_onboarding['sdk-rust'];
+  if (!rust) {
+    fail('quickstart contract must point agents to the Rust Cloud onboarding path');
+  }
+  assertStringArrayEqual(
+    rust.deployment_paths,
+    ['cloud_service', 'self_hosted_service'],
+    'Rust SDK onboarding deployment paths',
+  );
+  assertEqual(
+    rust.cloud_quickstart_url,
+    'https://durable-workflow.com/docs/2.0/polyglot/rust-cloud-quickstart/',
+    'Rust Cloud quickstart URL',
+  );
+  assertEqual(
+    rust.api_reference_url,
+    'https://rust.durable-workflow.com/',
+    'Rust API reference URL',
+  );
+}
+
+function assertRustCloudContract(contract) {
+  const hostingBranches = byId(contract.hosting_branches, 'hosting_branches');
+  const cloud = hostingBranches.get('cloud_managed_namespace');
+  if (!cloud) {
+    fail('hosting_branches must include cloud_managed_namespace');
+  }
+  assertEqual(
+    cloud.runtime_url_contract?.terminal_api_suffix_allowed,
+    false,
+    'Cloud namespace runtime terminal /api policy',
+  );
+
+  const scenarios = byId(contract.scenarios, 'scenarios');
+  const rustCloud = scenarios.get('rust_user_cloud_completion');
+  if (!rustCloud) {
+    fail('scenarios must include rust_user_cloud_completion');
+  }
+  assertEqual(
+    rustCloud.hosting_branch,
+    'cloud_managed_namespace',
+    'Rust Cloud hosting branch',
+  );
+  assertEqual(rustCloud.task_queue, 'rust-cloud-quickstart', 'Rust Cloud task queue');
+  assertEqual(
+    rustCloud.workflow_type,
+    'sample.rust-cloud.greeter',
+    'Rust Cloud workflow type',
+  );
+  assertEqual(
+    rustCloud.activity_type,
+    'sample.rust-cloud.greet',
+    'Rust Cloud activity type',
+  );
+  assertEqual(
+    rustCloud.required_control_plane_header?.name,
+    'X-Durable-Workflow-Control-Plane-Version',
+    'Rust Cloud control-plane header',
+  );
+  assertEqual(
+    rustCloud.required_control_plane_header?.value,
+    '2',
+    'Rust Cloud control-plane header value',
+  );
+  assertEqual(
+    rustCloud.required_control_plane_header?.injected_by_cli,
+    true,
+    'Rust Cloud CLI header ownership',
+  );
+  assertEqual(
+    rustCloud.runtime_url?.terminal_api_suffix_allowed,
+    false,
+    'Rust Cloud runtime URL terminal /api policy',
+  );
+  assertEqual(
+    rustCloud.credential_roles?.client?.environment,
+    'DURABLE_WORKFLOW_CLIENT_TOKEN',
+    'Rust Cloud client credential environment',
+  );
+  assertEqual(
+    rustCloud.credential_roles?.worker?.environment,
+    'DURABLE_WORKFLOW_WORKER_TOKEN',
+    'Rust Cloud worker credential environment',
+  );
+  assertEqual(
+    rustCloud.exact_artifact_versions?.['sdk-rust'],
+    PUBLISHED_ARTIFACT_VERSIONS['sdk-rust'],
+    'Rust Cloud SDK version',
+  );
+  assertEqual(
+    rustCloud.exact_artifact_versions?.cli,
+    PUBLISHED_ARTIFACT_VERSIONS.cli,
+    'Rust Cloud CLI version',
+  );
+  const commandScript = JSON.stringify(rustCloud.command_script_lines || []);
+  if (commandScript.includes('server:info') || commandScript.includes('worker:list')) {
+    fail('Rust Cloud first-run commands must not require Server discovery or worker listing');
+  }
+
+  const probes = byId(
+    rustCloud.success_probes,
+    'rust_user_cloud_completion.success_probes',
+  );
+  for (const id of [
+    'rust_cloud_sdk_version',
+    'rust_cloud_cli_version',
+    'rust_cloud_completion',
+    'rust_cloud_clean_shutdown',
+    'rust_cloud_managed_visibility',
+  ]) {
+    if (!probes.has(id)) {
+      fail(`rust_user_cloud_completion.success_probes must include ${id}`);
+    }
+  }
 }
 
 function main() {
@@ -585,13 +701,14 @@ function main() {
   const renderedQuickstart = replaceArtifactTokens(quickstart, 'docs/quickstart.md');
 
   assertEqual(contract.schema, EXPECTED_SCHEMA, 'quickstart execution contract schema');
-  assertEqual(contract.version, 4, 'quickstart execution contract version');
+  assertEqual(contract.version, 5, 'quickstart execution contract version');
   assertEqual(contract.release_status, '2.0_prerelease', 'quickstart execution contract release_status');
   assertEqual(contract.authority_doc, 'docs/platform-conformance.md', 'quickstart execution contract authority_doc');
   assertEqual(contract.onboarding_doc, 'docs/quickstart.md', 'quickstart execution contract onboarding_doc');
 
   assertDocsGuard(contract);
   assertSdkOnboarding(contract);
+  assertRustCloudContract(contract);
   assertQualifiedTupleAuthority(contract);
   assertPublicArtifactPins(contract);
   assertQualifiedTupleRenderedSurface(contract, renderedQuickstart);

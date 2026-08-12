@@ -25,12 +25,13 @@ const requiredScenarios = [
   'php_user_local_server_completion',
   'python_user_local_server_completion',
   'rust_user_local_server_completion',
+  'rust_user_cloud_completion',
   'operator_local_server_observation',
   'laravel_user_embedded_completion',
 ];
 const contract = {
   schema: 'durable-workflow.docs.v2.quickstart-execution-contract',
-  version: 4,
+  version: 5,
   contract_url: 'https://durable-workflow.com/quickstart-execution-contract.json',
   artifacts: Object.fromEntries(
     Object.entries(versions).map(([name, version]) => [name, {version}]),
@@ -182,7 +183,7 @@ const missingLaravel = structuredClone(contract);
 missingLaravel.scenarios.pop();
 assert.throws(
   () => qualify(missingLaravel, [passing]),
-  /exact five release scenarios/,
+  /exact six release scenarios/,
 );
 
 console.log('PHP SDK and Waterline docs release-train checks passed');

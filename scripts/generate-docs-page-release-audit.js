@@ -394,6 +394,7 @@ function quickstartQualificationFromEvidence(
     'php_user_local_server_completion',
     'python_user_local_server_completion',
     'rust_user_local_server_completion',
+    'rust_user_cloud_completion',
     'operator_local_server_observation',
     'laravel_user_embedded_completion',
   ];
@@ -409,7 +410,7 @@ function quickstartQualificationFromEvidence(
     contract?.schema !== QUICKSTART_CONTRACT_SCHEMA
     || JSON.stringify(scenarios) !== JSON.stringify(requiredScenarios)
   ) {
-    throw new Error('quickstart execution contract must declare the exact five release scenarios');
+    throw new Error('quickstart execution contract must declare the exact six release scenarios');
   }
 
   const matching = evidenceRecords
@@ -443,7 +444,7 @@ function quickstartQualificationFromEvidence(
   const selected = matching[0] || null;
 
   return {
-    role: 'five_scenario_exact_current',
+    role: 'six_scenario_exact_current',
     outcome: selected ? 'pass' : 'incomplete',
     contract_url: QUICKSTART_CONTRACT_URL,
     artifact_versions: versions,

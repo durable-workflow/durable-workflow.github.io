@@ -1,6 +1,6 @@
 {
   "schema": "durable-workflow.docs.v2.quickstart-execution-contract",
-  "version": 4,
+  "version": 5,
   "release_status": "2.0_prerelease",
   "authority_doc": "docs/platform-conformance.md",
   "authority_url": "https://durable-workflow.com/docs/2.0/platform-conformance/",
@@ -142,6 +142,16 @@
       "executable_contract_url": "https://php.durable-workflow.com/quickstart-contract.json",
       "source_root_url": "https://github.com/durable-workflow/sdk-php/tree/main/examples",
       "published_smoke_url": "https://github.com/durable-workflow/sdk-php/actions/workflows/service-mode-published-smoke.yml"
+    },
+    "sdk-rust": {
+      "deployment_paths": [
+        "cloud_service",
+        "self_hosted_service"
+      ],
+      "guide_url": "https://durable-workflow.com/docs/2.0/polyglot/rust/",
+      "cloud_quickstart_url": "https://durable-workflow.com/docs/2.0/polyglot/rust-cloud-quickstart/",
+      "api_reference_url": "https://rust.durable-workflow.com/",
+      "source_root_url": "https://github.com/durable-workflow/sample-app/tree/main/rust-cloud"
     }
   },
   "default_docs_guard": {
@@ -356,6 +366,48 @@
       "teardown_script_lines": [
         "docker rm -f durable-workflow-server",
         "docker volume rm durable-workflow-quickstart"
+      ]
+    },
+    {
+      "id": "cloud_managed_namespace",
+      "label": "Cloud-managed namespace runtime",
+      "used_by_personas": [
+        "rust"
+      ],
+      "clean_directory_required": false,
+      "runtime_url_contract": {
+        "shape": "https://<cloud-host>/api/runtime/v1/namespaces/<runtime-id>",
+        "terminal_api_suffix_allowed": false,
+        "sdk_appends_api_routes": true,
+        "cli_appends_api_routes": true
+      },
+      "required_environment": [
+        {
+          "name": "DURABLE_WORKFLOW_RUNTIME_URL",
+          "source": "cloud_namespace.runtime_url"
+        },
+        {
+          "name": "DURABLE_WORKFLOW_RUNTIME_NAMESPACE",
+          "source": "cloud_namespace.runtime_namespace"
+        },
+        {
+          "name": "DURABLE_WORKFLOW_CLIENT_TOKEN",
+          "credential_role": "client"
+        },
+        {
+          "name": "DURABLE_WORKFLOW_WORKER_TOKEN",
+          "credential_role": "worker"
+        },
+        {
+          "name": "DURABLE_WORKFLOW_TASK_QUEUE",
+          "value": "rust-cloud-quickstart"
+        }
+      ],
+      "required_ports": [],
+      "managed_operator_surface": "managed_waterline",
+      "teardown_script_lines": [
+        "send SIGINT to the Rust worker",
+        "wait for worker deregistration"
       ]
     },
     {
@@ -750,6 +802,133 @@
       "teardown_script_lines": [
         "cd ..",
         "rm -rf durable-workflow-rust-quickstart"
+      ]
+    },
+    {
+      "id": "rust_user_cloud_completion",
+      "persona": "rust",
+      "hosting_branch": "cloud_managed_namespace",
+      "deployment_path": "cloud_service",
+      "depends_on": [
+        "cloud_managed_namespace"
+      ],
+      "source_channels": [
+        "crates_io",
+        "durable_workflow_public_installer"
+      ],
+      "working_directory": "fresh Sample App Codespace repository root",
+      "canonical_guide_url": "https://durable-workflow.com/docs/2.0/polyglot/rust-cloud-quickstart/",
+      "sample_source_url": "https://github.com/durable-workflow/sample-app/tree/main/rust-cloud",
+      "exact_artifact_versions": {
+        "sdk-rust": "2.0.0-rc.12",
+        "cli": "2.0.0-rc.13"
+      },
+      "credential_roles": {
+        "cloud_api": {
+          "used_by_execution": false,
+          "purpose": "namespace and runtime-credential administration"
+        },
+        "client": {
+          "environment": "DURABLE_WORKFLOW_CLIENT_TOKEN",
+          "required_by": [
+            "workflow_start_command"
+          ]
+        },
+        "worker": {
+          "environment": "DURABLE_WORKFLOW_WORKER_TOKEN",
+          "required_by": [
+            "worker_command"
+          ]
+        }
+      },
+      "runtime_url": {
+        "environment": "DURABLE_WORKFLOW_RUNTIME_URL",
+        "shape": "https://<cloud-host>/api/runtime/v1/namespaces/<runtime-id>",
+        "terminal_api_suffix_allowed": false
+      },
+      "runtime_namespace_environment": "DURABLE_WORKFLOW_RUNTIME_NAMESPACE",
+      "task_queue": "rust-cloud-quickstart",
+      "workflow_type": "sample.rust-cloud.greeter",
+      "activity_type": "sample.rust-cloud.greet",
+      "worker_command": "scripts/rust-cloud.sh worker",
+      "complete_command": "scripts/rust-cloud.sh run",
+      "workflow_start_command": "dw workflow:start --server=\"$DURABLE_WORKFLOW_RUNTIME_URL\" --namespace=\"$DURABLE_WORKFLOW_RUNTIME_NAMESPACE\" --token=\"$DURABLE_WORKFLOW_CLIENT_TOKEN\" --type=sample.rust-cloud.greeter --task-queue=\"$DURABLE_WORKFLOW_TASK_QUEUE\" --workflow-id=\"$RUST_CLOUD_WORKFLOW_ID\" --input='[\"Cloud\"]' --wait --json",
+      "required_control_plane_header": {
+        "name": "X-Durable-Workflow-Control-Plane-Version",
+        "value": "2",
+        "injected_by_cli": true,
+        "manual_for_raw_http": true
+      },
+      "command_script_lines": [
+        "cargo tree --locked --manifest-path rust-cloud/Cargo.toml -p durable-workflow --depth 0",
+        "dw --version",
+        "scripts/rust-cloud.sh run"
+      ],
+      "success_probes": [
+        {
+          "id": "rust_cloud_sdk_version",
+          "source": "sdk-version.txt",
+          "required_substrings": [
+            "durable-workflow v2.0.0-rc.12"
+          ]
+        },
+        {
+          "id": "rust_cloud_cli_version",
+          "source": "cli-version.txt",
+          "required_substrings": [
+            "2.0.0-rc.13"
+          ]
+        },
+        {
+          "id": "rust_cloud_completion",
+          "source": "result.json",
+          "expect_json": true,
+          "required_json": {
+            "status_bucket": "completed",
+            "output.workflow_runtime": "rust",
+            "output.activity.activity_runtime": "rust"
+          }
+        },
+        {
+          "id": "rust_cloud_clean_shutdown",
+          "source": "worker.log",
+          "required_substrings": [
+            "shutdown=clean"
+          ]
+        },
+        {
+          "id": "rust_cloud_managed_visibility",
+          "surface": "managed_waterline",
+          "workflow_id_source": "result.json.workflow_id",
+          "required_status": "completed",
+          "required_history_types": [
+            "sample.rust-cloud.greeter",
+            "sample.rust-cloud.greet"
+          ]
+        }
+      ],
+      "expected_completion_state": {
+        "workflow_id_pattern": "^rust-cloud-[0-9]+$",
+        "status": "completed",
+        "result_schema": {
+          "workflow_runtime": "rust",
+          "workflow_type": "sample.rust-cloud.greeter",
+          "activity": {
+            "greeting": "string",
+            "activity": "sample.rust-cloud.greet",
+            "activity_runtime": "rust"
+          }
+        },
+        "timeout_seconds": 180
+      },
+      "diagnostic_outcomes": {
+        "no_worker": "verify exact runtime URL, namespace, task queue, worker registration, and worker credential role",
+        "incompatible_sdk": "compare recorded SDK and CLI versions with the bounded completion diagnostic and update to the supported train",
+        "leased_uncompleted": "inspect the matching run and task types in Managed Waterline while keeping the worker alive"
+      },
+      "teardown_script_lines": [
+        "send SIGINT to the Rust worker",
+        "require shutdown=clean in worker.log"
       ]
     },
     {

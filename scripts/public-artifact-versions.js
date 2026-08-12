@@ -498,6 +498,7 @@ const PYTHON_PACKAGE_AUTHORITY = buildPythonPackageAuthority(
 const QUALIFIED_PYTHON_PACKAGE_AUTHORITY = buildPythonPackageAuthority(
   ARTIFACT_VERSIONS,
 );
+const PUBLISHED_ARTIFACT_PINS = buildArtifactPins(PUBLISHED_ARTIFACT_VERSIONS);
 const ARTIFACT_PINS = Object.freeze({
   ...buildArtifactPins(ARTIFACT_VERSIONS),
   qualificationAuthorityUrl: QUALIFIED_ARTIFACT_TUPLE_AUTHORITY.authorityUrl,
@@ -508,6 +509,12 @@ const ARTIFACT_PINS = Object.freeze({
   pythonPypiExactReleaseJsonUrl: PYTHON_PACKAGE_AUTHORITY.exactReleaseJsonUrl,
   pythonPypiCanonicalProjectUrl: PYTHON_PACKAGE_AUTHORITY.canonicalProjectUrl,
   pythonPypiAuthorityUrl: PYTHON_PACKAGE_AUTHORITY.authorityUrl,
+  publishedCliInstallerCommand: PUBLISHED_ARTIFACT_PINS.cliInstallerCommand,
+  publishedCliUpgradeCommand: PUBLISHED_ARTIFACT_PINS.cliUpgradeCommand,
+  publishedCliVersion: PUBLISHED_ARTIFACT_PINS.cliVersion,
+  publishedRustCargoAddCommand: PUBLISHED_ARTIFACT_PINS.rustCargoAddCommand,
+  publishedRustCargoRequirement: PUBLISHED_ARTIFACT_PINS.rustCargoRequirement,
+  publishedRustSdkVersion: PUBLISHED_ARTIFACT_PINS.rustSdkVersion,
 });
 const SERVICE_MODE_SDK_ARTIFACTS = Object.freeze([
   'sdk-php',

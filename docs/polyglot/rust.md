@@ -23,6 +23,12 @@ Run Rust clients and workers against a Cloud-managed namespace with separate
 role-scoped credentials.
 </ProductPromotion>
 
+Use this guide for the general SDK surface, then continue to the generated API
+reference for individual types and methods. Evaluators enrolled in Durable
+Workflow Cloud controlled early access can also use the secondary [Rust Cloud
+quickstart](./rust-cloud-quickstart.md) to run one workflow and activity from a
+fresh Sample App Codespace.
+
 The first-party Rust SDK is a workflow-authoring surface, not only a protocol
 compatibility client. Rust authors deterministic workflows, activities, and
 long-running worker services against the same durable execution model used by
@@ -32,8 +38,10 @@ workflow history, runs workflow/activity/update handlers, reports worker and
 activity heartbeats, and exchanges language-neutral payloads with a self-hosted
 Server or Durable Workflow Cloud namespace runtime.
 
-For crate modules, structs, traits, and methods, see the generated
-[Rust SDK API reference](https://rust.durable-workflow.com/).
+The [Rust documentation landing page](https://rust.durable-workflow.com/)
+provides the SDK index and general entry points. For crate modules, structs,
+traits, and methods, continue to the generated [Rust SDK API
+reference](https://rust.durable-workflow.com/durable_workflow/).
 
 Cloud customers configure the provisioned namespace's runtime URL and use
 separate credentials for client and worker roles, even when both roles run in

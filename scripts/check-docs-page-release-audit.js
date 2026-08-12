@@ -119,7 +119,7 @@ function assertArtifactVersions(audit) {
   ) {
     fail(
       'docs-page-release-audit.json quickstart qualification must match ' +
-        'the exact retained five-scenario evidence',
+        'the exact retained six-scenario evidence',
     );
   }
 }

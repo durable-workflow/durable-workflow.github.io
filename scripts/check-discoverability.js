@@ -6,6 +6,12 @@ const path = require('path');
 const repoRoot = path.join(__dirname, '..');
 const docsDir = path.join(repoRoot, 'docs');
 const sidebarsPath = path.join(repoRoot, 'sidebars.js');
+const standaloneDocLinks = new Map([
+  ['polyglot/rust-cloud-quickstart', {
+    source: 'polyglot/rust',
+    href: './rust-cloud-quickstart.md',
+  }],
+]);
 
 function listDocIds(directory = docsDir, prefix = '') {
   const ids = [];
@@ -70,7 +76,9 @@ function main() {
   const sourceSet = new Set(sourceDocIds);
   const sidebarSet = new Set(docIds);
   const duplicates = [...new Set(docIds.filter((id, index) => docIds.indexOf(id) !== index))].sort();
-  const missing = sourceDocIds.filter(id => !sidebarSet.has(id));
+  const missing = sourceDocIds.filter(
+    id => !sidebarSet.has(id) && !standaloneDocLinks.has(id),
+  );
   const unknown = [...sidebarSet].filter(id => !sourceSet.has(id)).sort();
 
   if (duplicates.length > 0) {
@@ -81,6 +89,23 @@ function main() {
   }
   if (unknown.length > 0) {
     throw new Error(`sidebars.js references unknown docs: ${unknown.join(', ')}`);
+  }
+
+  for (const [docId, link] of standaloneDocLinks) {
+    if (!sourceSet.has(docId)) {
+      throw new Error(`standalone documentation route is missing: ${docId}`);
+    }
+    if (sidebarSet.has(docId)) {
+      throw new Error(`standalone documentation route must not be in sidebars.js: ${docId}`);
+    }
+
+    const sourcePath = path.join(docsDir, `${link.source}.md`);
+    const source = fs.readFileSync(sourcePath, 'utf8');
+    if (!source.includes(`](${link.href})`)) {
+      throw new Error(
+        `${link.source} must link the standalone documentation route ${docId}`,
+      );
+    }
   }
 
   console.log(`Discoverability route checks passed for ${sourceDocIds.length} docs`);

@@ -66,6 +66,26 @@ assert.doesNotThrow(
   'authority tokens for every install surface must render as current pins',
 );
 
+assert.doesNotThrow(
+  () => checkPublicArtifactSource(
+    'docs/polyglot/rust-cloud-quickstart.md',
+    [
+      '`%%artifact.publishedRustCargoAddCommand%%`',
+      '`%%artifact.publishedCliInstallerCommand%%`',
+    ].join('\n'),
+  ),
+  'the Rust Cloud registry journey may use its dedicated published-version tokens',
+);
+
+assert.throws(
+  () => checkPublicArtifactSource(
+    'docs/guides/install-anywhere.md',
+    '`%%artifact.publishedRustCargoAddCommand%%`',
+  ),
+  /stale Rust SDK crate pin/,
+  'published-version tokens must not weaken the exact qualified pin outside the Rust Cloud journey',
+);
+
 assert.strictEqual(
   ARTIFACT_PINS.productTrainVersion,
   ARTIFACT_VERSIONS['sdk-python'],

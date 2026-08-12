@@ -48,6 +48,7 @@ const QUICKSTART_SCENARIOS = [
   'php_user_local_server_completion',
   'python_user_local_server_completion',
   'rust_user_local_server_completion',
+  'rust_user_cloud_completion',
   'operator_local_server_observation',
   'laravel_user_embedded_completion',
 ];
@@ -146,7 +147,7 @@ function assertQuickstartQualification(qualification, artifactTuple, label) {
     !Array.isArray(qualification.scenario_results)
     || qualification.scenario_results.length !== QUICKSTART_SCENARIOS.length
   ) {
-    fail(`${label}.scenario_results must prove the exact five quickstart scenarios`);
+    fail(`${label}.scenario_results must prove the exact six quickstart scenarios`);
   }
   qualification.scenario_results.forEach((result, index) => {
     assertExactKeys(result, ['id', 'outcome'], `${label}.scenario_results[${index}]`);

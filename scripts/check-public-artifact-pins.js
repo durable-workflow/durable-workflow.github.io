@@ -4,6 +4,7 @@ const path = require('path');
 const {
   ARTIFACT_PIN_PATTERNS,
   ARTIFACT_VERSIONS,
+  PUBLISHED_ARTIFACT_VERSIONS,
   PUBLIC_ARTIFACT_SCAN_VERSION_PATTERN_SOURCE,
   replaceArtifactTokens,
 } = require('./public-artifact-versions');
@@ -24,6 +25,12 @@ const SOURCE_PIN_PATTERNS = [
     expected: ARTIFACT_VERSIONS.cli,
   },
 ];
+const PUBLISHED_TOKEN_SCOPES = Object.freeze({
+  'docs/polyglot/rust-cloud-quickstart.md': Object.freeze({
+    cli_artifact_pin: Object.freeze([PUBLISHED_ARTIFACT_VERSIONS.cli]),
+    rust_sdk_artifact_pin: Object.freeze([PUBLISHED_ARTIFACT_VERSIONS['sdk-rust']]),
+  }),
+});
 
 function fail(message) {
   throw new Error(message);
@@ -61,10 +68,16 @@ function sourceDocs(root = repoRoot) {
   return sources;
 }
 
-function assertObservedPinsCurrent(sourcePath, content) {
+function assertObservedPinsCurrent(sourcePath, content, allowPublishedTokens = false) {
+  const scopedPublished = allowPublishedTokens
+    ? PUBLISHED_TOKEN_SCOPES[sourcePath] || {}
+    : {};
   for (const definition of SOURCE_PIN_PATTERNS) {
     const pattern = new RegExp(definition.pattern.source, definition.pattern.flags);
-    const accepted = definition.accepted || [definition.expected];
+    const accepted = [
+      ...(definition.accepted || [definition.expected]),
+      ...(scopedPublished[definition.category] || []),
+    ];
     const versions = [...content.matchAll(pattern)]
       .map(match => match.slice(1).find(Boolean))
       .filter(Boolean);
@@ -115,7 +128,7 @@ function checkPublicArtifactSource(sourcePath, rawContent) {
 
   const renderedContent = replaceArtifactTokens(rawContent, sourcePath);
   assertNoUnresolvedTokens(sourcePath, renderedContent);
-  assertObservedPinsCurrent(sourcePath, renderedContent);
+  assertObservedPinsCurrent(sourcePath, renderedContent, true);
 }
 
 function checkPublicArtifactPins(root = repoRoot) {
