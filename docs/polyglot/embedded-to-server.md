@@ -198,7 +198,7 @@ curl -X POST "$SERVER/api/worker/register" \
     "worker_id": "orders-php-1",
     "task_queue": "orders",
     "runtime": "php",
-    "sdk_version": "%%artifact.phpSdkVersion%%",
+    "sdk_version": "<installed-sdk-version>",
     "supported_workflow_types": ["orders.process"],
     "supported_activity_types": [
       "orders.reserve-inventory",

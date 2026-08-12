@@ -18,10 +18,10 @@ const {
 
 const repoRoot = path.join(__dirname, '..');
 const CURRENT_PYTHON_DOCS = Object.freeze([
-  Object.freeze({source: 'docs/introduction.md', route: 'docs/2.0/introduction/index.html', authority: 'published'}),
-  Object.freeze({source: 'docs/quickstart.md', route: 'docs/2.0/quickstart/index.html', authority: 'qualified'}),
-  Object.freeze({source: 'docs/polyglot/python.md', route: 'docs/2.0/polyglot/python/index.html', authority: 'published'}),
-  Object.freeze({source: 'docs/sdk-neutrality.md', route: 'docs/2.0/sdk-neutrality/index.html', authority: 'published'}),
+  Object.freeze({source: 'docs/introduction.md', route: 'docs/2.0/introduction/index.html', authority: 'qualified', requiresVersion: false}),
+  Object.freeze({source: 'docs/quickstart.md', route: 'docs/2.0/quickstart/index.html', authority: 'qualified', requiresVersion: true}),
+  Object.freeze({source: 'docs/polyglot/python.md', route: 'docs/2.0/polyglot/python/index.html', authority: 'qualified', requiresVersion: true}),
+  Object.freeze({source: 'docs/sdk-neutrality.md', route: 'docs/2.0/sdk-neutrality/index.html', authority: 'published', requiresVersion: true}),
 ]);
 const PYPI_AUTHORITY_COMPONENT = '<PythonPackageReleaseLink>';
 const QUALIFIED_PYPI_AUTHORITY_COMPONENT =
@@ -102,6 +102,7 @@ function assertCurrentDocSource(
   raw,
   authority = PYTHON_PACKAGE_AUTHORITY,
   authorityRole = 'published',
+  requiresVersion = true,
 ) {
   const component = authorityRole === 'qualified'
     ? QUALIFIED_PYPI_AUTHORITY_COMPONENT
@@ -114,7 +115,7 @@ function assertCurrentDocSource(
   }
 
   const rendered = replaceArtifactTokens(raw, sourcePath);
-  if (!rendered.includes(authority.version)) {
+  if (requiresVersion && !rendered.includes(authority.version)) {
     fail(`${sourcePath} does not identify Python SDK ${authority.version}`);
   }
 }
@@ -133,6 +134,7 @@ function assertCurrentDocSources(root = repoRoot) {
       raw,
       pythonAuthorityForPage(page),
       page.authority,
+      page.requiresVersion,
     );
   }
 }

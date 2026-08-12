@@ -141,7 +141,7 @@ curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/worker/register" \
     "worker_id": "py-orders-1",
     "task_queue": "orders",
     "runtime": "python",
-    "sdk_version": "%%artifact.pythonSdkVersion%%",
+    "sdk_version": "<installed-sdk-version>",
     "build_id": "orders-worker-2026-04-22",
     "supported_workflow_types": ["orders.fulfillment"],
     "workflow_definition_fingerprints": {

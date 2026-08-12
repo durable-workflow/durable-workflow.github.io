@@ -52,18 +52,24 @@ assert.doesNotThrow(
     'docs/guides/install-anywhere.md',
     [
       '`%%artifact.serverDockerHubImage%%`',
-      '`%%artifact.cliInstallerEnv%%`',
-      '`dw` `%%artifact.cliVersion%%`',
+      '`%%artifact.cliChannelInstallerCommand%%`',
       '`%%artifact.workflowComposerPackage%%`',
       '`%%artifact.waterlineComposerPackage%%`',
       '`%%artifact.phpSdkComposerPackage%%`',
       '`pip install %%artifact.pythonPackagePin%%`',
-      '`%%artifact.pythonRegistryVersion%%`',
       '`%%artifact.rustCargoAddCommand%%`',
       '`%%artifact.releasePhase%%`',
     ].join('\n'),
   ),
   'authority tokens for every install surface must render as current pins',
+);
+
+assert.doesNotThrow(
+  () => checkPublicArtifactSource(
+    'docs/guides/generated-qualified-install.md',
+    '`composer require %%artifact.phpSdkComposerPackage%%`',
+  ),
+  'onboarding may project exact qualified requirements from the machine-owned tuple',
 );
 
 assert.doesNotThrow(
@@ -100,6 +106,11 @@ assert.strictEqual(
   ARTIFACT_PINS.releasePhase,
   'rc',
   'channel-specific documentation tokens must derive from the release-phase authority',
+);
+assert.doesNotMatch(
+  ARTIFACT_PINS.cliChannelInstallerCommand,
+  /\b\d+\.\d+\.\d+-(?:alpha|beta|rc)\.\d+\b/i,
+  'the CLI channel installer must not contain an exact prerelease sequence',
 );
 
 const releaseCandidatePolicy = readArtifactReleasePolicy({

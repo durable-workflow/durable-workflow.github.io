@@ -62,9 +62,10 @@ in-application ownership model is intentional.
 - **[PHP SDK](/docs/2.0/polyglot/php/):** install `durable-workflow/sdk` in a
   framework-neutral PHP application or remote worker.
 - **[Python SDK](/docs/2.0/polyglot/python/):** author deterministic workflows
-  and activities and use the async control-plane client. Its current package
-  metadata is the exact <PythonPackageReleaseLink>Python SDK
-  %%artifact.pythonPublishedSdkVersion%% release</PythonPackageReleaseLink>.
+  and activities and use the async control-plane client. The
+  <PythonPackageReleaseLink authority="qualified">compatibility-qualified Python
+  release</PythonPackageReleaseLink> is selected by the same machine-readable
+  tuple as the Server quickstart.
 - **[Rust SDK](/docs/2.0/polyglot/rust/):** author deterministic workflows and
   activities and run native worker services.
 

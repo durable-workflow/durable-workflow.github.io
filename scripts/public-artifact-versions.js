@@ -361,7 +361,6 @@ function buildArtifactPins(versions) {
   });
   const trainVersion = productTrainVersion(versions);
   const rustPackageAuthority = buildRustPackageAuthority(versions);
-
   return Object.freeze({
     cliPackageUrl: `https://github.com/durable-workflow/cli/releases/tag/${versions.cli}`,
     cliInstallerCommand: `curl -fsSL https://durable-workflow.com/install.sh | VERSION=${versions.cli} sh`,
@@ -407,6 +406,8 @@ function buildArtifactPins(versions) {
     workflowPackageUrl:
       `https://packagist.org/packages/durable-workflow/workflow#${versions.workflow}`,
     workflowComposerPackage: composerPackagePin('durable-workflow/workflow', versions.workflow),
+    cliChannelInstallerCommand: 'curl -fsSL https://durable-workflow.com/install.sh | sh',
+    cliChannelPowerShellCommand: 'irm https://durable-workflow.com/install.ps1 | iex',
   });
 }
 

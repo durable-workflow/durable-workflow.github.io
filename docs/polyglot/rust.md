@@ -44,7 +44,7 @@ one process. See
 [Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane) for the managed
 connection boundary and the Cloud-specific connection example below.
 
-At the current `%%artifact.rustSdkVersion%%` floor, Rust supports durable
+The supported Rust prerelease supports durable
 timers, child workflows, activity retries and timeouts, signals, replayed query
 handlers, cancellation and termination, server-enforced workflow deadlines,
 typed side effects, version markers, updates, and typed terminal/replay
@@ -61,28 +61,29 @@ not change which docs version is the public default.
 - [Crate on crates.io](https://crates.io/crates/durable-workflow)
 - [Source repository](https://github.com/durable-workflow/sdk-rust)
 
-Install the exact Rust SDK version in the current public artifact tuple:
+Install the Rust SDK from the last passing qualified tuple. The exact requirement
+is generated from the same machine-readable authority as the Server quickstart:
 
 <!-- docs-example id="rust.sdk.install" -->
 ```bash
 %%artifact.rustCargoAddCommand%%
 ```
 
-Or pin the same version directly in `Cargo.toml`:
+Or declare the same qualified requirement directly in `Cargo.toml`:
 
 ```toml
 [dependencies]
 %%artifact.rustCargoRequirement%%
 ```
 
-The `%%artifact.rustSdkVersion%%` release requires Rust 1.86 or newer. Its
-package metadata declares compatibility with Durable Workflow server
-`%%artifact.serverVersion%%`, worker protocol 1.2, and control plane 2. During deployment, the protocol
+The crate requires Rust 1.86 or newer. Its package metadata declares the exact
+qualified Durable Workflow Server range, worker protocol 1.2, and control plane
+2. During deployment, the protocol
 manifests advertised by `GET /api/cluster/info` remain authoritative.
 
-Server `%%artifact.serverVersion%%` negotiates worker-protocol headers within major `1`: a server
+Server negotiates worker-protocol headers within major `1`: a server
 advertising `1.N` accepts a worker header `1.M` only when `M <= N`. Rust SDK
-`%%artifact.rustSdkVersion%%` sends `X-Durable-Workflow-Protocol-Version: 1.2`, so it requires
+workers send `X-Durable-Workflow-Protocol-Version: 1.2`, so they require
 the same synchronized server train, which must also advertise worker
 protocol `1.2` or newer. The current server advertises `1.13`, accepts the
 Rust header, and returns `1.13` in its response header and body.
@@ -100,7 +101,7 @@ role-scoped credentials.
 ## Prepare the released repository example
 
 The repository's
-[`hello_world` example](https://github.com/durable-workflow/sdk-rust/blob/%%artifact.rustSdkVersion%%/examples/hello_world.rs)
+[`hello_world` example](https://github.com/durable-workflow/sdk-rust/blob/main/examples/hello_world.rs)
 registers a Rust worker, starts a workflow, sends a signal, runs an activity,
 reports an activity heartbeat, and waits for the completed result. Because that
 example runs the application client and worker in one process, a Cloud
@@ -115,8 +116,10 @@ or use the
 [self-hosted path](#run-the-combined-example-with-self-hosted-server) after the
 local Server quickstart.
 
-Obtain the source that matches the released crate. The example directory is
-absolute so either connection path can enter it directly:
+For a reproducible source exercise, obtain the exact crate source recorded by
+the qualified tuple. The value below is generated from that machine-readable
+authority. The example directory is absolute so either connection path can
+enter it directly:
 
 <!-- docs-example id="rust.sdk.repository-source" -->
 ```bash
@@ -197,7 +200,7 @@ by the local Server quickstart. Use `TASK_QUEUE` to override its default
 
 ## Start with server-enforced workflow timeouts
 
-Rust SDK `%%artifact.rustSdkVersion%%` adds `WorkflowStartOptions` and
+The Rust SDK provides `WorkflowStartOptions` and
 `Client::start_workflow_with_options` for workflow deadlines that the server
 enforces even after the starting process exits. Execution timeout covers the
 whole workflow instance, including continue-as-new runs; run timeout covers one
@@ -238,7 +241,7 @@ it expires, the server closes the run with a terminal `timed_out` outcome.
 
 ## Deterministic side effects and version markers
 
-Rust SDK `%%artifact.rustSdkVersion%%` records small non-deterministic values
+The Rust SDK records small non-deterministic values
 with `WorkflowContext::side_effect` and derives deterministic UUIDv4 values
 with `WorkflowContext::uuid_v4`. A cold replay decodes the recorded value
 instead of invoking the callback again; reordered, missing, duplicate, or

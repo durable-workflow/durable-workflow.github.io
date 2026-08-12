@@ -26,10 +26,9 @@ with the [Rust SDK guide](./rust.md).
 :::
 
 This is the shortest supported Rust path from a fresh Sample App Codespace to a
-completed Durable Workflow Cloud run. It uses the current published Rust SDK
-`%%artifact.publishedRustSdkVersion%%` and Cloud-aware CLI
-`%%artifact.publishedCliVersion%%`. It builds the small worker in development
-mode; there is no custom release build.
+completed Durable Workflow Cloud run. It uses the Rust and CLI prerelease
+channels resolved by the Sample App's machine-owned dependency metadata. It
+builds the small worker in development mode; there is no custom release build.
 
 The path has three credential roles:
 
@@ -78,14 +77,15 @@ command -v dw
 dw --version
 ```
 
-`scripts/rust-cloud.sh run` requires `dw` to report
-`%%artifact.publishedCliVersion%%`; a stale prepared image fails before starting
-the worker. Outside the prepared image, install or upgrade that exact release:
+`scripts/rust-cloud.sh run` validates `dw` against the Sample App's
+machine-readable qualified tuple; a stale prepared image fails before starting
+the worker. Outside the prepared image, install the supported prerelease
+channel and rerun the validation:
 
 <!-- docs-example id="rust.cloud.cli.install" -->
 ```bash
-%%artifact.publishedCliInstallerCommand%%
-dw upgrade --tag=%%artifact.publishedCliVersion%%
+%%artifact.cliChannelInstallerCommand%%
+dw --version
 ```
 
 The installer and `dw upgrade` report if another binary shadows the selected

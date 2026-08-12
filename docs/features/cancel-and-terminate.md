@@ -16,8 +16,8 @@ the default public docs line.
 The public
 [workflow-lifecycle scenario manifest](https://durable-workflow.github.io/platform-conformance/workflow-lifecycle-scenarios.json)
 defines the released lifecycle evidence contract. Current validation uses
-server `%%artifact.serverVersion%%` with the crates.io `durable-workflow`
-crate `%%artifact.rustSdkVersion%%` from the synchronized product train.
+Server with the crates.io `durable-workflow` crate from the supported 2.0
+prerelease channel.
 
 At that boundary, cancellation and termination must produce typed terminal
 outcomes with workflow and run identity. Run-scoped commands must preserve

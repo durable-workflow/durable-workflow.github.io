@@ -32,7 +32,13 @@ function checkShellInstaller() {
   const installer = read(path.join(staticDir, 'install.sh'));
   const ctx = 'static/install.sh';
 
-  assertContains(installer, 'VERSION="${VERSION:-latest}"', ctx);
+  assertContains(installer, 'VERSION="${VERSION:-prerelease}"', ctx);
+  assertContains(installer, 'public-artifact-compatibility-evidence.json', ctx);
+  assertContains(installer, '/"qualified_artifact_versions"', ctx);
+  assertContains(installer, '/"cli"', ctx);
+  if (installer.includes('api.github.com/repos/${REPO}/releases')) {
+    throw new Error(`${ctx} must not equate the newest published prerelease with the qualified channel`);
+  }
   assertContains(installer, 'SHA256SUMS', ctx);
   assertContains(installer, 'checksum verification failed', ctx);
   assertContains(installer, 'DURABLE_WORKFLOW_INSTALL_VERIFY_ATTESTATIONS', ctx);
@@ -55,7 +61,12 @@ function checkPowerShellInstaller() {
   const installer = read(path.join(staticDir, 'install.ps1'));
   const ctx = 'static/install.ps1';
 
-  assertContains(installer, "if (\$env:VERSION) { \$env:VERSION } else { 'latest' }", ctx);
+  assertContains(installer, "if (\$env:VERSION) { \$env:VERSION } else { 'prerelease' }", ctx);
+  assertContains(installer, 'public-artifact-compatibility-evidence.json', ctx);
+  assertContains(installer, '$authority.qualified_artifact_versions.cli', ctx);
+  if (installer.includes('api.github.com/repos/$repo/releases')) {
+    throw new Error(`${ctx} must not equate the newest published prerelease with the qualified channel`);
+  }
   assertContains(installer, 'SHA256SUMS', ctx);
   assertContains(installer, 'Checksum verification failed', ctx);
   assertContains(installer, 'DURABLE_WORKFLOW_INSTALL_VERIFY_ATTESTATIONS', ctx);

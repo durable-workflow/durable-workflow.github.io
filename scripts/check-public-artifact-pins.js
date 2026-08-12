@@ -31,7 +31,6 @@ const PUBLISHED_TOKEN_SCOPES = Object.freeze({
     rust_sdk_artifact_pin: Object.freeze([PUBLISHED_ARTIFACT_VERSIONS['sdk-rust']]),
   }),
 });
-
 function fail(message) {
   throw new Error(message);
 }

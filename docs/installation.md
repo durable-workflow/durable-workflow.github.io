@@ -36,8 +36,8 @@ Durable Workflow also requires a cache driver that supports [locks](https://lara
 ## Installing Durable Workflow
 
 Durable Workflow is installable via Composer. During the 2.0 pre-stable ramp,
-use the current public artifact pin so Composer receives the matching
-prerelease stability suffix:
+use the exact requirement generated from the last passing qualified tuple so
+Composer receives the matching prerelease stability suffix:
 
 ```bash
 composer require %%artifact.workflowComposerPackage%%

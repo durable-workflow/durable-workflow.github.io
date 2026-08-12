@@ -47,9 +47,8 @@ runbook.
 
 ## First-party SDKs and application boundary
 
-PHP `%%artifact.phpSdkVersion%%`, Python `%%artifact.pythonSdkVersion%%`, and
-Rust `%%artifact.rustSdkVersion%%` are first-party standalone SDK surfaces on
-the current installable tuple. Workflow `%%artifact.workflowVersion%%` is the
+PHP, Python, and Rust are first-party standalone SDK surfaces on the supported
+2.0 prerelease channel. Workflow is the
 separately versioned embedded Laravel engine and standalone-server core.
 
 - Framework-neutral PHP applications and remote workers use
@@ -72,7 +71,7 @@ and schedule-management boundary.
 
 ## Does a Python or Rust team need Laravel?
 
-No. The published standalone server `%%artifact.serverVersion%%` is implemented
+No. The published standalone Server is implemented
 in PHP and deployed as infrastructure. Python- or Rust-only application teams
 run native SDK workers against its versioned HTTP+JSON protocol; their
 application code does not embed Laravel and does not become a Laravel

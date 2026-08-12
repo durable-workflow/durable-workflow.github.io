@@ -51,13 +51,10 @@ connection boundary; the quickstart below uses local self-hosted values.
 
 ## Installation
 
-Install the published SDK version selected by the current 2.0 prerelease
-artifact tuple:
-
-The package authority for this docs line is the exact
-<PythonPackageReleaseLink>Python SDK %%artifact.pythonPublishedSdkVersion%%
-release</PythonPackageReleaseLink>. The install command remains pinned to the
-compatibility-qualified aggregate used by the runnable quickstart.
+Install the <PythonPackageReleaseLink authority="qualified">compatibility-qualified
+Python SDK release</PythonPackageReleaseLink>. The exact requirement is generated
+from the same tuple as the Server quickstart, and a lock or constraints file can
+retain it for reproducibility.
 
 <!-- docs-example id="python.sdk.install" -->
 ```bash

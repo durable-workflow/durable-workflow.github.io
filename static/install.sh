@@ -5,10 +5,12 @@
 #   curl -fsSL https://durable-workflow.com/install.sh | sh
 #
 # Environment variables:
-#   VERSION                              Release tag to install (default: latest).
+#   VERSION                              Release tag, prerelease, or stable (default: prerelease).
 #   DURABLE_WORKFLOW_INSTALL_DIR         Install directory (default: ~/.local/bin).
 #   DURABLE_WORKFLOW_BIN_NAME            Executable name (default: dw).
 #   DURABLE_WORKFLOW_RELEASE_BASE_URL    Release base URL override for tests.
+#   DURABLE_WORKFLOW_QUALIFIED_AUTHORITY_URL
+#                                        Qualified artifact authority override for tests.
 #   DURABLE_WORKFLOW_INSTALL_VERIFY_ATTESTATIONS
 #                                        Set to 1 to verify GitHub artifact attestations with gh.
 #   DURABLE_WORKFLOW_INSTALL_OUTPUT      Result format: human (default) or json.
@@ -18,9 +20,10 @@ set -eu
 REPO="durable-workflow/cli"
 BIN_NAME="${DURABLE_WORKFLOW_BIN_NAME:-dw}"
 INSTALL_DIR="${DURABLE_WORKFLOW_INSTALL_DIR:-$HOME/.local/bin}"
-VERSION="${VERSION:-latest}"
+VERSION="${VERSION:-prerelease}"
 RELEASE_BASE_URL="${DURABLE_WORKFLOW_RELEASE_BASE_URL:-https://github.com/${REPO}/releases}"
 RELEASE_BASE_URL="${RELEASE_BASE_URL%/}"
+QUALIFIED_AUTHORITY_URL="${DURABLE_WORKFLOW_QUALIFIED_AUTHORITY_URL:-https://durable-workflow.com/public-artifact-compatibility-evidence.json}"
 VERIFY_ATTESTATIONS="${DURABLE_WORKFLOW_INSTALL_VERIFY_ATTESTATIONS:-0}"
 OUTPUT_MODE="${DURABLE_WORKFLOW_INSTALL_OUTPUT:-human}"
 
@@ -60,15 +63,50 @@ fi
 
 asset="dw-${os}-${arch}"
 
-if [ "$VERSION" = "latest" ]; then
+command -v curl >/dev/null 2>&1 || err "curl is required"
+
+if [ "$VERSION" = "prerelease" ]; then
+    info "Resolving the qualified CLI prerelease"
+    if ! VERSION=$(curl -fsSL --retry 3 "$QUALIFIED_AUTHORITY_URL" | tr '{},' '\n\n\n' | awk '
+        /"schema"[[:space:]]*:[[:space:]]*"durable-workflow\.docs\.public-artifact-compatibility-evidence"/ && !schema_seen {
+            schema_seen=1
+        }
+        /"schema_version"[[:space:]]*:[[:space:]]*2([[:space:]]|$)/ && !schema_version_seen {
+            schema_version_seen=1
+        }
+        /"outcome"[[:space:]]*:/ && !outcome_seen {
+            outcome_seen=1
+            if ($0 ~ /"outcome"[[:space:]]*:[[:space:]]*"pass"/) outcome_pass=1
+        }
+        /"qualified_artifact_versions"[[:space:]]*:/ {
+            qualified_versions=1
+            next
+        }
+        qualified_versions && /"cli"[[:space:]]*:/ {
+            version=$0
+            sub(/^.*"cli"[[:space:]]*:[[:space:]]*"v?/, "", version)
+            sub(/".*$/, "", version)
+            qualified_versions=0
+        }
+        END {
+            if (schema_seen && schema_version_seen && outcome_pass && version ~ /^[0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc)\.[0-9]+$/) {
+                print version
+                exit 0
+            }
+            exit 1
+        }
+    '); then
+        err "could not resolve a passing qualified CLI prerelease from $QUALIFIED_AUTHORITY_URL"
+    fi
+fi
+
+if [ "$VERSION" = "latest" ] || [ "$VERSION" = "stable" ]; then
     url="${RELEASE_BASE_URL}/latest/download/${asset}"
     checksum_url="${RELEASE_BASE_URL}/latest/download/SHA256SUMS"
 else
     url="${RELEASE_BASE_URL}/download/${VERSION}/${asset}"
     checksum_url="${RELEASE_BASE_URL}/download/${VERSION}/SHA256SUMS"
 fi
-
-command -v curl >/dev/null 2>&1 || err "curl is required"
 
 sha256_file() {
     if command -v sha256sum >/dev/null 2>&1; then

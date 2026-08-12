@@ -56,7 +56,9 @@ assert.throws(
 
 assert.doesNotThrow(() => assertCurrentDocSource(
   'docs/example.md',
-  '<PythonPackageReleaseLink>Current Python %%artifact.pythonPublishedSdkVersion%% release</PythonPackageReleaseLink>',
+  '<PythonPackageReleaseLink authority="qualified">Qualified Python %%artifact.pythonSdkVersion%% release</PythonPackageReleaseLink>',
+  QUALIFIED_PYTHON_PACKAGE_AUTHORITY,
+  'qualified',
 ));
 assert.doesNotThrow(() => assertCurrentDocSource(
   'docs/quickstart.md',
@@ -80,7 +82,7 @@ assert.throws(
     '[Python package](https://pypi.org/project/durable-workflow/)',
   ),
   /centralized Python package authority component/,
-  'current docs must not link directly to the canonical PyPI project page',
+  'docs must not hand-maintain the canonical PyPI project page',
 );
 
 const stablePolicy = {

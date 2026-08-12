@@ -4,9 +4,11 @@
 #   irm https://durable-workflow.com/install.ps1 | iex
 #
 # Environment variables:
-#   $env:VERSION                         Release tag to install (default: latest).
+#   $env:VERSION                         Release tag, prerelease, or stable (default: prerelease).
 #   $env:DURABLE_WORKFLOW_INSTALL_DIR    Install directory (default: %USERPROFILE%\.durable-workflow\bin).
 #   $env:DURABLE_WORKFLOW_RELEASE_BASE_URL  Release base URL override for tests.
+#   $env:DURABLE_WORKFLOW_QUALIFIED_AUTHORITY_URL
+#                                        Qualified artifact authority override for tests.
 #   $env:DURABLE_WORKFLOW_INSTALL_VERIFY_ATTESTATIONS
 #                                        Set to 1 to verify GitHub artifact attestations with gh.
 
@@ -24,7 +26,31 @@ $installDir = if ($env:DURABLE_WORKFLOW_INSTALL_DIR) {
 } else {
     Join-Path $env:USERPROFILE '.durable-workflow\bin'
 }
-$version = if ($env:VERSION) { $env:VERSION } else { 'latest' }
+$version = if ($env:VERSION) { $env:VERSION } else { 'prerelease' }
+$qualifiedAuthorityUrl = if ($env:DURABLE_WORKFLOW_QUALIFIED_AUTHORITY_URL) {
+    $env:DURABLE_WORKFLOW_QUALIFIED_AUTHORITY_URL
+} else {
+    'https://durable-workflow.com/public-artifact-compatibility-evidence.json'
+}
+$version = if ($version -eq 'prerelease') {
+    Write-Host '==> Resolving the qualified CLI prerelease' -ForegroundColor Green
+    $authority = Invoke-RestMethod -Uri $qualifiedAuthorityUrl -UseBasicParsing
+    if (
+        $authority.schema -ne 'durable-workflow.docs.public-artifact-compatibility-evidence' -or
+        $authority.schema_version -ne 2 -or
+        $authority.outcome -ne 'pass'
+    ) {
+        throw "The qualified artifact authority at $qualifiedAuthorityUrl is not a passing schema-v2 document."
+    }
+    $resolvedVersion = [string] $authority.qualified_artifact_versions.cli
+    $resolvedVersion = $resolvedVersion -replace '^v', ''
+    if ($resolvedVersion -notmatch '^\d+\.\d+\.\d+-(alpha|beta|rc)\.\d+$') {
+        throw "Could not resolve a qualified CLI prerelease from $qualifiedAuthorityUrl."
+    }
+    $resolvedVersion
+} else {
+    $version
+}
 $verifyAttestations = $env:DURABLE_WORKFLOW_INSTALL_VERIFY_ATTESTATIONS -eq '1'
 
 if (-not [System.Environment]::Is64BitOperatingSystem) {
@@ -34,13 +60,13 @@ if (-not [System.Environment]::Is64BitOperatingSystem) {
 $arch = 'x86_64'
 $asset = "dw-windows-$arch.exe"
 
-$url = if ($version -eq 'latest') {
+$url = if ($version -eq 'latest' -or $version -eq 'stable') {
     "$releaseBaseUrl/latest/download/$asset"
 } else {
     "$releaseBaseUrl/download/$version/$asset"
 }
 
-$checksumUrl = if ($version -eq 'latest') {
+$checksumUrl = if ($version -eq 'latest' -or $version -eq 'stable') {
     "$releaseBaseUrl/latest/download/SHA256SUMS"
 } else {
     "$releaseBaseUrl/download/$version/SHA256SUMS"

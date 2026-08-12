@@ -39,11 +39,13 @@ surfaces.
 dw --version
 ```
 
-### Pinned install for CI and quickstarts
+### Prerelease channel install
 
-CI jobs and quickstart instructions should install a specific release rather
-than `latest`, so the same command produces the same `dw` binary every time
-and upgrades only when you change the pin.
+The default installer follows the CLI release from the last passing qualified
+artifact tuple without requiring an RC sequence number. A newer published CLI
+prerelease is not selected until the public compatibility authority qualifies
+it. For reproducible CI, record the resolved `dw --version` value and pass that
+exact tag through `VERSION` on later runs.
 
 Both installer scripts download `SHA256SUMS` from the release and verify the
 asset checksum before replacing `dw`, so a tampered mirror fails the install.
@@ -52,12 +54,12 @@ asset checksum before replacing `dw`, so a tampered mirror fails the install.
 <summary><b>Linux and macOS</b> (shell installer)</summary>
 
 ```bash
-curl -fsSL https://durable-workflow.com/install.sh | %%artifact.cliInstallerEnv%% sh
+%%artifact.cliChannelInstallerCommand%%
 dw --version
 ```
 
-`VERSION` accepts any published release tag. Leave it unset to install the
-latest release. Additional environment variables:
+`VERSION` accepts any published release tag, `prerelease`, or `stable`. Leave
+it unset to follow the prerelease channel. Additional environment variables:
 
 - `DURABLE_WORKFLOW_INSTALL_DIR` — install location (default `~/.local/bin`).
 - `DURABLE_WORKFLOW_BIN_NAME` — installed executable name (default `dw`).
@@ -67,7 +69,7 @@ A GitHub Actions example:
 ```yaml
 - name: Install Durable Workflow CLI
   run: |
-    curl -fsSL https://durable-workflow.com/install.sh | %%artifact.cliInstallerEnv%% sh
+    %%artifact.cliChannelInstallerCommand%%
     echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 - name: Verify
   run: dw --version
@@ -79,8 +81,7 @@ A GitHub Actions example:
 <summary><b>Windows</b> (PowerShell installer)</summary>
 
 ```powershell
-%%artifact.cliPowerShellVersion%%
-irm https://durable-workflow.com/install.ps1 | iex
+%%artifact.cliChannelPowerShellCommand%%
 dw --version
 ```
 
@@ -93,7 +94,7 @@ that directory to the user `PATH`.
 <summary><b>PHAR</b> (portable, requires PHP 8.2+)</summary>
 
 ```bash
-%%artifact.cliInstallerEnv%%
+VERSION=<release-tag>
 curl -fsSL -o dw.phar \
   "https://github.com/durable-workflow/cli/releases/download/${VERSION}/dw.phar"
 curl -fsSL -o SHA256SUMS \
@@ -115,8 +116,8 @@ For standalone release installs (the shell and PowerShell installers above),
 after verifying the asset against the release's `SHA256SUMS`.
 
 ```bash
-dw upgrade                 # upgrade to the latest release
-dw upgrade %%artifact.cliUpgradeTag%%     # pin to a specific release tag
+dw upgrade                 # upgrade through the stable release channel
+dw upgrade --tag=<release-tag>     # pin to a specific release tag
 dw upgrade --dry-run       # resolve the target release without downloading
 ```
 
@@ -176,7 +177,7 @@ until curl -sf http://localhost:8080/api/ready >/dev/null; do sleep 1; done
 Install the CLI in another terminal:
 
 ```bash
-curl -fsSL https://durable-workflow.com/install.sh | %%artifact.cliInstallerEnv%% sh
+%%artifact.cliChannelInstallerCommand%%
 export PATH="$HOME/.local/bin:$PATH"
 dw --version
 ```

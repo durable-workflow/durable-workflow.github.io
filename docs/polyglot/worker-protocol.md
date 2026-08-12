@@ -28,7 +28,7 @@ Workers may use an older minor within the same major. A server advertising
 `1.N` accepts `X-Durable-Workflow-Protocol-Version: 1.M` when `M <= N` and
 returns its advertised `1.N` on the response. The default `1.13` server
 therefore accepts request versions `1.0` through `1.13`, including Rust SDK
-`%%artifact.rustSdkVersion%%` on `1.2`. Missing or malformed headers, different majors, and worker
+the Rust SDK on `1.2`. Missing or malformed headers, different majors, and worker
 minors newer than the server fail closed.
 
 You can retrieve the full protocol description programmatically:

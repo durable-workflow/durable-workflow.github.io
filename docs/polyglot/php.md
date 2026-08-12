@@ -55,7 +55,9 @@ for the complete ownership comparison.
 
 ## Install
 
-Install the exact PHP SDK version in the current public artifact tuple:
+Install the PHP SDK from the last passing qualified tuple. The exact requirement
+below is generated from that machine-readable authority, and Composer records
+the resolved package in `composer.lock`:
 
 <!-- docs-example id="php.sdk.install" -->
 ```bash

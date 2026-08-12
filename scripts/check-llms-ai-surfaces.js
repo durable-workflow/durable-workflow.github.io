@@ -70,6 +70,17 @@ function assertNoUnresolvedArtifactTokens(content, label) {
   }
 }
 
+function assertNoExactPrereleaseCurrentClaims(content, label) {
+  const exactPrerelease = /\bv?\d+\.\d+\.\d+-(?:alpha|beta|rc)\.\d+\b|\b\d+\.\d+\.\d+(?:a|b|rc)\d+\b/i;
+  const currentClaim = /\b(?:current|latest|newest)\b/i;
+  const offendingLine = content.split(/\r?\n/)
+    .find(line => exactPrerelease.test(line) && currentClaim.test(line));
+
+  if (offendingLine) {
+    throw new Error(`${label} contains an exact prerelease presented as current`);
+  }
+}
+
 function docsConfig() {
   const preset = Array.isArray(config.presets)
     ? config.presets.find(entry => Array.isArray(entry) && entry[0] === 'classic')
@@ -113,6 +124,9 @@ function main() {
   }
   assertModelRetrievalSurface(v2Full, protocolCatalog, 'llms-full-2.0.txt');
   assertModelRetrievalSurface(v2PathAlias, protocolCatalog, '2.0/llms-full.txt');
+  assertNoExactPrereleaseCurrentClaims(v2Index, 'llms-2.0.txt');
+  assertNoExactPrereleaseCurrentClaims(v2Full, 'llms-full-2.0.txt');
+  assertNoExactPrereleaseCurrentClaims(v2PathAlias, '2.0/llms-full.txt');
 
   for (const [label, content] of Object.entries({
     'llms.txt': canonicalIndex,
