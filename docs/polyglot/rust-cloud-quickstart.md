@@ -44,9 +44,10 @@ roles connect to the same namespace runtime URL and runtime namespace.
 
 ## 1. Open the prepared Sample App
 
-Create a Codespace from the Sample App `main` branch, wait for setup to finish,
-and open a terminal at the repository root. The prepared image already includes
-Rust 1.86 or newer, Cargo, and `dw`.
+[Create a Codespace from the Sample App `main`
+branch](https://codespaces.new/durable-workflow/sample-app?quickstart=1&ref=main),
+wait for setup to finish, and open a terminal at the repository root. The
+prepared image already includes Rust 1.86 or newer, Cargo, and `dw`.
 
 Configure the values returned by Cloud when the namespace and its two runtime
 credentials were created:

@@ -18,11 +18,6 @@ import ProductPromotion from '@site/src/components/ProductPromotion';
 
 # Rust SDK
 
-<ProductPromotion source="docs-v2-rust-sdk">
-Run Rust clients and workers against a Cloud-managed namespace with separate
-role-scoped credentials.
-</ProductPromotion>
-
 Use this guide for the general SDK surface, then continue to the generated API
 reference for individual types and methods. Evaluators enrolled in Durable
 Workflow Cloud controlled early access can also use the secondary [Rust Cloud
@@ -96,6 +91,11 @@ Negotiation fails closed. A missing or malformed header, a different major,
 or a worker minor newer than the server's advertised minor is rejected. The
 server version range selects the release family; it does not override the
 runtime protocol manifest.
+
+<ProductPromotion source="docs-v2-rust-sdk">
+Run Rust clients and workers against a Cloud-managed namespace with separate
+role-scoped credentials.
+</ProductPromotion>
 
 ## Prepare the released repository example
 
