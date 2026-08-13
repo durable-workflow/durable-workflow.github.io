@@ -742,6 +742,46 @@ function validateSdkNeutralityAuthorityIdentity(
   }
 }
 
+function validateSdkNeutralityProjectionAdvance(
+  authority,
+  workflowVersion,
+  publishedArtifactVersions,
+  previousPublishedArtifactVersions,
+  workflowResourceSource,
+) {
+  const changedPublishedArtifacts = ARTIFACT_ORDER.filter(
+    artifact => (
+      publishedArtifactVersions[artifact]
+      !== previousPublishedArtifactVersions[artifact]
+    ),
+  );
+  if (
+    changedPublishedArtifacts.length !== 1
+    || changedPublishedArtifacts[0] !== 'sdk-python'
+  ) {
+    return;
+  }
+
+  const previousProjectionSource = sdkNeutralityContractSource(
+    workflowResourceSource,
+    previousPublishedArtifactVersions,
+  );
+  const previousLockSource = workflowAuthorityLockSource(
+    workflowVersion,
+    workflowResourceSource,
+    authority.workflow_source_commit,
+    previousPublishedArtifactVersions,
+  );
+  if (
+    authority.docs_projection_sha256 === sha256(previousProjectionSource)
+    || authority.authority_lock_sha256 === sha256(previousLockSource)
+  ) {
+    throw new Error(
+      'a Python-only handoff must carry a new SDK-neutrality docs projection identity',
+    );
+  }
+}
+
 function validateTupleDate(tupleDate) {
   if (tupleDate === undefined || tupleDate === null || tupleDate === '') {
     return;
@@ -857,12 +897,22 @@ function validateHandoff(handoff, options = {}) {
     handoff.published_server_protocol_authority,
     handoff.published_artifact_versions.server,
   );
+  const sdkNeutralityAuthoritySources = (
+    options.sdkNeutralityAuthoritySources
+    || defaultSdkNeutralityAuthoritySources()
+  );
   validateSdkNeutralityAuthorityIdentity(
     handoff.sdk_neutrality_authority,
     handoff.artifact_versions.workflow,
     handoff.published_artifact_versions,
-    options.sdkNeutralityAuthoritySources
-      || defaultSdkNeutralityAuthoritySources(),
+    sdkNeutralityAuthoritySources,
+  );
+  validateSdkNeutralityProjectionAdvance(
+    handoff.sdk_neutrality_authority,
+    handoff.artifact_versions.workflow,
+    handoff.published_artifact_versions,
+    handoff.previous_published_artifact_versions,
+    sdkNeutralityAuthoritySources.workflowResourceSource,
   );
   validateTupleDate(handoff.tuple_date);
 

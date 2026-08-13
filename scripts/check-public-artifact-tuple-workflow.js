@@ -971,6 +971,13 @@ pythonOnlyStaleSources.lockSource = workflowAuthorityLockSource(
   pythonOnlyTrustedSourceCommit,
   pythonOnlyPreviousPublishedVersions,
 );
+const pythonOnlyPreviousAuthority = buildSdkNeutralityAuthorityIdentity(
+  pythonOnlyQualifiedVersions.workflow,
+  pythonOnlyStaleSources.contractSource,
+  pythonOnlyStaleSources.lockSource,
+  pythonOnlyPreviousPublishedVersions,
+  pythonOnlyStaleSources.workflowResourceSource,
+);
 const pythonOnlyFutureSources = {
   workflowResourceSource: pythonOnlyStaleSources.workflowResourceSource,
 };
@@ -1015,6 +1022,10 @@ const pythonOnlyPayload = buildReadyItemPayload(
   pythonOnlyHandoff,
   {sdkNeutralityAuthoritySources: pythonOnlyStaleSources},
 );
+const pythonOnlyRefreshedPayload = buildReadyItemPayload(
+  pythonOnlyHandoff,
+  {sdkNeutralityAuthoritySources: pythonOnlyFutureSources},
+);
 assert.strictEqual(
   pythonOnlyHandoff.previous_published_artifact_versions['sdk-python'],
   '2.0.0-rc.25',
@@ -1034,6 +1045,11 @@ assert.strictEqual(
   pythonOnlyPayload.title,
   'Refresh public docs artifact tuple for sdk-python 2.0.0-rc.30',
   'a valid independently published Python advance must route one focused handoff',
+);
+assert.deepStrictEqual(
+  pythonOnlyRefreshedPayload,
+  pythonOnlyPayload,
+  'the Python-only handoff must keep one identity before and after docs refresh',
 );
 for (const [label, field, value] of [
   ['Workflow source commit', 'workflow_source_commit', '8'.repeat(40)],
@@ -1157,8 +1173,13 @@ assert.strictEqual(
 );
 assert.notStrictEqual(
   pythonOnlyHandoff.sdk_neutrality_authority.docs_projection_sha256,
-  multiArtifactHandoff.sdk_neutrality_authority.docs_projection_sha256,
+  pythonOnlyPreviousAuthority.docs_projection_sha256,
   'a Python-only handoff must carry a new docs projection identity',
+);
+assert.notStrictEqual(
+  pythonOnlyHandoff.sdk_neutrality_authority.authority_lock_sha256,
+  pythonOnlyPreviousAuthority.authority_lock_sha256,
+  'a Python-only handoff must carry a new authority-lock identity',
 );
 assert.notStrictEqual(
   pythonOnlyPayload.key,
