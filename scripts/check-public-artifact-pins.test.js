@@ -4,6 +4,7 @@ const {
   ARTIFACT_RELEASE_POLICY,
   ARTIFACT_PINS,
   ARTIFACT_VERSIONS,
+  PUBLISHED_ARTIFACT_VERSIONS,
   artifactVersionRemarkPlugin,
   readArtifactReleasePolicy,
   pypiRegistryVersion,
@@ -45,6 +46,29 @@ assert.strictEqual(
   artifactLinkTree.children[0].url,
   `https://github.com/durable-workflow/sdk-rust/blob/${ARTIFACT_PINS.rustSdkVersion}/examples/hello_world.rs`,
   'artifact tokens in Markdown links must resolve to the selected release',
+);
+
+assert.doesNotThrow(
+  () => checkPublicArtifactSource(
+    'docs/polyglot/php.md',
+    '`composer require %%artifact.publishedPhpSdkComposerPackage%%`',
+  ),
+  'the PHP guide may use its dedicated published-version token',
+);
+
+assert.throws(
+  () => checkPublicArtifactSource(
+    'docs/guides/install-anywhere.md',
+    '`composer require %%artifact.publishedPhpSdkComposerPackage%%`',
+  ),
+  /stale PHP SDK Composer package pin/,
+  'published PHP tokens must not weaken the qualified pin outside the PHP guide',
+);
+
+assert.strictEqual(
+  ARTIFACT_PINS.publishedPhpSdkVersion,
+  PUBLISHED_ARTIFACT_VERSIONS['sdk-php'],
+  'the PHP guide install token must derive from the published registry authority',
 );
 
 assert.doesNotThrow(

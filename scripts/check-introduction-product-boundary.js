@@ -176,7 +176,7 @@ function assertSidebarTopology(sidebars) {
 }
 
 function assertPhpPackageBoundary(phpSdk, server) {
-  if (!phpSdk.includes('composer require %%artifact.phpSdkComposerPackage%%')) {
+  if (!phpSdk.includes('composer require %%artifact.publishedPhpSdkComposerPackage%%')) {
     fail('docs/polyglot/php.md must install the exact published PHP SDK artifact token');
   }
   if (/composer\s+require[^\n]*durable-workflow\/workflow/.test(phpSdk)) {

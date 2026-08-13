@@ -758,6 +758,12 @@ assert.strictEqual(
   `composer require durable-workflow/sdk:${source.artifacts['sdk-php']}@` +
     productTrainVersionDetails(source.artifacts['sdk-php']).channel,
 );
+assert.strictEqual(
+  ARTIFACT_PINS.publishedPhpSdkComposerInstallCommand,
+  `composer require durable-workflow/sdk:${publishedSource.artifacts['sdk-php']}@` +
+    productTrainVersionDetails(publishedSource.artifacts['sdk-php']).channel,
+  'the PHP published install token must derive from the registry-refreshed authority',
+);
 assert.strictEqual(currentArtifactPins.pythonSdkVersion, source.artifacts['sdk-python']);
 assert.strictEqual(currentArtifactPins.rustSdkVersion, source.artifacts['sdk-rust']);
 assert.strictEqual(currentArtifactPins.rustCrate, 'durable-workflow');
@@ -795,7 +801,7 @@ assert.deepStrictEqual(
     },
     {
       surface: 'api_documentation',
-      url: 'https://php.durable-workflow.com/',
+      url: 'https://php.durable-workflow.com/api/',
     },
   ],
   'PHP SDK distribution surfaces must expose the package, source repository, and API documentation'

@@ -47,7 +47,7 @@ Its current public surface includes workflow lifecycle and result handles,
 signals, queries, updates, schedules, workflow filtering/history, namespace,
 worker, and task-queue visibility, plus registered workflow, activity, query,
 and update handlers. See the [PHP SDK guide](./php.md) and generated
-[PHP API reference](https://php.durable-workflow.com/).
+[PHP API reference](https://php.durable-workflow.com/api/).
 
 ### Python SDK
 

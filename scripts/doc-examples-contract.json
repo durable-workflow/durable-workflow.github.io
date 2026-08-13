@@ -71,7 +71,7 @@
       "id": "php.sdk.install",
       "path": "polyglot/php.md",
       "language": "bash",
-      "primaryArtifactInstall": "sdk-php"
+      "publishedArtifactInstall": "sdk-php"
     },
     {
       "id": "server.php-sdk.install",

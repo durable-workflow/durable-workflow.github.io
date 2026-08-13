@@ -29,9 +29,11 @@ control-plane client, authentication, transport, public payload codec, replay
 handler, and managed remote-worker lifecycle without requiring Laravel or the
 embedded engine package.
 
-Start with the executable [PHP SDK quickstart](https://php.durable-workflow.com/).
-That documentation root presents the clean Composer-project journey before its
-generated API reference. Its
+For step-by-step onboarding, framework paths, testing, deployment, and
+troubleshooting, use the authored
+[PHP developer portal](https://php.durable-workflow.com/). For exact
+constructor signatures, return types, and exception classes, use its distinct
+[generated API reference](https://php.durable-workflow.com/api/). The portal's
 [machine-readable contract](https://php.durable-workflow.com/quickstart-contract.json)
 identifies the package, runtime forms, role credentials, shipped source files,
 expected result, and published-artifact smoke as one tested path.
@@ -55,13 +57,13 @@ for the complete ownership comparison.
 
 ## Install
 
-Install the PHP SDK from the last passing qualified tuple. The exact requirement
-below is generated from that machine-readable authority, and Composer records
+Install the current published PHP SDK. The exact requirement below is generated
+from the registry-refreshed published-artifact authority, and Composer records
 the resolved package in `composer.lock`:
 
 <!-- docs-example id="php.sdk.install" -->
 ```bash
-composer require %%artifact.phpSdkComposerPackage%%
+composer require %%artifact.publishedPhpSdkComposerPackage%%
 ```
 
 The SDK uses the official `apache/avro` Composer package for the public payload
@@ -116,17 +118,19 @@ The current public client is broader than selected-run result handling:
 
 Remote workers register workflow, activity, query, and update handlers through
 `registerWorkflow`, `registerActivity`, `registerQuery`, and `registerUpdate`.
-Use the generated [PHP SDK API reference](https://php.durable-workflow.com/)
+Use the generated [PHP SDK API reference](https://php.durable-workflow.com/api/)
 for complete parameters and return types.
 
 ## Run a remote PHP worker
 
-Workflow handlers may be ordinary callables or generators. Yielding a command
-from `WorkflowContext` records a durable decision; replay sends the recorded
-value back into the generator without repeating the external activity. The
-managed worker registers its workflow and activity type names, polls the public
-worker protocol, heartbeats, completes or fails tasks, and handles graceful
-shutdown when `pcntl` is available.
+Workflow handlers are ordinary callables that run as straight-line code inside
+a managed Fiber. Call operations such as `WorkflowContext::activity()`
+directly; the SDK suspends the Fiber at durable decisions and returns recorded
+results during replay without repeating external activity. Do not declare a
+workflow as a Generator or yield `WorkflowContext` commands: Generator results
+are rejected. The managed worker registers its workflow and activity type
+names, polls the public worker protocol, heartbeats, completes or fails tasks,
+and handles graceful shutdown when `pcntl` is available.
 
 ## Framework service mode and embedded Laravel
 
@@ -162,6 +166,7 @@ when moving between pre-1.0 SDK releases; no cross-release shim is implied.
 - [Deployment Modes](/docs/2.0/polyglot/deployment-modes/)
 - [Worker Protocol](/docs/2.0/polyglot/worker-protocol/)
 - [Capability Index](/docs/2.0/capabilities/)
-- [PHP API reference](https://php.durable-workflow.com/)
+- [PHP developer portal](https://php.durable-workflow.com/)
+- [PHP API reference](https://php.durable-workflow.com/api/)
 - [PHP executable quickstart contract](https://php.durable-workflow.com/quickstart-contract.json)
 - [PHP SDK source](https://github.com/durable-workflow/sdk-php)

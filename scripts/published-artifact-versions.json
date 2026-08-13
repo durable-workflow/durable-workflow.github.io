@@ -2,11 +2,11 @@
   "schema": "durable-workflow.docs.published-artifact-versions",
   "schemaVersion": 1,
   "artifacts": {
-    "cli": "2.0.0-rc.13",
-    "sdk-php": "2.0.0-rc.14",
+    "cli": "2.0.0-rc.31",
+    "sdk-php": "2.0.0-rc.30",
     "sdk-python": "2.0.0-rc.25",
     "sdk-rust": "2.0.0-rc.12",
-    "server": "2.0.0-rc.29",
+    "server": "2.0.0-rc.32",
     "waterline": "2.0.0-rc.17",
     "workflow": "2.0.0-rc.31"
   }

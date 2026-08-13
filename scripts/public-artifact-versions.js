@@ -513,6 +513,11 @@ const ARTIFACT_PINS = Object.freeze({
   publishedCliInstallerCommand: PUBLISHED_ARTIFACT_PINS.cliInstallerCommand,
   publishedCliUpgradeCommand: PUBLISHED_ARTIFACT_PINS.cliUpgradeCommand,
   publishedCliVersion: PUBLISHED_ARTIFACT_PINS.cliVersion,
+  publishedPhpSdkComposerInstallCommand:
+    PUBLISHED_ARTIFACT_PINS.phpSdkComposerInstallCommand,
+  publishedPhpSdkComposerPackage: PUBLISHED_ARTIFACT_PINS.phpSdkComposerPackage,
+  publishedPhpSdkPackageUrl: PUBLISHED_ARTIFACT_PINS.phpSdkPackageUrl,
+  publishedPhpSdkVersion: PUBLISHED_ARTIFACT_PINS.phpSdkVersion,
   publishedRustCargoAddCommand: PUBLISHED_ARTIFACT_PINS.rustCargoAddCommand,
   publishedRustCargoRequirement: PUBLISHED_ARTIFACT_PINS.rustCargoRequirement,
   publishedRustSdkVersion: PUBLISHED_ARTIFACT_PINS.rustSdkVersion,
@@ -663,7 +668,7 @@ function buildArtifactDistributionSurfaces(versions) {
       }),
       Object.freeze({
         surface: 'api_documentation',
-        url: 'https://php.durable-workflow.com/',
+        url: 'https://php.durable-workflow.com/api/',
       }),
     ]),
     server: Object.freeze([
@@ -821,6 +826,7 @@ module.exports = {
   QUALIFIED_ARTIFACT_MATRIX,
   QUALIFIED_PYTHON_PACKAGE_AUTHORITY,
   PUBLISHED_ARTIFACT_VERSIONS,
+  PUBLISHED_ARTIFACT_PINS,
   PUBLISHED_ARTIFACT_VERSION_SCHEMA,
   PUBLIC_ARTIFACT_SCAN_VERSION_PATTERN_SOURCE,
   REQUIRED_ARTIFACTS,

@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const {
   ARTIFACT_DISTRIBUTION_SURFACES,
+  PUBLISHED_ARTIFACT_PINS,
   replaceArtifactTokens,
 } = require('./public-artifact-versions');
 
@@ -48,6 +49,30 @@ function assertPrimaryArtifactInstall(block, artifactId, quickstartContract, con
     throw new Error(
       `${context} must begin with the ${artifactId} install command from the quickstart contract; ` +
         `expected ${JSON.stringify(installCommand)}, got ${JSON.stringify(firstCommand)}`,
+    );
+  }
+}
+
+function assertPublishedArtifactInstall(block, artifactId, context) {
+  const installCommands = {
+    'sdk-php': PUBLISHED_ARTIFACT_PINS.phpSdkComposerInstallCommand,
+  };
+  const installCommand = installCommands[artifactId];
+
+  if (!installCommand) {
+    throw new Error(`${context} references an artifact without a published install command: ${artifactId}`);
+  }
+
+  const renderedBlock = replaceArtifactTokens(block, context);
+  const firstCommand = renderedBlock
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .find(line => line !== '' && !line.startsWith('#'));
+
+  if (firstCommand !== installCommand) {
+    throw new Error(
+      `${context} must begin with the ${artifactId} install command from the published ` +
+        `artifact authority; expected ${JSON.stringify(installCommand)}, got ${JSON.stringify(firstCommand)}`,
     );
   }
 }
@@ -370,6 +395,14 @@ function checkExample(example, quickstartContract, examplesById) {
       block,
       example.primaryArtifactInstall,
       quickstartContract,
+      context,
+    );
+  }
+
+  if (example.publishedArtifactInstall) {
+    assertPublishedArtifactInstall(
+      block,
+      example.publishedArtifactInstall,
       context,
     );
   }

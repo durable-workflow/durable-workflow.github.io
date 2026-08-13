@@ -59,7 +59,7 @@ endpoint. Use Waterline to correlate that runtime signal with the durable
 workflow history and current run state.
 
 Worker and client setup also remains separate from the operator surface. Use
-the generated [PHP SDK API reference](https://php.durable-workflow.com/),
+the generated [PHP SDK API reference](https://php.durable-workflow.com/api/),
 [Python SDK API reference](https://python.durable-workflow.com/), or
 [Rust SDK API reference](https://rust.durable-workflow.com/) alongside the
 language guides when connecting application clients and workers to the runtime
