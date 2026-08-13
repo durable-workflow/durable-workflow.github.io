@@ -1,7 +1,7 @@
 {
   "schema": "durable-workflow.v2.platform-conformance.run-ledger",
   "schema_version": 2,
-  "snapshot_refreshed_at": "2026-08-13T03:37:59.396Z",
+  "snapshot_refreshed_at": "2026-08-13T03:57:42.385Z",
   "retained_evidence_captured_at": "2026-07-29T13:59:32.249Z",
   "current_artifact_tuple": {
     "cli": "2.0.0-rc.13",
@@ -10,7 +10,7 @@
     "sdk-rust": "2.0.0-rc.12",
     "server": "2.0.0-rc.29",
     "waterline": "2.0.0-rc.17",
-    "workflow": "2.0.0-rc.30"
+    "workflow": "2.0.0-rc.31"
   },
   "retention_policy": {
     "max_runs_per_experiment": 3,
@@ -129,7 +129,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.6"
           }
         ],
@@ -196,7 +196,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.2"
           }
         ],
@@ -263,7 +263,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.6"
           }
         ],
@@ -330,7 +330,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.6"
           }
         ],
@@ -397,7 +397,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.1"
           }
         ],
@@ -464,7 +464,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.1"
           }
         ],
@@ -531,7 +531,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.6"
           }
         ],
@@ -598,7 +598,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.1"
           }
         ],
@@ -665,7 +665,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.1"
           }
         ],
@@ -732,7 +732,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.1"
           }
         ],
@@ -799,7 +799,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.6"
           }
         ],
@@ -866,7 +866,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.1"
           }
         ],
@@ -933,7 +933,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.1"
           }
         ],
@@ -1000,7 +1000,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.6"
           }
         ],
@@ -1067,7 +1067,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.6"
           }
         ],
@@ -1134,7 +1134,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.6"
           }
         ],
@@ -1201,7 +1201,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.6"
           }
         ],
@@ -1268,7 +1268,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.1"
           }
         ],
@@ -1335,7 +1335,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.6"
           }
         ],
@@ -1402,7 +1402,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.2"
           }
         ],
@@ -1469,7 +1469,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.1"
           }
         ],
@@ -1536,7 +1536,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.1"
           }
         ],
@@ -1603,7 +1603,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.1"
           }
         ],
@@ -1670,7 +1670,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.1"
           }
         ],
@@ -1737,7 +1737,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.1"
           }
         ],
@@ -1804,7 +1804,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.1"
           }
         ],
@@ -1871,7 +1871,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.6"
           }
         ],
@@ -1938,7 +1938,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.2"
           }
         ],
@@ -2005,7 +2005,7 @@
           },
           {
             "artifact": "workflow",
-            "expected": "2.0.0-rc.30",
+            "expected": "2.0.0-rc.31",
             "actual": "2.0.0-rc.1"
           }
         ],
