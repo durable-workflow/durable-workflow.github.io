@@ -5,8 +5,8 @@
   "current_artifact_tuple": {
     "cli": "2.0.0-rc.31",
     "sdk-php": "2.0.0-rc.30",
-    "sdk-python": "2.0.0-rc.25",
-    "sdk-rust": "2.0.0-rc.12",
+    "sdk-python": "2.0.0-rc.30",
+    "sdk-rust": "2.0.0-rc.30",
     "server": "2.0.0-rc.32",
     "waterline": "2.0.0-rc.18",
     "workflow": "2.0.0-rc.31"

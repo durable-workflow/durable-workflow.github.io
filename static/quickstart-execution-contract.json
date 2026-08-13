@@ -820,7 +820,7 @@
       "canonical_guide_url": "https://durable-workflow.com/docs/2.0/polyglot/rust-cloud-quickstart/",
       "sample_source_url": "https://github.com/durable-workflow/sample-app/tree/main/rust-cloud",
       "exact_artifact_versions": {
-        "sdk-rust": "2.0.0-rc.12",
+        "sdk-rust": "2.0.0-rc.30",
         "cli": "2.0.0-rc.31"
       },
       "credential_roles": {
@@ -869,7 +869,7 @@
           "id": "rust_cloud_sdk_version",
           "source": "sdk-version.txt",
           "required_substrings": [
-            "durable-workflow v2.0.0-rc.12"
+            "durable-workflow v2.0.0-rc.30"
           ]
         },
         {
