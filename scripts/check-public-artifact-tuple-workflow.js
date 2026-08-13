@@ -107,10 +107,6 @@ function workerBranch(payload) {
   return match[1];
 }
 
-function incrementPrereleaseVersion(version) {
-  return version.replace(/\.(\d+)$/, (_, sequence) => `.${Number(sequence) + 1}`);
-}
-
 function assertProtectedRefreshSource(source) {
   const parsed = yaml.load(source);
   const refreshJob = parsed?.jobs?.refresh;
@@ -948,38 +944,127 @@ const sdkNeutralityReplacementPayload = buildReadyItemPayload(
   sdkNeutralityReplacementHandoff,
   {sdkNeutralityAuthoritySources: sdkNeutralityReplacementSources},
 );
-const pythonOnlyPublishedVersions = {
-  ...multiArtifactHandoff.published_artifact_versions,
-  'sdk-python': incrementPrereleaseVersion(
-    multiArtifactHandoff.published_artifact_versions['sdk-python'],
-  ),
+const pythonOnlyQualifiedVersions = {
+  ...multiArtifactHandoff.artifact_versions,
+  workflow: '2.0.0-rc.12',
 };
-const pythonOnlySources = {
+const pythonOnlyPreviousPublishedVersions = {
+  ...multiArtifactHandoff.published_artifact_versions,
+  'sdk-python': '2.0.0-rc.25',
+};
+const pythonOnlyPublishedVersions = {
+  ...pythonOnlyPreviousPublishedVersions,
+  'sdk-python': '2.0.0-rc.30',
+};
+const pythonOnlyTrustedSourceCommit = '4'.repeat(40);
+const pythonOnlyStaleSources = {
   workflowResourceSource:
     currentSdkNeutralityAuthoritySources.workflowResourceSource,
 };
-pythonOnlySources.contractSource = sdkNeutralityContractSource(
-  pythonOnlySources.workflowResourceSource,
+pythonOnlyStaleSources.contractSource = sdkNeutralityContractSource(
+  pythonOnlyStaleSources.workflowResourceSource,
+  pythonOnlyPreviousPublishedVersions,
+);
+pythonOnlyStaleSources.lockSource = workflowAuthorityLockSource(
+  pythonOnlyQualifiedVersions.workflow,
+  pythonOnlyStaleSources.workflowResourceSource,
+  pythonOnlyTrustedSourceCommit,
+  pythonOnlyPreviousPublishedVersions,
+);
+const pythonOnlyFutureSources = {
+  workflowResourceSource: pythonOnlyStaleSources.workflowResourceSource,
+};
+pythonOnlyFutureSources.contractSource = sdkNeutralityContractSource(
+  pythonOnlyFutureSources.workflowResourceSource,
   pythonOnlyPublishedVersions,
 );
-pythonOnlySources.lockSource = workflowAuthorityLockSource(
-  multiArtifactHandoff.artifact_versions.workflow,
-  pythonOnlySources.workflowResourceSource,
-  multiArtifactHandoff.sdk_neutrality_authority.workflow_source_commit,
+pythonOnlyFutureSources.lockSource = workflowAuthorityLockSource(
+  pythonOnlyQualifiedVersions.workflow,
+  pythonOnlyFutureSources.workflowResourceSource,
+  pythonOnlyTrustedSourceCommit,
   pythonOnlyPublishedVersions,
 );
 const pythonOnlyHandoff = structuredClone(multiArtifactHandoff);
+pythonOnlyHandoff.artifact_versions = pythonOnlyQualifiedVersions;
 pythonOnlyHandoff.published_artifact_versions = pythonOnlyPublishedVersions;
+pythonOnlyHandoff.previous_published_artifact_versions =
+  pythonOnlyPreviousPublishedVersions;
+pythonOnlyHandoff.compatibility_evidence = compatibilityEvidence(
+  pythonOnlyQualifiedVersions,
+);
+pythonOnlyHandoff.published_server_protocol_authority =
+  publishedServerProtocolAuthority(pythonOnlyPublishedVersions.server);
 pythonOnlyHandoff.sdk_neutrality_authority = buildSdkNeutralityAuthorityIdentity(
   pythonOnlyHandoff.artifact_versions.workflow,
-  pythonOnlySources.contractSource,
-  pythonOnlySources.lockSource,
+  pythonOnlyFutureSources.contractSource,
+  pythonOnlyFutureSources.lockSource,
   pythonOnlyPublishedVersions,
-  pythonOnlySources.workflowResourceSource,
+  pythonOnlyFutureSources.workflowResourceSource,
+);
+assert.notStrictEqual(
+  pythonOnlyStaleSources.contractSource,
+  pythonOnlyFutureSources.contractSource,
+  'the independently published Python regression must begin with a stale docs projection',
+);
+assert.notStrictEqual(
+  pythonOnlyStaleSources.lockSource,
+  pythonOnlyFutureSources.lockSource,
+  'the independently published Python regression must begin with a stale authority lock projection',
 );
 const pythonOnlyPayload = buildReadyItemPayload(
   pythonOnlyHandoff,
-  {sdkNeutralityAuthoritySources: pythonOnlySources},
+  {sdkNeutralityAuthoritySources: pythonOnlyStaleSources},
+);
+assert.strictEqual(
+  pythonOnlyHandoff.previous_published_artifact_versions['sdk-python'],
+  '2.0.0-rc.25',
+  'the independently published Python regression must start at rc.25',
+);
+assert.strictEqual(
+  pythonOnlyHandoff.published_artifact_versions['sdk-python'],
+  '2.0.0-rc.30',
+  'the independently published Python regression must advance to rc.30',
+);
+assert.strictEqual(
+  pythonOnlyHandoff.artifact_versions.workflow,
+  '2.0.0-rc.12',
+  'the independently published Python regression must keep qualified Workflow rc.12',
+);
+assert.strictEqual(
+  pythonOnlyPayload.title,
+  'Refresh public docs artifact tuple for sdk-python 2.0.0-rc.30',
+  'a valid independently published Python advance must route one focused handoff',
+);
+for (const [label, field, value] of [
+  ['Workflow source commit', 'workflow_source_commit', '8'.repeat(40)],
+  ['Workflow resource identity', 'workflow_resource_sha256', '7'.repeat(64)],
+  ['Python package identity', 'python_package_version', '2.0.0-rc.999'],
+  ['Python registry identity', 'python_registry_version', '2.0.0rc999'],
+  ['docs projection digest', 'docs_projection_sha256', '5'.repeat(64)],
+  ['authority-lock digest', 'authority_lock_sha256', '6'.repeat(64)],
+]) {
+  const tamperedPythonOnlyHandoff = structuredClone(pythonOnlyHandoff);
+  tamperedPythonOnlyHandoff.sdk_neutrality_authority[field] = value;
+  assert.throws(
+    () => buildReadyItemPayload(
+      tamperedPythonOnlyHandoff,
+      {sdkNeutralityAuthoritySources: pythonOnlyStaleSources},
+    ),
+    new RegExp(`${field} must match the generated contract and lock`),
+    `the rc.25 to rc.30 intake regression must reject a forged ${label}`,
+  );
+}
+const forgedPythonOnlyWorkflowSources = {
+  ...pythonOnlyStaleSources,
+  workflowResourceSource: `${pythonOnlyStaleSources.workflowResourceSource}\n`,
+};
+assert.throws(
+  () => buildReadyItemPayload(
+    pythonOnlyHandoff,
+    {sdkNeutralityAuthoritySources: forgedPythonOnlyWorkflowSources},
+  ),
+  /trusted SDK-neutrality authority lock must match the Workflow resource SHA-256/,
+  'the rc.25 to rc.30 intake regression must reject forged Workflow resource bytes',
 );
 const requestMatch = /<!-- pipeline-request-b64: ([A-Za-z0-9+/=]+) -->/.exec(multiArtifactPayload.body);
 const filesMatch = /<!-- pipeline-files-b64: ([A-Za-z0-9+/=]+) -->/.exec(multiArtifactPayload.body);
@@ -1940,6 +2025,7 @@ async function assertDeferredPullIntakePath() {
           GITHUB_STEP_SUMMARY: summaryPath,
           GITHUB_OUTPUT: outputPath,
         },
+        sdkNeutralityAuthoritySources: currentSdkNeutralityAuthoritySources,
         log: () => {},
         postCallback: async () => {
           callbackAttempted = true;
@@ -2010,7 +2096,11 @@ async function assertAuthenticatedPushCallbackPath() {
     multiArtifactHandoff,
     configuration,
     artifact,
-    {now: 1_786_233_600_000, nonceBytes},
+    {
+      now: 1_786_233_600_000,
+      nonceBytes,
+      sdkNeutralityAuthoritySources: currentSdkNeutralityAuthoritySources,
+    },
   );
   const signedBody = JSON.parse(signed.body);
   const signatureInput = [
@@ -2055,7 +2145,11 @@ async function assertAuthenticatedPushCallbackPath() {
     multiArtifactHandoff,
     configuration,
     artifact,
-    {now: 1_786_233_600_000, nonceBytes: Buffer.alloc(32, 0x32)},
+    {
+      now: 1_786_233_600_000,
+      nonceBytes: Buffer.alloc(32, 0x32),
+      sdkNeutralityAuthoritySources: currentSdkNeutralityAuthoritySources,
+    },
   );
   assert.strictEqual(
     secondSigned.deliveryId,
@@ -2074,6 +2168,7 @@ async function assertAuthenticatedPushCallbackPath() {
     log: () => {},
     now: 1_786_233_600_000,
     nonceBytes,
+    sdkNeutralityAuthoritySources: currentSdkNeutralityAuthoritySources,
     postCallback: async request => {
       capturedRequest = request;
       return {
@@ -2097,6 +2192,7 @@ async function assertAuthenticatedPushCallbackPath() {
       environment,
       log: () => {},
       nonceBytes,
+      sdkNeutralityAuthoritySources: currentSdkNeutralityAuthoritySources,
       postCallback: async () => ({status: 'accepted'}),
     }),
     /acknowledgement must bind/,

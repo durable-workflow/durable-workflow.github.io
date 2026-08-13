@@ -6,7 +6,10 @@ const https = require('https');
 const path = require('path');
 const publicProtocolCatalog = require('../static/platform-protocol-specs.json');
 const {buildPythonPackageAuthority} = require('./public-artifact-versions');
-const {sdkNeutralityContractSource} = require('./refresh-public-artifact-versions');
+const {
+  sdkNeutralityContractSource,
+  workflowAuthorityLockSource,
+} = require('./refresh-public-artifact-versions');
 
 const HANDOFF_SCHEMA = 'durable-workflow.docs.public-artifact-tuple-handoff';
 const CALLBACK_SCHEMA = 'durable-workflow.docs.public-artifact-tuple-callback';
@@ -403,10 +406,6 @@ function defaultSdkNeutralityAuthoritySources() {
   }
 
   return {
-    contractSource: fs.readFileSync(
-      path.join(repoRoot, SDK_NEUTRALITY_CONTRACT_PATH),
-      'utf8',
-    ),
     lockSource: fs.readFileSync(
       path.join(repoRoot, SDK_NEUTRALITY_LOCK_PATH),
       'utf8',
@@ -638,6 +637,72 @@ function validateSdkNeutralityAuthorityIdentityShape(authority, workflowVersion)
   }
 }
 
+function trustedSdkNeutralityWorkflowSourceCommit(
+  workflowVersion,
+  lockSource,
+  workflowResourceSource,
+) {
+  if (typeof lockSource !== 'string') {
+    throw new Error(
+      `trusted ${SDK_NEUTRALITY_LOCK_PATH} source must be a string`,
+    );
+  }
+  if (typeof workflowResourceSource !== 'string') {
+    throw new Error(
+      'SDK-neutrality handoff verification requires the pinned Workflow resource bytes',
+    );
+  }
+
+  const lock = parseJsonSource(
+    lockSource,
+    `trusted ${SDK_NEUTRALITY_LOCK_PATH}`,
+  );
+  if (
+    lock?.schema !== SDK_NEUTRALITY_LOCK_SCHEMA
+    || lock.schema_version !== 3
+  ) {
+    throw new Error(
+      `trusted ${SDK_NEUTRALITY_LOCK_PATH} must be a version 3 authority lock`,
+    );
+  }
+  if (lock.workflow_ref !== workflowVersion) {
+    throw new Error(
+      'trusted SDK-neutrality authority lock must match the qualified Workflow version',
+    );
+  }
+  if (
+    typeof lock.workflow_source_commit !== 'string'
+    || !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(
+      lock.workflow_source_commit,
+    )
+  ) {
+    throw new Error(
+      'trusted SDK-neutrality authority lock must include a full Workflow source commit',
+    );
+  }
+  if (lock.workflow_resource_path !== 'resources/sdk-neutrality-contract.json') {
+    throw new Error(
+      'trusted SDK-neutrality authority lock must identify the Workflow resource',
+    );
+  }
+  if (lock.docs_projection_path !== SDK_NEUTRALITY_CONTRACT_PATH) {
+    throw new Error(
+      'trusted SDK-neutrality authority lock must identify the docs projection',
+    );
+  }
+  if (
+    typeof lock.workflow_resource_sha256 !== 'string'
+    || !/^[0-9a-f]{64}$/.test(lock.workflow_resource_sha256)
+    || lock.workflow_resource_sha256 !== sha256(workflowResourceSource)
+  ) {
+    throw new Error(
+      'trusted SDK-neutrality authority lock must match the Workflow resource SHA-256',
+    );
+  }
+
+  return lock.workflow_source_commit;
+}
+
 function validateSdkNeutralityAuthorityIdentity(
   authority,
   workflowVersion,
@@ -646,10 +711,25 @@ function validateSdkNeutralityAuthorityIdentity(
 ) {
   validateSdkNeutralityAuthorityIdentityShape(authority, workflowVersion);
 
+  const workflowSourceCommit = trustedSdkNeutralityWorkflowSourceCommit(
+    workflowVersion,
+    sources.lockSource,
+    sources.workflowResourceSource,
+  );
+  const projectedContractSource = sdkNeutralityContractSource(
+    sources.workflowResourceSource,
+    publishedArtifactVersions,
+  );
+  const projectedLockSource = workflowAuthorityLockSource(
+    workflowVersion,
+    sources.workflowResourceSource,
+    workflowSourceCommit,
+    publishedArtifactVersions,
+  );
   const expected = buildSdkNeutralityAuthorityIdentity(
     workflowVersion,
-    sources.contractSource,
-    sources.lockSource,
+    projectedContractSource,
+    projectedLockSource,
     publishedArtifactVersions,
     sources.workflowResourceSource,
   );
@@ -1159,7 +1239,7 @@ function callbackArtifactIdentity(environment = process.env) {
 }
 
 function createSignedCallback(handoff, configuration, artifact, options = {}) {
-  validateHandoff(handoff);
+  validateHandoff(handoff, options);
 
   const issuedAt = Math.floor((options.now || Date.now()) / 1000);
   const nonceBytes = options.nonceBytes || crypto.randomBytes(32);
@@ -1293,7 +1373,7 @@ function appendWorkflowOutputs(environment, mode, deliveryId) {
 async function publishHandoff(handoff, options = {}) {
   const environment = options.environment || process.env;
   const log = options.log || console.log;
-  const payload = buildReadyItemPayload(handoff);
+  const payload = buildReadyItemPayload(handoff, options);
   const configuration = callbackConfiguration(environment);
 
   if (configuration === null) {
