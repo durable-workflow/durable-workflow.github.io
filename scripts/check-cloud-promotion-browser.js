@@ -8,6 +8,7 @@ const {
   CLOUD_EARLY_ACCESS_URL,
   PROMOTION_EVENTS,
   PROMOTION_EVENT_URL,
+  PROMOTION_QUALIFICATION_EVENT,
   PROMOTION_PAYLOAD_FIELDS,
   PROMOTION_PLACEMENTS,
   PUBLIC_DOCS_ORIGIN,
@@ -260,14 +261,71 @@ function payloadForRequest(request) {
   }
 }
 
-async function waitForEvent(records, event) {
+function installPromotionTransport({
+  customerEvents,
+  eventUrl,
+  liveMode,
+  qualificationEvent,
+}) {
+  const nativeFetch = window.fetch.bind(window);
+  window.__cloudPromotionTransport = [];
+  window.fetch = (input, init = {}) => {
+    const requestUrl = typeof input === 'string' ? input : input?.url;
+    if (requestUrl !== eventUrl) return nativeFetch(input, init);
+
+    let applicationPayload = null;
+    try {
+      applicationPayload = JSON.parse(init.body || '');
+    } catch {
+      // The request contract assertion reports an invalid payload below.
+    }
+    const emittedPayload = liveMode && customerEvents.includes(applicationPayload?.event)
+      ? {...applicationPayload, event: qualificationEvent}
+      : applicationPayload;
+    window.__cloudPromotionTransport.push({
+      application_event: applicationPayload?.event || null,
+      credentials: init.credentials || null,
+      emitted_event: emittedPayload?.event || null,
+      keepalive: init.keepalive === true,
+      mode: init.mode || null,
+      referrer_policy: init.referrerPolicy || null,
+      source: emittedPayload?.source || null,
+    });
+
+    return nativeFetch(input, emittedPayload === applicationPayload ? init : {
+      ...init,
+      body: JSON.stringify(emittedPayload),
+    });
+  };
+}
+
+function emittedEventsForMode(liveMode) {
+  return liveMode
+    ? PROMOTION_EVENTS.map(() => PROMOTION_QUALIFICATION_EVENT)
+    : [...PROMOTION_EVENTS];
+}
+
+function transportEvidenceForMode(source, liveMode) {
+  return PROMOTION_EVENTS.map((event, index) => ({
+    application_event: event,
+    credentials: 'omit',
+    emitted_event: emittedEventsForMode(liveMode)[index],
+    keepalive: true,
+    mode: 'cors',
+    referrer_policy: 'no-referrer',
+    source,
+  }));
+}
+
+async function waitForEventCount(records, event, expectedCount) {
   const deadline = Date.now() + EVENT_TIMEOUT_MS;
   while (Date.now() < deadline) {
     const matches = records.filter(record => record.payload?.event === event);
-    if (matches.some(record => record.finished || record.failure !== null)) return;
+    const settled = matches.filter(record => record.finished || record.failure !== null);
+    if (settled.length >= expectedCount) return;
     await new Promise(resolve => setTimeout(resolve, 50));
   }
-  assert.fail(`timed out waiting for ${event} promotion event`);
+  assert.fail(`timed out waiting for ${expectedCount} ${event} promotion event(s)`);
 }
 
 async function settle(page) {
@@ -279,7 +337,9 @@ async function settle(page) {
 }
 
 async function validateEvent(record, expectedOrigin, source, event) {
+  assert.ok(record, `${source} ${event} request is missing`);
   const headers = await record.request.allHeaders();
+  const responseHeaders = record.response ? await record.response.allHeaders() : {};
   const url = new URL(record.request.url());
   const payload = record.payload;
 
@@ -298,9 +358,25 @@ async function validateEvent(record, expectedOrigin, source, event) {
   assert.equal(headers.authorization, undefined, `${source} ${event} must omit authorization`);
   assert.equal(headers.cookie, undefined, `${source} ${event} must omit cookies`);
   assert.equal(headers.referer, undefined, `${source} ${event} must omit Referer`);
-  assert.ok(
-    headers.origin === undefined || headers.origin === expectedOrigin,
-    `${source} ${event} must not send an unrelated Origin`,
+  assert.equal(
+    headers.origin,
+    expectedOrigin,
+    `${source} ${event} must send the allowlisted docs Origin`,
+  );
+  assert.equal(
+    responseHeaders['access-control-allow-origin'],
+    expectedOrigin,
+    `${source} ${event} must receive the matching CORS origin`,
+  );
+  assert.match(
+    responseHeaders['cache-control'] || '',
+    /(?:^|,)\s*no-store\s*(?:,|$)/i,
+    `${source} ${event} response must not be stored`,
+  );
+  assert.equal(
+    responseHeaders['set-cookie'],
+    undefined,
+    `${source} ${event} response must omit cookies`,
   );
   assert.deepEqual(Object.keys(payload || {}).sort(), [...PROMOTION_PAYLOAD_FIELDS]);
   assert.deepEqual(payload, {source, event});
@@ -312,6 +388,9 @@ async function validateEvent(record, expectedOrigin, source, event) {
     content_type: headers['content-type'],
     credentials_omitted: headers.authorization === undefined && headers.cookie === undefined,
     origin_header: headers.origin || null,
+    cors_allow_origin: responseHeaders['access-control-allow-origin'] || null,
+    response_cookie_omitted: responseHeaders['set-cookie'] === undefined,
+    response_cache_control: responseHeaders['cache-control'] || null,
     payload,
     query: url.search,
     referrer_omitted: headers.referer === undefined,
@@ -327,27 +406,12 @@ async function exercisePlacement(browser, baseUrl, placement, candidate) {
     reducedMotion: 'reduce',
     serviceWorkers: 'block',
   });
-  await context.addInitScript(({eventUrl}) => {
-    const nativeFetch = window.fetch.bind(window);
-    window.__cloudPromotionTransport = [];
-    window.fetch = (input, init = {}) => {
-      const requestUrl = typeof input === 'string' ? input : input?.url;
-      if (requestUrl === eventUrl) {
-        let payload = null;
-        try {
-          payload = JSON.parse(init.body || '');
-        } catch {
-          // The request contract assertion reports an invalid payload below.
-        }
-        window.__cloudPromotionTransport.push({
-          event: payload?.event || null,
-          source: payload?.source || null,
-          keepalive: init.keepalive === true,
-        });
-      }
-      return nativeFetch(input, init);
-    };
-  }, {eventUrl: PROMOTION_EVENT_URL});
+  await context.addInitScript(installPromotionTransport, {
+    customerEvents: PROMOTION_EVENTS,
+    eventUrl: PROMOTION_EVENT_URL,
+    liveMode: LIVE_MODE,
+    qualificationEvent: PROMOTION_QUALIFICATION_EVENT,
+  });
   const page = await context.newPage();
   const records = [];
   const consoleErrors = [];
@@ -375,6 +439,10 @@ async function exercisePlacement(browser, baseUrl, placement, candidate) {
       request_finished: record.finished,
       failure: record.failure,
     })),
+    evidence_class: LIVE_MODE
+      ? 'non-aggregating-live-qualification'
+      : 'customer-promotion-events',
+    customer_aggregate_eligible: !LIVE_MODE,
     client_transport: transportEvidence || [],
     candidate_bundle: {
       expected_path: candidatePlacement.bundle.path,
@@ -403,6 +471,7 @@ async function exercisePlacement(browser, baseUrl, placement, candidate) {
           request,
           payload: payloadForRequest(request),
           status: 204,
+          response: null,
           finished: false,
           failure: null,
         };
@@ -440,6 +509,7 @@ async function exercisePlacement(browser, baseUrl, placement, candidate) {
           request,
           payload: payloadForRequest(request),
           status: null,
+          response: null,
           finished: false,
           failure: null,
         });
@@ -459,7 +529,10 @@ async function exercisePlacement(browser, baseUrl, placement, candidate) {
         httpErrors.push({status: response.status(), url: response.url()});
       }
       const record = records.find(candidate => candidate.request === response.request());
-      if (record) record.status = response.status();
+      if (record) {
+        record.response = response;
+        record.status = response.status();
+      }
     });
     context.on('requestfinished', request => {
       const record = records.find(candidate => candidate.request === request);
@@ -499,11 +572,12 @@ async function exercisePlacement(browser, baseUrl, placement, candidate) {
 
     await promotion.scrollIntoViewIfNeeded();
     await settle(page);
-    await waitForEvent(records, 'impression');
+    const expectedEvents = emittedEventsForMode(LIVE_MODE);
+    await waitForEventCount(records, expectedEvents[0], 1);
     assert.equal(
-      records.filter(record => record.payload?.event === 'impression').length,
+      records.filter(record => record.payload?.event === expectedEvents[0]).length,
       1,
-      `${placement.source} must record one impression`,
+      `${placement.source} must record one ${expectedEvents[0]} after the impression trigger`,
     );
 
     const destinationResponsePromise = context.waitForEvent('response', response => (
@@ -528,19 +602,29 @@ async function exercisePlacement(browser, baseUrl, placement, candidate) {
     );
     await destinationPage.waitForLoadState('networkidle');
     assert.ok(destinationPage.url().startsWith(CLOUD_EARLY_ACCESS_URL));
-    await waitForEvent(records, 'click');
+    const finalExpectedEventCount = expectedEvents.filter(
+      event => event === expectedEvents[1],
+    ).length;
+    await waitForEventCount(records, expectedEvents[1], finalExpectedEventCount);
     assert.equal(
-      records.filter(record => record.payload?.event === 'click').length,
-      1,
-      `${placement.source} must record one click`,
+      records.filter(record => record.payload?.event === expectedEvents[1]).length,
+      finalExpectedEventCount,
+      `${placement.source} must record the expected event after the click trigger`,
     );
     await page.waitForTimeout(200);
 
     transportEvidence = await page.evaluate(() => window.__cloudPromotionTransport || []);
     assert.deepEqual(
       transportEvidence,
-      PROMOTION_EVENTS.map(event => ({event, source: placement.source, keepalive: true})),
+      transportEvidenceForMode(placement.source, LIVE_MODE),
       `${placement.source} must preserve navigation-safe promotion fetches`,
+    );
+    assert.deepEqual(
+      records.map(record => record.payload?.event),
+      expectedEvents,
+      LIVE_MODE
+        ? `${placement.source} live qualification must not emit customer events`
+        : `${placement.source} local qualification must emit impression and click`,
     );
 
     assert.deepEqual(consoleErrors, [], `${placement.source} emitted console errors`);
@@ -549,9 +633,13 @@ async function exercisePlacement(browser, baseUrl, placement, candidate) {
     assert.deepEqual(requestFailures, [], `${placement.source} had failed requests`);
 
     eventEvidence = [];
-    for (const event of PROMOTION_EVENTS) {
-      const record = records.find(candidate => candidate.payload?.event === event);
-      eventEvidence.push(await validateEvent(record, expectedOrigin, placement.source, event));
+    for (const [index, event] of expectedEvents.entries()) {
+      eventEvidence.push(await validateEvent(
+        records[index],
+        expectedOrigin,
+        placement.source,
+        event,
+      ));
     }
 
     return placementEvidence();
@@ -567,8 +655,14 @@ async function main() {
   fs.mkdirSync(OUTPUT_DIRECTORY, {recursive: true});
   const reportPath = path.join(OUTPUT_DIRECTORY, 'report.json');
   const report = {
-    schema: 'durable-workflow.docs.cloud-promotion-browser-evidence/v1',
-    mode: LIVE_MODE ? 'live' : 'local-receiver',
+    schema: 'durable-workflow.docs.cloud-promotion-browser-evidence/v2',
+    mode: LIVE_MODE ? 'live-qualification' : 'local-customer-events',
+    evidence_class: LIVE_MODE
+      ? 'non-aggregating-live-qualification'
+      : 'customer-promotion-events',
+    customer_aggregate_eligible: !LIVE_MODE,
+    expected_emitted_events: emittedEventsForMode(LIVE_MODE),
+    source_allowlist: PROMOTION_PLACEMENTS.map(placement => placement.source),
     generated_at: new Date().toISOString(),
     docs_origin: null,
     event_path: PROMOTION_EVENT_URL,
@@ -649,7 +743,7 @@ async function main() {
   if (failure) throw failure;
   process.stdout.write(
     `Validated ${report.placements.length} Cloud promotion placements with successful ` +
-      `impression and click events.\n`,
+      `${LIVE_MODE ? 'non-aggregating qualification' : 'impression and click'} events.\n`,
   );
 }
 
@@ -661,7 +755,10 @@ if (require.main === module) {
 }
 
 module.exports = {
+  emittedEventsForMode,
+  installPromotionTransport,
   observeCandidate,
   promotionCandidate,
   scriptAssetPaths,
+  transportEvidenceForMode,
 };

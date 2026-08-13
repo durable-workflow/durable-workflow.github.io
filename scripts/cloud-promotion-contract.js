@@ -2,6 +2,7 @@ const PUBLIC_DOCS_ORIGIN = 'https://durable-workflow.com';
 const CLOUD_EARLY_ACCESS_URL = 'https://cloud.durable-workflow.com/early-access';
 const PROMOTION_EVENT_URL = `${CLOUD_EARLY_ACCESS_URL}/promotion-events`;
 const PROMOTION_EVENTS = Object.freeze(['impression', 'click']);
+const PROMOTION_QUALIFICATION_EVENT = 'qualification';
 const PROMOTION_PAYLOAD_FIELDS = Object.freeze(['event', 'source']);
 const PROMOTION_PLACEMENTS = Object.freeze([
   Object.freeze({
@@ -40,6 +41,7 @@ module.exports = {
   CLOUD_EARLY_ACCESS_URL,
   PROMOTION_EVENTS,
   PROMOTION_EVENT_URL,
+  PROMOTION_QUALIFICATION_EVENT,
   PROMOTION_PAYLOAD_FIELDS,
   PROMOTION_PLACEMENTS,
   PUBLIC_DOCS_ORIGIN,
