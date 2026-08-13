@@ -169,8 +169,8 @@ $worker->registerActivity(
 
 $worker->registerWorkflow(
     'quickstart.greeter',
-    static function (WorkflowContext $context, string $name): Generator {
-        $greeting = yield $context->activity('quickstart.greet', [$name]);
+    static function (WorkflowContext $context, string $name): array {
+        $greeting = $context->activity('quickstart.greet', [$name]);
 
         return ['greeting' => $greeting, 'language' => 'php'];
     },

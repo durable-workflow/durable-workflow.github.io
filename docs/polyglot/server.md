@@ -981,8 +981,8 @@ $client = new Client(
 $worker = new Worker($client, taskQueue: 'polyglot-php');
 $worker->registerWorkflow(
     'invoice',
-    static function (WorkflowContext $context, string $invoiceId): Generator {
-        yield $context->activity('charge-card', [$invoiceId]);
+    static function (WorkflowContext $context, string $invoiceId): array {
+        $context->activity('charge-card', [$invoiceId]);
 
         return ['invoice_id' => $invoiceId, 'status' => 'paid'];
     },

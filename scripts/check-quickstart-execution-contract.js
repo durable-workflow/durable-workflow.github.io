@@ -16,6 +16,7 @@ const {
 const repoRoot = path.join(__dirname, '..');
 const contractPath = path.join(repoRoot, 'static', 'quickstart-execution-contract.json');
 const quickstartPath = path.join(repoRoot, 'docs', 'quickstart.md');
+const serverGuidePath = path.join(repoRoot, 'docs', 'polyglot', 'server.md');
 const configPath = path.join(repoRoot, 'docusaurus.config.js');
 const EXPECTED_SCHEMA = 'durable-workflow.docs.v2.quickstart-execution-contract';
 
@@ -77,6 +78,18 @@ function assertStringArrayEqual(actual, expected, label) {
     actual.some((value, index) => value !== expected[index])
   ) {
     fail(`${label} must be ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+  }
+}
+
+function assertPhpFiberWorkflowContract(source, label) {
+  const generatorReturnType = /(?<![A-Za-z0-9_])Generator\b/;
+  const yieldedContextOperation = /\byield(?:\s+from)?\s+\$[A-Za-z_][A-Za-z0-9_]*->/;
+
+  if (generatorReturnType.test(source)) {
+    fail(`${label} must use ordinary Fiber workflow return values`);
+  }
+  if (yieldedContextOperation.test(source)) {
+    fail(`${label} must call WorkflowContext operations directly`);
   }
 }
 
@@ -698,7 +711,15 @@ function assertRustCloudContract(contract) {
 function main() {
   const contract = loadJson(contractPath, 'static/quickstart-execution-contract.json');
   const quickstart = read(quickstartPath);
+  const serverGuide = read(serverGuidePath);
   const renderedQuickstart = replaceArtifactTokens(quickstart, 'docs/quickstart.md');
+
+  assertPhpFiberWorkflowContract(quickstart, 'docs/quickstart.md PHP service-mode example');
+  assertPhpFiberWorkflowContract(serverGuide, 'docs/polyglot/server.md PHP service-mode example');
+  assertPhpFiberWorkflowContract(
+    JSON.stringify(contract),
+    'static/quickstart-execution-contract.json PHP service-mode commands',
+  );
 
   assertEqual(contract.schema, EXPECTED_SCHEMA, 'quickstart execution contract schema');
   assertEqual(contract.version, 5, 'quickstart execution contract version');
