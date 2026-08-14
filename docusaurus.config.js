@@ -91,6 +91,12 @@ const config = {
           editUrl:
             'https://github.com/durable-workflow/durable-workflow.github.io/edit/main/',
         },
+        sitemap: {
+          // Docusaurus derives this from each route's source commit. The
+          // post-build discovery patch adds the same signal to generated
+          // artifacts and accounts for structured rendering dependencies.
+          lastmod: 'date',
+        },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
         },

@@ -224,6 +224,20 @@ function assertProtectedDeploySource(source) {
   }
 
   const steps = deployJob.steps || [];
+  const sourceCheckout = steps.find(
+    step => step.uses ===
+      'actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803',
+  );
+  if (
+    !sourceCheckout ||
+    sourceCheckout.with?.['fetch-depth'] !== 0 ||
+    sourceCheckout.with?.['persist-credentials'] !== false
+  ) {
+    fail(
+      'docs deploy workflow must check out complete source history without persisted credentials ' +
+        'so sitemap modification dates remain source-derived',
+    );
+  }
   const installIndex = steps.findIndex(step => step.run === 'npm ci');
   const setupHelmIndex = steps.findIndex(
     step => step.uses ===
@@ -421,6 +435,7 @@ function assertProtectedDeploySource(source) {
     'Install Cloud promotion browser',
     'Deploy to GitHub Pages',
     'Verify live docs release audit',
+    'Verify live sitemap freshness',
     'Verify live workflow lifecycle authority',
     'Verify live Cloud promotion browser transport',
     'Set up clean Helm install cluster',

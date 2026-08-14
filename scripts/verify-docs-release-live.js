@@ -340,9 +340,11 @@ module.exports = {
   assertLiveQuickstartPage,
   assertReleaseAuditAuthority,
   cratesIoExactVersionUrl,
+  fetchBody,
   qualifiedPackageUrls,
   verifyQualifiedPackageLinkReachability,
   verifyQualifiedPackagePublication,
   verifyLiveQuickstart,
   verifyLiveArtifacts,
+  wait,
 };

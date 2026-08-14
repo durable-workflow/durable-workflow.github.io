@@ -2,10 +2,13 @@ const fs = require('fs');
 const path = require('path');
 const { replaceArtifactTokens } = require('./public-artifact-versions');
 const {
+  isLlmDocFile,
+  shouldExcludeFromLlm,
+} = require('./llms-source-inventory');
+const {
   expandPlatformProtocolCatalog,
 } = require('./render-platform-protocol-catalog');
 
-const DOC_EXTS = new Set(['.md', '.mdx']);
 const V2_PRERELEASE_NOTICE =
   'Durable Workflow 2.0 is prerelease guidance and is not the default public docs line. Use the canonical stable 1.x bundle unless you are intentionally evaluating 2.0.';
 
@@ -14,7 +17,7 @@ function ensureDir(dir) {
 }
 
 function isDocFile(p) {
-  return DOC_EXTS.has(path.extname(p));
+  return isLlmDocFile(p);
 }
 
 function getRepoRelativePath(filePath) {
@@ -22,8 +25,7 @@ function getRepoRelativePath(filePath) {
 }
 
 function shouldExclude(filePath) {
-  const basename = path.basename(filePath);
-  return ['sponsors.md', 'support.md'].includes(basename);
+  return shouldExcludeFromLlm(filePath);
 }
 
 function extractFrontmatterAndContent(filePath) {

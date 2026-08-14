@@ -3,9 +3,11 @@ const path = require('path');
 
 const config = require('../docusaurus.config.js');
 const { replaceArtifactTokens } = require('./public-artifact-versions');
+const {
+  isLlmDocFile,
+  shouldExcludeFromLlm,
+} = require('./llms-source-inventory');
 
-const DOC_EXTS = new Set(['.md', '.mdx']);
-const EXCLUDED_FILES = new Set(['sponsors.md', 'support.md']);
 const FALLBACK_BRANCH = 'main';
 const V2_PRERELEASE_NOTICE =
   'Durable Workflow 2.0 is prerelease guidance and is not the default public docs line. Use the canonical stable 1.x bundle unless you are intentionally evaluating 2.0.';
@@ -17,11 +19,11 @@ function ensureDir(dir) {
 }
 
 function isDocFile(filePath) {
-  return DOC_EXTS.has(path.extname(filePath));
+  return isLlmDocFile(filePath);
 }
 
 function shouldExclude(filePath) {
-  return EXCLUDED_FILES.has(path.basename(filePath));
+  return shouldExcludeFromLlm(filePath);
 }
 
 function extractFrontmatterAndContent(filePath) {
