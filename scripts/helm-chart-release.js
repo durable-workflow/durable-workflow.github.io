@@ -10,6 +10,12 @@ const yaml = require('js-yaml');
 
 const REPO_ROOT = path.join(__dirname, '..');
 const CONTRACT_PATH = path.join(REPO_ROOT, 'static', 'charts', 'release.json');
+const RECOVERY_SOURCES_PATH = path.join(
+  REPO_ROOT,
+  'static',
+  'charts',
+  'recovery-sources.json',
+);
 const DEFAULT_BUILD_DIRECTORY = path.join(REPO_ROOT, 'build');
 const DEFAULT_PREDEPLOY_EVIDENCE_PATH = path.join(
   REPO_ROOT,
@@ -31,6 +37,12 @@ const DIGEST_PATTERN = /^sha256:[0-9a-f]{64}$/;
 
 function releaseContract() {
   return JSON.parse(fs.readFileSync(CONTRACT_PATH, 'utf8'));
+}
+
+function recoveryReleaseSources() {
+  return validateRecoveryReleaseSources(
+    JSON.parse(fs.readFileSync(RECOVERY_SOURCES_PATH, 'utf8')),
+  );
 }
 
 function validateContract(contract) {
@@ -69,6 +81,33 @@ function validateContract(contract) {
     'documented HTTPS package URL',
   );
   return contract;
+}
+
+function validateRecoveryReleaseSources(sourceSet) {
+  assert.strictEqual(
+    sourceSet?.schema,
+    'durable-workflow-helm-recovery-sources/v1',
+    'Helm recovery source schema',
+  );
+  assert(
+    Array.isArray(sourceSet?.releases),
+    'Helm recovery sources must contain a releases array',
+  );
+  const versions = new Set();
+  for (const release of sourceSet.releases) {
+    assert.match(
+      release?.source_revision || '',
+      /^[0-9a-f]{40}$/,
+      'Helm recovery source revision',
+    );
+    const contract = validateContract(release?.contract);
+    assert(
+      !versions.has(contract.chart.version),
+      `Helm recovery source ${contract.chart.version} must be unique`,
+    );
+    versions.add(contract.chart.version);
+  }
+  return sourceSet;
 }
 
 function contractFromServerSource(serverSource) {
@@ -279,6 +318,22 @@ function installCommand(releaseName, reference, version) {
       'my-values.yaml',
     ],
   };
+}
+
+function uninstallRelease(run, environment) {
+  run(
+    'helm',
+    [
+      'uninstall',
+      'durable-workflow',
+      '--namespace',
+      'durable-workflow',
+      '--wait',
+      '--timeout',
+      '5m',
+    ],
+    {env: environment},
+  );
 }
 
 function chartMetadata(packagePath, environment) {
@@ -689,6 +744,13 @@ function prepareCandidateRelease(options = {}) {
   const sourcePackage = path.join(pulledDirectory, packageFilename(contract));
   const metadata = getChartMetadata(sourcePackage, environment);
   assertPackageMetadata(metadata, contract);
+  if (options.sourceRevision) {
+    assert.strictEqual(
+      metadata.annotations[SOURCE_REVISION_ANNOTATION],
+      options.sourceRevision,
+      `packaged chart ${contract.chart.version} recovery source revision`,
+    );
+  }
   run(
     'helm',
     [
@@ -722,6 +784,75 @@ function prepareCandidateRelease(options = {}) {
     sourcePackage,
     temporary,
   };
+}
+
+function selectedRecoveryReleaseSources(options, contract) {
+  const sourceSet = options.recoverySources === undefined
+    ? recoveryReleaseSources()
+    : validateRecoveryReleaseSources(options.recoverySources);
+  const matchingCurrent = sourceSet.releases.find(
+    release => release.contract.chart.version === contract.chart.version,
+  );
+  if (matchingCurrent) {
+    assert.deepStrictEqual(
+      matchingCurrent.contract,
+      contract,
+      `current Helm chart ${contract.chart.version} must match its recovery source`,
+    );
+  }
+  return {
+    currentSourceRevision: matchingCurrent?.source_revision,
+    pending: sourceSet.releases.filter(
+      release => release.contract.chart.version !== contract.chart.version,
+    ),
+  };
+}
+
+function mergeGuardedReleaseHistory(guardedReleases, contract) {
+  const history = emptyReleaseHistory(contract);
+  const packages = new Map();
+  for (const guarded of guardedReleases) {
+    for (const [version, entry] of Object.entries(guarded.history.versions)) {
+      if (history.versions[version]) {
+        assert.deepStrictEqual(
+          history.versions[version],
+          entry,
+          `Helm release ${version} must have one immutable history identity`,
+        );
+      } else {
+        history.versions[version] = entry;
+      }
+    }
+    for (const [version, packageBody] of guarded.historicalPackages) {
+      if (packages.has(version)) {
+        assert(
+          packages.get(version).equals(packageBody),
+          `Helm release ${version} must have one immutable package`,
+        );
+      } else {
+        packages.set(version, packageBody);
+      }
+    }
+    const version = guarded.candidate.contract.chart.version;
+    const packageBody = fs.readFileSync(guarded.candidate.sourcePackage);
+    if (packages.has(version)) {
+      assert(
+        packages.get(version).equals(packageBody),
+        `Helm release ${version} candidate must match its historical package`,
+      );
+    } else {
+      packages.set(version, packageBody);
+    }
+  }
+  const sortedHistory = sortedReleaseHistory(
+    validateReleaseHistory(history, contract),
+  );
+  assert.deepStrictEqual(
+    [...packages.keys()].sort(),
+    Object.keys(sortedHistory.versions).sort(),
+    'every Helm release history identity must have staged package bytes',
+  );
+  return {history: sortedHistory, packages};
 }
 
 function captureContractMismatch(mismatches, field, assertion) {
@@ -1171,20 +1302,61 @@ async function guardChartVersionImmutability(options = {}) {
 }
 
 async function stageRelease(options = {}) {
-  const guarded = await guardChartVersionImmutability(options);
-  const {
+  const contract = validateContract(options.contract || releaseContract());
+  const recovery = selectedRecoveryReleaseSources(options, contract);
+  const evidencePath =
+    options.evidencePath ||
+    process.env.HELM_PREDEPLOY_IMMUTABILITY_EVIDENCE ||
+    DEFAULT_PREDEPLOY_EVIDENCE_PATH;
+  const recovered = [];
+  for (const source of recovery.pending) {
+    const candidate = prepareCandidateRelease({
+      ...options,
+      candidate: undefined,
+      contract: source.contract,
+      sourceRevision: source.source_revision,
+    });
+    const guarded = await guardChartVersionImmutability({
+      ...options,
+      candidate,
+      contract: source.contract,
+      evidencePath,
+    });
+    recovered.push({guarded, source});
+  }
+  const currentCandidate = options.candidate || prepareCandidateRelease({
+    ...options,
     contract,
+    sourceRevision: recovery.currentSourceRevision,
+  });
+  if (recovery.currentSourceRevision) {
+    assert.strictEqual(
+      currentCandidate.metadata.annotations[SOURCE_REVISION_ANNOTATION],
+      recovery.currentSourceRevision,
+      `packaged chart ${contract.chart.version} recovery source revision`,
+    );
+  }
+  const guarded = await guardChartVersionImmutability({
+    ...options,
+    candidate: currentCandidate,
+    contract,
+    evidencePath,
+  });
+  const combined = mergeGuardedReleaseHistory(
+    [...recovered.map(({guarded: recoveryGuard}) => recoveryGuard), guarded],
+    contract,
+  );
+  const {
     environment,
     imageDigest,
     metadata,
     packageDigest,
     run,
-    sourcePackage,
   } = guarded.candidate;
   const buildDirectory = options.buildDirectory || DEFAULT_BUILD_DIRECTORY;
   const chartsDirectory = path.join(buildDirectory, 'charts');
   fs.mkdirSync(chartsDirectory, {recursive: true});
-  for (const [version, packageBody] of guarded.historicalPackages) {
+  for (const [version, packageBody] of combined.packages) {
     fs.writeFileSync(
       path.join(
         chartsDirectory,
@@ -1193,8 +1365,6 @@ async function stageRelease(options = {}) {
       packageBody,
     );
   }
-  const destinationPackage = path.join(chartsDirectory, packageFilename(contract));
-  fs.copyFileSync(sourcePackage, destinationPackage);
 
   run(
     'helm',
@@ -1209,7 +1379,7 @@ async function stageRelease(options = {}) {
   );
   assertHistoryIndex(
     yaml.load(fs.readFileSync(path.join(chartsDirectory, 'index.yaml'), 'utf8')),
-    guarded.history,
+    combined.history,
   );
   fs.writeFileSync(
     path.join(chartsDirectory, 'provenance.json'),
@@ -1221,18 +1391,33 @@ async function stageRelease(options = {}) {
   );
   fs.writeFileSync(
     path.join(chartsDirectory, RELEASE_HISTORY_FILENAME),
-    `${JSON.stringify(guarded.history, null, 2)}\n`,
+    `${JSON.stringify(combined.history, null, 2)}\n`,
   );
+  const evidence = {
+    ...guarded.evidence,
+    live: {
+      ...guarded.evidence.live,
+      historical_versions: Object.keys(combined.history.versions),
+    },
+    recovery_sources: recovered.map(({guarded: recoveryGuard, source}) => ({
+      outcome: recoveryGuard.evidence.outcome,
+      source_revision: source.source_revision,
+      oci_repository: source.contract.channels.oci.repository,
+      identity: recoveryGuard.evidence.candidate,
+    })),
+  };
+  writePredeployEvidence(evidence, evidencePath);
   console.log(
-    `Staged ${Object.keys(guarded.history.versions).length} immutable Helm ` +
-      `release(s), including ${contract.chart.version} from anonymous OCI ` +
+    `Staged ${Object.keys(combined.history.versions).length} immutable Helm ` +
+      `release(s), including current ${contract.chart.version} from anonymous OCI ` +
       `package ${packageDigest}, for the HTTPS repository.`,
   );
-  return guarded.evidence;
+  return evidence;
 }
 
 async function verifyLiveRelease(options = {}) {
   const contract = validateContract(options.contract || releaseContract());
+  const recovery = selectedRecoveryReleaseSources(options, contract);
   const run = options.execute || execute;
   const getJson = options.fetchJson || fetchJson;
   const getResource = options.fetchResource || fetchResource;
@@ -1292,19 +1477,7 @@ async function verifyLiveRelease(options = {}) {
     cwd: ociClient.cwd,
     env: ociEnvironment,
   });
-  run(
-    'helm',
-    [
-      'uninstall',
-      'durable-workflow',
-      '--namespace',
-      'durable-workflow',
-      '--wait',
-      '--timeout',
-      '5m',
-    ],
-    {env: ociEnvironment},
-  );
+  uninstallRelease(run, ociEnvironment);
   const httpsInstallCommand = installCommand(
     'durable-workflow',
     `durable-workflow/${contract.chart.name}`,
@@ -1314,6 +1487,68 @@ async function verifyLiveRelease(options = {}) {
     cwd: httpsClient.cwd,
     env: httpsEnvironment,
   });
+
+  const recoveryInstallEvidence = [];
+  if (recovery.pending.length > 0) {
+    uninstallRelease(run, httpsEnvironment);
+  }
+  for (const source of recovery.pending) {
+    const version = source.contract.chart.version;
+    const clientName = version.replace(/[^0-9A-Za-z]+/g, '-');
+    const recoveryOciClient = cleanHelmClient(
+      path.join(temporary, `recovery-${clientName}-oci-client`),
+    );
+    const recoveryHttpsClient = cleanHelmClient(
+      path.join(temporary, `recovery-${clientName}-https-client`),
+    );
+    const recoveryOciInstall = installCommand(
+      'durable-workflow',
+      source.contract.channels.oci.repository,
+      version,
+    );
+    run(recoveryOciInstall.command, recoveryOciInstall.arguments, {
+      cwd: recoveryOciClient.cwd,
+      env: recoveryOciClient.environment,
+    });
+    uninstallRelease(run, recoveryOciClient.environment);
+    run(
+      'helm',
+      [
+        'repo',
+        'add',
+        'durable-workflow',
+        source.contract.channels.https.repository,
+      ],
+      {env: recoveryHttpsClient.environment},
+    );
+    run('helm', ['repo', 'update'], {env: recoveryHttpsClient.environment});
+    const recoveryHttpsInstall = installCommand(
+      'durable-workflow',
+      `durable-workflow/${source.contract.chart.name}`,
+      version,
+    );
+    run(recoveryHttpsInstall.command, recoveryHttpsInstall.arguments, {
+      cwd: recoveryHttpsClient.cwd,
+      env: recoveryHttpsClient.environment,
+    });
+    uninstallRelease(run, recoveryHttpsClient.environment);
+    recoveryInstallEvidence.push({
+      chart_version: version,
+      source_revision: source.source_revision,
+      oci_readme_command: [
+        recoveryOciInstall.command,
+        ...recoveryOciInstall.arguments,
+      ].join(' '),
+      https_readme_commands: [
+        `helm repo add durable-workflow ${source.contract.channels.https.repository}`,
+        'helm repo update',
+        [
+          recoveryHttpsInstall.command,
+          ...recoveryHttpsInstall.arguments,
+        ].join(' '),
+      ],
+    });
+  }
 
   const filename = packageFilename(contract);
   const ociPackage = path.join(ociDirectory, filename);
@@ -1328,6 +1563,13 @@ async function verifyLiveRelease(options = {}) {
 
   const metadata = getChartMetadata(ociPackage, ociEnvironment);
   assertPackageMetadata(metadata, contract);
+  if (recovery.currentSourceRevision) {
+    assert.strictEqual(
+      metadata.annotations[SOURCE_REVISION_ANNOTATION],
+      recovery.currentSourceRevision,
+      `live Helm recovery source revision for ${contract.chart.version}`,
+    );
+  }
   const imageDockerConfig = path.join(temporary, 'docker-config');
   fs.mkdirSync(imageDockerConfig, {recursive: true});
   const imageDigest = getImageDigest(contract.image.reference, {
@@ -1356,6 +1598,26 @@ async function verifyLiveRelease(options = {}) {
     ),
     'current OCI, HTTPS, provenance, and durable history identities',
   );
+  for (const source of recovery.pending) {
+    const version = source.contract.chart.version;
+    const entry = history.versions[version];
+    assert(entry, `live Helm history must contain recovery source ${version}`);
+    assert.strictEqual(
+      entry.source_revision,
+      source.source_revision,
+      `live Helm recovery source revision for ${version}`,
+    );
+    assert.strictEqual(
+      entry.app_version,
+      source.contract.chart.app_version,
+      `live Helm recovery appVersion for ${version}`,
+    );
+    assert.strictEqual(
+      entry.image_reference,
+      source.contract.image.reference,
+      `live Helm recovery image reference for ${version}`,
+    );
+  }
 
   const evidence = {
     ...provenance,
@@ -1378,6 +1640,7 @@ async function verifyLiveRelease(options = {}) {
       https_history_index: 'pass',
       https_history_packages_anonymous: 'pass',
       https_history_versions: Object.keys(history.versions),
+      recovery_readme_commands: recoveryInstallEvidence,
     },
   };
   const evidencePath =
@@ -1441,6 +1704,7 @@ module.exports = {
   synchronizeDocumentedInstallCommands,
   synchronizeReleaseContract,
   validateContract,
+  validateRecoveryReleaseSources,
   validateReleaseHistory,
   verifyLiveHttpsReleaseHistory,
   verifyLiveRelease,

@@ -16,12 +16,19 @@ const {
   synchronizeDocumentedInstallCommands,
   synchronizeReleaseContract,
   validateContract,
+  validateRecoveryReleaseSources,
   validateReleaseHistory,
   verifyLiveRelease,
 } = require('./helm-chart-release');
 const contract = require('../static/charts/release.json');
+const recoverySources = require('../static/charts/recovery-sources.json');
+const emptyRecoverySources = {
+  schema: 'durable-workflow-helm-recovery-sources/v1',
+  releases: [],
+};
 
 validateContract(contract);
+validateRecoveryReleaseSources(recoverySources);
 assertDocumentedInstallCommands(
   fs.readFileSync(
     path.join(__dirname, '..', 'docs', 'deployment.md'),
@@ -131,11 +138,10 @@ function assertPinnedServerContractSynchronization() {
     yaml.dump({
       apiVersion: 'v2',
       name: 'durable-workflow',
-      version: '0.1.24',
-      appVersion: '2.0.0-rc.33',
+      version: contract.chart.version,
+      appVersion: contract.chart.app_version,
       annotations: {
-        'dev.durable-workflow.image-reference':
-          'docker.io/durableworkflow/server:2.0.0-rc.33',
+        'dev.durable-workflow.image-reference': contract.image.reference,
       },
     }),
   );
@@ -144,7 +150,7 @@ function assertPinnedServerContractSynchronization() {
     `\`\`\`bash
 helm install durable-workflow \\
   oci://ghcr.io/durable-workflow/charts/durable-workflow \\
-  --version 0.1.24 \\
+  --version ${contract.chart.version} \\
   --namespace durable-workflow --create-namespace \\
   -f my-values.yaml
 \`\`\`\n\n` +
@@ -152,7 +158,7 @@ helm install durable-workflow \\
       'helm repo add durable-workflow https://durable-workflow.github.io/charts/\n' +
       'helm repo update\n' +
       'helm install durable-workflow durable-workflow/durable-workflow \\\n' +
-      '  --version 0.1.24 \\\n' +
+      `  --version ${contract.chart.version} \\\n` +
       '  --namespace durable-workflow --create-namespace \\\n' +
       '  -f my-values.yaml\n' +
       '```\n',
@@ -397,16 +403,36 @@ function stagingFixture(candidate, knownReleases, fetchResource) {
   if (!releasesByBody.has(candidate.packageBody)) {
     releasesByBody.set(candidate.packageBody, candidate);
   }
+  const releasesByVersion = new Map(
+    [...knownReleases, candidate].map(release => [
+      release.contract.chart.version,
+      release,
+    ]),
+  );
+  const releasesByImageReference = new Map(
+    [...knownReleases, candidate].map(release => [
+      release.contract.image.reference,
+      release,
+    ]),
+  );
+  const executed = [];
+  const pulledMetadata = new Map();
   const execute = (command, arguments) => {
+    executed.push({command, arguments});
     if (command === 'helm' && arguments[0] === 'pull') {
+      const version = arguments[arguments.indexOf('--version') + 1];
+      const release = releasesByVersion.get(version);
+      assert(release, `test fixture must identify OCI chart ${version}`);
       const destination = arguments[arguments.indexOf('--destination') + 1];
-      fs.writeFileSync(
-        path.join(
-          destination,
-          `${candidate.contract.chart.name}-${candidate.contract.chart.version}.tgz`,
-        ),
-        candidate.packageBody,
+      const packagePath = path.join(
+        destination,
+        `${release.contract.chart.name}-${release.contract.chart.version}.tgz`,
       );
+      fs.writeFileSync(
+        packagePath,
+        release.packageBody,
+      );
+      pulledMetadata.set(packagePath, release.metadata);
     }
     if (command === 'helm' && arguments[0] === 'repo' && arguments[1] === 'index') {
       const chartsDirectory = arguments[2];
@@ -426,8 +452,8 @@ function stagingFixture(candidate, knownReleases, fetchResource) {
     return '';
   };
   const chartMetadata = packagePath => {
-    if (packagePath.includes(`${path.sep}oci${path.sep}`)) {
-      return candidate.metadata;
+    if (pulledMetadata.has(packagePath)) {
+      return pulledMetadata.get(packagePath);
     }
     const body = fs.readFileSync(packagePath, 'utf8');
     const release = releasesByBody.get(body);
@@ -437,6 +463,7 @@ function stagingFixture(candidate, knownReleases, fetchResource) {
   return {
     buildDirectory,
     evidencePath,
+    executed,
     options: {
       contract: candidate.contract,
       buildDirectory,
@@ -444,7 +471,12 @@ function stagingFixture(candidate, knownReleases, fetchResource) {
       execute,
       fetchResource,
       chartMetadata,
-      resolveImageDigest: () => candidate.imageDigest,
+      recoverySources: emptyRecoverySources,
+      resolveImageDigest: reference => {
+        const release = releasesByImageReference.get(reference);
+        assert(release, `test fixture must identify image ${reference}`);
+        return release.imageDigest;
+      },
     },
   };
 }
@@ -484,6 +516,112 @@ async function assertLegacyReleaseMigrates() {
   const evidence = JSON.parse(fs.readFileSync(fixture.evidencePath, 'utf8'));
   assert.strictEqual(evidence.outcome, 'byte-identical-reuse');
   assert.strictEqual(evidence.live.migrated_legacy_release, true);
+}
+
+async function assertDeferredRecoverySurvivesRollingContract() {
+  const legacy = fixtureRelease('0.1.1', '2.0.0-rc.11');
+  const recoverySource = recoverySources.releases[0];
+  const deferred = fixtureRelease('0.1.24', '2.0.0-rc.33', {
+    sourceRevision: recoverySource.source_revision,
+  });
+  assert.deepStrictEqual(
+    deferred.contract,
+    recoverySource.contract,
+    'the retained recovery source must describe the deferred release exactly',
+  );
+  const current = fixtureRelease('0.1.25', '2.0.0-rc.34');
+  const published = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'durable-workflow-helm-deferred-test-'),
+  );
+  writePublishedRepository(published, [legacy], {includeHistory: false});
+  const fixture = stagingFixture(
+    current,
+    [legacy, deferred, current],
+    directoryFetcher(published),
+  );
+  fixture.options.recoverySources = recoverySources;
+
+  await stageRelease(fixture.options);
+
+  const chartsDirectory = path.join(fixture.buildDirectory, 'charts');
+  const history = JSON.parse(fs.readFileSync(
+    path.join(chartsDirectory, 'release-history.json'),
+    'utf8',
+  ));
+  assert.deepStrictEqual(
+    Object.keys(history.versions),
+    ['0.1.1', '0.1.24', '0.1.25'],
+    'staging the rolling chart must also backfill the retained deferred chart',
+  );
+  for (const release of [legacy, deferred, current]) {
+    assert.deepStrictEqual(
+      fs.readFileSync(path.join(
+        chartsDirectory,
+        `${contract.chart.name}-${release.contract.chart.version}.tgz`,
+      )),
+      Buffer.from(release.packageBody),
+      `staging must retain exact package bytes for ${release.contract.chart.version}`,
+    );
+  }
+  assert.deepStrictEqual(
+    fixture.executed
+      .filter(({command, arguments}) =>
+        command === 'helm' && arguments[0] === 'pull')
+      .map(({arguments}) => arguments[arguments.indexOf('--version') + 1]),
+    ['0.1.24', '0.1.25'],
+    'OCI staging must pull the deferred source independently of the rolling chart',
+  );
+  const evidence = JSON.parse(fs.readFileSync(fixture.evidencePath, 'utf8'));
+  assert.deepStrictEqual(
+    evidence.live.historical_versions,
+    ['0.1.1', '0.1.24', '0.1.25'],
+    'predeploy evidence must retain the complete staged release history',
+  );
+  assert.deepStrictEqual(
+    evidence.recovery_sources,
+    [{
+      outcome: 'first-publication',
+      source_revision: recoverySource.source_revision,
+      oci_repository: recoverySource.contract.channels.oci.repository,
+      identity: {
+        chart: {
+          name: deferred.contract.chart.name,
+          version: deferred.contract.chart.version,
+          app_version: deferred.contract.chart.app_version,
+          source_revision: recoverySource.source_revision,
+          package_digest: deferred.packageDigest,
+        },
+        image: {
+          reference: deferred.contract.image.reference,
+          digest: deferred.imageDigest,
+        },
+      },
+    }],
+    'predeploy evidence must bind the deferred OCI source to its immutable identity',
+  );
+  await assertLiveVerification(
+    [legacy, deferred, current],
+    publishFixtureBuild(fixture, current),
+    recoverySources,
+  );
+
+  const changedSource = clone(recoverySources);
+  changedSource.releases[0].source_revision = 'f'.repeat(40);
+  const mismatchFixture = stagingFixture(
+    current,
+    [legacy, deferred, current],
+    directoryFetcher(published),
+  );
+  mismatchFixture.options.recoverySources = changedSource;
+  await assert.rejects(
+    () => stageRelease(mismatchFixture.options),
+    /recovery source revision/,
+    'a deferred package from a different source revision must fail closed',
+  );
+  assert(
+    !fs.existsSync(path.join(mismatchFixture.buildDirectory, 'charts')),
+    'a changed deferred source must fail before Pages staging',
+  );
 }
 
 async function publishTwoSuccessiveVersions() {
@@ -548,8 +686,15 @@ async function publishTwoSuccessiveVersions() {
   };
 }
 
-async function assertLiveVerification(releases, published) {
+async function assertLiveVerification(
+  releases,
+  published,
+  liveRecoverySources = emptyRecoverySources,
+) {
   const current = releases.at(-1);
+  const retainedRecoveries = liveRecoverySources.releases.filter(
+    source => source.contract.chart.version !== current.contract.chart.version,
+  );
   const temporary = fs.mkdtempSync(
     path.join(os.tmpdir(), 'durable-workflow-helm-live-test-'),
   );
@@ -602,36 +747,43 @@ async function assertLiveVerification(releases, published) {
     },
     fetchResource: directoryFetcher(published),
     chartMetadata,
+    recoverySources: liveRecoverySources,
     resolveImageDigest: () => current.imageDigest,
   });
   const liveInstallCommands = executed
     .filter(({command, arguments}) => command === 'helm' && arguments[0] === 'install');
+  const expectedReleaseContracts = [
+    current.contract,
+    ...retainedRecoveries.map(source => source.contract),
+  ];
   assert.deepStrictEqual(
     liveInstallCommands.map(({command, arguments}) => ({command, arguments})),
-    [
+    expectedReleaseContracts.flatMap(releaseContract => [
       installCommand(
         'durable-workflow',
-        current.contract.channels.oci.repository,
-        current.contract.chart.version,
+        releaseContract.channels.oci.repository,
+        releaseContract.chart.version,
       ),
       installCommand(
         'durable-workflow',
-        `durable-workflow/${current.contract.chart.name}`,
-        current.contract.chart.version,
+        `durable-workflow/${releaseContract.chart.name}`,
+        releaseContract.chart.version,
       ),
-    ],
+    ]),
     'live verification must retain exact OCI and HTTPS install commands',
   );
-  assert.notStrictEqual(
-    liveInstallCommands[0].options.env.HELM_REGISTRY_CONFIG,
-    liveInstallCommands[1].options.env.HELM_REGISTRY_CONFIG,
-    'OCI and HTTPS verification must use independent clean Helm clients',
-  );
-  assert.notStrictEqual(
-    liveInstallCommands[0].options.cwd,
-    liveInstallCommands[1].options.cwd,
-    'OCI and HTTPS verification must use independent fixture directories',
-  );
+  for (let index = 0; index < liveInstallCommands.length; index += 2) {
+    assert.notStrictEqual(
+      liveInstallCommands[index].options.env.HELM_REGISTRY_CONFIG,
+      liveInstallCommands[index + 1].options.env.HELM_REGISTRY_CONFIG,
+      'OCI and HTTPS verification must use independent clean Helm clients',
+    );
+    assert.notStrictEqual(
+      liveInstallCommands[index].options.cwd,
+      liveInstallCommands[index + 1].options.cwd,
+      'OCI and HTTPS verification must use independent fixture directories',
+    );
+  }
   for (const {options} of liveInstallCommands) {
     assert.deepStrictEqual(
       yaml.load(fs.readFileSync(path.join(options.cwd, 'my-values.yaml'), 'utf8')),
@@ -639,33 +791,35 @@ async function assertLiveVerification(releases, published) {
       'each exact README command must resolve its clean-client values file',
     );
   }
-  const httpsEnvironment = liveInstallCommands[1].options.env;
-  assert.deepStrictEqual(
-    executed
-      .filter(({command, arguments, options}) =>
-        command === 'helm' &&
-        options.env === httpsEnvironment &&
-        (arguments[0] === 'repo' || arguments[0] === 'install'))
-      .map(({command, arguments}) => ({command, arguments})),
-    [
-      {
-        command: 'helm',
-        arguments: [
-          'repo',
-          'add',
+  for (const [index, releaseContract] of expectedReleaseContracts.entries()) {
+    const httpsEnvironment = liveInstallCommands[(index * 2) + 1].options.env;
+    assert.deepStrictEqual(
+      executed
+        .filter(({command, arguments, options}) =>
+          command === 'helm' &&
+          options.env === httpsEnvironment &&
+          (arguments[0] === 'repo' || arguments[0] === 'install'))
+        .map(({command, arguments}) => ({command, arguments})),
+      [
+        {
+          command: 'helm',
+          arguments: [
+            'repo',
+            'add',
+            'durable-workflow',
+            releaseContract.channels.https.repository,
+          ],
+        },
+        {command: 'helm', arguments: ['repo', 'update']},
+        installCommand(
           'durable-workflow',
-          current.contract.channels.https.repository,
-        ],
-      },
-      {command: 'helm', arguments: ['repo', 'update']},
-      installCommand(
-        'durable-workflow',
-        `durable-workflow/${current.contract.chart.name}`,
-        current.contract.chart.version,
-      ),
-    ],
-    'live verification must execute the complete documented HTTPS command sequence',
-  );
+          `durable-workflow/${releaseContract.chart.name}`,
+          releaseContract.chart.version,
+        ),
+      ],
+      'live verification must execute each documented HTTPS command sequence',
+    );
+  }
   assert.deepStrictEqual(
     JSON.parse(fs.readFileSync(evidencePath, 'utf8')),
     {
@@ -692,6 +846,23 @@ async function assertLiveVerification(releases, published) {
         https_history_versions: releases.map(
           release => release.contract.chart.version,
         ),
+        recovery_readme_commands: retainedRecoveries.map(source => ({
+          chart_version: source.contract.chart.version,
+          source_revision: source.source_revision,
+          oci_readme_command:
+            'helm install durable-workflow ' +
+            `${source.contract.channels.oci.repository} ` +
+            `--version ${source.contract.chart.version} ` +
+            '--namespace durable-workflow --create-namespace -f my-values.yaml',
+          https_readme_commands: [
+            `helm repo add durable-workflow ${source.contract.channels.https.repository}`,
+            'helm repo update',
+            'helm install durable-workflow ' +
+              `durable-workflow/${source.contract.chart.name} ` +
+              `--version ${source.contract.chart.version} ` +
+              '--namespace durable-workflow --create-namespace -f my-values.yaml',
+          ],
+        })),
       },
     },
     'live verification must cover current channel equality and all HTTPS history',
@@ -845,6 +1016,7 @@ async function assertFirstVersionIdentityReuseFails(releases, published) {
 
 async function main() {
   await assertLegacyReleaseMigrates();
+  await assertDeferredRecoverySurvivesRollingContract();
   const successive = await publishTwoSuccessiveVersions();
   await assertLiveVerification(
     [successive.first, successive.second],
