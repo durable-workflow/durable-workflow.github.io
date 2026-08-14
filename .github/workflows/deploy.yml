@@ -50,26 +50,29 @@ jobs:
         with:
           version: v3.16.2
 
-      - name: Plan deployment
-        id: deploy-plan
-        env:
-          DOCS_DEPLOY_EVENT_NAME: ${{ github.event_name }}
-        run: node scripts/plan-docs-deploy.js
-
       - name: Resolve published Server protocol authority ref
         id: published-server-authority
-        if: steps.deploy-plan.outputs.deploy == 'true'
         run: |
           node -e "process.stdout.write('ref=' + require('./scripts/published-artifact-versions.json').artifacts.server + '\n')" >> "$GITHUB_OUTPUT"
 
       - name: Checkout published Server protocol authority
-        if: steps.deploy-plan.outputs.deploy == 'true'
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
         with:
           repository: ${{ github.repository_owner }}/server
           ref: ${{ steps.published-server-authority.outputs.ref }}
           path: .published-server-protocol-authority
           persist-credentials: false
+
+      - name: Synchronize the Helm release contract from published Server source
+        run: >-
+          node scripts/helm-chart-release.js sync-contract
+          .published-server-protocol-authority
+
+      - name: Plan deployment
+        id: deploy-plan
+        env:
+          DOCS_DEPLOY_EVENT_NAME: ${{ github.event_name }}
+        run: node scripts/plan-docs-deploy.js
 
       - name: Verify pinned server protocol catalog
         id: server_catalog
@@ -327,6 +330,30 @@ jobs:
           (steps.server_catalog.outputs.deployment_state == 'deployable' ||
           steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
         run: npm run check:cloud-promotion-browser -- --live --wait-for-candidate --output cloud-promotion-browser-evidence
+
+      - name: Set up clean Helm install cluster
+        if: >-
+          steps.deploy-plan.outputs.deploy == 'true' &&
+          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
+          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
+        uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc  # v1.14.0
+        with:
+          version: v0.23.0
+          node_image: kindest/node:v1.29.4
+          cluster_name: docs-helm-public-${{ github.run_id }}-${{ github.run_attempt }}
+          wait: 120s
+
+      - name: Provision clean Helm install dependencies
+        if: >-
+          steps.deploy-plan.outputs.deploy == 'true' &&
+          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
+          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
+        run: |
+          kubectl apply -f .published-server-protocol-authority/scripts/helm-chart-kind-fixtures.yaml
+          kubectl --namespace durable-workflow rollout status \
+            deployment/durable-workflow-mysql --timeout=180s
+          kubectl --namespace durable-workflow rollout status \
+            deployment/durable-workflow-redis --timeout=120s
 
       - name: Upload live Cloud promotion browser evidence
         if: ${{ always() && steps.deploy-plan.outputs.deploy == 'true' && (steps.server_catalog.outputs.deployment_state == 'deployable' || steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable') }}

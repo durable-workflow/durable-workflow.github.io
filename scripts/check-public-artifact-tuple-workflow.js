@@ -141,7 +141,12 @@ function assertPublicWorkflowCheckout(steps, context) {
   }
 }
 
-function assertPublishedServerProtocolAuthority(steps, context, condition) {
+function assertPublishedServerProtocolAuthority(
+  steps,
+  context,
+  condition,
+  sourceCondition = condition,
+) {
   const resolveIndex = steps.findIndex(
     step => step.name === 'Resolve published Server protocol authority ref',
   );
@@ -162,8 +167,8 @@ function assertPublishedServerProtocolAuthority(steps, context, condition) {
     || !(resolveIndex < checkoutIndex && checkoutIndex < verifyIndex)
     || resolve.id !== 'published-server-authority'
     || !resolve.run.includes("require('./scripts/published-artifact-versions.json').artifacts.server")
-    || resolve.if !== condition
-    || checkout.if !== condition
+    || (resolve.if ?? null) !== sourceCondition
+    || (checkout.if ?? null) !== sourceCondition
     || checkout.with?.repository !== '${{ github.repository_owner }}/server'
     || checkout.with?.ref !== '${{ steps.published-server-authority.outputs.ref }}'
     || checkout.with?.path !== '.published-server-protocol-authority'
@@ -257,6 +262,7 @@ assertPublishedServerProtocolAuthority(
   yaml.load(deployWorkflow)?.jobs?.deploy?.steps || [],
   'documentation deployment',
   "steps.deploy-plan.outputs.deploy == 'true'",
+  null,
 );
 for (const [label, fixture] of [
   [

@@ -15,6 +15,11 @@ const DEFAULT_PREDEPLOY_EVIDENCE_PATH = path.join(
   REPO_ROOT,
   'helm-predeploy-immutability-evidence.json',
 );
+const CLEAN_INSTALL_VALUES_PATH = path.join(
+  REPO_ROOT,
+  'scripts',
+  'helm-chart-clean-client-values.yaml',
+);
 const RELEASE_HISTORY_FILENAME = 'release-history.json';
 const RELEASE_HISTORY_SCHEMA =
   'durable-workflow-helm-release-history/v1';
@@ -23,24 +28,6 @@ const IMAGE_REFERENCE_ANNOTATION = 'dev.durable-workflow.image-reference';
 const SEMVER_PATTERN =
   /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 const DIGEST_PATTERN = /^sha256:[0-9a-f]{64}$/;
-const RENDER_VALUE_ARGUMENTS = Object.freeze([
-  '--set-string',
-  'externalDatabase.host=database.example.invalid',
-  '--set-string',
-  'externalDatabase.auth.username=workflow',
-  '--set-string',
-  'externalDatabase.auth.password=not-a-secret',
-  '--set-string',
-  'externalRedis.host=redis.example.invalid',
-  '--set-string',
-  'auth.serverKey=base64:bm90LWEtc2VjcmV0',
-  '--set-string',
-  'auth.workerToken=not-a-secret',
-  '--set-string',
-  'auth.operatorToken=not-a-secret',
-  '--set-string',
-  'auth.adminToken=not-a-secret',
-]);
 
 function releaseContract() {
   return JSON.parse(fs.readFileSync(CONTRACT_PATH, 'utf8'));
@@ -84,6 +71,79 @@ function validateContract(contract) {
   return contract;
 }
 
+function contractFromServerSource(serverSource) {
+  const chartDirectory = path.join(
+    serverSource,
+    'k8s',
+    'helm',
+    'durable-workflow',
+  );
+  const chart = yaml.load(
+    fs.readFileSync(path.join(chartDirectory, 'Chart.yaml'), 'utf8'),
+  );
+  const imageReference =
+    chart?.annotations?.[IMAGE_REFERENCE_ANNOTATION];
+  const contract = validateContract({
+    schema: 'durable-workflow-helm-release-contract/v1',
+    chart: {
+      name: chart?.name,
+      version: chart?.version,
+      app_version: chart?.appVersion,
+    },
+    image: {
+      reference: imageReference,
+    },
+    channels: {
+      oci: {
+        repository: 'oci://ghcr.io/durable-workflow/charts/durable-workflow',
+      },
+      https: {
+        repository: 'https://durable-workflow.github.io/charts/',
+        package_url:
+          `https://durable-workflow.github.io/charts/` +
+          `durable-workflow-${chart?.version}.tgz`,
+      },
+    },
+  });
+  assertDocumentedInstallCommands(
+    fs.readFileSync(path.join(chartDirectory, 'README.md'), 'utf8'),
+    contract,
+  );
+  return contract;
+}
+
+function synchronizeReleaseContract(
+  serverSource,
+  contractPath = CONTRACT_PATH,
+) {
+  const contract = contractFromServerSource(serverSource);
+  fs.mkdirSync(path.dirname(contractPath), {recursive: true});
+  fs.writeFileSync(contractPath, `${JSON.stringify(contract, null, 2)}\n`);
+  console.log(
+    `Synchronized Helm chart ${contract.chart.version} for Server ` +
+      `${contract.chart.app_version} from the pinned published Server source.`,
+  );
+  return contract;
+}
+
+function synchronizeDocumentedInstallCommands(documentPath, contract) {
+  const source = fs.readFileSync(documentPath, 'utf8');
+  let replacements = 0;
+  const synchronized = source.replace(
+    /(--version\s+)[0-9]+\.[0-9]+\.[0-9]+(?=\s)/g,
+    (match, prefix) => {
+      replacements += 1;
+      return `${prefix}${contract.chart.version}`;
+    },
+  );
+  assert(
+    replacements >= 2,
+    'documentation must contain both Helm channel install versions',
+  );
+  assertDocumentedInstallCommands(synchronized, contract);
+  fs.writeFileSync(documentPath, synchronized);
+}
+
 function assertDocumentedInstallCommands(source, contract) {
   const versions = [...source.matchAll(/--version\s+([0-9]+\.[0-9]+\.[0-9]+)\s/g)]
     .map(match => match[1]);
@@ -99,6 +159,41 @@ function assertDocumentedInstallCommands(source, contract) {
     source.includes(`helm repo add durable-workflow ${contract.channels.https.repository}`),
     'documentation must add the contracted HTTPS repository',
   );
+  const shellCommands = [...source.matchAll(/```(?:bash|sh)\r?\n([\s\S]*?)```/g)]
+    .flatMap(([, block]) => block
+      .replace(/\\\r?\n[ \t]*/g, ' ')
+      .split(/\r?\n/)
+      .map(command => command.trim().replace(/[ \t]+/g, ' '))
+      .filter(Boolean));
+  const requiredCommands = [
+    installCommand(
+      'durable-workflow',
+      contract.channels.oci.repository,
+      contract.chart.version,
+    ),
+    {
+      command: 'helm',
+      arguments: [
+        'repo',
+        'add',
+        'durable-workflow',
+        contract.channels.https.repository,
+      ],
+    },
+    {command: 'helm', arguments: ['repo', 'update']},
+    installCommand(
+      'durable-workflow',
+      `durable-workflow/${contract.chart.name}`,
+      contract.chart.version,
+    ),
+  ];
+  for (const command of requiredCommands) {
+    const commandLine = [command.command, ...command.arguments].join(' ');
+    assert(
+      shellCommands.includes(commandLine),
+      `documentation must contain the executable Helm command: ${commandLine}`,
+    );
+  }
 }
 
 function execute(command, arguments, options = {}) {
@@ -133,6 +228,18 @@ function cleanHelmEnvironment(root) {
   return environment;
 }
 
+function cleanHelmClient(root) {
+  fs.mkdirSync(root, {recursive: true});
+  fs.copyFileSync(
+    CLEAN_INSTALL_VALUES_PATH,
+    path.join(root, 'my-values.yaml'),
+  );
+  return {
+    cwd: root,
+    environment: cleanHelmEnvironment(path.join(root, 'helm-home')),
+  };
+}
+
 function sha256File(file) {
   return `sha256:${crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')}`;
 }
@@ -156,18 +263,20 @@ function packageUrlForVersion(contract, version) {
   ).href;
 }
 
-function renderCommand(releaseName, reference, version) {
+function installCommand(releaseName, reference, version) {
   return {
     command: 'helm',
     arguments: [
-      'template',
+      'install',
       releaseName,
       reference,
       '--version',
       version,
       '--namespace',
       'durable-workflow',
-      ...RENDER_VALUE_ARGUMENTS,
+      '--create-namespace',
+      '-f',
+      'my-values.yaml',
     ],
   };
 }
@@ -580,12 +689,21 @@ function prepareCandidateRelease(options = {}) {
   const sourcePackage = path.join(pulledDirectory, packageFilename(contract));
   const metadata = getChartMetadata(sourcePackage, environment);
   assertPackageMetadata(metadata, contract);
-  const command = renderCommand(
-    'docs-stage-oci-check',
-    contract.channels.oci.repository,
-    contract.chart.version,
+  run(
+    'helm',
+    [
+      'template',
+      'docs-stage-oci-check',
+      contract.channels.oci.repository,
+      '--version',
+      contract.chart.version,
+      '--namespace',
+      'durable-workflow',
+      '-f',
+      CLEAN_INSTALL_VALUES_PATH,
+    ],
+    {env: environment},
   );
-  run(command.command, command.arguments, {env: environment});
   const packageDigest = sha256File(sourcePackage);
   const imageDockerConfig = path.join(temporary, 'docker-config');
   fs.mkdirSync(imageDockerConfig, {recursive: true});
@@ -1126,7 +1244,10 @@ async function verifyLiveRelease(options = {}) {
   assert.deepStrictEqual(remoteContract, contract, 'live Helm release contract');
 
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'durable-workflow-helm-live-'));
-  const environment = cleanHelmEnvironment(path.join(temporary, 'helm-home'));
+  const ociClient = cleanHelmClient(path.join(temporary, 'oci-client'));
+  const httpsClient = cleanHelmClient(path.join(temporary, 'https-client'));
+  const ociEnvironment = ociClient.environment;
+  const httpsEnvironment = httpsClient.environment;
   const ociDirectory = path.join(temporary, 'oci');
   const httpsDirectory = path.join(temporary, 'https');
   fs.mkdirSync(ociDirectory, {recursive: true});
@@ -1142,14 +1263,14 @@ async function verifyLiveRelease(options = {}) {
       '--destination',
       ociDirectory,
     ],
-    {env: environment},
+    {env: ociEnvironment},
   );
   run(
     'helm',
     ['repo', 'add', 'durable-workflow', contract.channels.https.repository],
-    {env: environment},
+    {env: httpsEnvironment},
   );
-  run('helm', ['repo', 'update'], {env: environment});
+  run('helm', ['repo', 'update'], {env: httpsEnvironment});
   run(
     'helm',
     [
@@ -1160,20 +1281,39 @@ async function verifyLiveRelease(options = {}) {
       '--destination',
       httpsDirectory,
     ],
-    {env: environment},
+    {env: httpsEnvironment},
   );
-  const ociRenderCommand = renderCommand(
-    'public-oci-check',
+  const ociInstallCommand = installCommand(
+    'durable-workflow',
     contract.channels.oci.repository,
     contract.chart.version,
   );
-  run(ociRenderCommand.command, ociRenderCommand.arguments, {env: environment});
-  const httpsRenderCommand = renderCommand(
-    'public-https-check',
+  run(ociInstallCommand.command, ociInstallCommand.arguments, {
+    cwd: ociClient.cwd,
+    env: ociEnvironment,
+  });
+  run(
+    'helm',
+    [
+      'uninstall',
+      'durable-workflow',
+      '--namespace',
+      'durable-workflow',
+      '--wait',
+      '--timeout',
+      '5m',
+    ],
+    {env: ociEnvironment},
+  );
+  const httpsInstallCommand = installCommand(
+    'durable-workflow',
     `durable-workflow/${contract.chart.name}`,
     contract.chart.version,
   );
-  run(httpsRenderCommand.command, httpsRenderCommand.arguments, {env: environment});
+  run(httpsInstallCommand.command, httpsInstallCommand.arguments, {
+    cwd: httpsClient.cwd,
+    env: httpsEnvironment,
+  });
 
   const filename = packageFilename(contract);
   const ociPackage = path.join(ociDirectory, filename);
@@ -1186,7 +1326,7 @@ async function verifyLiveRelease(options = {}) {
     'OCI and HTTPS channels must return the same packaged chart bytes',
   );
 
-  const metadata = getChartMetadata(ociPackage, environment);
+  const metadata = getChartMetadata(ociPackage, ociEnvironment);
   assertPackageMetadata(metadata, contract);
   const imageDockerConfig = path.join(temporary, 'docker-config');
   fs.mkdirSync(imageDockerConfig, {recursive: true});
@@ -1203,7 +1343,7 @@ async function verifyLiveRelease(options = {}) {
     fetchResource: getResource,
     chartMetadata: getChartMetadata,
     temporaryDirectory: path.join(temporary, 'history'),
-    environment,
+    environment: httpsEnvironment,
   });
 
   assert.deepStrictEqual(
@@ -1220,8 +1360,20 @@ async function verifyLiveRelease(options = {}) {
   const evidence = {
     ...provenance,
     validation: {
-      oci_anonymous_render: 'pass',
-      https_anonymous_render: 'pass',
+      oci_anonymous_install: 'pass',
+      https_anonymous_install: 'pass',
+      oci_readme_command: [
+        ociInstallCommand.command,
+        ...ociInstallCommand.arguments,
+      ].join(' '),
+      https_readme_commands: [
+        `helm repo add durable-workflow ${contract.channels.https.repository}`,
+        'helm repo update',
+        [
+          httpsInstallCommand.command,
+          ...httpsInstallCommand.arguments,
+        ].join(' '),
+      ],
       channels_identical: true,
       https_history_index: 'pass',
       https_history_packages_anonymous: 'pass',
@@ -1234,7 +1386,7 @@ async function verifyLiveRelease(options = {}) {
     path.join(REPO_ROOT, 'helm-public-validation-evidence.json');
   fs.writeFileSync(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
   console.log(
-    `Anonymous Helm renders passed from OCI and HTTPS for ${contract.chart.name} ` +
+    `Anonymous Helm installs passed from OCI and HTTPS for ${contract.chart.name} ` +
       `${contract.chart.version}; both returned ${ociDigest}.`,
   );
 }
@@ -1248,6 +1400,13 @@ async function main() {
       contract,
     );
     console.log('Helm chart release contract is valid.');
+  } else if (command === 'sync-contract') {
+    assert(process.argv[3], 'sync-contract requires a pinned Server source path');
+    const contract = synchronizeReleaseContract(path.resolve(process.argv[3]));
+    synchronizeDocumentedInstallCommands(
+      path.join(REPO_ROOT, 'docs', 'deployment.md'),
+      contract,
+    );
   } else if (command === 'stage') {
     await stageRelease();
   } else if (command === 'pre-deploy') {
@@ -1256,7 +1415,8 @@ async function main() {
     await verifyLiveRelease();
   } else {
     throw new Error(
-      'usage: helm-chart-release.js <check|pre-deploy|stage|verify-live>',
+      'usage: helm-chart-release.js ' +
+        '<check|sync-contract SERVER_SOURCE|pre-deploy|stage|verify-live>',
     );
   }
 }
@@ -1272,11 +1432,14 @@ module.exports = {
   assertDocumentedInstallCommands,
   assertPackageMetadata,
   assertProvenance,
+  contractFromServerSource,
   guardChartVersionImmutability,
   releaseHistoryEntry,
   releaseProvenance,
-  renderCommand,
+  installCommand,
   stageRelease,
+  synchronizeDocumentedInstallCommands,
+  synchronizeReleaseContract,
   validateContract,
   validateReleaseHistory,
   verifyLiveHttpsReleaseHistory,

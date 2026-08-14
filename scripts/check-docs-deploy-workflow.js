@@ -232,6 +232,16 @@ function assertProtectedDeploySource(source) {
   const planIndex = steps.findIndex(
     step => step.run === 'node scripts/plan-docs-deploy.js',
   );
+  const publishedServerResolveIndex = steps.findIndex(
+    step => step.name === 'Resolve published Server protocol authority ref',
+  );
+  const publishedServerCheckoutIndex = steps.findIndex(
+    step => step.name === 'Checkout published Server protocol authority',
+  );
+  const helmContractSyncIndex = steps.findIndex(
+    step => step.name ===
+      'Synchronize the Helm release contract from published Server source',
+  );
   const publishedWorkflowResolveIndex = steps.findIndex(
     step => step.name === 'Resolve published Workflow conformance ref',
   );
@@ -257,6 +267,36 @@ function assertProtectedDeploySource(source) {
     fail(
       'docs deploy workflow must install the Helm history validation tooling ' +
         'before scheduled planning',
+    );
+  }
+  const publishedServerResolve = steps[publishedServerResolveIndex];
+  const publishedServerCheckout = steps[publishedServerCheckoutIndex];
+  const helmContractSync = steps[helmContractSyncIndex];
+  if (
+    publishedServerResolveIndex < 0 ||
+    publishedServerCheckoutIndex < 0 ||
+    helmContractSyncIndex < 0 ||
+    setupHelmIndex >= publishedServerResolveIndex ||
+    publishedServerResolveIndex >= publishedServerCheckoutIndex ||
+    publishedServerCheckoutIndex >= helmContractSyncIndex ||
+    helmContractSyncIndex >= planIndex ||
+    publishedServerResolve.if ||
+    publishedServerCheckout.if ||
+    helmContractSync.if ||
+    publishedServerCheckout.with?.repository !==
+      '${{ github.repository_owner }}/server' ||
+    publishedServerCheckout.with?.ref !==
+      '${{ steps.published-server-authority.outputs.ref }}' ||
+    publishedServerCheckout.with?.path !==
+      '.published-server-protocol-authority' ||
+    publishedServerCheckout.with?.['persist-credentials'] !== false ||
+    helmContractSync.run !==
+      'node scripts/helm-chart-release.js sync-contract ' +
+        '.published-server-protocol-authority'
+  ) {
+    fail(
+      'docs deploy workflow must synchronize the Helm mirror contract from ' +
+        'the pinned published Server source before scheduled planning',
     );
   }
   const publishedWorkflowResolve = steps[publishedWorkflowResolveIndex];
@@ -316,6 +356,15 @@ function assertProtectedDeploySource(source) {
   const verifyPromotionBrowserIndex = steps.findIndex(
     step => step.name === 'Verify live Cloud promotion browser transport',
   );
+  const setupHelmClusterIndex = steps.findIndex(
+    step => step.name === 'Set up clean Helm install cluster',
+  );
+  const provisionHelmDependenciesIndex = steps.findIndex(
+    step => step.name === 'Provision clean Helm install dependencies',
+  );
+  const verifyHelmChannelsIndex = steps.findIndex(
+    step => step.name === 'Verify both public Helm release channels',
+  );
   if (predeployIndex < 0 || deployIndex < 0 || predeployIndex >= deployIndex) {
     fail(
       'docs deploy workflow must guard Helm chart immutability and stage the ' +
@@ -339,6 +388,26 @@ function assertProtectedDeploySource(source) {
         'after publishing the Pages candidate',
     );
   }
+  if (
+    setupHelmClusterIndex < 0 ||
+    provisionHelmDependenciesIndex < 0 ||
+    verifyHelmChannelsIndex < 0 ||
+    deployIndex >= setupHelmClusterIndex ||
+    setupHelmClusterIndex >= provisionHelmDependenciesIndex ||
+    provisionHelmDependenciesIndex >= verifyHelmChannelsIndex ||
+    steps[setupHelmClusterIndex].uses !==
+      'helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc' ||
+    steps[setupHelmClusterIndex].if !== CATALOG_PUBLISHABLE ||
+    steps[provisionHelmDependenciesIndex].if !== CATALOG_PUBLISHABLE ||
+    !steps[provisionHelmDependenciesIndex].run.includes(
+      '.published-server-protocol-authority/scripts/helm-chart-kind-fixtures.yaml',
+    )
+  ) {
+    fail(
+      'docs deploy workflow must prove both public Helm channels with real ' +
+        'clean-client installs after publishing the Pages candidate',
+    );
+  }
 
   for (const stepName of [
     'Resolve Workflow authority ref',
@@ -354,6 +423,8 @@ function assertProtectedDeploySource(source) {
     'Verify live docs release audit',
     'Verify live workflow lifecycle authority',
     'Verify live Cloud promotion browser transport',
+    'Set up clean Helm install cluster',
+    'Provision clean Helm install dependencies',
     'Verify both public Helm release channels',
   ]) {
     const step = steps.find(candidate => candidate.name === stepName);
@@ -472,6 +543,8 @@ for (const required of [
   'actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38',
   'node-version: 24',
   'id: deploy-plan',
+  'name: Synchronize the Helm release contract from published Server source',
+  'node scripts/helm-chart-release.js sync-contract',
   'DOCS_DEPLOY_EVENT_NAME: ${{ github.event_name }}',
   'run: node scripts/plan-docs-deploy.js',
   'name: Verify live docs release audit',
@@ -489,6 +562,8 @@ for (const required of [
   'run: node scripts/helm-chart-release.js pre-deploy',
   'name: Verify both public Helm release channels',
   'run: node scripts/helm-chart-release.js verify-live',
+  'name: Set up clean Helm install cluster',
+  'name: Provision clean Helm install dependencies',
   'name: Upload public Helm validation evidence',
   'helm-predeploy-immutability-evidence.json',
   'helm-public-validation-evidence.json',

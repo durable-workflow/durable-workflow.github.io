@@ -8,10 +8,13 @@ const {
   assertDocumentedInstallCommands,
   assertPackageMetadata,
   assertProvenance,
+  contractFromServerSource,
+  installCommand,
   releaseHistoryEntry,
   releaseProvenance,
-  renderCommand,
   stageRelease,
+  synchronizeDocumentedInstallCommands,
+  synchronizeReleaseContract,
   validateContract,
   validateReleaseHistory,
   verifyLiveRelease,
@@ -27,90 +30,172 @@ assertDocumentedInstallCommands(
   contract,
 );
 
-const renderValueArguments = [
-  '--set-string',
-  'externalDatabase.host=database.example.invalid',
-  '--set-string',
-  'externalDatabase.auth.username=workflow',
-  '--set-string',
-  'externalDatabase.auth.password=not-a-secret',
-  '--set-string',
-  'externalRedis.host=redis.example.invalid',
-  '--set-string',
-  'auth.serverKey=base64:bm90LWEtc2VjcmV0',
-  '--set-string',
-  'auth.workerToken=not-a-secret',
-  '--set-string',
-  'auth.operatorToken=not-a-secret',
-  '--set-string',
-  'auth.adminToken=not-a-secret',
-];
-const expectedRenderCommand = (releaseName, reference) => ({
+const cleanInstallValues = yaml.load(fs.readFileSync(
+  path.join(__dirname, 'helm-chart-clean-client-values.yaml'),
+  'utf8',
+));
+assert.deepStrictEqual(cleanInstallValues, {
+  externalDatabase: {
+    host: 'mysql.durable-workflow.svc.cluster.local',
+    auth: {
+      username: 'durable_workflow',
+      password: 'durable_workflow',
+    },
+  },
+  externalRedis: {
+    host: 'redis.durable-workflow.svc.cluster.local',
+  },
+  auth: {
+    serverKey: 'base64:bm90LWEtc2VjcmV0',
+    workerToken: 'not-a-secret',
+    operatorToken: 'not-a-secret',
+    adminToken: 'not-a-secret',
+  },
+  server: {
+    replicaCount: 1,
+    pdb: {enabled: false},
+  },
+  worker: {replicaCount: 1},
+});
+const expectedInstallCommand = (releaseName, reference) => ({
   command: 'helm',
   arguments: [
-    'template',
+    'install',
     releaseName,
     reference,
     '--version',
     contract.chart.version,
     '--namespace',
     'durable-workflow',
-    ...renderValueArguments,
+    '--create-namespace',
+    '-f',
+    'my-values.yaml',
   ],
 });
-const renderCommands = [
+const installCommands = [
   {
-    actual: renderCommand(
-      'docs-stage-oci-check',
+    actual: installCommand(
+      'durable-workflow',
       contract.channels.oci.repository,
       contract.chart.version,
     ),
-    expected: expectedRenderCommand(
-      'docs-stage-oci-check',
+    expected: expectedInstallCommand(
+      'durable-workflow',
       contract.channels.oci.repository,
     ),
-    description: 'staging anonymous OCI render',
+    description: 'live anonymous OCI install',
   },
   {
-    actual: renderCommand(
-      'public-oci-check',
-      contract.channels.oci.repository,
-      contract.chart.version,
-    ),
-    expected: expectedRenderCommand(
-      'public-oci-check',
-      contract.channels.oci.repository,
-    ),
-    description: 'live anonymous OCI render',
-  },
-  {
-    actual: renderCommand(
-      'public-https-check',
+    actual: installCommand(
+      'durable-workflow',
       `durable-workflow/${contract.chart.name}`,
       contract.chart.version,
     ),
-    expected: expectedRenderCommand(
-      'public-https-check',
+    expected: expectedInstallCommand(
+      'durable-workflow',
       `durable-workflow/${contract.chart.name}`,
     ),
-    description: 'live anonymous HTTPS render',
+    description: 'live anonymous HTTPS install',
   },
 ];
-for (const {actual, expected, description} of renderCommands) {
+for (const {actual, expected, description} of installCommands) {
   assert.deepStrictEqual(
     actual,
     expected,
-    `${description} must be cluster-independent`,
+    `${description} must use the clean-install fixture contract`,
   );
   assert(
-    !actual.arguments.includes('install'),
-    `${description} must not install the chart`,
+    actual.arguments.includes('install'),
+    `${description} must install the chart`,
   );
   assert(
     !actual.arguments.includes('--dry-run=client'),
     `${description} must not use the cluster-discovering install dry-run`,
   );
 }
+
+function assertPinnedServerContractSynchronization() {
+  const temporary = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'durable-workflow-helm-contract-test-'),
+  );
+  const chartDirectory = path.join(
+    temporary,
+    'server',
+    'k8s',
+    'helm',
+    'durable-workflow',
+  );
+  fs.mkdirSync(chartDirectory, {recursive: true});
+  fs.writeFileSync(
+    path.join(chartDirectory, 'Chart.yaml'),
+    yaml.dump({
+      apiVersion: 'v2',
+      name: 'durable-workflow',
+      version: '0.1.24',
+      appVersion: '2.0.0-rc.33',
+      annotations: {
+        'dev.durable-workflow.image-reference':
+          'docker.io/durableworkflow/server:2.0.0-rc.33',
+      },
+    }),
+  );
+  fs.writeFileSync(
+    path.join(chartDirectory, 'README.md'),
+    `\`\`\`bash
+helm install durable-workflow \\
+  oci://ghcr.io/durable-workflow/charts/durable-workflow \\
+  --version 0.1.24 \\
+  --namespace durable-workflow --create-namespace \\
+  -f my-values.yaml
+\`\`\`\n\n` +
+      '```bash\n' +
+      'helm repo add durable-workflow https://durable-workflow.github.io/charts/\n' +
+      'helm repo update\n' +
+      'helm install durable-workflow durable-workflow/durable-workflow \\\n' +
+      '  --version 0.1.24 \\\n' +
+      '  --namespace durable-workflow --create-namespace \\\n' +
+      '  -f my-values.yaml\n' +
+      '```\n',
+  );
+  const contractPath = path.join(temporary, 'release.json');
+  const documentationPath = path.join(temporary, 'deployment.md');
+  fs.writeFileSync(
+    documentationPath,
+    '```bash\n' +
+      'helm install durable-workflow \\\n' +
+      '  oci://ghcr.io/durable-workflow/charts/durable-workflow \\\n' +
+      '  --version 0.1.1 \\\n' +
+      '  --namespace durable-workflow --create-namespace \\\n' +
+      '  -f my-values.yaml\n' +
+      '```\n\n' +
+      '```bash\n' +
+      'helm repo add durable-workflow https://durable-workflow.github.io/charts/\n' +
+      'helm repo update\n' +
+      'helm install durable-workflow durable-workflow/durable-workflow \\\n' +
+      '  --version 0.1.1 \\\n' +
+      '  --namespace durable-workflow --create-namespace \\\n' +
+      '  -f my-values.yaml\n' +
+      '```\n',
+  );
+  const derived = contractFromServerSource(path.join(temporary, 'server'));
+  const synchronized = synchronizeReleaseContract(
+    path.join(temporary, 'server'),
+    contractPath,
+  );
+  assert.deepStrictEqual(synchronized, derived);
+  synchronizeDocumentedInstallCommands(documentationPath, synchronized);
+  assertDocumentedInstallCommands(
+    fs.readFileSync(documentationPath, 'utf8'),
+    synchronized,
+  );
+  assert.deepStrictEqual(
+    JSON.parse(fs.readFileSync(contractPath, 'utf8')),
+    contract,
+    'the HTTPS mirror contract must follow the pinned published Server chart',
+  );
+}
+
+assertPinnedServerContractSynchronization();
 
 const metadata = {
   name: contract.chart.name,
@@ -519,32 +604,88 @@ async function assertLiveVerification(releases, published) {
     chartMetadata,
     resolveImageDigest: () => current.imageDigest,
   });
-  const liveRenderCommands = executed
-    .filter(({command, arguments}) => command === 'helm' && arguments[0] === 'template')
-    .map(({command, arguments}) => ({command, arguments}));
+  const liveInstallCommands = executed
+    .filter(({command, arguments}) => command === 'helm' && arguments[0] === 'install');
   assert.deepStrictEqual(
-    liveRenderCommands,
+    liveInstallCommands.map(({command, arguments}) => ({command, arguments})),
     [
-      renderCommand(
-        'public-oci-check',
+      installCommand(
+        'durable-workflow',
         current.contract.channels.oci.repository,
         current.contract.chart.version,
       ),
-      renderCommand(
-        'public-https-check',
+      installCommand(
+        'durable-workflow',
         `durable-workflow/${current.contract.chart.name}`,
         current.contract.chart.version,
       ),
     ],
-    'live verification must retain exact OCI and HTTPS template commands',
+    'live verification must retain exact OCI and HTTPS install commands',
+  );
+  assert.notStrictEqual(
+    liveInstallCommands[0].options.env.HELM_REGISTRY_CONFIG,
+    liveInstallCommands[1].options.env.HELM_REGISTRY_CONFIG,
+    'OCI and HTTPS verification must use independent clean Helm clients',
+  );
+  assert.notStrictEqual(
+    liveInstallCommands[0].options.cwd,
+    liveInstallCommands[1].options.cwd,
+    'OCI and HTTPS verification must use independent fixture directories',
+  );
+  for (const {options} of liveInstallCommands) {
+    assert.deepStrictEqual(
+      yaml.load(fs.readFileSync(path.join(options.cwd, 'my-values.yaml'), 'utf8')),
+      cleanInstallValues,
+      'each exact README command must resolve its clean-client values file',
+    );
+  }
+  const httpsEnvironment = liveInstallCommands[1].options.env;
+  assert.deepStrictEqual(
+    executed
+      .filter(({command, arguments, options}) =>
+        command === 'helm' &&
+        options.env === httpsEnvironment &&
+        (arguments[0] === 'repo' || arguments[0] === 'install'))
+      .map(({command, arguments}) => ({command, arguments})),
+    [
+      {
+        command: 'helm',
+        arguments: [
+          'repo',
+          'add',
+          'durable-workflow',
+          current.contract.channels.https.repository,
+        ],
+      },
+      {command: 'helm', arguments: ['repo', 'update']},
+      installCommand(
+        'durable-workflow',
+        `durable-workflow/${current.contract.chart.name}`,
+        current.contract.chart.version,
+      ),
+    ],
+    'live verification must execute the complete documented HTTPS command sequence',
   );
   assert.deepStrictEqual(
     JSON.parse(fs.readFileSync(evidencePath, 'utf8')),
     {
       ...current.provenance,
       validation: {
-        oci_anonymous_render: 'pass',
-        https_anonymous_render: 'pass',
+        oci_anonymous_install: 'pass',
+        https_anonymous_install: 'pass',
+        oci_readme_command:
+          'helm install durable-workflow ' +
+          `${current.contract.channels.oci.repository} ` +
+          `--version ${current.contract.chart.version} ` +
+          '--namespace durable-workflow --create-namespace -f my-values.yaml',
+        https_readme_commands: [
+          `helm repo add durable-workflow ${current.contract.channels.https.repository}`,
+          'helm repo update',
+          'helm install durable-workflow ' +
+            `durable-workflow/${current.contract.chart.name} ` +
+            `--version ${current.contract.chart.version} ` +
+            '--namespace durable-workflow --create-namespace -f my-values.yaml',
+        ],
         channels_identical: true,
         https_history_index: 'pass',
         https_history_packages_anonymous: 'pass',
