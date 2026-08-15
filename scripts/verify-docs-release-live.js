@@ -18,6 +18,11 @@ const {
   REQUIRED_LIVE_ARTIFACTS,
   buildArtifactPath,
 } = require('./docs-release-live-artifacts');
+const {
+  BUILD_ROOT,
+  MANIFEST_URL: CAPACITY_SCHEMA_MANIFEST_URL,
+  validatePublicationTree,
+} = require('./check-capacity-schema-publication');
 
 const DEFAULT_BASE_URL = 'https://durable-workflow.com';
 const DEFAULT_ATTEMPTS = 30;
@@ -30,12 +35,13 @@ function sha256(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
 
-function fetchBody(url, redirectsRemaining = 5) {
-  const client = url.protocol === 'http:' ? http : https;
+function fetchResponse(url, redirectsRemaining = 5) {
+  const requestUrl = url instanceof URL ? url : new URL(url);
+  const client = requestUrl.protocol === 'http:' ? http : https;
 
   return new Promise((resolve, reject) => {
     const request = client.get(
-      url,
+      requestUrl,
       {
         headers: {
           'Cache-Control': 'no-cache',
@@ -53,7 +59,7 @@ function fetchBody(url, redirectsRemaining = 5) {
           redirectsRemaining > 0
         ) {
           response.resume();
-          resolve(fetchBody(new URL(location, url), redirectsRemaining - 1));
+          resolve(fetchResponse(new URL(location, requestUrl), redirectsRemaining - 1));
           return;
         }
 
@@ -61,19 +67,30 @@ function fetchBody(url, redirectsRemaining = 5) {
         response.on('data', chunk => chunks.push(chunk));
         response.on('end', () => {
           if (response.statusCode !== 200) {
-            reject(new Error(`${url.href} returned HTTP ${response.statusCode}`));
+            reject(new Error(`${requestUrl.href} returned HTTP ${response.statusCode}`));
             return;
           }
-          resolve(Buffer.concat(chunks));
+          resolve({
+            body: Buffer.concat(chunks),
+            contentType: response.headers['content-type'] || '',
+            finalUrl: requestUrl.href,
+            status: response.statusCode,
+          });
         });
       },
     );
 
     request.setTimeout(REQUEST_TIMEOUT_MS, () => {
-      request.destroy(new Error(`${url.href} timed out after ${REQUEST_TIMEOUT_MS}ms`));
+      request.destroy(
+        new Error(`${requestUrl.href} timed out after ${REQUEST_TIMEOUT_MS}ms`),
+      );
     });
     request.on('error', reject);
   });
+}
+
+async function fetchBody(url, redirectsRemaining = 5) {
+  return (await fetchResponse(url, redirectsRemaining)).body;
 }
 
 function wait(milliseconds) {
@@ -326,8 +343,81 @@ async function verifyLiveArtifacts(options = {}) {
   throw lastError;
 }
 
+function assertLiveCapacitySchemaResponse(url, expected, response) {
+  if (response.status !== 200) {
+    throw new Error(`${url} returned HTTP ${response.status}`);
+  }
+  const finalUrl = new URL(response.finalUrl);
+  const canonicalUrl = new URL(url);
+  if (finalUrl.protocol !== 'https:') {
+    throw new Error(`${url} resolved outside HTTPS`);
+  }
+  if (finalUrl.pathname !== canonicalUrl.pathname) {
+    throw new Error(`${url} redirected to a different route: ${finalUrl.pathname}`);
+  }
+
+  const mediaType = String(response.contentType).split(';', 1)[0].trim().toLowerCase();
+  if (
+    mediaType !== 'application/json'
+    && !(mediaType.startsWith('application/') && mediaType.endsWith('+json'))
+  ) {
+    throw new Error(`${url} returned non-JSON content type ${response.contentType}`);
+  }
+  if (sha256(response.body) !== sha256(expected)) {
+    throw new Error(
+      `${url} returned sha256:${sha256(response.body)}; expected sha256:${sha256(expected)}`,
+    );
+  }
+  JSON.parse(response.body.toString('utf8'));
+}
+
+async function verifyLiveCapacitySchemas(options = {}) {
+  const attempts = Number(options.attempts || DEFAULT_ATTEMPTS);
+  const retryDelay = Number(options.retryDelay || DEFAULT_RETRY_DELAY_MS);
+  const responseFetcher = options.responseFetcher || fetchResponse;
+  const publication = validatePublicationTree(BUILD_ROOT);
+  const expectedByUrl = new Map([
+    [CAPACITY_SCHEMA_MANIFEST_URL, publication.manifestSource],
+    ...Object.values(publication.documents).map(document => [
+      document.document.$id,
+      document.source,
+    ]),
+  ]);
+  let lastError;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      await Promise.all([...expectedByUrl].map(async ([url, expected]) => {
+        const requestUrl = new URL(url);
+        requestUrl.searchParams.set('deploy_check', `${Date.now()}-${attempt}`);
+        const response = await responseFetcher(requestUrl);
+        assertLiveCapacitySchemaResponse(url, expected, response);
+      }));
+      console.log(
+        `Live capacity schema manifest and ${publication.manifest.schemas
+          ? Object.keys(publication.manifest.schemas).length
+          : 0} canonical schemas match the deployed build.`,
+      );
+      return;
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts) {
+        console.warn(
+          `Capacity schema routes are not live yet (${attempt}/${attempts}): ${error.message}`,
+        );
+        await wait(retryDelay);
+      }
+    }
+  }
+
+  throw lastError;
+}
+
 if (require.main === module) {
-  verifyLiveArtifacts().catch(error => {
+  (async () => {
+    await verifyLiveArtifacts();
+    await verifyLiveCapacitySchemas();
+  })().catch(error => {
     console.error(error.stack || error.message);
     process.exit(1);
   });
@@ -337,14 +427,17 @@ module.exports = {
   LIVE_ARTIFACTS,
   QUICKSTART_ROUTE,
   assertCratesIoExactVersion,
+  assertLiveCapacitySchemaResponse,
   assertLiveQuickstartPage,
   assertReleaseAuditAuthority,
   cratesIoExactVersionUrl,
   fetchBody,
+  fetchResponse,
   qualifiedPackageUrls,
   verifyQualifiedPackageLinkReachability,
   verifyQualifiedPackagePublication,
   verifyLiveQuickstart,
   verifyLiveArtifacts,
+  verifyLiveCapacitySchemas,
   wait,
 };

@@ -35,6 +35,7 @@ per-run evidence documents.
 | Surface | Public URL | Purpose |
 | --- | --- | --- |
 | Suite manifest | [`/platform-conformance-contract.json`](pathname:///platform-conformance-contract.json) | Declares the conformance schema, suite version, targets, fixture categories, harness contract, and release gates. |
+| Capacity benchmark schema catalog | [`/schemas/capacity-benchmark/v1/manifest.json`](pathname:///schemas/capacity-benchmark/v1/manifest.json) | Lists each capacity suite v1 JSON Schema by its canonical HTTPS identifier and immutable SHA-256 digest for external validators. |
 | CLI JSON/JSONL schema manifest | [`/cli-json-envelopes/v3/manifest.json`](pathname:///cli-json-envelopes/v3/manifest.json) | Maps every machine-readable CLI JSON envelope and record-level JSONL output to a retained schema identity and SHA-256 digest. |
 | Exact-tuple run ledger | [`/platform-conformance/run-ledger.json`](pathname:///platform-conformance/run-ledger.json) | Indexes bounded, sanitized executed-run evidence by tier and experiment, including exact artifact tuples, freshness, outcome, runner-blocked state, run time, and regression proof trails. |
 | PHP SDK conformance contract | [`/platform-conformance/php-sdk-conformance.json`](pathname:///platform-conformance/php-sdk-conformance.json) | Publishes schema `durable-workflow.v2.php-sdk-conformance-contract` for proving the released framework-neutral PHP SDK against the released standalone server. |
