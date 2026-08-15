@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 const {
-  PYTHON_PACKAGE_AUTHORITY,
+  QUALIFIED_PYTHON_PACKAGE_AUTHORITY,
 } = require('./public-artifact-versions');
 const {
   REQUIRED_DISCOVERY_ENTRIES,
@@ -58,21 +58,19 @@ function assertLiveSitemapFreshness(liveSitemap, expectedSitemap) {
   }
 }
 
-function assertLiveIntroductionPage(html) {
+function assertPythonPackageAuthorityLink(html, authority) {
   const source = String(html);
 
-  if (!source.includes(PYTHON_PACKAGE_AUTHORITY.version)) {
+  if (!source.includes(`href="${authority.authorityUrl}"`)) {
     throw new Error(
-      `live 2.0 introduction does not expose published Python SDK ` +
-        PYTHON_PACKAGE_AUTHORITY.version,
+      `live 2.0 introduction does not link compatibility-qualified Python SDK authority ` +
+        authority.authorityUrl,
     );
   }
-  if (!source.includes(`href="${PYTHON_PACKAGE_AUTHORITY.authorityUrl}"`)) {
-    throw new Error(
-      `live 2.0 introduction does not link published Python SDK authority ` +
-        PYTHON_PACKAGE_AUTHORITY.authorityUrl,
-    );
-  }
+}
+
+function assertLiveIntroductionPage(html) {
+  assertPythonPackageAuthorityLink(html, QUALIFIED_PYTHON_PACKAGE_AUTHORITY);
 }
 
 async function fetchUncached(fetcher, baseUrl, route, cacheKey) {
@@ -105,8 +103,9 @@ async function verifyLiveSitemapFreshness(options = {}) {
       assertLiveIntroductionPage(introduction.toString('utf8'));
       assertLiveQuickstartPage(quickstart.toString('utf8'), quickstartContract);
       console.log(
-        `Live sitemap freshness and published artifact identities match the deployed ` +
-          `2.0 introduction, quickstart, and generated discovery routes at ${baseUrl}`,
+        `Live sitemap freshness, qualified Python authority, and published artifact ` +
+          `identities match the deployed 2.0 introduction, quickstart, and generated ` +
+          `discovery routes at ${baseUrl}`,
       );
       return;
     } catch (error) {
@@ -136,6 +135,7 @@ module.exports = {
   QUICKSTART_ROUTE,
   assertLiveIntroductionPage,
   assertLiveSitemapFreshness,
+  assertPythonPackageAuthorityLink,
   sitemapFreshnessByPath,
   verifyLiveSitemapFreshness,
 };

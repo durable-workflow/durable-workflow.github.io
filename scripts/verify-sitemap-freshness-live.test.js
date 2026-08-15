@@ -4,6 +4,7 @@ const assert = require('assert');
 
 const {
   PYTHON_PACKAGE_AUTHORITY,
+  QUALIFIED_PYTHON_PACKAGE_AUTHORITY,
 } = require('./public-artifact-versions');
 const {
   REQUIRED_DISCOVERY_ENTRIES,
@@ -12,6 +13,7 @@ const {
   FOCUSED_CONTENT_ROUTES,
   assertLiveIntroductionPage,
   assertLiveSitemapFreshness,
+  assertPythonPackageAuthorityLink,
 } = require('./verify-sitemap-freshness-live');
 
 const routes = [...new Set([
@@ -50,18 +52,65 @@ assert.throws(
   'an invalid deployed calendar date must fail focused validation',
 );
 
+const publishedPythonAuthority = {
+  version: '2.0.0-rc.31',
+  authorityUrl: 'https://pypi.org/project/durable-workflow/2.0.0rc31/',
+};
+const qualifiedPythonAuthority = {
+  version: '2.0.0-rc.8',
+  authorityUrl: 'https://pypi.org/project/durable-workflow/2.0.0rc8/',
+};
 const introduction = (
-  `<a href="${PYTHON_PACKAGE_AUTHORITY.authorityUrl}">` +
-    `${PYTHON_PACKAGE_AUTHORITY.version}</a>`
+  `<a href="${qualifiedPythonAuthority.authorityUrl}">` +
+    'compatibility-qualified Python release</a>'
+);
+
+assert.notStrictEqual(
+  publishedPythonAuthority.version,
+  qualifiedPythonAuthority.version,
+  'the regression fixtures must keep published and qualified versions distinct',
 );
 assert.doesNotThrow(
-  () => assertLiveIntroductionPage(introduction),
-  'the current published package identity must satisfy introduction validation',
+  () => assertPythonPackageAuthorityLink(introduction, qualifiedPythonAuthority),
+  'the exact qualified package link must satisfy introduction validation',
 );
 assert.throws(
-  () => assertLiveIntroductionPage(introduction.replace(PYTHON_PACKAGE_AUTHORITY.version, '0.0.0')),
-  /does not expose published Python SDK/,
-  'stale published package identity must fail introduction validation',
+  () => assertPythonPackageAuthorityLink(
+    introduction.replace(
+      qualifiedPythonAuthority.authorityUrl,
+      publishedPythonAuthority.authorityUrl,
+    ),
+    qualifiedPythonAuthority,
+  ),
+  /does not link compatibility-qualified Python SDK authority/,
+  'a stale published package link must fail qualified introduction validation',
+);
+assert.throws(
+  () => assertPythonPackageAuthorityLink(
+    '<p>Choose a compatibility-qualified Python release.</p>',
+    qualifiedPythonAuthority,
+  ),
+  /does not link compatibility-qualified Python SDK authority/,
+  'a missing qualified package link must fail introduction validation',
+);
+
+const liveIntroduction = (
+  `<a href="${QUALIFIED_PYTHON_PACKAGE_AUTHORITY.authorityUrl}">` +
+    'compatibility-qualified Python release</a>'
+);
+assert.doesNotThrow(
+  () => assertLiveIntroductionPage(liveIntroduction),
+  'live introduction validation must select the qualified package authority',
+);
+assert.throws(
+  () => assertLiveIntroductionPage(
+    liveIntroduction.replace(
+      QUALIFIED_PYTHON_PACKAGE_AUTHORITY.authorityUrl,
+      PYTHON_PACKAGE_AUTHORITY.authorityUrl,
+    ),
+  ),
+  /does not link compatibility-qualified Python SDK authority/,
+  'live introduction validation must reject the independently published package authority',
 );
 
 console.log('Live sitemap freshness validation tests passed');
