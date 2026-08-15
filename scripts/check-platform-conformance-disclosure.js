@@ -65,7 +65,64 @@ async function listen(server) {
 }
 
 async function closeServer(server) {
+  if (!server.listening) return;
   await new Promise((resolve, reject) => server.close(error => (error ? reject(error) : resolve())));
+}
+
+async function launchBrowser() {
+  return chromium.launch({
+    executablePath:
+      process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+      || process.env.VISUAL_REACHABILITY_CHROMIUM_PATH
+      || undefined,
+    headless: true,
+    chromiumSandbox: false,
+    args: ['--disable-dev-shm-usage'],
+  });
+}
+
+async function withBrowserAndServer(run, dependencies = {}) {
+  const launch = dependencies.launchBrowser || launchBrowser;
+  const createServer = dependencies.createServer || createStaticServer;
+  const startServer = dependencies.listen || listen;
+  const stopServer = dependencies.closeServer || closeServer;
+  let browser;
+  let server;
+  let result;
+  let primaryError;
+
+  try {
+    browser = await launch();
+    server = createServer();
+    const baseUrl = await startServer(server);
+    result = await run(browser, baseUrl);
+  } catch (error) {
+    primaryError = error;
+  }
+
+  const cleanupErrors = [];
+  for (const cleanup of [
+    server && (() => stopServer(server)),
+    browser && (() => browser.close()),
+  ]) {
+    if (!cleanup) continue;
+    try {
+      await cleanup();
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
+  }
+
+  if (primaryError) {
+    if (cleanupErrors.length > 0 && primaryError.cause === undefined) {
+      primaryError.cause = new AggregateError(cleanupErrors, 'disclosure check cleanup failed');
+    }
+    throw primaryError;
+  }
+  if (cleanupErrors.length > 0) {
+    throw new AggregateError(cleanupErrors, 'disclosure check cleanup failed');
+  }
+  return result;
 }
 
 async function settle(page) {
@@ -81,23 +138,32 @@ async function openPage(browser, baseUrl, viewport, hash = '') {
     reducedMotion: 'reduce',
     serviceWorkers: 'block',
   });
-  const page = await context.newPage();
-  const browserErrors = [];
-  await page.route('https://api.github.com/repos/durable-workflow/workflow', route => route.fulfill({
-    status: 200,
-    contentType: 'application/json',
-    body: JSON.stringify({stargazers_count: 1171}),
-  }));
-  page.on('console', message => {
-    if (message.type() === 'error') browserErrors.push(`console: ${message.text()}`);
-  });
-  page.on('pageerror', error => browserErrors.push(`page: ${error.message || error}`));
+  try {
+    const page = await context.newPage();
+    const browserErrors = [];
+    await page.route('https://api.github.com/repos/durable-workflow/workflow', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({stargazers_count: 1171}),
+    }));
+    page.on('console', message => {
+      if (message.type() === 'error') browserErrors.push(`console: ${message.text()}`);
+    });
+    page.on('pageerror', error => browserErrors.push(`page: ${error.message || error}`));
 
-  const response = await page.goto(`${baseUrl}${ROUTE}${hash}`, {waitUntil: 'networkidle'});
-  assert.equal(response?.status(), 200, `${ROUTE}${hash} must render`);
-  await page.locator('[data-conformance-run-ledger]').waitFor();
-  await settle(page);
-  return {context, page, browserErrors};
+    const response = await page.goto(`${baseUrl}${ROUTE}${hash}`, {waitUntil: 'networkidle'});
+    assert.equal(response?.status(), 200, `${ROUTE}${hash} must render`);
+    await page.locator('[data-conformance-run-ledger]').waitFor();
+    await settle(page);
+    return {context, page, browserErrors};
+  } catch (error) {
+    try {
+      await context.close();
+    } catch (cleanupError) {
+      if (error.cause === undefined) error.cause = cleanupError;
+    }
+    throw error;
+  }
 }
 
 async function assertDefaultInformation(page) {
@@ -263,19 +329,7 @@ async function main() {
     fs.existsSync(path.join(BUILD_DIRECTORY, ROUTE, 'index.html')),
     'run the Docusaurus build before the disclosure check',
   );
-  const server = createStaticServer();
-  const baseUrl = await listen(server);
-  const browser = await chromium.launch({
-    executablePath:
-      process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
-      || process.env.VISUAL_REACHABILITY_CHROMIUM_PATH
-      || undefined,
-    headless: true,
-    chromiumSandbox: false,
-    args: ['--disable-dev-shm-usage'],
-  });
-
-  try {
+  await withBrowserAndServer(async (browser, baseUrl) => {
     for (const viewport of VIEWPORTS) {
       await validateViewport(browser, baseUrl, viewport);
     }
@@ -284,13 +338,17 @@ async function main() {
       `Validated collapsed and expanded conformance ledger states across ` +
         `${VIEWPORTS.length} viewports, plus experiment deep linking.\n`,
     );
-  } finally {
-    await browser.close();
-    await closeServer(server);
-  }
+  });
 }
 
-main().catch(error => {
-  process.stderr.write(`${error.stack || error}\n`);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch(error => {
+    process.stderr.write(`${error.stack || error}\n`);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = {
+  openPage,
+  withBrowserAndServer,
+};

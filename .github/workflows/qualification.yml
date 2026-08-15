@@ -119,6 +119,9 @@ jobs:
       - name: Install visual qualification browser
         run: npx --no-install playwright install --with-deps chromium
 
+      - name: Verify platform conformance disclosure
+        run: npm run check:platform-conformance-disclosure
+
       - name: Enforce visual control reachability
         run: npm run check:visual-reachability
 
