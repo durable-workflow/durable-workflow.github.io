@@ -19,6 +19,17 @@ the stable 1.x documentation. The full prerelease conformance authority is
 the [Platform Conformance Suite](/docs/2.0/platform-conformance/) page in
 the explicit 2.0 prerelease docs.
 
+## Executed Run Ledger
+
+<ConformanceRunLedger />
+
+The ledger's `snapshot_refreshed_at` records when its current artifact tuple
+and derived freshness projection were generated or refreshed.
+`retained_evidence_captured_at` records when the bounded evidence source was
+captured. Artifact-tuple refreshes advance only the snapshot timestamp; they do
+not rewrite retained runs, their `finished_at` values, artifact attachments, or
+per-run evidence documents.
+
 ## Public Manifests
 
 | Surface | Public URL | Purpose |
@@ -75,17 +86,6 @@ identity and are not an active fixture source.
 
 Planned Waterline observer and MCP discovery categories remain provisional and
 non-normative until a later suite version explicitly promotes them.
-
-## Executed Run Ledger
-
-<ConformanceRunLedger />
-
-The ledger's `snapshot_refreshed_at` records when its current artifact tuple
-and derived freshness projection were generated or refreshed.
-`retained_evidence_captured_at` records when the bounded evidence source was
-captured. Artifact-tuple refreshes advance only the snapshot timestamp; they do
-not rewrite retained runs, their `finished_at` values, artifact attachments, or
-per-run evidence documents.
 
 ## How Harnesses Use This Surface
 
