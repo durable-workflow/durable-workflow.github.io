@@ -1,6 +1,7 @@
 ---
 slug: job-chaining-vs-fan-out-fan-in
-title: "Workflow: Job Chaining vs. Fan-out/Fan-in"
+title: "Laravel Job Chaining vs. Fan-Out/Fan-In"
+description: "Compare sequential Laravel job chaining with parallel fan-out/fan-in in a Workflow example that converts PDF pages concurrently, then merges the results."
 authors:
   name: Richard
   title: Core Team
@@ -11,7 +12,7 @@ tags: [chaining, fan-out, fan-in, batching]
 
 import ThemedImage from '@site/src/components/ThemedImage';
 
-[Chaining](https://laravel.com/docs/9.x/queues#job-chaining) is a workflow design pattern that involves the sequential execution of a series of activities, with the output of one activity potentially serving as the input to the next activity in the chain. This pattern is often used to create a linear, step-by-step process for completing a task.
+[Laravel job chaining](https://laravel.com/docs/9.x/queues#job-chaining) fits work that must run step by step, with one activity's output feeding the next. When independent activities can run at the same time and their outputs must be recombined, fan-out/fan-in is the better fit. This guide compares both patterns, then builds a Workflow PDF pipeline that converts pages concurrently before merging them.
 
 <ThemedImage
   lightSrc="https://mermaid.ink/img/pako:eNptkctOwzAQRX8lmhVIaYhtnIeFuoAoK9iwpOnCjZ2HlNiV64hHlB9hx6_xJThpC4vizfjOnTN3MSOUWkhgUHX6tWy4sd7jc6E893K0-f78utuZm3U-qNK2Wnloe_Sye7S5yrjlO36Q16dmji8B_AvgfwByCRDnnfO91Wo9Ry01xyd5rDkBH2rTCmDWDNKHXpqezxLGmS_ANrKXBTD3FbLiQ2cLKNTksD1XL1r3Z9LooW6AVbw7ODXsBbcya3lt-N-IVEKaBz0oCwyRZQWwEd5mFQaEEIToLcaUhrEP78AISgIcIxInYUSx86PJh48lNAxoSglKoyQhOEQ0TX2QorXaPB1PsVxk-gF0nnts?type=png"

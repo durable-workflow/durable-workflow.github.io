@@ -1,6 +1,7 @@
 ---
 slug: building-a-durable-ai-travel-agent-with-laravel
-title: "Building a Durable AI Travel Agent with Laravel"
+title: "Laravel AI Travel Agent with Saga Compensation"
+description: "Build a Laravel AI travel agent that keeps conversations durable and cancels earlier bookings with saga compensation when a later booking fails."
 authors:
   name: Richard
   title: Core Team
@@ -9,7 +10,9 @@ authors:
 tags: [ai, workflow, agents, tools]
 ---
 
-Look at these execution logs:
+A multi-booking AI conversation has a hard failure case: one reservation succeeds and the next fails. This tutorial combines the Laravel AI SDK with Durable Workflow so the conversation survives restarts and saga compensation cancels earlier bookings when a later booking fails.
+
+The failure path is visible in these execution logs:
 
 ```
 BookHotelActivity ........... RUNNING

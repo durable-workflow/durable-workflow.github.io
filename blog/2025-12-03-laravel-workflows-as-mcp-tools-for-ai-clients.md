@@ -1,6 +1,7 @@
 ---
 slug: laravel-workflows-as-mcp-tools-for-ai-clients
-title: "Workflows as MCP Tools for AI Clients"
+title: "Laravel Workflows as MCP Tools for AI Clients"
+description: "Build a Laravel MCP server that lets AI clients discover, start, and monitor durable workflows asynchronously through three focused tools."
 authors:
   name: Richard
   title: Core Team
@@ -9,7 +10,7 @@ authors:
 tags: [ai, workflow, mcp, agents, tools]
 ---
 
-The Model Context Protocol (MCP) is rapidly becoming the standard way for AI assistants like Claude, ChatGPT, and GitHub Copilot to interact with external tools and services. With Laravel MCP, you can expose your Workflow processes as callable tools that any MCP-compatible AI client can discover, invoke, and monitor.
+AI clients need a non-blocking way to launch work that outlives one request. This tutorial builds a Laravel MCP server that exposes durable workflows as tools clients can discover, start asynchronously, and monitor through completion.
 
 In this post, we'll show how to build an MCP server that allows AI clients to:
 

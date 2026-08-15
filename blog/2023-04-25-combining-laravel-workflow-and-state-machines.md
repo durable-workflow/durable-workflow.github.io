@@ -1,6 +1,7 @@
 ---
 slug: combining-laravel-workflow-and-state-machines
-title: "Combining Workflow and State Machines"
+title: "Laravel Workflow and State Machines with Finite"
+description: "Integrate Laravel Workflow with Finite to model a loan process with explicit created, submitted, approved, and denied transitions driven by workflow signals."
 authors:
   name: Richard
   title: Core Team
@@ -9,7 +10,7 @@ authors:
 tags: [side-effects, random, determinism]
 ---
 
-When it comes to building web applications, managing complex processes and activities can be a daunting task. Workflow (the Laravel-native durable workflow package) simplifies this process by providing tools for defining and managing workflows and activities. In addition, integrating a state machine library can offer more explicit control over the transitions between states or activities, resulting in a more structured and visual representation of the workflow. In this blog post, we will explore the benefits of using Workflow along with a state machine and walk through an example of integrating Workflow with Finite, a simple state machine library.
+Laravel Workflow handles queued, long-running execution, while Finite makes allowed state transitions explicit. This guide combines them in a loan-application workflow where signals move the process through created, submitted, approved, and denied states.
 
 Benefits of Combining Workflow and State Machines
 =========================================================

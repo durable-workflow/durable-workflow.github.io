@@ -46,6 +46,52 @@
         "comparison_window_days": 28,
         "metric": "click_through_rate"
       }
+    },
+    {
+      "id": "high-impression-article-search-relevance",
+      "window": {
+        "status": "finalized",
+        "dates_available": false
+      },
+      "landing_pages": [
+        {
+          "route": "/blog/building-a-durable-ai-travel-agent-with-laravel/",
+          "impressions": 217,
+          "clicks": 2,
+          "click_through_rate": 0.0092,
+          "average_position": 11.53
+        },
+        {
+          "route": "/blog/combining-laravel-workflow-and-state-machines/",
+          "impressions": 465,
+          "clicks": 2,
+          "click_through_rate": 0.0043,
+          "average_position": 11.8
+        },
+        {
+          "route": "/blog/job-chaining-vs-fan-out-fan-in/",
+          "impressions": 347,
+          "clicks": 2,
+          "click_through_rate": 0.0058,
+          "average_position": 8.32
+        },
+        {
+          "route": "/blog/laravel-workflows-as-mcp-tools-for-ai-clients/",
+          "impressions": 892,
+          "clicks": 2,
+          "click_through_rate": 0.0022,
+          "average_position": 8.82
+        }
+      ],
+      "follow_up": {
+        "after": "revised_pages_crawled_and_complete_later_reporting_window",
+        "metrics": [
+          "clicks",
+          "impressions",
+          "average_position",
+          "click_through_rate"
+        ]
+      }
     }
   ]
 }
