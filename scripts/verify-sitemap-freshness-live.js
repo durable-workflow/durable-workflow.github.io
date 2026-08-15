@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 const {
+  PYTHON_PACKAGE_AUTHORITY,
   QUALIFIED_PYTHON_PACKAGE_AUTHORITY,
 } = require('./public-artifact-versions');
 const {
@@ -26,6 +27,10 @@ const DEFAULT_RETRY_DELAY_MS = 10000;
 const INTRODUCTION_ROUTE = '/docs/2.0/introduction/';
 const QUICKSTART_ROUTE = '/docs/2.0/quickstart/';
 const FOCUSED_CONTENT_ROUTES = [INTRODUCTION_ROUTE, QUICKSTART_ROUTE];
+const CURRENT_PYTHON_PACKAGE_AUTHORITIES = Object.freeze({
+  published: PYTHON_PACKAGE_AUTHORITY,
+  qualified: QUALIFIED_PYTHON_PACKAGE_AUTHORITY,
+});
 
 function sitemapFreshnessByPath(sitemap) {
   return new Map(sitemapBlocks(String(sitemap)).map(({block}) => {
@@ -69,8 +74,11 @@ function assertPythonPackageAuthorityLink(html, authority) {
   }
 }
 
-function assertLiveIntroductionPage(html) {
-  assertPythonPackageAuthorityLink(html, QUALIFIED_PYTHON_PACKAGE_AUTHORITY);
+function assertLiveIntroductionPage(
+  html,
+  authorities = CURRENT_PYTHON_PACKAGE_AUTHORITIES,
+) {
+  assertPythonPackageAuthorityLink(html, authorities.qualified);
 }
 
 async function fetchUncached(fetcher, baseUrl, route, cacheKey) {

@@ -3,7 +3,6 @@
 const assert = require('assert');
 
 const {
-  PYTHON_PACKAGE_AUTHORITY,
   QUALIFIED_PYTHON_PACKAGE_AUTHORITY,
 } = require('./public-artifact-versions');
 const {
@@ -13,7 +12,6 @@ const {
   FOCUSED_CONTENT_ROUTES,
   assertLiveIntroductionPage,
   assertLiveSitemapFreshness,
-  assertPythonPackageAuthorityLink,
 } = require('./verify-sitemap-freshness-live');
 
 const routes = [...new Set([
@@ -60,6 +58,10 @@ const qualifiedPythonAuthority = {
   version: '2.0.0-rc.8',
   authorityUrl: 'https://pypi.org/project/durable-workflow/2.0.0rc8/',
 };
+const distinctPythonAuthorities = {
+  published: publishedPythonAuthority,
+  qualified: qualifiedPythonAuthority,
+};
 const introduction = (
   `<a href="${qualifiedPythonAuthority.authorityUrl}">` +
     'compatibility-qualified Python release</a>'
@@ -71,27 +73,47 @@ assert.notStrictEqual(
   'the regression fixtures must keep published and qualified versions distinct',
 );
 assert.doesNotThrow(
-  () => assertPythonPackageAuthorityLink(introduction, qualifiedPythonAuthority),
-  'the exact qualified package link must satisfy introduction validation',
+  () => assertLiveIntroductionPage(introduction, distinctPythonAuthorities),
+  'the introduction assertion must select the exact qualified package link',
 );
 assert.throws(
-  () => assertPythonPackageAuthorityLink(
+  () => assertLiveIntroductionPage(
     introduction.replace(
       qualifiedPythonAuthority.authorityUrl,
       publishedPythonAuthority.authorityUrl,
     ),
-    qualifiedPythonAuthority,
+    distinctPythonAuthorities,
   ),
   /does not link compatibility-qualified Python SDK authority/,
-  'a stale published package link must fail qualified introduction validation',
+  'a genuinely different published package link must fail qualified introduction validation',
 );
 assert.throws(
-  () => assertPythonPackageAuthorityLink(
+  () => assertLiveIntroductionPage(
     '<p>Choose a compatibility-qualified Python release.</p>',
-    qualifiedPythonAuthority,
+    distinctPythonAuthorities,
   ),
   /does not link compatibility-qualified Python SDK authority/,
   'a missing qualified package link must fail introduction validation',
+);
+
+const convergedPythonAuthority = {
+  version: '2.0.0-rc.31',
+  authorityUrl: 'https://pypi.org/project/durable-workflow/2.0.0rc31/',
+};
+const convergedPythonAuthorities = {
+  published: convergedPythonAuthority,
+  qualified: convergedPythonAuthority,
+};
+const convergedIntroduction = (
+  `<a href="${convergedPythonAuthority.authorityUrl}">` +
+    'compatibility-qualified Python release</a>'
+);
+assert.doesNotThrow(
+  () => assertLiveIntroductionPage(
+    convergedIntroduction,
+    convergedPythonAuthorities,
+  ),
+  'equal published and qualified package releases must satisfy introduction validation',
 );
 
 const liveIntroduction = (
@@ -101,16 +123,6 @@ const liveIntroduction = (
 assert.doesNotThrow(
   () => assertLiveIntroductionPage(liveIntroduction),
   'live introduction validation must select the qualified package authority',
-);
-assert.throws(
-  () => assertLiveIntroductionPage(
-    liveIntroduction.replace(
-      QUALIFIED_PYTHON_PACKAGE_AUTHORITY.authorityUrl,
-      PYTHON_PACKAGE_AUTHORITY.authorityUrl,
-    ),
-  ),
-  /does not link compatibility-qualified Python SDK authority/,
-  'live introduction validation must reject the independently published package authority',
 );
 
 console.log('Live sitemap freshness validation tests passed');
