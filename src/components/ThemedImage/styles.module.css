@@ -2,6 +2,21 @@
   display: inline-block;
 }
 
+.themedImageWrapper[data-diagram-id] {
+  display: block;
+  width: 100%;
+}
+
+.themedImageWrapper[data-diagram-id] > div {
+  width: 100%;
+}
+
+.themedImageWrapper[data-diagram-id] img {
+  display: block;
+  height: auto;
+  width: 100%;
+}
+
 /* Light mode: show light image, hide dark image */
 .lightImage {
   display: inline-block;

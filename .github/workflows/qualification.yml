@@ -122,6 +122,9 @@ jobs:
       - name: Verify platform conformance disclosure
         run: npm run check:platform-conformance-disclosure
 
+      - name: Verify job-chaining diagrams
+        run: npm run check:job-chaining-diagrams -- --output job-chaining-diagram-browser-evidence
+
       - name: Enforce visual control reachability
         run: npm run check:visual-reachability
 
@@ -148,6 +151,15 @@ jobs:
           path: visual-reachability/
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Upload job-chaining diagram evidence
+        if: ${{ always() && github.server_url == 'https://github.com' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: job-chaining-diagrams-${{ github.sha }}
+          path: job-chaining-diagram-browser-evidence/
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Generate model retrieval surfaces
         run: |

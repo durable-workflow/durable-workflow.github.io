@@ -332,6 +332,13 @@ jobs:
           steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
         run: node scripts/verify-workflow-lifecycle-live.js
 
+      - name: Verify live job-chaining diagrams
+        if: >-
+          steps.deploy-plan.outputs.deploy == 'true' &&
+          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
+          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
+        run: npm run check:job-chaining-diagrams -- --live --wait-for-candidate --output live-job-chaining-diagram-browser-evidence
+
       - name: Verify live Cloud promotion browser transport
         if: >-
           steps.deploy-plan.outputs.deploy == 'true' &&
@@ -369,6 +376,15 @@ jobs:
         with:
           name: live-cloud-promotion-browser-${{ github.sha }}
           path: cloud-promotion-browser-evidence/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload live job-chaining diagram evidence
+        if: ${{ always() && steps.deploy-plan.outputs.deploy == 'true' && (steps.server_catalog.outputs.deployment_state == 'deployable' || steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable') }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: live-job-chaining-diagrams-${{ github.sha }}
+          path: live-job-chaining-diagram-browser-evidence/
           if-no-files-found: error
           retention-days: 30
 

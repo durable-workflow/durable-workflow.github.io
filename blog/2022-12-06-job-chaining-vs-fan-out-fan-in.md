@@ -15,21 +15,19 @@ import ThemedImage from '@site/src/components/ThemedImage';
 [Laravel job chaining](https://laravel.com/docs/9.x/queues#job-chaining) fits work that must run step by step, with one activity's output feeding the next. When independent activities can run at the same time and their outputs must be recombined, fan-out/fan-in is the better fit. This guide compares both patterns, then builds a Workflow PDF pipeline that converts pages concurrently before merging them.
 
 <ThemedImage
-  lightSrc="https://mermaid.ink/img/pako:eNptkctOwzAQRX8lmhVIaYhtnIeFuoAoK9iwpOnCjZ2HlNiV64hHlB9hx6_xJThpC4vizfjOnTN3MSOUWkhgUHX6tWy4sd7jc6E893K0-f78utuZm3U-qNK2Wnloe_Sye7S5yrjlO36Q16dmji8B_AvgfwByCRDnnfO91Wo9Ry01xyd5rDkBH2rTCmDWDNKHXpqezxLGmS_ANrKXBTD3FbLiQ2cLKNTksD1XL1r3Z9LooW6AVbw7ODXsBbcya3lt-N-IVEKaBz0oCwyRZQWwEd5mFQaEEIToLcaUhrEP78AISgIcIxInYUSx86PJh48lNAxoSglKoyQhOEQ0TX2QorXaPB1PsVxk-gF0nnts?type=png"
-  darkSrc="https://mermaid.ink/img/pako:eNptkU1ugzAQha-CZtVKhGI75seqsmgRq3bTZUMWDnYANdiRY9QfxEW669V6khpIsklnM_Pm6Zu3mB5KLSQw2O31e1lzY72nl0J5rnK0_v3-ud-au1XeqdI2WnloM3vZA1rfZNzyLT_K29Myx9cAvgD4H4BcA8R553xvsViNUVPP8UnOPSfgQ2UaAcyaTvrQStPyUUI_8gXYWrayAOZGwc1bAYUaHHPg6lXr9owZ3VU1sB3fH53qDoJbmTW8Mry9bI1UQppH3SkLbBmT6QiwHj6AIRIGhBCE6BJjSsPYh09gBCUBjhGJkzCi2PnR4MPXFBsGNKUEpVGSEBwimqY-SNFYbZ7nT0wPGf4AtoR6rg?type=png"
-  lightLink="https://mermaid.live/edit#pako:eNptkctOwzAQRX8lmhVIaYhtnIeFuoAoK9iwpOnCjZ2HlNiV64hHlB9hx6_xJThpC4vizfjOnTN3MSOUWkhgUHX6tWy4sd7jc6E893K0-f78utuZm3U-qNK2Wnloe_Sye7S5yrjlO36Q16dmji8B_AvgfwByCRDnnfO91Wo9Ry01xyd5rDkBH2rTCmDWDNKHXpqezxLGmS_ANrKXBTD3FbLiQ2cLKNTksD1XL1r3Z9LooW6AVbw7ODXsBbcya3lt-N-IVEKaBz0oCwyRZQWwEd5mFQaEEIToLcaUhrEP78AISgIcIxInYUSx86PJh48lNAxoSglKoyQhOEQ0TX2QorXaPB1PsVxk-gF0nnts"
-  darkLink="https://mermaid.live/edit#pako:eNptkU1ugzAQha-CZtVKhGI75seqsmgRq3bTZUMWDnYANdiRY9QfxEW669V6khpIsklnM_Pm6Zu3mB5KLSQw2O31e1lzY72nl0J5rnK0_v3-ud-au1XeqdI2WnloM3vZA1rfZNzyLT_K29Myx9cAvgD4H4BcA8R553xvsViNUVPP8UnOPSfgQ2UaAcyaTvrQStPyUUI_8gXYWrayAOZGwc1bAYUaHHPg6lXr9owZ3VU1sB3fH53qDoJbmTW8Mry9bI1UQppH3SkLbBmT6QiwHj6AIRIGhBCE6BJjSsPYh09gBCUBjhGJkzCi2PnR4MPXFBsGNKUEpVGSEBwimqY-SNFYbZ7nT0wPGf4AtoR6rg"
-  alt="Job Chaining Diagram"
+  lightSrc="/img/job-chaining/job-chaining-light.svg"
+  darkSrc="/img/job-chaining/job-chaining-dark.svg"
+  alt="Three functions chained sequentially through two database steps"
+  diagramId="job-chaining"
 />
 
 In contrast, the fan-out/fan-in pattern involves dividing a task into smaller sub-tasks and then combining the results of those sub-tasks to produce the final result. This pattern is often used to parallelize a task and improve its performance by leveraging the power of multiple queue workers.
 
 <ThemedImage
-  lightSrc="https://mermaid.ink/img/pako:eNptkUtOwzAQhq8SzQqkNMQ2zsNCXUDUFWxY0nThNs5DSuzKdcQjykXYcTVOgpM0raB45X8-fzMjuYOdygQwyGv1uiu5Ns7jcyode1Zo_f35dbfVN8tVK3emUtJBm4kl92h9lXDDt_wgrm3xqGBz6eDNDJv_4dwS_245OuRSIedxyFkslsMyp63Ggl3jCPCUyV_ezDyV4EKhqwyY0a1woRG64UOEbpBSMKVoRArMXjOR87Y2KaSyt9qeyxelmtnUqi1KYDmvDza1-4wbkVS80Pz8RMhM6AfVSgMMkbEFsA7ehuR7hBCE6C3GlPqhC-_ACIo8HCISRn5AseVB78LHONT3aEwJioMoIthHNI5dEFlllH6afnT82P4HgHeQGg?type=png"
-  darkSrc="https://mermaid.ink/img/pako:eNptkU1ugzAQRq-CZtVKhGI7mMSqsmhRVu2my4YsHHAANbYjx6g_iIt016v1JDUQErWpV57v6c2MNA1kOhfAYLvTr1nJjfUenlLlubdEq-_Pr9uNuVksa5XZSisPrQeW3KHVVcIt3_CDuHbhUcH20sHrEcr_4dgS_27ZO-RSIedxyJtMFt0yp636wK1xBHioyV8uR54q8KEwVQ7Mmlr4IIWRvCuh6aQUbCmkSIG5b87NSwqpap2z5-pZazlqRtdFCWzLdwdX1fucW5FUvDBcnlIjVC7Mva6VBTYlcd8EWANvwBAJA0IIQtEU4ygKHXwHRtAswDEi8SykEXactj589GPDIJpHBM1pTCl1CvVB5JXV5nG4Z3_W9gchII8n?type=png"
-  lightLink="https://mermaid.live/edit#pako:eNptkUtOwzAQhq8SzQqkNMQ2zsNCXUDUFWxY0nThNs5DSuzKdcQjykXYcTVOgpM0raB45X8-fzMjuYOdygQwyGv1uiu5Ns7jcyode1Zo_f35dbfVN8tVK3emUtJBm4kl92h9lXDDt_wgrm3xqGBz6eDNDJv_4dwS_245OuRSIedxyFkslsMyp63Ggl3jCPCUyV_ezDyV4EKhqwyY0a1woRG64UOEbpBSMKVoRArMXjOR87Y2KaSyt9qeyxelmtnUqi1KYDmvDza1-4wbkVS80Pz8RMhM6AfVSgMMkbEFsA7ehuR7hBCE6C3GlPqhC-_ACIo8HCISRn5AseVB78LHONT3aEwJioMoIthHNI5dEFlllH6afnT82P4HgHeQGg"
-  darkLink="https://mermaid.live/edit#pako:eNptkU1ugzAQRq-CZtVKhGI7mMSqsmhRVu2my4YsHHAANbYjx6g_iIt016v1JDUQErWpV57v6c2MNA1kOhfAYLvTr1nJjfUenlLlubdEq-_Pr9uNuVksa5XZSisPrQeW3KHVVcIt3_CDuHbhUcH20sHrEcr_4dgS_27ZO-RSIedxyJtMFt0yp636wK1xBHioyV8uR54q8KEwVQ7Mmlr4IIWRvCuh6aQUbCmkSIG5b87NSwqpap2z5-pZazlqRtdFCWzLdwdX1fucW5FUvDBcnlIjVC7Mva6VBTYlcd8EWANvwBAJA0IIQtEU4ygKHXwHRtAswDEi8SykEXactj589GPDIJpHBM1pTCl1CvVB5JXV5nG4Z3_W9gchII8n"
-  alt="Fan-out/Fan-in Diagram"
+  lightSrc="/img/job-chaining/fan-out-fan-in-light.svg"
+  darkSrc="/img/job-chaining/fan-out-fan-in-dark.svg"
+  alt="One function fanning out to two parallel functions, then joining through a database before the final function"
+  diagramId="fan-out-fan-in"
 />
 
 There are two phases: fan-out and fan-in.

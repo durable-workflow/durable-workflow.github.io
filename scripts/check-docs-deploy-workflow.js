@@ -367,6 +367,9 @@ function assertProtectedDeploySource(source) {
   const verifyLiveDocsIndex = steps.findIndex(
     step => step.name === 'Verify live docs release audit',
   );
+  const verifyJobChainingDiagramsIndex = steps.findIndex(
+    step => step.name === 'Verify live job-chaining diagrams',
+  );
   const verifyPromotionBrowserIndex = steps.findIndex(
     step => step.name === 'Verify live Cloud promotion browser transport',
   );
@@ -390,16 +393,20 @@ function assertProtectedDeploySource(source) {
     || verifyPromotionBrowserIndex < 0
     || installPromotionBrowserIndex >= deployIndex
     || deployIndex >= verifyLiveDocsIndex
-    || verifyLiveDocsIndex >= verifyPromotionBrowserIndex
+    || verifyLiveDocsIndex >= verifyJobChainingDiagramsIndex
+    || verifyJobChainingDiagramsIndex >= verifyPromotionBrowserIndex
     || steps[installPromotionBrowserIndex].run !==
       'npx --no-install playwright install --with-deps chromium'
+    || steps[verifyJobChainingDiagramsIndex].run !==
+      'npm run check:job-chaining-diagrams -- --live --wait-for-candidate ' +
+        '--output live-job-chaining-diagram-browser-evidence'
     || steps[verifyPromotionBrowserIndex].run !==
       'npm run check:cloud-promotion-browser -- --live --wait-for-candidate ' +
         '--output cloud-promotion-browser-evidence'
   ) {
     fail(
-      'docs deploy workflow must exercise the live Cloud promotion browser transport ' +
-        'after publishing the Pages candidate',
+      'docs deploy workflow must exercise live diagram and Cloud promotion browser ' +
+        'transport after publishing the Pages candidate',
     );
   }
   if (
@@ -437,6 +444,7 @@ function assertProtectedDeploySource(source) {
     'Verify live docs release audit',
     'Verify live sitemap freshness',
     'Verify live workflow lifecycle authority',
+    'Verify live job-chaining diagrams',
     'Verify live Cloud promotion browser transport',
     'Set up clean Helm install cluster',
     'Provision clean Helm install dependencies',
@@ -472,6 +480,18 @@ function assertProtectedDeploySource(source) {
   ) {
     fail(
       'docs deploy workflow must retain live Cloud promotion browser evidence for every deployment',
+    );
+  }
+  const diagramEvidence = steps.find(
+    step => step.name === 'Upload live job-chaining diagram evidence',
+  );
+  if (
+    !diagramEvidence
+    || diagramEvidence.if !== `\${{ always() && ${CATALOG_PUBLISHABLE} }}`
+    || diagramEvidence.with?.path !== 'live-job-chaining-diagram-browser-evidence/'
+  ) {
+    fail(
+      'docs deploy workflow must retain live job-chaining diagram evidence for every deployment',
     );
   }
 }
@@ -566,6 +586,9 @@ for (const required of [
   'run: node scripts/verify-docs-release-live.js',
   'name: Verify live workflow lifecycle authority',
   'run: node scripts/verify-workflow-lifecycle-live.js',
+  'name: Verify live job-chaining diagrams',
+  'run: npm run check:job-chaining-diagrams -- --live --wait-for-candidate --output live-job-chaining-diagram-browser-evidence',
+  'name: Upload live job-chaining diagram evidence',
   'name: Verify live Cloud promotion browser transport',
   'run: npm run check:cloud-promotion-browser -- --live --wait-for-candidate --output cloud-promotion-browser-evidence',
   'name: Upload live Cloud promotion browser evidence',
