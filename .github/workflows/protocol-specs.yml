@@ -114,6 +114,9 @@ jobs:
       - name: Test malformed platform protocol specs
         run: node scripts/check-platform-protocol-specs.test.js
 
+      - name: Verify worker OpenAPI catalog version
+        run: node scripts/check-worker-openapi-version.test.js
+
       - name: Test published server catalog drift detection
         run: node scripts/check-public-server-protocol-catalog.test.js
 

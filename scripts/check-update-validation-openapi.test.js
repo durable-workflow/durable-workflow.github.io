@@ -311,7 +311,7 @@ validate(operationSchema(approveRoute, '409'), envelope({
   status: 409,
 }));
 
-assert.strictEqual(spec.info.version, '8');
+assert.strictEqual(spec.info.version, '9');
 assert.strictEqual(spec['x-durable-workflow-catalog-version'], 16);
 assert.strictEqual(
   spec.components.schemas.MultiplexedWorkflowTask.discriminator.propertyName,
