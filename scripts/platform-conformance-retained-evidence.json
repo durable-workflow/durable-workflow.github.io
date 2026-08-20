@@ -3,11 +3,11 @@
   "schema_version": 1,
   "captured_at": "2026-07-29T13:59:32.249Z",
   "current_artifact_tuple": {
-    "cli": "2.0.0-rc.33",
+    "cli": "2.0.0-rc.35",
     "sdk-php": "2.0.0-rc.31",
     "sdk-python": "2.0.0-rc.31",
     "sdk-rust": "2.0.0-rc.31",
-    "server": "2.0.0-rc.37",
+    "server": "2.0.0-rc.38",
     "waterline": "2.0.0-rc.21",
     "workflow": "2.0.0-rc.32"
   },

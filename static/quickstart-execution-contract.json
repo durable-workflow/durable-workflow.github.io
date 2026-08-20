@@ -821,7 +821,7 @@
       "sample_source_url": "https://github.com/durable-workflow/sample-app/tree/main/rust-cloud",
       "exact_artifact_versions": {
         "sdk-rust": "2.0.0-rc.31",
-        "cli": "2.0.0-rc.33"
+        "cli": "2.0.0-rc.35"
       },
       "credential_roles": {
         "cloud_api": {
@@ -876,7 +876,7 @@
           "id": "rust_cloud_cli_version",
           "source": "cli-version.txt",
           "required_substrings": [
-            "2.0.0-rc.33"
+            "2.0.0-rc.35"
           ]
         },
         {
