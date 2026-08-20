@@ -16,6 +16,17 @@ standalone server owns new control-plane starts, durable history, schedules,
 worker registrations, and task delivery over HTTP. Your application workers
 continue to own workflow and activity code.
 
+<div
+  data-public-payload-codec-contract="avro-only"
+  data-payload-codec="avro"
+  data-authority-manifest="https://durable-workflow.github.io/sdk-neutrality-contract.json"
+  data-legacy-v1-import-drain="internal">
+  Durable Workflow 2.0 has one public payload codec: <code data-payload-codec-field="codec">avro</code>.
+  JSON is the HTTP document transport, not a durable payload codec. PHP-only v1
+  readers remain internal to the import/drain path and cannot be selected for
+  new v2 runs. See the <a href="/docs/2.0/polyglot/avro-value-protocol/">Avro Value protocol</a>.
+</div>
+
 This is a self-hosted migration guide. It does not turn the embedded deployment
 into a Cloud namespace, and the resulting Server is not attached to Durable
 Workflow Cloud. For the separate managed-service choice, see
@@ -55,7 +66,7 @@ adds three cutover-specific rules on top of that shared contract:
 
 - Existing embedded runs keep executing where they started.
 - New server-managed runs use stable type keys, namespace names, task queues,
-  and payload codecs from the first cutover.
+  and the Avro payload contract from the first cutover.
 - Signals, queries, updates, repair, cancel, terminate, and archive must keep routing
   to the runtime that owns the target run.
 - Each Waterline deployment must keep targeting the runtime and namespace it
@@ -69,14 +80,14 @@ Keep these rules true throughout the migration:
   namespace, task queue, and auth material directly instead of inferring them
   from Laravel app-local settings.
 - Keep workflow ids, run-targeting rules, workflow/activity type keys, payload
-  codec, and compatibility markers stable across both runtimes.
+  codec tag (`avro`), and compatibility markers stable across both runtimes.
 - Route signals, queries, updates, repair, cancel, terminate, and archive to the same
   runtime that owns the target run.
 - Before importing an embedded run, pause embedded workers long enough to export
   a quiesced bundle with no leased workflow/activity task and no running
   activity attempt.
 - Treat language neutrality as part of the migration contract: server-managed
-  workflows should use stable aliases and a codec such as `avro`, not PHP-only
+  workflows use stable aliases and the fixed Avro Value schema, not PHP-only
   class names or payload formats.
 
 ## Phase A: Prepare Embedded v2
@@ -107,15 +118,16 @@ contracts. This reduces the amount of code that changes during cutover.
    `supported_workflow_types` / `supported_activity_types` with those same
    strings. Do not expose PHP FQCNs as the durable public contract.
 
-3. Use the language-neutral payload codec.
+3. Use the v2 Avro payload contract.
 
    ```php
    // config/workflows.php
    'serializer' => 'avro',
    ```
 
-   Keep legacy PHP codecs only while finishing old PHP-only runs. New
-   server-managed workflows should use `avro`.
+   Avro is mandatory for new embedded and server-managed v2 workflows. A
+   legacy PHP reader may be retained only inside the v1 import/drain path while
+   old v1 runs finish.
 
 4. Pick namespace and task queue names.
 
@@ -393,9 +405,9 @@ curl -X POST "$SERVER/api/workflows/order-123/archive" \
 ## Phase F: Add Polyglot Workers
 
 Once a workflow family runs through the server, add Python or custom workers by
-registering the same namespace, task queue, and type keys. Keep payloads in
-`avro` and keep activity inputs and outputs language-neutral: arrays, objects,
-strings, numbers, booleans, and nulls.
+registering the same namespace, task queue, and type keys. Every public v2
+payload uses `avro`; keep activity inputs and outputs language-neutral: arrays,
+objects, strings, numbers, booleans, and nulls.
 
 For Python, use [the Python SDK guide](/docs/2.0/polyglot/python). For direct
 HTTP implementations, use [the worker protocol reference](/docs/2.0/polyglot/worker-protocol).
@@ -404,7 +416,7 @@ HTTP implementations, use [the worker protocol reference](/docs/2.0/polyglot/wor
 
 - [ ] v1 runs are drained or intentionally left on the v1 engine.
 - [ ] Embedded v2 uses stable type keys, not PHP FQCNs, at external boundaries.
-- [ ] New v2 workflows use the `avro` codec.
+- [ ] Every new v2 workflow uses the sole public `avro` codec.
 - [ ] Server `/api/health` and `/api/cluster/info` pass from the deployment
   network.
 - [ ] Target namespace exists on the server.
@@ -429,7 +441,7 @@ HTTP implementations, use [the worker protocol reference](/docs/2.0/polyglot/wor
 | `missing_protocol_version` | Worker called a worker route without the worker protocol header | Send `X-Durable-Workflow-Protocol-Version: 1.0` |
 | `namespace_not_found` | The namespace has not been created on the server | Create it with `POST /api/namespaces` |
 | Worker polls return no task | Task queue, type key, namespace, or compatibility marker does not match | Compare workflow start payload, worker registration, and task queue visibility |
-| Payload cannot be decoded by a non-PHP worker | A legacy PHP serializer was used for new v2 work | Move new starts to `avro`; drain legacy-codec runs on PHP |
+| A v1 payload cannot be decoded by a non-PHP worker | The run contains PHP-native v1 history | Keep the run on the internal PHP v1 import/drain path; do not route it to a v2 worker |
 | Old workflow does not respond to server signal/query/update | The run was started in embedded mode | Send commands through the embedded app until that run finishes |
 | Import rejects `tasks.leased_task_present` | The embedded export captured a leased task | Pause embedded workers, wait for leases to release or complete, then export again |
 | Import returns `already_imported` | The same `run_id` and `dedupe_key` are already present on the server | Treat the retry as successful and inspect the server run |

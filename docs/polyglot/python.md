@@ -63,7 +63,7 @@ pip install %%artifact.pythonPackagePin%%
 
 The SDK depends on [httpx](https://www.python-httpx.org/) for HTTP and on the
 `fastavro` Python package to encode the Apache Avro wire format used by the
-default language-neutral payload codec. Prometheus metrics support is optional.
+only public v2 payload codec. Prometheus metrics support is optional.
 
 ## Quickstart
 
@@ -1434,8 +1434,9 @@ replay_history_file(
 )
 ```
 
-Both functions accept an optional `payload_codec` override. Leave it unset to
-use the codec the history recorded.
+Both functions accept an optional `payload_codec` validation hint. Leave it
+unset to use the history's recorded tag. An explicit or recorded tag must be
+`avro`; `json`, unknown, or untagged durable payloads fail before decode.
 
 #### Class-based replayer
 
@@ -1488,9 +1489,18 @@ suite can share one registration across many histories.
 | `durable_workflow.errors.WorkflowCancelled` | Terminal state when the workflow was cancelled. Inherits from `BaseException`. |
 | `durable_workflow.errors.WorkflowTerminated` | Terminal state when the workflow was terminated by the server. Inherits from `BaseException`. |
 
-## Payload Codecs
+## Payload Codec
 
-Every payload that crosses the worker-protocol boundary is codec-tagged. v2 ships a single language-neutral codec, **`avro`**, which is the Python SDK's default for every outgoing client and worker payload — matching the server, PHP, and every other polyglot SDK.
+<div
+  data-public-payload-codec-contract="avro-only"
+  data-payload-codec="avro"
+  data-authority-manifest="https://durable-workflow.github.io/sdk-neutrality-contract.json"
+  data-legacy-v1-import-drain="none">
+  Every payload that crosses the worker-protocol boundary is codec-tagged.
+  Durable Workflow 2.0 has one public payload codec: <code data-payload-codec-field="codec">avro</code>.
+  The Python SDK rejects JSON-tagged, unknown, and untagged durable payloads
+  instead of selecting another decoder. See the <a href="/docs/2.0/polyglot/avro-value-protocol/">Avro Value protocol</a>.
+</div>
 
 ### Avro support is built in
 
@@ -1517,9 +1527,12 @@ Every client and worker surface works end-to-end on the Avro default:
 - **Workflow worker history replay** — Avro-tagged start input and activity result events are decoded during replay, so a Python workflow can participate in an Avro-coded run.
 - **Workflow query tasks** — Server-routed query tasks carry Avro-tagged workflow arguments, query arguments, and replay history. The worker returns the query result as an Avro envelope.
 
-### Running a Python activity worker against an Avro-coded run
+### Running a Python activity worker against a v2 run
 
-No extra configuration is needed: the SDK reads `payload_codec` on every claim and picks the right decoder. If the server default is `avro` and the activity task arrives Avro-coded, the Python worker decodes it, runs the activity, and encodes the result back as `avro`.
+No codec configuration is needed. The SDK validates `payload_codec` before
+decoding every claim, accepts only `avro`, runs the activity, and returns an
+Avro-tagged result. Any other tag fails closed with
+`unsupported_payload_codec`; the worker never sniffs or guesses the format.
 
 ### Types that round-trip cleanly across Python and PHP
 
