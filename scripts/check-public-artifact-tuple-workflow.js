@@ -427,7 +427,7 @@ for (const required of [
   'HANDOFF_ARTIFACT_SHA256',
   'scripts/route-public-artifact-tuple-handoff.js',
   "schema: 'durable-workflow.docs.public-artifact-tuple-handoff'",
-  'schema_version: 4',
+  'schema_version: 5',
   "action: 'pipeline_ready_item'",
   "integration: 'pipeline'",
   'published_artifact_versions: publishedSource.artifacts',
@@ -442,8 +442,10 @@ for (const required of [
   'scripts/public-artifact-versions.json',
   'scripts/published-artifact-versions.json',
   'scripts/platform-conformance-retained-evidence.json',
+  'scripts/component-release-qualification-retained-evidence.json',
   'static/platform-conformance/run-ledger.json',
   'static/public-artifact-compatibility-evidence.json',
+  'static/public-component-release-qualifications.json',
   'static/quickstart-execution-contract.json',
   'static/compatibility-contract.json',
   'static/sdk-neutrality-contract.json',
@@ -456,6 +458,9 @@ for (const required of [
   "prerelease_docs_line: '2.0'",
   "'LEAK=0'",
   "'MIXED=0'",
+  'Refresh current Waterline release qualification',
+  'scripts/refresh-waterline-release-qualification.js',
+  'current_component_release_qualification: componentReleaseQualification',
 ]) {
   if (!workflow.includes(required)) {
     fail(`public-artifact-tuple workflow is missing required pipeline handoff contract: ${required}`);
@@ -468,6 +473,9 @@ if (workflow.includes('previous_artifact_versions:')) {
   );
 }
 
+const componentQualificationPosition = workflowStepPosition(
+  'Refresh current Waterline release qualification',
+);
 const detectPosition = workflowStepPosition('Detect tuple changes');
 const protocolCatalogPosition = workflowStepPosition('Verify candidate server protocol catalog');
 const protocolCatalogEvidencePosition = workflowStepPosition('Upload candidate server protocol catalog evidence');
@@ -479,7 +487,8 @@ const routePosition = workflowStepPosition('Route or defer pipeline handoff');
 const validatePosition = workflowStepPosition('Validate refreshed docs');
 
 if (!(
-  detectPosition < protocolCatalogPosition
+  componentQualificationPosition < detectPosition
+  && detectPosition < protocolCatalogPosition
   && protocolCatalogPosition < protocolCatalogEvidencePosition
   && protocolCatalogEvidencePosition < workflowAuthorityResolvePosition
   && workflowAuthorityResolvePosition < workflowAuthorityCheckoutPosition
@@ -496,10 +505,26 @@ if (routePosition >= validatePosition) {
 
 const parsedWorkflow = yaml.load(workflow);
 const refreshSteps = parsedWorkflow?.jobs?.refresh?.steps || [];
+const waterlineQualificationStep = refreshSteps.find(
+  step => step.name === 'Refresh current Waterline release qualification',
+);
 const uploadHandoffStep = refreshSteps.find(step => step.name === 'Upload pipeline handoff');
 const routeHandoffStep = refreshSteps.find(
   step => step.name === 'Route or defer pipeline handoff',
 );
+
+if (
+  !waterlineQualificationStep
+  || waterlineQualificationStep.run !==
+    'node scripts/refresh-waterline-release-qualification.js'
+  || waterlineQualificationStep.env?.GITHUB_TOKEN !== '${{ secrets.GITHUB_TOKEN }}'
+  || waterlineQualificationStep.env?.WATERLINE_ACTIONS_READ_TOKEN !== undefined
+) {
+  fail(
+    'current Waterline qualification ingestion must use the public release asset ' +
+      'route without requiring a new cross-repository credential',
+  );
+}
 
 if (
   !uploadHandoffStep
@@ -666,6 +691,28 @@ const stableKeyHandoff = {
     workflow: currentPublishedArtifactVersions.artifacts.workflow,
   },
 };
+function componentReleaseQualification(version, runId = 12345) {
+  return {
+    repository: 'durable-workflow/waterline',
+    workflow_name: 'Release Docs Audit',
+    workflow_path: '.github/workflows/release-docs-audit.yml',
+    event: 'repository_dispatch',
+    run_id: runId,
+    run_attempt: 1,
+    run_url: `https://github.com/durable-workflow/waterline/actions/runs/${runId}`,
+    release_tag: version,
+    release_commit: '6'.repeat(40),
+    qualification_outcome: 'pass',
+    packages: {
+      waterline: version,
+      'sdk-php': '2.0.0-rc.14',
+      workflow: '2.0.0-rc.14',
+    },
+    artifact_id: runId + 1000,
+    artifact_name: `waterline-exact-composer-qualification-${runId}-1.json`,
+    artifact_digest: `sha256:${'5'.repeat(64)}`,
+  };
+}
 function publishedServerProtocolAuthority(version) {
   const digest = `sha256:${'9'.repeat(64)}`;
   return {
@@ -769,6 +816,8 @@ stableKeyHandoff.compatibility_evidence = compatibilityEvidence(
 stableKeyHandoff.published_server_protocol_authority =
   publishedServerProtocolAuthority(stableKeyHandoff.published_artifact_versions.server);
 stableKeyHandoff.sdk_neutrality_authority = currentSdkNeutralityAuthority;
+stableKeyHandoff.current_component_release_qualification =
+  componentReleaseQualification(stableKeyHandoff.published_artifact_versions.waterline);
 const nextRunSameTuple = {
   ...stableKeyHandoff,
   tuple_date: '2026-06-19',
@@ -809,6 +858,16 @@ if (stableKey === nextPublishedTupleKey) {
   fail('public artifact tuple ready-item key must change when published artifact versions change');
 }
 
+const replacementComponentQualification = structuredClone(stableKeyHandoff);
+replacementComponentQualification.current_component_release_qualification =
+  componentReleaseQualification(
+    stableKeyHandoff.published_artifact_versions.waterline,
+    12346,
+  );
+if (stableKey === handoffKey(replacementComponentQualification)) {
+  fail('a replacement current Waterline qualification must receive a distinct handoff key');
+}
+
 if (stableKey.includes(stableKeyHandoff.tuple_date)) {
   fail('public artifact tuple ready-item key must not include tuple_date');
 }
@@ -825,7 +884,7 @@ if (existing) {
 
 const multiArtifactHandoff = {
   schema: 'durable-workflow.docs.public-artifact-tuple-handoff',
-  schema_version: 4,
+  schema_version: 5,
   action: 'pipeline_ready_item',
   repository: 'durable-workflow.github.io',
   target_branch: 'main',
@@ -834,8 +893,10 @@ const multiArtifactHandoff = {
     'scripts/public-artifact-versions.json',
     'scripts/published-artifact-versions.json',
     'scripts/platform-conformance-retained-evidence.json',
+    'scripts/component-release-qualification-retained-evidence.json',
     'static/platform-conformance/run-ledger.json',
     'static/public-artifact-compatibility-evidence.json',
+    'static/public-component-release-qualifications.json',
     'static/quickstart-execution-contract.json',
     'static/compatibility-contract.json',
     'static/sdk-neutrality-contract.json',
@@ -845,8 +906,10 @@ const multiArtifactHandoff = {
     'scripts/public-artifact-versions.json',
     'scripts/published-artifact-versions.json',
     'scripts/platform-conformance-retained-evidence.json',
+    'scripts/component-release-qualification-retained-evidence.json',
     'static/platform-conformance/run-ledger.json',
     'static/public-artifact-compatibility-evidence.json',
+    'static/public-component-release-qualifications.json',
     'static/quickstart-execution-contract.json',
     'static/compatibility-contract.json',
     'static/sdk-neutrality-contract.json',
@@ -856,6 +919,8 @@ const multiArtifactHandoff = {
   artifact_versions: stableKeyHandoff.artifact_versions,
   published_artifact_versions: stableKeyHandoff.published_artifact_versions,
   compatibility_evidence: compatibilityEvidence(stableKeyHandoff.artifact_versions),
+  current_component_release_qualification:
+    stableKeyHandoff.current_component_release_qualification,
   published_server_protocol_authority: publishedServerProtocolAuthority(
     stableKeyHandoff.published_artifact_versions.server,
   ),
@@ -1421,6 +1486,29 @@ for (const [label, mutate, expected] of [
       handoff.refresh_files.push('README.md');
     },
     /handoff refresh files mismatch/,
+  ],
+  [
+    'missing current Waterline qualification',
+    handoff => {
+      delete handoff.current_component_release_qualification;
+    },
+    /current_component_release_qualification has an invalid shape/,
+  ],
+  [
+    'current Waterline qualification from another workflow',
+    handoff => {
+      handoff.current_component_release_qualification.workflow_path =
+        '.github/workflows/untrusted.yml';
+    },
+    /is not trusted current Waterline evidence/,
+  ],
+  [
+    'current Waterline qualification for another package tuple',
+    handoff => {
+      handoff.current_component_release_qualification.packages.waterline =
+        '2.0.0-rc.999';
+    },
+    /package tuple is invalid/,
   ],
   [
     'missing published Server protocol authority',

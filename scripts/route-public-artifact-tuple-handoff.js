@@ -63,8 +63,10 @@ const EXPECTED_REFRESH_FILES = [
   'scripts/public-artifact-versions.json',
   'scripts/published-artifact-versions.json',
   'scripts/platform-conformance-retained-evidence.json',
+  'scripts/component-release-qualification-retained-evidence.json',
   'static/platform-conformance/run-ledger.json',
   'static/public-artifact-compatibility-evidence.json',
+  'static/public-component-release-qualifications.json',
   'static/quickstart-execution-contract.json',
   'static/compatibility-contract.json',
   'static/sdk-neutrality-contract.json',
@@ -201,6 +203,75 @@ function validateChangedFiles(changedFiles) {
   const unexpected = changedFiles.filter(file => !EXPECTED_REFRESH_FILES.includes(file));
   if (unexpected.length > 0) {
     throw new Error(`handoff changed files may only include ${EXPECTED_REFRESH_FILES.join(', ')}; saw ${unexpected.join(', ')}`);
+  }
+}
+
+function validateCurrentComponentReleaseQualification(qualification, waterlineVersion) {
+  const expectedKeys = [
+    'artifact_digest',
+    'artifact_id',
+    'artifact_name',
+    'event',
+    'packages',
+    'qualification_outcome',
+    'release_commit',
+    'release_tag',
+    'repository',
+    'run_attempt',
+    'run_id',
+    'run_url',
+    'workflow_name',
+    'workflow_path',
+  ];
+  if (
+    !qualification
+    || typeof qualification !== 'object'
+    || Array.isArray(qualification)
+    || stableStringify(Object.keys(qualification).sort()) !==
+      stableStringify(expectedKeys.sort())
+  ) {
+    throw new Error(
+      'handoff current_component_release_qualification has an invalid shape',
+    );
+  }
+  if (
+    qualification.repository !== 'durable-workflow/waterline'
+    || qualification.workflow_name !== 'Release Docs Audit'
+    || qualification.workflow_path !== '.github/workflows/release-docs-audit.yml'
+    || qualification.event !== 'repository_dispatch'
+    || qualification.release_tag !== waterlineVersion
+    || !/^[0-9a-f]{40}$/.test(qualification.release_commit)
+    || qualification.qualification_outcome !== 'pass'
+    || !Number.isInteger(qualification.run_id)
+    || qualification.run_id < 1
+    || !Number.isInteger(qualification.run_attempt)
+    || qualification.run_attempt < 1
+    || qualification.run_url !==
+      `https://github.com/durable-workflow/waterline/actions/runs/${qualification.run_id}`
+    || qualification.artifact_name !==
+      `waterline-exact-composer-qualification-${qualification.run_id}-` +
+        `${qualification.run_attempt}.json`
+    || !Number.isInteger(qualification.artifact_id)
+    || qualification.artifact_id < 1
+    || !/^sha256:[0-9a-f]{64}$/.test(qualification.artifact_digest)
+  ) {
+    throw new Error(
+      'handoff current component release qualification is not trusted current Waterline evidence',
+    );
+  }
+  const packages = qualification.packages;
+  if (
+    !packages
+    || stableStringify(Object.keys(packages).sort()) !==
+      stableStringify(['sdk-php', 'waterline', 'workflow'])
+    || packages.waterline !== waterlineVersion
+    || Object.values(packages).some(version => (
+      typeof version !== 'string' || version.length === 0
+    ))
+  ) {
+    throw new Error(
+      'handoff current component release qualification package tuple is invalid',
+    );
   }
 }
 
@@ -876,7 +947,7 @@ function validatePublishedServerProtocolAuthority(authority, serverVersion) {
 
 function validateHandoff(handoff, options = {}) {
   assertEqual(handoff.schema, HANDOFF_SCHEMA, 'handoff schema mismatch');
-  assertEqual(handoff.schema_version, 4, 'handoff schema version mismatch');
+  assertEqual(handoff.schema_version, 5, 'handoff schema version mismatch');
   assertEqual(handoff.action, 'pipeline_ready_item', 'handoff action mismatch');
   assertEqual(handoff.repository, EXPECTED_REPOSITORY, 'handoff repository mismatch');
   assertEqual(handoff.target_branch, EXPECTED_TARGET_BRANCH, 'handoff target branch mismatch');
@@ -893,6 +964,10 @@ function validateHandoff(handoff, options = {}) {
     'previous_published_artifact_versions',
   );
   validateCompatibilityEvidence(handoff.compatibility_evidence, handoff.artifact_versions);
+  validateCurrentComponentReleaseQualification(
+    handoff.current_component_release_qualification,
+    handoff.published_artifact_versions.waterline,
+  );
   validatePublishedServerProtocolAuthority(
     handoff.published_server_protocol_authority,
     handoff.published_artifact_versions.server,
@@ -1025,6 +1100,8 @@ function handoffKey(handoff) {
     handoff.published_artifact_versions.server,
   );
   const authorityDigest = sha256(stableStringify({
+    current_component_release_qualification:
+      handoff.current_component_release_qualification,
     published_server_protocol_authority: serverAuthorityDigest,
     sdk_neutrality_authority: sdkAuthorityDigest,
   })).slice(0, 12);
@@ -1050,7 +1127,8 @@ function buildTitle(handoff, changes) {
     return 'Refresh public docs artifact tuple for published releases';
   }
 
-  return 'Refresh public docs artifact tuple';
+  return `Refresh public docs release evidence for Waterline ` +
+    handoff.current_component_release_qualification.release_tag;
 }
 
 function buildWorkerBranch(handoff, key, changes) {
@@ -1087,6 +1165,7 @@ function buildChangeLines(changes) {
 
 function buildRequestText(handoff, changes) {
   const refreshInvocation = buildRefreshInvocation(handoff);
+  const componentQualification = handoff.current_component_release_qualification;
 
   return [
     'Refresh the public docs artifact sources for the current independently published releases and qualified aggregate recommendation.',
@@ -1107,13 +1186,19 @@ function buildRequestText(handoff, changes) {
     `- SDK-neutrality docs projection SHA-256 ${handoff.sdk_neutrality_authority.docs_projection_sha256}`,
     `- SDK-neutrality Python ${handoff.sdk_neutrality_authority.python_package_version} (${handoff.sdk_neutrality_authority.python_registry_version})`,
     '',
+    'Current Waterline release qualification:',
+    `- Waterline ${componentQualification.release_tag} source ${componentQualification.release_commit}`,
+    `- Composer sdk-php=${componentQualification.packages['sdk-php']}, workflow=${componentQualification.packages.workflow}`,
+    `- ${componentQualification.workflow_name} run ${componentQualification.run_id}.${componentQualification.run_attempt}`,
+    `- Qualification artifact ${componentQualification.artifact_id} ${componentQualification.artifact_digest}`,
+    '',
     'Published Server protocol authority:',
     `- Server ${handoff.published_server_protocol_authority.server_version} source ${handoff.published_server_protocol_authority.server_source_commit}`,
     `- OCI image ${handoff.published_server_protocol_authority.immutable_server_image}`,
     `- Embedded Workflow ${handoff.published_server_protocol_authority.workflow_package_provenance.ref} source ${handoff.published_server_protocol_authority.workflow_package_provenance.commit}`,
     `- Protocol catalog ${handoff.published_server_protocol_authority.catalog.version} SHA-256 ${handoff.published_server_protocol_authority.catalog.sha256}`,
     '',
-    `Run \`${refreshInvocation}\` and commit only the generated public artifact tuple files:`,
+    `Run \`${refreshInvocation}\`, run \`npm run refresh:waterline-release-qualification -- --run-id ${componentQualification.run_id}\`, and commit only the generated public release evidence files:`,
     ...handoff.refresh_files.map(file => `- \`${file}\``),
     '',
     'Keep stable 1.x as the default public docs line, and keep 2.0 surfaces explicitly versioned prerelease guidance.',
@@ -1123,9 +1208,12 @@ function buildRequestText(handoff, changes) {
 }
 
 function buildIssueBody(handoff, key, workerBranch, requestText, changes) {
+  const componentQualification = handoff.current_component_release_qualification;
   return [
     '## Context',
-    'Published package registries now contain newer component releases than the docs release-audit surface.',
+    changes.length === 0
+      ? 'The current Waterline release has newer trusted qualification evidence than the docs release-audit surface.'
+      : 'Published package registries now contain newer component releases than the docs release-audit surface.',
     '',
     '## Changed Independently Published Components',
     ...buildChangeLines(changes),
@@ -1143,6 +1231,13 @@ function buildIssueBody(handoff, key, workerBranch, requestText, changes) {
     `- SDK-neutrality docs projection SHA-256: ${handoff.sdk_neutrality_authority.docs_projection_sha256}`,
     `- SDK-neutrality Python: ${handoff.sdk_neutrality_authority.python_package_version} (${handoff.sdk_neutrality_authority.python_registry_version})`,
     '',
+    '## Current Waterline Release Qualification',
+    `- Release: ${componentQualification.release_tag}`,
+    `- Source commit: ${componentQualification.release_commit}`,
+    `- Composer tuple: sdk-php=${componentQualification.packages['sdk-php']}, workflow=${componentQualification.packages.workflow}`,
+    `- Workflow run: ${componentQualification.run_id}.${componentQualification.run_attempt}`,
+    `- Artifact SHA-256: ${componentQualification.artifact_digest}`,
+    '',
     '## Published Server Protocol Authority',
     `- Server: ${handoff.published_server_protocol_authority.server_version}`,
     `- Source commit: ${handoff.published_server_protocol_authority.server_source_commit}`,
@@ -1156,6 +1251,7 @@ function buildIssueBody(handoff, key, workerBranch, requestText, changes) {
     '- Every SDK in the qualified recommendation is bound to its qualified Server by passing immutable compatibility evidence.',
     '- The SDK-neutrality lock and handoff independently bind the published Workflow resource and Python-enriched docs projection digests.',
     '- Protocol-catalog qualification matches the exact independently published Server source, OCI digest, embedded Workflow provenance, and observed catalog.',
+    '- The current Waterline release has retained exact Composer qualification bound to its release source and publisher-completion workflow run.',
     '- The deployed docs release-audit JSON reports the qualified aggregate recommendation with LEAK=0 and MIXED=0.',
     '- Stable 1.x remains the default public docs line.',
     '- 2.0 remains explicit prerelease/versioned guidance.',

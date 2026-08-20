@@ -63,16 +63,21 @@ jobs:
       - name: Refresh public artifact tuple
         run: node scripts/refresh-public-artifact-versions.js --date "${{ steps.tuple-date.outputs.value }}"
 
+      - name: Refresh current Waterline release qualification
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/refresh-waterline-release-qualification.js
+
       - name: Detect tuple changes
         id: changes
         run: |
           set -euo pipefail
 
-          if git diff --quiet -- scripts/public-artifact-versions.json scripts/published-artifact-versions.json scripts/platform-conformance-retained-evidence.json static/platform-conformance/run-ledger.json static/public-artifact-compatibility-evidence.json static/quickstart-execution-contract.json static/compatibility-contract.json static/sdk-neutrality-contract.json scripts/workflow-sdk-neutrality-authority-lock.json; then
+          if git diff --quiet -- scripts/public-artifact-versions.json scripts/published-artifact-versions.json scripts/platform-conformance-retained-evidence.json scripts/component-release-qualification-retained-evidence.json static/platform-conformance/run-ledger.json static/public-artifact-compatibility-evidence.json static/public-component-release-qualifications.json static/quickstart-execution-contract.json static/compatibility-contract.json static/sdk-neutrality-contract.json scripts/workflow-sdk-neutrality-authority-lock.json; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
-            git diff -- scripts/public-artifact-versions.json scripts/published-artifact-versions.json scripts/platform-conformance-retained-evidence.json static/platform-conformance/run-ledger.json static/public-artifact-compatibility-evidence.json static/quickstart-execution-contract.json static/compatibility-contract.json static/sdk-neutrality-contract.json scripts/workflow-sdk-neutrality-authority-lock.json
+            git diff -- scripts/public-artifact-versions.json scripts/published-artifact-versions.json scripts/platform-conformance-retained-evidence.json scripts/component-release-qualification-retained-evidence.json static/platform-conformance/run-ledger.json static/public-artifact-compatibility-evidence.json static/public-component-release-qualifications.json static/quickstart-execution-contract.json static/compatibility-contract.json static/sdk-neutrality-contract.json scripts/workflow-sdk-neutrality-authority-lock.json
           fi
 
       - name: Resolve published Server protocol authority ref
@@ -137,10 +142,17 @@ jobs:
           const {
             buildSdkNeutralityAuthorityIdentity,
           } = require('./scripts/route-public-artifact-tuple-handoff');
+          const {
+            currentQualificationSummary,
+          } = require('./scripts/generate-component-release-qualifications');
           const source = require('./scripts/public-artifact-versions.json');
           const publishedSource = require('./scripts/published-artifact-versions.json');
           const compatibilityEvidence =
             require('./static/public-artifact-compatibility-evidence.json');
+          const componentQualificationSource =
+            require('./scripts/component-release-qualification-retained-evidence.json');
+          const componentReleaseQualification =
+            currentQualificationSummary(componentQualificationSource);
           const sdkNeutralityContractSource = fs.readFileSync(
             'static/sdk-neutrality-contract.json',
             'utf8',
@@ -179,8 +191,10 @@ jobs:
             'scripts/public-artifact-versions.json',
             'scripts/published-artifact-versions.json',
             'scripts/platform-conformance-retained-evidence.json',
+            'scripts/component-release-qualification-retained-evidence.json',
             'static/platform-conformance/run-ledger.json',
             'static/public-artifact-compatibility-evidence.json',
+            'static/public-component-release-qualifications.json',
             'static/quickstart-execution-contract.json',
             'static/compatibility-contract.json',
             'static/sdk-neutrality-contract.json',
@@ -203,7 +217,7 @@ jobs:
           const runId = process.env.GITHUB_RUN_ID || null;
           const handoff = {
             schema: 'durable-workflow.docs.public-artifact-tuple-handoff',
-            schema_version: 4,
+            schema_version: 5,
             action: 'pipeline_ready_item',
             reason: 'public_artifact_tuple_refresh_available',
             repository: 'durable-workflow.github.io',
@@ -216,6 +230,7 @@ jobs:
             artifact_versions: source.artifacts,
             published_artifact_versions: publishedSource.artifacts,
             compatibility_evidence: compatibilityEvidence,
+            current_component_release_qualification: componentReleaseQualification,
             published_server_protocol_authority: serverProtocolAuthority,
             sdk_neutrality_authority: sdkNeutralityAuthority,
             previous_published_artifact_versions: previousPublishedSource.artifacts,
