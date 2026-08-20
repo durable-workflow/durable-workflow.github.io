@@ -5,7 +5,7 @@
 #   curl -fsSL https://durable-workflow.com/install.sh | sh
 #
 # Environment variables:
-#   VERSION                              Release tag, prerelease, or stable (default: prerelease).
+#   VERSION                              Release tag, supported, prerelease, or stable (default: supported).
 #   DURABLE_WORKFLOW_INSTALL_DIR         Install directory (default: ~/.local/bin).
 #   DURABLE_WORKFLOW_BIN_NAME            Executable name (default: dw).
 #   DURABLE_WORKFLOW_RELEASE_BASE_URL    Release base URL override for tests.
@@ -20,7 +20,7 @@ set -eu
 REPO="durable-workflow/cli"
 BIN_NAME="${DURABLE_WORKFLOW_BIN_NAME:-dw}"
 INSTALL_DIR="${DURABLE_WORKFLOW_INSTALL_DIR:-$HOME/.local/bin}"
-VERSION="${VERSION:-prerelease}"
+VERSION="${VERSION:-supported}"
 RELEASE_BASE_URL="${DURABLE_WORKFLOW_RELEASE_BASE_URL:-https://github.com/${REPO}/releases}"
 RELEASE_BASE_URL="${RELEASE_BASE_URL%/}"
 QUALIFIED_AUTHORITY_URL="${DURABLE_WORKFLOW_QUALIFIED_AUTHORITY_URL:-https://durable-workflow.com/public-artifact-compatibility-evidence.json}"
@@ -62,11 +62,11 @@ if [ "$os" = "macos" ] && [ "$arch" = "x86_64" ]; then
 fi
 
 asset="dw-${os}-${arch}"
-
 command -v curl >/dev/null 2>&1 || err "curl is required"
 
-if [ "$VERSION" = "prerelease" ]; then
-    info "Resolving the qualified CLI prerelease"
+if [ "$VERSION" = "supported" ] || [ "$VERSION" = "prerelease" ]; then
+    requested_channel="$VERSION"
+    info "Resolving the qualified CLI release"
     if ! VERSION=$(curl -fsSL --retry 3 "$QUALIFIED_AUTHORITY_URL" | tr '{},' '\n\n\n' | awk '
         /"schema"[[:space:]]*:[[:space:]]*"durable-workflow\.docs\.public-artifact-compatibility-evidence"/ && !schema_seen {
             schema_seen=1
@@ -89,14 +89,19 @@ if [ "$VERSION" = "prerelease" ]; then
             qualified_versions=0
         }
         END {
-            if (schema_seen && schema_version_seen && outcome_pass && version ~ /^[0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc)\.[0-9]+$/) {
+            if (schema_seen && schema_version_seen && outcome_pass && version ~ /^[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc)\.[0-9]+)?$/) {
                 print version
                 exit 0
             }
             exit 1
         }
     '); then
-        err "could not resolve a passing qualified CLI prerelease from $QUALIFIED_AUTHORITY_URL"
+        err "could not resolve a passing qualified CLI release from $QUALIFIED_AUTHORITY_URL"
+    fi
+    if [ "$requested_channel" = "prerelease" ]; then
+        printf '%s\n' "$VERSION" \
+            | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc)\.[0-9]+$' \
+            || err "qualified CLI release is not an alpha, beta, or rc version"
     fi
 fi
 
@@ -104,10 +109,10 @@ if [ "$VERSION" = "latest" ] || [ "$VERSION" = "stable" ]; then
     url="${RELEASE_BASE_URL}/latest/download/${asset}"
     checksum_url="${RELEASE_BASE_URL}/latest/download/SHA256SUMS"
 else
-    url="${RELEASE_BASE_URL}/download/${VERSION}/${asset}"
-    checksum_url="${RELEASE_BASE_URL}/download/${VERSION}/SHA256SUMS"
+    release_version="${VERSION#v}"
+    url="${RELEASE_BASE_URL}/download/${release_version}/${asset}"
+    checksum_url="${RELEASE_BASE_URL}/download/${release_version}/SHA256SUMS"
 fi
-
 sha256_file() {
     if command -v sha256sum >/dev/null 2>&1; then
         sha256sum "$1" | awk '{print $1}'
@@ -173,10 +178,11 @@ fi
 chmod +x "$tmp"
 installed_path="$INSTALL_DIR/$BIN_NAME"
 
-# Remember what a fresh lookup selected before the new file existed. When Bash
-# launched this installer after invoking that command, its parent-process hash
-# can continue to select this path even though the installer's own lookup sees
-# the newly written file. A child process cannot inspect or clear that cache.
+# Remember what a fresh lookup selected before the new file existed. When a
+# hashing shell launched this installer after invoking that command, its
+# parent-process cache can continue to select this path even though the
+# installer's own lookup sees the newly written file. A child process cannot
+# inspect or clear that cache.
 pre_install_path=""
 hash -r 2>/dev/null || :
 if resolved_path=$(command -v "$BIN_NAME" 2>/dev/null); then
@@ -286,49 +292,70 @@ quoted_install_dir=$(shell_quote "$INSTALL_DIR")
 quoted_bin_name=$(shell_quote "$BIN_NAME")
 shell_path=${SHELL:-/bin/sh}
 shell_name=${shell_path##*/}
-case "$shell_name" in
+
+# SHELL identifies the login shell, not necessarily the shell that invoked this
+# installer. Prefer the direct parent process when it is a recognized shell so
+# remediation can be pasted into the shell that is actually waiting for us.
+parent_shell_name=""
+if [ -n "${PPID:-}" ] && parent_command=$(ps -p "$PPID" -o comm= 2>/dev/null); then
+    parent_command=${parent_command##*/}
+    parent_command=${parent_command#-}
+    case "$parent_command" in
+        bash|dash|sh|ash|ksh|ksh93|mksh|pdksh|zsh|fish)
+            parent_shell_name="$parent_command"
+            ;;
+    esac
+fi
+
+remediation_shell_name=${parent_shell_name:-$shell_name}
+parent_shell_label="$remediation_shell_name"
+parent_cache_command=""
+case "$remediation_shell_name" in
     bash)
+        parent_shell_label="Bash"
         shell_profile="$HOME/.bashrc"
         current_shell_command="export PATH=${quoted_install_dir}:\"\$PATH\"; hash -d ${quoted_bin_name} 2>/dev/null || :"
         persistent_shell_line="export PATH=${quoted_install_dir}:\"\$PATH\""
+        parent_cache_command="hash -d ${quoted_bin_name} 2>/dev/null || :"
         ;;
     zsh)
+        parent_shell_label="Zsh"
         shell_profile="$HOME/.zshrc"
         current_shell_command="export PATH=${quoted_install_dir}:\"\$PATH\"; rehash"
         persistent_shell_line="export PATH=${quoted_install_dir}:\"\$PATH\""
+        parent_cache_command="unhash ${quoted_bin_name} 2>/dev/null || rehash"
         ;;
     fish)
+        parent_shell_label="fish"
         shell_profile="$HOME/.config/fish/config.fish"
         current_shell_command="set -gx PATH ${quoted_install_dir} \$PATH"
         persistent_shell_line="fish_add_path --prepend ${quoted_install_dir}"
         ;;
+    dash|sh|ash|ksh|ksh93|mksh|pdksh)
+        shell_profile="$HOME/.profile"
+        current_shell_command="export PATH=${quoted_install_dir}:\"\$PATH\"; hash -r"
+        persistent_shell_line="export PATH=${quoted_install_dir}:\"\$PATH\""
+        parent_cache_command="hash ${quoted_bin_name}"
+        ;;
     *)
+        parent_shell_label="POSIX"
         shell_profile="$HOME/.profile"
         current_shell_command="export PATH=${quoted_install_dir}:\"\$PATH\"; hash -r"
         persistent_shell_line="export PATH=${quoted_install_dir}:\"\$PATH\""
         ;;
 esac
 
-# `command -v` above runs in this installer process. If its Bash parent could
-# have cached a different pre-install path, require a targeted refresh in that
-# invoking shell instead of claiming that the installation is already ready.
-parent_shell_name=""
-if [ -n "${PPID:-}" ] && parent_command=$(ps -p "$PPID" -o comm= 2>/dev/null); then
-    parent_command=${parent_command##*/}
-    parent_command=${parent_command#-}
-    case "$parent_command" in
-        bash) parent_shell_name="bash" ;;
-    esac
-fi
-
+# `command -v` above runs in this installer process. If its parent is a shell
+# that can cache command locations, require a targeted refresh in that invoking
+# shell instead of claiming that the installation is already ready.
 if [ "$install_status" = "ready" ] \
-    && [ "$parent_shell_name" = "bash" ] \
+    && [ -n "$parent_cache_command" ] \
     && [ -n "$pre_install_path" ] \
     && [ "$pre_install_path" != "$installed_path" ]; then
     install_status="shell-cache-refresh-required"
     active_path="$pre_install_path"
     active_version=$(read_version "$active_path") || active_version=""
-    current_shell_command="hash -d ${quoted_bin_name} 2>/dev/null || :"
+    current_shell_command="$parent_cache_command"
     shell_profile=""
     persistent_shell_line=""
 fi
@@ -370,13 +397,13 @@ else
             info "Installation ready: ordinary $BIN_NAME invocations use the installed release."
             ;;
         shell-cache-refresh-required)
-            warn "Installation is not ready: the invoking Bash may still cache the pre-install $BIN_NAME path."
-            printf 'For this Bash shell, run:\n    %s\n' "$current_shell_command" >&2
+            warn "Installation is not ready: the invoking $parent_shell_label shell may still cache the pre-install $BIN_NAME path."
+            printf 'For this %s shell, run:\n    %s\n' "$parent_shell_label" "$current_shell_command" >&2
             ;;
         *)
             warn "Installation is not ready: ordinary $BIN_NAME invocations do not select the installed release ($install_status)."
-            printf 'For this %s shell, run:\n    %s\n' "${shell_name:-POSIX}" "$current_shell_command" >&2
-            printf 'For new %s shells, add this exact line to %s:\n    %s\n' "${shell_name:-POSIX}" "$shell_profile" "$persistent_shell_line" >&2
+            printf 'For this %s shell, run:\n    %s\n' "$parent_shell_label" "$current_shell_command" >&2
+            printf 'For new %s shells, add this exact line to %s:\n    %s\n' "$parent_shell_label" "$shell_profile" "$persistent_shell_line" >&2
             ;;
     esac
 fi

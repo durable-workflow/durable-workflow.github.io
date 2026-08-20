@@ -33,7 +33,7 @@ function checkShellInstaller() {
   const installer = read(path.join(staticDir, 'install.sh'));
   const ctx = 'static/install.sh';
 
-  assertContains(installer, 'VERSION="${VERSION:-prerelease}"', ctx);
+  assertContains(installer, 'VERSION="${VERSION:-supported}"', ctx);
   assertContains(installer, 'public-artifact-compatibility-evidence.json', ctx);
   assertContains(installer, '/"qualified_artifact_versions"', ctx);
   assertContains(installer, '/"cli"', ctx);
@@ -48,12 +48,15 @@ function checkShellInstaller() {
   assertContains(installer, 'command -v "$BIN_NAME"', ctx);
   assertContains(installer, 'install_status="path-shadowed"', ctx);
   assertContains(installer, 'install_status="shell-cache-refresh-required"', ctx);
+  assertContains(installer, 'dash|sh|ash|ksh|ksh93|mksh|pdksh)', ctx);
+  assertContains(installer, 'remediation_shell_name=${parent_shell_name:-$shell_name}', ctx);
+  assertContains(installer, 'parent_cache_command="hash ${quoted_bin_name}"', ctx);
   assertContains(installer, 'gh attestation verify "$tmp" --repo "$REPO"', ctx);
   assertContains(installer, 'gh attestation verify "$sums" --repo "$REPO"', ctx);
   // Confirms the pinned-tag URL path is wired (not just `latest/download`).
   assertMatches(
     installer,
-    /\$\{RELEASE_BASE_URL\}\/download\/\$\{VERSION\}\//,
+    /\$\{RELEASE_BASE_URL\}\/download\/\$\{release_version\}\//,
     ctx,
   );
 }
