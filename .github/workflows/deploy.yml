@@ -311,6 +311,22 @@ jobs:
           user_email: 41898282+github-actions[bot]@users.noreply.github.com
           force_orphan: true
 
+      - name: Verify live CLI installer cache remediation
+        if: >-
+          steps.deploy-plan.outputs.deploy == 'true' &&
+          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
+          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
+        run: node scripts/verify-cli-installer-live.js
+
+      - name: Upload live CLI installer evidence
+        if: ${{ always() && steps.deploy-plan.outputs.deploy == 'true' && (steps.server_catalog.outputs.deployment_state == 'deployable' || steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable') }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: live-cli-installer-${{ github.sha }}
+          path: live-cli-installer-evidence.json
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Verify live docs release audit
         if: >-
           steps.deploy-plan.outputs.deploy == 'true' &&

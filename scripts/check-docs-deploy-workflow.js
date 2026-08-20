@@ -367,6 +367,9 @@ function assertProtectedDeploySource(source) {
   const verifyLiveDocsIndex = steps.findIndex(
     step => step.name === 'Verify live docs release audit',
   );
+  const verifyLiveCliInstallerIndex = steps.findIndex(
+    step => step.name === 'Verify live CLI installer cache remediation',
+  );
   const verifyJobChainingDiagramsIndex = steps.findIndex(
     step => step.name === 'Verify live job-chaining diagrams',
   );
@@ -392,6 +395,8 @@ function assertProtectedDeploySource(source) {
     installPromotionBrowserIndex < 0
     || verifyPromotionBrowserIndex < 0
     || installPromotionBrowserIndex >= deployIndex
+    || deployIndex >= verifyLiveCliInstallerIndex
+    || verifyLiveCliInstallerIndex >= verifyLiveDocsIndex
     || deployIndex >= verifyLiveDocsIndex
     || verifyLiveDocsIndex >= verifyJobChainingDiagramsIndex
     || verifyJobChainingDiagramsIndex >= verifyPromotionBrowserIndex
@@ -441,6 +446,7 @@ function assertProtectedDeploySource(source) {
     'Verify public artifact tuple',
     'Install Cloud promotion browser',
     'Deploy to GitHub Pages',
+    'Verify live CLI installer cache remediation',
     'Verify live docs release audit',
     'Verify live sitemap freshness',
     'Verify live workflow lifecycle authority',
@@ -468,6 +474,18 @@ function assertProtectedDeploySource(source) {
   ) {
     fail(
       'docs deploy workflow must upload Helm publication evidence for every permitted deployment',
+    );
+  }
+  const cliInstallerEvidence = steps.find(
+    step => step.name === 'Upload live CLI installer evidence',
+  );
+  if (
+    !cliInstallerEvidence
+    || cliInstallerEvidence.if !== `\${{ always() && ${CATALOG_PUBLISHABLE} }}`
+    || cliInstallerEvidence.with?.path !== 'live-cli-installer-evidence.json'
+  ) {
+    fail(
+      'docs deploy workflow must retain live CLI installer evidence for every deployment',
     );
   }
   const promotionEvidence = steps.find(
@@ -584,6 +602,9 @@ for (const required of [
   'run: node scripts/plan-docs-deploy.js',
   'name: Verify live docs release audit',
   'run: node scripts/verify-docs-release-live.js',
+  'name: Verify live CLI installer cache remediation',
+  'run: node scripts/verify-cli-installer-live.js',
+  'name: Upload live CLI installer evidence',
   'name: Verify live workflow lifecycle authority',
   'run: node scripts/verify-workflow-lifecycle-live.js',
   'name: Verify live job-chaining diagrams',
