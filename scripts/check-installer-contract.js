@@ -10,6 +10,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const repoRoot = path.join(__dirname, '..');
 const staticDir = path.join(__dirname, '..', 'static');
 
 function read(filePath) {
@@ -75,9 +76,30 @@ function checkPowerShellInstaller() {
   assertMatches(installer, /\$releaseBaseUrl\/download\/\$version\//, ctx);
 }
 
+function checkRenderedInstallerComponent() {
+  const component = read(path.join(repoRoot, 'src', 'components', 'CliInstall', 'index.js'));
+  const ctx = 'src/components/CliInstall/index.js';
+
+  assertContains(component, "require('../../../scripts/public-artifact-versions')", ctx);
+  assertContains(component, 'ARTIFACT_PINS.cliVersion', ctx);
+  assertContains(component, 'ARTIFACT_PINS.cliPackageUrl', ctx);
+  assertContains(component, 'data-cli-platform', ctx);
+  assertContains(component, 'data-cli-asset-download', ctx);
+  assertContains(component, 'data-cli-qualified-release', ctx);
+  if (component.includes('/releases/latest')) {
+    throw new Error(`${ctx} must not expose the newest unqualified CLI release`);
+  }
+  assertMatches(
+    component,
+    /releases\/download\/[\s\S]*ARTIFACT_PINS\.cliVersion[\s\S]*platform\.asset/,
+    ctx,
+  );
+}
+
 try {
   checkShellInstaller();
   checkPowerShellInstaller();
+  checkRenderedInstallerComponent();
   console.log('Installer contract OK');
 } catch (error) {
   console.error('Installer contract violation:', error.message);

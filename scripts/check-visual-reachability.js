@@ -4,10 +4,12 @@ const http = require('node:http');
 const path = require('node:path');
 const {chromium} = require('playwright');
 const {collectReachabilityGeometry} = require('./visual-reachability');
+const {ARTIFACT_PINS} = require('./public-artifact-versions');
 
 const BUILD_DIRECTORY = path.resolve('build');
 const FIXTURE_PATH = path.resolve('scripts/fixtures/occluded-control.css');
 const FIXTURE_OVERLAY_ID = 'visual-reachability-fixture-overlay';
+const CLI_INSTALL_ROUTE = '/docs/2.0/polyglot/cli/';
 const NAVIGATION_CONFIGURATIONS = [
   {id: 'stable-default', route: '/docs/platform-conformance/'},
   {id: 'current-v2', route: '/docs/2.0/platform-conformance/'},
@@ -383,6 +385,80 @@ async function exerciseOccludedControlFixture(browser, baseUrl) {
   }
 }
 
+async function checkCliInstallLinks(browser, baseUrl) {
+  const navigationConfiguration = {
+    id: 'current-v2-cli-install',
+    route: CLI_INSTALL_ROUTE,
+  };
+  const viewport = VIEWPORTS[0];
+  const {context, page, browserErrors} = await openPage(
+    browser,
+    baseUrl,
+    viewport,
+    navigationConfiguration,
+  );
+
+  try {
+    const platformButtons = page.locator('button[data-cli-platform]');
+    const platformCount = await platformButtons.count();
+    assert.ok(platformCount > 0, 'CLI install component must render platform choices');
+
+    const details = page.locator('details[data-cli-direct-download]');
+    await details.waitFor({state: 'visible'});
+    await details.evaluate(element => {
+      element.open = true;
+    });
+
+    const checkedPlatforms = [];
+    for (let index = 0; index < platformCount; index += 1) {
+      const button = platformButtons.nth(index);
+      const platform = await button.getAttribute('data-cli-platform');
+      assert.ok(platform, 'every CLI platform button must declare its machine identifier');
+      await button.click();
+
+      const assetLink = details.locator('a[data-cli-asset-download]');
+      const releaseLink = details.locator('a[data-cli-qualified-release]');
+      const asset = (await assetLink.textContent()).trim();
+      const assetUrl = new URL(await assetLink.getAttribute('href'));
+      const releaseUrl = await releaseLink.getAttribute('href');
+
+      assert.equal(assetUrl.origin, 'https://github.com');
+      assert.equal(
+        assetUrl.pathname,
+        `/durable-workflow/cli/releases/download/${ARTIFACT_PINS.cliVersion}/${asset}`,
+        `${platform} must download the CLI artifact selected by the qualified authority`,
+      );
+      assert.equal(
+        releaseUrl,
+        ARTIFACT_PINS.cliPackageUrl,
+        `${platform} must link to the qualified CLI release`,
+      );
+      assert.doesNotMatch(assetUrl.pathname, /\/releases\/latest(?:\/|$)/);
+      assert.doesNotMatch(releaseUrl, /\/releases\/latest(?:\/|$)/);
+      checkedPlatforms.push(platform);
+    }
+
+    assert.equal(
+      new Set(checkedPlatforms).size,
+      platformCount,
+      'CLI platform machine identifiers must be unique',
+    );
+    assert.deepEqual(browserErrors, [], 'CLI install component emitted browser errors');
+
+    return {
+      state: 'qualified-direct-download-links',
+      navigation_configuration: navigationConfiguration.id,
+      route: navigationConfiguration.route,
+      viewport,
+      qualified_cli_version: ARTIFACT_PINS.cliVersion,
+      checked_platforms: checkedPlatforms,
+      browser_errors: browserErrors,
+    };
+  } finally {
+    await context.close();
+  }
+}
+
 async function main() {
   assert.ok(fs.existsSync(path.join(BUILD_DIRECTORY, 'index.html')), 'run the Docusaurus build first');
   for (const navigationConfiguration of NAVIGATION_CONFIGURATIONS) {
@@ -391,6 +467,10 @@ async function main() {
       `${navigationConfiguration.id} documentation route is missing from the Docusaurus build`,
     );
   }
+  assert.ok(
+    fs.existsSync(path.join(BUILD_DIRECTORY, CLI_INSTALL_ROUTE, 'index.html')),
+    'current CLI install route is missing from the Docusaurus build',
+  );
   assert.ok(fs.existsSync(FIXTURE_PATH), 'occluded-control fixture stylesheet is missing');
   fs.mkdirSync(outputDirectory, {recursive: true});
   const server = createStaticServer();
@@ -405,6 +485,7 @@ async function main() {
 
   try {
     checks.push(await exerciseOccludedControlFixture(browser, baseUrl));
+    checks.push(await checkCliInstallLinks(browser, baseUrl));
     for (const navigationConfiguration of NAVIGATION_CONFIGURATIONS) {
       for (const viewport of VIEWPORTS) {
         checks.push(await captureState({

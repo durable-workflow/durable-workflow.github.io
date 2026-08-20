@@ -2,6 +2,8 @@ import React, {useEffect, useState} from 'react';
 import BrowserOnly from '@docusaurus/BrowserOnly';
 import CodeBlock from '@theme/CodeBlock';
 
+const {ARTIFACT_PINS} = require('../../../scripts/public-artifact-versions');
+
 const PLATFORMS = [
   {
     id: 'linux-x86_64',
@@ -66,7 +68,9 @@ function Installer() {
   }, []);
 
   const platform = PLATFORMS.find((p) => p.id === selected) || PLATFORMS[0];
-  const assetUrl = `https://github.com/durable-workflow/cli/releases/latest/download/${platform.asset}`;
+  const assetUrl =
+    `https://github.com/durable-workflow/cli/releases/download/` +
+    `${ARTIFACT_PINS.cliVersion}/${platform.asset}`;
 
   return (
     <div>
@@ -84,6 +88,7 @@ function Installer() {
           return (
             <button
               key={p.id}
+              data-cli-platform={p.id}
               type="button"
               onClick={() => setSelected(p.id)}
               style={{
@@ -130,15 +135,15 @@ function Installer() {
         before writing the binary.
       </p>
 
-      <details>
+      <details data-cli-direct-download>
         <summary>Or download the binary directly</summary>
         <p>
-          <a href={assetUrl}>
+          <a data-cli-asset-download href={assetUrl}>
             <code>{platform.asset}</code>
           </a>{' '}
           from the{' '}
-          <a href="https://github.com/durable-workflow/cli/releases/latest">
-            latest release
+          <a data-cli-qualified-release href={ARTIFACT_PINS.cliPackageUrl}>
+            qualified release
           </a>
           .
         </p>
