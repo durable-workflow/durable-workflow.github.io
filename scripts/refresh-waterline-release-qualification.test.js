@@ -30,8 +30,13 @@ const PACKAGES = {
   'sdk-php': '2.0.0-rc.14',
   workflow: '2.0.0-rc.14',
 };
+const REORDERED_PACKAGES = {
+  waterline: PACKAGES.waterline,
+  workflow: PACKAGES.workflow,
+  'sdk-php': PACKAGES['sdk-php'],
+};
 
-function fixture() {
+function fixture(qualifiedPackages = PACKAGES) {
   const run = {
     id: RUN_ID,
     run_attempt: 1,
@@ -48,7 +53,7 @@ function fixture() {
   const qualification = {
     schema: 'durable-workflow.exact-current-composer-qualification/v1',
     outcome: 'pass',
-    packages: {...PACKAGES},
+    packages: {...qualifiedPackages},
     package_metadata: {
       name: 'durable-workflow/waterline',
       description: 'Waterline fixture',
@@ -148,6 +153,16 @@ assert.notStrictEqual(
   'the trusted workflow may land after the immutable current release tag',
 );
 assert.deepStrictEqual(built.qualification.packages, PACKAGES);
+assert.deepStrictEqual(
+  buildQualificationRecord(fixture(REORDERED_PACKAGES)).qualification.packages,
+  PACKAGES,
+  'exact package tuple validation must ignore JSON object insertion order',
+);
+assert.throws(
+  () => buildQualificationRecord(fixture({...REORDERED_PACKAGES, unexpected: '2.0.0'})),
+  /package tuple keys must be exactly sdk-php, waterline, workflow/,
+  'order-independent package tuple validation must still reject unexpected keys',
+);
 assert.deepStrictEqual(
   parseArtifactJson(fixture().assetBytes),
   fixture().assetEvidence,

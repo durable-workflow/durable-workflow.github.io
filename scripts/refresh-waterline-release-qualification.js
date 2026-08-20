@@ -63,7 +63,17 @@ function exactKeys(value, expected, label) {
 }
 
 function exactObject(actual, expected, label) {
-  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+  const expectedKeys = Object.keys(expected || {});
+  if (
+    !actual
+    || typeof actual !== 'object'
+    || Array.isArray(actual)
+    || Object.keys(actual).length !== expectedKeys.length
+    || expectedKeys.some(key => (
+      !Object.prototype.hasOwnProperty.call(actual, key)
+      || actual[key] !== expected[key]
+    ))
+  ) {
     fail(`${label} does not match the exact released package tuple`);
   }
 }
