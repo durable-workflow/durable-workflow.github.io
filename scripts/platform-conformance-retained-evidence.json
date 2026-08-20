@@ -4,7 +4,7 @@
   "captured_at": "2026-07-29T13:59:32.249Z",
   "current_artifact_tuple": {
     "cli": "2.0.0-rc.35",
-    "sdk-php": "2.0.0-rc.35",
+    "sdk-php": "2.0.0-rc.36",
     "sdk-python": "2.0.0-rc.31",
     "sdk-rust": "2.0.0-rc.31",
     "server": "2.0.0-rc.38",
