@@ -100,9 +100,12 @@ runtime compatibility path.
 ## Deployment preflight
 
 Server bootstrap inventories every persisted `payload_codec` and verifies the
-single-object magic and fixed-schema fingerprint of inline and nested-history
-Avro frames. Deployment stops before the new runtime starts if any active or
-replay-relevant non-Avro payload or obsolete frame exists. Keep the current
-prerelease running, retain customer history, and drain or export the listed
-runs before verified Avro re-encoding. Never delete history to bypass the
-preflight.
+single-object magic and fixed-schema fingerprint of inline frames,
+nested-history envelopes, and external payload references. Deployment stops
+before the new runtime starts if any active or replay-relevant non-Avro payload,
+untagged payload, corrupt reference, or obsolete frame exists. Active runs may
+drain on the current prerelease; retained terminal and replay-relevant state
+must follow the backup-first
+[prerelease history migration](/docs/2.0/polyglot/prerelease-history-migration).
+Exporting a run does not alter the rejected database state. Never delete
+history to bypass the preflight.

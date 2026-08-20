@@ -195,6 +195,7 @@ const sidebars = {
         'polyglot/invocable-php-handler',
         'polyglot/worker-protocol',
         'polyglot/avro-value-protocol',
+        'polyglot/prerelease-history-migration',
         'polyglot/task-matching-dispatch',
         'polyglot/task-queue-admission',
         'polyglot/worker-build-id-rollout',
