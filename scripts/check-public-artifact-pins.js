@@ -27,6 +27,11 @@ const SOURCE_PIN_PATTERNS = [
   },
 ];
 const PUBLISHED_TOKEN_SCOPES = Object.freeze({
+  'docs/laravel-adoption.md': Object.freeze({
+    php_sdk_artifact_pin: Object.freeze([
+      ARTIFACT_PINS.publishedPhpSdkComposerPackage.replace('durable-workflow/sdk:', ''),
+    ]),
+  }),
   'docs/polyglot/php.md': Object.freeze({
     php_sdk_artifact_pin: Object.freeze([
       ARTIFACT_PINS.publishedPhpSdkComposerPackage.replace('durable-workflow/sdk:', ''),

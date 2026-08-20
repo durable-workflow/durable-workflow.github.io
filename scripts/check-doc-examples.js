@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const {
   ARTIFACT_DISTRIBUTION_SURFACES,
+  ARTIFACT_PINS,
   PUBLISHED_ARTIFACT_PINS,
   replaceArtifactTokens,
 } = require('./public-artifact-versions');
@@ -72,6 +73,30 @@ function assertPublishedArtifactInstall(block, artifactId, context) {
   if (firstCommand !== installCommand) {
     throw new Error(
       `${context} must begin with the ${artifactId} install command from the published ` +
+        `artifact authority; expected ${JSON.stringify(installCommand)}, got ${JSON.stringify(firstCommand)}`,
+    );
+  }
+}
+
+function assertQualifiedArtifactInstall(block, artifactId, context) {
+  const installCommands = {
+    workflow: `composer require ${ARTIFACT_PINS.workflowComposerPackage}`,
+  };
+  const installCommand = installCommands[artifactId];
+
+  if (!installCommand) {
+    throw new Error(`${context} references an artifact without a qualified install command: ${artifactId}`);
+  }
+
+  const renderedBlock = replaceArtifactTokens(block, context);
+  const firstCommand = renderedBlock
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .find(line => line !== '' && !line.startsWith('#'));
+
+  if (firstCommand !== installCommand) {
+    throw new Error(
+      `${context} must begin with the ${artifactId} install command from the qualified ` +
         `artifact authority; expected ${JSON.stringify(installCommand)}, got ${JSON.stringify(firstCommand)}`,
     );
   }
@@ -390,6 +415,12 @@ function checkExample(example, quickstartContract, examplesById) {
     assertIncludes(block, expected, context);
   }
 
+  for (const forbidden of example.forbiddenSubstrings || []) {
+    if (block.includes(forbidden)) {
+      throw new Error(`${context} must not include ${JSON.stringify(forbidden)}`);
+    }
+  }
+
   if (example.primaryArtifactInstall) {
     assertPrimaryArtifactInstall(
       block,
@@ -403,6 +434,14 @@ function checkExample(example, quickstartContract, examplesById) {
     assertPublishedArtifactInstall(
       block,
       example.publishedArtifactInstall,
+      context,
+    );
+  }
+
+  if (example.qualifiedArtifactInstall) {
+    assertQualifiedArtifactInstall(
+      block,
+      example.qualifiedArtifactInstall,
       context,
     );
   }

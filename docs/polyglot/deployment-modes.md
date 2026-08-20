@@ -45,6 +45,11 @@ Use this page when deciding which shape should own a workflow fleet, planning a
 cutover between them, or documenting which parts of the product contract must
 stay identical across both.
 
+Laravel teams should use the focused
+[Laravel adoption and runtime transition guide](/docs/2.0/laravel-adoption/)
+for the v1-to-v2 and embedded-to-service paths, including the shipped PHP SDK
+bridge and its Laravel test fake.
+
 ## Choose a service-mode runtime
 
 | Runtime choice | Who operates durable state | What your team runs | Start here |

@@ -6,6 +6,7 @@ const sidebars = {
     'introduction',
     'quickstart',
     'capabilities',
+    'laravel-adoption',
     {
       type: 'category',
       label: 'Service Mode',

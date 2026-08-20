@@ -11,6 +11,11 @@ application and moving new workflow traffic to the standalone server. If the
 application is still on v1, start with [Migrating to 2.0](/docs/2.0/migration)
 and keep existing v1 runs on the v1 engine until they finish.
 
+Use [Laravel Adoption and Runtime Transition](/docs/2.0/laravel-adoption/) first
+when the destination is not yet chosen or when Laravel framework integration is
+part of the decision. This page is the self-hosted Server runbook after that
+choice; it is not the Cloud migration path.
+
 The migration is an adoption path, not an in-place database move. The
 standalone server owns new control-plane starts, durable history, schedules,
 worker registrations, and task delivery over HTTP. Your application workers

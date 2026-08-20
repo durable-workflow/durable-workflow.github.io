@@ -57,6 +57,11 @@ reads that application-owned state in process.
 Start with [Embedded Installation](/docs/2.0/installation/) only when that
 in-application ownership model is intentional.
 
+Laravel teams coming from stable v1—or reconsidering an existing 2.0 embedded
+deployment—should use the
+[Laravel adoption and runtime transition guide](/docs/2.0/laravel-adoption/)
+to compare the executable embedded and PHP SDK paths before changing traffic.
+
 ## Choose a service-mode SDK
 
 - **[PHP SDK](/docs/2.0/polyglot/php/):** install `durable-workflow/sdk` in a

@@ -16,6 +16,10 @@ keywords:
 # Migrating to 2.0
 
 This guide covers the key changes when upgrading an existing Laravel v1 application to v2.
+First choose whether Laravel will keep owning the runtime or connect to Cloud or
+a self-hosted Server through the PHP SDK in the
+[Laravel adoption and runtime transition guide](/docs/2.0/laravel-adoption/).
+This page then provides the detailed v1-to-v2 embedded package procedure.
 
 ## Upgrade procedure
 

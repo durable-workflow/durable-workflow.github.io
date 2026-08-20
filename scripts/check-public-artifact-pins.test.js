@@ -56,6 +56,14 @@ assert.doesNotThrow(
   'the PHP guide may use its dedicated published-version token',
 );
 
+assert.doesNotThrow(
+  () => checkPublicArtifactSource(
+    'docs/laravel-adoption.md',
+    '`composer require %%artifact.publishedPhpSdkComposerPackage%%`',
+  ),
+  'the Laravel service-mode journey may use the PHP SDK published-version token',
+);
+
 assert.throws(
   () => checkPublicArtifactSource(
     'docs/guides/install-anywhere.md',

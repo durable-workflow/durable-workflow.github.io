@@ -145,8 +145,11 @@ Those bridges are distinct from
 [embedded Laravel workflows](/docs/2.0/installation/), where
 `durable-workflow/workflow` makes the Laravel application itself own durable
 state and execute through Laravel queues. See
-[Deployment Modes](/docs/2.0/polyglot/deployment-modes/) before choosing a
-runtime boundary.
+[Laravel Adoption and Runtime Transition](/docs/2.0/laravel-adoption/) for the
+same representative Laravel use case across v1, v2 embedded, and this shipped
+service-mode bridge, including drain and rollback. Use
+[Deployment Modes](/docs/2.0/polyglot/deployment-modes/) for the wider runtime
+boundary comparison.
 
 ## Protocol and release boundary
 
