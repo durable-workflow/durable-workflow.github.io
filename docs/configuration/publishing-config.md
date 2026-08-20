@@ -95,7 +95,7 @@ Two PHP-only codecs remain available for reading v1 history during migration:
 
 Setting `serializer` to a legacy codec will be flagged by `php artisan workflow:v2:doctor`. New v2 workflows still resolve to Avro; keep a legacy codec setting only while you are finishing or importing v1 runs that need PHP-native payload decoding.
 
-Legacy fully-qualified class names (e.g. `Workflow\Serializers\Y::class`) are accepted for backwards compatibility and resolve to their canonical codec names.
+The internal v1 import/drain reader recognizes legacy fully-qualified class names (for example, `Workflow\Serializers\Y::class`). They are not public v2 codec aliases and cannot be selected by a new v2 run or SDK.
 
 ## Compatibility Markers
 

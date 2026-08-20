@@ -106,7 +106,10 @@
     },
     "codec_schemas": {
       "type": "object",
-      "additionalProperties": true
+      "properties": {
+        "avro": true
+      },
+      "additionalProperties": false
     },
     "payload_manifest": {
       "$ref": "#/$defs/payloadManifest"
@@ -148,7 +151,7 @@
       "required": ["codec", "arguments", "output"],
       "additionalProperties": true,
       "properties": {
-        "codec": { "type": "string" },
+        "codec": { "type": "string", "const": "avro" },
         "arguments": { "$ref": "#/$defs/payloadValue" },
         "output": { "$ref": "#/$defs/payloadValue" }
       }
@@ -177,7 +180,7 @@
             "properties": {
               "path": { "type": "string" },
               "available": { "type": "boolean" },
-              "codec": { "type": ["string", "null"] },
+              "codec": { "type": "string", "const": "avro" },
               "redacted": { "type": "boolean" }
             }
           }

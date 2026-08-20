@@ -192,8 +192,8 @@
       "how_to_apply": "Every public route documented in the protocol-spec catalog must validate against the published OpenAPI document. Any field that requires a first-party serialization library is either internal or covered by an explicit codec entry under `codec_neutrality`."
     },
     "codec_neutrality": {
-      "requirement": "Every payload that crosses a public boundary advertises a codec name. At least one universal codec (a codec that any language can implement using only schema tooling, with no language-specific serializer dependency) is always offered alongside any engine-specific codec.",
-      "rationale": "PHP-specific codecs (`workflow-serializer-y`, `workflow-serializer-base64`) and Python `pickle`-style codecs cannot be safely consumed across languages. Universal codecs (Avro, raw JSON) are reachable from any language.",
+      "requirement": "Every durable payload that crosses a public boundary advertises codec `avro`; no other public or engine-specific v2 codec is offered.",
+      "rationale": "The fixed typed Avro Value schema and single-object framing are language-neutral. JSON remains the HTTP document transport, while PHP-specific v1 readers stay behind the internal import/drain boundary.",
       "authority": [
         {
           "kind": "protocol_spec",
@@ -206,7 +206,7 @@
           "url": "https://durable-workflow.github.io/platform-protocol-specs/cluster-info-envelope.schema.json"
         }
       ],
-      "how_to_apply": "Worker protocol negotiation must always include a universal codec in the advertised set. New persisted payload shapes that require a custom codec must register the codec name and ship a JSON Schema or Avro schema alongside the serializer."
+      "how_to_apply": "Worker and control-plane contracts advertise exactly [\"avro\"]. Reject json-tagged, unknown, or untagged durable payloads with unsupported_payload_codec; never transcode or guess."
     },
     "error_shape_neutrality": {
       "requirement": "Public failure objects use a structured envelope of (`code`, `message`, optional `details`) where `code` is a stable string identifier. Language-specific exception class names, stack traces, or framework-internal error types are diagnostic only and must not be required for consumers to branch on.",
@@ -309,7 +309,7 @@
       },
       "codec_review": {
         "rule": "codec_neutrality",
-        "check": "Any payload field carries a codec name and at least one universal codec is offered. Engine-specific codecs are accepted but never required."
+        "check": "Every durable payload field uses codec avro. No other public or engine-specific v2 codec is offered or accepted."
       },
       "error_shape_review": {
         "rule": "error_shape_neutrality",
@@ -350,7 +350,7 @@
     "gates": {
       "audit_recorded": "The release PR description (or a linked design note) states which audit steps were applied and links the protocol-spec catalog entry, the conformance fixture, and the discovery entry for the new surface.",
       "no_php_or_python_only_required_fields": "No guaranteed field on a `stable` surface requires the `workflow-serializer-y`, `workflow-serializer-base64`, PHP `serialize`, or Python `pickle` codec.",
-      "universal_codec_advertised": "Worker protocol negotiation continues to advertise at least one universal codec documented by `durable-workflow.v2.worker-protocol-api`.",
+      "universal_codec_advertised": "Worker protocol negotiation advertises exactly one universal codec, avro, as documented by `durable-workflow.v2.worker-protocol-api`.",
       "fixture_schema_validated": "New replay inputs validate against the published `durable-workflow.v2.history-event-payloads` and `durable-workflow.v2.replay-bundle` schemas.",
       "discovery_entry_present": "New public surfaces have a `platform_protocol_specs` catalog entry with a non-empty `surface_family`, `owner_repo`, and `format`."
     },

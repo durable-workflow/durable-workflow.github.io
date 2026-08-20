@@ -245,7 +245,7 @@ To accept the v2 default explicitly, leave `serializer` unset, or pin it:
 
 Keep a legacy codec (`'workflow-serializer-y'` or `'workflow-serializer-base64'`) only if you need to finish draining v1 runs that share PHP-native values between a server and PHP-only workers. Legacy class names (`Workflow\Serializers\Y::class`, etc.) are still accepted as aliases for decoding v1 runs.
 
-**Custom serializer classes from v1 are unsupported in v2.** v2 only resolves `avro`, the legacy `workflow-serializer-y`, and `workflow-serializer-base64` codecs. If you had a custom serializer, drain v1 runs before upgrading or re-encode historical payloads into `avro` — the custom class is not consulted. `php artisan workflow:v2:doctor` flags any other `workflows.serializer` value as migration debt; default-codec resolution silently falls back to `avro` for new runs so encode does not fail.
+**Custom serializer classes from v1 are unsupported in v2.** The public v2 registry resolves only `avro`. The legacy `workflow-serializer-y` and `workflow-serializer-base64` readers are confined to the internal v1 import/drain path and cannot be selected for a new v2 run or SDK payload. If you had a custom serializer, drain v1 runs before upgrading or re-encode historical payloads into `avro` — the custom class is not consulted. `php artisan workflow:v2:doctor` flags any other `workflows.serializer` value as migration debt; new-run codec omission resolves to `avro`.
 
 **Custom model subclasses are supported only when they keep the package's column and key contract.** The frozen support matrix in
 [Customization Matrix](/docs/2.0/configuration/customization-matrix/) is

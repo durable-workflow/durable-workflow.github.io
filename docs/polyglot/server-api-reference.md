@@ -514,7 +514,7 @@ the contract:
 | `uri` | yes | Driver-owned object location, such as `file:///...`, `s3://bucket/prefix/object`, `gs://bucket/prefix/object`, or `azure://container/prefix/object`. |
 | `sha256` | yes | Lowercase hex SHA-256 of the stored encoded bytes. SDKs and the server verify it before decode. |
 | `size_bytes` | yes | Byte length of the stored encoded payload. Mismatch is an integrity failure. |
-| `codec` | yes | Payload codec for the stored bytes, for example `json` or the SDK payload codec name. |
+| `codec` | yes | Always `avro`: fixed typed Value schema with Avro single-object framing. The surrounding HTTP document remains JSON. |
 | `expires_at` | no | ISO-8601 expiry hint for retention/GC. Missing means the namespace retention policy owns cleanup. |
 
 Payload offload is threshold-gated by the namespace storage policy. Inline

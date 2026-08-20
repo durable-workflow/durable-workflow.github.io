@@ -207,10 +207,9 @@ for the same attempt.
 ## Payload Codecs And External Storage
 
 Argument payloads arrive on `payloads.arguments` with a `codec` field. The
-helper uses the server's `CodecRegistry` to decode them, so the external
-process must reference the matching codec implementation (`avro`, `json`,
-etc.). A mismatched codec or a malformed blob becomes a
-`decode_failure`.
+helper uses the server's `CodecRegistry` to decode them. The only public v2
+codec is `avro`; `json`, unknown codecs, and malformed or untagged blobs fail
+closed. JSON remains the HTTP carrier document, not a durable payload codec.
 
 When workflow inputs exceed the configured
 [external payload storage](../features/external-payload-storage.md)

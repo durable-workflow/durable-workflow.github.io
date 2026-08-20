@@ -423,7 +423,7 @@ function buildSdkNeutralityAuthorityIdentity(
 ) {
   if (typeof workflowVersion !== 'string' || workflowVersion.trim() === '') {
     throw new Error(
-      'SDK-neutrality authority identity requires a qualified Workflow version',
+      'SDK-neutrality authority identity requires a published Workflow version',
     );
   }
   if (typeof contractSource !== 'string') {
@@ -469,7 +469,7 @@ function buildSdkNeutralityAuthorityIdentity(
   }
   if (lock.workflow_ref !== workflowVersion) {
     throw new Error(
-      'generated SDK-neutrality authority lock must match the qualified Workflow version',
+      'generated SDK-neutrality authority lock must match the published Workflow version',
     );
   }
   if (
@@ -667,7 +667,7 @@ function trustedSdkNeutralityWorkflowSourceCommit(
   }
   if (lock.workflow_ref !== workflowVersion) {
     throw new Error(
-      'trusted SDK-neutrality authority lock must match the qualified Workflow version',
+      'trusted SDK-neutrality authority lock must match the published Workflow version',
     );
   }
   if (
@@ -903,13 +903,13 @@ function validateHandoff(handoff, options = {}) {
   );
   validateSdkNeutralityAuthorityIdentity(
     handoff.sdk_neutrality_authority,
-    handoff.artifact_versions.workflow,
+    handoff.published_artifact_versions.workflow,
     handoff.published_artifact_versions,
     sdkNeutralityAuthoritySources,
   );
   validateSdkNeutralityProjectionAdvance(
     handoff.sdk_neutrality_authority,
-    handoff.artifact_versions.workflow,
+    handoff.published_artifact_versions.workflow,
     handoff.published_artifact_versions,
     handoff.previous_published_artifact_versions,
     sdkNeutralityAuthoritySources.workflowResourceSource,
@@ -1018,7 +1018,7 @@ function handoffKey(handoff) {
   ).slice(0, 12);
   const sdkAuthorityDigest = sdkNeutralityAuthorityDigest(
     handoff.sdk_neutrality_authority,
-    handoff.artifact_versions.workflow,
+    handoff.published_artifact_versions.workflow,
   );
   const serverAuthorityDigest = publishedServerProtocolAuthorityDigest(
     handoff.published_server_protocol_authority,
@@ -1154,7 +1154,7 @@ function buildIssueBody(handoff, key, workerBranch, requestText, changes) {
     '- The published-component source reports the newest independently published releases.',
     '- The qualified aggregate source remains the compatibility-backed recommendation.',
     '- Every SDK in the qualified recommendation is bound to its qualified Server by passing immutable compatibility evidence.',
-    '- The SDK-neutrality lock and handoff independently bind the qualified Workflow resource and Python-enriched docs projection digests.',
+    '- The SDK-neutrality lock and handoff independently bind the published Workflow resource and Python-enriched docs projection digests.',
     '- Protocol-catalog qualification matches the exact independently published Server source, OCI digest, embedded Workflow provenance, and observed catalog.',
     '- The deployed docs release-audit JSON reports the qualified aggregate recommendation with LEAK=0 and MIXED=0.',
     '- Stable 1.x remains the default public docs line.',

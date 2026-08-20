@@ -119,6 +119,12 @@ the catalog binding.
 | `cli_json_envelopes` | `stable` | [`durable-workflow.cli.output-schema-manifest@3`](https://durable-workflow.github.io/cli-json-envelopes/v3/manifest.json) |
 | `principal_attribution_contract` | `stable` | [`durable-workflow.v2.platform-conformance.runtime-scenarios/principal_attribution_contract@38`](https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/principal-attribution-scenarios.json) |
 
+The suite row retains CLI schema revision v3 as immutable historical evidence.
+The current CLI contract is the
+[`durable-workflow.cli.output-schema-manifest@4`](https://durable-workflow.github.io/cli-json-envelopes/v4/manifest.json)
+closure, which publishes the Avro-only payload fields without rewriting v2 or
+v3 bytes.
+
 The active worker-protocol API source uses the same lifecycle-neutral
 `durable-workflow.v2.worker-protocol-api@catalog-16` bytes as the
 [Platform Protocol Specs](/docs/2.0/platform-protocol-specs) catalog. The

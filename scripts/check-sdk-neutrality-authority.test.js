@@ -5,6 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
+  assertAvroOnlyCodecContract,
   assertNoRepositoryLocalReferences,
   assertNeutralityRules,
   assertPinnedWorkflowAuthority,
@@ -18,7 +19,7 @@ const {
   sdkNeutralityContractSource,
   workflowAuthorityLockSource,
 } = require('./refresh-public-artifact-versions');
-const currentWorkflowRef = require('./public-artifact-versions.json').artifacts.workflow;
+const currentWorkflowRef = require('./published-artifact-versions.json').artifacts.workflow;
 
 function nextWorkflowPrerelease(ref) {
   return ref.replace(/\.(\d+)$/, (_, sequence) => `.${Number(sequence) + 1}`);
@@ -55,6 +56,7 @@ const contract = loadContract();
 const catalogs = loadAuthorityCatalogs();
 
 assert.doesNotThrow(() => assertNoRepositoryLocalReferences(contract));
+assert.doesNotThrow(() => assertAvroOnlyCodecContract(contract));
 assert.doesNotThrow(() => assertNeutralityRules(contract, catalogs));
 assert.doesNotThrow(() => assertSdkBreadthPolicy(contract, catalogs));
 assert.doesNotThrow(() => assertReleaseGates(contract));
@@ -371,6 +373,65 @@ assert.throws(
   /is not published by static\/platform-protocol-specs\.json/,
   'unpublished protocol IDs must fail the release check',
 );
+
+for (const [label, mutate] of [
+  [
+    'append-style JSON durable codec authorization',
+    copy => {
+      copy.neutrality_rules.codec_neutrality.how_to_apply +=
+        ' JSON is also supported as a durable payload codec.';
+    },
+  ],
+  [
+    'raw JSON durable codec guidance',
+    copy => {
+      copy.neutrality_rules.codec_neutrality.rationale +=
+        ' Raw JSON is also a universal durable payload codec.';
+    },
+  ],
+  [
+    'a non-exclusive universal codec set',
+    copy => {
+      copy.release_gates.gates.universal_codec_advertised =
+        'Worker protocol negotiation advertises at least one universal codec.';
+    },
+  ],
+  [
+    'engine-specific v2 codec guidance',
+    copy => {
+      copy.neutrality_rules.codec_neutrality.how_to_apply +=
+        ' An engine-specific v2 codec may also be offered.';
+    },
+  ],
+  [
+    'custom v2 codec guidance',
+    copy => {
+      copy.neutrality_rules.codec_neutrality.how_to_apply +=
+        ' A new durable payload shape may register a custom codec.';
+    },
+  ],
+  [
+    'engine-specific release audit guidance',
+    copy => {
+      copy.audit_checklist.steps.codec_review.check =
+        'Every durable payload field uses codec avro, alongside an engine-specific codec.';
+    },
+  ],
+  [
+    'silent JSON decoding',
+    copy => {
+      copy.neutrality_rules.codec_neutrality.how_to_apply =
+        'Advertise exactly ["avro"], but decode json-tagged nulls as JSON.';
+    },
+  ],
+]) {
+  const contradictoryCodecContract = changed(contract, mutate);
+  assert.throws(
+    () => assertAvroOnlyCodecContract(contradictoryCodecContract),
+    /must exactly preserve the Avro-only payload-codec contract/,
+    `the machine authority must reject ${label}`,
+  );
+}
 
 const missingScenario = changed(contract, copy => {
   copy.sdk_breadth_policy.first_party.rust_sdk.conformance.scenario_ids.push(

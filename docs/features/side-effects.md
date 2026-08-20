@@ -109,7 +109,7 @@ php artisan app:elapsed
 
 `App\Workflows\Elapsed\ElapsedTimeWorkflow` records start and end
 timestamps as integer values inside `sideEffect()` callbacks so the
-recorded value survives any configured payload codec on replay. The
+recorded value survives Avro payload decoding on replay. The
 Waterline run detail shows two `MarkerRecorded` events bracketing the
 timer fire — that pair of markers is the on-disk evidence that the
 clock reads stayed deterministic.

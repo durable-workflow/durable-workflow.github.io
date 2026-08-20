@@ -47,10 +47,11 @@ union. Released branches are never reordered or reused.
   Pydantic, and domain objects require explicit adapters to a canonical value
   kind.
 
-JSON remains an explicit fallback codec for systems that prefer JSON's value
-model. Avro's main benefit here is exact cross-language type fidelity. Framing
-and base64 overhead can make small HTTP envelopes larger, so the generic Value
-schema is not presented as a large compression feature.
+Avro is the only Durable Workflow 2.0 payload codec. HTTP request and response
+documents remain JSON transport, but every durable value inside those
+documents uses this fixed schema and single-object frame. A `json` codec tag,
+an unknown codec, or an untagged raw durable blob fails closed with
+`unsupported_payload_codec`; runtimes never transcode or guess.
 
 ## JSON inspection projection
 
@@ -93,32 +94,15 @@ encode, and decode latency. `AVRO_VALUE_ENCODE_BUDGET_US` and
 `AVRO_VALUE_DECODE_BUDGET_US` can tighten the defaults on a qualification
 runner. Release CI executes these commands with budget enforcement; a
 production-path regression must be explained or corrected before release.
-The old wrapper implementation exists only inside the benchmark and migration
-tooling, not as a runtime compatibility path.
+The old wrapper implementation exists only inside the benchmark, not as a
+runtime compatibility path.
 
-## Migrating retained 2.0 prerelease histories
+## Deployment preflight
 
-The removed JSON-in-Avro wrapper is not accepted by the normal runtime decoder.
-Before deploying this release candidate over a database that retains earlier
-2.0 prerelease histories, stop writers and inventory the database:
-
-```bash
-php artisan workflow:v2:migrate-prerelease-avro --dry-run
-```
-
-If the inventory is non-empty, take the ordinary database and external-payload
-backups first. Then run the one-time backup-first rewrite with new paths:
-
-```bash
-php artisan workflow:v2:migrate-prerelease-avro \
-  --backup=/secure/backups/prerelease-avro-values.json \
-  --replay-export-dir=/secure/backups/prerelease-avro-replay
-```
-
-The command refuses to overwrite either path. It records the original inline
-or external payload references and resolved legacy bytes, rewrites them in one
-database transaction, exports each affected retained history, and requires
-strict replay verification before it reports success. Preserve the database,
-external-object, and command-generated backups together until the retained
-history window expires. A failed replay blocks the rollout and should be
-restored from those backups before retrying.
+Server bootstrap inventories every persisted `payload_codec` and verifies the
+single-object magic and fixed-schema fingerprint of inline and nested-history
+Avro frames. Deployment stops before the new runtime starts if any active or
+replay-relevant non-Avro payload or obsolete frame exists. Keep the current
+prerelease running, retain customer history, and drain or export the listed
+runs before verified Avro re-encoding. Never delete history to bypass the
+preflight.

@@ -72,6 +72,7 @@ const EXPECTED_PROTOCOL_SOURCE_DIGESTS = Object.freeze({
 const RETAINED_CLI_MANIFEST_SHA256 = {
   2: 'sha256:9eaccc507cb9f9affdc9ca6fe56a5ae83f528ba0c7621d31d8908cfec9b6c439',
   3: 'sha256:1b76016fe34266f1366cd09f66ba8a868f7c1faf014802237158f2b8a16a0e38',
+  4: 'sha256:caa4c047a9995f8aced4fc29085b9c3e29a7d1030eee3a5651ed22c575604330',
 };
 const VERSIONED_SUITE_AUTHORITY_DIGESTS = {
   29: 'sha256:51eaaf8d034264f0f91bd13d10e3d46ca10dc8d97010719d4727c0336ad66382',
@@ -3823,14 +3824,14 @@ function assertRetainedCliJsonEnvelopeRevisions(contract) {
       );
     }
     if (
-      revision === 3 &&
+      revision >= 3 &&
       (
         Object.keys(manifest.commands).length !== 79 ||
         Object.keys(jsonlCommands).length !== 12
       )
     ) {
       throw new Error(
-        'retained CLI output-schema manifest v3 must bind all 79 JSON and ' +
+        `retained CLI output-schema manifest v${revision} must bind all 79 JSON and ` +
           '12 JSONL command mappings.',
       );
     }

@@ -64,8 +64,8 @@ separately versioned embedded Laravel engine and standalone-server core.
 
 All three use the same durable execution model and public protocol.
 Cross-language child workflows and activities use registered string types and
-the shared codec envelope, preserving JSON value shape through the official
-Avro language packages. The [2.0 Capability Index](/docs/2.0/capabilities/)
+the shared Avro envelope, preserving fixed typed Value semantics through the
+official Avro language packages. The [2.0 Capability Index](/docs/2.0/capabilities/)
 records exact floors and deliberate gaps such as Rust's current update-authoring
 and schedule-management boundary.
 

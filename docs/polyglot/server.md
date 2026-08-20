@@ -946,7 +946,7 @@ Key field notes for client code:
   can distinguish `empty`, `throttled`, `unavailable`, and `draining` outcomes
   without scraping prose error messages.
 - Worker command-option capabilities, including retry policies, timeout fields, parent-close policy, and non-retryable failures, are also echoed in `server_capabilities` so workers can negotiate behavior without a separate cluster-info request.
-- Universal payload codecs live under `capabilities.payload_codecs`; final v2 advertises `avro` there. When the server advertises engine-specific codecs that only a PHP worker can honor, those appear under `capabilities.payload_codecs_engine_specific.<engine>` — language-neutral SDKs should ignore that object unless they opt into that engine.
+- The sole v2 payload codec lives under `capabilities.payload_codecs`; the list is exactly `['avro']`. PHP-only v1 import/drain serializers are internal migration mechanics and never appear in runtime capabilities.
 
 ## Connecting Workers
 
@@ -1178,7 +1178,7 @@ The only endpoints that do **not** require `X-Durable-Workflow-Control-Plane-Ver
 
 - `GET /api/health` — Liveness probe plus the public `topology` summary (no auth required)
 - `GET /api/ready` — Readiness probe plus the same `topology` summary (no auth required)
-- `GET /api/cluster/info` — Server capabilities, protocol versions, payload codecs. Clients should hit this first to discover which control-plane and worker-protocol versions the server supports.
+- `GET /api/cluster/info` — Server capabilities, protocol versions, and the sole Avro payload codec. Clients should hit this first to discover which control-plane and worker-protocol versions the server supports.
 
 ## Troubleshooting
 

@@ -154,7 +154,7 @@ jobs:
             'utf8',
           );
           const sdkNeutralityAuthority = buildSdkNeutralityAuthorityIdentity(
-            source.artifacts.workflow,
+            publishedSource.artifacts.workflow,
             sdkNeutralityContractSource,
             sdkNeutralityAuthorityLockSource,
             publishedSource.artifacts,

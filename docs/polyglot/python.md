@@ -213,6 +213,7 @@ from durable_workflow import (
     external_storage_envelope,
     to_avro_payload_value,
 )
+from durable_workflow.serializer import encode
 from durable_workflow.external_storage import fetch_external_payload, store_external_payload
 
 storage = LocalFilesystemExternalStorage("/var/lib/durable-workflow/payloads")
@@ -225,7 +226,11 @@ envelope = external_storage_envelope(
     threshold_bytes=64 * 1024,
 )
 
-reference = store_external_payload(storage, b'{"archived":true}', codec="json")
+reference = store_external_payload(
+    storage,
+    encode({"archived": True}).encode("utf-8"),
+    codec="avro",
+)
 payload_bytes = fetch_external_payload(storage, reference, cache=cache)
 ```
 
@@ -239,10 +244,10 @@ The wire envelope fields are intentionally small and stable:
 ```json
 {
   "schema": "durable-workflow.v2.external-payload-reference.v1",
-  "uri": "s3://dw-payloads/billing/run-001/input.json",
+  "uri": "s3://dw-payloads/billing/run-001/input.avro",
   "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
   "size_bytes": 1048576,
-  "codec": "json",
+  "codec": "avro",
   "expires_at": "2026-05-22T00:00:00Z"
 }
 ```

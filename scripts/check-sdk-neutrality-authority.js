@@ -49,7 +49,6 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const {
-  ARTIFACT_VERSIONS,
   PUBLISHED_ARTIFACT_VERSIONS,
   PYTHON_PACKAGE_AUTHORITY,
 } = require('./public-artifact-versions');
@@ -142,6 +141,26 @@ const REQUIRED_RELEASE_GATES = [
   'fixture_schema_validated',
   'discovery_entry_present',
 ];
+
+const EXPECTED_AVRO_ONLY_CODEC_FIELDS = {
+  'neutrality_rules.codec_neutrality.requirement':
+    'Every durable payload that crosses a public boundary advertises codec `avro`; ' +
+    'no other public or engine-specific v2 codec is offered.',
+  'neutrality_rules.codec_neutrality.rationale':
+    'The fixed typed Avro Value schema and single-object framing are language-neutral. ' +
+    'JSON remains the HTTP document transport, while PHP-specific v1 readers stay ' +
+    'behind the internal import/drain boundary.',
+  'neutrality_rules.codec_neutrality.how_to_apply':
+    'Worker and control-plane contracts advertise exactly ["avro"]. Reject json-tagged, ' +
+    'unknown, or untagged durable payloads with unsupported_payload_codec; never ' +
+    'transcode or guess.',
+  'audit_checklist.steps.codec_review.check':
+    'Every durable payload field uses codec avro. No other public or engine-specific ' +
+    'v2 codec is offered or accepted.',
+  'release_gates.gates.universal_codec_advertised':
+    'Worker protocol negotiation advertises exactly one universal codec, avro, as ' +
+    'documented by `durable-workflow.v2.worker-protocol-api`.',
+};
 
 function read(file) {
   return fs.readFileSync(file, 'utf8');
@@ -484,12 +503,7 @@ function assertNeutralityRules(contract, catalogs) {
         `point at the published worker protocol authority`,
     );
   }
-  if (!/universal codec/.test(codec.requirement)) {
-    throw new Error(
-      `static/sdk-neutrality-contract.json codec_neutrality.requirement must ` +
-        `require advertising at least one universal codec`,
-    );
-  }
+  assertAvroOnlyCodecContract(contract);
 
   const replay = rules.replay_fixture_neutrality;
   if (!/history_event_payloads/.test(replay.requirement) || !/replay_bundle/.test(replay.requirement)) {
@@ -518,6 +532,41 @@ function assertNeutralityRules(contract, catalogs) {
       `static/sdk-neutrality-contract.json replay_fixture_neutrality.authority ` +
         `must include the published history_replay_bundles scenario catalog`,
     );
+  }
+}
+
+function assertAvroOnlyCodecContract(contract) {
+  const codec = contract.neutrality_rules?.codec_neutrality;
+  const fields = [
+    {
+      path: 'neutrality_rules.codec_neutrality.requirement',
+      actual: codec?.requirement,
+    },
+    {
+      path: 'neutrality_rules.codec_neutrality.rationale',
+      actual: codec?.rationale,
+    },
+    {
+      path: 'neutrality_rules.codec_neutrality.how_to_apply',
+      actual: codec?.how_to_apply,
+    },
+    {
+      path: 'audit_checklist.steps.codec_review.check',
+      actual: contract.audit_checklist?.steps?.codec_review?.check,
+    },
+    {
+      path: 'release_gates.gates.universal_codec_advertised',
+      actual: contract.release_gates?.gates?.universal_codec_advertised,
+    },
+  ];
+
+  for (const field of fields) {
+    if (field.actual !== EXPECTED_AVRO_ONLY_CODEC_FIELDS[field.path]) {
+      throw new Error(
+        `static/sdk-neutrality-contract.json ${field.path} must exactly preserve ` +
+          `the Avro-only payload-codec contract`,
+      );
+    }
   }
 }
 
@@ -892,7 +941,7 @@ function assertPinnedWorkflowAuthority(options = {}) {
     'static',
     'sdk-neutrality-contract.json',
   );
-  const workflowVersion = options.workflowVersion || ARTIFACT_VERSIONS.workflow;
+  const workflowVersion = options.workflowVersion || PUBLISHED_ARTIFACT_VERSIONS.workflow;
 
   if (!fs.existsSync(lockPath)) {
     throw new Error(
@@ -913,7 +962,7 @@ function assertPinnedWorkflowAuthority(options = {}) {
   if (lock.workflow_ref !== workflowVersion) {
     throw new Error(
       `Workflow SDK neutrality authority lock targets ${lock.workflow_ref || '<missing>'}, ` +
-        `but scripts/public-artifact-versions.json pins ${workflowVersion}`,
+        `but scripts/published-artifact-versions.json pins ${workflowVersion}`,
     );
   }
   if (lock.workflow_resource_path !== 'resources/sdk-neutrality-contract.json') {
@@ -1047,6 +1096,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  assertAvroOnlyCodecContract,
   assertNoRepositoryLocalReferences,
   assertNeutralityRules,
   assertPinnedWorkflowAuthority,

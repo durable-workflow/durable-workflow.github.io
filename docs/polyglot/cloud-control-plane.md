@@ -182,8 +182,8 @@ executes the orchestration protocol in the managed runtime, and persists the
 workflow state and history.
 
 The customer application does not select a runtime deployment for an
-operation. Workflow IDs, run IDs, task queues, compatibility markers, and
-payload codecs remain durable application contracts within the Cloud namespace.
+operation. Workflow IDs, run IDs, task queues, compatibility markers, and Avro
+payload encoding remain durable application contracts within the Cloud namespace.
 
 ## Customer-Run Worker Connectivity
 

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "durable-workflow.v2.cli-json-envelopes",
   "title": "Durable Workflow CLI JSON envelopes",
-  "description": "Normative JSON Schema index for the dw CLI machine-readable output contract. The output-schema manifest, command-to-schema mapping, JSON/JSONL mode markers, and schema ids are contractual. Human-readable table output is diagnostic documentation and is outside this schema.",
+  "description": "Normative JSON Schema index for the current dw CLI machine-readable output contract. The output-schema manifest, command-to-schema mapping, JSON/JSONL mode markers, schema ids, resolvers, and digests are contractual. Human-readable table output is diagnostic documentation and is outside this schema.",
   "type": "object",
   "x-durable-workflow-catalog-entry": "cli_json_envelopes",
   "x-durable-workflow-catalog-schema": "durable-workflow.v2.platform-protocol-specs.catalog",
@@ -18,7 +18,14 @@
       "owner_repo": "durable-workflow/cli"
     }
   ],
-  "required": ["schema", "version", "json_schema_draft", "commands"],
+  "required": [
+    "schema",
+    "version",
+    "artifact_id",
+    "resolver_url",
+    "json_schema_draft",
+    "commands"
+  ],
   "additionalProperties": true,
   "properties": {
     "schema": {
@@ -27,7 +34,15 @@
     },
     "version": {
       "type": "integer",
-      "minimum": 1
+      "const": 4
+    },
+    "artifact_id": {
+      "type": "string",
+      "const": "durable-workflow.cli.output-schema-manifest@4"
+    },
+    "resolver_url": {
+      "type": "string",
+      "const": "https://durable-workflow.github.io/cli-json-envelopes/v4/manifest.json"
     },
     "json_schema_draft": {
       "type": "string",
@@ -48,12 +63,12 @@
   "$defs": {
     "command_schema_entry": {
       "type": "object",
-      "required": ["output", "schema", "schema_id"],
+      "required": ["output", "schema", "schema_id", "resolver_url", "sha256"],
       "additionalProperties": true,
       "properties": {
         "output": {
           "type": "string",
-          "enum": ["--json", "--jsonl"]
+          "enum": ["--json", "--output=json", "--output=jsonl", "stdout-json"]
         },
         "schema": {
           "type": "string",
@@ -62,7 +77,16 @@
         "schema_id": {
           "type": "string",
           "format": "uri",
-          "pattern": "^https://durable-workflow\\.com/schemas/cli/output/[A-Za-z0-9_.-]+\\.schema\\.json$"
+          "pattern": "^https://durable-workflow\\.github\\.io/cli-json-envelopes/v4/schemas/[A-Za-z0-9_.-]+\\.schema\\.json$"
+        },
+        "resolver_url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://durable-workflow\\.github\\.io/cli-json-envelopes/v4/schemas/[A-Za-z0-9_.-]+\\.schema\\.json$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
         },
         "stream_items_from": {
           "type": ["string", "null"],

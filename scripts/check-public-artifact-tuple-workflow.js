@@ -82,7 +82,7 @@ currentSdkNeutralityAuthoritySources.workflowResourceSource =
     currentSdkNeutralityAuthoritySources.contractSource,
   );
 const currentSdkNeutralityAuthority = buildSdkNeutralityAuthorityIdentity(
-  currentArtifactVersions.artifacts.workflow,
+  currentPublishedArtifactVersions.artifacts.workflow,
   currentSdkNeutralityAuthoritySources.contractSource,
   currentSdkNeutralityAuthoritySources.lockSource,
   currentPublishedArtifactVersions.artifacts,
@@ -663,6 +663,7 @@ const stableKeyHandoff = {
   published_artifact_versions: {
     ...stableArtifactVersions,
     'sdk-python': currentPublishedArtifactVersions.artifacts['sdk-python'],
+    workflow: currentPublishedArtifactVersions.artifacts.workflow,
   },
 };
 function publishedServerProtocolAuthority(version) {
@@ -932,7 +933,7 @@ const sdkNeutralityReplacementSources = {
   workflowResourceSource: sdkNeutralityReplacementResourceSource,
 };
 sdkNeutralityReplacementSources.lockSource = workflowAuthorityLockSource(
-  stableArtifactVersions.workflow,
+  stableKeyHandoff.published_artifact_versions.workflow,
   sdkNeutralityReplacementSources.workflowResourceSource,
   '9'.repeat(40),
   stableKeyHandoff.published_artifact_versions,
@@ -940,7 +941,7 @@ sdkNeutralityReplacementSources.lockSource = workflowAuthorityLockSource(
 const sdkNeutralityReplacementHandoff = structuredClone(multiArtifactHandoff);
 sdkNeutralityReplacementHandoff.sdk_neutrality_authority =
   buildSdkNeutralityAuthorityIdentity(
-    stableArtifactVersions.workflow,
+    stableKeyHandoff.published_artifact_versions.workflow,
     sdkNeutralityReplacementSources.contractSource,
     sdkNeutralityReplacementSources.lockSource,
     stableKeyHandoff.published_artifact_versions,
@@ -972,13 +973,13 @@ pythonOnlyStaleSources.contractSource = sdkNeutralityContractSource(
   pythonOnlyPreviousPublishedVersions,
 );
 pythonOnlyStaleSources.lockSource = workflowAuthorityLockSource(
-  pythonOnlyQualifiedVersions.workflow,
+  pythonOnlyPreviousPublishedVersions.workflow,
   pythonOnlyStaleSources.workflowResourceSource,
   pythonOnlyTrustedSourceCommit,
   pythonOnlyPreviousPublishedVersions,
 );
 const pythonOnlyPreviousAuthority = buildSdkNeutralityAuthorityIdentity(
-  pythonOnlyQualifiedVersions.workflow,
+  pythonOnlyPreviousPublishedVersions.workflow,
   pythonOnlyStaleSources.contractSource,
   pythonOnlyStaleSources.lockSource,
   pythonOnlyPreviousPublishedVersions,
@@ -992,7 +993,7 @@ pythonOnlyFutureSources.contractSource = sdkNeutralityContractSource(
   pythonOnlyPublishedVersions,
 );
 pythonOnlyFutureSources.lockSource = workflowAuthorityLockSource(
-  pythonOnlyQualifiedVersions.workflow,
+  pythonOnlyPublishedVersions.workflow,
   pythonOnlyFutureSources.workflowResourceSource,
   pythonOnlyTrustedSourceCommit,
   pythonOnlyPublishedVersions,
@@ -1008,7 +1009,7 @@ pythonOnlyHandoff.compatibility_evidence = compatibilityEvidence(
 pythonOnlyHandoff.published_server_protocol_authority =
   publishedServerProtocolAuthority(pythonOnlyPublishedVersions.server);
 pythonOnlyHandoff.sdk_neutrality_authority = buildSdkNeutralityAuthorityIdentity(
-  pythonOnlyHandoff.artifact_versions.workflow,
+  pythonOnlyHandoff.published_artifact_versions.workflow,
   pythonOnlyFutureSources.contractSource,
   pythonOnlyFutureSources.lockSource,
   pythonOnlyPublishedVersions,
@@ -1105,11 +1106,11 @@ assert.strictEqual(
 assert.strictEqual(
   sdkNeutralityAuthorityDigest(
     structuredClone(multiArtifactHandoff.sdk_neutrality_authority),
-    multiArtifactHandoff.artifact_versions.workflow,
+    multiArtifactHandoff.published_artifact_versions.workflow,
   ),
   sdkNeutralityAuthorityDigest(
     multiArtifactHandoff.sdk_neutrality_authority,
-    multiArtifactHandoff.artifact_versions.workflow,
+    multiArtifactHandoff.published_artifact_versions.workflow,
   ),
   'identical validated SDK-neutrality authority must preserve its stable digest',
 );

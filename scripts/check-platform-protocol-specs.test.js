@@ -4,6 +4,7 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const Ajv2020 = require('ajv/dist/2020');
 
 const {
   assertCatalogDoesNotExposeRepositoryLocalAuthority,
@@ -41,6 +42,104 @@ const realWorkerSpec = {
   repoRelativePath:
     'static/platform-protocol-specs/worker-protocol-api.openapi.yaml',
 };
+const replayBundleSchema = require('../static/platform-protocol-specs/replay-bundle.schema.json');
+const historyExportBundleSchema = require('../static/platform-protocol-specs/history-export-bundle.schema.json');
+const cliJsonEnvelopeIndex = require('../static/platform-protocol-specs/cli-json-envelopes.schema.json');
+const cliJsonEnvelopeManifest = require('../static/cli-json-envelopes/v4/manifest.json');
+const cliWorkflowStartSchema = require('../static/cli-json-envelopes/v4/schemas/workflow-start.schema.json');
+const cliWorkflowRunSchema = require('../static/cli-json-envelopes/v4/schemas/workflow-run.schema.json');
+const cliWorkflowQuerySchema = require('../static/cli-json-envelopes/v4/schemas/workflow-query.schema.json');
+const cliWorkflowUpdateSchema = require('../static/cli-json-envelopes/v4/schemas/workflow-update.schema.json');
+
+function assertAvroOnlyCodecSchema(label, schema) {
+  const validate = new Ajv2020({strict: true}).compile(schema);
+
+  assert.strictEqual(validate('avro'), true, `${label} must accept the Avro codec`);
+  for (const unsupportedCodec of ['json', 'unknown', null]) {
+    assert.strictEqual(
+      validate(unsupportedCodec),
+      false,
+      `${label} must reject ${JSON.stringify(unsupportedCodec)}`,
+    );
+  }
+}
+
+function assertPublishedPayloadCodecsAreAvroOnly() {
+  const codecSchemas = [
+    [
+      'replay.payload_codec',
+      replayBundleSchema.properties.replay.properties.payload_codec,
+    ],
+    [
+      'history payload section codec',
+      historyExportBundleSchema.$defs.payloadSection.properties.codec,
+    ],
+    [
+      'history payload manifest entry codec',
+      historyExportBundleSchema.$defs.payloadManifest.properties.entries.items
+        .properties.codec,
+    ],
+    [
+      'CLI workflow start payload codec',
+      cliWorkflowStartSchema.properties.payload_codec,
+    ],
+    [
+      'CLI workflow run payload codec',
+      cliWorkflowRunSchema.properties.payload_codec,
+    ],
+    [
+      'CLI workflow query result codec',
+      cliWorkflowQuerySchema.properties.result_envelope.properties.codec,
+    ],
+    [
+      'CLI workflow update result codec',
+      cliWorkflowUpdateSchema.properties.result_envelope.properties.codec,
+    ],
+    [
+      'CLI workflow update diagnostic result codec',
+      cliWorkflowUpdateSchema.properties.update_diagnostics.properties
+        .result_envelope.properties.codec,
+    ],
+  ];
+
+  for (const [label, schema] of codecSchemas) {
+    assertAvroOnlyCodecSchema(label, schema);
+  }
+
+  const validateCodecSchemas = new Ajv2020({strict: true}).compile(
+    historyExportBundleSchema.properties.codec_schemas,
+  );
+  assert.strictEqual(
+    validateCodecSchemas({avro: {}}),
+    true,
+    'history codec_schemas must allow the Avro schema entry',
+  );
+  for (const unsupportedCodec of ['json', 'unknown']) {
+    assert.strictEqual(
+      validateCodecSchemas({[unsupportedCodec]: {}}),
+      false,
+      `history codec_schemas must reject the ${unsupportedCodec} codec entry`,
+    );
+  }
+
+  const validateCliManifest = new Ajv2020({
+    strict: true,
+    strictSchema: false,
+    formats: {uri: true},
+  }).compile(cliJsonEnvelopeIndex);
+  assert.strictEqual(
+    validateCliManifest(cliJsonEnvelopeManifest),
+    true,
+    'the current CLI manifest must validate against the published schema index',
+  );
+  const staleCliManifest = structuredClone(cliJsonEnvelopeManifest);
+  staleCliManifest.version = 3;
+  assert.strictEqual(
+    validateCliManifest(staleCliManifest),
+    false,
+    'the published schema index must reject a stale CLI manifest revision',
+  );
+}
 
 function validateFixture(source) {
   fs.writeFileSync(fixturePath, source);
@@ -80,6 +179,8 @@ const safeCatalogEntry = {
 };
 
 try {
+  assertPublishedPayloadCodecsAreAvroOnly();
+
   assert.doesNotThrow(
     () => assertPublishedSpecFileMatchesEntry(
       'worker_protocol_api',

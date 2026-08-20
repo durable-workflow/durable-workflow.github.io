@@ -91,7 +91,7 @@
           "enum": ["verify", "debug", "project"]
         },
         "strict_history": { "type": "boolean" },
-        "payload_codec": { "type": ["string", "null"] },
+        "payload_codec": { "type": "string", "const": "avro" },
         "verification": {
           "type": ["object", "null"],
           "additionalProperties": true,

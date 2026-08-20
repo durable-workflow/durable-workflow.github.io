@@ -92,6 +92,7 @@
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "3.10.2",
+    "ajv": "8.20.0",
     "patch-package": "8.0.1",
     "playwright": "1.55.1"
   },

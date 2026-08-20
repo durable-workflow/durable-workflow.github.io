@@ -124,7 +124,7 @@ URL to its published artifact.
 | Rule | Requirement |
 | --- | --- |
 | `protocol_neutrality` | Public RPC and event surfaces use HTTP+JSON or AsyncAPI shapes that any HTTP-capable runtime can produce and consume. |
-| `codec_neutrality` | Every payload that crosses a public boundary advertises a codec name. At least one universal codec is always offered alongside any engine-specific codec. |
+| `codec_neutrality` | Every durable payload that crosses a public boundary advertises `avro`. No other public or engine-specific v2 codec is offered. |
 | `error_shape_neutrality` | Public failure objects use a structured envelope of (`code`, `message`, optional `details`). PHP and Python exception class names are diagnostic only. |
 | `type_identity_neutrality` | Workflow, activity, child workflow, and exception types are identified by stable string names. Class FQCNs and module paths are SDK-input convenience, not contract. |
 | `replay_fixture_neutrality` | Replay fixtures and golden history bundles are JSON conforming to the published `history_event_payloads` and `replay_bundle` schemas. |
@@ -190,8 +190,8 @@ of the manifest enumerates the specific checks:
   conformance fixture, and the discovery entry for the new surface.
 - `no_php_or_python_only_required_fields` — no guaranteed field on a
   `stable` surface requires a PHP-only or Python-only codec.
-- `universal_codec_advertised` — worker protocol negotiation continues
-  to advertise at least one universal codec.
+- `universal_codec_advertised` — worker protocol negotiation advertises
+  exactly one universal codec, `avro`.
 - `fixture_schema_validated` — new replay fixtures or golden history
   bundles validate against the published JSON Schemas.
 - `discovery_entry_present` — new public surfaces have a

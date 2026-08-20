@@ -1058,7 +1058,7 @@ async function resolvePublishedArtifactTupleState(sources = PUBLISHED_ARTIFACT_S
   const workflowRelease = selectPackagistRelease(
     workflowReleases,
     'workflow',
-    versions.workflow,
+    selection.publishedVersions.workflow,
   );
   const workflowAuthority = await resolveWorkflowAuthorityForRelease(workflowRelease);
 
@@ -1332,7 +1332,7 @@ function generatedPublicArtifactTupleSources(
     ),
     'static/sdk-neutrality-contract.json': sdkNeutralitySource,
     'scripts/workflow-sdk-neutrality-authority-lock.json': workflowAuthorityLockSource(
-      versions.workflow,
+      publishedVersions.workflow,
       workflowManifestSource,
       workflowSourceCommit,
       publishedVersions,

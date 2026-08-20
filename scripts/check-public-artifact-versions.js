@@ -919,6 +919,11 @@ const retainedEvidenceSource = JSON.parse(
 const currentWorkflowAuthorityLock = JSON.parse(
   currentTupleSources['scripts/workflow-sdk-neutrality-authority-lock.json'],
 );
+assert.strictEqual(
+  currentWorkflowAuthorityLock.workflow_ref,
+  publishedSource.artifacts.workflow,
+  'the SDK-neutrality authority must track the latest published Workflow package',
+);
 const currentWorkflowContract = JSON.parse(
   currentTupleSources['static/sdk-neutrality-contract.json'],
 );

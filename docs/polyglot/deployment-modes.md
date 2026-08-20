@@ -70,7 +70,7 @@ surfaces; there is no mandatory gRPC and no second engine.
 | Task dispatch default | Tasks are normally dispatched to the Laravel queue in-process with the application. | The service runtime uses poll dispatch so external workers discover work over HTTP. Self-hosted Server operators can explicitly override that default. | The ready/leased/repair lifecycle and durable task model stay the same. |
 | Workflow and activity type keys | PHP aliases can resolve to local classes inside the app. | Workers advertise supported type keys during registration. | Public type keys should stay stable and language-neutral. Do not make PHP FQCNs or mirrored PHP placeholder types the public contract. |
 | Operator surface | The embedded Waterline package or app-local tooling reads the Laravel app's durable state in process. | Cloud provides Managed Waterline for its namespace. Self-hosted operators can separately deploy Waterline against a Server-owned namespace. Service APIs, CLI, and SDKs also read runtime-owned state. | Visibility facts such as search attributes, memos, run status, queue diagnostics, and history export are durable facts within the runtime that owns the run. Waterline does not combine runtimes or namespaces. |
-| Auth and tenancy boundary | App auth is whatever the Laravel host exposes around its own routes and sessions. | Namespace selection and server auth tokens or signatures are mandatory API boundaries. | Namespace names, task queues, compatibility markers, and payload-codec choices should stay stable across a cutover. |
+| Auth and tenancy boundary | App auth is whatever the Laravel host exposes around its own routes and sessions. | Namespace selection and server auth tokens or signatures are mandatory API boundaries. | Namespace names, task queues, compatibility markers, and the fixed Avro payload contract should stay stable across a cutover. |
 | Runtime discovery | The app can resolve services in-process or through app-local configuration. | Workers and clients must target an explicit remote base URL. | Do not couple either mode to shared `APP_URL`, `APP_KEY`, localhost assumptions, or same-container discovery. |
 | Migration boundary | Existing embedded runs keep executing where they started. | New service-managed runs start in the selected Cloud or self-hosted runtime and stay there. | There is no automatic live migration of in-flight runs between modes. Export is for audit/debugging, not for importing live state. |
 
@@ -139,7 +139,7 @@ Three migration rules are non-negotiable:
 
 1. Existing runs stay on the runtime where they started.
 2. New server-managed runs use stable type keys, namespace names, task queues,
-   and payload codecs from the first cutover.
+   and the fixed Avro payload contract from the first cutover.
 3. Signals, queries, updates, repair, cancel, terminate, and archive must go to the
    runtime that owns the target run.
 
