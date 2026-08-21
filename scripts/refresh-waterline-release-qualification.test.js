@@ -168,8 +168,14 @@ assert.deepStrictEqual(
   fixture().assetEvidence,
   'the retained public release asset reader must parse the exact uploaded JSON bytes',
 );
+const legacyRetained = {
+  schema: retained.schema,
+  schema_version: 1,
+  retained_evidence_captured_at: retained.retained_evidence_captured_at,
+  records: retained.records.filter(record => !record.source.artifact),
+};
 assert.throws(
-  () => currentQualificationSummary(retained),
+  () => currentQualificationSummary(legacyRetained),
   /Current Waterline release qualification is missing/,
   'legacy retained rows must not masquerade as current release evidence',
 );

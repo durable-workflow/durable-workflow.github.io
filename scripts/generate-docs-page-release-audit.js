@@ -257,10 +257,34 @@ function buildArtifactCompatibilityProjection(
 function buildComponentReleaseQualificationProjection(
   evidence = readTrackedPublicComponentReleaseQualifications(),
 ) {
+  const qualifications = evidence.qualifications.map(record => {
+    const workflowRun = record.source?.workflow_run;
+    if (typeof workflowRun?.path !== 'string') {
+      return record;
+    }
+
+    const {path: workflowPath, ...publicWorkflowRun} = workflowRun;
+    const publicArtifact = {...record.source.artifact};
+    delete publicArtifact.name;
+    return {
+      ...record,
+      source: {
+        ...record.source,
+        workflow_run: {
+          ...publicWorkflowRun,
+          workflow_source_url:
+            `${record.source.repository_url}/blob/${record.source.release_commit}/${workflowPath}`,
+        },
+        artifact: publicArtifact,
+      },
+    };
+  });
+
   return {
     role: 'retained_component_release_qualifications',
     source_url: COMPONENT_RELEASE_QUALIFICATIONS_PATH,
     ...evidence,
+    qualifications,
   };
 }
 

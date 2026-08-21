@@ -2,7 +2,12 @@
   "schema": "durable-workflow.docs.public-component-release-qualifications",
   "schema_version": 1,
   "outcome": "pass",
-  "retained_evidence_captured_at": "2026-08-09T16:20:56.000Z",
+  "retained_evidence_captured_at": "2026-08-20T23:32:16.000Z",
+  "current_qualification_id": "waterline-2.0.0-rc.24-composer",
+  "current_release": {
+    "artifact": "waterline",
+    "version": "2.0.0-rc.24"
+  },
   "qualifications": [
     {
       "id": "waterline-2.0.0-rc.11-composer",
@@ -29,7 +34,8 @@
           "run_attempt": 2,
           "run_url": "https://github.com/durable-workflow/waterline/actions/runs/31266631910"
         }
-      }
+      },
+      "evidence_role": "historical"
     },
     {
       "id": "waterline-2.0.0-rc.13-composer",
@@ -56,7 +62,47 @@
           "run_attempt": 1,
           "run_url": "https://github.com/durable-workflow/waterline/actions/runs/31323527557"
         }
-      }
+      },
+      "evidence_role": "historical"
+    },
+    {
+      "id": "waterline-2.0.0-rc.24-composer",
+      "component": {
+        "artifact": "waterline",
+        "version": "2.0.0-rc.24"
+      },
+      "qualification": {
+        "schema": "durable-workflow.exact-current-composer-qualification/v1",
+        "outcome": "pass",
+        "packages": {
+          "waterline": "2.0.0-rc.24",
+          "sdk-php": "2.0.0-rc.40",
+          "workflow": "2.0.0-rc.33"
+        }
+      },
+      "source": {
+        "repository_url": "https://github.com/durable-workflow/waterline",
+        "release_tag": "2.0.0-rc.24",
+        "release_commit": "212837b26f825e88a5097ad778d9ebcaf3a51943",
+        "workflow_run": {
+          "name": "Release Docs Audit",
+          "path": ".github/workflows/release-docs-audit.yml",
+          "event": "repository_dispatch",
+          "head_sha": "212837b26f825e88a5097ad778d9ebcaf3a51943",
+          "run_id": 32429011063,
+          "run_attempt": 1,
+          "run_url": "https://github.com/durable-workflow/waterline/actions/runs/32429011063",
+          "run_conclusion": "failure",
+          "qualification_outcome": "pass"
+        },
+        "artifact": {
+          "name": "waterline-exact-composer-qualification-32429011063-1.json",
+          "artifact_id": 522932683,
+          "url": "https://github.com/durable-workflow/waterline/releases/download/2.0.0-rc.24/waterline-exact-composer-qualification-32429011063-1.json",
+          "digest": "sha256:5e5cfca93844dddc054c024b019dd1c62b8be38856196a650d57a0956f890bf7"
+        }
+      },
+      "evidence_role": "current"
     }
   ]
 }
