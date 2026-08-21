@@ -1,7 +1,7 @@
 ---
 sidebar_position: 4
 title: Rust Cloud Quickstart
-description: Run a Rust workflow and activity against one Durable Workflow Cloud namespace with the supported SDK and CLI.
+description: Run the shared Sample App Rust playground against a provisioned Durable Workflow Cloud namespace.
 tags:
   - Rust
   - Cloud
@@ -11,7 +11,7 @@ keywords:
   - Rust Cloud quickstart
   - namespace runtime URL
   - Rust worker
-  - dw workflow start
+  - Sample App playground
 ---
 
 # Rust Cloud Quickstart
@@ -19,172 +19,125 @@ keywords:
 :::caution Controlled early access
 
 Durable Workflow Cloud is available through controlled early access. Use this
-guide only with a provisioned Cloud namespace and its role-scoped runtime
-credentials. For generally available Rust SDK setup and API guidance, start
-with the [Rust SDK guide](./rust.md).
+guide only after Cloud has provisioned a namespace and two role-scoped runtime
+credentials. The generally available Rust journey does not require Cloud; start
+with the [Rust SDK guide](./rust.md) or run `scripts/playground rust` against
+the playground's default local runtime.
 
 :::
 
-This is the shortest supported Rust path from a fresh Sample App Codespace to a
-completed Durable Workflow Cloud run. It uses the Rust and CLI prerelease
-channels resolved by the Sample App's machine-owned dependency metadata. It
-builds the small worker in development mode; there is no custom release build.
+The Sample App exposes one symmetric playground for PHP, Python, and Rust. This
+page selects Rust and changes only the runtime target. The corresponding
+[PHP](./php.md) and [Python](./python.md) SDK paths use the same command with
+`php` or `python`; the [Sample App playground
+contract](https://github.com/durable-workflow/sample-app/blob/main/README.md#symmetric-sdk-playground)
+documents all three choices.
 
-The path has three credential roles:
-
-- A Cloud API key administers namespaces and creates credentials. It is not
-  used by this execution path.
-- A client runtime credential lets `dw` start and inspect workflows.
-- A worker runtime credential lets the Rust process register, poll, heartbeat,
-  complete work, and deregister during shutdown.
-
-The client and worker credentials must be different secrets. Both execution
-roles connect to the same namespace runtime URL and runtime namespace.
+The playground resolves the current qualified artifact tuple from the Sample
+App's machine-owned metadata. Do not copy an exact prerelease number into these
+commands or add a separate SDK installation step.
 
 ## 1. Open the prepared Sample App
 
 [Create a Codespace from the Sample App `main`
 branch](https://codespaces.new/durable-workflow/sample-app?quickstart=1&ref=main),
 wait for setup to finish, and open a terminal at the repository root. The
-prepared image already includes Rust 1.86 or newer, Cargo, and `dw`.
+prepared image contains the SDK toolchains and `dw` required by the shared
+playground.
 
-Configure the values returned by Cloud when the namespace and its two runtime
-credentials were created:
+Cloud provides the runtime URL, runtime namespace, and two role credentials.
+Choose an application task queue, then export these placeholders only after
+replacing them with the corresponding values:
 
-<!-- docs-example id="rust.cloud.environment" -->
 ```bash
-export DURABLE_WORKFLOW_RUNTIME_URL='https://cloud.example/api/runtime/v1/namespaces/00000000-0000-4000-8000-000000000000'
-export DURABLE_WORKFLOW_RUNTIME_NAMESPACE='orders'
-export DURABLE_WORKFLOW_CLIENT_TOKEN='dwr_client_credential'
-export DURABLE_WORKFLOW_WORKER_TOKEN='dwr_worker_credential'
-export DURABLE_WORKFLOW_TASK_QUEUE='rust-cloud-quickstart'
-export DURABLE_WORKFLOW_MANAGED_WATERLINE_URL='https://managed-waterline-url-from-cloud'
+export DURABLE_WORKFLOW_RUNTIME_URL='<provisioned-runtime-url>'
+export DURABLE_WORKFLOW_RUNTIME_NAMESPACE='<provisioned-runtime-namespace>'
+export DURABLE_WORKFLOW_CLIENT_TOKEN='<client-runtime-credential>'
+export DURABLE_WORKFLOW_WORKER_TOKEN='<worker-runtime-credential>'
+export DURABLE_WORKFLOW_TASK_QUEUE='<rust-task-queue>'
 ```
 
-`DURABLE_WORKFLOW_RUNTIME_URL` is the complete namespace-scoped runtime URL.
-Its path ends at the namespace identifier; it does not end in `/api`. Do not
-replace it with the Cloud administration URL or a self-hosted Server URL. The
-SDK and CLI preserve that namespace path and append their own `/api` route.
+The runtime URL is the namespace runtime root returned by Cloud. It must be an
+absolute HTTPS URL without a query, fragment, or terminal `/api`; the SDK and
+CLI append their own API routes. The runtime namespace is the separate value
+returned with that URL, not a name inferred from its path.
 
-## 2. Verify the supported CLI
+The client credential starts, describes, and reads workflows. The worker
+credential registers, polls, heartbeats, and completes tasks. They must be
+different role-scoped secrets even though this one command launches both child
+processes. A Cloud administration key manages namespaces and credentials; do
+not export or pass it as either runtime credential.
 
-The prepared Sample App image includes the current published CLI. Verify the
-bundled command before continuing:
+## 2. Run the Rust journey
 
-<!-- docs-example id="rust.cloud.cli" -->
+Run the shared external-runtime contract:
+
 ```bash
-command -v dw
-dw --version
+scripts/playground rust --runtime managed \
+  --runtime-url "$DURABLE_WORKFLOW_RUNTIME_URL" \
+  --namespace "$DURABLE_WORKFLOW_RUNTIME_NAMESPACE" \
+  --task-queue "$DURABLE_WORKFLOW_TASK_QUEUE"
 ```
 
-`scripts/rust-cloud.sh run` validates `dw` against the Sample App's
-machine-readable qualified tuple; a stale prepared image fails before starting
-the worker. Outside the prepared image, install the supported prerelease
-channel and rerun the validation:
+The command scaffolds missing files under `.playground/rust` without replacing
+caller-owned source. It prints the effective workflow type, activity type,
+queue, worker command, client command, input, and expected result before it
+starts anything. The worker receives only the worker credential; after its
+exact registration becomes visible, the client receives only the client
+credential.
 
-<!-- docs-example id="rust.cloud.cli.install" -->
-```bash
-%%artifact.cliChannelInstallerCommand%%
-dw --version
+The registration wait is bounded to 60 seconds. Do not treat process startup
+alone as readiness. Continue only after the command prints a checkpoint shaped
+like this (identities are illustrative):
+
+```text
+Worker ready: target=managed runtime_url=<provisioned-runtime-url> namespace=<provisioned-runtime-namespace> id=<worker-id> queue=<rust-task-queue> workflow_type=sample-app.playground.rust.authored-workflow activity_type=sample-app.playground.rust.authored-activity
 ```
 
-The installer and `dw upgrade` report if another binary shadows the selected
-release. Resolve that bounded `PATH` instruction before continuing.
+The same command starts one workflow, waits up to 120 seconds for the SDK
+client result, confirms `status=completed` with `dw`, and checks the required
+workflow and activity history. One successful result looks like:
 
-## 3. Start the Rust worker
-
-In the first terminal, run the Sample App's dedicated worker entry point:
-
-<!-- docs-example id="rust.cloud.worker" -->
-```bash
-scripts/rust-cloud.sh worker
+```text
+Completed rust workflow <workflow-id>: {"greeting":"Hello, Durable Workflow, from the Sample App Rust playground","input":{"name":"Durable Workflow"},"activity_runtime":"rust","workflow_runtime":"rust"}
 ```
 
-The worker registers one `sample.rust-cloud.greeter` workflow and one
-`sample.rust-cloud.greet` activity on `rust-cloud-quickstart`. It reads only the
-worker credential. Press Ctrl+C after the result is complete; the SDK stops its
-pollers and deregisters the worker before exiting.
-
-For a one-terminal evaluator path, `scripts/rust-cloud.sh run` builds the same
-development binary, starts it, runs the CLI command below, retains version and
-result evidence, and then performs the same clean shutdown.
-
-## 4. Start and wait for the workflow
-
-In a second terminal with the same environment, record the SDK and CLI
-versions, then start the workflow with the client credential:
-
-<!-- docs-example id="rust.cloud.version-evidence" -->
-```bash
-cargo tree --locked --manifest-path rust-cloud/Cargo.toml -p durable-workflow --depth 0
-dw --version
-```
-
-<!-- docs-example id="rust.cloud.start" -->
-```bash
-export RUST_CLOUD_WORKFLOW_ID="rust-cloud-$(date +%s)"
-dw workflow:start \
-  --server="$DURABLE_WORKFLOW_RUNTIME_URL" \
-  --namespace="$DURABLE_WORKFLOW_RUNTIME_NAMESPACE" \
-  --token="$DURABLE_WORKFLOW_CLIENT_TOKEN" \
-  --type=sample.rust-cloud.greeter \
-  --task-queue="$DURABLE_WORKFLOW_TASK_QUEUE" \
-  --workflow-id="$RUST_CLOUD_WORKFLOW_ID" \
-  --input='["Cloud"]' \
-  --wait --json | tee rust-cloud-result.json
-```
-
-Successful JSON has `status_bucket: "completed"` and an `output` object with a
-Rust greeting and activity evidence. Keep `rust-cloud-result.json`, the Cargo
-version line, and `dw --version` with clean-machine validation evidence.
-
-Open `DURABLE_WORKFLOW_MANAGED_WATERLINE_URL`, search for
-`RUST_CLOUD_WORKFLOW_ID`, and confirm the selected run is completed. Its history
-shows the workflow task and `sample.rust-cloud.greet` activity task. Managed
-Waterline is the operator surface for this Cloud namespace; do not deploy a
-separate Waterline instance.
+The final `Playground success` line repeats the runtime target, namespace,
+queue, registered types, and expected result shape without credential values.
+The command also writes `storage/app/playground-rust-evidence.json` with the
+selected artifact versions, exact registration, workflow/run identity,
+`completed` status, result, and history event types. Managed Waterline remains
+the operator surface for the provisioned namespace; the managed journey does
+not start a local Server or Waterline.
 
 ## Bounded diagnosis
 
-If `--wait` reports no compatible worker, keep it running while checking that
-the worker terminal reached registration, both terminals use the exact same
-runtime URL, namespace, and task queue, and the worker token has the worker
-role. A worker token passed to `dw` produces a client-credential authorization
-error; a client token passed to the worker produces the corresponding worker
-credential error.
+If the `Worker ready` checkpoint does not appear within 60 seconds, start with
+the effective contract printed above the error:
 
-If the worker reports an incompatible protocol or SDK, compare the recorded
-Cargo and CLI versions with the CLI diagnostic, update the Sample App checkout,
-and rerun the development build. Do not switch to an older checked-in
-prerelease or add a release build flag.
+- **Queue mismatch:** the runner queries the exact value passed to
+  `--task-queue`. Confirm that Cloud admits that queue and that the printed
+  registration uses the same value; then rerun the same command.
+- **Type mismatch:** the error names the workflow and activity types the worker
+  must advertise. Compare them with the effective contract. If caller-owned
+  files contain older hard-coded registrations, update them or prove the
+  current scaffold in a new directory with
+  `--source "$HOME/durable-rust-worker"`.
+- **Credential-role mismatch:** authorization before registration points to
+  the worker credential; authorization while describing or starting the run
+  points to the client credential. Do not swap the values or replace either
+  with a Cloud administration key.
+- **Runtime mismatch:** both roles must use the exact provisioned runtime URL
+  and runtime namespace. Remove a terminal `/api`; do not substitute the Cloud
+  administration URL or a self-hosted Server URL.
 
-If a task is leased but never completes, keep the worker alive and inspect the
-run in Managed Waterline. Match the leased workflow or activity type and task
-queue to the worker output, then use the CLI's periodic JSON diagnostic to
-distinguish a pending workflow task, pending activity, recent handler failure,
-or lost worker. Do not start a second workflow until the first run's durable
-state is understood.
+If registration succeeds but completion fails, keep the printed workflow/run
+identity. Inspect that selected run in Managed Waterline and compare its
+pending workflow or activity type and task queue with the effective contract.
+Fix that mismatch before starting another run. The retained evidence path and
+bounded worker output identify whether the client result, durable status,
+expected result, or required history check failed.
 
-## Raw HTTP is a protocol example
-
-The supported onboarding path is `dw workflow:start`; it recognizes the Cloud
-namespace runtime URL and supplies version headers. When diagnosing the wire
-contract itself, the equivalent control-plane request includes the required
-version header explicitly:
-
-```bash
-curl -sS -X POST "$DURABLE_WORKFLOW_RUNTIME_URL/api/workflows" \
-  -H "Authorization: Bearer $DURABLE_WORKFLOW_CLIENT_TOKEN" \
-  -H "X-Namespace: $DURABLE_WORKFLOW_RUNTIME_NAMESPACE" \
-  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
-  -H 'Content-Type: application/json' \
-  -d '{"workflow_type":"sample.rust-cloud.greeter","workflow_id":"rust-cloud-protocol-example","task_queue":"rust-cloud-quickstart","input":["Cloud"]}'
-```
-
-This raw request is a protocol example, not a fallback onboarding path. It does
-not replace CLI discovery, `--wait --json`, version recording, or Managed
-Waterline verification.
-
-Return to the broader [Rust SDK guide](./rust.md), then use the generated
-[Rust API reference](https://rust.durable-workflow.com/durable_workflow/) for individual types
-and methods.
+Return to the broader [Rust SDK guide](./rust.md), or use the generated [Rust
+API reference](https://rust.durable-workflow.com/durable_workflow/) for
+individual types and methods.

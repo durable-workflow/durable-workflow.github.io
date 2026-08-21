@@ -130,48 +130,49 @@ runtime credential.
 
 ### 3. Complete a first Cloud workflow {#cloud-first-workflow}
 
-Use the Cloud-provided runtime URL as the SDK's Server base URL and the
-Cloud-provided runtime namespace as its namespace. Application clients use the
-client credential; worker processes use the worker credential.
+The Sample App's shared external-runtime playground runs the same authored
+workflow-and-activity journey with PHP, Python, or Rust. Open a [Sample App
+Codespace](https://codespaces.new/durable-workflow/sample-app?quickstart=1&ref=main),
+export the provisioned namespace values and two runtime credentials, and choose
+an application task queue:
 
-Choose one complete client-and-worker program:
+```bash
+export DURABLE_WORKFLOW_RUNTIME_URL='<provisioned-runtime-url>'
+export DURABLE_WORKFLOW_RUNTIME_NAMESPACE='<provisioned-runtime-namespace>'
+export DURABLE_WORKFLOW_CLIENT_TOKEN='<client-runtime-credential>'
+export DURABLE_WORKFLOW_WORKER_TOKEN='<worker-runtime-credential>'
+export DURABLE_WORKFLOW_TASK_QUEUE='<language-task-queue>'
+```
 
-- **PHP:** use the complete
-  [client](/docs/2.0/polyglot/php/#start-and-inspect-a-workflow) and
-  [remote worker](/docs/2.0/polyglot/php/#run-a-remote-php-worker) sources,
-  constructing each `Client` with the Cloud runtime URL and its corresponding
-  role credential.
-- **Python:** use the complete
-  [quickstart program](/docs/2.0/polyglot/python/#quickstart), then apply the
-  [Cloud split-token connection](/docs/2.0/polyglot/python/#running-against-a-shared-server)
-  to that program's `Client`.
-- **Rust:** follow the
-  [Cloud client-and-worker example](/docs/2.0/polyglot/rust/#connect-to-durable-workflow-cloud),
-  which maps both credentials and runs the published `hello_world` example.
+Then choose a first-party SDK and run the same managed-runtime contract:
 
-For Cloud, replace the local example URL and namespace with the values issued
-for the namespace, then configure both role credentials through distinct
-authentication inputs. A combined client-and-worker process may hold both
-credentials, but it must not put one credential into both role inputs.
+```bash
+language=rust # Choose php, python, or rust.
+scripts/playground "$language" --runtime managed \
+  --runtime-url "$DURABLE_WORKFLOW_RUNTIME_URL" \
+  --namespace "$DURABLE_WORKFLOW_RUNTIME_NAMESPACE" \
+  --task-queue "$DURABLE_WORKFLOW_TASK_QUEUE"
+```
 
-For the Rust same-process example, the replacements map directly to
-`ClientBuilder`:
+The runner resolves the current qualified artifact tuple, gives each
+credential only to its matching child process, waits up to 60 seconds for a
+worker registration advertising the exact queue and generated workflow and
+activity types, then starts one client request. It succeeds only after the SDK
+returns the expected result, `dw` reports `completed`, and the required
+workflow and activity history is present. The command does not run a local
+Server or Waterline in managed mode.
 
-- pass Cloud's `runtime_url` to `Client::builder(runtime_url)`;
-- pass Cloud's `runtime_namespace` to `.namespace(runtime_namespace)`;
-- pass the client credential's token to
-  `.control_token(Some(client_token))`; and
-- pass the worker credential's token to
-  `.worker_token(Some(worker_token))`.
+Continue with the language guide for SDK-specific authoring:
 
-Rust's `.token(...)` method is a generic single-token fallback for self-hosted
-Server configurations. Do not use it in place of either role-specific Cloud
-method.
+- [PHP SDK](/docs/2.0/polyglot/php/): run `scripts/playground php`.
+- [Python SDK](/docs/2.0/polyglot/python/): run `scripts/playground python`.
+- [Rust managed-runtime quickstart](/docs/2.0/polyglot/rust-cloud-quickstart/):
+  run `scripts/playground rust` and use its worker-ready, completed-result, and
+  mismatch diagnostics.
 
-Run the selected program. Success is a worker registration followed by a
-workflow whose result call returns and whose durable status is `completed`.
-That is the same first-success outcome as the local Server quickstart, reached
-without installing or running Server.
+A combined client-and-worker journey holds both runtime credentials as distinct
+secrets. A Cloud administration key is not a runtime credential and must not be
+exported under either runtime-token variable.
 
 ### 4. Continue with managed operation
 

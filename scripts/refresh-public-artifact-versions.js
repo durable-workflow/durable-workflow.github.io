@@ -1673,23 +1673,6 @@ function applyQuickstartArtifactPins(
     publishedVersions.cli,
   );
 
-  const rustCloudProbe = byId(
-    rustCloud.success_probes,
-    'rust_user_cloud_completion success probe',
-  );
-  changed = replaceLineContaining(
-    rustCloudProbe('rust_cloud_sdk_version').required_substrings,
-    'durable-workflow v',
-    `durable-workflow v${publishedVersions['sdk-rust']}`,
-    'Rust Cloud SDK success-probe version',
-  ) || changed;
-  changed = replaceLineContaining(
-    rustCloudProbe('rust_cloud_cli_version').required_substrings,
-    '2.0.0-',
-    publishedVersions.cli,
-    'Rust Cloud CLI success-probe version',
-  ) || changed;
-
   changed = replaceLineContaining(
     operator.command_script_lines,
     'curl -fsSL https://durable-workflow.com/install.sh | VERSION=',

@@ -37,10 +37,6 @@ const PUBLISHED_TOKEN_SCOPES = Object.freeze({
       ARTIFACT_PINS.publishedPhpSdkComposerPackage.replace('durable-workflow/sdk:', ''),
     ]),
   }),
-  'docs/polyglot/rust-cloud-quickstart.md': Object.freeze({
-    cli_artifact_pin: Object.freeze([PUBLISHED_ARTIFACT_VERSIONS.cli]),
-    rust_sdk_artifact_pin: Object.freeze([PUBLISHED_ARTIFACT_VERSIONS['sdk-rust']]),
-  }),
 });
 function fail(message) {
   throw new Error(message);

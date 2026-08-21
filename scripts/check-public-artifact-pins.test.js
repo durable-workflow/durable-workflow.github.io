@@ -104,24 +104,13 @@ assert.doesNotThrow(
   'onboarding may project exact qualified requirements from the machine-owned tuple',
 );
 
-assert.doesNotThrow(
-  () => checkPublicArtifactSource(
-    'docs/polyglot/rust-cloud-quickstart.md',
-    [
-      '`%%artifact.publishedRustCargoAddCommand%%`',
-      '`%%artifact.publishedCliInstallerCommand%%`',
-    ].join('\n'),
-  ),
-  'the Rust Cloud registry journey may use its dedicated published-version tokens',
-);
-
 assert.throws(
   () => checkPublicArtifactSource(
-    'docs/guides/install-anywhere.md',
+    'docs/polyglot/rust-cloud-quickstart.md',
     '`%%artifact.publishedRustCargoAddCommand%%`',
   ),
   /stale Rust SDK crate pin/,
-  'published-version tokens must not weaken the exact qualified pin outside the Rust Cloud journey',
+  'the shared managed playground must resolve the qualified tuple dynamically',
 );
 
 assert.strictEqual(

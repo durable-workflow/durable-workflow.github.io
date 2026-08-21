@@ -18,11 +18,12 @@ import ProductPromotion from '@site/src/components/ProductPromotion';
 
 # Rust SDK
 
-Use this guide for the general SDK surface, then continue to the generated API
-reference for individual types and methods. Evaluators enrolled in Durable
-Workflow Cloud controlled early access can also use the secondary [Rust Cloud
-quickstart](./rust-cloud-quickstart.md) to run one workflow and activity from a
-fresh Sample App Codespace.
+Use this guide for the general-access SDK surface, then continue to the
+generated API reference for individual types and methods. No Cloud account is
+required: the primary path uses the published Rust crate with a self-hosted
+Server. Developers already enrolled in Durable Workflow Cloud controlled early
+access can instead choose the clearly separate [managed-runtime
+quickstart](./rust-cloud-quickstart.md).
 
 The first-party Rust SDK is a workflow-authoring surface, not only a protocol
 compatibility client. Rust authors deterministic workflows, activities, and
@@ -37,12 +38,6 @@ The [Rust documentation landing page](https://rust.durable-workflow.com/)
 provides the SDK index and general entry points. For crate modules, structs,
 traits, and methods, continue to the generated [Rust SDK API
 reference](https://rust.durable-workflow.com/durable_workflow/).
-
-Cloud customers configure the provisioned namespace's runtime URL and use
-separate credentials for client and worker roles, even when both roles run in
-one process. See
-[Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane) for the managed
-connection boundary and the Cloud-specific connection example below.
 
 The supported Rust prerelease supports durable
 timers, child workflows, activity retries and timeouts, signals, replayed query
@@ -93,28 +88,15 @@ or a worker minor newer than the server's advertised minor is rejected. The
 server version range selects the release family; it does not override the
 runtime protocol manifest.
 
-<ProductPromotion source="docs-v2-rust-sdk">
-Run Rust clients and workers against a Cloud-managed namespace with separate
-role-scoped credentials.
-</ProductPromotion>
-
 ## Prepare the released repository example
 
 The repository's
 [`hello_world` example](https://github.com/durable-workflow/sdk-rust/blob/main/examples/hello_world.rs)
 registers a Rust worker, starts a workflow, sends a signal, runs an activity,
 reports an activity heartbeat, and waits for the completed result. Because that
-example runs the application client and worker in one process, a Cloud
-connection must give its `Client` both role-specific credentials instead of
-setting the generic token fallback.
-
-Before running mode-specific commands, choose either Cloud or self-hosted
-Server. Both paths start from the same exact released SDK source, but their
-connection settings are alternatives: use the
-[Cloud path](#connect-to-durable-workflow-cloud) with a provisioned namespace,
-or use the
-[self-hosted path](#run-the-combined-example-with-self-hosted-server) after the
-local Server quickstart.
+example runs the application client and worker in one process, the no-account
+path below connects it to a self-hosted Server. A provisioned Cloud namespace
+is an optional secondary runtime with separate role-scoped credentials.
 
 For a reproducible source exercise, obtain the exact crate source recorded by
 the qualified tuple. The value below is generated from that machine-readable
@@ -129,10 +111,42 @@ git clone --depth 1 --single-branch --branch "$DURABLE_WORKFLOW_RUST_VERSION" \
   https://github.com/durable-workflow/sdk-rust.git "$DURABLE_WORKFLOW_RUST_EXAMPLE_DIR"
 ```
 
-## Connect to Durable Workflow Cloud
+## Run the combined example with self-hosted Server
 
-Export the values returned when Cloud provisions the namespace and creates its
-two runtime credentials:
+The unmodified `hello_world` example accepts one token for a self-hosted
+Durable Workflow Server whose authentication policy allows the same credential
+to make workflow commands and poll for work:
+
+<!-- docs-example id="rust.sdk.self-hosted" -->
+```bash
+cd "$DURABLE_WORKFLOW_RUST_EXAMPLE_DIR"
+DURABLE_WORKFLOW_SERVER_URL=http://localhost:8080 \
+DURABLE_WORKFLOW_TOKEN=dev-token \
+cargo run --example hello_world
+```
+
+The example uses the `default` namespace provisioned by the local Server
+quickstart. Use `TASK_QUEUE` to override its default `rust-workers` task queue.
+No Cloud enrollment or Cloud credential is involved in this path.
+
+## Optional secondary path: connect to Durable Workflow Cloud
+
+For the shortest managed-runtime proof, use the [Rust Cloud
+quickstart](./rust-cloud-quickstart.md). It runs the same symmetric Sample App
+playground available to PHP and Python, selects current qualified artifacts
+dynamically, verifies exact worker readiness, and waits for a completed result.
+
+<ProductPromotion source="docs-v2-rust-sdk">
+Already enrolled in Cloud? Run the shared Rust playground against your
+provisioned namespace with separate role-scoped runtime credentials.
+</ProductPromotion>
+
+The lower-level combined SDK example below is useful when adapting an existing
+Rust process. Export the values returned when Cloud provisions the namespace
+and creates its two runtime credentials:
+
+See [Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane) for the
+managed connection boundary.
 
 <!-- docs-example id="rust.sdk.cloud.environment" -->
 ```bash
@@ -177,26 +191,7 @@ The example's workflow start, signal, describe, and result calls use
 calls use `worker_token`. Both roles use the same Cloud-provided runtime URL,
 runtime namespace, and task queue, but they do not reuse a credential. Do not
 replace either Cloud credential with `.token(...)`: that method is the generic
-single-token fallback used by the self-hosted configuration below.
-
-## Run the combined example with self-hosted Server
-
-The unmodified `hello_world` example accepts one token for a self-hosted
-Durable Workflow Server whose authentication policy allows the same credential
-to make workflow commands and poll for work:
-
-<!-- docs-example id="rust.sdk.self-hosted" -->
-```bash
-cd "$DURABLE_WORKFLOW_RUST_EXAMPLE_DIR"
-DURABLE_WORKFLOW_SERVER_URL=http://localhost:8080 \
-DURABLE_WORKFLOW_TOKEN=dev-token \
-cargo run --example hello_world
-```
-
-This `DURABLE_WORKFLOW_TOKEN` command is for self-hosted Server usage, not a
-Cloud namespace. The example's client uses the `default` namespace provisioned
-by the local Server quickstart. Use `TASK_QUEUE` to override its default
-`rust-workers` task queue.
+single-token fallback used by the self-hosted configuration above.
 
 ## Start with server-enforced workflow timeouts
 

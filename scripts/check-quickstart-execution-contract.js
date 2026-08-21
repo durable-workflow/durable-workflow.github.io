@@ -594,7 +594,7 @@ function assertSdkOnboarding(contract) {
 
   const rust = contract.sdk_onboarding && contract.sdk_onboarding['sdk-rust'];
   if (!rust) {
-    fail('quickstart contract must point agents to the Rust Cloud onboarding path');
+    fail('quickstart contract must point agents to the Rust SDK onboarding path');
   }
   assertStringArrayEqual(
     rust.deployment_paths,
@@ -611,9 +611,19 @@ function assertSdkOnboarding(contract) {
     'https://rust.durable-workflow.com/',
     'Rust API reference URL',
   );
+  assertEqual(
+    rust.source_root_url,
+    'https://github.com/durable-workflow/sample-app/tree/main/playground/templates/rust',
+    'Rust shared playground source URL',
+  );
+  assertEqual(
+    rust.shared_playground_url,
+    'https://github.com/durable-workflow/sample-app/blob/main/scripts/playground',
+    'shared playground entry point URL',
+  );
 }
 
-function assertRustCloudContract(contract) {
+function assertRustManagedPlaygroundContract(contract) {
   const hostingBranches = byId(contract.hosting_branches, 'hosting_branches');
   const cloud = hostingBranches.get('cloud_managed_namespace');
   if (!cloud) {
@@ -623,6 +633,11 @@ function assertRustCloudContract(contract) {
     cloud.runtime_url_contract?.terminal_api_suffix_allowed,
     false,
     'Cloud namespace runtime terminal /api policy',
+  );
+  assertStringArrayEqual(
+    cloud.used_by_personas,
+    ['php', 'python', 'rust'],
+    'Cloud managed-runtime SDK personas',
   );
 
   const scenarios = byId(contract.scenarios, 'scenarios');
@@ -635,31 +650,21 @@ function assertRustCloudContract(contract) {
     'cloud_managed_namespace',
     'Rust Cloud hosting branch',
   );
-  assertEqual(rustCloud.task_queue, 'rust-cloud-quickstart', 'Rust Cloud task queue');
+  assertStringArrayEqual(
+    rustCloud.language_choices,
+    ['php', 'python', 'rust'],
+    'shared managed playground language choices',
+  );
+  assertEqual(rustCloud.task_queue, '<rust-task-queue>', 'Rust managed task queue placeholder');
   assertEqual(
     rustCloud.workflow_type,
-    'sample.rust-cloud.greeter',
-    'Rust Cloud workflow type',
+    'sample-app.playground.rust.authored-workflow',
+    'Rust managed playground workflow type',
   );
   assertEqual(
     rustCloud.activity_type,
-    'sample.rust-cloud.greet',
-    'Rust Cloud activity type',
-  );
-  assertEqual(
-    rustCloud.required_control_plane_header?.name,
-    'X-Durable-Workflow-Control-Plane-Version',
-    'Rust Cloud control-plane header',
-  );
-  assertEqual(
-    rustCloud.required_control_plane_header?.value,
-    '2',
-    'Rust Cloud control-plane header value',
-  );
-  assertEqual(
-    rustCloud.required_control_plane_header?.injected_by_cli,
-    true,
-    'Rust Cloud CLI header ownership',
+    'sample-app.playground.rust.authored-activity',
+    'Rust managed playground activity type',
   );
   assertEqual(
     rustCloud.runtime_url?.terminal_api_suffix_allowed,
@@ -686,9 +691,17 @@ function assertRustCloudContract(contract) {
     PUBLISHED_ARTIFACT_VERSIONS.cli,
     'Rust Cloud CLI version',
   );
+  assertEqual(
+    rustCloud.journey_command,
+    'scripts/playground rust --runtime managed --runtime-url "$DURABLE_WORKFLOW_RUNTIME_URL" --namespace "$DURABLE_WORKFLOW_RUNTIME_NAMESPACE" --task-queue "$DURABLE_WORKFLOW_TASK_QUEUE"',
+    'Rust managed playground journey command',
+  );
   const commandScript = JSON.stringify(rustCloud.command_script_lines || []);
   if (commandScript.includes('server:info') || commandScript.includes('worker:list')) {
     fail('Rust Cloud first-run commands must not require Server discovery or worker listing');
+  }
+  if (/tree\/main\/rust-cloud(?:[\/"]|$)|scripts\/rust-cloud\.sh/.test(JSON.stringify(rustCloud))) {
+    fail('Rust managed playground contract must not reference the retired dedicated scaffold');
   }
 
   const probes = byId(
@@ -696,11 +709,9 @@ function assertRustCloudContract(contract) {
     'rust_user_cloud_completion.success_probes',
   );
   for (const id of [
-    'rust_cloud_sdk_version',
-    'rust_cloud_cli_version',
-    'rust_cloud_completion',
-    'rust_cloud_clean_shutdown',
-    'rust_cloud_managed_visibility',
+    'rust_managed_worker_ready',
+    'rust_managed_completion',
+    'rust_managed_history',
   ]) {
     if (!probes.has(id)) {
       fail(`rust_user_cloud_completion.success_probes must include ${id}`);
@@ -722,14 +733,14 @@ function main() {
   );
 
   assertEqual(contract.schema, EXPECTED_SCHEMA, 'quickstart execution contract schema');
-  assertEqual(contract.version, 5, 'quickstart execution contract version');
+  assertEqual(contract.version, 6, 'quickstart execution contract version');
   assertEqual(contract.release_status, '2.0_prerelease', 'quickstart execution contract release_status');
   assertEqual(contract.authority_doc, 'docs/platform-conformance.md', 'quickstart execution contract authority_doc');
   assertEqual(contract.onboarding_doc, 'docs/quickstart.md', 'quickstart execution contract onboarding_doc');
 
   assertDocsGuard(contract);
   assertSdkOnboarding(contract);
-  assertRustCloudContract(contract);
+  assertRustManagedPlaygroundContract(contract);
   assertQualifiedTupleAuthority(contract);
   assertPublicArtifactPins(contract);
   assertQualifiedTupleRenderedSurface(contract, renderedQuickstart);
