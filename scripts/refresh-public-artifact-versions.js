@@ -1537,7 +1537,7 @@ function applyQuickstartArtifactPins(
     changed = true;
   }
 
-  update('quickstart contract', contract, 'version', 5);
+  update('quickstart contract', contract, 'version', 6);
   const qualifiedTuple = {
     meaning: qualification.meaning,
     qualified_on: qualification.qualifiedOn,
