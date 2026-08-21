@@ -5,11 +5,11 @@
   "current_artifact_tuple": {
     "cli": "2.0.0-rc.35",
     "sdk-php": "2.0.0-rc.42",
-    "sdk-python": "2.0.0-rc.32",
+    "sdk-python": "2.0.0-rc.33",
     "sdk-rust": "2.0.0-rc.32",
-    "server": "2.0.0-rc.38",
+    "server": "2.0.0-rc.39",
     "waterline": "2.0.0-rc.24",
-    "workflow": "2.0.0-rc.34"
+    "workflow": "2.0.0-rc.36"
   },
   "retention": {
     "max_runs_per_experiment": 3,
