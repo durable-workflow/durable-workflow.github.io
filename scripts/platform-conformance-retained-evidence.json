@@ -9,7 +9,7 @@
     "sdk-rust": "2.0.0-rc.32",
     "server": "2.0.0-rc.38",
     "waterline": "2.0.0-rc.24",
-    "workflow": "2.0.0-rc.33"
+    "workflow": "2.0.0-rc.34"
   },
   "retention": {
     "max_runs_per_experiment": 3,
