@@ -141,12 +141,19 @@ const capability = {
 };
 const server_capabilities = {
   workflow_task_poll_request_idempotency: true,
+  message_streams: {
+    schema: 'durable-workflow.v2.message-streams.contract',
+    version: 1,
+    capability_flag: 'message_streams',
+    minimum_worker_protocol_version: '1.15',
+    supported: true,
+  },
   update_validation_tasks: true,
   synchronous_update_validation: capability,
 };
 const envelope = (body) => ({
   ...body,
-  protocol_version: '1.13',
+  protocol_version: '1.15',
   server_capabilities,
 });
 
@@ -311,7 +318,7 @@ validate(operationSchema(approveRoute, '409'), envelope({
   status: 409,
 }));
 
-assert.strictEqual(spec.info.version, '9');
+assert.strictEqual(spec.info.version, '11');
 assert.strictEqual(spec['x-durable-workflow-catalog-version'], 16);
 assert.strictEqual(
   spec.components.schemas.MultiplexedWorkflowTask.discriminator.propertyName,
