@@ -19,6 +19,12 @@ Message streams are the v2 authoring surface for repeated workflow messages:
 human input loops, assistant replies, workflow-to-workflow notifications, and
 other ordered messages that must survive replay and continue-as-new.
 
+This page describes the embedded Laravel inbox/outbox API. Server-owned
+[Workflow Streams](/docs/2.0/polyglot/workflow-streams/) reuse names such as
+stream, offset, pending count, lifecycle, and error where their semantics
+match, but they are output-only. They do not add inbound workflow messaging or
+continue-as-new cursor transfer to service mode.
+
 Workflow authors should use the first-class facade:
 
 - `$this->inbox('stream-key')`

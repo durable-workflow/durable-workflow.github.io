@@ -18,6 +18,7 @@ const sidebars = {
         'polyglot/deployment-modes',
         'polyglot/cloud-control-plane',
         'polyglot/server',
+        'polyglot/workflow-streams',
         {
           type: 'link',
           label: 'Waterline: Cloud-managed or separately deployed',
