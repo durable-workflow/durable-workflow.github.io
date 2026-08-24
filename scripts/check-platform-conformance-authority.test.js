@@ -218,11 +218,26 @@ assert.throws(
 
 const betaLabeledCurrentBinding = clone(suite);
 betaLabeledCurrentBinding.artifact_version_history.worker_protocol_api
-  .bindings[1].lifecycle = 'beta';
+  .bindings[2].lifecycle = 'beta';
 assert.throws(
   () => assertWorkerProtocolArtifactHistory(betaLabeledCurrentBinding),
   /current binding/,
   'the active worker protocol history entry must remain lifecycle-neutral',
+);
+
+const staleActiveWorkerStreamBinding = clone(suite);
+staleActiveWorkerStreamBinding.fixture_catalog.worker_task_lifecycle.sources[1] = {
+  ...staleActiveWorkerStreamBinding.artifact_version_history
+    .worker_protocol_stream.bindings[0],
+};
+for (const field of ['suite_version', 'status', 'lifecycle']) {
+  delete staleActiveWorkerStreamBinding.fixture_catalog.worker_task_lifecycle
+    .sources[1][field];
+}
+assert.throws(
+  () => assertWorkerProtocolArtifactHistory(staleActiveWorkerStreamBinding),
+  /exactly one active worker protocol stream binding/,
+  'the active conformance category must not resolve retained stream history',
 );
 
 const mutableSourceDependency = clone(suite);
