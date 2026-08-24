@@ -8,6 +8,8 @@ const path = require('path');
 const {spawnSync} = require('child_process');
 const yaml = require('js-yaml');
 
+const {retryTransientResourceRead} = require('./live-resource-retry');
+
 const REPO_ROOT = path.join(__dirname, '..');
 const CONTRACT_PATH = path.join(REPO_ROOT, 'static', 'charts', 'release.json');
 const RECOVERY_SOURCES_PATH = path.join(
@@ -407,25 +409,7 @@ function assertProvenance(provenance, contract, metadata, packageDigest, imageDi
   );
 }
 
-async function fetchJson(url) {
-  const request = new URL(url);
-  request.searchParams.set('release_check', `${Date.now()}`);
-  const response = await fetch(request, {
-    redirect: 'follow',
-    signal: AbortSignal.timeout(15000),
-    headers: {
-      'Cache-Control': 'no-cache',
-      Pragma: 'no-cache',
-      'User-Agent': 'durable-workflow-helm-release-check',
-    },
-  });
-  if (!response.ok) {
-    throw new Error(`${request.href} returned HTTP ${response.status}`);
-  }
-  return response.json();
-}
-
-async function fetchResource(url) {
+async function fetchResourceOnce(url) {
   const request = new URL(url);
   request.searchParams.set('release_check', `${Date.now()}`);
   const response = await fetch(request, {
@@ -441,6 +425,24 @@ async function fetchResource(url) {
     status: response.status,
     body: Buffer.from(await response.arrayBuffer()),
   };
+}
+
+function fetchResource(url, options = {}) {
+  const requestOnce = options.requestOnce || fetchResourceOnce;
+  return retryTransientResourceRead(
+    () => requestOnce(url),
+    {url, ...options.retryOptions},
+  );
+}
+
+function liveResourceFetcher(options) {
+  if (options.fetchResource) {
+    return options.fetchResource;
+  }
+  return url => fetchResource(url, {
+    requestOnce: options.fetchResourceOnce,
+    retryOptions: options.liveResourceRetryOptions,
+  });
 }
 
 function requireLiveResource(resource, url) {
@@ -639,7 +641,7 @@ function assertHistoryIndex(index, history) {
 
 async function verifyLiveHttpsReleaseHistory(options = {}) {
   const contract = validateContract(options.contract || releaseContract());
-  const getResource = options.fetchResource || fetchResource;
+  const getResource = liveResourceFetcher(options);
   const getChartMetadata = options.chartMetadata || chartMetadata;
   const ownsTemporaryDirectory = !options.temporaryDirectory;
   const temporaryDirectory =
@@ -906,7 +908,7 @@ function rejectedEvidence(baseEvidence, mismatches) {
 async function guardChartVersionImmutability(options = {}) {
   const candidate = options.candidate || prepareCandidateRelease(options);
   const {contract, metadata, packageDigest, imageDigest} = candidate;
-  const getResource = options.fetchResource || fetchResource;
+  const getResource = liveResourceFetcher(options);
   const getChartMetadata = options.chartMetadata || chartMetadata;
   const evidencePath =
     options.evidencePath ||
@@ -1248,9 +1250,15 @@ async function guardChartVersionImmutability(options = {}) {
       mismatches,
     );
     writePredeployEvidence(evidence, evidencePath);
+    const liveResourceDetails = mismatches
+      .map(mismatch => mismatch.detail)
+      .filter(detail => detail?.includes('Live resource read failed'));
     throw new Error(
       `Helm chart ${contract.chart.version} durable release history rejected: ` +
-        [...new Set(mismatches.map(({field}) => field))].join(', '),
+        [...new Set(mismatches.map(({field}) => field))].join(', ') +
+        (liveResourceDetails.length > 0
+          ? `; ${[...new Set(liveResourceDetails)].join('; ')}`
+          : ''),
     );
   }
 
@@ -1419,12 +1427,16 @@ async function verifyLiveRelease(options = {}) {
   const contract = validateContract(options.contract || releaseContract());
   const recovery = selectedRecoveryReleaseSources(options, contract);
   const run = options.execute || execute;
-  const getJson = options.fetchJson || fetchJson;
-  const getResource = options.fetchResource || fetchResource;
+  const getResource = liveResourceFetcher(options);
   const getChartMetadata = options.chartMetadata || chartMetadata;
   const getImageDigest = options.resolveImageDigest || resolveImageDigest;
-  const remoteContract = await getJson(
-    new URL('release.json', contract.channels.https.repository).href,
+  const releaseUrl = new URL(
+    'release.json',
+    contract.channels.https.repository,
+  ).href;
+  const remoteContract = parseLiveJson(
+    await getResource(releaseUrl),
+    releaseUrl,
   );
   assert.deepStrictEqual(remoteContract, contract, 'live Helm release contract');
 
@@ -1576,8 +1588,13 @@ async function verifyLiveRelease(options = {}) {
     ...process.env,
     DOCKER_CONFIG: imageDockerConfig,
   });
-  const provenance = await getJson(
-    new URL('provenance.json', contract.channels.https.repository).href,
+  const provenanceUrl = new URL(
+    'provenance.json',
+    contract.channels.https.repository,
+  ).href;
+  const provenance = parseLiveJson(
+    await getResource(provenanceUrl),
+    provenanceUrl,
   );
   assertProvenance(provenance, contract, metadata, ociDigest, imageDigest);
   const history = await verifyLiveHttpsReleaseHistory({
@@ -1696,6 +1713,7 @@ module.exports = {
   assertPackageMetadata,
   assertProvenance,
   contractFromServerSource,
+  fetchResource,
   guardChartVersionImmutability,
   releaseHistoryEntry,
   releaseProvenance,

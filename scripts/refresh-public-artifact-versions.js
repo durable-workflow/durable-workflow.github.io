@@ -5,6 +5,8 @@ const fs = require('fs');
 const https = require('https');
 const path = require('path');
 
+const {retryTransientResourceRead} = require('./live-resource-retry');
+
 const {
   ARTIFACT_RELEASE_POLICY,
   ARTIFACT_VERSION_REQUIREMENTS,
@@ -231,52 +233,6 @@ function parseArgs(argv) {
   return args;
 }
 
-const TRANSIENT_REQUEST_ERROR_CODES = new Set([
-  'EAI_AGAIN',
-  'ECONNREFUSED',
-  'ECONNRESET',
-  'EHOSTUNREACH',
-  'ENETUNREACH',
-  'EPIPE',
-  'ETIMEDOUT',
-]);
-
-function wait(delayMs) {
-  return new Promise(resolve => setTimeout(resolve, delayMs));
-}
-
-function isTransientRequestError(error) {
-  return Boolean(error && TRANSIENT_REQUEST_ERROR_CODES.has(error.code));
-}
-
-async function requestWithTransientRetry(operation, options = {}) {
-  const maxAttempts = options.maxAttempts ?? DEFAULT_REQUEST_ATTEMPTS;
-  const retryDelayMs = options.retryDelayMs ?? DEFAULT_REQUEST_RETRY_DELAY_MS;
-  const requestLabel = options.label ? ` for ${options.label}` : '';
-  const onRetry = options.onRetry || ((error, attempt) => {
-    console.warn(
-      `Transient request failure${requestLabel} (${error.code}); ` +
-        `retrying attempt ${attempt + 1} ` +
-        `of ${maxAttempts}`,
-    );
-  });
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    try {
-      return await operation();
-    } catch (error) {
-      if (!isTransientRequestError(error) || attempt === maxAttempts) {
-        throw error;
-      }
-
-      onRetry(error, attempt);
-      await wait(retryDelayMs * attempt);
-    }
-  }
-
-  throw new Error('Transient request retry loop ended without a result');
-}
-
 function requestBufferResponseOnce(url, options = {}, redirects = MAX_REDIRECTS) {
   return new Promise((resolve, reject) => {
     const requestUrl = new URL(url);
@@ -321,9 +277,11 @@ function requestBufferResponseOnce(url, options = {}, redirects = MAX_REDIRECTS)
         res.on('end', () => {
           const body = Buffer.concat(chunks);
           if (status < 200 || status >= 300) {
-            reject(new Error(
+            const error = new Error(
               `Request failed for ${url}: HTTP ${status} ${body.toString('utf8', 0, 200)}`,
-            ));
+            );
+            error.status = status;
+            reject(error);
             return;
           }
 
@@ -349,9 +307,14 @@ function requestBufferResponse(
   clients = {},
 ) {
   const requestOnce = clients.requestOnce || requestBufferResponseOnce;
-  return requestWithTransientRetry(
+  return retryTransientResourceRead(
     () => requestOnce(url, options, redirects),
-    {label: url, ...(clients.retryOptions || {})},
+    {
+      url,
+      maxAttempts: DEFAULT_REQUEST_ATTEMPTS,
+      retryDelayMs: DEFAULT_REQUEST_RETRY_DELAY_MS,
+      ...(clients.retryOptions || {}),
+    },
   );
 }
 

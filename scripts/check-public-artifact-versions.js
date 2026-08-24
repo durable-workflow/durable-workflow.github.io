@@ -1609,6 +1609,27 @@ async function assertTransientRequestRetry() {
   assert.strictEqual(transientAttempts, 3);
   assert.strictEqual(retries, 2);
 
+  let httpAttempts = 0;
+  const httpResult = await requestBufferResponse(
+    'https://example.test/http-retry',
+    {},
+    undefined,
+    {
+      requestOnce: async () => {
+        httpAttempts += 1;
+        if (httpAttempts === 1) {
+          const error = new Error('registry unavailable');
+          error.status = 503;
+          throw error;
+        }
+        return 'http-recovered';
+      },
+      retryOptions: {maxAttempts: 3, retryDelayMs: 0, onRetry: () => {}},
+    },
+  );
+  assert.strictEqual(httpResult, 'http-recovered');
+  assert.strictEqual(httpAttempts, 2);
+
   let permanentAttempts = 0;
   await assert.rejects(
     () => requestBufferResponse(
@@ -1628,6 +1649,26 @@ async function assertTransientRequestRetry() {
     /invalid response/,
   );
   assert.strictEqual(permanentAttempts, 1);
+
+  let deterministicHttpAttempts = 0;
+  await assert.rejects(
+    () => requestBufferResponse(
+      'https://example.test/not-found',
+      {},
+      undefined,
+      {
+        requestOnce: async () => {
+          deterministicHttpAttempts += 1;
+          const error = new Error('registry release not found');
+          error.status = 404;
+          throw error;
+        },
+        retryOptions: {maxAttempts: 3, retryDelayMs: 0, onRetry: () => {}},
+      },
+    ),
+    /registry release not found/,
+  );
+  assert.strictEqual(deterministicHttpAttempts, 1);
 
   let exhaustedAttempts = 0;
   await assert.rejects(

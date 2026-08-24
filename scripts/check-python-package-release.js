@@ -6,6 +6,8 @@ const https = require('https');
 const os = require('os');
 const path = require('path');
 
+const {retryTransientResourceRead} = require('./live-resource-retry');
+
 const {
   ARTIFACT_DISTRIBUTION_SURFACES,
   ARTIFACT_RELEASE_POLICY,
@@ -209,7 +211,7 @@ function assertPipReport(report, authority = PYTHON_PACKAGE_AUTHORITY) {
   }
 }
 
-function fetchJson(url) {
+function fetchJsonOnce(url) {
   return new Promise((resolve, reject) => {
     const request = https.get(url, {
       headers: {Accept: 'application/json', 'User-Agent': 'durable-workflow-docs-python-release-audit'},
@@ -218,20 +220,33 @@ function fetchJson(url) {
       response.setEncoding('utf8');
       response.on('data', chunk => { body += chunk; });
       response.on('end', () => {
-        if (response.statusCode !== 200) {
-          reject(new Error(`${url} returned HTTP ${response.statusCode}`));
-          return;
-        }
-        try {
-          resolve(JSON.parse(body));
-        } catch (error) {
-          reject(new Error(`${url} did not return JSON: ${error.message}`));
-        }
+        resolve({body, status: response.statusCode || 0});
       });
+      response.on('error', reject);
     });
-    request.setTimeout(20000, () => request.destroy(new Error(`${url} timed out`)));
+    request.setTimeout(20000, () => {
+      const error = new Error(`${url} timed out after 20000ms`);
+      error.code = 'ETIMEDOUT';
+      request.destroy(error);
+    });
     request.on('error', reject);
   });
+}
+
+async function fetchJson(url, options = {}) {
+  const requestOnce = options.requestOnce || fetchJsonOnce;
+  const resource = await retryTransientResourceRead(
+    () => requestOnce(url),
+    {url, ...options.retryOptions},
+  );
+  if (resource.status !== 200) {
+    throw new Error(`${url} returned HTTP ${resource.status}`);
+  }
+  try {
+    return JSON.parse(resource.body);
+  } catch (error) {
+    throw new Error(`${url} did not return JSON: ${error.message}`);
+  }
 }
 
 function pipPackageRequirement(authority) {
@@ -346,6 +361,7 @@ module.exports = {
   assertPythonDistributionSurfaces,
   assertRenderedCurrentDocs,
   assertSdkNeutralityPackageAuthority,
+  fetchJson,
   pipPackageRequirement,
   pipSelectionArguments,
 };

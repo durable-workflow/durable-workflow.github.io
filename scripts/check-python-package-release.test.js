@@ -13,6 +13,7 @@ const {
   assertPypiReleaseMetadata,
   assertPythonDistributionSurfaces,
   assertSdkNeutralityPackageAuthority,
+  fetchJson,
   pipPackageRequirement,
   pipSelectionArguments,
 } = require('./check-python-package-release');
@@ -141,4 +142,107 @@ assert.throws(
   'the prerelease machine contract must reject the unversioned package authority',
 );
 
-console.log('Python package release authority tests passed.');
+async function assertTransientRegistryRetries() {
+  const url = 'https://pypi.example.test/pypi/durable-workflow/2.0.0rc35/json';
+  const success = {
+    body: JSON.stringify(currentMetadata),
+    status: 200,
+  };
+  const retryOptions = {
+    maxAttempts: 3,
+    retryDelayMs: 0,
+    onRetry: () => {},
+  };
+
+  let timeoutAttempts = 0;
+  assert.deepStrictEqual(
+    await fetchJson(url, {
+      requestOnce: async () => {
+        timeoutAttempts += 1;
+        if (timeoutAttempts === 1) {
+          const error = new Error('metadata request timed out');
+          error.code = 'ETIMEDOUT';
+          throw error;
+        }
+        return success;
+      },
+      retryOptions,
+    }),
+    currentMetadata,
+    'a transient PyPI timeout must recover without a workflow rerun',
+  );
+  assert.strictEqual(timeoutAttempts, 2);
+
+  let httpAttempts = 0;
+  assert.deepStrictEqual(
+    await fetchJson(url, {
+      requestOnce: async () => {
+        httpAttempts += 1;
+        return httpAttempts === 1
+          ? {body: 'temporarily unavailable', status: 503}
+          : success;
+      },
+      retryOptions,
+    }),
+    currentMetadata,
+    'a transient PyPI HTTP response must recover within the bounded budget',
+  );
+  assert.strictEqual(httpAttempts, 2);
+
+  let deterministicAttempts = 0;
+  await assert.rejects(
+    () => fetchJson(url, {
+      requestOnce: async () => {
+        deterministicAttempts += 1;
+        return {body: 'not found', status: 404};
+      },
+      retryOptions,
+    }),
+    /returned HTTP 404/,
+    'a deterministic PyPI response must fail without retrying',
+  );
+  assert.strictEqual(deterministicAttempts, 1);
+
+  let schemaAttempts = 0;
+  await assert.rejects(
+    () => fetchJson(url, {
+      requestOnce: async () => {
+        schemaAttempts += 1;
+        return {body: 'not-json', status: 200};
+      },
+      retryOptions,
+    }),
+    /did not return JSON/,
+    'invalid registry metadata must not be classified as transient',
+  );
+  assert.strictEqual(schemaAttempts, 1);
+
+  let exhaustedAttempts = 0;
+  await assert.rejects(
+    () => fetchJson(url, {
+      requestOnce: async () => {
+        exhaustedAttempts += 1;
+        return {body: 'still unavailable', status: 503};
+      },
+      retryOptions,
+    }),
+    error => {
+      assert.match(error.message, /after 3 attempts/);
+      assert(
+        error.message.includes(url),
+        'the exhausted registry error must identify the final URL',
+      );
+      assert.match(error.message, /final failure: HTTP 503/);
+      return true;
+    },
+    'exhausted PyPI retries must report the attempt count, URL, and final status',
+  );
+  assert.strictEqual(exhaustedAttempts, 3);
+}
+
+assertTransientRegistryRetries().then(() => {
+  console.log('Python package release authority tests passed.');
+}).catch(error => {
+  console.error(error.stack || error.message);
+  process.exitCode = 1;
+});

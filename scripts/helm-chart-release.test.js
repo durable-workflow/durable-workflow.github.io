@@ -469,7 +469,8 @@ function stagingFixture(candidate, knownReleases, fetchResource) {
       buildDirectory,
       evidencePath,
       execute,
-      fetchResource,
+      fetchResourceOnce: fetchResource,
+      liveResourceRetryOptions: {retryDelayMs: 0},
       chartMetadata,
       recoverySources: emptyRecoverySources,
       resolveImageDigest: reference => {
@@ -736,16 +737,8 @@ async function assertLiveVerification(
     contract: current.contract,
     evidencePath,
     execute,
-    fetchJson: async url => {
-      if (url.endsWith('/release.json')) {
-        return current.contract;
-      }
-      if (url.endsWith('/provenance.json')) {
-        return current.provenance;
-      }
-      throw new Error(`unexpected live release URL: ${url}`);
-    },
-    fetchResource: directoryFetcher(published),
+    fetchResourceOnce: directoryFetcher(published),
+    liveResourceRetryOptions: {retryDelayMs: 0},
     chartMetadata,
     recoverySources: liveRecoverySources,
     resolveImageDigest: () => current.imageDigest,
@@ -959,6 +952,75 @@ async function assertByteIdenticalHistoricalReuseStages(releases, published) {
   );
 }
 
+async function assertHistoricalPackageRetries(releases, published) {
+  const [first] = releases;
+  const next = fixtureRelease('0.1.3', '2.0.0-rc.13');
+  const firstPackagePath =
+    `/charts/${first.contract.chart.name}-${first.contract.chart.version}.tgz`;
+  const publishedFetcher = directoryFetcher(published);
+  let recoveryAttempts = 0;
+  const recoveringFixture = stagingFixture(
+    next,
+    releases,
+    async url => {
+      if (new URL(url).pathname === firstPackagePath) {
+        recoveryAttempts += 1;
+        if (recoveryAttempts === 1) {
+          return {status: 503, body: Buffer.from('temporarily unavailable')};
+        }
+      }
+      return publishedFetcher(url);
+    },
+  );
+
+  await stageRelease(recoveringFixture.options);
+  assert.strictEqual(
+    recoveryAttempts,
+    2,
+    'a historical Helm package HTTP 503 must be retried and recover in one deploy',
+  );
+  const recoveryEvidence = JSON.parse(
+    fs.readFileSync(recoveringFixture.evidencePath, 'utf8'),
+  );
+  assert.strictEqual(recoveryEvidence.outcome, 'first-publication');
+
+  let exhaustedAttempts = 0;
+  const exhaustedFixture = stagingFixture(
+    next,
+    releases,
+    async url => {
+      if (new URL(url).pathname === firstPackagePath) {
+        exhaustedAttempts += 1;
+        return {status: 503, body: Buffer.from('still unavailable')};
+      }
+      return publishedFetcher(url);
+    },
+  );
+  await assert.rejects(
+    () => stageRelease(exhaustedFixture.options),
+    error => {
+      assert.match(error.message, /after 3 attempts/);
+      assert(
+        error.message.includes(first.contract.channels.https.package_url),
+        'the exhausted Helm error must identify the historical package URL',
+      );
+      assert.match(error.message, /final failure: HTTP 503/);
+      return true;
+    },
+    'exhausted Helm retries must report the attempt count, URL, and final status',
+  );
+  assert.strictEqual(exhaustedAttempts, 3);
+  const exhaustedEvidence = JSON.parse(
+    fs.readFileSync(exhaustedFixture.evidencePath, 'utf8'),
+  );
+  assert(
+    exhaustedEvidence.mismatches.some(mismatch =>
+      mismatch.detail?.includes('after 3 attempts') &&
+      mismatch.detail.includes('HTTP 503')),
+    'predeploy evidence must retain the exhausted live-resource failure',
+  );
+}
+
 async function assertFirstVersionIdentityReuseFails(releases, published) {
   const [first] = releases;
   const scenarios = [
@@ -1027,6 +1089,10 @@ async function main() {
     successive.published,
   );
   await assertByteIdenticalHistoricalReuseStages(
+    [successive.first, successive.second],
+    successive.published,
+  );
+  await assertHistoricalPackageRetries(
     [successive.first, successive.second],
     successive.published,
   );
