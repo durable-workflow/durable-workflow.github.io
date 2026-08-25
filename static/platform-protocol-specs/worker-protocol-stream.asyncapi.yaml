@@ -2,7 +2,7 @@ asyncapi: 2.6.0
 id: durable-workflow.v2.worker-protocol-stream
 info:
   title: Durable Workflow worker-protocol long-poll stream semantics
-  version: "8"
+  version: "9"
   description: >
     Normative AsyncAPI description of the public worker-protocol stream
     semantics. Durable uses HTTP long-poll request/response rather than a
@@ -12,9 +12,9 @@ info:
     events, and terminal completion/failure events close the lease.
 x-durable-workflow-worker-protocol-negotiation:
   advertised_version_path: worker_protocol.version
-  default_advertised_version: "1.15"
+  default_advertised_version: "1.16"
   request_header_rule: same_major_and_minor_less_than_or_equal_to_advertised
-  accepted_request_versions_by_default: ["1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8", "1.9", "1.10", "1.11", "1.12", "1.13", "1.14", "1.15"]
+  accepted_request_versions_by_default: ["1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8", "1.9", "1.10", "1.11", "1.12", "1.13", "1.14", "1.15", "1.16"]
   response_version: advertised_version
   fail_closed_on: [missing_header, malformed_version, different_major, minor_greater_than_advertised]
 x-durable-workflow-catalog-entry: worker_protocol_stream
@@ -41,6 +41,19 @@ x-durable-workflow-message-streams-contract:
       submit_completion_fields: allowed
     rejection_status: 409
     rejection_reason: message_streams_unavailable
+x-durable-workflow-typed-search-attributes-contract:
+  minimum_protocol_version: "1.16"
+  worker_capability: typed_search_attributes
+  canonical_type_names: [string, keyword, keyword_list, int, float, bool, datetime]
+  completion_field: commands[].attribute_types
+  history:
+    event_type: SearchAttributesUpserted
+    payload_field: attribute_types
+    replay_identity: [sequence, attributes, attribute_types]
+    legacy_missing_metadata: unknown_type_identity_compare_value_only
+  version_gate:
+    rejection_status: 409
+    rejection_reason: typed_search_attributes_unavailable
 x-durable-workflow-object-families:
   - name: worker_poll_stream
     owner_repo: durable-workflow/server
@@ -158,7 +171,7 @@ components:
       properties:
         protocol_version:
           type: string
-          const: "1.15"
+          const: "1.16"
         server_capabilities:
           type: object
           additionalProperties: true

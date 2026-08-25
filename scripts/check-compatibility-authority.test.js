@@ -7,6 +7,7 @@ const path = require('path');
 const {
   assertOpenApiAcceptedWorkerProtocolVersions,
   assertPublishedServerSupportedByCargoRange,
+  assertWorkerProtocolVersionAccepted,
   composerPrereleaseStability,
   expectedAcceptedWorkerVersions,
 } = require('./check-compatibility-authority');
@@ -32,6 +33,20 @@ const advertisedVersion =
   contract.surface_families.worker_protocol.negotiation.default_advertised_version;
 const expectedVersions = expectedAcceptedWorkerVersions(advertisedVersion);
 const expectedEnum = `enum: [${expectedVersions.map(version => `"${version}"`).join(', ')}]`;
+
+assert.doesNotThrow(
+  () => assertWorkerProtocolVersionAccepted('1.2', expectedVersions, 'qualified Rust package'),
+  'the retained aggregate Rust protocol must remain accepted by the current Server',
+);
+assert.doesNotThrow(
+  () => assertWorkerProtocolVersionAccepted('1.16', expectedVersions, 'released Rust package'),
+  'the released Rust protocol may advance independently within the current Server window',
+);
+assert.throws(
+  () => assertWorkerProtocolVersionAccepted('1.17', expectedVersions, 'released Rust package'),
+  /released Rust package worker protocol 1\.17 is outside the default server request window/,
+  'a released Rust protocol ahead of the current Server must fail closed',
+);
 
 assert.doesNotThrow(
   () => assertPublishedServerSupportedByCargoRange(

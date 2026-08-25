@@ -43,11 +43,69 @@ class BookingSagaWorkflow extends Workflow
 
 When the workflow catches an exception, `$this->compensate()` runs every registered compensation in **reverse order**. In the example above, if `BookRentalCarActivity` fails, the engine cancels the hotel first and then the flight — unwinding the saga from the most recent step backward.
 
+The service-mode Python and Rust SDKs expose the same default policy through
+language-native helpers. They reuse ordinary activity commands and history;
+there is no saga-specific wire command.
+
+### Python
+
+```python
+def forward(saga):
+    flight = yield ctx.schedule_activity("trip.reserve-flight", [])
+    saga.add_compensation("trip.cancel-flight", [flight])
+
+    hotel = yield ctx.schedule_activity("trip.reserve-hotel", [])
+    saga.add_compensation("trip.cancel-hotel", [hotel])
+
+    ctx.throw_if_cancellation_requested()
+    yield ctx.schedule_activity("trip.charge", [])
+    return {"status": "booked"}
+
+return (yield from ctx.saga().run(forward))
+```
+
+### Rust
+
+```rust
+let mut saga = ctx.saga();
+let outcome = async {
+    let flight = ctx.activity("trip.reserve-flight", json!([])).await?;
+    saga.add_compensation("trip.cancel-flight", json!([flight]))?;
+
+    let hotel = ctx.activity("trip.reserve-hotel", json!([])).await?;
+    saga.add_compensation("trip.cancel-hotel", json!([hotel]))?;
+
+    ctx.throw_if_cancellation_requested()?;
+    ctx.activity("trip.charge", json!([])).await?;
+    Ok(json!({"status": "booked"}))
+}.await;
+
+saga.finish(outcome).await
+```
+
+Registering after forward success is part of the deterministic contract. A
+restart replays the same registration order and resumes the next uncompensated
+activity. Exact duplicate completion delivery does not run a compensation
+twice. Cooperative cancellation is observed only where workflow code calls the
+SDK cancellation check, so authors choose a safe point after registering any
+cleanup that must run.
+
 ## Compensation ordering
 
 By default, compensations execute **sequentially in reverse registration order**. This is the safest default because later steps may depend on earlier ones.
 
+Python and Rust stop at the first compensation failure. Their
+`SagaCompensationFailed` / `Error::SagaCompensationFailed` diagnostics preserve
+both the initiating failure and compensation failure, plus the failed
+compensation's activity type and registration order. PHP's default also stops
+and propagates on the first compensation failure; its runtime records the
+initiating and compensation diagnostics together.
+
 ## Parallel compensation
+
+Parallel compensation and continue-on-error are PHP-specific opt-in policies
+at the current SDK floors. Python and Rust intentionally expose only the shared
+sequential, reverse-order, stop-first policy.
 
 To run compensations in parallel, use `setParallelCompensation(true)`. When parallel compensation is enabled, each compensation closure should return a started (but not awaited) activity call so the engine can execute them concurrently:
 

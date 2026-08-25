@@ -630,6 +630,9 @@ The `WorkflowContext` passed to `run` provides deterministic operations:
 | `ctx.schedule_activity(type, args)` | Schedule an activity task, optionally with per-call retry and timeout options |
 | `ctx.start_timer(seconds)` | Durable sleep |
 | `ctx.start_child_workflow(type, args)` | Start a child workflow, optionally with per-call retry and workflow timeout options |
+| `yield [command, [...]]` | Join a nested deterministic activity, child-workflow, timer, or mixed group in input order |
+| `ctx.saga()` | Register and run reverse-order durable activity compensations |
+| `ctx.throw_if_cancellation_requested()` | Observe cooperative cancellation at an author-controlled safe point |
 | `ctx.side_effect(fn)` | Capture a non-deterministic value |
 | `ctx.get_version(change_id, min, max)` | Safe workflow code versioning |
 | `ctx.upsert_search_attributes(attrs)` | Update search attributes |
@@ -692,14 +695,47 @@ class FanOutWorkflow:
     def run(self, ctx, *args):
         items = args[0]
 
-        # Schedule all activities at once
+        # Nested lists may mix activities, children, and timers.
         results = yield [
-            ctx.schedule_activity("process_item", [item])
-            for item in items
+            ctx.schedule_activity("process_item", [items[0]]),
+            [
+                ctx.start_child_workflow("process-batch", [items[1:]]),
+                ctx.start_timer(1),
+            ],
         ]
 
-        return results  # list of results in the same order
+        return results  # same nested shape and input order
 ```
+
+The worker emits one ordinary command per durable leaf and attaches the shared
+stable `parallel_group_*` fields plus the full outer-to-inner path. History can
+close members in any order; replay still binds results and failures by durable
+input position. Exact duplicate terminal delivery is ignored. Pending history
+after a worker restart and fully completed history reconstruct the same group
+without rescheduling completed work.
+
+### Saga Compensation
+
+```python
+def forward(saga):
+    flight = yield ctx.schedule_activity("trip.reserve-flight", [])
+    saga.add_compensation("trip.cancel-flight", [flight])
+
+    hotel = yield ctx.schedule_activity("trip.reserve-hotel", [])
+    saga.add_compensation("trip.cancel-hotel", [hotel])
+
+    ctx.throw_if_cancellation_requested()
+    yield ctx.schedule_activity("trip.charge", [])
+    return {"status": "booked"}
+
+return (yield from ctx.saga().run(forward))
+```
+
+The saga executes ordinary activity commands sequentially in reverse
+registration order after failure or cooperative cancellation. It stops on the
+first compensation failure. `SagaCompensationFailed` preserves the initiating
+failure, compensation failure, compensation activity type, and deterministic
+registration order as structured diagnostics.
 
 ### Child Workflows
 

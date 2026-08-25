@@ -182,6 +182,15 @@ function expectedAcceptedWorkerVersions(advertisedVersion) {
   return Array.from({length: minor + 1}, (_, candidateMinor) => `${major}.${candidateMinor}`);
 }
 
+function assertWorkerProtocolVersionAccepted(protocolVersion, acceptedVersions, source) {
+  if (!acceptedVersions.includes(protocolVersion)) {
+    throw new Error(
+      `${source} worker protocol ${protocolVersion} is outside the default ` +
+        `server request window ${acceptedVersions[0]} through ${acceptedVersions.at(-1)}`,
+    );
+  }
+}
+
 function yamlComponentSchema(document, schemaName, label) {
   const schemasMarker = '\n  schemas:\n';
   const schemasStart = document.indexOf(schemasMarker);
@@ -369,12 +378,12 @@ function assertSdkProtocolAuthorities(contract) {
   const cargoMetadata = loadRustCargoMetadataWhenAvailable();
   if (cargoMetadata !== null) {
     // The crate package version follows the current published-component
-    // authority. Its release-specific Server support range is independent of
-    // the retained aggregate quickstart qualification checked above.
+    // authority. Its release-specific Server and worker-protocol ranges are
+    // independent of the retained aggregate quickstart qualification checked
+    // above.
     const expectedCargoValues = {
       package: rustPackage.package,
       version: PUBLISHED_ARTIFACT_VERSIONS['sdk-rust'],
-      worker_protocol_version: rustPackage.worker_protocol_version,
       control_plane_version: rustPackage.control_plane_version,
     };
 
@@ -459,10 +468,16 @@ function assertSdkProtocolAuthorities(contract) {
         `every version from ${expectedVersions[0]} through ${expectedVersions.at(-1)}`,
     );
   }
-  if (!expectedVersions.includes(rustPackage.worker_protocol_version)) {
-    throw new Error(
-      `Rust worker protocol ${rustPackage.worker_protocol_version} is outside the default ` +
-        `server request window ${expectedVersions[0]} through ${expectedVersions.at(-1)}`,
+  assertWorkerProtocolVersionAccepted(
+    rustPackage.worker_protocol_version,
+    expectedVersions,
+    'qualified Rust package',
+  );
+  if (cargoMetadata !== null) {
+    assertWorkerProtocolVersionAccepted(
+      cargoMetadata.worker_protocol_version,
+      expectedVersions,
+      cargoMetadata.source,
     );
   }
 
@@ -685,6 +700,7 @@ module.exports = {
   assertOpenApiAcceptedWorkerProtocolVersions,
   assertPublishedServerSupportedByCargoRange,
   assertReleaseCheckMetadata,
+  assertWorkerProtocolVersionAccepted,
   composerPrereleaseStability,
   expectedAcceptedWorkerVersions,
 };

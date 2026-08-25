@@ -73,7 +73,7 @@ const advertisedVersion = compatibility.surface_families.worker_protocol.negotia
 const acceptedVersions = compatibility.surface_families.worker_protocol.negotiation
   .accepted_request_versions_by_default;
 
-assert.strictEqual(advertisedVersion, '1.15');
+assert.strictEqual(advertisedVersion, '1.16');
 assert.strictEqual(
   openApi['x-durable-workflow-worker-protocol-negotiation'].default_advertised_version,
   advertisedVersion,
@@ -140,10 +140,16 @@ for (const filename of [
   'worker-protocol-api.openapi.yaml',
   'worker-protocol-stream.asyncapi.yaml',
 ]) {
+  const retained = readYaml(path.join(retainedRoot, filename));
   assert.strictEqual(
-    fs.readFileSync(path.join(specRoot, filename), 'utf8'),
-    fs.readFileSync(path.join(retainedRoot, filename), 'utf8'),
-    `the current ${filename} must match the retained 1.15 authority`,
+    retained['x-durable-workflow-worker-protocol-negotiation'].default_advertised_version,
+    '1.15',
+    `the retained ${filename} must preserve the 1.15 negotiation authority`,
+  );
+  assert.strictEqual(
+    retained['x-durable-workflow-message-streams-contract'].minimum_protocol_version,
+    '1.15',
+    `the retained ${filename} must preserve the message-stream protocol floor`,
   );
 }
 

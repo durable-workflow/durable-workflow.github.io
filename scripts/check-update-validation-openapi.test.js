@@ -140,7 +140,25 @@ const capability = {
   },
 };
 const server_capabilities = {
+  supported_workflow_task_commands: [
+    'complete_workflow',
+    'schedule_activity',
+    'upsert_memo',
+    'upsert_search_attributes',
+  ],
   workflow_task_poll_request_idempotency: true,
+  workflow_memo_updates: {
+    supported: true,
+    type: 'upsert_memo',
+    minimum_protocol_version: '1.14',
+    required_fields: ['type', 'entries'],
+    entries: {},
+    merge: {},
+    history: {},
+    idempotency: {},
+    continue_as_new: 'merged memo is inherited before commands on the continued run',
+    external_payloads: {},
+  },
   message_streams: {
     schema: 'durable-workflow.v2.message-streams.contract',
     version: 1,
@@ -148,12 +166,20 @@ const server_capabilities = {
     minimum_worker_protocol_version: '1.15',
     supported: true,
   },
+  typed_search_attributes: {
+    supported: true,
+    minimum_worker_protocol_version: '1.16',
+    canonical_types: ['string', 'keyword', 'keyword_list', 'int', 'float', 'bool', 'datetime'],
+    command_field: 'attribute_types',
+    history_field: 'attribute_types',
+    legacy_history_rule: 'absent_metadata_is_unknown_type_identity',
+  },
   update_validation_tasks: true,
   synchronous_update_validation: capability,
 };
 const envelope = (body) => ({
   ...body,
-  protocol_version: '1.15',
+  protocol_version: '1.16',
   server_capabilities,
 });
 
@@ -318,7 +344,7 @@ validate(operationSchema(approveRoute, '409'), envelope({
   status: 409,
 }));
 
-assert.strictEqual(spec.info.version, '11');
+assert.strictEqual(spec.info.version, '12');
 assert.strictEqual(spec['x-durable-workflow-catalog-version'], 16);
 assert.strictEqual(
   spec.components.schemas.MultiplexedWorkflowTask.discriminator.propertyName,

@@ -27,7 +27,7 @@ const controlPlaneSpec = yaml.load(fs.readFileSync(
 ));
 
 assert.strictEqual(catalog.version, 16);
-assert.strictEqual(workerSpec.info.version, '11');
+assert.strictEqual(workerSpec.info.version, '12');
 assert.strictEqual(workerSpec['x-durable-workflow-catalog-version'], 16);
 
 const route = workerSpec.paths['/worker/registrations/{workerId}'];

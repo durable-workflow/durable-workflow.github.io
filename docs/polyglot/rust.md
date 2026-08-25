@@ -234,6 +234,65 @@ caller can inspect the returned identity and wait again. An execution or run
 deadline configured with `WorkflowStartOptions` is durable server state; when
 it expires, the server closes the run with a terminal `timed_out` outcome.
 
+## Deterministic parallel groups
+
+`WorkflowContext::parallel` and its `join` alias compose activities, child
+workflows, timers, mixed groups, and nested groups without adding a new Server
+command. Constructors on `ParallelOperation` defer every leaf until the entire
+tree is known:
+
+```rust
+use durable_workflow::{json, ChildWorkflowOptions, ParallelOperation};
+use std::time::Duration;
+
+let results = ctx.parallel(vec![
+    ParallelOperation::activity("load-profile", json!(["customer-42"])),
+    ParallelOperation::group(vec![
+        ParallelOperation::child_workflow(
+            "quote-shipping",
+            ChildWorkflowOptions::new("shipping-workers"),
+            json!(["customer-42"]),
+        ),
+        ParallelOperation::timer(Duration::from_secs(1)),
+    ]),
+]).await?;
+```
+
+Every leaf carries the shared stable group identity plus its complete
+outer-to-inner path. Successful results retain nested input shape and order.
+`Error::ParallelFailed` preserves the typed leaf cause, deterministic member
+path, group path, and completed siblings. Pending and completed histories replay
+without rescheduling; exact duplicates and late completions do not change the
+chosen positional outcome.
+
+## Saga compensation
+
+Register a compensation only after the corresponding forward activity has
+completed, then give the forward result to `Saga::finish`:
+
+```rust
+let mut saga = ctx.saga();
+let outcome = async {
+    let flight = ctx.activity("trip.reserve-flight", json!([])).await?;
+    saga.add_compensation("trip.cancel-flight", json!([flight]))?;
+
+    let hotel = ctx.activity("trip.reserve-hotel", json!([])).await?;
+    saga.add_compensation("trip.cancel-hotel", json!([hotel]))?;
+
+    ctx.throw_if_cancellation_requested()?;
+    ctx.activity("trip.charge", json!([])).await?;
+    Ok(json!({"status": "booked"}))
+}.await;
+
+saga.finish(outcome).await
+```
+
+Failure or cooperative cancellation runs the existing activity command in
+reverse registration order, one compensation at a time. Compensation stops at
+its first failure. `Error::SagaCompensationFailed` preserves both typed errors,
+the compensation activity type, and its registration order through restart and
+replay.
+
 ## Deterministic side effects and version markers
 
 The Rust SDK records small non-deterministic values
