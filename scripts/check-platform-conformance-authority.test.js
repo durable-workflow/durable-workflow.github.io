@@ -277,6 +277,34 @@ assert.throws(
   'transitive stable source dependencies must stay in the versioned carrier',
 );
 
+const staleHistoryExportRelease = clone(suite);
+staleHistoryExportRelease.source_dependencies[
+  'history-export-bundle.schema.json'
+].source_release = '2.0.0-rc.41';
+assert.throws(
+  () => assertStableSourceDependenciesResolve(staleHistoryExportRelease),
+  /locked Workflow release/,
+  'the history-export dependency must retain the Workflow release named by the authority lock',
+);
+
+const mutatedHistoricalExportBinding = clone(suite);
+mutatedHistoricalExportBinding.artifact_version_history.history_export_bundle
+  .bindings[0].sha256 = `sha256:${'0'.repeat(64)}`;
+assert.throws(
+  () => assertStableSourceDependenciesResolve(mutatedHistoricalExportBinding),
+  /historical binding/,
+  'suite 43 must retain the immutable history-export schema version 1 binding',
+);
+
+const mismatchedCurrentExportBinding = clone(suite);
+mismatchedCurrentExportBinding.artifact_version_history.history_export_bundle
+  .bindings[1].sha256 = `sha256:${'0'.repeat(64)}`;
+assert.throws(
+  () => assertStableSourceDependenciesResolve(mismatchedCurrentExportBinding),
+  /current binding/,
+  'the current history-export history entry must match the source dependency',
+);
+
 for (const provisional of [
   'waterline_observer_envelopes',
   'mcp_discovery_envelopes',

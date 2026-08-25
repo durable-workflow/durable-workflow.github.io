@@ -45,7 +45,7 @@ const EXPECTED_RUNTIME_SOURCE_REVISION =
 const EXPECTED_RUNTIME_FIXTURE_SUITE_VERSION = 38;
 const EXPECTED_PROTOCOL_SOURCE_REVISION =
   'f781ced1ae33c8697835bd527a125bdf3eaf4321';
-const EXPECTED_PROTOCOL_SOURCE_SUITE_VERSION = 42;
+const EXPECTED_PROTOCOL_SOURCE_SUITE_VERSION = 43;
 const EXPECTED_PROTOCOL_SOURCE_CATALOG_VERSION = 16;
 const EXPECTED_PROTOCOL_SOURCE_DIGESTS = Object.freeze({
   'cluster-info-envelope.schema.json':
@@ -94,6 +94,7 @@ const VERSIONED_SUITE_AUTHORITY_DIGESTS = {
   40: 'sha256:0642f7d73fffecf0ac673b962756082f03e0c07b7ed3efda70fa26bacc8ebc8f',
   41: 'sha256:dfee9c9b419bab9504a662f22bd5b7866a2a7de50c6d31ee0a0e7b3c7067c1a1',
   42: 'sha256:73e4d6c0e6fbda033275ac14fd62eaffa0f740363da5e9e97d610e0ee6f12311',
+  43: 'sha256:73fec8cf65ce0a58ba605774e578d2c5cc488821a14249f43cee43f803d9c07c',
 };
 const SUITE_AUTHORITY_DIGEST_TRANSITIONS = Object.freeze({
   40: Object.freeze({
@@ -358,6 +359,7 @@ VERSIONED_RUNTIME_SCENARIO_STATUSES[39] = VERSIONED_RUNTIME_SCENARIO_STATUSES[38
 VERSIONED_RUNTIME_SCENARIO_STATUSES[40] = VERSIONED_RUNTIME_SCENARIO_STATUSES[39];
 VERSIONED_RUNTIME_SCENARIO_STATUSES[41] = VERSIONED_RUNTIME_SCENARIO_STATUSES[40];
 VERSIONED_RUNTIME_SCENARIO_STATUSES[42] = VERSIONED_RUNTIME_SCENARIO_STATUSES[41];
+VERSIONED_RUNTIME_SCENARIO_STATUSES[43] = VERSIONED_RUNTIME_SCENARIO_STATUSES[42];
 const VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_FIELDS = [
   'artifact_policy',
   'common_result_evidence',
@@ -678,6 +680,8 @@ VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[41] =
   VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[40];
 VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[42] =
   VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[41];
+VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[43] =
+  VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[42];
 // Digests bind public top-level runtime scenario manifest requirements to the
 // suite version. These fields define artifact source policy, common evidence,
 // runtime matrices, scenario-specific required evidence, and host-runner result
@@ -882,6 +886,8 @@ VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[41] =
   VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[40];
 VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[42] =
   VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[41];
+VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[43] =
+  VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[42];
 const VERSIONED_PASS_FAIL_RULES = {
   5: {
     guaranteed_field_equality: {
@@ -1161,6 +1167,7 @@ VERSIONED_PASS_FAIL_RULES[39] = VERSIONED_PASS_FAIL_RULES[38];
 VERSIONED_PASS_FAIL_RULES[40] = VERSIONED_PASS_FAIL_RULES[39];
 VERSIONED_PASS_FAIL_RULES[41] = VERSIONED_PASS_FAIL_RULES[40];
 VERSIONED_PASS_FAIL_RULES[42] = VERSIONED_PASS_FAIL_RULES[41];
+VERSIONED_PASS_FAIL_RULES[43] = VERSIONED_PASS_FAIL_RULES[42];
 const EXPECTED_AUTHORITY_DOC = 'docs/platform-conformance.md';
 const EXPECTED_DOC_ID = 'platform-conformance';
 
@@ -3286,6 +3293,110 @@ function assertStableFixtureSourcesResolve(contract) {
   }
 }
 
+function assertHistoryExportArtifactHistory(contract, dependency) {
+  const history = contract.artifact_version_history?.history_export_bundle;
+  const bindings = history?.bindings;
+  const lock = loadJson(
+    workflowAuthorityLockPath,
+    'scripts/workflow-platform-conformance-authority-lock.json',
+  );
+
+  if (
+    history?.history_mode !== 'immutable_prerelease_schema_bindings' ||
+    !Array.isArray(bindings) ||
+    bindings.length !== 2
+  ) {
+    throw new Error(
+      'history-export artifact history must retain exactly one historical ' +
+        'schema binding and one current schema binding.',
+    );
+  }
+
+  const expectedHistorical = {
+    suite_version: 42,
+    status: 'historical',
+    lifecycle: 'prerelease',
+    schema_version: 1,
+    artifact_id: 'durable-workflow.v2.history-export-bundle@catalog-16',
+    resolver_url:
+      'https://raw.githubusercontent.com/durable-workflow/' +
+      'durable-workflow.github.io/f781ced1ae33c8697835bd527a125bdf3eaf4321/' +
+      'static/platform-protocol-specs/history-export-bundle.schema.json',
+    sha256:
+      'sha256:e8d6ef0af49a2570007062215d1332c96910743c1449cd8ca2c702bfac6c181c',
+  };
+  const sourceRelease = dependency.source_release;
+
+  if (
+    sourceRelease !== lock.workflow_version ||
+    !/^2\.0\.0-rc\.\d+$/.test(sourceRelease || '')
+  ) {
+    throw new Error(
+      'history-export source dependency must bind the locked Workflow release.',
+    );
+  }
+
+  const expectedArtifactId =
+    `durable-workflow.v2.history-export-bundle@workflow-${sourceRelease}-schema-2`;
+  const expectedResolver =
+    `https://raw.githubusercontent.com/durable-workflow/workflow/` +
+    `${sourceRelease}/${dependency.source_path}`;
+  const expectedCurrent = {
+    suite_version: contract.version,
+    status: 'current',
+    lifecycle: 'prerelease',
+    schema_version: 2,
+    artifact_id: expectedArtifactId,
+    resolver_url: expectedResolver,
+    source_release: sourceRelease,
+    sha256: dependency.sha256,
+  };
+
+  assertJsonEqual(
+    bindings[0],
+    expectedHistorical,
+    'artifact_version_history.history_export_bundle historical binding',
+  );
+  assertJsonEqual(
+    bindings[1],
+    expectedCurrent,
+    'artifact_version_history.history_export_bundle current binding',
+  );
+
+  if (
+    dependency.artifact_id !== expectedArtifactId ||
+    dependency.resolver_url !== expectedResolver
+  ) {
+    throw new Error(
+      'history-export source dependency must use its retained Workflow ' +
+        'release identity and resolver.',
+    );
+  }
+
+  const workflowMirrorPath =
+    process.env.WORKFLOW_PLATFORM_CONFORMANCE_MANIFEST_PATH;
+  if (workflowMirrorPath) {
+    const workflowRoot = path.resolve(path.dirname(workflowMirrorPath), '..');
+    const packagedSourcePath = path.resolve(workflowRoot, dependency.source_path);
+    if (
+      !packagedSourcePath.startsWith(`${workflowRoot}${path.sep}`) ||
+      !fs.existsSync(packagedSourcePath)
+    ) {
+      throw new Error(
+        'published Workflow history-export source dependency is unavailable.',
+      );
+    }
+
+    const actualDigest = sha256(read(packagedSourcePath));
+    if (actualDigest !== dependency.sha256) {
+      throw new Error(
+        `published Workflow history-export source dependency digest ` +
+          `${actualDigest} must match ${dependency.sha256}.`,
+      );
+    }
+  }
+}
+
 function assertStableSourceDependenciesResolve(contract) {
   const dependencies = contract.source_dependencies;
   const protocolCatalog = loadJson(
@@ -3342,6 +3453,11 @@ function assertStableSourceDependenciesResolve(contract) {
         `stable source dependency "${filename}" source_path must stay inside ` +
         `the current suite-v${EXPECTED_PROTOCOL_SOURCE_SUITE_VERSION} protocol carrier.`,
       );
+    }
+
+    if (filename === 'history-export-bundle.schema.json') {
+      assertHistoryExportArtifactHistory(contract, source);
+      continue;
     }
 
     const resolverDetails = immutableResolverDetails(
