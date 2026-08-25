@@ -20,11 +20,6 @@ const sidebars = {
         'polyglot/server',
         'polyglot/workflow-streams',
         {
-          type: 'link',
-          label: 'Waterline: Cloud-managed or separately deployed',
-          href: '/docs/2.0/monitoring/',
-        },
-        {
           type: 'category',
           label: 'CLI',
           link: {

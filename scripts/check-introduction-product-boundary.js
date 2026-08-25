@@ -60,6 +60,7 @@ const SERVICE_MODE_DOC_IDS = Object.freeze([
   'polyglot/rust',
 ]);
 
+const MONITORING_DOC_ID = 'monitoring';
 const MONITORING_ROUTE = '/docs/2.0/monitoring/';
 
 function fail(message) {
@@ -140,6 +141,18 @@ function collectSidebarDocIds(item, docIds = []) {
   return docIds;
 }
 
+function collectSidebarHrefs(item, hrefs = []) {
+  if (item?.type === 'link') {
+    hrefs.push(item.href);
+  }
+
+  for (const child of item?.items || []) {
+    collectSidebarHrefs(child, hrefs);
+  }
+
+  return hrefs;
+}
+
 function assertSidebarTopology(sidebars) {
   const tutorialSidebar = sidebars.tutorialSidebar;
   if (!Array.isArray(tutorialSidebar)) {
@@ -167,11 +180,35 @@ function assertSidebarTopology(sidebars) {
     }
   }
 
-  const monitoringLink = serviceMode.items.find(
-    item => item?.type === 'link' && item.href === MONITORING_ROUTE,
+  const serviceModeMonitoringEntries = [
+    ...collectSidebarDocIds(serviceMode).filter(docId => docId === MONITORING_DOC_ID),
+    ...collectSidebarHrefs(serviceMode).filter(href => href === MONITORING_ROUTE),
+  ];
+  if (serviceModeMonitoringEntries.length !== 0) {
+    fail(`Service Mode navigation must not expose ${MONITORING_ROUTE}`);
+  }
+
+  const runAndOperate = tutorialSidebar.find(
+    item => item?.type === 'category' && item.label === 'Run And Operate',
   );
-  if (!monitoringLink) {
-    fail(`Service Mode navigation is missing ${MONITORING_ROUTE}`);
+  if (!runAndOperate || runAndOperate.link?.type !== 'generated-index') {
+    fail('sidebars.js must expose Run And Operate through a generated index');
+  }
+
+  const monitoringDocIds = collectSidebarDocIds(runAndOperate)
+    .filter(docId => docId === MONITORING_DOC_ID);
+  if (monitoringDocIds.length !== 1) {
+    fail(`Run And Operate navigation must expose ${MONITORING_ROUTE} exactly once`);
+  }
+
+  const allMonitoringEntries = [
+    ...collectSidebarDocIds({items: tutorialSidebar})
+      .filter(docId => docId === MONITORING_DOC_ID),
+    ...collectSidebarHrefs({items: tutorialSidebar})
+      .filter(href => href === MONITORING_ROUTE),
+  ];
+  if (allMonitoringEntries.length !== 1) {
+    fail(`2.0 navigation must expose ${MONITORING_ROUTE} exactly once`);
   }
 }
 
