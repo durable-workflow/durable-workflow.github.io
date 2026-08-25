@@ -34,6 +34,19 @@ function sitemapRoutes() {
   );
 }
 
+function renderedCanonicalRoute(buildArtifact) {
+  const html = fs.readFileSync(path.join(repoRoot, buildArtifact), 'utf8');
+  const canonicalTags = [...html.matchAll(/<link\b[^>]*\brel="canonical"[^>]*>/gi)];
+  if (canonicalTags.length !== 1) {
+    throw new Error(`${buildArtifact} must render exactly one canonical link`);
+  }
+  const href = canonicalTags[0][0].match(/\bhref="([^"]+)"/i)?.[1];
+  if (!href) {
+    throw new Error(`${buildArtifact} canonical link is missing its href`);
+  }
+  return new URL(href).pathname;
+}
+
 function main() {
   const validationInventory = sourceInventory(repoRoot);
   validateInventory(validationInventory);
@@ -52,13 +65,23 @@ function main() {
     if (!fs.existsSync(path.join(repoRoot, entry.build_artifact))) {
       throw new Error(`Missing built route for ${entry.source_file}: ${entry.build_artifact}`);
     }
-    if (!routes.has(entry.route)) {
-      throw new Error(`Sitemap is missing ${entry.route} for ${entry.source_file}`);
+    const canonicalRoute = renderedCanonicalRoute(entry.build_artifact);
+    if (canonicalRoute !== entry.canonical_route) {
+      throw new Error(
+        `${entry.route} canonical route ${canonicalRoute} does not match ${entry.canonical_route}`,
+      );
+    }
+    if (routes.has(entry.route) !== entry.sitemap_included) {
+      throw new Error(
+        `${entry.route} sitemap disposition does not match its canonical relationship`,
+      );
     }
   }
 
   const inventory = publicInventory(validationInventory, revision);
   validatePublicInventory(inventory, validationInventory, revision);
+  const sitemapRouteCount = inventory.filter(entry => entry.sitemap_included).length;
+  const canonicalizedAliasCount = inventory.length - sitemapRouteCount;
 
   const manifest = {
     schema: SCHEMA,
@@ -70,11 +93,13 @@ function main() {
     deploy_inventory: {
       release_audit_path: '/docs-page-release-audit.json',
       sitemap_path: '/sitemap.xml',
-      canonical_explicit_2_0_routes: inventory.length,
+      canonical_explicit_2_0_routes: sitemapRouteCount,
+      canonicalized_alias_routes: canonicalizedAliasCount,
     },
     summary: {
       markdown_sources: inventory.length,
       built_routes: inventory.length,
+      sitemap_routes: sitemapRouteCount,
     },
     route_inventory: inventory,
   };

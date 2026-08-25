@@ -34,6 +34,9 @@ function main() {
   const releaseAudit = readJson('docs-page-release-audit.json');
   const revision = docsRevision(repoRoot);
   const expectedPublicInventory = publicInventory(expectedInventory, revision);
+  const expectedSitemapRoutes = expectedInventory
+    .filter(entry => entry.sitemap_included).length;
+  const expectedCanonicalizedAliases = expectedInventory.length - expectedSitemapRoutes;
 
   assert.strictEqual(manifest.schema, SCHEMA, 'narrative inventory schema');
   assert.strictEqual(manifest.schema_version, SCHEMA_VERSION, 'narrative inventory schema version');
@@ -50,9 +53,17 @@ function main() {
   assert.strictEqual(manifest.release_status_guardrail.explicit_prerelease_docs_version, '2.0');
   assert.strictEqual(manifest.deploy_inventory.release_audit_path, '/docs-page-release-audit.json');
   assert.strictEqual(manifest.deploy_inventory.sitemap_path, '/sitemap.xml');
-  assert.strictEqual(manifest.deploy_inventory.canonical_explicit_2_0_routes, expectedInventory.length);
+  assert.strictEqual(
+    manifest.deploy_inventory.canonical_explicit_2_0_routes,
+    expectedSitemapRoutes,
+  );
+  assert.strictEqual(
+    manifest.deploy_inventory.canonicalized_alias_routes,
+    expectedCanonicalizedAliases,
+  );
   assert.strictEqual(manifest.summary.markdown_sources, expectedInventory.length);
   assert.strictEqual(manifest.summary.built_routes, expectedInventory.length);
+  assert.strictEqual(manifest.summary.sitemap_routes, expectedSitemapRoutes);
   assert.deepStrictEqual(
     manifest.route_inventory,
     expectedPublicInventory,

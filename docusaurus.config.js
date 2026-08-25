@@ -96,6 +96,10 @@ const config = {
           // post-build discovery patch adds the same signal to generated
           // artifacts and accounts for structured rendering dependencies.
           lastmod: 'date',
+          ignorePatterns: [
+            '/docs/2.0/constraints/idempotent-vs-deterministic',
+            '/docs/2.0/constraints/idempotent-vs-deterministic/**',
+          ],
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),

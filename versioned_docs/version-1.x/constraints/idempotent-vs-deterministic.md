@@ -1,8 +1,8 @@
 ---
 sidebar_position: 1.5
-title: "Idempotent vs. Deterministic Workflows: What's the Difference?"
+title: Idempotency vs. Determinism
 sidebar_label: Idempotent vs. deterministic
-description: Compare idempotent vs. deterministic behavior, why workflow code must be deterministic, and why retried activities and side effects must be idempotent.
+description: Determinism makes workflow replay predictable; idempotency makes repeated activity side effects safe. Learn why Durable Workflow requires both.
 slug: /constraints/idempotent-vs-deterministic
 image: /img/idempotent-vs-deterministic.png
 tags:

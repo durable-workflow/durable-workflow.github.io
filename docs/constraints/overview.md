@@ -6,7 +6,7 @@ sidebar_position: 1
 
 Workflows and activities live on opposite sides of the durable boundary and carry different constraints. Workflow code is **replayed**; activity code is **retried**. Those are not the same operation, and the rules flow from that split.
 
-Start with [Idempotent vs. Deterministic Workflows](./idempotent-vs-deterministic.md) for a direct comparison and concrete examples showing why neither property implies the other.
+Start with [Idempotent vs. Deterministic Workflows](/docs/constraints/idempotent-vs-deterministic/) for a direct comparison and concrete examples showing why neither property implies the other.
 
 - **Workflow authoring code must be deterministic.** The engine replays history to rebuild a workflow's state whenever it resumes — on another worker, after a restart, after a deployment, or during a long-running execution. Replay re-invokes the workflow body, not activities, so the workflow must produce the same decisions in the same order every time it sees the same history. Wall-clock reads, live cache reads, random numbers, network calls, and other sources of change are prohibited inside the workflow body; use [`Workflow::now()`](../defining-workflows/workflow-api.md), [`sideEffect(...)`](../features/side-effects.md), activities, and similar helpers to cross the durable boundary.
 

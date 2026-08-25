@@ -3,6 +3,38 @@
   "schema_version": 1,
   "baselines": [
     {
+      "id": "idempotency-determinism-single-authority-2026-08-24",
+      "observed_on": "2026-08-24",
+      "search_intent": {
+        "queries": [
+          "idempotent vs deterministic",
+          "deterministic vs idempotent",
+          "idempotency vs determinism",
+          "is idempotent the same as deterministic"
+        ],
+        "totals": {
+          "impressions": 261,
+          "clicks": 0,
+          "click_through_rate": 0
+        },
+        "average_position_range": {
+          "minimum": 6.7,
+          "maximum": 8.1
+        }
+      },
+      "landing_pages": {
+        "stable_route": "/docs/constraints/idempotent-vs-deterministic/",
+        "prerelease_route": "/docs/2.0/constraints/idempotent-vs-deterministic/",
+        "prerelease_route_impressions": 168,
+        "prerelease_route_clicks": 0
+      },
+      "authority_landing": {
+        "canonical_route": "/docs/constraints/idempotent-vs-deterministic/",
+        "prerelease_disposition": "canonical_to_stable_and_excluded_from_sitemap",
+        "review_after": "landing_and_complete_later_reporting_window"
+      }
+    },
+    {
       "id": "idempotency-determinism-comparison-intent-2026-07-30",
       "window": {
         "start": "2026-07-03",

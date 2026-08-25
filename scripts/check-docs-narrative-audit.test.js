@@ -20,11 +20,15 @@ const inventory = [
     source_file: 'docs/alpha.md',
     route: '/docs/2.0/alpha/',
     build_artifact: 'build/docs/2.0/alpha/index.html',
+    canonical_route: '/docs/2.0/alpha/',
+    sitemap_included: true,
   },
   {
     source_file: 'docs/nested/beta.mdx',
     route: '/docs/2.0/nested/beta/',
     build_artifact: 'build/docs/2.0/nested/beta/index.html',
+    canonical_route: '/docs/beta/',
+    sitemap_included: false,
   },
 ];
 
@@ -50,6 +54,8 @@ assert.deepStrictEqual(publishedInventory[0], {
     `https://github.com/durable-workflow/durable-workflow.github.io/blob/${revision}/docs/alpha.md`,
   route: '/docs/2.0/alpha/',
   artifact_route: '/docs/2.0/alpha/',
+  canonical_route: '/docs/2.0/alpha/',
+  sitemap_included: true,
 });
 
 for (const route of ['/docs/alpha/', '/scripts/example.json', '/build/example.json']) {

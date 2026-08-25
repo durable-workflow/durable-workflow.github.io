@@ -1,13 +1,20 @@
 const fs = require('fs');
 const path = require('path');
 const {execFileSync} = require('child_process');
+const yaml = require('js-yaml');
 const {
   assertPublicReference,
   repositorySourceUrl,
 } = require('./docs-audit-public-references');
 
 const SCHEMA = 'durable-workflow.docs.narrative-audit';
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
+
+function sourceFrontMatter(repoRoot, sourceFile) {
+  const source = fs.readFileSync(path.join(repoRoot, sourceFile), 'utf8');
+  const match = source.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+  return match ? yaml.load(match[1]) || {} : {};
+}
 
 function routeForSource(sourceFile) {
   if (!/^docs\/.+\.mdx?$/.test(sourceFile)) {
@@ -43,10 +50,14 @@ function markdownSourceFiles(repoRoot) {
 function sourceInventory(repoRoot) {
   return markdownSourceFiles(repoRoot).map(sourceFile => {
     const route = routeForSource(sourceFile);
+    const frontMatter = sourceFrontMatter(repoRoot, sourceFile);
+    const canonicalRoute = frontMatter.canonical_path || route;
     return {
       source_file: sourceFile,
       route,
       build_artifact: buildArtifactForRoute(route),
+      canonical_route: canonicalRoute,
+      sitemap_included: canonicalRoute === route,
     };
   });
 }
@@ -71,6 +82,8 @@ function publicInventory(inventory, revision) {
     source_url: repositorySourceUrl(entry.source_file, revision),
     route: entry.route,
     artifact_route: entry.route,
+    canonical_route: entry.canonical_route,
+    sitemap_included: entry.sitemap_included,
   }));
 }
 
@@ -91,7 +104,12 @@ function validatePublicInventory(inventory, validationInventory, revision) {
     if (routes.has(entry.route)) {
       throw new Error(`Duplicate published narrative inventory route: ${entry.route}`);
     }
-    if (entry.route !== validationEntry.route || entry.artifact_route !== entry.route) {
+    if (
+      entry.route !== validationEntry.route
+      || entry.artifact_route !== entry.route
+      || entry.canonical_route !== validationEntry.canonical_route
+      || entry.sitemap_included !== validationEntry.sitemap_included
+    ) {
       throw new Error(`${entry.route} published narrative artifact route is invalid`);
     }
     if (entry.source_url !== repositorySourceUrl(validationEntry.source_file, revision)) {
@@ -99,6 +117,7 @@ function validatePublicInventory(inventory, validationInventory, revision) {
     }
     assertPublicReference(entry.source_url, `${entry.route} source_url`);
     assertPublicReference(entry.artifact_route, `${entry.route} artifact_route`);
+    assertPublicReference(entry.canonical_route, `${entry.route} canonical_route`);
     routes.add(entry.route);
   });
 }
@@ -125,6 +144,16 @@ function validateInventory(inventory) {
     }
     if (entry.build_artifact !== buildArtifactForRoute(entry.route)) {
       throw new Error(`${entry.source_file} inventory build artifact does not match its route`);
+    }
+    if (
+      typeof entry.canonical_route !== 'string'
+      || !entry.canonical_route.startsWith('/docs/')
+      || !entry.canonical_route.endsWith('/')
+    ) {
+      throw new Error(`${entry.source_file} inventory canonical route is invalid`);
+    }
+    if (entry.sitemap_included !== (entry.canonical_route === entry.route)) {
+      throw new Error(`${entry.source_file} inventory sitemap disposition is invalid`);
     }
     sources.add(entry.source_file);
     routes.add(entry.route);

@@ -1,9 +1,10 @@
 ---
 sidebar_position: 2
-title: "Idempotent vs. Deterministic Workflows: What's the Difference?"
+title: "Idempotency vs. Determinism: 2.0 Prerelease"
 sidebar_label: Idempotent vs. deterministic
-description: Compare idempotent vs. deterministic behavior, why workflow code must be deterministic, and why retried activities and side effects must be idempotent.
+description: For Durable Workflow 2.0 prerelease SDKs, determinism keeps orchestration replay-safe while idempotency makes retried activity effects safe.
 slug: /constraints/idempotent-vs-deterministic
+canonical_path: /docs/constraints/idempotent-vs-deterministic/
 image: /img/idempotent-vs-deterministic.png
 tags:
   - constraints
@@ -19,6 +20,12 @@ keywords:
 ---
 
 # Idempotent vs. Deterministic Workflows: What's the Difference?
+
+:::note 2.0 prerelease guidance
+
+This page applies the comparison to 2.0 service-mode SDKs. The [stable explanation](/docs/constraints/idempotent-vs-deterministic/) is the canonical reference while 1.x remains the default documentation line.
+
+:::
 
 **Deterministic behavior makes the same decisions when it is given the same inputs and history. Idempotent behavior has the same intended effect whether an operation runs once or several times.** Determinism makes one execution predictable; idempotency makes repeated executions safe. Neither property implies the other.
 
