@@ -6,6 +6,7 @@ tags:
   - workers
   - polyglot
 keywords:
+  - sample-app-playground
   - Python SDK
   - durable_workflow Client
   - Python worker
@@ -17,16 +18,38 @@ import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseL
 
 # Python SDK
 
-<ProductPromotion source="docs-v2-python-sdk">
-Run Python clients and workers against a Cloud-managed namespace with separate
-role-scoped credentials.
-</ProductPromotion>
-
 The Python SDK is a thin, async-first client for a self-hosted Durable Workflow
 Server or Durable Workflow Cloud namespace runtime. It lets Python processes
 start, observe, signal, and cancel workflows through the runtime's
 control-plane API, and register as workers that execute workflow tasks and
 activities.
+
+## Try the local Sample App playground
+
+For the shortest no-Cloud authoring journey, open the current Sample App
+[`main` branch in GitHub Codespaces](https://codespaces.new/durable-workflow/sample-app?quickstart=1&ref=main)
+and run:
+
+<!-- docs-example id="sdk.python.sample-app-playground" -->
+```bash
+scripts/playground python
+```
+
+The local playground generates caller-owned workflow and activity source,
+selects the current compatibility-qualified artifacts, and starts the published
+Server and Waterline. It waits for a worker registration whose identity,
+workflow type, activity type, and task queue match the generated contract before
+starting the workflow. Success requires the expected completed result and
+history; the terminal then prints the exact local Waterline run link and the
+path to structured JSON evidence.
+
+The package installation, inline quickstart, API reference, and repository
+example below remain the direct paths for users who do not want Sample App.
+
+<ProductPromotion source="docs-v2-python-sdk">
+Run Python clients and workers against a Cloud-managed namespace with separate
+role-scoped credentials.
+</ProductPromotion>
 
 The SDK targets the same durable model as the PHP package — instance IDs, run IDs, history events, task queues, and type keys are shared across languages. A Python worker can serve activities for a PHP-authored workflow, and vice versa.
 

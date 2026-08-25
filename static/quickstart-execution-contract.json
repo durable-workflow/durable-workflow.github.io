@@ -156,6 +156,43 @@
       "shared_playground_contract_url": "https://github.com/durable-workflow/sample-app/blob/main/playground/contract.json"
     }
   },
+  "sample_app_playground": {
+    "access": "general",
+    "default_runtime": "local",
+    "codespaces_url": "https://codespaces.new/durable-workflow/sample-app?quickstart=1&ref=main",
+    "repository_url": "https://github.com/durable-workflow/sample-app/tree/main",
+    "script_url": "https://github.com/durable-workflow/sample-app/blob/main/scripts/playground",
+    "contract_url": "https://github.com/durable-workflow/sample-app/blob/main/playground/contract.json",
+    "artifact_authority": "qualified_artifact_tuple",
+    "commands": {
+      "sdk-php": "scripts/playground php",
+      "sdk-python": "scripts/playground python",
+      "sdk-rust": "scripts/playground rust"
+    },
+    "rust_follow_up_examples": {
+      "typed_input_output": "https://github.com/durable-workflow/sdk-rust/blob/main/examples/hello_world.rs",
+      "activity_policy": "https://github.com/durable-workflow/sdk-rust/blob/main/examples/activity_options.rs",
+      "cooperative_cancellation": "https://github.com/durable-workflow/sdk-rust#heartbeats"
+    },
+    "observable_contract": {
+      "source_ownership": "caller",
+      "worker_registration_matches": [
+        "worker_id",
+        "workflow_type",
+        "activity_type",
+        "task_queue"
+      ],
+      "workflow_status": "completed",
+      "required_history_events": [
+        "WorkflowStarted",
+        "ActivityScheduled",
+        "ActivityCompleted",
+        "WorkflowCompleted"
+      ],
+      "waterline_selected_run_url": "required",
+      "structured_evidence": "json"
+    }
+  },
   "default_docs_guard": {
     "stable_default_docs_version": "1.x",
     "explicit_prerelease_docs_version": "2.0",

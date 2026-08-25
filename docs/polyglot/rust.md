@@ -8,6 +8,7 @@ tags:
   - workers
   - polyglot
 keywords:
+  - sample-app-playground
   - Rust SDK
   - durable-workflow crate
   - Rust worker
@@ -50,6 +51,36 @@ has identical feature breadth.
 This page belongs to the explicit 2.0 prerelease docs line. The Rust crate is
 published independently from the stable 1.x PHP documentation line and does
 not change which docs version is the public default.
+
+## Try the local Sample App playground
+
+For the shortest no-Cloud authoring journey, open the current Sample App
+[`main` branch in GitHub Codespaces](https://codespaces.new/durable-workflow/sample-app?quickstart=1&ref=main)
+and run:
+
+<!-- docs-example id="sdk.rust.sample-app-playground" -->
+```bash
+scripts/playground rust
+```
+
+The local playground generates caller-owned workflow and activity source,
+selects the current compatibility-qualified artifacts, and starts the published
+Server and Waterline. It waits for a worker registration whose identity,
+workflow type, activity type, and task queue match the generated contract before
+starting the workflow. Success requires the expected completed result and
+history; the terminal then prints the exact local Waterline run link and the
+path to structured JSON evidence.
+
+This intentionally small, transport-first scaffold uses `serde_json::Value`;
+it is not the only recommended Rust application contract. Continue to the
+crate's existing [typed input/output
+example](https://github.com/durable-workflow/sdk-rust/blob/main/examples/hello_world.rs),
+[retry, timeout, heartbeat, and terminal-failure activity policy
+example](https://github.com/durable-workflow/sdk-rust/blob/main/examples/activity_options.rs),
+and [cooperative-cancellation heartbeat
+example](https://github.com/durable-workflow/sdk-rust#heartbeats). The package,
+repository example, and generated API reference below remain the direct paths
+for users who do not want Sample App.
 
 ## Package and source
 

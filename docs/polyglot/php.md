@@ -8,6 +8,7 @@ tags:
   - workers
   - polyglot
 keywords:
+  - sample-app-playground
   - Durable Workflow PHP SDK
   - PHP remote worker
   - PHP standalone server client
@@ -17,17 +18,39 @@ import ProductPromotion from '@site/src/components/ProductPromotion';
 
 # PHP SDK
 
-<ProductPromotion source="docs-v2-php-sdk">
-Run PHP clients and workers against a Cloud-managed namespace with separate
-role-scoped credentials.
-</ProductPromotion>
-
 Use `durable-workflow/sdk` when a PHP application or remote worker connects to
 the standalone Durable Workflow Server or a Durable Workflow Cloud namespace
 runtime URL. This first-party SDK is framework-neutral: it provides the
 control-plane client, authentication, transport, public payload codec, replay
 handler, and managed remote-worker lifecycle without requiring Laravel or the
 embedded engine package.
+
+## Try the local Sample App playground
+
+For the shortest no-Cloud authoring journey, open the current Sample App
+[`main` branch in GitHub Codespaces](https://codespaces.new/durable-workflow/sample-app?quickstart=1&ref=main)
+and run:
+
+<!-- docs-example id="sdk.php.sample-app-playground" -->
+```bash
+scripts/playground php
+```
+
+The local playground generates caller-owned workflow and activity source,
+selects the current compatibility-qualified artifacts, and starts the published
+Server and Waterline. It waits for a worker registration whose identity,
+workflow type, activity type, and task queue match the generated contract before
+starting the workflow. Success requires the expected completed result and
+history; the terminal then prints the exact local Waterline run link and the
+path to structured JSON evidence.
+
+The package-owned quickstart and API reference below remain the direct path for
+users who want to add the SDK to an existing project without Sample App.
+
+<ProductPromotion source="docs-v2-php-sdk">
+Run PHP clients and workers against a Cloud-managed namespace with separate
+role-scoped credentials.
+</ProductPromotion>
 
 For step-by-step onboarding, framework paths, testing, deployment, and
 troubleshooting, use the authored

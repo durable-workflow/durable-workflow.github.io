@@ -5,6 +5,7 @@ const path = require('path');
 
 const config = require('../docusaurus.config.js');
 const protocolCatalog = require('../static/platform-protocol-specs.json');
+const quickstartContract = require('../static/quickstart-execution-contract.json');
 const {
   assertModelRetrievalSurface,
 } = require('./check-platform-protocol-page');
@@ -81,6 +82,60 @@ function assertNoExactPrereleaseCurrentClaims(content, label) {
   }
 }
 
+function sourceSection(content, sourcePath, label) {
+  const marker = `<!-- Source: ${sourcePath} -->`;
+  const start = content.indexOf(marker);
+  if (start === -1) {
+    throw new Error(`${label} is missing source section ${sourcePath}`);
+  }
+  const next = content.indexOf('<!-- Source: ', start + marker.length);
+  return content.slice(start, next === -1 ? content.length : next);
+}
+
+function assertV2PlaygroundDiscovery(v2Index, v2Full, v2PathAlias) {
+  const playground = quickstartContract.sample_app_playground;
+  if (!playground || !playground.commands) {
+    throw new Error('quickstart execution contract is missing Sample App playground commands');
+  }
+
+  const guides = [
+    ['sdk-php', 'php'],
+    ['sdk-python', 'python'],
+    ['sdk-rust', 'rust'],
+  ];
+
+  for (const [artifact, language] of guides) {
+    const sourcePath = `docs/polyglot/${language}.md`;
+    const indexLine = v2Index.split(/\r?\n/)
+      .find(line => line.includes(sourcePath));
+    if (!indexLine || !indexLine.includes('sample-app-playground')) {
+      throw new Error(
+        `llms-2.0.txt must expose the Sample App playground topic on ${sourcePath}`,
+      );
+    }
+
+    for (const [label, content] of [
+      ['llms-full-2.0.txt', v2Full],
+      ['2.0/llms-full.txt', v2PathAlias],
+    ]) {
+      const section = sourceSection(content, sourcePath, label);
+      if (!section.includes(playground.codespaces_url)) {
+        throw new Error(`${label} ${sourcePath} must link the shared Codespaces entry point`);
+      }
+      if (!section.includes(playground.commands[artifact])) {
+        throw new Error(`${label} ${sourcePath} must expose ${playground.commands[artifact]}`);
+      }
+    }
+  }
+
+  const rustSection = sourceSection(v2Full, 'docs/polyglot/rust.md', 'llms-full-2.0.txt');
+  for (const [name, url] of Object.entries(playground.rust_follow_up_examples || {})) {
+    if (!rustSection.includes(url)) {
+      throw new Error(`llms-full-2.0.txt Rust guide is missing ${name} follow-up ${url}`);
+    }
+  }
+}
+
 function docsConfig() {
   const preset = Array.isArray(config.presets)
     ? config.presets.find(entry => Array.isArray(entry) && entry[0] === 'classic')
@@ -124,6 +179,7 @@ function main() {
   }
   assertModelRetrievalSurface(v2Full, protocolCatalog, 'llms-full-2.0.txt');
   assertModelRetrievalSurface(v2PathAlias, protocolCatalog, '2.0/llms-full.txt');
+  assertV2PlaygroundDiscovery(v2Index, v2Full, v2PathAlias);
   assertNoExactPrereleaseCurrentClaims(v2Index, 'llms-2.0.txt');
   assertNoExactPrereleaseCurrentClaims(v2Full, 'llms-full-2.0.txt');
   assertNoExactPrereleaseCurrentClaims(v2PathAlias, '2.0/llms-full.txt');

@@ -19,6 +19,23 @@ const quickstartPath = path.join(repoRoot, 'docs', 'quickstart.md');
 const serverGuidePath = path.join(repoRoot, 'docs', 'polyglot', 'server.md');
 const configPath = path.join(repoRoot, 'docusaurus.config.js');
 const EXPECTED_SCHEMA = 'durable-workflow.docs.v2.quickstart-execution-contract';
+const SDK_PLAYGROUND_GUIDES = Object.freeze([
+  {
+    artifact: 'sdk-php',
+    language: 'php',
+    path: path.join(repoRoot, 'docs', 'polyglot', 'php.md'),
+  },
+  {
+    artifact: 'sdk-python',
+    language: 'python',
+    path: path.join(repoRoot, 'docs', 'polyglot', 'python.md'),
+  },
+  {
+    artifact: 'sdk-rust',
+    language: 'rust',
+    path: path.join(repoRoot, 'docs', 'polyglot', 'rust.md'),
+  },
+]);
 
 function fail(message) {
   throw new Error(message);
@@ -104,16 +121,16 @@ function docsExamplePattern(id) {
   );
 }
 
-function docsExampleLines(renderedQuickstart, id) {
+function docsExampleLines(renderedQuickstart, id, sourceLabel = 'docs/quickstart.md') {
   const match = renderedQuickstart.match(docsExamplePattern(id));
 
   if (!match) {
-    fail(`docs/quickstart.md must include docs-example ${JSON.stringify(id)} followed by a fenced block`);
+    fail(`${sourceLabel} must include docs-example ${JSON.stringify(id)} followed by a fenced block`);
   }
 
   const language = match[1] || '';
   if (language !== 'bash') {
-    fail(`docs/quickstart.md docs-example ${id} must be a bash fenced block; found ${language || 'untyped'}`);
+    fail(`${sourceLabel} docs-example ${id} must be a bash fenced block; found ${language || 'untyped'}`);
   }
 
   return match[2].replace(/\r\n/g, '\n').split('\n');
@@ -623,6 +640,104 @@ function assertSdkOnboarding(contract) {
   );
 }
 
+function assertMarkdownLink(source, expectedUrl, label) {
+  const urls = new Set(
+    [...source.matchAll(/\[[^\]]+\]\((https:\/\/[^)]+)\)/g)]
+      .map(match => match[1]),
+  );
+  if (!urls.has(expectedUrl)) {
+    fail(`${label} must link ${expectedUrl}`);
+  }
+}
+
+function assertSampleAppPlaygroundContract(contract) {
+  const playground = contract.sample_app_playground;
+  if (!playground) {
+    fail('quickstart contract must define the shared Sample App playground');
+  }
+
+  assertEqual(playground.access, 'general', 'Sample App playground access');
+  assertEqual(playground.default_runtime, 'local', 'Sample App playground default runtime');
+  assertEqual(
+    playground.codespaces_url,
+    'https://codespaces.new/durable-workflow/sample-app?quickstart=1&ref=main',
+    'Sample App playground Codespaces URL',
+  );
+  assertEqual(
+    playground.repository_url,
+    'https://github.com/durable-workflow/sample-app/tree/main',
+    'Sample App playground repository URL',
+  );
+  assertEqual(
+    playground.script_url,
+    'https://github.com/durable-workflow/sample-app/blob/main/scripts/playground',
+    'Sample App playground script URL',
+  );
+  assertEqual(
+    playground.contract_url,
+    'https://github.com/durable-workflow/sample-app/blob/main/playground/contract.json',
+    'Sample App playground contract URL',
+  );
+  assertEqual(
+    playground.artifact_authority,
+    'qualified_artifact_tuple',
+    'Sample App playground artifact authority',
+  );
+
+  const proof = playground.observable_contract || {};
+  assertEqual(proof.source_ownership, 'caller', 'Sample App playground source ownership');
+  assertStringArrayEqual(
+    proof.worker_registration_matches,
+    ['worker_id', 'workflow_type', 'activity_type', 'task_queue'],
+    'Sample App playground worker readiness fields',
+  );
+  assertEqual(proof.workflow_status, 'completed', 'Sample App playground workflow status');
+  assertStringArrayEqual(
+    proof.required_history_events,
+    ['WorkflowStarted', 'ActivityScheduled', 'ActivityCompleted', 'WorkflowCompleted'],
+    'Sample App playground required history events',
+  );
+  assertEqual(
+    proof.waterline_selected_run_url,
+    'required',
+    'Sample App playground Waterline run URL proof',
+  );
+  assertEqual(proof.structured_evidence, 'json', 'Sample App playground evidence format');
+
+  for (const guide of SDK_PLAYGROUND_GUIDES) {
+    const command = `scripts/playground ${guide.language}`;
+    assertEqual(
+      playground.commands?.[guide.artifact],
+      command,
+      `${guide.language} Sample App playground command`,
+    );
+
+    const source = read(guide.path);
+    const sourceLabel = path.relative(repoRoot, guide.path).split(path.sep).join('/');
+    assertStringArrayEqual(
+      docsExampleLines(source, `sdk.${guide.language}.sample-app-playground`, sourceLabel),
+      [command],
+      `${sourceLabel} Sample App playground command block`,
+    );
+    assertMarkdownLink(source, playground.codespaces_url, sourceLabel);
+
+    const frontmatter = source.match(/^---\r?\n([\s\S]*?)\r?\n---/)?.[1] || '';
+    if (!/^\s+- sample-app-playground\s*$/m.test(frontmatter)) {
+      fail(`${sourceLabel} must expose the sample-app-playground discovery topic`);
+    }
+  }
+
+  const rustSource = read(SDK_PLAYGROUND_GUIDES.find(guide => guide.language === 'rust').path);
+  for (const [name, url] of Object.entries(playground.rust_follow_up_examples || {})) {
+    assertMarkdownLink(rustSource, url, `Rust ${name} follow-up`);
+  }
+  assertStringArrayEqual(
+    Object.keys(playground.rust_follow_up_examples || {}),
+    ['typed_input_output', 'activity_policy', 'cooperative_cancellation'],
+    'Rust playground follow-up examples',
+  );
+}
+
 function assertRustManagedPlaygroundContract(contract) {
   const hostingBranches = byId(contract.hosting_branches, 'hosting_branches');
   const cloud = hostingBranches.get('cloud_managed_namespace');
@@ -740,6 +855,7 @@ function main() {
 
   assertDocsGuard(contract);
   assertSdkOnboarding(contract);
+  assertSampleAppPlaygroundContract(contract);
   assertRustManagedPlaygroundContract(contract);
   assertQualifiedTupleAuthority(contract);
   assertPublicArtifactPins(contract);
