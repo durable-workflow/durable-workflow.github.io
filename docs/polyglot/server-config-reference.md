@@ -189,6 +189,9 @@ default.
 | `DW_MAX_HISTORY_EVENTS` | `50000` | Maximum history events per workflow run before continue-as-new is enforced. | `WORKFLOW_MAX_HISTORY_EVENTS` |
 | `DW_HISTORY_RETENTION_DAYS` | `30` | Default number of days closed-run history is retained when a namespace does not override it. | `WORKFLOW_HISTORY_RETENTION_DAYS` |
 | `DW_MAX_PAYLOAD_BYTES` | `2097152` | Maximum serialized bytes for one payload. | `WORKFLOW_MAX_PAYLOAD_BYTES` |
+| `DW_EXTERNAL_PAYLOAD_MAX_BYTES` | `67108864` | Maximum encoded size in bytes (64 MiB) accepted by the authenticated external-payload upload and fetch transport. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_MAX_BYTES` |
+| `DW_EXTERNAL_PAYLOAD_REQUEST_TIMEOUT` | `30` | Client-facing upload and fetch request-timeout budget advertised by the server, in seconds. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_REQUEST_TIMEOUT` |
+| `DW_EXTERNAL_PAYLOAD_UPLOAD_EXPIRY` | `3600` | Seconds an uploaded external payload may remain unclaimed before its opaque reference expires. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_UPLOAD_EXPIRY` |
 | `DW_MAX_MEMO_BYTES` | `262144` | Maximum serialized bytes for a workflow memo. | `WORKFLOW_MAX_MEMO_BYTES` |
 | `DW_MAX_SEARCH_ATTRIBUTES` | `100` | Maximum number of search attributes on one workflow. | `WORKFLOW_MAX_SEARCH_ATTRIBUTES` |
 | `DW_MAX_SEARCH_ATTRIBUTE_KEY_LENGTH` | `128` | Maximum byte length for one search-attribute key. | `WORKFLOW_MAX_SEARCH_ATTRIBUTE_KEY_LENGTH` |
