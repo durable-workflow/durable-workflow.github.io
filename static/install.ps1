@@ -4,7 +4,7 @@
 #   irm https://durable-workflow.com/install.ps1 | iex
 #
 # Environment variables:
-#   $env:VERSION                         Release tag, prerelease, or stable (default: prerelease).
+#   $env:VERSION                         Release tag, supported, prerelease, or stable (default: supported).
 #   $env:DURABLE_WORKFLOW_INSTALL_DIR    Install directory (default: %USERPROFILE%\.durable-workflow\bin).
 #   $env:DURABLE_WORKFLOW_RELEASE_BASE_URL  Release base URL override for tests.
 #   $env:DURABLE_WORKFLOW_QUALIFIED_AUTHORITY_URL
@@ -26,14 +26,15 @@ $installDir = if ($env:DURABLE_WORKFLOW_INSTALL_DIR) {
 } else {
     Join-Path $env:USERPROFILE '.durable-workflow\bin'
 }
-$version = if ($env:VERSION) { $env:VERSION } else { 'prerelease' }
+$version = if ($env:VERSION) { $env:VERSION } else { 'supported' }
 $qualifiedAuthorityUrl = if ($env:DURABLE_WORKFLOW_QUALIFIED_AUTHORITY_URL) {
     $env:DURABLE_WORKFLOW_QUALIFIED_AUTHORITY_URL
 } else {
     'https://durable-workflow.com/public-artifact-compatibility-evidence.json'
 }
-$version = if ($version -eq 'prerelease') {
-    Write-Host '==> Resolving the qualified CLI prerelease' -ForegroundColor Green
+$version = if ($version -eq 'supported' -or $version -eq 'prerelease') {
+    $requestedChannel = $version
+    Write-Host '==> Resolving the qualified CLI release' -ForegroundColor Green
     $authority = Invoke-RestMethod -Uri $qualifiedAuthorityUrl -UseBasicParsing
     if (
         $authority.schema -ne 'durable-workflow.docs.public-artifact-compatibility-evidence' -or
@@ -44,10 +45,18 @@ $version = if ($version -eq 'prerelease') {
     }
     $resolvedVersion = [string] $authority.qualified_artifact_versions.cli
     $resolvedVersion = $resolvedVersion -replace '^v', ''
-    if ($resolvedVersion -notmatch '^\d+\.\d+\.\d+-(alpha|beta|rc)\.\d+$') {
-        throw "Could not resolve a qualified CLI prerelease from $qualifiedAuthorityUrl."
+    if ($resolvedVersion -notmatch '^\d+\.\d+\.\d+(-(alpha|beta|rc)\.\d+)?$') {
+        throw "Could not resolve a qualified CLI release from $qualifiedAuthorityUrl."
+    }
+    if ($requestedChannel -eq 'prerelease' -and $resolvedVersion -notmatch '-(alpha|beta|rc)\.\d+$') {
+        throw "The qualified CLI release at $qualifiedAuthorityUrl is not a prerelease."
     }
     $resolvedVersion
+} else {
+    $version
+}
+$releaseVersion = if ($version.StartsWith('v')) {
+    $version.Substring(1)
 } else {
     $version
 }
@@ -63,13 +72,13 @@ $asset = "dw-windows-$arch.exe"
 $url = if ($version -eq 'latest' -or $version -eq 'stable') {
     "$releaseBaseUrl/latest/download/$asset"
 } else {
-    "$releaseBaseUrl/download/$version/$asset"
+    "$releaseBaseUrl/download/$releaseVersion/$asset"
 }
 
 $checksumUrl = if ($version -eq 'latest' -or $version -eq 'stable') {
     "$releaseBaseUrl/latest/download/SHA256SUMS"
 } else {
-    "$releaseBaseUrl/download/$version/SHA256SUMS"
+    "$releaseBaseUrl/download/$releaseVersion/SHA256SUMS"
 }
 
 New-Item -ItemType Directory -Force -Path $installDir | Out-Null

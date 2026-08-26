@@ -56,6 +56,7 @@ still honors the value.
 | `DW_SERVER_KEY` | generated at container boot | Optional server-internal runtime key. Docker images generate one automatically when unset. | - |
 | `DW_DEFAULT_NAMESPACE` | `default` | Namespace used when a request omits the namespace header. | `WORKFLOW_SERVER_DEFAULT_NAMESPACE` |
 | `DW_TASK_DISPATCH_MODE` | unset | Overrides `workflows.v2.task_dispatch_mode`; in service mode the server defaults to `poll` unless you set a different value. | `WORKFLOW_V2_TASK_DISPATCH_MODE` |
+| `DW_WORKFLOW_MEMO_MIGRATION_RECOVERY` | unset | One-run MySQL recovery proof for an unrecorded memo rewrite: `raw-json` or `envelope-prefix:<last-converted-id>`. | `WORKFLOW_SERVER_WORKFLOW_MEMO_MIGRATION_RECOVERY` |
 | `DW_EXTERNAL_EXECUTOR_CONFIG_PATH` | unset | Path to a `durable-workflow.external-executor.config` JSON file for external executor handler mappings. | `WORKFLOW_SERVER_EXTERNAL_EXECUTOR_CONFIG_PATH` |
 | `DW_EXTERNAL_EXECUTOR_CONFIG_OVERLAY` | unset | Overlay name from the external executor config file to apply before server validation and discovery. | `WORKFLOW_SERVER_EXTERNAL_EXECUTOR_CONFIG_OVERLAY` |
 

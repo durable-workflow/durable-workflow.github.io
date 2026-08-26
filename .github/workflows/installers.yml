@@ -332,10 +332,12 @@ jobs:
         shell: pwsh
         run: |
           $latestDir = Join-Path $env:RUNNER_TEMP 'release\latest\download'
+          $prereleaseDir = Join-Path $env:RUNNER_TEMP 'release\download\0.1.98-rc.4'
           $tagDir = Join-Path $env:RUNNER_TEMP 'release\download\0.1.99'
+          $authorityDir = Join-Path $env:RUNNER_TEMP 'release\authority'
           $appDir = Join-Path $env:RUNNER_TEMP 'fake-dw'
           $publishDir = Join-Path $env:RUNNER_TEMP 'fake-dw-publish'
-          New-Item -ItemType Directory -Force -Path $latestDir, $tagDir | Out-Null
+          New-Item -ItemType Directory -Force -Path $latestDir, $prereleaseDir, $tagDir, $authorityDir | Out-Null
 
           dotnet new console --output $appDir
           @'
@@ -345,15 +347,45 @@ jobs:
             -p:PublishSingleFile=true --output $publishDir
 
           $latestAsset = Join-Path $latestDir 'dw-windows-x86_64.exe'
+          $prereleaseAsset = Join-Path $prereleaseDir 'dw-windows-x86_64.exe'
           $tagAsset = Join-Path $tagDir 'dw-windows-x86_64.exe'
           Copy-Item -Path (Join-Path $publishDir 'fake-dw.exe') -Destination $latestAsset
+          Copy-Item -Path (Join-Path $publishDir 'fake-dw.exe') -Destination $prereleaseAsset
           Copy-Item -Path (Join-Path $publishDir 'fake-dw.exe') -Destination $tagAsset
 
-          foreach ($dir in @($latestDir, $tagDir)) {
+          foreach ($dir in @($latestDir, $prereleaseDir, $tagDir)) {
             $asset = Join-Path $dir 'dw-windows-x86_64.exe'
             $hash = (Get-FileHash -Algorithm SHA256 -Path $asset).Hash.ToLowerInvariant()
             "$hash  dw-windows-x86_64.exe" | Set-Content -Path (Join-Path $dir 'SHA256SUMS') -Encoding ascii
           }
+
+          @{
+            schema = 'durable-workflow.docs.public-artifact-compatibility-evidence'
+            schema_version = 2
+            outcome = 'pass'
+            qualified_artifact_versions = @{ cli = '0.1.98-rc.4' }
+          } | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $authorityDir 'supported-prerelease.json') -Encoding utf8
+
+          @{
+            schema = 'durable-workflow.docs.public-artifact-compatibility-evidence'
+            schema_version = 2
+            outcome = 'pass'
+            qualified_artifact_versions = @{ cli = '0.1.99' }
+          } | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $authorityDir 'supported-stable.json') -Encoding utf8
+
+          @{
+            schema = 'durable-workflow.docs.public-artifact-compatibility-evidence'
+            schema_version = 1
+            outcome = 'pass'
+            qualified_artifact_versions = @{ cli = '0.1.98-rc.4' }
+          } | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $authorityDir 'malformed.json') -Encoding utf8
+
+          @{
+            schema = 'durable-workflow.docs.public-artifact-compatibility-evidence'
+            schema_version = 2
+            outcome = 'fail'
+            qualified_artifact_versions = @{ cli = '0.1.98-rc.4' }
+          } | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $authorityDir 'non-passing.json') -Encoding utf8
 
       - name: Exercise installer
         shell: pwsh
@@ -393,11 +425,32 @@ jobs:
               throw 'fixture HTTP server did not become ready'
             }
 
+            $env:VERSION = $null
+            $env:DURABLE_WORKFLOW_QUALIFIED_AUTHORITY_URL = 'http://127.0.0.1:18082/authority/supported-prerelease.json'
             & ./static/install.ps1
-            & (Join-Path $env:DURABLE_WORKFLOW_INSTALL_DIR 'dw.exe') --version
+            $supportedPrerelease = Join-Path $env:DURABLE_WORKFLOW_INSTALL_DIR 'dw.exe'
+            if (-not (Test-Path $supportedPrerelease)) {
+              throw 'supported prerelease install did not write dw.exe'
+            }
+            & $supportedPrerelease --version
+
+            $supportedStableDir = Join-Path $env:RUNNER_TEMP 'dw-bin-supported-stable'
+            $env:DURABLE_WORKFLOW_INSTALL_DIR = $supportedStableDir
+            $env:DURABLE_WORKFLOW_QUALIFIED_AUTHORITY_URL = 'http://127.0.0.1:18082/authority/supported-stable.json'
+            & ./static/install.ps1
+            if (-not (Test-Path (Join-Path $supportedStableDir 'dw.exe'))) {
+              throw 'supported stable install did not write dw.exe'
+            }
+
+            $requestLog = Get-Content -Path $stderr -Raw
+            if ($requestLog -notmatch 'GET /download/0\.1\.98-rc\.4/dw-windows-x86_64\.exe') {
+              throw 'supported prerelease did not request the authority-selected tag'
+            }
+            if ($requestLog -notmatch 'GET /download/0\.1\.99/dw-windows-x86_64\.exe') {
+              throw 'supported stable did not request the authority-selected tag'
+            }
 
             $pinnedDir = Join-Path $env:RUNNER_TEMP 'dw-bin-pinned'
-            $previousDir = $env:DURABLE_WORKFLOW_INSTALL_DIR
             $env:DURABLE_WORKFLOW_INSTALL_DIR = $pinnedDir
             $env:VERSION = '0.1.99'
             try {
@@ -407,8 +460,39 @@ jobs:
               }
             } finally {
               $env:VERSION = $null
-              $env:DURABLE_WORKFLOW_INSTALL_DIR = $previousDir
             }
+
+            function Assert-AuthorityRejected {
+              param(
+                [string] $Name,
+                [string] $AuthorityFile,
+                [AllowNull()] [string] $RequestedVersion
+              )
+
+              $rejectedDir = Join-Path $env:RUNNER_TEMP "dw-rejected-$Name"
+              $env:DURABLE_WORKFLOW_INSTALL_DIR = $rejectedDir
+              $env:DURABLE_WORKFLOW_QUALIFIED_AUTHORITY_URL = "http://127.0.0.1:18082/authority/$AuthorityFile"
+              $env:VERSION = $RequestedVersion
+              $failed = $false
+
+              try {
+                & ./static/install.ps1
+              } catch {
+                $failed = $true
+                Write-Host $_
+              }
+
+              if (-not $failed) {
+                throw "$Name authority fixture was accepted"
+              }
+              if (Test-Path (Join-Path $rejectedDir 'dw.exe')) {
+                throw "$Name authority fixture wrote dw.exe"
+              }
+            }
+
+            Assert-AuthorityRejected -Name 'malformed' -AuthorityFile 'malformed.json' -RequestedVersion $null
+            Assert-AuthorityRejected -Name 'non-passing' -AuthorityFile 'non-passing.json' -RequestedVersion $null
+            Assert-AuthorityRejected -Name 'stable-as-prerelease' -AuthorityFile 'supported-stable.json' -RequestedVersion 'prerelease'
 
             $downloadDir = Join-Path $env:RUNNER_TEMP 'release\latest\download'
             '0000000000000000000000000000000000000000000000000000000000000000  dw-windows-x86_64.exe' |
@@ -416,6 +500,7 @@ jobs:
 
             $badDir = Join-Path $env:RUNNER_TEMP 'dw-bad'
             $env:DURABLE_WORKFLOW_INSTALL_DIR = $badDir
+            $env:VERSION = 'stable'
             $failed = $false
 
             try {

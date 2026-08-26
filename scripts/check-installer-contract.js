@@ -65,9 +65,16 @@ function checkPowerShellInstaller() {
   const installer = read(path.join(staticDir, 'install.ps1'));
   const ctx = 'static/install.ps1';
 
-  assertContains(installer, "if (\$env:VERSION) { \$env:VERSION } else { 'prerelease' }", ctx);
+  assertContains(installer, "if (\$env:VERSION) { \$env:VERSION } else { 'supported' }", ctx);
+  assertContains(installer, "if (\$version -eq 'supported' -or \$version -eq 'prerelease')", ctx);
   assertContains(installer, 'public-artifact-compatibility-evidence.json', ctx);
+  assertContains(installer, "$authority.schema -ne 'durable-workflow.docs.public-artifact-compatibility-evidence'", ctx);
+  assertContains(installer, '$authority.schema_version -ne 2', ctx);
+  assertContains(installer, "$authority.outcome -ne 'pass'", ctx);
   assertContains(installer, '$authority.qualified_artifact_versions.cli', ctx);
+  assertContains(installer, "$resolvedVersion -notmatch '^\\d+\\.\\d+\\.\\d+(-(alpha|beta|rc)\\.\\d+)?$'", ctx);
+  assertContains(installer, "$requestedChannel -eq 'prerelease'", ctx);
+  assertContains(installer, "is not a prerelease", ctx);
   if (installer.includes('api.github.com/repos/$repo/releases')) {
     throw new Error(`${ctx} must not equate the newest published prerelease with the qualified channel`);
   }
@@ -76,7 +83,21 @@ function checkPowerShellInstaller() {
   assertContains(installer, 'DURABLE_WORKFLOW_INSTALL_VERIFY_ATTESTATIONS', ctx);
   assertContains(installer, 'gh attestation verify $tmp --repo $repo', ctx);
   assertContains(installer, 'gh attestation verify $sums --repo $repo', ctx);
-  assertMatches(installer, /\$releaseBaseUrl\/download\/\$version\//, ctx);
+  assertMatches(installer, /\$releaseBaseUrl\/download\/\$releaseVersion\//, ctx);
+}
+
+function checkPowerShellInstallerWorkflow() {
+  const workflow = read(path.join(repoRoot, '.github', 'workflows', 'installers.yml'));
+  const ctx = '.github/workflows/installers.yml';
+
+  assertContains(workflow, "'supported-prerelease.json'", ctx);
+  assertContains(workflow, "'supported-stable.json'", ctx);
+  assertContains(workflow, "'malformed.json'", ctx);
+  assertContains(workflow, "'non-passing.json'", ctx);
+  assertContains(workflow, '$env:DURABLE_WORKFLOW_QUALIFIED_AUTHORITY_URL', ctx);
+  assertContains(workflow, "Assert-AuthorityRejected -Name 'malformed'", ctx);
+  assertContains(workflow, "Assert-AuthorityRejected -Name 'non-passing'", ctx);
+  assertContains(workflow, "Assert-AuthorityRejected -Name 'stable-as-prerelease'", ctx);
 }
 
 function checkRenderedInstallerComponent() {
@@ -102,6 +123,7 @@ function checkRenderedInstallerComponent() {
 try {
   checkShellInstaller();
   checkPowerShellInstaller();
+  checkPowerShellInstallerWorkflow();
   checkRenderedInstallerComponent();
   console.log('Installer contract OK');
 } catch (error) {
