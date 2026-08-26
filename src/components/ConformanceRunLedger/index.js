@@ -1,4 +1,5 @@
 import React, {useEffect} from 'react';
+import {useLocation} from '@docusaurus/router';
 
 import ledger from '@site/static/platform-conformance/run-ledger.json';
 
@@ -215,7 +216,12 @@ function RegressionTrails() {
 }
 
 export default function ConformanceRunLedger() {
+  const {hash} = useLocation();
+
   useEffect(() => {
+    let firstFrame;
+    let secondFrame;
+
     const revealHashTarget = () => {
       let targetId;
       try {
@@ -235,16 +241,25 @@ export default function ConformanceRunLedger() {
         ? target.querySelector(':scope > summary')
         : target;
       focusTarget?.focus({preventScroll: true});
-      window.requestAnimationFrame(() => {
-        target.scrollIntoView({block: 'start'});
-        window.setTimeout(() => target.scrollIntoView({block: 'start'}), 50);
+
+      const scrollToTarget = () => target.scrollIntoView({block: 'start'});
+      window.cancelAnimationFrame(firstFrame);
+      window.cancelAnimationFrame(secondFrame);
+      scrollToTarget();
+      firstFrame = window.requestAnimationFrame(() => {
+        scrollToTarget();
+        secondFrame = window.requestAnimationFrame(scrollToTarget);
       });
     };
 
     revealHashTarget();
     window.addEventListener('hashchange', revealHashTarget);
-    return () => window.removeEventListener('hashchange', revealHashTarget);
-  }, []);
+    return () => {
+      window.removeEventListener('hashchange', revealHashTarget);
+      window.cancelAnimationFrame(firstFrame);
+      window.cancelAnimationFrame(secondFrame);
+    };
+  }, [hash]);
 
   return (
     <section className={styles.ledger} data-conformance-run-ledger>

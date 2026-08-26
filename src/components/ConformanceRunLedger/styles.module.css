@@ -68,7 +68,7 @@
 .tierDisclosure {
   max-width: 100%;
   margin: 0;
-  scroll-margin-top: calc(var(--ifm-navbar-height) + 1rem);
+  scroll-margin-top: var(--ifm-navbar-height);
   border: 1px solid var(--ifm-color-emphasis-300);
   border-radius: 0.5rem;
   background: var(--ifm-background-surface-color);
