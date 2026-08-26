@@ -14,6 +14,12 @@ const VIEWPORTS = [
   {name: 'mobile', width: 390, height: 844},
   {name: 'short-height', width: 640, height: 360},
 ];
+const ANCHOR_VIEWPORTS = [
+  {name: 'desktop', width: 1440, height: 900},
+  {name: 'intermediate', width: 900, height: 900},
+  {name: 'mobile', width: 390, height: 844},
+  {name: 'short-height', width: 1440, height: 500},
+];
 const MIME_TYPES = new Map([
   ['.css', 'text/css; charset=utf-8'],
   ['.html', 'text/html; charset=utf-8'],
@@ -324,6 +330,93 @@ async function validateExperimentDeepLink(browser, baseUrl) {
   }
 }
 
+async function assertPublicManifestsSection(page, label) {
+  const heading = page.locator('#public-manifests');
+  const capacitySchema = page.locator(
+    'a[href="/schemas/capacity-benchmark/v1/manifest.json"]',
+  );
+  await assertVisible(heading, `${label} must keep the public manifests heading visible`);
+  await assertVisible(
+    capacitySchema,
+    `${label} must keep the capacity schema catalog entry operable`,
+  );
+
+  const sectionGeometry = await page.evaluate(() => {
+    const bounds = element => {
+      const rect = element.getBoundingClientRect();
+      return {top: rect.top, bottom: rect.bottom};
+    };
+    return {
+      heading: bounds(document.querySelector('#public-manifests')),
+      capacitySchema: bounds(document.querySelector(
+        'a[href="/schemas/capacity-benchmark/v1/manifest.json"]',
+      )),
+      navbarBottom: document.querySelector('.navbar')
+        ?.getBoundingClientRect().bottom || 0,
+      viewportHeight: document.documentElement.clientHeight,
+    };
+  });
+  assert.ok(
+    sectionGeometry.heading.top >= sectionGeometry.navbarBottom
+      && sectionGeometry.heading.bottom <= sectionGeometry.viewportHeight,
+    `${label} must keep the public manifests heading inside the unobscured viewport`,
+  );
+  assert.ok(
+    sectionGeometry.capacitySchema.top < sectionGeometry.viewportHeight
+      && sectionGeometry.capacitySchema.bottom > sectionGeometry.navbarBottom,
+    `${label} must keep the capacity schema catalog entry inside the unobscured viewport`,
+  );
+
+  const occludedSummaries = await page
+    .locator('[data-conformance-tier] > summary')
+    .evaluateAll(summaries => {
+      const navbarBottom = document.querySelector('.navbar')
+        ?.getBoundingClientRect().bottom || 0;
+      return summaries.filter(summary => {
+        const bounds = summary.getBoundingClientRect();
+        return bounds.bottom > 0 && bounds.top < navbarBottom;
+      }).map(summary => summary.parentElement?.getAttribute('data-conformance-tier'));
+    });
+  assert.deepEqual(
+    occludedSummaries,
+    [],
+    `${label} must not leave a ledger disclosure control beneath the sticky navigation`,
+  );
+  await assertGeometry(page, label);
+}
+
+async function validatePublicManifestsAnchor(browser, baseUrl, viewport) {
+  const {context, page, browserErrors} = await openPage(
+    browser,
+    baseUrl,
+    viewport,
+    '#public-manifests',
+  );
+  try {
+    await assertPublicManifestsSection(
+      page,
+      `${viewport.name} public manifests navigation`,
+    );
+
+    await page.evaluate(() => {
+      window.scrollTo(0, 0);
+      document.querySelector('#public-manifests')?.scrollIntoView({block: 'center'});
+    });
+    await settle(page);
+    await assertPublicManifestsSection(
+      page,
+      `${viewport.name} public manifests programmatic scroll`,
+    );
+    assert.deepEqual(
+      browserErrors,
+      [],
+      `${viewport.name} public manifests states emitted browser errors`,
+    );
+  } finally {
+    await context.close();
+  }
+}
+
 async function main() {
   assert.ok(
     fs.existsSync(path.join(BUILD_DIRECTORY, ROUTE, 'index.html')),
@@ -334,9 +427,13 @@ async function main() {
       await validateViewport(browser, baseUrl, viewport);
     }
     await validateExperimentDeepLink(browser, baseUrl);
+    for (const viewport of ANCHOR_VIEWPORTS) {
+      await validatePublicManifestsAnchor(browser, baseUrl, viewport);
+    }
     process.stdout.write(
       `Validated collapsed and expanded conformance ledger states across ` +
-        `${VIEWPORTS.length} viewports, plus experiment deep linking.\n`,
+        `${VIEWPORTS.length} viewports, experiment deep linking, and the ` +
+        `public manifests anchor across ${ANCHOR_VIEWPORTS.length} viewports.\n`,
     );
   });
 }

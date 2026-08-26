@@ -60,6 +60,14 @@ a[class^='skipToContent']:focus {
   max-width: 100%;
 }
 
+/* Keep earlier controls clear of the sticky nav during centered section scrolls. */
+.mdx-page #public-manifests {
+  scroll-margin-bottom: max(
+    calc(var(--ifm-navbar-height) + 2rem),
+    calc(100vh - 20rem)
+  );
+}
+
 .qualified-artifact-paths {
   display: grid;
   gap: 1rem;
