@@ -15,7 +15,9 @@ const {
   REQUIRED_PASSING_STEPS,
   buildQualificationRecord,
   findCurrentQualification,
+  findCurrentQualificationWithRetry,
   mergeQualification,
+  parseArgs,
   parseArtifactJson,
 } = require('./refresh-waterline-release-qualification');
 
@@ -35,6 +37,19 @@ const REORDERED_PACKAGES = {
   workflow: PACKAGES.workflow,
   'sdk-php': PACKAGES['sdk-php'],
 };
+
+assert.deepStrictEqual(parseArgs([]), {
+  attempts: 13,
+  check: false,
+  retryMs: 10000,
+  runId: null,
+});
+assert.deepStrictEqual(
+  parseArgs(['--check', '--attempts', '4', '--retry-ms=250', '--run-id', '17']),
+  {attempts: 4, check: true, retryMs: 250, runId: 17},
+);
+assert.throws(() => parseArgs(['--attempts', '0']), /positive integer/);
+assert.throws(() => parseArgs(['--retry-ms', '-1']), /non-negative integer/);
 
 function fixture(qualifiedPackages = PACKAGES) {
   const run = {
@@ -403,6 +418,51 @@ async function assertPublicReleaseAssetRetrieval() {
     calls.every(call => call.options.headers.Authorization === undefined),
     'anonymous public qualification retrieval must not synthesize credentials',
   );
+
+  let releaseReads = 0;
+  const retrySleeps = [];
+  const retried = await findCurrentQualificationWithRetry(VERSION, {
+    attempts: 3,
+    fetchImpl: async (url, options) => {
+      if (url === `${api}/releases/tags/${VERSION}`) {
+        releaseReads += 1;
+        if (releaseReads < 3) {
+          return response({...source.release, assets: []});
+        }
+      }
+      return fetchImpl(url, options);
+    },
+    retryMs: 25,
+    runId: RUN_ID,
+    sleep: async milliseconds => { retrySleeps.push(milliseconds); },
+    token,
+  });
+  assert.strictEqual(retried.record.source.workflow_run.run_id, RUN_ID);
+  assert.strictEqual(releaseReads, 3);
+  assert.deepStrictEqual(
+    retrySleeps,
+    [25, 25],
+    'qualification ingestion must wait between bounded propagation attempts',
+  );
+
+  const exhaustedSleeps = [];
+  await assert.rejects(
+    () => findCurrentQualificationWithRetry(VERSION, {
+      attempts: 2,
+      fetchImpl: async (url, options) => (
+        url === `${api}/releases/tags/${VERSION}`
+          ? response({...source.release, assets: []})
+          : fetchImpl(url, options)
+      ),
+      retryMs: 10,
+      runId: RUN_ID,
+      sleep: async milliseconds => { exhaustedSleeps.push(milliseconds); },
+      token,
+    }),
+    /has no publicly retrievable.*release asset/,
+    'tuple preparation must fail closed without declaring dispatch when the asset never appears',
+  );
+  assert.deepStrictEqual(exhaustedSleeps, [10]);
 }
 
 assertPublicReleaseAssetRetrieval()

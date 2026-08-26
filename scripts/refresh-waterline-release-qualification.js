@@ -33,6 +33,8 @@ const DOCS_CONFIRMATION_STEP = 'Require live docs release audit refresh';
 const QUALIFICATION_ASSET_SCHEMA =
   'durable-workflow.waterline.release-qualification-evidence';
 const MAX_ASSET_BYTES = 1024 * 1024;
+const DEFAULT_QUALIFICATION_ATTEMPTS = 13;
+const DEFAULT_QUALIFICATION_RETRY_MS = 10_000;
 const repoRoot = path.join(__dirname, '..');
 const retainedEvidencePath = path.join(
   repoRoot,
@@ -542,12 +544,58 @@ async function findCurrentQualification(expectedWaterlineVersion, options = {}) 
   );
 }
 
+async function findCurrentQualificationWithRetry(expectedWaterlineVersion, options = {}) {
+  const attempts = options.attempts ?? DEFAULT_QUALIFICATION_ATTEMPTS;
+  const retryMs = options.retryMs ?? DEFAULT_QUALIFICATION_RETRY_MS;
+  const sleep = options.sleep || (milliseconds => new Promise(resolve => {
+    setTimeout(resolve, milliseconds);
+  }));
+  if (!Number.isInteger(attempts) || attempts < 1) {
+    fail('qualification lookup attempts must be a positive integer');
+  }
+  if (!Number.isInteger(retryMs) || retryMs < 0) {
+    fail('qualification lookup retry delay must be a non-negative integer');
+  }
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await findCurrentQualification(expectedWaterlineVersion, options);
+    } catch (error) {
+      if (attempt === attempts) {
+        throw error;
+      }
+      console.error(
+        `Waiting for the immutable Waterline qualification asset ` +
+          `(${attempt}/${attempts}): ${error.message}`,
+      );
+      await sleep(retryMs);
+    }
+  }
+
+  throw new Error('unreachable qualification retry state');
+}
+
 function parseArgs(argv) {
-  const result = {check: false, runId: null};
+  const result = {
+    attempts: DEFAULT_QUALIFICATION_ATTEMPTS,
+    check: false,
+    retryMs: DEFAULT_QUALIFICATION_RETRY_MS,
+    runId: null,
+  };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === '--check') {
       result.check = true;
+    } else if (argument === '--attempts') {
+      result.attempts = Number(argv[index + 1]);
+      index += 1;
+    } else if (argument.startsWith('--attempts=')) {
+      result.attempts = Number(argument.slice('--attempts='.length));
+    } else if (argument === '--retry-ms') {
+      result.retryMs = Number(argv[index + 1]);
+      index += 1;
+    } else if (argument.startsWith('--retry-ms=')) {
+      result.retryMs = Number(argument.slice('--retry-ms='.length));
     } else if (argument === '--run-id') {
       result.runId = Number(argv[index + 1]);
       index += 1;
@@ -560,6 +608,12 @@ function parseArgs(argv) {
   if (result.runId !== null && (!Number.isInteger(result.runId) || result.runId < 1)) {
     fail('--run-id must be a positive integer');
   }
+  if (!Number.isInteger(result.attempts) || result.attempts < 1) {
+    fail('--attempts must be a positive integer');
+  }
+  if (!Number.isInteger(result.retryMs) || result.retryMs < 0) {
+    fail('--retry-ms must be a non-negative integer');
+  }
   return result;
 }
 
@@ -571,7 +625,7 @@ async function main() {
     fail('published artifact authority has no current Waterline release');
   }
   const source = JSON.parse(fs.readFileSync(retainedEvidencePath, 'utf8'));
-  const current = await findCurrentQualification(expectedWaterlineVersion, options);
+  const current = await findCurrentQualificationWithRetry(expectedWaterlineVersion, options);
   const expectedSource = mergeQualification(source, current.record, current.capturedAt);
   const expectedSourceText = `${JSON.stringify(expectedSource, null, 2)}\n`;
   const expectedPublicText = renderPublicComponentReleaseQualifications(expectedSource);
@@ -616,7 +670,9 @@ module.exports = {
   buildQualificationRecord,
   fetchTagCommit,
   findCurrentQualification,
+  findCurrentQualificationWithRetry,
   mergeQualification,
+  parseArgs,
   parseArtifactJson,
   validateArtifact,
   validateRun,

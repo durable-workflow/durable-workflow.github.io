@@ -516,13 +516,14 @@ const routeHandoffStep = refreshSteps.find(
 if (
   !waterlineQualificationStep
   || waterlineQualificationStep.run !==
-    'node scripts/refresh-waterline-release-qualification.js'
+    'node scripts/refresh-waterline-release-qualification.js --attempts 13 --retry-ms 10000'
   || waterlineQualificationStep.env?.GITHUB_TOKEN !== '${{ secrets.GITHUB_TOKEN }}'
   || waterlineQualificationStep.env?.WATERLINE_ACTIONS_READ_TOKEN !== undefined
 ) {
   fail(
     'current Waterline qualification ingestion must use the public release asset ' +
-      'route without requiring a new cross-repository credential',
+      'route with a bounded propagation retry and without requiring a new ' +
+      'cross-repository credential',
   );
 }
 

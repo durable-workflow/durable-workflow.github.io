@@ -66,7 +66,10 @@ jobs:
       - name: Refresh current Waterline release qualification
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node scripts/refresh-waterline-release-qualification.js
+        run: >-
+          node scripts/refresh-waterline-release-qualification.js
+          --attempts 13
+          --retry-ms 10000
 
       - name: Detect tuple changes
         id: changes
