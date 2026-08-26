@@ -126,6 +126,8 @@ jobs:
         run: npm run check:job-chaining-diagrams -- --output job-chaining-diagram-browser-evidence
 
       - name: Enforce visual control reachability
+        env:
+          VISUAL_QUALIFICATION_CANDIDATE_COMMIT: ${{ github.sha }}
         run: npm run check:visual-reachability
 
       - name: Exercise Cloud promotion browser transport
@@ -147,9 +149,9 @@ jobs:
         if: ${{ always() && github.server_url == 'https://github.com' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
         with:
-          name: visual-reachability
+          name: visual-reachability-${{ github.sha }}
           path: visual-reachability/
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 14
 
       - name: Upload job-chaining diagram evidence

@@ -5,10 +5,14 @@ const path = require('node:path');
 const {chromium} = require('playwright');
 const {collectReachabilityGeometry} = require('./visual-reachability');
 const {ARTIFACT_PINS} = require('./public-artifact-versions');
+const {
+  MANIFEST_SCHEMA: SECTION_MANIFEST_SCHEMA,
+  PUBLIC_MANIFESTS_SECTION,
+  resolveCandidateCommit,
+  validateSectionCaptureEvidence,
+} = require('./section-capture-qualification');
 
 const BUILD_DIRECTORY = path.resolve('build');
-const FIXTURE_PATH = path.resolve('scripts/fixtures/occluded-control.css');
-const FIXTURE_OVERLAY_ID = 'visual-reachability-fixture-overlay';
 const CLI_INSTALL_ROUTE = '/docs/2.0/polyglot/cli/';
 const NAVIGATION_CONFIGURATIONS = [
   {id: 'stable-default', route: '/docs/platform-conformance/'},
@@ -95,15 +99,28 @@ async function openPage(browser, baseUrl, viewport, navigationConfiguration) {
   });
   const page = await context.newPage();
   const browserErrors = [];
+  const consoleErrors = [];
+  const pageErrors = [];
   await page.route('https://api.github.com/repos/durable-workflow/workflow', route => route.fulfill({
     status: 200,
     contentType: 'application/json',
     body: JSON.stringify({stargazers_count: 1171}),
   }));
   page.on('console', message => {
-    if (message.type() === 'error') browserErrors.push({type: 'console', message: message.text().slice(0, 500)});
+    if (message.type() === 'error') {
+      const error = {type: 'console', message: message.text().slice(0, 500)};
+      consoleErrors.push(error);
+      browserErrors.push(error);
+    }
   });
-  page.on('pageerror', error => browserErrors.push({type: 'page', message: String(error.message || error).slice(0, 500)}));
+  page.on('pageerror', error => {
+    const browserError = {
+      type: 'page',
+      message: String(error.message || error).slice(0, 500),
+    };
+    pageErrors.push(browserError);
+    browserErrors.push(browserError);
+  });
 
   const response = await page.goto(`${baseUrl}${navigationConfiguration.route}`, {waitUntil: 'networkidle'});
   assert.equal(
@@ -113,7 +130,105 @@ async function openPage(browser, baseUrl, viewport, navigationConfiguration) {
   );
   await settle(page);
 
-  return {context, page, browserErrors};
+  return {context, page, browserErrors, consoleErrors, pageErrors};
+}
+
+function captureFailures({geometry, consoleErrors, pageErrors}) {
+  const failures = [];
+  if (geometry.horizontal_overflow) failures.push('horizontal overflow');
+  if (geometry.unreachable_controls.length > 0) failures.push('unreachable controls');
+  if (consoleErrors.length > 0) failures.push('browser console errors');
+  if (pageErrors.length > 0) failures.push('browser page errors');
+  return failures;
+}
+
+async function captureSectionState({
+  browser,
+  baseUrl,
+  section,
+  viewport,
+  candidateCommit,
+  fileStemPrefix = '',
+  prepareBeforeScroll,
+  prepareAfterScroll,
+}) {
+  const navigationConfiguration = {
+    id: section.navigation_configuration,
+    route: section.route,
+  };
+  const {
+    context,
+    page,
+    browserErrors,
+    consoleErrors,
+    pageErrors,
+  } = await openPage(browser, baseUrl, viewport, navigationConfiguration);
+  const fileStem = [fileStemPrefix, section.id, viewport.name].filter(Boolean).join('-');
+
+  try {
+    if (prepareBeforeScroll) await prepareBeforeScroll(page);
+    await page.locator(section.scroll_target).waitFor({state: 'visible'});
+    await page.evaluate(interaction => {
+      window.scrollTo(0, 0);
+      document.querySelector(interaction.selector)?.scrollIntoView({
+        block: interaction.block,
+      });
+    }, section.interaction);
+    await settle(page);
+    if (prepareAfterScroll) {
+      await prepareAfterScroll(page);
+      await settle(page);
+    }
+
+    const geometry = await page.evaluate(collectReachabilityGeometry);
+    const qualificationFailures = captureFailures({
+      geometry,
+      consoleErrors,
+      pageErrors,
+    });
+    const captureExitStatus = qualificationFailures.length === 0 ? 0 : 1;
+    const screenshot = path.join(outputDirectory, `${fileStem}.png`);
+    const reportPath = path.join(outputDirectory, `${fileStem}.json`);
+    const report = {
+      schema: 'durable-workflow.visual-reachability-report/v1',
+      candidate_commit: candidateCommit,
+      section_id: section.id,
+      navigation_configuration: section.navigation_configuration,
+      route: section.route,
+      state: section.state,
+      state_scope: section.state_scope,
+      scroll_target: section.scroll_target,
+      interaction: section.interaction,
+      viewport,
+      capture_exit_status: captureExitStatus,
+      qualification_failures: qualificationFailures,
+      geometry,
+      console_errors: consoleErrors,
+      page_errors: pageErrors,
+      browser_errors: browserErrors,
+    };
+
+    await page.screenshot({path: screenshot, animations: 'disabled'});
+    writeJson(reportPath, report);
+
+    return {
+      section_id: section.id,
+      navigation_configuration: section.navigation_configuration,
+      route: section.route,
+      state: section.state,
+      state_scope: section.state_scope,
+      scroll_target: section.scroll_target,
+      interaction: section.interaction,
+      viewport,
+      candidate_commit: candidateCommit,
+      capture_exit_status: captureExitStatus,
+      screenshot: path.basename(screenshot),
+      report: path.basename(reportPath),
+      unreachable_control_count: geometry.unreachable_controls.length,
+    };
+  } finally {
+    await context.close();
+  }
 }
 
 async function exerciseNavigationDrawer(page) {
@@ -262,127 +377,110 @@ async function captureState({
   }
 }
 
-async function exerciseOccludedControlFixture(browser, baseUrl) {
-  const navigationConfiguration = NAVIGATION_CONFIGURATIONS[0];
+async function exerciseOccludedSectionFixture(browser, baseUrl, candidateCommit) {
   const viewport = VIEWPORTS[0];
-  const {context, page, browserErrors} = await openPage(
+  const fixtureSection = {
+    ...PUBLIC_MANIFESTS_SECTION,
+    id: 'fixture-sticky-navigation-disclosure',
+    state: 'fixture-sticky-navigation-disclosure',
+    scroll_target: '[data-visual-reachability-fixture-target]',
+    interaction: {
+      action: 'scroll-to',
+      selector: '[data-visual-reachability-fixture-target]',
+      block: 'center',
+    },
+  };
+  const check = await captureSectionState({
     browser,
     baseUrl,
+    section: fixtureSection,
     viewport,
-    navigationConfiguration,
+    candidateCommit,
+    fileStemPrefix: 'negative',
+    prepareBeforeScroll: async page => {
+      const fixturePrepared = await page.evaluate(() => {
+        const heading = document.querySelector('#public-manifests');
+        if (!heading?.parentElement) return false;
+
+        const disclosure = document.createElement('details');
+        disclosure.setAttribute('data-visual-reachability-fixture', '');
+        disclosure.style.cssText = 'margin:2rem 0;min-height:8rem';
+        const target = document.createElement('summary');
+        target.id = 'fixture-sticky-navigation-disclosure';
+        target.textContent = 'Sticky navigation reachability fixture';
+        target.setAttribute('data-visual-reachability-fixture-target', '');
+        target.style.cssText = 'min-height:3rem;padding:0.75rem 1rem';
+        disclosure.append(target, document.createTextNode('Fixture disclosure content'));
+        heading.parentElement.insertBefore(disclosure, heading);
+        return true;
+      });
+      assert.equal(
+        fixturePrepared,
+        true,
+        'the platform conformance page must accept the disclosure fixture',
+      );
+    },
+    prepareAfterScroll: async page => {
+      await page.evaluate(() => {
+        const navbar = document.querySelector('.navbar');
+        const target = document.querySelector('[data-visual-reachability-fixture-target]');
+        const navbarBottom = navbar?.getBoundingClientRect().bottom || 0;
+        const targetBox = target.getBoundingClientRect();
+        const desiredTop = navbarBottom - (targetBox.height * 0.75);
+        window.scrollBy(0, targetBox.top - desiredTop);
+      });
+    },
+  });
+  const report = JSON.parse(
+    fs.readFileSync(path.join(outputDirectory, check.report), 'utf8'),
   );
-  const state = 'fixture-occluded-control';
-  const screenshot = path.join(outputDirectory, `${state}.png`);
-  const reportPath = path.join(outputDirectory, `${state}.json`);
+  const fixtureTargets = report.geometry.unreachable_controls.filter(
+    control => control.fixture_target,
+  );
 
-  try {
-    const routeIsLong = await page.evaluate(() => document.documentElement.scrollHeight > innerHeight);
-    assert.equal(routeIsLong, true, 'representative documentation route must extend beyond one viewport');
+  assert.equal(
+    fixtureTargets.length,
+    1,
+    'reachability collection must report the partially occluded disclosure',
+  );
+  assert.equal(
+    fixtureTargets[0].tag,
+    'summary',
+    'the negative section fixture must exercise an interactive disclosure',
+  );
+  assert.equal(
+    fixtureTargets[0].blockers.some(
+      blocker => blocker.tag === 'nav' && ['fixed', 'sticky'].includes(blocker.position),
+    ),
+    true,
+    'the fixture disclosure must be occluded by sticky navigation',
+  );
+  assert.equal(
+    check.capture_exit_status,
+    1,
+    'the partially occluded disclosure capture must exit unsuccessfully',
+  );
+  assert.throws(
+    () => validateSectionCaptureEvidence({
+      manifest: {
+        schema: SECTION_MANIFEST_SCHEMA,
+        candidate_commit: candidateCommit,
+        capture_exit_status: check.capture_exit_status,
+        checks: [check],
+      },
+      evidenceDirectory: outputDirectory,
+      candidateCommit,
+      requiredCaptures: [{...fixtureSection, viewport}],
+    }),
+    /unsuccessful capture exit status/,
+    'section capture qualification must reject the sticky-navigation fixture evidence',
+  );
 
-    const fixturePrepared = await page.evaluate(() => {
-      const main = document.querySelector('main');
-      if (!main) return false;
-
-      const fixture = document.createElement('div');
-      fixture.setAttribute('data-visual-reachability-fixture', '');
-      fixture.style.cssText = [
-        'align-items:center',
-        'display:flex',
-        'justify-content:center',
-        'min-height:12rem',
-      ].join(';');
-
-      const target = document.createElement('button');
-      target.type = 'button';
-      target.textContent = 'Reachability fixture target';
-      target.setAttribute('data-visual-reachability-fixture-target', '');
-      target.style.cssText = 'font:inherit;min-height:3rem;padding:0.75rem 1rem';
-      fixture.append(target);
-      main.append(fixture);
-      target.scrollIntoView({block: 'center'});
-      return true;
-    });
-    assert.equal(fixturePrepared, true, 'representative documentation route must render a main surface');
-    await settle(page);
-    await page.addStyleTag({path: FIXTURE_PATH});
-    await page.evaluate(overlayId => {
-      const target = document.querySelector('[data-visual-reachability-fixture-target]');
-      const box = target.getBoundingClientRect();
-      const root = document.documentElement.style;
-      root.setProperty('--visual-reachability-fixture-left', `${box.left}px`);
-      root.setProperty('--visual-reachability-fixture-top', `${box.top}px`);
-      root.setProperty('--visual-reachability-fixture-width', `${box.width}px`);
-      root.setProperty('--visual-reachability-fixture-height', `${box.height}px`);
-
-      const overlay = document.createElement('div');
-      overlay.id = overlayId;
-      overlay.setAttribute('aria-hidden', 'true');
-      overlay.setAttribute('data-visual-reachability-fixture-overlay', '');
-      overlay.textContent = 'Intentional occlusion';
-      document.body.append(overlay);
-    }, FIXTURE_OVERLAY_ID);
-    await settle(page);
-
-    const overlayPresentation = await page.evaluate(overlayId => {
-      const overlay = document.getElementById(overlayId);
-      const style = getComputedStyle(overlay);
-      const box = overlay.getBoundingClientRect();
-
-      return {
-        visible: style.display !== 'none' &&
-          style.visibility !== 'hidden' &&
-          Number.parseFloat(style.opacity) > 0 &&
-          box.width > 0 &&
-          box.height > 0,
-        pointer_events: style.pointerEvents,
-      };
-    }, FIXTURE_OVERLAY_ID);
-    const geometry = await page.evaluate(collectReachabilityGeometry);
-    const fixtureTargets = geometry.unreachable_controls.filter(control => control.fixture_target);
-    const fixtureTarget = fixtureTargets[0];
-    const fixtureRejected = fixtureTargets.length === 1 &&
-      fixtureTarget.blockers.some(blocker => blocker.id === FIXTURE_OVERLAY_ID);
-    const report = {
-      schema: 'durable-workflow.visual-reachability-report/v1',
-      navigation_configuration: navigationConfiguration.id,
-      route: navigationConfiguration.route,
-      state,
-      viewport,
-      expected_rejection: true,
-      rejected: fixtureRejected,
-      overlay_presentation: overlayPresentation,
-      geometry,
-      browser_errors: browserErrors,
-    };
-    await page.screenshot({path: screenshot, animations: 'disabled'});
-    writeJson(reportPath, report);
-
-    assert.deepEqual(browserErrors, [], `${state} emitted browser errors`);
-    assert.equal(geometry.horizontal_overflow, false, `${state} has horizontal overflow`);
-    assert.equal(overlayPresentation.visible, true, 'fixture overlay must remain visible');
-    assert.notEqual(overlayPresentation.pointer_events, 'none', 'fixture overlay must intercept pointer input');
-    assert.equal(fixtureTargets.length, 1, 'reachability collector must report the covered fixture control');
-    assert.equal(fixtureTarget.center_reachable, false, 'covered fixture control center must be unreachable');
-    assert.equal(
-      fixtureRejected,
-      true,
-      'reachability gate must attribute the fixture control occlusion to its visible overlay',
-    );
-
-    return {
-      state,
-      navigation_configuration: navigationConfiguration.id,
-      route: navigationConfiguration.route,
-      viewport,
-      expected_rejection: true,
-      rejected: true,
-      screenshot: path.basename(screenshot),
-      report: path.basename(reportPath),
-      unreachable_control_count: geometry.unreachable_controls.length,
-    };
-  } finally {
-    await context.close();
-  }
+  return {
+    ...check,
+    expected_rejection: true,
+    rejected: true,
+  };
 }
 
 async function checkCliInstallLinks(browser, baseUrl) {
@@ -471,8 +569,8 @@ async function main() {
     fs.existsSync(path.join(BUILD_DIRECTORY, CLI_INSTALL_ROUTE, 'index.html')),
     'current CLI install route is missing from the Docusaurus build',
   );
-  assert.ok(fs.existsSync(FIXTURE_PATH), 'occluded-control fixture stylesheet is missing');
   fs.mkdirSync(outputDirectory, {recursive: true});
+  const candidateCommit = resolveCandidateCommit();
   const server = createStaticServer();
   const baseUrl = await listen(server);
   const browser = await chromium.launch({
@@ -484,7 +582,7 @@ async function main() {
   const checks = [];
 
   try {
-    checks.push(await exerciseOccludedControlFixture(browser, baseUrl));
+    checks.push(await exerciseOccludedSectionFixture(browser, baseUrl, candidateCommit));
     checks.push(await checkCliInstallLinks(browser, baseUrl));
     for (const navigationConfiguration of NAVIGATION_CONFIGURATIONS) {
       for (const viewport of VIEWPORTS) {
@@ -507,16 +605,46 @@ async function main() {
         }));
       }
     }
+    const sectionChecks = [];
+    for (const viewport of PUBLIC_MANIFESTS_SECTION.viewports) {
+      const check = await captureSectionState({
+        browser,
+        baseUrl,
+        section: PUBLIC_MANIFESTS_SECTION,
+        viewport,
+        candidateCommit,
+      });
+      sectionChecks.push(check);
+      checks.push(check);
+    }
+    const sectionManifest = {
+      schema: SECTION_MANIFEST_SCHEMA,
+      candidate_commit: candidateCommit,
+      capture_exit_status: sectionChecks.some(check => check.capture_exit_status !== 0) ? 1 : 0,
+      checks: sectionChecks,
+    };
+    const sectionManifestPath = path.join(
+      outputDirectory,
+      'section-capture-manifest.json',
+    );
+    writeJson(sectionManifestPath, sectionManifest);
     writeJson(path.join(outputDirectory, 'manifest.json'), {
       schema: 'durable-workflow.visual-reachability-manifest/v1',
+      candidate_commit: candidateCommit,
       navigation_configurations: NAVIGATION_CONFIGURATIONS,
       generated_at: new Date().toISOString(),
       checks,
     });
+    const consumedSectionCaptures = validateSectionCaptureEvidence({
+      manifest: sectionManifest,
+      evidenceDirectory: outputDirectory,
+      candidateCommit,
+    });
     process.stdout.write(
       `Validated ${checks.length - 1} rendered states across ` +
         `${NAVIGATION_CONFIGURATIONS.length} documentation navigation configurations; ` +
-        `the occluded-control fixture was rejected.\n`,
+        `${consumedSectionCaptures.length} exact-revision section reports were consumed, ` +
+        `and the sticky-navigation disclosure fixture was rejected.\n`,
     );
   } finally {
     await browser.close();
