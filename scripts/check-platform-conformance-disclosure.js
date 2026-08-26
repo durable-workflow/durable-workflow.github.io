@@ -304,6 +304,20 @@ async function validateViewport(browser, baseUrl, viewport) {
 
 async function assertHashTargetVisible(page, targetId, label) {
   const target = page.locator(`#${targetId}`);
+  await page.waitForFunction(id => {
+    const element = document.getElementById(id);
+    if (!element) return false;
+
+    const disclosure = element.matches('details')
+      ? element
+      : element.closest('details');
+    const focusTarget = element.matches('details')
+      ? element.querySelector(':scope > summary')
+      : element;
+
+    return disclosure?.open === true && document.activeElement === focusTarget;
+  }, targetId);
+  await settle(page);
   await assertVisible(target, `${label} must reveal its target`);
   assert.equal(
     await target.evaluate(element => element.matches('details')
