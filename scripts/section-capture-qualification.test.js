@@ -29,6 +29,10 @@ function writeEvidence(directory, required, overrides = {}) {
     geometry: {
       horizontal_overflow: false,
       unreachable_controls: [],
+      sticky_navigation_intersections: [],
+      overlapping_floating_elements: [],
+      clipped_control_text: [],
+      clipped_text: [],
     },
     ...overrides,
   };
@@ -89,6 +93,11 @@ function assertQualificationWorkflowConsumesEvidence() {
     '${{ github.sha }}',
     'qualification must bind reports to the exact candidate commit',
   );
+  assert.equal(
+    steps[reachabilityIndex].env.VISUAL_QUALIFICATION_BASE_REF,
+    '${{ github.event.pull_request.base.sha || github.event.before }}',
+    'qualification must classify routes from the candidate change base',
+  );
   assert.ok(uploadIndex > reachabilityIndex, 'qualification must upload evidence after consuming it');
   assert.equal(
     steps[uploadIndex].with.name,
@@ -120,7 +129,7 @@ withEvidence(directory => {
       evidenceDirectory: directory,
       candidateCommit: CANDIDATE_COMMIT,
     }).length,
-    4,
+    8,
     'the complete exact-revision section matrix must pass',
   );
 });
@@ -199,15 +208,19 @@ withEvidence(directory => {
     captureKey(desktop),
     {
       capture_exit_status: 1,
-      qualification_failures: ['unreachable controls'],
+      qualification_failures: ['sticky navigation intersections'],
       geometry: {
         horizontal_overflow: false,
-        unreachable_controls: [{
+        unreachable_controls: [],
+        sticky_navigation_intersections: [{
           tag: 'summary',
           id: 'fixture-sticky-nav-disclosure',
-          center_reachable: false,
-          blockers: [{tag: 'nav', position: 'sticky'}],
+          rect: {x: 100, y: 48, width: 600, height: 120},
+          navbar_bottom: 60,
         }],
+        overlapping_floating_elements: [],
+        clipped_control_text: [],
+        clipped_text: [],
       },
     },
   ]]);
@@ -223,7 +236,41 @@ withEvidence(directory => {
       requiredCaptures: required,
     }),
     /unsuccessful capture exit status/,
-    'a disclosure partially occluded by sticky navigation must be rejected',
+    'a still-reachable disclosure intersecting sticky navigation must be rejected',
+  );
+});
+
+withEvidence(directory => {
+  const required = requiredSectionCaptures();
+  const desktop = required.find(capture => capture.viewport.name === 'desktop');
+  const floatingOverlapFailure = new Map([[
+    captureKey(desktop),
+    {
+      geometry: {
+        horizontal_overflow: false,
+        unreachable_controls: [],
+        sticky_navigation_intersections: [],
+        overlapping_floating_elements: [{
+          tag: 'div',
+          position: 'sticky',
+          overlaps: [{tag: 'td', overlap_width: 80, overlap_height: 24}],
+        }],
+        clipped_control_text: [],
+        clipped_text: [],
+      },
+    },
+  ]]);
+  const checks = writeMatrix(directory, floatingOverlapFailure);
+
+  assert.throws(
+    () => validateSectionCaptureEvidence({
+      manifest: manifest(checks),
+      evidenceDirectory: directory,
+      candidateCommit: CANDIDATE_COMMIT,
+      requiredCaptures: required,
+    }),
+    /records floating element overlap/,
+    'a sticky page-navigation rail covering table cells must be rejected',
   );
 });
 

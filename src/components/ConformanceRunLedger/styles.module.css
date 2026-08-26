@@ -68,6 +68,7 @@
 .tierDisclosure {
   max-width: 100%;
   margin: 0;
+  scroll-margin-top: calc(var(--ifm-navbar-height) + 1rem);
   border: 1px solid var(--ifm-color-emphasis-300);
   border-radius: 0.5rem;
   background: var(--ifm-background-surface-color);
@@ -194,6 +195,8 @@
 .experimentDetail {
   min-width: 0;
   padding: 1.25rem 0;
+  /* Leave the owning summary and both permalink controls clear of the navbar. */
+  scroll-margin-top: min(calc(100vh - 3rem), 19rem);
   border-top: 1px solid var(--ifm-color-emphasis-300);
 }
 

@@ -127,6 +127,7 @@ jobs:
 
       - name: Enforce visual control reachability
         env:
+          VISUAL_QUALIFICATION_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
           VISUAL_QUALIFICATION_CANDIDATE_COMMIT: ${{ github.sha }}
         run: npm run check:visual-reachability
 

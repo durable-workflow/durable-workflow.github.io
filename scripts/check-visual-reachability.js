@@ -4,10 +4,15 @@ const http = require('node:http');
 const path = require('node:path');
 const {chromium} = require('playwright');
 const {collectReachabilityGeometry} = require('./visual-reachability');
+const {
+  classifyChangedDocumentation,
+  resolveChangedFiles,
+} = require('./docs-visual-route-classification');
 const {ARTIFACT_PINS} = require('./public-artifact-versions');
 const {
   MANIFEST_SCHEMA: SECTION_MANIFEST_SCHEMA,
   PUBLIC_MANIFESTS_SECTION,
+  requiredSectionCaptures,
   resolveCandidateCommit,
   validateSectionCaptureEvidence,
 } = require('./section-capture-qualification');
@@ -137,6 +142,14 @@ function captureFailures({geometry, consoleErrors, pageErrors}) {
   const failures = [];
   if (geometry.horizontal_overflow) failures.push('horizontal overflow');
   if (geometry.unreachable_controls.length > 0) failures.push('unreachable controls');
+  if (geometry.sticky_navigation_intersections.length > 0) {
+    failures.push('sticky navigation intersections');
+  }
+  if (geometry.overlapping_floating_elements.length > 0) {
+    failures.push('floating element overlap');
+  }
+  if (geometry.clipped_control_text.length > 0) failures.push('clipped control text');
+  if (geometry.clipped_text.length > 0) failures.push('clipped text');
   if (consoleErrors.length > 0) failures.push('browser console errors');
   if (pageErrors.length > 0) failures.push('browser page errors');
   return failures;
@@ -180,6 +193,21 @@ async function captureSectionState({
       await settle(page);
     }
 
+    for (const selector of section.required_visible || []) {
+      const targetIsInsideViewport = await page.locator(selector).first().evaluate(element => {
+        const bounds = element.getBoundingClientRect();
+        return bounds.right > 0
+          && bounds.left < document.documentElement.clientWidth
+          && bounds.bottom > 0
+          && bounds.top < document.documentElement.clientHeight;
+      });
+      assert.equal(
+        targetIsInsideViewport,
+        true,
+        `${section.id} must keep ${selector} in the section-focused viewport`,
+      );
+    }
+
     const geometry = await page.evaluate(collectReachabilityGeometry);
     const qualificationFailures = captureFailures({
       geometry,
@@ -198,6 +226,8 @@ async function captureSectionState({
       state: section.state,
       state_scope: section.state_scope,
       scroll_target: section.scroll_target,
+      required_visible: section.required_visible,
+      selection_reason: section.selection_reason,
       interaction: section.interaction,
       viewport,
       capture_exit_status: captureExitStatus,
@@ -218,6 +248,8 @@ async function captureSectionState({
       state: section.state,
       state_scope: section.state_scope,
       scroll_target: section.scroll_target,
+      required_visible: section.required_visible,
+      selection_reason: section.selection_reason,
       interaction: section.interaction,
       viewport,
       candidate_commit: candidateCommit,
@@ -225,6 +257,9 @@ async function captureSectionState({
       screenshot: path.basename(screenshot),
       report: path.basename(reportPath),
       unreachable_control_count: geometry.unreachable_controls.length,
+      sticky_navigation_intersection_count:
+        geometry.sticky_navigation_intersections.length,
+      floating_overlap_count: geometry.overlapping_floating_elements.length,
     };
   } finally {
     await context.close();
@@ -426,7 +461,7 @@ async function exerciseOccludedSectionFixture(browser, baseUrl, candidateCommit)
         const target = document.querySelector('[data-visual-reachability-fixture-target]');
         const navbarBottom = navbar?.getBoundingClientRect().bottom || 0;
         const targetBox = target.getBoundingClientRect();
-        const desiredTop = navbarBottom - (targetBox.height * 0.75);
+        const desiredTop = navbarBottom - (targetBox.height * 0.15);
         window.scrollBy(0, targetBox.top - desiredTop);
       });
     },
@@ -437,23 +472,30 @@ async function exerciseOccludedSectionFixture(browser, baseUrl, candidateCommit)
   const fixtureTargets = report.geometry.unreachable_controls.filter(
     control => control.fixture_target,
   );
+  const intersectingFixtureTargets = report.geometry.sticky_navigation_intersections.filter(
+    control => control.fixture_target,
+  );
 
   assert.equal(
     fixtureTargets.length,
-    1,
-    'reachability collection must report the partially occluded disclosure',
+    0,
+    'the partial-intersection fixture must remain mostly reachable',
   );
   assert.equal(
-    fixtureTargets[0].tag,
+    intersectingFixtureTargets.length,
+    1,
+    'geometry collection must report the partially intersecting disclosure',
+  );
+  assert.equal(
+    intersectingFixtureTargets[0].tag,
     'summary',
     'the negative section fixture must exercise an interactive disclosure',
   );
   assert.equal(
-    fixtureTargets[0].blockers.some(
-      blocker => blocker.tag === 'nav' && ['fixed', 'sticky'].includes(blocker.position),
-    ),
+    intersectingFixtureTargets[0].rect.y
+      < intersectingFixtureTargets[0].navbar_bottom,
     true,
-    'the fixture disclosure must be occluded by sticky navigation',
+    'the fixture disclosure must intersect sticky navigation',
   );
   assert.equal(
     check.capture_exit_status,
@@ -571,6 +613,15 @@ async function main() {
   );
   fs.mkdirSync(outputDirectory, {recursive: true});
   const candidateCommit = resolveCandidateCommit();
+  const routeClassification = classifyChangedDocumentation({
+    changedFiles: resolveChangedFiles(),
+  });
+  for (const section of routeClassification.sections) {
+    assert.ok(
+      fs.existsSync(path.join(BUILD_DIRECTORY, section.route, 'index.html')),
+      `${section.id} route is missing from the Docusaurus build: ${section.route}`,
+    );
+  }
   const server = createStaticServer();
   const baseUrl = await listen(server);
   const browser = await chromium.launch({
@@ -606,22 +657,35 @@ async function main() {
       }
     }
     const sectionChecks = [];
-    for (const viewport of PUBLIC_MANIFESTS_SECTION.viewports) {
-      const check = await captureSectionState({
-        browser,
-        baseUrl,
-        section: PUBLIC_MANIFESTS_SECTION,
-        viewport,
-        candidateCommit,
-      });
-      sectionChecks.push(check);
-      checks.push(check);
+    for (const section of routeClassification.sections) {
+      for (const viewport of section.viewports) {
+        const check = await captureSectionState({
+          browser,
+          baseUrl,
+          section,
+          viewport,
+          candidateCommit,
+        });
+        sectionChecks.push(check);
+        checks.push(check);
+      }
     }
     const sectionManifest = {
       schema: SECTION_MANIFEST_SCHEMA,
       candidate_commit: candidateCommit,
       capture_exit_status: sectionChecks.some(check => check.capture_exit_status !== 0) ? 1 : 0,
       checks: sectionChecks,
+      route_classification: {
+        schema: routeClassification.schema,
+        changed_files: routeClassification.changed_files,
+        selected_sections: routeClassification.sections.map(section => ({
+          section_id: section.id,
+          route: section.route,
+          state: section.state,
+          scroll_target: section.scroll_target,
+          selection_reason: section.selection_reason,
+        })),
+      },
     };
     const sectionManifestPath = path.join(
       outputDirectory,
@@ -639,6 +703,7 @@ async function main() {
       manifest: sectionManifest,
       evidenceDirectory: outputDirectory,
       candidateCommit,
+      requiredCaptures: requiredSectionCaptures(routeClassification.sections),
     });
     process.stdout.write(
       `Validated ${checks.length - 1} rendered states across ` +

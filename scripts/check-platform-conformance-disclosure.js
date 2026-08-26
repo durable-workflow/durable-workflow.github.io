@@ -302,32 +302,118 @@ async function validateViewport(browser, baseUrl, viewport) {
   }
 }
 
-async function validateExperimentDeepLink(browser, baseUrl) {
-  const experiment = LEDGER.experiments.at(-1);
-  const targetId = `conformance-experiment-${experiment.id}`;
+async function assertHashTargetVisible(page, targetId, label) {
+  const target = page.locator(`#${targetId}`);
+  await assertVisible(target, `${label} must reveal its target`);
+  assert.equal(
+    await target.evaluate(element => element.matches('details')
+      ? element.open
+      : element.closest('details')?.open),
+    true,
+    `${label} must expand its owning disclosure`,
+  );
+
+  const geometry = await target.evaluate((element, id) => {
+    const focusTarget = element.matches('details')
+      ? element.querySelector(':scope > summary')
+      : element;
+    const headingTarget = element.matches('details')
+      ? focusTarget
+      : element.querySelector('h3, h4');
+    const permalink = element.querySelector(`a[href="#${id}"]`);
+    const bounds = candidate => {
+      const rect = candidate.getBoundingClientRect();
+      return {top: rect.top, right: rect.right, bottom: rect.bottom, left: rect.left};
+    };
+    return {
+      headingTarget: bounds(headingTarget),
+      permalink: bounds(permalink),
+      navbarBottom: document.querySelector('.navbar')?.getBoundingClientRect().bottom || 0,
+      viewportWidth: document.documentElement.clientWidth,
+      viewportHeight: document.documentElement.clientHeight,
+      focused: document.activeElement === focusTarget,
+    };
+  }, targetId);
+
+  for (const [name, bounds] of [
+    ['target heading', geometry.headingTarget],
+    ['permalink', geometry.permalink],
+  ]) {
+    assert.ok(
+      bounds.top >= geometry.navbarBottom
+        && bounds.bottom <= geometry.viewportHeight
+        && bounds.left >= 0
+        && bounds.right <= geometry.viewportWidth,
+      `${label} must keep its ${name} fully visible outside sticky navigation`,
+    );
+  }
+  assert.equal(geometry.focused, true, `${label} must focus its requested target`);
+  await assertGeometry(page, label);
+}
+
+async function validateDirectHashTarget(browser, baseUrl, viewport, targetId) {
   const {context, page, browserErrors} = await openPage(
     browser,
     baseUrl,
-    VIEWPORTS[0],
+    viewport,
     `#${targetId}`,
   );
   try {
-    const target = page.locator(`#${targetId}`);
-    await assertVisible(target, 'an experiment deep link must reveal its tier');
-    assert.equal(
-      await target.evaluate(element => element.closest('details')?.open),
-      true,
-      'an experiment deep link must expand its containing disclosure',
-    );
-    assert.equal(
-      await page.evaluate(() => document.activeElement?.id),
-      targetId,
-      'an experiment deep link must move focus to its detail row',
-    );
-    assert.deepEqual(browserErrors, [], 'experiment deep link emitted browser errors');
+    await assertHashTargetVisible(page, targetId, `${viewport.name} direct ${targetId}`);
+    assert.deepEqual(browserErrors, [], `${viewport.name} direct hash emitted browser errors`);
   } finally {
     await context.close();
   }
+}
+
+async function validateInPageAndHistoryNavigation(browser, baseUrl, viewport, tier, experiment) {
+  const tierId = `conformance-tier-${tier.id}`;
+  const experimentId = `conformance-experiment-${experiment.id}`;
+  const {context, page, browserErrors} = await openPage(browser, baseUrl, viewport);
+  try {
+    await page.locator(`#${tierId} > summary`).click();
+    await page.locator(`#${tierId} a[href="#${tierId}"]`).click();
+    await settle(page);
+    await assertHashTargetVisible(page, tierId, `${viewport.name} in-page tier permalink`);
+
+    await page.locator(`#${experimentId} a[href="#${experimentId}"]`).click();
+    await settle(page);
+    await assertHashTargetVisible(
+      page,
+      experimentId,
+      `${viewport.name} in-page experiment permalink`,
+    );
+
+    await page.goBack({waitUntil: 'networkidle'});
+    await settle(page);
+    await assertHashTargetVisible(page, tierId, `${viewport.name} history back`);
+
+    await page.goForward({waitUntil: 'networkidle'});
+    await settle(page);
+    await assertHashTargetVisible(page, experimentId, `${viewport.name} history forward`);
+    assert.deepEqual(browserErrors, [], `${viewport.name} hash history emitted browser errors`);
+  } finally {
+    await context.close();
+  }
+}
+
+async function validateLedgerPermalinks(browser, baseUrl, viewport) {
+  const tier = LEDGER.tiers[0];
+  const experiment = LEDGER.experiments.find(candidate => candidate.tier === tier.id);
+  assert.ok(experiment, `${tier.id} must own an experiment permalink fixture`);
+  await validateDirectHashTarget(
+    browser,
+    baseUrl,
+    viewport,
+    `conformance-tier-${tier.id}`,
+  );
+  await validateDirectHashTarget(
+    browser,
+    baseUrl,
+    viewport,
+    `conformance-experiment-${experiment.id}`,
+  );
+  await validateInPageAndHistoryNavigation(browser, baseUrl, viewport, tier, experiment);
 }
 
 async function assertPublicManifestsSection(page, label) {
@@ -426,13 +512,15 @@ async function main() {
     for (const viewport of VIEWPORTS) {
       await validateViewport(browser, baseUrl, viewport);
     }
-    await validateExperimentDeepLink(browser, baseUrl);
+    for (const viewport of VIEWPORTS) {
+      await validateLedgerPermalinks(browser, baseUrl, viewport);
+    }
     for (const viewport of ANCHOR_VIEWPORTS) {
       await validatePublicManifestsAnchor(browser, baseUrl, viewport);
     }
     process.stdout.write(
       `Validated collapsed and expanded conformance ledger states across ` +
-        `${VIEWPORTS.length} viewports, experiment deep linking, and the ` +
+        `${VIEWPORTS.length} viewports, ledger permalink navigation, and the ` +
         `public manifests anchor across ${ANCHOR_VIEWPORTS.length} viewports.\n`,
     );
   });

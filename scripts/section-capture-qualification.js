@@ -13,6 +13,10 @@ const PUBLIC_MANIFESTS_SECTION = Object.freeze({
   state: 'public-manifests',
   state_scope: 'section',
   scroll_target: '#public-manifests',
+  required_visible: Object.freeze([
+    '#public-manifests',
+    'a[href="/schemas/capacity-benchmark/v1/manifest.json"]',
+  ]),
   interaction: Object.freeze({
     action: 'scroll-to',
     selector: '#public-manifests',
@@ -20,11 +24,39 @@ const PUBLIC_MANIFESTS_SECTION = Object.freeze({
   }),
   viewports: Object.freeze([
     Object.freeze({name: 'desktop', width: 1440, height: 900}),
-    Object.freeze({name: 'intermediate', width: 768, height: 1024}),
+    Object.freeze({name: 'intermediate', width: 900, height: 900}),
     Object.freeze({name: 'mobile', width: 390, height: 844}),
-    Object.freeze({name: 'short-height', width: 640, height: 360}),
+    Object.freeze({name: 'short-height', width: 1440, height: 500}),
   ]),
 });
+const SERVER_CONFIG_SECTION = Object.freeze({
+  id: 'server-config-external-payload-settings',
+  navigation_configuration: 'current-v2',
+  route: '/docs/2.0/polyglot/server-config-reference/',
+  state: 'external-payload-settings',
+  state_scope: 'section',
+  scroll_target:
+    '#limits-retention-and-metrics + p + table tbody tr:nth-child(8) td:first-child',
+  required_visible: Object.freeze([
+    '#limits-retention-and-metrics + p + table tbody tr:nth-child(8) td:first-child',
+  ]),
+  interaction: Object.freeze({
+    action: 'scroll-to',
+    selector:
+      '#limits-retention-and-metrics + p + table tbody tr:nth-child(8) td:first-child',
+    block: 'center',
+  }),
+  viewports: Object.freeze([
+    Object.freeze({name: 'desktop', width: 1440, height: 900}),
+    Object.freeze({name: 'intermediate', width: 768, height: 1024}),
+    Object.freeze({name: 'mobile', width: 390, height: 844}),
+    Object.freeze({name: 'short-height', width: 1280, height: 360}),
+  ]),
+});
+const SECTION_QUALIFICATIONS = Object.freeze([
+  PUBLIC_MANIFESTS_SECTION,
+  SERVER_CONFIG_SECTION,
+]);
 
 function resolveCandidateCommit(options = {}) {
   const environment = options.environment || process.env;
@@ -49,17 +81,20 @@ function resolveCandidateCommit(options = {}) {
   return candidateCommit;
 }
 
-function requiredSectionCaptures(section = PUBLIC_MANIFESTS_SECTION) {
-  return section.viewports.map(viewport => ({
+function requiredSectionCaptures(sections = SECTION_QUALIFICATIONS) {
+  const sectionList = Array.isArray(sections) ? sections : [sections];
+  return sectionList.flatMap(section => section.viewports.map(viewport => ({
     section_id: section.id,
     navigation_configuration: section.navigation_configuration,
     route: section.route,
     state: section.state,
     state_scope: section.state_scope,
     scroll_target: section.scroll_target,
+    required_visible: section.required_visible,
+    selection_reason: section.selection_reason,
     interaction: section.interaction,
     viewport,
-  }));
+  })));
 }
 
 function captureKey(capture) {
@@ -103,9 +138,15 @@ function assertExactCaptureBinding(report, required, candidateCommit, label) {
     'state',
     'state_scope',
     'scroll_target',
+    'selection_reason',
   ]) {
     assert.equal(report[field], required[field], `${label} has the wrong ${field}`);
   }
+  assert.deepEqual(
+    report.required_visible,
+    required.required_visible,
+    `${label} does not prove the required visible content`,
+  );
   assert.deepEqual(
     report.interaction,
     required.interaction,
@@ -132,6 +173,26 @@ function assertPassingCaptureReport(report, label) {
     report.geometry?.unreachable_controls,
     [],
     `${label} records unreachable controls`,
+  );
+  assert.deepEqual(
+    report.geometry?.sticky_navigation_intersections,
+    [],
+    `${label} records controls intersecting sticky navigation`,
+  );
+  assert.deepEqual(
+    report.geometry?.overlapping_floating_elements,
+    [],
+    `${label} records floating element overlap`,
+  );
+  assert.deepEqual(
+    report.geometry?.clipped_control_text,
+    [],
+    `${label} records clipped control text`,
+  );
+  assert.deepEqual(
+    report.geometry?.clipped_text,
+    [],
+    `${label} records clipped text`,
   );
 }
 
@@ -193,6 +254,8 @@ module.exports = {
   MANIFEST_SCHEMA,
   PUBLIC_MANIFESTS_SECTION,
   REPORT_SCHEMA,
+  SECTION_QUALIFICATIONS,
+  SERVER_CONFIG_SECTION,
   captureKey,
   requiredSectionCaptures,
   resolveCandidateCommit,

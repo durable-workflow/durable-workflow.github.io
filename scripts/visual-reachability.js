@@ -13,6 +13,12 @@ function collectReachabilityGeometry() {
     right: Math.min(first.right, second.right),
     bottom: Math.min(first.bottom, second.bottom),
   });
+  const describeRect = rect => ({
+    x: round(rect.x),
+    y: round(rect.y),
+    width: round(rect.width),
+    height: round(rect.height),
+  });
   const visible = element => {
     const style = getComputedStyle(element);
     const box = element.getBoundingClientRect();
@@ -247,6 +253,93 @@ function collectReachabilityGeometry() {
     }];
   }).slice(0, 25);
 
+  const navbar = document.querySelector('.navbar');
+  const navbarBox = navbar?.getBoundingClientRect();
+  const stickyNavigationIntersections = navbarBox
+    ? interactiveElements
+      .filter(control => !navbar.contains(control))
+      .filter(control => {
+        const bounds = control.getBoundingClientRect();
+        return bounds.right > 0
+          && bounds.left < viewport.right
+          && bounds.bottom > 0
+          && bounds.top < navbarBox.bottom;
+      })
+      .map(control => ({
+        ...describe(control),
+        rect: describeRect(control.getBoundingClientRect()),
+        navbar_bottom: round(navbarBox.bottom),
+      }))
+      .slice(0, 25)
+    : [];
+
+  const floatingElements = [...document.querySelectorAll('body *')]
+    .filter(element => visible(element) && !navbar?.contains(element))
+    .filter(element => ['fixed', 'sticky'].includes(getComputedStyle(element).position));
+  const overlapCandidates = [...document.querySelectorAll([
+    'main td',
+    'main th',
+    'main a[href]',
+    'main button',
+    'main summary',
+  ].join(','))].filter(visible);
+  const overlappingFloatingElements = floatingElements.flatMap(floating => {
+    const floatingBox = floating.getBoundingClientRect();
+    const overlaps = overlapCandidates
+      .filter(candidate => !floating.contains(candidate) && !candidate.contains(floating))
+      .flatMap(candidate => {
+        const overlap = intersect(floatingBox, candidate.getBoundingClientRect());
+        if (!hasArea(overlap)) return [];
+
+        return [{
+          ...describe(candidate),
+          overlap_width: round(overlap.right - overlap.left),
+          overlap_height: round(overlap.bottom - overlap.top),
+        }];
+      })
+      .slice(0, 10);
+
+    if (overlaps.length === 0) return [];
+    return [{
+      ...describeBlocker(floating),
+      rect: describeRect(floatingBox),
+      overlaps,
+    }];
+  }).slice(0, 10);
+
+  const isClipped = element => {
+    const style = getComputedStyle(element);
+    const clipsX = ['clip', 'hidden'].includes(style.overflowX);
+    const clipsY = ['clip', 'hidden'].includes(style.overflowY);
+    return (clipsX && element.scrollWidth > element.clientWidth + 1)
+      || (clipsY && element.scrollHeight > element.clientHeight + 1);
+  };
+  const clippedControlText = interactiveElements
+    .filter(isClipped)
+    .map(control => ({
+      ...describe(control),
+      rect: describeRect(control.getBoundingClientRect()),
+    }))
+    .slice(0, 25);
+  const clippedText = [...document.querySelectorAll([
+    'main h1',
+    'main h2',
+    'main h3',
+    'main h4',
+    'main p',
+    'main li',
+    'main th',
+    'main td',
+    'main code',
+  ].join(','))]
+    .filter(element => visible(element) && isClipped(element))
+    .map(element => ({
+      tag: element.tagName.toLowerCase(),
+      id: element.id || '',
+      rect: describeRect(element.getBoundingClientRect()),
+    }))
+    .slice(0, 25);
+
   return {
     document_width: document.documentElement.scrollWidth,
     viewport_width: document.documentElement.clientWidth,
@@ -255,6 +348,10 @@ function collectReachabilityGeometry() {
     visible_element_count: [...document.querySelectorAll('body *')].filter(visible).length,
     interactive_control_count: interactiveElements.length,
     unreachable_controls: unreachableControls,
+    sticky_navigation_intersections: stickyNavigationIntersections,
+    overlapping_floating_elements: overlappingFloatingElements,
+    clipped_control_text: clippedControlText,
+    clipped_text: clippedText,
   };
 }
 
