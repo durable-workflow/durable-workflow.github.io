@@ -601,6 +601,48 @@ for (const required of [
   }
 }
 
+const buildCommands = packageSource.scripts.build.split(/\s*&&\s*/);
+const renderedProtocolCheck = 'node scripts/check-platform-protocol-page.js';
+const renderedProtocolCheckPositions = buildCommands
+  .map((command, index) => command === renderedProtocolCheck ? index : -1)
+  .filter(index => index !== -1);
+if (renderedProtocolCheckPositions.length !== 1) {
+  fail('normal docs builds must run the rendered protocol retrieval check exactly once');
+}
+
+const renderedProtocolCheckPosition = renderedProtocolCheckPositions[0];
+const docusaurusBuildPosition = buildCommands.indexOf('docusaurus build');
+for (const prerequisite of [
+  'node scripts/generate-llms.js',
+  'node scripts/generate-llms-full.js',
+]) {
+  const prerequisitePosition = buildCommands.indexOf(prerequisite);
+  if (
+    docusaurusBuildPosition === -1
+    || prerequisitePosition === -1
+    || !(docusaurusBuildPosition < prerequisitePosition
+      && prerequisitePosition < renderedProtocolCheckPosition)
+  ) {
+    fail(
+      `rendered protocol retrieval validation must run after Docusaurus and ${prerequisite}`,
+    );
+  }
+}
+
+for (const sourceCheck of [
+  'node scripts/check-platform-protocol-specs.js',
+  'node scripts/check-platform-protocol-specs.test.js',
+]) {
+  const sourceCheckPosition = buildCommands.indexOf(sourceCheck);
+  if (
+    sourceCheckPosition === -1
+    || docusaurusBuildPosition === -1
+    || sourceCheckPosition > docusaurusBuildPosition
+  ) {
+    fail(`protocol source/catalog validation must run before Docusaurus: ${sourceCheck}`);
+  }
+}
+
 if (!deployWorkflow.includes('- name: Build website') || !deployWorkflow.includes('run: npm run build')) {
   fail('docs deploy workflow must preserve the complete npm build');
 }
