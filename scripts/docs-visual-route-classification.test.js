@@ -46,6 +46,18 @@ assert.equal(
   true,
   'a changed documentation source must select its exact rendered route',
 );
+const genericRouteSection = genericPage.sections.find(
+  section => section.route === '/docs/2.0/polyglot/python/',
+);
+assert.deepEqual(
+  genericRouteSection.interaction,
+  {
+    action: 'scroll-to',
+    selector: '.theme-doc-markdown h1',
+    block: 'nearest',
+  },
+  'a generic top-level heading must remain in place when it is already visible',
+);
 
 assert.throws(
   () => classifyChangedDocumentation({

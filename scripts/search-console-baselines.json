@@ -124,6 +124,57 @@
           "click_through_rate"
         ]
       }
+    },
+    {
+      "id": "stable-introduction-search-relevance",
+      "window": {
+        "status": "finalized",
+        "days": 28,
+        "dates_available": false
+      },
+      "landing_page": "/docs/introduction/",
+      "search_intent": {
+        "clusters": [
+          {
+            "id": "durable-workflow-product-category",
+            "reader_question": "What is a durable workflow engine for long-running PHP processes?",
+            "result_terms": [
+              "workflow engine",
+              "long-running",
+              "PHP"
+            ]
+          },
+          {
+            "id": "laravel-framework-fit",
+            "reader_question": "How does Durable Workflow fit a Laravel application?",
+            "result_terms": [
+              "Laravel"
+            ]
+          },
+          {
+            "id": "queues-versus-workflow-orchestration",
+            "reader_question": "When does a process need durable orchestration instead of queued work alone?",
+            "result_terms": [
+              "queued activities"
+            ]
+          }
+        ]
+      },
+      "totals": {
+        "impressions": 584,
+        "clicks": 4,
+        "click_through_rate": 0.0068,
+        "average_position": 9.42
+      },
+      "follow_up": {
+        "after": "revised_page_recrawled_and_complete_later_reporting_window",
+        "metrics": [
+          "impressions",
+          "average_position",
+          "clicks",
+          "click_through_rate"
+        ]
+      }
     }
   ]
 }

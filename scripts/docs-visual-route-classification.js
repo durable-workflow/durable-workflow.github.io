@@ -88,7 +88,7 @@ function genericSectionForFile(file, source = '') {
     interaction: Object.freeze({
       action: 'scroll-to',
       selector: scrollTarget,
-      block: 'center',
+      block: 'nearest',
     }),
     viewports: SERVER_CONFIG_SECTION.viewports,
   });

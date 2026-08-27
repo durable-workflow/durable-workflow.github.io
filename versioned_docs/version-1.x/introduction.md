@@ -1,12 +1,39 @@
 ---
 sidebar_position: 1
+title: Laravel Durable Workflow Engine for PHP
+sidebar_label: Introduction
+description: Build long-running, persistent PHP workflows in Laravel that wait for events, survive restarts, and coordinate queued activities with Durable Workflow.
+canonical_path: /docs/introduction/
+image: /img/docusaurus.png
+tags:
+  - concepts
+  - getting-started
+  - laravel
+  - workflows
+keywords:
+  - durable workflow laravel
+  - laravel workflow engine
+  - long-running php workflows
+  - laravel workflow orchestration
+  - laravel queues vs workflows
 ---
 
-# Introduction
+# Durable Workflow for Laravel
 
-## Why use workflows?
+Durable Workflow is an open-source, Laravel-native durable workflow engine for
+long-running PHP processes. It stores orchestration state in your application's
+database and schedules work through Laravel queues, so a workflow can pause for
+a timer, webhook, or human decision and resume after a worker restart.
 
-You probably need a workflow if:
+This introduction covers stable 1.x, the default public documentation line. It
+runs inside your Laravel application. The separately versioned
+[2.0 prerelease introduction](/docs/2.0/introduction/) covers Cloud,
+self-hosted Server, and service-mode SDK deployments.
+
+## When to use a durable workflow
+
+Use a workflow when a process has multiple steps and may outlive any one web
+request or queue worker. Common signs include:
 
 - The process spans minutes, hours, or days
 - You need to wait for a human approval step
@@ -14,22 +41,37 @@ You probably need a workflow if:
 - You need to pause and continue later without keeping a process running
 - You need to be able to restart after a crash without causing bugs or duplicating work
 
-## What is Durable Workflow (the Laravel-native durable workflow package)?
+For one independent background task, a Laravel queued job is usually enough. A
+fixed sequence or group of known jobs may fit job chaining or batching. Durable
+Workflow is for orchestration that must persist progress while it branches,
+loops, waits, or changes its next step in response to an external event.
 
-Durable Workflow (formerly Laravel Workflow) is a durable workflow engine that allows developers to write long running persistent distributed workflows (orchestrations) in PHP. It provides a simple and intuitive way to define complex asynchronous processes, such as agentic workflows (AI-driven), data pipelines, and microservices, as a sequence of activities that run in parallel or in series.
+## How Durable Workflow fits Laravel
 
-Durable Workflow is built on top of Laravel, the popular PHP web framework, and uses its queue system and database layer to store and manage workflow data and state. It is designed to be scalable, reliable, and easy to use, with a focus on simplicity and maintainability.
+The stable `durable-workflow/workflow` Composer package embeds the workflow
+runtime in a Laravel application. It uses Laravel's database layer to retain
+workflow state and its queue system to run workflow and activity work. Your
+workflow code can use familiar framework capabilities such as the service
+container, events, and Eloquent models.
 
-## Why use Durable Workflow?
+A workflow describes the durable sequence and decisions. Activities perform
+the side-effecting work, such as calling an API, updating a database, or
+processing a file. Persisting progress between those steps lets another worker
+continue the orchestration instead of restarting the entire process after a
+failure.
 
-There are several reasons why developers might choose to use Durable Workflow for their workflow management needs:
+Start with [Installation](./installation.md) to add the package, publish its
+migrations, and run queue workers. Read [How It Works](./how-it-works.md) for
+the execution and replay model.
 
-- Durable Workflow has access to all the features and capabilities of Laravel, such as Eloquent ORM, events, service container and more. This makes it a natural fit for Laravel developers and allows them to leverage their existing Laravel knowledge and skills.
+## What you can build
 
-- Durable Workflow is designed to be simple and intuitive to use, with a clean and straightforward API and conventions. This makes it easy for developers to get started and quickly build complex workflows without having to spend a lot of time learning a new framework or domain-specific language.
+Durable Workflow can coordinate asynchronous application processes such as
+approval flows, agentic AI loops, data pipelines, media processing, and
+microservice operations. Activities can run in sequence or in parallel, while
+the workflow retains the state needed to make the next decision.
 
-- Durable Workflow is highly scalable and reliable, thanks to its use of Laravel queues and the ability to run workflows on multiple workers. This means it can scale horizontally and handle large workloads without sacrificing performance or stability.
-
-- Durable Workflow is open source and actively maintained, with a growing community of contributors and users. This means that developers can easily get help and support, share their experiences and knowledge, and contribute to the development of the framework.
-
-Compared to the built-in queues, Durable Workflow allows for more complex and dynamic control over the execution of jobs, such as branching and looping, and provides a way to monitor the progress and status of the workflow as a whole. Unlike job chaining and batching, which are designed to execute a fixed set of jobs in a predetermined sequence, Durable Workflow also allows for more flexible and adaptable execution.
+Laravel teams keep their existing application conventions while gaining a
+workflow-level view of progress and status. Queue workers can scale
+horizontally, and the orchestration remains explicit in PHP instead of being
+spread across callbacks and ad hoc status columns.
