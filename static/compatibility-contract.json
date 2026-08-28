@@ -89,7 +89,7 @@
       "notes": "Includes the `worker_sessions` and `local_activities` runtime contracts, `external_execution_surface_contract`, `external_executor_config_contract`, `invocable_carrier_contract`, `external_task_input_contract`, and `external_task_result_contract` published from `/api/cluster/info`. Each nested contract carries its own schema/version and may evolve independently per its own contract rules.",
       "negotiation": {
         "advertised_version_path": "worker_protocol.version",
-        "default_advertised_version": "1.16",
+        "default_advertised_version": "1.17",
         "request_header_rule": "same_major_and_minor_less_than_or_equal_to_advertised",
         "accepted_request_versions_by_default": [
           "1.0",
@@ -108,7 +108,8 @@
           "1.13",
           "1.14",
           "1.15",
-          "1.16"
+          "1.16",
+          "1.17"
         ],
         "response_version": "advertised_version",
         "fail_closed_on": [

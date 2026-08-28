@@ -1,12 +1,12 @@
 {
   "schema": "durable-workflow.docs.workflow-sdk-neutrality-authority-lock",
   "schema_version": 3,
-  "workflow_ref": "2.0.0-rc.45",
-  "workflow_source_commit": "5d8033aa0b82ab2ba3adf55d9bdd76f39e74260f",
+  "workflow_ref": "2.0.0-rc.48",
+  "workflow_source_commit": "278fa0fddcf05bf96aedec9d2466867fb0eb7702",
   "workflow_resource_path": "resources/sdk-neutrality-contract.json",
   "workflow_resource_sha256": "fdd34e4409549cf97325f650bf22f2d7f12a40246eb2949da1f547472ebc5a53",
   "docs_projection_path": "static/sdk-neutrality-contract.json",
-  "docs_projection_sha256": "98dc1fd67a610fea59e0aa4b9696930eec7d5dcd1cd112fddb62da64a0279f2a",
-  "python_package_version": "2.0.0-rc.35",
-  "python_registry_version": "2.0.0rc35"
+  "docs_projection_sha256": "aa0dac9191f4ed49ac0ae21b464edceba64186a394ae057d453daeaf32d7e7fd",
+  "python_package_version": "2.0.0-rc.36",
+  "python_registry_version": "2.0.0rc36"
 }

@@ -39,12 +39,12 @@ assert.doesNotThrow(
   'the retained aggregate Rust protocol must remain accepted by the current Server',
 );
 assert.doesNotThrow(
-  () => assertWorkerProtocolVersionAccepted('1.16', expectedVersions, 'released Rust package'),
+  () => assertWorkerProtocolVersionAccepted('1.17', expectedVersions, 'released Rust package'),
   'the released Rust protocol may advance independently within the current Server window',
 );
 assert.throws(
-  () => assertWorkerProtocolVersionAccepted('1.17', expectedVersions, 'released Rust package'),
-  /released Rust package worker protocol 1\.17 is outside the default server request window/,
+  () => assertWorkerProtocolVersionAccepted('1.18', expectedVersions, 'released Rust package'),
+  /released Rust package worker protocol 1\.18 is outside the default server request window/,
   'a released Rust protocol ahead of the current Server must fail closed',
 );
 

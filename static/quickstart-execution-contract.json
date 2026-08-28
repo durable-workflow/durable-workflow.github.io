@@ -867,7 +867,7 @@
         "rust"
       ],
       "exact_artifact_versions": {
-        "sdk-rust": "2.0.0-rc.33",
+        "sdk-rust": "2.0.0-rc.34",
         "cli": "2.0.0-rc.35"
       },
       "credential_roles": {

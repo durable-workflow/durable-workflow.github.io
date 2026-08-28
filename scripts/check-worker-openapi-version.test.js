@@ -21,17 +21,17 @@ assert(fs.existsSync(specPath), 'the worker protocol catalog URL must resolve to
 
 const spec = yaml.load(fs.readFileSync(specPath, 'utf8'));
 assert.strictEqual(spec.info.title, workerEntry.spec_id);
-assert.strictEqual(spec.info.version, '12');
+assert.strictEqual(spec.info.version, '13');
 assert(
   spec.components.responses.WorkflowTaskPollConflict.content['application/json']
     .schema.oneOf.some(
       branch => branch.$ref === '#/components/schemas/CachedPollTaskKindConflict',
     ),
-  'worker OpenAPI version 12 must include the cached-poll conflict union branch',
+  'worker OpenAPI version 13 must include the cached-poll conflict union branch',
 );
 
 const negotiation = spec['x-durable-workflow-worker-protocol-negotiation'];
-assert.strictEqual(negotiation.default_advertised_version, '1.16');
+assert.strictEqual(negotiation.default_advertised_version, '1.17');
 assert.deepStrictEqual(
   negotiation.fail_closed_on,
   ['missing_header', 'malformed_version', 'different_major', 'minor_greater_than_advertised'],

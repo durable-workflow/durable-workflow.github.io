@@ -151,6 +151,7 @@ const server_capabilities = {
     supported: true,
     type: 'upsert_memo',
     minimum_protocol_version: '1.14',
+    worker_capability: 'memo_upserts',
     required_fields: ['type', 'entries'],
     entries: {},
     merge: {},
@@ -169,17 +170,34 @@ const server_capabilities = {
   typed_search_attributes: {
     supported: true,
     minimum_worker_protocol_version: '1.16',
+    worker_capability: 'typed_search_attributes',
     canonical_types: ['string', 'keyword', 'keyword_list', 'int', 'float', 'bool', 'datetime'],
     command_field: 'attribute_types',
     history_field: 'attribute_types',
     legacy_history_rule: 'absent_metadata_is_unknown_type_identity',
+  },
+  condition_wait_occurrence_identity: {
+    supported: true,
+    minimum_worker_protocol_version: '1.17',
+    command_type: 'open_condition_wait',
+    command_field: 'condition_wait_occurrence_id',
+    history_field: 'condition_wait_occurrence_id',
+    history_events: [
+      'ConditionWaitOpened',
+      'ConditionWaitSatisfied',
+      'ConditionWaitTimedOut',
+      'TimerScheduled',
+      'TimerFired',
+      'TimerCancelled',
+    ],
+    history_routing: 'requires_minimum_worker_protocol_version',
   },
   update_validation_tasks: true,
   synchronous_update_validation: capability,
 };
 const envelope = (body) => ({
   ...body,
-  protocol_version: '1.16',
+  protocol_version: '1.17',
   server_capabilities,
 });
 
@@ -205,7 +223,7 @@ const workflowClaim = envelope({
     workflow_task_attempt: 1,
     lease_owner: 'worker-1',
     lease_expires_at: '2026-08-10T08:00:00Z',
-    history: [],
+    history_events: [],
   },
 });
 const validationTask = {
@@ -344,7 +362,7 @@ validate(operationSchema(approveRoute, '409'), envelope({
   status: 409,
 }));
 
-assert.strictEqual(spec.info.version, '12');
+assert.strictEqual(spec.info.version, '13');
 assert.strictEqual(spec['x-durable-workflow-catalog-version'], 16);
 assert.strictEqual(
   spec.components.schemas.MultiplexedWorkflowTask.discriminator.propertyName,

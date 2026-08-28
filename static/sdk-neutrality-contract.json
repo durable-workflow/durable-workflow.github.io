@@ -43,7 +43,7 @@
       },
       "python_sdk": {
         "package": "durable_workflow",
-        "package_url": "https://pypi.org/project/durable-workflow/2.0.0rc35/",
+        "package_url": "https://pypi.org/project/durable-workflow/2.0.0rc36/",
         "language": "python",
         "posture": "priority",
         "role": "Highest-value non-PHP SDK. Used to validate that the worker protocol, control plane, and replay fixtures behave the same way outside PHP.",
@@ -73,10 +73,10 @@
             "python_in_flight_signal_restart_timing"
           ]
         },
-        "package_version": "2.0.0-rc.35",
-        "registry_version": "2.0.0rc35",
-        "exact_release_url": "https://pypi.org/project/durable-workflow/2.0.0rc35/",
-        "exact_release_json_url": "https://pypi.org/pypi/durable-workflow/2.0.0rc35/json",
+        "package_version": "2.0.0-rc.36",
+        "registry_version": "2.0.0rc36",
+        "exact_release_url": "https://pypi.org/project/durable-workflow/2.0.0rc36/",
+        "exact_release_json_url": "https://pypi.org/pypi/durable-workflow/2.0.0rc36/json",
         "canonical_project_url": "https://pypi.org/project/durable-workflow/",
         "canonical_project_url_role": "project_identity_only"
       },

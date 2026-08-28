@@ -97,7 +97,7 @@ const advertisedVersion = compatibility.surface_families.worker_protocol.negotia
 const acceptedVersions = compatibility.surface_families.worker_protocol.negotiation
   .accepted_request_versions_by_default;
 
-assert.strictEqual(advertisedVersion, '1.16');
+assert.strictEqual(advertisedVersion, '1.17');
 assert.strictEqual(
   openApi['x-durable-workflow-worker-protocol-negotiation'].default_advertised_version,
   advertisedVersion,
