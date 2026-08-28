@@ -60,6 +60,33 @@ assert.equal(
   'the Server Config source must select its affected external-payload rows',
 );
 
+const portableWorkerAffinity = classifyChangedDocumentation({
+  changedFiles: ['docs/features/portable-worker-affinity.md'],
+  readSource: () => '| SDK worker | Local activities |\n| --- | --- |',
+});
+const sdkSupport = portableWorkerAffinity.sections.find(section => (
+  section.id === 'portable-worker-affinity-sdk-support'
+));
+assert.equal(
+  sdkSupport.route,
+  '/docs/2.0/features/portable-worker-affinity/',
+  'the portable worker affinity source must select its exact versioned route',
+);
+assert.equal(
+  sdkSupport.scroll_target,
+  '#sdk-support',
+  'the portable worker affinity source must select its SDK support table section',
+);
+assert.deepEqual(
+  sdkSupport.interaction,
+  {
+    action: 'scroll-to',
+    selector: '#sdk-support',
+    block: 'start',
+  },
+  'the SDK support anchor must align below sticky navigation',
+);
+
 const genericPage = classifyChangedDocumentation({
   changedFiles: ['docs/polyglot/python.md'],
   readSource: () => '# Python SDK\n\nReference copy.',

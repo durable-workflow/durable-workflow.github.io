@@ -17,6 +17,9 @@ keywords:
 
 # Activity Execution Model
 
+For service-worker support and fail-closed capability negotiation across PHP,
+Python, and Rust, see [Portable Worker Affinity](/docs/2.0/features/portable-worker-affinity).
+
 Durable Workflow v2 now has explicit primitives for the common activity
 placement choices:
 

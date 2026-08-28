@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const config = require('../docusaurus.config.js');
 
@@ -18,6 +19,23 @@ function requireFile(relativePath) {
     fail(`Missing generated documentation surface: build/${relativePath}`);
   }
   return fs.readFileSync(absolutePath, 'utf8');
+}
+
+function requireFileDigest(relativePath, expectedDigest) {
+  const absolutePath = path.join(build, relativePath);
+  if (!fs.existsSync(absolutePath) || fs.statSync(absolutePath).size === 0) {
+    fail(`Missing generated documentation surface: build/${relativePath}`);
+  }
+
+  const actualDigest = crypto
+    .createHash('sha256')
+    .update(fs.readFileSync(absolutePath))
+    .digest('hex');
+  if (actualDigest !== expectedDigest) {
+    fail(
+      `Generated documentation surface build/${relativePath} has SHA-256 ${actualDigest}; expected ${expectedDigest}`,
+    );
+  }
 }
 
 function docsOptions() {
@@ -75,6 +93,19 @@ function assertGeneratedSurfaces() {
   }
 }
 
+function assertPublishedProtocolResolvers() {
+  const protocolRoot = 'platform-protocol-specs/v1.19';
+  requireFileDigest(
+    `${protocolRoot}/worker-protocol-api.openapi.yaml`,
+    '2b25103fb2260ee8c97e8cb62ff18dfcb8c8091a79f4cc70bb5e4878375a079c',
+  );
+  requireFileDigest(
+    `${protocolRoot}/worker-protocol-stream.asyncapi.yaml`,
+    '9b85abd60e1a9c5d41a134691f474e4665726f18f4b51d0851affbb0519582b1',
+  );
+}
+
 assertVersionRouting();
 assertGeneratedSurfaces();
+assertPublishedProtocolResolvers();
 console.log('Executable documentation contracts passed');

@@ -13,3 +13,10 @@
 .releaseBanner a {
   font-weight: 600;
 }
+
+/* Keep this banner's stable-line link below the fixed navbar when section
+ * qualification centers a document heading in a compact viewport. */
+:global(.theme-doc-version-banner[data-docs-release-banner-version='2.0'])
+  ~ * :global(.theme-doc-markdown h1) {
+  scroll-margin-top: calc(var(--ifm-navbar-height) + 1rem);
+}

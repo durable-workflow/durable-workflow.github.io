@@ -30,6 +30,12 @@ const immutableProtocolVersions = Object.freeze({
     'worker-protocol-stream.asyncapi.yaml':
       '2111f2dbd158468e186bc5acca9ab3467910ff64fd44494cc60dda30d020f6df',
   }),
+  '1.19': Object.freeze({
+    'worker-protocol-api.openapi.yaml':
+      '2b25103fb2260ee8c97e8cb62ff18dfcb8c8091a79f4cc70bb5e4878375a079c',
+    'worker-protocol-stream.asyncapi.yaml':
+      '9b85abd60e1a9c5d41a134691f474e4665726f18f4b51d0851affbb0519582b1',
+  }),
 });
 
 function readYaml(file) {
@@ -97,7 +103,6 @@ const advertisedVersion = compatibility.surface_families.worker_protocol.negotia
 const acceptedVersions = compatibility.surface_families.worker_protocol.negotiation
   .accepted_request_versions_by_default;
 
-assert.strictEqual(advertisedVersion, '1.17');
 assert.strictEqual(
   openApi['x-durable-workflow-worker-protocol-negotiation'].default_advertised_version,
   advertisedVersion,

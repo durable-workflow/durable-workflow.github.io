@@ -12,6 +12,9 @@ const spec = yaml.load(fs.readFileSync(path.join(
   'platform-protocol-specs',
   'worker-protocol-api.openapi.yaml',
 ), 'utf8'));
+const advertisedProtocolVersion = spec[
+  'x-durable-workflow-worker-protocol-negotiation'
+].default_advertised_version;
 
 const serverRepo = process.env.SERVER_REPO_PATH || path.join(__dirname, '..', '..', 'server');
 const serverMirror = path.join(
@@ -192,12 +195,32 @@ const server_capabilities = {
     ],
     history_routing: 'requires_minimum_worker_protocol_version',
   },
+  local_activities: {
+    schema: 'durable-workflow.v2.local-activity.contract',
+    version: 1,
+    supported: true,
+    worker_capability: 'local_activities',
+    minimum_worker_protocol_version: '1.18',
+    execution: {},
+    retry: {},
+    timeouts: {},
+    visibility: {},
+  },
+  sticky_execution: {
+    feature: 'sticky_execution',
+    supported: true,
+    worker_capability: 'sticky_execution',
+    minimum_worker_protocol_version: '1.18',
+    cache_key_fields: ['workflow_id', 'run_id', 'build_id'],
+    correctness_fallback: 'cold_replay',
+    metrics: ['hit', 'miss', 'eviction', 'forced_cold_replay'],
+  },
   update_validation_tasks: true,
   synchronous_update_validation: capability,
 };
 const envelope = (body) => ({
   ...body,
-  protocol_version: '1.17',
+  protocol_version: advertisedProtocolVersion,
   server_capabilities,
 });
 
@@ -362,7 +385,6 @@ validate(operationSchema(approveRoute, '409'), envelope({
   status: 409,
 }));
 
-assert.strictEqual(spec.info.version, '13');
 assert.strictEqual(spec['x-durable-workflow-catalog-version'], 16);
 assert.strictEqual(
   spec.components.schemas.MultiplexedWorkflowTask.discriminator.propertyName,
