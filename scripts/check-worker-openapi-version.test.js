@@ -7,6 +7,7 @@ const yaml = require('js-yaml');
 
 const repoRoot = path.join(__dirname, '..');
 const catalog = require('../static/platform-protocol-specs.json');
+const compatibility = require('../static/compatibility-contract.json');
 const workerEntry = catalog.specs.worker_protocol_api;
 const specUrl = new URL(workerEntry.spec_url);
 
@@ -43,7 +44,10 @@ assert.deepStrictEqual(
 assert.strictEqual(heartbeatDetails.oneOf[1].additionalProperties, true);
 
 const negotiation = spec['x-durable-workflow-worker-protocol-negotiation'];
-assert.strictEqual(negotiation.default_advertised_version, '1.18');
+assert.strictEqual(
+  negotiation.default_advertised_version,
+  compatibility.surface_families.worker_protocol.negotiation.default_advertised_version,
+);
 assert.deepStrictEqual(
   negotiation.fail_closed_on,
   ['missing_header', 'malformed_version', 'different_major', 'minor_greater_than_advertised'],
