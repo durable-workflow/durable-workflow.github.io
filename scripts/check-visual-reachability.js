@@ -525,6 +525,168 @@ async function exerciseOccludedSectionFixture(browser, baseUrl, candidateCommit)
   };
 }
 
+async function exerciseWrappedInlineBoundaryFixture(browser, baseUrl) {
+  const viewport = VIEWPORTS.find(candidate => candidate.name === 'mobile');
+  const navigationConfiguration = NAVIGATION_CONFIGURATIONS.find(
+    candidate => candidate.id === 'current-v2',
+  );
+  const {context, page, browserErrors} = await openPage(
+    browser,
+    baseUrl,
+    viewport,
+    navigationConfiguration,
+  );
+  const state = 'fixture-wrapped-inline-boundary';
+  const screenshot = path.join(outputDirectory, `${state}.png`);
+  const reportPath = path.join(outputDirectory, `${state}.json`);
+
+  try {
+    await page.evaluate(() => {
+      const fixture = document.createElement('div');
+      fixture.style.cssText = [
+        'bottom:-8px',
+        'font:16px/20px sans-serif',
+        'left:16px',
+        'position:fixed',
+        'width:112px',
+      ].join(';');
+      const target = document.createElement('a');
+      target.href = '#wrapped-inline-boundary-fixture';
+      target.textContent = 'Wrapped inline control at the viewport boundary';
+      target.setAttribute('data-visual-reachability-fixture-target', '');
+      target.style.cssText = 'overflow-wrap:anywhere';
+      fixture.append(target);
+      document.body.replaceChildren(fixture);
+    });
+    await settle(page);
+
+    const fixture = await page.evaluate(() => {
+      const target = document.querySelector('[data-visual-reachability-fixture-target]');
+      const viewport = {
+        left: 0,
+        top: 0,
+        right: document.documentElement.clientWidth,
+        bottom: document.documentElement.clientHeight,
+      };
+      const fragments = [...target.getClientRects()];
+      const visibleFragments = fragments
+        .map(fragment => ({
+          left: Math.max(fragment.left, viewport.left),
+          top: Math.max(fragment.top, viewport.top),
+          right: Math.min(fragment.right, viewport.right),
+          bottom: Math.min(fragment.bottom, viewport.bottom),
+        }))
+        .filter(fragment => fragment.right > fragment.left && fragment.bottom > fragment.top);
+      const boundaryFragment = visibleFragments.at(-1);
+      const missedCenter = {
+        x: boundaryFragment.left + ((boundaryFragment.right - boundaryFragment.left) / 2),
+        y: boundaryFragment.top + ((boundaryFragment.bottom - boundaryFragment.top) / 2),
+      };
+      const originalElementFromPoint = document.elementFromPoint.bind(document);
+      const originalElementsFromPoint = document.elementsFromPoint.bind(document);
+      const nativeCenterHit = originalElementFromPoint(missedCenter.x, missedCenter.y);
+      const isMissedCenter = (x, y) => (
+        Math.abs(x - missedCenter.x) < 0.01 && Math.abs(y - missedCenter.y) < 0.01
+      );
+      const sampledArea = visibleFragments.reduce(
+        (total, fragment) => total
+          + ((fragment.right - fragment.left) * (fragment.bottom - fragment.top)),
+        0,
+      );
+      const boundaryArea = (boundaryFragment.right - boundaryFragment.left)
+        * (boundaryFragment.bottom - boundaryFragment.top);
+
+      window.__wrappedInlineBoundaryMisses = 0;
+      Object.defineProperty(document, 'elementFromPoint', {
+        configurable: true,
+        value: (x, y) => {
+          if (isMissedCenter(x, y)) {
+            window.__wrappedInlineBoundaryMisses += 1;
+            return null;
+          }
+          return originalElementFromPoint(x, y);
+        },
+      });
+      Object.defineProperty(document, 'elementsFromPoint', {
+        configurable: true,
+        value: (x, y) => (isMissedCenter(x, y) ? [] : originalElementsFromPoint(x, y)),
+      });
+
+      return {
+        fragment_count: fragments.length,
+        visible_fragment_count: visibleFragments.length,
+        extends_beyond_viewport: fragments.some(fragment => fragment.bottom > viewport.bottom),
+        native_center_hit_is_target:
+          nativeCenterHit === target || Boolean(target.contains(nativeCenterHit)),
+        expected_reachable_area_ratio: 1 - ((boundaryArea / 25) / sampledArea),
+      };
+    });
+    const geometry = await page.evaluate(collectReachabilityGeometry);
+    fixture.emulated_blank_center_hits = await page.evaluate(
+      () => window.__wrappedInlineBoundaryMisses,
+    );
+    const fixtureTargets = geometry.unreachable_controls.filter(
+      control => control.fixture_target,
+    );
+    const report = {
+      schema: 'durable-workflow.visual-reachability-report/v1',
+      route: navigationConfiguration.route,
+      state,
+      viewport,
+      fixture,
+      geometry,
+      browser_errors: browserErrors,
+    };
+
+    await page.screenshot({path: screenshot, animations: 'disabled'});
+    writeJson(reportPath, report);
+
+    assert.deepEqual(browserErrors, [], `${state} emitted browser errors`);
+    assert.ok(fixture.fragment_count > 1, 'fixture target must be a wrapped inline control');
+    assert.ok(
+      fixture.visible_fragment_count > 1,
+      'fixture target must expose multiple visible inline fragments',
+    );
+    assert.equal(
+      fixture.extends_beyond_viewport,
+      true,
+      'fixture target must cross the mobile viewport boundary',
+    );
+    assert.equal(
+      fixture.native_center_hit_is_target,
+      true,
+      'fixture must emulate a browser miss at an otherwise clickable fragment center',
+    );
+    assert.ok(
+      fixture.expected_reachable_area_ratio >= 0.5,
+      'fixture target must retain at least half of its sampled reachable area',
+    );
+    assert.ok(
+      fixture.emulated_blank_center_hits > 0,
+      'reachability collection must sample the emulated blank fragment center',
+    );
+    assert.equal(
+      fixtureTargets.length,
+      0,
+      'an unblocked wrapped inline control must pass by reachable visible area',
+    );
+
+    return {
+      state,
+      navigation_configuration: navigationConfiguration.id,
+      route: navigationConfiguration.route,
+      viewport,
+      screenshot: path.basename(screenshot),
+      report: path.basename(reportPath),
+      wrapped_fragment_count: fixture.fragment_count,
+      emulated_blank_center_hits: fixture.emulated_blank_center_hits,
+      unreachable_control_count: geometry.unreachable_controls.length,
+    };
+  } finally {
+    await context.close();
+  }
+}
+
 async function checkCliInstallLinks(browser, baseUrl) {
   const navigationConfiguration = {
     id: 'current-v2-cli-install',
@@ -634,6 +796,7 @@ async function main() {
 
   try {
     checks.push(await exerciseOccludedSectionFixture(browser, baseUrl, candidateCommit));
+    checks.push(await exerciseWrappedInlineBoundaryFixture(browser, baseUrl));
     checks.push(await checkCliInstallLinks(browser, baseUrl));
     for (const navigationConfiguration of NAVIGATION_CONFIGURATIONS) {
       for (const viewport of VIEWPORTS) {

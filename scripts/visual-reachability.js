@@ -222,8 +222,14 @@ function collectReachabilityGeometry() {
 
     const sampledArea = points.reduce((total, point) => total + point.area, 0);
     const reachableAreaRatio = sampledArea ? reachableArea / sampledArea : 0;
+    const unblockedFragmentCenterMiss = fragments.length > 1
+      && !centerReachable
+      && blockerCounts.size === 0;
 
-    if (centerReachable && reachableAreaRatio >= 0.5) {
+    if (
+      reachableAreaRatio >= 0.5
+      && (centerReachable || unblockedFragmentCenterMiss)
+    ) {
       return [];
     }
 

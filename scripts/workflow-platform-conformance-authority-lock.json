@@ -2,10 +2,10 @@
   "schema": "durable-workflow.docs.workflow-platform-conformance-authority-lock",
   "schema_version": 1,
   "workflow_package": "durable-workflow/workflow",
-  "workflow_version": "2.0.0-rc.42",
-  "workflow_source_commit": "b5af16ec0e6f803669980dab492cb63a508776ae",
+  "workflow_version": "2.0.0-rc.48",
+  "workflow_source_commit": "278fa0fddcf05bf96aedec9d2466867fb0eb7702",
   "manifest_path": "resources/platform-conformance-contract.json",
   "manifest_schema": "durable-workflow.v2.platform-conformance.suite",
-  "manifest_version": 43,
-  "manifest_sha256": "sha256:b8cffa99ce15d972a6782652593d5853a92f4e239679ff59b65b947fb0e15bee"
+  "manifest_version": 47,
+  "manifest_sha256": "sha256:985f8a657003c7b4f4db0670ae0be4212537bcb4609a9534149704eaee11e83f"
 }

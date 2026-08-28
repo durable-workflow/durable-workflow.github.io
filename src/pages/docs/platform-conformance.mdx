@@ -64,7 +64,7 @@ reject fetched bytes that do not match the suite binding.
 | Fixture category | Public authority |
 | --- | --- |
 | `control_plane_request_response` | [`durable-workflow.v2.control-plane-api@catalog-16`](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/f781ced1ae33c8697835bd527a125bdf3eaf4321/static/platform-protocol-specs/control-plane-api.openapi.yaml) |
-| `worker_task_lifecycle` | [`durable-workflow.v2.worker-protocol-api@catalog-16`](https://durable-workflow.github.io/platform-protocol-specs/v1.15/worker-protocol-api.openapi.yaml), [`durable-workflow.v2.worker-protocol-stream@catalog-16`](https://durable-workflow.github.io/platform-protocol-specs/v1.15/worker-protocol-stream.asyncapi.yaml) |
+| `worker_task_lifecycle` | [`durable-workflow.v2.worker-protocol-api@catalog-16`](https://durable-workflow.github.io/platform-protocol-specs/v1.19/worker-protocol-api.openapi.yaml), [`durable-workflow.v2.worker-protocol-stream@catalog-16`](https://durable-workflow.github.io/platform-protocol-specs/v1.19/worker-protocol-stream.asyncapi.yaml) |
 | `signal_query_runtime_contract` | [`durable-workflow.v2.platform-conformance.runtime-scenarios/signal_query_runtime_contract@38`](https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/signal-query-runtime-scenarios.json) |
 | `workflow_update_runtime_contract` | [`durable-workflow.v2.platform-conformance.runtime-scenarios/workflow_update_runtime_contract@38`](https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/workflow-update-runtime-scenarios.json) |
 | `search_attribute_runtime_contract` | [`durable-workflow.v2.platform-conformance.runtime-scenarios/search_attribute_runtime_contract@38`](https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/search-attribute-runtime-scenarios.json) |
@@ -81,10 +81,12 @@ reject fetched bytes that do not match the suite binding.
 | `cli_json_envelopes` | [`durable-workflow.cli.output-schema-manifest@3`](https://durable-workflow.github.io/cli-json-envelopes/v3/manifest.json) |
 | `principal_attribution_contract` | [`durable-workflow.v2.platform-conformance.runtime-scenarios/principal_attribution_contract@38`](https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/principal-attribution-scenarios.json) |
 
-The active worker-protocol fixture follows the lifecycle-neutral catalog
-authority. The prior beta-worded bytes are retained only by the manifest's
-separate `durable-workflow.v2.worker-protocol-api@catalog-16-beta-history`
-identity and are not an active fixture source.
+The active worker-protocol fixture follows the lifecycle-neutral protocol 1.19
+authority. Protocol revisions 1.15 through 1.18 remain available at their
+versioned resolver URLs, while the prior beta-worded bytes are retained only by
+the manifest's separate
+`durable-workflow.v2.worker-protocol-api@catalog-16-beta-history` identity and
+are not an active fixture source.
 
 Planned Waterline observer and MCP discovery categories remain provisional and
 non-normative until a later suite version explicitly promotes them.

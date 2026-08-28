@@ -45,7 +45,7 @@ const EXPECTED_RUNTIME_SOURCE_REVISION =
 const EXPECTED_RUNTIME_FIXTURE_SUITE_VERSION = 38;
 const EXPECTED_PROTOCOL_SOURCE_REVISION =
   'f781ced1ae33c8697835bd527a125bdf3eaf4321';
-const EXPECTED_PROTOCOL_SOURCE_SUITE_VERSION = 43;
+const EXPECTED_PROTOCOL_SOURCE_SUITE_VERSION = 47;
 const EXPECTED_PROTOCOL_SOURCE_CATALOG_VERSION = 16;
 const EXPECTED_PROTOCOL_SOURCE_DIGESTS = Object.freeze({
   'cluster-info-envelope.schema.json':
@@ -69,14 +69,38 @@ const EXPECTED_PROTOCOL_SOURCE_DIGESTS = Object.freeze({
   'worker-sessions-runtime.schema.json':
     'sha256:36b16340fe9524653baef7de0a32b2f744562bfc57e91853579a2c94dd512581',
 });
-const EXPECTED_VERSIONED_PROTOCOL_SOURCE_VERSION = '1.15';
-const EXPECTED_VERSIONED_PROTOCOL_SOURCE_DIGESTS = Object.freeze({
-  'worker-protocol-api.openapi.yaml':
-    'sha256:d21a59e98ef46419b0792e716bd359c424a5759140474b838b1398083a291df6',
-  'worker-protocol-stream.asyncapi.yaml':
-    'sha256:388fd30483c0bb52c6b39cee219be3c9fc933ff815ccf4a06f9063c85902b458',
-  'worker-sessions-runtime.schema.json':
-    'sha256:36b16340fe9524653baef7de0a32b2f744562bfc57e91853579a2c94dd512581',
+const EXPECTED_VERSIONED_PROTOCOL_SOURCE_VERSION = '1.19';
+const RETAINED_VERSIONED_PROTOCOL_SOURCE_DIGESTS = Object.freeze({
+  '1.15': Object.freeze({
+    'worker-protocol-api.openapi.yaml':
+      'sha256:d21a59e98ef46419b0792e716bd359c424a5759140474b838b1398083a291df6',
+    'worker-protocol-stream.asyncapi.yaml':
+      'sha256:388fd30483c0bb52c6b39cee219be3c9fc933ff815ccf4a06f9063c85902b458',
+  }),
+  '1.16': Object.freeze({
+    'worker-protocol-api.openapi.yaml':
+      'sha256:2dd330d52b8a36d1de0f364fc5f81311e2146f11ba1f77237e9c948e988c6817',
+    'worker-protocol-stream.asyncapi.yaml':
+      'sha256:05c966ba9e328a8d73e769f1303bd1d456be363e6dbb22cfa592c5177c47b5d0',
+  }),
+  '1.17': Object.freeze({
+    'worker-protocol-api.openapi.yaml':
+      'sha256:ebf84ff9443860085e503dfabbe0ccf7f313bed95b2261bef1e56abfbaab188e',
+    'worker-protocol-stream.asyncapi.yaml':
+      'sha256:2111f2dbd158468e186bc5acca9ab3467910ff64fd44494cc60dda30d020f6df',
+  }),
+  '1.18': Object.freeze({
+    'worker-protocol-api.openapi.yaml':
+      'sha256:d704de374bf097bae08421ff293638af6e036f97184ac8f5b732f31dabf6c920',
+    'worker-protocol-stream.asyncapi.yaml':
+      'sha256:4842cf99b4e7a036cdc0d96600a6b34ed79a626e6ac422ed9d26afe5ad10b02a',
+  }),
+  '1.19': Object.freeze({
+    'worker-protocol-api.openapi.yaml':
+      'sha256:2b25103fb2260ee8c97e8cb62ff18dfcb8c8091a79f4cc70bb5e4878375a079c',
+    'worker-protocol-stream.asyncapi.yaml':
+      'sha256:9b85abd60e1a9c5d41a134691f474e4665726f18f4b51d0851affbb0519582b1',
+  }),
 });
 const RETAINED_CLI_MANIFEST_SHA256 = {
   2: 'sha256:9eaccc507cb9f9affdc9ca6fe56a5ae83f528ba0c7621d31d8908cfec9b6c439',
@@ -95,6 +119,7 @@ const VERSIONED_SUITE_AUTHORITY_DIGESTS = {
   41: 'sha256:dfee9c9b419bab9504a662f22bd5b7866a2a7de50c6d31ee0a0e7b3c7067c1a1',
   42: 'sha256:73e4d6c0e6fbda033275ac14fd62eaffa0f740363da5e9e97d610e0ee6f12311',
   43: 'sha256:73fec8cf65ce0a58ba605774e578d2c5cc488821a14249f43cee43f803d9c07c',
+  47: 'sha256:513438e2cbbdc00ee8b1e0bdc225183c8c900f9d29895a0e426ee9213e44282e',
 };
 const SUITE_AUTHORITY_DIGEST_TRANSITIONS = Object.freeze({
   40: Object.freeze({
@@ -360,6 +385,10 @@ VERSIONED_RUNTIME_SCENARIO_STATUSES[40] = VERSIONED_RUNTIME_SCENARIO_STATUSES[39
 VERSIONED_RUNTIME_SCENARIO_STATUSES[41] = VERSIONED_RUNTIME_SCENARIO_STATUSES[40];
 VERSIONED_RUNTIME_SCENARIO_STATUSES[42] = VERSIONED_RUNTIME_SCENARIO_STATUSES[41];
 VERSIONED_RUNTIME_SCENARIO_STATUSES[43] = VERSIONED_RUNTIME_SCENARIO_STATUSES[42];
+VERSIONED_RUNTIME_SCENARIO_STATUSES[44] = VERSIONED_RUNTIME_SCENARIO_STATUSES[43];
+VERSIONED_RUNTIME_SCENARIO_STATUSES[45] = VERSIONED_RUNTIME_SCENARIO_STATUSES[44];
+VERSIONED_RUNTIME_SCENARIO_STATUSES[46] = VERSIONED_RUNTIME_SCENARIO_STATUSES[45];
+VERSIONED_RUNTIME_SCENARIO_STATUSES[47] = VERSIONED_RUNTIME_SCENARIO_STATUSES[46];
 const VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_FIELDS = [
   'artifact_policy',
   'common_result_evidence',
@@ -682,6 +711,14 @@ VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[42] =
   VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[41];
 VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[43] =
   VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[42];
+VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[44] =
+  VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[43];
+VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[45] =
+  VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[44];
+VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[46] =
+  VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[45];
+VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[47] =
+  VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS[46];
 // Digests bind public top-level runtime scenario manifest requirements to the
 // suite version. These fields define artifact source policy, common evidence,
 // runtime matrices, scenario-specific required evidence, and host-runner result
@@ -888,6 +925,14 @@ VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[42] =
   VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[41];
 VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[43] =
   VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[42];
+VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[44] =
+  VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[43];
+VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[45] =
+  VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[44];
+VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[46] =
+  VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[45];
+VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[47] =
+  VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS[46];
 const VERSIONED_PASS_FAIL_RULES = {
   5: {
     guaranteed_field_equality: {
@@ -1168,6 +1213,10 @@ VERSIONED_PASS_FAIL_RULES[40] = VERSIONED_PASS_FAIL_RULES[39];
 VERSIONED_PASS_FAIL_RULES[41] = VERSIONED_PASS_FAIL_RULES[40];
 VERSIONED_PASS_FAIL_RULES[42] = VERSIONED_PASS_FAIL_RULES[41];
 VERSIONED_PASS_FAIL_RULES[43] = VERSIONED_PASS_FAIL_RULES[42];
+VERSIONED_PASS_FAIL_RULES[44] = VERSIONED_PASS_FAIL_RULES[43];
+VERSIONED_PASS_FAIL_RULES[45] = VERSIONED_PASS_FAIL_RULES[44];
+VERSIONED_PASS_FAIL_RULES[46] = VERSIONED_PASS_FAIL_RULES[45];
+VERSIONED_PASS_FAIL_RULES[47] = VERSIONED_PASS_FAIL_RULES[46];
 const EXPECTED_AUTHORITY_DOC = 'docs/platform-conformance.md';
 const EXPECTED_DOC_ID = 'platform-conformance';
 
@@ -3023,10 +3072,11 @@ function immutableResolverDetails(source, category, suiteVersion) {
     resolver.hostname === 'durable-workflow.github.io' &&
     versionedProtocolMatch
   ) {
-    if (versionedProtocolMatch[1] !== EXPECTED_VERSIONED_PROTOCOL_SOURCE_VERSION) {
+    const protocolVersion = versionedProtocolMatch[1];
+    if (!RETAINED_VERSIONED_PROTOCOL_SOURCE_DIGESTS[protocolVersion]) {
       throw new Error(
         `${label} must use retained docs protocol version ` +
-          `v${EXPECTED_VERSIONED_PROTOCOL_SOURCE_VERSION}.`,
+          `v${Object.keys(RETAINED_VERSIONED_PROTOCOL_SOURCE_DIGESTS).join(', v')}.`,
       );
     }
 
@@ -3036,7 +3086,7 @@ function immutableResolverDetails(source, category, suiteVersion) {
       repoRoot,
       'static',
       'platform-protocol-specs',
-      `v${EXPECTED_VERSIONED_PROTOCOL_SOURCE_VERSION}`,
+      `v${protocolVersion}`,
       filename,
     );
     discoveryUrl =
@@ -3107,12 +3157,15 @@ function resolverContentDigest(resolverDetails) {
   }
 
   if (resolverDetails.kind === 'versioned_protocol') {
+    const protocolVersion = resolverDetails.revision.slice(1);
     const expectedDigest =
-      EXPECTED_VERSIONED_PROTOCOL_SOURCE_DIGESTS[resolverDetails.filename];
+      RETAINED_VERSIONED_PROTOCOL_SOURCE_DIGESTS[protocolVersion]?.[
+        resolverDetails.filename
+      ];
     if (expectedDigest === undefined) {
       throw new Error(
         `published docs protocol version ` +
-          `v${EXPECTED_VERSIONED_PROTOCOL_SOURCE_VERSION} does not pin ` +
+          `v${protocolVersion} does not pin ` +
           `retained bytes for ${resolverDetails.filename}.`,
       );
     }
@@ -3123,7 +3176,7 @@ function resolverContentDigest(resolverDetails) {
     if (actualDigest !== expectedDigest) {
       throw new Error(
         `published docs protocol version ` +
-          `v${EXPECTED_VERSIONED_PROTOCOL_SOURCE_VERSION} ${resolverDetails.filename} ` +
+          `v${protocolVersion} ${resolverDetails.filename} ` +
           `digest ${actualDigest} must match ${expectedDigest}.`,
       );
     }
@@ -3296,10 +3349,6 @@ function assertStableFixtureSourcesResolve(contract) {
 function assertHistoryExportArtifactHistory(contract, dependency) {
   const history = contract.artifact_version_history?.history_export_bundle;
   const bindings = history?.bindings;
-  const lock = loadJson(
-    workflowAuthorityLockPath,
-    'scripts/workflow-platform-conformance-authority-lock.json',
-  );
 
   if (
     history?.history_mode !== 'immutable_prerelease_schema_bindings' ||
@@ -3325,14 +3374,10 @@ function assertHistoryExportArtifactHistory(contract, dependency) {
     sha256:
       'sha256:e8d6ef0af49a2570007062215d1332c96910743c1449cd8ca2c702bfac6c181c',
   };
-  const sourceRelease = dependency.source_release;
-
-  if (
-    sourceRelease !== lock.workflow_version ||
-    !/^2\.0\.0-rc\.\d+$/.test(sourceRelease || '')
-  ) {
+  const sourceRelease = '2.0.0-rc.42';
+  if (dependency.source_release !== sourceRelease) {
     throw new Error(
-      'history-export source dependency must bind the locked Workflow release.',
+      'history-export source dependency must retain its immutable Workflow release.',
     );
   }
 
@@ -3340,9 +3385,10 @@ function assertHistoryExportArtifactHistory(contract, dependency) {
     `durable-workflow.v2.history-export-bundle@workflow-${sourceRelease}-schema-2`;
   const expectedResolver =
     `https://raw.githubusercontent.com/durable-workflow/workflow/` +
-    `${sourceRelease}/${dependency.source_path}`;
+    `${sourceRelease}/resources/conformance/suite-v43/` +
+    `platform-protocol-specs/history-export-bundle.schema.json`;
   const expectedCurrent = {
-    suite_version: contract.version,
+    suite_version: 43,
     status: 'current',
     lifecycle: 'prerelease',
     schema_version: 2,
@@ -3516,24 +3562,39 @@ function assertWorkerProtocolArtifactHistory(contract) {
     contract.artifact_version_history?.worker_protocol_stream;
   const apiBindings = apiHistory?.bindings;
   const streamBindings = streamHistory?.bindings;
+  const retainedVersions = [
+    {suiteVersion: 43, protocolVersion: '1.15'},
+    {suiteVersion: 44, protocolVersion: '1.16'},
+    {suiteVersion: 45, protocolVersion: '1.17'},
+    {suiteVersion: 46, protocolVersion: '1.18'},
+    {
+      suiteVersion: 47,
+      protocolVersion: EXPECTED_VERSIONED_PROTOCOL_SOURCE_VERSION,
+    },
+  ];
+  const versionedBinding = (
+    surface,
+    filename,
+    suiteVersion,
+    protocolVersion,
+  ) => {
+    const isCurrent = suiteVersion === contract.version;
 
-  if (
-    apiHistory?.history_mode !== 'immutable_lifecycle_bindings' ||
-    !Array.isArray(apiBindings) ||
-    apiBindings.length !== 3 ||
-    streamHistory?.history_mode !== 'immutable_lifecycle_bindings' ||
-    !Array.isArray(streamBindings) ||
-    streamBindings.length !== 2
-  ) {
-    throw new Error(
-      'worker protocol artifact history must declare the complete API and ' +
-        'stream historical bindings plus one current binding for each surface.',
-    );
-  }
-
-  const versionedProtocolBaseUrl =
-    'https://durable-workflow.github.io/platform-protocol-specs/' +
-    `v${EXPECTED_VERSIONED_PROTOCOL_SOURCE_VERSION}`;
+    return {
+      suite_version: suiteVersion,
+      status: isCurrent ? 'current' : 'historical',
+      lifecycle: 'lifecycle_neutral',
+      artifact_id: isCurrent
+        ? `durable-workflow.v2.worker-protocol-${surface}@catalog-16`
+        : `durable-workflow.v2.worker-protocol-${surface}` +
+          `@catalog-16-protocol-${protocolVersion}-history`,
+      resolver_url:
+        `https://durable-workflow.github.io/platform-protocol-specs/` +
+        `v${protocolVersion}/${filename}`,
+      sha256:
+        RETAINED_VERSIONED_PROTOCOL_SOURCE_DIGESTS[protocolVersion][filename],
+    };
+  };
   const expectedApiBindings = [
     {
       suite_version: 40,
@@ -3560,17 +3621,14 @@ function assertWorkerProtocolArtifactHistory(contract) {
         'static/platform-protocol-specs/worker-protocol-api.openapi.yaml',
       sha256: EXPECTED_PROTOCOL_SOURCE_DIGESTS['worker-protocol-api.openapi.yaml'],
     },
-    {
-      suite_version: contract.version,
-      status: 'current',
-      lifecycle: 'lifecycle_neutral',
-      artifact_id: 'durable-workflow.v2.worker-protocol-api@catalog-16',
-      resolver_url: `${versionedProtocolBaseUrl}/worker-protocol-api.openapi.yaml`,
-      sha256:
-        EXPECTED_VERSIONED_PROTOCOL_SOURCE_DIGESTS[
-          'worker-protocol-api.openapi.yaml'
-        ],
-    },
+    ...retainedVersions.map(({suiteVersion, protocolVersion}) =>
+      versionedBinding(
+        'api',
+        'worker-protocol-api.openapi.yaml',
+        suiteVersion,
+        protocolVersion,
+      ),
+    ),
   ];
   const expectedStreamBindings = [
     {
@@ -3588,49 +3646,81 @@ function assertWorkerProtocolArtifactHistory(contract) {
           'worker-protocol-stream.asyncapi.yaml'
         ],
     },
-    {
-      suite_version: contract.version,
-      status: 'current',
-      lifecycle: 'lifecycle_neutral',
-      artifact_id: 'durable-workflow.v2.worker-protocol-stream@catalog-16',
-      resolver_url:
-        `${versionedProtocolBaseUrl}/worker-protocol-stream.asyncapi.yaml`,
-      sha256:
-        EXPECTED_VERSIONED_PROTOCOL_SOURCE_DIGESTS[
-          'worker-protocol-stream.asyncapi.yaml'
-        ],
-    },
+    ...retainedVersions.map(({suiteVersion, protocolVersion}) =>
+      versionedBinding(
+        'stream',
+        'worker-protocol-stream.asyncapi.yaml',
+        suiteVersion,
+        protocolVersion,
+      ),
+    ),
   ];
 
-  for (const [index, label] of [
-    [0, 'beta historical binding'],
-    [1, 'protocol 1.13 historical binding'],
-    [2, 'current binding'],
-  ]) {
-    assertJsonEqual(
-      apiBindings[index],
-      expectedApiBindings[index],
-      `artifact_version_history.worker_protocol_api ${label}`,
+  if (
+    apiHistory?.history_mode !== 'immutable_lifecycle_bindings' ||
+    !Array.isArray(apiBindings) ||
+    apiBindings.length !== expectedApiBindings.length ||
+    streamHistory?.history_mode !== 'immutable_lifecycle_bindings' ||
+    !Array.isArray(streamBindings) ||
+    streamBindings.length !== expectedStreamBindings.length
+  ) {
+    throw new Error(
+      'worker protocol artifact history must declare the complete API and ' +
+        'stream historical bindings plus one current binding for each surface.',
     );
   }
-  assertJsonEqual(
-    streamBindings[0],
-    expectedStreamBindings[0],
-    'artifact_version_history.worker_protocol_stream historical binding',
-  );
-  assertJsonEqual(
-    streamBindings[1],
-    expectedStreamBindings[1],
-    'artifact_version_history.worker_protocol_stream current binding',
-  );
+
+  for (const [index, expected] of expectedApiBindings.entries()) {
+    assertJsonEqual(
+      apiBindings[index],
+      expected,
+      `artifact_version_history.worker_protocol_api ${expected.status} ` +
+        `binding for suite ${expected.suite_version}`,
+    );
+  }
+  for (const [index, expected] of expectedStreamBindings.entries()) {
+    assertJsonEqual(
+      streamBindings[index],
+      expected,
+      `artifact_version_history.worker_protocol_stream ${expected.status} ` +
+        `binding for suite ${expected.suite_version}`,
+    );
+  }
+
+  for (const [surface, bindings] of [
+    ['API', expectedApiBindings],
+    ['stream', expectedStreamBindings],
+  ]) {
+    for (const binding of bindings.filter(source =>
+      source.resolver_url.startsWith(
+        'https://durable-workflow.github.io/platform-protocol-specs/v',
+      ),
+    )) {
+      const resolverDetails = immutableResolverDetails(
+        binding,
+        `worker protocol ${surface} history`,
+        contract.version,
+      );
+      const actualDigest = resolverContentDigest(resolverDetails);
+      if (actualDigest !== binding.sha256) {
+        throw new Error(
+          `worker protocol ${surface} suite ${binding.suite_version} bytes ` +
+            `must match retained digest ${binding.sha256}.`,
+        );
+      }
+    }
+  }
+
+  const expectedCurrentApi = expectedApiBindings.at(-1);
+  const expectedCurrentStream = expectedStreamBindings.at(-1);
 
   const activeSources =
     contract.fixture_catalog?.worker_task_lifecycle?.sources || [];
   const activeApiSources = activeSources.filter(
-    source => source?.artifact_id === expectedApiBindings[2].artifact_id,
+    source => source?.artifact_id === expectedCurrentApi.artifact_id,
   );
   const activeStreamSources = activeSources.filter(
-    source => source?.artifact_id === expectedStreamBindings[1].artifact_id,
+    source => source?.artifact_id === expectedCurrentStream.artifact_id,
   );
   if (activeApiSources.length !== 1) {
     throw new Error(
@@ -3644,8 +3734,8 @@ function assertWorkerProtocolArtifactHistory(contract) {
   }
 
   for (const [source, binding, label] of [
-    [activeApiSources[0], expectedApiBindings[2], 'API'],
-    [activeStreamSources[0], expectedStreamBindings[1], 'stream'],
+    [activeApiSources[0], expectedCurrentApi, 'API'],
+    [activeStreamSources[0], expectedCurrentStream, 'stream'],
   ]) {
     const expectedSource = {...binding};
     delete expectedSource.suite_version;

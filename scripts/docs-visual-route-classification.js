@@ -3,6 +3,7 @@ const path = require('node:path');
 const {spawnSync} = require('node:child_process');
 const yaml = require('js-yaml');
 const {
+  CURRENT_V2_CONFORMANCE_FIXTURE_CATALOG_SECTION,
   PUBLIC_MANIFESTS_SECTION,
   SERVER_CONFIG_SECTION,
 } = require('./section-capture-qualification');
@@ -16,6 +17,7 @@ const VISUAL_SHELL_PATHS = Object.freeze([
   'src/theme/',
 ]);
 const ROUTE_SPECIFIC_SECTIONS = Object.freeze(new Map([
+  ['docs/platform-conformance.md', CURRENT_V2_CONFORMANCE_FIXTURE_CATALOG_SECTION],
   ['docs/polyglot/server-config-reference.md', SERVER_CONFIG_SECTION],
   ['src/pages/docs/platform-conformance.mdx', PUBLIC_MANIFESTS_SECTION],
 ]));

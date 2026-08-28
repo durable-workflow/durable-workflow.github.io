@@ -68,6 +68,78 @@ a[class^='skipToContent']:focus {
   );
 }
 
+/* Keep the conformance fixture catalog inside the article column beside the sticky TOC. */
+[class~='docs-doc-id-platform-conformance'] #fixture-catalog {
+  scroll-margin-bottom: max(
+    calc(var(--ifm-navbar-height) + 2rem),
+    calc(100vh - 20rem)
+  );
+}
+
+[class~='docs-doc-id-platform-conformance']
+  #fixture-catalog + p + table {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+  overflow: visible;
+}
+
+[class~='docs-doc-id-platform-conformance']
+  #fixture-catalog + p + table :is(th, td, code) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+[class~='docs-doc-id-platform-conformance']
+  #fixture-catalog + p + table :is(th, td):nth-child(1) {
+  width: 30%;
+}
+
+[class~='docs-doc-id-platform-conformance']
+  #fixture-catalog + p + table :is(th, td):nth-child(2) {
+  width: 10%;
+}
+
+[class~='docs-doc-id-platform-conformance']
+  #fixture-catalog + p + table :is(th, td):nth-child(3) {
+  width: 60%;
+}
+
+@media (max-width: 800px) {
+  [class~='docs-doc-id-platform-conformance']
+    #fixture-catalog + p + table :is(th, td):nth-child(1) {
+    width: 30%;
+  }
+
+  [class~='docs-doc-id-platform-conformance']
+    #fixture-catalog + p + table :is(th, td):nth-child(2) {
+    width: 22%;
+  }
+
+  [class~='docs-doc-id-platform-conformance']
+    #fixture-catalog + p + table :is(th, td):nth-child(3) {
+    width: 48%;
+  }
+}
+
+@media (max-width: 480px) {
+  [class~='docs-doc-id-platform-conformance']
+    #fixture-catalog + p + table :is(th, td):nth-child(1) {
+    width: 29%;
+  }
+
+  [class~='docs-doc-id-platform-conformance']
+    #fixture-catalog + p + table :is(th, td):nth-child(2) {
+    width: 25%;
+  }
+
+  [class~='docs-doc-id-platform-conformance']
+    #fixture-catalog + p + table :is(th, td):nth-child(3) {
+    width: 46%;
+  }
+}
+
 /* Keep the Server Config matrix inside the article column beside the sticky TOC. */
 [class~='docs-doc-id-polyglot/server-config-reference'] .theme-doc-markdown table {
   display: table;

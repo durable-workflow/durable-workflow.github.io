@@ -29,6 +29,26 @@ const PUBLIC_MANIFESTS_SECTION = Object.freeze({
     Object.freeze({name: 'short-height', width: 1440, height: 500}),
   ]),
 });
+const CURRENT_V2_CONFORMANCE_FIXTURE_CATALOG_SECTION = Object.freeze({
+  id: 'current-v2-conformance-fixture-catalog',
+  navigation_configuration: 'current-v2',
+  route: '/docs/2.0/platform-conformance/',
+  state: 'fixture-catalog',
+  state_scope: 'section',
+  scroll_target: '#fixture-catalog',
+  required_visible: Object.freeze(['#fixture-catalog']),
+  interaction: Object.freeze({
+    action: 'scroll-to',
+    selector: '#fixture-catalog',
+    block: 'center',
+  }),
+  viewports: Object.freeze([
+    Object.freeze({name: 'desktop', width: 1440, height: 900}),
+    Object.freeze({name: 'intermediate', width: 768, height: 1024}),
+    Object.freeze({name: 'mobile', width: 390, height: 844}),
+    Object.freeze({name: 'short-height', width: 1280, height: 500}),
+  ]),
+});
 const SERVER_CONFIG_SECTION = Object.freeze({
   id: 'server-config-external-payload-settings',
   navigation_configuration: 'current-v2',
@@ -251,6 +271,7 @@ function validateSectionCaptureEvidence({
 }
 
 module.exports = {
+  CURRENT_V2_CONFORMANCE_FIXTURE_CATALOG_SECTION,
   MANIFEST_SCHEMA,
   PUBLIC_MANIFESTS_SECTION,
   REPORT_SCHEMA,

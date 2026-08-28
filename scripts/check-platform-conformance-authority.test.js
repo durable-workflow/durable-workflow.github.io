@@ -218,11 +218,21 @@ assert.throws(
 
 const betaLabeledCurrentBinding = clone(suite);
 betaLabeledCurrentBinding.artifact_version_history.worker_protocol_api
-  .bindings[2].lifecycle = 'beta';
+  .bindings.at(-1).lifecycle = 'beta';
 assert.throws(
   () => assertWorkerProtocolArtifactHistory(betaLabeledCurrentBinding),
   /current binding/,
   'the active worker protocol history entry must remain lifecycle-neutral',
+);
+
+const mutatedProtocol118History = clone(suite);
+mutatedProtocol118History.artifact_version_history.worker_protocol_api.bindings.find(
+  binding => binding.suite_version === 46,
+).sha256 = `sha256:${'0'.repeat(64)}`;
+assert.throws(
+  () => assertWorkerProtocolArtifactHistory(mutatedProtocol118History),
+  /historical binding for suite 46/,
+  'protocol 1.18 history must retain its immutable API digest',
 );
 
 const staleActiveWorkerStreamBinding = clone(suite);
@@ -283,8 +293,8 @@ staleHistoryExportRelease.source_dependencies[
 ].source_release = '2.0.0-rc.41';
 assert.throws(
   () => assertStableSourceDependenciesResolve(staleHistoryExportRelease),
-  /locked Workflow release/,
-  'the history-export dependency must retain the Workflow release named by the authority lock',
+  /immutable Workflow release/,
+  'the history-export dependency must retain its original Workflow release identity',
 );
 
 const mutatedHistoricalExportBinding = clone(suite);
@@ -293,7 +303,7 @@ mutatedHistoricalExportBinding.artifact_version_history.history_export_bundle
 assert.throws(
   () => assertStableSourceDependenciesResolve(mutatedHistoricalExportBinding),
   /historical binding/,
-  'suite 43 must retain the immutable history-export schema version 1 binding',
+  'the immutable history-export schema version 1 binding must be retained',
 );
 
 const mismatchedCurrentExportBinding = clone(suite);

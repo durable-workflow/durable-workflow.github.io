@@ -99,8 +99,8 @@ the catalog binding.
 | Category | Status | Consumer-resolvable authority |
 | --- | --- | --- |
 | `control_plane_request_response` | `stable` | [`durable-workflow.v2.control-plane-api@catalog-16`](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/f781ced1ae33c8697835bd527a125bdf3eaf4321/static/platform-protocol-specs/control-plane-api.openapi.yaml) |
-| `worker_task_lifecycle` | `stable` | [`durable-workflow.v2.worker-protocol-api@catalog-16`](https://durable-workflow.github.io/platform-protocol-specs/v1.15/worker-protocol-api.openapi.yaml) |
-| `worker_task_lifecycle` | `stable` | [`durable-workflow.v2.worker-protocol-stream@catalog-16`](https://durable-workflow.github.io/platform-protocol-specs/v1.15/worker-protocol-stream.asyncapi.yaml) |
+| `worker_task_lifecycle` | `stable` | [`durable-workflow.v2.worker-protocol-api@catalog-16`](https://durable-workflow.github.io/platform-protocol-specs/v1.19/worker-protocol-api.openapi.yaml) |
+| `worker_task_lifecycle` | `stable` | [`durable-workflow.v2.worker-protocol-stream@catalog-16`](https://durable-workflow.github.io/platform-protocol-specs/v1.19/worker-protocol-stream.asyncapi.yaml) |
 | `signal_query_runtime_contract` | `stable` | [`durable-workflow.v2.platform-conformance.runtime-scenarios/signal_query_runtime_contract@38`](https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/signal-query-runtime-scenarios.json) |
 | `workflow_update_runtime_contract` | `stable` | [`durable-workflow.v2.platform-conformance.runtime-scenarios/workflow_update_runtime_contract@38`](https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/workflow-update-runtime-scenarios.json) |
 | `search_attribute_runtime_contract` | `stable` | [`durable-workflow.v2.platform-conformance.runtime-scenarios/search_attribute_runtime_contract@38`](https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/search-attribute-runtime-scenarios.json) |
@@ -125,10 +125,13 @@ The current CLI contract is the
 closure, which publishes the Avro-only payload fields without rewriting v2 or
 v3 bytes.
 
-The active worker-protocol API source uses the same lifecycle-neutral
-`durable-workflow.v2.worker-protocol-api@catalog-16` bytes as the
-[Platform Protocol Specs](/docs/2.0/platform-protocol-specs) catalog. The
-former beta-worded bytes remain available only as the explicitly historical
+The active worker-protocol API and stream sources use the lifecycle-neutral
+protocol 1.19 bytes recorded by
+`durable-workflow.v2.worker-protocol-api@catalog-16` and
+`durable-workflow.v2.worker-protocol-stream@catalog-16`. Protocol revisions
+1.15 through 1.18 remain available at the versioned resolver URLs retained by
+the suite history. The former beta-worded bytes remain available only as the
+explicitly historical
 [`durable-workflow.v2.worker-protocol-api@catalog-16-beta-history`](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/e990bc36731463cc5b2cb2a9175dbccfdea61704/static/platform-protocol-specs/worker-protocol-api.openapi.yaml)
 binding recorded in the suite manifest.
 

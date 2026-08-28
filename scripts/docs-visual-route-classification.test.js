@@ -24,6 +24,29 @@ assert.equal(
 );
 assert.equal(containsMarkdownTable('| A | B |\n| --- | --- |\n| one | two |'), true);
 
+const platformConformance = classifyChangedDocumentation({
+  changedFiles: ['docs/platform-conformance.md'],
+  readSource: () => '| Category | Authority |\n| --- | --- |\n| worker | protocol |',
+});
+const fixtureCatalog = platformConformance.sections.find(section => (
+  section.id === 'current-v2-conformance-fixture-catalog'
+));
+assert.equal(
+  fixtureCatalog.route,
+  '/docs/2.0/platform-conformance/',
+  'the current conformance source must select its exact versioned route',
+);
+assert.equal(
+  fixtureCatalog.navigation_configuration,
+  'current-v2',
+  'the current conformance source must retain the explicit 2.0 navigation configuration',
+);
+assert.equal(
+  fixtureCatalog.scroll_target,
+  '#fixture-catalog',
+  'the current conformance source must select its affected fixture catalog',
+);
+
 const serverConfig = classifyChangedDocumentation({
   changedFiles: ['docs/polyglot/server-config-reference.md'],
   readSource: () => '| Variable | Default |\n| --- | --- |',
