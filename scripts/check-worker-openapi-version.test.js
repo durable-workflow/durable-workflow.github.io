@@ -43,6 +43,45 @@ assert.deepStrictEqual(
 );
 assert.strictEqual(heartbeatDetails.oneOf[1].additionalProperties, true);
 
+const localActivities =
+  spec['x-durable-workflow-portable-worker-affinity-contract'].local_activities;
+assert.strictEqual(
+  localActivities.attempt_reports_required_from_protocol_version,
+  '1.19',
+);
+assert.strictEqual(localActivities.retained_nested_object_unknown_fields, 'ignore');
+assert.strictEqual(
+  localActivities.strict_nested_object_shape_from_protocol_version,
+  '1.19',
+);
+
+const localActivityCommand = spec.components.schemas.WorkflowCommand.allOf.find(
+  branch => branch.if?.properties?.type?.const === 'record_local_activity',
+);
+assert(
+  localActivityCommand,
+  'the current worker OpenAPI must publish record_local_activity',
+);
+assert.strictEqual(
+  localActivityCommand.then.properties.attempts[
+    'x-durable-workflow-minimum-protocol-version'
+  ],
+  '1.19',
+);
+for (const schemaName of [
+  'LocalActivityAttemptReport',
+  'LocalActivityHeartbeatReport',
+  'LocalActivityRetryPolicy',
+]) {
+  assert.strictEqual(
+    spec.components.schemas[schemaName][
+      'x-durable-workflow-minimum-protocol-version'
+    ],
+    '1.19',
+    `${schemaName} must publish its protocol 1.19 field gate`,
+  );
+}
+
 const negotiation = spec['x-durable-workflow-worker-protocol-negotiation'];
 assert.strictEqual(
   negotiation.default_advertised_version,
