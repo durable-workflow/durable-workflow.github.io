@@ -28,23 +28,43 @@ const platformConformance = classifyChangedDocumentation({
   changedFiles: ['docs/platform-conformance.md'],
   readSource: () => '| Category | Authority |\n| --- | --- |\n| worker | protocol |',
 });
-const fixtureCatalog = platformConformance.sections.find(section => (
-  section.id === 'current-v2-conformance-fixture-catalog'
+const authorityRoles = platformConformance.sections.find(section => (
+  section.id === 'conformance-worker-protocol-authority-roles'
 ));
 assert.equal(
-  fixtureCatalog.route,
+  authorityRoles.route,
   '/docs/2.0/platform-conformance/',
   'the current conformance source must select its exact versioned route',
 );
 assert.equal(
-  fixtureCatalog.navigation_configuration,
+  authorityRoles.navigation_configuration,
   'current-v2',
   'the current conformance source must retain the explicit 2.0 navigation configuration',
 );
 assert.equal(
-  fixtureCatalog.scroll_target,
-  '#fixture-catalog',
-  'the current conformance source must select its affected fixture catalog',
+  authorityRoles.scroll_target,
+  '[data-worker-protocol-authority-roles="true"] > p',
+  'the current conformance source must select its affected authority-role table',
+);
+assert.equal(
+  authorityRoles.geometry_scope,
+  '[data-worker-protocol-authority-roles="true"]',
+  'authority-role reachability must exclude controls outside the selected component',
+);
+
+const protocolAuthorityComponent = classifyChangedDocumentation({
+  changedFiles: ['src/components/WorkerProtocolAuthorityRoles/index.js'],
+});
+assert.deepEqual(
+  new Set(protocolAuthorityComponent.sections
+    .filter(section => section.state === 'worker-protocol-authority-roles')
+    .map(section => section.route)),
+  new Set([
+    '/docs/2.0/compatibility/',
+    '/docs/2.0/platform-protocol-specs/',
+    '/docs/2.0/platform-conformance/',
+  ]),
+  'the shared authority component must select all three explanatory surfaces',
 );
 
 const serverConfig = classifyChangedDocumentation({

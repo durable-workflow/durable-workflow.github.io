@@ -19,6 +19,7 @@ keywords:
 ---
 
 import PublicAuthorityIdentity from '@site/src/components/PublicAuthorityIdentity';
+import WorkerProtocolAuthorityRoles from '@site/src/components/WorkerProtocolAuthorityRoles';
 import protocolCatalog from '@site/static/platform-protocol-specs.json';
 
 # Version Compatibility
@@ -86,6 +87,8 @@ The catalog is advertised as `platform_protocol_specs` in
 Every catalog entry's `surface_family` must exist in the contract above;
 docs-site CI validates the catalog, resolves each public spec URL, and rejects
 repository-local authority fields.
+
+<WorkerProtocolAuthorityRoles />
 
 Every required platform protocol catalog entry is marked `published`; the
 invocable carrier entry remains `in_progress`. Every available entry links
@@ -264,10 +267,11 @@ manifests provide a second, fail-closed check:
 | Python SDK | `%%artifact.pythonSdkVersion%%` | `2` | `1.1` |
 | Rust SDK | `%%artifact.rustSdkVersion%%` | `2` | `1.2` |
 
-The server advertises worker protocol `1.13`. It accepts request headers
-from the same major with a minor less than or equal to the advertised minor,
-then returns the advertised version. Missing or malformed headers, different
-majors, and worker minors ahead of the server fail closed. The CLI validates
+The current published Server advertises the worker protocol version shown in
+the authority-role table above. It accepts request headers from the same major
+with a minor less than or equal to the advertised minor, then returns the
+advertised version. Missing or malformed headers, different majors, and worker
+minors ahead of the server fail closed. The CLI validates
 `control_plane.version: "2"`.
 
 The server's top-level `version` is build identity. Clients must use the

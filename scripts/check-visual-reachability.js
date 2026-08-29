@@ -12,6 +12,7 @@ const {ARTIFACT_PINS} = require('./public-artifact-versions');
 const {
   MANIFEST_SCHEMA: SECTION_MANIFEST_SCHEMA,
   PUBLIC_MANIFESTS_SECTION,
+  failedSectionCaptureDiagnostics,
   requiredSectionCaptures,
   resolveCandidateCommit,
   validateSectionCaptureEvidence,
@@ -181,6 +182,9 @@ async function captureSectionState({
   try {
     if (prepareBeforeScroll) await prepareBeforeScroll(page);
     await page.locator(section.scroll_target).waitFor({state: 'visible'});
+    if (section.geometry_scope) {
+      await page.locator(section.geometry_scope).waitFor({state: 'visible'});
+    }
     await page.evaluate(interaction => {
       window.scrollTo(0, 0);
       document.querySelector(interaction.selector)?.scrollIntoView({
@@ -208,7 +212,9 @@ async function captureSectionState({
       );
     }
 
-    const geometry = await page.evaluate(collectReachabilityGeometry);
+    const geometry = await page.evaluate(collectReachabilityGeometry, {
+      scopeSelector: section.geometry_scope || null,
+    });
     const qualificationFailures = captureFailures({
       geometry,
       consoleErrors,
@@ -226,6 +232,7 @@ async function captureSectionState({
       state: section.state,
       state_scope: section.state_scope,
       scroll_target: section.scroll_target,
+      geometry_scope: section.geometry_scope,
       required_visible: section.required_visible,
       selection_reason: section.selection_reason,
       interaction: section.interaction,
@@ -248,12 +255,14 @@ async function captureSectionState({
       state: section.state,
       state_scope: section.state_scope,
       scroll_target: section.scroll_target,
+      geometry_scope: section.geometry_scope,
       required_visible: section.required_visible,
       selection_reason: section.selection_reason,
       interaction: section.interaction,
       viewport,
       candidate_commit: candidateCommit,
       capture_exit_status: captureExitStatus,
+      qualification_failures: qualificationFailures,
       screenshot: path.basename(screenshot),
       report: path.basename(reportPath),
       unreachable_control_count: geometry.unreachable_controls.length,
@@ -846,6 +855,7 @@ async function main() {
           route: section.route,
           state: section.state,
           scroll_target: section.scroll_target,
+          geometry_scope: section.geometry_scope,
           selection_reason: section.selection_reason,
         })),
       },
@@ -862,6 +872,9 @@ async function main() {
       generated_at: new Date().toISOString(),
       checks,
     });
+    for (const diagnostic of failedSectionCaptureDiagnostics(sectionChecks)) {
+      process.stderr.write(`Section capture failed: ${diagnostic}\n`);
+    }
     const consumedSectionCaptures = validateSectionCaptureEvidence({
       manifest: sectionManifest,
       evidenceDirectory: outputDirectory,

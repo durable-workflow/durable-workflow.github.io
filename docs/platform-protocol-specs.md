@@ -21,6 +21,7 @@ keywords:
 
 import PublicAuthorityIdentity from '@site/src/components/PublicAuthorityIdentity';
 import ProtocolCatalog from '@site/src/components/ProtocolCatalog';
+import WorkerProtocolAuthorityRoles from '@site/src/components/WorkerProtocolAuthorityRoles';
 import protocolCatalog from '@site/static/platform-protocol-specs.json';
 
 # Platform Protocol Specs
@@ -56,6 +57,8 @@ The catalog is also available through:
 The JSON URL is the machine-consumable catalog authority. The server re-exports
 the same catalog so clients can discover the active protocol surface without
 assuming a repository layout.
+
+<WorkerProtocolAuthorityRoles />
 
 ## Consumer fields
 

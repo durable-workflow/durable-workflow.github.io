@@ -16,6 +16,7 @@ keywords:
 ---
 
 import PublicAuthorityIdentity from '@site/src/components/PublicAuthorityIdentity';
+import WorkerProtocolAuthorityRoles from '@site/src/components/WorkerProtocolAuthorityRoles';
 import platformConformanceContract from '@site/static/platform-conformance-contract.json';
 
 # Platform Conformance Suite
@@ -42,6 +43,8 @@ enumerates a surface family or stability rule, it must match the
 surface-stability contract. The compatibility authority defines what
 the contract is; this page defines how an implementation proves it
 follows that contract.
+
+<WorkerProtocolAuthorityRoles />
 
 ## Public Conformance Authorities
 
@@ -125,12 +128,14 @@ The current CLI contract is the
 closure, which publishes the Avro-only payload fields without rewriting v2 or
 v3 bytes.
 
-The active worker-protocol API and stream sources use the lifecycle-neutral
+The current conformance-suite worker-protocol target uses the lifecycle-neutral
 protocol 1.19 bytes recorded by
 `durable-workflow.v2.worker-protocol-api@catalog-16` and
 `durable-workflow.v2.worker-protocol-stream@catalog-16`. Protocol revisions
 1.15 through 1.18 remain available at the versioned resolver URLs retained by
-the suite history. The former beta-worded bytes remain available only as the
+the suite history. These versioned fixtures do not replace the unversioned
+current published Server protocol authority. The former beta-worded bytes
+remain available only as the
 explicitly historical
 [`durable-workflow.v2.worker-protocol-api@catalog-16-beta-history`](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/e990bc36731463cc5b2cb2a9175dbccfdea61704/static/platform-protocol-specs/worker-protocol-api.openapi.yaml)
 binding recorded in the suite manifest.

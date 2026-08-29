@@ -4,9 +4,11 @@ const os = require('node:os');
 const path = require('node:path');
 const yaml = require('js-yaml');
 const {
+  COMPATIBILITY_WORKER_PROTOCOL_AUTHORITY_SECTION,
   MANIFEST_SCHEMA,
   REPORT_SCHEMA,
   captureKey,
+  failedSectionCaptureDiagnostics,
   requiredSectionCaptures,
   resolveCandidateCommit,
   validateSectionCaptureEvidence,
@@ -27,6 +29,7 @@ function writeEvidence(directory, required, overrides = {}) {
     console_errors: [],
     page_errors: [],
     geometry: {
+      scope_selector: required.geometry_scope || null,
       horizontal_overflow: false,
       unreachable_controls: [],
       sticky_navigation_intersections: [],
@@ -112,6 +115,27 @@ function assertQualificationWorkflowConsumesEvidence() {
 }
 
 assertQualificationWorkflowConsumesEvidence();
+assert.equal(
+  requiredSectionCaptures(COMPATIBILITY_WORKER_PROTOCOL_AUTHORITY_SECTION)
+    .every(capture => (
+      capture.geometry_scope === '[data-worker-protocol-authority-roles="true"]'
+    )),
+  true,
+  'authority-role captures must scope geometry to the selected component',
+);
+assert.deepEqual(
+  failedSectionCaptureDiagnostics([{
+    section_id: 'authority-roles',
+    state: 'selected',
+    viewport: {name: 'mobile', width: 390, height: 844},
+    capture_exit_status: 1,
+    qualification_failures: ['unreachable controls', 'sticky navigation intersections'],
+  }]),
+  [
+    'authority-roles:selected:mobile:390:844: unreachable controls, sticky navigation intersections',
+  ],
+  'aggregate diagnostics must name each failed capture and its qualification failures',
+);
 assert.throws(
   () => resolveCandidateCommit({
     cwd: process.cwd(),
@@ -131,6 +155,28 @@ withEvidence(directory => {
     }).length,
     8,
     'the complete exact-revision section matrix must pass',
+  );
+});
+
+withEvidence(directory => {
+  const required = requiredSectionCaptures(
+    COMPATIBILITY_WORKER_PROTOCOL_AUTHORITY_SECTION,
+  )[0];
+  const check = writeEvidence(directory, required);
+  const reportPath = path.join(directory, check.report);
+  const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+  report.geometry_scope = null;
+  fs.writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`);
+
+  assert.throws(
+    () => validateSectionCaptureEvidence({
+      manifest: manifest([check]),
+      evidenceDirectory: directory,
+      candidateCommit: CANDIDATE_COMMIT,
+      requiredCaptures: [required],
+    }),
+    /wrong geometry_scope/,
+    'an unscoped report must not satisfy a section-scoped capture',
   );
 });
 

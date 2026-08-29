@@ -1,4 +1,4 @@
-function collectReachabilityGeometry() {
+function collectReachabilityGeometry(options = {}) {
   const viewport = {
     left: 0,
     top: 0,
@@ -72,6 +72,18 @@ function collectReachabilityGeometry() {
       .filter(hasArea);
   };
   const nativeInteractiveSelector = 'input, select, textarea, button, a[href], summary';
+  const scopeSelector = options.scopeSelector || null;
+  const scopeElement = scopeSelector ? document.querySelector(scopeSelector) : document;
+  if (!scopeElement) {
+    throw new Error(`Reachability geometry scope not found: ${scopeSelector}`);
+  }
+  const scopedElements = selector => {
+    const descendants = [...scopeElement.querySelectorAll(selector)];
+    if (scopeElement instanceof Element && scopeElement.matches(selector)) {
+      descendants.unshift(scopeElement);
+    }
+    return descendants;
+  };
   const interactiveRoles = new Set([
     'button',
     'checkbox',
@@ -92,25 +104,24 @@ function collectReachabilityGeometry() {
     'textbox',
     'treeitem',
   ]);
-  const interactiveElements = [
-    ...document.querySelectorAll(`${nativeInteractiveSelector}, [role]`),
-  ].filter(element => {
-    if (!visible(element)) {
-      return false;
-    }
-    if (element.matches('input[type="hidden"], :disabled, [aria-disabled="true"]')) {
-      return false;
-    }
-    if (element.closest('[aria-disabled="true"], [inert]')) {
-      return false;
-    }
-    if (element.matches(nativeInteractiveSelector)) {
-      return true;
-    }
+  const interactiveElements = scopedElements(`${nativeInteractiveSelector}, [role]`)
+    .filter(element => {
+      if (!visible(element)) {
+        return false;
+      }
+      if (element.matches('input[type="hidden"], :disabled, [aria-disabled="true"]')) {
+        return false;
+      }
+      if (element.closest('[aria-disabled="true"], [inert]')) {
+        return false;
+      }
+      if (element.matches(nativeInteractiveSelector)) {
+        return true;
+      }
 
-    const roles = String(element.getAttribute('role') || '').toLowerCase().split(/\s+/);
-    return roles.some(role => interactiveRoles.has(role));
-  });
+      const roles = String(element.getAttribute('role') || '').toLowerCase().split(/\s+/);
+      return roles.some(role => interactiveRoles.has(role));
+    });
   const isRelatedHit = (hit, control) => {
     if (!hit) {
       return false;
@@ -282,13 +293,13 @@ function collectReachabilityGeometry() {
   const floatingElements = [...document.querySelectorAll('body *')]
     .filter(element => visible(element) && !navbar?.contains(element))
     .filter(element => ['fixed', 'sticky'].includes(getComputedStyle(element).position));
-  const overlapCandidates = [...document.querySelectorAll([
+  const overlapCandidates = scopedElements([
     'main td',
     'main th',
     'main a[href]',
     'main button',
     'main summary',
-  ].join(','))].filter(visible);
+  ].join(',')).filter(visible);
   const overlappingFloatingElements = floatingElements.flatMap(floating => {
     const floatingBox = floating.getBoundingClientRect();
     const overlaps = overlapCandidates
@@ -327,7 +338,7 @@ function collectReachabilityGeometry() {
       rect: describeRect(control.getBoundingClientRect()),
     }))
     .slice(0, 25);
-  const clippedText = [...document.querySelectorAll([
+  const clippedText = scopedElements([
     'main h1',
     'main h2',
     'main h3',
@@ -337,7 +348,7 @@ function collectReachabilityGeometry() {
     'main th',
     'main td',
     'main code',
-  ].join(','))]
+  ].join(','))
     .filter(element => visible(element) && isClipped(element))
     .map(element => ({
       tag: element.tagName.toLowerCase(),
@@ -349,9 +360,13 @@ function collectReachabilityGeometry() {
   return {
     document_width: document.documentElement.scrollWidth,
     viewport_width: document.documentElement.clientWidth,
+    scope_selector: scopeSelector,
+    scope_rect: scopeElement instanceof Element
+      ? describeRect(scopeElement.getBoundingClientRect())
+      : null,
     horizontal_overflow:
       document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
-    visible_element_count: [...document.querySelectorAll('body *')].filter(visible).length,
+    visible_element_count: scopedElements('*').filter(visible).length,
     interactive_control_count: interactiveElements.length,
     unreachable_controls: unreachableControls,
     sticky_navigation_intersections: stickyNavigationIntersections,

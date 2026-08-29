@@ -3,9 +3,11 @@ const path = require('node:path');
 const {spawnSync} = require('node:child_process');
 const yaml = require('js-yaml');
 const {
-  CURRENT_V2_CONFORMANCE_FIXTURE_CATALOG_SECTION,
+  COMPATIBILITY_WORKER_PROTOCOL_AUTHORITY_SECTION,
+  CONFORMANCE_WORKER_PROTOCOL_AUTHORITY_SECTION,
   PORTABLE_WORKER_AFFINITY_SDK_SUPPORT_SECTION,
   PUBLIC_MANIFESTS_SECTION,
+  PROTOCOL_SPECS_WORKER_PROTOCOL_AUTHORITY_SECTION,
   SERVER_CONFIG_SECTION,
 } = require('./section-capture-qualification');
 
@@ -22,12 +24,19 @@ const ROUTE_SPECIFIC_SECTIONS = Object.freeze(new Map([
     'docs/features/portable-worker-affinity.md',
     PORTABLE_WORKER_AFFINITY_SDK_SUPPORT_SECTION,
   ],
-  ['docs/platform-conformance.md', CURRENT_V2_CONFORMANCE_FIXTURE_CATALOG_SECTION],
+  ['docs/compatibility.md', COMPATIBILITY_WORKER_PROTOCOL_AUTHORITY_SECTION],
+  ['docs/platform-conformance.md', CONFORMANCE_WORKER_PROTOCOL_AUTHORITY_SECTION],
+  ['docs/platform-protocol-specs.md', PROTOCOL_SPECS_WORKER_PROTOCOL_AUTHORITY_SECTION],
   ['docs/polyglot/server-config-reference.md', SERVER_CONFIG_SECTION],
   ['src/pages/docs/platform-conformance.mdx', PUBLIC_MANIFESTS_SECTION],
 ]));
 const COMPONENT_SECTIONS = Object.freeze(new Map([
-  ['src/components/ConformanceRunLedger/', PUBLIC_MANIFESTS_SECTION],
+  ['src/components/ConformanceRunLedger/', Object.freeze([PUBLIC_MANIFESTS_SECTION])],
+  ['src/components/WorkerProtocolAuthorityRoles/', Object.freeze([
+    COMPATIBILITY_WORKER_PROTOCOL_AUTHORITY_SECTION,
+    PROTOCOL_SPECS_WORKER_PROTOCOL_AUTHORITY_SECTION,
+    CONFORMANCE_WORKER_PROTOCOL_AUTHORITY_SECTION,
+  ])],
 ]));
 
 function normalizeRoute(route) {
@@ -134,7 +143,9 @@ function classifyChangedDocumentation({
     const component = [...COMPONENT_SECTIONS.entries()]
       .find(([prefix]) => file.startsWith(prefix));
     if (component) {
-      add(component[1], `component surface selected from ${file}`);
+      for (const section of component[1]) {
+        add(section, `component surface selected from ${file}`);
+      }
       continue;
     }
 

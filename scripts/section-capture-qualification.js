@@ -93,6 +93,46 @@ const SERVER_CONFIG_SECTION = Object.freeze({
     Object.freeze({name: 'short-height', width: 1280, height: 360}),
   ]),
 });
+function workerProtocolAuthoritySection(id, route, scrollTarget) {
+  return Object.freeze({
+    id,
+    navigation_configuration: 'current-v2',
+    route,
+    state: 'worker-protocol-authority-roles',
+    state_scope: 'section',
+    scroll_target: scrollTarget,
+    geometry_scope: '[data-worker-protocol-authority-roles="true"]',
+    required_visible: Object.freeze([
+      '#worker-protocol-authority-roles',
+      '[data-worker-protocol-authority-roles="true"]',
+    ]),
+    interaction: Object.freeze({
+      action: 'scroll-to',
+      selector: scrollTarget,
+      block: 'center',
+    }),
+    viewports: Object.freeze([
+      Object.freeze({name: 'desktop', width: 1440, height: 900}),
+      Object.freeze({name: 'intermediate', width: 768, height: 1024}),
+      Object.freeze({name: 'mobile', width: 390, height: 844}),
+    ]),
+  });
+}
+const COMPATIBILITY_WORKER_PROTOCOL_AUTHORITY_SECTION = workerProtocolAuthoritySection(
+  'compatibility-worker-protocol-authority-roles',
+  '/docs/2.0/compatibility/',
+  '#worker-protocol-authority-roles',
+);
+const PROTOCOL_SPECS_WORKER_PROTOCOL_AUTHORITY_SECTION = workerProtocolAuthoritySection(
+  'protocol-specs-worker-protocol-authority-roles',
+  '/docs/2.0/platform-protocol-specs/',
+  '#worker-protocol-authority-roles',
+);
+const CONFORMANCE_WORKER_PROTOCOL_AUTHORITY_SECTION = workerProtocolAuthoritySection(
+  'conformance-worker-protocol-authority-roles',
+  '/docs/2.0/platform-conformance/',
+  '[data-worker-protocol-authority-roles="true"] > p',
+);
 const SECTION_QUALIFICATIONS = Object.freeze([
   PUBLIC_MANIFESTS_SECTION,
   SERVER_CONFIG_SECTION,
@@ -130,6 +170,7 @@ function requiredSectionCaptures(sections = SECTION_QUALIFICATIONS) {
     state: section.state,
     state_scope: section.state_scope,
     scroll_target: section.scroll_target,
+    geometry_scope: section.geometry_scope,
     required_visible: section.required_visible,
     selection_reason: section.selection_reason,
     interaction: section.interaction,
@@ -145,6 +186,18 @@ function captureKey(capture) {
     capture.viewport?.width,
     capture.viewport?.height,
   ].join(':');
+}
+
+function failedSectionCaptureDiagnostics(checks) {
+  return checks
+    .filter(check => check.capture_exit_status !== 0)
+    .map(check => {
+      const failures = Array.isArray(check.qualification_failures)
+        && check.qualification_failures.length > 0
+        ? check.qualification_failures.join(', ')
+        : `capture exit status ${check.capture_exit_status}`;
+      return `${captureKey(check)}: ${failures}`;
+    });
 }
 
 function assertEvidenceFile(evidenceDirectory, relativePath, label) {
@@ -178,6 +231,7 @@ function assertExactCaptureBinding(report, required, candidateCommit, label) {
     'state',
     'state_scope',
     'scroll_target',
+    'geometry_scope',
     'selection_reason',
   ]) {
     assert.equal(report[field], required[field], `${label} has the wrong ${field}`);
@@ -193,6 +247,11 @@ function assertExactCaptureBinding(report, required, candidateCommit, label) {
     `${label} does not prove the required scroll interaction`,
   );
   assert.deepEqual(report.viewport, required.viewport, `${label} has the wrong viewport`);
+  assert.equal(
+    report.geometry?.scope_selector || null,
+    required.geometry_scope || null,
+    `${label} did not scope geometry to the selected section`,
+  );
 }
 
 function assertPassingCaptureReport(report, label) {
@@ -291,14 +350,18 @@ function validateSectionCaptureEvidence({
 }
 
 module.exports = {
+  COMPATIBILITY_WORKER_PROTOCOL_AUTHORITY_SECTION,
+  CONFORMANCE_WORKER_PROTOCOL_AUTHORITY_SECTION,
   CURRENT_V2_CONFORMANCE_FIXTURE_CATALOG_SECTION,
   MANIFEST_SCHEMA,
   PORTABLE_WORKER_AFFINITY_SDK_SUPPORT_SECTION,
   PUBLIC_MANIFESTS_SECTION,
+  PROTOCOL_SPECS_WORKER_PROTOCOL_AUTHORITY_SECTION,
   REPORT_SCHEMA,
   SECTION_QUALIFICATIONS,
   SERVER_CONFIG_SECTION,
   captureKey,
+  failedSectionCaptureDiagnostics,
   requiredSectionCaptures,
   resolveCandidateCommit,
   validateSectionCaptureEvidence,
