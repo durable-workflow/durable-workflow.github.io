@@ -35,7 +35,7 @@ Most readers can skip the disclosure below. Open it when you need exact
 signatures, return contracts, machine-operable notes, or the full API
 surface in one place.
 
-<details>
+<details id="workflow-api-details">
 <summary><b>More Info for AI</b></summary>
 
 **Base workflow object**
@@ -68,7 +68,7 @@ abstract class Workflow
 | `historySize()` | The workflow needs a byte-based history budget signal. | Approximate persisted history size in bytes. |
 | `shouldContinueAsNew()` | The workflow should rotate before history becomes expensive. | `true` when configured history budgets recommend rotation. |
 
-**Durable commands**
+## Durable commands
 
 The static facade delegates to namespaced helpers in `Workflow\V2`. The two
 forms are equivalent:
@@ -81,6 +81,8 @@ $resultFromFacade = Workflow::activity(SendReceipt::class, $orderId);
 $resultFromHelper = activity(SendReceipt::class, $orderId);
 ```
 
+<span id="durable-command-surface"></span>
+
 | Facade | Helper | Signature | Durable effect |
 | --- | --- | --- | --- |
 | `Workflow::activity()` | `activity()` | `activity(string $activity, mixed ...$arguments): mixed` | Schedules an activity and waits for its result. |
@@ -92,10 +94,11 @@ $resultFromHelper = activity(SendReceipt::class, $orderId);
 | `Workflow::async()` | `async()` | `async(callable $callback): mixed` | Runs a callable as an auto-generated child workflow. |
 | `Workflow::all()` | `all()` | `all(iterable $calls): mixed` | Waits for concurrent calls and returns results in iteration order. |
 | `Workflow::parallel()` | `all()` | `parallel(iterable $calls): mixed` | Alias for `all()`. |
-| `Workflow::await()` | `await()` | `await(callable|string $condition, int|string|CarbonInterval|null $timeout = null, ?string $conditionKey = null): mixed` | Waits for a named signal or replay-safe condition. |
-| `Workflow::awaitWithTimeout()` | `await()` | `awaitWithTimeout(int|string|CarbonInterval $timeout, callable|string $condition, ?string $conditionKey = null): mixed` | Waits for a signal or condition with an explicit timeout. |
+| `Workflow::select()` | `select()` | `select(iterable $calls): SelectionResult` | Starts independent durable calls and returns the first committed winner plus stable handles for every member. |
+| `Workflow::await()` | `await()` | `await(callable\|string $condition, int\|string\|CarbonInterval\|null $timeout = null, ?string $conditionKey = null): mixed` | Waits for a named signal or replay-safe condition. |
+| `Workflow::awaitWithTimeout()` | `await()` | `awaitWithTimeout(int\|string\|CarbonInterval $timeout, callable\|string $condition, ?string $conditionKey = null): mixed` | Waits for a signal or condition with an explicit timeout. |
 | `Workflow::awaitSignal()` | `await()` | `awaitSignal(string $name): mixed` | Waits for a named signal. |
-| `Workflow::timer()` | `timer()` | `timer(int|string|CarbonInterval $duration): mixed` | Suspends until durable time advances. |
+| `Workflow::timer()` | `timer()` | `timer(int\|string\|CarbonInterval $duration): mixed` | Suspends until durable time advances. |
 | `Workflow::sideEffect()` | `sideEffect()` | `sideEffect(callable $callback): mixed` | Records a non-deterministic result in history and replays it. |
 | `Workflow::uuid4()` | `uuid4()` | `uuid4(): mixed` | Generates a replay-stable UUIDv4. |
 | `Workflow::uuid7()` | `uuid7()` | `uuid7(): mixed` | Generates a replay-stable UUIDv7. |
@@ -196,7 +199,7 @@ final class AssistantWorkflow extends Workflow
 | `MessageStream::peek()` | `peek(int $limit = 100): Collection` | Reads pending messages without consuming them. |
 | `MessageStream::receive()` | `receive(int $limit = 1, ?int $consumedBySequence = null): Collection` | Reads and consumes messages, recording cursor advancement. |
 | `MessageStream::receiveOne()` | `receiveOne(?int $consumedBySequence = null): ?WorkflowMessage` | Reads and consumes one message. |
-| `MessageStream::sendReference()` | `sendReference(string $targetInstanceId, ?string $payloadReference = null, MessageChannel|string $channel = MessageChannel::WorkflowMessage, ?string $correlationId = null, ?string $idempotencyKey = null, array $metadata = [], ?DateTimeInterface $expiresAt = null): WorkflowMessage` | Sends an ordered payload-reference message to another workflow instance. |
+| `MessageStream::sendReference()` | `sendReference(string $targetInstanceId, ?string $payloadReference = null, MessageChannel\|string $channel = MessageChannel::WorkflowMessage, ?string $correlationId = null, ?string $idempotencyKey = null, array $metadata = [], ?DateTimeInterface $expiresAt = null): WorkflowMessage` | Sends an ordered payload-reference message to another workflow instance. |
 
 Use message streams for repeated ordered messages with cursor semantics. Use
 [Signals](../features/signals.md) for one-shot external events and

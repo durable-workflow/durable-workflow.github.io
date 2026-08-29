@@ -296,6 +296,38 @@ path, group path, and completed siblings. Pending and completed histories replay
 without rescheduling; exact duplicates and late completions do not change the
 chosen positional outcome.
 
+## Durable first-completion selection
+
+`WorkflowContext::select` and `select_keyed` start activities, child workflows,
+timers, signals, condition waits, and nested ordinary groups together, then
+resume from the winner recorded by the runtime:
+
+```rust
+use durable_workflow::{json, ParallelOperation, SelectionKey};
+use std::time::Duration;
+
+let selected = ctx.select_keyed(vec![
+    ("resolver", ParallelOperation::activity("resolve-request", json!([request_id]))),
+    ("input", ParallelOperation::signal("resolution.received")),
+    ("deadline", ParallelOperation::timer(Duration::from_secs(2))),
+]).await?;
+
+if selected.key == SelectionKey::Name("deadline".to_string()) {
+    if let Some(resolver) = selected.handle(&SelectionKey::Name("resolver".to_string())) {
+        resolver.cancel().await?;
+    }
+}
+```
+
+`SelectionResult` preserves the stable key/index, operation kind and identity,
+typed value or failure, and a `DurableOperationHandle` for every member. A loser
+continues unless workflow code later awaits `handle.await_result()` or awaits
+`handle.cancel()`. The cancellation future resolves to unit; only committed
+`SelectionOperationCancelled` history proves cancellation won. Replay advances
+past an unmarked request, and `await_result()` still returns a completion that
+committed first. Restart and replay consume the persisted winner; later or
+duplicate terminal events cannot change it.
+
 ## Saga compensation
 
 Register a compensation only after the corresponding forward activity has

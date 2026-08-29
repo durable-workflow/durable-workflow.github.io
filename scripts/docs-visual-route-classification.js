@@ -3,12 +3,17 @@ const path = require('node:path');
 const {spawnSync} = require('node:child_process');
 const yaml = require('js-yaml');
 const {
+  CAPABILITY_SELECTION_SECTION,
   COMPATIBILITY_WORKER_PROTOCOL_AUTHORITY_SECTION,
   CONFORMANCE_WORKER_PROTOCOL_AUTHORITY_SECTION,
+  CURRENT_V2_CONFORMANCE_FIXTURE_CATALOG_SECTION,
+  PHP_SELECTION_SECTION,
   PORTABLE_WORKER_AFFINITY_SDK_SUPPORT_SECTION,
   PUBLIC_MANIFESTS_SECTION,
+  PYTHON_SELECTION_SECTION,
   PROTOCOL_SPECS_WORKER_PROTOCOL_AUTHORITY_SECTION,
   SERVER_CONFIG_SECTION,
+  WORKFLOW_API_SELECTION_SECTION,
 } = require('./section-capture-qualification');
 
 const DOCUMENTATION_SOURCE_PATTERN = /^(?:docs|versioned_docs\/version-1\.x)\/.+\.mdx?$/;
@@ -20,13 +25,20 @@ const VISUAL_SHELL_PATHS = Object.freeze([
   'src/theme/',
 ]);
 const ROUTE_SPECIFIC_SECTIONS = Object.freeze(new Map([
+  ['docs/capabilities.md', CAPABILITY_SELECTION_SECTION],
+  ['docs/defining-workflows/workflow-api.md', WORKFLOW_API_SELECTION_SECTION],
   [
     'docs/features/portable-worker-affinity.md',
     PORTABLE_WORKER_AFFINITY_SDK_SUPPORT_SECTION,
   ],
   ['docs/compatibility.md', COMPATIBILITY_WORKER_PROTOCOL_AUTHORITY_SECTION],
-  ['docs/platform-conformance.md', CONFORMANCE_WORKER_PROTOCOL_AUTHORITY_SECTION],
+  ['docs/platform-conformance.md', Object.freeze([
+    CURRENT_V2_CONFORMANCE_FIXTURE_CATALOG_SECTION,
+    CONFORMANCE_WORKER_PROTOCOL_AUTHORITY_SECTION,
+  ])],
   ['docs/platform-protocol-specs.md', PROTOCOL_SPECS_WORKER_PROTOCOL_AUTHORITY_SECTION],
+  ['docs/polyglot/php.md', PHP_SELECTION_SECTION],
+  ['docs/polyglot/python.md', PYTHON_SELECTION_SECTION],
   ['docs/polyglot/server-config-reference.md', SERVER_CONFIG_SECTION],
   ['src/pages/docs/platform-conformance.mdx', PUBLIC_MANIFESTS_SECTION],
 ]));
@@ -136,7 +148,9 @@ function classifyChangedDocumentation({
   for (const file of changedFiles) {
     const routeSpecific = ROUTE_SPECIFIC_SECTIONS.get(file);
     if (routeSpecific) {
-      add(routeSpecific, `route-specific state selected from ${file}`);
+      for (const section of Array.isArray(routeSpecific) ? routeSpecific : [routeSpecific]) {
+        add(section, `route-specific state selected from ${file}`);
+      }
       continue;
     }
 

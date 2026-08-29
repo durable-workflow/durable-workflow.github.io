@@ -304,8 +304,8 @@ function collectReachabilityGeometry(options = {}) {
     const floatingBox = floating.getBoundingClientRect();
     const overlaps = overlapCandidates
       .filter(candidate => !floating.contains(candidate) && !candidate.contains(floating))
-      .flatMap(candidate => {
-        const overlap = intersect(floatingBox, candidate.getBoundingClientRect());
+      .flatMap(candidate => visibleFragments(candidate).flatMap(fragment => {
+        const overlap = intersect(floatingBox, fragment);
         if (!hasArea(overlap)) return [];
 
         return [{
@@ -313,7 +313,7 @@ function collectReachabilityGeometry(options = {}) {
           overlap_width: round(overlap.right - overlap.left),
           overlap_height: round(overlap.bottom - overlap.top),
         }];
-      })
+      }))
       .slice(0, 10);
 
     if (overlaps.length === 0) return [];

@@ -654,6 +654,7 @@ The `WorkflowContext` passed to `run` provides deterministic operations:
 | `ctx.start_timer(seconds)` | Durable sleep |
 | `ctx.start_child_workflow(type, args)` | Start a child workflow, optionally with per-call retry and workflow timeout options |
 | `yield [command, [...]]` | Join a nested deterministic activity, child-workflow, timer, or mixed group in input order |
+| `yield ctx.select({key: command, ...})` | Resume with the first durably committed member while retaining handles for every non-winner |
 | `ctx.saga()` | Register and run reverse-order durable activity compensations |
 | `ctx.throw_if_cancellation_requested()` | Observe cooperative cancellation at an author-controlled safe point |
 | `ctx.side_effect(fn)` | Capture a non-deterministic value |
@@ -736,6 +737,36 @@ close members in any order; replay still binds results and failures by durable
 input position. Exact duplicate terminal delivery is ignored. Pending history
 after a worker restart and fully completed history reconstruct the same group
 without rescheduling completed work.
+
+### First-completion selection
+
+Use `ctx.select()` when independent work should start together but the workflow
+can make progress after one member completes:
+
+```python
+selected = yield ctx.select({
+    "resolver": ctx.schedule_activity("resolve-request", [request_id]),
+    "input": ctx.wait_condition(lambda: self.resolution is not None, key="resolution-ready"),
+    "deadline": ctx.start_timer(2),
+})
+
+if selected.key == "deadline":
+    yield selected.handles["resolver"].cancel()
+    return {"status": "timed_out"}
+
+yield selected.handles["deadline"].cancel()
+return {"status": "resolved", "value": selected.result()}
+```
+
+The `SelectionResult` includes the winner's stable key, input index, operation
+kind and durable identity, typed outcome, and all `DurableOperationHandle`
+instances. `yield handle.await_result()` waits for a non-winner later; `yield
+handle.cancel()` records an explicit void request. Only committed
+`SelectionOperationCancelled` history proves cancellation won; replay advances
+past an unmarked request, and `await_result()` still returns a completion that
+committed first. Replay consumes the persisted winner even if later history
+contains another completion first. Duplicate and out-of-order external
+delivery cannot replace an already committed winner.
 
 ### Saga Compensation
 

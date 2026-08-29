@@ -181,6 +181,10 @@ async function captureSectionState({
 
   try {
     if (prepareBeforeScroll) await prepareBeforeScroll(page);
+    if (section.click_target) {
+      await page.locator(section.click_target).click();
+      await settle(page);
+    }
     await page.locator(section.scroll_target).waitFor({state: 'visible'});
     if (section.geometry_scope) {
       await page.locator(section.geometry_scope).waitFor({state: 'visible'});
@@ -191,6 +195,10 @@ async function captureSectionState({
         block: interaction.block,
       });
     }, section.interaction);
+    const scrollOffsetY = section.scroll_offsets_by_viewport?.[viewport.name] || 0;
+    if (scrollOffsetY !== 0) {
+      await page.evaluate(offset => window.scrollBy(0, offset), scrollOffsetY);
+    }
     await settle(page);
     if (prepareAfterScroll) {
       await prepareAfterScroll(page);
@@ -231,7 +239,9 @@ async function captureSectionState({
       route: section.route,
       state: section.state,
       state_scope: section.state_scope,
+      click_target: section.click_target,
       scroll_target: section.scroll_target,
+      scroll_offset_y: scrollOffsetY,
       geometry_scope: section.geometry_scope,
       required_visible: section.required_visible,
       selection_reason: section.selection_reason,
@@ -245,7 +255,11 @@ async function captureSectionState({
       browser_errors: browserErrors,
     };
 
-    await page.screenshot({path: screenshot, animations: 'disabled'});
+    await page.screenshot({
+      path: screenshot,
+      animations: 'disabled',
+      fullPage: viewport.fullPage || false,
+    });
     writeJson(reportPath, report);
 
     return {
@@ -254,7 +268,9 @@ async function captureSectionState({
       route: section.route,
       state: section.state,
       state_scope: section.state_scope,
+      click_target: section.click_target,
       scroll_target: section.scroll_target,
+      scroll_offset_y: scrollOffsetY,
       geometry_scope: section.geometry_scope,
       required_visible: section.required_visible,
       selection_reason: section.selection_reason,

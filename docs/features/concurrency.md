@@ -13,6 +13,11 @@ activity, child-workflow, or timer commands with the same group identity/path
 metadata; no separate parallel wire command exists. Results come back in the
 original nested input shape.
 
+Use a selection group when progress depends on the first completed member
+instead of the whole barrier. Selection is also durable: it starts every member,
+records one winner, and leaves every non-winner running until workflow code
+awaits or explicitly cancels it.
+
 ## Series
 
 This example will execute 3 activities in series, waiting for the completion of each activity before continuing to the next one.
@@ -76,6 +81,76 @@ class MyWorkflow extends Workflow
 />
 
 The main difference between the serial example and the parallel execution example is where suspension happens. In the serial example, each `activity()` call suspends and resumes the workflow directly. In the parallel example, the closures describe the whole barrier first and `all()` suspends once for the whole group, so every member can run in parallel before the workflow resumes.
+
+## First-completion selection
+
+`select([...])` starts independent activities, child workflows, timers, signal
+waits, condition waits, or nested ordinary barriers and resumes when one member
+commits an eligible result or typed failure. Give members stable application
+keys when later code needs to distinguish or revisit them.
+Member keys have one portable domain across runtimes: a non-empty string or a
+non-negative integer.
+
+The following coordinator starts its deadline at the same durable step as the
+resolver. Input processing and resolver progress cannot reset or postpone that
+deadline:
+
+```php
+use function Workflow\V2\{activity, await, select, timer};
+use Workflow\V2\Workflow;
+
+final class ResolveInRealTime extends Workflow
+{
+    public function handle(string $requestId): array
+    {
+        $selected = select([
+            'resolved' => fn () => activity(ResolveRequest::class, $requestId),
+            'manual' => fn () => await('resolution.received'),
+            'deadline' => fn () => timer('2 seconds'),
+        ]);
+
+        if ($selected->key === 'deadline') {
+            $selected->handles['resolved']->cancel();
+
+            return ['status' => 'timed_out'];
+        }
+
+        // The deadline is not cancelled just because another member won.
+        $selected->handles['deadline']->cancel();
+
+        return [
+            'status' => 'resolved',
+            'source' => $selected->key,
+            'value' => $selected->result(),
+        ];
+    }
+}
+```
+
+The result contains the stable member key and index, operation kind and durable
+identity, result or typed failure, the winner handle, and a handle for every
+member. A non-winning handle can be awaited later with `await()` or cancelled
+with `cancel()`. Selection never implicitly discards or cancels a sibling.
+`cancel()` is a void/unit request and never reports whether cancellation won.
+`SelectionOperationCancelled` history is the outcome authority. If completion
+commits first, the runtime writes no cancellation marker, replay advances past
+the cancel call only after a committed workflow-task boundary, successor
+command, or workflow terminal event proves the no-op committed. Query replay
+stops at an in-flight cancel instead of exposing speculative state after it.
+Awaiting the handle after the committed no-op returns the earlier completion.
+
+The runtime records the first eligible resolution while holding the parent-run
+commit lock. Cold restart, persisted-history reload, query replay, and later
+loser completions therefore reuse the recorded winner instead of racing local
+language futures or reinterpreting history order. Exact duplicate delivery is
+idempotent. Concurrent inputs are ordered by their committed durable history;
+an input that arrives while an activity runs is visible on the next workflow
+task, and a late or duplicate input cannot replace an already recorded winner.
+
+Service-mode SDKs expose the same lifecycle in their language model: Python
+uses `yield ctx.select({...})`, PHP uses `$ctx->select([...])`, and Rust awaits
+`ctx.select_keyed(...)`. See the [PHP service-mode example](/docs/2.0/polyglot/php/#run-a-remote-php-worker)
+and the language pages for exact handle methods.
 
 ## Nested Barriers
 
@@ -205,7 +280,6 @@ final class OrderWorkflow extends Workflow
 
 The current concurrency surface does not yet include:
 
-- launch handles that can be started and awaited separately from `all([...])` barriers or `async(...)`
 - built-in bounded-concurrency helpers beyond explicit nested `all([...])` groups
 
 ## Child Workflows in Parallel

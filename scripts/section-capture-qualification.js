@@ -49,6 +49,95 @@ const CURRENT_V2_CONFORMANCE_FIXTURE_CATALOG_SECTION = Object.freeze({
     Object.freeze({name: 'short-height', width: 1280, height: 500}),
   ]),
 });
+const CAPABILITY_SELECTION_SECTION = Object.freeze({
+  id: 'capability-durable-first-completion-selection',
+  navigation_configuration: 'current-v2',
+  route: '/docs/2.0/capabilities/',
+  state: 'durable-first-completion-selection',
+  state_scope: 'section',
+  scroll_target: '#durable-first-completion-selection-capability',
+  required_visible: Object.freeze([
+    '#durable-first-completion-selection-capability',
+  ]),
+  interaction: Object.freeze({
+    action: 'scroll-to',
+    selector: '#durable-first-completion-selection-capability',
+    block: 'center',
+  }),
+  viewports: Object.freeze([
+    Object.freeze({name: 'desktop', width: 1440, height: 900}),
+    Object.freeze({name: 'intermediate', width: 768, height: 1024}),
+    Object.freeze({name: 'mobile', width: 390, height: 844}),
+    Object.freeze({name: 'short-height', width: 640, height: 360, fullPage: true}),
+  ]),
+});
+const WORKFLOW_API_SELECTION_SECTION = Object.freeze({
+  id: 'workflow-api-durable-selection',
+  navigation_configuration: 'current-v2',
+  route: '/docs/2.0/defining-workflows/workflow-api/',
+  state: 'durable-selection-api',
+  state_scope: 'section',
+  click_target: '#workflow-api-details > summary',
+  scroll_target: '#durable-command-surface + table tbody tr:nth-child(10)',
+  required_visible: Object.freeze([
+    '#durable-command-surface + table tbody tr:nth-child(10) td:nth-child(1)',
+    '#durable-command-surface + table tbody tr:nth-child(10) td:nth-child(3)',
+    '#durable-command-surface + table tbody tr:nth-child(10) td:nth-child(4)',
+  ]),
+  interaction: Object.freeze({
+    action: 'scroll-to',
+    selector: '#durable-command-surface + table tbody tr:nth-child(10)',
+    block: 'center',
+  }),
+  viewports: Object.freeze([
+    Object.freeze({name: 'desktop', width: 1440, height: 900}),
+    Object.freeze({name: 'intermediate', width: 768, height: 1024}),
+    Object.freeze({name: 'mobile', width: 390, height: 844}),
+    Object.freeze({name: 'short-height', width: 640, height: 360}),
+  ]),
+});
+const PHP_SELECTION_SECTION = Object.freeze({
+  id: 'php-durable-first-completion-selection',
+  navigation_configuration: 'current-v2',
+  route: '/docs/2.0/polyglot/php/',
+  state: 'durable-first-completion-selection',
+  state_scope: 'section',
+  scroll_target: '#first-completion-selection',
+  required_visible: Object.freeze(['#first-completion-selection']),
+  interaction: Object.freeze({
+    action: 'scroll-to',
+    selector: '#first-completion-selection',
+    block: 'center',
+  }),
+  viewports: Object.freeze([
+    Object.freeze({name: 'desktop', width: 1440, height: 900}),
+    Object.freeze({name: 'intermediate', width: 768, height: 1024}),
+    Object.freeze({name: 'mobile', width: 390, height: 844}),
+    Object.freeze({name: 'short-height', width: 640, height: 360, fullPage: true}),
+  ]),
+});
+const PYTHON_SELECTION_SECTION = Object.freeze({
+  id: 'python-durable-first-completion-selection',
+  navigation_configuration: 'current-v2',
+  route: '/docs/2.0/polyglot/python/',
+  state: 'durable-first-completion-selection',
+  state_scope: 'section',
+  scroll_target: '#workflow-context + p + table tbody tr:nth-child(5) td:first-child',
+  required_visible: Object.freeze([
+    '#workflow-context + p + table tbody tr:nth-child(5) td:first-child',
+  ]),
+  interaction: Object.freeze({
+    action: 'scroll-to',
+    selector: '#workflow-context + p + table tbody tr:nth-child(5) td:first-child',
+    block: 'center',
+  }),
+  viewports: Object.freeze([
+    Object.freeze({name: 'desktop', width: 1440, height: 900}),
+    Object.freeze({name: 'intermediate', width: 768, height: 1024}),
+    Object.freeze({name: 'mobile', width: 390, height: 844}),
+    Object.freeze({name: 'short-height', width: 640, height: 360, fullPage: true}),
+  ]),
+});
 const PORTABLE_WORKER_AFFINITY_SDK_SUPPORT_SECTION = Object.freeze({
   id: 'portable-worker-affinity-sdk-support',
   navigation_configuration: 'current-v2',
@@ -169,11 +258,13 @@ function requiredSectionCaptures(sections = SECTION_QUALIFICATIONS) {
     route: section.route,
     state: section.state,
     state_scope: section.state_scope,
+    click_target: section.click_target,
     scroll_target: section.scroll_target,
     geometry_scope: section.geometry_scope,
     required_visible: section.required_visible,
     selection_reason: section.selection_reason,
     interaction: section.interaction,
+    scroll_offset_y: section.scroll_offsets_by_viewport?.[viewport.name] || 0,
     viewport,
   })));
 }
@@ -230,7 +321,9 @@ function assertExactCaptureBinding(report, required, candidateCommit, label) {
     'route',
     'state',
     'state_scope',
+    'click_target',
     'scroll_target',
+    'scroll_offset_y',
     'geometry_scope',
     'selection_reason',
   ]) {
@@ -350,16 +443,20 @@ function validateSectionCaptureEvidence({
 }
 
 module.exports = {
+  CAPABILITY_SELECTION_SECTION,
   COMPATIBILITY_WORKER_PROTOCOL_AUTHORITY_SECTION,
   CONFORMANCE_WORKER_PROTOCOL_AUTHORITY_SECTION,
   CURRENT_V2_CONFORMANCE_FIXTURE_CATALOG_SECTION,
   MANIFEST_SCHEMA,
   PORTABLE_WORKER_AFFINITY_SDK_SUPPORT_SECTION,
   PUBLIC_MANIFESTS_SECTION,
+  PHP_SELECTION_SECTION,
+  PYTHON_SELECTION_SECTION,
   PROTOCOL_SPECS_WORKER_PROTOCOL_AUTHORITY_SECTION,
   REPORT_SCHEMA,
   SECTION_QUALIFICATIONS,
   SERVER_CONFIG_SECTION,
+  WORKFLOW_API_SELECTION_SECTION,
   captureKey,
   failedSectionCaptureDiagnostics,
   requiredSectionCaptures,

@@ -155,6 +155,37 @@ are rejected. The managed worker registers its workflow and activity type
 names, polls the public worker protocol, heartbeats, completes or fails tasks,
 and handles graceful shutdown when `pcntl` is available.
 
+### First-completion selection
+
+Use `WorkflowContext::select()` to start independent deferred activities,
+child workflows, timers, condition waits, or nested ordinary barriers and
+resume from the first durably committed winner. The returned `SelectionResult`
+contains stable member keys and identities plus one handle per member:
+
+```php
+$selected = $ctx->select([
+    'resolver' => fn () => $ctx->activity('resolve-request', [$requestId]),
+    'input' => fn () => $ctx->waitCondition(
+        fn (): bool => $this->resolution !== null,
+        key: 'resolution-ready',
+    ),
+    'deadline' => fn () => $ctx->sleep(2),
+]);
+
+if ($selected->key === 'deadline') {
+    $selected->handles['resolver']->cancel();
+}
+```
+
+Selection does not cancel non-winners. Call `await()` on a handle to consume
+its eventual result or `cancel()` to record explicit cancellation. A cold worker
+or completed-history replay consumes the recorded winner even when duplicate or
+later input and terminal events appear in another delivery order.
+`cancel()` returns void and does not report its terminal outcome. Only
+`SelectionOperationCancelled` history proves cancellation won; replay advances
+past an unmarked cancel request, and if the operation completed first,
+`await()` still returns that result.
+
 ## Framework service mode and embedded Laravel
 
 The same package ships first-party
