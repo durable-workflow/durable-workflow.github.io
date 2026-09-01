@@ -147,7 +147,7 @@ which features the sample app is expected to demonstrate, marks
 each one `covered` or `gap`, and lints on every push. A feature
 that ships upstream without a sample becomes visible in the
 manifest, not in tribal memory. The
-[Sample-App Plan, Phase 4](https://github.com/durable-workflow/workflow/blob/v2/docs/sample-app/plan.md)
+[Sample-App Plan, Phase 4](https://github.com/durable-workflow/workflow/blob/main/docs/sample-app/plan.md)
 spells the cadence out: the pinned `durable-workflow/workflow`
 version moves within one release cycle of every upstream tag.
 

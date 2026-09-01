@@ -374,7 +374,7 @@ a different, support-led evaluation; see
 The intended contract — engine behavior, readiness rules, the per-event
 recovery targets, the split-brain prevention rules, and the rehearsal
 acceptance test — lives in the workflow library at
-[`docs/deployment/ha-failover.md`](https://github.com/durable-workflow/workflow/blob/v2/docs/deployment/ha-failover.md)
+[`docs/deployment/ha-failover.md`](https://github.com/durable-workflow/workflow/blob/main/docs/deployment/ha-failover.md)
 and the standalone server at
 [`docs/ha-failover-validation.md`](https://github.com/durable-workflow/server/blob/main/docs/ha-failover-validation.md).
 This section is the public surface of those documents.
@@ -580,7 +580,7 @@ material — data authority, replication assumptions,
 namespace/task-queue/worker behavior, the failover and failback runbook,
 fencing, and the consistency/latency tradeoffs — lives in the workflow library
 at
-[`docs/deployment/multi-region.md`](https://github.com/durable-workflow/workflow/blob/v2/docs/deployment/multi-region.md)
+[`docs/deployment/multi-region.md`](https://github.com/durable-workflow/workflow/blob/main/docs/deployment/multi-region.md)
 and the standalone server at
 [`docs/multi-region-validation.md`](https://github.com/durable-workflow/server/blob/main/docs/multi-region-validation.md).
 

@@ -131,7 +131,7 @@ version bump, this page, and the JSON mirror in the same commit).
 
 These documents add per-package detail under the rules on this page:
 
-- `durable-workflow/workflow` (PHP) — [`docs/api-stability.md`](https://github.com/durable-workflow/workflow/blob/v2/docs/api-stability.md). Authoritative for the PHP authoring API, the `Support\*` server-facing classes, and the frozen history-event wire-format tables.
+- `durable-workflow/workflow` (PHP) — [`docs/api-stability.md`](https://github.com/durable-workflow/workflow/blob/main/docs/api-stability.md). Authoritative for the PHP authoring API, the `Support\*` server-facing classes, and the frozen history-event wire-format tables.
 - `durable-workflow/sdk` (PHP) — [`README.md`](https://github.com/durable-workflow/sdk-php/blob/main/README.md). Authoritative for the framework-neutral remote client and worker API distributed from Packagist.
 - `durable-workflow/server` — [`README.md`](https://github.com/durable-workflow/server/blob/main/README.md) and `docs/contracts/*`. Authoritative for the standalone server's request/response contracts.
 - `dw` CLI — [`/docs/polyglot/cli-reference`](/docs/polyglot/cli-reference). Authoritative for the JSON output shapes and exit codes.
@@ -328,4 +328,4 @@ and cross-language examples synchronized.
 - [Rust SDK](/docs/polyglot/rust) — Rust client and worker
 - [CLI](/docs/polyglot/cli) — Command-line interface
 - [Migration Guide](/docs/migration) — Migrating from v1 to v2
-- [PHP workflow `docs/api-stability.md`](https://github.com/durable-workflow/workflow/blob/v2/docs/api-stability.md) — per-package stability for the PHP workflow package
+- [PHP workflow `docs/api-stability.md`](https://github.com/durable-workflow/workflow/blob/main/docs/api-stability.md) — per-package stability for the PHP workflow package

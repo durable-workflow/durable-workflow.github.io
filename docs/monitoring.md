@@ -73,7 +73,7 @@ not turn into the wrong operational conclusion.
 
 ### Dashboard View
 
-![Waterline dashboard](https://raw.githubusercontent.com/durable-workflow/waterline/refs/heads/v2/docs/screenshots/dashboard.png)
+![Waterline dashboard](https://raw.githubusercontent.com/durable-workflow/waterline/refs/heads/main/docs/screenshots/dashboard.png)
 
 The dashboard shows running totals, recent-run counters, and fleet-wide
 metrics so you can tell at a glance whether work is flowing, stalling, or
@@ -87,7 +87,7 @@ paths.
 
 ### Workflow View
 
-![Waterline workflow detail](https://raw.githubusercontent.com/durable-workflow/waterline/refs/heads/v2/docs/screenshots/workflow-detail.png)
+![Waterline workflow detail](https://raw.githubusercontent.com/durable-workflow/waterline/refs/heads/main/docs/screenshots/workflow-detail.png)
 
 The workflow detail view shows the durable timeline for a single run: the
 activities, signals, timers, and child workflows that happened in order,
@@ -140,7 +140,7 @@ Open `/waterline` through the URL represented by `APP_URL`. The image listens
 on container port `8080`; set `PORT` only when you intentionally change that
 internal port. `WATERLINE_PATH` changes the default `waterline` URL prefix.
 The repository also publishes a
-[Docker Compose service definition](https://github.com/durable-workflow/waterline/blob/v2/deploy/docker-compose.service.yml)
+[Docker Compose service definition](https://github.com/durable-workflow/waterline/blob/main/deploy/docker-compose.service.yml)
 with the same connection boundary.
 
 Service mode has two independent authentication layers:
