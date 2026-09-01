@@ -63,20 +63,20 @@ expected result, and published-artifact smoke as one tested path.
 
 Cloud customers use the runtime URL and namespace returned during provisioning,
 with separate client and worker credentials. See
-[Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane) for that
+[Cloud Managed Runtime](/docs/polyglot/cloud-control-plane) for that
 connection boundary; the examples below show the same SDK against local
 self-hosted values.
 
 Use `durable-workflow/workflow` for the separate embedded Laravel path, where
 the application owns workflow state in its existing database and executes work
-through its Laravel queues. See [Deployment Modes](/docs/2.0/polyglot/deployment-modes/)
+through its Laravel queues. See [Deployment Modes](/docs/polyglot/deployment-modes/)
 for the complete ownership comparison.
 
 ## Requirements
 
 - PHP 8.1 or later
-- A reachable [self-hosted Server](/docs/2.0/polyglot/server/) or provisioned
-  [Cloud namespace runtime](/docs/2.0/polyglot/cloud-control-plane)
+- A reachable [self-hosted Server](/docs/polyglot/server/) or provisioned
+  [Cloud namespace runtime](/docs/polyglot/cloud-control-plane)
 
 ## Install
 
@@ -196,13 +196,13 @@ bridges. They retain framework dependency injection, configuration, logging,
 console workers, and test fakes while connecting to Cloud or Server.
 
 Those bridges are distinct from
-[embedded Laravel workflows](/docs/2.0/installation/), where
+[embedded Laravel workflows](/docs/installation/), where
 `durable-workflow/workflow` makes the Laravel application itself own durable
 state and execute through Laravel queues. See
-[Laravel Adoption and Runtime Transition](/docs/2.0/laravel-adoption/) for the
+[Laravel Adoption and Runtime Transition](/docs/laravel-adoption/) for the
 same representative Laravel use case across v1, v2 embedded, and this shipped
 service-mode bridge, including drain and rollback. Use
-[Deployment Modes](/docs/2.0/polyglot/deployment-modes/) for the wider runtime
+[Deployment Modes](/docs/polyglot/deployment-modes/) for the wider runtime
 boundary comparison.
 
 ## Protocol and release boundary
@@ -219,10 +219,10 @@ when moving between pre-1.0 SDK releases; no cross-release shim is implied.
 
 ## Related references
 
-- [Standalone Server](/docs/2.0/polyglot/server/)
-- [Deployment Modes](/docs/2.0/polyglot/deployment-modes/)
-- [Worker Protocol](/docs/2.0/polyglot/worker-protocol/)
-- [Capability Index](/docs/2.0/capabilities/)
+- [Standalone Server](/docs/polyglot/server/)
+- [Deployment Modes](/docs/polyglot/deployment-modes/)
+- [Worker Protocol](/docs/polyglot/worker-protocol/)
+- [Capability Index](/docs/capabilities/)
 - [PHP developer portal](https://php.durable-workflow.com/)
 - [PHP API reference](https://php.durable-workflow.com/api/)
 - [PHP executable quickstart contract](https://php.durable-workflow.com/quickstart-contract.json)

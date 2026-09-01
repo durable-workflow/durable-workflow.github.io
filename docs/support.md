@@ -54,7 +54,7 @@ Durable Workflow is designed to be useful without a sales call. The public distr
   Use the provided manifests when your team already operates Kubernetes and wants a Kubernetes-native starting point.
 
 Hosted Durable Workflow Cloud is a separate
-[managed orchestration service](/docs/2.0/polyglot/cloud-control-plane). Cloud
+[managed orchestration service](/docs/polyglot/cloud-control-plane). Cloud
 operates its runtime, persistence, single-region placement, and recovery;
 customers run SDK clients and workers. Customers do not attach a self-hosted
 Server to Cloud. Multi-region replication, regional failover, and failback are
@@ -64,10 +64,10 @@ We intentionally optimize the public distribution for local development,
 single-node production, and the narrow small-cluster contract described in the
 self-hosting guide. Kubernetes manifests are provided for teams that already
 operate Kubernetes. The small-cluster contract supports
-[rolling upgrades](/docs/2.0/rolling-upgrades) when every guarantee on that
+[rolling upgrades](/docs/rolling-upgrades) when every guarantee on that
 page holds. Active/passive multi-region with operator-driven regional
 failover remains support-led evaluation guidance; see
-[Active/passive multi-region](/docs/2.0/deployment#activepassive-multi-region)
+[Active/passive multi-region](/docs/deployment#activepassive-multi-region)
 in the self-hosting guide. The published Helm chart is a self-serve packaging
 and rollout path; custom chart changes, provider infrastructure, duplicate
 schedulers, Redis-less
@@ -77,7 +77,7 @@ topologies remain
 support-led because they require environment-specific sizing, database,
 networking, security, and upgrade decisions.
 
-See the [self-hosting deployment guide](/docs/2.0/deployment) for the
+See the [self-hosting deployment guide](/docs/deployment) for the
 concrete support matrix, published-image Compose recipes, raw Kubernetes
 manifest boundary, readiness checks, and where support-led work begins.
 
@@ -102,7 +102,7 @@ Commercial support engagements are led by the project maintainer and typically i
   Help with capacity assumptions, backup and restore strategy, bootstrap and migration order, rollout safety, and operational runbooks.
 
 - **Advanced topology support**  
-  Support-led design work for custom Helm chart changes, provider-specific Kubernetes infrastructure, custom overlays, duplicate scheduler designs, Redis-less multi-node mode, high-availability deployments, active/passive or active/active multi-region, self-hosted automatic regional failover, and synchronous cross-region replication. The published chart remains a self-serve installation path; the [self-hosting guide](/docs/2.0/deployment#activepassive-multi-region) retains active/passive architecture and runbook material for support-led evaluation. The separate [Cloud managed-runtime contract](/docs/2.0/polyglot/cloud-control-plane) documents the hosted service's single-region placement, recovery, and connectivity boundary.
+  Support-led design work for custom Helm chart changes, provider-specific Kubernetes infrastructure, custom overlays, duplicate scheduler designs, Redis-less multi-node mode, high-availability deployments, active/passive or active/active multi-region, self-hosted automatic regional failover, and synchronous cross-region replication. The published chart remains a self-serve installation path; the [self-hosting guide](/docs/deployment#activepassive-multi-region) retains active/passive architecture and runbook material for support-led evaluation. The separate [Cloud managed-runtime contract](/docs/polyglot/cloud-control-plane) documents the hosted service's single-region placement, recovery, and connectivity boundary.
 
 - **Security review**  
   Assistance with role-scoped credentials, network exposure, internal versus public endpoints, TLS termination, and access boundaries for operators and workers.

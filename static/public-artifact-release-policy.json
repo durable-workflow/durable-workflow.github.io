@@ -2,10 +2,11 @@
   "schema": "durable-workflow.docs.public-artifact-release-policy",
   "schema_version": 1,
   "product_train": "2.0.0",
-  "release_phase": "rc",
+  "release_phase": "stable",
   "authorized_channels": [
     "alpha",
     "beta",
-    "rc"
+    "rc",
+    "stable"
   ]
 }

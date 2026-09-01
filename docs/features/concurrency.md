@@ -149,7 +149,7 @@ task, and a late or duplicate input cannot replace an already recorded winner.
 
 Service-mode SDKs expose the same lifecycle in their language model: Python
 uses `yield ctx.select({...})`, PHP uses `$ctx->select([...])`, and Rust awaits
-`ctx.select_keyed(...)`. See the [PHP service-mode example](/docs/2.0/polyglot/php/#run-a-remote-php-worker)
+`ctx.select_keyed(...)`. See the [PHP service-mode example](/docs/polyglot/php/#run-a-remote-php-worker)
 and the language pages for exact handle methods.
 
 ## Nested Barriers

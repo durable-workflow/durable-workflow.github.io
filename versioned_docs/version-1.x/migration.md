@@ -12,7 +12,7 @@ the Laravel deployment. The PHP SDK keeps Laravel dependency injection,
 configuration, Artisan, logging, events, and testing while Cloud or a
 self-hosted Server owns durable state.
 
-Use the [Laravel adoption and runtime transition guide](/docs/2.0/laravel-adoption/)
+Use the [Laravel adoption and runtime transition guide](/docs/laravel-adoption/)
 to compare both destinations with the same application action and to choose the
 drain, coexistence, cutover, and rollback boundary. Switching Composer packages
 does not migrate in-flight history, timers, retries, or durable Laravel queue
@@ -20,5 +20,5 @@ state.
 
 Keep the [stable installation guide](/docs/installation/) for the running 1.x
 fleet until every run it owns is terminal. After choosing embedded 2.0, follow
-the [detailed package migration procedure](/docs/2.0/migration/). After choosing
-service mode, follow the [PHP SDK guide](/docs/2.0/polyglot/php/).
+the [detailed package migration procedure](/docs/migration/). After choosing
+service mode, follow the [PHP SDK guide](/docs/polyglot/php/).

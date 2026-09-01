@@ -40,17 +40,13 @@ provides the SDK index and general entry points. For crate modules, structs,
 traits, and methods, continue to the generated [Rust SDK API
 reference](https://rust.durable-workflow.com/durable_workflow/).
 
-The supported Rust prerelease supports durable
+The stable Rust SDK supports durable
 timers, child workflows, activity retries and timeouts, signals, replayed query
 handlers, cancellation and termination, server-enforced workflow deadlines,
 typed side effects, version markers, updates, and typed terminal/replay
 failures. It does not yet claim schedule management. Use the
-[2.0 Capability Index](/docs/2.0/capabilities/) instead of assuming every SDK
+[2.0 Capability Index](/docs/capabilities/) instead of assuming every SDK
 has identical feature breadth.
-
-This page belongs to the explicit 2.0 prerelease docs line. The Rust crate is
-published independently from the stable 1.x PHP documentation line and does
-not change which docs version is the public default.
 
 ## Try the local Sample App playground
 
@@ -176,7 +172,7 @@ The lower-level combined SDK example below is useful when adapting an existing
 Rust process. Export the values returned when Cloud provisions the namespace
 and creates its two runtime credentials:
 
-See [Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane) for the
+See [Cloud Managed Runtime](/docs/polyglot/cloud-control-plane) for the
 managed connection boundary.
 
 <!-- docs-example id="rust.sdk.cloud.environment" -->
@@ -255,7 +251,7 @@ async fn start(client: &Client) -> Result<()> {
 Both values are seconds, must be positive, and the run timeout cannot exceed
 the execution timeout. The existing `Client::start_workflow` convenience
 method uses `WorkflowStartOptions::default()`: a 3600-second execution timeout
-and a 600-second run timeout. See [Timeouts](/docs/2.0/features/timeouts) for
+and a 600-second run timeout. See [Timeouts](/docs/features/timeouts) for
 the server's deadline and continue-as-new semantics.
 
 These are workflow policy, not HTTP or result-polling timeouts. In particular,
@@ -369,8 +365,8 @@ keep old and new workflow branches replay-compatible during a rollout. New
 runs record `max_supported`; existing runs reuse the durable marker.
 `patched(change_id)` provides the boolean rollout form, and
 `deprecate_patch(change_id)` preserves the marker after the legacy branch has
-drained. See [Side Effects](/docs/2.0/features/side-effects/) and
-[Versioning](/docs/2.0/features/versioning/) for the shared durable semantics.
+drained. See [Side Effects](/docs/features/side-effects/) and
+[Versioning](/docs/features/versioning/) for the shared durable semantics.
 
 ## Cancel, terminate, and handle terminal outcomes
 
@@ -508,4 +504,4 @@ and cannot convert a cancelled or terminated run into success; managed workers
 continue polling after that definitive rejection and after restart.
 
 For server images, authentication, and production topology, continue with the
-[server setup guide](/docs/2.0/polyglot/server).
+[server setup guide](/docs/polyglot/server).

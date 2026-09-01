@@ -26,22 +26,21 @@ machine-readable docs surface:
 
 | Surface | URL | Use |
 | --- | --- | --- |
-| canonical manifest | `https://durable-workflow.com/llms.txt` | Stable 1.x docs index. Tracks the site's unversioned default Docs path. |
+| canonical manifest | `https://durable-workflow.com/llms.txt` | Stable 2.0 docs index. Tracks the site's unversioned default Docs path. |
 | canonical full bundle | `https://durable-workflow.com/llms-full.txt` | Single-file docs bundle matching the canonical manifest. |
-| v1 manifest | `https://durable-workflow.com/llms-1.x.txt` | Version-pinned 1.x stable index. Equivalent to canonical while 1.x is the active release line. |
+| v1 manifest | `https://durable-workflow.com/llms-1.x.txt` | Version-pinned 1.x archive. |
 | v1 full bundle | `https://durable-workflow.com/llms-full-1.x.txt` | Version-pinned 1.x stable bundle. |
-| v2 manifest | `https://durable-workflow.com/llms-2.0.txt` | Version-pinned 2.0 prerelease index. Use only when intentionally evaluating unreleased 2.0 guidance. |
-| v2 full bundle | `https://durable-workflow.com/llms-full-2.0.txt` | Version-pinned 2.0 prerelease bundle. |
+| v2 manifest | `https://durable-workflow.com/llms-2.0.txt` | Version-pinned 2.0 index, equivalent to the canonical manifest. |
+| v2 full bundle | `https://durable-workflow.com/llms-full-2.0.txt` | Version-pinned 2.0 bundle. |
 
 Default agent prompts should fetch `/llms.txt` or `/llms-full.txt` for stable
-1.x applications. Pin the `-2.0.txt` URLs only when the task is explicitly
-about prerelease 2.0 behavior.
+2.0 work. Pin the `-1.x.txt` URLs when maintaining a 1.x application.
 
 ## Local MCP Surface
 
-The [sample app](/docs/2.0/sample-app) exposes a Laravel MCP server at
+The [sample app](/docs/sample-app) exposes a Laravel MCP server at
 `/mcp/workflows`. It is the reference AI-client integration for local v2
-workflow development. The dedicated [MCP Workflow Surface](/docs/2.0/mcp-workflows)
+workflow development. The dedicated [MCP Workflow Surface](/docs/mcp-workflows)
 page defines the endpoint, tool set, safe smoke workflows, and report shape.
 
 The MCP server gives an agent structured workflow operations instead of UI
@@ -59,7 +58,7 @@ external credentials only after the local environment contains the required
 keys.
 
 When an agent edits repeated AI or human-input workflows, point it at the v2
-[Message Streams](/docs/2.0/features/message-streams) contract. The stable
+[Message Streams](/docs/features/message-streams) contract. The stable
 authoring pattern is `Workflow::inbox()` / `Workflow::outbox()` /
 `MessageStream`; direct `MessageService`, `WorkflowMessage`, or cursor-row
 writes are runtime internals, not sample code patterns.
@@ -68,19 +67,19 @@ writes are runtime internals, not sample code patterns.
 
 Agents should prefer machine-readable surfaces over screenshots or prose:
 
-- The [Agent Operating Loop](/docs/2.0/agent-operating-loop) turns the v2
+- The [Agent Operating Loop](/docs/agent-operating-loop) turns the v2
   docs, MCP endpoint, `dw` JSON output, Waterline history export, and SDK
   references into one repeatable discover-change-run-diagnose workflow.
-- The [Agent Tooling Contract](/docs/2.0/agent-tooling-contract) defines how
+- The [Agent Tooling Contract](/docs/agent-tooling-contract) defines how
   MCP tools, CLI JSON, server diagnostics, Waterline exports, and SDK fixtures
   line up as one machine-operable surface.
 - `dw` commands expose stable exit codes for automation. See the
-  [CLI reference](/docs/2.0/polyglot/cli#exit-codes).
-- [Client and Worker Capabilities](/docs/2.0/polyglot/cli-python-parity/)
+  [CLI reference](/docs/polyglot/cli#exit-codes).
+- [Client and Worker Capabilities](/docs/polyglot/cli-python-parity/)
   compares lifecycle, messages, schedules, visibility, and worker execution
   across `dw` and all three first-party SDKs, with shared request evidence
   where it exists.
-- The [external execution surface](/docs/2.0/polyglot/external-execution)
+- The [external execution surface](/docs/polyglot/external-execution)
   publishes the activity-grade task boundary, carrier requirements, bridge
   outcomes, and input/result envelope paths through `/api/cluster/info`.
 - Server health, info, namespace, workflow, schedule, worker, and task-queue
@@ -98,8 +97,8 @@ When an agent needs to explain a stuck workflow, collect these facts first:
 3. recent typed history events
 4. open waits, timers, and pending tasks
 5. worker and task-queue health
-6. the relevant docs version, using `1.x` for default product work and `2.0`
-   only for prerelease tasks
+6. the relevant docs version, using `2.0` for current product work and `1.x`
+   only for legacy maintenance
 
 That set is enough to distinguish a durable workflow failure from a worker
 runtime failure, a missing external credential, a queue outage, or an operator
@@ -115,8 +114,8 @@ Use the sample app MCP endpoint at /mcp/workflows for workflow discovery,
 start, result, and history. Prefer dw JSON/exit-code contracts and Waterline
 history exports over screenshots. For external handlers or bridge adapters,
 read worker_protocol.external_execution_surface_contract from /api/cluster/info
-and preserve the external task input/result envelopes. Use stable 1.x
-Workflow\Workflow examples unless I explicitly ask for prerelease 2.0 APIs.
+and preserve the external task input/result envelopes. Use Durable Workflow
+2.0 APIs unless I explicitly ask for legacy 1.x maintenance.
 ```
 
 The goal is simple: humans learn the workflow/activity/replay invariant, and

@@ -167,7 +167,7 @@ the local environment has the needed keys.
 
 An AI client should report MCP results with stable facts:
 
-- docs version used, usually `2.0` during prerelease work
+- docs version used, normally `2.0`
 - MCP endpoint and tool name
 - workflow key, `workflow_id`, and `run_id`
 - status and latest failure summary

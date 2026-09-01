@@ -9,9 +9,6 @@ const {
   expandPlatformProtocolCatalog,
 } = require('./render-platform-protocol-catalog');
 
-const V2_PRERELEASE_NOTICE =
-  'Durable Workflow 2.0 is prerelease guidance and is not the default public docs line. Use the canonical stable 1.x bundle unless you are intentionally evaluating 2.0.';
-
 function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
 }
@@ -231,7 +228,7 @@ function withVersionNotice(content, notice) {
   }
 
   return [
-    '# Durable Workflow 2.0 Prerelease Documentation',
+    '# Durable Workflow 2.0 Documentation',
     '',
     notice,
     '',
@@ -245,9 +242,7 @@ function main() {
 
   const versions = getVersionPaths();
   const lastVersion = versions.lastVersion;
-  const v2Notice = versions.currentBanner === 'unreleased'
-    ? V2_PRERELEASE_NOTICE
-    : null;
+  const v2Notice = null;
 
   // Generate manifest for v2.0 (current docs)
   const v2DocsDir = path.join(__dirname, '..', 'docs');

@@ -28,8 +28,8 @@ operating the orchestration runtime yourself.
 Durable Workflow v2 has two deployment modes:
 
 - **Service mode:** applications and workers connect through SDKs to a remote
-  runtime. Choose [Durable Workflow Cloud](/docs/2.0/polyglot/cloud-control-plane/)
-  or a [self-hosted Server](/docs/2.0/polyglot/server/).
+  runtime. Choose [Durable Workflow Cloud](/docs/polyglot/cloud-control-plane/)
+  or a [self-hosted Server](/docs/polyglot/server/).
 - **Embedded mode:** a Laravel application installs
   `durable-workflow/workflow` and owns the runtime directly.
 
@@ -46,7 +46,7 @@ cutover between them, or documenting which parts of the product contract must
 stay identical across both.
 
 Laravel teams should use the focused
-[Laravel adoption and runtime transition guide](/docs/2.0/laravel-adoption/)
+[Laravel adoption and runtime transition guide](/docs/laravel-adoption/)
 for the v1-to-v2 and embedded-to-service paths, including the shipped PHP SDK
 bridge and its Laravel test fake.
 
@@ -54,8 +54,8 @@ bridge and its Laravel test fake.
 
 | Runtime choice | Who operates durable state | What your team runs | Start here |
 | --- | --- | --- | --- |
-| Durable Workflow Cloud | Durable Workflow operates the managed namespace runtime, persistence, upgrades, service endpoint, and Managed Waterline. | Application clients plus PHP, Python, or Rust workers using provisioned credentials. Do not run Server or a separate Waterline service. | [Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane/) |
-| Self-hosted Server | Your team deploys, secures, scales, backs up, and upgrades the Server and its persistence. | Server plus application clients and PHP, Python, or Rust workers. If wanted, deploy Waterline as a separate service against the Server-owned namespace. | [Self-hosted Server](/docs/2.0/polyglot/server/) |
+| Durable Workflow Cloud | Durable Workflow operates the managed namespace runtime, persistence, upgrades, service endpoint, and Managed Waterline. | Application clients plus PHP, Python, or Rust workers using provisioned credentials. Do not run Server or a separate Waterline service. | [Cloud Managed Runtime](/docs/polyglot/cloud-control-plane/) |
+| Self-hosted Server | Your team deploys, secures, scales, backs up, and upgrades the Server and its persistence. | Server plus application clients and PHP, Python, or Rust workers. If wanted, deploy Waterline as a separate service against the Server-owned namespace. | [Self-hosted Server](/docs/polyglot/server/) |
 
 Both choices use the same client and worker model. The difference is runtime
 operations and credentials, not workflow authoring.
@@ -90,8 +90,8 @@ surfaces; there is no mandatory gRPC and no second engine.
 - Your operators can use Waterline or host-app tooling as the primary workflow
   surface.
 
-Start with [Embedded Installation](/docs/2.0/installation/) and the
-[Embedded documentation](/docs/2.0/category/embedded/), including its
+Start with [Embedded Installation](/docs/installation/) and the
+[Embedded documentation](/docs/category/embedded/), including its
 Configuration group.
 
 ## Choose Service Mode When
@@ -102,20 +102,20 @@ Configuration group.
   the workflow engine.
 - You want to scale API ingress, matching/dispatch, and workers independently
   within the supported
-  [server role topology](/docs/2.0/polyglot/server-role-topology).
+  [server role topology](/docs/polyglot/server-role-topology).
 - For self-hosted Server, you want to deploy Waterline as an observer over a
   server-owned namespace. Cloud instead includes Managed Waterline.
 
 For a managed runtime, start with
-[Durable Workflow Cloud](/docs/2.0/polyglot/cloud-control-plane/). For
-self-hosting, start with [Server](/docs/2.0/polyglot/server/) and
-[Self-Hosting Deployments](/docs/2.0/deployment/). Then choose the
-[PHP SDK](/docs/2.0/polyglot/php/),
-[Python SDK](/docs/2.0/polyglot/python/), or
-[Rust SDK](/docs/2.0/polyglot/rust/). Cloud users operate through Managed
+[Durable Workflow Cloud](/docs/polyglot/cloud-control-plane/). For
+self-hosting, start with [Server](/docs/polyglot/server/) and
+[Self-Hosting Deployments](/docs/deployment/). Then choose the
+[PHP SDK](/docs/polyglot/php/),
+[Python SDK](/docs/polyglot/python/), or
+[Rust SDK](/docs/polyglot/rust/). Cloud users operate through Managed
 Waterline. Self-hosted operators can use the
-[Server API Reference](/docs/2.0/polyglot/server-api-reference/) and
-[Monitoring](/docs/2.0/monitoring#waterline-service) when deploying a separate
+[Server API Reference](/docs/polyglot/server-api-reference/) and
+[Monitoring](/docs/monitoring#waterline-service) when deploying a separate
 Waterline service.
 
 ## Migration tooling to self-hosted service mode
@@ -123,7 +123,7 @@ Waterline service.
 The supported path from embedded mode to service mode is staged adoption, not a
 live handoff of in-flight state:
 
-- Use [Embedded to Server Migration](/docs/2.0/polyglot/embedded-to-server) for
+- Use [Embedded to Server Migration](/docs/polyglot/embedded-to-server) for
   the step-by-step cutover.
 - Use `GET /api/cluster/info` to confirm the target server build, topology, and
   capability contract before switching traffic.
@@ -133,7 +133,7 @@ live handoff of in-flight state:
   operator views to verify worker registration and compatible fleet coverage
   before shifting production traffic.
 - Use
-  [Client and Worker Capabilities](/docs/2.0/polyglot/cli-python-parity/)
+  [Client and Worker Capabilities](/docs/polyglot/cli-python-parity/)
   when replacing app-local control-plane calls with server-backed automation.
 - Use Cloud's Managed Waterline, the Waterline deployment attached to a
   self-hosted runtime, or server-native history export for audit/debugging
@@ -150,10 +150,10 @@ Three migration rules are non-negotiable:
 
 ## Related References
 
-- [Installation](/docs/2.0/installation)
-- [Server](/docs/2.0/polyglot/server)
-- [PHP SDK](/docs/2.0/polyglot/php)
-- [Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane)
-- [Embedded to Server Migration](/docs/2.0/polyglot/embedded-to-server)
-- [Server Role Topology](/docs/2.0/polyglot/server-role-topology)
-- [Server Config Reference](/docs/2.0/polyglot/server-config-reference)
+- [Installation](/docs/installation)
+- [Server](/docs/polyglot/server)
+- [PHP SDK](/docs/polyglot/php)
+- [Cloud Managed Runtime](/docs/polyglot/cloud-control-plane)
+- [Embedded to Server Migration](/docs/polyglot/embedded-to-server)
+- [Server Role Topology](/docs/polyglot/server-role-topology)
+- [Server Config Reference](/docs/polyglot/server-config-reference)

@@ -27,7 +27,7 @@ a timer, webhook, or human decision and resume after a worker restart.
 
 This introduction covers stable 1.x, the default public documentation line. It
 runs inside your Laravel application. The separately versioned
-[2.0 prerelease introduction](/docs/2.0/introduction/) covers Cloud,
+[2.0 introduction](/docs/introduction/) covers Cloud,
 self-hosted Server, and service-mode SDK deployments.
 
 ## When to use a durable workflow

@@ -24,15 +24,15 @@ repair.
 
 ## 1. Use The Right Docs Line
 
-For stable 1.x work, use the canonical bundle. It tracks the same unversioned
+For stable 2.0 work, use the canonical bundle. It tracks the same unversioned
 default Docs path human readers reach from the public site:
 
 ```text
 https://durable-workflow.com/llms-full.txt
 ```
 
-Use the version-specific 2.0 bundle only when the task is explicitly about
-prerelease 2.0 behavior:
+Use the version-specific 2.0 bundle when the URL itself must name the current
+major line:
 
 ```text
 https://durable-workflow.com/llms-full-2.0.txt

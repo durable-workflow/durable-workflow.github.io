@@ -1,6 +1,6 @@
 ---
 sidebar_position: 2
-title: 2.0 Prerelease Quickstart
+title: Durable Workflow 2.0 Quickstart
 description: Choose a service-mode runtime and complete a first workflow from PHP, Python, or Rust.
 tags:
   - quickstart
@@ -8,10 +8,9 @@ tags:
   - PHP
   - Python
   - Rust
-  - prerelease
 keywords:
   - Durable Workflow quickstart
-  - 2.0 prerelease quickstart
+  - Durable Workflow 2.0 quickstart
   - standalone PHP SDK quickstart
   - Python SDK quickstart
   - Rust SDK quickstart
@@ -21,9 +20,8 @@ keywords:
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseLink';
-import QualifiedArtifactTuple from '@site/src/components/QualifiedArtifactTuple';
 
-# 2.0 Prerelease Quickstart
+# Durable Workflow 2.0 Quickstart
 
 ## Before you begin
 
@@ -49,30 +47,13 @@ at the end of this guide.
 
 | Runtime | Choose it when | Next action |
 | --- | --- | --- |
-| Durable Workflow Cloud | You want Durable Workflow to operate the runtime, persistence, and Managed Waterline. | Follow the executable [Cloud first workflow](/docs/2.0/polyglot/cloud-control-plane/#cloud-first-workflow), which maps PHP, Python, and Rust complete sources to provisioned credentials and a `completed` result. **Do not run Server or a separate Waterline service.** |
+| Durable Workflow Cloud | You want Durable Workflow to operate the runtime, persistence, and Managed Waterline. | Follow the executable [Cloud first workflow](/docs/polyglot/cloud-control-plane/#cloud-first-workflow), which maps PHP, Python, and Rust complete sources to provisioned credentials and a `completed` result. **Do not run Server or a separate Waterline service.** |
 | Self-hosted Server | You want to operate the runtime yourself or run this exact local published-artifact exercise. | Continue below with Docker and `curl`; deploy Waterline separately only when you want its operator UI. |
 
 The runnable source below uses a local self-hosted Server so it can be exercised
 without an account or source checkout. Cloud uses the same SDK and worker model;
 replace the local development connection with the provisioned values shown in
-[Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane/).
-
-## Qualified compatibility matrix
-
-The matrix records the last jointly qualified 2.0 compatibility tuple, accepted
-on `%%artifact.qualificationDate%%`. It is not a universal install checklist:
-choose the subset for your deployment path. The seven artifacts are versioned
-independently rather than as one synthetic release. A package registry may list
-a newer individual component, but the runnable commands remain on the selected
-path's exact identities until a passing release handoff replaces the versioned
-qualification authority.
-
-<QualifiedArtifactTuple />
-
-Every active command below is rendered from that authority. Accepted handoffs
-refresh the table, commands, and machine-readable
-[quickstart execution contract](pathname:///quickstart-execution-contract.json)
-together; the linked qualification evidence remains immutable history.
+[Cloud Managed Runtime](/docs/polyglot/cloud-control-plane/).
 
 ## 2. Start the local Server
 
@@ -234,7 +215,7 @@ trap - EXIT
 `"greeting":"Hello, PHP!"`. You have run a standalone PHP worker and
 inspected its durable result without Laravel.
 
-Continue with the [PHP SDK guide](/docs/2.0/polyglot/php/).
+Continue with the [PHP SDK guide](/docs/polyglot/php/).
 
 </TabItem>
 <TabItem value="python" label="Python">
@@ -329,7 +310,7 @@ python greeter.py
 `Hello, Python!`. The last two SDK calls read the selected run's result and
 durable terminal state from the server.
 
-Continue with the [Python SDK guide](/docs/2.0/polyglot/python/).
+Continue with the [Python SDK guide](/docs/polyglot/python/).
 
 </TabItem>
 <TabItem value="rust" label="Rust">
@@ -431,7 +412,7 @@ cargo run
 `"greeting":"Hello, Rust!"`. The example waits for its worker to finish the
 run, then reads the selected run's durable status and decoded result.
 
-Continue with the [Rust SDK guide](/docs/2.0/polyglot/rust/).
+Continue with the [Rust SDK guide](/docs/polyglot/rust/).
 
 </TabItem>
 </Tabs>
@@ -475,35 +456,35 @@ This Composer package is not the install identity for the separately deployed
 self-hosted Waterline service. Embedded Laravel does not run Server or install
 one of the service-mode SDKs.
 
-Continue with [Embedded Installation](/docs/2.0/installation/) to configure a
-non-`sync` Laravel queue, then [define](/docs/2.0/defining-workflows/workflows/)
-and [start](/docs/2.0/defining-workflows/starting-workflows/) an embedded
-workflow. [Deployment Modes](/docs/2.0/polyglot/deployment-modes/) compares
+Continue with [Embedded Installation](/docs/installation/) to configure a
+non-`sync` Laravel queue, then [define](/docs/defining-workflows/workflows/)
+and [start](/docs/defining-workflows/starting-workflows/) an embedded
+workflow. [Deployment Modes](/docs/polyglot/deployment-modes/) compares
 this specialized route with the service-mode platform.
 
 ## Next steps
 
-- Use the [Capability Index](/docs/2.0/capabilities/) to check the exact
-  prerelease floors and supported surface for your selected runtime and SDK.
-- Continue with the service-mode [PHP SDK](/docs/2.0/polyglot/php/),
-  [Python SDK](/docs/2.0/polyglot/python/), or
-  [Rust SDK](/docs/2.0/polyglot/rust/) guide.
+- Use the [Capability Index](/docs/capabilities/) to check the supported
+  surface for your selected runtime and SDK.
+- Continue with the service-mode [PHP SDK](/docs/polyglot/php/),
+  [Python SDK](/docs/polyglot/python/), or
+  [Rust SDK](/docs/polyglot/rust/) guide.
 - Compare lifecycle, messages, schedules, visibility, and worker execution in
-  [Client and Worker Capabilities](/docs/2.0/polyglot/cli-python-parity/).
+  [Client and Worker Capabilities](/docs/polyglot/cli-python-parity/).
 - Operate the matching runtime through
-  [Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane/) or the
-  [self-hosted Server](/docs/2.0/polyglot/server/), then add the
-  [CLI](/docs/2.0/polyglot/cli/) when shell automation is useful.
+  [Cloud Managed Runtime](/docs/polyglot/cloud-control-plane/) or the
+  [self-hosted Server](/docs/polyglot/server/), then add the
+  [CLI](/docs/polyglot/cli/) when shell automation is useful.
 - Plan safe service-worker deployment with
-  [worker compatibility and routing](/docs/2.0/polyglot/worker-compatibility-routing/)
-  and [build-ID rollout](/docs/2.0/polyglot/worker-build-id-rollout/).
+  [worker compatibility and routing](/docs/polyglot/worker-compatibility-routing/)
+  and [build-ID rollout](/docs/polyglot/worker-build-id-rollout/).
 
 For embedded Laravel authoring features such as timers, signals, queries,
 activities, and child workflows, use the separate
-[Embedded documentation](/docs/2.0/category/embedded/).
+[Embedded documentation](/docs/category/embedded/).
 
 Release qualification is intentionally separate from this first-success
-guide. The [Platform Conformance Suite](/docs/2.0/platform-conformance/)
+guide. The [Platform Conformance Suite](/docs/platform-conformance/)
 contains the exact artifact matrix, public-source checks, full execution
 transcripts, wall-clock criteria, teardown, and machine-readable quickstart
 contract used for certification.

@@ -20,9 +20,9 @@ import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseL
 Durable Workflow 2.0 keeps workflow state and history outside short-lived
 application processes so PHP, Python, and Rust workers can resume safely after
 a restart. If this is your first visit, take the
-[2.0 Prerelease Quickstart](/docs/2.0/quickstart/) first: it gets one workflow
+[Durable Workflow 2.0 Quickstart](/docs/quickstart/) first: it gets one workflow
 to `completed` before you enter the reference-heavy
-[Capability Index](/docs/2.0/capabilities/).
+[Capability Index](/docs/capabilities/).
 
 ## Choose a deployment model
 
@@ -31,19 +31,19 @@ to `completed` before you enter the reference-heavy
 Applications use a remote durable runtime through first-party SDKs. Choose who
 operates that runtime:
 
-- **[Durable Workflow Cloud](/docs/2.0/polyglot/cloud-control-plane/)** is the
+- **[Durable Workflow Cloud](/docs/polyglot/cloud-control-plane/)** is the
   managed choice. Durable Workflow operates orchestration, persistence, and
   Managed Waterline; your team runs SDK clients and workers against its
   provisioned namespace. **Cloud users do not install or run Durable Workflow
   Server or a separate Waterline service.**
-- **[Self-hosted Server](/docs/2.0/polyglot/server/)** gives your team the same
+- **[Self-hosted Server](/docs/polyglot/server/)** gives your team the same
   service boundary while you deploy, secure, scale, back up, and upgrade the
   runtime. Waterline observation is a separate service you may deploy against
   the Server-owned namespace.
 
 Both choices expose the same versioned HTTP+JSON control plane, worker
 protocol, namespace model, and language-neutral payload envelope. See
-[Deployment Modes](/docs/2.0/polyglot/deployment-modes/) for their ownership
+[Deployment Modes](/docs/polyglot/deployment-modes/) for their ownership
 boundaries.
 
 ### Embedded Laravel
@@ -54,34 +54,34 @@ own infrastructure. It installs `durable-workflow/workflow` and does not
 connect to Cloud or require a separate Server. The embedded Waterline package
 reads that application-owned state in process.
 
-Start with [Embedded Installation](/docs/2.0/installation/) only when that
+Start with [Embedded Installation](/docs/installation/) only when that
 in-application ownership model is intentional.
 
 Laravel teams coming from stable v1—or reconsidering an existing 2.0 embedded
 deployment—should use the
-[Laravel adoption and runtime transition guide](/docs/2.0/laravel-adoption/)
+[Laravel adoption and runtime transition guide](/docs/laravel-adoption/)
 to compare the executable embedded and PHP SDK paths before changing traffic.
 
 ## Choose a service-mode SDK
 
-- **[PHP SDK](/docs/2.0/polyglot/php/):** install `durable-workflow/sdk` in a
+- **[PHP SDK](/docs/polyglot/php/):** install `durable-workflow/sdk` in a
   framework-neutral PHP application or remote worker.
-- **[Python SDK](/docs/2.0/polyglot/python/):** author deterministic workflows
+- **[Python SDK](/docs/polyglot/python/):** author deterministic workflows
   and activities and use the async control-plane client. The
   <PythonPackageReleaseLink authority="qualified">compatibility-qualified Python
   release</PythonPackageReleaseLink> is selected by the same machine-readable
   tuple as the Server quickstart.
-- **[Rust SDK](/docs/2.0/polyglot/rust/):** author deterministic workflows and
+- **[Rust SDK](/docs/polyglot/rust/):** author deterministic workflows and
   activities and run native worker services.
 
 All three are first-party implementations of the same public service boundary.
-The [Client and Worker Capabilities](/docs/2.0/polyglot/cli-python-parity/)
+The [Client and Worker Capabilities](/docs/polyglot/cli-python-parity/)
 guide makes supported and intentionally different client and worker surfaces
 explicit.
 
 ## Your first completed workflow
 
-The [Quickstart](/docs/2.0/quickstart/) states the goal, runtime choice,
+The [Quickstart](/docs/quickstart/) states the goal, runtime choice,
 prerequisites, time, and expected outcome up front. It keeps PHP, Python, and
 Rust equally available while showing one runnable language path at a time.
 Use the local self-hosted path for a source-free published-artifact exercise,
@@ -112,14 +112,14 @@ implementation types.
 Workflow workers reconstruct decisions from durable command and history
 records. Activity and child-workflow input and results can cross language
 boundaries when workers advertise the same public codec and register matching
-type names. Consult the [Capability Index](/docs/2.0/capabilities/) and runtime
+type names. Consult the [Capability Index](/docs/capabilities/) and runtime
 discovery before depending on a specific SDK surface.
 
 ## Learn from the matching examples
 
 - **Service mode and polyglot:** use the
-  [Quickstart](/docs/2.0/quickstart/) and the PHP, Python, or Rust SDK guide.
-- **Embedded Laravel:** use the [Sample App](/docs/2.0/sample-app/) gallery to
+  [Quickstart](/docs/quickstart/) and the PHP, Python, or Rust SDK guide.
+- **Embedded Laravel:** use the [Sample App](/docs/sample-app/) gallery to
   explore Laravel-native workflow patterns and Waterline evidence.
 
 The embedded gallery is not a universal starting point for Cloud or
@@ -132,8 +132,8 @@ The testable loop is **Discover -> Change -> Run -> Diagnose -> Repair**:
 version and capability manifests, explicit workflow commands, structured
 results, typed history and worker/queue diagnostics, safe mutations, and
 post-change verification. See the
-[Agent Operating Loop](/docs/2.0/agent-operating-loop/) and the direct
-[AI-agent evaluator](/docs/2.0/ai-agent-workflow-engine/).
+[Agent Operating Loop](/docs/agent-operating-loop/) and the direct
+[AI-agent evaluator](/docs/ai-agent-workflow-engine/).
 
 ## Do you need a workflow?
 

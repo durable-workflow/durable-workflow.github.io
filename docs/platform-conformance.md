@@ -33,12 +33,12 @@ for implementations that claim Durable Workflow v2 compatibility.
 
 The same manifest is advertised by the standalone server from
 `GET /api/cluster/info` under `platform_conformance_suite`. The
-[Platform Protocol Specs](/docs/2.0/platform-protocol-specs) catalog names
+[Platform Protocol Specs](/docs/platform-protocol-specs) catalog names
 that nested manifest as the `platform_conformance_suite_manifest`
 object family in the `cluster_info_envelope` spec.
 
 The suite is downstream of the
-[Version Compatibility](/docs/2.0/compatibility) authority. Where the suite
+[Version Compatibility](/docs/compatibility) authority. Where the suite
 enumerates a surface family or stability rule, it must match the
 surface-stability contract. The compatibility authority defines what
 the contract is; this page defines how an implementation proves it
@@ -54,13 +54,6 @@ and public URL. The framework-neutral PHP SDK authority is published as
 It declares the released-package topology, scenario and evidence requirements,
 and public runner and result-schema identifiers used to evaluate
 `durable-workflow/sdk` against the released standalone server.
-
-Executed published-artifact evidence is indexed separately in the
-[exact-tuple conformance run ledger](/docs/platform-conformance/#executed-run-ledger).
-The ledger keeps static contract coverage distinct from executed results,
-compares every retained run with the complete current artifact tuple, and
-marks missing, stale, or runner-blocked release evidence as an evidence gap
-rather than a product failure.
 
 ## Target Matrix
 
@@ -150,9 +143,7 @@ them for a stable conformance claim.
 The exact released workflow-lifecycle scenario authority is
 [published as JSON](https://durable-workflow.github.io/platform-conformance/workflow-lifecycle-scenarios.json).
 It records the lifecycle requirements exercised at the current published
-server, PHP SDK, and Rust SDK prerelease boundary. This authority is part of
-the explicit 2.0 prerelease line. It does not change stable 1.x as the default
-docs line.
+server, PHP SDK, and Rust SDK release boundary.
 
 The PHP shard installs the exact `durable-workflow/sdk` package named by the
 current artifact tuple from Packagist into a disposable Composer project. It
@@ -496,12 +487,7 @@ make prerelease readiness green.
 Those prerelease readiness scenario ids and their pass criteria are
 published at
 [`static/platform-conformance/prerelease-readiness-scenarios.json`](pathname:///platform-conformance/prerelease-readiness-scenarios.json).
-The exact quickstart artifact matrix, public distribution channels, command
-transcripts, success probes, result shapes, and teardown steps are published
-in the
-[`quickstart execution contract`](pathname:///quickstart-execution-contract.json).
-That machine contract points back to the concise
-[2.0 quickstart](/docs/2.0/quickstart/) used for onboarding.
+The concise [2.0 quickstart](/docs/quickstart/) is the public onboarding path.
 
 ## Pass / Fail Rules
 

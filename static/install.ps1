@@ -4,11 +4,9 @@
 #   irm https://durable-workflow.com/install.ps1 | iex
 #
 # Environment variables:
-#   $env:VERSION                         Release tag, supported, prerelease, or stable (default: supported).
+#   $env:VERSION                         Release tag, supported, prerelease, or stable (default: stable).
 #   $env:DURABLE_WORKFLOW_INSTALL_DIR    Install directory (default: %USERPROFILE%\.durable-workflow\bin).
 #   $env:DURABLE_WORKFLOW_RELEASE_BASE_URL  Release base URL override for tests.
-#   $env:DURABLE_WORKFLOW_QUALIFIED_AUTHORITY_URL
-#                                        Qualified artifact authority override for tests.
 #   $env:DURABLE_WORKFLOW_INSTALL_VERIFY_ATTESTATIONS
 #                                        Set to 1 to verify GitHub artifact attestations with gh.
 
@@ -26,32 +24,11 @@ $installDir = if ($env:DURABLE_WORKFLOW_INSTALL_DIR) {
 } else {
     Join-Path $env:USERPROFILE '.durable-workflow\bin'
 }
-$version = if ($env:VERSION) { $env:VERSION } else { 'supported' }
-$qualifiedAuthorityUrl = if ($env:DURABLE_WORKFLOW_QUALIFIED_AUTHORITY_URL) {
-    $env:DURABLE_WORKFLOW_QUALIFIED_AUTHORITY_URL
-} else {
-    'https://durable-workflow.com/public-artifact-compatibility-evidence.json'
-}
-$version = if ($version -eq 'supported' -or $version -eq 'prerelease') {
-    $requestedChannel = $version
-    Write-Host '==> Resolving the qualified CLI release' -ForegroundColor Green
-    $authority = Invoke-RestMethod -Uri $qualifiedAuthorityUrl -UseBasicParsing
-    if (
-        $authority.schema -ne 'durable-workflow.docs.public-artifact-compatibility-evidence' -or
-        $authority.schema_version -ne 2 -or
-        $authority.outcome -ne 'pass'
-    ) {
-        throw "The qualified artifact authority at $qualifiedAuthorityUrl is not a passing schema-v2 document."
-    }
-    $resolvedVersion = [string] $authority.qualified_artifact_versions.cli
-    $resolvedVersion = $resolvedVersion -replace '^v', ''
-    if ($resolvedVersion -notmatch '^\d+\.\d+\.\d+(-(alpha|beta|rc)\.\d+)?$') {
-        throw "Could not resolve a qualified CLI release from $qualifiedAuthorityUrl."
-    }
-    if ($requestedChannel -eq 'prerelease' -and $resolvedVersion -notmatch '-(alpha|beta|rc)\.\d+$') {
-        throw "The qualified CLI release at $qualifiedAuthorityUrl is not a prerelease."
-    }
-    $resolvedVersion
+$version = if ($env:VERSION) { $env:VERSION } else { 'stable' }
+$version = if ($version -eq 'supported') {
+    'stable'
+} elseif ($version -eq 'prerelease') {
+    throw 'Prerelease auto-selection ended with the stable 2.0 launch; set VERSION to an exact historical tag.'
 } else {
     $version
 }

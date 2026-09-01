@@ -10,7 +10,7 @@ first-party PHP, Python, and Rust SDKs share the v2 control-plane and worker
 contracts, but their operator, client, and worker roles are not identical.
 
 This all-client guide remains at the original
-`/docs/2.0/polyglot/cli-python-parity/` route so existing links keep working.
+`/docs/polyglot/cli-python-parity/` route so existing links keep working.
 
 ## Capability comparison
 
@@ -75,9 +75,9 @@ See the [Rust SDK guide](./rust.md) and generated
 All four products target the same versioned HTTP+JSON control plane and public
 payload envelope. Evidence is split by what it proves:
 
-- the [Capability Index](/docs/2.0/capabilities/) records exact artifact floors
+- the [Capability Index](/docs/capabilities/) records exact artifact floors
   and current breadth;
-- the [Platform Conformance Suite](/docs/2.0/platform-conformance/) records
+- the [Platform Conformance Suite](/docs/platform-conformance/) records
   cross-client and cross-worker runtime scenarios;
 - CLI and Python repositories retain shared request fixtures for operations
   whose semantic request bodies are byte-for-byte compared today;

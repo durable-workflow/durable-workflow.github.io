@@ -29,7 +29,7 @@ scripts, and SDKs should preserve.
 
 | Layer | Stable handle | Contract expectation |
 | --- | --- | --- |
-| Docs retrieval | Canonical `llms.txt` and `llms-full.txt` track the public site's stable 1.x default Docs path. 2.0 remains reachable through the pinned `llms-2.0.txt` / `llms-full-2.0.txt` prerelease aliases. | Use canonical URLs for default product work. Pin `-1.x.txt` when a URL must name the stable major line, and pin `-2.0.txt` only for explicitly prerelease 2.0 tasks. |
+| Docs retrieval | Canonical `llms.txt` and `llms-full.txt` track the stable 2.0 documentation. `llms-2.0.txt` and `llms-full-2.0.txt` are pinned aliases for the same release line. | Use canonical URLs for 2.0 product work. Pin `-1.x.txt` when a URL must name the archived 1.x line, or `-2.0.txt` when a consumer requires an explicit major-version URL. |
 | Local discovery | `/mcp/workflows` `list_workflows` | The app-owned MCP allow-list names exposed workflow keys, required credentials, expected arguments, and smoke-test suitability. |
 | Workflow operations | MCP `start_workflow`, `get_workflow_result`, `get_workflow_history`, `diagnose_workflow`, `repair_workflow`; `dw` JSON commands; SDK clients | Every client reports workflow id, run id, namespace, task queue, command status, root-cause classification, remediation, and named failure fields without scraping a UI. |
 | Server diagnostics | `/api/cluster/info`, `dw server:info --output=json`, `dw doctor --output=json`, `dw debug workflow --output=json` | Compatibility, protocol, task-queue, worker, and stuck-run facts are machine-readable and bounded. |

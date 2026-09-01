@@ -31,8 +31,7 @@ state, history, schedules, task queues, leases, and durable visibility.
 Customers run SDK clients and workers against a provisioned Cloud namespace.
 
 This is separate from self-hosting. A self-hosted Durable Workflow Server runs
-independently and is never attached to Cloud. The guidance on this page belongs
-to the explicit 2.0 prerelease docs line.
+independently and is never attached to Cloud.
 
 ## Managed Service Boundary
 
@@ -164,9 +163,9 @@ Server or Waterline in managed mode.
 
 Continue with the language guide for SDK-specific authoring:
 
-- [PHP SDK](/docs/2.0/polyglot/php/): run `scripts/playground php`.
-- [Python SDK](/docs/2.0/polyglot/python/): run `scripts/playground python`.
-- [Rust managed-runtime quickstart](/docs/2.0/polyglot/rust-cloud-quickstart/):
+- [PHP SDK](/docs/polyglot/php/): run `scripts/playground php`.
+- [Python SDK](/docs/polyglot/python/): run `scripts/playground python`.
+- [Rust managed-runtime quickstart](/docs/polyglot/rust-cloud-quickstart/):
   run `scripts/playground rust` and use its worker-ready, completed-result, and
   mismatch diagnostics.
 
@@ -230,7 +229,7 @@ Choose Cloud when Durable Workflow should operate the orchestration runtime,
 persistence, single-region placement, recovery, and Managed Waterline while
 your team operates the SDK clients and workers.
 
-Choose [self-hosted Server](/docs/2.0/polyglot/server) when your team needs to
+Choose [self-hosted Server](/docs/polyglot/server) when your team needs to
 operate the Server image, database, cache, networking, authentication, backups,
 and failover independently. A self-hosted Server cannot be registered with,
 attached to, or used as the backing runtime for a Cloud namespace. Embedded
@@ -362,10 +361,10 @@ plot `estimated_cost_cents / 100` as the cost series.
 
 ## Related References
 
-- [Deployment Modes](/docs/2.0/polyglot/deployment-modes)
-- [PHP SDK](/docs/2.0/polyglot/php)
-- [Python SDK](/docs/2.0/polyglot/python)
-- [Rust SDK](/docs/2.0/polyglot/rust)
-- [Server](/docs/2.0/polyglot/server)
-- [Self-Hosting Deployments](/docs/2.0/deployment)
-- [Support](/docs/2.0/support)
+- [Deployment Modes](/docs/polyglot/deployment-modes)
+- [PHP SDK](/docs/polyglot/php)
+- [Python SDK](/docs/polyglot/python)
+- [Rust SDK](/docs/polyglot/rust)
+- [Server](/docs/polyglot/server)
+- [Self-Hosting Deployments](/docs/deployment)
+- [Support](/docs/support)

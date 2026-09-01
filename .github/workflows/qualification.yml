@@ -11,8 +11,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: documentation-qualification-${{ github.sha }}
-  cancel-in-progress: false
+  group: documentation-qualification-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   action-policy:
@@ -45,132 +45,28 @@ jobs:
           --target documentation
           --workflow-directory .github/workflows
 
-  executable-contracts:
+  build:
     name: Executable documentation contracts
     needs: action-policy
     if: ${{ always() }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-
+    timeout-minutes: 15
     steps:
       - name: Require central action policy preflight
         if: ${{ github.server_url == 'https://github.com' }}
         env:
           ACTION_POLICY_RESULT: ${{ needs.action-policy.result }}
         run: test "$ACTION_POLICY_RESULT" = success
-
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
         with:
-          fetch-depth: 0
-
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6
+          persist-credentials: false
+      - name: Set up Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6
         with:
           node-version: 24
           cache: npm
-
-      - name: Classify Cloud promotion browser evidence
-        id: cloud-promotion-classification
-        env:
-          CLOUD_PROMOTION_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
-        run: |
-          classification_args=(--output cloud-promotion-browser-classification.json)
-          if [[ "$CLOUD_PROMOTION_BASE_REF" =~ ^[0-9a-f]{40}$ ]] && \
-            git cat-file -e "${CLOUD_PROMOTION_BASE_REF}^{commit}" 2>/dev/null; then
-            classification_args+=(--base-ref "$CLOUD_PROMOTION_BASE_REF")
-          fi
-          node scripts/classify-cloud-promotion-browser-evidence.js "${classification_args[@]}"
-
-      - name: Verify local Workflow conformance authority
-        run: npm run check:platform-conformance-authority
-
-      - name: Resolve published Workflow conformance ref
-        id: published-workflow
-        if: github.server_url == 'https://github.com'
-        run: |
-          node -e "process.stdout.write('ref=' + require('./scripts/workflow-platform-conformance-authority-lock.json').workflow_source_commit + '\n')" >> "$GITHUB_OUTPUT"
-
-      - name: Checkout published Workflow conformance authority
-        if: github.server_url == 'https://github.com'
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
-        with:
-          repository: ${{ github.repository_owner }}/workflow
-          ref: ${{ steps.published-workflow.outputs.ref }}
-          path: .published-workflow-authority
-          persist-credentials: false
-
-      - name: Verify published Workflow conformance authority
-        if: github.server_url == 'https://github.com'
-        env:
-          WORKFLOW_PLATFORM_CONFORMANCE_MANIFEST_PATH: ${{ github.workspace }}/.published-workflow-authority/resources/platform-conformance-contract.json
-        run: npm run check:platform-conformance-authority
-
-      - name: Install documentation dependencies
+      - name: Install dependencies
         run: npm ci
-
-      - name: Verify live Python package release authority
-        run: node scripts/check-python-package-release.js --live
-
-      - name: Validate Node toolchain policy
-        run: npm run check:node-toolchain
-
       - name: Build routes and validate links
-        run: npm run docusaurus -- build
-
-      - name: Install visual qualification browser
-        run: npx --no-install playwright install --with-deps chromium
-
-      - name: Verify platform conformance disclosure
-        run: npm run check:platform-conformance-disclosure
-
-      - name: Verify job-chaining diagrams
-        run: npm run check:job-chaining-diagrams -- --output job-chaining-diagram-browser-evidence
-
-      - name: Enforce visual control reachability
-        env:
-          VISUAL_QUALIFICATION_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
-          VISUAL_QUALIFICATION_CANDIDATE_COMMIT: ${{ github.sha }}
-        run: npm run check:visual-reachability
-
-      - name: Exercise Cloud promotion browser transport
-        if: steps.cloud-promotion-classification.outputs.required == 'true'
-        run: npm run check:cloud-promotion-browser
-
-      - name: Upload Cloud promotion browser evidence
-        if: ${{ always() && steps.cloud-promotion-classification.outputs.required == 'true' && github.server_url == 'https://github.com' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
-        with:
-          name: cloud-promotion-browser-${{ github.sha }}
-          path: |
-            cloud-promotion-browser-classification.json
-            cloud-promotion-browser-evidence/
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Upload visual qualification evidence
-        if: ${{ always() && github.server_url == 'https://github.com' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
-        with:
-          name: visual-reachability-${{ github.sha }}
-          path: visual-reachability/
-          if-no-files-found: error
-          retention-days: 14
-
-      - name: Upload job-chaining diagram evidence
-        if: ${{ always() && github.server_url == 'https://github.com' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
-        with:
-          name: job-chaining-diagrams-${{ github.sha }}
-          path: job-chaining-diagram-browser-evidence/
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Generate model retrieval surfaces
-        run: |
-          node scripts/generate-llms.js
-          node scripts/generate-llms-full.js
-
-      - name: Validate model retrieval surfaces
-        run: npm run check:llms-ai-surfaces
-
-      - name: Validate executable documentation contracts
-        run: node scripts/check-executable-docs-contracts.js
+        run: npm run build

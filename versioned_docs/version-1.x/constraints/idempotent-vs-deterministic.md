@@ -77,11 +77,11 @@ Design the activity's intended effect so another attempt is safe:
 
 An idempotency key does not make activity code deterministic, and it does not prevent another attempt from starting. It lets the external system recognize that repeated attempts represent the same logical operation.
 
-See [Activity Constraints](./activity-constraints.md), [Defining Activities](../defining-workflows/activities.md), and [Failures and Recovery](../failures-and-recovery.md) for stable 1.x guidance. The explicit 2.0 prerelease documentation provides the deeper [Activity Execution Model](/docs/2.0/features/activity-execution-model/) and [Execution Guarantees and Idempotency](/docs/2.0/constraints/execution-guarantees/) contracts.
+See [Activity Constraints](./activity-constraints.md), [Defining Activities](../defining-workflows/activities.md), and [Failures and Recovery](../failures-and-recovery.md) for stable 1.x guidance. The stable 2.0 documentation provides the deeper [Activity Execution Model](/docs/features/activity-execution-model/) and [Execution Guarantees and Idempotency](/docs/constraints/execution-guarantees/) contracts.
 
 ## One Boundary, Versioned SDK Guidance
 
-The determinism-versus-idempotency boundary is language-neutral. This stable 1.x documentation line covers the Laravel/PHP package and its in-application workflow and activity model. PHP, Python, and Rust service-mode SDK guidance is part of the explicit [2.0 prerelease line](/docs/2.0/introduction/), with separate guides for the [PHP SDK](/docs/2.0/polyglot/php/), [Python SDK](/docs/2.0/polyglot/python/), and [Rust SDK](/docs/2.0/polyglot/rust/).
+The determinism-versus-idempotency boundary is language-neutral. This stable 1.x documentation line covers the Laravel/PHP package and its in-application workflow and activity model. PHP, Python, and Rust service-mode SDK guidance is part of the stable [2.0 line](/docs/introduction/), with separate guides for the [PHP SDK](/docs/polyglot/php/), [Python SDK](/docs/polyglot/python/), and [Rust SDK](/docs/polyglot/rust/).
 
 In any documented runtime, apply the same design:
 

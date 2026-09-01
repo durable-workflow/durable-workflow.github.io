@@ -7,11 +7,11 @@ sidebar_position: 3
 This guide covers installing the Durable Workflow PHP package for Laravel applications.
 
 If you are deciding between package embedding and the standalone server, start
-with [Deployment Modes](/docs/2.0/polyglot/deployment-modes). This page covers
+with [Deployment Modes](/docs/polyglot/deployment-modes). This page covers
 the embedded Laravel path.
 
 > **Prefer to start from a working app?** The
-> [Sample App](/docs/2.0/sample-app) is a runnable Laravel 13 project on
+> [Sample App](/docs/sample-app) is a runnable Laravel 13 project on
 > Durable Workflow 2.0 with one workflow per pattern surface, a Codespaces
 > flow, and a `docker compose` flow. Clone it, run `php artisan app:init`,
 > and you have the same install applied for you. Come back here when you
@@ -35,20 +35,15 @@ Durable Workflow also requires a cache driver that supports [locks](https://lara
 
 ## Installing Durable Workflow
 
-Durable Workflow is installable via Composer. During the 2.0 pre-stable ramp,
-use the exact requirement generated from the last passing qualified tuple so
-Composer receives the matching prerelease stability suffix:
+Durable Workflow is installable via Composer:
 
 ```bash
 composer require %%artifact.workflowComposerPackage%%
 ```
 
-Switch to a normal stable constraint such as `durable-workflow/workflow:^2.0`
-only after `2.0.0` is tagged stable on Packagist and the documented 2.0
-cutover is authorized. See the [compatibility and release-authority
-contract](/docs/2.0/compatibility) for the platform-wide stability rules; the
-prerelease suffix on the Composer pin applies only to package install
-resolution and does not change the stability of any other published surface.
+Use `durable-workflow/workflow:^2.0` when you want Composer to accept compatible
+2.x updates automatically. See [Version Compatibility](/docs/compatibility)
+for runtime and package compatibility rules.
 
 The package auto-loads its migrations, so a normal migrate run is enough after install:
 

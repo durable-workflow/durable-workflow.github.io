@@ -20,7 +20,7 @@ human input loops, assistant replies, workflow-to-workflow notifications, and
 other ordered messages that must survive replay and continue-as-new.
 
 This page describes the embedded Laravel inbox/outbox API. Server-owned
-[Workflow Streams](/docs/2.0/polyglot/workflow-streams/) reuse names such as
+[Workflow Streams](/docs/polyglot/workflow-streams/) reuse names such as
 stream, offset, pending count, lifecycle, and error where their semantics
 match, but they are output-only. They do not add inbound workflow messaging or
 continue-as-new cursor transfer to service mode.
@@ -161,7 +161,7 @@ which run currently owns the stream cursor.
 ## Run this pattern
 
 The travel-agent workflow in the
-[Sample App](/docs/2.0/sample-app) is the runnable reference for the
+[Sample App](/docs/sample-app) is the runnable reference for the
 inbox/outbox shape this page describes:
 
 ```bash

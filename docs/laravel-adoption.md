@@ -28,16 +28,16 @@ This is the decision and transition page for three journeys:
 3. 2.0 embedded Laravel to the 2.0 PHP SDK in service mode.
 
 If your immediate goal is a package-level v1 upgrade, keep the detailed
-[2.0 migration guide](/docs/2.0/migration/) open beside this page. If you have
+[2.0 migration guide](/docs/migration/) open beside this page. If you have
 already selected a self-hosted service runtime, continue with the
-[embedded-to-Server runbook](/docs/2.0/polyglot/embedded-to-server/) after
+[embedded-to-Server runbook](/docs/polyglot/embedded-to-server/) after
 choosing the transition policy here.
 
 ## Pick the destination
 
 | Starting point | Destination | Choose it when | First transition boundary |
 | --- | --- | --- | --- |
-| Stable v1 Laravel | 2.0 embedded | The Laravel app should continue to own workflow persistence, queues, execution, and embedded Waterline. | Upgrade the maintained `durable-workflow/workflow` package through the artifact-authorized 2.0 prerelease path. Existing v1 runs finish through the package's v1 compatibility path; new starts use v2. |
+| Stable v1 Laravel | 2.0 embedded | The Laravel app should continue to own workflow persistence, queues, execution, and embedded Waterline. | Upgrade the maintained `durable-workflow/workflow` package to the 2.0 release line. Existing v1 runs finish through the package's v1 compatibility path; new starts use v2. |
 | Stable v1 Laravel | PHP SDK service mode | Laravel should keep dependency injection, configuration, Artisan, logging, events, and test fakes, but Cloud or Server should own durable state. | Install `durable-workflow/sdk` as a separate service client/worker boundary. v1 history and durable Laravel queue jobs stay on the v1 runtime until terminal. |
 | 2.0 embedded Laravel | PHP SDK service mode | The application should stop owning the orchestration runtime or needs a shared/polyglot runtime boundary. | Route new starts to the service runtime after its workers are ready. Drain embedded runs where they started, or use the explicit eligible embedded-v2 import procedure for self-hosted Server. |
 
@@ -181,8 +181,7 @@ the application.
 
 ### 2.0 embedded Laravel
 
-The runnable prerelease install resolves from the same artifact authority as
-the embedded quickstart:
+The stable install uses the same Workflow package as the embedded quickstart:
 
 <!-- docs-example id="laravel.adoption.v2-embedded.install" -->
 ```bash
@@ -541,7 +540,7 @@ Before changing traffic:
 | Embedded v2 to self-hosted Server | Drain in place, or separately perform the supported export, dry-run, and atomic import for an eligible quiesced embedded-v2 run. Never infer eligibility from package installation. | Start through the SDK after Server discovery, namespace, worker registration, and queue checks pass. | A failed import writes no partial run. After a committed import, Server owns that run; do not resume the embedded copy. |
 
 For the self-hosted import option, use the complete
-[embedded-to-Server migration procedure](/docs/2.0/polyglot/embedded-to-server/#phase-e-import-eligible-embedded-v2-runs).
+[embedded-to-Server migration procedure](/docs/polyglot/embedded-to-server/#phase-e-import-eligible-embedded-v2-runs).
 It rejects v1, redacted history, leased tasks, running activity attempts, and
 other unsafe snapshots. History export by itself is audit/debugging data; only
 that explicit validated import operation creates Server-owned state.
@@ -568,9 +567,9 @@ last step, never the cutover mechanism.
 
 - [Stable v1 installation](/docs/installation/)
 - [Stable v1 migration planning](/docs/migration/)
-- [2.0 embedded installation](/docs/2.0/installation/)
-- [Detailed v1-to-v2 package migration](/docs/2.0/migration/)
-- [PHP SDK service mode](/docs/2.0/polyglot/php/)
-- [Cloud managed runtime](/docs/2.0/polyglot/cloud-control-plane/)
-- [Self-hosted Server](/docs/2.0/polyglot/server/)
-- [Embedded v2 to self-hosted Server](/docs/2.0/polyglot/embedded-to-server/)
+- [2.0 embedded installation](/docs/installation/)
+- [Detailed v1-to-v2 package migration](/docs/migration/)
+- [PHP SDK service mode](/docs/polyglot/php/)
+- [Cloud managed runtime](/docs/polyglot/cloud-control-plane/)
+- [Self-hosted Server](/docs/polyglot/server/)
+- [Embedded v2 to self-hosted Server](/docs/polyglot/embedded-to-server/)
