@@ -153,7 +153,7 @@ scripts/playground "$language" --runtime managed \
   --task-queue "$DURABLE_WORKFLOW_TASK_QUEUE"
 ```
 
-The runner resolves the current qualified artifact tuple, gives each
+The runner resolves the current stable artifact versions, gives each
 credential only to its matching child process, waits up to 60 seconds for a
 worker registration advertising the exact queue and generated workflow and
 activity types, then starts one client request. It succeeds only after the SDK

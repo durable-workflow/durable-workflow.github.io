@@ -60,7 +60,7 @@ scripts/playground rust
 ```
 
 The local playground generates caller-owned workflow and activity source,
-selects the current compatibility-qualified artifacts, and starts the published
+selects the current stable artifacts, and starts the published
 Server and Waterline. It waits for a worker registration whose identity,
 workflow type, activity type, and task queue match the generated contract before
 starting the workflow. Success requires the expected completed result and
@@ -160,7 +160,7 @@ No Cloud enrollment or Cloud credential is involved in this path.
 
 For the shortest managed-runtime proof, use the [Rust Cloud
 quickstart](./rust-cloud-quickstart.md). It runs the same symmetric Sample App
-playground available to PHP and Python, selects current qualified artifacts
+playground available to PHP and Python, selects current stable artifacts
 dynamically, verifies exact worker readiness, and waits for a completed result.
 
 <ProductPromotion source="docs-v2-rust-sdk">

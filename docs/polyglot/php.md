@@ -37,7 +37,7 @@ scripts/playground php
 ```
 
 The local playground generates caller-owned workflow and activity source,
-selects the current compatibility-qualified artifacts, and starts the published
+selects the current stable artifacts, and starts the published
 Server and Waterline. It waits for a worker registration whose identity,
 workflow type, activity type, and task queue match the generated contract before
 starting the workflow. Success requires the expected completed result and

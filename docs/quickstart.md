@@ -226,10 +226,10 @@ worker and control-plane APIs.
 
 1. **Install the SDK.**
 
-   Use the <PythonPackageReleaseLink authority="qualified">compatibility-qualified
-   Python SDK release</PythonPackageReleaseLink> projected from the tuple above.
-   The generated exact requirement keeps this executable path on the same
-   Server train without asking you to discover an RC sequence number.
+   Use the <PythonPackageReleaseLink authority="qualified">stable Python SDK
+   release</PythonPackageReleaseLink> listed in the manifest above.
+   The generated exact requirement keeps this executable path on the documented
+   stable release line.
 
 <!-- docs-example id="quickstart.python.install" -->
 ```bash

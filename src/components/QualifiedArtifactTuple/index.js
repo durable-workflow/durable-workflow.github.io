@@ -105,7 +105,7 @@ export default function QualifiedArtifactTuple() {
             <th>Component</th>
             <th>Role</th>
             <th>Deployment applicability</th>
-            <th>Exact qualified identity</th>
+            <th>Stable identity</th>
           </tr>
         </thead>
         <tbody>
@@ -133,7 +133,7 @@ export default function QualifiedArtifactTuple() {
               </td>
               <td>
                 <span className="qualified-artifact-cell-label" aria-hidden="true">
-                  Exact qualified identity
+                  Stable identity
                 </span>
                 <a href={row.packageUrl}><code>{row.identity}</code></a>
               </td>
@@ -143,7 +143,7 @@ export default function QualifiedArtifactTuple() {
       </table>
       <p>
         <a href={QUALIFIED_ARTIFACT_TUPLE_AUTHORITY.authorityUrl}>
-          Open the versioned qualification authority
+          Open the stable release manifest
         </a>
       </p>
     </>

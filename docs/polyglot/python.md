@@ -36,7 +36,7 @@ scripts/playground python
 ```
 
 The local playground generates caller-owned workflow and activity source,
-selects the current compatibility-qualified artifacts, and starts the published
+selects the current stable artifacts, and starts the published
 Server and Waterline. It waits for a worker registration whose identity,
 workflow type, activity type, and task queue match the generated contract before
 starting the workflow. Success requires the expected completed result and
@@ -74,8 +74,8 @@ connection boundary; the quickstart below uses local self-hosted values.
 
 ## Installation
 
-Install the <PythonPackageReleaseLink authority="qualified">compatibility-qualified
-Python SDK release</PythonPackageReleaseLink>. The exact requirement is generated
+Install the <PythonPackageReleaseLink authority="qualified">stable Python SDK
+release</PythonPackageReleaseLink>. The exact requirement is generated
 from the same tuple as the Server quickstart, and a lock or constraints file can
 retain it for reproducibility.
 
