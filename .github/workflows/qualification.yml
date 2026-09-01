@@ -17,7 +17,6 @@ concurrency:
 jobs:
   action-policy:
     name: Central action policy preflight
-    if: ${{ github.server_url == 'https://github.com' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -53,7 +52,6 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Require central action policy preflight
-        if: ${{ github.server_url == 'https://github.com' }}
         env:
           ACTION_POLICY_RESULT: ${{ needs.action-policy.result }}
         run: test "$ACTION_POLICY_RESULT" = success
