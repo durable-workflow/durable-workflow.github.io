@@ -32,7 +32,7 @@ language-agnosticism audit that release reviewers apply to new server,
 workflow, CLI, Waterline, and MCP surfaces.
 
 The upstream architecture guide is published at
-[`sdk-neutrality.md`](https://github.com/durable-workflow/workflow/blob/v2/docs/architecture/sdk-neutrality.md).
+[`sdk-neutrality.md`](https://github.com/durable-workflow/workflow/blob/main/docs/architecture/sdk-neutrality.md).
 The consumable machine-readable authority is published from this site at
 [`/sdk-neutrality-contract.json`](/sdk-neutrality-contract.json) under
 the schema id `durable-workflow.v2.sdk-neutrality.contract`. Its protocol and
