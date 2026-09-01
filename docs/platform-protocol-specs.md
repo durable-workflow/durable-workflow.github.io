@@ -166,7 +166,7 @@ JSON mirror, and affected published specification artifacts together. Human
 review confirms that explanatory prose remains useful without treating it as
 machine authority.
 
-Continue to the [Platform Conformance Suite](/docs/2.0/platform-conformance)
+Continue to the [Platform Conformance Suite](/docs/platform-conformance)
 to resolve the active, byte-bound fixtures that exercise these protocol
 specifications. Historical fixture evidence is identified separately in that
 suite and does not replace a current catalog authority.

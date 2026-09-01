@@ -2,11 +2,8 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
-  schedule:
-    - cron: '17 * * * *'
 
 permissions:
   contents: read
@@ -22,148 +19,22 @@ jobs:
       github.repository == 'durable-workflow/durable-workflow.github.io' &&
       github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
         with:
-          fetch-depth: 0
           persist-credentials: false
-
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6
+      - name: Set up Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6
         with:
           node-version: 24
           cache: npm
-
-      - name: Verify current public artifact tuple
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node scripts/refresh-public-artifact-versions.js --check
-
       - name: Install dependencies
         run: npm ci
-
-      - name: Verify live Python package release authority
-        run: node scripts/check-python-package-release.js --live
-
-      - name: Set up Helm
-        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310  # v5
-        with:
-          version: v3.16.2
-
-      - name: Resolve published Server protocol authority ref
-        id: published-server-authority
-        run: |
-          node -e "process.stdout.write('ref=' + require('./scripts/published-artifact-versions.json').artifacts.server + '\n')" >> "$GITHUB_OUTPUT"
-
-      - name: Checkout published Server protocol authority
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
-        with:
-          repository: ${{ github.repository_owner }}/server
-          ref: ${{ steps.published-server-authority.outputs.ref }}
-          path: .published-server-protocol-authority
-          persist-credentials: false
-
-      - name: Synchronize the Helm release contract from published Server source
-        run: >-
-          node scripts/helm-chart-release.js sync-contract
-          .published-server-protocol-authority
-
-      - name: Plan deployment
-        id: deploy-plan
-        env:
-          DOCS_DEPLOY_EVENT_NAME: ${{ github.event_name }}
-        run: node scripts/plan-docs-deploy.js
-
-      - name: Verify pinned server protocol catalog
-        id: server_catalog
-        if: steps.deploy-plan.outputs.deploy == 'true'
-        env:
-          PUBLIC_SERVER_PROTOCOL_CATALOG_ALLOW_FORWARD_CANDIDATE: '1'
-          PUBLIC_SERVER_PROTOCOL_CATALOG_EVIDENCE: public-server-protocol-catalog-conformance.json
-          PUBLIC_SERVER_SOURCE_PATH: ${{ github.workspace }}/.published-server-protocol-authority
-        run: node scripts/check-public-server-protocol-catalog.js
-
-      - name: Report source-qualified additive catalog deployment
-        if: >-
-          steps.deploy-plan.outputs.deploy == 'true' &&
-          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable'
-        env:
-          PUBLIC_SERVER_PROTOCOL_CATALOG_EVIDENCE: public-server-protocol-catalog-conformance.json
-        run: |
-          node <<'NODE'
-          const fs = require('fs');
-          const {
-            writeDeploymentSummary,
-          } = require('./scripts/check-public-server-protocol-catalog');
-
-          const evidencePath = process.env.PUBLIC_SERVER_PROTOCOL_CATALOG_EVIDENCE;
-          const evidence = JSON.parse(fs.readFileSync(evidencePath, 'utf8'));
-          writeDeploymentSummary(
-            process.env.GITHUB_STEP_SUMMARY,
-            evidence.deployment,
-            evidencePath,
-          );
-          NODE
-
-      - name: Upload pinned server protocol catalog evidence
-        if: ${{ always() && steps.deploy-plan.outputs.deploy == 'true' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
-        with:
-          name: public-server-protocol-catalog-conformance
-          path: |
-            public-server-protocol-catalog-conformance.json
-            public-server-protocol-catalog-bootstrap.log
-            public-server-protocol-catalog-server.log
-          if-no-files-found: error
-
-      - name: Resolve Workflow authority ref
-        id: workflow-authority
-        if: >-
-          steps.deploy-plan.outputs.deploy == 'true' &&
-          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
-          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
-        run: |
-          node -e "process.stdout.write('ref=' + require('./scripts/workflow-sdk-neutrality-authority-lock.json').workflow_source_commit + '\n')" >> "$GITHUB_OUTPUT"
-
-      - name: Checkout Workflow authority
-        if: >-
-          steps.deploy-plan.outputs.deploy == 'true' &&
-          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
-          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
-        with:
-          repository: durable-workflow/workflow
-          ref: ${{ steps.workflow-authority.outputs.ref }}
-          path: .workflow-authority
-          persist-credentials: false
-
-      - name: Resolve published Workflow conformance ref
-        id: published-workflow
-        if: >-
-          steps.deploy-plan.outputs.deploy == 'true' &&
-          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
-          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
-        run: |
-          node -e "process.stdout.write('ref=' + require('./scripts/workflow-platform-conformance-authority-lock.json').workflow_source_commit + '\n')" >> "$GITHUB_OUTPUT"
-
-      - name: Checkout published Workflow conformance authority
-        if: >-
-          steps.deploy-plan.outputs.deploy == 'true' &&
-          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
-          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
-        with:
-          repository: ${{ github.repository_owner }}/workflow
-          ref: ${{ steps.published-workflow.outputs.ref }}
-          path: .published-workflow-authority
-          persist-credentials: false
-
-      - name: Validate privacy-first analytics configuration
-        if: >-
-          steps.deploy-plan.outputs.deploy == 'true' &&
-          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
-          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
+      - name: Validate analytics configuration
         env:
           CLOUDFLARE_WEB_ANALYTICS_TOKEN: ${{ vars.CLOUDFLARE_WEB_ANALYTICS_TOKEN }}
         run: |
@@ -171,256 +42,15 @@ jobs:
             echo 'CLOUDFLARE_WEB_ANALYTICS_TOKEN must be the canonical 32-character site token' >&2
             exit 1
           fi
-
       - name: Build website
-        if: >-
-          steps.deploy-plan.outputs.deploy == 'true' &&
-          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
-          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
         env:
           CLOUDFLARE_WEB_ANALYTICS_TOKEN: ${{ vars.CLOUDFLARE_WEB_ANALYTICS_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          WORKFLOW_SDK_NEUTRALITY_MANIFEST_PATH: ${{ github.workspace }}/.workflow-authority/resources/sdk-neutrality-contract.json
-          WORKFLOW_PLATFORM_CONFORMANCE_MANIFEST_PATH: ${{ github.workspace }}/.published-workflow-authority/resources/platform-conformance-contract.json
         run: npm run build
-
-      - name: Set up Docker Buildx
-        if: >-
-          steps.deploy-plan.outputs.deploy == 'true' &&
-          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
-          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4
-
-      - name: Guard Helm chart immutability and stage the HTTPS repository
-        if: >-
-          steps.deploy-plan.outputs.deploy == 'true' &&
-          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
-          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
-        run: node scripts/helm-chart-release.js pre-deploy
-
-      - name: Verify public artifact tuple
-        if: >-
-          steps.deploy-plan.outputs.deploy == 'true' &&
-          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
-          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
-        run: |
-          node <<'NODE'
-          const assert = require('assert');
-          const fs = require('fs');
-
-          const recommended = require('./scripts/public-artifact-versions.json').artifacts;
-          const published = require('./scripts/published-artifact-versions.json').artifacts;
-          const audit = JSON.parse(fs.readFileSync('build/docs-page-release-audit.json', 'utf8'));
-          const narrative = JSON.parse(fs.readFileSync('build/docs-narrative-audit.json', 'utf8'));
-          const quickstart = JSON.parse(fs.readFileSync('build/quickstart-execution-contract.json', 'utf8'));
-
-          for (const [name, version] of Object.entries(published)) {
-            assert.strictEqual(
-              audit.artifact_versions && audit.artifact_versions[name],
-              version,
-              `docs-page-release-audit.json artifact_versions.${name}`
-            );
-
-            assert.strictEqual(
-              narrative.artifact_versions && narrative.artifact_versions[name],
-              version,
-              `docs-narrative-audit.json artifact_versions.${name}`
-            );
-          }
-
-          for (const [name, version] of Object.entries(recommended)) {
-            assert.strictEqual(
-              quickstart.artifacts && quickstart.artifacts[name] && quickstart.artifacts[name].version,
-              version,
-              `quickstart-execution-contract.json artifacts.${name}.version`
-            );
-          }
-
-          assert.strictEqual(
-            audit.release_status_guardrail &&
-              audit.release_status_guardrail.stable_default_docs_version,
-            '1.x',
-            'release audit stable default docs version'
-          );
-          assert.strictEqual(
-            quickstart.default_docs_guard &&
-              quickstart.default_docs_guard.stable_default_docs_version,
-            '1.x',
-            'quickstart stable default docs version'
-          );
-          assert.strictEqual(
-            narrative.release_status_guardrail &&
-              narrative.release_status_guardrail.stable_default_docs_version,
-            '1.x',
-            'narrative audit stable default docs version'
-          );
-          assert.strictEqual(
-            narrative.release_status_guardrail &&
-              narrative.release_status_guardrail.explicit_prerelease_docs_version,
-            '2.0',
-            'narrative audit explicit prerelease docs version'
-          );
-          assert.strictEqual(
-            narrative.docs_revision,
-            audit.docs_revision,
-            'narrative and release audit docs revisions'
-          );
-          assert.strictEqual(
-            narrative.summary && narrative.summary.markdown_sources,
-            narrative.route_inventory && narrative.route_inventory.length,
-            'narrative audit Markdown source count matches the built route inventory'
-          );
-
-          console.log(
-            `Deploying current published component artifacts: ${Object.entries(published)
-              .map(([name, version]) => `${name}=${version}`)
-              .join(', ')}`
-          );
-          console.log(
-            `Retaining qualified aggregate recommendation: ${Object.entries(recommended)
-              .map(([name, version]) => `${name}=${version}`)
-              .join(', ')}`
-          );
-          NODE
-
-      - name: Install Cloud promotion browser
-        if: >-
-          steps.deploy-plan.outputs.deploy == 'true' &&
-          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
-          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
-        run: npx --no-install playwright install --with-deps chromium
-
-      # Popular action to deploy to GitHub Pages:
-      # Docs: https://github.com/peaceiris/actions-gh-pages#%EF%B8%8F-docusaurus
       - name: Deploy to GitHub Pages
-        if: >-
-          steps.deploy-plan.outputs.deploy == 'true' &&
-          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
-          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
         uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453  # v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          # Build output to publish to the `gh-pages` branch:
           publish_dir: ./build
-          # The following lines assign commit authorship to the official
-          # GH-Actions bot for deploys to `gh-pages` branch:
-          # https://github.com/actions/checkout/issues/13#issuecomment-724415212
-          # The GH actions bot is used by default if you didn't specify the two fields.
-          # You can swap them out with your own user credentials.
           user_name: github-actions[bot]
           user_email: 41898282+github-actions[bot]@users.noreply.github.com
           force_orphan: true
-
-      - name: Verify live CLI installer cache remediation
-        if: >-
-          steps.deploy-plan.outputs.deploy == 'true' &&
-          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
-          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
-        run: node scripts/verify-cli-installer-live.js
-
-      - name: Upload live CLI installer evidence
-        if: ${{ always() && steps.deploy-plan.outputs.deploy == 'true' && (steps.server_catalog.outputs.deployment_state == 'deployable' || steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable') }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
-        with:
-          name: live-cli-installer-${{ github.sha }}
-          path: live-cli-installer-evidence.json
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Verify live docs release audit
-        if: >-
-          steps.deploy-plan.outputs.deploy == 'true' &&
-          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
-          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
-        run: node scripts/verify-docs-release-live.js
-
-      - name: Verify live sitemap freshness
-        if: >-
-          steps.deploy-plan.outputs.deploy == 'true' &&
-          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
-          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
-        run: node scripts/verify-sitemap-freshness-live.js
-
-      - name: Verify live workflow lifecycle authority
-        if: >-
-          steps.deploy-plan.outputs.deploy == 'true' &&
-          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
-          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
-        run: node scripts/verify-workflow-lifecycle-live.js
-
-      - name: Verify live job-chaining diagrams
-        if: >-
-          steps.deploy-plan.outputs.deploy == 'true' &&
-          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
-          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
-        run: npm run check:job-chaining-diagrams -- --live --wait-for-candidate --output live-job-chaining-diagram-browser-evidence
-
-      - name: Verify live Cloud promotion browser transport
-        if: >-
-          steps.deploy-plan.outputs.deploy == 'true' &&
-          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
-          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
-        run: npm run check:cloud-promotion-browser -- --live --wait-for-candidate --output cloud-promotion-browser-evidence
-
-      - name: Set up clean Helm install cluster
-        if: >-
-          steps.deploy-plan.outputs.deploy == 'true' &&
-          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
-          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
-        uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc  # v1.14.0
-        with:
-          version: v0.23.0
-          node_image: kindest/node:v1.29.4
-          cluster_name: docs-helm-public-${{ github.run_id }}-${{ github.run_attempt }}
-          wait: 120s
-
-      - name: Provision clean Helm install dependencies
-        if: >-
-          steps.deploy-plan.outputs.deploy == 'true' &&
-          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
-          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
-        run: |
-          kubectl apply -f .published-server-protocol-authority/scripts/helm-chart-kind-fixtures.yaml
-          kubectl --namespace durable-workflow rollout status \
-            deployment/durable-workflow-mysql --timeout=180s
-          kubectl --namespace durable-workflow rollout status \
-            deployment/durable-workflow-redis --timeout=120s
-
-      - name: Upload live Cloud promotion browser evidence
-        if: ${{ always() && steps.deploy-plan.outputs.deploy == 'true' && (steps.server_catalog.outputs.deployment_state == 'deployable' || steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable') }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
-        with:
-          name: live-cloud-promotion-browser-${{ github.sha }}
-          path: cloud-promotion-browser-evidence/
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Upload live job-chaining diagram evidence
-        if: ${{ always() && steps.deploy-plan.outputs.deploy == 'true' && (steps.server_catalog.outputs.deployment_state == 'deployable' || steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable') }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
-        with:
-          name: live-job-chaining-diagrams-${{ github.sha }}
-          path: live-job-chaining-diagram-browser-evidence/
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Verify both public Helm release channels
-        if: >-
-          steps.deploy-plan.outputs.deploy == 'true' &&
-          (steps.server_catalog.outputs.deployment_state == 'deployable' ||
-          steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable')
-        run: node scripts/helm-chart-release.js verify-live
-
-      - name: Upload public Helm validation evidence
-        if: ${{ always() && steps.deploy-plan.outputs.deploy == 'true' && (steps.server_catalog.outputs.deployment_state == 'deployable' || steps.server_catalog.outputs.deployment_state == 'source-qualified-deployable') }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
-        with:
-          name: public-helm-release-validation
-          path: |
-            helm-predeploy-immutability-evidence.json
-            helm-public-validation-evidence.json
-          if-no-files-found: error
-
-      - name: Report current live tuple
-        if: steps.deploy-plan.outputs.deploy != 'true'
-        run: echo "Live public artifact tuple already matches main; skipping scheduled deploy."

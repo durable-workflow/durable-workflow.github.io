@@ -21,9 +21,9 @@ Ordinary v2 activities run as durable queued tasks. Local activities are an
 explicit same-process primitive for short activity work that still records
 durable activity history. Worker sessions are available when multiple durable
 activity steps need one worker lease, and sticky execution is a supported
-replay optimization, not a correctness contract. See [Activity Execution Model](/docs/2.0/features/activity-execution-model),
-[Local Activities](/docs/2.0/features/local-activities), [Worker Sessions](/docs/2.0/features/worker-sessions),
-and [Sticky Execution](/docs/2.0/features/sticky-execution) for the exact
+replay optimization, not a correctness contract. See [Activity Execution Model](/docs/features/activity-execution-model),
+[Local Activities](/docs/features/local-activities), [Worker Sessions](/docs/features/worker-sessions),
+and [Sticky Execution](/docs/features/sticky-execution) for the exact
 contracts.
 :::
 
@@ -52,17 +52,17 @@ class MyActivity extends Activity
 
 Every `activity(...)` call records an activity command on workflow history and
 creates a durable queued task for a worker to claim. Ordinary activities may
-be claimed by any compatible worker, while [worker sessions](/docs/2.0/features/worker-sessions)
+be claimed by any compatible worker, while [worker sessions](/docs/features/worker-sessions)
 can pin a sequence of activity attempts to one worker-session lease when the
 workflow explicitly opts into that contract.
 
 If you need a replay-safe value without scheduling queued work, use
-[`sideEffect(...)`](/docs/2.0/features/side-effects) instead. If you need a
+[`sideEffect(...)`](/docs/features/side-effects) instead. If you need a
 short retryable same-process activity with timeout, heartbeat, and activity
-history semantics, use [Local Activities](/docs/2.0/features/local-activities).
-For the full placement model, see [Activity Execution Model](/docs/2.0/features/activity-execution-model).
+history semantics, use [Local Activities](/docs/features/local-activities).
+For the full placement model, see [Activity Execution Model](/docs/features/activity-execution-model).
 For sticky replay-cache behavior, see
-[Sticky Execution](/docs/2.0/features/sticky-execution).
+[Sticky Execution](/docs/features/sticky-execution).
 
 ## Idempotency and Durable Identity
 
@@ -85,9 +85,9 @@ its lease, and reports late, the engine may reject that late completion because
 another worker already won the durable race, but the remote side effect may
 still have happened.
 
-See [Execution Guarantees and Idempotency](/docs/2.0/constraints/execution-guarantees),
-[Heartbeats](/docs/2.0/features/heartbeats), and
-[Failures and Recovery](/docs/2.0/failures-and-recovery) for the operational
+See [Execution Guarantees and Idempotency](/docs/constraints/execution-guarantees),
+[Heartbeats](/docs/features/heartbeats), and
+[Failures and Recovery](/docs/failures-and-recovery) for the operational
 model behind those identifiers.
 
 ## Per-Call Overrides
@@ -105,7 +105,7 @@ $result = activity(
 );
 ```
 
-See [Activity options](/docs/2.0/configuration/options#activityoptions) for the full list of fields, including timeouts and heartbeats.
+See [Activity options](/docs/configuration/options#activityoptions) for the full list of fields, including timeouts and heartbeats.
 
 ## Local Activity Calls
 
@@ -126,5 +126,5 @@ $receipt = localActivity(
 
 Local activities reject `connection`, `queue`, worker-session routing, and
 schedule-to-start options because they do not create ordinary activity tasks.
-See [Local Activities](/docs/2.0/features/local-activities) for the complete
+See [Local Activities](/docs/features/local-activities) for the complete
 contract.

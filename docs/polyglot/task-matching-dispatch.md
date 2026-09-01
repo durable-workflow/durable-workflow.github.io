@@ -200,11 +200,11 @@ clear rollout and compatibility behavior rather than a new topology.
 
 ## Related references
 
-- [Worker Protocol](/docs/2.0/polyglot/worker-protocol) for poll, heartbeat,
+- [Worker Protocol](/docs/polyglot/worker-protocol) for poll, heartbeat,
   complete, and fail verbs
-- [Task Queue Admission](/docs/2.0/polyglot/task-queue-admission) for slot,
+- [Task Queue Admission](/docs/polyglot/task-queue-admission) for slot,
   lease, and dispatch budgets on top of matching
-- [Rolling Upgrades](/docs/2.0/rolling-upgrades) for rollout procedure when
+- [Rolling Upgrades](/docs/rolling-upgrades) for rollout procedure when
   matching and compatibility are both in play
-- [Server Config Reference](/docs/2.0/polyglot/server-config-reference) for
+- [Server Config Reference](/docs/polyglot/server-config-reference) for
   `DW_V2_MATCHING_ROLE_QUEUE_WAKE`, poll timing, and wake-signal settings

@@ -174,7 +174,6 @@ const sidebars = {
         'compatibility',
         'platform-protocol-specs',
         'platform-conformance',
-        'docs-page-release-audit',
         'sdk-neutrality',
         'support',
       ],

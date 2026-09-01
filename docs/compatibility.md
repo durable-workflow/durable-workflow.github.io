@@ -67,7 +67,7 @@ release-review responsibility.
 ## Companion: Platform Protocol Spec Catalog
 
 This page says *which* surfaces are public and *how* they may change.
-The companion [Platform Protocol Specs](/docs/2.0/platform-protocol-specs)
+The companion [Platform Protocol Specs](/docs/platform-protocol-specs)
 catalog says *where* the normative machine-readable specification for
 each surface lives, *which format* the spec uses (OpenAPI for HTTP APIs,
 JSON Schema for object families, AsyncAPI for event-stream semantics),
@@ -93,7 +93,7 @@ repository-local authority fields.
 Every required platform protocol catalog entry is marked `published`; the
 invocable carrier entry remains `in_progress`. Every available entry links
 directly to a public OpenAPI, AsyncAPI, or JSON Schema document. The
-[`cluster_info_envelope`](/docs/2.0/platform-protocol-specs#cluster-info-envelope-notes)
+[`cluster_info_envelope`](/docs/platform-protocol-specs#cluster-info-envelope-notes)
 schema pins the discovery surface every other catalog entry can be
 reached from.
 
@@ -134,7 +134,7 @@ These documents add per-package detail under the rules on this page:
 - `durable-workflow/workflow` (PHP) — [`docs/api-stability.md`](https://github.com/durable-workflow/workflow/blob/v2/docs/api-stability.md). Authoritative for the PHP authoring API, the `Support\*` server-facing classes, and the frozen history-event wire-format tables.
 - `durable-workflow/sdk` (PHP) — [`README.md`](https://github.com/durable-workflow/sdk-php/blob/main/README.md). Authoritative for the framework-neutral remote client and worker API distributed from Packagist.
 - `durable-workflow/server` — [`README.md`](https://github.com/durable-workflow/server/blob/main/README.md) and `docs/contracts/*`. Authoritative for the standalone server's request/response contracts.
-- `dw` CLI — [`/docs/polyglot/cli-reference`](/docs/2.0/polyglot/cli-reference). Authoritative for the JSON output shapes and exit codes.
+- `dw` CLI — [`/docs/polyglot/cli-reference`](/docs/polyglot/cli-reference). Authoritative for the JSON output shapes and exit codes.
 - Python SDK — `README.md` in `durable-workflow/sdk-python`. Authoritative for the `durable_workflow` package public API.
 - Rust SDK — `README.md` and `[package.metadata.durable-workflow]` in
   `durable-workflow/sdk-rust`. Authoritative for the `durable-workflow` crate
@@ -182,7 +182,7 @@ Required:
   one minor release before cutting the major
 - where feasible, ship the new surface alongside the old surface in a
   previous minor release so callers can migrate before the major
-- document the migration path on the [migration guide](/docs/2.0/migration)
+- document the migration path on the [migration guide](/docs/migration)
   before publish
 
 ## Diagnostic-Only Versus Guaranteed Fields
@@ -248,12 +248,7 @@ Capabilities in this train are the 2.0 baseline and therefore have no
 feature-introduction version matrix. New capabilities progress through
 ordinary compatible releases: additive work advances the compatible version,
 while a breaking public-surface change waits for the next major version.
-During the prerelease period, a coordinated `%%artifact.releasePhase%%`
-qualification supersedes the previous reproducibility tuple.
-
-Stable 1.x remains the default public docs line. This page is explicit
-prerelease guidance under `/docs/2.0/`; it does not authorize a default-docs
-cutover.
+Each stable component follows semantic versioning from this 2.0 baseline.
 
 ### Runtime protocol compatibility
 
@@ -279,9 +274,8 @@ The server's top-level `version` is build identity. Clients must use the
 `surface_stability_contract` manifests returned by
 `GET /api/cluster/info` for protocol negotiation.
 
-Workflow and Waterline must also share the exact current
-`%%artifact.releasePhase%%` train. Matching only the major version is
-insufficient during the 2.0 prerelease.
+Workflow and Waterline must use compatible 2.x releases. Runtime discovery and
+package constraints provide the compatibility boundary after the stable cut.
 
 ### Runtime validation examples
 
@@ -296,15 +290,10 @@ clean machine, install only the published artifacts named above, and complete
 the PHP, Python, and Rust conformance paths. Source checkouts and unpublished
 substitutions do not count as public-artifact evidence.
 
-The selected tuple is published with its
-[SDK and Server compatibility evidence](/public-artifact-compatibility-evidence.json).
-That record names each SDK and Server distribution locator and digest, the
-immutable conformance result and digest, and the exact passing SDK-to-Server
-tuple. Registry publication, source commits, and release-plan authorization
-are release inputs; none of them can establish compatibility without the
-passing published-artifact qualification. Missing, failed, stale, or
-tuple-mismatched qualification leaves the candidate unpublished in this
-matrix.
+Stable package metadata and runtime discovery now define the supported 2.x
+compatibility boundary. Release qualification still installs public artifacts
+together before publication, while patch and minor releases follow the semantic
+versioning rules below.
 
 ### Release progression
 
@@ -314,17 +303,15 @@ Breaking stable changes require a major release and a documented migration
 path. Frozen history-event shapes remain decodable indefinitely; a new shape
 uses a parallel primitive rather than mutating an existing event.
 
-Every train release must keep package metadata, release notes, generated docs,
-installation commands, the quickstart execution contract, and cross-language
-examples synchronized with the machine-owned artifact tuple.
+Every release must keep package metadata, release notes, installation commands,
+and cross-language examples synchronized.
 
 ### Release review checklist
 
 - Confirm the machine-readable compatibility contract matches the Workflow
   surface-stability manifest.
-- Confirm every selected SDK version is bound to the selected Server by the
-  exact passing compatibility-evidence record.
-- Confirm installation examples resolve tokens from the artifact authority.
+- Confirm every selected SDK version passes against the selected Server.
+- Confirm installation examples use the stable release channel.
 - Confirm package metadata identifies the exact SDK release and protocol
   versions; record later Server qualification in the compatibility evidence.
 - Confirm clean-machine published-artifact conformance passes for PHP, Python,
@@ -334,11 +321,11 @@ examples synchronized with the machine-owned artifact tuple.
 
 ## See Also
 
-- [Server Setup](/docs/2.0/polyglot/server) — Deploying the standalone server
-- [Server API Reference](/docs/2.0/polyglot/server-api-reference) — `GET /api/cluster/info` and the protocol manifests
-- [PHP SDK](/docs/2.0/polyglot/php) — PHP client and worker
-- [Python SDK](/docs/2.0/polyglot/python) — Python client and worker
-- [Rust SDK](/docs/2.0/polyglot/rust) — Rust client and worker
-- [CLI](/docs/2.0/polyglot/cli) — Command-line interface
-- [Migration Guide](/docs/2.0/migration) — Migrating from v1 to v2
+- [Server Setup](/docs/polyglot/server) — Deploying the standalone server
+- [Server API Reference](/docs/polyglot/server-api-reference) — `GET /api/cluster/info` and the protocol manifests
+- [PHP SDK](/docs/polyglot/php) — PHP client and worker
+- [Python SDK](/docs/polyglot/python) — Python client and worker
+- [Rust SDK](/docs/polyglot/rust) — Rust client and worker
+- [CLI](/docs/polyglot/cli) — Command-line interface
+- [Migration Guide](/docs/migration) — Migrating from v1 to v2
 - [PHP workflow `docs/api-stability.md`](https://github.com/durable-workflow/workflow/blob/v2/docs/api-stability.md) — per-package stability for the PHP workflow package

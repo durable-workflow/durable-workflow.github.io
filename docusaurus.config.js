@@ -25,7 +25,7 @@ function mobileNavigationReachabilityPlugin() {
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'Durable Workflow',
-  tagline: 'Laravel-native durable workflows for long-running PHP applications.',
+  tagline: 'Durable execution for PHP, Python, and Rust.',
   url: 'https://durable-workflow.com',
   baseUrl: '/',
   trailingSlash: true,
@@ -71,16 +71,16 @@ const config = {
           remarkPlugins: [artifactVersionRemarkPlugin],
           editUrl:
             'https://github.com/durable-workflow/durable-workflow.github.io/edit/main/',
-          lastVersion: '1.x',
+          lastVersion: 'current',
           versions: {
             current: {
-              label: '2.0 prerelease',
-              path: '2.0',
-              banner: 'unreleased',
+              label: '2.0',
+              path: '',
+              banner: 'none',
             },
             '1.x': {
               label: '1.x',
-              path: '',
+              path: '1.x',
             },
           },
         },
@@ -97,8 +97,8 @@ const config = {
           // artifacts and accounts for structured rendering dependencies.
           lastmod: 'date',
           ignorePatterns: [
-            '/docs/2.0/constraints/idempotent-vs-deterministic',
-            '/docs/2.0/constraints/idempotent-vs-deterministic/**',
+            '/docs/constraints/idempotent-vs-deterministic',
+            '/docs/constraints/idempotent-vs-deterministic/**',
           ],
         },
         theme: {
@@ -113,6 +113,16 @@ const config = {
     [
       '@docusaurus/plugin-client-redirects',
       {
+        createRedirects(existingPath) {
+          if (
+            existingPath.startsWith('/docs/') &&
+            !existingPath.startsWith('/docs/1.x/')
+          ) {
+            return existingPath.replace('/docs/', '/docs/2.0/');
+          }
+
+          return undefined;
+        },
         redirects: [
           {
             from: '/docs',
@@ -120,23 +130,23 @@ const config = {
           },
           {
             from: '/docs/2.0',
-            to: '/docs/2.0/introduction/',
+            to: '/docs/introduction/',
           },
           {
             from: '/docs/2.0/server-setup',
-            to: '/docs/2.0/polyglot/server',
+            to: '/docs/polyglot/server',
           },
           {
             from: '/docs/2.0/cli',
-            to: '/docs/2.0/polyglot/cli',
+            to: '/docs/polyglot/cli',
           },
           {
             from: '/docs/2.0/sdks/python',
-            to: '/docs/2.0/polyglot/python',
+            to: '/docs/polyglot/python',
           },
           {
             from: '/docs/2.0/configuration/worker-protocol',
-            to: '/docs/2.0/polyglot/worker-protocol',
+            to: '/docs/polyglot/worker-protocol',
           },
         ],
       },
@@ -229,7 +239,7 @@ const config = {
         theme: prismThemes.github,
         darkTheme: prismThemes.dracula,
       },
-      image: 'img/docusaurus.png',
+      image: 'img/durable-workflow-2.0.png',
       algolia: {
         appId: 'IYIBF1DKO0',
         apiKey: 'bd5089d395bb02b42c90304ead050cdf',

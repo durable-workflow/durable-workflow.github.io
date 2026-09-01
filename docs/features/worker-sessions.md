@@ -151,7 +151,7 @@ Worker-protocol capabilities advertise `worker_session_verbs` and the
 worker-plane response. The machine-readable contract is published in
 [`worker-sessions-runtime.schema.json`](/platform-protocol-specs/worker-sessions-runtime.schema.json)
 and is indexed by the
-[Platform Protocol Specs](/docs/2.0/platform-protocol-specs#worker-session-runtime-notes)
+[Platform Protocol Specs](/docs/platform-protocol-specs#worker-session-runtime-notes)
 catalog.
 
 Operators can list active, closed, expired, failed, and orphaned sessions at
@@ -168,6 +168,6 @@ worker session only when multiple durable activity steps must reuse a
 worker-local resource and the workflow can tolerate rebuilding that resource
 after worker failure.
 
-See [Activity Execution Model](/docs/2.0/features/activity-execution-model)
+See [Activity Execution Model](/docs/features/activity-execution-model)
 for how worker sessions relate to ordinary queued activities, local
 activities, and sticky execution.

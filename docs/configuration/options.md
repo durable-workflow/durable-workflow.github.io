@@ -25,7 +25,7 @@ class MyActivity extends Activity
 
 The `$connection` and `$queue` properties on `Workflow\V2\Workflow` and `Workflow\V2\Activity` are declared as `public ?string` and default to `null`. Subclass overrides must keep the nullable type so PHP's invariant public-property typing rules accept the redeclaration. Use `null` when you want to inherit the application's default connection or queue instead of hard-coding a value.
 
-Activity timeouts are not configured through a class property. Use [`ActivityOptions`](#activityoptions) per-call (for example `startToCloseTimeout`) or the activity retry policy snapshot taken at schedule time. See also [Task Repair Policy](/docs/2.0/polyglot/server-config-reference#workflow-package-controls) for worker-loop timing settings.
+Activity timeouts are not configured through a class property. Use [`ActivityOptions`](#activityoptions) per-call (for example `startToCloseTimeout`) or the activity retry policy snapshot taken at schedule time. See also [Task Repair Policy](/docs/polyglot/server-config-reference#workflow-package-controls) for worker-loop timing settings.
 
 ## StartOptions
 
@@ -85,7 +85,7 @@ The `$tries` setting is used to control the total number of attempts for an acti
 
 ## Timeout
 
-The v2 `Activity` base class has no `$timeout` class property. Configure activity timeouts per call through [`ActivityOptions`](#activityoptions) using `startToCloseTimeout`, `scheduleToStartTimeout`, `scheduleToCloseTimeout`, or `heartbeatTimeout`. The runtime snapshots the resulting retry policy onto the activity execution when it is scheduled, so the timeout is stable for an already scheduled attempt even if a later deploy changes the activity class or options. Worker-loop level dispatch timing is controlled through [Task Repair Policy](/docs/2.0/polyglot/server-config-reference#workflow-package-controls).
+The v2 `Activity` base class has no `$timeout` class property. Configure activity timeouts per call through [`ActivityOptions`](#activityoptions) using `startToCloseTimeout`, `scheduleToStartTimeout`, `scheduleToCloseTimeout`, or `heartbeatTimeout`. The runtime snapshots the resulting retry policy onto the activity execution when it is scheduled, so the timeout is stable for an already scheduled attempt even if a later deploy changes the activity class or options. Worker-loop level dispatch timing is controlled through [Task Repair Policy](/docs/polyglot/server-config-reference#workflow-package-controls).
 
 ## Backoff
 

@@ -81,7 +81,7 @@ covers manifest truth, local-activity replay, session holder loss and
 reacquisition, sticky hits and eviction, worker replacement, forced cold
 replay, and zero-configuration workflows.
 
-See [Local Activities](/docs/2.0/features/local-activities),
-[Worker Sessions](/docs/2.0/features/worker-sessions), and
-[Sticky Execution](/docs/2.0/features/sticky-execution) for the individual
+See [Local Activities](/docs/features/local-activities),
+[Worker Sessions](/docs/features/worker-sessions), and
+[Sticky Execution](/docs/features/sticky-execution) for the individual
 contracts.

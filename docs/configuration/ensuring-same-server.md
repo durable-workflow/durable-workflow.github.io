@@ -48,12 +48,12 @@ payload storage, or another shared store available to every eligible worker.
 
 ## Choose the Affinity Contract You Need
 
-- Use an [ordinary queued activity](/docs/2.0/defining-workflows/activities)
+- Use an [ordinary queued activity](/docs/defining-workflows/activities)
   when the work can run on any compatible worker in its queue.
-- Use a [local activity](/docs/2.0/features/local-activities) when one short,
+- Use a [local activity](/docs/features/local-activities) when one short,
   retryable activity must execute inside the workflow worker process that is
   currently handling the workflow task.
-- Use a [worker session](/docs/2.0/features/worker-sessions) when several durable
+- Use a [worker session](/docs/features/worker-sessions) when several durable
   activity steps must reuse one worker-session lease for process-local state,
   GPU memory, or a worker-local mounted filesystem.
 
@@ -62,6 +62,6 @@ capability contract after routing, including expiry and optional reacquisition;
 they do not make an individual machine immortal. If state must survive worker
 loss or session reacquisition, keep it in durable shared storage.
 
-See [Activity Execution Model](/docs/2.0/features/activity-execution-model) for
-the placement comparison and [Options](/docs/2.0/configuration/options#queue)
+See [Activity Execution Model](/docs/features/activity-execution-model) for
+the placement comparison and [Options](/docs/configuration/options#queue)
 for class-level and per-call queue configuration.

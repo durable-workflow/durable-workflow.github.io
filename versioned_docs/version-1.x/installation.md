@@ -50,7 +50,7 @@ Durable Workflow uses queues to run workflows and activities in the background. 
 
 ## Planning a 2.0 transition
 
-Use the explicit [Laravel adoption and runtime transition guide](/docs/2.0/laravel-adoption/)
+Use the explicit [Laravel adoption and runtime transition guide](/docs/laravel-adoption/)
 before upgrading this embedded v1 application. It compares 2.0 embedded with
 the PHP SDK's Laravel service mode and preserves the database, durable queue,
 in-flight run, and rollback boundaries for both Cloud and self-hosted Server.

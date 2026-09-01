@@ -13,7 +13,7 @@ export default function FooterWrapper(props) {
     // Canonical /llms-full.txt tracks the stable unversioned docs line.
     // Only the explicit prerelease docs path should switch to the 2.0 bundle.
     const pathname = window.location.pathname;
-    const isV2Docs = pathname.startsWith('/docs/2.0/');
+    const isV2Docs = pathname.startsWith('/docs/');
 
     const llmDocsLink = footerRef.current.querySelector('a[href*="llms-full.txt"]');
     if (llmDocsLink && isV2Docs) {

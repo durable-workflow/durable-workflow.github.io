@@ -15,7 +15,7 @@ You read them and you can recognize the words but you can't yet write
 the code, because nothing connects.
 
 For Durable Workflow, there is one answer that connects: the
-[Sample App](/docs/2.0/sample-app). It is a runnable Laravel 13
+[Sample App](/docs/sample-app). It is a runnable Laravel 13
 project with one workflow per pattern surface — deterministic chains,
 elapsed-time measurement, microservice coordination, browser
 automation, webhook-started workflows, AI activity loops, and a
@@ -121,13 +121,13 @@ differs.
 This is when you start to feel which calls produce history events
 and which calls do not. It is also when you find out which calls
 break replay if you mis-place them — the
-[Constraints](/docs/2.0/constraints/overview) page describes those
+[Constraints](/docs/constraints/overview) page describes those
 rules abstractly, but you understand them in your bones the first
 time you accidentally call `now()` in workflow code and watch the
 replay diverge.
 
 When you are ready to build something new, follow the
-[Contribute a Sample](/docs/2.0/contribute-a-sample) guide. The
+[Contribute a Sample](/docs/contribute-a-sample) guide. The
 guide describes the contract every merged sample meets: a workflow
 class under `app/Workflows/<Pattern>/`, an artisan command, a
 `config/workflow_mcp.php` entry, a test, a README index row, a
@@ -160,11 +160,11 @@ will read the same code your local run is going to execute.
 
 ## What to read next
 
-- [Sample App](/docs/2.0/sample-app) — the reference page, with the
+- [Sample App](/docs/sample-app) — the reference page, with the
   full sample gallery and pattern-page cross-links.
-- [Contribute a Sample](/docs/2.0/contribute-a-sample) — the
+- [Contribute a Sample](/docs/contribute-a-sample) — the
   contract for landing a new sample.
-- [How It Works](/docs/2.0/how-it-works) — the engine internals
+- [How It Works](/docs/how-it-works) — the engine internals
   story for when "the run committed" stops being magic and you want
   to know how.
 

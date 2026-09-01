@@ -9,10 +9,8 @@ const {
 } = require('./llms-source-inventory');
 
 const FALLBACK_BRANCH = 'main';
-const V2_PRERELEASE_NOTICE =
-  'Durable Workflow 2.0 is prerelease guidance and is not the default public docs line. Use the canonical stable 1.x bundle unless you are intentionally evaluating 2.0.';
-const V2_PRERELEASE_TAGLINE =
-  'Prerelease 2.0 polyglot durable execution for applications and AI agents.';
+const V2_TAGLINE =
+  'Durable Workflow 2.0 durable execution for PHP, Python, Rust, and AI agents.';
 
 function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
@@ -201,9 +199,7 @@ function getCurrentVersionConfig() {
 }
 
 function getV2Notice() {
-  return getCurrentVersionConfig().banner === 'unreleased'
-    ? V2_PRERELEASE_NOTICE
-    : null;
+  return null;
 }
 
 // Returns the docs directory for whichever version is lastVersion in the
@@ -436,12 +432,23 @@ function main() {
   const v2DocsDir = path.join(__dirname, '..', 'docs');
   if (fs.existsSync(v2DocsDir)) {
     const v2OutputFile = path.join(buildDir, 'llms-2.0.txt');
-    const v2FullUrl = new URL('llms-full-2.0.txt', siteBaseUrl).toString();
-    generateManifest(v2DocsDir, v2OutputFile, v2FullUrl, {
-      versionNotice: v2Notice,
-      tagline: V2_PRERELEASE_TAGLINE,
-    });
-    const pinLabel = v2DocsDir === canonicalDocsDir ? '(matches canonical)' : '(pinned alias only)';
+    const matchesCanonical = v2DocsDir === canonicalDocsDir;
+    const v2FullUrl = new URL(
+      matchesCanonical ? 'llms-full.txt' : 'llms-full-2.0.txt',
+      siteBaseUrl,
+    ).toString();
+    generateManifest(
+      v2DocsDir,
+      v2OutputFile,
+      v2FullUrl,
+      matchesCanonical
+        ? {}
+        : {
+            versionNotice: v2Notice,
+            tagline: V2_TAGLINE,
+          },
+    );
+    const pinLabel = matchesCanonical ? '(matches canonical)' : '(pinned alias only)';
     console.log(`v2.0 llms-2.0.txt generated ${pinLabel}:`, v2OutputFile);
   }
 }

@@ -1,8 +1,6 @@
 const artifactVersionSource = require('./public-artifact-versions.json');
 const publishedArtifactVersionSource = require('./published-artifact-versions.json');
 const artifactReleasePolicySource = require('../static/public-artifact-release-policy.json');
-const artifactCompatibilityEvidenceSource =
-  require('../static/public-artifact-compatibility-evidence.json');
 
 const ARTIFACT_VERSION_SCHEMA = 'durable-workflow.docs.public-artifact-versions';
 const PUBLISHED_ARTIFACT_VERSION_SCHEMA =
@@ -64,7 +62,8 @@ function readArtifactReleasePolicy(source = artifactReleasePolicySource) {
 const ARTIFACT_RELEASE_POLICY = readArtifactReleasePolicy();
 
 function productTrainVersionDetails(version, policy = ARTIFACT_RELEASE_POLICY) {
-  if (version === policy.product_train) {
+  const [major, minor] = policy.product_train.split('.');
+  if (new RegExp(`^${major}\\.${minor}\\.\\d+$`).test(version)) {
     return Object.freeze({channel: 'stable', sequence: null});
   }
 
@@ -84,7 +83,7 @@ function isAuthorizedProductTrainVersion(version, policy = ARTIFACT_RELEASE_POLI
 function authorizedProductTrainVersionFormat(policy = ARTIFACT_RELEASE_POLICY) {
   return policy.authorized_channels
     .map(channel => channel === 'stable'
-      ? policy.product_train
+      ? `${policy.product_train.replace(/\.0$/, '')}.x`
       : `${policy.product_train}-${channel}.N`)
     .join(', ');
 }
@@ -206,7 +205,7 @@ function qualificationDateFromTag(tag) {
 }
 
 function readQualifiedArtifactTupleAuthority(
-  source = artifactCompatibilityEvidenceSource,
+  source,
   projectedVersions = readArtifactVersions(),
 ) {
   if (!source || source.schema !== QUALIFIED_ARTIFACT_AUTHORITY_SCHEMA) {
@@ -265,30 +264,44 @@ function readQualifiedArtifactTupleAuthority(
   });
 }
 
-const QUALIFIED_ARTIFACT_TUPLE_AUTHORITY = readQualifiedArtifactTupleAuthority();
-const ARTIFACT_VERSIONS = QUALIFIED_ARTIFACT_TUPLE_AUTHORITY.artifactVersions;
+const ARTIFACT_VERSIONS = readArtifactVersions();
 const PUBLISHED_ARTIFACT_VERSIONS = readPublishedArtifactVersions();
+const QUALIFIED_ARTIFACT_TUPLE_AUTHORITY = Object.freeze({
+  schema: 'durable-workflow.docs.stable-artifact-line',
+  schemaVersion: 1,
+  meaning: 'stable_release_line',
+  qualifiedOn: '2026-09-01',
+  authorityUrl: '/blog/durable-workflow-2-0/',
+  artifactVersions: ARTIFACT_VERSIONS,
+});
 
 function composerPrereleaseStability(version) {
   assertAuthorizedProductTrainVersion('Composer', version);
   const details = productTrainVersionDetails(version);
 
-  if (!details || details.channel === 'stable') {
+  if (!details) {
     throw new Error(`Unsupported Composer prerelease version: ${version}`);
   }
 
-  return details.channel;
+  return details.channel === 'stable' ? null : details.channel;
 }
 
 function composerPackagePin(packageName, version) {
-  return `${packageName}:${version}@${composerPrereleaseStability(version)}`;
+  const stability = composerPrereleaseStability(version);
+  return `${packageName}:${version}${stability ? `@${stability}` : ''}`;
 }
 
 function composerPinCheckValue(version) {
-  return `${version}@${composerPrereleaseStability(version)}`;
+  const stability = composerPrereleaseStability(version);
+  return `${version}${stability ? `@${stability}` : ''}`;
 }
 
 function pypiRegistryVersion(version) {
+  const details = productTrainVersionDetails(version);
+  if (details?.channel === 'stable') {
+    return version;
+  }
+
   const match = /^(\d+\.\d+\.\d+)-(alpha|beta|rc)\.(\d+)$/.exec(version);
 
   if (!match) {

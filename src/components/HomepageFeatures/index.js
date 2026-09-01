@@ -4,32 +4,32 @@ import styles from './styles.module.css';
 
 const FeatureList = [
   {
-    title: 'Built for Laravel',
+    title: 'Build in PHP, Python, or Rust',
     Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
     description: (
       <>
-        Add the Composer package to your application and keep using Laravel's
-        database, queues, service container, events, and Eloquent models.
+        Author clients, workflows, and activities with first-party SDKs that
+        share one public protocol and portable Avro payload model.
       </>
     ),
   },
   {
-    title: 'Durable through failures',
+    title: 'Choose who operates the runtime',
     Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
     description: (
       <>
-        Event-sourced history and deterministic replay rebuild workflow state after
-        a crash, while durable timers survive restarts and long waits.
+        Use Durable Workflow Cloud, run the standalone Server, or keep the
+        Laravel-native embedded runtime inside your application.
       </>
     ),
   },
   {
-    title: 'Coordinate long-running work',
+    title: 'Recover through failures',
     Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
     description: (
       <>
-        Run activities in series or parallel, then use signals, queries, updates,
-        child workflows, and sagas to model processes that evolve over time.
+        Durable history, deterministic replay, timers, retries, signals,
+        updates, child workflows, and sagas keep long-running work moving.
       </>
     ),
   },
@@ -53,7 +53,7 @@ export default function HomepageFeatures() {
   return (
     <section
       className={styles.features}
-      data-homepage-release="stable-1.x">
+      data-homepage-release="stable-2.0">
       <div className="container">
         <div className="row">
           {FeatureList.map((props, idx) => (

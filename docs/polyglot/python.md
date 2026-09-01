@@ -55,22 +55,22 @@ The SDK targets the same durable model as the PHP package — instance IDs, run 
 
 For a capability comparison across the Python SDK, PHP SDK, Rust SDK, and
 `dw`, see
-[Client and Worker Capabilities](/docs/2.0/polyglot/cli-python-parity/).
+[Client and Worker Capabilities](/docs/polyglot/cli-python-parity/).
 
 For constructor signatures, return types, exception classes, and metric names,
 see the generated [Python SDK API reference](https://python.durable-workflow.com/).
 
 Cloud customers use the provisioned namespace's runtime URL and namespace with
 separate client and worker credentials. See
-[Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane) for that
+[Cloud Managed Runtime](/docs/polyglot/cloud-control-plane) for that
 connection boundary; the quickstart below uses local self-hosted values.
 
 ## Requirements
 
 - Python 3.10 or later
 - Docker (for the local Server used in this quickstart), an existing
-  [self-hosted Server](/docs/2.0/polyglot/server), or a provisioned
-  [Cloud namespace runtime](/docs/2.0/polyglot/cloud-control-plane)
+  [self-hosted Server](/docs/polyglot/server), or a provisioned
+  [Cloud namespace runtime](/docs/polyglot/cloud-control-plane)
 
 ## Installation
 
@@ -164,7 +164,7 @@ docker run -d --name durable-workflow-server \
 until curl -sf http://localhost:8080/api/ready > /dev/null; do sleep 1; done
 ```
 
-For production deployment — auth drivers, database config, TLS — see the [server setup guide](/docs/2.0/polyglot/server).
+For production deployment — auth drivers, database config, TLS — see the [server setup guide](/docs/polyglot/server).
 
 For a larger example, the SDK repository includes [`examples/order_processing`](https://github.com/durable-workflow/sdk-python/tree/main/examples/order_processing), a Docker Compose stack that runs a Python worker through an order workflow end to end.
 
@@ -357,7 +357,7 @@ Task queue return types expose nested `TaskQueueAdmission`,
 `TaskQueueBuildIdRollout`, and `TaskQueueBuildIdRolloutState` dataclasses so
 scripts can check server-side capacity and build-id rollout without parsing
 prose output. See
-[Worker Build-Id Rollout](/docs/2.0/polyglot/worker-build-id-rollout) for the
+[Worker Build-Id Rollout](/docs/polyglot/worker-build-id-rollout) for the
 end-to-end rollout walkthrough; the CLI mirrors of these methods are
 `dw task-queue:build-ids`, `dw task-queue:drain`, and `dw task-queue:resume`.
 
@@ -934,7 +934,7 @@ worker and drives one workflow to a terminal state with sequential polling. Use
 The two `max_concurrent_*` values are advertised to the server during worker
 registration and appear in task queue admission diagnostics. Treat them as the
 worker's local capacity. Use server-side
-[task queue admission](/docs/2.0/polyglot/task-queue-admission) caps when a
+[task queue admission](/docs/polyglot/task-queue-admission) caps when a
 namespace, queue, or downstream budget group needs a hard shared budget across
 multiple workers.
 
@@ -1589,7 +1589,7 @@ suite can share one registration across many histories.
   Every payload that crosses the worker-protocol boundary is codec-tagged.
   Durable Workflow 2.0 has one public payload codec: <code data-payload-codec-field="codec">avro</code>.
   The Python SDK rejects JSON-tagged, unknown, and untagged durable payloads
-  instead of selecting another decoder. See the <a href="/docs/2.0/polyglot/avro-value-protocol/">Avro Value protocol</a>.
+  instead of selecting another decoder. See the <a href="/docs/polyglot/avro-value-protocol/">Avro Value protocol</a>.
 </div>
 
 ### Avro support is built in
@@ -1661,11 +1661,11 @@ client = Client(
 Set the `namespace` argument to whichever tenant namespace the shared server has
 provisioned for your team, and use the credentials issued for that namespace.
 The Server operator manages namespace creation; see the
-[Server guide](/docs/2.0/polyglot/server) for details.
+[Server guide](/docs/polyglot/server) for details.
 
 The same constructor supports a Cloud managed runtime. Use the namespace's
 Cloud-provided runtime URL and namespace value, set `control_token` to the
 client runtime credential, and set `worker_token` to the worker runtime
 credential. Cloud provisions the namespace; do not substitute a self-hosted
 Server address. See
-[Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane).
+[Cloud Managed Runtime](/docs/polyglot/cloud-control-plane).

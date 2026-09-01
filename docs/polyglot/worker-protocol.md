@@ -65,12 +65,12 @@ Read these fields before sending optional command fields:
 
 Before polling, each worker must register its namespace, task queue, runtime,
 supported type keys, and local capacity through `POST /api/worker/register`.
-The [Namespace, Auth, And Worker Registration](/docs/2.0/polyglot/namespace-auth-workers)
+The [Namespace, Auth, And Worker Registration](/docs/polyglot/namespace-auth-workers)
 reference freezes that registration payload and the role-scoped auth contract.
 For the broader ready-task discovery and lease-assignment contract behind these
-verbs, see [Task Matching and Dispatch](/docs/2.0/polyglot/task-matching-dispatch).
+verbs, see [Task Matching and Dispatch](/docs/polyglot/task-matching-dispatch).
 For activity affinity across multiple durable steps, see
-[Worker Sessions](/docs/2.0/features/worker-sessions).
+[Worker Sessions](/docs/features/worker-sessions).
 
 ## Execution Semantics
 
@@ -88,7 +88,7 @@ worker or carrier talks to another system. Reach for `activity_attempt_id`
 only when the downstream system must distinguish separate tries of the same
 logical activity execution.
 
-Read [Execution Guarantees and Idempotency](/docs/2.0/constraints/execution-guarantees)
+Read [Execution Guarantees and Idempotency](/docs/constraints/execution-guarantees)
 for the authoritative replay, retry, lease-expiry, redelivery, and
 exactly-once durable-history contract behind these verbs.
 
@@ -469,7 +469,7 @@ Every payload byte string that crosses the worker-protocol boundary is tagged wi
 framing. Its named branches preserve booleans, signed 64-bit integers, finite
 doubles, bytes, UTF-8 strings, lists, and string-keyed maps without
 workflow-specific schemas or a registry. See the
-[Avro Value protocol](/docs/2.0/polyglot/avro-value-protocol/).
+[Avro Value protocol](/docs/polyglot/avro-value-protocol/).
 
 ### Wire Format: Payload Envelope
 

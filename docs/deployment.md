@@ -15,7 +15,7 @@ package embedded in your own app, use the package installation and configuration
 pages instead. Durable Workflow Cloud is a separate managed-service choice in
 which Cloud operates the runtime, persistence, placement, and recovery; a
 self-hosted Server is never attached to Cloud. See
-[Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane). The current
+[Cloud Managed Runtime](/docs/polyglot/cloud-control-plane). The current
 Cloud contract is a single-region managed runtime and recovery boundary; it
 does not promise multi-region replication, automatic regional failover, or
 failback.
@@ -23,7 +23,7 @@ failback.
 The self-hosted Server distribution does not bundle or operate Waterline.
 Deploy Waterline separately only when you want its operator UI, and connect it
 to a Server-owned namespace using the
-[Waterline deployment and monitoring guide](/docs/2.0/monitoring/#waterline-service).
+[Waterline deployment and monitoring guide](/docs/monitoring/#waterline-service).
 Cloud instead includes Managed Waterline for its managed namespace.
 
 ## Deployment support matrix
@@ -32,7 +32,7 @@ Cloud instead includes Managed Waterline for its managed namespace.
 | --- | --- | --- | --- | --- |
 | Local development and internal non-production | [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) with `%%artifact.serverTagEnv%%` or `%%artifact.serverImageEnv%%` | One developer machine, LAN demos, shared staging, SDK and worker integration tests | Internet-facing production, durable backup guarantees, strict secret rotation, multi-node failover | You want help turning a working dev stack into a production runbook |
 | Single-node production | [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) with a production env file, MySQL and Redis volumes, role-scoped tokens, backups, TLS through a reverse proxy, and pinned image tags or digests | One VM, VPS, or internal Docker host with persistent workflow state and a simple operational model | Host-level HA, automatic database failover, multi-region recovery, zero-downtime major topology changes | The deployment carries production traffic and you want review of backup, restore, auth, TLS, upgrade, or rollback procedures |
-| Small clustered deployment | Published `durableworkflow/server` or `ghcr.io/durable-workflow/server` images using the [Compose recipe](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) as the container/process template, with 2-3 API nodes, shared external MySQL/PostgreSQL, shared Redis, independently scaled workers, and exactly one scheduler/maintenance runner | Horizontal API and worker capacity when one node is no longer enough; rolling upgrades when every guarantee in the [rolling-upgrade contract](/docs/2.0/rolling-upgrades) holds | SQLite clustering, Redis-less multi-node mode, duplicate schedulers as a steady-state topology, active/active multi-writer databases, self-hosted hands-free regional failover, broad "five-nines" or "zero-downtime" SLA promises, and self-serve single-region HA failover until its [release-evidence gate](#release-evidence-status) passes | You need sizing, failure-domain, rollout, or recovery planning across more than one host, or you intend to claim the gated single-region HA behavior |
+| Small clustered deployment | Published `durableworkflow/server` or `ghcr.io/durable-workflow/server` images using the [Compose recipe](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) as the container/process template, with 2-3 API nodes, shared external MySQL/PostgreSQL, shared Redis, independently scaled workers, and exactly one scheduler/maintenance runner | Horizontal API and worker capacity when one node is no longer enough; rolling upgrades when every guarantee in the [rolling-upgrade contract](/docs/rolling-upgrades) holds | SQLite clustering, Redis-less multi-node mode, duplicate schedulers as a steady-state topology, active/active multi-writer databases, self-hosted hands-free regional failover, broad "five-nines" or "zero-downtime" SLA promises, and self-serve single-region HA failover until its [release-evidence gate](#release-evidence-status) passes | You need sizing, failure-domain, rollout, or recovery planning across more than one host, or you intend to claim the gated single-region HA behavior |
 | Helm chart for Kubernetes | The version pinned in the [chart release contract](/charts/release.json), from `oci://ghcr.io/durable-workflow/charts/durable-workflow` or `https://durable-workflow.github.io/charts/`, with your external database, Redis, ingress, and secret management | A repeatable production install and upgrade path for the chart's server, worker, singleton scheduler, bootstrap, service, probes, and policy resources | Bundled persistence, provider-managed infrastructure, active/active multi-region, custom operators, and self-serve single-region HA failover until its [release-evidence gate](#release-evidence-status) passes | You need provider-specific architecture, capacity, recovery, or changes outside the chart's published values contract |
 | Raw Kubernetes manifests | The server repository [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) manifests, using published server images and your existing database, Redis, ingress, and secret management | Teams that already operate Kubernetes and want inspectable manifests for API, worker, scheduler, bootstrap, service, probes, config, and secrets | The separate Helm lifecycle, managed-Kubernetes provider validation, active/active multi-region, custom operators, environment-specific storage/networking/security decisions, and self-serve single-region HA failover until its [release-evidence gate](#release-evidence-status) passes | You need overlays, managed-cluster validation, provider-specific production planning, or intend to claim the gated single-region HA behavior |
 | Active/passive multi-region evaluation | A validated single-node or small-cluster deployment per region, plus asynchronous database replication from active to standby and a reviewed failover/failback runbook | Support-led architecture evaluation and environment-specific rehearsal for regional disaster recovery | A proven self-serve 2.0 contract, active/active multi-region, automatic or hands-free regional failover, synchronous cross-region replication (RPO=0), cross-region active visibility or federated search, or region-pinned task queues as an engine-enforced routing axis | Before relying on cross-region replication, failover, failback, RPO, or RTO in production |
@@ -57,8 +57,8 @@ runner, and upgrade choices. The published Helm chart is a self-serve packaging
 path within those same operator-owned boundaries. Cloud currently provides
 single-region managed operation and recovery, not multi-region replication or
 regional failover; see
-[Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane). See the
-[support boundary](/docs/2.0/support) for the commercial support model.
+[Cloud Managed Runtime](/docs/polyglot/cloud-control-plane). See the
+[support boundary](/docs/support) for the commercial support model.
 
 ## Production recovery deliverables
 
@@ -77,7 +77,7 @@ the same runbook as the deployment commands:
 
 If you cannot produce that packet on demand, treat the environment as staging
 until the recovery contract is written down and rehearsed. The
-[Operator Operating Envelope](/docs/2.0/operator-operating-envelope) defines
+[Operator Operating Envelope](/docs/operator-operating-envelope) defines
 the restore order, verification pass, and rehearsal cadence those packets must
 follow.
 
@@ -237,12 +237,12 @@ self-serve contract is intentionally narrow:
   block should continue to advertise the intended `task_dispatch_mode`, the
   frozen routing axes in `partition_primitives`, and the current
   `backpressure_model`. See
-  [Server Role Topology](/docs/2.0/polyglot/server-role-topology) for the
+  [Server Role Topology](/docs/polyglot/server-role-topology) for the
   field-by-field meaning of the topology manifest.
 - Scale external SDK workers independently from API nodes. Workers can run on
   separate hosts or processes, but they should talk to the load-balanced API
   endpoint rather than to one sticky node.
-- Configure [task queue admission](/docs/2.0/polyglot/task-queue-admission)
+- Configure [task queue admission](/docs/polyglot/task-queue-admission)
   for queues that protect a tenant, external API, database pool, or other
   shared downstream dependency.
 - Run exactly one scheduler or maintenance process for schedule evaluation,
@@ -252,7 +252,7 @@ self-serve contract is intentionally narrow:
 - Choose a rollout posture for this release: stop-the-world (drain workers,
   stop scheduler/maintenance, replace API nodes, run bootstrap/migrations,
   then restart workers and the scheduler) or
-  [rolling upgrades](/docs/2.0/rolling-upgrades) when every guarantee on
+  [rolling upgrades](/docs/rolling-upgrades) when every guarantee on
   that contract holds.
 - Treat the database and Redis as the primary failure domains. The server
   containers are replaceable; the persistence and coordination layers are not.
@@ -264,7 +264,7 @@ not as a second server product. If you pilot a more explicit role split later,
 keep reading `topology.current_shape`, `topology.current_roles`, and
 `topology.matching_role` from `/api/cluster/info` instead of inferring duties
 from hostnames or container names. The
-[Server Role Topology](/docs/2.0/polyglot/server-role-topology) page explains
+[Server Role Topology](/docs/polyglot/server-role-topology) page explains
 those role assignments and the migration path in one place.
 
 Every API node should use the same auth tokens or signature keys, app version,
@@ -539,7 +539,7 @@ result before claiming managed-service HA.
 
 A small-cluster or raw-manifest deployment that claims this contract MUST
 extend its recovery packet (per the
-[Operator Operating Envelope](/docs/2.0/operator-operating-envelope)) with
+[Operator Operating Envelope](/docs/operator-operating-envelope)) with
 rehearsal evidence for each event class:
 
 - a managed-database failover that completes without acknowledged-write
@@ -669,7 +669,7 @@ Consistency and latency tradeoffs in steady state:
 
 The disaster-recovery boundary is explicit: this candidate design is not a
 substitute for backups or evidence. The recovery packet documented in
-[Operator Operating Envelope](/docs/2.0/operator-operating-envelope)
+[Operator Operating Envelope](/docs/operator-operating-envelope)
 remains required, with replication-lag SLO, promotion-runbook latency,
 last successful failover rehearsal date, and the fencing procedure for
 the recovered primary added on top.
@@ -678,9 +678,9 @@ For self-hosted deployments, active/passive and active/active multi-region,
 automatic regional failover, synchronous cross-region replication (RPO=0),
 cross-region active visibility, and region-pinned task queues as an
 engine-enforced routing axis remain
-[support-led](/docs/2.0/support) because the topology itself is part of the
+[support-led](/docs/support) because the topology itself is part of the
 product risk. The current
-[Cloud managed-runtime contract](/docs/2.0/polyglot/cloud-control-plane) is
+[Cloud managed-runtime contract](/docs/polyglot/cloud-control-plane) is
 single-region and does not supply those multi-region guarantees.
 
 ## Readiness contract

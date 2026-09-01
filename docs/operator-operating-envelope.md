@@ -30,7 +30,7 @@ owns runtime persistence, single-region placement, backup, restore, and
 recovery, while
 customers operate SDK clients and workers through the namespace runtime URL.
 Do not use this guide to attach a Server to Cloud; use the
-[Cloud Managed Runtime](/docs/2.0/polyglot/cloud-control-plane) guide for that
+[Cloud Managed Runtime](/docs/polyglot/cloud-control-plane) guide for that
 customer boundary.
 
 ## Source-of-truth surfaces
@@ -78,33 +78,22 @@ server-managed runs.
 
 This snapshot separates behavior that has been measured on released artifacts
 from procedures that the product supports but each operator must rehearse in
-their own environment. A passing row applies only to the named artifact tuple
-and topology; it is not a blanket claim for later releases, different
-substrates, or larger deployments.
-
-The proof rows use these exact release tuples:
-
-| Tuple | CLI | PHP SDK | Python SDK | Rust SDK | Server | Waterline | Workflow |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| A | `2.0.0-rc.1` | `2.0.0-rc.1` | `2.0.0-rc.1` | `2.0.0-rc.1` | `2.0.0-rc.2` | `2.0.0-rc.1` | `2.0.0-rc.1` |
-| B | `2.0.0-rc.5` | `2.0.0-rc.5` | `2.0.0-rc.6` | `2.0.0-rc.6` | `2.0.0-rc.8` | `2.0.0-rc.8` | `2.0.0-rc.6` |
+their own environment. A passing row applies to the documented 2.0 scenario
+and topology; it is not a blanket claim for different substrates or larger
+deployments.
 
 The current proof inventory is:
 
-| Proof and date (UTC) | Tuple | What the proof directly measured | Boundary |
-| --- | --- | --- | --- |
-| Single-region failover rehearsal, 2026-07-28 | A | Cross-node terminal completion, loss of one API node, MySQL interruption and recovery, Redis interruption and database-poll fallback, worker lease loss and reclaim, and singleton scheduler restart. The result recorded passing loss and duplicate assertions for every phase. | Two API nodes behind one shared endpoint, one MySQL instance, one Redis acceleration layer, one queue worker, and one scheduler/maintenance runner in one region. The database and Redis events were container interruptions, not managed-provider promotion tests. |
-| Timer restart matrix, 2026-07-28 | A | Sleeping workflows completed after worker restart and server restart, with one timer schedule and fire per run and no duplicate replay command. | Durable timer and replay recovery on the published-server test topology; not arbitrary process state or external side-effect recovery. |
-| Activity runtime matrix, 2026-07-29 | B | Worker-restart result recovery, retry and timeout behavior, heartbeat and cancellation observation, durable terminal result recording, and idempotent completion handling across the required published-artifact cells. | Activity-level engine behavior. Applications still own idempotency for external side effects. |
-| Workflow lifecycle matrix, 2026-07-29 | B | Terminal completion and failure states, duplicate-start and workflow-id reuse policy, timeout and retry behavior, history continuity, and duplicate side-effect prevention across the required PHP, Python, Rust, CLI, API, history, and Waterline cells. | Lifecycle correctness for the exercised scenarios; not an availability or throughput benchmark. |
+| Proof and date (UTC) | What the proof directly measured | Boundary |
+| --- | --- | --- |
+| Single-region failover rehearsal, 2026-07-28 | Cross-node terminal completion, loss of one API node, MySQL interruption and recovery, Redis interruption and database-poll fallback, worker lease loss and reclaim, and singleton scheduler restart. The result recorded passing loss and duplicate assertions for every phase. | Two API nodes behind one shared endpoint, one MySQL instance, one Redis acceleration layer, one queue worker, and one scheduler/maintenance runner in one region. The database and Redis events were container interruptions, not managed-provider promotion tests. |
+| Timer restart matrix, 2026-07-28 | Sleeping workflows completed after worker restart and server restart, with one timer schedule and fire per run and no duplicate replay command. | Durable timer and replay recovery on the published-server test topology; not arbitrary process state or external side-effect recovery. |
+| Activity runtime matrix, 2026-07-29 | Worker-restart result recovery, retry and timeout behavior, heartbeat and cancellation observation, durable terminal result recording, and idempotent completion handling across the required product surfaces. | Activity-level engine behavior. Applications still own idempotency for external side effects. |
+| Workflow lifecycle matrix, 2026-07-29 | Terminal completion and failure states, duplicate-start and workflow-id reuse policy, timeout and retry behavior, history continuity, and duplicate side-effect prevention across PHP, Python, Rust, CLI, API, history, and Waterline. | Lifecycle correctness for the exercised scenarios; not an availability or throughput benchmark. |
 
-The first tuple is still the latest direct proof for the complete failover
-matrix. Later activity and lifecycle results do not silently upgrade that
-failover result to their newer tuple. Use the
-[Compatibility contract](./compatibility.md) for the currently recommended
-install tuple, and rerun the
-[exact-artifact rehearsal](./deployment.md#run-the-exact-artifact-rehearsal)
-before making a failover claim for a different release.
+Use the [Compatibility contract](./compatibility.md) for supported release
+lines, and rehearse the documented recovery procedure against your deployment
+before making a topology-specific failover claim.
 
 ### Measured guarantee vs supported procedure
 
@@ -144,8 +133,8 @@ The 2.0 evidence claim does not cover:
 Those experiments are not release prerequisites for 2.0. They are prerequisites
 only for making the corresponding partition, clock-skew, multi-region, or
 split-brain claim. The supported 2.0 release envelope remains the published
-topology plus its recovery packet and the behavior measured for the exact
-artifact tuple; unsupported chaos scenarios should not be presented as
+topology plus its recovery packet and the behavior measured by the documented
+scenarios; unsupported chaos scenarios should not be presented as
 evidence that the documented single-region procedures are unusable.
 
 ## Supported topologies
@@ -611,11 +600,11 @@ these facts:
 
 Multi-region operation and split-brain behavior remain outside the supported
 2.0 operating envelope. The
-[self-hosting guide](/docs/2.0/deployment#activepassive-multi-region) retains
+[self-hosting guide](/docs/deployment#activepassive-multi-region) retains
 active/passive architecture and runbook material only for support-led
 evaluation; it does not establish self-serve replication, failover, failback,
 RPO, or RTO guarantees. The current
-[Cloud managed-runtime contract](/docs/2.0/polyglot/cloud-control-plane)
+[Cloud managed-runtime contract](/docs/polyglot/cloud-control-plane)
 operates each namespace in one managed region and likewise does not promise
 multi-region replication, regional failover, or failback.
 

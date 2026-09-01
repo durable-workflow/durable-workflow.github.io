@@ -106,6 +106,6 @@ before the new runtime starts if any active or replay-relevant non-Avro payload,
 untagged payload, corrupt reference, or obsolete frame exists. Active runs may
 drain on the current prerelease; retained terminal and replay-relevant state
 must follow the backup-first
-[prerelease history migration](/docs/2.0/polyglot/prerelease-history-migration).
+[prerelease history migration](/docs/polyglot/prerelease-history-migration).
 Exporting a run does not alter the rejected database state. Never delete
 history to bypass the preflight.
