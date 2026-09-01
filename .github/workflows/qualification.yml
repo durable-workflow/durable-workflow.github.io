@@ -46,7 +46,7 @@ jobs:
           --workflow-directory .github/workflows
 
   build:
-    name: Build documentation
+    name: Executable documentation contracts
     needs: action-policy
     if: ${{ always() }}
     runs-on: ubuntu-latest
