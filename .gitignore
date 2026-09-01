@@ -3,8 +3,6 @@
 
 # Production
 /build
-/cloud-promotion-browser-evidence
-/visual-reachability
 
 # Generated files
 .docusaurus

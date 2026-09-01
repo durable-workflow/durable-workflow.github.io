@@ -30,7 +30,7 @@
     },
     "worker_protocol_api": {
       "owner_symbol": "App\\Support\\WorkerProtocol and Workflow\\V2\\Support\\WorkerProtocolVersion",
-      "conformance_test": "durable-workflow/server: tests/Feature/WorkerProtocolContractTest.php, tests/Feature/WorkerProtocolSuccessContractTest.php, tests/Feature/WorkerProtocolOwnershipErrorContractTest.php, tests/Feature/WorkerProtocolVersionCoverageTest.php, tests/Feature/WorkflowWorkerProtocolTest.php, tests/Feature/WorkflowUpdateValidationTaskTest.php, tests/Feature/ActivityWorkerProtocolTest.php, and tests/Feature/WorkflowQueryTaskBrokerTest.php; durable-workflow/durable-workflow.github.io: scripts/check-update-validation-openapi.test.js; durable-workflow/sdk-php: tests/ClientContractTest.php and tests/ControlPlaneParityTest.php",
+      "conformance_test": "durable-workflow/server: tests/Feature/WorkerProtocolContractTest.php, tests/Feature/WorkerProtocolSuccessContractTest.php, tests/Feature/WorkerProtocolOwnershipErrorContractTest.php, tests/Feature/WorkerProtocolVersionCoverageTest.php, tests/Feature/WorkflowWorkerProtocolTest.php, tests/Feature/WorkflowUpdateValidationTaskTest.php, tests/Feature/ActivityWorkerProtocolTest.php, and tests/Feature/WorkflowQueryTaskBrokerTest.php; durable-workflow/sdk-php: tests/ClientContractTest.php and tests/ControlPlaneParityTest.php",
       "object_families": [
         {
           "name": "worker_registration_request",
@@ -325,7 +325,7 @@
     },
     "mcp_discovery": {
       "owner_symbol": "docs/mcp-workflows.md, scripts/generate-llms.js, and scripts/generate-llms-full.js",
-      "conformance_test": "durable-workflow/durable-workflow.github.io: scripts/check-discoverability.js and scripts/check-llms-ai-surfaces.js",
+      "conformance_test": "durable-workflow/durable-workflow.github.io: npm run build and scripts/check-platform-protocol-specs.js",
       "object_families": [
         {
           "name": "mcp_tool_discovery",
@@ -343,7 +343,7 @@
     },
     "mcp_tool_results": {
       "owner_symbol": "docs/mcp-workflows.md Tool Result Contract and static/platform-protocol-specs/mcp-tool-results.schema.json",
-      "conformance_test": "durable-workflow/durable-workflow.github.io: scripts/check-llms-ai-surfaces.js and scripts/check-platform-protocol-specs.js",
+      "conformance_test": "durable-workflow/durable-workflow.github.io: npm run build and scripts/check-platform-protocol-specs.js",
       "object_families": [
         {
           "name": "mcp_tool_result_envelope",
