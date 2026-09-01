@@ -143,7 +143,7 @@ function Installer() {
           </a>{' '}
           from the{' '}
           <a data-cli-qualified-release href={ARTIFACT_PINS.cliPackageUrl}>
-            qualified release
+            stable release
           </a>
           .
         </p>

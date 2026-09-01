@@ -9,7 +9,6 @@ const SUPPORTED_NODE_RANGE = '>=24 <25';
 const REQUIRED_NODE_WORKFLOWS = [
   '.github/workflows/deploy.yml',
   '.github/workflows/protocol-specs.yml',
-  '.github/workflows/public-artifact-tuple.yml',
   '.github/workflows/qualification.yml',
 ];
 

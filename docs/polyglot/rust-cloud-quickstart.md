@@ -33,9 +33,9 @@ page selects Rust and changes only the runtime target. The corresponding
 contract](https://github.com/durable-workflow/sample-app/blob/main/README.md#symmetric-sdk-playground)
 documents all three choices.
 
-The playground resolves the current qualified artifact tuple from the Sample
-App's machine-owned metadata. Do not copy an exact prerelease number into these
-commands or add a separate SDK installation step.
+The playground resolves the current stable artifact versions from the Sample
+App's machine-owned metadata. Use those generated versions instead of copying
+version numbers into these commands or adding a separate SDK installation step.
 
 ## 1. Open the prepared Sample App
 

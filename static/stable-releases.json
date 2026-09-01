@@ -1,6 +1,7 @@
 {
-  "schema": "durable-workflow.docs.public-artifact-versions",
-  "schemaVersion": 1,
+  "schema": "durable-workflow.docs.stable-releases",
+  "schema_version": 1,
+  "updated_at": "2026-09-01",
   "artifacts": {
     "cli": "2.0.0",
     "sdk-php": "2.0.0",

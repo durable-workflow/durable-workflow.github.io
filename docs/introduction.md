@@ -68,9 +68,9 @@ to compare the executable embedded and PHP SDK paths before changing traffic.
   framework-neutral PHP application or remote worker.
 - **[Python SDK](/docs/polyglot/python/):** author deterministic workflows
   and activities and use the async control-plane client. The
-  <PythonPackageReleaseLink authority="qualified">compatibility-qualified Python
-  release</PythonPackageReleaseLink> is selected by the same machine-readable
-  tuple as the Server quickstart.
+  <PythonPackageReleaseLink authority="qualified">stable Python
+  release</PythonPackageReleaseLink> is listed in the same machine-readable
+  stable release manifest as the Server quickstart.
 - **[Rust SDK](/docs/polyglot/rust/):** author deterministic workflows and
   activities and run native worker services.
 
