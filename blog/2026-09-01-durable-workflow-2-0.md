@@ -129,9 +129,6 @@ people and software agents. It preserves the Laravel-native experience that
 started the project while adding the standalone and managed runtime boundaries
 needed by a polyglot system.
 
-This is not an incremental Laravel package update. It is a durable execution
-platform wearing a familiar name.
-
 Start with the [Durable Workflow 2.0 quickstart](/docs/quickstart/), choose
 [Cloud](/docs/polyglot/cloud-control-plane/),
 [Standalone Server](/docs/polyglot/server/), or
