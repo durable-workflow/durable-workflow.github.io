@@ -237,6 +237,26 @@ Laravel, self-hosted Server, and Cloud are separate deployment choices.
 
 ## Billing Usage API
 
+Cloud Dev uses one isolated, single-host runtime cell for each provisioned Dev
+space. Its approved launch terms are:
+
+| Billing term | Cloud Dev |
+| --- | ---: |
+| Provisioned runtime | $0.03 per hour, metered by minute |
+| Calendar-month maximum | $20 per Dev space |
+| Active-month minimum | $1 when a Dev space is provisioned during the month |
+| Managed capacity | 1 vCPU, 1 GB memory, 5 GB durable storage |
+| Additional durable storage | $2 per GB-month, metered by GB-hour |
+| Basic encrypted backups | Included |
+| Availability | Single host, no SLA |
+
+The allocation covers Cloud-operated Server, MySQL, Redis, scheduling,
+Waterline access, backups, upgrades, and infrastructure. Customer PHP, Python,
+and Rust workers run outside that allocation. Workflow starts, activity
+attempts, retries, timers, signals, queries, updates, and child workflows are
+operational telemetry, not separate billing units. Prices exclude applicable
+taxes. Additional durable storage is outside the $20 runtime-capacity maximum.
+
 Cloud exposes organization-scoped billing usage for finance, operations, and
 chargeback automation. The endpoint is authenticated by a Cloud API key and
 does not accept a customer or organization id in the request; the caller's
@@ -254,71 +274,83 @@ Cloud returns the current calendar month. Billing usage reads and exports stay
 available even if billing restrictions pause namespace provisioning or workflow
 operations, so finance teams can still recover account standing.
 
-The response schema is `durable_workflow.cloud.billing_usage.v1`. The
-abbreviated zero-valued response below illustrates the API shape only; it does
-not represent a plan rate or pricing quote. `estimated_cost_cents` comes from
-the caller's plan-backed usage rollup. Every usage and cost value is zero, so
-the example does not imply an action-count-to-cost rate.
+The response schema is
+`durable_workflow.cloud.namespace_capacity_usage.v1`. It separates allocated
+capacity time and additional durable storage from semantic event counters. The
+abbreviated Cloud Dev response below shows that distinction.
 
 ```json
 {
-  "schema": "durable_workflow.cloud.billing_usage.v1",
+  "schema": "durable_workflow.cloud.namespace_capacity_usage.v1",
   "access_control": {
     "scope": "organization_billing_usage",
-    "api": {"authentication": "organization_api_key"}
+    "read_allowed": true,
+    "export_allowed": true
   },
   "current_period": {
     "starts_at": "2026-05-01T00:00:00+00:00",
     "ends_at": "2026-05-31T23:59:59+00:00"
   },
-  "totals": {
-    "workflow_execution_count": 0,
-    "activity_execution_count": 0,
-    "timer_fire_count": 0,
-    "signal_delivery_count": 0,
-    "update_delivery_count": 0,
-    "query_task_count": 0,
-    "storage_byte_hours": 0,
-    "billable_action_count": 0,
-    "estimated_cost_cents": 0
+  "metering_policy": {
+    "invoice_drivers": [
+      "namespace_plan_capacity",
+      "additional_durable_storage_gb_month"
+    ],
+    "semantic_events_are_invoice_units": false,
+    "network": "measured_not_billable",
+    "basic_backups": "included",
+    "customer_worker_compute": "excluded"
   },
-  "by_action_type": [
-    {
-      "action_type": "workflow_start",
-      "raw_count": 0,
-      "billing_unit": "billable_action",
-      "billing_units": 0,
-      "estimated_cost_cents": 0
-    }
-  ],
   "by_namespace": [
     {
-      "namespace": "example",
-      "project": "example",
-      "environment": "test",
-      "usage": {
-        "billable_action_count": 0,
-        "estimated_cost_cents": 0
-      },
-      "action_types": [
-        {
-          "action_type": "workflow_start",
-          "raw_count": 0,
-          "billing_units": 0,
-          "estimated_cost_cents": 0
+      "namespace": "development",
+      "project": "sample-app",
+      "environment": "development",
+      "plan": {
+        "version": "cloud-dev.single-host-v1",
+        "name": "Cloud Dev",
+        "availability_class": "development_single_host",
+        "sla_status": "none",
+        "billing_terms": {
+          "currency": "usd",
+          "unit": "provisioned_runtime_hour",
+          "hourly_rate_cents": 3,
+          "monthly_cap_cents": 2000,
+          "active_month_minimum_cents": 100,
+          "billing_period": "calendar_month_utc",
+          "metering_resolution_seconds": 60,
+          "additional_storage_unit": "gb_month",
+          "additional_storage_rate_cents": 200,
+          "additional_storage_metering_unit": "gb_hour",
+          "additional_storage_in_monthly_cap": false
         }
-      ]
+      },
+      "allocation": {
+        "managed_cpu_vcpu": 1,
+        "managed_memory_gb": 1,
+        "included_durable_storage_gb": 5
+      },
+      "operational_telemetry": {
+        "billing_status": "not_billable",
+        "counters": {
+          "workflow_execution_count": 20,
+          "activity_execution_count": 40,
+          "timer_fire_count": 5,
+          "signal_delivery_count": 3,
+          "update_delivery_count": 0,
+          "query_task_count": 2
+        }
+      }
     }
   ]
 }
 ```
 
-The standard action types are `workflow_start`, `activity_execution`,
-`timer_fire`, `signal`, `update`, and `query`. `raw_count` is the source meter
-count. `billing_units` is the derived `billable_action` quantity used for
-chargeback. The plan-backed `estimated_cost_cents` rollup is allocated
-proportionally across action types so totals reconcile with the namespace and
-report totals.
+Cloud Dev's time meter starts when its isolated runtime is provisioned and
+stops when that runtime is deprovisioned. The monthly cap and minimum apply per
+Dev space in UTC calendar months. Durable storage above the included amount is
+metered separately. Cloud preserves an operating and recovery reserve on the
+runtime disk and requires a capacity change before storage can consume it.
 
 Export the same evidence as CSV or a JSON report when a downstream finance
 system needs a file handoff:
@@ -339,25 +371,25 @@ GET https://cloud.durable-workflow.com/api/v1/billing/usage?period_start=${__fro
 Authorization: Bearer dwc_...
 ```
 
-Then flatten namespace/action rows with:
+Then flatten namespace capacity rows with:
 
 ```jq
 .by_namespace[]
-| . as $namespace
-| .action_types[]
 | {
-    project: $namespace.project,
-    environment: $namespace.environment,
-    namespace: $namespace.namespace,
-    action_type,
-    raw_count,
-    billing_units,
-    estimated_cost_cents
+    project,
+    environment,
+    namespace,
+    plan: .plan.name,
+    cpu_vcpu: .allocation.managed_cpu_vcpu,
+    memory_gb: .allocation.managed_memory_gb,
+    included_storage_gb: .allocation.included_durable_storage_gb,
+    capacity_status
   }
 ```
 
-Group the dashboard by `namespace` and `action_type`, sum `billing_units`, and
-plot `estimated_cost_cents / 100` as the cost series.
+Use `invoice_units` for capacity and storage reconciliation. Use
+`operational_telemetry` to understand workload shape and benchmark behavior;
+do not convert those event counters into charges.
 
 ## Related References
 
