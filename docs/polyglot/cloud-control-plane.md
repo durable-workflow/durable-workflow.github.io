@@ -269,8 +269,7 @@ a 30-second warmup, and a five-minute measurement window.
 | Scheduling latency, p95 | 95.1 ms |
 | Scheduling latency, p99 | 134.5 ms |
 | Final workflow backlog | 0 |
-| 30-day equivalent at the measured rate | 648,000 standard workflows |
-| 30-day workflow-start + activity equivalent | 1,296,000 operations |
+| 30-day workflow actions | 1,296,000 |
 
 This is a measured development baseline, not a universal conversion for every
 workflow and not an SLA. Larger payloads, additional activities, timers,
