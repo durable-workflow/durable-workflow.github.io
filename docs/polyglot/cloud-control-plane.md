@@ -257,20 +257,20 @@ v1](https://github.com/durable-workflow/server/tree/main/benchmarks/capacity),
 a fixed comparison workload consisting of one workflow start, one external
 activity, and one workflow completion with defined 1 KiB Avro inputs and
 results. The test used the provisioned 1-vCPU/1-GB runtime topology, current
-stable Server and PHP SDK artifacts, 32 worker processes, 16 client slots, a
-60-second warmup, and a five-minute measurement window.
+stable Server and PHP SDK artifacts, one PHP worker process, two client slots,
+a 30-second warmup, and a five-minute measurement window.
 
 | Measured result | Value |
 | --- | ---: |
-| Offered and completed rate | 0.10 standard workflows/second |
-| Completed workflows | 30 of 30 |
+| Offered and completed rate | 0.25 standard workflows/second |
+| Completed workflows | 75 of 75 |
 | Errors / throttled starts | 0 / 0 |
-| Scheduling latency, p50 | 30.5 ms |
-| Scheduling latency, p95 | 307.1 ms |
-| Scheduling latency, p99 | 827.0 ms |
+| Scheduling latency, p50 | 28.0 ms |
+| Scheduling latency, p95 | 95.1 ms |
+| Scheduling latency, p99 | 134.5 ms |
 | Final workflow backlog | 0 |
-| 30-day equivalent at the measured rate | 259,200 standard workflows |
-| 30-day workflow-start + activity equivalent | 518,400 operations |
+| 30-day equivalent at the measured rate | 648,000 standard workflows |
+| 30-day workflow-start + activity equivalent | 1,296,000 operations |
 
 This is a measured development baseline, not a universal conversion for every
 workflow and not an SLA. Larger payloads, additional activities, timers,
