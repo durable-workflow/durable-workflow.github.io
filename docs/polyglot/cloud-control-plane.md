@@ -235,6 +235,48 @@ and failover independently. A self-hosted Server cannot be registered with,
 attached to, or used as the backing runtime for a Cloud namespace. Embedded
 Laravel, self-hosted Server, and Cloud are separate deployment choices.
 
+## Cloud Dev Capacity
+
+Cloud Dev is an isolated, single-host managed runtime for development and
+evaluation. Each provisioned space receives the same runtime shape used for
+the measurement below:
+
+| Resource | Cloud Dev |
+| --- | --- |
+| Runtime compute | 1 shared vCPU, 1 GB RAM |
+| Durable storage included | 5 GB |
+| Runtime services | Server, queue worker, scheduler, MySQL, and Redis |
+| Network path | Direct, space-specific HTTPS ingress |
+| Customer workers | Run in the customer's environment |
+| Availability | No SLA; maintenance interruptions are allowed |
+| Runtime price | $0.03/hour, measured by minute, capped at $20/month |
+| Storage above 5 GB | $2/GB-month |
+
+Cloud Dev was measured with [DW Standard Workflow
+v1](https://github.com/durable-workflow/server/tree/main/benchmarks/capacity),
+a fixed comparison workload consisting of one workflow start, one external
+activity, and one workflow completion with defined 1 KiB Avro inputs and
+results. The test used the provisioned 1-vCPU/1-GB runtime topology, current
+stable Server and PHP SDK artifacts, one PHP worker process, two client slots,
+a 30-second warmup, and a five-minute measurement window.
+
+| Measured result | Value |
+| --- | ---: |
+| Offered and completed rate | 0.25 standard workflows/second |
+| Completed workflows | 75 of 75 |
+| Errors / throttled starts | 0 / 0 |
+| Scheduling latency, p50 | 28.0 ms |
+| Scheduling latency, p95 | 95.1 ms |
+| Scheduling latency, p99 | 134.5 ms |
+| Final workflow backlog | 0 |
+| 30-day workflow actions | 1,296,000 |
+
+This is a measured development baseline, not a universal conversion for every
+workflow and not an SLA. Larger payloads, additional activities, timers,
+signals, queries, replay-heavy histories, and customer worker latency change
+capacity. Cloud billing remains based on provisioned runtime time and durable
+storage, not workflow operations.
+
 ## Billing Usage API
 
 Cloud Dev uses one isolated, single-host runtime cell for each provisioned Dev
