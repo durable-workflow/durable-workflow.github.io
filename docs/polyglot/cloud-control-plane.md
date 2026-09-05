@@ -1,7 +1,7 @@
 ---
 sidebar_position: 3
 title: Cloud Managed Runtime
-description: Provision a Durable Workflow Cloud namespace and connect SDK clients and customer-run workers to its managed runtime.
+description: Compare Cloud plans, measured workflow capacity, billing and availability, then connect PHP, Python or Rust workers to a managed namespace.
 tags:
   - cloud
   - managed-runtime
@@ -14,16 +14,10 @@ keywords:
   - customer-run workers
   - private networking
   - single-region managed runtime
+  - multi-region managed runtime
 ---
 
-import ProductPromotion from '@site/src/components/ProductPromotion';
-
 # Cloud Managed Runtime
-
-<ProductPromotion source="docs-v2-cloud-runtime">
-Request a managed namespace for a real workload and share feedback during the
-launch cohort.
-</ProductPromotion>
 
 Durable Workflow Cloud is a managed orchestration service. Cloud operates both
 the hosted control plane and the orchestration runtime, including workflow
@@ -32,6 +26,37 @@ Customers run SDK clients and workers against a provisioned Cloud namespace.
 
 This is separate from self-hosting. A self-hosted Durable Workflow Server runs
 independently and is never attached to Cloud.
+
+## Plans And Pricing
+
+Pay for provisioned capacity, not workflow semantics. Each namespace receives
+an isolated managed runtime; customer PHP, Python, and Rust workers run in your
+own environment. All five plans are available through Cloud.
+
+| Plan | Runtime capacity | Included durable storage | Availability | Price (USD) |
+| --- | --- | --- | --- | --- |
+| Cloud Dev | 1 vCPU, 1 GB RAM | 5 GB | Single host, no SLA | $0.03/hour, capped at $20/month |
+| Cloud Standard | 1 vCPU, 2 GB RAM | 25 GB | Single-region HA, 99.99% SLA | $100/month |
+| Cloud Multi-Region | 1 vCPU, 2 GB RAM | 25 GB | Multi-region HA, 99.99% SLA | $150/month |
+| Cloud Business | 4 vCPU, 8 GB RAM | 100 GB | Single-region HA, 99.99% SLA | $500/month |
+| Cloud Business Multi-Region | 4 vCPU, 8 GB RAM | 100 GB | Multi-region HA, 99.99% SLA | $650/month |
+
+Capacity covers the managed runtime components, not customer worker compute.
+HA replication and standby capacity are included in the plan price; the table
+does not add replicas together as extra workflow-execution capacity. Every plan
+includes Managed Waterline, basic encrypted backups, upgrades, and a stable
+runtime URL.
+
+Cloud Dev is metered by minute, with a $1 active-month minimum and a $20 cap
+per space per UTC calendar month. SLA plans have a fixed monthly runtime price,
+with applicable plan-change prorations handled by Stripe. Additional durable
+storage is $2/GB-month, metered by GB-hour and separate from runtime charges or
+the Dev cap. Prices exclude applicable taxes. Storage expansion requires
+available capacity; neither disk growth nor network use is unlimited.
+
+See [Cloud pricing](https://cloud.durable-workflow.com/pricing) to choose a plan.
+For larger capacity, different connectivity, SSO, enterprise support, or a
+custom availability requirement, [contact us](https://cloud.durable-workflow.com/contact).
 
 ## Managed Service Boundary
 
@@ -59,6 +84,12 @@ Customers own application code, workflow and activity implementations, and the
 processes that run their workers. Cloud customers do not deploy a separate
 Waterline service.
 
+The namespace's HTTPS endpoint connects directly to its managed runtime.
+SDK traffic is not proxied through the Cloud website/control-plane application.
+Use the returned runtime URL unchanged, without appending `/api`; the SDK and
+CLI construct their API paths. Administrative API calls still use
+`https://cloud.durable-workflow.com/api/v1`.
+
 Cloud administration and runtime traffic use different credentials:
 
 - A Cloud API key (`dwc_...`) manages projects, environments, namespaces,
@@ -82,7 +113,20 @@ before using Cloud credentials so the selected release is the active binary.
 
 ### 1. Create and provision the namespace
 
-Create the namespace without supplying a Server URL, deployment identifier, or
+In the [Cloud dashboard](https://cloud.durable-workflow.com/), create an
+organization, project, environment, and namespace, then select its capacity
+plan. Creating an account or namespace definition does not provision paid
+capacity. Complete payment setup through Stripe, then select **Provision** on
+the namespace page. Adding a card alone does not start provisioning.
+
+Provisioning is asynchronous. The namespace page updates its progress while
+Cloud prepares the runtime. Wait for it to become active before starting SDK
+work. The page also provides runtime-credential creation and Managed Waterline
+access for inspecting workflows and their history.
+
+For API-driven setup, complete payment setup first. The following example uses
+the organization's default plan; `capacity_plan_version` can select another
+available plan. Do not supply your own Server URL, deployment identifier, or
 placement record:
 
 ```bash
@@ -137,7 +181,7 @@ an application task queue:
 
 ```bash
 export DURABLE_WORKFLOW_RUNTIME_URL='<provisioned-runtime-url>'
-export DURABLE_WORKFLOW_RUNTIME_NAMESPACE='<provisioned-runtime-namespace>'
+export DURABLE_WORKFLOW_NAMESPACE='<provisioned-runtime-namespace>'
 export DURABLE_WORKFLOW_CLIENT_TOKEN='<client-runtime-credential>'
 export DURABLE_WORKFLOW_WORKER_TOKEN='<worker-runtime-credential>'
 export DURABLE_WORKFLOW_TASK_QUEUE='<language-task-queue>'
@@ -146,10 +190,10 @@ export DURABLE_WORKFLOW_TASK_QUEUE='<language-task-queue>'
 Then choose a first-party SDK and run the same managed-runtime contract:
 
 ```bash
-language=rust # Choose php, python, or rust.
+language=php # Choose php, python, or rust.
 scripts/playground "$language" --runtime managed \
   --runtime-url "$DURABLE_WORKFLOW_RUNTIME_URL" \
-  --namespace "$DURABLE_WORKFLOW_RUNTIME_NAMESPACE" \
+  --namespace "$DURABLE_WORKFLOW_NAMESPACE" \
   --task-queue "$DURABLE_WORKFLOW_TASK_QUEUE"
 ```
 
@@ -203,17 +247,47 @@ and must allow the worker protocol's long-lived poll requests.
 
 ## Region Placement And Recovery Boundary
 
-The current 2.0 launch cohort provisions each namespace in one managed region.
-The namespace response exposes that region and its service status for
-residency, latency, and incident decisions; infrastructure deployment
-identities, private addresses, upstream credentials, and provider topology
-remain internal.
+Choose the recovery boundary with the plan:
 
-Multi-region replication, automatic regional failover or failback, and
-customer-facing RTO or replication-lag targets are not part of the current
-Cloud contract. Applications should retry transient connection failures using
-their normal bounded policy, but must not treat a stable namespace URL as a
-guarantee of automatic cross-region recovery.
+- **Cloud Dev:** one isolated host with persistent state and backups. Maintenance
+  and recovery may interrupt service. There is no uptime SLA or automatic
+  regional failover.
+- **Single-region HA:** three replicated hosts in one region, with automatic
+  primary failover. One host may fail without losing the remaining quorum.
+  A whole-region outage is outside this plan's SLA coverage.
+- **Multi-region HA:** three replicated hosts across three regions, with
+  automatic primary failover. The SLA includes loss or isolation of one
+  configured region, provided the remaining members can form a quorum.
+
+The stable runtime URL follows the elected primary; you do not change SDK
+configuration during a supported failover. An isolated former primary is
+prevented from continuing to serve authoritative work. If a safe primary
+cannot be established, the runtime stops serving rather than accepting
+conflicting writes. HA is not a promise of uninterrupted requests: clients and
+workers still need bounded retries for transient failures.
+
+The namespace page exposes its topology, region information, and service
+status. Backups support recovery but are not a substitute for live replication.
+Short failover tests demonstrate the exercised failure cases, not a universal
+recovery-time guarantee or a month's achieved availability.
+
+### SLA Measurement And Credits
+
+The four SLA plans provide a 99.99% uptime SLA over a UTC calendar month,
+measured at the customer runtime endpoint in one-minute windows. Missing
+measurements count as unavailable, and planned maintenance is not excluded.
+Customer-hosted worker availability is separate from managed runtime availability.
+
+| Monthly availability | Automatic account credit |
+| --- | ---: |
+| At least 99.99% | None |
+| At least 99.9%, below 99.99% | 10% |
+| At least 99.0%, below 99.9% | 25% |
+| Below 99.0% | 100% |
+
+Account credits apply automatically; cash refunds require review and approval.
+Cloud Dev has no SLA credits. See [Cloud pricing](https://cloud.durable-workflow.com/pricing)
+for the plan's availability scope and billing terms.
 
 ## Private Connectivity And Support Boundary
 
@@ -226,7 +300,7 @@ runtime addresses or asked to route around the namespace URL.
 ## Cloud Or Self-Hosted Server
 
 Choose Cloud when Durable Workflow should operate the orchestration runtime,
-persistence, single-region placement, recovery, and Managed Waterline while
+persistence, the selected plan's availability, recovery, and Managed Waterline while
 your team operates the SDK clients and workers.
 
 Choose [self-hosted Server](/docs/polyglot/server) when your team needs to
@@ -235,7 +309,37 @@ and failover independently. A self-hosted Server cannot be registered with,
 attached to, or used as the backing runtime for a Cloud namespace. Embedded
 Laravel, self-hosted Server, and Cloud are separate deployment choices.
 
-## Cloud Dev Capacity
+## Standard Workflow Benchmarks
+
+[DW Standard Workflow v1](https://github.com/durable-workflow/server/tree/main/benchmarks/capacity)
+defines a small, repeatable workload: one workflow start, one external activity,
+and one workflow completion, with defined 1 KiB Avro inputs and results.
+The customer worker runs outside the managed runtime allocation.
+
+The recorded plan baselines below use that workload. The SLA-plan measurements
+include their replicated HA topology; they are not extrapolated from a Dev host.
+
+| Plan | Standard workflows/second | 30-day workflow actions |
+| --- | ---: | ---: |
+| Cloud Dev | 0.25 | 1,296,000 |
+| Cloud Standard | 0.25 | 1,296,000 |
+| Cloud Multi-Region | 0.10 | 518,400 |
+| Cloud Business | 0.50 | 2,592,000 |
+| Cloud Business Multi-Region | 0.20 | 1,036,800 |
+
+The 30-day estimate is `workflows/second x 2,592,000 seconds x 2 workflow actions`:
+one start and one activity for this comparison. It assumes that rate runs
+continuously for 30 days. It is not an included-action quota, a billing unit,
+or an exact mapping to another engine's action definitions.
+
+These are measured workload baselines, not maximum throughput or guaranteed
+capacity for every application. Larger payloads, more activities, timers,
+signals, queries, replay-heavy histories, cross-region communication, and
+customer worker latency change the result. The table does not claim separate
+timer, signal, replay, or saturation benchmarks. Plan for your actual workflow
+mix rather than multiplying these numbers by an arbitrary workflow size.
+
+### Cloud Dev Measurement {#cloud-dev-capacity}
 
 Cloud Dev is an isolated, single-host managed runtime for development and
 evaluation. Each provisioned space receives the same runtime shape used for
@@ -245,7 +349,7 @@ the measurement below:
 | --- | --- |
 | Runtime compute | 1 shared vCPU, 1 GB RAM |
 | Durable storage included | 5 GB |
-| Runtime services | Server, queue worker, scheduler, MySQL, and Redis |
+| Runtime services | Server with Managed Waterline, queue worker, scheduler, MySQL, and Redis |
 | Network path | Direct, space-specific HTTPS ingress |
 | Customer workers | Run in the customer's environment |
 | Availability | No SLA; maintenance interruptions are allowed |
@@ -256,8 +360,8 @@ Cloud Dev was measured with [DW Standard Workflow
 v1](https://github.com/durable-workflow/server/tree/main/benchmarks/capacity),
 a fixed comparison workload consisting of one workflow start, one external
 activity, and one workflow completion with defined 1 KiB Avro inputs and
-results. The test used the provisioned 1-vCPU/1-GB runtime topology, current
-stable Server and PHP SDK artifacts, one PHP worker process, two client slots,
+results. The test used the provisioned 1-vCPU/1-GB runtime topology, published
+Server and PHP SDK artifacts, one PHP worker process, two client slots,
 a 30-second warmup, and a five-minute measurement window.
 
 | Measured result | Value |
@@ -280,7 +384,7 @@ storage, not workflow operations.
 ## Billing Usage API
 
 Cloud Dev uses one isolated, single-host runtime cell for each provisioned Dev
-space. Its approved launch terms are:
+space. Its billing terms are:
 
 | Billing term | Cloud Dev |
 | --- | ---: |
@@ -388,11 +492,18 @@ abbreviated Cloud Dev response below shows that distinction.
 }
 ```
 
-Cloud Dev's time meter starts when its isolated runtime is provisioned and
+Cloud Dev's time meter starts when its isolated runtime is activated and
 stops when that runtime is deprovisioned. The monthly cap and minimum apply per
 Dev space in UTC calendar months. Durable storage above the included amount is
 metered separately. Cloud preserves an operating and recovery reserve on the
 runtime disk and requires a capacity change before storage can consume it.
+
+Idle runtimes still incur capacity charges. Deprovisioning stops runtime
+capacity billing and removes active runtime data and credentials; it is not a
+pause/resume operation. SLA plans use their selected monthly subscription price,
+not the Dev hourly rate. Use the plan's returned `billing_terms` when interpreting
+usage, and keep any separately retained billable storage distinct from runtime
+capacity.
 
 Export the same evidence as CSV or a JSON report when a downstream finance
 system needs a file handoff:
