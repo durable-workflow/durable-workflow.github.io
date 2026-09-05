@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en" dir="ltr" class="docs-wrapper plugin-docs plugin-id-default docs-version-current docs-doc-page docs-doc-id-polyglot/task-matching-dispatch" data-has-hydrated="false">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="Docusaurus v3.10.2">
+<title data-rh="true">Task Matching and Dispatch | Durable Workflow</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://durable-workflow.com/img/durable-workflow-2.0.png"><meta data-rh="true" name="twitter:image" content="https://durable-workflow.com/img/durable-workflow-2.0.png"><meta data-rh="true" property="og:url" content="https://durable-workflow.com/docs/polyglot/task-matching-dispatch/"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Task Matching and Dispatch | Durable Workflow"><meta data-rh="true" name="description" content="Understand how Durable Workflow turns ready durable tasks into worker assignments, from long-poll wakeups to dedicated matching-role deployments."><meta data-rh="true" property="og:description" content="Understand how Durable Workflow turns ready durable tasks into worker assignments, from long-poll wakeups to dedicated matching-role deployments."><meta data-rh="true" name="keywords" content="task matching,task dispatch,matching role,ready task discovery,queue wake"><meta data-rh="true" name="twitter:title" content="Task Matching and Dispatch | Durable Workflow"><meta data-rh="true" name="twitter:description" content="Understand how Durable Workflow turns ready durable tasks into worker assignments, from long-poll wakeups to dedicated matching-role deployments."><link data-rh="true" rel="icon" href="/img/favicon.ico"><link data-rh="true" rel="canonical" href="https://durable-workflow.com/docs/polyglot/task-matching-dispatch/"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/docs/polyglot/task-matching-dispatch/" hreflang="en"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/docs/polyglot/task-matching-dispatch/" hreflang="x-default"><link data-rh="true" rel="preconnect" href="https://IYIBF1DKO0-dsn.algolia.net" crossorigin="anonymous"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"External Execution And Ingress","item":"https://durable-workflow.com/docs/category/external-execution-and-ingress"},{"@type":"ListItem","position":2,"name":"Task Matching and Dispatch","item":"https://durable-workflow.com/docs/polyglot/task-matching-dispatch"}]}</script><link rel="alternate" type="application/rss+xml" href="/blog/rss.xml" title="Durable Workflow RSS Feed">
+<link rel="alternate" type="application/atom+xml" href="/blog/atom.xml" title="Durable Workflow Atom Feed">
+
+
+
+
+<link rel="search" type="application/opensearchdescription+xml" title="Durable Workflow" href="/opensearch.xml">
+
+
+<script src="/analytics/cloudflare-web-analytics.js" type="module" data-cloudflare-web-analytics-token="a1296466c4e5487ca6ffd230a694b933"></script><link rel="stylesheet" href="/assets/css/styles.5c989eb0.css">
+<script src="/assets/js/runtime~main.dd1a1f1f.js" defer="defer"></script>
+<script src="/assets/js/main.afaffac8.js" defer="defer"></script>
+</head>
+<body>
+<svg style="display: none;"><defs>
+<symbol id="theme-svg-external-link" viewBox="0 0 24 24"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"/></symbol>
+</defs></svg>
+<script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||"dark"),document.documentElement.setAttribute("data-theme-choice",t||"dark")}(),function(){try{const c=new URLSearchParams(window.location.search).entries();for(var[t,e]of c)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id="__docusaurus"><link rel="preload" as="image" href="/img/logo.svg"><div role="region" aria-label="Skip to main content"><a class="skipToContent_fXgn" href="#__docusaurus_skipToContent_fallback">Skip to main content</a></div><nav aria-label="Main" class="theme-layout-navbar navbar navbar--fixed-top"><div class="navbar__inner"><div class="theme-layout-navbar-left navbar__items"><button aria-label="Toggle navigation bar" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/"><div class="navbar__logo"><img src="/img/logo.svg" alt="Workflow Logo" class="themedComponent_mlkZ themedComponent--light_NVdE"><img src="/img/logo.svg" alt="Workflow Logo" class="themedComponent_mlkZ themedComponent--dark_xIcU"></div><b class="navbar__title text--truncate">Durable Workflow</b></a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/docs/introduction/">Docs</a><div class="navbar__item dropdown dropdown--hoverable"><a class="navbar__link" aria-haspopup="true" aria-expanded="false" role="button" href="/docs/polyglot/task-matching-dispatch/">2.0</a><ul class="dropdown__menu"><li><a aria-current="page" class="dropdown__link dropdown__link--active" href="/docs/polyglot/task-matching-dispatch/">2.0</a></li><li><a class="dropdown__link" href="/docs/1.x/introduction/">1.x</a></li></ul></div><a class="navbar__item navbar__link" href="/blog/">Blog</a></div><div class="theme-layout-navbar-right navbar__items navbar__items--right"><a href="https://github.com/durable-workflow/workflow" target="_blank" rel="noopener noreferrer" aria-label="Star Durable Workflow on GitHub" class="navbar-github-star-link navbar__item navbar__link" label="Star on GitHub"><svg aria-hidden="true" class="navbar-github-star-link__icon" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8a8.01 8.01 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.56 7.56 0 0 1 8 4.76c.68 0 1.36.09 2 .27 1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"></path></svg><span class="navbar-github-star-link__count" title="GitHub stars">1.2K</span></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type="button" disabled="" title="system mode" aria-label="Switch between dark and light mode (currently system mode)"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP lightToggleIcon_pyhR"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP darkToggleIcon_wfgR"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP systemToggleIcon_QzmC"><path fill="currentColor" d="m12 21c4.971 0 9-4.029 9-9s-4.029-9-9-9-9 4.029-9 9 4.029 9 9 9zm4.95-13.95c1.313 1.313 2.05 3.093 2.05 4.95s-0.738 3.637-2.05 4.95c-1.313 1.313-3.093 2.05-4.95 2.05v-14c1.857 0 3.637 0.737 4.95 2.05z"></path></svg></button></div><div class="navbarSearchContainer_Bca1"><button type="button" class="DocSearch DocSearch-Button" aria-label="Search (Meta+k)" aria-keyshortcuts="Meta+k"><span class="DocSearch-Button-Container"><svg width="20" height="20" class="DocSearch-Search-Icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" stroke="currentColor" fill="none" stroke-width="1.4"></circle><path d="m21 21-4.3-4.3" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg><span class="DocSearch-Button-Placeholder">Search</span></span><span class="DocSearch-Button-Keys"></span></button></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="__docusaurus_skipToContent_fallback" class="theme-layout-main main-wrapper mainWrapper_z2l0"><div class="docsWrapper_hBAB"><button aria-label="Scroll back to top" class="clean-btn theme-back-to-top-button backToTopButton_sjWU" type="button"></button><div class="docRoot_UBD9"><aside class="theme-doc-sidebar-container docSidebarContainer_YfHR"><div class="sidebarViewport_aRkj"><div class="sidebar_njMd"><nav aria-label="Docs sidebar" class="menu thin-scrollbar menu_SIkG"><ul class="theme-doc-sidebar-menu menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/docs/introduction/"><span class="linkLabel_WmDU">Introduction</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/docs/quickstart/"><span class="linkLabel_WmDU">Durable Workflow 2.0 Quickstart</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/docs/capabilities/"><span class="linkLabel_WmDU">2.0 Capability Index</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/docs/laravel-adoption/"><span class="linkLabel_WmDU">Laravel Adoption and Runtime Transition</span></a></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/docs/category/service-mode/"><span class="categoryLinkLabel_W154">Service Mode</span></a><button aria-label="Expand sidebar category &#x27;Service Mode&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/docs/category/embedded/"><span class="categoryLinkLabel_W154">Embedded</span></a><button aria-label="Expand sidebar category &#x27;Embedded&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/docs/category/run-and-operate/"><span class="categoryLinkLabel_W154">Run And Operate</span></a><button aria-label="Expand sidebar category &#x27;Run And Operate&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--active" href="/docs/category/external-execution-and-ingress/"><span class="categoryLinkLabel_W154">External Execution And Ingress</span></a><button aria-label="Collapse sidebar category &#x27;External Execution And Ingress&#x27;" aria-expanded="true" type="button" class="clean-btn menu__caret"></button></div><ul class="menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/polyglot/external-execution/"><span class="linkLabel_WmDU">External Execution Surface</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/polyglot/invocable-carrier/"><span class="linkLabel_WmDU">Invocable HTTP Carrier</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/polyglot/invocable-php-handler/"><span class="linkLabel_WmDU">PHP Invocable Activity Handler</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/polyglot/worker-protocol/"><span class="linkLabel_WmDU">Worker Protocol</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/polyglot/avro-value-protocol/"><span class="linkLabel_WmDU">Avro Value protocol</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/polyglot/prerelease-history-migration/"><span class="linkLabel_WmDU">Prerelease history migration</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link menu__link--active" aria-current="page" tabindex="0" href="/docs/polyglot/task-matching-dispatch/"><span class="linkLabel_WmDU">Task Matching and Dispatch</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/polyglot/task-queue-admission/"><span class="linkLabel_WmDU">Task Queue Admission</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/polyglot/worker-build-id-rollout/"><span class="linkLabel_WmDU">Worker Build-Id Rollout</span></a></li></ul></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/docs/category/ai-and-automation/"><span class="categoryLinkLabel_W154">AI And Automation</span></a><button aria-label="Expand sidebar category &#x27;AI And Automation&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/docs/sponsors/"><span class="linkLabel_WmDU">Sponsors</span></a></li></ul></nav></div></div></aside><main class="docMainContainer_TBSr"><div class="container padding-top--md padding-bottom--lg"><div class="row"><div class="col docItemCol_VOVn"><div class="docItemContainer_Djhp"><article><nav class="theme-doc-breadcrumbs breadcrumbsContainer_Z_bl" aria-label="Breadcrumbs"><ul class="breadcrumbs"><li class="breadcrumbs__item"><a aria-label="Home page" class="breadcrumbs__link" href="/"><svg viewBox="0 0 24 24" class="breadcrumbHomeIcon_YNFT"><path d="M10 19v-5h4v5c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-7h1.7c.46 0 .68-.57.33-.87L12.67 3.6c-.38-.34-.96-.34-1.34 0l-8.36 7.53c-.34.3-.13.87.33.87H5v7c0 .55.45 1 1 1h3c.55 0 1-.45 1-1z" fill="currentColor"></path></svg></a></li><li class="breadcrumbs__item"><a class="breadcrumbs__link" href="/docs/category/external-execution-and-ingress/"><span>External Execution And Ingress</span></a></li><li class="breadcrumbs__item breadcrumbs__item--active"><span class="breadcrumbs__link">Task Matching and Dispatch</span></li></ul></nav><span class="theme-doc-version-badge badge badge--secondary">Version: 2.0</span><div class="tocCollapsible_ETCw theme-doc-toc-mobile tocMobile_ITEo"><button type="button" class="clean-btn tocCollapsibleButton_TO0P">On this page</button></div><div class="theme-doc-markdown markdown"><header><h1>Task Matching and Dispatch</h1></header>
+<p>Use this guide when you need to reason about how Durable Workflow finds ready
+work, assigns it to compatible workers, and scales that assignment path beyond
+&quot;every node polls everything.&quot; This is the contract behind workflow-task polls,
+activity-task polls, queue wake behavior, and dedicated matching-role
+deployments.</p>
+<p>The core idea is that Durable Workflow separates two concerns:</p>
+<ul>
+<li class="">durable history and task state stay in the database</li>
+<li class="">task matching decides which live worker gets the next eligible task</li>
+</ul>
+<p>That separation matters even before you introduce a separate matching service.
+It lets operators talk about ready-task discovery, queue ownership, lease
+churn, and backpressure as one explicit role instead of as incidental side
+effects of every worker process.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="what-the-matching-role-does">What the matching role does<a href="#what-the-matching-role-does" class="hash-link" aria-label="Direct link to What the matching role does" title="Direct link to What the matching role does" translate="no">​</a></h2>
+<p>The matching role is responsible for:</p>
+<ul>
+<li class="">discovering ready workflow and activity tasks</li>
+<li class="">narrowing the eligible set by namespace, connection, queue, and
+compatibility family</li>
+<li class="">surfacing tasks to one worker at a time</li>
+<li class="">converting a successful claim into a lease with expiry</li>
+<li class="">preserving the same task when a claim fails, a lease expires, or a worker
+disappears</li>
+<li class="">making wake and backlog state visible to operators</li>
+</ul>
+<p>Matching does not replace durable history, workflow replay, or task execution.
+It decides who gets a chance to execute next.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="deployment-shapes">Deployment shapes<a href="#deployment-shapes" class="hash-link" aria-label="Direct link to Deployment shapes" title="Direct link to Deployment shapes" translate="no">​</a></h2>
+<p>Durable Workflow supports three practical shapes today:</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="in-worker-matching">In-worker matching<a href="#in-worker-matching" class="hash-link" aria-label="Direct link to In-worker matching" title="Direct link to In-worker matching" translate="no">​</a></h3>
+<p>This is the default shape. Worker processes long-poll for ready work and use
+claim-time fencing to ensure only one worker owns a task lease at a time.</p>
+<p>Use this when:</p>
+<ul>
+<li class="">you run a single node or a small fleet</li>
+<li class="">queue pressure is moderate</li>
+<li class="">you do not need a dedicated matching daemon yet</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="in-server-http-matching">In-server HTTP matching<a href="#in-server-http-matching" class="hash-link" aria-label="Direct link to In-server HTTP matching" title="Direct link to In-server HTTP matching" translate="no">​</a></h3>
+<p>In standalone-server deployments, external workers reach the same matching
+contract through the worker protocol:</p>
+<ul>
+<li class=""><code>POST /api/worker/workflow-tasks/poll</code></li>
+<li class=""><code>POST /api/worker/activity-tasks/poll</code></li>
+</ul>
+<p>The server becomes the network entrypoint for the same ready-task discovery,
+claim, heartbeat, and completion flow.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="dedicated-matching-role-deployment">Dedicated matching-role deployment<a href="#dedicated-matching-role-deployment" class="hash-link" aria-label="Direct link to Dedicated matching-role deployment" title="Direct link to Dedicated matching-role deployment" translate="no">​</a></h3>
+<p>Larger fleets can concentrate broad ready-task discovery into a dedicated
+matching-role process. The documented operator shape today is:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan workflow:v2:repair-pass --loop</span><br></div></code></pre></div></div>
+<p>Run that daemon in a dedicated process and set
+<code>DW_V2_MATCHING_ROLE_QUEUE_WAKE=0</code> on execution-only nodes so they stop doing
+the broad queue-worker wake on every loop tick.</p>
+<p>Use this shape when:</p>
+<ul>
+<li class="">execution nodes should focus on replay and activity execution</li>
+<li class="">broad independent polling is creating unnecessary contention</li>
+<li class="">operators want an explicit place to own ready-task discovery and sweep
+cadence</li>
+</ul>
+<p>The dedicated role changes where matching happens, not the worker-protocol
+contract. Poll, claim, lease, and redelivery semantics stay the same.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="ready-task-discovery">Ready-task discovery<a href="#ready-task-discovery" class="hash-link" aria-label="Direct link to Ready-task discovery" title="Direct link to Ready-task discovery" translate="no">​</a></h2>
+<p>The matching role looks for durable tasks that are actually ready to run now:</p>
+<ul>
+<li class="">the task kind matches the poller (<code>workflow</code> or <code>activity</code>)</li>
+<li class="">the task is in <code>ready</code> state</li>
+<li class="">the task&#x27;s <code>available_at</code> has arrived</li>
+<li class="">namespace, queue, connection, and compatibility filters still match</li>
+<li class="">activity polls also require a matching advertised activity type</li>
+</ul>
+<p>Long-poll wakeups are an acceleration path, not the correctness path. If the
+wake signal is delayed or missing, the task still becomes visible through
+durable polling. A wake failure should raise latency, not strand work.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="claim-lease-and-backpressure">Claim, lease, and backpressure<a href="#claim-lease-and-backpressure" class="hash-link" aria-label="Direct link to Claim, lease, and backpressure" title="Direct link to Claim, lease, and backpressure" translate="no">​</a></h2>
+<p>Matching only offers an opportunity. Ownership starts when one worker
+successfully claims the task and receives a lease.</p>
+<p>That lease gives Durable Workflow its backpressure behavior:</p>
+<ul>
+<li class="">one worker owns the task until the lease is renewed, completed, released, or
+expired</li>
+<li class="">a failed or stale worker does not permanently trap the task</li>
+<li class="">redelivery is normal and must be handled as part of at-least-once execution</li>
+<li class="">incompatible workers do not steal the lease; they get an explicit rejection</li>
+</ul>
+<p>Because work is lease-based, queue pressure shows up as backlog, stale leases,
+or repeated redelivery instead of as hidden in-memory loss.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="queue-partitioning">Queue partitioning<a href="#queue-partitioning" class="hash-link" aria-label="Direct link to Queue partitioning" title="Direct link to Queue partitioning" translate="no">​</a></h2>
+<p>The main partitioning primitives are:</p>
+<ul>
+<li class=""><strong>namespace</strong> for tenant or environment boundaries</li>
+<li class=""><strong>connection</strong> and <strong>queue</strong> for work-routing boundaries</li>
+<li class=""><strong>compatibility family</strong> for compatibility-marker routing safety</li>
+<li class=""><strong>activity type filters</strong> for workers that only execute selected activities</li>
+</ul>
+<p>Use separate queues when you want stronger isolation, independent worker pools,
+or different downstream budgets. Use compatibility families when the same
+queue must stay live across a rollout or rollback without letting in-flight
+work drift to incompatible executors.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="wake-signals-and-dedicated-sweeps">Wake signals and dedicated sweeps<a href="#wake-signals-and-dedicated-sweeps" class="hash-link" aria-label="Direct link to Wake signals and dedicated sweeps" title="Direct link to Wake signals and dedicated sweeps" translate="no">​</a></h2>
+<p>Wake signals shorten the time between &quot;task became ready&quot; and &quot;a poller noticed
+it.&quot; They are not the durable source of truth.</p>
+<p>In the default shape, queue workers can emit wake signals as part of their
+normal loop. In a dedicated matching-role deployment, execution-only nodes
+disable that broad wake path and the matching daemon owns the sweep cadence
+instead.</p>
+<p>Treat these as tuning levers:</p>
+<ul>
+<li class=""><code>DW_V2_MATCHING_ROLE_QUEUE_WAKE</code> controls whether execution nodes perform the
+in-worker wake</li>
+<li class=""><code>DW_WAKE_SIGNAL_TTL_SECONDS</code> controls how long wake markers remain visible</li>
+<li class="">long-poll timeout settings control how long pollers stay parked waiting for
+work</li>
+</ul>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="what-operators-should-watch">What operators should watch<a href="#what-operators-should-watch" class="hash-link" aria-label="Direct link to What operators should watch" title="Direct link to What operators should watch" translate="no">​</a></h2>
+<p>Use these surfaces together:</p>
+<ul>
+<li class=""><code>GET /api/cluster/info</code> for the per-node role topology:
+<code>current_shape</code>, <code>current_process_class</code>, current roles, and the full
+<code>matching_role</code> contract: <code>queue_wake_enabled</code>, deployment <code>shape</code>,
+<code>wake_owner</code>, <code>task_dispatch_mode</code>, frozen <code>partition_primitives</code>, and the
+current <code>backpressure_model</code></li>
+<li class="">task-queue visibility for ready depth, active slots, and throttling</li>
+<li class="">worker fleet visibility for active vs stale pollers on each queue</li>
+<li class=""><code>dw system:operator-metrics --json</code> or <code>/api/system/operator-metrics</code> for
+the same node-local <code>matching_role</code> contract beside live backlog, repair,
+worker, and health counters from the responding process</li>
+<li class="">health and Waterline diagnostics for unhealthy tasks, stale leases, and
+compatible-worker gaps</li>
+<li class="">rolling-upgrade checks when an overlap window is live and matching must
+block unsafe claims</li>
+</ul>
+<p>If the oldest ready-task age grows while compatible workers are available, the
+matching path is not making forward progress quickly enough. If ready tasks are
+preserved but no compatible worker can claim them, that is a compatibility
+problem, not a matching-loss problem.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="when-to-introduce-a-dedicated-matching-role">When to introduce a dedicated matching role<a href="#when-to-introduce-a-dedicated-matching-role" class="hash-link" aria-label="Direct link to When to introduce a dedicated matching role" title="Direct link to When to introduce a dedicated matching role" translate="no">​</a></h2>
+<p>Move from default in-worker matching to a dedicated matching-role shape when:</p>
+<ul>
+<li class="">broad polling is creating visible database or cache contention</li>
+<li class="">execution nodes should stop paying the overhead of ready-task sweeps</li>
+<li class="">queue fairness and dispatch ownership need to be reasoned about as one
+explicit subsystem</li>
+<li class="">operators want a distinct process to scale, supervise, and debug for
+ready-task discovery</li>
+</ul>
+<p>Stay on the default shape when the current fleet is small and the main need is
+clear rollout and compatibility behavior rather than a new topology.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="related-references">Related references<a href="#related-references" class="hash-link" aria-label="Direct link to Related references" title="Direct link to Related references" translate="no">​</a></h2>
+<ul>
+<li class=""><a class="" href="/docs/polyglot/worker-protocol/">Worker Protocol</a> for poll, heartbeat,
+complete, and fail verbs</li>
+<li class=""><a class="" href="/docs/polyglot/task-queue-admission/">Task Queue Admission</a> for slot,
+lease, and dispatch budgets on top of matching</li>
+<li class=""><a class="" href="/docs/rolling-upgrades/">Rolling Upgrades</a> for rollout procedure when
+matching and compatibility are both in play</li>
+<li class=""><a class="" href="/docs/polyglot/server-config-reference/">Server Config Reference</a> for
+<code>DW_V2_MATCHING_ROLE_QUEUE_WAKE</code>, poll timing, and wake-signal settings</li>
+</ul></div><footer class="theme-doc-footer docusaurus-mt-lg"><div class="row margin-top--sm theme-doc-footer-tags-row"><div class="col"><b>Tags:</b><ul class="tags_jXut padding--none margin-left--sm"><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/docs/tags/worker-protocol/">worker-protocol</a></li><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/docs/tags/task-queues/">task-queues</a></li><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/docs/tags/operations/">operations</a></li><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/docs/tags/dispatch/">dispatch</a></li></ul></div></div><div class="row margin-top--sm theme-doc-footer-edit-meta-row"><div class="col noPrint_WFHX"><a href="https://github.com/durable-workflow/durable-workflow.github.io/edit/main/docs/polyglot/task-matching-dispatch.md" target="_blank" rel="noopener noreferrer" class="theme-edit-this-page"><svg fill="currentColor" height="20" width="20" viewBox="0 0 40 40" class="iconEdit_Z9Sw" aria-hidden="true"><g><path d="m34.5 11.7l-3 3.1-6.3-6.3 3.1-3q0.5-0.5 1.2-0.5t1.1 0.5l3.9 3.9q0.5 0.4 0.5 1.1t-0.5 1.2z m-29.5 17.1l18.4-18.5 6.3 6.3-18.4 18.4h-6.3v-6.2z"></path></g></svg>Edit this page</a></div><div class="col lastUpdated_JAkA"></div></div></footer></article><nav class="docusaurus-mt-lg pagination-nav" aria-label="Docs pages"><a class="pagination-nav__link pagination-nav__link--prev" href="/docs/polyglot/prerelease-history-migration/"><div class="pagination-nav__sublabel">Previous</div><div class="pagination-nav__label">Prerelease history migration</div></a><a class="pagination-nav__link pagination-nav__link--next" href="/docs/polyglot/task-queue-admission/"><div class="pagination-nav__sublabel">Next</div><div class="pagination-nav__label">Task Queue Admission</div></a></nav></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#what-the-matching-role-does" class="table-of-contents__link toc-highlight">What the matching role does</a></li><li><a href="#deployment-shapes" class="table-of-contents__link toc-highlight">Deployment shapes</a><ul><li><a href="#in-worker-matching" class="table-of-contents__link toc-highlight">In-worker matching</a></li><li><a href="#in-server-http-matching" class="table-of-contents__link toc-highlight">In-server HTTP matching</a></li><li><a href="#dedicated-matching-role-deployment" class="table-of-contents__link toc-highlight">Dedicated matching-role deployment</a></li></ul></li><li><a href="#ready-task-discovery" class="table-of-contents__link toc-highlight">Ready-task discovery</a></li><li><a href="#claim-lease-and-backpressure" class="table-of-contents__link toc-highlight">Claim, lease, and backpressure</a></li><li><a href="#queue-partitioning" class="table-of-contents__link toc-highlight">Queue partitioning</a></li><li><a href="#wake-signals-and-dedicated-sweeps" class="table-of-contents__link toc-highlight">Wake signals and dedicated sweeps</a></li><li><a href="#what-operators-should-watch" class="table-of-contents__link toc-highlight">What operators should watch</a></li><li><a href="#when-to-introduce-a-dedicated-matching-role" class="table-of-contents__link toc-highlight">When to introduce a dedicated matching role</a></li><li><a href="#related-references" class="table-of-contents__link toc-highlight">Related references</a></li></ul></div></div></div></div></main></div></div></div><div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="row footer__links"><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Docs</div><ul class="footer__items clean-list"><li class="footer__item"><a class="footer__link-item" href="/docs/introduction/">Introduction</a></li><li class="footer__item"><a class="footer__link-item" href="/docs/installation/">Installation</a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Community</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://discord.gg/xu5aDDpqVy" target="_blank" rel="noopener noreferrer" class="footer__link-item">Discord<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://x.com/DurableWorkflow" target="_blank" rel="noopener noreferrer" class="footer__link-item">X<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">More</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://durable-workflow.com/llms-full.txt" target="_blank" rel="noopener noreferrer" class="footer__link-item">LLM Docs<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://packagist.org/packages/durable-workflow/workflow" target="_blank" rel="noopener noreferrer" class="footer__link-item">Packagist<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div></div><div class="footer__bottom text--center"><div class="footer__copyright">Copyright © 2026 <a href="https://durable-workflow.com">Durable Workflow</a>.</div></div></div></footer></div></div>
+</body>
+</html>

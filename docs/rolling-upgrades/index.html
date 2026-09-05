@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en" dir="ltr" class="docs-wrapper plugin-docs plugin-id-default docs-version-current docs-doc-page docs-doc-id-rolling-upgrades" data-has-hydrated="false">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="Docusaurus v3.10.2">
+<title data-rh="true">Rolling Upgrades | Durable Workflow</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://durable-workflow.com/img/durable-workflow-2.0.png"><meta data-rh="true" name="twitter:image" content="https://durable-workflow.com/img/durable-workflow-2.0.png"><meta data-rh="true" property="og:url" content="https://durable-workflow.com/docs/rolling-upgrades/"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Rolling Upgrades | Durable Workflow"><meta data-rh="true" name="description" content="Run a self-serve rolling upgrade across Durable Workflow server API nodes, workers, and the scheduler without stopping live traffic."><meta data-rh="true" property="og:description" content="Run a self-serve rolling upgrade across Durable Workflow server API nodes, workers, and the scheduler without stopping live traffic."><meta data-rh="true" name="keywords" content="rolling upgrade,rolling safety,worker drain,schema fencing,readiness contract,rollback workflow"><meta data-rh="true" name="twitter:title" content="Rolling Upgrades | Durable Workflow"><meta data-rh="true" name="twitter:description" content="Run a self-serve rolling upgrade across Durable Workflow server API nodes, workers, and the scheduler without stopping live traffic."><link data-rh="true" rel="icon" href="/img/favicon.ico"><link data-rh="true" rel="canonical" href="https://durable-workflow.com/docs/rolling-upgrades/"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/docs/rolling-upgrades/" hreflang="en"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/docs/rolling-upgrades/" hreflang="x-default"><link data-rh="true" rel="preconnect" href="https://IYIBF1DKO0-dsn.algolia.net" crossorigin="anonymous"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Run And Operate","item":"https://durable-workflow.com/docs/category/run-and-operate"},{"@type":"ListItem","position":2,"name":"Rolling Upgrades","item":"https://durable-workflow.com/docs/rolling-upgrades"}]}</script><link rel="alternate" type="application/rss+xml" href="/blog/rss.xml" title="Durable Workflow RSS Feed">
+<link rel="alternate" type="application/atom+xml" href="/blog/atom.xml" title="Durable Workflow Atom Feed">
+
+
+
+
+<link rel="search" type="application/opensearchdescription+xml" title="Durable Workflow" href="/opensearch.xml">
+
+
+<script src="/analytics/cloudflare-web-analytics.js" type="module" data-cloudflare-web-analytics-token="a1296466c4e5487ca6ffd230a694b933"></script><link rel="stylesheet" href="/assets/css/styles.5c989eb0.css">
+<script src="/assets/js/runtime~main.dd1a1f1f.js" defer="defer"></script>
+<script src="/assets/js/main.afaffac8.js" defer="defer"></script>
+</head>
+<body>
+<svg style="display: none;"><defs>
+<symbol id="theme-svg-external-link" viewBox="0 0 24 24"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"/></symbol>
+</defs></svg>
+<script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||"dark"),document.documentElement.setAttribute("data-theme-choice",t||"dark")}(),function(){try{const c=new URLSearchParams(window.location.search).entries();for(var[t,e]of c)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id="__docusaurus"><link rel="preload" as="image" href="/img/logo.svg"><div role="region" aria-label="Skip to main content"><a class="skipToContent_fXgn" href="#__docusaurus_skipToContent_fallback">Skip to main content</a></div><nav aria-label="Main" class="theme-layout-navbar navbar navbar--fixed-top"><div class="navbar__inner"><div class="theme-layout-navbar-left navbar__items"><button aria-label="Toggle navigation bar" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/"><div class="navbar__logo"><img src="/img/logo.svg" alt="Workflow Logo" class="themedComponent_mlkZ themedComponent--light_NVdE"><img src="/img/logo.svg" alt="Workflow Logo" class="themedComponent_mlkZ themedComponent--dark_xIcU"></div><b class="navbar__title text--truncate">Durable Workflow</b></a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/docs/introduction/">Docs</a><div class="navbar__item dropdown dropdown--hoverable"><a class="navbar__link" aria-haspopup="true" aria-expanded="false" role="button" href="/docs/rolling-upgrades/">2.0</a><ul class="dropdown__menu"><li><a aria-current="page" class="dropdown__link dropdown__link--active" href="/docs/rolling-upgrades/">2.0</a></li><li><a class="dropdown__link" href="/docs/1.x/introduction/">1.x</a></li></ul></div><a class="navbar__item navbar__link" href="/blog/">Blog</a></div><div class="theme-layout-navbar-right navbar__items navbar__items--right"><a href="https://github.com/durable-workflow/workflow" target="_blank" rel="noopener noreferrer" aria-label="Star Durable Workflow on GitHub" class="navbar-github-star-link navbar__item navbar__link" label="Star on GitHub"><svg aria-hidden="true" class="navbar-github-star-link__icon" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8a8.01 8.01 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.56 7.56 0 0 1 8 4.76c.68 0 1.36.09 2 .27 1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"></path></svg><span class="navbar-github-star-link__count" title="GitHub stars">1.2K</span></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type="button" disabled="" title="system mode" aria-label="Switch between dark and light mode (currently system mode)"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP lightToggleIcon_pyhR"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP darkToggleIcon_wfgR"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP systemToggleIcon_QzmC"><path fill="currentColor" d="m12 21c4.971 0 9-4.029 9-9s-4.029-9-9-9-9 4.029-9 9 4.029 9 9 9zm4.95-13.95c1.313 1.313 2.05 3.093 2.05 4.95s-0.738 3.637-2.05 4.95c-1.313 1.313-3.093 2.05-4.95 2.05v-14c1.857 0 3.637 0.737 4.95 2.05z"></path></svg></button></div><div class="navbarSearchContainer_Bca1"><button type="button" class="DocSearch DocSearch-Button" aria-label="Search (Meta+k)" aria-keyshortcuts="Meta+k"><span class="DocSearch-Button-Container"><svg width="20" height="20" class="DocSearch-Search-Icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" stroke="currentColor" fill="none" stroke-width="1.4"></circle><path d="m21 21-4.3-4.3" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg><span class="DocSearch-Button-Placeholder">Search</span></span><span class="DocSearch-Button-Keys"></span></button></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="__docusaurus_skipToContent_fallback" class="theme-layout-main main-wrapper mainWrapper_z2l0"><div class="docsWrapper_hBAB"><button aria-label="Scroll back to top" class="clean-btn theme-back-to-top-button backToTopButton_sjWU" type="button"></button><div class="docRoot_UBD9"><aside class="theme-doc-sidebar-container docSidebarContainer_YfHR"><div class="sidebarViewport_aRkj"><div class="sidebar_njMd"><nav aria-label="Docs sidebar" class="menu thin-scrollbar menu_SIkG"><ul class="theme-doc-sidebar-menu menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/docs/introduction/"><span class="linkLabel_WmDU">Introduction</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/docs/quickstart/"><span class="linkLabel_WmDU">Durable Workflow 2.0 Quickstart</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/docs/capabilities/"><span class="linkLabel_WmDU">2.0 Capability Index</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/docs/laravel-adoption/"><span class="linkLabel_WmDU">Laravel Adoption and Runtime Transition</span></a></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/docs/category/service-mode/"><span class="categoryLinkLabel_W154">Service Mode</span></a><button aria-label="Expand sidebar category &#x27;Service Mode&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/docs/category/embedded/"><span class="categoryLinkLabel_W154">Embedded</span></a><button aria-label="Expand sidebar category &#x27;Embedded&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--active" href="/docs/category/run-and-operate/"><span class="categoryLinkLabel_W154">Run And Operate</span></a><button aria-label="Collapse sidebar category &#x27;Run And Operate&#x27;" aria-expanded="true" type="button" class="clean-btn menu__caret"></button></div><ul class="menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/deployment/"><span class="linkLabel_WmDU">Self-Hosting Deployments</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link menu__link--active" aria-current="page" tabindex="0" href="/docs/rolling-upgrades/"><span class="linkLabel_WmDU">Rolling Upgrades</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/monitoring/"><span class="linkLabel_WmDU">Monitoring</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/operator-operating-envelope/"><span class="linkLabel_WmDU">Operator Operating Envelope</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/waterline-operator-api/"><span class="linkLabel_WmDU">Waterline Operator API Reference</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/compatibility/"><span class="linkLabel_WmDU">Version Compatibility</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/platform-protocol-specs/"><span class="linkLabel_WmDU">Platform Protocol Specs</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/platform-conformance/"><span class="linkLabel_WmDU">Platform Conformance Suite</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/sdk-neutrality/"><span class="linkLabel_WmDU">SDK Neutrality</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/support/"><span class="linkLabel_WmDU">Support</span></a></li></ul></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/docs/category/external-execution-and-ingress/"><span class="categoryLinkLabel_W154">External Execution And Ingress</span></a><button aria-label="Expand sidebar category &#x27;External Execution And Ingress&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/docs/category/ai-and-automation/"><span class="categoryLinkLabel_W154">AI And Automation</span></a><button aria-label="Expand sidebar category &#x27;AI And Automation&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/docs/sponsors/"><span class="linkLabel_WmDU">Sponsors</span></a></li></ul></nav></div></div></aside><main class="docMainContainer_TBSr"><div class="container padding-top--md padding-bottom--lg"><div class="row"><div class="col docItemCol_VOVn"><div class="docItemContainer_Djhp"><article><nav class="theme-doc-breadcrumbs breadcrumbsContainer_Z_bl" aria-label="Breadcrumbs"><ul class="breadcrumbs"><li class="breadcrumbs__item"><a aria-label="Home page" class="breadcrumbs__link" href="/"><svg viewBox="0 0 24 24" class="breadcrumbHomeIcon_YNFT"><path d="M10 19v-5h4v5c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-7h1.7c.46 0 .68-.57.33-.87L12.67 3.6c-.38-.34-.96-.34-1.34 0l-8.36 7.53c-.34.3-.13.87.33.87H5v7c0 .55.45 1 1 1h3c.55 0 1-.45 1-1z" fill="currentColor"></path></svg></a></li><li class="breadcrumbs__item"><a class="breadcrumbs__link" href="/docs/category/run-and-operate/"><span>Run And Operate</span></a></li><li class="breadcrumbs__item breadcrumbs__item--active"><span class="breadcrumbs__link">Rolling Upgrades</span></li></ul></nav><span class="theme-doc-version-badge badge badge--secondary">Version: 2.0</span><div class="tocCollapsible_ETCw theme-doc-toc-mobile tocMobile_ITEo"><button type="button" class="clean-btn tocCollapsibleButton_TO0P">On this page</button></div><div class="theme-doc-markdown markdown"><header><h1>Rolling Upgrades</h1></header>
+<p>Run a rolling upgrade when you want to replace API nodes, workers, or the
+scheduler without taking the deployment offline. This contract covers the
+small clustered shape from the <a class="" href="/docs/deployment/">self-hosting deployments</a>
+guide: two or three API nodes behind a load balancer, shared external MySQL
+or PostgreSQL, shared Redis, independently scaled workers, and exactly one
+scheduler or maintenance runner.</p>
+<p>A rolling upgrade is supported when every guarantee on this page holds.
+Outside that envelope, use the documented stop-the-world flow in the
+deployment guide instead.</p>
+<p>The role vocabulary and shape manifest behind this contract are documented in
+<a class="" href="/docs/polyglot/server-role-topology/">Server Role Topology</a>. This guide
+focuses on how the current <code>standalone_server</code> process classes roll in place.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="what-rolling-upgrade-means-here">What rolling upgrade means here<a href="#what-rolling-upgrade-means-here" class="hash-link" aria-label="Direct link to What rolling upgrade means here" title="Direct link to What rolling upgrade means here" translate="no">​</a></h2>
+<p>A <strong>rolling upgrade</strong> replaces processes one at a time, draining each one
+before stopping it, while the rest of the fleet keeps serving traffic. The
+result is zero downtime for the deployment as a whole and a bounded overlap
+window where old and new processes coexist.</p>
+<p>The contract distinguishes four process classes in the current
+<code>standalone_server</code> shape, each with its own rollout posture:</p>
+<ul>
+<li class=""><strong>HTTP/API nodes</strong>: stateless server processes serving HTTP traffic and
+currently hosting the <code>api_ingress</code>, <code>control_plane</code>, <code>matching</code>, and
+<code>history_projection</code> roles.</li>
+<li class=""><strong>Workers</strong>: SDK processes that poll the worker plane and execute
+activity and workflow tasks as the <code>execution_plane</code>.</li>
+<li class=""><strong>Scheduler / maintenance runner</strong>: the singleton process that fires
+schedules and drives activity-timeout and history retention as the
+<code>scheduler</code> role.</li>
+<li class=""><strong>Bootstrap</strong>: the one-shot process that runs database migrations and
+default-namespace seeding.</li>
+</ul>
+<p>API nodes and workers roll independently. The scheduler is a singleton —
+you stop the old one before starting the new one, but the rest of the
+deployment keeps serving traffic across that gap.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="compatible-version-skew-rules">Compatible version-skew rules<a href="#compatible-version-skew-rules" class="hash-link" aria-label="Direct link to Compatible version-skew rules" title="Direct link to Compatible version-skew rules" translate="no">​</a></h2>
+<p>The rolling-upgrade overlap window is the time during which more than one server
+image, workflow package version, or worker SDK version is live. The
+window must satisfy every rule in this section.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="server-image-and-workflow-package">Server image and workflow package<a href="#server-image-and-workflow-package" class="hash-link" aria-label="Direct link to Server image and workflow package" title="Direct link to Server image and workflow package" translate="no">​</a></h3>
+<ul>
+<li class=""><strong>Adjacent versions only.</strong> During a rolling upgrade, every API node
+and worker must run a server image whose workflow package version is
+the same major version as the cluster&#x27;s previous package and within
+one minor version of every other live process. Skipping a major
+version requires a stop-the-world upgrade.</li>
+<li class=""><strong>Forward-additive migrations.</strong> Every Durable Workflow v2 schema
+change is additive within a major version. New nodes must not require
+a column or table that has not been migrated in. Old nodes must not
+break when a new column they do not read is present. The
+<a href="#schemabootstrap-ordering" class="">migration order rules</a> below enforce this.</li>
+<li class=""><strong>Adjacent control-plane and worker-protocol versions.</strong> Every node
+publishes its supported <code>control_plane.version</code> and
+<code>worker_protocol.version</code> ranges from <code>GET /api/cluster/info</code>. During
+a rolling upgrade, the new image&#x27;s supported range must overlap with
+every live old node&#x27;s supported range. Discover the range before the
+rollout, and abort if it does not overlap.</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="worker-sdk-and-build-identity">Worker SDK and build identity<a href="#worker-sdk-and-build-identity" class="hash-link" aria-label="Direct link to Worker SDK and build identity" title="Direct link to Worker SDK and build identity" translate="no">​</a></h3>
+<ul>
+<li class=""><strong>Workers tag every build.</strong> Every worker that may participate in a
+rolling upgrade must register through <code>POST /api/worker/register</code>
+with a stable <code>build_id</code>. The unversioned cohort
+(<code>build_id: null</code>) is the pre-rollout default; the
+<a class="" href="/docs/polyglot/worker-build-id-rollout/">worker build-id rollout guide</a>
+explains the first cutover.</li>
+<li class=""><strong>Workflow definition fingerprints stay pinned.</strong> Server images
+carrying <code>DW_V2_PIN_TO_RECORDED_FINGERPRINT=true</code> (the default) keep
+in-flight runs pinned to the workflow definition fingerprint
+recorded at <code>WorkflowStarted</code>. A new worker that ships a different
+fingerprint for the same workflow refuses to claim those runs until
+they finish.</li>
+<li class=""><strong>Overlapping-build admission posture.</strong> Choose the
+<a class="" href="/docs/polyglot/server-config-reference/"><code>DW_V2_FLEET_VALIDATION_MODE</code></a>
+posture before you start. <code>warn</code> lets the rollout proceed even when
+the required compatibility marker has no live worker;  <code>fail</code> blocks
+dispatch and fails the readiness contract closed during that window.
+Production rollouts that require a clean cutover should be on <code>fail</code>.</li>
+</ul>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="schemabootstrap-ordering">Schema/bootstrap ordering<a href="#schemabootstrap-ordering" class="hash-link" aria-label="Direct link to Schema/bootstrap ordering" title="Direct link to Schema/bootstrap ordering" translate="no">​</a></h2>
+<p>Schema changes ride a single bootstrap pass. Order matters.</p>
+<ol>
+<li class=""><strong>Run bootstrap first, exactly once.</strong> Run <code>php artisan server:bootstrap --force</code> (or the published-image equivalent) from
+one container before starting any new API node, worker, or
+scheduler. Bootstrap runs <code>migrate</code> plus default-namespace seeding;
+it adopts any workflow package migrations whose tables already
+exist on the connection.</li>
+<li class=""><strong>New schema must be backwards-compatible with old code.</strong> Every v2
+migration in this release path is additive (new tables, new
+columns, new indexes). Old API nodes and workers continue running
+against the new schema.</li>
+<li class=""><strong>Do not start new code before bootstrap completes.</strong> Roll the new
+server image only after bootstrap exits successfully. New API nodes
+and workers may rely on the freshly migrated tables, and starting
+them before bootstrap finishes is the most common cause of a 5xx
+surge during the cutover.</li>
+<li class=""><strong>Bootstrap is idempotent.</strong> Re-running it is safe. If bootstrap
+fails partway, fix the underlying error and re-run; the migration
+ledger picks up where it left off, and the namespace seed is a
+no-op when the row exists.</li>
+</ol>
+<p>A migration that lands on one server before another MUST NOT corrupt
+the readiness surface. If you discover a non-additive change during
+planning, take a stop-the-world upgrade window for that release and
+return to rolling upgrades on the next one.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="drain-and-admission-during-the-overlap-window">Drain and admission during the overlap window<a href="#drain-and-admission-during-the-overlap-window" class="hash-link" aria-label="Direct link to Drain and admission during the overlap window" title="Direct link to Drain and admission during the overlap window" translate="no">​</a></h2>
+<p>Three admission surfaces enforce overlap-window safety automatically:</p>
+<ul>
+<li class=""><strong>Boot-time admission.</strong> Every server process loads
+<code>BackendCapabilities</code>, <code>LongPollCacheValidator</code>, <code>WorkflowModeGuard</code>,
+and the readiness contract at boot. A process whose backend or
+cache cannot satisfy the v2 contract refuses to mark itself ready.</li>
+<li class=""><strong>Worker compatibility.</strong> When
+<code>DW_V2_FLEET_VALIDATION_MODE=fail</code> and no live worker advertises the
+required compatibility marker for a task&#x27;s connection and queue
+scope, the matching role blocks dispatch and the
+<code>worker_compatibility</code> health check escalates from <code>warning</code> to
+<code>error</code>. Tasks stay ready and visible — they are never dropped — and
+the readiness contract returns 503 on that node so the load balancer
+takes it out of rotation.</li>
+<li class=""><strong>Routing safety.</strong> A ready task whose required compatibility has no
+live worker is preserved and counted under the
+<code>compatibility_blocked_runs</code> backlog metric. Routing safety never
+silently escalates to task loss; the at-least-once execution
+guarantee still applies after a routing drain.</li>
+</ul>
+<p>To keep the worker overlap window short, drain old
+worker cohorts as new workers come online. Use the
+<a class="" href="/docs/polyglot/worker-build-id-rollout/">worker build-id rollout</a>
+flow:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">dw task-queue:drain orders-critical --build-id orders-worker-2026-04-21-z9</span><br></div></code></pre></div></div>
+<p>The cohort&#x27;s <code>drain_intent</code> flips to <code>draining</code>. Workers under that
+build keep finishing in-flight work but stop claiming new tasks. Wait
+for the cohort&#x27;s <code>active_worker_count</code> and <code>draining_worker_count</code> to
+reach zero before stopping the old worker processes.</p>
+<p>The scheduler does not run a long-lived task queue, so it does not need
+a worker drain. Stop the old scheduler container, run bootstrap if it
+has not run yet, and start the new one. The window between the two is
+bounded by how long it takes the new container to come up; schedule
+firing resumes from the persisted state on next tick.</p>
+<p>If the rollout also introduces a dedicated matching-role deployment, make that
+topology change explicit instead of assuming every execution node will keep
+doing broad ready-task sweeps. See
+<a class="" href="/docs/polyglot/task-matching-dispatch/">Task Matching and Dispatch</a> for
+the documented <code>workflow:v2:repair-pass --loop</code> plus
+<code>DW_V2_MATCHING_ROLE_QUEUE_WAKE=0</code> shape. Verify the live node contract from
+<code>GET /api/cluster/info</code>: <code>topology.current_shape</code> should still match the
+deployment you are cutting over, <code>topology.current_roles</code> should still match
+the documented role bundle for that node, and
+<code>topology.matching_role.queue_wake_enabled</code>,
+<code>topology.matching_role.shape</code>, and <code>topology.matching_role.wake_owner</code>
+should show the expected broad-ready-task owner. The default shape reports
+<code>queue_wake_enabled: true</code>, <code>shape: &quot;in_worker&quot;</code>, and
+<code>wake_owner: &quot;worker_loop&quot;</code>; dedicated matching rollouts flip execution nodes
+to <code>queue_wake_enabled: false</code>, <code>shape: &quot;dedicated&quot;</code>, and
+<code>wake_owner: &quot;dedicated_repair_pass&quot;</code>.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="readiness-and-cutover">Readiness and cutover<a href="#readiness-and-cutover" class="hash-link" aria-label="Direct link to Readiness and cutover" title="Direct link to Readiness and cutover" translate="no">​</a></h2>
+<p>Use the readiness contract — not just the liveness probe — to decide
+when traffic flows to a node.</p>
+<ul>
+<li class=""><code>GET /api/health</code> proves the process is serving HTTP.</li>
+<li class=""><code>GET /api/ready</code> proves the process can use its configured runtime
+dependencies, including migrations, default namespace, and (under
+<code>DW_V2_FLEET_VALIDATION_MODE=fail</code>) the worker-compatibility
+admission check.</li>
+<li class=""><code>GET /api/cluster/info</code> proves an authenticated client can discover
+build identity, control-plane protocol, worker protocol, payload
+codecs, and server capabilities.</li>
+<li class=""><code>POST /api/worker/register</code> proves workers can authenticate into the
+expected namespace and task queue.</li>
+</ul>
+<p>Cutover sequence for one API node:</p>
+<ol>
+<li class="">Take the node out of the load balancer rotation. The simplest path
+is to fail the load balancer&#x27;s readiness probe by stopping the new
+image&#x27;s pre-start hook before bringing the new container up.</li>
+<li class="">Drain in-flight HTTP requests. Most clients retry on connection
+reset; long-running connections (worker long-polls) reconnect
+against the rest of the fleet.</li>
+<li class="">Stop the old container, start the new one.</li>
+<li class="">Wait for <code>GET /api/ready</code> to return 200 and for
+<code>GET /api/cluster/info</code> to advertise the new build identity. When the
+rollout changes the matching topology, also confirm
+<code>topology.matching_role.task_dispatch_mode</code>,
+<code>topology.matching_role.queue_wake_enabled</code>,
+<code>topology.matching_role.shape</code>, <code>topology.matching_role.wake_owner</code>,
+<code>topology.matching_role.partition_primitives</code>, and
+<code>topology.matching_role.backpressure_model</code> match the intended deployment
+before returning the node to traffic. Use <code>/api/system/operator-metrics</code>
+when you want the same node-local matching-role contract alongside live
+backlog, repair, and worker counters from the responding process.</li>
+<li class="">Return the node to rotation.</li>
+</ol>
+<p>Repeat one node at a time. Do not roll the next node until the
+previous one is back in rotation and serving traffic cleanly.</p>
+<p>For workers, the cutover is per-cohort:</p>
+<ol>
+<li class="">Bring the new worker cohort online with a new <code>build_id</code>.</li>
+<li class="">Confirm both cohorts report <code>rollout_status: &quot;active&quot;</code> and non-zero
+<code>active_worker_count</code> from <code>dw task-queue:build-ids &lt;queue&gt; --json</code>.</li>
+<li class="">Drain the old cohort with <code>dw task-queue:drain</code>.</li>
+<li class="">Wait until the old cohort&#x27;s <code>active_worker_count</code> and
+<code>draining_worker_count</code> reach zero.</li>
+<li class="">Stop the old worker processes.</li>
+</ol>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="rollback">Rollback<a href="#rollback" class="hash-link" aria-label="Direct link to Rollback" title="Direct link to Rollback" translate="no">​</a></h2>
+<p>Every step is reversible. Plan for rollback before you start.</p>
+<ul>
+<li class="">
+<p><strong>Bootstrap rollback.</strong> v2 migrations are reversible by the standard
+Laravel <code>down()</code> path. A rollback that reverts a migration the new
+image relies on requires stopping every new node first; otherwise
+the new code observes a missing column and the readiness contract
+returns 503 on those nodes. Most rollbacks do not need to reverse
+migrations because schema changes are additive.</p>
+</li>
+<li class="">
+<p><strong>API node rollback.</strong> Stop the new container, restart the old one
+on the same node. Take the node out of rotation while it boots and
+return it once <code>GET /api/ready</code> is green. Repeat for any other
+upgraded API nodes. Old code keeps reading the new schema cleanly
+because the schema change was additive.</p>
+</li>
+<li class="">
+<p><strong>Worker rollback.</strong> Resume the previously drained cohort, drain
+the bad cohort, and scale the known-good build back up:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">dw task-queue:resume orders-critical --build-id orders-worker-2026-04-21-z9</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">dw task-queue:drain  orders-critical --build-id orders-worker-2026-04-22</span><br></div></code></pre></div></div>
+<p>Resume clears <code>drain_intent</code> and <code>drained_at</code>, and any worker
+heartbeating under the resumed <code>build_id</code> flips back to <code>active</code> on
+the next poll. Both calls are idempotent.</p>
+</li>
+</ul>
+<p>If the rollout exposed a non-additive schema problem, take a
+stop-the-world upgrade window to roll back, run the corrective
+migrations, and re-plan.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="operator-verification">Operator verification<a href="#operator-verification" class="hash-link" aria-label="Direct link to Operator verification" title="Direct link to Operator verification" translate="no">​</a></h2>
+<p>Verify each phase of the rollout from operator surfaces, not from logs.</p>
+<table><thead><tr><th>Question</th><th>Surface</th></tr></thead><tbody><tr><td>Is bootstrap finished?</td><td><code>php artisan server:bootstrap --force</code> exit code 0; <code>migrate:status</code> shows every migration ran.</td></tr><tr><td>Is the new node ready?</td><td><code>GET /api/ready</code> returns 200; <code>GET /api/cluster/info</code> reports the new build.</td></tr><tr><td>Is compatibility admission healthy?</td><td><code>GET /api/system/operator-metrics</code> <code>workers.fleet</code>, <code>workers.active_workers</code>, and <code>workers.active_workers_supporting_required</code> agree on a non-zero supporter count for every required compatibility marker.</td></tr><tr><td>Is the worker drain progressing?</td><td><code>dw task-queue:build-ids &lt;queue&gt; --json</code> shows <code>active_worker_count</code> and <code>draining_worker_count</code> falling for the draining cohort.</td></tr><tr><td>Is routing safe?</td><td><code>GET /api/system/operator-metrics</code> <code>backlog.compatibility_blocked_runs</code> and <code>backlog.max_compatibility_blocked_age_ms</code> stay near zero; the <code>worker_compatibility</code> health check is not in <code>error</code>.</td></tr><tr><td>Is the scheduler caught up?</td><td><code>GET /api/system/operator-metrics</code> <code>schedules.missed</code> is zero and <code>schedules.oldest_overdue_at</code> is null.</td></tr><tr><td>Are stuck runs piling up?</td><td><code>GET /api/system/operator-metrics</code> <code>runs.repair_needed</code> and <code>runs.max_repair_needed_age_ms</code> stay near their pre-rollout baseline.</td></tr></tbody></table>
+<p><code>dw system:operator-metrics --json</code> exposes the same operator-metrics snapshot
+on the console for the standalone-server fleet, so operators may pick whichever
+surface matches their existing workflow. A separately deployed Waterline
+service can read the same server-owned rollout state through the PHP SDK under
+<code>/waterline/api/v2/health</code> and <code>/waterline/api/stats</code>; keep its endpoint,
+namespace, and server token aligned with the fleet being rolled. Embedded
+Laravel deployments expose those Waterline routes from their in-process
+package instead. The server API and CLI remain available in either case, as
+documented in the
+<a class="" href="/docs/operator-operating-envelope/">Operator Operating Envelope</a>.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="failure-modes-and-what-to-do">Failure modes and what to do<a href="#failure-modes-and-what-to-do" class="hash-link" aria-label="Direct link to Failure modes and what to do" title="Direct link to Failure modes and what to do" translate="no">​</a></h2>
+<table><thead><tr><th>Symptom</th><th>Likely cause</th><th>Action</th></tr></thead><tbody><tr><td>New API node fails <code>GET /api/ready</code> after start</td><td>Bootstrap did not finish, or <code>DW_V2_FLEET_VALIDATION_MODE=fail</code> and no compatible worker is live yet</td><td>Rerun bootstrap; bring a compatible worker cohort online before adding the API node back to rotation.</td></tr><tr><td><code>worker_compatibility</code> health check escalates to <code>error</code> mid-rollout</td><td>The required compatibility marker has no live supporting worker</td><td>Bring more workers under a supporting <code>build_id</code> online; resume a previously drained cohort if rollback is the right call.</td></tr><tr><td><code>backlog.compatibility_blocked_runs</code> climbs and <code>max_compatibility_blocked_age_ms</code> grows</td><td>Tasks are queued for a marker no live worker supports</td><td>Same as above; tasks are preserved and will redispatch automatically once a compatible worker heartbeats.</td></tr><tr><td><code>dw task-queue:drain</code> returns success but workers keep claiming tasks</td><td>The worker process did not heartbeat after the drain</td><td>Wait one heartbeat cycle; if the cohort stays active, restart the worker process so it picks up the drain intent.</td></tr><tr><td>Schedule fires stop after a scheduler restart</td><td>Old and new scheduler are both stopped</td><td>Start the new scheduler container; verify <code>schedules.missed</code> returns to zero on next operator-metrics scrape.</td></tr></tbody></table>
+<p>If a symptom is not on this list, treat the rollout as failed: stop
+adding new processes, drain whatever new cohorts you started, and
+restore the previous build before debugging further.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="related-references">Related references<a href="#related-references" class="hash-link" aria-label="Direct link to Related references" title="Direct link to Related references" translate="no">​</a></h2>
+<ul>
+<li class=""><a class="" href="/docs/deployment/">Self-Hosting Deployments</a> for the deployment
+shapes this contract assumes.</li>
+<li class=""><a class="" href="/docs/polyglot/worker-build-id-rollout/">Worker Build-Id Rollout</a>
+for the per-cohort drain and resume calls.</li>
+<li class=""><a class="" href="/docs/operator-operating-envelope/">Operator Operating Envelope</a>
+for the diagnostic, queue, and rebuild contract that operators read
+alongside the rollout signals.</li>
+<li class=""><a class="" href="/docs/polyglot/server-config-reference/">Server Config Reference</a>
+for the rollout-safety environment variables (<code>DW_V2_FLEET_VALIDATION_MODE</code>,
+<code>DW_V2_PIN_TO_RECORDED_FINGERPRINT</code>, <code>DW_V2_GUARDRAILS_BOOT</code>,
+<code>DW_V2_CACHE_VALIDATION_MODE</code>, <code>DW_V2_MULTI_NODE</code>,
+<code>DW_V2_VALIDATE_CACHE_BACKEND</code>, <code>DW_V2_TASK_REPAIR_*</code>).</li>
+<li class=""><a class="" href="/docs/polyglot/server-api-reference/">Server API Reference</a> for
+the readiness, cluster info, and operator-metrics endpoints used to
+verify each phase of the rollout.</li>
+</ul></div><footer class="theme-doc-footer docusaurus-mt-lg"><div class="row margin-top--sm theme-doc-footer-tags-row"><div class="col"><b>Tags:</b><ul class="tags_jXut padding--none margin-left--sm"><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/docs/tags/operations/">operations</a></li><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/docs/tags/upgrades/">upgrades</a></li><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/docs/tags/rollouts/">rollouts</a></li><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/docs/tags/rollback/">rollback</a></li></ul></div></div><div class="row margin-top--sm theme-doc-footer-edit-meta-row"><div class="col noPrint_WFHX"><a href="https://github.com/durable-workflow/durable-workflow.github.io/edit/main/docs/rolling-upgrades.md" target="_blank" rel="noopener noreferrer" class="theme-edit-this-page"><svg fill="currentColor" height="20" width="20" viewBox="0 0 40 40" class="iconEdit_Z9Sw" aria-hidden="true"><g><path d="m34.5 11.7l-3 3.1-6.3-6.3 3.1-3q0.5-0.5 1.2-0.5t1.1 0.5l3.9 3.9q0.5 0.4 0.5 1.1t-0.5 1.2z m-29.5 17.1l18.4-18.5 6.3 6.3-18.4 18.4h-6.3v-6.2z"></path></g></svg>Edit this page</a></div><div class="col lastUpdated_JAkA"></div></div></footer></article><nav class="docusaurus-mt-lg pagination-nav" aria-label="Docs pages"><a class="pagination-nav__link pagination-nav__link--prev" href="/docs/deployment/"><div class="pagination-nav__sublabel">Previous</div><div class="pagination-nav__label">Self-Hosting Deployments</div></a><a class="pagination-nav__link pagination-nav__link--next" href="/docs/monitoring/"><div class="pagination-nav__sublabel">Next</div><div class="pagination-nav__label">Monitoring</div></a></nav></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#what-rolling-upgrade-means-here" class="table-of-contents__link toc-highlight">What rolling upgrade means here</a></li><li><a href="#compatible-version-skew-rules" class="table-of-contents__link toc-highlight">Compatible version-skew rules</a><ul><li><a href="#server-image-and-workflow-package" class="table-of-contents__link toc-highlight">Server image and workflow package</a></li><li><a href="#worker-sdk-and-build-identity" class="table-of-contents__link toc-highlight">Worker SDK and build identity</a></li></ul></li><li><a href="#schemabootstrap-ordering" class="table-of-contents__link toc-highlight">Schema/bootstrap ordering</a></li><li><a href="#drain-and-admission-during-the-overlap-window" class="table-of-contents__link toc-highlight">Drain and admission during the overlap window</a></li><li><a href="#readiness-and-cutover" class="table-of-contents__link toc-highlight">Readiness and cutover</a></li><li><a href="#rollback" class="table-of-contents__link toc-highlight">Rollback</a></li><li><a href="#operator-verification" class="table-of-contents__link toc-highlight">Operator verification</a></li><li><a href="#failure-modes-and-what-to-do" class="table-of-contents__link toc-highlight">Failure modes and what to do</a></li><li><a href="#related-references" class="table-of-contents__link toc-highlight">Related references</a></li></ul></div></div></div></div></main></div></div></div><div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="row footer__links"><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Docs</div><ul class="footer__items clean-list"><li class="footer__item"><a class="footer__link-item" href="/docs/introduction/">Introduction</a></li><li class="footer__item"><a class="footer__link-item" href="/docs/installation/">Installation</a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Community</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://discord.gg/xu5aDDpqVy" target="_blank" rel="noopener noreferrer" class="footer__link-item">Discord<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://x.com/DurableWorkflow" target="_blank" rel="noopener noreferrer" class="footer__link-item">X<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">More</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://durable-workflow.com/llms-full.txt" target="_blank" rel="noopener noreferrer" class="footer__link-item">LLM Docs<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://packagist.org/packages/durable-workflow/workflow" target="_blank" rel="noopener noreferrer" class="footer__link-item">Packagist<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div></div><div class="footer__bottom text--center"><div class="footer__copyright">Copyright © 2026 <a href="https://durable-workflow.com">Durable Workflow</a>.</div></div></div></footer></div></div>
+</body>
+</html>

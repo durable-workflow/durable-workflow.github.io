@@ -1,0 +1,64 @@
+# Durable Workflow
+
+> Durable execution for PHP, Python, and Rust.
+
+This file is a curated markdown index for LLMs. Use the sections below for targeted source documents, or use the optional full bundle when you want the entire documentation set in one file.
+
+Each link includes frontmatter descriptions and discoverability topics when the source page provides them. Prefer those notes to pick the smallest relevant page before falling back to the full bundle.
+
+## Core Docs
+
+- [Laravel Durable Workflow Engine for PHP](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/introduction.md): Build long-running, persistent PHP workflows in Laravel that wait for events, survive restarts, and coordinate queued activities with Durable Workflow. Topics: concepts, getting-started, laravel, workflows, durable workflow laravel, laravel workflow engine
+- [Installation](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/installation.md)
+- [Sample App](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/sample-app.md)
+- [Testing](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/testing.md)
+- [Failures and Recovery](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/failures-and-recovery.md)
+- [How It Works](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/how-it-works.md)
+- [Planning a 2.0 Migration](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/migration.md): Choose an embedded or service-mode Durable Workflow 2.0 destination before changing a stable Laravel application.
+- [Monitoring](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/monitoring.md)
+
+## Defining Workflows
+
+- [Workflows](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/defining-workflows/workflows.md)
+- [Activities](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/defining-workflows/activities.md)
+- [Starting Workflows](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/defining-workflows/starting-workflows.md)
+- [Passing Data](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/defining-workflows/passing-data.md)
+- [Workflow Status](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/defining-workflows/workflow-status.md)
+- [Workflow ID](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/defining-workflows/workflow-id.md)
+
+## Features
+
+- [Signals](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/features/signals.md)
+- [Queries](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/features/queries.md)
+- [Timers](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/features/timers.md)
+- [Signal + Timer](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/features/signal+timer.md)
+- [Side Effects](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/features/side-effects.md)
+- [Heartbeats](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/features/heartbeats.md)
+- [Child Workflows](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/features/child-workflows.md)
+- [Concurrency](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/features/concurrency.md)
+- [Sagas](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/features/sagas.md)
+- [Events](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/features/events.md)
+- [Webhooks](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/features/webhooks.md)
+- [Continue As New](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/features/continue-as-new.md)
+- [Versioning](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/features/versioning.md)
+
+## Configuration
+
+- [Publishing Config](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/configuration/publishing-config.md)
+- [Options](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/configuration/options.md)
+- [Ensuring Same Server](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/configuration/ensuring-same-server.md)
+- [Database Connection](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/configuration/database-connection.md)
+- [Microservices](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/configuration/microservices.md)
+- [Pruning Workflows](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/configuration/pruning-workflows.md)
+
+## Constraints
+
+- [Overview](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/constraints/overview.md)
+- [Idempotency vs. Determinism](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/constraints/idempotent-vs-deterministic.md): Determinism makes workflow replay predictable; idempotency makes repeated activity side effects safe. Learn why Durable Workflow requires both. Topics: constraints, determinism, idempotency, replay, idempotent vs deterministic, idempotency vs determinism
+- [Workflow Constraints](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/constraints/workflow-constraints.md)
+- [Activity Constraints](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/constraints/activity-constraints.md)
+- [Constraints Summary](https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/main/versioned_docs/version-1.x/constraints/constraints-summary.md): What workflow and activity code may do.
+
+## Optional
+
+- [Durable Workflow full documentation bundle](https://durable-workflow.com/llms-full-1.x.txt): Single-file bundle of the complete documentation set.

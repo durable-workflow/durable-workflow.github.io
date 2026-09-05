@@ -1,0 +1,125 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://durable-workflow.github.io/schemas/v2/compiled-workflow-ir.schema.json",
+    "title": "Durable Workflow v2 compiled workflow IR",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+        "schema",
+        "schema_version",
+        "workflow_type",
+        "definition_version",
+        "definition_fingerprint",
+        "source",
+        "entrypoint_step_id",
+        "steps",
+        "version_selection"
+    ],
+    "properties": {
+        "schema": {
+            "const": "durable-workflow.v2.compiled-workflow-ir"
+        },
+        "schema_version": {
+            "const": 1
+        },
+        "workflow_type": {
+            "type": "string",
+            "minLength": 1
+        },
+        "definition_version": {
+            "type": "string",
+            "minLength": 1
+        },
+        "definition_fingerprint": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "source": {
+            "type": "object",
+            "required": [
+                "format"
+            ],
+            "properties": {
+                "format": {
+                    "enum": [
+                        "php_class",
+                        "serverless_workflow"
+                    ]
+                }
+            },
+            "additionalProperties": true
+        },
+        "entrypoint_step_id": {
+            "type": "string",
+            "minLength": 1
+        },
+        "steps": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "kind",
+                    "name"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "kind": {
+                        "enum": [
+                            "workflow.entry",
+                            "workflow.query",
+                            "workflow.signal",
+                            "workflow.update",
+                            "workflow.state",
+                            "workflow.action"
+                        ]
+                    },
+                    "name": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "parameters": {
+                        "type": "array"
+                    }
+                },
+                "additionalProperties": true
+            }
+        },
+        "version_selection": {
+            "type": "object",
+            "required": [
+                "strategy",
+                "selected_version",
+                "available_versions"
+            ],
+            "properties": {
+                "strategy": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "requested_version": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "selected_version": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "available_versions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "minLength": 1
+                    }
+                }
+            },
+            "additionalProperties": true
+        }
+    }
+}

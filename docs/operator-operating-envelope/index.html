@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="en" dir="ltr" class="docs-wrapper plugin-docs plugin-id-default docs-version-current docs-doc-page docs-doc-id-operator-operating-envelope" data-has-hydrated="false">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="Docusaurus v3.10.2">
+<title data-rh="true">Operator Operating Envelope | Durable Workflow</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://durable-workflow.com/img/durable-workflow-2.0.png"><meta data-rh="true" name="twitter:image" content="https://durable-workflow.com/img/durable-workflow-2.0.png"><meta data-rh="true" property="og:url" content="https://durable-workflow.com/docs/operator-operating-envelope/"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Operator Operating Envelope | Durable Workflow"><meta data-rh="true" name="description" content="The operator-facing contract for Durable Workflow v2 health, queue state, rebuilds, exports, archives, and deployment topology."><meta data-rh="true" property="og:description" content="The operator-facing contract for Durable Workflow v2 health, queue state, rebuilds, exports, archives, and deployment topology."><meta data-rh="true" name="keywords" content="operating envelope,workflow v2 health,rebuild projections,history export,archive verification,queue health,high availability"><meta data-rh="true" name="twitter:title" content="Operator Operating Envelope | Durable Workflow"><meta data-rh="true" name="twitter:description" content="The operator-facing contract for Durable Workflow v2 health, queue state, rebuilds, exports, archives, and deployment topology."><link data-rh="true" rel="icon" href="/img/favicon.ico"><link data-rh="true" rel="canonical" href="https://durable-workflow.com/docs/operator-operating-envelope/"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/docs/operator-operating-envelope/" hreflang="en"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/docs/operator-operating-envelope/" hreflang="x-default"><link data-rh="true" rel="preconnect" href="https://IYIBF1DKO0-dsn.algolia.net" crossorigin="anonymous"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Run And Operate","item":"https://durable-workflow.com/docs/category/run-and-operate"},{"@type":"ListItem","position":2,"name":"Operator Operating Envelope","item":"https://durable-workflow.com/docs/operator-operating-envelope"}]}</script><link rel="alternate" type="application/rss+xml" href="/blog/rss.xml" title="Durable Workflow RSS Feed">
+<link rel="alternate" type="application/atom+xml" href="/blog/atom.xml" title="Durable Workflow Atom Feed">
+
+
+
+
+<link rel="search" type="application/opensearchdescription+xml" title="Durable Workflow" href="/opensearch.xml">
+
+
+<script src="/analytics/cloudflare-web-analytics.js" type="module" data-cloudflare-web-analytics-token="a1296466c4e5487ca6ffd230a694b933"></script><link rel="stylesheet" href="/assets/css/styles.5c989eb0.css">
+<script src="/assets/js/runtime~main.dd1a1f1f.js" defer="defer"></script>
+<script src="/assets/js/main.afaffac8.js" defer="defer"></script>
+</head>
+<body>
+<svg style="display: none;"><defs>
+<symbol id="theme-svg-external-link" viewBox="0 0 24 24"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"/></symbol>
+</defs></svg>
+<script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||"dark"),document.documentElement.setAttribute("data-theme-choice",t||"dark")}(),function(){try{const c=new URLSearchParams(window.location.search).entries();for(var[t,e]of c)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id="__docusaurus"><link rel="preload" as="image" href="/img/logo.svg"><div role="region" aria-label="Skip to main content"><a class="skipToContent_fXgn" href="#__docusaurus_skipToContent_fallback">Skip to main content</a></div><nav aria-label="Main" class="theme-layout-navbar navbar navbar--fixed-top"><div class="navbar__inner"><div class="theme-layout-navbar-left navbar__items"><button aria-label="Toggle navigation bar" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/"><div class="navbar__logo"><img src="/img/logo.svg" alt="Workflow Logo" class="themedComponent_mlkZ themedComponent--light_NVdE"><img src="/img/logo.svg" alt="Workflow Logo" class="themedComponent_mlkZ themedComponent--dark_xIcU"></div><b class="navbar__title text--truncate">Durable Workflow</b></a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/docs/introduction/">Docs</a><div class="navbar__item dropdown dropdown--hoverable"><a class="navbar__link" aria-haspopup="true" aria-expanded="false" role="button" href="/docs/operator-operating-envelope/">2.0</a><ul class="dropdown__menu"><li><a aria-current="page" class="dropdown__link dropdown__link--active" href="/docs/operator-operating-envelope/">2.0</a></li><li><a class="dropdown__link" href="/docs/1.x/introduction/">1.x</a></li></ul></div><a class="navbar__item navbar__link" href="/blog/">Blog</a></div><div class="theme-layout-navbar-right navbar__items navbar__items--right"><a href="https://github.com/durable-workflow/workflow" target="_blank" rel="noopener noreferrer" aria-label="Star Durable Workflow on GitHub" class="navbar-github-star-link navbar__item navbar__link" label="Star on GitHub"><svg aria-hidden="true" class="navbar-github-star-link__icon" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8a8.01 8.01 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.56 7.56 0 0 1 8 4.76c.68 0 1.36.09 2 .27 1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"></path></svg><span class="navbar-github-star-link__count" title="GitHub stars">1.2K</span></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type="button" disabled="" title="system mode" aria-label="Switch between dark and light mode (currently system mode)"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP lightToggleIcon_pyhR"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP darkToggleIcon_wfgR"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP systemToggleIcon_QzmC"><path fill="currentColor" d="m12 21c4.971 0 9-4.029 9-9s-4.029-9-9-9-9 4.029-9 9 4.029 9 9 9zm4.95-13.95c1.313 1.313 2.05 3.093 2.05 4.95s-0.738 3.637-2.05 4.95c-1.313 1.313-3.093 2.05-4.95 2.05v-14c1.857 0 3.637 0.737 4.95 2.05z"></path></svg></button></div><div class="navbarSearchContainer_Bca1"><button type="button" class="DocSearch DocSearch-Button" aria-label="Search (Meta+k)" aria-keyshortcuts="Meta+k"><span class="DocSearch-Button-Container"><svg width="20" height="20" class="DocSearch-Search-Icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" stroke="currentColor" fill="none" stroke-width="1.4"></circle><path d="m21 21-4.3-4.3" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg><span class="DocSearch-Button-Placeholder">Search</span></span><span class="DocSearch-Button-Keys"></span></button></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="__docusaurus_skipToContent_fallback" class="theme-layout-main main-wrapper mainWrapper_z2l0"><div class="docsWrapper_hBAB"><button aria-label="Scroll back to top" class="clean-btn theme-back-to-top-button backToTopButton_sjWU" type="button"></button><div class="docRoot_UBD9"><aside class="theme-doc-sidebar-container docSidebarContainer_YfHR"><div class="sidebarViewport_aRkj"><div class="sidebar_njMd"><nav aria-label="Docs sidebar" class="menu thin-scrollbar menu_SIkG"><ul class="theme-doc-sidebar-menu menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/docs/introduction/"><span class="linkLabel_WmDU">Introduction</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/docs/quickstart/"><span class="linkLabel_WmDU">Durable Workflow 2.0 Quickstart</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/docs/capabilities/"><span class="linkLabel_WmDU">2.0 Capability Index</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/docs/laravel-adoption/"><span class="linkLabel_WmDU">Laravel Adoption and Runtime Transition</span></a></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/docs/category/service-mode/"><span class="categoryLinkLabel_W154">Service Mode</span></a><button aria-label="Expand sidebar category &#x27;Service Mode&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/docs/category/embedded/"><span class="categoryLinkLabel_W154">Embedded</span></a><button aria-label="Expand sidebar category &#x27;Embedded&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--active" href="/docs/category/run-and-operate/"><span class="categoryLinkLabel_W154">Run And Operate</span></a><button aria-label="Collapse sidebar category &#x27;Run And Operate&#x27;" aria-expanded="true" type="button" class="clean-btn menu__caret"></button></div><ul class="menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/deployment/"><span class="linkLabel_WmDU">Self-Hosting Deployments</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/rolling-upgrades/"><span class="linkLabel_WmDU">Rolling Upgrades</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/monitoring/"><span class="linkLabel_WmDU">Monitoring</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link menu__link--active" aria-current="page" tabindex="0" href="/docs/operator-operating-envelope/"><span class="linkLabel_WmDU">Operator Operating Envelope</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/waterline-operator-api/"><span class="linkLabel_WmDU">Waterline Operator API Reference</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/compatibility/"><span class="linkLabel_WmDU">Version Compatibility</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/platform-protocol-specs/"><span class="linkLabel_WmDU">Platform Protocol Specs</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/platform-conformance/"><span class="linkLabel_WmDU">Platform Conformance Suite</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/sdk-neutrality/"><span class="linkLabel_WmDU">SDK Neutrality</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/support/"><span class="linkLabel_WmDU">Support</span></a></li></ul></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/docs/category/external-execution-and-ingress/"><span class="categoryLinkLabel_W154">External Execution And Ingress</span></a><button aria-label="Expand sidebar category &#x27;External Execution And Ingress&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/docs/category/ai-and-automation/"><span class="categoryLinkLabel_W154">AI And Automation</span></a><button aria-label="Expand sidebar category &#x27;AI And Automation&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/docs/sponsors/"><span class="linkLabel_WmDU">Sponsors</span></a></li></ul></nav></div></div></aside><main class="docMainContainer_TBSr"><div class="container padding-top--md padding-bottom--lg"><div class="row"><div class="col docItemCol_VOVn"><div class="docItemContainer_Djhp"><article><nav class="theme-doc-breadcrumbs breadcrumbsContainer_Z_bl" aria-label="Breadcrumbs"><ul class="breadcrumbs"><li class="breadcrumbs__item"><a aria-label="Home page" class="breadcrumbs__link" href="/"><svg viewBox="0 0 24 24" class="breadcrumbHomeIcon_YNFT"><path d="M10 19v-5h4v5c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-7h1.7c.46 0 .68-.57.33-.87L12.67 3.6c-.38-.34-.96-.34-1.34 0l-8.36 7.53c-.34.3-.13.87.33.87H5v7c0 .55.45 1 1 1h3c.55 0 1-.45 1-1z" fill="currentColor"></path></svg></a></li><li class="breadcrumbs__item"><a class="breadcrumbs__link" href="/docs/category/run-and-operate/"><span>Run And Operate</span></a></li><li class="breadcrumbs__item breadcrumbs__item--active"><span class="breadcrumbs__link">Operator Operating Envelope</span></li></ul></nav><span class="theme-doc-version-badge badge badge--secondary">Version: 2.0</span><div class="tocCollapsible_ETCw theme-doc-toc-mobile tocMobile_ITEo"><button type="button" class="clean-btn tocCollapsibleButton_TO0P">On this page</button></div><div class="theme-doc-markdown markdown"><header><h1>Operator Operating Envelope</h1></header>
+<p>This guide defines the operator-facing contract for Durable Workflow v2.
+Use it to decide which diagnostics block rollouts, which ones are advisory,
+which queue facts belong to Waterline versus worker telemetry, how to verify
+rebuild and export workflows, and which deployment shapes are part of the
+documented operating envelope.</p>
+<p>The deployment and recovery procedures here apply to embedded Laravel and
+self-hosted Server. Durable Workflow Cloud is a separate managed service: Cloud
+owns runtime persistence, single-region placement, backup, restore, and
+recovery, while
+customers operate SDK clients and workers through the namespace runtime URL.
+Do not use this guide to attach a Server to Cloud; use the
+<a class="" href="/docs/polyglot/cloud-control-plane/">Cloud Managed Runtime</a> guide for that
+customer boundary.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="source-of-truth-surfaces">Source-of-truth surfaces<a href="#source-of-truth-surfaces" class="hash-link" aria-label="Direct link to Source-of-truth surfaces" title="Direct link to Source-of-truth surfaces" translate="no">​</a></h2>
+<p>Use these surfaces together:</p>
+<table><thead><tr><th>Surface</th><th>Use it for</th><th>Contract class</th></tr></thead><tbody><tr><td><code>php artisan workflow:v2:doctor --strict</code></td><td>Backend capability gating before v2 traffic or upgrades</td><td>Blocking</td></tr><tr><td><code>GET /waterline/api/v2/health</code></td><td>Current engine-source readiness plus blocking vs advisory v2 health checks</td><td>Blocking when <code>status = error</code>, advisory when <code>status = warning</code></td></tr><tr><td><code>GET /waterline/api/stats</code></td><td>Durable fleet totals, backlog counters, repair-loop facts, projection drift counts, worker compatibility summaries</td><td>Advisory and benchmarking</td></tr><tr><td><code>php artisan workflow:v2:rebuild-projections ...</code></td><td>Previewing and repairing projection drift</td><td>Maintenance</td></tr><tr><td><code>php artisan workflow:v2:backfill-command-contracts ...</code></td><td>Previewing and backfilling legacy command-contract snapshots</td><td>Maintenance</td></tr><tr><td><code>php artisan workflow:v2:history-export ...</code> and Waterline history-export routes</td><td>Replay, archive handoff, and incident artifacts</td><td>Verification</td></tr><tr><td>Waterline archive actions and control-plane <code>archive()</code></td><td>Lifecycle state transitions for closed runs</td><td>Lifecycle</td></tr><tr><td>Worker SDK metrics, traces, and logs</td><td>Schedule-to-start latency, poll success, sticky-cache behavior, and custom application telemetry</td><td>Runtime telemetry</td></tr></tbody></table>
+<p>The durable-state operator contract lives in the runtime that owns each run.
+Waterline projects that contract either from the embedded workflow package or
+from a standalone server through the PHP SDK. Worker telemetry remains the
+source of truth for latency and process-level behavior inside your workers.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="surface-mapping-by-deployment-shape">Surface mapping by deployment shape<a href="#surface-mapping-by-deployment-shape" class="hash-link" aria-label="Direct link to Surface mapping by deployment shape" title="Direct link to Surface mapping by deployment shape" translate="no">​</a></h3>
+<p>The Waterline routes in the table above are available from both Waterline
+deployment shapes. Embedded mode reads the Laravel host&#x27;s durable state in
+process. Service mode runs the published Waterline image and reads one
+standalone-server namespace through the PHP SDK. The authenticated server API
+and <code>dw</code> CLI remain available directly with or without Waterline:</p>
+<table><thead><tr><th>Operator question</th><th>Waterline (embedded or service mode)</th><th>Standalone-server native surface</th></tr></thead><tbody><tr><td>Engine-source readiness and blocking vs advisory health</td><td><code>GET /waterline/api/v2/health</code></td><td><code>GET /api/system/health</code> (admin auth, control-plane v2); <code>dw server:health</code> for liveness and <code>dw server:info</code> for the topology, protocol, and rollout-safety summary</td></tr><tr><td>Durable fleet totals, backlog, repair, worker compatibility, projection drift</td><td><code>GET /waterline/api/stats</code></td><td><code>GET /api/system/operator-metrics</code> and <code>dw system:operator-metrics</code></td></tr><tr><td>Selected-run detail and history export</td><td><code>GET /waterline/api/instances/...</code> and <code>/waterline/api/.../history-export</code></td><td><code>GET /api/workflows/{workflowId}</code>, <code>/runs/{runId}</code>, and <code>/runs/{runId}/history/export</code> (see the <a class="" href="/docs/polyglot/server-api-reference/">Server API Reference</a>)</td></tr><tr><td>Operator commands (cancel, terminate, repair, archive, signal/update/query)</td><td><code>POST /waterline/api/instances/.../{cancel|terminate|repair|archive}</code> and signal/update/query routes</td><td><code>POST /api/workflows/{workflowId}/{cancel|terminate|repair|archive}</code> and <code>POST /api/system/repair/pass</code></td></tr><tr><td>Topology and node-identity discovery</td><td>Embedded: <code>php artisan workflow:v2:doctor --json</code> (<code>topology</code> object); service: use the connected server&#x27;s native surface</td><td><code>GET /api/cluster/info</code>, <code>GET /api/health</code>, <code>GET /api/ready</code> (or <code>dw server:info</code>)</td></tr></tbody></table>
+<p>The field families and contract names below stay the same regardless of
+which surface you read them through. A Waterline deployment is scoped to its
+configured runtime and namespace; it does not combine embedded and
+server-managed runs.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="dated-20-evidence-snapshot">Dated 2.0 evidence snapshot<a href="#dated-20-evidence-snapshot" class="hash-link" aria-label="Direct link to Dated 2.0 evidence snapshot" title="Direct link to Dated 2.0 evidence snapshot" translate="no">​</a></h2>
+<p>This snapshot separates behavior that has been measured on released artifacts
+from procedures that the product supports but each operator must rehearse in
+their own environment. A passing row applies to the documented 2.0 scenario
+and topology; it is not a blanket claim for different substrates or larger
+deployments.</p>
+<p>The current proof inventory is:</p>
+<table><thead><tr><th>Proof and date (UTC)</th><th>What the proof directly measured</th><th>Boundary</th></tr></thead><tbody><tr><td>Single-region failover rehearsal, 2026-07-28</td><td>Cross-node terminal completion, loss of one API node, MySQL interruption and recovery, Redis interruption and database-poll fallback, worker lease loss and reclaim, and singleton scheduler restart. The result recorded passing loss and duplicate assertions for every phase.</td><td>Two API nodes behind one shared endpoint, one MySQL instance, one Redis acceleration layer, one queue worker, and one scheduler/maintenance runner in one region. The database and Redis events were container interruptions, not managed-provider promotion tests.</td></tr><tr><td>Timer restart matrix, 2026-07-28</td><td>Sleeping workflows completed after worker restart and server restart, with one timer schedule and fire per run and no duplicate replay command.</td><td>Durable timer and replay recovery on the published-server test topology; not arbitrary process state or external side-effect recovery.</td></tr><tr><td>Activity runtime matrix, 2026-07-29</td><td>Worker-restart result recovery, retry and timeout behavior, heartbeat and cancellation observation, durable terminal result recording, and idempotent completion handling across the required product surfaces.</td><td>Activity-level engine behavior. Applications still own idempotency for external side effects.</td></tr><tr><td>Workflow lifecycle matrix, 2026-07-29</td><td>Terminal completion and failure states, duplicate-start and workflow-id reuse policy, timeout and retry behavior, history continuity, and duplicate side-effect prevention across PHP, Python, Rust, CLI, API, history, and Waterline.</td><td>Lifecycle correctness for the exercised scenarios; not an availability or throughput benchmark.</td></tr></tbody></table>
+<p>Use the <a class="" href="/docs/compatibility/">Compatibility contract</a> for supported release
+lines, and rehearse the documented recovery procedure against your deployment
+before making a topology-specific failover claim.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="measured-guarantee-vs-supported-procedure">Measured guarantee vs supported procedure<a href="#measured-guarantee-vs-supported-procedure" class="hash-link" aria-label="Direct link to Measured guarantee vs supported procedure" title="Direct link to Measured guarantee vs supported procedure" translate="no">​</a></h3>
+<table><thead><tr><th>Failure or outcome</th><th>Directly proven by the dated evidence</th><th>Supported operator procedure</th><th>Not established by this evidence</th></tr></thead><tbody><tr><td>One API-node loss</td><td>The failover rehearsal killed one of two API nodes, reached the surviving node through the shared endpoint, preserved acknowledged state, and completed the run.</td><td>Remove failed nodes with <code>/api/ready</code>, retry interrupted client requests, then verify topology and worker registration before returning traffic.</td><td>Whole-fleet loss, availability-zone isolation, or arbitrary network partition behavior.</td></tr><tr><td>Database interruption</td><td>Both API nodes became not ready, durable state survived the interruption, a replacement worker reclaimed the task after lease expiry, the run completed, and a duplicate completion was refused.</td><td>Restore the writable database first, wait for readiness, fence the stale task owner, verify one representative run, then resume traffic. Managed-service promotion needs provider-native fencing, RPO, and elapsed-time evidence in the recovery packet.</td><td>Managed database promotion, acknowledged-write behavior during split brain, or an RPO/RTO beyond the measured local interruption.</td></tr><tr><td>Redis interruption</td><td>Readiness reported acceleration degradation while database-backed polling preserved durable state; replaying the same poll request did not create a duplicate lease; readiness recovered after Redis returned.</td><td>Keep Redis as an acceleration layer, tolerate warning readiness, restore it after durable persistence, and verify poll-discovery latency returns to the deployment baseline.</td><td>Redis dual-primary behavior, cache behavior across a network partition, or provider promotion timing.</td></tr><tr><td>Worker restart or loss</td><td>The failover proof reclaimed and completed a leased workflow after worker loss; the newer activity matrix proved durable result recovery after worker restart and idempotent completion handling.</td><td>Let leases expire or drain workers, start a compatible replacement, verify registration and queue pickup, and keep external effects idempotent.</td><td>Recovery of process-local state that was not stored durably or exactly-once external side effects.</td></tr><tr><td>Server or scheduler restart</td><td>The timer matrix completed sleeping workflows after a server restart without duplicate timer commands. The failover proof also preserved progress through one API-node loss and one singleton scheduler restart.</td><td>Restore persistence, bring server roles back to readiness, confirm exactly one scheduler/maintenance runner, then verify worker registration and one representative completion.</td><td>Simultaneous loss of every server and persistence node, multi-region failover, or duplicate schedulers as a steady-state topology.</td></tr><tr><td>Duplicate delivery</td><td>Database-recovery and worker-loss phases each recorded one logical completion and rejected the duplicate completion with HTTP <code>409</code>; Redis degradation replayed the original lease without issuing a duplicate. The activity matrix separately passed its idempotent-completion cell.</td><td>Use stable request and task identities, honor stale-attempt refusals, and make activity side effects idempotent.</td><td>A universal exactly-once delivery or side-effect guarantee outside the durable engine boundary.</td></tr><tr><td>Terminal completion</td><td>Cross-node, API-loss, database-recovery, and worker-loss workflows all reached terminal <code>completed</code> state; the newer lifecycle matrix passed completion, failure, cancellation, termination, timeout, and retry cells.</td><td>Verify the selected run and its history/export evidence before archiving or declaring recovery complete.</td><td>Completion of workload shapes, integrations, or failure combinations that were not exercised.</td></tr></tbody></table>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="largest-current-load-cell">Largest current load cell<a href="#largest-current-load-cell" class="hash-link" aria-label="Direct link to Largest current load cell" title="Direct link to Largest current load cell" translate="no">​</a></h3>
+<p>The largest configured server load cell starts <strong>1,000 workflows</strong> with start
+concurrency <strong>8</strong> while also running <strong>8</strong> concurrent polling workers for 120
+seconds. It requires at least a 98% workflow-start completion ratio and checks
+endpoint availability, cache-key drainage, sample coverage, and bounded
+resource ceilings.</p>
+<p>Treat this as a short <strong>correctness smoke</strong>, not a sustained production-scale
+benchmark. It does not establish a universal throughput, latency, memory, or
+maximum-concurrency promise. Establish those values with the benchmark and
+long-soak packet for the exact topology, worker mix, database, cache, and
+release you intend to operate.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="explicitly-out-of-scope">Explicitly out of scope<a href="#explicitly-out-of-scope" class="hash-link" aria-label="Direct link to Explicitly out of scope" title="Direct link to Explicitly out of scope" translate="no">​</a></h3>
+<p>The 2.0 evidence claim does not cover:</p>
+<ul>
+<li class="">network partitions</li>
+<li class="">deliberate clock drift</li>
+<li class="">multi-region operation</li>
+<li class="">split-brain behavior</li>
+</ul>
+<p>Those experiments are not release prerequisites for 2.0. They are prerequisites
+only for making the corresponding partition, clock-skew, multi-region, or
+split-brain claim. The supported 2.0 release envelope remains the published
+topology plus its recovery packet and the behavior measured by the documented
+scenarios; unsupported chaos scenarios should not be presented as
+evidence that the documented single-region procedures are unusable.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="supported-topologies">Supported topologies<a href="#supported-topologies" class="hash-link" aria-label="Direct link to Supported topologies" title="Direct link to Supported topologies" translate="no">​</a></h2>
+<p>Durable Workflow v2 supports these operator shapes. The shape names in the
+first column match the <code>topology.current_shape</code> values published by
+<code>/api/cluster/info</code> and the <a class="" href="/docs/polyglot/server-role-topology/">Server Role Topology</a>
+manifest, so the operator contract here lines up with the discovery contract
+your automation already reads.</p>
+<table><thead><tr><th>Operator shape (<code>topology.current_shape</code>)</th><th>Supported operator contract</th><th>Primary failure domains</th><th>Recovery and failover expectation</th></tr></thead><tbody><tr><td><code>embedded</code>, single node</td><td>Waterline, control-plane routes, health, rebuild, export, and archive all run from one app process against one durable database and one cache store.</td><td>The Laravel app process, the durable database, and the cache store on one host.</td><td>Treat host or database loss as a full service interruption. Restore durable state first, bring one app node back to readiness, then verify worker registration before resuming traffic.</td></tr><tr><td><code>embedded</code>, small same-region cluster</td><td>Use one shared database, one shared cache backend for wake-signal coordination, identical workflow compatibility/config across nodes, and keep active nodes in the same datacenter or region so queue wake-up and timer wake-up latency stay bounded.</td><td>Shared database, shared cache/wake coordination, load balancer routing, and the singleton scheduler or maintenance role.</td><td>One app-node loss should reduce capacity, not correctness. Database loss blocks durable traffic; Redis-only loss degrades wake acceleration and reports a readiness warning while database polling preserves durable correctness. Scheduler failover and upgrades remain explicit operator procedures rather than automatic HA promises.</td></tr><tr><td><code>standalone_server</code> distribution</td><td>Use the <a class="" href="/docs/deployment/">Self-Hosting Deployments</a> guide for the server-specific deployment matrix, then apply the same health, stats, export, archive, and queue-health distinctions through the native <code>/api/system/...</code> and <code>/api/workflows/...</code> routes or a separately deployed Waterline service (see the surface mapping above).</td><td>Shared database, shared Redis, API container set, independently scaled workers, the optional Waterline observer, and the single scheduler or maintenance runner.</td><td>API containers are replaceable server process nodes, and the Waterline container is a replaceable observer of server-owned state. The database, Redis, and singleton scheduler path define recovery order. Restore persistence first, then verify <code>/api/ready</code>, <code>/api/cluster/info</code>, and worker registration before shifting traffic back.</td></tr><tr><td><code>split_control_execution</code></td><td>Same product contract as <code>standalone_server</code>, with each role isolated into its own process class (<code>ingress_node</code>, <code>control_plane_node</code>, <code>scheduler_node</code>, <code>matching_node</code>, <code>execution_node</code>). The same operator-metrics, health, and command surfaces apply per-node; route admin reads to the node that hosts the role you are interrogating.</td><td>Each role runs as its own process class, so the failure-domain checklist in <a class="" href="/docs/polyglot/server-role-topology/">Server Role Topology</a> governs which subsystem fails first. The shared database, Redis, and singleton scheduler election remain fleet-wide failure domains.</td><td>Recovery follows the same order as <code>standalone_server</code>, but verify <code>topology.current_shape</code>, <code>topology.current_process_class</code>, and <code>topology.current_roles</code> per node before declaring the deployment ready. Hosted routes return <code>503 topology_role_unavailable</code> when sent to the wrong node class.</td></tr></tbody></table>
+<p><code>split_control_execution</code> is not a separate engine or product. It is the same
+operator contract as <code>standalone_server</code> with the role-specific process classes
+named in <code>topology.shape_assignments</code>. Treat the rest of this guide as
+shape-agnostic for those two server shapes unless a section calls out a
+specific role. <a class="" href="/docs/polyglot/server-role-topology/">Server Role Topology</a>
+holds the role vocabulary, authority boundaries, and migration path.</p>
+<p>Waterline service mode is an observer deployment, not another server topology.
+Adding or removing it does not change <code>topology.current_shape</code>, server-native
+API or CLI availability, or the runtime that owns a run.</p>
+<p>Publish the restore order, backup cadence, expected failover lag, and any
+region-pinned behavior in the runbook for the topology you operate. The product
+contract tells you which facts to measure; your deployment contract records the
+recovery timing, manual steps, and failure domains you accept.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="failure-domain-checklist-by-supported-shape">Failure-domain checklist by supported shape<a href="#failure-domain-checklist-by-supported-shape" class="hash-link" aria-label="Direct link to Failure-domain checklist by supported shape" title="Direct link to Failure-domain checklist by supported shape" translate="no">​</a></h3>
+<p>Use the topology table above as the quick summary, then write your runbook
+against these more explicit loss models:</p>
+<ul>
+<li class=""><strong>Embedded Laravel, single node</strong>: One application process owns the control
+plane, matching, projection, scheduler, and execution roles together. Losing
+that process is a full service interruption for durable commands, workflow
+progress, schedule firing, and operator reads until the same app returns to
+readiness against intact durable storage.</li>
+<li class=""><strong>Embedded Laravel, small same-region cluster</strong>: Losing one ordinary app node
+should remove only a share of HTTP and worker capacity while the remaining
+nodes keep claiming work from the shared durable store. Treat the shared
+database, the shared cache-backed wake path, and whichever node currently
+owns the singleton scheduler or maintenance duty as the main correctness
+boundaries for the fleet.</li>
+<li class=""><strong>Standalone server distribution (<code>standalone_server</code>)</strong>: Losing one
+<code>server_http_node</code> should stop ingress and control-plane commands only on
+that node; healthy worker nodes can still finish leased work and other API
+nodes can keep serving traffic. Losing one <code>worker_node</code> should raise
+backlog, queue age, or compatibility warnings only for the affected
+<code>(connection, queue, compatibility)</code> scopes. Losing the <code>scheduler_node</code>
+should pause new schedule fires and maintenance sweeps without invalidating
+already running workflows. Database loss is a fleet-level outage. Redis-only
+loss keeps durable database polling available, reports
+<code>long_poll_wake_acceleration</code> as degraded, and increases discovery latency
+until Redis reconnects.</li>
+<li class=""><strong>Split-role server distribution (<code>split_control_execution</code>)</strong>: Each role
+runs as its own process class — <code>ingress_node</code>, <code>control_plane_node</code>,
+<code>scheduler_node</code>, <code>matching_node</code>, and <code>execution_node</code>. Losing any one
+process class only degrades the role it owns: ingress loss stops external
+HTTP traffic at the edge, control-plane loss makes operator commands fail
+fast while leased work continues, matching loss falls back to direct
+ready-task discovery, scheduler loss pauses schedule fires and records
+missed runs, and execution loss accumulates ready tasks without losing
+durable state. Database loss remains a fleet-wide outage. Redis-only loss is
+an acceleration-layer degradation with the same database-poll fallback and
+warning readiness behavior as the <code>standalone_server</code> shape.</li>
+</ul>
+<p>If your deployment depends on different assumptions, treat that topology as a
+separate runbook with its own validated contract instead of assuming the
+self-serve guidance still applies unchanged.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="published-recovery-packet-by-topology">Published recovery packet by topology<a href="#published-recovery-packet-by-topology" class="hash-link" aria-label="Direct link to Published recovery packet by topology" title="Direct link to Published recovery packet by topology" translate="no">​</a></h3>
+<p>The supported topologies above are only production-ready when the deployment
+runbook publishes the matching recovery packet alongside them:</p>
+<table><thead><tr><th>Topology</th><th>Publish these operator-owned facts</th></tr></thead><tbody><tr><td><code>embedded</code>, single node</td><td>Backup schedule for the database, cache-preservation expectations, the exact app revision and env/config snapshot used for restore, the maximum accepted restore lag, and the latest successful restore rehearsal evidence.</td></tr><tr><td><code>embedded</code>, small same-region cluster</td><td>Everything from the single-node packet, plus which node or process currently owns scheduler or maintenance duty, the expected impact of losing one ordinary node versus losing the shared database or cache backend, and the failover steps required to restore queue wake coordination.</td></tr><tr><td><code>standalone_server</code> distribution</td><td>Database and Redis backup cadence, pinned server image or digest, auth-material location, the expected failover behavior for <code>server_http_node</code>, <code>worker_node</code>, and <code>scheduler_node</code>, the latest <code>/api/ready</code> plus <code>/api/cluster/info</code> restore verification evidence, and the latest worker re-registration proof after restore.</td></tr><tr><td><code>split_control_execution</code> distribution</td><td>Everything from the <code>standalone_server</code> packet, plus the per-process-class scaling and failure expectations for <code>ingress_node</code>, <code>control_plane_node</code>, <code>scheduler_node</code>, <code>matching_node</code>, and <code>execution_node</code>, and the routing rules clients use when a hosted route returns <code>503 topology_role_unavailable</code> from the wrong node class.</td></tr></tbody></table>
+<p>If that packet is missing, stale, or untested, treat the topology as
+development-grade regardless of how many nodes are currently running.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="verify-live-topology-identity-before-trusting-the-baseline">Verify live topology identity before trusting the baseline<a href="#verify-live-topology-identity-before-trusting-the-baseline" class="hash-link" aria-label="Direct link to Verify live topology identity before trusting the baseline" title="Direct link to Verify live topology identity before trusting the baseline" translate="no">​</a></h3>
+<p>For standalone-server and split-role deployments, confirm the node identity
+that the product itself reports before you interpret queue, scheduler, or role
+failure signals. <code>GET /api/cluster/info</code> is the source of truth for that
+identity:</p>
+<table><thead><tr><th>Field</th><th>Use it for</th></tr></thead><tbody><tr><td><code>topology.current_shape</code></td><td>Confirms whether the node is currently advertising <code>embedded</code>, <code>standalone_server</code>, or <code>split_control_execution</code>.</td></tr><tr><td><code>topology.current_roles</code></td><td>Confirms the logical roles actually hosted by this node.</td></tr><tr><td><code>topology.supported_shapes</code></td><td>Confirms which deployment shapes the current server build publicly supports.</td></tr><tr><td><code>topology.shape_assignments</code></td><td>Maps each supported shape to its documented process-class role bundles so you can compare the current role bundle against the supported topology.</td></tr></tbody></table>
+<p>Use those fields as the first topology-drift check during rollouts:</p>
+<ul>
+<li class="">In the self-serve standalone-server shape, API nodes should continue to
+report the <code>api_ingress</code>, <code>control_plane</code>, <code>matching</code>, and
+<code>history_projection</code> role bundle; scheduler nodes should report <code>scheduler</code>;
+worker nodes should report <code>execution_plane</code>.</li>
+<li class="">In the split-role shape, verify that each node&#x27;s <code>current_roles</code> match one of
+the documented role bundles under <code>shape_assignments</code> before you interpret
+backlog or scheduler lag as a worker problem.</li>
+<li class="">If <code>current_roles</code> drift from the deployment plan,
+treat queue and failover baselines as suspect until the node identity is
+corrected.</li>
+</ul>
+<p>Embedded installs do not publish <code>/api/cluster/info</code>. For the package-local
+topology view, run <code>php artisan workflow:v2:doctor --json</code> and inspect the
+<code>topology</code> object. It publishes the same role-topology schema and includes the
+embedded app&#x27;s <code>current_shape</code>, <code>current_process_class</code>, <code>current_roles</code>,
+<code>execution_mode</code>, and nested <code>matching_role</code> summary.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="blocking-and-advisory-diagnostics">Blocking and advisory diagnostics<a href="#blocking-and-advisory-diagnostics" class="hash-link" aria-label="Direct link to Blocking and advisory diagnostics" title="Direct link to Blocking and advisory diagnostics" translate="no">​</a></h2>
+<p>Durable Workflow v2 separates blocking diagnostics from advisory diagnostics.</p>
+<table><thead><tr><th>Severity</th><th>Meaning</th><th>Typical operator action</th></tr></thead><tbody><tr><td>Blocking</td><td>The current configuration or readiness state is not safe to trust for v2 traffic</td><td>Stop rollout, fix the prerequisite, rerun verification</td></tr><tr><td>Advisory</td><td>The surface remains readable, but some derived facts need rebuild, backfill, or manual review before you rely on them</td><td>Keep serving traffic when appropriate, then repair the named surface</td></tr><tr><td>Healthy</td><td>No current issue was found in that surface</td><td>Continue normal operation</td></tr></tbody></table>
+<p>Apply that rule to the shipped surfaces:</p>
+<ul>
+<li class=""><code>workflow:v2:doctor --strict</code> blocks when backend capability issues have
+<code>error</code> severity. Examples include an unsupported queue driver in queue mode
+or a cache store without locks. Informational queue diagnostics in poll mode
+remain advisory.</li>
+<li class=""><code>GET /waterline/api/v2/health</code> returns:<!-- -->
+<ul>
+<li class=""><code>status = ok</code> when the v2 operator surface is ready and the current checks
+are aligned.</li>
+<li class=""><code>status = warning</code> when the surface remains readable but specific facts
+need rebuild, backfill, or repair before you trust them fully.</li>
+<li class=""><code>status = error</code> with HTTP <code>503</code> when the engine-source bridge is not ready
+or a blocking capability problem makes the v2 surface unavailable.</li>
+</ul>
+</li>
+<li class=""><code>GET /waterline/api/stats</code> publishes durable operator facts. Treat those JSON
+fields as operator diagnostics for dashboards and scripts, not as a metrics
+scrape endpoint.</li>
+</ul>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="correctness-vs-acceleration-checks">Correctness vs acceleration checks<a href="#correctness-vs-acceleration-checks" class="hash-link" aria-label="Direct link to Correctness vs acceleration checks" title="Direct link to Correctness vs acceleration checks" translate="no">​</a></h2>
+<p>Every v2 health check carries a <code>category</code> of either <code>correctness</code> or
+<code>acceleration</code>, and the snapshot publishes a per-category rollup so operators
+can answer two separate questions without re-aggregating the check list.</p>
+<ul>
+<li class=""><strong>Correctness checks</strong> describe whether durable ready-task discovery,
+projection freshness, command-contract backfill, history retention, worker
+compatibility, and backend capabilities are intact. A correctness check in
+<code>status = error</code> means safe task pickup or operator-trusted state is at
+risk; rollouts should stop until it clears.</li>
+<li class=""><strong>Acceleration checks</strong> describe whether optional wake-signal propagation
+is keeping up. The durable pollers are the correctness path, so an
+acceleration check in <code>status = warning</code> means cross-node wake-up latency
+may be higher than steady state but no task is stranded.</li>
+</ul>
+<p>Each entry under <code>checks</code> carries its <code>category</code>, and the snapshot adds a
+<code>categories</code> rollup so dashboards can summarize both questions at a glance:</p>
+<div class="language-json codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-json codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token punctuation" style="color:rgb(248, 248, 242)">{</span><span class="token plain"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  </span><span class="token property">&quot;status&quot;</span><span class="token operator">:</span><span class="token plain"> </span><span class="token string" style="color:rgb(255, 121, 198)">&quot;warning&quot;</span><span class="token punctuation" style="color:rgb(248, 248, 242)">,</span><span class="token plain"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  </span><span class="token property">&quot;categories&quot;</span><span class="token operator">:</span><span class="token plain"> </span><span class="token punctuation" style="color:rgb(248, 248, 242)">{</span><span class="token plain"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    </span><span class="token property">&quot;correctness&quot;</span><span class="token operator">:</span><span class="token plain"> </span><span class="token punctuation" style="color:rgb(248, 248, 242)">{</span><span class="token property">&quot;status&quot;</span><span class="token operator">:</span><span class="token plain"> </span><span class="token string" style="color:rgb(255, 121, 198)">&quot;ok&quot;</span><span class="token punctuation" style="color:rgb(248, 248, 242)">,</span><span class="token plain"> </span><span class="token property">&quot;check_count&quot;</span><span class="token operator">:</span><span class="token plain"> </span><span class="token number">8</span><span class="token punctuation" style="color:rgb(248, 248, 242)">}</span><span class="token punctuation" style="color:rgb(248, 248, 242)">,</span><span class="token plain"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    </span><span class="token property">&quot;acceleration&quot;</span><span class="token operator">:</span><span class="token plain"> </span><span class="token punctuation" style="color:rgb(248, 248, 242)">{</span><span class="token property">&quot;status&quot;</span><span class="token operator">:</span><span class="token plain"> </span><span class="token string" style="color:rgb(255, 121, 198)">&quot;warning&quot;</span><span class="token punctuation" style="color:rgb(248, 248, 242)">,</span><span class="token plain"> </span><span class="token property">&quot;check_count&quot;</span><span class="token operator">:</span><span class="token plain"> </span><span class="token number">1</span><span class="token punctuation" style="color:rgb(248, 248, 242)">}</span><span class="token plain"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  </span><span class="token punctuation" style="color:rgb(248, 248, 242)">}</span><span class="token plain"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"></span><span class="token punctuation" style="color:rgb(248, 248, 242)">}</span><br></div></code></pre></div></div>
+<p>Treat a degraded <code>acceleration</code> rollup as acceleration-only: investigate
+cache or wake backend health, but do not block traffic that depends only on
+durable ready-task discovery. A degraded <code>correctness</code> rollup is the
+blocking signal. The <code>long_poll_wake_acceleration</code> check is the canonical
+acceleration entry and never escalates above <code>warning</code>; every other check
+is a correctness entry.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="queue-health-semantics">Queue-health semantics<a href="#queue-health-semantics" class="hash-link" aria-label="Direct link to Queue-health semantics" title="Direct link to Queue-health semantics" translate="no">​</a></h2>
+<p>Queue health is split between durable queue state and worker/runtime telemetry.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="durable-queue-facts">Durable queue facts<a href="#durable-queue-facts" class="hash-link" aria-label="Direct link to Durable queue facts" title="Direct link to Durable queue facts" translate="no">​</a></h3>
+<p>Use Waterline dashboard stats and queue views for durable task state:</p>
+<table><thead><tr><th>Fact</th><th>Meaning</th></tr></thead><tbody><tr><td><code>operator_metrics.backlog.runnable_tasks</code></td><td>Durable tasks that are ready to be claimed now.</td></tr><tr><td><code>operator_metrics.backlog.delayed_tasks</code></td><td>Durable tasks that exist but are still waiting for <code>available_at</code>.</td></tr><tr><td><code>operator_metrics.backlog.leased_tasks</code></td><td>Durable tasks currently claimed by a worker.</td></tr><tr><td><code>operator_metrics.backlog.tasks_added_last_minute</code></td><td>Distinct durable task rows created in the trailing 60 seconds. Treat this as durable queue inflow, not as a transport-attempt counter.</td></tr><tr><td><code>operator_metrics.backlog.tasks_dispatched_last_minute</code></td><td>Distinct durable task rows whose latest successful <code>last_dispatched_at</code> landed in the trailing 60 seconds. Compare it with <code>tasks_added_last_minute</code> to tell whether durable inflow is outrunning dispatch.</td></tr><tr><td><code>operator_metrics.starts.pending_runs</code>, <code>operator_metrics.starts.pending_commands</code>, <code>operator_metrics.starts.ready_tasks</code>, <code>operator_metrics.starts.oldest_pending_start_at</code>, <code>operator_metrics.starts.max_pending_ms</code></td><td>Durable workflow-start backlog. Use these facts to distinguish starts that have been accepted but have not yet become active workflow-task work from ordinary worker-side queue lag.</td></tr><tr><td><code>operator_metrics.tasks.oldest_ready_due_at</code>, <code>operator_metrics.tasks.max_ready_due_age_ms</code></td><td>The oldest currently actionable task and its ready-to-dispatch age. This is the machine-readable backlog-latency pair behind &quot;oldest ready task&quot;.</td></tr><tr><td><code>operator_metrics.tasks.dispatch_overdue</code>, <code>operator_metrics.tasks.oldest_dispatch_overdue_since</code>, <code>operator_metrics.tasks.max_dispatch_overdue_age_ms</code></td><td>Ready durable tasks that still have no successful dispatch wake plus the age of the stalest example. Use these facts to spot degraded notifier acceleration without confusing it for ordinary queue growth.</td></tr><tr><td><code>operator_metrics.backlog.unhealthy_tasks</code></td><td>Durable tasks with dispatch failure, claim failure, overdue dispatch, or expired lease state.</td></tr><tr><td><code>operator_metrics.backlog.repair_needed_runs</code></td><td>Open runs that do not currently have a trusted durable resume path.</td></tr><tr><td><code>operator_metrics.tasks.oldest_lease_expired_at</code>, <code>operator_metrics.tasks.max_lease_expired_age_ms</code></td><td>The oldest expired lease and its age. Use this pair as the primary stuck-lease and duplicate-risk age indicator.</td></tr><tr><td><code>operator_metrics.backlog.oldest_compatibility_blocked_started_at</code>, <code>operator_metrics.backlog.max_compatibility_blocked_age_ms</code></td><td>The oldest compatibility routing block and its age. Use this when work is preserved but no compatible worker is currently eligible to claim it.</td></tr><tr><td>Active vs stale pollers</td><td>Whether registered workers are still heartbeating for a queue.</td></tr><tr><td>Current leases</td><td>Which workflow or activity tasks are leased right now and whether the lease is expired.</td></tr></tbody></table>
+<p>These facts describe durable workflow-task and activity-task traffic only.</p>
+<p>When you need queue-local drill-down instead of fleet totals, use the server
+task-queue visibility routes for backlog age, poller state, current leases,
+and admission budgets. Those routes do not currently expose per-queue
+<code>stats.tasks_added_last_minute</code> or <code>stats.tasks_dispatched_last_minute</code>; use
+the fleet-level <code>operator_metrics.backlog.*</code> pair above to compare durable
+inflow with dispatch, then use queue-local routes to see which queue is
+building backlog or has no available worker capacity.</p>
+<p>Waterline&#x27;s <code>GET /waterline/api/v2/health</code> surface publishes the same queue
+drill-down under <code>queue_visibility.*</code> for the configured namespace. Treat these
+field families as the typed queue-health contract:</p>
+<table><thead><tr><th>Field family</th><th>Meaning</th></tr></thead><tbody><tr><td><code>queue_visibility.available</code>, <code>queue_visibility.reason</code></td><td>Whether Waterline can currently produce queue-local visibility for the configured namespace, and why not when it cannot.</td></tr><tr><td><code>queue_visibility.task_queues[].stats.approximate_backlog_count</code>, <code>queue_visibility.task_queues[].stats.approximate_backlog_age</code></td><td>Queue-local backlog count and oldest durable backlog age.</td></tr><tr><td><code>queue_visibility.task_queues[].stats.tasks_added_last_minute</code>, <code>queue_visibility.task_queues[].stats.tasks_dispatched_last_minute</code></td><td>Per-queue durable inflow versus dispatch over the trailing 60 seconds. Use these when one hot queue is hidden inside healthy fleet totals.</td></tr><tr><td><code>queue_visibility.task_queues[].stats.pollers.active_count</code>, <code>queue_visibility.task_queues[].stats.pollers.stale_count</code>, <code>queue_visibility.task_queues[].stats.pollers.stale_after_seconds</code></td><td>Healthy versus stale pollers on that queue and the stale-heartbeat threshold the snapshot used.</td></tr><tr><td><code>queue_visibility.task_queues[].stats.workflow_tasks.*</code>, <code>queue_visibility.task_queues[].stats.activity_tasks.*</code></td><td>Queue-local ready, leased, and expired-lease counts split by workflow-task versus activity-task traffic.</td></tr><tr><td><code>queue_visibility.task_queues[].repair.candidates</code>, <code>dispatch_failed</code>, <code>expired_leases</code>, <code>dispatch_overdue</code></td><td>Queue-local repair pressure: durable tasks that already need repair, are dispatch-failed, hold expired leases, or are overdue for redispatch.</td></tr><tr><td><code>queue_visibility.task_queues[].repair.oldest_dispatch_failed_at</code>, <code>max_dispatch_failed_age_ms</code>, <code>oldest_lease_expired_at</code>, <code>max_lease_expired_age_ms</code>, <code>oldest_dispatch_overdue_since</code>, <code>max_dispatch_overdue_age_ms</code></td><td>Queue-local age signals for the stalest dispatch failure, expired lease, and dispatch-overdue durable task.</td></tr></tbody></table>
+<p><code>coordination_alerts[]</code> on the same <code>GET /waterline/api/v2/health</code> payload is
+the operator roll-up for those queue-local facts plus the health-check list.
+Use it as the page-ready summary for warnings and errors, then drill into the
+matching <code>queue_visibility</code> or <code>checks</code> entries for evidence.</p>
+<p>Treat the queue-local admission status as the first-class slot and poller
+signal for that queue. <code>saturated</code> means live workers are present but every
+registered slot is already leased. <code>throttled</code> means a server-side lease or
+dispatch cap is intentionally holding new work. <code>no_slots</code> means workers are
+registered but exposed zero capacity for that task kind. <code>no_active_workers</code>
+means the queue has no healthy poller at all, and <code>unavailable</code> means a
+configured lock-backed admission guard cannot currently prove safety.</p>
+<p>Use <code>operator_metrics.starts.*</code> when new workflow starts appear stuck even
+though steady-state queue lag looks normal. Those facts separate control-plane
+start admission and first-task creation debt from downstream worker pickup.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="poller-pressure-and-admission-budgets">Poller pressure and admission budgets<a href="#poller-pressure-and-admission-budgets" class="hash-link" aria-label="Direct link to Poller pressure and admission budgets" title="Direct link to Poller pressure and admission budgets" translate="no">​</a></h3>
+<p>Use task-queue detail routes or <code>dw task-queue:describe</code> when queue flow is
+degrading and you need to separate &quot;not enough worker capacity&quot; from
+&quot;intentional server throttling&quot; or &quot;no live poller at all&quot;:</p>
+<table><thead><tr><th>Queue status</th><th>Meaning</th><th>Treat it as</th></tr></thead><tbody><tr><td><code>accepting</code></td><td>Workers still have available slots and no server cap is full.</td><td>Healthy baseline.</td></tr><tr><td><code>saturated</code></td><td>All registered worker slots are currently leased.</td><td>Worker-capacity pressure.</td></tr><tr><td><code>throttled</code></td><td>A server-side active-lease or dispatch-rate cap is intentionally holding the queue back.</td><td>Advisory unless the cap is unexpected or the backlog keeps growing beyond the published baseline.</td></tr><tr><td><code>no_slots</code></td><td>Active workers are registered, but none advertise slots for that task kind.</td><td>Blocking for that queue.</td></tr><tr><td><code>no_active_workers</code></td><td>No healthy poller is currently serving the queue.</td><td>Blocking for that queue.</td></tr><tr><td><code>unavailable</code></td><td>The queue cannot acquire the lock needed for its configured admission path.</td><td>Blocking until the admission dependency recovers.</td></tr></tbody></table>
+<p>Use these statuses with the queue-flow facts together:</p>
+<ul>
+<li class=""><code>tasks_added_last_minute &gt; tasks_dispatched_last_minute</code> plus <code>saturated</code>
+means durable inflow is outrunning worker capacity.</li>
+<li class="">The same rate imbalance plus <code>throttled</code> means the queue is being held back
+by an explicit server cap and should be judged against that cap&#x27;s intended
+contract, not against unrestricted throughput.</li>
+<li class="">A rising oldest-ready age plus <code>no_active_workers</code> or stale pollers means the
+queue has lost healthy claimers and should be treated as a routing outage for
+that scope.</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="matching-role-deployment-shape">Matching-role deployment shape<a href="#matching-role-deployment-shape" class="hash-link" aria-label="Direct link to Matching-role deployment shape" title="Direct link to Matching-role deployment shape" translate="no">​</a></h3>
+<p>Use <code>operator_metrics.matching_role.*</code> when you need to confirm which
+matching/dispatch contract the current node is actually serving:</p>
+<table><thead><tr><th>Fact</th><th>Meaning</th></tr></thead><tbody><tr><td><code>operator_metrics.matching_role.queue_wake_enabled</code></td><td>Whether this node still runs the in-worker broad-poll wake path on queue-worker loop events.</td></tr><tr><td><code>operator_metrics.matching_role.shape</code></td><td><code>in_worker</code> when the node still owns that wake path, <code>dedicated</code> when the wake/repair sweep is expected to run under a separate <code>workflow:v2:repair-pass --loop</code> process.</td></tr><tr><td><code>operator_metrics.matching_role.task_dispatch_mode</code></td><td>The dispatch mode this node is using for ready tasks: <code>queue</code> or <code>poll</code>.</td></tr><tr><td><code>operator_metrics.matching_role.partition_primitives</code></td><td>The frozen routing axes, in order: <code>connection</code>, <code>queue</code>, <code>compatibility</code>, <code>namespace</code>.</td></tr><tr><td><code>operator_metrics.matching_role.backpressure_model</code></td><td>The durable admission boundary the engine enforces. Current v2 reports <code>lease_ownership</code>.</td></tr></tbody></table>
+<p>These fields are node-local, not fleet-wide. In a mixed-shape rollout, read
+the snapshot from each node or pod you are cutting over so you can confirm the
+matching role moved where you intended before you interpret backlog or poller
+changes as worker health.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="worker-and-sdk-telemetry">Worker and SDK telemetry<a href="#worker-and-sdk-telemetry" class="hash-link" aria-label="Direct link to Worker and SDK telemetry" title="Direct link to Worker and SDK telemetry" translate="no">​</a></h3>
+<p>Use worker metrics, traces, and logs for:</p>
+<ul>
+<li class="">Workflow and activity <code>schedule_to_start</code> latency</li>
+<li class="">Poll success rate and sync/eager-dispatch behavior</li>
+<li class="">Sticky-cache size and eviction behavior</li>
+<li class="">Worker CPU, memory, thread, and event-loop pressure</li>
+<li class="">Custom application metrics emitted from activities or worker code</li>
+</ul>
+<p>Synchronous queries, live-debug tooling, and other non-durable control-plane
+calls should be labeled separately in your dashboards. They do not count as
+durable task backlog and they do not change Waterline repair counters.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="worker-compatibility-and-rollout-health">Worker compatibility and rollout health<a href="#worker-compatibility-and-rollout-health" class="hash-link" aria-label="Direct link to Worker compatibility and rollout health" title="Direct link to Worker compatibility and rollout health" translate="no">​</a></h2>
+<p><code>operator_metrics.workers</code> publishes the compatibility facts that determine
+whether the active worker fleet can safely handle the required workflow
+contract:</p>
+<table><thead><tr><th>Fact</th><th>Meaning</th></tr></thead><tbody><tr><td><code>operator_metrics.workers.required_compatibility</code></td><td>Compatibility markers a worker must advertise to be eligible for work in the namespace.</td></tr><tr><td><code>operator_metrics.workers.active_workers</code></td><td>Count of distinct live workers seen through compatibility heartbeat.</td></tr><tr><td><code>operator_metrics.workers.active_worker_scopes</code></td><td>Count of <code>(connection, queue)</code> scopes covered by those workers.</td></tr><tr><td><code>operator_metrics.workers.active_workers_supporting_required</code></td><td>Workers whose advertised compatibility covers the required markers.</td></tr><tr><td><code>operator_metrics.workers.fleet</code></td><td>Per-scope list of every active worker with <code>worker_id</code>, <code>connection</code>, <code>queue</code>, advertised <code>supported</code> markers, a <code>supports_required</code> flag, the heartbeat <code>source</code> (<code>database</code> or <code>cache</code>), and <code>recorded_at</code>.</td></tr></tbody></table>
+<p>Use the summary counts to detect rollout states where some workers cannot
+safely claim the required work, and drill into <code>fleet</code> to identify
+exactly which <code>(connection, queue)</code> scope is missing coverage. The Waterline
+operator dashboard renders the same fleet list under its worker
+compatibility panel so operators do not need to query the metric surface by
+hand.</p>
+<p>When <code>active_workers_supporting_required</code> reaches zero for a namespace,
+Waterline surfaces a <code>no_compatible_worker_for_task</code> run diagnostic on
+affected runs so the gap is visible on the run-detail view as well as the
+metric surface. The companion <code>worker_compatibility</code> health check fires as
+<code>warning</code> under <code>correctness</code> in the same condition, which flips the
+<code>correctness</code> category rollup to <code>warning</code> so the fleet gap is visible at
+a glance and not buried inside the check list.</p>
+<p>See <a class="" href="/docs/polyglot/worker-build-id-rollout/">Rolling Out Worker Builds With Build IDs</a>
+for the drain/resume flow that coordinates with these facts during a
+build-id rollout, and
+<a class="" href="/docs/polyglot/worker-compatibility-routing/">Worker Compatibility and Routing</a>
+for the pinning contract behind those diagnostics.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="alert-semantics">Alert semantics<a href="#alert-semantics" class="hash-link" aria-label="Direct link to Alert semantics" title="Direct link to Alert semantics" translate="no">​</a></h2>
+<p>Alert thresholds are deployment-specific. Publish your own numeric baselines
+for queue age, repair lag, worker coverage, and restore timing, then alert when
+the contract below stays breached longer than one normal repair or watchdog
+window for the topology you operate.</p>
+<table><thead><tr><th>Alert family</th><th>Source</th><th>Treat as</th><th>Escalate when</th><th>Operator response</th></tr></thead><tbody><tr><td>Blocking readiness</td><td><code>workflow:v2:doctor --strict</code>, <code>GET /waterline/api/v2/health</code></td><td>Blocking</td><td><code>doctor --strict</code> returns an error or the health endpoint returns <code>status = error</code> / HTTP <code>503</code></td><td>Stop rollout or traffic shift, fix the blocking prerequisite, then rerun readiness and compatibility checks.</td></tr><tr><td>Compatible-worker coverage</td><td><code>operator_metrics.workers.*</code>, <code>worker_compatibility</code> health check, run diagnostic <code>no_compatible_worker_for_task</code></td><td>Blocking</td><td><code>active_workers_supporting_required = 0</code> for a namespace or required <code>(connection, queue)</code> scope</td><td>Drain incompatible workers, register compatible workers, and confirm the <code>correctness</code> rollup clears before trusting new claims.</td></tr><tr><td>Durable queue lag</td><td>Waterline queue views, <code>operator_metrics.backlog.*</code>, worker <code>schedule_to_start</code> telemetry</td><td>Blocking when sustained; advisory when brief</td><td>The oldest ready-task age or schedule-to-start latency stays above the published topology baseline while compatible workers are available</td><td>Add worker capacity, inspect task-queue admission limits, and verify the scheduler or matching path is still making forward progress.</td></tr><tr><td>Poller pressure and admission saturation</td><td>Task-queue detail routes, <code>dw task-queue:describe</code>, queue <code>status</code>, stale pollers, and queue-local add/dispatch rates</td><td>Blocking for <code>no_active_workers</code>, <code>no_slots</code>, or <code>unavailable</code>; advisory for intentional <code>throttled</code> states</td><td>One queue stays <code>saturated</code> while its oldest-ready age and add-vs-dispatch gap keep growing, or any queue flips to <code>no_active_workers</code>, <code>no_slots</code>, or <code>unavailable</code> outside a planned maintenance window</td><td>Add worker slots, restore the missing poller cohort, or confirm the server-side cap and lock dependency are behaving as designed before you scale blindly.</td></tr><tr><td>Workflow-start backlog</td><td><code>operator_metrics.starts.*</code>, control-plane start telemetry, worker <code>schedule_to_start</code> telemetry for first workflow tasks</td><td>Blocking when sustained; advisory when brief</td><td><code>pending_commands</code>, <code>ready_tasks</code>, or <code>max_pending_ms</code> stay above the published topology baseline while compatible workers and queue capacity are available</td><td>Inspect the start boundary end to end: confirm start commands are turning into durable tasks, verify matching or dispatch is creating the first task promptly, and separate start-path debt from general worker lag before scaling.</td></tr><tr><td>Projection drift and repair debt</td><td><code>run_summary_projection</code> / <code>selected_run_projections</code> health checks, <code>operator_metrics.repair.*</code></td><td>Advisory</td><td>Drift warnings persist past one planned rebuild window or the max candidate age keeps climbing</td><td>Run the rebuild or repair previews, execute the repair, then verify the warning clears and stale ages return to baseline.</td></tr><tr><td>Retry or failure storm</td><td><code>operator_metrics.backlog.unhealthy_tasks</code>, durable run diagnostics, worker error telemetry</td><td>Advisory, escalating to blocking if it prevents durable progress</td><td>Dispatch-failed, claim-failed, expired-lease, or retry-exhaustion facts climb above the topology baseline and stay elevated</td><td>Inspect the failing task family, compare worker telemetry with durable error facts, and decide whether to drain traffic or isolate the affected queue.</td></tr><tr><td>Wake acceleration degradation</td><td><code>long_poll_wake_acceleration</code> health check and the <code>acceleration</code> category rollup</td><td>Advisory</td><td>The acceleration warning persists after cache or notifier maintenance windows</td><td>Investigate cache or wake propagation health. Do not treat this as a correctness outage unless the <code>correctness</code> rollup also degrades.</td></tr></tbody></table>
+<p>The goal is to page on durable contract risk, not on every transient signal.
+Queue and worker alerts should only become blocking when they threaten the
+operator contract for the topology you actually run.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="rebuild-repair-and-restore-expectations">Rebuild, repair, and restore expectations<a href="#rebuild-repair-and-restore-expectations" class="hash-link" aria-label="Direct link to Rebuild, repair, and restore expectations" title="Direct link to Rebuild, repair, and restore expectations" translate="no">​</a></h2>
+<p>Use these checks in order when the operator surface reports drift:</p>
+<ol>
+<li class="">
+<p>Check <code>GET /waterline/api/v2/health</code>.</p>
+<ul>
+<li class=""><code>run_summary_projection</code> and <code>selected_run_projections</code> warnings mean
+Waterline can still answer, but some list or detail facts need rebuild.</li>
+<li class=""><code>command_contract_snapshots</code> warnings mean some legacy runs still need
+WorkflowStarted contract backfill before operators can trust declared
+signal, update, or query forms.</li>
+<li class=""><code>durable_resume_paths</code> warnings mean open runs need repair before you rely
+on their projected next resume source.</li>
+</ul>
+</li>
+<li class="">
+<p>Preview projection work with:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan workflow:v2:rebuild-projections --needs-rebuild --dry-run</span><br></div></code></pre></div></div>
+</li>
+<li class="">
+<p>Rebuild the affected projections:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan workflow:v2:rebuild-projections --needs-rebuild</span><br></div></code></pre></div></div>
+</li>
+<li class="">
+<p>Preview command-contract backfill work with:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan workflow:v2:backfill-command-contracts --dry-run</span><br></div></code></pre></div></div>
+</li>
+<li class="">
+<p>Backfill command contracts when the current workflow class is still
+available:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan workflow:v2:backfill-command-contracts</span><br></div></code></pre></div></div>
+</li>
+<li class="">
+<p>Use <code>--prune-stale</code> only after your retention workflow has intentionally
+removed durable rows and you want to delete projection rows whose durable run
+or history row no longer exists.</p>
+</li>
+</ol>
+<p><code>operator_metrics.repair.*</code> publishes the repair-loop sweep footprint. Use the
+candidate counts, selected counts, maximum candidate age, and scan-limit
+pressure to decide whether repair work is comfortably within your baseline or
+needs capacity investigation.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="export-and-archive-verification">Export and archive verification<a href="#export-and-archive-verification" class="hash-link" aria-label="Direct link to Export and archive verification" title="Direct link to Export and archive verification" translate="no">​</a></h2>
+<p>History export and archive serve different purposes:</p>
+<ul>
+<li class=""><strong>History export</strong> creates a replay/debug/archive artifact.</li>
+<li class=""><strong>Archive</strong> marks a closed run as archived so it leaves active fleet views.</li>
+<li class=""><strong>Prune</strong> removes projection or durable rows after retention has definitely
+expired.</li>
+</ul>
+<p>Use this verification sequence:</p>
+<ol>
+<li class="">
+<p>Export the selected run:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan workflow:v2:history-export &lt;workflow-instance-id&gt; --run-id=&lt;workflow-run-id&gt; --output=storage/app/workflow-history/run.json --pretty</span><br></div></code></pre></div></div>
+</li>
+<li class="">
+<p>Verify the bundle includes the expected run id, schema version, and any
+configured redaction metadata.</p>
+</li>
+<li class="">
+<p>Archive the closed run only after the export artifact is stored where your
+runbook expects it.</p>
+</li>
+<li class="">
+<p>Keep archived-but-not-pruned runs available for incident review.</p>
+</li>
+<li class="">
+<p>Prune durable rows through your retention job, then rebuild/prune projections
+with <code>workflow:v2:rebuild-projections --prune-stale</code>.</p>
+</li>
+</ol>
+<p>For Waterline users, the matching history-export and archive routes are listed
+in the <a class="" href="/docs/waterline-operator-api/">Waterline Operator API Reference</a>.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="backup-restore-and-disaster-recovery-contract">Backup, restore, and disaster-recovery contract<a href="#backup-restore-and-disaster-recovery-contract" class="hash-link" aria-label="Direct link to Backup, restore, and disaster-recovery contract" title="Direct link to Backup, restore, and disaster-recovery contract" translate="no">​</a></h2>
+<p>Backup, restore, and disaster recovery are part of the operating envelope, not
+an optional private runbook. For every supported topology, publish and rehearse
+these facts:</p>
+<ol>
+<li class="">The durable backup set: database backup, server or app image reference,
+runtime env file or config set, auth material location, and the exact
+topology or restore notes needed to reattach workers.</li>
+<li class="">The recovery targets: maximum accepted restore lag, expected failover lag,
+and who is allowed to declare traffic safe again.</li>
+<li class="">The restore order: restore durable persistence first, then cache, then
+bootstrap or migrations, then the singleton scheduler or maintenance role,
+then API readiness, then worker registration.</li>
+<li class="">The verification pass: <code>/api/ready</code> or <code>/waterline/api/v2/health</code>,
+<code>/api/cluster/info</code> where applicable, one representative worker
+registration, and one representative history export from restored state.</li>
+<li class="">The repair pass after restore: rebuild projections, backfill command
+contracts if needed, and confirm queue, compatibility, and repair metrics
+return to baseline before you call the environment healthy.</li>
+</ol>
+<p>Multi-region operation and split-brain behavior remain outside the supported
+2.0 operating envelope. The
+<a class="" href="/docs/deployment/#activepassive-multi-region">self-hosting guide</a> retains
+active/passive architecture and runbook material only for support-led
+evaluation; it does not establish self-serve replication, failover, failback,
+RPO, or RTO guarantees. The current
+<a class="" href="/docs/polyglot/cloud-control-plane/">Cloud managed-runtime contract</a>
+operates each namespace in one managed region and likewise does not promise
+multi-region replication, regional failover, or failback.</p>
+<p>Treat restore rehearsal cadence as part of the public operating contract too.
+At minimum, rehearse the documented restore sequence:</p>
+<ul>
+<li class="">before the first production rollout for a topology</li>
+<li class="">after any change to the backup mechanism, schema/bootstrap path, auth model,
+or deployment topology</li>
+<li class="">on a regular recurring cadence that is published in the same runbook as the
+backup schedule</li>
+</ul>
+<p>If you cannot produce the latest successful rehearsal date, elapsed restore
+time, and verification evidence, then backup and DR remain an unproven claim
+for that topology.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="benchmark-envelope">Benchmark envelope<a href="#benchmark-envelope" class="hash-link" aria-label="Direct link to Benchmark envelope" title="Direct link to Benchmark envelope" translate="no">​</a></h2>
+<p>Durable Workflow v2 publishes the dimensions you should benchmark for your own
+environment. Record these baselines in staging or canary before production
+traffic depends on them:</p>
+<table><thead><tr><th>Dimension</th><th>What to baseline</th><th>Source</th></tr></thead><tbody><tr><td>Projection health</td><td>Steady-state <code>needs_rebuild = 0</code>, rebuild duration after intentional drift, and stale/orphan cleanup time</td><td><code>/waterline/api/v2/health</code>, <code>/waterline/api/stats</code>, <code>workflow:v2:rebuild-projections</code></td></tr><tr><td>Queue pressure</td><td>Backlog age, oldest ready task age, runnable vs delayed task counts, task add vs dispatch rate, dispatch-overdue age, stale poller count, and queue admission status (<code>accepting</code>, <code>saturated</code>, <code>throttled</code>, <code>no_slots</code>, <code>no_active_workers</code>)</td><td>Waterline dashboard stats and queue views plus <code>operator_metrics.backlog.*</code> / <code>operator_metrics.tasks.*</code></td></tr><tr><td>Workflow-start latency</td><td>Accepted start commands waiting for first-task creation, oldest pending-start age, and first-task pickup after admission</td><td><code>operator_metrics.starts.*</code> plus worker <code>schedule_to_start</code> telemetry</td></tr><tr><td>Schedule-to-start latency</td><td>Workflow and activity queue wait from enqueue to start</td><td>Worker SDK metrics</td></tr><tr><td>Timer fan-out wake-up behavior</td><td>Wake-signal propagation time and the lag between scheduled fire time and ready-task visibility during burst timers</td><td>Worker telemetry plus same-region wake coordination checks</td></tr><tr><td>Repair-loop sweep cost</td><td>Candidate counts, selected counts, max candidate age, max missing-run age, and scan-pressure behavior</td><td><code>operator_metrics.repair.*</code></td></tr><tr><td>History pressure</td><td>Event count, history size, and continue-as-new recommendation thresholds</td><td><code>operator_metrics.history.*</code></td></tr></tbody></table>
+<p>These are benchmark dimensions rather than universal latency promises. Publish
+your own acceptable ranges for the topology you operate.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="long-soak-evidence">Long-soak evidence<a href="#long-soak-evidence" class="hash-link" aria-label="Direct link to Long-soak evidence" title="Direct link to Long-soak evidence" translate="no">​</a></h2>
+<p>Benchmark snapshots are not enough on their own. Before you call a topology
+trusted for sustained traffic, keep a long-soak evidence packet that shows the
+system stayed inside its declared envelope over time.</p>
+<p>Include at least:</p>
+<ul>
+<li class="">workload shape: topology, server image or app revision, worker build ids,
+queue layout, cache backend, database backend, and the representative mix of
+workflow starts, timer load, activities, queries, and exports</li>
+<li class="">soak window: start and end time, plus enough duration to cover at least one
+normal repair window, one retention or archive pass if applicable, and one
+representative business-cycle traffic swing for that environment</li>
+<li class="">durable queue stability: backlog age, ready-task age, start backlog age, task
+add versus dispatch rate, and stale-poller counts staying within the
+published baseline for the topology</li>
+<li class="">correctness stability: no sustained <code>status = error</code> from
+<code>GET /waterline/api/v2/health</code>, no unexplained growth in
+<code>operator_metrics.repair.*</code>, and no persistent compatibility gaps in
+<code>operator_metrics.workers.*</code></li>
+<li class="">process and cache stability: worker memory, CPU, event-loop or thread
+pressure, and cache/cardinality growth staying bounded rather than climbing
+monotonically under steady load</li>
+<li class="">recovery evidence: the latest successful backup timestamp, latest restore
+rehearsal timestamp, elapsed restore time, and the verification commands that
+proved the restored environment was ready</li>
+</ul>
+<p>Store the packet where the same operators can retrieve the deployment runbook.
+If a topology claims published benchmark numbers, alert semantics, or recovery
+timing without a matching soak packet, treat those numbers as provisional
+rather than trusted operating-envelope evidence.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="end-to-end-operator-checklist">End-to-end operator checklist<a href="#end-to-end-operator-checklist" class="hash-link" aria-label="Direct link to End-to-end operator checklist" title="Direct link to End-to-end operator checklist" translate="no">​</a></h2>
+<p>Use this checklist after upgrades and before trusting a new environment:</p>
+<ol>
+<li class="">Run <code>php artisan workflow:v2:doctor --strict</code>.</li>
+<li class="">Check <code>GET /waterline/api/v2/health</code> and confirm whether the state is
+<code>ok</code>, <code>warning</code>, or <code>error</code>.</li>
+<li class="">Read <code>GET /waterline/api/stats</code> for backlog, repair, history, command
+contract, worker compatibility, and projection drift facts.</li>
+<li class="">Run projection rebuild or command-contract backfill previews when health
+reports drift.</li>
+<li class="">Export one representative run and verify the archive/replay artifact path.</li>
+<li class="">Confirm archived runs leave active fleet views while durable rows remain
+available until retention cleanup.</li>
+<li class="">Rehearse the restore or failover sequence recorded in your deployment
+runbook and verify the measured lag matches the published expectation for
+your topology.</li>
+</ol>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="related-guides">Related Guides<a href="#related-guides" class="hash-link" aria-label="Direct link to Related Guides" title="Direct link to Related Guides" translate="no">​</a></h2>
+<ul>
+<li class=""><a class="" href="/docs/monitoring/">Monitoring</a></li>
+<li class=""><a class="" href="/docs/waterline-operator-api/">Waterline Operator API Reference</a></li>
+<li class=""><a class="" href="/docs/configuration/pruning-workflows/">Pruning Workflows</a></li>
+<li class=""><a class="" href="/docs/deployment/">Self-Hosting Deployments</a></li>
+</ul></div><footer class="theme-doc-footer docusaurus-mt-lg"><div class="row margin-top--sm theme-doc-footer-tags-row"><div class="col"><b>Tags:</b><ul class="tags_jXut padding--none margin-left--sm"><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/docs/tags/operations/">operations</a></li><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/docs/tags/observability/">observability</a></li><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/docs/tags/waterline/">Waterline</a></li></ul></div></div><div class="row margin-top--sm theme-doc-footer-edit-meta-row"><div class="col noPrint_WFHX"><a href="https://github.com/durable-workflow/durable-workflow.github.io/edit/main/docs/operator-operating-envelope.md" target="_blank" rel="noopener noreferrer" class="theme-edit-this-page"><svg fill="currentColor" height="20" width="20" viewBox="0 0 40 40" class="iconEdit_Z9Sw" aria-hidden="true"><g><path d="m34.5 11.7l-3 3.1-6.3-6.3 3.1-3q0.5-0.5 1.2-0.5t1.1 0.5l3.9 3.9q0.5 0.4 0.5 1.1t-0.5 1.2z m-29.5 17.1l18.4-18.5 6.3 6.3-18.4 18.4h-6.3v-6.2z"></path></g></svg>Edit this page</a></div><div class="col lastUpdated_JAkA"></div></div></footer></article><nav class="docusaurus-mt-lg pagination-nav" aria-label="Docs pages"><a class="pagination-nav__link pagination-nav__link--prev" href="/docs/monitoring/"><div class="pagination-nav__sublabel">Previous</div><div class="pagination-nav__label">Monitoring</div></a><a class="pagination-nav__link pagination-nav__link--next" href="/docs/waterline-operator-api/"><div class="pagination-nav__sublabel">Next</div><div class="pagination-nav__label">Waterline Operator API Reference</div></a></nav></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#source-of-truth-surfaces" class="table-of-contents__link toc-highlight">Source-of-truth surfaces</a><ul><li><a href="#surface-mapping-by-deployment-shape" class="table-of-contents__link toc-highlight">Surface mapping by deployment shape</a></li></ul></li><li><a href="#dated-20-evidence-snapshot" class="table-of-contents__link toc-highlight">Dated 2.0 evidence snapshot</a><ul><li><a href="#measured-guarantee-vs-supported-procedure" class="table-of-contents__link toc-highlight">Measured guarantee vs supported procedure</a></li><li><a href="#largest-current-load-cell" class="table-of-contents__link toc-highlight">Largest current load cell</a></li><li><a href="#explicitly-out-of-scope" class="table-of-contents__link toc-highlight">Explicitly out of scope</a></li></ul></li><li><a href="#supported-topologies" class="table-of-contents__link toc-highlight">Supported topologies</a><ul><li><a href="#failure-domain-checklist-by-supported-shape" class="table-of-contents__link toc-highlight">Failure-domain checklist by supported shape</a></li><li><a href="#published-recovery-packet-by-topology" class="table-of-contents__link toc-highlight">Published recovery packet by topology</a></li><li><a href="#verify-live-topology-identity-before-trusting-the-baseline" class="table-of-contents__link toc-highlight">Verify live topology identity before trusting the baseline</a></li></ul></li><li><a href="#blocking-and-advisory-diagnostics" class="table-of-contents__link toc-highlight">Blocking and advisory diagnostics</a></li><li><a href="#correctness-vs-acceleration-checks" class="table-of-contents__link toc-highlight">Correctness vs acceleration checks</a></li><li><a href="#queue-health-semantics" class="table-of-contents__link toc-highlight">Queue-health semantics</a><ul><li><a href="#durable-queue-facts" class="table-of-contents__link toc-highlight">Durable queue facts</a></li><li><a href="#poller-pressure-and-admission-budgets" class="table-of-contents__link toc-highlight">Poller pressure and admission budgets</a></li><li><a href="#matching-role-deployment-shape" class="table-of-contents__link toc-highlight">Matching-role deployment shape</a></li><li><a href="#worker-and-sdk-telemetry" class="table-of-contents__link toc-highlight">Worker and SDK telemetry</a></li></ul></li><li><a href="#worker-compatibility-and-rollout-health" class="table-of-contents__link toc-highlight">Worker compatibility and rollout health</a></li><li><a href="#alert-semantics" class="table-of-contents__link toc-highlight">Alert semantics</a></li><li><a href="#rebuild-repair-and-restore-expectations" class="table-of-contents__link toc-highlight">Rebuild, repair, and restore expectations</a></li><li><a href="#export-and-archive-verification" class="table-of-contents__link toc-highlight">Export and archive verification</a></li><li><a href="#backup-restore-and-disaster-recovery-contract" class="table-of-contents__link toc-highlight">Backup, restore, and disaster-recovery contract</a></li><li><a href="#benchmark-envelope" class="table-of-contents__link toc-highlight">Benchmark envelope</a></li><li><a href="#long-soak-evidence" class="table-of-contents__link toc-highlight">Long-soak evidence</a></li><li><a href="#end-to-end-operator-checklist" class="table-of-contents__link toc-highlight">End-to-end operator checklist</a></li><li><a href="#related-guides" class="table-of-contents__link toc-highlight">Related Guides</a></li></ul></div></div></div></div></main></div></div></div><div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="row footer__links"><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Docs</div><ul class="footer__items clean-list"><li class="footer__item"><a class="footer__link-item" href="/docs/introduction/">Introduction</a></li><li class="footer__item"><a class="footer__link-item" href="/docs/installation/">Installation</a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Community</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://discord.gg/xu5aDDpqVy" target="_blank" rel="noopener noreferrer" class="footer__link-item">Discord<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://x.com/DurableWorkflow" target="_blank" rel="noopener noreferrer" class="footer__link-item">X<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">More</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://durable-workflow.com/llms-full.txt" target="_blank" rel="noopener noreferrer" class="footer__link-item">LLM Docs<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://packagist.org/packages/durable-workflow/workflow" target="_blank" rel="noopener noreferrer" class="footer__link-item">Packagist<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div></div><div class="footer__bottom text--center"><div class="footer__copyright">Copyright © 2026 <a href="https://durable-workflow.com">Durable Workflow</a>.</div></div></div></footer></div></div>
+</body>
+</html>

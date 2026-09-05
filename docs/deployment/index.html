@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en" dir="ltr" class="docs-wrapper plugin-docs plugin-id-default docs-version-current docs-doc-page docs-doc-id-deployment" data-has-hydrated="false">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="Docusaurus v3.10.2">
+<title data-rh="true">Self-Hosting Deployments | Durable Workflow</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://durable-workflow.com/img/durable-workflow-2.0.png"><meta data-rh="true" name="twitter:image" content="https://durable-workflow.com/img/durable-workflow-2.0.png"><meta data-rh="true" property="og:url" content="https://durable-workflow.com/docs/deployment/"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Self-Hosting Deployments | Durable Workflow"><meta data-rh="true" name="description" content="Choose a supported Durable Workflow v2 self-hosting path and the artifact to start from."><meta data-rh="true" property="og:description" content="Choose a supported Durable Workflow v2 self-hosting path and the artifact to start from."><meta data-rh="true" name="twitter:title" content="Self-Hosting Deployments | Durable Workflow"><meta data-rh="true" name="twitter:description" content="Choose a supported Durable Workflow v2 self-hosting path and the artifact to start from."><link data-rh="true" rel="icon" href="/img/favicon.ico"><link data-rh="true" rel="canonical" href="https://durable-workflow.com/docs/deployment/"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/docs/deployment/" hreflang="en"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/docs/deployment/" hreflang="x-default"><link data-rh="true" rel="preconnect" href="https://IYIBF1DKO0-dsn.algolia.net" crossorigin="anonymous"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Run And Operate","item":"https://durable-workflow.com/docs/category/run-and-operate"},{"@type":"ListItem","position":2,"name":"Self-Hosting Deployments","item":"https://durable-workflow.com/docs/deployment"}]}</script><link rel="alternate" type="application/rss+xml" href="/blog/rss.xml" title="Durable Workflow RSS Feed">
+<link rel="alternate" type="application/atom+xml" href="/blog/atom.xml" title="Durable Workflow Atom Feed">
+
+
+
+
+<link rel="search" type="application/opensearchdescription+xml" title="Durable Workflow" href="/opensearch.xml">
+
+
+<script src="/analytics/cloudflare-web-analytics.js" type="module" data-cloudflare-web-analytics-token="a1296466c4e5487ca6ffd230a694b933"></script><link rel="stylesheet" href="/assets/css/styles.5c989eb0.css">
+<script src="/assets/js/runtime~main.dd1a1f1f.js" defer="defer"></script>
+<script src="/assets/js/main.afaffac8.js" defer="defer"></script>
+</head>
+<body>
+<svg style="display: none;"><defs>
+<symbol id="theme-svg-external-link" viewBox="0 0 24 24"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"/></symbol>
+</defs></svg>
+<script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||"dark"),document.documentElement.setAttribute("data-theme-choice",t||"dark")}(),function(){try{const c=new URLSearchParams(window.location.search).entries();for(var[t,e]of c)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id="__docusaurus"><link rel="preload" as="image" href="/img/logo.svg"><div role="region" aria-label="Skip to main content"><a class="skipToContent_fXgn" href="#__docusaurus_skipToContent_fallback">Skip to main content</a></div><nav aria-label="Main" class="theme-layout-navbar navbar navbar--fixed-top"><div class="navbar__inner"><div class="theme-layout-navbar-left navbar__items"><button aria-label="Toggle navigation bar" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/"><div class="navbar__logo"><img src="/img/logo.svg" alt="Workflow Logo" class="themedComponent_mlkZ themedComponent--light_NVdE"><img src="/img/logo.svg" alt="Workflow Logo" class="themedComponent_mlkZ themedComponent--dark_xIcU"></div><b class="navbar__title text--truncate">Durable Workflow</b></a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/docs/introduction/">Docs</a><div class="navbar__item dropdown dropdown--hoverable"><a class="navbar__link" aria-haspopup="true" aria-expanded="false" role="button" href="/docs/deployment/">2.0</a><ul class="dropdown__menu"><li><a aria-current="page" class="dropdown__link dropdown__link--active" href="/docs/deployment/">2.0</a></li><li><a class="dropdown__link" href="/docs/1.x/introduction/">1.x</a></li></ul></div><a class="navbar__item navbar__link" href="/blog/">Blog</a></div><div class="theme-layout-navbar-right navbar__items navbar__items--right"><a href="https://github.com/durable-workflow/workflow" target="_blank" rel="noopener noreferrer" aria-label="Star Durable Workflow on GitHub" class="navbar-github-star-link navbar__item navbar__link" label="Star on GitHub"><svg aria-hidden="true" class="navbar-github-star-link__icon" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8a8.01 8.01 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.56 7.56 0 0 1 8 4.76c.68 0 1.36.09 2 .27 1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"></path></svg><span class="navbar-github-star-link__count" title="GitHub stars">1.2K</span></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type="button" disabled="" title="system mode" aria-label="Switch between dark and light mode (currently system mode)"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP lightToggleIcon_pyhR"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP darkToggleIcon_wfgR"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP systemToggleIcon_QzmC"><path fill="currentColor" d="m12 21c4.971 0 9-4.029 9-9s-4.029-9-9-9-9 4.029-9 9 4.029 9 9 9zm4.95-13.95c1.313 1.313 2.05 3.093 2.05 4.95s-0.738 3.637-2.05 4.95c-1.313 1.313-3.093 2.05-4.95 2.05v-14c1.857 0 3.637 0.737 4.95 2.05z"></path></svg></button></div><div class="navbarSearchContainer_Bca1"><button type="button" class="DocSearch DocSearch-Button" aria-label="Search (Meta+k)" aria-keyshortcuts="Meta+k"><span class="DocSearch-Button-Container"><svg width="20" height="20" class="DocSearch-Search-Icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" stroke="currentColor" fill="none" stroke-width="1.4"></circle><path d="m21 21-4.3-4.3" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg><span class="DocSearch-Button-Placeholder">Search</span></span><span class="DocSearch-Button-Keys"></span></button></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="__docusaurus_skipToContent_fallback" class="theme-layout-main main-wrapper mainWrapper_z2l0"><div class="docsWrapper_hBAB"><button aria-label="Scroll back to top" class="clean-btn theme-back-to-top-button backToTopButton_sjWU" type="button"></button><div class="docRoot_UBD9"><aside class="theme-doc-sidebar-container docSidebarContainer_YfHR"><div class="sidebarViewport_aRkj"><div class="sidebar_njMd"><nav aria-label="Docs sidebar" class="menu thin-scrollbar menu_SIkG"><ul class="theme-doc-sidebar-menu menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/docs/introduction/"><span class="linkLabel_WmDU">Introduction</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/docs/quickstart/"><span class="linkLabel_WmDU">Durable Workflow 2.0 Quickstart</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/docs/capabilities/"><span class="linkLabel_WmDU">2.0 Capability Index</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/docs/laravel-adoption/"><span class="linkLabel_WmDU">Laravel Adoption and Runtime Transition</span></a></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/docs/category/service-mode/"><span class="categoryLinkLabel_W154">Service Mode</span></a><button aria-label="Expand sidebar category &#x27;Service Mode&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/docs/category/embedded/"><span class="categoryLinkLabel_W154">Embedded</span></a><button aria-label="Expand sidebar category &#x27;Embedded&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--active" href="/docs/category/run-and-operate/"><span class="categoryLinkLabel_W154">Run And Operate</span></a><button aria-label="Collapse sidebar category &#x27;Run And Operate&#x27;" aria-expanded="true" type="button" class="clean-btn menu__caret"></button></div><ul class="menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link menu__link--active" aria-current="page" tabindex="0" href="/docs/deployment/"><span class="linkLabel_WmDU">Self-Hosting Deployments</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/rolling-upgrades/"><span class="linkLabel_WmDU">Rolling Upgrades</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/monitoring/"><span class="linkLabel_WmDU">Monitoring</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/operator-operating-envelope/"><span class="linkLabel_WmDU">Operator Operating Envelope</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/waterline-operator-api/"><span class="linkLabel_WmDU">Waterline Operator API Reference</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/compatibility/"><span class="linkLabel_WmDU">Version Compatibility</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/platform-protocol-specs/"><span class="linkLabel_WmDU">Platform Protocol Specs</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/platform-conformance/"><span class="linkLabel_WmDU">Platform Conformance Suite</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/sdk-neutrality/"><span class="linkLabel_WmDU">SDK Neutrality</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/docs/support/"><span class="linkLabel_WmDU">Support</span></a></li></ul></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/docs/category/external-execution-and-ingress/"><span class="categoryLinkLabel_W154">External Execution And Ingress</span></a><button aria-label="Expand sidebar category &#x27;External Execution And Ingress&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/docs/category/ai-and-automation/"><span class="categoryLinkLabel_W154">AI And Automation</span></a><button aria-label="Expand sidebar category &#x27;AI And Automation&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/docs/sponsors/"><span class="linkLabel_WmDU">Sponsors</span></a></li></ul></nav></div></div></aside><main class="docMainContainer_TBSr"><div class="container padding-top--md padding-bottom--lg"><div class="row"><div class="col docItemCol_VOVn"><div class="docItemContainer_Djhp"><article><nav class="theme-doc-breadcrumbs breadcrumbsContainer_Z_bl" aria-label="Breadcrumbs"><ul class="breadcrumbs"><li class="breadcrumbs__item"><a aria-label="Home page" class="breadcrumbs__link" href="/"><svg viewBox="0 0 24 24" class="breadcrumbHomeIcon_YNFT"><path d="M10 19v-5h4v5c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-7h1.7c.46 0 .68-.57.33-.87L12.67 3.6c-.38-.34-.96-.34-1.34 0l-8.36 7.53c-.34.3-.13.87.33.87H5v7c0 .55.45 1 1 1h3c.55 0 1-.45 1-1z" fill="currentColor"></path></svg></a></li><li class="breadcrumbs__item"><a class="breadcrumbs__link" href="/docs/category/run-and-operate/"><span>Run And Operate</span></a></li><li class="breadcrumbs__item breadcrumbs__item--active"><span class="breadcrumbs__link">Self-Hosting Deployments</span></li></ul></nav><span class="theme-doc-version-badge badge badge--secondary">Version: 2.0</span><div class="tocCollapsible_ETCw theme-doc-toc-mobile tocMobile_ITEo"><button type="button" class="clean-btn tocCollapsibleButton_TO0P">On this page</button></div><div class="theme-doc-markdown markdown"><header><h1>Self-Hosting Deployments</h1></header>
+<p>Durable Workflow v2 supports several self-hosted shapes. Pick the smallest path
+that matches the environment you operate, then keep the image, database, cache,
+auth, readiness, and upgrade contract explicit.</p>
+<p>This guide covers the standalone server distribution. If you run the Laravel
+package embedded in your own app, use the package installation and configuration
+pages instead. Durable Workflow Cloud is a separate managed-service choice in
+which Cloud operates the runtime, persistence, placement, and recovery; a
+self-hosted Server is never attached to Cloud. See
+<a class="" href="/docs/polyglot/cloud-control-plane/">Cloud Managed Runtime</a>. The current
+Cloud contract is a single-region managed runtime and recovery boundary; it
+does not promise multi-region replication, automatic regional failover, or
+failback.</p>
+<p>The self-hosted Server distribution does not bundle or operate Waterline.
+Deploy Waterline separately only when you want its operator UI, and connect it
+to a Server-owned namespace using the
+<a class="" href="/docs/monitoring/#waterline-service">Waterline deployment and monitoring guide</a>.
+Cloud instead includes Managed Waterline for its managed namespace.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="deployment-support-matrix">Deployment support matrix<a href="#deployment-support-matrix" class="hash-link" aria-label="Direct link to Deployment support matrix" title="Direct link to Deployment support matrix" translate="no">​</a></h2>
+<table><thead><tr><th>Path</th><th>Start from</th><th>Supported for</th><th>Not promised by this path</th><th>Commercial support starts when</th></tr></thead><tbody><tr><td>Local development and internal non-production</td><td><a href="https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml" target="_blank" rel="noopener noreferrer" class=""><code>docker-compose.published.yml</code></a> with <code>DW_SERVER_TAG=2.0.0</code> or <code>DW_SERVER_IMAGE=durableworkflow/server:2.0.0</code></td><td>One developer machine, LAN demos, shared staging, SDK and worker integration tests</td><td>Internet-facing production, durable backup guarantees, strict secret rotation, multi-node failover</td><td>You want help turning a working dev stack into a production runbook</td></tr><tr><td>Single-node production</td><td><a href="https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml" target="_blank" rel="noopener noreferrer" class=""><code>docker-compose.published.yml</code></a> with a production env file, MySQL and Redis volumes, role-scoped tokens, backups, TLS through a reverse proxy, and pinned image tags or digests</td><td>One VM, VPS, or internal Docker host with persistent workflow state and a simple operational model</td><td>Host-level HA, automatic database failover, multi-region recovery, zero-downtime major topology changes</td><td>The deployment carries production traffic and you want review of backup, restore, auth, TLS, upgrade, or rollback procedures</td></tr><tr><td>Small clustered deployment</td><td>Published <code>durableworkflow/server</code> or <code>ghcr.io/durable-workflow/server</code> images using the <a href="https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml" target="_blank" rel="noopener noreferrer" class="">Compose recipe</a> as the container/process template, with 2-3 API nodes, shared external MySQL/PostgreSQL, shared Redis, independently scaled workers, and exactly one scheduler/maintenance runner</td><td>Horizontal API and worker capacity when one node is no longer enough; rolling upgrades when every guarantee in the <a class="" href="/docs/rolling-upgrades/">rolling-upgrade contract</a> holds</td><td>SQLite clustering, Redis-less multi-node mode, duplicate schedulers as a steady-state topology, active/active multi-writer databases, self-hosted hands-free regional failover, broad &quot;five-nines&quot; or &quot;zero-downtime&quot; SLA promises, and self-serve single-region HA failover until its <a href="#release-evidence-status" class="">release-evidence gate</a> passes</td><td>You need sizing, failure-domain, rollout, or recovery planning across more than one host, or you intend to claim the gated single-region HA behavior</td></tr><tr><td>Helm chart for Kubernetes</td><td>The <a href="https://github.com/durable-workflow/server/tree/main/k8s/helm/durable-workflow" target="_blank" rel="noopener noreferrer" class="">Server-owned Helm chart</a> from <code>oci://ghcr.io/durable-workflow/charts/durable-workflow</code>, with your external database, Redis, ingress, and secret management</td><td>A repeatable production install and upgrade path for the chart&#x27;s server, worker, singleton scheduler, bootstrap, service, probes, and policy resources</td><td>Bundled persistence, provider-managed infrastructure, active/active multi-region, custom operators, and self-serve single-region HA failover until its <a href="#release-evidence-status" class="">release-evidence gate</a> passes</td><td>You need provider-specific architecture, capacity, recovery, or changes outside the chart&#x27;s published values contract</td></tr><tr><td>Raw Kubernetes manifests</td><td>The server repository <a href="https://github.com/durable-workflow/server/tree/main/k8s" target="_blank" rel="noopener noreferrer" class=""><code>k8s/</code></a> manifests, using published server images and your existing database, Redis, ingress, and secret management</td><td>Teams that already operate Kubernetes and want inspectable manifests for API, worker, scheduler, bootstrap, service, probes, config, and secrets</td><td>The separate Helm lifecycle, managed-Kubernetes provider validation, active/active multi-region, custom operators, environment-specific storage/networking/security decisions, and self-serve single-region HA failover until its <a href="#release-evidence-status" class="">release-evidence gate</a> passes</td><td>You need overlays, managed-cluster validation, provider-specific production planning, or intend to claim the gated single-region HA behavior</td></tr><tr><td>Active/passive multi-region evaluation</td><td>A validated single-node or small-cluster deployment per region, plus asynchronous database replication from active to standby and a reviewed failover/failback runbook</td><td>Support-led architecture evaluation and environment-specific rehearsal for regional disaster recovery</td><td>A proven self-serve 2.0 contract, active/active multi-region, automatic or hands-free regional failover, synchronous cross-region replication (RPO=0), cross-region active visibility or federated search, or region-pinned task queues as an engine-enforced routing axis</td><td>Before relying on cross-region replication, failover, failback, RPO, or RTO in production</td></tr><tr><td>Support-led topologies</td><td>A reviewed design based on your environment</td><td>Self-hosted active/passive or active/active multi-region, hands-free regional failover, RPO=0 cross-writer replication, duplicate scheduler runners as a steady-state topology, bespoke security/networking, private SLOs, custom overlays, migration planning</td><td>Self-serve copy/paste operation</td><td>The topology itself is part of the product risk</td></tr></tbody></table>
+<p>The public distribution is intentionally optimized for local development,
+single-node production, and small clustered deployments. Kubernetes manifests
+are provided for teams that already operate Kubernetes. Active/passive
+multi-region material is available as a support-led evaluation guide (see
+<a href="#activepassive-multi-region" class="">Active/passive multi-region</a> below), not as a
+proven self-serve 2.0 contract.
+Single-region HA failover — managed-database failover, managed-Redis failover,
+API-node loss, worker loss, and scheduler-runner restart inside one region —
+is currently support-led while its exact-release evidence gate remains closed
+(see
+<a href="#single-region-high-availability-and-failover" class="">Single-region high availability and failover</a>
+below). For self-hosted server deployments, active/active multi-region,
+automatic regional failover, duplicate scheduler runners as a steady-state
+topology, and provider-specific managed-Kubernetes validation remain
+support-led because they depend on your database, cache, networking, security,
+runner, and upgrade choices. The published Helm chart is a self-serve packaging
+path within those same operator-owned boundaries. Cloud currently provides
+single-region managed operation and recovery, not multi-region replication or
+regional failover; see
+<a class="" href="/docs/polyglot/cloud-control-plane/">Cloud Managed Runtime</a>. See the
+<a class="" href="/docs/support/">support boundary</a> for the commercial support model.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="production-recovery-deliverables">Production recovery deliverables<a href="#production-recovery-deliverables" class="hash-link" aria-label="Direct link to Production recovery deliverables" title="Direct link to Production recovery deliverables" translate="no">​</a></h2>
+<p>Calling a topology &quot;production-ready&quot; means publishing the recovery packet for
+that topology, not just starting the containers. Keep the latest evidence in
+the same runbook as the deployment commands:</p>
+<table><thead><tr><th>Path</th><th>Minimum published recovery packet</th></tr></thead><tbody><tr><td>Single-node production</td><td>Backup schedule, pinned image or digest, env/config snapshot location, maximum accepted restore lag, and the latest successful restore rehearsal timestamp plus verification evidence.</td></tr><tr><td>Small clustered deployment</td><td>The single-node packet plus the expected impact of losing one API node, one worker node, the scheduler/maintenance runner, Redis, or the shared database; the worker re-registration steps after restore; and the documented rolling-upgrade or stop-the-world posture for the current release.</td></tr><tr><td>Helm chart for Kubernetes</td><td>The clustered packet plus chart version, values revision, image digest, cluster-specific ingress and secret owners, and the latest chart upgrade/rollback rehearsal.</td></tr><tr><td>Raw Kubernetes manifests</td><td>The clustered packet plus the cluster-specific storage, secret, ingress, and rollout owners that must be restored or re-applied before traffic is declared healthy again.</td></tr><tr><td>Single-region HA evaluation (support-led while the release-evidence gate is closed)</td><td>The clustered or raw-manifest packet plus rehearsal evidence for managed-database failover, managed-Redis failover, API-node loss, worker loss, and scheduler-runner restart, each completing within the recovery target published in the <a href="#single-region-high-availability-and-failover" class="">Single-region HA contract</a> without acknowledged-write loss.</td></tr><tr><td>Active/passive multi-region evaluation (support-led)</td><td>The per-region packet plus the database replication and fencing design, measured replication lag, operator-owned RPO/RTO, promotion and failback runbooks, and environment-specific rehearsal evidence.</td></tr></tbody></table>
+<p>If you cannot produce that packet on demand, treat the environment as staging
+until the recovery contract is written down and rehearsed. The
+<a class="" href="/docs/operator-operating-envelope/">Operator Operating Envelope</a> defines
+the restore order, verification pass, and rehearsal cadence those packets must
+follow.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="security-data-and-audit-posture">Security, Data, And Audit Posture<a href="#security-data-and-audit-posture" class="hash-link" aria-label="Direct link to Security, Data, And Audit Posture" title="Direct link to Security, Data, And Audit Posture" translate="no">​</a></h2>
+<p>Self-hosted Durable Workflow deployments inherit most security controls from
+the environment you operate. Publish these facts in the same release or runbook
+packet as the image tag, migration plan, and recovery evidence:</p>
+<table><thead><tr><th>Posture area</th><th>Honest release statement</th></tr></thead><tbody><tr><td>Data handling</td><td>Workflow arguments, results, history, memos, search attributes, visibility labels, command context, audit rows, exception messages, and operator notes can contain customer application data. Treat search attributes and labels as operator-visible metadata, not secret storage.</td></tr><tr><td>Encryption</td><td>Use TLS for every production HTTP surface. At-rest encryption comes from your database, object storage, filesystem, queue, cache, and secret manager. The workflow package and server do not automatically encrypt each payload field.</td></tr><tr><td>Compliance</td><td>The open-source package and self-hosted server provide controls and audit evidence, not a compliance certification by themselves. Claims such as SOC 2, HIPAA, PCI, ISO, or FedRAMP belong to your own program unless a hosted offering documents otherwise.</td></tr><tr><td>Audit logs</td><td>Workflow commands, schedule audit events, history export metadata, and service-call records provide durable operational evidence. They are not a complete SIEM, DLP system, immutable external ledger, or legal-hold system unless you add those components.</td></tr><tr><td>Support</td><td>Role-scoped credentials, TLS termination, backups, restore rehearsal, and narrow self-serve topologies are documented here. Advanced identity, mTLS rollout, private networking, custom policy engines, provider compliance, and bespoke topology review are support-led unless public docs say otherwise.</td></tr></tbody></table>
+<p>Network posture must be explicit:</p>
+<ul>
+<li class=""><strong>Webhook ingress:</strong> document the public endpoint, auth method, replay or
+idempotency strategy, timeout, payload limit, trusted proxy-header
+configuration, and secret rotation plan.</li>
+<li class=""><strong>Worker-to-backend traffic:</strong> use TLS verification, role-scoped worker
+credentials, namespace headers, private networking or mTLS when workers cross
+an untrusted network, and rotation that does not grant operator capabilities
+to worker tokens.</li>
+<li class=""><strong>Operator surfaces:</strong> place Waterline, standalone-server operator APIs, CLI
+automation endpoints, and custom admin panels behind authenticated sessions
+or role-scoped service credentials, with CSRF protection for browser
+sessions and documented proxy/TLS boundaries.</li>
+</ul>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="published-images">Published images<a href="#published-images" class="hash-link" aria-label="Direct link to Published images" title="Direct link to Published images" translate="no">​</a></h2>
+<p>Use published images for self-hosted server deployments:</p>
+<ul>
+<li class="">Docker Hub: <code>durableworkflow/server:2.0.0</code></li>
+<li class="">GitHub Container Registry: <code>ghcr.io/durable-workflow/server:2.0.0</code></li>
+<li class="">Digest pinning: <code>durableworkflow/server@sha256:...</code> or
+<code>ghcr.io/durable-workflow/server@sha256:...</code></li>
+</ul>
+<p>Use mutable tags only for local experiments. Production env files should pin a
+specific version tag or digest so upgrade and rollback steps are auditable.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="local-development-and-internal-non-production">Local development and internal non-production<a href="#local-development-and-internal-non-production" class="hash-link" aria-label="Direct link to Local development and internal non-production" title="Direct link to Local development and internal non-production" translate="no">​</a></h2>
+<p>Use the published-image Compose recipe when you want a source-free stack backed
+by MySQL and Redis:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/main/docker-compose.published.yml</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">export DW_SERVER_TAG=2.0.0</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">export DW_AUTH_TOKEN=dev-token</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">docker compose -f docker-compose.published.yml up -d --wait</span><br></div></code></pre></div></div>
+<p>Verify the API, readiness, cluster discovery, and worker registration:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">curl http://localhost:8080/api/health</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">curl http://localhost:8080/api/ready</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">curl -H &quot;Authorization: Bearer $DW_AUTH_TOKEN&quot; \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  http://localhost:8080/api/cluster/info</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">curl -X POST http://localhost:8080/api/worker/register \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  -H &quot;Authorization: Bearer $DW_AUTH_TOKEN&quot; \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  -H &quot;Content-Type: application/json&quot; \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  -H &quot;X-Namespace: default&quot; \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  -H &quot;X-Durable-Workflow-Protocol-Version: 1.0&quot; \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  -d &#x27;{&quot;worker_id&quot;:&quot;compose-worker&quot;,&quot;task_queue&quot;:&quot;compose&quot;,&quot;runtime&quot;:&quot;python&quot;}&#x27;</span><br></div></code></pre></div></div>
+<p>This path is safe for development and internal staging. It is not a production
+security boundary: the example uses one compatibility token, default service
+passwords, local named volumes, and no TLS.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="single-node-production">Single-node production<a href="#single-node-production" class="hash-link" aria-label="Direct link to Single-node production" title="Direct link to Single-node production" translate="no">​</a></h2>
+<p>Use the same Compose artifact with production configuration outside source
+control:</p>
+<div class="language-env codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-env codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">DW_SERVER_IMAGE=durableworkflow/server:2.0.0</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">SERVER_PORT=8080</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">APP_ENV=production</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">APP_DEBUG=false</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">DB_DATABASE=durable_workflow</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">DB_USERNAME=workflow</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">DB_PASSWORD=replace-with-random-password</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">DB_ROOT_PASSWORD=replace-with-random-root-password</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">DW_AUTH_DRIVER=token</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">DW_AUTH_BACKWARD_COMPATIBLE=false</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">DW_WORKER_TOKEN=replace-with-worker-token</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">DW_OPERATOR_TOKEN=replace-with-operator-token</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">DW_ADMIN_TOKEN=replace-with-admin-token</span><br></div></code></pre></div></div>
+<p>Start with that env file:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">docker compose --env-file durable-workflow.prod.env \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  -f docker-compose.published.yml up -d --wait</span><br></div></code></pre></div></div>
+<p>Operate the host as a production service:</p>
+<ul>
+<li class="">Put TLS, public routing, request logging, and IP allow lists in a reverse
+proxy in front of the API container.</li>
+<li class="">Do not expose MySQL or Redis publicly.</li>
+<li class="">Use <code>DW_WORKER_TOKEN</code> for workers, <code>DW_OPERATOR_TOKEN</code> for application and
+operator traffic, and <code>DW_ADMIN_TOKEN</code> for namespace and administrative work.</li>
+<li class="">Back up the MySQL volume before every image upgrade and on a regular
+schedule. Redis should be preserved for graceful restarts, but MySQL remains
+the durable workflow-history source of truth.</li>
+<li class="">Keep the exact env file, image tag or digest, and database backup together for
+restores.</li>
+</ul>
+<p>Upgrade order:</p>
+<ol>
+<li class="">Back up MySQL and record the current image reference.</li>
+<li class="">Change only <code>DW_SERVER_IMAGE</code> or <code>DW_SERVER_TAG</code>.</li>
+<li class="">Pull the new image.</li>
+<li class="">Run <code>docker compose --env-file durable-workflow.prod.env -f docker-compose.published.yml up -d --wait</code>.</li>
+<li class="">Confirm <code>/api/ready</code>, <code>/api/cluster/info</code>, and worker registration before
+shifting external traffic.</li>
+</ol>
+<p>The server README keeps the latest command-level Compose examples in the
+<a href="https://github.com/durable-workflow/server#official-image--compose" target="_blank" rel="noopener noreferrer" class="">Official Image + Compose</a>
+section.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="small-clustered-deployments">Small clustered deployments<a href="#small-clustered-deployments" class="hash-link" aria-label="Direct link to Small clustered deployments" title="Direct link to Small clustered deployments" translate="no">​</a></h2>
+<p>A small cluster is a modest extension of the single-node model. The validated
+self-serve contract is intentionally narrow:</p>
+<ul>
+<li class="">Run 2-3 stateless API containers behind a load balancer. Health,
+readiness, cluster discovery, worker registration, workflow-task polling, and
+workflow-task completion must work without sticky sessions.</li>
+<li class="">Use one shared external MySQL or PostgreSQL database for durable history.
+SQLite is single-node only and is not a clustered persistence backend.</li>
+<li class="">Use shared Redis for cache, long-poll wake signals, query-task queue locks,
+task-queue admission locks, and queue state. Redis-less multi-node mode is
+not a supported clustered contract.</li>
+<li class="">Check <code>GET /api/cluster/info</code> on each API node during rollout.
+<code>topology.current_shape</code> should remain <code>standalone_server</code>,
+<code>topology.current_roles</code> should include <code>api_ingress</code>, <code>control_plane</code>,
+<code>matching</code>, and <code>history_projection</code>, and <code>topology.execution_mode</code> should
+remain <code>remote_worker_protocol</code> for standalone server nodes. Use
+<code>topology.matching_role</code> to confirm the matching path you actually deployed:
+default nodes report <code>queue_wake_enabled: true</code>, <code>shape: &quot;in_worker&quot;</code>, and
+<code>wake_owner: &quot;worker_loop&quot;</code>, while dedicated matching rollouts flip nodes
+with <code>DW_V2_MATCHING_ROLE_QUEUE_WAKE=0</code> to <code>queue_wake_enabled: false</code>,
+<code>shape: &quot;dedicated&quot;</code>, and <code>wake_owner: &quot;dedicated_repair_pass&quot;</code>. The same
+block should continue to advertise the intended <code>task_dispatch_mode</code>, the
+frozen routing axes in <code>partition_primitives</code>, and the current
+<code>backpressure_model</code>. See
+<a class="" href="/docs/polyglot/server-role-topology/">Server Role Topology</a> for the
+field-by-field meaning of the topology manifest.</li>
+<li class="">Scale external SDK workers independently from API nodes. Workers can run on
+separate hosts or processes, but they should talk to the load-balanced API
+endpoint rather than to one sticky node.</li>
+<li class="">Configure <a class="" href="/docs/polyglot/task-queue-admission/">task queue admission</a>
+for queues that protect a tenant, external API, database pool, or other
+shared downstream dependency.</li>
+<li class="">Run exactly one scheduler or maintenance process for schedule evaluation,
+activity-timeout enforcement, and history pruning.</li>
+<li class="">Run bootstrap/migrations once per rollout before new API and worker
+containers accept traffic.</li>
+<li class="">Choose a rollout posture for this release: stop-the-world (drain workers,
+stop scheduler/maintenance, replace API nodes, run bootstrap/migrations,
+then restart workers and the scheduler) or
+<a class="" href="/docs/rolling-upgrades/">rolling upgrades</a> when every guarantee on
+that contract holds.</li>
+<li class="">Treat the database and Redis as the primary failure domains. The server
+containers are replaceable; the persistence and coordination layers are not.</li>
+</ul>
+<p>The published self-serve recipes start in the <code>standalone_server</code> shape even
+though cluster discovery also names <code>split_control_execution</code> as a supported
+product topology. Treat that as one contract with different role assignments,
+not as a second server product. If you pilot a more explicit role split later,
+keep reading <code>topology.current_shape</code>, <code>topology.current_roles</code>, and
+<code>topology.matching_role</code> from <code>/api/cluster/info</code> instead of inferring duties
+from hostnames or container names. The
+<a class="" href="/docs/polyglot/server-role-topology/">Server Role Topology</a> page explains
+those role assignments and the migration path in one place.</p>
+<p>Every API node should use the same auth tokens or signature keys, app version,
+workflow package version, payload-codec configuration, database connection, and
+Redis connection. Give each API node a unique <code>DW_SERVER_ID</code> so cluster
+discovery and logs can distinguish the nodes.</p>
+<p>The unsupported boundaries are explicit: SQLite clustering, Redis-less
+multi-node mode, duplicate schedulers as a steady-state topology, active/active
+multi-writer databases, self-hosted hands-free regional failover,
+and broad &quot;five-nines&quot; or &quot;zero-downtime&quot; SLA promises need separate
+validation or support-led design before you rely on them. Active/passive
+multi-region guidance is also support-led evaluation material; see
+<a href="#activepassive-multi-region" class="">Active/passive multi-region</a> below.
+Single-region HA failover — managed-database failover, managed-Redis failover,
+API-node loss, worker loss, and scheduler-runner restart inside one region —
+is a support-led evaluation contract until the release-evidence gate passes;
+see
+<a href="#single-region-high-availability-and-failover" class="">Single-region high availability and failover</a>
+below for the engine recovery targets, the readiness rules during a failover,
+and the evidence required to open that gate.</p>
+<p>This path is self-serve when your team already has a clear VM, network,
+database, cache, backup, and load-balancer model. It becomes support-led when
+you need help deciding those boundaries, capacity, rollout order, or recovery
+procedures.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="helm-chart-for-kubernetes">Helm chart for Kubernetes<a href="#helm-chart-for-kubernetes" class="hash-link" aria-label="Direct link to Helm chart for Kubernetes" title="Direct link to Helm chart for Kubernetes" translate="no">​</a></h2>
+<p>The Server repository owns the
+<a href="https://github.com/durable-workflow/server/tree/main/k8s/helm/durable-workflow" target="_blank" rel="noopener noreferrer" class="">chart source and release guidance</a>.
+Install the published chart from the OCI registry:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">helm install durable-workflow \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  oci://ghcr.io/durable-workflow/charts/durable-workflow \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  --namespace durable-workflow --create-namespace \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  -f my-values.yaml</span><br></div></code></pre></div></div>
+<p>Your values file must point to an external MySQL/PostgreSQL database and
+external Redis, provide production credentials through existing Kubernetes
+Secrets, and configure ingress/TLS for your environment. The chart does not
+create persistence or provider-managed infrastructure. For reproducible
+production deployments, add <code>--version &lt;validated-chart-version&gt;</code> and pin the
+Server image by digest. The Server repository publishes chart versions and
+documents chart upgrades alongside the chart source.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="kubernetes-manifests">Kubernetes manifests<a href="#kubernetes-manifests" class="hash-link" aria-label="Direct link to Kubernetes manifests" title="Direct link to Kubernetes manifests" translate="no">​</a></h2>
+<p>The server repository includes raw manifests under
+<a href="https://github.com/durable-workflow/server/tree/main/k8s" target="_blank" rel="noopener noreferrer" class=""><code>k8s/</code></a> for teams
+that already operate Kubernetes:</p>
+<ul>
+<li class="">Namespace and shared labels</li>
+<li class="">ConfigMap and Secret split</li>
+<li class="">Bootstrap/migration Job</li>
+<li class="">API Deployment and Service</li>
+<li class="">Worker Deployment</li>
+<li class="">Scheduler CronJob</li>
+<li class="">PodDisruptionBudget</li>
+<li class=""><code>/api/health</code> liveness and <code>/api/ready</code> readiness probes</li>
+<li class="">Conservative resource requests and limits</li>
+</ul>
+<p>Before applying the manifests, replace the image tag with a specific published
+version or digest, provide real database and Redis credentials, and wire the
+ConfigMap values to the services your cluster already operates. The manifests
+are intentionally raw and inspectable; they are not a Helm chart and do not
+promise generic managed-Kubernetes behavior.</p>
+<p>For a Kubernetes production rollout, prove at minimum:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">kubectl -n durable-workflow wait --for=condition=complete job/durable-workflow-migrate --timeout=180s</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">kubectl -n durable-workflow rollout status deploy/durable-workflow-server</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">kubectl -n durable-workflow rollout status deploy/durable-workflow-worker</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">kubectl -n durable-workflow port-forward svc/durable-workflow-server 8080:8080</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">curl http://localhost:8080/api/ready</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">curl -H &quot;Authorization: Bearer $DW_ADMIN_TOKEN&quot; http://localhost:8080/api/cluster/info</span><br></div></code></pre></div></div>
+<p>Single-region HA failover — managed-database failover, managed-Redis failover,
+API-node loss, worker loss, and scheduler-runner restart inside one region —
+remains support-led on the raw-manifest path just as it does on the small-cluster
+path while the release-evidence gate is closed. The intended contract requires
+the readiness, singleton-scheduler, and shared-substrate rules in
+<a href="#single-region-high-availability-and-failover" class="">Single-region high availability and failover</a>
+below. Provider-specific load balancers, storage classes, network policies,
+active/active multi-region, and self-hosted hands-free regional failover remain
+support-led or tracked separately from the raw-manifest contract. Use the
+separately versioned Helm path above when you want Helm-managed installation
+and upgrades.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="single-region-high-availability-and-failover">Single-region high availability and failover<a href="#single-region-high-availability-and-failover" class="hash-link" aria-label="Direct link to Single-region high availability and failover" title="Direct link to Single-region high availability and failover" translate="no">​</a></h2>
+<p>Single-region HA failover is currently an <strong>unverified, support-led</strong> contract
+candidate layered on the small-cluster shape and the raw Kubernetes shape. It
+targets the failure modes that the engine is designed to survive <strong>inside one
+region</strong>: managed-database failover (RDS
+Multi-AZ, Aurora cluster failover, Cloud SQL HA, Patroni promotion, etc.),
+managed-Redis failover (Sentinel, Elasticache replication-group failover,
+Memorystore HA, etc.), API-node loss, worker loss, and
+scheduler/maintenance runner restart. Cross-region active/passive recovery is
+a different, support-led evaluation; see
+<a href="#activepassive-multi-region" class="">Active/passive multi-region</a> below.</p>
+<p>The intended contract — engine behavior, readiness rules, the per-event
+recovery targets, the split-brain prevention rules, and the rehearsal
+acceptance test — lives in the workflow library at
+<a href="https://github.com/durable-workflow/workflow/blob/main/docs/deployment/ha-failover.md" target="_blank" rel="noopener noreferrer" class=""><code>docs/deployment/ha-failover.md</code></a>
+and the standalone server at
+<a href="https://github.com/durable-workflow/server/blob/main/docs/ha-failover-validation.md" target="_blank" rel="noopener noreferrer" class=""><code>docs/ha-failover-validation.md</code></a>.
+This section is the public surface of those documents.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="release-evidence-status">Release-evidence status<a href="#release-evidence-status" class="hash-link" aria-label="Direct link to Release-evidence status" title="Direct link to Release-evidence status" translate="no">​</a></h3>
+<p>No passing exact-release result is linked for the documented public server
+release. The recorded released-image attempt stopped during <code>topology_start</code>
+while waiting for API readiness, before any failure-matrix or recovery-bound
+claim could be established. Do not treat the runner&#x27;s presence, its scenario
+manifest, or a deployment-specific rehearsal as evidence that the released
+image has passed the full matrix. Single-region HA therefore remains
+support-led.</p>
+<p>Self-serve wording is authorized only after a source-free run uses the exact
+documented server release for the image, runner, and Compose topology and
+publishes a <code>single-region-failover-result.json</code> with <code>outcome: &quot;pass&quot;</code>,
+<code>runner_blocked: false</code>, every entry in <code>phase_outcomes</code> at <code>status: &quot;pass&quot;</code>,
+every recovery-bound verdict passing, and evidence for every required scenario
+in the public
+<a href="/assets/files/single-region-failover-scenarios-3d2cf6a2e7b5b21ae6846bfc7b7be484.json/" target="_blank" class="">single-region failover scenario manifest</a>.
+That public passing result must be linked from this status section and must name
+the same server image as <code>durableworkflow/server:2.0.0</code>. Until all of those
+conditions hold, the recovery bounds below are evaluation targets rather than
+released-image validation claims.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="candidate-topology">Candidate topology<a href="#candidate-topology" class="hash-link" aria-label="Direct link to Candidate topology" title="Direct link to Candidate topology" translate="no">​</a></h3>
+<p>The intended HA contract applies when the deployment matches the small-cluster
+shape or the raw-manifest shape and the operator preserves three rules:</p>
+<ul>
+<li class=""><strong>One writable workflow database endpoint, always.</strong> Managed failover
+(RDS Multi-AZ, Aurora cluster failover, Cloud SQL HA, Patroni, etc.) is
+permitted on the rule that the previous primary is fenced — revoke the
+write user, demote with <code>read_only=on</code>, sever replication, or restore from
+a known-good snapshot — before it can re-attach. A connection proxy (RDS
+Proxy, ProxySQL, PgBouncer) between the API/scheduler containers and the
+database is permitted; it does not change any guarantee, because the
+engine&#x27;s contract is on the connection it sees.</li>
+<li class=""><strong>One Redis endpoint at a time, with a documented promotion path.</strong>
+Managed-Redis failover (Sentinel, Elasticache replication-group failover,
+Memorystore HA, etc.) is permitted. Redis is the acceleration layer, not
+the correctness substrate, so a Redis failover is a latency event, never a
+correctness event.</li>
+<li class=""><strong>One scheduler/maintenance runner, always.</strong> The orchestrator (Compose
+service with <code>deploy.replicas: 1</code>, systemd unit guarded by a host-level
+lease, or Kubernetes <code>Deployment</code> with <code>replicas: 1</code> and
+<code>RollingUpdate.maxSurge: 0</code>) is responsible for keeping the singleton
+invariant during restart. Duplicate scheduler runners as a steady-state
+topology are not in this contract.</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="per-event-behavior-and-recovery-targets">Per-event behavior and recovery targets<a href="#per-event-behavior-and-recovery-targets" class="hash-link" aria-label="Direct link to Per-event behavior and recovery targets" title="Direct link to Per-event behavior and recovery targets" translate="no">​</a></h3>
+<p>The intended engine contract defines bounded recovery targets for each event
+class. These are not released-image guarantees while the release-evidence gate
+is closed. The wall-clock recovery time the operator observes is the engine
+target plus the managed service&#x27;s own promotion latency.</p>
+<table><thead><tr><th>Event</th><th>Candidate engine behavior</th><th>Recovery target (after substrate / runner is back)</th></tr></thead><tbody><tr><td>Managed-database failover</td><td>Writes return errors and are not silently buffered. Reads return errors. <code>/api/ready</code> fails on every API node and on the scheduler. No acknowledged work is lost.</td><td>One connection-pool reconnect, plus one <code>task_repair</code> cadence (default 3s), plus one long-poll timeout (default 30s, max 60s) for in-flight pollers.</td></tr><tr><td>Managed-Redis failover</td><td>Wake signals dropped → discovery falls back to long-poll timeout. Acceleration-layer health checks go to <strong>warning</strong>, not error. <code>/api/ready</code> typically stays green.</td><td>Redis client reconnect interval.</td></tr><tr><td>API node loss (1 of N)</td><td>Load balancer removes the failed node within its readiness interval. In-flight requests against it fail at the LB and are retried by the client.</td><td>Load-balancer readiness interval (operator-controlled, typically 5–10s).</td></tr><tr><td>Worker loss</td><td>Tasks held by the failed worker pause until lease expiry. Other workers continue claiming their own tasks.</td><td>Lease expiry (5 min for activity tasks), plus one <code>task_repair</code> cadence.</td></tr><tr><td>Scheduler/maintenance restart</td><td>Schedule fires pause; activity-timeout enforcement pauses; history pruning pauses. All three resume on the next tick after restart. No duplicate fires occur because the runner is a singleton.</td><td>Orchestrator restart latency, plus one scheduler tick.</td></tr></tbody></table>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="load-balancer-readiness-and-traffic-shift-rules">Load-balancer, readiness, and traffic-shift rules<a href="#load-balancer-readiness-and-traffic-shift-rules" class="hash-link" aria-label="Direct link to Load-balancer, readiness, and traffic-shift rules" title="Direct link to Load-balancer, readiness, and traffic-shift rules" translate="no">​</a></h3>
+<p>The load balancer in front of the API nodes is the single decision point
+for traffic admission during a failover:</p>
+<ul>
+<li class="">Wire the load balancer to <strong><code>GET /api/ready</code></strong>, not <code>/api/health</code> alone.
+<code>/api/health</code> only proves the process is serving HTTP; <code>/api/ready</code> proves
+the server can use its durable database and reports whether Redis wake
+acceleration is healthy or degraded. During a database outage <code>/api/ready</code>
+correctly fails on every node — the load balancer MUST tolerate the all-down
+state rather than fall back to a stale &quot;last known good&quot; roster.</li>
+<li class="">Use a check interval of 5–10 seconds and a removal threshold of 2–3
+consecutive failures.</li>
+<li class="">Do not require sticky sessions; the small-cluster smoke proves an
+external worker can poll <code>server-a</code> and complete on <code>server-b</code>.</li>
+<li class="">During a Redis-only failover, readiness remains green on every node while
+the database-backed durable paths are available. Acceleration-layer
+degradation surfaces as <code>checks.cache.status=warning</code> with
+<code>checks.cache.degraded_capability=long_poll_wake_acceleration</code>; do not
+configure the load balancer to remove nodes on that warning.</li>
+</ul>
+<p>After substrate recovery, the recommended verification sequence is to wait
+for at least one node&#x27;s <code>/api/ready</code> to return 200, curl <code>/api/cluster/info</code>
+through the load balancer with an admin token to confirm the topology
+manifest, issue <code>POST /api/worker/register</code> for a probe worker through the
+load-balanced endpoint, confirm exactly one scheduler runner is alive in
+its orchestrator, and resume external traffic.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="run-the-exact-artifact-rehearsal">Run the exact-artifact rehearsal<a href="#run-the-exact-artifact-rehearsal" class="hash-link" aria-label="Direct link to Run the exact-artifact rehearsal" title="Direct link to Run the exact-artifact rehearsal" translate="no">​</a></h3>
+<p>The server release includes a reusable baseline rehearsal intended to exercise
+the full failure matrix without building product code from a checkout. The
+runner and Compose topology must come from the same release tag as the server
+image; do not combine a moving default-branch checkout with an arbitrary image.
+On a clean host with Docker Engine, Docker Compose v2, Python 3.11 or newer, and
+public registry access, run:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">export DW_SERVER_RELEASE=2.0.0</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">git clone --depth 1 --single-branch --branch &quot;$DW_SERVER_RELEASE&quot; \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  https://github.com/durable-workflow/server.git &quot;server-$DW_SERVER_RELEASE&quot;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">cd &quot;server-$DW_SERVER_RELEASE&quot;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">export DW_SERVER_IMAGE=&quot;durableworkflow/server:$DW_SERVER_RELEASE&quot;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">scripts/conformance/single-region-failover-published-artifacts.sh \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  --result-dir ./failover-result</span><br></div></code></pre></div></div>
+<p>This path deliberately derives the checkout and <code>DW_SERVER_IMAGE</code> from one
+release variable. Do not override the image independently; select a different
+release by changing <code>DW_SERVER_RELEASE</code> before cloning. The runner requires a
+concrete public server tag or digest, pulls every
+supporting image, resolves all runtime images to repository digests, and
+rejects Compose build sections, product-source bind mounts, and local or
+rolling server references. It starts exactly two API nodes behind one nginx
+endpoint, one MySQL database, one Redis service, and one scheduler/maintenance
+runner.</p>
+<p>The resulting <code>single-region-failover-result.json</code> uses schema
+<code>durable-workflow.v2.single-region-failover.result</code>. It records exact artifact
+and tool versions, normalized topology, readiness transitions, measured
+recovery times and bound verdicts, workflow/run/task/schedule identities, and
+duplicate/loss assertions for cross-node completion, API-node loss, database
+interruption, Redis interruption, worker lease loss, and singleton-scheduler
+restart. External runners discover the invocation and public scenario manifest
+from <code>GET /api/cluster/info</code> at <code>single_region_failover_contract</code>.</p>
+<p>A result validates engine-visible interruption and recovery against the
+released image only when it passes the release-evidence gate above. A failed,
+partial, or runner-blocked result is diagnostic evidence, not validation. Even
+a passing baseline does not turn a local MySQL or Redis container restart into
+evidence for a cloud provider&#x27;s promotion mechanism. Keep provider-native
+promotion, fencing, RPO, and elapsed-time evidence alongside the baseline
+result before claiming managed-service HA.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="recovery-packet-additions">Recovery packet additions<a href="#recovery-packet-additions" class="hash-link" aria-label="Direct link to Recovery packet additions" title="Direct link to Recovery packet additions" translate="no">​</a></h3>
+<p>A small-cluster or raw-manifest deployment that claims this contract MUST
+extend its recovery packet (per the
+<a class="" href="/docs/operator-operating-envelope/">Operator Operating Envelope</a>) with
+rehearsal evidence for each event class:</p>
+<ul>
+<li class="">a managed-database failover that completes without acknowledged-write
+loss and within the bounded recovery time above;</li>
+<li class="">a managed-Redis failover that does not flap the load-balancer rotation,
+does not lose any acknowledged work, and surfaces
+<code>checks.cache.status=warning</code> with <code>long_poll_wake_acceleration</code> as the
+degraded capability;</li>
+<li class="">an API-node loss event that the load balancer absorbs within the
+configured readiness interval, with no acknowledged-write loss;</li>
+<li class="">a worker-loss event that preserves the durable run through lease expiry,
+reclaims it after the configured repair bound, and completes it exactly once;</li>
+<li class="">a scheduler-runner restart on a different host that fires no duplicate
+schedules and leaves no schedule unevaluated past its <code>next_fire_at</code>
+plus one tick.</li>
+</ul>
+<p>While the release-evidence gate is closed, every deployment remains support-led
+even if its own rehearsal passes. After a public all-phase result opens the
+release gate, a deployment becomes self-serve under this contract only after
+its environment-specific rehearsal evidence is recorded in the operator&#x27;s
+recovery packet and refreshed on the cadence the Operator Operating Envelope
+publishes.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="boundary-against-unsupported-ha-claims">Boundary against unsupported HA claims<a href="#boundary-against-unsupported-ha-claims" class="hash-link" aria-label="Direct link to Boundary against unsupported HA claims" title="Direct link to Boundary against unsupported HA claims" translate="no">​</a></h3>
+<p>The single-region HA contract is intentionally narrow. The following remain
+<strong>outside</strong> it and continue to require a support-led design pass; the
+topology itself is part of the product risk:</p>
+<ul>
+<li class="">active/active multi-writer database topologies;</li>
+<li class="">active/passive multi-region and automatic or hands-free regional failover
+for self-hosted topologies (the
+<a href="#activepassive-multi-region" class="">next section</a> preserves evaluation guidance);</li>
+<li class="">synchronous cross-region database replication (RPO=0);</li>
+<li class="">duplicate scheduler/maintenance runners as a steady-state topology;</li>
+<li class="">engine-enforced region-pinned task queues as a routing axis;</li>
+<li class="">provider-specific managed-Kubernetes validation beyond the published
+chart&#x27;s packaging contract;</li>
+<li class="">broad &quot;five-nines&quot; or &quot;zero-downtime&quot; SLA promises beyond the bounded
+recovery times above.</li>
+</ul>
+<p>The contract is <em>bounded recovery during named events</em>, not an uptime
+promise that depends on the operator&#x27;s database, network, and orchestrator
+choices. Marketing or SLA language for self-hosted deployments MUST NOT
+cross that line without dedicated validation.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="activepassive-multi-region">Active/passive multi-region<a href="#activepassive-multi-region" class="hash-link" aria-label="Direct link to Active/passive multi-region" title="Direct link to Active/passive multi-region" translate="no">​</a></h2>
+<p>Active/passive multi-region is <strong>support-led evaluation guidance</strong>, not a
+proven self-serve contract in the supported 2.0 operating envelope. Use this
+section to review a candidate architecture and build an environment-specific
+rehearsal with support before relying on it in production. Each region still
+starts from a documented single-node, small-cluster, or raw Kubernetes path,
+but those single-region contracts do not establish cross-region replication,
+failover, failback, RPO, RTO, or split-brain behavior. The deeper design
+material — data authority, replication assumptions,
+namespace/task-queue/worker behavior, the failover and failback runbook,
+fencing, and the consistency/latency tradeoffs — lives in the workflow library
+at
+<a href="https://github.com/durable-workflow/workflow/blob/main/docs/deployment/multi-region.md" target="_blank" rel="noopener noreferrer" class=""><code>docs/deployment/multi-region.md</code></a>
+and the standalone server at
+<a href="https://github.com/durable-workflow/server/blob/main/docs/multi-region-validation.md" target="_blank" rel="noopener noreferrer" class=""><code>docs/multi-region-validation.md</code></a>.</p>
+<p>The candidate shape to evaluate:</p>
+<ul>
+<li class="">One <strong>active region</strong> running the validated single-node or small-cluster
+contract: API container(s) behind a load balancer, shared external MySQL or
+PostgreSQL as the writable durable database, shared Redis, exactly one
+scheduler/maintenance runner, and external workers.</li>
+<li class="">One <strong>standby region</strong> holding an asynchronously replicated standby of the
+workflow database, optional standby Redis, no scheduler/maintenance
+process, and zero or more pre-provisioned API/worker containers that are
+idle until promotion.</li>
+<li class="">A <strong>regional failover</strong> that is explicit operator work: stop write traffic
+to the failed region, confirm replication state against the published
+RPO, promote the standby database, run any release-required migrations on
+the new primary, start the singleton scheduler/maintenance runner in the
+new active region, switch worker endpoints, switch external traffic, and
+rebuild any derived projections. There is no automatic cross-region
+cutover.</li>
+<li class="">A <strong>failback</strong> that runs the same sequence in reverse once the original
+region returns to service, with the recovered primary fenced (revoke
+write user, demote with <code>read_only=on</code>, sever replication, or restore
+from a known-good snapshot) before re-attaching as a standby.</li>
+</ul>
+<p>Data authority and replication assumptions:</p>
+<ul>
+<li class="">The workflow database is the single durable source of truth and is
+region-bound: exactly one region writes to it at any given time. The
+standby region&#x27;s database is a read replica until promotion. Recovery
+point objective (RPO) is the asynchronous replication lag; recovery time
+objective (RTO) is operator runbook execution time.</li>
+<li class="">Redis is region-local acceleration. Wake signals, query-task queue
+locks, and admission locks do not propagate across regions and must not
+be expected to. Each region runs its own Redis; the standby&#x27;s cache is
+cold or warm at the operator&#x27;s discretion and correctness does not
+depend on it being preserved across the failover.</li>
+<li class="">Visibility is served by the active region&#x27;s database. Promote first,
+then read.</li>
+</ul>
+<p>Namespace, task-queue, and worker-registration behavior:</p>
+<ul>
+<li class="">Namespaces and task queues are stored in the workflow database and
+survive promotion exactly as they were at the last replicated commit.
+They are not regionally partitioned by the engine.</li>
+<li class="">Workers in the new active region register against the local API
+endpoint after promotion. Pre-existing registrations from the failed
+region remain in the database and expire through the normal
+worker-expiry path.</li>
+<li class="">Build-id rollouts and deployment-lifecycle state survive failover
+because they live in the workflow database.</li>
+</ul>
+<p>Consistency and latency tradeoffs in steady state:</p>
+<ul>
+<li class="">Workflow starts, signals, and updates commit against the active
+region&#x27;s database; their latency is the active-region commit latency,
+and they are refused while authority is being withdrawn during a
+failover.</li>
+<li class="">Workflow-task and activity-task delivery follow the single-region
+acceleration contract inside the active region: sub-second when Redis
+is healthy, durable poll cadence otherwise.</li>
+<li class="">Schedules fire from the singleton scheduler in the active region and
+pause while no scheduler is running; fires resume from durable
+schedule rows after promotion.</li>
+<li class="">Visibility reads are read-after-write within the active region only;
+the engine does not provide cross-region read-your-writes or RPO=0.</li>
+</ul>
+<p>The disaster-recovery boundary is explicit: this candidate design is not a
+substitute for backups or evidence. The recovery packet documented in
+<a class="" href="/docs/operator-operating-envelope/">Operator Operating Envelope</a>
+remains required, with replication-lag SLO, promotion-runbook latency,
+last successful failover rehearsal date, and the fencing procedure for
+the recovered primary added on top.</p>
+<p>For self-hosted deployments, active/passive and active/active multi-region,
+automatic regional failover, synchronous cross-region replication (RPO=0),
+cross-region active visibility, and region-pinned task queues as an
+engine-enforced routing axis remain
+<a class="" href="/docs/support/">support-led</a> because the topology itself is part of the
+product risk. The current
+<a class="" href="/docs/polyglot/cloud-control-plane/">Cloud managed-runtime contract</a> is
+single-region and does not supply those multi-region guarantees.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="readiness-contract">Readiness contract<a href="#readiness-contract" class="hash-link" aria-label="Direct link to Readiness contract" title="Direct link to Readiness contract" translate="no">​</a></h2>
+<p>Use both health and readiness checks:</p>
+<ul>
+<li class=""><code>GET /api/health</code> proves the process is serving HTTP.</li>
+<li class=""><code>GET /api/ready</code> proves the server can use its configured runtime
+dependencies, including migrations and default namespace readiness.</li>
+<li class=""><code>GET /api/cluster/info</code> proves an authenticated client can discover build
+identity, control-plane protocol, worker protocol, payload codecs, and server
+capabilities.</li>
+<li class=""><code>POST /api/worker/register</code> proves workers can authenticate into the expected
+namespace and task queue.</li>
+</ul>
+<p>Do not shift traffic based on <code>/api/health</code> alone.</p></div><footer class="theme-doc-footer docusaurus-mt-lg"><div class="row margin-top--sm theme-doc-footer-edit-meta-row"><div class="col noPrint_WFHX"><a href="https://github.com/durable-workflow/durable-workflow.github.io/edit/main/docs/deployment.md" target="_blank" rel="noopener noreferrer" class="theme-edit-this-page"><svg fill="currentColor" height="20" width="20" viewBox="0 0 40 40" class="iconEdit_Z9Sw" aria-hidden="true"><g><path d="m34.5 11.7l-3 3.1-6.3-6.3 3.1-3q0.5-0.5 1.2-0.5t1.1 0.5l3.9 3.9q0.5 0.4 0.5 1.1t-0.5 1.2z m-29.5 17.1l18.4-18.5 6.3 6.3-18.4 18.4h-6.3v-6.2z"></path></g></svg>Edit this page</a></div><div class="col lastUpdated_JAkA"></div></div></footer></article><nav class="docusaurus-mt-lg pagination-nav" aria-label="Docs pages"><a class="pagination-nav__link pagination-nav__link--prev" href="/docs/category/run-and-operate/"><div class="pagination-nav__sublabel">Previous</div><div class="pagination-nav__label">Run And Operate</div></a><a class="pagination-nav__link pagination-nav__link--next" href="/docs/rolling-upgrades/"><div class="pagination-nav__sublabel">Next</div><div class="pagination-nav__label">Rolling Upgrades</div></a></nav></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#deployment-support-matrix" class="table-of-contents__link toc-highlight">Deployment support matrix</a></li><li><a href="#production-recovery-deliverables" class="table-of-contents__link toc-highlight">Production recovery deliverables</a></li><li><a href="#security-data-and-audit-posture" class="table-of-contents__link toc-highlight">Security, Data, And Audit Posture</a></li><li><a href="#published-images" class="table-of-contents__link toc-highlight">Published images</a></li><li><a href="#local-development-and-internal-non-production" class="table-of-contents__link toc-highlight">Local development and internal non-production</a></li><li><a href="#single-node-production" class="table-of-contents__link toc-highlight">Single-node production</a></li><li><a href="#small-clustered-deployments" class="table-of-contents__link toc-highlight">Small clustered deployments</a></li><li><a href="#helm-chart-for-kubernetes" class="table-of-contents__link toc-highlight">Helm chart for Kubernetes</a></li><li><a href="#kubernetes-manifests" class="table-of-contents__link toc-highlight">Kubernetes manifests</a></li><li><a href="#single-region-high-availability-and-failover" class="table-of-contents__link toc-highlight">Single-region high availability and failover</a><ul><li><a href="#release-evidence-status" class="table-of-contents__link toc-highlight">Release-evidence status</a></li><li><a href="#candidate-topology" class="table-of-contents__link toc-highlight">Candidate topology</a></li><li><a href="#per-event-behavior-and-recovery-targets" class="table-of-contents__link toc-highlight">Per-event behavior and recovery targets</a></li><li><a href="#load-balancer-readiness-and-traffic-shift-rules" class="table-of-contents__link toc-highlight">Load-balancer, readiness, and traffic-shift rules</a></li><li><a href="#run-the-exact-artifact-rehearsal" class="table-of-contents__link toc-highlight">Run the exact-artifact rehearsal</a></li><li><a href="#recovery-packet-additions" class="table-of-contents__link toc-highlight">Recovery packet additions</a></li><li><a href="#boundary-against-unsupported-ha-claims" class="table-of-contents__link toc-highlight">Boundary against unsupported HA claims</a></li></ul></li><li><a href="#activepassive-multi-region" class="table-of-contents__link toc-highlight">Active/passive multi-region</a></li><li><a href="#readiness-contract" class="table-of-contents__link toc-highlight">Readiness contract</a></li></ul></div></div></div></div></main></div></div></div><div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="row footer__links"><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Docs</div><ul class="footer__items clean-list"><li class="footer__item"><a class="footer__link-item" href="/docs/introduction/">Introduction</a></li><li class="footer__item"><a class="footer__link-item" href="/docs/installation/">Installation</a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Community</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://discord.gg/xu5aDDpqVy" target="_blank" rel="noopener noreferrer" class="footer__link-item">Discord<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://x.com/DurableWorkflow" target="_blank" rel="noopener noreferrer" class="footer__link-item">X<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">More</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://durable-workflow.com/llms-full.txt" target="_blank" rel="noopener noreferrer" class="footer__link-item">LLM Docs<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://packagist.org/packages/durable-workflow/workflow" target="_blank" rel="noopener noreferrer" class="footer__link-item">Packagist<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div></div><div class="footer__bottom text--center"><div class="footer__copyright">Copyright © 2026 <a href="https://durable-workflow.com">Durable Workflow</a>.</div></div></div></footer></div></div>
+</body>
+</html>
