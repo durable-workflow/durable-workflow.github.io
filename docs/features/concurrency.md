@@ -184,8 +184,7 @@ can enrich partial diagnostics without changing the failed member already
 selected by the embedded runtime's deterministic policy.
 
 The embedded runtime raises the typed leaf failure from `all()` and retains
-the barrier's durable group metadata in
-history and operator views.
+the barrier's durable group metadata in history and operator views.
 
 ## Async Callback
 

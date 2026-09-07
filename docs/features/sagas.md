@@ -6,7 +6,7 @@ sidebar_position: 11
 
 This guide covers compensation in embedded Laravel workflows using
 `Workflow\V2\Workflow`. For service-mode workers, use the
-[PHP SDK guide](https://php.durable-workflow.com/build/workflows-activities/#compensate-completed-work-with-a-saga),
+[PHP SDK guide](https://php.durable-workflow.com/build/workflows-activities/),
 [Python SDK guide](https://python.durable-workflow.com/sdk-reference/#saga-compensation), or
 [Rust SDK reference](https://rust.durable-workflow.com/durable_workflow/struct.Saga.html).
 
