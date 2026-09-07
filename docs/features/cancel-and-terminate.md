@@ -4,35 +4,23 @@ sidebar_position: 16
 
 # Cancel and Terminate
 
+This guide covers the embedded Laravel `Workflow\V2\WorkflowStub` API. For
+service-mode clients and workers, use the
+[PHP SDK guide](https://php.durable-workflow.com/),
+[Python cancellation reference](https://python.durable-workflow.com/reference/errors/#durable_workflow.errors.ActivityCancelled), or
+[Rust lifecycle API](https://rust.durable-workflow.com/durable_workflow/struct.Client.html#method.cancel_workflow).
+
 Cancel and terminate are first-class durable commands that close a running workflow. Both are recorded in command history, appear in typed history events, and surface in Waterline.
 
-The key difference: **cancel** is a request that the workflow observe and gracefully close, while **terminate** is a direct terminal closure that does not schedule further workflow code.
-
-## Published Rust lifecycle boundary
-
-The public
-[workflow-lifecycle scenario manifest](https://durable-workflow.github.io/platform-conformance/workflow-lifecycle-scenarios.json)
-defines the released lifecycle evidence contract. Current validation uses
-Server with the crates.io `durable-workflow` crate from the stable 2.0 release
-line.
-
-At that boundary, cancellation and termination must produce typed terminal
-outcomes with workflow and run identity. Run-scoped commands must preserve
-selected-run safety and reject a historical run with a typed stable reason.
-Activity cancellation must be visible through heartbeat state; a late
-completion must be refused after the run closes; and a worker restart during
-pending cancellation must not reclaim the cancelled activity.
-
-The exact-crate shard records Cargo registry provenance for both
-`durable-workflow` and the official `apache-avro` crate used by the SDK's Avro
-payload envelope. It does not substitute a custom codec or local product
-source for the published payload implementation. See the
-[Rust SDK lifecycle API](/docs/polyglot/rust#cancel-terminate-and-handle-terminal-outcomes)
-for the selected-run commands and typed outcome variants.
+In the current embedded API, both commands close the run immediately. **Cancel**
+records a `cancelled` outcome; **terminate** records a `terminated` outcome.
+Neither command schedules cleanup inside the closed workflow. If your
+application needs durable compensation first, signal the workflow to run that
+cleanup before closing it.
 
 ## Cancel
 
-Cancel requests that a running workflow close gracefully. Cancel immediately transitions the run to `cancelled` and records durable history.
+Cancel immediately transitions the run to `cancelled` and records durable history.
 
 ```php
 use Workflow\V2\WorkflowStub;
@@ -162,29 +150,15 @@ The response includes the command outcome, the public instance id, and the reaso
 
 ## Cancellation is not an error you catch by accident
 
-Cancellation is a control-plane outcome, not a bug. An activity or workflow that is cancelled did not fail — the caller (or an operator, or a parent workflow) asked for it to stop. To keep that signal from being swallowed by a generic catch-all, the SDKs put the cancellation exception classes **outside** the normal error hierarchy:
+Cancellation is an explicit lifecycle outcome, not an unexpected application
+error. The embedded package's
+`Workflow\V2\Exceptions\WorkflowCancelledException` extends `\Error`, not
+`\Exception`. A `catch (\Exception $e)` block will not catch it; a
+`catch (\Throwable $t)` block will.
 
-- **Python SDK** — `WorkflowCancelled` and `ActivityCancelled` inherit from `BaseException`, not `Exception`. A bare `except Exception:` block in an activity or result handler will **not** catch them. Catch them by name when you want to distinguish cancellation from failure:
-
-  ```python
-  from durable_workflow import ActivityCancelled
-
-  @activity.defn(name="long_task")
-  async def long_task(items: list) -> dict:
-      ctx = activity.context()
-      try:
-          for i, item in enumerate(items):
-              await process(item)
-              await ctx.heartbeat({"progress": i + 1})
-          return {"done": True}
-      except ActivityCancelled:
-          await cleanup_partial_state()
-          raise  # re-raise so the worker reports cancelled, not completed
-  ```
-
-- **PHP (workflow package)** — `Workflow\V2\Exceptions\WorkflowCancelledException` extends `\Error`, not `\Exception`. A `catch (\Exception $e)` block will not catch it; use `catch (\Throwable $t)` or catch the class by name.
-
-This intentionally mirrors how `asyncio.CancelledError`, `KeyboardInterrupt`, and `\Error` behave in their respective standard libraries: cancellation propagates unless you handle it on purpose. If you need to run cleanup on cancellation, catch it explicitly and re-raise — don't rely on a catch-all.
+When reading a cancelled workflow's result, catch the exception by name if you
+need to distinguish cancellation from other failures. Catching a result-side
+exception does not reopen the cancelled run or schedule cleanup inside it.
 
 ## Waterline
 
@@ -231,7 +205,7 @@ WorkflowTerminated    <- failure_id, failure_category, reason when supplied
 
 | | Cancel | Terminate |
 | --- | --- | --- |
-| Workflow observes the command | Yes (future cancellation scopes) | No |
+| Further workflow code is scheduled | No | No |
 | Open activities cancelled | Yes | Yes |
 | Open timers cancelled | Yes | Yes |
 | Reason metadata | Yes | Yes |
