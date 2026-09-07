@@ -118,6 +118,13 @@ const config = {
         },
         redirects: [
           {
+            from: [
+              '/docs/features/portable-worker-affinity',
+              '/docs/2.0/features/portable-worker-affinity',
+            ],
+            to: '/docs/polyglot/portable-worker-affinity',
+          },
+          {
             from: '/docs',
             to: '/docs/introduction/',
           },

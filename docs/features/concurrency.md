@@ -6,12 +6,15 @@ import ConcurrencySimulator from '@site/src/components/ConcurrencySimulator';
 
 # Concurrency
 
-Parallel barriers describe the complete durable group before suspension. PHP
-uses `all([...])` or `parallel([...])`, Python yields a list, and Rust awaits
-`WorkflowContext::parallel(...)` or `join(...)`. Every SDK emits ordinary
-activity, child-workflow, or timer commands with the same group identity/path
-metadata; no separate parallel wire command exists. Results come back in the
-original nested input shape.
+This guide covers concurrency in embedded Laravel workflows using
+`Workflow\V2\Workflow`. For service-mode workers, use the
+[PHP SDK guide](https://php.durable-workflow.com/build/workflows-activities/),
+[Python SDK guide](https://python.durable-workflow.com/sdk-reference/#deterministic-parallel-groups), or
+[Rust SDK reference](https://rust.durable-workflow.com/durable_workflow/struct.WorkflowContext.html#method.parallel).
+
+`all([...])` describes the complete durable group before suspension. The
+embedded runtime schedules its activity and child-workflow commands and returns
+results in the original nested input shape.
 
 Use a selection group when progress depends on the first completed member
 instead of the whole barrier. Selection is also durable: it starts every member,
@@ -88,8 +91,7 @@ The main difference between the serial example and the parallel execution exampl
 waits, condition waits, or nested ordinary barriers and resumes when one member
 commits an eligible result or typed failure. Give members stable application
 keys when later code needs to distinguish or revisit them.
-Member keys have one portable domain across runtimes: a non-empty string or a
-non-negative integer.
+Member keys must be a non-empty string or a non-negative integer.
 
 The following coordinator starts its deadline at the same durable step as the
 resolver. Input processing and resolver progress cannot reset or postpone that
@@ -147,11 +149,6 @@ idempotent. Concurrent inputs are ordered by their committed durable history;
 an input that arrives while an activity runs is visible on the next workflow
 task, and a late or duplicate input cannot replace an already recorded winner.
 
-Service-mode SDKs expose the same lifecycle in their language model: Python
-uses `yield ctx.select({...})`, PHP uses `$ctx->select([...])`, and Rust awaits
-`ctx.select_keyed(...)`. See the [PHP service-mode example](/docs/polyglot/php/#run-a-remote-php-worker)
-and the language pages for exact handle methods.
-
 ## Nested Barriers
 
 Nested `all([...])` groups let one workflow step express a tree of durable fan-out and fan-in work. The runtime schedules every activity or child workflow as a durable leaf sequence, records the leaf's full `parallel_group_path`, waits until every enclosing barrier can make progress, and then rebuilds the original nested result shape before resuming the workflow body. During replay, an activity or child leaf from an `all([...])` step must still match that recorded group path; typed leaf history that has no group metadata is treated as incompatible older preview history instead of being guessed into the current barrier.
@@ -177,52 +174,17 @@ final class NestedWorkflow extends Workflow
 
 In that example, Waterline exposes three open leaf waits, not one synthetic "nested" wait. The first leaf belongs only to the outer barrier, while the second and third leaves expose a two-entry `parallel_group_path` so operators can see both the outer group and the inner subgroup that is still open.
 
-### Python nested list-yield
-
-```python
-results = yield [
-    ctx.schedule_activity("build-summary", []),
-    [
-        ctx.start_child_workflow("build-invoice", []),
-        ctx.start_timer(1),
-    ],
-]
-summary, (invoice, _) = results
-```
-
-### Rust nested join
-
-```rust
-use durable_workflow::{json, ChildWorkflowOptions, ParallelOperation};
-use std::time::Duration;
-
-let results = ctx.join(vec![
-    ParallelOperation::activity("build-summary", json!([])),
-    ParallelOperation::group(vec![
-        ParallelOperation::child_workflow(
-            "build-invoice",
-            ChildWorkflowOptions::new("document-workers"),
-            json!([]),
-        ),
-        ParallelOperation::timer(Duration::from_secs(1)),
-    ]),
-]).await?;
-```
-
-For all three SDKs, the outer group size counts durable leaves, not list nodes.
+The outer group size counts durable leaves, not nested arrays.
 Each nested leaf carries an outer-to-inner `parallel_group_path`; every path
 entry preserves the same durable workflow position. The group schedules all
 leaves before it suspends, then assembles successful values by input position.
 Worker restart and completed-history replay rebuild the same group identity.
 Exact duplicate terminal delivery is ignored, and a late sibling completion
 can enrich partial diagnostics without changing the failed member already
-selected by the SDK's deterministic policy.
+selected by the embedded runtime's deterministic policy.
 
-Python throws the typed leaf failure at the list-yield expression. Rust wraps
-the typed cause in `Error::ParallelFailed` together with the failed member path,
-full group path, and already completed siblings. PHP raises the typed leaf
-failure from `all()` and retains the barrier's durable group metadata in
-history and operator views.
+The embedded runtime raises the typed leaf failure from `all()` and retains
+the barrier's durable group metadata in history and operator views.
 
 ## Async Callback
 

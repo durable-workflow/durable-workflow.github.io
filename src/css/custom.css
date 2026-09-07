@@ -62,18 +62,18 @@ a[class^='skipToContent']:focus {
 
 /* Keep the mobile table-of-contents control reachable when the SDK support
  * section is centered below the fixed navbar. */
-[class~='docs-doc-id-features/portable-worker-affinity'] #sdk-support {
+[class~='docs-doc-id-polyglot/portable-worker-affinity'] #sdk-support {
   scroll-margin-top: calc(var(--ifm-navbar-height) + 1rem);
 }
 
-[class~='docs-doc-id-features/portable-worker-affinity'] #sdk-support + table {
+[class~='docs-doc-id-polyglot/portable-worker-affinity'] #sdk-support + table {
   display: table;
   width: 100%;
   table-layout: fixed;
   overflow: visible;
 }
 
-[class~='docs-doc-id-features/portable-worker-affinity']
+[class~='docs-doc-id-polyglot/portable-worker-affinity']
   #sdk-support + table :is(th, td) {
   min-width: 0;
   overflow-wrap: normal;
@@ -82,11 +82,11 @@ a[class^='skipToContent']:focus {
 }
 
 @media (max-width: 996px) {
-  [class~='docs-doc-id-features/portable-worker-affinity'] #sdk-support {
+  [class~='docs-doc-id-polyglot/portable-worker-affinity'] #sdk-support {
     scroll-margin-top: calc(var(--ifm-navbar-height) + 6.25rem);
   }
 
-  [class~='docs-doc-id-features/portable-worker-affinity']
+  [class~='docs-doc-id-polyglot/portable-worker-affinity']
     #sdk-support + table :is(th, td) {
     font-size: 0.875rem;
     padding: 0.5rem 0.35rem;

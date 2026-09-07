@@ -1,7 +1,7 @@
 ---
 sidebar_position: 26
 title: Portable Worker Affinity
-description: Negotiate local activities, worker sessions, and sticky execution safely across PHP, Python, and Rust service workers.
+description: Service-mode worker-affinity support and limitations for PHP, Python, and Rust SDKs.
 tags:
   - workers
   - activities
@@ -10,6 +10,10 @@ tags:
 ---
 
 # Portable Worker Affinity
+
+This is a service-mode capability reference, not an embedded Laravel feature
+guide. PHP service workers implement these features; Python and Rust service
+workers do not yet implement them.
 
 Local activities, worker sessions, and sticky execution share one portability
 rule: a service worker must declare each feature as supported or explicitly
@@ -22,12 +26,13 @@ manifest marks the same feature as supported.
 | SDK worker | Local activities | Worker sessions | Sticky execution |
 | --- | --- | --- | --- |
 | PHP | Supported | Supported | Supported |
-| Python | Explicitly refused | Explicitly refused | Explicitly refused |
-| Rust | Explicitly refused | Explicitly refused | Explicitly refused |
+| Python | Not supported | Not supported | Not supported |
+| Rust | Not supported | Not supported | Not supported |
 
-An explicit refusal is safe interoperability, not partial execution. The
-worker remains usable for its ordinary workflow and activity capabilities and
-is never routed work that depends on the refused contract.
+Python and Rust advertise `supported: false` for all three features. That
+prevents incompatible routing; it is not feature parity or a fallback
+implementation. These workers remain usable for ordinary workflows and queued
+activities, with complete durable-history replay.
 
 ## Local activity recording
 
@@ -81,7 +86,8 @@ covers manifest truth, local-activity replay, session holder loss and
 reacquisition, sticky hits and eviction, worker replacement, forced cold
 replay, and zero-configuration workflows.
 
-See [Local Activities](/docs/features/local-activities),
+For embedded Laravel implementations, see
+[Local Activities](/docs/features/local-activities),
 [Worker Sessions](/docs/features/worker-sessions), and
-[Sticky Execution](/docs/features/sticky-execution) for the individual
-contracts.
+[Sticky Execution](/docs/features/sticky-execution). Those APIs belong to the
+workflow package, not to Python or Rust service workers.
