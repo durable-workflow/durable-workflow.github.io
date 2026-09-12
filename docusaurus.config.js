@@ -246,7 +246,7 @@ const config = {
         indexName: 'docs',
         // The former version prefix has redirect HTML but no client-side route.
         replaceSearchResultPathname: {
-          from: '^/docs/2\\.0/',
+          from: /^\/docs\/2\.0\//,
           to: '/docs/',
         },
       },
