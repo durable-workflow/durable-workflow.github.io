@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://durable-workflow.github.io/schemas/capacity-benchmark-result/v1.json",
+  "title": "Durable Workflow capacity benchmark result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "identity", "evidence_class", "publishable", "cell_id", "measurement_contract", "operating_point_rule", "load_steps", "maximum_sustained_operating_point"],
+  "properties": {
+    "schema": {"const": "durable-workflow.capacity-benchmark-result/v1"},
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["suite_version", "suite_sha256", "source_revision", "artifacts", "infrastructure_profile", "infrastructure_profile_sha256", "architecture", "binding", "run_timestamp"],
+      "properties": {
+        "suite_version": {"type": "string"},
+        "suite_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "source_revision": {"type": "string"},
+        "artifacts": {"type": "object"},
+        "infrastructure_profile": {"type": "string"},
+        "infrastructure_profile_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "architecture": {"type": "string"},
+        "binding": {"enum": ["php", "python", "rust", "deterministic-model"]},
+        "run_timestamp": {"type": "string", "format": "date-time"}
+      }
+    },
+    "evidence_class": {"enum": ["capacity", "harness_reference"]},
+    "publishable": {"type": "boolean"},
+    "cell_id": {"type": "string"},
+    "measurement_contract": {"type": "object", "required": ["warmup_seconds", "duration_seconds", "termination"]},
+    "operating_point_rule": {"type": "object"},
+    "load_steps": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/load_step"}},
+    "maximum_sustained_operating_point": {"oneOf": [{"$ref": "#/$defs/load_step"}, {"type": "null"}]}
+  },
+  "$defs": {
+    "load_step": {
+      "type": "object",
+      "required": ["load_step", "measurement_seconds", "offered_load", "rates", "latency_ms", "concurrent_open_workflows", "workflow_completion_evidence", "completion_ratio", "error_rate", "throttle_rate", "storage", "infrastructure", "drain", "saturation", "operating_point_eligible"],
+      "properties": {
+        "load_step": {"type": "number", "minimum": 0.001},
+        "workflow_completion_evidence": {"$ref": "#/$defs/workflow_completion_evidence"},
+        "offered_load": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["workflow_starts", "query_operations"],
+          "properties": {
+            "workflow_starts": {"$ref": "#/$defs/delivery"},
+            "query_operations": {"$ref": "#/$defs/delivery"}
+          }
+        },
+        "drain": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["seconds", "workflow_completions", "activity_dispatches", "errors", "throttles", "demand", "workflow_cohorts", "latency_samples", "final_open_workflows", "final_queue_backlog", "converged"],
+              "properties": {
+                "seconds": {"type": "number", "minimum": 0},
+                "workflow_completions": {"type": "integer", "minimum": 0},
+                "activity_dispatches": {"type": "integer", "minimum": 0},
+                "errors": {"type": "integer", "minimum": 0},
+                "throttles": {"type": "integer", "minimum": 0},
+                "demand": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["workflow_starts", "query_operations"],
+                  "properties": {
+                    "workflow_starts": {"$ref": "#/$defs/demand"},
+                    "query_operations": {"$ref": "#/$defs/demand"}
+                  }
+                },
+                "workflow_cohorts": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["completion_required", "long_lived_query"],
+                  "properties": {
+                    "completion_required": {"$ref": "#/$defs/cohort"},
+                    "long_lived_query": {"$ref": "#/$defs/cohort"}
+                  }
+                },
+                "latency_samples": {"type": "integer", "minimum": 0},
+                "final_open_workflows": {"type": "integer", "minimum": 0},
+                "final_queue_backlog": {"type": "integer", "minimum": 0},
+                "converged": {"type": "boolean"}
+              }
+            }
+          ]
+        }
+      }
+    },
+    "demand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempted", "accepted", "completed", "rejected", "throttled"],
+      "properties": {
+        "attempted": {"type": "integer", "minimum": 0},
+        "accepted": {"type": "integer", "minimum": 0},
+        "completed": {"type": "integer", "minimum": 0},
+        "rejected": {"type": "integer", "minimum": 0},
+        "throttled": {"type": "integer", "minimum": 0}
+      }
+    },
+    "cohort": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["starts", "completions"],
+      "properties": {
+        "starts": {"type": "integer", "minimum": 0},
+        "completions": {"type": "integer", "minimum": 0}
+      }
+    },
+    "workflow_completion_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["denominator", "eligible_starts", "eligible_completions", "long_lived_query_workflows"],
+      "properties": {
+        "denominator": {"const": "completion_required_workflows_started_during_measurement"},
+        "eligible_starts": {"type": "integer", "minimum": 0},
+        "eligible_completions": {"type": "integer", "minimum": 0},
+        "long_lived_query_workflows": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["target", "measurement_minimum", "measurement_final", "final"],
+          "properties": {
+            "target": {"type": "integer", "minimum": 0},
+            "measurement_minimum": {"type": "integer", "minimum": 0},
+            "measurement_final": {"type": "integer", "minimum": 0},
+            "final": {"type": "integer", "minimum": 0}
+          }
+        }
+      }
+    },
+    "delivery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_per_second", "target_count", "minimum_delivery_ratio", "delivery_tolerance_ratio", "minimum_count", "attempted", "accepted", "completed", "rejected", "throttled", "unoffered", "attempted_ratio", "delivered_ratio"],
+      "properties": {
+        "target_per_second": {"type": "number", "minimum": 0},
+        "target_count": {"type": "number", "minimum": 0},
+        "minimum_delivery_ratio": {"type": "number", "minimum": 0, "maximum": 1},
+        "delivery_tolerance_ratio": {"type": "number", "minimum": 0, "maximum": 1},
+        "minimum_count": {"type": "integer", "minimum": 0},
+        "attempted": {"type": "integer", "minimum": 0},
+        "accepted": {"type": "integer", "minimum": 0},
+        "completed": {"type": "integer", "minimum": 0},
+        "rejected": {"type": "integer", "minimum": 0},
+        "throttled": {"type": "integer", "minimum": 0},
+        "unoffered": {"type": "integer", "minimum": 0},
+        "attempted_ratio": {"oneOf": [{"type": "number", "minimum": 0}, {"type": "null"}]},
+        "delivered_ratio": {"oneOf": [{"type": "number", "minimum": 0}, {"type": "null"}]}
+      }
+    }
+  }
+}

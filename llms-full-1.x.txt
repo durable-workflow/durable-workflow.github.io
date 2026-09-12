@@ -1,0 +1,2467 @@
+<!-- Source: versioned_docs/version-1.x/introduction.md -->
+
+# Durable Workflow for Laravel
+
+Durable Workflow is an open-source, Laravel-native durable workflow engine for
+long-running PHP processes. It stores orchestration state in your application's
+database and schedules work through Laravel queues, so a workflow can pause for
+a timer, webhook, or human decision and resume after a worker restart.
+
+This introduction covers stable 1.x, the default public documentation line. It
+runs inside your Laravel application. The separately versioned
+[2.0 introduction](/docs/introduction/) covers Cloud,
+self-hosted Server, and service-mode SDK deployments.
+
+## When to use a durable workflow
+
+Use a workflow when a process has multiple steps and may outlive any one web
+request or queue worker. Common signs include:
+
+- The process spans minutes, hours, or days
+- You need to wait for a human approval step
+- You need to wait for a webhook or other external event
+- You need to pause and continue later without keeping a process running
+- You need to be able to restart after a crash without causing bugs or duplicating work
+
+For one independent background task, a Laravel queued job is usually enough. A
+fixed sequence or group of known jobs may fit job chaining or batching. Durable
+Workflow is for orchestration that must persist progress while it branches,
+loops, waits, or changes its next step in response to an external event.
+
+## How Durable Workflow fits Laravel
+
+The stable `durable-workflow/workflow` Composer package embeds the workflow
+runtime in a Laravel application. It uses Laravel's database layer to retain
+workflow state and its queue system to run workflow and activity work. Your
+workflow code can use familiar framework capabilities such as the service
+container, events, and Eloquent models.
+
+A workflow describes the durable sequence and decisions. Activities perform
+the side-effecting work, such as calling an API, updating a database, or
+processing a file. Persisting progress between those steps lets another worker
+continue the orchestration instead of restarting the entire process after a
+failure.
+
+Start with [Installation](./installation.md) to add the package, publish its
+migrations, and run queue workers. Read [How It Works](./how-it-works.md) for
+the execution and replay model.
+
+## What you can build
+
+Durable Workflow can coordinate asynchronous application processes such as
+approval flows, agentic AI loops, data pipelines, media processing, and
+microservice operations. Activities can run in sequence or in parallel, while
+the workflow retains the state needed to make the next decision.
+
+Laravel teams keep their existing application conventions while gaining a
+workflow-level view of progress and status. Queue workers can scale
+horizontally, and the orchestration remains explicit in PHP instead of being
+spread across callbacks and ad hoc status columns.
+
+<!-- Source: versioned_docs/version-1.x/installation.md -->
+
+# Installation
+
+## Requirements
+
+Durable Workflow requires the following to run:
+
+- PHP 8.1 or later
+- Laravel 9 or later
+
+Durable Workflow can be used with any queue driver that Laravel supports (except the `sync` driver), including:
+
+- Amazon SQS
+- Beanstalkd
+- Database
+- Redis
+
+Each queue driver has its own [prerequisites](https://laravel.com/docs/13.x/queues#driver-prerequisites).
+
+Durable Workflow also requires a cache driver that supports [locks](https://laravel.com/docs/13.x/cache#atomic-locks).
+
+> ✨ SQS Support: `timer()` and `awaitWithTimeout()` work with any duration, even when using the SQS queue driver. Durable Workflow automatically handles SQS's delay limitation transparently.
+
+## Installing Durable Workflow
+
+Durable Workflow is installable via Composer. To install it, run the following command in your Laravel project:
+
+```bash
+composer require durable-workflow/workflow
+```
+
+After installing, you must also publish the migrations. To publish the migrations, run the following command:
+
+```bash
+php artisan vendor:publish --provider="Workflow\Providers\WorkflowServiceProvider" --tag="migrations"
+```
+
+Once the migrations are published, you can run the migrate command to create the workflow tables in your database:
+
+```bash
+php artisan migrate
+```
+
+## Running Workers
+
+Durable Workflow uses queues to run workflows and activities in the background. You will need to either run the `queue:work` [command](https://laravel.com/docs/13.x/queues#the-queue-work-command) or use [Horizon](https://laravel.com/docs/13.x/horizon) to run your queue workers. Without a queue worker, workflows and activities will not be processed. You cannot use the sync driver with queue workers. To run workflows and activities in parallel, you will need more than one queue worker.
+
+## Planning a 2.0 transition
+
+Use the explicit [Laravel adoption and runtime transition guide](/docs/laravel-adoption/)
+before upgrading this embedded v1 application. It compares 2.0 embedded with
+the PHP SDK's Laravel service mode and preserves the database, durable queue,
+in-flight run, and rollback boundaries for both Cloud and self-hosted Server.
+
+<!-- Source: versioned_docs/version-1.x/defining-workflows/workflows.md -->
+
+# Workflows
+
+Workflows and activities are defined as classes that extend the base `Workflow` and `Activity` classes provided by the framework. A workflow is a class that defines a sequence of activities that run in parallel, series or a mixture of both. 
+
+You may use the `make:workflow` artisan command to generate a new workflow:
+
+```php
+php artisan make:workflow MyWorkflow
+```
+
+It is defined by extending the `Workflow` class and implementing the `execute()` method.
+
+```php
+use function Workflow\activity;
+use Workflow\Workflow;
+
+class MyWorkflow extends Workflow
+{
+    public function execute()
+    {
+        $result = yield activity(MyActivity::class);
+
+        return $result;
+    }
+}
+```
+
+The `yield` keyword is used to pause the execution of the workflow and wait for the completion of an activity.
+
+<!-- Source: versioned_docs/version-1.x/defining-workflows/activities.md -->
+
+# Activities
+
+An activity is a unit of work that performs a specific task or operation (e.g. making an API request, processing data, sending an email) and can be executed by a workflow.
+
+You may use the `make:activity` artisan command to generate a new activity:
+
+```php
+php artisan make:activity MyActivity
+```
+
+It is defined by extending the `Activity` class and implementing the `execute()` method.
+
+```php
+use Workflow\Activity;
+
+class MyActivity extends Activity
+{
+    public function execute()
+    {
+        // Perform some work...
+        return $result;
+    }
+}
+```
+
+<!-- Source: versioned_docs/version-1.x/defining-workflows/starting-workflows.md -->
+
+# Starting Workflows
+
+To start a workflow, you must first create a workflow instance and then call the `start()` method on it. The workflow instance has several methods that can be used to interact with the workflow, such as `id()` to get the workflow's unique identifier, `status()` or `running()` to get the current status of the workflow, and `output()` to get the output data produced by the workflow.
+
+```php
+use Workflow\WorkflowStub;
+
+$workflow = WorkflowStub::make(MyWorkflow::class);
+$workflow->start();
+```
+
+Once a workflow has been started, it will be executed asynchronously by a queue worker. The `start()` method returns immediately and does not block the current request.
+
+You can obtain an instance of an existing workflow using its workflow ID.
+
+```php
+use Workflow\WorkflowStub;
+
+$workflow = WorkflowStub::load($id);
+```
+
+<!-- Source: versioned_docs/version-1.x/defining-workflows/passing-data.md -->
+
+# Passing Data
+
+You can pass data into a workflow via the `start()` method.
+
+```php
+use Workflow\WorkflowStub;
+
+$workflow = WorkflowStub::make(MyWorkflow::class);
+$workflow->start('world');
+```
+
+It will be passed as arguments to the workflow's `execute()` method.
+
+Similarly, you can pass data into an activity via the `activity()` helper function.
+
+```php
+use function Workflow\activity;
+use Workflow\Workflow;
+
+class MyWorkflow extends Workflow
+{
+    public function execute($name)
+    {
+        return yield activity(MyActivity::class, $name);
+    }
+}
+```
+
+It will be passed as arguments to the activity's `execute()` method
+
+```php
+use Workflow\Activity;
+
+class MyActivity extends Activity
+{
+    public function execute($name)
+    {
+        return "Hello, {$name}!";
+    }
+}
+```
+
+In general, you should only pass small amounts of data in this manner. Rather than passing large amounts of data, you should write the data to the database, cache or file system. Then pass the key or file path to the workflow and activities. The activities can then use the key or file path to read the data.
+
+## Output
+
+Once the workflow has completed, you can retrieve the output using the `output()` method.
+
+```php
+$workflow->output();
+=> 'Hello, world!'
+```
+
+## Models
+
+Passing in models works similarly to `SerializesModels`.
+
+```php
+use App\Models\User;
+use function Workflow\activity;
+use Workflow\Workflow;
+
+class MyWorkflow extends Workflow
+{
+    public function execute(User $user)
+    {
+        return yield activity(MyActivity::class, $user->name);
+    }
+}
+```
+
+When an Eloquent model is passed to a workflow or activity, only its `ModelIdentifier` is serialized. This reduces the size of the payload, ensuring that your workflows remain efficient and performant.
+
+```
+object(ModelIdentifier) {
+    id: 42,
+    class: "App\Models\User",
+    relations: [],
+    connection: "mysql"
+}
+```
+
+When the workflow or activity runs, it will retrieve the complete model instance, including any loaded relationships, from the database. If you wish to prevent extra database calls during the execution of a workflow or activity, consider converting the model to an array before passing it.
+
+## Dependency Injection
+
+In addition to passing data, you are able to type-hint dependencies on the workflow or activity `execute()` methods. The Laravel service container will automatically inject those dependencies.
+
+```php
+use Illuminate\Contracts\Foundation\Application;
+use Workflow\Workflow;
+
+class MyWorkflow extends Workflow
+{
+    public function execute(Application $app)
+    {
+        if ($app->runningInConsole()) {
+            // ...
+        }
+    }
+}
+```
+
+<!-- Source: versioned_docs/version-1.x/defining-workflows/workflow-status.md -->
+
+# Workflow Status
+
+You can monitor the status of the workflow by calling the `running()` method, which returns `true` if the workflow is still running and `false` if it has completed or failed. 
+
+```php
+while ($workflow->running());
+```
+
+These are the possible values returned by the `status()` method.
+
+```
+WorkflowCreatedStatus
+WorkflowCompletedStatus
+WorkflowContinuedStatus
+WorkflowFailedStatus
+WorkflowPendingStatus
+WorkflowRunningStatus
+WorkflowWaitingStatus
+```
+
+This is the state machine for a workflow status.
+
+<!-- Source: versioned_docs/version-1.x/defining-workflows/workflow-id.md -->
+
+# Workflow ID
+
+When starting a workflow you can obtain the id like this.
+
+```php
+use Workflow\WorkflowStub;
+
+$workflow = WorkflowStub::make(MyWorkflow::class);
+$workflowId = $workflow->id();
+```
+
+In addition, inside of an activity, `$this->workflowId()` returns the id of the current workflow. This can be useful for activities that need to store data about the workflow that is executing them. For example, an activity may use the workflow id to store information in a database or cache so that it can be accessed by other activities in the same workflow.
+
+```php
+use Illuminate\Support\Facades\Cache;
+use Workflow\Activity;
+
+class MyActivity extends Activity
+{
+    public function execute()
+    {
+        $workflowId = $this->workflowId();
+
+        Cache::put("workflow:{$workflowId}:data", 'some data');
+    }
+}
+```
+
+This ID can also be used to signal or query the workflow later. For example, if you want to send a notification email with a link to view the current state of the workflow, you can include the `$workflowId` in the email and use it to generate a signed URL.
+
+<!-- Source: versioned_docs/version-1.x/features/signals.md -->
+
+# Signals
+
+Signals allow you to trigger events in a workflow from outside the workflow. This can be useful for reacting to external events, enabling *human-in-the-loop* interventions, or for signaling the completion of an external task.
+
+To define a signal method on your workflow, use the `SignalMethod` annotation. The method will be called with any arguments provided when the signal is triggered:
+
+```php
+use Workflow\SignalMethod;
+use Workflow\Workflow;
+
+class MyWorkflow extends Workflow
+{
+    private $ready = false;
+
+    #[SignalMethod]
+    public function setReady($ready)
+    {
+        $this->ready = $ready;
+    }
+}
+```
+
+To trigger a signal on a workflow, call the method on the workflow instance. The signal method accepts optional arguments that will also be passed to it.
+
+```php
+use Workflow\WorkflowStub;
+
+$workflow = WorkflowStub::load($workflowId);
+
+$workflow->setReady(true);
+```
+
+The `await()` function can be used in a workflow to pause execution until a specified condition is met. For example, to pause the workflow until a signal is received, the following code can be used:
+
+```php
+use function Workflow\await;
+use Workflow\SignalMethod;
+use Workflow\Workflow;
+
+class MyWorkflow extends Workflow
+{
+    private $ready = false;
+
+    #[SignalMethod]
+    public function setReady($ready)
+    {
+        $this->ready = $ready;
+    }
+
+    public function execute()
+    {
+        yield await(fn () => $this->ready);
+    }
+}
+```
+
+**Important:** The `await()` function should only be used in a workflow, not an activity.
+
+## Inbox
+
+Workflows often need to handle multiple incoming signals over time. To solve this, workflows include a built-in replay-safe `$this->inbox`.
+
+The inbox collects incoming signal values and lets you consume them exactly once, even if the workflow is replayed or resumed multiple times.
+
+```php
+use function Workflow\await;
+use Workflow\SignalMethod;
+use Workflow\Workflow;
+
+class MyWorkflow extends Workflow
+{
+    #[SignalMethod]
+    public function send(string $message): void
+    {
+        $this->inbox->receive($message);
+    }
+
+    public function execute()
+    {
+        while (true) {
+            yield await(fn () => $this->inbox->hasUnread());
+
+            $message = $this->inbox->nextUnread();
+        }
+    }
+}
+```
+
+Each received signal is stored in the inbox. The inbox tracks which messages have already been read. On replay, previously read messages remain read. Only unread messages are returned by `nextUnread()`. This makes the inbox safe to use in `await()` conditions and inside long-running loops.
+
+<!-- Source: versioned_docs/version-1.x/features/queries.md -->
+
+# Queries
+
+Queries allow you to retrieve information about the current state of a workflow without affecting its execution. This is useful for monitoring and debugging purposes.
+
+To define a query method on a workflow, use the `QueryMethod` annotation:
+
+```php
+use Workflow\QueryMethod;
+use Workflow\Workflow;
+
+class MyWorkflow extends Workflow
+{
+    private bool $ready = false;
+
+    #[QueryMethod]
+    public function getReady(): bool
+    {
+        return $this->ready;
+    }
+}
+```
+
+To query a workflow, call the method on the workflow instance. The query method will return the data from the workflow.
+
+```php
+use Workflow\WorkflowStub;
+
+$workflow = WorkflowStub::load($workflowId);
+
+$ready = $workflow->getReady();
+```
+
+**Important:** Querying a workflow does not advance its execution, unlike signals.
+
+# Updates
+
+Updates allow you to retrieve information about the current state of a workflow and mutate the workflow state at the same time. They are essentially both a query and a signal combined into one.
+
+To define an update method on a workflow, use the `UpdateMethod` annotation:
+
+```php
+use Workflow\UpdateMethod;
+use Workflow\Workflow;
+
+class MyWorkflow extends Workflow
+{
+    private bool $ready = false;
+
+    #[UpdateMethod]
+    public function updateReady($ready): bool
+    {
+        $this->ready = $ready;
+
+        return $this->ready;
+    }
+}
+```
+
+## Outbox
+
+The outbox collects outgoing query messages and lets you produce them exactly once, even if the workflow is replayed or resumed multiple times.
+
+```php
+use Workflow\UpdateMethod;
+use Workflow\Workflow;
+
+class MyWorkflow extends Workflow
+{
+    #[UpdateMethod]
+    public function receive()
+    {
+        return $this->outbox->nextUnsent();
+    }
+
+    public function execute()
+    {
+        $count = 0;
+        while (true) {
+            $count++;
+
+            $this->outbox->send("Message {$count}");
+        }
+    }
+}
+```
+
+Each sent signal is stored in the outbox. The outbox tracks which messages have already been sent. On replay, previously read messages remain sent. Only unsent messages are returned by `nextUnsent()`. This makes the outbox safe to send multiple messages inside long-running loops.
+
+<!-- Source: versioned_docs/version-1.x/features/timers.md -->
+
+# Timers
+
+The framework provides the ability to suspend the execution of a workflow and resume at a later time. These are durable timers, meaning they survive restarts and failures while remaining consistent with workflow replay semantics. This can be useful for implementing delays, retry logic, or timeouts.
+
+To use timers, you can use the `timer($duration)` helper function within your workflow. This method returns a `Promise` that will be resolved after the specified duration has passed.
+
+Here is an example of using a timer:
+
+```php
+use function Workflow\timer;
+use Workflow\Workflow;
+
+class MyWorkflow extends Workflow
+{
+    public function execute()
+    {
+        yield timer('5 seconds');
+
+        return 'The workflow waited 5 seconds.';
+    }
+}
+```
+
+You can specify the `$duration` as an integer number of seconds or as a string e.g. '5 seconds', '30 minutes' or even '3 days'. It can handle any duration.
+
+**Important:** Inside of a workflow, never use `Carbon::now()` or Laravel's `now()` to get the current time. Instead, use `Workflow\now()`, which returns the current time as seen by the workflow system. This is crucial because the actual time may not match your application's system clock.
+
+Additionally, when measuring elapsed time in workflows (e.g., tracking how long an activity takes), always get your start and end times with:
+
+```php
+use function Workflow\{now, sideEffect};
+
+$start = yield sideEffect(fn () => now());
+```
+
+This ensures an event log is created, preventing replay-related inconsistencies and guaranteeing accurate time calculations.
+
+## Time Helpers
+
+You can also use the following helper functions to create timers for specific units of time:
+
+**seconds, minutes, hours, days, weeks, months, years**
+
+Each function returns a timer promise based on the unit:
+
+```php
+use function Workflow\{days, hours};
+
+yield days(3);
+yield hours(2);
+```
+
+<!-- Source: versioned_docs/version-1.x/features/signal+timer.md -->
+
+# Signal + Timer
+
+In some cases, you may want to wait for a signal or for a timer to expire, whichever comes first. This can be achieved by using `awaitWithTimeout($timeout, $condition)`.
+
+```php
+use function Workflow\awaitWithTimeout;
+use Workflow\SignalMethod;
+use Workflow\Workflow;
+
+class MyWorkflow extends Workflow
+{
+    private bool $ready = false;
+
+    #[SignalMethod]
+    public function setReady($ready)
+    {
+        $this->ready = $ready;
+    }
+
+    public function execute()
+    {
+        $result = yield awaitWithTimeout('5 minutes', fn () => $this->ready);
+    }
+}
+```
+
+The workflow will reach the call to `awaitWithTimeout()` and then hibernate until either some external code signals the workflow like this.
+
+```php
+$workflow->setReady();
+```
+
+Or, if the specified timeout is reached, the workflow will continue without the signal. The return value is `true` if the signal was received before the timeout, or `false` if the timeout was reached without receiving the signal.
+
+<!-- Source: versioned_docs/version-1.x/features/side-effects.md -->
+
+# Side Effects
+
+A side effect is a closure containing non-deterministic code. The closure is only executed once and the result is saved. It will not execute again if the workflow is retried. Instead, it will return the saved result. This makes the workflow deterministic because replaying the workflow will always return the same stored value rather than re-running the non-deterministic code.
+
+```php
+use function Workflow\{sideEffect, timer};
+use Workflow\Workflow;
+
+class MyWorkflow extends Workflow
+{
+    public function execute()
+    {
+        $seconds = yield sideEffect(fn () => random_int(60, 120));
+
+        yield timer($seconds);
+    }
+}
+```
+
+The workflow will only call `random_int()` once and save the result, even if the workflow later fails and is retried.
+
+**Important:** The code inside a side effect should never fail because it will not be retried. Code that can possibly fail and therefore need to be retried should be moved to an activity instead.
+
+## Signals and Control Flow
+
+Signal-mutated variables are sources of non-determinism and can break replays unless the control flow decision is recorded deterministically.
+
+Use `sideEffect()` to snapshot any signal-driven branch decision:
+
+```php
+use function Workflow\{activity, sideEffect};
+use Exception;
+use Workflow\SignalMethod;
+use Workflow\Workflow;
+
+class MyWorkflow extends Workflow
+{
+    private bool $cancelled = false;
+
+    #[SignalMethod]
+    public function cancel()
+    {
+        $this->cancelled = true;
+    }
+
+    public function execute()
+    {
+        while (true) {
+            yield activity(MyActivity::class);
+
+            if (yield sideEffect(fn () => $this->cancelled)) {
+                throw new Exception('Workflow cancelled by signal.');
+            }
+        }
+    }
+```
+
+This keeps control flow replay-safe and avoids non-deterministic branching during signal handling.
+
+<!-- Source: versioned_docs/version-1.x/features/heartbeats.md -->
+
+# Heartbeats
+
+Heartbeats are sent at regular intervals to indicate that an activity is still running and hasn't frozen or crashed. They prevent the activity from being terminated due to timing out. This enables long-running activities to have a relatively low timeout. As long as the activity sends a heartbeat faster than the timeout duration, it will not be terminated.
+
+```php
+use Workflow\Activity;
+
+class MyActivity extends Activity
+{
+    public $timeout = 5;
+
+    public function execute()
+    {
+      while (true) {
+        sleep(1);
+
+        $this->heartbeat();
+      }
+    }
+}
+```
+
+In the above example, even though the activity would normally be terminated after running for 5 seconds, the periodic heartbeat allows it to keep running. If the activity does freeze or crash then the heartbeat will stop and the timeout will be triggered.
+
+<!-- Source: versioned_docs/version-1.x/features/child-workflows.md -->
+
+# Child Workflows
+
+It's often necessary to break down complex processes into smaller, more manageable units. Child workflows provide a way to encapsulate a sub-process within a parent workflow. This allows you to create hierarchical and modular structures for your workflows, making them more organized and maintainable.
+
+A child workflow is just like any other workflow. The only difference is how it's invoked within the parent workflow, using `child()`.
+
+```php
+use function Workflow\child;
+use Workflow\Workflow;
+
+class ParentWorkflow extends Workflow
+{
+    public function execute()
+    {
+        $result = yield child(ChildWorkflow::class);
+    }
+}
+```
+
+## Signaling Child Workflows
+
+Parent workflows can signal their child workflows to coordinate behavior or pass data. To signal a child safely without corrupting the parent's execution context, use the `$this->child()` or `$this->children()` methods.
+
+### Getting a Child Handle
+
+The `$this->child()` method returns a `ChildWorkflowHandle` for the most recently created child workflow:
+
+```php
+use function Workflow\child;
+use Workflow\Workflow;
+
+class ParentWorkflow extends Workflow
+{
+    public function execute()
+    {
+        $child = child(ChildWorkflow::class);
+
+        $childHandle = $this->child();
+
+        $childHandle->process('approved');
+
+        $result = yield $child;
+
+        return $result;
+    }
+}
+```
+
+### Multiple Children
+
+Use the `$this->children()` method to get handles for all child workflows created by the parent:
+
+```php
+use function Workflow\{all, child};
+use Workflow\Workflow;
+
+class ParentWorkflow extends Workflow
+{
+    public function execute()
+    {
+        $child1 = child(ChildWorkflow::class, 'first');
+        $child2 = child(ChildWorkflow::class, 'second');
+        $child3 = child(ChildWorkflow::class, 'third');
+
+        $childHandles = $this->children();
+
+        foreach ($childHandles as $childHandle) {
+            $childHandle->process('approved');
+        }
+
+        $results = yield all([$child1, $child2, $child3]);
+
+        return $results;
+    }
+}
+```
+
+The `$this->children()` method returns children in reverse chronological order (most recently created first).
+
+### Forwarding Signals to Children
+
+You can forward external signals to child workflows by combining signal methods with child handles:
+
+```php
+use function Workflow\{await, child};
+use Workflow\SignalMethod;
+use Workflow\Workflow;
+
+class ParentWorkflow extends Workflow
+{
+    private bool $processed = false;
+    private ?string $status = null;
+
+    #[SignalMethod]
+    public function process(string $status)
+    {
+        $this->processed = true;
+        $this->status = $status;
+    }
+
+    public function execute()
+    {
+        $child = child(ChildWorkflow::class);
+
+        $childHandle = $this->child();
+
+        yield await(fn () => $this->processed);
+
+        $childHandle->process($this->status);
+
+        $result = yield $child;
+
+        return $result;
+    }
+}
+```
+
+**Important:** Always call `$this->child()` or `$this->children()` in the `execute()` method. Never call these methods in signal methods or query methods, as this violates determinism during workflow replay.
+
+### Getting Child Workflow IDs
+
+You can access the child workflow ID using the `id()` method on the child handle. This allows you to store the ID for external systems to signal the child directly.
+
+```php
+use function Workflow\{activity, child};
+use Workflow\Workflow;
+
+class ParentWorkflow extends Workflow
+{    
+    public function execute()
+    {
+        $child = child(ChildWorkflow::class);
+        yield activity(StoreWorkflowIdActivity::class, $this->child()->id());
+        yield $child;
+    }
+}
+```
+
+or
+
+```php
+use function Workflow\{await, child};
+use Workflow\QueryMethod;
+use Workflow\Workflow;
+
+class ParentWorkflow extends Workflow
+{
+    private ?int $childId = null;
+
+    #[QueryMethod]
+    public function childId(): ?int
+    {
+        return $this->childId;
+    }
+
+    public function execute()
+    {
+        $child = child(ChildWorkflow::class);
+        $childHandle = $this->child();
+        yield await(fn () => !is_null($childHandle));
+        $this->childId = $childHandle->id();
+        yield $child;
+    }
+}
+```
+
+**Important:** When using query methods in the same workflow with child handles, you must first await for the child handle to be available. Query methods like `$workflow->childId()` may return `null` if you query the parent workflow before the child handle has finished being awaited.
+
+Then you can interact with the child workflow directly.
+
+```php
+$workflow = WorkflowStub::load($workflowId);
+if ($childId = $workflow->childId()) {
+    WorkflowStub::load($childId)->process('approved');
+}
+```
+
+## Async Activities
+
+Rather than creating a child workflow, you can pass a callback to `async()` and it will be executed in the context of a separate workflow.
+
+```php
+use Workflow\Workflow;
+use function Workflow\{activity, async};
+
+class AsyncWorkflow extends Workflow
+{
+    public function execute()
+    {
+        [$result, $otherResult] = yield async(function () {
+            $result = yield activity(Activity::class);
+            $otherResult = yield activity(OtherActivity::class, 'other');
+            return [$result, $otherResult];
+        });
+    }
+}
+```
+
+<!-- Source: versioned_docs/version-1.x/features/concurrency.md -->
+
+# Concurrency
+
+Activities can be executed in series or in parallel. In either case, you start by using `activity()` to create a new instance of an activity and return a promise that represents the execution of that activity. The activity will immediately begin executing in the background. You can then `yield` this promise to pause the execution of the workflow and wait for the result of the activity, or pass the promise into the `all()` method to wait for a group of activities to complete in parallel.
+
+## Series
+
+This example will execute 3 activities in series, waiting for the completion of each activity before continuing to the next one.
+
+```php
+use function Workflow\activity;
+use Workflow\Workflow;
+
+class MyWorkflow extends Workflow
+{
+    public function execute()
+    {
+        return [
+            yield activity(MyActivity1::class),
+            yield activity(MyActivity2::class),
+            yield activity(MyActivity3::class),
+        ];
+    }
+}
+```
+
+## Parallel
+
+This example will execute 3 activities in parallel, waiting for the completion of all activities and collecting the results.
+
+```php
+use function Workflow\{activity, all};
+use Workflow\Workflow;
+
+class MyWorkflow extends Workflow
+{
+    public function execute()
+    {
+        return yield all([
+            activity(MyActivity1::class),
+            activity(MyActivity2::class),
+            activity(MyActivity3::class),
+        ]);
+    }
+}
+```
+
+The main difference between the serial example and the parallel execution example is the number of `yield` statements. In the serial example, there are 3 `yield` statements, one for each activity. This means that the workflow will pause and wait for each activity to complete before continuing to the next one. In the parallel example, there is only 1 `yield` statement, which wraps all of the activities in a call to `all()`. This means that all of the activities will be executed in parallel, and the workflow will pause and wait for all of them to complete as a group before continuing.
+
+## Mix and Match
+
+You can also mix serial and parallel executions as desired.
+
+```php
+use function Workflow\{activity, all, async};
+use Workflow\Workflow;
+
+class MyWorkflow extends Workflow
+{
+    public function execute()
+    {
+        return [
+            yield activity(MyActivity1::class),
+            yield all([
+                async(fn () => [
+                    yield activity(MyActivity2::class),
+                    yield activity(MyActivity3::class),
+                ]),
+                activity(MyActivity4::class),
+                activity(MyActivity5::class),
+            ]),
+            yield activity(MyActivity6::class),
+        ];
+    }
+}
+```
+
+Activity 1 will execute and complete before any other activities start. Activities 2 and 3 will execute in series, waiting for each to complete one after another before continuing. At the same time, activities 4 and 5 will execute together in parallel and only when they all complete will execution continue. Finally, activity 6 executes last after all others have completed.
+
+## Child Workflows in Parallel
+
+You can pass child workflows to `all()` along with other activities. It works the same way as parallel activity execution, but for child workflows. It allows you to fan out multiple child workflows and wait for all of them to complete together.
+
+```php
+use function Workflow\{all, child};
+
+$results = yield all([
+    child(MyChild1::class),
+    child(MyChild2::class),
+    child(MyChild3::class),
+]);
+```
+
+This makes it easy to build hierarchical parallelism into your workflows.
+
+<!-- Source: versioned_docs/version-1.x/features/sagas.md -->
+
+# Sagas
+
+Sagas are an established design pattern for managing complex, long-running operations:
+
+- A saga manages distributed transactions using a sequence of local transactions.
+- A local transaction is a work unit performed by a saga participant (an activity).
+- Each operation in the saga can be reversed by a compensatory activity.
+- The saga pattern assures that all operations are either completed successfully or the corresponding compensation activities are run to undo any completed work.
+
+```php
+use function Workflow\activity;
+use Workflow\Workflow;
+
+class BookingSagaWorkflow extends Workflow
+{
+    public function execute()
+    {
+        try {
+            $flightId = yield activity(BookFlightActivity::class);
+            $this->addCompensation(fn () => activity(CancelFlightActivity::class, $flightId));
+
+            $hotelId = yield activity(BookHotelActivity::class);
+            $this->addCompensation(fn () => activity(CancelHotelActivity::class, $hotelId));
+
+            $carId = yield activity(BookRentalCarActivity::class);
+            $this->addCompensation(fn () => activity(CancelRentalCarActivity::class, $carId));
+        } catch (Throwable $th) {
+            yield from $this->compensate();
+            throw $th;
+        }
+    }
+}
+```
+
+By default, compensations execute sequentially in the reverse order they were added. To run them in parallel, use `$this->setParallelCompensation(true)`. To ignore exceptions that occur inside compensation activities while still running them sequentially, use `$this->setContinueWithError(true)` instead.
+
+<!-- Source: versioned_docs/version-1.x/features/events.md -->
+
+# Events
+
+Events are dispatched at various stages of workflow and activity execution to notify of progress, completion, or failures. These events can be used for logging, metrics collection, or any custom application logic.
+
+## Workflow Events
+
+### WorkflowStarted
+
+Triggered when a workflow starts its execution.
+
+Attributes:
+- `workflowId`: Unique identifier for the workflow.
+- `class`: Class name of the workflow.
+- `arguments`: Arguments passed to the workflow.
+- `timestamp`: Timestamp of when the workflow started.
+
+### WorkflowCompleted
+
+Triggered when a workflow successfully completes.
+
+Attributes:
+- `workflowId`: Unique identifier for the workflow.
+- `output`: The result returned by the workflow.
+- `timestamp`: Timestamp of when the workflow completed.
+
+### WorkflowFailed
+
+Triggered when a workflow fails during its execution.
+
+Attributes:
+- `workflowId`: Unique identifier for the workflow.
+- `output`: Error message or exception details.
+- `timestamp`: Timestamp of when the workflow failed.
+
+## Activity Events
+
+### ActivityStarted
+
+Triggered when an activity starts its execution.
+
+Attributes:
+- `workflowId`: The ID of the parent workflow.
+- `activityId`: Unique identifier for the activity.
+- `class`: Class name of the activity.
+- `index`: The position of the activity within the workflow.
+- `arguments`: Arguments passed to the activity.
+- `timestamp`: Timestamp of when the activity started.
+
+### ActivityCompleted
+
+Triggered when an activity successfully completes.
+
+Attributes:
+- `workflowId`: The ID of the parent workflow.
+- `activityId`: Unique identifier for the activity.
+- `output`: The result returned by the activity.
+- `timestamp`: Timestamp of when the activity completed.
+
+### ActivityFailed
+
+Triggered when an activity fails during execution.
+
+Attributes:
+- `workflowId`: The ID of the parent workflow.
+- `activityId`: Unique identifier for the activity.
+- `output`: Error message or exception details.
+- `timestamp`: Timestamp of when the activity failed.
+
+## Lifecycle
+
+This is a typical workflow lifecycle:
+
+```
+Workflow\Events\WorkflowStarted
+Workflow\Events\ActivityStarted
+Workflow\Events\ActivityCompleted
+Workflow\Events\WorkflowCompleted
+```
+
+This is a workflow lifecycle with a failed activity that recovers:
+
+```
+Workflow\Events\WorkflowStarted
+Workflow\Events\ActivityStarted
+Workflow\Events\ActivityFailed
+Workflow\Events\ActivityStarted
+Workflow\Events\ActivityCompleted
+Workflow\Events\WorkflowCompleted
+```
+
+<!-- Source: versioned_docs/version-1.x/features/webhooks.md -->
+
+# Webhooks
+
+The framework provides webhooks that allow external systems to start workflows and send signals dynamically. This feature enables seamless integration with external services, APIs, and automation tools.
+
+## Enabling Webhooks
+To enable webhooks, register the webhook routes in your application’s routes file (`routes/web.php` or `routes/api.php`):
+
+```php
+use Workflow\Webhooks;
+
+Webhooks::routes();
+```
+
+By default, webhooks will:
+- Auto-discover workflows in the `app/Workflows` folder.
+- Expose webhooks to workflows marked with `#[Webhook]` at the class level.
+- Expose webhooks to signal methods marked with `#[Webhook]`.
+
+## Starting a Workflow via Webhook
+To expose a workflow as a webhook, add the `#[Webhook]` attribute on the class itself.
+
+```php
+use Workflow\Webhook;
+use Workflow\Workflow;
+
+#[Webhook]
+class OrderWorkflow extends Workflow
+{
+    public function execute($orderId)
+    {
+        // your code here
+    }
+}
+```
+
+### Webhook URL
+```
+POST /webhooks/start/order-workflow
+```
+
+### Example Request
+```bash
+curl -X POST "https://example.com/webhooks/start/order-workflow" \
+     -H "Content-Type: application/json" \
+     -d '{"orderId": 123}'
+```
+
+## Sending a Signal via Webhook
+To allow external systems to send signals to a workflow, add the `#[Webhook]` attribute on the method.
+
+```php
+use Workflow\SignalMethod;
+use Workflow\Webhook;
+use Workflow\Workflow;
+
+class OrderWorkflow extends Workflow
+{
+    protected bool $shipped = false;
+
+    #[SignalMethod]
+    #[Webhook]
+    public function markAsShipped()
+    {
+        $this->shipped = true;
+    }
+}
+```
+
+### Webhook URL
+```
+POST /webhooks/signal/order-workflow/{workflowId}/mark-as-shipped
+```
+
+### Example Request
+```bash
+curl -X POST "https://example.com/webhooks/signal/order-workflow/1/mark-as-shipped" \
+     -H "Content-Type: application/json"
+```
+
+## Webhook URL Helper
+The `$this->webhookUrl()` helper generates webhook URLs for starting workflows or sending signals.
+
+```
+public function webhookUrl(string $signalMethod = ''): string
+```
+
+If `$signalMethod` is empty or omitted, `$this->webhookUrl()` returns the URL for starting the workflow. If `$signalMethod` is provided, `$this->webhookUrl()` returns the URL for sending a signal to an active workflow instance.
+
+```
+use Workflow\Activity;
+
+class ShipOrderActivity extends Activity
+{
+    public function execute(string $email): void
+    {
+        $startUrl = $this->webhookUrl();
+        // $startUrl = '/webhooks/start/order-workflow';
+
+        $signalUrl = $this->webhookUrl('markAsShipped');
+        // $signalUrl = '/webhooks/signal/order-workflow/{workflowId}/mark-as-shipped';
+    }
+}
+```
+
+## Webhook Authentication
+By default, webhooks don't require authentication, but you can configure one of several strategies in `config/workflows.php`.
+
+**Important:** If webhook URLs are shared with external parties or exposed publicly, enable authentication (token or HMAC signature) to prevent unauthorized access.
+
+### Authentication Methods
+It supports:
+1. No Authentication (none)
+2. Token-based Authentication (token)
+3. HMAC Signature Verification (signature)
+4. Custom Authentication (custom)
+
+### Token Authentication
+For token authentication, webhooks require a valid API token in the request headers. The default header is `Authorization` but you can change this in the configuration settings.
+
+#### Example Request
+```bash
+curl -X POST "https://example.com/webhooks/start/order-workflow" \
+     -H "Content-Type: application/json" \
+     -H "Authorization: your-api-token" \
+     -d '{"orderId": 123}'
+```
+
+### HMAC Signature Authentication
+For HMAC authentication, it verifies requests using a secret key. The default header is `X-Signature` but this can also be changed.
+
+#### Example Request
+```bash
+BODY='{"orderId": 123}'
+SIGNATURE=$(echo -n "$BODY" | openssl dgst -sha256 -hmac "your-secret-key" | awk '{print $2}')
+
+curl -X POST "https://example.com/webhooks/start/order-workflow" \
+     -H "Content-Type: application/json" \
+     -H "X-Signature: $SIGNATURE" \
+     -d "$BODY"
+```
+
+### Custom Authentication
+To use a custom authenticator, create a class that implements the `WebhookAuthenticator` interface:
+
+```php
+use Illuminate\Http\Request;
+use Workflow\Auth\WebhookAuthenticator;
+
+class CustomAuthenticator implements WebhookAuthenticator
+{
+    public function validate(Request $request): Request
+    {
+        $allow = true;
+
+        if ($allow) {
+            return $request;
+        } else {
+            abort(401, 'Unauthorized');
+        }
+    }
+}
+```
+
+Then configure it in `config/workflows.php`:
+
+```php
+'webhook_auth' => [
+    'method' => 'custom',
+    'custom' => [
+        'class' => App\Your\CustomAuthenticator::class,
+    ],
+],
+```
+
+The `validate()` method should return the `Request` if valid, or call `abort(401)` if unauthorized.
+
+## Configuring Webhook Routes
+By default, webhooks are accessible under `/webhooks`. You can customize the route path in `config/workflows.php`:
+
+```php
+'webhooks_route' => 'workflows',
+```
+
+After this change, webhooks will be accessible under:
+```
+POST /workflows/start/order-workflow
+POST /workflows/signal/order-workflow/{workflowId}/mark-as-shipped
+```
+
+<!-- Source: versioned_docs/version-1.x/features/continue-as-new.md -->
+
+# Continue As New
+
+The **Continue As New** pattern allows a running workflow to restart itself with new arguments.
+This is useful when you need to:
+
+* Prevent unbounded workflow history growth.
+* Model iterative loops or recursive workflows.
+* Split long-running workflows into smaller, manageable executions while preserving continuity.
+
+## Using `continueAsNew`
+
+To restart a workflow as new, call the helper function `continueAsNew(...)` from within the workflow’s `execute()` method.
+
+```php
+use function Workflow\{activity, continueAsNew};
+use Workflow\Workflow;
+
+class CounterWorkflow extends Workflow
+{
+    public function execute(int $count = 0, int $max = 3)
+    {
+        $result = yield activity(CountActivity::class, $count);
+
+        if ($count >= $max) {
+            return 'workflow_' . $result;
+        }
+
+        return yield continueAsNew($count + 1, $max);
+    }
+}
+```
+
+In this example:
+
+* The workflow executes an activity each iteration.
+* If the maximum count has not been reached, it continues as new with incremented arguments.
+* The final result is returned only when the loop completes.
+
+<!-- Source: versioned_docs/version-1.x/features/versioning.md -->
+
+# Versioning
+
+Since workflows can run for long periods, sometimes months or even years, it's common to need to make changes to a workflow definition while executions are still in progress. Without versioning, modifying workflow code that affects the execution path would cause non-determinism errors during replay.
+
+The `getVersion()` helper function allows you to safely introduce changes to running workflows by creating versioned branch points.
+
+```php
+use Workflow\Workflow;
+use Workflow\WorkflowStub;
+use function Workflow\{activity, getVersion};
+
+class MyWorkflow extends Workflow
+{
+    public function execute()
+    {
+        $version = yield getVersion(
+            'my-change-id',
+            WorkflowStub::DEFAULT_VERSION,
+            1
+        );
+
+        if ($version === WorkflowStub::DEFAULT_VERSION) {
+            yield activity(OldActivity::class);
+        } else {
+            yield activity(NewActivity::class);
+        }
+    }
+}
+```
+
+## How It Works
+
+The `getVersion()` method takes three parameters:
+
+- **changeId** - A unique identifier for this change point
+- **minSupported** - The minimum version this code still supports
+- **maxSupported** - The maximum (current) version for new executions
+
+When a workflow encounters `getVersion()`:
+
+- **New executions** record the `maxSupported` version and return it
+- **Replaying executions** return the previously recorded version
+
+This allows new workflows to use the latest code path while existing workflows continue using their original path.
+
+## Adding a New Version
+
+Suppose you have an existing workflow that calls `prePatchActivity`:
+
+```php
+use function Workflow\activity;
+use Workflow\Workflow;
+
+class MyWorkflow extends Workflow
+{
+    public function execute()
+    {
+        $result = yield activity(PrePatchActivity::class);
+
+        return $result;
+    }
+}
+```
+
+To replace it with `postPatchActivity` without breaking running workflows:
+
+```php
+use function Workflow\{activity, getVersion};
+use Workflow\Workflow;
+use Workflow\WorkflowStub;
+
+class MyWorkflow extends Workflow
+{
+    public function execute()
+    {
+        $version = yield getVersion(
+            'activity-change',
+            WorkflowStub::DEFAULT_VERSION,
+            1
+        );
+
+        $result = $version === WorkflowStub::DEFAULT_VERSION
+            ? yield activity(PrePatchActivity::class)
+            : yield activity(PostPatchActivity::class);
+
+        return $result;
+    }
+}
+```
+
+## Adding More Versions
+
+When you need to make additional changes, increment `maxSupported`:
+
+```php
+$version = yield getVersion(
+    'activity-change',
+    WorkflowStub::DEFAULT_VERSION,
+    2
+);
+
+$result = match($version) {
+    WorkflowStub::DEFAULT_VERSION => yield activity(PrePatchActivity::class),
+    1 => yield activity(PostPatchActivity::class),
+    2 => yield activity(AnotherPatchActivity::class),
+};
+```
+
+## Deprecating Old Versions
+
+After all workflows using an old version have completed, you can drop support by increasing `minSupported`. This removes the need to maintain old code paths.
+
+```php
+// After all DEFAULT_VERSION workflows have completed:
+$version = yield getVersion(
+    'activity-change',
+    1,  // No longer supporting DEFAULT_VERSION
+    2
+);
+
+$result = match($version) {
+    1 => yield activity(PostPatchActivity::class),
+    2 => yield activity(AnotherPatchActivity::class),
+};
+```
+
+If a workflow with a version older than `minSupported` tries to replay, it will throw a `VersionNotSupportedException`.
+
+## Multiple Change Points
+
+You can use multiple `getVersion()` calls in the same workflow for independent changes:
+
+```php
+use function Workflow\getVersion;
+use Workflow\Workflow;
+use Workflow\WorkflowStub;
+
+class MyWorkflow extends Workflow
+{
+    public function execute()
+    {
+        $version1 = yield getVersion('change-1', WorkflowStub::DEFAULT_VERSION, 1);
+        $version2 = yield getVersion('change-2', WorkflowStub::DEFAULT_VERSION, 1);
+
+        // Each change point is tracked independently
+    }
+}
+```
+
+**Important:** Each `changeId` should be unique within a workflow. The version is recorded in the workflow logs and will be replayed deterministically.
+
+<!-- Source: versioned_docs/version-1.x/configuration/publishing-config.md -->
+
+# Publishing Config
+
+This will create a `workflows.php` configuration file in your `config` folder.
+
+```bash
+php artisan vendor:publish --provider="Workflow\Providers\WorkflowServiceProvider" --tag="config"
+```
+
+## Changing Workflows Folder
+
+By default, the `make` commands will write to the `app/Workflows` folder.
+
+```php
+php artisan make:workflow MyWorkflow
+php artisan make:activity MyActivity
+```
+
+This can be changed by updating the `workflows_folder` setting.
+
+```php
+'workflows_folder' => 'Workflows',
+```
+
+## Using Custom Models
+
+In the `workflows.php` config file you can update the model classes to use your own.
+
+```php
+'stored_workflow_model' => App\Models\StoredWorkflow::class,
+
+'stored_workflow_exception_model' => App\Models\StoredWorkflowException::class,
+
+'stored_workflow_log_model' => App\Models\StoredWorkflowLog::class,
+
+'stored_workflow_signal_model' => App\Models\StoredWorkflowSignal::class,
+
+'stored_workflow_timer_model' => App\Models\StoredWorkflowTimer::class,
+```
+
+## Changing Serializer
+
+This setting allows you to optionally use the Base64 serializer instead of Y (kind of like yEnc encoding where it only gets rid of null bytes). If you change this it will only affect new workflows and old workflows will revert to whatever they were encoded with to ensure compatibility.
+
+The default serializer setting in `workflows.php` is:
+
+```php
+'serializer' => Workflow\Serializers\Y::class,
+```
+
+To use Base64 instead, update it to:
+
+```php
+'serializer' => Workflow\Serializers\Base64::class,
+```
+
+<!-- Source: versioned_docs/version-1.x/configuration/options.md -->
+
+# Options
+
+There are various options available when defining your workflows and activities. These options include the number of times a workflow or activity may be attempted before it fails, the connection and queue, and the maximum number of seconds it is allowed to run.
+
+```php
+use Workflow\Activity;
+
+class MyActivity extends Activity
+{
+    public $connection = 'default';
+    public $queue = 'default';
+
+    public $tries = 0;
+    public $timeout = 0;
+
+    public function backoff()
+    {
+        return [1, 2, 5, 10, 15, 30, 60, 120];
+    }
+}
+```
+
+## WorkflowOptions
+
+You can also set queue options at workflow start time using `WorkflowOptions`.
+
+```php
+use Workflow\WorkflowOptions;
+use Workflow\WorkflowStub;
+
+$workflow = WorkflowStub::make(MyWorkflow::class);
+
+$workflow->start(
+    'arg1',
+    WorkflowOptions::set([
+        'connection' => 'redis',
+        'queue' => 'critical',
+    ])
+);
+
+// OR
+
+$workflow->start('arg1', new WorkflowOptions('redis', 'critical'));
+```
+
+`WorkflowOptions` are consumed by the workflow engine and are not passed as arguments to your workflow `execute()` method.
+
+These options are persisted with the workflow and used for subsequent workflow/activity dispatching (including replay and continue-as-new behavior).
+
+## Connection
+
+The `$connection` setting is used to specify which queue connection the workflow or activity should be sent to. By default, the `$connection` value is not set which will use the default connection. This can be overridden by setting the `$connection` property on the workflow or activity class.
+
+## Queue
+
+The `$queue` setting is used to specify which queue the workflow or activity should be added to. By default, the `$queue` value is not set which uses the default queue for the specified connection. This can be overridden by setting the `$queue` property on the workflow or activity class.
+
+## Retries
+
+The `$tries` setting is used to control the number of retries an activity is attempted before it is considered failed. By default, the `$tries` value is set to 0 which means it will be retried forever. This can be overridden by setting the `$tries` property on the activity class.
+
+## Timeout
+
+The `$timeout` setting is used to control the maximum number of seconds an activity is allowed to run before it is killed. By default, the `$timeout` value is set to 0 seconds which means it can run forever. This can be overridden by setting the `$timeout` property on the activity class.
+
+## Backoff
+
+The `backoff` method returns an array of integers corresponding to the current attempt. The default `backoff` method decays exponentially to 2 minutes. This can be overridden by implementing the `backoff` method on the activity class.
+
+<!-- Source: versioned_docs/version-1.x/configuration/ensuring-same-server.md -->
+
+# Ensuring Same Server
+
+To ensure that your activities run on the same server so that they can share data using the local file system, you can use the `$queue` property on your workflow and activity classes. Set the `$queue` property to the name of a dedicated queue that is only processed by the desired server.
+
+In order to run a queue worker that only processes the `my_dedicated_queue` queue, you can use the `php artisan queue:work --queue=my_dedicated_queue` command. Alternatively, you can use Laravel Horizon to manage your queues. Horizon is a queue manager that provides a dashboard for monitoring the status of your queues and workers.
+
+<!-- Source: versioned_docs/version-1.x/configuration/database-connection.md -->
+
+# Database Connection
+
+Here is an overview of the steps needed to customize the database connection used for the stored workflow models. This is *only* required if you want to use a different database connection than the default connection you specified for your Laravel application.
+
+1. Create classes in your app models directory that extend the base workflow model classes
+2. Set the desired `$connection` option in each class
+3. Publish the workflow config file
+4. Update the config file to use your custom classes
+
+## Extending Workflow Models
+
+In `app\Models\StoredWorkflow.php` put this.
+
+```php
+namespace App\Models;
+
+use Workflow\Models\StoredWorkflow as BaseStoredWorkflow;
+
+class StoredWorkflow extends BaseStoredWorkflow
+{
+    protected $connection = 'mysql';
+}
+```
+
+In `app\Models\StoredWorkflowException.php` put this.
+
+```php
+namespace App\Models;
+
+use Workflow\Models\StoredWorkflowException as BaseStoredWorkflowException;
+
+class StoredWorkflowException extends BaseStoredWorkflowException
+{
+    protected $connection = 'mysql';
+
+}
+```
+
+In `app\Models\StoredWorkflowLog.php` put this.
+
+```php
+namespace App\Models;
+
+use Workflow\Models\StoredWorkflowLog as BaseStoredWorkflowLog;
+
+class StoredWorkflowLog extends BaseStoredWorkflowLog
+{
+    protected $connection = 'mysql';
+}
+```
+
+In `app\Models\StoredWorkflowSignal.php` put this.
+
+```php
+namespace App\Models;
+
+use Workflow\Models\StoredWorkflowSignal as BaseStoredWorkflowSignal;
+
+class StoredWorkflowSignal extends BaseStoredWorkflowSignal
+{
+    protected $connection = 'mysql';
+}
+```
+
+In `app\Models\StoredWorkflowTimer.php` put this.
+
+```php
+namespace App\Models;
+
+use Workflow\Models\StoredWorkflowTimer as BaseStoredWorkflowTimer;
+
+class StoredWorkflowTimer extends BaseStoredWorkflowTimer
+{
+    protected $connection = 'mysql';
+}
+```
+
+<!-- Source: versioned_docs/version-1.x/configuration/microservices.md -->
+
+# Microservices
+Workflows can span across multiple Laravel applications. For instance, a workflow might exist in one microservice while its corresponding activity resides in another.
+
+To enable seamless communication between Laravel applications, set up a shared database and queue connection across all microservices.
+
+All microservices must have identical `APP_KEY` values in their `.env` files for proper serialization and deserialization from the queue.
+
+Below is a guide on configuring a shared MySQL database and Redis connection:
+
+```php
+// config/database.php
+
+'connections' => [
+    'shared' => [
+        'driver' => 'mysql',
+        'url' => env('SHARED_DB_URL'),
+        'host' => env('SHARED_DB_HOST', '127.0.0.1'),
+        'port' => env('SHARED_DB_PORT', '3306'),
+        'database' => env('SHARED_DB_DATABASE', 'laravel'),
+        'username' => env('SHARED_DB_USERNAME', 'root'),
+        'password' => env('SHARED_DB_PASSWORD', ''),
+        'unix_socket' => env('SHARED_DB_SOCKET', ''),
+        'charset' => env('SHARED_DB_CHARSET', 'utf8mb4'),
+        'collation' => env('SHARED_DB_COLLATION', 'utf8mb4_unicode_ci'),
+        'prefix' => '',
+        'prefix_indexes' => true,
+        'strict' => true,
+        'engine' => null,
+        'options' => extension_loaded('pdo_mysql') ? array_filter([
+            PDO::MYSQL_ATTR_SSL_CA => env('SHARED_MYSQL_ATTR_SSL_CA'),
+        ]) : [],
+    ],
+],
+
+'redis' => [
+    'shared' => [
+        'url' => env('SHARED_REDIS_URL'),
+        'host' => env('SHARED_REDIS_HOST', '127.0.0.1'),
+        'username' => env('SHARED_REDIS_USERNAME'),
+        'password' => env('SHARED_REDIS_PASSWORD'),
+        'port' => env('SHARED_REDIS_PORT', '6379'),
+        'database' => env('SHARED_REDIS_DB', '0'),
+    ],
+],
+```
+
+```php
+// config/queue.php
+
+'connections' => [
+    'shared' => [
+        'driver' => 'redis',
+        'connection' => env('SHARED_REDIS_QUEUE_CONNECTION', 'default'),
+        'queue' => env('SHARED_REDIS_QUEUE', 'default'),
+        'retry_after' => (int) env('SHARED_REDIS_QUEUE_RETRY_AFTER', 90),
+        'block_for' => null,
+        'after_commit' => false,
+    ],
+],
+```
+
+For consistency in the workflow database schema across services, designate only one microservice to publish and run the workflow migrations.
+
+Modify the workflow migrations to use the shared database connection:
+
+```php
+// database/migrations/2022_01_01_000000_create_workflows_table.php
+
+final class CreateWorkflowsTable extends Migration
+{
+    protected $connection = 'shared';
+```
+
+In each microservice, extend the workflow models to use the shared connection:
+
+```php
+// app\Models\StoredWorkflow.php
+
+class StoredWorkflow extends BaseStoredWorkflow
+{
+    protected $connection = 'shared';
+```
+
+Publish the workflow config file and update it to use your custom models.
+
+Update your workflow and activity classes to use the shared queue connection. Assign unique queue names to each microservice for differentiation:
+
+```php
+// App: workflow microservice
+
+use function Workflow\activity;
+use Workflow\Workflow;
+
+class MyWorkflow extends Workflow
+{
+    public $connection = 'shared';
+    public $queue = 'workflow';
+
+    public function execute($name)
+    {
+        $result = yield activity(MyActivity::class, $name);
+        return $result;
+    }
+}
+```
+
+```php
+// App: activity microservice
+
+use Workflow\Activity;
+
+class MyActivity extends Activity
+{
+    public $connection = 'shared';
+    public $queue = 'activity';
+
+    public function execute($name)
+    {
+        return "Hello, {$name}!";
+    }
+}
+```
+
+It's crucial to maintain empty duplicate classes in every microservice, ensuring they share the same namespace and class name. This precaution avoids potential exceptions due to class discrepancies:
+
+```php
+// App: workflow microservice
+
+use Workflow\Activity;
+
+class MyActivity extends Activity
+{
+    public $connection = 'shared';
+    public $queue = 'activity';
+}
+```
+
+```php
+// App: activity microservice
+
+use Workflow\Workflow;
+
+class MyWorkflow extends Workflow
+{
+    public $connection = 'shared';
+    public $queue = 'workflow';
+}
+```
+
+Note: The workflow code should exclusively reside in the workflow microservice, and the activity code should only be found in the activity microservice. The code isn't duplicated; identical class structures are merely maintained across all microservices.
+
+To run queue workers in each microservice, use the shared connection and the respective queue names:
+
+```bash
+php artisan queue:work shared --queue=workflow
+php artisan queue:work shared --queue=activity
+```
+
+In this setup, the workflow queue worker runs in the workflow microservice, while the activity queue worker runs in the activity microservice.
+
+<!-- Source: versioned_docs/version-1.x/configuration/pruning-workflows.md -->
+
+# Pruning Workflows
+Sometimes you may want to periodically delete completed workflows that are no longer needed. To accomplish this, you may use the `model:prune` artisan command.
+
+```bash
+php artisan model:prune --model="Workflow\Models\StoredWorkflow"
+```
+
+By default, only completed workflows older than 1 month are pruned. You can control this via configuration setting.
+
+```php
+'prune_age' => '1 month',
+```
+
+You can schedule the `model:prune` artisan command in your application's `routes/console.php` file.
+
+```php
+Schedule::command('model:prune', [
+    '--model' => StoredWorkflow::class,
+])->daily();
+```
+
+You can also control which workflows are pruned by extending the base workflow model and implementing your own `prunable` method.
+
+```php
+public function prunable(): Builder
+{
+    return static::where('status', 'completed')
+            ->where('created_at', '<=', now()->subMonth())
+            ->whereDoesntHave('parents');
+}
+```
+
+You may test the `model:prune` command with the `--pretend` option. When pretending, the `model:prune` command will report how many records would be pruned if the command were to actually run.
+
+```bash
+php artisan model:prune --model="Workflow\Models\StoredWorkflow" --pretend
+```
+
+<!-- Source: versioned_docs/version-1.x/constraints/idempotent-vs-deterministic.md -->
+
+# Idempotent vs. Deterministic Workflows: What's the Difference?
+
+**Deterministic behavior makes the same decisions when it is given the same inputs and history. Idempotent behavior has the same intended effect whether an operation runs once or several times.** Determinism makes one execution predictable; idempotency makes repeated executions safe. Neither property implies the other.
+
+| Question | Deterministic | Idempotent |
+| --- | --- | --- |
+| What stays the same? | The decisions made from the same inputs and history | The intended external effect after one or many calls |
+| Why does Durable Workflow need it? | Replay must reconstruct the same workflow path | Retries must not duplicate side effects |
+| Where does it belong? | Workflow and orchestration code | Activities and the systems they call |
+| Does it prohibit IO or randomness? | Yes, inside replayed workflow code unless the result is recorded | No; an activity may use IO, time, or randomness and still make its effect safe to repeat |
+
+## The Properties Are Independent
+
+### Deterministic but not idempotent
+
+Consider an operation that increments a counter:
+
+```text
+increment(counter):
+    counter.value = counter.value + 1
+```
+
+Given the same starting counter value, this operation always makes the same calculation, so it is deterministic. It is not idempotent: calling it twice increments the counter twice, while calling it once increments it once.
+
+### Idempotent but not deterministic
+
+Now consider an activity that sets an order to a known state but uses randomized backoff while contacting the service:
+
+```text
+archive(order_id):
+    wait(random_backoff())
+    PUT /orders/{order_id}/status {"status": "archived"}
+```
+
+The timing and number of internal attempts can differ, so this implementation is not deterministic. The operation can still be idempotent: after one successful call or several, the order is archived. The response, latency, and internal path do not have to be identical; the intended external effect does.
+
+## Why Workflow Code Must Be Deterministic
+
+Durable Workflow rebuilds orchestration state by replaying committed history. With the same workflow input and the same history, workflow code must schedule the same activities, timers, and waits in the same order. A wall-clock read, random value, live database query, or network response inside the workflow body can choose a different branch during replay and make the new decisions disagree with history.
+
+Move those operations into activities, or use a workflow helper that records the value in history. Replay then returns the recorded activity or side-effect result instead of performing the external operation again. Determinism does not require every activity invocation to produce a universal, timeless answer; it requires replayed orchestration to make decisions that agree with its recorded history.
+
+The workflow body does not need to be idempotent. Replay may invoke it again, but the engine matches its durable decisions to recorded history instead of asking the body to deduplicate an external effect.
+
+See [Workflow Constraints](./workflow-constraints.md) for the authoring rules and [How It Works](../how-it-works.md) for the replay model.
+
+## Why Activities and Side Effects Must Be Idempotent
+
+Activities cross the durable boundary into databases, payment APIs, email providers, object storage, and other systems. They can run again after a failure or retry. The external change may even finish before a lost response causes the next attempt.
+
+Design the activity's intended effect so another attempt is safe:
+
+- send a stable idempotency key to the remote API
+- upsert by a durable business or execution identifier
+- write to a deterministic object or resource name
+- use a naturally idempotent operation such as setting a value or deleting a known resource
+
+An idempotency key does not make activity code deterministic, and it does not prevent another attempt from starting. It lets the external system recognize that repeated attempts represent the same logical operation.
+
+See [Activity Constraints](./activity-constraints.md), [Defining Activities](../defining-workflows/activities.md), and [Failures and Recovery](../failures-and-recovery.md) for stable 1.x guidance. The stable 2.0 documentation provides the deeper [Activity Execution Model](/docs/features/activity-execution-model/) and [Execution Guarantees and Idempotency](/docs/constraints/execution-guarantees/) contracts.
+
+## One Boundary, Versioned SDK Guidance
+
+The determinism-versus-idempotency boundary is language-neutral. This stable 1.x documentation line covers the Laravel/PHP package and its in-application workflow and activity model. PHP, Python, and Rust service-mode SDK guidance is part of the stable [2.0 line](/docs/introduction/), with separate guides for the [PHP SDK](/docs/polyglot/php/), [Python SDK](/docs/polyglot/python/), and [Rust SDK](/docs/polyglot/rust/).
+
+In any documented runtime, apply the same design:
+
+1. Keep orchestration replay-safe: given the same input and history, issue the same durable commands.
+2. Put network calls, clocks, randomness, and mutable external state behind an activity boundary.
+3. Give each side-effecting activity a stable identity that the target system can deduplicate.
+
+The language syntax changes. The durable boundary does not.
+
+<!-- Source: versioned_docs/version-1.x/constraints/overview.md -->
+
+# Overview
+
+Workflow code is replayed to reconstruct orchestration state, while activity code can be retried when work fails or its result is uncertain. Those two recovery paths require different properties:
+
+- **Workflow code must be deterministic.** Given the same workflow input and recorded history, replay must make the same orchestration decisions in the same order.
+
+- **Activity side effects should be idempotent.** Repeating the same logical operation must have the same intended external effect as performing it once.
+
+Event sourcing persists the workflow's history. Replay reads the recorded events and returns saved activity results to the workflow; it does not require an activity to be deterministic. Activity idempotency protects the separate case where an external operation is attempted again.
+
+Read [Idempotent vs. Deterministic Workflows](./idempotent-vs-deterministic.md) for the direct comparison and examples, then use [Workflow Constraints](./workflow-constraints.md) and [Activity Constraints](./activity-constraints.md) for the authoring rules.
+
+<!-- Source: versioned_docs/version-1.x/constraints/workflow-constraints.md -->
+
+# Workflow Constraints
+
+The determinism constraints for workflow classes dictate that a workflow class must not depend on external state or services that may change over time. This means that a workflow class should not perform any operations that rely on the current date and time, the current user, external network resources, or any other source of potentially changing state.
+
+Here are some examples of things you shouldn't do inside of a workflow class:
+
+- Don't use the `Carbon::now()` method to get the current date and time, as this will produce different results each time it is called. Instead, use the `Workflow\now()` method, which returns a fixed date and time.
+- Don't use the `Auth::user()` method to get the current user, as this will produce different results depending on who is currently logged in. Instead, pass the user as an input to the workflow when it is started.
+- Don't make network requests to external resources, as these may be slow or unavailable at different times. Instead, pass the necessary data as inputs to the workflow when it is started or use an activity to retrieve the data.
+- Don't use random number generators (unless using a side effect) or other sources of randomness, as these will produce different results each time they are called. Instead, pass any necessary randomness as an input to the workflow when it is started.
+
+<!-- Source: versioned_docs/version-1.x/constraints/activity-constraints.md -->
+
+# Activity Constraints
+
+Activities have none of the prior constraints. However, because activities are retryable they should still be idempotent. If your activity creates a charge for a customer then retrying it should not create a duplicate charge.
+
+Many external APIs support passing an `Idempotency-Key`. See [Stripe](https://stripe.com/docs/api/idempotent_requests) for an example.
+
+Many operations are naturally idempotent. If you encode a video twice, while it may be a waste of time, you still have the same video. If you delete the same file twice, the second deletion does nothing.
+
+Some operations are not idempotent but duplication may be tolerable. If you are unsure if an email was actually sent, sending a duplicate email might be preferable to risking that no email was sent at all. However, it is important to carefully consider the implications of ignoring this constraint before doing so.
+
+<!-- Source: versioned_docs/version-1.x/constraints/constraints-summary.md -->
+
+# Constraints Summary
+
+| Constraint | Workflow code | Activity code |
+| --- | --- | --- |
+| IO | Not allowed | Allowed |
+| Mutable global variables | Not allowed | Allowed |
+| Non-deterministic functions | Not allowed | Allowed |
+| `Carbon::now()` | Not allowed | Allowed |
+| `sleep()` | Not allowed | Allowed |
+| External side effects | Move them into activities | Allowed only when safe to repeat |
+
+Workflow code must be deterministic because the engine rebuilds orchestration state by replaying recorded history. Given the same workflow input and history, the workflow body must make the same durable decisions in the same order. The workflow body does not need to be idempotent; determinism is the replay requirement.
+
+Activity side effects must be safe to repeat because an activity may be retried after a failure or lost response. Usually that means making the external effect idempotent with a stable key, deterministic target resource, or naturally idempotent operation.
+
+See [Idempotent vs. Deterministic Workflows](./idempotent-vs-deterministic.md) for a direct comparison and examples that separate the two properties.
+
+<!-- Source: versioned_docs/version-1.x/sample-app.md -->
+
+# Sample App
+
+https://github.com/durable-workflow/sample-app/tree/Laravel-12
+
+This is a sample Laravel 12 application with example workflows that you can run inside a GitHub codespace. The `Laravel-12` branch preserves the Laravel 12 + Durable Workflow 1.x snapshot that these v1 docs describe; the repo's `main` branch now tracks Laravel 13 + Durable Workflow 2.x (see the 2.x docs).
+
+**Step 1**
+
+Create a codespace from the `Laravel-12` branch of this repo.
+
+**Step 2**
+
+Once the codespace has been created, wait for the codespace to build. This should take between 5 to 10 minutes.
+
+**Step 3**
+
+Once it is done. You will see the editor and the terminal at the bottom.
+
+**Step 4**
+
+Run composer install.
+
+```bash
+composer install
+```
+
+**Step 5**
+
+Run the init command to setup the app, install extra dependencies and run the migrations.
+
+```bash
+php artisan app:init
+```
+
+**Step 6**
+
+Start the queue worker. This will enable the processing of workflows and activities.
+
+```bash
+php artisan queue:work
+```
+
+**Step 7**
+
+Create a new terminal window.
+
+**Step 8**
+
+Start the example workflow inside the new terminal window.
+
+```bash
+php artisan app:workflow
+```
+
+**Step 9**
+
+You can view the waterline dashboard at https://[your-codespace-name]-80.preview.app.github.dev/waterline/dashboard.
+
+**Step 10**
+
+Run the workflow and activity tests.
+
+```bash
+php artisan test
+```
+
+That's it! You can now create and test workflows.
+
+<!-- Source: versioned_docs/version-1.x/testing.md -->
+
+# Testing
+
+## Workflows
+
+You can execute workflows synchronously in your test environment and mock activities and child workflows to define expected behaviors and outputs without running the actual implementations.
+
+```
+use function Workflow\activity;
+use Workflow\Workflow;
+
+class MyWorkflow extends Workflow
+{
+    public function execute()
+    {
+        $result = yield activity(MyActivity::class);
+
+        return $result;
+    }
+}
+```
+
+The above workflow can be tested by first calling `WorkflowStub::fake()` and then mocking the activity.
+
+```
+public function testWorkflow()
+{
+    WorkflowStub::fake();
+
+    WorkflowStub::mock(MyActivity::class, 'result');
+
+    $workflow = WorkflowStub::make(MyWorkflow::class);
+    $workflow->start();
+
+    $this->assertSame($workflow->output(), 'result');
+}
+```
+
+You can also provide a callback instead of a result value to ` WorkflowStub::mock()`.
+
+The workflow `$context` along with any arguments for the current activity will also be passed to the callback.
+
+```
+public function testWorkflow()
+{
+    WorkflowStub::fake();
+
+    WorkflowStub::mock(MyActivity::class, function ($context) {
+        return 'result';
+    });
+
+    $workflow = WorkflowStub::make(MyWorkflow::class);
+    $workflow->start();
+
+    $this->assertSame($workflow->output(), 'result');
+}
+```
+
+You can assert which activities or child workflows were dispatched by using the `assertDispatched`, `assertNotDispatched`, and `assertNothingDispatched` methods:
+
+```
+WorkflowStub::assertDispatched(MyActivity::class);
+
+// Assert the activity was dispatched twice...
+WorkflowStub::assertDispatched(MyActivity::class, 2);
+
+WorkflowStub::assertNotDispatched(MyActivity::class);
+
+WorkflowStub::assertNothingDispatched();
+```
+
+You may pass a closure to the `assertDispatched` or `assertNotDispatched` methods in order to assert that an activity or child workflow was dispatched that passes a given "truth test". The arguments for the activity or child workflow will be passed to the callback.
+
+```
+WorkflowStub::assertDispatched(TestOtherActivity::class, function ($string) {
+    return $string === 'other';
+});
+```
+
+## Skipping Time
+
+By manipulating the system time with `$this->travel()` or `$this->travelTo()`, you can simulate time-dependent workflows. This strategy allows you to test timeouts, delays, and other time-sensitive logic within your workflows.
+
+```
+use function Workflow\{activity, timer};
+use Workflow\Workflow;
+
+class MyTimerWorkflow extends Workflow
+{
+    public function execute()
+    {
+        yield timer(60);
+
+        $result = yield activity(MyActivity::class);
+
+        return $result;
+    }
+}
+```
+
+The above workflow waits 60 seconds before executing the activity. Using `$this->travel()` and `$workflow->resume()` allows us to skip this waiting period.
+
+```
+public function testTimeTravelWorkflow()
+{
+    WorkflowStub::fake();
+
+    WorkflowStub::mock(MyActivity::class, 'result');
+
+    $workflow = WorkflowStub::make(MyTimerWorkflow::class);
+    $workflow->start();
+
+    $this->travel(120)->seconds();
+
+    $workflow->resume();
+
+    $this->assertSame($workflow->output(), 'result');
+}
+```
+
+The helpers `$this->travel()` and `$this->travelTo()` methods use `Carbon:setTestNow()` under the hood.
+
+## Activities
+
+Testing activities is similar to testing Laravel jobs. You manually create the activity and then call the `handle()` method.
+
+```
+$workflow = WorkflowStub::make(MyWorkflow::class);
+
+$activity = new MyActivity(0, now()->toDateTimeString(), StoredWorkflow::findOrFail($workflow->id()));
+
+$result = $activity->handle();
+```
+
+Notice that we call the `handle()` method and not the `execute()` method.
+
+<!-- Source: versioned_docs/version-1.x/failures-and-recovery.md -->
+
+# Failures and Recovery
+
+## Handling Exceptions
+
+When an activity throws an exception, the workflow won't immediately be informed. Instead, it waits until the number of `$tries` has been exhausted. The system will keep retrying the activity based on its retry policy. If you want the exception to be immediately sent to the workflow upon a failure, you can set the number of `$tries` to 1.
+
+```php
+use Exception;
+use Workflow\Activity;
+
+class MyActivity extends Activity
+{
+    public $tries = 1;
+
+    public function execute()
+    {
+        throw new Exception();
+    }
+}
+```
+
+```php
+use Exception;
+use function Workflow\activity;
+use Workflow\Workflow;
+
+class MyWorkflow extends Workflow
+{
+    public function execute()
+    {
+        try {
+            $result = yield activity(MyActivity::class);
+        } catch (Exception) {
+            // handle the exception here
+        }
+    }
+}
+```
+
+## Non-retryable Exceptions
+
+In certain cases, you may encounter exceptions that should not be retried. These are referred to as non-retryable exceptions. When an activity throws a non-retryable exception, the workflow will immediately mark the activity as failed and stop retrying.
+
+```php
+use Workflow\Activity;
+use Workflow\Exceptions\NonRetryableException;
+
+class MyNonRetryableActivity extends Activity
+{
+    public function execute()
+    {
+        throw new NonRetryableException('This is a non-retryable error');
+    }
+}
+```
+
+## Failing Activities
+
+The default value for `$tries` is 0 which means to retry forever. This is because the retry policy includes a backoff function which increases the delay between each retry attempt. This gives you time to fix the error without creating too many attempts.
+
+There are two types of failures that can occur in a activity: recoverable failures and non-recoverable failures. Recoverable failures are temporary and can be resolved without intervention, such as a timeout or temporary network failure. Non-recoverable failures require manual intervention, such as a deployment or code change.
+
+## Recovery Process
+
+The general process to fix a failing activity is:
+
+1. Check the logs for the activity that is failing and look for any errors or exceptions that are being thrown.
+2. Identify the source of the error and fix it in the code.
+3. Deploy the fix to the server where the queue is running.
+4. Restart the queue worker to pick up the new code.
+5. Wait for the activity to automatically retry and ensure that it is now completing successfully without errors.
+6. If the activity continues to fail, repeat the process until the issue is resolved.
+
+This allows you to keep the workflow in a running status even while an activity is failing. After you fix the failing activity, the workflow will finish in a completed status. A workflow with a failed status means that all activity `$tries` have been exhausted and the exception wasn't handled.
+
+<!-- Source: versioned_docs/version-1.x/how-it-works.md -->
+
+# How It Works
+
+Durable Workflow uses Laravel's queued jobs and event sourced persistence to create durable coroutines.
+
+## Queues
+
+Queued jobs are background processes that are scheduled to run at a later time. Laravel supports running queues via Amazon SQS, Redis, or even a relational database. Workflows and activities are both queued jobs but each behaves a little differently. A workflow will be dispatched mutliple times during normal operation. A workflow runs, dispatches one or more activities and then exits again until the activities are completed. An activity will only execute once during normal operation, as it will only be retried in the case of an error.
+
+## Event Sourcing
+
+Event sourcing is a way to build up the current state from a sequence of saved events rather than saving the state directly. This has several benefits, such as providing a complete history of the execution events which can be used to resume a workflow if the server it is running on crashes.
+
+## Coroutines
+
+Coroutines are functions that allow execution to be suspended and resumed by returning control to the calling function. In PHP, this is done using the yield keyword inside a generator. A generator is typically invoked by calling the [`Generator::current()`](https://www.php.net/manual/en/generator.current.php) method. This will execute the generator up to the first yield and then control will be returned to the caller.
+
+The `execute()` method of a workflow class is a [generator](https://www.php.net/manual/en/language.generators.syntax.php). It works by yielding each activity. This allows the workflow to first check if the activity has already successfully completed. If so, the cached result is pulled from the event store and returned instead of running the activity a second time. If the activity hasn't been successfully completed before, it will queue the activity to run. The workflow is then able to suspend execution until the activity completes or fails.
+
+## Activities
+
+By calling multiple activities, a workflow can orchestrate the results between each of the activities. The execution of the workflow and the activities it yields are interleaved, with the workflow yielding an activity, suspending execution until the activity completes, and then continuing execution from where it left off.
+
+If a workflow fails, the events leading up to the failure are replayed to rebuild the current state. This allows the workflow to pick up where it left off, with the same inputs and outputs as before, ensuring determinism.
+
+## Promises
+
+Promises are used to represent the result of an asynchronous operation, such as an activity. The yield keyword suspends execution until the promise is fulfilled or rejected. This allows the workflow to wait for an activity to complete before continuing execution.
+
+## Example
+
+```php
+use Workflow\Workflow;
+use function Workflow\{activity, all};
+
+class MyWorkflow extends Workflow
+{
+    public function execute()
+    {
+        return [
+            yield activity(TestActivity::class),
+            yield activity(TestOtherActivity::class),
+            yield all([
+                activity(TestParallelActivity::class),
+                activity(TestParallelOtherActivity::class),
+            ]),
+        ];
+    }
+}
+```
+
+## Sequence Diagram
+
+This sequence diagram shows how a workflow progresses through a series of activities, both serial and parallel.
+
+1. The workflow starts by getting dispatched as a queued job.
+2. The first activity, TestActivity, is then dispatched as a queued job. The workflow job then exits. Once TestActivity has completed, it saves the result to the database and returns control to the workflow by dispatching it again.
+3. At this point, the workflow enters the event sourcing replay loop. This is where it goes back to the database and looks at the event stream to rebuild the current state. This is necessary because the workflow is not a long running process. The workflow exits while any activities are running and then is dispatched again after completion.
+4. Once the event stream has been replayed, the workflow continues to the next activity, TestOtherActivity, and starts it by dispatching it as a queued job. Again, once TestOtherActivity has completed, it saves the result to the database and returns control to the workflow by dispatching it as a queued job.
+5. The workflow then enters the event sourcing replay loop again, rebuilding the current state from the event stream.
+6. Next, the workflow starts two parallel activities, TestParallelActivity and TestOtherParallelActivity. Both activities are dispatched. Once they have completed, they save the results to the database and return control to the workflow.
+7. Finally, the workflow enters the event sourcing replay loop one last time to rebuild the current state from the event stream. This completes the execution of the workflow.
+
+## Summary
+The sequence diagram illustrates the workflow starting with the TestActivity and then the TestOtherActivity being executed in series. After both activities complete, the workflow replayed the events in order to rebuild the current state. This process is necessary in order to ensure that the workflow can be resumed after a crash or other interruption.
+
+The need for determinism comes into play when the events are replayed. In order for the workflow to rebuild the correct state, the code for each activity must produce the same result when run multiple times with the same inputs. This means that activities should avoid using things like random numbers (unless using a side effect) or dates, as these will produce different results each time they are run.
+
+The need for idempotency comes into play when an API fails to return a response even though it has actually completed successfully. For example, if an activity charges a customer and is not idempotent, rerunning it after a a failed response could result in the customer being charged twice. To avoid this, activities should be designed to be idempotent.
+
+<!-- Source: versioned_docs/version-1.x/migration.md -->
+
+# Planning a 2.0 Migration
+
+Durable Workflow 2.0 gives a stable Laravel application two destinations. The
+embedded package keeps history, queues, workers, and operational ownership in
+the Laravel deployment. The PHP SDK keeps Laravel dependency injection,
+configuration, Artisan, logging, events, and testing while Cloud or a
+self-hosted Server owns durable state.
+
+Use the [Laravel adoption and runtime transition guide](/docs/laravel-adoption/)
+to compare both destinations with the same application action and to choose the
+drain, coexistence, cutover, and rollback boundary. Switching Composer packages
+does not migrate in-flight history, timers, retries, or durable Laravel queue
+state.
+
+Keep the [stable installation guide](/docs/installation/) for the running 1.x
+fleet until every run it owns is terminal. After choosing embedded 2.0, follow
+the [detailed package migration procedure](/docs/migration/). After choosing
+service mode, follow the [PHP SDK guide](/docs/polyglot/php/).
+
+<!-- Source: versioned_docs/version-1.x/monitoring.md -->
+
+# Monitoring
+
+## Waterline
+
+[Waterline](https://github.com/durable-workflow/waterline) is a separate UI that works nicely alongside Horizon. Think of Waterline as being to workflows what Horizon is to queues.
+
+### Dashboard View
+
+### Workflow View
+
+Refer to https://github.com/durable-workflow/waterline for installation and configuration instructions.
+
+

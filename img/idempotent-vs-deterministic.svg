@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title description">
+  <title id="title">Idempotent versus deterministic workflows</title>
+  <desc id="description">A social preview comparing predictable replay with safe retries.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#111827"/>
+      <stop offset="0.55" stop-color="#172554"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+    <linearGradient id="workflow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#38bdf8"/>
+      <stop offset="1" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="activity" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5eead4"/>
+      <stop offset="1" stop-color="#10b981"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="22" flood-color="#020617" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#background)"/>
+  <circle cx="1080" cy="90" r="220" fill="#38bdf8" opacity="0.08"/>
+  <circle cx="112" cy="584" r="260" fill="#2dd4bf" opacity="0.08"/>
+
+  <g transform="translate(70 62)">
+    <rect width="44" height="44" rx="11" fill="#f59e0b"/>
+    <path d="M12 22h20M22 12v20" stroke="#111827" stroke-width="5" stroke-linecap="round"/>
+    <text x="62" y="33" fill="#f8fafc" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="27" font-weight="650">Durable Workflow</text>
+  </g>
+
+  <text x="70" y="195" fill="#f8fafc" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="62" font-weight="760" letter-spacing="-1.7">Idempotent vs. Deterministic</text>
+  <text x="70" y="258" fill="#cbd5e1" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="31" font-weight="500">What’s the difference?</text>
+
+  <g filter="url(#shadow)">
+    <g transform="translate(70 322)">
+      <rect width="500" height="205" rx="24" fill="#f8fafc" fill-opacity="0.98"/>
+      <circle cx="58" cy="58" r="28" fill="url(#workflow)"/>
+      <path d="M45 58l9 9 18-21" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="104" y="68" fill="#0f172a" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="31" font-weight="720">Deterministic</text>
+      <text x="38" y="124" fill="#334155" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="24">Same inputs + history</text>
+      <text x="38" y="161" fill="#334155" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="24">→ same workflow decisions</text>
+    </g>
+
+    <g transform="translate(630 322)">
+      <rect width="500" height="205" rx="24" fill="#f8fafc" fill-opacity="0.98"/>
+      <circle cx="58" cy="58" r="28" fill="url(#activity)"/>
+      <path d="M58 40a18 18 0 1 1-15 8M43 48v-12m0 12h12" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="104" y="68" fill="#0f172a" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="31" font-weight="720">Idempotent</text>
+      <text x="38" y="124" fill="#334155" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="24">One attempt or many</text>
+      <text x="38" y="161" fill="#334155" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="24">→ same intended effect</text>
+    </g>
+  </g>
+
+  <text x="70" y="586" fill="#bae6fd" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="23" font-weight="600">Predictable replay · Safe retries · Language-neutral design</text>
+</svg>
