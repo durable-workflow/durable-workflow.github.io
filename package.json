@@ -12,7 +12,7 @@
     "postinstall": "patch-package",
     "prestart": "node scripts/check-dependency-security.js",
     "start": "docusaurus start",
-    "build": "npm run check:dependency-security && npm run check:node-toolchain && docusaurus build && node scripts/generate-llms.js && node scripts/generate-llms-full.js",
+    "build": "npm run check:dependency-security && npm run check:node-toolchain && node scripts/search-navigation.test.js && docusaurus build && node scripts/generate-llms.js && node scripts/generate-llms-full.js",
     "check:node-toolchain": "node scripts/check-node-toolchain.js && node scripts/check-node-toolchain.test.js",
     "check:dependency-security": "node scripts/check-dependency-security.js && node scripts/check-dependency-security.test.js",
     "check:platform-protocol-specs": "node scripts/check-platform-protocol-specs.js",
