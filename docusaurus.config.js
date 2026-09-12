@@ -244,8 +244,11 @@ const config = {
         appId: 'IYIBF1DKO0',
         apiKey: 'bd5089d395bb02b42c90304ead050cdf',
         indexName: 'docs',
-        // Legacy results need the redirect HTML, not a nonexistent client route.
-        externalUrlRegex: '^https://durable-workflow\\.com/docs/2\\.0(?:/|$)',
+        // The former version prefix has redirect HTML but no client-side route.
+        replaceSearchResultPathname: {
+          from: '^/docs/2\\.0/',
+          to: '/docs/',
+        },
       },
     }),
 };
