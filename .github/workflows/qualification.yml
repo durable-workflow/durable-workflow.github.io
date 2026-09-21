@@ -67,9 +67,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Test the published PHP comparison example
-        working-directory: static/examples/temporal-comparison
         run: |
-          composer install --no-interaction --prefer-dist
-          php test.php
+          example_dir="$(mktemp -d)"
+          cp static/examples/temporal-comparison/* "$example_dir/"
+          composer install --working-dir="$example_dir" --no-interaction --prefer-dist
+          php "$example_dir/test.php"
       - name: Build routes and validate links
         run: npm run build
