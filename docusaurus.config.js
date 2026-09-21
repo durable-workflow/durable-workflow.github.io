@@ -223,6 +223,10 @@ const config = {
             title: 'More',
             items: [
               {
+                label: 'Durable Workflow vs Temporal',
+                to: '/compare/temporal/',
+              },
+              {
                 label: 'LLM Docs',
                 href: 'https://durable-workflow.com/llms-full.txt',
               },

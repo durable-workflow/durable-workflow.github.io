@@ -1,0 +1,206 @@
+---
+title: Durable Workflow vs Temporal
+description: "Compare Durable Workflow and Temporal for PHP and Laravel teams: embedded execution, managed capacity versus usage billing, operational ownership, and a tested PHP example."
+image: /img/durable-workflow-2.0.png
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import handlers from '!!raw-loader!@site/static/examples/temporal-comparison/handlers.php';
+
+# Durable Workflow vs Temporal
+
+**For PHP and Laravel teams choosing where durable execution should live.**
+
+Durable Workflow offers an embedded Laravel engine, a self-hosted Server, and
+managed Cloud capacity. Its specific appeal is a Laravel-native starting point
+and a Cloud bill based on provisioned capacity rather than workflow actions.
+That is a different tradeoff, not a claim to replace every Temporal deployment.
+
+Our promise is **predictable cost, predictable behavior, predictable operations**.
+This comparison explains what that means and where another choice can fit better.
+
+*Written by the Durable Workflow maintainers. Sources checked September 21, 2026.
+Pricing can change; linked provider pages remain authoritative.*
+
+## Choose by the shape of your team
+
+| Your priority | Consider Durable Workflow when... | Consider Temporal when... |
+| --- | --- | --- |
+| Predictable operations | You want workflows inside an existing Laravel app, using its database, queue workers, container, and deployment. | You want a separate orchestration service, managed by Temporal Cloud or operated by your platform team. |
+| Predictable cost | You prefer a chosen Cloud capacity allocation and a monthly cap, accepting finite throughput and storage. | You prefer consumption billing tied to Actions and stored history, particularly when demand is intermittent. |
+| Predictable behavior | PHP, Python, or Rust fit your service-mode application, and you can validate its required semantics against our SDK guides. | Your application already uses Temporal contracts, or needs its other SDKs and operational integrations. |
+
+Those deployment choices are described in the
+[Durable Workflow introduction](/docs/introduction/),
+[Temporal Service architecture](https://docs.temporal.io/temporal-service), and
+[Temporal SDK guides](https://docs.temporal.io/develop).
+Do not interpret this table as feature parity or a migration guarantee.
+
+## PHP support is not the differentiator
+
+**Temporal supports PHP.** Its [PHP SDK guide](https://docs.temporal.io/develop/php)
+includes workflows, activities, workers, testing, and examples. You do not need
+to change application language simply to adopt Temporal.
+
+The narrower gap Durable Workflow addresses is **durable execution embedded in
+a Laravel application's own execution and storage model**. The
+[embedded quickstart](/docs/quickstart/) uses Laravel application classes and
+queue workers. There is no separate Durable Workflow Server to operate in that
+mode. Your database, queues, backups, and application deployment still need
+operation; embedded does not mean infrastructure-free.
+
+When you want an independent runtime, the
+[PHP SDK](https://php.durable-workflow.com/) connects to Server or Cloud. Its
+Laravel bridge supplies container integration, configuration, and logging.
+Embedded code and SDK code have different APIs: moving between them is a
+deliberate application change, not a promise that existing histories can be
+moved unchanged.
+
+## Predictable cost: capacity or consumption?
+
+[Durable Workflow Cloud pricing](https://cloud.durable-workflow.com/pricing)
+charges for provisioned runtime time, with an active-month minimum and a UTC
+monthly cap. Starts, activity attempts, timers, signals, and queries do not add
+per-action charges. They still consume the plan's resources. Storage is fixed
+per plan; needing more means arranging a whole-plan upgrade, not an automatic
+storage overage. Customer worker infrastructure is separate.
+
+[Temporal's current pricing](https://temporal.io/pricing) has **no base monthly
+fee** on its entry-level pay-as-you-go offer. Its bill combines Actions, active
+and retained storage, and support. The
+[detailed pricing documentation](https://docs.temporal.io/cloud/pricing)
+lists Developer support at 10% of usage. Consumption billing can be attractive
+when little work runs; it is not inherently unpredictable if you model it.
+
+### Two calculations, not a throughput comparison
+
+All figures below are USD, before tax. These are pricing arithmetic, not a
+benchmark or a claim that the plans provide equivalent capacity or availability.
+
+**Durable Workflow Cloud Dev:** the published rate is $0.075/hour, a $2 minimum
+per active UTC month, and a $50 monthly cap. For one unchanged provisioned
+runtime in one UTC month:
+
+```text
+No provisioned time: $0
+10 billable hours: min($50, max($2, 10 × $0.075)) = $2
+100 billable hours: min($50, max($2, 100 × $0.075)) = $7.50
+720 billable hours: min($50, max($2, 720 × $0.075)) = $50
+```
+
+Dev includes 5 GB of storage and has **no uptime SLA**. Provisioned idle time is
+still billed. Deprovisioning ends capacity accrual; it does not undo a minimum
+already incurred. See the [billing and plan terms](/docs/polyglot/cloud-control-plane/)
+for other plans and lifecycle rules.
+
+**Temporal Developer, an illustrative monthly workload:** assume 1 million
+billable Actions, 720 GB-hours of active storage and 720 GB-hours of retained
+storage. These storage quantities are assumptions, not an estimate derived
+from the Action count. At the documented rates:
+
+```text
+Actions:          1 × $50                      = $50.00
+Active storage:   720 × $0.042                  = $30.24
+Retained storage: 720 × $0.00105                =  $0.756
+Usage subtotal:                                = $80.996
+Developer support: 10% × $80.996               =  $8.0996
+Illustrative total, rounded to cents:          = $89.10
+```
+
+This excludes credits, tax, optional features, replicated namespaces, and
+customer worker costs. It is not a quote. Temporal's entry-level offer includes
+an SLA; Cloud Dev does not. At lower usage Temporal can cost less, and a Durable
+Workflow Dev runtime is **not** guaranteed to sustain this example's workload.
+
+### A workflow is not one Action
+
+Temporal documents [billable Actions](https://docs.temporal.io/evaluate/cloud/actions)
+including workflow starts, activity starts and retries, timers, signals, and
+queries. Replaying workflow history is not itself billed as new Actions.
+A successfully started workflow with one successfully executed ordinary activity
+and no additional billable operations contributes two Actions, not one. A retry
+can change that count; stored history is another billing dimension.
+
+Our capacity model removes that billing multiplier, not the underlying work.
+If retries or retained history exhaust your allocation, you must address the
+workload, retention, or plan size. Neither model means unlimited execution.
+
+## Predictable behavior: test the contract you need
+
+Both projects separate workflow decisions from activity execution. Durable
+execution is not a guarantee that an external payment or email happens exactly
+once. Plan for idempotent external effects and test failure paths. See our
+[determinism and idempotency guidance](/docs/constraints/idempotent-vs-deterministic/)
+and Temporal's [Activity documentation](https://docs.temporal.io/activities).
+
+Here is an actual **PHP service-mode SDK** workflow and activity, not embedded
+Laravel syntax. The workflow schedules the named activity and returns its result.
+The same handler file is downloadable and used by the test below.
+
+<CodeBlock language="php" title="handlers.php">{handlers}</CodeBlock>
+
+Get the [complete example files](https://github.com/durable-workflow/durable-workflow.github.io/tree/main/static/examples/temporal-comparison)
+and run them in that directory with PHP 8.1+ and Composer:
+
+```sh
+composer install
+php test.php
+```
+
+The test exercises registration, the scheduling command, the real activity
+handler, and replay with a recorded activity result. It does not contact a
+Server or claim to test crash recovery. Its expected output is:
+
+```text
+PASS: registration, activity scheduling, activity result, and completed-history replay.
+```
+
+For an end-to-end run, start the [local Server](/docs/polyglot/server/) at
+`http://localhost:18080` with its documented development token, then run
+`php worker.php` and `php client.php` in separate terminals. The expected result
+is `{"greeting":"Hello, Ada!"}`. For Cloud, supply the exact runtime URL,
+namespace, and separate client and worker tokens from your namespace instead
+of those local defaults. The [PHP quickstart](https://php.durable-workflow.com/getting-started/first-workflow/)
+covers those connection details. This sample is not a performance measurement
+or a claim about fewer lines than Temporal.
+
+## Predictable operations: say which deployment you mean
+
+| Deployment | What you operate |
+| --- | --- |
+| Durable Workflow embedded Laravel | Laravel app, queue consumers, database, and the associated backups and monitoring. |
+| Durable Workflow self-hosted Server | Server, its database/cache and operational processes, plus your SDK clients and workers. |
+| Durable Workflow Cloud | Your application clients and workers; we operate the selected managed runtime. |
+| Temporal self-hosted | Temporal Service and its persistence/visibility configuration, plus your application workers. |
+| Temporal Cloud | Your application workers and clients; Temporal operates its managed service. |
+
+Compare the [Server deployment guide](/docs/polyglot/server/),
+[Cloud ownership boundary](/docs/polyglot/cloud-control-plane/), and Temporal's
+[self-hosting guide](https://docs.temporal.io/self-hosted-guide) and
+[Cloud overview](https://docs.temporal.io/cloud).
+We do **not** claim that Durable Workflow has no cluster in every deployment,
+that Temporal requires Kubernetes, or that Temporal Cloud makes you operate
+Temporal Server. Temporal also provides a single-binary local development server;
+local setup is not the same as a production availability design.
+
+## When to choose which
+
+Choose Durable Workflow when the embedded Laravel path fits your existing
+application, or when PHP/Python/Rust service-mode workers and a finite managed
+capacity budget fit your workload. Measure that workload before selecting a plan.
+
+Choose Temporal when its SDK coverage, integrations, existing team expertise,
+or managed consumption model match your needs. A working Temporal deployment
+is not a reason to migrate by itself. Evaluate required behavior and operational
+support, not a feature-count table.
+
+We have not run a controlled cross-product latency or throughput benchmark for
+this page, so there is no speed or cost-per-completed-workflow claim here.
+
+**Next:** [try embedded Laravel](/docs/quickstart/),
+[run the PHP SDK example](https://php.durable-workflow.com/getting-started/first-workflow/),
+or [compare managed capacity plans](https://cloud.durable-workflow.com/pricing).
+For the other side, start with [Temporal's PHP guide](https://docs.temporal.io/develop/php).
+
+Found a factual error? [Open a documentation issue](https://github.com/durable-workflow/durable-workflow.github.io/issues/new)
+with the claim and a current source. We will correct the page when the evidence changes.
