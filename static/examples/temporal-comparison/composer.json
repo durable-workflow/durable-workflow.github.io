@@ -1,0 +1,9 @@
+{
+  "name": "durable-workflow/comparison-example",
+  "description": "Runnable PHP example for the Durable Workflow and Temporal comparison",
+  "type": "project",
+  "require": {
+    "php": "^8.1",
+    "durable-workflow/sdk": "^2.0"
+  }
+}

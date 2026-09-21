@@ -1,0 +1,223 @@
+---
+title: Durable Workflow vs Temporal
+description: "Compare Durable Workflow and Temporal: PHP, Python, and Rust workflows, Fiber-based PHP without RoadRunner, standalone architecture, replay, and self-hosted operations."
+image: /img/durable-workflow-2.0.png
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import handlers from '@site/static/examples/temporal-comparison/handlers.php';
+
+# Durable Workflow vs Temporal
+
+**Durable execution for PHP, Python, and Rust, on a familiar server stack.**
+
+Durable Workflow is an open-source workflow engine. Your application runs
+workflow and activity workers in PHP, Python, or Rust; Server handles durable
+history, task dispatch, timers, and recovery. Your application does not need
+Laravel.
+
+Run Server as a separate service using the published container, and keep your
+application and workers in their own language and deployment environment. You
+can use one language throughout or combine workers across languages. PHP
+developers get Fiber-based workflows and a directly runnable worker, without
+RoadRunner.
+
+Temporal uses a dedicated orchestration service, with a broader SDK selection.
+For PHP, its workflow API uses generators and its workers run through RoadRunner.
+The choice is about application fit and operational ownership.
+
+Durable Workflow's promise is **predictable cost, predictable behavior, and
+predictable operations**: infrastructure you can budget for, explicit execution
+contracts, and workflow history you can inspect.
+
+*By the Durable Workflow maintainers. Updated September 21, 2026.*
+
+## Architecture at a glance
+
+| Decision | Durable Workflow | Temporal |
+| --- | --- | --- |
+| Standalone runtime | Language-neutral Server implemented as a Laravel application. | Dedicated Temporal Service with persistence and visibility stores. |
+| SDK languages | PHP, Python, and Rust. | Go, Java, .NET, PHP, Python, Ruby, Rust, and TypeScript. |
+| PHP authoring | Straight-line methods with Fiber-backed durable calls and ordinary return types. | Generator-based workflow methods with yielded durable operations. |
+| PHP worker | Direct PHP process using an HTTP client. | PHP processes managed through RoadRunner. |
+| Application embedding | Laravel apps can run the engine in their own database and queues. | Application workers connect to Temporal Service. |
+
+Sources: [Durable Workflow Server](/docs/polyglot/server/),
+[PHP SDK](https://php.durable-workflow.com/),
+[Temporal Service](https://docs.temporal.io/temporal-service),
+[Temporal PHP workflows](https://docs.temporal.io/develop/php/workflows/basics),
+[Temporal PHP workers](https://docs.temporal.io/develop/php/workers/run-worker-process),
+and [Temporal SDKs](https://docs.temporal.io/develop).
+
+## One Server, three first-party SDKs
+
+You can author both workflows and activities in
+[PHP](https://php.durable-workflow.com/),
+[Python](https://python.durable-workflow.com/), and
+[Rust](https://rust.durable-workflow.com/). Workers run in your application's
+environment, connect to Server, and scale independently from it.
+
+A Python team can keep its application entirely in Python. A Rust team can keep
+its application entirely in Rust. Server's implementation language does not
+become an application dependency.
+
+You can also combine languages in one workflow. The
+[runnable polyglot example](https://github.com/durable-workflow/sample-app#service-mode)
+uses a PHP workflow, a Python calculation activity, and a Rust receipt activity
+on separate task queues. The engine coordinates them through named workflow and
+activity types.
+
+Temporal offers [SDKs for a wider set of languages](https://docs.temporal.io/develop).
+For an application built around Go, Java, .NET, Ruby, or TypeScript, that coverage
+is a concrete reason to choose Temporal.
+
+## Straight-line PHP, without RoadRunner
+
+Durable Workflow's PHP SDK uses a managed Fiber. Calling
+`$context->activity(...)` suspends workflow execution until the durable result is
+available; the method then continues with that result. Your workflow remains a
+straight-line PHP method with an ordinary return type. There are no `yield`
+statements or Generator return types to carry through your workflow code.
+
+The worker runs directly as `php worker.php`. Its
+[PSR-18 HTTP transport](https://github.com/durable-workflow/sdk-php/blob/main/src/Transport/Psr18Transport.php)
+requires neither RoadRunner nor a gRPC extension.
+
+Temporal's [PHP workflow API](https://docs.temporal.io/develop/php/workflows/basics)
+expresses suspension through generators and `yield`. Its
+[PHP setup](https://docs.temporal.io/develop/php/set-up-your-local-php)
+includes RoadRunner and the gRPC extension.
+
+Here is a complete Durable Workflow **service-mode** handler file. The workflow
+schedules a greeting activity and returns its result:
+
+<CodeBlock language="php" title="handlers.php">{handlers}</CodeBlock>
+
+Get the [worker, client, and test](https://github.com/durable-workflow/durable-workflow.github.io/tree/main/static/examples/temporal-comparison).
+In that directory, with PHP 8.1+ and Composer:
+
+```sh
+composer install
+php test.php
+```
+
+The test checks registration, activity scheduling and execution, and replay with
+a recorded activity result. To run the worker and client against a real runtime,
+start the [local Server](/docs/polyglot/server/) at `http://localhost:8080` with
+its documented development token, then run `php worker.php` and `php client.php`
+in separate terminals:
+
+```json
+{"greeting":"Hello, Ada!"}
+```
+
+We verified this result with published SDK and Server artifacts.
+[Versions and test results](https://github.com/durable-workflow/durable-workflow.github.io/pull/135)
+are recorded with the source.
+
+## Predictable behavior across workers
+
+Both engines rebuild workflow state from recorded history. Completed activity
+results are replayed into workflow code rather than repeating that completed
+work. Workflow decisions therefore need to remain deterministic: put network
+calls and database effects in activities, and use durable timer and time APIs.
+See [Durable Workflow's execution model](/docs/how-it-works/) and
+[Temporal workflow replay](https://docs.temporal.io/workflow-execution#replays).
+
+Activity delivery is a separate concern. A worker can perform an external action
+and fail before reporting its result, so a retry may repeat that action. Durable
+Workflow provides a stable logical activity execution identity across attempts,
+which can serve as an idempotency key for payments and other external effects.
+The [execution guarantees](/docs/constraints/execution-guarantees/) explain that
+contract. Temporal also recommends
+[idempotent activities](https://docs.temporal.io/activities).
+
+### A shared payload contract
+
+Durable Workflow's PHP, Python, and Rust SDKs share a fixed
+[Avro Value contract](/docs/polyglot/avro-value-protocol/). It preserves distinctions
+such as bytes versus text and integers versus floating-point values across
+languages. The SDKs bundle the schema; you do not operate a schema registry.
+Application-specific objects are adapted to these portable values.
+
+Temporal uses [Data Converters](https://docs.temporal.io/dataconversion) with
+default serialization and support for custom converters and codecs. Durable
+Workflow takes a more opinionated approach: one portable value contract across
+its first-party SDKs.
+
+For deployment confidence, test workflow changes against recorded history as
+well as testing activity business logic. Durable Workflow provides
+[PHP SDK replay tests](https://php.durable-workflow.com/build/testing/) and
+[embedded test fakes](/docs/testing/). Temporal documents its
+[PHP unit and integration testing tools](https://docs.temporal.io/develop/php/best-practices/testing-suite).
+
+## Self-host on a familiar application stack
+
+**Running Durable Workflow Server means running a Laravel application.** It uses
+PHP application configuration, a database, queue/cache services, and worker and
+scheduler processes. Operators familiar with Laravel can use those skills for
+deployment, logs, process supervision, and database maintenance.
+
+The [Server source](https://github.com/durable-workflow/server) and
+[deployment guide](/docs/polyglot/server/) make that setup inspectable. The
+published Docker image packages the application for you. Using it does not
+require PHP or Laravel in your Python or Rust worker environment.
+
+| Deployment | What you operate |
+| --- | --- |
+| Durable Workflow Server | A Laravel application with API, worker and scheduler processes, database and queue/cache services, plus application SDK workers. |
+| Durable Workflow embedded | Your Laravel app, database, queue consumers, and lock-capable cache. |
+| Temporal Service | Temporal Server, persistence and visibility stores, plus application SDK workers. |
+
+The Durable Workflow [published Compose setup](/docs/polyglot/server/#published-image--compose)
+uses MySQL and Redis. Its local quickstart also supports SQLite.
+Temporal's [self-hosting guide](https://docs.temporal.io/self-hosted-guide)
+covers its deployment options, with a local development service available through
+the Temporal CLI.
+
+**Predictable cost follows from explicit ownership.** The
+[Durable Workflow engine](https://github.com/durable-workflow/workflow/blob/main/LICENSE),
+[Server](https://github.com/durable-workflow/server/blob/main/LICENSE), and
+[Temporal Server](https://github.com/temporalio/temporal/blob/main/LICENSE)
+are MIT-licensed. Self-hosting either engine has no per-action software fee.
+Your costs are infrastructure and the work of operating it. Durable Workflow
+lets you use established PHP application tooling, while independently scaling
+workers written in your application's language.
+
+### Inspect workflow history
+
+[Waterline](/docs/monitoring/) shows Durable Workflow execution history,
+activity results, timers, and failures. It can run as a separate operator UI
+for Server, or inside a Laravel app for embedded execution. The CLI and Server
+API also expose runtime state. Temporal provides its
+[Web UI](https://docs.temporal.io/web-ui) for inspecting executions and history.
+
+### Laravel integration when your application uses Laravel
+
+Laravel users get two choices: embed the engine, or keep a separate Server and
+use the [PHP SDK's Laravel bridge](https://php.durable-workflow.com/frameworks/laravel/).
+The bridge supplies container-resolved handlers, configuration, logging, an
+Artisan worker command, and a test fake. Separating orchestration state does not
+require abandoning the application's framework conventions.
+
+Embedding goes further: workflow state lives in the application's database, and
+Laravel queue workers execute the work. You deploy the engine with your app
+instead of operating a separate service. Start with the
+[embedded installation guide](/docs/installation/).
+
+## Which engine fits your team?
+
+**Choose Durable Workflow** for PHP, Python, and Rust applications when you want
+a self-hostable engine with a shared cross-language execution contract and
+independently deployed application workers. PHP teams also get Fiber-based
+workflow code without RoadRunner, with optional Laravel integration.
+
+**Choose Temporal** when its broader language SDK coverage or your existing
+Temporal tooling and expertise fit the application better.
+
+**Start building:** [choose a PHP, Python, or Rust quickstart](/docs/quickstart/),
+[run Durable Workflow Server](/docs/polyglot/server/), or
+[explore Temporal's SDKs](https://docs.temporal.io/develop).
+
+Found a factual error? [Open a documentation issue](https://github.com/durable-workflow/durable-workflow.github.io/issues/new)
+with the claim and its source.
