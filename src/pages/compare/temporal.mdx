@@ -9,17 +9,17 @@ import handlers from '@site/static/examples/temporal-comparison/handlers.php';
 
 # Durable Workflow vs Temporal
 
-**Durable execution inside your application, or a dedicated workflow service.**
+**A durable workflow engine on the Laravel stack your team already knows.**
 
-Durable Workflow and Temporal let you express long-running processes as code,
-record their progress, and recover execution after a worker fails. The important
-difference for a Laravel team is where that engine lives.
+Durable Workflow brings durable execution to Laravel without requiring a new
+server platform. Embed the engine in your application, or deploy standalone
+Server as another Laravel app serving PHP, Python, and Rust workers. Your
+existing deployment, database, queue, and monitoring knowledge carries over.
 
-Durable Workflow can run **inside your Laravel application**, using its database,
-queue workers, and deployment. Its standalone Server is also a Laravel
-application, serving PHP, Python, and Rust workers. Familiar Laravel operations
-apply in either mode. Temporal uses its own dedicated service with SDK workers
-and a broader language ecosystem.
+Its PHP SDK uses Fibers for straight-line workflow code and runs directly in a
+PHP process, without RoadRunner. Temporal uses its own dedicated service,
+generator-based PHP workflows, and RoadRunner for PHP workers, alongside a
+broader selection of language SDKs.
 
 Durable Workflow's approach is **predictable cost, predictable behavior, and
 predictable operations**: choose the infrastructure you operate, make durable
@@ -137,7 +137,7 @@ well as testing activity business logic. Durable Workflow provides
 Temporal documents its
 [PHP unit and integration testing tools](https://docs.temporal.io/develop/php/best-practices/testing-suite).
 
-## Predictable operations when self-hosting
+## Self-host with the Laravel skills you already have
 
 **Running Durable Workflow Server means running a Laravel application.** It uses
 familiar PHP application configuration, a database, queue/cache services, and
