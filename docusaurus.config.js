@@ -102,6 +102,18 @@ const config = {
   ],
 
   plugins: [
+    function executableExamples() {
+      return {
+        name: 'executable-code-examples',
+        configureWebpack() {
+          return {module: {rules: [{
+            test: /\.php$/,
+            include: require('path').resolve(__dirname, 'static/examples'),
+            type: 'asset/source',
+          }]}};
+        },
+      };
+    },
     mobileNavigationReachabilityPlugin,
     [
       '@docusaurus/plugin-client-redirects',
