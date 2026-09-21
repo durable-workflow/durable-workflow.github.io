@@ -31,15 +31,16 @@ independently and is never attached to Cloud.
 
 Pay for provisioned capacity, not workflow semantics. Each namespace receives
 an isolated managed runtime; customer PHP, Python, and Rust workers run in your
-own environment. All five plans are available through Cloud.
+own environment. Check [Cloud pricing](https://cloud.durable-workflow.com/pricing)
+and the dashboard for current provisioning availability.
 
 | Plan | Runtime capacity | Included durable storage | Availability | Price (USD) |
 | --- | --- | --- | --- | --- |
-| Cloud Dev | 1 vCPU, 1 GB RAM | 5 GB | Single host, no SLA | $0.03/hour, capped at $20/month |
-| Cloud Standard | 1 vCPU, 2 GB RAM | 25 GB | Single-region HA, 99.99% SLA | $100/month |
-| Cloud Multi-Region | 1 vCPU, 2 GB RAM | 25 GB | Multi-region HA, 99.99% SLA | $150/month |
-| Cloud Business | 4 vCPU, 8 GB RAM | 100 GB | Single-region HA, 99.99% SLA | $500/month |
-| Cloud Business Multi-Region | 4 vCPU, 8 GB RAM | 100 GB | Multi-region HA, 99.99% SLA | $650/month |
+| Cloud Dev | 1 vCPU, 1 GB RAM | 5 GB | Single host, no SLA | $0.075/hour, $2 active-month minimum, $50/month cap |
+| Cloud Standard | 1 vCPU, 2 GB RAM | 25 GB | Single-region HA, 99.99% SLA | $0.45/hour, $10 active-month minimum, $300/month cap |
+| Cloud Multi-Region | 1 vCPU, 2 GB RAM | 25 GB | Multi-region HA, 99.99% SLA | $0.60/hour, $15 active-month minimum, $400/month cap |
+| Cloud Business | 4 vCPU, 8 GB RAM | 100 GB | Single-region HA, 99.99% SLA | $2.25/hour, $50 active-month minimum, $1,500/month cap |
+| Cloud Business Multi-Region | 4 vCPU, 8 GB RAM | 100 GB | Multi-region HA, 99.99% SLA | $3.00/hour, $75 active-month minimum, $2,000/month cap |
 
 Capacity covers the managed runtime components, not customer worker compute.
 HA replication and standby capacity are included in the plan price; the table
@@ -47,12 +48,20 @@ does not add replicas together as extra workflow-execution capacity. Every plan
 includes Managed Waterline, basic encrypted backups, upgrades, and a stable
 runtime URL.
 
-Cloud Dev is metered by minute, with a $1 active-month minimum and a $20 cap
-per space per UTC calendar month. SLA plans have a fixed monthly runtime price,
-with applicable plan-change prorations handled by Stripe. Additional durable
-storage is $2/GB-month, metered by GB-hour and separate from runtime charges or
-the Dev cap. Prices exclude applicable taxes. Storage expansion requires
-available capacity; neither disk growth nor network use is unlimited.
+Every plan is billed for provisioned runtime time, metered by the minute from
+activation to deprovisioning. Minimums and caps apply per runtime purchase in a
+UTC calendar month. Idle provisioned time is billable; a month with no
+provisioned time has no runtime charge. A fresh purchase has its own minimum
+and cap; service-managed repair or recovery does not reset them. Stripe invoices
+accrued usage monthly. Prices exclude applicable taxes.
+
+Storage is fixed at the included allocation. There are no separately purchased
+storage add-ons, automatic storage increases, or storage overage charges. For
+more space, [request a larger runtime plan](https://cloud.durable-workflow.com/contact)
+before reaching the limit. Moving from single-region to multi-region alone
+does not increase storage. A capacity upgrade requires an actual runtime change,
+not just a billing change; it is currently arranged with support. Network use
+is measured, not currently billed, and is not unlimited.
 
 See [Cloud pricing](https://cloud.durable-workflow.com/pricing) to choose a plan.
 For larger capacity, different connectivity, SSO, enterprise support, or a
@@ -316,8 +325,11 @@ defines a small, repeatable workload: one workflow start, one external activity,
 and one workflow completion, with defined 1 KiB Avro inputs and results.
 The customer worker runs outside the managed runtime allocation.
 
-The recorded plan baselines below use that workload. The SLA-plan measurements
+The historical plan baselines below use that workload. The SLA-plan measurements
 include their replicated HA topology; they are not extrapolated from a Dev host.
+These results predate the current runtime release and are not a qualification
+of its capacity. Updated measurements of the provisioned plans will be published
+here after release.
 
 | Plan | Standard workflows/second | 30-day workflow actions |
 | --- | ---: | ---: |
@@ -342,8 +354,7 @@ mix rather than multiplying these numbers by an arbitrary workflow size.
 ### Cloud Dev Measurement {#cloud-dev-capacity}
 
 Cloud Dev is an isolated, single-host managed runtime for development and
-evaluation. Each provisioned space receives the same runtime shape used for
-the measurement below:
+evaluation. The earlier measurement below used this runtime shape:
 
 | Resource | Cloud Dev |
 | --- | --- |
@@ -353,8 +364,8 @@ the measurement below:
 | Network path | Direct, space-specific HTTPS ingress |
 | Customer workers | Run in the customer's environment |
 | Availability | No SLA; maintenance interruptions are allowed |
-| Runtime price | $0.03/hour, measured by minute, capped at $20/month |
-| Storage above 5 GB | $2/GB-month |
+| Current runtime price | See [Plans And Pricing](#plans-and-pricing) |
+| More storage | Request a larger runtime plan; no storage add-ons |
 
 Cloud Dev was measured with [DW Standard Workflow
 v1](https://github.com/durable-workflow/server/tree/main/benchmarks/capacity),
@@ -378,7 +389,7 @@ a 30-second warmup, and a five-minute measurement window.
 This is a measured development baseline, not a universal conversion for every
 workflow and not an SLA. Larger payloads, additional activities, timers,
 signals, queries, replay-heavy histories, and customer worker latency change
-capacity. Cloud billing remains based on provisioned runtime time and durable
+capacity. Cloud billing is based on provisioned runtime time with fixed included
 storage, not workflow operations.
 
 ## Billing Usage API
@@ -388,11 +399,11 @@ space. Its billing terms are:
 
 | Billing term | Cloud Dev |
 | --- | ---: |
-| Provisioned runtime | $0.03 per hour, metered by minute |
-| Calendar-month maximum | $20 per Dev space |
-| Active-month minimum | $1 when a Dev space is provisioned during the month |
+| Provisioned runtime | $0.075 per hour, metered by minute |
+| Calendar-month maximum | $50 per runtime purchase |
+| Active-month minimum | $2 per runtime purchase in an active UTC month |
 | Managed capacity | 1 vCPU, 1 GB memory, 5 GB durable storage |
-| Additional durable storage | $2 per GB-month, metered by GB-hour |
+| Additional durable storage | Not sold separately; request a larger runtime plan |
 | Basic encrypted backups | Included |
 | Availability | Single host, no SLA |
 
@@ -401,7 +412,7 @@ Waterline access, backups, upgrades, and infrastructure. Customer PHP, Python,
 and Rust workers run outside that allocation. Workflow starts, activity
 attempts, retries, timers, signals, queries, updates, and child workflows are
 operational telemetry, not separate billing units. Prices exclude applicable
-taxes. Additional durable storage is outside the $20 runtime-capacity maximum.
+taxes. Included storage does not create a separate charge.
 
 Cloud exposes organization-scoped billing usage for finance, operations, and
 chargeback automation. The endpoint is authenticated by a Cloud API key and
@@ -422,8 +433,9 @@ operations, so finance teams can still recover account standing.
 
 The response schema is
 `durable_workflow.cloud.namespace_capacity_usage.v1`. It separates allocated
-capacity time and additional durable storage from semantic event counters. The
-abbreviated Cloud Dev response below shows that distinction.
+capacity time from semantic event counters. Storage-related fields remain in
+the schema for historical billing; they do not authorize an add-on purchase.
+The abbreviated Cloud Dev response below shows the current plan terms.
 
 ```json
 {
@@ -453,20 +465,22 @@ abbreviated Cloud Dev response below shows that distinction.
       "project": "sample-app",
       "environment": "development",
       "plan": {
-        "version": "cloud-dev.single-host-v1",
+        "version": "cloud-dev.single-host-v2",
         "name": "Cloud Dev",
         "availability_class": "development_single_host",
         "sla_status": "none",
         "billing_terms": {
           "currency": "usd",
           "unit": "provisioned_runtime_hour",
-          "hourly_rate_cents": 3,
-          "monthly_cap_cents": 2000,
-          "active_month_minimum_cents": 100,
+          "hourly_rate_cents": "7.5",
+          "monthly_cap_cents": 5000,
+          "active_month_minimum_cents": 200,
+          "scope": "runtime_purchase",
           "billing_period": "calendar_month_utc",
           "metering_resolution_seconds": 60,
           "additional_storage_unit": "gb_month",
-          "additional_storage_rate_cents": 200,
+          "additional_storage_rate_cents": 0,
+          "additional_storage_available": false,
           "additional_storage_metering_unit": "gb_hour",
           "additional_storage_in_monthly_cap": false
         }
@@ -494,16 +508,15 @@ abbreviated Cloud Dev response below shows that distinction.
 
 Cloud Dev's time meter starts when its isolated runtime is activated and
 stops when that runtime is deprovisioned. The monthly cap and minimum apply per
-Dev space in UTC calendar months. Durable storage above the included amount is
-metered separately. Cloud preserves an operating and recovery reserve on the
-runtime disk and requires a capacity change before storage can consume it.
+runtime purchase in UTC calendar months. Storage does not grow or start billing
+automatically. Cloud preserves an operating and recovery reserve on the runtime
+disk; request a larger runtime plan before reaching the included allocation.
 
 Idle runtimes still incur capacity charges. Deprovisioning stops runtime
 capacity billing and removes active runtime data and credentials; it is not a
-pause/resume operation. SLA plans use their selected monthly subscription price,
-not the Dev hourly rate. Use the plan's returned `billing_terms` when interpreting
-usage, and keep any separately retained billable storage distinct from runtime
-capacity.
+pause/resume operation. SLA plans use the same provisioned-time model at their
+own rates, minimums and caps. Use the plan's returned `billing_terms` when
+interpreting usage; historical invoices keep their accepted terms.
 
 Export the same evidence as CSV or a JSON report when a downstream finance
 system needs a file handoff:
