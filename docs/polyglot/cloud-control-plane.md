@@ -325,19 +325,18 @@ defines a small, repeatable workload: one workflow start, one external activity,
 and one workflow completion, with defined 1 KiB Avro inputs and results.
 The customer worker runs outside the managed runtime allocation.
 
-The historical plan baselines below use that workload. The SLA-plan measurements
-include their replicated HA topology; they are not extrapolated from a Dev host.
-These results predate the current runtime release and are not a qualification
-of its capacity. Updated measurements of the provisioned plans will be published
-here after release.
+Cloud Dev was measured on September 21, 2026 using the same plan customers
+provision. The other four baselines are historical: they include their replicated
+HA topology, but predate the current runtime release. They are not extrapolated
+from Dev and do not qualify the current SLA plans' capacity.
 
-| Plan | Standard workflows/second | 30-day workflow actions |
-| --- | ---: | ---: |
-| Cloud Dev | 0.25 | 1,296,000 |
-| Cloud Standard | 0.25 | 1,296,000 |
-| Cloud Multi-Region | 0.10 | 518,400 |
-| Cloud Business | 0.50 | 2,592,000 |
-| Cloud Business Multi-Region | 0.20 | 1,036,800 |
+| Plan | Standard workflows/second | 30-day workflow actions | Measurement |
+| --- | ---: | ---: | --- |
+| Cloud Dev | 0.25 | 1,296,000 | September 21, 2026; details below |
+| Cloud Standard | 0.25 | 1,296,000 | Historical; remeasurement pending |
+| Cloud Multi-Region | 0.10 | 518,400 | Historical; remeasurement pending |
+| Cloud Business | 0.50 | 2,592,000 | Historical; remeasurement pending |
+| Cloud Business Multi-Region | 0.20 | 1,036,800 | Historical; remeasurement pending |
 
 The 30-day estimate is `workflows/second x 2,592,000 seconds x 2 workflow actions`:
 one start and one activity for this comparison. It assumes that rate runs
@@ -354,40 +353,62 @@ mix rather than multiplying these numbers by an arbitrary workflow size.
 ### Cloud Dev Measurement {#cloud-dev-capacity}
 
 Cloud Dev is an isolated, single-host managed runtime for development and
-evaluation. The earlier measurement below used this runtime shape:
+evaluation. This measurement used an ordinarily provisioned Dev runtime, without
+changing its CPU, memory, storage, ingress or backup settings:
 
 | Resource | Cloud Dev |
 | --- | --- |
 | Runtime compute | 1 shared vCPU, 1 GB RAM |
 | Durable storage included | 5 GB |
-| Runtime services | Server with Managed Waterline, queue worker, scheduler, MySQL, and Redis |
+| Runtime services | Server, queue worker, scheduler, MySQL, and Redis |
+| Managed Waterline | Included through the authenticated Cloud application; not a process on the Dev host |
 | Network path | Direct, space-specific HTTPS ingress |
 | Customer workers | Run in the customer's environment |
 | Availability | No SLA; maintenance interruptions are allowed |
 | Current runtime price | See [Plans And Pricing](#plans-and-pricing) |
 | More storage | Request a larger runtime plan; no storage add-ons |
 
-Cloud Dev was measured with [DW Standard Workflow
-v1](https://github.com/durable-workflow/server/tree/main/benchmarks/capacity),
-a fixed comparison workload consisting of one workflow start, one external
-activity, and one workflow completion with defined 1 KiB Avro inputs and
-results. The test used the provisioned 1-vCPU/1-GB runtime topology, published
-Server and PHP SDK artifacts, one PHP worker process, two client slots,
-a 30-second warmup, and a five-minute measurement window.
+The run used the public [DW Standard Workflow v1 PHP
+definition](https://github.com/durable-workflow/server/blob/68168f34b637a19c054211f4db2df9c616799a86/benchmarks/capacity/v1/bindings/php/capacity_adapter.php):
+one workflow start, one external echo activity, and one completion, carrying a
+1,024-byte string in Avro at each workflow/activity input and result boundary.
+Server 2.3.12 contained Workflow 2.0.14; the external worker and clients used
+PHP SDK 2.0.11 on PHP 8.4.25. The runtime used PHP 8.3.33 and MySQL 8.0.46.
+
+One PHP worker used a one-second task-poll timeout. Two independent client slots
+offered one workflow every four seconds after a separate 30-second warmup.
+The fixed measurement window was **18:50:30-18:55:30 UTC on September 21, 2026**.
+Only completions observed within those five minutes count toward throughput;
+draining afterward cannot increase the reported rate. Every result, completed
+status and ordered workflow/activity history was checked.
 
 | Measured result | Value |
 | --- | ---: |
 | Offered and completed rate | 0.25 standard workflows/second |
 | Completed workflows | 75 of 75 |
-| Errors / throttled starts | 0 / 0 |
-| Scheduling latency, p50 | 28.0 ms |
-| Scheduling latency, p95 | 95.1 ms |
-| Scheduling latency, p99 | 134.5 ms |
-| Final workflow backlog | 0 |
+| Errors / missed start slots | 0 / 0 |
+| Start-to-result latency, p50 | 2.76 seconds |
+| Start-to-result latency, p95 | 4.18 seconds |
+| Start-to-result latency, p99 | 4.33 seconds |
+| Unfinished workflows in the measured cohort | 0 |
 | 30-day workflow actions | 1,296,000 |
 
+Latency includes client networking and result polling every 100 ms. It is not
+internal task scheduling latency, and should not be compared with an engine's
+internal scheduling metric.
+
+Host CPU averaged **63.5% busy**, peaking at **89%** across five-second samples.
+There were **no container OOM kills or restarts**. Peak observed container memory
+was 95.21 MiB for Server, 197.1 MiB for MySQL, 45.84 MiB for the queue worker,
+43.75 MiB for the scheduler, 9.49 MiB for Redis and 34.59 MiB for the ingress
+connector. These individual peaks are not simultaneous whole-host RSS; the OS
+and other host processes also consume memory. The host had its normal 1 GiB
+swap configuration, with up to about 90 MiB occupied during measurement.
+An initial encrypted backup had been verified before the window; no backup
+capture overlapped it.
+
 This is a measured development baseline, not a universal conversion for every
-workflow and not an SLA. Larger payloads, additional activities, timers,
+workflow, a maximum-throughput test, a long-duration soak or an SLA. Larger payloads, additional activities, timers,
 signals, queries, replay-heavy histories, and customer worker latency change
 capacity. Cloud billing is based on provisioned runtime time with fixed included
 storage, not workflow operations.
