@@ -16,11 +16,11 @@ workflow and activity workers in PHP, Python, or Rust; Server handles durable
 history, task dispatch, timers, and recovery. Your application does not need
 Laravel.
 
-The Server itself is a Laravel application. That is an operational advantage:
-ordinary PHP hosting, databases, queues, and deployment tools, rather than a
-new server platform to learn. PHP developers also get Fiber-based workflows and
-a directly runnable worker, without RoadRunner. Laravel applications have the
-additional option of embedding the engine instead of running Server separately.
+Run Server as a separate service using the published container, and keep your
+application and workers in their own language and deployment environment. You
+can use one language throughout or combine workers across languages. PHP
+developers get Fiber-based workflows and a directly runnable worker, without
+RoadRunner.
 
 Temporal uses a dedicated orchestration service, with a broader SDK selection.
 For PHP, its workflow API uses generators and its workers run through RoadRunner.
@@ -208,9 +208,9 @@ instead of operating a separate service. Start with the
 ## Which engine fits your team?
 
 **Choose Durable Workflow** for PHP, Python, and Rust applications when you want
-a self-hostable engine on a familiar PHP server stack. PHP teams get Fiber-based
-workflow code without RoadRunner; Laravel teams can also embed the engine or use
-the first-party SDK bridge.
+a self-hostable engine with a shared cross-language execution contract and
+independently deployed application workers. PHP teams also get Fiber-based
+workflow code without RoadRunner, with optional Laravel integration.
 
 **Choose Temporal** when its broader language SDK coverage or your existing
 Temporal tooling and expertise fit the application better.
