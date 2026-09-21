@@ -66,5 +66,10 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Test the published PHP comparison example
+        working-directory: static/examples/temporal-comparison
+        run: |
+          composer install --no-interaction --prefer-dist
+          php test.php
       - name: Build routes and validate links
         run: npm run build

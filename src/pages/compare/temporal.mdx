@@ -157,8 +157,11 @@ PASS: registration, activity scheduling, activity result, and completed-history 
 
 For an end-to-end run, start the [local Server](/docs/polyglot/server/) at
 `http://localhost:18080` with its documented development token, then run
-`php worker.php` and `php client.php` in separate terminals. The expected result
-is `{"greeting":"Hello, Ada!"}`. For Cloud, supply the exact runtime URL,
+`php worker.php` and `php client.php` in separate terminals. We also ran these
+files against a published Server image and verified the result
+`{"greeting":"Hello, Ada!"}`; the exact package and image versions are recorded
+in the [publication check](https://github.com/durable-workflow/durable-workflow.github.io/pull/135).
+For Cloud, supply the exact runtime URL,
 namespace, and separate client and worker tokens from your namespace instead
 of those local defaults. The [PHP quickstart](https://php.durable-workflow.com/getting-started/first-workflow/)
 covers those connection details. This sample is not a performance measurement
