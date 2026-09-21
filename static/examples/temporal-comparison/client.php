@@ -7,7 +7,7 @@ require __DIR__.'/vendor/autoload.php';
 use DurableWorkflow\Client;
 
 $client = new Client(
-    getenv('DURABLE_WORKFLOW_RUNTIME_URL') ?: 'http://localhost:18080',
+    getenv('DURABLE_WORKFLOW_RUNTIME_URL') ?: 'http://localhost:8080',
     namespace: getenv('DURABLE_WORKFLOW_NAMESPACE') ?: 'default',
     controlToken: getenv('DURABLE_WORKFLOW_CLIENT_TOKEN') ?: 'dev-token',
 );

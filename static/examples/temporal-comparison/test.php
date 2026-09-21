@@ -11,7 +11,7 @@ if (!class_exists(Client::class)) {
 }
 require __DIR__.'/handlers.php';
 
-$client = new Client('http://localhost:18080');
+$client = new Client('http://localhost:8080');
 $worker = Worker::create($client, 'comparison-php')
     ->register(GreetingWorkflow::class, GreetingActivities::class);
 $harness = new WorkerTestHarness($worker);

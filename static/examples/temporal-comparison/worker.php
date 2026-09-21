@@ -9,7 +9,7 @@ use DurableWorkflow\Client;
 use DurableWorkflow\Worker;
 
 $client = new Client(
-    getenv('DURABLE_WORKFLOW_RUNTIME_URL') ?: 'http://localhost:18080',
+    getenv('DURABLE_WORKFLOW_RUNTIME_URL') ?: 'http://localhost:8080',
     namespace: getenv('DURABLE_WORKFLOW_NAMESPACE') ?: 'default',
     workerToken: getenv('DURABLE_WORKFLOW_WORKER_TOKEN') ?: 'dev-token',
 );

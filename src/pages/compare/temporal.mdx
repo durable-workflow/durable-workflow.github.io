@@ -1,6 +1,6 @@
 ---
 title: Durable Workflow vs Temporal
-description: "Compare Durable Workflow and Temporal for PHP and Laravel teams: embedded execution, managed capacity versus usage billing, operational ownership, and a tested PHP example."
+description: "Compare the Durable Workflow and Temporal engines: Laravel embedding, standalone architecture, PHP workflow authoring, replay, workers, testing, and self-hosted operations."
 image: /img/durable-workflow-2.0.png
 ---
 
@@ -9,190 +9,178 @@ import handlers from '@site/static/examples/temporal-comparison/handlers.php';
 
 # Durable Workflow vs Temporal
 
-**Durable execution for teams that want to stay close to their Laravel application
-and control their infrastructure budget.**
+**Durable execution inside your application, or a dedicated workflow service.**
 
-Durable Workflow lets you run workflows inside Laravel using your existing
-database and queue workers, or connect PHP, Python, and Rust workers to a separate
-runtime. Temporal uses a dedicated orchestration service, self-hosted or managed
-by Temporal Cloud.
+Durable Workflow and Temporal let you express long-running processes as code,
+record their progress, and recover execution after a worker fails. The important
+difference for a Laravel team is where that engine lives.
 
-The choice comes down to where you want workflow state to live, what you want to
-operate, and how you want your bill to grow. Durable Workflow is built around
-**predictable cost, predictable behavior, and predictable operations**.
+Durable Workflow can run **inside your Laravel application**, using its database,
+queue workers, and deployment. It also runs as a standalone Server for PHP,
+Python, and Rust applications. Temporal uses a separate service with SDK workers
+and a broader language ecosystem.
+
+Durable Workflow's approach is **predictable cost, predictable behavior, and
+predictable operations**: choose the infrastructure you operate, make durable
+steps explicit, and inspect the history when something goes wrong.
 
 *By the Durable Workflow maintainers. Updated September 21, 2026.*
 
-## Choose by the shape of your team
+## Architecture at a glance
 
-| Your priority | Consider Durable Workflow when... | Consider Temporal when... |
+| Decision | Durable Workflow | Temporal |
 | --- | --- | --- |
-| Predictable operations | You want workflows inside an existing Laravel app, using its database, queue workers, container, and deployment. | You want a separate orchestration service, managed by Temporal Cloud or operated by your platform team. |
-| Predictable cost | You prefer a chosen Cloud capacity allocation and a monthly cap, accepting finite throughput and storage. | You prefer consumption billing tied to Actions and stored history, particularly when demand is intermittent. |
-| Predictable behavior | You want Laravel-native workflow authoring, or PHP, Python, and Rust workers using a shared service-mode protocol. | Your application already uses Temporal's execution model, or needs its wider SDK selection and integrations. |
+| Where the engine lives | Embedded in Laravel, or deployed as standalone Server. | A dedicated Temporal Service, separate from application workers. |
+| PHP execution | Laravel queue workers in embedded mode; a PHP SDK worker process in service mode. | PHP workers managed through RoadRunner. |
+| PHP authoring | Straight-line methods with Fiber-backed durable calls. | Generator-based workflow methods with yielded durable operations. |
+| Service-mode SDKs | PHP, Python, and Rust. | Go, Java, .NET, PHP, Python, Ruby, Rust, and TypeScript. |
+| Recovery model | Recorded history and deterministic workflow replay. | Recorded history and deterministic workflow replay. |
 
-Those deployment choices are described in the
-[Durable Workflow introduction](/docs/introduction/),
-[Temporal Service architecture](https://docs.temporal.io/temporal-service), and
-[Temporal SDK guides](https://docs.temporal.io/develop).
+Sources: [Durable Workflow deployment modes](/docs/polyglot/deployment-modes/),
+[PHP execution model](/docs/polyglot/php/),
+[Temporal Service](https://docs.temporal.io/temporal-service),
+[Temporal PHP workflows](https://docs.temporal.io/develop/php/workflows/basics),
+[Temporal PHP workers](https://docs.temporal.io/develop/php/workers/run-worker-process),
+and [Temporal SDKs](https://docs.temporal.io/develop).
+
 ## Keep workflows inside Laravel
 
-If your team already operates Laravel, embedded Durable Workflow puts workflow
-execution in that application. Workflow and activity classes use Laravel's
-container, state lives in your database, and queue workers execute the work.
-You deploy and operate them with the rest of your app, without adding a separate
-orchestration service. Start with the [embedded quickstart](/docs/quickstart/).
+For a Laravel application, embedded Durable Workflow adds durable execution to
+the stack your team already operates. Activities can use application services
+through Laravel's container. Workflow state lives in your database, and Laravel
+queue workers execute workflow and activity tasks.
 
-[Temporal's PHP workers](https://docs.temporal.io/develop/php) instead connect
-to Temporal Service. That separation fits teams that want orchestration managed
-independently of their application.
+That means one application deployment and no separate orchestration service.
+You still manage the database, queue capacity, backups, and recovery, but they
+remain part of your existing Laravel operations. The
+[installation guide](/docs/installation/) and
+[execution model](/docs/how-it-works/) show that setup.
 
-Durable Workflow also supports that deployment model. The
-[PHP SDK](https://php.durable-workflow.com/) connects to self-hosted Server or
-Cloud, and its Laravel bridge preserves container integration, configuration,
-and logging. Service mode uses the SDK API rather than the embedded API.
+A dedicated service is useful when orchestration needs an independent deployment
+and lifecycle. Durable Workflow supports that too:
+[Server](/docs/polyglot/server/) exposes the engine to external SDK workers.
+A Python- or Rust-only application can use it without adopting Laravel.
 
-## Predictable cost: capacity or consumption?
+## Straight-line PHP, without RoadRunner
 
-[Durable Workflow Cloud pricing](https://cloud.durable-workflow.com/pricing)
-charges for provisioned runtime time, with an active-month minimum and a UTC
-monthly cap. Starts, activity attempts, timers, signals, and queries do not add
-per-action charges. They still consume the plan's resources. Storage is fixed
-per plan; needing more means arranging a whole-plan upgrade, not an automatic
-storage overage. Customer worker infrastructure is separate.
+Durable Workflow's PHP SDK uses a managed Fiber. Calling
+`$context->activity(...)` suspends workflow execution until the durable result is
+available; the method then continues with that result. Your workflow remains a
+straight-line PHP method with an ordinary return type. There are no `yield`
+statements or Generator return types to carry through your workflow code.
 
-[Temporal's current pricing](https://temporal.io/pricing) has **no base monthly
-fee** on its entry-level pay-as-you-go offer. Its bill combines Actions, active
-and retained storage, and support. The
-[detailed pricing documentation](https://docs.temporal.io/cloud/pricing)
-lists Developer support at 10% of usage. For an intermittent workload,
-consumption billing can cost less than keeping dedicated capacity provisioned.
+The SDK worker runs directly as a PHP process: `php worker.php`. You do not need
+RoadRunner to host it. In a Laravel service-mode application, the first-party
+bridge also connects your handlers to the application's container and logger.
 
-### What the bill looks like
+Temporal's [PHP workflow API](https://docs.temporal.io/develop/php/workflows/basics)
+expresses suspension through generators and `yield`. Its
+[PHP worker setup](https://docs.temporal.io/develop/php/set-up-your-local-php)
+uses RoadRunner to manage workers and connect them to Temporal Service.
 
-All figures below are USD, before tax.
-
-**Durable Workflow Cloud Dev:** the published rate is $0.075/hour, a $2 minimum
-per active UTC month, and a $50 monthly cap. For one unchanged provisioned
-runtime in one UTC month:
-
-```text
-No provisioned time: $0
-10 billable hours: min($50, max($2, 10 × $0.075)) = $2
-100 billable hours: min($50, max($2, 100 × $0.075)) = $7.50
-720 billable hours: min($50, max($2, 720 × $0.075)) = $50
-```
-
-Dev includes 5 GB of storage and has **no uptime SLA**. Provisioned idle time is
-still billed. Deprovisioning ends capacity accrual; it does not undo a minimum
-already incurred. See the [billing and plan terms](/docs/polyglot/cloud-control-plane/)
-for other plans and lifecycle rules.
-
-**Temporal Developer:** for an example month, assume 1 million
-billable Actions, 720 GB-hours of active storage and 720 GB-hours of retained
-storage. Storage is measured separately from Actions. At the documented rates:
-
-```text
-Actions:          1 × $50                      = $50.00
-Active storage:   720 × $0.042                  = $30.24
-Retained storage: 720 × $0.00105                =  $0.756
-Usage subtotal:                                = $80.996
-Developer support: 10% × $80.996               =  $8.0996
-Total, rounded to cents:                       = $89.10
-```
-
-The Temporal calculation excludes credits, optional features, and replicated
-namespaces. Both examples exclude customer worker costs. They illustrate billing
-models, not equivalent capacity: Temporal's entry-level offer includes an SLA,
-while Cloud Dev does not. Size either service against your workload.
-
-### A workflow is not one Action
-
-Temporal documents [billable Actions](https://docs.temporal.io/evaluate/cloud/actions)
-including workflow starts, activity starts and retries, timers, signals, and
-queries. Replaying workflow history is not itself billed as new Actions.
-A successfully started workflow with one successfully executed ordinary activity
-and no additional billable operations contributes two Actions, not one. A retry
-can change that count; stored history is another billing dimension.
-
-With Durable Workflow Cloud, those operations use your existing allocation
-without adding per-action charges. You control spend through provisioned time,
-plan size, and retention. More execution or storage requires enough capacity to
-support it.
-
-## Predictable behavior: workflow code and activity effects
-
-Both projects separate workflow decisions from activity execution. Activities
-can be retried, so make external effects such as payments idempotent. See our
-[determinism and idempotency guidance](/docs/constraints/idempotent-vs-deterministic/)
-and Temporal's [Activity documentation](https://docs.temporal.io/activities).
-
-This **PHP service-mode SDK** workflow schedules a greeting activity and returns
-its result. Download the same handler file and run its test below.
+Here is a complete Durable Workflow **service-mode** handler file. The workflow
+schedules a greeting activity and returns its result:
 
 <CodeBlock language="php" title="handlers.php">{handlers}</CodeBlock>
 
-Get the [complete example files](https://github.com/durable-workflow/durable-workflow.github.io/tree/main/static/examples/temporal-comparison)
-and run them in that directory with PHP 8.1+ and Composer:
+Get the [worker, client, and test](https://github.com/durable-workflow/durable-workflow.github.io/tree/main/static/examples/temporal-comparison).
+In that directory, with PHP 8.1+ and Composer:
 
 ```sh
 composer install
 php test.php
 ```
 
-The local test checks registration, activity scheduling and execution, and replay
-with a recorded activity result:
+The test checks registration, activity scheduling and execution, and replay with
+a recorded activity result. To run the worker and client against a real runtime,
+start the [local Server](/docs/polyglot/server/) at `http://localhost:8080` with
+its documented development token, then run `php worker.php` and `php client.php`
+in separate terminals:
 
-```text
-PASS: registration, activity scheduling, activity result, and completed-history replay.
+```json
+{"greeting":"Hello, Ada!"}
 ```
 
-For an end-to-end run, start the [local Server](/docs/polyglot/server/) at
-`http://localhost:18080` with its documented development token, then run
-`php worker.php` and `php client.php` in separate terminals. The result is
-`{"greeting":"Hello, Ada!"}`. This example is tested against published packages
-and Server; [test results and versions](https://github.com/durable-workflow/durable-workflow.github.io/pull/135)
-are recorded with the source.
+We verified this result with published SDK and Server artifacts.
+[Versions and test results](https://github.com/durable-workflow/durable-workflow.github.io/pull/135)
+are recorded with the source. For Laravel service-mode applications, the
+[Laravel bridge](https://php.durable-workflow.com/frameworks/laravel/) supplies
+container integration, configuration, and logging.
 
-For Cloud, supply your runtime URL, namespace, and separate client and worker
-tokens. The [PHP quickstart](https://php.durable-workflow.com/getting-started/first-workflow/)
-covers the connection details.
+## Predictable behavior through replay
 
-## Predictable operations: know what you own
+Both engines rebuild workflow state from recorded history. Completed activity
+results are replayed into workflow code rather than repeating that completed
+work. Workflow decisions therefore need to remain deterministic: put network
+calls and database effects in activities, and use the engine's durable timer
+and time APIs.
+
+The mechanics are described in
+[How Durable Workflow works](/docs/how-it-works/) and
+[Temporal workflow replay](https://docs.temporal.io/workflow-execution#replays).
+This is the common foundation that makes either engine useful for processes
+that must survive worker restarts.
+
+Activity delivery is a separate concern. A worker can perform an external action
+and fail before reporting its result, so a retry may repeat that action. Use an
+idempotency key for payments and other external effects. Durable Workflow
+provides a stable logical activity execution identity across attempts; see
+[execution guarantees](/docs/constraints/execution-guarantees/).
+Temporal likewise recommends
+[idempotent activities](https://docs.temporal.io/activities).
+
+For deployment confidence, test workflow changes against recorded history as
+well as testing activity business logic. Durable Workflow provides
+[embedded test fakes](/docs/testing/) and
+[PHP SDK replay tests](https://php.durable-workflow.com/build/testing/).
+Temporal documents its
+[PHP unit and integration testing tools](https://docs.temporal.io/develop/php/best-practices/testing-suite).
+
+## Predictable operations when self-hosting
 
 | Deployment | What you operate |
 | --- | --- |
-| Durable Workflow embedded Laravel | Laravel app, queue consumers, database, and the associated backups and monitoring. |
-| Durable Workflow self-hosted Server | Server, its database/cache and operational processes, plus your SDK clients and workers. |
-| Durable Workflow Cloud | Your application clients and workers; we operate the selected managed runtime. |
-| Temporal self-hosted | Temporal Service and its persistence/visibility configuration, plus your application workers. |
-| Temporal Cloud | Your application workers and clients; Temporal operates its managed service. |
+| Durable Workflow embedded | Your Laravel app, database, queue consumers, and lock-capable cache. |
+| Durable Workflow Server | The Server API and background processes, persistence and queue/cache services, plus application SDK workers. |
+| Temporal Service | Temporal Server, persistence and visibility stores, plus application SDK workers. |
 
-Compare the [Server deployment guide](/docs/polyglot/server/),
-[Cloud ownership boundary](/docs/polyglot/cloud-control-plane/), and Temporal's
-[self-hosting guide](https://docs.temporal.io/self-hosted-guide) and
-[Cloud overview](https://docs.temporal.io/cloud).
-Both managed services leave your application workers in your hands. For
-self-hosting, plan for database recovery, upgrades, monitoring, and the
-availability your application needs. Embedded Durable Workflow keeps that work
-inside your existing Laravel operations; a separate service gives it an
-independent deployment and lifecycle.
+The Durable Workflow [published Compose setup](/docs/polyglot/server/#published-image--compose)
+uses MySQL and Redis. Its local quickstart also supports SQLite.
+Temporal's [self-hosting guide](https://docs.temporal.io/self-hosted-guide)
+covers deployment options, and its
+[PHP quickstart](https://docs.temporal.io/develop/php/set-up-your-local-php)
+starts a local development service through the Temporal CLI.
 
-## When to choose which
+For production, the ownership choice matters more than a local startup command.
+Embedded execution shares the application's infrastructure and failure domain.
+A separate service lets you operate orchestration independently, while adding a
+service boundary to deploy, secure, and monitor.
 
-**Choose Durable Workflow** to add durable execution to an existing Laravel app,
-or to run PHP, Python, and Rust workers against capacity you choose and budget
-for. Its embedded path keeps operations close to the application; its Cloud
-plans keep normal execution behavior out of per-action billing.
+**Predictable cost starts with that ownership decision.** The
+[Durable Workflow engine](https://github.com/durable-workflow/workflow/blob/main/LICENSE),
+[Server](https://github.com/durable-workflow/server/blob/main/LICENSE), and
+[Temporal Server](https://github.com/temporalio/temporal/blob/main/LICENSE)
+are MIT-licensed. Self-hosting either engine has no per-action software fee.
+Your costs are infrastructure and the work of operating it. Embedded Durable
+Workflow can reuse a Laravel stack you already maintain; additional execution
+and retained history still consume resources.
 
-**Choose Temporal** when its wider SDK ecosystem, integrations, and your team's
-existing expertise are the better fit, or when paying for consumed Actions and
-storage suits your workload better than provisioning capacity.
+## Which engine fits your team?
 
-**Next:** [try embedded Laravel](/docs/quickstart/),
-[run the PHP SDK example](https://php.durable-workflow.com/getting-started/first-workflow/),
-or [compare managed capacity plans](https://cloud.durable-workflow.com/pricing).
-For the other side, start with [Temporal's PHP guide](https://docs.temporal.io/develop/php).
+**Choose Durable Workflow** when you want durable execution integrated into
+Laravel, Fiber-based PHP workflows without RoadRunner, or a standalone engine for PHP,
+Python, and Rust workers. Its embedded option is particularly useful when your
+team wants workflow infrastructure to remain part of the application it already
+knows how to deploy and recover.
+
+**Choose Temporal** when you want a dedicated orchestration service and its
+broader SDK coverage, especially for Go, Java, .NET, Ruby, or TypeScript
+applications. Existing Temporal tooling and team expertise are also good
+reasons to stay with that execution model.
+
+**Start building:** [install embedded Durable Workflow](/docs/installation/),
+[run standalone Server](/docs/polyglot/server/), or
+[follow Temporal's PHP quickstart](https://docs.temporal.io/develop/php/set-up-your-local-php).
 
 Found a factual error? [Open a documentation issue](https://github.com/durable-workflow/durable-workflow.github.io/issues/new)
-with the claim and a current source. We will correct the page when the evidence changes.
+with the claim and its source.
