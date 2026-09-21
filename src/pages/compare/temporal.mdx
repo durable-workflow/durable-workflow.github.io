@@ -16,8 +16,9 @@ record their progress, and recover execution after a worker fails. The important
 difference for a Laravel team is where that engine lives.
 
 Durable Workflow can run **inside your Laravel application**, using its database,
-queue workers, and deployment. It also runs as a standalone Server for PHP,
-Python, and Rust applications. Temporal uses a separate service with SDK workers
+queue workers, and deployment. Its standalone Server is also a Laravel
+application, serving PHP, Python, and Rust workers. Familiar Laravel operations
+apply in either mode. Temporal uses its own dedicated service with SDK workers
 and a broader language ecosystem.
 
 Durable Workflow's approach is **predictable cost, predictable behavior, and
@@ -30,7 +31,7 @@ steps explicit, and inspect the history when something goes wrong.
 
 | Decision | Durable Workflow | Temporal |
 | --- | --- | --- |
-| Where the engine lives | Embedded in Laravel, or deployed as standalone Server. | A dedicated Temporal Service, separate from application workers. |
+| Where the engine lives | Embedded in your Laravel app, or deployed as a standalone Laravel-based Server. | A dedicated Temporal Service, separate from application workers. |
 | PHP execution | Laravel queue workers in embedded mode; a PHP SDK worker process in service mode. | PHP workers managed through RoadRunner. |
 | PHP authoring | Straight-line methods with Fiber-backed durable calls. | Generator-based workflow methods with yielded durable operations. |
 | Service-mode SDKs | PHP, Python, and Rust. | Go, Java, .NET, PHP, Python, Ruby, Rust, and TypeScript. |
@@ -138,10 +139,21 @@ Temporal documents its
 
 ## Predictable operations when self-hosting
 
+**Running Durable Workflow Server means running a Laravel application.** It uses
+familiar PHP application configuration, a database, queue/cache services, and
+worker and scheduler processes. If your team already deploys Laravel, that
+operational knowledge transfers to the standalone engine: deployment,
+configuration, logs, process supervision, and database maintenance.
+
+The [Server source](https://github.com/durable-workflow/server) and
+[deployment guide](/docs/polyglot/server/) make the setup inspectable. The
+published Docker image packages it for you; choosing a standalone workflow
+service does not require learning a different application stack.
+
 | Deployment | What you operate |
 | --- | --- |
 | Durable Workflow embedded | Your Laravel app, database, queue consumers, and lock-capable cache. |
-| Durable Workflow Server | The Server API and background processes, persistence and queue/cache services, plus application SDK workers. |
+| Durable Workflow Server | A Laravel application with API, worker and scheduler processes, database and queue/cache services, plus application SDK workers. |
 | Temporal Service | Temporal Server, persistence and visibility stores, plus application SDK workers. |
 
 The Durable Workflow [published Compose setup](/docs/polyglot/server/#published-image--compose)
@@ -162,16 +174,17 @@ service boundary to deploy, secure, and monitor.
 [Temporal Server](https://github.com/temporalio/temporal/blob/main/LICENSE)
 are MIT-licensed. Self-hosting either engine has no per-action software fee.
 Your costs are infrastructure and the work of operating it. Embedded Durable
-Workflow can reuse a Laravel stack you already maintain; additional execution
-and retained history still consume resources.
+Workflow can reuse a Laravel stack you already maintain, and standalone Server
+uses the same familiar application tooling. Additional execution and retained
+history still consume resources.
 
 ## Which engine fits your team?
 
 **Choose Durable Workflow** when you want durable execution integrated into
-Laravel, Fiber-based PHP workflows without RoadRunner, or a standalone engine for PHP,
-Python, and Rust workers. Its embedded option is particularly useful when your
-team wants workflow infrastructure to remain part of the application it already
-knows how to deploy and recover.
+Laravel, Fiber-based PHP workflows without RoadRunner, or a standalone engine
+for PHP, Python, and Rust workers that you operate as a Laravel application.
+You can keep the engine inside your app or deploy it independently without
+leaving the PHP operational stack.
 
 **Choose Temporal** when you want a dedicated orchestration service and its
 broader SDK coverage, especially for Go, Java, .NET, Ruby, or TypeScript
