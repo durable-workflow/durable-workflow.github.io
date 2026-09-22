@@ -101,6 +101,16 @@ const config = {
     ],
   ],
 
+  themes: [
+    [
+      require.resolve('@easyops-cn/docusaurus-search-local'),
+      {
+        hashed: 'filename',
+        indexBlog: false,
+      },
+    ],
+  ],
+
   plugins: [
     function executableExamples() {
       return {
@@ -256,16 +266,6 @@ const config = {
         darkTheme: prismThemes.dracula,
       },
       image: 'img/durable-workflow-2.0.png',
-      algolia: {
-        appId: 'IYIBF1DKO0',
-        apiKey: 'bd5089d395bb02b42c90304ead050cdf',
-        indexName: 'docs',
-        // The former version prefix has redirect HTML but no client-side route.
-        replaceSearchResultPathname: {
-          from: /^\/docs\/2\.0\//,
-          to: '/docs/',
-        },
-      },
     }),
 };
 
