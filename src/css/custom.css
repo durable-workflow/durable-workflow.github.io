@@ -35,6 +35,12 @@ a[class^='skipToContent'] {
   right: 100%;
 }
 
+/* The search input's hidden text mirror must not widen narrow viewports. */
+.navbar__search pre[aria-hidden='true'] {
+  max-width: 100%;
+  overflow: hidden;
+}
+
 a[class^='skipToContent']:focus {
   left: 1rem;
   right: auto;
