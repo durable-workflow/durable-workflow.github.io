@@ -247,7 +247,7 @@ dw workflow:start --type=MyWorkflow --input-file=input.json
 dw workflow:describe <workflow-id>                         # Describe a workflow
 dw workflow:signal <workflow-id> <signal-name> --input='["ok"]'
 dw workflow:query <workflow-id> <query-name>               # Run a query
-dw workflow:cancel <workflow-id>                           # Request cancellation
+dw workflow:cancel <workflow-id>                           # Close as cancelled immediately
 dw workflow:terminate <workflow-id>                        # Force terminate
 dw workflow:history <workflow-id> <run-id>                 # Show run history
 ```

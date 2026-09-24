@@ -400,6 +400,12 @@ when a script already knows the workflow id and wants handle-style methods.
 | `await handle.cancel(reason=None)` | `client.cancel_workflow(...)` |
 | `await handle.terminate(reason=None)` | `client.terminate_workflow(...)` |
 
+Both operations close the Server run immediately with distinct terminal
+outcomes. `cancel_workflow` does not deliver a cooperative request to workflow
+code or run saga/finally cleanup. Arrange cleanup before terminal cancellation
+or use external reconciliation; embedded Laravel's `requestCancellation()` is
+a separate capability, not yet available in service mode.
+
 ### Schedules
 
 Schedules use `ScheduleSpec` for calendar/interval rules and `ScheduleAction`
@@ -656,7 +662,6 @@ The `WorkflowContext` passed to `run` provides deterministic operations:
 | `yield [command, [...]]` | Join a nested deterministic activity, child-workflow, timer, or mixed group in input order |
 | `yield ctx.select({key: command, ...})` | Resume with the first durably committed member while retaining handles for every non-winner |
 | `ctx.saga()` | Register and run reverse-order durable activity compensations |
-| `ctx.throw_if_cancellation_requested()` | Observe cooperative cancellation at an author-controlled safe point |
 | `ctx.side_effect(fn)` | Capture a non-deterministic value |
 | `ctx.get_version(change_id, min, max)` | Safe workflow code versioning |
 | `ctx.upsert_search_attributes(attrs)` | Update search attributes |
@@ -778,7 +783,6 @@ def forward(saga):
     hotel = yield ctx.schedule_activity("trip.reserve-hotel", [])
     saga.add_compensation("trip.cancel-hotel", [hotel])
 
-    ctx.throw_if_cancellation_requested()
     yield ctx.schedule_activity("trip.charge", [])
     return {"status": "booked"}
 
@@ -786,7 +790,8 @@ return (yield from ctx.saga().run(forward))
 ```
 
 The saga executes ordinary activity commands sequentially in reverse
-registration order after failure or cooperative cancellation. It stops on the
+registration order after a failure. Terminal `cancel_workflow` does not
+resume the workflow to run compensations. The helper stops on the
 first compensation failure. `SagaCompensationFailed` preserves the initiating
 failure, compensation failure, compensation activity type, and deterministic
 registration order as structured diagnostics.
@@ -1253,7 +1258,8 @@ except WorkflowNotFound:
 
 `WorkflowCancelled` and `ActivityCancelled` inherit from `BaseException`, not `Exception`. A generic `except Exception:` block in an activity body — or in code that awaits `client.get_result()` — will **not** catch them. This is deliberate: cancellation is a control-plane outcome, and silently swallowing it in a catch-all would let an activity report success after its workflow asked it to stop.
 
-If you need to run cleanup on cancellation, catch the class by name and re-raise:
+If an activity needs local cleanup when its task is cancelled, catch the class
+by name and re-raise. This does not resume the closed workflow for compensation:
 
 ```python
 from durable_workflow import ActivityCancelled, activity

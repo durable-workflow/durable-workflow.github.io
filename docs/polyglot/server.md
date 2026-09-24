@@ -1116,7 +1116,7 @@ Key endpoints:
 - `POST /api/workflows/{id}/signal/{name}` — Send a signal
 - `POST /api/workflows/{id}/query/{name}` — Execute a query
 - `POST /api/workflows/{id}/update/{name}` — Execute an update
-- `POST /api/workflows/{id}/cancel` — Request cancellation
+- `POST /api/workflows/{id}/cancel` — close the run as cancelled immediately
 - `POST /api/workflows/{id}/terminate` — Terminate immediately
 - `GET /api/workflows/{id}/runs/{runId}/history` — List run history events
 - `GET /api/workflows/{id}/runs/{runId}/history/export` — Export a replay bundle
