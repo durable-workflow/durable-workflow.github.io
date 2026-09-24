@@ -13,7 +13,7 @@ const lockfileManifest = require(
 );
 const securityPolicy = require("./dependency-security-policy.json");
 
-const EXPECTED_IMAGE_SIZE_VERSION = "2.0.2";
+const EXPECTED_IMAGE_SIZE_VERSION = "2.0.4";
 const EXPECTED_IMAGE_SIZE_PARENT = "node_modules/@docusaurus/mdx-loader";
 const EXPECTED_ADVISORIES = ["GHSA-5p2g-fcmc-qvqq", "GHSA-w3rx-r6r6-pgpr"];
 const VULNERABLE_IMAGE_EXTENSIONS = new Set([
@@ -156,7 +156,7 @@ function checkDependencyGraph() {
   assert.deepEqual(
     lockedEntries("image-size").map(({ entry }) => entry.version),
     [EXPECTED_IMAGE_SIZE_VERSION],
-    "the unpatched image-size disposition must be reviewed when its locked version changes",
+    "the image-size advisory disposition must be reviewed when its locked version changes",
   );
   assert.deepEqual(dependencyParents("image-size"), [
     EXPECTED_IMAGE_SIZE_PARENT,
@@ -174,8 +174,8 @@ function checkRecordedDispositions() {
   for (const disposition of dispositions) {
     assert.equal(disposition.dependency, "image-size");
     assert.equal(disposition.locked_version, EXPECTED_IMAGE_SIZE_VERSION);
-    assert.equal(disposition.disposition, "not_affected");
-    assert.equal(disposition.github_dismissal_reason, "not_used");
+    assert.equal(disposition.disposition, "outside_affected_range");
+    assert.equal(disposition.github_dismissal_reason, undefined);
     assert.ok(disposition.justification.includes("static build"));
     assert.ok(
       disposition.justification.includes("no request-time image parsing"),
