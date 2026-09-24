@@ -338,7 +338,6 @@ let outcome = async {
     let hotel = ctx.activity("trip.reserve-hotel", json!([])).await?;
     saga.add_compensation("trip.cancel-hotel", json!([hotel]))?;
 
-    ctx.throw_if_cancellation_requested()?;
     ctx.activity("trip.charge", json!([])).await?;
     Ok(json!({"status": "booked"}))
 }.await;
@@ -346,11 +345,12 @@ let outcome = async {
 saga.finish(outcome).await
 ```
 
-Failure or cooperative cancellation runs the existing activity command in
+Handled failure runs the existing activity command in
 reverse registration order, one compensation at a time. Compensation stops at
 its first failure. `Error::SagaCompensationFailed` preserves both typed errors,
 the compensation activity type, and its registration order through restart and
 replay.
+Terminal `cancel_workflow` does not resume workflow code to run compensations.
 
 ## Deterministic side effects and version markers
 
@@ -370,11 +370,12 @@ drained. See [Side Effects](/docs/features/side-effects/) and
 
 ## Cancel, terminate, and handle terminal outcomes
 
-The 2.0 baseline separates cooperative cancellation from forced termination.
-Cancellation is the normal lifecycle operation when workflow and
-activity code should observe the stop request and clean up. Termination closes
-the run without waiting for that cleanup and should be reserved for an
-operator-enforced stop.
+Service-mode `cancel_workflow` and `terminate_workflow` both close the run
+immediately. They record distinct terminal outcomes, but neither asks workflow
+code to run cleanup. Arrange compensation before closing the run or use external
+reconciliation. Embedded Laravel has a separate cooperative
+`requestCancellation()` capability; Server and service-mode SDKs do not yet
+expose that request.
 
 ```rust
 use durable_workflow::{Client, WorkflowCommandOptions};

@@ -215,7 +215,7 @@ runtime environment and not in the profile file.
 | `dw workflow:signal <workflow-id> <signal-name>` | Send a signal. | `--run-id`, input options, `--json` |
 | `dw workflow:query <workflow-id> <query-name>` | Execute a read-only workflow query. | `--run-id`, input options, `--json` |
 | `dw workflow:update <workflow-id> <update-name>` | Submit or execute a workflow update. | `--wait=accepted|completed`, `--run-id`, input options, `--json` |
-| `dw workflow:cancel [workflow-id]` | Request cancellation for one workflow or a batch query. | `--reason`, `--run-id`, `--all-matching`, `--type`, `--status`, `--limit`, `--yes`, `--json` |
+| `dw workflow:cancel [workflow-id]` | Close one workflow or a selected batch as cancelled; no workflow-code cleanup runs. | `--reason`, `--run-id`, `--all-matching`, `--type`, `--status`, `--limit`, `--yes`, `--json` |
 | `dw workflow:terminate <workflow-id>` | Force terminate a workflow. | `--reason`, `--run-id`, `--json` |
 | `dw workflow:repair <workflow-id>` | Ask the server to repair a stuck or retryable run. | `--json` |
 | `dw workflow:archive <workflow-id>` | Archive a closed run. | `--reason`, `--json` |

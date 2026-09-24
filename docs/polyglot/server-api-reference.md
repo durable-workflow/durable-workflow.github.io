@@ -461,7 +461,7 @@ Instance-targeted command routes operate on the current run for a workflow id:
 | `POST` | `/api/workflows/{workflowId}/signal/{signalName}` | Send a signal. |
 | `POST` | `/api/workflows/{workflowId}/query/{queryName}` | Execute a read-only query. |
 | `POST` | `/api/workflows/{workflowId}/update/{updateName}` | Submit or execute an update. |
-| `POST` | `/api/workflows/{workflowId}/cancel` | Request cancellation. |
+| `POST` | `/api/workflows/{workflowId}/cancel` | Close the run as cancelled immediately; does not resume workflow cleanup. |
 | `POST` | `/api/workflows/{workflowId}/terminate` | Force termination. |
 | `POST` | `/api/workflows/{workflowId}/repair` | Ask the server to repair retryable stuck state. |
 | `POST` | `/api/workflows/{workflowId}/archive` | Archive a closed workflow run. |
