@@ -72,9 +72,8 @@ it is not the only recommended Rust application contract. Continue to the
 crate's existing [typed input/output
 example](https://github.com/durable-workflow/sdk-rust/blob/main/examples/hello_world.rs),
 [retry, timeout, heartbeat, and terminal-failure activity policy
-example](https://github.com/durable-workflow/sdk-rust/blob/main/examples/activity_options.rs),
-and [cooperative-cancellation heartbeat
-example](https://github.com/durable-workflow/sdk-rust#heartbeats). The package,
+example](https://github.com/durable-workflow/sdk-rust/blob/main/examples/activity_options.rs).
+The package,
 repository example, and generated API reference below remain the direct paths
 for users who do not want Sample App.
 
