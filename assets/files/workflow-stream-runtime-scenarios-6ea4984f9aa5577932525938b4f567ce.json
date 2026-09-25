@@ -1,0 +1,115 @@
+{
+  "schema": "durable-workflow.v2.platform-conformance.runtime-scenarios",
+  "version": 1,
+  "category": "workflow_stream_runtime_contract",
+  "description": "Published-artifact scenarios for run-scoped Workflow Streams across PHP production, Python and Rust consumption, restart/reconnect, lifecycle, backpressure, cancellation, and external payload references.",
+  "fixture_type": "published_artifact_runtime_scenario_manifest",
+  "result_statuses": ["pass", "fail", "unsupported", "not_covered", "runner_blocked"],
+  "artifact_policy": {
+    "published_artifacts_only": true,
+    "requires_resolved_versions": true,
+    "rejects_placeholder_versions": true,
+    "implementation_tests_are_not_sources": true
+  },
+  "common_result_evidence": [
+    "scenario_id",
+    "status",
+    "published_artifact_versions",
+    "runtime_matrix",
+    "workflow_id",
+    "run_id",
+    "stream_name",
+    "observed_offsets",
+    "durable_record_count",
+    "linked_findings"
+  ],
+  "scenarios": [
+    {
+      "id": "php_producer_python_consumer",
+      "actors": ["server", "php_worker", "python_sdk_client"],
+      "operations": [
+        "emit an ordered batch from a PHP workflow command boundary",
+        "read the stream with the Python typed subscriber from offset zero",
+        "close the stream and read through terminal"
+      ],
+      "pass_criteria": [
+        "Python decodes every PHP-produced Avro item in offset order",
+        "next_offset advances without gaps",
+        "the number of durable rows equals the number of logical items"
+      ]
+    },
+    {
+      "id": "php_producer_rust_consumer",
+      "actors": ["server", "php_worker", "rust_sdk_client"],
+      "operations": [
+        "emit an ordered batch from a PHP workflow command boundary",
+        "read the stream with the Rust typed subscriber from offset zero",
+        "close the stream and read through terminal"
+      ],
+      "pass_criteria": [
+        "Rust decodes every inline PHP-produced Avro item in offset order",
+        "opaque external references remain available without a Rust storage driver",
+        "the number of durable rows equals the number of logical items"
+      ]
+    },
+    {
+      "id": "producer_worker_restart",
+      "actors": ["server", "php_worker"],
+      "operations": [
+        "stop the worker after it submits a stream append but before it observes task completion",
+        "restart the worker and replay the same durable workflow command",
+        "inspect stream rows and idempotency identities"
+      ],
+      "pass_criteria": [
+        "replay either observes the committed side effect or retries the same derived idempotency keys",
+        "no logical item receives a second durable offset",
+        "the workflow task and stream mutation are not partially committed"
+      ]
+    },
+    {
+      "id": "consumer_reconnect",
+      "actors": ["server", "python_sdk_client", "rust_sdk_client"],
+      "operations": [
+        "read a bounded prefix and record next_offset",
+        "disconnect the consumer",
+        "reconnect from the recorded offset and read through terminal",
+        "repeat once from the prior offset to exercise at-least-once redelivery"
+      ],
+      "pass_criteria": [
+        "reconnect loses no durable offset",
+        "a retry may redeliver but never creates a durable row",
+        "consumer-side idempotent processing produces one logical effect per offset"
+      ]
+    },
+    {
+      "id": "lifecycle_backpressure_and_cancellation",
+      "actors": ["server", "php_sdk_client", "python_sdk_client", "rust_sdk_client", "waterline"],
+      "operations": [
+        "observe open, closed, and errored lifecycle states",
+        "fill the pending-items bound and record stream_full",
+        "cancel each SDK's bounded long poll",
+        "inspect Waterline stream rows"
+      ],
+      "pass_criteria": [
+        "all SDKs surface terminal status, pending count, and error reason",
+        "backpressure returns stream_full without inventing an offset",
+        "cancellation ends within the bounded request window",
+        "Waterline reports the same lifecycle, offset, pending, and error values"
+      ]
+    },
+    {
+      "id": "external_payload_reference_matrix",
+      "actors": ["server", "php_sdk_client", "python_sdk_client", "rust_sdk_client"],
+      "operations": [
+        "append inline Avro and external-reference items",
+        "read with Python using a configured storage driver",
+        "read with PHP and Rust without a storage transport"
+      ],
+      "pass_criteria": [
+        "Python verifies and decodes the external payload with its configured driver",
+        "PHP and Rust preserve the opaque reference and metadata",
+        "inline Avro values decode equivalently in every SDK"
+      ]
+    }
+  ]
+}

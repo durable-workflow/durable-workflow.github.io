@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en" dir="ltr" class="mdx-wrapper mdx-page plugin-pages plugin-id-default" data-has-hydrated="false">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="Docusaurus v3.10.2">
+<title data-rh="true">Durable Workflow vs Temporal | Durable Workflow</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://durable-workflow.com/compare/temporal/"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docusaurus_tag" content="default"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docsearch:docusaurus_tag" content="default"><meta data-rh="true" property="og:title" content="Durable Workflow vs Temporal | Durable Workflow"><meta data-rh="true" name="description" content="Compare Durable Workflow and Temporal: PHP, Python, and Rust workflows, Fiber-based PHP without RoadRunner, standalone architecture, replay, and self-hosted operations."><meta data-rh="true" property="og:description" content="Compare Durable Workflow and Temporal: PHP, Python, and Rust workflows, Fiber-based PHP without RoadRunner, standalone architecture, replay, and self-hosted operations."><meta data-rh="true" property="og:image" content="https://durable-workflow.com/img/durable-workflow-2.0.png"><meta data-rh="true" name="twitter:image" content="https://durable-workflow.com/img/durable-workflow-2.0.png"><link data-rh="true" rel="icon" href="/img/favicon.ico"><link data-rh="true" rel="canonical" href="https://durable-workflow.com/compare/temporal/"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/compare/temporal/" hreflang="en"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/compare/temporal/" hreflang="x-default"><link rel="alternate" type="application/rss+xml" href="/blog/rss.xml" title="Durable Workflow RSS Feed">
+<link rel="alternate" type="application/atom+xml" href="/blog/atom.xml" title="Durable Workflow Atom Feed">
+
+
+
+
+
+
+
+
+<script src="/analytics/cloudflare-web-analytics.js" type="module" data-cloudflare-web-analytics-token="a1296466c4e5487ca6ffd230a694b933"></script><link rel="stylesheet" href="/assets/css/styles.42a5a635.css">
+<script src="/assets/js/runtime~main.f27fa3c6.js" defer="defer"></script>
+<script src="/assets/js/main.5fa965bc.js" defer="defer"></script>
+</head>
+<body>
+<svg style="display: none;"><defs>
+<symbol id="theme-svg-external-link" viewBox="0 0 24 24"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"/></symbol>
+</defs></svg>
+<script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||"dark"),document.documentElement.setAttribute("data-theme-choice",t||"dark")}(),function(){try{const c=new URLSearchParams(window.location.search).entries();for(var[t,e]of c)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id="__docusaurus"><link rel="preload" as="image" href="/img/logo.svg"><div role="region" aria-label="Skip to main content"><a class="skipToContent_fXgn" href="#__docusaurus_skipToContent_fallback">Skip to main content</a></div><nav aria-label="Main" class="theme-layout-navbar navbar navbar--fixed-top"><div class="navbar__inner"><div class="theme-layout-navbar-left navbar__items"><button aria-label="Toggle navigation bar" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/"><div class="navbar__logo"><img src="/img/logo.svg" alt="Workflow Logo" class="themedComponent_mlkZ themedComponent--light_NVdE"><img src="/img/logo.svg" alt="Workflow Logo" class="themedComponent_mlkZ themedComponent--dark_xIcU"></div><b class="navbar__title text--truncate">Durable Workflow</b></a><a class="navbar__item navbar__link" href="/docs/introduction/">Docs</a><div class="navbar__item dropdown dropdown--hoverable"><a class="navbar__link" aria-haspopup="true" aria-expanded="false" role="button" href="/docs/introduction/">2.0</a><ul class="dropdown__menu"><li><a class="dropdown__link" href="/docs/introduction/">2.0</a></li><li><a class="dropdown__link" href="/docs/1.x/introduction/">1.x</a></li></ul></div><a class="navbar__item navbar__link" href="/blog/">Blog</a></div><div class="theme-layout-navbar-right navbar__items navbar__items--right"><a href="https://github.com/durable-workflow/workflow" target="_blank" rel="noopener noreferrer" aria-label="Star Durable Workflow on GitHub" class="navbar-github-star-link navbar__item navbar__link" label="Star on GitHub"><svg aria-hidden="true" class="navbar-github-star-link__icon" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8a8.01 8.01 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.56 7.56 0 0 1 8 4.76c.68 0 1.36.09 2 .27 1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"></path></svg><span class="navbar-github-star-link__count" title="GitHub stars">1.2K</span></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type="button" disabled="" title="system mode" aria-label="Switch between dark and light mode (currently system mode)"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP lightToggleIcon_pyhR"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP darkToggleIcon_wfgR"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP systemToggleIcon_QzmC"><path fill="currentColor" d="m12 21c4.971 0 9-4.029 9-9s-4.029-9-9-9-9 4.029-9 9 4.029 9 9 9zm4.95-13.95c1.313 1.313 2.05 3.093 2.05 4.95s-0.738 3.637-2.05 4.95c-1.313 1.313-3.093 2.05-4.95 2.05v-14c1.857 0 3.637 0.737 4.95 2.05z"></path></svg></button></div><div class="navbarSearchContainer_Bca1"><div class="navbar__search searchBarContainer_NW3z" dir="ltr"><svg aria-hidden="true" class="searchIcon_T3tP" focusable="false" viewBox="0 0 16 16"><path fill="currentColor" d="M6.02945 10.20327a4.17382 4.17382 0 1 1 4.17382-4.17382 4.15609 4.15609 0 0 1-4.17382 4.17382Zm9.69195 4.2199-4.8225-4.82338A5.88021 5.88021 0 0 0 12.058 6.02856 6.00467 6.00467 0 1 0 9.59979 10.8989l4.82338 4.82338a.89729.89729 0 0 0 1.29912 0 .89749.89749 0 0 0-.00087-1.29909Z"></path></svg><input placeholder="Search" aria-label="Search" class="navbar__search-input searchInput_YFbd" value=""><div class="loadingRing_RJI3 searchBarLoadingRing_YnHq"><div></div><div></div><div></div><div></div></div></div></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="__docusaurus_skipToContent_fallback" class="theme-layout-main main-wrapper mainWrapper_z2l0"><main class="container container--fluid margin-vert--lg"><div class="row mdxPageWrapper_j9I6"><div class="col col--8"><article><header><h1>Durable Workflow vs Temporal</h1></header>
+<p><strong>Durable execution for PHP, Python, and Rust, on a familiar server stack.</strong></p>
+<p>Durable Workflow is an open-source workflow engine. Your application runs
+workflow and activity workers in PHP, Python, or Rust; Server handles durable
+history, task dispatch, timers, and recovery. Your application does not need
+Laravel.</p>
+<p>Run Server as a separate service using the published container, and keep your
+application and workers in their own language and deployment environment. You
+can use one language throughout or combine workers across languages. PHP
+developers get Fiber-based workflows and a directly runnable worker, without
+RoadRunner.</p>
+<p>Temporal uses a dedicated orchestration service, with a broader SDK selection.
+For PHP, its workflow API uses generators and its workers run through RoadRunner.
+The choice is about application fit and operational ownership.</p>
+<p>Durable Workflow&#x27;s promise is <strong>predictable cost, predictable behavior, and
+predictable operations</strong>: infrastructure you can budget for, explicit execution
+contracts, and workflow history you can inspect.</p>
+<p><em>By the Durable Workflow maintainers. Updated September 21, 2026.</em></p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="architecture-at-a-glance">Architecture at a glance<a href="#architecture-at-a-glance" class="hash-link" aria-label="Direct link to Architecture at a glance" title="Direct link to Architecture at a glance" translate="no">​</a></h2>
+<table><thead><tr><th>Decision</th><th>Durable Workflow</th><th>Temporal</th></tr></thead><tbody><tr><td>Standalone runtime</td><td>Language-neutral Server implemented as a Laravel application.</td><td>Dedicated Temporal Service with persistence and visibility stores.</td></tr><tr><td>SDK languages</td><td>PHP, Python, and Rust.</td><td>Go, Java, .NET, PHP, Python, Ruby, Rust, and TypeScript.</td></tr><tr><td>PHP authoring</td><td>Straight-line methods with Fiber-backed durable calls and ordinary return types.</td><td>Generator-based workflow methods with yielded durable operations.</td></tr><tr><td>PHP worker</td><td>Direct PHP process using an HTTP client.</td><td>PHP processes managed through RoadRunner.</td></tr><tr><td>Application embedding</td><td>Laravel apps can run the engine in their own database and queues.</td><td>Application workers connect to Temporal Service.</td></tr></tbody></table>
+<p>Sources: <a class="" href="/docs/polyglot/server/">Durable Workflow Server</a>,
+<a href="https://php.durable-workflow.com/" target="_blank" rel="noopener noreferrer" class="">PHP SDK</a>,
+<a href="https://docs.temporal.io/temporal-service" target="_blank" rel="noopener noreferrer" class="">Temporal Service</a>,
+<a href="https://docs.temporal.io/develop/php/workflows/basics" target="_blank" rel="noopener noreferrer" class="">Temporal PHP workflows</a>,
+<a href="https://docs.temporal.io/develop/php/workers/run-worker-process" target="_blank" rel="noopener noreferrer" class="">Temporal PHP workers</a>,
+and <a href="https://docs.temporal.io/develop" target="_blank" rel="noopener noreferrer" class="">Temporal SDKs</a>.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="one-server-three-first-party-sdks">One Server, three first-party SDKs<a href="#one-server-three-first-party-sdks" class="hash-link" aria-label="Direct link to One Server, three first-party SDKs" title="Direct link to One Server, three first-party SDKs" translate="no">​</a></h2>
+<p>You can author both workflows and activities in
+<a href="https://php.durable-workflow.com/" target="_blank" rel="noopener noreferrer" class="">PHP</a>,
+<a href="https://python.durable-workflow.com/" target="_blank" rel="noopener noreferrer" class="">Python</a>, and
+<a href="https://rust.durable-workflow.com/" target="_blank" rel="noopener noreferrer" class="">Rust</a>. Workers run in your application&#x27;s
+environment, connect to Server, and scale independently from it.</p>
+<p>A Python team can keep its application entirely in Python. A Rust team can keep
+its application entirely in Rust. Server&#x27;s implementation language does not
+become an application dependency.</p>
+<p>You can also combine languages in one workflow. The
+<a href="https://github.com/durable-workflow/sample-app#service-mode" target="_blank" rel="noopener noreferrer" class="">runnable polyglot example</a>
+uses a PHP workflow, a Python calculation activity, and a Rust receipt activity
+on separate task queues. The engine coordinates them through named workflow and
+activity types.</p>
+<p>Temporal offers <a href="https://docs.temporal.io/develop" target="_blank" rel="noopener noreferrer" class="">SDKs for a wider set of languages</a>.
+For an application built around Go, Java, .NET, Ruby, or TypeScript, that coverage
+is a concrete reason to choose Temporal.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="straight-line-php-without-roadrunner">Straight-line PHP, without RoadRunner<a href="#straight-line-php-without-roadrunner" class="hash-link" aria-label="Direct link to Straight-line PHP, without RoadRunner" title="Direct link to Straight-line PHP, without RoadRunner" translate="no">​</a></h2>
+<p>Durable Workflow&#x27;s PHP SDK uses a managed Fiber. Calling
+<code>$context-&gt;activity(...)</code> suspends workflow execution until the durable result is
+available; the method then continues with that result. Your workflow remains a
+straight-line PHP method with an ordinary return type. There are no <code>yield</code>
+statements or Generator return types to carry through your workflow code.</p>
+<p>The worker runs directly as <code>php worker.php</code>. Its
+<a href="https://github.com/durable-workflow/sdk-php/blob/main/src/Transport/Psr18Transport.php" target="_blank" rel="noopener noreferrer" class="">PSR-18 HTTP transport</a>
+requires neither RoadRunner nor a gRPC extension.</p>
+<p>Temporal&#x27;s <a href="https://docs.temporal.io/develop/php/workflows/basics" target="_blank" rel="noopener noreferrer" class="">PHP workflow API</a>
+expresses suspension through generators and <code>yield</code>. Its
+<a href="https://docs.temporal.io/develop/php/set-up-your-local-php" target="_blank" rel="noopener noreferrer" class="">PHP setup</a>
+includes RoadRunner and the gRPC extension.</p>
+<p>Here is a complete Durable Workflow <strong>service-mode</strong> handler file. The workflow
+schedules a greeting activity and returns its result:</p>
+<div class="language-php codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockTitle_OeMC">handlers.php</div><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-php codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">&lt;?php</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">declare(strict_types=1);</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use DurableWorkflow\Attribute\Activity;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use DurableWorkflow\Attribute\Workflow;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use DurableWorkflow\Worker\ActivityContext;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use DurableWorkflow\Worker\WorkflowContext;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">final class GreetingWorkflow</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">{</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    #[Workflow(&#x27;comparison.php.greeting&#x27;)]</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    public function run(WorkflowContext $context, string $name): array</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    {</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">        return [&#x27;greeting&#x27; =&gt; $context-&gt;activity(&#x27;comparison.php.greet&#x27;, [$name])];</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    }</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">}</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">final class GreetingActivities</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">{</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    #[Activity(&#x27;comparison.php.greet&#x27;)]</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    public function greet(ActivityContext $context, string $name): string</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    {</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">        return &quot;Hello, {$name}!&quot;;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    }</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">}</span><br></div></code></pre></div></div>
+<p>Get the <a href="https://github.com/durable-workflow/durable-workflow.github.io/tree/main/static/examples/temporal-comparison" target="_blank" rel="noopener noreferrer" class="">worker, client, and test</a>.
+In that directory, with PHP 8.1+ and Composer:</p>
+<div class="language-sh codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-sh codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">composer install</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">php test.php</span><br></div></code></pre></div></div>
+<p>The test checks registration, activity scheduling and execution, and replay with
+a recorded activity result. To run the worker and client against a real runtime,
+start the <a class="" href="/docs/polyglot/server/">local Server</a> at <code>http://localhost:8080</code> with
+its documented development token, then run <code>php worker.php</code> and <code>php client.php</code>
+in separate terminals:</p>
+<div class="language-json codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-json codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token punctuation" style="color:rgb(248, 248, 242)">{</span><span class="token property">&quot;greeting&quot;</span><span class="token operator">:</span><span class="token string" style="color:rgb(255, 121, 198)">&quot;Hello, Ada!&quot;</span><span class="token punctuation" style="color:rgb(248, 248, 242)">}</span><br></div></code></pre></div></div>
+<p>We verified this result with published SDK and Server artifacts.
+<a href="https://github.com/durable-workflow/durable-workflow.github.io/pull/135" target="_blank" rel="noopener noreferrer" class="">Versions and test results</a>
+are recorded with the source.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="predictable-behavior-across-workers">Predictable behavior across workers<a href="#predictable-behavior-across-workers" class="hash-link" aria-label="Direct link to Predictable behavior across workers" title="Direct link to Predictable behavior across workers" translate="no">​</a></h2>
+<p>Both engines rebuild workflow state from recorded history. Completed activity
+results are replayed into workflow code rather than repeating that completed
+work. Workflow decisions therefore need to remain deterministic: put network
+calls and database effects in activities, and use durable timer and time APIs.
+See <a class="" href="/docs/how-it-works/">Durable Workflow&#x27;s execution model</a> and
+<a href="https://docs.temporal.io/workflow-execution#replays" target="_blank" rel="noopener noreferrer" class="">Temporal workflow replay</a>.</p>
+<p>Activity delivery is a separate concern. A worker can perform an external action
+and fail before reporting its result, so a retry may repeat that action. Durable
+Workflow provides a stable logical activity execution identity across attempts,
+which can serve as an idempotency key for payments and other external effects.
+The <a class="" href="/docs/constraints/execution-guarantees/">execution guarantees</a> explain that
+contract. Temporal also recommends
+<a href="https://docs.temporal.io/activities" target="_blank" rel="noopener noreferrer" class="">idempotent activities</a>.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="a-shared-payload-contract">A shared payload contract<a href="#a-shared-payload-contract" class="hash-link" aria-label="Direct link to A shared payload contract" title="Direct link to A shared payload contract" translate="no">​</a></h3>
+<p>Durable Workflow&#x27;s PHP, Python, and Rust SDKs share a fixed
+<a class="" href="/docs/polyglot/avro-value-protocol/">Avro Value contract</a>. It preserves distinctions
+such as bytes versus text and integers versus floating-point values across
+languages. The SDKs bundle the schema; you do not operate a schema registry.
+Application-specific objects are adapted to these portable values.</p>
+<p>Temporal uses <a href="https://docs.temporal.io/dataconversion" target="_blank" rel="noopener noreferrer" class="">Data Converters</a> with
+default serialization and support for custom converters and codecs. Durable
+Workflow takes a more opinionated approach: one portable value contract across
+its first-party SDKs.</p>
+<p>For deployment confidence, test workflow changes against recorded history as
+well as testing activity business logic. Durable Workflow provides
+<a href="https://php.durable-workflow.com/build/testing/" target="_blank" rel="noopener noreferrer" class="">PHP SDK replay tests</a> and
+<a class="" href="/docs/testing/">embedded test fakes</a>. Temporal documents its
+<a href="https://docs.temporal.io/develop/php/best-practices/testing-suite" target="_blank" rel="noopener noreferrer" class="">PHP unit and integration testing tools</a>.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="self-host-on-a-familiar-application-stack">Self-host on a familiar application stack<a href="#self-host-on-a-familiar-application-stack" class="hash-link" aria-label="Direct link to Self-host on a familiar application stack" title="Direct link to Self-host on a familiar application stack" translate="no">​</a></h2>
+<p><strong>Running Durable Workflow Server means running a Laravel application.</strong> It uses
+PHP application configuration, a database, queue/cache services, and worker and
+scheduler processes. Operators familiar with Laravel can use those skills for
+deployment, logs, process supervision, and database maintenance.</p>
+<p>The <a href="https://github.com/durable-workflow/server" target="_blank" rel="noopener noreferrer" class="">Server source</a> and
+<a class="" href="/docs/polyglot/server/">deployment guide</a> make that setup inspectable. The
+published Docker image packages the application for you. Using it does not
+require PHP or Laravel in your Python or Rust worker environment.</p>
+<table><thead><tr><th>Deployment</th><th>What you operate</th></tr></thead><tbody><tr><td>Durable Workflow Server</td><td>A Laravel application with API, worker and scheduler processes, database and queue/cache services, plus application SDK workers.</td></tr><tr><td>Durable Workflow embedded</td><td>Your Laravel app, database, queue consumers, and lock-capable cache.</td></tr><tr><td>Temporal Service</td><td>Temporal Server, persistence and visibility stores, plus application SDK workers.</td></tr></tbody></table>
+<p>The Durable Workflow <a class="" href="/docs/polyglot/server/#published-image--compose">published Compose setup</a>
+uses MySQL and Redis. Its local quickstart also supports SQLite.
+Temporal&#x27;s <a href="https://docs.temporal.io/self-hosted-guide" target="_blank" rel="noopener noreferrer" class="">self-hosting guide</a>
+covers its deployment options, with a local development service available through
+the Temporal CLI.</p>
+<p><strong>Predictable cost follows from explicit ownership.</strong> The
+<a href="https://github.com/durable-workflow/workflow/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" class="">Durable Workflow engine</a>,
+<a href="https://github.com/durable-workflow/server/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" class="">Server</a>, and
+<a href="https://github.com/temporalio/temporal/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" class="">Temporal Server</a>
+are MIT-licensed. Self-hosting either engine has no per-action software fee.
+Your costs are infrastructure and the work of operating it. Durable Workflow
+lets you use established PHP application tooling, while independently scaling
+workers written in your application&#x27;s language.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="inspect-workflow-history">Inspect workflow history<a href="#inspect-workflow-history" class="hash-link" aria-label="Direct link to Inspect workflow history" title="Direct link to Inspect workflow history" translate="no">​</a></h3>
+<p><a class="" href="/docs/monitoring/">Waterline</a> shows Durable Workflow execution history,
+activity results, timers, and failures. It can run as a separate operator UI
+for Server, or inside a Laravel app for embedded execution. The CLI and Server
+API also expose runtime state. Temporal provides its
+<a href="https://docs.temporal.io/web-ui" target="_blank" rel="noopener noreferrer" class="">Web UI</a> for inspecting executions and history.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="laravel-integration-when-your-application-uses-laravel">Laravel integration when your application uses Laravel<a href="#laravel-integration-when-your-application-uses-laravel" class="hash-link" aria-label="Direct link to Laravel integration when your application uses Laravel" title="Direct link to Laravel integration when your application uses Laravel" translate="no">​</a></h3>
+<p>Laravel users get two choices: embed the engine, or keep a separate Server and
+use the <a href="https://php.durable-workflow.com/frameworks/laravel/" target="_blank" rel="noopener noreferrer" class="">PHP SDK&#x27;s Laravel bridge</a>.
+The bridge supplies container-resolved handlers, configuration, logging, an
+Artisan worker command, and a test fake. Separating orchestration state does not
+require abandoning the application&#x27;s framework conventions.</p>
+<p>Embedding goes further: workflow state lives in the application&#x27;s database, and
+Laravel queue workers execute the work. You deploy the engine with your app
+instead of operating a separate service. Start with the
+<a class="" href="/docs/installation/">embedded installation guide</a>.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="which-engine-fits-your-team">Which engine fits your team?<a href="#which-engine-fits-your-team" class="hash-link" aria-label="Direct link to Which engine fits your team?" title="Direct link to Which engine fits your team?" translate="no">​</a></h2>
+<p><strong>Choose Durable Workflow</strong> for PHP, Python, and Rust applications when you want
+a self-hostable engine with a shared cross-language execution contract and
+independently deployed application workers. PHP teams also get Fiber-based
+workflow code without RoadRunner, with optional Laravel integration.</p>
+<p><strong>Choose Temporal</strong> when its broader language SDK coverage or your existing
+Temporal tooling and expertise fit the application better.</p>
+<p><strong>Start building:</strong> <a class="" href="/docs/quickstart/">choose a PHP, Python, or Rust quickstart</a>,
+<a class="" href="/docs/polyglot/server/">run Durable Workflow Server</a>, or
+<a href="https://docs.temporal.io/develop" target="_blank" rel="noopener noreferrer" class="">explore Temporal&#x27;s SDKs</a>.</p>
+<p>Found a factual error? <a href="https://github.com/durable-workflow/durable-workflow.github.io/issues/new" target="_blank" rel="noopener noreferrer" class="">Open a documentation issue</a>
+with the claim and its source.</p></article></div><div class="col col--2"><div class="tableOfContents_bqdL thin-scrollbar"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#architecture-at-a-glance" class="table-of-contents__link toc-highlight">Architecture at a glance</a></li><li><a href="#one-server-three-first-party-sdks" class="table-of-contents__link toc-highlight">One Server, three first-party SDKs</a></li><li><a href="#straight-line-php-without-roadrunner" class="table-of-contents__link toc-highlight">Straight-line PHP, without RoadRunner</a></li><li><a href="#predictable-behavior-across-workers" class="table-of-contents__link toc-highlight">Predictable behavior across workers</a><ul><li><a href="#a-shared-payload-contract" class="table-of-contents__link toc-highlight">A shared payload contract</a></li></ul></li><li><a href="#self-host-on-a-familiar-application-stack" class="table-of-contents__link toc-highlight">Self-host on a familiar application stack</a><ul><li><a href="#inspect-workflow-history" class="table-of-contents__link toc-highlight">Inspect workflow history</a></li><li><a href="#laravel-integration-when-your-application-uses-laravel" class="table-of-contents__link toc-highlight">Laravel integration when your application uses Laravel</a></li></ul></li><li><a href="#which-engine-fits-your-team" class="table-of-contents__link toc-highlight">Which engine fits your team?</a></li></ul></div></div></div></main></div><div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="row footer__links"><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Docs</div><ul class="footer__items clean-list"><li class="footer__item"><a class="footer__link-item" href="/docs/introduction/">Introduction</a></li><li class="footer__item"><a class="footer__link-item" href="/docs/installation/">Installation</a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Community</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://discord.gg/xu5aDDpqVy" target="_blank" rel="noopener noreferrer" class="footer__link-item">Discord<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://x.com/DurableWorkflow" target="_blank" rel="noopener noreferrer" class="footer__link-item">X<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">More</div><ul class="footer__items clean-list"><li class="footer__item"><a class="footer__link-item" href="/compare/temporal/">Durable Workflow vs Temporal</a></li><li class="footer__item"><a href="https://durable-workflow.com/llms-full.txt" target="_blank" rel="noopener noreferrer" class="footer__link-item">LLM Docs<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://packagist.org/packages/durable-workflow/workflow" target="_blank" rel="noopener noreferrer" class="footer__link-item">Packagist<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div></div><div class="footer__bottom text--center"><div class="footer__copyright">Copyright © 2026 <a href="https://durable-workflow.com">Durable Workflow</a>.</div></div></div></footer></div></div>
+</body>
+</html>

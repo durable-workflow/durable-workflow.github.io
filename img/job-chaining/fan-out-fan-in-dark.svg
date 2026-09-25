@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="380" viewBox="0 0 760 380" role="img" aria-labelledby="title description">
+  <title id="title">Fan-out and fan-in</title>
+  <desc id="description">Function 1 writes to a database, which starts two Function 2 tasks in parallel. Their work joins at a database before Function 3 runs.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0l10 5-10 5z" fill="#cbd5e1"/>
+    </marker>
+  </defs>
+  <g fill="none" stroke="#cbd5e1" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" marker-end="url(#arrow)">
+    <path d="M145 190h15"/>
+    <path d="M280 190h20V95h20"/>
+    <path d="M280 190h20v95h20"/>
+    <path d="M450 95h15v95h15"/>
+    <path d="M450 285h15v-95h15"/>
+    <path d="M600 190h15"/>
+  </g>
+  <g font-family="Inter, ui-sans-serif, system-ui, sans-serif" text-anchor="middle">
+    <g fill="#312e81" stroke="#a5b4fc" stroke-width="3">
+      <rect x="15" y="140" width="130" height="100" rx="8"/>
+      <rect x="320" y="45" width="130" height="100" rx="8"/>
+      <rect x="320" y="235" width="130" height="100" rx="8"/>
+      <rect x="615" y="140" width="130" height="100" rx="8"/>
+    </g>
+    <g fill="#f8fafc" font-size="24" font-weight="600">
+      <text x="80" y="182"><tspan x="80">Function</tspan><tspan x="80" dy="30">1</tspan></text>
+      <text x="385" y="87"><tspan x="385">Function</tspan><tspan x="385" dy="30">2</tspan></text>
+      <text x="385" y="277"><tspan x="385">Function</tspan><tspan x="385" dy="30">2</tspan></text>
+      <text x="680" y="182"><tspan x="680">Function</tspan><tspan x="680" dy="30">3</tspan></text>
+    </g>
+    <g fill="#164e63" stroke="#67e8f9" stroke-width="3">
+      <path d="M160 162c0-13 27-22 60-22s60 9 60 22v56c0 13-27 22-60 22s-60-9-60-22z"/>
+      <ellipse cx="220" cy="162" rx="60" ry="22" fill="#155e75"/>
+      <path d="M480 162c0-13 27-22 60-22s60 9 60 22v56c0 13-27 22-60 22s-60-9-60-22z"/>
+      <ellipse cx="540" cy="162" rx="60" ry="22" fill="#155e75"/>
+    </g>
+    <g fill="#f8fafc" font-size="22" font-weight="600">
+      <text x="220" y="200">Database</text>
+      <text x="540" y="200">Database</text>
+    </g>
+  </g>
+</svg>
