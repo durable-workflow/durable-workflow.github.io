@@ -207,7 +207,7 @@ Parent-close policy fires on every terminal parent disposition, and stays inert 
 
 **Abandon** (default) is correct when children represent independent work that should complete regardless of the parent's fate — for example, a notification workflow or a cleanup task that must finish.
 
-**Request Cancel** is correct when children should receive a graceful shutdown signal. The child can handle the cancellation and run compensation logic before closing.
+**Request Cancel** applies the child's terminal `cancel()` command when the parent closes. Despite the policy name, it does not deliver the separate cooperative `requestCancellation()` request. The child cannot run workflow-code cleanup or compensation after this policy closes its run. Complete any required compensation before closing the parent, or use **Abandon** for independent cleanup work.
 
 **Terminate** is correct when children must stop immediately. Use this for children that are purely auxiliary to the parent and have no independent value after the parent closes.
 
