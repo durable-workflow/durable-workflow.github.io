@@ -5,17 +5,24 @@ authors: [richard]
 tags: [server, performance, php, laravel, reliability]
 ---
 
-Which HTTP stack should serve Durable Workflow Server? We expected a comparison
-of Apache, PHP-FPM, and persistent PHP workers. The measurements first exposed
-problems that an HTTP server swap could never solve: how idle workers wake up,
-whether readiness tells the truth, and whether the load generator has enough
-workers to exercise the server.
-
-The investigation has also produced a practical runtime recommendation. Here
-is the architecture behind that choice, the evidence for it, and the limits of
-what we measured.
+Which HTTP stack should serve Durable Workflow Server? We measured Apache,
+PHP-FPM, and persistent PHP workers against the same application workload. The
+answer depends on the whole request path, including the time SDK workers spend
+waiting for tasks. Here are the results, what they mean for our Server, and why
+a different application might choose differently.
 
 <!-- truncate -->
+
+## The results
+
+<!-- Complete this lead section only after Server #137 and #222 have all
+     measured results and final decisions. Show a compact six-stack comparison,
+     exact published tuple, PHP version, host and container limits, workloads,
+     repetitions/variation, offered and completed rates, latency, CPU, memory,
+     ordinary API failures and correctness. Link the complete report and raw
+     artifacts. Keep the uncapped Apache reference separate. Include the
+     verified image size, pull/start and before/after outcome from #222. State
+     what each result supports without inventing saturation capacity. -->
 
 ## Why a standalone Server is still a Laravel app
 
@@ -55,52 +62,32 @@ authentication isolation, stale backend connections, and clean recycling part
 of the correctness test. We did not treat a fast response as proof that those
 contracts hold.
 
-## The bugs the comparison found first
+## What else moved the numbers
 
-Workflow, activity, and query workers share a task queue, but their polls must
-wake for the right reasons. We found that registering a query poll broadcast a
-wake signal to workflow and activity polls, even when no matching work had
-arrived. The [Server fix](https://github.com/durable-workflow/server/pull/195)
-separates that signal and adds a capability-gated notification when another
-task kind really is ready. In a disposable local source-pair test, five of six
-old-worker runs had spaced activity schedule-to-start times of **3.65–3.88
-seconds**; all six new-worker runs were **86–184 milliseconds**. Those are
-bounded local observations, not a published throughput claim. One idle sample
-also saw about **18% more Redis commands**, a cost to keep measuring.
+Workers must wake for the right task. Registering a query poll was needlessly
+waking workflow and activity polls, so we [separated their wake
+signals](https://github.com/durable-workflow/server/pull/195). In a bounded
+local test, spaced activity schedule-to-start fell from **3.65–3.88 seconds**
+in five of six old-worker runs to **86–184 milliseconds** in six new-worker
+runs. The same fix increased Redis commands by about **18%** in one idle
+sample. That tradeoff matters when interpreting the benefit; the local test
+does not establish a published capacity gain.
 
-The same work exposed an unreliable health signal. When the required Redis
-queue was unavailable, `/api/ready` could return 200 while the Laravel queue
-worker had exited. [Readiness now probes the configured queue](https://github.com/durable-workflow/server/pull/189)
-and returns 503 when it cannot reach it. That check reports a necessary backend
-condition; process supervision is still a separate responsibility. In the
-published Compose stack, the queue worker lacked a restart policy. The
-[supervision fix](https://github.com/durable-workflow/server/pull/191) gives it
-`unless-stopped`; a disposable Redis-interruption fixture then showed the
-worker recovering automatically and a subsequent four-workflow canary
-completing. That is evidence for this recovery path, not a general failover
-guarantee.
-
-Finally, the first comparison was testing its own client-side ceiling. With
-one SDK worker, adding HTTP capacity did little; two workers helped the
-diagnostic run, while four on a fixed CPU budget made contention worse. The
-[worker-count matrix](https://github.com/durable-workflow/server/issues/137#issuecomment-5838172790)
-changed the load generator before we judged the Server. A benchmark must
-measure the intended system, not accidentally cap it with its client.
-
-## How we compared the stacks
-
-<!-- Complete this section from Server #137 after all six fixed-envelope runs.
-     Name the exact Server digest, bundled Workflow and published SDK tuple,
-     PHP version, hardware, host and container limits, workload, warmup and
-     measured window, repetitions, and raw artifact links. Keep the uncapped
-     Apache pass in a separate reference row. State that the current soak is
-     closed-loop and does not determine saturation capacity. -->
+We also made [readiness detect an unavailable Redis
+queue](https://github.com/durable-workflow/server/pull/189) and [the published
+queue worker restart](https://github.com/durable-workflow/server/pull/191)
+after a backend interruption. These changes affect whether a fast Server stays
+useful through a failure. On the client side, a
+[worker-count check](https://github.com/durable-workflow/server/issues/137#issuecomment-5838172790)
+showed that one SDK worker limited the load test while four contended for the
+fixed CPU budget. We sized the test client to exercise the Server without
+turning it into the bottleneck.
 
 ## What we chose, and what could change the answer
 
-<!-- Complete the recommendation only after reviewing all comparable results,
-     correctness, recovery, memory, and operational costs. Mention Server #222
-     image tuning if qualified by publication, otherwise state its status. -->
+<!-- Complete the recommendation only after reviewing all comparable #137
+     results, correctness, recovery, memory, and operational costs. Include
+     #222's verified image tuning outcome and released digest. -->
 
 Another application can get a different result. An API with short, CPU-heavy
 requests and few idle polls has a different worker-occupancy pattern. A site
