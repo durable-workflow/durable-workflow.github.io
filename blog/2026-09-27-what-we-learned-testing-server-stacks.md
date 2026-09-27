@@ -19,28 +19,26 @@ a different application might choose differently.
      measured results and final decisions. Show a compact six-stack comparison,
      exact published tuple, PHP version, host and container limits, workloads,
      repetitions/variation, offered and completed rates, latency, CPU, memory,
-     ordinary API failures and correctness. Link the complete report and raw
-     artifacts. Keep the uncapped Apache reference separate. Include the
+     ordinary API failures and correctness. Put one link to the complete Server
+     report at the end, where readers can find raw artifacts. Keep the uncapped
+     Apache reference separate. Include the
      verified image size, pull/start and before/after outcome from #222. State
      what each result supports without inventing saturation capacity. -->
 
 ## Why a standalone Server is still a Laravel app
 
 Durable Workflow Server presents a language-neutral HTTP protocol to PHP,
-Python, and Rust SDKs. Its implementation is a
-[Laravel application](https://github.com/durable-workflow/server/blob/main/composer.json):
-Laravel bootstraps its
-[API routes and middleware](https://github.com/durable-workflow/server/blob/main/bootstrap/app.php),
-and its [published Compose stack](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml)
-runs separate HTTP, queue-worker, and scheduler processes. The queue worker
-advances durable work; MySQL holds durable state; Redis supports the queue,
-cache, and wake signals. The HTTP process accepts starts and completions, and
-serves workflow, activity, and query polls to SDK workers. An SDK client does
-not need to be written in PHP just because the Server is.
+Python, and Rust SDKs. Its implementation is a Laravel application. Laravel
+handles its API routes and middleware. The published stack runs separate HTTP,
+queue worker, and scheduler processes. The queue worker advances durable work.
+MySQL holds durable state. Redis supports the queue, cache, and wake signals.
+The HTTP process accepts starts and completions, and serves workflow, activity,
+and query polls to SDK workers. An SDK client does not need to be written in
+PHP just because the Server is.
 
 That structure matters when choosing the front end. An ordinary short API
 request enters Laravel and leaves. A long poll can wait for work inside
-[`LongPoller`](https://github.com/durable-workflow/server/blob/main/app/Support/LongPoller.php).
+`LongPoller`.
 In the current implementation, that wait occupies the PHP execution slot
 handling the request. A web server may accept many connections, but it cannot
 make a finite pool of busy PHP workers unlimited. The exact process limit,
@@ -65,23 +63,19 @@ contracts hold.
 ## What else moved the numbers
 
 Workers must wake for the right task. Registering a query poll was needlessly
-waking workflow and activity polls, so we [separated their wake
-signals](https://github.com/durable-workflow/server/pull/195). In a bounded
-local test, spaced activity schedule-to-start fell from **3.65–3.88 seconds**
-in five of six old-worker runs to **86–184 milliseconds** in six new-worker
-runs. The same fix increased Redis commands by about **18%** in one idle
-sample. That tradeoff matters when interpreting the benefit; the local test
-does not establish a published capacity gain.
+waking workflow and activity polls, so we separated their wake signals. In a
+bounded local test, spaced activity schedule-to-start fell from **3.65 to 3.88
+seconds** in five of six old-worker runs to **86 to 184 milliseconds** in six
+new-worker runs. The same fix increased Redis commands by about **18%** in one
+idle sample. That tradeoff matters when interpreting the benefit. The local
+test does not establish a published capacity gain.
 
-We also made [readiness detect an unavailable Redis
-queue](https://github.com/durable-workflow/server/pull/189) and [the published
-queue worker restart](https://github.com/durable-workflow/server/pull/191)
-after a backend interruption. These changes affect whether a fast Server stays
-useful through a failure. On the client side, a
-[worker-count check](https://github.com/durable-workflow/server/issues/137#issuecomment-5838172790)
-showed that one SDK worker limited the load test while four contended for the
-fixed CPU budget. We sized the test client to exercise the Server without
-turning it into the bottleneck.
+We also made readiness detect an unavailable Redis queue and made the
+published queue worker restart after a backend interruption. These changes
+affect whether a fast Server stays useful through a failure. On the client
+side, a worker-count check showed that one SDK worker limited the load test
+while four contended for the fixed CPU budget. We sized the test client to
+exercise the Server without turning it into the bottleneck.
 
 ## What we chose, and what could change the answer
 
@@ -98,9 +92,8 @@ useful method is to freeze the application and workload, measure completed
 work against total resources, and make readiness and recovery part of the
 decision.
 
-The [Server investigation](https://github.com/durable-workflow/server/issues/137)
-and its raw comparison artifacts are public. The selected image's separate
-[production-tuning work](https://github.com/durable-workflow/server/issues/222)
-measures distribution and cold-start costs as well as runtime performance.
-These Server measurements do not qualify a managed Cloud plan or establish a
-customer throughput guarantee.
+The selected image's production tuning measures distribution and cold-start
+costs as well as runtime performance. These Server measurements do not qualify
+a managed Cloud plan or establish a customer throughput guarantee. The full
+methods, results, and raw artifacts are in [the public engineering
+report](https://github.com/durable-workflow/server/issues/137).
