@@ -33,8 +33,7 @@ handles its API routes and middleware. The published stack runs separate HTTP,
 queue worker, and scheduler processes. The queue worker advances durable work.
 MySQL holds durable state. Redis supports the queue, cache, and wake signals.
 The HTTP process accepts starts and completions, and serves workflow, activity,
-and query polls to SDK workers. An SDK client does not need to be written in
-PHP just because the Server is.
+and query polls to SDK workers.
 
 That structure matters when choosing the front end. An ordinary short API
 request enters Laravel and leaves. A long poll can wait for work inside
@@ -57,18 +56,15 @@ The candidates change how those slots are provided:
 Persistent workers also keep Laravel state in memory between requests. That
 can remove repeated bootstrap work, but it makes cross-request state reset,
 authentication isolation, stale backend connections, and clean recycling part
-of the correctness test. We did not treat a fast response as proof that those
-contracts hold.
+of the stack choice.
 
 ## What else moved the numbers
 
 Workers must wake for the right task. Registering a query poll was needlessly
 waking workflow and activity polls, so we separated their wake signals. In a
-bounded local test, spaced activity schedule-to-start fell from **3.65 to 3.88
-seconds** in five of six old-worker runs to **86 to 184 milliseconds** in six
-new-worker runs. The same fix increased Redis commands by about **18%** in one
-idle sample. That tradeoff matters when interpreting the benefit. The local
-test does not establish a published capacity gain.
+local six-run comparison, spaced activity schedule-to-start fell from **3.65
+to 3.88 seconds** in five of six old-worker runs to **86 to 184 milliseconds**
+in all six new-worker runs.
 
 We also made readiness detect an unavailable Redis queue and made the
 published queue worker restart after a backend interruption. These changes
@@ -93,7 +89,6 @@ work against total resources, and make readiness and recovery part of the
 decision.
 
 The selected image's production tuning measures distribution and cold-start
-costs as well as runtime performance. These Server measurements do not qualify
-a managed Cloud plan or establish a customer throughput guarantee. The full
-methods, results, and raw artifacts are in [the public engineering
-report](https://github.com/durable-workflow/server/issues/137).
+costs as well as runtime performance. Cloud plan qualification is a separate
+step. The full methods, results, and raw artifacts are in
+[the public engineering report](https://github.com/durable-workflow/server/issues/137).
