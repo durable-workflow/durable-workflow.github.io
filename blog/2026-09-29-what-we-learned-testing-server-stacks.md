@@ -70,10 +70,9 @@ and query polls to SDK workers.
 
 That structure matters when choosing the front end. An ordinary short API
 request enters Laravel and leaves. A long poll can wait for work inside
-`LongPoller`.
-In the current implementation, that wait occupies the PHP execution slot
-handling the request. A web server may accept many connections, but it cannot
-make a finite pool of busy PHP workers unlimited. The exact process limit,
+`LongPoller`. In the current implementation, that wait occupies the PHP
+execution slot handling the request. A web server may accept many connections,
+but it cannot make a finite pool of busy PHP workers unlimited. The process limit,
 memory per waiting worker, wakeup path, and responsiveness of ordinary API
 requests matter more than the web server's name.
 
@@ -120,10 +119,10 @@ tools used by the published conformance runner, and the existing Apache and
 OPcache settings. Its compressed layers are 19.5 MB smaller on both amd64
 and arm64. The amd64 visible root filesystem is about 32 MB smaller. Three
 repeated fixed-load runs and a fresh baseline check showed similar completed
-work, CPU use, latency, and memory. The gain is cheaper distribution and
-disk use, with the same application behavior. The exact published image
-passed a fresh startup, workflow verification, and recovery after MySQL and
-Redis interruptions.
+work, CPU use, latency, and memory. The gain is less data to transfer and
+store, with the same application behavior. The exact published image passed
+PHP, Python, and Rust lifecycle checks, plus recovery after MySQL and Redis
+interruptions.
 
 Another application can get a different result. An API with short, CPU-heavy
 requests and few idle polls has a different worker-occupancy pattern. A site
@@ -134,9 +133,8 @@ useful method is to freeze the application and workload, measure completed
 work against total resources, and make readiness and recovery part of the
 decision.
 
-The image's local pull took 20.9 seconds with a shared base layer already
-cached. A fresh Compose stack reached healthy Server, queue worker, and SDK
-workers in 92.8 seconds, including MySQL initialization and migrations.
-Cloud plan qualification is a separate step. The full methods, results, and
-raw artifacts are in
-[the public engineering report](https://github.com/durable-workflow/server/issues/137).
+The local pull took about 21 seconds for either image with a shared base layer
+cached. Fresh stacks reached readiness in about a minute and a half, including
+MySQL initialization and migrations. Cloud plan qualification is a separate
+step. The full methods, results, and raw artifacts are in
+[the public engineering report](https://github.com/durable-workflow/server/issues/137#issuecomment-5892913410).
