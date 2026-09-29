@@ -133,8 +133,5 @@ useful method is to freeze the application and workload, measure completed
 work against total resources, and make readiness and recovery part of the
 decision.
 
-The local pull took about 21 seconds for either image with a shared base layer
-cached. Fresh stacks reached readiness in about a minute and a half, including
-MySQL initialization and migrations. Cloud plan qualification is a separate
-step. The full methods, results, and raw artifacts are in
+The full methods, results, and raw artifacts are in
 [the public engineering report](https://github.com/durable-workflow/server/issues/137#issuecomment-5892913410).
