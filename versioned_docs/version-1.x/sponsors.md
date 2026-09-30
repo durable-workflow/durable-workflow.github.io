@@ -8,7 +8,6 @@ Durable Workflow is sustained by the community via sponsors and volunteers. If t
 
 ## Current Sponsors
 
-- <a href="https://github.com/discovery-ukraine" target="_blank" rel="noopener sponsored">Andriy Karpishyn</a>
 - <a href="https://freispace.com" target="_blank" rel="noopener sponsored">Freispace Resource Scheduling</a>
 - <a href="https://translateabook.com" target="_blank" rel="noopener sponsored">Translate a Book</a>
 
