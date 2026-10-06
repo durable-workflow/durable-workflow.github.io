@@ -45,7 +45,7 @@ manifests, and CI gates can validate themselves against one source of truth:
 
 - `surface_stability_contract` in the response body of
   `GET /api/cluster/info` on the standalone Durable Workflow server, schema
-  `durable-workflow.v2.surface-stability.contract`, version `4`.
+  `durable-workflow.v2.surface-stability.contract`, version `5`.
 - A frozen mirror of the same manifest in this repository at
   `static/compatibility-contract.json`.
 - The PHP class `Workflow\V2\Support\SurfaceStabilityContract`, which is
