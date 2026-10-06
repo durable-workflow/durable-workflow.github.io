@@ -93,9 +93,9 @@ The `backoff` method returns an array of integers corresponding to the current a
 
 ## Namespace
 
-Workflows can be scoped to a namespace for multi-namespace isolation. When a namespace is configured, it is persisted on every workflow instance, run, task, and run-summary projection created through the control plane. Task bridge polling and Waterline visibility filters can then restrict results to a single namespace.
+Workflows can be scoped to a namespace for multi-namespace isolation. The configured namespace applies to both the control-plane start API and `Workflow\V2\WorkflowStub::make()->start()`. It is persisted on the new instance, run, durable tasks and run-summary projection. Task polling and Waterline visibility filters can then restrict results to a single namespace. Use Workflow 2.4.2 or newer for consistent namespace assignment through both PHP start APIs.
 
-Namespace names must contain only lowercase alphanumeric characters, dots, underscores, and hyphens (matching `[a-z0-9._-]+`, max 128 characters). Mixed-case input is normalized to lowercase automatically.
+Namespace names must contain only lowercase alphanumeric characters, dots, underscores, and hyphens (matching `[a-z0-9._-]+`, max 128 characters).
 
 Set the default namespace via environment variable:
 
@@ -112,7 +112,18 @@ Or in `config/workflows.php`:
 ],
 ```
 
-The control plane also accepts a per-call namespace override in the `start()` options:
+An explicit namespace overrides the configured default. The stub accepts it as its third `make()` argument:
+
+```php
+$workflow = \Workflow\V2\WorkflowStub::make(
+    OrderProcessingWorkflow::class,
+    'order-12345',
+    'staging',
+);
+$workflow->start();
+```
+
+The control plane accepts it in the `start()` options:
 
 ```php
 $controlPlane->start('order-processing', 'order-12345', [
@@ -121,7 +132,7 @@ $controlPlane->start('order-processing', 'order-12345', [
 ]);
 ```
 
-When no namespace is configured and none is passed explicitly, instances have a `null` namespace and are visible to all consumers.
+When no namespace is configured and none is passed explicitly, new instances retain a `null` namespace. A namespace-scoped observer does not include those runs. Changing configuration does not reassign existing instances. Starting an existing instance through a different namespace is rejected.
 
 ### Waterline namespace scoping
 
