@@ -26,12 +26,12 @@ manifest marks the same feature as supported.
 | --- | --- | --- | --- |
 | PHP | Supported | Supported | Supported |
 | Python | Supported since 2.2.0 | Supported since 2.3.0 | Not supported |
-| Rust | Supported since 3.1.0 with `Worker::local_activities(true)` | Not supported | Not supported |
+| Rust | Supported since 3.1.0 with `Worker::local_activities(true)` | Supported since 3.2.0 with `Worker::worker_sessions(true)` | Not supported |
 
 Workers advertise only the capabilities implemented and enabled for their
-profile. Rust local activities require explicit opt-in. Older Rust versions
-refuse them, and Rust continues to refuse sessions and sticky execution.
-Python continues to refuse sticky execution. Ordinary workflows and queued
+profile. Rust local activities and sessions require explicit opt-in. Older Rust
+versions refuse capabilities they do not implement. Python and Rust continue
+to refuse sticky execution. Ordinary workflows and queued
 activities use complete durable-history replay without these optimizations.
 
 ## Local activity recording
@@ -67,7 +67,7 @@ need process supervision to guarantee physical stop.
 
 ## Worker session lifecycle
 
-The PHP and Python SDKs expose typed session options and create, use, renew, and close
+The PHP, Python and Rust SDKs expose typed session options and create, use, renew, and close
 operations. Options include requirements, queue, lease duration, total TTL,
 maximum concurrent activities, and reacquisition policy. A worker closes the
 sessions it holds during graceful shutdown.
@@ -76,6 +76,12 @@ If a holder disappears, its lease and concurrency reservation expire. A new
 holder may reacquire the session when requirements match, but it must rebuild
 worker-local resources before the first activity uses them. Session identity
 never makes process memory durable.
+
+Reacquisition preserves the session's original absolute TTL. Renewal extends
+holder authority without extending that TTL. Use Server 2.5.1 or newer for
+original TTL preservation and recorded session routing during cold replay.
+See the [Rust session example](https://github.com/durable-workflow/sdk-rust/blob/3.2.0/examples/worker_sessions.rs)
+and [WorkerSessionOptions](https://rust.durable-workflow.com/durable_workflow/struct.WorkerSessionOptions.html).
 
 ## Sticky execution and cold replay
 

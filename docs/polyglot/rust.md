@@ -41,7 +41,7 @@ traits, and methods, continue to the generated [Rust SDK API
 reference](https://rust.durable-workflow.com/durable_workflow/).
 
 The stable Rust SDK supports durable
-timers, child workflows, activity retries and timeouts, local activities, signals, replayed query
+timers, child workflows, activity retries and timeouts, local activities, worker sessions, signals, replayed query
 handlers, cancellation and termination, server-enforced workflow deadlines,
 typed side effects, version markers, updates, and typed terminal/replay
 failures. It does not yet claim schedule management. Use the
@@ -106,7 +106,7 @@ manifests advertised by `GET /api/cluster/info` remain authoritative.
 Server negotiates worker-protocol headers within major `1`: a server
 advertising `1.N` accepts a worker header `1.M` only when `M <= N`. Rust SDK
 ordinary workers send `X-Durable-Workflow-Protocol-Version: 1.19` and require
-a server advertising `1.19` or newer. The qualified Server 2.5.0 advertises
+a server advertising `1.19` or newer. The qualified Server advertises
 `1.20`. The opt-in cooperative cancellation profile requires `1.20`.
 
 Negotiation fails closed. A missing or malformed header, a different major,
@@ -127,7 +127,33 @@ Server records the terminal result for cold replay. Uncommitted local effects
 can execute again after worker loss and must be idempotent. Async callbacks
 must yield to Tokio. Blocking work needs separate process supervision.
 Inline local execution and prepared cooperative local supervision use separate
-worker profiles. Sessions and sticky execution remain unsupported in Rust.
+worker profiles. Sticky execution remains unsupported in Rust.
+
+## Worker sessions
+
+Enable `Worker::worker_sessions(true)` and declare the requirements your worker
+satisfies with `capabilities(...)`. Route remote activities with
+`in_worker_session(WorkerSessionOptions::new(session_id))`. The activity context
+provides the shared handle through `worker_session()`. Explicit handles support
+`create()`, `renew()` and `close(reason)` after worker registration.
+
+Bound worker session count with `max_concurrent_worker_sessions(...)` and session
+activity concurrency with `max_concurrent_activities(...)`. Renew idle handles
+explicitly. Activity heartbeats also renew the holder lease, preserving the
+original absolute TTL. An async callback that yields to Tokio is dropped when
+its locally observed lease or TTL expires without requiring application heartbeats.
+
+Session resources live in the holder process. A replacement must rebuild them,
+and interrupted external effects need idempotency and attempt fencing. Committed
+results replay without rerunning the callback. Graceful shutdown closes held
+sessions before deregistration. Local activities cannot use session routing.
+
+Session support starts with Rust SDK 3.2.0. Use Server 2.5.1 or newer. The
+[runnable example](https://github.com/durable-workflow/sdk-rust/blob/3.2.0/examples/worker_sessions.rs)
+reuses a process-local cache across two typed activities and prints its generation.
+See [WorkerSessionOptions](https://rust.durable-workflow.com/durable_workflow/struct.WorkerSessionOptions.html)
+and [WorkerSession](https://rust.durable-workflow.com/durable_workflow/struct.WorkerSession.html)
+for configuration and lifecycle methods.
 
 ## Prepare the released repository example
 
