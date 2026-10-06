@@ -402,9 +402,10 @@ when a script already knows the workflow id and wants handle-style methods.
 
 Both operations close the Server run immediately with distinct terminal
 outcomes. `cancel_workflow` does not deliver a cooperative request to workflow
-code or run saga/finally cleanup. Arrange cleanup before terminal cancellation
-or use external reconciliation; embedded Laravel's `requestCancellation()` is
-a separate capability, not yet available in service mode.
+code or run saga/finally cleanup. Use `request_cancellation()` with cooperating
+workers for bounded workflow cleanup. See the
+[cooperative cancellation guide](/docs/polyglot/cancellation) for operation
+policies, supervision and recovery.
 
 ### Schedules
 

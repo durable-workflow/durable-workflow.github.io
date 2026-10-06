@@ -43,12 +43,17 @@ server records that sequence atomically as normal activity history marked
 `execution_mode=local`.
 
 Replay consumes the recorded terminal activity event. It does not invoke the
-local handler again. The synchronous PHP handler is not preempted: cancellation
-and elapsed heartbeat, per-attempt, and total timeouts are observed before an
-attempt, when the handler calls `ActivityContext::heartbeat()`, or after the
-handler returns. A handler that neither returns nor heartbeats cannot be
-interrupted by these cooperative controls, so local activities must remain
-short and divide blocking work with safe heartbeat boundaries.
+local handler again. Ordinary PHP workers execute the synchronous handler
+inline. Cancellation and elapsed heartbeat, per-attempt, and total timeouts
+are observed before an attempt, at `ActivityContext::heartbeat()`, or after the
+handler returns. These handlers must remain short and divide blocking work
+with safe heartbeat boundaries.
+
+Workers that enable [cooperative cancellation](/docs/polyglot/cancellation)
+use protocol 1.20 and supervised callback processes for prepared local
+activities. They observe cancellation and stop the callback independently of
+application heartbeats. Durable stop receipts and attempt fencing distinguish
+callback stop from refusal of a late result.
 
 ## Worker session lifecycle
 
