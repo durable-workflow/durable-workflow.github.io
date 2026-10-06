@@ -4,11 +4,11 @@
   "updated_at": "2026-10-06",
   "artifacts": {
     "cli": "2.2.0",
-    "sdk-php": "2.1.0",
-    "sdk-python": "2.1.0",
-    "sdk-rust": "2.1.0",
-    "server": "2.4.0",
-    "waterline": "2.0.4",
-    "workflow": "2.1.1"
+    "sdk-php": "2.2.0",
+    "sdk-python": "2.4.0",
+    "sdk-rust": "3.0.0",
+    "server": "2.5.0",
+    "waterline": "2.1.0",
+    "workflow": "2.4.0"
   }
 }

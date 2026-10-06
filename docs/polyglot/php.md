@@ -134,6 +134,10 @@ The current public client is broader than selected-run result handling:
 - `Client` exposes `listWorkflows` with server filtering and pagination,
   `workflowHistory`, `updateWorkflow`, `cancelWorkflow`, and
   `terminateWorkflow`.
+- `requestCancellation()` requests bounded cleanup from cooperating workers.
+  Existing `cancel()` and `cancelWorkflow()` close the run immediately. See
+  [cooperative cancellation](/docs/polyglot/cancellation) for the authoring and
+  recovery contract.
 - Schedule methods cover create, describe, list, update, pause, resume,
   trigger, backfill, and delete.
 - Operational visibility includes `listNamespaces`, `listWorkers`, and

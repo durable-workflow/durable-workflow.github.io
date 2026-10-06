@@ -371,10 +371,10 @@ drained. See [Side Effects](/docs/features/side-effects/) and
 
 Service-mode `cancel_workflow` and `terminate_workflow` both close the run
 immediately. They record distinct terminal outcomes, but neither asks workflow
-code to run cleanup. Arrange compensation before closing the run or use external
-reconciliation. Embedded Laravel has a separate cooperative
-`requestCancellation()` capability; Server and service-mode SDKs do not yet
-expose that request.
+code to run cleanup. Use `request_cancellation()` with cooperating workers for
+bounded workflow cleanup. See the
+[cooperative cancellation guide](/docs/polyglot/cancellation) for operation
+policies, supervision and recovery.
 
 ```rust
 use durable_workflow::{Client, WorkflowCommandOptions};
