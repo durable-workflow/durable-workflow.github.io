@@ -18,6 +18,7 @@ const sidebars = {
         'polyglot/deployment-modes',
         'polyglot/cloud-control-plane',
         'polyglot/server',
+        'polyglot/cancellation',
         'polyglot/workflow-streams',
         {
           type: 'category',

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: durable-workflow.v2.control-plane-api
-  version: "9"
+  version: "11"
   summary: Durable Workflow control-plane HTTP+JSON API
   description: >
     Normative OpenAPI specification for the standalone Durable Workflow
@@ -35,6 +35,7 @@ security:
 tags:
   - name: discovery
   - name: namespaces
+  - name: runtime-credentials
   - name: workflows
   - name: schedules
   - name: task-queues
@@ -120,6 +121,58 @@ paths:
       responses:
         "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
         "422": { $ref: "#/components/responses/ControlPlaneError" }
+  /runtime-credentials:
+    get:
+      tags: [runtime-credentials]
+      operationId: listRuntimeCredentials
+      parameters: [{ $ref: "#/components/parameters/ControlPlaneVersionHeader" }]
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "403": { $ref: "#/components/responses/ControlPlaneError" }
+  /runtime-credentials/{credentialId}:
+    get:
+      tags: [runtime-credentials]
+      operationId: getRuntimeCredential
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/RuntimeCredentialIdPath"
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "404": { $ref: "#/components/responses/ControlPlaneError" }
+    put:
+      tags: [runtime-credentials]
+      operationId: putRuntimeCredential
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/RuntimeCredentialIdPath"
+      requestBody: { $ref: "#/components/requestBodies/JsonObject" }
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "201": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "409": { $ref: "#/components/responses/ControlPlaneError" }
+        "422": { $ref: "#/components/responses/ControlPlaneError" }
+    delete:
+      tags: [runtime-credentials]
+      operationId: revokeRuntimeCredential
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/RuntimeCredentialIdPath"
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "404": { $ref: "#/components/responses/ControlPlaneError" }
+  /runtime-credentials/{credentialId}/rotate:
+    post:
+      tags: [runtime-credentials]
+      operationId: rotateRuntimeCredential
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/RuntimeCredentialIdPath"
+      requestBody: { $ref: "#/components/requestBodies/JsonObject" }
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "404": { $ref: "#/components/responses/ControlPlaneError" }
+        "409": { $ref: "#/components/responses/ControlPlaneError" }
+        "422": { $ref: "#/components/responses/ControlPlaneError" }
   /storage/test:
     post:
       tags: [system]
@@ -162,6 +215,12 @@ paths:
     get:
       tags: [workflows]
       operationId: getWorkflow
+      description: >
+        Returns metadata and complete input/output envelopes. Decoded input or
+        output previews are null for external objects above the ordinary API
+        payload limit; payload_previews reports input_omitted, output_omitted,
+        and max_encoded_bytes. Read the full value through its envelope using
+        the SDK or authenticated external-payload endpoint.
       parameters:
         - $ref: "#/components/parameters/ControlPlaneVersionHeader"
         - $ref: "#/components/parameters/WorkflowIdPath"
@@ -259,6 +318,47 @@ paths:
       requestBody: { $ref: "#/components/requestBodies/ReasonObject" }
       responses:
         "202": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+  /workflows/{workflowId}/request-cancellation:
+    post:
+      tags: [workflows]
+      operationId: requestWorkflowCancellation
+      summary: Request cooperative cancellation with bounded workflow cleanup.
+      x-durable-workflow-minimum-worker-protocol-version: "1.20"
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/WorkflowIdPath"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CooperativeCancellationAdmissionRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/CooperativeCancellationAdmission" }
+        "202": { $ref: "#/components/responses/CooperativeCancellationAdmission" }
+        "404": { $ref: "#/components/responses/ControlPlaneError" }
+        "409": { $ref: "#/components/responses/ControlPlaneError" }
+        "422": { $ref: "#/components/responses/ControlPlaneError" }
+  /workflows/{workflowId}/runs/{runId}/request-cancellation:
+    post:
+      tags: [workflows]
+      operationId: requestWorkflowRunCancellation
+      summary: Request cooperative cancellation of the selected current run.
+      x-durable-workflow-minimum-worker-protocol-version: "1.20"
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/WorkflowIdPath"
+        - $ref: "#/components/parameters/RunIdPath"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CooperativeCancellationAdmissionRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/CooperativeCancellationAdmission" }
+        "202": { $ref: "#/components/responses/CooperativeCancellationAdmission" }
+        "404": { $ref: "#/components/responses/ControlPlaneError" }
+        "409": { $ref: "#/components/responses/ControlPlaneError" }
+        "422": { $ref: "#/components/responses/ControlPlaneError" }
   /workflows/{workflowId}/terminate:
     post:
       tags: [workflows]
@@ -740,6 +840,7 @@ components:
         carrier is present, the server's configured default namespace is used.
       schema: { type: string, minLength: 1 }
     NamespacePath: { name: namespace, in: path, required: true, schema: { type: string, minLength: 1 } }
+    RuntimeCredentialIdPath: { name: credentialId, in: path, required: true, schema: { type: string, pattern: "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" } }
     WorkflowIdPath: { name: workflowId, in: path, required: true, schema: { type: string, minLength: 1 } }
     RunIdPath: { name: runId, in: path, required: true, schema: { type: string, minLength: 1 } }
     ScheduleIdPath: { name: scheduleId, in: path, required: true, schema: { type: string, minLength: 1 } }
@@ -840,6 +941,14 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/JsonObject" }
+    CooperativeCancellationAdmission:
+      description: The original request and immutable cleanup deadline, including duplicate acceptance.
+      headers:
+        X-Durable-Workflow-Control-Plane-Version:
+          schema: { type: string, const: "2" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/CooperativeCancellationAdmission" }
     ControlPlaneEnvelope:
       description: Successful control-plane response.
       headers:
@@ -873,6 +982,25 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/ScheduleListError" }
   schemas:
+    CooperativeCancellationAdmissionRequest:
+      type: object
+      additionalProperties: true
+      properties:
+        reason: { type: [string, "null"], maxLength: 1000 }
+        cleanup_timeout_seconds: { type: [integer, "null"], minimum: 1, maximum: 3600, default: 600 }
+    CooperativeCancellationAdmission:
+      allOf:
+        - $ref: "#/components/schemas/ControlPlaneEnvelope"
+        - type: object
+          required: [workflow_id, run_id, accepted, duplicate, run_status, cancellation_request]
+          properties:
+            workflow_id: { type: string, minLength: 1 }
+            run_id: { type: string, minLength: 1 }
+            accepted: { type: boolean, const: true }
+            duplicate: { type: boolean }
+            run_status: { type: string }
+            cancellation_request:
+              $ref: "./worker-protocol-api.openapi.yaml#/components/schemas/CooperativeCancellationRequest"
     JsonObject:
       type: object
       additionalProperties: true
