@@ -495,6 +495,11 @@ Schedules belong to a namespace. When `namespace` is passed to `create()` or `cr
 
 Schedule IDs are unique within a namespace — the same `scheduleId` can exist in different namespaces without conflict.
 
+The standard PHP schedule starter passes the schedule's stored namespace to the
+workflow instance, run and durable tasks. A later change to the application's
+default namespace does not move an existing schedule's executions. Use Workflow
+2.4.2 or newer for this namespace propagation.
+
 ```php
 $schedule = ScheduleManager::create(
     scheduleId: 'daily-sync',
