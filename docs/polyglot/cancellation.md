@@ -5,8 +5,8 @@ description: Request bounded cleanup across a workflow, its children and its act
 
 # Cooperative cancellation
 
-Protocol 1.20 adds cooperative cancellation to the self-hosted Server release
-candidate. It requires workers that explicitly enable cooperation. Check runtime
+Server 2.5.0 adds cooperative cancellation through protocol 1.20. It requires
+workers that explicitly enable cooperation. Check runtime
 discovery and the SDK's capability support before using it.
 
 ## Request cleanup
@@ -89,7 +89,7 @@ registration does not upgrade a claim that was already issued.
 ## Release boundary
 
 Whole-run requests, child and activity policies, bounded shielded cleanup,
-recovery and cascade inspection form this release candidate. Independently
+recovery and cascade inspection form the supported release. Independently
 cancellable operation scopes remain a disabled source preview and are marked
 experimental in the protocol reference.
 
