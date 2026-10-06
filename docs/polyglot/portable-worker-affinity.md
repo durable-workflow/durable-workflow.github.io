@@ -11,9 +11,8 @@ tags:
 
 # Portable Worker Affinity
 
-This is a service-mode capability reference, not an embedded Laravel feature
-guide. PHP service workers implement these features; Python and Rust service
-workers do not yet implement them.
+Service workers implement the features listed below through Server's worker
+protocol. SDK versions and worker configuration determine what is available.
 
 Local activities, worker sessions, and sticky execution share one portability
 rule: a service worker must declare each feature as supported or explicitly
@@ -26,38 +25,49 @@ manifest marks the same feature as supported.
 | SDK worker | Local activities | Worker sessions | Sticky execution |
 | --- | --- | --- | --- |
 | PHP | Supported | Supported | Supported |
-| Python | Not supported | Not supported | Not supported |
-| Rust | Not supported | Not supported | Not supported |
+| Python | Supported since 2.2.0 | Supported since 2.3.0 | Not supported |
+| Rust | Supported since 3.1.0 with `Worker::local_activities(true)` | Not supported | Not supported |
 
-Python and Rust advertise `supported: false` for all three features. That
-prevents incompatible routing; it is not feature parity or a fallback
-implementation. These workers remain usable for ordinary workflows and queued
-activities, with complete durable-history replay.
+Workers advertise only the capabilities implemented and enabled for their
+profile. Rust local activities require explicit opt-in. Older Rust versions
+refuse them, and Rust continues to refuse sessions and sticky execution.
+Python continues to refuse sticky execution. Ordinary workflows and queued
+activities use complete durable-history replay without these optimizations.
 
 ## Local activity recording
 
-PHP service workers run a local activity inside the workflow worker. The
+PHP, Python and opted-in Rust workers run a local activity inside the workflow worker. The
 workflow-task completion contains the arguments, attempt outcomes, retry and
 timeout settings, heartbeat progress, and terminal result or failure. The
 server records that sequence atomically as normal activity history marked
 `execution_mode=local`.
 
 Replay consumes the recorded terminal activity event. It does not invoke the
-local handler again. Ordinary PHP workers execute the synchronous handler
+local handler again. A worker lost before Server commits completion can execute
+the handler again, so external effects must be idempotent.
+
+Ordinary PHP workers execute the synchronous handler
 inline. Cancellation and elapsed heartbeat, per-attempt, and total timeouts
 are observed before an attempt, at `ActivityContext::heartbeat()`, or after the
 handler returns. These handlers must remain short and divide blocking work
 with safe heartbeat boundaries.
 
-Workers that enable [cooperative cancellation](/docs/polyglot/cancellation)
-use protocol 1.20 and supervised callback processes for prepared local
-activities. They observe cancellation and stop the callback independently of
-application heartbeats. Durable stop receipts and attempt fencing distinguish
-callback stop from refusal of a late result.
+Python and Rust async callbacks must yield to their language runtime.
+Rust renews the exact workflow-task lease independently of application
+heartbeats, drops the callback on timeout, lost authority or worker shutdown,
+and records bounded attempt and heartbeat reports. See the
+[Rust local activity example](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs)
+and [API reference](https://rust.durable-workflow.com/durable_workflow/struct.LocalActivityOptions.html).
+
+PHP workers that enable [cooperative cancellation](/docs/polyglot/cancellation)
+use protocol 1.20 and supervised callback processes for prepared local activities.
+Rust inline local execution uses a separate ordinary worker profile and cannot
+be combined with prepared cooperative local supervision. Blocking callbacks
+need process supervision to guarantee physical stop.
 
 ## Worker session lifecycle
 
-The PHP SDK exposes typed session options and create, use, renew, and close
+The PHP and Python SDKs expose typed session options and create, use, renew, and close
 operations. Options include requirements, queue, lease duration, total TTL,
 maximum concurrent activities, and reacquisition policy. A worker closes the
 sessions it holds during graceful shutdown.
@@ -95,4 +105,4 @@ For embedded Laravel implementations, see
 [Local Activities](/docs/features/local-activities),
 [Worker Sessions](/docs/features/worker-sessions), and
 [Sticky Execution](/docs/features/sticky-execution). Those APIs belong to the
-workflow package, not to Python or Rust service workers.
+workflow package. Use the corresponding SDK's API for service workers.

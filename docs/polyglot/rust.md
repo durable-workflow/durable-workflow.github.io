@@ -41,7 +41,7 @@ traits, and methods, continue to the generated [Rust SDK API
 reference](https://rust.durable-workflow.com/durable_workflow/).
 
 The stable Rust SDK supports durable
-timers, child workflows, activity retries and timeouts, signals, replayed query
+timers, child workflows, activity retries and timeouts, local activities, signals, replayed query
 handlers, cancellation and termination, server-enforced workflow deadlines,
 typed side effects, version markers, updates, and typed terminal/replay
 failures. It does not yet claim schedule management. Use the
@@ -72,7 +72,8 @@ it is not the only recommended Rust application contract. Continue to the
 crate's existing [typed input/output
 example](https://github.com/durable-workflow/sdk-rust/blob/main/examples/hello_world.rs),
 [retry, timeout, heartbeat, and terminal-failure activity policy
-example](https://github.com/durable-workflow/sdk-rust/blob/main/examples/activity_options.rs).
+example](https://github.com/durable-workflow/sdk-rust/blob/main/examples/activity_options.rs)
+and [local activity example](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs).
 The package,
 repository example, and generated API reference below remain the direct paths
 for users who do not want Sample App.
@@ -98,21 +99,35 @@ Or declare the same qualified requirement directly in `Cargo.toml`:
 ```
 
 The crate requires Rust 1.86 or newer. Its package metadata declares the exact
-qualified Durable Workflow Server range, worker protocol 1.2, and control plane
+qualified Durable Workflow Server range, worker protocol 1.19, and control plane
 2. During deployment, the protocol
 manifests advertised by `GET /api/cluster/info` remain authoritative.
 
 Server negotiates worker-protocol headers within major `1`: a server
 advertising `1.N` accepts a worker header `1.M` only when `M <= N`. Rust SDK
-workers send `X-Durable-Workflow-Protocol-Version: 1.2`, so they require
-the same synchronized server train, which must also advertise worker
-protocol `1.2` or newer. The current server advertises `1.13`, accepts the
-Rust header, and returns `1.13` in its response header and body.
+ordinary workers send `X-Durable-Workflow-Protocol-Version: 1.19` and require
+a server advertising `1.19` or newer. The qualified Server 2.5.0 advertises
+`1.20`. The opt-in cooperative cancellation profile requires `1.20`.
 
 Negotiation fails closed. A missing or malformed header, a different major,
 or a worker minor newer than the server's advertised minor is rejected. The
 server version range selects the release family; it does not override the
 runtime protocol manifest.
+
+## Local activities
+
+Rust SDK 3.1.0 adds inline local execution on workers configured with
+`Worker::local_activities(true)`. Register callbacks with the ordinary activity
+registration methods, then use the workflow context's local activity methods.
+See the [runnable example](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs)
+and [LocalActivityOptions reference](https://rust.durable-workflow.com/durable_workflow/struct.LocalActivityOptions.html)
+for retry and timeout configuration.
+
+Server records the terminal result for cold replay. Uncommitted local effects
+can execute again after worker loss and must be idempotent. Async callbacks
+must yield to Tokio. Blocking work needs separate process supervision.
+Inline local execution and prepared cooperative local supervision use separate
+worker profiles. Sessions and sticky execution remain unsupported in Rust.
 
 ## Prepare the released repository example
 
