@@ -25,6 +25,8 @@ $schedule = ScheduleManager::create(
     memo: ['origin' => 'scheduled'],
     searchAttributes: ['tenant_id' => '42'],
     notes: 'Runs every night at 2 AM ET.',
+    executionTimeoutSeconds: 120,
+    runTimeoutSeconds: 60,
 );
 ```
 
@@ -49,6 +51,53 @@ The `scheduleId` is a unique, user-chosen identifier for the schedule. Each trig
 | `queue` | `string\|null` | `null` | Queue name for triggered runs (overrides the workflow class default) |
 | `notes` | `string\|null` | `null` | Free-form operator notes |
 | `namespace` | `string\|null` | `null` | Namespace for the schedule (defaults to the configured `workflows.v2.namespace` or `'default'`) |
+| `executionTimeoutSeconds` | `int\|null` | `null` | Timeout for each logical workflow execution across retries and continue-as-new |
+| `runTimeoutSeconds` | `int\|null` | `null` | Timeout for each individual run, resetting on continue-as-new |
+
+### Workflow timeouts
+
+The execution timeout covers one logical execution across retries and
+continue-as-new. The run timeout limits an individual run and resets on
+continue-as-new. A run cannot exceed the remaining execution budget. Each
+scheduled occurrence starts a new execution budget, measured from the actual
+workflow start rather than its scheduled fire time.
+
+Both options accept positive integer seconds or `null`. Omitted or `null`
+options leave the corresponding limit unset. Manual triggers, automatic ticks,
+buffered starts and backfills apply the stored limits through the default PHP
+starter.
+
+For `createFromSpec()`, put the limits in the action:
+
+```php
+$schedule = ScheduleManager::createFromSpec(
+    scheduleId: 'hourly-invoice-sync',
+    spec: ['intervals' => [['every' => 'PT1H']]],
+    action: [
+        'workflow_class' => InvoiceSyncWorkflow::class,
+        'input' => ['hourly'],
+        'execution_timeout_seconds' => 120,
+        'run_timeout_seconds' => 60,
+    ],
+);
+```
+
+Creation and action updates validate PHP workflow timeouts using the same
+`StartOptions` rules as direct starts. No custom starter is needed.
+
+Change limits for future starts by updating the action:
+
+```php
+$schedule = ScheduleManager::update($schedule, action: [
+    ...$schedule->action,
+    'execution_timeout_seconds' => 240,
+    'run_timeout_seconds' => 90,
+]);
+```
+
+The action is replaced, so preserve its workflow class and input as shown.
+Previously started runs keep their original deadlines. Set a timeout field to
+`null` to remove that limit from subsequent starts.
 
 ## Advanced scheduling
 
