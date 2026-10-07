@@ -1,0 +1,39 @@
+diff --git a/node_modules/@docusaurus/utils/lib/markdownLinks.js b/node_modules/@docusaurus/utils/lib/markdownLinks.js
+index 9c571a2..d14cd2c 100644
+--- a/node_modules/@docusaurus/utils/lib/markdownLinks.js
++++ b/node_modules/@docusaurus/utils/lib/markdownLinks.js
+@@ -28,7 +28,12 @@ function resolveMarkdownLinkPathname(linkPathname, context) {
+         // ./file.md and ../file.md are always resolved from
+         // - the current file dir
+         else if (linkPathname.startsWith('./') || linkPathname.startsWith('../')) {
+-            return [path_1.default.dirname(sourceFilePath)];
++            const sourceDir = path_1.default.dirname(sourceFilePath);
++            const contentDirs = (0, dataFileUtils_1.getContentPathList)(contentPaths);
++            const sourceRoot = contentDirs.find((dir) => sourceDir === dir || sourceDir.startsWith(`${dir}${path_1.default.sep}`));
++            return sourceRoot
++                ? [sourceDir, ...contentDirs.map((dir) => path_1.default.join(dir, path_1.default.relative(sourceRoot, sourceDir)))]
++                : [sourceDir];
+         }
+         // file.md is resolved from
+         // - the current file dir,
+diff --git a/node_modules/@docusaurus/utils/src/markdownLinks.ts b/node_modules/@docusaurus/utils/src/markdownLinks.ts
+index 5a7ad51..80fac25 100644
+--- a/node_modules/@docusaurus/utils/src/markdownLinks.ts
++++ b/node_modules/@docusaurus/utils/src/markdownLinks.ts
+@@ -74,7 +74,15 @@ export function resolveMarkdownLinkPathname(
+     // ./file.md and ../file.md are always resolved from
+     // - the current file dir
+     else if (linkPathname.startsWith('./') || linkPathname.startsWith('../')) {
+-      return [path.dirname(sourceFilePath)];
++      const sourceDir = path.dirname(sourceFilePath);
++      const contentDirs = getContentPathList(contentPaths);
++      const sourceRoot = contentDirs.find(
++        (dir) => sourceDir === dir || sourceDir.startsWith(`${dir}${path.sep}`),
++      );
++      return sourceRoot
++        ? [sourceDir, ...contentDirs.map((dir) =>
++          path.join(dir, path.relative(sourceRoot, sourceDir)))]
++        : [sourceDir];
+     }
+     // file.md is resolved from
+     // - the current file dir,
