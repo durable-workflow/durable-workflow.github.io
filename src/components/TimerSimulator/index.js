@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import Translate, {translate} from '@docusaurus/Translate';
 import styles from './styles.module.css';
 
 const ExecutionState = {
@@ -24,7 +25,7 @@ class MyWorkflow extends Workflow
     { line: 7, duration: 5000, label: "timer('5 seconds')", showCountdown: true },
     { line: 9, duration: 500, label: "return 'The workflow waited 5 seconds.'", showCountdown: false },
   ],
-  title = "Timer Execution Simulator",
+  title = translate({id: 'simulator.timer.title', message: 'Timer Execution Simulator'}),
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [executionState, setExecutionState] = useState(ExecutionState.IDLE);
@@ -117,7 +118,7 @@ class MyWorkflow extends Workflow
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <span className={styles.expandIcon}>{isExpanded ? '▼' : '▶'}</span>
-        <span>Try it out!</span>
+        <span><Translate id="simulator.try">Try it out!</Translate></span>
       </button>
 
       {isExpanded && (
@@ -130,14 +131,14 @@ class MyWorkflow extends Workflow
                 onClick={runSimulation}
                 disabled={executionState === ExecutionState.RUNNING}
               >
-                {executionState === ExecutionState.RUNNING ? '⏳ Running...' : '▶ Play'}
+                {executionState === ExecutionState.RUNNING ? translate({id: 'simulator.runningHourglass', message: '⏳ Running...'}) : translate({id: 'simulator.play', message: '▶ Play'})}
               </button>
               <button
                 className={styles.resetButton}
                 onClick={resetSimulation}
                 disabled={executionState === ExecutionState.RUNNING}
               >
-                🔄 Reset
+                <Translate id="simulator.reset">🔄 Reset</Translate>
               </button>
             </div>
           </div>
@@ -168,7 +169,7 @@ class MyWorkflow extends Workflow
           {executionState === ExecutionState.RUNNING && getCurrentStep() && getCurrentStep().showCountdown && (
             <div className={styles.progressSection}>
               <div className={styles.progressLabel}>
-                Executing: <code>{getCurrentStep().label}</code>
+                <Translate id="simulator.executing">Executing:</Translate>{' '}<code>{getCurrentStep().label}</code>
               </div>
               <div className={styles.progressBarContainer}>
                 <div
@@ -181,9 +182,9 @@ class MyWorkflow extends Workflow
 
           <div className={styles.statusBar}>
             <span className={`${styles.statusIndicator} ${styles[executionState]}`}>
-              {executionState === ExecutionState.IDLE && '⏸️ Ready'}
-              {executionState === ExecutionState.RUNNING && '▶️ Running'}
-              {executionState === ExecutionState.COMPLETED && '✅ Completed'}
+              {executionState === ExecutionState.IDLE && translate({id: 'simulator.ready', message: '⏸️ Ready'})}
+              {executionState === ExecutionState.RUNNING && translate({id: 'simulator.running', message: '▶️ Running'})}
+              {executionState === ExecutionState.COMPLETED && translate({id: 'simulator.completed', message: '✅ Completed'})}
             </span>
           </div>
         </div>

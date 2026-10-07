@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import Translate, {translate} from '@docusaurus/Translate';
 import styles from './styles.module.css';
 
 const ActivityStatus = {
@@ -13,9 +14,9 @@ function ActivityBar({ name, status, progress, duration }) {
       <div className={styles.activityHeader}>
         <span className={styles.activityName}>{name}</span>
         <span className={`${styles.activityStatus} ${styles[status]}`}>
-          {status === ActivityStatus.PENDING && '⏳ Pending'}
-          {status === ActivityStatus.RUNNING && '▶️ Running'}
-          {status === ActivityStatus.COMPLETED && '✅ Completed'}
+          {status === ActivityStatus.PENDING && translate({id: 'simulator.pending', message: '⏳ Pending'})}
+          {status === ActivityStatus.RUNNING && translate({id: 'simulator.running', message: '▶️ Running'})}
+          {status === ActivityStatus.COMPLETED && translate({id: 'simulator.completed', message: '✅ Completed'})}
         </span>
       </div>
       <div className={styles.progressBarContainer}>
@@ -38,7 +39,7 @@ export default function WorkflowSimulator({
     { name: 'MyActivity3', duration: 1200 },
   ],
   mode = 'series',
-  title = 'Series Execution',
+  title = translate({id: 'simulator.series.title', message: 'Series Execution'}),
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
@@ -303,7 +304,7 @@ export default function WorkflowSimulator({
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <span className={styles.expandIcon}>{isExpanded ? '▼' : '▶'}</span>
-        <span>Try it out!</span>
+        <span><Translate id="simulator.try">Try it out!</Translate></span>
       </button>
       
       {isExpanded && (
@@ -316,14 +317,14 @@ export default function WorkflowSimulator({
                 onClick={handlePlay}
                 disabled={isRunning}
               >
-                {isRunning ? '⏳ Running...' : '▶ Play'}
+                {isRunning ? translate({id: 'simulator.runningHourglass', message: '⏳ Running...'}) : translate({id: 'simulator.play', message: '▶ Play'})}
               </button>
               <button
                 className={styles.resetButton}
                 onClick={resetSimulation}
                 disabled={isRunning}
               >
-                🔄 Reset
+                <Translate id="simulator.reset">🔄 Reset</Translate>
               </button>
             </div>
           </div>
@@ -342,10 +343,10 @@ export default function WorkflowSimulator({
           
           <div className={styles.statusBar}>
             <span className={`${styles.statusIndicator} ${isRunning ? styles.running : allCompleted ? styles.completed : styles.idle}`}>
-              {isRunning ? '▶️ Running' : allCompleted ? '✅ Completed' : '⏸️ Ready'}
+              {isRunning ? translate({id: 'simulator.running', message: '▶️ Running'}) : allCompleted ? translate({id: 'simulator.completed', message: '✅ Completed'}) : translate({id: 'simulator.ready', message: '⏸️ Ready'})}
             </span>
             <span className={styles.modeIndicator}>
-              Mode: <strong>{mode === 'series' ? 'Series' : mode === 'mix' ? 'Mix' : 'Parallel'}</strong>
+              <Translate id="simulator.mode">Mode:</Translate>{' '}<strong>{mode === 'series' ? translate({id: 'simulator.mode.series', message: 'Series'}) : mode === 'mix' ? translate({id: 'simulator.mode.mix', message: 'Mix'}) : translate({id: 'simulator.mode.parallel', message: 'Parallel'})}</strong>
             </span>
           </div>
         </div>

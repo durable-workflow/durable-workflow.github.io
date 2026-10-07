@@ -1,6 +1,7 @@
 import React, {useEffect, useState} from 'react';
 import BrowserOnly from '@docusaurus/BrowserOnly';
 import CodeBlock from '@theme/CodeBlock';
+import Translate, {translate} from '@docusaurus/Translate';
 
 const {ARTIFACT_PINS} = require('../../../scripts/public-artifact-versions');
 
@@ -10,7 +11,6 @@ const PLATFORMS = [
     label: 'Linux (x86_64)',
     shell: 'bash',
     command: 'curl -fsSL https://durable-workflow.com/install.sh | sh',
-    note: 'Installs to ~/.local/bin. Set DURABLE_WORKFLOW_INSTALL_DIR to override.',
     asset: 'dw-linux-x86_64',
   },
   {
@@ -18,7 +18,6 @@ const PLATFORMS = [
     label: 'Linux (arm64)',
     shell: 'bash',
     command: 'curl -fsSL https://durable-workflow.com/install.sh | sh',
-    note: 'Installs to ~/.local/bin. Set DURABLE_WORKFLOW_INSTALL_DIR to override.',
     asset: 'dw-linux-aarch64',
   },
   {
@@ -26,7 +25,6 @@ const PLATFORMS = [
     label: 'macOS (Apple Silicon)',
     shell: 'bash',
     command: 'curl -fsSL https://durable-workflow.com/install.sh | sh',
-    note: 'Installs to ~/.local/bin. Set DURABLE_WORKFLOW_INSTALL_DIR to override.',
     asset: 'dw-macos-aarch64',
   },
   {
@@ -34,7 +32,6 @@ const PLATFORMS = [
     label: 'Windows (x86_64)',
     shell: 'powershell',
     command: 'irm https://durable-workflow.com/install.ps1 | iex',
-    note: 'Installs to %USERPROFILE%\\.durable-workflow\\bin and adds it to your user PATH.',
     asset: 'dw-windows-x86_64.exe',
   },
 ];
@@ -68,6 +65,9 @@ function Installer() {
   }, []);
 
   const platform = PLATFORMS.find((p) => p.id === selected) || PLATFORMS[0];
+  const installationNote = platform.id === 'windows-x86_64'
+    ? translate({id: 'cliInstall.windowsNote', message: 'Installs to %USERPROFILE%\\.durable-workflow\\bin and adds it to your user PATH.'})
+    : translate({id: 'cliInstall.unixNote', message: 'Installs to ~/.local/bin. Set DURABLE_WORKFLOW_INSTALL_DIR to override.'});
   const assetUrl =
     `https://github.com/durable-workflow/cli/releases/download/` +
     `${ARTIFACT_PINS.cliVersion}/${platform.asset}`;
@@ -114,7 +114,9 @@ function Installer() {
 
       {detected && detected !== selected && (
         <p style={{fontSize: '0.85rem', color: 'var(--ifm-color-emphasis-700)'}}>
-          Detected <strong>{PLATFORMS.find((p) => p.id === detected).label}</strong>.{' '}
+          <Translate id="cliInstall.detected" values={{platform: <strong>{PLATFORMS.find((p) => p.id === detected).label}</strong>}}>
+            {'Detected {platform}.'}
+          </Translate>{' '}
           <a
             href="#"
             onClick={(e) => {
@@ -122,7 +124,7 @@ function Installer() {
               setSelected(detected);
             }}
           >
-            Switch back
+            <Translate id="cliInstall.switchBack">Switch back</Translate>
           </a>
           .
         </p>
@@ -131,19 +133,21 @@ function Installer() {
       <CodeBlock language={platform.shell}>{platform.command}</CodeBlock>
 
       <p style={{fontSize: '0.9rem', color: 'var(--ifm-color-emphasis-700)'}}>
-        {platform.note} The installer verifies the release SHA256SUMS manifest
-        before writing the binary.
+        {installationNote}{' '}
+        <Translate id="cliInstall.verification">
+          The installer verifies the release SHA256SUMS manifest before writing the binary.
+        </Translate>
       </p>
 
       <details data-cli-direct-download>
-        <summary>Or download the binary directly</summary>
+        <summary><Translate id="cliInstall.directDownload">Or download the binary directly</Translate></summary>
         <p>
           <a data-cli-asset-download href={assetUrl}>
             <code>{platform.asset}</code>
           </a>{' '}
-          from the{' '}
+          <Translate id="cliInstall.fromRelease">from the</Translate>{' '}
           <a data-cli-qualified-release href={ARTIFACT_PINS.cliPackageUrl}>
-            stable release
+            <Translate id="cliInstall.stableRelease">stable release</Translate>
           </a>
           .
         </p>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import Translate, {translate} from '@docusaurus/Translate';
 import styles from './styles.module.css';
 
 const ExecutionState = {
@@ -31,7 +32,7 @@ class MyActivity extends Activity
 }`;
 
 export default function PassingDataSimulator({
-  title = "Hello World Simulator",
+  title = translate({id: 'simulator.passingData.title', message: 'Hello World Simulator'}),
   inputValue = "world",
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -113,7 +114,7 @@ export default function PassingDataSimulator({
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <span className={styles.expandIcon}>{isExpanded ? '▼' : '▶'}</span>
-        <span>Try it out!</span>
+        <span><Translate id="simulator.try">Try it out!</Translate></span>
       </button>
 
       {isExpanded && (
@@ -126,14 +127,14 @@ export default function PassingDataSimulator({
                 onClick={runSimulation}
                 disabled={executionState === ExecutionState.RUNNING}
               >
-                {executionState === ExecutionState.RUNNING ? '▶️ Running...' : '▶ Play'}
+                {executionState === ExecutionState.RUNNING ? translate({id: 'simulator.runningArrow', message: '▶️ Running...'}) : translate({id: 'simulator.play', message: '▶ Play'})}
               </button>
               <button
                 className={styles.resetButton}
                 onClick={resetSimulation}
                 disabled={executionState === ExecutionState.RUNNING}
               >
-                🔄 Reset
+                <Translate id="simulator.reset">🔄 Reset</Translate>
               </button>
             </div>
           </div>
@@ -181,20 +182,20 @@ export default function PassingDataSimulator({
 
           {output !== null && (
             <div className={styles.outputSection}>
-              <span className={styles.outputLabel}>Output:</span>
+              <span className={styles.outputLabel}><Translate id="simulator.output">Output:</Translate></span>
               <code className={styles.outputValue}>'{output}'</code>
             </div>
           )}
 
           <div className={styles.statusBar}>
             <span className={`${styles.statusIndicator} ${styles[executionState]}`}>
-              {executionState === ExecutionState.IDLE && '⏸️ Ready'}
-              {executionState === ExecutionState.RUNNING && '▶️ Running'}
-              {executionState === ExecutionState.COMPLETED && '✅ Completed'}
+              {executionState === ExecutionState.IDLE && translate({id: 'simulator.ready', message: '⏸️ Ready'})}
+              {executionState === ExecutionState.RUNNING && translate({id: 'simulator.running', message: '▶️ Running'})}
+              {executionState === ExecutionState.COMPLETED && translate({id: 'simulator.completed', message: '✅ Completed'})}
             </span>
             {executionState === ExecutionState.RUNNING && (
               <span className={styles.currentFileIndicator}>
-                Executing: <strong>{currentFile === 'workflow' ? 'MyWorkflow' : 'MyActivity'}</strong>
+                <Translate id="simulator.executing">Executing:</Translate>{' '}<strong>{currentFile === 'workflow' ? 'MyWorkflow' : 'MyActivity'}</strong>
               </span>
             )}
           </div>

@@ -30,8 +30,10 @@ By calling multiple activities, a workflow can orchestrate the results between e
 
 If a workflow fails, the events leading up to the failure are replayed to rebuild the current state. This allows the workflow to pick up where it left off, with the same inputs and outputs as before, ensuring determinism.
 
-Activities are always durable queued work in v2. There is no in-process local
-activity fast path. Ordinary activities can run on any compatible worker, and
+Ordinary activities are durable queued work in v2. Explicit
+[local activities](./features/local-activities.md) run short activity work in
+the workflow worker process while preserving durable history and retry semantics.
+Ordinary activities can run on any compatible worker, and
 [worker sessions](./features/worker-sessions.md) add an explicit lease when a
 sequence of activity steps needs the same worker-local resource. If you need a
 replay-safe one-shot value without queueing an activity, use

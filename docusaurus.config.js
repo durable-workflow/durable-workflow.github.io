@@ -70,6 +70,7 @@ const config = {
           remarkPlugins: [artifactVersionRemarkPlugin],
           editUrl:
             'https://github.com/durable-workflow/durable-workflow.github.io/edit/main/',
+          editLocalizedFiles: true,
           lastVersion: 'current',
           versions: {
             current: {

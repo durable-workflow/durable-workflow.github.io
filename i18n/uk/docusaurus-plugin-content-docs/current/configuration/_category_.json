@@ -1,0 +1,8 @@
+{
+  "label": "Налаштування",
+  "position": 8,
+  "link": {
+    "type": "generated-index",
+    "description": "Пакет Workflow дозволяє задавати різні параметри під час визначення workflow й activity."
+  }
+}

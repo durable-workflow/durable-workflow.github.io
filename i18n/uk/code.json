@@ -271,38 +271,38 @@
     "description": "The ARIA label and title attribute for expand button of doc sidebar"
   },
   "theme.SearchPage.existingResultsTitle": {
-    "message": "Search results for \"{query}\"",
+    "message": "Результати пошуку за запитом «{query}»",
     "description": "The search page title for non-empty query"
   },
   "theme.SearchPage.emptyResultsTitle": {
-    "message": "Search the documentation",
+    "message": "Пошук у документації",
     "description": "The search page title for empty query"
   },
   "theme.SearchPage.searchContext.everywhere": {
-    "message": "Everywhere"
+    "message": "Усюди"
   },
   "theme.SearchPage.documentsFound.plurals": {
-    "message": "1 document found|{count} documents found",
+    "message": "Знайдено {count} документ|Знайдено {count} документи|Знайдено {count} документів",
     "description": "Pluralized label for \"{count} documents found\". Use as much plural forms (separated by \"|\") as your language support (see https://www.unicode.org/cldr/cldr-aux/charts/34/supplemental/language_plural_rules.html)"
   },
   "theme.SearchPage.noResultsText": {
-    "message": "No documents were found",
+    "message": "Документів не знайдено",
     "description": "The paragraph for empty search result"
   },
   "theme.SearchBar.noResultsText": {
-    "message": "No results"
+    "message": "Немає результатів"
   },
   "theme.SearchBar.seeAllOutsideContext": {
-    "message": "See all results outside \"{context}\""
+    "message": "Переглянути всі результати поза «{context}»"
   },
   "theme.SearchBar.searchInContext": {
-    "message": "See all results within \"{context}\""
+    "message": "Переглянути всі результати в «{context}»"
   },
   "theme.SearchBar.seeAll": {
-    "message": "See all results"
+    "message": "Переглянути всі результати"
   },
   "theme.SearchBar.label": {
-    "message": "Search",
+    "message": "Пошук",
     "description": "The ARIA label and placeholder for search button"
   },
   "theme.blog.post.plurals": {
@@ -360,5 +360,257 @@
   "theme.tags.tagsPageTitle": {
     "message": "Теги",
     "description": "The title of the tag list page"
+  },
+  "homepage.tagline": {
+    "message": "Стійке виконання для PHP, Python та Rust."
+  },
+  "homepage.getStarted": {
+    "message": "Почати"
+  },
+  "homepage.deploymentModes": {
+    "message": "Обрати режим розгортання"
+  },
+  "homepage.description": {
+    "message": "Платформа стійкого виконання для PHP, Python та Rust, незалежна від мови клієнта, доступна як керований Cloud, власний Server або вбудоване середовище виконання Laravel."
+  },
+  "homepage.cloudDescription": {
+    "message": "Запускайте worker на PHP, Python або Rust у керованому просторі імен, а Durable Workflow експлуатуватиме середовище оркестрації."
+  },
+  "homepage.features.languages.title": {
+    "message": "Розробляйте на PHP, Python або Rust"
+  },
+  "homepage.features.languages.description": {
+    "message": "Створюйте клієнти, workflow й activity з офіційними SDK, які мають спільний публічний протокол та переносиму модель даних Avro."
+  },
+  "homepage.features.runtime.title": {
+    "message": "Обирайте, хто експлуатує середовище виконання"
+  },
+  "homepage.features.runtime.description": {
+    "message": "Використовуйте Durable Workflow Cloud, запускайте окремий Server або залишайте вбудоване середовище виконання Laravel всередині свого застосунку."
+  },
+  "homepage.features.recovery.title": {
+    "message": "Відновлюйте роботу після збоїв"
+  },
+  "homepage.features.recovery.description": {
+    "message": "Стійка історія, детерміноване відтворення, timer, повторні спроби, signal, update, дочірні workflow та saga забезпечують поступ тривалої роботи."
+  },
+  "promotion.eyebrow": {
+    "message": "Керований сервіс · обмежена група"
+  },
+  "promotion.title": {
+    "message": "Група запуску Durable Workflow Cloud"
+  },
+  "promotion.requestAccess": {
+    "message": "Запросити ранній доступ"
+  },
+  "navbar.github.repository": {
+    "message": "Репозиторій GitHub"
+  },
+  "navbar.github.repositoryStars": {
+    "message": "{repository} (зірок: {count})"
+  },
+  "navbar.github.starCount": {
+    "message": "Зірок на GitHub: {count}"
+  },
+  "navbar.github.stars": {
+    "message": "Зірки на GitHub"
+  },
+  "cliInstall.windowsNote": {
+    "message": "Встановлює до %USERPROFILE%\\.durable-workflow\\bin та додає цей каталог до вашого PATH."
+  },
+  "cliInstall.unixNote": {
+    "message": "Встановлює до ~/.local/bin. Задайте DURABLE_WORKFLOW_INSTALL_DIR для зміни каталогу."
+  },
+  "cliInstall.detected": {
+    "message": "Виявлено {platform}."
+  },
+  "cliInstall.switchBack": {
+    "message": "Повернутися"
+  },
+  "cliInstall.verification": {
+    "message": "Інсталятор перевіряє маніфест SHA256SUMS випуску перед записом виконуваного файлу."
+  },
+  "cliInstall.directDownload": {
+    "message": "Або завантажте виконуваний файл безпосередньо"
+  },
+  "cliInstall.fromRelease": {
+    "message": "зі"
+  },
+  "cliInstall.stableRelease": {
+    "message": "стабільного випуску"
+  },
+  "simulator.passingData.title": {
+    "message": "Симулятор Hello World"
+  },
+  "simulator.try": {
+    "message": "Спробуйте!"
+  },
+  "simulator.runningArrow": {
+    "message": "▶️ Виконується..."
+  },
+  "simulator.play": {
+    "message": "▶ Запустити"
+  },
+  "simulator.reset": {
+    "message": "🔄 Скинути"
+  },
+  "simulator.output": {
+    "message": "Результат:"
+  },
+  "simulator.ready": {
+    "message": "⏸️ Готово до запуску"
+  },
+  "simulator.running": {
+    "message": "▶️ Виконується"
+  },
+  "simulator.completed": {
+    "message": "✅ Завершено"
+  },
+  "simulator.executing": {
+    "message": "Виконується:"
+  },
+  "protocolCatalog.specId": {
+    "message": "Ідентифікатор специфікації"
+  },
+  "protocolCatalog.publicSpec": {
+    "message": "Публічна специфікація"
+  },
+  "protocolCatalog.formatStatus": {
+    "message": "Формат і стан"
+  },
+  "protocolCatalog.owner": {
+    "message": "Контракт власника"
+  },
+  "protocolCatalog.objectFamilies": {
+    "message": "Сімейства об’єктів та контракти власників"
+  },
+  "authority.identity": {
+    "message": "Машинозчитуване авторитетне джерело опубліковано за адресою {manifest} зі схемою {schema}, версією {version}."
+  },
+  "simulator.query.title": {
+    "message": "Симулятор query та signal"
+  },
+  "simulator.runningHourglass": {
+    "message": "⏳ Виконується..."
+  },
+  "simulator.waiting": {
+    "message": "⏸️ Очікування..."
+  },
+  "simulator.sendSignal": {
+    "message": "📤 Надіслати signal:"
+  },
+  "simulator.waitingSignal": {
+    "message": "⏳ Очікування signal"
+  },
+  "simulator.timer.title": {
+    "message": "Симулятор виконання timer"
+  },
+  "navbar.github.starRepository": {
+    "message": "Підтримати Durable Workflow зіркою на GitHub"
+  },
+  "simulator.pending": {
+    "message": "⏳ Очікує виконання"
+  },
+  "simulator.series.title": {
+    "message": "Послідовне виконання"
+  },
+  "simulator.mode": {
+    "message": "Режим:"
+  },
+  "simulator.mode.series": {
+    "message": "Послідовний"
+  },
+  "simulator.mode.mix": {
+    "message": "Змішаний"
+  },
+  "simulator.mode.parallel": {
+    "message": "Паралельний"
+  },
+  "simulator.heartbeat.title": {
+    "message": "Симулятор heartbeat"
+  },
+  "simulator.stop": {
+    "message": "⏹ Зупинити"
+  },
+  "simulator.withHeartbeat": {
+    "message": "З heartbeat"
+  },
+  "simulator.withoutHeartbeat": {
+    "message": "Без heartbeat"
+  },
+  "simulator.loopIterations": {
+    "message": "Ітерацій циклу:"
+  },
+  "simulator.totalTime": {
+    "message": "Загальний час:"
+  },
+  "simulator.heartbeatElapsed": {
+    "message": "Час від останнього heartbeat: {elapsed} / тайм-аут 5s"
+  },
+  "simulator.noHeartbeat": {
+    "message": "❌ Тайм-аут — немає heartbeat!"
+  },
+  "simulator.heartbeatActive": {
+    "message": "💓 Heartbeat активний"
+  },
+  "simulator.signal.title": {
+    "message": "Симулятор виконання signal"
+  },
+  "simulator.signalTimer.title": {
+    "message": "Симулятор signal + timer"
+  },
+  "simulator.timeoutIn": {
+    "message": "До тайм-ауту:"
+  },
+  "simulator.waitingSignalTimeout": {
+    "message": "⏳ Очікування signal або тайм-ауту"
+  },
+  "simulator.signalReceived": {
+    "message": "signal отримано"
+  },
+  "simulator.timeoutReached": {
+    "message": "тайм-аут настав"
+  },
+  "workerAuthority.title": {
+    "message": "Ролі авторитетних джерел протоколу worker"
+  },
+  "workerAuthority.description": {
+    "message": "Виявлення можливостей середовища виконання та перевірка відповідності використовують окремі авторитетні джерела протоколу. Обирайте рядок для свого завдання. Однакова мітка версії не робить версіоноване історичне джерело псевдонімом неверсіонованого авторитетного джерела Server."
+  },
+  "workerAuthority.role": {
+    "message": "Роль"
+  },
+  "workerAuthority.marker": {
+    "message": "Поточний маркер"
+  },
+  "workerAuthority.resolver": {
+    "message": "Авторитетне джерело"
+  },
+  "workerAuthority.currentServer": {
+    "message": "Поточний опублікований протокол Server"
+  },
+  "workerAuthority.serverMirrors": {
+    "message": "Неверсіоновані дзеркала на основі Server:"
+  },
+  "workerAuthority.currentConformance": {
+    "message": "Поточна ціль перевірки відповідності Workflow"
+  },
+  "workerAuthority.suiteTarget": {
+    "message": "Набір {suite} перевіряє протокол {protocol}"
+  },
+  "workerAuthority.fixtures": {
+    "message": "Версіоновані тестові дані, прив’язані до digest:"
+  },
+  "workerAuthority.historicalConformance": {
+    "message": "Збережені історичні прив’язки відповідності"
+  },
+  "workerAuthority.historicalBindings": {
+    "message": "Прив’язки з позначкою {marker} для протоколів {protocols}"
+  },
+  "workerAuthority.historicalRecords": {
+    "message": "Незмінні записи джерел і digest у"
+  },
+  "workerAuthority.manifest": {
+    "message": "маніфесті відповідності"
   }
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import Translate, {translate} from '@docusaurus/Translate';
 import styles from './styles.module.css';
 
 const ExecutionState = {
@@ -23,7 +24,7 @@ class MyWorkflow extends Workflow
 }`,
   steps = null,
   signalName = "ready",
-  title = "Signal Execution Simulator",
+  title = translate({id: 'simulator.signal.title', message: 'Signal Execution Simulator'}),
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [executionState, setExecutionState] = useState(ExecutionState.IDLE);
@@ -149,7 +150,7 @@ class MyWorkflow extends Workflow
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <span className={styles.expandIcon}>{isExpanded ? '▼' : '▶'}</span>
-        <span>Try it out!</span>
+        <span><Translate id="simulator.try">Try it out!</Translate></span>
       </button>
 
       {isExpanded && (
@@ -162,15 +163,15 @@ class MyWorkflow extends Workflow
                 onClick={runSimulation}
                 disabled={executionState === ExecutionState.RUNNING || executionState === ExecutionState.WAITING}
               >
-                {executionState === ExecutionState.RUNNING ? '⏳ Running...' : 
-                 executionState === ExecutionState.WAITING ? '⏸️ Waiting...' : '▶ Play'}
+                {executionState === ExecutionState.RUNNING ? translate({id: 'simulator.runningHourglass', message: '⏳ Running...'}) :
+                 executionState === ExecutionState.WAITING ? translate({id: 'simulator.waiting', message: '⏸️ Waiting...'}) : translate({id: 'simulator.play', message: '▶ Play'})}
               </button>
               <button
                 className={styles.resetButton}
                 onClick={resetSimulation}
                 disabled={executionState === ExecutionState.RUNNING}
               >
-                🔄 Reset
+                <Translate id="simulator.reset">🔄 Reset</Translate>
               </button>
             </div>
           </div>
@@ -205,17 +206,17 @@ class MyWorkflow extends Workflow
                 className={styles.signalButton}
                 onClick={sendSignal}
               >
-                📤 Send Signal: <code>{signalName}</code>
+                <Translate id="simulator.sendSignal">📤 Send Signal:</Translate>{' '}<code>{signalName}</code>
               </button>
             </div>
           )}
 
           <div className={styles.statusBar}>
             <span className={`${styles.statusIndicator} ${styles[executionState]}`}>
-              {executionState === ExecutionState.IDLE && '⏸️ Ready'}
-              {executionState === ExecutionState.RUNNING && '▶️ Running'}
-              {executionState === ExecutionState.WAITING && '⏳ Waiting for Signal'}
-              {executionState === ExecutionState.COMPLETED && '✅ Completed'}
+              {executionState === ExecutionState.IDLE && translate({id: 'simulator.ready', message: '⏸️ Ready'})}
+              {executionState === ExecutionState.RUNNING && translate({id: 'simulator.running', message: '▶️ Running'})}
+              {executionState === ExecutionState.WAITING && translate({id: 'simulator.waitingSignal', message: '⏳ Waiting for Signal'})}
+              {executionState === ExecutionState.COMPLETED && translate({id: 'simulator.completed', message: '✅ Completed'})}
             </span>
           </div>
         </div>
