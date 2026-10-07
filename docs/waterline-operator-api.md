@@ -51,6 +51,22 @@ php artisan waterline:publish
 For the self-contained service image and its connection, authentication, and
 persistence inputs, use [Monitoring](./monitoring.md#waterline-service).
 
+### Interface Language
+
+Waterline 2.3.0 supports English and Ukrainian in both embedded and service
+mode. Select Ukrainian in the Laravel application's environment or the service
+container's environment:
+
+```dotenv
+WATERLINE_LOCALE=uk
+```
+
+English (`en`) is the default and fallback. Embedded applications can also set
+`waterline.locale` in their resolved configuration. Rebuild a cached Laravel
+configuration after changing the setting. Waterline keeps the host application's
+locale, workflow names, identifiers, payloads and original exception text
+unchanged. JSON API field names and machine states retain their existing values.
+
 ## Deployment Boundary
 
 Waterline has two backend adapters:
