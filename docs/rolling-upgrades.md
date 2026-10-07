@@ -67,8 +67,8 @@ window must satisfy every rule in this section.
 ### Server image and workflow package
 
 - **Adjacent versions only.** During a rolling upgrade, every API node
-  and worker must run a server image whose workflow package version is
-  the same major version as the cluster's previous package and within
+  and other Server process must run a server image whose workflow package
+  version is the same major version as the cluster's previous package and within
   one minor version of every other live process. Skipping a major
   version requires a stop-the-world upgrade.
 - **Forward-additive migrations.** Every Durable Workflow v2 schema

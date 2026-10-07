@@ -170,7 +170,7 @@ heartbeat, застосування тайм-ауту й завершення с
 `GET /api/cluster/info`. Машиночитаний контракт — це
 [`local-activity-runtime.schema.json`](/platform-protocol-specs/local-activity-runtime.schema.json),
 включений до каталогу
-[Platform Protocol Specs](/docs/platform-protocol-specs#local-activity-runtime-notes).
+[специфікації протоколів платформи](/docs/platform-protocol-specs#local-activity-runtime-notes).
 
 Назви подій залишаються звичайними назвами подій activity, тому хронологія
 та засоби replay зберігають порядок без окремої родини подій.

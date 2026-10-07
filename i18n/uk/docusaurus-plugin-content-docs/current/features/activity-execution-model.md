@@ -19,7 +19,7 @@ keywords:
 
 Підтримку worker сервісного режиму й узгодження можливостей із відмовою
 за відсутності підтримки в PHP, Python та Rust наведено в матриці
-[Portable Worker Affinity](/docs/polyglot/portable-worker-affinity).
+[переносиму спорідненість worker](/docs/polyglot/portable-worker-affinity).
 
 Durable Workflow v2 надає явні примітиви для типових способів розміщення activity:
 

@@ -150,7 +150,7 @@ runtime `worker_sessions` через `GET /api/cluster/info` та кожну в�
 площини worker. Машиночитаний контракт опубліковано в
 [`worker-sessions-runtime.schema.json`](/platform-protocol-specs/worker-sessions-runtime.schema.json)
 і включено до каталогу
-[Platform Protocol Specs](/docs/platform-protocol-specs#worker-session-runtime-notes).
+[специфікації протоколів платформи](/docs/platform-protocol-specs#worker-session-runtime-notes).
 
 Оператори можуть переглядати активні, закриті, прострочені, неуспішні сесії
 та сесії без власника через `GET /api/worker-sessions`. Деталі містять ID сесії,

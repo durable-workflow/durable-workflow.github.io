@@ -216,7 +216,7 @@ DW_V2_CONTINUE_AS_NEW_EVENT_THRESHOLD=10000
 DW_V2_CONTINUE_AS_NEW_SIZE_BYTES_THRESHOLD=5242880
 ```
 
-The published `workflows.php` config maps those values here:
+Опублікована конфігурація `workflows.php` зіставляє ці значення тут:
 
 ```php
 'v2' => [
@@ -243,7 +243,7 @@ DW_V2_UPDATE_WAIT_COMPLETION_TIMEOUT_SECONDS=10
 DW_V2_UPDATE_WAIT_POLL_INTERVAL_MS=50
 ```
 
-The published `workflows.php` config maps those values here:
+Опублікована конфігурація `workflows.php` зіставляє ці значення тут:
 
 ```php
 'v2' => [

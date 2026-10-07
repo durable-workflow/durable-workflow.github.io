@@ -17,7 +17,7 @@ keywords:
 https://github.com/durable-workflow/sample-app
 
 This is the embedded Laravel gallery: a sample Laravel 13 application built on
-the Durable Workflow 2.0 release-candidate line, with workflows you can run in
+the stable Durable Workflow 2.0 release line, with workflows you can run in
 a GitHub Codespace. It is the right starting point when your deployment model
 is **embedded Laravel** and you want to inspect Laravel queue execution and
 Waterline together.
@@ -50,13 +50,13 @@ sample lands or moves, the README and this gallery move together.
 
 | Pattern | Workflow class | Command | Waterline screen |
 |---------|----------------|---------|------------------|
-| Smallest deterministic v2 workflow | `App\Workflows\Simple\SimpleWorkflow` | `php artisan app:workflow` | Run list → run detail with two activity events and a `WorkflowExecutionCompleted` event |
-| Durable elapsed-time measurement without replay drift | `App\Workflows\Elapsed\ElapsedTimeWorkflow` | `php artisan app:elapsed` | Run detail showing two `MarkerRecorded` events for `sideEffect` clock reads bracketing a `TimerFired` event |
+| Smallest deterministic v2 workflow | `App\Workflows\Simple\SimpleWorkflow` | `php artisan app:workflow` | Run list → run detail with two activity events and a `WorkflowCompleted` event |
+| Durable elapsed-time measurement without replay drift | `App\Workflows\Elapsed\ElapsedTimeWorkflow` | `php artisan app:elapsed` | Run detail showing two `SideEffectRecorded` events for `sideEffect` clock reads bracketing a `TimerFired` event |
 | Coordination across Laravel app boundaries | `App\Workflows\Microservice\MicroserviceWorkflow` | `php artisan app:microservice` | Run detail showing activity events with task-queue routing across the app and microservice workers |
 | Browser automation with captured artifacts | `App\Workflows\Playwright\CheckConsoleErrorsWorkflow` | `php artisan app:playwright` | Run detail showing the Playwright activity, the FFmpeg activity, and the cleanup activity in order |
-| Webhook-started workflow with a signal wait | `App\Workflows\Webhooks\WebhookWorkflow` | `php artisan app:webhook` | Run detail showing `WorkflowExecutionStarted` from the webhook ingress and a `WorkflowExecutionSignaled` event for `ready` |
-| AI activity loop with durable retry/validation | `App\Workflows\Prism\PrismWorkflow` | `php artisan app:prism` | Run detail showing repeated activity attempts and the `ActivityTaskCompleted` that satisfies the validator |
-| Signal-driven AI agent with saga compensation | `App\Workflows\Ai\AiWorkflow` | `php artisan app:ai` | Run detail showing a message-stream `MarkerRecorded` reference, an `Update` event, and the compensation activities recorded after a saga failure |
+| Webhook-started workflow with a signal wait | `App\Workflows\Webhooks\WebhookWorkflow` | `php artisan app:webhook` | Run detail showing `WorkflowStarted` from the webhook ingress and a `SignalReceived` event for `ready` |
+| AI activity loop with durable retry/validation | `App\Workflows\Prism\PrismWorkflow` | `php artisan app:prism` | Run detail showing repeated activity attempts and the `ActivityCompleted` that satisfies the validator |
+| Signal-driven AI agent with saga compensation | `App\Workflows\Ai\AiWorkflow` | `php artisan app:ai` | Run detail showing a message-stream reference, update history, and the compensation activities recorded after a saga failure |
 
 The Waterline screen column names the events you should expect to see
 in a healthy run; if your local run is missing one, that gap is the
@@ -73,7 +73,7 @@ page to the matching runnable workflow.
 | [Sagas](/docs/features/sagas) | `App\Workflows\Ai\AiWorkflow` (`php artisan app:ai`) |
 | [Signals](/docs/features/signals) | `App\Workflows\Webhooks\WebhookWorkflow` (`php artisan app:webhook`) |
 | [Message Streams](/docs/features/message-streams) | `App\Workflows\Ai\AiWorkflow` (`php artisan app:ai`) |
-| [Child Workflows](/docs/features/child-workflows) | `App\Workflows\Microservice\MicroserviceWorkflow` (`php artisan app:microservice`) |
+| [Child Workflows](/docs/features/child-workflows) | No dedicated gallery entry yet. Use the child-workflow guide. |
 | [Side Effects](/docs/features/side-effects) | `App\Workflows\Elapsed\ElapsedTimeWorkflow` (`php artisan app:elapsed`) |
 | [Webhooks](/docs/features/webhooks) | `App\Workflows\Webhooks\WebhookWorkflow` (`php artisan app:webhook`) |
 | [MCP Workflows](/docs/mcp-workflows) | every gallery entry, exposed through `config/workflow_mcp.php` |
@@ -257,6 +257,8 @@ Default tools:
 | `start_workflow` | Starts a configured v2 workflow and returns `workflow_id`, `run_id`, status, business key, and command outcome. |
 | `get_workflow_result` | Polls the current or selected run and returns status, output, visibility metadata, and latest failure summary. |
 | `get_workflow_history` | Returns a bounded tail of typed v2 history events and latest durable failures for debugging. |
+| `diagnose_workflow` | Classifies a selected run with structured facts, root cause, remediation, and next actions. |
+| `repair_workflow` | Requests the built-in v2 repair command and returns a structured accepted, refused, or not-needed mutation result. |
 
 A typical agent loop is:
 

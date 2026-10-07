@@ -54,7 +54,7 @@ state (active, draining, stale, total counts) plus operator intent:
 | `runtimes`, `sdk_versions` | Distinct runtime and SDK version strings observed across the cohort. |
 | `last_heartbeat_at`, `first_seen_at` | Cohort-wide heartbeat window, useful for confirming quiet cohorts before deleting them. |
 
-`drain_intent` is persistent: resuming a cohort, stopping every worker, or
+`drain_intent` is persistent: restarting a worker, stopping every worker, or
 letting the cohort go stale does not silently flip it back to `active`. Only
 an explicit `POST .../build-ids/resume` clears `drain_intent` and `drained_at`.
 This keeps `rollout_status` honest even after a cohort has no live workers.
