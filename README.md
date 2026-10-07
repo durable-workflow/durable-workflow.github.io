@@ -60,8 +60,9 @@ readers see the current English source and the fallback notice. Artifact
 version placeholders stay shared with English and update automatically.
 
 The documentation maintainers own translation upkeep. The existing build also
-checks reviewed English source hashes for Spanish, so a source edit requires a
-translation review before the pull request can pass. After reviewing and
+compares reviewed English source hashes for Spanish and reports the guides
+needing review. Prose edits produce a notice, while changed executable examples
+must still match. After reviewing and
 updating the translation, run `node scripts/check-doc-translations.js --record-review`
 and commit `i18n/es/source-hashes.json` with it. This command still checks the
 code blocks. Recording hashes alone does not review the prose.
