@@ -9,7 +9,7 @@
   "theme.SearchBar.searchInContext": {"message": "Ver todos los resultados en «{context}»"},
   "theme.SearchBar.seeAll": {"message": "Ver todos los resultados"},
   "theme.SearchBar.label": {"message": "Buscar"},
-  "docs.translationFallback": {"message": "Esta página está disponible en inglés mientras se prepara su traducción."},
+  "docs.translationFallback": {"message": "Esta página está disponible en inglés."},
   "docs.readInEnglish": {"message": "Leer en inglés"},
   "homepage.tagline": {"message": "Ejecución duradera para PHP, Python y Rust."},
   "homepage.getStarted": {"message": "Empieza aquí"},

@@ -17,7 +17,7 @@ export default function DocItemContentWrapper(props) {
       {usesEnglishFallback && (
         <aside className="alert alert--info margin-bottom--md" data-docs-language-fallback="en">
           <Translate id="docs.translationFallback">
-            This page is available in English while its translation is being prepared.
+            This page is available in English.
           </Translate>{' '}
           <Link to={`pathname://${englishPath}`} autoAddBaseUrl={false} target="_self">
             <Translate id="docs.readInEnglish">Read in English</Translate>
