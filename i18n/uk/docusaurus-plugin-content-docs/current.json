@@ -1,0 +1,94 @@
+{
+  "version.label": {
+    "message": "2.0",
+    "description": "The label for version current"
+  },
+  "sidebar.tutorialSidebar.category.Service Mode": {
+    "message": "Режим сервісу",
+    "description": "The label for category 'Service Mode' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.Service Mode.link.generated-index.description": {
+    "message": "Підключайте офіційні клієнти й worker на PHP, Python або Rust до Durable Workflow Cloud чи власного Server. Cloud містить Managed Waterline. Для самостійного розгортання оператори встановлюють Waterline окремо й підключають його до простору імен, яким керує Server.",
+    "description": "The generated-index page description for category 'Service Mode' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.CLI": {
+    "message": "CLI",
+    "description": "The label for category 'CLI' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.CLI.link.generated-index.description": {
+    "message": "Встановіть операторський клієнт dw та ознайомтеся з повним переліком його команд.",
+    "description": "The generated-index page description for category 'CLI' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.SDKs": {
+    "message": "SDKs",
+    "description": "The label for category 'SDKs' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.SDKs.link.generated-index.description": {
+    "message": "Створюйте клієнти й worker для режиму сервісу з офіційними SDK для PHP, Python та Rust.",
+    "description": "The generated-index page description for category 'SDKs' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.Embedded": {
+    "message": "Вбудований режим",
+    "description": "The label for category 'Embedded' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.Embedded.link.generated-index.description": {
+    "message": "Встановлюйте, створюйте, тестуйте й налаштовуйте workflow з середовищем виконання всередині застосунку Laravel.",
+    "description": "The generated-index page description for category 'Embedded' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.Defining Workflows": {
+    "message": "Визначення workflow",
+    "description": "The label for category 'Defining Workflows' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.Defining Workflows.link.generated-index.description": {
+    "message": "Створюйте класи workflow й activity, дані, ідентифікатори та обробку станів для середовища виконання всередині застосунку Laravel.",
+    "description": "The generated-index page description for category 'Defining Workflows' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.Features": {
+    "message": "Можливості",
+    "description": "The label for category 'Features' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.Features.link.generated-index.description": {
+    "message": "Обирайте потоки повідомлень, стійкі команди, очікування, повторні спроби, версіонування та шаблони обмеження історії для середовища виконання всередині застосунку Laravel.",
+    "description": "The generated-index page description for category 'Features' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.Constraints": {
+    "message": "Обмеження",
+    "description": "The label for category 'Constraints' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.Constraints.link.generated-index.description": {
+    "message": "Дізнайтеся про межі детермінованого виконання workflow та структурні обмеження середовища виконання всередині застосунку Laravel.",
+    "description": "The generated-index page description for category 'Constraints' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.Configuration": {
+    "message": "Налаштування",
+    "description": "The label for category 'Configuration' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.Configuration.link.generated-index.description": {
+    "message": "Налаштовуйте сховище, з’єднання, межі сервісу та строки зберігання для середовища виконання всередині застосунку Laravel.",
+    "description": "The generated-index page description for category 'Configuration' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.Run And Operate": {
+    "message": "Запуск та експлуатація",
+    "description": "The label for category 'Run And Operate' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.Run And Operate.link.generated-index.description": {
+    "message": "Розгортайте, спостерігайте, діагностуйте, відновлюйте та підтримуйте запущені workflow.",
+    "description": "The generated-index page description for category 'Run And Operate' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.External Execution And Ingress": {
+    "message": "Зовнішнє виконання та вхідні запити",
+    "description": "The label for category 'External Execution And Ingress' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.External Execution And Ingress.link.generated-index.description": {
+    "message": "Налаштовуйте вхідні HTTP-запити, зовнішні worker, черги завдань та інтеграції на рівні протоколу.",
+    "description": "The generated-index page description for category 'External Execution And Ingress' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.AI And Automation": {
+    "message": "ШІ та автоматизація",
+    "description": "The label for category 'AI And Automation' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.AI And Automation.link.generated-index.description": {
+    "message": "Надавайте агентам програмування й засобам автоматизації стабільну документацію, маніфести, команди та інструменти workflow.",
+    "description": "The generated-index page description for category 'AI And Automation' in sidebar 'tutorialSidebar'"
+  }
+}

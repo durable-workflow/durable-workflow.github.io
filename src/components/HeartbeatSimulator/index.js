@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import Translate, {translate} from '@docusaurus/Translate';
 import styles from './styles.module.css';
 
 const ExecutionState = {
@@ -41,7 +42,7 @@ class MyActivity extends Activity
 }`;
 
 export default function HeartbeatSimulator({
-  title = "Heartbeat Simulator",
+  title = translate({id: 'simulator.heartbeat.title', message: 'Heartbeat Simulator'}),
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [withHeartbeat, setWithHeartbeat] = useState(true);
@@ -159,7 +160,7 @@ export default function HeartbeatSimulator({
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <span className={styles.expandIcon}>{isExpanded ? '▼' : '▶'}</span>
-        <span>Try it out!</span>
+        <span><Translate id="simulator.try">Try it out!</Translate></span>
       </button>
 
       {isExpanded && (
@@ -172,14 +173,14 @@ export default function HeartbeatSimulator({
                   className={styles.stopButton}
                   onClick={stopSimulation}
                 >
-                  ⏹ Stop
+                  <Translate id="simulator.stop">⏹ Stop</Translate>
                 </button>
               ) : (
                 <button
                   className={styles.playButton}
                   onClick={runSimulation}
                 >
-                  ▶ Play
+                  <Translate id="simulator.play">▶ Play</Translate>
                 </button>
               )}
               <button
@@ -187,7 +188,7 @@ export default function HeartbeatSimulator({
                 onClick={resetSimulation}
                 disabled={executionState === ExecutionState.RUNNING}
               >
-                🔄 Reset
+                <Translate id="simulator.reset">🔄 Reset</Translate>
               </button>
             </div>
           </div>
@@ -198,14 +199,14 @@ export default function HeartbeatSimulator({
               onClick={() => setWithHeartbeat(true)}
               disabled={executionState === ExecutionState.RUNNING}
             >
-              With Heartbeat
+              <Translate id="simulator.withHeartbeat">With Heartbeat</Translate>
             </button>
             <button
               className={`${styles.modeButton} ${!withHeartbeat ? styles.active : ''}`}
               onClick={() => setWithHeartbeat(false)}
               disabled={executionState === ExecutionState.RUNNING}
             >
-              Without Heartbeat
+              <Translate id="simulator.withoutHeartbeat">Without Heartbeat</Translate>
             </button>
           </div>
 
@@ -231,16 +232,16 @@ export default function HeartbeatSimulator({
           {executionState === ExecutionState.RUNNING && (
             <div className={styles.statsSection}>
               <div className={styles.statRow}>
-                <span className={styles.statLabel}>Loop iterations:</span>
+                <span className={styles.statLabel}><Translate id="simulator.loopIterations">Loop iterations:</Translate></span>
                 <span className={styles.statValue}>{loopCount}</span>
               </div>
               <div className={styles.statRow}>
-                <span className={styles.statLabel}>Total time:</span>
+                <span className={styles.statLabel}><Translate id="simulator.totalTime">Total time:</Translate></span>
                 <span className={styles.statValue}>{elapsedTime.toFixed(1)}s</span>
               </div>
               <div className={styles.timeoutSection}>
                 <div className={styles.timeoutLabel}>
-                  Time since last heartbeat: <strong>{timeSinceHeartbeat.toFixed(1)}s</strong> / 5s timeout
+                  <Translate id="simulator.heartbeatElapsed" values={{elapsed: <strong>{timeSinceHeartbeat.toFixed(1)}s</strong>}}>{'Time since last heartbeat: {elapsed} / 5s timeout'}</Translate>
                 </div>
                 <div className={styles.timeoutBarContainer}>
                   <div
@@ -254,14 +255,14 @@ export default function HeartbeatSimulator({
 
           <div className={styles.statusBar}>
             <span className={`${styles.statusIndicator} ${styles[executionState]}`}>
-              {executionState === ExecutionState.IDLE && '⏸️ Ready'}
-              {executionState === ExecutionState.RUNNING && '▶️ Running'}
-              {executionState === ExecutionState.COMPLETED && '✅ Completed'}
-              {executionState === ExecutionState.FAILED && '❌ Timeout - No Heartbeat!'}
+              {executionState === ExecutionState.IDLE && translate({id: 'simulator.ready', message: '⏸️ Ready'})}
+              {executionState === ExecutionState.RUNNING && translate({id: 'simulator.running', message: '▶️ Running'})}
+              {executionState === ExecutionState.COMPLETED && translate({id: 'simulator.completed', message: '✅ Completed'})}
+              {executionState === ExecutionState.FAILED && translate({id: 'simulator.noHeartbeat', message: '❌ Timeout - No Heartbeat!'})}
             </span>
             {executionState === ExecutionState.RUNNING && withHeartbeat && (
               <span className={styles.heartbeatIndicator}>
-                💓 Heartbeat active
+                <Translate id="simulator.heartbeatActive">💓 Heartbeat active</Translate>
               </span>
             )}
           </div>

@@ -1,0 +1,8 @@
+{
+  "label": "Можливості",
+  "position": 7,
+  "link": {
+    "type": "generated-index",
+    "description": "Пакет Workflow надає методи для виконання activity, обробки помилок і повторних спроб та взаємодії з workflow."
+  }
+}

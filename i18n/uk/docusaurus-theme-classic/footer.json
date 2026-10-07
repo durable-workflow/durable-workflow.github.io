@@ -1,0 +1,46 @@
+{
+  "link.title.Docs": {
+    "message": "Документація",
+    "description": "The title of the footer links column with title=Docs in the footer"
+  },
+  "link.title.Community": {
+    "message": "Спільнота",
+    "description": "The title of the footer links column with title=Community in the footer"
+  },
+  "link.title.More": {
+    "message": "Інші ресурси",
+    "description": "The title of the footer links column with title=More in the footer"
+  },
+  "link.item.label.Introduction": {
+    "message": "Вступ",
+    "description": "The label of footer link with label=Introduction linking to /docs/introduction"
+  },
+  "link.item.label.Installation": {
+    "message": "Встановлення",
+    "description": "The label of footer link with label=Installation linking to /docs/installation"
+  },
+  "link.item.label.Discord": {
+    "message": "Discord",
+    "description": "The label of footer link with label=Discord linking to https://discord.gg/xu5aDDpqVy"
+  },
+  "link.item.label.X": {
+    "message": "X",
+    "description": "The label of footer link with label=X linking to https://x.com/DurableWorkflow"
+  },
+  "link.item.label.Durable Workflow vs Temporal": {
+    "message": "Durable Workflow і Temporal",
+    "description": "The label of footer link with label=Durable Workflow vs Temporal linking to /compare/temporal/"
+  },
+  "link.item.label.LLM Docs": {
+    "message": "Документація для LLM",
+    "description": "The label of footer link with label=LLM Docs linking to https://durable-workflow.com/llms-full.txt"
+  },
+  "link.item.label.Packagist": {
+    "message": "Packagist",
+    "description": "The label of footer link with label=Packagist linking to https://packagist.org/packages/durable-workflow/workflow"
+  },
+  "copyright": {
+    "message": "Авторські права © 2026 <a href=\"https://durable-workflow.com\">Durable Workflow</a>.",
+    "description": "The footer copyright"
+  }
+}

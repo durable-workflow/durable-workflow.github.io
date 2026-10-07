@@ -24,6 +24,27 @@ Build the same static site and validate the same links as CI:
 npm run build
 ```
 
+## Ukrainian translations
+
+English is the default locale. Current documentation and site pages are also
+available in Ukrainian under `/uk/`. Preview that locale with:
+
+```bash
+npm run start -- --locale uk
+```
+
+Translate current docs in `i18n/uk/docusaurus-plugin-content-docs/current/`
+and standalone pages in `i18n/uk/docusaurus-plugin-content-pages/`. Keep the
+English source file paths, examples, commands, API names and explicit heading
+anchors intact. Keep workflow, activity, worker, signal, timer, query, update
+and saga as English technical terms.
+
+Use Docusaurus translation markers for component text. Run
+`npm run write-translations -- --locale uk` to extract new messages, then
+translate them in `i18n/uk/code.json` and the plugin message files. Build both
+locales with `npm run build` before submitting a change. Blog articles and the
+versioned 1.x docs use the English fallback.
+
 ## Repository layout
 
 | Path | Purpose |

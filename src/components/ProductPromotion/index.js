@@ -1,5 +1,6 @@
 import React, {useEffect, useId, useRef} from 'react';
 import Link from '@docusaurus/Link';
+import Translate from '@docusaurus/Translate';
 
 import styles from './styles.module.css';
 
@@ -61,8 +62,8 @@ export default function ProductPromotion({source, children}) {
       aria-labelledby={titleId}
       data-promotion-source={source}>
       <div className={styles.copy}>
-        <p className={styles.eyebrow}>Managed service · limited cohort</p>
-        <h2 id={titleId}>Durable Workflow Cloud launch cohort</h2>
+        <p className={styles.eyebrow}><Translate id="promotion.eyebrow">Managed service · limited cohort</Translate></p>
+        <h2 id={titleId}><Translate id="promotion.title">Durable Workflow Cloud launch cohort</Translate></h2>
         <div className={styles.description}>{children}</div>
       </div>
       <Link
@@ -70,7 +71,7 @@ export default function ProductPromotion({source, children}) {
         data-promotion-action="early-access"
         to={`${CLOUD_EARLY_ACCESS_URL}#source=${encodeURIComponent(source)}`}
         onClick={() => sendPromotionEvent(source, 'click')}>
-        Request early access
+        <Translate id="promotion.requestAccess">Request early access</Translate>
       </Link>
     </aside>
   );

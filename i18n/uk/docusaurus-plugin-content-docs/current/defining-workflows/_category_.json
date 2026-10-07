@@ -1,0 +1,8 @@
+{
+  "label": "Визначення workflow",
+  "position": 5,
+  "link": {
+    "type": "generated-index",
+    "description": "Workflow й activity визначаються як класи, що успадковують базові класи Workflow та Activity, надані фреймворком."
+  }
+}

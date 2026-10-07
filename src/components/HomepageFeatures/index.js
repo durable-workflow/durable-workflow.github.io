@@ -1,36 +1,37 @@
 import React from 'react';
 import clsx from 'clsx';
+import Translate from '@docusaurus/Translate';
 import styles from './styles.module.css';
 
 const FeatureList = [
   {
-    title: 'Build in PHP, Python, or Rust',
+    title: <Translate id="homepage.features.languages.title">Build in PHP, Python, or Rust</Translate>,
     Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
     description: (
-      <>
+      <Translate id="homepage.features.languages.description">
         Author clients, workflows, and activities with first-party SDKs that
         share one public protocol and portable Avro payload model.
-      </>
+      </Translate>
     ),
   },
   {
-    title: 'Choose who operates the runtime',
+    title: <Translate id="homepage.features.runtime.title">Choose who operates the runtime</Translate>,
     Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
     description: (
-      <>
+      <Translate id="homepage.features.runtime.description">
         Use Durable Workflow Cloud, run the standalone Server, or keep the
         Laravel-native embedded runtime inside your application.
-      </>
+      </Translate>
     ),
   },
   {
-    title: 'Recover through failures',
+    title: <Translate id="homepage.features.recovery.title">Recover through failures</Translate>,
     Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
     description: (
-      <>
+      <Translate id="homepage.features.recovery.description">
         Durable history, deterministic replay, timers, retries, signals,
         updates, child workflows, and sagas keep long-running work moving.
-      </>
+      </Translate>
     ),
   },
 ];

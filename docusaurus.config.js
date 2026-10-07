@@ -53,7 +53,11 @@ const config = {
 
   i18n: {
     defaultLocale: 'en',
-    locales: ['en'],
+    locales: ['en', 'uk'],
+    localeConfigs: {
+      en: {label: 'English', htmlLang: 'en'},
+      uk: {label: 'Українська', htmlLang: 'uk'},
+    },
   },
 
   presets: [
@@ -66,6 +70,7 @@ const config = {
           remarkPlugins: [artifactVersionRemarkPlugin],
           editUrl:
             'https://github.com/durable-workflow/durable-workflow.github.io/edit/main/',
+          editLocalizedFiles: true,
           lastVersion: 'current',
           versions: {
             current: {
@@ -202,6 +207,7 @@ const config = {
             dropdownActiveClassDisabled: true,
           },
           {to: '/blog', label: 'Blog', position: 'left'},
+          {type: 'localeDropdown', position: 'right'},
           {
             type: 'custom-githubStar',
             href: 'https://github.com/durable-workflow/workflow',

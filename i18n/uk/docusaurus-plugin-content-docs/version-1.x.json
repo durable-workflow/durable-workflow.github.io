@@ -1,0 +1,38 @@
+{
+  "version.label": {
+    "message": "1.x",
+    "description": "The label for version 1.x"
+  },
+  "sidebar.tutorialSidebar.category.Defining Workflows": {
+    "message": "Defining Workflows",
+    "description": "The label for category 'Defining Workflows' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.Defining Workflows.link.generated-index.description": {
+    "message": "Workflows and activities are defined as classes that extend the base Workflow and Activity classes provided by the framework.",
+    "description": "The generated-index page description for category 'Defining Workflows' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.Features": {
+    "message": "Features",
+    "description": "The label for category 'Features' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.Features.link.generated-index.description": {
+    "message": "The Workflow package provides methods for executing activities, handling errors and retries, and communicating with the workflow.",
+    "description": "The generated-index page description for category 'Features' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.Configuration": {
+    "message": "Configuration",
+    "description": "The label for category 'Configuration' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.Configuration.link.generated-index.description": {
+    "message": "The Workflow package allows you to specify various options when defining your workflows and activities.",
+    "description": "The generated-index page description for category 'Configuration' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.Constraints": {
+    "message": "Constraints",
+    "description": "The label for category 'Constraints' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.Constraints.link.generated-index.description": {
+    "message": "The Workflow package's determinism and idempotency constraints for workflows and activities are important for ensuring the reliability and correctness of the overall system.",
+    "description": "The generated-index page description for category 'Constraints' in sidebar 'tutorialSidebar'"
+  }
+}

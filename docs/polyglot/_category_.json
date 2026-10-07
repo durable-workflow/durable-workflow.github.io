@@ -3,6 +3,6 @@
   "position": 14,
   "link": {
     "type": "generated-index",
-    "description": "Run workflows in any language. The standalone server, CLI, Python SDK, and worker protocol let you drive Durable Workflow from PHP, Python, or any HTTP client."
+    "description": "Run workflows with PHP, Python, or Rust SDK workers against Cloud or a self-hosted Server. Use the CLI and public HTTP protocols for control, diagnostics, and worker integrations."
   }
 }

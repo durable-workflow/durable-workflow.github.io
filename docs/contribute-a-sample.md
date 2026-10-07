@@ -93,7 +93,9 @@ Three docs surfaces move when a sample lands:
   sample-app docs page is the canonical list; an entry that names a
   surface but does not link to a sample is treated as a gap.
 
-These three changes ship in the same PR as the sample workflow itself.
+Submit the sample and README changes in the sample-app PR, and the gallery
+and pattern-page changes in a linked docs-site PR. Maintainers land the linked
+changes together.
 A sample that lands without a docs-site mirror is in `gap` state for
 the upstream-coverage tracker until the docs PR catches up, so
 contributors are encouraged to ship them together.

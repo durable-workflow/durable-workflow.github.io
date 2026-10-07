@@ -34,21 +34,25 @@ an isolated managed runtime; customer PHP, Python, and Rust workers run in your
 own environment. Check [Cloud pricing](https://cloud.durable-workflow.com/pricing)
 and the dashboard for current provisioning availability.
 
+Cloud Dev is available now. The four HA plans are in qualification and cannot
+yet be purchased or provisioned. Their prices, capacities, availability and SLA
+terms below are planned terms, not current purchase offers.
+
 | Plan | Runtime capacity | Included durable storage | Availability | Price (USD) |
 | --- | --- | --- | --- | --- |
 | Cloud Dev | 1 vCPU, 1 GB RAM | 5 GB | Single host, no SLA | $0.075/hour, $2 active-month minimum, $50/month cap |
-| Cloud Standard | 1 vCPU, 2 GB RAM | 25 GB | Single-region HA, 99.99% SLA | $0.45/hour, $10 active-month minimum, $300/month cap |
-| Cloud Multi-Region | 1 vCPU, 2 GB RAM | 25 GB | Multi-region HA, 99.99% SLA | $0.60/hour, $15 active-month minimum, $400/month cap |
-| Cloud Business | 4 vCPU, 8 GB RAM | 100 GB | Single-region HA, 99.99% SLA | $2.25/hour, $50 active-month minimum, $1,500/month cap |
-| Cloud Business Multi-Region | 4 vCPU, 8 GB RAM | 100 GB | Multi-region HA, 99.99% SLA | $3.00/hour, $75 active-month minimum, $2,000/month cap |
+| Cloud Standard | 1 vCPU, 2 GB RAM | 25 GB | Planned single-region HA, 99.99% SLA | $0.45/hour, $10 active-month minimum, $300/month cap |
+| Cloud Multi-Region | 1 vCPU, 2 GB RAM | 25 GB | Planned multi-region HA, 99.99% SLA | $0.60/hour, $15 active-month minimum, $400/month cap |
+| Cloud Business | 4 vCPU, 8 GB RAM | 100 GB | Planned single-region HA, 99.99% SLA | $2.25/hour, $50 active-month minimum, $1,500/month cap |
+| Cloud Business Multi-Region | 4 vCPU, 8 GB RAM | 100 GB | Planned multi-region HA, 99.99% SLA | $3.00/hour, $75 active-month minimum, $2,000/month cap |
 
 Capacity covers the managed runtime components, not customer worker compute.
-HA replication and standby capacity are included in the plan price; the table
+For planned HA plans, replication and standby capacity are included in the price; the table
 does not add replicas together as extra workflow-execution capacity. Every plan
 includes Managed Waterline, basic encrypted backups, upgrades, and a stable
 runtime URL.
 
-Every plan is billed for provisioned runtime time, metered by the minute from
+Provisioned runtimes are billed for runtime time, metered by the minute from
 activation to deprovisioning. Minimums and caps apply per runtime purchase in a
 UTC calendar month. Idle provisioned time is billable; a month with no
 provisioned time has no runtime charge. A fresh purchase has its own minimum
@@ -256,19 +260,21 @@ and must allow the worker protocol's long-lived poll requests.
 
 ## Region Placement And Recovery Boundary
 
-Choose the recovery boundary with the plan:
+Cloud Dev is available with the recovery boundary below. The HA boundaries
+describe the planned plans that remain unavailable pending qualification:
 
 - **Cloud Dev:** one isolated host with persistent state and backups. Maintenance
   and recovery may interrupt service. There is no uptime SLA or automatic
   regional failover.
-- **Single-region HA:** three replicated hosts in one region, with automatic
+- **Planned single-region HA:** three replicated hosts in one region, with automatic
   primary failover. One host may fail without losing the remaining quorum.
   A whole-region outage is outside this plan's SLA coverage.
-- **Multi-region HA:** three replicated hosts across three regions, with
+- **Planned multi-region HA:** three replicated hosts across three regions, with
   automatic primary failover. The SLA includes loss or isolation of one
   configured region, provided the remaining members can form a quorum.
 
-The stable runtime URL follows the elected primary; you do not change SDK
+For the planned HA profiles, the stable runtime URL is intended to follow the
+elected primary; you do not change SDK
 configuration during a supported failover. An isolated former primary is
 prevented from continuing to serve authoritative work. If a safe primary
 cannot be established, the runtime stops serving rather than accepting
@@ -282,7 +288,7 @@ recovery-time guarantee or a month's achieved availability.
 
 ### SLA Measurement And Credits
 
-The four SLA plans provide a 99.99% uptime SLA over a UTC calendar month,
+The four planned SLA plans specify a 99.99% uptime SLA over a UTC calendar month,
 measured at the customer runtime endpoint in one-minute windows. Missing
 measurements count as unavailable, and planned maintenance is not excluded.
 Customer-hosted worker availability is separate from managed runtime availability.
@@ -535,7 +541,7 @@ disk; request a larger runtime plan before reaching the included allocation.
 
 Idle runtimes still incur capacity charges. Deprovisioning stops runtime
 capacity billing and removes active runtime data and credentials; it is not a
-pause/resume operation. SLA plans use the same provisioned-time model at their
+pause/resume operation. Planned SLA terms use the same provisioned-time model at their
 own rates, minimums and caps. Use the plan's returned `billing_terms` when
 interpreting usage; historical invoices keep their accepted terms.
 

@@ -1,6 +1,7 @@
 import React, {useEffect, useState} from 'react';
 import clsx from 'clsx';
 import Link from '@docusaurus/Link';
+import {translate} from '@docusaurus/Translate';
 
 const DEFAULT_STAR_COUNT = 1171; // latest count used to avoid showing a zero-star count before the first successful fetch
 const STAR_COUNT_CACHE_TTL = 1000 * 60 * 30;
@@ -135,9 +136,12 @@ export default function GitHubStarNavbarItem({
   const {starCount, resolved} = useGitHubStarCount(repo);
   const fullStarCount = resolved ? formatFullStarCount(starCount) : null;
   const compactStarCount = formatCompactStarCount(starCount);
+  const repositoryLabel = ariaLabel === 'Star Durable Workflow on GitHub'
+    ? translate({id: 'navbar.github.starRepository', message: 'Star Durable Workflow on GitHub'})
+    : ariaLabel ?? translate({id: 'navbar.github.repository', message: 'GitHub repository'});
   const resolvedAriaLabel = fullStarCount
-    ? `${ariaLabel ?? 'GitHub repository'} (${fullStarCount} stars)`
-    : ariaLabel ?? 'GitHub repository';
+    ? translate({id: 'navbar.github.repositoryStars', message: '{repository} ({count} stars)'}, {repository: repositoryLabel, count: fullStarCount})
+    : repositoryLabel;
   const sharedClassName = clsx(
     className,
     'navbar-github-star-link',
@@ -159,7 +163,9 @@ export default function GitHubStarNavbarItem({
       </svg>
       <span
         className="navbar-github-star-link__count"
-        title={resolved ? `${fullStarCount} GitHub stars` : 'GitHub stars'}
+        title={resolved
+          ? translate({id: 'navbar.github.starCount', message: '{count} GitHub stars'}, {count: fullStarCount})
+          : translate({id: 'navbar.github.stars', message: 'GitHub stars'})}
       >
         {compactStarCount}
       </span>

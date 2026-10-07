@@ -38,9 +38,9 @@ class CounterWorkflow extends Workflow
 
         if ($count >= $max) {
             return [
-                ‘count’ => $result,
-                ‘workflow_id’ => $this->workflowId(),
-                ‘run_id’ => $this->runId(),
+                'count' => $result,
+                'workflow_id' => $this->workflowId(),
+                'run_id' => $this->runId(),
             ];
         }
 

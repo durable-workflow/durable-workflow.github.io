@@ -1,0 +1,228 @@
+---
+title: Durable Workflow і Temporal
+description: "Порівняння Durable Workflow і Temporal: workflow на PHP, Python та Rust, PHP на основі Fiber без RoadRunner, окрема архітектура, відтворення та самостійна експлуатація."
+image: /img/durable-workflow-2.0.png
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import handlers from '@site/static/examples/temporal-comparison/handlers.php';
+
+# Durable Workflow і Temporal {#durable-workflow-vs-temporal}
+
+**Стійке виконання для PHP, Python та Rust на знайомому серверному стеку.**
+
+Durable Workflow — рушій workflow з відкритим кодом. Ваш застосунок запускає
+worker для workflow й activity на PHP, Python або Rust. Server відповідає за
+надійне зберігання історії, розподіл завдань, timer та відновлення. Вашому
+застосунку Laravel не потрібен.
+
+Запускайте Server як окремий сервіс із опублікованого контейнера, а застосунок
+і worker залишайте у власному мовному середовищі та середовищі розгортання.
+Можна використовувати одну мову або поєднувати worker різними мовами.
+Розробники PHP отримують workflow на основі Fiber та worker, який запускається
+безпосередньо, без RoadRunner.
+
+Temporal використовує спеціалізований сервіс оркестрації та має ширший вибір SDK.
+У PHP його API для workflow використовує генератори, а worker працюють через
+RoadRunner. Вибір залежить від потреб застосунку та відповідальності за експлуатацію.
+
+Обіцянка Durable Workflow — **передбачувана вартість, передбачувана поведінка та
+передбачувана експлуатація**: інфраструктура з планованим бюджетом, явні контракти
+виконання та історія workflow, яку можна дослідити.
+
+*Від команди підтримки Durable Workflow. Оновлено 21 вересня 2026 року.*
+
+## Коротко про архітектуру {#architecture-at-a-glance}
+
+| Рішення | Durable Workflow | Temporal |
+| --- | --- | --- |
+| Окреме середовище виконання | Server, незалежний від мови клієнта, реалізований як застосунок Laravel. | Спеціалізований Temporal Service зі сховищами збереження й видимості. |
+| Мови SDK | PHP, Python та Rust. | Go, Java, .NET, PHP, Python, Ruby, Rust та TypeScript. |
+| Написання PHP-коду | Послідовні методи зі стійкими викликами на основі Fiber та звичайними типами повернення. | Методи workflow на основі генераторів зі стійкими операціями через yield. |
+| PHP worker | Безпосередній процес PHP з HTTP-клієнтом. | Процеси PHP під керуванням RoadRunner. |
+| Вбудовування в застосунок | Застосунки Laravel можуть запускати рушій у власній базі даних і чергах. | Worker застосунку підключаються до Temporal Service. |
+
+Джерела: [Durable Workflow Server](/docs/polyglot/server/),
+[PHP SDK](https://php.durable-workflow.com/),
+[Temporal Service](https://docs.temporal.io/temporal-service),
+[workflow на PHP у Temporal](https://docs.temporal.io/develop/php/workflows/basics),
+[worker на PHP у Temporal](https://docs.temporal.io/develop/php/workers/run-worker-process)
+та [SDK Temporal](https://docs.temporal.io/develop).
+
+## Один Server, три офіційні SDK {#one-server-three-first-party-sdks}
+
+Ви можете писати workflow й activity на
+[PHP](https://php.durable-workflow.com/),
+[Python](https://python.durable-workflow.com/) та
+[Rust](https://rust.durable-workflow.com/). Worker працюють у середовищі вашого
+застосунку, підключаються до Server та масштабуються незалежно від нього.
+
+Команда Python може залишити весь застосунок на Python. Команда Rust може
+залишити весь застосунок на Rust. Мова реалізації Server не стає залежністю
+застосунку.
+
+Мови можна поєднувати й у межах одного workflow.
+[Приклад із запуском кількох мов](https://github.com/durable-workflow/sample-app#service-mode)
+використовує workflow на PHP, activity обчислення на Python та activity квитанції
+на Rust в окремих чергах завдань. Рушій координує їх через іменовані типи
+workflow й activity.
+
+Temporal пропонує [SDK для ширшого набору мов](https://docs.temporal.io/develop).
+Для застосунку на Go, Java, .NET, Ruby або TypeScript така підтримка є конкретною
+причиною обрати Temporal.
+
+## Послідовний PHP-код без RoadRunner {#straight-line-php-without-roadrunner}
+
+PHP SDK Durable Workflow використовує керований Fiber. Виклик
+`$context->activity(...)` призупиняє виконання workflow, доки стійкий результат
+не стане доступним. Потім метод продовжується з цим результатом. Ваш workflow
+залишається послідовним PHP-методом зі звичайним типом повернення. У коді workflow
+не потрібно використовувати `yield` чи типи повернення Generator.
+
+Worker запускається безпосередньо командою `php worker.php`. Його
+[HTTP-транспорт PSR-18](https://github.com/durable-workflow/sdk-php/blob/main/src/Transport/Psr18Transport.php)
+не потребує ані RoadRunner, ані розширення gRPC.
+
+[API workflow на PHP у Temporal](https://docs.temporal.io/develop/php/workflows/basics)
+виражає призупинення через генератори й `yield`. Його
+[налаштування PHP](https://docs.temporal.io/develop/php/set-up-your-local-php)
+включає RoadRunner та розширення gRPC.
+
+Ось повний файл обробників Durable Workflow **для режиму сервісу**. Workflow
+планує activity привітання та повертає її результат:
+
+<CodeBlock language="php" title="handlers.php">{handlers}</CodeBlock>
+
+Завантажте [worker, клієнт і тест](https://github.com/durable-workflow/durable-workflow.github.io/tree/main/static/examples/temporal-comparison).
+У цьому каталозі, маючи PHP 8.1+ та Composer, виконайте:
+
+```sh
+composer install
+php test.php
+```
+
+Тест перевіряє реєстрацію, планування та виконання activity, а також відтворення
+із записаним результатом activity. Щоб запустити worker і клієнт із реальним
+середовищем виконання, запустіть [локальний Server](/docs/polyglot/server/) за
+адресою `http://localhost:8080` з документованим токеном розробки, а потім
+виконайте `php worker.php` та `php client.php` в окремих терміналах:
+
+```json
+{"greeting":"Hello, Ada!"}
+```
+
+Ми перевірили цей результат з опублікованими SDK та Server.
+[Версії та результати тестів](https://github.com/durable-workflow/durable-workflow.github.io/pull/135)
+записано разом із вихідним кодом.
+
+## Передбачувана поведінка між worker {#predictable-behavior-across-workers}
+
+Обидва рушії відновлюють стан workflow із записаної історії. Результати завершених
+activity відтворюються в коді workflow без повторного виконання вже завершеної
+роботи. Тому рішення workflow мають залишатися детермінованими: мережеві виклики
+та зміни бази даних розміщуйте в activity, а для часу використовуйте стійкі API
+timer і часу. Дивіться [модель виконання Durable Workflow](/docs/how-it-works/)
+та [відтворення workflow у Temporal](https://docs.temporal.io/workflow-execution#replays).
+
+Доставка activity — окреме питання. Worker може виконати зовнішню дію та
+завершитися з помилкою до повідомлення результату, тож повторна спроба може
+повторити цю дію. Durable Workflow надає стабільну логічну ідентичність виконання
+activity між спробами. Її можна використовувати як ключ ідемпотентності для
+платежів та інших зовнішніх ефектів.
+[Гарантії виконання](/docs/constraints/execution-guarantees/) пояснюють цей
+контракт. Temporal також рекомендує
+[ідемпотентні activity](https://docs.temporal.io/activities).
+
+### Спільний контракт даних {#a-shared-payload-contract}
+
+SDK Durable Workflow для PHP, Python та Rust використовують спільний фіксований
+[контракт Avro Value](/docs/polyglot/avro-value-protocol/). Він зберігає між мовами
+відмінності, зокрема між байтами й текстом та між цілими числами й числами з
+рухомою комою. SDK містять схему, тож вам не потрібно експлуатувати реєстр схем.
+Об’єкти застосунку адаптуються до цих переносимих значень.
+
+Temporal використовує [Data Converters](https://docs.temporal.io/dataconversion)
+із типовою серіалізацією та підтримкою власних конвертерів і кодеків. Durable
+Workflow обирає більш визначений підхід: один переносимий контракт значень
+для всіх офіційних SDK.
+
+Для впевненості в розгортанні перевіряйте зміни workflow на записаній історії,
+а також тестуйте бізнес-логіку activity. Durable Workflow надає
+[тести відтворення PHP SDK](https://php.durable-workflow.com/build/testing/) та
+[тестові підміни вбудованого режиму](/docs/testing/). Temporal документує свої
+[засоби модульного та інтеграційного тестування PHP](https://docs.temporal.io/develop/php/best-practices/testing-suite).
+
+## Самостійне розгортання на знайомому стеку застосунків {#self-host-on-a-familiar-application-stack}
+
+**Запуск Durable Workflow Server означає запуск застосунку Laravel.** Він
+використовує налаштування PHP-застосунку, базу даних, сервіси черг і кешу, а також
+процеси worker та планувальника. Оператори, знайомі з Laravel, можуть застосувати
+свої навички для розгортання, журналювання, нагляду за процесами та обслуговування
+бази даних.
+
+[Вихідний код Server](https://github.com/durable-workflow/server) та
+[посібник із розгортання](/docs/polyglot/server/) дозволяють дослідити це
+налаштування. Опублікований Docker-образ уже містить застосунок. Його використання
+не вимагає PHP чи Laravel у середовищі ваших worker на Python або Rust.
+
+| Розгортання | Що ви експлуатуєте |
+| --- | --- |
+| Durable Workflow Server | Застосунок Laravel із процесами API, worker і планувальника, сервіси бази даних, черг і кешу, а також SDK worker застосунку. |
+| Вбудований Durable Workflow | Ваш застосунок Laravel, базу даних, споживачів черг та кеш із підтримкою блокувань. |
+| Temporal Service | Temporal Server, сховища збереження й видимості, а також SDK worker застосунку. |
+
+[Опубліковане налаштування Compose](/docs/polyglot/server/#published-image--compose)
+для Durable Workflow використовує MySQL та Redis. Локальний швидкий старт також
+підтримує SQLite.
+[Посібник із самостійного розгортання Temporal](https://docs.temporal.io/self-hosted-guide)
+описує варіанти розгортання. Локальний сервіс розробки доступний через Temporal CLI.
+
+**Передбачувана вартість випливає з явної відповідальності.**
+[Рушій Durable Workflow](https://github.com/durable-workflow/workflow/blob/main/LICENSE),
+[Server](https://github.com/durable-workflow/server/blob/main/LICENSE) та
+[Temporal Server](https://github.com/temporalio/temporal/blob/main/LICENSE)
+мають ліцензію MIT. Самостійне розгортання будь-якого рушія не передбачає плати за
+кожну дію в програмному забезпеченні. Ваші витрати — це інфраструктура та її
+експлуатація. Durable Workflow дозволяє використовувати усталені інструменти
+PHP-застосунків і незалежно масштабувати worker мовою вашого застосунку.
+
+### Дослідження історії workflow {#inspect-workflow-history}
+
+[Waterline](/docs/monitoring/) показує історію виконання Durable Workflow,
+результати activity, timer та помилки. Він може працювати як окремий
+операторський інтерфейс для Server або всередині застосунку Laravel для
+вбудованого виконання. CLI та Server API також відкривають стан середовища
+виконання. Temporal надає [вебінтерфейс](https://docs.temporal.io/web-ui) для
+дослідження виконань та історії.
+
+### Інтеграція з Laravel, якщо застосунок використовує Laravel {#laravel-integration-when-your-application-uses-laravel}
+
+Користувачі Laravel мають два варіанти: вбудувати рушій або залишити окремий
+Server і використовувати
+[міст Laravel у PHP SDK](https://php.durable-workflow.com/frameworks/laravel/).
+Міст надає обробники, які отримуються з контейнера, налаштування, журналювання,
+команду Artisan для worker та тестову підміну. Відокремлення стану оркестрації
+не вимагає відмовлятися від звичних правил фреймворку застосунку.
+
+Вбудовування йде далі: стан workflow зберігається в базі даних застосунку, а
+worker черг Laravel виконують роботу. Ви розгортаєте рушій разом із застосунком,
+замість експлуатації окремого сервісу. Почніть із
+[посібника встановлення вбудованого режиму](/docs/installation/).
+
+## Який рушій підходить вашій команді? {#which-engine-fits-your-team}
+
+**Обирайте Durable Workflow** для застосунків на PHP, Python та Rust, якщо вам
+потрібен рушій для самостійного розгортання зі спільним міжмовним контрактом
+виконання та незалежно розгорнутими worker застосунку. Команди PHP також
+отримують workflow на основі Fiber без RoadRunner і необов’язкову інтеграцію
+з Laravel.
+
+**Обирайте Temporal**, якщо його ширша підтримка мов у SDK або ваші наявні
+інструменти та досвід Temporal краще відповідають застосунку.
+
+**Почніть розробку:** [оберіть швидкий старт для PHP, Python чи Rust](/docs/quickstart/),
+[запустіть Durable Workflow Server](/docs/polyglot/server/) або
+[дослідіть SDK Temporal](https://docs.temporal.io/develop).
+
+Знайшли фактичну помилку? [Створіть issue документації](https://github.com/durable-workflow/durable-workflow.github.io/issues/new)
+і вкажіть твердження та його джерело.

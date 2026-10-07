@@ -1,4 +1,5 @@
 import React from 'react';
+import Translate from '@docusaurus/Translate';
 import protocolCatalog from '@site/static/platform-protocol-specs.json';
 
 const {availableProtocolEntries} = require('./catalog');
@@ -38,23 +39,23 @@ export default function ProtocolCatalog() {
           </h3>
           <dl>
             <div>
-              <dt>Specification ID</dt>
+              <dt><Translate id="protocolCatalog.specId">Specification ID</Translate></dt>
               <dd><code>{entry.spec_id}</code></dd>
             </div>
             <div>
-              <dt>Public specification</dt>
+              <dt><Translate id="protocolCatalog.publicSpec">Public specification</Translate></dt>
               <dd><a href={entry.spec_url}>{entry.spec_url}</a></dd>
             </div>
             <div>
-              <dt>Format and status</dt>
+              <dt><Translate id="protocolCatalog.formatStatus">Format and status</Translate></dt>
               <dd><code>{entry.format}</code> · <code>{entry.status}</code></dd>
             </div>
             <div>
-              <dt>Owning contract</dt>
+              <dt><Translate id="protocolCatalog.owner">Owning contract</Translate></dt>
               <dd><code>{entry.owner_repo}</code></dd>
             </div>
           </dl>
-          <h4>Object families and owning contracts</h4>
+          <h4><Translate id="protocolCatalog.objectFamilies">Object families and owning contracts</Translate></h4>
           <ObjectFamilies families={entry.object_families} />
         </section>
       ))}

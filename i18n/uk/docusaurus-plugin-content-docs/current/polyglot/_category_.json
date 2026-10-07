@@ -1,0 +1,8 @@
+{
+  "label": "Міжмовна взаємодія",
+  "position": 14,
+  "link": {
+    "type": "generated-index",
+    "description": "Виконуйте workflow через worker SDK PHP, Python або Rust із Cloud чи власним Server. Використовуйте CLI та публічні протоколи HTTP для керування, діагностики й інтеграції worker."
+  }
+}

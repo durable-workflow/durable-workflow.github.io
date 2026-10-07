@@ -445,7 +445,7 @@ public function testTimeTravelWorkflow()
 }
 ```
 
-The helpers `$this->travel()` and `$this->travelTo()` methods use `Carbon:setTestNow()` under the hood.
+The helpers `$this->travel()` and `$this->travelTo()` methods use `Carbon::setTestNow()` under the hood.
 
 ### Activities
 

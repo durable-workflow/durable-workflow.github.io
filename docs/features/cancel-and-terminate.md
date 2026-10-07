@@ -15,10 +15,11 @@ Cancel and terminate are first-class durable commands that close a running workf
 In the current embedded API, both commands close the run immediately. **Cancel**
 records a `cancelled` outcome; **terminate** records a `terminated` outcome.
 Neither command schedules cleanup inside the closed workflow. Embedded Laravel
-also provides `requestCancellation()` for bounded cooperative cleanup; that
-separate request is not yet exposed by Server or service-mode SDKs. If your
-service-mode application needs compensation before closing, signal the workflow
-to run it and wait for completion before issuing terminal cancel.
+also provides `requestCancellation()` for bounded cooperative cleanup.
+Server and the PHP, Python and Rust SDKs support the separate cooperative
+request with workers that explicitly enable it. See
+[Cooperative Cancellation](/docs/polyglot/cancellation) for the capability,
+deadline, cleanup and recovery contract.
 
 ## Cancel
 

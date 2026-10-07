@@ -64,8 +64,8 @@ All three use the same durable execution model and public protocol.
 Cross-language child workflows and activities use registered string types and
 the shared Avro envelope, preserving fixed typed Value semantics through the
 official Avro language packages. The [2.0 Capability Index](/docs/capabilities/)
-records exact floors and deliberate gaps such as Rust's current update-authoring
-and schedule-management boundary.
+records exact floors and deliberate gaps such as Rust's current schedule-management
+and fleet-wide visibility boundary.
 
 ## Does a Python or Rust team need Laravel?
 
