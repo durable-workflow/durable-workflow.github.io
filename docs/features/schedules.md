@@ -70,12 +70,16 @@ starter.
 For `createFromSpec()`, put the limits in the action:
 
 ```php
-action: [
-    'workflow_class' => InvoiceSyncWorkflow::class,
-    'input' => ['nightly'],
-    'execution_timeout_seconds' => 120,
-    'run_timeout_seconds' => 60,
-],
+$schedule = ScheduleManager::createFromSpec(
+    scheduleId: 'hourly-invoice-sync',
+    spec: ['intervals' => [['every' => 'PT1H']]],
+    action: [
+        'workflow_class' => InvoiceSyncWorkflow::class,
+        'input' => ['hourly'],
+        'execution_timeout_seconds' => 120,
+        'run_timeout_seconds' => 60,
+    ],
+);
 ```
 
 Creation and action updates validate PHP workflow timeouts using the same
