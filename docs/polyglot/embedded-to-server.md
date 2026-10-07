@@ -42,7 +42,7 @@ Workflow Cloud. For the separate managed-service choice, see
 Supported today:
 
 - Start new workflows through the server control-plane API or CLI.
-- Register PHP, Python, or custom HTTP workers against the server.
+- Register PHP, Python, Rust, or custom HTTP workers against the server.
 - Poll and complete workflow and activity tasks through the worker protocol.
 - Import eligible embedded v2 history-export bundles into the server as
   server-managed workflow state.
@@ -67,7 +67,7 @@ either drain in place or move through the import workflow below.
 
 For the frozen embedded-vs-service comparison, see
 [Deployment Modes](/docs/polyglot/deployment-modes). This migration guide
-adds three cutover-specific rules on top of that shared contract:
+adds four cutover-specific rules on top of that shared contract:
 
 - Existing embedded runs keep executing where they started.
 - New server-managed runs use stable type keys, namespace names, task queues,
@@ -409,12 +409,13 @@ curl -X POST "$SERVER/api/workflows/order-123/archive" \
 
 ## Phase F: Add Polyglot Workers
 
-Once a workflow family runs through the server, add Python or custom workers by
+Once a workflow family runs through the server, add Python, Rust, or custom workers by
 registering the same namespace, task queue, and type keys. Every public v2
 payload uses `avro`; keep activity inputs and outputs language-neutral: arrays,
 objects, strings, numbers, booleans, and nulls.
 
-For Python, use [the Python SDK guide](/docs/polyglot/python). For direct
+Use [the Python SDK guide](/docs/polyglot/python) or
+[the Rust SDK guide](/docs/polyglot/rust). For direct
 HTTP implementations, use [the worker protocol reference](/docs/polyglot/worker-protocol).
 
 ## Cutover Checklist

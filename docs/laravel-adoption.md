@@ -88,7 +88,7 @@ database, network, clock, and other side effects belong in activities.
 
 ### Stable v1 Laravel
 
-Keep the [stable installation](/docs/installation/) and its real queue-driver
+Keep the [stable v1 installation](/docs/1.x/installation/) and its real queue-driver
 requirements. This representative implementation uses a constructor-injected
 application starter and method-injected activity services:
 
@@ -565,7 +565,7 @@ last step, never the cutover mechanism.
 
 ## Continue with the chosen path
 
-- [Stable v1 installation](/docs/installation/)
+- [Stable v1 installation](/docs/1.x/installation/)
 - [Stable v1 migration planning](/docs/migration/)
 - [2.0 embedded installation](/docs/installation/)
 - [Detailed v1-to-v2 package migration](/docs/migration/)
