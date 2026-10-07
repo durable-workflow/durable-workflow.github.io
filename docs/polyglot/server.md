@@ -1075,8 +1075,10 @@ maintenance runner. Choose stop-the-world upgrades or
 [rolling upgrades](/docs/rolling-upgrades) per release; the rolling-upgrade
 contract names the version-skew, schema, drain, readiness, and rollback
 guarantees that must hold. SQLite clustering, Redis-less multi-node mode,
-duplicate schedulers, active/active multi-region, Helm, and provider-specific
-failover are outside that contract until separately validated. Active/passive
+duplicate schedulers, active/active multi-region, and provider-specific
+failover are outside that contract until separately validated. The separately
+versioned Helm path is documented in the
+[deployment guide](/docs/deployment#helm-chart-for-kubernetes). Active/passive
 multi-region material in the
 [self-hosting guide](/docs/deployment#activepassive-multi-region) is
 support-led evaluation guidance, not a proven self-serve 2.0 contract; each
@@ -1153,8 +1155,9 @@ and lease counters. The detailed route also includes the `admission` object so
 automation can separate worker-capacity pressure from server-side queue or
 query-task throttling. Fleet-level durable inflow versus dispatch rates live on
 the operator-metrics surfaces (`operator_metrics.backlog.tasks_added_last_minute`
-and `operator_metrics.backlog.tasks_dispatched_last_minute`), not on the
-per-queue task-queue routes.
+and `operator_metrics.backlog.tasks_dispatched_last_minute`). The task-queue
+routes also expose `stats.tasks_added_last_minute` and
+`stats.tasks_dispatched_last_minute` for the same comparison within one queue.
 
 ### Worker Protocol
 

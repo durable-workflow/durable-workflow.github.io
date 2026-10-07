@@ -344,7 +344,7 @@ code.
 
 | Method | Returns | Notes |
 | --- | --- | --- |
-| `await client.health()` | `dict[str, Any]` | Calls the health endpoint for readiness checks. |
+| `await client.health()` | `dict[str, Any]` | Calls the health endpoint for liveness checks. |
 | `await client.get_cluster_info()` | `dict[str, Any]` | Reads server version, protocol, capability, and compatibility metadata. |
 | `await client.list_task_queues()` | `TaskQueueList` | Lists task queues visible in the namespace. |
 | `await client.describe_task_queue(name)` | `TaskQueueDescription` | Returns worker capacity, current leases, query admission, and dispatch-budget facts. |

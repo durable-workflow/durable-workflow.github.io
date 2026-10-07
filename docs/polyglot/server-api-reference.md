@@ -454,7 +454,7 @@ curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/workflows" \
 
 ### Workflow Commands
 
-Protocol 1.20's release candidate also provides cooperative
+The server also provides cooperative
 `request-cancellation` routes. See [Cooperative cancellation](/docs/polyglot/cancellation/)
 for the bounded cleanup contract and worker requirements.
 
