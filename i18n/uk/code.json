@@ -1,4 +1,10 @@
 {
+  "docs.translationFallback": {
+    "message": "Ця сторінка доступна англійською, поки готується її переклад."
+  },
+  "docs.readInEnglish": {
+    "message": "Читати англійською"
+  },
   "theme.ErrorPageContent.title": {
     "message": "На сторінці стався збій.",
     "description": "The title of the fallback page when the page crashed"

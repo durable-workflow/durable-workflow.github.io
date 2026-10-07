@@ -25,7 +25,12 @@ function SupplementalMetadata({canonicalPath, title, description}) {
 
 export default function DocItemMetadata() {
   const {metadata, frontMatter, assets} = useDoc();
-  const canonicalPath = frontMatter.canonical_path;
+  const {i18n: {currentLocale, defaultLocale}} = useDocusaurusContext();
+  const usesEnglishFallback = currentLocale !== defaultLocale &&
+    !metadata.source.startsWith(`@site/i18n/${currentLocale}/`);
+  const canonicalPath = frontMatter.canonical_path || (usesEnglishFallback
+    ? metadata.permalink.replace(`/${currentLocale}/`, '/').replace(/\/?$/, '/')
+    : undefined);
 
   return (
     <>

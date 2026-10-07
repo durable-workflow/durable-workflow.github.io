@@ -27,7 +27,7 @@ implica la otra.
 
 - **El código de las actividades debe ser idempotente.** Los intentos de una
   actividad se ejecutan **al menos una vez**. Los reintentos, el vencimiento de
-  un lease y la entrega repetida pueden hacer que el mismo trabajo lógico se
+  una lease y la entrega repetida pueden hacer que el mismo trabajo lógico se
   ejecute más de una vez. El framework registra como máximo un resultado
   terminal por intento en el estado duradero, pero el cuerpo de una actividad
   puede empezar a ejecutarse varias veces antes de que el motor reciba el
@@ -37,10 +37,10 @@ implica la otra.
 
 - **Event sourcing conserva el historial de los pasos duraderos.** El motor
   registra cada paso como un evento con un tipo definido, por ejemplo la
-  finalización de una actividad, el disparo de un timer, la recepción de una
-  signal o el valor de un side effect. Al reproducir el historial, devuelve los
+  finalización de una actividad, el disparo de un temporizador, la recepción de una
+  señal o el valor de un side effect. Al reproducir el historial, devuelve los
   resultados registrados al cuerpo del workflow sin volver a enviar esas
-  actividades, timers o signals. Cada evento de estado duradero asociado a un
+  actividades, temporizadores o señales. Cada evento de estado duradero asociado a un
   identificador se registra exactamente una vez en el historial, aunque el
   transporte haya entregado el trabajo más de una vez.
 
