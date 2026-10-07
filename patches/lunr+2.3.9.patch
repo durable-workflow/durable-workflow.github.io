@@ -1,0 +1,13 @@
+diff --git a/node_modules/lunr/lunr.js b/node_modules/lunr/lunr.js
+--- a/node_modules/lunr/lunr.js
++++ b/node_modules/lunr/lunr.js
+@@ -1336,7 +1336,8 @@
+  */
+ lunr.trimmer = function (token) {
+   return token.update(function (s) {
+-    return s.replace(/^\W+/, '').replace(/\W+$/, '')
++    // Preserve Unicode words in localized documentation indexes.
++    return s.replace(/^[^\p{L}\p{M}\p{N}_]+/u, '').replace(/[^\p{L}\p{M}\p{N}_]+$/u, '')
+   })
+ }
+ 
