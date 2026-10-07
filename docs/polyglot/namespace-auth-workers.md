@@ -157,7 +157,7 @@ curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/worker/register" \
 | --- | --- | --- |
 | `worker_id` | no | Stable process identity. The server generates one when omitted, but long-running runtimes should set it for logs and task queue diagnostics. |
 | `task_queue` | yes | Queue this worker polls. Poll requests for a different queue fail with `reason: "task_queue_mismatch"`. |
-| `runtime` | yes | One of `php`, `python`, `typescript`, `go`, or `java`. |
+| `runtime` | yes | One of `php`, `python`, `rust`, `typescript`, `go`, `java`, or `external`. An accepted runtime identifier does not imply a first-party SDK is available. |
 | `sdk_version` | no | Runtime SDK version shown in worker visibility and diagnostics. |
 | `build_id` | no | Deploy/build identity used by task queue build-id visibility and rollout cohorts. It should stay stable for one replay-compatible worker family. |
 | `supported_workflow_types` | no | Workflow type keys this worker can replay. Empty means no workflow-type filter. |

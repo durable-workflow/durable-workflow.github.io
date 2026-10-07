@@ -217,9 +217,10 @@ publishes its accepted protocol and codec set from `GET /api/cluster/info`.
 Check runtime discovery during deployment instead of inferring compatibility
 from a server patch version.
 
-The PHP SDK is versioned independently from the 2.0 Laravel package. Keep the
-exact published pin in runnable prerelease examples and evaluate release notes
-when moving between pre-1.0 SDK releases; no cross-release shim is implied.
+The PHP SDK is versioned independently from the Laravel package. Keep the
+exact published pin in runnable examples and evaluate release notes when
+upgrading SDK releases. Compatibility follows the SDK's declared contract,
+not matching package version numbers.
 
 ## Related references
 
