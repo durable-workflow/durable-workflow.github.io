@@ -18,7 +18,7 @@ Durable Workflow exposes a versioned worker protocol through two bridge contract
 
 ## Protocol Version
 
-The current server-advertised protocol version is **1.13**. The protocol
+The current server-advertised protocol version is **1.20**. The protocol
 follows semver-style numbering:
 
 - **Major** bumps when a change is backwards-incompatible (new required fields, removed verbs, changed pagination semantics).
@@ -26,9 +26,10 @@ follows semver-style numbering:
 
 Workers may use an older minor within the same major. A server advertising
 `1.N` accepts `X-Durable-Workflow-Protocol-Version: 1.M` when `M <= N` and
-returns its advertised `1.N` on the response. The default `1.13` server
-therefore accepts request versions `1.0` through `1.13`, including Rust SDK
-the Rust SDK on `1.2`. Missing or malformed headers, different majors, and worker
+returns its advertised `1.N` on the response. The default `1.20` server
+therefore accepts request versions `1.0` through `1.20`. Discover each SDK's
+required minor and optional capability profile before deployment.
+Missing or malformed headers, different majors, and worker
 minors newer than the server fail closed.
 
 You can retrieve the full protocol description programmatically:
@@ -290,7 +291,11 @@ When completing a workflow task, the external worker submits a list of typed com
 
 `start_child_workflow` accepts optional `parent_close_policy`, `retry_policy`,
 `execution_timeout_seconds`, and `run_timeout_seconds` fields.
-`parent_close_policy` is one of `abandon`, `request_cancel`, or `terminate`.
+`parent_close_policy` is one of `abandon`, `request_cancel`,
+`request_cancellation`, or `terminate`. `request_cancel` closes the child
+immediately; `request_cancellation` requests cooperative cleanup with the
+original cancellation identity and deadline. See
+[cooperative cancellation](/docs/polyglot/cancellation).
 Child retry policy uses the same `max_attempts`, `backoff_seconds`, and
 `non_retryable_error_types` object shape as activities. Retry backoff applies
 after a child run fails; invalid child start commands are protocol errors and
@@ -355,7 +360,8 @@ Condition-timeout resumes set `workflow_wait_kind: "condition"`,
 When a control-plane query targets a workflow whose code is owned by an
 external runtime, the standalone server cannot replay that workflow in the PHP
 process. Instead, it creates an ephemeral query task and waits for an active
-non-PHP worker on the workflow's task queue to execute it.
+query-capable worker on the workflow's task queue to execute it. This includes
+remote PHP SDK workers whose workflow code is outside the Server process.
 
 Query tasks are read-only. Workers replay the supplied history, invoke the
 registered query handler, and then complete or fail the query task. They do not

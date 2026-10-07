@@ -1,0 +1,417 @@
+---
+sidebar_position: 3
+title: CLI
+description: Встановлення та використання Durable Workflow CLI для роботи з окремим Server.
+tags:
+  - CLI
+  - operations
+  - automation
+keywords:
+  - Durable Workflow CLI
+  - команда dw
+  - профіль CLI
+  - встановлення CLI
+---
+
+import CliInstall from '@site/src/components/CliInstall';
+
+# CLI {#cli}
+
+Durable Workflow CLI (`dw`) є shell-інтерфейсом
+[окремого Server](/docs/polyglot/server).
+Він дає операторам змогу запускати й перелічувати workflows,
+виконувати signal, query, update, repair, cancel, terminate та archive,
+керувати schedules, оглядати task queues і перевіряти стан Server
+із командного рядка.
+
+Той самий CLI працює з будь-яким Durable Workflow Server незалежно
+від мови workflows. Підтримувані та навмисно різні поверхні CLI, PHP,
+Python і Rust наведено в
+[можливостях clients і workers](/docs/polyglot/cli-python-parity/).
+
+## Встановлення {#install}
+
+<CliInstall />
+
+### Перевірка {#verify}
+
+```bash
+dw --version
+```
+
+### Встановлення підтримуваного каналу {#supported-channel-install}
+
+Стандартний installer вибирає випуск CLI з останнього успішно перевіреного
+набору артефактів без потреби в номері RC. Новіший опублікований prerelease CLI
+не вибирається до qualification публічним джерелом сумісності.
+Для відтворюваного CI запишіть отримане `dw --version`
+і передавайте цей точний tag через `VERSION` у наступних запусках.
+
+Обидва installer scripts завантажують `SHA256SUMS` випуску
+й перевіряють checksum артефакту перед заміною `dw`.
+Підмінене mirror не проходить встановлення.
+
+<details>
+<summary><b>Linux та macOS</b> (shell installer)</summary>
+
+```bash
+%%artifact.cliChannelInstallerCommand%%
+dw --version
+```
+
+`VERSION` приймає будь-який опублікований release tag, `supported`,
+`prerelease` або `stable`. Без значення використовується перевірений
+канал `supported`. Явний канал `prerelease` вимагає, щоб перевірений
+випуск був prerelease. Додаткові змінні середовища:
+
+- `DURABLE_WORKFLOW_INSTALL_DIR` — каталог установлення, стандартно `~/.local/bin`.
+- `DURABLE_WORKFLOW_BIN_NAME` — назва встановленого executable, стандартно `dw`.
+
+Приклад GitHub Actions:
+
+```yaml
+- name: Install Durable Workflow CLI
+  run: |
+    %%artifact.cliChannelInstallerCommand%%
+    echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+- name: Verify
+  run: dw --version
+```
+
+</details>
+
+<details>
+<summary><b>Windows</b> (PowerShell installer)</summary>
+
+```powershell
+%%artifact.cliChannelPowerShellCommand%%
+dw --version
+```
+
+Installer записує `dw.exe` до `%USERPROFILE%\.durable-workflow\bin`
+і додає цей каталог до `PATH` користувача.
+
+</details>
+
+<details>
+<summary><b>PHAR</b> (переносний, потребує PHP 8.2+)</summary>
+
+```bash
+VERSION=<release-tag>
+curl -fsSL -o dw.phar \
+  "https://github.com/durable-workflow/cli/releases/download/${VERSION}/dw.phar"
+curl -fsSL -o SHA256SUMS \
+  "https://github.com/durable-workflow/cli/releases/download/${VERSION}/SHA256SUMS"
+sha256sum --check --ignore-missing SHA256SUMS
+chmod +x dw.phar
+./dw.phar --version
+```
+
+PHAR працює всюди, де вже доступний PHP 8.2 або новіший.
+Це рекомендований артефакт спільних CI runners, які вже містять PHP.
+
+</details>
+
+### Оновлення встановленого binary {#update-an-installed-binary}
+
+Для standalone-встановлень випуску через shell чи PowerShell installer
+вище `dw upgrade` замінює активний binary найновішим опублікованим
+випуском після перевірки артефакту за `SHA256SUMS` випуску.
+
+```bash
+dw upgrade                 # upgrade through the stable release channel
+dw upgrade --tag=<release-tag>     # pin to a specific release tag
+dw upgrade --dry-run       # resolve the target release without downloading
+```
+
+`dw upgrade` відмовляється переписувати Composer vendor, Homebrew cellar
+та PHAR installs, бо ці шляхи належать іншому інструменту.
+Перевстановіть закріплений публічний випуск installer, оновіть
+відповідний package manager або використайте
+`brew upgrade durable-workflow/tap/dw` для Homebrew tap.
+Повний сталий контракт options і status fields наведено в
+[довіднику CLI](./cli-reference.md#self-upgrade).
+
+## Налаштування {#configure}
+
+Укажіть ваш Server для CLI:
+
+```bash
+export DURABLE_WORKFLOW_SERVER_URL=http://localhost:8080
+export DURABLE_WORKFLOW_AUTH_TOKEN=your-token
+export DURABLE_WORKFLOW_NAMESPACE=default
+```
+
+Або передавайте ці значення кожній команді:
+
+```bash
+dw --server=http://localhost:8080 --token=your-token workflow:list
+```
+
+## П'ятихвилинний quickstart оператора {#five-minute-operator-quickstart}
+
+Цей шлях перевіряє CLI зі справжнім окремим Server без написання коду
+застосунку. Він запускає опублікований локальний Server stack,
+установлює закріплений `dw`, створює reusable profile, починає
+один workflow та стежить за потраплянням run до черги worker.
+
+```bash
+export DW_SERVER_IMAGE=%%artifact.serverDockerHubImage%%
+export DW_AUTH_TOKEN=dev-token
+
+docker volume create durable-workflow-cli-quickstart
+
+docker run --rm \
+  -v durable-workflow-cli-quickstart:/app/database \
+  -e DW_AUTH_DRIVER=token \
+  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
+  "$DW_SERVER_IMAGE" server-bootstrap
+
+docker rm -f durable-workflow-server >/dev/null 2>&1 || true
+docker run -d --name durable-workflow-server \
+  -p 8080:8080 \
+  -v durable-workflow-cli-quickstart:/app/database \
+  -e DW_AUTH_DRIVER=token \
+  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
+  "$DW_SERVER_IMAGE"
+
+until curl -sf http://localhost:8080/api/ready >/dev/null; do sleep 1; done
+```
+
+Установіть CLI в іншому терміналі:
+
+```bash
+%%artifact.cliChannelInstallerCommand%%
+export PATH="$HOME/.local/bin:$PATH"
+dw --version
+```
+
+Один раз збережіть підключення Server:
+
+```bash
+dw env:set local \
+  --server=http://localhost:8080 \
+  --token=dev-token \
+  --namespace=default \
+  --make-default
+
+dw doctor
+dw server:health
+```
+
+Почніть workflow та огляньте run:
+
+```bash
+dw workflow:start \
+  --type=quickstart.order \
+  --workflow-id=quickstart-order-001 \
+  --task-queue=quickstart \
+  --input='{"order_id":"order-001","total":42.50}' \
+  --json
+
+dw workflow:describe quickstart-order-001 --output=json
+dw workflow:history quickstart-order-001 <run-id-from-start-or-describe>
+dw task-queue:describe quickstart
+```
+
+Run тепер є durable-станом Server. Поки worker типу `quickstart.order`
+не опитує чергу `quickstart`, `dw task-queue:describe quickstart`
+найшвидше пояснить очікування. Після підключення worker виконайте
+`dw watch workflow quickstart-order-001`, щоб стежити до термінального стану.
+Повний сценарій із підключенням опублікованого Python SDK worker
+та досягненням `status=completed` наведено в
+[quickstart Durable Workflow 2.0](/docs/quickstart).
+
+## Команди {#commands}
+
+### Server {#server}
+
+```bash
+dw server:health          # Check server health
+dw server:info            # Show server version, role topology, protocols, and worker fleet
+```
+
+`dw server:info` відображає `GET /api/cluster/info`.
+Поряд із build, protocol та worker-fleet фактами він виводить manifest
+топології ролей Server: підтримувані форми, поточні shape/process class/roles,
+подробиці wake і partition matching, поточні межі запису,
+масштабування та області відмов. Використовуйте `--output=json`,
+коли автоматизації потрібні raw-поля `topology.*`, або читайте
+[топологію ролей Server](./server-role-topology.md)
+для контракту кожного поля цього виводу.
+
+### Workflows {#workflows}
+
+```bash
+dw workflow:list                                          # List workflows
+dw workflow:start --type=MyWorkflow --input='["arg1"]'    # Start a workflow
+dw workflow:start --type=MyWorkflow --input-file=input.json
+dw workflow:describe <workflow-id>                         # Describe a workflow
+dw workflow:signal <workflow-id> <signal-name> --input='["ok"]'
+dw workflow:query <workflow-id> <query-name>               # Run a query
+dw workflow:cancel <workflow-id>                           # Close as cancelled immediately
+dw workflow:terminate <workflow-id>                        # Force terminate
+dw workflow:history <workflow-id> <run-id>                 # Show run history
+```
+
+Кожна команда з payload ініціатора використовує однакову форму:
+`--input` для inline-значень, `--input-file` для шляху файлу
+чи `-` для stdin, `--input-encoding=json|raw|base64` для кодування.
+Стандартно JSON. Raw та base64 input передаються як один
+позиційний аргумент workflow.
+
+### Bridge adapters {#bridge-adapters}
+
+```bash
+dw bridge:webhook stripe \
+  --action=start_workflow \
+  --idempotency-key=stripe-event-1001 \
+  --target='{"workflow_type":"orders.fulfillment","task_queue":"external-workflows"}' \
+  --input='{"order_id":"order-1001"}'
+
+dw bridge:webhook pagerduty \
+  --action=signal_workflow \
+  --idempotency-key=pd-event-3003 \
+  --target='{"workflow_id":"wf-remediation-42","signal_name":"incident_escalated"}' \
+  --input='{"severity":"critical"}' \
+  --json
+```
+
+Bridge adapters є обмеженими інструментами ingress інтеграційних подій.
+Вони повертають іменовані bridge outcomes прийнятих, повторних
+і відхилених deliveries та не стають workflow runtimes.
+
+### Schedules {#schedules}
+
+```bash
+dw schedule:list                          # List schedules
+dw schedule:create --workflow-type=MyWorkflow \
+  --cron='0 * * * *'                      # Create hourly schedule
+dw schedule:update <schedule-id> --input-file=input.json
+dw schedule:describe <schedule-id>        # Describe a schedule
+dw schedule:pause <schedule-id>           # Pause a schedule
+dw schedule:resume <schedule-id>          # Resume a schedule
+dw schedule:trigger <schedule-id>         # Trigger immediately
+dw schedule:delete <schedule-id>          # Delete a schedule
+```
+
+### Activities {#activities}
+
+```bash
+dw activity:complete <task-id> <attempt-id> --input='{"ok":true}'
+dw activity:complete <task-id> <attempt-id> --input-file=result.json
+dw activity:fail <task-id> <attempt-id> --message='upstream failed'
+```
+
+### Workers та task queues {#workers-and-task-queues}
+
+```bash
+dw worker:list                    # List registered workers
+dw worker:describe <worker-id>    # Describe a worker
+dw task-queue:list                # List active task queues
+dw task-queue:describe <queue>    # Describe a task queue
+```
+
+`dw task-queue:list` є стислим оглядом fleet.
+Він показує admission status columns для workflow, activity та query tasks.
+`dw task-queue:describe` розгортає той самий payload Server з pollers,
+поточними leases, dispatch capacity черги, namespace та downstream budget groups,
+залишковою capacity, джерелом budget і pending capacity query tasks.
+
+Для scripts `dw task-queue:describe --json` надає локальні backlog,
+lease, poller та admission state черги. Використовуйте його,
+щоб розрізняти відсутність workers, admission throttling
+і одну чергу з наростанням backlog:
+
+```bash
+dw task-queue:describe orders --json | jq '.stats | {
+  approximate_backlog_count,
+  approximate_backlog_age_seconds,
+  workflow_tasks,
+  activity_tasks
+}'
+```
+
+Загальні durable inflow та dispatch rates fleet не належать
+JSON-контракту task queue. Читайте їх через
+`dw system:operator-metrics --json`:
+
+```bash
+dw system:operator-metrics --json | jq '.operator_metrics.backlog | {
+  tasks_added_last_minute,
+  tasks_dispatched_last_minute
+}'
+```
+
+Операторський контракт налаштування цих полів описано в
+[прийманні task queue](/docs/polyglot/task-queue-admission).
+
+Для контракту маршрутизації matching вузла, який ви запитали,
+прочитайте блок `matching_role` того самого payload:
+
+```bash
+dw system:operator-metrics --json | jq '.operator_metrics.matching_role | {
+  queue_wake_enabled,
+  shape,
+  task_dispatch_mode,
+  partition_primitives,
+  backpressure_model
+}'
+```
+
+`partition_primitives` закріплює осі маршрутизації
+(`connection`, `queue`, `compatibility`, `namespace`), а
+`backpressure_model` визначає використання рушієм зайнятих leases
+або іншої межі приймання роботи. Поточний v2 повідомляє `lease_ownership`.
+
+### Namespaces {#namespaces}
+
+```bash
+dw namespace:list                             # List namespaces
+dw namespace:create --name=production         # Create a namespace
+dw namespace:describe <namespace>             # Describe a namespace
+```
+
+### Search attributes {#search-attributes}
+
+```bash
+dw search-attribute:list                                  # List search attributes
+dw search-attribute:create --name=env --type=keyword      # Register an attribute
+```
+
+## Exit codes {#exit-codes}
+
+CLI використовує сталу політику exit codes, щоб scripts і CI pipelines
+могли реагувати на конкретні відмови без розбору stderr.
+Значення починаються з канонічних `0`/`1`/`2` Symfony Console
+для success / failure / usage та розширюють їх.
+
+| Код | Назва | Значення |
+|------|------|---------|
+| `0` | `SUCCESS` | Операція завершилася успішно. |
+| `1` | `FAILURE` | Загальна помилка: команда виконалася без успіху. |
+| `2` | `INVALID` | Некоректне використання: аргументи, невідомі options чи локальна validation. Також для HTTP 4xx, не описаних нижче, наприклад 400, 422. |
+| `3` | `NETWORK` | Server недоступний: connection refused, DNS failure, TLS handshake failure чи transport error. |
+| `4` | `AUTH` | Помилка authentication чи authorization. Для HTTP `401` та `403`. |
+| `5` | `NOT_FOUND` | Ресурс не знайдено. Для HTTP `404`. |
+| `6` | `SERVER` | Помилка Server. Для HTTP `5xx`. |
+| `7` | `TIMEOUT` | Timeout запиту до відповіді Server. Також для HTTP `408`. |
+
+Приклад:
+
+```bash
+dw workflow:describe chk-does-not-exist
+echo $?  # 5 (NOT_FOUND)
+
+dw server:health --server=http://unreachable:9999
+echo $?  # 3 (NETWORK)
+```
+
+Канонічне джерело —
+[`DurableWorkflow\Cli\Support\ExitCode`](https://github.com/durable-workflow/cli/blob/main/src/Support/ExitCode.php)
+у репозиторії CLI.
+
+## Довідник {#reference}
+
+Форми команд, options, output modes та поведінку помилок автоматизації
+наведено в [довіднику команд CLI](/docs/polyglot/cli-reference).
