@@ -203,9 +203,10 @@ Use these diagnostics this way:
 ## Replay-Safe Code
 
 Workflow code must behave identically under sticky and cold-replay execution.
-Only durable history is safe for workflow decisions: workflow inputs, activity
-results, timers, signals, updates, side effects, version markers, memo, and
-search attributes.
+Workflow decisions must use durable history: workflow inputs, activity results,
+timers, signals, updates, side effects and version markers. Memo and search
+attribute projections are operator metadata; do not branch workflow logic on
+their mutable values.
 
 Do not rely on mutable globals, local files, open sockets, object identity,
 random values, wall-clock reads, or any other process-local state for

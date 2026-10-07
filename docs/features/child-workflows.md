@@ -133,6 +133,7 @@ When a parent workflow closes — whether by completing, failing, timing out, be
 | Policy | Value | Behavior |
 |---|---|---|
 | Abandon | `abandon` | The child continues running independently. This is the default. |
+| Request Cancellation | `request_cancellation` | The child receives a cooperative cleanup request with the parent's original cancellation lineage and deadline. |
 | Request Cancel | `request_cancel` | A cancel command is sent to the child when the parent closes. |
 | Terminate | `terminate` | A terminate command is sent to the child when the parent closes. |
 
@@ -184,7 +185,7 @@ $results = all([
 ### How it works
 
 - The policy is recorded on the `workflow_links` row (`parent_close_policy`) and in the `ChildWorkflowScheduled` history event payload.
-- When the parent run closes for any reason, the engine queries open child links with a non-abandon policy and sends the appropriate command (cancel or terminate) to each open child.
+- When the parent run closes for any reason, the engine queries open child links with a non-abandon policy and sends the appropriate command (request cancellation, cancel, or terminate) to each open child.
 - If the child has already closed by the time the policy is enforced, no action is taken — the command is silently skipped.
 - Policy enforcement is best-effort: if a child command is rejected (e.g. the child is already terminal), the parent's closure is not affected. When enforcement succeeds, a `ParentClosePolicyApplied` history event is recorded on the parent run. When enforcement fails, a `ParentClosePolicyFailed` history event is recorded instead, so operators can distinguish successful enforcement from silent failures.
 - Continue-as-new does **not** trigger parent-close policy, because the workflow instance remains active under a new run.
@@ -206,6 +207,8 @@ Parent-close policy fires on every terminal parent disposition, and stays inert 
 ### When to use each policy
 
 **Abandon** (default) is correct when children represent independent work that should complete regardless of the parent's fate — for example, a notification workflow or a cleanup task that must finish.
+
+**Request Cancellation** uses `ParentClosePolicy::RequestCancellation` for cooperative cleanup. It preserves an existing parent cancellation request's root identity and immutable deadline. If the parent closes without such a request, the policy records one shared cleanup budget of 600 seconds from the parent's recorded closure time. Repeated enforcement does not grant more time. See [Cooperative Cancellation](/docs/polyglot/cancellation) for the service-mode worker capability and cleanup contract.
 
 **Request Cancel** applies the child's terminal `cancel()` command when the parent closes. Despite the policy name, it does not deliver the separate cooperative `requestCancellation()` request. The child cannot run workflow-code cleanup or compensation after this policy closes its run. Complete any required compensation before closing the parent, or use **Abandon** for independent cleanup work.
 
