@@ -1,14 +1,14 @@
 {
   "schema": "durable-workflow.docs.stable-releases",
   "schema_version": 1,
-  "updated_at": "2026-10-06",
+  "updated_at": "2026-10-07",
   "artifacts": {
     "cli": "2.2.0",
     "sdk-php": "2.2.3",
     "sdk-python": "2.4.0",
     "sdk-rust": "3.2.0",
-    "server": "2.5.5",
+    "server": "2.5.6",
     "waterline": "2.2.0",
-    "workflow": "2.4.5"
+    "workflow": "2.4.6"
   }
 }
