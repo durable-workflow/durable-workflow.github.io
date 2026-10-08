@@ -26,12 +26,12 @@ manifest marks the same feature as supported.
 | --- | --- | --- | --- |
 | PHP | Supported | Supported | Supported |
 | Python | Supported since 2.2.0 | Supported since 2.3.0 | Supported since 2.5.0 with `sticky_cache_capacity` above zero |
-| Rust | Supported since 3.1.0 with `Worker::local_activities(true)` | Supported since 3.2.0 with `Worker::worker_sessions(true)` | Not supported |
+| Rust | Supported since 3.1.0 with `Worker::local_activities(true)` | Supported since 3.2.0 with `Worker::worker_sessions(true)` | Supported since 3.4.0 with `Worker::sticky_cache(...)` |
 
 Workers advertise only the capabilities implemented and enabled for their
-profile. Rust local activities and sessions, and Python sticky execution,
+profile. Rust local activities, sessions and sticky execution, and Python sticky execution,
 require explicit opt-in. Older SDK versions refuse capabilities they do not
-implement. Rust continues to refuse sticky execution. Ordinary workflows and
+implement. Ordinary workflows and
 queued activities use complete durable-history replay without these optimizations.
 
 ## Local activity recording
@@ -85,7 +85,7 @@ and [WorkerSessionOptions](https://rust.durable-workflow.com/durable_workflow/st
 
 ## Sticky execution and cold replay
 
-The PHP and Python caches are bounded and keyed by the exact workflow ID, run
+The PHP, Python and Rust caches are bounded and keyed by the exact workflow ID, run
 ID, and worker build ID. They report `hit`, `miss`, `eviction`, and `forced_cold_replay`.
 Expiry, eviction, worker replacement, holder loss, or a build mismatch discards
 the optimization and replays complete durable history.
@@ -96,6 +96,15 @@ byte limit and TTL for your worker. It stores encoded durable history and can
 reuse validated page cursors to save repeated downloads. Allow additional
 memory for decoding and deterministic replay. See the
 [Python sticky execution guide and runnable example](https://python.durable-workflow.com/guides/sticky-execution/).
+
+Rust SDK 3.4.0 supports the same published Server baseline. Enable its cache
+with `Worker::sticky_cache(StickyCacheOptions::new(...))` and configure the
+encoded-history byte limit and TTL. Each replay decodes a fresh snapshot.
+Reused history cursors are checked against the current task lease and durable
+history before a warm hit is accepted. The cache holds history, not live
+workflow instances or session resources. See
+[StickyCacheOptions](https://rust.durable-workflow.com/durable_workflow/struct.StickyCacheOptions.html)
+and the [runnable Rust example](https://github.com/durable-workflow/sdk-rust/blob/3.4.0/examples/sticky_execution.rs).
 
 Server 2.5.10 preserves full replay for PHP SDKs before 2.2.0. Use PHP SDK
 2.2.0 or newer to consume replay hints for histories beginning with StartAccepted.

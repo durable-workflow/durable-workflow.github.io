@@ -27,12 +27,12 @@ Server відхиляє плоску можливість маршрутизац
 | --- | --- | --- | --- |
 | PHP | Підтримується | Підтримується | Підтримується |
 | Python | Підтримується з 2.2.0 | Підтримується з 2.3.0 | Підтримується з 2.5.0, якщо `sticky_cache_capacity` більше нуля |
-| Rust | Підтримується з 3.1.0 із `Worker::local_activities(true)` | Підтримується з 3.2.0 із `Worker::worker_sessions(true)` | Не підтримується |
+| Rust | Підтримується з 3.1.0 із `Worker::local_activities(true)` | Підтримується з 3.2.0 із `Worker::worker_sessions(true)` | Підтримується з 3.4.0 із `Worker::sticky_cache(...)` |
 
 Worker оголошують лише реалізовані й увімкнені для свого профілю
-можливості. Локальні activity та сеанси Rust, а також sticky execution у
+можливості. Локальні activity, сеанси та sticky execution Rust, а також sticky execution у
 Python потребують явного увімкнення. Старі версії SDK відхиляють нереалізовані
-можливості. Rust продовжує відхиляти sticky execution. Звичайні workflow та activity
+можливості. Звичайні workflow та activity
 в черзі використовують повний replay стійкої історії без цих оптимізацій.
 
 ## Запис локальної activity {#local-activity-recording}
@@ -92,7 +92,7 @@ Server 2.5.1 або новіший для збереження початков�
 
 ## Sticky execution і холодний replay {#sticky-execution-and-cold-replay}
 
-Кеші PHP та Python обмежені й мають ключ із точних ID workflow, ID run та
+Кеші PHP, Python і Rust обмежені й мають ключ із точних ID workflow, ID run та
 build ID worker. Вони повідомляють `hit`, `miss`, `eviction` і `forced_cold_replay`.
 Спливання, витіснення, заміна worker, втрата утримувача або невідповідність
 збірки відкидає оптимізацію й відтворює повну стійку історію.
@@ -104,6 +104,15 @@ build ID worker. Вони повідомляють `hit`, `miss`, `eviction` і 
 повторне завантаження. Передбачте додаткову пам'ять для декодування й
 детермінованого replay. Дивіться
 [посібник Python sticky execution і готовий приклад](https://python.durable-workflow.com/guides/sticky-execution/).
+
+Rust SDK 3.4.0 підтримує ту саму базову версію опублікованого Server.
+Увімкніть кеш через `Worker::sticky_cache(StickyCacheOptions::new(...))`
+і задайте ліміт байтів закодованої історії та TTL. Кожен replay декодує
+новий знімок. Повторно використані курсори історії перевіряються за поточною
+орендою завдання та стійкою історією перед зарахуванням влучання в кеш.
+Кеш зберігає історію, а не живі об’єкти workflow чи ресурси сеансів. Дивіться
+[StickyCacheOptions](https://rust.durable-workflow.com/durable_workflow/struct.StickyCacheOptions.html)
+та [виконуваний приклад Rust](https://github.com/durable-workflow/sdk-rust/blob/3.4.0/examples/sticky_execution.rs).
 
 Server 2.5.10 зберігає повний replay для PHP SDK до 2.2.0. Використовуйте
 PHP SDK 2.2.0 або новіший для підказок replay історій, що починаються з StartAccepted.
