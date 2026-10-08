@@ -61,6 +61,11 @@ Worker Python може виконувати activity для workflow PHP і на
 Сигнатури конструкторів, типи результатів, класи винятків і назви метрик є
 в згенерованому [довіднику API Python SDK](https://python.durable-workflow.com/).
 
+Python SDK 2.5.0 додає необов'язковий обмежений кеш історії для sticky execution.
+Використовуйте Server 2.5.10 або новіший і вмикайте кеш для кожного worker.
+Дивіться [Portable Worker Affinity](/docs/polyglot/portable-worker-affinity) та
+[посібник Python і готовий приклад](https://python.durable-workflow.com/guides/sticky-execution/).
+
 Клієнти Cloud використовують надані URL runtime і namespace з окремими
 обліковими даними клієнта й worker. Цю межу підключення описано в
 [керованому runtime Cloud](/docs/polyglot/cloud-control-plane).
