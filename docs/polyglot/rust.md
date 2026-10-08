@@ -41,7 +41,7 @@ traits, and methods, continue to the generated [Rust SDK API
 reference](https://rust.durable-workflow.com/durable_workflow/).
 
 The stable Rust SDK supports durable
-timers, child workflows, activity retries and timeouts, local activities, worker sessions, signals, replayed query
+timers, child workflows, activity retries and timeouts, local activities, worker sessions, sticky execution, signals, replayed query
 handlers, cancellation and termination, server-enforced workflow deadlines,
 typed side effects, version markers, updates, and typed terminal/replay
 failures. It does not yet claim schedule management. Use the
@@ -127,7 +127,7 @@ Server records the terminal result for cold replay. Uncommitted local effects
 can execute again after worker loss and must be idempotent. Async callbacks
 must yield to Tokio. Blocking work needs separate process supervision.
 Inline local execution and prepared cooperative local supervision use separate
-worker profiles. Sticky execution remains unsupported in Rust.
+worker profiles.
 
 ## Worker sessions
 
@@ -154,6 +154,23 @@ reuses a process-local cache across two typed activities and prints its generati
 See [WorkerSessionOptions](https://rust.durable-workflow.com/durable_workflow/struct.WorkerSessionOptions.html)
 and [WorkerSession](https://rust.durable-workflow.com/durable_workflow/struct.WorkerSession.html)
 for configuration and lifecycle methods.
+
+## Bounded sticky execution
+
+Enable `Worker::sticky_cache(StickyCacheOptions::new(capacity))` to retain
+immutable encoded history for subsequent replay. The cache is disabled by
+default. Set `max_history_bytes(...)` and `ttl(...)` to bound retained history
+and its lifetime. Allow additional memory for decoding and replay.
+
+The cache uses workflow, run and build identity. Worker replacement, expiry,
+eviction or an invalid history cursor falls back to complete durable history.
+Terminal workflows and stopped workers discard their entries. Workflow code
+must replay correctly with an empty cache.
+
+Support starts with Rust SDK 3.4.0 and the qualified Server baseline. See the
+[configuration reference](https://rust.durable-workflow.com/durable_workflow/struct.StickyCacheOptions.html),
+[runnable example](https://github.com/durable-workflow/sdk-rust/blob/3.4.0/examples/sticky_execution.rs)
+and [portable worker-affinity guide](./portable-worker-affinity.md).
 
 ## Prepare the released repository example
 

@@ -41,7 +41,7 @@ crate наведено у згенерованому
 [довіднику Rust SDK API](https://rust.durable-workflow.com/durable_workflow/).
 
 Стабільний Rust SDK підтримує durable timers, дочірні workflows, retries
-і timeouts activity, local activities, worker sessions, signals,
+і timeouts activity, local activities, worker sessions, sticky execution, signals,
 query handlers з replay, cancellation і termination, серверні deadlines
 workflow, типізовані side effects, маркери версій, updates та типізовані
 термінальні помилки й помилки replay. Керування schedules поки не заявлено.
@@ -128,7 +128,7 @@ Server записує термінальний результат для cold re
 і мають бути ідемпотентними. Асинхронні callbacks мають передавати
 керування Tokio. Блокувальна робота потребує окремого нагляду процесу.
 Inline local execution та підготовлений кооперативний локальний нагляд
-використовують окремі профілі worker. Sticky execution у Rust не підтримується.
+використовують окремі профілі worker.
 
 ## Worker sessions {#worker-sessions}
 
@@ -160,6 +160,24 @@ Local activities не можуть використовувати session routin
 та виводить його generation. Конфігурацію і методи життєвого циклу наведено
 в [WorkerSessionOptions](https://rust.durable-workflow.com/durable_workflow/struct.WorkerSessionOptions.html)
 та [WorkerSession](https://rust.durable-workflow.com/durable_workflow/struct.WorkerSession.html).
+
+## Обмежений кеш sticky execution {#bounded-sticky-execution}
+
+Увімкніть `Worker::sticky_cache(StickyCacheOptions::new(capacity))`, щоб
+зберігати незмінну закодовану історію для наступного replay. Типово кеш
+вимкнений. Задайте `max_history_bytes(...)` і `ttl(...)`, щоб обмежити
+збережену історію та її час життя. Передбачте додаткову пам’ять для
+декодування й replay.
+
+Ключ кешу містить ідентичність workflow, run та збірки. Заміна worker,
+спливання, витіснення або некоректний курсор історії повертає виконання
+до повного replay стійкої історії. Термінальні workflow та зупинені workers
+видаляють свої записи. Код workflow має правильно відтворюватися з порожнім кешем.
+
+Підтримка починається з Rust SDK 3.4.0 та кваліфікованої базової версії Server.
+Дивіться [довідник конфігурації](https://rust.durable-workflow.com/durable_workflow/struct.StickyCacheOptions.html),
+[виконуваний приклад](https://github.com/durable-workflow/sdk-rust/blob/3.4.0/examples/sticky_execution.rs)
+та [посібник переносної спорідненості workers](./portable-worker-affinity.md).
 
 ## Підготовка прикладу опублікованого репозиторію {#prepare-the-released-repository-example}
 
