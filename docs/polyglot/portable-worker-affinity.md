@@ -25,14 +25,14 @@ manifest marks the same feature as supported.
 | SDK worker | Local activities | Worker sessions | Sticky execution |
 | --- | --- | --- | --- |
 | PHP | Supported | Supported | Supported |
-| Python | Supported since 2.2.0 | Supported since 2.3.0 | Not supported |
+| Python | Supported since 2.2.0 | Supported since 2.3.0 | Supported since 2.5.0 with `sticky_cache_capacity` above zero |
 | Rust | Supported since 3.1.0 with `Worker::local_activities(true)` | Supported since 3.2.0 with `Worker::worker_sessions(true)` | Not supported |
 
 Workers advertise only the capabilities implemented and enabled for their
-profile. Rust local activities and sessions require explicit opt-in. Older Rust
-versions refuse capabilities they do not implement. Python and Rust continue
-to refuse sticky execution. Ordinary workflows and queued
-activities use complete durable-history replay without these optimizations.
+profile. Rust local activities and sessions, and Python sticky execution,
+require explicit opt-in. Older SDK versions refuse capabilities they do not
+implement. Rust continues to refuse sticky execution. Ordinary workflows and
+queued activities use complete durable-history replay without these optimizations.
 
 ## Local activity recording
 
@@ -85,10 +85,20 @@ and [WorkerSessionOptions](https://rust.durable-workflow.com/durable_workflow/st
 
 ## Sticky execution and cold replay
 
-The PHP cache is bounded and keyed by the exact workflow ID, run ID, and worker
-build ID. It reports `hit`, `miss`, `eviction`, and `forced_cold_replay`.
+The PHP and Python caches are bounded and keyed by the exact workflow ID, run
+ID, and worker build ID. They report `hit`, `miss`, `eviction`, and `forced_cold_replay`.
 Expiry, eviction, worker replacement, holder loss, or a build mismatch discards
 the optimization and replays complete durable history.
+
+Use Python SDK 2.5.0 with Server 2.5.10 or newer. Its cache is disabled by
+default. Enable it with `sticky_cache_capacity` and set the retained history
+byte limit and TTL for your worker. It stores encoded durable history and can
+reuse validated page cursors to save repeated downloads. Allow additional
+memory for decoding and deterministic replay. See the
+[Python sticky execution guide and runnable example](https://python.durable-workflow.com/guides/sticky-execution/).
+
+Server 2.5.10 preserves full replay for PHP SDKs before 2.2.0. Use PHP SDK
+2.2.0 or newer to consume replay hints for histories beginning with StartAccepted.
 
 Sticky routing is an affinity optimization. A forced cold replay is diagnostic
 evidence that the optimization was unavailable; it is not a workflow

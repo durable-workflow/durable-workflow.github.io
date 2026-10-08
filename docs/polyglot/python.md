@@ -60,6 +60,11 @@ For a capability comparison across the Python SDK, PHP SDK, Rust SDK, and
 For constructor signatures, return types, exception classes, and metric names,
 see the generated [Python SDK API reference](https://python.durable-workflow.com/).
 
+Python SDK 2.5.0 adds an optional bounded history cache for sticky execution.
+Use Server 2.5.10 or newer and enable it on each worker. See
+[Portable Worker Affinity](/docs/polyglot/portable-worker-affinity) and the
+[Python guide and runnable example](https://python.durable-workflow.com/guides/sticky-execution/).
+
 Cloud customers use the provisioned namespace's runtime URL and namespace with
 separate client and worker credentials. See
 [Cloud Managed Runtime](/docs/polyglot/cloud-control-plane) for that
