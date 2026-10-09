@@ -431,4 +431,3 @@ php artisan waterline:install
 Laravel 内嵌模式的定时器、信号、查询、活动和子工作流等编写功能，请参考单独的[内嵌文档](/docs/category/embedded/)。
 
 版本发布验证有独立指南。[平台一致性测试套件](/docs/platform-conformance/)包含用于认证的精确制品矩阵、公开源码检查、完整执行记录、实际耗时标准、清理步骤和机器可读的快速入门契约。
-

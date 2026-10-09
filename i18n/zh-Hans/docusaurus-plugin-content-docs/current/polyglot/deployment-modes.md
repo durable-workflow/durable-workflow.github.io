@@ -105,4 +105,3 @@ Laravel 团队可以阅读专门的 [Laravel 采用与运行时迁移指南](/do
 - [内嵌到 Server 迁移](/docs/polyglot/embedded-to-server)
 - [Server 角色拓扑](/docs/polyglot/server-role-topology)
 - [Server 配置参考](/docs/polyglot/server-config-reference)
-

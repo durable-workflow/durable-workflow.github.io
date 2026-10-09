@@ -149,4 +149,3 @@ final class ChargeCard extends Activity
 - [活动执行模型](../features/activity-execution-model.md)说明队列活动、本地活动、Worker 会话和粘性执行如何协作。
 - [本地活动](../features/local-activities.md)介绍同进程活动尝试、工作流任务心跳、重试和冷重放。
 - [粘性执行](../features/sticky-execution.md)介绍重放缓存，以及冷重放为何始终是正确性的后备路径。
-
