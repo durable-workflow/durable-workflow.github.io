@@ -53,12 +53,13 @@ const config = {
 
   i18n: {
     defaultLocale: 'en',
-    locales: ['en', 'uk', 'es', 'pt-BR'],
+    locales: ['en', 'uk', 'es', 'pt-BR', 'zh-Hans'],
     localeConfigs: {
       en: {label: 'English', htmlLang: 'en'},
       uk: {label: 'Українська', htmlLang: 'uk'},
       es: {label: 'Español', htmlLang: 'es'},
       'pt-BR': {label: 'Português (Brasil)', htmlLang: 'pt-BR'},
+      'zh-Hans': {label: '简体中文', htmlLang: 'zh-Hans'},
     },
   },
 
