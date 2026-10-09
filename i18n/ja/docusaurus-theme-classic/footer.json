@@ -1,0 +1,9 @@
+{
+  "link.title.Docs": {"message": "ドキュメント"},
+  "link.title.Community": {"message": "コミュニティ"},
+  "link.title.More": {"message": "その他"},
+  "link.item.label.Introduction": {"message": "はじめに"},
+  "link.item.label.Installation": {"message": "インストール"},
+  "link.item.label.Durable Workflow vs Temporal": {"message": "Durable Workflow と Temporal の比較"},
+  "link.item.label.LLM Docs": {"message": "LLM 向けドキュメント"}
+}
