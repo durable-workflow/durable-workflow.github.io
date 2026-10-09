@@ -27,6 +27,7 @@
   "promotion.title": {"message": "Durable Workflow Cloud 首批开放名额"},
   "promotion.requestAccess": {"message": "申请提前体验"},
   "navbar.github.repository": {"message": "GitHub 仓库"},
+  "navbar.github.starRepository": {"message": "在 GitHub 上为 Durable Workflow 点星"},
   "navbar.github.repositoryStars": {"message": "{repository}（{count} 星）"},
   "navbar.github.starCount": {"message": "GitHub 星标：{count}"},
   "navbar.github.stars": {"message": "GitHub 星标"}
