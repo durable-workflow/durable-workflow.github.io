@@ -9,7 +9,7 @@ keywords:
   - durable workflow
   - execução durável
   - orquestração durável
-  - workflows em vários linguagens
+  - workflows em várias linguagens
 ---
 
 import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseLink';
@@ -68,7 +68,7 @@ de alterar o tráfego.
 - **[SDK Python](/docs/polyglot/python/):** escreva workflows determinísticos
   e atividades e use o cliente assíncrono do plano de controle. A
   <PythonPackageReleaseLink authority="qualified">versão estável do
-  Python</PythonPackageReleaseLink> consta no mesmo manifesto de versões
+  SDK Python</PythonPackageReleaseLink> consta no mesmo manifesto de versões
   estáveis usado pelo guia de início rápido do Server.
 - **[SDK Rust](/docs/polyglot/rust/):** escreva workflows determinísticos e
   atividades e execute serviços de workers nativos.

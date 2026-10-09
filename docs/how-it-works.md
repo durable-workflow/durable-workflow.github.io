@@ -28,7 +28,7 @@ User workflow code lives in `handle()`, which is an ordinary method that calls t
 
 By calling multiple activities, a workflow can orchestrate the results between each of them. The execution of the workflow and the durable steps it schedules are interleaved: the workflow reaches an activity call, suspends until that activity completes, and then continues execution from where it left off.
 
-If a workflow fails, the events leading up to the failure are replayed to rebuild the current state. This allows the workflow to pick up where it left off, with the same inputs and outputs as before, ensuring determinism.
+If a workflow worker crashes, committed events are replayed to rebuild the current state. This allows the workflow to pick up where it left off, with the same inputs and outputs as before, ensuring determinism. An unhandled workflow failure makes the run terminal; replay does not retry a failed run.
 
 Ordinary activities are durable queued work in v2. Explicit
 [local activities](./features/local-activities.md) run short activity work in
@@ -69,7 +69,7 @@ class MyWorkflow extends Workflow
         return [
             activity(TestActivity::class),
             activity(TestOtherActivity::class),
-            fn () => all([
+            all([
                 fn () => activity(TestParallelActivity::class),
                 fn () => activity(TestParallelOtherActivity::class),
             ]),
@@ -97,7 +97,7 @@ import ThemedImage from '@site/src/components/ThemedImage';
 3. At this point, the workflow enters the event sourcing replay loop. This is where it goes back to the database and looks at the event stream to rebuild the current state. This is necessary because the workflow is not a long running process. The workflow exits while any activities are running and then is dispatched again after completion.
 4. Once the event stream has been replayed, the workflow continues to the next activity, `TestOtherActivity`, and starts it by dispatching it as a queued job. Again, once `TestOtherActivity` has completed, it saves the result to the database and returns control to the workflow by dispatching it as a queued job.
 5. The workflow then enters the event sourcing replay loop again, rebuilding the current state from the event stream.
-6. Next, the workflow starts two parallel activities, `TestParallelActivity` and `TestOtherParallelActivity`. Both activities are dispatched. Once they have completed, they save the results to the database and return control to the workflow.
+6. Next, the workflow starts two parallel activities, `TestParallelActivity` and `TestParallelOtherActivity`. Both activities are dispatched. Once they have completed, they save the results to the database and return control to the workflow.
 7. Finally, the workflow enters the event sourcing replay loop one last time to rebuild the current state from the event stream. This completes the execution of the workflow.
 
 ## Determinism

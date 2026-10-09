@@ -50,6 +50,8 @@ de actividad, se suspende hasta recibir su resultado y continúa desde ese punto
 
 Para recuperar una tarea tras un fallo, el motor reproduce los eventos
 confirmados y reconstruye el estado con las mismas entradas y salidas.
+Un fallo no controlado del workflow deja el run en un estado terminal.
+El replay no vuelve a intentar un run fallido.
 
 En v2, las actividades ordinarias son tareas duraderas en cola y pueden
 ejecutarse en cualquier worker compatible. Las
@@ -100,7 +102,7 @@ class MyWorkflow extends Workflow
         return [
             activity(TestActivity::class),
             activity(TestOtherActivity::class),
-            fn () => all([
+            all([
                 fn () => activity(TestParallelActivity::class),
                 fn () => activity(TestParallelOtherActivity::class),
             ]),
