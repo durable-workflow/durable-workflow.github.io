@@ -142,5 +142,5 @@ import ThemedImage from '@site/src/components/ThemedImage';
 
 Con el mismo historial, el código del workflow debe producir los mismos
 comandos. Consulta [Restricciones](./constraints/overview.md) para conocer las
-reglas y las funciones seguras, como `Workflow\now()`, `sideEffect()` y
+reglas y las funciones seguras, como `Workflow::now()` en `Workflow\V2\Workflow`, `sideEffect()` y
 `getVersion()`, que evitan decisiones no deterministas.

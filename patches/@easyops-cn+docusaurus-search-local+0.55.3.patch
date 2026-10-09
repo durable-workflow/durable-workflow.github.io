@@ -1,12 +1,47 @@
 diff --git a/node_modules/@easyops-cn/docusaurus-search-local/dist/client/client/theme/SearchBar/SearchBar.jsx b/node_modules/@easyops-cn/docusaurus-search-local/dist/client/client/theme/SearchBar/SearchBar.jsx
+index 10ef222..61082a4 100644
 --- a/node_modules/@easyops-cn/docusaurus-search-local/dist/client/client/theme/SearchBar/SearchBar.jsx
 +++ b/node_modules/@easyops-cn/docusaurus-search-local/dist/client/client/theme/SearchBar/SearchBar.jsx
-@@ -401,1 +401,1 @@
+@@ -398,7 +398,7 @@ export default function SearchBar({ handleSearchBarToggle, }) {
+             id: "theme.SearchBar.label",
+             message: "Search",
+             description: "The ARIA label and placeholder for search button",
 -        })} aria-label="Search" className={`navbar__search-input ${styles.searchInput}`} onMouseEnter={onInputMouseEnter} onFocus={onInputFocus} onBlur={onInputBlur} onChange={onInputChange} ref={searchBarRef} value={inputValue}/>
 +        })} aria-label={translate({ id: "theme.SearchBar.label", message: "Search" })} className={`navbar__search-input ${styles.searchInput}`} onMouseEnter={onInputMouseEnter} onFocus={onInputFocus} onBlur={onInputBlur} onChange={onInputChange} ref={searchBarRef} value={inputValue}/>
+       {askAi && AskAIWidgetComponent && (<AskAIWidgetComponent ref={askAIWidgetRef} {...askAi}>
+           <span hidden></span>
+         </AskAIWidgetComponent>)}
 diff --git a/node_modules/@easyops-cn/docusaurus-search-local/dist/client/client/theme/SearchPage/SearchPage.jsx b/node_modules/@easyops-cn/docusaurus-search-local/dist/client/client/theme/SearchPage/SearchPage.jsx
+index 2efb8b4..7a49a02 100644
 --- a/node_modules/@easyops-cn/docusaurus-search-local/dist/client/client/theme/SearchPage/SearchPage.jsx
 +++ b/node_modules/@easyops-cn/docusaurus-search-local/dist/client/client/theme/SearchPage/SearchPage.jsx
-@@ -98,1 +98,1 @@
+@@ -95,7 +95,7 @@ function SearchPageContent() {
+             "col--9": Array.isArray(searchContextByPaths),
+             "col--12": !Array.isArray(searchContextByPaths),
+         })}>
 -            <input type="search" name="q" className={styles.searchQueryInput} aria-label="Search" onChange={handleSearchInputChange} value={searchQuery} autoComplete="off" autoFocus/>
 +            <input type="search" name="q" className={styles.searchQueryInput} aria-label={translate({ id: "theme.SearchBar.label", message: "Search" })} onChange={handleSearchInputChange} value={searchQuery} autoComplete="off" autoFocus/>
+           </div>
+           {Array.isArray(searchContextByPaths) ? (<div className={clsx("col", "col--3", "padding-left--none", styles.searchContextColumn)}>
+               <select name="search-context" className={styles.searchContextInput} id="context-selector" value={searchContext} onChange={(e) => updateSearchContext(e.target.value)}>
+diff --git a/node_modules/@easyops-cn/docusaurus-search-local/dist/server/server/utils/buildIndex.js b/node_modules/@easyops-cn/docusaurus-search-local/dist/server/server/utils/buildIndex.js
+index 821d58f..661417a 100644
+--- a/node_modules/@easyops-cn/docusaurus-search-local/dist/server/server/utils/buildIndex.js
++++ b/node_modules/@easyops-cn/docusaurus-search-local/dist/server/server/utils/buildIndex.js
+@@ -5,11 +5,13 @@ const tslib_1 = require("tslib");
+ /* eslint @typescript-eslint/no-var-requires: 0 */
+ const lunr_1 = tslib_1.__importDefault(require("lunr"));
+ const constants_1 = require("../../shared/constants");
+-let pluginInitialized = false;
++let pluginLanguage;
+ let plugin;
+ function buildIndex(allDocuments, { language, removeDefaultStopWordFilter, removeDefaultStemmer, zhUserDict, zhUserDictPath, }) {
+-    if (!pluginInitialized) {
+-        pluginInitialized = true;
++    const languageKey = language.join(",");
++    if (pluginLanguage !== languageKey) {
++        pluginLanguage = languageKey;
++        plugin = undefined;
+         if (language.length > 1 || language.some((item) => item !== "en")) {
+             require("lunr-languages/lunr.stemmer.support")(lunr_1.default);
+         }

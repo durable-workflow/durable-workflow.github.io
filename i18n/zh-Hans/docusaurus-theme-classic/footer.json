@@ -1,0 +1,9 @@
+{
+  "link.title.Docs": {"message": "文档"},
+  "link.title.Community": {"message": "社区"},
+  "link.title.More": {"message": "更多"},
+  "link.item.label.Introduction": {"message": "简介"},
+  "link.item.label.Installation": {"message": "安装"},
+  "link.item.label.Durable Workflow vs Temporal": {"message": "Durable Workflow 与 Temporal 对比"},
+  "link.item.label.LLM Docs": {"message": "LLM 文档"}
+}

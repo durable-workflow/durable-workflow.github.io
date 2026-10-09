@@ -23,3 +23,35 @@ for (const candidate of [index, lunr.Index.load(JSON.parse(JSON.stringify(index)
 }
 
 console.log('Local search preserves Ukrainian words and English API terms.');
+
+// Docusaurus builds several locales in one process. Exercise the actual
+// plugin builder across language changes and reload its serialized indexes.
+const {buildIndex} = require('@easyops-cn/docusaurus-search-local/dist/server/server/utils/buildIndex');
+function build(documents, language) {
+  return buildIndex([documents], {
+    language,
+    removeDefaultStopWordFilter: [],
+    removeDefaultStemmer: false,
+  })[0].index;
+}
+const latinDocuments = [
+  {i: 0, t: '«Українська» документація: скасування workflow'},
+  {i: 1, t: 'Workflow activities and retries'},
+];
+const chineseDocuments = [
+  {i: 2, t: '工作流故障恢复与持久执行'},
+  {i: 3, t: 'PHP activity workflow API'},
+];
+for (const {documents, language, expected} of [
+  {documents: latinDocuments, language: ['en'], expected: {'Українська': ['0'], activity: ['1']}},
+  {documents: chineseDocuments, language: ['en', 'zh'], expected: {'恢复': ['2'], activity: ['3']}},
+  {documents: latinDocuments, language: ['en'], expected: {'Українська': ['0'], activity: ['1']}},
+]) {
+  const built = build(documents, language);
+  for (const candidate of [built, lunr.Index.load(JSON.parse(JSON.stringify(built)))]) {
+    for (const [query, references] of Object.entries(expected)) {
+      assert.deepEqual(candidate.search(query).map(result => result.ref), references);
+    }
+  }
+}
+console.log('Plugin indexes preserve Chinese word search, English API terms and locale switching.');

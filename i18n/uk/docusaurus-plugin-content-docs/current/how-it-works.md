@@ -100,4 +100,4 @@ import ThemedImage from '@site/src/components/ThemedImage';
 
 ## Детермінованість {#determinism}
 
-Оскільки історія відтворюється під час кожного пробудження, код workflow має створювати ті самі команди за тієї самої історії. Дивіться [обмеження](./constraints/overview.md) для правил написання та допоміжних засобів Durable Workflow (`Workflow\now()`, `sideEffect()`, `getVersion()` тощо) для ситуацій, де код інакше був би недетермінованим.
+Оскільки історія відтворюється під час кожного пробудження, код workflow має створювати ті самі команди за тієї самої історії. Дивіться [обмеження](./constraints/overview.md) для правил написання та допоміжних засобів Durable Workflow (`Workflow::now()` у `Workflow\V2\Workflow`, `sideEffect()`, `getVersion()` тощо) для ситуацій, де код інакше був би недетермінованим.

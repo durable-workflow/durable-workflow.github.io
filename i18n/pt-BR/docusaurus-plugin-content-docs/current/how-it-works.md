@@ -106,4 +106,4 @@ import ThemedImage from '@site/src/components/ThemedImage';
 
 ## Determinismo {#determinism}
 
-Como o histórico passa por replay sempre que o workflow é reativado, seu código deve produzir os mesmos comandos para o mesmo histórico. Veja [Restrições](./constraints/overview.md) para as regras de código e os recursos que Durable Workflow fornece, como `Workflow\now()`, `sideEffect()` e `getVersion()`, quando o código seria não determinístico.
+Como o histórico passa por replay sempre que o workflow é reativado, seu código deve produzir os mesmos comandos para o mesmo histórico. Veja [Restrições](./constraints/overview.md) para as regras de código e os recursos que Durable Workflow fornece, como `Workflow::now()` em `Workflow\V2\Workflow`, `sideEffect()` e `getVersion()`, quando o código seria não determinístico.
