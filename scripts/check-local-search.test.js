@@ -55,3 +55,31 @@ for (const {documents, language, expected} of [
   }
 }
 console.log('Plugin indexes preserve Chinese word search, English API terms and locale switching.');
+
+async function checkJapaneseSearch() {
+  // Use the same query tokenizer as the browser worker, including queries
+  // without spaces. The multilingual index must also retain English stemming.
+  const {tokenize} = await import('@easyops-cn/docusaurus-search-local/dist/client/client/utils/tokenize.js');
+  const language = ['en', 'ja'];
+  const japanese = build([
+    {i: 4, t: '障害復旧ガイドとワークフロー'},
+    {i: 5, t: 'PHP activities workflow API'},
+  ], language);
+  for (const candidate of [japanese, lunr.Index.load(JSON.parse(JSON.stringify(japanese)))]) {
+    for (const [query, expected] of [['障害復旧', ['4']], ['復旧', ['4']], ['ワークフロー', ['4']], ['activity', ['5']]]) {
+      const tokens = tokenize(query, language);
+      const results = candidate.query(queryBuilder => {
+        for (const token of tokens) queryBuilder.term(token, {presence: lunr.Query.presence.REQUIRED});
+      });
+      assert.deepEqual(results.map(result => result.ref), expected, query);
+    }
+  }
+  const english = build(latinDocuments, ['en']);
+  for (const candidate of [english, lunr.Index.load(JSON.parse(JSON.stringify(english)))]) {
+    assert.deepEqual(candidate.search('Українська').map(result => result.ref), ['0']);
+    assert.deepEqual(candidate.search('activity').map(result => result.ref), ['1']);
+  }
+  console.log('Japanese browser queries and English API terms survive segmentation, index reload and locale switching.');
+}
+
+checkJapaneseSearch().catch(error => {console.error(error); process.exitCode = 1;});

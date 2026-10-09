@@ -4,7 +4,7 @@ const path = require('node:path');
 const {createHash} = require('node:crypto');
 
 const root = path.resolve(__dirname, '..');
-const locales = {es: 'Spanish', 'pt-BR': 'Brazilian Portuguese', 'zh-Hans': 'Simplified Chinese'};
+const locales = {es: 'Spanish', 'pt-BR': 'Brazilian Portuguese', 'zh-Hans': 'Simplified Chinese', ja: 'Japanese'};
 
 function codeBlocks(file) {
   const text = fs.readFileSync(file, 'utf8');

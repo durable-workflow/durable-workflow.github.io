@@ -24,6 +24,23 @@ index 2efb8b4..7a49a02 100644
            </div>
            {Array.isArray(searchContextByPaths) ? (<div className={clsx("col", "col--3", "padding-left--none", styles.searchContextColumn)}>
                <select name="search-context" className={styles.searchContextInput} id="context-selector" value={searchContext} onChange={(e) => updateSearchContext(e.target.value)}>
+diff --git a/node_modules/@easyops-cn/docusaurus-search-local/dist/client/client/utils/tokenize.js b/node_modules/@easyops-cn/docusaurus-search-local/dist/client/client/utils/tokenize.js
+index e79541d..836963e 100644
+--- a/node_modules/@easyops-cn/docusaurus-search-local/dist/client/client/utils/tokenize.js
++++ b/node_modules/@easyops-cn/docusaurus-search-local/dist/client/client/utils/tokenize.js
+@@ -9,8 +9,10 @@ import lunr from "lunr";
+  */
+ export function tokenize(text, language) {
+     // Some languages have their own tokenizer.
+-    if (language.length === 1 && ["ja", "jp", "th"].includes(language[0])) {
+-        return lunr[language[0]]
++    const japanese = language.find((item) => item === "ja" || item === "jp");
++    const tokenizerLanguage = japanese || (language.length === 1 && language[0] === "th" ? "th" : null);
++    if (tokenizerLanguage) {
++        return lunr[tokenizerLanguage]
+             .tokenizer(text)
+             .map((token) => token.toString());
+     }
 diff --git a/node_modules/@easyops-cn/docusaurus-search-local/dist/server/server/utils/buildIndex.js b/node_modules/@easyops-cn/docusaurus-search-local/dist/server/server/utils/buildIndex.js
 index 821d58f..661417a 100644
 --- a/node_modules/@easyops-cn/docusaurus-search-local/dist/server/server/utils/buildIndex.js
