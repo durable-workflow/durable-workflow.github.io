@@ -102,4 +102,4 @@ import ThemedImage from '@site/src/components/ThemedImage';
 
 ## Determinism
 
-Because history is replayed on every wake-up, workflow code must produce the same commands given the same history. Read [Constraints](./constraints/overview.md) for the authoring rules and the helpers Durable Workflow exposes (`Workflow\now()`, `sideEffect()`, `getVersion()`, and similar) for situations where code would otherwise be non-deterministic.
+Because history is replayed on every wake-up, workflow code must produce the same commands given the same history. Read [Constraints](./constraints/overview.md) for the authoring rules and the helpers Durable Workflow exposes (`Workflow::now()` on `Workflow\V2\Workflow`, `sideEffect()`, `getVersion()`, and similar) for situations where code would otherwise be non-deterministic.

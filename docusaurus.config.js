@@ -111,7 +111,7 @@ const config = {
 
   themes: [
     [
-      require.resolve('@easyops-cn/docusaurus-search-local'),
+      require.resolve('./plugins/local-search'),
       {
         hashed: 'filename',
         indexBlog: false,
