@@ -4,7 +4,8 @@ module.exports = function localSearch(context, options) {
   const locale = context.i18n.currentLocale;
   const language = locale === 'zh-Hans' ? ['en', 'zh']
     : locale === 'ja' ? ['en', 'ja']
-    : locale === 'fr' ? ['en', 'fr'] : options.language;
+    : locale === 'fr' ? ['en', 'fr']
+    : locale === 'de' ? ['en', 'de'] : options.language;
   return search.default(context, {
     ...options,
     language,

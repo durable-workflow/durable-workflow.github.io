@@ -1,0 +1,23 @@
+{
+  "link.title.Docs": {
+    "message": "Dokumentation"
+  },
+  "link.title.Community": {
+    "message": "Community"
+  },
+  "link.title.More": {
+    "message": "Weitere Links"
+  },
+  "link.item.label.Introduction": {
+    "message": "Einführung"
+  },
+  "link.item.label.Installation": {
+    "message": "Installation"
+  },
+  "link.item.label.Durable Workflow vs Temporal": {
+    "message": "Durable Workflow im Vergleich zu Temporal"
+  },
+  "link.item.label.LLM Docs": {
+    "message": "Dokumentation für LLMs"
+  }
+}
