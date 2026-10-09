@@ -82,4 +82,29 @@ async function checkJapaneseSearch() {
   console.log('Japanese browser queries and English API terms survive segmentation, index reload and locale switching.');
 }
 
-checkJapaneseSearch().catch(error => {console.error(error); process.exitCode = 1;});
+async function checkFrenchSearch() {
+  const {tokenize} = await import('@easyops-cn/docusaurus-search-local/dist/client/client/utils/tokenize.js');
+  const language = ['en', 'fr'];
+  const french = build([
+    {i: 6, t: 'Échecs et reprise des activités'},
+    {i: 7, t: 'PHP activities workflow API'},
+  ], language);
+  for (const candidate of [french, lunr.Index.load(JSON.parse(JSON.stringify(french)))]) {
+    // Related French/English activity words may share a stem. Require the
+    // relevant document without excluding other relevant bilingual matches.
+    for (const [query, expected] of [['échec', '6'], ['activité', '6'], ['reprise', '6'], ['activity', '7']]) {
+      const results = candidate.query(queryBuilder => {
+        for (const token of tokenize(query, language)) queryBuilder.term(token, {presence: lunr.Query.presence.REQUIRED});
+      });
+      assert.ok(results.some(result => result.ref === expected), query);
+    }
+  }
+  const english = build(latinDocuments, ['en']);
+  for (const candidate of [english, lunr.Index.load(JSON.parse(JSON.stringify(english)))]) {
+    assert.deepEqual(candidate.search('Українська').map(result => result.ref), ['0']);
+    assert.deepEqual(candidate.search('activity').map(result => result.ref), ['1']);
+  }
+  console.log('French accented inflections and English API terms survive index reload and locale switching.');
+}
+
+checkJapaneseSearch().then(checkFrenchSearch).catch(error => {console.error(error); process.exitCode = 1;});
