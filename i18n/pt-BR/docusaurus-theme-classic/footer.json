@@ -1,0 +1,10 @@
+{
+  "link.title.Docs": {"message": "Documentação"},
+  "link.title.Community": {"message": "Comunidade"},
+  "link.title.More": {"message": "Mais recursos"},
+  "link.item.label.Introduction": {"message": "Introdução"},
+  "link.item.label.Installation": {"message": "Instalação"},
+  "link.item.label.Durable Workflow vs Temporal": {"message": "Durable Workflow e Temporal"},
+  "link.item.label.LLM Docs": {"message": "Documentação para LLMs"},
+  "copyright": {"message": "Copyright © 2026 <a href=\"https://durable-workflow.com\">Durable Workflow</a>."}
+}
