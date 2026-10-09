@@ -1,0 +1,98 @@
+{
+  "theme.SearchPage.existingResultsTitle": {
+    "message": "Résultats de recherche pour « {query} »"
+  },
+  "theme.SearchPage.emptyResultsTitle": {
+    "message": "Rechercher dans la documentation"
+  },
+  "theme.SearchPage.searchContext.everywhere": {
+    "message": "Toute la documentation"
+  },
+  "theme.SearchPage.documentsFound.plurals": {
+    "message": "{count} document trouvé|{count} documents trouvés"
+  },
+  "theme.SearchPage.noResultsText": {
+    "message": "Aucun document trouvé"
+  },
+  "theme.SearchBar.noResultsText": {
+    "message": "Aucun résultat"
+  },
+  "theme.SearchBar.seeAllOutsideContext": {
+    "message": "Voir tous les résultats hors de « {context} »"
+  },
+  "theme.SearchBar.searchInContext": {
+    "message": "Voir tous les résultats dans « {context} »"
+  },
+  "theme.SearchBar.seeAll": {
+    "message": "Voir tous les résultats"
+  },
+  "theme.SearchBar.label": {
+    "message": "Rechercher"
+  },
+  "theme.navbar.mobileLanguageDropdown.label": {
+    "message": "Langues"
+  },
+  "docs.translationFallback": {
+    "message": "Cette page est actuellement disponible uniquement en anglais."
+  },
+  "docs.readInEnglish": {
+    "message": "Lire en anglais"
+  },
+  "homepage.tagline": {
+    "message": "L’exécution durable pour PHP, Python et Rust."
+  },
+  "homepage.getStarted": {
+    "message": "Commencer"
+  },
+  "homepage.deploymentModes": {
+    "message": "Choisir un déploiement"
+  },
+  "homepage.description": {
+    "message": "Une plateforme d’exécution durable pour PHP, Python et Rust. Cloud géré, Server auto-hébergé ou intégration Laravel."
+  },
+  "homepage.cloudDescription": {
+    "message": "Exécutez vos workers PHP, Python et Rust dans un espace de noms géré. Durable Workflow prend en charge l’orchestration et l’exploitation du runtime."
+  },
+  "homepage.features.languages.title": {
+    "message": "Développez en PHP, Python ou Rust"
+  },
+  "homepage.features.languages.description": {
+    "message": "Créez clients, workflows et activités avec les SDK officiels. Partagez un protocole public et un format Avro utilisable entre langages."
+  },
+  "homepage.features.runtime.title": {
+    "message": "Choisissez qui exploite le runtime"
+  },
+  "homepage.features.runtime.description": {
+    "message": "Utilisez Durable Workflow Cloud, exploitez votre propre Server ou intégrez le runtime à votre application Laravel. Choisissez selon vos besoins."
+  },
+  "homepage.features.recovery.title": {
+    "message": "Reprenez après une défaillance"
+  },
+  "homepage.features.recovery.description": {
+    "message": "Historique durable, relecture déterministe, temporisateurs, nouvelles tentatives, signaux, mises à jour, workflows enfants et sagas pour vos processus de longue durée."
+  },
+  "promotion.eyebrow": {
+    "message": "Service géré · accès limité"
+  },
+  "promotion.title": {
+    "message": "Accès anticipé à Durable Workflow Cloud"
+  },
+  "promotion.requestAccess": {
+    "message": "Demander l’accès"
+  },
+  "navbar.github.repository": {
+    "message": "Dépôt GitHub"
+  },
+  "navbar.github.starRepository": {
+    "message": "Ajouter une étoile à Durable Workflow sur GitHub"
+  },
+  "navbar.github.repositoryStars": {
+    "message": "{repository} ({count} étoiles)"
+  },
+  "navbar.github.starCount": {
+    "message": "Étoiles GitHub : {count}"
+  },
+  "navbar.github.stars": {
+    "message": "Étoiles GitHub"
+  }
+}
