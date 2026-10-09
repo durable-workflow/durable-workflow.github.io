@@ -1,0 +1,14 @@
+{
+  "logo.alt": {
+    "message": "Durable Workflow Logo"
+  },
+  "item.label.Docs": {
+    "message": "Dokumentation"
+  },
+  "item.label.Blog": {
+    "message": "Blog (Englisch)"
+  },
+  "item.label.Star on GitHub": {
+    "message": "Stern auf GitHub geben"
+  }
+}

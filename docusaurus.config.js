@@ -53,7 +53,7 @@ const config = {
 
   i18n: {
     defaultLocale: 'en',
-    locales: ['en', 'uk', 'es', 'pt-BR', 'zh-Hans', 'ja', 'fr'],
+    locales: ['en', 'uk', 'es', 'pt-BR', 'zh-Hans', 'ja', 'fr', 'de'],
     localeConfigs: {
       en: {label: 'English', htmlLang: 'en'},
       uk: {label: 'Українська', htmlLang: 'uk'},
@@ -62,6 +62,7 @@ const config = {
       'zh-Hans': {label: '简体中文', htmlLang: 'zh-Hans'},
       ja: {label: '日本語', htmlLang: 'ja'},
       fr: {label: 'Français', htmlLang: 'fr'},
+      de: {label: 'Deutsch', htmlLang: 'de'},
     },
   },
 

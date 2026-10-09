@@ -1,0 +1,98 @@
+{
+  "theme.SearchPage.existingResultsTitle": {
+    "message": "Suchergebnisse für „{query}“"
+  },
+  "theme.SearchPage.emptyResultsTitle": {
+    "message": "Dokumentation durchsuchen"
+  },
+  "theme.SearchPage.searchContext.everywhere": {
+    "message": "Gesamte Dokumentation"
+  },
+  "theme.SearchPage.documentsFound.plurals": {
+    "message": "{count} Dokument gefunden|{count} Dokumente gefunden"
+  },
+  "theme.SearchPage.noResultsText": {
+    "message": "Keine Dokumente gefunden"
+  },
+  "theme.SearchBar.noResultsText": {
+    "message": "Keine Ergebnisse"
+  },
+  "theme.SearchBar.seeAllOutsideContext": {
+    "message": "Alle Ergebnisse außerhalb von „{context}“ anzeigen"
+  },
+  "theme.SearchBar.searchInContext": {
+    "message": "Alle Ergebnisse in „{context}“ anzeigen"
+  },
+  "theme.SearchBar.seeAll": {
+    "message": "Alle Ergebnisse anzeigen"
+  },
+  "theme.SearchBar.label": {
+    "message": "Suchen"
+  },
+  "theme.navbar.mobileLanguageDropdown.label": {
+    "message": "Sprachen"
+  },
+  "docs.translationFallback": {
+    "message": "Diese Seite ist derzeit nur auf Englisch verfügbar."
+  },
+  "docs.readInEnglish": {
+    "message": "Auf Englisch lesen"
+  },
+  "homepage.tagline": {
+    "message": "Dauerhafte Ausführung für PHP, Python und Rust."
+  },
+  "homepage.getStarted": {
+    "message": "Erste Schritte"
+  },
+  "homepage.deploymentModes": {
+    "message": "Bereitstellung wählen"
+  },
+  "homepage.description": {
+    "message": "Eine Plattform für dauerhafte Ausführung in PHP, Python und Rust. Verwaltete Cloud, selbst betriebener Server oder Einbettung in Laravel."
+  },
+  "homepage.cloudDescription": {
+    "message": "Führen Sie PHP-, Python- und Rust-Worker in einem verwalteten Namespace aus. Durable Workflow übernimmt die Orchestrierung und den Betrieb der Laufzeitumgebung."
+  },
+  "homepage.features.languages.title": {
+    "message": "Entwickeln Sie mit PHP, Python oder Rust"
+  },
+  "homepage.features.languages.description": {
+    "message": "Erstellen Sie Clients, Workflows und Aktivitäten mit den offiziellen SDKs. Nutzen Sie ein gemeinsames öffentliches Protokoll und ein sprachübergreifendes Avro-Format."
+  },
+  "homepage.features.runtime.title": {
+    "message": "Wählen Sie, wer die Laufzeitumgebung betreibt"
+  },
+  "homepage.features.runtime.description": {
+    "message": "Nutzen Sie Durable Workflow Cloud, betreiben Sie einen eigenen Server oder betten Sie die Laufzeitumgebung in Ihre Laravel-Anwendung ein."
+  },
+  "homepage.features.recovery.title": {
+    "message": "Nach einem Ausfall fortsetzen"
+  },
+  "homepage.features.recovery.description": {
+    "message": "Dauerhafte Historie, deterministisches Replay, Timer, Wiederholungsversuche, Signale, Updates, untergeordnete Workflows und Sagas für lang laufende Prozesse."
+  },
+  "promotion.eyebrow": {
+    "message": "Verwalteter Dienst · begrenzter Zugang"
+  },
+  "promotion.title": {
+    "message": "Vorabzugang zu Durable Workflow Cloud"
+  },
+  "promotion.requestAccess": {
+    "message": "Zugang anfragen"
+  },
+  "navbar.github.repository": {
+    "message": "GitHub-Repository"
+  },
+  "navbar.github.starRepository": {
+    "message": "Durable Workflow auf GitHub einen Stern geben"
+  },
+  "navbar.github.repositoryStars": {
+    "message": "{repository} ({count} Sterne)"
+  },
+  "navbar.github.starCount": {
+    "message": "GitHub-Sterne: {count}"
+  },
+  "navbar.github.stars": {
+    "message": "GitHub-Sterne"
+  }
+}

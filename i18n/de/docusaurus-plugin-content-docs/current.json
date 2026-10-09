@@ -1,0 +1,71 @@
+{
+  "version.label": {
+    "message": "2.0"
+  },
+  "sidebar.tutorialSidebar.category.Service Mode": {
+    "message": "Dienstmodus"
+  },
+  "sidebar.tutorialSidebar.category.Service Mode.link.generated-index.description": {
+    "message": "Verbinden Sie Clients und Worker mit Cloud oder einem selbst betriebenen Server über die offiziellen SDKs für PHP, Python und Rust. Cloud enthält Managed Waterline. Bei einem selbst betriebenen Server wird Waterline separat bereitgestellt."
+  },
+  "sidebar.tutorialSidebar.category.CLI": {
+    "message": "CLI"
+  },
+  "sidebar.tutorialSidebar.category.CLI.link.generated-index.description": {
+    "message": "Installation und Befehlsreferenz für das Betriebswerkzeug dw."
+  },
+  "sidebar.tutorialSidebar.category.SDKs": {
+    "message": "SDKs"
+  },
+  "sidebar.tutorialSidebar.category.SDKs.link.generated-index.description": {
+    "message": "Erstellen Sie Clients und Worker im Dienstmodus mit den offiziellen SDKs für PHP, Python und Rust."
+  },
+  "sidebar.tutorialSidebar.category.Embedded": {
+    "message": "Eingebetteter Modus"
+  },
+  "sidebar.tutorialSidebar.category.Embedded.link.generated-index.description": {
+    "message": "Installieren, erstellen, testen und konfigurieren Sie Workflows in Ihrer Laravel-Anwendung."
+  },
+  "sidebar.tutorialSidebar.category.Defining Workflows": {
+    "message": "Workflows definieren"
+  },
+  "sidebar.tutorialSidebar.category.Defining Workflows.link.generated-index.description": {
+    "message": "Definieren Sie Workflows, Aktivitäten, Daten, Kennungen und Zustände im eingebetteten Laravel-Modus."
+  },
+  "sidebar.tutorialSidebar.category.Features": {
+    "message": "Funktionen"
+  },
+  "sidebar.tutorialSidebar.category.Features.link.generated-index.description": {
+    "message": "Konfigurieren Sie Nachrichten, dauerhafte Befehle, Wartezeiten, Wiederholungsversuche, Versionen und Historiengrenzen im eingebetteten Laravel-Modus."
+  },
+  "sidebar.tutorialSidebar.category.Constraints": {
+    "message": "Einschränkungen"
+  },
+  "sidebar.tutorialSidebar.category.Constraints.link.generated-index.description": {
+    "message": "Determinismusregeln und strukturelle Grenzen im eingebetteten Modus."
+  },
+  "sidebar.tutorialSidebar.category.Configuration": {
+    "message": "Konfiguration"
+  },
+  "sidebar.tutorialSidebar.category.Configuration.link.generated-index.description": {
+    "message": "Konfigurieren Sie Speicher, Verbindungen, Grenzen und Datenaufbewahrung im eingebetteten Laravel-Modus."
+  },
+  "sidebar.tutorialSidebar.category.Run And Operate": {
+    "message": "Ausführung und Betrieb"
+  },
+  "sidebar.tutorialSidebar.category.Run And Operate.link.generated-index.description": {
+    "message": "Stellen Sie Workflows bereit, beobachten und diagnostizieren Sie sie und führen Sie Reparaturen und Wartung durch."
+  },
+  "sidebar.tutorialSidebar.category.External Execution And Ingress": {
+    "message": "Externe Ausführung und Anbindung"
+  },
+  "sidebar.tutorialSidebar.category.External Execution And Ingress.link.generated-index.description": {
+    "message": "Binden Sie HTTP-APIs, externe Worker, Warteschlangen und weitere Protokollintegrationen an."
+  },
+  "sidebar.tutorialSidebar.category.AI And Automation": {
+    "message": "KI und Automatisierung"
+  },
+  "sidebar.tutorialSidebar.category.AI And Automation.link.generated-index.description": {
+    "message": "Dokumentation, Manifeste, Befehle und stabile Werkzeuge für Agenten und Automatisierung."
+  }
+}
