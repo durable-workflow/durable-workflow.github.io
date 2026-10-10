@@ -53,7 +53,7 @@ persistence inputs, use [Monitoring](./monitoring.md#waterline-service).
 
 ### Interface Language
 
-Waterline supports English, Brazilian Portuguese, Spanish and Ukrainian in both
+Waterline supports English, Brazilian Portuguese, Simplified Chinese, Spanish and Ukrainian in both
 embedded and service mode. Set the language in the Laravel application's environment or the service
 container's environment:
 
@@ -65,6 +65,7 @@ WATERLINE_LOCALE=es
 | --- | --- |
 | English | `en` |
 | Brazilian Portuguese | `pt-BR` |
+| Simplified Chinese | `zh-Hans` |
 | Spanish | `es` |
 | Ukrainian | `uk` |
 
@@ -72,6 +73,10 @@ Spanish regional aliases such as `es-ES`, `es-MX` and `es-419` select the shared
 Spanish interface. `pt`, `pt_br` and case variants select Brazilian Portuguese
 (`pt-BR`). Other Portuguese regions fall back to English. Counts, chart labels
 and relative durations follow the selected interface language.
+Use `zh-Hans` for Simplified Chinese. `zh`, `zh-CN`, `zh-SG` and explicit
+Simplified script tags such as `zh-Hans-CN` select the same interface.
+Underscores and case variants are accepted. Traditional Chinese tags such as
+`zh-Hant`, `zh-TW` and `zh-HK` fall back to English.
 
 English is the default and fallback. Embedded applications can also set
 `waterline.locale` in their resolved configuration. Rebuild a cached Laravel
