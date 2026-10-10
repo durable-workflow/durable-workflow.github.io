@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="uk" dir="ltr" class="docs-wrapper plugin-docs plugin-id-default docs-version-current docs-doc-page docs-doc-id-deployment" data-has-hydrated="false">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="Docusaurus v3.10.2">
+<title data-rh="true">Самостійне розгортання | Durable Workflow</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://durable-workflow.com/uk/img/durable-workflow-2.0.png"><meta data-rh="true" name="twitter:image" content="https://durable-workflow.com/uk/img/durable-workflow-2.0.png"><meta data-rh="true" property="og:url" content="https://durable-workflow.com/uk/docs/deployment/"><meta data-rh="true" property="og:locale" content="uk"><meta data-rh="true" property="og:locale:alternate" content="en"><meta data-rh="true" property="og:locale:alternate" content="de"><meta data-rh="true" property="og:locale:alternate" content="es"><meta data-rh="true" property="og:locale:alternate" content="fr"><meta data-rh="true" property="og:locale:alternate" content="pt_BR"><meta data-rh="true" property="og:locale:alternate" content="ja"><meta data-rh="true" property="og:locale:alternate" content="zh_Hans"><meta data-rh="true" name="docusaurus_locale" content="uk"><meta data-rh="true" name="docsearch:language" content="uk"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Самостійне розгортання | Durable Workflow"><meta data-rh="true" name="description" content="Вибір підтримуваного шляху самостійного розгортання Durable Workflow v2 та початкового артефакту."><meta data-rh="true" property="og:description" content="Вибір підтримуваного шляху самостійного розгортання Durable Workflow v2 та початкового артефакту."><meta data-rh="true" name="twitter:title" content="Самостійне розгортання | Durable Workflow"><meta data-rh="true" name="twitter:description" content="Вибір підтримуваного шляху самостійного розгортання Durable Workflow v2 та початкового артефакту."><link data-rh="true" rel="icon" href="/uk/img/favicon.ico"><link data-rh="true" rel="canonical" href="https://durable-workflow.com/uk/docs/deployment/"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/docs/deployment/" hreflang="en"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/de/docs/deployment/" hreflang="de"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/es/docs/deployment/" hreflang="es"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/fr/docs/deployment/" hreflang="fr"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/pt-BR/docs/deployment/" hreflang="pt-BR"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/uk/docs/deployment/" hreflang="uk"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/ja/docs/deployment/" hreflang="ja"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/zh-Hans/docs/deployment/" hreflang="zh-Hans"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/docs/deployment/" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Запуск та експлуатація","item":"https://durable-workflow.com/uk/docs/category/run-and-operate"},{"@type":"ListItem","position":2,"name":"Самостійне розгортання","item":"https://durable-workflow.com/uk/docs/deployment"}]}</script><link rel="alternate" type="application/rss+xml" href="/uk/blog/rss.xml" title="Durable Workflow RSS Feed">
+<link rel="alternate" type="application/atom+xml" href="/uk/blog/atom.xml" title="Durable Workflow Atom Feed">
+
+
+
+
+
+
+
+
+<script src="/analytics/cloudflare-web-analytics.js" type="module" data-cloudflare-web-analytics-token="a1296466c4e5487ca6ffd230a694b933"></script><link rel="stylesheet" href="/uk/assets/css/styles.d8bc86b9.css">
+<script src="/uk/assets/js/runtime~main.26502815.js" defer="defer"></script>
+<script src="/uk/assets/js/main.d9da7836.js" defer="defer"></script>
+</head>
+<body>
+<svg style="display: none;"><defs>
+<symbol id="theme-svg-external-link" viewBox="0 0 24 24"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"/></symbol>
+</defs></svg>
+<script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||"dark"),document.documentElement.setAttribute("data-theme-choice",t||"dark")}(),function(){try{const c=new URLSearchParams(window.location.search).entries();for(var[t,e]of c)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id="__docusaurus"><link rel="preload" as="image" href="/uk/img/logo.svg"><div role="region" aria-label="Перейти до основного вмісту"><a class="skipToContent_fXgn" href="#__docusaurus_skipToContent_fallback">Перейти до основного вмісту</a></div><nav aria-label="Головна" class="theme-layout-navbar navbar navbar--fixed-top"><div class="navbar__inner"><div class="theme-layout-navbar-left navbar__items"><button aria-label="Перемкнути сайдбар" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/uk/"><div class="navbar__logo"><img src="/uk/img/logo.svg" alt="Логотип Workflow" class="themedComponent_mlkZ themedComponent--light_NVdE"><img src="/uk/img/logo.svg" alt="Логотип Workflow" class="themedComponent_mlkZ themedComponent--dark_xIcU"></div><b class="navbar__title text--truncate">Durable Workflow</b></a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/uk/docs/introduction/">Документація</a><div class="navbar__item dropdown dropdown--hoverable"><a class="navbar__link" aria-haspopup="true" aria-expanded="false" role="button" href="/uk/docs/deployment/">2.0</a><ul class="dropdown__menu"><li><a aria-current="page" class="dropdown__link dropdown__link--active" href="/uk/docs/deployment/">2.0</a></li><li><a class="dropdown__link" href="/uk/docs/1.x/introduction/">1.x</a></li></ul></div><a class="navbar__item navbar__link" href="/uk/blog/">Блог</a></div><div class="theme-layout-navbar-right navbar__items navbar__items--right"><div class="navbar__item dropdown dropdown--hoverable dropdown--right"><a href="#" aria-haspopup="true" aria-expanded="false" role="button" class="navbar__link"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" class="iconLanguage_nlXk"><path fill="currentColor" d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"></path></svg>Українська</a><ul class="dropdown__menu"><li><a href="/docs/deployment/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="en">English</a></li><li><a href="/de/docs/deployment/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="de">Deutsch</a></li><li><a href="/es/docs/deployment/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="es">Español</a></li><li><a href="/fr/docs/deployment/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="fr">Français</a></li><li><a href="/pt-BR/docs/deployment/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="pt-BR">Português (Brasil)</a></li><li><a href="/uk/docs/deployment/" target="_self" rel="noopener noreferrer" class="dropdown__link dropdown__link--active" lang="uk">Українська</a></li><li><a href="/ja/docs/deployment/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="ja">日本語</a></li><li><a href="/zh-Hans/docs/deployment/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="zh-Hans">简体中文</a></li></ul></div><a href="https://github.com/durable-workflow/workflow" target="_blank" rel="noopener noreferrer" aria-label="Підтримати Durable Workflow зіркою на GitHub" class="navbar-github-star-link navbar__item navbar__link" label="Підтримати зіркою на GitHub"><svg aria-hidden="true" class="navbar-github-star-link__icon" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8a8.01 8.01 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.56 7.56 0 0 1 8 4.76c.68 0 1.36.09 2 .27 1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"></path></svg><span class="navbar-github-star-link__count" title="Зірки на GitHub">1.2K</span></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type="button" disabled="" title="Автоматичний режим" aria-label="Перемикання між темним та світлим режимом (зараз використовується Автоматичний режим)"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP lightToggleIcon_pyhR"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP darkToggleIcon_wfgR"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP systemToggleIcon_QzmC"><path fill="currentColor" d="m12 21c4.971 0 9-4.029 9-9s-4.029-9-9-9-9 4.029-9 9 4.029 9 9 9zm4.95-13.95c1.313 1.313 2.05 3.093 2.05 4.95s-0.738 3.637-2.05 4.95c-1.313 1.313-3.093 2.05-4.95 2.05v-14c1.857 0 3.637 0.737 4.95 2.05z"></path></svg></button></div><div class="navbarSearchContainer_Bca1"><div class="navbar__search searchBarContainer_NW3z" dir="ltr"><svg aria-hidden="true" class="searchIcon_T3tP" focusable="false" viewBox="0 0 16 16"><path fill="currentColor" d="M6.02945 10.20327a4.17382 4.17382 0 1 1 4.17382-4.17382 4.15609 4.15609 0 0 1-4.17382 4.17382Zm9.69195 4.2199-4.8225-4.82338A5.88021 5.88021 0 0 0 12.058 6.02856 6.00467 6.00467 0 1 0 9.59979 10.8989l4.82338 4.82338a.89729.89729 0 0 0 1.29912 0 .89749.89749 0 0 0-.00087-1.29909Z"></path></svg><input placeholder="Пошук" aria-label="Пошук" class="navbar__search-input searchInput_YFbd" value=""><div class="loadingRing_RJI3 searchBarLoadingRing_YnHq"><div></div><div></div><div></div><div></div></div></div></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="__docusaurus_skipToContent_fallback" class="theme-layout-main main-wrapper mainWrapper_z2l0"><div class="docsWrapper_hBAB"><button aria-label="Прокрутити до початку" class="clean-btn theme-back-to-top-button backToTopButton_sjWU" type="button"></button><div class="docRoot_UBD9"><aside class="theme-doc-sidebar-container docSidebarContainer_YfHR"><div class="sidebarViewport_aRkj"><div class="sidebar_njMd"><nav aria-label="Сайдбар документації" class="menu thin-scrollbar menu_SIkG"><ul class="theme-doc-sidebar-menu menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/uk/docs/introduction/"><span class="linkLabel_WmDU">Вступ</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/uk/docs/quickstart/"><span class="linkLabel_WmDU">Швидкий старт Durable Workflow 2.0</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/uk/docs/capabilities/"><span class="linkLabel_WmDU">Індекс можливостей 2.0</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/uk/docs/laravel-adoption/"><span class="linkLabel_WmDU">Інтеграція Laravel та перехід між runtime</span></a></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/uk/docs/category/service-mode/"><span class="categoryLinkLabel_W154">Режим сервісу</span></a><button aria-label="Розгорнути категорію в сайдбарі &#x27;Режим сервісу&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/uk/docs/category/embedded/"><span class="categoryLinkLabel_W154">Вбудований режим</span></a><button aria-label="Розгорнути категорію в сайдбарі &#x27;Вбудований режим&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--active" href="/uk/docs/category/run-and-operate/"><span class="categoryLinkLabel_W154">Запуск та експлуатація</span></a><button aria-label="Згорнути категорію в сайдбарі &#x27;Запуск та експлуатація&#x27;" aria-expanded="true" type="button" class="clean-btn menu__caret"></button></div><ul class="menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link menu__link--active" aria-current="page" tabindex="0" href="/uk/docs/deployment/"><span class="linkLabel_WmDU">Самостійне розгортання</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/rolling-upgrades/"><span class="linkLabel_WmDU">Поступові оновлення</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/monitoring/"><span class="linkLabel_WmDU">Моніторинг</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/operator-operating-envelope/"><span class="linkLabel_WmDU">Межі експлуатації для операторів</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/waterline-operator-api/"><span class="linkLabel_WmDU">Довідник операторського API Waterline</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/compatibility/"><span class="linkLabel_WmDU">Сумісність версій</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/platform-protocol-specs/"><span class="linkLabel_WmDU">Специфікації протоколів платформи</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/platform-conformance/"><span class="linkLabel_WmDU">Набір перевірок відповідності платформи</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/sdk-neutrality/"><span class="linkLabel_WmDU">Незалежність від SDK</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/support/"><span class="linkLabel_WmDU">Підтримка</span></a></li></ul></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/uk/docs/category/external-execution-and-ingress/"><span class="categoryLinkLabel_W154">Зовнішнє виконання та вхідні запити</span></a><button aria-label="Розгорнути категорію в сайдбарі &#x27;Зовнішнє виконання та вхідні запити&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/uk/docs/category/ai-and-automation/"><span class="categoryLinkLabel_W154">ШІ та автоматизація</span></a><button aria-label="Розгорнути категорію в сайдбарі &#x27;ШІ та автоматизація&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/uk/docs/sponsors/"><span class="linkLabel_WmDU">Спонсори</span></a></li></ul></nav></div></div></aside><main class="docMainContainer_TBSr"><div class="container padding-top--md padding-bottom--lg"><div class="row"><div class="col docItemCol_VOVn"><div class="docItemContainer_Djhp"><article><nav class="theme-doc-breadcrumbs breadcrumbsContainer_Z_bl" aria-label="Навігаційний ланцюжок поточної сторінки"><ul class="breadcrumbs"><li class="breadcrumbs__item"><a aria-label="Головна сторінка" class="breadcrumbs__link" href="/uk/"><svg viewBox="0 0 24 24" class="breadcrumbHomeIcon_YNFT"><path d="M10 19v-5h4v5c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-7h1.7c.46 0 .68-.57.33-.87L12.67 3.6c-.38-.34-.96-.34-1.34 0l-8.36 7.53c-.34.3-.13.87.33.87H5v7c0 .55.45 1 1 1h3c.55 0 1-.45 1-1z" fill="currentColor"></path></svg></a></li><li class="breadcrumbs__item"><a class="breadcrumbs__link" href="/uk/docs/category/run-and-operate/"><span>Запуск та експлуатація</span></a></li><li class="breadcrumbs__item breadcrumbs__item--active"><span class="breadcrumbs__link">Самостійне розгортання</span></li></ul></nav><span class="theme-doc-version-badge badge badge--secondary">Версія: 2.0</span><div class="tocCollapsible_ETCw theme-doc-toc-mobile tocMobile_ITEo"><button type="button" class="clean-btn tocCollapsibleButton_TO0P">Зміст цієї сторінки</button></div><div lang="uk"><div class="theme-doc-markdown markdown"><header><h1>Самостійне розгортання</h1></header>
+<p>Durable Workflow v2 підтримує кілька форм самостійного розгортання.
+Виберіть найменший шлях, який відповідає вашому середовищу,
+і явно визначте образ, базу даних, cache, автентифікацію,
+readiness та контракт оновлення.</p>
+<p>Ця настанова описує окремий Server. Для Laravel-пакета,
+вбудованого у власний застосунок, використовуйте сторінки встановлення
+та конфігурації пакета. Durable Workflow Cloud є окремим керованим
+сервісом, де Cloud оперує runtime, зберіганням, розміщенням і відновленням.
+Власний Server ніколи не підключається до Cloud.
+Дивіться <a class="" href="/uk/docs/polyglot/cloud-control-plane/">керований Cloud runtime</a>.
+Поточний контракт Cloud визначає керований runtime та відновлення
+в одному регіоні. Він не обіцяє multi-region replication,
+автоматичного regional failover чи failback.</p>
+<p>Власний Server не містить і не оперує Waterline.
+Розгортайте Waterline окремо, коли потрібний його операторський UI,
+і підключайте до namespace Server за
+<a class="" href="/uk/docs/monitoring/#waterline-service">настановою розгортання та моніторингу Waterline</a>.
+Cloud включає Managed Waterline для свого керованого namespace.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="deployment-support-matrix">Матриця підтримки розгортань<a href="#deployment-support-matrix" class="hash-link" aria-label="Пряме посилання на Матриця підтримки розгортань" title="Пряме посилання на Матриця підтримки розгортань" translate="no">​</a></h2>
+<table><thead><tr><th>Шлях</th><th>Початковий артефакт</th><th>Підтримується для</th><th>Що цей шлях не обіцяє</th><th>Коли потрібна комерційна підтримка</th></tr></thead><tbody><tr><td>Локальна розробка та внутрішнє non-production</td><td><a href="https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml" target="_blank" rel="noopener noreferrer" class=""><code>docker-compose.published.yml</code></a> із <code>DW_SERVER_TAG=2.5.16</code> або <code>DW_SERVER_IMAGE=durableworkflow/server:2.5.16</code></td><td>Один комп&#x27;ютер розробника, LAN demos, спільний staging, інтеграційні тести SDK та workers</td><td>Відкритий в інтернет production, гарантії durable backup, сувора ротація секретів, багатовузловий failover</td><td>Потрібна допомога з перетворення робочого dev stack на production runbook</td></tr><tr><td>Одновузловий production</td><td><a href="https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml" target="_blank" rel="noopener noreferrer" class=""><code>docker-compose.published.yml</code></a> із production env file, volumes MySQL і Redis, токенами ролей, backups, TLS через reverse proxy та закріпленими image tags чи digests</td><td>Одна VM, VPS чи внутрішній Docker host із постійним станом workflow і простою операційною моделлю</td><td>HA host, автоматичний failover бази, multi-region recovery, великі зміни топології без перерви</td><td>Розгортання обслуговує production-трафік і потребує перевірки backup, restore, auth, TLS, upgrade чи rollback</td></tr><tr><td>Невеликий кластер</td><td>Опубліковані образи <code>durableworkflow/server</code> чи <code>ghcr.io/durable-workflow/server</code>, <a href="https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml" target="_blank" rel="noopener noreferrer" class="">Compose recipe</a> як шаблон контейнера/процесу, 2–3 API nodes, спільна зовнішня MySQL/PostgreSQL, спільний Redis, незалежно масштабовані workers та рівно один scheduler/maintenance runner</td><td>Горизонтальна місткість API та workers, коли одного вузла недостатньо. Rolling upgrades за виконання всіх гарантій <a class="" href="/uk/docs/rolling-upgrades/">контракту rolling upgrades</a></td><td>SQLite clustering, багатовузловий режим без Redis, дублікати schedulers як стала топологія, active/active multi-writer бази, власний regional failover без втручання, широкі SLA «five-nines» чи «zero-downtime» та самостійний HA failover одного регіону до проходження <a href="#release-evidence-status" class="">перевірки випуску</a></td><td>Потрібне планування місткості, областей відмов, rollout чи recovery між hosts або твердження про умовну поведінку single-region HA</td></tr><tr><td>Helm chart для Kubernetes</td><td><a href="https://github.com/durable-workflow/server/tree/main/k8s/helm/durable-workflow" target="_blank" rel="noopener noreferrer" class="">Helm chart Server</a> з <code>oci://ghcr.io/durable-workflow/charts/durable-workflow</code> із вашими зовнішніми базою, Redis, ingress та керуванням секретами</td><td>Відтворюване production-встановлення й оновлення ресурсів chart: server, worker, singleton scheduler, bootstrap, service, probes та policies</td><td>Вбудоване сховище, provider-managed інфраструктура, active/active multi-region, custom operators та самостійний single-region HA failover до проходження <a href="#release-evidence-status" class="">перевірки випуску</a></td><td>Потрібні архітектура конкретного provider, capacity, recovery чи зміни поза опублікованим контрактом values chart</td></tr><tr><td>Raw Kubernetes manifests</td><td>Manifests Server <a href="https://github.com/durable-workflow/server/tree/main/k8s" target="_blank" rel="noopener noreferrer" class=""><code>k8s/</code></a> з опублікованими образами Server та вашими базою, Redis, ingress і керуванням секретами</td><td>Команди з досвідом Kubernetes, яким потрібні відкриті для перевірки manifests API, worker, scheduler, bootstrap, service, probes, config та secrets</td><td>Окремий життєвий цикл Helm, перевірка managed-Kubernetes provider, active/active multi-region, custom operators, рішення сховища/мережі/безпеки середовища та самостійний single-region HA failover до проходження <a href="#release-evidence-status" class="">перевірки випуску</a></td><td>Потрібні overlays, перевірка managed cluster, production-планування provider чи твердження про умовну поведінку single-region HA</td></tr><tr><td>Оцінювання active/passive multi-region</td><td>Перевірене одновузлове чи невелике кластерне розгортання на регіон, асинхронна реплікація бази з active до standby та перевірений failover/failback runbook</td><td>Архітектурне оцінювання з підтримкою та репетиція disaster recovery регіону для конкретного середовища</td><td>Доведений самостійний контракт 2.0, active/active multi-region, автоматичний regional failover без втручання, синхронна реплікація між регіонами (RPO=0), активна міжрегіональна видимість чи federated search, прив&#x27;язані до регіону task queues як вісь маршрутизації рушія</td><td>Перед production-залежністю від міжрегіональної реплікації, failover, failback, RPO чи RTO</td></tr><tr><td>Топології з підтримкою</td><td>Перевірений дизайн вашого середовища</td><td>Власні active/passive чи active/active multi-region, regional failover без втручання, RPO=0 cross-writer replication, дублікати scheduler runners як стала топологія, спеціальна безпека/мережа, приватні SLOs, custom overlays, планування міграції</td><td>Самостійний запуск копіюванням прикладу</td><td>Коли сама топологія є частиною ризику продукту</td></tr></tbody></table>
+<p>Публічний дистрибутив оптимізований для локальної розробки,
+одновузлового production та невеликих кластерів. Kubernetes manifests
+надано командам, які вже оперують Kubernetes.
+Матеріал active/passive multi-region доступний як оцінювальна настанова
+з підтримкою, а не доведений самостійний контракт 2.0.
+Дивіться <a href="#activepassive-multi-region" class="">active/passive multi-region</a> нижче.
+Single-region HA failover: failover керованої бази, керованого Redis,
+втрата API node чи worker та restart scheduler runner у межах регіону,
+зараз потребує підтримки, поки перевірка точного випуску не пройдена.
+Дивіться <a href="#single-region-high-availability-and-failover" class="">single-region HA та failover</a>.
+Для власного Server active/active multi-region, автоматичний regional failover,
+дублікати scheduler runners як стала топологія та перевірка managed-Kubernetes
+provider залишаються шляхами з підтримкою через залежність від бази, cache,
+мережі, безпеки, runner та upgrade. Опублікований Helm chart надає
+самостійне пакування в тих самих межах відповідальності оператора.
+Cloud зараз надає керовану роботу та recovery в одному регіоні,
+без multi-region replication чи regional failover.
+Дивіться <a class="" href="/uk/docs/polyglot/cloud-control-plane/">керований Cloud runtime</a>
+та <a class="" href="/uk/docs/support/">межу підтримки</a> для комерційної моделі.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="production-recovery-deliverables">Матеріали production-відновлення<a href="#production-recovery-deliverables" class="hash-link" aria-label="Пряме посилання на Матеріали production-відновлення" title="Пряме посилання на Матеріали production-відновлення" translate="no">​</a></h2>
+<p>«Готовність до production» означає публікацію набору відновлення
+для топології разом із запуском контейнерів. Зберігайте актуальні
+підтвердження в тому самому runbook, що й команди розгортання:</p>
+<table><thead><tr><th>Шлях</th><th>Мінімальний опублікований набір відновлення</th></tr></thead><tbody><tr><td>Одновузловий production</td><td>Розклад backup, закріплений image чи digest, місце snapshot env/config, максимальна прийнятна затримка restore та timestamp останньої успішної репетиції restore з даними перевірки.</td></tr><tr><td>Невеликий кластер</td><td>Одновузловий набір та очікуваний вплив втрати одного API node, worker node, scheduler/maintenance runner, Redis або спільної бази. Кроки повторної реєстрації worker після restore та документований rolling-upgrade чи stop-the-world режим поточного випуску.</td></tr><tr><td>Helm chart для Kubernetes</td><td>Кластерний набір, версія chart, редакція values, image digest, власники ingress і secrets кластера та остання репетиція upgrade/rollback chart.</td></tr><tr><td>Raw Kubernetes manifests</td><td>Кластерний набір та власники storage, secrets, ingress і rollout кластера, які потрібно відновити або повторно застосувати перед визнанням трафіку здоровим.</td></tr><tr><td>Оцінювання single-region HA з підтримкою до проходження перевірки випуску</td><td>Кластерний чи raw-manifest набір та репетиції failover керованої бази, керованого Redis, втрати API node, worker і restart scheduler runner. Кожна має завершитися в межах цілі <a href="#single-region-high-availability-and-failover" class="">single-region HA контракту</a> без втрати підтверджених записів.</td></tr><tr><td>Оцінювання active/passive multi-region з підтримкою</td><td>Набір кожного регіону, дизайн реплікації бази та fencing, виміряна затримка реплікації, RPO/RTO оператора, runbooks promotion і failback та репетиції конкретного середовища.</td></tr></tbody></table>
+<p>Якщо цей набір неможливо надати на вимогу, вважайте середовище staging,
+доки контракт відновлення не записаний і не відрепетируваний.
+<a class="" href="/uk/docs/operator-operating-envelope/">Операторські межі експлуатації</a>
+визначають порядок restore, перевірку та періодичність репетицій цих наборів.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="security-data-and-audit-posture">Безпека, дані та аудит<a href="#security-data-and-audit-posture" class="hash-link" aria-label="Пряме посилання на Безпека, дані та аудит" title="Пряме посилання на Безпека, дані та аудит" translate="no">​</a></h2>
+<p>Власні розгортання Durable Workflow успадковують більшість механізмів
+безпеки з вашого середовища. Публікуйте ці факти в тому самому наборі
+випуску чи runbook, що й image tag, план міграції та підтвердження recovery:</p>
+<table><thead><tr><th>Область</th><th>Точне твердження випуску</th></tr></thead><tbody><tr><td>Обробка даних</td><td>Аргументи workflow, результати, історія, memos, search attributes, мітки видимості, контекст команд, рядки аудиту, повідомлення винятків та операторські notes можуть містити дані застосунку клієнта. Search attributes і мітки є видимими оператору metadata, а не сховищем секретів.</td></tr><tr><td>Шифрування</td><td>Використовуйте TLS на кожній production HTTP-поверхні. Шифрування at rest надають база, object storage, файлова система, черга, cache та secret manager. Пакет workflow і Server не шифрують автоматично кожне поле payload.</td></tr><tr><td>Compliance</td><td>Open-source пакет та власний Server надають механізми й дані аудиту, а не саму compliance-сертифікацію. Твердження SOC 2, HIPAA, PCI, ISO чи FedRAMP належать вашій програмі, якщо hosted offering не документує інше.</td></tr><tr><td>Логи аудиту</td><td>Команди workflow, audit events schedules, metadata exports історії та записи service calls надають durable-операційні дані. Повний SIEM, DLP, незмінний зовнішній ledger чи legal-hold system потребує додаткових компонентів.</td></tr><tr><td>Підтримка</td><td>Тут документовано credentials ролей, TLS termination, backups, репетиції restore та вузькі самостійні топології. Advanced identity, mTLS rollout, приватна мережа, custom policy engines, compliance provider та окрема перевірка топології потребують підтримки, якщо публічні docs не визначають інше.</td></tr></tbody></table>
+<p>Мережева модель має бути явною:</p>
+<ul>
+<li class=""><strong>Webhook ingress:</strong> документуйте публічний endpoint, метод auth,
+replay або стратегію ідемпотентності, timeout, обмеження payload,
+конфігурацію довірених proxy headers і план ротації секретів.</li>
+<li class=""><strong>Worker-to-backend трафік:</strong> використовуйте перевірку TLS, credentials ролі
+worker, заголовки namespace, приватну мережу чи mTLS за недовіреної мережі
+та ротацію, що не надає токенам worker повноважень operator.</li>
+<li class=""><strong>Операторські поверхні:</strong> захищайте Waterline, операторські API Server,
+endpoints автоматизації CLI та власні admin panels автентифікованими
+sessions чи service credentials ролей, із CSRF-захистом browser sessions
+та документованими межами proxy/TLS.</li>
+</ul>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="published-images">Опубліковані образи<a href="#published-images" class="hash-link" aria-label="Пряме посилання на Опубліковані образи" title="Пряме посилання на Опубліковані образи" translate="no">​</a></h2>
+<p>Для власних розгортань Server використовуйте опубліковані образи:</p>
+<ul>
+<li class="">Docker Hub: <code>durableworkflow/server:2.5.16</code></li>
+<li class="">GitHub Container Registry: <code>ghcr.io/durable-workflow/server:2.5.16</code></li>
+<li class="">Закріплення digest: <code>durableworkflow/server@sha256:...</code> або
+<code>ghcr.io/durable-workflow/server@sha256:...</code></li>
+</ul>
+<p>Використовуйте mutable tags лише для локальних експериментів.
+Production env files мають закріплювати конкретну version tag чи digest,
+щоб кроки upgrade і rollback можна було перевірити.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="local-development-and-internal-non-production">Локальна розробка та внутрішнє non-production<a href="#local-development-and-internal-non-production" class="hash-link" aria-label="Пряме посилання на Локальна розробка та внутрішнє non-production" title="Пряме посилання на Локальна розробка та внутрішнє non-production" translate="no">​</a></h2>
+<p>Використовуйте Compose recipe опублікованого образу для stack
+без source code з MySQL та Redis:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/main/docker-compose.published.yml</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">export DW_SERVER_TAG=2.5.16</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">export DW_AUTH_TOKEN=dev-token</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">docker compose -f docker-compose.published.yml up -d --wait</span><br></div></code></pre></div></div>
+<p>Перевірте API, readiness, discovery кластера та реєстрацію worker:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">curl http://localhost:8080/api/health</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">curl http://localhost:8080/api/ready</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">curl -H &quot;Authorization: Bearer $DW_AUTH_TOKEN&quot; \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  http://localhost:8080/api/cluster/info</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">curl -X POST http://localhost:8080/api/worker/register \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  -H &quot;Authorization: Bearer $DW_AUTH_TOKEN&quot; \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  -H &quot;Content-Type: application/json&quot; \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  -H &quot;X-Namespace: default&quot; \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  -H &quot;X-Durable-Workflow-Protocol-Version: 1.0&quot; \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  -d &#x27;{&quot;worker_id&quot;:&quot;compose-worker&quot;,&quot;task_queue&quot;:&quot;compose&quot;,&quot;runtime&quot;:&quot;python&quot;}&#x27;</span><br></div></code></pre></div></div>
+<p>Цей шлях придатний для розробки та внутрішнього staging.
+Він не є межею production-безпеки: приклад використовує один токен
+сумісності, стандартні passwords сервісів, локальні named volumes і не має TLS.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="single-node-production">Одновузловий production<a href="#single-node-production" class="hash-link" aria-label="Пряме посилання на Одновузловий production" title="Пряме посилання на Одновузловий production" translate="no">​</a></h2>
+<p>Використовуйте той самий Compose-артефакт із production-конфігурацією
+поза source control:</p>
+<div class="language-env codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-env codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">DW_SERVER_IMAGE=durableworkflow/server:2.5.16</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">SERVER_PORT=8080</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">APP_ENV=production</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">APP_DEBUG=false</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">DB_DATABASE=durable_workflow</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">DB_USERNAME=workflow</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">DB_PASSWORD=replace-with-random-password</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">DB_ROOT_PASSWORD=replace-with-random-root-password</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">DW_AUTH_DRIVER=token</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">DW_AUTH_BACKWARD_COMPATIBLE=false</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">DW_WORKER_TOKEN=replace-with-worker-token</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">DW_OPERATOR_TOKEN=replace-with-operator-token</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">DW_ADMIN_TOKEN=replace-with-admin-token</span><br></div></code></pre></div></div>
+<p>Запустіть із цим env file:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">docker compose --env-file durable-workflow.prod.env \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  -f docker-compose.published.yml up -d --wait</span><br></div></code></pre></div></div>
+<p>Оперуйте host як production-сервісом:</p>
+<ul>
+<li class="">Розмістіть TLS, public routing, логування запитів та IP allow lists
+у reverse proxy перед контейнером API.</li>
+<li class="">Не відкривайте MySQL чи Redis публічно.</li>
+<li class="">Використовуйте <code>DW_WORKER_TOKEN</code> для workers, <code>DW_OPERATOR_TOKEN</code>
+для застосунку та операторського трафіку, <code>DW_ADMIN_TOKEN</code>
+для namespaces та адміністрування.</li>
+<li class="">Резервуйте MySQL volume перед кожним image upgrade та регулярно.
+Redis слід зберігати для graceful restarts, але MySQL залишається
+durable-джерелом істини історії workflow.</li>
+<li class="">Зберігайте точний env file, image tag чи digest та backup бази разом для restore.</li>
+</ul>
+<p>Порядок upgrade:</p>
+<ol>
+<li class="">Створіть backup MySQL і запишіть поточний image reference.</li>
+<li class="">Змініть лише <code>DW_SERVER_IMAGE</code> або <code>DW_SERVER_TAG</code>.</li>
+<li class="">Завантажте новий image.</li>
+<li class="">Виконайте <code>docker compose --env-file durable-workflow.prod.env -f docker-compose.published.yml up -d --wait</code>.</li>
+<li class="">Перевірте <code>/api/ready</code>, <code>/api/cluster/info</code> та реєстрацію worker
+перед переведенням зовнішнього трафіку.</li>
+</ol>
+<p>README Server підтримує актуальні Compose-команди в розділі
+<a href="https://github.com/durable-workflow/server#official-image--compose" target="_blank" rel="noopener noreferrer" class="">Official Image + Compose</a>.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="small-clustered-deployments">Невеликі кластерні розгортання<a href="#small-clustered-deployments" class="hash-link" aria-label="Пряме посилання на Невеликі кластерні розгортання" title="Пряме посилання на Невеликі кластерні розгортання" translate="no">​</a></h2>
+<p>Невеликий кластер трохи розширює одновузлову модель.
+Перевірений самостійний контракт навмисно вузький:</p>
+<ul>
+<li class="">Запускайте 2–3 stateless API-контейнери за load balancer.
+Health, readiness, discovery кластера, реєстрація worker, polling workflow tasks
+та completion workflow tasks мають працювати без sticky sessions.</li>
+<li class="">Використовуйте одну спільну зовнішню MySQL чи PostgreSQL для durable-історії.
+SQLite підтримує лише один вузол і не є backend кластерного зберігання.</li>
+<li class="">Використовуйте спільний Redis для cache, long-poll wake signals, locks
+query-task queues, locks приймання task queue та стану черг.
+Багатовузловий режим без Redis не входить до підтримуваного контракту.</li>
+<li class="">Перевіряйте <code>GET /api/cluster/info</code> кожного API node під час rollout.
+<code>topology.current_shape</code> має залишатися <code>standalone_server</code>,
+<code>topology.current_roles</code> — містити <code>api_ingress</code>, <code>control_plane</code>,
+<code>matching</code> і <code>history_projection</code>, <code>topology.execution_mode</code> —
+залишатися <code>remote_worker_protocol</code> для вузлів окремого Server.
+Перевіряйте фактичний matching через <code>topology.matching_role</code>.
+Стандартні вузли повідомляють <code>queue_wake_enabled: true</code>, <code>shape: &quot;in_worker&quot;</code>
+та <code>wake_owner: &quot;worker_loop&quot;</code>. Rollout dedicated matching перемикає вузли
+з <code>DW_V2_MATCHING_ROLE_QUEUE_WAKE=0</code> на <code>queue_wake_enabled: false</code>,
+<code>shape: &quot;dedicated&quot;</code> і <code>wake_owner: &quot;dedicated_repair_pass&quot;</code>.
+Той самий блок має зберігати очікуваний <code>task_dispatch_mode</code>, закріплені
+осі маршрутизації <code>partition_primitives</code> та поточний <code>backpressure_model</code>.
+Значення кожного поля описано в
+<a class="" href="/uk/docs/polyglot/server-role-topology/">топології ролей Server</a>.</li>
+<li class="">Масштабуйте зовнішні SDK workers незалежно від API nodes.
+Workers можуть працювати на окремих hosts чи процесах, але мають
+підключатися до load-balanced API endpoint, а не одного sticky node.</li>
+<li class="">Налаштуйте <a class="" href="/uk/docs/polyglot/task-queue-admission/">приймання task queue</a>
+для черг, які захищають tenant, зовнішній API, database pool
+або іншу спільну downstream-залежність.</li>
+<li class="">Запускайте рівно один scheduler чи maintenance process для schedules,
+застосування activity timeouts та pruning історії.</li>
+<li class="">Виконуйте bootstrap/migrations один раз на rollout перед прийманням
+трафіку новими API та worker containers.</li>
+<li class="">Виберіть режим rollout випуску: stop-the-world (drain workers,
+зупинка scheduler/maintenance, заміна API nodes, bootstrap/migrations,
+restart workers і scheduler) або <a class="" href="/uk/docs/rolling-upgrades/">rolling upgrades</a>,
+коли діє кожна гарантія цього контракту.</li>
+<li class="">Розглядайте базу та Redis як основні області відмов.
+Контейнери Server можна замінити. Persistence і coordination — ні.</li>
+</ul>
+<p>Опубліковані самостійні recipes починаються з форми <code>standalone_server</code>,
+хоча discovery також називає <code>split_control_execution</code> підтримуваною
+топологією продукту. Це один контракт із різними призначеннями ролей.
+Під час подальшої проби явнішого поділу ролей продовжуйте читати
+<code>topology.current_shape</code>, <code>topology.current_roles</code> і <code>topology.matching_role</code>
+з <code>/api/cluster/info</code>, а не виводити обов&#x27;язки з hostname чи назви контейнера.
+<a class="" href="/uk/docs/polyglot/server-role-topology/">Топологія ролей Server</a>
+пояснює призначення ролей та шлях міграції.</p>
+<p>Кожен API node має використовувати однакові auth tokens чи signature keys,
+версію застосунку, версію пакета workflow, конфігурацію codec payload,
+підключення бази та Redis. Задайте кожному API node унікальний
+<code>DW_SERVER_ID</code>, щоб discovery і логи могли розрізняти вузли.</p>
+<p>Непідтримувані межі визначено явно: SQLite clustering, багатовузловий режим
+без Redis, дублікати schedulers як стала топологія, active/active multi-writer
+бази, власний regional failover без втручання та широкі SLA «five-nines»
+чи «zero-downtime» потребують окремої перевірки або дизайну з підтримкою
+перед використанням. Active/passive multi-region також є оцінювальним
+матеріалом із підтримкою. Дивіться
+<a href="#activepassive-multi-region" class="">active/passive multi-region</a>.
+Single-region HA failover: failover керованої бази, керованого Redis,
+втрата API node, worker та restart scheduler runner в одному регіоні,
+залишається оцінювальним контрактом із підтримкою до проходження перевірки
+випуску. Цілі recovery рушія, readiness під час failover та потрібні
+підтвердження наведено в
+<a href="#single-region-high-availability-and-failover" class="">single-region HA та failover</a>.</p>
+<p>Цей шлях самостійний, коли команда вже має чітку модель VM, мережі,
+бази, cache, backup і load balancer. Підтримка потрібна, коли слід
+визначити ці межі, capacity, порядок rollout чи процедури recovery.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="helm-chart-for-kubernetes">Helm chart для Kubernetes<a href="#helm-chart-for-kubernetes" class="hash-link" aria-label="Пряме посилання на Helm chart для Kubernetes" title="Пряме посилання на Helm chart для Kubernetes" translate="no">​</a></h2>
+<p>Репозиторій Server володіє
+<a href="https://github.com/durable-workflow/server/tree/main/k8s/helm/durable-workflow" target="_blank" rel="noopener noreferrer" class="">кодом chart та настановами випуску</a>.
+Установіть опублікований chart з OCI registry:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">helm install durable-workflow \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  oci://ghcr.io/durable-workflow/charts/durable-workflow \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  --namespace durable-workflow --create-namespace \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  -f my-values.yaml</span><br></div></code></pre></div></div>
+<p>Values file має вказувати зовнішні MySQL/PostgreSQL і Redis,
+надавати production credentials через наявні Kubernetes Secrets
+та налаштовувати ingress/TLS вашого середовища.
+Chart не створює сховище чи provider-managed інфраструктуру.
+Для відтворюваного production додайте <code>--version &lt;validated-chart-version&gt;</code>
+і закріпіть образ Server за digest. Репозиторій Server публікує
+версії chart та документує upgrades поруч із кодом chart.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="kubernetes-manifests">Kubernetes manifests<a href="#kubernetes-manifests" class="hash-link" aria-label="Пряме посилання на Kubernetes manifests" title="Пряме посилання на Kubernetes manifests" translate="no">​</a></h2>
+<p>Репозиторій Server містить raw manifests під
+<a href="https://github.com/durable-workflow/server/tree/main/k8s" target="_blank" rel="noopener noreferrer" class=""><code>k8s/</code></a>
+для команд, які вже оперують Kubernetes:</p>
+<ul>
+<li class="">Namespace та спільні labels</li>
+<li class="">Поділ ConfigMap і Secret</li>
+<li class="">Bootstrap/migration Job</li>
+<li class="">API Deployment і Service</li>
+<li class="">Worker Deployment</li>
+<li class="">Scheduler CronJob</li>
+<li class="">PodDisruptionBudget</li>
+<li class="">Liveness probe <code>/api/health</code> та readiness probe <code>/api/ready</code></li>
+<li class="">Консервативні resource requests і limits</li>
+</ul>
+<p>Перед застосуванням manifests замініть image tag на конкретну
+опубліковану версію чи digest, надайте справжні credentials бази та Redis
+і підключіть ConfigMap до сервісів вашого кластера.
+Manifests навмисно відкриті для перевірки та не є Helm chart.
+Вони не обіцяють універсальної поведінки managed Kubernetes.</p>
+<p>Для production rollout Kubernetes перевірте щонайменше:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">kubectl -n durable-workflow wait --for=condition=complete job/durable-workflow-migrate --timeout=180s</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">kubectl -n durable-workflow rollout status deploy/durable-workflow-server</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">kubectl -n durable-workflow rollout status deploy/durable-workflow-worker</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">kubectl -n durable-workflow port-forward svc/durable-workflow-server 8080:8080</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">curl http://localhost:8080/api/ready</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">curl -H &quot;Authorization: Bearer $DW_ADMIN_TOKEN&quot; http://localhost:8080/api/cluster/info</span><br></div></code></pre></div></div>
+<p>Single-region HA failover: failover керованої бази, керованого Redis,
+втрата API node, worker та restart scheduler runner в одному регіоні,
+на raw-manifest шляху потребує підтримки, як і на малому кластері,
+поки перевірка випуску не пройдена. Передбачений контракт потребує
+правил readiness, singleton scheduler та спільного substrate у
+<a href="#single-region-high-availability-and-failover" class="">single-region HA та failover</a>.
+Load balancers provider, storage classes, network policies,
+active/active multi-region та власний regional failover без втручання
+потребують підтримки або окремо відстежуються поза raw-manifest контрактом.
+Для встановлення та upgrades через Helm використовуйте окремо
+версійований Helm-шлях вище.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="single-region-high-availability-and-failover">Single-region HA та failover<a href="#single-region-high-availability-and-failover" class="hash-link" aria-label="Пряме посилання на Single-region HA та failover" title="Пряме посилання на Single-region HA та failover" translate="no">​</a></h2>
+<p>Single-region HA failover зараз є <strong>неперевіреним кандидатом контракту
+з підтримкою</strong> поверх невеликого кластера та raw Kubernetes.
+Він охоплює відмови, які рушій розрахований витримати <strong>в одному регіоні</strong>:
+failover керованої бази (RDS Multi-AZ, Aurora cluster failover, Cloud SQL HA,
+Patroni promotion тощо), керованого Redis (Sentinel, Elasticache
+replication-group failover, Memorystore HA тощо), втрату API node,
+worker та restart scheduler/maintenance runner.
+Active/passive recovery між регіонами є окремим оцінюванням із підтримкою.
+Дивіться <a href="#activepassive-multi-region" class="">active/passive multi-region</a>.</p>
+<p>Передбачений контракт: поведінка рушія, readiness, цілі recovery
+кожної події, запобігання split brain та приймальна репетиція,
+зберігається в бібліотеці workflow:
+<a href="https://github.com/durable-workflow/workflow/blob/main/docs/deployment/ha-failover.md" target="_blank" rel="noopener noreferrer" class=""><code>docs/deployment/ha-failover.md</code></a>
+та в окремому Server:
+<a href="https://github.com/durable-workflow/server/blob/main/docs/ha-failover-validation.md" target="_blank" rel="noopener noreferrer" class=""><code>docs/ha-failover-validation.md</code></a>.
+Цей розділ є публічною поверхнею цих документів.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="release-evidence-status">Стан підтвердження випуску<a href="#release-evidence-status" class="hash-link" aria-label="Пряме посилання на Стан підтвердження випуску" title="Пряме посилання на Стан підтвердження випуску" translate="no">​</a></h3>
+<p>Для документованого публічного випуску Server немає посилання
+на успішний результат точного випуску. Записана спроба опублікованого
+образу зупинилася під час <code>topology_start</code>, очікуючи readiness API,
+до підтвердження матриці відмов чи меж recovery.
+Наявність runner, його scenario manifest чи репетиція окремого
+розгортання не доводять проходження повної матриці опублікованим образом.
+Тому single-region HA залишається шляхом із підтримкою.</p>
+<p>Самостійний контракт дозволений лише після запуску без source code
+з точним документованим випуском Server для image, runner та Compose-топології
+і публікації <code>single-region-failover-result.json</code> із <code>outcome: &quot;pass&quot;</code>,
+<code>runner_blocked: false</code>, <code>status: &quot;pass&quot;</code> кожного запису <code>phase_outcomes</code>,
+успішними вердиктами всіх меж recovery та даними кожного обов&#x27;язкового
+сценарію публічного
+<a href="/uk/assets/files/single-region-failover-scenarios-3d2cf6a2e7b5b21ae6846bfc7b7be484.json/" target="_blank" class="">scenario manifest single-region failover</a>.
+Посилання на цей публічний успішний результат має бути в цьому розділі
+з тим самим образом Server, що й <code>durableworkflow/server:2.5.16</code>.
+До виконання всіх умов межі recovery нижче є цілями оцінювання,
+а не твердженнями перевірки опублікованого образу.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="candidate-topology">Кандидат топології<a href="#candidate-topology" class="hash-link" aria-label="Пряме посилання на Кандидат топології" title="Пряме посилання на Кандидат топології" translate="no">​</a></h3>
+<p>Передбачений HA-контракт діє, коли розгортання відповідає формі
+невеликого кластера чи raw manifests, а оператор зберігає три правила:</p>
+<ul>
+<li class=""><strong>Завжди один writable endpoint бази workflow.</strong> Керований failover
+(RDS Multi-AZ, Aurora cluster failover, Cloud SQL HA, Patroni тощо)
+дозволений, якщо попередній primary відгороджений через fencing
+до повторного підключення: відкликання write user, переведення
+в <code>read_only=on</code>, розрив replication чи restore відомого справного snapshot.
+Connection proxy (RDS Proxy, ProxySQL, PgBouncer) між API/scheduler
+та базою дозволений. Він не змінює гарантій, бо контракт рушія
+визначається підключенням, яке він бачить.</li>
+<li class=""><strong>Один Redis endpoint одночасно з документованим promotion.</strong>
+Керований failover Redis (Sentinel, Elasticache replication-group failover,
+Memorystore HA тощо) дозволений. Redis є шаром прискорення,
+тому failover Redis впливає на latency та не змінює correctness.</li>
+<li class=""><strong>Завжди один scheduler/maintenance runner.</strong> Orchestrator
+(Compose service з <code>deploy.replicas: 1</code>, systemd unit під host lease
+чи Kubernetes <code>Deployment</code> із <code>replicas: 1</code> та <code>RollingUpdate.maxSurge: 0</code>)
+відповідає за збереження singleton під час restart.
+Дублікати scheduler runners як стала топологія не входять до контракту.</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="per-event-behavior-and-recovery-targets">Поведінка та цілі recovery кожної події<a href="#per-event-behavior-and-recovery-targets" class="hash-link" aria-label="Пряме посилання на Поведінка та цілі recovery кожної події" title="Пряме посилання на Поведінка та цілі recovery кожної події" translate="no">​</a></h3>
+<p>Передбачений контракт рушія визначає обмежені цілі recovery
+для кожного класу подій. Вони не є гарантіями опублікованого образу
+до проходження перевірки випуску. Спостережений оператором wall-clock recovery
+дорівнює цілі рушія плюс latency promotion самого керованого сервісу.</p>
+<table><thead><tr><th>Подія</th><th>Передбачена поведінка рушія</th><th>Ціль recovery після повернення substrate / runner</th></tr></thead><tbody><tr><td>Failover керованої бази</td><td>Writes і reads повертають помилки. Writes не буферизуються приховано. <code>/api/ready</code> не проходить на всіх API nodes та scheduler. Підтверджена робота не втрачається.</td><td>Одне перепідключення connection pool, один інтервал <code>task_repair</code> (стандартно 3 с) та один timeout long poll (стандартно 30 с, максимум 60 с) для активних pollers.</td></tr><tr><td>Failover керованого Redis</td><td>Втрачені wake signals переводять discovery на timeout long poll. Health checks прискорення стають <strong>warning</strong>, а не error. <code>/api/ready</code> зазвичай залишається успішним.</td><td>Інтервал reconnect Redis client.</td></tr><tr><td>Втрата API node (1 з N)</td><td>Load balancer прибирає несправний вузол у межах readiness interval. Активні запити до нього не проходять у LB і повторюються клієнтом.</td><td>Readiness interval load balancer, контрольований оператором, зазвичай 5–10 с.</td></tr><tr><td>Втрата worker</td><td>Tasks несправного worker чекають до спливу lease. Інші workers продовжують claim своїх tasks.</td><td>Сплив lease (5 хв для activity tasks) плюс один інтервал <code>task_repair</code>.</td></tr><tr><td>Restart scheduler/maintenance</td><td>Запуски schedules, застосування activity timeouts та pruning історії призупиняються. Усі три відновлюються на наступному tick після restart. Дублікатів запуску немає, бо runner singleton.</td><td>Restart latency orchestrator плюс один tick scheduler.</td></tr></tbody></table>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="load-balancer-readiness-and-traffic-shift-rules">Правила load balancer, readiness та переведення трафіку<a href="#load-balancer-readiness-and-traffic-shift-rules" class="hash-link" aria-label="Пряме посилання на Правила load balancer, readiness та переведення трафіку" title="Пряме посилання на Правила load balancer, readiness та переведення трафіку" translate="no">​</a></h3>
+<p>Load balancer перед API nodes є єдиною точкою рішення
+про приймання трафіку під час failover:</p>
+<ul>
+<li class="">Підключіть load balancer до <strong><code>GET /api/ready</code></strong>, а не лише <code>/api/health</code>.
+<code>/api/health</code> доводить обслуговування HTTP процесом. <code>/api/ready</code>
+доводить доступ Server до durable-бази та повідомляє здоровий
+чи погіршений стан прискорення wake Redis. За відмови бази <code>/api/ready</code>
+правильно не проходить на всіх вузлах. Load balancer МАЄ приймати
+стан all-down без повернення до застарілого «останнього справного» списку.</li>
+<li class="">Задайте інтервал перевірки 5–10 секунд та поріг видалення
+2–3 послідовних невдалих перевірок.</li>
+<li class="">Не вимагайте sticky sessions. Small-cluster smoke доводить,
+що зовнішній worker може poll <code>server-a</code> і complete на <code>server-b</code>.</li>
+<li class="">За failover лише Redis readiness залишається успішним на кожному вузлі,
+поки database-backed durable-шляхи доступні. Погіршення прискорення
+проявляється як <code>checks.cache.status=warning</code> з
+<code>checks.cache.degraded_capability=long_poll_wake_acceleration</code>.
+Не прибирайте вузли load balancer через цей warning.</li>
+</ul>
+<p>Після recovery substrate рекомендовано дочекатися HTTP 200 від
+<code>/api/ready</code> хоча б одного вузла, запитати <code>/api/cluster/info</code>
+через load balancer з admin token для перевірки topology manifest,
+виконати <code>POST /api/worker/register</code> probe worker через load-balanced
+endpoint, перевірити рівно один активний scheduler runner
+у його orchestrator та відновити зовнішній трафік.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="run-the-exact-artifact-rehearsal">Репетиція точного артефакту<a href="#run-the-exact-artifact-rehearsal" class="hash-link" aria-label="Пряме посилання на Репетиція точного артефакту" title="Пряме посилання на Репетиція точного артефакту" translate="no">​</a></h3>
+<p>Випуск Server містить багаторазову базову репетицію повної матриці відмов
+без build продукту з checkout. Runner і Compose-топологія мають походити
+з того самого release tag, що й image Server. Не поєднуйте мінливий checkout
+стандартної гілки з довільним image. На чистому host з Docker Engine,
+Docker Compose v2, Python 3.11 або новішим та доступом до публічних
+реєстрів виконайте:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">export DW_SERVER_RELEASE=2.5.16</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">git clone --depth 1 --single-branch --branch &quot;$DW_SERVER_RELEASE&quot; \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  https://github.com/durable-workflow/server.git &quot;server-$DW_SERVER_RELEASE&quot;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">cd &quot;server-$DW_SERVER_RELEASE&quot;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">export DW_SERVER_IMAGE=&quot;durableworkflow/server:$DW_SERVER_RELEASE&quot;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">scripts/conformance/single-region-failover-published-artifacts.sh \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  --result-dir ./failover-result</span><br></div></code></pre></div></div>
+<p>Цей шлях навмисно визначає checkout та <code>DW_SERVER_IMAGE</code> за однією
+release variable. Не перевизначайте image незалежно.
+Вибирайте інший випуск зміною <code>DW_SERVER_RELEASE</code> перед clone.
+Runner потребує конкретного публічного tag чи digest Server,
+завантажує всі допоміжні images, визначає repository digests усіх runtime images
+і відхиляє Compose build sections, product-source bind mounts та локальні
+або rolling references Server. Він запускає рівно два API nodes
+за одним nginx endpoint, одну MySQL, один Redis
+та один scheduler/maintenance runner.</p>
+<p>Отриманий <code>single-region-failover-result.json</code> використовує schema
+<code>durable-workflow.v2.single-region-failover.result</code>.
+Він записує точні версії артефактів та інструментів, нормалізовану
+топологію, readiness transitions, виміряні recovery times і вердикти меж,
+ідентичності workflow/run/task/schedule та перевірки дублікатів/втрат
+для cross-node completion, втрати API node, interruption бази,
+Redis, втрати lease worker та restart singleton scheduler.
+Зовнішні runners знаходять виклик і публічний scenario manifest
+у <code>single_region_failover_contract</code> відповіді <code>GET /api/cluster/info</code>.</p>
+<p>Результат підтверджує видимі рушію interruption та recovery
+опублікованого образу лише після проходження вимог випуску вище.
+Невдалий, частковий чи runner-blocked результат є діагностикою.
+Навіть успішна база не перетворює restart локального контейнера
+MySQL чи Redis на підтвердження promotion cloud provider.
+Зберігайте provider-native promotion, fencing, RPO та elapsed-time дані
+поруч із базовим результатом перед твердженнями про managed-service HA.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="recovery-packet-additions">Доповнення набору відновлення<a href="#recovery-packet-additions" class="hash-link" aria-label="Пряме посилання на Доповнення набору відновлення" title="Пряме посилання на Доповнення набору відновлення" translate="no">​</a></h3>
+<p>Невеликий кластер чи raw-manifest розгортання, яке заявляє цей контракт,
+МАЄ доповнити набір відновлення за
+<a class="" href="/uk/docs/operator-operating-envelope/">операторськими межами експлуатації</a>
+репетиціями кожного класу подій:</p>
+<ul>
+<li class="">failover керованої бази без втрати підтверджених записів
+та в межах recovery time вище;</li>
+<li class="">failover керованого Redis без коливань ротації load balancer,
+без втрати підтвердженої роботи та з <code>checks.cache.status=warning</code>
+і degraded capability <code>long_poll_wake_acceleration</code>;</li>
+<li class="">втрату API node, яку load balancer поглинає в налаштованому
+readiness interval без втрати підтверджених записів;</li>
+<li class="">втрату worker зі збереженням durable run до спливу lease,
+повторним claim у налаштованій межі repair та рівно одним completion;</li>
+<li class="">restart scheduler runner на іншому host без повторних schedules
+і без schedule, що залишився неоціненим після <code>next_fire_at</code> плюс один tick.</li>
+</ul>
+<p>Поки перевірка випуску не пройдена, кожне розгортання потребує підтримки,
+навіть якщо власна репетиція успішна. Після публічного успішного результату
+всіх фаз розгортання стає самостійним за цим контрактом лише після
+запису репетиції конкретного середовища в набір відновлення оператора
+та її оновлення за періодичністю операторських меж експлуатації.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="boundary-against-unsupported-ha-claims">Межа непідтримуваних тверджень HA<a href="#boundary-against-unsupported-ha-claims" class="hash-link" aria-label="Пряме посилання на Межа непідтримуваних тверджень HA" title="Пряме посилання на Межа непідтримуваних тверджень HA" translate="no">​</a></h3>
+<p>Single-region HA контракт навмисно вузький.
+Таке залишається <strong>поза</strong> ним і потребує дизайну з підтримкою,
+бо сама топологія є частиною ризику продукту:</p>
+<ul>
+<li class="">active/active multi-writer топології баз;</li>
+<li class="">active/passive multi-region та автоматичний regional failover
+без втручання для власних топологій.
+<a href="#activepassive-multi-region" class="">Наступний розділ</a> зберігає оцінювальну настанову;</li>
+<li class="">синхронна міжрегіональна реплікація бази (RPO=0);</li>
+<li class="">дублікати scheduler/maintenance runners як стала топологія;</li>
+<li class="">прив&#x27;язані до регіону task queues як вісь маршрутизації рушія;</li>
+<li class="">перевірка managed-Kubernetes provider поза контрактом пакування chart;</li>
+<li class="">широкі SLA «five-nines» чи «zero-downtime» поза обмеженими recovery times вище.</li>
+</ul>
+<p>Контракт визначає <em>обмежене recovery під час названих подій</em>.
+Uptime залежить від бази, мережі та orchestrator оператора.
+Маркетингові чи SLA-твердження власних розгортань НЕ МОЖУТЬ
+переходити цю межу без окремої перевірки.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="activepassive-multi-region">Active/passive multi-region<a href="#activepassive-multi-region" class="hash-link" aria-label="Пряме посилання на Active/passive multi-region" title="Пряме посилання на Active/passive multi-region" translate="no">​</a></h2>
+<p>Active/passive multi-region є <strong>оцінювальною настановою з підтримкою</strong>,
+а не доведеним самостійним контрактом підтримуваних меж експлуатації 2.0.
+Використовуйте цей розділ для перевірки кандидата архітектури та створення
+репетиції конкретного середовища з підтримкою перед production.
+Кожен регіон починається з документованого одновузлового, невеликого
+кластерного чи raw Kubernetes шляху, але їхні single-region контракти
+не встановлюють міжрегіональну replication, failover, failback, RPO, RTO
+чи split-brain поведінку. Глибший дизайн: повноваження даних,
+припущення replication, поведінка namespace/task queue/worker,
+runbook failover/failback, fencing та компроміси consistency/latency,
+міститься в бібліотеці workflow:
+<a href="https://github.com/durable-workflow/workflow/blob/main/docs/deployment/multi-region.md" target="_blank" rel="noopener noreferrer" class=""><code>docs/deployment/multi-region.md</code></a>
+та в окремому Server:
+<a href="https://github.com/durable-workflow/server/blob/main/docs/multi-region-validation.md" target="_blank" rel="noopener noreferrer" class=""><code>docs/multi-region-validation.md</code></a>.</p>
+<p>Кандидат форми для оцінювання:</p>
+<ul>
+<li class="">Один <strong>active region</strong> із перевіреним одновузловим чи невеликим
+кластерним контрактом: API containers за load balancer, спільна
+зовнішня MySQL чи PostgreSQL як writable durable-база, спільний Redis,
+рівно один scheduler/maintenance runner та зовнішні workers.</li>
+<li class="">Один <strong>standby region</strong> з асинхронно реплікованою standby-базою workflow,
+необов&#x27;язковим standby Redis, без scheduler/maintenance process
+і з нулем чи більше заздалегідь підготовлених API/worker containers,
+які простоюють до promotion.</li>
+<li class=""><strong>Regional failover</strong> є явною роботою оператора: зупинка write traffic
+несправного регіону, перевірка replication за опублікованим RPO,
+promotion standby-бази, потрібні випуску migrations нового primary,
+старт singleton scheduler/maintenance runner нового active region,
+зміна endpoints workers, переведення зовнішнього трафіку та відновлення
+похідних projections. Автоматичного міжрегіонального cutover немає.</li>
+<li class=""><strong>Failback</strong> виконує ту саму послідовність у зворотному порядку після
+відновлення початкового регіону. Відновлений primary відгороджується
+до підключення як standby: відкликання write user, <code>read_only=on</code>,
+розрив replication чи restore відомого справного snapshot.</li>
+</ul>
+<p>Повноваження даних та припущення replication:</p>
+<ul>
+<li class="">База workflow є єдиним durable-джерелом істини, прив&#x27;язаним до регіону.
+У будь-який момент записує рівно один регіон. База standby region
+залишається read replica до promotion. Recovery point objective (RPO)
+дорівнює затримці асинхронної replication, а recovery time objective (RTO) —
+часу виконання runbook оператором.</li>
+<li class="">Redis є локальним прискоренням регіону. Wake signals, locks query-task queues
+та admission locks не переносяться між регіонами. Кожен регіон запускає
+власний Redis. Cache standby може бути cold або warm за рішенням
+оператора. Correctness не залежить від його збереження під час failover.</li>
+<li class="">Огляд стану читає базу active region. Спочатку promotion, потім читання.</li>
+</ul>
+<p>Поведінка namespace, task queue та реєстрації worker:</p>
+<ul>
+<li class="">Namespaces і task queues зберігаються в базі workflow та переживають
+promotion точно в стані останнього реплікованого commit.
+Рушій не поділяє їх за регіонами.</li>
+<li class="">Workers нового active region реєструються на локальному API endpoint
+після promotion. Попередні реєстрації несправного регіону залишаються
+в базі й спливають через звичайний шлях expiry worker.</li>
+<li class="">Rollouts build ID та deployment-lifecycle state переживають failover,
+оскільки зберігаються в базі workflow.</li>
+</ul>
+<p>Компроміси consistency та latency у сталому стані:</p>
+<ul>
+<li class="">Запуски workflow, signals і updates фіксуються в базі active region.
+Їхня latency відповідає commit latency цього регіону.
+Вони відхиляються під час відкликання повноважень у failover.</li>
+<li class="">Доставка workflow tasks та activity tasks дотримується single-region
+контракту прискорення active region: менше секунди за здорового Redis,
+інакше durable poll cadence.</li>
+<li class="">Schedules запускає singleton scheduler active region.
+Вони призупиняються без scheduler і відновлюються з durable-рядків
+schedule після promotion.</li>
+<li class="">Огляд стану має read-after-write лише в active region.
+Рушій не надає міжрегіонального read-your-writes чи RPO=0.</li>
+</ul>
+<p>Цей кандидат disaster recovery не замінює backups та підтвердження.
+Набір відновлення за
+<a class="" href="/uk/docs/operator-operating-envelope/">операторськими межами експлуатації</a>
+залишається обов&#x27;язковим. Доповніть його replication-lag SLO,
+latency promotion runbook, датою останньої успішної failover-репетиції
+та fencing-процедурою відновленого primary.</p>
+<p>Для власних розгортань active/passive та active/active multi-region,
+автоматичний regional failover, синхронна міжрегіональна replication (RPO=0),
+активна міжрегіональна видимість та region-pinned task queues
+як вісь маршрутизації рушія залишаються
+<a class="" href="/uk/docs/support/">шляхами з підтримкою</a>, бо топологія є частиною ризику продукту.
+Поточний <a class="" href="/uk/docs/polyglot/cloud-control-plane/">контракт керованого Cloud runtime</a>
+є single-region і не надає цих multi-region гарантій.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="readiness-contract">Контракт readiness<a href="#readiness-contract" class="hash-link" aria-label="Пряме посилання на Контракт readiness" title="Пряме посилання на Контракт readiness" translate="no">​</a></h2>
+<p>Використовуйте перевірки і health, і readiness:</p>
+<ul>
+<li class=""><code>GET /api/health</code> доводить обслуговування HTTP процесом.</li>
+<li class=""><code>GET /api/ready</code> доводить доступ Server до налаштованих runtime-залежностей,
+включно з migrations і готовністю стандартного namespace.</li>
+<li class=""><code>GET /api/cluster/info</code> доводить, що автентифікований клієнт може знайти
+ідентичність build, протокол керування, worker-протокол, codecs payload
+та capabilities Server.</li>
+<li class=""><code>POST /api/worker/register</code> доводить можливість автентифікації workers
+в очікувані namespace та task queue.</li>
+</ul>
+<p>Не переводьте трафік лише за <code>/api/health</code>.</p></div></div><footer class="theme-doc-footer docusaurus-mt-lg"><div class="row margin-top--sm theme-doc-footer-edit-meta-row"><div class="col noPrint_WFHX"><a href="https://github.com/durable-workflow/durable-workflow.github.io/edit/main/i18n/uk/docusaurus-plugin-content-docs/current/deployment.md" target="_blank" rel="noopener noreferrer" class="theme-edit-this-page"><svg fill="currentColor" height="20" width="20" viewBox="0 0 40 40" class="iconEdit_Z9Sw" aria-hidden="true"><g><path d="m34.5 11.7l-3 3.1-6.3-6.3 3.1-3q0.5-0.5 1.2-0.5t1.1 0.5l3.9 3.9q0.5 0.4 0.5 1.1t-0.5 1.2z m-29.5 17.1l18.4-18.5 6.3 6.3-18.4 18.4h-6.3v-6.2z"></path></g></svg>Відредагувати цю сторінку</a></div><div class="col lastUpdated_JAkA"></div></div></footer></article><nav class="docusaurus-mt-lg pagination-nav" aria-label="сторінка документації"><a class="pagination-nav__link pagination-nav__link--prev" href="/uk/docs/category/run-and-operate/"><div class="pagination-nav__sublabel">Попередня сторінка</div><div class="pagination-nav__label">Запуск та експлуатація</div></a><a class="pagination-nav__link pagination-nav__link--next" href="/uk/docs/rolling-upgrades/"><div class="pagination-nav__sublabel">Наступна сторінка</div><div class="pagination-nav__label">Поступові оновлення</div></a></nav></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#deployment-support-matrix" class="table-of-contents__link toc-highlight">Матриця підтримки розгортань</a></li><li><a href="#production-recovery-deliverables" class="table-of-contents__link toc-highlight">Матеріали production-відновлення</a></li><li><a href="#security-data-and-audit-posture" class="table-of-contents__link toc-highlight">Безпека, дані та аудит</a></li><li><a href="#published-images" class="table-of-contents__link toc-highlight">Опубліковані образи</a></li><li><a href="#local-development-and-internal-non-production" class="table-of-contents__link toc-highlight">Локальна розробка та внутрішнє non-production</a></li><li><a href="#single-node-production" class="table-of-contents__link toc-highlight">Одновузловий production</a></li><li><a href="#small-clustered-deployments" class="table-of-contents__link toc-highlight">Невеликі кластерні розгортання</a></li><li><a href="#helm-chart-for-kubernetes" class="table-of-contents__link toc-highlight">Helm chart для Kubernetes</a></li><li><a href="#kubernetes-manifests" class="table-of-contents__link toc-highlight">Kubernetes manifests</a></li><li><a href="#single-region-high-availability-and-failover" class="table-of-contents__link toc-highlight">Single-region HA та failover</a><ul><li><a href="#release-evidence-status" class="table-of-contents__link toc-highlight">Стан підтвердження випуску</a></li><li><a href="#candidate-topology" class="table-of-contents__link toc-highlight">Кандидат топології</a></li><li><a href="#per-event-behavior-and-recovery-targets" class="table-of-contents__link toc-highlight">Поведінка та цілі recovery кожної події</a></li><li><a href="#load-balancer-readiness-and-traffic-shift-rules" class="table-of-contents__link toc-highlight">Правила load balancer, readiness та переведення трафіку</a></li><li><a href="#run-the-exact-artifact-rehearsal" class="table-of-contents__link toc-highlight">Репетиція точного артефакту</a></li><li><a href="#recovery-packet-additions" class="table-of-contents__link toc-highlight">Доповнення набору відновлення</a></li><li><a href="#boundary-against-unsupported-ha-claims" class="table-of-contents__link toc-highlight">Межа непідтримуваних тверджень HA</a></li></ul></li><li><a href="#activepassive-multi-region" class="table-of-contents__link toc-highlight">Active/passive multi-region</a></li><li><a href="#readiness-contract" class="table-of-contents__link toc-highlight">Контракт readiness</a></li></ul></div></div></div></div></main></div></div></div><div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="row footer__links"><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Документація</div><ul class="footer__items clean-list"><li class="footer__item"><a class="footer__link-item" href="/uk/docs/introduction/">Вступ</a></li><li class="footer__item"><a class="footer__link-item" href="/uk/docs/installation/">Встановлення</a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Спільнота</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://discord.gg/xu5aDDpqVy" target="_blank" rel="noopener noreferrer" class="footer__link-item">Discord<svg width="13.5" height="13.5" aria-label="(відкривається в новій вкладці)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://x.com/DurableWorkflow" target="_blank" rel="noopener noreferrer" class="footer__link-item">X<svg width="13.5" height="13.5" aria-label="(відкривається в новій вкладці)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Інші ресурси</div><ul class="footer__items clean-list"><li class="footer__item"><a class="footer__link-item" href="/uk/compare/temporal/">Durable Workflow і Temporal</a></li><li class="footer__item"><a href="https://durable-workflow.com/llms-full.txt" target="_blank" rel="noopener noreferrer" class="footer__link-item">Документація для LLM<svg width="13.5" height="13.5" aria-label="(відкривається в новій вкладці)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://packagist.org/packages/durable-workflow/workflow" target="_blank" rel="noopener noreferrer" class="footer__link-item">Packagist<svg width="13.5" height="13.5" aria-label="(відкривається в новій вкладці)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div></div><div class="footer__bottom text--center"><div class="footer__copyright">Авторські права © 2026 <a href="https://durable-workflow.com">Durable Workflow</a>.</div></div></div></footer></div></div>
+</body>
+</html>

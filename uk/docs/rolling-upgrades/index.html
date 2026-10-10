@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="uk" dir="ltr" class="docs-wrapper plugin-docs plugin-id-default docs-version-current docs-doc-page docs-doc-id-rolling-upgrades" data-has-hydrated="false">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="Docusaurus v3.10.2">
+<title data-rh="true">Поступові оновлення | Durable Workflow</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://durable-workflow.com/uk/img/durable-workflow-2.0.png"><meta data-rh="true" name="twitter:image" content="https://durable-workflow.com/uk/img/durable-workflow-2.0.png"><meta data-rh="true" property="og:url" content="https://durable-workflow.com/uk/docs/rolling-upgrades/"><meta data-rh="true" property="og:locale" content="uk"><meta data-rh="true" property="og:locale:alternate" content="en"><meta data-rh="true" property="og:locale:alternate" content="de"><meta data-rh="true" property="og:locale:alternate" content="es"><meta data-rh="true" property="og:locale:alternate" content="fr"><meta data-rh="true" property="og:locale:alternate" content="pt_BR"><meta data-rh="true" property="og:locale:alternate" content="ja"><meta data-rh="true" property="og:locale:alternate" content="zh_Hans"><meta data-rh="true" name="docusaurus_locale" content="uk"><meta data-rh="true" name="docsearch:language" content="uk"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Поступові оновлення | Durable Workflow"><meta data-rh="true" name="description" content="Самостійне поступове оновлення вузлів API Server, worker і scheduler Durable Workflow без зупинки живого трафіку."><meta data-rh="true" property="og:description" content="Самостійне поступове оновлення вузлів API Server, worker і scheduler Durable Workflow без зупинки живого трафіку."><meta data-rh="true" name="keywords" content="поступове оновлення,безпека поступового оновлення,drain worker,відсікання схемою,контракт готовності,процес відкату"><meta data-rh="true" name="twitter:title" content="Поступові оновлення | Durable Workflow"><meta data-rh="true" name="twitter:description" content="Самостійне поступове оновлення вузлів API Server, worker і scheduler Durable Workflow без зупинки живого трафіку."><link data-rh="true" rel="icon" href="/uk/img/favicon.ico"><link data-rh="true" rel="canonical" href="https://durable-workflow.com/uk/docs/rolling-upgrades/"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/docs/rolling-upgrades/" hreflang="en"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/de/docs/rolling-upgrades/" hreflang="de"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/es/docs/rolling-upgrades/" hreflang="es"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/fr/docs/rolling-upgrades/" hreflang="fr"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/pt-BR/docs/rolling-upgrades/" hreflang="pt-BR"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/uk/docs/rolling-upgrades/" hreflang="uk"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/ja/docs/rolling-upgrades/" hreflang="ja"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/zh-Hans/docs/rolling-upgrades/" hreflang="zh-Hans"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/docs/rolling-upgrades/" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Запуск та експлуатація","item":"https://durable-workflow.com/uk/docs/category/run-and-operate"},{"@type":"ListItem","position":2,"name":"Поступові оновлення","item":"https://durable-workflow.com/uk/docs/rolling-upgrades"}]}</script><link rel="alternate" type="application/rss+xml" href="/uk/blog/rss.xml" title="Durable Workflow RSS Feed">
+<link rel="alternate" type="application/atom+xml" href="/uk/blog/atom.xml" title="Durable Workflow Atom Feed">
+
+
+
+
+
+
+
+
+<script src="/analytics/cloudflare-web-analytics.js" type="module" data-cloudflare-web-analytics-token="a1296466c4e5487ca6ffd230a694b933"></script><link rel="stylesheet" href="/uk/assets/css/styles.d8bc86b9.css">
+<script src="/uk/assets/js/runtime~main.26502815.js" defer="defer"></script>
+<script src="/uk/assets/js/main.d9da7836.js" defer="defer"></script>
+</head>
+<body>
+<svg style="display: none;"><defs>
+<symbol id="theme-svg-external-link" viewBox="0 0 24 24"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"/></symbol>
+</defs></svg>
+<script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||"dark"),document.documentElement.setAttribute("data-theme-choice",t||"dark")}(),function(){try{const c=new URLSearchParams(window.location.search).entries();for(var[t,e]of c)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id="__docusaurus"><link rel="preload" as="image" href="/uk/img/logo.svg"><div role="region" aria-label="Перейти до основного вмісту"><a class="skipToContent_fXgn" href="#__docusaurus_skipToContent_fallback">Перейти до основного вмісту</a></div><nav aria-label="Головна" class="theme-layout-navbar navbar navbar--fixed-top"><div class="navbar__inner"><div class="theme-layout-navbar-left navbar__items"><button aria-label="Перемкнути сайдбар" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/uk/"><div class="navbar__logo"><img src="/uk/img/logo.svg" alt="Логотип Workflow" class="themedComponent_mlkZ themedComponent--light_NVdE"><img src="/uk/img/logo.svg" alt="Логотип Workflow" class="themedComponent_mlkZ themedComponent--dark_xIcU"></div><b class="navbar__title text--truncate">Durable Workflow</b></a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/uk/docs/introduction/">Документація</a><div class="navbar__item dropdown dropdown--hoverable"><a class="navbar__link" aria-haspopup="true" aria-expanded="false" role="button" href="/uk/docs/rolling-upgrades/">2.0</a><ul class="dropdown__menu"><li><a aria-current="page" class="dropdown__link dropdown__link--active" href="/uk/docs/rolling-upgrades/">2.0</a></li><li><a class="dropdown__link" href="/uk/docs/1.x/introduction/">1.x</a></li></ul></div><a class="navbar__item navbar__link" href="/uk/blog/">Блог</a></div><div class="theme-layout-navbar-right navbar__items navbar__items--right"><div class="navbar__item dropdown dropdown--hoverable dropdown--right"><a href="#" aria-haspopup="true" aria-expanded="false" role="button" class="navbar__link"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" class="iconLanguage_nlXk"><path fill="currentColor" d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"></path></svg>Українська</a><ul class="dropdown__menu"><li><a href="/docs/rolling-upgrades/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="en">English</a></li><li><a href="/de/docs/rolling-upgrades/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="de">Deutsch</a></li><li><a href="/es/docs/rolling-upgrades/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="es">Español</a></li><li><a href="/fr/docs/rolling-upgrades/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="fr">Français</a></li><li><a href="/pt-BR/docs/rolling-upgrades/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="pt-BR">Português (Brasil)</a></li><li><a href="/uk/docs/rolling-upgrades/" target="_self" rel="noopener noreferrer" class="dropdown__link dropdown__link--active" lang="uk">Українська</a></li><li><a href="/ja/docs/rolling-upgrades/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="ja">日本語</a></li><li><a href="/zh-Hans/docs/rolling-upgrades/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="zh-Hans">简体中文</a></li></ul></div><a href="https://github.com/durable-workflow/workflow" target="_blank" rel="noopener noreferrer" aria-label="Підтримати Durable Workflow зіркою на GitHub" class="navbar-github-star-link navbar__item navbar__link" label="Підтримати зіркою на GitHub"><svg aria-hidden="true" class="navbar-github-star-link__icon" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8a8.01 8.01 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.56 7.56 0 0 1 8 4.76c.68 0 1.36.09 2 .27 1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"></path></svg><span class="navbar-github-star-link__count" title="Зірки на GitHub">1.2K</span></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type="button" disabled="" title="Автоматичний режим" aria-label="Перемикання між темним та світлим режимом (зараз використовується Автоматичний режим)"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP lightToggleIcon_pyhR"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP darkToggleIcon_wfgR"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP systemToggleIcon_QzmC"><path fill="currentColor" d="m12 21c4.971 0 9-4.029 9-9s-4.029-9-9-9-9 4.029-9 9 4.029 9 9 9zm4.95-13.95c1.313 1.313 2.05 3.093 2.05 4.95s-0.738 3.637-2.05 4.95c-1.313 1.313-3.093 2.05-4.95 2.05v-14c1.857 0 3.637 0.737 4.95 2.05z"></path></svg></button></div><div class="navbarSearchContainer_Bca1"><div class="navbar__search searchBarContainer_NW3z" dir="ltr"><svg aria-hidden="true" class="searchIcon_T3tP" focusable="false" viewBox="0 0 16 16"><path fill="currentColor" d="M6.02945 10.20327a4.17382 4.17382 0 1 1 4.17382-4.17382 4.15609 4.15609 0 0 1-4.17382 4.17382Zm9.69195 4.2199-4.8225-4.82338A5.88021 5.88021 0 0 0 12.058 6.02856 6.00467 6.00467 0 1 0 9.59979 10.8989l4.82338 4.82338a.89729.89729 0 0 0 1.29912 0 .89749.89749 0 0 0-.00087-1.29909Z"></path></svg><input placeholder="Пошук" aria-label="Пошук" class="navbar__search-input searchInput_YFbd" value=""><div class="loadingRing_RJI3 searchBarLoadingRing_YnHq"><div></div><div></div><div></div><div></div></div></div></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="__docusaurus_skipToContent_fallback" class="theme-layout-main main-wrapper mainWrapper_z2l0"><div class="docsWrapper_hBAB"><button aria-label="Прокрутити до початку" class="clean-btn theme-back-to-top-button backToTopButton_sjWU" type="button"></button><div class="docRoot_UBD9"><aside class="theme-doc-sidebar-container docSidebarContainer_YfHR"><div class="sidebarViewport_aRkj"><div class="sidebar_njMd"><nav aria-label="Сайдбар документації" class="menu thin-scrollbar menu_SIkG"><ul class="theme-doc-sidebar-menu menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/uk/docs/introduction/"><span class="linkLabel_WmDU">Вступ</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/uk/docs/quickstart/"><span class="linkLabel_WmDU">Швидкий старт Durable Workflow 2.0</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/uk/docs/capabilities/"><span class="linkLabel_WmDU">Індекс можливостей 2.0</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/uk/docs/laravel-adoption/"><span class="linkLabel_WmDU">Інтеграція Laravel та перехід між runtime</span></a></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/uk/docs/category/service-mode/"><span class="categoryLinkLabel_W154">Режим сервісу</span></a><button aria-label="Розгорнути категорію в сайдбарі &#x27;Режим сервісу&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/uk/docs/category/embedded/"><span class="categoryLinkLabel_W154">Вбудований режим</span></a><button aria-label="Розгорнути категорію в сайдбарі &#x27;Вбудований режим&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--active" href="/uk/docs/category/run-and-operate/"><span class="categoryLinkLabel_W154">Запуск та експлуатація</span></a><button aria-label="Згорнути категорію в сайдбарі &#x27;Запуск та експлуатація&#x27;" aria-expanded="true" type="button" class="clean-btn menu__caret"></button></div><ul class="menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/deployment/"><span class="linkLabel_WmDU">Самостійне розгортання</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link menu__link--active" aria-current="page" tabindex="0" href="/uk/docs/rolling-upgrades/"><span class="linkLabel_WmDU">Поступові оновлення</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/monitoring/"><span class="linkLabel_WmDU">Моніторинг</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/operator-operating-envelope/"><span class="linkLabel_WmDU">Межі експлуатації для операторів</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/waterline-operator-api/"><span class="linkLabel_WmDU">Довідник операторського API Waterline</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/compatibility/"><span class="linkLabel_WmDU">Сумісність версій</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/platform-protocol-specs/"><span class="linkLabel_WmDU">Специфікації протоколів платформи</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/platform-conformance/"><span class="linkLabel_WmDU">Набір перевірок відповідності платформи</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/sdk-neutrality/"><span class="linkLabel_WmDU">Незалежність від SDK</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/support/"><span class="linkLabel_WmDU">Підтримка</span></a></li></ul></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/uk/docs/category/external-execution-and-ingress/"><span class="categoryLinkLabel_W154">Зовнішнє виконання та вхідні запити</span></a><button aria-label="Розгорнути категорію в сайдбарі &#x27;Зовнішнє виконання та вхідні запити&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/uk/docs/category/ai-and-automation/"><span class="categoryLinkLabel_W154">ШІ та автоматизація</span></a><button aria-label="Розгорнути категорію в сайдбарі &#x27;ШІ та автоматизація&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/uk/docs/sponsors/"><span class="linkLabel_WmDU">Спонсори</span></a></li></ul></nav></div></div></aside><main class="docMainContainer_TBSr"><div class="container padding-top--md padding-bottom--lg"><div class="row"><div class="col docItemCol_VOVn"><div class="docItemContainer_Djhp"><article><nav class="theme-doc-breadcrumbs breadcrumbsContainer_Z_bl" aria-label="Навігаційний ланцюжок поточної сторінки"><ul class="breadcrumbs"><li class="breadcrumbs__item"><a aria-label="Головна сторінка" class="breadcrumbs__link" href="/uk/"><svg viewBox="0 0 24 24" class="breadcrumbHomeIcon_YNFT"><path d="M10 19v-5h4v5c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-7h1.7c.46 0 .68-.57.33-.87L12.67 3.6c-.38-.34-.96-.34-1.34 0l-8.36 7.53c-.34.3-.13.87.33.87H5v7c0 .55.45 1 1 1h3c.55 0 1-.45 1-1z" fill="currentColor"></path></svg></a></li><li class="breadcrumbs__item"><a class="breadcrumbs__link" href="/uk/docs/category/run-and-operate/"><span>Запуск та експлуатація</span></a></li><li class="breadcrumbs__item breadcrumbs__item--active"><span class="breadcrumbs__link">Поступові оновлення</span></li></ul></nav><span class="theme-doc-version-badge badge badge--secondary">Версія: 2.0</span><div class="tocCollapsible_ETCw theme-doc-toc-mobile tocMobile_ITEo"><button type="button" class="clean-btn tocCollapsibleButton_TO0P">Зміст цієї сторінки</button></div><div lang="uk"><div class="theme-doc-markdown markdown"><header><h1>Поступові оновлення</h1></header>
+<p>Виконуйте поступове оновлення для заміни вузлів API, worker чи scheduler
+без вимкнення розгортання. Контракт охоплює невелику кластерну форму з
+<a class="" href="/uk/docs/deployment/">посібника самостійного розгортання</a>: два чи три вузли
+API за балансувальником, спільні зовнішні MySQL або PostgreSQL, спільний
+Redis, незалежно масштабовані worker та рівно один scheduler або runner
+обслуговування.</p>
+<p>Поступове оновлення підтримується за виконання всіх гарантій цієї
+сторінки. Поза цими межами використовуйте задокументований процес
+оновлення із зупинкою всього розгортання.</p>
+<p>Терміни ролей і маніфест форм цього контракту наведені в
+<a class="" href="/uk/docs/polyglot/server-role-topology/">топології ролей Server</a>. Цей посібник
+описує поступове оновлення поточних класів процесів <code>standalone_server</code>.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="what-rolling-upgrade-means-here">Що означає поступове оновлення<a href="#what-rolling-upgrade-means-here" class="hash-link" aria-label="Пряме посилання на Що означає поступове оновлення" title="Пряме посилання на Що означає поступове оновлення" translate="no">​</a></h2>
+<p><strong>Поступове оновлення</strong> замінює процеси по одному, завершуючи роботу
+кожного перед зупинкою, поки решта набору обслуговує трафік. Результат —
+відсутність простою розгортання загалом і обмежене вікно співіснування
+старих і нових процесів.</p>
+<p>Контракт розрізняє чотири класи процесів поточної форми
+<code>standalone_server</code>, кожен із власним підходом до оновлення:</p>
+<ul>
+<li class=""><strong>Вузли HTTP/API</strong>: процеси Server без стану, що обслуговують HTTP
+і зараз містять ролі <code>api_ingress</code>, <code>control_plane</code>, <code>matching</code> і
+<code>history_projection</code>.</li>
+<li class=""><strong>Worker</strong>: процеси SDK, що опитують площину worker та виконують
+завдання activity й workflow як <code>execution_plane</code>.</li>
+<li class=""><strong>Scheduler / runner обслуговування</strong>: єдиний процес, що запускає
+розклади та забезпечує тайм-аути activity й зберігання історії як
+роль <code>scheduler</code>.</li>
+<li class=""><strong>Bootstrap</strong>: одноразовий процес міграцій бази даних і створення
+типового простору імен.</li>
+</ul>
+<p>Вузли API та worker оновлюються незалежно. Scheduler має один екземпляр:
+зупиніть старий перед запуском нового. Решта розгортання обслуговує
+трафік протягом цього проміжку.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="compatible-version-skew-rules">Правила сумісного змішування версій<a href="#compatible-version-skew-rules" class="hash-link" aria-label="Пряме посилання на Правила сумісного змішування версій" title="Пряме посилання на Правила сумісного змішування версій" translate="no">​</a></h2>
+<p>Вікно співіснування — час, коли одночасно працюють кілька образів Server,
+версій пакета Workflow або версій SDK worker. У ньому мають виконуватися
+всі правила цього розділу.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="server-image-and-workflow-package">Образ Server і пакет Workflow<a href="#server-image-and-workflow-package" class="hash-link" aria-label="Пряме посилання на Образ Server і пакет Workflow" title="Пряме посилання на Образ Server і пакет Workflow" translate="no">​</a></h3>
+<ul>
+<li class=""><strong>Лише сусідні версії.</strong> Під час поступового оновлення кожен вузол
+API та інший процес Server має використовувати образ Server, версія
+пакета Workflow якого має ту саму мажорну версію, що й попередній
+пакет кластера, і відрізняється від кожного іншого живого процесу
+щонайбільше на одну мінорну версію. Перехід через мажорну версію
+потребує оновлення із загальною зупинкою.</li>
+<li class=""><strong>Міграції лише з додаванням.</strong> Кожна зміна схеми Durable Workflow
+v2 є додатковою в межах мажорної версії. Нові вузли не повинні
+потребувати стовпця чи таблиці, яких ще немає після міграцій.
+Старі вузли мають працювати з новим стовпцем, якого не читають.
+Це забезпечують <a href="#schemabootstrap-ordering" class="">правила порядку міграцій</a>.</li>
+<li class=""><strong>Сусідні версії площини керування й протоколу worker.</strong> Кожен
+вузол публікує підтримувані діапазони <code>control_plane.version</code> і
+<code>worker_protocol.version</code> через <code>GET /api/cluster/info</code>. Під час
+оновлення підтримуваний діапазон нового образу має перетинатися
+з діапазоном кожного живого старого вузла. Виявіть діапазон перед
+оновленням і припиніть його за відсутності перетину.</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="worker-sdk-and-build-identity">SDK worker та ідентичність збірки<a href="#worker-sdk-and-build-identity" class="hash-link" aria-label="Пряме посилання на SDK worker та ідентичність збірки" title="Пряме посилання на SDK worker та ідентичність збірки" translate="no">​</a></h3>
+<ul>
+<li class=""><strong>Worker позначають кожну збірку.</strong> Кожен worker поступового
+оновлення має реєструватися через <code>POST /api/worker/register</code> зі
+стабільним <code>build_id</code>. Група без версії (<code>build_id: null</code>) є типовою
+до оновлення. <a class="" href="/uk/docs/polyglot/worker-build-id-rollout/">Посібник оновлення build ID worker</a>
+пояснює перший перехід.</li>
+<li class=""><strong>Fingerprint визначення workflow залишаються закріпленими.</strong>
+Образи Server із <code>DW_V2_PIN_TO_RECORDED_FINGERPRINT=true</code>, типовим
+значенням, закріплюють незавершені run за fingerprint визначення
+workflow, записаним у <code>WorkflowStarted</code>. Новий worker з іншим
+fingerprint того самого workflow відмовляється забирати ці run
+до їх завершення.</li>
+<li class=""><strong>Підхід до допуску збірок, що співіснують.</strong> Оберіть
+<a class="" href="/uk/docs/polyglot/server-config-reference/"><code>DW_V2_FLEET_VALIDATION_MODE</code></a>
+перед початком. <code>warn</code> дозволяє оновлення навіть без живого worker
+потрібного маркера сумісності. <code>fail</code> блокує диспетчеризацію та
+закриває допуск контракту готовності в цьому вікні. Виробничі
+оновлення, що потребують чистого переходу, мають використовувати <code>fail</code>.</li>
+</ul>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="schemabootstrap-ordering">Порядок схеми й bootstrap<a href="#schemabootstrap-ordering" class="hash-link" aria-label="Пряме посилання на Порядок схеми й bootstrap" title="Пряме посилання на Порядок схеми й bootstrap" translate="no">​</a></h2>
+<p>Зміни схеми виконуються одним проходом bootstrap. Порядок важливий.</p>
+<ol>
+<li class=""><strong>Спочатку виконайте bootstrap рівно один раз.</strong> Виконайте
+<code>php artisan server:bootstrap --force</code> або еквівалент опублікованого
+образу з одного контейнера перед запуском будь-якого нового вузла
+API, worker чи scheduler. Bootstrap виконує <code>migrate</code> і створення
+типового простору імен. Він приймає міграції пакета Workflow,
+таблиці яких уже існують на підключенні.</li>
+<li class=""><strong>Нова схема має бути сумісною зі старим кодом.</strong> Кожна міграція
+v2 цього шляху лише додає таблиці, стовпці чи індекси. Старі
+вузли API й worker продовжують працювати з новою схемою.</li>
+<li class=""><strong>Не запускайте новий код до завершення bootstrap.</strong> Оновлюйте
+образ Server лише після успішного завершення bootstrap. Нові
+вузли API й worker можуть залежати від щойно створених таблиць.
+Запуск до завершення bootstrap є найпоширенішою причиною сплеску
+5xx під час переходу.</li>
+<li class=""><strong>Bootstrap ідемпотентний.</strong> Його безпечно повторювати. Якщо він
+частково завершився помилкою, виправте причину й повторіть.
+Журнал міграцій продовжує з місця зупинки, а створення простору
+імен нічого не змінює за наявності рядка.</li>
+</ol>
+<p>Міграція, що з’явилася на одному сервері раніше за інший, НЕ ПОВИННА
+порушувати інтерфейс готовності. Якщо під час планування знайдено зміну,
+яка не є додатковою, використовуйте вікно загальної зупинки для цього
+випуску й поверніться до поступових оновлень у наступному.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="drain-and-admission-during-the-overlap-window">Drain і допуск у вікні співіснування<a href="#drain-and-admission-during-the-overlap-window" class="hash-link" aria-label="Пряме посилання на Drain і допуск у вікні співіснування" title="Пряме посилання на Drain і допуск у вікні співіснування" translate="no">​</a></h2>
+<p>Три інтерфейси допуску автоматично забезпечують безпеку співіснування:</p>
+<ul>
+<li class=""><strong>Допуск запуску.</strong> Кожен процес Server завантажує
+<code>BackendCapabilities</code>, <code>LongPollCacheValidator</code>, <code>WorkflowModeGuard</code>
+і контракт готовності під час запуску. Процес із backend чи кешем,
+що не відповідає контракту v2, відмовляється позначати себе готовим.</li>
+<li class=""><strong>Сумісність worker.</strong> За <code>DW_V2_FLEET_VALIDATION_MODE=fail</code> і
+відсутності живого worker потрібного маркера сумісності в області
+підключення та черги завдання роль matching блокує диспетчеризацію,
+а перевірка здоров’я <code>worker_compatibility</code> переходить із <code>warning</code>
+до <code>error</code>. Завдання залишаються готовими й видимими та не втрачаються.
+Контракт готовності повертає 503 на цьому вузлі, щоб балансувальник
+виключив його з обслуговування.</li>
+<li class=""><strong>Безпека маршрутизації.</strong> Готове завдання без живого worker потрібної
+сумісності зберігається й рахується в метриці backlog
+<code>compatibility_blocked_runs</code>. Drain маршрутизації не призводить
+до прихованої втрати завдань. Гарантія виконання щонайменше один
+раз залишається чинною.</li>
+</ul>
+<p>Щоб скоротити вікно співіснування worker, переведіть старі групи в drain
+після появи нових. Використовуйте процес
+<a class="" href="/uk/docs/polyglot/worker-build-id-rollout/">оновлення build ID worker</a>:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">dw task-queue:drain orders-critical --build-id orders-worker-2026-04-21-z9</span><br></div></code></pre></div></div>
+<p><code>drain_intent</code> групи стає <code>draining</code>. Worker цієї збірки завершують
+поточну роботу, але припиняють забирати нові завдання. Дочекайтеся нуля
+<code>active_worker_count</code> і <code>draining_worker_count</code> перед зупинкою старих
+процесів worker.</p>
+<p>Scheduler не має довготривалої черги завдань і не потребує drain worker.
+Зупиніть старий контейнер scheduler, виконайте bootstrap, якщо його ще
+не виконано, і запустіть новий. Вікно між ними обмежене часом запуску
+нового контейнера. Розклади відновлюються зі збереженого стану на
+наступному tick.</p>
+<p>Якщо оновлення також вводить окреме розгортання ролі matching, явно
+задайте зміну топології. Не припускайте, що кожен вузол виконання
+продовжить загальний пошук готових завдань. У
+<a class="" href="/uk/docs/polyglot/task-matching-dispatch/">зіставленні й диспетчеризації завдань</a>
+наведена форма <code>workflow:v2:repair-pass --loop</code> разом із
+<code>DW_V2_MATCHING_ROLE_QUEUE_WAKE=0</code>. Перевірте живий контракт вузла
+через <code>GET /api/cluster/info</code>: <code>topology.current_shape</code> має відповідати
+розгортанню переходу, <code>topology.current_roles</code> — задокументованому набору
+ролей вузла, а <code>topology.matching_role.queue_wake_enabled</code>,
+<code>topology.matching_role.shape</code> і <code>topology.matching_role.wake_owner</code>
+мають показувати очікуваного власника загального пошуку готових завдань.
+Типова форма повідомляє <code>queue_wake_enabled: true</code>, <code>shape: &quot;in_worker&quot;</code>
+і <code>wake_owner: &quot;worker_loop&quot;</code>. Окремі розгортання matching змінюють
+вузли виконання на <code>queue_wake_enabled: false</code>, <code>shape: &quot;dedicated&quot;</code>
+і <code>wake_owner: &quot;dedicated_repair_pass&quot;</code>.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="readiness-and-cutover">Готовність і перемикання<a href="#readiness-and-cutover" class="hash-link" aria-label="Пряме посилання на Готовність і перемикання" title="Пряме посилання на Готовність і перемикання" translate="no">​</a></h2>
+<p>Визначайте допуск трафіку на вузол за контрактом готовності:</p>
+<ul>
+<li class=""><code>GET /api/health</code> доводить обслуговування HTTP процесом.</li>
+<li class=""><code>GET /api/ready</code> доводить доступ до налаштованих залежностей runtime,
+включно з міграціями, типовим простором імен та перевіркою допуску
+сумісності worker за <code>DW_V2_FLEET_VALIDATION_MODE=fail</code>.</li>
+<li class=""><code>GET /api/cluster/info</code> доводить можливість автентифікованого клієнта
+виявити ідентичність збірки, протоколи площини керування й worker,
+кодеки payload та можливості Server.</li>
+<li class=""><code>POST /api/worker/register</code> доводить можливість автентифікації worker
+в очікуваному просторі імен і черзі завдань.</li>
+</ul>
+<p>Послідовність перемикання одного вузла API:</p>
+<ol>
+<li class="">Виключіть вузол із ротації балансувальника. Найпростіший шлях —
+спричинити невдачу перевірки готовності балансувальника, зупинивши
+pre-start hook нового образу перед запуском нового контейнера.</li>
+<li class="">Дочекайтеся завершення поточних запитів HTTP. Більшість клієнтів
+повторює запит після скидання підключення. Довгі підключення, як
+long-poll worker, підключаються до решти набору вузлів.</li>
+<li class="">Зупиніть старий контейнер і запустіть новий.</li>
+<li class="">Дочекайтеся 200 від <code>GET /api/ready</code> та нової ідентичності збірки
+в <code>GET /api/cluster/info</code>. За зміни топології matching також
+підтвердьте відповідність <code>topology.matching_role.task_dispatch_mode</code>,
+<code>topology.matching_role.queue_wake_enabled</code>,
+<code>topology.matching_role.shape</code>, <code>topology.matching_role.wake_owner</code>,
+<code>topology.matching_role.partition_primitives</code> і
+<code>topology.matching_role.backpressure_model</code> потрібному розгортанню
+перед поверненням трафіку. Використовуйте <code>/api/system/operator-metrics</code>
+для того самого локального контракту ролі matching разом із живими
+лічильниками backlog, відновлення й worker процесу, що відповідає.</li>
+<li class="">Поверніть вузол до ротації.</li>
+</ol>
+<p>Повторюйте по одному вузлу. Не оновлюйте наступний, доки попередній
+не повернувся до ротації й не обслуговує трафік без помилок.</p>
+<p>Worker перемикаються за групами:</p>
+<ol>
+<li class="">Запустіть нову групу worker із новим <code>build_id</code>.</li>
+<li class="">Підтвердьте <code>rollout_status: &quot;active&quot;</code> і ненульовий
+<code>active_worker_count</code> обох груп у <code>dw task-queue:build-ids &lt;queue&gt; --json</code>.</li>
+<li class="">Переведіть стару групу в drain через <code>dw task-queue:drain</code>.</li>
+<li class="">Дочекайтеся нуля <code>active_worker_count</code> і <code>draining_worker_count</code>
+старої групи.</li>
+<li class="">Зупиніть старі процеси worker.</li>
+</ol>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="rollback">Відкат<a href="#rollback" class="hash-link" aria-label="Пряме посилання на Відкат" title="Пряме посилання на Відкат" translate="no">​</a></h2>
+<p>Кожен крок оборотний. Сплануйте відкат перед початком.</p>
+<ul>
+<li class="">
+<p><strong>Відкат bootstrap.</strong> Міграції v2 оборотні через стандартний шлях
+Laravel <code>down()</code>. Відкат міграції, потрібної новому образу, вимагає
+спочатку зупинити всі нові вузли. Інакше новий код бачить відсутній
+стовпець, а контракт готовності повертає 503. Більшість відкатів
+не потребує скасування міграцій, оскільки зміни схеми додаткові.</p>
+</li>
+<li class="">
+<p><strong>Відкат вузла API.</strong> Зупиніть новий контейнер і запустіть старий
+на тому самому вузлі. Виключіть вузол із ротації на час запуску
+та поверніть після успішного <code>GET /api/ready</code>. Повторіть для інших
+оновлених вузлів API. Старий код читає нову схему, бо зміна додаткова.</p>
+</li>
+<li class="">
+<p><strong>Відкат worker.</strong> Відновіть раніше спорожнену групу, переведіть
+невдалу групу в drain і знову масштабуйте відому робочу збірку:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">dw task-queue:resume orders-critical --build-id orders-worker-2026-04-21-z9</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">dw task-queue:drain  orders-critical --build-id orders-worker-2026-04-22</span><br></div></code></pre></div></div>
+<p>Resume очищає <code>drain_intent</code> і <code>drained_at</code>. Worker, що надсилає
+heartbeat із відновленим <code>build_id</code>, повертається до <code>active</code> на
+наступному опитуванні. Обидва виклики ідемпотентні.</p>
+</li>
+</ul>
+<p>Якщо оновлення виявило недодаткову проблему схеми, використовуйте
+вікно загальної зупинки для відкату, виконайте коригувальні міграції
+та сплануйте перехід заново.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="operator-verification">Перевірка оператором<a href="#operator-verification" class="hash-link" aria-label="Пряме посилання на Перевірка оператором" title="Пряме посилання на Перевірка оператором" translate="no">​</a></h2>
+<p>Перевіряйте кожен етап оновлення за інтерфейсами оператора.</p>
+<table><thead><tr><th>Питання</th><th>Інтерфейс</th></tr></thead><tbody><tr><td>Чи bootstrap завершений?</td><td>Код завершення 0 <code>php artisan server:bootstrap --force</code>. <code>migrate:status</code> показує виконання всіх міграцій.</td></tr><tr><td>Чи новий вузол готовий?</td><td><code>GET /api/ready</code> повертає 200, <code>GET /api/cluster/info</code> повідомляє нову збірку.</td></tr><tr><td>Чи здоровий допуск сумісності?</td><td><code>workers.fleet</code>, <code>workers.active_workers</code> і <code>workers.active_workers_supporting_required</code> у <code>GET /api/system/operator-metrics</code> погоджені щодо ненульової кількості worker кожного потрібного маркера сумісності.</td></tr><tr><td>Чи просувається drain worker?</td><td><code>dw task-queue:build-ids &lt;queue&gt; --json</code> показує зменшення <code>active_worker_count</code> і <code>draining_worker_count</code> групи drain.</td></tr><tr><td>Чи маршрутизація безпечна?</td><td><code>backlog.compatibility_blocked_runs</code> і <code>backlog.max_compatibility_blocked_age_ms</code> у <code>GET /api/system/operator-metrics</code> близькі до нуля, перевірка <code>worker_compatibility</code> не має <code>error</code>.</td></tr><tr><td>Чи scheduler наздогнав розклад?</td><td><code>schedules.missed</code> у <code>GET /api/system/operator-metrics</code> дорівнює нулю, <code>schedules.oldest_overdue_at</code> — null.</td></tr><tr><td>Чи накопичуються застряглі run?</td><td><code>runs.repair_needed</code> і <code>runs.max_repair_needed_age_ms</code> у <code>GET /api/system/operator-metrics</code> залишаються близькими до базових значень перед оновленням.</td></tr></tbody></table>
+<p><code>dw system:operator-metrics --json</code> надає той самий знімок метрик
+оператора в консолі набору окремого Server, тож оператори можуть
+обрати зручний для свого процесу інтерфейс. Окрема служба Waterline
+може читати той самий стан оновлення Server через PHP SDK у
+<code>/waterline/api/v2/health</code> і <code>/waterline/api/stats</code>. Узгодьте її endpoint,
+простір імен та токен Server з оновлюваним набором. Вбудовані
+Laravel-розгортання надають ці маршрути Waterline зі свого пакета
+в процесі. Server API та CLI залишаються доступними в обох випадках,
+як описано в <a class="" href="/uk/docs/operator-operating-envelope/">операційних межах оператора</a>.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="failure-modes-and-what-to-do">Сценарії помилок і дії<a href="#failure-modes-and-what-to-do" class="hash-link" aria-label="Пряме посилання на Сценарії помилок і дії" title="Пряме посилання на Сценарії помилок і дії" translate="no">​</a></h2>
+<table><thead><tr><th>Симптом</th><th>Імовірна причина</th><th>Дія</th></tr></thead><tbody><tr><td>Новий вузол API не проходить <code>GET /api/ready</code> після запуску</td><td>Bootstrap не завершений або задано <code>DW_V2_FLEET_VALIDATION_MODE=fail</code> без живого сумісного worker</td><td>Повторіть bootstrap. Запустіть сумісну групу worker перед поверненням вузла API до ротації.</td></tr><tr><td><code>worker_compatibility</code> переходить до <code>error</code> під час оновлення</td><td>Потрібний маркер сумісності не має живого worker із підтримкою</td><td>Запустіть більше worker підтримуваного <code>build_id</code>. Відновіть раніше спорожнену групу, якщо потрібен відкат.</td></tr><tr><td><code>backlog.compatibility_blocked_runs</code> і <code>max_compatibility_blocked_age_ms</code> зростають</td><td>Завдання очікують маркер, якого не підтримує живий worker</td><td>Та сама дія. Завдання зберігаються й автоматично надсилаються після heartbeat сумісного worker.</td></tr><tr><td><code>dw task-queue:drain</code> успішний, але worker продовжують забирати завдання</td><td>Процес worker не надсилав heartbeat після drain</td><td>Дочекайтеся одного циклу heartbeat. Якщо група залишається активною, перезапустіть процес worker, щоб отримати намір drain.</td></tr><tr><td>Запуски розкладів припинилися після перезапуску scheduler</td><td>Старий і новий scheduler зупинені</td><td>Запустіть новий контейнер scheduler. Перевірте повернення <code>schedules.missed</code> до нуля під час наступного зчитування метрик оператора.</td></tr></tbody></table>
+<p>Якщо симптому немає в списку, вважайте оновлення невдалим: припиніть
+додавати нові процеси, переведіть запущені нові групи в drain та
+відновіть попередню збірку перед подальшою діагностикою.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="related-references">Пов’язані довідники<a href="#related-references" class="hash-link" aria-label="Пряме посилання на Пов’язані довідники" title="Пряме посилання на Пов’язані довідники" translate="no">​</a></h2>
+<ul>
+<li class=""><a class="" href="/uk/docs/deployment/">Самостійні розгортання</a> для форм розгортання,
+які передбачає цей контракт.</li>
+<li class=""><a class="" href="/uk/docs/polyglot/worker-build-id-rollout/">Оновлення build ID worker</a>
+для викликів drain і resume груп.</li>
+<li class=""><a class="" href="/uk/docs/operator-operating-envelope/">Операційні межі оператора</a>
+для контракту діагностики, черг і відновлення проєкцій, який
+оператори читають разом із сигналами оновлення.</li>
+<li class=""><a class="" href="/uk/docs/polyglot/server-config-reference/">Довідник конфігурації Server</a>
+для змінних середовища безпеки оновлення (<code>DW_V2_FLEET_VALIDATION_MODE</code>,
+<code>DW_V2_PIN_TO_RECORDED_FINGERPRINT</code>, <code>DW_V2_GUARDRAILS_BOOT</code>,
+<code>DW_V2_CACHE_VALIDATION_MODE</code>, <code>DW_V2_MULTI_NODE</code>,
+<code>DW_V2_VALIDATE_CACHE_BACKEND</code>, <code>DW_V2_TASK_REPAIR_*</code>).</li>
+<li class=""><a class="" href="/uk/docs/polyglot/server-api-reference/">Довідник Server API</a> для
+endpoint готовності, cluster info й метрик оператора, що
+перевіряють кожен етап оновлення.</li>
+</ul></div></div><footer class="theme-doc-footer docusaurus-mt-lg"><div class="row margin-top--sm theme-doc-footer-tags-row"><div class="col"><b>Теги:</b><ul class="tags_jXut padding--none margin-left--sm"><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/uk/docs/tags/operations/">operations</a></li><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/uk/docs/tags/upgrades/">upgrades</a></li><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/uk/docs/tags/rollouts/">rollouts</a></li><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/uk/docs/tags/rollback/">rollback</a></li></ul></div></div><div class="row margin-top--sm theme-doc-footer-edit-meta-row"><div class="col noPrint_WFHX"><a href="https://github.com/durable-workflow/durable-workflow.github.io/edit/main/i18n/uk/docusaurus-plugin-content-docs/current/rolling-upgrades.md" target="_blank" rel="noopener noreferrer" class="theme-edit-this-page"><svg fill="currentColor" height="20" width="20" viewBox="0 0 40 40" class="iconEdit_Z9Sw" aria-hidden="true"><g><path d="m34.5 11.7l-3 3.1-6.3-6.3 3.1-3q0.5-0.5 1.2-0.5t1.1 0.5l3.9 3.9q0.5 0.4 0.5 1.1t-0.5 1.2z m-29.5 17.1l18.4-18.5 6.3 6.3-18.4 18.4h-6.3v-6.2z"></path></g></svg>Відредагувати цю сторінку</a></div><div class="col lastUpdated_JAkA"></div></div></footer></article><nav class="docusaurus-mt-lg pagination-nav" aria-label="сторінка документації"><a class="pagination-nav__link pagination-nav__link--prev" href="/uk/docs/deployment/"><div class="pagination-nav__sublabel">Попередня сторінка</div><div class="pagination-nav__label">Самостійне розгортання</div></a><a class="pagination-nav__link pagination-nav__link--next" href="/uk/docs/monitoring/"><div class="pagination-nav__sublabel">Наступна сторінка</div><div class="pagination-nav__label">Моніторинг</div></a></nav></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#what-rolling-upgrade-means-here" class="table-of-contents__link toc-highlight">Що означає поступове оновлення</a></li><li><a href="#compatible-version-skew-rules" class="table-of-contents__link toc-highlight">Правила сумісного змішування версій</a><ul><li><a href="#server-image-and-workflow-package" class="table-of-contents__link toc-highlight">Образ Server і пакет Workflow</a></li><li><a href="#worker-sdk-and-build-identity" class="table-of-contents__link toc-highlight">SDK worker та ідентичність збірки</a></li></ul></li><li><a href="#schemabootstrap-ordering" class="table-of-contents__link toc-highlight">Порядок схеми й bootstrap</a></li><li><a href="#drain-and-admission-during-the-overlap-window" class="table-of-contents__link toc-highlight">Drain і допуск у вікні співіснування</a></li><li><a href="#readiness-and-cutover" class="table-of-contents__link toc-highlight">Готовність і перемикання</a></li><li><a href="#rollback" class="table-of-contents__link toc-highlight">Відкат</a></li><li><a href="#operator-verification" class="table-of-contents__link toc-highlight">Перевірка оператором</a></li><li><a href="#failure-modes-and-what-to-do" class="table-of-contents__link toc-highlight">Сценарії помилок і дії</a></li><li><a href="#related-references" class="table-of-contents__link toc-highlight">Пов’язані довідники</a></li></ul></div></div></div></div></main></div></div></div><div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="row footer__links"><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Документація</div><ul class="footer__items clean-list"><li class="footer__item"><a class="footer__link-item" href="/uk/docs/introduction/">Вступ</a></li><li class="footer__item"><a class="footer__link-item" href="/uk/docs/installation/">Встановлення</a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Спільнота</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://discord.gg/xu5aDDpqVy" target="_blank" rel="noopener noreferrer" class="footer__link-item">Discord<svg width="13.5" height="13.5" aria-label="(відкривається в новій вкладці)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://x.com/DurableWorkflow" target="_blank" rel="noopener noreferrer" class="footer__link-item">X<svg width="13.5" height="13.5" aria-label="(відкривається в новій вкладці)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Інші ресурси</div><ul class="footer__items clean-list"><li class="footer__item"><a class="footer__link-item" href="/uk/compare/temporal/">Durable Workflow і Temporal</a></li><li class="footer__item"><a href="https://durable-workflow.com/llms-full.txt" target="_blank" rel="noopener noreferrer" class="footer__link-item">Документація для LLM<svg width="13.5" height="13.5" aria-label="(відкривається в новій вкладці)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://packagist.org/packages/durable-workflow/workflow" target="_blank" rel="noopener noreferrer" class="footer__link-item">Packagist<svg width="13.5" height="13.5" aria-label="(відкривається в новій вкладці)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div></div><div class="footer__bottom text--center"><div class="footer__copyright">Авторські права © 2026 <a href="https://durable-workflow.com">Durable Workflow</a>.</div></div></div></footer></div></div>
+</body>
+</html>

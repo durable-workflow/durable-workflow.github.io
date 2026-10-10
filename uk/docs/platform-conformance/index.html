@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="uk" dir="ltr" class="docs-wrapper plugin-docs plugin-id-default docs-version-current docs-doc-page docs-doc-id-platform-conformance" data-has-hydrated="false">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="Docusaurus v3.10.2">
+<title data-rh="true">Набір перевірок відповідності платформи | Durable Workflow</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://durable-workflow.com/uk/img/durable-workflow-2.0.png"><meta data-rh="true" name="twitter:image" content="https://durable-workflow.com/uk/img/durable-workflow-2.0.png"><meta data-rh="true" property="og:url" content="https://durable-workflow.com/uk/docs/platform-conformance/"><meta data-rh="true" property="og:locale" content="uk"><meta data-rh="true" property="og:locale:alternate" content="en"><meta data-rh="true" property="og:locale:alternate" content="de"><meta data-rh="true" property="og:locale:alternate" content="es"><meta data-rh="true" property="og:locale:alternate" content="fr"><meta data-rh="true" property="og:locale:alternate" content="pt_BR"><meta data-rh="true" property="og:locale:alternate" content="ja"><meta data-rh="true" property="og:locale:alternate" content="zh_Hans"><meta data-rh="true" name="docusaurus_locale" content="uk"><meta data-rh="true" name="docsearch:language" content="uk"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Набір перевірок відповідності платформи | Durable Workflow"><meta data-rh="true" name="description" content="Публічне авторитетне джерело маніфесту перевірок відповідності Durable Workflow v2, каталогу fixture, правил harness і вимог релізів."><meta data-rh="true" property="og:description" content="Публічне авторитетне джерело маніфесту перевірок відповідності Durable Workflow v2, каталогу fixture, правил harness і вимог релізів."><meta data-rh="true" name="keywords" content="набір перевірок відповідності платформи,harness відповідності,fixture відповідності,сумісність durable workflow,platform-conformance-contract"><meta data-rh="true" name="twitter:title" content="Набір перевірок відповідності платформи | Durable Workflow"><meta data-rh="true" name="twitter:description" content="Публічне авторитетне джерело маніфесту перевірок відповідності Durable Workflow v2, каталогу fixture, правил harness і вимог релізів."><link data-rh="true" rel="icon" href="/uk/img/favicon.ico"><link data-rh="true" rel="canonical" href="https://durable-workflow.com/uk/docs/platform-conformance/"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/docs/platform-conformance/" hreflang="en"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/de/docs/platform-conformance/" hreflang="de"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/es/docs/platform-conformance/" hreflang="es"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/fr/docs/platform-conformance/" hreflang="fr"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/pt-BR/docs/platform-conformance/" hreflang="pt-BR"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/uk/docs/platform-conformance/" hreflang="uk"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/ja/docs/platform-conformance/" hreflang="ja"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/zh-Hans/docs/platform-conformance/" hreflang="zh-Hans"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/docs/platform-conformance/" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Запуск та експлуатація","item":"https://durable-workflow.com/uk/docs/category/run-and-operate"},{"@type":"ListItem","position":2,"name":"Набір перевірок відповідності платформи","item":"https://durable-workflow.com/uk/docs/platform-conformance"}]}</script><link rel="alternate" type="application/rss+xml" href="/uk/blog/rss.xml" title="Durable Workflow RSS Feed">
+<link rel="alternate" type="application/atom+xml" href="/uk/blog/atom.xml" title="Durable Workflow Atom Feed">
+
+
+
+
+
+
+
+
+<script src="/analytics/cloudflare-web-analytics.js" type="module" data-cloudflare-web-analytics-token="a1296466c4e5487ca6ffd230a694b933"></script><link rel="stylesheet" href="/uk/assets/css/styles.d8bc86b9.css">
+<script src="/uk/assets/js/runtime~main.26502815.js" defer="defer"></script>
+<script src="/uk/assets/js/main.d9da7836.js" defer="defer"></script>
+</head>
+<body>
+<svg style="display: none;"><defs>
+<symbol id="theme-svg-external-link" viewBox="0 0 24 24"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"/></symbol>
+</defs></svg>
+<script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||"dark"),document.documentElement.setAttribute("data-theme-choice",t||"dark")}(),function(){try{const c=new URLSearchParams(window.location.search).entries();for(var[t,e]of c)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id="__docusaurus"><link rel="preload" as="image" href="/uk/img/logo.svg"><div role="region" aria-label="Перейти до основного вмісту"><a class="skipToContent_fXgn" href="#__docusaurus_skipToContent_fallback">Перейти до основного вмісту</a></div><nav aria-label="Головна" class="theme-layout-navbar navbar navbar--fixed-top"><div class="navbar__inner"><div class="theme-layout-navbar-left navbar__items"><button aria-label="Перемкнути сайдбар" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/uk/"><div class="navbar__logo"><img src="/uk/img/logo.svg" alt="Логотип Workflow" class="themedComponent_mlkZ themedComponent--light_NVdE"><img src="/uk/img/logo.svg" alt="Логотип Workflow" class="themedComponent_mlkZ themedComponent--dark_xIcU"></div><b class="navbar__title text--truncate">Durable Workflow</b></a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/uk/docs/introduction/">Документація</a><div class="navbar__item dropdown dropdown--hoverable"><a class="navbar__link" aria-haspopup="true" aria-expanded="false" role="button" href="/uk/docs/platform-conformance/">2.0</a><ul class="dropdown__menu"><li><a aria-current="page" class="dropdown__link dropdown__link--active" href="/uk/docs/platform-conformance/">2.0</a></li><li><a class="dropdown__link" href="/uk/docs/1.x/introduction/">1.x</a></li></ul></div><a class="navbar__item navbar__link" href="/uk/blog/">Блог</a></div><div class="theme-layout-navbar-right navbar__items navbar__items--right"><div class="navbar__item dropdown dropdown--hoverable dropdown--right"><a href="#" aria-haspopup="true" aria-expanded="false" role="button" class="navbar__link"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" class="iconLanguage_nlXk"><path fill="currentColor" d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"></path></svg>Українська</a><ul class="dropdown__menu"><li><a href="/docs/platform-conformance/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="en">English</a></li><li><a href="/de/docs/platform-conformance/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="de">Deutsch</a></li><li><a href="/es/docs/platform-conformance/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="es">Español</a></li><li><a href="/fr/docs/platform-conformance/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="fr">Français</a></li><li><a href="/pt-BR/docs/platform-conformance/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="pt-BR">Português (Brasil)</a></li><li><a href="/uk/docs/platform-conformance/" target="_self" rel="noopener noreferrer" class="dropdown__link dropdown__link--active" lang="uk">Українська</a></li><li><a href="/ja/docs/platform-conformance/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="ja">日本語</a></li><li><a href="/zh-Hans/docs/platform-conformance/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="zh-Hans">简体中文</a></li></ul></div><a href="https://github.com/durable-workflow/workflow" target="_blank" rel="noopener noreferrer" aria-label="Підтримати Durable Workflow зіркою на GitHub" class="navbar-github-star-link navbar__item navbar__link" label="Підтримати зіркою на GitHub"><svg aria-hidden="true" class="navbar-github-star-link__icon" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8a8.01 8.01 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.56 7.56 0 0 1 8 4.76c.68 0 1.36.09 2 .27 1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"></path></svg><span class="navbar-github-star-link__count" title="Зірки на GitHub">1.2K</span></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type="button" disabled="" title="Автоматичний режим" aria-label="Перемикання між темним та світлим режимом (зараз використовується Автоматичний режим)"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP lightToggleIcon_pyhR"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP darkToggleIcon_wfgR"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP systemToggleIcon_QzmC"><path fill="currentColor" d="m12 21c4.971 0 9-4.029 9-9s-4.029-9-9-9-9 4.029-9 9 4.029 9 9 9zm4.95-13.95c1.313 1.313 2.05 3.093 2.05 4.95s-0.738 3.637-2.05 4.95c-1.313 1.313-3.093 2.05-4.95 2.05v-14c1.857 0 3.637 0.737 4.95 2.05z"></path></svg></button></div><div class="navbarSearchContainer_Bca1"><div class="navbar__search searchBarContainer_NW3z" dir="ltr"><svg aria-hidden="true" class="searchIcon_T3tP" focusable="false" viewBox="0 0 16 16"><path fill="currentColor" d="M6.02945 10.20327a4.17382 4.17382 0 1 1 4.17382-4.17382 4.15609 4.15609 0 0 1-4.17382 4.17382Zm9.69195 4.2199-4.8225-4.82338A5.88021 5.88021 0 0 0 12.058 6.02856 6.00467 6.00467 0 1 0 9.59979 10.8989l4.82338 4.82338a.89729.89729 0 0 0 1.29912 0 .89749.89749 0 0 0-.00087-1.29909Z"></path></svg><input placeholder="Пошук" aria-label="Пошук" class="navbar__search-input searchInput_YFbd" value=""><div class="loadingRing_RJI3 searchBarLoadingRing_YnHq"><div></div><div></div><div></div><div></div></div></div></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="__docusaurus_skipToContent_fallback" class="theme-layout-main main-wrapper mainWrapper_z2l0"><div class="docsWrapper_hBAB"><button aria-label="Прокрутити до початку" class="clean-btn theme-back-to-top-button backToTopButton_sjWU" type="button"></button><div class="docRoot_UBD9"><aside class="theme-doc-sidebar-container docSidebarContainer_YfHR"><div class="sidebarViewport_aRkj"><div class="sidebar_njMd"><nav aria-label="Сайдбар документації" class="menu thin-scrollbar menu_SIkG"><ul class="theme-doc-sidebar-menu menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/uk/docs/introduction/"><span class="linkLabel_WmDU">Вступ</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/uk/docs/quickstart/"><span class="linkLabel_WmDU">Швидкий старт Durable Workflow 2.0</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/uk/docs/capabilities/"><span class="linkLabel_WmDU">Індекс можливостей 2.0</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/uk/docs/laravel-adoption/"><span class="linkLabel_WmDU">Інтеграція Laravel та перехід між runtime</span></a></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/uk/docs/category/service-mode/"><span class="categoryLinkLabel_W154">Режим сервісу</span></a><button aria-label="Розгорнути категорію в сайдбарі &#x27;Режим сервісу&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/uk/docs/category/embedded/"><span class="categoryLinkLabel_W154">Вбудований режим</span></a><button aria-label="Розгорнути категорію в сайдбарі &#x27;Вбудований режим&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--active" href="/uk/docs/category/run-and-operate/"><span class="categoryLinkLabel_W154">Запуск та експлуатація</span></a><button aria-label="Згорнути категорію в сайдбарі &#x27;Запуск та експлуатація&#x27;" aria-expanded="true" type="button" class="clean-btn menu__caret"></button></div><ul class="menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/deployment/"><span class="linkLabel_WmDU">Самостійне розгортання</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/rolling-upgrades/"><span class="linkLabel_WmDU">Поступові оновлення</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/monitoring/"><span class="linkLabel_WmDU">Моніторинг</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/operator-operating-envelope/"><span class="linkLabel_WmDU">Межі експлуатації для операторів</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/waterline-operator-api/"><span class="linkLabel_WmDU">Довідник операторського API Waterline</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/compatibility/"><span class="linkLabel_WmDU">Сумісність версій</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/platform-protocol-specs/"><span class="linkLabel_WmDU">Специфікації протоколів платформи</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link menu__link--active" aria-current="page" tabindex="0" href="/uk/docs/platform-conformance/"><span class="linkLabel_WmDU">Набір перевірок відповідності платформи</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/sdk-neutrality/"><span class="linkLabel_WmDU">Незалежність від SDK</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/support/"><span class="linkLabel_WmDU">Підтримка</span></a></li></ul></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/uk/docs/category/external-execution-and-ingress/"><span class="categoryLinkLabel_W154">Зовнішнє виконання та вхідні запити</span></a><button aria-label="Розгорнути категорію в сайдбарі &#x27;Зовнішнє виконання та вхідні запити&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/uk/docs/category/ai-and-automation/"><span class="categoryLinkLabel_W154">ШІ та автоматизація</span></a><button aria-label="Розгорнути категорію в сайдбарі &#x27;ШІ та автоматизація&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/uk/docs/sponsors/"><span class="linkLabel_WmDU">Спонсори</span></a></li></ul></nav></div></div></aside><main class="docMainContainer_TBSr"><div class="container padding-top--md padding-bottom--lg"><div class="row"><div class="col docItemCol_VOVn"><div class="docItemContainer_Djhp"><article><nav class="theme-doc-breadcrumbs breadcrumbsContainer_Z_bl" aria-label="Навігаційний ланцюжок поточної сторінки"><ul class="breadcrumbs"><li class="breadcrumbs__item"><a aria-label="Головна сторінка" class="breadcrumbs__link" href="/uk/"><svg viewBox="0 0 24 24" class="breadcrumbHomeIcon_YNFT"><path d="M10 19v-5h4v5c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-7h1.7c.46 0 .68-.57.33-.87L12.67 3.6c-.38-.34-.96-.34-1.34 0l-8.36 7.53c-.34.3-.13.87.33.87H5v7c0 .55.45 1 1 1h3c.55 0 1-.45 1-1z" fill="currentColor"></path></svg></a></li><li class="breadcrumbs__item"><a class="breadcrumbs__link" href="/uk/docs/category/run-and-operate/"><span>Запуск та експлуатація</span></a></li><li class="breadcrumbs__item breadcrumbs__item--active"><span class="breadcrumbs__link">Набір перевірок відповідності платформи</span></li></ul></nav><span class="theme-doc-version-badge badge badge--secondary">Версія: 2.0</span><div class="tocCollapsible_ETCw theme-doc-toc-mobile tocMobile_ITEo"><button type="button" class="clean-btn tocCollapsibleButton_TO0P">Зміст цієї сторінки</button></div><div lang="uk"><div class="theme-doc-markdown markdown"><header><h1>Набір перевірок відповідності платформи</h1></header>
+<p>Ця сторінка є публічним авторитетним джерелом <strong>набору перевірок відповідності
+платформи</strong> Durable Workflow. Вона визначає матрицю цілей, каталог повторно
+використовуваних fixture, контракт harness, правила успіху й помилок та вимоги
+релізів для реалізацій, що заявляють сумісність із Durable Workflow v2.</p>
+<p data-public-authority-identity="true" data-authority-manifest="https://durable-workflow.github.io/platform-conformance-contract.json" data-authority-schema="durable-workflow.v2.platform-conformance.suite" data-authority-version="47">Машинозчитуване авторитетне джерело опубліковано за адресою <a href="https://durable-workflow.github.io/platform-conformance-contract.json"><code data-authority-field="manifest-path">/platform-conformance-contract.json</code></a> зі схемою <code data-authority-field="schema">durable-workflow.v2.platform-conformance.suite</code>, версією <code data-authority-field="version">47</code>.</p>
+<p>Самостійний Server оголошує той самий маніфест у <code>GET /api/cluster/info</code>
+під <code>platform_conformance_suite</code>. Каталог
+<a class="" href="/uk/docs/platform-protocol-specs/">специфікацій протоколів платформи</a> називає
+вкладений маніфест сімейством об&#x27;єктів <code>platform_conformance_suite_manifest</code>
+у специфікації <code>cluster_info_envelope</code>.</p>
+<p>Набір підпорядковується авторитетному джерелу
+<a class="" href="/uk/docs/compatibility/">сумісності версій</a>. Назви сімейств поверхонь і правила
+стабільності мають відповідати контракту стабільності поверхонь.
+Джерело сумісності визначає контракт, а ця сторінка визначає, як реалізація
+доводить його виконання.</p>
+<section data-worker-protocol-authority-roles="true" data-current-server-protocol-version="1.20" data-current-conformance-protocol-version="1.19" data-current-conformance-suite-version="47"><h2 id="worker-protocol-authority-roles">Ролі авторитетних джерел протоколу worker</h2><p>Виявлення можливостей середовища виконання та перевірка відповідності використовують окремі авторитетні джерела протоколу. Обирайте рядок для свого завдання. Однакова мітка версії не робить версіоноване історичне джерело псевдонімом неверсіонованого авторитетного джерела Server.</p><table><thead><tr><th>Роль</th><th>Поточний маркер</th><th>Авторитетне джерело</th></tr></thead><tbody><tr data-worker-protocol-role="current_server_protocol" data-protocol-version="1.20" data-resolver-role="unversioned_server_mirror" data-api-url="https://durable-workflow.github.io/platform-protocol-specs/worker-protocol-api.openapi.yaml" data-stream-url="https://durable-workflow.github.io/platform-protocol-specs/worker-protocol-stream.asyncapi.yaml"><td><strong>Поточний опублікований протокол Server</strong></td><td><code>worker_protocol.version</code> = <code>1.20</code></td><td>Неверсіоновані дзеркала на основі Server:<!-- --> <a href="https://durable-workflow.github.io/platform-protocol-specs/worker-protocol-api.openapi.yaml">OpenAPI</a> · <a href="https://durable-workflow.github.io/platform-protocol-specs/worker-protocol-stream.asyncapi.yaml">AsyncAPI</a></td></tr><tr data-worker-protocol-role="current_conformance_target" data-protocol-version="1.19" data-suite-version="47" data-resolver-role="versioned_conformance_fixture" data-api-url="https://durable-workflow.github.io/platform-protocol-specs/v1.19/worker-protocol-api.openapi.yaml" data-stream-url="https://durable-workflow.github.io/platform-protocol-specs/v1.19/worker-protocol-stream.asyncapi.yaml"><td><strong>Поточна ціль перевірки відповідності Workflow</strong></td><td>Набір <code>47</code> перевіряє протокол <code>1.19</code></td><td>Версіоновані тестові дані, прив’язані до digest:<!-- --> <a href="https://durable-workflow.github.io/platform-protocol-specs/v1.19/worker-protocol-api.openapi.yaml">OpenAPI</a> · <a href="https://durable-workflow.github.io/platform-protocol-specs/v1.19/worker-protocol-stream.asyncapi.yaml">AsyncAPI</a></td></tr><tr data-worker-protocol-role="historical_conformance_binding" data-history-protocol-versions="1.13, 1.15, 1.16, 1.17, 1.18" data-history-binding-count="11" data-resolver-role="immutable_digest_bound_fixture"><td><strong>Збережені історичні прив’язки відповідності</strong></td><td>Прив’язки з позначкою <code>historical</code> для протоколів <code>1.13, 1.15, 1.16, 1.17, 1.18</code></td><td>Незмінні записи джерел і digest у<!-- --> <a href="https://durable-workflow.github.io/platform-conformance-contract.json">маніфесті відповідності</a></td></tr></tbody></table></section>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="public-conformance-authorities">Публічні джерела відповідності<a href="#public-conformance-authorities" class="hash-link" aria-label="Пряме посилання на Публічні джерела відповідності" title="Пряме посилання на Публічні джерела відповідності" translate="no">​</a></h2>
+<p>Набір реєструє стабільні машиночитані джерела за ідентичністю схеми й публічним
+URL. Незалежний від фреймворку контракт PHP SDK опубліковано як
+<a href="/uk/platform-conformance/php-sdk-conformance.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.php-sdk-conformance-contract</code></a>.
+Він визначає топологію випущених пакетів, вимоги сценаріїв і доказів та
+публічні ідентифікатори runner і схеми результату для оцінювання
+<code>durable-workflow/sdk</code> проти випущеного самостійного Server.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="target-matrix">Матриця цілей<a href="#target-matrix" class="hash-link" aria-label="Пряме посилання на Матриця цілей" title="Пряме посилання на Матриця цілей" translate="no">​</a></h2>
+<p><strong>Ціль</strong> відповідності є видом реалізації, що може заявляти сумісність Durable.
+Реалізація може заявляти кілька цілей. Наприклад, самостійний Server заявляє
+<code>standalone_server</code>, <code>worker_protocol_implementation</code> і <code>repair_actionability_surface</code>.</p>
+<table><thead><tr><th>Ціль</th><th>Обов&#x27;язкові сімейства поверхонь</th><th>Обов&#x27;язкові категорії fixture</th></tr></thead><tbody><tr><td><code>standalone_server</code></td><td><code>server_api</code>, <code>worker_protocol</code>, <code>cluster_info_manifests</code></td><td><code>control_plane_request_response</code>, <code>signal_query_runtime_contract</code>, <code>workflow_update_runtime_contract</code>, <code>search_attribute_runtime_contract</code>, <code>schedules_runtime_contract</code>, <code>namespace_runtime_contract</code>, <code>child_workflow_runtime_contract</code>, <code>saga_runtime_contract</code>, <code>worker_versioning_runtime_contract</code>, <code>migration_runtime_contract</code>, <code>skew_refusal_matrix_contract</code>, <code>principal_attribution_contract</code>, <code>worker_task_lifecycle</code>, <code>failure_repair_actionability</code></td></tr><tr><td><code>embedded_engine</code></td><td><code>history_event_wire_formats</code></td><td><code>history_replay_bundles</code></td></tr><tr><td><code>official_sdk</code></td><td><code>official_sdks</code>, <code>worker_protocol</code>, <code>history_event_wire_formats</code></td><td><code>control_plane_request_response</code>, <code>signal_query_runtime_contract</code>, <code>workflow_update_runtime_contract</code>, <code>search_attribute_runtime_contract</code>, <code>schedules_runtime_contract</code>, <code>namespace_runtime_contract</code>, <code>child_workflow_runtime_contract</code>, <code>saga_runtime_contract</code>, <code>worker_versioning_runtime_contract</code>, <code>migration_runtime_contract</code>, <code>skew_refusal_matrix_contract</code>, <code>principal_attribution_contract</code>, <code>worker_task_lifecycle</code>, <code>history_replay_bundles</code></td></tr><tr><td><code>worker_protocol_implementation</code></td><td><code>worker_protocol</code>, <code>history_event_wire_formats</code></td><td><code>worker_task_lifecycle</code>, <code>signal_query_runtime_contract</code>, <code>workflow_update_runtime_contract</code>, <code>search_attribute_runtime_contract</code>, <code>schedules_runtime_contract</code>, <code>namespace_runtime_contract</code>, <code>child_workflow_runtime_contract</code>, <code>saga_runtime_contract</code>, <code>worker_versioning_runtime_contract</code>, <code>migration_runtime_contract</code>, <code>skew_refusal_matrix_contract</code>, <code>history_replay_bundles</code></td></tr><tr><td><code>cli_json_client</code></td><td><code>cli_json</code></td><td><code>control_plane_request_response</code>, <code>signal_query_runtime_contract</code>, <code>workflow_update_runtime_contract</code>, <code>search_attribute_runtime_contract</code>, <code>schedules_runtime_contract</code>, <code>namespace_runtime_contract</code>, <code>child_workflow_runtime_contract</code>, <code>saga_runtime_contract</code>, <code>worker_versioning_runtime_contract</code>, <code>migration_runtime_contract</code>, <code>skew_refusal_matrix_contract</code>, <code>principal_attribution_contract</code>, <code>cli_json_envelopes</code></td></tr><tr><td><code>waterline_contract_surface</code></td><td><code>waterline_api</code></td><td><code>signal_query_runtime_contract</code>, <code>workflow_update_runtime_contract</code>, <code>search_attribute_runtime_contract</code>, <code>namespace_runtime_contract</code>, <code>saga_runtime_contract</code>, <code>worker_versioning_runtime_contract</code>, <code>migration_runtime_contract</code>, <code>skew_refusal_matrix_contract</code>, <code>principal_attribution_contract</code>, <code>waterline_observer_envelopes</code></td></tr><tr><td><code>repair_actionability_surface</code></td><td><code>worker_protocol</code>, <code>server_api</code></td><td><code>failure_repair_actionability</code></td></tr><tr><td><code>mcp_discovery_surface</code></td><td><code>mcp_discovery_results</code></td><td><code>mcp_discovery_envelopes</code></td></tr><tr><td><code>prerelease_release_candidate</code></td><td><code>server_api</code>, <code>official_sdks</code>, <code>cli_json</code>, <code>waterline_api</code>, <code>cluster_info_manifests</code></td><td><code>skew_refusal_matrix_contract</code>, <code>workflow_update_runtime_contract</code>, <code>principal_attribution_contract</code>, <code>prerelease_readiness_contract</code></td></tr></tbody></table>
+<p>Цілі стабільні. Додавання цілі, потрібної поверхні до наявної цілі чи категорії
+fixture, переведення provisional категорії в обов&#x27;язкову, зміна <code>operations</code>
+чи <code>pass_criteria</code> стабільного runtime сценарію, зміна його публічної вимоги
+(<code>artifact_policy</code>, <code>common_result_evidence</code>, <code>required_matrix</code>,
+<code>scenario_requirements</code>, <code>host_runner_contract</code>) або правил успіху/помилок
+є зміною контракту набору й потребує збільшення версії маніфесту.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="fixture-catalog">Каталог fixture<a href="#fixture-catalog" class="hash-link" aria-label="Пряме посилання на Каталог fixture" title="Пряме посилання на Каталог fixture" translate="no">​</a></h2>
+<p>Кожне стабільне джерело є публічним артефактом із трьома машиночитаними
+прив&#x27;язками в каталозі: <code>artifact_id</code>, <code>resolver_url</code>, <code>sha256</code>.
+ID артефактів runtime закінчуються версією набору, ID протоколів версією
+каталогу протоколів платформи. Споживач отримує артефакт за <code>resolver_url</code>
+і приймає байти лише за збігу SHA-256 із прив&#x27;язкою каталогу.</p>
+<table><thead><tr><th>Категорія</th><th>Статус</th><th>Джерело, доступне споживачу</th></tr></thead><tbody><tr><td><code>control_plane_request_response</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/f781ced1ae33c8697835bd527a125bdf3eaf4321/static/platform-protocol-specs/control-plane-api.openapi.yaml" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.control-plane-api@catalog-16</code></a></td></tr><tr><td><code>worker_task_lifecycle</code></td><td><code>stable</code></td><td><a href="https://durable-workflow.github.io/platform-protocol-specs/v1.19/worker-protocol-api.openapi.yaml" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.worker-protocol-api@catalog-16</code></a></td></tr><tr><td><code>worker_task_lifecycle</code></td><td><code>stable</code></td><td><a href="https://durable-workflow.github.io/platform-protocol-specs/v1.19/worker-protocol-stream.asyncapi.yaml" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.worker-protocol-stream@catalog-16</code></a></td></tr><tr><td><code>signal_query_runtime_contract</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/signal-query-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.platform-conformance.runtime-scenarios/signal_query_runtime_contract@38</code></a></td></tr><tr><td><code>workflow_update_runtime_contract</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/workflow-update-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.platform-conformance.runtime-scenarios/workflow_update_runtime_contract@38</code></a></td></tr><tr><td><code>search_attribute_runtime_contract</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/search-attribute-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.platform-conformance.runtime-scenarios/search_attribute_runtime_contract@38</code></a></td></tr><tr><td><code>schedules_runtime_contract</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/schedules-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.platform-conformance.runtime-scenarios/schedules_runtime_contract@38</code></a></td></tr><tr><td><code>history_replay_bundles</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/replay-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.platform-conformance.runtime-scenarios/history_replay_bundles@38</code></a></td></tr><tr><td><code>history_replay_bundles</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/f781ced1ae33c8697835bd527a125bdf3eaf4321/static/platform-protocol-specs/history-event-payloads.schema.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.history-event-payloads@catalog-16</code></a></td></tr><tr><td><code>history_replay_bundles</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/f781ced1ae33c8697835bd527a125bdf3eaf4321/static/platform-protocol-specs/replay-bundle.schema.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.replay-bundle@catalog-16</code></a></td></tr><tr><td><code>namespace_runtime_contract</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/namespace-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.platform-conformance.runtime-scenarios/namespace_runtime_contract@38</code></a></td></tr><tr><td><code>child_workflow_runtime_contract</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/child-workflow-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.platform-conformance.runtime-scenarios/child_workflow_runtime_contract@38</code></a></td></tr><tr><td><code>worker_versioning_runtime_contract</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/worker-versioning-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.platform-conformance.runtime-scenarios/worker_versioning_runtime_contract@38</code></a></td></tr><tr><td><code>saga_runtime_contract</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/saga-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.platform-conformance.runtime-scenarios/saga_runtime_contract@38</code></a></td></tr><tr><td><code>migration_runtime_contract</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/migration-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.platform-conformance.runtime-scenarios/migration_runtime_contract@38</code></a></td></tr><tr><td><code>skew_refusal_matrix_contract</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/skew-refusal-matrix-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.platform-conformance.runtime-scenarios/skew_refusal_matrix_contract@38</code></a></td></tr><tr><td><code>prerelease_readiness_contract</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/prerelease-readiness-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.platform-conformance.runtime-scenarios/prerelease_readiness_contract@38</code></a></td></tr><tr><td><code>failure_repair_actionability</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/f781ced1ae33c8697835bd527a125bdf3eaf4321/static/platform-protocol-specs/repair-actionability-objects.schema.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.repair-actionability-objects@catalog-16</code></a></td></tr><tr><td><code>cli_json_envelopes</code></td><td><code>stable</code></td><td><a href="https://durable-workflow.github.io/cli-json-envelopes/v3/manifest.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.cli.output-schema-manifest@3</code></a></td></tr><tr><td><code>principal_attribution_contract</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/principal-attribution-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.platform-conformance.runtime-scenarios/principal_attribution_contract@38</code></a></td></tr></tbody></table>
+<p>Рядок набору зберігає ревізію схеми CLI v3 як незмінний історичний доказ.
+Поточний контракт CLI є повним набором
+<a href="https://durable-workflow.github.io/cli-json-envelopes/v4/manifest.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.cli.output-schema-manifest@4</code></a>,
+який публікує поля payload лише Avro без зміни байтів v2 чи v3.</p>
+<p>Поточна ціль протоколу worker у наборі використовує незалежні від життєвого
+циклу байти протоколу 1.19, записані як
+<code>durable-workflow.v2.worker-protocol-api@catalog-16</code> і
+<code>durable-workflow.v2.worker-protocol-stream@catalog-16</code>. Ревізії 1.15–1.18
+залишаються доступними за версіонованими URL із історії набору.
+Ці fixture не заміняють неверсіонованого поточного джерела протоколу
+опублікованого Server. Колишні байти з формулюванням beta доступні лише як
+явно історична прив&#x27;язка
+<a href="https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/e990bc36731463cc5b2cb2a9175dbccfdea61704/static/platform-protocol-specs/worker-protocol-api.openapi.yaml" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.worker-protocol-api@catalog-16-beta-history</code></a>
+у маніфесті набору.</p>
+<p>Заплановані категорії <code>waterline_observer_envelopes</code> і <code>mcp_discovery_envelopes</code>
+залишаються <code>provisional</code>. Їхні шляхи вихідного коду є ненормативними
+заповнювачами: harness не має отримувати їх як fixture чи використовувати
+для заяви стабільної відповідності.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="workflow-lifecycle-release-authority">Джерело релізу життєвого циклу workflow<a href="#workflow-lifecycle-release-authority" class="hash-link" aria-label="Пряме посилання на Джерело релізу життєвого циклу workflow" title="Пряме посилання на Джерело релізу життєвого циклу workflow" translate="no">​</a></h2>
+<p>Точне джерело сценаріїв випущеного життєвого циклу workflow
+<a href="https://durable-workflow.github.io/platform-conformance/workflow-lifecycle-scenarios.json" target="_blank" rel="noopener noreferrer" class="">опубліковано як JSON</a>.
+Воно фіксує вимоги життєвого циклу, перевірені на поточній межі релізів
+опублікованих Server, PHP SDK і Rust SDK.</p>
+<p>Шард PHP встановлює точний пакет <code>durable-workflow/sdk</code> із поточного кортежу
+артефактів з Packagist у тимчасовий проєкт Composer. Він запускає окремі
+процеси клієнта й worker PHP проти відповідного публічного образу Server,
+фіксує походження дистрибутива Packagist і офіційного <code>apache/avro</code> та
+має повідомити <code>local_product_source_checkouts_used=false</code>.</p>
+<p>Шард Rust встановлює точний crate поточного кортежу артефактів із crates.io
+та фіксує джерело реєстру й контрольну суму цього crate та офіційного
+<code>apache-avro</code>. Доказ payload використовує опубліковану Avro обгортку SDK
+на основі <code>apache-avro</code>. Власний кодек чи локальні вихідні коди продукту
+не є прийнятним походженням.</p>
+<p>Шард Rust має виконати й повідомити всі ці перевірки:</p>
+<ul>
+<li class=""><code>instance_cancel</code> і <code>instance_terminate</code> через публічні команди SDK.</li>
+<li class=""><code>selected_run_guard</code> і <code>stale_run_rejection</code>, щоб вибране виконання не
+плуталося з поточним виконанням екземпляра.</li>
+<li class=""><code>typed_failed</code>, <code>typed_cancelled</code>, <code>typed_terminated</code>, <code>typed_timed_out</code>
+як типізовані термінальні результати з ідентичністю workflow й виконання.</li>
+<li class=""><code>cancellation_heartbeat</code> і <code>late_activity_completion_refused</code>, щоб activity
+спостерігала скасування, а пізнє завершення не перезаписувало термінальний результат.</li>
+<li class=""><code>worker_restart_during_cancellation</code>, поки врегулювання скасування ще триває,
+щоб довести відсутність повторного отримання закритої activity новим worker.</li>
+</ul>
+<p>Маніфест також вимагає точні версії артефактів і Server, ідентичність кластера,
+походження інсталяції, ідентичності workflow, результати кожної перевірки,
+сталі причини, контракт payload, топологію виконання, версію контракту Rust
+шарда, ідентичність runner і статус завершення шарда. Відсутні, непідтримувані,
+заблоковані runner чи неуспішні докази Rust не задовольняють категорію.</p>
+<p>Категорія fixture обов&#x27;язкова для цілі лише якщо ціль її перелічує та статус
+категорії не <code>provisional</code>. Provisional категорії дають рекомендаційні
+попередження й стають обов&#x27;язковими лише після переведення в <code>stable</code>
+у пізнішій версії набору.</p>
+<p>Категорія <code>signal_query_runtime_contract</code> стабільна. Результат має фіксувати
+конкретні опубліковані версії артефактів і називати кожен потрібний сценарій
+як <code>pass</code>, <code>fail</code>, <code>unsupported</code>, <code>not_covered</code> чи <code>runner_blocked</code> із
+посиланнями на знахідки. Заповнювачі чи невизначені версії на кшталт
+<code>latest</code>, <code>current</code>, <code>head</code>, <code>&lt;latest&gt;</code>, <code>${VERSION}</code> чи <code>{{ version }}</code>
+не проходять перевірку результату. Лише <code>pass</code> зараховується до успішної категорії:
+<code>published_artifact_install_only</code>,
+<code>python_worker_cli_and_sdk_baseline</code>, <code>php_worker_cli_and_sdk_baseline</code>,
+<code>python_worker_php_facing_and_cli_clients</code>,
+<code>php_worker_python_and_cli_clients</code>,
+<code>rust_worker_rust_php_python_clients</code>, <code>python_worker_rust_client</code>,
+<code>php_worker_rust_client</code>, <code>rust_query_error_and_immutability</code>,
+<code>ordered_signal_delivery</code>,
+<code>dedup_contract_observation</code>, <code>signal_during_replay</code>,
+<code>query_during_replay</code>,
+<code>rust_replayed_instance_state_query_after_cold_restart</code>,
+<code>completed_run_signal_and_query</code>,
+<code>unknown_signal_and_query_errors</code>,
+<code>malformed_signal_and_query_payloads</code>, and
+<code>waterline_operator_visibility</code>.</p>
+<p>ID цих сценаріїв та критерії успіху опубліковані як машиночитаний маніфест
+runtime сценаріїв у
+<a href="/uk/platform-conformance/signal-query-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>static/platform-conformance/signal-query-runtime-scenarios.json</code></a>.
+Тести реалізації можуть перевіряти сценарії, але не є стабільним джерелом
+fixture для зовнішніх harness.</p>
+<p>Перевірки Rust встановлюють точну версію crate <code>durable-workflow</code>, оголошену
+маніфестом runtime сценаріїв, із crates.io та фіксують джерело Cargo і
+контрольні суми SDK та визначеної залежності <code>apache-avro</code>.
+Транспорт query, отриманий зі знімка, оцінюють
+<code>rust_worker_rust_php_python_clients</code> і <code>rust_query_error_and_immutability</code>.
+Це не стан екземпляра workflow, відновлений replay. Окрема перевірка
+<code>rust_replayed_instance_state_query_after_cold_restart</code> використовує
+<code>register_replayed_workflow</code> і <code>register_replayed_query</code>, запускає новий
+процес worker Rust після холодної зупинки, відновлює надійну історію й
+порівнює активний, відновлений і завершений стан через виклики Rust, PHP і Python.
+Успішні й помилкові послідовності query фіксують кількості історії й команд
+workflow до першого успішного вимірюваного query та залишають їх незмінними.</p>
+<p>Для <code>completed_run_signal_and_query</code> чисто завершене виконання з оголошеним
+обробником query, придатним для replay, має повертати остаточний стан query
+через кожну заявлену публічну поверхню. Сталі помилки термінального стану
+допустимі лише для явно непідтримуваних станів чи недоступних обробників.
+Загальна помилка completed-run не є успіхом для завершеного виконання з replay.</p>
+<p><code>workflow_update_runtime_contract</code> є стабільною категорією runtime сценаріїв.
+Результат має використовувати опубліковані артефакти, фіксувати версії Server,
+CLI, Python SDK, PHP SDK і Waterline, зазначати використання локальних
+вихідних кодів продукту та називати кожен сценарій update як <code>pass</code>, <code>fail</code>,
+<code>unsupported</code>, <code>not_covered</code> чи <code>runner_blocked</code> із посиланнями на знахідки.
+Успішні докази update мають перевіряти публічні поверхні площини керування,
+історії, CLI/SDK й оператора. Виконання локальних вихідних кодів не зараховується.</p>
+<p>Обов&#x27;язкові сценарії update охоплюють інсталяцію опублікованих артефактів,
+видимість оголошеного контракту update, докази прийнятого update в площині
+керування й історії, видимість активного чи очікувального стану оператором,
+отримання завершеного результату, помилки й відмови, дублікати та ідемпотентність,
+відмову невідомому update чи неправильному вводу, обгортку payload,
+термінальний workflow, автентифікованого суб&#x27;єкта, паритет клієнта/worker PHP
+і Python та операторську діагностику. Якщо SDK не підтримує update як основну
+функцію, результат має містити типізований unsupported і конкретну знахідку
+SDK замість мовчазного пропуску мови.</p>
+<p>ID цих сценаріїв і критерії успіху опубліковані в
+<a href="/uk/platform-conformance/workflow-update-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>static/platform-conformance/workflow-update-runtime-scenarios.json</code></a>.
+Поточне передавання host-runner навмисно має <code>runner_blocked</code>, доки
+зареєстрований host runner не встановить зафіксовані опубліковані артефакти
+й не виконає всю матрицю update workflow.</p>
+<p><code>search_attribute_runtime_contract</code> є стабільною категорією runtime сценаріїв.
+Результат використовує опубліковані артефакти та охоплює start/upsert PHP і Python,
+query і помилки CLI, видимість у Waterline, обмін через кодек між мовами,
+query рівності/діапазону/bool, граматику OR/NOT, належність keyword-list,
+безпеку типів, розподіл затримки індексування, затримку під навантаженням,
+ізоляцію namespace, відмову зарезервованим назвам і захист від ін&#x27;єкції query.
+Підмножина Python/Server не відповідає контракту, доки кожна потрібна перевірка
+не записана як <code>pass</code>, <code>fail</code>, <code>unsupported</code>, <code>not_covered</code> чи <code>runner_blocked</code>
+із посиланнями на знахідки. Лише <code>pass</code> зараховується до успішної категорії.</p>
+<p>ID сценаріїв атрибутів пошуку та критерії успіху опубліковані в
+<a href="/uk/platform-conformance/search-attribute-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>static/platform-conformance/search-attribute-runtime-scenarios.json</code></a>.</p>
+<p><code>schedules_runtime_contract</code> є стабільною категорією runtime сценаріїв.
+Результат використовує опубліковані артефакти й охоплює періодичність cron
+і fixed-rate, list/describe, pause/resume без спрацювань, припинення запусків
+після delete, політику пропущених запусків, відновлення після restart,
+операції CLI, Python SDK та PHP, запуски PHP workflow з Python schedule і навпаки,
+відмову неправильному cron і невідомому типу workflow. Часткова перевірка
+життєвого циклу schedule не відповідає контракту, доки кожна потрібна перевірка
+не записана як <code>pass</code>, <code>fail</code>, <code>unsupported</code>, <code>not_covered</code> чи <code>runner_blocked</code>
+із посиланнями на знахідки. Лише <code>pass</code> зараховується до успішної категорії.</p>
+<p>ID сценаріїв schedule та критерії успіху опубліковані в
+<a href="/uk/platform-conformance/schedules-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>static/platform-conformance/schedules-runtime-scenarios.json</code></a>.</p>
+<p><code>history_replay_bundles</code> також є стабільною категорією runtime сценаріїв.
+Результат використовує опубліковані артефакти й охоплює replay PHP і Python
+завершеної історії, restart worker, activity, signal/update, wait-condition,
+version-marker, saga-компенсацію, явну відмову розбіжності коду, зміні історії
+на сервері й неправильній історії та час restart під час signal.
+Часткова перевірка еталонної історії не відповідає контракту, доки всі потрібні
+перевірки не записані як <code>pass</code>, <code>fail</code>, <code>unsupported</code>, <code>not_covered</code> чи
+<code>runner_blocked</code> із посиланнями на знахідки. Лише <code>pass</code> зараховується до успіху.</p>
+<p>ID сценаріїв replay та критерії успіху опубліковані в
+<a href="/uk/platform-conformance/replay-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>static/platform-conformance/replay-runtime-scenarios.json</code></a>.</p>
+<p><code>namespace_runtime_contract</code> є стабільною категорією runtime сценаріїв.
+Результат використовує опубліковані артефакти й охоплює create/update/describe/list
+namespace, очищення й повторне створення, ізоляцію видимості й змін workflow,
+черг worker PHP, контекст namespace CLI й типової області, паритет вибору
+namespace SDK, ізоляцію схем і query значень атрибутів пошуку, schedule,
+видимість Waterline/оператора, явні виклики Nexus між namespace, відмову
+зарезервованим назвам і маршрутизацію записів результатів до знахідок продукту.
+Часткова перевірка namespace не відповідає контракту, доки всі перевірки не
+записані як <code>pass</code>, <code>fail</code>, <code>unsupported</code>, <code>not_covered</code> чи <code>runner_blocked</code>
+із посиланнями на знахідки. Лише <code>pass</code> зараховується до успіху.</p>
+<p>Ненормативні примітки реалізації видимості Waterline/оператора можуть походити
+з опублікованого артефакту Waterline чи окремого його шарда. Корисні знімки
+для перевірки: обмежені списки й деталі workflow, schedule за наявності,
+значення атрибутів пошуку, область панелі, статистика API оператора та
+задокументований висновок для типового чи необмеженого огляду продукту.
+Нормативні критерії залишаються в сценарії <code>waterline_operator_namespace_visibility</code>.</p>
+<p>ID сценаріїв namespace та критерії успіху опубліковані в
+<a href="/uk/platform-conformance/namespace-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>static/platform-conformance/namespace-runtime-scenarios.json</code></a>.</p>
+<p><code>child_workflow_runtime_contract</code> є стабільною категорією runtime сценаріїв.
+Результат використовує опубліковані артефакти й охоплює батьківські/дочірні
+виконання PHP і Python однією мовою та між мовами, типізоване повернення помилки
+дочірнього workflow, поширення скасування батька на дитину, спостереження
+батьком прямого скасування дитини, replay після restart батьківського worker
+під час очікування дитини, паралельний запуск п&#x27;яти дітей і поведінку namespace.
+Одна перевірка parent/child не відповідає контракту, доки всі перевірки не
+записані як <code>pass</code>, <code>fail</code>, <code>unsupported</code>, <code>not_covered</code> чи <code>runner_blocked</code>
+із посиланнями на знахідки. Лише <code>pass</code> зараховується до успіху.</p>
+<p>ID сценаріїв дочірніх workflow та критерії успіху опубліковані в
+<a href="/uk/platform-conformance/child-workflow-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>static/platform-conformance/child-workflow-runtime-scenarios.json</code></a>.</p>
+<p><code>saga_runtime_contract</code> є стабільною категорією runtime сценаріїв.
+Результат використовує опубліковані артефакти й охоплює успіх прямого виконання,
+помилку пізнього кроку з компенсацією у зворотному порядку, помилку раннього кроку
+без зайвої компенсації, ідемпотентність повторної компенсації, термінальну
+видимість помилки компенсації, restart worker під час неї, PHP workflow з
+Python компенсацією й навпаки, типізовані помилки компенсації та її видимий
+оператору поточний стан. Перевірка лише успішного шляху чи одного SDK не
+відповідає контракту, доки всі перевірки не записані як <code>pass</code>, <code>fail</code>,
+<code>unsupported</code>, <code>not_covered</code> чи <code>runner_blocked</code> із посиланнями на знахідки.
+Лише <code>pass</code> зараховується до успіху. Матриця runtime називає пакет PHP
+<code>workflow-php</code>, а порівняння набору артефактів релізу також може записувати <code>workflow</code>.</p>
+<p>ID сценаріїв saga та критерії успіху опубліковані в
+<a href="/uk/platform-conformance/saga-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>static/platform-conformance/saga-runtime-scenarios.json</code></a>.</p>
+<p><code>worker_versioning_runtime_contract</code> є стабільною категорією runtime сценаріїв.
+Результат використовує опубліковані артефакти й охоплює реєстрацію build-ID,
+видимість розгортання оператором, drain/resume, прив&#x27;язки сумісності виконань,
+replay лише сумісними worker, маршрутизацію нових запусків до promoted версії,
+replay після витіснення кешу, діагностику відсутності сумісного worker,
+поверхні CLI й Waterline, прив&#x27;язки PHP/Python між мовами, навмисну відсутність
+збільшення версії та прив&#x27;язки версій API історії. Часткова перевірка не
+відповідає контракту, доки всі перевірки не записані як <code>pass</code>, <code>fail</code>,
+<code>unsupported</code>, <code>not_covered</code> чи <code>runner_blocked</code> із посиланнями на знахідки.
+Лише <code>pass</code> зараховується до успіху.</p>
+<p>Докази прив&#x27;язки PHP/Python між мовами мають фіксувати ідентичність runtime
+worker, ID workflow й виконання, стан розгортання черги, результати публічних
+poll і rollout для перевірки прив&#x27;язки, джерело й версію встановленого
+артефакту worker та відсутність локальних вихідних кодів продукту.</p>
+<p>ID сценаріїв версіонування worker та критерії успіху опубліковані в
+<a href="/uk/platform-conformance/worker-versioning-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>static/platform-conformance/worker-versioning-runtime-scenarios.json</code></a>.</p>
+<p><code>migration_runtime_contract</code> є стабільною категорією runtime сценаріїв.
+Результат використовує опубліковані артефакти й охоплює стан останньої
+підтримуваної v1, задокументовані кроки міграції, збереження й replay завершеної
+історії, прогрес активного workflow, стан повторної activity, очікування signal
+чи timer, періодичність schedule, проєкцію реєстрації worker, видимість Waterline,
+доступ CLI до стану перед оновленням, нові запуски v2, відкат з урахуванням черги
+та явну відмову непідтримуваній різниці версій. Докази відкату мають перелічувати
+готову, відкладену й зарезервовану роботу v1, зазначати завершення роботи,
+узгоджений знімок SQL із чергою чи прийняту невідновлюваність та доводити
+наявність виконуваного пробудження через чергу чи signal для кожного
+відновленого незавершеного рядка v1. Придатний застарілий <code>pending</code> може
+використовувати Watchdog v1.0.77 лише за спостереження запуску типово
+ввімкненого Watchdog циклом worker, повторного направлення workflow після
+п&#x27;ятихвилинної межі та просування рядка на записаній черзі. Цей шлях лише
+для pending не заміняє збереження черги повторних спроб, timer чи роботи
+<code>waiting</code>/<code>running</code>. Відновлення лише SQL є успішним доказом відкату лише
+за відсутності інших незавершених залежних від черги виконань v1 на момент знімка.
+Маніфест відновлення має містити лише посилання на <code>APP_KEY</code> у менеджері
+секретів і версію, тоді як ключ і облікові дані відновлення зберігаються
+окремо від копій SQL і черг під окремим контролем доступу. Чиста інсталяція
+чи міграція без реалістичного стану v1 не відповідає контракту, доки всі
+перевірки не записані як <code>pass</code>, <code>fail</code>, <code>unsupported</code>, <code>not_covered</code> чи
+<code>runner_blocked</code> із посиланнями на знахідки. Лише <code>pass</code> зараховується до успіху.</p>
+<p>Перевірка задокументованих кроків має записати актуальний список команд
+посібника, фактично виконані команди в його порядку, коди завершення й час
+кожної команди. Знімки до й після мають містити завершену історію, активний
+workflow, повторну activity, очікування signal чи timer, schedule й реєстрацію worker.</p>
+<p>ID сценаріїв міграції та критерії успіху опубліковані в
+<a href="/uk/platform-conformance/migration-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>static/platform-conformance/migration-runtime-scenarios.json</code></a>.</p>
+<p><code>skew_refusal_matrix_contract</code> є стабільною категорією runtime сценаріїв.
+Результат використовує опубліковані артефакти й охоплює сумісні пари, старіші,
+новіші та поза вікном сумісності версії CLI, Python SDK, самостійного worker
+PHP SDK і Waterline. Workflow присутній лише як рушій вбудованого Laravel і
+Waterline. Перевірка також тестує межі майбутніх версій, фіксує запити й
+відповіді кожної операції з різницею версій, класифікує worker як
+<code>register_refused</code>, <code>register_and_serve</code> чи <code>register_and_drop</code>, Waterline як
+<code>banner</code>, <code>render_refused</code> чи <code>stale_render</code>. Часткова перевірка маніфесту
+протоколу не відповідає контракту, доки всі сценарії не записані як <code>pass</code>,
+<code>fail</code>, <code>unsupported</code>, <code>not_covered</code> чи <code>runner_blocked</code> із посиланнями на знахідки.
+Лише <code>pass</code> зараховується до успіху. <code>register_and_drop</code> і <code>stale_render</code>
+без явного попередження є блокувальними дефектами продукту.</p>
+<p>ID сценаріїв відмови несумісним версіям та критерії успіху опубліковані в
+<a href="/uk/platform-conformance/skew-refusal-matrix-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>static/platform-conformance/skew-refusal-matrix-scenarios.json</code></a>.</p>
+<p><code>principal_attribution_contract</code> є стабільною категорією runtime сценаріїв.
+Результат використовує опубліковані артефакти й доводить запис визначених
+сервером суб&#x27;єктів в історію для запуску, signal, query, скасування, завершення,
+помилки, анонімних і серверних подій. Він перевіряє підробку payload/заголовків,
+іменованих alice/bob, ротацію облікових даних, видимість CLI і Waterline та
+автентифіковані start/signal через Python SDK і PHP <code>DurableWorkflow\Client</code>.
+Перевірки SDK записують версію пакета, результати операцій, приклади суб&#x27;єктів
+історії/API й еталонних HTTP викликів для порівняння форми та очікуваних ID.
+PHP має отримати <code>durable-workflow/sdk</code> як точний дистрибутив Packagist
+і записати тип, URL і reference. <code>durable-workflow/workflow</code> встановлюється
+окремо лише для вбудованого Laravel і Waterline. Часткова перевірка role-token
+не відповідає контракту, доки всі сценарії не записані як <code>pass</code>, <code>fail</code>,
+<code>unsupported</code>, <code>not_covered</code> чи <code>runner_blocked</code> із посиланнями на знахідки.</p>
+<p>ID сценаріїв визначення суб&#x27;єкта та критерії успіху опубліковані в
+<a href="/uk/platform-conformance/principal-attribution-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>static/platform-conformance/principal-attribution-scenarios.json</code></a>.</p>
+<p><code>prerelease_readiness_contract</code> є стабільною категорією runtime сценаріїв
+узгодженого кандидата релізу 2.0. Результат використовує лише опубліковані
+артефакти й публічну документацію, фіксує окремі GO / NO-GO для Workflow і
+Waterline, охоплює повноту основних функцій, готовність міграції, стабільність
+API, точність документації, зрозумілість конфігурації та сумісність компонентів.
+Server, CLI, SDK PHP/Python/Rust, Workflow, Waterline, sample app і публічні
+документи оцінюються як один кортеж екосистеми. Кожен версіонований
+самостійний quickstart 2.0 та окремий вбудований шлях Laravel має пройти
+з актуальної публічної документації до видимого завершення workflow за
+10 хвилин із точними командами, виводом, версіями, походженням пакетів і часом.
+Перевірка лише виявлення quickstart не відповідає контракту до запису сценаріїв
+PHP, Python, Rust і Laravel як <code>pass</code>, <code>fail</code>, <code>unsupported</code>, <code>not_covered</code>
+чи <code>runner_blocked</code>. Відсутній артефакт, застаріла сторінка, незадокументований
+крок міграції, проблема інсталяції, нестабільність API, ризик несумісності
+компонентів чи невідповідність каналу релізу мають бути non-pass із знахідкою.
+Докази лише runner не можуть зробити готовність prerelease успішною.</p>
+<p>ID сценаріїв готовності prerelease та критерії успіху опубліковані в
+<a href="/uk/platform-conformance/prerelease-readiness-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>static/platform-conformance/prerelease-readiness-scenarios.json</code></a>.
+Стислий <a class="" href="/uk/docs/quickstart/">quickstart 2.0</a> є публічним шляхом початку роботи.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="pass--fail-rules">Правила успіху й помилок<a href="#pass--fail-rules" class="hash-link" aria-label="Пряме посилання на Правила успіху й помилок" title="Пряме посилання на Правила успіху й помилок" translate="no">​</a></h2>
+<ol>
+<li class=""><strong><code>guaranteed_field_equality</code>.</strong> Кожне гарантоване поле схеми fixture
+має бути присутнім із правильним типом і тим самим значенням у відповіді
+реалізації. Суто діагностичні поля ігноруються.</li>
+<li class=""><strong><code>unknown_additive_fields_tolerated</code>.</strong> Зайві поля допустимі лише як
+задокументовані суто діагностичні або за рівня стабільності fixture,
+що дозволяє додавання полів.</li>
+<li class=""><strong><code>frozen_shape_exact_match</code>.</strong> Fixture поверхні <code>frozen</code> мають
+збігатися точно. Розбіжність замороженої форми завжди є помилкою.</li>
+<li class=""><strong><code>required_fixtures_must_pass</code>.</strong> Реліз, що заявляє ціль, має пройти
+кожну обов&#x27;язкову категорію fixture цієї цілі. Один провал означає
+невідповідність релізу цій цілі.</li>
+<li class=""><strong><code>stable_runtime_scenario_coverage</code>.</strong> Стабільна категорія runtime
+має повідомити кожен потрібний сценарій зі статусом свого маніфесту:
+<code>pass</code>, <code>fail</code>, <code>unsupported</code>, <code>not_covered</code>, <code>runner_blocked</code>.
+Повна відповідність потребує успіху всіх сценаріїв. Часткова перевірка,
+пропуск, непідтримувана поверхня, непокрита чи runner-blocked перевірка
+не відповідають контракту й мають посилатися на знахідку. Цей набір
+статусів і правило лише pass належать семантиці версії набору 5+.</li>
+<li class=""><strong><code>provisional_categories_warn_only</code>.</strong> Провал fixture provisional
+категорії дає попередження й не блокує реліз.</li>
+<li class=""><strong><code>diagnostic_only_mismatches_pass</code>.</strong> За відмінностей лише діагностичних
+полів harness записує їх у <code>diagnostic_diff</code>, а fixture проходить.</li>
+</ol>
+<p>Документ результату harness оголошує один із чотирьох рівнів відповідності:</p>
+<table><thead><tr><th>Рівень</th><th>Значення</th></tr></thead><tbody><tr><td><code>full</code></td><td>Усі обов&#x27;язкові fixture успішні для всіх заявлених цілей.</td></tr><tr><td><code>partial</code></td><td>Усі обов&#x27;язкові fixture успішні хоча б для однієї цілі, але інша ціль неуспішна.</td></tr><tr><td><code>provisional</code></td><td>Провалилися лише provisional категорії, усі обов&#x27;язкові успішні.</td></tr><tr><td><code>nonconforming</code></td><td>Для кожної заявленої цілі провалився хоча б один обов&#x27;язковий fixture.</td></tr></tbody></table>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="harness-contract">Контракт harness<a href="#harness-contract" class="hash-link" aria-label="Пряме посилання на Контракт harness" title="Пряме посилання на Контракт harness" translate="no">​</a></h2>
+<p>Harness, що відповідає контракту:</p>
+<ul>
+<li class="">завантажує маніфест із <code>platform_conformance_suite</code> у <code>GET /api/cluster/info</code>
+або зі статичного дзеркала для офлайн перевірок;</li>
+<li class="">отримує кожен оголошений fixture з авторитетного джерела;</li>
+<li class="">викликає реалізацію задокументованою операцією fixture;</li>
+<li class="">порівнює відповідь за правилами вище;</li>
+<li class="">створює один документ результату перевірки зі схемою
+<code>durable-workflow.v2.platform-conformance.result</code>, версією набору,
+ідентичністю реалізації, результатами fixture, діагностичними відмінностями
+та загальним рівнем відповідності;</li>
+<li class="">завершується ненульовим кодом тоді й лише тоді, коли рівень <code>nonconforming</code>.</li>
+</ul>
+<p>Документ результату є артефактом. Заява сумісності дійсна лише за отримання
+результату для конкретної збірки реалізації та версії набору, названої цією збіркою.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="release-gates">Вимоги релізів<a href="#release-gates" class="hash-link" aria-label="Пряме посилання на Вимоги релізів" title="Пряме посилання на Вимоги релізів" translate="no">​</a></h2>
+<table><thead><tr><th>Реліз</th><th>Обов&#x27;язкові заявлені цілі</th><th>Обов&#x27;язковий артефакт</th></tr></thead><tbody><tr><td><code>durable-workflow/server</code></td><td><code>standalone_server</code>, <code>worker_protocol_implementation</code>, <code>repair_actionability_surface</code></td><td>Документ результату harness, прикріплений до релізу.</td></tr><tr><td><code>durable-workflow/workflow</code></td><td><code>embedded_engine</code></td><td>Документ результату harness, прикріплений до релізу.</td></tr><tr><td><code>durable-workflow/sdk</code></td><td><code>official_sdk</code>, <code>worker_protocol_implementation</code></td><td>Документ результату harness, прикріплений до релізу.</td></tr><tr><td><code>durable_workflow</code></td><td><code>official_sdk</code>, <code>worker_protocol_implementation</code></td><td>Документ результату harness, прикріплений до релізу.</td></tr><tr><td><code>dw</code></td><td><code>cli_json_client</code></td><td>Документ результату harness, прикріплений до релізу.</td></tr><tr><td><code>waterline</code></td><td><code>waterline_contract_surface</code></td><td>Документ результату harness, прикріплений до релізу.</td></tr><tr><td><code>durable-workflow/2.0-release-candidate</code></td><td><code>prerelease_release_candidate</code></td><td>Запис відповідності зберігає результат готовності prerelease на опублікованих артефактах.</td></tr></tbody></table>
+<p>Під час перевірки релізу підтверджують наявність результату harness, рівень
+<code>full</code> чи <code>provisional</code> і збіг версії набору в результаті з версією тестованої
+збірки. <code>nonconforming</code> блокує реліз.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="release-check">Перевірка релізу<a href="#release-check" class="hash-link" aria-label="Пряме посилання на Перевірка релізу" title="Пряме посилання на Перевірка релізу" translate="no">​</a></h2>
+<p>Перевірка релізу сайту <code>scripts/check-platform-conformance-authority.js</code>
+завершує збірку помилкою, якщо статичний маніфест посилається на відсутнє,
+локальне для репозиторію, суто версійний псевдонім чи позасайтове джерело.
+Вона перевіряє <code>authority_doc</code> кожного стабільного fixture як канонічний URL
+поточної документації й відхиляє відносні дерева коду, тестові fixture,
+документацію, каталоги схем, неверсіоновані ID артефактів, непублічні resolver
+і неправильні digest байтів стабільних категорій. Категорії runtime додатково
+мають надавати публічний маніфест сценаріїв, прив&#x27;язаний до набору.
+Перевірка також вимагає перелік схеми маніфесту, цілей, категорій fixture,
+правил успіху/помилок і вимог релізу на цій сторінці за машиночитаним дзеркалом.</p>
+<p>Після зміни набору оновіть цю сторінку та <code>static/platform-conformance-contract.json</code>
+разом. Якщо зміна додає ціль чи потрібну категорію fixture, переводить
+provisional у stable, змінює <code>operations</code> чи <code>pass_criteria</code> стабільного сценарію,
+його публічну вимогу (<code>artifact_policy</code>, <code>common_result_evidence</code>,
+<code>required_matrix</code>, <code>scenario_requirements</code>, <code>host_runner_contract</code>) або правило
+успіху/помилки, збільште версію набору в тій самій зміні релізу.
+Перевірка фіксує критерії стабільних сценаріїв і знімки публічних вимог через
+версіоновані digest, щоб зовнішні harness не отримували нові критерії чи
+політики доказів під старою версією набору.</p>
+<p>Опубліковані записи digest критеріїв і публічних вимог runtime сценаріїв
+дозволяють лише додавання. Для зміни <code>operations</code> чи <code>pass_criteria</code> залиште
+наявні <code>VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS</code> незмінними, збільште
+версію набору, оновіть маніфест сценаріїв і додайте digest нової версії.
+Для зміни вимог доказів, політики артефактів, матриці, полів вимог сценарію
+чи контракту host-runner залиште наявні
+<code>VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS</code> незмінними,
+збільште версію набору, оновіть маніфест і додайте відповідний digest.
+Перевірка порівнює опубліковані записи цільової гілки з поточною зміною,
+тому редагування чи видалення старого запису спричиняє помилку навіть
+за додавання digest нової поточної версії.</p></div></div><footer class="theme-doc-footer docusaurus-mt-lg"><div class="row margin-top--sm theme-doc-footer-tags-row"><div class="col"><b>Теги:</b><ul class="tags_jXut padding--none margin-left--sm"><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/uk/docs/tags/compatibility/">compatibility</a></li><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/uk/docs/tags/conformance/">conformance</a></li><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/uk/docs/tags/protocols/">protocols</a></li><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/uk/docs/tags/api-stability/">api-stability</a></li></ul></div></div><div class="row margin-top--sm theme-doc-footer-edit-meta-row"><div class="col noPrint_WFHX"><a href="https://github.com/durable-workflow/durable-workflow.github.io/edit/main/i18n/uk/docusaurus-plugin-content-docs/current/platform-conformance.md" target="_blank" rel="noopener noreferrer" class="theme-edit-this-page"><svg fill="currentColor" height="20" width="20" viewBox="0 0 40 40" class="iconEdit_Z9Sw" aria-hidden="true"><g><path d="m34.5 11.7l-3 3.1-6.3-6.3 3.1-3q0.5-0.5 1.2-0.5t1.1 0.5l3.9 3.9q0.5 0.4 0.5 1.1t-0.5 1.2z m-29.5 17.1l18.4-18.5 6.3 6.3-18.4 18.4h-6.3v-6.2z"></path></g></svg>Відредагувати цю сторінку</a></div><div class="col lastUpdated_JAkA"></div></div></footer></article><nav class="docusaurus-mt-lg pagination-nav" aria-label="сторінка документації"><a class="pagination-nav__link pagination-nav__link--prev" href="/uk/docs/platform-protocol-specs/"><div class="pagination-nav__sublabel">Попередня сторінка</div><div class="pagination-nav__label">Специфікації протоколів платформи</div></a><a class="pagination-nav__link pagination-nav__link--next" href="/uk/docs/sdk-neutrality/"><div class="pagination-nav__sublabel">Наступна сторінка</div><div class="pagination-nav__label">Незалежність від SDK</div></a></nav></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#public-conformance-authorities" class="table-of-contents__link toc-highlight">Публічні джерела відповідності</a></li><li><a href="#target-matrix" class="table-of-contents__link toc-highlight">Матриця цілей</a></li><li><a href="#fixture-catalog" class="table-of-contents__link toc-highlight">Каталог fixture</a></li><li><a href="#workflow-lifecycle-release-authority" class="table-of-contents__link toc-highlight">Джерело релізу життєвого циклу workflow</a></li><li><a href="#pass--fail-rules" class="table-of-contents__link toc-highlight">Правила успіху й помилок</a></li><li><a href="#harness-contract" class="table-of-contents__link toc-highlight">Контракт harness</a></li><li><a href="#release-gates" class="table-of-contents__link toc-highlight">Вимоги релізів</a></li><li><a href="#release-check" class="table-of-contents__link toc-highlight">Перевірка релізу</a></li></ul></div></div></div></div></main></div></div></div><div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="row footer__links"><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Документація</div><ul class="footer__items clean-list"><li class="footer__item"><a class="footer__link-item" href="/uk/docs/introduction/">Вступ</a></li><li class="footer__item"><a class="footer__link-item" href="/uk/docs/installation/">Встановлення</a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Спільнота</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://discord.gg/xu5aDDpqVy" target="_blank" rel="noopener noreferrer" class="footer__link-item">Discord<svg width="13.5" height="13.5" aria-label="(відкривається в новій вкладці)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://x.com/DurableWorkflow" target="_blank" rel="noopener noreferrer" class="footer__link-item">X<svg width="13.5" height="13.5" aria-label="(відкривається в новій вкладці)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Інші ресурси</div><ul class="footer__items clean-list"><li class="footer__item"><a class="footer__link-item" href="/uk/compare/temporal/">Durable Workflow і Temporal</a></li><li class="footer__item"><a href="https://durable-workflow.com/llms-full.txt" target="_blank" rel="noopener noreferrer" class="footer__link-item">Документація для LLM<svg width="13.5" height="13.5" aria-label="(відкривається в новій вкладці)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://packagist.org/packages/durable-workflow/workflow" target="_blank" rel="noopener noreferrer" class="footer__link-item">Packagist<svg width="13.5" height="13.5" aria-label="(відкривається в новій вкладці)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div></div><div class="footer__bottom text--center"><div class="footer__copyright">Авторські права © 2026 <a href="https://durable-workflow.com">Durable Workflow</a>.</div></div></div></footer></div></div>
+</body>
+</html>

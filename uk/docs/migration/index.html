@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="uk" dir="ltr" class="docs-wrapper plugin-docs plugin-id-default docs-version-current docs-doc-page docs-doc-id-migration" data-has-hydrated="false">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="Docusaurus v3.10.2">
+<title data-rh="true">Перехід на 2.0 | Durable Workflow</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://durable-workflow.com/uk/img/durable-workflow-2.0.png"><meta data-rh="true" name="twitter:image" content="https://durable-workflow.com/uk/img/durable-workflow-2.0.png"><meta data-rh="true" property="og:url" content="https://durable-workflow.com/uk/docs/migration/"><meta data-rh="true" property="og:locale" content="uk"><meta data-rh="true" property="og:locale:alternate" content="en"><meta data-rh="true" property="og:locale:alternate" content="de"><meta data-rh="true" property="og:locale:alternate" content="es"><meta data-rh="true" property="og:locale:alternate" content="fr"><meta data-rh="true" property="og:locale:alternate" content="pt_BR"><meta data-rh="true" property="og:locale:alternate" content="ja"><meta data-rh="true" property="og:locale:alternate" content="zh_Hans"><meta data-rh="true" name="docusaurus_locale" content="uk"><meta data-rh="true" name="docsearch:language" content="uk"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Перехід на 2.0 | Durable Workflow"><meta data-rh="true" name="description" content="Оновлення наявного застосунку Laravel Workflow v1 до Durable Workflow v2."><meta data-rh="true" property="og:description" content="Оновлення наявного застосунку Laravel Workflow v1 до Durable Workflow v2."><meta data-rh="true" name="keywords" content="перехід на Durable Workflow v2,оновлення Laravel Workflow,міграція схеми v2,workflow v1 до v2"><meta data-rh="true" name="twitter:title" content="Перехід на 2.0 | Durable Workflow"><meta data-rh="true" name="twitter:description" content="Оновлення наявного застосунку Laravel Workflow v1 до Durable Workflow v2."><link data-rh="true" rel="icon" href="/uk/img/favicon.ico"><link data-rh="true" rel="canonical" href="https://durable-workflow.com/uk/docs/migration/"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/docs/migration/" hreflang="en"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/de/docs/migration/" hreflang="de"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/es/docs/migration/" hreflang="es"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/fr/docs/migration/" hreflang="fr"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/pt-BR/docs/migration/" hreflang="pt-BR"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/uk/docs/migration/" hreflang="uk"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/ja/docs/migration/" hreflang="ja"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/zh-Hans/docs/migration/" hreflang="zh-Hans"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/docs/migration/" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Вбудований режим","item":"https://durable-workflow.com/uk/docs/category/embedded"},{"@type":"ListItem","position":2,"name":"Перехід на 2.0","item":"https://durable-workflow.com/uk/docs/migration"}]}</script><link rel="alternate" type="application/rss+xml" href="/uk/blog/rss.xml" title="Durable Workflow RSS Feed">
+<link rel="alternate" type="application/atom+xml" href="/uk/blog/atom.xml" title="Durable Workflow Atom Feed">
+
+
+
+
+
+
+
+
+<script src="/analytics/cloudflare-web-analytics.js" type="module" data-cloudflare-web-analytics-token="a1296466c4e5487ca6ffd230a694b933"></script><link rel="stylesheet" href="/uk/assets/css/styles.d8bc86b9.css">
+<script src="/uk/assets/js/runtime~main.26502815.js" defer="defer"></script>
+<script src="/uk/assets/js/main.d9da7836.js" defer="defer"></script>
+</head>
+<body>
+<svg style="display: none;"><defs>
+<symbol id="theme-svg-external-link" viewBox="0 0 24 24"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"/></symbol>
+</defs></svg>
+<script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||"dark"),document.documentElement.setAttribute("data-theme-choice",t||"dark")}(),function(){try{const c=new URLSearchParams(window.location.search).entries();for(var[t,e]of c)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id="__docusaurus"><link rel="preload" as="image" href="/uk/img/logo.svg"><div role="region" aria-label="Перейти до основного вмісту"><a class="skipToContent_fXgn" href="#__docusaurus_skipToContent_fallback">Перейти до основного вмісту</a></div><nav aria-label="Головна" class="theme-layout-navbar navbar navbar--fixed-top"><div class="navbar__inner"><div class="theme-layout-navbar-left navbar__items"><button aria-label="Перемкнути сайдбар" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/uk/"><div class="navbar__logo"><img src="/uk/img/logo.svg" alt="Логотип Workflow" class="themedComponent_mlkZ themedComponent--light_NVdE"><img src="/uk/img/logo.svg" alt="Логотип Workflow" class="themedComponent_mlkZ themedComponent--dark_xIcU"></div><b class="navbar__title text--truncate">Durable Workflow</b></a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/uk/docs/introduction/">Документація</a><div class="navbar__item dropdown dropdown--hoverable"><a class="navbar__link" aria-haspopup="true" aria-expanded="false" role="button" href="/uk/docs/migration/">2.0</a><ul class="dropdown__menu"><li><a aria-current="page" class="dropdown__link dropdown__link--active" href="/uk/docs/migration/">2.0</a></li><li><a class="dropdown__link" href="/uk/docs/1.x/migration/">1.x</a></li></ul></div><a class="navbar__item navbar__link" href="/uk/blog/">Блог</a></div><div class="theme-layout-navbar-right navbar__items navbar__items--right"><div class="navbar__item dropdown dropdown--hoverable dropdown--right"><a href="#" aria-haspopup="true" aria-expanded="false" role="button" class="navbar__link"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" class="iconLanguage_nlXk"><path fill="currentColor" d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"></path></svg>Українська</a><ul class="dropdown__menu"><li><a href="/docs/migration/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="en">English</a></li><li><a href="/de/docs/migration/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="de">Deutsch</a></li><li><a href="/es/docs/migration/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="es">Español</a></li><li><a href="/fr/docs/migration/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="fr">Français</a></li><li><a href="/pt-BR/docs/migration/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="pt-BR">Português (Brasil)</a></li><li><a href="/uk/docs/migration/" target="_self" rel="noopener noreferrer" class="dropdown__link dropdown__link--active" lang="uk">Українська</a></li><li><a href="/ja/docs/migration/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="ja">日本語</a></li><li><a href="/zh-Hans/docs/migration/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="zh-Hans">简体中文</a></li></ul></div><a href="https://github.com/durable-workflow/workflow" target="_blank" rel="noopener noreferrer" aria-label="Підтримати Durable Workflow зіркою на GitHub" class="navbar-github-star-link navbar__item navbar__link" label="Підтримати зіркою на GitHub"><svg aria-hidden="true" class="navbar-github-star-link__icon" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8a8.01 8.01 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.56 7.56 0 0 1 8 4.76c.68 0 1.36.09 2 .27 1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"></path></svg><span class="navbar-github-star-link__count" title="Зірки на GitHub">1.2K</span></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type="button" disabled="" title="Автоматичний режим" aria-label="Перемикання між темним та світлим режимом (зараз використовується Автоматичний режим)"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP lightToggleIcon_pyhR"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP darkToggleIcon_wfgR"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP systemToggleIcon_QzmC"><path fill="currentColor" d="m12 21c4.971 0 9-4.029 9-9s-4.029-9-9-9-9 4.029-9 9 4.029 9 9 9zm4.95-13.95c1.313 1.313 2.05 3.093 2.05 4.95s-0.738 3.637-2.05 4.95c-1.313 1.313-3.093 2.05-4.95 2.05v-14c1.857 0 3.637 0.737 4.95 2.05z"></path></svg></button></div><div class="navbarSearchContainer_Bca1"><div class="navbar__search searchBarContainer_NW3z" dir="ltr"><svg aria-hidden="true" class="searchIcon_T3tP" focusable="false" viewBox="0 0 16 16"><path fill="currentColor" d="M6.02945 10.20327a4.17382 4.17382 0 1 1 4.17382-4.17382 4.15609 4.15609 0 0 1-4.17382 4.17382Zm9.69195 4.2199-4.8225-4.82338A5.88021 5.88021 0 0 0 12.058 6.02856 6.00467 6.00467 0 1 0 9.59979 10.8989l4.82338 4.82338a.89729.89729 0 0 0 1.29912 0 .89749.89749 0 0 0-.00087-1.29909Z"></path></svg><input placeholder="Пошук" aria-label="Пошук" class="navbar__search-input searchInput_YFbd" value=""><div class="loadingRing_RJI3 searchBarLoadingRing_YnHq"><div></div><div></div><div></div><div></div></div></div></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="__docusaurus_skipToContent_fallback" class="theme-layout-main main-wrapper mainWrapper_z2l0"><div class="docsWrapper_hBAB"><button aria-label="Прокрутити до початку" class="clean-btn theme-back-to-top-button backToTopButton_sjWU" type="button"></button><div class="docRoot_UBD9"><aside class="theme-doc-sidebar-container docSidebarContainer_YfHR"><div class="sidebarViewport_aRkj"><div class="sidebar_njMd"><nav aria-label="Сайдбар документації" class="menu thin-scrollbar menu_SIkG"><ul class="theme-doc-sidebar-menu menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/uk/docs/introduction/"><span class="linkLabel_WmDU">Вступ</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/uk/docs/quickstart/"><span class="linkLabel_WmDU">Швидкий старт Durable Workflow 2.0</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/uk/docs/capabilities/"><span class="linkLabel_WmDU">Індекс можливостей 2.0</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/uk/docs/laravel-adoption/"><span class="linkLabel_WmDU">Інтеграція Laravel та перехід між runtime</span></a></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/uk/docs/category/service-mode/"><span class="categoryLinkLabel_W154">Режим сервісу</span></a><button aria-label="Розгорнути категорію в сайдбарі &#x27;Режим сервісу&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--active" href="/uk/docs/category/embedded/"><span class="categoryLinkLabel_W154">Вбудований режим</span></a><button aria-label="Згорнути категорію в сайдбарі &#x27;Вбудований режим&#x27;" aria-expanded="true" type="button" class="clean-btn menu__caret"></button></div><ul class="menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/installation/"><span class="linkLabel_WmDU">Встановлення</span></a></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-2 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" tabindex="0" href="/uk/docs/category/defining-workflows/"><span class="categoryLinkLabel_W154">Визначення workflow</span></a><button aria-label="Розгорнути категорію в сайдбарі &#x27;Визначення workflow&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-2 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" tabindex="0" href="/uk/docs/category/features/"><span class="categoryLinkLabel_W154">Можливості</span></a><button aria-label="Розгорнути категорію в сайдбарі &#x27;Можливості&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-2 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" tabindex="0" href="/uk/docs/category/constraints/"><span class="categoryLinkLabel_W154">Обмеження</span></a><button aria-label="Розгорнути категорію в сайдбарі &#x27;Обмеження&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/how-it-works/"><span class="linkLabel_WmDU">Принцип роботи</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/testing/"><span class="linkLabel_WmDU">Тестування</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/failures-and-recovery/"><span class="linkLabel_WmDU">Помилки й відновлення</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link menu__link--active" aria-current="page" tabindex="0" href="/uk/docs/migration/"><span class="linkLabel_WmDU">Перехід на 2.0</span></a></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-2 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" tabindex="0" href="/uk/docs/category/configuration/"><span class="categoryLinkLabel_W154">Налаштування</span></a><button aria-label="Розгорнути категорію в сайдбарі &#x27;Налаштування&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/sample-app/"><span class="linkLabel_WmDU">Sample App</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/uk/docs/contribute-a-sample/"><span class="linkLabel_WmDU">Додавання прикладу</span></a></li></ul></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/uk/docs/category/run-and-operate/"><span class="categoryLinkLabel_W154">Запуск та експлуатація</span></a><button aria-label="Розгорнути категорію в сайдбарі &#x27;Запуск та експлуатація&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/uk/docs/category/external-execution-and-ingress/"><span class="categoryLinkLabel_W154">Зовнішнє виконання та вхідні запити</span></a><button aria-label="Розгорнути категорію в сайдбарі &#x27;Зовнішнє виконання та вхідні запити&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/uk/docs/category/ai-and-automation/"><span class="categoryLinkLabel_W154">ШІ та автоматизація</span></a><button aria-label="Розгорнути категорію в сайдбарі &#x27;ШІ та автоматизація&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/uk/docs/sponsors/"><span class="linkLabel_WmDU">Спонсори</span></a></li></ul></nav></div></div></aside><main class="docMainContainer_TBSr"><div class="container padding-top--md padding-bottom--lg"><div class="row"><div class="col docItemCol_VOVn"><div class="docItemContainer_Djhp"><article><nav class="theme-doc-breadcrumbs breadcrumbsContainer_Z_bl" aria-label="Навігаційний ланцюжок поточної сторінки"><ul class="breadcrumbs"><li class="breadcrumbs__item"><a aria-label="Головна сторінка" class="breadcrumbs__link" href="/uk/"><svg viewBox="0 0 24 24" class="breadcrumbHomeIcon_YNFT"><path d="M10 19v-5h4v5c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-7h1.7c.46 0 .68-.57.33-.87L12.67 3.6c-.38-.34-.96-.34-1.34 0l-8.36 7.53c-.34.3-.13.87.33.87H5v7c0 .55.45 1 1 1h3c.55 0 1-.45 1-1z" fill="currentColor"></path></svg></a></li><li class="breadcrumbs__item"><a class="breadcrumbs__link" href="/uk/docs/category/embedded/"><span>Вбудований режим</span></a></li><li class="breadcrumbs__item breadcrumbs__item--active"><span class="breadcrumbs__link">Перехід на 2.0</span></li></ul></nav><span class="theme-doc-version-badge badge badge--secondary">Версія: 2.0</span><div class="tocCollapsible_ETCw theme-doc-toc-mobile tocMobile_ITEo"><button type="button" class="clean-btn tocCollapsibleButton_TO0P">Зміст цієї сторінки</button></div><div lang="uk"><div class="theme-doc-markdown markdown"><header><h1>Перехід на 2.0</h1></header>
+<p>Цей посібник описує основні зміни під час оновлення наявного застосунку Laravel з v1 до v2.
+Спочатку виберіть, чи Laravel і надалі керуватиме runtime, чи підключатиметься до Cloud або
+самостійно розгорнутого Server через PHP SDK, за допомогою
+<a class="" href="/uk/docs/laravel-adoption/">посібника з упровадження в Laravel і переходу між runtime</a>.
+Далі ця сторінка описує докладну процедуру переходу вбудованого пакета з v1 до v2.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="upgrade-procedure">Процедура оновлення<a href="#upgrade-procedure" class="hash-link" aria-label="Пряме посилання на Процедура оновлення" title="Пряме посилання на Процедура оновлення" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="before-upgrading">Перед оновленням<a href="#before-upgrading" class="hash-link" aria-label="Пряме посилання на Перед оновленням" title="Пряме посилання на Перед оновленням" translate="no">​</a></h3>
+<p><strong>1. Складіть перелік усіх сховищ виконання v1</strong></p>
+<p>Стан виконання v1 може зберігатися поза базою даних workflow. Окрім рядків workflow та історії,
+завдання черги Laravel можуть бути готовими, відкладеними або зарезервованими в Redis,
+базі даних черги, SQS чи іншому бекенді черги. До зміни коду зафіксуйте:</p>
+<ul>
+<li class="">з&#x27;єднання зі сховищем workflow та фактичні відповідності моделей і таблиць v1</li>
+<li class="">усі з&#x27;єднання та назви черг, які використовують workflow й activity v1,
+включно з перевизначеннями для окремих workflow чи activity</li>
+<li class="">базу даних, префікс ключів, регіон, обліковий запис та інші параметри маршрутизації
+бекенду черги, потрібні для відновлення тих самих черг</li>
+<li class="">посилання на секрет у менеджері секретів і його незмінну версію для отримання точного
+<code>APP_KEY</code>, а також сховище кешу для блокувань унікальних завдань v1</li>
+</ul>
+<p>Не копіюйте значення <code>APP_KEY</code>, облікові дані відновлення менеджера секретів,
+бази даних чи провайдера черги до цього переліку. Для зашифрованих завдань і серіалізованих
+аргументів workflow потрібен початковий ключ, але маніфест відновлення має містити лише
+посилання на нього в менеджері секретів і версію. Облікові дані для отримання ключа
+зберігайте окремо від резервних копій SQL і черг, з окремим контролем доступу.</p>
+<p>Типові таблиці v1: <code>workflows</code>, <code>workflow_logs</code>, <code>workflow_signals</code>,
+<code>workflow_timers</code>, <code>workflow_exceptions</code> і <code>workflow_relationships</code>.
+Опублікований файл <code>config/workflows.php</code> може перевизначати
+<code>stored_workflow_model</code>, <code>stored_workflow_log_model</code>,
+<code>stored_workflow_signal_model</code>, <code>stored_workflow_timer_model</code> або
+<code>stored_workflow_exception_model</code>. Власна модель може також перевизначати
+Eloquent <code>$table</code>, а <code>workflow_relationships_table</code> окремо задає таблицю зв&#x27;язків.
+Створіть резервні копії таблиць і з&#x27;єднання зі сховищем, визначених цими
+налаштованими моделями, а не лише таблиць із типовими назвами.</p>
+<p><strong>2. Виберіть межу відкату й призупиніть роботу v1</strong></p>
+<p>Заблокуйте запуск нових workflow і надсилання signal на час створення узгодженого
+набору відновлення. Призупиніть планувальники й зупиніть усі worker, що споживають
+завдання з перелічених черг, після завершення поточного завдання. Наприклад:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain"># Horizon</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan horizon:pause</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"># Supervisor or systemd (use the names from your deployment)</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">sudo supervisorctl stop &lt;your-worker-group&gt;:*</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">sudo systemctl stop laravel-worker</span><br></div></code></pre></div></div>
+<p>Сам по собі <code>php artisan queue:restart</code> не призупиняє роботу, якщо Supervisor,
+systemd, Kubernetes чи інший менеджер процесів одразу запускає нового worker.
+Перш ніж фіксувати стан, переконайтеся, що жоден споживач не може зарезервувати
+наступне завдання.</p>
+<p>Виберіть і зафіксуйте одну з цих політик:</p>
+<ul>
+<li class=""><strong>Завершити роботу v1:</strong> заблокуйте нову роботу v1 і залиште worker v1 працювати,
+доки <code>php artisan workflow:v1:list</code> (якщо команда доступна) або еквівалентний
+запит до налаштованої таблиці збережених workflow не покаже відсутність незавершених workflow.
+Потім зупиніть worker і переконайтеся, що відповідні черги не містять готових,
+відкладених чи зарезервованих завдань v1. Для таких завершених workflow v1 достатньо відкату SQL.</li>
+<li class=""><strong>Зберегти активну роботу v1:</strong> зупиніть worker між завданнями та зробіть узгоджений
+знімок SQL і кожного надійного бекенду черги. Знімок черги має містити готову,
+відкладену й зарезервовану роботу та відповідати тому самому моменту відновлення,
+що й SQL. Дочекайтеся завершення зарезервованого завдання, якщо бекенд не описує,
+як безпечно відновити його повідомлення та lease.</li>
+<li class=""><strong>Прийняти втрату активної роботи:</strong> якщо бекенд не дає створити відновлюваний
+узгоджений знімок черги, зафіксуйте відповідні ID workflow і явно прийміть, що
+незавершені виконання, залежні від черги, неможливо відновити цим відкатом.
+Виключайте придатний рядок <code>pending</code> з цього переліку лише після перевірки
+шляху Watchdog нижче, а справжнє очікування лише signal лише після перевірки
+збереженого входу signal. Не вважайте інші рядки SQL відновлюваною роботою.</li>
+</ul>
+<p>Очікування лише signal може правомірно не мати завдання в черзі, якщо зовнішній
+вхід signal залишається доступним після відкату. Повторні спроби activity й timer
+залежать від черги: рядок <code>workflow_timers</code> або рядок <code>workflows</code> зі станом очікування
+не відтворює втрачене відкладене завдання.</p>
+<p>Підтримувана v1.0.77 також запускає типово ввімкнений <code>Workflow\Watchdog</code> із циклу
+worker черги. Watchdog може знайти workflow <code>pending</code>, чий <code>updated_at</code> старший за
+п&#x27;ять хвилин і чиї серіалізовані <code>arguments</code> наявні, та повторно направити його
+до записаних з&#x27;єднання й черги. Це обмежений шлях пробудження лише для <code>pending</code>,
+а не заміна резервної копії черги. Покладайтеся на нього лише після перевірки
+в тестовому середовищі: відновлений цикл worker v1 запускає Watchdog, Watchdog
+повторно направляє придатний застарілий рядок <code>pending</code>, а workflow просувається
+на очікуваній черзі. Цей шлях не відтворює повторні спроби activity чи завдання timer
+та не відновлює рядки <code>waiting</code> або <code>running</code>. Для них потрібне збережене завдання
+черги або справний зовнішній шлях signal, якщо workflow справді очікує signal.</p>
+<p><strong>3. Створіть резервну копію набору відновлення для відкату</strong></p>
+<p>Перед оновленням створіть повну резервну копію бази даних:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain"># MySQL/MariaDB</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">mysqldump -u root -p your_database &gt; backup-v1-$(date +%Y%m%d-%H%M%S).sql</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"># PostgreSQL</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">pg_dump -U postgres your_database &gt; backup-v1-$(date +%Y%m%d-%H%M%S).sql</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"># Laravel backup package (if installed)</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan backup:run --only-db</span><br></div></code></pre></div></div>
+<p>Потім збережіть стан черги відповідно до її бекенду:</p>
+<ul>
+<li class=""><strong>Черга в базі даних:</strong> включіть таблиці черги та їхнє з&#x27;єднання до того самого
+узгодженого набору відновлення. Вони можуть бути поза базою даних workflow.</li>
+<li class=""><strong>Черга Redis:</strong> використайте відновлюваний знімок чи резервну копію Redis із
+точною базою даних і префіксом черги та її готовими, відкладеними й зарезервованими
+ключами. Якщо ця база Redis містить потрібні блокування унікальних завдань,
+збережіть і їх. Бажано мати окрему базу чи екземпляр для черг, адже відновлення
+спільного знімка Redis може відкотити сторонні дані застосунку.</li>
+<li class=""><strong>SQS чи інша керована черга:</strong> використовуйте відновлення повідомлень на момент часу,
+підтримуване провайдером, лише якщо воно узгоджено зберігає доступні, відкладені
+й активні повідомлення. SQS не надає довільного знімка черги для цієї процедури,
+тому завершіть роботу v1 або визнайте решту залежної від черги роботи v1 невідновлюваною.
+Єдині винятки для відновлення лише SQL: перевірений рядок <code>pending</code>, придатний
+для Watchdog, і перевірене очікування лише signal.</li>
+</ul>
+<p>Зберігайте резервні копії SQL і черг, перелік без секретів і час відновлення разом.
+Маніфест відновлення може містити посилання на <code>APP_KEY</code> у менеджері секретів і
+його версію, але не сам ключ чи облікові дані для його отримання. Доступ до облікових
+даних менеджера секретів, бази даних, провайдера черги та відновлення резервних копій
+контролюйте окремо. Відновлення SQL і стану черги з різних моментів часу не є
+підтримуваним способом відкату активної роботи.</p>
+<p><strong>4. Спочатку перевірте в тестовому середовищі</strong></p>
+<p><strong>Не оновлюйте production без перевірки в тестовому середовищі.</strong> Оновлення включає:</p>
+<ul>
+<li class="">Зміни схеми бази даних: надійне ядро v2 додає нові таблиці, точну кількість
+визначає <code>php artisan migrate</code>, а майбутня об&#x27;єднана міграція може згрупувати файли</li>
+<li class="">Зміни просторів імен, що потребують оновлення коду</li>
+<li class="">Перезапуск worker черги з короткою перервою</li>
+<li class="">Перевірку можливостей бекенду</li>
+</ul>
+<p><strong>Контрольний список перевірки:</strong></p>
+<ul class="contains-task-list containsTaskList_mC6p">
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Розгорніть код v2 у тестовому середовищі</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Виконайте міграції тестової бази даних</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Перезапустіть worker черги</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Виконайте <code>php artisan workflow:v2:doctor --strict</code></li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Запустіть новий workflow v2 і перевірте його завершення</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Перевірте, що workflow v1, якщо вони є, також завершуються</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Перевірте відображення workflow v1 і v2 у Waterline</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Запустіть тести свого застосунку</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Перевірте відсутність помилок у журналах</li>
+</ul>
+<p>Переходьте до production лише після успішної перевірки в тестовому середовищі.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="upgrade-steps">Кроки оновлення<a href="#upgrade-steps" class="hash-link" aria-label="Пряме посилання на Кроки оновлення" title="Пряме посилання на Кроки оновлення" translate="no">​</a></h3>
+<p><strong>1. Оновіть залежність Composer</strong></p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">composer require durable-workflow/workflow:2.5.7</span><br></div></code></pre></div></div>
+<p>Підтримуваний пакет Composer для v1 і v2 має назву <code>durable-workflow/workflow</code>.
+Ця команда змінює обмеження версії на поточну зафіксовану публічну версію v2.
+Стара назва <code>laravel-workflow/laravel-workflow</code> є лише псевдонімом сумісності для
+графів залежностей, створених до перейменування пакета. Для нових вимог і відкату
+використовуйте підтримувану назву. Поточна публічна зафіксована версія належить
+стабільному пакету 2.0. Використовуйте <code>durable-workflow/workflow:^2.0</code>, якщо
+хочете, щоб Composer автоматично приймав сумісні оновлення 2.x.</p>
+<p><strong>2. Виконайте міграції бази даних</strong></p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan migrate</span><br></div></code></pre></div></div>
+<p>v2 додає таблиці надійного ядра, які забезпечують контракт функцій v2.
+Поточні міграції окремих функцій створюють:</p>
+<ul>
+<li class="">Ядро: <code>workflow_instances</code>, <code>workflow_runs</code>, <code>workflow_history_events</code>, <code>workflow_tasks</code>, <code>workflow_commands</code></li>
+<li class="">Activity: <code>activity_executions</code>, <code>activity_attempts</code></li>
+<li class="">Функції: <code>workflow_updates</code>, <code>workflow_signal_records</code>, <code>workflow_run_waits</code>, <code>workflow_run_timeline_entries</code>, <code>workflow_run_lineage_entries</code>, <code>workflow_schedules</code>, <code>workflow_schedule_history_events</code></li>
+<li class="">Спостережуваність: <code>workflow_run_summaries</code>, <code>workflow_failures</code>, <code>workflow_links</code>, <code>worker_compatibility_heartbeats</code></li>
+<li class="">Timer: <code>workflow_run_timers</code>, <code>workflow_run_timer_entries</code></li>
+<li class="">Пошук / memo / повідомлення / дочірні workflow: <code>workflow_search_attributes</code>, <code>workflow_memos</code>, <code>workflow_messages</code>, <code>workflow_child_calls</code></li>
+<li class="">Каталог сервісів: <code>workflow_service_endpoints</code>, <code>workflow_services</code>, <code>workflow_service_operations</code>, <code>workflow_service_calls</code></li>
+</ul>
+<p>Майбутня об&#x27;єднана міграція може згрупувати їх у меншу кількість файлів без зміни
+надійного контракту. Підтримуваний спосіб визначити фактичний стан бази даних:
+виконати <code>php artisan migrate:status</code> після оновлення.</p>
+<p>Типові таблиці v1 (<code>workflows</code>, <code>workflow_logs</code>, <code>workflow_signals</code>,
+<code>workflow_timers</code>, <code>workflow_exceptions</code>, <code>workflow_relationships</code>)
+зберігаються для завершення виконання на v1. Якщо налаштовані моделі v1
+перевизначають таблиці чи з&#x27;єднання зі сховищем, саме ці таблиці є джерелом істини v1.</p>
+<p><strong>3. За потреби оновіть конфігурацію</strong></p>
+<p>Конфігурація v2 зворотно сумісна. Якщо ви опублікували <code>config/workflow.php</code>
+у v1, він продовжить працювати. Нові параметри v2:</p>
+<ul>
+<li class=""><code>durable_types</code>: псевдоніми типів для незалежних від мови посилань на workflow</li>
+<li class=""><code>task_repair_policy</code>: обробка застряглих завдань</li>
+<li class=""><code>backend_capability_check</code>: сувора чи дозвільна перевірка</li>
+<li class=""><code>projection_rebuild</code>: стратегії відновлення з історії</li>
+<li class=""><code>history_budget</code>: обмеження кількості подій для continue-as-new</li>
+</ul>
+<p>Вони мають практичні типові значення. Змінюйте їх лише за потреби іншої поведінки.
+Докладніше в розділі <a class="" href="/uk/docs/configuration/options/">Конфігурація</a>.</p>
+<p><strong>Типовий кодек payload змінено на <code>avro</code>.</strong> v1 типово використовувала
+PHP-специфічний <code>Workflow\Serializers\Y::class</code>. v2 типово використовує незалежний
+від мови кодек <code>avro</code>, щоб worker інших мов могли декодувати payload без спільного
+PHP runtime. <code>avro</code> є єдиним підтримуваним кодеком для нових workflow v2.
+Нові workflow v2 отримують <code>payload_codec = &quot;avro&quot;</code>.</p>
+<p>Якщо у вас є опублікований <code>config/workflows.php</code> із v1 зі значенням
+<code>&#x27;serializer&#x27; =&gt; Workflow\Serializers\Y::class</code>, v2 продовжує читати його для
+діагностики міграції, але payload нових workflow v2 використовує Avro.
+Після оновлення виконайте <code>php artisan workflow:v2:doctor</code>: команда позначить
+застарілий кодек як питання завершення чи імпорту роботи v1.</p>
+<p>Щоб явно прийняти типове значення v2, не задавайте <code>serializer</code> або зафіксуйте його:</p>
+<div class="language-php codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-php codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">// config/workflows.php — v2 default (language-neutral, compact binary)</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">&#x27;serializer&#x27; =&gt; &#x27;avro&#x27;,</span><br></div></code></pre></div></div>
+<p>Зберігайте застарілий кодек (<code>&#x27;workflow-serializer-y&#x27;</code> чи
+<code>&#x27;workflow-serializer-base64&#x27;</code>) лише для завершення workflow v1, що обмінюються
+власними значеннями PHP між сервером і worker лише на PHP. Застарілі назви класів
+(<code>Workflow\Serializers\Y::class</code> тощо) залишаються псевдонімами для декодування v1.</p>
+<p><strong>Власні класи серіалізаторів v1 не підтримуються у v2.</strong> Публічний реєстр v2
+розпізнає лише <code>avro</code>. Застарілі декодери <code>workflow-serializer-y</code> і
+<code>workflow-serializer-base64</code> обмежені внутрішнім шляхом імпорту та завершення v1.
+Їх не можна вибрати для нового виконання v2 чи payload SDK. Якщо у вас був власний
+серіалізатор, завершіть виконання v1 до оновлення або перекодуйте історичний payload
+в <code>avro</code>: власний клас не викликається. <code>php artisan workflow:v2:doctor</code> позначає
+інші значення <code>workflows.serializer</code> як борг міграції. Відсутність кодека нового
+виконання означає <code>avro</code>.</p>
+<p><strong>Власні підкласи моделей підтримуються лише зі збереженням контракту колонок і ключів пакета.</strong>
+Зафіксована <a class="" href="/uk/docs/configuration/customization-matrix/">матриця налаштувань</a>
+є авторитетним джерелом: підкласи моделей екземпляра, виконання, завдання, події історії,
+проєкції, schedule, activity, помилки, зв&#x27;язку, повідомлення, memo, атрибута пошуку
+та дочірнього виклику v2 підтримуються зі збереженням назв таблиць, первинних і зовнішніх
+ключів пакета. Власні назви таблиць із власними назвами колонок зовнішніх ключів
+виходять за межі контракту. Waterline читає проєкції v2 через контракт
+<code>Workflow\V2\Contracts\OperatorObservabilityRepository</code>, тому сумісний зі схемою
+підклас не потребує зміни Waterline.</p>
+<p><strong>Змінні середовища:</strong></p>
+<p>v2 не додає нових обов&#x27;язкових змінних середовища. Наявні <code>QUEUE_CONNECTION</code>,
+<code>CACHE_DRIVER</code> і <code>DB_CONNECTION</code> продовжують працювати.</p>
+<p><strong>4. Перезапустіть worker черги</strong></p>
+<p>Worker черги потрібно перезапустити для завантаження коду v2:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain"># If using Laravel queue workers</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan queue:restart</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"># If using Supervisor</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">sudo supervisorctl restart &lt;your-worker-group&gt;:*</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"># If using systemd</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">sudo systemctl restart laravel-worker</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"># If using Horizon</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan horizon:terminate</span><br></div></code></pre></div></div>
+<p>Worker:</p>
+<ol>
+<li class="">Завершать поточне завдання</li>
+<li class="">Коректно завершать процес</li>
+<li class="">Перезапустяться із завантаженим кодом v2</li>
+</ol>
+<p><strong>Worker мають перезапуститися до обробки workflow v2.</strong> Workflow v1 можуть
+завершуватися зі старими чи новими worker завдяки сумісності finish-on-v1.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="after-upgrading">Після оновлення<a href="#after-upgrading" class="hash-link" aria-label="Пряме посилання на Після оновлення" title="Пряме посилання на Після оновлення" translate="no">​</a></h3>
+<p><strong>1. Перевірте можливості бекенду</strong></p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan workflow:v2:doctor --strict</span><br></div></code></pre></div></div>
+<p>Очікуваний результат:</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">✓ Database driver supports required features</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">✓ Queue driver supports required features</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">✓ Cache driver supports locks</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">✓ All backend capabilities present</span><br></div></code></pre></div></div>
+<p>Якщо перевірка не пройшла, дивіться передумови драйверів у розділі
+<a class="" href="/uk/docs/installation/#requirements">Вимоги до бекенду</a>.</p>
+<p><strong>2. Перевірте успішний запуск workflow v2</strong></p>
+<p>Запустіть тестовий workflow через API v2:</p>
+<div class="language-php codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-php codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">use Workflow\V2\WorkflowStub;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use Workflow\V2\StartOptions;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">$workflow = WorkflowStub::make(TestWorkflow::class, &#x27;test-upgrade&#x27;);</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">$result = $workflow-&gt;start([&#x27;test&#x27; =&gt; true], new StartOptions());</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">$runId = $result-&gt;runId();</span><br></div></code></pre></div></div>
+<p><code>WorkflowStub::start()</code> повертає об&#x27;єкт <code>StartResult</code>. Отримайте ID виконання
+через <code>runId()</code> перед порівнянням із рядками бази даних. Спроба порівняти
+повернений об&#x27;єкт із колонкою як звичайний рядок непомітно дає неправильне порівняння.</p>
+<p>Перевірте:</p>
+<ul>
+<li class="">Workflow відображається у Waterline</li>
+<li class="">У таблиці <code>workflow_instances</code> є рядок із відповідним <code>instance_id</code> (<code>$workflow-&gt;id()</code>)</li>
+<li class="">У таблиці <code>workflow_runs</code> є рядок із відповідним <code>run_id</code> (<code>$result-&gt;runId()</code>)</li>
+<li class="">Workflow завершується чи просувається як очікується</li>
+</ul>
+<p><strong>3. Перевірте workflow v1, якщо вони є</strong></p>
+<p>Якщо у вас є активні workflow v1:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan workflow:v1:list</span><br></div></code></pre></div></div>
+<p>Перевірте їх подальше просування. Workflow v1 мають завершитися на рушії v1 без помилок.</p>
+<p><strong>4. Перевірте журнали на помилки</strong></p>
+<p>Стежте за помилками workflow в журналах застосунку:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">tail -f storage/logs/laravel.log | grep -i workflow</span><br></div></code></pre></div></div>
+<p>Типові проблеми:</p>
+<ul>
+<li class="">Помилки просторів імен: код досі використовує <code>Workflow\Workflow</code> замість <code>Workflow\V2\Workflow</code></li>
+<li class="">Помилки методів: класам workflow чи activity v2 ще потрібно перейменувати початковий метод на <code>handle()</code></li>
+<li class="">Помилки драйвера черги: драйвер <code>sync</code> у режимі черги не підтримується. У режимі poll
+(<code>workflows.v2.task_dispatch_mode=poll</code>) черга не використовується для доставлення завдань, тому <code>sync</code> прийнятний</li>
+</ul>
+<p><strong>5. Перевірте спостережуваність Waterline</strong></p>
+<p>Відкрийте Waterline (типово <code>/waterline</code>) і перевірте:</p>
+<ul>
+<li class="">Workflow v1, якщо вони є, відображаються з початковими даними</li>
+<li class="">Workflow v2 відображаються з повними відомостями про виконання, історію й activity</li>
+<li class="">Waterline відображається без помилок</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="rollback-procedure">Процедура відкату<a href="#rollback-procedure" class="hash-link" aria-label="Пряме посилання на Процедура відкату" title="Пряме посилання на Процедура відкату" translate="no">​</a></h3>
+<p>Відкат потребує узгодженого набору відновлення. Саме лише відновлення бази даних
+SQL workflow не відновлює активне виконання v1, якщо стан черги Laravel
+зберігається в Redis, SQS, іншій базі даних чи зовнішньому бекенді.</p>
+<p>Якщо оновлення production не вдалося, повертайтеся лише до політики й моменту
+відновлення, вибраних до оновлення:</p>
+<p><strong>1. Призупиніть вхідні запити застосунку, планувальники й worker черги</strong></p>
+<p>Використайте ту саму процедуру зупинки, що й перед оновленням. Переконайтеся,
+що жоден worker не може зарезервувати завдання, а жоден запит не може запустити
+workflow чи надіслати signal під час відновлення стану.</p>
+<p><strong>2. Перевірте набір відновлення</strong></p>
+<ul>
+<li class="">Набір відновлення лише SQL підтримується, якщо на вибраний момент не було
+незавершеного виконання v1, що залежить від збереженої роботи в черзі.
+Придатний застарілий рядок <code>pending</code> може використовувати перевірений шлях
+Watchdog v1.0.77, описаний вище, а справжнє очікування лише signal може
+використовувати перевірений зовнішній вхід signal. Не поширюйте ці винятки на інші стани.</li>
+<li class="">Набір відновлення активної роботи має містити SQL і відновлюваний стан готових,
+відкладених та зарезервованих завдань черги з того самого моменту для повторних
+спроб, timer, activity та роботи <code>waiting</code> або <code>running</code>. Для очікування лише
+signal потрібен справний вхід signal, для timer потрібні їхні відкладені завдання.</li>
+<li class="">Якщо жодна умова не виконується, зупиніться. Виправте поточну версію, вручну
+узгодьте зафіксовані workflow або дійте відповідно до заздалегідь задокументованого
+прийняття невідновлюваності цих виконань.</li>
+</ul>
+<p><strong>3. Відновіть резервну копію бази даних</strong></p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain"># MySQL/MariaDB</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">mysql -u root -p your_database &lt; backup-v1-YYYYMMDD-HHMMSS.sql</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"># PostgreSQL</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">psql -U postgres -d your_database &lt; backup-v1-YYYYMMDD-HHMMSS.sql</span><br></div></code></pre></div></div>
+<p>Відновіть усі налаштовані власні таблиці моделей v1 та
+<code>workflow_relationships_table</code>, навіть якщо вони використовують інше з&#x27;єднання.</p>
+<p><strong>4. За потреби відновіть стан черги на вибраний момент</strong></p>
+<p>Не запускайте споживачів. Дотримуйтеся процедури відновлення провайдера черги
+та відновіть точні з&#x27;єднання, черги, префікси, готові, відкладені й зарезервовані
+завдання, збережені разом із SQL. Відновіть потрібні блокування унікальних завдань,
+якщо вони входили до набору відновлення. Порожня черга з тією самою назвою
+не може пробудити відновлені повторні спроби, timer чи роботу <code>waiting</code>/<code>running</code>.
+Порожньої доступної для запису черги достатньо лише для придатного рядка <code>pending</code>
+після перевірки запуску Watchdog v1.0.77 і повторного направлення ним цього рядка.</p>
+<p><strong>5. Поверніть попередню залежність Composer</strong></p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">composer require durable-workflow/workflow:^1.0 --with-all-dependencies</span><br></div></code></pre></div></div>
+<p><code>durable-workflow/workflow</code> є підтримуваною назвою пакета для підтримуваних
+версій v1 і v2. <code>laravel-workflow/laravel-workflow</code> є лише застарілим псевдонімом,
+оголошеним підтримуваним пакетом для сумісності зі старими графами залежностей.
+Не використовуйте його у вимогах відкату.</p>
+<p>Отримайте точний <code>APP_KEY</code> за зафіксованими посиланням і версією в менеджері
+секретів, використовуючи окремо контрольовані облікові дані відновлення.
+До запуску споживачів відновіть його разом зі з&#x27;єднанням зі сховищем workflow,
+з&#x27;єднаннями й назвами черг, префіксами Redis та налаштуваннями власних моделей.
+Зашифровані завдання й серіалізовані посилання на моделі залежать від відповідності
+цієї конфігурації збереженому моменту відновлення.</p>
+<p><strong>6. Перезапустіть worker черги й відновіть вхідні запити</strong></p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain"># Use the start command for your worker system, for example:</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">sudo supervisorctl start &lt;your-worker-group&gt;:*</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">sudo systemctl start laravel-worker</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan horizon:continue</span><br></div></code></pre></div></div>
+<p><strong>7. Перевірте можливість продовжити виконання v1</strong></p>
+<p>Видимість у Waterline підтверджує відновлення рядка, але не здатність worker
+продовжити виконання. Перед оголошенням успішного відкату виконайте цей список:</p>
+<ul class="contains-task-list containsTaskList_mC6p">
+<li class="task-list-item"><input type="checkbox" disabled=""> <code>composer show durable-workflow/workflow</code> показує потрібну версію v1,
+а worker завантажили цей код.</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Фактичні налаштовані таблиці v1 і <code>workflow_relationships_table</code> наявні
+на очікуваних з&#x27;єднаннях зі сховищем.</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Кожен незавершений рядок налаштованої таблиці збережених workflow
+(типово <code>workflows</code>) класифікований за наступним шляхом пробудження:
+готове/відкладене/зарезервоване завдання черги, збережене завдання timer або
+перевірений зовнішній вхід signal. Придатний рядок <code>pending</code> може натомість
+посилатися на перевірені докази повторного направлення Watchdog v1.0.77 нижче.</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Перевірка провайдера черги підтверджує наявність кожного залежного від черги
+пробудження повторної спроби, timer, activity та workflow <code>waiting</code> або <code>running</code>
+на зафіксованих з&#x27;єднанні й черзі. Сам рядок timer у SQL не задовольняє цю
+перевірку, а Watchdog не заміняє ці завдання.</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Якщо відновлений рядок <code>pending</code> не має збереженого завдання workflow,
+спостерігається постановка Watchdog у чергу циклом worker v1.0.77. Коли рядок
+досягає п&#x27;ятихвилинної межі застарілості, Watchdog ставить workflow на його
+записані з&#x27;єднання й чергу, а рядок просувається. Без цієї наскрізної перевірки
+вважайте рядок застряглим, навіть якщо Waterline його показує.</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Жоден відновлений рядок повторної спроби, timer, <code>waiting</code> чи <code>running</code>
+не позбавлений потрібного виконуваного завдання черги або доступного зовнішнього
+шляху signal для справжнього очікування signal. Такий рядок вважайте застряглим.
+Докази Watchdog лише для <code>pending</code> не роблять його відновлюваним.</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Відновлена повторна спроба чи timer просувається далі позначки до знімка,
+а контрольоване очікування signal може поставити й обробити пробудження signal.</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Новий контрольний workflow v1 завершується, а журнали не містять помилок
+відсутніх завдань, дешифрування, таблиць моделей, з&#x27;єднань чи маршрутизації черг.</li>
+</ul>
+<p>За типових таблиць цей запит дає початковий перелік. Для власної моделі
+збережених workflow замініть таблицю на визначену цією моделлю:</p>
+<div class="language-sql codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-sql codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">SELECT</span><span class="token plain"> id</span><span class="token punctuation" style="color:rgb(248, 248, 242)">,</span><span class="token plain"> class</span><span class="token punctuation" style="color:rgb(248, 248, 242)">,</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">status</span><span class="token plain"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"></span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">FROM</span><span class="token plain"> workflows</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"></span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">WHERE</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">status</span><span class="token plain"> </span><span class="token operator">NOT</span><span class="token plain"> </span><span class="token operator">IN</span><span class="token plain"> </span><span class="token punctuation" style="color:rgb(248, 248, 242)">(</span><span class="token string" style="color:rgb(255, 121, 198)">&#x27;completed&#x27;</span><span class="token punctuation" style="color:rgb(248, 248, 242)">,</span><span class="token plain"> </span><span class="token string" style="color:rgb(255, 121, 198)">&#x27;failed&#x27;</span><span class="token punctuation" style="color:rgb(248, 248, 242)">,</span><span class="token plain"> </span><span class="token string" style="color:rgb(255, 121, 198)">&#x27;cancelled&#x27;</span><span class="token punctuation" style="color:rgb(248, 248, 242)">)</span><span class="token punctuation" style="color:rgb(248, 248, 242)">;</span><br></div></code></pre></div></div>
+<p><strong>Важливі зауваження щодо відкату:</strong></p>
+<ul>
+<li class="">Відкат відкидає всі workflow v2, запущені після оновлення: вони існують лише в таблицях v2</li>
+<li class="">Відкат лише SQL відновлює записи workflow v1, але не повідомлення зовнішніх черг</li>
+<li class="">Активне виконання v1 підтримується лише за відновлення SQL і надійного стану черги
+з одного узгодженого моменту або за збереження доступного входу для задокументованого
+очікування лише signal. Додатковий виняток для SQL: придатний застарілий рядок
+<code>pending</code> із перевіреним повторним направленням Watchdog v1.0.77. Він не охоплює
+повторні спроби, timer чи роботу <code>waiting</code>/<code>running</code></li>
+<li class="">Відтворення стану до оновлення може повторити зовнішні побічні ефекти.
+Перевірте ідемпотентність застосунку перед відновленням activity з черги</li>
+<li class="">Якщо потрібно зберегти workflow v2, запущені під час оновлення, не відновлюйте
+базу даних, а виправте проблему в поточній версії</li>
+</ul>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="code-changes">Зміни коду<a href="#code-changes" class="hash-link" aria-label="Пряме посилання на Зміни коду" title="Пряме посилання на Зміни коду" translate="no">​</a></h2>
+<p>Розділи нижче описують зміни коду, потрібні для переходу від API v1 до API v2.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="namespace-change">Зміна простору імен<a href="#namespace-change" class="hash-link" aria-label="Пряме посилання на Зміна простору імен" title="Пряме посилання на Зміна простору імен" translate="no">​</a></h3>
+<p>Усі класи v2 належать до <code>Workflow\V2</code>. Оновіть імпорти:</p>
+<div class="language-php codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-php codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">// v1</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use Workflow\Workflow;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use Workflow\Activity;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use Workflow\WorkflowStub;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">// v2</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use Workflow\V2\Workflow;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use Workflow\V2\Activity;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use Workflow\V2\WorkflowStub;</span><br></div></code></pre></div></div>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="entry-method">Початковий метод<a href="#entry-method" class="hash-link" aria-label="Пряме посилання на Початковий метод" title="Пряме посилання на Початковий метод" translate="no">​</a></h3>
+<p>Workflow й activity v2 використовують <code>handle()</code> як початковий метод.
+Під час переходу перейменуйте методи <code>execute()</code> із v1 на <code>handle()</code>:</p>
+<div class="language-php codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-php codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">// v1</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">class MyWorkflow extends Workflow</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">{</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    public function execute($input)</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    {</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">        $result = yield ActivityStub::make(MyActivity::class, $input);</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">        return $result;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    }</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">}</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">// v2</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use function Workflow\V2\activity;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">class MyWorkflow extends Workflow</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">{</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    public function handle($input)</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    {</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">        return activity(MyActivity::class, $input);</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    }</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">}</span><br></div></code></pre></div></div>
+<p>Не залишайте <code>execute()</code> початковим методом workflow чи activity v2: runtime відхиляє його.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="activity-calls">Виклики activity<a href="#activity-calls" class="hash-link" aria-label="Пряме посилання на Виклики activity" title="Пряме посилання на Виклики activity" translate="no">​</a></h3>
+<p>v2 замінює <code>ActivityStub::make()</code> і <code>yield</code> прямими функціями-помічниками:</p>
+<div class="language-php codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-php codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">// v1</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">$result = yield ActivityStub::make(MyActivity::class, $arg1, $arg2);</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">// v2</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use function Workflow\V2\activity;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">$result = activity(MyActivity::class, $arg1, $arg2);</span><br></div></code></pre></div></div>
+<p>Activity тепер мають надійну ідентичність. Кожна запланована activity отримує
+рядок <code>activity_executions</code> зі сталим ID виконання, а кожна конкретна спроба
+отримує рядок <code>activity_attempts</code> із типізованою історією.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="workflow-identity">Ідентичність workflow<a href="#workflow-identity" class="hash-link" aria-label="Пряме посилання на Ідентичність workflow" title="Пряме посилання на Ідентичність workflow" translate="no">​</a></h3>
+<p>v2 розділяє ідентичність на ID екземпляра й ID виконання:</p>
+<ul>
+<li class=""><code>id()</code>: публічний ID екземпляра workflow, спільний для переходів continue-as-new</li>
+<li class=""><code>runId()</code>: ID поточного виконання</li>
+</ul>
+<p>У v1 це було одним поняттям.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="signals">Signal<a href="#signals" class="hash-link" aria-label="Пряме посилання на Signal" title="Пряме посилання на Signal" translate="no">​</a></h3>
+<p>v2 використовує іменовані очікування signal замість методів зміни стану з атрибутом <code>#[SignalMethod]</code>:</p>
+<div class="language-php codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-php codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">// v1</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">#[SignalMethod]</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">public function approve()</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">{</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    $this-&gt;approved = true;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">}</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">// v2</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use function Workflow\V2\await;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">$approved = await(&#x27;approve&#x27;);</span><br></div></code></pre></div></div>
+<p>Іменовані signal підтримують <code>await(&#x27;name&#x27;)</code> для блокувального очікування в коді
+workflow та <code>signal()</code> / <code>attemptSignal()</code> для зовнішніх даних. Скасування й
+примусове завершення залишаються явними командами runtime й не моделюються як signal.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="queries">Query<a href="#queries" class="hash-link" aria-label="Пряме посилання на Query" title="Пряме посилання на Query" translate="no">​</a></h3>
+<p>v2 використовує безпечні для replay методи query замість прямого читання властивостей workflow:</p>
+<div class="language-php codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-php codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">// v1</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">#[QueryMethod]</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">public function getStatus(): string</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">{</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    return $this-&gt;status;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">}</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">// v2</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use function Workflow\V2\query;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">// Queries are defined as named, replay-safe accessors</span><br></div></code></pre></div></div>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="timers-and-side-effects">Timer і побічні ефекти<a href="#timers-and-side-effects" class="hash-link" aria-label="Пряме посилання на Timer і побічні ефекти" title="Пряме посилання на Timer і побічні ефекти" translate="no">​</a></h3>
+<p>Функції-помічники заміняють статичні методи v1:</p>
+<div class="language-php codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-php codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">// v1</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">yield Timer::make(60);</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">$value = yield SideEffect::make(fn() =&gt; random_int(1, 100));</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">// v2</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use function Workflow\V2\timer;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use function Workflow\V2\sideEffect;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">timer(60);</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">$value = sideEffect(fn() =&gt; random_int(1, 100));</span><br></div></code></pre></div></div>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="timeouts">Тайм-аути<a href="#timeouts" class="hash-link" aria-label="Пряме посилання на Тайм-аути" title="Пряме посилання на Тайм-аути" translate="no">​</a></h3>
+<p>v2 додає тайм-аути рівня workflow через <code>StartOptions</code>:</p>
+<div class="language-php codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-php codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">use Workflow\V2\StartOptions;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use Workflow\V2\WorkflowStub;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">$workflow = WorkflowStub::make(MyWorkflow::class, &#x27;order-123&#x27;);</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">$workflow-&gt;start(</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    $orderId,</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    StartOptions::rejectDuplicate()</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">        -&gt;withExecutionTimeout(7200)   // 2 hours across all runs</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">        -&gt;withRunTimeout(3600),        // 1 hour per run</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">);</span><br></div></code></pre></div></div>
+<ul>
+<li class=""><strong>Тайм-аут виконання</strong> охоплює весь екземпляр, включно з переходами continue-as-new.</li>
+<li class=""><strong>Тайм-аут run</strong> діє для одного виконання та починається заново після continue-as-new.</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="database-migrations">Міграції бази даних<a href="#database-migrations" class="hash-link" aria-label="Пряме посилання на Міграції бази даних" title="Пряме посилання на Міграції бази даних" translate="no">​</a></h3>
+<p>v2 додає нові таблиці й колонки. Пакет автоматично завантажує свої міграції,
+тому після оновлення виконайте:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">composer update durable-workflow/workflow</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan migrate</span><br></div></code></pre></div></div>
+<p>Версія 2.0.0 включає базові міграції таблиць для чистого встановлення.
+Звичайний шлях: дозволити Laravel автоматично завантажити міграції пакета
+та виконати <code>php artisan migrate</code>.</p>
+<p>Якщо ви раніше опублікували міграції Durable Workflow у застосунку,
+виберіть одне джерело міграцій і підтримуйте його актуальним:</p>
+<ul>
+<li class="">
+<p><strong>Автоматично завантажувані міграції пакета:</strong> видаліть старі опубліковані
+файли міграцій Durable Workflow із <code>database/migrations</code> і виконайте <code>php artisan migrate</code>.</p>
+</li>
+<li class="">
+<p><strong>Опубліковані міграції:</strong> опублікуйте поточний набір перед застосуванням:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan vendor:publish \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  --provider=&quot;Workflow\Providers\WorkflowServiceProvider&quot; \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  --tag=migrations \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  --force</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan migrate</span><br></div></code></pre></div></div>
+</li>
+</ul>
+<p>Не залишайте застарілі опубліковані файли одночасно з використанням нових
+автоматично завантажуваних файлів пакета. Інакше застосунок може не отримати
+новіші таблиці v2 чи виправні міграції.</p>
+<p>Якщо ви змінили файли міграцій, під час кожного оновлення порівнюйте свої копії
+з каталогом <code>src/migrations</code> пакета. Зберігайте назви таблиць, колонки, індекси
+та правила nullable/default сумісними зі схемою моделей пакета. Якщо власна
+інсталяція направляє таблиці workflow на нетипове з&#x27;єднання, опублікуйте міграції,
+задайте їхній <code>$connection</code> і далі переносіть кожну нову міграцію пакета
+в порядку часових позначок.</p>
+<p>Для користувачів попередніх версій v2 колонка <code>workflow_run_summaries.memo</code>
+відновлюється ідемпотентно, якщо старіша опублікована міграція таблиці зведень
+створила <code>workflow_run_summaries</code> без цієї колонки. Чисті інсталяції вже
+створюють її в базовій міграції таблиці зведень.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="backend-capability-check">Перевірка можливостей бекенду<a href="#backend-capability-check" class="hash-link" aria-label="Пряме посилання на Перевірка можливостей бекенду" title="Пряме посилання на Перевірка можливостей бекенду" translate="no">​</a></h3>
+<p>v2 перевіряє відповідність драйверів черги, бази даних і кешу своїм вимогам.
+Після оновлення виконайте команду doctor:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan workflow:v2:doctor --strict</span><br></div></code></pre></div></div>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="configuration">Конфігурація<a href="#configuration" class="hash-link" aria-label="Пряме посилання на Конфігурація" title="Пряме посилання на Конфігурація" translate="no">​</a></h3>
+<p>v2 додає кілька параметрів конфігурації. Розділ
+<a class="" href="/uk/docs/configuration/options/">Конфігурація</a> описує:</p>
+<ul>
+<li class="">Псевдоніми надійних типів</li>
+<li class="">Політику відновлення завдань</li>
+<li class="">Перевірки можливостей бекенду</li>
+<li class="">Відновлення проєкцій</li>
+<li class="">Бюджети історії та приховування даних в експорті</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="waterline">Waterline<a href="#waterline" class="hash-link" aria-label="Пряме посилання на Waterline" title="Пряме посилання на Waterline" translate="no">​</a></h3>
+<p>Waterline, інтерфейс моніторингу, оновлено для v2:</p>
+<ul>
+<li class="">Деталі виконання показують тривалості тайм-аутів і дедлайни</li>
+<li class="">Відстеження спроб activity зі сталими ID</li>
+<li class="">Оновлене відображення статусів workflow</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="continue-as-new">Continue-as-new<a href="#continue-as-new" class="hash-link" aria-label="Пряме посилання на Continue-as-new" title="Пряме посилання на Continue-as-new" translate="no">​</a></h3>
+<p>v2 додає бюджети історії, що можуть автоматично запускати continue-as-new
+після перевищення межі кількості подій. Метадані (memo, атрибути пошуку,
+тайм-аути) переносяться між виконаннями.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="existing-workflows">Наявні workflow<a href="#existing-workflows" class="hash-link" aria-label="Пряме посилання на Наявні workflow" title="Пряме посилання на Наявні workflow" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="finish-on-v1-strategy">Стратегія finish-on-v1<a href="#finish-on-v1-strategy" class="hash-link" aria-label="Пряме посилання на Стратегія finish-on-v1" title="Пряме посилання на Стратегія finish-on-v1" translate="no">​</a></h3>
+<p><strong>Workflow, запущені на v1, продовжують виконання через шляхи сумісності v1.</strong>
+Нові workflow після оновлення використовують семантику v2. Мігрувати активні
+екземпляри workflow не потрібно.</p>
+<p>Після оновлення до 2.0:</p>
+<ol>
+<li class=""><strong>Дані v1 зберігаються:</strong> типові таблиці <code>workflows</code>, <code>workflow_logs</code>,
+<code>workflow_signals</code>, <code>workflow_timers</code>, <code>workflow_exceptions</code> і
+<code>workflow_relationships</code> залишаються цілими, а налаштовані перевизначення
+моделей і таблиць v1 залишаються авторитетними</li>
+<li class=""><strong>Workflow v1 завершуються на рушії v1:</strong> активні workflow v1 продовжують
+виконання на рушії replay v1 до термінального стану</li>
+<li class=""><strong>Workflow v2 використовують рушій v2:</strong> усі workflow після оновлення
+використовують схему v2 (<code>workflow_instances</code>, <code>workflow_runs</code>, <code>workflow_history_events</code> тощо)</li>
+<li class=""><strong>Waterline показує обидві версії:</strong> інтерфейс моніторингу відображає workflow v1 і v2 поруч</li>
+</ol>
+<p>Finish-on-v1 також залежить від бекенду черги Laravel. Зберігайте кожне
+з&#x27;єднання та чергу v1 до завершення їхніх workflow. Рядки бази даних
+зберігають історію й статус, але не відтворюють втрачені готові, відкладені
+чи зарезервовані завдання зовнішнього бекенду. Watchdog v1.0.77 може повторно
+направити придатний застарілий workflow <code>pending</code> із SQL, але цей обмежений
+шлях не відтворює повторні спроби, timer чи роботу <code>waiting</code>/<code>running</code>.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="tracking-v1-workflow-completion">Відстеження завершення workflow v1<a href="#tracking-v1-workflow-completion" class="hash-link" aria-label="Пряме посилання на Відстеження завершення workflow v1" title="Пряме посилання на Відстеження завершення workflow v1" translate="no">​</a></h3>
+<p>Щоб побачити workflow v1, які залишаються активними після оновлення:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan workflow:v1:list</span><br></div></code></pre></div></div>
+<p>Ця команда показує всі workflow v1, що ще не досягли термінального стану
+(completed, failed, cancelled). Відстежуйте нею завершення workflow v1.</p>
+<p>Приклад результату:</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">+--------------------------------------+---------------------+-----------+------------+</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">| ID                                   | Class               | Status    | Created    |</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">+--------------------------------------+---------------------+-----------+------------+</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">| 01J1234567890ABCDEFGHIJK             | App\OrderWorkflow   | running   | 2 days ago |</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">| 01J9876543210ZYXWVUTSRQP             | App\InvoiceWorkflow | pending   | 1 day ago  |</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">+--------------------------------------+---------------------+-----------+------------+</span><br></div></code></pre></div></div>
+<h4 class="anchor anchorTargetStickyNavbar_Vzrq" id="waterline-visibility">Видимість у Waterline<a href="#waterline-visibility" class="hash-link" aria-label="Пряме посилання на Видимість у Waterline" title="Пряме посилання на Видимість у Waterline" translate="no">​</a></h4>
+<p>Після оновлення до 2.0 Waterline автоматично показує workflow з обох рушіїв:</p>
+<ul>
+<li class=""><strong>Workflow v1</strong> відображають початкові дані <code>StoredWorkflow</code>: клас, статус, журнали, signal, винятки</li>
+<li class=""><strong>Workflow v2</strong> відображають повні деталі v2: виконання, події історії, timer, activity, атрибути пошуку</li>
+</ul>
+<p>Налаштування не потрібне. Waterline читає обидва набори таблиць і надає спільний перегляд.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="when-to-clean-up-v1-tables">Коли видаляти таблиці v1<a href="#when-to-clean-up-v1-tables" class="hash-link" aria-label="Пряме посилання на Коли видаляти таблиці v1" title="Пряме посилання на Коли видаляти таблиці v1" translate="no">​</a></h3>
+<p>Коли всі workflow v1 завершилися, що підтверджує нуль активних workflow
+у <code>workflow:v1:list</code>, можна за бажанням видалити таблиці v1:</p>
+<div class="language-sql codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-sql codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">DROP</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">TABLE</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">IF</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">EXISTS</span><span class="token plain"> workflow_relationships</span><span class="token punctuation" style="color:rgb(248, 248, 242)">;</span><span class="token plain"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"></span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">DROP</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">TABLE</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">IF</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">EXISTS</span><span class="token plain"> workflow_exceptions</span><span class="token punctuation" style="color:rgb(248, 248, 242)">;</span><span class="token plain"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"></span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">DROP</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">TABLE</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">IF</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">EXISTS</span><span class="token plain"> workflow_timers</span><span class="token punctuation" style="color:rgb(248, 248, 242)">;</span><span class="token plain"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"></span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">DROP</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">TABLE</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">IF</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">EXISTS</span><span class="token plain"> workflow_signals</span><span class="token punctuation" style="color:rgb(248, 248, 242)">;</span><span class="token plain"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"></span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">DROP</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">TABLE</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">IF</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">EXISTS</span><span class="token plain"> workflow_logs</span><span class="token punctuation" style="color:rgb(248, 248, 242)">;</span><span class="token plain"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"></span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">DROP</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">TABLE</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">IF</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">EXISTS</span><span class="token plain"> workflows</span><span class="token punctuation" style="color:rgb(248, 248, 242)">;</span><br></div></code></pre></div></div>
+<p><strong>Важливо:</strong> не видаляйте ці таблиці, доки хоч один workflow v1 залишається активним.
+Це спричинить збій replay v1 і залишить workflow застряглими.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="why-finish-on-v1">Навіщо finish-on-v1?<a href="#why-finish-on-v1" class="hash-link" aria-label="Пряме посилання на Навіщо finish-on-v1?" title="Пряме посилання на Навіщо finish-on-v1?" translate="no">​</a></h3>
+<p>Стратегія finish-on-v1 дозволяє оновлення без примусової міграції даних.
+v1 і v2 мають принципово різні моделі зберігання:</p>
+<ul>
+<li class=""><strong>v1</strong> зберігає стан workflow у денормалізованому рядку <code>workflows</code> із пов&#x27;язаними журналами, signal і timer</li>
+<li class=""><strong>v2</strong> зберігає стан workflow як історію подій із проєкціями (<code>workflow_instances</code>, <code>workflow_runs</code>, <code>workflow_history_events</code>)</li>
+</ul>
+<p>Перетворення активних workflow v1 на історію v2 потребувало б відновлення
+послідовностей подій із журналів v1, що створює ризик втрати даних і
+неузгодженості replay. Finish-on-v1 дозволяє workflow v1 безпечно завершитися
+на початковому рушії, а новій роботі одразу перейти до v2.</p></div></div><footer class="theme-doc-footer docusaurus-mt-lg"><div class="row margin-top--sm theme-doc-footer-tags-row"><div class="col"><b>Теги:</b><ul class="tags_jXut padding--none margin-left--sm"><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/uk/docs/tags/migration/">migration</a></li><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/uk/docs/tags/upgrade/">upgrade</a></li><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/uk/docs/tags/v-2/">v2</a></li></ul></div></div><div class="row margin-top--sm theme-doc-footer-edit-meta-row"><div class="col noPrint_WFHX"><a href="https://github.com/durable-workflow/durable-workflow.github.io/edit/main/i18n/uk/docusaurus-plugin-content-docs/current/migration.md" target="_blank" rel="noopener noreferrer" class="theme-edit-this-page"><svg fill="currentColor" height="20" width="20" viewBox="0 0 40 40" class="iconEdit_Z9Sw" aria-hidden="true"><g><path d="m34.5 11.7l-3 3.1-6.3-6.3 3.1-3q0.5-0.5 1.2-0.5t1.1 0.5l3.9 3.9q0.5 0.4 0.5 1.1t-0.5 1.2z m-29.5 17.1l18.4-18.5 6.3 6.3-18.4 18.4h-6.3v-6.2z"></path></g></svg>Відредагувати цю сторінку</a></div><div class="col lastUpdated_JAkA"></div></div></footer></article><nav class="docusaurus-mt-lg pagination-nav" aria-label="сторінка документації"><a class="pagination-nav__link pagination-nav__link--prev" href="/uk/docs/failures-and-recovery/"><div class="pagination-nav__sublabel">Попередня сторінка</div><div class="pagination-nav__label">Помилки й відновлення</div></a><a class="pagination-nav__link pagination-nav__link--next" href="/uk/docs/category/configuration/"><div class="pagination-nav__sublabel">Наступна сторінка</div><div class="pagination-nav__label">Налаштування</div></a></nav></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#upgrade-procedure" class="table-of-contents__link toc-highlight">Процедура оновлення</a><ul><li><a href="#before-upgrading" class="table-of-contents__link toc-highlight">Перед оновленням</a></li><li><a href="#upgrade-steps" class="table-of-contents__link toc-highlight">Кроки оновлення</a></li><li><a href="#after-upgrading" class="table-of-contents__link toc-highlight">Після оновлення</a></li><li><a href="#rollback-procedure" class="table-of-contents__link toc-highlight">Процедура відкату</a></li></ul></li><li><a href="#code-changes" class="table-of-contents__link toc-highlight">Зміни коду</a><ul><li><a href="#namespace-change" class="table-of-contents__link toc-highlight">Зміна простору імен</a></li><li><a href="#entry-method" class="table-of-contents__link toc-highlight">Початковий метод</a></li><li><a href="#activity-calls" class="table-of-contents__link toc-highlight">Виклики activity</a></li><li><a href="#workflow-identity" class="table-of-contents__link toc-highlight">Ідентичність workflow</a></li><li><a href="#signals" class="table-of-contents__link toc-highlight">Signal</a></li><li><a href="#queries" class="table-of-contents__link toc-highlight">Query</a></li><li><a href="#timers-and-side-effects" class="table-of-contents__link toc-highlight">Timer і побічні ефекти</a></li><li><a href="#timeouts" class="table-of-contents__link toc-highlight">Тайм-аути</a></li><li><a href="#database-migrations" class="table-of-contents__link toc-highlight">Міграції бази даних</a></li><li><a href="#backend-capability-check" class="table-of-contents__link toc-highlight">Перевірка можливостей бекенду</a></li><li><a href="#configuration" class="table-of-contents__link toc-highlight">Конфігурація</a></li><li><a href="#waterline" class="table-of-contents__link toc-highlight">Waterline</a></li><li><a href="#continue-as-new" class="table-of-contents__link toc-highlight">Continue-as-new</a></li></ul></li><li><a href="#existing-workflows" class="table-of-contents__link toc-highlight">Наявні workflow</a><ul><li><a href="#finish-on-v1-strategy" class="table-of-contents__link toc-highlight">Стратегія finish-on-v1</a></li><li><a href="#tracking-v1-workflow-completion" class="table-of-contents__link toc-highlight">Відстеження завершення workflow v1</a></li><li><a href="#when-to-clean-up-v1-tables" class="table-of-contents__link toc-highlight">Коли видаляти таблиці v1</a></li><li><a href="#why-finish-on-v1" class="table-of-contents__link toc-highlight">Навіщо finish-on-v1?</a></li></ul></li></ul></div></div></div></div></main></div></div></div><div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="row footer__links"><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Документація</div><ul class="footer__items clean-list"><li class="footer__item"><a class="footer__link-item" href="/uk/docs/introduction/">Вступ</a></li><li class="footer__item"><a class="footer__link-item" href="/uk/docs/installation/">Встановлення</a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Спільнота</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://discord.gg/xu5aDDpqVy" target="_blank" rel="noopener noreferrer" class="footer__link-item">Discord<svg width="13.5" height="13.5" aria-label="(відкривається в новій вкладці)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://x.com/DurableWorkflow" target="_blank" rel="noopener noreferrer" class="footer__link-item">X<svg width="13.5" height="13.5" aria-label="(відкривається в новій вкладці)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Інші ресурси</div><ul class="footer__items clean-list"><li class="footer__item"><a class="footer__link-item" href="/uk/compare/temporal/">Durable Workflow і Temporal</a></li><li class="footer__item"><a href="https://durable-workflow.com/llms-full.txt" target="_blank" rel="noopener noreferrer" class="footer__link-item">Документація для LLM<svg width="13.5" height="13.5" aria-label="(відкривається в новій вкладці)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://packagist.org/packages/durable-workflow/workflow" target="_blank" rel="noopener noreferrer" class="footer__link-item">Packagist<svg width="13.5" height="13.5" aria-label="(відкривається в новій вкладці)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div></div><div class="footer__bottom text--center"><div class="footer__copyright">Авторські права © 2026 <a href="https://durable-workflow.com">Durable Workflow</a>.</div></div></div></footer></div></div>
+</body>
+</html>
