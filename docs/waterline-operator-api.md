@@ -53,8 +53,8 @@ persistence inputs, use [Monitoring](./monitoring.md#waterline-service).
 
 ### Interface Language
 
-Waterline supports English, Spanish and Ukrainian in both embedded and service
-mode. Set the language in the Laravel application's environment or the service
+Waterline supports English, Brazilian Portuguese, Spanish and Ukrainian in both
+embedded and service mode. Set the language in the Laravel application's environment or the service
 container's environment:
 
 ```dotenv
@@ -64,12 +64,14 @@ WATERLINE_LOCALE=es
 | Language | Setting |
 | --- | --- |
 | English | `en` |
+| Brazilian Portuguese | `pt-BR` |
 | Spanish | `es` |
 | Ukrainian | `uk` |
 
 Spanish regional aliases such as `es-ES`, `es-MX` and `es-419` select the shared
-Spanish interface. Counts, chart labels and relative durations follow the
-selected interface language.
+Spanish interface. `pt`, `pt_br` and case variants select Brazilian Portuguese
+(`pt-BR`). Other Portuguese regions fall back to English. Counts, chart labels
+and relative durations follow the selected interface language.
 
 English is the default and fallback. Embedded applications can also set
 `waterline.locale` in their resolved configuration. Rebuild a cached Laravel
