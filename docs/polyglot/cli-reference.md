@@ -60,13 +60,36 @@ canonical `input` array.
 | `dw server:info` | Show server version, the role-topology manifest, protocol manifests, request contract, worker protocol, worker-fleet facts, and compatibility metadata. | global options, `--json` |
 | `dw doctor` | Explain the resolved profile/server/token/TLS state, remote compatibility warnings, and next steps. | global options, `--json` |
 | `dw debug workflow <workflow-id>` | Capture stuck-run diagnostics for one workflow: state, pending tasks, queue facts, failures, and compatibility metadata. | `--run-id`, global options, `--json` |
-| `dw server:start-dev` | Start a local development server for smoke work. | `--port`, `--db=sqlite|mysql|pgsql` |
+| `dw server:start-dev` | Serve an existing, configured Laravel project's HTTP application. Requires external PHP. | `--port`, `--host` (default `127.0.0.1`), `--db=sqlite|mysql|pgsql` |
 | `dw watch workflow <workflow-id>` | Poll a workflow until terminal or until a configured polling limit. | `--run-id`, `--interval`, `--max-polls`, global options |
 | `dw upgrade` | Replace the running standalone `dw` binary with a newer (or pinned) release. Refuses to rewrite Composer vendor, Homebrew cellar, and PHAR installs. | `--tag`, `--dry-run`, `--force`, `--output=table|json` |
 
 Use `server:info` when validating contract shape, `doctor` when explaining why
 a CLI cannot talk to a server, and `debug workflow` when support needs one
 machine-readable run capture.
+
+### Local Project HTTP Server
+
+Run `dw server:start-dev` from an installed Laravel project's directory containing
+`artisan`. The native CLI requires a separate PHP executable on `PATH` for this
+command. Configure the database and run migrations first. The selected `--db`
+value is passed as `DB_CONNECTION`, so clear Laravel's cached configuration when
+changing drivers. Run queue workers and the scheduler separately when required.
+Restart the command after editing `.env`. The selected driver stays applied to
+HTTP requests through Artisan's `--no-reload` mode.
+
+The command defaults to loopback. Use `--host=0.0.0.0` explicitly to bind to all
+interfaces. MySQL and PostgreSQL modes require project Compose services named
+`mysql` or `pgsql`, respectively, and `redis`. Failed dependency or HTTP processes
+return nonzero. Compose services remain running when the HTTP process ends.
+
+POSIX native binaries forward SIGINT and SIGTERM to the active child and wait
+up to five seconds for its process group to stop. Source and PHAR installs
+require PHP's `pcntl` and `posix` extensions for this forwarding. Windows uses
+its console interruption behavior.
+
+For a standalone Durable Workflow Server using published images, follow the
+[service quickstart](/docs/quickstart).
 
 ### Server Info And Role Topology
 
