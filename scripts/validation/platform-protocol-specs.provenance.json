@@ -41,8 +41,8 @@
         {
           "name": "worker_deregistration_result",
           "owner_repo": "durable-workflow/server",
-          "schema_authority": "DELETE /api/worker/registrations/{workerId} WorkerProtocol response envelope",
-          "version_authority": "Workflow\\V2\\Support\\WorkerProtocolVersion::VERSION"
+          "schema_authority": "POST /api/worker/registrations/{workerId}/deregister fenced receipt and legacy DELETE /api/worker/registrations/{workerId} WorkerProtocol response envelope",
+          "version_authority": "App\\Support\\WorkerProtocol::VERSION"
         },
         {
           "name": "worker_task_poll_request",
