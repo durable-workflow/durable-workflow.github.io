@@ -1,5 +1,5 @@
 {
-  "version.label": {"message": "2.0"},
+  "version.label": {"message": "2.x"},
   "sidebar.tutorialSidebar.category.Service Mode": {"message": "サービスモード"},
   "sidebar.tutorialSidebar.category.Service Mode.link.generated-index.description": {"message": "公式 PHP、Python、Rust SDK でクライアントと Worker を Cloud またはセルフホスト Server に接続します。Cloud は Managed Waterline を含み、セルフホスト Server の Waterline は別途デプロイします。"},
   "sidebar.tutorialSidebar.category.CLI": {"message": "CLI"},

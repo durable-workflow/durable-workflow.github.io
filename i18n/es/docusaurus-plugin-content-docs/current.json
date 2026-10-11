@@ -1,5 +1,5 @@
 {
-  "version.label": {"message": "2.0"},
+  "version.label": {"message": "2.x"},
   "sidebar.tutorialSidebar.category.Service Mode": {"message": "Modo servicio"},
   "sidebar.tutorialSidebar.category.Service Mode.link.generated-index.description": {"message": "Conecta clientes y workers oficiales de PHP, Python o Rust a Cloud o Server autogestionado. Cloud incluye Managed Waterline. Para Server, Waterline se despliega por separado."},
   "sidebar.tutorialSidebar.category.CLI": {"message": "CLI"},
