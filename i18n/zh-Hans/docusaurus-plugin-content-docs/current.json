@@ -1,5 +1,5 @@
 {
-  "version.label": {"message": "2.0"},
+  "version.label": {"message": "2.x"},
   "sidebar.tutorialSidebar.category.Service Mode": {"message": "服务模式"},
   "sidebar.tutorialSidebar.category.Service Mode.link.generated-index.description": {"message": "使用官方 PHP、Python 或 Rust SDK，将客户端和 Worker 连接到 Cloud 或自托管 Server。Cloud 包含 Managed Waterline，自托管 Server 的 Waterline 需单独部署。"},
   "sidebar.tutorialSidebar.category.CLI": {"message": "CLI"},
