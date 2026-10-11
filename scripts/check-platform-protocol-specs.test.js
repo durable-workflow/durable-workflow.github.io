@@ -9,6 +9,7 @@ const Ajv2020 = require('ajv/dist/2020');
 const {
   assertCatalogDoesNotExposeRepositoryLocalAuthority,
   assertPublishedSpecFileMatchesEntry,
+  assertRelativeSpecReferencesResolve,
 } = require('./check-platform-protocol-specs');
 
 const entry = {
@@ -280,6 +281,35 @@ x-decoy-object-families:
 
 } finally {
   fs.rmSync(fixtureRoot, {recursive: true, force: true});
+}
+
+const referenceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'worker-spec-references-'));
+try {
+  const workerPath = path.join(referenceRoot, 'worker.openapi.yaml');
+  const payloadPath = path.join(referenceRoot, 'payload.schema.json');
+  fs.writeFileSync(workerPath, '$ref: "./payload.schema.json#/$defs/envelope"\n');
+  assert.throws(
+    () => assertRelativeSpecReferencesResolve(workerPath),
+    /no shipped public file.*payload\.schema\.json/,
+    'a referenced but unpublished payload schema must fail qualification',
+  );
+  fs.writeFileSync(payloadPath, JSON.stringify({$defs: {other: {type: 'object'}}}));
+  assert.throws(
+    () => assertRelativeSpecReferencesResolve(workerPath),
+    /cannot resolve local JSON Schema reference #\/\$defs\/envelope/,
+    'a shipped file must contain the referenced schema',
+  );
+  fs.writeFileSync(payloadPath, JSON.stringify({$defs: {envelope: {$ref: './worker.openapi.yaml'}}}));
+  assert.doesNotThrow(
+    () => assertRelativeSpecReferencesResolve(workerPath),
+    'valid cyclic references resolve without repeatedly visiting documents',
+  );
+  assert.doesNotThrow(
+    () => assertRelativeSpecReferencesResolve(realWorkerSpec.absolutePath),
+    'the actual current worker document must resolve its supporting schemas',
+  );
+} finally {
+  fs.rmSync(referenceRoot, {recursive: true, force: true});
 }
 
 console.log('Platform-protocol-spec structural parsing adversarial checks passed.');

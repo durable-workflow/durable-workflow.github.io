@@ -1143,6 +1143,45 @@ function resolveJsonPointer(document, pointer) {
   return current;
 }
 
+function assertRelativeSpecReferencesResolve(specPath, publicRoot = path.dirname(specPath)) {
+  const root = path.resolve(publicRoot);
+  const documents = new Map();
+
+  function visitDocument(file) {
+    if (documents.has(file)) return documents.get(file);
+    if (!file.startsWith(`${root}${path.sep}`)) {
+      throw new Error(`relative spec reference escapes the public spec directory: ${file}.`);
+    }
+    if (!fs.existsSync(file) || !fs.statSync(file).isFile()) {
+      throw new Error(`relative spec reference has no shipped public file: ${file}.`);
+    }
+    const document = loadYaml(file, 'referenced public spec');
+    documents.set(file, document);
+    visit(document, file);
+    return document;
+  }
+
+  function visit(node, file) {
+    if (node === null || typeof node !== 'object') return;
+    if (typeof node.$ref === 'string' && !/^[a-z][a-z0-9+.-]*:/i.test(node.$ref)) {
+      const separator = node.$ref.indexOf('#');
+      const relative = separator === -1 ? node.$ref : node.$ref.slice(0, separator);
+      const fragment = separator === -1 ? '' : decodeURIComponent(node.$ref.slice(separator));
+      const target = relative === '' ? documents.get(file)
+        : visitDocument(path.resolve(path.dirname(file), decodeURIComponent(relative)));
+      if (fragment !== '' && fragment !== '#') {
+        if (!fragment.startsWith('#/')) {
+          throw new Error(`relative spec reference must use a JSON pointer: ${node.$ref}.`);
+        }
+        resolveJsonPointer(target, fragment);
+      }
+    }
+    for (const child of Object.values(node)) visit(child, file);
+  }
+
+  visitDocument(path.resolve(specPath));
+}
+
 function formatPropertySet(schema) {
   if (!schema.properties || typeof schema.properties !== 'object') {
     return '(no properties)';
@@ -1203,6 +1242,9 @@ function main() {
   assertServerOwnedSpecMirrorsMatchWhenAvailable(catalog);
   assertCatalogEntriesAreWellFormed(catalog, surfaceFamilies);
   assertAgentToolingSchemaDefinitionsAreAligned(catalog);
+  assertRelativeSpecReferencesResolve(
+    path.join(repoRoot, 'static', 'platform-protocol-specs', 'worker-protocol-api.openapi.yaml'),
+  );
   const specCount = Object.keys(catalog.specs).length;
   console.log(
     `Platform-protocol-specs check passed: ${specCount} spec entries at ` +
@@ -1217,5 +1259,6 @@ if (require.main === module) {
 module.exports = {
   assertCatalogDoesNotExposeRepositoryLocalAuthority,
   assertPublishedSpecFileMatchesEntry,
+  assertRelativeSpecReferencesResolve,
   loadYaml,
 };
