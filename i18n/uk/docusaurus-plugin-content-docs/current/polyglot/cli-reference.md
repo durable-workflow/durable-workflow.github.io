@@ -35,7 +35,7 @@ keywords:
 | `--namespace` | Цільовий namespace. Перевизначає namespace профілю. |
 | `--token` | Bearer token для цього виклику. Для збереженої автоматизації краще використовувати профілі з `--token-env`. |
 | `--env` | Іменований профіль середовища CLI. Невідоме ім'я спричиняє помилку без резервного вибору. |
-| `--output=table|json|jsonl` | Контракт виводу: `table` для людини, `json` як один JSON документ, `jsonl` як один JSON об'єкт на рядок для списків. |
+| `--output=table\|json\|jsonl` | Контракт виводу: `table` для людини, `json` як один JSON документ, `jsonl` як один JSON об'єкт на рядок для списків. |
 | `--json` | Локальний псевдонім JSON виводу в командах, що його надають. |
 
 Команди з даними від користувача використовують спільний контракт вводу:
@@ -44,7 +44,7 @@ keywords:
 | --- | --- |
 | `--input`, `-i` | Документ вводу безпосередньо в параметрі. |
 | `--input-file` | Читати ввід із файлу або зі stdin через `-`. Несумісний із `--input`. |
-| `--input-encoding=json|raw|base64` | Декодувати ввід як JSON, передати сирий текст одним аргументом або декодувати base64 одним аргументом. Типово `json`. |
+| `--input-encoding=json\|raw\|base64` | Декодувати ввід як JSON, передати сирий текст одним аргументом або декодувати base64 одним аргументом. Типово `json`. |
 
 Ввід JSON для запуску workflow, signal, query, update, schedule та завершення
 activity є позиційним масивом аргументів v2. Ввід raw і base64 стає одним
@@ -59,9 +59,9 @@ activity є позиційним масивом аргументів v2. Вві�
 | `dw server:info` | Показати версію Server, маніфест топології ролей, маніфести протоколів, контракт запиту, протокол worker, факти про парк worker і метадані сумісності. | глобальні параметри, `--json` |
 | `dw doctor` | Пояснити визначений стан профілю, Server, token і TLS, попередження віддаленої сумісності та наступні дії. | глобальні параметри, `--json` |
 | `dw debug workflow <workflow-id>` | Зібрати діагностику застряглого виконання: стан, очікувані завдання, відомості про чергу, помилки й метадані сумісності. | `--run-id`, глобальні параметри, `--json` |
-| `dw server:start-dev` | Обслуговувати HTTP-запити наявного налаштованого Laravel-проєкту. Потрібен окремий PHP. | `--port`, `--host` (типово `127.0.0.1`), `--db=sqlite|mysql|pgsql` |
+| `dw server:start-dev` | Обслуговувати HTTP-запити наявного налаштованого Laravel-проєкту. Потрібен окремий PHP. | `--port`, `--host` (типово `127.0.0.1`), `--db=sqlite\|mysql\|pgsql` |
 | `dw watch workflow <workflow-id>` | Опитувати workflow до термінального стану чи заданої межі опитувань. | `--run-id`, `--interval`, `--max-polls`, глобальні параметри |
-| `dw upgrade` | Замінити поточний самостійний бінарний файл `dw` новішим чи зафіксованим релізом. Відмовляється змінювати Composer vendor, Homebrew cellar і PHAR. | `--tag`, `--dry-run`, `--force`, `--output=table|json` |
+| `dw upgrade` | Замінити поточний самостійний бінарний файл `dw` новішим чи зафіксованим релізом. Відмовляється змінювати Composer vendor, Homebrew cellar і PHAR. | `--tag`, `--dry-run`, `--force`, `--output=table\|json` |
 
 Використовуйте `server:info` для перевірки форми контракту, `doctor` для пояснення
 проблем зв'язку CLI із сервером, а `debug workflow` для отримання
@@ -205,11 +205,11 @@ JSON містить стабільне поле `status` для автомати
 
 | Команда | Призначення | Важливі параметри |
 | --- | --- | --- |
-| `dw env:set <name>` | Створити чи оновити іменований профіль. | | `--server`, `--namespace`, `--token-env`, `--token`, `--tls-verify=true|false`, `--profile-output=table|json|jsonl`, `--make-default`, `--json` |
-| `dw env:list` | Показати профілі з типовим приховуванням буквальних token. | | `--show-token`, `--json`, `--output=jsonl` |
-| `dw env:show [name]` | Показати один профіль, типово поточний. | | `--show-token`, `--json` |
-| `dw env:use <name>` | Задати типовий профіль. Невідомі імена спричиняють помилку. | | `--json` |
-| `dw env:delete <name>` | Видалити профіль. | | `--json` |
+| `dw env:set <name>` | Створити чи оновити іменований профіль. | `--server`, `--namespace`, `--token-env`, `--token`, `--tls-verify=true\|false`, `--profile-output=table\|json\|jsonl`, `--make-default`, `--json` |
+| `dw env:list` | Показати профілі з типовим приховуванням буквальних token. | `--show-token`, `--json`, `--output=jsonl` |
+| `dw env:show [name]` | Показати один профіль, типово поточний. | `--show-token`, `--json` |
+| `dw env:use <name>` | Задати типовий профіль. Невідомі імена спричиняють помилку. | `--json` |
+| `dw env:delete <name>` | Видалити профіль. | `--json` |
 
 Для production профілів надавайте перевагу `--token-env=NAME`, щоб секрети
 залишалися в середовищі виконання й не потрапляли до файлу профілю.
@@ -218,12 +218,12 @@ JSON містить стабільне поле `status` для автомати
 
 | Команда | Призначення | Важливі параметри |
 | --- | --- | --- |
-| `dw workflow:start` | Запустити workflow через площину керування. | | `--type`, `--workflow-id`, `--business-key`, `--task-queue`, `--duplicate-policy`, `--memo`, `--search-attr key=value`, `--execution-timeout`, `--run-timeout`, `--wait`, параметри вводу, `--json` |
-| `dw workflow:list` | Показати екземпляри workflow. | | `--type`, `--status`, `--query`, `--limit`, глобальні параметри виводу |
-| `dw workflow:describe <workflow-id>` | Описати поточне чи вибране виконання. | | `--run-id`, `--follow`, `--json` |
-| `dw workflow:list-runs <workflow-id>` | Показати виконання екземпляра workflow. | | `--json` |
-| `dw workflow:show-run <workflow-id> <run-id>` | Показати одне виконання. | | `--follow`, `--json` |
-| `dw workflow:history <workflow-id> <run-id>` | Прочитати події історії виконання. | | `--follow`, `--page-size`, `--json` |
+| `dw workflow:start` | Запустити workflow через площину керування. | `--type`, `--workflow-id`, `--business-key`, `--task-queue`, `--duplicate-policy`, `--memo`, `--search-attr key=value`, `--execution-timeout`, `--run-timeout`, `--wait`, параметри вводу, `--json` |
+| `dw workflow:list` | Показати екземпляри workflow. | `--type`, `--status`, `--query`, `--limit`, глобальні параметри виводу |
+| `dw workflow:describe <workflow-id>` | Описати поточне чи вибране виконання. | `--run-id`, `--follow`, `--json` |
+| `dw workflow:list-runs <workflow-id>` | Показати виконання екземпляра workflow. | `--json` |
+| `dw workflow:show-run <workflow-id> <run-id>` | Показати одне виконання. | `--follow`, `--json` |
+| `dw workflow:history <workflow-id> <run-id>` | Прочитати події історії виконання. | `--follow`, `--page-size`, `--json` |
 | `dw workflow:history-export <workflow-id> <run-id>` | Експортувати архівний payload історії виконання. | | `--output-file`, глобальні параметри |
 | `dw workflow:signal <workflow-id> <signal-name>` | Надіслати signal. | | `--run-id`, параметри вводу, `--json` |
 | `dw workflow:query <workflow-id> <query-name>` | Виконати query workflow лише для читання. | | `--run-id`, параметри вводу, `--json` |
@@ -288,15 +288,15 @@ dw bridge:webhook pagerduty \
 
 | Команда | Призначення | Важливі параметри |
 | --- | --- | --- |
-| `dw schedule:create` | Створити schedule. | | `--schedule-id`, `--workflow-type`, `--cron`, `--interval`, `--task-queue`, `--timezone`, `--execution-timeout`, `--run-timeout`, `--overlap-policy`, `--jitter`, `--max-runs`, `--paused`, `--note`, параметри вводу, `--json` |
-| `dw schedule:list` | Показати schedule. | | глобальні параметри виводу |
-| `dw schedule:describe <schedule-id>` | Описати один schedule. | | `--json` |
-| `dw schedule:update <schedule-id>` | Оновити специфікацію schedule чи ввід workflow. | | параметри створення schedule, параметри вводу, `--json` |
-| `dw schedule:pause <schedule-id>` | Призупинити schedule. | | `--note`, `--json` |
-| `dw schedule:resume <schedule-id>` | Відновити schedule. | | `--note`, `--json` |
-| `dw schedule:trigger <schedule-id>` | Негайно запустити schedule. | | `--overlap-policy`, `--json` |
-| `dw schedule:backfill <schedule-id>` | Виконати backfill часового вікна. | | `--start-time`, `--end-time`, `--overlap-policy`, `--json` |
-| `dw schedule:delete <schedule-id>` | Видалити schedule. | | `--json` |
+| `dw schedule:create` | Створити schedule. | `--schedule-id`, `--workflow-type`, `--cron`, `--interval`, `--task-queue`, `--timezone`, `--execution-timeout`, `--run-timeout`, `--overlap-policy`, `--jitter`, `--max-runs`, `--paused`, `--note`, параметри вводу, `--json` |
+| `dw schedule:list` | Показати schedule. | глобальні параметри виводу |
+| `dw schedule:describe <schedule-id>` | Описати один schedule. | `--json` |
+| `dw schedule:update <schedule-id>` | Оновити специфікацію schedule чи ввід workflow. | параметри створення schedule, параметри вводу, `--json` |
+| `dw schedule:pause <schedule-id>` | Призупинити schedule. | `--note`, `--json` |
+| `dw schedule:resume <schedule-id>` | Відновити schedule. | `--note`, `--json` |
+| `dw schedule:trigger <schedule-id>` | Негайно запустити schedule. | `--overlap-policy`, `--json` |
+| `dw schedule:backfill <schedule-id>` | Виконати backfill часового вікна. | `--start-time`, `--end-time`, `--overlap-policy`, `--json` |
+| `dw schedule:delete <schedule-id>` | Видалити schedule. | `--json` |
 
 Під час створення schedule використовуйте `--cron` або `--interval`.
 `--paused` дозволяє зареєструвати schedule під час розгортання без запуску роботи.
@@ -305,15 +305,15 @@ dw bridge:webhook pagerduty \
 
 | Команда | Призначення | Важливі параметри |
 | --- | --- | --- |
-| `dw worker:register [worker-id]` | Зареєструвати worker із місткістю й метаданими сумісності. | | `--task-queue`, `--runtime`, `--sdk-version`, `--build-id`, `--workflow-type`, `--activity-type`, `--max-workflow-tasks`, `--max-activity-tasks`, `--json` |
-| `dw worker:list` | Показати worker. | | `--task-queue`, `--status`, глобальні параметри виводу |
-| `dw worker:describe <worker-id>` | Описати одного worker. | | `--json` |
-| `dw worker:deregister <worker-id>` | Скасувати реєстрацію worker. | | `--json` |
-| `dw task-queue:list` | Показати активні черги завдань і стан допуску. | | глобальні параметри виводу |
-| `dw task-queue:describe <queue>` | Описати місткість worker, lease, бюджети доставлення й місткість очікуваних завдань query. | | `--json` |
-| `dw task-queue:build-ids <queue>` | Перевірити стан груп за build-id і розгортання однієї черги. | | `--json` |
-| `dw task-queue:drain <queue>` | Позначити групу build-id як draining, щоб вона перестала отримувати нові завдання. | | `--build-id <value>`, `--unversioned`, `--json` |
-| `dw task-queue:resume <queue>` | Зняти попередній drain, щоб група знову отримувала нові завдання. | | `--build-id <value>`, `--unversioned`, `--json` |
+| `dw worker:register [worker-id]` | Зареєструвати worker із місткістю й метаданими сумісності. | `--task-queue`, `--runtime`, `--sdk-version`, `--build-id`, `--workflow-type`, `--activity-type`, `--max-workflow-tasks`, `--max-activity-tasks`, `--json` |
+| `dw worker:list` | Показати worker. | `--task-queue`, `--status`, глобальні параметри виводу |
+| `dw worker:describe <worker-id>` | Описати одного worker. | `--json` |
+| `dw worker:deregister <worker-id>` | Скасувати реєстрацію worker. | `--json` |
+| `dw task-queue:list` | Показати активні черги завдань і стан допуску. | глобальні параметри виводу |
+| `dw task-queue:describe <queue>` | Описати місткість worker, lease, бюджети доставлення й місткість очікуваних завдань query. | `--json` |
+| `dw task-queue:build-ids <queue>` | Перевірити стан груп за build-id і розгортання однієї черги. | `--json` |
+| `dw task-queue:drain <queue>` | Позначити групу build-id як draining, щоб вона перестала отримувати нові завдання. | `--build-id <value>`, `--unversioned`, `--json` |
+| `dw task-queue:resume <queue>` | Зняти попередній drain, щоб група знову отримувала нові завдання. | `--build-id <value>`, `--unversioned`, `--json` |
 
 Команди черг завдань є рекомендованим операторським оглядом обмеження потоку,
 місткості та відсутності worker. Серверну політику цих полів описано в
@@ -335,15 +335,15 @@ dw bridge:webhook pagerduty \
 
 | Команда | Призначення | Важливі параметри |
 | --- | --- | --- |
-| `dw workflow-task:poll <worker-id>` | Опитати одне завдання workflow. | | `--task-queue`, `--build-id`, `--poll-request-id`, `--history-page-size`, `--accept-history-encoding`, `--json` |
-| `dw workflow-task:history <task-id> <page-token>` | Отримати наступну сторінку історії орендованого завдання workflow. | | `--lease-owner`, `--attempt`, `--json` |
-| `dw workflow-task:complete <task-id> <attempt>` | Завершити одне завдання workflow з payload команд. | | `--lease-owner`, `--complete-result`, `--command`, `--json` |
-| `dw workflow-task:fail <task-id> <attempt>` | Повідомити про помилку виконання завдання workflow для повторної спроби чи діагностики. Відрізняється від завершення завдання командою `fail_workflow`. | | `--lease-owner`, `--message`, `--type`, `--stack-trace`, `--json` |
-| `dw query-task:poll <worker-id>` | Опитати й орендувати одне маршрутизоване завдання query workflow. | | `--task-queue`, `--json` |
-| `dw query-task:complete <query-task-id> <attempt>` | Завершити орендоване завдання query результатом JSON і відповідною обгорткою. | | `--lease-owner`, `--result`, `--json` |
-| `dw query-task:fail <query-task-id> <attempt>` | Повідомити про помилку орендованого завдання query з машиночитаною причиною. | | `--lease-owner`, `--message`, `--reason`, `--type`, `--stack-trace`, `--json` |
-| `dw activity:complete <task-id> <attempt-id>` | Завершити одну орендовану спробу activity. | | `--lease-owner`, параметри вводу, `--json` |
-| `dw activity:fail <task-id> <attempt-id>` | Завершити одну орендовану спробу activity помилкою. | | `--lease-owner`, `--message`, `--type`, `--non-retryable`, `--json` |
+| `dw workflow-task:poll <worker-id>` | Опитати одне завдання workflow. | `--task-queue`, `--build-id`, `--poll-request-id`, `--history-page-size`, `--accept-history-encoding`, `--json` |
+| `dw workflow-task:history <task-id> <page-token>` | Отримати наступну сторінку історії орендованого завдання workflow. | `--lease-owner`, `--attempt`, `--json` |
+| `dw workflow-task:complete <task-id> <attempt>` | Завершити одне завдання workflow з payload команд. | `--lease-owner`, `--complete-result`, `--command`, `--json` |
+| `dw workflow-task:fail <task-id> <attempt>` | Повідомити про помилку виконання завдання workflow для повторної спроби чи діагностики. Відрізняється від завершення завдання командою `fail_workflow`. | `--lease-owner`, `--message`, `--type`, `--stack-trace`, `--json` |
+| `dw query-task:poll <worker-id>` | Опитати й орендувати одне маршрутизоване завдання query workflow. | `--task-queue`, `--json` |
+| `dw query-task:complete <query-task-id> <attempt>` | Завершити орендоване завдання query результатом JSON і відповідною обгорткою. | `--lease-owner`, `--result`, `--json` |
+| `dw query-task:fail <query-task-id> <attempt>` | Повідомити про помилку орендованого завдання query з машиночитаною причиною. | `--lease-owner`, `--message`, `--reason`, `--type`, `--stack-trace`, `--json` |
+| `dw activity:complete <task-id> <attempt-id>` | Завершити одну орендовану спробу activity. | `--lease-owner`, параметри вводу, `--json` |
+| `dw activity:fail <task-id> <attempt-id>` | Завершити одну орендовану спробу activity помилкою. | `--lease-owner`, `--message`, `--type`, `--non-retryable`, `--json` |
 
 Використовуйте `workflow-task:fail` для помилок виконання на боці worker,
 наприклад розбіжностей replay чи помилок десеріалізації. Команда звертається до
@@ -395,15 +395,15 @@ JSON повертає відповідь сервера без переймен�
 
 | Команда | Призначення | Важливі параметри |
 | --- | --- | --- |
-| `dw namespace:list` | Показати namespace. | | глобальні параметри виводу |
-| `dw namespace:create <name>` | Створити namespace. | | `--description`, `--retention`, `--json` |
-| `dw namespace:describe <name>` | Описати один namespace. | | `--json` |
-| `dw namespace:update <name>` | Оновити метадані namespace. | | `--description`, `--retention`, `--json` |
-| `dw namespace:set-storage-driver <name> <driver>` | Налаштувати політику зовнішнього сховища payload namespace для закодованих payload, що перевищують поріг винесення. | | `--threshold-bytes`, `--uri`, `--disk`, `--bucket`, `--prefix`, `--region`, `--endpoint`, `--auth-profile`, `--disable`, `--json` |
-| `dw storage:test` | Перевірити запис і читання малого вбудованого й великого винесеного payload через вибрану політику сховища namespace чи перевизначений драйвер. | | `--driver=local|s3|gcs|azure`, `--small-bytes`, `--large-bytes`, глобальні параметри, `--json` |
-| `dw search-attribute:list` | Показати атрибути пошуку. | | глобальні параметри виводу |
-| `dw search-attribute:create <name> <type>` | Зареєструвати атрибут пошуку. | | `--json` |
-| `dw search-attribute:delete <name>` | Видалити атрибут пошуку. | | `--json` |
+| `dw namespace:list` | Показати namespace. | глобальні параметри виводу |
+| `dw namespace:create <name>` | Створити namespace. | `--description`, `--retention`, `--json` |
+| `dw namespace:describe <name>` | Описати один namespace. | `--json` |
+| `dw namespace:update <name>` | Оновити метадані namespace. | `--description`, `--retention`, `--json` |
+| `dw namespace:set-storage-driver <name> <driver>` | Налаштувати політику зовнішнього сховища payload namespace для закодованих payload, що перевищують поріг винесення. | `--threshold-bytes`, `--uri`, `--disk`, `--bucket`, `--prefix`, `--region`, `--endpoint`, `--auth-profile`, `--disable`, `--json` |
+| `dw storage:test` | Перевірити запис і читання малого вбудованого й великого винесеного payload через вибрану політику сховища namespace чи перевизначений драйвер. | `--driver=local\|s3\|gcs\|azure`, `--small-bytes`, `--large-bytes`, глобальні параметри, `--json` |
+| `dw search-attribute:list` | Показати атрибути пошуку. | глобальні параметри виводу |
+| `dw search-attribute:create <name> <type>` | Зареєструвати атрибут пошуку. | `--json` |
+| `dw search-attribute:delete <name>` | Видалити атрибут пошуку. | `--json` |
 
 Типи атрибутів пошуку є сумісними із сервером значеннями: `keyword`, `text`,
 `int`, `double`, `bool`, `datetime` і `keyword_list`.
@@ -451,12 +451,12 @@ dw storage:test --driver=s3 --small-bytes=128 --large-bytes=3145728 --json
 
 | Команда | Призначення | Важливі параметри |
 | --- | --- | --- |
-| `dw system:repair-status` | Показати backlog і стан відновлення workflow. | | `--json` |
-| `dw system:repair-pass` | Виконати один прохід відновлення. | | `--run-id`, `--limit`, `--json` |
-| `dw system:activity-timeout-status` | Показати backlog і стан тайм-аутів activity. | | `--json` |
-| `dw system:activity-timeout-pass` | Виконати один прохід тайм-аутів activity. | | `--task-id`, `--limit`, `--json` |
-| `dw system:retention-status` | Показати backlog і стан retention. | | `--json` |
-| `dw system:retention-pass` | Виконати один прохід очищення retention. | | `--run-id`, `--limit`, `--json` |
+| `dw system:repair-status` | Показати backlog і стан відновлення workflow. | `--json` |
+| `dw system:repair-pass` | Виконати один прохід відновлення. | `--run-id`, `--limit`, `--json` |
+| `dw system:activity-timeout-status` | Показати backlog і стан тайм-аутів activity. | `--json` |
+| `dw system:activity-timeout-pass` | Виконати один прохід тайм-аутів activity. | `--task-id`, `--limit`, `--json` |
+| `dw system:retention-status` | Показати backlog і стан retention. | `--json` |
+| `dw system:retention-pass` | Виконати один прохід очищення retention. | `--run-id`, `--limit`, `--json` |
 
 В інструкціях операцій спочатку використовуйте команди status, а потім pass,
 щоб оператори бачили обсяг очікуваної роботи до зміни стану сервера.
@@ -465,9 +465,9 @@ dw storage:test --driver=s3 --small-bytes=128 --large-bytes=3145728 --json
 
 | Команда | Призначення | Важливі параметри |
 | --- | --- | --- |
-| `dw schema:list` | Показати опубліковані машиночитані схеми. | | з'єднання із сервером не потрібне |
-| `dw schema:show <command-name>` | Показати вбудовану JSON Schema виводу однієї команди. | | `--output=json|jsonl`; з'єднання із сервером не потрібне |
-| `dw schema:manifest` | Показати маніфест схем. | | з'єднання із сервером не потрібне |
+| `dw schema:list` | Показати опубліковані машиночитані схеми. | з'єднання із сервером не потрібне |
+| `dw schema:show <command-name>` | Показати вбудовану JSON Schema виводу однієї команди. | `--output=json\|jsonl`; з'єднання із сервером не потрібне |
+| `dw schema:manifest` | Показати маніфест схем. | з'єднання із сервером не потрібне |
 
 Команди схем корисні, якщо AI клієнту чи завданню CI потрібен поточний контракт
 площини керування, відповіді чи виводу без розбору документації.
