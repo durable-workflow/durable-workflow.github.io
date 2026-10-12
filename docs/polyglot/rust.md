@@ -99,15 +99,18 @@ Or declare the same qualified requirement directly in `Cargo.toml`:
 ```
 
 The crate requires Rust 1.86 or newer. Its package metadata declares the exact
-qualified Durable Workflow Server range, worker protocol 1.19, and control plane
-2. During deployment, the protocol
+qualified Durable Workflow Server range, worker protocol default and minimum,
+and control plane 2. During deployment, the protocol
 manifests advertised by `GET /api/cluster/info` remain authoritative.
 
 Server negotiates worker-protocol headers within major `1`: a server
 advertising `1.N` accepts a worker header `1.M` only when `M <= N`. Rust SDK
-ordinary workers send `X-Durable-Workflow-Protocol-Version: 1.19` and require
-a server advertising `1.19` or newer. The qualified Server advertises
-`1.20`. The opt-in cooperative cancellation profile requires `1.20`.
+3.5.0 defaults to `X-Durable-Workflow-Protocol-Version: 1.20` and requires a
+server advertising `1.20` or newer. For an older compatible Server, select
+`WorkerProtocolVersion::V119` through the client builder's
+`worker_protocol_version` setting. SDK 3.4.x uses `1.19` by default.
+The opt-in cooperative cancellation profile requires `1.20` and refuses an
+explicit `1.19` selection.
 
 Negotiation fails closed. A missing or malformed header, a different major,
 or a worker minor newer than the server's advertised minor is rejected. The
