@@ -32,6 +32,13 @@ required minor and optional capability profile before deployment.
 Missing or malformed headers, different majors, and worker
 minors newer than the server fail closed.
 
+PHP SDK 2.3.2, Python SDK 2.5.7 and Rust SDK 3.5.0 use `1.20` by default.
+These releases also support explicit `1.19` selection for an older compatible
+Server. Optional worker capabilities, including cooperative cancellation,
+remain explicit opt-ins. Selecting a protocol version does not enable them.
+See each [SDK's documentation](/docs/polyglot/deployment-modes/) for its
+configuration and published compatibility metadata.
+
 You can retrieve the full protocol description programmatically:
 
 ```php

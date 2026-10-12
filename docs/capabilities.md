@@ -52,11 +52,13 @@ ownership boundary, then continue with
 [self-hosted Server](/docs/polyglot/server/). The capability evidence below
 applies only where the selected runtime advertises the required contract.
 
-The current self-hosted Server floor advertises worker protocol `1.13`. Python
-uses its declared `1.1` baseline, while Rust uses `1.2` and requires the
-additive `1.8` query-task surface for replayed queries. Runtime discovery, not a
-Server patch-number guess, decides whether a client may connect. See
-[Version Compatibility](/docs/compatibility/).
+PHP SDK 2.3.2, Python SDK 2.5.7 and Rust SDK 3.5.0 default to worker protocol
+`1.20`. Default workers require a Server advertising `1.20` or newer within
+major `1`. Each SDK also supports explicitly selecting `1.19` for an older
+compatible Server. Cooperative cancellation requires `1.20` and its explicit
+capability opt-in. Runtime discovery and the selected SDK's published metadata
+decide compatibility. See [Version Compatibility](/docs/compatibility/) and
+[Worker Protocol](/docs/polyglot/worker-protocol/).
 
 ## Capability and SDK floors
 
