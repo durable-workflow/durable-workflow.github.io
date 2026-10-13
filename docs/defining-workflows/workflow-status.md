@@ -32,6 +32,12 @@ Keep the workflow ID so another observer can load its current state. A terminal
 failure, cancellation or termination must be handled before reading a successful
 output.
 
+An instance handle from `Workflow\V2\WorkflowStub::load($workflowId)` follows the
+current run when refreshed, including across `continueAsNew()`. A handle from
+`loadRun()` or `loadSelection()` keeps observing the selected run, whose completion
+can mean it continued into a successor. See [Workflow API](./workflow-api.md) for
+run selection and closure details.
+
 ## Status Values
 
 The `status()` method returns string statuses:
