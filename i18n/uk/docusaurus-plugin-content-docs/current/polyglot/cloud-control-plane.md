@@ -223,12 +223,13 @@ Runner визначає поточні стабільні версії арте�
 та потрібної історії workflow/activity. У managed mode команда
 не запускає локальний Server чи Waterline.
 
-Для написання workflow конкретного SDK продовжуйте мовною настановою:
+Для кожної мови повторіть повну managed-команду вище, змінюючи лише
+`language`. Для написання workflow конкретного SDK продовжуйте його настановою:
 
-- [PHP SDK](/docs/polyglot/php/): виконайте `scripts/playground php`.
-- [Python SDK](/docs/polyglot/python/): виконайте `scripts/playground python`.
+- [PHP SDK](/docs/polyglot/php/): задайте `language=php`.
+- [Python SDK](/docs/polyglot/python/): задайте `language=python`.
 - [Rust managed-runtime quickstart](/docs/polyglot/rust-cloud-quickstart/):
-  виконайте `scripts/playground rust` і використовуйте його діагностику
+  задайте `language=rust` і використовуйте його діагностику
   готовності worker, завершеного результату та невідповідностей.
 
 Спільний client/worker сценарій зберігає обидва runtime credentials
