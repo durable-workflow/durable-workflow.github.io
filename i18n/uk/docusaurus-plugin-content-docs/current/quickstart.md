@@ -77,13 +77,21 @@ docker run --rm \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE" server-bootstrap
 
-docker rm -f durable-workflow-server >/dev/null 2>&1 || true
+docker rm -f durable-workflow-server durable-workflow-server-queue-worker >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
   -v durable-workflow-quickstart:/app/database \
   -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE"
+
+docker run -d --name durable-workflow-server-queue-worker \
+  --health-cmd="server-process-healthcheck worker" \
+  -v durable-workflow-quickstart:/app/database \
+  -e DW_SERVER_PROCESS_CLASS=worker_node \
+  -e DW_AUTH_DRIVER=token \
+  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
+  "$DW_SERVER_IMAGE" php artisan queue:work database --queue=default --sleep=1 --tries=3
 
 until curl -sf http://localhost:8080/api/ready >/dev/null; do sleep 1; done
 curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
@@ -91,6 +99,17 @@ curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
 ```
 
 </details>
+
+API доступний лише через loopback-адресу цього комп’ютера. `dev-token`
+призначений тільки для цього локального прикладу. Для віддаленого доступу
+використовуйте [розгортання Compose](/docs/polyglot/server/#published-image--compose)
+із власними обліковими даними, TLS та контролем мережевого доступу.
+
+Другий контейнер обробляє інфраструктурну чергу Server і просуває стійкі таймери,
+навіть коли SDK worker зупинені. Його черга Laravel має назву `default` і
+відрізняється від черг завдань SDK нижче. Залиште обидва контейнери працювати.
+Оцінювання розкладів і обслуговування production використовують додаткові ролі
+стека Compose.
 
 **Очікуваний результат:** запит готовності успішний, а cluster info визначає
 локальний окремий Server. Залиште його запущеним під час виконання
@@ -422,7 +441,7 @@ cargo run
 власного розгортання:
 
 ```bash
-docker rm -f durable-workflow-server
+docker rm -f durable-workflow-server durable-workflow-server-queue-worker
 docker volume rm durable-workflow-quickstart
 ```
 

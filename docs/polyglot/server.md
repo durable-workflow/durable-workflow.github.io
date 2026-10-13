@@ -98,13 +98,21 @@ docker run --rm \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$server_image" server-bootstrap
 
-docker rm -f durable-workflow-server >/dev/null 2>&1 || true
+docker rm -f durable-workflow-server durable-workflow-server-queue-worker >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
   -v durable-workflow-server-quickstart:/app/database \
   -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$server_image"
+
+docker run -d --name durable-workflow-server-queue-worker \
+  --health-cmd="server-process-healthcheck worker" \
+  -v durable-workflow-server-quickstart:/app/database \
+  -e DW_SERVER_PROCESS_CLASS=worker_node \
+  -e DW_AUTH_DRIVER=token \
+  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
+  "$server_image" php artisan queue:work database --queue=default --sleep=1 --tries=3
 
 until curl -sf http://localhost:8080/api/ready >/dev/null; do sleep 1; done
 curl http://localhost:8080/api/health
@@ -113,10 +121,23 @@ curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
   | jq '.topology | {current_shape, current_roles, execution_mode}'
 ```
 
-This starts one API server container and creates the default namespace. It is
-enough for local Python SDK workers and CLI checks. Use the published Compose
-path below when you want MySQL, Redis, separate worker and scheduler
-containers, or a closer production rehearsal.
+This creates the default namespace and starts the API plus its infrastructure
+queue worker. The Laravel queue is `default`, separate from your SDK's named
+task queues. The queue worker advances durable timers while SDK workers are
+stopped. Schedule evaluation and production maintenance need the additional
+roles in the published Compose stack below.
+
+The API is bound to loopback and `dev-token` is for this local exercise. For
+remote access, use the Compose deployment with your own credentials, TLS and
+network access controls. Use that stack with MySQL and shared Redis for a
+production rehearsal.
+
+Remove these local exercise containers and database when finished:
+
+```bash
+docker rm -f durable-workflow-server durable-workflow-server-queue-worker
+docker volume rm durable-workflow-server-quickstart
+```
 
 ### Published Image + Compose
 

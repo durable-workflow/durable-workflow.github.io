@@ -77,13 +77,21 @@ docker run --rm \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE" server-bootstrap
 
-docker rm -f durable-workflow-server >/dev/null 2>&1 || true
+docker rm -f durable-workflow-server durable-workflow-server-queue-worker >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
   -v durable-workflow-quickstart:/app/database \
   -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE"
+
+docker run -d --name durable-workflow-server-queue-worker \
+  --health-cmd="server-process-healthcheck worker" \
+  -v durable-workflow-quickstart:/app/database \
+  -e DW_SERVER_PROCESS_CLASS=worker_node \
+  -e DW_AUTH_DRIVER=token \
+  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
+  "$DW_SERVER_IMAGE" php artisan queue:work database --queue=default --sleep=1 --tries=3
 
 until curl -sf http://localhost:8080/api/ready >/dev/null; do sleep 1; done
 curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
@@ -91,6 +99,16 @@ curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
 ```
 
 </details>
+
+The API is bound to this machine's loopback address. `dev-token` is only for
+this local exercise. For deliberate remote access, use the [Compose deployment](/docs/polyglot/server/#published-image--compose)
+with your own credentials, TLS and network access controls.
+
+The second container runs Server's infrastructure queue and advances durable
+timers even while SDK workers are stopped. Its Laravel queue is `default`,
+separate from the SDK task queues below. Keep both containers running. Schedule
+evaluation and production maintenance use the additional roles in the Compose
+stack.
 
 **Expected result:** the readiness request succeeds and cluster info identifies
 the local standalone Server. Keep it running while you complete one language
@@ -422,7 +440,7 @@ Continue with the [Rust SDK guide](/docs/polyglot/rust/).
 Cloud users have no local Server to remove. For the self-hosted exercise:
 
 ```bash
-docker rm -f durable-workflow-server
+docker rm -f durable-workflow-server durable-workflow-server-queue-worker
 docker volume rm durable-workflow-quickstart
 ```
 

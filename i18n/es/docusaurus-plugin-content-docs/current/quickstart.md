@@ -77,13 +77,21 @@ docker run --rm \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE" server-bootstrap
 
-docker rm -f durable-workflow-server >/dev/null 2>&1 || true
+docker rm -f durable-workflow-server durable-workflow-server-queue-worker >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
   -v durable-workflow-quickstart:/app/database \
   -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE"
+
+docker run -d --name durable-workflow-server-queue-worker \
+  --health-cmd="server-process-healthcheck worker" \
+  -v durable-workflow-quickstart:/app/database \
+  -e DW_SERVER_PROCESS_CLASS=worker_node \
+  -e DW_AUTH_DRIVER=token \
+  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
+  "$DW_SERVER_IMAGE" php artisan queue:work database --queue=default --sleep=1 --tries=3
 
 until curl -sf http://localhost:8080/api/ready >/dev/null; do sleep 1; done
 curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
@@ -91,6 +99,17 @@ curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
 ```
 
 </details>
+
+La API solo escucha en la dirección de loopback de esta máquina. `dev-token`
+es exclusivo de este ejercicio local. Para acceso remoto, usa el
+[despliegue Compose](/docs/polyglot/server/#published-image--compose) con
+credenciales propias, TLS y controles de acceso de red.
+
+El segundo contenedor procesa la cola de infraestructura de Server y hace
+avanzar los temporizadores durables aunque los workers SDK estén detenidos.
+Su cola Laravel se llama `default`, distinta de las colas de tareas SDK de abajo.
+Mantén ambos contenedores en ejecución. La evaluación de calendarios y el
+mantenimiento de producción usan los roles adicionales del stack Compose.
 
 **Resultado esperado:** la comprobación de disponibilidad responde
 correctamente y la información del clúster identifica el Server local.
@@ -420,7 +439,7 @@ Continúa con la [Guía del SDK Rust](/docs/polyglot/rust/).
 Cloud no necesita un Server local. Al terminar el ejercicio autogestionado:
 
 ```bash
-docker rm -f durable-workflow-server
+docker rm -f durable-workflow-server durable-workflow-server-queue-worker
 docker volume rm durable-workflow-quickstart
 ```
 
