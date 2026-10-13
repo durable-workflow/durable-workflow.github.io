@@ -36,21 +36,28 @@ Waterline надає оператору durable-стан і для вбудов�
 ```bash
 composer require \
   %%artifact.waterlineComposerPackage%% \
-  %%artifact.workflowComposerPackage%% \
-  %%artifact.phpSdkComposerPackage%%
+  %%artifact.workflowComposerPackage%%
 php artisan waterline:install
 ```
 
-Згенеровані pins вибирають стабільні випуски 2.x Waterline, Workflow
-та PHP SDK. Після оновлення Waterline опублікуйте поточні assets:
+Згенеровані версії вибирають стабільні випуски 2.x Waterline та Workflow.
+Вбудований режим читає стан workflows безпосередньо в застосунку й не потребує
+service SDK. Після оновлення Waterline опублікуйте поточні assets:
 
 ```bash
 composer update durable-workflow/waterline
 php artisan waterline:publish
 ```
 
-Самодостатній service image та його параметри підключення,
-автентифікації й зберігання описано в
+Для спостереження в service mode усередині Laravel-застосунку додатково
+встановіть PHP SDK:
+
+```bash
+composer require %%artifact.phpSdkComposerPackage%%
+```
+
+Самодостатній Waterline service image вже містить цей SDK. Його параметри
+підключення, автентифікації й зберігання описано в
 [моніторингу](./monitoring.md#waterline-service).
 
 ### Мова інтерфейсу {#interface-language}
