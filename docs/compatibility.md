@@ -214,9 +214,11 @@ when the manifests do not agree.
 
 ### Last qualified reproducible tuple
 
-The table is immutable compatibility evidence for the last jointly qualified
-2.0 tuple. It is a reproducibility record, not a set of independently
-maintained claims about the newest package in each registry:
+The table shows the reviewed stable combination selected for these docs from
+[`stable-releases.json`](/stable-releases.json). Each component is versioned
+independently. A compatible combination can therefore contain different
+package versions. Release and qualification reports retain the exact versions
+and image digests used for each completed check.
 
 | Component | Supported version | Install identity |
 |-----------|-------------------|------------------|
@@ -230,25 +232,21 @@ maintained claims about the newest package in each registry:
 
 PyPI renders the Python distribution version as
 `%%artifact.pythonRegistryVersion%%`; the documented PEP 440 install spelling
-`%%artifact.productTrainVersion%%` resolves to that same release. This
+`%%artifact.pythonSdkVersion%%` resolves to that same release. This
 normalization does not create a second supported version.
 
-Qualification is coordinated as a unit. A tuple is publishable only when
-all seven entries share the same authority identifier, both server
-registries agree, and the generated quickstart contract uses those exact
-artifacts. The registry refresher fails closed instead of combining
-independently newest packages. Its current authorized release phase is
-`%%artifact.releasePhase%%`; registry tags from later channels remain
-ineligible until the release policy is reviewed and changed.
+The selected combination advances after affected consumers are qualified.
+The published Server registries and generated quickstarts use the selected
+artifacts. Packages can release independently, with compatibility verified
+through their protocol manifests, capabilities and consumer checks.
 
 Earlier alpha and beta artifacts are historical. They are not alternative
 onboarding choices, and release history remains intact.
 
-Capabilities in this train are the 2.0 baseline and therefore have no
-feature-introduction version matrix. New capabilities progress through
-ordinary compatible releases: additive work advances the compatible version,
-while a breaking public-surface change waits for the next major version.
-Each stable component follows semantic versioning from this 2.0 baseline.
+Each stable component follows semantic versioning. Additive capabilities can
+ship in compatible releases; breaking public changes require a major release.
+Use runtime discovery to check the capabilities available in your installed
+Server and workers before enabling a feature.
 
 ### Runtime protocol compatibility
 

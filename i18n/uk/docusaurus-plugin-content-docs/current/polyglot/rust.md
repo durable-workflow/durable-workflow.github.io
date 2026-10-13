@@ -97,10 +97,11 @@ scripts/playground rust
 %%artifact.rustCargoRequirement%%
 ```
 
-Crate потребує Rust 1.86 або новішого. Metadata пакета оголошує точний
-перевірений діапазон Durable Workflow Server, стандартну та мінімальну версії
-worker-протоколу й площину керування 2. Під час розгортання визначальними залишаються
-protocol manifests, оголошені `GET /api/cluster/info`.
+Crate потребує Rust 1.86 або новішого. Metadata пакета записує версію Server,
+використану для перевірки цього випуску SDK, стандартну та мінімальну версії
+worker-протоколу й площину керування 2. Сумісність із новішим Server
+перевіряється окремо. Під час розгортання використовуйте protocol manifests
+і можливості, оголошені `GET /api/cluster/info`.
 
 Server узгоджує заголовки worker-протоколу в межах major `1`:
 Server з `1.N` приймає заголовок worker `1.M` лише за `M <= N`.
@@ -114,8 +115,8 @@ Rust SDK 3.5.0 за замовчуванням надсилає
 
 Узгодження відхиляє невідповідність. Відсутній чи некоректний заголовок,
 інший major або worker minor вище оголошеного Server відхиляються.
-Діапазон версій Server вибирає сімейство випусків і не перевизначає
-protocol manifest runtime.
+Версії випусків SDK та Server відстежуються незалежно. Їхня сумісність
+визначається protocol manifests runtime.
 
 ## Local activities {#local-activities}
 
