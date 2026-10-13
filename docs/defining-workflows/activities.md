@@ -30,7 +30,7 @@ contracts.
 You may use the `make:activity` artisan command to create a new activity:
 
 ```php
-php artisan make:activity MyActivity
+php artisan make:activity MyActivity --v2
 ```
 
 It is defined by extending the `Activity` class and implementing the `handle()` method.

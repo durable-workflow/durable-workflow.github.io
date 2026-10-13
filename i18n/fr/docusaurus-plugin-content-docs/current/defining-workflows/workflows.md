@@ -19,7 +19,7 @@ Les workflows et les activités sont des classes qui héritent des classes de ba
 La commande Artisan `make:workflow` crée un nouveau workflow :
 
 ```php
-php artisan make:workflow MyWorkflow
+php artisan make:workflow MyWorkflow --v2
 ```
 
 Héritez de `Workflow` et implémentez la méthode `handle()` :

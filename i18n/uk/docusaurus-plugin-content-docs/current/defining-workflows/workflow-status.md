@@ -4,12 +4,33 @@ sidebar_position: 5
 
 # Стан workflow {#workflow-status}
 
-Стан workflow можна відстежувати методом `running()`, який повертає `true`,
-якщо workflow ще виконується, та `false`, якщо він завершився успішно чи з помилкою.
+`running()` читає стан, завантажений у handle. Перед перевіркою workflow, який
+виконує інший queue worker, викличте `refresh()`. Обмежте час очікування та робіть
+паузу між читаннями:
 
 ```php
-while ($workflow->running());
+$deadline = hrtime(true) + 20_000_000_000;
+do {
+    $workflow->refresh();
+    if (! $workflow->running()) {
+        break;
+    }
+    usleep(100_000);
+} while (hrtime(true) < $deadline);
+
+if ($workflow->running()) {
+    throw new RuntimeException('Workflow is still running; observation deadline expired.');
+}
+if (! $workflow->completed()) {
+    throw new RuntimeException('Workflow ended with status '.$workflow->status());
+}
+$result = $workflow->output();
 ```
+
+Завершення часу спостереження припиняє лише очікування цього caller і не скасовує
+workflow. Збережіть його ID, щоб інший observer міг завантажити поточний стан.
+Кінцеву помилку, скасування чи примусове завершення слід обробити перед читанням
+успішного результату.
 
 ## Значення станів {#status-values}
 

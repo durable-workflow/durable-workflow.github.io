@@ -19,7 +19,7 @@ keywords:
 用 Artisan 命令 `make:workflow` 创建工作流：
 
 ```php
-php artisan make:workflow MyWorkflow
+php artisan make:workflow MyWorkflow --v2
 ```
 
 继承 `Workflow` 类并实现 `handle()` 方法：

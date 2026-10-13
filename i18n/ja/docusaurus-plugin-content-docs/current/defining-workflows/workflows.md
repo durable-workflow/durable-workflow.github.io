@@ -19,7 +19,7 @@ keywords:
 Artisan の `make:workflow` コマンドでワークフローを作成できます。
 
 ```php
-php artisan make:workflow MyWorkflow
+php artisan make:workflow MyWorkflow --v2
 ```
 
 `Workflow` を継承し、`handle()` メソッドを実装します。

@@ -4,11 +4,33 @@ sidebar_position: 5
 
 # Workflow Status
 
-You can monitor the status of the workflow by calling the `running()` method, which returns `true` if the workflow is still running and `false` if it has completed or failed.
+`running()` observes the handle's loaded state. Call `refresh()` before observing
+a workflow that another queue worker is executing. Use a bounded wait with a
+pause between reads:
 
 ```php
-while ($workflow->running());
+$deadline = hrtime(true) + 20_000_000_000;
+do {
+    $workflow->refresh();
+    if (! $workflow->running()) {
+        break;
+    }
+    usleep(100_000);
+} while (hrtime(true) < $deadline);
+
+if ($workflow->running()) {
+    throw new RuntimeException('Workflow is still running; observation deadline expired.');
+}
+if (! $workflow->completed()) {
+    throw new RuntimeException('Workflow ended with status '.$workflow->status());
+}
+$result = $workflow->output();
 ```
+
+An observation timeout stops this caller's wait. It does not cancel the workflow.
+Keep the workflow ID so another observer can load its current state. A terminal
+failure, cancellation or termination must be handled before reading a successful
+output.
 
 ## Status Values
 

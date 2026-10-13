@@ -19,7 +19,7 @@ Workflows e atividades são definidos como classes que estendem as classes base 
 Use o comando Artisan `make:workflow` para criar um workflow:
 
 ```php
-php artisan make:workflow MyWorkflow
+php artisan make:workflow MyWorkflow --v2
 ```
 
 Estenda a classe `Workflow` e implemente o método `handle()`:
