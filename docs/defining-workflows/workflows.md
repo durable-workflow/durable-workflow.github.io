@@ -19,7 +19,7 @@ Workflows and activities are defined as classes that extend the base `Workflow` 
 You may use the `make:workflow` artisan command to create a new workflow:
 
 ```php
-php artisan make:workflow MyWorkflow
+php artisan make:workflow MyWorkflow --v2
 ```
 
 It is defined by extending the `Workflow` class and implementing the `handle()` method.

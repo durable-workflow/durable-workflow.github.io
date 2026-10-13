@@ -17,7 +17,7 @@ o combinando ambos patrones.
 Crea la clase con el comando Artisan `make:workflow`:
 
 ```php
-php artisan make:workflow MyWorkflow
+php artisan make:workflow MyWorkflow --v2
 ```
 
 Extiende `Workflow` e implementa el método `handle()`:

@@ -19,7 +19,7 @@ Workflows und Aktivitäten sind Klassen, die die Basisklassen `Workflow` und `Ac
 Erstellen Sie einen neuen Workflow mit dem Artisan-Befehl `make:workflow`:
 
 ```php
-php artisan make:workflow MyWorkflow
+php artisan make:workflow MyWorkflow --v2
 ```
 
 Erweitern Sie die Klasse `Workflow` und implementieren Sie die Methode `handle()`:

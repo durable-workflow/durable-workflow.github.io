@@ -35,21 +35,28 @@ workflow package:
 ```bash
 composer require \
   %%artifact.waterlineComposerPackage%% \
-  %%artifact.workflowComposerPackage%% \
-  %%artifact.phpSdkComposerPackage%%
+  %%artifact.workflowComposerPackage%%
 php artisan waterline:install
 ```
 
-The generated pins select stable 2.x releases of Waterline, Workflow, and the
-PHP SDK. After upgrading Waterline, publish the current assets:
+The generated pins select stable 2.x releases of Waterline and Workflow. Embedded
+mode reads the application's workflow state directly and needs no service SDK.
+After upgrading Waterline, publish the current assets:
 
 ```bash
 composer update durable-workflow/waterline
 php artisan waterline:publish
 ```
 
-For the self-contained service image and its connection, authentication, and
-persistence inputs, use [Monitoring](./monitoring.md#waterline-service).
+For service-mode observation inside a Laravel host, also install the PHP SDK:
+
+```bash
+composer require %%artifact.phpSdkComposerPackage%%
+```
+
+The self-contained Waterline service image already includes that SDK. Its
+connection, authentication and persistence inputs are described in
+[Monitoring](./monitoring.md#waterline-service).
 
 ### Interface Language
 

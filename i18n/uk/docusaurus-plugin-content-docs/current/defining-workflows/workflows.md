@@ -22,7 +22,7 @@ Workflow й activity визначаються як класи, що успадк
 Для створення нового workflow можна використати команду Artisan `make:workflow`:
 
 ```php
-php artisan make:workflow MyWorkflow
+php artisan make:workflow MyWorkflow --v2
 ```
 
 Він визначається успадкуванням класу `Workflow` та реалізацією методу `handle()`.
