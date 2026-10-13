@@ -98,10 +98,11 @@ Or declare the same qualified requirement directly in `Cargo.toml`:
 %%artifact.rustCargoRequirement%%
 ```
 
-The crate requires Rust 1.86 or newer. Its package metadata declares the exact
-qualified Durable Workflow Server range, worker protocol default and minimum,
-and control plane 2. During deployment, the protocol
-manifests advertised by `GET /api/cluster/info` remain authoritative.
+The crate requires Rust 1.86 or newer. Its package metadata records the Server
+version used to qualify that SDK release, plus the worker protocol default and
+minimum and control plane 2. Compatibility with a newer Server is verified
+separately. During deployment, use the protocol manifests and capabilities
+advertised by `GET /api/cluster/info`.
 
 Server negotiates worker-protocol headers within major `1`: a server
 advertising `1.N` accepts a worker header `1.M` only when `M <= N`. Rust SDK
@@ -114,8 +115,8 @@ explicit `1.19` selection.
 
 Negotiation fails closed. A missing or malformed header, a different major,
 or a worker minor newer than the server's advertised minor is rejected. The
-server version range selects the release family; it does not override the
-runtime protocol manifest.
+SDK and Server release versions are tracked independently. Their runtime
+protocol manifests determine compatibility.
 
 ## Local activities
 
