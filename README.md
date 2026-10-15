@@ -1,5 +1,7 @@
 # Durable Workflow Documentation
 
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=durable-workflow_durable-workflow.github.io&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=durable-workflow_durable-workflow.github.io)
+
 [![Documentation Qualification](https://github.com/durable-workflow/durable-workflow.github.io/actions/workflows/qualification.yml/badge.svg?branch=main)](https://github.com/durable-workflow/durable-workflow.github.io/actions/workflows/qualification.yml)
 [![Deploy to GitHub Pages](https://github.com/durable-workflow/durable-workflow.github.io/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/durable-workflow/durable-workflow.github.io/actions/workflows/deploy.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
