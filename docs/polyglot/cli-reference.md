@@ -35,7 +35,7 @@ Server-backed commands accept these options unless noted otherwise.
 | `--namespace` | Target namespace. Overrides the profile namespace. |
 | `--token` | Bearer token for this invocation. Prefer profiles with `--token-env` for stored automation. |
 | `--env` | Named CLI environment profile. Unknown profile names fail instead of falling back. |
-| `--output=table|json|jsonl` | Output contract. `table` is human-readable, `json` is one JSON document, and `jsonl` is one JSON object per line for list commands. |
+| `--output=table\|json\|jsonl` | Output contract. `table` is human-readable, `json` is one JSON document, and `jsonl` is one JSON object per line for list commands. |
 | `--json` | Command-local alias for JSON output on commands that expose it. |
 
 Commands that accept caller payloads use one shared input contract:
@@ -44,7 +44,7 @@ Commands that accept caller payloads use one shared input contract:
 | --- | --- |
 | `--input`, `-i` | Inline input document. |
 | `--input-file` | Read input from a file, or `-` for stdin. Mutually exclusive with `--input`. |
-| `--input-encoding=json|raw|base64` | Decode input as JSON, pass raw text as one argument, or decode base64 as one argument. Defaults to `json`. |
+| `--input-encoding=json\|raw\|base64` | Decode input as JSON, pass raw text as one argument, or decode base64 as one argument. Defaults to `json`. |
 
 JSON input for workflow starts, signals, queries, updates, schedules, and
 activity completions represents the v2 positional argument array. Raw and
@@ -60,13 +60,36 @@ canonical `input` array.
 | `dw server:info` | Show server version, the role-topology manifest, protocol manifests, request contract, worker protocol, worker-fleet facts, and compatibility metadata. | global options, `--json` |
 | `dw doctor` | Explain the resolved profile/server/token/TLS state, remote compatibility warnings, and next steps. | global options, `--json` |
 | `dw debug workflow <workflow-id>` | Capture stuck-run diagnostics for one workflow: state, pending tasks, queue facts, failures, and compatibility metadata. | `--run-id`, global options, `--json` |
-| `dw server:start-dev` | Start a local development server for smoke work. | `--port`, `--db=sqlite|mysql|pgsql` |
+| `dw server:start-dev` | Serve an existing, configured Laravel project's HTTP application. Requires external PHP. | `--port`, `--host` (default `127.0.0.1`), `--db=sqlite\|mysql\|pgsql` |
 | `dw watch workflow <workflow-id>` | Poll a workflow until terminal or until a configured polling limit. | `--run-id`, `--interval`, `--max-polls`, global options |
-| `dw upgrade` | Replace the running standalone `dw` binary with a newer (or pinned) release. Refuses to rewrite Composer vendor, Homebrew cellar, and PHAR installs. | `--tag`, `--dry-run`, `--force`, `--output=table|json` |
+| `dw upgrade` | Replace the running standalone `dw` binary with a newer (or pinned) release. Refuses to rewrite Composer vendor, Homebrew cellar, and PHAR installs. | `--tag`, `--dry-run`, `--force`, `--output=table\|json` |
 
 Use `server:info` when validating contract shape, `doctor` when explaining why
 a CLI cannot talk to a server, and `debug workflow` when support needs one
 machine-readable run capture.
+
+### Local Project HTTP Server
+
+Run `dw server:start-dev` from an installed Laravel project's directory containing
+`artisan`. The native CLI requires a separate PHP executable on `PATH` for this
+command. Configure the database and run migrations first. The selected `--db`
+value is passed as `DB_CONNECTION`, so clear Laravel's cached configuration when
+changing drivers. Run queue workers and the scheduler separately when required.
+Restart the command after editing `.env`. The selected driver stays applied to
+HTTP requests through Artisan's `--no-reload` mode.
+
+The command defaults to loopback. Use `--host=0.0.0.0` explicitly to bind to all
+interfaces. MySQL and PostgreSQL modes require project Compose services named
+`mysql` or `pgsql`, respectively, and `redis`. Failed dependency or HTTP processes
+return nonzero. Compose services remain running when the HTTP process ends.
+
+POSIX native binaries forward SIGINT and SIGTERM to the active child and wait
+up to five seconds for its process group to stop. Source and PHAR installs
+require PHP's `pcntl` and `posix` extensions for this forwarding. Windows uses
+its console interruption behavior.
+
+For a standalone Durable Workflow Server using published images, follow the
+[service quickstart](/docs/quickstart).
 
 ### Server Info And Role Topology
 
@@ -192,7 +215,7 @@ test or CI profile directory.
 
 | Command | Purpose | Important options |
 | --- | --- | --- |
-| `dw env:set <name>` | Create or update a named profile. | `--server`, `--namespace`, `--token-env`, `--token`, `--tls-verify=true|false`, `--profile-output=table|json|jsonl`, `--make-default`, `--json` |
+| `dw env:set <name>` | Create or update a named profile. | `--server`, `--namespace`, `--token-env`, `--token`, `--tls-verify=true\|false`, `--profile-output=table\|json\|jsonl`, `--make-default`, `--json` |
 | `dw env:list` | List profiles with literal tokens redacted by default. | `--show-token`, `--json`, `--output=jsonl` |
 | `dw env:show [name]` | Show one profile, defaulting to the current profile. | `--show-token`, `--json` |
 | `dw env:use <name>` | Set the default profile. Unknown names fail. | `--json` |
@@ -214,7 +237,7 @@ runtime environment and not in the profile file.
 | `dw workflow:history-export <workflow-id> <run-id>` | Export the archival run-history payload. | `--output-file`, global options |
 | `dw workflow:signal <workflow-id> <signal-name>` | Send a signal. | `--run-id`, input options, `--json` |
 | `dw workflow:query <workflow-id> <query-name>` | Execute a read-only workflow query. | `--run-id`, input options, `--json` |
-| `dw workflow:update <workflow-id> <update-name>` | Submit or execute a workflow update. | `--wait=accepted|completed`, `--run-id`, input options, `--json` |
+| `dw workflow:update <workflow-id> <update-name>` | Submit or execute a workflow update. | `--wait=accepted\|completed`, `--run-id`, input options, `--json` |
 | `dw workflow:cancel [workflow-id]` | Close one workflow or a selected batch as cancelled; no workflow-code cleanup runs. | `--reason`, `--run-id`, `--all-matching`, `--type`, `--status`, `--limit`, `--yes`, `--json` |
 | `dw workflow:terminate <workflow-id>` | Force terminate a workflow. | `--reason`, `--run-id`, `--json` |
 | `dw workflow:repair <workflow-id>` | Ask the server to repair a stuck or retryable run. | `--json` |
@@ -247,7 +270,7 @@ They do not execute workflow code or own workflow state transitions.
 
 | Command | Purpose | Important options |
 | --- | --- | --- |
-| `dw bridge:webhook <adapter>` | Send one webhook bridge event that starts, signals, or updates a workflow through the control plane. | `--action=start_workflow|signal_workflow|update_workflow`, `--idempotency-key`, `--target`, input options, `--correlation`, `--json` |
+| `dw bridge:webhook <adapter>` | Send one webhook bridge event that starts, signals, or updates a workflow through the control plane. | `--action=start_workflow\|signal_workflow\|update_workflow`, `--idempotency-key`, `--target`, input options, `--correlation`, `--json` |
 
 Examples:
 
@@ -389,7 +412,7 @@ control-plane run-history fields `events` or `next_page_token`.
 | `dw namespace:describe <name>` | Describe one namespace. | `--json` |
 | `dw namespace:update <name>` | Update namespace metadata. | `--description`, `--retention`, `--json` |
 | `dw namespace:set-storage-driver <name> <driver>` | Configure the namespace external payload storage policy used when encoded payloads exceed the offload threshold. | `--threshold-bytes`, `--uri`, `--disk`, `--bucket`, `--prefix`, `--region`, `--endpoint`, `--auth-profile`, `--disable`, `--json` |
-| `dw storage:test` | Round-trip a small inline payload and a large offloaded payload through the selected namespace storage policy or driver override. | `--driver=local|s3|gcs|azure`, `--small-bytes`, `--large-bytes`, global options, `--json` |
+| `dw storage:test` | Round-trip a small inline payload and a large offloaded payload through the selected namespace storage policy or driver override. | `--driver=local\|s3\|gcs\|azure`, `--small-bytes`, `--large-bytes`, global options, `--json` |
 | `dw search-attribute:list` | List search attributes. | global output options |
 | `dw search-attribute:create <name> <type>` | Register a search attribute. | `--json` |
 | `dw search-attribute:delete <name>` | Delete a search attribute. | `--json` |
@@ -456,7 +479,7 @@ the pending scope before mutating server state.
 | Command | Purpose | Important options |
 | --- | --- | --- |
 | `dw schema:list` | List published machine-readable schemas. | no server connection required |
-| `dw schema:show <command-name>` | Show the bundled JSON Schema for one command output. | `--output=json|jsonl`; no server connection required |
+| `dw schema:show <command-name>` | Show the bundled JSON Schema for one command output. | `--output=json\|jsonl`; no server connection required |
 | `dw schema:manifest` | Show the schema manifest. | no server connection required |
 
 Schema commands are useful when an AI client or CI job needs the current

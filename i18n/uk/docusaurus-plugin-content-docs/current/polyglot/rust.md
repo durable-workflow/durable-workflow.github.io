@@ -97,22 +97,26 @@ scripts/playground rust
 %%artifact.rustCargoRequirement%%
 ```
 
-Crate потребує Rust 1.86 або новішого. Metadata пакета оголошує точний
-перевірений діапазон Durable Workflow Server, worker-протокол 1.19
-та площину керування 2. Під час розгортання визначальними залишаються
-protocol manifests, оголошені `GET /api/cluster/info`.
+Crate потребує Rust 1.86 або новішого. Metadata пакета записує версію Server,
+використану для перевірки цього випуску SDK, стандартну та мінімальну версії
+worker-протоколу й площину керування 2. Сумісність із новішим Server
+перевіряється окремо. Під час розгортання використовуйте protocol manifests
+і можливості, оголошені `GET /api/cluster/info`.
 
 Server узгоджує заголовки worker-протоколу в межах major `1`:
 Server з `1.N` приймає заголовок worker `1.M` лише за `M <= N`.
-Звичайні workers Rust SDK надсилають
-`X-Durable-Workflow-Protocol-Version: 1.19` і потребують Server,
-який оголошує `1.19` або новіший. Перевірений Server оголошує `1.20`.
-Явно ввімкнений профіль кооперативного скасування потребує `1.20`.
+Rust SDK 3.5.0 за замовчуванням надсилає
+`X-Durable-Workflow-Protocol-Version: 1.20` і потребує Server,
+який оголошує `1.20` або новішу версію. Для старішого сумісного Server
+оберіть `WorkerProtocolVersion::V119` через налаштування
+`worker_protocol_version` у builder клієнта. SDK 3.4.x за замовчуванням
+використовує `1.19`. Явно ввімкнений профіль кооперативного скасування
+потребує `1.20` і відхиляє явний вибір `1.19`.
 
 Узгодження відхиляє невідповідність. Відсутній чи некоректний заголовок,
 інший major або worker minor вище оголошеного Server відхиляються.
-Діапазон версій Server вибирає сімейство випусків і не перевизначає
-protocol manifest runtime.
+Версії випусків SDK та Server відстежуються незалежно. Їхня сумісність
+визначається protocol manifests runtime.
 
 ## Local activities {#local-activities}
 

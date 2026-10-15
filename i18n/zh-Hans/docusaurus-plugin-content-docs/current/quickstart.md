@@ -68,13 +68,21 @@ docker run --rm \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE" server-bootstrap
 
-docker rm -f durable-workflow-server >/dev/null 2>&1 || true
+docker rm -f durable-workflow-server durable-workflow-server-queue-worker >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
   -v durable-workflow-quickstart:/app/database \
   -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE"
+
+docker run -d --name durable-workflow-server-queue-worker \
+  --health-cmd="server-process-healthcheck worker" \
+  -v durable-workflow-quickstart:/app/database \
+  -e DW_SERVER_PROCESS_CLASS=worker_node \
+  -e DW_AUTH_DRIVER=token \
+  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
+  "$DW_SERVER_IMAGE" php artisan queue:work database --queue=default --sleep=1 --tries=3
 
 until curl -sf http://localhost:8080/api/ready >/dev/null; do sleep 1; done
 curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
@@ -82,6 +90,10 @@ curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
 ```
 
 </details>
+
+API 仅绑定到本机的回环地址。`dev-token` 只用于这个本地示例。如需远程访问，请使用配置了独立凭据、TLS 和网络访问控制的 [Compose 部署](/docs/polyglot/server/#published-image--compose)。
+
+第二个容器运行 Server 的基础设施队列，即使 SDK Worker 已停止，也会推进持久化计时器。它使用名为 `default` 的 Laravel 队列，与下面的 SDK 任务队列不同。请保持两个容器运行。计划调度和生产维护由 Compose 栈中的其他角色负责。
 
 **预期结果：** 就绪请求成功，集群信息标识出本地独立 Server。完成一种语言的入门路径前，请保持 Server 运行。
 
@@ -391,7 +403,7 @@ cargo run
 Cloud 用户没有需要移除的本地 Server。自托管示例完成后执行：
 
 ```bash
-docker rm -f durable-workflow-server
+docker rm -f durable-workflow-server durable-workflow-server-queue-worker
 docker volume rm durable-workflow-quickstart
 ```
 

@@ -68,13 +68,21 @@ docker run --rm \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE" server-bootstrap
 
-docker rm -f durable-workflow-server >/dev/null 2>&1 || true
+docker rm -f durable-workflow-server durable-workflow-server-queue-worker >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
   -v durable-workflow-quickstart:/app/database \
   -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE"
+
+docker run -d --name durable-workflow-server-queue-worker \
+  --health-cmd="server-process-healthcheck worker" \
+  -v durable-workflow-quickstart:/app/database \
+  -e DW_SERVER_PROCESS_CLASS=worker_node \
+  -e DW_AUTH_DRIVER=token \
+  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
+  "$DW_SERVER_IMAGE" php artisan queue:work database --queue=default --sleep=1 --tries=3
 
 until curl -sf http://localhost:8080/api/ready >/dev/null; do sleep 1; done
 curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
@@ -82,6 +90,17 @@ curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
 ```
 
 </details>
+
+Die API ist nur an die Loopback-Adresse dieses Rechners gebunden. `dev-token`
+ist ausschließlich für dieses lokale Beispiel gedacht. Für Fernzugriff nutzen
+Sie die [Compose-Bereitstellung](/docs/polyglot/server/#published-image--compose)
+mit eigenen Zugangsdaten, TLS und Netzwerkzugriffskontrollen.
+
+Der zweite Container verarbeitet die Infrastrukturwarteschlange des Servers und
+führt dauerhafte Timer auch bei gestoppten SDK-Workern weiter. Seine
+Laravel-Warteschlange heißt `default` und ist von den SDK-Aufgabenwarteschlangen
+unten getrennt. Lassen Sie beide Container laufen. Zeitplan-Auswertung und
+Produktionswartung nutzen zusätzliche Rollen im Compose-Stack.
 
 **Erwartetes Ergebnis:** Die Bereitschaftsabfrage ist erfolgreich und die Clusterinformationen nennen den lokalen eigenständigen Server. Lassen Sie ihn laufen, während Sie einen Sprachpfad abschließen.
 
@@ -391,7 +410,7 @@ Fahren Sie mit dem [Rust-SDK-Leitfaden](/docs/polyglot/rust/) fort.
 Cloud-Nutzer haben keinen lokalen Server zu entfernen. Für das lokale Beispiel:
 
 ```bash
-docker rm -f durable-workflow-server
+docker rm -f durable-workflow-server durable-workflow-server-queue-worker
 docker volume rm durable-workflow-quickstart
 ```
 

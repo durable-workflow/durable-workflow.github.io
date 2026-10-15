@@ -1,6 +1,6 @@
 {
   "version.label": {
-    "message": "2.0"
+    "message": "2.x"
   },
   "sidebar.tutorialSidebar.category.Service Mode": {
     "message": "Mode service"

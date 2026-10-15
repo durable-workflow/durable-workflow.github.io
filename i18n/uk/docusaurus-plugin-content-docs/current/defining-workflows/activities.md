@@ -33,7 +33,7 @@ Activity — це одиниця роботи, яка виконує конкр�
 Для створення нової activity можна використати команду Artisan `make:activity`:
 
 ```php
-php artisan make:activity MyActivity
+php artisan make:activity MyActivity --v2
 ```
 
 Вона визначається успадкуванням класу `Activity` та реалізацією методу `handle()`.

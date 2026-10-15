@@ -93,13 +93,21 @@ docker run --rm \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$server_image" server-bootstrap
 
-docker rm -f durable-workflow-server >/dev/null 2>&1 || true
+docker rm -f durable-workflow-server durable-workflow-server-queue-worker >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
   -v durable-workflow-server-quickstart:/app/database \
   -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$server_image"
+
+docker run -d --name durable-workflow-server-queue-worker \
+  --health-cmd="server-process-healthcheck worker" \
+  -v durable-workflow-server-quickstart:/app/database \
+  -e DW_SERVER_PROCESS_CLASS=worker_node \
+  -e DW_AUTH_DRIVER=token \
+  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
+  "$server_image" php artisan queue:work database --queue=default --sleep=1 --tries=3
 
 until curl -sf http://localhost:8080/api/ready >/dev/null; do sleep 1; done
 curl http://localhost:8080/api/health
@@ -108,10 +116,23 @@ curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
   | jq '.topology | {current_shape, current_roles, execution_mode}'
 ```
 
-Це запускає один контейнер API й створює типовий namespace. Достатньо для
-локальних worker Python SDK і перевірок CLI. Опублікований Compose нижче
-дає MySQL, Redis, окремі контейнери worker і планувальника та ближче
-до production середовище для тренування.
+Це створює типовий namespace і запускає API та його інфраструктурний worker
+черги. Черга Laravel має назву `default` і відрізняється від іменованих черг
+завдань SDK. Worker черги просуває стійкі таймери, коли SDK worker зупинені.
+Оцінювання розкладів і обслуговування production потребують додаткових ролей
+опублікованого стека Compose нижче.
+
+API прив’язаний до loopback, а `dev-token` призначений для цього локального
+прикладу. Для віддаленого доступу використовуйте розгортання Compose із
+власними обліковими даними, TLS та контролем мережевого доступу. Стек із MySQL
+і спільним Redis підходить для перевірки розгортання перед production.
+
+Після завершення видаліть контейнери й базу даних локального прикладу:
+
+```bash
+docker rm -f durable-workflow-server durable-workflow-server-queue-worker
+docker volume rm durable-workflow-server-quickstart
+```
 
 ### Опублікований образ і Compose {#published-image--compose}
 

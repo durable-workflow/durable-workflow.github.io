@@ -218,12 +218,13 @@ returns the expected result, `dw` reports `completed`, and the required
 workflow and activity history is present. The command does not run a local
 Server or Waterline in managed mode.
 
-Continue with the language guide for SDK-specific authoring:
+For each language, rerun the complete managed command above, changing only
+`language`. Continue with its guide for SDK-specific authoring:
 
-- [PHP SDK](/docs/polyglot/php/): run `scripts/playground php`.
-- [Python SDK](/docs/polyglot/python/): run `scripts/playground python`.
+- [PHP SDK](/docs/polyglot/php/): set `language=php`.
+- [Python SDK](/docs/polyglot/python/): set `language=python`.
 - [Rust managed-runtime quickstart](/docs/polyglot/rust-cloud-quickstart/):
-  run `scripts/playground rust` and use its worker-ready, completed-result, and
+  set `language=rust` and use its worker-ready, completed-result, and
   mismatch diagnostics.
 
 A combined client-and-worker journey holds both runtime credentials as distinct
