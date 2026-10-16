@@ -14,9 +14,6 @@
   "link.item.label.Installation": {
     "message": "Installation"
   },
-  "link.item.label.Durable Workflow vs Temporal": {
-    "message": "Durable Workflow im Vergleich zu Temporal"
-  },
   "link.item.label.LLM Docs": {
     "message": "Dokumentation für LLMs"
   }
