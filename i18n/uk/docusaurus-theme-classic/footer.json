@@ -27,10 +27,6 @@
     "message": "X",
     "description": "The label of footer link with label=X linking to https://x.com/DurableWorkflow"
   },
-  "link.item.label.Durable Workflow vs Temporal": {
-    "message": "Durable Workflow і Temporal",
-    "description": "The label of footer link with label=Durable Workflow vs Temporal linking to /compare/temporal/"
-  },
   "link.item.label.LLM Docs": {
     "message": "Документація для LLM",
     "description": "The label of footer link with label=LLM Docs linking to https://durable-workflow.com/llms-full.txt"
