@@ -587,6 +587,17 @@ Operation create/update requests use the same JSON field names as the response.
 `activity_execution`, or `invocable_http`. New operations must provide either
 `handler_target_reference` or a non-empty `handler_binding` payload.
 
+The nested service-call detail also exposes `service_call_attempts`,
+`retry_attempt_count`, the original `call_deadline_at`, typed failure metadata
+and the retained Avro `result_envelope`. Accepted or started calls are
+nonterminal. A completion-waiting workflow caller resolves with the linked
+workflow's actual result or terminal failure/cancellation, preserving the
+original call identity and deadline.
+
+Use [CLI service-call inspection](./cli-reference.md#service-call-inspection)
+or Waterline's service catalog to inspect that original call. Inspection does
+not request another service execution.
+
 Delete routes fail closed with HTTP `409` and a named reason when dependents
 still exist, such as `endpoint_has_services`, `service_has_operations`, or
 `operation_has_service_calls`.
