@@ -261,6 +261,23 @@ dw workflow:cancel --all-matching='WorkflowType = "ImportJob"' --limit=25 --yes
 validate canonical request fields against the server-published request
 contract. Non-canonical legacy aliases are rejected before the request is sent.
 
+## Service Call Inspection
+
+Use `dw service-call:describe <endpoint> <service> <operation> <call-id>`
+to inspect one durable Nexus call in the endpoint's namespace. For example,
+`dw service-call:describe billing invoices create call-42 --namespace=shared --json`
+returns the complete Server response.
+
+The response preserves the original caller and linked target, call deadline,
+status, outcome, attempt records, typed failure and retained payload references.
+Successful results remain lossless Avro `result_envelope` values. An accepted
+or started call is still pending, rather than a successful completed result.
+
+The command requests a single GET. It does not request a retry, cancellation
+or external-object download. The Server can reconcile a call with its linked
+workflow's terminal outcome while serving the read. Namespace authorization and
+the endpoint, service, operation and call selectors all apply.
+
 ## Bridge Adapter Commands
 
 Bridge commands are bounded ingress and handoff tools for integration events.
