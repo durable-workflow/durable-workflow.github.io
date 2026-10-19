@@ -549,12 +549,14 @@ full-scope pass over the namespace; pass `run_ids` to narrow the sweep to a
 specific list of workflow runs, or `instance_id` to bound it to a single
 running instance.
 
-`retention_pass` enforces the namespace retention window on terminal runs.
-With no filters the server prunes expired runs up to its scan limit; pass
-`run_ids` to narrow the sweep, or `limit` to bound how many runs a single pass
-processes. The companion `retention_status()` reports the namespace retention
-window, the cutoff, and the run ids currently eligible for pruning up to the
-server's scan limit.
+With no `run_ids`, `retention_pass` asks the PHP Server to prune expired
+terminal runs under the current namespace policy, up to its scan limit.
+Explicit `run_ids` directly target closed runs and bypass that age scan;
+they can prune history younger than the bounded retention window. Forever
+retention and archived-run protections still apply. The companion
+`retention_status()` reports the current policy, cutoff and bounded eligible
+list without deleting history. Review the [retention procedure](./server.md#retention)
+before shortening a policy or submitting explicit targets.
 
 `activity_timeout_pass` enforces start-to-close and schedule-to-close deadlines
 on activity executions that have already passed their deadline. With no

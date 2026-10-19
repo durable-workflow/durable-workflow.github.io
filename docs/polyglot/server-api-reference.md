@@ -741,6 +741,13 @@ status routes before pass routes in automation.
 | `GET` | `/api/system/retention` | Inspect retention cleanup backlog. |
 | `POST` | `/api/system/retention/pass` | Run one retention cleanup pass. |
 
+For PHP Server retention, the status route reads the current namespace policy
+and returns a bounded eligible-run list. Policy changes also affect existing
+closed history. An unfiltered pass selects expired runs; explicit `run_ids`
+directly target closed runs without the bounded age filter. Forever retention
+and archived-run protections still apply. Review the [retention procedure and
+backup steps](./server.md#retention) before changing policy or running cleanup.
+
 `/api/system/health` is the quickest way to answer whether one namespace is
 healthy enough to keep taking traffic. It returns `{namespace, health}`, where
 `health` contains the categorized rollout-safety checks, the nested
