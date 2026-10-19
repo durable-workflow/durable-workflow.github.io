@@ -59,7 +59,18 @@ When a workflow continues as new:
 
 - The instance id stays stable across the chain; `WorkflowStub::runId()` moves forward to the newest run.
 - The continued run closes as `completed` / `continued` and the next run starts immediately with a fresh run id.
-- Signals, queries, updates, and operator commands always resolve the newest durable run for that instance — callers do not need to track run ids across continue-as-new boundaries.
+- Instance-scoped signals, queries, updates, and operator commands resolve the newest durable run. Explicit run-targeted commands remain bound to their selected run.
+
+Core 2.6.4 and compatible Servers preserve received instance-scoped signals that
+the old run has not applied. They transfer with pending accepted updates in
+their original command order. Signal and command IDs, argument bytes and receipt
+times stay unchanged. An already applied signal is not delivered again to the
+successor. Keep business state needed by the next run in the arguments you pass
+to `continueAsNew()`; arbitrary local state is not copied automatically.
+
+A run-targeted signal is never retargeted. If it cannot be applied before its
+run closes, it gets the explicit rejected disposition described under
+[signal acceptance and closure](./signals.md#acceptance-and-closure).
 
 Long-lived loops can shed history without inventing a new public workflow id every time the run rolls forward.
 
