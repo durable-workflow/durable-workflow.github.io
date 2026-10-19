@@ -54,8 +54,8 @@ function dependencyParents(packageName, lockfile = lockfileManifest) {
     .sort();
 }
 
-function assertMinimumLockedVersion(packageName, minimumVersion) {
-  const entries = lockedEntries(packageName);
+function assertMinimumLockedVersion(packageName, minimumVersion, lockfile = lockfileManifest) {
+  const entries = lockedEntries(packageName, lockfile);
   assert.ok(
     entries.length > 0,
     `${packageName} must be present in package-lock.json`,
@@ -153,6 +153,10 @@ function checkDependencyGraph() {
     securityPolicy.minimum_versions["js-yaml"],
   );
   assertMinimumLockedVersion("nanoid", securityPolicy.minimum_versions.nanoid);
+  assertMinimumLockedVersion(
+    "http-cache-semantics",
+    securityPolicy.minimum_versions["http-cache-semantics"],
+  );
   assert.deepEqual(
     lockedEntries("image-size").map(({ entry }) => entry.version),
     [EXPECTED_IMAGE_SIZE_VERSION],
@@ -208,7 +212,7 @@ function main() {
   checkBuildEntryPoints();
   checkTrackedBuildAssets();
   console.log(
-    "The docs dependency graph and build-only image parser boundary are secure.",
+    "Recorded dependency version floors and build-asset policy checks pass.",
   );
 }
 
@@ -224,5 +228,6 @@ if (require.main === module) {
 module.exports = {
   HEIF_BRANDS,
   VULNERABLE_IMAGE_EXTENSIONS,
+  assertMinimumLockedVersion,
   vulnerableImageParser,
 };
