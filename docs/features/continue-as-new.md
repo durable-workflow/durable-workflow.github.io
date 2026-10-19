@@ -61,7 +61,7 @@ When a workflow continues as new:
 - The continued run closes as `completed` / `continued` and the next run starts immediately with a fresh run id.
 - Instance-scoped signals, queries, updates, and operator commands resolve the newest durable run. Explicit run-targeted commands remain bound to their selected run.
 
-Core 2.6.4 and compatible Servers preserve received instance-scoped signals that
+Core 2.7.0 and compatible Servers preserve received instance-scoped signals that
 the old run has not applied. They transfer with pending accepted updates in
 their original command order. Signal and command IDs, argument bytes and receipt
 times stay unchanged. An already applied signal is not delivered again to the

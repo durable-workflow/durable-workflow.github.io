@@ -24,7 +24,7 @@ Signals allow you to trigger events in a workflow from outside the workflow. Thi
 code processed the signal. Inspect the signal's retained status and history when
 the business operation needs confirmation.
 
-With Core 2.6.4 or a compatible Server, eligible signals accepted during a remote
+With Core 2.7.0 or a compatible Server, eligible signals accepted during a remote
 workflow task get a delivery turn before successful closure. Received signals
 addressed to the instance carry across [continue-as-new](./continue-as-new.md)
 with their original identity, arguments and ordering. A signal addressed to a
@@ -37,7 +37,7 @@ and signals that cannot be applied before failure, cancellation or timeout.
 The earlier acceptance receipt remains valid. Use an [update](./updates.md) when
 the caller needs a retained processing result, rather than an acceptance alone.
 
-Before upgrading a writer to Core 2.6.4, drain and upgrade every embedded or
+Before upgrading a writer to Core 2.7.0, drain and upgrade every embedded or
 direct-database reader, including Waterline when it reads the same database.
 Older readers cannot decode `SignalRejected`; do not leave them running against
 the new writer or roll back a reader after that event has been stored.
