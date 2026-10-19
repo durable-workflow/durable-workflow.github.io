@@ -111,10 +111,88 @@ $latest->closedAt();     // null until the lifecycle closes
 
 `inspectUpdate()` does not wait for workflow execution. It reloads the stored durable lifecycle and returns the current `UpdateResult`.
 
+## Recover after an uncertain response {#recover-after-an-uncertain-response}
+
+Durable admission, handler completion and an external business effect are
+separate facts. A caller timeout can leave an accepted update still running,
+and a lost response can hide a result that was already committed. A later
+refusal to submit a fresh update does not resolve the original outcome.
+
+When your application saved an update ID, inspect that retained lifecycle
+instead of submitting another update. Keep its original run ID so that a
+continue-as-new transition does not redirect the investigation:
+
+```php
+use Workflow\V2\WorkflowStub;
+
+$latest = WorkflowStub::loadRun($savedRunId, $savedNamespace)->inspectUpdate($savedUpdateId);
+
+$latest->updateStatus();
+$latest->result(); // Available when that retained update completed.
+```
+
+The saved IDs come from the original operation. Inspection reads the retained
+record and can still work after that run closes or becomes historical. Missing
+or pruned evidence leaves the outcome unresolved; it is not permission to
+repeat a business effect. Preserve an application-owned operation record for
+reconciliation when the original response and generated update ID were lost.
+
+### Request IDs and retained receipts
+
+Save the namespace, instance ID, original run ID, update ID, operation name and
+intent in your application record. An accepted receipt proves durable admission.
+A completed lifecycle supplies the handler's recorded outcome. Neither proves
+that a separate payment, email or database write happened exactly once.
+
+`request_id` is not a portable, run-scoped Update-ID contract. The verified PHP
+paths can return the first retained update when the same key is submitted with
+different arguments. Embedded lookup also spans update names within that
+instance. Reusing a key after continue-as-new can return a predecessor's result
+without admitting an update to the successor. A retained keyed receipt can also
+be returned after closure, while a fresh update is refused.
+
+Use one key for one logical operation and preserve its original intent. Do not
+change the arguments, reuse it for another update name or assume it starts a new
+operation in the next run. The PHP service's active update path and embedded
+lookup do not have identical matching rules. In particular, reuse across update
+names is not a supported recovery recipe. The [qualification record](https://github.com/durable-workflow/durable-workflow.github.io/pull/268)
+names the published PHP runtime and SDK and records the different paths. Native
+Server and other SDK paths require their own qualification.
+
+Receipt recovery depends on retained command, update and history records. There
+is no application-independent deduplication lifetime promised here. Review
+[history retention](../configuration/pruning-workflows.md) and keep your business ledger
+for the lifetime required by your application. Missing evidence remains an
+unknown outcome.
+
+### Protect the business effect
+
+For an operation such as charging an invoice:
+
+1. Persist an application operation key, such as `tenant-1:charge:invoice-123`,
+   and its immutable intent before sending the command. Reuse that key during
+   recovery.
+2. In the activity that applies the effect, use a unique database constraint on
+   the tenant and operation key. Atomically check the stored intent, apply the
+   local database effect and store its result in one transaction. Return the
+   stored result for a duplicate with the same intent. Refuse a different intent.
+3. For an external provider, use its supported idempotency contract or an outbox
+   and reconciliation process. A transaction in your database cannot make a
+   separate provider call atomic.
+4. After an uncertain response, reconcile that operation record, the original
+   update lifecycle and the provider's evidence. Record whether the effect is
+   pending, committed, failed or still unknown before deciding another action.
+
+A query followed by a command leaves a race. A duplicate signal can trigger
+another activity even when the original was admitted. The application guard
+must tolerate repeated delivery. The qualified example executes two activities
+for the same key but commits one local database effect. It does not establish
+exactly-once execution for arbitrary external systems.
+
 Update rules:
 
 - `load($instanceId)` updates the newest durable run for that instance (including after continue-as-new).
-- `loadRun($runId)` rejects with `rejected_not_current` once that selected run is historical.
-- Closed runs reject with `rejected_not_active`.
+- Fresh updates through `loadRun($runId)` reject with `rejected_not_current` once that selected run is historical. Retained receipt inspection is separate.
+- Fresh updates against closed runs reject with `rejected_not_active`. Replaying a retained keyed receipt is separate.
 - Failed update bodies do not close the workflow run; they are recorded as update-scoped failures and leave the run open for the next replay task.
 - Queries replay completed updates, but rejected or failed updates remain non-replayable command and history facts only.
