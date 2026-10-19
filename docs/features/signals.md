@@ -37,6 +37,11 @@ and signals that cannot be applied before failure, cancellation or timeout.
 The earlier acceptance receipt remains valid. Use an [update](./updates.md) when
 the caller needs a retained processing result, rather than an acceptance alone.
 
+Before upgrading a writer to Core 2.6.4, drain and upgrade every embedded or
+direct-database reader, including Waterline when it reads the same database.
+Older readers cannot decode `SignalRejected`; do not leave them running against
+the new writer or roll back a reader after that event has been stored.
+
 ## Named Signal Waits
 
 A workflow calls `await('signal-name')` directly. The next accepted signal command with that name resumes the run and returns a deterministic value to the suspended workflow.
