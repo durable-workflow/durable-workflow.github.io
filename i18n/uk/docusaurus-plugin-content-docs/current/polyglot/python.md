@@ -902,6 +902,11 @@ async def validate(data: dict) -> dict:
 `Worker` реєструється на Server, опитує завдання й направляє їх до ваших
 реалізацій workflow та activity.
 
+Щоб виконувати workflow та activity в окремих процесах, скористайтеся
+[готовим прикладом Python SDK](https://python.durable-workflow.com/guides/separate-workers/)
+англійською мовою. Він охоплює окремі реєстрації, спільні або різні черги
+завдань, повторні спроби, слоти для кожної ролі та коректне завершення процесів.
+
 ```python
 from durable_workflow import Client, Worker
 

@@ -910,6 +910,11 @@ async def validate(data: dict) -> dict:
 
 The `Worker` registers with the server, polls for tasks, and dispatches them to your workflow and activity implementations.
 
+For independent workflow and activity processes, follow the Python SDK's
+[runnable process-split guide](https://python.durable-workflow.com/guides/separate-workers/).
+It covers separate registrations, shared or distinct task queues, retries,
+role-specific slots and graceful shutdown.
+
 ```python
 from durable_workflow import Client, Worker
 

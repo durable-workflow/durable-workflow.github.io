@@ -103,6 +103,12 @@ Cache must support atomic locks for server-side active lease caps, dispatch-rate
 
 ## Worker Slot Registration
 
+To give Python workflow and activity handlers independent process resources,
+use the [separate worker processes example](https://python.durable-workflow.com/guides/separate-workers/).
+Choose the registered handler lists to separate roles. Keep both concurrency
+values positive, and apply server caps when the total across processes must be
+bounded.
+
 Python workers expose local semaphores through `Worker(...)` and send the same values during registration:
 
 ```python
