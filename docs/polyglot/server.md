@@ -269,13 +269,95 @@ WORKFLOW_PACKAGE_SOURCE=       # custom Git remote (optional)
 
 ### Retention
 
-Configure how long completed workflows remain queryable:
+The PHP Server uses namespace retention to select closed run history for
+cleanup. The default bounded duration is configured with:
 
 ```bash
 DW_HISTORY_RETENTION_DAYS=30
 ```
 
-After retention expires, workflows are pruned. Configure per-namespace retention via the API.
+Each scan uses the namespace's **current** policy. Changing the duration also
+affects history that was already closed before the change; it does not give
+each run a new retention period starting on the update date.
+
+| Policy change | Effect on retained closed runs |
+| --- | --- |
+| Shorten bounded retention | Older runs can become eligible at the next scan. |
+| Extend bounded retention | Runs still retained may stop being eligible. Previously pruned history is not restored. |
+| Change to `forever` | Retention scans select no runs, and explicit retention passes skip them. |
+| Change from `forever` to `bounded` | Supply `retention_days`; existing closed history is assessed against that duration. |
+
+For example, at **19 October, 12:00 UTC**, a run closed on **1 October,
+12:00 UTC** is 18 days old. It is outside a 7-day window and inside a 90-day
+window. Changing 90 days to 7 makes it eligible immediately; cleanup can
+process it on a later pass. A run closed exactly at the cutoff remains outside
+that scan's selection, which uses a strict earlier-than comparison.
+
+#### Review a retention change {#review-a-retention-change}
+
+Before shortening retention, review close times and preserve the history you
+need. Export important runs through the [history export API](./server-api-reference.md#workflow-control-plane)
+and keep recoverable database and external-payload backups. A replay export
+must retain its referenced payload objects; it does not replace a database
+and storage backup.
+
+Update the namespace with an admin credential:
+
+```bash
+curl -sS -X PUT "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/orders-prod" \
+  -H "Authorization: Bearer $DW_ADMIN_TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "Content-Type: application/json" \
+  -d '{"retention_mode":"bounded","retention_days":7}'
+```
+
+For `forever`, send `{"retention_mode":"forever","retention_days":null}`.
+Returning to bounded retention requires an explicit duration from 1 to 365 days.
+
+Inspect the current namespace policy and bounded eligible-run list:
+
+```bash
+curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/system/retention?limit=100" \
+  -H "Authorization: Bearer $DW_ADMIN_TOKEN" \
+  -H "X-Namespace: orders-prod" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2"
+```
+
+`cutoff` describes the current scan. `expired_run_count` counts the returned
+IDs, up to `scan_limit`, rather than the entire backlog. `scan_pressure: true`
+means that limit was reached. This read does not delete history.
+
+The update is not a cleanup preview or a grace period: ordinary worker
+heartbeats can already trigger a small throttled retention pass after the
+policy changes. Scheduled `history:prune` and explicit system passes can also
+process eligible runs. Back up and review **before** shortening the policy.
+
+#### Cleanup and protections {#retention-cleanup-and-protections}
+
+`POST /api/system/retention/pass` without `run_ids` selects expired runs under
+the current policy, up to its limit. Inspect the response's `pruned`, `skipped`,
+`failed` and per-run reasons to distinguish selection from completed deletion.
+
+:::warning Explicit run IDs bypass the age scan
+
+In the PHP Server, supplying `run_ids` directly targets those closed runs,
+including runs younger than the current bounded retention window. It is not
+an intersection with the expired-run list. Review each target as a destructive
+operation; omit `run_ids` for ordinary age-based cleanup.
+
+:::
+
+Retention passes skip archived runs and namespaces configured as `forever`.
+Archive marks history retained in the same database; it is not an independent
+backup. Other retention holds, such as unfinished detached activity work, can
+also prevent deletion. Check the reported reason rather than assuming a
+selected run was removed.
+
+Pruning removes history, related details and eligible external payloads. A
+later policy extension cannot recover them. The [embedded pruning guide](../configuration/pruning-workflows.md)
+describes a separate application-owned process; its archive-first procedure
+does not describe the Server's automatic selection. For a different runtime,
+verify its retention behavior before applying this PHP Server procedure.
 
 ### Namespaces
 
