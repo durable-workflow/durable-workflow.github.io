@@ -25,6 +25,23 @@ Build the same static site and validate the same links as CI:
 npm run build
 ```
 
+## Dependency security
+
+`npm run check:dependency-security` checks the recorded dependency version
+floors, blocked build-asset formats and stale HTTP-cache wildcard handling.
+Run `npm audit` separately for current advisories. Passing this preflight does
+not mean every dependency is free of reported vulnerabilities.
+
+The [unpatched braces advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm)
+affects build/development glob processing. This repository supplies those
+patterns from reviewed source and configuration; it has no public pattern
+evaluation endpoint, and the published site is static. Maintainers accept
+that limited build-tool exposure while no patched release is available and
+keep the audit warning visible. Review the decision when an upstream fix is
+released, or before accepting external patterns or changing development-server
+exposure and build-source permissions. The dependency paths and review are
+recorded in [#261](https://github.com/durable-workflow/durable-workflow.github.io/issues/261).
+
 ## Translations
 
 English is the default locale. Ukrainian is available under `/uk/`. Spanish

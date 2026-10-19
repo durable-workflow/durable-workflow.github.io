@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 
 const assert = require("node:assert/strict");
-const { vulnerableImageParser } = require("./check-dependency-security");
+const CachePolicy = require("http-cache-semantics");
+const {
+  assertMinimumLockedVersion,
+  vulnerableImageParser,
+} = require("./check-dependency-security");
 
 function container(boxType, brand) {
   const input = Buffer.alloc(24);
@@ -36,6 +40,65 @@ assert.equal(
   null,
 );
 
-console.log(
-  "Dependency security preflight recognizes the blocked image parser inputs.",
+function cacheLock(rootVersion, nestedVersion) {
+  return {
+    packages: {
+      "node_modules/http-cache-semantics": { version: rootVersion },
+      ...(nestedVersion ? {
+        "node_modules/nested/node_modules/http-cache-semantics": { version: nestedVersion },
+      } : {}),
+    },
+  };
+}
+
+assert.throws(
+  () => assertMinimumLockedVersion("http-cache-semantics", "4.3.0", cacheLock("4.2.0")),
+  /must be at least 4\.3\.0/,
 );
+assert.throws(
+  () => assertMinimumLockedVersion("http-cache-semantics", "4.3.0", cacheLock("4.3.0", "4.2.0")),
+  /must be at least 4\.3\.0/,
+);
+assert.doesNotThrow(
+  () => assertMinimumLockedVersion("http-cache-semantics", "4.3.0", cacheLock("4.3.0")),
+);
+
+function staleCacheReuse(vary) {
+  const originalNow = Date.now;
+  let clock = Date.parse("2026-10-19T12:00:00Z");
+  Date.now = () => clock;
+  try {
+    const request = {
+      url: "https://cache.invalid/public",
+      method: "GET",
+      headers: { host: "cache.invalid", accept: "text/plain" },
+    };
+    const policy = new CachePolicy(request, {
+      status: 200,
+      headers: {
+        date: new Date(clock).toUTCString(),
+        "cache-control": "public, max-age=1",
+        vary,
+      },
+    });
+    clock += 2000;
+    assert.equal(policy.stale(), true);
+    return policy.satisfiesWithoutRevalidation({
+      ...request,
+      headers: { ...request.headers, "cache-control": "max-stale=60" },
+    });
+  } finally {
+    Date.now = originalNow;
+  }
+}
+
+for (const [vary, expectedReuse] of [
+  ["*", false],
+  ["accept, *", false],
+  ["*, accept", false],
+  ["accept", true],
+]) {
+  assert.equal(staleCacheReuse(vary), expectedReuse, `stale cache reuse with Vary: ${vary}`);
+}
+
+console.log("Dependency floors, blocked image formats and stale wildcard cache controls pass.");

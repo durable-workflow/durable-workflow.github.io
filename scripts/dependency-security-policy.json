@@ -1,9 +1,10 @@
 {
   "schema_version": 1,
-  "reviewed_on": "2026-09-24",
+  "reviewed_on": "2026-10-19",
   "minimum_versions": {
     "js-yaml": "4.3.1",
-    "nanoid": "3.3.17"
+    "nanoid": "3.3.17",
+    "http-cache-semantics": "4.3.0"
   },
   "advisory_dispositions": [
     {
