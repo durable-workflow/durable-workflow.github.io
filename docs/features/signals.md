@@ -72,6 +72,21 @@ Signal behavior:
 - Without a contract, `await('name')` returns `true` when no arguments were sent, the single argument when one was sent, or the full argument array when several were sent.
 - Unknown signal names reject as `rejected_unknown_signal`; signals against a closed or unstarted instance reject as `rejected_not_active` or `rejected_not_started`.
 
+## After an uncertain response {#after-an-uncertain-response}
+
+A timeout or lost response can happen after a signal has been durably admitted.
+A later closed-run or not-found response describes that later request; it does
+not establish whether the original signal was applied. A status check before
+sending also leaves a gap in which the workflow can close or continue as new.
+
+Keep the original namespace, workflow identity, signal name, arguments and
+application operation key when investigating an uncertain delivery. Repeating
+a signal must follow the target's actual duplicate-handling contract. Do not
+start a replacement workflow merely because the retry was refused.
+
+See [recovering an uncertain command](./updates.md#recover-after-an-uncertain-response)
+for retained update inspection and application-owned reconciliation.
+
 ## Sender identity and authorization
 
 `approvedBy` is application data. The string `Taylor` in the example is not

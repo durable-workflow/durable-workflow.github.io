@@ -111,6 +111,32 @@ $latest->closedAt();     // null until the lifecycle closes
 
 `inspectUpdate()` does not wait for workflow execution. It reloads the stored durable lifecycle and returns the current `UpdateResult`.
 
+## Recover after an uncertain response {#recover-after-an-uncertain-response}
+
+Durable admission, handler completion and an external business effect are
+separate facts. A caller timeout can leave an accepted update still running,
+and a lost response can hide a result that was already committed. A later
+refusal to submit a fresh update does not resolve the original outcome.
+
+When your application saved an update ID, inspect that retained lifecycle
+instead of submitting another update. Keep its original run ID so that a
+continue-as-new transition does not redirect the investigation:
+
+```php
+use Workflow\V2\WorkflowStub;
+
+$latest = WorkflowStub::loadRun($savedRunId)->inspectUpdate($savedUpdateId);
+
+$latest->updateStatus();
+$latest->result(); // Available when that retained update completed.
+```
+
+The saved IDs come from the original operation. Inspection reads the retained
+record and can still work after that run closes or becomes historical. Missing
+or pruned evidence leaves the outcome unresolved; it is not permission to
+repeat a business effect. Preserve an application-owned operation record for
+reconciliation when the original response and generated update ID were lost.
+
 Update rules:
 
 - `load($instanceId)` updates the newest durable run for that instance (including after continue-as-new).
