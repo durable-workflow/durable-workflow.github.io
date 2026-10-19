@@ -553,7 +553,7 @@ needs capacity investigation.
 
 With Workflow 2.6.3 or later, a retained run marked `details_pruned_at` does not
 count as a missing run summary, rebuild debt or missing-summary age. The run
-still contributes to retained run totals. Every projection rebuild mode skips
+still contributes to the drift report's `runs` total. Every projection rebuild mode skips
 it, including explicit run or instance selection, so a repair does not restore
 its deleted list row or return it to retention selection.
 
