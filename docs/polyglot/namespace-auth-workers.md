@@ -73,6 +73,40 @@ DW_ADMIN_SIGNATURE_KEY=admin-signature-secret
 boundary from every route and should never be exposed outside a trusted local
 network.
 
+## Signal authorization and attribution
+
+Before admitting a signal, Server authenticates the request and enforces the
+configured role and namespace policy. The workflow signal routes require an
+`operator` or `admin` credential. These route permissions do not implement your
+application's order-approval policy. Enforce that business decision in a
+trusted application gateway before forwarding the signal, or in your supported
+custom auth provider. Keep privileged Server credentials in that trusted
+boundary when end users must not send signals directly.
+
+The Server derives a command's `principal` from the authenticated credential.
+A signal argument such as `approvedBy` remains application data even when it
+has the same spelling as an actor subject. A gateway using one service token
+records that service's principal, not necessarily the human behind its request.
+Derive any human approval field from the gateway's authenticated user and
+authorization decision rather than accepting it from the client.
+
+For audit inspection, command responses and linked command/history metadata
+expose the recorded principal. The persisted command stores it under
+`context.principal`; this is separate from the signal's arguments and from the
+value a workflow's named signal wait returns. Missing principal metadata is
+not proof of a particular sender. See
+[the embedded signal example](/docs/features/signals#sender-identity-and-authorization)
+for a Laravel policy check and host-side command context.
+
+Use [named principal tokens](/docs/polyglot/server-config-reference#authentication)
+when audit trails need stable actor subjects. A shared role token does not
+identify an individual application user, and auth-disabled development mode
+provides no authenticated human identity. Forwarded caller/auth attribution
+headers may add configured audit labels; they do not supply the
+Server-authenticated principal. Keep forwarded attribution disabled unless
+the [trusted-gateway requirements](/docs/polyglot/server-config-reference#command-attribution)
+are met.
+
 ## Namespace Contract
 
 The bootstrap process seeds the default namespace. Set

@@ -72,6 +72,72 @@ Signal behavior:
 - Without a contract, `await('name')` returns `true` when no arguments were sent, the single argument when one was sent, or the full argument array when several were sent.
 - Unknown signal names reject as `rejected_unknown_signal`; signals against a closed or unstarted instance reject as `rejected_not_active` or `rejected_not_started`.
 
+## Sender identity and authorization
+
+`approvedBy` is application data. The string `Taylor` in the example is not
+proof of an authenticated sender. A `#[Signal]` contract validates the signal
+name and arguments; your Laravel application must authenticate the caller and
+authorize the operation before admitting the signal.
+
+For example, an approval endpoint can use the authenticated user and an order
+policy. This application defines an `Order` model with stored
+`workflow_instance_id` and `workflow_namespace` fields, and registers an
+`approve` policy that checks the user's access to that order. The endpoint
+does not take the actor or workflow routing values from the request body:
+
+```php
+use App\Models\Order;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Route;
+use Workflow\V2\CommandContext;
+use Workflow\V2\WorkflowStub;
+
+Route::post('/orders/{order}/approve', function (Request $request, Order $order) {
+    $user = $request->user();
+    Gate::forUser($user)->authorize('approve', $order);
+
+    $actorId = (string) $user->getAuthIdentifier();
+    $context = CommandContext::phpApi()->withPrincipal('user', $actorId);
+
+    $result = WorkflowStub::load(
+        $order->workflow_instance_id,
+        $order->workflow_namespace,
+    )->withCommandContext($context)->attemptSignalWithArguments('approved-by', [
+        'approvedBy' => $actorId,
+    ]);
+
+    return response()->json([
+        'accepted' => $result->accepted(),
+        'outcome' => $result->outcome(),
+        'command_id' => $result->commandId(),
+    ], $result->accepted() ? 202 : 409);
+})->middleware('auth');
+```
+
+The policy check happens before loading or signaling the workflow. Every
+approval entry point must enforce the same application policy, including any
+webhook or administrative endpoint that can send this signal. Inside the
+workflow, `await('approved-by')` receives the recorded argument; it does not
+return an authenticated-sender object or perform another permission check.
+
+The command's audit identity is separate from that argument.
+`withCommandContext()` records the context on the `WorkflowCommand` identified
+by `commandId()`. Its `context.principal` and `principalType()`, `principalId()`
+and `principalLabel()` accessors support host-side audit inspection; linked
+history and operator views can display the recorded command attribution.
+Missing attribution does not establish a sender identity.
+
+`CommandContext::withPrincipal()` records what trusted host code supplies. It
+does not authenticate a user or authorize a signal. Keep that context outside
+caller-controlled input, and do not use a live HTTP session or a database
+lookup of current permissions inside deterministic workflow replay.
+
+Service-mode SDK calls use the Server's HTTP authorization boundary instead
+of this embedded route. See
+[Signal authorization and attribution](/docs/polyglot/namespace-auth-workers#signal-authorization-and-attribution)
+for credentials, trusted gateways and audit identity.
+
 <SignalSimulator />
 
 **Important:** The `await()` function should only be used in a workflow, not an activity.

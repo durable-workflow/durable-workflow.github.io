@@ -72,6 +72,73 @@ $result->instanceId();  // "order-123"
 - Без контракту `await('name')` повертає `true`, якщо аргументів немає, єдиний аргумент, якщо передано один, або повний масив аргументів, якщо передано кілька.
 - Невідомі назви signal відхиляються як `rejected_unknown_signal`. Signal для закритого чи незапущеного екземпляра відхиляються як `rejected_not_active` або `rejected_not_started`.
 
+## Особа відправника та авторизація {#sender-identity-and-authorization}
+
+`approvedBy` — це дані застосунку. Рядок `Taylor` у прикладі не підтверджує
+особу автентифікованого відправника. Контракт `#[Signal]` перевіряє назву та
+аргументи signal. Ваш Laravel-застосунок має автентифікувати користувача й
+перевірити його право на операцію до приймання signal.
+
+Наприклад, endpoint погодження може використовувати автентифікованого
+користувача та policy замовлення. У цьому застосунку модель `Order` зберігає
+поля `workflow_instance_id` і `workflow_namespace`, а зареєстрована policy
+`approve` перевіряє доступ користувача до замовлення. Endpoint не бере особу
+відправника чи маршрут workflow з тіла запиту:
+
+```php
+use App\Models\Order;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Route;
+use Workflow\V2\CommandContext;
+use Workflow\V2\WorkflowStub;
+
+Route::post('/orders/{order}/approve', function (Request $request, Order $order) {
+    $user = $request->user();
+    Gate::forUser($user)->authorize('approve', $order);
+
+    $actorId = (string) $user->getAuthIdentifier();
+    $context = CommandContext::phpApi()->withPrincipal('user', $actorId);
+
+    $result = WorkflowStub::load(
+        $order->workflow_instance_id,
+        $order->workflow_namespace,
+    )->withCommandContext($context)->attemptSignalWithArguments('approved-by', [
+        'approvedBy' => $actorId,
+    ]);
+
+    return response()->json([
+        'accepted' => $result->accepted(),
+        'outcome' => $result->outcome(),
+        'command_id' => $result->commandId(),
+    ], $result->accepted() ? 202 : 409);
+})->middleware('auth');
+```
+
+Policy перевіряється до завантаження workflow та надсилання signal. Таку саму
+policy мають застосовувати всі точки погодження, зокрема webhook та
+адміністративні endpoints, які можуть надіслати цей signal. Усередині workflow
+`await('approved-by')` повертає записаний аргумент. Він не повертає об'єкт
+автентифікованого відправника й не виконує додаткової перевірки дозволів.
+
+Аудитна особа команди зберігається окремо від аргументу.
+`withCommandContext()` записує контекст у `WorkflowCommand`, визначений через
+`commandId()`. Поле `context.principal` та методи `principalType()`,
+`principalId()` і `principalLabel()` доступні для аудиту в коді host-застосунку.
+Пов'язані історія та операторські подання можуть показувати записану особу
+команди. Відсутність цих даних не підтверджує особу відправника.
+
+`CommandContext::withPrincipal()` записує дані, надані довіреним кодом
+host-застосунку. Він не автентифікує користувача й не надає права на signal.
+Не формуйте цей контекст із довільного вводу клієнта та не звертайтеся до
+поточної HTTP-сесії чи актуальних дозволів у базі даних під час
+детермінованого replay workflow.
+
+SDK-виклики в service mode використовують HTTP-авторизацію Server замість
+цього embedded-маршруту. Дивіться
+[авторизацію та атрибуцію signal](/docs/polyglot/namespace-auth-workers#signal-authorization-and-attribution),
+щоб налаштувати облікові дані, довірені шлюзи й аудитну особу.
+
 <SignalSimulator />
 
 **Важливо:** функцію `await()` слід використовувати лише у workflow, а не в activity.
