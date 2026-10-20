@@ -100,6 +100,99 @@ Signal behavior:
 - Without a contract, `await('name')` returns `true` when no arguments were sent, the single argument when one was sent, or the full argument array when several were sent.
 - Unknown signal names reject as `rejected_unknown_signal`; signals against a closed or unstarted instance reject as `rejected_not_active` or `rejected_not_started`.
 
+## Evolve a signal payload {#evolve-a-signal-payload}
+
+Use one declared map argument for an application payload that needs compatible
+additions. This example keeps `schema_version: 1` for an optional, informational
+`note`. An old sender omits it; a newer reader uses `null`. An older reader can
+ignore it without changing the approval decision. Do not use an ignored field
+for a change that must affect authorization or business behavior.
+
+```php
+use Workflow\V2\Attributes\Signal;
+use Workflow\V2\Attributes\Type;
+use Workflow\V2\Workflow;
+use function Workflow\V2\await;
+
+#[Type('map-approval')]
+#[Signal('reviewed', [
+    ['name' => 'payload', 'type' => 'array', 'allows_null' => false],
+])]
+final class MapApprovalWorkflow extends Workflow
+{
+    public function handle(): array
+    {
+        $payload = await('reviewed');
+        if (! is_array($payload) || array_is_list($payload)
+            || ($payload['schema_version'] ?? null) !== 1) {
+            return ['status' => 'rejected_payload', 'reason' => 'unsupported_shape_or_version'];
+        }
+        if (! in_array($payload['decision'] ?? null, ['approved', 'rejected'], true)) {
+            return ['status' => 'rejected_payload', 'reason' => 'invalid_decision'];
+        }
+        $note = $payload['note'] ?? null;
+        if ($note !== null && ! is_string($note)) {
+            return ['status' => 'rejected_payload', 'reason' => 'invalid_note'];
+        }
+
+        return ['status' => 'processed', 'decision' => $payload['decision'], 'note' => $note];
+    }
+}
+```
+
+Both senders use the same declared `payload` parameter:
+
+```php
+use Workflow\V2\WorkflowStub;
+
+$oldPayload = ['schema_version' => 1, 'decision' => 'approved'];
+$newPayload = [...$oldPayload, 'note' => 'review λ'];
+
+$receipt = WorkflowStub::load('review-123')->attemptSignalWithArguments(
+    'reviewed',
+    ['payload' => $newPayload], // An old sender passes $oldPayload here.
+);
+```
+
+The declaration checks the outer argument. A scalar in place of `payload`
+rejects at admission. Its `array` type does not validate nested fields or
+distinguish a PHP list from a string-keyed map. The workflow checks those
+application rules before doing business work. An unsupported version or invalid
+`note` can therefore be durably admitted, then produce `rejected_payload` as the
+workflow result. That result is separate from the `signal_received` receipt.
+
+Keep required fields and their meanings stable. Define whether missing and
+explicit `null` mean the same thing; they do for `note` here. Preserve old
+decoders for recorded values. A breaking shape or meaning needs a new
+application version and an explicit compatibility plan, not just another
+optional field.
+
+A run keeps the signal declarations and defaults recorded when it started.
+Changing a current handler signature or default does not rewrite that contract.
+Adding another top-level signal argument is different from adding a key inside
+the existing map. Do not assume that an old run accepts it or adopts the new
+default. New runs can record a new declaration while old runs retain theirs.
+
+This application format is separate from the fixed
+[Avro Value wire schema](/docs/polyglot/avro-value-protocol). Service-mode PHP,
+Python and Rust clients encode supported map/list/scalar values through their
+SDKs. A Python dataclass, PHP domain object or Rust struct needs the relevant
+explicit value adapter; an application version field is not a schema registry.
+See the [SDK references](/docs/sdk-neutrality) for the service-mode APIs.
+
+Payload compatibility also does not authorize a changed workflow definition to
+claim an existing run. Keep the required compatible worker/build available.
+Server 2.9.7's source-fingerprint restriction is tracked separately in
+[Server #518](https://github.com/durable-workflow/server/issues/518). This recipe
+does not bypass it or promise that a current handler replaces the old run's code.
+Use [workflow versioning](./versioning.md) for replay-safe code changes within
+the runtime's supported routing contract.
+
+The same recorded-value boundary applies to activity arguments and results:
+retries and replay can encounter older shapes. Keep their adapters compatible
+with those values rather than rewriting history or relying on current model
+defaults.
+
 ## After an uncertain response {#after-an-uncertain-response}
 
 A timeout or lost response can happen after a signal has been durably admitted.
@@ -200,5 +293,5 @@ php artisan app:webhook
 `App\Workflows\Webhooks\WebhookWorkflow` starts from an HTTP webhook
 ingress and parks on `await('ready')` until the matching signal lands.
 Open Waterline while it is parked and you will see the
-`WorkflowExecutionSignaled` event materialize the moment the signal
+`SignalReceived` event materialize the moment the signal
 is accepted.

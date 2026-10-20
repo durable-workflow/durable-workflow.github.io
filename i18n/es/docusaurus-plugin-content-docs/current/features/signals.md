@@ -84,6 +84,68 @@ Comportamiento de las señales:
 - Sin contrato, `await('name')` devuelve `true` sin argumentos, el valor único con uno o el array completo con varios.
 - Los nombres desconocidos se rechazan con `rejected_unknown_signal`; las señales para instancias cerradas o sin iniciar se rechazan con `rejected_not_active` o `rejected_not_started`.
 
+## Evolucionar una carga de señal compatible {#evolve-a-signal-payload}
+
+Usa un único argumento de mapa declarado para una carga de aplicación que necesite ampliaciones compatibles. Este ejemplo conserva `schema_version: 1` al añadir la `note` opcional e informativa. Un emisor antiguo la omite; un lector más reciente usa `null`. Un lector anterior puede ignorarla sin cambiar la decisión de aprobación. No uses un campo ignorado para un cambio que deba afectar a la autorización o al comportamiento de negocio.
+
+```php
+use Workflow\V2\Attributes\Signal;
+use Workflow\V2\Attributes\Type;
+use Workflow\V2\Workflow;
+use function Workflow\V2\await;
+
+#[Type('map-approval')]
+#[Signal('reviewed', [
+    ['name' => 'payload', 'type' => 'array', 'allows_null' => false],
+])]
+final class MapApprovalWorkflow extends Workflow
+{
+    public function handle(): array
+    {
+        $payload = await('reviewed');
+        if (! is_array($payload) || array_is_list($payload)
+            || ($payload['schema_version'] ?? null) !== 1) {
+            return ['status' => 'rejected_payload', 'reason' => 'unsupported_shape_or_version'];
+        }
+        if (! in_array($payload['decision'] ?? null, ['approved', 'rejected'], true)) {
+            return ['status' => 'rejected_payload', 'reason' => 'invalid_decision'];
+        }
+        $note = $payload['note'] ?? null;
+        if ($note !== null && ! is_string($note)) {
+            return ['status' => 'rejected_payload', 'reason' => 'invalid_note'];
+        }
+
+        return ['status' => 'processed', 'decision' => $payload['decision'], 'note' => $note];
+    }
+}
+```
+
+Ambos emisores usan el mismo parámetro declarado `payload`:
+
+```php
+use Workflow\V2\WorkflowStub;
+
+$oldPayload = ['schema_version' => 1, 'decision' => 'approved'];
+$newPayload = [...$oldPayload, 'note' => 'review λ'];
+
+$receipt = WorkflowStub::load('review-123')->attemptSignalWithArguments(
+    'reviewed',
+    ['payload' => $newPayload], // An old sender passes $oldPayload here.
+);
+```
+
+La declaración comprueba el argumento externo. Un escalar en lugar de `payload` se rechaza durante la admisión. El tipo `array` no valida campos anidados ni distingue una lista de PHP de un mapa con claves de cadena. El workflow comprueba estas reglas de aplicación antes de realizar el trabajo de negocio. Por tanto, una versión no admitida o una `note` inválida pueden aceptarse de forma duradera y después producir `rejected_payload` como resultado del workflow. Ese resultado es distinto del recibo `signal_received`.
+
+Mantén estables los campos obligatorios y su significado. Define si la ausencia y el `null` explícito significan lo mismo; aquí lo hacen para `note`. Conserva decodificadores para los valores antiguos registrados. Un cambio incompatible de estructura o significado requiere una nueva versión de aplicación y un plan explícito de compatibilidad, no simplemente otro campo opcional.
+
+Cada ejecución conserva las declaraciones y los valores predeterminados de señales registrados al comenzar. Cambiar la firma o un valor predeterminado del handler actual no reescribe ese contrato. Añadir otro argumento de señal de nivel superior es distinto de añadir una clave dentro del mapa existente. No supongas que una ejecución antigua lo acepta o adopta el nuevo valor predeterminado. Las ejecuciones nuevas pueden registrar una declaración nueva mientras las anteriores conservan la suya.
+
+Este formato de aplicación es independiente del [esquema de transporte Avro Value](/docs/polyglot/avro-value-protocol), que es fijo. Los clientes PHP, Python y Rust en modo servicio codifican los mapas, listas y escalares compatibles mediante sus SDK. Una dataclass de Python, un objeto de dominio de PHP o un struct de Rust necesita el adaptador de valores explícito correspondiente. Un campo de versión de aplicación no es un registro de esquemas. Consulta las [referencias de los SDK](/docs/sdk-neutrality) para las API del modo servicio.
+
+La compatibilidad de cargas tampoco autoriza a una definición modificada del workflow a adquirir una ejecución existente. Mantén disponible el worker o build compatible necesario. La restricción de huellas del código fuente de Server 2.9.7 se sigue por separado en [Server #518](https://github.com/durable-workflow/server/issues/518). Esta receta no la evita ni promete que un handler actual sustituya el código de la ejecución antigua. Usa [versionado de workflows](./versioning.md) para cambios de código seguros durante el replay dentro del contrato de enrutamiento admitido por el runtime.
+
+El mismo límite de valores registrados se aplica a los argumentos y resultados de actividades: los reintentos y el replay pueden encontrar estructuras antiguas. Mantén sus adaptadores compatibles con esos valores en vez de reescribir el historial o depender de los valores predeterminados actuales del modelo.
+
 ## Tras una respuesta incierta {#after-an-uncertain-response}
 
 Puede vencer un plazo o perderse una respuesta después de admitir la señal de forma duradera. Una respuesta posterior de ejecución cerrada o no encontrada describe esa solicitud posterior; no establece si se aplicó la señal original. Consultar el estado antes de enviar también deja un intervalo en el que el workflow puede cerrarse o continuar como nueva ejecución.
@@ -150,4 +212,4 @@ El workflow iniciado mediante webhook de la [Aplicación de ejemplo](/docs/sampl
 php artisan app:webhook
 ```
 
-`App\Workflows\Webhooks\WebhookWorkflow` comienza desde un webhook HTTP y se detiene en `await('ready')` hasta que llega la señal. Abre Waterline durante la espera y verás aparecer el evento `WorkflowExecutionSignaled` en cuanto se acepte.
+`App\Workflows\Webhooks\WebhookWorkflow` comienza desde un webhook HTTP y se detiene en `await('ready')` hasta que llega la señal. Abre Waterline durante la espera y verás aparecer el evento `SignalReceived` en cuanto se acepte.
