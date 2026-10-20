@@ -482,9 +482,10 @@ Run-targeted command routes reject historical or wrong-run targets explicitly:
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/repair` | Repair only if the selected run is current. |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/archive` | Archive only if the selected run is current and closed. |
 
-Commands with caller payloads use an `input` array. The Python and PHP SDKs
-encode language-neutral payload envelopes for you; direct HTTP callers must
-send JSON values that the target workflow or activity can decode.
+Commands carry business values in Avro payload envelopes. First-party SDKs
+encode them for you. A direct HTTP caller must use the official Avro encoder's
+`{codec, blob}` envelope or the runtime external reference below. The surrounding
+HTTP document is JSON; raw business JSON is not an alternative payload codec.
 
 ## Namespace And Storage
 
@@ -508,26 +509,138 @@ server.
 
 ### External Payload Reference Envelope
 
-The external payload reference is a stable wire envelope. SDKs may decode it
-into native helper types, but HTTP clients should treat these field names as
-the contract:
+Server accepts **runtime** references, not the provider-URI references used by
+embedded storage helpers. A request containing `external_storage` is rejected
+with HTTP `422` and `external_payload_unsupported`. Do not copy a `file://`,
+`s3://`, `gs://` or `azure://` provider reference into a Server request.
+
+The runtime payload envelope has exactly `codec` and `external_payload`:
+
+```json
+{
+  "codec": "avro",
+  "external_payload": {
+    "schema": "durable-workflow.v2.runtime-external-payload-reference.v1",
+    "reference_id": "ep_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+    "codec": "avro",
+    "size_bytes": 1048576,
+    "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  }
+}
+```
+
+The reference id and digest above are illustrative. Use the reference returned
+by an actual upload, unchanged. The nested reference has exactly five fields:
 
 | Field | Required | Meaning |
 | --- | --- | --- |
-| `schema` | yes | Must be `durable-workflow.v2.external-payload-reference.v1`. Unknown schemas fail closed. |
-| `uri` | yes | Driver-owned object location, such as `file:///...`, `s3://bucket/prefix/object`, `gs://bucket/prefix/object`, or `azure://container/prefix/object`. |
-| `sha256` | yes | Lowercase hex SHA-256 of the stored encoded bytes. SDKs and the server verify it before decode. |
-| `size_bytes` | yes | Byte length of the stored encoded payload. Mismatch is an integrity failure. |
-| `codec` | yes | Always `avro`: fixed typed Value schema with Avro single-object framing. The surrounding HTTP document remains JSON. |
-| `expires_at` | no | ISO-8601 expiry hint for retention/GC. Missing means the namespace retention policy owns cleanup. |
+| `schema` | yes | `durable-workflow.v2.runtime-external-payload-reference.v1`. |
+| `reference_id` | yes | Opaque Server id: `ep_` followed by 26 uppercase ULID characters. It is not a provider URI. |
+| `codec` | yes | `avro`, matching the outer envelope. |
+| `size_bytes` | yes | Non-negative integer size of the uploaded encoded bytes. |
+| `sha256` | yes | SHA-256 of those same bytes, returned as lowercase hexadecimal. |
 
-Payload offload is threshold-gated by the namespace storage policy. Inline
-payloads continue to use the normal payload envelope until encoded bytes exceed
-`threshold_bytes`; then the driver writes bytes and history stores the reference
-envelope. Replay and history export must fail loudly when a referenced blob is
-missing, mutated, outside the configured prefix, or owned by an unavailable
-provider. They must not silently replace a missing object with `null`, `{}`, or
-an empty byte string.
+### Runtime External Payload Transport {#runtime-external-payload-transport}
+
+Discover `namespace.external_payload_storage.transport` from
+`GET /api/cluster/info`. Its schema is
+`durable-workflow.v2.runtime-external-payload-transport.v1`, version `1`.
+Use its upload/fetch routes and limits only when the namespace storage status is
+`available`. Server owns provider credentials and returns no provider locations.
+
+| Method | Path | Result |
+| --- | --- | --- |
+| `POST` | `/api/external-payloads/v1` | Upload bounded encoded bytes. `201` returns schema `durable-workflow.v2.runtime-external-payload-upload.v1`, `transport_version: 1` and `reference`. |
+| `GET` | `/api/external-payloads/v1/{referenceId}` | Fetch and verify the referenced encoded bytes. `200` returns `application/octet-stream`. |
+
+Both routes use a normal runtime credential with `worker`, `operator` or `admin`
+role and `X-Namespace`. Both require `X-Durable-Workflow-Payload-Codec`,
+`X-Durable-Workflow-Payload-Size` and `X-Durable-Workflow-Payload-SHA256`.
+Upload also requires `Content-Type: application/octet-stream`.
+Cross-namespace lookup returns not found without revealing another namespace's
+object. Possession of an id does not grant access or workflow-completion authority.
+
+The uploaded bytes are the **UTF-8 bytes of the official Avro envelope's base64
+`blob` string**, without an added newline. They are not decoded binary Avro and
+are not raw business JSON. Compute length and SHA-256 over precisely those bytes.
+For example, after installing the Python SDK:
+
+```bash
+python - <<'PY'
+from pathlib import Path
+from durable_workflow.serializer import encode
+
+Path("payload.avro.txt").write_bytes(
+    encode([{"message": "large value", "optional": None}]).encode("utf-8")
+)
+PY
+
+PAYLOAD_SIZE=$(wc -c < payload.avro.txt | tr -d ' ')
+PAYLOAD_SHA256=$(sha256sum payload.avro.txt | cut -d ' ' -f 1)
+
+curl --fail-with-body -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/external-payloads/v1" \
+  -H "Authorization: Bearer $DURABLE_WORKFLOW_AUTH_TOKEN" \
+  -H "X-Namespace: billing" \
+  -H "Content-Type: application/octet-stream" \
+  -H "X-Durable-Workflow-Payload-Codec: avro" \
+  -H "X-Durable-Workflow-Payload-Size: $PAYLOAD_SIZE" \
+  -H "X-Durable-Workflow-Payload-SHA256: $PAYLOAD_SHA256" \
+  --data-binary @payload.avro.txt > upload.json
+
+REFERENCE_ID=$(jq -r '.reference.reference_id' upload.json)
+curl --fail-with-body -sS "$DURABLE_WORKFLOW_SERVER_URL/api/external-payloads/v1/$REFERENCE_ID" \
+  -H "Authorization: Bearer $DURABLE_WORKFLOW_AUTH_TOKEN" \
+  -H "X-Namespace: billing" \
+  -H "X-Durable-Workflow-Payload-Codec: avro" \
+  -H "X-Durable-Workflow-Payload-Size: $PAYLOAD_SIZE" \
+  -H "X-Durable-Workflow-Payload-SHA256: $PAYLOAD_SHA256" \
+  -o fetched.avro.txt
+cmp payload.avro.txt fetched.avro.txt
+```
+
+An upload verifies byte integrity before committing a reference. It does not
+execute a workflow or prove that the stored bytes form a valid business payload.
+The first verified state-bearing request claims the reference; payload validation
+and normal request, namespace, task-attempt and lease guards still apply.
+Use the official SDK for worker completion uploads and its discovered completion
+context rather than inventing a lease allowance in a direct client.
+
+Read `limits.max_payload_bytes`, `request_timeout_seconds` and
+`abandoned_upload_expiry_seconds` from the transport manifest. Namespace byte and
+object quotas, ordinary request limits and completion upload limits also apply.
+Threshold selection leaves values equal to the namespace threshold inline.
+SDKs externalize larger values and may externalize additional values to fit an
+aggregate request.
+
+| Outcome | HTTP status | Action |
+| --- | --- | --- |
+| Missing or expired reference | `404` / `410` | Restore the required object or correct the reference. Do not decode a missing value as `null`. |
+| Unauthorized | `401` / `403` | Correct credential, role or namespace authorization. |
+| Unsupported envelope or integrity mismatch | `415` / `422` | Correct codec, fields, size, hash or encoded bytes. |
+| Oversized payload | `413` | Reduce the encoded value or use an allowed larger policy. |
+| Namespace quota or upload allowance exhausted | `429` | Inspect capacity and retry only within the original operation's budget. |
+| Storage unavailable | `503` | Restore storage availability before retrying within that budget. |
+| Stale or conflicting completion | `409` | Do not retry with invented task identity or a new lease. |
+
+Server owns retention. There is no client delete route. A cache eviction must
+not delete the backing object. Unclaimed uploads can expire; retained owners,
+shared objects, storage failures and backup holds affect cleanup. A history
+export containing a reference is not a self-contained backup of its bytes.
+
+### External Payload Support By Mode {#external-payload-support-by-mode}
+
+| Caller or worker | Storage path | Provider credentials |
+| --- | --- | --- |
+| Embedded Laravel workflow package | Application namespace policy and provider-URI references. | Embedded application. |
+| PHP SDK | Automatic discovered runtime upload/fetch with opaque references. | Server. |
+| Python SDK | Automatic discovered runtime upload/fetch with opaque references. | Server. |
+| Rust SDK | Automatic discovered runtime upload/fetch with opaque references. | Server. |
+| Direct HTTP | Explicit runtime upload/fetch plus the returned runtime reference in a supported payload slot. | Server. |
+
+All SDK rows require an available compatible runtime transport. Provider driver
+helpers serve application-owned embedded/direct storage integrations. Their
+availability does not make provider envelopes a supported Server or Cloud ingress
+format.
 
 For the full request-authority contract, including namespace resolution,
 role-scoped credentials, and worker registration fields, see

@@ -269,17 +269,9 @@ dieser Einstellungen begrenzt global SQL-Sitzungen, Datenbankbytes oder
 Commit-Latenz. Halten Sie auch Kapazität für Abschlüsse, Heartbeats,
 Operatoranfragen und Zustandsprüfungen frei.
 
-Verwenden Sie einen direkt erreichbaren beschreibbaren Datenbankendpunkt als
-Ausgangspunkt. Ein Verbindungsproxy muss mit exakter Server-Version, Poolmodus
-und Einstellungen für vorbereitete Anweisungen, Transaktionsgrenzen,
-Sitzungszustand und Sperren qualifiziert werden. Der veröffentlichte Server
-2.9.7 scheitert mit PgBouncer im Transaktionspoolmodus; sein
-Bereitschaftsendpunkt kann dabei weiterhin einen gesunden Zustand melden.
-Verfolgen Sie Produktkorrektur und Prüfung des veröffentlichten Images in
-[Server #524](https://github.com/durable-workflow/server/issues/524). Ein
-erfolgreicher TCP-Verbindungsaufbau, eine Migration oder Bereitschaftsantwort
-beweist keine Kompatibilität mit Transaktionspooling. Lesereplikate dürfen
-den maßgeblichen Schreiber für Claims und dauerhafte Übergänge nicht ersetzen.
+Verwenden Sie einen direkt erreichbaren beschreibbaren Datenbankendpunkt als Ausgangspunkt. Ein Verbindungsproxy muss mit exakter Server-Version, Poolmodus und Einstellungen für vorbereitete Anweisungen, Transaktionsgrenzen, Sitzungszustand und Sperren qualifiziert werden. **PgBouncer-Transaktionspooling erfordert den korrigierten Server ab Version 2.9.8.** Die [Abnahme der veröffentlichten Version 2.9.8](https://github.com/durable-workflow/server/issues/524#issuecomment-6293185092) qualifiziert PostgreSQL 16.15 mit PgBouncer 1.26.1: direkte PostgreSQL-Verbindung, Sitzungspooling und Transaktionspooling mit `max_prepared_statements=0` oder `max_prepared_statements=200`. Das bezeichnet eine Kompatibilitätsuntergrenze und eine exakt geprüfte Konfiguration, keine Empfehlung zur neuesten Version oder Kapazitätsgarantie; prüfen Sie andere Kombinationen gesondert. Führen Sie vor der Verkehrsfreigabe die normale Initialisierung mit `server-bootstrap` über den gewählten Endpunkt aus.
+
+`GET /api/ready` führt eine Datenbank-Leseabfrage mit gebundenen Parametern (`bound_read_query`) und konfigurierte Bereitschaftsprüfungen aus; die Schreibkapazität bleibt ausdrücklich ungeprüft. Erfolgreiche TCP-Verbindungen, Migrationen oder Bereitschaftsantworten beweisen nicht jede Workflow-SQL-Operation oder die Commit-Kapazität. Lesereplikate dürfen den maßgeblichen Schreiber für Claims und dauerhafte Übergänge nicht ersetzen.
 
 ## Helm-Chart für Kubernetes {#helm-chart-for-kubernetes}
 
@@ -339,7 +331,7 @@ Die Darstellung als selbstständig nutzbar ist erst zulässig, wenn ein Lauf ohn
 
 Der beabsichtigte HA-Vertrag gilt bei passender Kleincluster- oder Rohmanifestform und drei vom Operator erhaltenen Regeln:
 
-- **Immer genau ein beschreibbarer Workflow-Datenbankendpunkt.** Verwaltetes Failover wie RDS Multi-AZ, Aurora, Cloud SQL HA oder Patroni ist zulässig, wenn der vorherige Primärknoten vor Wiederanbindung durch Fencing abgesichert wird: Schreibbenutzer entziehen, mit `read_only=on` herabstufen, Replikation trennen oder aus bekannt guter Momentaufnahme wiederherstellen. Ein Verbindungsproxy muss die vom Server verwendete Datenbanksemantik erhalten und mit exakter Version, Modus und Einstellungen qualifiziert werden. [SQL-Verbindungsbudgets](#sql-connection-budgets) beschreibt die aktuelle PgBouncer-Einschränkung beim Transaktionspooling und die Prüfgrenze.
+- **Immer genau ein beschreibbarer Workflow-Datenbankendpunkt.** Verwaltetes Failover wie RDS Multi-AZ, Aurora, Cloud SQL HA oder Patroni ist zulässig, wenn der vorherige Primärknoten vor Wiederanbindung durch Fencing abgesichert wird: Schreibbenutzer entziehen, mit `read_only=on` herabstufen, Replikation trennen oder aus bekannt guter Momentaufnahme wiederherstellen. Ein Verbindungsproxy muss die vom Server verwendete Datenbanksemantik erhalten und mit exakter Version, Modus und Einstellungen qualifiziert werden. [SQL-Verbindungsbudgets](#sql-connection-budgets) beschreibt die Versionsanforderungen und geprüften Modi für PgBouncer-Transaktionspooling.
 - **Jeweils ein Redis-Endpunkt mit dokumentiertem Hochstufungspfad.** Verwaltetes Redis-Failover wie Sentinel, Elasticache oder Memorystore HA ist zulässig. Redis ist Beschleunigungsschicht, nicht Korrektheitsgrundlage. Redis-Failover ist daher ein Latenzereignis, niemals ein Korrektheitsereignis.
 - **Immer genau ein Scheduler/Wartungsprozess.** Der Orchestrator, etwa ein Compose-Service mit `deploy.replicas: 1`, eine durch Host-Lease geschützte systemd-Unit oder ein Kubernetes-`Deployment` mit `replicas: 1` und `RollingUpdate.maxSurge: 0`, erhält die Singleton-Invariante beim Neustart. Doppelte Scheduler als Dauertopologie gehören nicht zu diesem Vertrag.
 
