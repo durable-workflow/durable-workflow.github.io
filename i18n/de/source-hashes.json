@@ -25,5 +25,10 @@
   "ai-assisted-development.md": "b246bb60585fb7a69bc534978f470f3f16e899e1f8f203ba0847d2d11b8a1ec3",
   "mcp-workflows.md": "1c0b5bb7f2e5c7ca835dfdfa57bbe8f6624172c855f4e225057ac2377abf360e",
   "platform-protocol-specs.md": "ba9c69adfca7fb4a0dd982464b0ca69dd5a21de1e340edbe23b075ec0fb0c35c",
-  "sponsors.md": "e85e14375743ca8fa50e3a48f894b160e28272573aa88480064f74010ebee98a"
+  "sponsors.md": "e85e14375743ca8fa50e3a48f894b160e28272573aa88480064f74010ebee98a",
+  "polyglot/external-execution.md": "410728db1107c328d0cb129cbf0c58f4fa8c6427e0406610d6801dfeb8a2db31",
+  "polyglot/prerelease-history-migration.md": "a57f05f492228a8a67791f9152648a1e5f80856325b78777cf63b6ef49b7413c",
+  "polyglot/rust-cloud-quickstart.md": "2303434fc9302a81a8381ad4836423ef9952eb3201a4574c432254e3cb68c5f3",
+  "polyglot/worker-compatibility-routing.md": "e2cdfdbe8b295ba511f26345318e847611c1f2e67dafdf51441f09e93cb939ca",
+  "polyglot/workflow-streams.md": "5675a8ea1b9d0b1f7223fecb90b3b048d3006670bf505950bc783709287a6432"
 }
