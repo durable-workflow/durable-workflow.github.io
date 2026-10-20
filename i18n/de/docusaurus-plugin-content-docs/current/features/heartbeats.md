@@ -58,6 +58,18 @@ Polyglotte Worker können Heartbeats über die HTTP-Worker-Brücke senden, ohne
 die PHP-Aktivitätsklasse zu erzeugen. Die Endpunkte beschreibt das
 [Worker-Protokoll](/docs/polyglot/worker-protocol).
 
+## Takt und Bestätigungen {#heartbeat-cadence-and-receipts}
+
+Bei einer Aktivität in der Warteschlange beginnt die erste Heartbeat-Frist, wenn die Laufzeit sie beansprucht, also vor der Aufgabenauslieferung und dem Anwendungscode. Ein aufgezeichneter Heartbeat setzt die nächste Frist auf seinen Laufzeitzeitpunkt plus `heartbeatTimeout`. Weder das Senden der Anfrage noch der Empfang ihrer Antwort eröffnet ein weiteres vollständiges Zeitfenster. Siehe [Heartbeat-Zeitlimit](./timeouts.md#heartbeat-timeout).
+
+Wählen Sie einen Takt deutlich innerhalb dieses Zeitfensters und begrenzen Sie die Arbeit zwischen Aufrufen. Bei einem Zeitlimit von 15 Sekunden können etwa fünf Sekunden ein Ausgangspunkt sein, aber nur wenn Auslieferung, jeder Stapel oder E/A-Aufruf, Ausführungspausen, Netzwerklatenz und Transportwiederholungen in das verbleibende Budget passen. Messen Sie diese Verzögerungen und lassen Sie Spielraum. Das ist Planungshilfe, kein garantiert sicheres Intervall. Ein abgelaufener oder ersetzter Versuch erhält seine Lease nicht durch einen späten Heartbeat zurück.
+
+Es gibt keinen automatischen Fortschritts-Heartbeat-Takt und keine Zusage einer SDK-Bündelung. Worker-Registrierungs-Heartbeats und Besitzstatusabfragen veröffentlichen keinen Aktivitätsfortschritt. Jeder angenommene Fortschritts-Heartbeat erweitert die dauerhafte Historie. Melden Sie deshalb nicht jeden winzigen Arbeitsschritt.
+
+Eingebettetes `Activity::heartbeat()` gibt `void` zurück. Ungültiger Fortschritt und Speicherfehler können Ausnahmen auslösen. Eine normale Rückkehr ist kein Bestätigungsobjekt: Ein geschlossener, abgelaufener oder ersetzter Versuch kann zurückkehren, ohne einen weiteren Heartbeat aufzuzeichnen. Im Service-Modus unterscheiden sich direkte Client-Aufrufe und überwachte Worker. Siehe die Anleitungen für [PHP](../polyglot/php.md#activity-heartbeats), [Python](../polyglot/python.md#activity-heartbeat-requests) und [Rust](../polyglot/rust.md#activity-heartbeats).
+
+Heartbeat-Fortschritt schreibt einen externen Stapel nicht atomar fest und grenzt externe Effekte nicht ab. Ein wiederholungssicherer Anwendungsprüfpunkt braucht einen eigenen dauerhaften Commit, einen stabilen logischen Auftragsschlüssel und Idempotenz oder externes Fencing. Ein Zugriff auf bestätigte Prüfpunkte durch einen Ersatzversuch wird separat in [der Prüfpunkt-Funktion](https://github.com/durable-workflow/.github/issues/218) verfolgt.
+
 ## Fortschritts-Snapshots {#progress-snapshots}
 
 Sowohl `Activity::heartbeat()` als auch `ActivityTaskBridge::heartbeat()`

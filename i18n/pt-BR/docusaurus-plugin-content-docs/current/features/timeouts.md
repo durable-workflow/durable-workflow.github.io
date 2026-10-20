@@ -202,7 +202,7 @@ O prazo é calculado uma vez no agendamento e nunca reinicia. Ao vencer, a ativi
 
 ### Tempo limite de heartbeat {#heartbeat-timeout}
 
-O primeiro prazo começa quando o runtime reivindica a atividade, antes da entrega da tarefa e da execução do código do usuário. Cada heartbeat aceito define o prazo como seu horário registrado pelo runtime mais o tempo limite configurado. Ele não soma tempo ao prazo anterior nem abre uma nova janela quando o chamador recebe a resposta. Reserve margem para entrega, trabalho limitado, pausas de execução, latência das requisições e novas tentativas de transporte. Envie heartbeats bem antes de a janela expirar. Uma tentativa expirada ou substituída não recupera autoridade ao enviar um heartbeat atrasado. Se restarem tentativas, uma nova é agendada com o prazo schedule-to-start reiniciado, se configurado. Caso contrário, um tempo limite terminal é registrado.
+Para uma atividade em fila, o primeiro prazo começa quando o runtime a reivindica, antes da entrega da tarefa e da execução do código do usuário. Cada heartbeat aceito define o prazo como seu horário registrado pelo runtime mais o tempo limite configurado. Ele não soma tempo ao prazo anterior nem abre uma nova janela quando o chamador recebe a resposta. Reserve margem para entrega, trabalho limitado, pausas de execução, latência das requisições e novas tentativas de transporte. Envie heartbeats bem antes de a janela expirar. Uma tentativa expirada ou substituída não recupera autoridade ao enviar um heartbeat atrasado. Se restarem tentativas, uma nova é agendada com o prazo schedule-to-start reiniciado, se configurado. Caso contrário, um tempo limite terminal é registrado.
 
 ```php
 use Workflow\V2\Activity;

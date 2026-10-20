@@ -40,6 +40,18 @@ Inside the activity, `activityId()`, `attemptId()`, and `attemptCount()` expose 
 
 Polyglot workers can heartbeat via the HTTP worker bridge without constructing the PHP activity class — see the [worker protocol](/docs/polyglot/worker-protocol) for the endpoints.
 
+## Cadence and receipts {#heartbeat-cadence-and-receipts}
+
+For a queued activity, the first heartbeat deadline starts when the runtime claims it, before task delivery and user code. A recorded heartbeat sets the next deadline to its runtime timestamp plus `heartbeatTimeout`. Sending the request or receiving its response does not start another full window. See [Heartbeat timeout](./timeouts.md#heartbeat-timeout).
+
+Choose a cadence well inside that window and bound the work between calls. With a 15-second timeout, a target around five seconds can be a starting point only if delivery, each batch or I/O call, scheduling pauses, network latency and transport retries fit the remaining budget. Measure those delays and leave margin. This is planning guidance, not a guaranteed safe interval. An expired or replaced attempt cannot recover its lease by sending a late heartbeat.
+
+There is no automatic progress-heartbeat schedule or SDK batching guarantee. Worker-registration heartbeats and ownership-status probes do not publish activity progress. Each accepted progress heartbeat adds durable history, so avoid reporting every tiny operation.
+
+Embedded `Activity::heartbeat()` returns `void`. Invalid progress and storage failures can throw. A normal return is not an acknowledgement object: a closed, expired or replaced attempt can return without recording another heartbeat. Service-mode error behavior differs between direct client calls and supervised workers. See the [PHP](../polyglot/php.md#activity-heartbeats), [Python](../polyglot/python.md#activity-heartbeat-requests) and [Rust](../polyglot/rust.md#activity-heartbeats) guides.
+
+Heartbeat progress does not atomically commit an external batch or fence external effects. A retry-safe application checkpoint needs its own durable commit, stable logical job key and idempotency or external fencing. A replacement attempt's acknowledged-checkpoint accessor is tracked separately in [the checkpoint feature](https://github.com/durable-workflow/.github/issues/218).
+
 ## Progress Snapshots
 
 Both `Activity::heartbeat()` and `ActivityTaskBridge::heartbeat()` accept an optional bounded progress snapshot:

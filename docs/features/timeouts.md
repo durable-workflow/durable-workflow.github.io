@@ -218,7 +218,7 @@ The deadline is computed once at scheduling time and never resets. When it expir
 
 ### Heartbeat timeout
 
-The first deadline starts when the runtime claims the activity, before task delivery and user code. Each accepted heartbeat sets the deadline to its recorded runtime timestamp plus the configured timeout. It does not add time to the previous deadline or start a fresh window when the caller receives the response. Leave room for delivery, bounded work, scheduling pauses, request latency and transport retries. Send heartbeats well before the window expires. An expired or replaced attempt cannot regain authority by sending a late heartbeat. If retry attempts remain, a new attempt is scheduled with a reset schedule-to-start deadline (if configured). Otherwise a terminal timeout is recorded.
+For a queued activity, the first deadline starts when the runtime claims it, before task delivery and user code. Each accepted heartbeat sets the deadline to its recorded runtime timestamp plus the configured timeout. It does not add time to the previous deadline or start a fresh window when the caller receives the response. Leave room for delivery, bounded work, scheduling pauses, request latency and transport retries. Send heartbeats well before the window expires. An expired or replaced attempt cannot regain authority by sending a late heartbeat. If retry attempts remain, a new attempt is scheduled with a reset schedule-to-start deadline (if configured). Otherwise a terminal timeout is recorded.
 
 ```php
 use Workflow\V2\Activity;
