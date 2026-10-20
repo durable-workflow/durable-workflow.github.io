@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const {createHash} = require('node:crypto');
+const {test} = require('node:test');
 const {checkTranslationUpdates} = require('./check-doc-translation-updates');
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'doc-translation-updates-'));
@@ -24,26 +25,26 @@ function check() {
   return checkTranslationUpdates(root, [`docs/${relative}`], ['de']);
 }
 
-try {
-  write(path.join(root, 'docs', relative), source);
-  assert.throws(check, /missing translation/);
-  write(translated, source);
-  record(source);
-  assert.throws(check, /unchanged English copy/);
+test('translation presence, translated content, current review and complete locale coverage', () => {
+  try {
+    write(path.join(root, 'docs', relative), source);
+    assert.throws(check, /missing translation/);
+    write(translated, source);
+    record(source);
+    assert.throws(check, /unchanged English copy/);
 
-  write(translated, translation);
-  assert.equal(check(), 1);
-  record('an older English source');
-  assert.throws(check, /review and update/);
-  fs.unlinkSync(review);
-  assert.throws(check, /review and update/);
+    write(translated, translation);
+    assert.equal(check(), 1);
+    record('an older English source');
+    assert.throws(check, /review and update/);
+    fs.unlinkSync(review);
+    assert.throws(check, /review and update/);
 
-  record(source);
-  assert.throws(() => checkTranslationUpdates(root, [`docs/${relative}`], ['de', 'fr']),
-    /fr: missing translation/);
-  assert.equal(checkTranslationUpdates(root, ['README.md'], ['de', 'fr']), 0);
-} finally {
-  fs.rmSync(root, {recursive: true, force: true});
-}
-
-console.log('PASS translation presence, English-copy refusal, current review, stale/missing review and additional-locale refusal.');
+    record(source);
+    assert.throws(() => checkTranslationUpdates(root, [`docs/${relative}`], ['de', 'fr']),
+      /fr: missing translation/);
+    assert.equal(checkTranslationUpdates(root, ['README.md'], ['de', 'fr']), 0);
+  } finally {
+    fs.rmSync(root, {recursive: true, force: true});
+  }
+});

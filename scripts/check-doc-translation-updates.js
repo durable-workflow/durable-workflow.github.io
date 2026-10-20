@@ -55,7 +55,8 @@ function checkTranslationUpdatesFromGit(root) {
     throw new Error('DOCS_TRANSLATION_BASE must be an existing Git commit SHA.');
   }
 
-  const changed = execFileSync('git', [
+  // Use the runner's system Git rather than a repository-controlled PATH entry.
+  const changed = execFileSync('/usr/bin/git', [
     'diff', '--name-only', '--diff-filter=ACMR', '-z', base, 'HEAD', '--', 'docs/',
   ], {cwd: root, encoding: 'utf8'}).split('\0').filter(Boolean);
   const count = checkTranslationUpdates(root, changed);
