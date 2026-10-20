@@ -30,7 +30,7 @@ L'idée centrale est que Durable Workflow sépare deux responsabilités :
 
 Cette séparation compte avant même d'introduire un service d'appariement
 distinct. Elle permet aux opérateurs de considérer la découverte des tâches
-prêtes, la propriété des files, le renouvellement des baux et la
+prêtes, la propriété des files, la rotation des baux et la
 contre-pression comme un rôle explicite, plutôt que comme des effets
 accessoires de chaque processus worker.
 

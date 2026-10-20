@@ -43,7 +43,7 @@ de démarrer le workflow. La réussite exige le résultat terminé et l'historiq
 attendus. Le terminal affiche alors le lien exact de l'exécution Waterline
 locale et le chemin des preuves JSON structurées.
 
-Installation du paquet, démarrage rapide intégré, référence API et exemple de
+Installation du paquet, démarrage rapide présenté ci-dessous, référence API et exemple de
 dépôt ci-dessous restent les parcours directs sans Sample App.
 
 <ProductPromotion source="docs-v2-python-sdk">
@@ -800,7 +800,7 @@ return (yield from ctx.saga().run(forward))
 
 Après échec, la saga exécute des commandes d'activité ordinaires séquentiellement
 dans l'ordre inverse d'enregistrement. Le `cancel_workflow` terminal ne reprend
-pas le workflow pour compenser. L'assistant s'arrête au premier échec de
+pas le workflow pour compenser. La fonction utilitaire s'arrête au premier échec de
 compensation. `SagaCompensationFailed` conserve échec initial, échec de
 compensation, type d'activité et ordre d'enregistrement déterministe comme
 diagnostics structurés.
@@ -983,7 +983,7 @@ Pendant l'exécution des tâches :
 
 - les types de workflow ou d'activité inconnus sont signalés au serveur comme
   échecs de tâche, sans rester cachés dans les journaux locaux
-- `NonRetryableError` marque les échecs d'activité comme permanents
+- `NonRetryableError` marque les échecs d'activité comme non réessayables
 - `ActivityCancelled` se propage comme résultat d'annulation
 - les exceptions d'activité non gérées sont réessayables sauf indication
   contraire de la politique ou de l'échéance serveur
@@ -1054,7 +1054,7 @@ logging.getLogger("durable_workflow.workflow.replay").setLevel(logging.INFO)
 - **INFO** : enregistrement worker, débuts/fins de tâche, achèvement de workflow
 - **DEBUG** : charges utiles détaillées tronquées, cycles d'interrogation
 - **WARNING** : erreurs réessayables, appels API échoués, types inconnus
-- **ERROR** : échecs permanents, arrêts anormaux de relecture
+- **ERROR** : échecs non réessayables, arrêts anormaux de relecture
 
 ### Journalisation consciente de la relecture {#replay-aware-logging}
 

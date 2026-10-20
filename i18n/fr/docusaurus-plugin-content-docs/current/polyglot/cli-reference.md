@@ -182,7 +182,7 @@ dw server:info --output=json \
 Consultez la [référence de l'API Server](/docs/polyglot/server-api-reference)
 pour le contrat de disponibilité sous-jacent.
 
-### Mise à niveau automatique {#self-upgrade}
+### Mise à jour de la CLI {#self-upgrade}
 
 `dw upgrade` télécharge l'artefact de la plateforme depuis la version GitHub
 `durable-workflow/cli`, le vérifie avec son `SHA256SUMS` et remplace le binaire
