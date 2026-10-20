@@ -260,7 +260,7 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/system/retention?limit=100" \
 
 Die Änderung ist weder Bereinigungsvorschau noch Schonfrist: Gewöhnliche Worker-Heartbeats können danach bereits eine kleine gedrosselte Bereinigung auslösen. Geplantes `history:prune` und ausdrückliche Systemdurchläufe können ebenfalls geeignete Läufe bearbeiten. Sichern und prüfen Sie **vor** Verkürzung der Regel.
 
-#### Bereinigung und Schutz {#cleanup-and-protections}
+#### Bereinigung und Schutz {#retention-cleanup-and-protections}
 
 `POST /api/system/retention/pass` ohne `run_ids` wählt abgelaufene Läufe nach aktueller Regel bis zur Grenze aus. Prüfen Sie `pruned`, `skipped`, `failed` und laufbezogene Gründe, um Auswahl und abgeschlossene Löschung zu unterscheiden.
 

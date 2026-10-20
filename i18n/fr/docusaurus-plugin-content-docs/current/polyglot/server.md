@@ -260,7 +260,7 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/system/retention?limit=100" \
 
 La modification n’est ni une prévisualisation du nettoyage ni un délai de grâce : les heartbeats ordinaires peuvent déjà déclencher un petit passage de rétention limité après le changement. Les tâches planifiées `history:prune` et passages système explicites peuvent aussi traiter les runs éligibles. Sauvegardez et vérifiez **avant** de raccourcir la politique.
 
-#### Nettoyage et protections {#cleanup-and-protections}
+#### Nettoyage et protections {#retention-cleanup-and-protections}
 
 `POST /api/system/retention/pass` sans `run_ids` sélectionne les runs expirés selon la politique actuelle, jusqu’à sa limite. Inspectez `pruned`, `skipped`, `failed` et les motifs par run pour distinguer sélection et suppression réellement terminée.
 
