@@ -43,5 +43,8 @@
   "polyglot/task-matching-dispatch.md": "6cae26eeb95ee6f1e96f6ccea0846832de4e6ce1c01896ee70695ee2e3f29825",
   "polyglot/task-queue-admission.md": "a8cd766b03094def66507f42829eee919e12366fd5942ffd7337f0163e1dc831",
   "polyglot/worker-build-id-rollout.md": "88a2ec730ed0b2f58ff5d49aa1041c758ec491aceda4165fe1f3b06fcfee0278",
-  "polyglot/worker-compatibility-routing.md": "e2cdfdbe8b295ba511f26345318e847611c1f2e67dafdf51441f09e93cb939ca"
+  "polyglot/worker-compatibility-routing.md": "e2cdfdbe8b295ba511f26345318e847611c1f2e67dafdf51441f09e93cb939ca",
+  "contribute-a-sample.md": "d250d8c63d448e32d3160ff7a2900e7a270dcbd9cda22cf3af46cdf219395ea3",
+  "sample-app.md": "070e0d4523f8228cf4492d2a590df8cd7d121a8c7b521f559629975719fdf515",
+  "sdk-neutrality.md": "7b0714c123ade4904591870fc20e9a797da1e5485b2a6c87ca3eaa00c5de6ed6"
 }
