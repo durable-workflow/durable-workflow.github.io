@@ -17,6 +17,7 @@
   "constraints/overview.md": "fd6c842c6c22d6f0df37a52de15ca74b34664f5ecd78af0c08b1e0cdb9a2be1f",
   "constraints/structural-limits.md": "dec64eb7c8261b64a687938072e73dadf519511b132fc7b6542c96f44a8d3037",
   "constraints/workflow-constraints.md": "a69c8a118dc790a5d7b6c91806cb7ceca3015004a0fe549aee3094b09cbf17ad",
+  "contribute-a-sample.md": "d250d8c63d448e32d3160ff7a2900e7a270dcbd9cda22cf3af46cdf219395ea3",
   "defining-workflows/activities.md": "05b46f73477a0bbd5f21d17ac37def8a8eac53f1e629155805c98cc46e75b418",
   "defining-workflows/passing-data.md": "064658f2d1cf643b4bba11020f9143af61b05f1ef5c5b9a9e0dd43fa982fb3e8",
   "defining-workflows/starting-workflows.md": "722b80454b577b0715ff50db70c7cda2cd02c34c505dd1219a83307852d325a4",
@@ -24,6 +25,8 @@
   "defining-workflows/workflow-id.md": "91b94211e2f8f405895ad82cfe2ef9baadb7a2cbd06e9c1e7aa6362231e0d424",
   "defining-workflows/workflow-status.md": "8e8cb27ff44c890d489d89bf166375acfdfaecabd990a2235e106fab1592d529",
   "defining-workflows/workflows.md": "f467bc73de32aa5d722c61ce085065460382ae7dd44cea4625847d9fcdc4c97c",
+  "deployment.md": "2eadca4ea3703d0b09bb7e885eaafe84dc2f7eb7c1a9904dc5649f086f629258",
+  "failures-and-recovery.md": "0d2b8c71b7b54a0160c9bd631348a8223c0d05749f7224ec3ea5feaf74a0a3b5",
   "features/activity-execution-model.md": "e8c37520ae46a7efb30438f4fc06bf893c1df430cb1f92c48963697adaf09082",
   "features/cancel-and-terminate.md": "c678fc7a0c9b11f0e1bee295aff259de9803219c0aa6769fb801622799e7deb1",
   "features/child-workflows.md": "2e842089e2e25be0226d927dc9cf4934014178087465ee0223c6e303d128e251"
