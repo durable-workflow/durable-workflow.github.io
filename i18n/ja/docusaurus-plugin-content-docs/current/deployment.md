@@ -333,7 +333,7 @@ curl -H "Authorization: Bearer $DW_ADMIN_TOKEN" http://localhost:8080/api/cluste
 
 LB が切替中の受付を一元判断します。
 
-- **`GET /api/ready`** に接続し、`/api/health` だけにしない。health は HTTP 提供、ready は永続 DB 利用と Redis 起動高速化の正常・劣化を示します。DB 停止時は全ノードで正しく失敗します。LB は全停止状態を許容し、古い「最後の正常」一覧に戻ってはいけません。
+- **`GET /api/ready`** に接続し、`/api/health` だけにしない。health は HTTP 提供、ready は DB 接続と設定された準備チェックを報告し、Redis 起動高速化の正常・劣化も示します。すべてのワークフロー SQL 操作や書き込み容量を検証するものではありません。DB 停止時は全ノードで正しく失敗します。LB は全停止状態を許容し、古い「最後の正常」一覧に戻ってはいけません。
 - 間隔 5～10 秒、除外しきい値は連続 2～3 回失敗。
 - スティッキー不要。外部 Worker が `server-a` で取得し `server-b` で完了することを小規模 smoke が実証。
 - Redis のみの切替は DB 永続経路が使える限り全ノード準備正常。`checks.cache.status=warning`、`checks.cache.degraded_capability=long_poll_wake_acceleration` で示し、この警告で除外しない。
@@ -426,7 +426,7 @@ scripts/conformance/single-region-failover-published-artifacts.sh \
 ヘルスと準備状態の両方を使います。
 
 - `GET /api/health`: HTTP を提供。
-- `GET /api/ready`: マイグレーション・既定名前空間を含む設定ランタイム依存を利用可能。
+- `GET /api/ready`: DB 接続、マイグレーション、既定名前空間など設定された依存チェックを報告。すべてのワークフロー SQL 操作や書き込み余力を証明するものではありません。
 - `GET /api/cluster/info`: 認証済みクライアントがビルド、両プロトコル、コーデック、機能を検出可能。
 - `POST /api/worker/register`: 期待名前空間・キューへ認証可能。
 

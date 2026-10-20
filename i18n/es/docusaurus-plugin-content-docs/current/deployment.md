@@ -511,8 +511,10 @@ El balanceador delante de API es el punto único de admisión de tráfico durant
 una conmutación:
 
 - Configúralo con **`GET /api/ready`**, no solo `/api/health`. Salud solo prueba
-  HTTP; disponibilidad prueba acceso a la base duradera e informa del estado de
-  aceleración Redis. Ante una caída de base, todos los nodos fallan correctamente.
+  HTTP; disponibilidad informa de conectividad y comprobaciones configuradas,
+  incluido el estado de aceleración Redis. No prueba todas las operaciones SQL
+  de workflows ni verifica capacidad de escritura. Ante una caída de base,
+  todos los nodos fallan correctamente.
   El balanceador DEBE tolerar que todos estén caídos sin recurrir a una lista
   antigua de nodos «conocidos como sanos».
 - Usa intervalos de 5–10 segundos y retira tras 2–3 fallos consecutivos.
@@ -698,8 +700,10 @@ una región y no aporta esas garantías multirregión.
 Usa comprobaciones de salud y disponibilidad:
 
 - `GET /api/health` demuestra que el proceso sirve HTTP.
-- `GET /api/ready` demuestra que puede usar sus dependencias configuradas,
-  incluidas migraciones y namespace predeterminado.
+- `GET /api/ready` informa de las comprobaciones de dependencias configuradas,
+  incluidas conectividad, migraciones y disponibilidad del namespace
+  predeterminado. No prueba todas las operaciones SQL de workflows ni la
+  capacidad de escritura disponible.
 - `GET /api/cluster/info` demuestra que un cliente autenticado descubre la
   identidad, protocolos de control y workers, códecs y capacidades.
 - `POST /api/worker/register` demuestra que los workers se autentican en el

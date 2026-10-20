@@ -528,8 +528,10 @@ Le répartiteur devant les nœuds API est le point de décision unique d'admissi
 pendant un basculement :
 
 - Utilisez **`GET /api/ready`**, au-delà de `/api/health`. Ce dernier prouve
-  seulement HTTP. `/api/ready` prouve l'accès à la base durable et signale
-  l'accélération Redis saine ou dégradée. Pendant une panne de base, il échoue
+  seulement HTTP. `/api/ready` indique la connectivité et les contrôles de
+  disponibilité configurés, dont l'accélération Redis saine ou dégradée.
+  Il ne teste pas toutes les opérations SQL des workflows ni la capacité
+  d'écriture. Pendant une panne de base, il échoue
   correctement partout. Le répartiteur DOIT accepter cet état sans retomber
   sur une ancienne liste de nœuds supposés sains.
 - Utilisez un intervalle de 5 à 10 secondes et un seuil de retrait de 2 à 3
@@ -719,8 +721,10 @@ fournit pas ces garanties multirégion.
 Utilisez santé et disponibilité ensemble :
 
 - `GET /api/health` prouve que le processus sert HTTP.
-- `GET /api/ready` prouve l'accès aux dépendances configurées, y compris
-  migrations et espace de noms par défaut.
+- `GET /api/ready` rapporte les contrôles de dépendances configurés, dont la
+  connectivité, les migrations et la disponibilité de l'espace de noms par
+  défaut. Il ne prouve ni chaque opération SQL de workflow ni la capacité
+  d'écriture disponible.
 - `GET /api/cluster/info` prouve qu'un client authentifié découvre identité du
   build, protocoles du plan de contrôle et worker, codecs et capacités serveur.
 - `POST /api/worker/register` prouve l'authentification worker dans l'espace de

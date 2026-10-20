@@ -552,9 +552,10 @@ O balanceador de carga à frente dos nós de API é o único ponto de decisão
 para admissão de tráfego durante um failover:
 
 - Conecte o balanceador a **`GET /api/ready`**, além de `/api/health`.
-  `/api/health` só comprova que o processo atende HTTP. `/api/ready` comprova
-  que o servidor consegue usar seu banco de dados durável e informa se a
-  aceleração de reativação do Redis está saudável ou degradada. Durante uma
+  `/api/health` só comprova que o processo atende HTTP. `/api/ready` informa
+  conectividade e verificações de prontidão configuradas, incluindo se a
+  aceleração de reativação do Redis está saudável ou degradada. Ele não testa
+  todas as operações SQL de workflows nem verifica capacidade de escrita. Durante uma
   indisponibilidade do banco, `/api/ready` falha corretamente em todos os nós.
   O balanceador DEVE tolerar o estado de todos indisponíveis em vez de recorrer
   a uma lista desatualizada de "últimos nós conhecidos como saudáveis".
@@ -775,8 +776,9 @@ risco do produto. O [contrato atual de runtime gerenciado do Cloud](/docs/polygl
 Use verificações de integridade e de prontidão:
 
 - `GET /api/health` comprova que o processo está atendendo HTTP.
-- `GET /api/ready` comprova que o servidor consegue usar suas dependências
-  configuradas de runtime, incluindo migrações e prontidão do namespace padrão.
+- `GET /api/ready` informa as verificações de dependências configuradas,
+  incluindo conectividade, migrações e prontidão do namespace padrão. Não
+  comprova todas as operações SQL de workflows nem a capacidade de escrita disponível.
 - `GET /api/cluster/info` comprova que um cliente autenticado consegue descobrir
   a identidade do build, os protocolos do plano de controle e de workers, os
   codecs de payload e as capacidades do servidor.

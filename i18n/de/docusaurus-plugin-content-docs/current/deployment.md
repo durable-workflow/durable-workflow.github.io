@@ -359,7 +359,7 @@ Der beabsichtigte Engine-Vertrag definiert begrenzte Wiederherstellungsziele pro
 
 Der Load Balancer vor den API-Knoten ist der einzige Entscheidungspunkt für Verkehrszulassung während eines Failovers:
 
-- Verbinden Sie ihn mit **`GET /api/ready`**, nicht nur mit `/api/health`. `/api/health` belegt ausschließlich HTTP-Bedienung. `/api/ready` belegt die Nutzbarkeit der dauerhaften Datenbank und meldet gesunde oder beeinträchtigte Redis-Weckbeschleunigung. Bei Datenbankausfall schlägt `/api/ready` korrekt auf jedem Knoten fehl. Der Load Balancer MUSS den Zustand vollständig ausgefallener Knoten tolerieren, statt auf eine veraltete zuletzt gute Liste zurückzufallen.
+- Verbinden Sie ihn mit **`GET /api/ready`**, nicht nur mit `/api/health`. `/api/health` belegt ausschließlich HTTP-Bedienung. `/api/ready` meldet Datenbankverbindung und konfigurierte Bereitschaftsprüfungen einschließlich gesunder oder beeinträchtigter Redis-Weckbeschleunigung. Es testet nicht jede Workflow-SQL-Operation und prüft keine Schreibkapazität. Bei Datenbankausfall schlägt `/api/ready` korrekt auf jedem Knoten fehl. Der Load Balancer MUSS den Zustand vollständig ausgefallener Knoten tolerieren, statt auf eine veraltete zuletzt gute Liste zurückzufallen.
 - Prüfintervall 5–10 Sekunden und Entfernungsschwelle 2–3 aufeinanderfolgende Fehler verwenden.
 - Keine Sticky Sessions verlangen. Der Kleincluster-Funktionstest belegt, dass ein externer Worker auf `server-a` pollen und auf `server-b` abschließen kann.
 - Bei reinem Redis-Failover bleibt die Bereitschaft auf jedem Knoten grün, solange die datenbankgestützten dauerhaften Pfade verfügbar sind. Die Beeinträchtigung der Beschleunigungsschicht erscheint als `checks.cache.status=warning` mit `checks.cache.degraded_capability=long_poll_wake_acceleration`. Konfigurieren Sie keine Knotenentfernung aufgrund dieser Warnung.
@@ -452,7 +452,7 @@ Für Selbsthosting bleiben Aktiv/Passiv und Aktiv/Aktiv über mehrere Regionen, 
 Verwenden Sie Zustands- und Bereitschaftsprüfungen:
 
 - `GET /api/health` belegt HTTP-Bedienung durch den Prozess.
-- `GET /api/ready` belegt die Nutzbarkeit konfigurierter Laufzeitabhängigkeiten einschließlich Migrationen und Standard-Namespace-Bereitschaft.
+- `GET /api/ready` meldet konfigurierte Abhängigkeitsprüfungen einschließlich Datenbankverbindung, Migrationen und Bereitschaft des Standard-Namespace. Es beweist weder jede Workflow-SQL-Operation noch verfügbare Schreibkapazität.
 - `GET /api/cluster/info` belegt, dass ein authentifizierter Client Build-Identität, Control-Plane-Protokoll, Worker-Protokoll, Nutzdaten-Codecs und Serverfähigkeiten ermitteln kann.
 - `POST /api/worker/register` belegt, dass Worker sich im erwarteten Namespace und in der erwarteten Aufgabenwarteschlange authentifizieren können.
 

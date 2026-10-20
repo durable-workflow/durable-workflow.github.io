@@ -318,7 +318,7 @@ curl -H "Authorization: Bearer $DW_ADMIN_TOKEN" http://localhost:8080/api/cluste
 
 API 节点前的负载均衡器是故障转移期间流量准入的唯一决策点：
 
-- 将负载均衡器连接到 **`GET /api/ready`**，不要仅用 `/api/health`。`/api/health` 仅证明进程能提供 HTTP 服务；`/api/ready` 证明 Server 能使用持久数据库，并报告 Redis 唤醒加速是健康还是降级。数据库中断时，每个节点的 `/api/ready` 都会正确失败；负载均衡器**必须**容忍全部不可用状态，不能回退到过期的“上次已知正常”节点列表。
+- 将负载均衡器连接到 **`GET /api/ready`**，不要仅用 `/api/health`。`/api/health` 仅证明进程能提供 HTTP 服务；`/api/ready` 报告数据库连接和已配置的就绪检查，包括 Redis 唤醒加速是健康还是降级。它不会验证每种工作流 SQL 操作或写入容量。数据库中断时，每个节点的 `/api/ready` 都会正确失败；负载均衡器**必须**容忍全部不可用状态，不能回退到过期的“上次已知正常”节点列表。
 - 使用 5–10 秒检查间隔，以及连续失败 2–3 次的移除阈值。
 - 不要求粘性会话；小型集群冒烟测试证明外部 Worker 能在 `server-a` 轮询并在 `server-b` 完成。
 - 仅 Redis 故障转移期间，只要基于数据库的持久路径可用，每个节点仍保持就绪。加速层降级表现为 `checks.cache.status=warning` 和 `checks.cache.degraded_capability=long_poll_wake_acceleration`；不要配置负载均衡器因该警告移除节点。
@@ -411,7 +411,7 @@ scripts/conformance/single-region-failover-published-artifacts.sh \
 同时使用健康和就绪检查：
 
 - `GET /api/health` 证明进程正在提供 HTTP 服务。
-- `GET /api/ready` 证明 Server 能使用配置的运行时依赖，包括迁移和默认命名空间就绪状态。
+- `GET /api/ready` 报告已配置的依赖检查，包括数据库连接、迁移和默认命名空间就绪状态；它不证明每种工作流 SQL 操作正常或具备可用写入容量。
 - `GET /api/cluster/info` 证明已验证客户端能发现构建身份、控制平面协议、Worker 协议、负载编解码器和 Server 能力。
 - `POST /api/worker/register` 证明 Worker 能通过身份验证进入预期命名空间和任务队列。
 

@@ -546,9 +546,10 @@ The load balancer in front of the API nodes is the single decision point
 for traffic admission during a failover:
 
 - Wire the load balancer to **`GET /api/ready`**, not `/api/health` alone.
-  `/api/health` only proves the process is serving HTTP; `/api/ready` proves
-  the server can use its durable database and reports whether Redis wake
-  acceleration is healthy or degraded. During a database outage `/api/ready`
+  `/api/health` only proves the process is serving HTTP; `/api/ready` reports
+  database connectivity and configured readiness checks, including whether
+  Redis wake acceleration is healthy or degraded. It does not exercise every
+  workflow SQL operation or verify write capacity. During a database outage `/api/ready`
   correctly fails on every node — the load balancer MUST tolerate the all-down
   state rather than fall back to a stale "last known good" roster.
 - Use a check interval of 5–10 seconds and a removal threshold of 2–3
@@ -768,8 +769,9 @@ single-region and does not supply those multi-region guarantees.
 Use both health and readiness checks:
 
 - `GET /api/health` proves the process is serving HTTP.
-- `GET /api/ready` proves the server can use its configured runtime
-  dependencies, including migrations and default namespace readiness.
+- `GET /api/ready` reports configured dependency checks, including database
+  connectivity, migrations and default namespace readiness. It does not prove
+  every workflow SQL operation or available write capacity.
 - `GET /api/cluster/info` proves an authenticated client can discover build
   identity, control-plane protocol, worker protocol, payload codecs, and server
   capabilities.
