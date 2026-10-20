@@ -46,7 +46,7 @@ Avro は Durable Workflow 2.0 で唯一のペイロードコーデックです�
 
 ## 再現可能なベンチマーク {#repeatable-benchmark}
 
-各 SDK は同じ代表値のベンチマークを同梱し、選択した本番経路の予算を強制します。
+各 SDK は同じ代表値のベンチマークを同梱し、選択した本番経路に処理時間の上限を適用します。
 
 ```bash
 # PHP SDK checkout
@@ -59,7 +59,7 @@ python benchmarks/avro_value.py --enforce
 cargo run --release --example avro_value_benchmark -- --enforce
 ```
 
-JSON 出力は、コンパクトな JSON、廃止した JSON-in-Avro ラッパー、固定型付きスキーマを比較します。生の datum、フレーム付きペイロード、実際の `{codec, blob}` HTTP エンベロープのサイズと、アダプター、エンコード、デコードを含むエンドツーエンドのレイテンシを報告します。`AVRO_VALUE_ENCODE_BUDGET_US` と `AVRO_VALUE_DECODE_BUDGET_US` で、認定用ランナーの既定値を厳しくできます。リリース CI は予算を強制してこれらのコマンドを実行します。本番経路のリグレッションは、リリース前に説明または修正が必要です。古いラッパーの実装はベンチマーク内だけに存在し、ランタイムの互換経路にはなりません。
+JSON 出力は、コンパクトな JSON、廃止した JSON-in-Avro ラッパー、固定型付きスキーマを比較します。生の datum、フレーム付きペイロード、実際の `{codec, blob}` HTTP エンベロープのサイズと、アダプター、エンコード、デコードを含むエンドツーエンドのレイテンシを報告します。`AVRO_VALUE_ENCODE_BUDGET_US` と `AVRO_VALUE_DECODE_BUDGET_US` で、認定用ランナーの既定の時間上限を厳しくできます。リリース CI は処理時間の上限を適用してこれらのコマンドを実行します。本番経路のリグレッションは、リリース前に説明または修正が必要です。古いラッパーの実装はベンチマーク内だけに存在し、ランタイムの互換経路にはなりません。
 
 ## デプロイ前チェック {#deployment-preflight}
 

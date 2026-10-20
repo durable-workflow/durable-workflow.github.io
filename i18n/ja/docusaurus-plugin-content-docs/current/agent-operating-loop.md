@@ -8,11 +8,11 @@ tags:
   - mcp
   - operations
 keywords:
-  - durable workflow agent loop
-  - ai workflow debugging
-  - mcp workflows
-  - waterline history export
-  - dw json output
+  - Durable Workflow エージェント運用ループ
+  - AI ワークフローのデバッグ
+  - MCP ワークフロー
+  - Waterline 履歴エクスポート
+  - dw JSON 出力
 ---
 
 # エージェント運用ループ {#agent-operating-loop}

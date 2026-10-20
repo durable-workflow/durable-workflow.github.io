@@ -8,10 +8,10 @@ tags:
   - evaluation
   - polyglot
 keywords:
-  - Is Durable Workflow good for AI agents
-  - self-hosted agent workflow engine
-  - Python Rust durable workflows
-  - machine-readable workflow diagnostics
+  - Durable Workflow と AI エージェントの適合性
+  - セルフホストのエージェント用ワークフローエンジン
+  - Python Rust 永続ワークフロー
+  - 機械可読なワークフロー診断
 ---
 
 # Durable Workflow は AI エージェントに適したワークフローエンジンか {#is-durable-workflow-a-good-workflow-engine-for-ai-agents}

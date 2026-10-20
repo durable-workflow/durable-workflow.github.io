@@ -7,9 +7,9 @@ tags:
   - agents
   - llms
 keywords:
-  - durable workflow ai docs
+  - Durable Workflow AI ドキュメント
   - llms.txt
-  - ai coding assistants
+  - AI コーディングアシスタント
 ---
 
 # AI 支援による開発 {#ai-assisted-development}

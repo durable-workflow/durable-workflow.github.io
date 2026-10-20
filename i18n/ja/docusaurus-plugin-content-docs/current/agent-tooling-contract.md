@@ -8,10 +8,10 @@ tags:
   - mcp
   - operations
 keywords:
-  - durable workflow agent tooling
-  - ai tooling contract
-  - mcp workflow diagnostics
-  - machine readable workflow operations
+  - Durable Workflow エージェントツール
+  - AI ツール契約
+  - MCP ワークフロー診断
+  - 機械可読なワークフロー操作
 ---
 
 # エージェントツール契約 {#agent-tooling-contract}
