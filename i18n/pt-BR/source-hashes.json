@@ -13,5 +13,10 @@
   "polyglot/avro-value-protocol.md": "602e66c6288c1dd69d2b400c64e4739ad3a0493b5be269cee40f7848b11f260a",
   "polyglot/cancellation.md": "a08aca914d8211d32184fd76f14e4f8bf47d40656e55364923013e3cece3b70d",
   "polyglot/workflow-streams.md": "5675a8ea1b9d0b1f7223fecb90b3b048d3006670bf505950bc783709287a6432",
-  "polyglot/worker-compatibility-routing.md": "e2cdfdbe8b295ba511f26345318e847611c1f2e67dafdf51441f09e93cb939ca"
+  "polyglot/worker-compatibility-routing.md": "e2cdfdbe8b295ba511f26345318e847611c1f2e67dafdf51441f09e93cb939ca",
+  "polyglot/prerelease-history-migration.md": "a57f05f492228a8a67791f9152648a1e5f80856325b78777cf63b6ef49b7413c",
+  "polyglot/rust-cloud-quickstart.md": "2303434fc9302a81a8381ad4836423ef9952eb3201a4574c432254e3cb68c5f3",
+  "polyglot/task-matching-dispatch.md": "6cae26eeb95ee6f1e96f6ccea0846832de4e6ce1c01896ee70695ee2e3f29825",
+  "polyglot/task-queue-admission.md": "a8cd766b03094def66507f42829eee919e12366fd5942ffd7337f0163e1dc831",
+  "polyglot/worker-build-id-rollout.md": "88a2ec730ed0b2f58ff5d49aa1041c758ec491aceda4165fe1f3b06fcfee0278"
 }
