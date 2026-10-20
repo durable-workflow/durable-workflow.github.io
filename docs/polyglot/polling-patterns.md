@@ -15,6 +15,7 @@ Poll an external job in an activity, never by making network requests in workflo
 | One long activity with heartbeats | Holds its activity slot throughout the wait | Each accepted heartbeat adds a history event. Use finite activity deadlines and a bounded downstream request timeout; heartbeats do not extend the whole execution deadline. |
 | Activity check followed by a durable timer | Releases activity slots between checks | Each check adds activity events and each interval adds timer events. Workflow code can decide whether to stop, compensate or continue as new between checks. |
 | A dedicated polling child workflow | The child uses the slots required by its chosen pattern | Moves polling history into the child; adds child start/resolution events to the parent. It does not make the child history or execution free. Choose the parent-close policy explicitly. |
+| Submit once, then receive a callback signal | Releases the activity slot after submission; the workflow waits durably | Submission, signal admission/application and any deadline-backed wait add history. Requires authenticated correlation and application duplicate handling. |
 
 Use short, retry-safe checks. A callback blocked in a downstream request cannot become responsive merely because its workflow has a timer or cancellation policy.
 
