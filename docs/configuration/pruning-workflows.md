@@ -36,6 +36,13 @@ that a run can be resumed from that file alone.
 Use the same procedure for an embedded application's retention job and a Server
 namespace. The selection and cleanup authority differ, as described below.
 
+The examples were checked with published PHP Server **2.9.5**, its loaded
+Workflow **2.6.2**, and normally installed Python SDK **2.6.1**. The
+[published-artifact verification](https://github.com/durable-workflow/durable-workflow.github.io/issues/276#issuecomment-6285271861)
+covered close-time pagination, individual run exports, checksums and structural
+verification, archive/`forever` holds, and real `pruneRun()` cleanup. It did not
+qualify a full application replay or restoration of external objects.
+
 1. **Establish a safe window.** Run the exporter well inside the retention
    period, with time for retries, outages and a verification backlog. For
    example, a daily export with 30-day database retention leaves more recovery
@@ -67,6 +74,12 @@ namespace. The selection and cleanup authority differ, as described below.
    after every candidate is accounted for. Re-scan overlapping close-time
    windows and deduplicate by namespace and run id. Do not overwrite a verified
    full bundle with a later incomplete export.
+
+These are application-owned steps, not a supported self-contained archive
+operation. [Server #520](https://github.com/durable-workflow/server/issues/520)
+tracks the missing product workflow that copies, retains and cold-verifies all
+required external bytes. A successful reference-only export or manual checksum
+check does not complete that requirement.
 
 :::warning Pruning is irreversible without a recovery copy
 

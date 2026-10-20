@@ -276,6 +276,8 @@ Para manter um registro além da janela limitada de 1 a 365 dias, escolha entre 
 
 A limpeza remove histórico, detalhes relacionados e payloads externos elegíveis. Uma ampliação posterior da política não pode recuperá-los. O [guia de limpeza incorporada](../configuration/pruning-workflows.md) descreve um processo separado controlado pela aplicação; sua API de limpeza não aplica a política de retenção por namespace do Server. Para outro runtime, confirme o comportamento de retenção antes de aplicar este procedimento do PHP Server.
 
+As exportações atuais preservam referências externas, não cópias independentes dos objetos. O fluxo de arquivo autossuficiente verificado é solicitado em [Server #520](https://github.com/durable-workflow/server/issues/520); uma exportação com checksum não o fornece. Recuse também históricos já limpos em vez de confiar no indicador `history_complete`: o caso conhecido de falsa completude permanece aberto em [Workflow #856](https://github.com/durable-workflow/workflow/issues/856).
+
 ### Namespaces {#namespaces}
 
 O comando `server-bootstrap` executa migrações e cria o namespace `default`. Use `DW_DEFAULT_NAMESPACE` para alterar o namespace quando uma requisição omitir seu cabeçalho:
