@@ -469,7 +469,7 @@ Worker 应将租约 ID、尝试、任务 ID 和心跳端点视为 Server 签发�
 | `leased` | `200` | Server 已租出任务，`task` 包含任务负载。 |
 | `empty` | `200` | 轮询返回前没有匹配的就绪任务。 |
 | `throttled` | `200` | 队列可见，但租约或派发准入限制阻止本次轮询获得新任务。 |
-| `unavailable` | `503` or `200` | Server 无法安全协调队列轮询路径，返回类型化不可用结果，而不是悄悄表现为空队列。 |
+| `unavailable` | `503` 或 `200` | Server 无法安全协调队列轮询路径，返回类型化不可用结果，而不是悄悄表现为空队列。 |
 | `draining` | `409` | 已注册 Worker 群组正在排空，因此 Server 拒绝租出新工作，并返回 `reason: "worker_draining"`。 |
 
 ## 集群与任务队列可见性 {#fleet-and-task-queue-visibility}

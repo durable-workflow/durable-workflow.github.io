@@ -74,5 +74,13 @@
   "features/concurrency.md": "a7a3eb2274f7b14faf722494569b7663c07ab48afdf2e9225e58914b84cacbb4",
   "features/signals.md": "2c27bf3122ac62d2634af5f2c8452399fdb14be34a6e02858c847ff2b4028b9a",
   "features/versioning.md": "8b7cd077bffc357bd020b70685ea5b45853c3405f48cce42c9338fa0f7322f0b",
-  "compatibility.md": "0cb61cd6cc06da7c98e81bc29ea72f10020a03f0a9256329bca30e2f7a571f66"
+  "compatibility.md": "0cb61cd6cc06da7c98e81bc29ea72f10020a03f0a9256329bca30e2f7a571f66",
+  "features/schedules.md": "73dd4d49bfb61d5ecafc0fb799136fc170d8cd33781ff00f40893efe4e0de0d6",
+  "features/webhooks.md": "edcdfc05ccb0d34a77c51594f85bc3cab343e787f8e0e08d2cd4ddebd048e8c8",
+  "polyglot/cloud-control-plane.md": "d08b280c6d3b3dc209e3c3773e275066fa4a80accb2dcd550ad7a3f52e236b78",
+  "polyglot/embedded-to-server.md": "21a7e4c9439a73db3a97fd9b0610749faabf7c449806fe0ad55a0924f50d3b80",
+  "polyglot/rust.md": "b5d3b44c4e68e8b707804001bc46bd5e758b0180eec2a9a2ebdb69a6183dced5",
+  "polyglot/cli.mdx": "024a3f73e1c700a7fa142ec64a7edde03303f12507f4eb4a9161e0e944f7431b",
+  "polyglot/cli-reference.md": "b20db162aa91cc85ea64528a061753a99f053b33b6141664ce1194e711c641cc",
+  "polyglot/server-api-reference.md": "6029fa5573106ebb40d4cf6fc384c4c5aa3ac77d435b3d2c30c4c505cce7ac23"
 }
