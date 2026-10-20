@@ -62,7 +62,7 @@ function checkCurrentTranslations(root, languages = locales) {
   }
 
   visit(docsRoot);
-  return checkTranslationUpdates(root, guides.sort(), languages);
+  return checkTranslationUpdates(root, guides.toSorted((left, right) => left.localeCompare(right)), languages);
 }
 
 function checkTranslationUpdatesFromGit(root) {
