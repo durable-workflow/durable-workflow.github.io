@@ -89,7 +89,7 @@ packet as the image tag, migration plan, and recovery evidence:
 
 | Posture area | Honest release statement |
 | --- | --- |
-| Data handling | Workflow arguments, results, history, memos, search attributes, visibility labels, command context, audit rows, exception messages, and operator notes can contain customer application data. Treat search attributes and labels as operator-visible metadata, not secret storage. |
+| Data handling | Workflow arguments, results, history, memos, search attributes, visibility labels, command context, audit rows, exception messages, and operator notes can contain customer application data. [Workflow IDs](./defining-workflows/workflow-id.md#ids-are-visible-metadata), search attributes and labels are operator-visible metadata, not secret storage. Workflow IDs remain plaintext and are not covered by payload codecs. |
 | Encryption | Use TLS for every production HTTP surface. At-rest encryption comes from your database, object storage, filesystem, queue, cache, and secret manager. The workflow package and server do not automatically encrypt each payload field. |
 | Compliance | The open-source package and self-hosted server provide controls and audit evidence, not a compliance certification by themselves. Claims such as SOC 2, HIPAA, PCI, ISO, or FedRAMP belong to your own program unless a hosted offering documents otherwise. |
 | Audit logs | Workflow commands, schedule audit events, history export metadata, and service-call records provide durable operational evidence. They are not a complete SIEM, DLP system, immutable external ledger, or legal-hold system unless you add those components. |
