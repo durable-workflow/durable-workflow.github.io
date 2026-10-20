@@ -691,20 +691,22 @@ in their workflow contracts rather than claiming validator parity.
 
 ### Handler lifecycle {#handler-lifecycle}
 
-**Unpublished validation change.** The handler guards below are prepared for Python SDK 2.6.2, but publication and installed-artifact qualification are still pending. Server-routed asynchronous queries are already supported; this change preserves that path. See [SDK #177](https://github.com/durable-workflow/sdk-python/issues/177#issuecomment-6296781770) for the corrected scope.
+**Unpublished validation change.** The handler guards below are prepared for Python SDK 2.6.2, but publication and installed-artifact qualification are still pending. Server-routed asynchronous queries and update validators are already supported; this change preserves those paths. See [SDK #177](https://github.com/durable-workflow/sdk-python/issues/177#issuecomment-6296781770) for the corrected scope.
 
-Every replay constructs a fresh workflow instance before executing `run()`. Signals already recorded at workflow start are applied after `run()` reaches its first `yield`, so constructor and pre-yield initialization happen first. Signal and update handlers mutate that replayed state. Queries inspect it without changing durable state; update validators check the request before acceptance. Put durable activities, timers and child workflow commands in `run()`, not in a handler.
+Every replay constructs a fresh workflow instance before executing `run()`. Signals already recorded at workflow start are applied after `run()` reaches its first `yield`, so constructor and pre-yield initialization happen first. Signal and update handlers mutate that replayed state. Queries inspect it without changing durable state; update validators inspect a disposable replayed state before acceptance. Put durable activities, timers and child workflow commands in `run()`, not in a handler.
 
 | Handler | Supported form and failure outcome |
 | --- | --- |
 | `@workflow.signal` | Synchronous function. An exception while applying the signal during replay fails the workflow run. |
 | `@workflow.update` | Synchronous function. A handler exception fails that update. |
-| `@workflow.update_validator` or `@update_method.validator` | Synchronous function. An exception rejects the update before acceptance. |
+| `@workflow.update_validator` or `@update_method.validator` | Synchronous function or `async def` under the Worker. An exception rejects the update before acceptance. |
 | `@workflow.query` | Synchronous function or `async def` under the Worker. A handler exception fails the query, not the workflow run. |
 
-The prepared validation rejects coroutine functions for signals, updates and validators, and rejects generator or async-generator functions for **all** decorated handler kinds, including queries. It raises `InvalidWorkflowDefinition` at definition, registration or replay, including inherited handlers and offline tools. Synchronous signal, update and validator wrappers cannot bypass the guards by returning asynchronous values. Returning generator or async-generator values is refused for every handler kind. These restrictions do not forbid the synchronous generator used by `run()`.
+The prepared validation rejects coroutine functions for signals and updates, and rejects generator or async-generator functions for **all** decorated handler kinds, including queries and validators. It raises `InvalidWorkflowDefinition` at definition, registration or replay, including inherited handlers and offline tools. Synchronous signal and update wrappers cannot bypass the guards by returning asynchronous values. Returning generator or async-generator values is refused for every handler kind. These restrictions do not forbid the synchronous generator used by `run()`.
 
-For a server-routed query, the Worker explicitly awaits an asynchronous result under the original query deadline and claim/cancellation authority. Awaiting does not grant a fresh budget or permit a result after authority is lost. The local synchronous `workflow.query_state()` helper cannot await: the prepared fix refuses an asynchronous result with `QueryFailed` and closes a returned coroutine instead of leaking it as the query result.
+For a server-routed query, the Worker explicitly awaits an asynchronous result under the original query deadline and claim/cancellation authority. Awaiting does not grant a fresh budget or permit a result after authority is lost. For pre-accept validation, the Worker also awaits an asynchronous validator result against disposable replayed state.
+
+The local synchronous helpers cannot await. In the prepared fix, `workflow.query_state()` refuses an asynchronous result with `QueryFailed`, and `workflow.validate_update()` refuses it with `UpdateRejected`. They close returned coroutines instead of leaking them as operation results.
 
 ### Workflow Context
 
