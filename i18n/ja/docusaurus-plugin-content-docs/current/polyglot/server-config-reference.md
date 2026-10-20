@@ -173,8 +173,8 @@ Sticky 実行には Server イメージ専用の環境変数はありません�
 | `DW_QUERY_TASK_POLL_MAX_CONCURRENT` | 未設定。`PHP_CLI_SERVER_WORKERS` から算出 | この Server ノードで保持するアイドル状態のクエリタスクのロングポーリング待機数の任意の上限。保留タスクは待機に入る前に即座に取得できます。 | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT` |
 | `DW_WORKFLOW_TASK_TIMEOUT` | `60` | ワークフロータスクの既定リースタイムアウト（秒）。 | `WORKFLOW_TASK_TIMEOUT` |
 | `DW_ACTIVITY_TASK_TIMEOUT` | `300` | アクティビティタスクの既定リースタイムアウト（秒）。 | `ACTIVITY_TASK_TIMEOUT` |
-| `DW_WORKER_STALE_AFTER_SECONDS` | `max(DW_WORKER_POLL_TIMEOUT * 2, 60)` | Worker のハートビート後、その登録が古いと見なされるまでの秒数。 | `WORKFLOW_SERVER_WORKER_STALE_AFTER_SECONDS` |
-| `DW_WORKER_HEARTBEAT_INTERVAL_SECONDS` | `60` | Worker 登録とハートビート応答で SDK に通知する間隔（秒）。 | `WORKFLOW_SERVER_WORKER_HEARTBEAT_INTERVAL_SECONDS` |
+| `DW_WORKER_STALE_AFTER_SECONDS` | `max(DW_WORKER_HEARTBEAT_INTERVAL_SECONDS * 3, 30)` | Worker のハートビート後、その登録が古いと見なされるまでの秒数。 | `WORKFLOW_SERVER_WORKER_STALE_AFTER_SECONDS` |
+| `DW_WORKER_HEARTBEAT_INTERVAL_SECONDS` | `10` | Worker 登録とハートビート応答で SDK に通知する間隔（秒）。 | `WORKFLOW_SERVER_WORKER_HEARTBEAT_INTERVAL_SECONDS` |
 
 ## 制限、保持、メトリクス {#limits-retention-and-metrics}
 

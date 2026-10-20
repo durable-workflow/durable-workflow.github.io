@@ -173,8 +173,8 @@ Ejemplo de configuración específica de admisión:
 | `DW_QUERY_TASK_POLL_MAX_CONCURRENT` | sin definir; derivado de `PHP_CLI_SERVER_WORKERS` | Límite opcional de esperas simultáneas de long polling de consultas inactivas en este nodo. Las consultas pendientes aún pueden reclamarse de inmediato antes de que el sondeo empiece a esperar. | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT` |
 | `DW_WORKFLOW_TASK_TIMEOUT` | `60` | Plazo predeterminado del lease de una tarea de workflow, en segundos. | `WORKFLOW_TASK_TIMEOUT` |
 | `DW_ACTIVITY_TASK_TIMEOUT` | `300` | Plazo predeterminado del lease de una tarea de actividad, en segundos. | `ACTIVITY_TASK_TIMEOUT` |
-| `DW_WORKER_STALE_AFTER_SECONDS` | `max(DW_WORKER_POLL_TIMEOUT * 2, 60)` | Segundos tras el heartbeat de un worker antes de considerar obsoleto su registro. | `WORKFLOW_SERVER_WORKER_STALE_AFTER_SECONDS` |
-| `DW_WORKER_HEARTBEAT_INTERVAL_SECONDS` | `60` | Cadencia en segundos anunciada a los SDK en las confirmaciones de registro y heartbeat del worker. | `WORKFLOW_SERVER_WORKER_HEARTBEAT_INTERVAL_SECONDS` |
+| `DW_WORKER_STALE_AFTER_SECONDS` | `max(DW_WORKER_HEARTBEAT_INTERVAL_SECONDS * 3, 30)` | Segundos tras el heartbeat de un worker antes de considerar obsoleto su registro. | `WORKFLOW_SERVER_WORKER_STALE_AFTER_SECONDS` |
+| `DW_WORKER_HEARTBEAT_INTERVAL_SECONDS` | `10` | Cadencia en segundos anunciada a los SDK en las confirmaciones de registro y heartbeat del worker. | `WORKFLOW_SERVER_WORKER_HEARTBEAT_INTERVAL_SECONDS` |
 
 ## Límites, retención y métricas {#limits-retention-and-metrics}
 
