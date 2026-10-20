@@ -93,5 +93,8 @@
   "workerAuthority.historicalConformance": {"message": "Vínculos históricos de conformidade preservados"},
   "workerAuthority.historicalBindings": {"message": "Vínculos marcados como {marker} para os protocolos {protocols}"},
   "workerAuthority.historicalRecords": {"message": "Registros imutáveis de fontes e digests no"},
-  "workerAuthority.manifest": {"message": "manifesto de conformidade"}
+  "workerAuthority.manifest": {"message": "manifesto de conformidade"},
+  "simulator.queryAction": {"message": "🔍 Consultar:"},
+  "simulator.signalAccepted": {"message": "Sinal {signal} aceito"},
+  "simulator.signalWaitReceived": {"message": "sinal de await() recebido"}
 }
