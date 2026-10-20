@@ -248,7 +248,7 @@ El mismo manifiesto publica los límites del despliegue del transportador:
 - [Referencia de configuración del servidor](./server-config-reference.md):
   variables `DW_EXTERNAL_EXECUTOR_CONFIG_PATH` y `DW_EXTERNAL_EXECUTOR_CONFIG_OVERLAY`.
 - [Almacenamiento externo de cargas útiles](../features/external-payload-storage.md):
-  cómo se descargan cargas grandes de solicitud o resultado a un controlador
+  cómo se trasladan cargas grandes de solicitud o resultado a un controlador
   configurado y se representan mediante referencias verificables dentro de los
   mismos esquemas de entrada y resultado del transportador.
 - [Protocolo de workers](./worker-protocol.md): el contrato general del plano de

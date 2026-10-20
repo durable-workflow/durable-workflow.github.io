@@ -273,7 +273,7 @@ solo se aplica al desarrollo local.
   independiente del transportador, incluidos los esquemas de entrada y resultado
   que implementa el auxiliar.
 - [Almacenamiento externo de cargas útiles](../features/external-payload-storage.md):
-  cómo se descargan argumentos o resultados grandes a un controlador configurado
+  cómo se trasladan argumentos o resultados grandes a un controlador configurado
   y se representan mediante un sobre de referencia verificable.
 - [Protocolo de workers](./worker-protocol.md): el contrato general del plano
   de workers que publica el contrato del transportador junto a los manejadores

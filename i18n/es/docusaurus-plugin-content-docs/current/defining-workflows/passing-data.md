@@ -50,7 +50,7 @@ import PassingDataSimulator from '@site/src/components/PassingDataSimulator';
 
 En general, pasa solo pequeñas cantidades de datos de esta forma. Para datos grandes, escríbelos en la base de datos, caché o sistema de archivos. Después pasa la clave o ruta al workflow y las actividades, que podrán usarlas para leer los datos.
 
-Cuando la aplicación necesite transportar grandes volúmenes de bytes por el historial, como documentos, blobs multimedia o exportaciones serializadas, habilita [Almacenamiento externo de cargas útiles](../features/external-payload-storage.md) en el espacio de nombres. El runtime descarga las cargas que superen el umbral a un almacén de objetos configurado y registra un sobre de referencia verificable en el historial. Así conserva la integridad de la reproducción respetando el [límite estructural `payload_size_bytes`](../constraints/structural-limits.md#payload-size).
+Cuando la aplicación necesite transportar grandes volúmenes de bytes por el historial, como documentos, blobs multimedia o exportaciones serializadas, habilita [Almacenamiento externo de cargas útiles](../features/external-payload-storage.md) en el espacio de nombres. El runtime traslada las cargas que superen el umbral a un almacén de objetos configurado y registra un sobre de referencia verificable en el historial. Así conserva la integridad de la reproducción respetando el [límite estructural `payload_size_bytes`](../constraints/structural-limits.md#payload-size).
 
 ## Resultado {#output}
 

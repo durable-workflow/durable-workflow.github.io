@@ -134,7 +134,7 @@ activity(ProcessDocumentActivity::class, $threeMegabyteBlob);
 
 Para respetar el límite, activa el
 [almacenamiento externo de cargas útiles](../features/external-payload-storage.md)
-en el namespace para que el runtime descargue de forma transparente las cargas
+en el namespace para que el runtime traslade de forma transparente las cargas
 que superen el umbral en un almacén de objetos configurado, o guarda los bytes
 por tu cuenta y pasa una referencia gestionada por la aplicación:
 

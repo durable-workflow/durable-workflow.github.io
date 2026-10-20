@@ -7,7 +7,7 @@ tags:
 keywords:
   - almacenamiento externo de cargas útiles
   - cargas útiles grandes
-  - descarga de cargas útiles
+  - externalización de cargas útiles
   - almacenamiento S3
   - almacenamiento GCS
   - almacenamiento Azure Blob
@@ -15,7 +15,7 @@ keywords:
 
 # Almacenamiento externo de cargas útiles {#external-payload-storage}
 
-El almacenamiento externo descarga las cargas grandes de workflow a un almacén de objetos intercambiable (S3, GCS, Azure Blob o sistema de archivos local) y sustituye los bytes en línea del historial por un sobre pequeño de referencia verificable. Úsalo si los argumentos o resultados de actividades e hijos, las señales o las actualizaciones son demasiado grandes para la fila de base de datos que respalda el historial.
+El almacenamiento externo traslada las cargas grandes de workflow a un almacén de objetos intercambiable (S3, GCS, Azure Blob o sistema de archivos local) y sustituye los bytes en línea del historial por un sobre pequeño de referencia verificable. Úsalo si los argumentos o resultados de actividades e hijos, las señales o las actualizaciones son demasiado grandes para la fila de base de datos que respalda el historial.
 
 El runtime conserva las cargas en línea mientras su tamaño codificado esté por debajo del umbral del espacio de nombres. Solo escribe las que lo alcancen o superen en el controlador configurado y registra un sobre `durable-workflow.v2.external-payload-reference.v1` en el historial. La reproducción y exportación se bloquean con error si falta una referencia, cambia su contenido o queda fuera del prefijo configurado. Nunca se sustituye silenciosamente un blob ausente por un valor vacío.
 
@@ -30,7 +30,7 @@ Prefiérelo siempre que la aplicación necesite legítimamente pasar por el work
 
 Las cargas pequeñas (campos del plano de control, ids, indicadores y JSON habitual) siguen en línea sin coste adicional. La política depende del umbral: habilitarla no mueve las cargas pequeñas.
 
-## Cómo funciona la descarga {#how-offload-works}
+## Cómo funciona la externalización {#how-offload-works}
 
 Cada espacio tiene una política independiente. Al codificar una carga para almacenamiento duradero, el runtime compara su longitud en bytes con `threshold_bytes`:
 
@@ -133,7 +133,7 @@ Un umbral muy bajo no aporta ventajas: las cargas pequeñas viajan más rápido 
 
 ## Usarlo desde código {#using-it-from-code}
 
-La mayoría de aplicaciones nunca llama directamente a la API: el runtime descarga según la política y el SDK decodifica las referencias al reproducir. Para crear o consumir sobres fuera del runtime, por ejemplo en un puente independiente del lenguaje o una prueba que sintetice una carga grande, usa los helpers del SDK.
+La mayoría de aplicaciones nunca llama directamente a la API: el runtime almacena las cargas externamente según la política y el SDK decodifica las referencias al reproducir. Para crear o consumir sobres fuera del runtime, por ejemplo en un puente independiente del lenguaje o una prueba que sintetice una carga grande, usa los helpers del SDK.
 
 - **PHP (paquete workflow).** `Workflow\V2\Support\ExternalPayloadStorage` guarda y recupera bytes con cualquier controlador que implemente `Workflow\V2\Contracts\ExternalPayloadStorageDriver`. `LocalFilesystemExternalPayloadStorage` gestiona URI `file://`; el servidor independiente incluye un controlador de discos que respalda `s3`, `gcs` y `azure` mediante un disco Laravel con nombre.
 - **SDK Python.** Consulta [Almacenamiento externo de cargas útiles](../polyglot/python.md#external-payload-storage) para `ExternalPayloadReference`, `ExternalPayloadCache`, `store_external_payload()`, `fetch_external_payload()` y adaptadores `LocalFilesystemExternalStorage`, `S3ExternalStorage`, `GCSExternalStorage` y `AzureBlobExternalStorage`. Los clientes de SDK de proveedores siguen siendo propiedad de la aplicación; el SDK no añade boto3, google-cloud-storage ni azure-storage-blob como dependencias de runtime.
