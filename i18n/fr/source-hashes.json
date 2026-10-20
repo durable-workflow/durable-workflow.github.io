@@ -41,5 +41,7 @@
   "polyglot/php.md": "9ab2f2b6cb617475e3873609667f7c40eaeed8512f1f041834d74bb63d1a6040",
   "polyglot/invocable-php-handler.md": "3b678eb1d69fe32dfcfdc05d36b33e49e01b79d7216bd784f6a61a6f1c3c3a13",
   "polyglot/prerelease-history-migration.md": "a57f05f492228a8a67791f9152648a1e5f80856325b78777cf63b6ef49b7413c",
-  "polyglot/rust-cloud-quickstart.md": "2303434fc9302a81a8381ad4836423ef9952eb3201a4574c432254e3cb68c5f3"
+  "polyglot/rust-cloud-quickstart.md": "2303434fc9302a81a8381ad4836423ef9952eb3201a4574c432254e3cb68c5f3",
+  "polyglot/embedded-to-server.md": "21a7e4c9439a73db3a97fd9b0610749faabf7c449806fe0ad55a0924f50d3b80",
+  "polyglot/rust.md": "b5d3b44c4e68e8b707804001bc46bd5e758b0180eec2a9a2ebdb69a6183dced5"
 }
