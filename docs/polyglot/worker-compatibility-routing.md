@@ -1,164 +1,105 @@
 ---
 sidebar_position: 5
 title: Worker Compatibility and Routing
-description: Keep worker build rollouts safe by pinning in-flight work to compatible executors and making rollout gaps explicit.
-tags:
-  - worker-protocol
-  - compatibility
-  - operations
-  - rollouts
-keywords:
-  - worker compatibility
-  - worker build rollouts
-  - compatibility markers
-  - build id routing
-  - rollback workers
+description: Preserve original run pins while promoting new starts and inspecting missing compatible workers.
+tags: [worker-protocol, compatibility, operations, rollouts]
+keywords: [worker compatibility, worker build rollouts, compatibility markers, build id routing, rollback workers]
 ---
 
 # Worker Compatibility and Routing
 
-Use this guide when you need to deploy a new worker build, canary one task
-queue, roll a bad build back, or keep long-running workflows alive through a
-worker build rollout. Durable Workflow v2 treats worker compatibility as a
-routing contract, not as an informal deployment convention.
+Compatibility is a routing contract. Keep workers that can replay existing
+histories available while changing which build receives new workflow starts.
+Draining a build does not transfer its runs to a different build.
 
-The key rule is simple: a run that was started under one compatibility family
-must keep landing on workers that can safely replay and execute that run. The
-system must surface "no compatible worker is available" as an explicit
-operational state instead of silently handing the task to a different build.
+## Two related identities {#two-related-identities}
 
-## Two related identities
+- **Build id** is the standalone Server cohort's registered `build_id`, scoped
+  to a namespace and task queue. Promotion, drain and resume operate on this cohort.
+- **Compatibility marker** is recorded on durable work. Embedded PHP uses
+  `DW_V2_CURRENT_COMPATIBILITY` and `DW_V2_SUPPORTED_COMPATIBILITIES`; standalone
+  worker build ids provide the corresponding routing identity.
 
-Durable Workflow exposes two related but different rollout surfaces:
+Treat identities as opaque strings. A newer-looking name does not establish
+replay compatibility or authorize an existing run to change its pin.
 
-- **Build id** is the operator-facing cohort identity on the standalone server.
-  It is the value a worker registers as `build_id`, and it is what
-  task-queue rollout APIs drain or resume.
-- **Compatibility marker** is the routing identity for in-flight work. In
-  embedded and server-hosted PHP workers it comes from
-  `DW_V2_CURRENT_COMPATIBILITY` and
-  `DW_V2_SUPPORTED_COMPATIBILITIES`. On the standalone server, build-id
-  cohorts are the operator-facing way to inspect and control those compatible
-  worker groups.
+## What gets pinned {#what-gets-pinned}
 
-Treat both values as opaque strings such as `orders-2026-04-28` or
-`api-v3`. Durable Workflow does not interpret semver, compare dates, or guess
-that one string is newer than another.
+The standalone Server selects the pin for new starts from explicit promotion,
+then its single-active-cohort fallbacks; ambiguous starts can be unpinned.
+See [the selection order](/docs/polyglot/worker-build-id-rollout#canary-a-new-build).
 
-## What gets pinned
+Workflow tasks and activities inherit the run's compatibility. Task retries,
+lease expiry and redispatch preserve it. Retry runs, children and
+continue-as-new also inherit the original pin. Promotion affects subsequent
+new instances; it does not move a continuing chain to the new build.
 
-Compatibility is attached to durable workflow work, not just to live worker
-processes.
+## How routing works {#how-routing-works}
 
-- **Workflow start** records the current compatibility family on the new run.
-- **Workflow tasks** inherit that compatibility family and keep it through
-  retries, lease expiry, and redispatch.
-- **Activity tasks** inherit the same compatibility family as their parent run.
-- **Retry runs** keep the source run's compatibility family.
-- **Continue-as-new** keeps the current run's compatibility family.
-- **Child workflows** inherit the parent run's compatibility family.
+### Poll-time narrowing {#poll-time-narrowing}
 
-This means a long-running workflow does not drift onto a different executor
-family just because a deployment changed. New builds affect new starts unless
-you deliberately drain old cohorts and move traffic.
+Workers request a namespace, task queue and compatible build cohort. Poll-time
+selection avoids offering incompatible work, but is not the final authority.
 
-## How routing works
+### Claim-time enforcement {#claim-time-enforcement}
 
-Compatibility enforcement happens at more than one layer.
+The claim checks the task's original compatibility and worker identity. An
+incompatible worker cannot gain its lease merely because another build is
+absent. Lease expiry does not widen that compatibility.
 
-### Poll-time narrowing
+## What operators should configure {#what-operators-should-configure}
 
-Workers narrow what they ask for by task queue and compatibility/build cohort
-so the server or embedded engine can avoid offering obviously incompatible
-tasks first.
-
-This is an efficiency hint, not the final safety boundary.
-
-### Claim-time enforcement
-
-Claim-time enforcement is the correctness boundary. If a worker cannot safely
-run a task, Durable Workflow rejects the claim with an explicit compatibility
-reason instead of silently reassigning ownership.
-
-That is the contract to rely on during compatibility-affecting deploys:
-
-- tasks are never silently widened to an incompatible worker
-- lease expiry and redelivery preserve the original compatibility family
-- a missing compatible worker is observable state, not undefined behavior
-
-## What operators should configure
-
-Use stable, human-readable compatibility families for builds that can safely
-replay the same in-flight workflows.
-
-For embedded or server-hosted PHP workers, set:
+For embedded PHP, configure the current and explicitly supported families:
 
 ```bash
 DW_V2_CURRENT_COMPATIBILITY=orders-2026-04-28
 DW_V2_SUPPORTED_COMPATIBILITIES=orders-2026-04-28,orders-2026-04-21
 ```
 
-`DW_V2_CURRENT_COMPATIBILITY` names the family new runs are pinned to.
-`DW_V2_SUPPORTED_COMPATIBILITIES` names the families this worker may still
-claim while a rollout or rollback is in progress. Use `*` only for
-single-build fleets or narrow test harnesses; do not use it to hide an
-uncertain rollout policy.
+The first value pins new embedded runs; the second permits claims for those
+families. Use `*` only with a deliberately verified compatibility policy.
+For standalone workers, register a stable `build_id` and use the Server's
+promotion and lifecycle controls. Keep a family stable across replay-compatible
+rebuilds; changing a label does not make incompatible workflow code replay safely.
 
-For standalone-server workers, register a stable `build_id` and use the
-build-id rollout APIs to drain or resume cohorts intentionally.
+## Safe rollout pattern {#safe-rollout-pattern}
 
-## Safe rollout pattern
+1. Deploy and inspect the new cohort's namespace, queue, supported workflow
+   types and fresh registrations. Keep the old cohort available.
+2. Explicitly promote the desired build for subsequent new starts. Worker
+   counts do not define a percentage traffic split.
+3. Keep compatible capacity for existing pinned runs, including passive runs
+   waiting for a timer, signal, activity or child.
+4. Drain only when intentionally stopping that cohort's new claims. If an
+   early drain strands work, resume and restore the original compatible build.
+5. To roll back new starts, restore/resume and promote the known-good cohort,
+   then roll back the bad deployment. Existing pins remain unchanged.
 
-Use this sequence for compatibility-affecting worker changes:
+Zero pending workflow tasks does not establish safe retirement. Retain the
+artifact and recovery path while any pinned run or inherited chain can need
+it. [Server #519](https://github.com/durable-workflow/server/issues/519) tracks
+the separate guarded retirement capability; this checklist does not deliver it.
 
-1. Start the new worker cohort with a new build id or compatibility marker.
-2. Keep the old cohort live until you confirm the new cohort can claim work.
-3. Drain the old cohort so it stops taking new tasks but can finish or release
-   what it already leased.
-4. Watch the compatibility and task-queue surfaces until the old cohort is no
-   longer needed.
-5. Resume the old cohort only if you need to roll back.
+## Explicit missing-worker state {#explicit-missing-worker-state}
 
-Keep the compatibility family stable across replay-compatible rebuilds. Change
-it only when the new workers must no longer claim tasks created by the older
-family.
+Inspect [per-cohort pending workflow tasks](/docs/polyglot/worker-build-id-rollout#pending-workflow-tasks-by-cohort),
+fresh/draining/stale registrations and the original run pin together.
+`no_compatible_worker` identifies pending workflow work for a non-null build
+with no active compatible worker. It does not count activity queues or all
+passive pinned runs. A missing field, failed request or stale heartbeat is not
+an empty fleet or a zero backlog. Restore the matching build or investigate
+its queue, namespace and workflow-type declarations before adding unrelated workers.
 
-## Explicit missing-worker state
+## How this relates to build-id rollouts {#how-this-relates-to-build-id-rollouts}
 
-When no worker can satisfy the required compatibility family, Durable Workflow
-must show that plainly:
+Rollout state describes registered capacity and new-start/lifecycle intent;
+compatibility determines whether a specific original task can be claimed.
+Use both. Neither a drain nor a rollback rewrites durable compatibility or
+proves that a build can be removed.
 
-- worker fleet summaries show that required compatibility is not covered
-- task-queue and rollout surfaces show which build cohorts are still active,
-  draining, stale, or gone
-- workflow diagnostics surface that the run is waiting for a compatible worker
-- operator health and metrics expose compatibility-blocked work as a named
-  condition
-
-This is the expected signal during a partial rollout or an incomplete rollback.
-Treat it as a real operating condition to fix, not as a random transient.
-
-## How this relates to build-id rollouts
-
-Build-id rollout state and compatibility routing solve different problems:
-
-- **Build-id rollout** tells operators which worker cohorts are live and lets
-  them drain or resume those cohorts intentionally.
-- **Compatibility routing** decides whether a specific in-flight task is
-  eligible to run on a specific worker.
-
-You usually use both together. Build-id cohorts tell you which executors are
-available; compatibility routing makes sure long-running work only lands on a
-compatible cohort.
-
-## Related references
+## Related references {#related-references}
 
 - [Namespace, Auth, And Worker Registration](/docs/polyglot/namespace-auth-workers)
-  for the worker registration payload, including `build_id`
-- [Worker Build-Id Rollout](/docs/polyglot/worker-build-id-rollout) for
-  drain/resume lifecycle on one task queue
-- [Server Config Reference](/docs/polyglot/server-config-reference) for
-  `DW_V2_CURRENT_COMPATIBILITY`,
-  `DW_V2_SUPPORTED_COMPATIBILITIES`, and related config
-- [Operator Operating Envelope](/docs/operator-operating-envelope) for
-  the health, metrics, and run diagnostics that expose compatibility gaps
+- [Worker Build-Id Rollout](/docs/polyglot/worker-build-id-rollout)
+- [Server Config Reference](/docs/polyglot/server-config-reference)
+- [Operator Operating Envelope](/docs/operator-operating-envelope)
