@@ -25,7 +25,7 @@ Durable Workflow Server. PHP, Python і Rust мають типізовані о�
 потім стійко збережіть `next_offset` як контрольну точку. Падіння до
 контрольної точки може повторно доставити елементи.
 
-## Emit із коду workflow {#emit-from-workflow-code}
+## Створення елементів із коду workflow {#emit-from-workflow-code}
 
 Три SDK створюють елементи через ту саму детерміновану межу команди:
 `record_side_effect.workflow_stream`. Кожен SDK утворює ключ ідемпотентності
