@@ -24,5 +24,7 @@
   "polyglot/php.md": "9ab2f2b6cb617475e3873609667f7c40eaeed8512f1f041834d74bb63d1a6040",
   "polyglot/invocable-carrier.md": "d32d8b5c7c33204b342f977e0af734166d91e96073db1a49ccb4d414a6d67380",
   "polyglot/invocable-php-handler.md": "3b678eb1d69fe32dfcfdc05d36b33e49e01b79d7216bd784f6a61a6f1c3c3a13",
-  "polyglot/server-role-topology.md": "3d048f0c6b5f179399622508f51e67fff8aa5a6d5b2492533fc720eeec2c27f2"
+  "polyglot/server-role-topology.md": "3d048f0c6b5f179399622508f51e67fff8aa5a6d5b2492533fc720eeec2c27f2",
+  "polyglot/python.md": "18c872ffee086853f50efc51a3dc193d7953d5eaaad72e44aa36a3a4379d6070",
+  "polyglot/rust.md": "b5d3b44c4e68e8b707804001bc46bd5e758b0180eec2a9a2ebdb69a6183dced5"
 }
