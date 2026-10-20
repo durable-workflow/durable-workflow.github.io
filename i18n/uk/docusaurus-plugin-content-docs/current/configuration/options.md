@@ -25,7 +25,7 @@ class MyActivity extends Activity
 
 Властивості `$connection` та `$queue` у `Workflow\V2\Workflow` і `Workflow\V2\Activity` оголошені як `public ?string` і типово мають значення `null`. Перевизначення в підкласах мають зберігати тип із підтримкою null, щоб правила інваріантної типізації публічних властивостей PHP приймали повторне оголошення. Використовуйте `null` для успадкування типового з’єднання чи черги застосунку замість фіксованого значення.
 
-Тайм-аути activity не налаштовуються властивістю класу. Використовуйте [`ActivityOptions`](#activityoptions) для окремого виклику, наприклад `startToCloseTimeout`, або знімок політики повторних спроб activity на момент планування. Налаштування часу циклу worker наведено також у [політиці ремонту завдань](/docs/polyglot/server-config-reference#workflow-package-controls).
+Тайм-аути activity не налаштовуються властивістю класу. Використовуйте [`ActivityOptions`](#activityoptions) для окремого виклику, наприклад `startToCloseTimeout`, або знімок політики повторних спроб activity на момент планування. Налаштування часу циклу worker наведено також у [політиці відновлення завдань](/docs/polyglot/server-config-reference#workflow-package-controls).
 
 ## StartOptions {#startoptions}
 
@@ -85,7 +85,7 @@ $result = activity(
 
 ## Тайм-аут {#timeout}
 
-Базовий клас `Activity` v2 не має властивості `$timeout`. Налаштовуйте тайм-аути activity для окремого виклику через [`ActivityOptions`](#activityoptions) за допомогою `startToCloseTimeout`, `scheduleToStartTimeout`, `scheduleToCloseTimeout` чи `heartbeatTimeout`. Під час планування середовище виконання зберігає знімок отриманої політики повторних спроб у виконанні activity. Тому тайм-аут уже запланованої спроби залишається стабільним, навіть якщо наступне розгортання змінить клас activity чи параметри. Час надсилання на рівні циклу worker контролює [політика ремонту завдань](/docs/polyglot/server-config-reference#workflow-package-controls).
+Базовий клас `Activity` v2 не має властивості `$timeout`. Налаштовуйте тайм-аути activity для окремого виклику через [`ActivityOptions`](#activityoptions) за допомогою `startToCloseTimeout`, `scheduleToStartTimeout`, `scheduleToCloseTimeout` чи `heartbeatTimeout`. Під час планування середовище виконання зберігає знімок отриманої політики повторних спроб у виконанні activity. Тому тайм-аут уже запланованої спроби залишається стабільним, навіть якщо наступне розгортання змінить клас activity чи параметри. Час надсилання на рівні циклу worker контролює [політика відновлення завдань](/docs/polyglot/server-config-reference#workflow-package-controls).
 
 ## Затримка між спробами {#backoff}
 
