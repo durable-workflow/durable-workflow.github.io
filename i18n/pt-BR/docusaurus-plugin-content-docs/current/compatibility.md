@@ -52,17 +52,11 @@ manifestos do servidor e verificações de CI se validem contra uma única fonte
 - A classe PHP `Workflow\V2\Support\SurfaceStabilityContract`, que é
   a fonte em processo reexposta pelo servidor.
 
-A admissão de canais de artefatos é regida separadamente por
-[`/public-artifact-release-policy.json`](pathname:///public-artifact-release-policy.json).
-Essa política, revisada de forma independente, controla quais canais 2.0
-podem se tornar a combinação pública canônica.
-
 Um release que altere qualquer interface listada abaixo, seu nível de
 estabilidade, conjunto de campos ou regras de alterações incompatíveis deve
 atualizar esta página, a cópia JSON, o manifesto PHP e os documentos de
 estabilidade de pacotes pertinentes na mesma alteração. A CI da documentação
-valida o contrato legível por máquina, a política de fases de release de
-artefatos, os metadados Rust publicados quando disponíveis e as especificações
+valida o contrato legível por máquina, os metadados Rust publicados quando disponíveis e as especificações
 do protocolo de workers. O alinhamento editorial entre esta página e o
 manifesto continua sendo responsabilidade explícita da revisão de release.
 
