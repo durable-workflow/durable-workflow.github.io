@@ -7,9 +7,10 @@ tags:
   - workflows
 keywords:
   - durable workflow
-  - execução durável
+  - motor de workflows em várias linguagens
+  - motor de workflows para agentes de IA
   - orquestração durável
-  - workflows em várias linguagens
+  - conceitos de workflow v2
 ---
 
 import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseLink';
