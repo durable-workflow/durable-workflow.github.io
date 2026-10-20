@@ -58,5 +58,6 @@
   "features/updates.md": "72da32fa413a3376bea84ab009ce15217238ccc3c57794783789b21b23c7cf18",
   "polyglot/worker-build-id-rollout.md": "88a2ec730ed0b2f58ff5d49aa1041c758ec491aceda4165fe1f3b06fcfee0278",
   "polyglot/invocable-carrier.md": "d32d8b5c7c33204b342f977e0af734166d91e96073db1a49ccb4d414a6d67380",
-  "polyglot/invocable-php-handler.md": "3b678eb1d69fe32dfcfdc05d36b33e49e01b79d7216bd784f6a61a6f1c3c3a13"
+  "polyglot/invocable-php-handler.md": "3b678eb1d69fe32dfcfdc05d36b33e49e01b79d7216bd784f6a61a6f1c3c3a13",
+  "polyglot/worker-protocol.md": "007e844b0a7ab284b7cd343e79f01a27a0dabee3fe4cf19064170581bb897b85"
 }
