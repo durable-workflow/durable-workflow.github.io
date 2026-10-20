@@ -246,7 +246,7 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/task-queues/orders" \
 
 La visibilidad de cola es el primer lugar que comprobar si los workers no
 reciben tareas. Distingue workers ausentes, colas no coincidentes, filtros de
-tipos no compatibles, slots saturados, límites de leases activos del servidor,
+tipos no compatibles, slots saturados, límites de leases activas del servidor,
 límites de despacho y contrapresión de consultas.
 
 Las respuestas de sondeo exponen el mismo resultado legible por máquinas mediante
@@ -255,7 +255,7 @@ Las respuestas de sondeo exponen el mismo resultado legible por máquinas median
 Las rutas de sondeo de workflows, actividades y consultas conservan el campo
 incluso con `task` igual a `null`, para que los runtimes utilicen una interfaz estable:
 
-- `leased`: se concedió el lease de una tarea correctamente.
+- `leased`: se concedió la lease de una tarea correctamente.
 - `empty`: no había tareas listas antes de devolver el sondeo.
 - `throttled`: los límites de admisión impidieron entregar una tarea nueva.
 - `unavailable`: el servidor no pudo coordinar la cola con seguridad y devolvió
