@@ -47,5 +47,11 @@
   "contribute-a-sample.md": "d250d8c63d448e32d3160ff7a2900e7a270dcbd9cda22cf3af46cdf219395ea3",
   "sample-app.md": "070e0d4523f8228cf4492d2a590df8cd7d121a8c7b521f559629975719fdf515",
   "sdk-neutrality.md": "7b0714c123ade4904591870fc20e9a797da1e5485b2a6c87ca3eaa00c5de6ed6",
-  "support.md": "706807b3902599dda6080f632ec1f893017ea18bbe9585f533dcdbd6d85f4621"
+  "support.md": "706807b3902599dda6080f632ec1f893017ea18bbe9585f533dcdbd6d85f4621",
+  "features/activity-execution-model.md": "50eb43b1b18458ef5509886756041752d30cca4c511a24a74f409f8f87f86c4f",
+  "features/cancel-and-terminate.md": "c678fc7a0c9b11f0e1bee295aff259de9803219c0aa6769fb801622799e7deb1",
+  "features/child-workflows.md": "2e842089e2e25be0226d927dc9cf4934014178087465ee0223c6e303d128e251",
+  "features/concurrency.md": "a7a3eb2274f7b14faf722494569b7663c07ab48afdf2e9225e58914b84cacbb4",
+  "features/condition-waits.md": "451261eda990c9591a0db69839d872184b5c64da6b537a582133095b8d4b599e",
+  "features/continue-as-new.md": "6b3cc8f8c5375726ff0b2544da01e7206e964908b436544e284068ab67aa3dbb"
 }
