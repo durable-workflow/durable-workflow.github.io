@@ -250,12 +250,19 @@ du Server et des workers installés avant d'activer une fonctionnalité.
 Les versions de paquets sélectionnent la ligne de produit prise en charge. Les
 manifestes de protocole ajoutent un second contrôle avec refus par défaut :
 
-| Client | Ligne de produit | Plan de contrôle | Protocole worker demandé |
-|--------|---------------|---------------|-------------------------|
+| Client | Ligne de produit | Plan de contrôle | Protocole d’enregistrement worker par défaut |
+|--------|---------------|---------------|---------------------------------------------|
 | CLI | `%%artifact.cliVersion%%` | `2` | sans objet |
-| SDK PHP | `%%artifact.phpSdkVersion%%` | `2` | `1.13` |
-| SDK Python | `%%artifact.pythonSdkVersion%%` | `2` | `1.1` |
-| SDK Rust | `%%artifact.rustSdkVersion%%` | `2` | `1.2` |
+| SDK PHP | `%%artifact.phpSdkVersion%%` | `2` | `1.20` |
+| SDK Python | `%%artifact.pythonSdkVersion%%` | `2` | `1.20` |
+| SDK Rust | `%%artifact.rustSdkVersion%%` | `2` | `1.20` |
+
+Les SDK permettent aussi de sélectionner explicitement le protocole worker
+`1.19` pour un ancien Server compatible. L’annulation coopérative exige
+`1.20`. Sélectionner `1.19` ne fournit pas cette capacité. Chaque opération
+peut utiliser sa version minimale documentée. La valeur par défaut de
+l’enregistrement ne signifie donc pas que toutes les requêtes worker
+envoient `1.20`.
 
 Le Server publié actuel annonce la version worker indiquée dans le tableau des
 rôles de référence ci-dessus. Il accepte des en-têtes de la même majeure avec
