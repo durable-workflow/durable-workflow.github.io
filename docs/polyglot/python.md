@@ -589,7 +589,7 @@ deltas, so they are safe to call from cron-driven operator scripts.
 
 ## Defining Workflows
 
-Workflows are Python classes decorated with `@workflow.defn`. The `run` method is a generator that yields commands to the server.
+Workflows are Python classes decorated with `@workflow.defn`. The `run` method is an ordinary synchronous function or a synchronous generator that yields durable commands to the server. Use the generator form when the workflow needs durable work; `async def run` is not supported.
 
 ```python
 from durable_workflow import workflow
@@ -688,6 +688,23 @@ rejection, missing or incompatible workers, worker loss, timeout, and fenced
 duplicate or stale completion remain explicit typed outcomes. PHP and Rust do
 not currently expose update-validator authoring APIs and advertise that absence
 in their workflow contracts rather than claiming validator parity.
+
+### Handler lifecycle {#handler-lifecycle}
+
+**Unpublished validation change.** The handler guards below are prepared for Python SDK 2.6.2, but publication and installed-artifact qualification are still pending. Server-routed asynchronous queries are already supported; this change preserves that path. See [SDK #177](https://github.com/durable-workflow/sdk-python/issues/177#issuecomment-6296781770) for the corrected scope.
+
+Every replay constructs a fresh workflow instance before executing `run()`. Signals already recorded at workflow start are applied after `run()` reaches its first `yield`, so constructor and pre-yield initialization happen first. Signal and update handlers mutate that replayed state. Queries inspect it without changing durable state; update validators check the request before acceptance. Put durable activities, timers and child workflow commands in `run()`, not in a handler.
+
+| Handler | Supported form and failure outcome |
+| --- | --- |
+| `@workflow.signal` | Synchronous function. An exception while applying the signal during replay fails the workflow run. |
+| `@workflow.update` | Synchronous function. A handler exception fails that update. |
+| `@workflow.update_validator` or `@update_method.validator` | Synchronous function. An exception rejects the update before acceptance. |
+| `@workflow.query` | Synchronous function or `async def` under the Worker. A handler exception fails the query, not the workflow run. |
+
+The prepared validation rejects coroutine functions for signals, updates and validators, and rejects generator or async-generator functions for **all** decorated handler kinds, including queries. It raises `InvalidWorkflowDefinition` at definition, registration or replay, including inherited handlers and offline tools. A synchronous wrapper cannot bypass the guards by returning an asynchronous or generator value. These restrictions do not forbid the synchronous generator used by `run()`.
+
+For a server-routed query, the Worker explicitly awaits an asynchronous result under the original query deadline and claim/cancellation authority. Awaiting does not grant a fresh budget or permit a result after authority is lost. The local synchronous `workflow.query_state()` helper cannot await: the prepared fix refuses an asynchronous result with `QueryFailed` and closes a returned coroutine instead of leaking it as the query result.
 
 ### Workflow Context
 
