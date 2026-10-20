@@ -9,7 +9,7 @@ description: 选择有界重试、带心跳的活动或持久定时器循环，�
 
 ## 选择等待边界 {#choose-the-waiting-boundary}
 
-| 模式 | 工作进程使用情况 | 持久历史与控制 |
+| 模式 | Worker使用情况 | 持久历史与控制 |
 | --- | --- | --- |
 | 重试一个活动，直到状态就绪 | 每次尝试期间占用活动槽位；重试退避期间释放 | 每次尝试和重试计划都会增加历史。工作流代码不会在尝试之间恢复，因此此时无法检查历史预算或执行 continue-as-new。 |
 | 一个持续发送心跳的长活动 | 整个等待期间占用活动槽位 | 每个被接受的心跳都会增加一个历史事件。为活动设置有限截止时间，并为外部请求设置有界超时；心跳不会延长整个执行的截止时间。 |
@@ -64,7 +64,7 @@ final class PollDemo extends Workflow
 
 按照常规[嵌入式工作流设置](../installation.md)启动，并为单次运行和整个执行设置有限超时。
 
-### 服务模式 Python 工作进程 {#python-service-worker}
+### 服务模式 Python Worker {#python-service-worker}
 
 ```python
 from durable_workflow import activity, workflow
@@ -88,7 +88,7 @@ class PollDemo:
         return ctx.continue_as_new(remaining - 1, interval_seconds)
 ```
 
-在同一个 [Python 工作进程](./python.md)中注册 `PollDemo` 和 `check_status`，然后以参数 `[2, 30]` 以及有限的执行与运行超时启动。观察当前工作流实例以跟随其后继运行；绑定到特定运行的句柄仍然选择原来的运行。
+在同一个 [Python Worker](./python.md)中注册 `PollDemo` 和 `check_status`，然后以参数 `[2, 30]` 以及有限的执行与运行超时启动。观察当前工作流实例以跟随其后继运行；绑定到特定运行的句柄仍然选择原来的运行。
 
 两个示例均已在发布的 Server **2.9.7 / Core 2.7.2** 和正常安装的 Python **2.6.1** 上以测试输入 `[2, 1]` 执行。两者都在两次运行中完成两次真实检查。Continue-as-new 重置单次运行的历史，增加运行与链接开销，并保留整个执行最初的截止时间。它不会提供无限生命周期。
 

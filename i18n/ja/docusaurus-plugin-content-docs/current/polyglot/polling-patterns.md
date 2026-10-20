@@ -9,7 +9,7 @@ description: 上限付きの再試行、ハートビート付きアクティビ�
 
 ## 待機を担う境界を選ぶ {#choose-the-waiting-boundary}
 
-| パターン | ワーカーの使用 | 永続履歴と制御 |
+| パターン | Workerの使用 | 永続履歴と制御 |
 | --- | --- | --- |
 | 準備が整うまで1つのアクティビティを再試行する | 各試行中はアクティビティスロットを使用し、再試行の待機中は解放する | 各試行と再試行の予定が履歴を増やします。試行間でワークフローコードは再開しないため、その間に履歴予算を確認したり continue-as-new を実行したりできません。 |
 | ハートビートを送る長時間アクティビティ | 待機中ずっとアクティビティスロットを占有する | 受理されたハートビートごとに履歴イベントが増えます。アクティビティには有限の期限を、外部リクエストには上限付きタイムアウトを設定します。ハートビートは実行全体の期限を延長しません。 |
@@ -64,7 +64,7 @@ final class PollDemo extends Workflow
 
 通常の[組み込みワークフローの設定](../installation.md)から開始し、run と実行全体に有限のタイムアウトを設定します。
 
-### サービスモードの Python ワーカー {#python-service-worker}
+### サービスモードの Python Worker {#python-service-worker}
 
 ```python
 from durable_workflow import activity, workflow
@@ -88,7 +88,7 @@ class PollDemo:
         return ctx.continue_as_new(remaining - 1, interval_seconds)
 ```
 
-`PollDemo` と `check_status` を同じ [Python ワーカー](./python.md)に登録し、引数 `[2, 30]` と有限の実行全体・run タイムアウトを指定して開始します。後続 run を追うには現在のワークフローインスタンスを観察します。特定の run に結び付いたハンドルは、引き続き元の run を選択します。
+`PollDemo` と `check_status` を同じ [Python Worker](./python.md)に登録し、引数 `[2, 30]` と有限の実行全体・run タイムアウトを指定して開始します。後続 run を追うには現在のワークフローインスタンスを観察します。特定の run に結び付いたハンドルは、引き続き元の run を選択します。
 
 両方の例を公開済みの Server **2.9.7 / Core 2.7.2** と通常インストールした Python **2.6.1**、テスト入力 `[2, 1]` で実行しました。どちらも2つの run にまたがって2回の実際の確認を完了しました。Continue-as-new は run の履歴を新しくし、run とリンクのコストを追加しますが、実行全体の元の期限は維持します。寿命が無制限になるわけではありません。
 
