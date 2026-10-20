@@ -4,6 +4,52 @@ sidebar_position: 9
 
 # Pruebas {#testing}
 
+## Replay antes de desplegar o revertir {#replay-before-deployment}
+
+Conserve exportaciones de ejecuciones seleccionadas de workflows representativos abiertos y cerrados recientemente. Cubra las rutas de actividades, reintentos, señales, actualizaciones, workflows hijos, temporizadores y marcadores de versión que puede encontrar el candidato. Conserve cada generación necesaria de continue-as-new. Use historiales sin podar con los bytes originales del payload y sus codecs disponibles. Un indicador de exportación por sí solo no demuestra integridad completa. Consulte los [límites de retención](./configuration/pruning-workflows.md).
+
+### PHP integrado {#embedded-php-replay}
+
+Exporte desde el almacén que pertenece a la aplicación. Establezca `WORKFLOW_ID` y `RUN_ID` para la instancia y ejecución seleccionadas exactamente:
+
+```bash
+php artisan workflow:v2:history-export "$WORKFLOW_ID" \
+  --run-id="$RUN_ID" --output=replay-bundles/run.json
+```
+
+Ejecute la verificación dentro del artefacto de la aplicación candidata, con sus clases de workflow y configuración cargadas. Guarde los informes fuera del directorio de paquetes. Use un entorno de CI aislado sin credenciales para efectos externos en producción:
+
+```bash
+php artisan workflow:v2:replay-verify replay-bundles/run.json \
+  --json --output=replay-one.json
+php artisan workflow:v2:replay-simulate replay-bundles \
+  --json --output=replay-report.json
+```
+
+Un código de salida distinto de cero bloquea la promoción. Un cero todavía puede exigir revisión. Guarde esta comprobación del informe de lote como `gate-replay.php` y ejecute `php gate-replay.php replay-report.json` en CI:
+
+```php
+<?php
+$report = json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR);
+$evidence = $report['evidence'] ?? [];
+$count = $evidence['bundle_count'] ?? 0;
+$allowed = ($report['promotion_decision'] ?? null) === 'safe_to_promote'
+    && $count > 0
+    && ($evidence['missing_bundle_count'] ?? 1) === 0
+    && ($evidence['replay_checked_count'] ?? 0) === $count;
+exit($allowed ? 0 : 1);
+```
+
+`--skip-replay` comprueba solo la integridad. Ni siquiera un resultado limpio autoriza una promoción segura para replay. Un éxito cubre únicamente las rutas registradas y el prefijo visible de una ejecución abierta, no ramas futuras, corrección de negocio ni comportamiento de red. Antes de revertir, pruebe el artefacto antiguo con los historiales ya escritos por workers nuevos que podría recibir. Mantenga también pruebas unitarias y con un runtime real.
+
+### SDK de servicio {#service-sdk-replay}
+
+**PHP:** use `DurableWorkflow\Worker\Replayer::replay()` con el codec de la aplicación, el callable, la lista de eventos, la entrada original, la cola y la identidad registrada de la tarea. Deje que `NonDeterministicWorkflow` haga fallar la prueba y compruebe comandos y resultados esperados. Consulte las [pruebas de replay de PHP](https://php.durable-workflow.com/build/testing/).
+
+**Python:** use `Replayer.replay()` o `verify_replay()` con los workflows candidatos registrados y compruebe el resultado esperado. Recibir un objeto no es, por sí solo, una aserción satisfactoria. Proporcione el `start_input` original decodificado cuando los eventos no lo incluyan: Core lo almacena en `payloads.arguments`. Conserve el tipo, los ID y el codec registrados. Consulte las [API de replay de Python](https://python.durable-workflow.com/sdk-reference/#replay-captured-histories). `--simulate-bundles` comprueba integridad, no código candidato; la compatibilidad actual con el esquema 2 se sigue en [Python #173](https://github.com/durable-workflow/sdk-python/issues/173). No reescriba la versión ni la suma de comprobación para evitar un rechazo.
+
+**Rust:** todavía no existe una API pública de replay sin conexión. [Rust #105](https://github.com/durable-workflow/sdk-rust/issues/105) cubre esa capacidad. Mientras tanto, pruebe el candidato contra un runtime aislado; eso no aporta la garantía sin conexión que falta.
+
 ## `Workflow\V2` {#workflowv2}
 
 `Workflow\V2\WorkflowStub::fake()` ofrece una ruta de prueba determinista con ejecución inmediata para las funciones admitidas por el modo simulado de `V2`.

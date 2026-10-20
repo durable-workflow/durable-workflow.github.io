@@ -8,6 +8,10 @@ keywords: [build dos workers, drenagem, reversão, canário, workers sem versão
 
 # Implantação de identificadores de build dos workers
 
+## Replay antes de trocar builds {#replay-before-changing-builds}
+
+Antes de promover um candidato, reproduza históricos representativos abertos e encerrados recentemente usando seu código exato. Antes de reverter, reproduza os históricos escritos pelo build novo com o artefato antigo. Siga a [verificação de replay](../testing.md#replay-before-deployment); uma coorte de roteamento compatível ou uma verificação de integridade aprovada não comprova, por si só, compatibilidade de replay.
+
 Use este guia para inspecionar coortes, escolher o build de novos workflows e manter workers compatíveis com execuções existentes. A promoção muda a seleção de novas inicializações; a drenagem impede novas reivindicações pela coorte. Nenhuma das ações migra execuções ou comprova que um build pode ser excluído.
 
 [Compatibilidade e roteamento dos workers](/docs/polyglot/worker-compatibility-routing) descreve a identidade de tarefas, atividades, novas tentativas, filhos e continue-as-new. Uma coorte tem escopo `(namespace, task_queue, build_id)`. Registros sem `build_id` pertencem à coorte não versionada, `null`.

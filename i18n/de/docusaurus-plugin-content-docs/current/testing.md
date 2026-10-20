@@ -4,6 +4,52 @@ sidebar_position: 9
 
 # Testen {#testing}
 
+## Replay vor Bereitstellung oder Rollback {#replay-before-deployment}
+
+Bewahren Sie Exporte ausgewählter Runs aus repräsentativen offenen und kürzlich geschlossenen Workflows auf. Decken Sie die Aktivitäts-, Wiederholungs-, Signal-, Update-, Kind-Workflow-, Timer- und Versionsmarker-Pfade ab, auf die der Kandidat treffen kann. Behalten Sie jede benötigte Continue-as-new-Generation. Verwenden Sie ungekürzte Historien mit verfügbaren ursprünglichen Payload-Bytes und Codecs. Ein Exportkennzeichen allein beweist keine Vollständigkeit. Siehe die [Aufbewahrungsgrenzen](./configuration/pruning-workflows.md).
+
+### Eingebettetes PHP {#embedded-php-replay}
+
+Exportieren Sie aus dem Datenspeicher der Anwendung. Setzen Sie `WORKFLOW_ID` und `RUN_ID` auf die genau ausgewählte Instanz und den Run:
+
+```bash
+php artisan workflow:v2:history-export "$WORKFLOW_ID" \
+  --run-id="$RUN_ID" --output=replay-bundles/run.json
+```
+
+Führen Sie die Prüfung im Anwendungsartefakt des Kandidaten aus, mit geladenen Workflow-Klassen und dessen Konfiguration. Legen Sie Berichte außerhalb des Bundle-Verzeichnisses ab. Verwenden Sie eine isolierte CI-Umgebung ohne Zugangsdaten für produktive Seiteneffekte:
+
+```bash
+php artisan workflow:v2:replay-verify replay-bundles/run.json \
+  --json --output=replay-one.json
+php artisan workflow:v2:replay-simulate replay-bundles \
+  --json --output=replay-report.json
+```
+
+Ein Rückgabecode ungleich null blockiert die Promotion. Auch bei null kann eine Prüfung nötig sein. Speichern Sie diese Prüfung des Sammelberichts als `gate-replay.php` und führen Sie `php gate-replay.php replay-report.json` in CI aus:
+
+```php
+<?php
+$report = json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR);
+$evidence = $report['evidence'] ?? [];
+$count = $evidence['bundle_count'] ?? 0;
+$allowed = ($report['promotion_decision'] ?? null) === 'safe_to_promote'
+    && $count > 0
+    && ($evidence['missing_bundle_count'] ?? 1) === 0
+    && ($evidence['replay_checked_count'] ?? 0) === $count;
+exit($allowed ? 0 : 1);
+```
+
+`--skip-replay` prüft nur die Integrität. Selbst ein einwandfreies Ergebnis erlaubt keine Aussage über Replay-sichere Promotion. Ein Erfolg deckt nur aufgezeichnete Pfade und den sichtbaren Präfix eines offenen Runs ab, keine künftigen Zweige, fachliche Korrektheit oder Netzwerkfunktionen. Prüfen Sie vor einem Rollback das ältere Artefakt gegen Historien, die neuere Worker bereits geschrieben haben und die es erhalten könnte. Behalten Sie zusätzlich Unit-Tests und Tests mit einer echten Laufzeitumgebung bei.
+
+### Service-SDKs {#service-sdk-replay}
+
+**PHP:** verwenden Sie `DurableWorkflow\Worker\Replayer::replay()` mit dem Codec der Anwendung, der aufrufbaren Funktion, Ereignisliste, ursprünglichen Eingabe, Queue und aufgezeichneten Task-Identität. Lassen Sie `NonDeterministicWorkflow` den Test fehlschlagen und prüfen Sie erwartete Befehle und Ergebnisse. Siehe [PHP-Replay-Tests](https://php.durable-workflow.com/build/testing/).
+
+**Python:** verwenden Sie `Replayer.replay()` oder `verify_replay()` mit registrierten Kandidaten-Workflows und prüfen Sie das erwartete Ergebnis. Ein zurückgegebenes Objekt allein ist kein erfolgreicher Test. Übergeben Sie die ursprüngliche dekodierte `start_input`, wenn Ereignisse sie nicht enthalten: Core-Exporte speichern sie unter `payloads.arguments`. Behalten Sie aufgezeichneten Typ, IDs und Codec bei. Siehe [Python-Replay-APIs](https://python.durable-workflow.com/sdk-reference/#replay-captured-histories). `--simulate-bundles` prüft Integrität und keinen Kandidatencode. Die aktuelle Kompatibilität mit Schema 2 wird in [Python #173](https://github.com/durable-workflow/sdk-python/issues/173) verfolgt. Schreiben Sie weder Version noch Prüfsumme um, um eine Ablehnung zu umgehen.
+
+**Rust:** eine öffentliche Offline-Replay-API fehlt noch. [Rust #105](https://github.com/durable-workflow/sdk-rust/issues/105) verfolgt diese Funktion. Testen Sie den Kandidaten bis dahin gegen eine isolierte Laufzeitumgebung; das bietet nicht die fehlende Offline-Garantie.
+
 ## `Workflow\V2` {#workflowv2}
 
 `Workflow\V2\WorkflowStub::fake()` bietet einen deterministischen Inline-Testpfad für den unterstützten Funktionsumfang des `V2`-Fakes.
