@@ -75,5 +75,6 @@
   "features/memo.md": "621aa630e37fbef6f84d761c92f99dc3fe8756879008c659cbad0600eb14fd5d",
   "features/message-streams.md": "3bce915ed750793b31360d2accc94eebf2c7f075b9769e072f8a2d3d034afad0",
   "features/search-attributes.md": "3d07ea788c7d6753a0751c226554fa36667d4ab7860379c01c171fbe066dff11",
-  "features/versioning.md": "8b7cd077bffc357bd020b70685ea5b45853c3405f48cce42c9338fa0f7322f0b"
+  "features/versioning.md": "8b7cd077bffc357bd020b70685ea5b45853c3405f48cce42c9338fa0f7322f0b",
+  "laravel-adoption.md": "978f2333bf5ce38ebc58619ca3f50a087572a3b0c28d52bc06843bc341010684"
 }
