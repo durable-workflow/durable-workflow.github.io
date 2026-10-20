@@ -146,7 +146,7 @@ Waterline-Sichtbarkeitsfilter können Ergebnisse dann auf einen Namespace
 beschränken. Verwenden Sie Workflow 2.4.2 oder neuer für eine konsistente
 Namespace-Zuweisung über beide PHP-Start-APIs.
 
-Namespace-Namen dürfen nur alphanumerische Kleinbuchstaben, Punkte, Unterstriche
+Namespace-Namen dürfen nur Kleinbuchstaben, Ziffern, Punkte, Unterstriche
 und Bindestriche enthalten (entsprechend `[a-z0-9._-]+`, maximal 128 Zeichen).
 
 Setzen Sie den Standard-Namespace über eine Umgebungsvariable:

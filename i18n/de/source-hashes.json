@@ -12,5 +12,11 @@
   "quickstart.md": "fac182ed61fc3540219e737a0e8166fa798ce0c035a34debac2dad9b85573215",
   "polyglot/avro-value-protocol.md": "602e66c6288c1dd69d2b400c64e4739ad3a0493b5be269cee40f7848b11f260a",
   "polyglot/cancellation.md": "a08aca914d8211d32184fd76f14e4f8bf47d40656e55364923013e3cece3b70d",
-  "polyglot/cli-python-parity.md": "acf1acbf15ca9cdf069154699c5fbf8c1d1fd3241a32d201ac10b8ec76c038be"
+  "polyglot/cli-python-parity.md": "acf1acbf15ca9cdf069154699c5fbf8c1d1fd3241a32d201ac10b8ec76c038be",
+  "configuration/customization-matrix.md": "3d115863eaee7852b541bcd01615f424cc19c5847c7cd7d75e5ae63bc3f5cc78",
+  "configuration/database-connection.md": "a4657d239673a4ecdc3981bcc5a7cf33aa2d37c709768131cd5ba3292987681f",
+  "configuration/ensuring-same-server.md": "6c665f37cc198c7b1a775a60a94aab5ff4e55383385e76f1834c7840559b512a",
+  "configuration/microservices.md": "46dc4afa07588b78829a7e3d259177ce0cf40861f0e31b88dbb6de3a83aa5488",
+  "configuration/options.md": "f8d746d34d28d03c8e31ab19223864df04742cde9e6a0cc1445501f8fbddf625",
+  "configuration/publishing-config.md": "8ed57c1e94ec42ad2dc9a67e2749a93b66143466c4ca07a704b816e3c515a81e"
 }

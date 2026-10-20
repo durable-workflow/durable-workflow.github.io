@@ -49,8 +49,9 @@ andere Verbindung verlegen müssen, mindestens für:
 - `Workflow\V2\Models\WorkflowSchedule`
 - `Workflow\V2\Models\WorkflowScheduleHistoryEvent`
 
-Jede Unterklasse sollte `protected $connection = 'mysql';` deklarieren, mit
-dem in `config/database.php` definierten Verbindungsnamen.
+Jede Unterklasse sollte `protected $connection = 'mysql';` deklarieren.
+Ersetzen Sie `mysql` bei Bedarf durch den gewünschten Verbindungsnamen aus
+`config/database.php`.
 
 ## Eigene Modelle registrieren {#registering-custom-models}
 
