@@ -134,7 +134,7 @@ Waterline zeigt den dauerhaften Zustand: ob ein Workflow gestartet ist, welche A
 
 | Schnittstelle | Beantwortet | Beispielprüfung |
 | --- | --- | --- |
-| Waterline und Historienexport | Dauerhafter Workflow-Status, Historie, Wiederholungen, Wartezustände, Signale, Updates, Fehler und Operatoraktionen | `/waterline/dashboard` öffnen, dann den Historie der ausgewählten Laufes exportieren |
+| Waterline und Historienexport | Dauerhafter Workflow-Status, Historie, Wiederholungen, Wartezustände, Signale, Updates, Fehler und Operatoraktionen | `/waterline/dashboard` öffnen, dann die Historie des ausgewählten Laufes exportieren |
 | Worker-Logs | Prozessfehler des PHP-Warteschlangen-Workers und Anwendungslogzeilen | `storage/logs/laravel.log` verfolgen, während `php artisan queue:work` läuft |
 | SDK-Metriken | Anfragezahlen externer Worker/Clients, Polling-Latenz und Aufgabendauer | Den Prometheus-/OpenMetrics-Endpunkt des SDK-Workers abfragen |
 
@@ -165,9 +165,9 @@ async with Client("http://localhost:8080", token="secret", metrics=metrics) as c
 
 Ersetzen Sie `GreeterWorkflow` und `greet` durch die von diesem Worker registrierten Workflow- und Aktivitätshandler.
 
-Fragen Sie `:9102/metrics` nach den Reihen `durable_workflow_worker_*` und `durable_workflow_client_*` ab. Diese Metriken erklären die Laufzeitleistung des Workers. Waterline bleibt die maßgebliche Quelle für den gespeicherten Workflow-Historie.
+Fragen Sie `:9102/metrics` nach den Reihen `durable_workflow_worker_*` und `durable_workflow_client_*` ab. Diese Metriken erklären die Laufzeitleistung des Workers. Waterline bleibt die maßgebliche Quelle für die gespeicherte Workflow-Historie.
 
-Die Waterline-Detailansicht enthält eine Aktion „Historie exportieren“ für die ausgewählte Ausführung. Zeigt die Detailansicht die aktuellen Lauf der Instanz, verwendet die Schaltfläche die instanzbezogene Exportroute der aktuellen Ausführung. Historische Laufdetails verwenden weiterhin den expliziten Pfad `/runs/{runId}/history-export`. Sie können dasselbe Replay-/Debug-Bündel auch aus dem Terminal der Beispielanwendung exportieren:
+Die Waterline-Detailansicht enthält eine Aktion „Historie exportieren“ für die ausgewählte Ausführung. Zeigt die Detailansicht den aktuellen Lauf der Instanz, verwendet die Schaltfläche die instanzbezogene Exportroute der aktuellen Ausführung. Historische Laufdetails verwenden weiterhin den expliziten Pfad `/runs/{runId}/history-export`. Sie können dasselbe Replay-/Debug-Bündel auch aus dem Terminal der Beispielanwendung exportieren:
 
 ```bash
 php artisan workflow:v2:history-export {workflow-instance-id} --run-id={workflow-run-id} --output=storage/app/workflow-history/example.json --pretty
@@ -175,7 +175,7 @@ php artisan workflow:v2:history-export {workflow-instance-id} --run-id={workflow
 
 Der Export enthält eine SHA-256-Integritätsprüfsumme. Setzen Sie `DW_V2_HISTORY_EXPORT_SIGNING_KEY` und `DW_V2_HISTORY_EXPORT_SIGNING_KEY_ID` in der Anwendungsumgebung, wenn ein anderes System das exportierte Bündel mit einer HMAC-Signatur prüfen muss.
 
-Der exportierte Block `selected_run` enthält `waits_projection_source`, `timeline_projection_source`, `timers_projection_source` und `lineage_projection_source`. Der Block `links` enthält außerdem `projection_source`. Die Abschnitte `links.parents` / `links.children` stammen vorrangig aus dem typisierten Abstammungsverlauf der ausgewählten Laufes. Beziehungen zu untergeordneten Workflows und Continue-As-New bleiben damit sichtbar, auch wenn veränderliche Verknüpfungszeilen während eines lokalen Experiments abgewichen sind. Existiert eine Abstammungszeile nur noch durch ältere veränderliche Kompatibilitätsdaten, kennzeichnet das Bündel den Eintrag nun mit `history_authority = mutable_open_fallback` und `diagnostic_only = true`, statt beim Export stillschweigend zusätzliche Verknüpfungsmetadaten wiederherzustellen.
+Der exportierte Block `selected_run` enthält `waits_projection_source`, `timeline_projection_source`, `timers_projection_source` und `lineage_projection_source`. Der Block `links` enthält außerdem `projection_source`. Die Abschnitte `links.parents` / `links.children` stammen vorrangig aus dem typisierten Abstammungsverlauf des ausgewählten Laufes. Beziehungen zu untergeordneten Workflows und Continue-As-New bleiben damit sichtbar, auch wenn veränderliche Verknüpfungszeilen während eines lokalen Experiments abgewichen sind. Existiert eine Abstammungszeile nur noch durch ältere veränderliche Kompatibilitätsdaten, kennzeichnet das Bündel den Eintrag nun mit `history_authority = mutable_open_fallback` und `diagnostic_only = true`, statt beim Export stillschweigend zusätzliche Verknüpfungsmetadaten wiederherzustellen.
 
 ## KI-Workflow-Nachrichtenströme {#ai-workflow-message-streams}
 
@@ -205,7 +205,7 @@ Nun können Sie Workflows erstellen und testen.
 
 ## MCP-Server für KI-Clients {#ai-client-mcp-server}
 
-Die Beispielanwendung stellt unter `/mcp/workflows` außerdem einen Laravel-MCP-Server bereit. Dies ist die Referenzschnittstelle für KI-Clients in Durable Workflow v2: Agenten erhalten strukturierte Workflow-Ermittlung, Start, Status, Ausgabe, jüngsten typisierten Historie und Fehlerfakten, ohne Waterline auslesen zu müssen.
+Die Beispielanwendung stellt unter `/mcp/workflows` außerdem einen Laravel-MCP-Server bereit. Dies ist die Referenzschnittstelle für KI-Clients in Durable Workflow v2: Agenten erhalten strukturierte Workflow-Ermittlung, Start, Status, Ausgabe, jüngste typisierte Historie und Fehlerfakten, ohne Waterline auslesen zu müssen.
 
 Den ausführlichen Endpunkt- und Werkzeugvertrag finden Sie unter [MCP-Workflow-Schnittstelle](/docs/mcp-workflows). Der umfassendere Vertrag für KI-gestützte Entwicklung mit v2-LLM-Manifesten, CLI-Exit-Codes, Waterline-Exporten und SDK-Referenzen steht unter [KI-gestützte Entwicklung](/docs/ai-assisted-development).
 
