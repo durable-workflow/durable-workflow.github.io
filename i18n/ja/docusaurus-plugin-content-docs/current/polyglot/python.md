@@ -190,7 +190,7 @@ SDK は Server と CLI のストレージ API が使うものと同じ外部ペ�
 | `ExternalPayloadCache` | 検証済みの外部ペイロードバイト列用の上限付きリプレイキャッシュ。 | コンストラクターは正でないエントリー数・バイト数上限を拒否する。 |
 | `store_external_payload()` | エンコード済みバイト列をドライバーで保存し `ExternalPayloadReference` を返す。 | ドライバーエラー。 |
 | `fetch_external_payload()` | 参照されたバイト列を取得し、デコード前にサイズと SHA-256 を検証する。 | サイズ・ハッシュ不一致で `ExternalPayloadIntegrityError`。 |
-| `delete_external_payload()` | 参照オブジェクトを削除し、キャッシュエントリーを退避する。 | ドライバーが送出するストレージエラー。 |
+| `delete_external_payload()` | 参照オブジェクトを削除し、キャッシュエントリーも削除する。 | ドライバーが送出するストレージエラー。 |
 | `external_storage_envelope()` | しきい値までは値をインラインにエンコードし、超えたらドライバーでバイト列を書き込む。 | 不正なしきい値や参照を解決できるドライバーがない場合は `ValueError`。 |
 | `external_storage_driver_from_policy()` | アプリケーション提供のプロバイダークライアントから、Server または Cloud の `external_payload_storage` ポリシーに一致するドライバーを構築する。 | ポリシーが無効、未対応、必要なクライアント・バケット・コンテナが不足の場合は `ValueError`。 |
 
