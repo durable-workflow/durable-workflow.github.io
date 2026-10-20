@@ -293,6 +293,106 @@ modelo claro de VM, rede, banco de dados, cache, backup e balanceador de carga.
 Ele passa a ser conduzido pelo suporte quando você precisa de ajuda para decidir
 esses limites, capacidade, ordem de implantação ou procedimentos de recuperação.
 
+## Orçamentos de conexões SQL {#sql-connection-budgets}
+
+Planeje as sessões do banco antes de adicionar réplicas de API ou sobrepor
+processos antigos e novos durante uma
+[atualização gradual](/docs/rolling-upgrades). O banco pode atingir o limite
+de conexões mesmo com CPU disponível. Esse limite é distinto da latência de
+escrita/commit, da capacidade HTTP e do crescimento dos dados retidos.
+
+### Conte todos os processos que usam SQL {#count-every-sql-owning-process}
+
+O deployment PHP Compose publicado tem estes possíveis clientes SQL:
+
+| Papel | O que contar |
+| --- | --- |
+| API | Cada processo PHP que atende uma requisição simultânea e pode usar SQL, incluindo prontidão, operações e polls em espera. A configuração Apache prefork publicada permite 24 processos de requisição por contêiner de API. É um teto de processos HTTP, não um pool SQL nem uma medição de 24 sessões abertas. |
+| Workers de fila Laravel | Cada processo `php artisan queue:work`. A receita Compose publicada executa um; contêineres worker adicionais acrescentam processos. Eles são distintos dos workers externos dos SDKs. |
+| Agendador/manutenção | Comandos PHP simultâneos, não apenas o contêiner do agendador. O Compose executa avaliação de agendamentos, reparo, expiração de atividades e poda em sequência. Assim, o loop normal tem um comando ativo por vez. Preserve a regra de um único agendador. |
+| Inicialização e ferramentas operacionais | Comandos de migração/inicialização, reconstrução de projeções, retenção, backups, monitoramento e clientes SQL interativos que possam se sobrepor ao deployment. Conte separadamente os comandos executados simultaneamente de propósito. |
+| Clientes e workers dos SDKs | Normalmente nenhuma sessão direta no banco do Server, pois os SDKs PHP, Python e Rust em modo de serviço usam HTTP. Adicione conexões somente se suas atividades ou outro código da aplicação realmente acessarem esse banco. |
+
+Conte **os identificadores de conexão SQL distintos usados por processo**, não
+apenas contêineres ou nomes de host. A conexão padrão do Laravel e
+`workflows.storage.connection` podem compartilhar um nome configurado. Outro
+nome de armazenamento, uma conexão SQL de fila/cache/sessão ou conexões
+separadas de leitura/escrita/diretas podem abrir uma sessão adicional, mesmo
+no mesmo endpoint. Conexões Redis não são sessões SQL. Inspecione a
+configuração efetiva em cache e os nomes realmente usados por cada papel.
+
+Em um deployment FPM próprio, conte processos de execução PHP-FPM, não threads
+do nginx ou Apache event. No Octane, inventarie workers de requisição, workers
+de tarefas e clientes reais do banco. Não use os 24 processos do Apache como
+tamanho de pool desses frontends. Long polls síncronos ocupam um processo PHP
+enquanto aguardam e podem manter uma sessão SQL. Não atribua automaticamente
+consumo SQL zero a um poll HTTP ocioso.
+
+### Exemplo conservador de atualização gradual {#a-conservative-rolling-upgrade-example}
+
+Este é um exemplo de planejamento, **não capacidade medida**. Considere um
+limite de 120 sessões cliente, dez para outras aplicações e quinze reservadas
+para recuperação/administração. Restam 95 para este deployment. Considere
+fila/cache em Redis e no máximo uma conexão SQL por processo PHP.
+
+| Sobreposição máxima | Cálculo | Sessões planejadas |
+| --- | --- | ---: |
+| Réplicas de API, incluindo uma réplica adicional no rollout | `(2 + 1) × 24 × 1` | 72 |
+| Workers de fila Laravel | `2 × 1` | 2 |
+| Comando único de agendador/manutenção | `1 × 1` | 1 |
+| Inicialização/migração | `1 × 1` | 1 |
+| Backup, monitoramento e outras ferramentas aprovadas | Reserva explícita | 4 |
+| **Subtotal do deployment** | | **80** |
+| Margem do deployment ainda não alocada | `95 − 80` | 15 |
+
+Nessas condições, uma quarta réplica de API elevaria o subtotal para 104,
+ultrapassando a alocação de 95 sessões. Duas conexões SQL por processo de API
+já exigiriam 144 sessões apenas para as três réplicas de API. Recalcule ao
+alterar conexões de armazenamento, quantidade de workers ou sobreposição do
+rollout. Reduza os tetos de processos/réplicas ou substitua por etapas, sem
+presumir que o banco absorverá a sobreposição. Aumentar `max_connections`
+também exige revisar memória e carga do banco.
+
+### Observe e aplique o orçamento {#observe-and-enforce-the-budget}
+
+1. Registre o limite efetivo de conexões, clientes de outras aplicações e
+   acesso reservado para recuperação. Defina máximos de réplicas/processos API
+   e de réplicas adicionais no rollout. Inclua gerações de workers de fila e
+   ferramentas sobrepostas.
+2. Em uma cópia isolada com sua imagem publicada e configuração exatas,
+   observe sessões em repouso, com polls em espera, durante trabalho real e
+   numa sobreposição antiga/nova limitada. Inclua sessões ociosas e o próprio
+   monitor. PostgreSQL expõe `pg_stat_activity`; MySQL,
+   `information_schema.PROCESSLIST`. Use um papel de monitoramento com escopo
+   apropriado e não exporte texto SQL nem payloads.
+3. Compare sessões observadas por usuário/banco com a alocação por processo.
+   Uma amostra curta valida as premissas desse ambiente de teste, não um limite
+   de saturação ou garantia para qualquer carga.
+4. Acompanhe a folga de sessões junto com recusas de conexão, latência de
+   transação/commit, espera por bloqueios, requisições HTTP retidas e
+   crescimento do armazenamento. Prontidão sozinha não prova folga para rollout.
+5. Perto do limite, reduza a sobreposição ou drene e retire um grupo antigo
+   de API/worker antes de iniciar seu substituto. Preserve acesso de recuperação
+   e execute inicialização apenas na janela de migração planejada. Se uma
+   sobreposição segura não couber, use o procedimento documentado com parada total.
+
+A [admissão de filas](/docs/polyglot/task-queue-admission) limita certas
+operações de despacho e lease. `DW_WORKER_LONG_POLL_MAX_CONCURRENT` e
+`DW_QUERY_TASK_POLL_MAX_CONCURRENT` limitam polls em espera por nó. Nenhum
+limita globalmente sessões SQL, bytes do banco ou latência de commit. Reserve
+também capacidade para conclusões, heartbeats, operações e verificações de saúde.
+
+Use como referência um endpoint direto e gravável do banco. Um proxy deve ser
+qualificado com a versão exata do Server, modo de pool e configurações de
+instruções preparadas, limites de transações, estado da sessão e bloqueios.
+O Server publicado 2.9.7 falha com PgBouncer em modo de transação; o endpoint
+de prontidão pode continuar saudável apesar das falhas. Acompanhe a correção
+e a qualificação da imagem publicada em
+[Server #524](https://github.com/durable-workflow/server/issues/524). Conexão
+TCP, migração ou resposta de prontidão bem-sucedida não comprova
+compatibilidade com pool transacional. Réplicas de leitura não devem substituir
+o escritor autoritativo usado para claims e transições duráveis.
+
 ## Chart Helm para Kubernetes {#helm-chart-for-kubernetes}
 
 O repositório Server mantém o
@@ -414,10 +514,11 @@ preserva três regras:
   gerenciado (RDS Multi-AZ, failover de cluster Aurora, Cloud SQL HA, Patroni etc.)
   é permitido desde que o primário anterior seja isolado antes de se reconectar:
   revogue o usuário de escrita, rebaixe com `read_only=on`, corte a replicação
-  ou restaure de um snapshot comprovadamente funcional. Um proxy de conexão
-  (RDS Proxy, ProxySQL, PgBouncer) entre os contêineres de API/agendador e o
-  banco de dados é permitido. Ele não altera as garantias porque o contrato
-  do mecanismo se aplica à conexão que ele vê.
+  ou restaure de um snapshot comprovadamente funcional. Um proxy deve preservar
+  a semântica de banco usada pelo Server e ser qualificado para sua versão
+  exata, modo e configurações. Veja os
+  [orçamentos de conexões SQL](#sql-connection-budgets) para a limitação atual
+  do pool transacional PgBouncer e os critérios de qualificação.
 - **Um endpoint Redis por vez, com um caminho documentado de promoção.**
   O failover de Redis gerenciado (Sentinel, failover de grupo de replicação
   Elasticache, Memorystore HA etc.) é permitido. O Redis é a camada de aceleração,

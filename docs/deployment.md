@@ -292,6 +292,104 @@ database, cache, backup, and load-balancer model. It becomes support-led when
 you need help deciding those boundaries, capacity, rollout order, or recovery
 procedures.
 
+## SQL connection budgets {#sql-connection-budgets}
+
+Budget database sessions before adding API replicas or overlapping old and new
+processes during a [rolling upgrade](/docs/rolling-upgrades). A database can
+reach its connection limit while CPU is still available. This is separate from
+write/commit latency, HTTP request capacity and retained storage growth.
+
+### Count every SQL-owning process {#count-every-sql-owning-process}
+
+The published PHP Compose deployment has these possible SQL clients:
+
+| Role | What to count |
+| --- | --- |
+| API | Every concurrently active PHP request process that can use SQL, including readiness, operator requests and held polls. The published Apache prefork configuration permits 24 request processes per API container. That is an HTTP process ceiling, not a SQL pool or a measurement of 24 open sessions. |
+| Laravel queue workers | Each `php artisan queue:work` process. The published Compose recipe runs one; extra worker containers add processes. These are separate from external SDK workers. |
+| Scheduler/maintenance | Concurrent PHP commands, not just the scheduler container. The Compose scheduler runs schedule evaluation, repair, activity timeout and pruning commands sequentially, so its ordinary loop has one command active at a time. Keep the singleton scheduler rule. |
+| Bootstrap and operational tools | Migration/bootstrap commands, projection rebuilds, retention jobs, backups, monitoring and interactive SQL clients that can overlap the deployment. Count any deliberately concurrent commands separately. |
+| SDK clients and workers | Normally zero direct Server-database sessions because PHP, Python and Rust service-mode SDKs use HTTP. Add connections only if your activity code or other application code actually connects to that database. |
+
+Count **distinct SQL handles used by each process**, not just containers or
+hostnames. Laravel's default connection and `workflows.storage.connection`
+may share one configured connection name. A different storage name, database
+queue/cache/session connection, or read/write/direct connection handle can
+open an additional session even when it reaches the same database endpoint.
+Redis connections are not SQL sessions. Inspect the effective cached
+configuration and the connection names each role actually uses.
+
+For a custom FPM deployment, count PHP-FPM execution children, not nginx or
+Apache event threads. For a custom Octane deployment, inventory its request
+workers, task workers and actual database clients. Do not reuse Apache's
+24-process figure as a pool size for either frontend. Synchronous long polls
+occupy a PHP execution worker while waiting and may retain a database session;
+an idle HTTP poll must not automatically be budgeted as zero SQL usage.
+
+### A conservative rolling-upgrade example {#a-conservative-rolling-upgrade-example}
+
+This is a planning example, **not measured capacity**. Assume a database limit
+of 120 client sessions, ten sessions for other applications and fifteen
+reserved for recovery/admin access. That leaves 95 for this deployment.
+Assume Redis-backed queue/cache and at most one SQL handle per PHP process.
+
+| Peak overlap | Calculation | Planned sessions |
+| --- | --- | ---: |
+| API replicas, including one rollout surge | `(2 + 1) × 24 × 1` | 72 |
+| Laravel queue workers | `2 × 1` | 2 |
+| Singleton scheduler/maintenance command | `1 × 1` | 1 |
+| Bootstrap/migration | `1 × 1` | 1 |
+| Backup, monitoring and other approved tools | Explicit allowance | 4 |
+| **Deployment subtotal** | | **80** |
+| Unallocated deployment margin | `95 − 80` | 15 |
+
+At these assumptions, a fourth API replica would raise the deployment subtotal
+to 104 and exceed its 95-session allocation. Two SQL handles per API process
+would already require 144 sessions for the three API replicas alone. Recompute
+the budget when changing storage connections, worker counts or rollout surge.
+Lower the process/replica ceiling or stage replacement rather than assuming
+the database will absorb the overlap. Raising `max_connections` also needs
+database memory and workload review.
+
+### Observe and enforce the budget {#observe-and-enforce-the-budget}
+
+1. Record the effective database connection limit, unrelated clients and
+   reserved recovery access. Set explicit API replica/process maxima and
+   rollout surge. Include overlapping queue-worker generations and tools.
+2. On an isolated copy using your exact published image and configuration,
+   sample sessions while idle, during held polls, while completing real work
+   and during a bounded old/new overlap. Include idle sessions and the monitor
+   itself. PostgreSQL exposes `pg_stat_activity`; MySQL exposes
+   `information_schema.PROCESSLIST`. Use a suitably scoped monitoring role and
+   avoid exporting SQL text or payloads.
+3. Compare the observed sessions by application user/database with the
+   declared per-process allowance. A short sample validates that fixture's
+   assumptions, not a saturation limit or a guarantee for every workload.
+4. Watch session headroom together with connection refusals, transaction/commit
+   latency, lock waits, held HTTP requests and storage growth. Readiness alone
+   does not prove a rollout has spare capacity.
+5. Near the limit, reduce the surge or drain and retire an old API/worker group
+   before starting its replacement. Keep recovery access available and run
+   bootstrap only in the planned migration window. If safe overlap cannot fit,
+   use the documented stop-the-world upgrade posture.
+
+[Task-queue admission](/docs/polyglot/task-queue-admission) limits selected
+dispatch and lease activity. `DW_WORKER_LONG_POLL_MAX_CONCURRENT` and
+`DW_QUERY_TASK_POLL_MAX_CONCURRENT` bound held poll waits on a node. None is a
+global SQL-session, database-byte or commit-latency limit; keep capacity for
+completions, heartbeats, operator requests and health checks as well.
+
+Use a direct writable database endpoint as the baseline. A connection proxy
+must be qualified with the exact Server release, pool mode and settings for
+prepared statements, transaction boundaries, session state and locking.
+Published Server 2.9.7 fails with PgBouncer transaction pooling; its readiness
+endpoint can remain healthy despite those failures. Track the product
+correction and published-image qualification in
+[Server #524](https://github.com/durable-workflow/server/issues/524). Do not
+infer transaction-pool compatibility from a successful TCP connection, migration
+or readiness response. Read replicas must not replace the authoritative
+writer used for claims and durable transitions.
+
 ## Helm chart for Kubernetes
 
 The Server repository owns the
@@ -410,10 +508,11 @@ shape or the raw-manifest shape and the operator preserves three rules:
   (RDS Multi-AZ, Aurora cluster failover, Cloud SQL HA, Patroni, etc.) is
   permitted on the rule that the previous primary is fenced — revoke the
   write user, demote with `read_only=on`, sever replication, or restore from
-  a known-good snapshot — before it can re-attach. A connection proxy (RDS
-  Proxy, ProxySQL, PgBouncer) between the API/scheduler containers and the
-  database is permitted; it does not change any guarantee, because the
-  engine's contract is on the connection it sees.
+  a known-good snapshot — before it can re-attach. A connection proxy must
+  preserve the database semantics the Server uses and pass exact-release
+  qualification for its mode and settings. See
+  [SQL connection budgets](#sql-connection-budgets) for the current PgBouncer
+  transaction-pooling limitation and the qualification boundary.
 - **One Redis endpoint at a time, with a documented promotion path.**
   Managed-Redis failover (Sentinel, Elasticache replication-group failover,
   Memorystore HA, etc.) is permitted. Redis is the acceleration layer, not

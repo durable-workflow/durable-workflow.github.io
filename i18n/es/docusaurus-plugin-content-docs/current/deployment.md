@@ -268,6 +268,109 @@ Esta opción es autónoma si tu equipo ya tiene claros los modelos de VM, red,
 base de datos, caché, copias y balanceador. Requiere soporte si necesitas definir
 esos límites, capacidad, orden de despliegue o recuperación.
 
+## Presupuestos de conexiones SQL {#sql-connection-budgets}
+
+Calcula las sesiones de base de datos antes de añadir réplicas API o solapar
+procesos antiguos y nuevos durante una
+[actualización gradual](/docs/rolling-upgrades). La base puede alcanzar el
+límite de conexiones aunque quede CPU disponible. Este límite es distinto de
+la latencia de escritura/commit, la capacidad HTTP y el crecimiento de los
+datos conservados.
+
+### Cuenta todos los procesos que usan SQL {#count-every-sql-owning-process}
+
+El despliegue PHP Compose publicado tiene estos posibles clientes SQL:
+
+| Función | Qué contar |
+| --- | --- |
+| API | Cada proceso PHP que atiende simultáneamente una petición y puede usar SQL, incluidos disponibilidad, operaciones y polls en espera. La configuración Apache prefork publicada permite 24 procesos por contenedor API. Es un máximo de procesos HTTP, no un pool SQL ni una medición de 24 sesiones abiertas. |
+| Workers de cola Laravel | Cada proceso `php artisan queue:work`. La receta Compose publicada ejecuta uno; los contenedores worker adicionales añaden procesos. Son distintos de los workers SDK externos. |
+| Programador/mantenimiento | Los comandos PHP simultáneos, no solo el contenedor programador. El programador Compose ejecuta secuencialmente evaluación de programas, reparación, expiración de actividades y poda, por lo que su bucle normal tiene un comando activo cada vez. Mantén la regla de un único programador. |
+| Inicialización y herramientas operativas | Comandos de migración/inicialización, reconstrucciones de proyecciones, retención, copias, monitorización y clientes SQL interactivos que puedan coincidir con el despliegue. Cuenta por separado los comandos deliberadamente simultáneos. |
+| Clientes y workers SDK | Normalmente ninguna sesión directa a la base del Server: los SDK PHP, Python y Rust en modo servicio usan HTTP. Añade conexiones solo si tus actividades u otro código de la aplicación acceden realmente a esa base. |
+
+Cuenta **las conexiones SQL distintas usadas por cada proceso**, no solo
+contenedores o nombres de host. La conexión predeterminada de Laravel y
+`workflows.storage.connection` pueden compartir un nombre configurado. Otro
+nombre de almacenamiento, una conexión SQL para cola/caché/sesión o un
+identificador separado de lectura/escritura/directo puede abrir otra sesión,
+incluso hacia el mismo endpoint. Redis no cuenta como sesiones SQL. Revisa la
+configuración efectiva en caché y los nombres que usa realmente cada función.
+
+En un despliegue FPM propio, cuenta procesos ejecutores PHP-FPM, no hilos nginx
+o Apache event. En Octane, inventaría workers de peticiones, workers de tareas
+y clientes reales de la base. No reutilices los 24 procesos Apache como tamaño
+de pool para esos frontales. Los long polls síncronos ocupan un proceso PHP
+mientras esperan y pueden conservar una sesión SQL. No presupuestes
+automáticamente un poll HTTP inactivo como consumo SQL cero.
+
+### Ejemplo conservador de actualización gradual {#a-conservative-rolling-upgrade-example}
+
+Es un ejemplo de planificación, **no capacidad medida**. Supón un límite de
+120 sesiones cliente, diez para otras aplicaciones y quince reservadas para
+recuperación y administración. Quedan 95 para este despliegue. Supón cola y
+caché en Redis y como máximo una conexión SQL por proceso PHP.
+
+| Solapamiento máximo | Cálculo | Sesiones previstas |
+| --- | --- | ---: |
+| Réplicas API, incluida una réplica adicional durante el despliegue | `(2 + 1) × 24 × 1` | 72 |
+| Workers de cola Laravel | `2 × 1` | 2 |
+| Comando único de programador/mantenimiento | `1 × 1` | 1 |
+| Inicialización/migración | `1 × 1` | 1 |
+| Copias, monitorización y otras herramientas aprobadas | Asignación explícita | 4 |
+| **Subtotal del despliegue** | | **80** |
+| Margen del despliegue sin asignar | `95 − 80` | 15 |
+
+Con estos supuestos, una cuarta réplica API elevaría el subtotal a 104 y
+superaría las 95 sesiones asignadas. Dos conexiones SQL por proceso API
+requerirían ya 144 sesiones solo para las tres réplicas API. Recalcula al
+cambiar conexiones de almacenamiento, número de workers o solapamiento.
+Reduce los máximos de procesos/réplicas o sustituye por etapas, sin dar por
+hecho que la base absorberá la coexistencia. Aumentar `max_connections`
+también exige revisar memoria y carga de la base.
+
+### Observa y aplica el presupuesto {#observe-and-enforce-the-budget}
+
+1. Registra el límite efectivo de conexiones, los clientes ajenos y el acceso
+   reservado para recuperación. Fija máximos de réplicas/procesos API y de
+   réplicas adicionales durante el despliegue. Incluye generaciones de workers
+   de cola y herramientas que coincidan.
+2. En una copia aislada con tu imagen publicada y configuración exactas,
+   muestrea sesiones en reposo, con polls en espera, al completar trabajo real
+   y durante un solapamiento antiguo/nuevo acotado. Incluye sesiones inactivas
+   y el propio monitor. PostgreSQL expone `pg_stat_activity`; MySQL,
+   `information_schema.PROCESSLIST`. Usa un rol de monitorización con permisos
+   adecuados y evita exportar texto SQL o payloads.
+3. Compara sesiones observadas por usuario/base con la asignación por proceso.
+   Una muestra corta valida los supuestos de ese montaje, no un límite de
+   saturación ni una garantía para todas las cargas.
+4. Vigila el margen de sesiones junto con rechazos de conexión, latencia de
+   transacción/commit, esperas de bloqueos, peticiones HTTP retenidas y
+   crecimiento del almacenamiento. La disponibilidad no demuestra por sí sola
+   que haya capacidad para el despliegue.
+5. Cerca del límite, reduce el solapamiento o vacía y retira un grupo API/worker
+   antiguo antes de iniciar el sustituto. Conserva acceso para recuperación
+   y ejecuta la inicialización solo en la ventana de migración prevista.
+   Si el solapamiento seguro no cabe, usa la actualización documentada con
+   parada completa.
+
+La [admisión de colas](/docs/polyglot/task-queue-admission) limita ciertas
+operaciones de envío y lease. `DW_WORKER_LONG_POLL_MAX_CONCURRENT` y
+`DW_QUERY_TASK_POLL_MAX_CONCURRENT` acotan polls en espera por nodo. Ninguno
+limita globalmente sesiones SQL, bytes de la base ni latencia de commit.
+Reserva también capacidad para completados, heartbeats, operaciones y salud.
+
+Parte de un endpoint directo y escribible de base de datos. Un proxy debe
+validarse con la versión exacta del Server, el modo de pool y los ajustes de
+sentencias preparadas, límites de transacciones, estado de sesión y bloqueos.
+El Server publicado 2.9.7 falla con PgBouncer en modo de transacción; el
+endpoint de disponibilidad puede seguir sano pese a esos fallos. Sigue la
+corrección y la validación de la imagen publicada en
+[Server #524](https://github.com/durable-workflow/server/issues/524). Una
+conexión TCP, migración o respuesta de disponibilidad correcta no demuestra
+compatibilidad con el pool transaccional. Las réplicas de lectura no deben
+sustituir al escritor autoritativo de claims y transiciones durables.
+
 ## Chart Helm para Kubernetes {#helm-chart-for-kubernetes}
 
 El repositorio Server mantiene el
@@ -375,9 +478,10 @@ el operador conserva tres reglas:
   conmutación gestionada (RDS Multi-AZ, Aurora, Cloud SQL HA, Patroni, etc.) si
   se aísla el primario anterior antes de reincorporarlo: revocar el usuario de
   escritura, degradarlo con `read_only=on`, cortar replicación o restaurar una
-  instantánea fiable. Se admite un proxy (RDS Proxy, ProxySQL, PgBouncer) entre
-  API/programador y base de datos. No altera garantías porque el contrato se
-  aplica a la conexión que ve el motor.
+  instantánea fiable. Un proxy debe conservar la semántica de base usada por
+  el Server y validarse con su versión exacta, modo y ajustes. Consulta los
+  [presupuestos de conexiones SQL](#sql-connection-budgets) para la limitación
+  actual del pool transaccional PgBouncer y los requisitos de validación.
 - **Un endpoint Redis cada vez, con promoción documentada.** Se admite
   Sentinel, Elasticache, Memorystore HA, etc. Redis es aceleración, no el
   sustrato de corrección: su conmutación afecta a latencia, nunca a corrección.
