@@ -121,8 +121,11 @@ les diagnostics opérateur.
 
 L’exécution avec affinité de cache optimise la relecture des tâches de workflow.
 Un worker peut conserver un cache de relecture chaud local au processus après
-la fin d’une tâche. L’appariement peut privilégier ce worker pour la prochaine
-tâche de la même exécution.
+la fin d’une tâche de workflow. S’il prend ensuite une tâche de la même
+exécution, il peut réutiliser son cache valide. L’affinité ne réserve pas les
+tâches prêtes et n’accorde aucune priorité d’appariement au propriétaire du
+cache. Un autre worker admissible peut prendre la tâche et relire son
+historique à froid.
 
 La progression du workflow ne devient pas locale au processus. La correction
 repose toujours sur la relecture ordinaire à froid depuis l’historique durable

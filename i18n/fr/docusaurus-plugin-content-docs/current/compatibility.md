@@ -50,16 +50,11 @@ manifestes serveur et contrôles CI se valident contre une référence unique :
 - La classe PHP `Workflow\V2\Support\SurfaceStabilityContract`, source dans le
   processus que le serveur réexporte.
 
-L'admission des canaux d'artefacts est régie séparément par
-[`/public-artifact-release-policy.json`](pathname:///public-artifact-release-policy.json).
-Cette politique revue indépendamment détermine quels canaux 2.0 peuvent devenir
-le tuple public de référence.
-
 Une publication qui modifie une interface ci-dessous, son niveau de stabilité,
 ses champs ou ses règles d'incompatibilité doit mettre à jour cette page, le
 miroir JSON, le manifeste PHP et les documents de stabilité des paquets concernés
 dans la même modification. La CI documentaire valide le contrat lisible par
-machine, la politique des phases de publication, les métadonnées Rust publiées
+machine, les métadonnées Rust publiées
 quand elles sont disponibles et les spécifications du protocole worker.
 L'alignement éditorial de cette page avec le manifeste reste une responsabilité
 explicite de la revue de publication.
