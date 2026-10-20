@@ -71,6 +71,8 @@ $result = activity(
 );
 ```
 
+Routing overrides in `ActivityOptions` apply when a new activity execution is scheduled. They do not move an activity already recorded in history. See [recorded activity queues](../polyglot/task-matching-dispatch.md#recorded-activity-queues) before changing worker pools.
+
 ## Connection
 
 The `$connection` setting is used to specify which queue connection the workflow or activity should be sent to. By default, the `$connection` value is not set which will use the default connection. This can be overridden by setting the `$connection` property on the workflow or activity class.
@@ -78,6 +80,8 @@ The `$connection` setting is used to specify which queue connection the workflow
 ## Queue
 
 The `$queue` setting is used to specify which queue the workflow or activity should be added to. By default, the `$queue` value is not set which uses the default queue for the specified connection. This can be overridden by setting the `$queue` property on the workflow or activity class.
+
+An activity stores its resolved connection and queue when it is scheduled. Its retries and repaired tasks reuse that recorded routing, even after class defaults or per-call options change. Existing workflow runs also retain their recorded workflow queue. Keep compatible workers on the old queues while those dependencies remain. Follow the [queue transition procedure](../polyglot/task-matching-dispatch.md#recorded-activity-queues).
 
 ## Retries
 

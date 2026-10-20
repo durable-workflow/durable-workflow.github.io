@@ -150,6 +150,40 @@ familles de compatibilité lorsqu'une même file doit rester active pendant un
 déploiement ou un retour arrière sans que le travail en cours ne dérive vers
 des exécuteurs incompatibles.
 
+## Files d’activité enregistrées {#recorded-activity-queues}
+
+La connexion et la file résolues d’une activité sont enregistrées lors de sa planification. Modifier une classe d’activité, `ActivityOptions`, les options d’activité du SDK PHP ou Python `schedule_activity(..., queue=...)` affecte les activités planifiées ensuite. Les exécutions existantes conservent leur file enregistrée lors des nouvelles tentatives et des réparations. Un worker qui s’inscrit sur une nouvelle file ne déplace pas l’ancien travail. Les exécutions de workflow existantes conservent aussi leur propre file de workflow.
+
+### Changer le routage avec une période de chevauchement {#change-recorded-routing}
+
+1. Démarrez les workers de la nouvelle file dans le bon namespace. Vérifiez leurs types d’activité, leurs slots d’activité positifs et la compatibilité des builds. Gardez les anciens pools de workflows et d’activités disponibles.
+2. Déployez le nouveau routage pour le nouveau travail. Conservez du code compatible avec les exécutions existantes et respectez leurs builds épinglés. Une nouvelle file ne migre pas les exécutions enregistrées.
+3. Inspectez les exécutions concernées et les deux files. Tenez compte des activités en attente ou sous lease, des nouvelles tentatives disponibles plus tard, des exécutions ouvertes passives, des enfants et des chaînes de continuation qui ont encore besoin des anciens workers. Un compteur de tâches prêtes à zéro ne couvre pas ces dépendances.
+4. Retirez les anciens workers uniquement après avoir pris en compte ces dépendances et empêché le nouveau travail d’en créer. Les instantanés actuels ne sont pas une protection atomique du retrait. Si vous ne pouvez pas l’établir, gardez l’ancien pool disponible. [Server #519](https://github.com/durable-workflow/server/issues/519) couvre l’inventaire et le retrait protégés.
+
+### Inspecter et débloquer le travail {#recorded-queue-diagnostics}
+
+Utilisez un identifiant opérateur et le même namespace que l’exécution concernée. Définissez explicitement l’origine, le namespace, l’ancienne file et les IDs du workflow et de l’exécution sélectionnés :
+
+```bash
+curl -fsS "$DW_SERVER_URL/api/task-queues/$OLD_QUEUE" \
+  -H "Authorization: Bearer $DW_OPERATOR_TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "X-Namespace: $DW_NAMESPACE"
+curl -fsS "$DW_SERVER_URL/api/workflows/$WORKFLOW_ID/runs/$RUN_ID/debug" \
+  -H "Authorization: Bearer $DW_OPERATOR_TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "X-Namespace: $DW_NAMESPACE"
+```
+
+La visibilité des files indique `admission.activity_tasks.status: no_active_workers` lorsqu’aucun worker actif et non périmé n’est inscrit sur cette file. La réponse de débogage de l’exécution contient `pending_activities[].queue`, `activity_task_queues` et des constats tels que `pending_activity_queue_without_active_pollers`. Si des workers sont présents mais n’annoncent pas le type d’activité requis, cherchez `pending_activity_type_unsupported`. L’inscription seule ne prouve pas qu’un worker progresse.
+
+La réponse de débogage est un instantané borné d’une exécution, pas un inventaire complet de la file. Elle comprend au plus 25 activités en attente. Les compteurs de file et les instantanés vides ne prouvent pas que du travail concurrent ou futur ne dépend plus de l’ancien pool.
+
+Rétablissez avant l’échéance un worker compatible sur la file **enregistrée**, avec le type d’activité requis et des slots disponibles. Réparer ou redémarrer un worker ne change pas cette file et ne prolonge pas l’échéance totale d’origine. Si ce travail n’est plus souhaité, annulez volontairement l’exécution concernée et réconciliez ses effets externes. Ne modifiez pas les champs de file stockés comme procédure de migration.
+
+Un délai schedule-to-start fini peut expirer pendant qu’une activité attend un worker. Schedule-to-close borne toute l’exécution de l’activité, y compris les délais entre tentatives. Ces limites ne s’appliquent que si elles sont configurées. Leur application ne déplace pas l’activité vers une file active, et rétablir les workers ne réactive pas un timeout déjà terminal. Voir les [timeouts d’activités et de workflows](../features/timeouts.md).
+
 ## Signaux de réveil et balayages dédiés {#wake-signals-and-dedicated-sweeps}
 
 Les signaux de réveil réduisent le délai entre « la tâche est devenue prête »

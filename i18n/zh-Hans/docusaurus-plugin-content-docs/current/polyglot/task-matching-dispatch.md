@@ -116,6 +116,40 @@ php artisan workflow:v2:repair-pass --loop
 
 需要更强隔离、独立 Worker 池或不同下游预算时，使用不同队列。同一队列需要在发布或回滚期间保持可用，同时避免执行中的工作转移到不兼容执行器时，使用兼容族。
 
+## 已记录的活动队列 {#recorded-activity-queues}
+
+活动解析后的连接和队列在调度时保存。修改活动类、`ActivityOptions`、PHP SDK 活动选项或 Python 的 `schedule_activity(..., queue=...)`，只影响新调度的活动。现有执行在重试和修复时仍保留已记录的队列。工作器注册到新队列不会移动旧任务。现有工作流运行也保留自己的工作流队列。
+
+### 在重叠运行窗口内切换路由 {#change-recorded-routing}
+
+1. 在正确的命名空间中启动新队列的工作器。确认其活动类型、正数的活动槽位和构建兼容性。保留旧的工作流池和活动池。
+2. 为新任务部署新路由。为现有运行保留兼容代码，并遵守其固定构建。新队列并不等于迁移已记录的执行。
+3. 检查受影响的运行和两个队列。核实待处理及已租用的活动、未来可重试的任务、被动等待的未结束运行、子工作流，以及仍依赖旧工作器的延续链。就绪任务数为零并不能涵盖这些依赖。
+4. 只有在核实依赖且阻止新任务继续创建这些依赖后，才能退役旧工作器。当前快照不是原子的退役保护。如果无法确认，就应继续保留旧池。[Server #519](https://github.com/durable-workflow/server/issues/519) 负责带保护的依赖清单与退役能力。
+
+### 检查并恢复滞留任务 {#recorded-queue-diagnostics}
+
+使用操作员凭据和受影响运行所在的命名空间。显式设置源站、命名空间、旧队列及选定的工作流 ID 和运行 ID：
+
+```bash
+curl -fsS "$DW_SERVER_URL/api/task-queues/$OLD_QUEUE" \
+  -H "Authorization: Bearer $DW_OPERATOR_TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "X-Namespace: $DW_NAMESPACE"
+curl -fsS "$DW_SERVER_URL/api/workflows/$WORKFLOW_ID/runs/$RUN_ID/debug" \
+  -H "Authorization: Bearer $DW_OPERATOR_TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "X-Namespace: $DW_NAMESPACE"
+```
+
+当队列上没有活跃且未过期的工作器注册时，队列可见性返回 `admission.activity_tasks.status: no_active_workers`。运行调试响应包含 `pending_activities[].queue`、`activity_task_queues`，以及 `pending_activity_queue_without_active_pollers` 等诊断。如果存在工作器但未声明所需的活动类型，请检查 `pending_activity_type_unsupported`。仅有注册不能证明工作器正在推进任务。
+
+调试响应只是单个运行的有限快照，并非完整的队列清单，最多包含 25 个待处理活动。队列计数和空快照无法证明并发或未来任务不再依赖旧池。
+
+在期限到达前，将具有所需活动类型和可用槽位的兼容工作器恢复到**已记录**的队列。修复任务或重启工作器不会改变该队列，也不会延长原始总期限。如果不再需要这项工作，应明确取消相应运行，并核对外部影响。不要通过编辑已存储的队列字段来执行迁移。
+
+有限的 schedule-to-start 超时可能在活动等待工作器期间到期。Schedule-to-close 限制整个活动执行，包括重试等待时间。这些限制只在配置后生效。执行期限不会将活动迁移到可用队列；恢复工作器也不会复活已因超时进入终态的活动。请参阅[活动和工作流超时](../features/timeouts.md)。
+
 ## 唤醒信号与专用扫描 {#wake-signals-and-dedicated-sweeps}
 
 唤醒信号缩短任务就绪到轮询方发现任务之间的时间。它不是持久事实的权威来源。

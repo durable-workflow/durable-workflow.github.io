@@ -71,6 +71,8 @@ $result = activity(
 );
 ```
 
+Перевизначення маршрутизації в `ActivityOptions` застосовуються під час планування нової execution activity. Вони не переміщують activity, уже записану в history. Перш ніж змінювати пули worker, перегляньте [зафіксовані черги activity](../polyglot/task-matching-dispatch.md#recorded-activity-queues).
+
 ## З’єднання {#connection}
 
 Налаштування `$connection` задає з’єднання черги, до якого слід надіслати workflow чи activity. Типово `$connection` не задано, тому використовується типове з’єднання. Це можна перевизначити властивістю `$connection` класу workflow чи activity.
@@ -78,6 +80,8 @@ $result = activity(
 ## Черга {#queue}
 
 Налаштування `$queue` задає чергу, до якої слід додати workflow чи activity. Типово `$queue` не задано, тому використовується типова черга вказаного з’єднання. Це можна перевизначити властивістю `$queue` класу workflow чи activity.
+
+Під час планування activity зберігає визначені connection і queue. Її retry та відновлені task повторно використовують цю зафіксовану маршрутизацію, навіть після зміни типових значень класу або параметрів окремого виклику. Наявні run workflow також зберігають свою зафіксовану чергу workflow. Залишайте сумісні worker у старих чергах, доки існують ці залежності. Дотримуйтеся [процедури переходу між чергами](../polyglot/task-matching-dispatch.md#recorded-activity-queues).
 
 ## Повторні спроби {#retries}
 

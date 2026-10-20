@@ -803,6 +803,8 @@ attempts. `heartbeat_timeout` requires long-running activities to call
 policy is snapped onto the durable activity execution when it is scheduled, so
 later deploys do not change already-running attempts.
 
+`ctx.schedule_activity(..., queue="payments-v2")` selects the queue for a newly scheduled activity. An already scheduled execution, its retries and repaired tasks keep their recorded queue. Changing the worker's `task_queue` does not reroute them or change an existing run's workflow queue. Keep compatible old-queue workers until the remaining dependencies are accounted for. Follow [recorded activity queues and recovery](./task-matching-dispatch.md#recorded-activity-queues).
+
 ### Determinism Rules
 
 Workflow code is replayed from history. It must not perform any non-deterministic operations directly:

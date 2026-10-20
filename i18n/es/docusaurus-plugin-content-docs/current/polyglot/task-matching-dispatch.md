@@ -145,6 +145,40 @@ independientes o presupuestos distintos para dependencias posteriores. Utiliza
 familias de compatibilidad si una cola debe seguir activa durante un despliegue
 o reversión sin que el trabajo en curso pase a ejecutores incompatibles.
 
+## Colas de actividad registradas {#recorded-activity-queues}
+
+La conexión y la cola resueltas de una actividad se guardan al programarla. Un cambio en su clase, `ActivityOptions`, las opciones de actividad del SDK PHP o Python `schedule_activity(..., queue=...)` afecta a las actividades que se programen después. Las ejecuciones existentes conservan su cola registrada en los reintentos y reparaciones. Registrar un worker en una cola nueva no traslada el trabajo antiguo. Las ejecuciones de workflow existentes también conservan su propia cola de workflow.
+
+### Cambiar el enrutamiento con un período de solapamiento {#change-recorded-routing}
+
+1. Inicia workers para la cola nueva en el namespace correcto. Verifica sus tipos de actividad, slots de actividad positivos y compatibilidad de build. Mantén disponibles los grupos antiguos de workflows y actividades.
+2. Despliega el nuevo enrutamiento para el trabajo nuevo. Conserva código compatible con las ejecuciones existentes y respeta sus builds fijadas. Una cola nueva no migra las ejecuciones registradas.
+3. Inspecciona las ejecuciones afectadas y ambas colas. Ten en cuenta las actividades pendientes o con lease, la disponibilidad futura de reintentos, las ejecuciones abiertas pasivas, los hijos y las cadenas de continuación que aún necesitan workers antiguos. Un contador de tareas listas a cero no cubre esas dependencias.
+4. Retira los workers antiguos solo después de considerar esas dependencias e impedir que el trabajo nuevo las cree. Las instantáneas actuales no son una protección atómica para la retirada. Si no puedes establecerlo, mantén disponible el grupo antiguo. [Server #519](https://github.com/durable-workflow/server/issues/519) cubre el inventario y la retirada protegidos.
+
+### Inspeccionar y recuperar trabajo bloqueado {#recorded-queue-diagnostics}
+
+Usa una credencial de operador y el mismo namespace que la ejecución afectada. Establece explícitamente el origen, el namespace, la cola antigua y los IDs del workflow y la ejecución seleccionados:
+
+```bash
+curl -fsS "$DW_SERVER_URL/api/task-queues/$OLD_QUEUE" \
+  -H "Authorization: Bearer $DW_OPERATOR_TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "X-Namespace: $DW_NAMESPACE"
+curl -fsS "$DW_SERVER_URL/api/workflows/$WORKFLOW_ID/runs/$RUN_ID/debug" \
+  -H "Authorization: Bearer $DW_OPERATOR_TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "X-Namespace: $DW_NAMESPACE"
+```
+
+La visibilidad de colas informa `admission.activity_tasks.status: no_active_workers` cuando no hay un worker activo y no obsoleto registrado en esa cola. La respuesta de depuración de la ejecución incluye `pending_activities[].queue`, `activity_task_queues` y hallazgos como `pending_activity_queue_without_active_pollers`. Si hay workers pero no anuncian el tipo de actividad necesario, busca `pending_activity_type_unsupported`. Registrarse no demuestra por sí solo que el worker progrese.
+
+La respuesta de depuración es una instantánea acotada de una ejecución, no un inventario completo de la cola. Incluye como máximo 25 actividades pendientes. Los contadores de cola y las instantáneas vacías no demuestran que el trabajo concurrente o futuro ya no dependa del grupo antiguo.
+
+Restaura un worker compatible en la cola **registrada**, con el tipo de actividad necesario y slots disponibles, antes de que venzan sus plazos. Reparar o reiniciar un worker no cambia esa cola ni amplía el plazo total original. Si ya no se desea ese trabajo, cancela deliberadamente la ejecución afectada y concilia sus efectos externos. No edites los campos de cola almacenados como procedimiento de migración.
+
+Un timeout finito de schedule-to-start puede vencer mientras una actividad espera un worker. Schedule-to-close limita toda la ejecución de la actividad, incluidos los retrasos de reintento. Esos límites solo se aplican si están configurados. Aplicar el plazo no traslada la actividad a una cola activa, y restaurar workers no revive un timeout ya terminal. Consulta los [timeouts de actividades y workflows](../features/timeouts.md).
+
 ## Avisos y barridos dedicados {#wake-signals-and-dedicated-sweeps}
 
 Los avisos reducen el tiempo entre que una tarea está lista y un sondeador la

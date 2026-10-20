@@ -145,6 +145,40 @@ worker або інших бюджетів залежностей. Сімейст
 коли та сама черга має працювати під час оновлення чи відкату без
 переходу незавершеної роботи до несумісних виконавців.
 
+## Зафіксовані черги activity {#recorded-activity-queues}
+
+Визначені connection і queue activity зберігаються під час її планування. Зміни класу activity, `ActivityOptions`, параметрів activity у PHP SDK або Python `schedule_activity(..., queue=...)` впливають на нові заплановані activity. Наявні execution зберігають зафіксовану чергу під час retry та repair. Реєстрація worker у новій черзі не переміщує стару роботу. Наявні run workflow також зберігають власну чергу workflow.
+
+### Зміна маршрутизації з періодом перекриття {#change-recorded-routing}
+
+1. Запустіть worker для нової черги у правильному namespace. Перевірте їхні типи activity, додатну кількість слотів activity та сумісність build. Залишайте старі пули workflow й activity доступними.
+2. Розгорніть нову маршрутизацію для нової роботи. Збережіть сумісний код для наявних run і дотримуйтеся їхніх прив’язок до build. Нова черга не мігрує зафіксовані execution.
+3. Перевірте відповідні run та обидві черги. Врахуйте activity в очікуванні та під lease, майбутню доступність retry, пасивні відкриті run, дочірні workflow й ланцюжки продовження, яким ще потрібні старі worker. Нульова кількість готових task не охоплює цих залежностей.
+4. Виводьте старі worker з експлуатації лише після врахування цих залежностей і припинення створення нових. Поточні знімки не є атомарним захистом виведення з експлуатації. Якщо цього неможливо встановити, залиште старий пул доступним. [Server #519](https://github.com/durable-workflow/server/issues/519) охоплює захищену інвентаризацію та виведення з експлуатації.
+
+### Перевірка та відновлення роботи без worker {#recorded-queue-diagnostics}
+
+Використовуйте облікові дані оператора й той самий namespace, що й у відповідного run. Явно задайте origin, namespace, стару чергу та вибрані ID workflow і run:
+
+```bash
+curl -fsS "$DW_SERVER_URL/api/task-queues/$OLD_QUEUE" \
+  -H "Authorization: Bearer $DW_OPERATOR_TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "X-Namespace: $DW_NAMESPACE"
+curl -fsS "$DW_SERVER_URL/api/workflows/$WORKFLOW_ID/runs/$RUN_ID/debug" \
+  -H "Authorization: Bearer $DW_OPERATOR_TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "X-Namespace: $DW_NAMESPACE"
+```
+
+Видимість черги повідомляє `admission.activity_tasks.status: no_active_workers`, коли в цій черзі не зареєстровано активного, не застарілого worker. Відповідь налагодження run містить `pending_activities[].queue`, `activity_task_queues` та висновки на кшталт `pending_activity_queue_without_active_pollers`. Якщо worker є, але вони не оголошують потрібний тип activity, шукайте `pending_activity_type_unsupported`. Сама реєстрація не доводить, що worker просуває роботу.
+
+Відповідь налагодження — обмежений знімок run, а не повна інвентаризація черги. Вона містить щонайбільше 25 activity в очікуванні. Лічильники черги та порожні знімки не доводять, що паралельна чи майбутня робота більше не залежить від старого пулу.
+
+Відновіть сумісний worker у **зафіксованій** черзі з потрібним типом activity та доступними слотами до спливу дедлайнів. Repair або перезапуск worker не змінює цю чергу й не подовжує початковий загальний дедлайн. Якщо робота більше не потрібна, свідомо скасуйте відповідний run та узгодьте зовнішні наслідки. Не редагуйте збережені поля черги як процедуру міграції.
+
+Скінченний таймаут schedule-to-start може сплинути, поки activity чекає на worker. Schedule-to-close обмежує всю execution activity, включно із затримками retry. Ці межі діють лише за наявності конфігурації. Контроль дедлайну не переміщує activity до живої черги, а відновлення worker не оживляє вже термінальний timeout. Див. [таймаути activity та workflow](../features/timeouts.md).
+
 ## Сигнали пробудження й окремі проходи {#wake-signals-and-dedicated-sweeps}
 
 Сигнали пробудження скорочують час між готовністю завдання й

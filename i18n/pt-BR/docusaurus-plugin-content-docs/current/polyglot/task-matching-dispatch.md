@@ -141,6 +141,40 @@ ou orçamentos downstream diferentes. Use famílias de compatibilidade quando a
 mesma fila precisar permanecer ativa durante um rollout ou rollback sem deixar
 o trabalho em andamento migrar para executores incompatíveis.
 
+## Filas de atividade registradas {#recorded-activity-queues}
+
+A conexão e a fila resolvidas de uma atividade são armazenadas ao agendá-la. Uma mudança na classe da atividade, em `ActivityOptions`, nas opções de atividade do SDK PHP ou no Python `schedule_activity(..., queue=...)` afeta atividades agendadas depois. Execuções existentes mantêm sua fila registrada nas novas tentativas e reparos. Um worker registrado em uma fila nova não move o trabalho antigo. Execuções de workflow existentes também mantêm sua própria fila de workflow.
+
+### Alterar o roteamento com um período de sobreposição {#change-recorded-routing}
+
+1. Inicie workers para a nova fila no namespace correto. Verifique seus tipos de atividade, slots de atividade positivos e compatibilidade de build. Mantenha os pools antigos de workflows e atividades disponíveis.
+2. Implante o novo roteamento para o trabalho novo. Preserve código compatível com as execuções existentes e respeite seus builds fixados. Uma fila nova não migra as execuções registradas.
+3. Inspecione as execuções afetadas e ambas as filas. Considere atividades pendentes e sob lease, novas tentativas disponíveis no futuro, execuções abertas passivas, filhas e cadeias de continuação que ainda precisam de workers antigos. Um contador de tarefas prontas igual a zero não cobre essas dependências.
+4. Desative os workers antigos somente após considerar essas dependências e impedir que o trabalho novo as crie. Os snapshots atuais não são uma proteção atômica para a desativação. Se não puder determinar isso, mantenha o pool antigo disponível. [Server #519](https://github.com/durable-workflow/server/issues/519) cobre o inventário e a desativação protegidos.
+
+### Inspecionar e recuperar trabalho parado {#recorded-queue-diagnostics}
+
+Use uma credencial de operador e o mesmo namespace da execução afetada. Defina explicitamente a origem, o namespace, a fila antiga e os IDs do workflow e da execução selecionados:
+
+```bash
+curl -fsS "$DW_SERVER_URL/api/task-queues/$OLD_QUEUE" \
+  -H "Authorization: Bearer $DW_OPERATOR_TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "X-Namespace: $DW_NAMESPACE"
+curl -fsS "$DW_SERVER_URL/api/workflows/$WORKFLOW_ID/runs/$RUN_ID/debug" \
+  -H "Authorization: Bearer $DW_OPERATOR_TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "X-Namespace: $DW_NAMESPACE"
+```
+
+A visibilidade de filas informa `admission.activity_tasks.status: no_active_workers` quando nenhum worker ativo e não obsoleto está registrado nessa fila. A resposta de depuração da execução inclui `pending_activities[].queue`, `activity_task_queues` e achados como `pending_activity_queue_without_active_pollers`. Se houver workers, mas eles não anunciarem o tipo de atividade necessário, procure `pending_activity_type_unsupported`. O registro sozinho não comprova progresso.
+
+A resposta de depuração é um snapshot limitado de uma execução, não um inventário completo da fila. Ela inclui no máximo 25 atividades pendentes. Contadores de fila e snapshots vazios não comprovam que trabalho concorrente ou futuro deixou de depender do pool antigo.
+
+Restaure um worker compatível na fila **registrada**, com o tipo de atividade necessário e slots disponíveis, antes do vencimento dos prazos. Reparar ou reiniciar um worker não altera essa fila nem estende o prazo total original. Se o trabalho não for mais desejado, cancele deliberadamente a execução afetada e reconcilie os efeitos externos. Não edite campos de fila armazenados como procedimento de migração.
+
+Um timeout finito de schedule-to-start pode expirar enquanto uma atividade espera por um worker. Schedule-to-close limita toda a execução da atividade, incluindo atrasos entre tentativas. Esses limites só se aplicam quando configurados. A aplicação do prazo não move a atividade para uma fila ativa, e restaurar workers não revive um timeout já terminal. Consulte [timeouts de atividades e workflows](../features/timeouts.md).
+
 ## Sinais de despertar e varreduras dedicadas {#wake-signals-and-dedicated-sweeps}
 
 Sinais de despertar reduzem o tempo entre "a tarefa ficou pronta" e "um poller

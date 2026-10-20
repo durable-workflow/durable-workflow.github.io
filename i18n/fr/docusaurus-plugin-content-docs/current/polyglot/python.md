@@ -804,6 +804,8 @@ tentatives. `heartbeat_timeout` exige que les activités longues appellent
 politique est figée dans l'exécution durable à sa planification. Les déploiements
 ultérieurs ne changent donc pas les tentatives en cours.
 
+`ctx.schedule_activity(..., queue="payments-v2")` choisit la file d’une nouvelle exécution d’activité. Les activités déjà enregistrées, leurs nouvelles tentatives et tâches réparées conservent la file d’origine. Modifier `Worker.task_queue` ne déplace ni ces tâches ni la file de workflow des exécutions existantes. Gardez l’ancien pool compatible disponible jusqu’à avoir pris en compte toutes les dépendances ; voir les [files d’activité enregistrées](./task-matching-dispatch.md#recorded-activity-queues).
+
 ### Règles de déterminisme {#determinism-rules}
 
 Le code du workflow est relu depuis l'historique. Il ne doit effectuer aucune

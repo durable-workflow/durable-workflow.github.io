@@ -91,6 +91,8 @@ $result = activity(
 );
 ```
 
+Routing-Überschreibungen in `ActivityOptions` gelten beim Planen einer neuen Aktivitätsausführung. Sie verschieben keine bereits im Verlauf gespeicherte Aktivität. Lies vor dem Wechsel eines Worker-Pools den Abschnitt zu [gespeicherten Aktivitätsqueues](../polyglot/task-matching-dispatch.md#recorded-activity-queues).
+
 ## Verbindung {#connection}
 
 Die Einstellung `$connection` legt fest, an welche Queue-Verbindung der Workflow
@@ -104,6 +106,8 @@ Die Einstellung `$queue` legt fest, welcher Queue der Workflow oder die
 Aktivität hinzugefügt wird. Standardmäßig ist `$queue` nicht gesetzt; dadurch
 wird die Standardqueue der angegebenen Verbindung verwendet. Sie können dies
 über die Eigenschaft `$queue` der Workflow- oder Aktivitätsklasse überschreiben.
+
+Eine Aktivität speichert ihre aufgelöste Verbindung und Queue beim Planen. Wiederholungen und reparierte Aufgaben verwenden dieses gespeicherte Routing auch dann, wenn sich Klassenstandardwerte oder Optionen einzelner Aufrufe ändern. Bestehende Workflow-Läufe behalten auch ihre gespeicherte Workflow-Queue. Halte kompatible Worker auf den alten Queues verfügbar, solange diese Abhängigkeiten bestehen. Folge dem [Verfahren zum Queue-Wechsel](../polyglot/task-matching-dispatch.md#recorded-activity-queues).
 
 ## Wiederholungen {#retries}
 

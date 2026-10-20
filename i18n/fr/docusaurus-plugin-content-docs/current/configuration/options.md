@@ -71,6 +71,8 @@ $result = activity(
 );
 ```
 
+Les surcharges de routage dans `ActivityOptions` s’appliquent lors de la planification d’une nouvelle exécution d’activité. Elles ne déplacent pas une activité déjà enregistrée dans l’historique. Consultez les [files d’activité enregistrées](../polyglot/task-matching-dispatch.md#recorded-activity-queues) avant de changer de pools de workers.
+
 ## Connexion {#connection}
 
 Le réglage `$connection` indique la connexion de file vers laquelle envoyer le workflow ou l’activité. Par défaut, `$connection` n’est pas défini et la connexion par défaut est utilisée. Redéfinissez ce comportement avec la propriété `$connection` de la classe de workflow ou d’activité.
@@ -78,6 +80,8 @@ Le réglage `$connection` indique la connexion de file vers laquelle envoyer le 
 ## File {#queue}
 
 Le réglage `$queue` indique la file à laquelle ajouter le workflow ou l’activité. Par défaut, `$queue` n’est pas défini et la file par défaut de la connexion indiquée est utilisée. Redéfinissez ce comportement avec la propriété `$queue` de la classe de workflow ou d’activité.
+
+Une activité enregistre sa connexion et sa file résolues lors de sa planification. Ses nouvelles tentatives et tâches réparées réutilisent ce routage enregistré, même si les valeurs par défaut de la classe ou les options d’un appel changent. Les exécutions de workflow existantes conservent aussi leur file de workflow enregistrée. Gardez des workers compatibles sur les anciennes files tant que ces dépendances subsistent. Suivez la [procédure de transition de files](../polyglot/task-matching-dispatch.md#recorded-activity-queues).
 
 ## Nouvelles tentatives {#retries}
 
