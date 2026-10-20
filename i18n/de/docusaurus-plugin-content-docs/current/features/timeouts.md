@@ -148,7 +148,7 @@ Die eingebettete Einstellung wird auf `workflows.v2.workflow_task_lease_seconds`
 
 ### Heartbeats und Ausführung {#workflow-task-heartbeats}
 
-Worker im Service-Modus erneuern einen laufenden Workflow-Task-Anspruch mit Task-Heartbeats. Server prüft Task, Versuch und Lease-Eigentümer. Eine bestätigte Erneuerung verwendet die wirksame Lease-Dauer, begrenzt durch gegebenenfalls geltende Abbruch-Cleanup-Fristen. Sie ändert weder die ursprünglichen Lauf- und Ausführungsfristen noch Aktivitäts-Timeouts. Ein Worker-Registrierungs-Heartbeat meldet nur die Erreichbarkeit der Flotte; ein Aktivitäts-Heartbeat meldet den Fortschritt einer Aktivität. Keiner ersetzt die Erneuerung eines Workflow-Tasks.
+Worker im Service-Modus erneuern einen laufenden Workflow-Task-Anspruch mit Task-Heartbeats. Server prüft Task, Versuch und Lease-Eigentümer. Eine bestätigte Erneuerung verwendet die wirksame Lease-Dauer, begrenzt durch gegebenenfalls geltende Abbruch-Cleanup-Fristen. Sie ändert weder die ursprünglichen Lauf- und Ausführungsfristen noch Aktivitäts-Timeouts. Worker-Registrierungs-Heartbeats halten die Registrierung aktuell. Eine veraltete Registrierung kann einen Server-Anspruch schon vor Ablauf der Task-Lease ungültig machen. Diese Heartbeats erneuern die Task-Lease nicht. Ein Aktivitäts-Heartbeat meldet den Fortschritt einer Aktivität und ersetzt keine Workflow-Task-Erneuerung.
 
 Synchroner eingebetteter Workflow-Code kann während einer Blockierung nicht regelmäßig erneuern. Halten Sie Workflow-Code deterministisch und kurz. Lange E/A- oder CPU-Arbeit gehört in Aktivitäten. Die Lease ist keine harte Prozess- oder CPU-Ausführungsgrenze.
 
