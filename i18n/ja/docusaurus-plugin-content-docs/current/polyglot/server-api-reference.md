@@ -117,7 +117,7 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/health" | jq '{
 `GET /api/ready` は最上位の `status` と機械可読の `checks` を返します。2つの検査が、Server がロールアウト安全性ヘルスを安全に評価できるかを定義します。
 
 - `checks.migrations` はブートストラップ・移行の制限。`repository_exists`、`pending_migrations`、`adoptable_migrations`、`blocking_migrations`、`missing_tables`、`operator_surface`、`readiness_contract` を公開する。
-- `adoptable_migrations` は、既存のワークフローテーブルに移行履歴の取り込みだけが必要なことを意味する。Server は準備完了を保ち `status: "warning"` を返し、運用担当者は次の移行パス前に取り込みを予定できる。
+- `adoptable_migrations` は、既存のワークフローテーブルに移行履歴の取り込みだけが必要なことを意味する。Server は準備完了を保ち `status: "warning"` を返し、運用担当者は次の移行処理前に取り込みを予定できる。
 - `blocking_migrations` はロールアウト安全性の移行レコードがまだ必要なことを意味する。Server は最新の状態を装わず、`status: "pending"` と `remediation` 文字列で安全側に失敗する。
 - `operator_surface.available` と `operator_surface.required_tables` は、起動後にロールアウト安全性を説明するための永続テーブルを v2 運用サーフェスが持つかを示す。
 - `readiness_contract.version` は、スクリプトがこれらを解析する際に想定するインストール・取り込み契約リビジョンを固定する。
@@ -498,7 +498,7 @@ Worker はリース ID、試行、タスク ID、ハートビートエンドポ�
 | `GET` | `/api/schedules` | スケジュールを一覧。 |
 | `POST` | `/api/schedules` | スケジュールを作成。 |
 | `GET` | `/api/schedules/{scheduleId}` | 1スケジュールを説明。 |
-| `PUT` | `/api/schedules/{scheduleId}` | 仕様、アクション、注記、memo、検索属性を更新。 |
+| `PUT` | `/api/schedules/{scheduleId}` | 仕様、アクション、注記、メモ、検索属性を更新。 |
 | `DELETE` | `/api/schedules/{scheduleId}` | スケジュールを削除。 |
 | `POST` | `/api/schedules/{scheduleId}/pause` | 今後の発火を一時停止。 |
 | `POST` | `/api/schedules/{scheduleId}/resume` | 一時停止から再開。 |
@@ -512,7 +512,7 @@ Worker はリース ID、試行、タスク ID、ハートビートエンドポ�
 
 ## システム操作 {#system-operations}
 
-システムルートには admin ロールが必要です。明示的な運用パスであり、自動化では pass の前に status ルートを使ってください。
+システムルートには admin ロールが必要です。明示的な運用処理であり、自動化では pass の前に status ルートを使ってください。
 
 | メソッド | パス | 用途 |
 | --- | --- | --- |
@@ -520,11 +520,11 @@ Worker はリース ID、試行、タスク ID、ハートビートエンドポ�
 | `GET` | `/api/system/metrics` | 範囲を制限した JSON メトリクスを返す。 |
 | `GET` | `/api/system/operator-metrics` | 実行、タスク、バックログ、修復、Worker、構造上限の名前空間スコープ運用メトリクスを返す。 |
 | `GET` | `/api/system/repair` | ワークフロー修復バックログを検査。 |
-| `POST` | `/api/system/repair/pass` | 修復パスを1回実行。 |
+| `POST` | `/api/system/repair/pass` | 修復処理を1回実行。 |
 | `GET` | `/api/system/activity-timeouts` | アクティビティタイムアウトのバックログを検査。 |
-| `POST` | `/api/system/activity-timeouts/pass` | タイムアウト強制パスを1回実行。 |
+| `POST` | `/api/system/activity-timeouts/pass` | タイムアウト強制処理を1回実行。 |
 | `GET` | `/api/system/retention` | 保持期限による清掃バックログを検査。 |
-| `POST` | `/api/system/retention/pass` | 保持期限の清掃パスを1回実行。 |
+| `POST` | `/api/system/retention/pass` | 保持期限の削除処理を1回実行。 |
 
 PHP Server の保持では status ルートが現在の名前空間ポリシーを読み、上限付きの適格実行リストを返します。ポリシー変更は既存の閉じた履歴にも影響します。無指定の pass は期限切れを選び、明示 `run_ids` は経過時間の制限フィルターなしで閉じた実行を直接対象にします。永久保持とアーカイブ済み実行の保護は引き続き適用されます。ポリシー変更や清掃前に[保持手順とバックアップ手順](./server.md#retention)を確認してください。
 
