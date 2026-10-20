@@ -205,7 +205,7 @@ Ordem de atualização:
 1. Faça backup do MySQL e registre a referência da imagem atual.
 2. Altere apenas `DW_SERVER_IMAGE` ou `DW_SERVER_TAG`.
 3. Baixe a nova imagem.
-4. Run `docker compose --env-file durable-workflow.prod.env -f docker-compose.published.yml up -d --wait`.
+4. Execute `docker compose --env-file durable-workflow.prod.env -f docker-compose.published.yml up -d --wait`.
 5. Confirme `/api/ready`, `/api/cluster/info` e o registro de workers antes de
    mudar o tráfego externo.
 
