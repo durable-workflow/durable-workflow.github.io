@@ -191,7 +191,7 @@ class MyWorkflow extends Workflow
                   className={styles.queryButton}
                   onClick={queryWorkflow}
                 >
-                  🔍 Query: <code>getReady()</code>
+                  <Translate id="simulator.queryAction">🔍 Query:</Translate>{' '}<code>getReady()</code>
                 </button>
                 {queryResult !== null && (
                   <span className={styles.queryResultInline}>
