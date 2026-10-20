@@ -44,13 +44,14 @@ recorded in [#261](https://github.com/durable-workflow/durable-workflow.github.i
 
 ## Translations
 
-English is the default locale. Ukrainian is available under `/uk/`. Spanish
-onboarding and core guides are available under `/es/`, Brazilian Portuguese
-under `/pt-BR/`, Simplified Chinese under `/zh-Hans/`, Japanese under `/ja/`,
-French under `/fr/`, and German under `/de/`.
-Untranslated reference
-pages show the English text with a language notice and a link to the English
-route. Blog articles and versioned 1.x documentation remain in English.
+English is the default locale. The offered documentation languages are Ukrainian
+(`/uk/`), Spanish (`/es/`), Brazilian Portuguese (`/pt-BR/`), Simplified Chinese
+(`/zh-Hans/`), Japanese (`/ja/`), French (`/fr/`) and German (`/de/`).
+Current 2.0 guides must have reviewed translations in every offered language.
+Completing the existing gaps is tracked in [#169](https://github.com/durable-workflow/durable-workflow.github.io/issues/169).
+The visible English fallback remains a temporary indication of missing work,
+not completed language support. Blog articles and versioned 1.x documentation
+have separate English-only scope.
 
 Preview one locale with:
 
@@ -87,24 +88,26 @@ Use Docusaurus translation markers for component text. Run
 translate them in `i18n/<locale>/code.json` and the plugin message files. Build
 all locales with `npm run build` before submitting a change.
 
-When changing an English guide that already has a translation, review and
-update that translation in the same pull request. Review the prose for fluent
+When changing or adding an English guide, review and update all seven
+translations in the same delivery. Review the prose for fluent
 language and the technical contract for accuracy. Keep executable code blocks
 identical to the English source. The build checks this for Spanish, Brazilian
-Portuguese, Simplified Chinese, Japanese, French and German. If a translation cannot be brought
-current, remove the stale translated file so
-readers see the current English source and the fallback notice. Artifact
+Portuguese, Simplified Chinese, Japanese, French and German. A missing translation
+or English fallback does not satisfy a changed guide's acceptance. Artifact
 version placeholders stay shared with English and update automatically.
 
-The documentation maintainers own translation upkeep. The existing build also
-compares reviewed English source hashes for Spanish, Brazilian Portuguese,
-Simplified Chinese, Japanese, French and German and reports the guides needing review. Prose
-edits produce a notice, while changed executable examples must still match.
-After reviewing and
-updating the translation, run `node scripts/check-doc-translations.js --record-review`
-and commit the affected `i18n/<locale>/source-hashes.json` files with it.
-This command still checks the code blocks. Recording hashes alone does not
-review the prose.
+The documentation maintainers own translation upkeep. Pull-request and main
+builds compare changed English guides with all seven translated files and their
+reviewed source hashes. Missing files, unchanged English copies and stale or
+missing review hashes fail qualification. Existing executable-example checks
+remain in place. During completion of #169, unchanged older gaps are still
+reported separately and are not claimed as translated.
+
+After reviewing a guide, record its English file's SHA-256 in the corresponding
+`i18n/<locale>/source-hashes.json`. Use `--record-review` only after reviewing
+every page it records. Recording hashes alone does not review the prose.
+For a local changed-guide check, set `DOCS_TRANSLATION_BASE` to the full Git
+commit SHA of the comparison base before running the normal build.
 
 The pinned Docusaurus 3.10.2 utility patch resolves relative Markdown links
 between translated and English fallback files. It uses Docusaurus's document
