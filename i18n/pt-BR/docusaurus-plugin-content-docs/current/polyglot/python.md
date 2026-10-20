@@ -789,6 +789,8 @@ tentativas. `heartbeat_timeout` exige que atividades de longa duração chamem
 de novas tentativas é capturada na execução durável quando ela é agendada,
 portanto implantações posteriores não alteram tentativas já em andamento.
 
+`ctx.schedule_activity(..., queue="payments-v2")` seleciona a fila de uma nova execução de atividade. Atividades já registradas, suas novas tentativas e tarefas reparadas mantêm a fila original. Alterar `Worker.task_queue` não move essas tarefas nem a fila de workflow das execuções existentes. Mantenha o pool antigo compatível disponível até contabilizar todas as dependências; consulte as [filas de atividade registradas](./task-matching-dispatch.md#recorded-activity-queues).
+
 ### Regras de determinismo {#determinism-rules}
 
 O código do workflow é reproduzido do histórico. Não deve realizar diretamente

@@ -769,6 +769,8 @@ receipt = yield ctx.schedule_activity(
 queda fijada en la ejecución duradera al programar; despliegues posteriores no
 cambian intentos ya en curso.
 
+`ctx.schedule_activity(..., queue="payments-v2")` selecciona la cola de una nueva ejecución de actividad. Las actividades ya registradas, sus reintentos y tareas reparadas conservan la cola original. Cambiar `Worker.task_queue` no traslada esas tareas ni la cola de workflow de las ejecuciones existentes. Mantén disponible el grupo antiguo compatible hasta tener en cuenta todas las dependencias; consulta las [colas de actividad registradas](./task-matching-dispatch.md#recorded-activity-queues).
+
 ### Reglas de determinismo {#determinism-rules}
 
 El código se reproduce desde historial. No debe realizar directamente operaciones

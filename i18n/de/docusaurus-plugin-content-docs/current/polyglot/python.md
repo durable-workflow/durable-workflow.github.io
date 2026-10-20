@@ -789,6 +789,8 @@ Wiederholungsrichtlinie wird beim Planen als Snapshot an die dauerhafte
 Aktivitätsausführung gebunden. Spätere Bereitstellungen ändern daher laufende
 Versuche nicht.
 
+`ctx.schedule_activity(..., queue="payments-v2")` wählt die Queue einer neu geplanten Aktivitätsausführung. Bereits gespeicherte Aktivitäten, ihre Wiederholungen und reparierte Aufgaben behalten die ursprüngliche Queue. Eine Änderung von `Worker.task_queue` verschiebt weder diese Aufgaben noch die Workflow-Queue bestehender Läufe. Halte den kompatiblen alten Pool verfügbar, bis alle Abhängigkeiten berücksichtigt sind; siehe [gespeicherte Aktivitätsqueues](./task-matching-dispatch.md#recorded-activity-queues).
+
 ### Regeln für Determinismus {#determinism-rules}
 
 Workflow-Code wird aus der Historie wiedergegeben. Er darf keine nicht deterministischen Operationen direkt ausführen:

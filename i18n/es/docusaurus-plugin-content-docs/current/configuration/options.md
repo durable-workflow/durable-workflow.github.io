@@ -71,6 +71,8 @@ $result = activity(
 );
 ```
 
+Las opciones de enrutamiento de `ActivityOptions` se aplican al programar una nueva ejecución de actividad. No trasladan una actividad ya registrada en el historial. Antes de cambiar los grupos de workers, consulta las [colas de actividad registradas](../polyglot/task-matching-dispatch.md#recorded-activity-queues).
+
 ## Conexión {#connection}
 
 El ajuste `$connection` especifica la conexión de cola a la que se enviará el workflow o la actividad. Su valor no se establece de forma predeterminada, por lo que se usa la conexión predeterminada. Puedes cambiarlo con la propiedad `$connection` de la clase de workflow o actividad.
@@ -78,6 +80,8 @@ El ajuste `$connection` especifica la conexión de cola a la que se enviará el 
 ## Cola {#queue}
 
 El ajuste `$queue` especifica la cola a la que se añadirá el workflow o la actividad. Su valor no se establece de forma predeterminada, por lo que se usa la cola predeterminada de la conexión elegida. Puedes cambiarlo con la propiedad `$queue` de la clase de workflow o actividad.
+
+Una actividad guarda su conexión y cola resueltas al programarse. Sus reintentos y tareas reparadas reutilizan ese enrutamiento registrado, aunque cambien los valores predeterminados de la clase o las opciones de una llamada. Las ejecuciones de workflow existentes también conservan su cola de workflow registrada. Mantén workers compatibles en las colas antiguas mientras existan esas dependencias. Sigue el [procedimiento de transición de colas](../polyglot/task-matching-dispatch.md#recorded-activity-queues).
 
 ## Reintentos {#retries}
 

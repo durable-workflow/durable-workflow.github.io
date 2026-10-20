@@ -637,6 +637,8 @@ receipt = yield ctx.schedule_activity(
 
 `start_to_close_timeout` は Worker 開始後の1試行を制限します。`schedule_to_close_timeout` は全試行を通じたアクティビティ実行全体を制限します。`heartbeat_timeout` では、長時間のアクティビティが間隔の経過前に `activity.context().heartbeat(...)` を呼ぶ必要があります。再試行ポリシーはスケジュール時に永続アクティビティ実行へ固定されるため、後のデプロイで進行中の試行は変わりません。
 
+`ctx.schedule_activity(..., queue="payments-v2")` は、新しくスケジュールするアクティビティ実行のキューを選択します。記録済みのアクティビティ、その再試行、修復されたタスクは元のキューを保持します。`Worker.task_queue` を変更しても、これらのタスクや既存実行のワークフローキューは移動しません。すべての依存関係を把握するまで、互換性のある古いプールを維持してください。[記録済みのアクティビティキュー](./task-matching-dispatch.md#recorded-activity-queues)を参照してください。
+
 ### 決定性の規則 {#determinism-rules}
 
 ワークフローコードは履歴からリプレイされます。非決定的な操作を直接行ってはいけません。

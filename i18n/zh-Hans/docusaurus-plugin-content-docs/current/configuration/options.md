@@ -71,6 +71,8 @@ $result = activity(
 );
 ```
 
+`ActivityOptions` 中的路由覆盖项在调度新的活动执行时生效，不会移动已记录在历史中的活动。更换工作器池前，请参阅[已记录的活动队列](../polyglot/task-matching-dispatch.md#recorded-activity-queues)。
+
 ## 连接 {#connection}
 
 `$connection` 指定工作流或活动发送到哪个队列连接。默认不设置 `$connection`，即使用默认连接。可通过设置工作流或活动类的 `$connection` 属性覆盖。
@@ -78,6 +80,8 @@ $result = activity(
 ## 队列 {#queue}
 
 `$queue` 指定工作流或活动加入哪个队列。默认不设置 `$queue`，即使用指定连接的默认队列。可通过设置工作流或活动类的 `$queue` 属性覆盖。
+
+活动在调度时保存解析后的连接和队列。即使类默认值或每次调用的选项发生变化，重试和修复后的任务仍使用已记录的路由。现有工作流运行也保留其已记录的工作流队列。只要这些依赖仍存在，就应在旧队列上保留兼容的工作器。请遵循[队列切换流程](../polyglot/task-matching-dispatch.md#recorded-activity-queues)。
 
 ## 重试 {#retries}
 
