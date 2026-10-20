@@ -141,7 +141,7 @@ curl -sS "$APP_URL/waterline/api/instances/order-1001" \
 | `queue_visibility.task_queues[].stats.*` | キュー固有のバックログ、経過時間、ポーラー数、ワークフロー・アクティビティの準備済み対リース済み件数、`tasks_added_last_minute` / `tasks_dispatched_last_minute` 流量。 |
 | `queue_visibility.task_queues[].repair.*` | キュー固有の候補、配送失敗、期限切れリース、配送遅延の件数と各状態の最長経過時間。 |
 | `coordination_alerts[]` | ヘルスチェックと、ポーラー不在のバックログ、古いポーラー、長期の修復候補などキュー可視性リスクから得る警告・エラー概要。 |
-| `checks[]`, `categories.*` | ブロックする v2 ヘルスチェックと助言チェック。各 `category = correctness | acceleration` と、Worker 画面で使う分類集計。 |
+| `checks[]`, `categories.*` | ブロックする v2 ヘルスチェックと助言チェック。各 `category = correctness \| acceleration` と、Worker 画面で使う分類集計。 |
 | `engine_source`, `readiness_contract` | v2 運用ブリッジを実際に使用しているか、状態をどの準備状態契約が規定するか。 |
 
 キュー流量は、永続キューへの入力が配送速度を上回るかに答えます。`tasks_added_last_minute` は直近 60 秒に作った異なる永続タスク行数、`tasks_dispatched_last_minute` は同じ期間内に最新の成功した配送が行われた異なる行数です。

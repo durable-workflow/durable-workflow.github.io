@@ -202,13 +202,13 @@ async with Client(
 | Argumento | Tipo | Padrão | Quando usar |
 | --- | --- | --- | --- |
 | `base_url` | `str` | obrigatório | Origem do Server, sem `/api`. |
-| `token` | `str | None` | `None` | Um token bearer deve autorizar chamadas dos planos de controle e workers. |
-| `control_token` | `str | None` | `None` | Chamadas do plano de controle precisam de um token bearer diferente do polling de workers. |
-| `worker_token` | `str | None` | `None` | Chamadas do plano de workers precisam de um token bearer diferente das chamadas de operador. |
+| `token` | `str \| None` | `None` | Um token bearer deve autorizar chamadas dos planos de controle e workers. |
+| `control_token` | `str \| None` | `None` | Chamadas do plano de controle precisam de um token bearer diferente do polling de workers. |
+| `worker_token` | `str \| None` | `None` | Chamadas do plano de workers precisam de um token bearer diferente das chamadas de operador. |
 | `namespace` | `str` | `"default"` | Selecionar um namespace do servidor por `X-Namespace`. |
 | `timeout` | `float` | `60.0` | Substituir o timeout HTTP padrão. |
-| `retry_policy` | `TransportRetryPolicy | None` | política padrão | Ajustar novas tentativas de transporte para falhas HTTP transitórias. |
-| `metrics` | `MetricsRecorder | None` | sem operação | Emitir métricas de cliente e worker para um registrador personalizado. |
+| `retry_policy` | `TransportRetryPolicy \| None` | política padrão | Ajustar novas tentativas de transporte para falhas HTTP transitórias. |
+| `metrics` | `MetricsRecorder \| None` | sem operação | Emitir métricas de cliente e worker para um registrador personalizado. |
 | `payload_size_limit_bytes` | `int` | padrão do SDK | Corresponder ao contrato de bytes máximos de payload do servidor. |
 | `payload_size_warning_threshold_percent` | `int` | padrão do SDK | Avisar antes de um payload atingir o limite configurado. |
 | `payload_size_warnings` | `bool` | `True` | Desabilitar avisos locais de tamanho de payload em testes ou scripts controlados. |

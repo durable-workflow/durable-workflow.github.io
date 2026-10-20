@@ -199,13 +199,13 @@ async with Client(
 | Argumento | Tipo | Predeterminado | Cuándo usarlo |
 | --- | --- | --- | --- |
 | `base_url` | `str` | obligatorio | Origen de Server, sin `/api`. |
-| `token` | `str | None` | `None` | Un token bearer autoriza llamadas de control y workers. |
-| `control_token` | `str | None` | `None` | El control necesita un bearer diferente del sondeo de workers. |
-| `worker_token` | `str | None` | `None` | El plano de workers necesita un bearer diferente de las llamadas de operador. |
+| `token` | `str \| None` | `None` | Un token bearer autoriza llamadas de control y workers. |
+| `control_token` | `str \| None` | `None` | El control necesita un bearer diferente del sondeo de workers. |
+| `worker_token` | `str \| None` | `None` | El plano de workers necesita un bearer diferente de las llamadas de operador. |
 | `namespace` | `str` | `"default"` | Seleccionar namespace mediante `X-Namespace`. |
 | `timeout` | `float` | `60.0` | Cambiar el plazo HTTP predeterminado. |
-| `retry_policy` | `TransportRetryPolicy | None` | política predeterminada | Ajustar reintentos de transporte ante fallos HTTP transitorios. |
-| `metrics` | `MetricsRecorder | None` | sin operación | Emitir métricas de cliente y worker a un registrador propio. |
+| `retry_policy` | `TransportRetryPolicy \| None` | política predeterminada | Ajustar reintentos de transporte ante fallos HTTP transitorios. |
+| `metrics` | `MetricsRecorder \| None` | sin operación | Emitir métricas de cliente y worker a un registrador propio. |
 | `payload_size_limit_bytes` | `int` | predeterminado del SDK | Ajustar al contrato máximo de bytes de carga del servidor. |
 | `payload_size_warning_threshold_percent` | `int` | predeterminado del SDK | Avisar antes de alcanzar el límite. |
 | `payload_size_warnings` | `bool` | `True` | Desactivar avisos locales de tamaño en pruebas o scripts controlados. |
