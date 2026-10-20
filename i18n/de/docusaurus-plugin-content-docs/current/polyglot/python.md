@@ -677,10 +677,97 @@ Der an `run` übergebene `WorkflowContext` bietet deterministische Operationen:
 | `ctx.get_version(change_id, min, max)` | Workflow-Code sicher versionieren |
 | `ctx.upsert_search_attributes(attrs)` | Suchattribute aktualisieren |
 | `ctx.continue_as_new(*args)` | Workflow mit neuer Eingabe neu starten |
-| `ctx.now()` | Deterministische Uhr aus der Historie |
+| `ctx.now()` | Gespeicherte Workflow-Startzeit, während dieses Runs fest |
 | `ctx.random()` | Zufallsgenerator mit festgelegtem Startwert |
 | `ctx.uuid4()` | Deterministische UUID |
 | `ctx.logger` | Beim Replay stummer Logger |
+
+### Workflow-Zeit und dauerhafte Warteoperationen {#workflow-time-and-durable-waits}
+
+Beim Replay im Worker gibt `ctx.now()` die **gespeicherte Startzeit des Runs**
+zurück. Sie schreitet nach einer Aktivität, einem Timer, Signal oder anderen
+dauerhaften Schritt nicht fort. Wiederholte Cold-Replays derselben Historie
+liefern denselben Startwert. Ein Continue-as-new-Nachfolger hat seine eigene
+Startzeit und übernimmt nicht den Uhranker des Vorgängers.
+
+Die [veröffentlichte Python-Implementierung](https://github.com/durable-workflow/sdk-python/blob/150c6f6bc14e3516f75cc615b2f75f093ed84ea1/src/durable_workflow/workflow.py#L2594-L2601)
+verwendet `WorkflowStarted.payload.timestamp`, falls vorhanden, andernfalls das
+kanonische `WorkflowStarted.recorded_at`. Fehlende oder ungültige gespeicherte
+Replay-Zeit führt zu einem ausdrücklichen Uhrfehler, nicht zum Lesen der
+Wanduhr des Workers. Das ist der in [SDK #146](https://github.com/durable-workflow/sdk-python/issues/146)
+vereinbarte Vertrag mit fester Startzeit.
+
+Warten Sie auf eine dauerhafte Operation, statt auf eine Änderung von
+`ctx.now()` zu warten:
+
+```python
+from durable_workflow import workflow
+
+
+@workflow.defn(name="wait_without_clock_loop")
+class WaitWithoutClockLoop:
+    def run(self, ctx):
+        started_at = ctx.now()
+        yield ctx.start_timer(30)
+        return {
+            "run_started_at": started_at.isoformat(),
+            "after_wait": ctx.now().isoformat(),
+        }
+```
+
+Der dauerhafte Abschluss des Timers setzt den Workflow fort. Beide
+zurückgegebenen Zeitstempel enthalten dieselbe Startzeit. Eine Schleife wie
+`while ctx.now() < deadline` wird nicht allein durch ausgelöste Timer falsch.
+
+Für eine relative Verzögerung verwenden Sie `yield ctx.start_timer(seconds)`
+oder `yield ctx.sleep(seconds)`. Verwenden Sie die
+[Auswahl des ersten Abschlusses](#first-completion-selection), wenn Arbeit mit
+einem dauerhaften Timer konkurrieren soll. Setzen Sie `execution_timeout_seconds`
+und `run_timeout_seconds` bei `client.start_workflow(...)`, wenn der Server eine
+Workflow-Frist auch bei gestoppten Workern durchsetzen muss. Ein HTTP- oder
+`get_result()`-Wartezeitlimit begrenzt nur die lokale Anfrage und ersetzt keine
+gespeicherte Workflow-Frist. Geben Sie eine Anwendungsfrist ausdrücklich als
+Eingabe an Continue-as-new weiter, ohne die ursprüngliche Ausführungsfrist des
+Servers zu ersetzen.
+
+Um die tatsächliche Dauer innerhalb eines Aktivitätsaufrufs zu messen, lesen
+Sie dort eine monotone Uhr und geben die Dauer als Aktivitätsergebnis zurück.
+Für eine externe UTC-Frist lassen Sie eine Aktivität die maßgebliche externe
+Uhr prüfen und ihre Entscheidung zurückgeben; der Workflow spielt dieses
+gespeicherte Ergebnis ab. Vergleichen Sie UTC-Zeitstempel nie mit monotonen
+Werten und subtrahieren Sie keine monotonen Messwerte verschiedener Prozesse
+oder Hosts. Die Differenz von `ctx.now()`-Werten misst in Python weder aktive
+Verarbeitungszeit noch verstrichene Wanduhrzeit.
+
+#### Unterschiede zwischen den SDK-Uhren {#clock-differences-across-sdks}
+
+Diese APIs sind, soweit vorhanden, deterministisch, teilen aber keine gemeinsame Uhr:
+
+| Autorenschnittstelle | Wiederholte Aufrufe und dauerhafte Schritte | Continue-as-new-Nachfolger |
+| --- | --- | --- |
+| Python `ctx.now()` | Bleibt auf der gespeicherten Startzeit dieses Runs, auch nach einem Timer oder einer Aktivität. | Verwendet den Startanker des Nachfolger-Runs. |
+| Embedded PHP `Workflow::now()` | Beginnt mit der Run-Startzeit und schreitet zur aufgezeichneten Ereigniszeit fort, die das Replay verarbeitet hat. Siehe [Workflow-Zeit](../features/timers.md#reading-deterministic-time). | Beginnt mit dem neuen Run und schreitet durch dessen verarbeitete Ereignisse fort. |
+| PHP-SDK im Service-Modus | Kein allgemeiner öffentlicher Workflow-Helfer `now()`. Verwenden Sie dauerhafte Operationen oder aufgezeichnete Aktivitäts-/Seiteneffektwerte. | Übergeben Sie Anwendungszeitdaten ausdrücklich, wenn sie die Übergabe überleben müssen. |
+| Rust-SDK im Service-Modus | Kein allgemeiner öffentlicher Helfer `WorkflowContext::now()`. Ein `side_effect` kann eine kleine Wanduhrmomentaufnahme speichern; sie ist keine fortschreitende Uhr. | Ein Seiteneffekt im neuen Run ist eine neue Operation; übergeben Sie bei Bedarf frühere Zeitdaten ausdrücklich. |
+
+Das Embedded-PHP-Verhalten ist im
+[veröffentlichten Core](https://github.com/durable-workflow/workflow/blob/64efa176e4c37e5d6ae80e767ba3b41464024e53/src/V2/Support/WorkflowFiberContext.php)
+vorhanden. Der separate [PHP-SDK-Kontext](https://github.com/durable-workflow/sdk-php/blob/2.5.2/src/Worker/WorkflowContext.php)
+und [Rust-SDK-Kontext](https://github.com/durable-workflow/sdk-rust/blob/3.5.5/src/lib.rs)
+haben eigene APIs. Übertragen Sie die dauerhafte Operation und Fristenregel,
+statt für jeden SDK-Uhrhelfer dieselbe Semantik anzunehmen.
+
+#### Ausgegebene Ereignisse mit Sequenzwerten ordnen {#order-emitted-events-with-sequence-values}
+
+Ein Workflow-Zeitstempel ist kein Sortierschlüssel für Ereignisse. Python-Ereignisse
+mit `ctx.now()` können alle denselben Zeitstempel haben. Verwenden Sie
+[Workflow-Stream-Offsets](./workflow-streams.md), die passende
+[Embedded-Outbox-Sequenz](../features/message-streams.md) oder einen
+deterministischen Workflow-lokalen Zähler. Kombinieren Sie einen Run-lokalen
+Zähler mit `run_id`; übergeben Sie ihn bei Continue-as-new ausdrücklich, wenn
+die Anwendung eine logische Sequenz benötigt. Zeitstempel geben unabhängigen
+Streams oder Runs keine globale Reihenfolge.
+
 
 ### Aktivitätswiederholungen und -Timeouts {#activity-retries-and-timeouts}
 
@@ -720,7 +807,7 @@ Versuche nicht.
 Workflow-Code wird aus der Historie wiedergegeben. Er darf keine nicht deterministischen Operationen direkt ausführen:
 
 - Keine E/A (HTTP-Aufrufe, Dateilesen, Datenbankabfragen).
-- Kein `datetime.now()` oder `time.time()`: `ctx.now()` verwenden.
+- Kein `datetime.now()` oder `time.time()`: `ctx.now()` nur als festen Run-Startanker verwenden; für Warteoperationen dauerhafte Timer verwenden.
 - Kein `random.random()`: `ctx.random()` verwenden.
 - Kein `uuid.uuid4()`: `ctx.uuid4()` verwenden.
 
