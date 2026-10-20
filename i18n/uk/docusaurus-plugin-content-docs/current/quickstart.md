@@ -124,7 +124,7 @@ API доступний лише через loopback-адресу цього ко
 <TabItem value="php" label="PHP" default>
 
 Вимоги: PHP 8.1 або новіший і Composer. Використовується незалежний від
-фреймворку пакет `durable-workflow/sdk`.
+фреймворку пакет `durable-workflow/sdk`, а не вбудований рушій Laravel.
 
 1. **Встановіть SDK.**
 

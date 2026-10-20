@@ -63,7 +63,7 @@ Worker Python може виконувати activity для workflow PHP і на
 
 Python SDK 2.5.0 додає необов'язковий обмежений кеш історії для sticky execution.
 Використовуйте Server 2.5.10 або новіший і вмикайте кеш для кожного worker.
-Дивіться [Portable Worker Affinity](/docs/polyglot/portable-worker-affinity) та
+Дивіться [переносну спорідненість workers](/docs/polyglot/portable-worker-affinity) та
 [посібник Python і готовий приклад](https://python.durable-workflow.com/guides/sticky-execution/).
 
 Клієнти Cloud використовують надані URL runtime і namespace з окремими
@@ -94,7 +94,7 @@ SDK залежить від [httpx](https://www.python-httpx.org/) для HTTP �
 `fastavro` для кодування Apache Avro єдиного публічного кодека payload v2.
 Підтримка метрик Prometheus необов'язкова.
 
-## Quickstart {#quickstart}
+## Швидкий початок {#quickstart}
 
 Ця повна програма Python визначає workflow з однією activity,
 запускає його на локальному Durable Workflow Server і чекає результату:
@@ -200,13 +200,13 @@ async with Client(
 | Аргумент | Тип | Типове значення | Призначення |
 | --- | --- | --- | --- |
 | `base_url` | `str` | обов'язковий | Origin Server без `/api`. |
-| `token` | `str | None` | `None` | Один bearer token для control-plane і worker. |
-| `control_token` | `str | None` | `None` | Окремий bearer token control-plane від poll worker. |
-| `worker_token` | `str | None` | `None` | Окремий bearer token worker від операторських викликів. |
+| `token` | `str \| None` | `None` | Один bearer token для control-plane і worker. |
+| `control_token` | `str \| None` | `None` | Окремий bearer token control-plane від poll worker. |
+| `worker_token` | `str \| None` | `None` | Окремий bearer token worker від операторських викликів. |
 | `namespace` | `str` | `"default"` | Цільовий namespace Server через `X-Namespace`. |
 | `timeout` | `float` | `60.0` | Перевизначення типового HTTP тайм-ауту. |
-| `retry_policy` | `TransportRetryPolicy | None` | типова політика | Налаштування retry тимчасових помилок HTTP. |
-| `metrics` | `MetricsRecorder | None` | no-op | Метрики клієнта й worker через власний recorder. |
+| `retry_policy` | `TransportRetryPolicy \| None` | типова політика | Налаштування retry тимчасових помилок HTTP. |
+| `metrics` | `MetricsRecorder \| None` | без дій | Метрики клієнта й worker через власний recorder. |
 | `payload_size_limit_bytes` | `int` | типове SDK | Відповідність максимальному розміру payload Server. |
 | `payload_size_warning_threshold_percent` | `int` | типове SDK | Попередження до досягнення межі payload. |
 | `payload_size_warnings` | `bool` | `True` | Вимкнення локальних попереджень розміру в тестах чи контрольованих скриптах. |
@@ -309,7 +309,7 @@ driver = external_storage_driver_from_policy(
 драйвера чи відсутнього клієнта провайдера. Вимкнена політика не повертає
 no-op драйвера. Перевіряйте `policy.enabled` перед запитом драйвера.
 
-### Namespace {#namespaces}
+### Простори імен {#namespaces}
 
 Namespace є межею орендарів workflow, schedule, атрибутів пошуку й
 зовнішнього сховища payload. Client вибирає один namespace через аргумент
@@ -409,7 +409,7 @@ workflow й не запускає очищення saga/finally. Для обме
 [Посібник кооперативного скасування](/docs/polyglot/cancellation) описує
 політики операцій, нагляд і відновлення.
 
-### Schedule {#schedules}
+### Розклади {#schedules}
 
 Schedule використовують `ScheduleSpec` для календаря/інтервалів і
 `ScheduleAction` для запиту запуску workflow за спрацювання.
@@ -711,7 +711,7 @@ receipt = yield ctx.schedule_activity(
 
 Уся недетермінованість має проходити через контекст або фіксуватися `ctx.side_effect()`.
 
-### Fan-out {#fan-out}
+### Паралельне розгалуження {#fan-out}
 
 Передайте через yield список команд для паралельного виконання:
 
@@ -1127,7 +1127,7 @@ SDK записує:
 | `durable_workflow_worker_tasks` | Лічильник | `task_kind`, `task_queue`, `outcome` |
 | `durable_workflow_worker_task_duration_seconds` | Гістограма | `task_kind`, `task_queue`, `outcome` |
 
-## Schedule {#schedules-1}
+## Розклади {#schedules-1}
 
 Створюйте й керуйте запланованими workflow через клієнт:
 
@@ -1256,7 +1256,7 @@ except WorkflowNotFound:
     print("Workflow type not registered on any worker")
 ```
 
-### Скасування навмисно не перехоплюється except Exception {#cancellation-is-intentionally-uncatchable-by-except-exception}
+### Скасування навмисно не перехоплюється `except Exception` {#cancellation-is-intentionally-uncatchable-by-except-exception}
 
 `WorkflowCancelled` і `ActivityCancelled` успадковують `BaseException`, а не
 `Exception`. Загальний `except Exception:` усередині activity чи коду, що
@@ -1345,7 +1345,7 @@ Harness явно повідомляє відсутні fixture:
 Передайте `iteration_limit=...` у `WorkflowEnvironment(...)` для workflow,
 які правомірно потребують більше ітерацій.
 
-#### Mock activity як функції {#callable-activity-mocks}
+#### Підміни activity як функції {#callable-activity-mocks}
 
 Використовуйте `register_activity`, якщо mock має відповідати за
 аргументами чи фіксувати виклики:
@@ -1496,7 +1496,7 @@ def test_workflow_failure_surfaces_as_workflow_failed() -> None:
     assert "boom" in str(exc_info.value)
 ```
 
-### Тестування replay production історії {#replay-testing-against-production-history}
+### Перевірка відтворення історії виробничого середовища {#replay-testing-against-production-history}
 
 Використовуйте `replay_history` для регресійної перевірки зміни коду
 проти справжньої історії Server. Replayer виконує поточний код за
@@ -1536,7 +1536,7 @@ replay_history_file(
 має бути `avro`. `json`, невідомий чи відсутній тег надійного payload
 відхиляється до декодування.
 
-#### Replayer як клас {#class-based-replayer}
+#### Відтворювач як клас {#class-based-replayer}
 
 Для кількох типів workflow за один тест або вибору типу через збережену
 подію `WorkflowStarted` використовуйте клас `Replayer`.
@@ -1572,7 +1572,7 @@ for command in outcome.commands:
 `replay_history`. Клас дозволяє тестам використовувати одну реєстрацію
 для багатьох історій.
 
-### Довідник тестового harness {#test-harness-reference}
+### Довідник тестового середовища {#test-harness-reference}
 
 | Символ | Призначення |
 | --- | --- |

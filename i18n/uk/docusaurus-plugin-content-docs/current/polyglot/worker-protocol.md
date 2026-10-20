@@ -54,7 +54,7 @@ $summary = WorkerProtocolVersion::describe();
 // Returns version, verb lists, command types, and pagination defaults.
 ```
 
-## Discovery capabilities {#capability-discovery}
+## Виявлення можливостей {#capability-discovery}
 
 Окремий Server публікує capabilities worker-протоколу під
 `worker_protocol.server_capabilities` у `GET /api/cluster/info`.
@@ -107,7 +107,7 @@ Affinity activity між кількома durable-кроками описано 
 та exactly-once durable-історії описано в
 [гарантіях виконання та ідемпотентності](/docs/constraints/execution-guarantees).
 
-## Workflow Task Bridge {#workflow-task-bridge}
+## Міст завдань workflow {#workflow-task-bridge}
 
 Контракт `WorkflowTaskBridge` визначає взаємодію зовнішнього worker
 з durable workflow tasks:
@@ -396,7 +396,7 @@ Condition-timeout resume задає `workflow_wait_kind: "condition"`,
 `condition_wait_id` і для keyed waits — `condition_key`
 та `condition_definition_fingerprint`.
 
-## Query tasks {#query-tasks}
+## Завдання query {#query-tasks}
 
 Коли query площини керування спрямований до workflow, чий код належить
 зовнішньому runtime, окремий Server не може replay його в PHP-процесі.
@@ -487,7 +487,7 @@ Poll-відповідь:
 площина керування повертає `query_worker_unavailable`.
 Без результату до налаштованого timeout вона повертає `query_worker_timeout`.
 
-## Activity Task Bridge {#activity-task-bridge}
+## Міст завдань activity {#activity-task-bridge}
 
 Контракт `ActivityTaskBridge` визначає взаємодію зовнішнього worker
 з activity tasks:
@@ -507,7 +507,7 @@ Poll-відповідь:
 відповіді heartbeat, complete та fail також містять
 `run_closed_reason` і `run_closed_at`.
 
-## Codecs payload {#payload-codecs}
+## Кодеки даних {#payload-codecs}
 
 Кожен рядок bytes payload через межу worker-протоколу позначений
 **`payload_codec`**, що визначає формат blob. V2 використовує один
@@ -516,13 +516,14 @@ TypeScript, Rust) міг кодувати та декодувати payload бе
 runtime чи app key. Активний Server оголошує підтримку codecs у
 **`capabilities.payload_codecs`** відповіді `GET /api/cluster/info`.
 
-### Codec `avro` {#the-avro-codec}
+### Кодек `avro` {#the-avro-codec}
 
-`avro` є codec типізованих значень v2. Кожен payload використовує
-закріплену рекурсивну schema `durable_workflow.protocol.Value`
-та стандартне Avro single-object framing. Іменовані branches зберігають
-booleans, signed 64-bit integers, скінченні doubles, bytes, UTF-8 strings,
-lists та string-keyed maps без schemas окремих workflows чи registry.
+`avro` є кодеком типізованих значень v2. Кожен payload використовує
+закріплену рекурсивну схему `durable_workflow.protocol.Value`
+та стандартне обрамлення Avro single-object. Іменовані гілки зберігають
+булеві значення, знакові 64-бітові цілі числа, скінченні числа подвійної точності,
+байти, рядки UTF-8, списки та мапи з рядковими ключами без схем окремих workflows
+чи реєстру.
 Дивіться [протокол Avro Value](/docs/polyglot/avro-value-protocol/).
 
 ### Формат передачі: оболонка payload {#wire-format-payload-envelope}
@@ -592,7 +593,7 @@ Embedded/package starts, запущені з PHP через
 також визначають стандартний codec нового run через остаточний
 контракт Avro-only v2.
 
-## Отримання bridges {#resolving-the-bridges}
+## Отримання мостів {#resolving-the-bridges}
 
 Обидва bridges зареєстровані в контейнері Laravel
 та доступні безпосередньо:

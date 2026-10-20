@@ -299,7 +299,7 @@ HTTP поверхні керування на вузлі.
 ### Перевірка bootstrap workflow {#workflow-bootstrap-gate}
 
 Автентифіковані маршрути зміни чи обслуговування трафіку workflow v2 також
-відхиляють запити за `checks.workflow_v2.status = blocked` на вузлі.
+відхиляють запити, коли `checks.workflow_v2.status` на вузлі має значення `blocked`.
 Перевірка працює після ролі й версії протоколу, але до namespace, тому запит
 під час заблокованого розгортання не дізнається про існування namespace.
 
@@ -539,6 +539,17 @@ Replay і експорт історії мають явно завершуват
 `activity_execution` чи `invocable_http`. Нова операція має містити
 `handler_target_reference` або непорожній payload `handler_binding`.
 
+Вкладені деталі виклику сервісу також містять `service_call_attempts`,
+`retry_attempt_count`, початковий `call_deadline_at`, типізовані метадані
+помилок і збережений Avro `result_envelope`. Прийнятий або розпочатий виклик
+ще не є термінальним. Workflow, що очікує завершення виклику, отримує
+фактичний результат пов'язаного workflow або його термінальну помилку чи
+скасування зі збереженням початкової ідентичності та строку виклику.
+
+Для перегляду початкового виклику використовуйте
+[огляд викликів сервісів у CLI](./cli-reference.md#service-call-inspection)
+або каталог сервісів Waterline. Перегляд не запитує нового виконання сервісу.
+
 Delete відхиляється з HTTP `409` та іменованою причиною за наявних залежностей:
 `endpoint_has_services`, `service_has_operations`, `operation_has_service_calls`.
 
@@ -601,7 +612,7 @@ Worker мають сприймати ID lease, спроб, завдань та e
 непрозорі значення, видані Server. Застарілий lease чи неправильний ID
 повертає іменовану помилку протоколу worker замість мовчазного завершення роботи.
 
-Якщо `worker_protocol.server_capabilities.poll_status = true`, кожна відповідь
+Якщо `worker_protocol.server_capabilities.poll_status` має значення `true`, кожна відповідь
 poll завдань workflow, activity і query містить машиночитаний `poll_status`.
 Перевіряйте його перед полями payload конкретного маршруту:
 

@@ -150,10 +150,11 @@ curl -sS "$APP_URL/waterline/api/instances/order-1001" \
 
 ## Автентифікація {#authentication}
 
-Кожен controller UI та JSON API Waterline проходить перевірку доступу
-Waterline. У embedded mode Laravel host визначає цю перевірку та вирішує,
-які guards, route middleware, gates, policies, SSO/OIDC/SAML sessions,
-групи каталогу, service tokens і rate limits діють.
+Кожен контролер UI та JSON API Waterline проходить перевірку доступу
+Waterline. У вбудованому режимі Laravel-застосунок визначає цю перевірку
+та вибирає механізми автентифікації, проміжні обробники маршрутів,
+правила й політики доступу, сеанси SSO/OIDC/SAML, групи служби каталогів,
+сервісні токени та обмеження частоти запитів.
 
 Поточна група JSON operator API виключає CSRF middleware Laravel,
 щоб host міг послідовно застосувати межу session або service token
@@ -173,7 +174,7 @@ Waterline. У embedded mode Laravel host визначає цю перевірк�
 й обидві межі автентифікації наведено в
 [моніторингу](./monitoring.md#waterline-service).
 
-## Dashboard та стан {#dashboard-and-health}
+## Панель керування та стан {#dashboard-and-health}
 
 | Метод | Шлях | Призначення |
 | --- | --- | --- |
@@ -201,7 +202,7 @@ Prometheus scrape. Для latency runtime та власної телеметрі
 | `queue_visibility.task_queues[].stats.*` | Backlog окремої черги, його вік, кількість pollers, готові та leased workflow/activity tasks і факти потоку `tasks_added_last_minute` / `tasks_dispatched_last_minute` кожної черги. |
 | `queue_visibility.task_queues[].repair.*` | Тиск repair окремої черги: candidates, помилки dispatch, спливлі leases, прострочені dispatch та найстарший вік кожної умови. |
 | `coordination_alerts[]` | Зведені warnings і errors з health checks та ризиків огляду черг, зокрема backlog без pollers, застарілі pollers чи старі repair candidates. |
-| `checks[]`, `categories.*` | Блокувальні та рекомендаційні health checks v2 з `category = correctness | acceleration` кожної перевірки та зведеннями категорій Waterline для поверхні workers. |
+| `checks[]`, `categories.*` | Блокувальні та рекомендаційні перевірки стану v2 з `category = correctness \| acceleration` кожної перевірки та зведеннями категорій Waterline для екрана workers. |
 | `engine_source`, `readiness_contract` | Чи Waterline активно використовує операторський bridge v2 та який контракт readiness визначає цей стан. |
 
 Поля потоку черги показують, чи durable-робота надходить швидше,
@@ -383,7 +384,7 @@ Signals, updates та queries приймають JSON `arguments`.
 чи update прийнято, застосовано, завершено, відхилено,
 чи сплив час його очікування або його заблокувала сумісність replay.
 
-## Schedules {#schedules}
+## Розклади {#schedules}
 
 Маршрути schedules Waterline надають огляд v2 та дії оператора:
 
