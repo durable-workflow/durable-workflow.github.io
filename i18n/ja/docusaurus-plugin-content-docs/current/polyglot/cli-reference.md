@@ -330,16 +330,16 @@ JSON モードの `namespace:set-storage-driver` は `external_payload_storage` 
 
 ## システムコマンド {#system-commands}
 
-システムコマンドは Server の保守パスを明示的でスクリプト化可能な操作として公開します。
+システムコマンドは Server の保守処理を明示的でスクリプト化可能な操作として公開します。
 
 | コマンド | 用途 | 主なオプション |
 | --- | --- | --- |
 | `dw system:repair-status` | ワークフロー修復バックログ・状態を表示。 | `--json` |
-| `dw system:repair-pass` | 修復パスを1回実行。 | `--run-id`, `--limit`, `--json` |
+| `dw system:repair-pass` | 修復処理を1回実行。 | `--run-id`, `--limit`, `--json` |
 | `dw system:activity-timeout-status` | アクティビティタイムアウトのバックログ・状態を表示。 | `--json` |
-| `dw system:activity-timeout-pass` | タイムアウトパスを1回実行。 | `--task-id`, `--limit`, `--json` |
+| `dw system:activity-timeout-pass` | タイムアウト処理を1回実行。 | `--task-id`, `--limit`, `--json` |
 | `dw system:retention-status` | 保持期間による削除のバックログ・状態を表示。 | `--json` |
-| `dw system:retention-pass` | 保持期限のクリーンアップパスを1回実行。 | `--run-id`, `--limit`, `--json` |
+| `dw system:retention-pass` | 保持期限のクリーンアップ処理を1回実行。 | `--run-id`, `--limit`, `--json` |
 
 運用手順書では、状態変更前に保留範囲が見えるよう、pass コマンドの前に status コマンドを使ってください。
 
