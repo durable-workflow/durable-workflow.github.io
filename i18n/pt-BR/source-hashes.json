@@ -84,5 +84,6 @@
   "polyglot/python.md": "18c872ffee086853f50efc51a3dc193d7953d5eaaad72e44aa36a3a4379d6070",
   "polyglot/rust.md": "b5d3b44c4e68e8b707804001bc46bd5e758b0180eec2a9a2ebdb69a6183dced5",
   "polyglot/cli.mdx": "024a3f73e1c700a7fa142ec64a7edde03303f12507f4eb4a9161e0e944f7431b",
-  "polyglot/cli-reference.md": "b20db162aa91cc85ea64528a061753a99f053b33b6141664ce1194e711c641cc"
+  "polyglot/cli-reference.md": "b20db162aa91cc85ea64528a061753a99f053b33b6141664ce1194e711c641cc",
+  "deployment.md": "2eadca4ea3703d0b09bb7e885eaafe84dc2f7eb7c1a9904dc5649f086f629258"
 }
