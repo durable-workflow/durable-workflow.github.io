@@ -1,4 +1,6 @@
 {
+  "capabilities.md": "c11b11db4cffe5ab2cec77e823fa9e7f33094bf7449a3ee29cbd404d48ac1c3c",
+  "compatibility.md": "3af32f6c46f83df39dc74dedf32314a3416ccd40620948bd8f66ace0d914946e",
   "constraints/activity-constraints.md": "5a953d0e95e750b6c02d1c72b72199fb3ff4687540cebc56aa3b216cf667bb05",
   "constraints/execution-guarantees.md": "e0903f1d6d7461191f2190453f9f96ce9bdcf6811e7e99c7d51f81e2f58ef27d",
   "constraints/overview.md": "fd6c842c6c22d6f0df37a52de15ca74b34664f5ecd78af0c08b1e0cdb9a2be1f",
