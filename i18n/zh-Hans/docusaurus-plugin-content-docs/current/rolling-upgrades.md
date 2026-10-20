@@ -18,6 +18,10 @@ keywords:
 
 # 滚动升级 {#rolling-upgrades}
 
+## 更换构建前进行重放 {#replay-before-changing-builds}
+
+晋升候选构建前，应使用其准确的应用代码重放具有代表性的运行中和最近关闭的历史。回滚前，应使用旧制品重放新构建写入的历史。请遵循[重放检查](./testing.md#replay-before-deployment)；兼容的路由构建组或完整性检查通过，本身都不能证明重放兼容性。
+
 需要在部署保持在线的同时替换 API 节点、Worker 或调度器时，使用滚动升级。本契约覆盖[自托管部署](/docs/deployment)指南中的小型集群形态：负载均衡器后有两到三个 API 节点、共享外部 MySQL 或 PostgreSQL、共享 Redis、独立扩缩的 Worker，以及恰好一个调度器或维护运行器。
 
 只有本页全部保证成立时才支持滚动升级。超出此边界时，应改用部署指南中记录的整体停机流程。

@@ -18,6 +18,10 @@ keywords:
 
 # Actualizaciones graduales {#rolling-upgrades}
 
+## Replay antes de cambiar builds {#replay-before-changing-builds}
+
+Antes de promover un candidato, reproduzca historiales representativos abiertos y cerrados recientemente con su código exacto. Antes de revertir, reproduzca los historiales escritos por el build nuevo con el artefacto antiguo. Siga la [comprobación de replay](./testing.md#replay-before-deployment); una cohorte de enrutamiento compatible o una comprobación de integridad satisfactoria no demuestra, por sí sola, compatibilidad de replay.
+
 Usa una actualización gradual para sustituir nodos API, workers o el programador
 sin desconectar el despliegue. Este contrato cubre el clúster pequeño de la guía
 de [despliegues autogestionados](/docs/deployment): dos o tres nodos API detrás de

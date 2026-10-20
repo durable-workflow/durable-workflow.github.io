@@ -18,6 +18,10 @@ keywords:
 
 # Atualizações graduais {#rolling-upgrades}
 
+## Replay antes de trocar builds {#replay-before-changing-builds}
+
+Antes de promover um candidato, reproduza históricos representativos abertos e encerrados recentemente usando seu código exato. Antes de reverter, reproduza os históricos escritos pelo build novo com o artefato antigo. Siga a [verificação de replay](./testing.md#replay-before-deployment); uma coorte de roteamento compatível ou uma verificação de integridade aprovada não comprova, por si só, compatibilidade de replay.
+
 Faça uma atualização gradual quando quiser substituir nós de API, workers ou o
 agendador sem tirar a implantação do ar. Este contrato abrange a topologia de
 cluster pequeno do guia de [implantações sob sua administração](/docs/deployment):

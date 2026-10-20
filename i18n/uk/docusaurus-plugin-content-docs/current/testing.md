@@ -4,6 +4,52 @@ sidebar_position: 9
 
 # Тестування {#testing}
 
+## Replay перед розгортанням або відкатом {#replay-before-deployment}
+
+Зберігайте експорти вибраних run із репрезентативних відкритих і нещодавно закритих workflow. Охопіть шляхи activity, повторних спроб, signal, update, дочірніх workflow, timer і маркерів версій, які може зустріти кандидат. Збережіть кожне потрібне покоління continue-as-new. Використовуйте історію без pruning із доступними оригінальними байтами payload і codec. Сам прапорець експорту не доводить повноту. Див. [обмеження retention](./configuration/pruning-workflows.md).
+
+### Вбудований PHP {#embedded-php-replay}
+
+Експортуйте зі сховища, яким володіє застосунок. Установіть `WORKFLOW_ID` і `RUN_ID` для точно вибраних instance та run:
+
+```bash
+php artisan workflow:v2:history-export "$WORKFLOW_ID" \
+  --run-id="$RUN_ID" --output=replay-bundles/run.json
+```
+
+Виконуйте перевірку всередині артефакту застосунку-кандидата із завантаженими класами workflow та конфігурацією. Зберігайте звіти поза каталогом bundle. Використовуйте ізольоване середовище CI без облікових даних для побічних ефектів у production:
+
+```bash
+php artisan workflow:v2:replay-verify replay-bundles/run.json \
+  --json --output=replay-one.json
+php artisan workflow:v2:replay-simulate replay-bundles \
+  --json --output=replay-report.json
+```
+
+Ненульовий код завершення блокує promotion. Нульовий код усе одно може вимагати перевірки. Збережіть цю перевірку пакетного звіту як `gate-replay.php` і виконайте `php gate-replay.php replay-report.json` у CI:
+
+```php
+<?php
+$report = json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR);
+$evidence = $report['evidence'] ?? [];
+$count = $evidence['bundle_count'] ?? 0;
+$allowed = ($report['promotion_decision'] ?? null) === 'safe_to_promote'
+    && $count > 0
+    && ($evidence['missing_bundle_count'] ?? 1) === 0
+    && ($evidence['replay_checked_count'] ?? 0) === $count;
+exit($allowed ? 0 : 1);
+```
+
+`--skip-replay` перевіряє лише цілісність. Навіть чистий результат не дозволяє вважати promotion безпечним для replay. Успіх охоплює лише записані шляхи та видимий префікс відкритого run, а не майбутні гілки, правильність предметної логіки чи мережеву поведінку. Перед відкатом перевірте старіший артефакт на історіях, уже записаних новішими worker, які він може отримати. Зберігайте також модульні тести й тести зі справжнім runtime.
+
+### Service SDK {#service-sdk-replay}
+
+**PHP:** використовуйте `DurableWorkflow\Worker\Replayer::replay()` із codec застосунку, callable, списком подій, оригінальними аргументами, чергою та записаною ідентичністю task. Нехай `NonDeterministicWorkflow` провалює тест; перевіряйте очікувані команди й результат. Див. [тестування replay у PHP](https://php.durable-workflow.com/build/testing/).
+
+**Python:** використовуйте `Replayer.replay()` або `verify_replay()` із зареєстрованими workflow-кандидатами та перевіряйте очікуваний результат. Сам факт повернення об’єкта не означає успішного тесту. Передавайте оригінальний декодований `start_input`, коли його немає в подіях: Core зберігає його в `payloads.arguments`. Збережіть записані тип, ID та codec. Див. [API replay у Python](https://python.durable-workflow.com/sdk-reference/#replay-captured-histories). `--simulate-bundles` перевіряє цілісність, а не код кандидата; сумісність поточної схеми 2 відстежується в [Python #173](https://github.com/durable-workflow/sdk-python/issues/173). Не переписуйте версію чи checksum для обходу відмови.
+
+**Rust:** публічного API для автономного replay поки немає. Цю можливість відстежує [Rust #105](https://github.com/durable-workflow/sdk-rust/issues/105). Поки що перевіряйте кандидата на ізольованому runtime; це не надає відсутньої гарантії автономного replay.
+
 ## `Workflow\V2` {#workflowv2}
 
 `Workflow\V2\WorkflowStub::fake()` надає детермінований шлях тестування

@@ -4,6 +4,52 @@ sidebar_position: 9
 
 # テスト {#testing}
 
+## デプロイまたはロールバック前のリプレイ {#replay-before-deployment}
+
+代表的な実行中のランと最近終了したランについて、選択したランのエクスポートを保存します。候補コードが通る可能性のあるアクティビティ、再試行、シグナル、更新、子ワークフロー、タイマー、バージョンマーカーの経路を含めてください。必要な continue-as-new の各世代も保存します。プルーニングされておらず、元のペイロードのバイト列とコーデックが利用できる履歴を使います。エクスポートのフラグだけでは完全性を証明できません。[保持の制約](./configuration/pruning-workflows.md)を参照してください。
+
+### 組み込み PHP {#embedded-php-replay}
+
+アプリケーションが所有するストアからエクスポートします。`WORKFLOW_ID` と `RUN_ID` に、選択したインスタンスとランの正確な ID を設定します。
+
+```bash
+php artisan workflow:v2:history-export "$WORKFLOW_ID" \
+  --run-id="$RUN_ID" --output=replay-bundles/run.json
+```
+
+候補アプリケーションのアーティファクト内で、ワークフローのクラスと設定を読み込んで検証します。レポートはバンドルのディレクトリの外に置きます。本番環境に副作用を起こす認証情報を持たない、隔離した CI 環境を使ってください。
+
+```bash
+php artisan workflow:v2:replay-verify replay-bundles/run.json \
+  --json --output=replay-one.json
+php artisan workflow:v2:replay-simulate replay-bundles \
+  --json --output=replay-report.json
+```
+
+終了コードがゼロ以外なら昇格をブロックします。ゼロでもレビューが必要な場合があります。次の一括レポート用の判定を `gate-replay.php` として保存し、CI で `php gate-replay.php replay-report.json` を実行します。
+
+```php
+<?php
+$report = json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR);
+$evidence = $report['evidence'] ?? [];
+$count = $evidence['bundle_count'] ?? 0;
+$allowed = ($report['promotion_decision'] ?? null) === 'safe_to_promote'
+    && $count > 0
+    && ($evidence['missing_bundle_count'] ?? 1) === 0
+    && ($evidence['replay_checked_count'] ?? 0) === $count;
+exit($allowed ? 0 : 1);
+```
+
+`--skip-replay` は整合性だけを確認します。問題のない結果でも、リプレイ互換な昇格を承認する根拠にはなりません。成功が対象とするのは記録済みの経路と実行中のランの可視プレフィックスだけで、将来の分岐、業務ロジックの正しさ、ネットワーク動作ではありません。ロールバック前には、新しい Worker がすでに書き込み、古いアーティファクトが受け取る可能性のある履歴を、その古いアーティファクトでテストします。ユニットテストと実際のランタイムを使うテストも維持してください。
+
+### サービス SDK {#service-sdk-replay}
+
+**PHP:** アプリケーションのコーデック、呼び出し可能オブジェクト、イベント一覧、元の入力、キュー、記録されたタスク ID を指定して `DurableWorkflow\Worker\Replayer::replay()` を使います。`NonDeterministicWorkflow` でテストを失敗させ、期待するコマンドと結果を検証してください。[PHP のリプレイテスト](https://php.durable-workflow.com/build/testing/)を参照してください。
+
+**Python:** 登録した候補ワークフローに対して `Replayer.replay()` または `verify_replay()` を使い、期待する結果を検証します。オブジェクトが返るだけではテストの成功になりません。イベントに入力が含まれない場合は、デコードした元の `start_input` を渡してください。Core のエクスポートでは `payloads.arguments` に保存されます。記録された型、ID、コーデックを維持します。[Python のリプレイ API](https://python.durable-workflow.com/sdk-reference/#replay-captured-histories)を参照してください。`--simulate-bundles` が確認するのは整合性であり、候補コードではありません。現行スキーマ 2 との互換性は [Python #173](https://github.com/durable-workflow/sdk-python/issues/173) で管理しています。拒否を回避するためにバージョンやチェックサムを書き換えないでください。
+
+**Rust:** 公開されたオフラインリプレイ API はまだありません。この機能は [Rust #105](https://github.com/durable-workflow/sdk-rust/issues/105) が担当します。当面は隔離したランタイムに対して候補をテストしてください。それによって不足しているオフラインの保証が得られるわけではありません。
+
 ## `Workflow\V2` {#workflowv2}
 
 `Workflow\V2\WorkflowStub::fake()` は、対応する `V2` fake 機能に対し、決定的なインラインテスト経路を提供します。

@@ -18,6 +18,10 @@ keywords:
 
 # Rolling Upgrades
 
+## Replay before changing builds {#replay-before-changing-builds}
+
+Before promoting a candidate, replay representative open and recently closed histories against its exact application code. Before rollback, replay histories written by the newer build against the older artifact. Follow the [replay testing gate](./testing.md#replay-before-deployment); a compatible routing cohort or successful integrity check alone does not prove replay compatibility.
+
 Run a rolling upgrade when you want to replace API nodes, workers, or the
 scheduler without taking the deployment offline. This contract covers the
 small clustered shape from the [self-hosting deployments](/docs/deployment)

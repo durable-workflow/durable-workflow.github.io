@@ -4,6 +4,10 @@ sidebar_position: 15
 
 # Versionamento {#versioning}
 
+## Replay antes de trocar builds {#replay-before-changing-builds}
+
+Antes de promover um candidato, reproduza históricos representativos abertos e encerrados recentemente usando seu código exato. Antes de reverter, reproduza os históricos escritos pelo build novo com o artefato antigo. Siga a [verificação de replay](../testing.md#replay-before-deployment); uma coorte de roteamento compatível ou uma verificação de integridade aprovada não comprova, por si só, compatibilidade de replay.
+
 Como workflows podem executar por longos períodos, às vezes meses ou anos, é comum precisar alterar uma definição de workflow enquanto execuções ainda estão em andamento. Sem versionamento, modificar código que afeta o caminho de execução causaria erros de não determinismo no replay.
 
 O helper `getVersion()` permite introduzir mudanças com segurança em workflows em execução, criando pontos de ramificação versionados.

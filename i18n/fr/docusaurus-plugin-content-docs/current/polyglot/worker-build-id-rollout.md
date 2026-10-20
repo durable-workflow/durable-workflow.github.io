@@ -8,6 +8,10 @@ keywords: [build des workers, drainage, retour arrière, canary, workers sans ve
 
 # Déploiement des identifiants de build des workers
 
+## Relecture avant un changement de build {#replay-before-changing-builds}
+
+Avant de promouvoir un candidat, relisez des historiques représentatifs ouverts et récemment clôturés avec son code applicatif exact. Avant un retour arrière, relisez les historiques écrits par le nouveau build avec l’ancien artefact. Suivez le [contrôle de relecture](../testing.md#replay-before-deployment) : une cohorte de routage compatible ou une vérification d’intégrité réussie ne prouve pas à elle seule la compatibilité de relecture.
+
 Inspectez les cohortes, choisissez le build des nouveaux workflows et conservez des workers compatibles pour les exécutions existantes. La promotion change la sélection des nouveaux démarrages. Le drainage empêche de nouvelles prises de tâches par la cohorte. Aucune de ces opérations ne migre les exécutions ni ne prouve qu'un build peut être supprimé.
 
 [Compatibilité et routage des workers](/docs/polyglot/worker-compatibility-routing) décrit l'identité portée par les tâches, activités, reprises, enfants et continue-as-new. Une cohorte est délimitée par `(namespace, task_queue, build_id)`. Sans `build_id`, une inscription appartient à la cohorte non versionnée `null`.

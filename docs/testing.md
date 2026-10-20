@@ -4,6 +4,52 @@ sidebar_position: 9
 
 # Testing
 
+## Replay before deployment or rollback {#replay-before-deployment}
+
+Keep selected-run exports from representative open and recently closed runs. Include the activity, retry, signal, update, child, timer and version-marker paths that the candidate may encounter. Keep each required continuation generation. Use unpruned histories with available original payload bytes and codecs. An export flag alone does not prove completeness. See the [retention limits](./configuration/pruning-workflows.md).
+
+### Embedded PHP {#embedded-php-replay}
+
+Export from the application's owning store. Set `WORKFLOW_ID` and `RUN_ID` to the exact selected instance and run:
+
+```bash
+php artisan workflow:v2:history-export "$WORKFLOW_ID" \
+  --run-id="$RUN_ID" --output=replay-bundles/run.json
+```
+
+Run verification inside the candidate application artifact, with its workflow classes and configuration loaded. Keep reports outside the bundle directory. Use an isolated CI environment without production side-effect credentials:
+
+```bash
+php artisan workflow:v2:replay-verify replay-bundles/run.json \
+  --json --output=replay-one.json
+php artisan workflow:v2:replay-simulate replay-bundles \
+  --json --output=replay-report.json
+```
+
+A nonzero exit blocks promotion. An exit of zero can still require review. Save this batch-report gate as `gate-replay.php` and run `php gate-replay.php replay-report.json` in CI:
+
+```php
+<?php
+$report = json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR);
+$evidence = $report['evidence'] ?? [];
+$count = $evidence['bundle_count'] ?? 0;
+$allowed = ($report['promotion_decision'] ?? null) === 'safe_to_promote'
+    && $count > 0
+    && ($evidence['missing_bundle_count'] ?? 1) === 0
+    && ($evidence['replay_checked_count'] ?? 0) === $count;
+exit($allowed ? 0 : 1);
+```
+
+`--skip-replay` checks integrity only. Even a clean result cannot authorize replay-safe promotion. A pass covers only recorded paths and the visible prefix of an open run, not future branches, domain correctness or network behavior. Before rollback, test the older artifact against histories already written by newer workers that it could receive. Keep unit and real-runtime tests as well.
+
+### Service SDKs {#service-sdk-replay}
+
+**PHP:** use `DurableWorkflow\Worker\Replayer::replay()` with the application's codec, callable, event list, original input, queue and recorded task identity. Let `NonDeterministicWorkflow` fail the test and assert the expected commands/result. See [PHP replay testing](https://php.durable-workflow.com/build/testing/).
+
+**Python:** use `Replayer.replay()` or `verify_replay()` against registered candidate workflows and assert the expected outcome. A returned object alone is not a passing assertion. Supply the original decoded `start_input` when events omit it: Core exports store it under `payloads.arguments`. Preserve recorded type, IDs and codec. See [Python replay APIs](https://python.durable-workflow.com/sdk-reference/#replay-captured-histories). `--simulate-bundles` checks integrity, not candidate code; current schema-2 compatibility is tracked in [Python #173](https://github.com/durable-workflow/sdk-python/issues/173). Do not rewrite a version or checksum to bypass refusal.
+
+**Rust:** no public offline replay API is available yet. [Rust #105](https://github.com/durable-workflow/sdk-rust/issues/105) owns that capability. Test the candidate against an isolated runtime meanwhile; this does not supply the missing offline guarantee.
+
 ## `Workflow\V2`
 
 `Workflow\V2\WorkflowStub::fake()` provides a deterministic inline test path for the supported `V2` fake surface.

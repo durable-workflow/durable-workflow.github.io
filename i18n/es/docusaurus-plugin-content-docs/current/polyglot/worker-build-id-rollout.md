@@ -8,6 +8,10 @@ keywords: [compilación de workers, drenaje, reversión, canary, workers sin ver
 
 # Despliegue de identificadores de compilación de workers
 
+## Replay antes de cambiar builds {#replay-before-changing-builds}
+
+Antes de promover un candidato, reproduzca historiales representativos abiertos y cerrados recientemente con su código exacto. Antes de revertir, reproduzca los historiales escritos por el build nuevo con el artefacto antiguo. Siga la [comprobación de replay](../testing.md#replay-before-deployment); una cohorte de enrutamiento compatible o una comprobación de integridad satisfactoria no demuestra, por sí sola, compatibilidad de replay.
+
 Usa esta guía para inspeccionar cohortes, elegir la compilación de los nuevos workflows y mantener workers compatibles con las ejecuciones existentes. La promoción cambia la selección de nuevos inicios; el drenaje impide nuevas reclamaciones por esa cohorte. Ninguna operación migra ejecuciones ni demuestra que se pueda eliminar una compilación.
 
 [Compatibilidad y enrutamiento de workers](/docs/polyglot/worker-compatibility-routing) explica la identidad de tareas, actividades, reintentos, hijos y continue-as-new. Una cohorte tiene el ámbito `(namespace, task_queue, build_id)`. Los registros sin `build_id` pertenecen a la cohorte sin versión, `null`.

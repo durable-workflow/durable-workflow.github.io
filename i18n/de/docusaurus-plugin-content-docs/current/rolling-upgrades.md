@@ -18,6 +18,10 @@ keywords:
 
 # Rollierende Upgrades {#rolling-upgrades}
 
+## Replay vor einem Build-Wechsel {#replay-before-changing-builds}
+
+Prüfen Sie vor der Promotion eines Kandidaten repräsentative offene und kürzlich geschlossene Historien gegen dessen genauen Anwendungscode. Prüfen Sie vor einem Rollback die Historien des neueren Builds gegen das ältere Artefakt. Nutzen Sie die [Replay-Prüfung](./testing.md#replay-before-deployment); eine kompatible Routing-Kohorte oder erfolgreiche Integritätsprüfung allein beweist keine Replay-Kompatibilität.
+
 Führen Sie ein rollierendes Upgrade aus, wenn Sie API-Knoten, Worker oder Scheduler ersetzen möchten, ohne die Bereitstellung offline zu nehmen. Dieser Vertrag deckt die kleine Clusterform des Leitfadens [Selbsthosting-Bereitstellungen](/docs/deployment) ab: zwei oder drei API-Knoten hinter einem Load Balancer, gemeinsames externes MySQL oder PostgreSQL, gemeinsames Redis, unabhängig skalierte Worker und genau ein Scheduler oder Wartungsprozess.
 
 Ein rollierendes Upgrade wird unterstützt, wenn alle Garantien dieser Seite gelten. Verwenden Sie außerhalb dieser Grenzen stattdessen den dokumentierten Ablauf mit vollständiger Unterbrechung im Bereitstellungsleitfaden.
