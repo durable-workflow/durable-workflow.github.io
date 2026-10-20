@@ -11,5 +11,8 @@
   "polyglot/deployment-modes.md": "ee38a2ca890e6ba5d52fffa1fa0bc65e64a1fc82e47af92463983e523d4e3f49",
   "quickstart.md": "fac182ed61fc3540219e737a0e8166fa798ce0c035a34debac2dad9b85573215",
   "ai-assisted-development.md": "b246bb60585fb7a69bc534978f470f3f16e899e1f8f203ba0847d2d11b8a1ec3",
-  "agent-operating-loop.md": "7b8f9c72f1166d5bb496aaad680e7054d360589b548a2c2a3d23206288bd6500"
+  "agent-operating-loop.md": "7b8f9c72f1166d5bb496aaad680e7054d360589b548a2c2a3d23206288bd6500",
+  "agent-tooling-contract.md": "bafa630abb2be2cefc7a0eb5c6962fd92f1193083cd3993e2aa68bc79530c2bf",
+  "ai-agent-workflow-engine.md": "28016466b179adbabdff6467ce351100c9bee48529a8bec9df7ec22c8d786d4d",
+  "mcp-workflows.md": "1c0b5bb7f2e5c7ca835dfdfa57bbe8f6624172c855f4e225057ac2377abf360e"
 }
