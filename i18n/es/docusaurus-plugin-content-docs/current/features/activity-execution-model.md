@@ -79,7 +79,7 @@ $receipt = localActivity(
 
 Las sesiones fijan una secuencia de intentos ordinarios en cola a una lease de sesión de worker. Úsalas cuando varios pasos duraderos deban reutilizar recursos locales, como memoria GPU, un sistema de archivos montado o un modelo cargado.
 
-Una sesión no convierte una actividad en local. Cada actividad de la sesión sigue siendo una tarea duradera con su propio lease, latidos, tiempos de espera, reintentos e historial terminal. La sesión añade reglas explícitas de afinidad y admisión al enrutamiento normal por colas.
+Una sesión no convierte una actividad en local. Cada actividad de la sesión sigue siendo una tarea duradera con su propia lease, latidos, tiempos de espera, reintentos e historial terminal. La sesión añade reglas explícitas de afinidad y admisión al enrutamiento normal por colas.
 
 Consulta la API de sesión, el ciclo de vida de la lease, enrutamiento, fallos, apagado y diagnósticos en [Sesiones de worker](/docs/features/worker-sessions).
 

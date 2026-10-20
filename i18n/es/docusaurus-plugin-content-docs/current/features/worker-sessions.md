@@ -93,7 +93,7 @@ Las sesiones participan en el enrutamiento normal por colas. `WorkerSessionOptio
 
 - las `capabilities` registradas deben cubrir todos los requisitos de la sesión;
 - `max_concurrent_activities` limita los intentos de actividad con lease dentro de la sesión;
-- `max_concurrent_worker_sessions` limita las leases de sesión activos de un registro de worker.
+- `max_concurrent_worker_sessions` limita las leases de sesión activas de un registro de worker.
 
 El enrutamiento específico de flota usa cadenas de capacidades simples como `gpu:nvidia-l4`, `gpu:a100`, `fs:/mnt/models` o `zone:us-east-1a`.
 
@@ -103,7 +103,7 @@ Los latidos renuevan las leases del intento y de la sesión. Los workers tambié
 
 Si el worker muere a mitad de la secuencia, las actividades en curso conservan el comportamiento de al menos una vez: sus leases caducan, la reparación vuelve a permitir reclamarlas y se puede rechazar una finalización obsoleta. Un worker capaz puede readquirir la sesión si el contrato lo permite. El workflow debe prever reconstruir el estado local tras la readquisición.
 
-La cancelación del workflow sigue propagándose mediante las respuestas a latidos. Un lease de sesión nunca autoriza a una actividad a ignorar `cancel_requested`. Un apagado planificado debe cerrar las sesiones mediante `DELETE /api/worker/sessions/{sessionId}` antes de detener el proceso; las actividades en curso siguen completándose, fallando, cancelándose o caducando bajo sus propios leases de intento.
+La cancelación del workflow sigue propagándose mediante las respuestas a latidos. Una lease de sesión nunca autoriza a una actividad a ignorar `cancel_requested`. Un apagado planificado debe cerrar las sesiones mediante `DELETE /api/worker/sessions/{sessionId}` antes de detener el proceso; las actividades en curso siguen completándose, fallando, cancelándose o caducando bajo sus propias leases de intento.
 
 ## Visibilidad {#visibility}
 

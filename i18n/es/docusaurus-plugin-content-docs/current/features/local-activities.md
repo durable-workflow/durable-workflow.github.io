@@ -25,7 +25,7 @@ Las actividades locales son la primitiva v2 para trabajo breve que debe ejecutar
 - `localActivity(...)` y `Workflow::localActivity(...)` ejecutan la clase de actividad en el mismo proceso que la tarea actual de workflow.
 - El runtime crea una fila `activity_executions` y eventos normales de historial marcados con `execution_mode=local` y `local_activity=true`.
 - No se crea una tarea ordinaria `TaskType::Activity`, por lo que se rechazan `connection`, `queue`, sesión de worker y opciones de enrutamiento entre programación e inicio.
-- El intento local es propietario de la lease de la tarea de workflow. `heartbeat()` de actividad renueva ese lease y registra `ActivityHeartbeatRecorded`.
+- El intento local es propietario de la lease de la tarea de workflow. `heartbeat()` de actividad renueva esa lease y registra `ActivityHeartbeatRecorded`.
 - Los reintentos son tareas duraderas de workflow con espera, no reintentos ocultos en un bucle.
 - La reproducción en frío lee historial confirmado. Si un intento local iniciado no tiene evento terminal tras perder el worker, el siguiente intento registra `retry_reason=cold_replay`.
 - Los detalles de ejecución, exportaciones, cronologías y métricas distinguen los intentos locales de los ordinarios en cola.
@@ -84,7 +84,7 @@ La reproducción no vuelve a ejecutar una actividad local completada. La reprodu
 
 ## Latidos {#heartbeats}
 
-Una actividad local no es propietaria de una lease de tarea de actividad. Posee la lease de la tarea de workflow que se está ejecutando. Al comenzar el intento, el runtime renueva ese lease. Cuando la actividad llama a `$this->heartbeat()`, registra el progreso, actualiza el intento y renueva la lease de workflow.
+Una actividad local no es propietaria de una lease de tarea de actividad. Posee la lease de la tarea de workflow que se está ejecutando. Al comenzar el intento, el runtime renueva esa lease. Cuando la actividad llama a `$this->heartbeat()`, registra el progreso, actualiza el intento y renueva la lease de workflow.
 
 Las actividades locales prolongadas deben emitir latidos con frecuencia suficiente para mantener tanto su plazo de latidos como la lease de tarea de workflow:
 

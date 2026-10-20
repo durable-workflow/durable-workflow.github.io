@@ -24,5 +24,21 @@
   "support.md": "706807b3902599dda6080f632ec1f893017ea18bbe9585f533dcdbd6d85f4621",
   "agent-tooling-contract.md": "bafa630abb2be2cefc7a0eb5c6962fd92f1193083cd3993e2aa68bc79530c2bf",
   "capabilities.md": "c11b11db4cffe5ab2cec77e823fa9e7f33094bf7449a3ee29cbd404d48ac1c3c",
-  "sdk-neutrality.md": "7b0714c123ade4904591870fc20e9a797da1e5485b2a6c87ca3eaa00c5de6ed6"
+  "sdk-neutrality.md": "7b0714c123ade4904591870fc20e9a797da1e5485b2a6c87ca3eaa00c5de6ed6",
+  "configuration/customization-matrix.md": "3d115863eaee7852b541bcd01615f424cc19c5847c7cd7d75e5ae63bc3f5cc78",
+  "configuration/database-connection.md": "a4657d239673a4ecdc3981bcc5a7cf33aa2d37c709768131cd5ba3292987681f",
+  "configuration/ensuring-same-server.md": "6c665f37cc198c7b1a775a60a94aab5ff4e55383385e76f1834c7840559b512a",
+  "configuration/microservices.md": "46dc4afa07588b78829a7e3d259177ce0cf40861f0e31b88dbb6de3a83aa5488",
+  "configuration/options.md": "f8d746d34d28d03c8e31ab19223864df04742cde9e6a0cc1445501f8fbddf625",
+  "configuration/publishing-config.md": "8ed57c1e94ec42ad2dc9a67e2749a93b66143466c4ca07a704b816e3c515a81e",
+  "defining-workflows/activities.md": "05b46f73477a0bbd5f21d17ac37def8a8eac53f1e629155805c98cc46e75b418",
+  "defining-workflows/passing-data.md": "064658f2d1cf643b4bba11020f9143af61b05f1ef5c5b9a9e0dd43fa982fb3e8",
+  "defining-workflows/starting-workflows.md": "722b80454b577b0715ff50db70c7cda2cd02c34c505dd1219a83307852d325a4",
+  "defining-workflows/workflow-api.md": "a6150e75302323b49f350159ce3568a51a19701bb81829915615f754592ee79c",
+  "defining-workflows/workflow-id.md": "91b94211e2f8f405895ad82cfe2ef9baadb7a2cbd06e9c1e7aa6362231e0d424",
+  "defining-workflows/workflow-status.md": "8e8cb27ff44c890d489d89bf166375acfdfaecabd990a2235e106fab1592d529",
+  "features/activity-execution-model.md": "50eb43b1b18458ef5509886756041752d30cca4c511a24a74f409f8f87f86c4f",
+  "features/heartbeats.md": "55dc06337706e0b0f62100cddd445055165bc406a1b2e2f6b4fdf8c22f84f3d1",
+  "features/local-activities.md": "05fca8f2104d8f4e7bd8b48040f5615f18d0ee2795922fb65c56f8d3d70ed204",
+  "features/worker-sessions.md": "2b08a0cdaee486970e099ea8bcb91d7f6daf135b0bc98629ed47f3885e64c77d"
 }
