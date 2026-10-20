@@ -253,12 +253,18 @@ Server and workers before enabling a feature.
 Top-level package versions select the supported train. Runtime protocol
 manifests provide a second, fail-closed check:
 
-| Client | Product train | Control plane | Worker protocol request |
-|--------|---------------|---------------|-------------------------|
+| Client | Product train | Control plane | Default worker registration protocol |
+|--------|---------------|---------------|--------------------------------------|
 | CLI | `%%artifact.cliVersion%%` | `2` | n/a |
-| PHP SDK | `%%artifact.phpSdkVersion%%` | `2` | `1.13` |
-| Python SDK | `%%artifact.pythonSdkVersion%%` | `2` | `1.1` |
-| Rust SDK | `%%artifact.rustSdkVersion%%` | `2` | `1.2` |
+| PHP SDK | `%%artifact.phpSdkVersion%%` | `2` | `1.20` |
+| Python SDK | `%%artifact.pythonSdkVersion%%` | `2` | `1.20` |
+| Rust SDK | `%%artifact.rustSdkVersion%%` | `2` | `1.20` |
+
+The SDKs also support explicitly selecting worker protocol `1.19` for a
+compatible older Server. Cooperative cancellation requires `1.20`; selecting
+`1.19` does not provide that capability. Individual operations can use their
+documented minimum protocol version, so the registration default is not a
+claim that every worker request sends `1.20`.
 
 The current published Server advertises the worker protocol version shown in
 the authority-role table above. It accepts request headers from the same major
