@@ -31,7 +31,7 @@ Durable Workflow v2 では、**ワークフローのリプレイ**と**アクテ
 
 ワークフロータスクは、確定済み履歴をリプレイして状態を再構築し、次の処理を決めます。ワークフロー本体を再び呼び出しますが、履歴に記録済みのアクティビティ、シグナル送信、副作用は繰り返しません。
 
-そのため、ワークフローコードは決定的である必要があります。永続境界を越えるときは、[`Workflow::now()`](../defining-workflows/workflow-api.md)、[`sideEffect(...)`](../features/side-effects.md)、クエリ、更新、アクティビティ結果、memo、検索属性など、ワークフローに安全な機能を使ってください。
+そのため、ワークフローコードは決定的である必要があります。永続境界を越えるときは、[`Workflow::now()`](../defining-workflows/workflow-api.md)、[`sideEffect(...)`](../features/side-effects.md)、クエリ、更新、アクティビティ結果、メモ、検索属性など、ワークフローに安全な機能を使ってください。
 
 ## アクティビティは少なくとも一回実行される {#activity-execution-is-at-least-once}
 
@@ -112,7 +112,7 @@ final class ChargeCard extends Activity
 
 ## 開発者が冪等にする処理 {#what-developers-must-make-idempotent}
 
-ワークフローのリプレイは、フレームワークが確定済み履歴から状態を再構築して処理します。
+ワークフローのリプレイ自体を冪等にする必要はありません。フレームワークが確定済み履歴から状態を再構築して処理します。
 
 アプリでは、外部副作用を安全に繰り返せるようにする必要があります。
 
