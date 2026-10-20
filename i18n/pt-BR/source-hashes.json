@@ -11,5 +11,8 @@
   "polyglot/deployment-modes.md": "ee38a2ca890e6ba5d52fffa1fa0bc65e64a1fc82e47af92463983e523d4e3f49",
   "quickstart.md": "fac182ed61fc3540219e737a0e8166fa798ce0c035a34debac2dad9b85573215",
   "sponsors.md": "e85e14375743ca8fa50e3a48f894b160e28272573aa88480064f74010ebee98a",
-  "support.md": "706807b3902599dda6080f632ec1f893017ea18bbe9585f533dcdbd6d85f4621"
+  "support.md": "706807b3902599dda6080f632ec1f893017ea18bbe9585f533dcdbd6d85f4621",
+  "contribute-a-sample.md": "d250d8c63d448e32d3160ff7a2900e7a270dcbd9cda22cf3af46cdf219395ea3",
+  "ai-assisted-development.md": "b246bb60585fb7a69bc534978f470f3f16e899e1f8f203ba0847d2d11b8a1ec3",
+  "ai-agent-workflow-engine.md": "28016466b179adbabdff6467ce351100c9bee48529a8bec9df7ec22c8d786d4d"
 }
