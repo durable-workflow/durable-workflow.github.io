@@ -608,8 +608,9 @@ context rather than inventing a lease allowance in a direct client.
 Read `limits.max_payload_bytes`, `request_timeout_seconds` and
 `abandoned_upload_expiry_seconds` from the transport manifest. Namespace byte and
 object quotas, ordinary request limits and completion upload limits also apply.
-A value equal to the namespace threshold stays inline. SDKs externalize larger
-values and may externalize additional values to fit an aggregate request.
+Threshold selection leaves values equal to the namespace threshold inline.
+SDKs externalize larger values and may externalize additional values to fit an
+aggregate request.
 
 | Outcome | HTTP status | Action |
 | --- | --- | --- |
@@ -637,8 +638,9 @@ export containing a reference is not a self-contained backup of its bytes.
 | Direct HTTP | Explicit runtime upload/fetch plus the returned runtime reference in a supported payload slot. | Server. |
 
 All SDK rows require an available compatible runtime transport. Provider driver
-helpers are for embedded/direct storage integration or explicitly negotiated
-self-hosted adapters, not an alternative default Server or Cloud wire format.
+helpers serve application-owned embedded/direct storage integrations. Their
+availability does not make provider envelopes a supported Server or Cloud ingress
+format.
 
 For the full request-authority contract, including namespace resolution,
 role-scoped credentials, and worker registration fields, see

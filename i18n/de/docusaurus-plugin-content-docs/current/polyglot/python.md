@@ -214,11 +214,11 @@ Worker-Plane-Methoden `worker_token`.
 
 ### Externer Nutzlastspeicher {#external-payload-storage}
 
-Das SDK exportiert denselben Vertrag für externe Nutzlastreferenzen wie die
-Speicher-APIs von Server und CLI. Verwenden Sie ihn, wenn Python-Aktivitäts-Handler
-oder aufrufbare Transportadapter große Nutzlastreferenzen aus Workflow-Historie
-decodieren müssen oder ein Python-Prozess eine sprachneutrale Nutzlast-Envelope
-ohne große Inline-Bytes erzeugen muss.
+Normale `Client`- und `Worker`-Operationen verwenden automatisch den authentifizierten Runtime-Transport von Server. Das SDK ermittelt Richtlinie und Limits über `GET /api/cluster/info`, lädt codierte Werte über dem Schwellenwert oder bei Bedarf zum Einhalten des Anfragelimits hoch und lädt Referenzwerte vor dem Decodieren. Workflow- und Aktivitätscode erhalten den decodierten Wert. Anbieter-Zugangsdaten bleiben auf dem Server. Entfernte Worker benötigen weder boto3 noch Anbieter-Clients oder Zugriff auf das lokale Server-Verzeichnis.
+
+Die Runtime-Referenz verwendet Schema `durable-workflow.v2.runtime-external-payload-reference.v1` und eine opake `reference_id`. Sie enthält keine Anbieter-`uri`. Upload und Abruf verwenden normale Rollen-Zugangsdaten und den Namespace, prüfen Größe und SHA-256 und erhalten die Aufgabenversuchs- und Lease-Abgrenzung beim Worker-Abschluss. Der [HTTP-Vertrag](./server-api-reference.md#runtime-external-payload-transport) beschreibt Routen, Limits und typisierte Ablehnungen. Unterstützung erfordert einen verfügbaren kompatiblen Transport, nicht nur einen konfigurierten Treiber.
+
+Die folgenden **direkten Anbieterhelfer** dienen anwendungseigenem Speicher und Tests, die bewusst auf ihren eigenen Anbieter zugreifen. Sie verwenden ein anderes URI-Schema. Normale Server- oder Cloud-Clients benötigen sie nicht. Server lehnt Anbieter-Envelopes `external_storage` mit HTTP `422` und `external_payload_unsupported` ab.
 
 | API | Rolle | Fehleroberfläche |
 | --- | --- | --- |
@@ -233,7 +233,7 @@ ohne große Inline-Bytes erzeugen muss.
 | `fetch_external_payload()` | Ruft referenzierte Bytes ab und prüft vor Decodierung Größe und SHA-256. | `ExternalPayloadIntegrityError` bei Größen-/Hashabweichung. |
 | `delete_external_payload()` | Löscht das referenzierte Objekt und verdrängt den Cache-Eintrag. | Vom Treiber ausgelöste Speicherfehler. |
 | `external_storage_envelope()` | Codiert einen Wert bis zur Schwelle inline und schreibt danach Bytes über einen Treiber. | `ValueError` bei ungültiger Schwelle oder fehlendem Treiber zur Referenzauflösung. |
-| `external_storage_driver_from_policy()` | Baut aus einer Server- oder Cloud-Richtlinie `external_payload_storage` mit anwendungsseitigen Anbieterclients den passenden Treiber. | `ValueError` bei deaktivierter/nicht unterstützter Richtlinie oder fehlendem erforderlichem Client/Bucket/Container. |
+| `external_storage_driver_from_policy()` | Erstellt einen direkten Treiber aus expliziter Richtlinie und anwendungseigenen Anbieter-Clients. Gewährt keinen direkten Anbieterzugriff auf Server oder Cloud. | `ValueError` bei deaktivierter/nicht unterstützter Richtlinie oder fehlendem Client/Bucket/Container. |
 
 ```python
 from durable_workflow import (
@@ -263,12 +263,9 @@ reference = store_external_payload(
 payload_bytes = fetch_external_payload(storage, reference, cache=cache)
 ```
 
-Das Referenzschema ist `EXTERNAL_PAYLOAD_REFERENCE_SCHEMA`
-(`durable-workflow.v2.external-payload-reference.v1`). Objektspeicheradapter
-ergänzen keine Cloud-SDK-Abhängigkeiten in `durable-workflow`. Anwendungen
-übergeben ihre bereits konfigurierten S3-, GCS- oder Azure-Clients.
+Für diese direkten Helfer lautet das Referenzschema `EXTERNAL_PAYLOAD_REFERENCE_SCHEMA` (`durable-workflow.v2.external-payload-reference.v1`). Anbieteradapter fügen `durable-workflow` keine Cloud-SDK-Abhängigkeiten hinzu; Anwendungen stellen ihre konfigurierten S3-, GCS- oder Azure-Clients bereit.
 
-Die Felder der Übertragungs-Envelope sind bewusst klein und stabil:
+Ihre Anbieterreferenz enthält diese Felder. Sie ist nicht die Runtime-Referenz der Server-HTTP-Routen:
 
 ```json
 {
@@ -281,20 +278,9 @@ Die Felder der Übertragungs-Envelope sind bewusst klein und stabil:
 }
 ```
 
-`ExternalPayloadReference.from_dict()` lehnt unbekannte Schemas und ungültige
-Felder ab. `fetch_external_payload()` prüft `size_bytes` und `sha256` vor der
-Byte-Rückgabe und löst bei fehlenden, gekürzten oder geänderten Objekten
-`ExternalPayloadIntegrityError` aus. Worker-Replay sollte
-`ExternalPayloadCache` erst nach Prüfung nutzen, damit wiederholtes
-Historienlesen denselben Blob ohne schwächere Integritätsprüfung nicht erneut
-abrufen muss.
+`ExternalPayloadReference.from_dict()` lehnt unbekannte Schemas und fehlerhafte Felder ab. `fetch_external_payload()` prüft `size_bytes` und `sha256` vor der Rückgabe und wirft bei Größen- oder Hashabweichung `ExternalPayloadIntegrityError`. Fehlende Objekte können außerdem einen Fehler des Anbietertreibers auslösen. Verwenden Sie `ExternalPayloadCache` nur für geprüfte Bytes. Cache-Verdrängung berechtigt nicht zum Löschen Server-verwalteter Objekte. `delete_external_payload()` ist eine direkte Anbieteroperation, keine Bereinigungs-API für Runtime-Referenzen.
 
-Hat die Anwendung die Namespace-Richtlinie `external_payload_storage` bereits
-aus Server oder Cloud-Control-Plane gelesen, liefert
-`external_storage_driver_from_policy()` den passenden Treiber.
-Anbieter-SDK-Clients bleiben Aufgabe der Anwendung. Das SDK fügt daher
-boto3, google-cloud-storage oder azure-storage-blob niemals als
-Laufzeitabhängigkeiten hinzu:
+Verwenden Sie `external_storage_driver_from_policy()` in Code, der bewusst auf anwendungseigenen Anbieterspeicher zugreift und den erforderlichen Client besitzt. Das Lesen der Richtlinie macht Anbieter-Envelopes nicht zu gültigen Server-Anfragen. Die Clients bleiben anwendungseigen. Optionale Adapter ergänzen keine Runtime-Abhängigkeiten auf boto3, google-cloud-storage oder azure-storage-blob:
 
 ```python
 from durable_workflow.external_storage import external_storage_driver_from_policy
@@ -306,10 +292,7 @@ driver = external_storage_driver_from_policy(
 )
 ```
 
-Die Factory löst `ValueError` aus, wenn die Richtlinie deaktiviert, der benannte
-Treiber nicht unterstützt oder der passende Anbieterclient nicht vorhanden ist.
-Deaktivierte Richtlinien liefern keinen wirkungslosen Treiber. Aufrufer sollten
-vor der Treiberanforderung `policy.enabled` prüfen.
+Die Factory wirft `ValueError`, wenn die Richtlinie deaktiviert, der Treiber nicht unterstützt oder der passende Client nicht vorhanden ist. Deaktivierte Richtlinien liefern keinen leeren Treiber. Prüfen Sie vorher `policy.enabled`.
 
 ### Namespaces {#namespaces}
 
@@ -343,11 +326,7 @@ Speichertreiber und liefert `StorageTestResult` mit
 `StoragePayloadTestResult`-Datensätzen je Nutzlast und den Feldern `wrote`,
 `read`, `verified`, `latency_ms` und `bytes`.
 
-`NamespaceDescription` enthält die Namespace-Richtlinie
-`external_payload_storage`, wie unter [Externer Nutzlastspeicher](#external-payload-storage)
-dokumentiert. Kombinieren Sie sie mit `external_storage_driver_from_policy()`,
-um den passenden Python-Treiber aus der Richtlinie zu bauen, ohne Zugangsdaten
-im Anwendungscode erneut zu lesen.
+`NamespaceDescription` enthält die unter [Externer Nutzlastspeicher](#external-payload-storage) beschriebene `external_payload_storage`-Richtlinie. Normale Clients verwenden automatisch den ermittelten Runtime-Transport. Direkte Anbieterhelfer setzen anwendungseigenen Anbieterzugriff voraus; eine Richtlinienbeschreibung macht Anbieter-Envelopes nicht zu gültigen Server-Anfragen.
 
 ### Cluster und Task-Warteschlangen {#cluster-and-task-queues}
 

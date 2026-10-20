@@ -15,237 +15,73 @@ keywords:
 
 # Armazenamento externo de payloads {#external-payload-storage}
 
-O armazenamento externo de payloads transfere payloads grandes de workflows
-para um armazenamento de objetos substituível (S3, GCS, Azure Blob ou sistema
-de arquivos local) e substitui os bytes embutidos no histórico por um envelope
-de referência pequeno e verificável. Use quando argumentos ou resultados de
-atividades ou workflows filhos, sinais ou payloads de atualização forem grandes
-demais para ficar embutidos na linha de banco que mantém o histórico do workflow.
-
-O runtime mantém os payloads embutidos enquanto o tamanho codificado fica
-abaixo do limite do namespace. Somente payloads que atingem o limite são
-gravados pelo driver configurado e registrados no histórico como um envelope
-`durable-workflow.v2.external-payload-reference.v1`. O replay e a exportação
-de histórico falham sem prosseguir quando uma referência está ausente,
-alterada ou fora do prefixo configurado. O sistema nunca substitui
-silenciosamente um blob ausente por um valor vazio.
+No Laravel embutido, o armazenamento externo substitui valores codificados grandes no histórico do workflow por referências verificadas ao armazenamento da aplicação. Esta página descreve esse limite. Clientes e workers em modo serviço usam o [transporte do runtime do Server](../polyglot/server-api-reference.md#runtime-external-payload-transport): o Server mantém as credenciais do provedor e os SDKs trocam identificadores opacos por HTTP autenticado. Um URI do provedor não é um envelope de payload válido para o Server.
 
 ## Quando usar {#when-to-use-it}
 
-Prefira armazenamento externo de payloads sempre que a aplicação precisar
-legitimamente passar mais de algumas centenas de kilobytes por um workflow:
+Use armazenamento externo para documentos, mídia, relatórios, argumentos ou resultados de atividades grandes que realmente precisem passar pela execução durável. Valores pequenos permanecem inline e dispensam escrita no armazenamento de objetos. A externalização não remove limites de payload, eventos de histórico nem a necessidade de limitar os objetos retidos por execução.
 
-- Pipelines de processamento de documentos e mídia que passam PDFs, imagens
-  ou blobs de áudio de uma atividade para a próxima.
-- Relatórios, exportações ou arquivos cuja saída final é um artefato
-  serializado grande.
-- Payloads de fluxos de mensagens produzidos por sistemas externos que não
-  expõem uma URL estável de objeto que o workflow possa referenciar diretamente.
-- Qualquer payload que, de outra forma, atingiria o
-  [limite estrutural `payload_size_bytes`](../constraints/structural-limits.md#payload-size).
+## Como funciona a externalização {#how-offload-works}
 
-Payloads pequenos, como campos do plano de controle, IDs, indicadores de status
-e JSON típico, continuam embutidos sem custo adicional. A política depende do
-limite, portanto habilitar armazenamento externo em um namespace não move payloads pequenos.
+A política do namespace da aplicação fornece um driver e um `threshold_bytes` positivo. Payloads codificados cujo tamanho é **maior que** o limite são gravados pelo driver. Valores iguais ou inferiores permanecem inline. Uma política desativada ou sem driver também mantém os valores inline.
 
-## Como a transferência funciona {#how-offload-works}
+A referência de provedor do modo embutido usa o esquema `durable-workflow.v2.external-payload-reference.v1` com `uri`, `sha256`, `size_bytes`, `codec` e `expires_at` opcional. O codec é `avro`. `Workflow\V2\Support\ExternalPayloads` armazena o envelope codificado com o prefixo `dw-external-payload:v1:`. Quando precisa do valor, o runtime busca os bytes codificados e verifica tamanho e SHA-256 antes de decodificar. Bytes ausentes ou alterados causam falha, nunca um valor `null` substituto.
 
-Cada namespace tem uma política independente de armazenamento externo de
-payloads. Quando o runtime codifica um payload para armazenamento durável,
-compara seu tamanho em bytes codificados com o `threshold_bytes` configurado:
-
-- O tamanho codificado está abaixo do limite. O payload é armazenado
-  embutido, como atualmente. Nada muda no histórico.
-- O tamanho codificado é igual ou superior ao limite. O runtime entrega os
-  bytes codificados ao driver configurado, recebe uma URI gerenciada pelo
-  driver e registra uma referência de payload externo no histórico. A
-  referência contém a URI, um hash SHA-256, o tamanho exato em bytes, o codec
-  do payload e uma indicação opcional `expires_at`.
-
-No replay, workers buscam os bytes referenciados pelo mesmo driver, verificam
-se o objeto retornado tem o tamanho e SHA-256 esperados e só então entregam
-o payload ao decodificador. Uma divergência de tamanho ou hash lança
-`ExternalPayloadIntegrityException` (PHP) ou `ExternalPayloadIntegrityError`
-(Python) e aparece como falha de replay, nunca como um payload vazio silencioso.
-
-O envelope de referência é um formato de transmissão estável. Ele é idêntico
-quando produzido por um workflow PHP, um worker do SDK Python ou um chamador
-direto da API HTTP. Para o contrato completo dos campos, consulte
-[Envelope de referência de payload externo](../polyglot/server-api-reference.md#external-payload-reference-envelope).
+Essa referência difere do esquema do Server `durable-workflow.v2.runtime-external-payload-reference.v1`. Consulte a [tabela de suporte por modo](../polyglot/server-api-reference.md#external-payload-support-by-mode) antes de transportar um helper de driver ou envelope armazenado entre modos de implantação.
 
 ## Limite de confiança da decodificação {#decode-trust-boundary}
 
-Armazenamento e decodificação de payloads são limites de confiança separados.
-Um armazenamento de objetos pode manter bytes codificados ou referências,
-enquanto um servidor de codec, decodificador personalizado, processo de worker
-ou ferramenta de exportação de histórico que decodifique esses bytes pode
-ver payloads da aplicação em texto simples.
-
-Trate todo servidor de codec como um limite de confiança gerenciado pelo
-cliente: decida onde ele executa, qual rede pode acessá-lo, a quais chaves
-tem acesso, quais logs de auditoria emite e como as prévias decodificadas
-têm dados ocultados antes de chegar às interfaces do operador. O Durable
-Workflow registra nomes de codecs, URIs de referência, hashes, tamanhos,
-impressões digitais de schema e prévias limitadas, mas esses fatos não equivalem
-a criptografia de ponta a ponta.
+Armazenamento e decodificação têm limites de confiança distintos. Um provedor pode guardar bytes codificados enquanto um worker, servidor de codecs ou ferramenta de exportação que os decodifica pode ver os valores da aplicação. Defina onde os decodificadores executam, quais chaves acessam e como dados são ocultados em prévias e logs. Hashes, tamanhos e nomes de codecs são metadados de integridade, não uma garantia de criptografia ponta a ponta. URIs do provedor também podem conter nomes de objetos sensíveis.
 
 ## Opções de driver {#driver-choices}
 
-| Driver | Esquema de URI | Uso típico |
+| Driver | Esquema URI | Requisito no modo embutido |
 | --- | --- | --- |
-| `local` | `file://` | Desenvolvimento local, CI e implantações em nó único onde servidor e workers compartilham um sistema de arquivos. Inadequado quando workers executam em hosts diferentes do servidor. |
-| `s3` | `s3://` | Amazon S3 e armazenamentos de objetos compatíveis com S3 (MinIO, Cloudflare R2 etc.) por um disco de sistema de arquivos do servidor. |
-| `gcs` | `gs://` | Google Cloud Storage por um disco de sistema de arquivos do servidor. |
-| `azure` | `azure://` | Azure Blob Storage por um disco de sistema de arquivos do servidor. |
+| Sistema de arquivos local | `file://` | Todo processo embutido que resolve uma referência deve acessar a mesma raiz de armazenamento. |
+| Armazenamento compatível com S3 | `s3://` | Driver ou disco da aplicação com bucket, prefixo e credenciais adequados. |
+| Google Cloud Storage | `gs://` | Driver ou disco da aplicação e cliente do provedor. |
+| Azure Blob Storage | `azure://` | Driver ou disco da aplicação e cliente do provedor. |
 
-Drivers de armazenamento de objetos configuram as credenciais reais do
-bucket ou contêiner por um disco nomeado de sistema de arquivos do servidor.
-Assim, segredos ficam na configuração do servidor, fora do registro de política do namespace.
+O Server pode usar armazenamento local enquanto workers SDK remotos buscam dados por HTTP. Esses workers não precisam de sistema de arquivos compartilhado nem de credenciais do provedor.
 
-## Configuração de um namespace {#configuring-a-namespace}
+## Configurar um namespace {#configuring-a-namespace}
 
-Configure a política com a [CLI](../polyglot/cli-reference.md#namespace-and-search-attribute-commands)
-ou a [API HTTP do servidor](../polyglot/server-api-reference.md#namespace-and-storage).
-Ambas gravam o mesmo envelope `external_payload_storage` no registro do namespace.
+Aplicações embutidas configuram a política de armazenamento do namespace e `ExternalPayloadStorageDriver` no próprio runtime Laravel. Mantenha credenciais na configuração da aplicação, não em argumentos de workflow, histórico ou URIs de referências. Use uma política consistente nos processos que executam e fazem replay da execução.
+
+No Server auto-hospedado, a [API administrativa de armazenamento](../polyglot/server-api-reference.md#namespace-and-storage) e os [comandos CLI](../polyglot/cli-reference.md#namespace-and-search-attribute-commands) configuram a política do Server. Eles não concedem acesso direto ao provedor aos workers SDK.
 
 ### Pela CLI {#with-the-cli}
 
-```bash
-# Production namespace using Amazon S3 through the 'external-payload-objects' disk.
-dw namespace:set-storage-driver billing s3 \
-  --disk=external-payload-objects \
-  --bucket=dw-payloads \
-  --prefix=billing/ \
-  --threshold-bytes=2097152
+`dw namespace:set-storage-driver` configura um namespace do Server, não o contêiner Laravel de uma aplicação embutida independente. Os parâmetros obrigatórios de disco, bucket e prefixo estão na referência da CLI.
 
-# Development namespace using the local filesystem.
-dw namespace:set-storage-driver dev local \
-  --uri=file:///var/lib/durable-workflow/payloads
+### Pela API do Server {#with-the-server-api}
 
-# Disable offload while keeping the policy record (all payloads stay inline).
-dw namespace:set-storage-driver billing s3 \
-  --disk=external-payload-objects \
-  --bucket=dw-payloads \
-  --disable
-```
+`PUT /api/namespaces/{namespace}/external-storage` é uma operação administrativa de política. Clientes SDK normais descobrem o transporte resultante por `GET /api/cluster/info`; não copiam sua configuração do provedor para os workers.
 
-### Pela API do servidor {#with-the-server-api}
+## Verificar a política {#verifying-the-policy}
 
-```bash
-curl -sS -X PUT "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/billing/external-storage" \
-  -H "Authorization: Bearer $DURABLE_WORKFLOW_AUTH_TOKEN" \
-  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "enabled": true,
-    "driver": "s3",
-    "threshold_bytes": 2097152,
-    "config": {
-      "disk": "external-payload-objects",
-      "bucket": "dw-payloads",
-      "prefix": "billing/"
-    }
-  }'
-```
+Exercite um valor acima do limite com o driver configurado e os processos que farão replay. Verifique o comprimento exato dos bytes codificados e SHA-256 após a busca. Para o Server, `dw storage:test --namespace=billing --json` verifica o caminho configurado. Um diagnóstico de armazenamento não comprova execução de workflows em cada SDK, restauração de backups nem todos os adaptadores de provedores.
 
-A descrição do namespace retornada por `GET /api/namespaces/{name}` ou
-`dw namespace:describe` contém o envelope resolvido `external_payload_storage`,
-para que operadores e automações verifiquem a política ativa sem repetir uma gravação.
+## Escolher um limite {#picking-a-threshold}
 
-## Verificação da política {#verifying-the-policy}
-
-Use o diagnóstico de ida e volta para comprovar que uma política configurada
-pode realmente gravar e ler bytes com as credenciais do namespace antes de
-abri-lo ao tráfego de workflows:
-
-```bash
-dw storage:test --namespace=billing --large-bytes=2097152 --json
-```
-
-O diagnóstico grava um payload pequeno embutido e outro que ultrapassa o
-limite, recupera ambos, verifica tamanho e SHA-256 e retorna os objetos de
-resultado legíveis por máquina `small_payload` e `large_payload`.
-Um resultado aprovado para o payload grande comprova que o driver produz
-um envelope válido `durable-workflow.v2.external-payload-reference.v1` de
-ponta a ponta. Trate uma falha de diagnóstico como problema na política de
-armazenamento. Não habilite tráfego de workflows por um namespace cuja
-política não passe na verificação de ida e volta.
-
-## Escolha de um limite {#picking-a-threshold}
-
-O comportamento padrão mantém os payloads embutidos até atingirem
-`threshold_bytes`. Bons pontos de partida:
-
-- Ajuste o limite ao ponto em que payloads embutidos começam a gerar pressão
-  operacional, normalmente entre 256 KiB e 2 MiB de bytes codificados.
-- Deixe uma margem confortável abaixo do limite estrutural
-  [`payload_size_bytes`](../constraints/structural-limits.md#payload-size)
-  do namespace, para que o tamanho limitado seja o do envelope de referência,
-  e não o dos próprios bytes.
-- Defina um único limite por namespace. Escolha com base na atividade ou
-  workflow produtor de payloads que gera mais bytes por execução, em vez de
-  ajustá-lo para o payload mediano.
-
-Não há benefício em definir um limite muito baixo: a ida e volta de payloads
-pequenos pelo banco é mais rápida que pelo armazenamento externo, e o próprio
-envelope de referência consome uma pequena quantidade de espaço no histórico.
+Deixe margem em relação aos limites normais de solicitações e payloads. O limite se aplica a **bytes codificados**, não ao tamanho do arquivo original ou JSON de negócio. Limites muito baixos acrescentam solicitações de armazenamento e referências retidas para valores pequenos. O transporte do runtime também pode externalizar valores adicionais para que uma solicitação HTTP agregada caiba no limite. No modo serviço, use os limites descobertos do Server, não o limite embutido como limite do protocolo.
 
 ## Replay, retenção e limpeza {#replay-retention-and-cleanup}
 
-- **Integridade do replay.** Toda busca verifica o objeto armazenado contra
-  `size_bytes` e `sha256` da referência. Um blob alterado ou ausente lança
-  uma exceção de integridade, sem substituir silenciosamente outro valor.
-- **Cache de buscas verificadas.** Workers armazenam bytes verificados em
-  cache por `(uri, sha256, size, codec)`, com limites de entradas e bytes.
-  Leituras repetidas do histórico da mesma execução evitam buscar novamente
-  o mesmo objeto sem enfraquecer a verificação de integridade no primeiro carregamento.
-- **Retenção.** Quando a passagem de retenção do servidor remove uma execução
-  de workflow, também exclui os objetos de payload externo referenciados por
-  seu histórico. Objetos órfãos não se acumulam enquanto a retenção está funcionando.
-- **Exportação de histórico.** O histórico exportado preserva o envelope de
-  referência. Consumidores posteriores que precisarem dos bytes referenciados
-  devem buscá-los pelo mesmo driver e verificá-los contra o envelope antes de
-  decodificar. O formato de exportação não embute bytes externos.
+- **Integridade do replay.** Um valor só é decodificado após buscar e verificar seus bytes. Preserve os objetos ainda necessários a qualquer execução retida.
+- **Cache de buscas verificadas.** `ExternalPayloadStorage` limita seu cache de bytes verificados. Limpá-lo não exclui o objeto nem altera sua propriedade.
+- **Retenção.** A limpeza do runtime considera proprietários retidos e objetos compartilhados. Falhas de armazenamento, retenções para backup ou referências restantes podem atrasar a exclusão. Executar a retenção não garante ausência de objetos órfãos.
+- **Exportação do histórico.** Uma exportação pode preservar metadados de referências sem buscar o objeto. Seu checksum ou `history_complete` não comprova a existência dos bytes externos nem que o arquivo pode ser reproduzido. Respeite o [limite de backup e restauração](../configuration/pruning-workflows.md#export-before-pruning) e verifique objetos separadamente. Arquivos autossuficientes continuam em [Server #520](https://github.com/durable-workflow/server/issues/520).
 
-## Uso pelo código {#using-it-from-code}
+## Uso por código {#using-it-from-code}
 
-A maioria das aplicações nunca chama a API de armazenamento diretamente:
-o runtime transfere os dados de forma transparente conforme a política do
-namespace, e o SDK decodifica as referências no replay. Aplicações que precisam
-construir ou consumir envelopes fora do runtime, como um handler de ponte
-independente de linguagem ou um teste que sintetiza um payload grande, usam
-os helpers dos SDKs.
+PHP embutido usa `Workflow\V2\Support\ExternalPayloadStorage` com um `ExternalPayloadStorageDriver`. `LocalFilesystemExternalPayloadStorage` lida com raízes locais. Adaptadores de provedor controlam suas configurações de acesso e regras URI. Normalmente, a aplicação permite que o runtime aplique a política do namespace, em vez de construir envelopes armazenados manualmente.
 
-- **PHP (pacote de workflow).** O helper
-  `Workflow\V2\Support\ExternalPayloadStorage` armazena e busca bytes por
-  qualquer driver que implemente
-  `Workflow\V2\Contracts\ExternalPayloadStorageDriver`.
-  `LocalFilesystemExternalPayloadStorage` trata URIs `file://`, e o servidor
-  independente inclui um driver de disco de sistema de arquivos que dá
-  suporte aos drivers de política `s3`, `gcs` e `azure` por um disco Laravel nomeado.
-- **SDK Python.** Consulte
-  [Armazenamento externo de payloads](../polyglot/python.md#external-payload-storage)
-  para conhecer `ExternalPayloadReference`, `ExternalPayloadCache`,
-  `store_external_payload()`, `fetch_external_payload()` e os adaptadores
-  `LocalFilesystemExternalStorage`, `S3ExternalStorage`, `GCSExternalStorage`
-  e `AzureBlobExternalStorage`. Os clientes dos SDKs de nuvem continuam sob
-  responsabilidade da aplicação. O SDK não adiciona boto3, google-cloud-storage
-  nem azure-storage-blob como dependências de runtime.
-- **HTTP direto.** Chamadores HTTP que codificam payloads manualmente podem
-  armazenar bytes pelo driver e depois enviar o envelope de referência como
-  campo de payload na requisição. O envelope de payload do protocolo de
-  workers (`{codec, blob}`) continua transportando referências para argumentos
-  e resultados de atividades, payloads de sinais e payloads de atualizações.
+No modo serviço, clientes e workers dos SDKs PHP, Python e Rust enviam e buscam payloads automaticamente quando o Server anuncia um transporte disponível. Não envie um envelope de provedor `external_storage` ao Server nem exclua objetos gerenciados pelo Server com um helper direto. Consulte o [contrato de envio e busca](../polyglot/server-api-reference.md#runtime-external-payload-transport) e o [limite dos helpers Python](../polyglot/python.md#external-payload-storage).
 
-## Consulte também {#see-also}
+## Veja também {#see-also}
 
-- [Passagem de dados](../defining-workflows/passing-data.md) para o contrato
-  padrão de payload embutido.
+- [Passagem de dados](../defining-workflows/passing-data.md)
 - [Limites estruturais: tamanho do payload](../constraints/structural-limits.md#payload-size)
-  para o teto imposto pelo mecanismo, que o armazenamento externo permite respeitar.
-- [Referência da API do Server: namespace e armazenamento](../polyglot/server-api-reference.md#namespace-and-storage)
-  para o contrato HTTP completo, incluindo os campos do envelope de referência.
-- [Referência da CLI: comandos de namespace e atributos de busca](../polyglot/cli-reference.md#namespace-and-search-attribute-commands)
-  para o uso de `dw namespace:set-storage-driver` e `dw storage:test`.
+- [API do Server: transporte de payloads externos](../polyglot/server-api-reference.md#runtime-external-payload-transport)
 - [SDK Python: armazenamento externo de payloads](../polyglot/python.md#external-payload-storage)
-  para drivers, helpers e orientações de cache de replay no Python.

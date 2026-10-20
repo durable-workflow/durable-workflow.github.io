@@ -230,8 +230,8 @@ task-attempt and lease fencing for worker completion. See the
 for routes, limits and typed refusals. SDK support depends on an available
 compatible transport, not merely on a configured storage driver.
 
-The following **direct provider helpers** serve application-managed storage,
-test fixtures and explicitly negotiated self-hosted adapters. They use a
+The following **direct provider helpers** serve application-managed storage
+and test fixtures that deliberately access their own provider. They use a
 different provider-URI schema. They are not required for normal Server or Cloud
 clients, and a provider `external_storage` envelope is rejected by Server with
 HTTP `422` and `external_payload_unsupported`.
@@ -306,9 +306,9 @@ mismatch. Missing objects can also raise the provider driver's error. Use
 permission to delete a Server-managed object. `delete_external_payload()` is a
 direct provider operation, not a runtime-reference cleanup API.
 
-Only use `external_storage_driver_from_policy()` when the deployment explicitly
-permits a direct self-hosted provider adapter and the application owns the
-required client. Reading a namespace policy alone is not that permission.
+Use `external_storage_driver_from_policy()` in code that deliberately accesses
+application-owned provider storage and owns the required client. Reading a
+namespace policy does not make provider envelopes valid Server requests.
 Provider clients remain application-owned; these optional adapters do not add
 boto3, google-cloud-storage or azure-storage-blob as runtime dependencies:
 
@@ -360,9 +360,9 @@ records with `wrote`, `read`, `verified`, `latency_ms`, and `bytes` fields.
 
 `NamespaceDescription` carries the namespace's `external_payload_storage`
 policy as documented in [External Payload Storage](#external-payload-storage).
-Pair it with `external_storage_driver_from_policy()` to build the matching
-Python driver from the policy without re-reading credentials in application
-code.
+Normal clients use the discovered runtime transport automatically. Direct
+provider helpers require application-owned provider access; a policy description
+does not make provider envelopes valid Server requests.
 
 ### Cluster and Task Queues
 

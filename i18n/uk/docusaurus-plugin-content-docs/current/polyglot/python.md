@@ -216,11 +216,11 @@ async with Client(
 
 ### Зовнішнє сховище payload {#external-payload-storage}
 
-SDK експортує той самий контракт посилання на зовнішній payload, що й
-Server та API сховища CLI. Використовуйте його, якщо обробники activity
-Python чи носії invocable мають декодувати великі посилання з історії,
-або процес Python створює незалежну від мови обгортку без великих
-вбудованих байтів.
+Звичайні операції `Client` і `Worker` автоматично використовують автентифікований транспорт runtime Server. SDK виявляє політику namespace й ліміти через `GET /api/cluster/info`, завантажує закодовані значення понад поріг або потрібні для вміщення запиту й отримує байти посилань перед декодуванням. Код workflow та activity отримує декодоване значення. Облікові дані провайдера залишаються на Server. Віддаленим worker не потрібні boto3, клієнти провайдерів або доступ до локального каталогу Server.
+
+Посилання runtime має схему `durable-workflow.v2.runtime-external-payload-reference.v1` і непрозорий `reference_id`. Воно не містить `uri` провайдера. Завантаження й отримання використовують звичайні облікові дані ролі й namespace, перевіряють розмір закодованих байтів і SHA-256 та зберігають обмеження спроби task і lease під час завершення worker. [HTTP-контракт runtime](./server-api-reference.md#runtime-external-payload-transport) описує маршрути, ліміти й типізовані відмови. Підтримка SDK залежить від доступного сумісного транспорту, а не лише налаштованого драйвера.
+
+Наведені нижче **допоміжні функції прямого доступу до провайдера** призначені для сховища застосунку й тестових прикладів, які свідомо звертаються до свого провайдера. Вони використовують іншу схему з URI. Для звичайних клієнтів Server чи Cloud вони не потрібні. Конверт провайдера `external_storage` відхиляється Server із HTTP `422` та `external_payload_unsupported`.
 
 | API | Роль | Помилки |
 | --- | --- | --- |
@@ -235,7 +235,7 @@ Python чи носії invocable мають декодувати великі п
 | `fetch_external_payload()` | Отримує байти й перевіряє розмір та SHA-256 до декодування. | `ExternalPayloadIntegrityError` за невідповідності розміру/hash. |
 | `delete_external_payload()` | Видаляє об'єкт і запис кешу. | Помилки сховища драйвера. |
 | `external_storage_envelope()` | Кодує значення всередині до перевищення порогу, потім пише драйвером. | `ValueError` за неправильного порогу чи відсутнього драйвера посилання. |
-| `external_storage_driver_from_policy()` | Створює драйвер політики Server чи Cloud `external_payload_storage` із клієнтами провайдерів застосунку. | `ValueError` за вимкненої/непідтримуваної політики чи відсутніх client/bucket/container. |
+| `external_storage_driver_from_policy()` | Створює прямий драйвер із явно переданої політики й клієнтів провайдера застосунку. Не надає прямого доступу до провайдера на Server чи Cloud. | `ValueError`, якщо політику вимкнено, драйвер не підтримується або немає потрібного клієнта/bucket/контейнера. |
 
 ```python
 from durable_workflow import (
@@ -265,12 +265,9 @@ reference = store_external_payload(
 payload_bytes = fetch_external_payload(storage, reference, cache=cache)
 ```
 
-Схема посилання: `EXTERNAL_PAYLOAD_REFERENCE_SCHEMA`
-(`durable-workflow.v2.external-payload-reference.v1`). Адаптери об'єктних
-сховищ не додають залежностей cloud SDK до `durable-workflow`:
-застосунок передає вже налаштовані клієнти S3, GCS чи Azure.
+Для цих прямих допоміжних функцій схема посилання — `EXTERNAL_PAYLOAD_REFERENCE_SCHEMA` (`durable-workflow.v2.external-payload-reference.v1`). Адаптери не додають залежностей від хмарних SDK до `durable-workflow`: застосунок передає вже налаштовані клієнти S3, GCS чи Azure.
 
-Поля мережевої обгортки навмисно невеликі й стабільні:
+Їхнє посилання провайдера має такі поля. Це не посилання runtime, яке приймають HTTP-маршрути Server:
 
 ```json
 {
@@ -283,17 +280,9 @@ payload_bytes = fetch_external_payload(storage, reference, cache=cache)
 }
 ```
 
-`ExternalPayloadReference.from_dict()` відхиляє невідомі схеми й неправильні
-поля. `fetch_external_payload()` перевіряє `size_bytes` і `sha256` до
-повернення байтів та піднімає `ExternalPayloadIntegrityError` за відсутнього,
-обрізаного чи зміненого об'єкта. Replay worker має використовувати
-`ExternalPayloadCache` лише після перевірки, щоб уникати повторного
-завантаження blob без послаблення цілісності.
+`ExternalPayloadReference.from_dict()` відхиляє невідомі схеми й некоректні поля. `fetch_external_payload()` перевіряє `size_bytes` і `sha256` перед поверненням байтів та піднімає `ExternalPayloadIntegrityError` у разі розбіжності розміру чи хешу. Відсутній об’єкт може також спричинити помилку драйвера провайдера. Використовуйте `ExternalPayloadCache` лише для перевірених байтів. Витіснення кешу не дає права видаляти об’єкт Server. `delete_external_payload()` — пряма операція провайдера, а не API очищення посилань runtime.
 
-Після читання політики `external_payload_storage` namespace з control-plane
-Server чи Cloud функція `external_storage_driver_from_policy()` повертає
-відповідний драйвер. Клієнти провайдерів належать застосунку, тому SDK
-не додає boto3, google-cloud-storage чи azure-storage-blob як залежності runtime:
+Використовуйте `external_storage_driver_from_policy()` у коді, що свідомо звертається до сховища провайдера застосунку й володіє потрібним клієнтом. Читання політики namespace не робить конверти провайдера припустимими запитами Server. Клієнти залишаються власністю застосунку. Необов’язкові адаптери не додають boto3, google-cloud-storage чи azure-storage-blob як runtime-залежності:
 
 ```python
 from durable_workflow.external_storage import external_storage_driver_from_policy
@@ -305,9 +294,7 @@ driver = external_storage_driver_from_policy(
 )
 ```
 
-Фабрика піднімає `ValueError` за вимкненої політики, непідтримуваного
-драйвера чи відсутнього клієнта провайдера. Вимкнена політика не повертає
-no-op драйвера. Перевіряйте `policy.enabled` перед запитом драйвера.
+Фабрика піднімає `ValueError`, якщо політику вимкнено, драйвер не підтримується або потрібний клієнт відсутній. Вимкнена політика не повертає порожній драйвер. Перевірте `policy.enabled` перед викликом.
 
 ### Простори імен {#namespaces}
 
@@ -339,10 +326,7 @@ Namespace є межею орендарів workflow, schedule, атрибуті�
 та повертає `StorageTestResult` із записами `StoragePayloadTestResult`
 і полями `wrote`, `read`, `verified`, `latency_ms`, `bytes`.
 
-`NamespaceDescription` містить політику `external_payload_storage`,
-описану в [зовнішньому сховищі payload](#external-payload-storage).
-Поєднуйте його з `external_storage_driver_from_policy()` для створення
-драйвера Python без повторного читання облікових даних кодом застосунку.
+`NamespaceDescription` містить політику namespace `external_payload_storage`, описану в [зовнішньому сховищі payload](#external-payload-storage). Звичайні клієнти автоматично використовують виявлений транспорт runtime. Прямі допоміжні функції провайдера потребують доступу, яким володіє застосунок. Опис політики не робить конверти провайдера припустимими запитами Server.
 
 ### Кластер і черги завдань {#cluster-and-task-queues}
 

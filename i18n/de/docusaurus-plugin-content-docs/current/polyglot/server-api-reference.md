@@ -467,9 +467,7 @@ Laufbezogene Befehlsrouten lehnen historische oder falsche Laufziele explizit ab
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/repair` | Nur reparieren, wenn der gewählte Lauf aktuell ist. |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/archive` | Nur archivieren, wenn der gewählte Lauf aktuell und geschlossen ist. |
 
-Befehle mit Aufrufernutzlasten verwenden ein `input`-Array. Python- und PHP-SDKs
-codieren sprachneutrale Nutzlast-Envelopes für Sie. Direkte HTTP-Aufrufer müssen
-JSON-Werte senden, die der Ziel-Workflow oder die Aktivität decodieren kann.
+Befehle übertragen Geschäftswerte in Avro-Envelopes. Die offiziellen SDKs codieren sie automatisch. Direkte HTTP-Clients müssen den `{codec, blob}`-Envelope des offiziellen Avro-Encoders oder die unten beschriebene Runtime-Referenz verwenden. Das äußere HTTP-Dokument ist JSON; uncodiertes Geschäfts-JSON ist kein alternativer Nutzlast-Codec.
 
 ## Namespace und Speicher {#namespace-and-storage}
 
@@ -493,31 +491,108 @@ Bucket-/Präfixeinstellungen auf dem Server.
 
 ### Externe Nutzlastreferenz-Envelope {#external-payload-reference-envelope}
 
-Die externe Nutzlastreferenz ist eine stabile Übertragungs-Envelope. SDKs können
-sie in native Hilfstypen decodieren. HTTP-Clients sollten diese Feldnamen als
-Vertrag behandeln:
+Server akzeptiert **Runtime-Referenzen**, nicht die Anbieter-URI-Referenzen eingebetteter Speicherhelfer. Eine Anfrage mit `external_storage` wird mit HTTP `422` und `external_payload_unsupported` abgelehnt. Übernehmen Sie keine Anbieterreferenz mit `file://`, `s3://`, `gs://` oder `azure://` in Server-Anfragen.
+
+Der Runtime-Envelope enthält genau `codec` und `external_payload`:
+
+```json
+{
+  "codec": "avro",
+  "external_payload": {
+    "schema": "durable-workflow.v2.runtime-external-payload-reference.v1",
+    "reference_id": "ep_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+    "codec": "avro",
+    "size_bytes": 1048576,
+    "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  }
+}
+```
+
+ID und Hash sind illustrative Beispiele. Verwenden Sie unverändert die Referenz eines tatsächlichen Uploads. Die verschachtelte Referenz enthält genau fünf Felder:
 
 | Feld | Erforderlich | Bedeutung |
 | --- | --- | --- |
-| `schema` | ja | Muss `durable-workflow.v2.external-payload-reference.v1` sein. Unbekannte Schemas werden strikt abgelehnt. |
-| `uri` | ja | Vom Treiber verwalteter Objektort wie `file:///...`, `s3://bucket/prefix/object`, `gs://bucket/prefix/object` oder `azure://container/prefix/object`. |
-| `sha256` | ja | SHA-256 der gespeicherten codierten Bytes in kleingeschriebenem Hex. SDKs und Server prüfen ihn vor dem Decodieren. |
-| `size_bytes` | ja | Byte-Länge der gespeicherten codierten Nutzlast. Abweichung ist ein Integritätsfehler. |
-| `codec` | ja | Immer `avro`: festes typisiertes Value-Schema mit Avro-Einzelobjektrahmen. Das umgebende HTTP-Dokument bleibt JSON. |
-| `expires_at` | nein | ISO-8601-Ablaufhinweis für Aufbewahrung/GC. Ohne Angabe verantwortet die Namespace-Aufbewahrungsrichtlinie die Bereinigung. |
+| `schema` | ja | `durable-workflow.v2.runtime-external-payload-reference.v1`. |
+| `reference_id` | ja | Opake Server-ID: `ep_` gefolgt von 26 großgeschriebenen ULID-Zeichen. Keine Anbieter-URI. |
+| `codec` | ja | `avro`, passend zum äußeren Envelope. |
+| `size_bytes` | ja | Nichtnegative ganzzahlige Größe der hochgeladenen codierten Bytes. |
+| `sha256` | ja | SHA-256 genau dieser Bytes, als kleingeschriebene Hexadezimalzahl zurückgegeben. |
 
-Auslagerung wird durch die Schwelle der Namespace-Speicherrichtlinie gesteuert.
-Inline-Nutzlasten verwenden die normale Envelope, bis codierte Bytes
-`threshold_bytes` überschreiten. Dann schreibt der Treiber die Bytes und die
-Historie speichert die Referenz-Envelope. Replay und Historienexport müssen
-klar fehlschlagen, wenn ein referenzierter Blob fehlt, geändert ist, außerhalb
-des konfigurierten Präfixes liegt oder einem nicht verfügbaren Anbieter gehört.
-Sie dürfen fehlende Objekte niemals still durch `null`, `{}` oder eine leere
-Bytefolge ersetzen.
+### Externer Runtime-Nutzlasttransport {#runtime-external-payload-transport}
 
-Den vollständigen Anfrageautoritätsvertrag mit Namespace-Auflösung,
-rollenspezifischen Zugangsdaten und Worker-Registrierungsfeldern beschreibt
-[Namespace, Authentifizierung und Worker-Registrierung](/docs/polyglot/namespace-auth-workers).
+Ermitteln Sie `namespace.external_payload_storage.transport` über `GET /api/cluster/info`. Das Schema lautet `durable-workflow.v2.runtime-external-payload-transport.v1`, Version `1`. Verwenden Sie seine Routen und Limits nur bei Namespace-Speicherstatus `available`. Der Server hält Anbieter-Zugangsdaten und liefert keine Anbieter-Speicherorte aus.
+
+| Methode | Pfad | Ergebnis |
+| --- | --- | --- |
+| `POST` | `/api/external-payloads/v1` | Lädt begrenzte codierte Bytes hoch. `201` liefert Schema `durable-workflow.v2.runtime-external-payload-upload.v1`, `transport_version: 1` und `reference`. |
+| `GET` | `/api/external-payloads/v1/{referenceId}` | Lädt und prüft die referenzierten codierten Bytes. `200` liefert `application/octet-stream`. |
+
+Beide Routen verwenden normale Runtime-Zugangsdaten mit Rolle `worker`, `operator` oder `admin` und `X-Namespace`. Beide benötigen `X-Durable-Workflow-Payload-Codec`, `X-Durable-Workflow-Payload-Size` und `X-Durable-Workflow-Payload-SHA256`. Uploads benötigen zusätzlich `Content-Type: application/octet-stream`. Namespace-übergreifende Suche meldet nicht gefunden, ohne fremde Objekte offenzulegen. Der Besitz einer ID gewährt weder Zugriff noch die Befugnis, einen Workflow abzuschließen.
+
+Hochgeladen werden die **UTF-8-Bytes der base64-Zeichenfolge `blob` aus dem offiziellen Avro-Envelope**, ohne angehängten Zeilenumbruch. Es handelt sich weder um decodiertes binäres Avro noch um Geschäfts-JSON. Berechnen Sie Länge und SHA-256 exakt über diese Bytes. Beispiel nach Installation des Python-SDK:
+
+```bash
+python - <<'PY'
+from pathlib import Path
+from durable_workflow.serializer import encode
+
+Path("payload.avro.txt").write_bytes(
+    encode([{"message": "large value", "optional": None}]).encode("utf-8")
+)
+PY
+
+PAYLOAD_SIZE=$(wc -c < payload.avro.txt | tr -d ' ')
+PAYLOAD_SHA256=$(sha256sum payload.avro.txt | cut -d ' ' -f 1)
+
+curl --fail-with-body -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/external-payloads/v1" \
+  -H "Authorization: Bearer $DURABLE_WORKFLOW_AUTH_TOKEN" \
+  -H "X-Namespace: billing" \
+  -H "Content-Type: application/octet-stream" \
+  -H "X-Durable-Workflow-Payload-Codec: avro" \
+  -H "X-Durable-Workflow-Payload-Size: $PAYLOAD_SIZE" \
+  -H "X-Durable-Workflow-Payload-SHA256: $PAYLOAD_SHA256" \
+  --data-binary @payload.avro.txt > upload.json
+
+REFERENCE_ID=$(jq -r '.reference.reference_id' upload.json)
+curl --fail-with-body -sS "$DURABLE_WORKFLOW_SERVER_URL/api/external-payloads/v1/$REFERENCE_ID" \
+  -H "Authorization: Bearer $DURABLE_WORKFLOW_AUTH_TOKEN" \
+  -H "X-Namespace: billing" \
+  -H "X-Durable-Workflow-Payload-Codec: avro" \
+  -H "X-Durable-Workflow-Payload-Size: $PAYLOAD_SIZE" \
+  -H "X-Durable-Workflow-Payload-SHA256: $PAYLOAD_SHA256" \
+  -o fetched.avro.txt
+cmp payload.avro.txt fetched.avro.txt
+```
+
+Der Upload prüft die Byteintegrität vor dem Speichern einer Referenz. Er führt keinen Workflow aus und beweist nicht, dass die Bytes eine gültige Geschäftsnutzlast sind. Die erste geprüfte zustandsbehaftete Anfrage beansprucht die Referenz. Nutzlastvalidierung und normale Anfrage-, Namespace-, Aufgabenversuchs- und Lease-Prüfungen gelten weiter. Verwenden Sie für Worker-Abschlussuploads das offizielle SDK und dessen ermittelten Abschlusskontext, statt in einem direkten Client eine Lease-Freigabe zu erfinden.
+
+Lesen Sie `limits.max_payload_bytes`, `request_timeout_seconds` und `abandoned_upload_expiry_seconds` aus dem Transportmanifest. Namespace-Byte- und Objektkontingente, normale Anfragelimits sowie Abschlussupload-Limits gelten ebenfalls. Nach dem Schwellenwertkriterium bleibt ein gleich großer Wert inline. SDKs lagern größere Werte aus und können weitere Werte auslagern, damit die gesamte Anfrage passt.
+
+| Ergebnis | HTTP-Status | Handlung |
+| --- | --- | --- |
+| Fehlende oder abgelaufene Referenz | `404` / `410` | Stellen Sie das benötigte Objekt wieder her oder korrigieren Sie die Referenz. Decodieren Sie einen fehlenden Wert nicht als `null`. |
+| Nicht autorisiert | `401` / `403` | Korrigieren Sie Zugangsdaten, Rolle oder Namespace-Berechtigung. |
+| Nicht unterstützter Envelope oder Integritätsfehler | `415` / `422` | Korrigieren Sie Codec, Felder, Größe, Hash oder codierte Bytes. |
+| Zu große Nutzlast | `413` | Verkleinern Sie den codierten Wert oder verwenden Sie eine zulässige größere Richtlinie. |
+| Namespace-Kontingent oder Upload-Freigabe erschöpft | `429` | Prüfen Sie Kapazität und wiederholen Sie nur innerhalb des ursprünglichen Operationsbudgets. |
+| Speicher nicht verfügbar | `503` | Stellen Sie Verfügbarkeit her, bevor Sie innerhalb desselben Budgets wiederholen. |
+| Veralteter oder widersprüchlicher Abschluss | `409` | Wiederholen Sie nicht mit erfundener Aufgabenidentität oder neuer Lease. |
+
+Der Server steuert die Aufbewahrung. Es gibt keine Client-Löschroute. Cache-Verdrängung darf das Objekt nicht löschen. Unbeanspruchte Uploads können ablaufen; aufbewahrte Eigentümer, gemeinsame Objekte, Speicherfehler und Backup-Sperren beeinflussen die Bereinigung. Ein Verlaufsexport mit Referenzen ist kein eigenständiges Backup ihrer Bytes.
+
+### Unterstützung externer Nutzlasten nach Modus {#external-payload-support-by-mode}
+
+| Client oder Worker | Speicherweg | Anbieter-Zugangsdaten |
+| --- | --- | --- |
+| Eingebettetes Laravel-Workflow-Paket | Anwendungsrichtlinie und Anbieter-URI-Referenzen. | Eingebettete Anwendung. |
+| PHP-SDK | Automatisch ermittelter Runtime-Upload/-Abruf mit opaken Referenzen. | Server. |
+| Python-SDK | Automatisch ermittelter Runtime-Upload/-Abruf mit opaken Referenzen. | Server. |
+| Rust-SDK | Automatisch ermittelter Runtime-Upload/-Abruf mit opaken Referenzen. | Server. |
+| Direktes HTTP | Expliziter Runtime-Upload/-Abruf und zurückgegebene Referenz in einem unterstützten Nutzlastfeld. | Server. |
+
+Alle SDK-Zeilen benötigen einen verfügbaren kompatiblen Runtime-Transport. Anbieterhelfer dienen anwendungseigenen eingebetteten oder direkten Speicherintegrationen. Ihre Verfügbarkeit macht Anbieter-Envelopes nicht zu einem unterstützten Eingangsformat von Server oder Cloud.
+
+Den vollständigen Anfragevertrag einschließlich Namespace-Auflösung, rollenbezogenen Zugangsdaten und Worker-Registrierung beschreibt [Namespace, Authentifizierung und Worker-Registrierung](/docs/polyglot/namespace-auth-workers).
 
 ## Verwaltungs-APIs des Dienstkatalogs {#service-catalog-admin-apis}
 

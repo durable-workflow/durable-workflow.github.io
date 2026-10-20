@@ -440,9 +440,7 @@ Server також надає кооперативні маршрути `request-
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/repair` | Виправити лише поточне вибране виконання. |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/archive` | Архівувати лише поточне й закрите вибране виконання. |
 
-Команди з даними від викликача використовують масив `input`. SDK Python і
-PHP кодують незалежні від мови обгортки payload. Прямі HTTP виклики мають
-надсилати значення JSON, які цільовий workflow чи activity може декодувати.
+Команди передають бізнес-значення в Avro-конвертах. SDK першої сторони кодують їх автоматично. Прямий HTTP-клієнт має використовувати конверт `{codec, blob}` офіційного Avro-кодувальника або посилання runtime нижче. Зовнішній HTTP-документ є JSON; звичайний бізнес-JSON не є іншим кодеком даних.
 
 ## Namespace і сховище {#namespace-and-storage}
 
@@ -465,29 +463,108 @@ PHP кодують незалежні від мови обгортки payload. 
 
 ### Обгортка посилання на зовнішній payload {#external-payload-reference-envelope}
 
-Посилання на зовнішній payload є стабільною мережевою обгорткою. SDK можуть
-декодувати його у власні типи-помічники, але HTTP клієнти мають вважати
-назви полів контрактом:
+Server приймає посилання **runtime**, а не посилання з URI провайдера, які використовують вбудовані допоміжні функції сховища. Запит із `external_storage` відхиляється з HTTP `422` і `external_payload_unsupported`. Не копіюйте посилання провайдера `file://`, `s3://`, `gs://` чи `azure://` у запит до Server.
 
-| Поле | Обов'язкове | Значення |
+Конверт runtime містить рівно `codec` і `external_payload`:
+
+```json
+{
+  "codec": "avro",
+  "external_payload": {
+    "schema": "durable-workflow.v2.runtime-external-payload-reference.v1",
+    "reference_id": "ep_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+    "codec": "avro",
+    "size_bytes": 1048576,
+    "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  }
+}
+```
+
+ID і хеш вище наведені для ілюстрації. Використовуйте без змін посилання, повернуте фактичним завантаженням. Вкладене посилання містить рівно п’ять полів:
+
+| Поле | Обов’язкове | Значення |
 | --- | --- | --- |
-| `schema` | так | Має бути `durable-workflow.v2.external-payload-reference.v1`. Невідомі схеми відхиляються. |
-| `uri` | так | Розташування об'єкта драйвера, наприклад `file:///...`, `s3://bucket/prefix/object`, `gs://bucket/prefix/object`, `azure://container/prefix/object`. |
-| `sha256` | так | SHA-256 збережених закодованих байтів шістнадцятковим нижнім регістром. SDK і Server перевіряють його перед декодуванням. |
-| `size_bytes` | так | Довжина збереженого закодованого payload у байтах. Розбіжність є помилкою цілісності. |
-| `codec` | так | Завжди `avro`: фіксована типізована схема Value з форматом Avro single-object. Зовнішній HTTP документ залишається JSON. |
-| `expires_at` | ні | Підказка строку ISO-8601 для retention/GC. За відсутності очищення належить політиці retention namespace. |
+| `schema` | так | `durable-workflow.v2.runtime-external-payload-reference.v1`. |
+| `reference_id` | так | Непрозорий ID Server: `ep_` і 26 великих символів ULID. Це не URI провайдера. |
+| `codec` | так | `avro`, як у зовнішньому конверті. |
+| `size_bytes` | так | Невід’ємний цілий розмір завантажених закодованих байтів. |
+| `sha256` | так | SHA-256 тих самих байтів, повернутий у шістнадцятковому нижньому регістрі. |
 
-Винесення payload залежить від порогу політики namespace. Вбудований payload
-використовує звичайну обгортку, доки байти не перевищать `threshold_bytes`.
-Потім драйвер записує байти, а історія зберігає обгортку посилання.
-Replay і експорт історії мають явно завершуватися помилкою, якщо blob
-відсутній, змінений, поза префіксом чи належить недоступному провайдеру.
-Не можна мовчки заміняти відсутній об'єкт на `null`, `{}` чи порожні байти.
+### Транспорт зовнішніх даних runtime {#runtime-external-payload-transport}
 
-Повний контракт повноважень запиту, визначення namespace, облікові дані
-ролей і поля реєстрації worker описані в
-[namespace, автентифікації та реєстрації worker](/docs/polyglot/namespace-auth-workers).
+Виявляйте `namespace.external_payload_storage.transport` через `GET /api/cluster/info`. Його схема — `durable-workflow.v2.runtime-external-payload-transport.v1`, версія `1`. Використовуйте оголошені маршрути й ліміти лише коли стан сховища namespace — `available`. Server володіє обліковими даними провайдера й не повертає його адреси об’єктів.
+
+| Метод | Шлях | Результат |
+| --- | --- | --- |
+| `POST` | `/api/external-payloads/v1` | Завантаження обмежених закодованих байтів. `201` повертає схему `durable-workflow.v2.runtime-external-payload-upload.v1`, `transport_version: 1` і `reference`. |
+| `GET` | `/api/external-payloads/v1/{referenceId}` | Отримання й перевірка закодованих байтів за посиланням. `200` повертає `application/octet-stream`. |
+
+Обидва маршрути використовують звичайні облікові дані runtime з роллю `worker`, `operator` або `admin` і `X-Namespace`. Обидва потребують `X-Durable-Workflow-Payload-Codec`, `X-Durable-Workflow-Payload-Size` та `X-Durable-Workflow-Payload-SHA256`. Для завантаження також потрібен `Content-Type: application/octet-stream`. Пошук в іншому namespace повертає «не знайдено», не розкриваючи наявності його об’єкта. Сам ID не надає доступу чи повноважень завершити workflow.
+
+Завантажувані байти — це **UTF-8 байти base64-рядка `blob` офіційного Avro-конверта** без доданого переведення рядка. Це не декодований бінарний Avro і не бізнес-JSON. Обчислюйте довжину й SHA-256 саме цих байтів. Наприклад, після встановлення Python SDK:
+
+```bash
+python - <<'PY'
+from pathlib import Path
+from durable_workflow.serializer import encode
+
+Path("payload.avro.txt").write_bytes(
+    encode([{"message": "large value", "optional": None}]).encode("utf-8")
+)
+PY
+
+PAYLOAD_SIZE=$(wc -c < payload.avro.txt | tr -d ' ')
+PAYLOAD_SHA256=$(sha256sum payload.avro.txt | cut -d ' ' -f 1)
+
+curl --fail-with-body -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/external-payloads/v1" \
+  -H "Authorization: Bearer $DURABLE_WORKFLOW_AUTH_TOKEN" \
+  -H "X-Namespace: billing" \
+  -H "Content-Type: application/octet-stream" \
+  -H "X-Durable-Workflow-Payload-Codec: avro" \
+  -H "X-Durable-Workflow-Payload-Size: $PAYLOAD_SIZE" \
+  -H "X-Durable-Workflow-Payload-SHA256: $PAYLOAD_SHA256" \
+  --data-binary @payload.avro.txt > upload.json
+
+REFERENCE_ID=$(jq -r '.reference.reference_id' upload.json)
+curl --fail-with-body -sS "$DURABLE_WORKFLOW_SERVER_URL/api/external-payloads/v1/$REFERENCE_ID" \
+  -H "Authorization: Bearer $DURABLE_WORKFLOW_AUTH_TOKEN" \
+  -H "X-Namespace: billing" \
+  -H "X-Durable-Workflow-Payload-Codec: avro" \
+  -H "X-Durable-Workflow-Payload-Size: $PAYLOAD_SIZE" \
+  -H "X-Durable-Workflow-Payload-SHA256: $PAYLOAD_SHA256" \
+  -o fetched.avro.txt
+cmp payload.avro.txt fetched.avro.txt
+```
+
+Завантаження перевіряє цілісність байтів перед збереженням посилання. Воно не виконує workflow і не доводить коректності збережених байтів як бізнес-даних. Перший перевірений запит, що змінює стан, закріплює посилання. Перевірка даних та звичайні обмеження запиту, namespace, спроби task і lease залишаються чинними. Для завантаження результатів worker використовуйте офіційний SDK і виявлений ним контекст завершення, а не вигадуйте дозвіл lease у прямому клієнті.
+
+Читайте `limits.max_payload_bytes`, `request_timeout_seconds` і `abandoned_upload_expiry_seconds` із маніфесту транспорту. Також діють квоти байтів і об’єктів namespace, звичайний ліміт запиту та ліміти завантаження завершення. За порогом значення, рівне порогу namespace, залишається вбудованим. SDK виносять більші значення й можуть виносити додаткові, щоб умістити сукупний запит.
+
+| Результат | HTTP-статус | Дія |
+| --- | --- | --- |
+| Посилання відсутнє чи прострочене | `404` / `410` | Відновіть потрібний об’єкт або виправте посилання. Не декодуйте відсутнє значення як `null`. |
+| Немає дозволу | `401` / `403` | Виправте облікові дані, роль або дозвіл namespace. |
+| Непідтримуваний конверт чи порушення цілісності | `415` / `422` | Виправте кодек, поля, розмір, хеш або закодовані байти. |
+| Завеликий payload | `413` | Зменште закодоване значення або використайте дозволену більшу політику. |
+| Квота namespace чи дозвіл завантаження вичерпані | `429` | Перевірте місткість і повторюйте лише в початковому бюджеті операції. |
+| Сховище недоступне | `503` | Відновіть доступність перед повтором у межах того самого бюджету. |
+| Застаріле чи конфліктне завершення | `409` | Не повторюйте з вигаданою ідентичністю task чи новим lease. |
+
+Server керує зберіганням. Клієнтського маршруту видалення немає. Витіснення з кешу не повинно видаляти об’єкт. Незакріплені завантаження можуть прострочитися. Утримувані власники, спільні об’єкти, збої сховища й блокування резервних копій впливають на очищення. Експорт історії з посиланням не є самодостатньою резервною копією його байтів.
+
+### Підтримка зовнішніх даних за режимами {#external-payload-support-by-mode}
+
+| Клієнт або worker | Шлях зберігання | Облікові дані провайдера |
+| --- | --- | --- |
+| Вбудований Laravel workflow package | Політика namespace застосунку й посилання з URI провайдера. | Вбудований застосунок. |
+| PHP SDK | Автоматичне виявлене завантаження й отримання runtime з непрозорими посиланнями. | Server. |
+| Python SDK | Автоматичне виявлене завантаження й отримання runtime з непрозорими посиланнями. | Server. |
+| Rust SDK | Автоматичне виявлене завантаження й отримання runtime з непрозорими посиланнями. | Server. |
+| Прямий HTTP | Явне завантаження й отримання runtime та повернуте посилання в підтримуваному полі даних. | Server. |
+
+Усі рядки SDK потребують доступного сумісного транспорту runtime. Допоміжні функції драйверів провайдера обслуговують вбудовані чи прямі інтеграції зі сховищем застосунку. Їхня наявність не робить конверти провайдера підтримуваним форматом вхідних запитів Server чи Cloud.
+
+Повний контракт повноважень запитів, розв’язання namespace, облікові дані ролей і поля реєстрації worker наведені в розділі [Namespace, автентифікація та реєстрація worker](/docs/polyglot/namespace-auth-workers).
 
 ## Адміністративні API каталогу сервісів {#service-catalog-admin-apis}
 
