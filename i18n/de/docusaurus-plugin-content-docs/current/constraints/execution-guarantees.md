@@ -135,7 +135,7 @@ Bei der Diagnose eines Laufs in Waterline, der CLI oder Server-Protokollen:
 
 - Erwarten Sie nach dem Ablauf einer Lease eine mögliche mehrfache Aktivitätsausführung, bis das dauerhafte Ergebnis des Versuchs etwas anderes zeigt.
 - Behandeln Sie verspätete Abschluss- oder Fehlerberichte als Rennen, das die Engine entscheidet. Daraus folgt nicht, dass die externe Nebenwirkung ausgeblieben ist.
-- Behandeln Sie Workflow-Replay als Wiederherstellung.
+- Behandeln Sie das Replay einer Workflow-Aufgabe als Wiederherstellung, nicht als Wiederholungsversuch auf Workflow-Ebene.
 - Untersuchen Sie fehlende kompatible Worker, festhängende Leases und wiederholte Reparaturen. Solche Hinweise sind kein Grund, Nebenwirkungen in den Workflow-Code zu verschieben.
 
 Unterscheiden Sie **Unsicherheit im Transport** und **dauerhaftes Ergebnis**. Durable Workflow macht beides sichtbar, damit Sie den tatsächlichen Zustand beurteilen können.
