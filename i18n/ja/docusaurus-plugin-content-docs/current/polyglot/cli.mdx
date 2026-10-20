@@ -1,0 +1,348 @@
+---
+sidebar_position: 3
+title: CLI
+description: Durable Workflow CLI をインストールし、スタンドアロン Server の運用に使います。
+tags:
+  - CLI
+  - operations
+  - automation
+keywords:
+  - Durable Workflow CLI
+  - dw コマンド
+  - CLI プロファイル
+  - CLI のインストール
+---
+
+import CliInstall from '@site/src/components/CliInstall';
+
+# CLI {#cli}
+
+Durable Workflow CLI（`dw`）は、[スタンドアロン Server](/docs/polyglot/server)へのシェルインターフェースです。運用者はコマンドラインから、ワークフローの開始、一覧取得、シグナル、クエリ、更新、修復、キャンセル、強制終了、アーカイブに加え、スケジュール管理、タスクキューの検査、Server のヘルス確認を行えます。
+
+同じ CLI は、ワークフローの記述言語にかかわらず、どの Durable Workflow Server に対しても使えます。CLI、PHP、Python、Rust の対応範囲と意図的な違いは、[クライアントと Worker の機能](/docs/polyglot/cli-python-parity/)を参照してください。
+
+## インストール {#install}
+
+<CliInstall />
+
+### 確認 {#verify}
+
+```bash
+dw --version
+```
+
+### サポート対象チャネルからのインストール {#supported-channel-install}
+
+既定のインストーラーは、RC の連番を指定せずに、最後に検証を通過した認定済み成果物の組にある CLI リリースを選びます。より新しい CLI プレリリースが公開されても、公開互換性の規範で認定されるまでは選びません。CI の再現性を保つには、解決された `dw --version` の値を記録し、以後はその正確なタグを `VERSION` で渡します。
+
+両インストーラースクリプトはリリースから `SHA256SUMS` を取得し、`dw` の置き換え前に成果物のチェックサムを検証するため、改ざんされたミラーではインストールが失敗します。
+
+<details>
+<summary><b>Linux と macOS</b>（シェルインストーラー）</summary>
+
+```bash
+%%artifact.cliChannelInstallerCommand%%
+dw --version
+```
+
+`VERSION` は公開リリースタグ、`supported`、`prerelease`、`stable` を受け付けます。認定済みの `supported` チャネルを使うには未設定にします。明示的な `prerelease` チャネルでは、認定済みリリースがプレリリースである必要があります。追加の環境変数:
+
+- `DURABLE_WORKFLOW_INSTALL_DIR` — インストール先（既定 `~/.local/bin`）。
+- `DURABLE_WORKFLOW_BIN_NAME` — インストールする実行ファイル名（既定 `dw`）。
+
+GitHub Actions の例:
+
+```yaml
+- name: Install Durable Workflow CLI
+  run: |
+    %%artifact.cliChannelInstallerCommand%%
+    echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+- name: Verify
+  run: dw --version
+```
+
+</details>
+
+<details>
+<summary><b>Windows</b>（PowerShell インストーラー）</summary>
+
+```powershell
+%%artifact.cliChannelPowerShellCommand%%
+dw --version
+```
+
+インストーラーは `dw.exe` を `%USERPROFILE%\.durable-workflow\bin` に配置し、そのディレクトリをユーザーの `PATH` に追加します。
+
+</details>
+
+<details>
+<summary><b>PHAR</b>（移植可能、PHP 8.2 以降が必要）</summary>
+
+```bash
+VERSION=<release-tag>
+curl -fsSL -o dw.phar \
+  "https://github.com/durable-workflow/cli/releases/download/${VERSION}/dw.phar"
+curl -fsSL -o SHA256SUMS \
+  "https://github.com/durable-workflow/cli/releases/download/${VERSION}/SHA256SUMS"
+sha256sum --check --ignore-missing SHA256SUMS
+chmod +x dw.phar
+./dw.phar --version
+```
+
+PHAR は PHP 8.2 以降があれば動作し、PHP が既にある共有 CI ランナーに推奨する成果物です。
+
+</details>
+
+### インストール済みバイナリの更新 {#update-an-installed-binary}
+
+単独のリリースインストール（上記のシェル・PowerShell インストーラー）では、`dw upgrade` がリリースの `SHA256SUMS` で成果物を検証してから、実行中のバイナリを最新の公開リリースに置き換えます。
+
+```bash
+dw upgrade                 # upgrade through the stable release channel
+dw upgrade --tag=<release-tag>     # pin to a specific release tag
+dw upgrade --dry-run       # resolve the target release without downloading
+```
+
+`dw upgrade` は、他のツールが所有する Composer vendor、Homebrew cellar、PHAR のインストール先を書き換えません。インストーラーで固定した公開リリースを再インストールするか、管理元のパッケージマネージャーで更新します。tap 管理の Homebrew インストールには `brew upgrade durable-workflow/tap/dw` を使います。安定したオプションとステータスフィールドの完全な契約は、[CLI リファレンス](./cli-reference.md#self-upgrade)を参照してください。
+
+## 設定 {#configure}
+
+CLI の接続先 Server を設定します。
+
+```bash
+export DURABLE_WORKFLOW_SERVER_URL=http://localhost:8080
+export DURABLE_WORKFLOW_AUTH_TOKEN=your-token
+export DURABLE_WORKFLOW_NAMESPACE=default
+```
+
+またはコマンドごとに渡します。
+
+```bash
+dw --server=http://localhost:8080 --token=your-token workflow:list
+```
+
+## 運用者向け 5 分クイックスタート {#five-minute-operator-quickstart}
+
+アプリケーションコードを書かず、実際のスタンドアロン Server に対して CLI を確認する手順です。公開されたローカル Server スタックを起動し、固定バージョンの `dw` をインストールし、再利用可能なプロファイルを作成し、ワークフローを一つ開始して Worker キューに到達するまで確認します。
+
+```bash
+export DW_SERVER_IMAGE=%%artifact.serverDockerHubImage%%
+export DW_AUTH_TOKEN=dev-token
+
+docker volume create durable-workflow-cli-quickstart
+
+docker run --rm \
+  -v durable-workflow-cli-quickstart:/app/database \
+  -e DW_AUTH_DRIVER=token \
+  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
+  "$DW_SERVER_IMAGE" server-bootstrap
+
+docker rm -f durable-workflow-server >/dev/null 2>&1 || true
+docker run -d --name durable-workflow-server \
+  -p 8080:8080 \
+  -v durable-workflow-cli-quickstart:/app/database \
+  -e DW_AUTH_DRIVER=token \
+  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
+  "$DW_SERVER_IMAGE"
+
+until curl -sf http://localhost:8080/api/ready >/dev/null; do sleep 1; done
+```
+
+別のターミナルで CLI をインストールします。
+
+```bash
+%%artifact.cliChannelInstallerCommand%%
+export PATH="$HOME/.local/bin:$PATH"
+dw --version
+```
+
+Server 接続を一度保存します。
+
+```bash
+dw env:set local \
+  --server=http://localhost:8080 \
+  --token=dev-token \
+  --namespace=default \
+  --make-default
+
+dw doctor
+dw server:health
+```
+
+ワークフローを開始し、実行を検査します。
+
+```bash
+dw workflow:start \
+  --type=quickstart.order \
+  --workflow-id=quickstart-order-001 \
+  --task-queue=quickstart \
+  --input='{"order_id":"order-001","total":42.50}' \
+  --json
+
+dw workflow:describe quickstart-order-001 --output=json
+dw workflow:history quickstart-order-001 <run-id-from-start-or-describe>
+dw task-queue:describe quickstart
+```
+
+実行は永続的な Server 状態になりました。`quickstart.order` 用の Worker が `quickstart` キューをポーリングするまでは、`dw task-queue:describe quickstart` で待機理由を最も手早く確認できます。Worker の接続後は `dw watch workflow quickstart-order-001` で終端状態まで追跡します。公開 Python SDK Worker を接続し、`status=completed` に達する一連の実行には、[Durable Workflow 2.0 クイックスタート](/docs/quickstart)を使います。
+
+## コマンド {#commands}
+
+### Server {#server}
+
+```bash
+dw server:health          # Check server health
+dw server:info            # Show server version, role topology, protocols, and worker fleet
+```
+
+`dw server:info` は `GET /api/cluster/info` に対応します。ビルド、プロトコル、Worker 群の事実に加え、Server ロールトポロジーのマニフェストを表示します。対応構成、現在の構成・プロセス分類・ロール、matching ロールの起動と分割の詳細、現在の書き込み境界、スケール境界、障害ドメインを含みます。自動化で生の `topology.*` フィールドが必要なら `--output=json` を使います。出力の各フィールドの契約は、[Server ロールトポロジー](./server-role-topology.md)を参照してください。
+
+### ワークフロー {#workflows}
+
+```bash
+dw workflow:list                                          # List workflows
+dw workflow:start --type=MyWorkflow --input='["arg1"]'    # Start a workflow
+dw workflow:start --type=MyWorkflow --input-file=input.json
+dw workflow:describe <workflow-id>                         # Describe a workflow
+dw workflow:signal <workflow-id> <signal-name> --input='["ok"]'
+dw workflow:query <workflow-id> <query-name>               # Run a query
+dw workflow:cancel <workflow-id>                           # Close as cancelled immediately
+dw workflow:terminate <workflow-id>                        # Force terminate
+dw workflow:history <workflow-id> <run-id>                 # Show run history
+```
+
+呼び出し元のペイロードを受け取る全コマンドは同じ入力形式を使います。インライン値は `--input`、ファイルパスまたは標準入力を示す `-` は `--input-file`、エンコードは `--input-encoding=json|raw|base64` です。既定は JSON で、raw と base64 の入力は一つの位置引数としてワークフローに渡します。
+
+### ブリッジアダプター {#bridge-adapters}
+
+```bash
+dw bridge:webhook stripe \
+  --action=start_workflow \
+  --idempotency-key=stripe-event-1001 \
+  --target='{"workflow_type":"orders.fulfillment","task_queue":"external-workflows"}' \
+  --input='{"order_id":"order-1001"}'
+
+dw bridge:webhook pagerduty \
+  --action=signal_workflow \
+  --idempotency-key=pd-event-3003 \
+  --target='{"workflow_id":"wf-remediation-42","signal_name":"incident_escalated"}' \
+  --input='{"severity":"critical"}' \
+  --json
+```
+
+ブリッジアダプターは統合イベントの範囲を制限した入口ツールです。受理、重複、拒否の配信について名前付きブリッジ結果を返し、ワークフローランタイムにはなりません。
+
+### スケジュール {#schedules}
+
+```bash
+dw schedule:list                          # List schedules
+dw schedule:create --workflow-type=MyWorkflow \
+  --cron='0 * * * *'                      # Create hourly schedule
+dw schedule:update <schedule-id> --input-file=input.json
+dw schedule:describe <schedule-id>        # Describe a schedule
+dw schedule:pause <schedule-id>           # Pause a schedule
+dw schedule:resume <schedule-id>          # Resume a schedule
+dw schedule:trigger <schedule-id>         # Trigger immediately
+dw schedule:delete <schedule-id>          # Delete a schedule
+```
+
+### アクティビティ {#activities}
+
+```bash
+dw activity:complete <task-id> <attempt-id> --input='{"ok":true}'
+dw activity:complete <task-id> <attempt-id> --input-file=result.json
+dw activity:fail <task-id> <attempt-id> --message='upstream failed'
+```
+
+### Worker とタスクキュー {#workers-and-task-queues}
+
+```bash
+dw worker:list                    # List registered workers
+dw worker:describe <worker-id>    # Describe a worker
+dw task-queue:list                # List active task queues
+dw task-queue:describe <queue>    # Describe a task queue
+```
+
+`dw task-queue:list` は Worker 群の簡潔な一覧で、ワークフロー、アクティビティ、クエリタスクの受付状態を列に示します。`dw task-queue:describe` は同じ Server ペイロードの詳細を示し、ポーラー、現在のリース、キュー・名前空間・下流制限グループの配送容量、残り容量、上限の設定元、保留クエリタスクの容量を含みます。
+
+スクリプトでは `dw task-queue:describe --json` がキュー固有のバックログ、リース、ポーラー、受付状態を公開します。Worker 不在、受付のスロットリング、一つのキューへのバックログ蓄積を区別するために使います。
+
+```bash
+dw task-queue:describe orders --json | jq '.stats | {
+  approximate_backlog_count,
+  approximate_backlog_age_seconds,
+  workflow_tasks,
+  activity_tasks
+}'
+```
+
+Worker 群全体の永続入力と配送レートはタスクキューの JSON 契約には含まれません。`dw system:operator-metrics --json` から読み取ります。
+
+```bash
+dw system:operator-metrics --json | jq '.operator_metrics.backlog | {
+  tasks_added_last_minute,
+  tasks_dispatched_last_minute
+}'
+```
+
+これらのフィールドの運用調整契約は、[タスクキューの受付](/docs/polyglot/task-queue-admission)を参照してください。
+
+問い合わせたノードの matching ロールのルーティング契約を検査するには、同じペイロードの `matching_role` ブロックを読みます。
+
+```bash
+dw system:operator-metrics --json | jq '.operator_metrics.matching_role | {
+  queue_wake_enabled,
+  shape,
+  task_dispatch_mode,
+  partition_primitives,
+  backpressure_model
+}'
+```
+
+`partition_primitives` はルーティング軸（`connection`、`queue`、`compatibility`、`namespace`）を固定し、`backpressure_model` はエンジンがリース占有か別の受付境界に依存するかを示します。現在の v2 は `lease_ownership` を報告します。
+
+### 名前空間 {#namespaces}
+
+```bash
+dw namespace:list                             # List namespaces
+dw namespace:create --name=production         # Create a namespace
+dw namespace:describe <namespace>             # Describe a namespace
+```
+
+### 検索属性 {#search-attributes}
+
+```bash
+dw search-attribute:list                                  # List search attributes
+dw search-attribute:create --name=env --type=keyword      # Register an attribute
+```
+
+## 終了コード {#exit-codes}
+
+CLI は安定した終了コード方針を使い、スクリプトや CI が標準エラーを解析せずに特定の失敗へ対処できるようにします。Symfony Console の正規の `0`/`1`/`2`（成功・失敗・使用法エラー）に従い、その先を拡張します。
+
+| コード | 名前 | 意味 |
+|------|------|---------|
+| `0` | `SUCCESS` | 操作が正常に完了。 |
+| `1` | `FAILURE` | 一般的な失敗。コマンドは実行したが成功しなかった。 |
+| `2` | `INVALID` | 引数不正、未知のオプション、ローカル検証などの使用法エラー。以下に含まれない HTTP 4xx（400、422 など）でも返す。 |
+| `3` | `NETWORK` | Server に到達できない（接続拒否、DNS 失敗、TLS ハンドシェイク失敗、トランスポートエラー）。 |
+| `4` | `AUTH` | 認証・認可の失敗。HTTP `401` と `403` で返す。 |
+| `5` | `NOT_FOUND` | リソースが見つからない。HTTP `404` で返す。 |
+| `6` | `SERVER` | Server エラー。HTTP `5xx` で返す。 |
+| `7` | `TIMEOUT` | Server 応答前に要求がタイムアウト。HTTP `408` でも返す。 |
+
+例:
+
+```bash
+dw workflow:describe chk-does-not-exist
+echo $?  # 5 (NOT_FOUND)
+
+dw server:health --server=http://unreachable:9999
+echo $?  # 3 (NETWORK)
+```
+
+正本は CLI リポジトリの [`DurableWorkflow\Cli\Support\ExitCode`](https://github.com/durable-workflow/cli/blob/main/src/Support/ExitCode.php) です。
+
+## リファレンス {#reference}
+
+コマンド形式、オプション、出力モード、自動化時の失敗の動作は、[CLI コマンドリファレンス](/docs/polyglot/cli-reference)を参照してください。
