@@ -30,10 +30,9 @@ redistribution et des résultats durables.
 
 ## Gérer les exceptions {#handling-exceptions}
 
-Lorsqu’une activité lève une exception, le workflow n’en est pas immédiatement
-informé. Il attend que le nombre de tentatives `$tries` soit épuisé.
-Le système réessaie l’activité selon sa politique. Pour transmettre
-l’exception au workflow dès le premier échec, définissez `$tries` à 1.
+`Workflow\V2\Activity` utilise `$tries = 1` par défaut : une seule tentative, sans nouvel essai automatique après une exception. Le premier échec de l’activité est transmis au workflow. Son code peut intercepter l’exception, comme ci-dessous ; sinon, l’exécution échoue et devient terminale.
+
+Les nouvelles tentatives sont facultatives et doivent être configurées. Définissez `$tries` au-dessus de `1` pour en autoriser plusieurs, ou à `0` pour un nombre illimité, et choisissez une politique `backoff()`. Un échec réessayable est transmis au code du workflow seulement après épuisement du budget configuré de tentatives ou de temps. Un échec non réessayable ignore les tentatives restantes.
 
 ```php
 use Exception;
@@ -89,23 +88,23 @@ class MyNonRetryableActivity extends Activity
 
 ## Procédure de reprise {#recovery-process}
 
-Pour corriger une activité qui échoue :
+Consultez d’abord l’état durable de l’exécution sélectionnée et la politique de nouvelles tentatives de l’activité. Avec l’unique tentative par défaut, un échec d’activité non géré a déjà rendu l’exécution terminale. Déployer une correction ou appeler `repair()` ne rouvre pas cette exécution échouée.
+
+Corriger le code pendant que l’exécution d’origine attend n’est possible que si l’activité dispose encore d’une tentative admissible. Configurez `$tries` au-dessus de `1`, ou à `0` pour un nombre illimité, avec `backoff()` avant de planifier l’activité. Vous pouvez définir `ActivityOptions::$scheduleToCloseTimeout` pour borner la durée totale de l’activité, toutes tentatives comprises ; les échéances du workflow restent applicables. Consultez [Nouvelles tentatives](./configuration/options.md#retries), [Délai entre tentatives](./configuration/options.md#backoff) et [ActivityOptions](./configuration/options.md#activityoptions). La politique est figée lors de la planification ; un déploiement ultérieur n’étend pas les budgets de tentatives ou de temps d’une activité existante.
+
+Pour une exécution qui attend encore une activité réessayable :
 
 1. Consultez ses logs et recherchez les erreurs ou exceptions.
 2. Identifiez la cause et corrigez le code.
-3. Déployez la correction sur le serveur qui exécute la file.
-4. Redémarrez ou remplacez progressivement les workers concernés afin qu’ils
-   chargent le nouveau code et puissent reprendre les tâches en sécurité.
-5. Attendez une nouvelle tentative de l’activité ou la réparation et la
-   redistribution de la tâche durable à un worker sain.
-6. Vérifiez le résultat durable dans Waterline, l’export d’historique ou
-   l’API Server. Une ligne de log d’un worker ne fait pas autorité.
-7. Si l’activité échoue encore, répétez la procédure jusqu’à résolution.
+3. Déployez la correction là où tournent les workers de la file.
+4. Redémarrez ou remplacez progressivement les workers concernés afin qu’ils chargent le nouveau code et reprennent les tâches en sécurité.
+5. Laissez un worker sain exécuter la prochaine tentative admissible. Réparation et redistribution peuvent rétablir un transport de tâches perdu ; elles n’accordent pas une tentative métier supplémentaire après la clôture de l’activité ou de l’exécution.
+6. Vérifiez le résultat durable dans Waterline, l’export d’historique ou l’API Server. Une ligne de log d’un worker ne fait pas autorité.
+7. Si l’activité échoue encore, vérifiez les budgets de tentatives et de temps restants avant de répéter la procédure.
 
-Le workflow peut rester en cours pendant que l’activité échoue et réessaie.
-Une fois l’activité corrigée, il peut se terminer avec l’état `completed`.
-Un workflow dans l’état `failed` a épuisé les `$tries` de l’activité sans
-que son exception ait été gérée.
+Une exécution disposant d’une tentative d’activité admissible reste en attente et peut continuer après le succès du code corrigé, si ses budgets d’origine n’ont pas expiré. Cela ne garantit pas de corriger tout workflow sur place : un échec final d’activité non géré, un échec du code du workflow, une limite structurelle ou un délai de workflow dépassé peuvent rendre l’exécution terminale.
+
+Pour une exécution échouée terminale, conservez son historique et rapprochez les effets externes avant de décider si l’application doit lancer un nouveau workflow. Rendez les opérations métier répétées idempotentes dans l’application. Il n’y a ni nouvelle tentative automatique de tout le workflow ni réouverture d’une exécution terminale ; consultez [Nouvelles tentatives au niveau du workflow](#workflow-level-retry).
 
 ## Application des délais des workflows {#workflow-timeout-enforcement}
 
@@ -166,6 +165,19 @@ class ChargeCard extends Activity
     }
 }
 ```
+
+Dans le code du workflow, bornez la durée totale de l’activité, y compris les attentes en file et entre les tentatives :
+
+```php
+use Workflow\V2\Support\ActivityOptions;
+use function Workflow\V2\activity;
+
+$result = activity(ChargeCard::class, new ActivityOptions(
+    scheduleToCloseTimeout: 120,
+));
+```
+
+Ces réglages autorisent au maximum trois tentatives, avec des pauses de 5 et 30 secondes, dans le délai schedule-to-close initial de 120 secondes. Une échéance du workflow plus proche reste applicable. N’activez les nouvelles tentatives que pour les opérations pouvant être répétées sans danger et protégez les effets externes par des mécanismes d’idempotence.
 
 Lorsqu’une activité réessayable lève une exception avant d’avoir épuisé
 `$tries`, le moteur ferme la ligne `activity_attempts` courante dans

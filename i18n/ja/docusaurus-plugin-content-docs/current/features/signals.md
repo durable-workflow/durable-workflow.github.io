@@ -84,6 +84,68 @@ $result->instanceId();  // "order-123"
 - 契約がなければ `await('name')` は引数なしで `true`、1引数でその値、複数なら全引数の配列を返します。
 - 未知の名前は `rejected_unknown_signal`、終了済みや未開始のインスタンスへの送信は `rejected_not_active` または `rejected_not_started` で拒否します。
 
+## シグナルペイロードの互換性を保って拡張する {#evolve-a-signal-payload}
+
+互換性のある追加が必要なアプリケーションペイロードには、宣言済みのマップ引数を1つ使用します。この例では、任意の参考情報 `note` を追加しても `schema_version: 1` を維持します。古い送信側はこのフィールドを省略し、新しい読み取り側は `null` を使用します。古い読み取り側は、承認判断を変えずにこれを無視できます。認可や業務上の動作を変える必要がある変更には、無視されるフィールドを使用しないでください。
+
+```php
+use Workflow\V2\Attributes\Signal;
+use Workflow\V2\Attributes\Type;
+use Workflow\V2\Workflow;
+use function Workflow\V2\await;
+
+#[Type('map-approval')]
+#[Signal('reviewed', [
+    ['name' => 'payload', 'type' => 'array', 'allows_null' => false],
+])]
+final class MapApprovalWorkflow extends Workflow
+{
+    public function handle(): array
+    {
+        $payload = await('reviewed');
+        if (! is_array($payload) || array_is_list($payload)
+            || ($payload['schema_version'] ?? null) !== 1) {
+            return ['status' => 'rejected_payload', 'reason' => 'unsupported_shape_or_version'];
+        }
+        if (! in_array($payload['decision'] ?? null, ['approved', 'rejected'], true)) {
+            return ['status' => 'rejected_payload', 'reason' => 'invalid_decision'];
+        }
+        $note = $payload['note'] ?? null;
+        if ($note !== null && ! is_string($note)) {
+            return ['status' => 'rejected_payload', 'reason' => 'invalid_note'];
+        }
+
+        return ['status' => 'processed', 'decision' => $payload['decision'], 'note' => $note];
+    }
+}
+```
+
+どちらの送信側も、同じ宣言済みパラメーター `payload` を使用します。
+
+```php
+use Workflow\V2\WorkflowStub;
+
+$oldPayload = ['schema_version' => 1, 'decision' => 'approved'];
+$newPayload = [...$oldPayload, 'note' => 'review λ'];
+
+$receipt = WorkflowStub::load('review-123')->attemptSignalWithArguments(
+    'reviewed',
+    ['payload' => $newPayload], // An old sender passes $oldPayload here.
+);
+```
+
+宣言が検証するのは外側の引数です。`payload` の代わりにスカラーを渡すと、受け付け時に拒否されます。`array` 型は、入れ子のフィールドを検証せず、PHPのリストと文字列キーのマップも区別しません。ワークフローは業務処理の前に、これらのアプリケーション規則を検証します。そのため、未対応のバージョンや不正な `note` が永続的に受け付けられた後で、ワークフロー結果が `rejected_payload` になる場合があります。この結果は、受領確認 `signal_received` とは別です。
+
+必須フィールドとその意味を維持してください。フィールドの欠落と明示的な `null` が同じ意味かどうかを定義します。この例の `note` では同じ意味です。記録済みの古い値を読むデコーダーを残してください。互換性のない構造や意味への変更には、任意フィールドを追加するだけでなく、新しいアプリケーションバージョンと明確な互換性計画が必要です。
+
+runは、開始時に記録したシグナル宣言とデフォルト値を維持します。現在のハンドラーのシグネチャやデフォルト値を変更しても、その契約は書き換わりません。トップレベルのシグナル引数を追加することと、既存マップ内にキーを追加することは異なります。古いrunが新しい引数を受け付けたり、新しいデフォルト値を採用したりするとは限りません。新しいrunは新しい宣言を記録でき、古いrunは元の宣言を維持します。
+
+このアプリケーション形式は、固定の[Avro Valueワイヤースキーマ](/docs/polyglot/avro-value-protocol)とは別です。サービスモードのPHP、Python、Rustクライアントは、それぞれのSDKで対応するマップ、リスト、スカラー値をエンコードします。Pythonのdataclass、PHPのドメインオブジェクト、Rustのstructには、対応する明示的な値アダプターが必要です。アプリケーションのバージョンフィールドはスキーマレジストリーではありません。サービスモードAPIは[SDKリファレンス](/docs/sdk-neutrality)を参照してください。
+
+ペイロードに互換性があっても、変更したワークフロー定義が既存runを取得する権限は得られません。必要な互換workerやbuildを利用可能な状態に保ってください。Server 2.9.7のソースフィンガープリント制約は、別途[Server #518](https://github.com/durable-workflow/server/issues/518)で管理しています。このレシピは制約を回避せず、現在のハンドラーが古いrunのコードを置き換えるとも保証しません。ランタイムが対応するルーティング契約の範囲内でリプレイに安全なコード変更を行うには、[ワークフローのバージョニング](./versioning.md)を使用してください。
+
+記録済み値に関する同じ境界は、アクティビティの引数と結果にも適用されます。リトライやリプレイでは、古い構造の値を読むことがあります。履歴を書き換えたり、現在のモデルのデフォルト値に依存したりせず、その値との互換性をアダプターで維持してください。
+
 ## 応答が不確かな場合 {#after-an-uncertain-response}
 
 永続的に受理された後でも、タイムアウトや応答喪失は起こります。後の終了済み・未検出の応答は後のリクエストを表すだけで、元のシグナルが適用されたかは分かりません。送信前の状態確認でも、その後に終了や continue-as-new が起こり得る隙間は残ります。
@@ -150,4 +212,4 @@ Route::post('/orders/{order}/approve', function (Request $request, Order $order)
 php artisan app:webhook
 ```
 
-`App\Workflows\Webhooks\WebhookWorkflow` は HTTP Webhook の入口から開始し、対応するシグナルが来るまで `await('ready')` で待ちます。待機中に Waterline を開くと、受理の瞬間に `WorkflowExecutionSignaled` イベントが現れます。
+`App\Workflows\Webhooks\WebhookWorkflow` は HTTP Webhook の入口から開始し、対応するシグナルが来るまで `await('ready')` で待ちます。待機中に Waterline を開くと、受理の瞬間に `SignalReceived` イベントが現れます。
