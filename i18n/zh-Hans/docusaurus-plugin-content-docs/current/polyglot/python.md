@@ -513,10 +513,81 @@ Python Worker 通过向 Server 返回查询任务结果来完成 Server 路由�
 | `ctx.get_version(change_id, min, max)` | 安全的工作流代码版本管理 |
 | `ctx.upsert_search_attributes(attrs)` | 更新搜索属性 |
 | `ctx.continue_as_new(*args)` | 使用新输入重启工作流 |
-| `ctx.now()` | 确定性时钟（来自历史） |
+| `ctx.now()` | 持久化的工作流开始时间，在本次运行内固定 |
 | `ctx.random()` | 带种子的随机生成器 |
 | `ctx.uuid4()` | 确定性 UUID |
 | `ctx.logger` | 重放期间保持静默的日志器 |
+
+### 工作流时间与持久等待 {#workflow-time-and-durable-waits}
+
+在 Worker 重放期间，`ctx.now()` 返回运行的**持久化开始时间**。
+活动、定时器、信号或其他持久步骤结束后，这个值也不会推进。
+对同一历史进行多次冷重放会得到同一个起始值。
+continue-as-new 后继运行有自己的开始时间，不会沿用前一运行的时钟基准。
+
+[已发布的 Python 实现](https://github.com/durable-workflow/sdk-python/blob/150c6f6bc14e3516f75cc615b2f75f093ed84ea1/src/durable_workflow/workflow.py#L2594-L2601)
+优先使用存在的 `WorkflowStarted.payload.timestamp`，否则使用规范的
+`WorkflowStarted.recorded_at`。持久化重放时间缺失或无效时，会明确报告时钟错误，
+而不是允许读取 Worker 的墙上时钟。这是
+[SDK #146](https://github.com/durable-workflow/sdk-python/issues/146) 已确定的固定开始时间契约。
+
+应等待持久操作，而不是循环等待 `ctx.now()` 改变：
+
+```python
+from durable_workflow import workflow
+
+
+@workflow.defn(name="wait_without_clock_loop")
+class WaitWithoutClockLoop:
+    def run(self, ctx):
+        started_at = ctx.now()
+        yield ctx.start_timer(30)
+        return {
+            "run_started_at": started_at.isoformat(),
+            "after_wait": ctx.now().isoformat(),
+        }
+```
+
+定时器的持久完成会恢复工作流。返回的两个时间戳都是同一个开始时间。
+即使定时器已触发，`while ctx.now() < deadline` 这样的循环条件也不会因此变为假。
+
+需要相对延迟时，使用 `yield ctx.start_timer(seconds)` 或 `yield ctx.sleep(seconds)`。
+工作需要与持久定时器竞争时，使用[首次完成选择](#first-completion-selection)。
+需要 Server 强制执行工作流期限（包括 Worker 已停止的情况）时，在
+`client.start_workflow(...)` 中设置 `execution_timeout_seconds` 和 `run_timeout_seconds`。
+HTTP 或 `get_result()` 的等待超时只限制该本地请求，并不能替代工作流的持久化期限。
+需要跨 continue-as-new 保留应用期限时，应将其明确传入输入，且不要替换 Server 原有的执行期限。
+
+需要测量一次活动调用内的实际耗时时，应在活动中读取单调时钟，并将时长作为活动结果返回。
+对于外部 UTC 期限，让活动检查有权威性的外部时钟并返回判断；工作流重放该已记录结果。
+绝不要将 UTC 时间戳与单调时钟值比较，也不要对不同进程或主机的单调时钟读数做差。
+在 Python 中，对 `ctx.now()` 做差既不能测量有效处理时间，也不能测量实际经过的墙上时间。
+
+#### 各 SDK 的时钟差异 {#clock-differences-across-sdks}
+
+这些 API 在提供时是确定性的，但并不共享同一个时钟：
+
+| 编写接口 | 重复调用与持久步骤 | continue-as-new 后继运行 |
+| --- | --- | --- |
+| Python `ctx.now()` | 固定为本次运行的持久化开始时间，定时器或活动之后也不变。 | 使用后继运行的开始时间基准。 |
+| 嵌入式 PHP `Workflow::now()` | 从运行开始时间起步，并推进到重放已消费事件的记录时间。参见[工作流时间](../features/timers.md#reading-deterministic-time)。 | 从新运行开始，随后沿该运行已消费的事件推进。 |
+| 服务模式 PHP SDK | 没有通用的公开工作流 `now()` 辅助方法。使用持久操作或已记录的活动／副作用值。 | 需要跨交接保留应用时间状态时，必须明确传递。 |
+| 服务模式 Rust SDK | 没有通用的公开 `WorkflowContext::now()` 辅助方法。`side_effect` 可以记录一个小型墙上时钟快照，但它不是会推进的时钟。 | 新运行中的副作用是新操作；需要时应明确传递先前的时间状态。 |
+
+嵌入式 PHP 的行为已存在于
+[已发布的 Core](https://github.com/durable-workflow/workflow/blob/64efa176e4c37e5d6ae80e767ba3b41464024e53/src/V2/Support/WorkflowFiberContext.php)。
+独立的 [PHP SDK 上下文](https://github.com/durable-workflow/sdk-php/blob/2.5.2/src/Worker/WorkflowContext.php)
+和 [Rust SDK 上下文](https://github.com/durable-workflow/sdk-rust/blob/3.5.5/src/lib.rs)
+各有自己的 API。应迁移持久操作与期限策略，而不是假定每个 SDK 的时钟辅助方法都有相同语义。
+
+#### 使用序列值排列发出的事件 {#order-emitted-events-with-sequence-values}
+
+工作流时间戳不是事件排序键。使用 `ctx.now()` 标记的 Python 事件可能都有同一个时间戳。
+应使用 [Workflow Streams 偏移量](./workflow-streams.md)、相应的
+[嵌入式发件箱序列](../features/message-streams.md)，或确定性的工作流本地计数器。
+运行本地计数器应配合 `run_id` 使用；如果应用需要一个逻辑序列，必须通过
+continue-as-new 明确传递。独立流或运行不会因拥有时间戳而获得全局顺序。
+
 
 ### 活动重试与超时 {#activity-retries-and-timeouts}
 
@@ -548,7 +619,7 @@ receipt = yield ctx.schedule_activity(
 工作流代码根据历史重放，不得直接执行任何非确定性操作：
 
 - 不执行 I/O（HTTP 调用、文件读取、数据库查询）
-- 不使用 `datetime.now()` 或 `time.time()`，改用 `ctx.now()`
+- 不使用 `datetime.now()` 或 `time.time()`；`ctx.now()` 仅用于固定的运行开始时间基准，等待应使用持久定时器。
 - 不使用 `random.random()`，改用 `ctx.random()`
 - 不使用 `uuid.uuid4()`，改用 `ctx.uuid4()`
 

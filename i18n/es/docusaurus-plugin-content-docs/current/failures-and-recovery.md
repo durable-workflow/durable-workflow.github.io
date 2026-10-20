@@ -26,9 +26,9 @@ para conocer la semántica exacta de reintentos, reentregas y resultados durader
 
 ## Manejo de excepciones {#handling-exceptions}
 
-Cuando una actividad lanza una excepción, el sistema aplica su política de
-reintentos hasta agotar `$tries`. Después entrega la excepción al workflow.
-Configura `$tries = 1` para que el workflow la reciba en el primer fallo.
+`Workflow\V2\Activity` usa `$tries = 1` de forma predeterminada: un intento, sin reintento automático tras una excepción. El primer fallo de la actividad se devuelve al workflow. El código puede capturarlo, como en el ejemplo; si no lo maneja, la ejecución falla y queda en un estado terminal.
+
+Los reintentos deben configurarse explícitamente. Establece `$tries` por encima de `1` para permitir más intentos, o en `0` para intentos ilimitados, y elige una política de `backoff()`. Un fallo reintentable se entrega al código del workflow solo cuando se agota el presupuesto de intentos o de tiempo configurado. Un fallo no reintentable omite los reintentos restantes.
 
 ```php
 use Exception;
@@ -84,23 +84,23 @@ class MyNonRetryableActivity extends Activity
 
 ## Proceso de recuperación {#recovery-process}
 
-Para corregir una actividad que está fallando:
+Primero consulta el estado duradero de la ejecución seleccionada y la política de reintentos de la actividad. Con el intento único predeterminado, un fallo de actividad sin manejar ya ha dejado la ejecución en un estado terminal. Desplegar una corrección o llamar a `repair()` no reabre esa ejecución fallida.
+
+Solo es posible corregir el código mientras la ejecución original espera si la actividad aún dispone de un reintento válido. Antes de programarla, configura `$tries` por encima de `1`, o en `0` para intentos ilimitados, junto con `backoff()`. Opcionalmente, define `ActivityOptions::$scheduleToCloseTimeout` para limitar la duración total de la actividad entre todos los intentos; los plazos del workflow siguen aplicándose. Consulta [Reintentos](./configuration/options.md#retries), [Espera entre intentos](./configuration/options.md#backoff) y [ActivityOptions](./configuration/options.md#activityoptions). La política se guarda al programar la actividad, por lo que un despliegue posterior no amplía su presupuesto de intentos ni de tiempo.
+
+Para una ejecución que aún espera una actividad reintentable:
 
 1. Consulta sus registros y localiza los errores o excepciones.
 2. Identifica la causa y corrige el código.
 3. Despliega la corrección donde se ejecutan los workers de la cola.
-4. Reinicia o sustituye gradualmente los workers para que carguen el código
-   nuevo y puedan reclamar trabajo de forma segura.
-5. Espera al reintento o a que la reparación o reentrega asigne la tarea
-   duradera a un worker sano.
-6. Verifica el resultado duradero en Waterline, una exportación del historial
-   o la API. Una línea del registro del worker no basta para confirmar el estado.
-7. Si la actividad sigue fallando, continúa el diagnóstico.
+4. Reinicia o sustituye gradualmente los workers pertinentes para que carguen el código nuevo y puedan reclamar trabajo de forma segura.
+5. Deja que un worker sano ejecute el siguiente intento válido. La reparación o reentrega puede recuperar el transporte de tareas perdido; no concede otro reintento de negocio después de cerrarse la actividad o la ejecución.
+6. Verifica el resultado duradero en Waterline, una exportación del historial o la API de Server. Una línea del registro del worker no basta para confirmar el estado.
+7. Si la actividad sigue fallando, comprueba los presupuestos restantes de intentos y de tiempo antes de repetir el proceso.
 
-Mientras queden reintentos, el workflow puede seguir en ejecución aunque la
-actividad falle. Si corriges la causa antes de agotar los intentos, puede
-continuar hasta completarse. Agotar `$tries` con una excepción sin manejar
-cierra el workflow como fallido.
+Una ejecución con un reintento de actividad válido permanece en espera y puede continuar cuando el código corregido tenga éxito, siempre que no hayan vencido sus presupuestos originales. Esto no garantiza que todo workflow fallido pueda corregirse en el mismo lugar: el fallo final de una actividad sin manejar, un fallo del código del workflow, un límite estructural o un plazo vencido pueden dejar la ejecución en un estado terminal.
+
+Para una ejecución fallida terminal, conserva el historial y concilia los efectos externos antes de decidir si la aplicación debe iniciar otro workflow. Usa idempotencia en la aplicación para operaciones de negocio repetidas. No hay reintento automático del workflow completo ni reapertura de ejecuciones terminales; consulta [Reintentos a nivel de workflow](#workflow-level-retry).
 
 ## Aplicación de los plazos del workflow {#workflow-timeout-enforcement}
 
@@ -156,6 +156,19 @@ class ChargeCard extends Activity
     }
 }
 ```
+
+Desde el código del workflow, limita el tiempo total de la actividad, incluidas las esperas en cola y entre intentos:
+
+```php
+use Workflow\V2\Support\ActivityOptions;
+use function Workflow\V2\activity;
+
+$result = activity(ChargeCard::class, new ActivityOptions(
+    scheduleToCloseTimeout: 120,
+));
+```
+
+En conjunto, estos ajustes permiten como máximo tres intentos, con pausas de 5 y 30 segundos, dentro del plazo original de 120 segundos de schedule-to-close. Si el plazo del workflow vence antes, también se aplica. Habilita reintentos solo para operaciones que puedan repetirse de forma segura y protege los efectos externos con controles de idempotencia.
 
 Cuando falla un intento y aún quedan reintentos, el motor cierra su fila en
 `activity_attempts`, devuelve `activity_executions` a `pending`, registra
