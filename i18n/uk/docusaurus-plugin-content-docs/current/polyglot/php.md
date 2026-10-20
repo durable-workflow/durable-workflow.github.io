@@ -79,7 +79,7 @@ scripts/playground php
 
 - PHP 8.1 або новіший
 - Доступний [самостійно розгорнутий Server](/docs/polyglot/server/) або підготовлений
-  [Cloud namespace runtime](/docs/polyglot/cloud-control-plane)
+  [runtime простору імен Cloud](/docs/polyglot/cloud-control-plane)
 
 ## Встановлення {#install}
 
@@ -129,7 +129,7 @@ Bootstrap звільняє користувача від вибору шляху
 Коли операцію потрібно обмежити конкретним run, використовуйте його
 методи для вибраного run.
 
-## Життєвий цикл, updates, schedules та огляд стану {#lifecycle-updates-schedules-and-visibility}
+## Життєвий цикл, update, розклади та огляд стану {#lifecycle-updates-schedules-and-visibility}
 
 Поточний публічний клієнт підтримує більше, ніж отримання результату вибраного run:
 
@@ -196,7 +196,7 @@ if ($selected->key === 'deadline') {
 Replay проходить запит cancel без такого запису. Якщо операція завершилася
 раніше, `await()` усе одно повертає її результат.
 
-## Service mode фреймворків та вбудований Laravel {#framework-service-mode-and-embedded-laravel}
+## Сервісний режим фреймворків та вбудований Laravel {#framework-service-mode-and-embedded-laravel}
 
 Той самий пакет містить офіційні інтеграції
 [Laravel service mode](https://github.com/durable-workflow/sdk-php#laravel-service-mode)
