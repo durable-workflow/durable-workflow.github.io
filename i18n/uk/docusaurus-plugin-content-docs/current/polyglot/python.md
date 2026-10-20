@@ -777,7 +777,7 @@ receipt = yield ctx.schedule_activity(
 на надійному виконанні під час планування, тому наступні розгортання
 не змінюють активних спроб.
 
-`ctx.schedule_activity(..., queue="payments-v2")` вибирає чергу нової execution activity. Уже записані activity, їхні retry та відновлені task зберігають початкову чергу. Зміна `Worker.task_queue` не переміщує ці task або чергу workflow наявних run. Залишайте сумісний старий пул доступним, доки не врахуєте всі залежності; див. [зафіксовані черги activity](./task-matching-dispatch.md#recorded-activity-queues).
+`ctx.schedule_activity(..., queue="payments-v2")` вибирає чергу нового виконання activity. Уже записані activity, їхні повторні спроби та відновлені завдання зберігають початкову чергу. Зміна `Worker.task_queue` не переміщує ці завдання або чергу workflow наявних запусків. Залишайте сумісний старий пул доступним, доки не врахуєте всі залежності; див. [зафіксовані черги activity](./task-matching-dispatch.md#recorded-activity-queues).
 
 ### Правила детермінізму {#determinism-rules}
 
