@@ -53,7 +53,7 @@ Der Schutz deutet Ausnahmen aus dem Workflow-Rumpf **nicht** in Bereitstellungsf
 
 ### Separate Grenzen der Service-SDKs {#service-sdk-entry-boundaries}
 
-Ein Fix im eingebetteten Core verändert nicht den SDK-Prozess, der Workflow-Code im Servicemodus ausführt. Dies sind die im Quellcode geprüften Grenzen veröffentlichter Versionen. Gleichwertige wiederherstellbare Eingabeprüfung bleibt unter [shared #221](https://github.com/durable-workflow/.github/issues/221) offen:
+Ein Fix im eingebetteten Core verändert nicht den SDK-Prozess, der Workflow-Code im Servicemodus ausführt. Die folgenden älteren veröffentlichten SDKs stammen aus der Zeit vor dem unter [shared #221](https://github.com/durable-workflow/.github/issues/221) erfassten Schutz am Workflow-Einstieg im Servicemodus:
 
 | Veröffentlichtes SDK | Verhalten bei der Eingabebindung |
 | --- | --- |
@@ -62,6 +62,18 @@ Ein Fix im eingebetteten Core verändert nicht den SDK-Prozess, der Workflow-Cod
 | [Rust 3.5.5](https://github.com/durable-workflow/sdk-rust/tree/4d5047ba9da39785512340b0975ce28da09f0cee) | Der typisierte Adapter deserialisiert die Eingabe vor dem Aufruf seines Handlers mit fester Signatur. Ein geänderter Anfragetyp kann diese Dekodierung scheitern lassen. Das unterscheidet sich von positioneller PHP/Python-Bindung. Eine beiläufige Ablehnung wegen nicht verbrauchter Historie ist kein zugesagter wiederherstellbarer Signaturschutz. |
 
 Halten Sie die Eingabekompatibilität im Dienstmodus und die tatsächliche SDK-Qualifikation von der eingebetteten Veröffentlichung getrennt. Fangen Sie nicht jeden `TypeError` oder jeden Rust-Handlerfehler ab, um ihn als Replay-sicher einzustufen: Das würde echte Anwendungsfehler verbergen.
+
+### Schutz am Workflow-Einstieg im Servicemodus {#service-sdk-entry-safeguard}
+
+**Vorbereitung einer noch nicht veröffentlichten Version.** Die Quellcodeänderungen für Server 2.9.9, PHP SDK 2.5.4, Python SDK 2.6.2 und Rust SDK 3.5.6 sind zusammengeführt. Veröffentlichung und Prüfung der installierten Artefakte stehen jedoch noch aus. Dieser Abschnitt belegt keine veröffentlichte Unterstützung.
+
+Die vorbereiteten SDKs prüfen die aufgezeichnete Einstiegseingabe, bevor Anwendungscode des Workflows ausgeführt wird. Inkompatible Eingaben melden `workflow_entry_arguments_mismatch` als fehlgeschlagene, für Replay blockierte Workflow-**Aufgabe**, ohne `fail_workflow` zu senden oder den fachlichen **Lauf** zu schließen. Eingabe, Workflow-/Laufidentität, bestätigte Historie, Build-Bindung und ursprüngliche Fristen bleiben unverändert. PHP prüft erforderliche positionelle Argumente und deklarierte PHP-Typen. Python bindet die Signatur und prüft so Argumentanzahl und Standardwerte; Annotationen werden nicht zu Laufzeit-Typprüfungen. Die typisierten Rust-Adapter prüfen die Eingabedekodierung vor dem Aufruf des Handlers oder seiner Zustandsfabrik. Rohe Rust-Handler bleiben selbst für die Behandlung ihrer Anwendungseingaben verantwortlich.
+
+Der spezifische `failure_reason` der Server-Aufgabe ist `workflow_entry_arguments_mismatch`; `replay_blocked_reason` bleibt der allgemeine Wert `worker_reported_replay_failure`. Prüfen Sie `latest_workflow_task_failure.reason` in der Debug-Antwort des ausgewählten Laufs. Verwechseln Sie diese Felder nicht mit der Diagnose des eingebetteten Core weiter oben. Erfolgreich gebundener Anwendungscode, der einen `TypeError` auslöst, einen Rust-Handlerfehler zurückgibt oder anderweitig fehlschlägt, folgt weiterhin dem normalen Verhalten für fachliche Fehler.
+
+Stellen Sie Code wieder her, der die ursprüngliche aufgezeichnete Eingabe akzeptiert, und verwenden Sie dann das [unterstützte Verfahren zur Wiederherstellung desselben Originallaufs](../failures-and-recovery.md#service-entry-recovery). Ersetzen Sie Eingaben nicht durch DTO-Standardwerte, ändern Sie keine Historie und setzen Sie keine Frist zurück. Der Schutz öffnet keinen Originallauf erneut, den ein älterer Worker bereits terminal gemacht hat.
+
+Sicheres Routing zu einem Ersatz benötigt außerdem die [Worker-Fähigkeit zur Einstiegsprüfung](../polyglot/worker-compatibility-routing.md#definition-fingerprint-evolution). Ein geänderter Fingerabdruck beweist weder Replay-Kompatibilität noch rechtfertigt er, den ursprünglichen Fingerabdruck eines Laufs umzuschreiben. Versionieren Sie Änderungen an dauerhaften Befehlen innerhalb einer kompatiblen Einstiegsmethode und testen Sie kaltes Replay vor der Promotion.
 
 ## `getVersion` verwenden {#using-getversion}
 

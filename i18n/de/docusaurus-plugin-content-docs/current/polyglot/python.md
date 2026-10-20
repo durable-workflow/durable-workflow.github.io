@@ -669,6 +669,16 @@ Der an `run` übergebene `WorkflowContext` bietet deterministische Operationen:
 | `ctx.uuid4()` | Deterministische UUID |
 | `ctx.logger` | Beim Replay stummer Logger |
 
+### Kompatibilität am Einstieg und Wiederherstellung {#entry-compatibility-and-recovery}
+
+**Vorbereitung einer noch nicht veröffentlichten Version.** Der Einstiegsschutz im Python SDK 2.6.2 und die Routing-/Wiederherstellungsunterstützung in Server 2.9.9 sind im Quellcode zusammengeführt. Veröffentlichung und Prüfung der installierten Artefakte stehen noch aus.
+
+Vor dem Aufruf von `run(ctx, *start_input)` bindet der Worker die aufgezeichneten Argumente an die Einstiegssignatur. Ein fehlendes erforderliches Argument oder eine unpassende Argumentanzahl löst vor der Ausführung des Rumpfs `WorkflowEntryArgumentsMismatchError` mit dem Grund `workflow_entry_arguments_mismatch` aus. Standardwerte ergänzen nur ausgelassene Argumente. Python-Annotationen werden weiterhin nicht erzwungen: Eine geänderte Annotation prüft oder konvertiert keine aufgezeichneten Daten. Ein `TypeError` im erfolgreich betretenen normalen Rumpf oder Generatorrumpf bleibt ein Anwendungsfehler.
+
+Der Worker kündigt `workflow_entry_arguments_validation` automatisch an. Mit einem qualifizierten Server wird die fehlgeschlagene Aufgabe für Replay blockiert, während der ursprüngliche Lauf nichtterminal bleibt. Ältere Laufzeiten können die Aufgabe stattdessen wiederholen; die SDK-seitige Ablehnung allein belegt nicht den vollständigen Wiederherstellungsvertrag.
+
+Prüfen Sie den genauen Lauf mit `await client.describe_workflow_run(workflow_id, run_id)` und dem Debug-Endpunkt für den ausgewählten Lauf. Verwenden Sie nach Wiederherstellung einer kompatiblen Einstiegsmethode die laufbezogene HTTP-Reparaturroute aus dem [Wiederherstellungsverfahren](../failures-and-recovery.md#service-entry-recovery). `await client.repair_workflow(workflow_id)` und `handle.repair()` ermitteln dagegen den aktuellen Lauf der Instanz; keine der Methoden akzeptiert eine Lauf-ID als Argument. Bewahren Sie ursprüngliche Eingabe, Historie, Namespace, Warteschlange, Build und Fristen. Platzieren Sie bei Befehlsänderungen `ctx.get_version` innerhalb dieser kompatiblen Methode und qualifizieren Sie kaltes Replay anhand des [Routings nach Definition](./worker-compatibility-routing.md#definition-fingerprint-evolution).
+
 ### Workflow-Zeit und dauerhafte Warteoperationen {#workflow-time-and-durable-waits}
 
 Beim Replay im Worker gibt `ctx.now()` die **gespeicherte Startzeit des Runs**

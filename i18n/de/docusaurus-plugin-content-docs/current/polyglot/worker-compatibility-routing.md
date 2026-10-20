@@ -33,6 +33,28 @@ Worker fragen einen Namespace, eine Queue und eine kompatible Build-Kohorte an. 
 
 Beim Claim werden ursprüngliche Task-Kompatibilität und Worker-Identität geprüft. Ein inkompatibler Worker erhält keine Lease, nur weil ein anderer Build fehlt. Auch ein Lease-Ablauf erweitert die Kompatibilität nicht.
 
+## Weiterentwicklung des Definitionsfingerabdrucks {#definition-fingerprint-evolution}
+
+**Vorbereitung einer noch nicht veröffentlichten Version.** Das folgende Routingverhalten ist für Server 2.9.9 und die SDKs PHP 2.5.4, Python 2.6.2 und Rust 3.5.6 im Quellcode zusammengeführt. Veröffentlichung und Prüfung der installierten Artefakte stehen noch aus.
+
+Die ursprüngliche Build-Bindung und der Definitionsfingerabdruck beantworten unterschiedliche Fragen. Ein Replay-kompatibler neuer Build kann zur selben Build-Familie gehören und trotzdem einen anderen Quellcode-Fingerabdruck haben. Standardmäßig bevorzugt der Server einen geeigneten Worker mit dem bei `WorkflowStarted` aufgezeichneten Fingerabdruck. Ist keiner mehr vorhanden, kann eine geänderte Definition das Original nur übernehmen, wenn ihr Worker `workflow_entry_arguments_validation` ankündigt. Diese Fähigkeit verspricht eine Ablehnung vor dem Einstieg, ohne den fachlichen Lauf fehlschlagen zu lassen. Sie wird weder aus der Laufzeitsprache noch aus der Protokollversion abgeleitet. Das manuelle Ergänzen dieser Zeichenfolge macht eine unsichere Worker-Implementierung nicht sicher.
+
+Auch beim Ausweichen auf eine andere Definition gelten der ursprüngliche Namespace, die Aufgabenwarteschlange, der Workflow-Typ, der Build und die Replay-Fähigkeiten. Der Lauf behält seinen aufgezeichneten Fingerabdruck und seine Zulassungssnapshots. Das SDK muss die ursprüngliche Einstiegseingabe prüfen und bestätigte Befehle wiedergeben; eine Quellcodeänderung, ein Versionsmarker oder eine erfolgreiche Registrierung beweist nicht, dass dieses Replay gelingt. Starten Sie geänderten Code mit einer neuen Worker-ID, weil eine aktive Registrierung ihren angekündigten Fingerabdruck nicht ändern kann.
+
+Laufdetails, Debug-Antworten für ausgewählte Läufe, Reparaturantworten und Details der Aufgabenwarteschlange zeigen `definition_routing`:
+
+| Status | Bedeutung und Maßnahme |
+| --- | --- |
+| `matching_definition_available` / `matching_definition_preferred` | Geeignete Kapazität mit aufgezeichneter Definition ist verfügbar oder wird dem geänderten Worker vorgezogen. |
+| `replay_required` | Eine geänderte Definition mit der erforderlichen Fähigkeit darf übernehmen. Einstiegsprüfung und striktes Replay müssen weiterhin gelingen. Das ist kein Blockierungsurteil. |
+| `entry_validation_unavailable` | Dem Ersatz fehlt die Fähigkeit zur Einstiegsprüfung. Aktualisieren Sie das SDK oder stellen Sie die aufgezeichnete Definition wieder her. |
+| `no_eligible_worker` / `worker_definition_missing` / `recorded_definition_missing` | Prüfen Sie fehlende Kapazität oder Fingerabdruckinformationen, ohne ursprüngliche Routing-Schutzbedingungen zu verändern. |
+| `pinning_disabled` | Die Bevorzugung übereinstimmenden Quellcodes ist deaktiviert; andere Claim- und Replay-Schutzbedingungen gelten weiterhin. |
+
+`blocked = true` beschreibt eine fällige, bereite Workflow-Aufgabe ohne geeigneten Definitionspfad. Die Warteschlangendetails nehmen höchstens zehn Läufe auf und melden, ob weitere bereite Läufe existieren. Das ist keine vollständige Zählung aller passiven oder blockierten Läufe. Eine Reparatur kann keinen passenden Worker erzeugen und keine Historie umschreiben. Folgen Sie nach einer tatsächlichen Einstiegsablehnung dem [Verfahren zur Wiederherstellung desselben Originallaufs](../failures-and-recovery.md#service-entry-recovery).
+
+`DW_V2_PIN_TO_RECORDED_FINGERPRINT=false` hebt die Bevorzugung übereinstimmenden Quellcodes auf. Build-Bindungen, Namespace-/Warteschlangen-/Typgrenzen, Registrierungsidentität, Lease-Fencing und strikte Replay-Prüfungen bleiben bestehen. Die Einstellung ersetzt weder das sichere SDK noch ein Upgrade über den sicheren Standardpfad. Ältere Laufzeiten können eine geänderte Definition stillschweigend ohne ausführenden Worker lassen oder eine nicht klassifizierte Einstiegsablehnung wiederholen. Verwenden Sie die exakt qualifizierte Kombination aus Laufzeit und SDK.
+
 ## Was Betreiber konfigurieren sollten {#what-operators-should-configure}
 
 Konfigurieren Sie für Embedded-PHP die aktuelle und ausdrücklich unterstützten Familien:
