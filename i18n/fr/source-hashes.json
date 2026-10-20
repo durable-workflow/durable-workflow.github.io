@@ -43,5 +43,15 @@
   "polyglot/prerelease-history-migration.md": "a57f05f492228a8a67791f9152648a1e5f80856325b78777cf63b6ef49b7413c",
   "polyglot/rust-cloud-quickstart.md": "2303434fc9302a81a8381ad4836423ef9952eb3201a4574c432254e3cb68c5f3",
   "polyglot/embedded-to-server.md": "21a7e4c9439a73db3a97fd9b0610749faabf7c449806fe0ad55a0924f50d3b80",
-  "polyglot/rust.md": "b5d3b44c4e68e8b707804001bc46bd5e758b0180eec2a9a2ebdb69a6183dced5"
+  "polyglot/rust.md": "b5d3b44c4e68e8b707804001bc46bd5e758b0180eec2a9a2ebdb69a6183dced5",
+  "capabilities.md": "c11b11db4cffe5ab2cec77e823fa9e7f33094bf7449a3ee29cbd404d48ac1c3c",
+  "compatibility.md": "3af32f6c46f83df39dc74dedf32314a3416ccd40620948bd8f66ace0d914946e",
+  "deployment.md": "2eadca4ea3703d0b09bb7e885eaafe84dc2f7eb7c1a9904dc5649f086f629258",
+  "laravel-adoption.md": "978f2333bf5ce38ebc58619ca3f50a087572a3b0c28d52bc06843bc341010684",
+  "migration.md": "53659987d64f3fc66c935bed55ec4227689185a23970f31327773fa408f5cf22",
+  "monitoring.md": "28bc87ab65b4ef8e466f12114cc56dd60f4216f1f163ec84defec1a030ec320e",
+  "rolling-upgrades.md": "5cb58386636361a07de5dd1f0438596dc649bcaf6ea493749ad0635eabb5be7f",
+  "sample-app.md": "070e0d4523f8228cf4492d2a590df8cd7d121a8c7b521f559629975719fdf515",
+  "testing.md": "e0e33204c80d777adfc04fe4d4842632c784b4a289ebcf1ef84eccfcd5ba2202",
+  "waterline-operator-api.md": "d858c9fe75b495106157ab11d6f7f2d4ad5aeaa94346342398cb8bafdd069d6d"
 }
