@@ -26,9 +26,13 @@ the business operation needs confirmation.
 
 With Core 2.7.0 or a compatible Server, eligible signals accepted during a remote
 workflow task get a delivery turn before successful closure. Received signals
-addressed to the instance carry across [continue-as-new](./continue-as-new.md)
+addressed to the instance and declared by its command contract carry across [continue-as-new](./continue-as-new.md)
 with their original identity, arguments and ordering. A signal addressed to a
 specific run never moves to another run.
+
+Older runs without a durable signal declaration do not gain one from a worker's
+later registration. If the runtime cannot establish delivery, the accepted
+signal closes with the explicit rejected disposition below.
 
 If a run closes without applying a signal, its status becomes `rejected` with
 `run_closed_before_signal_applied`, a closed timestamp and a `SignalRejected`
