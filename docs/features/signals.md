@@ -18,6 +18,34 @@ import SignalSimulator from '@site/src/components/SignalSimulator';
 
 Signals allow you to trigger events in a workflow from outside the workflow. This can be useful for reacting to external events, enabling *human-in-the-loop* interventions, or for signaling the completion of an external task. For repeated ordered inputs with durable cursor advancement, use [Message Streams](./message-streams.md).
 
+## Acceptance and closure
+
+`signal_received` confirms durable acceptance. It does not confirm that workflow
+code processed the signal. Inspect the signal's retained status and history when
+the business operation needs confirmation.
+
+With Core 2.7.0 or a compatible Server, eligible signals accepted during a remote
+workflow task get a delivery turn before successful closure. Received signals
+addressed to the instance and declared by its command contract carry across [continue-as-new](./continue-as-new.md)
+with their original identity, arguments and ordering. A signal addressed to a
+specific run never moves to another run.
+
+Runs without a durable signal declaration do not gain one from a worker's
+later registration. If the runtime cannot establish delivery, the accepted
+signal closes with the explicit rejected disposition below.
+
+If a run closes without applying a signal, its status becomes `rejected` with
+`run_closed_before_signal_applied`, a closed timestamp and a `SignalRejected`
+history event. This includes an unused buffered signal at ordinary completion
+and signals that cannot be applied before failure, cancellation or timeout.
+The earlier acceptance receipt remains valid. Use an [update](./updates.md) when
+the caller needs a retained processing result, rather than an acceptance alone.
+
+Before upgrading a writer to Core 2.7.0, drain and upgrade every embedded or
+direct-database reader, including Waterline when it reads the same database.
+Older readers cannot decode `SignalRejected`; do not leave them running against
+the new writer or roll back a reader after that event has been stored.
+
 ## Named Signal Waits
 
 A workflow calls `await('signal-name')` directly. The next accepted signal command with that name resumes the run and returns a deterministic value to the suspended workflow.
