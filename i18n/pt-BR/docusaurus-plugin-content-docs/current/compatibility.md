@@ -257,12 +257,18 @@ capacidades do Server e dos workers instalados antes de habilitar um recurso.
 As versões de nível superior dos pacotes selecionam a linha suportada.
 Manifestos de protocolo em runtime fornecem uma segunda verificação com recusa segura:
 
-| Cliente | Linha do produto | Plano de controle | Protocolo solicitado pelo worker |
-|--------|---------------|---------------|-------------------------|
+| Cliente | Linha do produto | Plano de controle | Protocolo padrão de registro de workers |
+|--------|---------------|---------------|--------------------------------------|
 | CLI | `%%artifact.cliVersion%%` | `2` | não se aplica |
-| SDK PHP | `%%artifact.phpSdkVersion%%` | `2` | `1.13` |
-| SDK Python | `%%artifact.pythonSdkVersion%%` | `2` | `1.1` |
-| SDK Rust | `%%artifact.rustSdkVersion%%` | `2` | `1.2` |
+| SDK PHP | `%%artifact.phpSdkVersion%%` | `2` | `1.20` |
+| SDK Python | `%%artifact.pythonSdkVersion%%` | `2` | `1.20` |
+| SDK Rust | `%%artifact.rustSdkVersion%%` | `2` | `1.20` |
+
+Os SDKs também permitem selecionar explicitamente o protocolo de workers
+`1.19` para um Server compatível mais antigo. O cancelamento cooperativo
+exige `1.20`; selecionar `1.19` não fornece essa capacidade. Cada operação
+pode usar sua versão mínima documentada de protocolo, portanto o padrão
+de registro não significa que toda requisição de worker envie `1.20`.
 
 O Server publicado atual anuncia a versão de protocolo de workers mostrada
 na tabela de papéis de autoridade acima. Ele aceita cabeçalhos de requisição
