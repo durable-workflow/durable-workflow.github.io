@@ -42,13 +42,13 @@
     "message": "Einschränkungen"
   },
   "sidebar.tutorialSidebar.category.Constraints.link.generated-index.description": {
-    "message": "Determinismusregeln und strukturelle Grenzen im eingebetteten Modus."
+    "message": "Verstehen Sie die Grenzen deterministischer Workflows und die strukturellen Limits der Laufzeitumgebung innerhalb Ihrer Laravel-Anwendung."
   },
   "sidebar.tutorialSidebar.category.Configuration": {
     "message": "Konfiguration"
   },
   "sidebar.tutorialSidebar.category.Configuration.link.generated-index.description": {
-    "message": "Konfigurieren Sie Speicher, Verbindungen, Grenzen und Datenaufbewahrung im eingebetteten Laravel-Modus."
+    "message": "Konfigurieren Sie Speicher, Verbindungen, Dienstgrenzen und Datenaufbewahrung für die Laufzeitumgebung innerhalb Ihrer Laravel-Anwendung."
   },
   "sidebar.tutorialSidebar.category.Run And Operate": {
     "message": "Ausführung und Betrieb"
