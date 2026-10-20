@@ -596,9 +596,17 @@ class ApprovalWorkflow:
         self.approved_by = by
 
     def run(self, ctx, *args):
-        yield ctx.schedule_activity("wait_for_approval", [])
-        return {"approved": self.approved, "approved_by": self.approved_by}
+        ready = yield ctx.wait_condition(
+            lambda: self.approved, key="approval.approved", timeout=60,
+        )
+        return {
+            "status": "approved" if ready else "timed_out",
+            "approved": self.approved,
+            "approved_by": self.approved_by,
+        }
 ```
+
+Der Workflow wartet, nicht eine Aktivität. Das Prädikat liest den bei der Wiedergabe rekonstruierten Zustand des Signalhandlers; für die Freigabe bleibt kein Aktivitätsslot belegt. Das Zeitlimit der Bedingung ist von den endlichen Lauf- und Ausführungsfristen des Workflows getrennt. Zur Fertigstellung externer Aufträge verwenden Sie eine kurze Aktivität, die den Auftrag übermittelt und zurückkehrt, sowie einen [zugeordneten Rückruf](./polling-patterns.md#callback-and-signal-completion).
 
 Empfängerdekoratoren für Abfragen und Updates erlauben Workflow-Klassen,
 stabile Handler-Namen zu veröffentlichen. Python-Worker führen servergeroutete

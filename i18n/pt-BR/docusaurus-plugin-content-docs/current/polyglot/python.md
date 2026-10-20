@@ -600,9 +600,17 @@ class ApprovalWorkflow:
         self.approved_by = by
 
     def run(self, ctx, *args):
-        yield ctx.schedule_activity("wait_for_approval", [])
-        return {"approved": self.approved, "approved_by": self.approved_by}
+        ready = yield ctx.wait_condition(
+            lambda: self.approved, key="approval.approved", timeout=60,
+        )
+        return {
+            "status": "approved" if ready else "timed_out",
+            "approved": self.approved,
+            "approved_by": self.approved_by,
+        }
 ```
+
+A espera pertence ao workflow, não a uma atividade. O predicado lê o estado do manipulador de sinal reconstruído no replay; o worker não mantém um slot de atividade ocupado pela aprovação. O timeout da condição é separado dos prazos finitos do run e da execução completa do workflow. Para concluir um trabalho externo, use uma atividade curta que envia e retorna, com um [callback correlacionado](./polling-patterns.md#callback-and-signal-completion).
 
 Decoradores de receptores de consultas e atualizações permitem que classes de
 workflow publiquem nomes estáveis de handlers. Workers Python executam

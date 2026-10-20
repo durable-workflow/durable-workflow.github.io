@@ -635,9 +635,21 @@ class ApprovalWorkflow:
         self.approved_by = by
 
     def run(self, ctx, *args):
-        yield ctx.schedule_activity("wait_for_approval", [])
-        return {"approved": self.approved, "approved_by": self.approved_by}
+        ready = yield ctx.wait_condition(
+            lambda: self.approved, key="approval.approved", timeout=60,
+        )
+        return {
+            "status": "approved" if ready else "timed_out",
+            "approved": self.approved,
+            "approved_by": self.approved_by,
+        }
 ```
+
+The wait belongs to the workflow, not an activity. Its predicate reads replayed
+signal-handler state; the worker does not hold an activity slot for the approval.
+The condition's timeout is separate from the workflow's finite run and execution
+deadlines. For external-job completion, use a short submit-and-return activity
+and a [correlated callback](./polling-patterns.md#callback-and-signal-completion).
 
 Query and update receiver decorators are available so workflow classes can
 publish stable handler names. Python workers execute server-routed query tasks

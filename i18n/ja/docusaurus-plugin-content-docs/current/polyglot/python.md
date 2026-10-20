@@ -472,9 +472,17 @@ class ApprovalWorkflow:
         self.approved_by = by
 
     def run(self, ctx, *args):
-        yield ctx.schedule_activity("wait_for_approval", [])
-        return {"approved": self.approved, "approved_by": self.approved_by}
+        ready = yield ctx.wait_condition(
+            lambda: self.approved, key="approval.approved", timeout=60,
+        )
+        return {
+            "status": "approved" if ready else "timed_out",
+            "approved": self.approved,
+            "approved_by": self.approved_by,
+        }
 ```
+
+待機するのはアクティビティではなくワークフローです。述語はリプレイで再構築されたシグナルハンドラーの状態を読みます。承認を待つ間、ワーカーがアクティビティのスロットを占有することはありません。条件のタイムアウトは、ワークフローの有限な run と実行全体の期限とは別です。外部ジョブの完了には、送信してすぐ戻る短いアクティビティと[対応付けられたコールバック](./polling-patterns.md#callback-and-signal-completion)を使用します。
 
 クエリと更新の受信デコレーターにより、ワークフロークラスは安定したハンドラー名を公開できます。Python Worker は、コミット済みワークフロー履歴をリプレイし、再現した状態に対して登録済みクエリハンドラーを呼んで、Server からルーティングされたクエリタスクを実行します。ワークフロータスクで届いた受理済み更新も適用します。
 
