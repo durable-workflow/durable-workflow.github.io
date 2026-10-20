@@ -29,17 +29,17 @@ Behalten Sie die Reihenfolge bestehender Positionsargumente bei und akzeptieren 
 
 Bevorzugen Sie einen zusätzlichen optionalen letzten Parameter oder einen neuen Workflow-Typ für einen anderen Eingabevertrag. Benötigen Sie intern ein neues DTO, erzeugen Sie es ausdrücklich aus kompatiblen aufgezeichneten Argumenten **im** Workflow-Rumpf und versionieren Sie dort Änderungen an dauerhaften Befehlen. Behalten Sie Code für jede unterstützte Eingabeform bei, solange entsprechende Läufe ihn benötigen. Testen Sie tatsächlich gespeicherte Eingaben mit der neuen Definition, einschließlich eines kalten Replay nach einer dauerhaften Wartephase. Tests nur mit neuen Starts decken diese Bereitstellungsgrenze nicht ab.
 
-### Verhalten der veröffentlichten eingebetteten Laufzeit {#released-embedded-entry-behavior}
+### Verhalten von Workflow 2.7.2 {#released-embedded-entry-behavior}
 
 In Workflow **2.7.2** kann ein Fehler bei Argumentanzahl oder -typ am Einstieg zu einem terminalen `WorkflowFailed`-Ereignis werden. Manche Fehler bei der Auflösung von Abhängigkeiten lassen den Lauf dagegen offen, mit einer wiederholt fehlschlagenden Aufgabe. Der Wechsel von einem Skalar zu einem injizierten DTO mit Konstruktor-Standardwerten kann sogar eine Ausführung mit falschen Daten verursachen. Das sind unter [Workflow #866](https://github.com/durable-workflow/workflow/issues/866) erfasste Produktfehler, keine sichere Versionierungsstrategie.
 
 Die Wiederherstellung kompatiblen Codes kann einen offenen, erneut zustellbaren Lauf wiederherstellen, öffnet aber keinen bereits terminalen Lauf. Weder `repair()` noch ein neuer Versionszweig verspricht, das fehlgeschlagene Original wiederzubeleben. Prüfen Sie zuerst den tatsächlichen Status und Fehler. Bewahren Sie Eingabe und Historie, während Sie die Wiederherstellung planen.
 
-### Geplanter eingebetteter Schutz — noch nicht veröffentlicht {#embedded-entry-argument-safeguard}
+### Veröffentlichter eingebetteter Schutz {#embedded-entry-argument-safeguard}
 
-Der Kandidat in [Workflow #867](https://github.com/durable-workflow/workflow/pull/867) prüft Eingabeargumente vor dem Eintritt in Anwendungscode. Inkompatible Bindung führt zu einer typisierten `WorkflowEntryArgumentsMismatchException` und einer Replay-blockierten **Workflow-Aufgabe** mit `replay_blocked_reason = workflow_entry_arguments_mismatch`; der **Lauf bleibt nichtterminal**. Diagnosefelder nennen Workflow, Einstiegsmethode, Parameter sowie erwarteten und tatsächlichen Typ, ohne Argumentwerte zu kopieren. Ein neu injiziertes DTO, das aufgezeichnete Eingabe verwerfen würde, wird ebenfalls abgelehnt. Dieser Abschnitt beschreibt den unveröffentlichten Kandidaten und ist keine Zusage für eine installierte Version.
+Workflow **2.7.3** prüft aufgezeichnete Eingabeargumente vor dem Eintritt in Anwendungscode. Inkompatible Bindung führt zu einer typisierten `WorkflowEntryArgumentsMismatchException` und einer Replay-blockierten **Workflow-Aufgabe** mit `replay_blocked_reason = workflow_entry_arguments_mismatch`; der **Lauf bleibt nichtterminal**. Diagnosefelder nennen Workflow, Einstiegsmethode, Parameter sowie erwarteten und tatsächlichen Typ, ohne Argumentwerte zu kopieren. Ein neu injiziertes DTO, das aufgezeichnete Eingabe verwerfen würde, wird ebenfalls abgelehnt. Prüfen Sie das tatsächlich in der eingebetteten Anwendung installierte Workflow-Paket. Der Schutz öffnet keine terminalen Läufe aus älteren Versionen erneut.
 
-Für eine Laufzeit mit diesem qualifizierten Schutz erfolgt die Wiederherstellung so:
+Stellen Sie mit diesem veröffentlichten Schutz denselben noch offenen Originallauf so wieder her:
 
 1. Prüfen Sie die Aufgabendiagnose des ausgewählten Laufs und bestätigen Sie `workflow_entry_arguments_mismatch`, statt diese Ursache bei jedem Aufgabenfehler anzunehmen.
 2. Stellen Sie eine Definition wieder her, die die ursprünglich aufgezeichneten Argumente akzeptiert, oder stellen Sie einen kompatiblen Adapter im Workflow-Rumpf bereit. Bewahren Sie ursprüngliche Workflow-Identität, Eingabe, Historie und Fristen; bearbeiten Sie nicht den Speicher, um die neue Signatur passend zu machen.
@@ -57,7 +57,7 @@ Ein Fix im eingebetteten Core verändert nicht den SDK-Prozess, der Workflow-Cod
 | [Python 2.6.1](https://github.com/durable-workflow/sdk-python/tree/150c6f6bc14e3516f75cc615b2f75f093ed84ea1) | Ruft `run(ctx, *start_input)` auf. Geänderte Argumentanzahl kann den Workflow fehlschlagen lassen; Typannotationen allein erzwingen keine Typen und konvertieren keine aufgezeichneten Werte. Fehler im Generatorrumpf sind ebenfalls Anwendungsfehler. |
 | [Rust 3.5.5](https://github.com/durable-workflow/sdk-rust/tree/4d5047ba9da39785512340b0975ce28da09f0cee) | Der typisierte Adapter deserialisiert die Eingabe vor dem Aufruf seines Handlers mit fester Signatur. Ein geänderter Anfragetyp kann diese Dekodierung scheitern lassen. Das unterscheidet sich von positioneller PHP/Python-Bindung. Eine beiläufige Ablehnung wegen nicht verbrauchter Historie ist kein zugesagter wiederherstellbarer Signaturschutz. |
 
-Halten Sie die Eingabekompatibilität im Servicemodus und die tatsächliche SDK-Qualifikation vom eingebetteten Kandidaten getrennt. Fangen Sie nicht jeden `TypeError` oder jeden Rust-Handlerfehler ab, um ihn als Replay-sicher einzustufen: Das würde echte Anwendungsfehler verbergen.
+Halten Sie die Eingabekompatibilität im Dienstmodus und die tatsächliche SDK-Qualifikation von der eingebetteten Veröffentlichung getrennt. Fangen Sie nicht jeden `TypeError` oder jeden Rust-Handlerfehler ab, um ihn als Replay-sicher einzustufen: Das würde echte Anwendungsfehler verbergen.
 
 ## `getVersion` verwenden {#using-getversion}
 

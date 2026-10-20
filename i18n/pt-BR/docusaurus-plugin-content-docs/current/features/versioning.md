@@ -25,17 +25,17 @@ Mantenha os argumentos posicionais existentes na mesma ordem e aceite seus tipos
 
 Prefira adicionar um parâmetro final opcional ou criar outro tipo de workflow para um contrato de entrada diferente. Se precisar de um novo DTO internamente, construa-o explicitamente com argumentos registrados compatíveis **dentro** do corpo do workflow e versione ali qualquer mudança nos comandos duráveis. Preserve código capaz de reproduzir cada formato de entrada suportado enquanto essas execuções precisarem dele. Teste as entradas realmente armazenadas contra a nova definição, incluindo um replay a frio após uma espera durável; testar apenas novas execuções não cobre esse limite de implantação.
 
-### Comportamento embarcado publicado {#released-embedded-entry-behavior}
+### Comportamento do Workflow 2.7.2 {#released-embedded-entry-behavior}
 
 No Workflow **2.7.2**, um erro na quantidade ou no tipo dos argumentos de entrada pode se tornar um evento terminal `WorkflowFailed`. Alguns erros de resolução de dependências deixam a execução aberta com uma tarefa que falha repetidamente. Trocar um escalar por um DTO injetado com valores padrão no construtor pode até executar o workflow com dados errados. Esses são defeitos do produto registrados em [Workflow #866](https://github.com/durable-workflow/workflow/issues/866), não uma estratégia segura de versionamento.
 
 Restaurar código compatível pode recuperar uma execução aberta que possa ser entregue novamente, mas não reabre uma que já ficou terminal. Nem `repair()` nem uma nova ramificação de versão prometem reativar esse original com falha. Primeiro inspecione seu estado e sua falha reais; preserve a entrada e o histórico enquanto decide a recuperação.
 
-### Próxima proteção embarcada — ainda não publicada {#embedded-entry-argument-safeguard}
+### Proteção embutida publicada {#embedded-entry-argument-safeguard}
 
-O candidato em [Workflow #867](https://github.com/durable-workflow/workflow/pull/867) valida os argumentos de entrada antes de entrar no código da aplicação. Uma associação incompatível produz uma `WorkflowEntryArgumentsMismatchException` tipada e uma **tarefa de workflow** com replay bloqueado, com `replay_blocked_reason = workflow_entry_arguments_mismatch`; a **execução permanece não terminal**. Os campos de diagnóstico identificam o workflow, o método de entrada, o parâmetro e os tipos esperado e real sem copiar valores dos argumentos. Um novo DTO injetado que descartaria a entrada registrada também é recusado. Esta seção descreve o candidato não publicado, não uma garantia de uma versão instalada.
+Workflow **2.7.3** valida os argumentos registrados antes de entrar no código da aplicação. Uma associação incompatível produz uma `WorkflowEntryArgumentsMismatchException` tipada e uma **tarefa de workflow** com replay bloqueado, com `replay_blocked_reason = workflow_entry_arguments_mismatch`; a **execução permanece não terminal**. Os campos de diagnóstico identificam workflow, método de entrada, parâmetro e tipos esperado e real sem copiar valores dos argumentos. Um novo DTO injetado que descartaria a entrada registrada também é recusado. Verifique o pacote Workflow realmente instalado na aplicação embutida. Essa proteção não reabre execuções terminais criadas por uma versão anterior.
 
-Em um runtime que contenha essa proteção qualificada, a recuperação segue esta sequência:
+Com essa proteção publicada, recupere o mesmo original ainda aberto assim:
 
 1. Inspecione o diagnóstico da tarefa da execução selecionada e confirme `workflow_entry_arguments_mismatch`, sem presumir que toda falha de tarefa tenha essa causa.
 2. Restaure uma definição que aceite os argumentos originais registrados ou implante um adaptador compatível no corpo do workflow. Preserve identidade, entrada, histórico e prazos originais; não edite o armazenamento para encaixar a nova assinatura.
@@ -53,7 +53,7 @@ Uma correção no Core embarcado não muda o processo SDK que executa o código 
 | [Python 2.6.1](https://github.com/durable-workflow/sdk-python/tree/150c6f6bc14e3516f75cc615b2f75f093ed84ea1) | Chama `run(ctx, *start_input)`. Uma mudança na quantidade de argumentos pode falhar o workflow; anotações de tipo sozinhas não impõem tipos nem convertem os valores registrados. Erros no corpo do gerador também são falhas da aplicação. |
 | [Rust 3.5.5](https://github.com/durable-workflow/sdk-rust/tree/4d5047ba9da39785512340b0975ce28da09f0cee) | O adaptador tipado desserializa a entrada antes de chamar o handler de assinatura fixa. Mudar o tipo da requisição pode falhar nessa decodificação. Isso difere da associação posicional do PHP/Python; uma recusa incidental por histórico não consumido não é garantia de proteção recuperável de assinaturas. |
 
-Mantenha a compatibilidade de entrada do serviço e a qualificação real do SDK separadas do candidato embarcado. Não capture todo `TypeError` ou todo erro de handler Rust para classificá-lo como seguro para replay: isso ocultaria falhas reais da aplicação.
+Mantenha a compatibilidade de entrada em modo serviço e a qualificação real dos SDKs separadas da versão embutida publicada. Não capture todo `TypeError` ou todo erro de handler Rust para chamá-lo de seguro para replay: isso esconderia falhas reais da aplicação.
 
 ## Uso de `getVersion` {#using-getversion}
 

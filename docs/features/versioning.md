@@ -25,17 +25,17 @@ Keep existing positional arguments in the same order and accept their recorded t
 
 Prefer an additive, optional trailing parameter or a new workflow type for a different input contract. If you need a new DTO internally, construct it explicitly from compatible recorded arguments **inside** the workflow body and version any change to durable commands there. Keep code able to replay every supported input shape until those runs no longer need it. Test the actual stored inputs against the new definition, including a cold replay after a durable wait; testing only new starts misses this deployment boundary.
 
-### Released Embedded Behavior {#released-embedded-entry-behavior}
+### Workflow 2.7.2 Behavior {#released-embedded-entry-behavior}
 
 In Workflow **2.7.2**, an entry arity or type error can become a terminal `WorkflowFailed` event. Some dependency-resolution errors instead leave the run open with a repeatedly failing task. A scalar changed to a newly injected DTO with default constructor values can even run with the wrong data. These are product defects tracked in [Workflow #866](https://github.com/durable-workflow/workflow/issues/866), not a safe versioning strategy.
 
 Restoring compatible code can recover an open run that can be redelivered, but it does not reopen a run already made terminal. Neither `repair()` nor a new version branch promises to revive such a failed original. Inspect its actual status and failure first; preserve its input and history while deciding on recovery.
 
-### Upcoming Embedded Safeguard — Not Released {#embedded-entry-argument-safeguard}
+### Released Embedded Safeguard {#embedded-entry-argument-safeguard}
 
-The candidate in [Workflow #867](https://github.com/durable-workflow/workflow/pull/867) validates entry arguments before entering application code. Incompatible binding becomes a typed `WorkflowEntryArgumentsMismatchException` and a replay-blocked **workflow task**, with `replay_blocked_reason = workflow_entry_arguments_mismatch`; the **run stays nonterminal**. Diagnostic fields identify the workflow, entry method, parameter and expected/actual types without copying argument values. A newly injected DTO that would discard recorded input is refused too. This section describes the unpublished candidate, not a guarantee of an installed release.
+Workflow **2.7.3** validates recorded entry arguments before entering application code. Incompatible binding becomes a typed `WorkflowEntryArgumentsMismatchException` and a replay-blocked **workflow task**, with `replay_blocked_reason = workflow_entry_arguments_mismatch`; the **run stays nonterminal**. Diagnostic fields identify the workflow, entry method, parameter and expected/actual types without copying argument values. A newly injected DTO that would discard recorded input is refused too. Check the actual Workflow package installed in the embedded application. This safeguard does not reopen terminal runs created by an older release.
 
-For a runtime containing that qualified safeguard, the recovery sequence is:
+With that released safeguard, recover the same still-open original as follows:
 
 1. Inspect the selected run's task diagnostic and confirm `workflow_entry_arguments_mismatch`, rather than assuming every task failure has this cause.
 2. Restore a definition that accepts the original recorded arguments, or deploy a compatible adapter in the workflow body. Keep the original workflow identity, input, history and deadlines; do not edit storage to make the new signature fit.
@@ -53,7 +53,7 @@ An embedded Core fix does not change the SDK process that executes service-mode 
 | [Python 2.6.1](https://github.com/durable-workflow/sdk-python/tree/150c6f6bc14e3516f75cc615b2f75f093ed84ea1) | Calls `run(ctx, *start_input)`. Changed arity can fail the workflow; type annotations alone do not enforce argument types or convert recorded values. Generator-body errors are application failures too. |
 | [Rust 3.5.5](https://github.com/durable-workflow/sdk-rust/tree/4d5047ba9da39785512340b0975ce28da09f0cee) | The typed adapter deserializes input before calling its fixed-signature handler. A changed request type can fail that decoding step. This differs from PHP/Python positional binding; an incidental unconsumed-history refusal is not a promised recoverable signature safeguard. |
 
-Keep service input compatibility and actual SDK qualification separate from the embedded candidate. Do not catch every `TypeError` or every Rust handler error and label it replay-safe: that would hide real application failures.
+Keep service input compatibility and actual SDK qualification separate from the embedded release. Do not catch every `TypeError` or every Rust handler error and label it replay-safe: that would hide real application failures.
 
 ## Using `getVersion`
 

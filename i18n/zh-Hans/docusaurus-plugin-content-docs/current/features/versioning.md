@@ -25,17 +25,17 @@ sidebar_position: 15
 
 优先追加可选的末尾参数，或为不同的输入契约创建新的工作流类型。如果内部需要新 DTO，请在工作流**方法体内**根据兼容的已记录参数显式构造它，并在方法体内为持久命令的任何变更进行版本管理。在相关运行仍有需要时，保留能够重放每种受支持输入结构的代码。用实际存储的输入测试新定义，包括持久等待后的冷重放；只测试新启动的运行无法覆盖这一部署边界。
 
-### 已发布嵌入式运行时的行为 {#released-embedded-entry-behavior}
+### Workflow 2.7.2 的行为 {#released-embedded-entry-behavior}
 
 在 Workflow **2.7.2** 中，入口参数数量或类型错误可能变成终态 `WorkflowFailed` 事件。某些依赖解析错误则会让运行保持未关闭状态，但任务反复失败。把标量改为构造函数带默认值的注入 DTO，甚至可能使工作流使用错误数据运行。这些是 [Workflow #866](https://github.com/durable-workflow/workflow/issues/866) 跟踪的产品缺陷，不是安全的版本管理策略。
 
 恢复兼容代码可能恢复仍可重新投递的未关闭运行，但不会重新打开已经进入终态的运行。`repair()` 和新的版本分支都不保证能复活这样的失败原运行。请先检查其实际状态和失败原因；决定恢复方案时保留原始输入和历史。
 
-### 即将提供的嵌入式保护——尚未发布 {#embedded-entry-argument-safeguard}
+### 已发布的嵌入式保护 {#embedded-entry-argument-safeguard}
 
-[Workflow #867](https://github.com/durable-workflow/workflow/pull/867) 中的候选实现会在进入应用代码前验证入口参数。不兼容的绑定会产生类型化的 `WorkflowEntryArgumentsMismatchException`，并将**工作流任务**设为重放阻塞状态，`replay_blocked_reason = workflow_entry_arguments_mismatch`；**运行本身仍处于非终态**。诊断字段标识工作流、入口方法、参数以及预期和实际类型，不复制参数值。新注入的 DTO 若会丢弃已记录输入，也会被拒绝。本节描述的是尚未发布的候选实现，不是对已安装版本的保证。
+Workflow **2.7.3** 会在进入应用代码前验证已记录的入口参数。不兼容绑定会产生类型化的 `WorkflowEntryArgumentsMismatchException`，并将**工作流任务**设为重放阻塞状态，`replay_blocked_reason = workflow_entry_arguments_mismatch`；**运行本身仍处于非终态**。诊断字段标识工作流、入口方法、参数以及预期和实际类型，不复制参数值。新注入的 DTO 若会丢弃已记录输入，也会被拒绝。请检查嵌入式应用实际安装的 Workflow 包。该保护不会重新打开旧版本已进入终态的运行。
 
-对包含这一已通过资格验证保护的运行时，恢复步骤如下：
+使用此已发布保护，按以下步骤恢复同一个仍未关闭的原运行：
 
 1. 检查所选运行的任务诊断并确认 `workflow_entry_arguments_mismatch`，不要假设每个任务失败都由此引起。
 2. 恢复接受原始已记录参数的定义，或在工作流方法体内部署兼容适配器。保留原始工作流标识、输入、历史和截止时间；不要修改存储来适配新签名。
@@ -53,7 +53,7 @@ sidebar_position: 15
 | [Python 2.6.1](https://github.com/durable-workflow/sdk-python/tree/150c6f6bc14e3516f75cc615b2f75f093ed84ea1) | 调用 `run(ctx, *start_input)`。参数数量变化可能导致工作流失败；类型注解本身不会强制参数类型，也不会转换已记录值。生成器方法体错误同样是应用失败。 |
 | [Rust 3.5.5](https://github.com/durable-workflow/sdk-rust/tree/4d5047ba9da39785512340b0975ce28da09f0cee) | 类型化适配器会先反序列化输入，再调用签名固定的处理器。请求类型变化可能使该解码步骤失败。这与 PHP/Python 的位置绑定不同；因历史未完全消费而偶然触发的拒绝，不等于承诺提供可恢复的签名保护。 |
 
-请将服务输入兼容性、实际 SDK 资格验证与嵌入式候选实现分别看待。不要捕获所有 `TypeError` 或所有 Rust 处理器错误，并将其标记为可安全重放：这会掩盖真正的应用失败。
+请将服务输入兼容性、实际 SDK 资格验证与嵌入式发布版本分别看待。不要捕获所有 `TypeError` 或所有 Rust 处理器错误并标记为可安全重放，这会掩盖真正的应用失败。
 
 ## 使用 `getVersion` {#using-getversion}
 

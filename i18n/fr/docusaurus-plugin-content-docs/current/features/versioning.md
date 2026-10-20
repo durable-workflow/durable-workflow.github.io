@@ -25,17 +25,17 @@ Conservez l’ordre des arguments positionnels existants et acceptez leurs types
 
 Préférez l’ajout d’un paramètre final facultatif ou un nouveau type de workflow pour un contrat d’entrée différent. Si vous avez besoin d’un nouveau DTO en interne, construisez-le explicitement à partir d’arguments enregistrés compatibles **dans** le corps du workflow et gérez à cet endroit les versions de toute modification des commandes durables. Conservez du code capable de relire chaque forme d’entrée prise en charge tant que ces exécutions en ont besoin. Testez les entrées réellement stockées avec la nouvelle définition, y compris une relecture à froid après une attente durable ; tester uniquement de nouveaux démarrages ne couvre pas cette limite du déploiement.
 
-### Comportement embarqué publié {#released-embedded-entry-behavior}
+### Comportement de Workflow 2.7.2 {#released-embedded-entry-behavior}
 
 Dans Workflow **2.7.2**, une erreur d’arité ou de type à l’entrée peut devenir un événement terminal `WorkflowFailed`. Certaines erreurs de résolution des dépendances laissent au contraire l’exécution ouverte avec une tâche qui échoue à répétition. Remplacer un scalaire par un DTO injecté dont le constructeur possède des valeurs par défaut peut même exécuter le workflow avec des données erronées. Ce sont des défauts du produit suivis dans [Workflow #866](https://github.com/durable-workflow/workflow/issues/866), pas une stratégie de versionnement sûre.
 
 Restaurer du code compatible peut récupérer une exécution ouverte pouvant être livrée à nouveau, mais ne rouvre pas une exécution déjà terminale. Ni `repair()` ni une nouvelle branche de version ne promettent de ressusciter cet original échoué. Inspectez d’abord son état et son échec réels ; préservez son entrée et son historique pendant le choix de la récupération.
 
-### Protection embarquée à venir — non publiée {#embedded-entry-argument-safeguard}
+### Protection embarquée publiée {#embedded-entry-argument-safeguard}
 
-Le candidat dans [Workflow #867](https://github.com/durable-workflow/workflow/pull/867) valide les arguments d’entrée avant d’entrer dans le code applicatif. Une liaison incompatible produit une `WorkflowEntryArgumentsMismatchException` typée et une **tâche de workflow** bloquée en relecture, avec `replay_blocked_reason = workflow_entry_arguments_mismatch` ; **l’exécution reste non terminale**. Les champs de diagnostic identifient le workflow, la méthode d’entrée, le paramètre et les types attendu et réel sans copier les valeurs des arguments. Un nouveau DTO injecté qui écarterait l’entrée enregistrée est également refusé. Cette section décrit le candidat non publié, pas une garantie d’une version installée.
+Workflow **2.7.3** valide les arguments enregistrés avant d’entrer dans le code applicatif. Une liaison incompatible produit une `WorkflowEntryArgumentsMismatchException` typée et une **tâche de workflow** bloquée en relecture, avec `replay_blocked_reason = workflow_entry_arguments_mismatch` ; **l’exécution reste non terminale**. Les champs de diagnostic identifient workflow, méthode d’entrée, paramètre et types attendu et réel sans copier les valeurs des arguments. Un nouveau DTO injecté qui écarterait l’entrée enregistrée est également refusé. Vérifiez le paquet Workflow réellement installé dans l’application embarquée. Cette protection ne rouvre pas les exécutions terminales créées par une version antérieure.
 
-Pour un runtime contenant cette protection qualifiée, la récupération suit ces étapes :
+Avec cette protection publiée, récupérez le même original encore ouvert comme suit :
 
 1. Inspectez le diagnostic de tâche de l’exécution sélectionnée et confirmez `workflow_entry_arguments_mismatch`, sans supposer que tout échec de tâche a cette cause.
 2. Restaurez une définition acceptant les arguments d’origine enregistrés, ou déployez un adaptateur compatible dans le corps du workflow. Préservez l’identité, l’entrée, l’historique et les échéances d’origine ; ne modifiez pas le stockage pour l’adapter à la nouvelle signature.
@@ -53,7 +53,7 @@ Une correction du Core embarqué ne change pas le processus SDK qui exécute le 
 | [Python 2.6.1](https://github.com/durable-workflow/sdk-python/tree/150c6f6bc14e3516f75cc615b2f75f093ed84ea1) | Appelle `run(ctx, *start_input)`. Une arité modifiée peut faire échouer le workflow ; les annotations de type seules n’imposent pas les types et ne convertissent pas les valeurs enregistrées. Les erreurs du corps du générateur sont aussi des échecs applicatifs. |
 | [Rust 3.5.5](https://github.com/durable-workflow/sdk-rust/tree/4d5047ba9da39785512340b0975ce28da09f0cee) | L’adaptateur typé désérialise l’entrée avant d’appeler son gestionnaire à signature fixe. Une modification du type de requête peut faire échouer ce décodage. Cela diffère de la liaison positionnelle PHP/Python ; un refus incident dû à un historique non consommé ne garantit pas une protection récupérable des signatures. |
 
-Distinguez la compatibilité des entrées du service et la qualification réelle du SDK du candidat embarqué. Ne capturez pas tous les `TypeError` ni toutes les erreurs de gestionnaire Rust pour les déclarer sûrs à relire : cela masquerait de véritables échecs applicatifs.
+Séparez la compatibilité des entrées en mode service et la qualification réelle des SDK de la version embarquée publiée. Ne capturez pas tous les `TypeError` ou toutes les erreurs des handlers Rust pour les déclarer sûrs pour la relecture : cela masquerait de véritables échecs applicatifs.
 
 ## Utiliser `getVersion` {#using-getversion}
 
