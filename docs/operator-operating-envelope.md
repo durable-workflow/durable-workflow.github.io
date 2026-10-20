@@ -549,6 +549,26 @@ candidate counts, selected counts, maximum candidate age, and scan-limit
 pressure to decide whether repair work is comfortably within your baseline or
 needs capacity investigation.
 
+### Retention and projection drift
+
+With Workflow 2.6.3 or later, a retained run marked `details_pruned_at` does not
+count as a missing run summary, rebuild debt or missing-summary age. The run
+still contributes to the drift report's `runs` total. Every projection rebuild mode skips
+it, including explicit run or instance selection, so a repair does not restore
+its deleted list row or return it to retention selection.
+
+An unmarked run without a summary still reports drift. Empty history alone
+does not prove that an older retention job pruned it. Confirm intentional
+cleanup from an authoritative retention record before choosing remediation.
+Projection rebuild cannot recover deleted history. Use an appropriate backup
+when that history is required.
+
+Earlier runtimes can falsely report marked pruned runs as missing summaries.
+Upgrade the runtime before using a rebuild to address that retention warning.
+After a retention pass, verify that `run_summary_projection` is `ok`,
+`projections.run_summaries.needs_rebuild` is zero, and later retention passes
+do not select the same pruned runs. Genuine projection loss still needs repair.
+
 ## Export and archive verification
 
 History export and archive serve different purposes:

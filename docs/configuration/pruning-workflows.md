@@ -7,7 +7,11 @@ sidebar_position: 6
 Workflow v2 separates two distinct lifecycle operations:
 
 1. **Archive** — marks a terminal run as archived so it is excluded from active fleet views. Archiving does **not** delete any rows.
-2. **Prune** — removes stale projection or durable rows from the database. Pruning should only run against archived runs.
+2. **Prune** — removes eligible retained details or orphaned projections. The embedded cleanup API requires a terminal, closed run and checks its retention holds. Your host chooses the retention policy; archiving is not an API prerequisite.
+
+Server has a separate namespace retention policy: its automatic retention skips
+archived runs. Archiving a Server run therefore protects it from that cleanup;
+it is not a preparatory step for automatic deletion.
 
 ## Archiving terminal runs
 
@@ -68,11 +72,33 @@ php artisan workflow:v2:rebuild-projections --prune-stale
 
 ## Pruning durable rows
 
-Durable rows (`workflow_instances`, `workflow_runs`, `workflow_history_events`, `workflow_tasks`, `activity_executions`, `activity_attempts`, `workflow_failures`, etc.) should only be deleted once the run has been archived and retention is definitely over. Because these rows are referenced by typed history and lineage, pruning must be done in dependency order. The package does not yet ship an end-to-end durable prune command — if you need to reclaim disk space, do it with a scoped cleanup job that:
+Embedded hosts can use the shipped cleanup API after enforcing their retention
+policy and verifying any required export or recovery copy:
 
-1. Targets runs where `archived_at IS NOT NULL AND archived_at <= now()->subMonths(3)`.
-2. Deletes dependent rows first (history events, tasks, activity attempts, activity executions, failures, timers, links, commands).
-3. Deletes the `workflow_runs` row, then the `workflow_instances` row once all runs are removed.
-4. Rebuilds projections with `workflow:v2:rebuild-projections --prune-stale` to clean up any orphaned projection rows.
+```php
+use Workflow\V2\Support\WorkflowRunRetentionCleanup;
 
-Track the archival retention window and durable retention window separately. Archived-but-not-pruned runs are still available for history export and incident review.
+$report = WorkflowRunRetentionCleanup::pruneRun($runId);
+```
+
+`pruneRun()` locks the selected run and removes its detail rows in one storage
+transaction. It refuses a nonterminal run, a missing close time or an open
+detached activity (`detached_activity_still_open`). The host remains responsible
+for selecting the correct authorized run and enforcing its retention window.
+`retentionHoldReason($runId)` can inspect the detached-activity hold; the prune
+operation checks it again before deletion.
+
+Keep `workflow_runs` and `workflow_instances`. The run remains a terminal
+tombstone with `details_pruned_at`; repeated cleanup preserves the first marker.
+Root input/output fields remain in the run row, so account for their storage
+separately. Do not recreate the deleted summaries or history with a projection
+rebuild. An export taken after pruning cannot recover deleted history; the
+export-completeness limitation is tracked in
+[Workflow #856](https://github.com/durable-workflow/workflow/issues/856).
+
+This API deletes database details. The host owns external-object retention and
+cleanup, including references from retained roots, detached work and active
+backup/recovery holds. Follow the
+[external payload lifecycle](../features/external-payload-storage.md) before
+removing objects. Verify the export and any required external bytes **before**
+pruning. Archived runs with retained details remain available for incident review.
