@@ -598,6 +598,15 @@ Use this verification sequence:
    and instance tombstones. A projection rebuild does not restore pruned
    history, and marked pruned runs are excluded from rebuilding.
 
+Checksum and structure checks do not prove that an export contains all original
+events or independent external bytes. Reject already-pruned sources; the false
+complete-export flag remains an open defect in
+[Workflow #856](https://github.com/durable-workflow/workflow/issues/856).
+The self-contained verified archive operation requested in
+[Server #520](https://github.com/durable-workflow/server/issues/520) is also
+not delivered by this manual procedure. Keep those product gaps separate from
+the recovery checks your deployment actually passed.
+
 For Waterline users, the matching history-export and archive routes are listed
 in the [Waterline Operator API Reference](./waterline-operator-api.md).
 

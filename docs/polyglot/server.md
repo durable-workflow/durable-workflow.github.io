@@ -360,6 +360,13 @@ covers `CloseTime` selection, pagination, external bytes and export-before-prune
 reconciliation. The published API has no unarchive operation. An archived run
 therefore cannot later be removed through Server retention passes.
 
+Current history exports preserve external references, not an independent copy
+of their objects. The self-contained verified archive workflow is requested in
+[Server #520](https://github.com/durable-workflow/server/issues/520), not supplied
+by an export plus a checksum. Also reject already-pruned history rather than
+trusting its `history_complete` flag; the known false-complete case remains open
+in [Workflow #856](https://github.com/durable-workflow/workflow/issues/856).
+
 Pruning removes history, related details and eligible external payloads. A
 later policy extension cannot recover them. The [embedded pruning guide](../configuration/pruning-workflows.md)
 describes a separate application-owned process; its cleanup API does not apply

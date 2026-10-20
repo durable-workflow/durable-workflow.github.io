@@ -276,6 +276,8 @@ Pour conserver plus longtemps que 1 à 365 jours, choisissez entre l’historiqu
 
 Le nettoyage supprime historique, détails associés et payloads externes éligibles. Allonger la politique ensuite ne les récupère pas. Le [guide de nettoyage intégré](../configuration/pruning-workflows.md) décrit un processus distinct, géré par l’application, dont l’API n’applique pas la politique de namespace Server. Pour un autre runtime, vérifiez sa rétention avant d’appliquer cette procédure PHP.
 
+Les exports actuels préservent les références externes, pas une copie indépendante de leurs objets. Le processus d’archive autonome vérifiée est demandé dans [Server #520](https://github.com/durable-workflow/server/issues/520) ; un export et sa somme de contrôle ne le fournissent pas. Refusez aussi les historiques déjà nettoyés plutôt que de faire confiance à leur indicateur `history_complete` : le cas connu de fausse complétude reste ouvert dans [Workflow #856](https://github.com/durable-workflow/workflow/issues/856).
+
 ### Espaces de noms {#namespaces}
 
 `server-bootstrap` exécute les migrations et crée le namespace `default`. Utilisez `DW_DEFAULT_NAMESPACE` pour changer celui utilisé lorsqu’une requête omet l’en-tête de namespace :

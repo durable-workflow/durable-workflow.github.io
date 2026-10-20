@@ -391,6 +391,8 @@ Workflow 2.6.3 及更新版本中，标记 `details_pruned_at` 的保留运行�
 
 Waterline 对应导出与归档路由见 [Waterline 运维 API 参考](./waterline-operator-api.md)。
 
+校验和与结构检查不能证明导出包含全部原始事件或独立的外部字节。请拒绝已清理的来源；错误的“完整导出”标记仍是 [Workflow #856](https://github.com/durable-workflow/workflow/issues/856) 中的未解决缺陷。此手动流程也没有交付 [Server #520](https://github.com/durable-workflow/server/issues/520) 要求的自包含且经过验证的归档操作。请将这些产品缺口与部署实际通过的恢复检查分开看待。
+
 ## 备份、恢复与灾难恢复契约 {#backup-restore-and-disaster-recovery-contract}
 
 备份、恢复与灾难恢复属于运维边界，不是可选私有手册。每个支持拓扑都应公布并演练以下事实：
