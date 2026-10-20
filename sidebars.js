@@ -20,6 +20,7 @@ const sidebars = {
         'polyglot/server',
         'polyglot/cancellation',
         'polyglot/workflow-streams',
+        'polyglot/polling-patterns',
         {
           type: 'category',
           label: 'CLI',
