@@ -215,8 +215,15 @@ The current structural limits configuration is included in the v2 health check s
 
 The backend capabilities snapshot publishes the full structural-limit contract adjusted for the current infrastructure. Most limits are backend-independent configuration values, but certain backends impose additional constraints:
 
-- **SQS queue** — Amazon SQS caps delayed message delivery at 900 seconds, so the capability snapshot includes `max_single_timer_delay_seconds: 900`. Timers exceeding this are chunked by the transport layer.
+- **SQS queue**: [Standard SQS message delays](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-message-timers.html) are capped at 900 seconds. Longer timer, activity-retry and workflow-task delays are chunked by the transport layer. The capability snapshot retains `max_single_timer_delay_seconds: 900` for compatibility.
 - **SQLite database** — SQLite serializes writes, so the snapshot notes `concurrent_write_safety: limited`. High pending-count limits may cause lock contention under concurrent worker load.
+
+An early SQS delivery schedules another capped message without leasing the
+durable task, spending an execution attempt, writing execution history or running
+user code. The original `available_at` stays unchanged. Once due, the task follows
+normal execution and duplicate-delivery fencing. Overall workflow and activity
+deadlines keep running during the wait, so choose a backoff that fits those
+budgets. Queue drivers without a delay cap retain the exact requested delay.
 
 The full contract is available in the `structural_limits` section of the backend capabilities response:
 
@@ -231,7 +238,7 @@ The full contract is available in the `structural_limits` section of the backend
         "component": "structural_limits",
         "severity": "info",
         "code": "queue_max_delay_constraint",
-        "message": "The [sqs] queue driver limits delayed dispatch to 900 seconds; timers exceeding this are chunked by the transport layer."
+        "message": "The [sqs] queue driver limits delayed dispatch to 900 seconds; longer task delays are chunked by the transport layer."
       }
     ]
   }
