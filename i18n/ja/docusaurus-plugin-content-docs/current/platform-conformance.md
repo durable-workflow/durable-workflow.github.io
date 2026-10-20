@@ -153,7 +153,7 @@ ID・基準は [`static/platform-conformance/saga-runtime-scenarios.json`](pathn
 
 `worker_versioning_runtime_contract` は安定ランタイムカテゴリです。公開成果物でビルド ID 登録、運用ロールアウト可視性、ドレイン・再開、実行別互換性固定、互換 Worker のみのリプレイ、新規開始の昇格版ルーティング、キャッシュ追放後リプレイ、互換 Worker 不在診断、CLI・Waterline、PHP/Python 横断固定、版を上げない敵対的動作、履歴 API 版固定を検証します。全必須セルを `pass`、`fail`、`unsupported`、`not_covered`、`runner_blocked` とリンク付きで記録するまで、部分 smoke は不適合です。`pass` だけを数えます。
 
-PHP/Python 固定証拠は、Worker ランタイム、ワークフロー・実行 ID、キューのロールアウト状態、固定を検証する公開 poll・更新結果、公開 Worker 成果物の導入元・版、ローカル製品ソースを使っていない確認を記録します。
+PHP/Python 固定証拠は、Worker ランタイム、ワークフロー・実行 ID、キューのロールアウト状態、固定を検証する公開ポーリングとロールアウトの結果、公開 Worker 成果物の導入元・版、ローカル製品ソースを使っていない確認を記録します。
 
 ID・基準は [`static/platform-conformance/worker-versioning-runtime-scenarios.json`](pathname:///platform-conformance/worker-versioning-runtime-scenarios.json) にあります。
 

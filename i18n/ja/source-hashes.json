@@ -89,5 +89,6 @@
   "constraints/structural-limits.md": "dec64eb7c8261b64a687938072e73dadf519511b132fc7b6542c96f44a8d3037",
   "features/schedules.md": "73dd4d49bfb61d5ecafc0fb799136fc170d8cd33781ff00f40893efe4e0de0d6",
   "polyglot/worker-protocol.md": "007e844b0a7ab284b7cd343e79f01a27a0dabee3fe4cf19064170581bb897b85",
-  "features/webhooks.md": "edcdfc05ccb0d34a77c51594f85bc3cab343e787f8e0e08d2cd4ddebd048e8c8"
+  "features/webhooks.md": "edcdfc05ccb0d34a77c51594f85bc3cab343e787f8e0e08d2cd4ddebd048e8c8",
+  "platform-conformance.md": "2eec7eba9a65c010e03c4b2eb78afe4dddd6fd8170218b3194c49e3777124c91"
 }
