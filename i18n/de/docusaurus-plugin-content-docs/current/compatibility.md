@@ -40,9 +40,7 @@ Derselbe Vertrag wird maschinenlesbar veröffentlicht, damit SDKs, Servermanifes
 - Ein eingefrorener Spiegel desselben Manifests in diesem Repository unter `static/compatibility-contract.json`.
 - Die PHP-Klasse `Workflow\V2\Support\SurfaceStabilityContract` als prozessinterne Quelle, die der Server erneut exportiert.
 
-Die Zulassung von Artefaktkanälen wird separat durch [`/public-artifact-release-policy.json`](pathname:///public-artifact-release-policy.json) geregelt. Diese unabhängig geprüfte Richtlinie bestimmt, welche 2.0-Kanäle zum kanonischen öffentlichen Tupel werden dürfen.
-
-Eine Veröffentlichung, die eine unten aufgeführte Schnittstelle verändert, etwa Stabilitätsstufe, Feldmenge oder Regeln für inkompatible Änderungen, muss diese Seite, den JSON-Spiegel, das PHP-Manifest und alle paketspezifischen Stabilitätsdokumente gemeinsam aktualisieren. Die Dokumentations-CI validiert den maschinenlesbaren Vertrag, die Richtlinie zur Artefakt-Veröffentlichungsphase, veröffentlichte Rust-Metadaten soweit verfügbar und Worker-Protokollspezifikationen. Die redaktionelle Übereinstimmung dieser Seite mit dem Manifest bleibt eine ausdrückliche Aufgabe der Veröffentlichungsprüfung.
+Eine Veröffentlichung, die eine unten aufgeführte Schnittstelle verändert, etwa Stabilitätsstufe, Feldmenge oder Regeln für inkompatible Änderungen, muss diese Seite, den JSON-Spiegel, das PHP-Manifest und alle paketspezifischen Stabilitätsdokumente gemeinsam aktualisieren. Die Dokumentations-CI validiert den maschinenlesbaren Vertrag, veröffentlichte Rust-Metadaten soweit verfügbar und Worker-Protokollspezifikationen. Die redaktionelle Übereinstimmung dieser Seite mit dem Manifest bleibt eine ausdrückliche Aufgabe der Veröffentlichungsprüfung.
 
 ## Ergänzung: Katalog der Plattform-Protokollspezifikationen {#companion-platform-protocol-spec-catalog}
 
