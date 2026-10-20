@@ -208,7 +208,7 @@ zuerst abgeschlossen, liefert `await()` weiterhin dieses Ergebnis.
 
 **Vorbereitung einer noch nicht veröffentlichten Version.** Der Einstiegsschutz im PHP SDK 2.5.4 und die Routing-/Wiederherstellungsunterstützung in Server 2.9.9 sind im Quellcode zusammengeführt. Veröffentlichung und Prüfung der installierten Artefakte stehen noch aus.
 
-Der verwaltete Worker prüft die aufgezeichnete positionelle Eingabe des Handlers vor dem Eintritt in dessen Fiber. Fehlende erforderliche Argumente oder inkompatible deklarierte PHP-Typen lösen `DurableWorkflow\\Exception\\WorkflowEntryArgumentsMismatch` aus und melden den Aufgabengrund `workflow_entry_arguments_mismatch`. Optionale Standardwerte gelten nur für ausgelassene Eingaben; sie ersetzen niemals einen inkompatiblen aufgezeichneten Wert. Ein `TypeError` nach erfolgreichem Einstieg bleibt ein Anwendungsfehler.
+Der verwaltete Worker prüft die aufgezeichnete positionelle Eingabe des Handlers vor dem Eintritt in dessen Fiber. Fehlende erforderliche Argumente oder inkompatible deklarierte PHP-Typen lösen `DurableWorkflow\Exception\WorkflowEntryArgumentsMismatch` aus und melden den Aufgabengrund `workflow_entry_arguments_mismatch`. Optionale Standardwerte gelten nur für ausgelassene Eingaben; sie ersetzen niemals einen inkompatiblen aufgezeichneten Wert. Ein `TypeError` nach erfolgreichem Einstieg bleibt ein Anwendungsfehler.
 
 Der Worker kündigt `workflow_entry_arguments_validation` automatisch an. Mit der passenden Serverunterstützung wird eine abgelehnte Aufgabe für Replay blockiert, während der ursprüngliche Lauf nichtterminal bleibt. Eine ältere Laufzeit kann die fehlgeschlagene Aufgabe stattdessen wiederholen; ein SDK-Upgrade allein belegt daher nicht den vollständigen Wiederherstellungsvertrag.
 
