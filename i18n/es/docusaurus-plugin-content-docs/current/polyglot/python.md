@@ -654,10 +654,94 @@ paridad de validación.
 | `ctx.get_version(change_id, min, max)` | Versionado seguro del código del workflow |
 | `ctx.upsert_search_attributes(attrs)` | Actualiza atributos de búsqueda |
 | `ctx.continue_as_new(*args)` | Reinicia el workflow con otra entrada |
-| `ctx.now()` | Reloj determinista desde historial |
+| `ctx.now()` | Hora de inicio persistida del workflow, fija durante este run |
 | `ctx.random()` | Generador aleatorio con semilla |
 | `ctx.uuid4()` | UUID determinista |
 | `ctx.logger` | Logger silencioso durante la reproducción |
+
+### Tiempo del workflow y esperas duraderas {#workflow-time-and-durable-waits}
+
+Durante la reproducción del worker, `ctx.now()` devuelve la **hora de inicio
+persistida del run**. No avanza tras una actividad, temporizador, señal ni otro
+paso duradero. Las reproducciones en frío del mismo historial devuelven ese
+mismo valor inicial. Un sucesor de continue-as-new tiene su propia hora de
+inicio; no conserva el ancla del reloj de su predecesor.
+
+La [implementación publicada de Python](https://github.com/durable-workflow/sdk-python/blob/150c6f6bc14e3516f75cc615b2f75f093ed84ea1/src/durable_workflow/workflow.py#L2594-L2601)
+usa `WorkflowStarted.payload.timestamp` cuando existe y, si no, el valor
+canónico `WorkflowStarted.recorded_at`. Si falta la hora persistida de
+reproducción o no es válida, se produce un error explícito de reloj, no se lee
+el reloj de pared del worker. Este es el contrato de inicio fijo acordado en
+[SDK #146](https://github.com/durable-workflow/sdk-python/issues/146).
+
+Espera una operación duradera en vez de repetir un bucle hasta que cambie `ctx.now()`:
+
+```python
+from durable_workflow import workflow
+
+
+@workflow.defn(name="wait_without_clock_loop")
+class WaitWithoutClockLoop:
+    def run(self, ctx):
+        started_at = ctx.now()
+        yield ctx.start_timer(30)
+        return {
+            "run_started_at": started_at.isoformat(),
+            "after_wait": ctx.now().isoformat(),
+        }
+```
+
+La finalización duradera del temporizador reanuda el workflow. Las dos marcas
+devueltas son la misma hora de inicio. Un bucle como `while ctx.now() < deadline`
+no pasa a falso solo porque se activen temporizadores.
+
+Para una demora relativa, usa `yield ctx.start_timer(seconds)` o
+`yield ctx.sleep(seconds)`. Usa la [selección de la primera finalización](#first-completion-selection)
+cuando el trabajo deba competir con un temporizador duradero. Configura
+`execution_timeout_seconds` y `run_timeout_seconds` en
+`client.start_workflow(...)` cuando Server deba aplicar un plazo al workflow,
+incluso con los workers detenidos. Un tiempo de espera HTTP o de `get_result()`
+solo limita esa petición local; no sustituye el plazo persistido del workflow.
+Para conservar un plazo de aplicación en continue-as-new, pásalo explícitamente
+como entrada sin sustituir el plazo de ejecución original de Server.
+
+Para medir el tiempo transcurrido dentro de una invocación de actividad, lee
+allí un reloj monotónico y devuelve la duración como resultado de la actividad.
+Para un plazo UTC externo, haz que una actividad consulte el reloj externo
+autoritativo y devuelva su decisión; el workflow reproduce ese resultado
+registrado. Nunca compares marcas UTC con valores monotónicos ni restes
+lecturas monotónicas de procesos o equipos diferentes. Restar `ctx.now()` no
+mide ni el tiempo de procesamiento activo ni el tiempo real transcurrido en Python.
+
+#### Diferencias entre los relojes de los SDK {#clock-differences-across-sdks}
+
+Estas API son deterministas cuando existen, pero no comparten un único reloj:
+
+| Interfaz de autoría | Llamadas repetidas y pasos duraderos | Sucesor de continue-as-new |
+| --- | --- | --- |
+| Python `ctx.now()` | Fija la hora de inicio persistida de este run, incluso después de un temporizador o actividad. | Usa el ancla inicial del run sucesor. |
+| PHP integrado `Workflow::now()` | Parte de la hora inicial del run y avanza a la hora registrada del evento consumido durante la reproducción. Consulta [tiempo del workflow](../features/timers.md#reading-deterministic-time). | Parte del nuevo run y avanza por sus propios eventos consumidos. |
+| SDK PHP en modo servicio | No hay un ayudante público general `now()` para workflows. Usa operaciones duraderas o valores registrados de actividades o efectos secundarios. | Pasa explícitamente el estado temporal de la aplicación si debe sobrevivir al traspaso. |
+| SDK Rust en modo servicio | No hay un ayudante público general `WorkflowContext::now()`. Un `side_effect` puede registrar una pequeña instantánea del reloj de pared; no es un reloj que avance. | Un efecto secundario en el nuevo run es otra operación; pasa explícitamente el estado temporal anterior si hace falta. |
+
+El comportamiento de PHP integrado existe en el
+[Core publicado](https://github.com/durable-workflow/workflow/blob/64efa176e4c37e5d6ae80e767ba3b41464024e53/src/V2/Support/WorkflowFiberContext.php).
+Los contextos independientes del [SDK PHP](https://github.com/durable-workflow/sdk-php/blob/2.5.2/src/Worker/WorkflowContext.php)
+y del [SDK Rust](https://github.com/durable-workflow/sdk-rust/blob/3.5.5/src/lib.rs)
+tienen sus propias API. Porta la operación duradera y la política de plazos
+sin suponer que un ayudante de reloj significa lo mismo en todos los SDK.
+
+#### Ordena eventos emitidos mediante secuencias {#order-emitted-events-with-sequence-values}
+
+Una marca temporal del workflow no es una clave de orden de eventos. Los
+eventos de Python marcados con `ctx.now()` pueden tener todos la misma hora.
+Usa [offsets de Workflow Streams](./workflow-streams.md), la
+[secuencia del outbox integrado](../features/message-streams.md) correspondiente
+o un contador determinista local al workflow. Combina un contador local al run
+con `run_id`; pásalo explícitamente por continue-as-new si la aplicación
+necesita una secuencia lógica única. Los streams o runs independientes no
+obtienen un orden global a partir de sus marcas temporales.
+
 
 ### Reintentos y plazos de actividades {#activity-retries-and-timeouts}
 
@@ -697,7 +781,7 @@ El código se reproduce desde historial. No debe realizar directamente operacion
 no deterministas:
 
 - Sin E/S (HTTP, lecturas de archivos, consultas de base)
-- Sin `datetime.now()` ni `time.time()`; usa `ctx.now()`
+- Sin `datetime.now()` ni `time.time()`; usa `ctx.now()` solo como ancla fija del inicio del run y temporizadores duraderos para esperar.
 - Sin `random.random()`; usa `ctx.random()`
 - Sin `uuid.uuid4()`; usa `ctx.uuid4()`
 
