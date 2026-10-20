@@ -162,7 +162,7 @@ class ChargeCard extends Activity
 }
 ```
 
-Quando uma atividade com falha transitória lança uma exceção antes de esgotar
+Quando uma atividade que permite novas tentativas lança uma exceção antes de esgotar
 `$tries`, o mecanismo encerra o registro atual de `activity_attempts` no
 estado do runtime, devolve o registro de `activity_executions` a `pending`,
 grava um evento tipado `ActivityRetryScheduled` e cria uma nova tarefa durável.
