@@ -12,6 +12,53 @@ Les workflows pouvant durer des mois, voire des années, il faut souvent modifie
 
 La fonction `getVersion()` permet de modifier en sécurité des workflows en cours en créant des points de branchement versionnés.
 
+## Faire évoluer les arguments d’entrée enregistrés {#evolving-recorded-entry-arguments}
+
+Une exécution conserve les arguments enregistrés à son démarrage. Déployer une nouvelle définition ne réécrit pas cette entrée. Pendant la relecture, le runtime lie ces valeurs à la méthode d’entrée actuelle du workflow **avant d’exécuter le moindre code dans son corps**. Une branche `getVersion()` ou `patched()` dans le corps ne peut pas sauver une signature incompatible : il faut d’abord pouvoir entrer dans la méthode.
+
+Conservez l’ordre des arguments positionnels existants et acceptez leurs types enregistrés. Une valeur par défaut PHP complète un argument omis ; elle ne remplace pas une valeur incompatible déjà enregistrée à cette position. Par exemple, une exécution démarrée avec `[7]` fournit toujours l’entier `7` après le déploiement :
+
+| Modification de l’entrée | Effet sur l’entrée enregistrée `[7]` |
+| --- | --- |
+| `handle(int $amount)` → `handle(int $amount, string $currency = 'USD')` | L’ancien argument reste compatible ; le nouvel argument final peut utiliser sa valeur par défaut. Préservez aussi la compatibilité des commandes relues. |
+| Ajouter un argument final obligatoire sans valeur par défaut | L’ancienne exécution ne dispose d’aucune valeur pour lui. |
+| Insérer, retirer ou réordonner les premiers arguments | Les valeurs existantes peuvent se retrouver dans le mauvais paramètre. Des noms de paramètres identiques ne corrigent pas une entrée positionnelle. |
+| Remplacer `int $amount` par `string $amount` | L’entier enregistré n’est pas devenu une chaîne. |
+| Remplacer `int $amount` par `PaymentRequest $request` | L’injection de dépendances n’est pas une migration des entrées. Un nouveau DTO ne doit pas remplacer le montant enregistré par les valeurs par défaut de son constructeur. |
+| Retirer uniquement un paramètre final | PHP peut accepter l’appel, mais vérifiez que supprimer sa signification ne modifie ni les commandes relues ni le comportement métier. |
+
+Préférez l’ajout d’un paramètre final facultatif ou un nouveau type de workflow pour un contrat d’entrée différent. Si vous avez besoin d’un nouveau DTO en interne, construisez-le explicitement à partir d’arguments enregistrés compatibles **dans** le corps du workflow et gérez à cet endroit les versions de toute modification des commandes durables. Conservez du code capable de relire chaque forme d’entrée prise en charge tant que ces exécutions en ont besoin. Testez les entrées réellement stockées avec la nouvelle définition, y compris une relecture à froid après une attente durable ; tester uniquement de nouveaux démarrages ne couvre pas cette limite du déploiement.
+
+### Comportement de Workflow 2.7.2 {#released-embedded-entry-behavior}
+
+Dans Workflow **2.7.2**, une erreur d’arité ou de type à l’entrée peut devenir un événement terminal `WorkflowFailed`. Certaines erreurs de résolution des dépendances laissent au contraire l’exécution ouverte avec une tâche qui échoue à répétition. Remplacer un scalaire par un DTO injecté dont le constructeur possède des valeurs par défaut peut même exécuter le workflow avec des données erronées. Ce sont des défauts du produit suivis dans [Workflow #866](https://github.com/durable-workflow/workflow/issues/866), pas une stratégie de versionnement sûre.
+
+Restaurer du code compatible peut récupérer une exécution ouverte pouvant être livrée à nouveau, mais ne rouvre pas une exécution déjà terminale. Ni `repair()` ni une nouvelle branche de version ne promettent de ressusciter cet original échoué. Inspectez d’abord son état et son échec réels ; préservez son entrée et son historique pendant le choix de la récupération.
+
+### Protection embarquée publiée {#embedded-entry-argument-safeguard}
+
+Workflow **2.7.3** valide les arguments enregistrés avant d’entrer dans le code applicatif. Une liaison incompatible produit une `WorkflowEntryArgumentsMismatchException` typée et une **tâche de workflow** bloquée en relecture, avec `replay_blocked_reason = workflow_entry_arguments_mismatch` ; **l’exécution reste non terminale**. Les champs de diagnostic identifient workflow, méthode d’entrée, paramètre et types attendu et réel sans copier les valeurs des arguments. Un nouveau DTO injecté qui écarterait l’entrée enregistrée est également refusé. Vérifiez le paquet Workflow réellement installé dans l’application embarquée. Cette protection ne rouvre pas les exécutions terminales créées par une version antérieure.
+
+Avec cette protection publiée, récupérez le même original encore ouvert comme suit :
+
+1. Inspectez le diagnostic de tâche de l’exécution sélectionnée et confirmez `workflow_entry_arguments_mismatch`, sans supposer que tout échec de tâche a cette cause.
+2. Restaurez une définition acceptant les arguments d’origine enregistrés, ou déployez un adaptateur compatible dans le corps du workflow. Préservez l’identité, l’entrée, l’historique et les échéances d’origine ; ne modifiez pas le stockage pour l’adapter à la nouvelle signature.
+3. Utilisez l’action de réparation prise en charge pour cette même exécution encore ouverte une fois le code compatible disponible. Vérifiez ensuite que le travail d’origine reprend et que son résultat terminal est enregistré une seule fois. La réparation ne prolonge pas l’échéance d’origine ; une échéance déjà dépassée s’applique toujours.
+
+La protection **ne** requalifie **pas** les exceptions levées dans le corps du workflow en incompatibilités de déploiement. Un véritable `TypeError` applicatif ou un autre échec non traité du corps suit toujours le comportement normal d’échec du workflow. Elle ne fournit pas non plus le contrôle à l’échelle de la flotte pour retirer les anciennes branches, suivi dans [shared #220](https://github.com/durable-workflow/.github/issues/220).
+
+### Les SDK en mode service ont leurs propres limites {#service-sdk-entry-boundaries}
+
+Une correction du Core embarqué ne change pas le processus SDK qui exécute le code du workflow en mode service. Voici les limites publiées vérifiées dans le code source ; la validation d’entrée récupérable équivalente reste ouverte dans [shared #221](https://github.com/durable-workflow/.github/issues/221) :
+
+| SDK publié | Comportement de liaison de l’entrée |
+| --- | --- |
+| [PHP 2.5.3](https://github.com/durable-workflow/sdk-php/tree/43d39bff50ccace0a309de41306cd350751ec575) | Appelle le gestionnaire enregistré avec le contexte suivi de l’entrée positionnelle enregistrée. Un `ArgumentCountError` ou `TypeError` à l’entrée peut suivre le chemin générique d’échec du workflow. |
+| [Python 2.6.1](https://github.com/durable-workflow/sdk-python/tree/150c6f6bc14e3516f75cc615b2f75f093ed84ea1) | Appelle `run(ctx, *start_input)`. Une arité modifiée peut faire échouer le workflow ; les annotations de type seules n’imposent pas les types et ne convertissent pas les valeurs enregistrées. Les erreurs du corps du générateur sont aussi des échecs applicatifs. |
+| [Rust 3.5.5](https://github.com/durable-workflow/sdk-rust/tree/4d5047ba9da39785512340b0975ce28da09f0cee) | L’adaptateur typé désérialise l’entrée avant d’appeler son gestionnaire à signature fixe. Une modification du type de requête peut faire échouer ce décodage. Cela diffère de la liaison positionnelle PHP/Python ; un refus incident dû à un historique non consommé ne garantit pas une protection récupérable des signatures. |
+
+Séparez la compatibilité des entrées en mode service et la qualification réelle des SDK de la version embarquée publiée. Ne capturez pas tous les `TypeError` ou toutes les erreurs des handlers Rust pour les déclarer sûrs pour la relecture : cela masquerait de véritables échecs applicatifs.
+
 ## Utiliser `getVersion` {#using-getversion}
 
 `getVersion()` est une fonction séquentielle sûre à relire. Chaque point de changement enregistre un marqueur durable de version lors de la première exécution. Les relectures réutilisent cette valeur validée au lieu de recalculer la branche d’après le code actuel. Par prudence, les exécutions antérieures à un nouveau point de branchement reçoivent `DEFAULT_VERSION`.

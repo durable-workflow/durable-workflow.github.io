@@ -12,6 +12,53 @@ Since workflows can run for long periods, sometimes months or even years, it's c
 
 The `getVersion()` helper function allows you to safely introduce changes to running workflows by creating versioned branch points.
 
+## Evolving Recorded Entry Arguments {#evolving-recorded-entry-arguments}
+
+A run keeps the arguments recorded when it started. Deploying a new definition does not rewrite that input. On replay, the runtime binds those recorded values to today's workflow entry method **before any code inside that method runs**. A `getVersion()` or `patched()` branch inside the body cannot rescue an incompatible signature: the runtime has to enter the body first.
+
+Keep existing positional arguments in the same order and accept their recorded types. A PHP default fills an omitted argument; it does not replace an incompatible value already recorded at that position. For example, a run started with `[7]` still supplies the integer `7` after deployment:
+
+| Entry change | Effect on the recorded input `[7]` |
+| --- | --- |
+| `handle(int $amount)` → `handle(int $amount, string $currency = 'USD')` | The old argument still binds; the new trailing argument can use its default. Keep replayed commands compatible too. |
+| Add a required trailing argument without a default | The old run has no value for it. |
+| Insert, remove or reorder leading arguments | Existing values can move into the wrong parameter. Do not assume matching parameter names repair positional input. |
+| Change `int $amount` to `string $amount` | The recorded integer has not become a string. |
+| Change `int $amount` to `PaymentRequest $request` | Dependency injection is not an input migration. A newly constructed DTO must not replace the recorded amount with constructor defaults. |
+| Remove only a trailing parameter | PHP can accept the call, but verify that dropping its meaning does not change replayed commands or business behavior. |
+
+Prefer an additive, optional trailing parameter or a new workflow type for a different input contract. If you need a new DTO internally, construct it explicitly from compatible recorded arguments **inside** the workflow body and version any change to durable commands there. Keep code able to replay every supported input shape until those runs no longer need it. Test the actual stored inputs against the new definition, including a cold replay after a durable wait; testing only new starts misses this deployment boundary.
+
+### Workflow 2.7.2 Behavior {#released-embedded-entry-behavior}
+
+In Workflow **2.7.2**, an entry arity or type error can become a terminal `WorkflowFailed` event. Some dependency-resolution errors instead leave the run open with a repeatedly failing task. A scalar changed to a newly injected DTO with default constructor values can even run with the wrong data. These are product defects tracked in [Workflow #866](https://github.com/durable-workflow/workflow/issues/866), not a safe versioning strategy.
+
+Restoring compatible code can recover an open run that can be redelivered, but it does not reopen a run already made terminal. Neither `repair()` nor a new version branch promises to revive such a failed original. Inspect its actual status and failure first; preserve its input and history while deciding on recovery.
+
+### Released Embedded Safeguard {#embedded-entry-argument-safeguard}
+
+Workflow **2.7.3** validates recorded entry arguments before entering application code. Incompatible binding becomes a typed `WorkflowEntryArgumentsMismatchException` and a replay-blocked **workflow task**, with `replay_blocked_reason = workflow_entry_arguments_mismatch`; the **run stays nonterminal**. Diagnostic fields identify the workflow, entry method, parameter and expected/actual types without copying argument values. A newly injected DTO that would discard recorded input is refused too. Check the actual Workflow package installed in the embedded application. This safeguard does not reopen terminal runs created by an older release.
+
+With that released safeguard, recover the same still-open original as follows:
+
+1. Inspect the selected run's task diagnostic and confirm `workflow_entry_arguments_mismatch`, rather than assuming every task failure has this cause.
+2. Restore a definition that accepts the original recorded arguments, or deploy a compatible adapter in the workflow body. Keep the original workflow identity, input, history and deadlines; do not edit storage to make the new signature fit.
+3. Use the supported repair action for that same still-open run after compatible code is available, then verify its original work resumes and its terminal outcome is recorded once. Repair does not extend the original deadline; a deadline that has elapsed still applies.
+
+The safeguard does **not** reinterpret exceptions thrown by the workflow body as deployment mismatches. A genuine application `TypeError` or other unhandled body failure still follows normal workflow failure behavior. It also does not supply the fleet-level legacy-branch retirement check tracked in [shared #220](https://github.com/durable-workflow/.github/issues/220).
+
+### Service SDKs Have Separate Boundaries {#service-sdk-entry-boundaries}
+
+An embedded Core fix does not change the SDK process that executes service-mode workflow code. The following are the source-verified published boundaries; equivalent recoverable entry validation remains open in [shared #221](https://github.com/durable-workflow/.github/issues/221):
+
+| Published SDK | Entry-binding behavior |
+| --- | --- |
+| [PHP 2.5.3](https://github.com/durable-workflow/sdk-php/tree/43d39bff50ccace0a309de41306cd350751ec575) | Calls the registered handler with context followed by recorded positional input. An entry `ArgumentCountError` or `TypeError` can follow the generic workflow-failure path. |
+| [Python 2.6.1](https://github.com/durable-workflow/sdk-python/tree/150c6f6bc14e3516f75cc615b2f75f093ed84ea1) | Calls `run(ctx, *start_input)`. Changed arity can fail the workflow; type annotations alone do not enforce argument types or convert recorded values. Generator-body errors are application failures too. |
+| [Rust 3.5.5](https://github.com/durable-workflow/sdk-rust/tree/4d5047ba9da39785512340b0975ce28da09f0cee) | The typed adapter deserializes input before calling its fixed-signature handler. A changed request type can fail that decoding step. This differs from PHP/Python positional binding; an incidental unconsumed-history refusal is not a promised recoverable signature safeguard. |
+
+Keep service input compatibility and actual SDK qualification separate from the embedded release. Do not catch every `TypeError` or every Rust handler error and label it replay-safe: that would hide real application failures.
+
 ## Using `getVersion`
 
 `getVersion()` is a replay-safe straight-line helper. Each change point records a durable version marker for the run on first execution, and every later replay reuses that committed value instead of recalculating the branch from today's code. Old runs that predate a newly introduced branch point conservatively receive `DEFAULT_VERSION`.
