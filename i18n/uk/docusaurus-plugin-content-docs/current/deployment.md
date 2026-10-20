@@ -87,7 +87,7 @@ Cloud зараз надає керовану роботу та recovery в од�
 
 | Область | Точне твердження випуску |
 | --- | --- |
-| Обробка даних | Аргументи workflow, результати, історія, memos, search attributes, мітки видимості, контекст команд, рядки аудиту, повідомлення винятків та операторські notes можуть містити дані застосунку клієнта. Search attributes і мітки є видимими оператору metadata, а не сховищем секретів. |
+| Обробка даних | Аргументи workflow, результати, історія, memos, search attributes, мітки видимості, контекст команд, рядки аудиту, повідомлення винятків та операторські notes можуть містити дані застосунку клієнта. [Ідентифікатори workflow](./defining-workflows/workflow-id.md#ids-are-visible-metadata), search attributes і мітки є видимими оператору метаданими, а не сховищем секретів. Ідентифікатори workflow залишаються відкритим текстом і не охоплюються кодеками payload. |
 | Шифрування | Використовуйте TLS на кожній production HTTP-поверхні. Шифрування at rest надають база, object storage, файлова система, черга, cache та secret manager. Пакет workflow і Server не шифрують автоматично кожне поле payload. |
 | Compliance | Open-source пакет та власний Server надають механізми й дані аудиту, а не саму compliance-сертифікацію. Твердження SOC 2, HIPAA, PCI, ISO чи FedRAMP належать вашій програмі, якщо hosted offering не документує інше. |
 | Логи аудиту | Команди workflow, audit events schedules, metadata exports історії та записи service calls надають durable-операційні дані. Повний SIEM, DLP, незмінний зовнішній ledger чи legal-hold system потребує додаткових компонентів. |
