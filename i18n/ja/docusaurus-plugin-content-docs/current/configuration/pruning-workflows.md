@@ -54,7 +54,7 @@ curl --fail-with-body --get "$DURABLE_WORKFLOW_SERVER_URL/api/workflows" \
   --data-urlencode "page_size=200"
 ```
 
-`workflows` の各項目から `workflow_id`、`run_id`、`closed_at` を読みます。応答の `next_page_token` が `null` になるまで、同じリクエストに `next_page_token` を付けて続けます。失敗などの終了結果を漏らさないため、`status=completed` のみに限定しないでください。ページング中は時間範囲を変えず、取得中の summary が削除されないように保護します。
+`workflows` の各項目から `workflow_id`、`run_id`、`closed_at` を読みます。応答が `next_page_token: null` になるまで、同じリクエストに `next_page_token` を付けて続けます。失敗などの終了結果を漏らさないため、`status=completed` のみに限定しないでください。ページング中は時間範囲を変えず、取得中の summary が削除されないように保護します。
 
 選択した各組について、バンドルをエクスポートして保存します。
 
