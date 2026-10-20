@@ -57,7 +57,7 @@ Arquivos publicados de `config/workflows.php` podem substituir
 `stored_workflow_exception_model`. Um modelo substituto também pode alterar
 sua `$table` do Eloquent. `workflow_relationships_table` controla separadamente
 a tabela de relações. Faça backup das tabelas e da conexão de armazenamento
-resolvidas por esses modelos configurados, além dos nomes padrão.
+resolvidas por esses modelos configurados, não apenas as tabelas com os nomes padrão.
 
 **2. Escolha uma fronteira de reversão e deixe o trabalho da v1 quiescente**
 
