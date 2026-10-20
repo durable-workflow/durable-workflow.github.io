@@ -357,7 +357,7 @@ aktuellen SLA-Pläne.
 | Cloud Business | 0.50 | 2,592,000 | Historisch; erneute Messung ausstehend |
 | Cloud Business Multi-Region | 0.20 | 1,036,800 | Historisch; erneute Messung ausstehend |
 
-Die 30-Tage-Schätzung ist `Workflows/Sekunde x 2,592,000 Sekunden x 2 Workflow-Aktionen`:
+Die 30-Tage-Schätzung ist `workflows/second x 2,592,000 seconds x 2 workflow actions`:
 ein Start und eine Aktivität für diesen Vergleich. Sie setzt diese Rate
 ununterbrochen über 30 Tage voraus. Sie ist weder enthaltenes Aktionskontingent
 noch Abrechnungseinheit oder exakte Zuordnung zu Aktionsdefinitionen anderer Engines.
