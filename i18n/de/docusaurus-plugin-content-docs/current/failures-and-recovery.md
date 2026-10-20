@@ -24,7 +24,9 @@ Die [Ausführungsgarantien und Idempotenz](./constraints/execution-guarantees.md
 
 ## Exceptions behandeln {#handling-exceptions}
 
-Wirft eine Aktivität eine Exception, erhält der Workflow sie erst, wenn alle `$tries` ausgeschöpft sind. Bis dahin wiederholt das System die Aktivität gemäß ihrer Wiederholungsrichtlinie. Für eine sofortige Weitergabe der Exception setzen Sie `$tries` auf 1.
+`Workflow\V2\Activity` verwendet standardmäßig `$tries = 1`: einen Versuch, ohne automatische Wiederholung nach einer Exception. Der erste Aktivitätsfehler wird an den Workflow zurückgegeben. Der Workflow-Code kann ihn wie unten abfangen; bleibt die Exception unbehandelt, schlägt der Lauf fehl und wird terminal.
+
+Wiederholungen müssen ausdrücklich konfiguriert werden. Setzen Sie `$tries` für weitere Versuche auf einen Wert über `1` oder für unbegrenzt viele Versuche auf `0`, und wählen Sie eine `backoff()`-Richtlinie. Ein wiederholbarer Fehler wird erst nach Ausschöpfung des konfigurierten Versuchs- oder Zeitbudgets an den Workflow-Code weitergegeben. Ein nicht wiederholbarer Fehler überspringt die verbleibenden Versuche.
 
 ```php
 use Exception;
@@ -78,17 +80,23 @@ class MyNonRetryableActivity extends Activity
 
 ## Wiederherstellungsverfahren {#recovery-process}
 
-So beheben Sie eine fehlschlagende Aktivität:
+Prüfen Sie zuerst den dauerhaften Status des ausgewählten Laufs und die Wiederholungsrichtlinie der Aktivität. Mit dem standardmäßigen Einzelversuch hat ein unbehandelter Aktivitätsfehler den Lauf bereits terminal gemacht. Eine Fehlerkorrektur bereitzustellen oder `repair()` aufzurufen öffnet diesen fehlgeschlagenen Lauf nicht erneut.
+
+Eine Korrektur während des Wartens ist nur möglich, solange die Aktivität noch einen zulässigen Wiederholungsversuch hat. Konfigurieren Sie `$tries` vor dem Einplanen der Aktivität auf einen Wert über `1` oder für unbegrenzt viele Versuche auf `0`, zusammen mit `backoff()`. Optional begrenzt `ActivityOptions::$scheduleToCloseTimeout` die Gesamtdauer über alle Aktivitätsversuche; Workflow-Fristen gelten weiterhin. Siehe [Wiederholungen](./configuration/options.md#retries), [Wartezeiten](./configuration/options.md#backoff) und [ActivityOptions](./configuration/options.md#activityoptions). Die Richtlinie wird beim Einplanen gespeichert. Eine spätere Bereitstellung erweitert weder das Versuchs- noch das Zeitbudget einer bestehenden Aktivität.
+
+Für einen Lauf, der noch auf eine wiederholbare Aktivität wartet:
 
 1. Prüfen Sie die Aktivitätsprotokolle auf Fehler und Exceptions.
 2. Ermitteln und beheben Sie die Ursache im Code.
-3. Stellen Sie die Korrektur dort bereit, wo die Queue ausgeführt wird.
+3. Stellen Sie die Korrektur dort bereit, wo die Queue-Worker laufen.
 4. Starten oder ersetzen Sie die betroffenen Worker, damit sie den neuen Code laden und Arbeit sicher übernehmen können.
-5. Warten Sie auf den nächsten Aktivitätsversuch oder darauf, dass Reparatur beziehungsweise erneute Zustellung die dauerhafte Aufgabe einem gesunden Worker übergibt.
+5. Lassen Sie einen gesunden Worker den nächsten zulässigen Versuch ausführen. Reparatur und erneute Zustellung können verlorenen Aufgabentransport wiederherstellen; sie gewähren nach Abschluss der Aktivität oder des Laufs keinen weiteren fachlichen Wiederholungsversuch.
 6. Prüfen Sie das dauerhafte Ergebnis in Waterline, im Historienexport oder über die Server-API. Eine einzelne Worker-Protokollzeile ist nicht maßgeblich.
-7. Schlägt die Aktivität weiterhin fehl, wiederholen Sie die Diagnose.
+7. Schlägt die Aktivität weiterhin fehl, prüfen Sie die verbleibenden Versuchs- und Zeitbudgets, bevor Sie das Verfahren wiederholen.
 
-Während der Aktivitätsversuche kann der Workflow im laufenden Zustand bleiben. Nach der Fehlerbehebung kann er erfolgreich abschließen. Sind alle Aktivitätsversuche ausgeschöpft und bleibt die Exception unbehandelt, schlägt der Workflow fehl.
+Ein Lauf mit einem zulässigen Aktivitätsversuch bleibt wartend und kann nach erfolgreicher Ausführung des korrigierten Codes fortfahren, sofern seine ursprünglichen Budgets nicht abgelaufen sind. Das garantiert keine Korrektur jedes Workflows im bestehenden Lauf: Ein unbehandelter letzter Aktivitätsfehler, ein Fehler im Workflow-Code, eine strukturelle Grenze oder ein Workflow-Timeout können ihn terminal machen.
+
+Bewahren Sie bei einem terminal fehlgeschlagenen Lauf die Historie auf und gleichen Sie externe Seiteneffekte ab, bevor die Anwendung über einen neuen Workflow entscheidet. Sichern Sie wiederholte fachliche Operationen durch anwendungsseitige Idempotenz ab. Es gibt weder automatische Workflow-Wiederholungen noch eine Wiederöffnung terminaler Läufe; siehe [Wiederholungen auf Workflow-Ebene](#workflow-level-retry).
 
 ## Workflow-Zeitlimits durchsetzen {#workflow-timeout-enforcement}
 
