@@ -176,7 +176,7 @@ curl -fsS "$DW_SERVER_URL/api/workflows/$WORKFLOW_ID/runs/$RUN_ID/debug" \
   -H "X-Namespace: $DW_NAMESPACE"
 ```
 
-La visibilité des files indique `admission.activity_tasks.status: no_active_workers` lorsqu’aucun worker actif et non périmé n’est inscrit sur cette file. La réponse de débogage de l’exécution contient `pending_activities[].queue`, `activity_task_queues` et des constats tels que `pending_activity_queue_without_active_pollers`. Si des workers sont présents mais n’annoncent pas le type d’activité requis, cherchez `pending_activity_type_unsupported`. L’inscription seule ne prouve pas qu’un worker progresse.
+Si l’admission côté serveur est disponible et non limitée, la visibilité des files indique `admission.activity_tasks.status: no_active_workers` lorsqu’aucun worker actif et non périmé n’est inscrit sur cette file. La réponse de débogage de l’exécution contient `pending_activities[].queue`, `activity_task_queues` et des constats tels que `pending_activity_queue_without_active_pollers`. Si des workers sont présents mais n’annoncent pas le type d’activité requis, cherchez `pending_activity_type_unsupported`. L’inscription seule ne prouve pas qu’un worker progresse.
 
 La réponse de débogage est un instantané borné d’une exécution, pas un inventaire complet de la file. Elle comprend au plus 25 activités en attente. Les compteurs de file et les instantanés vides ne prouvent pas que du travail concurrent ou futur ne dépend plus de l’ancien pool.
 

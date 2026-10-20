@@ -168,7 +168,7 @@ curl -fsS "$DW_SERVER_URL/api/workflows/$WORKFLOW_ID/runs/$RUN_ID/debug" \
   -H "X-Namespace: $DW_NAMESPACE"
 ```
 
-Queue visibility reports `admission.activity_tasks.status: no_active_workers` when no active, non-stale worker is registered on that queue. The run debug response includes `pending_activities[].queue`, `activity_task_queues` and findings such as `pending_activity_queue_without_active_pollers`. If workers are present but do not advertise the required activity type, look for `pending_activity_type_unsupported`. Registration alone does not prove a worker is making progress.
+If server admission is available and not throttled, queue visibility reports `admission.activity_tasks.status: no_active_workers` when no active, non-stale worker is registered on that queue. The run debug response includes `pending_activities[].queue`, `activity_task_queues` and findings such as `pending_activity_queue_without_active_pollers`. If workers are present but do not advertise the required activity type, look for `pending_activity_type_unsupported`. Registration alone does not prove a worker is making progress.
 
 The debug response is a bounded run snapshot, not a complete queue inventory. It includes at most 25 pending activities. Queue counters and empty snapshots cannot prove that concurrent or future work has no dependency on the old pool.
 

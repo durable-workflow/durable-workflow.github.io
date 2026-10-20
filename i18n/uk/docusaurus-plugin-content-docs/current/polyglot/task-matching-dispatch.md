@@ -171,7 +171,7 @@ curl -fsS "$DW_SERVER_URL/api/workflows/$WORKFLOW_ID/runs/$RUN_ID/debug" \
   -H "X-Namespace: $DW_NAMESPACE"
 ```
 
-Видимість черги повідомляє `admission.activity_tasks.status: no_active_workers`, коли в цій черзі не зареєстровано активного, не застарілого worker. Відповідь налагодження run містить `pending_activities[].queue`, `activity_task_queues` та висновки на кшталт `pending_activity_queue_without_active_pollers`. Якщо worker є, але вони не оголошують потрібний тип activity, шукайте `pending_activity_type_unsupported`. Сама реєстрація не доводить, що worker просуває роботу.
+Якщо приймання на сервері доступне й не обмежене, видимість черги повідомляє `admission.activity_tasks.status: no_active_workers`, коли в цій черзі не зареєстровано активного, не застарілого worker. Відповідь налагодження run містить `pending_activities[].queue`, `activity_task_queues` та висновки на кшталт `pending_activity_queue_without_active_pollers`. Якщо worker є, але вони не оголошують потрібний тип activity, шукайте `pending_activity_type_unsupported`. Сама реєстрація не доводить, що worker просуває роботу.
 
 Відповідь налагодження — обмежений знімок run, а не повна інвентаризація черги. Вона містить щонайбільше 25 activity в очікуванні. Лічильники черги та порожні знімки не доводять, що паралельна чи майбутня робота більше не залежить від старого пулу.
 

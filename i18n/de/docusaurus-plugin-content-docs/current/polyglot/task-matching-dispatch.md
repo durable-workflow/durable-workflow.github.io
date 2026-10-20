@@ -167,7 +167,7 @@ curl -fsS "$DW_SERVER_URL/api/workflows/$WORKFLOW_ID/runs/$RUN_ID/debug" \
   -H "X-Namespace: $DW_NAMESPACE"
 ```
 
-Die Queue-Sichtbarkeit meldet `admission.activity_tasks.status: no_active_workers`, wenn kein aktiver, nicht veralteter Worker auf dieser Queue registriert ist. Die Debug-Antwort des Laufs enthält `pending_activities[].queue`, `activity_task_queues` und Befunde wie `pending_activity_queue_without_active_pollers`. Sind Worker vorhanden, bieten aber den benötigten Aktivitätstyp nicht an, suche nach `pending_activity_type_unsupported`. Eine Registrierung allein beweist keinen Fortschritt.
+Wenn die serverseitige Aufnahme verfügbar und nicht gedrosselt ist, meldet die Queue-Sichtbarkeit `admission.activity_tasks.status: no_active_workers`, wenn kein aktiver, nicht veralteter Worker auf dieser Queue registriert ist. Die Debug-Antwort des Laufs enthält `pending_activities[].queue`, `activity_task_queues` und Befunde wie `pending_activity_queue_without_active_pollers`. Sind Worker vorhanden, bieten aber den benötigten Aktivitätstyp nicht an, suche nach `pending_activity_type_unsupported`. Eine Registrierung allein beweist keinen Fortschritt.
 
 Die Debug-Antwort ist eine begrenzte Momentaufnahme eines Laufs, kein vollständiges Queue-Inventar. Sie enthält höchstens 25 wartende Aktivitäten. Queue-Zähler und leere Momentaufnahmen beweisen nicht, dass gleichzeitige oder künftige Arbeit keinen alten Pool mehr benötigt.
 

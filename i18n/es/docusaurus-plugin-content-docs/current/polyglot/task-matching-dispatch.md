@@ -171,7 +171,7 @@ curl -fsS "$DW_SERVER_URL/api/workflows/$WORKFLOW_ID/runs/$RUN_ID/debug" \
   -H "X-Namespace: $DW_NAMESPACE"
 ```
 
-La visibilidad de colas informa `admission.activity_tasks.status: no_active_workers` cuando no hay un worker activo y no obsoleto registrado en esa cola. La respuesta de depuración de la ejecución incluye `pending_activities[].queue`, `activity_task_queues` y hallazgos como `pending_activity_queue_without_active_pollers`. Si hay workers pero no anuncian el tipo de actividad necesario, busca `pending_activity_type_unsupported`. Registrarse no demuestra por sí solo que el worker progrese.
+Si la admisión del servidor está disponible y no está limitada, la visibilidad de colas informa `admission.activity_tasks.status: no_active_workers` cuando no hay un worker activo y no obsoleto registrado en esa cola. La respuesta de depuración de la ejecución incluye `pending_activities[].queue`, `activity_task_queues` y hallazgos como `pending_activity_queue_without_active_pollers`. Si hay workers pero no anuncian el tipo de actividad necesario, busca `pending_activity_type_unsupported`. Registrarse no demuestra por sí solo que el worker progrese.
 
 La respuesta de depuración es una instantánea acotada de una ejecución, no un inventario completo de la cola. Incluye como máximo 25 actividades pendientes. Los contadores de cola y las instantáneas vacías no demuestran que el trabajo concurrente o futuro ya no dependa del grupo antiguo.
 

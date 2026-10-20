@@ -167,7 +167,7 @@ curl -fsS "$DW_SERVER_URL/api/workflows/$WORKFLOW_ID/runs/$RUN_ID/debug" \
   -H "X-Namespace: $DW_NAMESPACE"
 ```
 
-A visibilidade de filas informa `admission.activity_tasks.status: no_active_workers` quando nenhum worker ativo e não obsoleto está registrado nessa fila. A resposta de depuração da execução inclui `pending_activities[].queue`, `activity_task_queues` e achados como `pending_activity_queue_without_active_pollers`. Se houver workers, mas eles não anunciarem o tipo de atividade necessário, procure `pending_activity_type_unsupported`. O registro sozinho não comprova progresso.
+Se a admissão do servidor estiver disponível e não estiver limitada, a visibilidade de filas informa `admission.activity_tasks.status: no_active_workers` quando nenhum worker ativo e não obsoleto está registrado nessa fila. A resposta de depuração da execução inclui `pending_activities[].queue`, `activity_task_queues` e achados como `pending_activity_queue_without_active_pollers`. Se houver workers, mas eles não anunciarem o tipo de atividade necessário, procure `pending_activity_type_unsupported`. O registro sozinho não comprova progresso.
 
 A resposta de depuração é um snapshot limitado de uma execução, não um inventário completo da fila. Ela inclui no máximo 25 atividades pendentes. Contadores de fila e snapshots vazios não comprovam que trabalho concorrente ou futuro deixou de depender do pool antigo.
 

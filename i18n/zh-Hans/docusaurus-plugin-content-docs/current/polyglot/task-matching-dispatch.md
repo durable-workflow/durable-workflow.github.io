@@ -142,7 +142,7 @@ curl -fsS "$DW_SERVER_URL/api/workflows/$WORKFLOW_ID/runs/$RUN_ID/debug" \
   -H "X-Namespace: $DW_NAMESPACE"
 ```
 
-当队列上没有活跃且未过期的工作器注册时，队列可见性返回 `admission.activity_tasks.status: no_active_workers`。运行调试响应包含 `pending_activities[].queue`、`activity_task_queues`，以及 `pending_activity_queue_without_active_pollers` 等诊断。如果存在工作器但未声明所需的活动类型，请检查 `pending_activity_type_unsupported`。仅有注册不能证明工作器正在推进任务。
+当服务端准入可用且未被节流，并且队列上没有活跃且未过期的工作器注册时，队列可见性返回 `admission.activity_tasks.status: no_active_workers`。运行调试响应包含 `pending_activities[].queue`、`activity_task_queues`，以及 `pending_activity_queue_without_active_pollers` 等诊断。如果存在工作器但未声明所需的活动类型，请检查 `pending_activity_type_unsupported`。仅有注册不能证明工作器正在推进任务。
 
 调试响应只是单个运行的有限快照，并非完整的队列清单，最多包含 25 个待处理活动。队列计数和空快照无法证明并发或未来任务不再依赖旧池。
 
