@@ -68,7 +68,7 @@ $result->failureMessage();  // Failure message when the update body threw
 
 `attemptUpdate()` はまず受理を記録し、Worker が適用して更新ライフサイクルを閉じるまで待って戻ります。待機には `workflows.v2.update_wait.completion_timeout_seconds` の上限があります。期限までに閉じなければ、`waitTimedOut() === true`、`updateStatus() === 'accepted'` の受理済みライフサイクルを返します。
 
-個別の呼び出しで待機予算を変えるには `withUpdateWaitTimeout()` を使います。
+個別の呼び出しで完了待機の上限時間を変えるには `withUpdateWaitTimeout()` を使います。
 
 ```php
 use Workflow\V2\WorkflowStub;

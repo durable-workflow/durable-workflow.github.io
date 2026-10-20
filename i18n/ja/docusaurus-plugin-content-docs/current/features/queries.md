@@ -112,7 +112,7 @@ $workflow->queryWithArguments('starts-with', [
 ]);
 ```
 
-Waterline は選択実行のクエリ契約を使います。ダッシュボードはシグナルや更新とともに `declared_query_targets[*]` を表示しますが、実行操作は `can_query = true` の場合のみ表示します。選択実行・現在実行のクエリ操作は JSON の `arguments` を `/waterline/api/instances/{instanceId}/queries/{query}` または `/waterline/api/instances/{instanceId}/runs/{runId}/queries/{query}` に送ります。メソッド呼び出し前にリプレイが必要なため、読み込み可能な定義が必要です。永続ターゲットがあっても定義がなければ、詳細は `can_query = false` と `query_blocked_reason = workflow_definition_unavailable` を示し、POST は同じ `blocked_reason` で HTTP `409 Conflict` を返します。不完全なスナップショットしかなく現在のビルドで補完できなければ `declared_contract_source = unavailable` です。残存ターゲットは診断メタデータとして表示しますが、互換ビルドが不足契約を保存するまで名前付きクエリ引数は `422` で拒否します。
+Waterline は選択実行のクエリ契約を使います。ダッシュボードはシグナルや更新とともに `declared_query_targets[*]` を表示しますが、実行操作は `can_query = true` の場合のみ表示します。選択実行・現在実行のクエリ操作は JSON の `arguments` を `/waterline/api/instances/{instanceId}/queries/{query}` または `/waterline/api/instances/{instanceId}/runs/{runId}/queries/{query}` に送ります。メソッド呼び出し前にリプレイが必要なため、読み込み可能な定義が必要です。永続ターゲットがあっても定義がなければ、詳細は `can_query = false` と `query_blocked_reason = workflow_definition_unavailable` を示し、POST は `blocked_reason = workflow_definition_unavailable` で HTTP `409 Conflict` を返します。不完全なスナップショットしかなく現在のビルドで補完できなければ `declared_contract_source = unavailable` です。残存ターゲットは診断メタデータとして表示しますが、互換ビルドが不足契約を保存するまで名前付きクエリ引数は `422` で拒否します。
 
 公開 Webhook ブリッジは Waterline の外にも同じ安全なクエリを提供します。
 
