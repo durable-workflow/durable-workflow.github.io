@@ -101,7 +101,7 @@ MCP 工具 schema 有意使用 Durable Workflow 的术语，而非 Laravel 内�
 
 配套的 `remediation` 对象使用 schema ID `durable-workflow.v2.agent-remediation`。它包含 `classification`、简短的 `summary`、`automatic_repair.tool`、`automatic_repair.allowed`，以及列出受支持后续命令的 `next_actions` 条目。代理仅应在 `automatic_repair.allowed` 为 true 时调用 `repair_workflow`。其他分类会指示代理等待、通过文档规定的工作流命令接口发送预期输入、检查历史、修改工作流或活动代码，或规划 Continue-As-New。
 
-`repair_workflow` 返回 `durable-workflow.v2.safe-mutation` 封装。`mutation.applied` 表示修复命令是否被接受，`command.outcome` 则区分 `repair_dispatched`、`repair_not_needed`，以及运行已终止或非当前运行等结构化拒绝结果。
+`repair_workflow` 返回 `durable-workflow.v2.safe-mutation` 封装。`mutation.applied` 表示修复命令是否被接受，`command.outcome` 则区分 `repair_dispatched`、`repair_not_needed`，以及运行已进入终态或非当前运行等结构化拒绝结果。
 
 ## 安全的代理循环 {#safe-agent-loop}
 

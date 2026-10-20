@@ -162,13 +162,13 @@ async with Client(
 | 参数 | 类型 | 默认值 | 使用场景 |
 | --- | --- | --- | --- |
 | `base_url` | `str` | 必填 | Server 源地址，不包含 `/api`。 |
-| `token` | `str | None` | `None` | 一个 bearer 令牌应同时授权控制平面和 Worker 平面调用。 |
-| `control_token` | `str | None` | `None` | 控制平面调用需要与 Worker 轮询不同的 bearer 令牌。 |
-| `worker_token` | `str | None` | `None` | Worker 平面调用需要与运维调用不同的 bearer 令牌。 |
+| `token` | `str \| None` | `None` | 一个 bearer 令牌应同时授权控制平面和 Worker 平面调用。 |
+| `control_token` | `str \| None` | `None` | 控制平面调用需要与 Worker 轮询不同的 bearer 令牌。 |
+| `worker_token` | `str \| None` | `None` | Worker 平面调用需要与运维调用不同的 bearer 令牌。 |
 | `namespace` | `str` | `"default"` | 通过 `X-Namespace` 定位 Server 命名空间。 |
 | `timeout` | `float` | `60.0` | 覆盖默认 HTTP 超时。 |
-| `retry_policy` | `TransportRetryPolicy | None` | 默认策略 | 调整短暂 HTTP 失败的传输重试。 |
-| `metrics` | `MetricsRecorder | None` | 无操作 | 向自定义记录器输出客户端和 Worker 指标。 |
+| `retry_policy` | `TransportRetryPolicy \| None` | 默认策略 | 调整短暂 HTTP 失败的传输重试。 |
+| `metrics` | `MetricsRecorder \| None` | 无操作 | 向自定义记录器输出客户端和 Worker 指标。 |
 | `payload_size_limit_bytes` | `int` | SDK 默认值 | 匹配 Server 最大负载字节契约。 |
 | `payload_size_warning_threshold_percent` | `int` | SDK 默认值 | 在负载达到配置上限前警告。 |
 | `payload_size_warnings` | `bool` | `True` | 在测试或受控脚本中禁用本地负载大小警告。 |
@@ -921,7 +921,7 @@ SDK 记录：
 | `durable_workflow_worker_tasks` | 计数器 | `task_kind`, `task_queue`, `outcome` |
 | `durable_workflow_worker_task_duration_seconds` | 直方图 | `task_kind`, `task_queue`, `outcome` |
 
-## 计划 {#schedules}
+## 计划 {#schedules-1}
 
 通过客户端创建和管理计划工作流：
 
@@ -1175,7 +1175,7 @@ def test_signal_is_delivered_before_run_returns() -> None:
 
 #### 定时器、副作用与搜索属性 {#timers-side-effects-and-search-attributes}
 
-测试工具为这些命令自动触发相应历史事件，因此工作流在测试中不会因墙上时钟时间阻塞：
+测试工具为这些命令自动触发相应历史事件，因此工作流在测试中不会因系统时钟时间阻塞：
 
 - `ctx.sleep(seconds)` → `TimerFired`
 - `ctx.side_effect(...)` → `SideEffectRecorded`

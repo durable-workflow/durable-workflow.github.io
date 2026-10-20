@@ -49,7 +49,7 @@ PHP SDK 桥接和嵌入软件包在各自兼容的 PHP 版本上支持 Laravel 9
 | 运维工具 | Laravel 日志/事件、队列工具、Horizon、v1 Waterline，以及可用时的 `workflow:v1:list`。 | Laravel 日志/事件、队列工具、`workflow:v2:doctor`、历史/修复命令和嵌入式 Waterline。 | SDK 诊断通过 Laravel PSR logger 和 `WorkerDiagnosticEvent` 传递。Cloud 包含 Managed Waterline。自托管操作人员使用 Server API/CLI，也可单独部署 Waterline 连接 Server 命名空间。 |
 | 切换与回滚负责方 | 你的团队将 v1 数据库、队列状态、配置和密钥保存为一套恢复集。 | 你的团队区分 v1 与 v2 启动、保留 v1 唤醒路径，并决定何时退役旧表/队列。 | 你的团队将每条命令路由到拥有其运行实例的运行时。Cloud 负责托管服务内的运行时回滚；自托管操作人员负责 Server 持久化和回滚。应用回滚必须保留新旧运行时路由，直到对应运行实例终结。 |
 
-Cloud 和自托管 Server 是服务模式中的两种选择。Cloud 用户不安装 Server 或独立 Waterline 服务。自托管操作人员负责 Server 的部署、安全、备份、扩缩和升级；Waterline 是连接 Server 所有命名空间的独立可选部署。
+Cloud 和自托管 Server 是服务模式中的两种选择。Cloud 用户不安装 Server 或独立 Waterline 服务。自托管操作人员负责 Server 的部署、安全、备份、扩缩和升级；Waterline 是连接 Server 管理的命名空间的独立可选部署。
 
 ## 同一个 Laravel 用例的三种模式 {#one-laravel-use-case-in-all-three-modes}
 
@@ -473,7 +473,7 @@ $workflows->assertResultRequested('order-1001');
 | 嵌入 v2 到 Cloud | 原地排空嵌入运行实例；Cloud 入门不会将软件包修改变成历史导入。 | 客户端/Worker 凭据和任务队列检查通过后，在提供的 Cloud 命名空间中启动。 | 必要时将新启动路由回嵌入模式；Cloud 已接受运行实例的命令仍指向 Cloud。 |
 | 嵌入 v2 到自托管 Server | 原地排空，或对符合条件、已静止的嵌入 v2 运行实例单独执行受支持的导出、试运行和原子导入。绝不根据软件包已安装就推断符合条件。 | Server 发现、命名空间、Worker 注册和队列检查通过后，通过 SDK 启动。 | 导入失败不写入部分运行实例。导入提交后，Server 拥有该运行实例；不要恢复嵌入副本。 |
 
-自托管导入选项请使用完整的[嵌入模式到 Server 迁移流程](/docs/polyglot/embedded-to-server/#phase-e-import-eligible-embedded-v2-runs)。它拒绝 v1、脱敏历史、已租出任务、正在运行的活动尝试及其他不安全快照。单独的历史导出是审计/调试数据；只有该明确、经过验证的导入操作才创建 Server 所有状态。
+自托管导入选项请使用完整的[嵌入模式到 Server 迁移流程](/docs/polyglot/embedded-to-server/#phase-e-import-eligible-embedded-v2-runs)。它拒绝 v1、脱敏历史、已租出任务、正在运行的活动尝试及其他不安全快照。单独的历史导出是审计/调试数据；只有该明确、经过验证的导入操作才创建由 Server 管理的状态。
 
 ### 3. 切换流量前证明目标可用 {#3-prove-the-destination-before-switching-traffic}
 
