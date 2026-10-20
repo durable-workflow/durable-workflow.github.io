@@ -55,5 +55,9 @@
   "features/condition-waits.md": "451261eda990c9591a0db69839d872184b5c64da6b537a582133095b8d4b599e",
   "features/continue-as-new.md": "6b3cc8f8c5375726ff0b2544da01e7206e964908b436544e284068ab67aa3dbb",
   "capabilities.md": "c11b11db4cffe5ab2cec77e823fa9e7f33094bf7449a3ee29cbd404d48ac1c3c",
-  "compatibility.md": "3af32f6c46f83df39dc74dedf32314a3416ccd40620948bd8f66ace0d914946e"
+  "compatibility.md": "3af32f6c46f83df39dc74dedf32314a3416ccd40620948bd8f66ace0d914946e",
+  "polyglot/invocable-carrier.md": "d32d8b5c7c33204b342f977e0af734166d91e96073db1a49ccb4d414a6d67380",
+  "polyglot/invocable-php-handler.md": "3b678eb1d69fe32dfcfdc05d36b33e49e01b79d7216bd784f6a61a6f1c3c3a13",
+  "polyglot/php.md": "9ab2f2b6cb617475e3873609667f7c40eaeed8512f1f041834d74bb63d1a6040",
+  "polyglot/server-role-topology.md": "3d048f0c6b5f179399622508f51e67fff8aa5a6d5b2492533fc720eeec2c27f2"
 }
