@@ -50,6 +50,7 @@ Durable Workflow має дві площини спостереження:
 | Стійкий стан | База даних workflow та API runtime-власника, проєкції Waterline й експорт історії | Чи почався workflow? Який run поточний? Які signal, update, timer, activity, повторна спроба або помилка зафіксовані? Яка дія оператора зараз безпечна? |
 | Телеметрія worker/runtime | Журнали worker черг, реєстратори метрик SDK, endpoint Prometheus/OpenMetrics і трасування застосунку | Чи worker опитують черги? Скільки тривають завдання? Чи налаштований exporter? Чи власні метрики застосунку вийшли з процесу worker? |
 
+Waterline навмисно не замінює метрики worker.
 Власні метрики, записані кодом activity або worker, зчитуйте з endpoint
 телеметрії worker. Використовуйте Waterline для зіставлення такого
 сигналу runtime зі стійкою історією workflow та поточним станом run.
