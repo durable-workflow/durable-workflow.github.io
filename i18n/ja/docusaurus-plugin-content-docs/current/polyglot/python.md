@@ -530,6 +530,16 @@ Python Worker は Server へクエリタスク結果を返して、ルーティ�
 | `ctx.uuid4()` | 決定的な UUID |
 | `ctx.logger` | リプレイ中は出力しないロガー |
 
+### エントリの互換性と復旧 {#entry-compatibility-and-recovery}
+
+**未公開リリースの準備段階です。** Python SDK 2.6.2 のエントリ保護と Server 2.9.9 のルーティング・復旧機能はソースにマージされていますが、公開とインストール済み成果物の検証は未完了です。
+
+Worker は `run(ctx, *start_input)` を呼ぶ前に、記録済み引数をエントリシグネチャに束縛します。必須引数の不足や引数の個数の不整合は、本体が動く前に `WorkflowEntryArgumentsMismatchError` と理由 `workflow_entry_arguments_mismatch` を発生させます。既定値は省略された引数だけを補います。Python の型注釈は引き続き強制されません。注釈の変更だけで記録済みデータが検証・変換されることはありません。通常の本体でもジェネレーター本体でも、進入に成功した後の `TypeError` はアプリケーションの失敗です。
+
+Worker は `workflow_entry_arguments_validation` を自動的に通知します。検証済みの Server と組み合わせると、失敗したタスクのリプレイがブロックされ、元の実行は非終端のままです。古いランタイムはそのタスクを再試行する場合があり、SDK 側の拒否だけでは復旧契約全体は成立しません。
+
+`await client.describe_workflow_run(workflow_id, run_id)` と実行指定のデバッグエンドポイントで、正確な対象実行を確認します。互換性のあるエントリメソッドに戻してから、[復旧手順](../failures-and-recovery.md#service-entry-recovery)の実行指定 HTTP 修復ルートを使ってください。一方、`await client.repair_workflow(workflow_id)` と `handle.repair()` はインスタンスの現在の実行を解決し、どちらも実行 ID の引数を受け付けません。元の入力、履歴、名前空間、キュー、ビルド、期限を維持します。コマンドを変更する場合は、その互換メソッド内に `ctx.get_version` を配置し、[定義ルーティング](./worker-compatibility-routing.md#definition-fingerprint-evolution)を使ってコールドリプレイを検証してください。
+
 ### ワークフロー時刻と永続的な待機 {#workflow-time-and-durable-waits}
 
 Worker でのリプレイ中、`ctx.now()` は実行の**永続化された開始時刻**を返します。
