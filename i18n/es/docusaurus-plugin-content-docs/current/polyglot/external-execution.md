@@ -39,8 +39,8 @@ referencias estables, pero no redefinen el límite del runtime.
 
 Los manejadores externos pueden:
 
-- ejecutar una tarea arrendada de workflow o actividad
-- comunicar el progreso del arrendamiento con latidos del protocolo de workers
+- ejecutar una tarea de workflow o actividad con una lease
+- comunicar el progreso de la lease con latidos del protocolo de workers
 - devolver un sobre estructurado de éxito o fallo
 - utilizar un adaptador puente para iniciar, señalizar, actualizar o traspasar trabajo acotado
 
@@ -63,7 +63,7 @@ Consulta `GET /api/cluster/info` antes de conectar un transportador. Estas son l
 | Ruta | Finalidad |
 | --- | --- |
 | `worker_protocol.external_execution_surface_contract` | Límites del producto y del runtime, clases válidas de transportador y estado de los puntos de integración. |
-| `worker_protocol.external_task_input_contract` | Sobre de entrada independiente del transportador para una tarea arrendada de workflow o actividad. |
+| `worker_protocol.external_task_input_contract` | Sobre de entrada independiente del transportador para una tarea de workflow o actividad con una lease. |
 | `worker_protocol.external_task_result_contract` | Sobre independiente del transportador para éxito, fallo y salida malformada. |
 | `worker_protocol.server_capabilities.external_execution_surface` | Referencia compacta a la capacidad para la negociación del plano de workers. |
 

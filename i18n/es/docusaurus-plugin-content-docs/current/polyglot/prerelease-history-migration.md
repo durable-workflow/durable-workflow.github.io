@@ -113,7 +113,7 @@ en lugar de hacer suposiciones.
 
 ## Reversión {#rollback}
 
-Si falla la aplicación, la reproducción, la verificación de proyecciones o la
+Si falla la aplicación de cambios, la reproducción, la verificación de proyecciones o la
 comprobación posterior, la actualización queda bloqueada. Mantén detenidos todos
 los escritores y ejecuta el comando de reversión que imprime la migración.
 Con las rutas anteriores es:
@@ -124,7 +124,7 @@ php artisan workflow:v2:migrate-prerelease-history \
   --evidence-dir=/secure/dw-prerelease-history-evidence
 ```
 
-La reversión verifica el resumen de la copia y el estado de migración, rechaza
+La reversión verifica la huella de la copia y el estado de migración, rechaza
 sobrescribir sus evidencias y no restaura filas modificadas tras la conversión.
 Restaura atómicamente los valores originales de base de datos y conserva los
 objetos externos sustitutos como evidencia. Después restaura el artefacto

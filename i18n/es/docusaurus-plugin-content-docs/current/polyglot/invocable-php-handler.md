@@ -31,7 +31,7 @@ Utilízalo para conectar un manejador de actividad a:
 - un contenedor que exponga un endpoint POST por cola de actividad
 
 El auxiliar analiza el sobre de entrada de tarea externa independiente del
-transportador, busca la función registrada, exige el plazo del lease y emite
+transportador, busca la función registrada, exige el plazo de la lease y emite
 el sobre de resultado independiente del transportador, incluidas las estructuras
 de fallo que espera el servidor.
 
@@ -138,7 +138,7 @@ En caso de éxito, `handle()` devuelve el sobre de éxito independiente del tran
 ```
 
 Los campos `task.id`, `task.attempt` y `task.idempotency_key` se copian del
-sobre de entrada para que el servidor concilie el resultado con el lease original.
+sobre de entrada para que el servidor concilie el resultado con la lease original.
 
 En caso de fallo, `handle()` devuelve el sobre de fallo. El bloque `failure`
 contiene el tipo de fallo, la clasificación, el mensaje, el tipo PHP de origen,
@@ -176,7 +176,7 @@ el nombre `deadline` y el valor `expires_at`:
 
 | `failure.kind` | `classification` | Reintentable | Cuándo se produce |
 | --- | --- | --- | --- |
-| `timeout` | `deadline_exceeded` | sí | El lease o el plazo de entrada ya había vencido al llegar el sobre, o el manejador devolvió después de que venciera durante la ejecución. |
+| `timeout` | `deadline_exceeded` | sí | La lease o el plazo de entrada ya había vencido al llegar el sobre, o el manejador devolvió después de que venciera durante la ejecución. |
 | `decode_failure` | `decode_failure` | no | No se pudieron decodificar los argumentos con el códec declarado, una cadena de plazo no se pudo analizar, el manejador lanzó `TypeError` / `ValueError` por sus parámetros o la carga de éxito no pudo recodificarse con el códec de resultado configurado. |
 | `application` | `application_error` | depende de la excepción | El manejador lanzó una excepción. `retryable` es `false` si implementa `Workflow\Exceptions\NonRetryableExceptionContract`; en otro caso, `true`. El mensaje es el de la excepción y `type` es su clase. |
 | `application` | `application_error` | no | `task.kind` no es `activity_task` o `task.handler` no está registrado en el mapa. |
@@ -199,7 +199,7 @@ actividad declarados (`schedule_to_start`, `start_to_close`,
   descarta el valor devuelto del sobre.
 
 Como el transportador reintenta entregas y el runtime vuelve a entregar leases
-no notificados, el mismo `task.id` y `task.idempotency_key` puede llegar más de
+no notificadas, el mismo `task.id` y `task.idempotency_key` puede llegar más de
 una vez. El código del manejador debe ser idempotente. La clave de idempotencia
 del sobre es estable entre reintentos del mismo intento de actividad.
 

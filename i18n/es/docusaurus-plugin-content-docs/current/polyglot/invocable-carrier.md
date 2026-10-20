@@ -142,7 +142,7 @@ El transportador convierte de forma determinista los hechos de transporte en res
 
 Los manejadores deben ser idempotentes. El mismo `task.id` y
 `task.idempotency_key` puede llegar más de una vez si el transportador reintenta
-la entrega o el runtime vuelve a entregar un lease sin finalizar.
+la entrega o el runtime vuelve a entregar una lease sin finalizar.
 
 ## Ejemplo de configuración {#configuration-example}
 
