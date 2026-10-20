@@ -379,16 +379,9 @@ dispatch and lease activity. `DW_WORKER_LONG_POLL_MAX_CONCURRENT` and
 global SQL-session, database-byte or commit-latency limit; keep capacity for
 completions, heartbeats, operator requests and health checks as well.
 
-Use a direct writable database endpoint as the baseline. A connection proxy
-must be qualified with the exact Server release, pool mode and settings for
-prepared statements, transaction boundaries, session state and locking.
-Published Server 2.9.7 fails with PgBouncer transaction pooling; its readiness
-endpoint can remain healthy despite those failures. Track the product
-correction and published-image qualification in
-[Server #524](https://github.com/durable-workflow/server/issues/524). Do not
-infer transaction-pool compatibility from a successful TCP connection, migration
-or readiness response. Read replicas must not replace the authoritative
-writer used for claims and durable transitions.
+Use a direct writable database endpoint as the baseline. A connection proxy must be qualified with the exact Server release, pool mode and settings for prepared statements, transaction boundaries, session state and locking. **PgBouncer transaction pooling requires fixed Server 2.9.8 or later.** The [published 2.9.8 acceptance](https://github.com/durable-workflow/server/issues/524#issuecomment-6293185092) qualifies PostgreSQL 16.15 with PgBouncer 1.26.1: direct PostgreSQL, session pooling, and transaction pooling with either `max_prepared_statements=0` or `max_prepared_statements=200`. This is a compatibility floor and an exact tested configuration, not a latest-version pin or capacity guarantee; qualify other combinations separately. Run the ordinary `server-bootstrap` initialization against the selected endpoint before admitting traffic.
+
+`GET /api/ready` exercises a parameter-bound database read (`bound_read_query`) and configured readiness checks; it explicitly leaves write capacity unverified. A successful TCP connection, migration or readiness response does not prove every workflow SQL operation or commit capacity. Read replicas must not replace the authoritative writer used for claims and durable transitions.
 
 ## Helm chart for Kubernetes
 
@@ -511,8 +504,8 @@ shape or the raw-manifest shape and the operator preserves three rules:
   a known-good snapshot — before it can re-attach. A connection proxy must
   preserve the database semantics the Server uses and pass exact-release
   qualification for its mode and settings. See
-  [SQL connection budgets](#sql-connection-budgets) for the current PgBouncer
-  transaction-pooling limitation and the qualification boundary.
+  [SQL connection budgets](#sql-connection-budgets) for the PgBouncer
+  transaction-pooling version requirements and tested modes.
 - **One Redis endpoint at a time, with a documented promotion path.**
   Managed-Redis failover (Sentinel, Elasticache replication-group failover,
   Memorystore HA, etc.) is permitted. Redis is the acceleration layer, not
