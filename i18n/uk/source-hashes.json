@@ -1,4 +1,9 @@
 {
+  "agent-operating-loop.md": "7b8f9c72f1166d5bb496aaad680e7054d360589b548a2c2a3d23206288bd6500",
+  "agent-tooling-contract.md": "bafa630abb2be2cefc7a0eb5c6962fd92f1193083cd3993e2aa68bc79530c2bf",
+  "ai-agent-workflow-engine.md": "28016466b179adbabdff6467ce351100c9bee48529a8bec9df7ec22c8d786d4d",
+  "ai-assisted-development.md": "b246bb60585fb7a69bc534978f470f3f16e899e1f8f203ba0847d2d11b8a1ec3",
+  "capabilities.md": "d21aad314bd80a9a2a9929e732d7816d293dcc56ab417fd0143c3dd729d64913",
   "configuration/customization-matrix.md": "3d115863eaee7852b541bcd01615f424cc19c5847c7cd7d75e5ae63bc3f5cc78",
   "configuration/database-connection.md": "a4657d239673a4ecdc3981bcc5a7cf33aa2d37c709768131cd5ba3292987681f",
   "configuration/ensuring-same-server.md": "6c665f37cc198c7b1a775a60a94aab5ff4e55383385e76f1834c7840559b512a",

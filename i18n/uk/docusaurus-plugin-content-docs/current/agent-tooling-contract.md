@@ -9,14 +9,14 @@ tags:
   - operations
 keywords:
   - інструменти агентів durable workflow
-  - контракт інструментів AI
+  - контракт інструментів ШІ
   - діагностика workflow mcp
   - машиночитані операції workflow
 ---
 
 # Контракт інструментів агентів {#agent-tooling-contract}
 
-Durable Workflow v2 робить розробку за допомогою AI передбачуваною,
+Durable Workflow v2 робить розробку за допомогою ШІ передбачуваною,
 надаючи факти продукту через стабільні контракти. Інструмент має читати
 версію документації, виявляти локальний інтерфейс, викликати задокументовані
 операції та повідомляти іменовані факти. Стан workflow визначається цими
@@ -65,7 +65,7 @@ Durable Workflow v2 робить розробку за допомогою AI п�
 - Ніколи не включайте значення секретів, імена хостів конкретних клієнтів
   або облікові дані окремих записів в описи чи метадані результатів.
 
-Endpoint `/mcp/workflows` sample-app є еталонним локальним інтерфейсом
+Кінцева точка `/mcp/workflows` прикладу застосунку є еталонним локальним інтерфейсом
 workflow. Майбутні сервери MCP конкретних проєктів мають дотримуватися
 того самого підходу: конфігурація володіє списком дозволених workflow,
 інструменти працюють лише з ними, а результати посилаються на стійкі
@@ -109,7 +109,7 @@ workflow. Майбутні сервери MCP конкретних проєкт�
 
 ## Першопричина й усунення {#root-cause-and-remediation}
 
-Підтримуваний schema id першопричини —
+Підтримуваний ідентифікатор схеми першопричини —
 `durable-workflow.v2.agent-root-cause`. Діагностичні інструменти мають містити:
 
 - `category`, наприклад `activity_failure`, `workflow_failure`,
@@ -118,7 +118,7 @@ workflow. Майбутні сервери MCP конкретних проєкт�
 - `source.kind` і `source.id`;
 - `retryable`, `severity` і `actionable`.
 
-Підтримуваний schema id усунення — `durable-workflow.v2.agent-remediation`.
+Підтримуваний ідентифікатор схеми усунення — `durable-workflow.v2.agent-remediation`.
 Він містить `classification`, `summary`, `automatic_repair.tool`,
 `automatic_repair.allowed` і `next_actions`. `repair_workflow` є
 підтримуваним локальним інтерфейсом відновлення MCP. За відсутності MCP
@@ -157,7 +157,7 @@ dw system:repair-pass --output=json
 
 ## Пов’язані сторінки {#related-pages}
 
-- [Розробка за допомогою AI](./ai-assisted-development.md)
+- [Розробка за допомогою ШІ](./ai-assisted-development.md)
 - [Операційний цикл агента](./agent-operating-loop.md)
 - [Інтерфейс workflow MCP](./mcp-workflows.md)
 - [Можливості клієнтів і worker](./polyglot/cli-python-parity.md)
