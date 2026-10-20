@@ -40,7 +40,7 @@ PHP, Python und Rust sind offizielle eigenständige SDKs der stabilen 2.0-Versio
 - Python ermöglicht deterministische Workflows und Aktivitäten sowie Betriebs-/Control-Plane-Operationen für Workflows, Zeitpläne, Namespaces, Worker, Warteschlangen, Verlauf und Reparatur.
 - Rust ermöglicht deterministische Workflows, Aktivitäten und Worker-Dienste. Auf dem aktuellen Mindeststand unterstützt es dauerhafte Timer, untergeordnete Workflows, Aktivitätswiederholungen und -timeouts, Signale, per Replay ausgeführte Abfragen, Abbruch/Terminierung und typisierte Ergebnisse. Es ist mehr als ein Protokolladapter.
 
-Alle drei verwenden dasselbe dauerhafte Ausführungsmodell und öffentliche Protokoll. Sprachübergreifende untergeordnete Workflows und Aktivitäten verwenden registrierte String-Typen und die gemeinsame Avro-Hülle. Die offiziellen Avro-Sprachpakete erhalten dabei die festgelegte typisierte Value-Semantik. Die [Fähigkeitsübersicht für 2.0](/docs/capabilities/) nennt genaue Mindeststände und bewusste Lücken wie Rusts aktuelle Grenzen bei Zeitplanverwaltung und flottenweiter Sichtbarkeit.
+Alle drei verwenden dasselbe dauerhafte Ausführungsmodell und öffentliche Protokoll. Sprachübergreifende untergeordnete Workflows und Aktivitäten verwenden registrierte Typnamen als Zeichenketten und die gemeinsame Avro-Hülle. Die offiziellen Avro-Sprachpakete erhalten dabei die festgelegte typisierte Value-Semantik. Die [Fähigkeitsübersicht für 2.0](/docs/capabilities/) nennt genaue Mindeststände und bewusste Lücken wie Rusts aktuelle Grenzen bei Zeitplanverwaltung und flottenweiter Sichtbarkeit.
 
 ## Braucht ein Python- oder Rust-Team Laravel? {#does-a-python-or-rust-team-need-laravel}
 
@@ -54,7 +54,7 @@ Es gibt drei Bereitstellungs-/Control-Plane-Optionen:
 
 ## Was heute vorhanden ist {#what-exists-now}
 
-Das aktuell veröffentlichte 2.0-Tupel implementiert deterministische Workflows, Aktivitäten, Signale, Abfragen, Updates soweit angekündigt, Timer, Wiederholungen, Timeouts, untergeordnete Workflows, Abbruch, Terminierung, Seiteneffekte und Versionsmarker auf den in der Fähigkeitsübersicht genannten SDKs. Hinzu kommen Zeitpläne, Namespaces, Suchattribute, Codec-Interoperabilität, Worker-Kompatibilität, typisierter Verlauf und typisierte Fehler, strukturierte Diagnose und sichere Operatorbefehle.
+Das aktuell veröffentlichte 2.0-Tupel implementiert deterministische Workflows, Aktivitäten, Signale, Abfragen, Updates sofern von der Laufzeit ausgewiesen, Timer, Wiederholungen, Timeouts, untergeordnete Workflows, Abbruch, Terminierung, Seiteneffekte und Versionsmarker auf den in der Fähigkeitsübersicht genannten SDKs. Hinzu kommen Zeitpläne, Namespaces, Suchattribute, Codec-Interoperabilität, Worker-Kompatibilität, typisierter Verlauf und typisierte Fehler, strukturierte Diagnose und sichere Operatorbefehle.
 
 Lesen Sie die Manifeste der Laufzeit und die genaue [Kompatibilitätsmatrix](/docs/compatibility/), statt gleiche Fähigkeiten aller SDKs anzunehmen oder sie aus einer übergeordneten Versionsnummer abzuleiten.
 
