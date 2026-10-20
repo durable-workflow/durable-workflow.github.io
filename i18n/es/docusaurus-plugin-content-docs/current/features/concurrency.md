@@ -33,7 +33,7 @@ class MyWorkflow extends Workflow
 }
 ```
 
-<ConcurrencySimulator 
+<ConcurrencySimulator
   activities={[
     { name: 'MyActivity1', duration: 1500 },
     { name: 'MyActivity2', duration: 2000 },
@@ -64,7 +64,7 @@ class MyWorkflow extends Workflow
 }
 ```
 
-<ConcurrencySimulator 
+<ConcurrencySimulator
   activities={[
     { name: 'MyActivity1', duration: 2000 },
     { name: 'MyActivity2', duration: 1500 },
@@ -226,7 +226,7 @@ final class ParentWorkflow extends Workflow
 }
 ```
 
-<ConcurrencySimulator 
+<ConcurrencySimulator
   activities={[
     { name: 'MyChild1', duration: 2200 },
     { name: 'MyChild2', duration: 1800 },
