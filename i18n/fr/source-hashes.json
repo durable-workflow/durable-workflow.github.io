@@ -20,5 +20,9 @@
   "polyglot/cli-python-parity.md": "acf1acbf15ca9cdf069154699c5fbf8c1d1fd3241a32d201ac10b8ec76c038be",
   "polyglot/workflow-streams.md": "5675a8ea1b9d0b1f7223fecb90b3b048d3006670bf505950bc783709287a6432",
   "sdk-neutrality.md": "7b0714c123ade4904591870fc20e9a797da1e5485b2a6c87ca3eaa00c5de6ed6",
-  "support.md": "706807b3902599dda6080f632ec1f893017ea18bbe9585f533dcdbd6d85f4621"
+  "support.md": "706807b3902599dda6080f632ec1f893017ea18bbe9585f533dcdbd6d85f4621",
+  "constraints/constraints-summary.md": "fb48d01502388fc3821eae3790f470ed29cec91545420450f96fc77b84e589f1",
+  "constraints/idempotent-vs-deterministic.md": "980c1b6a1075bfedfc32fa785be793a0c5aa3a13a1c4204029eb97127c54a602",
+  "constraints/structural-limits.md": "dec64eb7c8261b64a687938072e73dadf519511b132fc7b6542c96f44a8d3037",
+  "defining-workflows/workflow-api.md": "a6150e75302323b49f350159ce3568a51a19701bb81829915615f754592ee79c"
 }
