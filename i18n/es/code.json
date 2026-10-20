@@ -80,6 +80,8 @@
   "simulator.signalTimer.title": {"message": "Simulador de señal y temporizador"},
   "simulator.query.title": {"message": "Simulador de consultas y señales"},
   "simulator.queryAction": {"message": "🔍 Consultar:"},
+  "simulator.signalAccepted": {"message": "Señal {signal} aceptada"},
+  "simulator.signalWaitReceived": {"message": "await() recibió la señal"},
   "simulator.heartbeat.title": {"message": "Simulador de latidos"},
   "simulator.waiting": {"message": "⏸️ Esperando..."},
   "simulator.sendSignal": {"message": "📤 Enviar señal:"},

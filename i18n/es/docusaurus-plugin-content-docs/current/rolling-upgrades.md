@@ -212,7 +212,7 @@ Para workers, la transición se realiza por cohorte:
 
 1. Inicia la nueva cohorte con un `build_id` nuevo.
 2. Confirma que ambas indican `rollout_status: "active"` y `active_worker_count`
-   no nulo en `dw task-queue:build-ids <queue> --json`.
+   mayor que cero en `dw task-queue:build-ids <queue> --json`.
 3. Drena la antigua con `dw task-queue:drain`.
 4. Espera a que `active_worker_count` y `draining_worker_count` de la antigua sean cero.
 5. Detén los procesos de workers antiguos.
@@ -253,7 +253,7 @@ Verifica cada fase mediante las interfaces de operador, no mediante registros.
 | --- | --- |
 | ¿Terminó la inicialización? | `php artisan server:bootstrap --force` termina con código 0 y `migrate:status` muestra todas las migraciones aplicadas. |
 | ¿Está disponible el nodo nuevo? | `GET /api/ready` devuelve 200 y `GET /api/cluster/info` informa de la compilación nueva. |
-| ¿Está sana la admisión por compatibilidad? | En `GET /api/system/operator-metrics`, `workers.fleet`, `workers.active_workers` y `workers.active_workers_supporting_required` concuerdan en un número no nulo de workers para cada marcador requerido. |
+| ¿Está sana la admisión por compatibilidad? | En `GET /api/system/operator-metrics`, `workers.fleet`, `workers.active_workers` y `workers.active_workers_supporting_required` concuerdan en un número de workers mayor que cero para cada marcador requerido. |
 | ¿Avanza el drenaje? | `dw task-queue:build-ids <queue> --json` muestra descender `active_worker_count` y `draining_worker_count` de la cohorte drenada. |
 | ¿Es seguro el enrutamiento? | En `GET /api/system/operator-metrics`, `backlog.compatibility_blocked_runs` y `backlog.max_compatibility_blocked_age_ms` siguen cerca de cero; `worker_compatibility` no está en `error`. |
 | ¿Está al día el programador? | En `GET /api/system/operator-metrics`, `schedules.missed` es cero y `schedules.oldest_overdue_at` es null. |

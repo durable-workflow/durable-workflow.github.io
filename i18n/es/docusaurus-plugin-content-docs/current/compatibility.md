@@ -120,7 +120,7 @@ reclasificar una familia requiere cambiar el contrato (incremento de versión de
 | Familia | Estabilidad | Manifiesto de autoridad en `/api/cluster/info` | Qué cubre |
 |--------|-----------|-------------------------------------------|----------------|
 | `server_api` | `stable` | `control_plane` | API HTTP del servidor independiente: rutas del plano de control, namespaces, programaciones y sistema, además de `/api/health`, `/api/ready` y `/api/cluster/info`. La versión por ruta se rige por `control_plane.request_contract` y `control_plane.response.contract`. El `version` superior del servidor identifica la compilación, no la autoridad de compatibilidad del cliente. |
-| `worker_protocol` | `stable` | `worker_protocol` | API HTTP del plano de workers que usan los workers externos de SDK para registrarse, sondear, enviar latidos, gestionar concesiones de sesiones y completar o fallar tareas de workflows, actividades y consultas. Incluye los contratos de ejecución `worker_sessions` y `local_activities`, `external_execution_surface_contract`, `external_executor_config_contract`, `invocable_carrier_contract`, `external_task_input_contract` y `external_task_result_contract`. |
+| `worker_protocol` | `stable` | `worker_protocol` | API HTTP del plano de workers que usan los workers externos de SDK para registrarse, sondear, enviar latidos, gestionar leases de sesiones y completar o fallar tareas de workflows, actividades y consultas. Incluye los contratos de ejecución `worker_sessions` y `local_activities`, `external_execution_surface_contract`, `external_executor_config_contract`, `invocable_carrier_contract`, `external_task_input_contract` y `external_task_result_contract`. |
 | `cli_json` | `stable` | No aplicable (véase la referencia de la CLI) | Estructuras `--output=json` y `--output=jsonl` emitidas por `dw`. Los códigos de salida JSON y nombres de campos JSON son la interfaz duradera. El formato legible por personas `--output=table` es documentación, no contrato. |
 | `waterline_api` | `stable` | No aplicable (véase la API de operadores de Waterline) | API HTTP de observabilidad de Waterline en `/waterline/api/v2/*`, el contrato de origen del motor y las estructuras JSON del panel. Waterline debe coincidir con la versión mayor del paquete Workflow. |
 | `mcp_discovery_results` | `stable` | No aplicable (véase la página de workflows MCP) | Interfaces Model Context Protocol `/mcp/*` y archivos de descubrimiento `llms.txt` / `llms-2.0.txt`. Los nombres de herramientas MCP, esquemas de parámetros y semántica de `payload_preview_limit_bytes` forman parte del contrato. Las descripciones y pistas de descubrimiento son diagnósticas. |
@@ -218,7 +218,7 @@ La tabla muestra la combinación estable revisada seleccionada para estas guías
 desde [`stable-releases.json`](/stable-releases.json). Cada componente se versiona
 por separado. Una combinación compatible puede contener versiones distintas de
 paquetes. Los informes de publicación y validación conservan las versiones y
-resúmenes de imágenes exactos usados en cada comprobación completada.
+huellas de imágenes exactas usadas en cada comprobación completada.
 
 | Componente | Versión admitida | Identidad de instalación |
 |-----------|-------------------|------------------|

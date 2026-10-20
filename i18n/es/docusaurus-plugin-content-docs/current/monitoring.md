@@ -64,7 +64,7 @@ con las guías de cada lenguaje, para conectar clientes y workers al entorno
 propietario del namespace.
 
 Si la telemetría muestra reclamaciones repetidas, carreras de finalización tardía
-o concesiones atascadas, lee
+o leases atascadas, lee
 [Garantías de ejecución e idempotencia](./constraints/execution-guarantees.md)
 junto con esta guía. Ese contrato distingue la incertidumbre del transporte con
 entrega al menos una vez de los resultados duraderos duplicados, para evitar
@@ -296,7 +296,7 @@ de Waterline a Server para la interfaz gestionada.
 ## Guías relacionadas {#related-guides}
 
 - [Garantías de ejecución e idempotencia](./constraints/execution-guarantees.md)
-  explica el contrato de reproducción, reintento, vencimiento de concesiones y
+  explica el contrato de reproducción, reintento, vencimiento de leases y
   resultados duraderos que determina la evidencia del operador.
 - [Ámbito operativo del operador](./operator-operating-envelope.md) reúne salud,
   colas, reconstrucción, exportación, archivado y topología en un contrato.
