@@ -15,7 +15,7 @@ Sagas are an established design pattern for managing complex, long-running opera
 - A saga manages distributed transactions using a sequence of local transactions.
 - A local transaction is a work unit performed by a saga participant (an activity).
 - Each operation in the saga can be reversed by a compensatory activity.
-- The saga pattern assures that all operations are either completed successfully or the corresponding compensation activities are run to undo any completed work.
+- Workflow code decides when to invoke compensation. Compensation can fail and must have time and working workers to complete.
 
 ```php
 use function Workflow\V2\activity;
@@ -52,6 +52,87 @@ When the workflow catches an exception, `$this->compensate()` runs every registe
 Register each compensation after its forward activity succeeds. Replay
 reconstructs that registration order and reuses recorded activity results,
 including completed compensations.
+
+## Deadline-driven compensation
+
+An engine [workflow timeout](./timeouts.md#timeout-outcome-and-cleanup) closes
+the run before workflow code can run compensation. A `catch` or `finally` block
+does not change that behavior. Immediate `cancel()` and `terminate()` commands
+also provide no cleanup window.
+
+Use an earlier application deadline when timeout should undo completed work.
+This embedded workflow reserves a resource, then waits up to 30 seconds for a
+confirmation signal. Expiry resumes workflow code, which releases the
+reservation before returning an `expired` business result:
+
+```php
+use function Workflow\V2\{activity, await};
+use Workflow\V2\Attributes\Signal;
+use Workflow\V2\Attributes\Type;
+use Workflow\V2\Support\ActivityOptions;
+use Workflow\V2\Workflow;
+
+#[Type('reservation-deadline')]
+#[Signal('confirm')]
+final class ReservationDeadlineWorkflow extends Workflow
+{
+    public function handle(string $orderId): array
+    {
+        $reservationId = activity(
+            ReserveResourceActivity::class,
+            new ActivityOptions(scheduleToCloseTimeout: 30),
+            $orderId,
+        );
+        $this->addCompensation(fn () => activity(
+            ReleaseResourceActivity::class,
+            new ActivityOptions(scheduleToCloseTimeout: 30),
+            $reservationId,
+        ));
+
+        if (await('confirm', timeout: 30) === null) {
+            $this->compensate();
+
+            return ['status' => 'expired'];
+        }
+
+        return ['status' => 'confirmed'];
+    }
+}
+```
+
+`ReserveResourceActivity` and `ReleaseResourceActivity` are your application's
+activities. Make both idempotent, with a stable business key for the reservation.
+The wait starts after the reservation succeeds. Send `confirm` without
+arguments so its successful result is `true`; `null` means the wait expired.
+
+Start it with a larger engine limit as a backstop:
+
+```php
+use Workflow\V2\StartOptions;
+use Workflow\V2\WorkflowStub;
+
+$workflow = WorkflowStub::make(ReservationDeadlineWorkflow::class, 'order-123');
+$workflow->start(
+    'order-123',
+    StartOptions::rejectDuplicate()->withRunTimeout(300),
+);
+
+// From an authenticated application action, before the wait expires:
+WorkflowStub::load('order-123')->signal('confirm');
+```
+
+An expired wait with successful compensation completes normally with
+`status: expired` in its output. It is not an engine-timed-out run. If the release
+activity fails, `compensate()` propagates that failure. If the engine deadline
+arrives first, the run closes and remaining compensation cannot execute.
+Allow enough time for scheduling and retries, and account for an earlier
+execution deadline if one is configured.
+
+The separate cooperative `requestCancellation()` operation is available for
+caller-requested cleanup while a run is active. Use its bounded cancellation
+shield for durable cleanup under a cancellation request. It is not triggered
+automatically by a workflow timeout. See
+[Cooperative Cancellation](../polyglot/cancellation.md).
 
 ## Compensation ordering
 

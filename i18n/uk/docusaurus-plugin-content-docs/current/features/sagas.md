@@ -15,7 +15,7 @@ Saga — це усталений шаблон проєктування для к
 - Saga керує розподіленими транзакціями через послідовність локальних транзакцій.
 - Локальна транзакція — це одиниця роботи, яку виконує учасник saga, тобто activity.
 - Кожну операцію saga можна скасувати компенсувальною activity.
-- Шаблон saga передбачає, що всі операції або успішно завершуються, або відповідні компенсувальні activity виконуються для скасування вже завершеної роботи.
+- Код workflow визначає, коли викликати компенсацію. Компенсація може завершитися помилкою, а для її виконання потрібні час і працездатні worker.
 
 ```php
 use function Workflow\V2\activity;
@@ -52,6 +52,87 @@ class BookingSagaWorkflow extends Workflow
 Реєструйте кожну компенсацію після успіху її основної activity. Replay
 відновлює цей порядок реєстрації й використовує записані результати activity,
 зокрема завершених компенсацій.
+
+## Компенсація за кінцевим терміном {#deadline-driven-compensation}
+
+[Тайм-аут workflow](./timeouts.md#timeout-outcome-and-cleanup), який застосовує
+рушій, закриває запуск до виконання компенсації кодом workflow. Блок `catch`
+або `finally` цього не змінює. Негайні команди `cancel()` і `terminate()` також
+не надають вікна для очищення.
+
+Якщо сплив часу має скасувати вже виконану роботу, задайте раніший прикладний
+термін. Цей вбудований workflow резервує ресурс і до 30 секунд чекає на signal
+підтвердження. Після спливу терміну код workflow відновлюється, звільняє ресурс
+і повертає прикладний результат `expired`:
+
+```php
+use function Workflow\V2\{activity, await};
+use Workflow\V2\Attributes\Signal;
+use Workflow\V2\Attributes\Type;
+use Workflow\V2\Support\ActivityOptions;
+use Workflow\V2\Workflow;
+
+#[Type('reservation-deadline')]
+#[Signal('confirm')]
+final class ReservationDeadlineWorkflow extends Workflow
+{
+    public function handle(string $orderId): array
+    {
+        $reservationId = activity(
+            ReserveResourceActivity::class,
+            new ActivityOptions(scheduleToCloseTimeout: 30),
+            $orderId,
+        );
+        $this->addCompensation(fn () => activity(
+            ReleaseResourceActivity::class,
+            new ActivityOptions(scheduleToCloseTimeout: 30),
+            $reservationId,
+        ));
+
+        if (await('confirm', timeout: 30) === null) {
+            $this->compensate();
+
+            return ['status' => 'expired'];
+        }
+
+        return ['status' => 'confirmed'];
+    }
+}
+```
+
+`ReserveResourceActivity` та `ReleaseResourceActivity` — activity вашого
+застосунку. Зробіть обидві ідемпотентними зі стабільним бізнес-ключем
+резервування. Очікування починається після успішного резервування. Надсилайте
+`confirm` без аргументів: успішний результат буде `true`, а `null` означає,
+що термін очікування минув.
+
+Запускайте workflow з більшим обмеженням рушія як останнім запобіжником:
+
+```php
+use Workflow\V2\StartOptions;
+use Workflow\V2\WorkflowStub;
+
+$workflow = WorkflowStub::make(ReservationDeadlineWorkflow::class, 'order-123');
+$workflow->start(
+    'order-123',
+    StartOptions::rejectDuplicate()->withRunTimeout(300),
+);
+
+// From an authenticated application action, before the wait expires:
+WorkflowStub::load('order-123')->signal('confirm');
+```
+
+Після спливу очікування та успішної компенсації workflow завершується нормально
+з `status: expired` у результаті. Це не запуск, закритий тайм-аутом рушія.
+Якщо activity звільнення ресурсу завершується помилкою, `compensate()` передає
+цю помилку далі. Якщо раніше настає кінцевий термін рушія, запуск закривається
+й решта компенсації не виконується. Залишайте достатньо часу для планування та
+повторних спроб і враховуйте раніший кінцевий термін виконання, якщо його задано.
+
+Окрема операція `requestCancellation()` дає змогу викликати очищення, поки запуск
+активний. Для стійкого очищення під час такого запиту використовуйте обмежений
+cancellation shield. Тайм-аут workflow не викликає цей запит автоматично.
+Дивіться [Cooperative Cancellation](../polyglot/cancellation.md).
 
 ## Порядок компенсацій {#compensation-ordering}
 

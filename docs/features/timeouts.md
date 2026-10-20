@@ -123,6 +123,34 @@ When a timeout fires, the engine:
 
 The failure row stores `Workflow\V2\Exceptions\WorkflowTimeoutException` as the exception class, carrying the `timeout_kind` and the deadline timestamp for programmatic inspection.
 
+### Timeout outcome and cleanup
+
+A workflow deadline closes the run with status `failed` and
+`closed_reason = timed_out`. `WorkflowTimedOut` is the terminal history event.
+The runtime records `WorkflowTimeoutException` as failure data. It does **not**
+throw that exception into the workflow body or resume workflow code for cleanup.
+Workflow `catch` and `finally` blocks and registered saga compensations do not
+run when the engine enforces this deadline.
+
+Cancelling an activity's durable execution does not undo an external side
+effect or prove that its callback stopped. Use idempotent operations and
+application-owned reconciliation for effects that may already have committed.
+
+When cleanup must follow an application deadline, use a shorter durable timer
+or timeout-backed wait that lets workflow code run
+[compensation before closure](./sagas.md#deadline-driven-compensation).
+Leave time for activity retries, worker scheduling and cleanup before either
+the run or execution deadline. The engine timeout remains the final backstop.
+A delayed worker can reach that backstop before compensation finishes.
+
+The immediate `cancel()` and `terminate()` commands also close the run without
+a workflow cleanup window. The separate cooperative `requestCancellation()`
+operation can deliver bounded cleanup to a compatible worker while the run is
+still active. A workflow timeout does not automatically become a cooperative
+cancellation request, and a cancellation shield does not extend an execution
+or run deadline. See [Cancel and Terminate](./cancel-and-terminate.md) and
+[Cooperative Cancellation](../polyglot/cancellation.md).
+
 ## Activity timeouts
 
 Activity timeouts let you bound how long individual activity executions are allowed to take. There are four activity timeout scopes:
