@@ -9,12 +9,12 @@ tags:
   - Python
   - Rust
 keywords:
-  - Durable Workflow quickstart
-  - Durable Workflow 2.0 quickstart
-  - standalone PHP SDK quickstart
-  - Python SDK quickstart
-  - Rust SDK quickstart
-  - standalone server Docker quickstart
+  - inicio rápido de Durable Workflow
+  - inicio rápido de Durable Workflow 2.0
+  - inicio rápido del SDK PHP independiente
+  - inicio rápido del SDK Python
+  - inicio rápido del SDK Rust
+  - inicio rápido de Server independiente con Docker
 ---
 
 import Tabs from '@theme/Tabs';
@@ -106,9 +106,9 @@ es exclusivo de este ejercicio local. Para acceso remoto, usa el
 credenciales propias, TLS y controles de acceso de red.
 
 El segundo contenedor procesa la cola de infraestructura de Server y hace
-avanzar los temporizadores durables aunque los workers SDK estén detenidos.
+avanzar los temporizadores duraderos aunque los workers SDK estén detenidos.
 Su cola Laravel se llama `default`, distinta de las colas de tareas SDK de abajo.
-Mantén ambos contenedores en ejecución. La evaluación de calendarios y el
+Mantén ambos contenedores en ejecución. La evaluación de programaciones y el
 mantenimiento de producción usan los roles adicionales del stack Compose.
 
 **Resultado esperado:** la comprobación de disponibilidad responde
@@ -124,7 +124,7 @@ pestaña seleccionada para que sigas una ruta completa.
 <TabItem value="php" label="PHP" default>
 
 Requisitos: PHP 8.1 o posterior y Composer. Esta ruta usa
-`durable-workflow/sdk`, independiente del framework.
+`durable-workflow/sdk`, independiente del framework, no el motor Laravel integrado.
 
 1. **Instala el SDK.**
 
