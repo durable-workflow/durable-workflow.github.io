@@ -8,6 +8,10 @@ keywords: [worker build id rollout, drain worker build, rollback worker build, c
 
 # Worker Build-Id Rollout
 
+## Replay before changing builds {#replay-before-changing-builds}
+
+Before promoting a candidate, replay representative open and recently closed histories against its exact application code. Before rollback, replay histories written by the newer build against the older artifact. Follow the [replay testing gate](../testing.md#replay-before-deployment); a compatible routing cohort or successful integrity check alone does not prove replay compatibility.
+
 Use this guide to inspect worker cohorts, choose the build for new workflow
 starts, and keep compatible workers available for existing runs. Promotion
 changes new-start selection. Draining stops new claims by the selected cohort.

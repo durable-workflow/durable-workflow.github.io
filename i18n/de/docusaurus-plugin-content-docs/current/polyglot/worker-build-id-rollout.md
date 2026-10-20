@@ -8,6 +8,10 @@ keywords: [Worker-Build-ID, Worker entleeren, Worker-Rollback, Canary, unversion
 
 # Rollout von Worker-Build-IDs
 
+## Replay vor einem Build-Wechsel {#replay-before-changing-builds}
+
+Prüfen Sie vor der Promotion eines Kandidaten repräsentative offene und kürzlich geschlossene Historien gegen dessen genauen Anwendungscode. Prüfen Sie vor einem Rollback die Historien des neueren Builds gegen das ältere Artefakt. Nutzen Sie die [Replay-Prüfung](../testing.md#replay-before-deployment); eine kompatible Routing-Kohorte oder erfolgreiche Integritätsprüfung allein beweist keine Replay-Kompatibilität.
+
 Prüfen Sie mit diesem Leitfaden Worker-Kohorten und wählen Sie den Build für neue Workflow-Starts. Halten Sie kompatible Worker für bestehende Läufe bereit. Eine Promotion ändert die Auswahl für neue Starts; Drain verhindert neue Claims der Kohorte. Keine dieser Aktionen migriert vorhandene Läufe oder beweist, dass ein Build gelöscht werden kann.
 
 [Worker-Kompatibilität und Routing](/docs/polyglot/worker-compatibility-routing) erklärt die Identität von Workflow-Tasks, Aktivitäten, Wiederholungen, Kindern und Continue-as-new. Eine Kohorte ist durch `(namespace, task_queue, build_id)` abgegrenzt. Registrierungen ohne `build_id` gehören zur unversionierten `null`-Kohorte.

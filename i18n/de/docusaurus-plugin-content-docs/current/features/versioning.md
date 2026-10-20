@@ -4,6 +4,10 @@ sidebar_position: 15
 
 # Versionierung {#versioning}
 
+## Replay vor einem Build-Wechsel {#replay-before-changing-builds}
+
+Prüfen Sie vor der Promotion eines Kandidaten repräsentative offene und kürzlich geschlossene Historien gegen dessen genauen Anwendungscode. Prüfen Sie vor einem Rollback die Historien des neueren Builds gegen das ältere Artefakt. Nutzen Sie die [Replay-Prüfung](../testing.md#replay-before-deployment); eine kompatible Routing-Kohorte oder erfolgreiche Integritätsprüfung allein beweist keine Replay-Kompatibilität.
+
 Workflows können lange laufen, mitunter Monate oder Jahre. Daher müssen
 Workflow-Definitionen häufig geändert werden, während Ausführungen noch laufen.
 Ohne Versionierung würden Änderungen am Ausführungspfad beim Replay

@@ -18,6 +18,10 @@ keywords:
 
 # Mises à niveau progressives {#rolling-upgrades}
 
+## Relecture avant un changement de build {#replay-before-changing-builds}
+
+Avant de promouvoir un candidat, relisez des historiques représentatifs ouverts et récemment clôturés avec son code applicatif exact. Avant un retour arrière, relisez les historiques écrits par le nouveau build avec l’ancien artefact. Suivez le [contrôle de relecture](./testing.md#replay-before-deployment) : une cohorte de routage compatible ou une vérification d’intégrité réussie ne prouve pas à elle seule la compatibilité de relecture.
+
 Une mise à niveau progressive remplace les nœuds API, les workers ou
 l'ordonnanceur sans mettre le déploiement hors ligne. Ce contrat couvre le
 petit cluster du guide des [déploiements auto-hébergés](/docs/deployment) : deux

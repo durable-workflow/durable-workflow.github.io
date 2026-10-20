@@ -4,6 +4,52 @@ sidebar_position: 9
 
 # Testes {#testing}
 
+## Replay antes da implantação ou reversão {#replay-before-deployment}
+
+Guarde exportações de execuções selecionadas de workflows representativos abertos e encerrados recentemente. Cubra os caminhos de atividades, tentativas, sinais, atualizações, workflows filhos, temporizadores e marcadores de versão que o candidato pode encontrar. Preserve cada geração necessária de continue-as-new. Use históricos sem poda com os bytes originais dos payloads e os codecs disponíveis. Um indicador de exportação sozinho não comprova completude. Consulte os [limites de retenção](./configuration/pruning-workflows.md).
+
+### PHP embarcado {#embedded-php-replay}
+
+Exporte do armazenamento pertencente à aplicação. Defina `WORKFLOW_ID` e `RUN_ID` para a instância e a execução exatas selecionadas:
+
+```bash
+php artisan workflow:v2:history-export "$WORKFLOW_ID" \
+  --run-id="$RUN_ID" --output=replay-bundles/run.json
+```
+
+Execute a verificação dentro do artefato da aplicação candidata, com suas classes de workflow e configuração carregadas. Mantenha os relatórios fora do diretório dos bundles. Use um ambiente de CI isolado, sem credenciais para efeitos externos em produção:
+
+```bash
+php artisan workflow:v2:replay-verify replay-bundles/run.json \
+  --json --output=replay-one.json
+php artisan workflow:v2:replay-simulate replay-bundles \
+  --json --output=replay-report.json
+```
+
+Um código de saída diferente de zero bloqueia a promoção. Zero ainda pode exigir revisão. Salve esta verificação do relatório em lote como `gate-replay.php` e execute `php gate-replay.php replay-report.json` na CI:
+
+```php
+<?php
+$report = json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR);
+$evidence = $report['evidence'] ?? [];
+$count = $evidence['bundle_count'] ?? 0;
+$allowed = ($report['promotion_decision'] ?? null) === 'safe_to_promote'
+    && $count > 0
+    && ($evidence['missing_bundle_count'] ?? 1) === 0
+    && ($evidence['replay_checked_count'] ?? 0) === $count;
+exit($allowed ? 0 : 1);
+```
+
+`--skip-replay` verifica apenas integridade. Mesmo um resultado sem problemas não autoriza uma promoção segura para replay. A aprovação cobre somente caminhos registrados e o prefixo visível de uma execução aberta, não ramificações futuras, correção de negócio ou comportamento de rede. Antes de reverter, teste o artefato antigo com históricos já escritos por workers novos que ele possa receber. Mantenha também testes unitários e com um runtime real.
+
+### SDKs em modo serviço {#service-sdk-replay}
+
+**PHP:** use `DurableWorkflow\Worker\Replayer::replay()` com o codec da aplicação, o callable, a lista de eventos, a entrada original, a fila e a identidade registrada da tarefa. Deixe `NonDeterministicWorkflow` reprovar o teste e confira os comandos e resultados esperados. Consulte os [testes de replay em PHP](https://php.durable-workflow.com/build/testing/).
+
+**Python:** use `Replayer.replay()` ou `verify_replay()` com os workflows candidatos registrados e confira o resultado esperado. Receber um objeto, por si só, não é uma asserção aprovada. Forneça o `start_input` original decodificado quando os eventos o omitirem: o Core o armazena em `payloads.arguments`. Preserve o tipo, os IDs e o codec registrados. Consulte as [APIs de replay em Python](https://python.durable-workflow.com/sdk-reference/#replay-captured-histories). `--simulate-bundles` verifica integridade, não código candidato; a compatibilidade atual com o esquema 2 está em [Python #173](https://github.com/durable-workflow/sdk-python/issues/173). Não reescreva a versão nem o checksum para contornar uma recusa.
+
+**Rust:** ainda não existe uma API pública de replay offline. [Rust #105](https://github.com/durable-workflow/sdk-rust/issues/105) acompanha essa capacidade. Enquanto isso, teste o candidato contra um runtime isolado; isso não fornece a garantia offline ausente.
+
 ## `Workflow\V2` {#workflowv2}
 
 `Workflow\V2\WorkflowStub::fake()` oferece um caminho determinístico de testes com execução imediata no mesmo processo para os recursos suportados pelo modo fake da `V2`.
