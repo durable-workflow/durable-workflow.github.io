@@ -198,6 +198,16 @@ later input and terminal events appear in another delivery order.
 past an unmarked cancel request, and if the operation completed first,
 `await()` still returns that result.
 
+## Entry compatibility and recovery {#entry-compatibility-and-recovery}
+
+**Unpublished release preparation.** The PHP SDK 2.5.4 entry safeguard and Server 2.9.9 routing/recovery support are merged source, pending publication and installed-artifact qualification.
+
+The managed worker checks the handler's recorded positional input before entering its Fiber. Missing required arguments or incompatible declared PHP types raise `DurableWorkflow\Exception\WorkflowEntryArgumentsMismatch` and report the task reason `workflow_entry_arguments_mismatch`. Optional defaults apply only to omitted input; they never replace an incompatible recorded value. A `TypeError` thrown after successful entry remains an application failure.
+
+The worker advertises `workflow_entry_arguments_validation` automatically. With the matching Server support, a refused task is replay-blocked and the original run stays nonterminal. An older runtime may instead retry the failed task, so an SDK upgrade alone does not establish the complete recovery contract.
+
+Inspect the original with `Client::describeWorkflow($workflowId, $runId)` and the selected-run debug endpoint. Restore compatible code before calling `Client::repairWorkflow($workflowId, $runId)`, then verify that same run resumes without changing input, history, routing identity or deadlines. Do not catch this failure inside the workflow body or repeatedly repair incompatible code. See the [service recovery procedure](../failures-and-recovery.md#service-entry-recovery) and [definition routing](./worker-compatibility-routing.md#definition-fingerprint-evolution).
+
 ## Framework service mode and embedded Laravel
 
 The same package ships first-party

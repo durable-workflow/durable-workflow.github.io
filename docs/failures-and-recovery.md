@@ -101,6 +101,22 @@ A run with an eligible activity retry remains waiting and can continue after the
 
 For a terminal failed run, preserve its history and reconcile any external side effects before deciding whether the application should start a new workflow. Use application idempotency for repeated business operations. There is no automatic workflow-level retry or terminal-run reopening; see [Workflow-Level Retry](#workflow-level-retry).
 
+## Service Entry Refusal and Recovery {#service-entry-recovery}
+
+**Unpublished release preparation.** Server 2.9.9 and the PHP 2.5.4, Python 2.6.2 and Rust 3.5.6 SDK entry safeguards are merged source, pending publication and installed-artifact qualification.
+
+An entry mismatch is a deployment/replay refusal before application workflow code runs, not an activity retry or a terminal business failure. The worker reports `failure_reason = workflow_entry_arguments_mismatch`, and the Server retains the failed workflow task with `replay_blocked = true` instead of automatically creating another attempt. Its generic `replay_blocked_reason` is `worker_reported_replay_failure`. The run remains nonterminal, with its recorded input, history and deadlines intact. This differs from an exception thrown by a successfully entered workflow body, which can still fail the run.
+
+Recover only after checking the actual durable state:
+
+1. Inspect the selected run with `GET /api/workflows/{workflowId}/runs/{runId}/debug`. Confirm `latest_workflow_task_failure.reason` is `workflow_entry_arguments_mismatch` and that the original run is still open. A terminal run is not reopened by this procedure.
+2. Deploy code that accepts the recorded positional arguments or typed input. Preserve the original workflow/run id, namespace, queue, build compatibility, history and deadlines. Never edit stored input or substitute new DTO defaults.
+3. Confirm an eligible worker is available using [definition routing](./polyglot/worker-compatibility-routing.md#definition-fingerprint-evolution). Repair does not create a worker or prove replay compatibility.
+4. Use `POST /api/workflows/{workflowId}/runs/{runId}/repair` with the normal authorized operator credential and namespace. The selected-run route refuses a historical target instead of silently repairing a newer run. PHP also exposes `Client::repairWorkflow($workflowId, $runId)`; Python's `repair_workflow(workflow_id)` targets the current instance, and Rust has no equivalent repair convenience method.
+5. Verify the same original resumes with its recorded input and history prefix, then records its expected outcome once. An elapsed original deadline still applies. If the replacement remains incompatible, inspect the new refusal rather than repeatedly issuing repair.
+
+Older Server releases may store the SDK's specific reason without classifying it as a replay block, so reporting the failure alone does not establish the no-automatic-retry contract. Use the qualified runtime/SDK combination. See [Versioning](./features/versioning.md#service-sdk-entry-safeguard) for language boundaries and [Workflow Commands](./polyglot/server-api-reference.md#workflow-commands) for the authenticated selected-run routes.
+
 ## Workflow Timeout Enforcement
 
 When `StartOptions::withExecutionTimeout()` or `StartOptions::withRunTimeout()` is set, the engine records a deadline on the workflow run. The execution deadline spans the entire logical workflow (including continue-as-new runs), while the run deadline resets with each new run.

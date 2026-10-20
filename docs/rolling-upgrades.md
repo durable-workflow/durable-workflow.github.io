@@ -95,18 +95,28 @@ window must satisfy every rule in this section.
   (`build_id: null`) is the pre-rollout default; the
   [worker build-id rollout guide](/docs/polyglot/worker-build-id-rollout)
   explains the first cutover.
-- **Workflow definition fingerprints stay pinned.** Server images
-  carrying `DW_V2_PIN_TO_RECORDED_FINGERPRINT=true` (the default) keep
-  in-flight runs pinned to the workflow definition fingerprint
-  recorded at `WorkflowStarted`. A new worker that ships a different
-  fingerprint for the same workflow refuses to claim those runs until
-  they finish.
+- **Preserve original routing and qualify changed definitions.** A run keeps
+  its build pin and the fingerprint recorded at `WorkflowStarted`. With
+  `DW_V2_PIN_TO_RECORDED_FINGERPRINT=true` (the default), the prepared Server
+  2.9.9 routing change prefers eligible recorded-definition workers. If none
+  remains, a replacement with `workflow_entry_arguments_validation` may claim
+  under the original namespace, queue, type, build and replay guards. The SDK
+  must still validate original entry input and replay committed commands.
 - **Overlapping-build admission posture.** Choose the
   [`DW_V2_FLEET_VALIDATION_MODE`](/docs/polyglot/server-config-reference)
   posture before you start. `warn` lets the rollout proceed even when
   the required compatibility marker has no live worker;  `fail` blocks
   dispatch and fails the readiness contract closed during that window.
   Production rollouts that require a clean cutover should be on `fail`.
+
+**Unpublished release preparation.** That replacement path requires the pending
+Server 2.9.9 and PHP 2.5.4, Python 2.6.2 or Rust 3.5.6 SDK qualification.
+Older runtimes can keep refusing a changed fingerprint even when application
+code adds a valid version branch. Disabling fingerprint pinning is not the
+default safe-upgrade procedure. Follow [definition routing](./polyglot/worker-compatibility-routing.md#definition-fingerprint-evolution),
+inspect the actual worker capability and retain rollback artifacts until the
+new path is qualified. A version branch cannot fix incompatible entry arguments
+before the workflow body starts; see [entry compatibility](./features/versioning.md#service-sdk-entry-safeguard).
 
 ## Schema/bootstrap ordering
 

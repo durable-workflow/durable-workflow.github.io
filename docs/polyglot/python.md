@@ -710,6 +710,16 @@ The `WorkflowContext` passed to `run` provides deterministic operations:
 | `ctx.uuid4()` | Deterministic UUID |
 | `ctx.logger` | Logger that is silent during replay |
 
+### Entry compatibility and recovery {#entry-compatibility-and-recovery}
+
+**Unpublished release preparation.** The Python SDK 2.6.2 entry safeguard and Server 2.9.9 routing/recovery support are merged source, pending publication and installed-artifact qualification.
+
+Before calling `run(ctx, *start_input)`, the worker binds the recorded arguments against the entry signature. A missing required argument or incompatible arity raises `WorkflowEntryArgumentsMismatchError` with reason `workflow_entry_arguments_mismatch` before the body runs. Defaults fill omitted arguments only. Python annotations remain unenforced: changing an annotation does not validate or convert recorded data. A `TypeError` raised by a successfully entered ordinary or generator body remains an application failure.
+
+The worker automatically advertises `workflow_entry_arguments_validation`. With a qualified Server, the failed task becomes replay-blocked while the original run remains nonterminal. Older runtimes may retry that task instead; SDK-side refusal alone does not establish the complete recovery contract.
+
+Inspect the exact run with `await client.describe_workflow_run(workflow_id, run_id)` and the selected-run debug endpoint. After restoring a compatible entry method, use the selected-run HTTP repair route in the [recovery procedure](../failures-and-recovery.md#service-entry-recovery). `await client.repair_workflow(workflow_id)` and `handle.repair()` instead resolve the instance's current run; neither accepts a run-id argument. Preserve the original input, history, namespace, queue, build and deadlines. For command changes, put `ctx.get_version` inside that compatible method and qualify cold replay through [definition routing](./worker-compatibility-routing.md#definition-fingerprint-evolution).
+
 ### Workflow time and durable waits
 
 During worker replay, `ctx.now()` returns the run's **persisted start time**.

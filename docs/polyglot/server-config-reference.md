@@ -280,10 +280,21 @@ execute the same workflows.
 | `DW_V2_SUPPORTED_COMPATIBILITIES` | unset | Comma-separated compatibility markers this worker accepts, or `*`. | `WORKFLOW_V2_SUPPORTED_COMPATIBILITIES` |
 | `DW_V2_COMPATIBILITY_NAMESPACE` | unset | Compatibility namespace for shared workflow databases with independent fleets. | `WORKFLOW_V2_COMPATIBILITY_NAMESPACE` |
 | `DW_V2_COMPATIBILITY_HEARTBEAT_TTL` | `30` | Seconds a worker-compatibility heartbeat remains valid. | `WORKFLOW_V2_COMPATIBILITY_HEARTBEAT_TTL` |
-| `DW_V2_PIN_TO_RECORDED_FINGERPRINT` | `true` | Resolve in-flight runs from the workflow fingerprint recorded at `WorkflowStarted`. | `WORKFLOW_V2_PIN_TO_RECORDED_FINGERPRINT` |
+| `DW_V2_PIN_TO_RECORDED_FINGERPRINT` | `true` | Prefer the recorded workflow definition; see the runtime-specific fallback boundary below. | `WORKFLOW_V2_PIN_TO_RECORDED_FINGERPRINT` |
 | `DW_V2_CONTINUE_AS_NEW_EVENT_THRESHOLD` | `10000` | History event count at which the package asks the workflow author to continue-as-new. | `WORKFLOW_V2_CONTINUE_AS_NEW_EVENT_THRESHOLD` |
 | `DW_V2_CONTINUE_AS_NEW_SIZE_BYTES_THRESHOLD` | `5242880` | Serialized-history byte size at which the package asks for continue-as-new. | `WORKFLOW_V2_CONTINUE_AS_NEW_SIZE_BYTES_THRESHOLD` |
 | `DW_V2_HISTORY_EXPORT_SIGNING_KEY` | unset | Optional HMAC key for authenticating history export archives. | `WORKFLOW_V2_HISTORY_EXPORT_SIGNING_KEY` |
+
+**Unpublished Server release preparation.** Server 2.9.9 makes the fingerprint
+preference effective for service workers. With pinning enabled, a changed
+definition may fall back only when no eligible recorded-definition worker
+remains and the replacement advertises `workflow_entry_arguments_validation`.
+With pinning disabled, the source preference is removed; build pins,
+namespace/queue/type isolation, registration identity and strict replay remain.
+The PHP 2.5.4, Python 2.6.2 and Rust 3.5.6 SDK counterparts are also pending
+publication and installed qualification. Do not assume this behavior on an
+older runtime merely because its configuration contains the same key. See
+[definition routing](./worker-compatibility-routing.md#definition-fingerprint-evolution).
 | `DW_V2_HISTORY_EXPORT_SIGNING_KEY_ID` | unset | Key identifier recorded alongside signed history exports. | `WORKFLOW_V2_HISTORY_EXPORT_SIGNING_KEY_ID` |
 | `DW_V2_UPDATE_WAIT_COMPLETION_TIMEOUT_SECONDS` | `10` | Seconds the server waits for an update to reach a terminal stage. | `WORKFLOW_V2_UPDATE_WAIT_COMPLETION_TIMEOUT_SECONDS` |
 | `DW_V2_UPDATE_WAIT_POLL_INTERVAL_MS` | `50` | Milliseconds between update-stage polls. | `WORKFLOW_V2_UPDATE_WAIT_POLL_INTERVAL_MS` |
