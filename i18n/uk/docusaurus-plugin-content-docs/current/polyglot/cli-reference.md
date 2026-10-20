@@ -224,14 +224,14 @@ JSON містить стабільне поле `status` для автомати
 | `dw workflow:list-runs <workflow-id>` | Показати виконання екземпляра workflow. | `--json` |
 | `dw workflow:show-run <workflow-id> <run-id>` | Показати одне виконання. | `--follow`, `--json` |
 | `dw workflow:history <workflow-id> <run-id>` | Прочитати події історії виконання. | `--follow`, `--page-size`, `--json` |
-| `dw workflow:history-export <workflow-id> <run-id>` | Експортувати архівний payload історії виконання. | | `--output-file`, глобальні параметри |
-| `dw workflow:signal <workflow-id> <signal-name>` | Надіслати signal. | | `--run-id`, параметри вводу, `--json` |
-| `dw workflow:query <workflow-id> <query-name>` | Виконати query workflow лише для читання. | | `--run-id`, параметри вводу, `--json` |
-| `dw workflow:update <workflow-id> <update-name>` | Подати чи виконати update workflow. | | `--wait=accepted|completed`, `--run-id`, параметри вводу, `--json` |
-| `dw workflow:cancel [workflow-id]` | Закрити один workflow чи вибрану групу як скасовані без очищення в коді workflow. | | `--reason`, `--run-id`, `--all-matching`, `--type`, `--status`, `--limit`, `--yes`, `--json` |
-| `dw workflow:terminate <workflow-id>` | Примусово завершити workflow. | | `--reason`, `--run-id`, `--json` |
-| `dw workflow:repair <workflow-id>` | Попросити сервер відновити застрягле виконання чи виконання, що допускає повторну спробу. | | `--json` |
-| `dw workflow:archive <workflow-id>` | Архівувати закрите виконання. | | `--reason`, `--json` |
+| `dw workflow:history-export <workflow-id> <run-id>` | Експортувати архівний payload історії виконання. | `--output-file`, глобальні параметри |
+| `dw workflow:signal <workflow-id> <signal-name>` | Надіслати signal. | `--run-id`, параметри вводу, `--json` |
+| `dw workflow:query <workflow-id> <query-name>` | Виконати query workflow лише для читання. | `--run-id`, параметри вводу, `--json` |
+| `dw workflow:update <workflow-id> <update-name>` | Подати чи виконати update workflow. | `--wait=accepted\|completed`, `--run-id`, параметри вводу, `--json` |
+| `dw workflow:cancel [workflow-id]` | Закрити один workflow чи вибрану групу як скасовані без очищення в коді workflow. | `--reason`, `--run-id`, `--all-matching`, `--type`, `--status`, `--limit`, `--yes`, `--json` |
+| `dw workflow:terminate <workflow-id>` | Примусово завершити workflow. | `--reason`, `--run-id`, `--json` |
+| `dw workflow:repair <workflow-id>` | Попросити сервер відновити застрягле виконання чи виконання, що допускає повторну спробу. | `--json` |
+| `dw workflow:archive <workflow-id>` | Архівувати закрите виконання. | `--reason`, `--json` |
 
 Приклади:
 
@@ -251,6 +251,24 @@ dw workflow:cancel --all-matching='WorkflowType = "ImportJob"' --limit=25 --yes
 перевіряють канонічні поля запиту за контрактом, опублікованим сервером.
 Неканонічні застарілі псевдоніми відхиляються до надсилання запиту.
 
+## Перегляд викликів сервісів {#service-call-inspection}
+
+Використовуйте `dw service-call:describe <endpoint> <service> <operation> <call-id>`
+для перегляду одного стійкого виклику Nexus у просторі імен кінцевої точки.
+Наприклад, `dw service-call:describe billing invoices create call-42 --namespace=shared --json`
+повертає повну відповідь Server.
+
+Відповідь зберігає початкового викликача та пов'язану ціль, строк виклику,
+статус, результат операції, записи спроб, типізовану помилку та збережені
+посилання на дані. Успішний результат залишається Avro-значенням
+`result_envelope` без втрати даних. Прийнятий або розпочатий виклик ще
+очікує завершення, а не є успішним завершеним результатом.
+
+Команда робить один запит GET. Вона не запитує повторної спроби, скасування
+чи завантаження зовнішнього об'єкта. Під час читання Server може узгодити
+виклик із термінальним результатом пов'язаного workflow. Перевіряються
+авторизація простору імен та вибір кінцевої точки, сервісу, операції й виклику.
+
 ## Команди адаптерів bridge {#bridge-adapter-commands}
 
 Команди bridge є обмеженими інструментами приймання та передавання подій
@@ -260,7 +278,7 @@ dw workflow:cancel --all-matching='WorkflowType = "ImportJob"' --limit=25 --yes
 
 | Команда | Призначення | Важливі параметри |
 | --- | --- | --- |
-| `dw bridge:webhook <adapter>` | Надіслати одну подію webhook bridge, що запускає workflow, надсилає signal чи update через площину керування. | | `--action=start_workflow|signal_workflow|update_workflow`, `--idempotency-key`, `--target`, параметри вводу, `--correlation`, `--json` |
+| `dw bridge:webhook <adapter>` | Надіслати одну подію webhook bridge, що запускає workflow, надсилає signal чи update через площину керування. | `--action=start_workflow\|signal_workflow\|update_workflow`, `--idempotency-key`, `--target`, параметри вводу, `--correlation`, `--json` |
 
 Приклади:
 
