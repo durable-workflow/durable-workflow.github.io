@@ -3,11 +3,13 @@
   "features/condition-waits.md": "451261eda990c9591a0db69839d872184b5c64da6b537a582133095b8d4b599e",
   "features/continue-as-new.md": "6b3cc8f8c5375726ff0b2544da01e7206e964908b436544e284068ab67aa3dbb",
   "features/events.md": "fcb391862938b5e8cf44ad39f213fc3e55b2ecb7c6edebe6a83a1e58a60bf56e",
+  "features/external-payload-storage.md": "1741bcfc944c9d40f1101888b9f172d13e588f54f6cdcb6f84d00df10c878356",
   "features/heartbeats.md": "55dc06337706e0b0f62100cddd445055165bc406a1b2e2f6b4fdf8c22f84f3d1",
   "features/local-activities.md": "05fca8f2104d8f4e7bd8b48040f5615f18d0ee2795922fb65c56f8d3d70ed204",
   "features/memo.md": "621aa630e37fbef6f84d761c92f99dc3fe8756879008c659cbad0600eb14fd5d",
   "features/message-streams.md": "3bce915ed750793b31360d2accc94eebf2c7f075b9769e072f8a2d3d034afad0",
   "features/queries.md": "c66dd9542a062edd8158a46cebc9f1bf926aaf3599dca4a3122bd9860df6e2a2",
+  "features/schedules.md": "73dd4d49bfb61d5ecafc0fb799136fc170d8cd33781ff00f40893efe4e0de0d6",
   "features/search-attributes.md": "3d07ea788c7d6753a0751c226554fa36667d4ab7860379c01c171fbe066dff11",
   "features/side-effects.md": "abdccab8d6fc1a12b3eff8a4ccc58730ac36f523559b4ad89c5c2a8d201a3b86",
   "features/signal+timer.md": "65b4a78b9e90a845297b1cb12591dd26a6573f76c75717e1e4ba02211c590822",
@@ -20,6 +22,7 @@
   "installation.md": "1e2e04a8f23414d0e81c72b166700fd6350129ab81b2f22a6205856c23741967",
   "introduction.md": "06bf96d164d402d4e376c6308b20f96d324110b2e0cf96c2a1a67b39906072e3",
   "mcp-workflows.md": "1c0b5bb7f2e5c7ca835dfdfa57bbe8f6624172c855f4e225057ac2377abf360e",
+  "platform-protocol-specs.md": "ba9c69adfca7fb4a0dd982464b0ca69dd5a21de1e340edbe23b075ec0fb0c35c",
   "polyglot/avro-value-protocol.md": "602e66c6288c1dd69d2b400c64e4739ad3a0493b5be269cee40f7848b11f260a",
   "polyglot/cancellation.md": "a08aca914d8211d32184fd76f14e4f8bf47d40656e55364923013e3cece3b70d"
 }
