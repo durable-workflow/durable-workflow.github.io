@@ -40,9 +40,7 @@ import protocolCatalog from '@site/static/platform-protocol-specs.json';
 - 本仓库 `static/compatibility-contract.json` 中同一清单的冻结镜像。
 - PHP 类 `Workflow\V2\Support\SurfaceStabilityContract`，即 Server 重新导出的进程内来源。
 
-产物渠道准入由 [`/public-artifact-release-policy.json`](pathname:///public-artifact-release-policy.json) 单独约束。这项独立审查的策略控制哪些 2.0 渠道可以成为权威公开产物组合。
-
-发布若修改下列任何接口的稳定性级别、字段集或破坏性变更规则，必须在同一修改中更新本页、JSON 镜像、PHP 清单以及所有相关的软件包稳定性文档。文档 CI 验证机器可读契约、产物发布阶段策略、可用时的已发布 Rust 元数据以及 Worker 协议规范。本页与清单在文字上的对齐仍是明确的发布审查责任。
+发布若修改下列任何接口的稳定性级别、字段集或破坏性变更规则，必须在同一修改中更新本页、JSON 镜像、PHP 清单以及所有相关的软件包稳定性文档。文档 CI 验证机器可读契约、可用时的已发布 Rust 元数据以及 Worker 协议规范。本页与清单在文字上的对齐仍是明确的发布审查责任。
 
 ## 配套资料：平台协议规范目录 {#companion-platform-protocol-spec-catalog}
 
