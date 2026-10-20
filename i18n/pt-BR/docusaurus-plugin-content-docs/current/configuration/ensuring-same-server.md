@@ -7,10 +7,10 @@ tags:
   - workers
   - affinity
 keywords:
-  - activity worker affinity
-  - dedicated activity queue
-  - same process activity
-  - worker sessions
+  - afinidade de worker de atividade
+  - fila dedicada de atividades
+  - atividade no mesmo processo
+  - sessões de worker
 ---
 
 # Posicionamento e afinidade de workers {#worker-placement-and-affinity}
