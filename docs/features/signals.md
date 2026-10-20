@@ -30,7 +30,7 @@ addressed to the instance and declared by its command contract carry across [con
 with their original identity, arguments and ordering. A signal addressed to a
 specific run never moves to another run.
 
-Older runs without a durable signal declaration do not gain one from a worker's
+Runs without a durable signal declaration do not gain one from a worker's
 later registration. If the runtime cannot establish delivery, the accepted
 signal closes with the explicit rejected disposition below.
 
