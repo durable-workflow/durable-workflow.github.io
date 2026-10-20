@@ -34,7 +34,7 @@ Anwendungs-Worker behalten die Verantwortung für Workflow- und Aktivitätscode.
 </div>
 
 Dies ist ein Leitfaden für selbst gehostete Migration. Er verwandelt die
- eingebettete Bereitstellung nicht in einen Cloud-Namespace. Der resultierende
+eingebettete Bereitstellung nicht in einen Cloud-Namespace. Der resultierende
 Server ist nicht mit Durable Workflow Cloud verbunden. Die separate verwaltete
 Dienstoption beschreibt [Verwaltete Cloud-Laufzeitumgebung](/docs/polyglot/cloud-control-plane).
 
