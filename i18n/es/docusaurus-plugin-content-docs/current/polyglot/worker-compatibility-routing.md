@@ -83,7 +83,7 @@ un motivo explícito de compatibilidad en lugar de reasignar la propiedad silenc
 Este es el contrato para los despliegues que afectan a la compatibilidad:
 
 - las tareas nunca pasan silenciosamente a un worker incompatible
-- el vencimiento dla lease y la nueva entrega conservan la familia original
+- el vencimiento de la lease y la nueva entrega conservan la familia original
 - la ausencia de un worker compatible es un estado observable, no un comportamiento indefinido
 
 ## Qué deben configurar los operadores {#what-operators-should-configure}

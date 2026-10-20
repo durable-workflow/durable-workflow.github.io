@@ -249,7 +249,7 @@ Identificadores y criterios:
 [`static/platform-conformance/search-attribute-runtime-scenarios.json`](pathname:///platform-conformance/search-attribute-runtime-scenarios.json).
 
 `schedules_runtime_contract` es estable. Con artefactos publicados debe cubrir
-cadencia cron y de tasa fija, lista y detalle, pausas sin activaciones,
+cadencia cron y de tasa fija, lista y detalle, ventanas de pausa/reanudación sin activaciones,
 eliminación que detiene activaciones futuras, política de activaciones perdidas,
 supervivencia a reinicio, operaciones CLI y SDK Python y orientadas a PHP,
 programaciones Python que activan PHP y viceversa, rechazo de cron inválido y

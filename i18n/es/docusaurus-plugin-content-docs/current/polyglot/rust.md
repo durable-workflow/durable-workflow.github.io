@@ -25,7 +25,7 @@ El SDK oficial de Rust permite crear workflows, además de ofrecer compatibilida
 
 La [página principal de documentación de Rust](https://rust.durable-workflow.com/) ofrece el índice del SDK y los puntos de entrada generales. Para módulos, structs, traits y métodos del crate, continúa en la [referencia generada de la API del SDK de Rust](https://rust.durable-workflow.com/durable_workflow/).
 
-El SDK estable de Rust admite temporizadores duraderos, workflows hijos, reintentos y tiempos de espera de actividades, actividades locales, sesiones de worker, ejecución con afinidad, señales, manejadores de consulta mediante reproducción, cancelación y terminación, plazos de workflow exigidos por el servidor, efectos secundarios tipados, marcadores de versión, actualizaciones y fallos tipados terminales y de reproducción. Todavía no ofrece gestión de programaciones. Consulta el [índice de capacidades de 2.0](/docs/capabilities/) en lugar de suponer que todos los SDK tienen el mismo alcance.
+El SDK estable de Rust admite temporizadores duraderos, workflows hijos, reintentos y tiempos de espera de actividades, actividades locales, sesiones de worker, ejecución sticky, señales, manejadores de consulta mediante reproducción, cancelación y terminación, plazos de workflow exigidos por el servidor, efectos secundarios tipados, marcadores de versión, actualizaciones y fallos tipados terminales y de reproducción. Todavía no ofrece gestión de programaciones. Consulta el [índice de capacidades de 2.0](/docs/capabilities/) en lugar de suponer que todos los SDK tienen el mismo alcance.
 
 ## Probar el entorno local de Sample App {#try-the-local-sample-app-playground}
 
@@ -81,11 +81,11 @@ Los recursos de sesión viven en el proceso titular. Su sustituto debe reconstru
 
 Las sesiones se admiten desde el SDK de Rust 3.2.0. Utiliza Server 2.5.1 o posterior. El [ejemplo ejecutable](https://github.com/durable-workflow/sdk-rust/blob/3.2.0/examples/worker_sessions.rs) reutiliza una caché local del proceso entre dos actividades tipadas e imprime su generación. Consulta [WorkerSessionOptions](https://rust.durable-workflow.com/durable_workflow/struct.WorkerSessionOptions.html) y [WorkerSession](https://rust.durable-workflow.com/durable_workflow/struct.WorkerSession.html) para configuración y métodos del ciclo de vida.
 
-## Ejecución con afinidad acotada {#bounded-sticky-execution}
+## Ejecución sticky acotada {#bounded-sticky-execution}
 
 Habilita `Worker::sticky_cache(StickyCacheOptions::new(capacity))` para conservar historial codificado inmutable para posteriores reproducciones. La caché está deshabilitada por defecto. Configura `max_history_bytes(...)` y `ttl(...)` para acotar el historial retenido y su duración. Reserva memoria adicional para decodificación y reproducción.
 
-La caché utiliza la identidad de workflow, ejecución y versión. Sustituir el worker, el vencimiento, el desalojo o un cursor de historial no válido provocan la lectura del historial duradero completo. Los workflows terminales y los workers detenidos descartan sus entradas. El código del workflow debe reproducirse correctamente con la caché vacía.
+La caché utiliza la identidad de workflow, ejecución y compilación. Sustituir el worker, el vencimiento, el desalojo o un cursor de historial no válido provocan la lectura del historial duradero completo. Los workflows terminales y los workers detenidos descartan sus entradas. El código del workflow debe reproducirse correctamente con la caché vacía.
 
 Se admite desde el SDK de Rust 3.4.0 y la base cualificada de Server. Consulta la [referencia de configuración](https://rust.durable-workflow.com/durable_workflow/struct.StickyCacheOptions.html), el [ejemplo ejecutable](https://github.com/durable-workflow/sdk-rust/blob/3.4.0/examples/sticky_execution.rs) y la [guía de afinidad portable de workers](./portable-worker-affinity.md).
 

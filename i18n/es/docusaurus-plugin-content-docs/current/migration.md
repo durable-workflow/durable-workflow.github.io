@@ -251,7 +251,8 @@ clase antiguos (`Workflow\Serializers\Y::class`, etc.) siguen siendo alias para
 decodificar v1.
 
 **Los serializadores personalizados v1 no están admitidos en v2.** El registro
-público v2 solo resuelve `avro`. Los lectores antiguos están limitados a la ruta
+público v2 solo resuelve `avro`. Los lectores antiguos `workflow-serializer-y` y
+`workflow-serializer-base64` están limitados a la ruta
 interna v1 de importación/drenaje; no se seleccionan para ejecuciones o cargas
 SDK nuevas. Si usabas uno propio, drena v1 antes o recodifica el historial a
 `avro`: no se consulta la clase personalizada. `php artisan workflow:v2:doctor`

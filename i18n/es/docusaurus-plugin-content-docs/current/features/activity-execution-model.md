@@ -85,7 +85,7 @@ Consulta la API de sesión, el ciclo de vida de la lease, enrutamiento, fallos, 
 
 ## Ejecución sticky {#sticky-execution}
 
-La ejecución sticky optimiza la reproducción de tareas de workflow. Un worker puede mantener una caché de reproducción caliente local al proceso tras completar una tarea, y la asignación puede preferirlo para la siguiente tarea de la misma ejecución.
+La ejecución sticky optimiza la reproducción de tareas de workflow. Un worker puede mantener una caché de reproducción caliente local al proceso tras completar una tarea. Si reclama otra tarea de esa ejecución, puede reutilizar su caché válida. La afinidad no reserva tareas listas ni da prioridad al propietario de la caché en la asignación; otro worker apto puede reclamar la tarea y reproducir su historial desde cero.
 
 El progreso del workflow no pasa a ser local al proceso. La corrección siempre puede recurrir a la reproducción ordinaria en frío desde el historial duradero si falta la caché, se reinicia o retira el worker, se despliega otra versión o se expulsa la entrada. El código no debe depender de estado en memoria ajeno al historial.
 

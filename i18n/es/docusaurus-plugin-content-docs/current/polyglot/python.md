@@ -509,7 +509,7 @@ indexar. El cliente refleja las mismas operaciones de control que la CLI.
 
 `SearchAttributeList` separa definiciones `system` y `custom` para verificar las
 claves del motor (identificador, estado, tipo, inicio, etc.) y rechazar colisiones
-con claves propias. Los tipos admitidos son `keyword`, `text`, `int`, `double`,
+con claves propias. Los valores admitidos de `attribute_type` son `keyword`, `text`, `int`, `double`,
 `bool`, `datetime` y `keyword_list`.
 
 ### Mantenimiento del sistema {#system-maintenance}
@@ -1318,7 +1318,7 @@ def test_greeter_returns_activity_result() -> None:
 | `register_child_workflow_result(workflow_type, result)` | Devuelve `result` al iniciar un hijo de ese tipo. |
 | `signal(name, args=None, run=None)` | Encola una señal antes de la siguiente reproducción. Inyecta `SignalReceived` y llama al manejador `@workflow.signal`. `run=N` apunta al eslabón `N` de continue-as-new. |
 | `register_workflow(workflow_cls)` | Permite resolver otra clase por nombre. Necesario si `continue_as_new(workflow_type=...)` usa otro tipo. |
-| `execute_workflow(workflow_cls, *args, run_id="test-run")` | Lleva a estado terminal y devuelve resultado. Sigue continue-as-new hasta el final. Lanza `WorkflowFailed` si termina fallido. |
+| `execute_workflow(workflow_cls, *args, run_id="test-run")` | Lleva a estado terminal y devuelve resultado. Sigue los enlaces de `continue_as_new` hasta el final. Lanza `WorkflowFailed` si termina fallido. |
 | `runs` / `run_count` | Tras ejecutar, expone un `WorkflowRunRecord` por eslabón (entrada, tipo, eventos y comando terminal) para comprobar toda la cadena. |
 
 El banco de pruebas falla explícitamente si faltan datos simulados:

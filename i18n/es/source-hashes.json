@@ -23,7 +23,7 @@
   "sample-app.md": "070e0d4523f8228cf4492d2a590df8cd7d121a8c7b521f559629975719fdf515",
   "support.md": "706807b3902599dda6080f632ec1f893017ea18bbe9585f533dcdbd6d85f4621",
   "agent-tooling-contract.md": "bafa630abb2be2cefc7a0eb5c6962fd92f1193083cd3993e2aa68bc79530c2bf",
-  "capabilities.md": "c11b11db4cffe5ab2cec77e823fa9e7f33094bf7449a3ee29cbd404d48ac1c3c",
+  "capabilities.md": "d21aad314bd80a9a2a9929e732d7816d293dcc56ab417fd0143c3dd729d64913",
   "sdk-neutrality.md": "7b0714c123ade4904591870fc20e9a797da1e5485b2a6c87ca3eaa00c5de6ed6",
   "configuration/customization-matrix.md": "3d115863eaee7852b541bcd01615f424cc19c5847c7cd7d75e5ae63bc3f5cc78",
   "configuration/database-connection.md": "a4657d239673a4ecdc3981bcc5a7cf33aa2d37c709768131cd5ba3292987681f",
@@ -37,7 +37,7 @@
   "defining-workflows/workflow-api.md": "a6150e75302323b49f350159ce3568a51a19701bb81829915615f754592ee79c",
   "defining-workflows/workflow-id.md": "91b94211e2f8f405895ad82cfe2ef9baadb7a2cbd06e9c1e7aa6362231e0d424",
   "defining-workflows/workflow-status.md": "8e8cb27ff44c890d489d89bf166375acfdfaecabd990a2235e106fab1592d529",
-  "features/activity-execution-model.md": "50eb43b1b18458ef5509886756041752d30cca4c511a24a74f409f8f87f86c4f",
+  "features/activity-execution-model.md": "e8c37520ae46a7efb30438f4fc06bf893c1df430cb1f92c48963697adaf09082",
   "features/heartbeats.md": "55dc06337706e0b0f62100cddd445055165bc406a1b2e2f6b4fdf8c22f84f3d1",
   "features/local-activities.md": "05fca8f2104d8f4e7bd8b48040f5615f18d0ee2795922fb65c56f8d3d70ed204",
   "features/worker-sessions.md": "2b08a0cdaee486970e099ea8bcb91d7f6daf135b0bc98629ed47f3885e64c77d",
@@ -83,5 +83,14 @@
   "polyglot/python.md": "18c872ffee086853f50efc51a3dc193d7953d5eaaad72e44aa36a3a4379d6070",
   "polyglot/php.md": "9ab2f2b6cb617475e3873609667f7c40eaeed8512f1f041834d74bb63d1a6040",
   "polyglot/rust-cloud-quickstart.md": "2303434fc9302a81a8381ad4836423ef9952eb3201a4574c432254e3cb68c5f3",
-  "polyglot/namespace-auth-workers.md": "2b4078ceb74b849f12cb1975b410ff8e7266cd4345f6cf1d4dd906db12460ffb"
+  "polyglot/namespace-auth-workers.md": "2b4078ceb74b849f12cb1975b410ff8e7266cd4345f6cf1d4dd906db12460ffb",
+  "platform-conformance.md": "2eec7eba9a65c010e03c4b2eb78afe4dddd6fd8170218b3194c49e3777124c91",
+  "polyglot/rust.md": "b5d3b44c4e68e8b707804001bc46bd5e758b0180eec2a9a2ebdb69a6183dced5",
+  "polyglot/embedded-to-server.md": "21a7e4c9439a73db3a97fd9b0610749faabf7c449806fe0ad55a0924f50d3b80",
+  "polyglot/server-role-topology.md": "3d048f0c6b5f179399622508f51e67fff8aa5a6d5b2492533fc720eeec2c27f2",
+  "polyglot/cli.mdx": "024a3f73e1c700a7fa142ec64a7edde03303f12507f4eb4a9161e0e944f7431b",
+  "polyglot/cli-reference.md": "b20db162aa91cc85ea64528a061753a99f053b33b6141664ce1194e711c641cc",
+  "polyglot/server-api-reference.md": "6029fa5573106ebb40d4cf6fc384c4c5aa3ac77d435b3d2c30c4c505cce7ac23",
+  "polyglot/cloud-control-plane.md": "d08b280c6d3b3dc209e3c3773e275066fa4a80accb2dcd550ad7a3f52e236b78",
+  "polyglot/worker-protocol.md": "007e844b0a7ab284b7cd343e79f01a27a0dabee3fe4cf19064170581bb897b85"
 }

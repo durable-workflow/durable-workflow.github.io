@@ -26,6 +26,7 @@
   "promotion.title": {"message": "Grupo de lanzamiento de Durable Workflow Cloud"},
   "promotion.requestAccess": {"message": "Solicita acceso anticipado"},
   "navbar.github.repository": {"message": "Repositorio de GitHub"},
+  "navbar.github.starRepository": {"message": "Dale una estrella a Durable Workflow en GitHub"},
   "navbar.github.repositoryStars": {"message": "{repository} ({count} estrellas)"},
   "navbar.github.starCount": {"message": "Estrellas en GitHub: {count}"},
   "navbar.github.stars": {"message": "Estrellas en GitHub"},

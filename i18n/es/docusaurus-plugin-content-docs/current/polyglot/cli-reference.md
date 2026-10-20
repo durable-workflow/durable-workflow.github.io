@@ -305,7 +305,7 @@ La automatización debe leer `history_events`, `total_history_events` y `next_hi
 
 Los tipos de atributos son valores compatibles con el servidor como `keyword`, `text`, `int`, `double`, `bool`, `datetime` y `keyword_list`.
 
-Los comandos de almacenamiento externo llaman a la API de almacenamiento del espacio de nombres. El controlador es `local`, `s3`, `gcs` o `azure`; los de objetos utilizan la configuración del sistema de archivos del servidor, por lo que las opciones CLI describen la política y no transportan credenciales del proveedor. Utiliza `--disk` para vincular `s3`, `gcs` o `azure` a un disco con nombre del servidor que contenga las credenciales reales. Usa `--disable` para conservar la política sin permitir nuevas descargas al almacenamiento externo.
+Los comandos de almacenamiento externo llaman a la API de almacenamiento del espacio de nombres. El controlador es `local`, `s3`, `gcs` o `azure`; los de objetos utilizan la configuración del sistema de archivos del servidor, por lo que las opciones CLI describen la política y no transportan credenciales del proveedor. Utiliza `--disk` para vincular `s3`, `gcs` o `azure` a un disco con nombre del servidor que contenga las credenciales reales. Usa `--disable` para conservar la política e impedir nuevas externalizaciones de cargas.
 
 Ejemplos:
 
