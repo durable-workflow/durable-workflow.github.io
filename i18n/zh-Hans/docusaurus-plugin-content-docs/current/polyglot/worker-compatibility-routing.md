@@ -33,6 +33,28 @@ Worker 请求命名空间、队列和兼容构建群组。poll 选择避免提�
 
 领取会检查任务的原始兼容性和 Worker 身份。其他构建缺失时，不兼容 Worker 仍不能取得租约。租约到期也不会扩大兼容范围。
 
+## 定义指纹的演进 {#definition-fingerprint-evolution}
+
+**尚未发布的版本准备。** 以下路由行为已合并到 Server 2.9.9 以及 PHP 2.5.4、Python 2.6.2、Rust 3.5.6 SDK 的源码。发布和已安装制品的资格验证仍未完成。
+
+原构建固定与定义指纹回答不同的问题。与重放兼容的重新构建可以保持相同构建系列，同时改变源码指纹。默认情况下，Server 优先选择指纹与 `WorkflowStarted` 中记录值相同的合格 Worker。如果此类 Worker 已全部离开，只有声明 `workflow_entry_arguments_validation` 的 Worker 才能用更改后的定义领取原任务。此能力承诺在进入前拒绝不兼容输入，而不使业务运行失败。不能根据运行时语言或协议版本推断此能力；手动添加该字符串也不会使不安全的 Worker 实现变得安全。
+
+回退仍要求满足原命名空间、任务队列、工作流类型、构建和重放能力。运行保留已记录指纹和准入快照。SDK 必须验证原入口输入并重放已提交命令；源码变化、版本标记或注册成功都不能证明此次重放一定成功。请使用新的 Worker ID 重启更改后的代码，因为有效注册不能改变已声明的指纹。
+
+运行详情、指定运行的调试响应、修复响应和任务队列详情会公开 `definition_routing`：
+
+| 状态 | 含义与操作 |
+| --- | --- |
+| `matching_definition_available` / `matching_definition_preferred` | 与已记录定义匹配的合格处理能力可用，或比更改后的 Worker 更优先。 |
+| `replay_required` | 具备所需能力的更改后定义可以领取任务，但入口验证和严格重放仍必须成功。这不是阻塞结论。 |
+| `entry_validation_unavailable` | 替换 Worker 缺少入口验证能力。请升级 SDK 或恢复已记录定义。 |
+| `no_eligible_worker` / `worker_definition_missing` / `recorded_definition_missing` | 在保留原路由保护条件的前提下，检查缺失的处理能力或指纹信息。 |
+| `pinning_disabled` | 已禁用匹配源码的优先选择；其他领取与重放保护仍有效。 |
+
+`blocked = true` 表示某个已到可执行时间、处于 ready 状态的工作流任务没有合格的定义路由。队列详情最多采样十个运行，并报告是否还有更多 ready 运行；它不是全部被动等待或受阻运行的完整计数。修复操作不能凭空创建匹配 Worker，也不能改写历史。发生实际入口拒绝后，请遵循[同一原运行的恢复流程](../failures-and-recovery.md#service-entry-recovery)。
+
+`DW_V2_PIN_TO_RECORDED_FINGERPRINT=false` 会取消匹配源码的优先选择，但不会取消构建固定、命名空间/队列/类型边界、注册标识、租约隔离或严格重放检查。它不能代替安全 SDK 和默认路径升级。较旧的运行时可能让更改后的定义默默停滞，或重试未分类的入口拒绝；请使用经过验证的确切运行时与 SDK 组合。
+
 ## 运营者应配置什么 {#what-operators-should-configure}
 
 嵌入式 PHP 应设置当前及显式支持的兼容系列：

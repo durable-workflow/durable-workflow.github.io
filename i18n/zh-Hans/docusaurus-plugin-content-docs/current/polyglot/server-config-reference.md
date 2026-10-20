@@ -234,7 +234,7 @@ Server 镜像内置 `durable-workflow/workflow`，因此也提供包级 `DW_V2_*
 | `DW_V2_SUPPORTED_COMPATIBILITIES` | 未设置 | 此 Worker 接受的逗号分隔兼容性标记，或 `*`。 | `WORKFLOW_V2_SUPPORTED_COMPATIBILITIES` |
 | `DW_V2_COMPATIBILITY_NAMESPACE` | 未设置 | 独立 Worker 集群共享工作流数据库时使用的兼容性命名空间。 | `WORKFLOW_V2_COMPATIBILITY_NAMESPACE` |
 | `DW_V2_COMPATIBILITY_HEARTBEAT_TTL` | `30` | Worker 兼容性心跳的有效秒数。 | `WORKFLOW_V2_COMPATIBILITY_HEARTBEAT_TTL` |
-| `DW_V2_PIN_TO_RECORDED_FINGERPRINT` | `true` | 根据 `WorkflowStarted` 记录的工作流指纹解析进行中的运行。 | `WORKFLOW_V2_PIN_TO_RECORDED_FINGERPRINT` |
+| `DW_V2_PIN_TO_RECORDED_FINGERPRINT` | `true` | 优先选择已记录的工作流定义；各运行时的回退边界见下文。 | `WORKFLOW_V2_PIN_TO_RECORDED_FINGERPRINT` |
 | `DW_V2_CONTINUE_AS_NEW_EVENT_THRESHOLD` | `10000` | 包建议工作流作者执行 continue-as-new 的历史事件数量阈值。 | `WORKFLOW_V2_CONTINUE_AS_NEW_EVENT_THRESHOLD` |
 | `DW_V2_CONTINUE_AS_NEW_SIZE_BYTES_THRESHOLD` | `5242880` | 包建议执行 continue-as-new 的序列化历史字节大小阈值。 | `WORKFLOW_V2_CONTINUE_AS_NEW_SIZE_BYTES_THRESHOLD` |
 | `DW_V2_HISTORY_EXPORT_SIGNING_KEY` | 未设置 | 用于认证历史导出归档的可选 HMAC 密钥。 | `WORKFLOW_V2_HISTORY_EXPORT_SIGNING_KEY` |
@@ -264,6 +264,8 @@ Server 镜像内置 `durable-workflow/workflow`，因此也提供包级 `DW_V2_*
 | `DW_V2_CACHE_VALIDATION_MODE` | `warn` | 缓存后端验证失败模式：`fail`、`warn` 或 `silent`。 | `WORKFLOW_V2_CACHE_VALIDATION_MODE` |
 | `DW_V2_FLEET_VALIDATION_MODE` | `warn` | Worker 集群兼容性验证模式：`warn` 记录日志；`fail` 在没有兼容 Worker 时阻止分派并安全拒绝。 | `WORKFLOW_V2_FLEET_VALIDATION_MODE` |
 | `DW_SERIALIZER` | `avro` | 载荷编解码器诊断输入；正式 v2 将新运行的载荷解析为 Avro。 | `WORKFLOW_SERIALIZER` |
+
+**尚未发布的 Server 版本准备。** Server 2.9.9 使指纹优先选择对服务模式 Worker 生效。启用固定时，只有不存在符合条件的已记录定义 Worker，且替换 Worker 声明 `workflow_entry_arguments_validation`，才能回退到更改后的定义。禁用固定后，源码优先选择会取消，但构建固定、命名空间/队列/类型隔离、注册标识和严格重放仍然保留。配套的 PHP 2.5.4、Python 2.6.2 和 Rust 3.5.6 SDK 同样尚待发布及已安装制品验证。不要仅因为旧运行时的配置含有同一键，就假定它具有此行为。请参阅[定义路由](./worker-compatibility-routing.md#definition-fingerprint-evolution)。
 
 在 CI 与部署清单中使用 `DW_V2_GUARDRAILS_BOOT`。保留旧名称 `WORKFLOW_V2_GUARDRAILS_BOOT` 只是为了让 `env:audit` 提醒 alpha 时期的用户改名；Workflow 包不再将旧名称作为运行时回退值读取。
 

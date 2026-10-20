@@ -54,8 +54,10 @@ API 节点与 Worker 独立滚动替换。调度器是单实例，必须先停�
 ### Worker SDK 与构建身份 {#worker-sdk-and-build-identity}
 
 - **Worker 标记每个构建。** 所有可能参与滚动升级的 Worker 都必须通过 `POST /api/worker/register` 注册稳定的 `build_id`。无版本群组（`build_id: null`）是发布前默认值；[Worker build-id 发布指南](/docs/polyglot/worker-build-id-rollout)说明首次切换。
-- **工作流定义指纹保持固定。** 带有 `DW_V2_PIN_TO_RECORDED_FINGERPRINT=true`（默认值）的 Server 镜像，让进行中的运行实例固定到 `WorkflowStarted` 记录的工作流定义指纹。对于同一工作流，新 Worker 若携带不同指纹，在这些运行实例完成前会拒绝领取它们。
+- **保留原路由并验证更改后的定义。** 运行保留其构建固定和 `WorkflowStarted` 记录的指纹。当 `DW_V2_PIN_TO_RECORDED_FINGERPRINT=true`（默认值）时，准备中的 Server 2.9.9 路由更改会优先选择使用已记录定义的合格 Worker。若已不存在此类 Worker，具备 `workflow_entry_arguments_validation` 的替换 Worker 可在原命名空间、队列、类型、构建和重放保护下领取任务。SDK 仍须验证原入口输入并重放已提交命令。
 - **构建重叠时的准入策略。** 开始前选择 [`DW_V2_FLEET_VALIDATION_MODE`](/docs/polyglot/server-config-reference) 策略。`warn` 允许发布继续，即使没有在线 Worker 提供所需兼容性标记；`fail` 在此窗口内阻止分发，并使就绪契约默认拒绝。要求明确切换的生产发布应使用 `fail`。
+
+**尚未发布的版本准备。** 此替换路径要求 Server 2.9.9 以及 PHP 2.5.4、Python 2.6.2 或 Rust 3.5.6 SDK 完成尚未结束的资格验证。较旧的运行时即使遇到添加了有效版本分支的应用代码，也可能继续拒绝更改后的指纹。禁用指纹固定不是默认的安全升级流程。请遵循[定义路由](./polyglot/worker-compatibility-routing.md#definition-fingerprint-evolution)，检查 Worker 的实际能力，并在新路径通过验证之前保留回滚制品。版本分支无法在工作流方法体开始前修复不兼容的入口参数；请参阅[入口兼容性](./features/versioning.md#service-sdk-entry-safeguard)。
 
 ## Schema/bootstrap 顺序 {#schemabootstrap-ordering}
 

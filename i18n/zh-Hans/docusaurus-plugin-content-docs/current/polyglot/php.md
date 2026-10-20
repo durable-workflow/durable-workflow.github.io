@@ -121,6 +121,16 @@ if ($selected->key === 'deadline') {
 
 选择不会取消未胜出的操作。在句柄上调用 `await()` 消费其最终结果，或调用 `cancel()` 记录显式取消。即使重复或后来的输入和终态事件以不同顺序交付，冷启动 Worker 或完整历史重放仍消费已记录的胜出项。`cancel()` 返回 void，不报告其终态结果。只有 `SelectionOperationCancelled` 历史能证明取消胜出；重放会越过未有对应记录的取消请求，如果操作先完成，`await()` 仍返回该结果。
 
+## 入口兼容性与恢复 {#entry-compatibility-and-recovery}
+
+**尚未发布的版本准备。** PHP SDK 2.5.4 的入口保护和 Server 2.9.9 的路由及恢复支持已合并到源码，但发布和已安装制品的资格验证仍未完成。
+
+托管 Worker 会在进入处理器的 Fiber 前检查已记录的位置输入。缺少必需参数或声明的 PHP 类型不兼容时，会抛出 `DurableWorkflow\Exception\WorkflowEntryArgumentsMismatch` 并报告任务原因 `workflow_entry_arguments_mismatch`。可选参数的默认值只用于省略的输入，绝不会替换不兼容的已记录值。成功进入后抛出的 `TypeError` 仍属于应用失败。
+
+Worker 会自动声明 `workflow_entry_arguments_validation`。在配套 Server 支持下，被拒绝的任务会阻止重放，原运行则保持非终态。较旧的运行时可能改为重试失败任务，因此仅升级 SDK 并不能确立完整的恢复契约。
+
+使用 `Client::describeWorkflow($workflowId, $runId)` 和指定运行的调试端点检查原运行。先恢复兼容代码，再调用 `Client::repairWorkflow($workflowId, $runId)`，然后确认同一个运行在不改变输入、历史、路由标识和截止时间的情况下继续执行。不要在工作流方法体中捕获此失败，也不要反复修复不兼容代码。请参阅[服务模式恢复流程](../failures-and-recovery.md#service-entry-recovery)和[定义路由](./worker-compatibility-routing.md#definition-fingerprint-evolution)。
+
 ## 框架服务模式与嵌入式 Laravel {#framework-service-mode-and-embedded-laravel}
 
 同一个包提供第一方 [Laravel 服务模式](https://github.com/durable-workflow/sdk-php#laravel-service-mode) 和 [Symfony 服务模式](https://github.com/durable-workflow/sdk-php#symfony-service-mode) 桥接。连接 Cloud 或 Server 时，它们保留框架依赖注入、配置、日志、控制台 Worker 和测试替身。

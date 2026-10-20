@@ -530,6 +530,16 @@ Python Worker 通过向 Server 返回查询任务结果来完成 Server 路由�
 | `ctx.uuid4()` | 确定性 UUID |
 | `ctx.logger` | 重放期间保持静默的日志器 |
 
+### 入口兼容性与恢复 {#entry-compatibility-and-recovery}
+
+**尚未发布的版本准备。** Python SDK 2.6.2 的入口保护和 Server 2.9.9 的路由及恢复支持已合并到源码，但发布和已安装制品的资格验证仍未完成。
+
+Worker 会在调用 `run(ctx, *start_input)` 前，将已记录参数绑定到入口签名。缺少必需参数或参数数量不兼容时，会在方法体执行前抛出 `WorkflowEntryArgumentsMismatchError`，原因为 `workflow_entry_arguments_mismatch`。默认值只补充省略的参数。Python 类型注解仍不强制执行：改变注解不会验证或转换已记录数据。无论普通方法体还是生成器方法体，成功进入后抛出的 `TypeError` 仍属于应用失败。
+
+Worker 会自动声明 `workflow_entry_arguments_validation`。使用经过验证的 Server 时，失败任务的重放会被阻止，而原运行保持非终态。较旧的运行时可能重试该任务；仅 SDK 端的拒绝并不能确立完整恢复契约。
+
+使用 `await client.describe_workflow_run(workflow_id, run_id)` 和指定运行的调试端点检查确切运行。恢复兼容入口方法后，使用[恢复流程](../failures-and-recovery.md#service-entry-recovery)中指定运行的 HTTP 修复路由。相反，`await client.repair_workflow(workflow_id)` 和 `handle.repair()` 会解析实例的当前运行；两者都不接受运行 ID 参数。请保留原输入、历史、命名空间、队列、构建和截止时间。若要改变命令，请将 `ctx.get_version` 放在兼容方法内部，并通过[定义路由](./worker-compatibility-routing.md#definition-fingerprint-evolution)验证冷重放。
+
 ### 工作流时间与持久等待 {#workflow-time-and-durable-waits}
 
 在 Worker 重放期间，`ctx.now()` 返回运行的**持久化开始时间**。
