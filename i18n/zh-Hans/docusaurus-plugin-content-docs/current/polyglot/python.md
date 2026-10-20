@@ -427,7 +427,7 @@ Worker 注册表展示 Server 最近见过哪些 Worker，以及每个 Worker �
 
 ## 定义工作流 {#defining-workflows}
 
-工作流是用 `@workflow.defn` 装饰的 Python 类。`run` 方法是向 Server yield 命令的生成器。
+工作流是用 `@workflow.defn` 装饰的 Python 类。`run` 方法可以是普通同步函数，也可以是向 Server yield 持久命令的同步生成器。工作流需要持久执行的操作时，请使用生成器形式；不支持 `async def run`。
 
 ```python
 from durable_workflow import workflow
@@ -508,6 +508,23 @@ class ApprovalWorkflow:
 ```
 
 Python Worker 通过向 Server 返回查询任务结果来完成 Server 路由的查询。对于声明的更新验证器，Worker 改为接收专用验证任务，重放权威工作流状态，并仅调用验证器。验证成功之前，Server 不会记录已接受更新，也不会派发更新处理器。除非发现结果公布同步接受前契约，否则带验证器的 Worker 拒绝注册；拒绝、缺失或不兼容 Worker、Worker 丢失、超时，以及被隔离的重复或过时完成，仍是明确的类型化结果。PHP 和 Rust 当前不提供更新验证器编写 API，会在其工作流契约中公布这一缺失，而不是声称验证器对等。
+
+### 处理器生命周期 {#handler-lifecycle}
+
+**尚未发布的验证变更。** 以下处理器保护已为 Python SDK 2.6.2 准备，但发布和已安装制品的资格验证尚未完成。Server 路由的异步查询已经受支持，此变更会保留该路径。修正后的范围见 [SDK #177](https://github.com/durable-workflow/sdk-python/issues/177#issuecomment-6296781770)。
+
+每次重放都会在执行 `run()` 之前构造一个新的工作流实例。工作流启动时已记录的信号，会在 `run()` 到达第一个 `yield` 后应用，因此构造函数和首个 `yield` 前的初始化先执行。信号和更新处理器修改这份经重放恢复的状态。查询只检查它，不改变持久状态；更新验证器在接受请求前进行检查。持久活动、定时器和子工作流命令应放在 `run()` 中，而不是处理器中。
+
+| 处理器 | 支持的形式及失败结果 |
+| --- | --- |
+| `@workflow.signal` | 同步函数。重放期间应用信号时抛出异常，会导致工作流运行失败。 |
+| `@workflow.update` | 同步函数。处理器异常会导致该更新失败。 |
+| `@workflow.update_validator` 或 `@update_method.validator` | 同步函数。异常会在接受更新前将其拒绝。 |
+| `@workflow.query` | Worker 下的同步函数或 `async def`。处理器异常会使查询失败，而不是使工作流运行失败。 |
+
+准备中的验证会拒绝信号、更新和验证器的协程函数，并拒绝包括查询在内的**所有**装饰处理器的生成器函数和异步生成器函数。它会在定义、注册或重放时抛出 `InvalidWorkflowDefinition`，继承的处理器和离线工具也包括在内。同步的信号、更新和验证器包装函数不能通过返回异步值绕过保护。所有类型的处理器返回生成器或异步生成器值都会被拒绝。这些限制不禁止 `run()` 使用的同步生成器。
+
+对于 Server 路由的查询，Worker 会在原查询截止时间以及领取和取消权限约束下，显式等待异步结果。等待不会赋予新的时间预算，也不允许在失去权限后提交结果。本地同步辅助方法 `workflow.query_state()` 无法 await：准备中的修复会以 `QueryFailed` 拒绝异步结果，并关闭返回的协程，而不是将协程泄漏为查询结果。
 
 ### 工作流上下文 {#workflow-context}
 

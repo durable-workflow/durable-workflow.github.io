@@ -550,7 +550,7 @@ und sind daher für Cron-Betriebsskripte sicher.
 
 ## Workflows definieren {#defining-workflows}
 
-Workflows sind mit `@workflow.defn` dekorierte Python-Klassen. Die Methode `run` ist ein Generator, der Befehle an den Server ausgibt.
+Workflows sind mit `@workflow.defn` dekorierte Python-Klassen. Die Methode `run` ist eine gewöhnliche synchrone Funktion oder ein synchroner Generator, der dauerhafte Befehle an den Server ausgibt. Verwenden Sie die Generatorform, wenn der Workflow dauerhafte Arbeit ausführen muss; `async def run` wird nicht unterstützt.
 
 ```python
 from durable_workflow import workflow
@@ -647,6 +647,23 @@ und gesperrte doppelte oder veraltete Abschlüsse bleiben explizite typisierte
 Ergebnisse. PHP und Rust bieten derzeit keine APIs zur Update-Validator-Implementierung
 und melden diese Abwesenheit in ihren Workflow-Verträgen, statt
 Validator-Parität zu beanspruchen.
+
+### Lebenszyklus der Handler {#handler-lifecycle}
+
+**Noch nicht veröffentlichte Validierungsänderung.** Die folgenden Handler-Schutzprüfungen sind für Python SDK 2.6.2 vorbereitet; Veröffentlichung und Prüfung der installierten Artefakte stehen jedoch noch aus. Asynchrone, vom Server geroutete Abfragen werden bereits unterstützt. Diese Änderung erhält diesen Pfad. Den korrigierten Umfang beschreibt [SDK #177](https://github.com/durable-workflow/sdk-python/issues/177#issuecomment-6296781770).
+
+Jedes Replay erstellt vor der Ausführung von `run()` eine neue Workflow-Instanz. Bereits beim Workflow-Start aufgezeichnete Signale werden angewendet, nachdem `run()` sein erstes `yield` erreicht hat. Konstruktor und Initialisierung vor diesem `yield` laufen daher zuerst. Signal- und Update-Handler verändern diesen durch Replay hergestellten Zustand. Abfragen untersuchen ihn, ohne dauerhaften Zustand zu ändern; Update-Validatoren prüfen die Anfrage vor ihrer Annahme. Dauerhafte Aktivitäten, Timer und Kind-Workflow-Befehle gehören in `run()`, nicht in einen Handler.
+
+| Handler | Unterstützte Form und Fehlerfolge |
+| --- | --- |
+| `@workflow.signal` | Synchrone Funktion. Eine Ausnahme beim Anwenden des Signals während des Replays lässt den Workflow-Lauf fehlschlagen. |
+| `@workflow.update` | Synchrone Funktion. Eine Handler-Ausnahme lässt dieses Update fehlschlagen. |
+| `@workflow.update_validator` oder `@update_method.validator` | Synchrone Funktion. Eine Ausnahme lehnt das Update vor seiner Annahme ab. |
+| `@workflow.query` | Synchrone Funktion oder `async def` unter dem Worker. Eine Handler-Ausnahme lässt die Abfrage fehlschlagen, nicht den Workflow-Lauf. |
+
+Die vorbereitete Validierung lehnt Coroutine-Funktionen für Signale, Updates und Validatoren ab. Generator- und asynchrone Generatorfunktionen werden für **alle** Arten dekorierter Handler abgelehnt, einschließlich Abfragen. Sie löst bei Definition, Registrierung oder Replay `InvalidWorkflowDefinition` aus, auch bei geerbten Handlern und in Offline-Werkzeugen. Synchrone Wrapper für Signale, Updates und Validatoren können die Prüfungen nicht durch die Rückgabe asynchroner Werte umgehen. Generatorwerte und asynchrone Generatorwerte werden bei jeder Handler-Art abgelehnt. Diese Einschränkungen verbieten nicht den synchronen Generator von `run()`.
+
+Bei einer vom Server gerouteten Abfrage wartet der Worker ausdrücklich mit `await` auf ein asynchrones Ergebnis, unter der ursprünglichen Abfragefrist sowie der ursprünglichen Claim- und Abbruchautorität. Dieses Warten gibt weder ein neues Budget noch erlaubt es ein Ergebnis nach Verlust der Autorität. Die lokale synchrone Hilfsmethode `workflow.query_state()` kann nicht mit `await` warten: Der vorbereitete Fix lehnt ein asynchrones Ergebnis mit `QueryFailed` ab und schließt eine zurückgegebene Coroutine, statt sie als Abfrageergebnis nach außen gelangen zu lassen.
 
 ### Workflow-Kontext {#workflow-context}
 

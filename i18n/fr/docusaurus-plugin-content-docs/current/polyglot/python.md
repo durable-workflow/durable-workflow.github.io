@@ -549,8 +549,7 @@ Elles peuvent être appelées sans risque depuis des scripts cron opérateur.
 
 ## Définir des workflows {#defining-workflows}
 
-Les workflows sont des classes Python décorées avec `@workflow.defn`. La méthode
-`run` est un générateur qui émet des commandes vers le serveur avec yield.
+Les workflows sont des classes Python décorées avec `@workflow.defn`. La méthode `run` est une fonction synchrone ordinaire ou un générateur synchrone qui émet des commandes durables vers le serveur avec yield. Utilisez la forme générateur lorsque le workflow a besoin de travail durable ; `async def run` n’est pas pris en charge.
 
 ```python
 from durable_workflow import workflow
@@ -647,6 +646,23 @@ dépassé et achèvement dupliqué ou périmé rejeté par la protection de bail
 restent des résultats typés explicites. PHP et Rust n'exposent actuellement
 pas d'API d'écriture de validateurs et annoncent cette absence dans leurs
 contrats au lieu de revendiquer la parité.
+
+### Cycle de vie des handlers {#handler-lifecycle}
+
+**Modification de validation non publiée.** Les contrôles de handlers ci-dessous sont préparés pour le SDK Python 2.6.2, mais leur publication et la qualification des artefacts installés restent en attente. Les requêtes asynchrones routées par le serveur sont déjà prises en charge ; ce changement préserve ce chemin. Consultez [SDK #177](https://github.com/durable-workflow/sdk-python/issues/177#issuecomment-6296781770) pour le périmètre corrigé.
+
+Chaque relecture construit une nouvelle instance de workflow avant d’exécuter `run()`. Les signaux déjà enregistrés au démarrage du workflow sont appliqués après que `run()` atteint son premier `yield` ; le constructeur et l’initialisation précédant ce `yield` passent donc en premier. Les handlers de signaux et d’updates modifient cet état reconstitué. Les requêtes l’inspectent sans changer l’état durable ; les validateurs d’updates vérifient la demande avant son acceptation. Placez les commandes durables d’activités, de timers et de workflows enfants dans `run()`, pas dans un handler.
+
+| Handler | Forme prise en charge et résultat d’un échec |
+| --- | --- |
+| `@workflow.signal` | Fonction synchrone. Une exception lors de l’application du signal pendant la relecture fait échouer l’exécution du workflow. |
+| `@workflow.update` | Fonction synchrone. Une exception du handler fait échouer cet update. |
+| `@workflow.update_validator` ou `@update_method.validator` | Fonction synchrone. Une exception rejette l’update avant son acceptation. |
+| `@workflow.query` | Fonction synchrone ou `async def` sous le Worker. Une exception du handler fait échouer la requête, pas l’exécution du workflow. |
+
+La validation préparée refuse les fonctions coroutine pour les signaux, les updates et les validateurs, ainsi que les fonctions génératrices ou génératrices asynchrones pour **tous** les types de handlers décorés, y compris les requêtes. Elle lève `InvalidWorkflowDefinition` à la définition, à l’enregistrement ou à la relecture, y compris pour les handlers hérités et les outils hors ligne. Les wrappers synchrones de signaux, d’updates et de validateurs ne peuvent pas contourner ces contrôles en renvoyant des valeurs asynchrones. Le renvoi de générateurs ou de générateurs asynchrones est refusé pour chaque type de handler. Ces restrictions n’interdisent pas le générateur synchrone utilisé par `run()`.
+
+Pour une requête routée par le serveur, le Worker attend explicitement le résultat asynchrone avec `await`, sous l’échéance d’origine de la requête et l’autorité de prise de tâche et d’annulation. Cette attente n’accorde pas de nouveau budget et n’autorise pas de résultat après la perte de l’autorité. L’utilitaire local synchrone `workflow.query_state()` ne peut pas attendre avec `await` : le correctif préparé refuse un résultat asynchrone avec `QueryFailed` et ferme une coroutine renvoyée au lieu de la laisser devenir le résultat de la requête.
 
 ### Contexte de workflow {#workflow-context}
 
