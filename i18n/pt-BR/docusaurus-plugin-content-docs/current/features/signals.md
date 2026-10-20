@@ -18,6 +18,10 @@ import SignalSimulator from '@site/src/components/SignalSimulator';
 
 Sinais permitem acionar eventos em um workflow a partir de fora dele. Isso é útil para reagir a eventos externos, permitir intervenções humanas ou indicar a conclusão de uma tarefa externa. Para entradas repetidas e ordenadas com avanço durável de cursor, use [Fluxos de mensagens](./message-streams.md).
 
+## Fronteira do namespace {#namespace-boundary}
+
+Um sinal comum tem como destino um workflow no namespace do cliente. O handle de um filho também preserva o namespace original. Use uma [operação de serviço](./service-operations.md) para uma operação publicada em outro namespace. Alterar um id de workflow ou uma fila não concede autoridade entre namespaces.
+
 ## Aceitação e encerramento {#acceptance-and-closure}
 
 `signal_received` confirma a aceitação durável. Não confirma que o código do

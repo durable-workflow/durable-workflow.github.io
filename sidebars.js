@@ -20,6 +20,7 @@ const sidebars = {
         'polyglot/server',
         'polyglot/cancellation',
         'polyglot/workflow-streams',
+        'polyglot/service-operations',
         'polyglot/polling-patterns',
         {
           type: 'category',
@@ -102,6 +103,7 @@ const sidebars = {
             'features/concurrency',
             'features/sagas',
             'features/child-workflows',
+            'features/service-operations',
             'features/cancel-and-terminate',
             'features/heartbeats',
             'features/schedules',

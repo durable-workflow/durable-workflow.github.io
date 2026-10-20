@@ -18,6 +18,10 @@ import SignalSimulator from '@site/src/components/SignalSimulator';
 
 Las señales permiten activar eventos desde fuera del workflow. Sirven para reaccionar a eventos externos, permitir intervenciones humanas o indicar que terminó una tarea externa. Para entradas repetidas y ordenadas con avance duradero del cursor, usa [Flujos de mensajes](./message-streams.md).
 
+## Límite del espacio de nombres {#namespace-boundary}
+
+Una señal ordinaria se dirige a un workflow del espacio de nombres del cliente. El handle de un hijo también conserva su espacio original. Usa una [operación de servicio](./service-operations.md) para una operación publicada en otro espacio. Cambiar un id de workflow o una cola no concede autoridad entre espacios de nombres.
+
 ## Aceptación y cierre {#acceptance-and-closure}
 
 `signal_received` confirma la aceptación duradera. No confirma que el código haya procesado la señal. Inspecciona su estado conservado y su historial cuando la operación de negocio necesite confirmación.

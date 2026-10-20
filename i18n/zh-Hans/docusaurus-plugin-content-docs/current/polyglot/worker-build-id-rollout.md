@@ -8,6 +8,10 @@ keywords: [Worker 构建, 排空, 回滚, 金丝雀, 无版本 Worker]
 
 # Worker 构建 ID 发布
 
+## 更换构建前进行重放 {#replay-before-changing-builds}
+
+晋升候选构建前，应使用其准确的应用代码重放具有代表性的运行中和最近关闭的历史。回滚前，应使用旧制品重放新构建写入的历史。请遵循[重放检查](../testing.md#replay-before-deployment)；兼容的路由构建组或完整性检查通过，本身都不能证明重放兼容性。
+
 使用本指南检查 Worker 群组、选择新工作流使用的构建，并为已有运行保留兼容 Worker。提升构建会改变新启动的选择；排空会阻止该群组领取新任务。这些操作都不会迁移已有运行，也不能证明构建可以删除。
 
 [Worker 兼容性与路由](/docs/polyglot/worker-compatibility-routing)介绍工作流任务、活动、重试、子工作流及 continue-as-new 保留的身份。群组范围是 `(namespace, task_queue, build_id)`。未提供 `build_id` 的注册属于无版本的 `null` 群组。

@@ -47,6 +47,7 @@ PHP SDK 2.3.2、Python SDK 2.5.7 和 Rust SDK 3.5.0 默认使用 Worker 协议 `
 | --- | --- | --- |
 | 工作流 | PHP、Python 和 Rust 远程 Worker 可编写确定性工作流；嵌入式 Laravel 编写使用 Workflow 包。 | [工作流编写](/docs/defining-workflows/workflows/)、[PHP SDK](/docs/polyglot/php/)、[Python SDK](/docs/polyglot/python/)、[Rust SDK](/docs/polyglot/rust/) |
 | 活动与服务 | 嵌入式引擎和三个服务模式 SDK 都支持编写活动。Rust 工作流和活动在官方 Worker 服务中运行；Python 和 PHP 也提供官方控制与服务客户端。 | [活动](/docs/defining-workflows/activities/)、[PHP SDK](/docs/polyglot/php/)、[活动执行](/docs/features/activity-execution-model/)、[外部执行](/docs/polyglot/external-execution/) |
+| 跨命名空间服务调用 | 嵌入式 PHP、PHP SDK 和 Python SDK 可编写持久的已注册服务操作，等待完成或仅等待接纳，并保留记录的结果。PHP 服务模式目前通过数组 `namespace` 选项指定目标命名空间。Rust 的调用编写接口在 [sdk-rust #86](https://github.com/durable-workflow/sdk-rust/issues/86) 完成前不可用。 | [嵌入式编写方式](/docs/features/service-operations/)、[共享目录及 SDK 支持](/docs/polyglot/service-operations/) |
 | 信号 | PHP、Python 和 Rust 工作流接口在当前最低版本中支持持久异步变更。 | [信号](/docs/features/signals/)、[Python SDK](/docs/polyglot/python/)、[Rust SDK](/docs/polyglot/rust/) |
 | 查询 | 支持只读重放查询。PHP、Python 和 Rust 提供查询处理器与客户端；Rust 重放查询任务要求 Worker 协议 `1.8` 或更新版本。 | [查询](/docs/features/queries/)、[Python SDK](/docs/polyglot/python/)、[Rust SDK](/docs/polyglot/rust/) |
 | 更新 | PHP、Python 和 Rust 提供客户端及 Worker 处理器的更新接口。当 Server 发现结果声明支持确切的接受前契约时，Python 声明的验证器执行同步接受前验证：批准后才接受，拒绝、Worker 丢失、超时和被隔离的完成均明确失败。PHP 和 Rust 不提供验证器编写接口，也不声明验证器。 | [更新](/docs/features/updates/)、[Python SDK](/docs/polyglot/python/)、[Rust SDK](/docs/polyglot/rust/#workflow-updates) |

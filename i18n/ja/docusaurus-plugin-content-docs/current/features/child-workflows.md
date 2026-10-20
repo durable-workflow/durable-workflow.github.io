@@ -8,6 +8,10 @@ sidebar_position: 9
 
 子も固有のインスタンス ID と実行 ID を持つ通常の実行です。親への永続リンクと、その呼び出しに親が発行する安定した `child_call_id` により子として扱います。
 
+## 名前空間の境界 {#namespace-boundary}
+
+子ワークフローとそのハンドルから送るシグナルは親の名前空間に留まります。別のワークフロー型、言語、キューを選んでも名前空間は変わりません。同じクラスターの別の名前空間で公開された操作を永続的に呼び出すには、[サービス操作](./service-operations.md)を使ってください。
+
 ```php
 use function Workflow\V2\child;
 use Workflow\V2\Workflow;
