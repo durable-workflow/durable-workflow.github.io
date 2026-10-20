@@ -137,7 +137,7 @@ curl -sS "$APP_URL/waterline/api/instances/order-1001" \
 | `queue_visibility.task_queues[].stats.*` | 队列本地积压、积压年龄、轮询者数量、工作流/活动的就绪与已租出计数，以及每队列 `tasks_added_last_minute` / `tasks_dispatched_last_minute` 流量事实。 |
 | `queue_visibility.task_queues[].repair.*` | 队列本地修复压力，包括候选项、分发失败、过期租约、分发逾期数量，以及每种情况的最长年龄。 |
 | `coordination_alerts[]` | 根据健康检查及队列可见性风险汇总的警告和错误，例如有积压但无轮询者、轮询者过期或修复候选项过旧。 |
-| `checks[]`, `categories.*` | 阻塞与提示性的 v2 健康检查，每项检查有 `category = correctness | acceleration`，以及 Waterline 在 Worker 界面使用的分类汇总。 |
+| `checks[]`, `categories.*` | 阻塞与提示性的 v2 健康检查，每项检查有 `category = correctness \| acceleration`，以及 Waterline 在 Worker 界面使用的分类汇总。 |
 | `engine_source`, `readiness_contract` | Waterline 是否正在使用 v2 操作桥接，以及约束该状态的就绪契约。 |
 
 队列流量字段回答一个具体的运维问题：持久队列输入的到达速度是否超过系统分发速度？`tasks_added_last_minute` 统计过去 60 秒内新建的不同持久任务行，`tasks_dispatched_last_minute` 统计最近一次成功分发发生在同一窗口内的不同持久任务行。
