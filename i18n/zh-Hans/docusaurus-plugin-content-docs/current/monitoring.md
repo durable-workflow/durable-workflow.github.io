@@ -39,6 +39,15 @@ Worker 和客户端的配置也独立于运维界面。将应用客户端和 Wor
 
 如果 Worker 遥测显示重复领取、延迟完成的竞争或卡住的租约，请结合本指南阅读[执行保证与幂等性](./constraints/execution-guarantees.md)。该契约区分至少一次传输的不确定性和重复的持久结果，避免对看似重复的证据作出错误运维判断。
 
+:::tip 嵌入式 Laravel 的追踪关联
+
+要将应用日志关联到工作流运行和活动尝试，请配置可选的[嵌入式追踪集成（英文）](https://github.com/durable-workflow/workflow/blob/main/docs/embedded-tracing.md)。
+它会在队列 Worker、重试和恢复之间保留 W3C 上下文，并使用应用的 OpenTelemetry
+提供程序和 Laravel 日志通道。该指南说明如何启用追踪、添加日志 tap、执行数据库架构迁移
+以及限制导出。上线前，请查看其中的 Span 关系图以及运行时和 SDK 的能力矩阵。
+
+:::
+
 ### 仪表板视图 {#dashboard-view}
 
 ![Waterline 仪表板](https://raw.githubusercontent.com/durable-workflow/waterline/refs/heads/main/docs/screenshots/dashboard.png)

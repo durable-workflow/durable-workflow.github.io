@@ -71,6 +71,18 @@ alongside this guide. That contract separates at-least-once transport
 uncertainty from duplicate durable outcomes so duplicate-looking evidence does
 not turn into the wrong operational conclusion.
 
+:::tip Embedded Laravel trace correlation
+
+To correlate application logs with a workflow run and activity attempt, configure
+the optional [embedded tracing integration](https://github.com/durable-workflow/workflow/blob/main/docs/embedded-tracing.md).
+It persists W3C context across queue workers, retries and recovery and uses your
+application's OpenTelemetry provider and Laravel log channels. Follow the guide
+to enable tracing, add the log tap, run the schema migrations and configure
+bounded exports. Review its span diagram and runtime/SDK capability matrix
+before rollout.
+
+:::
+
 ### Dashboard View
 
 ![Waterline dashboard](https://raw.githubusercontent.com/durable-workflow/waterline/refs/heads/main/docs/screenshots/dashboard.png)

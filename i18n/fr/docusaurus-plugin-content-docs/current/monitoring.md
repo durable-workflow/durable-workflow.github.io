@@ -70,6 +70,19 @@ Ce contrat distingue l'incertitude du transport au moins une fois des résultats
 durables dupliqués, pour éviter les mauvaises conclusions face à des preuves
 qui ressemblent à des doublons.
 
+:::tip Corrélation des traces dans Laravel embarqué
+
+Pour relier les logs de l'application à une exécution de workflow et à une
+tentative d'activité, configurez l'[intégration facultative de traçage en mode embarqué (en anglais)](https://github.com/durable-workflow/workflow/blob/main/docs/embedded-tracing.md).
+Elle conserve le contexte W3C entre les workers de file, les nouvelles tentatives
+et la reprise, et utilise le fournisseur OpenTelemetry ainsi que les canaux de
+logs Laravel de votre application. Le guide explique comment activer le traçage,
+ajouter le tap de logs, exécuter les migrations du schéma et borner les exports.
+Consultez le diagramme des spans et la matrice des capacités des runtimes et SDK
+avant le déploiement.
+
+:::
+
 ### Vue du tableau de bord {#dashboard-view}
 
 ![Tableau de bord Waterline](https://raw.githubusercontent.com/durable-workflow/waterline/refs/heads/main/docs/screenshots/dashboard.png)

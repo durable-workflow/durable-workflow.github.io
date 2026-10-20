@@ -72,6 +72,18 @@ junto deste guia. Esse contrato separa a incerteza do transporte pelo menos
 uma vez de resultados duráveis duplicados, evitando conclusões operacionais
 erradas a partir de evidências que parecem duplicadas.
 
+:::tip Correlação de traces no Laravel embutido
+
+Para relacionar os logs da aplicação a uma execução de workflow e a uma tentativa
+de atividade, configure a [integração opcional de rastreamento no modo embutido (em inglês)](https://github.com/durable-workflow/workflow/blob/main/docs/embedded-tracing.md).
+Ela preserva o contexto W3C entre workers de fila, novas tentativas e recuperação,
+e usa o provedor OpenTelemetry e os canais de log do Laravel da sua aplicação.
+O guia explica como habilitar o rastreamento, adicionar o tap de logs, executar
+as migrações do esquema e limitar as exportações. Consulte o diagrama de spans
+e a matriz de capacidades de runtimes e SDKs antes da implantação.
+
+:::
+
 ### Visão do painel {#dashboard-view}
 
 ![Painel do Waterline](https://raw.githubusercontent.com/durable-workflow/waterline/refs/heads/main/docs/screenshots/dashboard.png)

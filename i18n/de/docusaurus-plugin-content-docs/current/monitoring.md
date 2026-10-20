@@ -39,6 +39,19 @@ Die Einrichtung von Workern und Clients bleibt ebenfalls von der Operatoroberfl�
 
 Zeigt Worker-Telemetrie wiederholte Übernahmen, Rennen um verspätete Abschlüsse oder feststeckende Leases, lesen Sie zusätzlich [Ausführungsgarantien und Idempotenz](./constraints/execution-guarantees.md). Dieser Vertrag trennt Unsicherheit des At-least-once-Transports von doppelten dauerhaften Ergebnissen, damit scheinbar doppelte Nachweise nicht zu falschen Betriebsentscheidungen führen.
 
+:::tip Trace-Korrelation in Embedded Laravel
+
+Um Anwendungslogs einem Workflow-Lauf und Aktivitätsversuch zuzuordnen, konfigurieren
+Sie die optionale [Tracing-Integration im eingebetteten Modus (Englisch)](https://github.com/durable-workflow/workflow/blob/main/docs/embedded-tracing.md).
+Sie bewahrt den W3C-Kontext über Warteschlangen-Worker, Wiederholungen und
+Wiederherstellung hinweg und nutzt den OpenTelemetry-Provider sowie die
+Laravel-Logkanäle Ihrer Anwendung. Der Leitfaden erklärt, wie Sie Tracing
+aktivieren, den Log-Tap hinzufügen, die Schema-Migrationen ausführen und Exporte
+begrenzen. Prüfen Sie vor dem Rollout das Span-Diagramm und die
+Fähigkeitsmatrix für Laufzeiten und SDKs.
+
+:::
+
 ### Dashboard-Ansicht {#dashboard-view}
 
 ![Waterline-Dashboard](https://raw.githubusercontent.com/durable-workflow/waterline/refs/heads/main/docs/screenshots/dashboard.png)

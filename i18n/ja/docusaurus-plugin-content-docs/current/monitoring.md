@@ -39,6 +39,17 @@ Worker・クライアントの設定も運用インターフェースと別で�
 
 Worker テレメトリに繰り返しの取得、遅延完了の競合、停止したリースがある場合は、このガイドと[実行保証と冪等性](./constraints/execution-guarantees.md)を併読してください。この契約は、少なくとも一回の配送で生じる不確実性と、永続結果の重複を分離し、重複して見える証拠から誤った運用判断をしないようにします。
 
+:::tip 組み込み Laravel のトレース相関
+
+アプリケーションログをワークフロー実行やアクティビティの試行に関連付けるには、
+任意の[組み込みモードのトレース連携（英語）](https://github.com/durable-workflow/workflow/blob/main/docs/embedded-tracing.md)を設定します。
+キュー Worker、再試行、復旧をまたいで W3C コンテキストを保持し、アプリケーションの
+OpenTelemetry プロバイダーと Laravel ログチャネルを使用します。ガイドでは、
+トレースの有効化、ログ tap の追加、スキーマ移行の実行、エクスポートの制限を説明します。
+ロールアウト前に、Span の関係図とランタイム・SDK の機能対応表を確認してください。
+
+:::
+
 ### ダッシュボードビュー {#dashboard-view}
 
 ![Waterline ダッシュボード](https://raw.githubusercontent.com/durable-workflow/waterline/refs/heads/main/docs/screenshots/dashboard.png)
