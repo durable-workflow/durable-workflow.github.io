@@ -30,5 +30,6 @@
   "sponsors.md": "e85e14375743ca8fa50e3a48f894b160e28272573aa88480064f74010ebee98a",
   "constraints/constraints-summary.md": "fb48d01502388fc3821eae3790f470ed29cec91545420450f96fc77b84e589f1",
   "constraints/idempotent-vs-deterministic.md": "980c1b6a1075bfedfc32fa785be793a0c5aa3a13a1c4204029eb97127c54a602",
-  "constraints/structural-limits.md": "dec64eb7c8261b64a687938072e73dadf519511b132fc7b6542c96f44a8d3037"
+  "constraints/structural-limits.md": "dec64eb7c8261b64a687938072e73dadf519511b132fc7b6542c96f44a8d3037",
+  "capabilities.md": "c11b11db4cffe5ab2cec77e823fa9e7f33094bf7449a3ee29cbd404d48ac1c3c"
 }
