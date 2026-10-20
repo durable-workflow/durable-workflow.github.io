@@ -148,9 +148,11 @@ A configuração embutida corresponde a `workflows.v2.workflow_task_lease_second
 
 ### Heartbeats e execução {#workflow-task-heartbeats}
 
-Workers em modo de serviço usam heartbeats de tarefa para renovar a posse de uma tarefa de workflow em andamento. O Server valida a tarefa, a tentativa e o proprietário da lease. Uma renovação confirmada usa a duração efetiva da lease, respeitando os limites aplicáveis à limpeza de cancelamento. Ela não altera os prazos originais da execução/run nem os timeouts de atividades. Os heartbeats de registro mantêm o registro atualizado. Um registro obsoleto pode invalidar uma posse no Server antes que a lease da tarefa expire. Esses heartbeats não renovam essa lease. Um heartbeat de atividade informa seu progresso e não substitui a renovação de uma tarefa de workflow.
+Workers em modo de serviço usam heartbeats de tarefa para renovar a posse de uma tarefa de workflow em andamento. O Server valida a tarefa, a tentativa e o proprietário da lease. Uma renovação confirmada usa a duração efetiva da lease, respeitando os limites aplicáveis à limpeza de cancelamento. Ela não altera os prazos originais da execução/run nem os timeouts de atividades. Os heartbeats de registro mantêm o registro atualizado. Um registro obsoleto pode invalidar uma posse no Server antes que a lease da tarefa expire. Esses heartbeats não renovam essa lease. O heartbeat de uma atividade em fila informa seu progresso e não substitui a renovação de uma tarefa de workflow.
 
 Código síncrono de workflow embutido não pode renovar periodicamente enquanto está bloqueado. Mantenha o código determinístico e curto; coloque trabalho longo de E/S ou CPU em atividades. A lease não é um limite rígido de execução do processo ou da CPU.
+
+Atividades locais embutidas mantêm a tarefa de workflow que as hospeda. Seu `$this->heartbeat()` também pode renovar essa lease enquanto a tentativa original de atividade e a posse da tarefa de workflow permanecerem válidas.
 
 ### Expiração da lease {#workflow-task-lease-expiry}
 

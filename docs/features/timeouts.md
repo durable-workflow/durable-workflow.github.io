@@ -164,9 +164,11 @@ The embedded setting maps to `workflows.v2.workflow_task_lease_seconds`. Server 
 
 ### Heartbeats and execution {#workflow-task-heartbeats}
 
-Service-mode workers use task heartbeats to renew an in-progress workflow-task claim. Server validates the task, attempt and lease owner. An acknowledged renewal uses the effective lease duration, subject to applicable cancellation-cleanup bounds. It does not change the original run/execution deadlines or activity timeouts. Worker-registration heartbeats keep the registration fresh. A stale registration can invalidate a Server claim before the task lease expires. These heartbeats do not renew that task lease. An activity heartbeat reports activity progress and does not replace a workflow-task renewal.
+Service-mode workers use task heartbeats to renew an in-progress workflow-task claim. Server validates the task, attempt and lease owner. An acknowledged renewal uses the effective lease duration, subject to applicable cancellation-cleanup bounds. It does not change the original run/execution deadlines or activity timeouts. Worker-registration heartbeats keep the registration fresh. A stale registration can invalidate a Server claim before the task lease expires. These heartbeats do not renew that task lease. A queued activity's heartbeat reports activity progress and does not replace a workflow-task renewal.
 
 Synchronous embedded workflow code cannot periodically renew while blocked. Keep workflow code deterministic and short. Put long I/O or CPU work in activities. The lease is not a hard process or CPU execution limit.
+
+Embedded local activities retain the hosting workflow task. Their `$this->heartbeat()` can also renew its lease while the original activity attempt and workflow-task claim remain valid.
 
 ### Lease expiry {#workflow-task-lease-expiry}
 

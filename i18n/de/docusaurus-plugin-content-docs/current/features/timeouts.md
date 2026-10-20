@@ -148,9 +148,11 @@ Die eingebettete Einstellung wird auf `workflows.v2.workflow_task_lease_seconds`
 
 ### Heartbeats und Ausführung {#workflow-task-heartbeats}
 
-Worker im Service-Modus erneuern einen laufenden Workflow-Task-Anspruch mit Task-Heartbeats. Server prüft Task, Versuch und Lease-Eigentümer. Eine bestätigte Erneuerung verwendet die wirksame Lease-Dauer, begrenzt durch gegebenenfalls geltende Abbruch-Cleanup-Fristen. Sie ändert weder die ursprünglichen Lauf- und Ausführungsfristen noch Aktivitäts-Timeouts. Worker-Registrierungs-Heartbeats halten die Registrierung aktuell. Eine veraltete Registrierung kann einen Server-Anspruch schon vor Ablauf der Task-Lease ungültig machen. Diese Heartbeats erneuern die Task-Lease nicht. Ein Aktivitäts-Heartbeat meldet den Fortschritt einer Aktivität und ersetzt keine Workflow-Task-Erneuerung.
+Worker im Service-Modus erneuern einen laufenden Workflow-Task-Anspruch mit Task-Heartbeats. Server prüft Task, Versuch und Lease-Eigentümer. Eine bestätigte Erneuerung verwendet die wirksame Lease-Dauer, begrenzt durch gegebenenfalls geltende Abbruch-Cleanup-Fristen. Sie ändert weder die ursprünglichen Lauf- und Ausführungsfristen noch Aktivitäts-Timeouts. Worker-Registrierungs-Heartbeats halten die Registrierung aktuell. Eine veraltete Registrierung kann einen Server-Anspruch schon vor Ablauf der Task-Lease ungültig machen. Diese Heartbeats erneuern die Task-Lease nicht. Der Heartbeat einer über die Queue ausgeführten Aktivität meldet deren Fortschritt und ersetzt keine Workflow-Task-Erneuerung.
 
 Synchroner eingebetteter Workflow-Code kann während einer Blockierung nicht regelmäßig erneuern. Halten Sie Workflow-Code deterministisch und kurz. Lange E/A- oder CPU-Arbeit gehört in Aktivitäten. Die Lease ist keine harte Prozess- oder CPU-Ausführungsgrenze.
+
+Eingebettete lokale Aktivitäten behalten ihren ausführenden Workflow-Task. Ihr `$this->heartbeat()` kann auch dessen Lease erneuern, solange der ursprüngliche Aktivitätsversuch und der Workflow-Task-Anspruch gültig bleiben.
 
 ### Ablauf einer Lease {#workflow-task-lease-expiry}
 

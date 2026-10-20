@@ -148,9 +148,11 @@ El ajuste embebido corresponde a `workflows.v2.workflow_task_lease_seconds`. Ser
 
 ### Heartbeats y ejecución {#workflow-task-heartbeats}
 
-Los workers en modo servicio usan heartbeats de tarea para renovar la reserva de una tarea de workflow en curso. Server valida la tarea, el intento y el propietario de la lease. Una renovación confirmada usa la duración efectiva de la lease, con los límites de limpieza por cancelación que correspondan. No cambia los plazos originales de ejecución/run ni los timeouts de actividades. Los heartbeats de registro mantienen actualizado el registro. Un registro obsoleto puede invalidar una reserva de Server antes de que venza la lease de la tarea. Estos heartbeats no renuevan esa lease. Un heartbeat de actividad informa de su progreso y no sustituye la renovación de una tarea de workflow.
+Los workers en modo servicio usan heartbeats de tarea para renovar la reserva de una tarea de workflow en curso. Server valida la tarea, el intento y el propietario de la lease. Una renovación confirmada usa la duración efectiva de la lease, con los límites de limpieza por cancelación que correspondan. No cambia los plazos originales de ejecución/run ni los timeouts de actividades. Los heartbeats de registro mantienen actualizado el registro. Un registro obsoleto puede invalidar una reserva de Server antes de que venza la lease de la tarea. Estos heartbeats no renuevan esa lease. El heartbeat de una actividad en cola informa de su progreso y no sustituye la renovación de una tarea de workflow.
 
 El código síncrono de un workflow embebido no puede renovar periódicamente mientras está bloqueado. Mantén el código determinista y breve; lleva el trabajo largo de E/S o CPU a actividades. La lease no es un límite estricto de ejecución del proceso o la CPU.
+
+Las actividades locales embebidas conservan la tarea de workflow que las aloja. Su `$this->heartbeat()` también puede renovar esa lease mientras el intento de actividad original y la reserva de la tarea de workflow sigan siendo válidos.
 
 ### Vencimiento de la lease {#workflow-task-lease-expiry}
 
