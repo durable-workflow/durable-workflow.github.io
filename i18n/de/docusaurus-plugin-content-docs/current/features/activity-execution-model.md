@@ -117,8 +117,11 @@ Herunterfahren und Betreiberdiagnosen beschreibt
 
 Sticky Execution optimiert das Replay von Workflow-Aufgaben. Ein Worker kann
 nach Abschluss einer Workflow-Aufgabe einen warmen prozesslokalen Replay-Cache
-behalten. Die Aufgabenzuordnung kann diesen Worker für die nächste
-Workflow-Aufgabe desselben Laufs bevorzugen.
+behalten. Übernimmt er später eine weitere Aufgabe dieses Laufs, kann er
+seinen gültigen Cache wiederverwenden. Affinität reserviert keine bereiten
+Aufgaben und gibt dem Cache-Besitzer keinen Vorrang bei der Aufgabenzuordnung.
+Ein anderer geeigneter Worker kann die Aufgabe übernehmen und ihre Historie
+kalt erneut abspielen.
 
 Sticky Execution macht Workflow-Fortschritt nicht prozesslokal. Nach
 Cache-Fehltreffern, Worker-Neustart, Leerlaufen, Rollout oder Verdrängung fällt
