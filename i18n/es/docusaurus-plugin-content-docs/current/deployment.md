@@ -360,16 +360,9 @@ operaciones de envío y lease. `DW_WORKER_LONG_POLL_MAX_CONCURRENT` y
 limita globalmente sesiones SQL, bytes de la base ni latencia de commit.
 Reserva también capacidad para completados, heartbeats, operaciones y salud.
 
-Parte de un endpoint directo y escribible de base de datos. Un proxy debe
-validarse con la versión exacta del Server, el modo de pool y los ajustes de
-sentencias preparadas, límites de transacciones, estado de sesión y bloqueos.
-El Server publicado 2.9.7 falla con PgBouncer en modo de transacción; el
-endpoint de disponibilidad puede seguir sano pese a esos fallos. Sigue la
-corrección y la validación de la imagen publicada en
-[Server #524](https://github.com/durable-workflow/server/issues/524). Una
-conexión TCP, migración o respuesta de disponibilidad correcta no demuestra
-compatibilidad con el pool transaccional. Las réplicas de lectura no deben
-sustituir al escritor autoritativo de claims y transiciones durables.
+Use como referencia un endpoint directo y escribible de la base de datos. Un proxy debe validarse con la versión exacta del Server, el modo de pool y los ajustes de sentencias preparadas, límites de transacciones, estado de sesión y bloqueos. **El pool transaccional de PgBouncer requiere el Server corregido, versión 2.9.8 o posterior.** La [aceptación de la versión publicada 2.9.8](https://github.com/durable-workflow/server/issues/524#issuecomment-6293185092) valida PostgreSQL 16.15 con PgBouncer 1.26.1: PostgreSQL directo, pool de sesiones y pool transaccional con `max_prepared_statements=0` o `max_prepared_statements=200`. Es una versión mínima compatible y una configuración exacta probada, no un pin a la última versión ni una garantía de capacidad; valide otras combinaciones por separado. Ejecute la inicialización habitual `server-bootstrap` contra el endpoint elegido antes de admitir tráfico.
+
+`GET /api/ready` ejecuta una lectura de base de datos con parámetros enlazados (`bound_read_query`) y las comprobaciones de disponibilidad configuradas; deja explícitamente sin verificar la capacidad de escritura. Una conexión TCP, migración o respuesta de disponibilidad correcta no demuestra todas las operaciones SQL del workflow ni la capacidad de commit. Las réplicas de lectura no deben sustituir al escritor autoritativo de claims y transiciones durables.
 
 ## Chart Helm para Kubernetes {#helm-chart-for-kubernetes}
 
@@ -480,8 +473,8 @@ el operador conserva tres reglas:
   escritura, degradarlo con `read_only=on`, cortar replicación o restaurar una
   instantánea fiable. Un proxy debe conservar la semántica de base usada por
   el Server y validarse con su versión exacta, modo y ajustes. Consulta los
-  [presupuestos de conexiones SQL](#sql-connection-budgets) para la limitación
-  actual del pool transaccional PgBouncer y los requisitos de validación.
+  [presupuestos de conexiones SQL](#sql-connection-budgets) para las versiones
+  requeridas y los modos probados del pool transaccional PgBouncer.
 - **Un endpoint Redis cada vez, con promoción documentada.** Se admite
   Sentinel, Elasticache, Memorystore HA, etc. Redis es aceleración, no el
   sustrato de corrección: su conmutación afecta a latencia, nunca a corrección.

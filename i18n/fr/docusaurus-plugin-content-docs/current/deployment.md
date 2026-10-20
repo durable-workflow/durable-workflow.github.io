@@ -371,16 +371,9 @@ bornent les polls en attente par nœud. Aucun ne plafonne globalement sessions
 SQL, octets de la base ou latence de commit. Gardez aussi de la capacité pour
 les complétions, heartbeats, requêtes opérateur et contrôles de santé.
 
-Prenez comme référence un point d'accès direct à la base en écriture. Un proxy
-doit être qualifié avec la version exacte du Server, son mode de pool et ses
-réglages de requêtes préparées, frontières transactionnelles, état de session
-et verrous. Le Server publié 2.9.7 échoue avec PgBouncer en mode transaction ;
-son endpoint de disponibilité peut pourtant rester sain. Suivez la correction
-produit et la qualification de l'image publiée dans
-[Server #524](https://github.com/durable-workflow/server/issues/524). Une
-connexion TCP, une migration ou une réponse de disponibilité réussie ne prouve
-pas la compatibilité du pool transactionnel. Les réplicas de lecture ne doivent
-pas remplacer le primaire faisant autorité pour les claims et transitions durables.
+Prenez comme référence un point d’accès direct à la base en écriture. Un proxy doit être qualifié avec la version exacte du Server, son mode de pool et ses réglages de requêtes préparées, frontières transactionnelles, état de session et verrous. **Le pool transactionnel PgBouncer exige le Server corrigé, version 2.9.8 ou ultérieure.** L’[acceptation de la version publiée 2.9.8](https://github.com/durable-workflow/server/issues/524#issuecomment-6293185092) qualifie PostgreSQL 16.15 avec PgBouncer 1.26.1 : PostgreSQL direct, pool de sessions et pool transactionnel avec `max_prepared_statements=0` ou `max_prepared_statements=200`. C’est une version minimale compatible et une configuration précise testée, pas un choix automatique de la dernière version ni une garantie de capacité ; qualifiez séparément les autres combinaisons. Exécutez l’initialisation habituelle `server-bootstrap` sur le point d’accès choisi avant d’admettre du trafic.
+
+`GET /api/ready` exécute une lecture de base avec paramètres liés (`bound_read_query`) et les contrôles de disponibilité configurés ; la capacité d’écriture reste explicitement non vérifiée. Une connexion TCP, une migration ou une réponse de disponibilité réussie ne prouve ni toutes les opérations SQL des workflows ni la capacité de commit. Les réplicas de lecture ne doivent pas remplacer le primaire faisant autorité pour les claims et transitions durables.
 
 ## Chart Helm pour Kubernetes {#helm-chart-for-kubernetes}
 
@@ -495,8 +488,7 @@ préserve trois règles :
   un instantané sain. Un proxy doit préserver la sémantique de base utilisée
   par le Server et être qualifié pour sa version exacte, son mode et ses
   réglages. Voir les [budgets de connexions SQL](#sql-connection-budgets) pour
-  la limitation actuelle du pool transactionnel PgBouncer et les conditions
-  de qualification.
+  les versions requises et les modes testés du pool transactionnel PgBouncer.
 - **Un point Redis à la fois et une promotion documentée.** Le basculement
   Redis géré (Sentinel, Elasticache, Memorystore HA, etc.) est permis. Redis
   accélère l'exécution sans porter l'exactitude : son basculement affecte la

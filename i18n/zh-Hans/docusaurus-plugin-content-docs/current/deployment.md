@@ -235,10 +235,9 @@ Server README 的[官方镜像 + Compose](https://github.com/durable-workflow/se
 `DW_WORKER_LONG_POLL_MAX_CONCURRENT` 和 `DW_QUERY_TASK_POLL_MAX_CONCURRENT` 限制每个节点等待中的轮询。
 它们都不是全局 SQL 会话、数据库字节数或 commit 延迟上限。也要为完成提交、心跳、运维请求和健康检查保留容量。
 
-以直接连接可写数据库端点为基线。连接代理必须按准确的 Server 版本、连接池模式，以及预处理语句、事务边界、
-会话状态和锁设置进行验证。已发布的 Server 2.9.7 在 PgBouncer 事务池模式下失败，发生失败时就绪端点仍可能报告正常。
-产品修复和已发布镜像验证记录在 [Server #524](https://github.com/durable-workflow/server/issues/524)。
-不能从 TCP 连接、迁移或就绪响应成功推断事务池兼容性。只读副本不能替代负责认领和持久状态转换的权威写入节点。
+以直接连接可写数据库端点为基线。连接代理必须按准确的 Server 版本、连接池模式，以及预处理语句、事务边界、会话状态和锁设置进行验证。**PgBouncer 事务池需要已修复的 Server 2.9.8 或更高版本。** [已发布 2.9.8 的验收记录](https://github.com/durable-workflow/server/issues/524#issuecomment-6293185092)验证了 PostgreSQL 16.15 与 PgBouncer 1.26.1：直接连接 PostgreSQL、会话池，以及 `max_prepared_statements=0` 或 `max_prepared_statements=200` 的事务池。这表示最低兼容版本和准确的已测配置，并非要求固定到最新版本，也不保证容量；其他组合需单独验证。接纳流量之前，请针对所选端点执行正常的 `server-bootstrap` 初始化。
+
+`GET /api/ready` 会执行绑定参数的数据库读取（`bound_read_query`）及已配置的就绪检查，并明确保留“写入容量未验证”的边界。TCP 连接、迁移或就绪响应成功，不能证明所有工作流 SQL 操作均可用或提交容量充足。只读副本不能替代负责认领和持久状态转换的权威写入节点。
 
 ## 适用于 Kubernetes 的 Helm chart {#helm-chart-for-kubernetes}
 
@@ -298,7 +297,7 @@ curl -H "Authorization: Bearer $DW_ADMIN_TOKEN" http://localhost:8080/api/cluste
 
 部署符合小型集群或原始清单形态，且操作人员保持三条规则时，预期高可用契约适用：
 
-- **始终只有一个可写工作流数据库端点。** 允许托管故障转移（RDS Multi-AZ、Aurora 集群故障转移、Cloud SQL HA、Patroni 等），前提是原主节点重新接入前先隔离它：撤销写入用户、用 `read_only=on` 降级、断开复制，或从已知正常快照恢复。连接代理必须保留 Server 使用的数据库语义，并通过准确版本、模式和设置的验证。PgBouncer 事务池当前的限制及验证边界见 [SQL 连接预算](#sql-connection-budgets)。
+- **始终只有一个可写工作流数据库端点。** 允许托管故障转移（RDS Multi-AZ、Aurora 集群故障转移、Cloud SQL HA、Patroni 等），前提是原主节点重新接入前先隔离它：撤销写入用户、用 `read_only=on` 降级、断开复制，或从已知正常快照恢复。连接代理必须保留 Server 使用的数据库语义，并通过准确版本、模式和设置的验证。PgBouncer 事务池的版本要求与已测模式见 [SQL 连接预算](#sql-connection-budgets)。
 - **每次只有一个 Redis 端点，并记录提升路径。** 允许托管 Redis 故障转移（Sentinel、Elasticache 复制组故障转移、Memorystore HA 等）。Redis 是加速层，不是正确性基础，因此 Redis 故障转移是延迟事件，绝非正确性事件。
 - **始终只有一个调度器/维护运行器。** 编排器（`deploy.replicas: 1` 的 Compose 服务、受主机级租约保护的 systemd unit，或 `replicas: 1` 且 `RollingUpdate.maxSurge: 0` 的 Kubernetes `Deployment`）负责在重启时保持单实例不变量。重复调度器运行器作为稳态拓扑不在此契约内。
 
