@@ -10,6 +10,18 @@ Cette commande crée un fichier de configuration `workflows.php` dans votre doss
 php artisan vendor:publish --provider="Workflow\Providers\WorkflowServiceProvider" --tag="config"
 ```
 
+## Bail d’une tâche de workflow (v2) {#workflow-task-lease-v2}
+
+Configurez le bail des tâches de workflow intégrées avec un nombre entier positif de secondes :
+
+```env
+DW_V2_WORKFLOW_TASK_LEASE_SECONDS=300
+```
+
+Ce réglage correspond à `workflows.v2.workflow_task_lease_seconds` dans `config/workflows.php` et vaut `300` par défaut. Les réservations et renouvellements de tâches lisent la configuration effective. Zéro ne désactive pas le bail. Après une modification de la configuration de déploiement, actualisez la configuration en cache et redémarrez les workers persistants.
+
+Server utilise plutôt `DW_WORKFLOW_TASK_TIMEOUT` et applique cette valeur au réglage du package. Ce bail de récupération est distinct des échéances d’activité et de workflow. Consultez [Bail d’une tâche de workflow](../features/timeouts.md#workflow-task-lease).
+
 ## Changer le dossier des workflows {#changing-workflows-folder}
 
 Par défaut, les commandes `make` écrivent dans le dossier `app/Workflows`.

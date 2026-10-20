@@ -10,6 +10,18 @@ sidebar_position: 1
 php artisan vendor:publish --provider="Workflow\Providers\WorkflowServiceProvider" --tag="config"
 ```
 
+## 工作流任务租约（v2） {#workflow-task-lease-v2}
+
+使用正整数秒数配置嵌入式工作流任务租约：
+
+```env
+DW_V2_WORKFLOW_TASK_LEASE_SECONDS=300
+```
+
+它映射到 `config/workflows.php` 中的 `workflows.v2.workflow_task_lease_seconds`，默认值为 `300`。任务领取和续租会读取当前有效配置。设为零不会关闭租约。修改部署配置后，请更新配置缓存并重启长期运行的Worker。
+
+Server改用 `DW_WORKFLOW_TASK_TIMEOUT`，并将该值映射到包设置。这个恢复租约与活动和工作流期限彼此独立。参阅[工作流任务租约](../features/timeouts.md#workflow-task-lease)。
+
 ## 更改工作流文件夹 {#changing-workflows-folder}
 
 默认情况下，`make` 命令将文件写入 `app/Workflows` 文件夹。

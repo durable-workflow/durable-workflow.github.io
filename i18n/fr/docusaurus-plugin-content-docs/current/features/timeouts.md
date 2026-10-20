@@ -135,6 +135,29 @@ Si le nettoyage doit suivre une échéance applicative, utilisez un timer durabl
 
 Les commandes immédiates `cancel()` et `terminate()` ferment aussi le run sans fenêtre de nettoyage. L’opération coopérative distincte `requestCancellation()` peut accorder un nettoyage borné à un worker compatible tant que le run est actif. Un délai de workflow n’est pas automatiquement transformé en demande d’annulation coopérative, et un bouclier d’annulation ne prolonge aucune échéance globale ou de run. Voir [Annuler et terminer](./cancel-and-terminate.md) et [Annulation coopérative](../polyglot/cancellation.md).
 
+## Bail d’une tâche de workflow {#workflow-task-lease}
+
+Une tâche de workflow est un tour de traitement d’un worker qui relit l’historique validé et produit des commandes durables. Ce n’est pas le workflow entier. Attendre un temporisateur durable, une activité en file d’attente ou un signal durable ne conserve pas la même tâche pendant toute l’attente. Une tâche ultérieure reprend le run.
+
+| Déploiement | Secondes par défaut | Réglage |
+| --- | --- | --- |
+| Laravel intégré | `300` | `DW_V2_WORKFLOW_TASK_LEASE_SECONDS` |
+| Server | `60` | `DW_WORKFLOW_TASK_TIMEOUT` |
+
+Le réglage intégré correspond à `workflows.v2.workflow_task_lease_seconds`. Au démarrage, Server applique son propre réglage à cette clé du package. Utilisez donc le réglage Server sur Server. Il s’agit d’une configuration du runtime, pas d’une option `StartOptions` ni d’un délai d’activité propre à un démarrage. Consultez [Publication de la configuration](../configuration/publishing-config.md#workflow-task-lease-v2) et la [référence de configuration Server](../polyglot/server-config-reference.md#worker-protocol-and-query-transport).
+
+### Heartbeats et exécution {#workflow-task-heartbeats}
+
+Les workers en mode service utilisent les heartbeats de tâche pour renouveler la réservation d’une tâche de workflow en cours. Server vérifie la tâche, la tentative et le propriétaire du bail. Un renouvellement confirmé utilise la durée effective du bail, sous réserve des limites applicables au nettoyage d’annulation. Il ne change ni les échéances d’origine du run et de l’exécution, ni les délais d’activité. Un heartbeat d’enregistrement de worker indique seulement la présence dans la flotte. Un heartbeat d’activité indique la progression de cette activité. Aucun ne remplace le renouvellement d’une tâche de workflow.
+
+Le code synchrone d’un workflow intégré ne peut pas renouveler périodiquement le bail lorsqu’il est bloqué. Gardez le code déterministe et court. Placez les longues opérations d’E/S ou de calcul dans des activités. Le bail n’est pas une limite stricte de durée du processus ou du calcul.
+
+### Expiration du bail {#workflow-task-lease-expiry}
+
+Une réservation expirée et inachevée devient récupérable. Matching/watchdog ou la réparation efface cette réservation puis redistribue le travail afin qu’un worker compatible relise l’historique validé. Cela nécessite des processus de récupération actifs, une base de données disponible et un worker éligible. L’expiration ne tue pas l’ancien processus et ne garantit pas une redistribution immédiate. Sur Server, une réservation expirée ou remplacée ne peut pas envoyer de nouvelles commandes. Un renouvellement refusé doit être traité comme une perte d’autorité.
+
+La réparation ne rouvre pas un run fermé, n’accorde pas de nouvelles tentatives métier et ne réinitialise pas les échéances d’origine. À l’inverse, `startToCloseTimeout` limite une tentative d’activité selon sa politique de nouvelle tentative enregistrée. Les délais de run et d’exécution limitent la durée de vie du workflow. Renouveler ou rejouer une tâche de workflow ne les prolonge pas.
+
 ## Délais des activités {#activity-timeouts}
 
 Les délais d’activité limitent la durée autorisée de chaque activité. Ils ont quatre portées :

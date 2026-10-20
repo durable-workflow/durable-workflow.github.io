@@ -151,6 +151,29 @@ cancellation request, and a cancellation shield does not extend an execution
 or run deadline. See [Cancel and Terminate](./cancel-and-terminate.md) and
 [Cooperative Cancellation](../polyglot/cancellation.md).
 
+## Workflow-task lease {#workflow-task-lease}
+
+A workflow task is one worker turn that replays committed history and produces durable commands. It is not the entire workflow. Waiting on a durable timer, queued activity or signal does not hold one workflow task for the whole wait; a later task resumes the run.
+
+| Deployment | Default seconds | Setting |
+| --- | --- | --- |
+| Embedded Laravel | `300` | `DW_V2_WORKFLOW_TASK_LEASE_SECONDS` |
+| Server | `60` | `DW_WORKFLOW_TASK_TIMEOUT` |
+
+The embedded setting maps to `workflows.v2.workflow_task_lease_seconds`. Server maps its own setting into that package key at boot, so use the Server setting on Server. This is runtime configuration, not a `StartOptions` or per-start activity timeout. See [Publishing Config](../configuration/publishing-config.md#workflow-task-lease-v2) and the [Server configuration reference](../polyglot/server-config-reference.md#worker-protocol-and-query-transport).
+
+### Heartbeats and execution {#workflow-task-heartbeats}
+
+Service-mode workers use task heartbeats to renew an in-progress workflow-task claim. Server validates the task, attempt and lease owner. An acknowledged renewal uses the effective lease duration, subject to applicable cancellation-cleanup bounds. It does not change the original run/execution deadlines or activity timeouts. A worker-registration heartbeat only reports fleet liveness; an activity heartbeat reports activity progress. Neither replaces a workflow-task renewal.
+
+Synchronous embedded workflow code cannot periodically renew while blocked. Keep workflow code deterministic and short; put long I/O or CPU work in activities. The lease is not a hard process or CPU execution limit.
+
+### Lease expiry {#workflow-task-lease-expiry}
+
+An expired, unfinished claim becomes eligible for recovery. Matching/watchdog or repair clears the expired claim and redispatches work so a compatible worker can replay committed history. Recovery requires running recovery processes, an available database and an eligible worker. Expiry does not kill the old process or guarantee immediate redelivery. On Server, an expired or replaced claim cannot submit new commands; a rejected renewal must be treated as lost authority.
+
+Repair does not reopen a closed run, grant extra business retries or reset original deadlines. Activity `startToCloseTimeout` instead bounds one activity attempt under its recorded retry policy. Run and execution timeouts bound the workflow lifetime; workflow-task renewal or replay does not extend them.
+
 ## Activity timeouts
 
 Activity timeouts let you bound how long individual activity executions are allowed to take. There are four activity timeout scopes:

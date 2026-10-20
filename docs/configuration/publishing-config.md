@@ -10,6 +10,18 @@ This will create a `workflows.php` configuration file in your `config` folder.
 php artisan vendor:publish --provider="Workflow\Providers\WorkflowServiceProvider" --tag="config"
 ```
 
+## Workflow-task lease (v2) {#workflow-task-lease-v2}
+
+Configure the embedded workflow-task lease with a positive integer number of seconds:
+
+```env
+DW_V2_WORKFLOW_TASK_LEASE_SECONDS=300
+```
+
+This maps to `workflows.v2.workflow_task_lease_seconds` in `config/workflows.php` and defaults to `300`. Claims and task renewals read the effective configuration. Zero does not disable the lease. Refresh cached configuration and restart long-running workers after changing deployment configuration.
+
+Server uses `DW_WORKFLOW_TASK_TIMEOUT` instead and maps that value into the package setting. This recovery lease is separate from activity and workflow deadlines. See [Workflow-task lease](../features/timeouts.md#workflow-task-lease).
+
 ## Changing Workflows Folder
 
 By default, the `make` commands will write to the `app/Workflows` folder.
