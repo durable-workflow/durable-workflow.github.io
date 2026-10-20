@@ -245,7 +245,7 @@ final class OrderApprovalWorkflow extends Workflow
 
 **确定性规则**
 
-工作流代码必须可安全重放。将不可逆或非确定性工作放在持久命令之后：
+工作流代码必须可安全重放。通过持久命令执行不可逆或非确定性工作：
 
 ```php
 use Workflow\V2\Workflow;

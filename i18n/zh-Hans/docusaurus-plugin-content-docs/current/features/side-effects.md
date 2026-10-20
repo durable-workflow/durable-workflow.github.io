@@ -99,7 +99,7 @@ $setting = sideEffect(fn () => cache('feature.flag'));
 
 ## 运行此模式 {#run-this-pattern}
 
-[示例应用](/docs/sample-app)中的计时工作流提供可运行的参考，将时钟读取放在 `sideEffect()` 之后：
+[示例应用](/docs/sample-app)中的计时工作流提供可运行的参考，将时钟读取封装在 `sideEffect()` 中：
 
 ```bash
 php artisan app:elapsed
