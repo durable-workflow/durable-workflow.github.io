@@ -13,6 +13,7 @@ keywords:
   - サービスモード
   - Durable Workflow Cloud
   - セルフホスト Server
+  - Cloud とセルフホストの比較
 ---
 
 import ProductPromotion from '@site/src/components/ProductPromotion';
@@ -28,7 +29,7 @@ Durable Workflow v2 には 2 つのデプロイモードがあります。
 - **サービスモード:** アプリケーションと Worker が SDK を通じてリモートランタイムに接続します。[Durable Workflow Cloud](/docs/polyglot/cloud-control-plane/) または[セルフホスト Server](/docs/polyglot/server/) を選びます。
 - **Laravel 組み込みモード:** Laravel アプリケーションに `durable-workflow/workflow` をインストールし、そのアプリケーションがランタイムを直接管理します。
 
-Cloud とセルフホスト Server は、サービスモード内のランタイムの選択肢です。両方を組み合わせて動かす必要はありません。Cloud では Durable Workflow がオーケストレーションと永続ストレージを運用し、利用者は SDK クライアントと Worker を動かします。Cloud には Managed Waterline が含まれます。**Cloud の利用者が独自の Server や Waterline サービスをインストール、デプロイ、接続する必要はありません。** セルフホスト Server に Waterline は含まれません。運用者は、Server が管理する名前空間に接続する Waterline を別途デプロイできます。
+Cloud とセルフホスト Server は、サービスモード内のランタイムの選択肢であり、組み合わせて動かす構成要素ではありません。Cloud では Durable Workflow がオーケストレーションと永続ストレージを運用し、利用者は SDK クライアントと Worker を動かします。Cloud には Managed Waterline が含まれます。**Cloud の利用者は、独自の Server や Waterline サービスをインストール、デプロイ、接続しません。** セルフホスト Server に Waterline は含まれません。運用者は、Server が管理する名前空間に接続する Waterline を別途デプロイできます。
 
 このページでは、ワークフロー群をどのランタイムで管理するか、モード間をどう切り替えるか、両モードでどの契約を維持するかを確認できます。
 

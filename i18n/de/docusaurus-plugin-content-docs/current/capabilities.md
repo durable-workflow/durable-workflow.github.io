@@ -1,0 +1,85 @@
+---
+sidebar_position: 2
+title: Fähigkeitsübersicht für 2.0
+description: Übersicht der Dienstmodus-SDKs, eingebetteten Laufzeit, Protokolle und Fähigkeiten von Durable Workflow 2.0.
+tags:
+  - capabilities
+  - compatibility
+  - polyglot
+keywords:
+  - Durable Workflow 2.0 Fähigkeiten
+  - PHP Python Rust SDK
+  - Workflow-Engine Funktionsmatrix
+  - genaue Funktionsmindeststände
+---
+
+# Fähigkeitsübersicht für Durable Workflow 2.0 {#durable-workflow-20-capability-index}
+
+Dies ist die Fähigkeitsübersicht für die stabile Durable-Workflow-2.0-Versionslinie.
+
+## Unterstützter installierbarer Kanal {#supported-installable-channel}
+
+Genaue Artefaktidentitäten gehören in Paketregistries und Veröffentlichungsmetadaten, nicht in diese Fähigkeitszusammenfassung.
+
+| Schnittstelle | Unterstützter Kanal | Rolle in dieser Übersicht |
+| --- | --- | --- |
+| CLI | 2.0 stabil | Maschinenlesbarer Operator- und Diagnoseclient. |
+| PHP-SDK | 2.0 stabil | Offizieller Dienstmodus-Client `durable-workflow/sdk` und entfernter Workflow-/Aktivitäts-Worker für eine Cloud-Namespace-Laufzeit oder einen selbst gehosteten Server. |
+| Eingebettete Laravel-Engine | 2.0 stabil | Separater Bereitstellungsmodus innerhalb der Anwendung mit `durable-workflow/workflow`, eigener Programmierlaufzeit, Persistenzengine, Warteschlangen und Replay. |
+| Python-SDK | 2.0 stabil | Offizielles deterministisches Workflow-/Aktivitäts-SDK für den Dienstmodus sowie Betriebs- und Control-Plane-Client für eine Cloud-Namespace-Laufzeit oder einen selbst gehosteten Server. Erfordert Python 3.10 oder neuer. |
+| Rust-SDK | 2.0 stabil | Offizielles deterministisches Workflow-/Aktivitäts-SDK für den Dienstmodus, Worker-Dienst und Control-Plane-Client für eine Cloud-Namespace-Laufzeit oder einen selbst gehosteten Server. Erfordert Rust 1.86 oder neuer. |
+| Server | 2.0 stabil | Selbst gehostete, in PHP implementierte sprachneutrale Laufzeit für die v2-Control-Plane- und Worker-Protokolle. |
+| Waterline | 2.0 stabil | Cloud enthält Managed Waterline. Selbsthosting-Operatoren stellen das Dienstimage separat gegen einen Server-Namespace bereit. Eingebettetes Laravel installiert das Composer-Paket und liest anwendungseigenen Zustand im Prozess. |
+
+PHP, Python und Rust sind die drei offiziellen SDK-Sprachen für den Dienstmodus. Jede kann eine bereitgestellte Durable-Workflow-Cloud-Namespace-Laufzeit oder einen selbst gehosteten Server ansprechen, dessen Laufzeitermittlung die veröffentlichte Fähigkeit ausweist. Sie teilen stabile Typnamen als Zeichenketten, ein dauerhaftes Befehls-/Historienmodell, Control-Plane-Version `2`, Worker-Protokollhauptversion `1` und die öffentliche Nutzdatenhülle. Rust ist ein Workflow-SDK: Es führt deterministischen Workflow-Code, Aktivitäten und Worker-Dienste aus und beschränkt sich nicht auf rohe Protokollaufrufe. Python verbindet Workflow-Programmierung mit Clientschnittstellen für Namespace, Zeitplan, Worker, Warteschlange, Historie, Reparatur und weitere Betriebsaufgaben.
+
+Eingebettetes Laravel bleibt ein separater PHP-Bereitstellungsmodus innerhalb der Anwendung. PHP-Dienstmodus-Clients und -Worker benötigen es nicht. Das frameworkneutrale PHP-SDK wird unabhängig von der eingebetteten Laravel-Engine versioniert.
+
+Wählen Sie unter [Bereitstellungsmodi](/docs/polyglot/deployment-modes/) die Verantwortungsgrenze und fahren Sie dann mit [Verwaltete Cloud-Laufzeit](/docs/polyglot/cloud-control-plane/) oder dem [selbst gehosteten Server](/docs/polyglot/server/) fort. Die folgenden Fähigkeitsnachweise gelten nur, wenn die gewählte Laufzeit den erforderlichen Vertrag ausweist.
+
+PHP-SDK 2.3.2, Python-SDK 2.5.7 und Rust-SDK 3.5.0 verwenden standardmäßig Worker-Protokoll `1.20`. Standard-Worker benötigen einen Server, der `1.20` oder neuer innerhalb der Hauptversion `1` ausweist. Jedes SDK unterstützt außerdem die explizite Wahl von `1.19` für einen älteren kompatiblen Server. Kooperativer Abbruch erfordert `1.20` und die ausdrückliche Aktivierung dieser Fähigkeit. Laufzeitermittlung und veröffentlichte Metadaten des gewählten SDKs bestimmen die Kompatibilität. Siehe [Versionskompatibilität](/docs/compatibility/) und [Worker-Protokoll](/docs/polyglot/worker-protocol/).
+
+## Fähigkeiten und SDK-Mindeststände {#capability-and-sdk-floors}
+
+„Dienstmodus“ bedeutet, dass Cloud oder ein selbst gehosteter Server die entfernte Laufzeit verantwortet. „Eingebettet“ bedeutet, dass eine Laravel-Anwendung die Laufzeit im Prozess verantwortet. Die SDK-Spalte hält Unterschiede bewusst fest. Ein leeres oder eingeschränktes SDK gilt nicht stillschweigend als gleichwertig.
+
+| Fähigkeit | Aktueller 2.0-Vertrag und offizieller Mindeststand | Expliziter 2.0-Nachweis |
+| --- | --- | --- |
+| Workflows | Entfernte PHP-, Python- und Rust-Worker ermöglichen deterministische Workflows. Eingebettete Laravel-Workflows verwenden das Workflow-Paket. | [Workflow-Programmierung](/docs/defining-workflows/workflows/), [PHP-SDK](/docs/polyglot/php/), [Python-SDK](/docs/polyglot/python/), [Rust-SDK](/docs/polyglot/rust/) |
+| Aktivitäten und Dienste | Die eingebettete Engine und alle drei Dienstmodus-SDKs ermöglichen Aktivitäten. Rust-Workflows und -Aktivitäten laufen in offiziellen Worker-Diensten. Python und PHP bieten außerdem offizielle Steuerungs-/Dienstclients. | [Aktivitäten](/docs/defining-workflows/activities/), [PHP-SDK](/docs/polyglot/php/), [Aktivitätsausführung](/docs/features/activity-execution-model/), [Externe Ausführung](/docs/polyglot/external-execution/) |
+| Signale | Dauerhafte asynchrone Mutation ist in den PHP-, Python- und Rust-Workflow-Schnittstellen auf ihren aktuellen Mindestständen verfügbar. | [Signale](/docs/features/signals/), [Python-SDK](/docs/polyglot/python/), [Rust-SDK](/docs/polyglot/rust/) |
+| Abfragen | Schreibgeschützte Replay-Abfragen werden unterstützt. PHP, Python und Rust stellen Abfragehandler/-clients bereit. Rust-Abfrageaufgaben mit Replay erfordern Worker-Protokoll `1.8` oder neuer. | [Abfragen](/docs/features/queries/), [Python-SDK](/docs/polyglot/python/), [Rust-SDK](/docs/polyglot/rust/) |
+| Updates | PHP, Python und Rust stellen Update-Schnittstellen für Clients und Worker-Handler bereit. Deklarierte Python-Validatoren verwenden synchrone Validierung vor der Annahme, wenn die Serverermittlung genau diesen Vertrag ausweist: Die Annahme erfolgt nach der Freigabe. Ablehnung, Worker-Verlust, Timeout und durch Fencing zurückgewiesener Abschluss schlagen explizit fehl. PHP und Rust ermöglichen keine Validatorprogrammierung und deklarieren keine Validatoren. | [Updates](/docs/features/updates/), [Python-SDK](/docs/polyglot/python/), [Rust-SDK](/docs/polyglot/rust/#workflow-updates) |
+| Timer | Von der Dienstlaufzeit gestützte dauerhafte Timer werden in PHP, Python und Rust per Replay rekonstruiert. | [Timer](/docs/features/timers/), [Rust-SDK](/docs/polyglot/rust/) |
+| Wiederholungen | Die dauerhafte Wiederholungsrichtlinie einer Aktivität wird mit dem Befehl aufgezeichnet. PHP, Python und Rust bieten auf den aktuellen Mindestständen Optionen für Aktivitätswiederholungen. | [Fehler und Wiederherstellung](/docs/failures-and-recovery/), [Python-SDK](/docs/polyglot/python/), [Rust-SDK](/docs/polyglot/rust/) |
+| Timeouts | Dienstmodus-Laufzeiten in Cloud und selbst gehostetem Server setzen Aktivitäts- und Workflow-Timeoutfamilien durch. Rust enthält Aktivitätsoptionen und Startfristen für Workflow-Ausführung/Lauf. | [Timeouts](/docs/features/timeouts/), [Rust-SDK](/docs/polyglot/rust/) |
+| Untergeordnete Workflows | PHP, Python und Rust starten dauerhafte untergeordnete Workflows und warten auf sie. Die sprachübergreifende Typidentität ist eine stabile Zeichenkette. Nutzdaten untergeordneter Workflows verwenden die gemeinsame Hülle. | [Untergeordnete Workflows](/docs/features/child-workflows/), [Python-SDK](/docs/polyglot/python/) |
+| Deterministische parallele Komposition | PHP `all()`/`parallel()`, verschachteltes List-Yield in Python und Rust `WorkflowContext::parallel()`/`join()` planen Aktivitäts-, untergeordnete Workflow-, Timer-, gemischte und verschachtelte Gruppen über gewöhnliche Befehle. Alle drei veröffentlichen gemeinsame Gruppenidentitäts-/Pfadmetadaten und stellen Ergebnisse in verschachtelter Eingabereihenfolge wieder her. | [Nebenläufigkeit](/docs/features/concurrency/), [Python-SDK](/docs/polyglot/python/#fan-out), [Rust-SDK](/docs/polyglot/rust/#deterministic-parallel-groups) |
+| <span id="durable-first-completion-selection-capability">Dauerhafte Auswahl des ersten Abschlusses</span> | Eingebettetes PHP sowie die PHP-, Python- und Rust-Dienst-SDKs starten unabhängige Mitglieder für Aktivitäten, untergeordnete Workflows, Timer, Wartezustände auf externe Eingaben und verschachtelte Gruppen. Ein Gewinner wird mit stabiler Mitgliedsidentität gespeichert. Nichtgewinner laufen weiter und behalten Handles zum Warten/Abbrechen. | [Nebenläufigkeit](/docs/features/concurrency/#first-completion-selection), [Python-SDK](/docs/polyglot/python/#first-completion-selection), [Rust-SDK](/docs/polyglot/rust/#durable-first-completion-selection) |
+| Saga-Kompensation | PHP-Saga-Helfer, Python `WorkflowContext.saga()` und Rust `WorkflowContext::saga()` registrieren dauerhafte Kompensationen nach erfolgreichem Vorwärtsschritt und führen sie standardmäßig nacheinander in umgekehrter Reihenfolge aus. Python und Rust stoppen beim ersten Kompensationsfehler und erhalten auslösenden Fehler sowie Kompensationsfehler. PHP bietet zusätzlich explizit aktivierbare Richtlinien für parallele Ausführung und Fortsetzung bei Fehlern. | [Sagas](/docs/features/sagas/), [Python-SDK](/docs/polyglot/python/#saga-compensation), [Rust-SDK](/docs/polyglot/rust/#saga-compensation) |
+| Abbruch | Eingebettetes Laravel und PHP, Python und Rust im Dienstmodus unterstützen kooperative Abbruchanforderungen mit einer gemeinsamen Wurzelidentität, unveränderlicher Frist und begrenzter Bereinigung auf ausdrücklich aktivierten Workern. Sofortiger terminaler Abbruch bleibt mit Absicherung des ausgewählten Laufes und typisierten Ergebnissen verfügbar. | [Abbrechen und terminieren](/docs/features/cancel-and-terminate/), [Abbruch im Dienstmodus](/docs/polyglot/cancellation/), [Rust-SDK](/docs/polyglot/rust/) |
+| Terminierung | Terminierung schließt einen Lauf sofort mit einem eigenen terminalen Ergebnis. Sie ist über Dienstlaufzeiten von Cloud und selbst gehostetem Server, CLI sowie PHP-, Python- und Rust-Steuerungsschnittstellen verfügbar. | [Abbrechen und terminieren](/docs/features/cancel-and-terminate/), [Server-API](/docs/polyglot/server-api-reference/) |
+| Seiteneffekte | PHP, Python und Rust zeichnen nichtdeterministische Werte genau einmal auf und dekodieren den aufgezeichneten Wert beim Replay. | [Seiteneffekte](/docs/features/side-effects/), [Python-SDK](/docs/polyglot/python/), [Rust-SDK](/docs/polyglot/rust/) |
+| Workflow Streams | PHP, Python und Rust bieten typisierte Operationen für Auflisten, Beschreiben, offsetbasiertes Abonnieren/Wiederaufnehmen, Anhängen, Schließen und Fehler für serververwaltete laufbezogene Ausgabeströme. Alle drei ermöglichen Replay-sichere Ausgaben aus einer dauerhaften Befehlsidentität. Python löst externe Nutzdaten mit seinem konfigurierten Speichertreiber auf. PHP und Rust erhalten undurchsichtige Referenzen. | [Workflow Streams](/docs/polyglot/workflow-streams/), [genaue SDK-Matrix](/workflow-stream-capabilities.json), [Laufzeitszenarien](/platform-conformance/workflow-stream-runtime-scenarios.json) |
+| Versionsmarker | PHP, Python und Rust bieten dauerhafte Versionsmarker für kompatible Codeweiterentwicklung. | [Versionierung](/docs/features/versioning/), [Python-SDK](/docs/polyglot/python/), [Rust-SDK](/docs/polyglot/rust/) |
+| Deterministisches Replay | PHP-, Python- und Rust-Workflow-Worker rekonstruieren Entscheidungen aus dauerhafter Historie und melden typisierten Nichtdeterminismus, statt externe Arbeit erneut auszuführen. | [Ausführungsgarantien](/docs/constraints/execution-guarantees/), [Plattformkonformität](/docs/platform-conformance/), [Rust-SDK](/docs/polyglot/rust/) |
+| Zeitpläne | Dienstlaufzeiten von Cloud und selbst gehostetem Server verwalten dauerhafte Zeitpläne. PHP, Python und CLI bieten Zeitplanoperationen. Rust beansprucht keine Zeitplanverwaltungs-API. | [Zeitpläne](/docs/features/schedules/), [CLI-Referenz](/docs/polyglot/cli-reference/), [Python-SDK](/docs/polyglot/python/) |
+| Namespaces | Dienstmodus-Laufzeiten sind auf Namespaces begrenzt. PHP-/Python-Clients und CLI verwalten Namespaces, soweit die ausgewählte Laufzeit diese Operation bereitstellt. Rust-Worker/-Clients sprechen einen Namespace an, beanspruchen auf dem aktuellen Mindeststand aber keine Namespace-Verwaltung. | [Namespace, Authentifizierung und Worker](/docs/polyglot/namespace-auth-workers/), [Server-API](/docs/polyglot/server-api-reference/) |
+| Suchattribute | Dienstlaufzeiten von Cloud und selbst gehostetem Server indexieren typisierte Suchattribute. PHP und Python bieten Programmier-/Steuerungsschnittstellen. CLI und Operator-APIs bieten strukturierte Ermittlung und Filterung. | [Suchattribute](/docs/features/search-attributes/), [Python-SDK](/docs/polyglot/python/) |
+| Worker-Kompatibilität | SDKs registrieren Laufzeit, SDK-Version, Build-ID, unterstützte Typen, Protokollversion und Kapazität. Der Server veröffentlicht akzeptierte Versionen und Routinginformationen. | [Kompatibilität](/docs/compatibility/), [Worker-Kompatibilität und -Routing](/docs/polyglot/worker-compatibility-routing/) |
+| Lokale Aktivitäten | In eingebettetem Laravel, PHP- und Python-Dienst-SDKs sowie Rust-SDK 3.1.0 mit ausdrücklicher Worker-Aktivierung verfügbar. | [Eingebettete Aktivitätsausführung](/docs/features/activity-execution-model/), [Unterstützungsmatrix für den Dienstmodus](/docs/polyglot/portable-worker-affinity/) |
+| Worker-Sitzungen | In eingebettetem Laravel, PHP- und Python-Dienst-SDKs sowie Rust-SDK 3.2.0 mit ausdrücklicher Worker-Aktivierung verfügbar. | [Worker-Sitzungen](/docs/features/worker-sessions/), [Unterstützungsmatrix für den Dienstmodus](/docs/polyglot/portable-worker-affinity/) |
+| Sticky-Ausführung | In eingebettetem Laravel und im PHP-Dienst-SDK verfügbar. Python und Rust bieten ebenfalls optionale begrenzte Historiencaches mit ausdrücklicher Worker-Aktivierung. Jeder Worker muss korrektes kaltes Replay weiterhin unterstützen. | [Sticky-Ausführung](/docs/features/sticky-execution/), [Unterstützungsmatrix für den Dienstmodus](/docs/polyglot/portable-worker-affinity/) |
+| Codec-Interoperabilität | PHP, Python und Rust verwenden die öffentliche Hülle `codec` + `blob` und ein festes rekursives Avro-Value-Schema. Benannte Zweige erhalten die Unterschiede zwischen Ganzzahlen und Doubles, Text und Bytes, booleschen Werten und Ganzzahlen sowie Listen und Maps. | [Avro-Value-Protokoll](/docs/polyglot/avro-value-protocol/), [Worker-Protokoll](/docs/polyglot/worker-protocol/), [Rust-SDK](/docs/polyglot/rust/) |
+| Diagnose | Dienstlaufzeiten und CLI veröffentlichen Fakten zu Version, Protokoll, Workern, Aufgabenwarteschlangen, Replay, Historie, typisierten Fehlern und Reparatur als JSON. Managed Waterline, ein separat bereitgestellter selbst gehosteter Dienst oder das eingebettete Paket zeigt Nachweise seiner verantwortlichen Laufzeit. | [Überwachung](/docs/monitoring/), [CLI-Referenz](/docs/polyglot/cli-reference/), [Waterline-Operator-API](/docs/waterline-operator-api/) |
+| Agentenwerkzeuge | Ermitteln -> Ändern -> Ausführen -> Diagnostizieren -> Reparieren ist über öffentliche Manifeste, Schemas, HTTP-Operationen, CLI-JSON, SDK-Clients, typisierte Historie/Diagnose und sichere Mutationen verfügbar. MCP ist eine optionale Schnittstelle und definiert nicht den gesamten Vertrag. | [Vertrag für Agentenwerkzeuge](/docs/agent-tooling-contract/), [Arbeitszyklus für Agenten](/docs/agent-operating-loop/) |
+
+## Grenze der Nutzdateninteroperabilität {#payload-interoperability-boundary}
+
+Sprachübergreifende Workflow- und Aktivitätsaufrufe übertragen keine serialisierten PHP-Objekte, Python-Pickles oder Rust-Implementierungstypen. Sie übertragen registrierte Typnamen als Zeichenketten und eine öffentliche Nutzdatenhülle. Mit `avro` verwendet jedes offizielle SDK die offizielle Sprachimplementierung und dasselbe feste Value-Schema. Dekodierte Maps, Listen, Zeichenketten, Bytes, Ganzzahlen, Doubles, boolesche Werte und Nullwerte erhalten ihren primitiven Typ. Eine sprachspezifische Klasse wird nur innerhalb ihres eigenen SDKs rekonstruiert.
+
+Dieser Vertrag gilt für Workflow-Eingabe und -Ergebnis, untergeordnete Workflows, Aktivitätseingabe und -ergebnis, Signale, Abfragen, Updates und externe Ausführung. Bereitstellungen müssen vor der Zulassung eines Workers weiterhin die von `GET /api/cluster/info` ausgewiesenen Codecs prüfen.
+
+## Veröffentlichungs- und Reifegradgrenze {#release-and-maturity-boundary}
+
+Die hier aufgeführten Plattformverträge bilden die stabile 2.0-Produktoberfläche. Verwenden Sie die [Bewertung für KI-Agenten](/docs/ai-agent-workflow-engine/) für eine kurze Eignungsentscheidung.

@@ -107,7 +107,7 @@ A API fica disponível apenas no endereço de loopback desta máquina. `dev-toke
 credenciais próprias, TLS e controles de acesso à rede.
 
 O segundo contêiner processa a fila de infraestrutura do Server e avança os
-timers duráveis mesmo com os workers SDK parados. Sua fila Laravel se chama
+temporizadores duráveis mesmo com os workers SDK parados. Sua fila Laravel se chama
 `default`, separada das filas de tarefas SDK abaixo. Mantenha os dois
 contêineres em execução. A avaliação de agendamentos e a manutenção em produção
 usam os papéis adicionais do stack Compose.

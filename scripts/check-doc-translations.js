@@ -2,9 +2,12 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const {createHash} = require('node:crypto');
+const {checkCurrentTranslations, checkTranslationUpdatesFromGit} = require('./check-doc-translation-updates');
 
 const root = path.resolve(__dirname, '..');
-require('./check-doc-translation-updates').checkTranslationUpdatesFromGit(root);
+const currentCount = checkCurrentTranslations(root);
+console.log(`All seven other locales contain ${currentCount} current guides with current reviewed-source hashes.`);
+checkTranslationUpdatesFromGit(root);
 const locales = {es: 'Spanish', 'pt-BR': 'Brazilian Portuguese', 'zh-Hans': 'Simplified Chinese', ja: 'Japanese', fr: 'French', de: 'German'};
 
 function codeBlocks(file) {

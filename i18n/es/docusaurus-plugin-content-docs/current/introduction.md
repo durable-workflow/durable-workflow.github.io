@@ -1,6 +1,6 @@
 ---
 sidebar_position: 1
-description: Elige Durable Workflow Cloud, Server autogestionado o Laravel integrado y completa tu primer workflow con un SDK oficial.
+description: Elige Durable Workflow Cloud, Server 2.0 autogestionado o Laravel integrado y completa tu primer workflow con un SDK oficial.
 tags:
   - concepts
   - getting-started
@@ -8,7 +8,9 @@ tags:
 keywords:
   - durable workflow
   - motor de workflows políglota
+  - motor de workflows para agentes de IA
   - orquestación duradera
+  - conceptos de workflows v2
 ---
 
 import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseLink';
@@ -16,9 +18,9 @@ import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseL
 # Introducción {#introduction}
 
 Durable Workflow 2.0 guarda el estado y el historial de los workflows fuera de
-los procesos de la aplicación. Así, los workers de PHP, Python y Rust pueden
-reanudar su trabajo después de un reinicio. Empieza con la
-[Guía de inicio rápido](/docs/quickstart/) para completar un workflow antes de
+los procesos de corta duración de la aplicación. Así, los workers de PHP, Python
+y Rust pueden reanudar su trabajo con seguridad después de un reinicio. Empieza con la
+[Guía de inicio rápido](/docs/quickstart/) para llevar un workflow a `completed` antes de
 consultar el [Índice de capacidades](/docs/capabilities/).
 
 ## Elige un modelo de despliegue {#choose-a-deployment-model}
@@ -101,12 +103,12 @@ Un despliegue en modo servicio tiene tres partes:
 
 Los SDK oficiales comparten nombres de tipos de workflow y actividad
 registrados como cadenas, y un formato público para los datos. Ese formato
-identifica su codec y contiene valores portables en lugar de serialización
+identifica su códec y contiene valores portables en lugar de serialización
 PHP, pickles de Python o tipos internos de Rust.
 
 Los workers reconstruyen las decisiones a partir de los comandos y del
 historial duradero. Las entradas y los resultados de actividades y workflows
-hijos pueden cruzar lenguajes cuando los workers anuncian el mismo codec
+hijos pueden cruzar lenguajes cuando los workers anuncian el mismo códec
 público y registran los mismos nombres de tipos. Consulta el
 [Índice de capacidades](/docs/capabilities/) y la información del entorno
 antes de depender de una función concreta de un SDK.

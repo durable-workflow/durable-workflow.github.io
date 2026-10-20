@@ -1,7 +1,7 @@
 ---
 sidebar_position: 4
-title: Invocable HTTP carrier
-description: Налаштування invocable_http carrier лише для activities, щоб Server міг POST leased activity task до HTTPS-обробника й узгодити структурований результат.
+title: Викличний HTTP-транспорт
+description: Налаштування транспорту invocable_http лише для activities, щоб Server міг надсилати орендовані завдання activity до HTTPS-обробника й узгоджувати структурований результат.
 tags:
   - external-execution
   - invocable-carrier
@@ -15,9 +15,9 @@ keywords:
   - оболонка результату external task
 ---
 
-# Invocable HTTP carrier {#invocable-http-carrier}
+# Викличний HTTP-транспорт {#invocable-http-carrier}
 
-Invocable HTTP carrier є першим конкретним carrier, визначеним у межах
+Викличний HTTP-транспорт є першою конкретною реалізацією транспорту, визначеною в межах
 [зовнішнього виконання](./external-execution.md). Він публікується
 в `GET /api/cluster/info` за шляхом
 `worker_protocol.invocable_carrier_contract`
@@ -96,7 +96,7 @@ Server перевіряє `target_fields` carrier перед публікаці�
 Оператор може перевірити за діагностикою runtime, який секрет автентифікації
 буде використано, без розкриття самого секрету Server.
 
-## Транспортні retries та durable retries activity {#transport-retry-versus-durable-activity-retry}
+## Транспортні повторні спроби та довговічні повторні спроби activity {#transport-retry-versus-durable-activity-retry}
 
 Необов'язкова `retry_policy` invocable carrier діє **лише на транспорт**.
 Вона керує HTTP-доставкою carrier до повідомлення результату обробником:
@@ -223,7 +223,7 @@ Activity poll-відповідь сама повідомляє вибране з
 Workers і операторські інструменти використовують ці поля як джерело
 істини замість власної кешованої копії конфігурації.
 
-## Співіснування та rollout {#coexistence-and-rollout}
+## Співіснування та поетапне впровадження {#coexistence-and-rollout}
 
 Межа rollout invocable carrier публікується в тому самому manifest:
 
@@ -242,7 +242,7 @@ Workers і операторські інструменти використов�
 
 - [Зовнішнє виконання](./external-execution.md) — незалежна від carrier
   продуктова межа, яку реалізує цей carrier.
-- [PHP-обробник invocable activity](./invocable-php-handler.md) — PHP-помічник
+- [Викличний PHP-обробник activity](./invocable-php-handler.md) — PHP-помічник
   для розбору вхідних оболонок зовнішнім процесом, виклику activity callable
   та формування структурованих оболонок результату, яких очікує carrier.
 - [Довідник конфігурації Server](./server-config-reference.md) — змінні

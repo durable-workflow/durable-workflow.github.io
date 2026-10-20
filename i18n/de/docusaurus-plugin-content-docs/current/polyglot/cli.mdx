@@ -1,0 +1,420 @@
+---
+sidebar_position: 3
+title: CLI
+description: Die Durable-Workflow-CLI installieren und zum Betrieb des eigenständigen Servers verwenden.
+tags:
+  - CLI
+  - operations
+  - automation
+keywords:
+  - Durable Workflow CLI
+  - dw-Befehl
+  - CLI-Profil
+  - CLI-Installation
+---
+
+import CliInstall from '@site/src/components/CliInstall';
+
+# CLI {#cli}
+
+Die Durable-Workflow-CLI (`dw`) ist eine Shell-Schnittstelle zum
+[eigenständigen Server](/docs/polyglot/server). Damit kann der Betrieb
+Workflows starten, auflisten, signalisieren, abfragen, aktualisieren,
+reparieren, abbrechen, terminieren und archivieren, Zeitpläne verwalten,
+Task-Warteschlangen untersuchen und den Server-Zustand prüfen, alles über die Befehlszeile.
+
+Dieselbe CLI funktioniert mit jedem Durable Workflow Server, unabhängig von
+der Sprache Ihrer Workflows. [Client- und Worker-Fähigkeiten](/docs/polyglot/cli-python-parity/)
+zeigt die unterstützten und bewusst unterschiedlichen CLI-, PHP-, Python- und
+Rust-Oberflächen.
+
+## Installation {#install}
+
+<CliInstall />
+
+### Prüfen {#verify}
+
+```bash
+dw --version
+```
+
+### Installation aus dem unterstützten Kanal {#supported-channel-install}
+
+Das Standardinstallationsprogramm folgt dem CLI-Release des letzten erfolgreich
+qualifizierten Artefakttupels, ohne eine RC-Folgenummer zu benötigen. Eine neuere
+veröffentlichte CLI-Vorabversion wird erst ausgewählt, wenn die öffentliche
+Kompatibilitätsautorität sie qualifiziert. Für reproduzierbare CI halten Sie
+den aufgelösten Wert von `dw --version` fest und übergeben bei späteren Läufen
+genau dieses Tag über `VERSION`.
+
+Beide Installationsskripte laden `SHA256SUMS` aus dem Release und prüfen vor
+dem Ersetzen von `dw` die Artefaktprüfsumme. Ein manipulierter Spiegel lässt
+die Installation daher fehlschlagen.
+
+<details>
+<summary><b>Linux und macOS</b> (Shell-Installation)</summary>
+
+```bash
+%%artifact.cliChannelInstallerCommand%%
+dw --version
+```
+
+`VERSION` akzeptiert jedes veröffentlichte Release-Tag, `supported`,
+`prerelease` oder `stable`. Lassen Sie die Variable ungesetzt, um dem
+qualifizierten Kanal `supported` zu folgen. Der explizite Kanal `prerelease`
+verlangt, dass das qualifizierte Release eine Vorabversion ist. Weitere
+Umgebungsvariablen:
+
+- `DURABLE_WORKFLOW_INSTALL_DIR`: Installationsort (Standard `~/.local/bin`).
+- `DURABLE_WORKFLOW_BIN_NAME`: Name der installierten ausführbaren Datei (Standard `dw`).
+
+Ein Beispiel für GitHub Actions:
+
+```yaml
+- name: Install Durable Workflow CLI
+  run: |
+    %%artifact.cliChannelInstallerCommand%%
+    echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+- name: Verify
+  run: dw --version
+```
+
+</details>
+
+<details>
+<summary><b>Windows</b> (PowerShell-Installation)</summary>
+
+```powershell
+%%artifact.cliChannelPowerShellCommand%%
+dw --version
+```
+
+Das Installationsprogramm schreibt `dw.exe` nach
+`%USERPROFILE%\.durable-workflow\bin` und ergänzt dieses Verzeichnis im
+Benutzer-`PATH`.
+
+</details>
+
+<details>
+<summary><b>PHAR</b> (portabel, erfordert PHP 8.2+)</summary>
+
+```bash
+VERSION=<release-tag>
+curl -fsSL -o dw.phar \
+  "https://github.com/durable-workflow/cli/releases/download/${VERSION}/dw.phar"
+curl -fsSL -o SHA256SUMS \
+  "https://github.com/durable-workflow/cli/releases/download/${VERSION}/SHA256SUMS"
+sha256sum --check --ignore-missing SHA256SUMS
+chmod +x dw.phar
+./dw.phar --version
+```
+
+Das PHAR funktioniert überall, wo PHP 8.2 oder neuer bereits verfügbar ist.
+Es ist das empfohlene Artefakt für gemeinsame CI-Runner mit vorhandenem PHP.
+
+</details>
+
+### Eine installierte Binärdatei aktualisieren {#update-an-installed-binary}
+
+Bei eigenständigen Release-Installationen (den obigen Shell- und
+PowerShell-Installationen) ersetzt `dw upgrade` die laufende Binärdatei durch
+das neueste veröffentlichte Release, nachdem es das Artefakt gegen dessen
+`SHA256SUMS` geprüft hat.
+
+```bash
+dw upgrade                 # upgrade through the stable release channel
+dw upgrade --tag=<release-tag>     # pin to a specific release tag
+dw upgrade --dry-run       # resolve the target release without downloading
+```
+
+`dw upgrade` verweigert das Überschreiben von Composer-vendor-, Homebrew-cellar-
+und PHAR-Installationen, da diese Pfade von anderen Werkzeugen verwaltet werden.
+Installieren Sie ein festgelegtes öffentliches Release erneut mit dem
+Installationsprogramm, aktualisieren Sie den zuständigen Paketmanager oder
+verwenden Sie für Tap-verwaltete Homebrew-Installationen
+`brew upgrade durable-workflow/tap/dw`. Den vollständigen stabilen Vertrag für
+Optionen und Statusfelder enthält die [CLI-Referenz](./cli-reference.md#self-upgrade).
+
+## Konfigurieren {#configure}
+
+Richten Sie die CLI auf Ihren Server:
+
+```bash
+export DURABLE_WORKFLOW_SERVER_URL=http://localhost:8080
+export DURABLE_WORKFLOW_AUTH_TOKEN=your-token
+export DURABLE_WORKFLOW_NAMESPACE=default
+```
+
+Oder übergeben Sie die Werte je Befehl:
+
+```bash
+dw --server=http://localhost:8080 --token=your-token workflow:list
+```
+
+## Betriebs-Schnellstart in fünf Minuten {#five-minute-operator-quickstart}
+
+Dieser Weg prüft die CLI gegen einen echten eigenständigen Server ohne
+Anwendungscode zu schreiben. Er startet den veröffentlichten lokalen
+Server-Stack, installiert ein festgelegtes `dw`, erstellt ein wiederverwendbares
+Profil, startet einen Workflow und beobachtet, wie der Lauf die
+Worker-Warteschlange erreicht.
+
+```bash
+export DW_SERVER_IMAGE=%%artifact.serverDockerHubImage%%
+export DW_AUTH_TOKEN=dev-token
+
+docker volume create durable-workflow-cli-quickstart
+
+docker run --rm \
+  -v durable-workflow-cli-quickstart:/app/database \
+  -e DW_AUTH_DRIVER=token \
+  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
+  "$DW_SERVER_IMAGE" server-bootstrap
+
+docker rm -f durable-workflow-server >/dev/null 2>&1 || true
+docker run -d --name durable-workflow-server \
+  -p 8080:8080 \
+  -v durable-workflow-cli-quickstart:/app/database \
+  -e DW_AUTH_DRIVER=token \
+  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
+  "$DW_SERVER_IMAGE"
+
+until curl -sf http://localhost:8080/api/ready >/dev/null; do sleep 1; done
+```
+
+Installieren Sie die CLI in einem anderen Terminal:
+
+```bash
+%%artifact.cliChannelInstallerCommand%%
+export PATH="$HOME/.local/bin:$PATH"
+dw --version
+```
+
+Speichern Sie die Server-Verbindung einmal:
+
+```bash
+dw env:set local \
+  --server=http://localhost:8080 \
+  --token=dev-token \
+  --namespace=default \
+  --make-default
+
+dw doctor
+dw server:health
+```
+
+Starten Sie einen Workflow und untersuchen Sie den Lauf:
+
+```bash
+dw workflow:start \
+  --type=quickstart.order \
+  --workflow-id=quickstart-order-001 \
+  --task-queue=quickstart \
+  --input='{"order_id":"order-001","total":42.50}' \
+  --json
+
+dw workflow:describe quickstart-order-001 --output=json
+dw workflow:history quickstart-order-001 <run-id-from-start-or-describe>
+dw task-queue:describe quickstart
+```
+
+Der Lauf ist jetzt dauerhafter Server-Zustand. Solange kein Worker für
+`quickstart.order` die Warteschlange `quickstart` abfragt, zeigt
+`dw task-queue:describe quickstart` am schnellsten, warum der Lauf wartet.
+Ist ein Worker angebunden, verfolgen Sie ihn mit
+`dw watch workflow quickstart-order-001` bis zu einem terminalen Zustand.
+Für einen vollständigen Lauf mit einem veröffentlichten Python-SDK-Worker bis
+`status=completed` folgen Sie dem
+[Durable-Workflow-2.0-Schnellstart](/docs/quickstart).
+
+## Befehle {#commands}
+
+### Server {#server}
+
+```bash
+dw server:health          # Check server health
+dw server:info            # Show server version, role topology, protocols, and worker fleet
+```
+
+`dw server:info` spiegelt `GET /api/cluster/info`. Neben Build-, Protokoll-
+und Worker-Flottenangaben gibt es das Rollentopologiemanifest des Servers aus:
+unterstützte Formen, aktuelle Form/Prozessklasse/Rollen, Aufweck- und
+Aufteilungsdetails der Matching-Rolle, aktuelle Schreibgrenzen,
+Skalierungsgrenzen und Ausfallbereiche. Verwenden Sie `--output=json`, wenn
+Automatisierung die rohen `topology.*`-Felder benötigt. Den Vertrag hinter
+jedem Feld erklärt [Server-Rollentopologie](./server-role-topology.md).
+
+### Workflows {#workflows}
+
+```bash
+dw workflow:list                                          # List workflows
+dw workflow:start --type=MyWorkflow --input='["arg1"]'    # Start a workflow
+dw workflow:start --type=MyWorkflow --input-file=input.json
+dw workflow:describe <workflow-id>                         # Describe a workflow
+dw workflow:signal <workflow-id> <signal-name> --input='["ok"]'
+dw workflow:query <workflow-id> <query-name>               # Run a query
+dw workflow:cancel <workflow-id>                           # Close as cancelled immediately
+dw workflow:terminate <workflow-id>                        # Force terminate
+dw workflow:history <workflow-id> <run-id>                 # Show run history
+```
+
+Alle Befehle mit Aufrufernutzlasten verwenden dieselbe Eingabeform: `--input`
+für Inline-Werte, `--input-file` für einen Dateipfad oder `-` für stdin und
+`--input-encoding=json|raw|base64`. JSON ist Standard. Raw- und Base64-Eingaben
+werden als ein Positionsargument des Workflows übergeben.
+
+### Brückenadapter {#bridge-adapters}
+
+```bash
+dw bridge:webhook stripe \
+  --action=start_workflow \
+  --idempotency-key=stripe-event-1001 \
+  --target='{"workflow_type":"orders.fulfillment","task_queue":"external-workflows"}' \
+  --input='{"order_id":"order-1001"}'
+
+dw bridge:webhook pagerduty \
+  --action=signal_workflow \
+  --idempotency-key=pd-event-3003 \
+  --target='{"workflow_id":"wf-remediation-42","signal_name":"incident_escalated"}' \
+  --input='{"severity":"critical"}' \
+  --json
+```
+
+Brückenadapter sind begrenzte Eingangswerkzeuge für Integrationsereignisse.
+Sie liefern benannte Brückenergebnisse für angenommene, doppelte und abgelehnte
+Zustellungen. Sie werden nicht zu Workflow-Laufzeitumgebungen.
+
+### Zeitpläne {#schedules}
+
+```bash
+dw schedule:list                          # List schedules
+dw schedule:create --workflow-type=MyWorkflow \
+  --cron='0 * * * *'                      # Create hourly schedule
+dw schedule:update <schedule-id> --input-file=input.json
+dw schedule:describe <schedule-id>        # Describe a schedule
+dw schedule:pause <schedule-id>           # Pause a schedule
+dw schedule:resume <schedule-id>          # Resume a schedule
+dw schedule:trigger <schedule-id>         # Trigger immediately
+dw schedule:delete <schedule-id>          # Delete a schedule
+```
+
+### Aktivitäten {#activities}
+
+```bash
+dw activity:complete <task-id> <attempt-id> --input='{"ok":true}'
+dw activity:complete <task-id> <attempt-id> --input-file=result.json
+dw activity:fail <task-id> <attempt-id> --message='upstream failed'
+```
+
+### Worker und Task-Warteschlangen {#workers-and-task-queues}
+
+```bash
+dw worker:list                    # List registered workers
+dw worker:describe <worker-id>    # Describe a worker
+dw task-queue:list                # List active task queues
+dw task-queue:describe <queue>    # Describe a task queue
+```
+
+`dw task-queue:list` ist die kompakte Flottenansicht. Sie zeigt Spalten zum
+Zulassungsstatus von Workflow-, Aktivitäts- und Abfrage-Tasks.
+`dw task-queue:describe` erweitert dieselbe Server-Nutzlast um Abfrager,
+aktuelle Leases, Zuweisungskapazität für Warteschlange, Namespace und
+nachgelagerte Budgetgruppen, verbleibende Kapazität, Budgetquelle und Kapazität
+ausstehender Abfrage-Tasks.
+
+Für Skripte zeigt `dw task-queue:describe --json` warteschlangenlokalen
+Rückstau-, Lease-, Abfrager- und Zulassungszustand. Unterscheiden Sie damit
+fehlende Worker von Zulassungsdrosselung oder einer einzelnen Warteschlange
+mit wachsendem Rückstau:
+
+```bash
+dw task-queue:describe orders --json | jq '.stats | {
+  approximate_backlog_count,
+  approximate_backlog_age_seconds,
+  workflow_tasks,
+  activity_tasks
+}'
+```
+
+Flottenweite dauerhafte Eingangs- gegenüber Zuweisungsraten stammen nicht aus
+dem Task-Warteschlangen-JSON-Vertrag. Lesen Sie sie stattdessen über
+`dw system:operator-metrics --json`:
+
+```bash
+dw system:operator-metrics --json | jq '.operator_metrics.backlog | {
+  tasks_added_last_minute,
+  tasks_dispatched_last_minute
+}'
+```
+
+Den betrieblichen Abstimmungsvertrag hinter diesen Feldern beschreibt
+[Task-Warteschlangenzulassung](/docs/polyglot/task-queue-admission).
+
+Lesen Sie zum Untersuchen des Matching-Routing-Vertrags des abgefragten Knotens
+den Block `matching_role` derselben Nutzlast:
+
+```bash
+dw system:operator-metrics --json | jq '.operator_metrics.matching_role | {
+  queue_wake_enabled,
+  shape,
+  task_dispatch_mode,
+  partition_primitives,
+  backpressure_model
+}'
+```
+
+`partition_primitives` legt die Routing-Achsen (`connection`, `queue`,
+`compatibility`, `namespace`) fest. `backpressure_model` zeigt, ob die Engine
+auf Lease-Belegung oder eine andere Zulassungsgrenze setzt. v2 meldet aktuell
+`lease_ownership`.
+
+### Namespaces {#namespaces}
+
+```bash
+dw namespace:list                             # List namespaces
+dw namespace:create --name=production         # Create a namespace
+dw namespace:describe <namespace>             # Describe a namespace
+```
+
+### Suchattribute {#search-attributes}
+
+```bash
+dw search-attribute:list                                  # List search attributes
+dw search-attribute:create --name=env --type=keyword      # Register an attribute
+```
+
+## Exit-Codes {#exit-codes}
+
+Die CLI verwendet stabile Exit-Codes, damit Skripte und CI-Pipelines ohne
+Auswertung von stderr auf bestimmte Fehlerarten reagieren können. Die Werte
+folgen Symfony Consoles kanonischen `0`/`1`/`2` für Erfolg/Fehler/Verwendung
+und werden darüber hinaus erweitert.
+
+| Code | Name | Bedeutung |
+|------|------|---------|
+| `0` | `SUCCESS` | Operation erfolgreich abgeschlossen. |
+| `1` | `FAILURE` | Allgemeiner Fehler: Befehl lief, war aber nicht erfolgreich. |
+| `2` | `INVALID` | Ungültige Verwendung: falsche Argumente, unbekannte Optionen oder lokale Validierung. Auch für unten nicht gesondert behandelte HTTP-4xx-Antworten (z. B. 400, 422). |
+| `3` | `NETWORK` | Server nicht erreichbar (Verbindung abgelehnt, DNS-Fehler, TLS-Handshake-Fehler, Transportfehler). |
+| `4` | `AUTH` | Authentifizierungs- oder Autorisierungsfehler. Für HTTP `401` und `403`. |
+| `5` | `NOT_FOUND` | Ressource nicht gefunden. Für HTTP `404`. |
+| `6` | `SERVER` | Serverfehler. Für HTTP `5xx`. |
+| `7` | `TIMEOUT` | Anfrage lief vor der Server-Antwort ab. Auch für HTTP `408`. |
+
+Beispiel:
+
+```bash
+dw workflow:describe chk-does-not-exist
+echo $?  # 5 (NOT_FOUND)
+
+dw server:health --server=http://unreachable:9999
+echo $?  # 3 (NETWORK)
+```
+
+Die maßgebliche Quelle ist [`DurableWorkflow\Cli\Support\ExitCode`](https://github.com/durable-workflow/cli/blob/main/src/Support/ExitCode.php)
+im CLI-Repository.
+
+## Referenz {#reference}
+
+Die [CLI-Befehlsreferenz](/docs/polyglot/cli-reference) beschreibt Befehlsformen,
+Optionen, Ausgabemodi und Fehlerverhalten für Automatisierung.

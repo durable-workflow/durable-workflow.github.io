@@ -111,7 +111,7 @@ Alle drei offiziellen SDKs stehen gleichberechtigt zur Verfügung. Es wird nur d
 <Tabs groupId="quickstart-language" className="quickstart-language-tabs">
 <TabItem value="php" label="PHP" default>
 
-Voraussetzungen: PHP 8.1 oder neuer und Composer. Dieser Weg verwendet das frameworkunabhängige Paket `durable-workflow/sdk`.
+Voraussetzungen: PHP 8.1 oder neuer und Composer. Dieser Weg verwendet das frameworkunabhängige Paket `durable-workflow/sdk`, nicht die eingebettete Laravel-Engine.
 
 1. **Das SDK installieren.**
 

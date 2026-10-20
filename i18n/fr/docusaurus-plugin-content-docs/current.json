@@ -6,13 +6,13 @@
     "message": "Mode service"
   },
   "sidebar.tutorialSidebar.category.Service Mode.link.generated-index.description": {
-    "message": "Connectez clients et workers à Cloud ou à un Server auto-hébergé avec les SDK officiels PHP, Python et Rust. Cloud inclut Managed Waterline. Pour un Server auto-hébergé, Waterline se déploie séparément."
+    "message": "Connectez clients et workers officiels PHP, Python ou Rust à Durable Workflow Cloud ou à un Server auto-hébergé. Cloud inclut Managed Waterline. En auto-hébergement, Waterline se déploie séparément pour un espace de noms Server."
   },
   "sidebar.tutorialSidebar.category.CLI": {
     "message": "CLI"
   },
   "sidebar.tutorialSidebar.category.CLI.link.generated-index.description": {
-    "message": "Installation et référence des commandes du client d’exploitation dw."
+    "message": "Installez le client opérateur dw et consultez l'ensemble de ses commandes."
   },
   "sidebar.tutorialSidebar.category.SDKs": {
     "message": "SDK"
@@ -21,51 +21,51 @@
     "message": "Créez des clients et des workers en mode service avec les SDK officiels PHP, Python et Rust."
   },
   "sidebar.tutorialSidebar.category.Embedded": {
-    "message": "Mode intégré"
+    "message": "Mode embarqué"
   },
   "sidebar.tutorialSidebar.category.Embedded.link.generated-index.description": {
-    "message": "Installez, créez, testez et configurez des workflows dans votre application Laravel."
+    "message": "Installez, écrivez, testez et configurez des workflows avec le runtime Laravel embarqué dans l'application."
   },
   "sidebar.tutorialSidebar.category.Defining Workflows": {
     "message": "Définir des workflows"
   },
   "sidebar.tutorialSidebar.category.Defining Workflows.link.generated-index.description": {
-    "message": "Définissez workflows, activités, données, identifiants et états dans le mode intégré à Laravel."
+    "message": "Écrivez les classes de workflow et d'activité, les charges utiles, les identifiants et la gestion des états pour le runtime Laravel embarqué."
   },
   "sidebar.tutorialSidebar.category.Features": {
     "message": "Fonctionnalités"
   },
   "sidebar.tutorialSidebar.category.Features.link.generated-index.description": {
-    "message": "Configurez les messages, commandes durables, attentes, nouvelles tentatives, versions et limites d’historique du mode intégré à Laravel."
+    "message": "Choisissez flux de messages, commandes durables, attentes, nouvelles tentatives, versionnage et modèles d'historique borné pour le runtime Laravel embarqué."
   },
   "sidebar.tutorialSidebar.category.Constraints": {
     "message": "Contraintes"
   },
   "sidebar.tutorialSidebar.category.Constraints.link.generated-index.description": {
-    "message": "Règles de déterminisme et limites structurelles du mode intégré."
+    "message": "Comprenez les frontières du déterminisme des workflows et les limites structurelles du runtime Laravel embarqué."
   },
   "sidebar.tutorialSidebar.category.Configuration": {
     "message": "Configuration"
   },
   "sidebar.tutorialSidebar.category.Configuration.link.generated-index.description": {
-    "message": "Configurez le stockage, les connexions, les limites et la conservation des données du mode intégré à Laravel."
+    "message": "Configurez stockage, connexions, frontières de service et rétention du runtime Laravel embarqué."
   },
   "sidebar.tutorialSidebar.category.Run And Operate": {
     "message": "Exécuter et exploiter"
   },
   "sidebar.tutorialSidebar.category.Run And Operate.link.generated-index.description": {
-    "message": "Déployez, observez, diagnostiquez, réparez et entretenez vos workflows."
+    "message": "Déployez, observez, diagnostiquez, reprenez et assistez vos ensembles de workflows en cours."
   },
   "sidebar.tutorialSidebar.category.External Execution And Ingress": {
-    "message": "Exécution externe et accès"
+    "message": "Exécution externe et entrées"
   },
   "sidebar.tutorialSidebar.category.External Execution And Ingress.link.generated-index.description": {
-    "message": "Connectez API HTTP, workers externes, files et autres intégrations de protocole."
+    "message": "Exposez les entrées HTTP, les workers externes, les files de tâches et les intégrations au niveau du protocole."
   },
   "sidebar.tutorialSidebar.category.AI And Automation": {
     "message": "IA et automatisation"
   },
   "sidebar.tutorialSidebar.category.AI And Automation.link.generated-index.description": {
-    "message": "Documentation, manifestes, commandes et outils stables pour les agents et l’automatisation."
+    "message": "Fournissez aux agents de programmation et à l'automatisation une documentation, des manifestes, des commandes et des outils de workflow stables."
   }
 }

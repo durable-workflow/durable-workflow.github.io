@@ -8,9 +8,9 @@ keywords:
   - зовнішнє сховище даних
   - великі дані
   - винесення даних у зовнішнє сховище
-  - S3 storage
-  - GCS storage
-  - Azure Blob storage
+  - сховище S3
+  - сховище GCS
+  - сховище Azure Blob
 ---
 
 # Зовнішнє сховище даних {#external-payload-storage}

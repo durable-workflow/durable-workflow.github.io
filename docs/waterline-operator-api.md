@@ -196,7 +196,7 @@ particular:
 | `queue_visibility.task_queues[].stats.*` | Queue-local backlog, backlog age, poller counts, workflow/activity ready-versus-leased counts, and per-queue `tasks_added_last_minute` / `tasks_dispatched_last_minute` flow facts. |
 | `queue_visibility.task_queues[].repair.*` | Queue-local repair pressure, including candidates, dispatch failures, expired leases, dispatch-overdue counts, and the oldest age for each condition. |
 | `coordination_alerts[]` | Roll-up warnings and errors derived from the health checks plus queue-visibility risks such as backlog without pollers, stale pollers, or aged repair candidates. |
-| `checks[]`, `categories.*` | Blocking versus advisory v2 health checks, with per-check `category = correctness | acceleration` and the category rollups Waterline uses on the workers surface. |
+| `checks[]`, `categories.*` | Blocking versus advisory v2 health checks, with per-check `category = correctness \| acceleration` and the category rollups Waterline uses on the workers surface. |
 | `engine_source`, `readiness_contract` | Whether Waterline is actively using the v2 operator bridge and which readiness contract governs that state. |
 
 The queue-flow fields answer a specific operator question: is durable queue

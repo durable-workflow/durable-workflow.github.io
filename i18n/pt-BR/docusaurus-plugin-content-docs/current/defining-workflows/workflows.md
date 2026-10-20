@@ -12,7 +12,7 @@ keywords:
   - workflow determinístico
 ---
 
-# Workflows
+# Workflows {#workflows}
 
 Workflows e atividades são definidos como classes que estendem as classes base `Workflow` e `Activity` fornecidas pelo framework. Um workflow define uma sequência de atividades que podem executar em paralelo, em série ou em uma combinação das duas formas.
 

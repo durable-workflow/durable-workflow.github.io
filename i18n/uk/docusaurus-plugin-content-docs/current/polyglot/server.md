@@ -17,7 +17,7 @@ keywords:
 # Server {#server}
 
 Опублікований Durable Workflow Server є самостійним сервісом оркестрації
-workflow, реалізованим на PHP. Він надає той самий надійний рушій, що й
+workflow, реалізованим на PHP. Він надає той самий рушій стійкого виконання, що й
 вбудований пакет PHP, через незалежні від мови HTTP+JSON площину керування
 та протокол worker. PHP тут є деталлю реалізації, а не вимогою до мови застосунку.
 
@@ -42,7 +42,7 @@ workflow й activity своїм SDK та спілкуватися публічн
   проти наданого namespace Cloud. Вона не розгортає цей Server для Cloud і
   не підключає до нього власний Server. Див. [керований runtime Cloud](/docs/polyglot/cloud-control-plane/).
 
-Усі три варіанти використовують ті самі поняття надійного виконання.
+Усі три варіанти використовують ті самі поняття стійкого виконання.
 Зовнішні worker самостійного Server і Cloud використовують сталі рядкові
 назви типів workflow/activity та спільну обгортку кодека. Тому дочірній
 workflow чи activity між мовами зберігає форму payload без серіалізації PHP.
@@ -118,7 +118,7 @@ curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
 
 Це створює типовий namespace і запускає API та його інфраструктурний worker
 черги. Черга Laravel має назву `default` і відрізняється від іменованих черг
-завдань SDK. Worker черги просуває стійкі таймери, коли SDK worker зупинені.
+завдань SDK. Worker черги просуває стійкі timer, коли worker SDK зупинені.
 Оцінювання розкладів і обслуговування production потребують додаткових ролей
 опублікованого стека Compose нижче.
 
@@ -203,7 +203,7 @@ workflow, activity чи query має діяти між усіма процеса
 
 Server підтримує три режими автентифікації:
 
-**За token** (типово):
+**За токеном** (типово):
 
 ```bash
 DW_AUTH_DRIVER=token
@@ -212,7 +212,7 @@ DW_AUTH_TOKEN=your-secret-token-here
 
 Усі запити мають надсилати `Authorization: Bearer your-secret-token-here`.
 
-Для мінімальних повноважень налаштуйте token окремих ролей замість одного спільного:
+Для мінімальних повноважень налаштуйте токени окремих ролей замість одного спільного:
 
 ```bash
 DW_AUTH_DRIVER=token
@@ -221,10 +221,12 @@ DW_OPERATOR_TOKEN=operator-secret
 DW_ADMIN_TOKEN=admin-secret
 ```
 
-Token worker дозволяє register, poll, heartbeat і завершення роботи.
-Token operator дозволяє start, list, signal, query, update, repair, cancel,
-terminate, archive і спостереження workflow. Token admin дозволяє
-адміністративні endpoint, наприклад керування namespace і retention.
+Токени worker дають змогу реєструвати worker, опитувати черги завдань,
+надсилати heartbeat і завершувати роботу. Токени operator дають змогу
+запускати workflow, отримувати їх список, надсилати signal, виконувати query
+та update, ремонтувати, скасовувати, примусово завершувати, архівувати й
+спостерігати workflow. Токени admin відкривають адміністративні endpoint,
+наприклад керування namespace і строками зберігання історії.
 
 **Підпис HMAC**:
 
@@ -278,7 +280,7 @@ DW_HISTORY_RETENTION_DAYS=30
 | Зміна політики | Наслідок для збережених закритих виконань |
 | --- | --- |
 | Скоротити обмежений строк | Старіші виконання можуть потрапити до наступного сканування. |
-| Збільшити обмежений строк | Збережені виконання можуть перестати підлягати очищенню. Уже видалену історію не відновлено. |
+| Збільшити обмежений строк | Збережені виконання можуть перестати підлягати очищенню. Уже видалена історія не відновлюється. |
 | Перейти на `forever` | Сканування не вибирає виконань, явні проходи retention їх пропускають. |
 | Перейти з `forever` на `bounded` | Передайте `retention_days`; наявну закриту історію оцінять за цим строком. |
 
@@ -323,7 +325,7 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/system/retention?limit=100" \
 досягнуто. Цей запит не видаляє історію.
 
 Оновлення не є попереднім переглядом очищення чи пільговим періодом: звичайні
-heartbeat воркерів уже можуть запустити малий обмежений прохід після зміни
+heartbeat worker уже можуть запустити малий обмежений прохід після зміни
 політики. Запланований `history:prune` та явні системні проходи також
 обробляють придатні виконання. Резервуйте й перевіряйте **до** скорочення.
 
@@ -347,10 +349,17 @@ heartbeat воркерів уже можуть запустити малий о�
 Інші умови, наприклад незавершена detached activity, теж можуть блокувати
 видалення. Перевіряйте причину відповіді, перш ніж вважати виконання видаленим.
 
+Для зберігання довше за bounded-вікно від 1 до 365 днів виберіть між історією
+в базі даних і незалежними перевіреними експортами.
+[Процедура довгострокового зберігання](../configuration/pruning-workflows.md#keeping-history-beyond-database-retention)
+описує відбір через `CloseTime`, сторінки результатів, зовнішні байти й звірку
+перед очищенням. Опублікований API не має операції скасування архівування.
+Тому проходи retention Server не можуть згодом видалити архівоване виконання.
+
 Pruning видаляє історію, пов'язані деталі й придатні зовнішні payload.
 Подальше збільшення строку їх не поверне. [Посібник embedded pruning](../configuration/pruning-workflows.md)
-описує окремий процес застосунку; його порядок «спершу архів» не описує
-автоматичний відбір Server. Для іншого runtime спочатку перевірте його
+описує окремий процес застосунку; його API очищення не застосовує політику
+зберігання namespace Server. Для іншого runtime спочатку перевірте його
 retention-поведінку, перш ніж застосовувати цю процедуру PHP Server.
 
 ### Namespace {#namespaces}
@@ -422,8 +431,9 @@ curl http://localhost:8080/api/health
 ### Публічне зведення топології {#public-topology-summary}
 
 Неавтентифіковані `GET /api/health` і `GET /api/ready` публікують зведення
-`topology` вузла. Цей блок менший за `/api/cluster/info`, але містить поля
-для визначення вузлів розділених ролей до автентифікації control-plane чи namespace:
+`topology` вузла, що відповів. Цей публічний блок навмисно менший за
+`/api/cluster/info`, але містить поля для визначення вузлів розділених ролей
+до автентифікації площини керування або визначення namespace:
 
 - `topology.schema`
 - `topology.version`
@@ -447,13 +457,14 @@ curl http://localhost:8080/api/health
 matching пакета workflow. `poll_batch_cap` задає максимальну кількість готових
 рядків на poll, `availability_ceiling_seconds` є допуском `available_at`
 між бекендами для нових готових завдань за розбіжності часу менш ніж секунду,
-`wake_signal_ttl_seconds` є типовим TTL `CacheLongPollWakeStore`,
+`wake_signal_ttl_seconds` є типовим TTL сигналу `CacheLongPollWakeStore`,
 `workflow_task_lease_seconds` і `activity_task_lease_seconds` є типовими
-тривалостями lease workflow і activity. Зменшення значення є зміною протоколу,
+тривалостями lease завдань workflow і activity. Зменшення будь-якого з цих
+значень є зміною протоколу,
 адже worker та сторонні інструменти читають цей авторитетний контракт.
 
 Те саме зведення є в `/api/ready` навіть за неготового розгортання.
-Probe розрізняють відповіді `server_http_node`, `scheduler_node`,
+Проби можуть розрізняти відповіді `server_http_node`, `scheduler_node`,
 `matching_node`, `execution_node` за активних перешкод bootstrap.
 
 ### Готовність {#readiness}
@@ -462,41 +473,44 @@ Probe розрізняють відповіді `server_http_node`, `scheduler_n
 curl http://localhost:8080/api/ready
 ```
 
-`/api/ready` є перевіркою розгортання. Повертає `200 OK` лише якщо
-передумови bootstrap і здоров'я безпечного розгортання готові чи мають warning.
+`/api/ready` є умовою допуску розгортання до роботи. Він повертає `200 OK`
+лише якщо передумови bootstrap і перевірки безпеки розгортання мають стан
+готовності або попередження.
 
 Тлумачте машиночитані поля так:
 
 - `checks.migrations.repository_exists` і `checks.migrations.pending_migrations`
-  показують наявність сховища міграцій і ще не застосовані записи.
+  показують наявність сховища міграцій і перелік ще не застосованих записів міграцій.
 - `checks.migrations.adoptable_migrations` перелічує міграції створення таблиць,
   яким потрібне лише прийняття в історію міграцій. Це `warning`, тож Server
   залишається готовим, поки оператор планує прийняття.
 - `checks.migrations.blocking_migrations` перелічує записи безпечності
   розгортання, потрібні до допуску трафіку. Непорожній масив блокує готовність
   із `checks.migrations.status = "pending"`.
-- `checks.migrations.missing_tables` показує відсутні надійні таблиці,
-  `checks.migrations.operator_surface` показує доступність поверхні v2
-  для пояснення безпечності після запуску Server.
+- `checks.migrations.missing_tables` показує відсутні таблиці стійкого стану,
+  а `checks.migrations.operator_surface` показує, чи достатньо доступна
+  операторська поверхня v2 для пояснення безпеки розгортання після запуску Server.
 - `checks.migrations.readiness_contract.version` фіксує ревізію контракту
   запуску й прийняття міграцій для скриптів.
-- `checks.workflow_v2` відображає висновок всіх namespace. Якщо оцінювання
-  ще неможливе, повертає `status: "blocked"`, `blocked_by`, `message`,
+- `checks.workflow_v2` відображає висновок щодо безпеки розгортання для всіх
+  namespace. Якщо оцінювання ще неможливе, повертає `status: "blocked"`, `blocked_by`, `message`,
   `remediation`, щоб оператор виправив передумову замість симптомів черги.
 
 ### Перевірка bootstrap workflow {#workflow-bootstrap-gate}
 
 `checks.workflow_v2.status: "blocked"` також блокує маршрути, а не лише
 сигналізує готовність. Під час блокування bootstrap v2 Server відхиляє
-start/mutation workflow, зміни schedule, bridge-adapter і worker з HTTP `503`
-та `reason: "workflow_v2_blocked"`. Перевірка йде після ролі й версії
-протоколу, але до namespace, тому не розкриває його існування.
+маршрути запуску й зміни workflow, зміни розкладів, адаптерів bridge та
+протоколу worker з HTTP `503` і машиночитаним payload
+`reason: "workflow_v2_blocked"`. Перевірка відбувається після перевірки ролі
+й версії протоколу, але до визначення namespace, тому заблоковані запити не
+розкривають його існування.
 
 Відповідь перевірки завжди містить:
 
 - `reason: "workflow_v2_blocked"` для перевірки машинного імені замість тексту.
-- `blocked_by`: впорядкований список передумов готовності, наприклад `migrations`.
-- `remediation`: інструкція оператора для усунення перешкод із
+- `blocked_by`: впорядкований список перешкод для готовності, наприклад `migrations`.
+- `remediation`: інструкція для оператора з усунення перелічених перешкод із
   `/api/ready` поля `checks.workflow_v2.remediation`.
 
 Сімейства маршрутів із перевіркою bootstrap:
@@ -913,25 +927,29 @@ Server. Перевіряйте її до використання полів н�
 - `matching_role.queue_wake_enabled`, `matching_role.shape`,
   `matching_role.wake_owner`, `matching_role.task_dispatch_mode`,
   `matching_role.partition_primitives`, `matching_role.backpressure_model`
-  визначають шлях пробудження у worker чи окремий цикл repair/matching,
-  сталі осі маршрутизації та надійну межу допуску matching.
+  показують, чи вузол ще виконує прохід пробудження всередині worker, чи
+  очікує, що цим проходом керуватиме окремий цикл ремонту або зіставлення
+  завдань. Вони також визначають сталі осі маршрутизації та межу допуску
+  до стійкого виконання, яку зараз забезпечує шар зіставлення.
 - `matching_role.discovery_limits` фіксує числові значення пакета:
   `poll_batch_cap` (максимальна кількість готових рядків на poll),
   `availability_ceiling_seconds` (допуск `available_at` між бекендами
   за розбіжності часу менш ніж секунду), `wake_signal_ttl_seconds`
   (типовий TTL пробудження long-poll), `workflow_task_lease_seconds`
-  і `activity_task_lease_seconds` (типові lease). Оператор перевіряє
+  і `activity_task_lease_seconds` (типові тривалості lease завдань workflow
+  та activity відповідно). Оператор перевіряє
   відповідність розгортання контракту без пошуку в коді пакета.
   Зменшення значення є зміною протоколу.
-- `role_catalog` і `authority_surfaces` визначають інтерфейси й надійні
-  шляхи змін, якими володіє кожна роль ревізії маніфесту.
+- `role_catalog` і `authority_surfaces` визначають інтерфейси й шляхи внесення
+  змін до стійкого стану, якими володіє кожна роль у поточній ревізії маніфесту.
 - `shape_assignments` зіставляє форми з допустимими класами процесів і ролями.
 - `supported_topologies` узагальнює сімейства розгортання й потрібні класи вузлів.
 - `authority_boundaries` називає поверхні запису кожної ролі для виявлення
   відхилень повноважень до розділення розгортання.
 - `failure_domains` описує першу видиму оператору ознаку погіршення за втрати ролі.
 - `scaling_boundaries` називає основний вимір навантаження кожної окремої ролі.
-- Автентифіковані маршрути відхиляють вузол без потрібної HTTP поверхні:
+- Автентифіковані маршрути відхиляють запити, якщо вузол, що відповідає,
+  не обслуговує потрібну HTTP-поверхню керування. Server повертає
   `503`, `reason: "topology_role_unavailable"`, `current_shape`,
   `current_process_class`, `current_roles`, `required_roles`, `missing_roles`.
   Клієнт може направити запит на вузол із потрібною поверхнею.
@@ -942,15 +960,16 @@ Server. Перевіряйте її до використання полів н�
 - `coordination_health.checks[]` завжди містить зафіксований `activity_path`
   поруч із `worker_compatibility`, `task_transport`, `routing_health`,
   `durable_resume_paths` і проєкціями/планувальником. Це відповідник
-  `task_transport` для activity: він показує минулі дедлайни schedule-to-start,
-  start-to-close, schedule-to-close чи heartbeat без застосування тайм-ауту
+  `task_transport` для activity: він показує виконання activity, у яких
+  минув дедлайн schedule-to-start, start-to-close, schedule-to-close чи
+  heartbeat, але тайм-аут ще не застосовано
   (`timeout_overdue`, `oldest_timeout_overdue_at`, `max_timeout_overdue_age_ms`)
   та тривалий backlog retry (`retrying`, `oldest_retrying_started_at`,
   `max_retrying_age_ms`). Перейменування перевірки є зміною протоколу.
 - `coordination_health.routing_drains` узагальнює draining групи build-id
   черг і namespace. `queues_with_drains` понад нуль означає навмисне
   утримання трафіку від хоча б однієї draining групи.
-- `migration_path` перелічує кроки переходу від самостійного дистрибутива
+- `migration_path` перелічує впорядковані кроки переходу від поточного самостійного дистрибутива
   до ізольованіших ролей зі збереженням одного рушія. `reversible: true`
   дозволяє повернення до менш ізольованої форми.
 - `kernel_invariants` перелічує гарантії ядра для всіх форм:
@@ -972,8 +991,9 @@ control-plane API. Під час переходу від вузького пар
 розгалуженого протоколу worker, другого записувача історії чи незворотної міграції.
 
 Перевірка ролі маршруту стосується лише автентифікованих API й worker.
-`GET /api/health`, `GET /api/ready`, автентифікований `GET /api/cluster/info`
-працюють для виявлення, життя й топології навіть на `scheduler_node`,
+`GET /api/health`, `GET /api/ready` та автентифікований `GET /api/cluster/info`
+залишаються доступними для виявлення, перевірки працездатності й огляду
+топології навіть у процесах `scheduler_node`,
 `matching_node`, `execution_node` без поточної HTTP поверхні керування.
 
 Для незалежних від носія зовнішніх обробників endpoint також публікує
@@ -1113,7 +1133,8 @@ dw workflow:start --type=my-workflow --input-file=input.json
 
 Перед production виберіть підтримувану топологію в
 [посібнику самостійного розгортання](/docs/deployment). Він розділяє локальну
-розробку, один production вузол, невеликі кластери, Kubernetes і топології з підтримкою.
+розробку, один production-вузол, невеликі кластери, безпосередні маніфести
+Kubernetes і топології, що впроваджуються за участю підтримки.
 
 Контракт невеликого самостійного кластера вузький: 2–3 stateless API вузли за
 балансувальником, спільна зовнішня MySQL чи PostgreSQL, спільний Redis,
@@ -1173,23 +1194,24 @@ Server надає три поверхні API:
 - `GET /api/task-queues`, `GET /api/task-queues/{taskQueue}`: backlog, poller, lease і допуск черг
 - `GET|POST /api/schedules`, `GET|PUT|DELETE /api/schedules/{id}`, `POST /api/schedules/{id}/{pause|resume|trigger|backfill}`: керування schedule
 - `GET|POST|DELETE /api/search-attributes`: керування атрибутами пошуку
-- `GET|POST|PUT|DELETE /api/service-endpoints...`: admin endpoint каталогу сервісів, вкладені сервіси, прив'язки операцій і надійні знімки викликів
+- `GET|POST|PUT|DELETE /api/service-endpoints...`: доступні лише admin endpoint каталогу сервісів, вкладені сервіси, прив'язки операцій і збережені знімки викликів сервісів
 - `POST /api/system/repair/pass`, `POST /api/system/activity-timeouts/pass`, `POST /api/system/retention/pass`: операторські проходи
 
 Відповіді workflow control-plane, включно зі списками історії, містять
 вкладені метадані `control_plane` для ідентифікації операції й версії
 контракту відповіді. Експорт історії навмисно повертає набір replay без
-обгортки, щоб сума цілісності й необов'язковий підпис покривали точні
-байти артефакту, отриманого клієнтом.
+обгортки та без змін, щоб контрольна сума цілісності й необов'язковий підпис
+покривали точний артефакт, отриманий клієнтом.
 
 Помилки перевірки повертають HTTP 422 із `reason: validation_failed`,
 `errors`, `validation_errors`. Маршрути workflow також відображають причину
 й деталі в `control_plane.reason` і `control_plane.validation_errors`.
-Команди вибраного виконання повертають URL `run_id` у відповіді й
+Поточні команди вибраного виконання повертають значення `run_id` із URL у відповіді й
 `control_plane.run_id` для розрізнення команд екземпляра й вибраного виконання.
 
-Видимість черги допомагає визначити, чи відставання спричинене ростом
-надійного backlog, відсутністю слотів worker чи лімітами допуску Server.
+Видимість черги допомагає визначити, чи відставання спричинене зростанням
+черги збережених невиконаних завдань, відсутністю доступних слотів worker чи
+лімітами допуску Server.
 `GET /api/task-queues` повертає зведення кожної черги, а
 `GET /api/task-queues/{taskQueue}` додає `pollers` і `current_leases`.
 Обидва надають `stats.approximate_backlog_count`,
@@ -1237,7 +1259,7 @@ Worker виконують register, poll, heartbeat і complete.
 1. Worker зареєстровані? `curl http://localhost:8080/api/workers -H "Authorization: Bearer $TOKEN" -H "X-Durable-Workflow-Control-Plane-Version: 2" -H "X-Namespace: default"`
 2. Worker опитують правильну чергу?
 3. Workflow запущений із тією самою чергою?
-4. Бекенд кешу спільний між Server?
+4. Бекенд кешу спільний між екземплярами Server?
 
 ### Long-poll одразу завершується тайм-аутом {#long-poll-connections-timing-out-immediately}
 
@@ -1258,7 +1280,7 @@ Worker виконують register, poll, heartbeat і complete.
 
 **Перевірте:**
 1. `DW_AUTH_DRIVER` відповідає методу клієнта?
-2. Token чи HMAC секрет однакові на Server і клієнті?
+2. Токен чи секрет HMAC однакові на Server і клієнті?
 3. Є заголовки автентифікації `Authorization: Bearer $TOKEN` чи підпису HMAC?
 
 ## Докладніше {#learn-more}

@@ -19,7 +19,7 @@ Laravel が対応するキュードライバーを利用できます。**`sync` 
 
 - Amazon SQS
 - Beanstalkd
-- Database
+- データベース
 - Redis
 
 各キュードライバーの[前提条件](https://laravel.com/docs/12.x/queues#driver-prerequisites)を確認してください。
@@ -44,4 +44,4 @@ php artisan migrate
 
 ## Worker を実行する {#running-workers}
 
-Durable Workflow はキューを使って、ワークフローとアクティビティをバックグラウンドで実行します。[ `queue:work` コマンド](https://laravel.com/docs/12.x/queues#the-queue-work-command)を実行するか、[Horizon](https://laravel.com/docs/12.x/horizon)でキュー Worker を管理してください。キュー Worker がなければ、ワークフローとアクティビティは処理されません。並列に実行するには、複数のキュー Worker が必要です。
+Durable Workflow はキューを使って、ワークフローとアクティビティをバックグラウンドで実行します。[`queue:work` コマンド](https://laravel.com/docs/12.x/queues#the-queue-work-command)を実行するか、[Horizon](https://laravel.com/docs/12.x/horizon)でキュー Worker を管理してください。キュー Worker がなければ、ワークフローとアクティビティは処理されません。並列に実行するには、複数のキュー Worker が必要です。

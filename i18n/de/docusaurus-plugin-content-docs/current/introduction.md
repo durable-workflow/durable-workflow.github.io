@@ -1,6 +1,6 @@
 ---
 sidebar_position: 1
-description: Wählen Sie Durable Workflow Cloud, einen selbst betriebenen Server oder die Einbettung in Laravel und schließen Sie einen ersten Workflow mit einem offiziellen SDK ab.
+description: Wählen Sie Durable Workflow Cloud, einen selbst betriebenen 2.0-Server oder die Einbettung in Laravel und schließen Sie einen ersten Workflow mit einem offiziellen SDK ab.
 tags:
   - concepts
   - getting-started

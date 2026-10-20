@@ -6,6 +6,10 @@ tags:
   - authoring
   - workflows
   - determinism
+keywords:
+  - clase de workflow de durable workflow
+  - autoría de workflows v2
+  - código determinista de workflow
 ---
 
 # Workflows {#workflows}

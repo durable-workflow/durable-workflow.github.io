@@ -7,9 +7,9 @@ tags:
   - workflow-start
   - visibility
 keywords:
-  - start workflow
-  - workflow instance id
-  - durable workflow start options
+  - запуск workflow
+  - ідентифікатор екземпляра workflow
+  - параметри запуску Durable Workflow
 ---
 
 # Запуск workflow {#starting-workflows}
@@ -23,7 +23,7 @@ $workflow = WorkflowStub::make(MyWorkflow::class);
 $workflow->start();
 ```
 
-Після запуску workflow виконуватиметься асинхронно worker черги. Метод `start()`
+Після запуску workflow асинхронно виконуватиме worker черги. Метод `start()`
 повертається одразу й не блокує поточний запит.
 
 Передавайте аргументи до методу `handle()` workflow через `start()`:

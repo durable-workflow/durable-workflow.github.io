@@ -7,9 +7,9 @@ tags:
   - activities
   - retries
 keywords:
-  - durable workflow activity class
-  - activity options
-  - non deterministic side effects
+  - клас activity Durable Workflow
+  - параметри activity
+  - недетерміновані побічні ефекти
 ---
 
 # Activity {#activities}

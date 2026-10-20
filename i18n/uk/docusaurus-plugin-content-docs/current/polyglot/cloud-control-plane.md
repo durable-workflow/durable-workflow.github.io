@@ -1,7 +1,7 @@
 ---
 sidebar_position: 3
 title: Керований Cloud runtime
-description: Порівняння планів Cloud, виміряної місткості workflow, billing і availability та підключення PHP, Python чи Rust workers до керованого namespace.
+description: Порівняння планів Cloud, виміряної місткості workflow, оплати й доступності та підключення PHP, Python чи Rust workers до керованого простору імен.
 tags:
   - cloud
   - managed-runtime
@@ -19,11 +19,11 @@ keywords:
 
 # Керований Cloud runtime {#cloud-managed-runtime}
 
-Durable Workflow Cloud є керованим сервісом orchestration.
-Cloud оперує hosted-площиною керування та orchestration runtime,
-включно зі станом workflow, історією, schedules, task queues, leases
-та durable-оглядом стану. Клієнти запускають SDK clients і workers
-для підготовленого Cloud namespace.
+Durable Workflow Cloud є керованим сервісом оркестрації.
+Cloud обслуговує розміщену площину керування та середовище оркестрації,
+включно зі станом workflow, історією, розкладами, чергами завдань, орендами
+та оглядом стійкого стану. Клієнти запускають клієнти SDK і workers
+для підготовленого простору імен Cloud.
 
 Це окремий шлях від власного розгортання.
 Власний Durable Workflow Server працює незалежно й ніколи не підключається до Cloud.
@@ -34,11 +34,11 @@ Cloud оперує hosted-площиною керування та orchestration
 Кожен namespace отримує ізольований керований runtime.
 PHP, Python та Rust workers клієнта працюють у вашому середовищі.
 Перевіряйте [ціни Cloud](https://cloud.durable-workflow.com/pricing)
-і dashboard щодо поточної доступності provisioning.
+і панель керування щодо поточної доступності підготовки ресурсів.
 
-Cloud Dev доступний зараз. Чотири HA-плани перебувають у qualification
-та ще не доступні для придбання чи provisioning.
-Їхні ціни, місткість, availability та SLA нижче є запланованими умовами,
+Cloud Dev доступний зараз. Чотири плани високої доступності проходять перевірку
+та ще не доступні для придбання чи підготовки ресурсів.
+Їхні ціни, місткість, доступність та SLA нижче є запланованими умовами,
 а не поточними пропозиціями придбання.
 
 | План | Місткість runtime | Включене durable-сховище | Доступність | Ціна (USD) |
@@ -50,31 +50,31 @@ Cloud Dev доступний зараз. Чотири HA-плани перебу
 | Cloud Business Multi-Region | 4 vCPU, 8 GB RAM | 100 GB | Запланований multi-region HA, SLA 99.99% | $3.00/год, мінімум $75 за активний місяць, максимум $2,000/місяць |
 
 Місткість охоплює компоненти керованого runtime, а не обчислення workers клієнта.
-Для запланованих HA-планів replication і standby capacity включено в ціну.
-Таблиця не підсумовує replicas як додаткову місткість виконання workflows.
-Кожен план включає Managed Waterline, базові зашифровані backups,
-upgrades та сталий runtime URL.
+Для запланованих HA-планів реплікацію та резервну місткість включено в ціну.
+Таблиця не підсумовує репліки як додаткову місткість виконання workflows.
+Кожен план включає Managed Waterline, базові зашифровані резервні копії,
+оновлення та сталу URL-адресу runtime.
 
-Підготовлені runtimes оплачуються за runtime time, виміряний похвилинно
-від activation до deprovisioning. Мінімум та максимум діють на кожне
+Підготовлені runtimes оплачуються за час роботи, виміряний похвилинно
+від активації до видалення ресурсів. Мінімум та максимум діють на кожне
 придбання runtime в календарному місяці UTC.
-Idle provisioned time оплачується. За місяць без provisioned time плати
-за runtime немає. Нове придбання має власні мінімум і максимум.
-Керовані сервісом repair чи recovery не скидають їх.
+Час простою підготовлених ресурсів оплачується. За місяць без підготовлених
+ресурсів плати за runtime немає. Нове придбання має власні мінімум і максимум.
+Керовані сервісом виправлення чи відновлення не скидають їх.
 Stripe виставляє рахунок за накопичене використання щомісяця.
 Ціни не включають застосовні податки.
 
-Storage фіксований у межах включеного обсягу. Окремих storage add-ons,
-автоматичного збільшення чи плати за перевищення storage немає.
-Для більшого місця [запросіть більший runtime plan](https://cloud.durable-workflow.com/contact)
-до досягнення межі. Сам перехід із single-region до multi-region
-не збільшує storage. Capacity upgrade потребує справжньої зміни runtime,
-а не лише billing, і зараз узгоджується з підтримкою.
+Сховище фіксоване в межах включеного обсягу. Окремих доповнень сховища,
+автоматичного збільшення чи плати за перевищення обсягу немає.
+Для більшого місця [запросіть більший план runtime](https://cloud.durable-workflow.com/contact)
+до досягнення межі. Сам перехід з одного регіону до кількох
+не збільшує сховище. Збільшення місткості потребує справжньої зміни runtime,
+а не лише оплати, і зараз узгоджується з підтримкою.
 Використання мережі вимірюється, зараз не оплачується та не є необмеженим.
 
 Виберіть план за [цінами Cloud](https://cloud.durable-workflow.com/pricing).
-Для більшої місткості, іншого connectivity, SSO, enterprise support
-чи власної вимоги availability
+Для більшої місткості, іншого підключення, SSO, корпоративної підтримки
+чи власної вимоги до доступності
 [зверніться до нас](https://cloud.durable-workflow.com/contact).
 
 ## Межа керованого сервісу {#managed-service-boundary}
@@ -125,12 +125,12 @@ Runtime credentials обмежені одним namespace і роллю, пов�
 [настановою CLI](./cli.mdx) та явно оновіть наявне standalone-встановлення
 через `dw upgrade`. CLI ніколи не оновлюється у background.
 Після встановлення чи upgrade виконайте `command -v dw` та `dw --version`.
-Виконайте PATH-інструкції installer до використання credentials Cloud,
-щоб активним binary був вибраний випуск.
+Виконайте інструкції інсталятора щодо `PATH` до використання облікових даних Cloud,
+щоб активним виконуваним файлом був вибраний випуск.
 
-## Provisioning та підключення namespace {#provision-and-connect-a-namespace}
+## Підготовка та підключення простору імен {#provision-and-connect-a-namespace}
 
-### 1. Створення та provisioning namespace {#1-create-and-provision-the-namespace}
+### 1. Створіть і підготуйте простір імен {#1-create-and-provision-the-namespace}
 
 У [Cloud dashboard](https://cloud.durable-workflow.com/) створіть
 organization, project, environment і namespace та виберіть capacity plan.
@@ -165,7 +165,7 @@ curl -X POST \
 Повернені URL і namespace є конфігурацією Cloud.
 Не виводьте endpoint самостійно й не замінюйте його адресою власного Server.
 
-### 2. Окремі client і worker credentials {#2-issue-separate-client-and-worker-credentials}
+### 2. Видайте окремі облікові дані клієнта й worker {#2-issue-separate-client-and-worker-credentials}
 
 Видайте обидві runtime roles незалежно:
 
@@ -262,7 +262,7 @@ namespace та дозвіл довготривалих poll requests worker-пр
   Cloud зберігає durable-стан namespace та історію.
 - Ротація credentials не потребує зміни runtime URL, namespace чи task queue.
 
-## Розміщення в регіоні та межа recovery {#region-placement-and-recovery-boundary}
+## Розміщення в регіонах і межа відновлення {#region-placement-and-recovery-boundary}
 
 Cloud Dev доступний із межею recovery нижче.
 HA-межі описують заплановані плани, які залишаються
@@ -290,25 +290,25 @@ Backups підтримують recovery, але не замінюють live rep
 Короткі failover-тести демонструють виконані випадки відмов,
 а не універсальну гарантію recovery time чи місяць досягнутої availability.
 
-### Вимірювання SLA та credits {#sla-measurement-and-credits}
+### Вимірювання SLA та зарахування коштів {#sla-measurement-and-credits}
 
 Чотири заплановані SLA-плани визначають uptime SLA 99.99%
 за календарний місяць UTC, виміряний на runtime endpoint клієнта
 в однохвилинних вікнах. Відсутні вимірювання рахуються як недоступність.
-Planned maintenance не виключається. Availability workers клієнта
-відокремлена від availability managed runtime.
+Планове обслуговування не виключається. Доступність workers клієнта
+відокремлена від доступності керованого runtime.
 
-| Місячна availability | Автоматичний account credit |
+| Місячна доступність | Автоматичне зарахування на рахунок |
 | --- | ---: |
 | Щонайменше 99.99% | Немає |
 | Щонайменше 99.9%, нижче 99.99% | 10% |
 | Щонайменше 99.0%, нижче 99.9% | 25% |
 | Нижче 99.0% | 100% |
 
-Account credits застосовуються автоматично.
-Cash refunds потребують перевірки та схвалення.
-Cloud Dev не має SLA credits.
-Область availability та billing terms плану наведено в
+Кошти зараховуються на рахунок автоматично.
+Повернення готівкою потребують перевірки та схвалення.
+Cloud Dev не має зарахувань за SLA.
+Область доступності та умови оплати плану наведено в
 [цінах Cloud](https://cloud.durable-workflow.com/pricing).
 
 ## Приватне підключення та межа підтримки {#private-connectivity-and-support-boundary}
@@ -333,7 +333,7 @@ Cloud Dev не має SLA credits.
 Cloud namespace. Embedded Laravel, власний Server та Cloud
 є окремими виборами розгортання.
 
-## Benchmarks стандартного workflow {#standard-workflow-benchmarks}
+## Вимірювання стандартного workflow {#standard-workflow-benchmarks}
 
 [DW Standard Workflow v1](https://github.com/durable-workflow/server/tree/main/benchmarks/capacity)
 визначає невелике відтворюване навантаження: один запуск workflow,
@@ -436,7 +436,7 @@ Host мав звичайну конфігурацію swap 1 GiB, із зайн�
 Cloud billing базується на provisioned runtime time з фіксованим
 включеним storage, а не на workflow operations.
 
-## API billing usage {#billing-usage-api}
+## API використання для оплати {#billing-usage-api}
 
 Cloud Dev використовує одну ізольовану single-host runtime cell
 для кожного підготовленого Dev space. Billing terms:

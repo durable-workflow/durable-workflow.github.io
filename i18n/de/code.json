@@ -94,5 +94,209 @@
   },
   "navbar.github.stars": {
     "message": "GitHub-Sterne"
+  },
+  "protocolCatalog.specId": {
+    "message": "Spezifikationskennung"
+  },
+  "protocolCatalog.publicSpec": {
+    "message": "Öffentliche Spezifikation"
+  },
+  "protocolCatalog.formatStatus": {
+    "message": "Format und Status"
+  },
+  "protocolCatalog.owner": {
+    "message": "Verantwortlicher Vertrag"
+  },
+  "protocolCatalog.objectFamilies": {
+    "message": "Objektfamilien und verantwortliche Verträge"
+  },
+  "authority.identity": {
+    "message": "Die maßgebliche maschinenlesbare Quelle ist unter {manifest} mit dem Schema {schema} in Version {version} veröffentlicht."
+  },
+  "workerAuthority.title": {
+    "message": "Rollen der maßgeblichen Worker-Protokollquellen"
+  },
+  "workerAuthority.description": {
+    "message": "Laufzeiterkennung und Konformitätsqualifikation verwenden getrennte maßgebliche Protokollquellen. Wählen Sie die Zeile für Ihre Aufgabe. Eine übereinstimmende Versionsbezeichnung macht einen versionierten historischen Resolver nicht zum Alias der unversionierten maßgeblichen Server-Quelle."
+  },
+  "workerAuthority.role": {
+    "message": "Rolle"
+  },
+  "workerAuthority.marker": {
+    "message": "Aktueller Marker"
+  },
+  "workerAuthority.resolver": {
+    "message": "Maßgebliche Resolver-Quelle"
+  },
+  "workerAuthority.currentServer": {
+    "message": "Aktuell veröffentlichtes Server-Protokoll"
+  },
+  "workerAuthority.serverMirrors": {
+    "message": "Unversionierte, vom Server bereitgestellte Spiegel:"
+  },
+  "workerAuthority.currentConformance": {
+    "message": "Aktuelles Konformitätsziel von Workflow"
+  },
+  "workerAuthority.suiteTarget": {
+    "message": "Suite {suite} prüft Protokoll {protocol}"
+  },
+  "workerAuthority.fixtures": {
+    "message": "Versionierte, an Prüfsummen gebundene Fixtures:"
+  },
+  "workerAuthority.historicalConformance": {
+    "message": "Aufbewahrte historische Konformitätsbindungen"
+  },
+  "workerAuthority.historicalBindings": {
+    "message": "Mit {marker} gekennzeichnete Bindungen für die Protokolle {protocols}"
+  },
+  "workerAuthority.historicalRecords": {
+    "message": "Unveränderliche Resolver- und Prüfsummeneinträge im"
+  },
+  "workerAuthority.manifest": {
+    "message": "Konformitätsmanifest"
+  },
+  "cliInstall.windowsNote": {
+    "message": "Installiert nach %USERPROFILE%\\.durable-workflow\\bin und ergänzt diesen Ordner im Benutzer-PATH."
+  },
+  "cliInstall.unixNote": {
+    "message": "Installiert nach ~/.local/bin. Mit DURABLE_WORKFLOW_INSTALL_DIR können Sie den Zielordner ändern."
+  },
+  "cliInstall.detected": {
+    "message": "Erkannt: {platform}."
+  },
+  "cliInstall.switchBack": {
+    "message": "Zur erkannten Plattform wechseln"
+  },
+  "cliInstall.verification": {
+    "message": "Das Installationsprogramm prüft das SHA256SUMS-Manifest der Veröffentlichung, bevor es die Binärdatei schreibt."
+  },
+  "cliInstall.directDownload": {
+    "message": "Oder die Binärdatei direkt herunterladen"
+  },
+  "cliInstall.fromRelease": {
+    "message": "aus der"
+  },
+  "cliInstall.stableRelease": {
+    "message": "stabilen Veröffentlichung"
+  },
+  "simulator.timer.title": {
+    "message": "Simulator für Timer-Ausführung"
+  },
+  "simulator.try": {
+    "message": "Ausprobieren"
+  },
+  "simulator.runningHourglass": {
+    "message": "⏳ Läuft …"
+  },
+  "simulator.runningArrow": {
+    "message": "▶️ Läuft …"
+  },
+  "simulator.play": {
+    "message": "▶ Starten"
+  },
+  "simulator.reset": {
+    "message": "🔄 Zurücksetzen"
+  },
+  "simulator.executing": {
+    "message": "Wird ausgeführt:"
+  },
+  "simulator.ready": {
+    "message": "⏸️ Bereit"
+  },
+  "simulator.running": {
+    "message": "▶️ Läuft"
+  },
+  "simulator.completed": {
+    "message": "✅ Abgeschlossen"
+  },
+  "simulator.query.title": {
+    "message": "Simulator für Abfragen und Signale"
+  },
+  "simulator.waiting": {
+    "message": "⏸️ Wartet …"
+  },
+  "simulator.sendSignal": {
+    "message": "📤 Signal senden:"
+  },
+  "simulator.waitingSignal": {
+    "message": "⏳ Wartet auf ein Signal"
+  },
+  "simulator.heartbeat.title": {
+    "message": "Heartbeat-Simulator"
+  },
+  "simulator.stop": {
+    "message": "⏹ Stoppen"
+  },
+  "simulator.withHeartbeat": {
+    "message": "Mit Heartbeat"
+  },
+  "simulator.withoutHeartbeat": {
+    "message": "Ohne Heartbeat"
+  },
+  "simulator.loopIterations": {
+    "message": "Schleifendurchläufe:"
+  },
+  "simulator.totalTime": {
+    "message": "Gesamtzeit:"
+  },
+  "simulator.heartbeatElapsed": {
+    "message": "Zeit seit dem letzten Heartbeat: {elapsed} / 5 s bis zum Timeout"
+  },
+  "simulator.noHeartbeat": {
+    "message": "❌ Timeout: kein Heartbeat!"
+  },
+  "simulator.heartbeatActive": {
+    "message": "💓 Heartbeat aktiv"
+  },
+  "simulator.pending": {
+    "message": "⏳ Ausstehend"
+  },
+  "simulator.series.title": {
+    "message": "Sequenzielle Ausführung"
+  },
+  "simulator.mode": {
+    "message": "Modus:"
+  },
+  "simulator.mode.series": {
+    "message": "Sequenziell"
+  },
+  "simulator.mode.mix": {
+    "message": "Gemischt"
+  },
+  "simulator.mode.parallel": {
+    "message": "Parallel"
+  },
+  "simulator.signalTimer.title": {
+    "message": "Simulator für Signal und Timer"
+  },
+  "simulator.timeoutIn": {
+    "message": "Timeout in:"
+  },
+  "simulator.waitingSignalTimeout": {
+    "message": "⏳ Wartet auf Signal oder Timeout"
+  },
+  "simulator.signalReceived": {
+    "message": "Signal empfangen"
+  },
+  "simulator.timeoutReached": {
+    "message": "Timeout erreicht"
+  },
+  "simulator.signal.title": {
+    "message": "Simulator für Signalausführung"
+  },
+  "simulator.passingData.title": {
+    "message": "Hallo-Welt-Simulator"
+  },
+  "simulator.output": {
+    "message": "Ausgabe:"
+  },
+  "simulator.queryAction": {
+    "message": "🔍 Abfrage:"
+  },
+  "simulator.signalAccepted": {
+    "message": "Signal {signal} angenommen"
+  },
+  "simulator.signalWaitReceived": {
+    "message": "await(): Signal empfangen"
   }
 }

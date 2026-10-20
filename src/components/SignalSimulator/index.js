@@ -43,8 +43,8 @@ class MyWorkflow extends Workflow
   const awaitLine = findLine("await('ready')");
   const simulationSteps = steps ?? [
     { line: awaitLine, duration: 0, label: "await('ready')", type: 'wait' },
-    { line: awaitLine, duration: 300, label: "signal 'ready' accepted", type: 'signal' },
-    { line: awaitLine, duration: 500, label: "await() signal received", type: 'run' },
+    { line: awaitLine, duration: 300, label: translate({id: 'simulator.signalAccepted', message: 'Signal {signal} accepted'}, {signal: signalName}), type: 'signal' },
+    { line: awaitLine, duration: 500, label: translate({id: 'simulator.signalWaitReceived', message: 'await() signal received'}), type: 'run' },
   ];
 
   const resetSimulation = () => {

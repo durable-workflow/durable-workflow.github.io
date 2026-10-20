@@ -138,7 +138,7 @@ workflow в `config/workflow_mcp.php`. Ця конфігурація є публ
 `durable-workflow.v2.agent-remediation`. Він містить `classification`,
 короткий `summary`, `automatic_repair.tool` і `automatic_repair.allowed`,
 а також записи `next_actions` підтримуваних подальших команд. Агенти мають
-викликати `repair_workflow` лише за `automatic_repair.allowed=true`.
+викликати `repair_workflow`, лише коли `automatic_repair.allowed` має значення true.
 Інші класифікації вказують очікувати, надіслати очікуваний вхід через
 задокументовані команди workflow, переглянути історію, змінити код workflow
 чи activity або запланувати Continue-As-New.
@@ -175,7 +175,7 @@ AI-клієнт має повідомляти результати MCP чере�
 - ключ workflow, `workflow_id` і `run_id`;
 - статус і останній опис помилки;
 - `root_cause.category` і `remediation.classification`;
-- чи було `remediation.automatic_repair.allowed=true` перед спробою
+- чи мало `remediation.automatic_repair.allowed` значення true перед спробою
   зміни відновлення;
 - обмежений перелік назв подій історії та часових позначок;
 - чи run використовував smoke-workflow без облікових даних або приклад

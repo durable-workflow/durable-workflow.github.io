@@ -126,16 +126,19 @@ import ThemedImage from '@site/src/components/ThemedImage';
   alt="Diagrama de secuencia de un workflow"
 />
 
-1. El workflow se despacha como trabajo en cola.
-2. Programa `TestActivity` y sale. Al terminar, la actividad guarda su resultado
-   y vuelve a despachar el workflow.
+1. El workflow comienza al despacharse como trabajo en cola.
+2. La primera actividad, `TestActivity`, se despacha como trabajo en cola y el
+   trabajo del workflow sale. Al terminar, la actividad guarda su resultado en
+   la base de datos y devuelve el control volviendo a despachar el workflow.
 3. El workflow reproduce el historial de la base de datos para reconstruir su
    estado. No necesita mantener un proceso activo mientras espera actividades.
-4. Continúa con `TestOtherActivity`. Al terminar, esta guarda su resultado y
-   vuelve a despachar el workflow.
+4. Tras reproducir el historial, continúa con `TestOtherActivity` y la despacha
+   como trabajo en cola. Al terminar, esta guarda su resultado en la base de
+   datos y devuelve el control despachando otra vez el workflow como trabajo en cola.
 5. El workflow reconstruye otra vez el estado a partir del historial.
-6. Programa dos actividades paralelas. Ambas guardan sus resultados al terminar
-   y devuelven el control al workflow.
+6. Inicia dos actividades paralelas, `TestParallelActivity` y
+   `TestParallelOtherActivity`. Ambas se despachan y, al terminar, guardan sus
+   resultados en la base de datos y devuelven el control al workflow.
 7. El workflow reproduce el historial una última vez y completa su ejecución.
 
 ## Determinismo {#determinism}

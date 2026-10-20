@@ -1,6 +1,6 @@
 ---
 sidebar_position: 5
-title: PHP-обробник invocable activity
+title: Викличний PHP-обробник activity
 description: Використання PHP-помічника InvocableActivityHandler для HTTPS-обробників activities, які отримують оболонки вхідних даних external task та повертають оболонки результату.
 tags:
   - external-execution
@@ -15,11 +15,11 @@ keywords:
   - Lambda activity handler
 ---
 
-# PHP-обробник invocable activity {#php-invocable-activity-handler}
+# Викличний PHP-обробник activity {#php-invocable-activity-handler}
 
-[Invocable HTTP carrier](./invocable-carrier.md) дає змогу Server надсилати
-leased activity task через POST до HTTPS endpoint замість очікування
-long-poll worker. PHP-помічник `Workflow\V2\Support\InvocableActivityHandler`
+[Викличний HTTP-транспорт](./invocable-carrier.md) дає змогу Server надсилати
+орендоване завдання activity через POST до HTTPS-адреси замість очікування
+worker із тривалим опитуванням. PHP-помічник `Workflow\V2\Support\InvocableActivityHandler`
 є еталонною реалізацією, за допомогою якої зовнішній PHP-процес перетворює
 запит на оболонку результату, яку Server може узгодити.
 
@@ -185,7 +185,7 @@ durable payload PHP workers. Codec результату має бути відо
 структуровану оболонку результату, щоб invocable carrier міг
 детерміновано узгодити відповідь.
 
-## Deadlines та ідемпотентність {#deadlines-and-idempotency}
+## Строки виконання та ідемпотентність {#deadlines-and-idempotency}
 
 Вхідна оболонка містить активний `lease.expires_at` та оголошені
 deadlines activity: `schedule_to_start`, `start_to_close`,
@@ -204,7 +204,7 @@ leases, про які не отримав результату, ті самі `t
 Код обробника має бути ідемпотентним. Ключ ідемпотентності кожної оболонки
 залишається сталим для retries тієї самої спроби.
 
-## Codecs payload та зовнішнє сховище {#payload-codecs-and-external-storage}
+## Кодеки даних і зовнішнє сховище {#payload-codecs-and-external-storage}
 
 Payload аргументів надходять у `payloads.arguments` із полем `codec`.
 Помічник декодує їх через `CodecRegistry` Server.
@@ -236,7 +236,7 @@ Driver має виконувати той самий контракт, який 
 Посилання, яке зовнішній процес не може отримати, дає
 `decode_failure` замість прихованого порожнього payload.
 
-## Production-інтеграція {#production-wiring}
+## Інтеграція у виробничому середовищі {#production-wiring}
 
 Laravel controller, який розміщує обробник за одним POST-маршрутом,
 має такий вигляд:
@@ -268,7 +268,7 @@ final class BillingActivityController
 
 ## Пов'язані поверхні {#related-surfaces}
 
-- [Invocable HTTP carrier](./invocable-carrier.md) — серверний контракт
+- [Викличний HTTP-транспорт](./invocable-carrier.md) — серверний контракт
   carrier для доставки вхідних оболонок та узгодження оболонок результату.
 - [Зовнішнє виконання](./external-execution.md) — незалежна від carrier
   продуктова межа, включно зі schemas вхідних даних і результату,

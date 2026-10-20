@@ -51,16 +51,11 @@ manifests, and CI gates can validate themselves against one source of truth:
 - The PHP class `Workflow\V2\Support\SurfaceStabilityContract`, which is
   the in-process source the server re-exports.
 
-Artifact-channel admission is governed separately by
-[`/public-artifact-release-policy.json`](pathname:///public-artifact-release-policy.json).
-This independently reviewed policy controls which 2.0 channels may become the
-canonical public tuple.
-
 A release that changes any surface listed below — its stability level, its
 field set, its breaking-change rules — must update this page, the JSON
 mirror, the PHP manifest, and any per-package stability document in the same
-change. Docs CI validates the machine-readable contract, artifact release-phase
-policy, released Rust metadata when available, and worker-protocol specs.
+change. Docs CI validates the machine-readable contract, released Rust metadata
+when available, and worker-protocol specs.
 Editorial alignment between this page and the manifest remains an explicit
 release-review responsibility.
 
@@ -253,12 +248,18 @@ Server and workers before enabling a feature.
 Top-level package versions select the supported train. Runtime protocol
 manifests provide a second, fail-closed check:
 
-| Client | Product train | Control plane | Worker protocol request |
-|--------|---------------|---------------|-------------------------|
+| Client | Product train | Control plane | Default worker registration protocol |
+|--------|---------------|---------------|--------------------------------------|
 | CLI | `%%artifact.cliVersion%%` | `2` | n/a |
-| PHP SDK | `%%artifact.phpSdkVersion%%` | `2` | `1.13` |
-| Python SDK | `%%artifact.pythonSdkVersion%%` | `2` | `1.1` |
-| Rust SDK | `%%artifact.rustSdkVersion%%` | `2` | `1.2` |
+| PHP SDK | `%%artifact.phpSdkVersion%%` | `2` | `1.20` |
+| Python SDK | `%%artifact.pythonSdkVersion%%` | `2` | `1.20` |
+| Rust SDK | `%%artifact.rustSdkVersion%%` | `2` | `1.20` |
+
+The SDKs also support explicitly selecting worker protocol `1.19` for a
+compatible older Server. Cooperative cancellation requires `1.20`; selecting
+`1.19` does not provide that capability. Individual operations can use their
+documented minimum protocol version, so the registration default is not a
+claim that every worker request sends `1.20`.
 
 The current published Server advertises the worker protocol version shown in
 the authority-role table above. It accepts request headers from the same major

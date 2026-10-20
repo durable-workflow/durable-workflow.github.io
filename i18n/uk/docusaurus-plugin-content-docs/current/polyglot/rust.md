@@ -118,7 +118,7 @@ Rust SDK 3.5.0 за замовчуванням надсилає
 Версії випусків SDK та Server відстежуються незалежно. Їхня сумісність
 визначається protocol manifests runtime.
 
-## Local activities {#local-activities}
+## Локальні activity {#local-activities}
 
 Rust SDK 3.1.0 додає inline local execution на workers із налаштуванням
 `Worker::local_activities(true)`. Реєструйте callbacks звичайними
@@ -134,7 +134,7 @@ Server записує термінальний результат для cold re
 Inline local execution та підготовлений кооперативний локальний нагляд
 використовують окремі профілі worker.
 
-## Worker sessions {#worker-sessions}
+## Сеанси worker {#worker-sessions}
 
 Увімкніть `Worker::worker_sessions(true)` та оголосіть вимоги,
 які задовольняє worker, через `capabilities(...)`.
@@ -289,7 +289,7 @@ runtime namespace та task queue від Cloud, але різні обліков
 Не замінюйте жодні облікові дані Cloud на `.token(...)`.
 Цей метод є загальним single-token fallback власного Server вище.
 
-## Запуск із серверними timeouts workflow {#start-with-server-enforced-workflow-timeouts}
+## Запуск із серверними тайм-аутами workflow {#start-with-server-enforced-workflow-timeouts}
 
 Rust SDK надає `WorkflowStartOptions` та `Client::start_workflow_with_options`
 для deadlines workflow, які Server контролює навіть після завершення
@@ -363,7 +363,7 @@ let results = ctx.parallel(vec![
 replay без повторного планування. Точні дублікати та пізні completions
 не змінюють вибраного позиційного результату.
 
-## Durable-вибір першого завершення {#durable-first-completion-selection}
+## Стійкий вибір першого завершення {#durable-first-completion-selection}
 
 `WorkflowContext::select` та `select_keyed` одночасно починають activities,
 дочірні workflows, timers, signals, очікування умов і вкладені звичайні
@@ -424,7 +424,7 @@ saga.finish(outcome).await
 тип compensation activity та порядок її реєстрації через restart і replay.
 Термінальний `cancel_workflow` не відновлює код workflow для compensations.
 
-## Детерміновані side effects та маркери версій {#deterministic-side-effects-and-version-markers}
+## Детерміновані побічні ефекти та маркери версій {#deterministic-side-effects-and-version-markers}
 
 Rust SDK записує невеликі недетерміновані значення через
 `WorkflowContext::side_effect` та виводить детерміновані UUIDv4 через
@@ -441,7 +441,7 @@ Rust SDK записує невеликі недетерміновані знач
 Спільну durable-семантику описано в
 [side effects](/docs/features/side-effects/) та [версіюванні](/docs/features/versioning/).
 
-## Cancel, terminate та термінальні результати {#cancel-terminate-and-handle-terminal-outcomes}
+## Скасування, примусове завершення та термінальні результати {#cancel-terminate-and-handle-terminal-outcomes}
 
 У service mode `cancel_workflow` та `terminate_workflow` закривають run
 негайно. Вони записують різні термінальні результати, але не просять код
@@ -534,7 +534,7 @@ Handles обох методів start зберігають вибраний `run
 та `outcome.run_id` у логах, метриках і записах retry.
 Використовуйте пошук рівня instance лише коли навмисно стежите за поточним run.
 
-## Workflow updates {#workflow-updates}
+## Оновлення workflow {#workflow-updates}
 
 Rust підтримує durable updates у ролях клієнта застосунку,
 вибраного handle та написання worker. Використовуйте

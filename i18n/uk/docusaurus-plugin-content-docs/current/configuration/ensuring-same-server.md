@@ -7,10 +7,10 @@ tags:
   - workers
   - affinity
 keywords:
-  - activity worker affinity
-  - dedicated activity queue
-  - same process activity
-  - worker sessions
+  - прив’язка worker activity
+  - окрема черга activity
+  - activity у тому самому процесі
+  - сесії worker
 ---
 
 # Розміщення та прив’язка worker {#worker-placement-and-affinity}

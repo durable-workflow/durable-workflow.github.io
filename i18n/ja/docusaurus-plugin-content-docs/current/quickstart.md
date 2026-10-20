@@ -104,7 +104,7 @@ API はこのマシンのループバックアドレスだけに公開されま�
 <Tabs groupId="quickstart-language" className="quickstart-language-tabs">
 <TabItem value="php" label="PHP" default>
 
-必要な環境：PHP 8.1 以降と Composer。この手順は、フレームワークに依存しない `durable-workflow/sdk` パッケージを使います。
+必要な環境：PHP 8.1 以降と Composer。この手順は、フレームワークに依存しない `durable-workflow/sdk` パッケージを使います。Laravel 組み込みエンジンとは別のものです。
 
 1. **SDK をインストールします。**
 
