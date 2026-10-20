@@ -276,6 +276,8 @@ Para conservar un registro más allá de la ventana acotada de 1 a 365 días, el
 
 La depuración elimina el historial, los detalles relacionados y las cargas externas elegibles. Una ampliación posterior de la política no puede recuperarlos. La [guía de depuración integrada](../configuration/pruning-workflows.md) describe un proceso separado controlado por la aplicación; su API de limpieza no aplica la política de retención por namespace de Server. Para otro runtime, confirme su comportamiento antes de aplicar este procedimiento de PHP Server.
 
+Las exportaciones actuales conservan referencias externas, no copias independientes de sus objetos. La función de archivado autosuficiente verificado se solicita en [Server #520](https://github.com/durable-workflow/server/issues/520); exportar y calcular una suma no la proporciona. Rechace también el historial ya depurado en lugar de confiar en su marca `history_complete`: el caso conocido de falsa completitud sigue abierto en [Workflow #856](https://github.com/durable-workflow/workflow/issues/856).
+
 ### Namespaces {#namespaces}
 
 El comando `server-bootstrap` ejecuta migraciones y crea el namespace `default`. Use `DW_DEFAULT_NAMESPACE` para cambiar el namespace cuando una solicitud omita su cabecera:

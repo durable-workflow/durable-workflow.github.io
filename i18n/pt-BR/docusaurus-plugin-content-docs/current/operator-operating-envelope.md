@@ -391,6 +391,8 @@ Use esta sequência de verificação:
 
 As rotas correspondentes de exportação e arquivamento do Waterline estão na [referência da sua API do operador](./waterline-operator-api.md).
 
+Verificações de checksum e estrutura não provam que uma exportação contenha todos os eventos originais ou bytes externos independentes. Recuse fontes já limpas: o indicador incorreto de exportação completa continua sendo um defeito aberto em [Workflow #856](https://github.com/durable-workflow/workflow/issues/856). Este procedimento manual também não entrega a operação de arquivo autossuficiente verificado solicitada em [Server #520](https://github.com/durable-workflow/server/issues/520). Separe essas lacunas do produto das verificações de recuperação que sua implantação realmente passou.
+
 ## Contrato de backup, restauração e recuperação de desastres {#backup-restore-and-disaster-recovery-contract}
 
 Backups, restauração e recuperação de desastres fazem parte do contrato operacional, não de um procedimento privado opcional. Publique e ensaie estes dados para cada topologia aceita:

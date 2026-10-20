@@ -276,6 +276,8 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/system/retention?limit=100" \
 
 清理移除历史、相关明细及符合条件的外部载荷，之后延长策略无法恢复。[嵌入式清理指南](../configuration/pruning-workflows.md)描述应用负责的独立流程，其清理 API 不应用 Server 命名空间保留策略。其他运行时应先验证保留行为，再应用此 PHP Server 流程。
 
+当前历史导出保留外部引用，而不是对象的独立副本。[Server #520](https://github.com/durable-workflow/server/issues/520) 请求提供自包含且经过验证的归档流程；导出加校验和并不提供该能力。还应拒绝已清理的历史，不要信任其 `history_complete` 标记；已知的错误完整性问题仍在 [Workflow #856](https://github.com/durable-workflow/workflow/issues/856) 中保持未解决状态。
+
 ### 命名空间 {#namespaces}
 
 `server-bootstrap` 执行迁移并初始化 `default` 命名空间。使用 `DW_DEFAULT_NAMESPACE` 更改请求省略命名空间请求头时采用的命名空间：
