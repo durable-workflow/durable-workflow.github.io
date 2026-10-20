@@ -26,6 +26,49 @@ The server still consumes ordinary Laravel runtime settings such as `DB_*`,
 variables are listed separately because they are deployment plumbing, not
 Durable Workflow API controls.
 
+## How Changes Take Effect
+
+The published PHP Server image runs `php artisan config:cache` in its
+entrypoint. Environment values are resolved at that startup and written to
+Laravel's configuration cache. Editing an environment file, changing an
+orchestrator's environment declaration, or replacing a mounted configuration
+file does not hot-reload a running deployment.
+
+Restart or replace every affected process with the new configuration: HTTP
+API replicas, local Laravel queue workers, and scheduler processes. Restart
+long-lived SDK workers separately when changing their own client or worker
+configuration. A successful API restart does not update a still-running queue
+worker or scheduler. Keep the same intended configuration across the roles
+that share a database and cache.
+
+During a rolling change, each node enforces its own loaded limits. Shared
+admission counters do not make differently configured nodes agree on a limit,
+so a request can be accepted on one API replica and refused on another. For a
+limit change that must take effect consistently:
+
+1. Pause new caller submissions and drain affected API replicas from ingress.
+   Let in-flight requests finish. Stop affected queue and scheduler roles
+   gracefully according to their shutdown budgets.
+2. Apply the same configuration to every affected role and restart or replace
+   them. Let each container's entrypoint rebuild its configuration cache.
+3. Check startup logs for configuration errors, verify readiness and exercise
+   the changed limit before restoring ingress and caller submissions. See the
+   [deployment and readiness guide](/docs/deployment#readiness-contract).
+
+Database-backed operator settings have a different lifecycle. Successful
+mutations below are available to subsequent operations without restarting
+Server:
+
+| Setting | Live mutation | Scope and limits |
+| --- | --- | --- |
+| Namespace description and retention | [`PUT /api/namespaces/{namespace}`](/docs/polyglot/server-api-reference#namespace-and-storage), or [`dw namespace:update`](/docs/polyglot/cli-reference#namespace-and-search-attribute-commands) | Retention policy governs later retention passes. Changing it does not restore already-pruned data. See [Server retention](/docs/polyglot/server#retention). |
+| Namespace external payload storage policy | [`PUT /api/namespaces/{namespace}/external-storage`](/docs/features/external-payload-storage#configuring-a-namespace) | Changes the stored namespace policy. Provider credentials, configured filesystem disks and other process configuration still require the restart procedure above. Preserve access to objects referenced by existing runs. |
+| Namespace search attribute definitions | [`POST` / `DELETE /api/search-attributes`](/docs/polyglot/server-api-reference#schedules-and-search-attributes) | Updates the registration used by subsequent requests. It does not rewrite workflow history or replace environment-configured size and count limits. |
+
+The `DW_*` defaults and caps in this reference remain process configuration
+unless a documented control-plane operation explicitly changes stored state.
+Server does not poll configuration files for changes.
+
 ## How The Contract Is Enforced
 
 The server repository keeps the canonical contract in `config/dw-contract.php`.
