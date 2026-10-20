@@ -29,7 +29,7 @@ Durable Workflow v2 有两种部署模式：
 - **服务模式：** 应用和 Worker 通过 SDK 连接远程运行时。可以选择 [Durable Workflow Cloud](/docs/polyglot/cloud-control-plane/)或[自托管 Server](/docs/polyglot/server/)。
 - **内嵌模式：** Laravel 应用安装 `durable-workflow/workflow` 包，直接管理运行时。
 
-Cloud 和自托管 Server 是服务模式中的两种运行时选择。在 Cloud 中，Durable Workflow 运维编排和持久存储，客户运行 SDK 客户端和 Worker。Cloud 包含 Managed Waterline。**Cloud 客户无需安装、部署或接入自己的 Server 或 Waterline 服务。** 自托管 Server 不包含 Waterline，运维人员可以单独部署 Waterline，连接到 Server 管理的命名空间。
+Cloud 和自托管 Server 是服务模式中的两种运行时选择，不是需要一起运行的组件。在 Cloud 中，Durable Workflow 运维编排和持久存储，客户运行 SDK 客户端和 Worker。Cloud 包含 Managed Waterline。**Cloud 客户不安装、部署或接入自己的 Server 或 Waterline 服务。** 自托管 Server 不包含 Waterline，运维人员可以单独部署 Waterline，连接到 Server 管理的命名空间。
 
 本页帮助你决定由哪个部署管理工作流、规划模式切换，以及明确两种模式中必须保持一致的产品契约。
 
@@ -39,7 +39,7 @@ Laravel 团队可以阅读专门的 [Laravel 采用与运行时迁移指南](/do
 
 | 运行时选择 | 谁运维持久状态 | 团队需要运行什么 | 从这里开始 |
 | --- | --- | --- | --- |
-| Durable Workflow Cloud | Durable Workflow 运维托管命名空间的运行时、持久存储、升级、服务端点和 Managed Waterline。 | 使用已配置凭据的应用客户端，以及 PHP、Python 或 Rust Worker。无需运行 Server 或单独的 Waterline 服务。 | [Cloud 托管运行时](/docs/polyglot/cloud-control-plane/) |
+| Durable Workflow Cloud | Durable Workflow 运维托管命名空间的运行时、持久存储、升级、服务端点和 Managed Waterline。 | 使用已配置凭据的应用客户端，以及 PHP、Python 或 Rust Worker。不要运行 Server 或单独的 Waterline 服务。 | [Cloud 托管运行时](/docs/polyglot/cloud-control-plane/) |
 | 自托管 Server | 团队自行部署、保护、扩容、备份和升级 Server 及其持久存储。 | Server、应用客户端，以及 PHP、Python 或 Rust Worker。需要时，单独部署 Waterline，连接 Server 管理的命名空间。 | [自托管 Server](/docs/polyglot/server/) |
 
 两种选择使用相同的客户端与 Worker 模型，区别在于运行时运维和凭据。
@@ -81,7 +81,7 @@ Laravel 团队可以阅读专门的 [Laravel 采用与运行时迁移指南](/do
 
 ## 迁移到自托管服务模式的工具 {#migration-tooling-to-self-hosted-service-mode}
 
-从内嵌模式迁移到服务模式采用分阶段切换：
+从内嵌模式迁移到服务模式采用分阶段切换，不会实时移交执行中的状态：
 
 - 按照[内嵌到 Server 迁移](/docs/polyglot/embedded-to-server)执行逐步切换。
 - 切换流量前，使用 `GET /api/cluster/info` 确认目标 Server 的构建、拓扑和能力契约。
