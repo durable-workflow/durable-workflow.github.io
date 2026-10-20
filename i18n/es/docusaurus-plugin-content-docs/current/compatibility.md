@@ -256,12 +256,19 @@ Las versiones superiores de los paquetes seleccionan la línea admitida. Los
 manifiestos de protocolos aportan una segunda comprobación que rechaza operar
 ante incompatibilidades:
 
-| Cliente | Línea del producto | Plano de control | Petición de protocolo de workers |
-|--------|---------------|---------------|-------------------------|
+| Cliente | Línea del producto | Plano de control | Protocolo predeterminado de registro de workers |
+|--------|---------------|---------------|--------------------------------------|
 | CLI | `%%artifact.cliVersion%%` | `2` | No aplicable |
-| SDK PHP | `%%artifact.phpSdkVersion%%` | `2` | `1.13` |
-| SDK Python | `%%artifact.pythonSdkVersion%%` | `2` | `1.1` |
-| SDK Rust | `%%artifact.rustSdkVersion%%` | `2` | `1.2` |
+| SDK PHP | `%%artifact.phpSdkVersion%%` | `2` | `1.20` |
+| SDK Python | `%%artifact.pythonSdkVersion%%` | `2` | `1.20` |
+| SDK Rust | `%%artifact.rustSdkVersion%%` | `2` | `1.20` |
+
+Los SDK también permiten seleccionar explícitamente el protocolo de workers
+`1.19` para un Server anterior compatible. La cancelación cooperativa requiere
+`1.20`; seleccionar `1.19` no proporciona esa capacidad. Cada operación puede
+usar su versión mínima de protocolo documentada, por lo que el valor
+predeterminado de registro no implica que todas las peticiones de workers envíen
+`1.20`.
 
 El Server publicado actual anuncia la versión del protocolo de workers que
 aparece en la tabla anterior de roles de autoridad. Acepta cabeceras de petición
