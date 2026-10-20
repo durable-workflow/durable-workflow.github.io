@@ -16,6 +16,53 @@ Nichtdeterminismusfehler verursachen.
 Mit dem Helfer `getVersion()` können Sie Änderungen durch versionierte
 Verzweigungspunkte sicher in laufende Workflows einführen.
 
+## Aufgezeichnete Eingabeargumente weiterentwickeln {#evolving-recorded-entry-arguments}
+
+Ein Lauf behält die bei seinem Start aufgezeichneten Argumente. Eine neue Definition schreibt diese Eingabe nicht um. Beim Replay bindet die Laufzeit die gespeicherten Werte an die heutige Einstiegsmethode des Workflows, **bevor Code im Methodenrumpf ausgeführt wird**. Ein `getVersion()`- oder `patched()`-Zweig im Rumpf kann eine inkompatible Signatur nicht retten: Zuerst muss der Aufruf den Rumpf erreichen können.
+
+Behalten Sie die Reihenfolge bestehender Positionsargumente bei und akzeptieren Sie deren aufgezeichnete Typen. Ein PHP-Standardwert ergänzt ein ausgelassenes Argument; er ersetzt keinen inkompatiblen Wert, der an dieser Position bereits aufgezeichnet wurde. Ein mit `[7]` gestarteter Lauf übergibt nach der Bereitstellung beispielsweise weiterhin die Ganzzahl `7`:
+
+| Änderung der Einstiegsmethode | Wirkung auf die aufgezeichnete Eingabe `[7]` |
+| --- | --- |
+| `handle(int $amount)` → `handle(int $amount, string $currency = 'USD')` | Das alte Argument bleibt kompatibel; das neue letzte Argument kann seinen Standardwert verwenden. Auch die erneut abgespielten Befehle müssen kompatibel bleiben. |
+| Ein erforderliches letztes Argument ohne Standardwert hinzufügen | Für dieses Argument hat der alte Lauf keinen Wert. |
+| Führende Argumente einfügen, entfernen oder umordnen | Bestehende Werte können beim falschen Parameter landen. Gleiche Parameternamen reparieren keine positionelle Eingabe. |
+| `int $amount` durch `string $amount` ersetzen | Die aufgezeichnete Ganzzahl ist keine Zeichenkette geworden. |
+| `int $amount` durch `PaymentRequest $request` ersetzen | Dependency Injection ist keine Eingabemigration. Ein neu erzeugtes DTO darf den aufgezeichneten Betrag nicht durch Konstruktor-Standardwerte ersetzen. |
+| Nur einen letzten Parameter entfernen | PHP kann den Aufruf akzeptieren. Prüfen Sie aber, dass der Bedeutungsverlust weder erneut abgespielte Befehle noch das Geschäftsverhalten verändert. |
+
+Bevorzugen Sie einen zusätzlichen optionalen letzten Parameter oder einen neuen Workflow-Typ für einen anderen Eingabevertrag. Benötigen Sie intern ein neues DTO, erzeugen Sie es ausdrücklich aus kompatiblen aufgezeichneten Argumenten **im** Workflow-Rumpf und versionieren Sie dort Änderungen an dauerhaften Befehlen. Behalten Sie Code für jede unterstützte Eingabeform bei, solange entsprechende Läufe ihn benötigen. Testen Sie tatsächlich gespeicherte Eingaben mit der neuen Definition, einschließlich eines kalten Replay nach einer dauerhaften Wartephase. Tests nur mit neuen Starts decken diese Bereitstellungsgrenze nicht ab.
+
+### Verhalten von Workflow 2.7.2 {#released-embedded-entry-behavior}
+
+In Workflow **2.7.2** kann ein Fehler bei Argumentanzahl oder -typ am Einstieg zu einem terminalen `WorkflowFailed`-Ereignis werden. Manche Fehler bei der Auflösung von Abhängigkeiten lassen den Lauf dagegen offen, mit einer wiederholt fehlschlagenden Aufgabe. Der Wechsel von einem Skalar zu einem injizierten DTO mit Konstruktor-Standardwerten kann sogar eine Ausführung mit falschen Daten verursachen. Das sind unter [Workflow #866](https://github.com/durable-workflow/workflow/issues/866) erfasste Produktfehler, keine sichere Versionierungsstrategie.
+
+Die Wiederherstellung kompatiblen Codes kann einen offenen, erneut zustellbaren Lauf wiederherstellen, öffnet aber keinen bereits terminalen Lauf. Weder `repair()` noch ein neuer Versionszweig verspricht, das fehlgeschlagene Original wiederzubeleben. Prüfen Sie zuerst den tatsächlichen Status und Fehler. Bewahren Sie Eingabe und Historie, während Sie die Wiederherstellung planen.
+
+### Veröffentlichter eingebetteter Schutz {#embedded-entry-argument-safeguard}
+
+Workflow **2.7.3** prüft aufgezeichnete Eingabeargumente vor dem Eintritt in Anwendungscode. Inkompatible Bindung führt zu einer typisierten `WorkflowEntryArgumentsMismatchException` und einer Replay-blockierten **Workflow-Aufgabe** mit `replay_blocked_reason = workflow_entry_arguments_mismatch`; der **Lauf bleibt nichtterminal**. Diagnosefelder nennen Workflow, Einstiegsmethode, Parameter sowie erwarteten und tatsächlichen Typ, ohne Argumentwerte zu kopieren. Ein neu injiziertes DTO, das aufgezeichnete Eingabe verwerfen würde, wird ebenfalls abgelehnt. Prüfen Sie das tatsächlich in der eingebetteten Anwendung installierte Workflow-Paket. Der Schutz öffnet keine terminalen Läufe aus älteren Versionen erneut.
+
+Stellen Sie mit diesem veröffentlichten Schutz denselben noch offenen Originallauf so wieder her:
+
+1. Prüfen Sie die Aufgabendiagnose des ausgewählten Laufs und bestätigen Sie `workflow_entry_arguments_mismatch`, statt diese Ursache bei jedem Aufgabenfehler anzunehmen.
+2. Stellen Sie eine Definition wieder her, die die ursprünglich aufgezeichneten Argumente akzeptiert, oder stellen Sie einen kompatiblen Adapter im Workflow-Rumpf bereit. Bewahren Sie ursprüngliche Workflow-Identität, Eingabe, Historie und Fristen; bearbeiten Sie nicht den Speicher, um die neue Signatur passend zu machen.
+3. Verwenden Sie nach Bereitstellung kompatiblen Codes die unterstützte Reparaturaktion für denselben noch offenen Lauf. Prüfen Sie anschließend, dass die ursprüngliche Arbeit fortgesetzt und ihr terminales Ergebnis genau einmal aufgezeichnet wird. Eine Reparatur verlängert die ursprüngliche Frist nicht; eine bereits abgelaufene Frist gilt weiterhin.
+
+Der Schutz deutet Ausnahmen aus dem Workflow-Rumpf **nicht** in Bereitstellungsfehler um. Ein echter `TypeError` der Anwendung oder ein anderer unbehandelter Fehler im Rumpf folgt weiterhin dem normalen Workflow-Fehlerverhalten. Die unter [shared #220](https://github.com/durable-workflow/.github/issues/220) erfasste flottenweite Prüfung zum Ausmustern alter Zweige liefert er ebenfalls nicht.
+
+### Separate Grenzen der Service-SDKs {#service-sdk-entry-boundaries}
+
+Ein Fix im eingebetteten Core verändert nicht den SDK-Prozess, der Workflow-Code im Servicemodus ausführt. Dies sind die im Quellcode geprüften Grenzen veröffentlichter Versionen. Gleichwertige wiederherstellbare Eingabeprüfung bleibt unter [shared #221](https://github.com/durable-workflow/.github/issues/221) offen:
+
+| Veröffentlichtes SDK | Verhalten bei der Eingabebindung |
+| --- | --- |
+| [PHP 2.5.3](https://github.com/durable-workflow/sdk-php/tree/43d39bff50ccace0a309de41306cd350751ec575) | Ruft den registrierten Handler mit dem Kontext und danach der aufgezeichneten positionellen Eingabe auf. Ein `ArgumentCountError` oder `TypeError` am Einstieg kann dem allgemeinen Workflow-Fehlerpfad folgen. |
+| [Python 2.6.1](https://github.com/durable-workflow/sdk-python/tree/150c6f6bc14e3516f75cc615b2f75f093ed84ea1) | Ruft `run(ctx, *start_input)` auf. Geänderte Argumentanzahl kann den Workflow fehlschlagen lassen; Typannotationen allein erzwingen keine Typen und konvertieren keine aufgezeichneten Werte. Fehler im Generatorrumpf sind ebenfalls Anwendungsfehler. |
+| [Rust 3.5.5](https://github.com/durable-workflow/sdk-rust/tree/4d5047ba9da39785512340b0975ce28da09f0cee) | Der typisierte Adapter deserialisiert die Eingabe vor dem Aufruf seines Handlers mit fester Signatur. Ein geänderter Anfragetyp kann diese Dekodierung scheitern lassen. Das unterscheidet sich von positioneller PHP/Python-Bindung. Eine beiläufige Ablehnung wegen nicht verbrauchter Historie ist kein zugesagter wiederherstellbarer Signaturschutz. |
+
+Halten Sie die Eingabekompatibilität im Dienstmodus und die tatsächliche SDK-Qualifikation von der eingebetteten Veröffentlichung getrennt. Fangen Sie nicht jeden `TypeError` oder jeden Rust-Handlerfehler ab, um ihn als Replay-sicher einzustufen: Das würde echte Anwendungsfehler verbergen.
+
 ## `getVersion` verwenden {#using-getversion}
 
 `getVersion()` ist ein Replay-sicherer geradliniger Helfer. Jeder Änderungspunkt
