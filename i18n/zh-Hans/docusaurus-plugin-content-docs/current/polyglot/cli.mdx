@@ -1,0 +1,348 @@
+---
+sidebar_position: 3
+title: CLI
+description: 安装并使用 Durable Workflow CLI 运维独立 Server。
+tags:
+  - CLI
+  - operations
+  - automation
+keywords:
+  - Durable Workflow CLI
+  - dw 命令
+  - CLI 配置档
+  - CLI 安装
+---
+
+import CliInstall from '@site/src/components/CliInstall';
+
+# CLI {#cli}
+
+Durable Workflow CLI（`dw`）是[独立 Server](/docs/polyglot/server) 的 shell 接口。运维人员可以完全通过命令行启动、列出、发送信号、查询、更新、修复、取消、终止和归档工作流，管理计划、检查任务队列，以及查看 Server 健康。
+
+无论工作流用哪种语言编写，同一个 CLI 都能连接任意 Durable Workflow Server。CLI、PHP、Python 和 Rust 受支持及有意区分的接口见[客户端与 Worker 能力](/docs/polyglot/cli-python-parity/)。
+
+## 安装 {#install}
+
+<CliInstall />
+
+### 验证 {#verify}
+
+```bash
+dw --version
+```
+
+### 安装受支持通道 {#supported-channel-install}
+
+默认安装器跟随最近一次通过资格验证的制品组合中的 CLI 发布，无需提供 RC 序号。较新的已发布 CLI 预发布版本，在公开兼容性权威数据验证之前不会被选中。为了使 CI 可重复，请记录解析出的 `dw --version` 值，并在后续运行中通过 `VERSION` 传入精确标签。
+
+两个安装脚本都从发布中下载 `SHA256SUMS`，在替换 `dw` 前验证制品校验和，因此镜像内容被篡改会导致安装失败。
+
+<details>
+<summary><b>Linux 和 macOS</b>（shell 安装器）</summary>
+
+```bash
+%%artifact.cliChannelInstallerCommand%%
+dw --version
+```
+
+`VERSION` 接受任意已发布标签、`supported`、`prerelease` 或 `stable`。不设置时跟随已验证的 `supported` 通道。显式 `prerelease` 通道要求已验证发布为预发布版本。其他环境变量：
+
+- `DURABLE_WORKFLOW_INSTALL_DIR`：安装位置（默认 `~/.local/bin`）。
+- `DURABLE_WORKFLOW_BIN_NAME`：安装的可执行文件名（默认 `dw`）。
+
+GitHub Actions 示例：
+
+```yaml
+- name: Install Durable Workflow CLI
+  run: |
+    %%artifact.cliChannelInstallerCommand%%
+    echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+- name: Verify
+  run: dw --version
+```
+
+</details>
+
+<details>
+<summary><b>Windows</b>（PowerShell 安装器）</summary>
+
+```powershell
+%%artifact.cliChannelPowerShellCommand%%
+dw --version
+```
+
+安装器将 `dw.exe` 写入 `%USERPROFILE%\.durable-workflow\bin`，并将该目录加入用户 `PATH`。
+
+</details>
+
+<details>
+<summary><b>PHAR</b>（可移植，要求 PHP 8.2+）</summary>
+
+```bash
+VERSION=<release-tag>
+curl -fsSL -o dw.phar \
+  "https://github.com/durable-workflow/cli/releases/download/${VERSION}/dw.phar"
+curl -fsSL -o SHA256SUMS \
+  "https://github.com/durable-workflow/cli/releases/download/${VERSION}/SHA256SUMS"
+sha256sum --check --ignore-missing SHA256SUMS
+chmod +x dw.phar
+./dw.phar --version
+```
+
+只要已有 PHP 8.2 或更新版本就能运行 PHAR；它是已配备 PHP 的共享 CI 运行器的推荐制品。
+
+</details>
+
+### 更新已安装的二进制文件 {#update-an-installed-binary}
+
+对于独立发布安装（上方 shell 和 PowerShell 安装器），`dw upgrade` 使用发布中的 `SHA256SUMS` 验证制品后，将正在运行的二进制文件替换为最新已发布版本。
+
+```bash
+dw upgrade                 # upgrade through the stable release channel
+dw upgrade --tag=<release-tag>     # pin to a specific release tag
+dw upgrade --dry-run       # resolve the target release without downloading
+```
+
+`dw upgrade` 拒绝重写 Composer vendor、Homebrew cellar 和 PHAR 安装，因为这些路径由其他工具管理。使用安装器重新安装固定的公开发布，更新对应包管理器，或对 Homebrew tap 管理的安装使用 `brew upgrade durable-workflow/tap/dw`。完整稳定选项及状态字段契约见 [CLI 参考](./cli-reference.md#self-upgrade)。
+
+## 配置 {#configure}
+
+将 CLI 指向 Server：
+
+```bash
+export DURABLE_WORKFLOW_SERVER_URL=http://localhost:8080
+export DURABLE_WORKFLOW_AUTH_TOKEN=your-token
+export DURABLE_WORKFLOW_NAMESPACE=default
+```
+
+或在每条命令中传入：
+
+```bash
+dw --server=http://localhost:8080 --token=your-token workflow:list
+```
+
+## 五分钟运维快速入门 {#five-minute-operator-quickstart}
+
+此路径用于在不编写应用代码的情况下，对真实独立 Server 检查 CLI。它启动已发布的本地 Server 栈，安装固定版本的 `dw`，创建可复用配置档，启动一个工作流，并观察运行到达 Worker 队列。
+
+```bash
+export DW_SERVER_IMAGE=%%artifact.serverDockerHubImage%%
+export DW_AUTH_TOKEN=dev-token
+
+docker volume create durable-workflow-cli-quickstart
+
+docker run --rm \
+  -v durable-workflow-cli-quickstart:/app/database \
+  -e DW_AUTH_DRIVER=token \
+  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
+  "$DW_SERVER_IMAGE" server-bootstrap
+
+docker rm -f durable-workflow-server >/dev/null 2>&1 || true
+docker run -d --name durable-workflow-server \
+  -p 8080:8080 \
+  -v durable-workflow-cli-quickstart:/app/database \
+  -e DW_AUTH_DRIVER=token \
+  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
+  "$DW_SERVER_IMAGE"
+
+until curl -sf http://localhost:8080/api/ready >/dev/null; do sleep 1; done
+```
+
+在另一个终端安装 CLI：
+
+```bash
+%%artifact.cliChannelInstallerCommand%%
+export PATH="$HOME/.local/bin:$PATH"
+dw --version
+```
+
+保存一次 Server 连接：
+
+```bash
+dw env:set local \
+  --server=http://localhost:8080 \
+  --token=dev-token \
+  --namespace=default \
+  --make-default
+
+dw doctor
+dw server:health
+```
+
+启动工作流并检查运行：
+
+```bash
+dw workflow:start \
+  --type=quickstart.order \
+  --workflow-id=quickstart-order-001 \
+  --task-queue=quickstart \
+  --input='{"order_id":"order-001","total":42.50}' \
+  --json
+
+dw workflow:describe quickstart-order-001 --output=json
+dw workflow:history quickstart-order-001 <run-id-from-start-or-describe>
+dw task-queue:describe quickstart
+```
+
+运行现在已是 Server 的持久状态。在处理 `quickstart.order` 的 Worker 轮询 `quickstart` 队列之前，`dw task-queue:describe quickstart` 是查看运行等待原因的最快方式。连接 Worker 后，用 `dw watch workflow quickstart-order-001` 跟踪运行直到终态。如需连接已发布 Python SDK Worker 并达到 `status=completed` 的端到端运行，请按 [Durable Workflow 2.0 快速入门](/docs/quickstart)操作。
+
+## 命令 {#commands}
+
+### Server {#server}
+
+```bash
+dw server:health          # Check server health
+dw server:info            # Show server version, role topology, protocols, and worker fleet
+```
+
+`dw server:info` 对应 `GET /api/cluster/info`。除构建、协议及 Worker 集群信息外，它还输出 Server 角色拓扑清单：受支持形态、当前形态/进程类别/角色、匹配角色唤醒及分区细节、当前写入边界、扩容边界和故障域。自动化需要原始 `topology.*` 字段时使用 `--output=json`，或阅读 [Server 角色拓扑](./server-role-topology.md)了解输出背后的逐字段契约。
+
+### 工作流 {#workflows}
+
+```bash
+dw workflow:list                                          # List workflows
+dw workflow:start --type=MyWorkflow --input='["arg1"]'    # Start a workflow
+dw workflow:start --type=MyWorkflow --input-file=input.json
+dw workflow:describe <workflow-id>                         # Describe a workflow
+dw workflow:signal <workflow-id> <signal-name> --input='["ok"]'
+dw workflow:query <workflow-id> <query-name>               # Run a query
+dw workflow:cancel <workflow-id>                           # Close as cancelled immediately
+dw workflow:terminate <workflow-id>                        # Force terminate
+dw workflow:history <workflow-id> <run-id>                 # Show run history
+```
+
+所有接受调用方负载的命令使用同一输入形式：`--input` 传入内联值，`--input-file` 指定文件路径或用 `-` 读取标准输入，`--input-encoding=json|raw|base64` 指定编码。默认 JSON；raw 和 base64 输入作为一个位置工作流参数传入。
+
+### 桥接适配器 {#bridge-adapters}
+
+```bash
+dw bridge:webhook stripe \
+  --action=start_workflow \
+  --idempotency-key=stripe-event-1001 \
+  --target='{"workflow_type":"orders.fulfillment","task_queue":"external-workflows"}' \
+  --input='{"order_id":"order-1001"}'
+
+dw bridge:webhook pagerduty \
+  --action=signal_workflow \
+  --idempotency-key=pd-event-3003 \
+  --target='{"workflow_id":"wf-remediation-42","signal_name":"incident_escalated"}' \
+  --input='{"severity":"critical"}' \
+  --json
+```
+
+桥接适配器是用于集成事件的有限入口工具。它们对接受、重复和拒绝的交付返回具名桥接结果；它们不会变成工作流运行时。
+
+### 计划 {#schedules}
+
+```bash
+dw schedule:list                          # List schedules
+dw schedule:create --workflow-type=MyWorkflow \
+  --cron='0 * * * *'                      # Create hourly schedule
+dw schedule:update <schedule-id> --input-file=input.json
+dw schedule:describe <schedule-id>        # Describe a schedule
+dw schedule:pause <schedule-id>           # Pause a schedule
+dw schedule:resume <schedule-id>          # Resume a schedule
+dw schedule:trigger <schedule-id>         # Trigger immediately
+dw schedule:delete <schedule-id>          # Delete a schedule
+```
+
+### 活动 {#activities}
+
+```bash
+dw activity:complete <task-id> <attempt-id> --input='{"ok":true}'
+dw activity:complete <task-id> <attempt-id> --input-file=result.json
+dw activity:fail <task-id> <attempt-id> --message='upstream failed'
+```
+
+### Worker 与任务队列 {#workers-and-task-queues}
+
+```bash
+dw worker:list                    # List registered workers
+dw worker:describe <worker-id>    # Describe a worker
+dw task-queue:list                # List active task queues
+dw task-queue:describe <queue>    # Describe a task queue
+```
+
+`dw task-queue:list` 是精简的集群视图，展示工作流、活动和查询任务的准入状态列。`dw task-queue:describe` 展开相同 Server 负载，包括轮询者、当前租约、队列、命名空间和下游预算组的派发容量、剩余容量、预算来源及查询任务待处理容量。
+
+脚本中，`dw task-queue:describe --json` 提供队列本地积压、租约、轮询者和准入状态。用它区分缺少 Worker、准入限流，或单个队列积压增长：
+
+```bash
+dw task-queue:describe orders --json | jq '.stats | {
+  approximate_backlog_count,
+  approximate_backlog_age_seconds,
+  workflow_tasks,
+  activity_tasks
+}'
+```
+
+集群级持久流入与派发速率不来自任务队列 JSON 契约。请改从 `dw system:operator-metrics --json` 读取：
+
+```bash
+dw system:operator-metrics --json | jq '.operator_metrics.backlog | {
+  tasks_added_last_minute,
+  tasks_dispatched_last_minute
+}'
+```
+
+这些字段背后的运维调优契约见[任务队列准入](/docs/polyglot/task-queue-admission)。
+
+要检查所查询节点的匹配角色路由契约，请读取同一负载中的 `matching_role` 块：
+
+```bash
+dw system:operator-metrics --json | jq '.operator_metrics.matching_role | {
+  queue_wake_enabled,
+  shape,
+  task_dispatch_mode,
+  partition_primitives,
+  backpressure_model
+}'
+```
+
+`partition_primitives` 固定路由维度（`connection`、`queue`、`compatibility`、`namespace`），`backpressure_model` 指明引擎依靠租约占用还是其他准入边界。当前 v2 报告 `lease_ownership`。
+
+### 命名空间 {#namespaces}
+
+```bash
+dw namespace:list                             # List namespaces
+dw namespace:create --name=production         # Create a namespace
+dw namespace:describe <namespace>             # Describe a namespace
+```
+
+### 搜索属性 {#search-attributes}
+
+```bash
+dw search-attribute:list                                  # List search attributes
+dw search-attribute:create --name=env --type=keyword      # Register an attribute
+```
+
+## 退出码 {#exit-codes}
+
+CLI 使用稳定退出码策略，使脚本和 CI 流水线无需解析 stderr 即可针对特定失败模式响应。取值遵循 Symfony Console 标准的成功/失败/用法 `0`/`1`/`2`，并在此基础上扩展。
+
+| 代码 | 名称 | 含义 |
+|------|------|---------|
+| `0` | `SUCCESS` | 操作成功完成。 |
+| `1` | `FAILURE` | 一般失败：命令已运行，但未成功。 |
+| `2` | `INVALID` | 用法无效：参数错误、未知选项或本地验证失败。下方未涵盖的 HTTP 4xx 响应（如 400、422）也返回此值。 |
+| `3` | `NETWORK` | 无法连接 Server（连接被拒绝、DNS 失败、TLS 握手失败、传输错误）。 |
+| `4` | `AUTH` | 认证或授权失败。HTTP `401` 和 `403` 返回此值。 |
+| `5` | `NOT_FOUND` | 资源不存在。HTTP `404` 返回此值。 |
+| `6` | `SERVER` | Server 错误。HTTP `5xx` 返回此值。 |
+| `7` | `TIMEOUT` | Server 响应前请求超时。HTTP `408` 也返回此值。 |
+
+示例：
+
+```bash
+dw workflow:describe chk-does-not-exist
+echo $?  # 5 (NOT_FOUND)
+
+dw server:health --server=http://unreachable:9999
+echo $?  # 3 (NETWORK)
+```
+
+权威源码是 CLI 仓库中的 [`DurableWorkflow\Cli\Support\ExitCode`](https://github.com/durable-workflow/cli/blob/main/src/Support/ExitCode.php)。
+
+## 参考 {#reference}
+
+命令形式、选项、输出模式及自动化失败行为见 [CLI 命令参考](/docs/polyglot/cli-reference)。
