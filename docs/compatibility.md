@@ -51,16 +51,11 @@ manifests, and CI gates can validate themselves against one source of truth:
 - The PHP class `Workflow\V2\Support\SurfaceStabilityContract`, which is
   the in-process source the server re-exports.
 
-Artifact-channel admission is governed separately by
-[`/public-artifact-release-policy.json`](pathname:///public-artifact-release-policy.json).
-This independently reviewed policy controls which 2.0 channels may become the
-canonical public tuple.
-
 A release that changes any surface listed below — its stability level, its
 field set, its breaking-change rules — must update this page, the JSON
 mirror, the PHP manifest, and any per-package stability document in the same
-change. Docs CI validates the machine-readable contract, artifact release-phase
-policy, released Rust metadata when available, and worker-protocol specs.
+change. Docs CI validates the machine-readable contract, released Rust metadata
+when available, and worker-protocol specs.
 Editorial alignment between this page and the manifest remains an explicit
 release-review responsibility.
 
