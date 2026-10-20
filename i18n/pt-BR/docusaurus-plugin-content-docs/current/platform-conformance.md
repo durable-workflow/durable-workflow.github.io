@@ -204,7 +204,7 @@ células `pass` contam para aprovar uma categoria:
 `rust_replayed_instance_state_query_after_cold_restart`,
 `completed_run_signal_and_query`,
 `unknown_signal_and_query_errors`,
-`malformed_signal_and_query_payloads`, and
+`malformed_signal_and_query_payloads`, e
 `waterline_operator_visibility`.
 
 Esses IDs de cenário e seus critérios de aprovação são publicados no
