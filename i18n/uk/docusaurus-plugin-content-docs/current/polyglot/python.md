@@ -662,10 +662,96 @@ workflow, замість заявляти паритет валідаторів.
 | `ctx.get_version(change_id, min, max)` | Безпечне версіонування коду workflow |
 | `ctx.upsert_search_attributes(attrs)` | Оновлення атрибутів пошуку |
 | `ctx.continue_as_new(*args)` | Перезапуск workflow з новим вводом |
-| `ctx.now()` | Детермінований годинник з історії |
+| `ctx.now()` | Збережений час початку workflow, фіксований для цього run |
 | `ctx.random()` | Генератор випадкових чисел зі сталим seed |
 | `ctx.uuid4()` | Детермінований UUID |
 | `ctx.logger` | Logger, що мовчить під час replay |
+
+### Час workflow та стійкі очікування {#workflow-time-and-durable-waits}
+
+Під час replay у worker `ctx.now()` повертає **збережений час початку run**.
+Він не просувається після activity, timer, signal чи іншого стійкого кроку.
+Повторні холодні replay тієї самої історії повертають те саме початкове
+значення. Наступник continue-as-new має власний час початку й не зберігає
+часову опору попередника.
+
+[Опублікована реалізація Python](https://github.com/durable-workflow/sdk-python/blob/150c6f6bc14e3516f75cc615b2f75f093ed84ea1/src/durable_workflow/workflow.py#L2594-L2601)
+використовує `WorkflowStarted.payload.timestamp`, якщо він наявний, інакше
+канонічний `WorkflowStarted.recorded_at`. Відсутній чи некоректний збережений
+час replay спричиняє явну помилку годинника, а не дозволяє читати реальний
+годинник worker. Це контракт фіксованого початку, узгоджений у
+[SDK #146](https://github.com/durable-workflow/sdk-python/issues/146).
+
+Очікуйте стійкої операції замість циклу до зміни `ctx.now()`:
+
+```python
+from durable_workflow import workflow
+
+
+@workflow.defn(name="wait_without_clock_loop")
+class WaitWithoutClockLoop:
+    def run(self, ctx):
+        started_at = ctx.now()
+        yield ctx.start_timer(30)
+        return {
+            "run_started_at": started_at.isoformat(),
+            "after_wait": ctx.now().isoformat(),
+        }
+```
+
+Стійке завершення timer відновлює workflow. Обидві повернені часові позначки
+є тим самим часом початку. Умова циклу на кшталт `while ctx.now() < deadline`
+не стане хибною лише через спрацювання timer.
+
+Для відносної затримки використовуйте `yield ctx.start_timer(seconds)` або
+`yield ctx.sleep(seconds)`. Використовуйте
+[вибір першого завершення](#first-completion-selection), коли робота має
+змагатися зі стійким timer. Задайте `execution_timeout_seconds` і
+`run_timeout_seconds` у `client.start_workflow(...)`, якщо Server має
+забезпечувати строк виконання workflow, зокрема за зупинених worker.
+Тайм-аут HTTP чи очікування `get_result()` обмежує лише локальний запит;
+він не замінює збереженого строку workflow. Щоб зберегти строк застосунку
+через continue-as-new, явно передайте його як вхідні дані, не замінюючи
+початкового строку виконання Server.
+
+Для вимірювання тривалості всередині одного виклику activity читайте там
+монотонний годинник і повертайте тривалість як результат activity. Для
+зовнішнього строку UTC нехай activity перевіряє авторитетний зовнішній
+годинник і повертає рішення; workflow відтворює цей записаний результат.
+Ніколи не порівнюйте часові позначки UTC з монотонними значеннями та не
+віднімайте покази монотонних годинників різних процесів чи машин. Різниця
+`ctx.now()` у Python не вимірює ні активного часу обробки, ні реальної
+тривалості.
+
+#### Відмінності годинників SDK {#clock-differences-across-sdks}
+
+Ці API детерміновані, коли вони надаються, але не мають одного спільного годинника:
+
+| Інтерфейс написання | Повторні виклики та стійкі кроки | Наступник continue-as-new |
+| --- | --- | --- |
+| Python `ctx.now()` | Фіксований збережений час початку цього run, зокрема після timer чи activity. | Використовує початкову часову опору наступного run. |
+| Вбудований PHP `Workflow::now()` | Починає з часу початку run та просувається до записаного часу події, яку спожив replay. Дивіться [час workflow](../features/timers.md#reading-deterministic-time). | Починає з нового run, потім просувається через спожиті події цього run. |
+| PHP SDK сервісного режиму | Загального публічного помічника `now()` для workflow немає. Використовуйте стійкі операції або записані результати activity чи побічних ефектів. | Явно передавайте часовий стан застосунку, якщо він має пережити передавання. |
+| Rust SDK сервісного режиму | Загального публічного помічника `WorkflowContext::now()` немає. `side_effect` може записати невеликий знімок реального годинника, але не є годинником, що просувається. | Побічний ефект у новому run є новою операцією; за потреби явно передавайте попередній часовий стан. |
+
+Поведінка вбудованого PHP наявна в
+[опублікованому Core](https://github.com/durable-workflow/workflow/blob/64efa176e4c37e5d6ae80e767ba3b41464024e53/src/V2/Support/WorkflowFiberContext.php).
+Окремі контексти [PHP SDK](https://github.com/durable-workflow/sdk-php/blob/2.5.2/src/Worker/WorkflowContext.php)
+та [Rust SDK](https://github.com/durable-workflow/sdk-rust/blob/3.5.5/src/lib.rs)
+мають власні API. Переносьте стійку операцію та політику строків замість
+припущення однакової семантики помічника годинника в кожному SDK.
+
+#### Упорядковуйте створені події за послідовністю {#order-emitted-events-with-sequence-values}
+
+Часова позначка workflow не є ключем порядку подій. Усі події Python,
+позначені `ctx.now()`, можуть мати той самий час. Використовуйте
+[зміщення Workflow Streams](./workflow-streams.md), відповідну
+[послідовність вбудованої вихідної скриньки](../features/message-streams.md)
+або детермінований локальний лічильник workflow. Поєднуйте лічильник run з
+`run_id`; явно передавайте його через continue-as-new, якщо застосунку
+потрібна одна логічна послідовність. Незалежні потоки чи run не отримують
+глобального порядку зі своїх часових позначок.
+
 
 ### Повторні спроби й тайм-аути activity {#activity-retries-and-timeouts}
 
@@ -705,7 +791,7 @@ receipt = yield ctx.schedule_activity(
 недетерміновані операції:
 
 - Без I/O: HTTP викликів, читання файлів, запитів бази
-- Без `datetime.now()` чи `time.time()`: використовуйте `ctx.now()`
+- Без `datetime.now()` чи `time.time()`: використовуйте `ctx.now()` лише як фіксовану часову опору початку run, а для очікувань — стійкі timer.
 - Без `random.random()`: використовуйте `ctx.random()`
 - Без `uuid.uuid4()`: використовуйте `ctx.uuid4()`
 

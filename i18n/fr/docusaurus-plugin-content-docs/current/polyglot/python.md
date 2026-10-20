@@ -672,10 +672,97 @@ Le `WorkflowContext` transmis à `run` fournit des opérations déterministes :
 | `ctx.get_version(change_id, min, max)` | Versionner le code du workflow sans risque |
 | `ctx.upsert_search_attributes(attrs)` | Mettre à jour les attributs de recherche |
 | `ctx.continue_as_new(*args)` | Redémarrer le workflow avec de nouvelles entrées |
-| `ctx.now()` | Horloge déterministe issue de l'historique |
+| `ctx.now()` | Heure de début persistée du workflow, fixe pour ce run |
 | `ctx.random()` | Générateur pseudoaléatoire à graine fixée |
 | `ctx.uuid4()` | UUID déterministe |
 | `ctx.logger` | Logger silencieux pendant la relecture |
+
+### Temps du workflow et attentes durables {#workflow-time-and-durable-waits}
+
+Pendant la relecture par le worker, `ctx.now()` renvoie **l'heure de début
+persistée du run**. Elle n'avance pas après une activité, un temporisateur, un
+signal ou une autre étape durable. Les relectures à froid du même historique
+renvoient cette même valeur initiale. Un successeur continue-as-new possède sa
+propre heure de début, sans conserver l'ancrage de l'horloge du prédécesseur.
+
+L'[implémentation Python publiée](https://github.com/durable-workflow/sdk-python/blob/150c6f6bc14e3516f75cc615b2f75f093ed84ea1/src/durable_workflow/workflow.py#L2594-L2601)
+utilise `WorkflowStarted.payload.timestamp` s'il est présent, sinon la valeur
+canonique `WorkflowStarted.recorded_at`. Une heure persistée absente ou invalide
+produit une erreur d'horloge explicite, sans autoriser la lecture de l'horloge
+murale du worker. C'est le contrat à début fixe établi dans
+[SDK #146](https://github.com/durable-workflow/sdk-python/issues/146).
+
+Attendez une opération durable plutôt que de boucler jusqu'à ce que `ctx.now()` change :
+
+```python
+from durable_workflow import workflow
+
+
+@workflow.defn(name="wait_without_clock_loop")
+class WaitWithoutClockLoop:
+    def run(self, ctx):
+        started_at = ctx.now()
+        yield ctx.start_timer(30)
+        return {
+            "run_started_at": started_at.isoformat(),
+            "after_wait": ctx.now().isoformat(),
+        }
+```
+
+La fin durable du temporisateur reprend le workflow. Les deux horodatages
+renvoyés sont la même heure de début. Une boucle comme
+`while ctx.now() < deadline` ne devient pas fausse simplement parce que des
+temporisateurs se déclenchent.
+
+Pour un délai relatif, utilisez `yield ctx.start_timer(seconds)` ou
+`yield ctx.sleep(seconds)`. Utilisez la [sélection de la première fin](#first-completion-selection)
+pour mettre un travail en concurrence avec un temporisateur durable. Définissez
+`execution_timeout_seconds` et `run_timeout_seconds` dans
+`client.start_workflow(...)` lorsque Server doit imposer une échéance au
+workflow, y compris lorsque les workers sont arrêtés. Le délai d'attente HTTP
+ou de `get_result()` limite seulement cette requête locale ; il ne remplace
+pas l'échéance persistée du workflow. Transmettez explicitement une échéance
+applicative en entrée de continue-as-new pour la conserver, sans remplacer
+l'échéance d'exécution initiale de Server.
+
+Pour mesurer le temps écoulé au sein d'un appel d'activité, lisez une horloge
+monotone dans cette activité et renvoyez la durée dans son résultat. Pour une
+échéance UTC externe, faites vérifier l'horloge externe faisant autorité par une
+activité et renvoyez sa décision ; le workflow relit ce résultat enregistré.
+Ne comparez jamais des horodatages UTC à des valeurs monotones et ne soustrayez
+pas des mesures monotones de processus ou d'hôtes différents. La soustraction
+de `ctx.now()` ne mesure en Python ni le temps de traitement actif ni le temps
+mural écoulé.
+
+#### Différences d'horloge entre SDK {#clock-differences-across-sdks}
+
+Ces API sont déterministes lorsqu'elles existent, mais ne partagent pas une même horloge :
+
+| Surface d'écriture | Appels répétés et étapes durables | Successeur continue-as-new |
+| --- | --- | --- |
+| Python `ctx.now()` | Fixe l'heure de début persistée de ce run, même après un temporisateur ou une activité. | Utilise l'ancrage initial du run successeur. |
+| PHP intégré `Workflow::now()` | Commence à l'heure de début du run et avance vers l'heure enregistrée de l'événement consommé par la relecture. Voir [temps du workflow](../features/timers.md#reading-deterministic-time). | Commence avec le nouveau run, puis avance au fil de ses propres événements consommés. |
+| SDK PHP en mode service | Pas d'aide publique générale `now()` pour le workflow. Utilisez des opérations durables ou les valeurs enregistrées d'activités ou d'effets de bord. | Transmettez explicitement l'état temporel de l'application s'il doit survivre au passage. |
+| SDK Rust en mode service | Pas d'aide publique générale `WorkflowContext::now()`. Un `side_effect` peut enregistrer un petit instantané de l'horloge murale, sans constituer une horloge qui avance. | Un effet de bord dans le nouveau run est une nouvelle opération ; transmettez explicitement l'état temporel antérieur si nécessaire. |
+
+Le comportement PHP intégré existe dans le
+[Core publié](https://github.com/durable-workflow/workflow/blob/64efa176e4c37e5d6ae80e767ba3b41464024e53/src/V2/Support/WorkflowFiberContext.php).
+Les contextes distincts du [SDK PHP](https://github.com/durable-workflow/sdk-php/blob/2.5.2/src/Worker/WorkflowContext.php)
+et du [SDK Rust](https://github.com/durable-workflow/sdk-rust/blob/3.5.5/src/lib.rs)
+ont leurs propres API. Portez l'opération durable et la politique d'échéance
+sans supposer qu'une aide d'horloge possède la même sémantique dans chaque SDK.
+
+#### Ordonner les événements émis avec des séquences {#order-emitted-events-with-sequence-values}
+
+Un horodatage de workflow n'est pas une clé d'ordre des événements. Tous les
+événements Python horodatés avec `ctx.now()` peuvent avoir la même heure.
+Utilisez les [offsets des Workflow Streams](./workflow-streams.md), la
+[séquence de l'outbox intégrée](../features/message-streams.md) appropriée ou un
+compteur déterministe local au workflow. Associez un compteur local au run à
+`run_id` ; transmettez-le explicitement via continue-as-new si l'application
+a besoin d'une séquence logique unique. Les horodatages ne donnent pas d'ordre
+global aux streams ou runs indépendants.
+
 
 ### Tentatives et délais d'activité {#activity-retries-and-timeouts}
 
@@ -715,7 +802,7 @@ Le code du workflow est relu depuis l'historique. Il ne doit effectuer aucune
 opération non déterministe directement :
 
 - Aucune entrée/sortie : appels HTTP, fichiers, requêtes de base
-- Aucun `datetime.now()` ou `time.time()` : utilisez `ctx.now()`
+- Aucun `datetime.now()` ou `time.time()` : utilisez `ctx.now()` uniquement comme ancrage fixe du début du run et des temporisateurs durables pour les attentes.
 - Aucun `random.random()` : utilisez `ctx.random()`
 - Aucun `uuid.uuid4()` : utilisez `ctx.uuid4()`
 
