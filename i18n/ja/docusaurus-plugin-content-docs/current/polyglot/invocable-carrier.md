@@ -51,7 +51,7 @@ keywords:
 | `url` | はい | 絶対 HTTPS URL、またはループバック開発用の HTTP（`localhost`、`127.0.0.0/8`、`::1`） | URL 内の認証情報（`scheme://user:pass@host`）は禁止。 |
 | `method` | いいえ | `POST` | 既定は `POST`。ほかの HTTP メソッドは受け入れない。 |
 | `timeout_seconds` | いいえ | 1〜900 の整数 | ハンドラー試行1回のトランスポート期限。タスクの期限は Server・ランタイムが別に強制する。 |
-| `retry_policy` | いいえ | オブジェクト（後述） | キャリアが管理するトランスポート再試行予算。 |
+| `retry_policy` | いいえ | オブジェクト（後述） | キャリアが管理するトランスポート再試行の上限。 |
 
 不正な対象は `invalid_carrier_target` で安全側に失敗し、ディスカバリー出力に現れません。
 

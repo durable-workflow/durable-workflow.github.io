@@ -52,7 +52,7 @@ header('Content-Type: application/vnd.durable-workflow.external-task-result+json
 echo json_encode($result, JSON_UNESCAPED_SLASHES);
 ```
 
-ハンドラーは入力エンベロープを受け取り、結果エンベロープを返します。キャリア契約（HTTPS、POST、認証、タイムアウト、再試行予算）は呼び出し可能な HTTP キャリアが管理します。PHP ヘルパーは引数のデコード、ハンドラーのディスパッチ、期限の強制、結果のエンコード、失敗の分類を管理します。
+ハンドラーは入力エンベロープを受け取り、結果エンベロープを返します。キャリア契約（HTTPS、POST、認証、タイムアウト、再試行の上限）は呼び出し可能な HTTP キャリアが管理します。PHP ヘルパーは引数のデコード、ハンドラーのディスパッチ、期限の強制、結果のエンコード、失敗の分類を管理します。
 
 ## ハンドラーの登録 {#registering-handlers}
 
