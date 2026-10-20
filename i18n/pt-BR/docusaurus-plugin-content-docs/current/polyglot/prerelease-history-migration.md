@@ -116,7 +116,7 @@ de fazer suposições.
 
 ## Rollback {#rollback}
 
-Se a aplicação, o replay, a verificação de projeções ou a verificação posterior
+Se a aplicação da migração, o replay, a verificação de projeções ou a verificação posterior
 falhar, a atualização fica bloqueada. Mantenha todos os escritores parados e
 execute o comando de rollback impresso pela migração. Com os caminhos acima, é:
 
