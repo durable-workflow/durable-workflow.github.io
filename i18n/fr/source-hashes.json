@@ -24,5 +24,8 @@
   "polyglot/server-role-topology.md": "3d048f0c6b5f179399622508f51e67fff8aa5a6d5b2492533fc720eeec2c27f2",
   "polyglot/cli.mdx": "024a3f73e1c700a7fa142ec64a7edde03303f12507f4eb4a9161e0e944f7431b",
   "polyglot/cli-reference.md": "b20db162aa91cc85ea64528a061753a99f053b33b6141664ce1194e711c641cc",
-  "platform-protocol-specs.md": "ba9c69adfca7fb4a0dd982464b0ca69dd5a21de1e340edbe23b075ec0fb0c35c"
+  "platform-protocol-specs.md": "ba9c69adfca7fb4a0dd982464b0ca69dd5a21de1e340edbe23b075ec0fb0c35c",
+  "polyglot/worker-protocol.md": "007e844b0a7ab284b7cd343e79f01a27a0dabee3fe4cf19064170581bb897b85",
+  "polyglot/server-api-reference.md": "6029fa5573106ebb40d4cf6fc384c4c5aa3ac77d435b3d2c30c4c505cce7ac23",
+  "polyglot/cloud-control-plane.md": "d08b280c6d3b3dc209e3c3773e275066fa4a80accb2dcd550ad7a3f52e236b78"
 }

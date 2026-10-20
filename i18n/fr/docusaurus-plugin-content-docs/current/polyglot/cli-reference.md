@@ -260,7 +260,7 @@ dw workflow:update order-123 approve --wait=completed --input='["manager"]'
 dw workflow:cancel --all-matching='WorkflowType = "ImportJob"' --limit=25 --yes
 ```
 
-`workflow:start`, `workflow:signal`, `workflow:query`, and `workflow:update`
+`workflow:start`, `workflow:signal`, `workflow:query` et `workflow:update`
 valident les champs canoniques avec le contrat de requête publié par le
 serveur. Les anciens alias non canoniques sont rejetés avant l'envoi.
 
