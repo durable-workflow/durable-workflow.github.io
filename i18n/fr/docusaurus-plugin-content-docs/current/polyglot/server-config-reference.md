@@ -173,8 +173,8 @@ Exemple de surcharge des limites d’admission :
 | `DW_QUERY_TASK_POLL_MAX_CONCURRENT` | non définie ; calculée pour `PHP_CLI_SERVER_WORKERS` | Plafond facultatif des attentes long poll inactives de requête de lecture sur ce nœud. Les tâches en attente peuvent toujours être attribuées immédiatement avant cette attente. | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT` |
 | `DW_WORKFLOW_TASK_TIMEOUT` | `60` | Durée par défaut, en secondes, du bail d’une tâche de workflow. | `WORKFLOW_TASK_TIMEOUT` |
 | `DW_ACTIVITY_TASK_TIMEOUT` | `300` | Durée par défaut, en secondes, du bail d’une tâche d’activité. | `ACTIVITY_TASK_TIMEOUT` |
-| `DW_WORKER_STALE_AFTER_SECONDS` | `max(DW_WORKER_POLL_TIMEOUT * 2, 60)` | Secondes après le dernier heartbeat avant que l’enregistrement du worker soit considéré comme périmé. | `WORKFLOW_SERVER_WORKER_STALE_AFTER_SECONDS` |
-| `DW_WORKER_HEARTBEAT_INTERVAL_SECONDS` | `60` | Cadence en secondes annoncée aux SDK dans les accusés de réception d’enregistrement et de heartbeat. | `WORKFLOW_SERVER_WORKER_HEARTBEAT_INTERVAL_SECONDS` |
+| `DW_WORKER_STALE_AFTER_SECONDS` | `max(DW_WORKER_HEARTBEAT_INTERVAL_SECONDS * 3, 30)` | Secondes après le dernier heartbeat avant que l’enregistrement du worker soit considéré comme périmé. | `WORKFLOW_SERVER_WORKER_STALE_AFTER_SECONDS` |
+| `DW_WORKER_HEARTBEAT_INTERVAL_SECONDS` | `10` | Cadence en secondes annoncée aux SDK dans les accusés de réception d’enregistrement et de heartbeat. | `WORKFLOW_SERVER_WORKER_HEARTBEAT_INTERVAL_SECONDS` |
 
 ## Limites, conservation et métriques {#limits-retention-and-metrics}
 

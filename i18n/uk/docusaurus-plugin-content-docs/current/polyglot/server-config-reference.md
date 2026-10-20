@@ -218,8 +218,8 @@ Sticky execution не має окремих змінних середовища 
 | `DW_QUERY_TASK_POLL_MAX_CONCURRENT` | не задано; визначається для `PHP_CLI_SERVER_WORKERS` | Необов'язкове обмеження одночасних idle long-poll очікувань query task workers на цьому вузлі Server. Незавершені query tasks можна отримати негайно перед idle-очікуванням poll. | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT` |
 | `DW_WORKFLOW_TASK_TIMEOUT` | `60` | Стандартний timeout lease workflow task у секундах. | `WORKFLOW_TASK_TIMEOUT` |
 | `DW_ACTIVITY_TASK_TIMEOUT` | `300` | Стандартний timeout lease activity task у секундах. | `ACTIVITY_TASK_TIMEOUT` |
-| `DW_WORKER_STALE_AFTER_SECONDS` | `max(DW_WORKER_POLL_TIMEOUT * 2, 60)` | Секунди після heartbeat worker, коли реєстрація worker стає застарілою. | `WORKFLOW_SERVER_WORKER_STALE_AFTER_SECONDS` |
-| `DW_WORKER_HEARTBEAT_INTERVAL_SECONDS` | `60` | Інтервал у секундах, оголошений SDK у підтвердженнях реєстрації та heartbeat worker. | `WORKFLOW_SERVER_WORKER_HEARTBEAT_INTERVAL_SECONDS` |
+| `DW_WORKER_STALE_AFTER_SECONDS` | `max(DW_WORKER_HEARTBEAT_INTERVAL_SECONDS * 3, 30)` | Секунди після heartbeat worker, коли реєстрація worker стає застарілою. | `WORKFLOW_SERVER_WORKER_STALE_AFTER_SECONDS` |
+| `DW_WORKER_HEARTBEAT_INTERVAL_SECONDS` | `10` | Інтервал у секундах, оголошений SDK у підтвердженнях реєстрації та heartbeat worker. | `WORKFLOW_SERVER_WORKER_HEARTBEAT_INTERVAL_SECONDS` |
 
 ## Обмеження, retention та метрики {#limits-retention-and-metrics}
 

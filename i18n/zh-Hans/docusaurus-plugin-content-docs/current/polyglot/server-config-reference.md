@@ -173,8 +173,8 @@ Sticky 执行没有独立的 Server 镜像环境变量。关于 sticky 缓存生
 | `DW_QUERY_TASK_POLL_MAX_CONCURRENT` | 未设置；根据 `PHP_CLI_SERVER_WORKERS` 推导 | 此 Server 节点上空闲查询任务长轮询等待的可选并发上限。进入空闲等待前，仍可立即领取待处理查询任务。 | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT` |
 | `DW_WORKFLOW_TASK_TIMEOUT` | `60` | 工作流任务的默认租约超时，单位为秒。 | `WORKFLOW_TASK_TIMEOUT` |
 | `DW_ACTIVITY_TASK_TIMEOUT` | `300` | 活动任务的默认租约超时，单位为秒。 | `ACTIVITY_TASK_TIMEOUT` |
-| `DW_WORKER_STALE_AFTER_SECONDS` | `max(DW_WORKER_POLL_TIMEOUT * 2, 60)` | Worker 心跳后，其注册被视为过期所需的秒数。 | `WORKFLOW_SERVER_WORKER_STALE_AFTER_SECONDS` |
-| `DW_WORKER_HEARTBEAT_INTERVAL_SECONDS` | `60` | Worker 注册及心跳确认中向 SDK 通告的心跳间隔，单位为秒。 | `WORKFLOW_SERVER_WORKER_HEARTBEAT_INTERVAL_SECONDS` |
+| `DW_WORKER_STALE_AFTER_SECONDS` | `max(DW_WORKER_HEARTBEAT_INTERVAL_SECONDS * 3, 30)` | Worker 心跳后，其注册被视为过期所需的秒数。 | `WORKFLOW_SERVER_WORKER_STALE_AFTER_SECONDS` |
+| `DW_WORKER_HEARTBEAT_INTERVAL_SECONDS` | `10` | Worker 注册及心跳确认中向 SDK 通告的心跳间隔，单位为秒。 | `WORKFLOW_SERVER_WORKER_HEARTBEAT_INTERVAL_SECONDS` |
 
 ## 限制、保留与指标 {#limits-retention-and-metrics}
 

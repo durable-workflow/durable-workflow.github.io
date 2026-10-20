@@ -10,6 +10,18 @@ sidebar_position: 1
 php artisan vendor:publish --provider="Workflow\Providers\WorkflowServiceProvider" --tag="config"
 ```
 
+## Lease для workflow task (v2) {#workflow-task-lease-v2}
+
+Задайте lease для вбудованих workflow task додатним цілим числом секунд:
+
+```env
+DW_V2_WORKFLOW_TASK_LEASE_SECONDS=300
+```
+
+Це відповідає `workflows.v2.workflow_task_lease_seconds` у `config/workflows.php` із типовим значенням `300`. Отримання task і поновлення читають чинну конфігурацію. Нуль не вимикає lease. Після зміни конфігурації розгортання оновіть кеш конфігурації та перезапустіть тривалі worker-процеси.
+
+Server натомість використовує `DW_WORKFLOW_TASK_TIMEOUT` і відображає це значення на налаштування пакета. Цей lease відновлення відокремлений від дедлайнів activity та workflow. Дивіться [Lease для workflow task](../features/timeouts.md#workflow-task-lease).
+
 ## Зміна каталогу workflow {#changing-workflows-folder}
 
 За замовчуванням команди `make` записують файли до каталогу `app/Workflows`.

@@ -135,6 +135,31 @@ Se for preciso limpar após um prazo da aplicação, use um temporizador duráve
 
 Os comandos imediatos `cancel()` e `terminate()` também encerram a execução sem dar tempo ao código de limpeza. A operação cooperativa independente `requestCancellation()` pode entregar uma limpeza limitada a um worker compatível enquanto a execução estiver ativa. Um tempo limite de workflow não se transforma automaticamente em solicitação de cancelamento cooperativo, e uma proteção contra cancelamento não amplia o prazo completo ou individual. Consulte [Cancelar e terminar](./cancel-and-terminate.md) e [Cancelamento cooperativo](../polyglot/cancellation.md).
 
+## Lease de uma tarefa de workflow {#workflow-task-lease}
+
+Uma tarefa de workflow é uma rodada de um worker que reproduz o histórico confirmado e produz comandos duráveis. Não é o workflow inteiro. Esperar um temporizador durável, uma atividade em fila ou um sinal durável não mantém uma única tarefa durante toda a espera; uma tarefa posterior retoma a execução.
+
+| Implantação | Segundos padrão | Configuração |
+| --- | --- | --- |
+| Laravel embutido | `300` | `DW_V2_WORKFLOW_TASK_LEASE_SECONDS` |
+| Server | `60` | `DW_WORKFLOW_TASK_TIMEOUT` |
+
+A configuração embutida corresponde a `workflows.v2.workflow_task_lease_seconds`. Na inicialização, o Server aplica sua própria configuração a essa chave do pacote. Portanto, use a configuração do Server no Server. É uma configuração do runtime, não uma opção de `StartOptions` nem um timeout de atividade por início. Veja [Publicação da configuração](../configuration/publishing-config.md#workflow-task-lease-v2) e a [referência de configuração do Server](../polyglot/server-config-reference.md#worker-protocol-and-query-transport).
+
+### Heartbeats e execução {#workflow-task-heartbeats}
+
+Workers em modo de serviço usam heartbeats de tarefa para renovar a posse de uma tarefa de workflow em andamento. O Server valida a tarefa, a tentativa e o proprietário da lease. Uma renovação confirmada usa a duração efetiva da lease, respeitando os limites aplicáveis à limpeza de cancelamento. Ela não altera os prazos originais da execução/run nem os timeouts de atividades. Os heartbeats de registro mantêm o registro atualizado. Um registro obsoleto pode invalidar uma posse no Server antes que a lease da tarefa expire. Esses heartbeats não renovam essa lease. O heartbeat de uma atividade em fila informa seu progresso e não substitui a renovação de uma tarefa de workflow.
+
+Código síncrono de workflow embutido não pode renovar periodicamente enquanto está bloqueado. Mantenha o código determinístico e curto; coloque trabalho longo de E/S ou CPU em atividades. A lease não é um limite rígido de execução do processo ou da CPU.
+
+Atividades locais embutidas mantêm a tarefa de workflow que as hospeda. Seu `$this->heartbeat()` também pode renovar essa lease enquanto a tentativa original de atividade e a posse da tarefa de workflow permanecerem válidas.
+
+### Expiração da lease {#workflow-task-lease-expiry}
+
+Uma posse expirada e inacabada se torna elegível para recuperação. Matching/watchdog ou o reparo limpa a posse expirada e despacha o trabalho novamente para que um worker compatível reproduza o histórico confirmado. A recuperação exige processos de recuperação em execução, banco de dados disponível e worker elegível. A expiração não mata o processo anterior nem garante reentrega imediata. No Server, uma posse expirada ou substituída não pode enviar novos comandos; uma renovação recusada deve ser tratada como perda de autoridade.
+
+O reparo não reabre uma execução fechada, não concede tentativas de negócio extras nem reinicia prazos originais. Já `startToCloseTimeout` limita uma tentativa de atividade conforme sua política de repetição registrada. Os timeouts de run e execução limitam a vida do workflow; renovar ou reproduzir uma tarefa de workflow não os prolonga.
+
 ## Tempos limite das atividades {#activity-timeouts}
 
 Os tempos limite das atividades permitem limitar a duração de cada atividade. Há quatro escopos:
