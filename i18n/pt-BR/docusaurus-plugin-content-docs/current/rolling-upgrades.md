@@ -95,17 +95,15 @@ ativa. Essa janela deve atender a todas as regras desta seção.
   `build_id` estável. O grupo sem versão (`build_id: null`) é o padrão anterior
   à implantação. O [guia de implantação por build ID de worker](/docs/polyglot/worker-build-id-rollout)
   explica a primeira transição.
-- **Impressões digitais da definição do workflow permanecem fixas.** Imagens do
-  Server com `DW_V2_PIN_TO_RECORDED_FINGERPRINT=true` (o padrão) mantêm execuções
-  em andamento fixadas à impressão digital da definição do workflow registrada
-  em `WorkflowStarted`. Um novo worker que traga uma impressão digital diferente
-  para o mesmo workflow se recusa a assumir essas execuções até que terminem.
+- **Preserve o roteamento original e qualifique as definições alteradas.** A execução mantém sua fixação de build e o fingerprint registrado em `WorkflowStarted`. Com `DW_V2_PIN_TO_RECORDED_FINGERPRINT=true` (padrão), a alteração preparada de roteamento do Server 2.9.9 prefere workers elegíveis com a definição registrada. Se não restar nenhum, uma substituição com `workflow_entry_arguments_validation` pode reivindicar a tarefa sob as proteções originais de namespace, fila, tipo, build e replay. O SDK ainda precisa validar a entrada original e reproduzir os comandos confirmados.
 - **Estratégia de admissão de builds sobrepostos.** Escolha a estratégia de
   [`DW_V2_FLEET_VALIDATION_MODE`](/docs/polyglot/server-config-reference) antes
   de começar. `warn` permite continuar a implantação mesmo quando não há worker
   ativo com o marcador de compatibilidade necessário. `fail` bloqueia o despacho
   e faz o contrato de prontidão negar a admissão durante essa janela.
   Implantações de produção que exijam uma transição limpa devem usar `fail`.
+
+**Preparação de versões ainda não publicadas.** Esse caminho de substituição exige a qualificação ainda pendente do Server 2.9.9 e dos SDKs PHP 2.5.4, Python 2.6.2 ou Rust 3.5.6. Runtimes antigos podem continuar recusando um fingerprint alterado mesmo quando o código da aplicação adiciona uma ramificação de versão válida. Desativar a fixação de fingerprint não é o procedimento padrão de atualização segura. Siga o [roteamento de definições](./polyglot/worker-compatibility-routing.md#definition-fingerprint-evolution), confira a capacidade real do worker e mantenha os artefatos de rollback até qualificar o novo caminho. Uma ramificação de versão não corrige argumentos de entrada incompatíveis antes de entrar no corpo do workflow; consulte [compatibilidade de entrada](./features/versioning.md#service-sdk-entry-safeguard).
 
 ## Ordem do esquema e bootstrap {#schemabootstrap-ordering}
 

@@ -206,6 +206,16 @@ informa seu resultado terminal. Somente o histórico
 além de uma solicitação de cancelamento sem marcação e, se a operação concluiu
 primeiro, `await()` ainda retorna esse resultado.
 
+## Compatibilidade de entrada e recuperação {#entry-compatibility-and-recovery}
+
+**Preparação de versões ainda não publicadas.** A proteção de entrada do PHP SDK 2.5.4 e o suporte a roteamento/recuperação do Server 2.9.9 foram integrados ao código-fonte, mas ainda aguardam publicação e qualificação dos artefatos instalados.
+
+O worker gerenciado verifica a entrada posicional registrada do handler antes de entrar em sua Fiber. Argumentos obrigatórios ausentes ou tipos PHP declarados incompatíveis geram `DurableWorkflow\Exception\WorkflowEntryArgumentsMismatch` e o motivo de tarefa `workflow_entry_arguments_mismatch`. Valores padrão opcionais preenchem apenas entradas omitidas; nunca substituem um valor registrado incompatível. Um `TypeError` lançado após a entrada bem-sucedida continua sendo uma falha da aplicação.
+
+O worker anuncia `workflow_entry_arguments_validation` automaticamente. Com o suporte correspondente do Server, a tarefa recusada fica bloqueada para replay e a execução original permanece não terminal. Um runtime antigo pode tentar executar novamente a tarefa com falha, portanto atualizar apenas o SDK não estabelece o contrato completo de recuperação.
+
+Inspecione o original com `Client::describeWorkflow($workflowId, $runId)` e o endpoint de depuração da execução selecionada. Restaure código compatível antes de chamar `Client::repairWorkflow($workflowId, $runId)` e verifique se a mesma execução continua sem alterar entrada, histórico, identidade de roteamento ou prazos. Não capture essa falha dentro do corpo do workflow nem repare repetidamente código incompatível. Consulte o [procedimento de recuperação de serviço](../failures-and-recovery.md#service-entry-recovery) e o [roteamento de definições](./worker-compatibility-routing.md#definition-fingerprint-evolution).
+
 ## Modo de serviço em frameworks e Laravel embarcado {#framework-service-mode-and-embedded-laravel}
 
 O mesmo pacote distribui integrações de primeira parte para

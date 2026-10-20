@@ -672,6 +672,16 @@ O `WorkflowContext` passado a `run` fornece operações determinísticas:
 | `ctx.uuid4()` | UUID determinístico |
 | `ctx.logger` | Logger silencioso durante replay |
 
+### Compatibilidade de entrada e recuperação {#entry-compatibility-and-recovery}
+
+**Preparação de versões ainda não publicadas.** A proteção de entrada do Python SDK 2.6.2 e o suporte a roteamento/recuperação do Server 2.9.9 foram integrados ao código-fonte, mas ainda aguardam publicação e qualificação dos artefatos instalados.
+
+Antes de chamar `run(ctx, *start_input)`, o worker vincula os argumentos registrados à assinatura de entrada. Um argumento obrigatório ausente ou uma quantidade incompatível de argumentos gera `WorkflowEntryArgumentsMismatchError` com motivo `workflow_entry_arguments_mismatch` antes de executar o corpo. Valores padrão preenchem somente argumentos omitidos. As anotações Python continuam sem imposição: mudar uma anotação não valida nem converte os dados registrados. Um `TypeError` lançado após entrar corretamente no corpo normal ou gerador continua sendo uma falha da aplicação.
+
+O worker anuncia `workflow_entry_arguments_validation` automaticamente. Com um Server qualificado, a tarefa com falha fica bloqueada para replay, enquanto a execução original permanece não terminal. Runtimes antigos podem repetir essa tarefa; a recusa do SDK sozinha não estabelece o contrato completo de recuperação.
+
+Inspecione a execução exata com `await client.describe_workflow_run(workflow_id, run_id)` e o endpoint de depuração da execução selecionada. Após restaurar um método de entrada compatível, use a rota HTTP de reparo da execução selecionada no [procedimento de recuperação](../failures-and-recovery.md#service-entry-recovery). Já `await client.repair_workflow(workflow_id)` e `handle.repair()` resolvem a execução atual da instância; nenhum aceita um argumento de run id. Preserve entrada, histórico, namespace, fila, build e prazos originais. Para alterar comandos, coloque `ctx.get_version` dentro desse método compatível e valide o replay a frio pelo [roteamento de definições](./worker-compatibility-routing.md#definition-fingerprint-evolution).
+
 ### Tempo do workflow e esperas duráveis {#workflow-time-and-durable-waits}
 
 Durante o replay no worker, `ctx.now()` retorna o **horário de início

@@ -284,7 +284,7 @@ workers, які виконують ті самі workflows.
 | `DW_V2_SUPPORTED_COMPATIBILITIES` | не задано | Маркери сумісності, які приймає worker, розділені комами, або `*`. | `WORKFLOW_V2_SUPPORTED_COMPATIBILITIES` |
 | `DW_V2_COMPATIBILITY_NAMESPACE` | не задано | Namespace сумісності для спільних баз workflow з незалежними fleets. | `WORKFLOW_V2_COMPATIBILITY_NAMESPACE` |
 | `DW_V2_COMPATIBILITY_HEARTBEAT_TTL` | `30` | Секунди чинності heartbeat сумісності worker. | `WORKFLOW_V2_COMPATIBILITY_HEARTBEAT_TTL` |
-| `DW_V2_PIN_TO_RECORDED_FINGERPRINT` | `true` | Вибір незавершених runs за fingerprint workflow, записаним у `WorkflowStarted`. | `WORKFLOW_V2_PIN_TO_RECORDED_FINGERPRINT` |
+| `DW_V2_PIN_TO_RECORDED_FINGERPRINT` | `true` | Віддавати перевагу записаному визначенню workflow; див. нижче межі резервного маршруту для конкретного runtime. | `WORKFLOW_V2_PIN_TO_RECORDED_FINGERPRINT` |
 | `DW_V2_CONTINUE_AS_NEW_EVENT_THRESHOLD` | `10000` | Кількість подій історії, за якої пакет рекомендує автору workflow continue-as-new. | `WORKFLOW_V2_CONTINUE_AS_NEW_EVENT_THRESHOLD` |
 | `DW_V2_CONTINUE_AS_NEW_SIZE_BYTES_THRESHOLD` | `5242880` | Розмір серіалізованої історії у bytes, за якого пакет рекомендує continue-as-new. | `WORKFLOW_V2_CONTINUE_AS_NEW_SIZE_BYTES_THRESHOLD` |
 | `DW_V2_HISTORY_EXPORT_SIGNING_KEY` | не задано | Необов'язковий ключ HMAC для автентифікації архівів експорту історії. | `WORKFLOW_V2_HISTORY_EXPORT_SIGNING_KEY` |
@@ -314,6 +314,8 @@ workers, які виконують ті самі workflows.
 | `DW_V2_CACHE_VALIDATION_MODE` | `warn` | Режим помилки перевірки cache backend: `fail`, `warn` або `silent`. | `WORKFLOW_V2_CACHE_VALIDATION_MODE` |
 | `DW_V2_FLEET_VALIDATION_MODE` | `warn` | Режим перевірки сумісності fleet: `warn` записує лог, `fail` блокує dispatch і відхиляє роботу за відсутності сумісного worker. | `WORKFLOW_V2_FLEET_VALIDATION_MODE` |
 | `DW_SERIALIZER` | `avro` | Діагностичний параметр codec payload. Остаточний v2 використовує Avro для payload нових runs. | `WORKFLOW_SERIALIZER` |
+
+**Підготовка неопублікованого випуску Server.** Server 2.9.9 робить перевагу fingerprint дієвою для сервісних worker. Коли прив’язку ввімкнено, змінене визначення може бути резервним лише за відсутності придатного worker із записаним визначенням і якщо заміна оголошує `workflow_entry_arguments_validation`. Коли прив’язку вимкнено, прибирається перевага вихідного коду; прив’язки build, ізоляція namespace/queue/type, ідентичність реєстрації та суворий replay залишаються. Відповідні SDK PHP 2.5.4, Python 2.6.2 і Rust 3.5.6 також очікують публікації та перевірки встановлених артефактів. Не припускайте такої поведінки на старішому runtime лише через наявність однакового ключа конфігурації. Див. [маршрутизацію визначень](./worker-compatibility-routing.md#definition-fingerprint-evolution).
 
 Використовуйте `DW_V2_GUARDRAILS_BOOT` у CI та deployment manifests.
 Стару назву `WORKFLOW_V2_GUARDRAILS_BOOT` залишено лише для того,

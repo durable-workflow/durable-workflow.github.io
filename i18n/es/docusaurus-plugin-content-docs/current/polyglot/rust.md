@@ -270,6 +270,16 @@ El SDK de Rust registra valores no deterministas pequeños con `WorkflowContext:
 
 Utiliza `WorkflowContext::get_version(change_id, min_supported, max_supported)` para mantener compatibles con la reproducción las ramas antiguas y nuevas durante un despliegue. Las ejecuciones nuevas registran `max_supported`; las existentes reutilizan el marcador duradero. `patched(change_id)` ofrece la forma booleana del despliegue y `deprecate_patch(change_id)` conserva el marcador tras finalizar la rama heredada. Consulta [Efectos secundarios](/docs/features/side-effects/) y [Versionado](/docs/features/versioning/) para la semántica duradera compartida.
 
+## Compatibilidad de entrada y recuperación {#entry-compatibility-and-recovery}
+
+**Preparación de versiones sin publicar.** La protección de entrada de Rust SDK 3.5.6 y el soporte de enrutamiento/recuperación de Server 2.9.9 están integrados en el código fuente, pendientes de publicación y validación de artefactos instalados.
+
+`Worker::register_typed_workflow` y los adaptadores tipados con estado deserializan la entrada registrada antes de invocar el manejador de aplicación o su fábrica de estado. Una forma de entrada incompatible comunica el tipo de fallo de tarea `WorkflowEntryArgumentsMismatch` y el motivo `workflow_entry_arguments_mismatch`, sin enviar `fail_workflow`. El error local del SDK es `Error::HandlerType` para entrada de workflow, con el workflow y el tipo Rust esperado en vez del valor registrado. Los manejadores de workflow de bajo nivel no reciben nuevas comprobaciones de firma Rust. Un error devuelto después de entrar correctamente en el manejador de aplicación sigue siendo un fallo normal del workflow, aunque su texto se parezca al diagnóstico de entrada.
+
+El worker gestionado anuncia `workflow_entry_arguments_validation` automáticamente. Un Server validado conserva la tarea fallida bloqueada para replay y deja la ejecución original no terminal. Los runtimes anteriores pueden reintentar la tarea, por lo que el SDK solo no establece el contrato completo de recuperación.
+
+Use `Client::describe_workflow_run(workflow_id, run_id)` para inspeccionar el original y el endpoint de depuración de la ejecución seleccionada para consultar el motivo de tarea. Restaure la decodificación de entrada y el código compatibles antes de usar la ruta HTTP de reparación seleccionada del [procedimiento de recuperación](../failures-and-recovery.md#service-entry-recovery). Este crate no tiene un método auxiliar `repair_workflow`. Conserve la entrada, el historial, el namespace, la cola, el build y los plazos originales; versione los cambios de comandos durables dentro de un manejador compatible y valide el replay en frío. Consulte el [enrutamiento de definiciones](./worker-compatibility-routing.md#definition-fingerprint-evolution).
+
 ## Cancelar, terminar y manejar resultados terminales {#cancel-terminate-and-handle-terminal-outcomes}
 
 En modo servicio, `cancel_workflow` y `terminate_workflow` cierran la ejecución inmediatamente. Registran resultados terminales distintos, pero ninguno pide al código realizar limpieza. Utiliza `request_cancellation()` con workers cooperativos para una limpieza acotada. Consulta la [guía de cancelación cooperativa](/docs/polyglot/cancellation) para políticas de operaciones, supervisión y recuperación.

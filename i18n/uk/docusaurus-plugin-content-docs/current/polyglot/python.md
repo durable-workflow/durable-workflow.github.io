@@ -659,6 +659,16 @@ workflow, замість заявляти паритет валідаторів.
 | `ctx.uuid4()` | Детермінований UUID |
 | `ctx.logger` | Logger, що мовчить під час replay |
 
+### Сумісність входу та відновлення {#entry-compatibility-and-recovery}
+
+**Підготовка неопублікованих випусків.** Захист входу Python SDK 2.6.2 і підтримку маршрутизації/відновлення Server 2.9.9 об’єднано у вихідному коді; публікація й перевірка встановлених артефактів ще очікуються.
+
+До виклику `run(ctx, *start_input)` worker зіставляє записані аргументи із сигнатурою входу. Відсутній обов’язковий аргумент або несумісна кількість аргументів спричиняє `WorkflowEntryArgumentsMismatchError` із причиною `workflow_entry_arguments_mismatch` до виконання тіла. Значення за замовчуванням заповнюють лише пропущені аргументи. Анотації Python не перевіряються: зміна анотації не перевіряє і не перетворює записані дані. `TypeError` у звичайному або генераторному тілі після успішного входу залишається помилкою застосунку.
+
+Worker автоматично оголошує `workflow_entry_arguments_validation`. Із перевіреним Server невдалий task блокується для replay, а оригінальний run залишається нетермінальним. Старіші runtime можуть натомість повторювати цей task; однієї відмови на боці SDK недостатньо для повного контракту відновлення.
+
+Перевірте точний run через `await client.describe_workflow_run(workflow_id, run_id)` і debug endpoint вибраного run. Відновивши сумісний метод входу, використайте HTTP-маршрут repair вибраного run із [процедури відновлення](../failures-and-recovery.md#service-entry-recovery). `await client.repair_workflow(workflow_id)` та `handle.repair()` натомість адресують поточний run екземпляра; жоден не приймає аргумент run id. Збережіть початкові вхід, історію, namespace, queue, build і дедлайни. Для зміни команд розмістіть `ctx.get_version` усередині сумісного методу та перевірте холодний replay через [маршрутизацію визначень](./worker-compatibility-routing.md#definition-fingerprint-evolution).
+
 ### Час workflow та стійкі очікування {#workflow-time-and-durable-waits}
 
 Під час replay у worker `ctx.now()` повертає **збережений час початку run**.
