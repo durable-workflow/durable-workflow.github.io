@@ -74,5 +74,14 @@
   "features/updates.md": "72da32fa413a3376bea84ab009ce15217238ccc3c57794783789b21b23c7cf18",
   "features/versioning.md": "8b7cd077bffc357bd020b70685ea5b45853c3405f48cce42c9338fa0f7322f0b",
   "features/schedules.md": "73dd4d49bfb61d5ecafc0fb799136fc170d8cd33781ff00f40893efe4e0de0d6",
-  "features/webhooks.md": "edcdfc05ccb0d34a77c51594f85bc3cab343e787f8e0e08d2cd4ddebd048e8c8"
+  "features/webhooks.md": "edcdfc05ccb0d34a77c51594f85bc3cab343e787f8e0e08d2cd4ddebd048e8c8",
+  "testing.md": "e0e33204c80d777adfc04fe4d4842632c784b4a289ebcf1ef84eccfcd5ba2202",
+  "waterline-operator-api.md": "d858c9fe75b495106157ab11d6f7f2d4ad5aeaa94346342398cb8bafdd069d6d",
+  "deployment.md": "2eadca4ea3703d0b09bb7e885eaafe84dc2f7eb7c1a9904dc5649f086f629258",
+  "laravel-adoption.md": "978f2333bf5ce38ebc58619ca3f50a087572a3b0c28d52bc06843bc341010684",
+  "migration.md": "53659987d64f3fc66c935bed55ec4227689185a23970f31327773fa408f5cf22",
+  "polyglot/python.md": "18c872ffee086853f50efc51a3dc193d7953d5eaaad72e44aa36a3a4379d6070",
+  "polyglot/php.md": "9ab2f2b6cb617475e3873609667f7c40eaeed8512f1f041834d74bb63d1a6040",
+  "polyglot/rust-cloud-quickstart.md": "2303434fc9302a81a8381ad4836423ef9952eb3201a4574c432254e3cb68c5f3",
+  "polyglot/namespace-auth-workers.md": "2b4078ceb74b849f12cb1975b410ff8e7266cd4345f6cf1d4dd906db12460ffb"
 }

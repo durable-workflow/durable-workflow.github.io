@@ -62,7 +62,7 @@ Para firmas de constructores, tipos devueltos, excepciones y nombres de métrica
 consulta la [referencia generada de la API del SDK Python](https://python.durable-workflow.com/).
 
 El SDK Python 2.5.0 añade una caché de historial opcional y acotada para ejecución
-con afinidad. Usa Server 2.5.10 o posterior y habilítala en cada worker. Consulta
+sticky. Usa Server 2.5.10 o posterior y habilítala en cada worker. Consulta
 [Afinidad portable de workers](/docs/polyglot/portable-worker-affinity) y la
 [guía Python y ejemplo ejecutable](https://python.durable-workflow.com/guides/sticky-execution/).
 
@@ -940,7 +940,7 @@ presupuesto compartido estricto de namespace, cola o dependencia entre workers.
 
 | Método | Devuelve | Cuándo usarlo |
 | --- | --- | --- |
-| `await worker.run()` | `None` | Proceso duradero supervisado por systemd, Docker, Kubernetes o terminal local. Registra una vez y sondea workflows, actividades y consultas hasta detenerse o cancelarse. |
+| `await worker.run()` | `None` | Proceso de larga duración supervisado por systemd, Docker, Kubernetes o terminal local. Registra una vez y sondea workflows, actividades y consultas hasta detenerse o cancelarse. |
 | `await worker.run_until(workflow_id=..., timeout=60.0, poll_interval=0.5)` | `WorkflowExecution` | Comprobaciones y ejemplos de un workflow conducido por el mismo proceso hasta estado terminal. |
 | `await worker.stop()` | `None` | Cierre cooperativo: detiene sondeos nuevos y drena tareas hasta `shutdown_timeout`. |
 

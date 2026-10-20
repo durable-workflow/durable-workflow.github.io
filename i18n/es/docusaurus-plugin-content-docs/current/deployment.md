@@ -360,7 +360,7 @@ Solo se puede describir como autónoma después de una ejecución sin código
 fuente que use la versión exacta documentada para imagen, ejecutor y topología
 Compose y publique `single-region-failover-result.json` con `outcome: "pass"`,
 `runner_blocked: false`, todas las fases `phase_outcomes` con `status: "pass"`,
-todos los límites de recuperación superados y evidencia de cada escenario del
+todos los veredictos sobre los límites de recuperación satisfactorios y evidencia de cada escenario del
 [manifiesto público](/platform-conformance/single-region-failover-scenarios.json).
 Ese resultado debe enlazarse aquí e identificar la misma imagen que
 `%%artifact.serverDockerHubImage%%`. Hasta entonces, los límites siguientes son
