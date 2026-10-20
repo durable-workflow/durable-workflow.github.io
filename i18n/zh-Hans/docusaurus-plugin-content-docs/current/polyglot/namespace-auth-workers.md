@@ -147,12 +147,12 @@ curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/worker/register" \
 | `sdk_version` | 否 | 在 Worker 可见性和诊断中显示的运行时 SDK 版本。 |
 | `build_id` | 否 | 任务队列构建 ID 可见性及发布群组使用的部署/构建标识。在同一重放兼容的 Worker 族中应保持稳定。 |
 | `supported_workflow_types` | 否 | 此 Worker 能够重放的工作流类型键。为空表示不进行工作流类型过滤。 |
-| `workflow_definition_fingerprints` | 否 | 每个工作流的确定性定义指纹。使用已变化指纹进行活动重新注册会被拒绝。 |
+| `workflow_definition_fingerprints` | 否 | 每个工作流的确定性定义指纹。运行中的 Worker 以已变化的指纹重新注册时会被拒绝。 |
 | `supported_activity_types` | 否 | 此 Worker 能够执行的活动类型键。为空表示不进行活动类型过滤。 |
 | `max_concurrent_workflow_tasks` | 否 | 公布的本地工作流任务槽位。默认 `100`；最小 `1`。 |
 | `max_concurrent_activity_tasks` | 否 | 公布的本地活动任务槽位。默认 `100`；最小 `1`。 |
 
-公布的定义指纹未变时，允许使用相同 Worker ID 进行活动重新注册。如果运行中的 Worker 更改了已公布类型的工作流代码，必须使用新的 `worker_id` 重启；否则注册以 `reason: "workflow_definition_changed"` 失败。
+公布的定义指纹未变时，运行中的 Worker 可以使用相同 Worker ID 重新注册。如果运行中的 Worker 更改了已公布类型的工作流代码，必须使用新的 `worker_id` 重启；否则注册以 `reason: "workflow_definition_changed"` 失败。
 
 `build_id` 不仅是展示元数据。它是任务队列发布 API 面向运维人员的群组标识。能够安全重放同一批执行中工作的 Worker 应保持同一个 `build_id`，发布创建新兼容族时再更改。固定和回滚契约见 [Worker 兼容性与路由](/docs/polyglot/worker-compatibility-routing)，排空/恢复流程见 [Worker 构建 ID 发布](/docs/polyglot/worker-build-id-rollout)。
 
@@ -204,7 +204,7 @@ Worker 收不到任务时，应先检查任务队列可见性。它区分缺少 
 | `namespace_already_exists` | `POST /api/namespaces` | 规范化后的命名空间名称已存在。 | 复用该名称或选择不同名称。 |
 | `task_queue_mismatch` | Worker 轮询路由 | 为某个队列注册的 Worker ID 试图轮询另一个队列。 | 使用新 Worker ID 重启，或轮询已注册队列。 |
 | `worker_draining` | Worker 轮询路由 | Worker 的构建 ID 群组被标记为排空，可以完成执行中的工作，但不能认领新任务。 | 恢复群组以回滚，或在当前租约排空后停止 Worker。 |
-| `workflow_definition_changed` | `POST /api/worker/register` | 活动 Worker ID 试图公布已更改的工作流指纹。 | 使用新 Worker ID 重启已更改的进程。 |
+| `workflow_definition_changed` | `POST /api/worker/register` | 运行中的 Worker ID 试图公布已更改的工作流指纹。 | 使用新 Worker ID 重启已更改的进程。 |
 | `validation_failed` | 任意 JSON 路由 | 字段缺失、格式错误、过大或超出允许范围。 | 阅读 `errors` 或 `validation_errors` 并修正负载。 |
 
 ## 另请参阅 {#see-also}

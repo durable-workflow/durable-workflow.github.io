@@ -74,7 +74,7 @@ SDK 维护的快速入门创建干净的 Composer 项目，定义带特性的工
 
 `Worker::register()` 发现同一源码文件中的 `#[Workflow]` 和 `#[Activity]` 处理器。指南也记录面向可调用对象的直接 `registerWorkflow()`/`registerActivity()` 替代方式。随包文件在独立项目、SDK 检出、已安装包，或将其放在 Composer `vendor/` 目录旁的试验环境/容器中运行时，引导文件让用户无需选择自动加载器路径。
 
-继续为新运行之后，`WorkflowHandle` 跟随当前运行。如果某操作必须限定在某个特定运行，请使用其选定运行方法。
+发生 Continue-As-New 转换后，`WorkflowHandle` 跟随当前运行。如果某操作必须限定在某个特定运行，请使用其选定运行方法。
 
 ## 生命周期、更新、计划与可见性 {#lifecycle-updates-schedules-and-visibility}
 
