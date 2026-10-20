@@ -14,5 +14,14 @@
   "agent-operating-loop.md": "7b8f9c72f1166d5bb496aaad680e7054d360589b548a2c2a3d23206288bd6500",
   "agent-tooling-contract.md": "bafa630abb2be2cefc7a0eb5c6962fd92f1193083cd3993e2aa68bc79530c2bf",
   "ai-agent-workflow-engine.md": "28016466b179adbabdff6467ce351100c9bee48529a8bec9df7ec22c8d786d4d",
-  "mcp-workflows.md": "1c0b5bb7f2e5c7ca835dfdfa57bbe8f6624172c855f4e225057ac2377abf360e"
+  "mcp-workflows.md": "1c0b5bb7f2e5c7ca835dfdfa57bbe8f6624172c855f4e225057ac2377abf360e",
+  "polyglot/cancellation.md": "a08aca914d8211d32184fd76f14e4f8bf47d40656e55364923013e3cece3b70d",
+  "polyglot/workflow-streams.md": "5675a8ea1b9d0b1f7223fecb90b3b048d3006670bf505950bc783709287a6432",
+  "polyglot/cli-python-parity.md": "acf1acbf15ca9cdf069154699c5fbf8c1d1fd3241a32d201ac10b8ec76c038be",
+  "polyglot/rust-cloud-quickstart.md": "2303434fc9302a81a8381ad4836423ef9952eb3201a4574c432254e3cb68c5f3",
+  "polyglot/worker-compatibility-routing.md": "e2cdfdbe8b295ba511f26345318e847611c1f2e67dafdf51441f09e93cb939ca",
+  "support.md": "706807b3902599dda6080f632ec1f893017ea18bbe9585f533dcdbd6d85f4621",
+  "contribute-a-sample.md": "d250d8c63d448e32d3160ff7a2900e7a270dcbd9cda22cf3af46cdf219395ea3",
+  "sdk-neutrality.md": "7b0714c123ade4904591870fc20e9a797da1e5485b2a6c87ca3eaa00c5de6ed6",
+  "platform-protocol-specs.md": "ba9c69adfca7fb4a0dd982464b0ca69dd5a21de1e340edbe23b075ec0fb0c35c"
 }

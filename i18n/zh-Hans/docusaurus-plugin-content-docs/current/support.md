@@ -33,6 +33,8 @@ Discord 适合：
 - 早期反馈
 - 社区协作
 
+https://discord.gg/xu5aDDpqVy
+
 社区支持以尽力而为的方式提供，通常足以满足开发、实验以及许多生产场景的需要。
 
 ## 部署支持边界 {#deployment-support-boundary}

@@ -1,5 +1,5 @@
 ---
-title: 工作流流
+title: 工作流输出流
 description: 使用 PHP、Python 和 Rust SDK 生产和消费作用域限于单次运行的持久化输出流。
 tags:
   - service-mode
@@ -9,9 +9,9 @@ tags:
   - rust
 ---
 
-# 工作流流 {#workflow-streams}
+# 工作流输出流 {#workflow-streams}
 
-工作流流是由 Durable Workflow Server 管理的具名输出日志，作用域限于单次运行。PHP、Python 和 Rust 提供类型化的列表、描述、订阅、追加、关闭及错误操作，应用无需自行组装 HTTP 请求。运行时公布 `durable-workflow.v2.workflow-streams.contract@1`；[机器可读的 SDK 矩阵](/workflow-stream-capabilities.json) 记录各 SDK 的精确支持范围。
+工作流输出流是由 Durable Workflow Server 管理的具名输出日志，作用域限于单次运行。PHP、Python 和 Rust 提供类型化的列表、描述、订阅、追加、关闭及错误操作，应用无需自行组装 HTTP 请求。运行时公布 `durable-workflow.v2.workflow-streams.contract@1`；[机器可读的 SDK 矩阵](/workflow-stream-capabilities.json) 记录各 SDK 的精确支持范围。
 
 每条流从 0 开始分配单调递增的偏移量。一页的 `next_offset` 是下次请求的起始偏移量，包含该位置。向消费者交付采用至少一次语义：先完成该页的幂等副作用，再持久化 `next_offset` 检查点。在写入该检查点前崩溃，可能导致条目重新交付。
 
@@ -73,11 +73,11 @@ ctx.close_workflow_stream("progress", None)?;
 | Python | 使用配置的外部存储驱动上传、校验完整性、缓存、获取及解码外部 Avro 信封。未配置驱动时，调用方可以追加或检查不透明的 `payload_reference`。 |
 | Rust | 追加并返回不透明引用及其元数据。当前 Rust SDK 不声明支持外部存储驱动。 |
 
-## 工作流流与嵌入式 MessageStream {#workflow-streams-and-embedded-messagestream}
+## 工作流输出流与嵌入式 MessageStream {#workflow-streams-and-embedded-messagestream}
 
 行为一致的地方采用一致的名称，但两种模型不能互换。
 
-| 概念 | 服务模式工作流流 | 嵌入式 Laravel MessageStream |
+| 概念 | 服务模式工作流输出流 | 嵌入式 Laravel MessageStream |
 | --- | --- | --- |
 | 地址 | 工作流运行 + 流名称 | 工作流实例/运行 + 流键 |
 | 方向 | 仅工作流输出 | 工作流收件箱和发件箱 |
@@ -90,4 +90,4 @@ Waterline 为两种模式使用一个标准化表，展示模式、生命周期�
 
 ## 资格验证 {#qualification}
 
-公开的[工作流流场景清单](/platform-conformance/workflow-stream-runtime-scenarios.json) 要求使用已发布制品验证 PHP 生产者到 Python 和 Rust 消费者、生产者 Worker 重启、消费者重连、生命周期/背压/取消，以及外部载荷引用。发布结果必须记录每个必需场景；仅有源码单元测试不能作为一致性证据。
+公开的[工作流输出流场景清单](/platform-conformance/workflow-stream-runtime-scenarios.json) 要求使用已发布制品验证 PHP 生产者到 Python 和 Rust 消费者、生产者 Worker 重启、消费者重连、生命周期/背压/取消，以及外部载荷引用。发布结果必须记录每个必需场景；仅有源码单元测试不能作为一致性证据。
