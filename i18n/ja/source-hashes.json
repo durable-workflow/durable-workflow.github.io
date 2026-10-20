@@ -88,5 +88,6 @@
   "deployment.md": "2eadca4ea3703d0b09bb7e885eaafe84dc2f7eb7c1a9904dc5649f086f629258",
   "constraints/structural-limits.md": "dec64eb7c8261b64a687938072e73dadf519511b132fc7b6542c96f44a8d3037",
   "features/schedules.md": "73dd4d49bfb61d5ecafc0fb799136fc170d8cd33781ff00f40893efe4e0de0d6",
-  "polyglot/worker-protocol.md": "007e844b0a7ab284b7cd343e79f01a27a0dabee3fe4cf19064170581bb897b85"
+  "polyglot/worker-protocol.md": "007e844b0a7ab284b7cd343e79f01a27a0dabee3fe4cf19064170581bb897b85",
+  "features/webhooks.md": "edcdfc05ccb0d34a77c51594f85bc3cab343e787f8e0e08d2cd4ddebd048e8c8"
 }
