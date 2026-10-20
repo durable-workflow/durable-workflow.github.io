@@ -13,6 +13,8 @@ Kind-Workflows und Signale bleiben in ihrem ursprünglichen Namespace. Ein ander
 
 Registrieren Sie den Zielkatalog und dessen Handler, bevor Sie den aufrufenden Workflow starten. Der [Leitfaden zum Service-Modus](../polyglot/service-operations.md) erläutert den gemeinsamen Katalog, die Grenzrichtlinie und die unabhängig veröffentlichten SDK-Schnittstellen.
 
+Die eingebettete Hilfsfunktion verwendet den eigenen Service-Katalog und die Steuerungsebene der Anwendungs-Runtime. Sie verbindet sich nicht selbst mit einem entfernten Server. Verwenden Sie das PHP SDK für einen aufrufenden Remote-Worker im Service-Modus.
+
 ```php
 use Workflow\V2\Support\ServiceOperationOptions;
 use Workflow\V2\Workflow;

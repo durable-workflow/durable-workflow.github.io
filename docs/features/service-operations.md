@@ -20,6 +20,8 @@ Register the target catalog and its handler before starting the caller. The
 [service-mode guide](../polyglot/service-operations.md) explains the shared
 catalog, boundary policy and independently published SDK surfaces.
 
+The embedded helper uses the application runtime’s own service catalog and control plane. It does not connect itself to a remote Server. Use the PHP SDK when the caller is a remote service-mode worker.
+
 ```php
 use Workflow\V2\Support\ServiceOperationOptions;
 use Workflow\V2\Workflow;

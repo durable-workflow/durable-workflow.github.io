@@ -13,6 +13,8 @@ Los workflows hijo y las señales permanecen en su espacio de nombres original. 
 
 Registra el catálogo de destino y su manejador antes de iniciar el workflow llamante. La [guía del modo servicio](../polyglot/service-operations.md) explica el catálogo compartido, la política de límites y las interfaces de SDK publicadas de forma independiente.
 
+La función auxiliar integrada usa el catálogo de servicios y el plano de control del propio runtime de la aplicación. No se conecta por sí sola a un Server remoto. Usa el PHP SDK cuando el llamante sea un worker remoto en modo servicio.
+
 ```php
 use Workflow\V2\Support\ServiceOperationOptions;
 use Workflow\V2\Workflow;

@@ -13,6 +13,8 @@ Workflows filhos e sinais permanecem no namespace original. Alterar o nome do ti
 
 Registre o catálogo de destino e seu handler antes de iniciar o workflow chamador. O [guia do modo serviço](../polyglot/service-operations.md) explica o catálogo compartilhado, a política de fronteira e as interfaces dos SDKs publicadas separadamente.
 
+A função auxiliar embarcada usa o catálogo de serviços e o plano de controle do próprio runtime da aplicação. Ela não se conecta sozinha a um Server remoto. Use o PHP SDK quando o chamador for um worker remoto no modo serviço.
+
 ```php
 use Workflow\V2\Support\ServiceOperationOptions;
 use Workflow\V2\Workflow;

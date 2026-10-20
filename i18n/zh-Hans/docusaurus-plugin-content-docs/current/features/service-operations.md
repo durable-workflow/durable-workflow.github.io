@@ -13,6 +13,8 @@ description: 从嵌入式 PHP 工作流调用其他命名空间的操作。
 
 启动调用方工作流前，先注册目标目录及其处理程序。[服务模式指南](../polyglot/service-operations.md)介绍共享目录、边界策略以及各自独立发布的 SDK 接口。
 
+嵌入式辅助函数使用应用运行时自身的服务目录和控制平面，不会自行连接远程 Server。如果调用方是服务模式的远程 Worker，请使用 PHP SDK。
+
 ```php
 use Workflow\V2\Support\ServiceOperationOptions;
 use Workflow\V2\Workflow;

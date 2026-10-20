@@ -13,6 +13,8 @@ description: 埋め込み PHP ワークフローから別の名前空間の操�
 
 呼び出し元を開始する前に、対象のカタログとハンドラーを登録します。[サービスモードのガイド](../polyglot/service-operations.md)で、共通カタログ、境界ポリシー、個別に公開される SDK のインターフェースを説明しています。
 
+埋め込みヘルパーは、アプリケーションのランタイム自身のサービスカタログと制御プレーンを使います。自動的にリモート Server へ接続するわけではありません。呼び出し元がサービスモードのリモート Worker の場合は PHP SDK を使ってください。
+
 ```php
 use Workflow\V2\Support\ServiceOperationOptions;
 use Workflow\V2\Workflow;

@@ -13,6 +13,8 @@ Les workflows enfants et les signaux restent dans leur espace de noms d’origin
 
 Enregistrez le catalogue cible et son gestionnaire avant de démarrer le workflow appelant. Le [guide du mode service](../polyglot/service-operations.md) décrit le catalogue partagé, la politique de frontière et les interfaces des SDK publiés séparément.
 
+La fonction auxiliaire embarquée utilise le catalogue de services et le plan de contrôle propres au runtime de l’application. Elle ne se connecte pas elle-même à un Server distant. Utilisez le PHP SDK lorsque l’appelant est un worker distant en mode service.
+
 ```php
 use Workflow\V2\Support\ServiceOperationOptions;
 use Workflow\V2\Workflow;
