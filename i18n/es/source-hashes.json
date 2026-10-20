@@ -17,5 +17,11 @@
   "polyglot/avro-value-protocol.md": "602e66c6288c1dd69d2b400c64e4739ad3a0493b5be269cee40f7848b11f260a",
   "polyglot/cancellation.md": "a08aca914d8211d32184fd76f14e4f8bf47d40656e55364923013e3cece3b70d",
   "polyglot/cli-python-parity.md": "acf1acbf15ca9cdf069154699c5fbf8c1d1fd3241a32d201ac10b8ec76c038be",
-  "polyglot/workflow-streams.md": "5675a8ea1b9d0b1f7223fecb90b3b048d3006670bf505950bc783709287a6432"
+  "polyglot/workflow-streams.md": "5675a8ea1b9d0b1f7223fecb90b3b048d3006670bf505950bc783709287a6432",
+  "contribute-a-sample.md": "d250d8c63d448e32d3160ff7a2900e7a270dcbd9cda22cf3af46cdf219395ea3",
+  "platform-protocol-specs.md": "ba9c69adfca7fb4a0dd982464b0ca69dd5a21de1e340edbe23b075ec0fb0c35c",
+  "sample-app.md": "070e0d4523f8228cf4492d2a590df8cd7d121a8c7b521f559629975719fdf515",
+  "support.md": "706807b3902599dda6080f632ec1f893017ea18bbe9585f533dcdbd6d85f4621",
+  "agent-tooling-contract.md": "bafa630abb2be2cefc7a0eb5c6962fd92f1193083cd3993e2aa68bc79530c2bf",
+  "capabilities.md": "c11b11db4cffe5ab2cec77e823fa9e7f33094bf7449a3ee29cbd404d48ac1c3c"
 }

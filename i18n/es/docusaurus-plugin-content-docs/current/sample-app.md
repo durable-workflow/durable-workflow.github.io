@@ -255,7 +255,7 @@ Herramientas predeterminadas:
 | `list_workflows` | Enumera las claves de workflow configuradas, requisitos de credenciales, estados de v2 y, opcionalmente, ejecuciones recientes. |
 | `start_workflow` | Inicia un workflow v2 configurado y devuelve `workflow_id`, `run_id`, estado, clave de negocio y resultado del comando. |
 | `get_workflow_result` | Sondea la ejecución actual o seleccionada y devuelve estado, salida, metadatos de visibilidad y resumen del último fallo. |
-| `get_workflow_history` | Devuelve una cola acotada de eventos tipados del historial v2 y los últimos fallos duraderos para depuración. |
+| `get_workflow_history` | Devuelve un tramo final acotado de eventos tipados del historial v2 y los últimos fallos duraderos para depuración. |
 | `diagnose_workflow` | Clasifica una ejecución seleccionada con datos estructurados, causa raíz, solución y siguientes acciones. |
 | `repair_workflow` | Solicita el comando de reparación integrado de v2 y devuelve un resultado de mutación estructurado: aceptado, rechazado o innecesario. |
 
