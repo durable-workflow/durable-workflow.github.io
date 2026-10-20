@@ -76,7 +76,7 @@ descrita em [aceitação e encerramento de sinais](./signals.md#acceptance-and-c
 A ausência de declarações legadas não autoriza a transferência. Esses sinais
 são encerrados explicitamente na execução antecessora.
 
-Loops de longa duração podem descartar o histórico sem inventar um novo ID público de workflow a cada avanço para uma nova execução.
+Loops de longa duração podem limitar o histórico por execução sem inventar um novo ID público de workflow a cada avanço para uma nova execução.
 
 ## Limites do histórico {#history-budget}
 
@@ -139,7 +139,7 @@ Quando um workflow continua como novo, a nova execução herda automaticamente o
 | Marcador de compatibilidade | Transferido para que a nova execução direcione o mesmo build de worker |
 | Posição do cursor de mensagens | Transferida para que a nova execução saiba quais mensagens de entrada já foram consumidas por [Fluxos de mensagens](./message-streams.md) |
 
-A nova execução inicia com os metadados herdados e pode continuar inserindo e atualizando atributos de busca e memo a partir deles. Assim, um workflow de polling de longa duração pode acumular metadados entre gerações sem perder estado ao descartar o histórico.
+A nova execução inicia com os metadados herdados e pode continuar inserindo e atualizando atributos de busca e memo a partir deles. Assim, um workflow de polling de longa duração pode acumular metadados entre gerações sem perder estado ao passar para uma nova execução com histórico menor.
 
 ```php
 use function Workflow\V2\{activity, continueAsNew, upsertMemo, upsertSearchAttributes};

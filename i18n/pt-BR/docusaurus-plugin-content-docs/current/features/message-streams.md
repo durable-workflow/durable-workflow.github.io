@@ -114,8 +114,8 @@ novo, mensagens de entrada pendentes e a posição do cursor são transferidas
 para a nova execução. Mensagens consumidas permanecem vinculadas à execução
 original como evidência histórica.
 
-Assim, um workflow de longa duração pode descartar o histórico e manter a
-mesma rota pública de mensagens:
+Assim, um workflow de longa duração pode iniciar uma nova execução com um
+histórico menor e manter a mesma rota pública de mensagens:
 
 ```php
 use function Workflow\V2\continueAsNew;
