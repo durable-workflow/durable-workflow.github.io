@@ -289,5 +289,14 @@
   },
   "simulator.timer.title": {
     "message": "Simulateur d'exécution de temporisateur"
+  },
+  "simulator.queryAction": {
+    "message": "🔍 Requête de lecture :"
+  },
+  "simulator.signalAccepted": {
+    "message": "Signal {signal} accepté"
+  },
+  "simulator.signalWaitReceived": {
+    "message": "await() a reçu le signal"
   }
 }
