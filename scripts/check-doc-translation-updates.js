@@ -40,15 +40,35 @@ function checkTranslationUpdates(root, changedPaths, languages = locales) {
   }
 
   if (failures.length) {
-    throw new Error(`Changed guides require all offered languages:\n${failures.join('\n')}`);
+    throw new Error(`Guides require all offered languages:\n${failures.join('\n')}`);
   }
   return guides.length;
+}
+
+function checkCurrentTranslations(root, languages = locales) {
+  // A review hash records the reviewed English revision, not translation fluency.
+  const docsRoot = path.join(root, 'docs');
+  const guides = [];
+
+  function visit(directory) {
+    for (const entry of fs.readdirSync(directory, {withFileTypes: true})) {
+      const file = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        visit(file);
+      } else if (entry.isFile() && /\.mdx?$/.test(entry.name)) {
+        guides.push(`docs/${path.relative(docsRoot, file).split(path.sep).join('/')}`);
+      }
+    }
+  }
+
+  visit(docsRoot);
+  return checkTranslationUpdates(root, guides.sort(), languages);
 }
 
 function checkTranslationUpdatesFromGit(root) {
   const base = process.env.DOCS_TRANSLATION_BASE;
   if (!base) {
-    console.log('Translation update comparison needs DOCS_TRANSLATION_BASE; existing example checks still run.');
+    console.log('Translation update comparison needs DOCS_TRANSLATION_BASE; full current-guide checks still run.');
     return;
   }
   if (!/^[a-f0-9]{40}$/.test(base) || /^0+$/.test(base)) {
@@ -63,4 +83,4 @@ function checkTranslationUpdatesFromGit(root) {
   console.log(`Translation updates match reviewed English sources for ${count} changed guides in all seven other locales.`);
 }
 
-module.exports = {checkTranslationUpdates, checkTranslationUpdatesFromGit};
+module.exports = {checkTranslationUpdates, checkCurrentTranslations, checkTranslationUpdatesFromGit};
