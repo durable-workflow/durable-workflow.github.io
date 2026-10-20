@@ -56,5 +56,6 @@
   "features/signal+timer.md": "65b4a78b9e90a845297b1cb12591dd26a6573f76c75717e1e4ba02211c590822",
   "features/timers.md": "51daf41fede21b6f994bb75851cdb34babdd3117677d00a5fc17189dfe34fa77",
   "features/updates.md": "72da32fa413a3376bea84ab009ce15217238ccc3c57794783789b21b23c7cf18",
-  "polyglot/worker-build-id-rollout.md": "88a2ec730ed0b2f58ff5d49aa1041c758ec491aceda4165fe1f3b06fcfee0278"
+  "polyglot/worker-build-id-rollout.md": "88a2ec730ed0b2f58ff5d49aa1041c758ec491aceda4165fe1f3b06fcfee0278",
+  "polyglot/invocable-carrier.md": "d32d8b5c7c33204b342f977e0af734166d91e96073db1a49ccb4d414a6d67380"
 }
