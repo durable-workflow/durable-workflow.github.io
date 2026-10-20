@@ -123,8 +123,10 @@ comportamento de desligamento e diagnóstico para operadores.
 
 A execução sticky é uma otimização do replay de tarefas de workflow. Um worker
 pode manter um cache de replay aquecido e local ao processo após concluir uma
-tarefa de workflow, e o mecanismo de correspondência pode preferir esse worker
-para a próxima tarefa da mesma execução.
+tarefa de workflow. Se assumir uma tarefa posterior dessa execução, poderá
+reutilizar seu cache válido. A afinidade não reserva tarefas prontas nem dá
+prioridade de correspondência ao proprietário do cache; outro worker elegível
+pode assumir a tarefa e fazer replay do histórico a frio.
 
 A execução sticky não torna o progresso do workflow local ao processo. A
 correção sempre recorre ao replay comum a frio a partir do histórico durável
