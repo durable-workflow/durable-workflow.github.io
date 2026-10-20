@@ -613,9 +613,17 @@ class ApprovalWorkflow:
         self.approved_by = by
 
     def run(self, ctx, *args):
-        yield ctx.schedule_activity("wait_for_approval", [])
-        return {"approved": self.approved, "approved_by": self.approved_by}
+        ready = yield ctx.wait_condition(
+            lambda: self.approved, key="approval.approved", timeout=60,
+        )
+        return {
+            "status": "approved" if ready else "timed_out",
+            "approved": self.approved,
+            "approved_by": self.approved_by,
+        }
 ```
+
+L’attente appartient au workflow, pas à une activité. Son prédicat lit l’état du gestionnaire de signal reconstruit par rejeu ; le worker ne réserve aucun slot d’activité pour cette approbation. Le délai de la condition est distinct des échéances finies de l’exécution individuelle et de l’exécution logique du workflow. Pour terminer un travail externe, utilisez une activité courte qui soumet puis revient, ainsi qu’un [rappel corrélé](./polling-patterns.md#callback-and-signal-completion).
 
 Les décorateurs de réception de requête et de mise à jour permettent de publier
 des noms de gestionnaire stables. Les workers Python exécutent les requêtes
