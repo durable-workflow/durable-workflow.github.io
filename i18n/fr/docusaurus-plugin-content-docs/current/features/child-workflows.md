@@ -8,6 +8,10 @@ L’interface actuelle de `Workflow\V2` prend en charge les workflows enfants du
 
 Une exécution enfant reste une exécution de workflow normale avec ses propres identifiants d’instance et d’exécution. Son statut d’enfant provient du lien durable avec l’exécution parente et d’un `child_call_id` stable émis par le parent pour cet appel.
 
+## Frontière de l’espace de noms {#namespace-boundary}
+
+Un workflow enfant et les signaux envoyés via son handle restent dans l’espace de noms du parent. Choisir un autre type de workflow, langage ou file ne change pas cet espace. Utilisez une [opération de service](./service-operations.md) pour appeler durablement une opération publiée dans un autre espace de noms du même cluster.
+
 ```php
 use function Workflow\V2\child;
 use Workflow\V2\Workflow;

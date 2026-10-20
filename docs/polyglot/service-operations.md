@@ -21,11 +21,14 @@ different language changes that rule.
 | Rust SDK | Authored Nexus waits are not published | Tracked in [Rust SDK #86](https://github.com/durable-workflow/sdk-rust/issues/86). A held draft is not installed support. |
 
 Use the [embedded example](../features/service-operations.md) for a Laravel
-workflow, the [PHP SDK service-call example](https://php.durable-workflow.com/build/workflows-activities/#call-a-registered-service)
+workflow, the [PHP SDK service-call example](https://php.durable-workflow.com/build/workflows-activities/)
 for its straight-line worker API, or the [Python workflow reference](https://python.durable-workflow.com/reference/workflow/)
 for generator-based authoring. Discover the connected runtime's advertised
 service-operation contract before deploying a caller. A client management API
 alone does not prove workflow-worker support.
+
+The PHP SDK's array option is currently the cross-namespace authoring path.
+An equivalent typed option is tracked in [PHP SDK #193](https://github.com/durable-workflow/sdk-php/issues/193).
 
 ## Publish the target operation {#publish-the-target-operation}
 
@@ -57,7 +60,7 @@ curl --fail-with-body -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/service-endpoint
   -H "X-Namespace: billing" \
   -H "X-Durable-Workflow-Control-Plane-Version: 2" \
   -H "Content-Type: application/json" \
-  -d '{"operation_name":"create","operation_mode":"sync","handler_binding_kind":"start_workflow","handler_target_reference":"billing.invoice","handler_binding":{"workflow_type":"billing.invoice","queue":"billing"}}'
+  -d '{"operation_name":"create","operation_mode":"sync","handler_binding_kind":"start_workflow","handler_target_reference":"billing.invoice","handler_binding":{"workflow_type":"billing.invoice","queue":"billing"},"deadline_policy":{"timeout_seconds":30}}'
 ```
 
 The catalog names are normalized to lowercase. Endpoint and service records
@@ -80,9 +83,17 @@ call id for inspection. A later completion does not replace the caller's
 original recorded admission. Choose completion waiting when workflow decisions
 need the target result.
 
-`wait_timeout_seconds` belongs to the original durable waiting contract and
-does not reset on cold replay. Inspect the actual target and call after a
-timeout. Do not assume a timeout means the remote side effect did not occur.
+Bound service execution with the catalog's `deadline_policy`, as above. It
+accepts exactly one positive integer `timeout_seconds` or an offset-bearing
+RFC3339 `deadline_at`. The runtime records one `call_deadline_at` from original
+acceptance. Replay, retries and later catalog edits cannot reset it. A null
+policy does not create a new service deadline.
+
+Do not use the caller's `wait_timeout_seconds` as an execution timeout. A
+one-second waiting option with no catalog deadline can still deliver a target
+that completes after three seconds. Inspect the original call and linked
+target after a timeout; expiration does not prove that external effects did
+not happen, and target cancellation is a separate policy.
 
 ## Failures, retries and idempotency {#failures-retries-and-idempotency}
 
@@ -102,8 +113,8 @@ open histories. Use a workflow version branch when that durable intent changes.
 
 ## Enforce the namespace boundary {#enforce-the-namespace-boundary}
 
-Cross-namespace service calls default to `allow` when no more specific boundary
-rule applies. Authentication, role checks and namespace authorization still
+The cross-namespace default is `allow`. Authentication, role checks, other
+boundary policies and namespace authorization still
 apply. Caller identity comes from the leased workflow; application input cannot
 impersonate a different caller namespace.
 
@@ -115,7 +126,7 @@ DW_SERVICE_BOUNDARY_CROSS_NAMESPACE_DEFAULT=deny
 ```
 
 The policy refuses the cross-namespace call before handler dispatch. Same-
-namespace calls and other, more specific policies still need their own review.
+namespace calls and other boundary policies still need their own review.
 Do not treat this variable as a replacement for credentials or tenant ACLs.
 
 ## Inspect the original call {#inspect-the-original-call}

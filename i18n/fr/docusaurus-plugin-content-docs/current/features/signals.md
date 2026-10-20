@@ -18,6 +18,10 @@ import SignalSimulator from '@site/src/components/SignalSimulator';
 
 Les signaux permettent de déclencher des événements dans un workflow depuis l’extérieur. Ils servent à réagir à des événements externes, permettre des *interventions humaines* ou signaler la fin d’une tâche externe. Pour des entrées répétées et ordonnées avec progression durable d’un curseur, utilisez les [Flux de messages](./message-streams.md).
 
+## Frontière de l’espace de noms {#namespace-boundary}
+
+Un signal ordinaire cible un workflow dans l’espace de noms du client. Le handle d’un enfant conserve aussi son espace d’origine. Utilisez une [opération de service](./service-operations.md) pour une opération publiée dans un autre espace. Changer un id de workflow ou une file ne confère aucune autorité entre espaces de noms.
+
 ## Acceptation et clôture {#acceptance-and-closure}
 
 `signal_received` confirme l’acceptation durable. Il ne confirme pas que le code

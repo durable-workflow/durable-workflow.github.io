@@ -37,7 +37,6 @@ final class CreateInvoice extends Workflow
                 targetNamespace: 'billing',
                 modeOverride: 'sync',
                 waitFor: 'completed',
-                waitTimeoutSeconds: 30,
             ),
         );
 
@@ -75,10 +74,13 @@ the same intended operation and request. Do not change it just because a
 response was lost or a wait expired. Inspect the original call before deciding
 whether another business operation is safe.
 
-The original call deadline still applies after worker replacement. A wait
-budget is not a fresh sleep on every replay. Keep workflow and service budgets
-consistent, and inspect the target after a timeout instead of assuming its
-external effects did not happen.
+Set the operation's catalog `deadline_policy` to bound service execution. Its
+`timeout_seconds` is resolved once from original acceptance into
+`call_deadline_at`; an offset-bearing `deadline_at` is the alternative. Worker
+replacement and replay do not renew that deadline. `waitTimeoutSeconds` is not
+the service execution deadline. Keep workflow and service budgets consistent,
+and inspect the target after a timeout instead of assuming its external effects
+did not happen.
 
 ## Related guides {#related-guides}
 

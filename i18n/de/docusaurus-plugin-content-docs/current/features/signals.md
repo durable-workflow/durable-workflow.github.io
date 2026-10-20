@@ -22,6 +22,10 @@ Eingriffe* oder zur Meldung des Abschlusses einer externen Aufgabe.
 Verwenden Sie für wiederholte geordnete Eingaben mit dauerhaftem
 Cursor-Fortschritt [Nachrichtenströme](./message-streams.md).
 
+## Namespace-Grenze {#namespace-boundary}
+
+Ein gewöhnliches Signal adressiert einen Workflow im Namespace des Clients. Auch ein Kind-Handle behält seinen ursprünglichen Namespace. Verwenden Sie für eine veröffentlichte Operation eines anderen Namespace eine [Service-Operation](./service-operations.md). Eine andere Workflow-ID oder Queue verleiht keine Namespace-übergreifende Berechtigung.
+
 ## Annahme und Abschluss {#acceptance-and-closure}
 
 `signal_received` bestätigt die dauerhafte Annahme. Es bestätigt nicht, dass

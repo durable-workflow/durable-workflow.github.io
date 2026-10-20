@@ -18,6 +18,10 @@ import SignalSimulator from '@site/src/components/SignalSimulator';
 
 信号允许从工作流外部触发工作流中的事件，适用于响应外部事件、允许*人工参与*干预，或通知外部任务完成。需要重复有序输入及持久游标推进时，请使用[消息流](./message-streams.md)。
 
+## 命名空间边界 {#namespace-boundary}
+
+普通信号以客户端命名空间中的工作流为目标。子工作流句柄也保留原命名空间。对于另一个命名空间发布的操作，请使用[服务操作](./service-operations.md)。更改工作流 id 或队列并不授予跨命名空间权限。
+
 ## 接受与关闭 {#acceptance-and-closure}
 
 `signal_received` 确认持久接受，不确认工作流代码已处理信号。业务操作需要确认时，请检查信号保留的状态和历史。
