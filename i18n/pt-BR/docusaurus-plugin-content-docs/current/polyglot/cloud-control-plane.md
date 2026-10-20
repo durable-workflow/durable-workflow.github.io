@@ -134,7 +134,7 @@ selecionado seja o binário ativo.
 No [painel Cloud](https://cloud.durable-workflow.com/), crie organização,
 projeto, ambiente e namespace e selecione seu plano de capacidade. Criar uma
 conta ou definição de namespace não provisiona capacidade paga. Conclua a
-configuração de pagamento pelo Stripe e selecione **Provision** na página do
+configuração de pagamento pelo Stripe e selecione **Provisionar** (**Provision**) na página do
 namespace. Adicionar um cartão sozinho não inicia o provisionamento.
 
 O provisionamento é assíncrono. A página do namespace atualiza o progresso
