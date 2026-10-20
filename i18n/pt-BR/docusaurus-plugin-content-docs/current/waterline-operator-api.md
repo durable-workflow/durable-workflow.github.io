@@ -199,7 +199,7 @@ resposta a incidentes. Em particular:
 | `queue_visibility.task_queues[].stats.*` | Pendências locais da fila, idade das pendências, contagens de pollers, tarefas de workflow/atividade prontas versus sob lease e fatos de fluxo por fila `tasks_added_last_minute` / `tasks_dispatched_last_minute`. |
 | `queue_visibility.task_queues[].repair.*` | Pressão de reparo local da fila, incluindo candidatos, falhas de despacho, leases expiradas, contagens de despacho atrasado e a maior idade de cada condição. |
 | `coordination_alerts[]` | Avisos e erros agregados das verificações de saúde, além de riscos de visibilidade das filas, como pendências sem pollers, pollers desatualizados ou candidatos antigos a reparo. |
-| `checks[]`, `categories.*` | Verificações de saúde v2 bloqueantes ou consultivas, com `category = correctness | acceleration` por verificação e agregações de categoria usadas pelo Waterline na interface de workers. |
+| `checks[]`, `categories.*` | Verificações de saúde v2 bloqueantes ou consultivas, com `category = correctness \| acceleration` por verificação e agregações de categoria usadas pelo Waterline na interface de workers. |
 | `engine_source`, `readiness_contract` | Se o Waterline está usando ativamente a ponte de operação v2 e qual contrato de prontidão rege esse estado. |
 
 Os campos de fluxo de fila respondem a uma pergunta específica: a entrada

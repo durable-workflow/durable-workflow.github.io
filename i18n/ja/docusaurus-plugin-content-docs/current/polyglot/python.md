@@ -162,13 +162,13 @@ async with Client(
 | 引数 | 型 | 既定値 | 用途 |
 | --- | --- | --- | --- |
 | `base_url` | `str` | 必須 | `/api` を含まない Server のオリジン。 |
-| `token` | `str | None` | `None` | 1つの Bearer トークンで両プレーンの呼び出しを認可する場合。 |
-| `control_token` | `str | None` | `None` | コントロールプレーンと Worker ポーリングで別の Bearer トークンが必要な場合。 |
-| `worker_token` | `str | None` | `None` | Worker プレーンと運用呼び出しで別の Bearer トークンが必要な場合。 |
+| `token` | `str \| None` | `None` | 1つの Bearer トークンで両プレーンの呼び出しを認可する場合。 |
+| `control_token` | `str \| None` | `None` | コントロールプレーンと Worker ポーリングで別の Bearer トークンが必要な場合。 |
+| `worker_token` | `str \| None` | `None` | Worker プレーンと運用呼び出しで別の Bearer トークンが必要な場合。 |
 | `namespace` | `str` | `"default"` | `X-Namespace` で Server の名前空間を指定する。 |
 | `timeout` | `float` | `60.0` | 既定の HTTP タイムアウトを上書きする。 |
-| `retry_policy` | `TransportRetryPolicy | None` | 既定のポリシー | 一時的な HTTP 失敗のトランスポート再試行を調整する。 |
-| `metrics` | `MetricsRecorder | None` | 何もしない | カスタム記録先へクライアントと Worker のメトリクスを出力する。 |
+| `retry_policy` | `TransportRetryPolicy \| None` | 既定のポリシー | 一時的な HTTP 失敗のトランスポート再試行を調整する。 |
+| `metrics` | `MetricsRecorder \| None` | 何もしない | カスタム記録先へクライアントと Worker のメトリクスを出力する。 |
 | `payload_size_limit_bytes` | `int` | SDK 既定値 | Server の最大ペイロードバイト数契約に合わせる。 |
 | `payload_size_warning_threshold_percent` | `int` | SDK 既定値 | 設定した上限に達する前に警告する。 |
 | `payload_size_warnings` | `bool` | `True` | テストや管理されたスクリプトでローカルのサイズ警告を無効にする。 |

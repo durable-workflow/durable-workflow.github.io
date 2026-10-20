@@ -195,7 +195,7 @@ leur interprétation lors des déploiements et incidents. En particulier :
 | `queue_visibility.task_queues[].stats.*` | Retard et ancienneté par file, nombre de pollers, tâches de workflow/activité prêtes ou louées et débits `tasks_added_last_minute` / `tasks_dispatched_last_minute` de la file. |
 | `queue_visibility.task_queues[].repair.*` | Pression de réparation locale : candidats, échecs de distribution, baux expirés, distributions en retard et ancienneté maximale de chaque condition. |
 | `coordination_alerts[]` | Synthèse d'avertissements et erreurs des contrôles de santé et des risques des files : retard sans pollers, pollers périmés ou anciens candidats à la réparation. |
-| `checks[]`, `categories.*` | Contrôles de santé v2 bloquants ou indicatifs, avec `category = correctness | acceleration` par contrôle et synthèses de catégorie utilisées dans la vue workers. |
+| `checks[]`, `categories.*` | Contrôles de santé v2 bloquants ou indicatifs, avec `category = correctness \| acceleration` par contrôle et synthèses de catégorie utilisées dans la vue workers. |
 | `engine_source`, `readiness_contract` | Utilisation active du pont opérateur v2 et contrat de disponibilité régissant cet état. |
 
 Les champs de débit répondent à une question précise : les entrées durables

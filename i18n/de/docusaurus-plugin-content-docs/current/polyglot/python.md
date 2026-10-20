@@ -197,13 +197,13 @@ async with Client(
 | Argument | Typ | Standard | Verwenden, wenn |
 | --- | --- | --- | --- |
 | `base_url` | `str` | erforderlich | Server-Ursprung ohne `/api`. |
-| `token` | `str | None` | `None` | Ein Bearer-Token soll Control-Plane- und Worker-Plane-Aufrufe autorisieren. |
-| `control_token` | `str | None` | `None` | Control-Plane-Aufrufe benötigen ein anderes Bearer-Token als Worker-Abfragen. |
-| `worker_token` | `str | None` | `None` | Worker-Plane-Aufrufe benötigen ein anderes Bearer-Token als Betriebsaufrufe. |
+| `token` | `str \| None` | `None` | Ein Bearer-Token soll Control-Plane- und Worker-Plane-Aufrufe autorisieren. |
+| `control_token` | `str \| None` | `None` | Control-Plane-Aufrufe benötigen ein anderes Bearer-Token als Worker-Abfragen. |
+| `worker_token` | `str \| None` | `None` | Worker-Plane-Aufrufe benötigen ein anderes Bearer-Token als Betriebsaufrufe. |
 | `namespace` | `str` | `"default"` | Server-Namespace über `X-Namespace` ansprechen. |
 | `timeout` | `float` | `60.0` | Standard-HTTP-Timeout überschreiben. |
-| `retry_policy` | `TransportRetryPolicy | None` | Standardrichtlinie | Transportwiederholungen für vorübergehende HTTP-Fehler abstimmen. |
-| `metrics` | `MetricsRecorder | None` | ohne Wirkung | Client- und Worker-Metriken an einen eigenen Recorder ausgeben. |
+| `retry_policy` | `TransportRetryPolicy \| None` | Standardrichtlinie | Transportwiederholungen für vorübergehende HTTP-Fehler abstimmen. |
+| `metrics` | `MetricsRecorder \| None` | ohne Wirkung | Client- und Worker-Metriken an einen eigenen Recorder ausgeben. |
 | `payload_size_limit_bytes` | `int` | SDK-Standard | Vertrag des Servers zur maximalen Nutzlastgröße abbilden. |
 | `payload_size_warning_threshold_percent` | `int` | SDK-Standard | Vor Erreichen der konfigurierten Nutzlastgrenze warnen. |
 | `payload_size_warnings` | `bool` | `True` | Lokale Nutzlastgrößenwarnungen in Tests oder kontrollierten Skripten deaktivieren. |

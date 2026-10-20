@@ -80,7 +80,7 @@
   "polyglot/php.md": "9ab2f2b6cb617475e3873609667f7c40eaeed8512f1f041834d74bb63d1a6040",
   "polyglot/portable-worker-affinity.md": "40973c6a31a76845b4f95e9a505e68ad76abd5174bbdccf37993cdebc8904959",
   "polyglot/prerelease-history-migration.md": "a57f05f492228a8a67791f9152648a1e5f80856325b78777cf63b6ef49b7413c",
-  "polyglot/python.md": "18c872ffee086853f50efc51a3dc193d7953d5eaaad72e44aa36a3a4379d6070",
+  "polyglot/python.md": "61cc21945d97c755cb81a904234252f9dfce042bd171d1ae4d9a9f3f1b1fb428",
   "polyglot/rust-cloud-quickstart.md": "2303434fc9302a81a8381ad4836423ef9952eb3201a4574c432254e3cb68c5f3",
   "polyglot/rust.md": "b5d3b44c4e68e8b707804001bc46bd5e758b0180eec2a9a2ebdb69a6183dced5",
   "polyglot/server-api-reference.md": "6029fa5573106ebb40d4cf6fc384c4c5aa3ac77d435b3d2c30c4c505cce7ac23",
@@ -100,5 +100,5 @@
   "sponsors.md": "e85e14375743ca8fa50e3a48f894b160e28272573aa88480064f74010ebee98a",
   "support.md": "706807b3902599dda6080f632ec1f893017ea18bbe9585f533dcdbd6d85f4621",
   "testing.md": "e0e33204c80d777adfc04fe4d4842632c784b4a289ebcf1ef84eccfcd5ba2202",
-  "waterline-operator-api.md": "d858c9fe75b495106157ab11d6f7f2d4ad5aeaa94346342398cb8bafdd069d6d"
+  "waterline-operator-api.md": "dd6b4a8256362c56d5d0c99b9049dd4791396be29334bbff081d593cebb53c0f"
 }

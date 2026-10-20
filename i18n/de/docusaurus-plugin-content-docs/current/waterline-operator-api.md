@@ -137,7 +137,7 @@ Die [Betriebsgrenzen für Operatoren](./operator-operating-envelope.md) definier
 | `queue_visibility.task_queues[].stats.*` | Warteschlangenlokaler Rückstau, dessen Alter, Pollerzahlen, bereite gegenüber mit Lease versehenen Workflow-/Aktivitätsaufgaben und Flusswerte `tasks_added_last_minute` / `tasks_dispatched_last_minute` je Warteschlange. |
 | `queue_visibility.task_queues[].repair.*` | Warteschlangenlokaler Reparaturdruck, einschließlich Kandidaten, Zuteilungsfehlern, abgelaufenen Leases, überfälligen Zuteilungen und jeweils höchstem Alter. |
 | `coordination_alerts[]` | Zusammengefasste Warnungen und Fehler aus Zustandsprüfungen und Warteschlangensichtbarkeitsrisiken wie Rückstau ohne Poller, veralteten Pollern oder überalterten Reparaturkandidaten. |
-| `checks[]`, `categories.*` | Blockierende und hinweisende v2-Zustandsprüfungen mit `category = correctness | acceleration` je Prüfung sowie den Kategoriezusammenfassungen der Worker-Ansicht. |
+| `checks[]`, `categories.*` | Blockierende und hinweisende v2-Zustandsprüfungen mit `category = correctness \| acceleration` je Prüfung sowie den Kategoriezusammenfassungen der Worker-Ansicht. |
 | `engine_source`, `readiness_contract` | Ob Waterline die v2-Operator-Bridge aktiv verwendet und welcher Bereitschaftsvertrag diesen Zustand regelt. |
 
 Die Warteschlangenflussfelder beantworten eine konkrete Operatorfrage: Trifft dauerhafte Warteschlangeneingabe schneller ein, als das System sie zuteilt? `tasks_added_last_minute` zählt unterschiedliche dauerhafte Aufgabenzeilen, die in den letzten 60 Sekunden erstellt wurden. `tasks_dispatched_last_minute` zählt unterschiedliche dauerhafte Aufgabenzeilen, deren letzte erfolgreiche Zuteilung in dasselbe Fenster fällt.

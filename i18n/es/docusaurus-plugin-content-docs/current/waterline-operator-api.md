@@ -191,7 +191,7 @@ interpretar estos diagnósticos en despliegues e incidentes. En concreto:
 | `queue_visibility.task_queues[].stats.*` | Trabajo pendiente y antigüedad de la cola, número de sondeadores, tareas de workflow/actividad listas frente a tareas con lease, y flujos `tasks_added_last_minute` / `tasks_dispatched_last_minute` por cola. |
 | `queue_visibility.task_queues[].repair.*` | Presión de reparación por cola: candidatos, fallos de despacho, leases vencidos, despachos atrasados y antigüedad máxima de cada condición. |
 | `coordination_alerts[]` | Advertencias y errores agregados de salud y riesgos de colas: trabajo pendiente sin sondeadores, sondeadores obsoletos o candidatos de reparación antiguos. |
-| `checks[]`, `categories.*` | Comprobaciones v2 bloqueantes e informativas, con `category = correctness | acceleration` por comprobación y los agregados por categoría que usa Waterline para workers. |
+| `checks[]`, `categories.*` | Comprobaciones v2 bloqueantes e informativas, con `category = correctness \| acceleration` por comprobación y los agregados por categoría que usa Waterline para workers. |
 | `engine_source`, `readiness_contract` | Si Waterline usa activamente el puente de operador v2 y qué contrato de disponibilidad rige ese estado. |
 
 Los campos de flujo responden a si la entrada duradera llega más rápido de lo

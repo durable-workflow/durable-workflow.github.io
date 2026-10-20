@@ -203,13 +203,13 @@ async with Client(
 | Argument | Type | Défaut | Usage |
 | --- | --- | --- | --- |
 | `base_url` | `str` | obligatoire | Origine Server sans `/api`. |
-| `token` | `str | None` | `None` | Un jeton porteur autorise les appels des deux plans. |
-| `control_token` | `str | None` | `None` | Les appels de contrôle nécessitent un autre jeton que les interrogations worker. |
-| `worker_token` | `str | None` | `None` | Les appels worker nécessitent un autre jeton que les appels opérateur. |
+| `token` | `str \| None` | `None` | Un jeton porteur autorise les appels des deux plans. |
+| `control_token` | `str \| None` | `None` | Les appels de contrôle nécessitent un autre jeton que les interrogations worker. |
+| `worker_token` | `str \| None` | `None` | Les appels worker nécessitent un autre jeton que les appels opérateur. |
 | `namespace` | `str` | `"default"` | Cibler un espace de noms via `X-Namespace`. |
 | `timeout` | `float` | `60.0` | Surcharger le délai HTTP. |
-| `retry_policy` | `TransportRetryPolicy | None` | politique par défaut | Ajuster les nouvelles tentatives de transport pour les échecs HTTP transitoires. |
-| `metrics` | `MetricsRecorder | None` | sans effet | Émettre les métriques client et worker vers un enregistreur personnalisé. |
+| `retry_policy` | `TransportRetryPolicy \| None` | politique par défaut | Ajuster les nouvelles tentatives de transport pour les échecs HTTP transitoires. |
+| `metrics` | `MetricsRecorder \| None` | sans effet | Émettre les métriques client et worker vers un enregistreur personnalisé. |
 | `payload_size_limit_bytes` | `int` | défaut SDK | Respecter le contrat maximal d'octets du serveur. |
 | `payload_size_warning_threshold_percent` | `int` | défaut SDK | Avertir avant d'atteindre la limite configurée. |
 | `payload_size_warnings` | `bool` | `True` | Désactiver les avertissements locaux de taille dans les tests ou scripts contrôlés. |

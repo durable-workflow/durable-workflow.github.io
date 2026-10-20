@@ -196,13 +196,13 @@ async with Client(
 | Argument | Type | Default | Use when |
 | --- | --- | --- | --- |
 | `base_url` | `str` | required | Server origin, without `/api`. |
-| `token` | `str | None` | `None` | One bearer token should authorize both control-plane and worker-plane calls. |
-| `control_token` | `str | None` | `None` | Control-plane calls need a different bearer token than worker polling. |
-| `worker_token` | `str | None` | `None` | Worker-plane calls need a different bearer token than operator calls. |
+| `token` | `str \| None` | `None` | One bearer token should authorize both control-plane and worker-plane calls. |
+| `control_token` | `str \| None` | `None` | Control-plane calls need a different bearer token than worker polling. |
+| `worker_token` | `str \| None` | `None` | Worker-plane calls need a different bearer token than operator calls. |
 | `namespace` | `str` | `"default"` | Target a server namespace through `X-Namespace`. |
 | `timeout` | `float` | `60.0` | Override the default HTTP timeout. |
-| `retry_policy` | `TransportRetryPolicy | None` | default policy | Tune transport retries for transient HTTP failures. |
-| `metrics` | `MetricsRecorder | None` | no-op | Emit client and worker metrics to a custom recorder. |
+| `retry_policy` | `TransportRetryPolicy \| None` | default policy | Tune transport retries for transient HTTP failures. |
+| `metrics` | `MetricsRecorder \| None` | no-op | Emit client and worker metrics to a custom recorder. |
 | `payload_size_limit_bytes` | `int` | SDK default | Match the server's max payload-byte contract. |
 | `payload_size_warning_threshold_percent` | `int` | SDK default | Warn before a payload reaches the configured limit. |
 | `payload_size_warnings` | `bool` | `True` | Disable local payload-size warnings in tests or controlled scripts. |
