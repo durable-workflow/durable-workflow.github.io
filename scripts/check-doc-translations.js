@@ -4,6 +4,7 @@ const path = require('node:path');
 const {createHash} = require('node:crypto');
 
 const root = path.resolve(__dirname, '..');
+require('./check-doc-translation-updates').checkTranslationUpdatesFromGit(root);
 const locales = {es: 'Spanish', 'pt-BR': 'Brazilian Portuguese', 'zh-Hans': 'Simplified Chinese', ja: 'Japanese', fr: 'French', de: 'German'};
 
 function codeBlocks(file) {
