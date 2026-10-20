@@ -48,7 +48,7 @@
     "message": "Choisir un déploiement"
   },
   "homepage.description": {
-    "message": "Une plateforme d’exécution durable pour PHP, Python et Rust. Cloud géré, Server auto-hébergé ou intégration Laravel."
+    "message": "Une plateforme d’exécution durable indépendante des langages pour PHP, Python et Rust, disponible en Cloud géré, Server auto-hébergé ou runtime Laravel embarqué."
   },
   "homepage.cloudDescription": {
     "message": "Exécutez vos workers PHP, Python et Rust dans un espace de noms géré. Durable Workflow prend en charge l’orchestration et l’exploitation du runtime."
@@ -63,7 +63,7 @@
     "message": "Choisissez qui exploite le runtime"
   },
   "homepage.features.runtime.description": {
-    "message": "Utilisez Durable Workflow Cloud, exploitez votre propre Server ou intégrez le runtime à votre application Laravel. Choisissez selon vos besoins."
+    "message": "Utilisez Durable Workflow Cloud, exploitez le Server autonome ou gardez le runtime embarqué natif Laravel dans votre application."
   },
   "homepage.features.recovery.title": {
     "message": "Reprenez après une défaillance"
@@ -72,13 +72,13 @@
     "message": "Historique durable, relecture déterministe, temporisateurs, nouvelles tentatives, signaux, mises à jour, workflows enfants et sagas pour vos processus de longue durée."
   },
   "promotion.eyebrow": {
-    "message": "Service géré · accès limité"
+    "message": "Service géré · cohorte limitée"
   },
   "promotion.title": {
-    "message": "Accès anticipé à Durable Workflow Cloud"
+    "message": "Cohorte de lancement de Durable Workflow Cloud"
   },
   "promotion.requestAccess": {
-    "message": "Demander l’accès"
+    "message": "Demander un accès anticipé"
   },
   "navbar.github.repository": {
     "message": "Dépôt GitHub"
@@ -94,5 +94,209 @@
   },
   "navbar.github.stars": {
     "message": "Étoiles GitHub"
+  },
+  "authority.identity": {
+    "message": "La référence lisible par machine est publiée à {manifest} avec le schéma {schema}, version {version}."
+  },
+  "protocolCatalog.specId": {
+    "message": "Identifiant de spécification"
+  },
+  "protocolCatalog.publicSpec": {
+    "message": "Spécification publique"
+  },
+  "protocolCatalog.formatStatus": {
+    "message": "Format et état"
+  },
+  "protocolCatalog.owner": {
+    "message": "Contrat responsable"
+  },
+  "protocolCatalog.objectFamilies": {
+    "message": "Familles d'objets et contrats responsables"
+  },
+  "workerAuthority.title": {
+    "message": "Rôles des références du protocole worker"
+  },
+  "workerAuthority.description": {
+    "message": "La découverte du runtime et la qualification de conformité utilisent des références de protocole distinctes. Choisissez la ligne correspondant à votre tâche. Une même étiquette de version ne fait pas d'un résolveur historique versionné un alias de la référence Server non versionnée."
+  },
+  "workerAuthority.role": {
+    "message": "Rôle"
+  },
+  "workerAuthority.marker": {
+    "message": "Marqueur actuel"
+  },
+  "workerAuthority.resolver": {
+    "message": "Référence du résolveur"
+  },
+  "workerAuthority.currentServer": {
+    "message": "Protocole du Server publié actuel"
+  },
+  "workerAuthority.serverMirrors": {
+    "message": "Miroirs non versionnés issus de Server :"
+  },
+  "workerAuthority.currentConformance": {
+    "message": "Cible actuelle de conformité Workflow"
+  },
+  "workerAuthority.suiteTarget": {
+    "message": "La suite {suite} cible le protocole {protocol}"
+  },
+  "workerAuthority.fixtures": {
+    "message": "Fixtures versionnées liées à une empreinte :"
+  },
+  "workerAuthority.historicalConformance": {
+    "message": "Associations historiques de conformité conservées"
+  },
+  "workerAuthority.historicalBindings": {
+    "message": "Associations marquées {marker} pour les protocoles {protocols}"
+  },
+  "workerAuthority.historicalRecords": {
+    "message": "Enregistrements immuables des résolveurs et empreintes dans le"
+  },
+  "workerAuthority.manifest": {
+    "message": "manifeste de conformité"
+  },
+  "cliInstall.windowsNote": {
+    "message": "Installe dans %USERPROFILE%\\.durable-workflow\\bin et ajoute ce répertoire à votre PATH utilisateur."
+  },
+  "cliInstall.unixNote": {
+    "message": "Installe dans ~/.local/bin. Définissez DURABLE_WORKFLOW_INSTALL_DIR pour changer ce répertoire."
+  },
+  "cliInstall.detected": {
+    "message": "Plateforme détectée : {platform}."
+  },
+  "cliInstall.switchBack": {
+    "message": "Revenir à cette plateforme"
+  },
+  "cliInstall.verification": {
+    "message": "L'installateur vérifie le manifeste SHA256SUMS de la publication avant d'écrire le binaire."
+  },
+  "cliInstall.directDownload": {
+    "message": "Ou télécharger directement le binaire"
+  },
+  "cliInstall.fromRelease": {
+    "message": "de la"
+  },
+  "cliInstall.stableRelease": {
+    "message": "version stable"
+  },
+  "simulator.try": {
+    "message": "Essayez !"
+  },
+  "simulator.play": {
+    "message": "▶ Lancer"
+  },
+  "simulator.reset": {
+    "message": "🔄 Réinitialiser"
+  },
+  "simulator.stop": {
+    "message": "⏹ Arrêter"
+  },
+  "simulator.pending": {
+    "message": "⏳ En attente"
+  },
+  "simulator.running": {
+    "message": "▶️ En cours"
+  },
+  "simulator.runningHourglass": {
+    "message": "⏳ En cours..."
+  },
+  "simulator.runningArrow": {
+    "message": "▶️ En cours..."
+  },
+  "simulator.completed": {
+    "message": "✅ Terminé"
+  },
+  "simulator.ready": {
+    "message": "⏸️ Prêt"
+  },
+  "simulator.waiting": {
+    "message": "⏸️ En attente..."
+  },
+  "simulator.mode": {
+    "message": "Mode :"
+  },
+  "simulator.mode.series": {
+    "message": "Séquentiel"
+  },
+  "simulator.mode.mix": {
+    "message": "Mixte"
+  },
+  "simulator.mode.parallel": {
+    "message": "Parallèle"
+  },
+  "simulator.series.title": {
+    "message": "Exécution séquentielle"
+  },
+  "simulator.heartbeat.title": {
+    "message": "Simulateur de battements de cœur"
+  },
+  "simulator.withHeartbeat": {
+    "message": "Avec battement de cœur"
+  },
+  "simulator.withoutHeartbeat": {
+    "message": "Sans battement de cœur"
+  },
+  "simulator.loopIterations": {
+    "message": "Itérations de boucle :"
+  },
+  "simulator.totalTime": {
+    "message": "Temps total :"
+  },
+  "simulator.heartbeatElapsed": {
+    "message": "Temps depuis le dernier battement de cœur : {elapsed} / délai de 5s"
+  },
+  "simulator.heartbeatActive": {
+    "message": "💓 Battement de cœur actif"
+  },
+  "simulator.noHeartbeat": {
+    "message": "❌ Délai dépassé : aucun battement de cœur !"
+  },
+  "simulator.output": {
+    "message": "Sortie :"
+  },
+  "simulator.executing": {
+    "message": "Exécution :"
+  },
+  "simulator.passingData.title": {
+    "message": "Simulateur Bonjour le monde"
+  },
+  "simulator.sendSignal": {
+    "message": "📤 Envoyer le signal :"
+  },
+  "simulator.query.title": {
+    "message": "Simulateur de requête de lecture et de signal"
+  },
+  "simulator.waitingSignal": {
+    "message": "⏳ En attente d'un signal"
+  },
+  "simulator.signal.title": {
+    "message": "Simulateur d'exécution de signal"
+  },
+  "simulator.timeoutIn": {
+    "message": "Expiration dans :"
+  },
+  "simulator.signalTimer.title": {
+    "message": "Simulateur de signal et de temporisateur"
+  },
+  "simulator.waitingSignalTimeout": {
+    "message": "⏳ En attente d'un signal ou de l'expiration du délai"
+  },
+  "simulator.signalReceived": {
+    "message": "signal reçu"
+  },
+  "simulator.timeoutReached": {
+    "message": "délai dépassé"
+  },
+  "simulator.timer.title": {
+    "message": "Simulateur d'exécution de temporisateur"
+  },
+  "simulator.queryAction": {
+    "message": "🔍 Requête de lecture :"
+  },
+  "simulator.signalAccepted": {
+    "message": "Signal {signal} accepté"
+  },
+  "simulator.signalWaitReceived": {
+    "message": "await() a reçu le signal"
   }
 }

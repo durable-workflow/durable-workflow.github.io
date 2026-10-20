@@ -16,5 +16,8 @@
   },
   "link.item.label.LLM Docs": {
     "message": "Documentation pour les LLM"
+  },
+  "copyright": {
+    "message": "Copyright © 2026 <a href=\"https://durable-workflow.com\">Durable Workflow</a>."
   }
 }

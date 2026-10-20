@@ -112,7 +112,7 @@ final class ChargeCard extends Activity
 
 ## Effets que l’application doit rendre idempotents {#what-developers-must-make-idempotent}
 
-Le framework gère la relecture en reconstruisant l’état depuis l’historique validé.
+Vous n’avez pas besoin de rendre la relecture du workflow elle-même idempotente. Le framework gère la relecture en reconstruisant l’état depuis l’historique validé.
 
 L’application doit rendre les effets externes sûrs à répéter, notamment :
 

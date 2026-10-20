@@ -108,9 +108,9 @@ L’API écoute uniquement sur l’adresse de boucle locale de cette machine.
 propres identifiants, TLS et contrôles d’accès réseau.
 
 Le second conteneur traite la file d’infrastructure de Server et fait avancer
-les timers durables même lorsque les workers SDK sont arrêtés. Sa file Laravel
+les temporisateurs durables même lorsque les workers SDK sont arrêtés. Sa file Laravel
 s’appelle `default`, distincte des files de tâches SDK ci-dessous. Gardez les
-deux conteneurs en fonctionnement. L’évaluation des calendriers et la
+deux conteneurs en fonctionnement. L’évaluation des planifications et la
 maintenance en production utilisent les rôles supplémentaires du stack Compose.
 
 **Résultat attendu :** la requête de disponibilité réussit et les informations
