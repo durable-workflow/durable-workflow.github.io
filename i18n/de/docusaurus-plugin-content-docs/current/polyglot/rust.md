@@ -127,7 +127,7 @@ Aktivitätsmethoden des Workflow-Kontexts. Wiederholungs- und
 Timeout-Konfiguration zeigen das [ausführbare Beispiel](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs)
 und die [LocalActivityOptions-Referenz](https://rust.durable-workflow.com/durable_workflow/struct.LocalActivityOptions.html).
 
-Server zeichnet das terminale Ergebnis für kalten Replay auf. Nicht
+Server zeichnet das terminale Ergebnis für kaltes Replay auf. Nicht
 festgeschriebene lokale Effekte können nach Worker-Verlust erneut laufen und
 müssen idempotent sein. Asynchrone Callbacks müssen an Tokio abgeben.
 Blockierende Arbeit benötigt separate Prozessüberwachung. Lokale Inline-Ausführung
@@ -430,7 +430,7 @@ Ausführen von Kompensationen fort.
 
 Das Rust SDK zeichnet kleine nicht deterministische Werte mit
 `WorkflowContext::side_effect` auf und leitet deterministische UUIDv4-Werte mit
-`WorkflowContext::uuid_v4` ab. Kalter Replay decodiert den aufgezeichneten Wert,
+`WorkflowContext::uuid_v4` ab. Kaltes Replay decodiert den aufgezeichneten Wert,
 statt den Callback erneut aufzurufen. Umgeordnete, fehlende, doppelte oder
 Codec-inkompatible Marker liefern ein typisiertes `Error::NonDeterministicReplay`.
 
@@ -531,7 +531,7 @@ Handles beider Startmethoden behalten die gewählte `run_id`.
 Wiederverwendung derselben Workflow-ID für einen neueren Lauf kann das Warten
 also nicht still auf dessen Ergebnis umstellen. Erhalten Sie
 `outcome.workflow_id` und `outcome.run_id` in Logs, Metriken und
-Wiederholungseinträgen. Verwenden Sie instanzbezogene Nachschlagen nur, wenn
+Wiederholungseinträgen. Verwenden Sie instanzbezogene Abfragen nur, wenn
 Sie bewusst dem aktuellen Lauf folgen.
 
 ## Workflow-Updates {#workflow-updates}
