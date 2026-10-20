@@ -7,7 +7,7 @@ tags:
   - activities
   - retries
 keywords:
-  - clase de actividad de workflow duradero
+  - clase de actividad de Durable Workflow
   - opciones de actividad
   - efectos secundarios no deterministas
 ---
@@ -20,11 +20,11 @@ Una actividad es una unidad de trabajo que realiza una tarea u operación concre
 Las actividades ordinarias v2 se ejecutan como tareas duraderas en cola. Las
 actividades locales son una primitiva explícita dentro del mismo proceso para
 trabajos breves que también registran historial duradero. Las sesiones de worker
-permiten que varios pasos de actividad duraderos compartan un lease de worker.
-La ejecución persistente es una optimización de reproducción compatible, no un
+permiten que varios pasos de actividad duraderos compartan una lease de worker.
+La ejecución sticky es una optimización de reproducción compatible, no un
 contrato de corrección. Consulta los contratos exactos en [Modelo de ejecución de actividades](/docs/features/activity-execution-model),
 [Actividades locales](/docs/features/local-activities), [Sesiones de worker](/docs/features/worker-sessions)
-y [Ejecución persistente](/docs/features/sticky-execution).
+y [Ejecución sticky](/docs/features/sticky-execution).
 :::
 
 Puedes crear una actividad con el comando Artisan `make:activity`:
@@ -53,7 +53,7 @@ class MyActivity extends Activity
 Cada llamada `activity(...)` registra un comando de actividad en el historial y
 crea una tarea duradera en cola que un worker puede reclamar. Cualquier worker
 compatible puede reclamar actividades ordinarias. Las [sesiones de worker](/docs/features/worker-sessions)
-pueden fijar una secuencia de intentos a un lease de sesión cuando el
+pueden fijar una secuencia de intentos a una lease de sesión cuando el
 workflow elige explícitamente ese contrato.
 
 Si necesitas un valor seguro para la reproducción sin programar trabajo en cola,
@@ -61,8 +61,8 @@ usa [`sideEffect(...)`](/docs/features/side-effects). Para una actividad breve y
 reintentable en el mismo proceso, con tiempo de espera, latidos e historial,
 usa [Actividades locales](/docs/features/local-activities).
 Consulta el modelo completo de ubicación en [Modelo de ejecución de actividades](/docs/features/activity-execution-model)
-y el comportamiento de la caché de reproducción persistente en
-[Ejecución persistente](/docs/features/sticky-execution).
+y el comportamiento de la caché de reproducción sticky en
+[Ejecución sticky](/docs/features/sticky-execution).
 
 ## Idempotencia e identidad duradera {#idempotency-and-durable-identity}
 

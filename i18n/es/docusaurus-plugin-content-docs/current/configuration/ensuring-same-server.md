@@ -56,7 +56,7 @@ accesible para todos los workers aptos.
   breve y reintentable deba ejecutarse dentro del proceso del worker de workflow
   que esté atendiendo la tarea de workflow.
 - Usa una [sesión de worker](/docs/features/worker-sessions) cuando varios pasos
-  de actividad duraderos deban reutilizar un mismo lease de sesión para
+  de actividad duraderos deban reutilizar una misma lease de sesión para
   estado local del proceso, memoria GPU o un sistema de archivos montado local al worker.
 
 Las sesiones de worker siguen aplicando primero el enrutamiento por colas.

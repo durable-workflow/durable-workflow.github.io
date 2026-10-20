@@ -1,7 +1,7 @@
 ---
 sidebar_position: 24
 title: Sesiones de worker
-description: Fija una secuencia de intentos de actividad duraderos a un lease de sesión de worker para afinidad con GPU, sistema de archivos o estado local al proceso.
+description: Fija una secuencia de intentos de actividad duraderos a una lease de sesión de worker para afinidad con GPU, sistema de archivos o estado local al proceso.
 tags:
   - activities
   - workers
@@ -21,9 +21,9 @@ Las sesiones de worker son la primitiva v2 de afinidad de actividades. Úsalas c
 
 ## Resumen del contrato {#contract-summary}
 
-- Una sesión tiene un único propietario del lease a la vez.
-- La primera actividad admitida en la sesión crea o readquiere el lease.
-- Los latidos de actividad renuevan los leases del intento y de la sesión.
+- Una sesión tiene un único propietario de la lease a la vez.
+- La primera actividad admitida en la sesión crea o readquiere la lease.
+- Los latidos de actividad renuevan las leases del intento y de la sesión.
 - `POST /api/worker/sessions`, `POST /api/worker/sessions/{sessionId}/heartbeat` y `DELETE /api/worker/sessions/{sessionId}` exponen operaciones explícitas del ciclo de vida para workers externos.
 - Primero se aplica el enrutamiento por colas; la admisión de sesión ocurre después de registrar el worker para la cola de tareas.
 - Las `capabilities` del registro deben cumplir todos los requisitos de la sesión.
@@ -75,17 +75,17 @@ La instantánea de opciones guarda el mismo contrato en `activity_options.worker
 
 La creación es diferida. La capa de asignación crea o readquiere la sesión cuando la primera tarea de actividad de la sesión se admite en un worker capaz. Un worker también puede crearla explícitamente antes de consultar tareas mediante `POST /api/worker/sessions`.
 
-Una sesión activa termina cuando su titular la cierra, caduca el lease o el TTL absoluto, o se detecta un fallo del worker titular. La caducidad del TTL y el cierre explícito son terminales para ese id de sesión. Tras caducar el lease o detectar una sesión huérfana se puede readquirir si `allow_reacquire_after_failure` es `true`.
+Una sesión activa termina cuando su titular la cierra, caduca la lease o el TTL absoluto, o se detecta un fallo del worker titular. La caducidad del TTL y el cierre explícito son terminales para ese id de sesión. Tras caducar la lease o detectar una sesión huérfana se puede readquirir si `allow_reacquire_after_failure` es `true`.
 
 ## Lease y propiedad {#lease-and-ownership}
 
-Como máximo, un worker posee el lease a la vez. El servidor solo admite tareas de actividad de la sesión si se cumple una de estas condiciones:
+Como máximo, un worker posee la lease a la vez. El servidor solo admite tareas de actividad de la sesión si se cumple una de estas condiciones:
 
 - no existe la sesión y `create_if_missing` es `true`;
 - la sesión activa ya pertenece al worker que consulta;
 - la sesión ha caducado, fallado o quedado huérfana y se permite readquirirla.
 
-La propiedad de sesión no sustituye el lease de cada intento de actividad. Cada uno conserva su `activity_attempt_id`, propietario, latidos y rutas de finalización, fallo, vencimiento y cancelación.
+La propiedad de sesión no sustituye la lease de cada intento de actividad. Cada uno conserva su `activity_attempt_id`, propietario, latidos y rutas de finalización, fallo, vencimiento y cancelación.
 
 ## Admisión y enrutamiento {#admission-and-routing}
 
@@ -93,13 +93,13 @@ Las sesiones participan en el enrutamiento normal por colas. `WorkerSessionOptio
 
 - las `capabilities` registradas deben cubrir todos los requisitos de la sesión;
 - `max_concurrent_activities` limita los intentos de actividad con lease dentro de la sesión;
-- `max_concurrent_worker_sessions` limita los leases de sesión activos de un registro de worker.
+- `max_concurrent_worker_sessions` limita las leases de sesión activos de un registro de worker.
 
 El enrutamiento específico de flota usa cadenas de capacidades simples como `gpu:nvidia-l4`, `gpu:a100`, `fs:/mnt/models` o `zone:us-east-1a`.
 
 ## Fallos, cancelación y apagado {#failure-cancellation-and-shutdown}
 
-Los latidos renuevan los leases del intento y de la sesión. Los workers también pueden renovar la sesión directamente mediante el protocolo. Si caduca su lease, pasa a `expired`; si el latido del registro del worker titular está obsoleto o ausente, pasa a `orphaned`.
+Los latidos renuevan las leases del intento y de la sesión. Los workers también pueden renovar la sesión directamente mediante el protocolo. Si caduca su lease, pasa a `expired`; si el latido del registro del worker titular está obsoleto o ausente, pasa a `orphaned`.
 
 Si el worker muere a mitad de la secuencia, las actividades en curso conservan el comportamiento de al menos una vez: sus leases caducan, la reparación vuelve a permitir reclamarlas y se puede rechazar una finalización obsoleta. Un worker capaz puede readquirir la sesión si el contrato lo permite. El workflow debe prever reconstruir el estado local tras la readquisición.
 
@@ -115,4 +115,4 @@ Los operadores pueden listar sesiones activas, cerradas, caducadas, fallidas y h
 
 Prefiere actividades ordinarias en cola si cada paso es independiente. Prefiere una actividad más grande si toda la operación es un solo efecto secundario atómico. Usa sesiones solo cuando varios pasos duraderos deban reutilizar un recurso local al worker y el workflow tolere reconstruirlo tras un fallo.
 
-Consulta cómo se relacionan con las actividades ordinarias, locales y la ejecución persistente en [Modelo de ejecución de actividades](/docs/features/activity-execution-model).
+Consulta cómo se relacionan con las actividades ordinarias, locales y la ejecución sticky en [Modelo de ejecución de actividades](/docs/features/activity-execution-model).

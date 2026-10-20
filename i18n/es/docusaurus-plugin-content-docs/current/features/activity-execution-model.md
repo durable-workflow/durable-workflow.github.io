@@ -1,7 +1,7 @@
 ---
 sidebar_position: 22
 title: Modelo de ejecución de actividades
-description: Cómo encajan las actividades ordinarias en cola, las actividades locales, las sesiones de worker y la ejecución persistente en Durable Workflow v2.
+description: Cómo encajan las actividades ordinarias en cola, las actividades locales, las sesiones de worker y la ejecución sticky en Durable Workflow v2.
 tags:
   - activities
   - workers
@@ -10,7 +10,7 @@ keywords:
   - modelo de ejecución de actividades
   - actividades locales
   - sesiones de worker
-  - ejecución persistente
+  - ejecución sticky
   - despacho de tareas duraderas
   - actividades en cola
 ---
@@ -24,7 +24,7 @@ Durable Workflow v2 ofrece primitivas explícitas para las opciones habituales d
 - actividades ordinarias en cola para trabajo duradero con leases independientes;
 - [actividades locales](/docs/features/local-activities) para trabajo breve en el mismo proceso que también registra historial de actividad;
 - [sesiones de worker](/docs/features/worker-sessions) para afinidad duradera entre varios pasos de actividad en cola;
-- [ejecución persistente](/docs/features/sticky-execution) para afinidad de la caché de reproducción del workflow, con reproducción ordinaria como alternativa que garantiza la corrección.
+- [ejecución sticky](/docs/features/sticky-execution) para afinidad de la caché de reproducción del workflow, con reproducción ordinaria como alternativa que garantiza la corrección.
 
 ## Actividades ordinarias en cola {#ordinary-queued-activities}
 
@@ -32,11 +32,11 @@ Durable Workflow v2 ofrece primitivas explícitas para las opciones habituales d
 
 1. El código del workflow llama a `activity(MyActivity::class, ...)`.
 2. La tarea de workflow registra `ActivityScheduled` y crea una tarea de actividad duradera en la conexión y cola configuradas.
-3. Un worker compatible reclama esa tarea mediante un lease.
+3. Un worker compatible reclama esa tarea mediante una lease.
 4. El worker ejecuta la clase de actividad y comunica finalización, fallo, cancelación, latido o vencimiento del plazo.
 5. El motor registra el resultado en el historial y reanuda el workflow desde el estado duradero.
 
-Los intentos ordinarios pueden ejecutarse en cualquier worker compatible. Un reintento puede llegar a otro proceso, host o compilación. La actividad debe ser idempotente ante entregas duplicadas, reintentos tras caducar el lease y carreras de finalización tardía. Usa `activity_execution_id` como clave predeterminada de idempotencia remota y `activity_attempt_id` solo si un sistema posterior necesita correlacionar cada intento.
+Los intentos ordinarios pueden ejecutarse en cualquier worker compatible. Un reintento puede llegar a otro proceso, host o compilación. La actividad debe ser idempotente ante entregas duplicadas, reintentos tras caducar la lease y carreras de finalización tardía. Usa `activity_execution_id` como clave predeterminada de idempotencia remota y `activity_attempt_id` solo si un sistema posterior necesita correlacionar cada intento.
 
 ```php
 use function Workflow\V2\activity;
@@ -60,7 +60,7 @@ Las actividades locales siguen registrando el historial normal:
 - `ActivityCancelled`
 - `ActivityTimedOut`
 
-Cada evento local contiene `execution_mode=local` y `local_activity=true`, y la instantánea de ejecución guarda `activity_options.execution_mode=local`. Los latidos de actividad renuevan el lease de la tarea de workflow propietaria mientras se ejecuta el intento local.
+Cada evento local contiene `execution_mode=local` y `local_activity=true`, y la instantánea de ejecución guarda `activity_options.execution_mode=local`. Los latidos de actividad renuevan la lease de la tarea de workflow propietaria mientras se ejecuta el intento local.
 
 Usa actividades locales para efectos secundarios breves e idempotentes que necesiten reintentos, tiempos de espera, latidos, cancelación y visibilidad de actividad, pero no enrutamiento por colas ni una flota independiente de workers de actividad. Consulta el contrato de API, tiempos de espera, reintentos, apagado, reproducción en frío, enrutamiento y métricas en [Actividades locales](/docs/features/local-activities).
 
@@ -77,19 +77,19 @@ $receipt = localActivity(
 
 ## Sesiones de worker {#worker-sessions}
 
-Las sesiones fijan una secuencia de intentos ordinarios en cola a un lease de sesión de worker. Úsalas cuando varios pasos duraderos deban reutilizar recursos locales, como memoria GPU, un sistema de archivos montado o un modelo cargado.
+Las sesiones fijan una secuencia de intentos ordinarios en cola a una lease de sesión de worker. Úsalas cuando varios pasos duraderos deban reutilizar recursos locales, como memoria GPU, un sistema de archivos montado o un modelo cargado.
 
 Una sesión no convierte una actividad en local. Cada actividad de la sesión sigue siendo una tarea duradera con su propio lease, latidos, tiempos de espera, reintentos e historial terminal. La sesión añade reglas explícitas de afinidad y admisión al enrutamiento normal por colas.
 
-Consulta la API de sesión, el ciclo de vida del lease, enrutamiento, fallos, apagado y diagnósticos en [Sesiones de worker](/docs/features/worker-sessions).
+Consulta la API de sesión, el ciclo de vida de la lease, enrutamiento, fallos, apagado y diagnósticos en [Sesiones de worker](/docs/features/worker-sessions).
 
-## Ejecución persistente {#sticky-execution}
+## Ejecución sticky {#sticky-execution}
 
-La ejecución persistente optimiza la reproducción de tareas de workflow. Un worker puede mantener una caché de reproducción caliente local al proceso tras completar una tarea, y la asignación puede preferirlo para la siguiente tarea de la misma ejecución.
+La ejecución sticky optimiza la reproducción de tareas de workflow. Un worker puede mantener una caché de reproducción caliente local al proceso tras completar una tarea, y la asignación puede preferirlo para la siguiente tarea de la misma ejecución.
 
 El progreso del workflow no pasa a ser local al proceso. La corrección siempre puede recurrir a la reproducción ordinaria en frío desde el historial duradero si falta la caché, se reinicia o retira el worker, se despliega otra versión o se expulsa la entrada. El código no debe depender de estado en memoria ajeno al historial.
 
-Consulta el ciclo de vida de la caché, identidad de enrutamiento, reglas de alternativa, controles de despliegue y métricas en [Ejecución persistente](/docs/features/sticky-execution).
+Consulta el ciclo de vida de la caché, identidad de enrutamiento, reglas de alternativa, controles de despliegue y métricas en [Ejecución sticky](/docs/features/sticky-execution).
 
 ## Elegir la primitiva adecuada {#choosing-the-right-primitive}
 

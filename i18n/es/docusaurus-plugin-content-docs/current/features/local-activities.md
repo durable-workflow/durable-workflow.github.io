@@ -18,14 +18,14 @@ keywords:
 
 Las actividades locales son la primitiva v2 para trabajo breve que debe ejecutarse dentro del proceso del worker que atiende la tarea de workflow. Conservan la semántica de reintentos, tiempos de espera, latidos, cancelación, historial y visibilidad para el operador, pero evitan el encolado ordinario de tareas de actividad.
 
-Úsalas cuando el trabajo sea de baja latencia, idempotente y adecuado para el propio worker de workflow. Usa actividades ordinarias en cola si necesitas escalado independiente de workers, enrutamiento por colas, ejecución prolongada o un lease separado de tarea de actividad.
+Úsalas cuando el trabajo sea de baja latencia, idempotente y adecuado para el propio worker de workflow. Usa actividades ordinarias en cola si necesitas escalado independiente de workers, enrutamiento por colas, ejecución prolongada o una lease separada de tarea de actividad.
 
 ## Resumen del contrato {#contract-summary}
 
 - `localActivity(...)` y `Workflow::localActivity(...)` ejecutan la clase de actividad en el mismo proceso que la tarea actual de workflow.
 - El runtime crea una fila `activity_executions` y eventos normales de historial marcados con `execution_mode=local` y `local_activity=true`.
 - No se crea una tarea ordinaria `TaskType::Activity`, por lo que se rechazan `connection`, `queue`, sesión de worker y opciones de enrutamiento entre programación e inicio.
-- El intento local es propietario del lease de la tarea de workflow. `heartbeat()` de actividad renueva ese lease y registra `ActivityHeartbeatRecorded`.
+- El intento local es propietario de la lease de la tarea de workflow. `heartbeat()` de actividad renueva ese lease y registra `ActivityHeartbeatRecorded`.
 - Los reintentos son tareas duraderas de workflow con espera, no reintentos ocultos en un bucle.
 - La reproducción en frío lee historial confirmado. Si un intento local iniciado no tiene evento terminal tras perder el worker, el siguiente intento registra `retry_reason=cold_replay`.
 - Los detalles de ejecución, exportaciones, cronologías y métricas distinguen los intentos locales de los ordinarios en cola.
@@ -84,9 +84,9 @@ La reproducción no vuelve a ejecutar una actividad local completada. La reprodu
 
 ## Latidos {#heartbeats}
 
-Una actividad local no es propietaria de un lease de tarea de actividad. Posee el lease de la tarea de workflow que se está ejecutando. Al comenzar el intento, el runtime renueva ese lease. Cuando la actividad llama a `$this->heartbeat()`, registra el progreso, actualiza el intento y renueva el lease de workflow.
+Una actividad local no es propietaria de una lease de tarea de actividad. Posee la lease de la tarea de workflow que se está ejecutando. Al comenzar el intento, el runtime renueva ese lease. Cuando la actividad llama a `$this->heartbeat()`, registra el progreso, actualiza el intento y renueva la lease de workflow.
 
-Las actividades locales prolongadas deben emitir latidos con frecuencia suficiente para mantener tanto su plazo de latidos como el lease de tarea de workflow:
+Las actividades locales prolongadas deben emitir latidos con frecuencia suficiente para mantener tanto su plazo de latidos como la lease de tarea de workflow:
 
 ```php
 use Workflow\V2\Activity;
@@ -120,7 +120,7 @@ Cada intento local tiene una nueva fila `activity_attempts`. El reintento regist
 
 La cancelación es cooperativa. Una actividad local la observa al emitir latidos, aplicar tiempos de espera y completar intentos. Un intento cancelado registra `ActivityCancelled` con el marcador local.
 
-Si un worker sale antes de confirmar un evento terminal local, caduca el lease de workflow y la reparación normal recupera su tarea. La reproducción en frío lee el historial confirmado. Si contiene un intento local iniciado sin evento terminal, el runtime programa un reintento con `retry_reason=cold_replay`.
+Si un worker sale antes de confirmar un evento terminal local, caduca la lease de workflow y la reparación normal recupera su tarea. La reproducción en frío lee el historial confirmado. Si contiene un intento local iniciado sin evento terminal, el runtime programa un reintento con `retry_reason=cold_replay`.
 
 ## Visibilidad {#visibility}
 
