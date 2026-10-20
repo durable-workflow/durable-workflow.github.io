@@ -69,5 +69,7 @@
   "features/memo.md": "621aa630e37fbef6f84d761c92f99dc3fe8756879008c659cbad0600eb14fd5d",
   "features/message-streams.md": "3bce915ed750793b31360d2accc94eebf2c7f075b9769e072f8a2d3d034afad0",
   "polyglot/cli-reference.md": "b20db162aa91cc85ea64528a061753a99f053b33b6141664ce1194e711c641cc",
-  "polyglot/cli.mdx": "024a3f73e1c700a7fa142ec64a7edde03303f12507f4eb4a9161e0e944f7431b"
+  "polyglot/cli.mdx": "024a3f73e1c700a7fa142ec64a7edde03303f12507f4eb4a9161e0e944f7431b",
+  "laravel-adoption.md": "978f2333bf5ce38ebc58619ca3f50a087572a3b0c28d52bc06843bc341010684",
+  "testing.md": "e0e33204c80d777adfc04fe4d4842632c784b4a289ebcf1ef84eccfcd5ba2202"
 }
