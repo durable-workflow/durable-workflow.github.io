@@ -6,13 +6,13 @@
     "message": "Dienstmodus"
   },
   "sidebar.tutorialSidebar.category.Service Mode.link.generated-index.description": {
-    "message": "Verbinden Sie Clients und Worker mit Cloud oder einem selbst betriebenen Server über die offiziellen SDKs für PHP, Python und Rust. Cloud enthält Managed Waterline. Bei einem selbst betriebenen Server wird Waterline separat bereitgestellt."
+    "message": "Verbinden Sie offizielle PHP-, Python- oder Rust-Clients und Worker mit Durable Workflow Cloud oder einem selbst betriebenen Server. Cloud enthält Managed Waterline. Im Selbstbetrieb stellen Betreiber Waterline separat für einen vom Server verwalteten Namespace bereit."
   },
   "sidebar.tutorialSidebar.category.CLI": {
     "message": "CLI"
   },
   "sidebar.tutorialSidebar.category.CLI.link.generated-index.description": {
-    "message": "Installation und Befehlsreferenz für das Betriebswerkzeug dw."
+    "message": "Installieren Sie das Betriebswerkzeug dw und schlagen Sie seinen vollständigen Befehlsumfang nach."
   },
   "sidebar.tutorialSidebar.category.SDKs": {
     "message": "SDKs"
@@ -30,13 +30,13 @@
     "message": "Workflows definieren"
   },
   "sidebar.tutorialSidebar.category.Defining Workflows.link.generated-index.description": {
-    "message": "Definieren Sie Workflows, Aktivitäten, Daten, Kennungen und Zustände im eingebetteten Laravel-Modus."
+    "message": "Definieren Sie Workflow- und Aktivitätsklassen, Payloads, Kennungen und Statusbehandlung für die Laufzeitumgebung innerhalb Ihrer Laravel-Anwendung."
   },
   "sidebar.tutorialSidebar.category.Features": {
     "message": "Funktionen"
   },
   "sidebar.tutorialSidebar.category.Features.link.generated-index.description": {
-    "message": "Konfigurieren Sie Nachrichten, dauerhafte Befehle, Wartezeiten, Wiederholungsversuche, Versionen und Historiengrenzen im eingebetteten Laravel-Modus."
+    "message": "Wählen Sie Nachrichtenströme, dauerhafte Befehle, Warteoperationen, Wiederholungsversuche, Versionierung und Muster mit begrenzter Historie für die Laufzeitumgebung innerhalb Ihrer Laravel-Anwendung."
   },
   "sidebar.tutorialSidebar.category.Constraints": {
     "message": "Einschränkungen"
@@ -54,18 +54,18 @@
     "message": "Ausführung und Betrieb"
   },
   "sidebar.tutorialSidebar.category.Run And Operate.link.generated-index.description": {
-    "message": "Stellen Sie Workflows bereit, beobachten und diagnostizieren Sie sie und führen Sie Reparaturen und Wartung durch."
+    "message": "Stellen Sie laufende Workflow-Flotten bereit, beobachten und diagnostizieren Sie sie, stellen Sie sie wieder her und unterstützen Sie ihren Betrieb."
   },
   "sidebar.tutorialSidebar.category.External Execution And Ingress": {
     "message": "Externe Ausführung und Anbindung"
   },
   "sidebar.tutorialSidebar.category.External Execution And Ingress.link.generated-index.description": {
-    "message": "Binden Sie HTTP-APIs, externe Worker, Warteschlangen und weitere Protokollintegrationen an."
+    "message": "Stellen Sie HTTP-Eingangsschnittstellen, externe Worker, Aufgabenwarteschlangen und Integrationen auf Protokollebene bereit."
   },
   "sidebar.tutorialSidebar.category.AI And Automation": {
     "message": "KI und Automatisierung"
   },
   "sidebar.tutorialSidebar.category.AI And Automation.link.generated-index.description": {
-    "message": "Dokumentation, Manifeste, Befehle und stabile Werkzeuge für Agenten und Automatisierung."
+    "message": "Geben Sie Programmieragenten und Automatisierung stabile Dokumentation, Manifeste, Befehle und Workflow-Werkzeuge."
   }
 }
