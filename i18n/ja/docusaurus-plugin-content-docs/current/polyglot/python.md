@@ -513,10 +513,92 @@ Python Worker は Server へクエリタスク結果を返して、ルーティ�
 | `ctx.get_version(change_id, min, max)` | 安全なワークフローコードのバージョニング |
 | `ctx.upsert_search_attributes(attrs)` | 検索属性を更新する |
 | `ctx.continue_as_new(*args)` | 新しい入力でワークフローを再開する |
-| `ctx.now()` | 決定的な時計（履歴由来） |
+| `ctx.now()` | 永続化されたワークフロー開始時刻。この実行中は固定 |
 | `ctx.random()` | シード付き乱数生成器 |
 | `ctx.uuid4()` | 決定的な UUID |
 | `ctx.logger` | リプレイ中は出力しないロガー |
+
+### ワークフロー時刻と永続的な待機 {#workflow-time-and-durable-waits}
+
+Worker でのリプレイ中、`ctx.now()` は実行の**永続化された開始時刻**を返します。
+アクティビティ、タイマー、シグナルなどの永続的なステップが終わっても進みません。
+同じ履歴をコールドリプレイすると、常に同じ開始値が返ります。
+continue-as-new の後続実行には独自の開始時刻があり、前の実行の時計の基準を引き継ぎません。
+
+[公開済みの Python 実装](https://github.com/durable-workflow/sdk-python/blob/150c6f6bc14e3516f75cc615b2f75f093ed84ea1/src/durable_workflow/workflow.py#L2594-L2601)
+は、`WorkflowStarted.payload.timestamp` があればそれを使い、なければ正規の
+`WorkflowStarted.recorded_at` を使います。永続化されたリプレイ時刻が存在しない場合や
+無効な場合は明示的な時計エラーになります。Worker の実時間時計を読む許可にはなりません。
+これは [SDK #146](https://github.com/durable-workflow/sdk-python/issues/146) で合意した、
+開始時刻を固定する契約です。
+
+`ctx.now()` が変わるまでループするのではなく、永続的な操作を待ちます。
+
+```python
+from durable_workflow import workflow
+
+
+@workflow.defn(name="wait_without_clock_loop")
+class WaitWithoutClockLoop:
+    def run(self, ctx):
+        started_at = ctx.now()
+        yield ctx.start_timer(30)
+        return {
+            "run_started_at": started_at.isoformat(),
+            "after_wait": ctx.now().isoformat(),
+        }
+```
+
+タイマーの永続的な完了によってワークフローが再開します。返される2つの時刻は
+同じ開始時刻です。`while ctx.now() < deadline` のようなループは、
+タイマーが発火しただけでは条件が偽になりません。
+
+相対的な遅延には `yield ctx.start_timer(seconds)` または `yield ctx.sleep(seconds)`
+を使います。作業と永続タイマーを競合させる場合は、
+[最初の完了の選択](#first-completion-selection)を使います。Worker の停止中も
+Server にワークフローの期限を強制させる場合は、`client.start_workflow(...)` の
+`execution_timeout_seconds` と `run_timeout_seconds` を設定します。
+HTTP や `get_result()` の待機タイムアウトが制限するのは、そのローカルリクエストだけです。
+ワークフローの永続化された期限の代わりにはなりません。アプリケーションの期限を
+continue-as-new に引き継ぐ必要がある場合は、Server の元の実行期限を置き換えずに、
+入力として明示的に渡します。
+
+1回のアクティビティ呼び出し内で実際の経過時間を測定するには、その中で単調時計を読み、
+所要時間をアクティビティ結果として返します。外部の UTC 期限については、
+アクティビティで権威ある外部時計を確認し、その判断を返します。
+ワークフローは記録済みの結果をリプレイします。UTC タイムスタンプと単調時計の値を比較したり、
+異なるプロセスやホストの単調時計の値を引き算したりしないでください。
+Python で `ctx.now()` 同士を引いても、実処理時間や実時間での経過時間にはなりません。
+
+#### SDK 間の時計の違い {#clock-differences-across-sdks}
+
+これらの API は、提供されている場合には決定的ですが、共通の時計ではありません。
+
+| 記述インターフェース | 繰り返し呼び出しと永続的なステップ | continue-as-new の後続実行 |
+| --- | --- | --- |
+| Python `ctx.now()` | タイマーやアクティビティの後も、この実行の永続化された開始時刻に固定されます。 | 後続実行の開始時刻を基準にします。 |
+| 組み込み PHP `Workflow::now()` | 実行の開始時刻から始まり、リプレイが消費したイベントの記録時刻へ進みます。[ワークフロー時刻](../features/timers.md#reading-deterministic-time)を参照してください。 | 新しい実行から始まり、その実行で消費したイベントに沿って進みます。 |
+| サービスモードの PHP SDK | 汎用の公開ワークフローヘルパー `now()` はありません。永続的な操作か、記録済みのアクティビティ／副作用の値を使います。 | 引き継ぎ後も必要なアプリケーションの時刻状態は、明示的に渡します。 |
+| サービスモードの Rust SDK | 汎用の公開ヘルパー `WorkflowContext::now()` はありません。`side_effect` で小さな実時間時計のスナップショットを記録できますが、進む時計ではありません。 | 新しい実行の副作用は新しい操作です。以前の時刻状態が必要なら明示的に渡します。 |
+
+組み込み PHP の動作は
+[公開済み Core](https://github.com/durable-workflow/workflow/blob/64efa176e4c37e5d6ae80e767ba3b41464024e53/src/V2/Support/WorkflowFiberContext.php)
+にあります。別の [PHP SDK コンテキスト](https://github.com/durable-workflow/sdk-php/blob/2.5.2/src/Worker/WorkflowContext.php)
+と [Rust SDK コンテキスト](https://github.com/durable-workflow/sdk-rust/blob/3.5.5/src/lib.rs)
+には独自の API があります。すべての SDK で時計ヘルパーの意味が同じだと仮定せず、
+永続的な操作と期限ポリシーを移植してください。
+
+#### 発行イベントをシーケンス値で順序付けする {#order-emitted-events-with-sequence-values}
+
+ワークフローのタイムスタンプはイベントの順序キーではありません。
+`ctx.now()` を付けた Python イベントは、すべて同じ時刻になり得ます。
+[Workflow Streams のオフセット](./workflow-streams.md)、対応する
+[組み込み送信ボックスのシーケンス](../features/message-streams.md)、または決定的な
+ワークフローローカルのカウンターを使います。実行ローカルのカウンターには `run_id`
+を組み合わせます。アプリケーションが1つの論理シーケンスを必要とする場合は、
+continue-as-new で明示的に引き継ぎます。独立したストリームや実行のタイムスタンプから、
+全体的な順序が得られるわけではありません。
+
 
 ### アクティビティの再試行とタイムアウト {#activity-retries-and-timeouts}
 
@@ -548,7 +630,7 @@ receipt = yield ctx.schedule_activity(
 ワークフローコードは履歴からリプレイされます。非決定的な操作を直接行ってはいけません。
 
 - I/O（HTTP 呼び出し、ファイル読み取り、データベースクエリ）を行わない
-- `datetime.now()` や `time.time()` の代わりに `ctx.now()` を使う
+- `datetime.now()` や `time.time()` は使わず、`ctx.now()` は実行開始の固定基準にだけ使います。待機には永続タイマーを使います。
 - `random.random()` の代わりに `ctx.random()` を使う
 - `uuid.uuid4()` の代わりに `ctx.uuid4()` を使う
 
