@@ -55,6 +55,31 @@ Later when you want to reference the workflow, you can load it with your custom 
 $workflow = WorkflowStub::load('order-123');
 ```
 
+### Choosing a caller-supplied ID
+
+Choose an ID that identifies one business operation consistently. Retrying the
+same start should reuse that ID; generate a new ID for a different operation.
+Include a workflow-type prefix and, when needed, an opaque tenant reference to
+avoid collisions between applications sharing a store. For example,
+`order:tenant-7f2:01J9Z6K6Z2EPV5G0C3R8F4M9AN` combines those prefixes with a
+collision-resistant identifier. A tenant prefix is a naming convention, not an
+authorization boundary. Configure namespace isolation separately.
+
+The ID does not override the [duplicate-start policy](../configuration/options.md).
+The default rejects a duplicate start. `ReturnExistingActive` can return the
+existing active workflow without starting another run or replacing its original
+arguments. A completed instance's ID remains reserved; changing the workflow
+type does not make that ID available again.
+
+### IDs are visible metadata
+
+Instance IDs appear in plaintext in Waterline, URLs, CLI output, logs, history
+exports and the database. Payload codecs, including payload encryption, do not
+cover these identifiers. Use opaque references instead of email addresses,
+names, access tokens or other personal or secret data. Keep sensitive business
+details in payload fields protected by your application's data-handling policy.
+An unguessable ID does not replace authorization.
+
 ## Accessing IDs Inside Activities and Workflows
 
 Inside an activity:
