@@ -388,6 +388,8 @@ Verwenden Sie diese Prüfreihenfolge:
 
 Die entsprechenden Waterline-Routen stehen in der [Waterline-Betriebs-API-Referenz](./waterline-operator-api.md).
 
+Prüfsummen- und Strukturprüfungen beweisen nicht, dass ein Export alle ursprünglichen Ereignisse oder unabhängige externe Bytes enthält. Lehnen Sie bereits bereinigte Quellen ab. Das falsche Vollständigkeitsmerkmal bleibt unter [Workflow #856](https://github.com/durable-workflow/workflow/issues/856) ein offener Fehler. Dieses manuelle Verfahren liefert auch nicht den unter [Server #520](https://github.com/durable-workflow/server/issues/520) geforderten eigenständigen, verifizierten Archivierungsvorgang. Unterscheiden Sie diese Produktlücken von den tatsächlich bestandenen Wiederherstellungsprüfungen Ihrer Bereitstellung.
+
 ## Vertrag für Sicherung, Wiederherstellung und Notfallwiederanlauf {#backup-restore-and-disaster-recovery-contract}
 
 Sicherung, Wiederherstellung und Notfallwiederanlauf gehören zum Betriebsrahmen. Veröffentlichen und erproben Sie für jede Topologie:
