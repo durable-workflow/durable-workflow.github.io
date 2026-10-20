@@ -41,16 +41,16 @@ Community-Unterstützung erfolgt nach Verfügbarkeit und reicht häufig für Ent
 
 Durable Workflow soll ohne Vertriebsgespräch nützlich sein. Die öffentliche Distribution ist bewusst für die Bereitstellungswege optimiert, die die meisten Teams zuerst benötigen:
 
-- **Lokale Entwicklung und interne Nichtproduktionsumgebungen**  
+- **Lokale Entwicklung und interne Nichtproduktionsumgebungen**\
   Betreiben Sie das Paket oder den eigenständigen Server lokal, in einem LAN oder in einer gemeinsamen Staging-Umgebung, damit Entwickler Workflows schnell ausprobieren und weiterentwickeln können.
 
-- **Produktion auf einem Knoten**  
+- **Produktion auf einem Knoten**\
   Betreiben Sie den eigenständigen Server auf einer VM, einem VPS oder einem internen Host mit dauerhafter Datenbank, Cache, Reverse Proxy, Sicherungen und rollenbezogenen Zugangsdaten.
 
-- **Kleine Clusterbereitstellungen**  
+- **Kleine Clusterbereitstellungen**\
   Betreiben Sie 2–3 zustandslose API-Container hinter einem Load Balancer mit gemeinsamem externem MySQL oder PostgreSQL, gemeinsamem Redis, unabhängig skalierten Workern und genau einem Scheduler oder Wartungsprozess.
 
-- **Kubernetes-Manifeste**  
+- **Kubernetes-Manifeste**\
   Verwenden Sie die bereitgestellten Manifeste, wenn Ihr Team bereits Kubernetes betreibt und einen Kubernetes-nativen Ausgangspunkt sucht.
 
 Das gehostete Durable Workflow Cloud ist ein separater [verwalteter Orchestrierungsdienst](/docs/polyglot/cloud-control-plane). Cloud betreibt Laufzeit, Persistenz, Platzierung in einer einzelnen Region und Wiederherstellung. Kunden betreiben SDK-Clients und Worker. Kunden binden keinen selbst gehosteten Server an Cloud an. Replikation über mehrere Regionen, regionales Failover und Failback sind nicht Teil des aktuellen Cloud-Vertrags.
@@ -73,34 +73,34 @@ Kommerzieller Support richtet sich an Teams, die Durable Workflow in Produktions
 
 Kommerzielle Supportaufträge werden vom Projektmaintainer geleitet und umfassen typischerweise:
 
-- **Planung der Produktionsbereitstellung**  
+- **Planung der Produktionsbereitstellung**\
   Beratung bei der Wahl zwischen Einzelknoten-, eng begrenzten Kleincluster-, Kubernetes- und supportbegleiteten Bereitstellungsmodellen, einschließlich Datenbank-, Cache-, Reverse-Proxy-, Scheduler- und Worker-Topologie.
 
-- **Dimensionierung, Zuverlässigkeit und Upgrade-Planung**  
+- **Dimensionierung, Zuverlässigkeit und Upgrade-Planung**\
   Hilfe bei Kapazitätsannahmen, Sicherungs- und Wiederherstellungsstrategie, Bootstrap- und Migrationsreihenfolge, Rolloutsicherheit und Betriebsanleitungen.
 
-- **Unterstützung erweiterter Topologien**  
+- **Unterstützung erweiterter Topologien**\
   Supportbegleiteter Entwurf für individuelle Helm-Chart-Änderungen, providerspezifische Kubernetes-Infrastruktur, individuelle Overlays, doppelte Scheduler, Mehrknotenbetrieb ohne Redis, Hochverfügbarkeit, Aktiv/Passiv oder Aktiv/Aktiv über mehrere Regionen, selbst gehostetes automatisches regionales Failover und synchrone regionsübergreifende Replikation. Das veröffentlichte Chart bleibt ein selbstständig nutzbarer Installationsweg. Der [Selbsthosting-Leitfaden](/docs/deployment#activepassive-multi-region) enthält weiterhin Architektur- und Betriebsmaterial für die supportbegleitete Aktiv/Passiv-Evaluierung. Der separate [Vertrag für die verwaltete Cloud-Laufzeit](/docs/polyglot/cloud-control-plane) dokumentiert Platzierung in einer einzelnen Region, Wiederherstellung und Konnektivitätsgrenzen des gehosteten Dienstes.
 
-- **Sicherheitsprüfung**  
+- **Sicherheitsprüfung**\
   Unterstützung bei rollenbezogenen Zugangsdaten, Netzwerkfreigaben, internen und öffentlichen Endpunkten, TLS-Terminierung und Zugriffsgrenzen für Operatoren und Worker.
 
-- **Prüfung von Workflow-Architektur und -Entwurf**  
+- **Prüfung von Workflow-Architektur und -Entwurf**\
   Beratung zur korrekten Workflow-Modellierung, einschließlich Aktivitätsgrenzen, Signalen, Inbox-/Outbox-Nutzung und Mustern für lang laufende Ausführungen.
 
-- **Beratung zu Determinismus und Replay-Sicherheit**  
+- **Beratung zu Determinismus und Replay-Sicherheit**\
   Hilfe beim Erkennen und Vermeiden nichtdeterministischen Verhaltens, von Replay-Problemen und subtilen Korrektheitsproblemen, die sich erst mit der Zeit zeigen können.
 
-- **Upgrade- und Versionierungsstrategie**  
+- **Upgrade- und Versionierungsstrategie**\
   Unterstützung bei sicheren Upgrades, Workflow-Versionierung und der Entscheidung, wann Muster wie `continue-as-new` erforderlich sind.
 
-- **Fehlersuche bei komplexem Workflow-Verhalten**  
+- **Fehlersuche bei komplexem Workflow-Verhalten**\
   Unterstützung bei feststeckenden Workflows, unerwarteten Schleifen, Problemen mit der Signalverarbeitung und anderem schwer nachvollziehbarem Laufzeitverhalten.
 
-- **Backports und Patches**  
+- **Backports und Patches**\
   Zugriff auf Korrekturen und Backports für unterstützte Versionen, um die Pflege privater Forks zu vermeiden.
 
-- **Individuelle Integrationen nach Vereinbarung**  
+- **Individuelle Integrationen nach Vereinbarung**\
   Hilfe bei der Integration von Durable Workflow mit bestehenden Systemen wie Chatplattformen, Freigabesystemen, internen APIs oder Beobachtbarkeitswerkzeugen.
 
 ## Für wen kommerzieller Support geeignet ist {#who-commercial-support-is-for}
