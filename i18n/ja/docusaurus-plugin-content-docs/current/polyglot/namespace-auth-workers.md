@@ -32,7 +32,7 @@ Durable Workflow は、名前空間、認証ロール、プロトコルバージ
 | 名前空間の一覧・説明 | `operator` または `admin` | `X-Durable-Workflow-Control-Plane-Version: 2` | ルートの対象またはリクエストコンテキスト |
 | 名前空間の作成・更新・ストレージポリシー | `admin` | `X-Durable-Workflow-Control-Plane-Version: 2` | ルートの対象またはリクエスト本文 |
 | ワークフロー、スケジュール、タスクキュー、ブリッジアダプター、Worker の可視性 | `operator` または `admin` | `X-Durable-Workflow-Control-Plane-Version: 2` | `X-Namespace`、`?namespace=`、既定値の順 |
-| システムのヘルス、メトリクス、パス、ストレージテスト | `admin` | `X-Durable-Workflow-Control-Plane-Version: 2` | `X-Namespace`、`?namespace=`、既定値の順 |
+| システムのヘルス、メトリクス、保守処理、ストレージテスト | `admin` | `X-Durable-Workflow-Control-Plane-Version: 2` | `X-Namespace`、`?namespace=`、既定値の順 |
 | Worker の登録、ポーリング、ハートビート、完了 | `worker` | `X-Durable-Workflow-Protocol-Version: 1.0` | `X-Namespace`、`?namespace=`、既定値の順 |
 
 ロール制限のあるエンドポイントでは、Server は名前空間の存在より先にルートのロールを検査します。誤ったロールのトークンには、名前空間の存在を示さず認証失敗を返します。ロールとバージョンの検査を通過した後、名前空間スコープのルートは未知の名前空間を `reason: "namespace_not_found"` で拒否します。
@@ -48,7 +48,7 @@ DW_OPERATOR_TOKEN=operator-secret
 DW_ADMIN_TOKEN=admin-secret
 ```
 
-デプロイが単一の共有 `DW_AUTH_TOKEN` を使う場合、そのトークンは実質的にすべてのルート権限を持ちます。Worker プロセスが名前空間を変更したりシステム保守パスを実行したりできないよう、本番環境ではロール別トークンを推奨します。
+デプロイが単一の共有 `DW_AUTH_TOKEN` を使う場合、そのトークンは実質的にすべてのルート権限を持ちます。Worker プロセスが名前空間を変更したりシステム保守処理を実行したりできないよう、本番環境ではロール別トークンを推奨します。
 
 署名認証にも同じロールの分離があります。
 

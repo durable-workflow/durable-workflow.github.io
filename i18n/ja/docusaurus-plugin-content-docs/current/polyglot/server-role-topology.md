@@ -9,7 +9,7 @@ tags:
   - workers
 keywords:
   - Durable Workflow ロールトポロジー
-  - cluster info トポロジー
+  - クラスター情報のトポロジー
   - Server 拡張境界
   - 制御と実行の分離
 ---
