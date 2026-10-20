@@ -179,7 +179,7 @@ $result = activity(
         scheduleToStartTimeout: 30,     // must be claimed within 30s
         startToCloseTimeout: 300,       // each attempt has 5 minutes
         scheduleToCloseTimeout: 600,    // total 10 minutes across all retries
-        heartbeatTimeout: 15,           // must heartbeat every 15 seconds
+        heartbeatTimeout: 15,           // heartbeat well before this 15-second window expires
         maxAttempts: 3,
     ),
     $input,
@@ -200,7 +200,7 @@ $result = activity(
 
 ### ハートビートのタイムアウト {#heartbeat-timeout}
 
-最初の期限は Worker がタスクを取得したときに計算します。`$this->heartbeat()` が成功するたびに、設定された間隔だけ期限を延ばします。期限までに `heartbeat()` が呼ばれなければ、Worker は応答していないと判断します。再試行が残っていれば、設定済みの開始待ち期限をリセットして新しい試行をスケジュールします。なければ終端のタイムアウトを記録します。
+キューに入ったアクティビティでは、最初の期限はランタイムの取得時点から始まり、タスクの配信やユーザーコードの実行より前です。受理された各ハートビートは、ランタイムが記録した時刻に設定済みのタイムアウトを加えて期限を設定します。前の期限に時間を追加するわけではなく、呼び出し元が応答を受信した時点で新しい期間が始まるわけでもありません。配信、上限を設けた処理、実行の中断、リクエストの遅延、通信の再試行に余裕を確保してください。期間が切れる十分前にハートビートを送信します。期限切れまたは置換済みの試行は、遅いハートビートを送っても権限を取り戻せません。再試行が残っていれば、設定済みの開始待ち期限をリセットして新しい試行をスケジュールします。なければ終端のタイムアウトを記録します。
 
 ```php
 use Workflow\V2\Activity;

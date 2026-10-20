@@ -154,6 +154,14 @@ requêtes de lecture et mises à jour via `registerWorkflow`,
 La [référence d’API générée du SDK PHP](https://php.durable-workflow.com/api/)
 donne tous les paramètres et types de retour.
 
+## Heartbeats d’activité {#activity-heartbeats}
+
+Pour les activités distantes, appelez `ActivityContext::heartbeat($details)` pendant un travail d’activité borné, bien avant le délai de heartbeat configuré. La première fenêtre commence lorsque le moteur réclame l’activité, pas lorsque PHP reçoit la tâche. La latence des requêtes, les pauses et les nouvelles tentatives de transport consomment cette fenêtre. Suivez les [conseils de fréquence](../features/heartbeats.md#heartbeat-cadence-and-receipts).
+
+La méthode renvoie `void`. Dans le chemin direct du gestionnaire, une réponse demandant l’arrêt lève `ActivityCancelled`. Les erreurs HTTP et de transport de `Client::heartbeatActivityTask()` apparaissent comme `ServerException`. Un worker à supervision coopérative peut arrêter ou abandonner son callback lorsqu’un heartbeat ou une vérification de possession échoue, au lieu de livrer une réponse normale au code de l’activité. Ne supposez pas que le nettoyage s’exécute toujours, ne masquez pas une perte d’autorité et ne soumettez pas de réussite après cette perte.
+
+Le retour de l’appel ne valide pas le travail externe et ne fournit pas de point de reprise. Gardez les effets externes idempotents et ne considérez pas une nouvelle tentative de transport comme une nouvelle fenêtre de heartbeat.
+
 ## Exécuter un worker PHP distant {#run-a-remote-php-worker}
 
 Les gestionnaires de workflow sont des callables ordinaires exécutant du code

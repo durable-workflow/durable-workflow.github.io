@@ -559,11 +559,13 @@ fn round_trip() -> Result<()> {
 automatically to their serializable input. Use the public helpers only when a
 program needs to exchange an envelope directly.
 
-Long-running activities should heartbeat and inspect `should_stop()`. On
-cancellation, release temporary files, connections, or other process-local
-resources and return promptly. A late completion is rejected by durable state
-and cannot convert a cancelled or terminated run into success; managed workers
-continue polling after that definitive rejection and after restart.
+## Activity heartbeats {#activity-heartbeats}
+
+For remote activities, `ActivityContext::heartbeat(...).await` returns a `Result<ActivityHeartbeatResponse>`. Propagate errors and inspect `should_stop()` on a successful response. Direct request failures include `Error::Transport` and typed `Error::ActivityTaskRejected` HTTP refusals. A cooperatively supervised claim can instead return `Error::ActivityExecutionAbandoned` when heartbeat or ownership checks fail. Stop external work after losing authority. Do not assume a callback always reaches application cleanup code.
+
+The first heartbeat window starts at runtime claim, before task delivery. A recorded heartbeat uses its runtime timestamp, not the caller's receipt time. Choose a cadence well inside the configured timeout, bound each work/I/O step and allow for scheduling, request latency and any transport retries. Follow the [cadence guidance](../features/heartbeats.md#heartbeat-cadence-and-receipts). No automatic progress-heartbeat or batching schedule is promised.
+
+On cancellation, release process-local resources when execution still permits it and return promptly. A late completion is rejected by durable state and cannot turn a cancelled or terminated run into success. Managed workers continue polling after that definitive rejection and restart. A successful heartbeat is not an external-effect commit or a replacement attempt's resumable checkpoint.
 
 For server images, authentication, and production topology, continue with the
 [server setup guide](/docs/polyglot/server).

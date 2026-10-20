@@ -784,6 +784,14 @@ async def long_running_task(items: list) -> dict:
     return {"processed": len(items)}
 ```
 
+### ハートビートのリクエスト {#activity-heartbeat-requests}
+
+リモートアクティビティでは、上限を設けた処理の途中で、`heartbeat_timeout` より十分前に `await ctx.heartbeat(...)` を呼び出します。最初の期間はランタイムのタスク取得から始まり、Python の受信より前です。記録されたハートビートはランタイムでの記録時刻を使い、Python が応答を受信した時刻は使いません。中断、リクエストの遅延、通信の再試行も時間予算を消費します。[送信間隔の指針](../features/heartbeats.md#heartbeat-cadence-and-receipts)に従ってください。
+
+`Client.heartbeat_activity_task()` の直接呼び出しは、設定された `TransportRetryPolicy` を使います。このポリシーの処理後、通信エラーは `httpx.TransportError` として伝播し、HTTP の拒否は `ServerError` などの SDK 例外になります。これは HTTP の再試行であり、新しいアクティビティ試行やハートビートの時間延長ではありません。Worker が停止を求めると、`ActivityContext.heartbeat()` は `ActivityCancelled` を発生させる場合があります。通常の協調的な監督下の Worker では、ハートビートや所有権確認の失敗によってコールバックが停止または放棄される場合があります。すべての失敗が例外処理ブロックに戻ったり、後始末が必ず実行されたりするとは限りません。
+
+ハートビートや所有権の失敗を抑制して外部処理を続けたり、成功を報告したりしないでください。進捗は外部コミットや再開可能なチェックポイントの確認ではありません。外部作用は冪等にしてください。
+
 ### 再試行しないエラー {#non-retryable-errors}
 
 再試行せずにアクティビティを失敗させるには `NonRetryableError` を送出します。

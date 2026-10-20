@@ -583,12 +583,13 @@ fn round_trip() -> Result<()> {
 l’enveloppe à leur entrée sérialisable. Utilisez les fonctions publiques
 uniquement lorsqu’un programme doit échanger directement une enveloppe.
 
-Les activités longues doivent émettre des battements et consulter
-`should_stop()`. À l’annulation, libérez les fichiers temporaires, connexions
-et autres ressources locales et retournez rapidement. L’état durable refuse
-une fin tardive, qui ne peut pas convertir une exécution annulée ou arrêtée
-de force en réussite. Les workers gérés continuent d’interroger les tâches
-après ce refus définitif et après redémarrage.
+## Heartbeats d’activité {#activity-heartbeats}
+
+Pour les activités distantes, `ActivityContext::heartbeat(...).await` renvoie `Result<ActivityHeartbeatResponse>`. Propagez les erreurs et vérifiez `should_stop()` sur une réponse réussie. Les erreurs des requêtes directes comprennent `Error::Transport` et les refus HTTP typés `Error::ActivityTaskRejected`. Une tâche à supervision coopérative peut renvoyer `Error::ActivityExecutionAbandoned` lorsque les heartbeats ou les vérifications de possession échouent. Arrêtez le travail externe après la perte d’autorité. Ne supposez pas qu’un callback atteint toujours le nettoyage applicatif.
+
+La première fenêtre de heartbeat commence lorsque le moteur réclame l’activité, avant la livraison de la tâche. Un heartbeat enregistré utilise son horodatage du moteur, pas la réception par l’appelant. Choisissez une fréquence bien à l’intérieur du délai configuré, bornez chaque étape de travail ou d’E/S et gardez une marge pour les pauses, la latence et les éventuelles nouvelles tentatives de transport. Suivez les [conseils de fréquence](../features/heartbeats.md#heartbeat-cadence-and-receipts). Aucune programmation automatique de progression ou de regroupement n’est promise.
+
+À l’annulation, libérez les ressources locales au processus lorsque l’exécution le permet encore et retournez rapidement. L’état durable refuse une fin tardive et ne peut pas transformer une exécution annulée ou terminée en réussite. Les workers gérés continuent de sonder après ce refus définitif et après redémarrage. Un heartbeat réussi n’est ni une validation des effets externes ni un point de reprise pour une tentative de remplacement.
 
 Pour les images Server, l’authentification et la topologie de production,
 consultez le [guide de configuration du serveur](/docs/polyglot/server).

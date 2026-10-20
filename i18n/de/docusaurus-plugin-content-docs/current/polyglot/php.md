@@ -151,6 +151,14 @@ Entfernte Worker registrieren Workflow-, Aktivitäts-, Abfrage- und Update-Handl
 Vollständige Parameter und Rückgabetypen stehen in der generierten
 [PHP-SDK-API-Referenz](https://php.durable-workflow.com/api/).
 
+## Aktivitäts-Heartbeats {#activity-heartbeats}
+
+Rufen Sie bei entfernten Aktivitäten `ActivityContext::heartbeat($details)` während begrenzter Aktivitätsarbeit deutlich vor dem konfigurierten Heartbeat-Zeitlimit auf. Das erste Zeitfenster beginnt mit der Beanspruchung durch die Laufzeit, nicht beim Empfang der Aufgabe in PHP. Anfragelatenz, Pausen und Transportwiederholungen verbrauchen dieses Zeitfenster. Beachten Sie die [Taktempfehlungen](../features/heartbeats.md#heartbeat-cadence-and-receipts).
+
+Die Methode gibt `void` zurück. Im direkten Handler-Pfad löst eine Stoppantwort `ActivityCancelled` aus. HTTP- und Transportfehler von `Client::heartbeatActivityTask()` erscheinen als `ServerException`. Ein kooperativ überwachter Worker kann seinen Callback bei einem fehlgeschlagenen Heartbeat oder einer Besitzprüfung stoppen oder aufgeben, statt dem Aktivitätscode eine normale Antwort zuzustellen. Verlassen Sie sich nicht darauf, dass Bereinigungscode immer läuft. Unterdrücken Sie keinen Fehler wegen verlorener Befugnis und melden Sie danach keinen Erfolg.
+
+Eine Rückkehr aus dem Aufruf schreibt externe Arbeit nicht fest und liefert keinen fortsetzbaren Prüfpunkt. Halten Sie externe Effekte idempotent und behandeln Sie eine Transportwiederholung nicht als neues Heartbeat-Zeitfenster.
+
 ## Einen entfernten PHP-Worker ausführen {#run-a-remote-php-worker}
 
 Workflow-Handler sind gewöhnliche Callables, die als geradliniger Code in einer

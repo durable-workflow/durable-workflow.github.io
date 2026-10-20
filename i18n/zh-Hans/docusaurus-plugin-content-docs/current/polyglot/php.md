@@ -88,6 +88,14 @@ SDK 维护的快速入门创建干净的 Composer 项目，定义带特性的工
 
 远程 Worker 通过 `registerWorkflow`、`registerActivity`、`registerQuery` 和 `registerUpdate` 注册工作流、活动、查询及更新处理器。完整参数及返回类型见生成的 [PHP SDK API 参考](https://php.durable-workflow.com/api/)。
 
+## 活动心跳 {#activity-heartbeats}
+
+对于远程活动，在有界工作期间调用 `ActivityContext::heartbeat($details)`，并在配置的心跳超时到期前留足时间。第一个窗口从运行时领取任务开始，而不是 PHP 收到任务时开始。请求延迟、暂停和传输重试都会消耗该窗口。请遵循[发送节奏建议](../features/heartbeats.md#heartbeat-cadence-and-receipts)。
+
+该方法返回 `void`。在直接处理器路径中，停止响应会抛出 `ActivityCancelled`。`Client::heartbeatActivityTask()` 的 HTTP 和传输故障表现为 `ServerException`。协作监督下的 Worker 在心跳或所有权检查失败时，可能停止或放弃回调，而不是向活动代码返回正常响应。不要假定清理代码总会执行，不要忽略权限丢失错误，也不要在失去权限后提交成功结果。
+
+调用返回并不表示外部工作已提交，也不会提供可恢复的检查点。请保持外部副作用幂等，不要将传输重试视为新的心跳窗口。
+
 ## 运行远程 PHP Worker {#run-a-remote-php-worker}
 
 工作流处理器是普通可调用对象，以直线代码在受管理的 Fiber 中运行。直接调用 `WorkflowContext::activity()` 等操作；SDK 在持久化决策处暂停 Fiber，在重放时返回已记录结果，不重复外部活动。不要将工作流声明为 Generator，也不要 yield `WorkflowContext` 命令：Generator 结果会被拒绝。受管理的 Worker 注册其工作流和活动类型名，轮询公开 Worker 协议，发送心跳，完成或标记任务失败，并在 `pcntl` 可用时处理优雅关闭。

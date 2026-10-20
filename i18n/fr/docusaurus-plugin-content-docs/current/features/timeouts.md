@@ -181,7 +181,7 @@ $result = activity(
         scheduleToStartTimeout: 30,     // must be claimed within 30s
         startToCloseTimeout: 300,       // each attempt has 5 minutes
         scheduleToCloseTimeout: 600,    // total 10 minutes across all retries
-        heartbeatTimeout: 15,           // must heartbeat every 15 seconds
+        heartbeatTimeout: 15,           // heartbeat well before this 15-second window expires
         maxAttempts: 3,
     ),
     $input,
@@ -202,7 +202,7 @@ L’échéance est calculée une seule fois à la planification et n’est jamai
 
 ### Délai entre heartbeats {#heartbeat-timeout}
 
-L’échéance initiale est calculée à l’attribution de la tâche à un worker. Chaque appel réussi à `$this->heartbeat()` la prolonge de l’intervalle configuré. Sans appel à `heartbeat()` avant l’échéance, le moteur considère le worker comme ne répondant plus. S’il reste des tentatives, une nouvelle tentative est planifiée avec une échéance schedule-to-start réinitialisée, si configurée. Sinon, une expiration terminale est enregistrée.
+Pour une activité mise en file d’attente, la première échéance commence lorsque le moteur la réclame, avant la livraison de la tâche et l’exécution du code applicatif. Chaque heartbeat accepté fixe l’échéance à son horodatage enregistré par le moteur, plus le délai configuré. Il n’ajoute pas de temps à l’échéance précédente et n’ouvre pas une nouvelle fenêtre lorsque l’appelant reçoit la réponse. Prévoyez une marge pour la livraison, le travail borné, les pauses d’exécution, la latence des requêtes et les nouvelles tentatives de transport. Envoyez les heartbeats bien avant l’expiration de la fenêtre. Une tentative expirée ou remplacée ne retrouve pas son autorité en envoyant un heartbeat tardif. S’il reste des tentatives, une nouvelle est planifiée avec un délai schedule-to-start réinitialisé, s’il est configuré. Sinon, une expiration terminale est enregistrée.
 
 ```php
 use Workflow\V2\Activity;

@@ -773,6 +773,14 @@ async def long_running_task(items: list) -> dict:
     return {"processed": len(items)}
 ```
 
+### 心跳请求 {#activity-heartbeat-requests}
+
+对于远程活动，在有界工作期间调用 `await ctx.heartbeat(...)`，并在 `heartbeat_timeout` 到期前留足时间。第一个窗口从运行时领取任务开始，早于 Python 收到任务。每个已记录心跳使用运行时的记录时间，而不是响应到达 Python 的时间。暂停、请求延迟和传输重试都会消耗预算。请遵循[发送节奏建议](../features/heartbeats.md#heartbeat-cadence-and-receipts)。
+
+直接调用 `Client.heartbeat_activity_task()` 会使用配置的 `TransportRetryPolicy`。策略处理后，传输错误可能以 `httpx.TransportError` 传播，HTTP 拒绝会映射为 `ServerError` 等 SDK 异常。这是 HTTP 重试，不是新的活动尝试，也不会增加心跳时间。Worker 要求活动停止时，`ActivityContext.heartbeat()` 可能抛出 `ActivityCancelled`。对于正常的协作监督 Worker，心跳或所有权检查失败可能停止或放弃回调。不要假定每次失败都会回到异常处理块，或清理代码总会执行。
+
+不要忽略心跳或所有权故障后继续执行外部工作或报告成功。进度不是外部提交，也不是可恢复检查点的确认。请保持外部副作用幂等。
+
 ### 不可重试错误 {#non-retryable-errors}
 
 抛出 `NonRetryableError`，使活动失败且不重试：

@@ -562,12 +562,13 @@ fn round_trip() -> Result<()> {
 automaticamente à entrada serializável. Use os auxiliares públicos somente
 quando um programa precisar trocar um envelope diretamente.
 
-Atividades de longa duração devem enviar heartbeats e inspecionar
-`should_stop()`. No cancelamento, libere arquivos temporários, conexões ou
-outros recursos locais do processo e retorne prontamente. Uma conclusão tardia
-é rejeitada pelo estado durável e não pode converter uma execução cancelada ou
-terminada em sucesso; workers gerenciados continuam fazendo polling após essa
-rejeição definitiva e após reinício.
+## Heartbeats de atividade {#activity-heartbeats}
+
+Para atividades remotas, `ActivityContext::heartbeat(...).await` retorna `Result<ActivityHeartbeatResponse>`. Propague erros e inspecione `should_stop()` em uma resposta bem-sucedida. Falhas de requisições diretas incluem `Error::Transport` e recusas HTTP tipadas como `Error::ActivityTaskRejected`. Uma reivindicação com supervisão cooperativa pode retornar `Error::ActivityExecutionAbandoned` quando heartbeats ou verificações de posse falham. Pare o trabalho externo ao perder autoridade. Não suponha que um callback sempre alcance o código de limpeza da aplicação.
+
+A primeira janela de heartbeat começa na reivindicação pelo runtime, antes da entrega da tarefa. Um heartbeat registrado usa seu horário no runtime, não a recepção pelo chamador. Escolha uma cadência com bastante margem dentro do tempo limite configurado, limite cada etapa de trabalho ou E/S e reserve tempo para pausas, latência e eventuais novas tentativas de transporte. Siga as [orientações de cadência](../features/heartbeats.md#heartbeat-cadence-and-receipts). Não há promessa de agendamento automático de heartbeats de progresso ou agrupamento.
+
+No cancelamento, libere recursos locais do processo quando a execução ainda permitir e retorne prontamente. O estado durável rejeita uma conclusão tardia e não permite transformar uma execução cancelada ou terminada em sucesso. Workers gerenciados continuam fazendo polling após essa recusa definitiva e depois de reiniciar. Um heartbeat bem-sucedido não é um commit de efeitos externos nem um checkpoint retomável para uma tentativa substituta.
 
 Para imagens do servidor, autenticação e topologia de produção, continue com o
 [guia de configuração do servidor](/docs/polyglot/server).
