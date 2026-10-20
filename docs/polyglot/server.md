@@ -353,10 +353,17 @@ backup. Other retention holds, such as unfinished detached activity work, can
 also prevent deletion. Check the reported reason rather than assuming a
 selected run was removed.
 
+For a record longer than the bounded 1-to-365-day window, choose between
+retaining history in the database and maintaining independent verified exports.
+The [long-term history procedure](../configuration/pruning-workflows.md#keeping-history-beyond-database-retention)
+covers `CloseTime` selection, pagination, external bytes and export-before-prune
+reconciliation. The published API has no unarchive operation. An archived run
+therefore cannot later be removed through Server retention passes.
+
 Pruning removes history, related details and eligible external payloads. A
 later policy extension cannot recover them. The [embedded pruning guide](../configuration/pruning-workflows.md)
-describes a separate application-owned process; its archive-first procedure
-does not describe the Server's automatic selection. For a different runtime,
+describes a separate application-owned process; its cleanup API does not apply
+the Server's namespace retention policy. For a different runtime,
 verify its retention behavior before applying this PHP Server procedure.
 
 ### Namespaces

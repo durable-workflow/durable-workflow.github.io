@@ -588,11 +588,15 @@ Use this verification sequence:
 
 2. Verify the bundle includes the expected run id, schema version, and any
    configured redaction metadata.
-3. Archive the closed run only after the export artifact is stored where your
-   runbook expects it.
-4. Keep archived-but-not-pruned runs available for incident review.
-5. Prune durable rows through your retention job, then rebuild/prune projections
-   with `workflow:v2:rebuild-projections --prune-stale`.
+3. Verify referenced external bytes and retain them for the artifact's required
+   lifetime. Follow the [export-before-prune procedure](./configuration/pruning-workflows.md#export-before-pruning)
+   to inventory every closed run and detect missing copies.
+4. Archive only when you intend to retain the run in the database. Server
+   retention skips archived runs and provides no unarchive API. Embedded
+   cleanup is application-owned and does not require archival first.
+5. Prune eligible details through the owning retention process. Keep the run
+   and instance tombstones. A projection rebuild does not restore pruned
+   history, and marked pruned runs are excluded from rebuilding.
 
 For Waterline users, the matching history-export and archive routes are listed
 in the [Waterline Operator API Reference](./waterline-operator-api.md).
