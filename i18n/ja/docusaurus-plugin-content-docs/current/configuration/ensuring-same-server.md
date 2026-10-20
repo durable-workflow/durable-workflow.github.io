@@ -7,10 +7,10 @@ tags:
   - workers
   - affinity
 keywords:
-  - activity worker affinity
-  - dedicated activity queue
-  - same process activity
-  - worker sessions
+  - アクティビティ Worker のアフィニティ
+  - 専用アクティビティキュー
+  - 同一プロセスのアクティビティ
+  - Worker セッション
 ---
 
 # Worker の配置とアフィニティ {#worker-placement-and-affinity}

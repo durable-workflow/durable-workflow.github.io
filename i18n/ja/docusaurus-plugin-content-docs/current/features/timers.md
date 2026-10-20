@@ -7,9 +7,9 @@ tags:
   - deterministic-time
   - waits
 keywords:
-  - durable timers
-  - deterministic time
-  - workflow now
+  - 永続タイマー
+  - 決定的な時刻
+  - ワークフローの現在時刻
 ---
 
 import TimerSimulator from '@site/src/components/TimerSimulator';

@@ -7,9 +7,9 @@ tags:
   - workflow-start
   - visibility
 keywords:
-  - start workflow
-  - workflow instance id
-  - durable workflow start options
+  - ワークフローの開始
+  - ワークフローインスタンス ID
+  - Durable Workflow 開始オプション
 ---
 
 # ワークフローの開始 {#starting-workflows}

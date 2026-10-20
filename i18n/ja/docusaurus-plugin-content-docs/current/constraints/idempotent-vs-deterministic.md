@@ -12,11 +12,11 @@ tags:
   - idempotency
   - replay
 keywords:
-  - idempotent vs deterministic
-  - idempotency vs determinism
-  - deterministic vs idempotent
-  - deterministic workflow
-  - idempotent activity
+  - 冪等と決定的の違い
+  - 冪等性と決定性の比較
+  - 決定性と冪等性の比較
+  - 決定的なワークフロー
+  - 冪等なアクティビティ
 ---
 
 # ワークフローの冪等性と決定性の違い {#idempotent-vs-deterministic-workflows-whats-the-difference}
@@ -83,7 +83,7 @@ Durable Workflow はコミット済みの履歴をリプレイしてオーケス
 Worker の言語が PHP、Python、Rust のどれでも、同じ設計を適用します。
 
 1. オーケストレーションを安全にリプレイできるようにし、同じ入力と履歴に対して同じ永続コマンドを発行します。
-2. ネットワーク呼び出し、時計、乱数、変更可能な外部状態をアクティビティの境界の外に置きます。
+2. ネットワーク呼び出し、時計、乱数、変更可能な外部状態をアクティビティの内部に隔離します。
 3. 副作用を持つ各アクティビティに、対象システムが重複排除できる安定した識別子を与えます。
 
 言語の構文が変わっても、決定性と冪等性の境界は変わりません。
