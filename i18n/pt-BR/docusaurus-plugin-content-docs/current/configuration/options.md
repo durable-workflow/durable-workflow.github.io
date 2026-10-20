@@ -71,6 +71,8 @@ $result = activity(
 );
 ```
 
+As substituições de roteamento em `ActivityOptions` se aplicam ao agendar uma nova execução de atividade. Elas não movem uma atividade já registrada no histórico. Consulte as [filas de atividade registradas](../polyglot/task-matching-dispatch.md#recorded-activity-queues) antes de mudar os pools de workers.
+
 ## Conexão {#connection}
 
 A configuração `$connection` especifica para qual conexão de fila o workflow ou a atividade deve ser enviado. Por padrão, o valor de `$connection` não é definido e a conexão padrão é usada. Você pode substituir esse comportamento definindo a propriedade `$connection` na classe do workflow ou da atividade.
@@ -78,6 +80,8 @@ A configuração `$connection` especifica para qual conexão de fila o workflow 
 ## Fila {#queue}
 
 A configuração `$queue` especifica a qual fila o workflow ou a atividade deve ser adicionado. Por padrão, o valor de `$queue` não é definido e a fila padrão da conexão especificada é usada. Você pode substituir esse comportamento definindo a propriedade `$queue` na classe do workflow ou da atividade.
+
+Uma atividade armazena a conexão e a fila resolvidas ao ser agendada. Suas novas tentativas e tarefas reparadas reutilizam esse roteamento registrado, mesmo após mudanças nos padrões da classe ou nas opções por chamada. Execuções de workflow existentes também mantêm sua fila de workflow registrada. Mantenha workers compatíveis nas filas antigas enquanto essas dependências existirem. Siga o [procedimento de transição de filas](../polyglot/task-matching-dispatch.md#recorded-activity-queues).
 
 ## Novas tentativas {#retries}
 

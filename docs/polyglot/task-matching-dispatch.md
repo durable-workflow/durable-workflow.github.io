@@ -142,6 +142,40 @@ or different downstream budgets. Use compatibility families when the same
 queue must stay live across a rollout or rollback without letting in-flight
 work drift to incompatible executors.
 
+## Recorded activity queues {#recorded-activity-queues}
+
+An activity's resolved connection and queue are stored when it is scheduled. A change to an activity class, `ActivityOptions`, PHP SDK activity options or Python `schedule_activity(..., queue=...)` affects newly scheduled activities. Existing executions keep their recorded queue through retries and repair. A worker registering on a new queue does not move old work. Existing workflow runs keep their own workflow queue too.
+
+### Change routing with an overlap window {#change-recorded-routing}
+
+1. Start workers for the new queue in the correct namespace. Verify their activity types, positive activity slots and build compatibility. Keep the old workflow and activity pools available.
+2. Deploy the new routing for new work. Preserve compatible code for existing runs and respect their build pins. A new queue is not a migration of recorded executions.
+3. Inspect affected runs and both queues. Account for pending and leased activities, future retry availability, passive open runs, children and continuation chains that still need old workers. A zero ready-task count does not cover these dependencies.
+4. Retire old workers only after you have accounted for those dependencies and stopped new work from creating them. Current snapshots are not an atomic retirement guard. If you cannot establish this, keep the old pool available. [Server #519](https://github.com/durable-workflow/server/issues/519) owns the guarded inventory and retirement capability.
+
+### Inspect and recover stranded work {#recorded-queue-diagnostics}
+
+Use an operator credential and the same namespace as the affected run. Set the origin, namespace, old queue and selected workflow/run IDs explicitly:
+
+```bash
+curl -fsS "$DW_SERVER_URL/api/task-queues/$OLD_QUEUE" \
+  -H "Authorization: Bearer $DW_OPERATOR_TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "X-Namespace: $DW_NAMESPACE"
+curl -fsS "$DW_SERVER_URL/api/workflows/$WORKFLOW_ID/runs/$RUN_ID/debug" \
+  -H "Authorization: Bearer $DW_OPERATOR_TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "X-Namespace: $DW_NAMESPACE"
+```
+
+If server admission is available and not throttled, queue visibility reports `admission.activity_tasks.status: no_active_workers` when no active, non-stale worker is registered on that queue. The run debug response includes `pending_activities[].queue`, `activity_task_queues` and findings such as `pending_activity_queue_without_active_pollers`. If workers are present but do not advertise the required activity type, look for `pending_activity_type_unsupported`. Registration alone does not prove a worker is making progress.
+
+The debug response is a bounded run snapshot, not a complete queue inventory. It includes at most 25 pending activities. Queue counters and empty snapshots cannot prove that concurrent or future work has no dependency on the old pool.
+
+Restore a compatible worker on the **recorded** queue, with the required activity type and available slots, before its deadlines expire. Repair or restarting a worker does not change that queue or extend the original total deadline. If the work is no longer wanted, deliberately cancel the affected run and reconcile any external effects. Do not edit stored queue fields as a migration procedure.
+
+A finite schedule-to-start timeout can expire while an activity waits for a worker. Schedule-to-close bounds the whole activity execution, including retry delays. These bounds apply only when configured. Deadline enforcement does not move the activity to a live queue, and an already terminal timeout is not revived by restoring workers. See [activity and workflow timeouts](../features/timeouts.md).
+
 ## Wake signals and dedicated sweeps
 
 Wake signals shorten the time between "task became ready" and "a poller noticed

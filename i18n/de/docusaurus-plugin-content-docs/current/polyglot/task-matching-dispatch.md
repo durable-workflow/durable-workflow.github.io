@@ -141,6 +141,40 @@ Sie Kompatibilitätsfamilien, wenn dieselbe Warteschlange während eines Rollout
 oder Rollbacks weiterlaufen muss, ohne laufende Arbeit auf inkompatible
 Executors zu verschieben.
 
+## Gespeicherte Aktivitätsqueues {#recorded-activity-queues}
+
+Die aufgelöste Verbindung und Queue einer Aktivität werden beim Planen gespeichert. Änderungen an einer Aktivitätsklasse, `ActivityOptions`, den Aktivitätsoptionen des PHP SDK oder Python `schedule_activity(..., queue=...)` gelten für neu geplante Aktivitäten. Bestehende Ausführungen behalten ihre gespeicherte Queue bei Wiederholungen und Reparaturen. Ein Worker, der sich auf einer neuen Queue registriert, verschiebt keine alte Arbeit. Bestehende Workflow-Läufe behalten ebenfalls ihre eigene Workflow-Queue.
+
+### Routing mit überlappenden Worker-Pools ändern {#change-recorded-routing}
+
+1. Starte Worker für die neue Queue im richtigen Namespace. Prüfe ihre Aktivitätstypen, positive Aktivitätsslots und Build-Kompatibilität. Halte die alten Workflow- und Aktivitätspools verfügbar.
+2. Stelle das neue Routing für neue Arbeit bereit. Bewahre kompatiblen Code für bestehende Läufe und beachte deren Build-Bindungen. Eine neue Queue migriert keine gespeicherten Ausführungen.
+3. Prüfe die betroffenen Läufe und beide Queues. Berücksichtige wartende und geleaste Aktivitäten, künftig verfügbare Wiederholungen, passive offene Läufe, Kinder und Fortsetzungsketten, die noch alte Worker benötigen. Null bereite Aufgaben schließen diese Abhängigkeiten nicht aus.
+4. Nimm alte Worker erst außer Betrieb, wenn diese Abhängigkeiten berücksichtigt sind und keine neue Arbeit sie mehr erzeugt. Aktuelle Momentaufnahmen sind keine atomare Absicherung für die Außerbetriebnahme. Kannst du das nicht feststellen, halte den alten Pool verfügbar. [Server #519](https://github.com/durable-workflow/server/issues/519) umfasst die abgesicherte Bestandsaufnahme und Außerbetriebnahme.
+
+### Gestrandete Arbeit untersuchen und wiederherstellen {#recorded-queue-diagnostics}
+
+Verwende Operator-Zugangsdaten und denselben Namespace wie der betroffene Lauf. Setze Ursprung, Namespace, alte Queue sowie ausgewählte Workflow- und Lauf-IDs ausdrücklich:
+
+```bash
+curl -fsS "$DW_SERVER_URL/api/task-queues/$OLD_QUEUE" \
+  -H "Authorization: Bearer $DW_OPERATOR_TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "X-Namespace: $DW_NAMESPACE"
+curl -fsS "$DW_SERVER_URL/api/workflows/$WORKFLOW_ID/runs/$RUN_ID/debug" \
+  -H "Authorization: Bearer $DW_OPERATOR_TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "X-Namespace: $DW_NAMESPACE"
+```
+
+Wenn die serverseitige Aufnahme verfügbar und nicht gedrosselt ist, meldet die Queue-Sichtbarkeit `admission.activity_tasks.status: no_active_workers`, wenn kein aktiver, nicht veralteter Worker auf dieser Queue registriert ist. Die Debug-Antwort des Laufs enthält `pending_activities[].queue`, `activity_task_queues` und Befunde wie `pending_activity_queue_without_active_pollers`. Sind Worker vorhanden, bieten aber den benötigten Aktivitätstyp nicht an, suche nach `pending_activity_type_unsupported`. Eine Registrierung allein beweist keinen Fortschritt.
+
+Die Debug-Antwort ist eine begrenzte Momentaufnahme eines Laufs, kein vollständiges Queue-Inventar. Sie enthält höchstens 25 wartende Aktivitäten. Queue-Zähler und leere Momentaufnahmen beweisen nicht, dass gleichzeitige oder künftige Arbeit keinen alten Pool mehr benötigt.
+
+Stelle vor Ablauf der Fristen einen kompatiblen Worker auf der **gespeicherten** Queue mit dem benötigten Aktivitätstyp und freien Slots wieder her. Reparatur oder Worker-Neustart ändern diese Queue nicht und verlängern die ursprüngliche Gesamtfrist nicht. Wird die Arbeit nicht mehr benötigt, brich den betroffenen Lauf bewusst ab und gleiche externe Auswirkungen ab. Bearbeite gespeicherte Queue-Felder nicht als Migrationsverfahren.
+
+Ein endliches Schedule-to-Start-Timeout kann ablaufen, während eine Aktivität auf einen Worker wartet. Schedule-to-Close begrenzt die gesamte Aktivitätsausführung einschließlich Wiederholungsverzögerungen. Diese Grenzen gelten nur, wenn sie konfiguriert sind. Fristdurchsetzung verschiebt die Aktivität nicht auf eine aktive Queue; ein bereits terminaler Timeout wird durch wiederhergestellte Worker nicht aufgehoben. Siehe [Aktivitäts- und Workflow-Timeouts](../features/timeouts.md).
+
 ## Aufwecksignale und dedizierte Suchläufe {#wake-signals-and-dedicated-sweeps}
 
 Aufwecksignale verkürzen die Zeit zwischen „Task wurde bereit“ und „ein Abfrager

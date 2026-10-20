@@ -626,6 +626,8 @@ receipt = yield ctx.schedule_activity(
 
 `start_to_close_timeout` 限制 Worker 启动后的单次尝试。`schedule_to_close_timeout` 限制跨所有尝试的整个活动执行。`heartbeat_timeout` 要求长时间运行活动在间隔到期前调用 `activity.context().heartbeat(...)`。活动被调度时，重试策略作为快照写入持久活动执行，因此后续部署不会改变已经运行的尝试。
 
+`ctx.schedule_activity(..., queue="payments-v2")` 为新调度的活动执行选择队列。已记录的活动及其重试和修复后的任务仍保留原队列。更改 `Worker.task_queue` 不会移动这些任务，也不会改变现有运行的工作流队列。在核实所有依赖之前，应保留兼容的旧工作器池；请参阅[已记录的活动队列](./task-matching-dispatch.md#recorded-activity-queues)。
+
 ### 确定性规则 {#determinism-rules}
 
 工作流代码根据历史重放，不得直接执行任何非确定性操作：
