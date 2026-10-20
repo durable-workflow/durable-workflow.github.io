@@ -805,7 +805,7 @@ return (yield from ctx.saga().run(forward))
 
 Nach einem Fehler führt die Saga gewöhnliche Aktivitätsbefehle sequenziell in
 umgekehrter Registrierungsreihenfolge aus. Terminales `cancel_workflow` setzt
-den Workflow nicht zum Kompensieren fort. Die Hilfe stoppt beim ersten
+den Workflow nicht zum Kompensieren fort. Der Helfer stoppt beim ersten
 Kompensationsfehler. `SagaCompensationFailed` erhält auslösenden Fehler,
 Kompensationsfehler, Kompensationsaktivitätstyp und deterministische
 Registrierungsreihenfolge als strukturierte Diagnosen.

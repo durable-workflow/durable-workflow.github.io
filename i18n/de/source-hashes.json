@@ -91,5 +91,6 @@
   "features/webhooks.md": "edcdfc05ccb0d34a77c51594f85bc3cab343e787f8e0e08d2cd4ddebd048e8c8",
   "deployment.md": "2eadca4ea3703d0b09bb7e885eaafe84dc2f7eb7c1a9904dc5649f086f629258",
   "polyglot/server-api-reference.md": "6029fa5573106ebb40d4cf6fc384c4c5aa3ac77d435b3d2c30c4c505cce7ac23",
-  "platform-conformance.md": "2eec7eba9a65c010e03c4b2eb78afe4dddd6fd8170218b3194c49e3777124c91"
+  "platform-conformance.md": "2eec7eba9a65c010e03c4b2eb78afe4dddd6fd8170218b3194c49e3777124c91",
+  "polyglot/python.md": "18c872ffee086853f50efc51a3dc193d7953d5eaaad72e44aa36a3a4379d6070"
 }
