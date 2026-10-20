@@ -25,5 +25,11 @@
   "features/queries.md": "c66dd9542a062edd8158a46cebc9f1bf926aaf3599dca4a3122bd9860df6e2a2",
   "features/side-effects.md": "abdccab8d6fc1a12b3eff8a4ccc58730ac36f523559b4ad89c5c2a8d201a3b86",
   "features/signal+timer.md": "65b4a78b9e90a845297b1cb12591dd26a6573f76c75717e1e4ba02211c590822",
-  "features/timers.md": "51daf41fede21b6f994bb75851cdb34babdd3117677d00a5fc17189dfe34fa77"
+  "features/timers.md": "51daf41fede21b6f994bb75851cdb34babdd3117677d00a5fc17189dfe34fa77",
+  "configuration/customization-matrix.md": "3d115863eaee7852b541bcd01615f424cc19c5847c7cd7d75e5ae63bc3f5cc78",
+  "configuration/database-connection.md": "a4657d239673a4ecdc3981bcc5a7cf33aa2d37c709768131cd5ba3292987681f",
+  "configuration/ensuring-same-server.md": "6c665f37cc198c7b1a775a60a94aab5ff4e55383385e76f1834c7840559b512a",
+  "configuration/microservices.md": "46dc4afa07588b78829a7e3d259177ce0cf40861f0e31b88dbb6de3a83aa5488",
+  "configuration/options.md": "f8d746d34d28d03c8e31ab19223864df04742cde9e6a0cc1445501f8fbddf625",
+  "configuration/publishing-config.md": "8ed57c1e94ec42ad2dc9a67e2749a93b66143466c4ca07a704b816e3c515a81e"
 }
