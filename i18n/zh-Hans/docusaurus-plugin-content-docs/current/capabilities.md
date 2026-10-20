@@ -69,7 +69,7 @@ PHP SDK 2.3.2、Python SDK 2.5.7 和 Rust SDK 3.5.0 默认使用 Worker 协议 `
 | Worker 兼容性 | SDK 注册运行时、SDK 版本、构建 ID、支持的类型、协议版本和容量；服务器发布已接受版本和路由事实。 | [兼容性](/docs/compatibility/)、[Worker 兼容性与路由](/docs/polyglot/worker-compatibility-routing/) |
 | 本地活动 | 嵌入式 Laravel、PHP 和 Python 服务 SDK，以及 Rust SDK 3.1.0 均支持，需在 Worker 上显式启用。 | [嵌入式活动执行](/docs/features/activity-execution-model/)、[服务模式支持矩阵](/docs/polyglot/portable-worker-affinity/) |
 | Worker 会话 | 嵌入式 Laravel、PHP 和 Python 服务 SDK，以及 Rust SDK 3.2.0 均支持，需在 Worker 上显式启用。 | [Worker 会话](/docs/features/worker-sessions/)、[服务模式支持矩阵](/docs/polyglot/portable-worker-affinity/) |
-| 粘性执行 | 嵌入式 Laravel 和 PHP 服务 SDK 支持。Python 和 Rust 仍不支持。 | [粘性执行](/docs/features/sticky-execution/)、[服务模式支持矩阵](/docs/polyglot/portable-worker-affinity/) |
+| 粘性执行 | 嵌入式 Laravel 和 PHP 服务 SDK 支持。Python 和 Rust 也提供可选的有界历史缓存，需要在 Worker 上显式启用。每个 Worker 都必须保持正确的冷重放行为。 | [粘性执行](/docs/features/sticky-execution/)、[服务模式支持矩阵](/docs/polyglot/portable-worker-affinity/) |
 | 编解码器互操作 | PHP、Python 和 Rust 使用公开的 `codec` + `blob` 封装和同一个固定递归 Avro Value schema。具名分支保留整数与双精度浮点数、文本与字节、布尔值与整数，以及列表与映射的区别。 | [Avro Value 协议](/docs/polyglot/avro-value-protocol/)、[Worker 协议](/docs/polyglot/worker-protocol/)、[Rust SDK](/docs/polyglot/rust/) |
 | 诊断 | 服务运行时和 CLI 以 JSON 发布版本、协议、Worker、任务队列、重放、历史、类型化失败和修复事实。Managed Waterline、单独部署的自托管服务或嵌入式包展示所属运行时的证据。 | [监控](/docs/monitoring/)、[CLI 参考](/docs/polyglot/cli-reference/)、[Waterline 运维 API](/docs/waterline-operator-api/) |
 | 代理工具 | 公开清单、schema、HTTP 操作、CLI JSON、SDK 客户端、类型化历史和诊断以及安全变更，支持发现 → 修改 → 运行 → 诊断 → 修复循环。MCP 是一种可选接口，并不代表整个契约。 | [代理工具契约](/docs/agent-tooling-contract/)、[代理操作循环](/docs/agent-operating-loop/) |
