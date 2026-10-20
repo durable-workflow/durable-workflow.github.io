@@ -42,5 +42,11 @@
   "polyglot/namespace-auth-workers.md": "2b4078ceb74b849f12cb1975b410ff8e7266cd4345f6cf1d4dd906db12460ffb",
   "polyglot/server-role-topology.md": "3d048f0c6b5f179399622508f51e67fff8aa5a6d5b2492533fc720eeec2c27f2",
   "polyglot/task-matching-dispatch.md": "6cae26eeb95ee6f1e96f6ccea0846832de4e6ce1c01896ee70695ee2e3f29825",
-  "polyglot/task-queue-admission.md": "a8cd766b03094def66507f42829eee919e12366fd5942ffd7337f0163e1dc831"
+  "polyglot/task-queue-admission.md": "a8cd766b03094def66507f42829eee919e12366fd5942ffd7337f0163e1dc831",
+  "defining-workflows/activities.md": "05b46f73477a0bbd5f21d17ac37def8a8eac53f1e629155805c98cc46e75b418",
+  "defining-workflows/passing-data.md": "064658f2d1cf643b4bba11020f9143af61b05f1ef5c5b9a9e0dd43fa982fb3e8",
+  "defining-workflows/starting-workflows.md": "722b80454b577b0715ff50db70c7cda2cd02c34c505dd1219a83307852d325a4",
+  "defining-workflows/workflow-api.md": "a6150e75302323b49f350159ce3568a51a19701bb81829915615f754592ee79c",
+  "defining-workflows/workflow-id.md": "91b94211e2f8f405895ad82cfe2ef9baadb7a2cbd06e9c1e7aa6362231e0d424",
+  "defining-workflows/workflow-status.md": "8e8cb27ff44c890d489d89bf166375acfdfaecabd990a2235e106fab1592d529"
 }
