@@ -284,5 +284,5 @@ php artisan app:webhook
 
 `App\Workflows\Webhooks\WebhookWorkflow` startet über einen HTTP-Webhook-Eingang
 und wartet bei `await('ready')`, bis das passende Signal eintrifft. Öffnen Sie
-Waterline während dieser Wartezeit. Das Ereignis `WorkflowExecutionSignaled`
+Waterline während dieser Wartezeit. Das Ereignis `SignalReceived`
 erscheint in dem Moment, in dem das Signal angenommen wird.

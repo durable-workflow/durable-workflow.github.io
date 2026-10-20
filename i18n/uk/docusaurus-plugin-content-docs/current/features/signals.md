@@ -260,4 +260,4 @@ Workflow, що запускається через webhook у [Sample App](/docs
 php artisan app:webhook
 ```
 
-`App\Workflows\Webhooks\WebhookWorkflow` запускається через вхідний HTTP webhook і зупиняється на `await('ready')` до надходження відповідного signal. Відкрийте Waterline під час очікування: подія `WorkflowExecutionSignaled` з’явиться в момент прийняття signal.
+`App\Workflows\Webhooks\WebhookWorkflow` запускається через вхідний HTTP webhook і зупиняється на `await('ready')` до надходження відповідного signal. Відкрийте Waterline під час очікування: подія `SignalReceived` з’явиться в момент прийняття signal.

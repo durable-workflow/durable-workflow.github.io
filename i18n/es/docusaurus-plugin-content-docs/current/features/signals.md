@@ -212,4 +212,4 @@ El workflow iniciado mediante webhook de la [Aplicación de ejemplo](/docs/sampl
 php artisan app:webhook
 ```
 
-`App\Workflows\Webhooks\WebhookWorkflow` comienza desde un webhook HTTP y se detiene en `await('ready')` hasta que llega la señal. Abre Waterline durante la espera y verás aparecer el evento `WorkflowExecutionSignaled` en cuanto se acepte.
+`App\Workflows\Webhooks\WebhookWorkflow` comienza desde un webhook HTTP y se detiene en `await('ready')` hasta que llega la señal. Abre Waterline durante la espera y verás aparecer el evento `SignalReceived` en cuanto se acepte.

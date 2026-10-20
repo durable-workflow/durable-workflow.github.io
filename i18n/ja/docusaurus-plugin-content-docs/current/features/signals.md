@@ -212,4 +212,4 @@ Route::post('/orders/{order}/approve', function (Request $request, Order $order)
 php artisan app:webhook
 ```
 
-`App\Workflows\Webhooks\WebhookWorkflow` は HTTP Webhook の入口から開始し、対応するシグナルが来るまで `await('ready')` で待ちます。待機中に Waterline を開くと、受理の瞬間に `WorkflowExecutionSignaled` イベントが現れます。
+`App\Workflows\Webhooks\WebhookWorkflow` は HTTP Webhook の入口から開始し、対応するシグナルが来るまで `await('ready')` で待ちます。待機中に Waterline を開くと、受理の瞬間に `SignalReceived` イベントが現れます。
