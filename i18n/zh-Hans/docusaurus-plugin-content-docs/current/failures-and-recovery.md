@@ -138,6 +138,19 @@ class ChargeCard extends Activity
 }
 ```
 
+在工作流代码中，为活动设置总时限，其中包括排队和重试间的等待时间：
+
+```php
+use Workflow\V2\Support\ActivityOptions;
+use function Workflow\V2\activity;
+
+$result = activity(ChargeCard::class, new ActivityOptions(
+    scheduleToCloseTimeout: 120,
+));
+```
+
+这些设置共同允许最多三次尝试，重试前分别等待 5 秒和 30 秒，并受最初的 120 秒 schedule-to-close 截止时间约束。如果工作流的截止时间更早，该期限仍然有效。只为可以安全重复的操作启用重试，并使用幂等性检查保护外部副作用。
+
 可重试活动在尝试次数用尽前抛出异常时，引擎会将当前 `activity_attempts` 行作为运行时状态关闭，把 `activity_executions` 行恢复为 `pending`，为失败尝试记录类型化 `ActivityRetryScheduled` 历史事件，并创建新的持久活动任务。新任务的 `available_at` 按 `backoff()` 策略设置。工作流继续等待同一活动执行，直到最后一次可重试尝试失败，才收到异常。
 
 重试任务的载荷记录 `retry_of_task_id`、`retry_after_attempt_id`、`retry_after_attempt` 和 `retry_backoff_seconds`，让 Waterline 能解释任务的调度原因。所选运行详情优先从类型化活动历史重建 `activities[*].attempts` 中的失败尝试，在时间线显示 `ActivityRetryScheduled`，并通过 `operator_metrics.activities.retrying`、`operator_metrics.activities.failed_attempts` 和 `operator_metrics.backlog.retrying_activities` 报告重试统计。

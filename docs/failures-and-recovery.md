@@ -141,6 +141,19 @@ class ChargeCard extends Activity
 }
 ```
 
+From workflow code, bound the total activity time, including queue waits and backoff:
+
+```php
+use Workflow\V2\Support\ActivityOptions;
+use function Workflow\V2\activity;
+
+$result = activity(ChargeCard::class, new ActivityOptions(
+    scheduleToCloseTimeout: 120,
+));
+```
+
+Together these settings permit at most three attempts, with backoffs of 5 and 30 seconds, under the original 120-second schedule-to-close deadline. An earlier workflow deadline still applies. Enable retries only for operations that can safely be repeated, using idempotency guards for external effects.
+
 When a retryable activity throws before `$tries` is exhausted, the engine closes the current `activity_attempts` row as runtime state, returns the `activity_executions` row to `pending`, records a typed `ActivityRetryScheduled` history event for the failed try, and creates a new durable activity task with `available_at` set from the `backoff()` policy. The workflow stays waiting on that same activity execution and is not resumed with the exception until the final retryable attempt fails.
 
 The retry task records `retry_of_task_id`, `retry_after_attempt_id`, `retry_after_attempt`, and `retry_backoff_seconds` in its payload so Waterline can explain why the task is scheduled. Selected-run detail rebuilds the failed attempt in `activities[*].attempts` from typed activity history first, shows `ActivityRetryScheduled` in the timeline, and reports retrying activity counts through `operator_metrics.activities.retrying`, `operator_metrics.activities.failed_attempts`, and `operator_metrics.backlog.retrying_activities`.

@@ -166,6 +166,19 @@ class ChargeCard extends Activity
 }
 ```
 
+Dans le code du workflow, bornez la durée totale de l’activité, y compris les attentes en file et entre les tentatives :
+
+```php
+use Workflow\V2\Support\ActivityOptions;
+use function Workflow\V2\activity;
+
+$result = activity(ChargeCard::class, new ActivityOptions(
+    scheduleToCloseTimeout: 120,
+));
+```
+
+Ces réglages autorisent au maximum trois tentatives, avec des pauses de 5 et 30 secondes, dans le délai schedule-to-close initial de 120 secondes. Une échéance du workflow plus proche reste applicable. N’activez les nouvelles tentatives que pour les opérations pouvant être répétées sans danger et protégez les effets externes par des mécanismes d’idempotence.
+
 Lorsqu’une activité réessayable lève une exception avant d’avoir épuisé
 `$tries`, le moteur ferme la ligne `activity_attempts` courante dans
 l’état du runtime, remet la ligne `activity_executions` à `pending`,

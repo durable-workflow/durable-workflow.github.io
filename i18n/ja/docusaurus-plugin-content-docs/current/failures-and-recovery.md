@@ -138,6 +138,19 @@ class ChargeCard extends Activity
 }
 ```
 
+ワークフローのコードで、キュー待機と再試行間の待機を含むアクティビティの合計時間を制限します。
+
+```php
+use Workflow\V2\Support\ActivityOptions;
+use function Workflow\V2\activity;
+
+$result = activity(ChargeCard::class, new ActivityOptions(
+    scheduleToCloseTimeout: 120,
+));
+```
+
+これらの設定では、元の 120 秒の schedule-to-close 期限内で、5 秒と 30 秒の待機を挟んで最大 3 回まで試行できます。ワークフローの期限がそれより早い場合は、その期限も適用されます。安全に繰り返せる操作だけで再試行を有効にし、外部の副作用を冪等性チェックで保護してください。
+
 再試行可能なアクティビティが `$tries` を使い切る前に例外を投げると、エンジンは現在の `activity_attempts` 行をランタイム状態として閉じ、`activity_executions` 行を `pending` に戻します。失敗した試行に対して型付き履歴イベント `ActivityRetryScheduled` を記録し、`backoff()` ポリシーから `available_at` を設定した新しい永続アクティビティタスクを作ります。ワークフローは同じアクティビティ実行を待ち続け、最後の再試行可能な試行が失敗するまで、例外を受け取って再開しません。
 
 再試行タスクのペイロードには `retry_of_task_id`、`retry_after_attempt_id`、`retry_after_attempt`、`retry_backoff_seconds` が記録されます。Waterline はこれを使って、タスクが予定された理由を説明できます。選択した実行の詳細は、まず型付きアクティビティ履歴から失敗した試行を `activities[*].attempts` に再構築します。タイムラインに `ActivityRetryScheduled` を表示し、`operator_metrics.activities.retrying`、`operator_metrics.activities.failed_attempts`、`operator_metrics.backlog.retrying_activities` で再試行関連の件数を報告します。

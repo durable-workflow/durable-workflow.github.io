@@ -138,6 +138,19 @@ class ChargeCard extends Activity
 }
 ```
 
+Begrenzen Sie im Workflow-Code die Gesamtdauer der Aktivität einschließlich der Wartezeiten in der Queue und zwischen den Versuchen:
+
+```php
+use Workflow\V2\Support\ActivityOptions;
+use function Workflow\V2\activity;
+
+$result = activity(ChargeCard::class, new ActivityOptions(
+    scheduleToCloseTimeout: 120,
+));
+```
+
+Diese Einstellungen erlauben zusammen höchstens drei Versuche mit Pausen von 5 und 30 Sekunden innerhalb der ursprünglichen Schedule-to-close-Frist von 120 Sekunden. Eine frühere Workflow-Frist gilt weiterhin. Aktivieren Sie Wiederholungen nur für Vorgänge, die sicher wiederholt werden können, und schützen Sie externe Nebenwirkungen durch Idempotenzprüfungen.
+
 Wirft eine wiederholbare Aktivität eine Exception, bevor `$tries` ausgeschöpft ist, schließt die Engine den aktuellen `activity_attempts`-Eintrag. Sie setzt `activity_executions` auf `pending`, speichert ein typisiertes `ActivityRetryScheduled`-Ereignis und erzeugt eine neue dauerhafte Aufgabe. Deren `available_at` folgt der `backoff()`-Richtlinie. Der Workflow wartet weiter auf dieselbe logische Aktivitätsausführung. Er erhält die Exception erst, wenn auch der letzte wiederholbare Versuch fehlschlägt.
 
 Der Payload der Wiederholungsaufgabe enthält `retry_of_task_id`, `retry_after_attempt_id`, `retry_after_attempt` und `retry_backoff_seconds`. Damit kann Waterline erklären, warum die Aufgabe geplant wurde. Die Laufdetails rekonstruieren den fehlgeschlagenen Versuch in `activities[*].attempts` zuerst aus der typisierten Historie und zeigen `ActivityRetryScheduled` in der Zeitleiste. Wiederholungszahlen erscheinen unter `operator_metrics.activities.retrying`, `operator_metrics.activities.failed_attempts` und `operator_metrics.backlog.retrying_activities`.
