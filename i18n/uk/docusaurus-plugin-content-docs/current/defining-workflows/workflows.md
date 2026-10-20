@@ -7,9 +7,9 @@ tags:
   - workflows
   - determinism
 keywords:
-  - durable workflow workflow class
-  - v2 workflow authoring
-  - deterministic workflow code
+  - клас workflow Durable Workflow
+  - написання workflow v2
+  - детермінований код workflow
 ---
 
 # Workflow {#workflows}

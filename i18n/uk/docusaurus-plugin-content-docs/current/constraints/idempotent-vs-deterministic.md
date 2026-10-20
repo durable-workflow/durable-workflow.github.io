@@ -12,11 +12,11 @@ tags:
   - idempotency
   - replay
 keywords:
-  - idempotent vs deterministic
-  - idempotency vs determinism
-  - deterministic vs idempotent
-  - deterministic workflow
-  - idempotent activity
+  - ідемпотентність і детермінованість
+  - відмінність ідемпотентності від детермінованості
+  - детермінованість та ідемпотентність
+  - детермінований workflow
+  - ідемпотентна activity
 ---
 
 # Ідемпотентні та детерміновані workflow: у чому різниця? {#idempotent-vs-deterministic-workflows-whats-the-difference}

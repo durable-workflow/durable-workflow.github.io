@@ -1,7 +1,7 @@
 ---
 sidebar_position: 9.1
 title: Операційний цикл агента
-description: Стабільний процес v2 для AI-агентів із виявленням, зміною, виконанням, діагностикою та відновленням застосунків Durable Workflow.
+description: Стабільний процес v2 для ШІ-агентів із виявленням, зміною, виконанням, діагностикою та відновленням застосунків Durable Workflow.
 tags:
   - ai
   - agents
@@ -9,8 +9,8 @@ tags:
   - operations
 keywords:
   - цикл агента durable workflow
-  - налагодження workflow AI
-  - mcp workflows
+  - налагодження workflow за допомогою ШІ
+  - workflow MCP
   - експорт історії waterline
   - вивід dw json
 ---
@@ -48,7 +48,7 @@ https://durable-workflow.com/llms-full-1.x.txt
 
 ## 2. Виявіть локальний інтерфейс workflow {#2-discover-the-local-workflow-surface}
 
-За наявності починайте з endpoint MCP sample-app:
+За наявності починайте з кінцевої точки MCP прикладу застосунку:
 
 ```text
 /mcp/workflows
@@ -59,7 +59,7 @@ https://durable-workflow.com/llms-full-1.x.txt
 
 Спочатку викликайте `list_workflows`. Відповідь повідомляє агенту відкриті
 workflow, потрібні облікові дані, прийняті аргументи та вже наявні недавні
-run. Використовуйте `simple` або `elapsed` для smoke-тестів без облікових
+запуски. Використовуйте `simple` або `elapsed` для базових перевірок без облікових
 даних перед прикладами, що потребують зовнішніх ключів API.
 
 Якщо MCP недоступний, використовуйте контракти CLI та Server:
@@ -82,7 +82,7 @@ workflow і здоров’я черг завдань без зчитуванн�
   розміщуйте в activity;
 - використовуйте signal, update, query, timer і потоки повідомлень замість
   довільних таблиць або завдань черг;
-- повторюваний ввід людини чи AI залишайте в контракті
+- повторюваний ввід людини чи ШІ залишайте в контракті
   [потоків повідомлень](./features/message-streams.md).
 
 Ця межа важливіша за мовний інтерфейс. Класи workflow PHP, `dw`, Python
@@ -101,7 +101,7 @@ signal/update, рекомендований `diagnose_workflow`.
 | Задача | Рекомендований інтерфейс |
 | --- | --- |
 | Запустити локальний workflow прикладу | `start_workflow` через `/mcp/workflows` |
-| Відновити локальний workflow прикладу | `diagnose_workflow`, потім `repair_workflow` лише за дозволом remediation |
+| Відновити локальний workflow прикладу | `diagnose_workflow`, потім `repair_workflow` лише тоді, коли план усунення це дозволяє |
 | Запустити workflow Server чи надіслати йому команду | `dw workflow:start`, `dw workflow:signal`, `dw workflow:update` або відповідні методи SDK |
 | Перевірити сумісність | `dw server:info --output=json` і `/api/cluster/info` |
 | Переглянути здоров’я черги | `dw task-queue:describe <queue> --output=json` |
@@ -137,8 +137,8 @@ dw workflow:history <workflow-id> <run-id> --output=json
 {"tool": "repair_workflow", "arguments": {"workflow_id": "<workflow_id>"}}
 ```
 
-Якщо Waterline доступний, експортуйте історію обраного run. Експорт
-містить типізовані події історії, контекст обраного run, очікування, timer,
+Якщо Waterline доступний, експортуйте історію обраного запуску. Експорт
+містить типізовані події історії, контекст обраного запуску, очікування, timer,
 лінію походження, метадані джерела проєкції, перевірки цілісності й стійкі
 помилки. Ці факти дозволяють агенту відрізнити помилку workflow від
 недоступного worker, відсутніх облікових даних, збою черги завдань,
@@ -149,7 +149,7 @@ dw workflow:history <workflow-id> <run-id> --output=json
 Звіти агентів мають посилатися на стабільні факти:
 
 - версія документації й використаний пакет LLM;
-- ID workflow, ID run, простір імен і черга завдань;
+- ID workflow, ID запуску, простір імен і черга завдань;
 - викликана команда чи інструмент MCP;
 - статус JSON, код завершення чи іменована причина помилки;
 - `root_cause.category`, `remediation.classification` і дозвіл або відмова
@@ -175,12 +175,12 @@ dw workflow:history <workflow-id> <run-id> --output=json
    `get_workflow_history`.
 
 Доказ записує коди статусів інструментів, ID workflow, статус завершення,
-schema id першопричини, schema id усунення, schema id безпечної зміни
+ідентифікатори схем першопричини, усунення та безпечної зміни
 та обмежену історію в метадані відповідності.
 
 ## Пов’язані сторінки {#related-pages}
 
-- [Розробка за допомогою AI](./ai-assisted-development.md)
+- [Розробка за допомогою ШІ](./ai-assisted-development.md)
 - [Контракт інструментів агентів](./agent-tooling-contract.md)
 - [Інтерфейс workflow MCP](./mcp-workflows.md)
 - [Sample App](./sample-app.md)

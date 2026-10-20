@@ -55,11 +55,11 @@ workflow: він виконує детермінований код workflow, ac
 потрібний контракт.
 
 PHP SDK 2.3.2, Python SDK 2.5.7 та Rust SDK 3.5.0 за замовчуванням
-використовують протокол worker `1.20`. Стандартні workers потребують Server,
-який оголошує `1.20` або новішу версію в межах major `1`. Кожен SDK також
+використовують протокол worker `1.20`. Стандартні worker потребують Server,
+який оголошує `1.20` або новішу версію в межах основної версії `1`. Кожен SDK також
 підтримує явний вибір `1.19` для старішого сумісного Server. Кооперативне
-скасування потребує `1.20` та явного ввімкнення відповідної capability.
-Сумісність визначають виявлення runtime та опубліковані metadata обраного SDK.
+скасування потребує `1.20` та явного ввімкнення відповідної можливості.
+Сумісність визначають виявлення середовища виконання та опубліковані метадані обраного SDK.
 Дивіться [сумісність версій](/docs/compatibility/) та
 [протокол worker](/docs/polyglot/worker-protocol/).
 
@@ -96,7 +96,7 @@ Server. «Вбудований» означає, що runtime працює в п
 | Сумісність worker | SDK реєструють runtime, версію SDK, build ID, підтримувані типи, версію протоколу й місткість. Server публікує прийняті версії та факти маршрутизації. | [Сумісність](/docs/compatibility/), [Сумісність і маршрутизація worker](/docs/polyglot/worker-compatibility-routing/) |
 | Локальні activity | Доступні у вбудованому Laravel, сервісних SDK PHP і Python та Rust SDK 3.1.0 за явного увімкнення worker. | [Вбудоване виконання activity](/docs/features/activity-execution-model/), [Матриця підтримки сервісного режиму](/docs/polyglot/portable-worker-affinity/) |
 | Сеанси worker | Доступні у вбудованому Laravel, сервісних SDK PHP та Python і Rust SDK 3.2.0 за явного увімкнення worker. | [Сеанси worker](/docs/features/worker-sessions/), [Матриця підтримки сервісного режиму](/docs/polyglot/portable-worker-affinity/) |
-| Sticky execution | Доступне у вбудованому Laravel і сервісному PHP SDK. Python і Rust не підтримуються. | [Sticky execution](/docs/features/sticky-execution/), [Матриця підтримки сервісного режиму](/docs/polyglot/portable-worker-affinity/) |
+| Sticky execution | Доступне у вбудованому Laravel і сервісному PHP SDK. Python і Rust також надають необов’язкові кеші історії з обмеженим розміром, які worker вмикають явно. Кожен worker має зберігати коректну поведінку холодного відтворення. | [Sticky execution](/docs/features/sticky-execution/), [Матриця підтримки сервісного режиму](/docs/polyglot/portable-worker-affinity/) |
 | Сумісність кодеків | PHP, Python і Rust використовують публічний конверт `codec` + `blob` і одну фіксовану рекурсивну схему Avro Value. Іменовані гілки зберігають відмінності цілих чисел і double, тексту й bytes, boolean і цілих чисел, списків і мап. | [Протокол Avro Value](/docs/polyglot/avro-value-protocol/), [Протокол worker](/docs/polyglot/worker-protocol/), [Rust SDK](/docs/polyglot/rust/) |
 | Діагностика | Сервісні runtime та CLI публікують факти версій, протоколів, worker, черг завдань, replay, історії, типізованих помилок і відновлення як JSON. Managed Waterline, окрема власна служба або вбудований пакет показують докази з runtime, що ними володіє. | [Моніторинг](/docs/monitoring/), [Довідник CLI](/docs/polyglot/cli-reference/), [API оператора Waterline](/docs/waterline-operator-api/) |
 | Інструменти агентів | Виявити -> Змінити -> Виконати -> Діагностувати -> Відновити доступно через публічні маніфести, схеми, HTTP-операції, JSON CLI, клієнти SDK, типізовану історію/діагностику та безпечні зміни. MCP — один необов’язковий інтерфейс, а не визначення цього контракту. | [Контракт інструментів агентів](/docs/agent-tooling-contract/), [Операційний цикл агента](/docs/agent-operating-loop/) |
