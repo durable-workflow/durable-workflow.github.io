@@ -19,7 +19,7 @@ Durable Workflow unterstützt alle Laravel-Queue-Treiber außer `sync`, darunter
 
 - Amazon SQS
 - Beanstalkd
-- Database
+- Datenbank
 - Redis
 
 Jeder Queue-Treiber hat eigene [Voraussetzungen](https://laravel.com/docs/12.x/queues#driver-prerequisites).
