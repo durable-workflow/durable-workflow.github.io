@@ -9,5 +9,9 @@
   "installation.md": "1e2e04a8f23414d0e81c72b166700fd6350129ab81b2f22a6205856c23741967",
   "introduction.md": "06bf96d164d402d4e376c6308b20f96d324110b2e0cf96c2a1a67b39906072e3",
   "polyglot/deployment-modes.md": "ee38a2ca890e6ba5d52fffa1fa0bc65e64a1fc82e47af92463983e523d4e3f49",
-  "quickstart.md": "fac182ed61fc3540219e737a0e8166fa798ce0c035a34debac2dad9b85573215"
+  "quickstart.md": "fac182ed61fc3540219e737a0e8166fa798ce0c035a34debac2dad9b85573215",
+  "polyglot/avro-value-protocol.md": "602e66c6288c1dd69d2b400c64e4739ad3a0493b5be269cee40f7848b11f260a",
+  "polyglot/cancellation.md": "a08aca914d8211d32184fd76f14e4f8bf47d40656e55364923013e3cece3b70d",
+  "polyglot/cli-python-parity.md": "acf1acbf15ca9cdf069154699c5fbf8c1d1fd3241a32d201ac10b8ec76c038be",
+  "polyglot/workflow-streams.md": "5675a8ea1b9d0b1f7223fecb90b3b048d3006670bf505950bc783709287a6432"
 }
