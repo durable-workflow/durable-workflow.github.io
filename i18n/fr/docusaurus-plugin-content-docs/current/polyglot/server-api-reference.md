@@ -484,10 +484,7 @@ historiques ou les mauvaises exécutions :
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/repair` | Réparer uniquement l'exécution actuelle sélectionnée. |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/archive` | Archiver uniquement l'exécution sélectionnée actuelle et fermée. |
 
-Les commandes portant une charge utile de l'appelant utilisent un tableau
-`input`. Les SDK Python et PHP encodent les enveloppes indépendantes du
-langage ; les appelants HTTP directs doivent envoyer des valeurs JSON que le
-workflow ou l'activité cible sait décoder.
+Les commandes transportent les valeurs métier dans des enveloppes Avro. Les SDK officiels les encodent automatiquement. Un client HTTP direct doit utiliser l’enveloppe `{codec, blob}` de l’encodeur Avro officiel ou la référence du runtime ci-dessous. Le document HTTP extérieur reste JSON ; le JSON métier brut n’est pas un autre codec de charge utile.
 
 ## Espaces de noms et stockage {#namespace-and-storage}
 
@@ -511,31 +508,108 @@ explicitement configuré et les paramètres de bucket/préfixe sur le serveur.
 
 ### Enveloppe de référence de charge utile externe {#external-payload-reference-envelope}
 
-La référence de charge externe est une enveloppe de transport stable. Les SDK
-peuvent la décoder en types natifs utilitaires, mais les clients HTTP
-devraient considérer ces noms de champs comme le contrat :
+Server accepte les références du **runtime**, pas les références avec URI fournisseur des utilitaires embarqués. Une requête contenant `external_storage` est refusée avec HTTP `422` et `external_payload_unsupported`. Ne copiez pas de référence `file://`, `s3://`, `gs://` ou `azure://` dans une requête Server.
+
+L’enveloppe du runtime contient exactement `codec` et `external_payload` :
+
+```json
+{
+  "codec": "avro",
+  "external_payload": {
+    "schema": "durable-workflow.v2.runtime-external-payload-reference.v1",
+    "reference_id": "ep_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+    "codec": "avro",
+    "size_bytes": 1048576,
+    "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  }
+}
+```
+
+L’identifiant et l’empreinte ci-dessus sont illustratifs. Utilisez sans modification la référence renvoyée par un véritable téléversement. La référence imbriquée comporte exactement cinq champs :
 
 | Champ | Obligatoire | Signification |
 | --- | --- | --- |
-| `schema` | oui | Doit être `durable-workflow.v2.external-payload-reference.v1`. Les schémas inconnus sont rejetés. |
-| `uri` | oui | Emplacement d'objet géré par le pilote, comme `file:///...`, `s3://bucket/prefix/object`, `gs://bucket/prefix/object` ou `azure://container/prefix/object`. |
-| `sha256` | oui | SHA-256 hexadécimal en minuscules des octets encodés stockés. Les SDK et le serveur le vérifient avant décodage. |
-| `size_bytes` | oui | Longueur en octets de la charge encodée stockée. Toute différence est un échec d'intégrité. |
-| `codec` | oui | Toujours `avro` : schéma Value typé fixe avec trame Avro single-object. Le document HTTP englobant reste en JSON. |
-| `expires_at` | non | Indication d'expiration ISO-8601 pour la rétention/le ramasse-miettes. Son absence confie le nettoyage à la politique de rétention de l'espace de noms. |
+| `schema` | oui | `durable-workflow.v2.runtime-external-payload-reference.v1`. |
+| `reference_id` | oui | Identifiant opaque Server : `ep_` suivi de 26 caractères ULID majuscules. Ce n’est pas un URI fournisseur. |
+| `codec` | oui | `avro`, comme dans l’enveloppe extérieure. |
+| `size_bytes` | oui | Taille entière non négative des octets encodés téléversés. |
+| `sha256` | oui | SHA-256 de ces mêmes octets, renvoyé en hexadécimal minuscule. |
 
-L'externalisation est conditionnée par le seuil de la politique de stockage
-de l'espace de noms. Les charges en ligne conservent l'enveloppe normale
-jusqu'à ce que les octets encodés dépassent `threshold_bytes`. Le pilote
-écrit alors les octets et l'historique stocke l'enveloppe de référence.
-Relecture et export d'historique doivent échouer explicitement si un blob
-référencé est absent, modifié, hors du préfixe configuré ou chez un fournisseur
-indisponible. Ils ne doivent pas remplacer silencieusement un objet manquant
-par `null`, `{}` ou une chaîne d'octets vide.
+### Transport des charges externes du runtime {#runtime-external-payload-transport}
 
-Pour le contrat complet d'autorité des requêtes, incluant résolution des
-espaces de noms, identifiants par rôle et champs d'inscription des workers,
-consultez [Espaces de noms, authentification et inscription des workers](/docs/polyglot/namespace-auth-workers).
+Découvrez `namespace.external_payload_storage.transport` via `GET /api/cluster/info`. Son schéma est `durable-workflow.v2.runtime-external-payload-transport.v1`, version `1`. Utilisez ses routes et limites uniquement lorsque le stockage de l’espace de noms est `available`. Server conserve les identifiants fournisseur et ne renvoie aucun emplacement fournisseur.
+
+| Méthode | Chemin | Résultat |
+| --- | --- | --- |
+| `POST` | `/api/external-payloads/v1` | Téléverse des octets encodés bornés. `201` renvoie le schéma `durable-workflow.v2.runtime-external-payload-upload.v1`, `transport_version: 1` et `reference`. |
+| `GET` | `/api/external-payloads/v1/{referenceId}` | Récupère et vérifie les octets encodés référencés. `200` renvoie `application/octet-stream`. |
+
+Les deux routes utilisent un identifiant ordinaire du runtime avec le rôle `worker`, `operator` ou `admin` et `X-Namespace`. Toutes deux exigent `X-Durable-Workflow-Payload-Codec`, `X-Durable-Workflow-Payload-Size` et `X-Durable-Workflow-Payload-SHA256`. Le téléversement exige aussi `Content-Type: application/octet-stream`. Une recherche entre espaces de noms répond introuvable sans révéler les objets d’autrui. Posséder un identifiant ne donne ni accès ni autorité pour terminer un workflow.
+
+Les octets téléversés sont les **octets UTF-8 de la chaîne base64 `blob` de l’enveloppe Avro officielle**, sans saut de ligne ajouté. Ce n’est ni l’Avro binaire décodé ni du JSON métier. Calculez longueur et SHA-256 sur ces octets précis. Par exemple, après installation du SDK Python :
+
+```bash
+python - <<'PY'
+from pathlib import Path
+from durable_workflow.serializer import encode
+
+Path("payload.avro.txt").write_bytes(
+    encode([{"message": "large value", "optional": None}]).encode("utf-8")
+)
+PY
+
+PAYLOAD_SIZE=$(wc -c < payload.avro.txt | tr -d ' ')
+PAYLOAD_SHA256=$(sha256sum payload.avro.txt | cut -d ' ' -f 1)
+
+curl --fail-with-body -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/external-payloads/v1" \
+  -H "Authorization: Bearer $DURABLE_WORKFLOW_AUTH_TOKEN" \
+  -H "X-Namespace: billing" \
+  -H "Content-Type: application/octet-stream" \
+  -H "X-Durable-Workflow-Payload-Codec: avro" \
+  -H "X-Durable-Workflow-Payload-Size: $PAYLOAD_SIZE" \
+  -H "X-Durable-Workflow-Payload-SHA256: $PAYLOAD_SHA256" \
+  --data-binary @payload.avro.txt > upload.json
+
+REFERENCE_ID=$(jq -r '.reference.reference_id' upload.json)
+curl --fail-with-body -sS "$DURABLE_WORKFLOW_SERVER_URL/api/external-payloads/v1/$REFERENCE_ID" \
+  -H "Authorization: Bearer $DURABLE_WORKFLOW_AUTH_TOKEN" \
+  -H "X-Namespace: billing" \
+  -H "X-Durable-Workflow-Payload-Codec: avro" \
+  -H "X-Durable-Workflow-Payload-Size: $PAYLOAD_SIZE" \
+  -H "X-Durable-Workflow-Payload-SHA256: $PAYLOAD_SHA256" \
+  -o fetched.avro.txt
+cmp payload.avro.txt fetched.avro.txt
+```
+
+Le téléversement vérifie l’intégrité des octets avant d’enregistrer une référence. Il n’exécute aucun workflow et ne prouve pas que les octets sont une charge métier valide. La première requête vérifiée incorporant un état revendique la référence ; la validation et les contrôles ordinaires de requête, d’espace de noms, de tentative de tâche et de bail restent applicables. Pour les téléversements de terminaison des workers, utilisez le SDK officiel et son contexte découvert plutôt que d’inventer une autorisation de bail dans un client direct.
+
+Lisez `limits.max_payload_bytes`, `request_timeout_seconds` et `abandoned_upload_expiry_seconds` dans le manifeste. Les quotas d’octets et d’objets, limites ordinaires de requête et limites de téléversement de terminaison s’appliquent aussi. Selon le seuil, une valeur exactement égale reste intégrée. Les SDK externalisent les valeurs supérieures et peuvent en externaliser d’autres pour respecter la limite de la requête agrégée.
+
+| Résultat | Statut HTTP | Action |
+| --- | --- | --- |
+| Référence absente ou expirée | `404` / `410` | Restaurez l’objet requis ou corrigez la référence. Ne décodez pas une absence comme `null`. |
+| Non autorisé | `401` / `403` | Corrigez identifiant, rôle ou autorisation de l’espace de noms. |
+| Enveloppe non prise en charge ou intégrité incorrecte | `415` / `422` | Corrigez codec, champs, taille, empreinte ou octets encodés. |
+| Charge trop grande | `413` | Réduisez la valeur encodée ou utilisez une politique supérieure autorisée. |
+| Quota ou autorisation de téléversement épuisés | `429` | Inspectez la capacité et réessayez uniquement dans le budget d’origine. |
+| Stockage indisponible | `503` | Rétablissez la disponibilité avant de réessayer dans ce même budget. |
+| Terminaison périmée ou conflictuelle | `409` | Ne réessayez pas avec une identité de tâche inventée ou un nouveau bail. |
+
+Server gère la rétention. Aucune route de suppression cliente n’existe. L’éviction du cache ne doit pas supprimer l’objet. Les téléversements non revendiqués peuvent expirer ; propriétaires conservés, objets partagés, défaillances du stockage et blocages de sauvegarde affectent le nettoyage. Un export d’historique contenant une référence n’est pas une sauvegarde autonome de ses octets.
+
+### Prise en charge des charges externes par mode {#external-payload-support-by-mode}
+
+| Client ou worker | Chemin de stockage | Identifiants fournisseur |
+| --- | --- | --- |
+| Paquet workflow Laravel embarqué | Politique de l’application et références avec URI fournisseur. | Application embarquée. |
+| SDK PHP | Téléversement/récupération automatiques découverts avec références opaques. | Server. |
+| SDK Python | Téléversement/récupération automatiques découverts avec références opaques. | Server. |
+| SDK Rust | Téléversement/récupération automatiques découverts avec références opaques. | Server. |
+| HTTP direct | Téléversement/récupération explicites et référence renvoyée dans un champ de charge pris en charge. | Server. |
+
+Tous les SDK exigent un transport du runtime compatible et disponible. Les utilitaires fournisseur servent aux intégrations de stockage embarquées ou directes appartenant à l’application. Leur présence ne fait pas des enveloppes fournisseur un format d’entrée pris en charge par Server ou Cloud.
+
+Le contrat complet d’autorité des requêtes, de résolution des espaces de noms, d’identifiants par rôle et d’enregistrement des workers figure dans [Espaces de noms, authentification et enregistrement des workers](/docs/polyglot/namespace-auth-workers).
 
 ## API d'administration du catalogue de services {#service-catalog-admin-apis}
 

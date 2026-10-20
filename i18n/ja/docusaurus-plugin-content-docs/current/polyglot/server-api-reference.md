@@ -335,7 +335,7 @@ Server は協調的な `request-cancellation` ルートも提供します。時�
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/repair` | 選択実行が現在の場合だけ修復。 |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/archive` | 選択実行が現在かつ閉じている場合だけアーカイブ。 |
 
-呼び出し元ペイロードを持つコマンドは `input` 配列を使います。Python と PHP SDK は言語中立なペイロードエンベロープをエンコードします。直接 HTTP 呼び出し元は、対象のワークフローやアクティビティがデコードできる JSON 値を送る必要があります。
+コマンドは業務値を Avro ペイロードエンベロープで運びます。公式 SDK が自動でエンコードします。直接 HTTP クライアントは、公式 Avro エンコーダーの `{codec, blob}` エンベロープか、以下のランタイム外部参照を使ってください。外側の HTTP 文書は JSON ですが、生の業務 JSON は別のペイロードコーデックとして使えません。
 
 ## 名前空間とストレージ {#namespace-and-storage}
 
@@ -354,20 +354,108 @@ Server は協調的な `request-cancellation` ルートも提供します。時�
 
 ### 外部ペイロード参照エンベロープ {#external-payload-reference-envelope}
 
-外部ペイロード参照は安定したワイヤーエンベロープです。SDK はネイティブのヘルパー型にデコードできますが、HTTP クライアントは次のフィールド名を契約として扱うべきです。
+Server は**ランタイム参照**を受け付けます。組み込みストレージのヘルパーが使うプロバイダー URI 参照とは異なります。`external_storage` を含むリクエストは HTTP `422`、`external_payload_unsupported` で拒否されます。`file://`、`s3://`、`gs://`、`azure://` のプロバイダー参照を Server リクエストへコピーしないでください。
+
+ランタイムのエンベロープは `codec` と `external_payload` だけを持ちます。
+
+```json
+{
+  "codec": "avro",
+  "external_payload": {
+    "schema": "durable-workflow.v2.runtime-external-payload-reference.v1",
+    "reference_id": "ep_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+    "codec": "avro",
+    "size_bytes": 1048576,
+    "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  }
+}
+```
+
+上の ID とハッシュは説明用です。実際のアップロードで返された参照を変更せず使ってください。入れ子の参照には次の5フィールドだけがあります。
 
 | フィールド | 必須 | 意味 |
 | --- | --- | --- |
-| `schema` | はい | `durable-workflow.v2.external-payload-reference.v1` が必須。未知のスキーマは安全側に失敗する。 |
-| `uri` | はい | `file:///...`、`s3://bucket/prefix/object`、`gs://bucket/prefix/object`、`azure://container/prefix/object` など、ドライバー所有のオブジェクト位置。 |
-| `sha256` | はい | 保存したエンコード済みバイト列の小文字16進 SHA-256。SDK と Server はデコード前に検証する。 |
-| `size_bytes` | はい | 保存したエンコード済みペイロードのバイト長。不一致は整合性失敗。 |
-| `codec` | はい | 常に `avro`。Avro single-object フレームの固定型付き Value スキーマ。周囲の HTTP ドキュメントは JSON のまま。 |
-| `expires_at` | いいえ | 保持・GC 向けの ISO-8601 期限ヒント。欠落時は名前空間の保持ポリシーが清掃を管理する。 |
+| `schema` | はい | `durable-workflow.v2.runtime-external-payload-reference.v1`。 |
+| `reference_id` | はい | 不透明な Server ID。`ep_` と26文字の大文字 ULID で構成されます。プロバイダー URI ではありません。 |
+| `codec` | はい | 外側のエンベロープと同じ `avro`。 |
+| `size_bytes` | はい | アップロードしたエンコード済みバイトの非負整数サイズ。 |
+| `sha256` | はい | 同じバイトの SHA-256。小文字の16進数で返されます。 |
 
-ペイロード退避は名前空間ストレージポリシーのしきい値で制御します。エンコード済みバイト数が `threshold_bytes` を超えるまでは通常のインラインエンベロープを使い、超えるとドライバーがバイト列を書き、履歴は参照エンベロープを保存します。参照 blob が欠落、変更済み、設定プレフィックス外、またはプロバイダー利用不能の場合、リプレイと履歴エクスポートは明示的に失敗しなければなりません。欠落を黙って `null`、`{}`、空のバイト文字列に置き換えてはいけません。
+### ランタイム外部ペイロード転送 {#runtime-external-payload-transport}
 
-名前空間解決、ロール別認証情報、Worker 登録フィールドを含むリクエスト権限契約全体は[名前空間、認証、Worker 登録](/docs/polyglot/namespace-auth-workers)を参照してください。
+`GET /api/cluster/info` から `namespace.external_payload_storage.transport` を検出します。スキーマは `durable-workflow.v2.runtime-external-payload-transport.v1`、バージョンは `1` です。名前空間ストレージの状態が `available` のときだけ、公開された経路と上限を使います。Server がプロバイダー認証情報を保持し、プロバイダー上の保存場所は返しません。
+
+| メソッド | パス | 結果 |
+| --- | --- | --- |
+| `POST` | `/api/external-payloads/v1` | 上限内のエンコード済みバイトをアップロードします。`201` は `durable-workflow.v2.runtime-external-payload-upload.v1` スキーマ、`transport_version: 1`、`reference` を返します。 |
+| `GET` | `/api/external-payloads/v1/{referenceId}` | 参照されたエンコード済みバイトを取得、検証します。`200` は `application/octet-stream` を返します。 |
+
+両方の経路は `worker`、`operator`、`admin` ロールの通常のランタイム認証情報と `X-Namespace` を使います。いずれも `X-Durable-Workflow-Payload-Codec`、`X-Durable-Workflow-Payload-Size`、`X-Durable-Workflow-Payload-SHA256` が必要です。アップロードには `Content-Type: application/octet-stream` も必要です。別の名前空間を検索すると、そのオブジェクトの存在を明かさず見つからないと返します。ID の所持は、アクセス権やワークフロー完了権限を与えません。
+
+アップロードするのは、**公式 Avro エンベロープの base64 `blob` 文字列の UTF-8 バイト**です。末尾に改行を追加しません。デコード済みバイナリ Avro や業務 JSON ではありません。長さと SHA-256 は、その正確なバイト列から求めてください。Python SDK をインストールした後の例です。
+
+```bash
+python - <<'PY'
+from pathlib import Path
+from durable_workflow.serializer import encode
+
+Path("payload.avro.txt").write_bytes(
+    encode([{"message": "large value", "optional": None}]).encode("utf-8")
+)
+PY
+
+PAYLOAD_SIZE=$(wc -c < payload.avro.txt | tr -d ' ')
+PAYLOAD_SHA256=$(sha256sum payload.avro.txt | cut -d ' ' -f 1)
+
+curl --fail-with-body -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/external-payloads/v1" \
+  -H "Authorization: Bearer $DURABLE_WORKFLOW_AUTH_TOKEN" \
+  -H "X-Namespace: billing" \
+  -H "Content-Type: application/octet-stream" \
+  -H "X-Durable-Workflow-Payload-Codec: avro" \
+  -H "X-Durable-Workflow-Payload-Size: $PAYLOAD_SIZE" \
+  -H "X-Durable-Workflow-Payload-SHA256: $PAYLOAD_SHA256" \
+  --data-binary @payload.avro.txt > upload.json
+
+REFERENCE_ID=$(jq -r '.reference.reference_id' upload.json)
+curl --fail-with-body -sS "$DURABLE_WORKFLOW_SERVER_URL/api/external-payloads/v1/$REFERENCE_ID" \
+  -H "Authorization: Bearer $DURABLE_WORKFLOW_AUTH_TOKEN" \
+  -H "X-Namespace: billing" \
+  -H "X-Durable-Workflow-Payload-Codec: avro" \
+  -H "X-Durable-Workflow-Payload-Size: $PAYLOAD_SIZE" \
+  -H "X-Durable-Workflow-Payload-SHA256: $PAYLOAD_SHA256" \
+  -o fetched.avro.txt
+cmp payload.avro.txt fetched.avro.txt
+```
+
+アップロードは参照の記録前にバイトの整合性を検証します。ワークフローを実行したり、有効な業務ペイロードであることを証明したりはしません。検証済みの最初の状態を伴うリクエストが参照を確保します。ペイロード検証と、通常のリクエスト、名前空間、タスク試行、リースの検証は継続します。Worker の完了アップロードには、直接クライアントでリース許可を作り出さず、公式 SDK と検出された完了コンテキストを使ってください。
+
+転送マニフェストから `limits.max_payload_bytes`、`request_timeout_seconds`、`abandoned_upload_expiry_seconds` を読み取ります。名前空間のバイト数・オブジェクト数クォータ、通常のリクエスト上限、完了アップロード上限も適用されます。しきい値による選択では、等しいサイズの値はインラインのままです。SDK はより大きい値を外部化し、リクエスト全体を収めるため追加の値を外部化する場合もあります。
+
+| 結果 | HTTP ステータス | 対応 |
+| --- | --- | --- |
+| 参照がない、または期限切れ | `404` / `410` | 必要なオブジェクトを復元するか参照を修正します。欠落を `null` としてデコードしないでください。 |
+| 権限なし | `401` / `403` | 認証情報、ロール、名前空間の許可を修正します。 |
+| 未対応エンベロープ、整合性不一致 | `415` / `422` | コーデック、フィールド、サイズ、ハッシュ、エンコード済みバイトを修正します。 |
+| ペイロードが大きすぎる | `413` | エンコード値を小さくするか、許可された大きいポリシーを使います。 |
+| クォータまたはアップロード許容量を消費 | `429` | 容量を確認し、元の操作予算内だけで再試行します。 |
+| ストレージ利用不可 | `503` | 可用性を回復してから、同じ予算内で再試行します。 |
+| 古い完了、または競合した完了 | `409` | タスクの同一性を捏造したり新しいリースに変えたりして再試行しないでください。 |
+
+保持は Server が管理します。クライアント削除経路はありません。キャッシュの破棄で保存オブジェクトを削除してはいけません。未確保のアップロードは期限切れになる場合があります。保持中の所有者、共有オブジェクト、ストレージ障害、バックアップ保留がクリーンアップに影響します。参照入りの履歴エクスポートは、参照バイトを含む自己完結型バックアップではありません。
+
+### モード別の外部ペイロード対応 {#external-payload-support-by-mode}
+
+| クライアントまたは Worker | 保存経路 | プロバイダー認証情報 |
+| --- | --- | --- |
+| 組み込み Laravel ワークフローパッケージ | アプリケーションの名前空間ポリシーとプロバイダー URI 参照。 | 組み込みアプリケーション。 |
+| PHP SDK | 自動検出したランタイムアップロード・取得と不透明参照。 | Server。 |
+| Python SDK | 自動検出したランタイムアップロード・取得と不透明参照。 | Server。 |
+| Rust SDK | 自動検出したランタイムアップロード・取得と不透明参照。 | Server。 |
+| 直接 HTTP | 明示的なランタイムアップロード・取得と、対応ペイロード欄に渡す返却参照。 | Server。 |
+
+すべての SDK 行には利用可能な互換ランタイム転送が必要です。プロバイダーヘルパーは、アプリケーションが所有する組み込み・直接ストレージ統合に使います。ヘルパーが存在しても、プロバイダーエンベロープが Server や Cloud の対応入力形式になるわけではありません。
+
+名前空間の解決、ロール別認証情報、Worker 登録フィールドを含む完全な要求権限契約は、[名前空間、認証、Worker 登録](/docs/polyglot/namespace-auth-workers)を参照してください。
 
 ## サービスカタログ管理 API {#service-catalog-admin-apis}
 
