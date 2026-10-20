@@ -552,8 +552,7 @@ períodos tranquilos retornam os mesmos contadores `passes` / `repaired` /
 
 ## Definir workflows {#defining-workflows}
 
-Workflows são classes Python decoradas com `@workflow.defn`. O método `run` é
-um gerador que produz comandos para o servidor.
+Workflows são classes Python decoradas com `@workflow.defn`. O método `run` é uma função síncrona comum ou um gerador síncrono que produz comandos duráveis para o servidor. Use o gerador quando o workflow precisar de trabalho durável; `async def run` não é suportado.
 
 ```python
 from durable_workflow import workflow
@@ -650,6 +649,25 @@ workers ausentes ou incompatíveis, perda de worker, timeout e conclusão
 duplicada ou antiga isolada por fencing continuam sendo resultados tipados
 explícitos. PHP e Rust atualmente não expõem APIs de autoria de validadores
 e anunciam essa ausência nos contratos de workflow em vez de declarar paridade de validadores.
+
+### Ciclo de vida dos handlers {#handler-lifecycle}
+
+**Alteração de validação ainda não publicada.** As proteções de handlers abaixo estão sendo preparadas para Python SDK 2.6.2, mas a publicação e a qualificação dos artefatos instalados continuam pendentes. Consultas assíncronas e validadores de atualização roteados pelo Server já são suportados; esta mudança preserva esses caminhos. Veja o escopo corrigido em [SDK #177](https://github.com/durable-workflow/sdk-python/issues/177#issuecomment-6296781770).
+
+Cada replay constrói uma nova instância do workflow antes de executar `run()`. Sinais já registrados no início do workflow são aplicados depois que `run()` chega ao primeiro `yield`; assim, o construtor e a inicialização anterior ao yield acontecem primeiro. Handlers de sinal e atualização modificam esse estado reconstruído. Consultas o inspecionam sem alterar o estado durável; validadores de atualização inspecionam um estado reconstruído descartável antes da aceitação. Coloque comandos duráveis de atividades, timers e workflows filhos em `run()`, não em um handler.
+
+| Handler | Forma suportada e resultado de uma falha |
+| --- | --- |
+| `@workflow.signal` | Função síncrona. Uma exceção ao aplicar o sinal durante o replay faz a execução do workflow falhar. |
+| `@workflow.update` | Função síncrona. Uma exceção do handler faz essa atualização falhar. |
+| `@workflow.update_validator` ou `@update_method.validator` | Função síncrona ou `async def` no Worker. Uma exceção rejeita a atualização antes da aceitação. |
+| `@workflow.query` | Função síncrona ou `async def` no Worker. Uma exceção do handler faz a consulta falhar, não a execução do workflow. |
+
+A validação preparada recusa funções de corrotina para sinais e atualizações, e funções geradoras ou geradoras assíncronas para **todos** os tipos de handlers decorados, inclusive consultas e validadores. Ela lança `InvalidWorkflowDefinition` na definição, no registro ou no replay, incluindo handlers herdados e ferramentas offline. Wrappers síncronos de sinal e atualização não podem contornar as proteções retornando valores assíncronos. Retornar valores geradores ou geradores assíncronos é recusado para qualquer tipo de handler. Essas restrições não proíbem o gerador síncrono usado por `run()`.
+
+Para uma consulta roteada pelo Server, o Worker aguarda explicitamente o resultado assíncrono sob o prazo original da consulta e a autoridade de claim/cancelamento. A espera não concede um novo orçamento nem permite um resultado após a perda de autoridade. Na validação anterior à aceitação, o Worker também aguarda o resultado assíncrono do validador sobre um estado reconstruído descartável.
+
+Os helpers locais síncronos não podem aguardar. Na correção preparada, `workflow.query_state()` recusa um resultado assíncrono com `QueryFailed`, e `workflow.validate_update()` o recusa com `UpdateRejected`. Eles fecham as corrotinas retornadas em vez de deixá-las escapar como resultados das operações.
 
 ### Contexto do workflow {#workflow-context}
 
