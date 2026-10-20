@@ -42,5 +42,8 @@
   "monitoring.md": "28bc87ab65b4ef8e466f12114cc56dd60f4216f1f163ec84defec1a030ec320e",
   "sample-app.md": "070e0d4523f8228cf4492d2a590df8cd7d121a8c7b521f559629975719fdf515",
   "waterline-operator-api.md": "d858c9fe75b495106157ab11d6f7f2d4ad5aeaa94346342398cb8bafdd069d6d",
-  "polyglot/cli-python-parity.md": "acf1acbf15ca9cdf069154699c5fbf8c1d1fd3241a32d201ac10b8ec76c038be"
+  "polyglot/cli-python-parity.md": "acf1acbf15ca9cdf069154699c5fbf8c1d1fd3241a32d201ac10b8ec76c038be",
+  "constraints/constraints-summary.md": "fb48d01502388fc3821eae3790f470ed29cec91545420450f96fc77b84e589f1",
+  "constraints/idempotent-vs-deterministic.md": "980c1b6a1075bfedfc32fa785be793a0c5aa3a13a1c4204029eb97127c54a602",
+  "constraints/structural-limits.md": "dec64eb7c8261b64a687938072e73dadf519511b132fc7b6542c96f44a8d3037"
 }
