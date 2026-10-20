@@ -289,5 +289,14 @@
   },
   "simulator.output": {
     "message": "Ausgabe:"
+  },
+  "simulator.queryAction": {
+    "message": "🔍 Abfrage:"
+  },
+  "simulator.signalAccepted": {
+    "message": "Signal {signal} angenommen"
+  },
+  "simulator.signalWaitReceived": {
+    "message": "await(): Signal empfangen"
   }
 }
