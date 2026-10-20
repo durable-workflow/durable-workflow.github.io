@@ -10,7 +10,7 @@ Durable Workflow v2 支持多种自托管形态。选择与你运维环境相符
 
 本指南涵盖独立 Server 发行版。如果将 Laravel 软件包嵌入自己的应用中运行，请改用软件包安装和配置页面。Durable Workflow Cloud 是独立的托管服务选择，由 Cloud 运维运行时、持久化、放置和恢复；自托管 Server 绝不会接入 Cloud。参见 [Cloud 托管运行时](/docs/polyglot/cloud-control-plane)。当前 Cloud 契约是单区域托管运行时和恢复边界，不承诺多区域复制、自动区域故障转移或故障回切。
 
-自托管 Server 发行版不捆绑或运维 Waterline。仅在需要其操作 UI 时单独部署 Waterline，并按照 [Waterline 部署与监控指南](/docs/monitoring/#waterline-service)连接到 Server 所有的命名空间。Cloud 则为托管命名空间提供 Managed Waterline。
+自托管 Server 发行版不捆绑或运维 Waterline。仅在需要其操作 UI 时单独部署 Waterline，并按照 [Waterline 部署与监控指南](/docs/monitoring/#waterline-service)连接到 Server 管理的命名空间。Cloud 则为托管命名空间提供 Managed Waterline。
 
 ## 部署支持矩阵 {#deployment-support-matrix}
 
