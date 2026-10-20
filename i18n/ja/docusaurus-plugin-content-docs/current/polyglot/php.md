@@ -125,7 +125,7 @@ if ($selected->key === 'deadline') {
 
 **未公開リリースの準備段階です。** PHP SDK 2.5.4 のエントリ保護と Server 2.9.9 のルーティング・復旧機能はソースにマージされていますが、公開とインストール済み成果物の検証は未完了です。
 
-管理対象 Worker は、ハンドラーの Fiber に入る前に記録済み位置入力を確認します。必須引数の不足や宣言された PHP 型との不整合は `DurableWorkflow\Exception\WorkflowEntryArgumentsMismatch` を発生させ、タスク理由 `workflow_entry_arguments_mismatch` を報告します。省略可能な引数の既定値は入力が省略された場合だけ適用され、互換性のない記録済み値を置き換えません。進入に成功した後の `TypeError` は引き続きアプリケーションの失敗です。
+管理対象 Worker は、ハンドラーの Fiber に入る前に記録済みの位置引数を確認します。必須引数の不足や宣言された PHP 型との不整合は `DurableWorkflow\Exception\WorkflowEntryArgumentsMismatch` を発生させ、タスク理由 `workflow_entry_arguments_mismatch` を報告します。省略可能な引数の既定値は入力が省略された場合だけ適用され、互換性のない記録済み値を置き換えません。進入に成功した後の `TypeError` は引き続きアプリケーションの失敗です。
 
 Worker は `workflow_entry_arguments_validation` を自動的に通知します。対応する Server 機能があれば、拒否されたタスクはリプレイがブロックされ、元の実行は非終端のままです。古いランタイムは失敗したタスクを再試行する場合があるため、SDK のアップグレードだけでは復旧契約全体は成立しません。
 
