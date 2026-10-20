@@ -143,7 +143,7 @@ DW_V2_COMPATIBILITY_NAMESPACE=sample-app
 
 未完了タスクが存在しても、現在のビルドも有効な Worker ハートビートもそのマーカーを通知していない場合、誤った `repair_needed` を表示せず、互換 Worker 待ちとして表示し続けます。
 
-## 履歴の予算 {#history-budgets}
+## 履歴の規模の目安 {#history-budgets}
 
 Waterline は実行サマリー投影から、選択した実行の型付き履歴の大きさを報告します。次のしきい値が、投影の `continue_as_new_recommended` を有効にするタイミングを制御します。
 
@@ -167,7 +167,7 @@ DW_V2_CONTINUE_AS_NEW_SIZE_BYTES_THRESHOLD=5242880
 
 ## 更新の待機ポリシー {#update-wait-policy}
 
-`attemptUpdate()`、Webhook の更新ルート、Waterline の更新操作など、完了を待つ API は有限の予算まで待機し、超えると受理済みの更新ライフサイクルを返します。既定の予算を次で設定します。
+`attemptUpdate()`、Webhook の更新ルート、Waterline の更新操作など、完了を待つ API は上限時間まで待機し、超えると受理済みの更新ライフサイクルを返します。既定の上限時間を次で設定します。
 
 ```env
 DW_V2_UPDATE_WAIT_COMPLETION_TIMEOUT_SECONDS=10

@@ -31,5 +31,13 @@
   "polyglot/invocable-carrier.md": "d32d8b5c7c33204b342f977e0af734166d91e96073db1a49ccb4d414a6d67380",
   "polyglot/invocable-php-handler.md": "3b678eb1d69fe32dfcfdc05d36b33e49e01b79d7216bd784f6a61a6f1c3c3a13",
   "polyglot/prerelease-history-migration.md": "a57f05f492228a8a67791f9152648a1e5f80856325b78777cf63b6ef49b7413c",
-  "polyglot/workflow-streams.md": "5675a8ea1b9d0b1f7223fecb90b3b048d3006670bf505950bc783709287a6432"
+  "polyglot/workflow-streams.md": "5675a8ea1b9d0b1f7223fecb90b3b048d3006670bf505950bc783709287a6432",
+  "capabilities.md": "c11b11db4cffe5ab2cec77e823fa9e7f33094bf7449a3ee29cbd404d48ac1c3c",
+  "mcp-workflows.md": "1c0b5bb7f2e5c7ca835dfdfa57bbe8f6624172c855f4e225057ac2377abf360e",
+  "platform-protocol-specs.md": "ba9c69adfca7fb4a0dd982464b0ca69dd5a21de1e340edbe23b075ec0fb0c35c",
+  "support.md": "706807b3902599dda6080f632ec1f893017ea18bbe9585f533dcdbd6d85f4621",
+  "configuration/customization-matrix.md": "3d115863eaee7852b541bcd01615f424cc19c5847c7cd7d75e5ae63bc3f5cc78",
+  "configuration/microservices.md": "46dc4afa07588b78829a7e3d259177ce0cf40861f0e31b88dbb6de3a83aa5488",
+  "configuration/options.md": "f8d746d34d28d03c8e31ab19223864df04742cde9e6a0cc1445501f8fbddf625",
+  "configuration/publishing-config.md": "8ed57c1e94ec42ad2dc9a67e2749a93b66143466c4ca07a704b816e3c515a81e"
 }
