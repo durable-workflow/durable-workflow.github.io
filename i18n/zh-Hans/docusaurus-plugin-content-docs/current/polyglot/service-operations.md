@@ -12,7 +12,7 @@ description: 发布服务操作，并从其他命名空间持久调用它。
 | 调用方 | 已发布接口 | 目标命名空间 |
 | --- | --- | --- |
 | 嵌入式 PHP | `Workflow::serviceOperation()` 或辅助函数 `serviceOperation()` | `ServiceOperationOptions(targetNamespace: 'billing')` |
-| PHP SDK | `WorkflowContext::serviceOperation()` | 数组选项 `namespace => 'billing'` |
+| PHP SDK | `WorkflowContext::serviceOperation()` | 数组选项 `['namespace' => 'billing']` |
 | Python SDK | `yield context.call_nexus_service(...)` | 关键字参数 `target_namespace='billing'` |
 | Rust SDK | 尚未发布可编写的 Nexus 等待接口 | 由 [Rust SDK #86](https://github.com/durable-workflow/sdk-rust/issues/86) 跟踪。暂缓的草稿不代表已安装版本支持。 |
 

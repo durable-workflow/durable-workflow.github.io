@@ -16,7 +16,7 @@ different language changes that rule.
 | Caller | Published surface | Target namespace |
 | --- | --- | --- |
 | Embedded PHP | `Workflow::serviceOperation()` or the `serviceOperation()` helper | `ServiceOperationOptions(targetNamespace: 'billing')` |
-| PHP SDK | `WorkflowContext::serviceOperation()` | Array option `namespace => 'billing'` |
+| PHP SDK | `WorkflowContext::serviceOperation()` | Array option `['namespace' => 'billing']` |
 | Python SDK | `yield context.call_nexus_service(...)` | Keyword `target_namespace='billing'` |
 | Rust SDK | Authored Nexus waits are not published | Tracked in [Rust SDK #86](https://github.com/durable-workflow/sdk-rust/issues/86). A held draft is not installed support. |
 

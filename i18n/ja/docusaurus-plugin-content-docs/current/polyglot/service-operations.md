@@ -12,7 +12,7 @@ description: サービス操作を公開し、別の名前空間から永続的�
 | 呼び出し元 | 公開済みのインターフェース | 対象名前空間 |
 | --- | --- | --- |
 | 埋め込み PHP | `Workflow::serviceOperation()` またはヘルパー `serviceOperation()` | `ServiceOperationOptions(targetNamespace: 'billing')` |
-| PHP SDK | `WorkflowContext::serviceOperation()` | 配列オプション `namespace => 'billing'` |
+| PHP SDK | `WorkflowContext::serviceOperation()` | 配列オプション `['namespace' => 'billing']` |
 | Python SDK | `yield context.call_nexus_service(...)` | キーワード引数 `target_namespace='billing'` |
 | Rust SDK | Nexus 待機を記述する機能は未公開 | [Rust SDK #86](https://github.com/durable-workflow/sdk-rust/issues/86)で追跡中です。保留中のドラフトはインストール済み製品の対応を意味しません。 |
 

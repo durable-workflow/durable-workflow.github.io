@@ -12,7 +12,7 @@ Eine Service-Operation, auch Nexus-Operation genannt, ist der unterstützte daue
 | Aufrufer | Veröffentlichte Schnittstelle | Ziel-Namespace |
 | --- | --- | --- |
 | Eingebettetes PHP | `Workflow::serviceOperation()` oder die Hilfsfunktion `serviceOperation()` | `ServiceOperationOptions(targetNamespace: 'billing')` |
-| PHP SDK | `WorkflowContext::serviceOperation()` | Array-Option `namespace => 'billing'` |
+| PHP SDK | `WorkflowContext::serviceOperation()` | Array-Option `['namespace' => 'billing']` |
 | Python SDK | `yield context.call_nexus_service(...)` | Schlüsselwort `target_namespace='billing'` |
 | Rust SDK | Das Verfassen von Nexus-Warteaufrufen ist nicht veröffentlicht | Verfolgt in [Rust SDK #86](https://github.com/durable-workflow/sdk-rust/issues/86). Ein zurückgehaltener Entwurf ist keine installierbare Unterstützung. |
 

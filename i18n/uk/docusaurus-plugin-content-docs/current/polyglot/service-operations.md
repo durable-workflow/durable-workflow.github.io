@@ -12,7 +12,7 @@ description: Опублікуйте сервісну операцію та до�
 | Викликач | Опублікований API | Цільовий namespace |
 | --- | --- | --- |
 | Вбудований PHP | `Workflow::serviceOperation()` або helper `serviceOperation()` | `ServiceOperationOptions(targetNamespace: 'billing')` |
-| PHP SDK | `WorkflowContext::serviceOperation()` | Параметр масиву `namespace => 'billing'` |
+| PHP SDK | `WorkflowContext::serviceOperation()` | Параметр масиву `['namespace' => 'billing']` |
 | Python SDK | `yield context.call_nexus_service(...)` | Ключовий аргумент `target_namespace='billing'` |
 | Rust SDK | Авторські очікування Nexus не опубліковані | Відстежуються у [Rust SDK #86](https://github.com/durable-workflow/sdk-rust/issues/86). Призупинена чернетка не є підтримкою встановленого пакета. |
 

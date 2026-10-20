@@ -12,7 +12,7 @@ Una operación de servicio, también llamada operación Nexus, es la llamada dur
 | Llamante | Interfaz publicada | Espacio de nombres de destino |
 | --- | --- | --- |
 | PHP integrado | `Workflow::serviceOperation()` o la función auxiliar `serviceOperation()` | `ServiceOperationOptions(targetNamespace: 'billing')` |
-| PHP SDK | `WorkflowContext::serviceOperation()` | Opción de array `namespace => 'billing'` |
+| PHP SDK | `WorkflowContext::serviceOperation()` | Opción de array `['namespace' => 'billing']` |
 | Python SDK | `yield context.call_nexus_service(...)` | Argumento `target_namespace='billing'` |
 | Rust SDK | La autoría de esperas Nexus no está publicada | Se sigue en [Rust SDK #86](https://github.com/durable-workflow/sdk-rust/issues/86). Un borrador retenido no es soporte instalable. |
 
