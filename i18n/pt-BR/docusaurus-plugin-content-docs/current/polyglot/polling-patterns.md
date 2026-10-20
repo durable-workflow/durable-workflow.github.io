@@ -20,7 +20,7 @@ Use consultas curtas que possam ser repetidas com segurança. Um callback bloque
 
 ## Limite tentativas e histórico {#bound-retries-and-history}
 
-As repetições precisam ser habilitadas: atividades PHP têm uma tentativa por padrão. Para três tentativas remotas, configure uma quantidade finita de tentativas, os dois intervalos desejados, um timeout por tentativa e o timeout total original da atividade. Retornar com sucesso «ainda não está pronto» não é uma falha e não dispara nova tentativa. Veja [falhas e recuperação](../failures-and-recovery.md).
+As repetições precisam ser habilitadas: atividades PHP têm uma tentativa por padrão. Por exemplo, configure `maxAttempts: 3`, `backoff: [5, 30]`, `startToCloseTimeout: 10` e `scheduleToCloseTimeout: 90` para três tentativas remotas com intervalos finitos e tempo total original. A política equivalente em Python é `ActivityRetryPolicy(max_attempts=3, backoff_seconds=[5, 30])`, com opções separadas de timeout por tentativa e total. Retornar com sucesso «ainda não está pronto» não é uma falha e não dispara nova tentativa. Veja [falhas e recuperação](../failures-and-recovery.md).
 
 Repetições são adequadas quando a indisponibilidade é um resultado explicitamente repetível e o workflow não precisa executar entre consultas. Não transforme tentativas ilimitadas em um ciclo de consulta invisível. A paridade dos intervalos em atividades locais é acompanhada na [issue do contrato de repetição](https://github.com/durable-workflow/.github/issues/219); estes exemplos usam atividades remotas.
 

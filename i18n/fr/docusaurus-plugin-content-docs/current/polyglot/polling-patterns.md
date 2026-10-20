@@ -20,7 +20,7 @@ Utilisez des vérifications courtes pouvant être répétées sans danger. Un ca
 
 ## Borner les tentatives et l’historique {#bound-retries-and-history}
 
-Les nouvelles tentatives sont explicites : les activités PHP disposent d’une seule tentative par défaut. Pour trois tentatives distantes, configurez un nombre fini de tentatives, les deux délais souhaités, une durée maximale par tentative et la durée maximale totale d’origine de l’activité. Un retour réussi « pas encore prêt » n’est pas un échec et ne déclenche pas de nouvelle tentative. Voir [échecs et récupération](../failures-and-recovery.md).
+Les nouvelles tentatives sont explicites : les activités PHP disposent d’une seule tentative par défaut. Configurez par exemple `maxAttempts: 3`, `backoff: [5, 30]`, `startToCloseTimeout: 10` et `scheduleToCloseTimeout: 90` pour trois tentatives distantes avec délais finis et durée totale d’origine. La politique Python correspondante est `ActivityRetryPolicy(max_attempts=3, backoff_seconds=[5, 30])`, avec des options distinctes pour la durée maximale par tentative et totale. Un retour réussi « pas encore prêt » n’est pas un échec et ne déclenche pas de nouvelle tentative. Voir [échecs et récupération](../failures-and-recovery.md).
 
 Les nouvelles tentatives conviennent lorsque l’indisponibilité constitue un résultat explicitement réessayable et que le workflow n’a pas besoin de s’exécuter entre vérifications. N’utilisez pas des tentatives illimitées comme boucle d’interrogation invisible. La cohérence des délais des activités locales est suivie dans [l’issue du contrat de nouvelle tentative](https://github.com/durable-workflow/.github/issues/219) ; les exemples ici utilisent des activités distantes.
 

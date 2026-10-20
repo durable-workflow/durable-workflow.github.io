@@ -20,7 +20,7 @@ Use short, retry-safe checks. A callback blocked in a downstream request cannot 
 
 ## Bound retries and history {#bound-retries-and-history}
 
-Retries are opt-in: PHP activities default to one attempt. For three remote attempts, configure a finite attempt count, the two intended backoff delays, an attempt timeout and an original total activity timeout. A successful “not ready” return is not a failure and does not trigger a retry. See [failures and recovery](../failures-and-recovery.md).
+Retries are opt-in: PHP activities default to one attempt. For example, configure `maxAttempts: 3`, `backoff: [5, 30]`, `startToCloseTimeout: 10` and `scheduleToCloseTimeout: 90` for three remote attempts with finite delays and original total time. Python's matching retry policy is `ActivityRetryPolicy(max_attempts=3, backoff_seconds=[5, 30])`, with separate attempt/total timeout options. A successful “not ready” return is not a failure and does not trigger a retry. See [failures and recovery](../failures-and-recovery.md).
 
 Retries are suitable when not-ready is an explicit retryable outcome and workflow code need not run between checks. Do not use unlimited retries as an invisible polling loop. Local-activity retry-delay parity is tracked in [the retry contract issue](https://github.com/durable-workflow/.github/issues/219); the examples here use remote activities.
 

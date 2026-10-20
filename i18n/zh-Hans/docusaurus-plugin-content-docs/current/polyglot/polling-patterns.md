@@ -20,7 +20,7 @@ description: 选择有界重试、带心跳的活动或持久定时器循环，�
 
 ## 限制重试与历史增长 {#bound-retries-and-history}
 
-重试需要显式启用：PHP 活动默认只有一次尝试。若要进行三次远程尝试，应配置有限尝试次数、预期的两次退避延迟、单次尝试超时以及活动最初的总超时。成功返回“尚未就绪”不是失败，也不会触发重试。参见[失败与恢复](../failures-and-recovery.md)。
+重试需要显式启用：PHP 活动默认只有一次尝试。例如设置 `maxAttempts: 3`、`backoff: [5, 30]`、`startToCloseTimeout: 10` 和 `scheduleToCloseTimeout: 90`，即可在有限延迟和原始总时间限制内进行三次远程尝试。对应的 Python 策略为 `ActivityRetryPolicy(max_attempts=3, backoff_seconds=[5, 30])`，单次尝试和活动总超时分别配置。成功返回“尚未就绪”不是失败，也不会触发重试。参见[失败与恢复](../failures-and-recovery.md)。
 
 当“尚未就绪”被明确表示为可重试结果，且工作流无需在检查之间运行时，适合使用重试。不要把无限重试当作隐藏的轮询循环。本地活动重试延迟的一致性由[重试契约议题](https://github.com/durable-workflow/.github/issues/219)跟踪；本文示例使用远程活动。
 

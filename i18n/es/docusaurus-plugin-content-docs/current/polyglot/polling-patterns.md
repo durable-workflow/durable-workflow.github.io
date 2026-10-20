@@ -20,7 +20,7 @@ Use consultas breves que puedan repetirse con seguridad. Un callback bloqueado e
 
 ## Acote los reintentos y el historial {#bound-retries-and-history}
 
-Los reintentos son explícitos: las actividades PHP tienen un solo intento por defecto. Para tres intentos remotos, configure un número finito de intentos, las dos demoras deseadas, un timeout por intento y un timeout total original para la actividad. Devolver correctamente «todavía no está listo» no es un fallo ni activa un reintento. Consulte [fallos y recuperación](../failures-and-recovery.md).
+Los reintentos son explícitos: las actividades PHP tienen un solo intento por defecto. Por ejemplo, configure `maxAttempts: 3`, `backoff: [5, 30]`, `startToCloseTimeout: 10` y `scheduleToCloseTimeout: 90` para tres intentos remotos con demoras finitas y un tiempo total original. La política equivalente de Python es `ActivityRetryPolicy(max_attempts=3, backoff_seconds=[5, 30])`, con opciones separadas de timeout por intento y total. Devolver correctamente «todavía no está listo» no es un fallo ni activa un reintento. Consulte [fallos y recuperación](../failures-and-recovery.md).
 
 Los reintentos encajan cuando la falta de disponibilidad es un resultado explícitamente reintentable y el workflow no necesita ejecutarse entre consultas. No convierta reintentos ilimitados en un bucle de sondeo invisible. La paridad de las demoras en actividades locales se sigue en [la incidencia del contrato de reintentos](https://github.com/durable-workflow/.github/issues/219); estos ejemplos usan actividades remotas.
 
