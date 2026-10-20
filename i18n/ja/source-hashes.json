@@ -60,5 +60,7 @@
   "features/worker-sessions.md": "2b08a0cdaee486970e099ea8bcb91d7f6daf135b0bc98629ed47f3885e64c77d",
   "compatibility.md": "3af32f6c46f83df39dc74dedf32314a3416ccd40620948bd8f66ace0d914946e",
   "monitoring.md": "28bc87ab65b4ef8e466f12114cc56dd60f4216f1f163ec84defec1a030ec320e",
-  "rolling-upgrades.md": "5cb58386636361a07de5dd1f0438596dc649bcaf6ea493749ad0635eabb5be7f"
+  "rolling-upgrades.md": "5cb58386636361a07de5dd1f0438596dc649bcaf6ea493749ad0635eabb5be7f",
+  "polyglot/rust.md": "b5d3b44c4e68e8b707804001bc46bd5e758b0180eec2a9a2ebdb69a6183dced5",
+  "polyglot/embedded-to-server.md": "21a7e4c9439a73db3a97fd9b0610749faabf7c449806fe0ad55a0924f50d3b80"
 }
