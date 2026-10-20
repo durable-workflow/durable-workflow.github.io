@@ -46,5 +46,9 @@
   "polyglot/worker-compatibility-routing.md": "e2cdfdbe8b295ba511f26345318e847611c1f2e67dafdf51441f09e93cb939ca",
   "contribute-a-sample.md": "d250d8c63d448e32d3160ff7a2900e7a270dcbd9cda22cf3af46cdf219395ea3",
   "sample-app.md": "070e0d4523f8228cf4492d2a590df8cd7d121a8c7b521f559629975719fdf515",
-  "sdk-neutrality.md": "7b0714c123ade4904591870fc20e9a797da1e5485b2a6c87ca3eaa00c5de6ed6"
+  "sdk-neutrality.md": "7b0714c123ade4904591870fc20e9a797da1e5485b2a6c87ca3eaa00c5de6ed6",
+  "defining-workflows/activities.md": "05b46f73477a0bbd5f21d17ac37def8a8eac53f1e629155805c98cc46e75b418",
+  "defining-workflows/passing-data.md": "064658f2d1cf643b4bba11020f9143af61b05f1ef5c5b9a9e0dd43fa982fb3e8",
+  "defining-workflows/workflow-id.md": "91b94211e2f8f405895ad82cfe2ef9baadb7a2cbd06e9c1e7aa6362231e0d424",
+  "defining-workflows/workflow-api.md": "a6150e75302323b49f350159ce3568a51a19701bb81829915615f754592ee79c"
 }

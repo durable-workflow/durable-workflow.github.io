@@ -55,9 +55,9 @@ abstract class Workflow
 | `runId()` | 現在実行中の実行 ID が必要な場合。 | 選択された実行の ID 文字列。 |
 | `lastChild()` | 最後に起動した子にシグナルを送る場合。 | `ChildWorkflowHandle` または `null`。 |
 | `children()` | 現在のリプレイシーケンスで見える子のハンドルが必要な場合。 | `ChildWorkflowHandle` のリスト。 |
-| `historyLength()` | 件数ベースの履歴予算の指標が必要な場合。 | 現在の履歴イベント件数。 |
-| `historySize()` | バイト数ベースの履歴予算の指標が必要な場合。 | 保存済み履歴のおおよそのバイト数。 |
-| `shouldContinueAsNew()` | 履歴コストが増える前に実行を切り替える場合。 | 設定した履歴予算が切り替えを推奨すると `true`。 |
+| `historyLength()` | 履歴の規模を件数で判断する指標が必要な場合。 | 現在の履歴イベント件数。 |
+| `historySize()` | 履歴の規模をバイト数で判断する指標が必要な場合。 | 保存済み履歴のおおよそのバイト数。 |
+| `shouldContinueAsNew()` | 履歴コストが増える前に実行を切り替える場合。 | 設定した履歴の目安が切り替えを推奨すると `true`。 |
 
 ## 永続コマンド {#durable-commands}
 
