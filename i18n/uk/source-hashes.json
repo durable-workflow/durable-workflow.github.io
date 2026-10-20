@@ -1,5 +1,7 @@
 {
   "configuration/pruning-workflows.md": "b0e45bd188cf17dc4023d5529b319c6d1be0b49f938feef5fbbb567974d3cc4a",
+  "features/sagas.md": "8dae955491a54bcbf545ce6972928df59f3885e00f98bf3a57b14dad98f89161",
+  "features/timeouts.md": "099c03402c856288b1ddfb5696e0476381248495391aba70ac3f4aa2ad8fe207",
   "operator-operating-envelope.md": "dadb2c97c762337e22cf5262305c0ef1fcc2917e34c0162e17178902c5a3c7e5",
   "polyglot/server-config-reference.md": "75b836b44f56542f5bc950ecb858797f6be9627e3f4d25a50de868ef357b3c76",
   "polyglot/server.md": "813231f8044b6e7757013463a81f7fc7a1f6e022b0bd744ecffec49db6234f5b"
