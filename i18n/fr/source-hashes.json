@@ -30,5 +30,9 @@
   "features/continue-as-new.md": "6b3cc8f8c5375726ff0b2544da01e7206e964908b436544e284068ab67aa3dbb",
   "features/versioning.md": "8b7cd077bffc357bd020b70685ea5b45853c3405f48cce42c9338fa0f7322f0b",
   "features/child-workflows.md": "2e842089e2e25be0226d927dc9cf4934014178087465ee0223c6e303d128e251",
-  "features/concurrency.md": "a7a3eb2274f7b14faf722494569b7663c07ab48afdf2e9225e58914b84cacbb4"
+  "features/concurrency.md": "a7a3eb2274f7b14faf722494569b7663c07ab48afdf2e9225e58914b84cacbb4",
+  "features/memo.md": "621aa630e37fbef6f84d761c92f99dc3fe8756879008c659cbad0600eb14fd5d",
+  "features/search-attributes.md": "3d07ea788c7d6753a0751c226554fa36667d4ab7860379c01c171fbe066dff11",
+  "features/message-streams.md": "3bce915ed750793b31360d2accc94eebf2c7f075b9769e072f8a2d3d034afad0",
+  "features/updates.md": "72da32fa413a3376bea84ab009ce15217238ccc3c57794783789b21b23c7cf18"
 }
