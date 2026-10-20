@@ -171,7 +171,7 @@ Server README 的[官方镜像 + Compose](https://github.com/durable-workflow/se
 
 团队已明确 VM、网络、数据库、缓存、备份和负载均衡模型时，此路径可自助执行。需要协助确定这些边界、容量、发布顺序或恢复流程时，则由支持团队指导。
 
-## Kubernetes Helm chart {#helm-chart-for-kubernetes}
+## 适用于 Kubernetes 的 Helm chart {#helm-chart-for-kubernetes}
 
 Server 仓库负责 [chart 源码和发布指南](https://github.com/durable-workflow/server/tree/main/k8s/helm/durable-workflow)。从 OCI 镜像仓库安装已发布 chart：
 

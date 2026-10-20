@@ -59,5 +59,19 @@
   "polyglot/worker-build-id-rollout.md": "88a2ec730ed0b2f58ff5d49aa1041c758ec491aceda4165fe1f3b06fcfee0278",
   "polyglot/invocable-carrier.md": "d32d8b5c7c33204b342f977e0af734166d91e96073db1a49ccb4d414a6d67380",
   "polyglot/invocable-php-handler.md": "3b678eb1d69fe32dfcfdc05d36b33e49e01b79d7216bd784f6a61a6f1c3c3a13",
-  "polyglot/worker-protocol.md": "007e844b0a7ab284b7cd343e79f01a27a0dabee3fe4cf19064170581bb897b85"
+  "polyglot/worker-protocol.md": "007e844b0a7ab284b7cd343e79f01a27a0dabee3fe4cf19064170581bb897b85",
+  "features/activity-execution-model.md": "50eb43b1b18458ef5509886756041752d30cca4c511a24a74f409f8f87f86c4f",
+  "features/cancel-and-terminate.md": "c678fc7a0c9b11f0e1bee295aff259de9803219c0aa6769fb801622799e7deb1",
+  "features/child-workflows.md": "2e842089e2e25be0226d927dc9cf4934014178087465ee0223c6e303d128e251",
+  "features/continue-as-new.md": "6b3cc8f8c5375726ff0b2544da01e7206e964908b436544e284068ab67aa3dbb",
+  "features/local-activities.md": "05fca8f2104d8f4e7bd8b48040f5615f18d0ee2795922fb65c56f8d3d70ed204",
+  "features/worker-sessions.md": "2b08a0cdaee486970e099ea8bcb91d7f6daf135b0bc98629ed47f3885e64c77d",
+  "features/events.md": "fcb391862938b5e8cf44ad39f213fc3e55b2ecb7c6edebe6a83a1e58a60bf56e",
+  "features/external-payload-storage.md": "1741bcfc944c9d40f1101888b9f172d13e588f54f6cdcb6f84d00df10c878356",
+  "features/memo.md": "621aa630e37fbef6f84d761c92f99dc3fe8756879008c659cbad0600eb14fd5d",
+  "features/message-streams.md": "3bce915ed750793b31360d2accc94eebf2c7f075b9769e072f8a2d3d034afad0",
+  "features/search-attributes.md": "3d07ea788c7d6753a0751c226554fa36667d4ab7860379c01c171fbe066dff11",
+  "features/concurrency.md": "a7a3eb2274f7b14faf722494569b7663c07ab48afdf2e9225e58914b84cacbb4",
+  "features/signals.md": "2c27bf3122ac62d2634af5f2c8452399fdb14be34a6e02858c847ff2b4028b9a",
+  "features/versioning.md": "8b7cd077bffc357bd020b70685ea5b45853c3405f48cce42c9338fa0f7322f0b"
 }

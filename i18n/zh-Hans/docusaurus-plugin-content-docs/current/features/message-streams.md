@@ -17,7 +17,7 @@ keywords:
 
 消息流是 v2 编写重复工作流消息的接口，适用于人工输入循环、助手回复、工作流之间的通知，以及其他必须在重放和 continue-as-new 后保留的有序消息。
 
-本页介绍嵌入式 Laravel 的收件箱／发件箱 API。由 Server 管理的[工作流流](/docs/polyglot/workflow-streams/)在语义相符时复用流、偏移量、待处理数量、生命周期和错误等名称，但仅用于输出。它们不会为服务模式增加入站工作流消息或 continue-as-new 游标转移。
+本页介绍嵌入式 Laravel 的收件箱／发件箱 API。由 Server 管理的[工作流输出流](/docs/polyglot/workflow-streams/)在语义相符时复用流、偏移量、待处理数量、生命周期和错误等名称，但仅用于输出。它们不会为服务模式增加入站工作流消息或 continue-as-new 游标转移。
 
 工作流作者应使用正式门面：
 

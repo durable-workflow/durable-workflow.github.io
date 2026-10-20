@@ -127,7 +127,7 @@ Waterline 只显示配置的命名空间和所连接 Server 拥有的运行实�
 | 服务目录路由报告 `backend_capability_unavailable` | 服务模式不镜像 Waterline 的嵌入式跨命名空间服务目录。请通过所连接 Server 的原生服务端点和 API 使用此能力。 |
 | Waterline 中缺少自定义指标 | 检查 Worker 的指标导出器。Waterline 报告持久操作事实，不报告任意进程指标。 |
 
-### Cloud Managed Waterline {#cloud-managed-waterline}
+### Cloud 中的 Managed Waterline {#cloud-managed-waterline}
 
 Cloud 客户从命名空间级托管操作界面打开 Cloud Managed Waterline。他们无需部署或配置 Waterline、Server、PHP 或内部端点，也无需维护第二套 Waterline 登录。上述自托管镜像、`WATERLINE_*` 设置、Server 令牌、数据库和入口身份验证说明不适用于此路径。
 
