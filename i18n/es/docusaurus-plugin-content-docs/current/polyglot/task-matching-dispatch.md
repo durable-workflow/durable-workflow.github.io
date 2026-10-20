@@ -30,7 +30,7 @@ La idea central es que Durable Workflow separa dos responsabilidades:
 
 Esta separación importa incluso antes de incorporar un servicio de asignación
 independiente. Permite tratar el descubrimiento de tareas listas, la propiedad
-de las colas, la rotación de arrendamientos y la contrapresión como un rol
+de las colas, la rotación de leases y la contrapresión como un rol
 explícito, en lugar de efectos incidentales de cada proceso de worker.
 
 ## Funciones del rol de asignación {#what-the-matching-role-does}
@@ -41,8 +41,8 @@ El rol de asignación se encarga de:
 - reducir el conjunto apto por espacio de nombres, conexión, cola y familia
   de compatibilidad
 - ofrecer las tareas a un solo worker a la vez
-- convertir una reclamación satisfactoria en un arrendamiento con vencimiento
-- conservar la misma tarea si falla una reclamación, vence un arrendamiento
+- convertir una reclamación satisfactoria en una lease con vencimiento
+- conservar la misma tarea si falla una reclamación, vence una lease
   o desaparece un worker
 - mostrar a los operadores el estado de los avisos y del trabajo acumulado
 
@@ -57,7 +57,7 @@ Durable Workflow admite hoy tres formas prácticas:
 
 Es la forma predeterminada. Los procesos de worker realizan sondeos largos para
 encontrar trabajo listo y aplican exclusión al reclamar para garantizar que un
-solo worker posea el arrendamiento de una tarea a la vez.
+solo worker posea la lease de una tarea a la vez.
 
 Utilízala cuando:
 
@@ -97,7 +97,7 @@ Utiliza esta forma cuando:
   tareas listas y de la frecuencia de barrido
 
 El rol dedicado cambia dónde se realiza la asignación, sin cambiar el contrato
-del protocolo de workers. La semántica de sondeo, reclamación, arrendamiento y
+del protocolo de workers. La semántica de sondeo, reclamación, lease y
 nueva entrega permanece igual.
 
 ## Descubrimiento de tareas listas {#ready-task-discovery}
@@ -114,21 +114,21 @@ Los avisos de sondeo largo aceleran el proceso, pero no garantizan su correcció
 Si el aviso se retrasa o falta, el sondeo duradero sigue haciendo visible la
 tarea. Un fallo de aviso debe aumentar la latencia, no dejar trabajo bloqueado.
 
-## Reclamación, arrendamiento y contrapresión {#claim-lease-and-backpressure}
+## Reclamación, lease y contrapresión {#claim-lease-and-backpressure}
 
 La asignación solo ofrece una oportunidad. La propiedad comienza cuando un
-worker reclama la tarea correctamente y recibe un arrendamiento.
+worker reclama la tarea correctamente y recibe una lease.
 
-Ese arrendamiento proporciona la contrapresión de Durable Workflow:
+Esa lease proporciona la contrapresión de Durable Workflow:
 
-- un worker posee la tarea hasta que el arrendamiento se renueva, completa,
+- un worker posee la tarea hasta que la lease se renueva, completa,
   libera o vence
 - un worker fallido u obsoleto no retiene la tarea permanentemente
 - la nueva entrega es normal y debe contemplarse en la ejecución al menos una vez
-- los workers incompatibles no roban el arrendamiento; reciben un rechazo explícito
+- los workers incompatibles no roban la lease; reciben un rechazo explícito
 
-Como el trabajo se basa en arrendamientos, la presión de cola aparece como
-trabajo acumulado, arrendamientos obsoletos o entregas repetidas, en lugar de
+Como el trabajo se basa en leases, la presión de cola aparece como
+trabajo acumulado, leases obsoletas o entregas repetidas, en lugar de
 pérdidas ocultas en memoria.
 
 ## Particionado de colas {#queue-partitioning}
@@ -177,8 +177,8 @@ Utiliza estas interfaces en conjunto:
 - `dw system:operator-metrics --json` o `/api/system/operator-metrics` para el
   mismo contrato `matching_role` local al nodo junto a contadores actuales de
   trabajo acumulado, reparación, workers y salud del proceso que responde
-- diagnósticos de salud y Waterline para tareas defectuosas, arrendamientos
-  obsoletos y falta de workers compatibles
+- diagnósticos de salud y Waterline para tareas defectuosas, leases
+  obsoletas y falta de workers compatibles
 - comprobaciones de actualización progresiva si hay una ventana de coexistencia
   y la asignación debe bloquear reclamaciones inseguras
 
@@ -206,7 +206,7 @@ necesidad es aclarar el despliegue y la compatibilidad en lugar de adoptar otra 
 - [Protocolo de workers](/docs/polyglot/worker-protocol) para las operaciones de
   sondeo, latido, finalización y fallo
 - [Admisión en colas de tareas](/docs/polyglot/task-queue-admission) para los
-  presupuestos de slots, arrendamientos y despacho sobre la asignación
+  presupuestos de slots, leases y despacho sobre la asignación
 - [Actualizaciones progresivas](/docs/rolling-upgrades) para el procedimiento de
   despliegue cuando intervienen asignación y compatibilidad
 - [Referencia de configuración del servidor](/docs/polyglot/server-config-reference)

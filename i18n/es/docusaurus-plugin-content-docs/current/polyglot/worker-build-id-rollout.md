@@ -137,7 +137,7 @@ reclamar trabajo y efectuar un traspaso limpio cuando una esté lista para deten
 
 ## Drenar una versión antigua {#drain-an-older-build}
 
-El drenaje mantiene las tareas ya arrendadas en la versión antigua mientras las
+El drenaje mantiene las tareas que ya tienen lease en la versión antigua mientras las
 nuevas pasan a otras cohortes activas de la cola:
 
 ```bash
@@ -149,7 +149,7 @@ ese `build_id` como drenando en su siguiente latido. La llamada es idempotente:
 repetirla no restablece `drained_at`, por lo que es seguro reintentar desde una automatización.
 
 Cuando una fila de worker queda en `draining`, las rutas de sondeo de tareas de
-workflow, actividad y consulta dejan de arrendarle trabajo nuevo. Los sondeos
+workflow, actividad y consulta dejan de asignarle trabajo nuevo mediante leases. Los sondeos
 fallan con HTTP `409`, `poll_status: "draining"` y `reason: "worker_draining"`
 hasta que se reanuda la cohorte.
 

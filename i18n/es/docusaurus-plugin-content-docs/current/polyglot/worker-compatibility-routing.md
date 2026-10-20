@@ -52,7 +52,7 @@ procesos de worker activos.
 
 - **El inicio del workflow** registra la familia de compatibilidad actual en la nueva ejecución.
 - **Las tareas de workflow** heredan esa familia y la conservan durante
-  reintentos, vencimientos de arrendamiento y nuevos despachos.
+  reintentos, vencimientos de leases y nuevos despachos.
 - **Las tareas de actividad** heredan la familia de su ejecución padre.
 - **Las ejecuciones de reintento** conservan la familia de la ejecución de origen.
 - **Continuar como nuevo** conserva la familia de la ejecución actual.
@@ -83,7 +83,7 @@ un motivo explícito de compatibilidad en lugar de reasignar la propiedad silenc
 Este es el contrato para los despliegues que afectan a la compatibilidad:
 
 - las tareas nunca pasan silenciosamente a un worker incompatible
-- el vencimiento del arrendamiento y la nueva entrega conservan la familia original
+- el vencimiento dla lease y la nueva entrega conservan la familia original
 - la ausencia de un worker compatible es un estado observable, no un comportamiento indefinido
 
 ## Qué deben configurar los operadores {#what-operators-should-configure}
@@ -114,7 +114,7 @@ Sigue esta secuencia para cambios de workers que afecten a la compatibilidad:
 1. Inicia la nueva cohorte de workers con un nuevo build id o marcador de compatibilidad.
 2. Mantén activa la cohorte antigua hasta confirmar que la nueva puede reclamar trabajo.
 3. Drena la cohorte antigua para que deje de tomar tareas nuevas pero pueda
-   terminar o liberar las que ya tenía arrendadas.
+   terminar o liberar las que ya tenía asignadas mediante leases.
 4. Observa las interfaces de compatibilidad y colas hasta que deje de ser
    necesaria la cohorte antigua.
 5. Reanuda la cohorte antigua solo si necesitas revertir el despliegue.

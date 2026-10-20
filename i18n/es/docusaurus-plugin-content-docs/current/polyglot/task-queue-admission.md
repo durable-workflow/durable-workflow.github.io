@@ -19,7 +19,7 @@ keywords:
 La admisión en colas de tareas impide que una cola, un inquilino o una dependencia posterior consuma toda la flota de workers. Durable Workflow ofrece controles de admisión en tres capas:
 
 - los registros de workers anuncian slots locales para workflows y actividades
-- el servidor puede limitar los arrendamientos activos de workflows y actividades por espacio de nombres y cola
+- el servidor puede limitar las leases activas de workflows y actividades por espacio de nombres y cola
 - el servidor puede limitar los despachos de workflows y actividades por minuto, espacio de nombres y cola
 - el servidor puede limitar los despachos por minuto de grupos de presupuesto con nombre para dependencias posteriores compartidas por varias colas
 - las tareas de consulta tienen una cola de pendientes acotada para que las lecturas síncronas fallen rápidamente en lugar de crecer sin límite
@@ -35,7 +35,7 @@ presupuestos decidan si puede pasar la siguiente tarea.
 
 El sondeo de workflows y actividades parte de los workers registrados actualmente para un espacio de nombres y una cola de tareas. Cada worker anuncia `max_concurrent_workflow_tasks` y `max_concurrent_activity_tasks`; el servidor suma los workers activos y no obsoletos para calcular la capacidad de slots registrada de la cola.
 
-Los límites de arrendamientos activos y tasa de despacho del servidor son opcionales. Cuando están configurados, el servidor comprueba un bloqueo de caché de corta duración antes de arrendar la siguiente tarea de workflow o actividad. Si se ha alcanzado el límite de arrendamientos activos, ese sondeo no devuelve una tarea en lugar de superar el presupuesto de trabajo en curso. Si se ha alcanzado el límite de despachos por minuto, el sondeo no devuelve tareas hasta que el siguiente intervalo de un minuto tenga capacidad. Los grupos de presupuesto de dependencias posteriores aplican el mismo comportamiento por minuto a todas las colas del espacio de nombres que compartan un nombre `dispatch_budget_group`.
+Los límites de leases activas y tasa de despacho del servidor son opcionales. Cuando están configurados, el servidor comprueba un bloqueo de caché de corta duración antes de asignar mediante una lease la siguiente tarea de workflow o actividad. Si se ha alcanzado el límite de leases activas, ese sondeo no devuelve una tarea en lugar de superar el presupuesto de trabajo en curso. Si se ha alcanzado el límite de despachos por minuto, el sondeo no devuelve tareas hasta que el siguiente intervalo de un minuto tenga capacidad. Los grupos de presupuesto de dependencias posteriores aplican el mismo comportamiento por minuto a todas las colas del espacio de nombres que compartan un nombre `dispatch_budget_group`.
 
 Las tareas de consulta son diferentes: el plano de control encola una tarea de consulta efímera y espera la respuesta de un worker. `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` limita las tareas de consulta pendientes por espacio de nombres y cola. Si la cola está llena, las nuevas consultas devuelven `query_task_queue_full` con HTTP `429`. Si el almacenamiento de caché no proporciona el bloqueo necesario para modificar la cola de consultas, devuelven `query_task_queue_unavailable` con HTTP `503`.
 
@@ -99,7 +99,7 @@ DW_TASK_QUEUE_ADMISSION_OVERRIDES='{
 
 El valor de personalización también acepta `max_active_leases` como alias de `max_active_leases_per_queue` y `budget_group` como alias de `dispatch_budget_group`.
 
-La caché debe admitir bloqueos atómicos para los límites de arrendamientos activos, la tasa de despacho y la admisión de consultas del servidor. Los contadores de despacho son intervalos de un minuto de corta duración creados solo para colas limitadas que realmente arriendan tareas. Redis es el almacenamiento de caché recomendado para despliegues de varios nodos.
+La caché debe admitir bloqueos atómicos para los límites de leases activas, la tasa de despacho y la admisión de consultas del servidor. Los contadores de despacho son intervalos de un minuto de corta duración creados solo para colas limitadas que realmente asignan tareas mediante leases. Redis es el almacenamiento de caché recomendado para despliegues de varios nodos.
 
 ## Registro de slots de workers {#worker-slot-registration}
 
@@ -209,8 +209,8 @@ La carga útil de admisión tiene tres secciones:
 | Sección | Estado | Significado |
 |---------|--------|---------|
 | Workflow/actividad | `accepting` | Los workers activos tienen slots disponibles y no se ha alcanzado ningún límite del servidor. |
-| Workflow/actividad | `throttled` | Se ha alcanzado el límite opcional del servidor de arrendamientos activos o despachos por minuto. |
-| Workflow/actividad | `saturated` | Todos los slots registrados están arrendados, incluso si no hay límites del servidor. |
+| Workflow/actividad | `throttled` | Se ha alcanzado el límite opcional del servidor de leases activas o despachos por minuto. |
+| Workflow/actividad | `saturated` | Todos los slots registrados están ocupados por leases, incluso si no hay límites del servidor. |
 | Workflow/actividad | `no_slots` | Los workers activos registraron cero slots para ese tipo de tarea. |
 | Workflow/actividad | `no_active_workers` | Ningún worker activo y no obsoleto está sondeando esa cola. |
 | Workflow/actividad | `unavailable` | Un límite configurado del servidor necesita un bloqueo de caché que no está disponible. |
@@ -221,12 +221,12 @@ La carga útil de admisión tiene tres secciones:
 ## Patrón de ajuste {#tuning-pattern}
 
 1. Dimensiona los slots del worker según el proceso: las tareas de workflow limitadas por CPU suelen requerir menos que las actividades con mucha E/S.
-2. Añade límites de arrendamientos activos a las colas que necesiten un techo de trabajo en curso entre todos sus workers.
-3. Añade límites de arrendamientos activos por espacio de nombres si un inquilino puede crear muchas colas pero necesita un techo total.
+2. Añade límites de leases activas a las colas que necesiten un techo de trabajo en curso entre todos sus workers.
+3. Añade límites de leases activas por espacio de nombres si un inquilino puede crear muchas colas pero necesita un techo total.
 4. Añade límites de despachos por minuto a las colas que protejan una API externa con límite de tasa, un pool de base de datos, un inquilino o un servicio heredado frente a ráfagas, incluso si quedan slots libres.
 5. Añade límites de despacho por grupo de presupuesto si varias colas comparten una dependencia posterior pero las colas no relacionadas deben seguir funcionando.
 6. Añade límites de despacho por espacio de nombres si la cuota posterior corresponde a todo el inquilino y no a una cola concreta.
-7. Inspecciona `dw task-queue:describe <queue>` bajo carga. `saturated` indica que debes añadir capacidad de workers o reducir el paralelismo del workflow. `throttled` indica que funciona un límite de arrendamientos activos o de tasa de despacho. `no_active_workers` indica que la cola no tiene ningún sondeador sano.
+7. Inspecciona `dw task-queue:describe <queue>` bajo carga. `saturated` indica que debes añadir capacidad de workers o reducir el paralelismo del workflow. `throttled` indica que funciona un límite de leases activas o de tasa de despacho. `no_active_workers` indica que la cola no tiene ningún sondeador sano.
 8. Mantén capacidad suficiente de consultas para las lecturas normales del operador, pero lo bastante baja para fallar rápidamente durante incidentes. El desbordamiento de consultas es contrapresión, no pérdida de datos.
 
 ## Guías relacionadas {#related-guides}
