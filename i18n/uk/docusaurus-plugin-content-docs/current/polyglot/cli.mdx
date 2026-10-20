@@ -112,7 +112,7 @@ PHAR працює всюди, де вже доступний PHP 8.2 або но
 
 </details>
 
-### Оновлення встановленого binary {#update-an-installed-binary}
+### Оновлення встановленого виконуваного файлу {#update-an-installed-binary}
 
 Для standalone-встановлень випуску через shell чи PowerShell installer
 вище `dw upgrade` замінює активний binary найновішим опублікованим
@@ -148,7 +148,7 @@ export DURABLE_WORKFLOW_NAMESPACE=default
 dw --server=http://localhost:8080 --token=your-token workflow:list
 ```
 
-## П'ятихвилинний quickstart оператора {#five-minute-operator-quickstart}
+## П'ятихвилинний початок роботи для оператора {#five-minute-operator-quickstart}
 
 Цей шлях перевіряє CLI зі справжнім окремим Server без написання коду
 застосунку. Він запускає опублікований локальний Server stack,
@@ -260,7 +260,7 @@ dw workflow:history <workflow-id> <run-id>                 # Show run history
 Стандартно JSON. Raw та base64 input передаються як один
 позиційний аргумент workflow.
 
-### Bridge adapters {#bridge-adapters}
+### Адаптери інтеграцій {#bridge-adapters}
 
 ```bash
 dw bridge:webhook stripe \
@@ -281,7 +281,7 @@ Bridge adapters є обмеженими інструментами ingress ін�
 Вони повертають іменовані bridge outcomes прийнятих, повторних
 і відхилених deliveries та не стають workflow runtimes.
 
-### Schedules {#schedules}
+### Розклади {#schedules}
 
 ```bash
 dw schedule:list                          # List schedules
@@ -303,7 +303,7 @@ dw activity:complete <task-id> <attempt-id> --input-file=result.json
 dw activity:fail <task-id> <attempt-id> --message='upstream failed'
 ```
 
-### Workers та task queues {#workers-and-task-queues}
+### Workers і черги завдань {#workers-and-task-queues}
 
 ```bash
 dw worker:list                    # List registered workers
@@ -364,7 +364,7 @@ dw system:operator-metrics --json | jq '.operator_metrics.matching_role | {
 `backpressure_model` визначає використання рушієм зайнятих leases
 або іншої межі приймання роботи. Поточний v2 повідомляє `lease_ownership`.
 
-### Namespaces {#namespaces}
+### Простори імен {#namespaces}
 
 ```bash
 dw namespace:list                             # List namespaces
@@ -372,30 +372,30 @@ dw namespace:create --name=production         # Create a namespace
 dw namespace:describe <namespace>             # Describe a namespace
 ```
 
-### Search attributes {#search-attributes}
+### Пошукові атрибути {#search-attributes}
 
 ```bash
 dw search-attribute:list                                  # List search attributes
 dw search-attribute:create --name=env --type=keyword      # Register an attribute
 ```
 
-## Exit codes {#exit-codes}
+## Коди завершення {#exit-codes}
 
-CLI використовує сталу політику exit codes, щоб scripts і CI pipelines
+CLI використовує сталу політику кодів завершення, щоб скрипти й конвеєри CI
 могли реагувати на конкретні відмови без розбору stderr.
 Значення починаються з канонічних `0`/`1`/`2` Symfony Console
-для success / failure / usage та розширюють їх.
+для успіху, помилки та неправильного використання й розширюють їх.
 
 | Код | Назва | Значення |
 |------|------|---------|
 | `0` | `SUCCESS` | Операція завершилася успішно. |
 | `1` | `FAILURE` | Загальна помилка: команда виконалася без успіху. |
-| `2` | `INVALID` | Некоректне використання: аргументи, невідомі options чи локальна validation. Також для HTTP 4xx, не описаних нижче, наприклад 400, 422. |
-| `3` | `NETWORK` | Server недоступний: connection refused, DNS failure, TLS handshake failure чи transport error. |
-| `4` | `AUTH` | Помилка authentication чи authorization. Для HTTP `401` та `403`. |
+| `2` | `INVALID` | Некоректне використання: неправильні аргументи, невідомі параметри чи помилка локальної перевірки. Також для HTTP 4xx, не описаних нижче, наприклад 400, 422. |
+| `3` | `NETWORK` | Server недоступний: відмова в з'єднанні, помилка DNS, узгодження TLS чи транспорту. |
+| `4` | `AUTH` | Помилка автентифікації чи авторизації. Для HTTP `401` та `403`. |
 | `5` | `NOT_FOUND` | Ресурс не знайдено. Для HTTP `404`. |
 | `6` | `SERVER` | Помилка Server. Для HTTP `5xx`. |
-| `7` | `TIMEOUT` | Timeout запиту до відповіді Server. Також для HTTP `408`. |
+| `7` | `TIMEOUT` | Час очікування запиту сплив до відповіді Server. Також для HTTP `408`. |
 
 Приклад:
 
@@ -413,5 +413,5 @@ echo $?  # 3 (NETWORK)
 
 ## Довідник {#reference}
 
-Форми команд, options, output modes та поведінку помилок автоматизації
+Форми команд, параметри, режими виводу та поведінку помилок автоматизації
 наведено в [довіднику команд CLI](/docs/polyglot/cli-reference).

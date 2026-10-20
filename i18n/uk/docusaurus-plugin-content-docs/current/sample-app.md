@@ -12,7 +12,7 @@ keywords:
   - панель Waterline
 ---
 
-# Sample App {#sample-app}
+# Приклад застосунку {#sample-app}
 
 https://github.com/durable-workflow/sample-app
 
