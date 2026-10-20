@@ -234,7 +234,7 @@ L’image Server embarque `durable-workflow/workflow` et expose donc aussi les p
 | `DW_V2_SUPPORTED_COMPATIBILITIES` | non définie | Marqueurs de compatibilité acceptés par ce worker, séparés par des virgules, ou `*`. | `WORKFLOW_V2_SUPPORTED_COMPATIBILITIES` |
 | `DW_V2_COMPATIBILITY_NAMESPACE` | non définie | Namespace de compatibilité pour les bases de workflows partagées entre flottes indépendantes. | `WORKFLOW_V2_COMPATIBILITY_NAMESPACE` |
 | `DW_V2_COMPATIBILITY_HEARTBEAT_TTL` | `30` | Durée de validité en secondes d’un heartbeat de compatibilité worker. | `WORKFLOW_V2_COMPATIBILITY_HEARTBEAT_TTL` |
-| `DW_V2_PIN_TO_RECORDED_FINGERPRINT` | `true` | Résout les runs en cours à partir de l’empreinte enregistrée dans `WorkflowStarted`. | `WORKFLOW_V2_PIN_TO_RECORDED_FINGERPRINT` |
+| `DW_V2_PIN_TO_RECORDED_FINGERPRINT` | `true` | Préfère la définition de workflow enregistrée ; voir ci-dessous les limites de repli propres au runtime. | `WORKFLOW_V2_PIN_TO_RECORDED_FINGERPRINT` |
 | `DW_V2_CONTINUE_AS_NEW_EVENT_THRESHOLD` | `10000` | Nombre d’événements d’historique auquel le package recommande continue-as-new à l’auteur du workflow. | `WORKFLOW_V2_CONTINUE_AS_NEW_EVENT_THRESHOLD` |
 | `DW_V2_CONTINUE_AS_NEW_SIZE_BYTES_THRESHOLD` | `5242880` | Taille en octets de l’historique sérialisé à laquelle le package recommande continue-as-new. | `WORKFLOW_V2_CONTINUE_AS_NEW_SIZE_BYTES_THRESHOLD` |
 | `DW_V2_HISTORY_EXPORT_SIGNING_KEY` | non définie | Clé HMAC facultative pour authentifier les archives exportées de l’historique. | `WORKFLOW_V2_HISTORY_EXPORT_SIGNING_KEY` |
@@ -264,6 +264,8 @@ L’image Server embarque `durable-workflow/workflow` et expose donc aussi les p
 | `DW_V2_CACHE_VALIDATION_MODE` | `warn` | Comportement en cas d’échec de validation du cache : `fail`, `warn` ou `silent`. | `WORKFLOW_V2_CACHE_VALIDATION_MODE` |
 | `DW_V2_FLEET_VALIDATION_MODE` | `warn` | Mode de validation de compatibilité de la flotte : `warn` journalise ; `fail` bloque la distribution et refuse si aucun worker compatible n’est disponible. | `WORKFLOW_V2_FLEET_VALIDATION_MODE` |
 | `DW_SERIALIZER` | `avro` | Entrée diagnostique du codec de payload. La v2 finale choisit Avro pour les payloads des nouveaux runs. | `WORKFLOW_SERIALIZER` |
+
+**Préparation d’une version Server non publiée.** Server 2.9.9 rend effective la préférence d’empreinte pour les workers en mode service. Quand la fixation est activée, le repli vers une définition modifiée n’est possible que s’il ne reste aucun worker éligible avec la définition enregistrée et si le remplacement annonce `workflow_entry_arguments_validation`. Quand elle est désactivée, la préférence de code source disparaît ; les builds fixés, l’isolation namespace/file/type, l’identité d’enregistrement et la relecture stricte demeurent. Les SDK correspondants PHP 2.5.4, Python 2.6.2 et Rust 3.5.6 attendent eux aussi leur publication et la qualification des installations. Ne supposez pas qu’un ancien runtime offre ce comportement simplement parce que sa configuration contient la même clé. Consultez le [routage des définitions](./worker-compatibility-routing.md#definition-fingerprint-evolution).
 
 Utilisez `DW_V2_GUARDRAILS_BOOT` dans la CI et les manifestes de déploiement. L’ancien nom `WORKFLOW_V2_GUARDRAILS_BOOT` n’est conservé que pour permettre à `env:audit` de signaler le renommage aux opérateurs des versions alpha. Le package Workflow ne le lit plus comme valeur de repli à l’exécution.
 

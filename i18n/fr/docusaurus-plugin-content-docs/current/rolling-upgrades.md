@@ -94,17 +94,15 @@ toutes les règles de cette section.
   La cohorte sans version (`build_id: null`) est la valeur par défaut avant
   déploiement. Le [guide de déploiement par build-id](/docs/polyglot/worker-build-id-rollout)
   explique la première transition.
-- **Les empreintes de définition restent fixées.** Les images Server avec
-  `DW_V2_PIN_TO_RECORDED_FINGERPRINT=true` (par défaut) conservent les exécutions
-  en cours sur l'empreinte enregistrée à `WorkflowStarted`. Un nouveau worker
-  dont l'empreinte diffère pour le même workflow refuse ces exécutions jusqu'à
-  leur fin.
+- **Préservez le routage d’origine et qualifiez les définitions modifiées.** Une exécution conserve son build fixé et l’empreinte enregistrée à `WorkflowStarted`. Avec `DW_V2_PIN_TO_RECORDED_FINGERPRINT=true` (par défaut), le changement de routage préparé pour Server 2.9.9 préfère les workers éligibles correspondant à la définition enregistrée. S’il n’en reste aucun, un remplacement disposant de `workflow_entry_arguments_validation` peut prendre la tâche sous les contrôles d’origine de namespace, de file, de type, de build et de relecture. Le SDK doit toujours valider l’entrée d’origine et relire les commandes validées.
 - **Choix d'admission pendant la coexistence.** Choisissez
   [`DW_V2_FLEET_VALIDATION_MODE`](/docs/polyglot/server-config-reference) avant de
   commencer. `warn` autorise le déploiement même si le marqueur requis n'a
   aucun worker actif. `fail` bloque la distribution et ferme l'admission de
   disponibilité pendant cet intervalle. Les déploiements de production qui
   exigent une transition nette doivent utiliser `fail`.
+
+**Préparation d’une version non publiée.** Ce chemin de remplacement exige la qualification encore en attente de Server 2.9.9 et du SDK PHP 2.5.4, Python 2.6.2 ou Rust 3.5.6. Les anciens runtimes peuvent continuer à refuser une empreinte différente même si le code applicatif ajoute une branche de version valide. Désactiver la fixation de l’empreinte n’est pas la procédure sûre de mise à niveau par défaut. Suivez le [routage des définitions](./polyglot/worker-compatibility-routing.md#definition-fingerprint-evolution), inspectez la capacité réelle du worker et conservez les artefacts de retour arrière jusqu’à la qualification du nouveau chemin. Une branche de version ne peut pas corriger des arguments d’entrée incompatibles avant l’exécution du corps du workflow ; consultez la [compatibilité à l’entrée](./features/versioning.md#service-sdk-entry-safeguard).
 
 ## Ordre du schéma et de l'initialisation {#schemabootstrap-ordering}
 

@@ -669,6 +669,16 @@ Le `WorkflowContext` transmis à `run` fournit des opérations déterministes :
 | `ctx.uuid4()` | UUID déterministe |
 | `ctx.logger` | Logger silencieux pendant la relecture |
 
+### Compatibilité à l’entrée et récupération {#entry-compatibility-and-recovery}
+
+**Préparation d’une version non publiée.** La protection d’entrée du SDK Python 2.6.2 et la prise en charge du routage et de la récupération dans Server 2.9.9 sont intégrées au code source. Leur publication et la qualification des artefacts installés restent en attente.
+
+Avant d’appeler `run(ctx, *start_input)`, le worker lie les arguments enregistrés à la signature d’entrée. Un argument obligatoire absent ou une arité incompatible lève `WorkflowEntryArgumentsMismatchError` avec le motif `workflow_entry_arguments_mismatch`, avant l’exécution du corps. Les valeurs par défaut ne complètent que les arguments omis. Les annotations Python ne sont toujours pas imposées : changer une annotation ne valide ni ne convertit les données enregistrées. Un `TypeError` levé dans un corps ordinaire ou générateur après une entrée réussie reste un échec applicatif.
+
+Le worker annonce automatiquement `workflow_entry_arguments_validation`. Avec un Server qualifié, la tâche en échec est bloquée pour la relecture et l’exécution d’origine reste non terminale. Les anciens runtimes peuvent relancer cette tâche ; le refus côté SDK seul n’établit pas le contrat complet de récupération.
+
+Inspectez l’exécution exacte avec `await client.describe_workflow_run(workflow_id, run_id)` et l’endpoint de débogage ciblant l’exécution. Après avoir restauré une méthode d’entrée compatible, utilisez la route HTTP de réparation ciblant l’exécution décrite dans la [procédure de récupération](../failures-and-recovery.md#service-entry-recovery). `await client.repair_workflow(workflow_id)` et `handle.repair()` résolvent au contraire l’exécution actuelle de l’instance ; aucun n’accepte d’argument d’identifiant d’exécution. Préservez l’entrée, l’historique, le namespace, la file, le build et les échéances d’origine. Pour les changements de commandes, placez `ctx.get_version` dans cette méthode compatible et qualifiez la relecture à froid avec le [routage des définitions](./worker-compatibility-routing.md#definition-fingerprint-evolution).
+
 ### Temps du workflow et attentes durables {#workflow-time-and-durable-waits}
 
 Pendant la relecture par le worker, `ctx.now()` renvoie **l'heure de début

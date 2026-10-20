@@ -49,7 +49,7 @@ La protection **ne** requalifie **pas** les exceptions levées dans le corps du 
 
 ### Les SDK en mode service ont leurs propres limites {#service-sdk-entry-boundaries}
 
-Une correction du Core embarqué ne change pas le processus SDK qui exécute le code du workflow en mode service. Voici les limites publiées vérifiées dans le code source ; la validation d’entrée récupérable équivalente reste ouverte dans [shared #221](https://github.com/durable-workflow/.github/issues/221) :
+Une correction du Core embarqué ne change pas le processus SDK qui exécute le code du workflow en mode service. Les anciennes versions publiées ci-dessous précèdent la protection d’entrée en mode service suivie dans [shared #221](https://github.com/durable-workflow/.github/issues/221) :
 
 | SDK publié | Comportement de liaison de l’entrée |
 | --- | --- |
@@ -58,6 +58,18 @@ Une correction du Core embarqué ne change pas le processus SDK qui exécute le 
 | [Rust 3.5.5](https://github.com/durable-workflow/sdk-rust/tree/4d5047ba9da39785512340b0975ce28da09f0cee) | L’adaptateur typé désérialise l’entrée avant d’appeler son gestionnaire à signature fixe. Une modification du type de requête peut faire échouer ce décodage. Cela diffère de la liaison positionnelle PHP/Python ; un refus incident dû à un historique non consommé ne garantit pas une protection récupérable des signatures. |
 
 Séparez la compatibilité des entrées en mode service et la qualification réelle des SDK de la version embarquée publiée. Ne capturez pas tous les `TypeError` ou toutes les erreurs des handlers Rust pour les déclarer sûrs pour la relecture : cela masquerait de véritables échecs applicatifs.
+
+### Protection d’entrée en mode service {#service-sdk-entry-safeguard}
+
+**Préparation d’une version non publiée.** Les modifications de Server 2.9.9, du SDK PHP 2.5.4, du SDK Python 2.6.2 et du SDK Rust 3.5.6 sont intégrées au code source, mais leur publication et la qualification des artefacts installés restent en attente. Cette section n’établit pas une prise en charge publiée.
+
+Les SDK préparés valident l’entrée enregistrée avant l’exécution du code applicatif du workflow. Une entrée incompatible signale `workflow_entry_arguments_mismatch` sur une **tâche** de workflow en échec et bloquée pour la relecture, sans envoyer `fail_workflow` ni fermer l’**exécution** métier. L’entrée, les identités de workflow et d’exécution, l’historique validé, le build fixé et les échéances d’origine restent inchangés. PHP valide les arguments positionnels obligatoires et les types PHP déclarés. Python lie les arguments à la signature pour vérifier l’arité et appliquer les valeurs par défaut ; les annotations ne deviennent pas des contrôles de type à l’exécution. Les adaptateurs typés Rust valident le décodage de l’entrée avant d’appeler le handler ou sa fabrique d’état. Les handlers Rust bruts restent responsables du traitement de leurs propres entrées applicatives.
+
+Le `failure_reason` spécifique de la tâche côté Server est `workflow_entry_arguments_mismatch` ; `replay_blocked_reason` conserve la valeur générique `worker_reported_replay_failure`. Inspectez `latest_workflow_task_failure.reason` dans la réponse de débogage de l’exécution sélectionnée. Ne confondez pas ces champs avec le diagnostic du Core embarqué ci-dessus. Le code applicatif entré avec succès qui lève un `TypeError`, renvoie une erreur de handler Rust ou échoue autrement conserve le comportement ordinaire d’échec métier.
+
+Restaurez un code acceptant l’entrée d’origine enregistrée, puis suivez la [procédure prise en charge pour récupérer cette même exécution](../failures-and-recovery.md#service-entry-recovery). Ne remplacez pas l’entrée par des valeurs par défaut de DTO, ne modifiez pas l’historique et ne réinitialisez pas une échéance. Cette protection ne rouvre pas une exécution qu’un ancien worker a déjà rendue terminale.
+
+Le routage sûr vers un remplacement exige aussi la [capacité worker de validation de l’entrée](../polyglot/worker-compatibility-routing.md#definition-fingerprint-evolution). Une empreinte différente ne prouve pas la compatibilité de relecture et ne justifie pas de réécrire l’empreinte d’origine d’une exécution. Versionnez les changements de commandes durables dans une méthode d’entrée compatible et testez une relecture à froid avant la promotion.
 
 ## Utiliser `getVersion` {#using-getversion}
 
