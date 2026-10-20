@@ -171,6 +171,75 @@ Server README 的[官方镜像 + Compose](https://github.com/durable-workflow/se
 
 团队已明确 VM、网络、数据库、缓存、备份和负载均衡模型时，此路径可自助执行。需要协助确定这些边界、容量、发布顺序或恢复流程时，则由支持团队指导。
 
+## SQL 连接预算 {#sql-connection-budgets}
+
+增加 API 副本或在[滚动升级](/docs/rolling-upgrades)中让新旧进程重叠运行前，先规划数据库会话预算。
+即使 CPU 仍有余量，数据库也可能达到连接上限。这与写入/commit 延迟、HTTP 请求容量和保留数据增长是不同的限制。
+
+### 统计所有使用 SQL 的进程 {#count-every-sql-owning-process}
+
+已发布的 PHP Compose 部署包含以下潜在 SQL 客户端：
+
+| 角色 | 统计对象 |
+| --- | --- |
+| API | 每个可能使用 SQL 的并发 PHP 请求进程，包括就绪检查、运维请求和等待中的轮询。已发布的 Apache prefork 配置允许每个 API 容器有 24 个请求进程。这是 HTTP 进程上限，不是 SQL 连接池，也不是已测得的 24 个开放会话。 |
+| Laravel 队列 Worker | 每个 `php artisan queue:work` 进程。已发布的 Compose 示例运行一个；增加 Worker 容器就会增加进程。它们与外部 SDK Worker 不同。 |
+| 调度器/维护 | 并发 PHP 命令，而不只是调度器容器数量。Compose 调度器依次执行计划评估、修复、活动超时和清理命令，所以普通循环同一时间只有一个命令活动。保持调度器单实例规则。 |
+| 初始化和运维工具 | 可能与部署重叠的迁移/初始化命令、投影重建、保留任务、备份、监控和交互式 SQL 客户端。主动并发的命令要分别计数。 |
+| SDK 客户端和 Worker | 通常不直接占用 Server 数据库会话，因为 PHP、Python 和 Rust 服务模式 SDK 使用 HTTP。只有活动代码或其他应用代码确实连接该数据库时才增加连接数。 |
+
+统计**每个进程使用的不同 SQL 连接句柄**，而不只是容器或主机名。Laravel 默认连接和
+`workflows.storage.connection` 可能共享一个已配置的连接名。不同的存储连接名、数据库队列/缓存/会话连接，
+或独立的读/写/直连句柄，都可能打开额外会话，即使连接的是同一个数据库端点。Redis 连接不属于 SQL 会话。
+检查实际生效的缓存配置及各角色真正使用的连接名。
+
+自定义 FPM 部署应统计执行请求的 PHP-FPM 子进程，而不是 nginx 或 Apache event 线程。
+自定义 Octane 部署应清点请求 Worker、任务 Worker 和真实数据库客户端。
+不能把 Apache 的 24 个进程直接当作这些前端的连接池大小。同步长轮询等待时仍占用 PHP 执行进程，
+也可能保留数据库会话。不能自动将空闲 HTTP 轮询按零 SQL 用量计算。
+
+### 保守的滚动升级预算示例 {#a-conservative-rolling-upgrade-example}
+
+这是规划示例，**不是实测容量**。假设数据库允许 120 个客户端会话，其中其他应用使用十个，
+为恢复/管理预留十五个，则本部署可用 95 个。假设队列和缓存使用 Redis，每个 PHP 进程最多使用一个 SQL 句柄。
+
+| 峰值重叠 | 计算 | 计划会话数 |
+| --- | --- | ---: |
+| API 副本，包含滚动发布时增加的一个副本 | `(2 + 1) × 24 × 1` | 72 |
+| Laravel 队列 Worker | `2 × 1` | 2 |
+| 单实例调度器/维护命令 | `1 × 1` | 1 |
+| 初始化/迁移 | `1 × 1` | 1 |
+| 备份、监控和其他获准工具 | 明确分配 | 4 |
+| **部署小计** | | **80** |
+| 部署内尚未分配的余量 | `95 − 80` | 15 |
+
+按这些假设，第四个 API 副本会使小计增加到 104，超过分配的 95 个会话。
+如果每个 API 进程使用两个 SQL 句柄，仅三个 API 副本就需要 144 个会话。
+变更存储连接、Worker 数量或滚动发布的额外副本数时，都要重新计算。
+应降低进程/副本上限或分批替换，不要假定数据库能承担重叠运行。提高 `max_connections` 也需要评估数据库内存和工作负载。
+
+### 观察并执行预算 {#observe-and-enforce-the-budget}
+
+1. 记录实际连接上限、其他客户端和预留恢复访问。明确设置 API 副本数、进程数以及滚动发布额外副本数的上限。
+   包含新旧队列 Worker 和运维工具同时运行的情况。
+2. 在使用准确已发布镜像和配置的隔离副本中，采样空闲、轮询等待、真实任务执行和有界新旧重叠时的会话。
+   包含空闲会话和监控连接自身。PostgreSQL 提供 `pg_stat_activity`，MySQL 提供
+   `information_schema.PROCESSLIST`。使用权限范围适当的监控角色，不要导出 SQL 文本或负载。
+3. 按应用用户/数据库比较实际会话数与每进程预算。短时采样只能验证该测试环境的假设，不能证明饱和上限或保证所有负载。
+4. 除会话余量外，同时观察连接拒绝、事务/commit 延迟、锁等待、占用中的 HTTP 请求和存储增长。
+   仅就绪正常不能证明滚动发布有可用余量。
+5. 接近上限时，减少重叠数量，或先排空并退役一组旧 API/Worker，再启动替代组。
+   保留恢复访问，只在计划的迁移窗口执行初始化。安全重叠无法容纳时，使用文档中的全停机升级方式。
+
+[任务队列准入](/docs/polyglot/task-queue-admission)限制特定的分发和租约活动。
+`DW_WORKER_LONG_POLL_MAX_CONCURRENT` 和 `DW_QUERY_TASK_POLL_MAX_CONCURRENT` 限制每个节点等待中的轮询。
+它们都不是全局 SQL 会话、数据库字节数或 commit 延迟上限。也要为完成提交、心跳、运维请求和健康检查保留容量。
+
+以直接连接可写数据库端点为基线。连接代理必须按准确的 Server 版本、连接池模式，以及预处理语句、事务边界、
+会话状态和锁设置进行验证。已发布的 Server 2.9.7 在 PgBouncer 事务池模式下失败，发生失败时就绪端点仍可能报告正常。
+产品修复和已发布镜像验证记录在 [Server #524](https://github.com/durable-workflow/server/issues/524)。
+不能从 TCP 连接、迁移或就绪响应成功推断事务池兼容性。只读副本不能替代负责认领和持久状态转换的权威写入节点。
+
 ## 适用于 Kubernetes 的 Helm chart {#helm-chart-for-kubernetes}
 
 Server 仓库负责 [chart 源码和发布指南](https://github.com/durable-workflow/server/tree/main/k8s/helm/durable-workflow)。从 OCI 镜像仓库安装已发布 chart：
@@ -229,7 +298,7 @@ curl -H "Authorization: Bearer $DW_ADMIN_TOKEN" http://localhost:8080/api/cluste
 
 部署符合小型集群或原始清单形态，且操作人员保持三条规则时，预期高可用契约适用：
 
-- **始终只有一个可写工作流数据库端点。** 允许托管故障转移（RDS Multi-AZ、Aurora 集群故障转移、Cloud SQL HA、Patroni 等），前提是原主节点重新接入前先隔离它：撤销写入用户、用 `read_only=on` 降级、断开复制，或从已知正常快照恢复。API/调度器容器和数据库之间可使用连接代理（RDS Proxy、ProxySQL、PgBouncer）；引擎契约针对它看到的连接，因此代理不改变任何保证。
+- **始终只有一个可写工作流数据库端点。** 允许托管故障转移（RDS Multi-AZ、Aurora 集群故障转移、Cloud SQL HA、Patroni 等），前提是原主节点重新接入前先隔离它：撤销写入用户、用 `read_only=on` 降级、断开复制，或从已知正常快照恢复。连接代理必须保留 Server 使用的数据库语义，并通过准确版本、模式和设置的验证。PgBouncer 事务池当前的限制及验证边界见 [SQL 连接预算](#sql-connection-budgets)。
 - **每次只有一个 Redis 端点，并记录提升路径。** 允许托管 Redis 故障转移（Sentinel、Elasticache 复制组故障转移、Memorystore HA 等）。Redis 是加速层，不是正确性基础，因此 Redis 故障转移是延迟事件，绝非正确性事件。
 - **始终只有一个调度器/维护运行器。** 编排器（`deploy.replicas: 1` 的 Compose 服务、受主机级租约保护的 systemd unit，或 `replicas: 1` 且 `RollingUpdate.maxSurge: 0` 的 Kubernetes `Deployment`）负责在重启时保持单实例不变量。重复调度器运行器作为稳态拓扑不在此契约内。
 
@@ -249,7 +318,7 @@ curl -H "Authorization: Bearer $DW_ADMIN_TOKEN" http://localhost:8080/api/cluste
 
 API 节点前的负载均衡器是故障转移期间流量准入的唯一决策点：
 
-- 将负载均衡器连接到 **`GET /api/ready`**，不要仅用 `/api/health`。`/api/health` 仅证明进程能提供 HTTP 服务；`/api/ready` 证明 Server 能使用持久数据库，并报告 Redis 唤醒加速是健康还是降级。数据库中断时，每个节点的 `/api/ready` 都会正确失败；负载均衡器**必须**容忍全部不可用状态，不能回退到过期的“上次已知正常”节点列表。
+- 将负载均衡器连接到 **`GET /api/ready`**，不要仅用 `/api/health`。`/api/health` 仅证明进程能提供 HTTP 服务；`/api/ready` 报告数据库连接和已配置的就绪检查，包括 Redis 唤醒加速是健康还是降级。它不会验证每种工作流 SQL 操作或写入容量。数据库中断时，每个节点的 `/api/ready` 都会正确失败；负载均衡器**必须**容忍全部不可用状态，不能回退到过期的“上次已知正常”节点列表。
 - 使用 5–10 秒检查间隔，以及连续失败 2–3 次的移除阈值。
 - 不要求粘性会话；小型集群冒烟测试证明外部 Worker 能在 `server-a` 轮询并在 `server-b` 完成。
 - 仅 Redis 故障转移期间，只要基于数据库的持久路径可用，每个节点仍保持就绪。加速层降级表现为 `checks.cache.status=warning` 和 `checks.cache.degraded_capability=long_poll_wake_acceleration`；不要配置负载均衡器因该警告移除节点。
@@ -342,7 +411,7 @@ scripts/conformance/single-region-failover-published-artifacts.sh \
 同时使用健康和就绪检查：
 
 - `GET /api/health` 证明进程正在提供 HTTP 服务。
-- `GET /api/ready` 证明 Server 能使用配置的运行时依赖，包括迁移和默认命名空间就绪状态。
+- `GET /api/ready` 报告已配置的依赖检查，包括数据库连接、迁移和默认命名空间就绪状态；它不证明每种工作流 SQL 操作正常或具备可用写入容量。
 - `GET /api/cluster/info` 证明已验证客户端能发现构建身份、控制平面协议、Worker 协议、负载编解码器和 Server 能力。
 - `POST /api/worker/register` 证明 Worker 能通过身份验证进入预期命名空间和任务队列。
 
