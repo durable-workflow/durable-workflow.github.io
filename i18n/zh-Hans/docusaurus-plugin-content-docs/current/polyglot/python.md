@@ -468,9 +468,17 @@ class ApprovalWorkflow:
         self.approved_by = by
 
     def run(self, ctx, *args):
-        yield ctx.schedule_activity("wait_for_approval", [])
-        return {"approved": self.approved, "approved_by": self.approved_by}
+        ready = yield ctx.wait_condition(
+            lambda: self.approved, key="approval.approved", timeout=60,
+        )
+        return {
+            "status": "approved" if ready else "timed_out",
+            "approved": self.approved,
+            "approved_by": self.approved_by,
+        }
 ```
+
+等待属于工作流，而不是活动。谓词读取回放重建的信号处理器状态；等待审批时，工作器不会占用活动槽位。条件超时与工作流有限的单次运行和整体执行截止时间相互独立。等待外部任务完成时，请使用提交后立即返回的短活动，以及[关联的回调](./polling-patterns.md#callback-and-signal-completion)。
 
 查询和更新接收器装饰器允许工作流类公布稳定的处理器名称。Python Worker 通过重放已提交工作流历史，并针对该重放状态调用已注册查询处理器，执行 Server 路由的查询任务。它们也应用通过工作流任务交付的已接受更新：
 

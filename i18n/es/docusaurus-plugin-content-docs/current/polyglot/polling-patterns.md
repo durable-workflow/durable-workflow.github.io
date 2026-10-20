@@ -1,6 +1,6 @@
 ---
 title: Sondeo del estado externo
-description: Elija reintentos acotados, actividades con heartbeat o bucles de temporizadores duraderos y contabilice su coste en el historial.
+description: Elegir sondeos acotados o señales de callback, esperar de forma duradera en el workflow y contabilizar el coste del historial.
 ---
 
 # Sondeo del estado externo {#polling-external-state}
@@ -15,8 +15,164 @@ Consulte un trabajo externo desde una actividad, nunca mediante solicitudes de r
 | Una actividad larga con heartbeats | Ocupa su slot de actividad durante toda la espera | Cada heartbeat aceptado añade un evento al historial. Use plazos finitos para la actividad y un timeout acotado para la solicitud externa; los heartbeats no amplían el plazo de toda la ejecución. |
 | Una consulta en una actividad seguida de un temporizador duradero | Libera los slots de actividad entre consultas | Cada consulta añade eventos de actividad y cada intervalo añade eventos de temporizador. Entre consultas, el workflow puede decidir detenerse, compensar o continuar como nuevo. |
 | Un workflow hijo dedicado al sondeo | El hijo usa los slots que requiere el patrón elegido | Traslada el historial del sondeo al hijo; añade eventos de inicio y resolución del hijo al padre. El historial y la ejecución del hijo siguen teniendo coste. Elija explícitamente la política de cierre del padre. |
+| Enviar el trabajo y regresar; después recibir una señal de callback | Libera el slot de actividad tras el envío; el workflow espera de forma duradera | El envío, la admisión y aplicación de señales y las esperas con plazo añaden historial. Requiere correlación autenticada y gestión de duplicados en la aplicación. |
 
 Use consultas breves que puedan repetirse con seguridad. Un callback bloqueado en una solicitud externa no se vuelve receptivo solo porque su workflow tenga un temporizador o una política de cancelación.
+
+## Completar mediante callback y señal {#callback-and-signal-completion}
+
+Si el sistema externo puede notificarle, envíe el trabajo desde una actividad corta y devuelva el acuse de recibo. Deje que el **workflow** espere una señal declarada o una condición reconstruida durante el replay, con un plazo finito. No mantenga abierta una actividad, respuesta HTTP o conexión SSE hasta que termine el trabajo.
+
+Elija el identificador de instancia y guarde la relación entre la operación externa autenticada, el namespace, el **identificador público de instancia del workflow** y el nombre de señal declarado antes de iniciar el workflow. La actividad puede enviar el trabajo en cuanto se confirme el inicio. Un identificador de run solo identifica ese run; no es una dirección estable para callbacks tras continue-as-new. Autentique el callback y compruebe la relación guardada antes de reenviarlo; no confíe en campos de identidad o enrutamiento de solicitudes arbitrarias.
+
+### Callback PHP embebido {#embedded-php-callback}
+
+Configure `services.jobs.url` para el proveedor y `services.jobs.callback_url` para el adaptador autenticado de la aplicación. Adapte la solicitud `/jobs` a la API del proveedor: debe confirmar rápidamente el envío y devolver `job_id`. Implemente su autenticación específica y limite la duración de la solicitud. La clave de operación solo sirve para deduplicar si el proveedor realmente la respeta.
+
+```php
+use Illuminate\Support\Facades\Http;
+use Workflow\V2\Activity;
+use Workflow\V2\Attributes\Signal;
+use Workflow\V2\Attributes\Type;
+use Workflow\V2\Support\ActivityOptions;
+use Workflow\V2\Workflow;
+use function Workflow\V2\activity;
+use function Workflow\V2\await;
+
+#[Type('external.submit')]
+final class SubmitExternalJob extends Activity
+{
+    public function handle(string $workflowId, string $operationId): array
+    {
+        return Http::connectTimeout(2)->timeout(5)
+            ->withHeaders(['Idempotency-Key' => $operationId])
+            ->post(config('services.jobs.url').'/jobs', [
+                'workflow_id' => $workflowId,
+                'operation_id' => $operationId,
+                'signal' => 'job-completed',
+                'callback_url' => config('services.jobs.callback_url'),
+            ])->throw()->json();
+    }
+}
+
+#[Type('external-completion')]
+#[Signal('job-completed', [
+    ['name' => 'operationId', 'type' => 'string'],
+    ['name' => 'result', 'type' => 'array'],
+])]
+final class ExternalCompletion extends Workflow
+{
+    public function handle(string $operationId): array
+    {
+        $job = activity(SubmitExternalJob::class, new ActivityOptions(
+            maxAttempts: 1, startToCloseTimeout: 10, scheduleToCloseTimeout: 15,
+        ), $this->workflowId(), $operationId);
+
+        $received = await('job-completed', timeout: 10);
+        if ($received === null) {
+            return ['status' => 'timed_out', 'job_id' => $job['job_id']];
+        }
+        if ($received[0] !== $operationId) {
+            return ['status' => 'unexpected_operation'];
+        }
+        return ['status' => 'completed', 'result' => $received[1]];
+    }
+}
+```
+
+Inicie con un identificador de instancia elegido por el llamante y límites finitos para el run y la ejecución completa. Registre `ExternalCompletion` con [webhooks autenticados](../features/webhooks.md); el adaptador de callback puede reenviar la entrada validada a la ruta de señal dirigida a la instancia:
+
+```bash
+curl -fsS -X POST "$APP_URL/webhooks/instances/external-job-42/signals/job-completed" \
+  -H "Authorization: $WEBHOOK_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"arguments":["op-42",{"value":42}]}'
+```
+
+Este es el formato `arguments` del webhook embebido, no el sobre de carga útil del Server. El proveedor debe llamar al adaptador autenticado de su aplicación, sin recibir credenciales de operador ni de worker del Server.
+
+### Callback y condición en Python {#python-callback-and-condition}
+
+La actividad siguiente solo realiza el envío acotado. Configure `JOB_API_URL`, `JOB_CALLBACK_URL` y la autenticación del proveedor en su entorno. Registre ambas definiciones en el [worker Python](./python.md). Pase explícitamente el identificador de instancia que conoce el llamante; el ejemplo no inventa un acceso al identificador desde el contexto del workflow.
+
+```python
+import os
+import httpx
+from durable_workflow import activity, workflow
+from durable_workflow.workflow import ActivityRetryPolicy
+
+@activity.defn(name="external.submit")
+async def submit_external_job(workflow_id, operation_id):
+    async with httpx.AsyncClient(timeout=5.0) as provider:
+        response = await provider.post(
+            os.environ["JOB_API_URL"] + "/jobs",
+            headers={"Idempotency-Key": operation_id},
+            json={"workflow_id": workflow_id, "operation_id": operation_id,
+                  "signal": "job-completed",
+                  "callback_url": os.environ["JOB_CALLBACK_URL"]},
+        )
+        response.raise_for_status()
+        return response.json()
+
+@workflow.defn(name="external-completion")
+class ExternalCompletion:
+    def __init__(self):
+        self.results = {}
+
+    @workflow.signal("job-completed")
+    def completed(self, operation_id: str, result: dict):
+        self.results.setdefault(operation_id, result)
+
+    def run(self, ctx, workflow_id, operation_id):
+        job = yield ctx.schedule_activity(
+            "external.submit", [workflow_id, operation_id],
+            retry_policy=ActivityRetryPolicy(max_attempts=1, backoff_seconds=[1]),
+            start_to_close_timeout=10, schedule_to_close_timeout=15,
+        )
+        ready = yield ctx.wait_condition(
+            lambda: operation_id in self.results,
+            key="external.completed", timeout=10,
+        )
+        if not ready:
+            return {"status": "timed_out", "job_id": job["job_id"]}
+        return {"status": "completed", "result": self.results[operation_id]}
+```
+
+Elija el identificador de instancia y persista la relación namespace/instancia/señal de la operación **antes de llamar a start**. La actividad puede comenzar en cuanto se confirme el inicio. Después, la aplicación inicia esa instancia con presupuestos finitos:
+
+```python
+handle = await client.start_workflow(
+    workflow_type="external-completion", task_queue="external-jobs",
+    workflow_id="external-job-42", input=["external-job-42", "op-42"],
+    execution_timeout_seconds=60, run_timeout_seconds=30,
+)
+```
+
+Tras autenticar al proveedor y resolver la relación guardada de su operación, el adaptador usa un Client en el **mismo namespace**:
+
+```python
+await client.signal_workflow(
+    "external-job-42", "job-completed", args=["op-42", {"value": 42}],
+)
+```
+
+Esto llama a `POST /api/workflows/{workflowId}/signal/{signalName}` del Server con el sobre Avro normal del SDK. Una llamada exitosa confirma la admisión, no que el código del workflow haya procesado el callback. Si importa la confirmación, consulte el resultado del workflow o el estado retenido de la señal.
+
+### Callbacks tempranos, continuaciones y callbacks tardíos {#early-continued-and-late-callbacks}
+
+- Declare la señal antes de iniciar el run. Un callback que llega antes de su espera se conserva y consume en orden duradero; Python reconstruye el estado del manejador durante el replay. Un registro posterior no puede reescribir las declaraciones de un run antiguo.
+- Los callbacks dirigidos a la instancia siguen continue-as-new; las llamadas dirigidas explícitamente a un run siguen limitadas a ese run. En runtimes compatibles Core 2.7.0+, las señales de instancia recibidas y aptas conservan su identidad y orden al transferirse. El estado de callbacks **ya aplicados** debe pasarse en la entrada de continuación si la aplicación aún lo necesita.
+- Un callback tras el cierre terminal se rechaza explícitamente. Con el Server publicado, Python expone `SignalFailed.reason == "run_not_active"` y estado409. Una señal admitida pero no aplicada puede conservar en cambio una disposición de rechazo por cierre; no se borra su recibo de admisión anterior. Consulte [admisión y cierre de señales](../features/signals.md#acceptance-and-closure).
+- El plazo de espera no cancela el trabajo externo. Reconcilie su resultado o solicite su cancelación al proveedor mediante una actividad. Un resultado tardío puede requerir una decisión de recuperación de la aplicación; no inicie silenciosamente trabajo de sustitución.
+
+### Entregas duplicadas y límites del streaming {#duplicate-delivery-and-streaming-limits}
+
+Los proveedores reintentan callbacks, y puede haber un error de red después de admitir la señal. Persista la clave de operación/evento y la intención exacta, deduplique tanto en la entrada del callback como en el procesamiento de negocio y conserve las entregas inciertas para reconciliarlas. El manejador Python conserva el primer resultado de cada operación en este run; no garantiza deduplicación entre runs ni admisión única. No marque un reenvío incierto como procesado solo porque envió la solicitud. [La incidencia compartida #216](https://github.com/durable-workflow/.github/issues/216) sigue cubriendo los reintentos seguros y la identidad retenida de admisión. Un encabezado de idempotencia o un único intento de actividad no garantiza por sí solo efectos externos únicos.
+
+Inicie el workflow antes de que esta receta envíe el trabajo. En modo servicio, `start(use-existing)` seguido de `signal` son **dos operaciones**, con una carrera frente al cierre; la admisión atómica sigue en [la incidencia compartida #222](https://github.com/durable-workflow/.github/issues/222). El `signalWithStart` embebido es otra API atómica. La petición de debounce [Website #280](https://github.com/durable-workflow/durable-workflow.github.io/issues/280) fue sustituida por ese requisito de producto, no completada por esta receta.
+
+Un socket HTTP/SSE mantenido dentro de una actividad no es duradero: perder el worker o proceso lo cierra, ocupa un slot de actividad y al reconectar puede repetir o perder eventos externos. El envío y los callbacks siguen añadiendo historial de actividad, señales y esperas; la ejecución no es gratuita ni ilimitada. Para **salida duradera del workflow**, use [Workflow Streams](./workflow-streams.md) y su contrato persistido de secuencia/cursor, en vez de tratar una conexión de transporte como almacenamiento.
+
+El código PHP y Python se ejecutó con **Server 2.9.7 / Core 2.7.2** publicado y **SDK Python 2.6.1** instalado normalmente. Controles separados de PostgreSQL 17.11 cubrieron callbacks tempranos y durante la espera, rechazo tardío y continue-as-new con callback mientras el worker Python estaba ausente, seguido de lectura en frío. Los controles embebidos usaron la ruta real del webhook. Esta evidencia corresponde a la receta, no a todas las bases, autenticación del proveedor, apagado ordenado ni runtime nativo. El [registro de calificación](https://github.com/durable-workflow/durable-workflow.github.io/issues/321#issuecomment-6292485315) conserva por separado los originales fallidos.
 
 ## Acote los reintentos y el historial {#bound-retries-and-history}
 
