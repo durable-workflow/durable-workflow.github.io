@@ -119,8 +119,10 @@ diagnostics.
 ## Sticky Execution
 
 Sticky execution is a workflow-task replay optimization. A worker may keep a
-warm process-local replay cache after completing a workflow task, and matching
-may prefer that worker for the next workflow task for the same run.
+warm process-local replay cache after completing a workflow task. If it claims
+a later task for that run, it may reuse its valid cache. Affinity does not
+reserve ready tasks or give the cache owner matching priority; another eligible
+worker can claim the task and replay its history cold.
 
 Sticky execution does not make workflow progress process-local. Correctness
 always falls back to ordinary cold replay from durable history after cache
