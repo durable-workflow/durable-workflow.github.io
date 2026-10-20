@@ -4,7 +4,7 @@ sidebar_position: 5
 
 # Limites structurelles {#structural-limits}
 
-Les limites structurelles plafonnent la consommation de ressources d’une exécution de workflow. Lorsqu’une opération dépasserait une limite configurée, le moteur enregistre un échec typé avec la catégorie lisible par machine `structural_limit` et le type précis de limite, puis fait échouer l’exécution. Cela protège le système contre les déploiements parallèles non bornés, les données utiles trop volumineuses et l’accumulation de métadonnées.
+Les limites structurelles plafonnent la consommation de ressources d’une exécution de workflow. Lorsqu’une opération dépasserait une limite configurée, le moteur enregistre un échec typé avec la catégorie lisible par machine `structural_limit` et le type précis de limite, puis fait échouer l’exécution. Cela protège le système contre les lancements parallèles non bornés, les données utiles trop volumineuses et l’accumulation de métadonnées.
 
 ## Types de limites {#limit-kinds}
 

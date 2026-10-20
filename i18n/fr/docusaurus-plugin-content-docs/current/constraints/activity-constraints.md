@@ -14,7 +14,7 @@ Ce comportement fait partie du contrat. Si une activité déclenche un paiement,
 
 - L’identifiant d’idempotence par défaut d’une activité logique est `activity_execution_id`.
 - Chaque nouvelle tentative possède aussi son propre `activity_attempt_id`.
-- Un worker peut terminer le travail externe, perdre son bail et envoyer son rapport trop tard. Le moteur peut refuser le rapport parce qu’un autre worker a déjà enregistré le résultat retenu, alors que l’effet externe a bien eu lieu.
+- Un worker peut terminer le travail externe, perdre son bail et envoyer son rapport trop tard. Le moteur peut refuser le rapport parce qu’un autre worker a déjà enregistré le résultat retenu, alors que l’effet externe peut néanmoins avoir eu lieu.
 - Les activités peuvent utiliser les entrées/sorties, l’horloge réelle et l’état mutable du processus. Le code des workflows ne le peut pas. Gardez cette frontière explicite.
 
 ## Modèles d’idempotence recommandés {#preferred-idempotency-patterns}
