@@ -184,12 +184,14 @@ PyPI 将 Python 分发版本显示为 `%%artifact.pythonRegistryVersion%%`；文
 
 顶层软件包版本选择受支持的产品系列。运行时协议清单提供第二层默认拒绝检查：
 
-| 客户端 | 产品系列 | 控制平面 | Worker 协议请求 |
-|--------|---------------|---------------|-------------------------|
+| 客户端 | 产品系列 | 控制平面 | 默认 Worker 注册协议 |
+|--------|---------------|---------------|--------------------------------------|
 | CLI | `%%artifact.cliVersion%%` | `2` | 不适用 |
-| PHP SDK | `%%artifact.phpSdkVersion%%` | `2` | `1.13` |
-| Python SDK | `%%artifact.pythonSdkVersion%%` | `2` | `1.1` |
-| Rust SDK | `%%artifact.rustSdkVersion%%` | `2` | `1.2` |
+| PHP SDK | `%%artifact.phpSdkVersion%%` | `2` | `1.20` |
+| Python SDK | `%%artifact.pythonSdkVersion%%` | `2` | `1.20` |
+| Rust SDK | `%%artifact.rustSdkVersion%%` | `2` | `1.20` |
+
+SDK 也支持显式选择 Worker 协议 `1.19`，以连接较旧的兼容 Server。协作式取消要求 `1.20`，选择 `1.19` 不提供该能力。各操作可以使用其文档规定的最低协议版本，因此默认注册版本并不意味着每个 Worker 请求都发送 `1.20`。
 
 当前已发布 Server 声明上方权威角色表中的 Worker 协议版本。它接受主版本相同、次版本小于或等于声明次版本的请求头，并返回声明版本。缺失或格式错误的请求头、不同主版本，以及领先于 Server 的 Worker 次版本都会被默认拒绝。CLI 验证 `control_plane.version: "2"`。
 
