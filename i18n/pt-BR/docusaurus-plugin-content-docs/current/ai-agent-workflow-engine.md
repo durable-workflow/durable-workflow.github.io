@@ -47,7 +47,7 @@ um procedimento operacional mais extenso.
 
 ## SDKs oficiais e limites da aplicação {#first-party-sdks-and-application-boundary}
 
-PHP, Python e Rust são SDKs oficiais independentes da linha estável 2.0.
+PHP, Python e Rust oferecem SDKs oficiais independentes, disponíveis na linha estável 2.0.
 Workflow é a engine Laravel embutida e o núcleo do servidor independente,
 com versionamento separado.
 
