@@ -8,6 +8,10 @@ sidebar_position: 9
 
 子运行仍是普通工作流运行，有自己的工作流实例 ID 和运行 ID。它之所以成为子工作流，是因为存在回到父运行的持久链接，以及由父工作流为此次调用发出的稳定 `child_call_id`。
 
+## 命名空间边界 {#namespace-boundary}
+
+子工作流及通过其句柄发送的信号仍属于父工作流的命名空间。选择不同的工作流类型、语言或队列不会改变该命名空间。要持久调用同一集群中其他命名空间发布的操作，请使用[服务操作](./service-operations.md)。
+
 ```php
 use function Workflow\V2\child;
 use Workflow\V2\Workflow;

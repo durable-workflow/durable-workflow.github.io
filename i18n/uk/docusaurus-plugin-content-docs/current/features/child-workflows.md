@@ -8,6 +8,10 @@ sidebar_position: 9
 
 Дочірній запуск залишається звичайним запуском workflow із власними ID екземпляра workflow та запуску. Дочірнім його роблять стійкий зв’язок із батьківським запуском та один стабільний `child_call_id`, виданий батьківським workflow для цього виклику.
 
+## Межа namespace {#namespace-boundary}
+
+Дочірній workflow і signal, надіслані через його handle, залишаються в namespace батьківського workflow. Вибір іншого типу workflow, мови чи черги не змінює namespace. Для довговічного виклику операції іншого namespace того самого кластера використовуйте [сервісну операцію](./service-operations.md).
+
 ```php
 use function Workflow\V2\child;
 use Workflow\V2\Workflow;

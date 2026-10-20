@@ -18,6 +18,14 @@ import SignalSimulator from '@site/src/components/SignalSimulator';
 
 Signals allow you to trigger events in a workflow from outside the workflow. This can be useful for reacting to external events, enabling *human-in-the-loop* interventions, or for signaling the completion of an external task. For repeated ordered inputs with durable cursor advancement, use [Message Streams](./message-streams.md).
 
+## Namespace boundary {#namespace-boundary}
+
+An ordinary signal targets a workflow in the client's namespace. A child
+handle also retains its original namespace. Use a
+[service operation](./service-operations.md) for an operation published in
+another namespace; changing a workflow id or queue is not cross-namespace
+authority.
+
 ## Acceptance and closure
 
 `signal_received` confirms durable acceptance. It does not confirm that workflow

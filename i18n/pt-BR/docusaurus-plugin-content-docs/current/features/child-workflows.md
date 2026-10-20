@@ -8,6 +8,10 @@ A implementação atual de `Workflow\V2` oferece workflows filhos duráveis por 
 
 Uma execução filha continua sendo uma execução normal de workflow, com seu próprio ID de instância e ID de execução. O que a torna filha é o vínculo durável com a execução pai e um `child_call_id` estável emitido pelo pai para essa invocação.
 
+## Fronteira do namespace {#namespace-boundary}
+
+Um workflow filho e os sinais enviados por seu handle permanecem no namespace do pai. Escolher outro tipo de workflow, linguagem ou fila não altera esse namespace. Use uma [operação de serviço](./service-operations.md) para chamar de forma durável uma operação publicada em outro namespace do mesmo cluster.
+
 ```php
 use function Workflow\V2\child;
 use Workflow\V2\Workflow;

@@ -8,6 +8,10 @@ La implementación actual de `Workflow\V2` admite workflows hijos duraderos medi
 
 Un hijo sigue siendo una ejecución normal de workflow con sus propios ids de instancia y ejecución. Lo distingue el vínculo duradero con la ejecución padre y un `child_call_id` estable emitido por el padre para esa invocación.
 
+## Límite del espacio de nombres {#namespace-boundary}
+
+Un workflow hijo y las señales enviadas mediante su handle permanecen en el espacio de nombres del padre. Elegir otro tipo de workflow, lenguaje o cola no cambia ese espacio. Usa una [operación de servicio](./service-operations.md) para llamar de forma duradera a una operación publicada en otro espacio de nombres del mismo clúster.
+
 ```php
 use function Workflow\V2\child;
 use Workflow\V2\Workflow;
