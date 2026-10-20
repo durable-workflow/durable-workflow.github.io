@@ -177,7 +177,11 @@ async with Client(
 
 ### 外部ペイロードストレージ {#external-payload-storage}
 
-SDK は Server と CLI のストレージ API が使うものと同じ外部ペイロード参照契約を公開します。Python のアクティビティハンドラーや呼び出し可能なキャリアで、ワークフロー履歴の大きなペイロード参照をデコードする場合や、大きなバイト列をインラインに含めずに言語中立なペイロードエンベロープを作る場合に使います。
+通常の `Client` と `Worker` 操作は、Server の認証付きランタイム転送を自動で使います。SDK は `GET /api/cluster/info` で名前空間ポリシーと転送上限を検出し、しきい値を超える値やリクエストを収めるために必要な値をアップロードし、参照値を取得してからデコードします。ワークフローとアクティビティのコードはデコード済み値を受け取ります。プロバイダー認証情報は Server に残ります。リモート Worker に boto3、プロバイダークライアント、Server のローカルディレクトリへのアクセスは不要です。
+
+ランタイム参照は `durable-workflow.v2.runtime-external-payload-reference.v1` スキーマと不透明な `reference_id` を持ち、プロバイダーの `uri` は含みません。アップロードと取得は通常のロール認証情報と名前空間を使い、サイズと SHA-256 を検証し、Worker 完了時のタスク試行とリースのフェンスを維持します。経路、上限、型付き拒否は [HTTP 契約](./server-api-reference.md#runtime-external-payload-transport)を参照してください。SDK の対応には利用可能な互換転送が必要であり、ドライバー設定だけでは足りません。
+
+以下の**直接プロバイダーヘルパー**は、アプリケーションが所有するプロバイダーを意図的に使う保存処理やテスト用です。別の URI スキーマを使います。通常の Server、Cloud クライアントには不要です。Server はプロバイダーの `external_storage` エンベロープを HTTP `422`、`external_payload_unsupported` で拒否します。
 
 | API | 役割 | 失敗サーフェス |
 | --- | --- | --- |
@@ -192,7 +196,7 @@ SDK は Server と CLI のストレージ API が使うものと同じ外部ペ�
 | `fetch_external_payload()` | 参照されたバイト列を取得し、デコード前にサイズと SHA-256 を検証する。 | サイズ・ハッシュ不一致で `ExternalPayloadIntegrityError`。 |
 | `delete_external_payload()` | 参照オブジェクトを削除し、キャッシュエントリーも削除する。 | ドライバーが送出するストレージエラー。 |
 | `external_storage_envelope()` | しきい値までは値をインラインにエンコードし、超えたらドライバーでバイト列を書き込む。 | 不正なしきい値や参照を解決できるドライバーがない場合は `ValueError`。 |
-| `external_storage_driver_from_policy()` | アプリケーション提供のプロバイダークライアントから、Server または Cloud の `external_payload_storage` ポリシーに一致するドライバーを構築する。 | ポリシーが無効、未対応、必要なクライアント・バケット・コンテナが不足の場合は `ValueError`。 |
+| `external_storage_driver_from_policy()` | 明示されたポリシーとアプリケーション所有のプロバイダークライアントから直接ドライバーを構築します。Server、Cloud 上の直接プロバイダーアクセスを許可しません。 | ポリシー無効、未対応、または必要なクライアント、バケット、コンテナーがない場合に `ValueError`。 |
 
 ```python
 from durable_workflow import (
@@ -222,9 +226,9 @@ reference = store_external_payload(
 payload_bytes = fetch_external_payload(storage, reference, cache=cache)
 ```
 
-参照スキーマは `EXTERNAL_PAYLOAD_REFERENCE_SCHEMA`（`durable-workflow.v2.external-payload-reference.v1`）です。オブジェクトストアのアダプターは `durable-workflow` に Cloud SDK の依存関係を追加しません。アプリケーションが設定済みの S3、GCS、Azure クライアントを渡します。
+直接ヘルパーの参照スキーマは `EXTERNAL_PAYLOAD_REFERENCE_SCHEMA`（`durable-workflow.v2.external-payload-reference.v1`）です。アダプターは `durable-workflow` にクラウド SDK の依存関係を追加しません。アプリケーションが設定済み S3、GCS、Azure クライアントを渡します。
 
-ワイヤーエンベロープのフィールドは意図的に小さく安定させています。
+プロバイダー参照のフィールドは次のとおりです。Server HTTP 経路が受け付けるランタイム参照ではありません。
 
 ```json
 {
@@ -237,9 +241,9 @@ payload_bytes = fetch_external_payload(storage, reference, cache=cache)
 }
 ```
 
-`ExternalPayloadReference.from_dict()` は未知のスキーマと不正フィールドを拒否します。`fetch_external_payload()` はバイト列を返す前に `size_bytes` と `sha256` を検証し、オブジェクトが欠落、途中切れ、変更済みの場合 `ExternalPayloadIntegrityError` を送出します。Worker のリプレイは検証後にだけ `ExternalPayloadCache` を使い、整合性検査を弱めずに、繰り返す履歴読み取りで同じ blob の再取得を避けるべきです。
+`ExternalPayloadReference.from_dict()` は未知のスキーマや不正フィールドを拒否します。`fetch_external_payload()` はバイトを返す前に `size_bytes` と `sha256` を検証し、不一致なら `ExternalPayloadIntegrityError` を送出します。オブジェクト欠落時にはプロバイダードライバーのエラーが発生する場合もあります。`ExternalPayloadCache` は検証済みバイトだけに使ってください。キャッシュ破棄は Server 管理オブジェクトを削除する権限を与えません。`delete_external_payload()` はプロバイダーへの直接操作であり、ランタイム参照の清掃 API ではありません。
 
-アプリケーションが Server または Cloud コントロールプレーンから名前空間の `external_payload_storage` ポリシーを読み取り済みの場合、`external_storage_driver_from_policy()` は一致するドライバーを返します。プロバイダー SDK クライアントはアプリケーション所有のままなので、SDK は boto3、google-cloud-storage、azure-storage-blob をランタイム依存に追加しません。
+`external_storage_driver_from_policy()` は、アプリケーション所有のプロバイダーストレージを意図的に使い、必要なクライアントを所有するコードで使用します。ポリシーを読んでも、プロバイダーエンベロープが有効な Server リクエストにはなりません。クライアントはアプリケーションが所有します。任意のアダプターは boto3、google-cloud-storage、azure-storage-blob をランタイム依存に追加しません。
 
 ```python
 from durable_workflow.external_storage import external_storage_driver_from_policy
@@ -251,7 +255,7 @@ driver = external_storage_driver_from_policy(
 )
 ```
 
-ポリシーが無効、指定ドライバーが未対応、対応するプロバイダークライアントがない場合、ファクトリーは `ValueError` を送出します。無効なポリシーは何もしないドライバーを返しません。呼び出し元はドライバーを要求する前に `policy.enabled` で分岐するべきです。
+ポリシー無効、未対応ドライバー、必要なクライアント欠落時にファクトリーは `ValueError` を送出します。無効なポリシーは空のドライバーを返しません。呼び出す前に `policy.enabled` を確認してください。
 
 ### 名前空間 {#namespaces}
 
@@ -270,7 +274,7 @@ driver = external_storage_driver_from_policy(
 
 `test_external_storage` は `dw storage:test` に対応します。Server は対象の外部ストレージドライバーに小・大のペイロードを書いて読み戻し、`StorageTestResult` を返します。各ペイロードの `StoragePayloadTestResult` レコードに `wrote`、`read`、`verified`、`latency_ms`、`bytes` を公開します。
 
-`NamespaceDescription` は[外部ペイロードストレージ](#external-payload-storage)で記載する名前空間の `external_payload_storage` ポリシーを持ちます。`external_storage_driver_from_policy()` と組み合わせると、アプリケーションコードで認証情報を読み直さず、ポリシーから対応する Python ドライバーを構築できます。
+`NamespaceDescription` は[外部ペイロードストレージ](#external-payload-storage)で説明した `external_payload_storage` ポリシーを持ちます。通常のクライアントは検出したランタイム転送を自動で使います。直接ヘルパーにはアプリケーション所有のプロバイダーアクセスが必要です。ポリシーの説明を取得しても、プロバイダーエンベロープが有効な Server リクエストにはなりません。
 
 ### クラスターとタスクキュー {#cluster-and-task-queues}
 

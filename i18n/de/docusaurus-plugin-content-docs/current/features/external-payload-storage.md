@@ -13,194 +13,75 @@ keywords:
   - Azure-Blob-Speicher
 ---
 
-# Externer Payload-Speicher {#external-payload-storage}
+# Externer Nutzlastspeicher {#external-payload-storage}
 
-Externer Payload-Speicher lagert große Workflow-Payloads in einen austauschbaren
-Objektspeicher (S3, GCS, Azure Blob oder ein lokales Dateisystem) aus. Er ersetzt
-die direkt in der Workflow-Historie gespeicherten Bytes durch einen kleinen,
-überprüfbaren Referenzumschlag. Verwenden Sie ihn, wenn Argumente oder
-Ergebnisse von Aktivitäten oder untergeordneten Workflows, Signale oder
-Update-Payloads zu groß für die Datenbankzeile der Workflow-Historie sind.
+Im eingebetteten Laravel ersetzt externer Speicher große codierte Werte im Workflow-Verlauf durch geprüfte Referenzen auf den anwendungseigenen Speicher. Diese Seite beschreibt diese Speichergrenze. Clients und Worker im Dienstmodus verwenden den [Runtime-Transport des Servers](../polyglot/server-api-reference.md#runtime-external-payload-transport): Der Server verwahrt die Zugangsdaten des Anbieters, und SDKs tauschen opake Referenz-IDs über authentifiziertes HTTP aus. Eine Anbieter-URI ist kein gültiger Nutzlast-Envelope für Server.
 
-Die Laufzeit speichert Payloads weiterhin direkt, solange die kodierte Größe
-unter dem Namespace-Schwellenwert bleibt. Nur Payloads ab diesem Schwellenwert
-werden an den konfigurierten Treiber geschrieben und als Umschlag
-`durable-workflow.v2.external-payload-reference.v1` in der Historie
-aufgezeichnet. Replay und Historienexport brechen sicher mit einem Fehler ab,
-wenn eine Referenz fehlt, verändert wurde oder außerhalb des konfigurierten
-Präfixes liegt. Das System ersetzt einen fehlenden Blob niemals still durch
-einen leeren Wert.
+## Einsatzfälle {#when-to-use-it}
 
-## Wann Sie ihn verwenden sollten {#when-to-use-it}
+Verwenden Sie externen Speicher für große Dokumente, Medien, Berichte sowie Aktivitätsargumente oder -ergebnisse, die tatsächlich durch die dauerhafte Ausführung laufen müssen. Kleine Werte bleiben inline und benötigen keinen Objektspeicher-Schreibzugriff. Die Auslagerung hebt weder Nutzlast- oder Verlaufslimits auf noch die Notwendigkeit, die Anzahl der von einem Lauf aufbewahrten Objekte zu begrenzen.
 
-Bevorzugen Sie externen Payload-Speicher, wenn die Anwendung berechtigterweise
-mehr als wenige hundert Kilobyte durch einen Workflow transportieren muss:
+## Ablauf der Auslagerung {#how-offload-works}
 
-- Dokument- und Medienverarbeitung, die PDFs, Bilder oder Audioblobs zwischen Aktivitäten weitergibt.
-- Berichte, Exporte oder Archive mit einem großen serialisierten Endartefakt.
-- Nachrichtenstrom-Payloads externer Systeme ohne stabile Objekt-URL, auf die der Workflow direkt verweisen kann.
-- Jeder Payload, der sonst die [strukturelle Grenze `payload_size_bytes`](../constraints/structural-limits.md#payload-size) auslösen würde.
+Die Namespace-Richtlinie der Anwendung stellt einen Speichertreiber und einen positiven `threshold_bytes` bereit. Codierte Nutzlasten, deren Größe **über** dem Schwellenwert liegt, werden über den Treiber gespeichert. Werte am oder unter dem Schwellenwert bleiben inline. Auch eine deaktivierte Richtlinie oder ein fehlender Treiber belässt Werte inline.
 
-Kleine Payloads wie Steuerungsebenenfelder, IDs, Statuskennzeichen und übliche
-JSON-Daten bleiben direkt gespeichert und verursachen keinen zusätzlichen
-Aufwand. Da die Richtlinie vom Schwellenwert abhängt, verschiebt das Aktivieren
-externen Speichers für einen Namespace keine kleinen Payloads.
+Die eingebettete Anbieterreferenz verwendet das Schema `durable-workflow.v2.external-payload-reference.v1` mit `uri`, `sha256`, `size_bytes`, `codec` und optionalem `expires_at`. Der Codec ist `avro`. `Workflow\V2\Support\ExternalPayloads` speichert den codierten Envelope mit dem Präfix `dw-external-payload:v1:`. Benötigt die Runtime den Wert, lädt sie die codierten Bytes und prüft Größe und SHA-256 vor dem Decodieren. Fehlende oder veränderte Bytes führen zum Fehler, niemals zu einem ersatzweisen `null`.
 
-## Wie die Auslagerung funktioniert {#how-offload-works}
+Diese Anbieterreferenz unterscheidet sich vom Server-Schema `durable-workflow.v2.runtime-external-payload-reference.v1`. Prüfen Sie die [Unterstützung nach Betriebsmodus](../polyglot/server-api-reference.md#external-payload-support-by-mode), bevor Sie einen Treiberhelfer oder gespeicherten Envelope zwischen Bereitstellungsmodi übernehmen.
 
-Jeder Namespace hat eine unabhängige Richtlinie für externen Payload-Speicher.
-Wenn die Laufzeit einen Payload für die dauerhafte Speicherung kodiert,
-vergleicht sie die kodierte Byte-Länge mit `threshold_bytes`:
+## Vertrauensgrenze beim Decodieren {#decode-trust-boundary}
 
-- Die kodierte Größe liegt unter der Schwelle. Der Payload bleibt wie bisher direkt gespeichert. In der Historie ändert sich nichts.
-- Die kodierte Größe erreicht oder überschreitet die Schwelle. Die Laufzeit übergibt die kodierten Bytes an den konfigurierten Treiber, erhält eine treibereigene URI und zeichnet eine externe Payload-Referenz in der Historie auf. Die Referenz enthält URI, SHA-256-Hash, genaue Byte-Länge, Payload-Codec und optional einen Hinweis `expires_at`.
-
-Beim Replay laden Worker die referenzierten Bytes über denselben Treiber,
-prüfen die erwartete Größe und den SHA-256-Hash und übergeben den Payload erst
-danach an den Decoder. Eine abweichende Größe oder ein abweichender Hash löst
-`ExternalPayloadIntegrityException` (PHP) oder `ExternalPayloadIntegrityError`
-(Python) aus und erscheint als Replay-Fehler, niemals als stiller leerer Payload.
-
-Der Referenzumschlag ist ein stabiles Übertragungsformat. Es ist identisch,
-unabhängig davon, ob ein PHP-Workflow, Python-SDK-Worker oder direkter
-HTTP-API-Aufrufer der Erzeuger ist. Den vollständigen Feldvertrag beschreibt
-[Umschlag für externe Payload-Referenzen](../polyglot/server-api-reference.md#external-payload-reference-envelope).
-
-## Vertrauensgrenze beim Dekodieren {#decode-trust-boundary}
-
-Payload-Speicherung und Payload-Dekodierung sind getrennte Vertrauensgrenzen.
-Ein Objektspeicher kann kodierte Bytes oder Referenzen enthalten. Ein
-Codec-Server, eigener Decoder, Worker-Prozess oder Historienexport-Werkzeug,
-der diese Bytes dekodiert, kann dagegen Anwendungs-Payloads im Klartext sehen.
-
-Behandeln Sie jeden Codec-Server als kundenseitig verwaltete Vertrauensgrenze:
-Legen Sie seinen Ausführungsort, erreichbare Netzwerke, zugängliche Schlüssel,
-Auditprotokolle und die Schwärzung dekodierter Vorschauen vor der Anzeige in
-Betreiberoberflächen fest. Durable Workflow zeichnet Codec-Namen,
-Referenz-URIs, Hashes, Größen, Schema-Fingerprints und begrenzte Vorschauen auf.
-Diese Fakten sind jedoch keine Ende-zu-Ende-Verschlüsselung.
+Speicherung und Decodierung haben getrennte Vertrauensgrenzen. Ein Anbieter kann codierte Bytes halten, während ein Worker, Codec-Server oder Exportwerkzeug beim Decodieren Anwendungswerte sieht. Legen Sie Ausführungsort, zugängliche Schlüssel sowie die Schwärzung von Vorschauen und Logs fest. Hashes, Größen und Codec-Namen sind Integritätsmetadaten, keine Zusicherung einer Ende-zu-Ende-Verschlüsselung. Auch Anbieter-URIs können vertrauliche Objektnamen enthalten.
 
 ## Treiberauswahl {#driver-choices}
 
-| Treiber | URI-Schema | Typischer Einsatz |
+| Treiber | URI-Schema | Voraussetzung im eingebetteten Modus |
 | --- | --- | --- |
-| `local` | `file://` | Lokale Entwicklung, CI und Einzelknotenbereitstellungen mit gemeinsamem Dateisystem für Server und Worker. Nicht geeignet, wenn Worker auf anderen Hosts als der Server laufen. |
-| `s3` | `s3://` | Amazon S3 und S3-kompatible Objektspeicher wie MinIO oder Cloudflare R2 über einen serverseitigen Dateisystem-Datenträger. |
-| `gcs` | `gs://` | Google Cloud Storage über einen serverseitigen Dateisystem-Datenträger. |
-| `azure` | `azure://` | Azure Blob Storage über einen serverseitigen Dateisystem-Datenträger. |
+| Lokales Dateisystem | `file://` | Alle eingebetteten Prozesse, die Referenzen auflösen, müssen dieselbe Speicherwurzel erreichen. |
+| S3-kompatibler Speicher | `s3://` | Anwendungseigener Treiber oder Dateisystem-Disk mit passendem Bucket, Präfix und Zugangsdaten. |
+| Google Cloud Storage | `gs://` | Anwendungseigener Treiber oder Dateisystem-Disk und Anbieter-Client. |
+| Azure Blob Storage | `azure://` | Anwendungseigener Treiber oder Dateisystem-Disk und Anbieter-Client. |
 
-Objektspeichertreiber konfigurieren die tatsächlichen Bucket-/Container-Zugangsdaten
-über einen benannten serverseitigen Dateisystem-Datenträger. Geheimnisse liegen
-dadurch in der Serverkonfiguration statt im Namespace-Richtliniendatensatz.
+Ein Server kann selbst lokalen Speicher verwenden, während entfernte SDK-Worker die Bytes über HTTP abrufen. Diese Worker benötigen weder ein gemeinsames Dateisystem noch Anbieter-Zugangsdaten.
 
-## Einen Namespace konfigurieren {#configuring-a-namespace}
+## Namespace konfigurieren {#configuring-a-namespace}
 
-Konfigurieren Sie die Richtlinie mit der
-[CLI](../polyglot/cli-reference.md#namespace-and-search-attribute-commands)
-oder der [Server-HTTP-API](../polyglot/server-api-reference.md#namespace-and-storage).
-Beide schreiben denselben Umschlag `external_payload_storage` in den
-Namespace-Datensatz.
+Eingebettete Anwendungen konfigurieren Namespace-Speicherrichtlinie und `ExternalPayloadStorageDriver` in ihrer Laravel-Runtime. Halten Sie Zugangsdaten in der Anwendungskonfiguration, nicht in Workflow-Argumenten, Verlauf oder Referenz-URIs. Verwenden Sie dieselbe Richtlinie in den Prozessen, die einen Lauf ausführen und wiedergeben.
+
+Bei selbst betriebenem Server konfigurieren die administrative [Namespace-Speicher-API](../polyglot/server-api-reference.md#namespace-and-storage) und die [CLI-Speicherbefehle](../polyglot/cli-reference.md#namespace-and-search-attribute-commands) die Server-Richtlinie. Sie gewähren SDK-Workern keinen direkten Anbieterzugriff.
 
 ### Mit der CLI {#with-the-cli}
 
-```bash
-# Production namespace using Amazon S3 through the 'external-payload-objects' disk.
-dw namespace:set-storage-driver billing s3 \
-  --disk=external-payload-objects \
-  --bucket=dw-payloads \
-  --prefix=billing/ \
-  --threshold-bytes=2097152
-
-# Development namespace using the local filesystem.
-dw namespace:set-storage-driver dev local \
-  --uri=file:///var/lib/durable-workflow/payloads
-
-# Disable offload while keeping the policy record (all payloads stay inline).
-dw namespace:set-storage-driver billing s3 \
-  --disk=external-payload-objects \
-  --bucket=dw-payloads \
-  --disable
-```
+`dw namespace:set-storage-driver` konfiguriert einen Server-Namespace, nicht den Laravel-Container einer unabhängigen eingebetteten Anwendung. Die erforderlichen Disk-, Bucket- und Präfixoptionen stehen in der CLI-Referenz.
 
 ### Mit der Server-API {#with-the-server-api}
 
-```bash
-curl -sS -X PUT "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/billing/external-storage" \
-  -H "Authorization: Bearer $DURABLE_WORKFLOW_AUTH_TOKEN" \
-  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "enabled": true,
-    "driver": "s3",
-    "threshold_bytes": 2097152,
-    "config": {
-      "disk": "external-payload-objects",
-      "bucket": "dw-payloads",
-      "prefix": "billing/"
-    }
-  }'
-```
+`PUT /api/namespaces/{namespace}/external-storage` ist eine administrative Richtlinienoperation. Normale SDK-Clients entdecken den resultierenden Runtime-Transport über `GET /api/cluster/info`; sie kopieren dessen Anbieter-Konfiguration nicht in Worker.
 
-Die Namespace-Beschreibung aus `GET /api/namespaces/{name}` oder
-`dw namespace:describe` enthält den aufgelösten Umschlag
-`external_payload_storage`. Betreiber und Automatisierung können die aktive
-Richtlinie dadurch ohne erneuten Schreibzugriff prüfen.
+## Richtlinie prüfen {#verifying-the-policy}
 
-## Die Richtlinie überprüfen {#verifying-the-policy}
+Prüfen Sie einen Wert oberhalb des Schwellenwerts über den tatsächlich konfigurierten Treiber und die späteren Replay-Prozesse. Vergleichen Sie nach dem Abruf die genaue codierte Byteanzahl und SHA-256. Für Server prüft `dw storage:test --namespace=billing --json` den konfigurierten Speicherpfad. Eine Speicherdiagnose belegt weder Workflow-Ausführung in jedem SDK noch Backup-Wiederherstellung oder alle Anbieteradapter.
 
-Beweisen Sie mit der Hin-und-zurück-Diagnose vor Freigabe für Workflow-Verkehr,
-dass die konfigurierte Richtlinie mit den Namespace-Zugangsdaten tatsächlich
-Bytes schreiben und lesen kann:
+## Schwellenwert wählen {#picking-a-threshold}
 
-```bash
-dw storage:test --namespace=billing --large-bytes=2097152 --json
-```
-
-Die Diagnose schreibt einen kleinen direkt gespeicherten Payload und einen
-Payload über der Schwelle, lädt beide zurück, prüft Größe und SHA-256 und
-liefert maschinenlesbare Ergebnisobjekte `small_payload` und `large_payload`.
-Ein erfolgreiches Groß-Payload-Ergebnis beweist, dass der Treiber durchgängig
-einen gültigen Umschlag `durable-workflow.v2.external-payload-reference.v1`
-erzeugen kann. Behandeln Sie eine fehlgeschlagene Diagnose als Problem der
-Speicherrichtlinie. Geben Sie keinen Workflow-Verkehr durch einen Namespace
-frei, dessen Richtlinie diese Prüfung nicht besteht.
-
-## Einen Schwellenwert wählen {#picking-a-threshold}
-
-Standardmäßig bleiben direkt gespeicherte Payloads unverändert, solange sie
-`threshold_bytes` nicht erreichen. Sinnvolle Ausgangspunkte:
-
-- Richten Sie die Schwelle daran aus, wann direkt gespeicherte Payloads den Betrieb belasten, üblicherweise zwischen 256 KiB und 2 MiB kodierter Bytes.
-- Lassen Sie ausreichend Spielraum unter der strukturellen Namespace-Grenze [`payload_size_bytes`](../constraints/structural-limits.md#payload-size), damit der Referenzumschlag geprüft wird und nicht die Bytes selbst.
-- Setzen Sie einen einzigen Schwellenwert pro Namespace. Wählen Sie ihn anhand der Aktivität oder des Workflows mit dem höchsten Byte-Aufkommen pro Lauf, statt ihn auf den mittleren Payload abzustimmen.
-
-Eine sehr niedrige Schwelle bringt keinen Vorteil: Kleine Payloads lassen sich
-über die Datenbank schneller schreiben und zurücklesen als über externen
-Speicher. Auch der Referenzumschlag selbst verbraucht etwas Historienplatz.
+Lassen Sie Abstand zu normalen Anfrage- und Nutzlastlimits. Der Schwellenwert gilt für **codierte Bytes**, nicht für die ursprüngliche Dateigröße oder das Geschäfts-JSON. Sehr niedrige Werte erzeugen Speicheranfragen und aufbewahrte Referenzen für kleine Werte. Der Runtime-Transport kann weitere Werte auslagern, damit eine gesamte HTTP-Anfrage ihr Limit einhält. Verwenden Sie im Dienstmodus die ermittelten Server-Limits, statt den eingebetteten Schwellenwert als Protokolllimit zu behandeln.
 
 ## Replay, Aufbewahrung und Bereinigung {#replay-retention-and-cleanup}
 
-- **Replay-Integrität.** Jeder Abruf prüft das gespeicherte Objekt gegen `size_bytes` und `sha256` der Referenz. Ein veränderter oder fehlender Blob löst eine Integritätsausnahme aus, statt still einen anderen Wert einzusetzen.
-- **Cache für geprüfte Abrufe.** Worker cachen geprüfte Bytes anhand von `(uri, sha256, size, codec)` mit begrenzter Eintragszahl und Byte-Obergrenze. Wiederholtes Lesen derselben Laufhistorie vermeidet erneutes Laden desselben Objekts, ohne die Integritätsprüfung beim ersten Laden abzuschwächen.
-- **Aufbewahrung.** Entfernt der Aufbewahrungslauf des Servers einen Workflow-Lauf, löscht er auch die von dessen Historie referenzierten externen Payload-Objekte. Solange die Aufbewahrungsbereinigung läuft, sammeln sich keine verwaisten Objekte an.
-- **Historienexport.** Exportierte Historie erhält den Referenzumschlag. Nachgelagerte Verbraucher, die die Bytes benötigen, sollten sie über denselben Treiber laden und vor dem Dekodieren gegen den Umschlag prüfen. Das Exportformat bettet externe Bytes nicht direkt ein.
+- **Replay-Integrität.** Ein Wert wird erst nach Abruf und Prüfung seiner Bytes decodiert. Bewahren Sie Objekte für jeden aufbewahrten Lauf auf, der sie noch benötigt.
+- **Cache geprüfter Abrufe.** `ExternalPayloadStorage` begrenzt seinen Cache geprüfter Bytes. Das Leeren löscht weder das Objekt noch ändert es dessen Eigentümerschaft.
+- **Aufbewahrung.** Die Runtime-Bereinigung berücksichtigt aufbewahrte Eigentümer und gemeinsam verwendete Objekte. Speicherfehler, Backup-Sperren oder verbleibende Referenzen können die Löschung verzögern. Eine laufende Aufbewahrungsbereinigung garantiert keine Abwesenheit verwaister Objekte.
+- **Verlaufsexport.** Ein Export kann Referenzmetadaten ohne Objektabruf aufbewahren. Seine Prüfsumme oder `history_complete` beweisen weder die Existenz externer Bytes noch die Wiedergebbarkeit des Archivs. Beachten Sie die [Backup- und Wiederherstellungsgrenze](../configuration/pruning-workflows.md#export-before-pruning), und prüfen Sie Objekte gesondert. Eigenständige Archive werden weiter in [Server #520](https://github.com/durable-workflow/server/issues/520) verfolgt.
 
-## Aus Code verwenden {#using-it-from-code}
+## Verwendung im Code {#using-it-from-code}
 
-Die meisten Anwendungen rufen die Speicher-API nie direkt auf: Die Laufzeit
-lagert anhand der Namespace-Richtlinie transparent aus, und das SDK dekodiert
-Referenzen beim Replay. Anwendungen, die Umschläge außerhalb der Laufzeit
-erzeugen oder verarbeiten müssen, etwa ein sprachneutraler Brückenhandler
-oder ein Test mit künstlichem Groß-Payload, verwenden die SDK-Helfer.
+Eingebettetes PHP verwendet `Workflow\V2\Support\ExternalPayloadStorage` mit einem `ExternalPayloadStorageDriver`. `LocalFilesystemExternalPayloadStorage` verarbeitet lokale Speicherwurzeln. Anbieteradapter verwalten ihre Zugriffskonfiguration und URI-Regeln. Anwendungen lassen üblicherweise die Runtime ihre Namespace-Richtlinie anwenden, statt gespeicherte Envelopes selbst zu konstruieren.
 
-- **PHP (Workflow-Paket).** Der Helfer `Workflow\V2\Support\ExternalPayloadStorage` speichert und lädt Bytes über jeden Treiber, der `Workflow\V2\Contracts\ExternalPayloadStorageDriver` implementiert. `LocalFilesystemExternalPayloadStorage` verarbeitet `file://`-URIs. Der eigenständige Server enthält einen Dateisystem-Datenträgertreiber, der die Richtlinientreiber `s3`, `gcs` und `azure` über einen benannten Laravel-Datenträger umsetzt.
-- **Python-SDK.** Siehe [Externer Payload-Speicher](../polyglot/python.md#external-payload-storage) für `ExternalPayloadReference`, `ExternalPayloadCache`, `store_external_payload()`, `fetch_external_payload()` sowie die Adapter `LocalFilesystemExternalStorage`, `S3ExternalStorage`, `GCSExternalStorage` und `AzureBlobExternalStorage`. Cloud-SDK-Clients bleiben Verantwortung der Anwendung. Das SDK fügt boto3, google-cloud-storage oder azure-storage-blob nicht als Laufzeitabhängigkeiten hinzu.
-- **Direktes HTTP.** HTTP-Aufrufer, die Payloads manuell kodieren, können Bytes über den Treiber speichern und dann den Referenzumschlag als Payload-Feld der Anfrage übergeben. Der Worker-Protokoll-Payload-Umschlag (`{codec, blob}`) enthält weiterhin Referenzen für Aktivitätsargumente, Ergebnisse, Signal-Payloads und Update-Payloads.
+Im Dienstmodus laden PHP-, Python- und Rust-SDK-Clients und -Worker Runtime-Nutzlasten automatisch hoch und herunter, wenn der Server einen verfügbaren Transport meldet. Senden Sie keinen Anbieter-Envelope `external_storage` an Server, und löschen Sie keine Server-verwalteten Objekte über direkte Anbieterhelfer. Siehe den [Upload-/Abrufvertrag](../polyglot/server-api-reference.md#runtime-external-payload-transport) und die [Grenze der Python-Helfer](../polyglot/python.md#external-payload-storage).
 
-## Siehe auch {#see-also}
+## Weiterführende Informationen {#see-also}
 
-- [Daten übergeben](../defining-workflows/passing-data.md) für den Standardvertrag direkt gespeicherter Payloads.
-- [Strukturelle Grenzen: Payload-Größe](../constraints/structural-limits.md#payload-size) für die von der Engine durchgesetzte Obergrenze, unter der Sie mit externem Speicher arbeiten können.
-- [Server-API-Referenz: Namespace und Speicher](../polyglot/server-api-reference.md#namespace-and-storage) für den vollständigen HTTP-Vertrag einschließlich der Felder des Referenzumschlags.
-- [CLI-Referenz: Namespace- und Suchattributbefehle](../polyglot/cli-reference.md#namespace-and-search-attribute-commands) zur Verwendung von `dw namespace:set-storage-driver` und `dw storage:test`.
-- [Python-SDK: Externer Payload-Speicher](../polyglot/python.md#external-payload-storage) für Python-Treiber, Helfer und Hinweise zum Replay-Cache.
+- [Daten übergeben](../defining-workflows/passing-data.md)
+- [Strukturelle Limits: Nutzlastgröße](../constraints/structural-limits.md#payload-size)
+- [Server-API: externer Runtime-Nutzlasttransport](../polyglot/server-api-reference.md#runtime-external-payload-transport)
+- [Python-SDK: externer Nutzlastspeicher](../polyglot/python.md#external-payload-storage)

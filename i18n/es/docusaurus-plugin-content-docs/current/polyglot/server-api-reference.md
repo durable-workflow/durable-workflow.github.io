@@ -335,7 +335,7 @@ Los comandos dirigidos a ejecución rechazan explícitamente destinos histórico
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/repair` | Reparar solo si la ejecución es actual. |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/archive` | Archivar solo si la ejecución es actual y está cerrada. |
 
-Los comandos con cargas del usuario utilizan un array `input`. Los SDK de Python y PHP codifican los sobres independientes del lenguaje; las llamadas HTTP directas deben enviar valores JSON que el workflow o actividad de destino pueda decodificar.
+Los comandos llevan valores de negocio en sobres Avro. Los SDK oficiales los codifican automáticamente. Un cliente HTTP directo debe usar el sobre `{codec, blob}` del codificador Avro oficial o la referencia del runtime descrita abajo. El documento HTTP exterior es JSON; el JSON de negocio sin codificar no es un códec alternativo.
 
 ## Espacios de nombres y almacenamiento {#namespace-and-storage}
 
@@ -354,20 +354,108 @@ Las políticas permiten que sobres grandes contengan referencias estables en lug
 
 ### Sobre de referencia a carga útil externa {#external-payload-reference-envelope}
 
-La referencia es un sobre de transmisión estable. Los SDK pueden convertirla en tipos auxiliares nativos, pero los clientes HTTP deben respetar estos nombres:
+Server acepta referencias del **runtime**, distintas de las referencias con URI de proveedor de los helpers embebidos. Una solicitud con `external_storage` se rechaza con HTTP `422` y `external_payload_unsupported`. No copies referencias `file://`, `s3://`, `gs://` o `azure://` en solicitudes a Server.
+
+El sobre del runtime contiene exactamente `codec` y `external_payload`:
+
+```json
+{
+  "codec": "avro",
+  "external_payload": {
+    "schema": "durable-workflow.v2.runtime-external-payload-reference.v1",
+    "reference_id": "ep_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+    "codec": "avro",
+    "size_bytes": 1048576,
+    "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  }
+}
+```
+
+El identificador y el hash anteriores son ilustrativos. Utiliza sin cambios la referencia devuelta por una subida real. La referencia anidada contiene exactamente cinco campos:
 
 | Campo | Obligatorio | Significado |
 | --- | --- | --- |
-| `schema` | sí | Debe ser `durable-workflow.v2.external-payload-reference.v1`. Se rechazan esquemas desconocidos. |
-| `uri` | sí | Ubicación del objeto gestionada por el controlador, como `file:///...`, `s3://bucket/prefix/object`, `gs://bucket/prefix/object` o `azure://container/prefix/object`. |
-| `sha256` | sí | SHA-256 hexadecimal en minúsculas de los bytes codificados almacenados. SDK y servidor lo verifican antes de decodificar. |
-| `size_bytes` | sí | Longitud en bytes de la carga codificada. Una discrepancia es un fallo de integridad. |
-| `codec` | sí | Siempre `avro`: esquema Value tipado fijo con trama de objeto único Avro. El documento HTTP envolvente sigue siendo JSON. |
-| `expires_at` | no | Indicación de vencimiento ISO-8601 para retención/GC. Si falta, la política del espacio gestiona la limpieza. |
+| `schema` | sí | `durable-workflow.v2.runtime-external-payload-reference.v1`. |
+| `reference_id` | sí | ID opaco de Server: `ep_` seguido de 26 caracteres ULID en mayúsculas. No es un URI del proveedor. |
+| `codec` | sí | `avro`, igual que en el sobre exterior. |
+| `size_bytes` | sí | Tamaño entero no negativo de los bytes codificados subidos. |
+| `sha256` | sí | SHA-256 de esos mismos bytes, devuelto como hexadecimal en minúsculas. |
 
-La política del espacio aplica un umbral a la externalización. Se utiliza el sobre normal en línea hasta superar `threshold_bytes`; después el controlador escribe los bytes y el historial guarda la referencia. La reproducción y exportación deben fallar claramente si el blob falta, fue modificado, queda fuera del prefijo o depende de un proveedor no disponible. No deben sustituirlo silenciosamente por `null`, `{}` ni una cadena de bytes vacía.
+### Transporte de cargas externas del runtime {#runtime-external-payload-transport}
 
-Para el contrato completo de autoridad de solicitud, con resolución de espacios, credenciales por rol y campos de registro, consulta [Espacios de nombres, autenticación y registro de workers](/docs/polyglot/namespace-auth-workers).
+Descubre `namespace.external_payload_storage.transport` mediante `GET /api/cluster/info`. Su esquema es `durable-workflow.v2.runtime-external-payload-transport.v1`, versión `1`. Usa sus rutas y límites solo cuando el almacenamiento del espacio de nombres esté `available`. Server conserva las credenciales del proveedor y no devuelve ubicaciones del proveedor.
+
+| Método | Ruta | Resultado |
+| --- | --- | --- |
+| `POST` | `/api/external-payloads/v1` | Sube bytes codificados con límites. `201` devuelve el esquema `durable-workflow.v2.runtime-external-payload-upload.v1`, `transport_version: 1` y `reference`. |
+| `GET` | `/api/external-payloads/v1/{referenceId}` | Recupera y verifica los bytes codificados referenciados. `200` devuelve `application/octet-stream`. |
+
+Ambas rutas usan una credencial normal del runtime con rol `worker`, `operator` o `admin` y `X-Namespace`. Ambas requieren `X-Durable-Workflow-Payload-Codec`, `X-Durable-Workflow-Payload-Size` y `X-Durable-Workflow-Payload-SHA256`. La subida también requiere `Content-Type: application/octet-stream`. Una búsqueda entre espacios de nombres devuelve no encontrado sin revelar objetos ajenos. Poseer un ID no concede acceso ni autoridad para completar workflows.
+
+Los bytes subidos son los **bytes UTF-8 de la cadena base64 `blob` del sobre Avro oficial**, sin añadir un salto de línea. No son Avro binario decodificado ni JSON de negocio. Calcula longitud y SHA-256 exactamente sobre esos bytes. Por ejemplo, después de instalar el SDK Python:
+
+```bash
+python - <<'PY'
+from pathlib import Path
+from durable_workflow.serializer import encode
+
+Path("payload.avro.txt").write_bytes(
+    encode([{"message": "large value", "optional": None}]).encode("utf-8")
+)
+PY
+
+PAYLOAD_SIZE=$(wc -c < payload.avro.txt | tr -d ' ')
+PAYLOAD_SHA256=$(sha256sum payload.avro.txt | cut -d ' ' -f 1)
+
+curl --fail-with-body -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/external-payloads/v1" \
+  -H "Authorization: Bearer $DURABLE_WORKFLOW_AUTH_TOKEN" \
+  -H "X-Namespace: billing" \
+  -H "Content-Type: application/octet-stream" \
+  -H "X-Durable-Workflow-Payload-Codec: avro" \
+  -H "X-Durable-Workflow-Payload-Size: $PAYLOAD_SIZE" \
+  -H "X-Durable-Workflow-Payload-SHA256: $PAYLOAD_SHA256" \
+  --data-binary @payload.avro.txt > upload.json
+
+REFERENCE_ID=$(jq -r '.reference.reference_id' upload.json)
+curl --fail-with-body -sS "$DURABLE_WORKFLOW_SERVER_URL/api/external-payloads/v1/$REFERENCE_ID" \
+  -H "Authorization: Bearer $DURABLE_WORKFLOW_AUTH_TOKEN" \
+  -H "X-Namespace: billing" \
+  -H "X-Durable-Workflow-Payload-Codec: avro" \
+  -H "X-Durable-Workflow-Payload-Size: $PAYLOAD_SIZE" \
+  -H "X-Durable-Workflow-Payload-SHA256: $PAYLOAD_SHA256" \
+  -o fetched.avro.txt
+cmp payload.avro.txt fetched.avro.txt
+```
+
+La subida verifica la integridad de los bytes antes de guardar una referencia. No ejecuta un workflow ni demuestra que los bytes sean una carga de negocio válida. La primera solicitud verificada que incorpora estado reclama la referencia; siguen vigentes la validación de cargas y los controles normales de solicitud, espacio de nombres, intento de tarea y lease. Para subidas de finalización de workers usa el SDK oficial y su contexto descubierto, sin inventar permisos de lease en un cliente directo.
+
+Lee `limits.max_payload_bytes`, `request_timeout_seconds` y `abandoned_upload_expiry_seconds` en el manifiesto. También se aplican las cuotas de bytes y objetos, los límites normales de solicitud y los de subidas de finalización. Por umbral, un valor igual al límite permanece en línea. Los SDK externalizan valores mayores y pueden externalizar otros para que quepa la solicitud agregada.
+
+| Resultado | Estado HTTP | Acción |
+| --- | --- | --- |
+| Referencia ausente o caducada | `404` / `410` | Restaura el objeto necesario o corrige la referencia. No decodifiques una ausencia como `null`. |
+| Sin autorización | `401` / `403` | Corrige credencial, rol o autorización del espacio de nombres. |
+| Sobre no admitido o integridad incorrecta | `415` / `422` | Corrige códec, campos, tamaño, hash o bytes codificados. |
+| Carga demasiado grande | `413` | Reduce el valor codificado o usa una política mayor permitida. |
+| Cuota o permiso de subida agotados | `429` | Revisa la capacidad y reintenta solo dentro del presupuesto original. |
+| Almacenamiento no disponible | `503` | Restablece su disponibilidad antes de reintentar dentro del mismo presupuesto. |
+| Finalización obsoleta o en conflicto | `409` | No reintentes inventando una identidad de tarea o un lease nuevo. |
+
+Server controla la retención. No hay ruta de borrado para el cliente. Desalojar una caché no debe borrar el objeto. Las subidas sin reclamar pueden caducar; los propietarios retenidos, objetos compartidos, fallos de almacenamiento y retenciones de copias afectan a la limpieza. Un historial exportado con referencias no es una copia autosuficiente de sus bytes.
+
+### Soporte de cargas externas por modo {#external-payload-support-by-mode}
+
+| Cliente o worker | Ruta de almacenamiento | Credenciales del proveedor |
+| --- | --- | --- |
+| Paquete workflow de Laravel embebido | Política de la aplicación y referencias con URI del proveedor. | Aplicación embebida. |
+| SDK PHP | Subida y descarga automáticas descubiertas con referencias opacas. | Server. |
+| SDK Python | Subida y descarga automáticas descubiertas con referencias opacas. | Server. |
+| SDK Rust | Subida y descarga automáticas descubiertas con referencias opacas. | Server. |
+| HTTP directo | Subida y descarga explícitas del runtime y referencia devuelta en un campo de carga admitido. | Server. |
+
+Todos los SDK requieren un transporte del runtime compatible y disponible. Los helpers de proveedores sirven para integraciones embebidas o directas con almacenamiento de la aplicación. Su disponibilidad no convierte los sobres de proveedor en un formato de entrada admitido por Server o Cloud.
+
+El contrato completo de autoridad de solicitudes, resolución de espacios de nombres, credenciales por rol y registro de workers está en [Espacios de nombres, autenticación y registro de workers](/docs/polyglot/namespace-auth-workers).
 
 ## API administrativas del catálogo de servicios {#service-catalog-admin-apis}
 

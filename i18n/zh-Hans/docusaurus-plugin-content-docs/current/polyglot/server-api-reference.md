@@ -335,7 +335,7 @@ Server 也提供协作式 `request-cancellation` 路由。有时限清理契约�
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/repair` | 仅在选定运行仍为当前运行时修复。 |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/archive` | 仅在选定运行为当前运行且已关闭时归档。 |
 
-带调用方负载的命令使用 `input` 数组。Python 和 PHP SDK 为你编码语言中立的负载封装；直接 HTTP 调用方必须发送目标工作流或活动能解码的 JSON 值。
+命令通过 Avro 负载封装传递业务值，官方 SDK 自动完成编码。直接 HTTP 客户端必须使用官方 Avro 编码器的 `{codec, blob}` 封装，或下述运行时外部引用。外围 HTTP 文档是 JSON，但原始业务 JSON 不是另一种负载编解码格式。
 
 ## 命名空间与存储 {#namespace-and-storage}
 
@@ -354,20 +354,108 @@ Server 也提供协作式 `request-cancellation` 路由。有时限清理契约�
 
 ### 外部负载引用封装 {#external-payload-reference-envelope}
 
-外部负载引用是稳定的线格式封装。SDK 可以将它解码为原生辅助类型，但 HTTP 客户端应将这些字段名视为契约：
+Server 接受**运行时引用**，不接受嵌入式存储辅助函数使用的提供商 URI 引用。包含 `external_storage` 的请求会以 HTTP `422` 和 `external_payload_unsupported` 拒绝。不要把 `file://`、`s3://`、`gs://` 或 `azure://` 提供商引用复制到 Server 请求中。
 
-| 字段 | 必填 | 含义 |
+运行时负载封装仅包含 `codec` 和 `external_payload`：
+
+```json
+{
+  "codec": "avro",
+  "external_payload": {
+    "schema": "durable-workflow.v2.runtime-external-payload-reference.v1",
+    "reference_id": "ep_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+    "codec": "avro",
+    "size_bytes": 1048576,
+    "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  }
+}
+```
+
+以上 ID 和哈希仅作示例。请原样使用实际上传返回的引用。嵌套引用恰好包含五个字段：
+
+| 字段 | 必需 | 含义 |
 | --- | --- | --- |
-| `schema` | 是 | 必须为 `durable-workflow.v2.external-payload-reference.v1`。未知模式默认拒绝。 |
-| `uri` | 是 | 驱动管理的对象位置，例如 `file:///...`、`s3://bucket/prefix/object`、`gs://bucket/prefix/object` 或 `azure://container/prefix/object`。 |
-| `sha256` | 是 | 所存编码字节的小写十六进制 SHA-256。SDK 和 Server 在解码前验证它。 |
-| `size_bytes` | 是 | 所存编码负载的字节长度。不匹配即完整性失败。 |
-| `codec` | 是 | 始终为 `avro`：固定的类型化 Value 模式及 Avro 单对象帧。外层 HTTP 文档仍为 JSON。 |
-| `expires_at` | 否 | 用于保留期/GC 的 ISO-8601 到期提示。缺失时由命名空间保留策略负责清理。 |
+| `schema` | 是 | `durable-workflow.v2.runtime-external-payload-reference.v1`。 |
+| `reference_id` | 是 | Server 不透明 ID：`ep_` 加26个大写 ULID 字符，不是提供商 URI。 |
+| `codec` | 是 | `avro`，与外层封装一致。 |
+| `size_bytes` | 是 | 上传编码字节的非负整数大小。 |
+| `sha256` | 是 | 同一字节序列的 SHA-256，以小写十六进制返回。 |
 
-负载外移由命名空间存储策略的阈值控制。在编码字节超过 `threshold_bytes` 前，内联负载继续使用普通负载封装；之后驱动写入字节，历史保存引用封装。如果引用的 blob 缺失、被修改、位于配置前缀之外，或归属不可用提供商，重放和历史导出必须明确失败，绝不能悄悄用 `null`、`{}` 或空字节串替换缺失对象。
+### 运行时外部负载传输 {#runtime-external-payload-transport}
 
-完整请求权限契约，包括命名空间解析、角色限定凭据及 Worker 注册字段，见[命名空间、认证与 Worker 注册](/docs/polyglot/namespace-auth-workers)。
+通过 `GET /api/cluster/info` 发现 `namespace.external_payload_storage.transport`。其模式为 `durable-workflow.v2.runtime-external-payload-transport.v1`，版本为 `1`。仅当命名空间存储状态为 `available` 时使用声明的上传、获取路由与限制。Server 保管提供商凭据，不返回提供商对象位置。
+
+| 方法 | 路径 | 结果 |
+| --- | --- | --- |
+| `POST` | `/api/external-payloads/v1` | 上传受限的编码字节。`201` 返回模式 `durable-workflow.v2.runtime-external-payload-upload.v1`、`transport_version: 1` 和 `reference`。 |
+| `GET` | `/api/external-payloads/v1/{referenceId}` | 获取并验证引用的编码字节。`200` 返回 `application/octet-stream`。 |
+
+两条路由均使用带有 `worker`、`operator` 或 `admin` 角色的普通运行时凭据和 `X-Namespace`。两者均要求 `X-Durable-Workflow-Payload-Codec`、`X-Durable-Workflow-Payload-Size` 和 `X-Durable-Workflow-Payload-SHA256`。上传还要求 `Content-Type: application/octet-stream`。跨命名空间查询返回未找到，不泄露其他命名空间的对象是否存在。持有 ID 不代表拥有访问权或工作流完成权限。
+
+上传内容是**官方 Avro 封装中 base64 `blob` 字符串的 UTF-8 字节**，不能添加换行。它既不是解码后的二进制 Avro，也不是业务 JSON。长度和 SHA-256 必须针对这些准确字节计算。例如，安装 Python SDK 后：
+
+```bash
+python - <<'PY'
+from pathlib import Path
+from durable_workflow.serializer import encode
+
+Path("payload.avro.txt").write_bytes(
+    encode([{"message": "large value", "optional": None}]).encode("utf-8")
+)
+PY
+
+PAYLOAD_SIZE=$(wc -c < payload.avro.txt | tr -d ' ')
+PAYLOAD_SHA256=$(sha256sum payload.avro.txt | cut -d ' ' -f 1)
+
+curl --fail-with-body -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/external-payloads/v1" \
+  -H "Authorization: Bearer $DURABLE_WORKFLOW_AUTH_TOKEN" \
+  -H "X-Namespace: billing" \
+  -H "Content-Type: application/octet-stream" \
+  -H "X-Durable-Workflow-Payload-Codec: avro" \
+  -H "X-Durable-Workflow-Payload-Size: $PAYLOAD_SIZE" \
+  -H "X-Durable-Workflow-Payload-SHA256: $PAYLOAD_SHA256" \
+  --data-binary @payload.avro.txt > upload.json
+
+REFERENCE_ID=$(jq -r '.reference.reference_id' upload.json)
+curl --fail-with-body -sS "$DURABLE_WORKFLOW_SERVER_URL/api/external-payloads/v1/$REFERENCE_ID" \
+  -H "Authorization: Bearer $DURABLE_WORKFLOW_AUTH_TOKEN" \
+  -H "X-Namespace: billing" \
+  -H "X-Durable-Workflow-Payload-Codec: avro" \
+  -H "X-Durable-Workflow-Payload-Size: $PAYLOAD_SIZE" \
+  -H "X-Durable-Workflow-Payload-SHA256: $PAYLOAD_SHA256" \
+  -o fetched.avro.txt
+cmp payload.avro.txt fetched.avro.txt
+```
+
+上传会在提交引用前验证字节完整性，但不会执行工作流，也不证明这些字节构成有效业务负载。第一个经过验证且携带状态的请求会认领引用；负载验证和普通请求、命名空间、任务尝试、租约检查仍然有效。Worker 完成上传应使用官方 SDK 及其发现的完成上下文，不要在直接客户端中自行构造租约许可。
+
+从传输清单读取 `limits.max_payload_bytes`、`request_timeout_seconds` 和 `abandoned_upload_expiry_seconds`。命名空间字节和对象配额、普通请求限制、完成上传限制也同样适用。按阈值选择时，大小恰等于阈值的值保持内联。SDK 外置更大的值，也可能为满足聚合请求限制而额外外置其他值。
+
+| 结果 | HTTP 状态 | 操作 |
+| --- | --- | --- |
+| 引用缺失或过期 | `404` / `410` | 恢复所需对象或修正引用。不要把缺失值解码成 `null`。 |
+| 未授权 | `401` / `403` | 修正凭据、角色或命名空间授权。 |
+| 不支持的封装或完整性不符 | `415` / `422` | 修正编解码器、字段、大小、哈希或编码字节。 |
+| 负载过大 | `413` | 减小编码值或使用允许的更大策略。 |
+| 配额或上传额度耗尽 | `429` | 检查容量，仅在原操作预算内重试。 |
+| 存储不可用 | `503` | 恢复可用性后，在同一预算内重试。 |
+| 过期或冲突的完成 | `409` | 不要伪造任务身份或更换租约后重试。 |
+
+Server 管理保留，没有客户端删除路由。缓存淘汰不能删除底层对象。未认领上传可能过期；保留所有者、共享对象、存储故障和备份保留会影响清理。含有引用的历史导出不是包含引用字节的自包含备份。
+
+### 各模式的外部负载支持 {#external-payload-support-by-mode}
+
+| 客户端或 Worker | 存储路径 | 提供商凭据 |
+| --- | --- | --- |
+| 嵌入式 Laravel 工作流包 | 应用命名空间策略和提供商 URI 引用。 | 嵌入式应用。 |
+| PHP SDK | 自动发现的运行时上传、获取及不透明引用。 | Server。 |
+| Python SDK | 自动发现的运行时上传、获取及不透明引用。 | Server。 |
+| Rust SDK | 自动发现的运行时上传、获取及不透明引用。 | Server。 |
+| 直接 HTTP | 显式运行时上传、获取，并把返回引用放入受支持的负载字段。 | Server。 |
+
+所有 SDK 行都要求兼容且可用的运行时传输。提供商辅助函数用于应用自有的嵌入式或直接存储集成。辅助函数存在，不代表提供商封装成为 Server 或 Cloud 支持的输入格式。
+
+包含命名空间解析、角色凭据和 Worker 注册字段的完整请求权限契约见[命名空间、身份验证与 Worker 注册](/docs/polyglot/namespace-auth-workers)。
 
 ## 服务目录管理 API {#service-catalog-admin-apis}
 

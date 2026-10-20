@@ -177,7 +177,11 @@ async with Client(
 
 ### 外部负载存储 {#external-payload-storage}
 
-SDK 导出与 Server 和 CLI 存储 API 相同的外部负载引用契约。当 Python 活动处理器或可调用载体需要从工作流历史解码大型负载引用，或 Python 进程需要创建不内联大字节的语言中立负载封装时，请使用它。
+普通 `Client` 和 `Worker` 操作会自动使用 Server 的认证运行时传输。SDK 通过 `GET /api/cluster/info` 发现命名空间策略和传输上限，上传大于阈值或为满足请求限制而必须外置的编码值，并在解码前获取引用值。工作流和活动代码收到的是解码后的值。提供商凭据保留在 Server 上。远程 Worker 不需要 boto3、提供商客户端或 Server 本地目录的访问权。
+
+运行时引用使用 `durable-workflow.v2.runtime-external-payload-reference.v1` 模式和不透明 `reference_id`，不含提供商 `uri`。上传和获取使用普通角色凭据及命名空间，验证编码字节大小和 SHA-256，并在 Worker 完成时保留任务尝试与租约围栏。路由、上限和类型化拒绝见[运行时 HTTP 契约](./server-api-reference.md#runtime-external-payload-transport)。SDK 支持取决于兼容且可用的传输，而不只是已配置驱动。
+
+以下**直接提供商辅助函数**用于应用有意访问自身提供商的存储和测试场景。它们使用另一种带 URI 的模式，普通 Server 或 Cloud 客户端不需要它们。Server 会以 HTTP `422` 和 `external_payload_unsupported` 拒绝提供商 `external_storage` 封装。
 
 | API | 职责 | 失败接口 |
 | --- | --- | --- |
@@ -192,7 +196,7 @@ SDK 导出与 Server 和 CLI 存储 API 相同的外部负载引用契约。当 
 | `fetch_external_payload()` | 获取引用字节，然后在解码前验证大小和 SHA-256。 | 大小/哈希不匹配时抛出 `ExternalPayloadIntegrityError`。 |
 | `delete_external_payload()` | 删除引用对象，并驱逐相应缓存条目。 | 驱动抛出的存储错误。 |
 | `external_storage_envelope()` | 阈值内将值内联编码，超过阈值后通过驱动写入字节。 | 阈值无效或没有驱动能解析引用时抛出 `ValueError`。 |
-| `external_storage_driver_from_policy()` | 根据 Server 或 Cloud 的 `external_payload_storage` 策略及应用提供的提供商客户端，构建匹配驱动。 | 策略禁用、不受支持或缺少必需客户端/桶/容器时抛出 `ValueError`。 |
+| `external_storage_driver_from_policy()` | 根据显式策略和应用自有提供商客户端构建直接驱动，不授予 Server 或 Cloud 上的直接提供商访问权。 | 策略禁用、不支持或缺少所需客户端、bucket、容器时抛出 `ValueError`。 |
 
 ```python
 from durable_workflow import (
@@ -222,9 +226,9 @@ reference = store_external_payload(
 payload_bytes = fetch_external_payload(storage, reference, cache=cache)
 ```
 
-引用模式为 `EXTERNAL_PAYLOAD_REFERENCE_SCHEMA`（`durable-workflow.v2.external-payload-reference.v1`）。对象存储适配器不为 `durable-workflow` 增加云 SDK 依赖；应用传入已配置的 S3、GCS 或 Azure 客户端。
+这些直接辅助函数的引用模式为 `EXTERNAL_PAYLOAD_REFERENCE_SCHEMA`（`durable-workflow.v2.external-payload-reference.v1`）。适配器不会向 `durable-workflow` 添加云 SDK 依赖；应用传入已配置的 S3、GCS 或 Azure 客户端。
 
-线格式封装字段有意保持小巧稳定：
+提供商引用包含以下字段。这不是 Server HTTP 路由接受的运行时引用：
 
 ```json
 {
@@ -237,9 +241,9 @@ payload_bytes = fetch_external_payload(storage, reference, cache=cache)
 }
 ```
 
-`ExternalPayloadReference.from_dict()` 拒绝未知模式和格式错误字段。`fetch_external_payload()` 在返回字节前验证 `size_bytes` 和 `sha256`，对象缺失、截断或被修改时抛出 `ExternalPayloadIntegrityError`。Worker 重放应仅在验证后使用 `ExternalPayloadCache`，使重复历史读取无需重新获取同一 blob，同时保持完整性检查。
+`ExternalPayloadReference.from_dict()` 拒绝未知模式和格式错误的字段。`fetch_external_payload()` 在返回字节前验证 `size_bytes` 和 `sha256`，大小或哈希不符时抛出 `ExternalPayloadIntegrityError`。对象缺失也可能触发提供商驱动自身的错误。`ExternalPayloadCache` 只能缓存已验证字节。缓存淘汰不授予删除 Server 管理对象的权限。`delete_external_payload()` 是直接提供商操作，不是运行时引用清理 API。
 
-应用已从 Server 或 Cloud 控制平面读取命名空间的 `external_payload_storage` 策略时，`external_storage_driver_from_policy()` 返回匹配驱动。提供商 SDK 客户端仍由应用负责，所以 SDK 绝不会增加 boto3、google-cloud-storage 或 azure-storage-blob 作为运行时依赖：
+在有意访问应用自有提供商存储、且拥有所需客户端的代码中使用 `external_storage_driver_from_policy()`。读取命名空间策略不会让提供商封装变成有效 Server 请求。客户端仍由应用管理。可选适配器不会把 boto3、google-cloud-storage 或 azure-storage-blob 加入运行时依赖：
 
 ```python
 from durable_workflow.external_storage import external_storage_driver_from_policy
@@ -251,7 +255,7 @@ driver = external_storage_driver_from_policy(
 )
 ```
 
-策略已禁用、具名驱动不受支持或缺少匹配的提供商客户端时，工厂抛出 `ValueError`。禁用策略不会返回无操作驱动；调用方应先根据 `policy.enabled` 分支，再请求驱动。
+策略禁用、驱动不支持或缺少所需客户端时，工厂抛出 `ValueError`。禁用的策略不会返回空驱动。调用前应检查 `policy.enabled`。
 
 ### 命名空间 {#namespaces}
 
@@ -270,7 +274,7 @@ driver = external_storage_driver_from_policy(
 
 `test_external_storage` 对应 `dw storage:test`。Server 通过绑定的外部存储驱动往返测试小型和大型负载，返回 `StorageTestResult`，其中每个负载的 `StoragePayloadTestResult` 记录提供 `wrote`、`read`、`verified`、`latency_ms` 和 `bytes` 字段。
 
-`NamespaceDescription` 携带[外部负载存储](#external-payload-storage)中记录的命名空间 `external_payload_storage` 策略。配合 `external_storage_driver_from_policy()` 可根据策略构造匹配的 Python 驱动，无需在应用代码中重新读取凭据。
+`NamespaceDescription` 携带[外部负载存储](#external-payload-storage)中说明的 `external_payload_storage` 策略。普通客户端自动使用发现的运行时传输。直接辅助函数需要应用拥有提供商访问权；取得策略描述不会让提供商封装变成有效 Server 请求。
 
 ### 集群与任务队列 {#cluster-and-task-queues}
 
