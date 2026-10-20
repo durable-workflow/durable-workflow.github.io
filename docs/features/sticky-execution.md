@@ -1,7 +1,7 @@
 ---
 sidebar_position: 25
 title: Sticky Execution
-description: Use sticky workflow-task routing as a supported v2 replay optimization with cold replay as the correctness fallback.
+description: Understand advisory workflow-task affinity, worker-local replay caches, normal task matching, and cold replay diagnostics.
 tags:
   - sticky-execution
   - replay
@@ -18,8 +18,8 @@ keywords:
 
 Sticky execution is a supported Durable Workflow v2 replay optimization. A
 worker can keep a warm, process-local workflow cache after it completes a
-workflow task, and matching can prefer that worker for the next workflow task
-for the same run.
+workflow task. If that worker claims a later task for the same run, it may
+reuse its valid cache. Affinity does not reserve the task for that worker.
 
 Sticky execution is not a correctness feature. Workflow progress is still
 committed only through durable history, and ordinary cold replay from history
@@ -31,7 +31,7 @@ correctness.
 Sticky execution has four guarantees:
 
 - Sticky caches are owned by worker processes, not by the server or database.
-- Sticky routing uses the worker protocol `worker_id` as the routing identity.
+- Sticky affinity uses the worker protocol `worker_id` as the cache-owner identity.
 - Sticky affinity is advisory and expires; cold replay is the mandatory
   fallback for cache misses, worker restart, drain, rollout, or eviction.
 - Operators have named controls and diagnostics for enablement, TTL, capacity,
@@ -64,18 +64,22 @@ The routing identity is the worker protocol `worker_id`. Workers opt into
 sticky routing by registering with sticky cache enabled and by continuing to
 heartbeat as active workers on the task queue.
 
-Matching follows these rules:
+Sticky affinity does not add an owner preference or an owner-only hold to
+ready-task matching. The PHP runtime selects candidates by priority,
+`available_at`, then task ID. Server can also rebalance the candidate batch
+across fairness keys within a priority tier. Ordinary compatibility, workflow
+type, queue, namespace, capacity, and lease checks still apply.
 
-- A task with active affinity for the polling worker is preferred.
-- A task with no active affinity can be claimed by any compatible worker.
-- A task with active affinity for another live sticky worker is held for that
-  owner until `sticky_until` expires or the owner becomes unavailable.
-- A task with expired affinity, stale-owner affinity, or disabled sticky
-  execution can be claimed normally and cold replayed.
+Any eligible polling worker can claim the task before `sticky_until`, even
+when another live worker owns the affinity. If the owner has no free workflow
+slots, another eligible worker can claim it immediately and cold replay. The
+task does not wait for the owner's cache or for affinity expiry. Raising the
+TTL does not create a longer owner reservation.
 
-Sticky routing does not bypass compatibility, queue, namespace, or lease
-checks. It only changes ready-task preference while ordinary replay remains the
-fallback.
+`sticky_until` bounds when the stored affinity is active and when an owner
+claim can be labelled `sticky_hit_expected`. It does not set task availability,
+extend a lease, or guarantee that the owner's local cache still contains the
+run.
 
 ## Fallback Semantics
 
@@ -86,13 +90,17 @@ Cold replay is mandatory fallback. It happens when:
 - the task has no active `sticky_worker_id` and `sticky_until`.
 - the sticky owner is stale, missing, draining, restarted, or rolled out.
 - the sticky owner evicted the run.
-- the polling worker is not the sticky owner after the affinity expired.
+- another worker claims the task, including while the owner's affinity is active.
+- the affinity expired before the task was claimed.
 
 The replay-mode diagnostics are:
 
-- `sticky_hit_expected` - the sticky owner claimed the task before expiry.
+- `sticky_hit_expected` - the sticky owner claimed the task before expiry. The
+  worker must still validate its local cache before using it.
 - `cold_replay` - no sticky affinity applied.
-- `forced_cold_replay` - affinity existed, but the task must be replayed cold.
+- `forced_cold_replay` - a sticky owner was recorded, but a different worker
+  claimed the task or the affinity had expired. This can occur while the
+  original owner is healthy.
 
 `forced_cold_replay` is not a correctness failure. It means sticky execution
 did not deliver its intended replay-speed benefit for that task.
@@ -101,9 +109,9 @@ did not deliver its intended replay-speed benefit for that task.
 
 Sticky execution follows the worker lifecycle. During drain, a worker should
 stop claiming new workflow tasks while completing, heartbeating, failing, or
-letting existing leases expire under the normal lease contract. Once the worker
-is stale or no longer active, other compatible workers can claim its sticky
-tasks after the affinity expires and cold replay them.
+letting existing leases expire under the normal lease contract. Other
+compatible workers can claim ready tasks and cold replay them without waiting
+for the affinity to expire.
 
 Replacement workers do not inherit process-local caches. A rollout can
 therefore increase `forced_cold_replay` until new workers warm their own
@@ -193,12 +201,17 @@ capacity-pressure worker count under `sticky_execution_workers`.
 
 Use these diagnostics this way:
 
-- Low hit rate with healthy workers usually means the TTL is too short, workers
-  are being replaced often, or cache capacity is too small.
+- `ready_sticky_tasks` counts ready workflow tasks whose recorded affinity has
+  not expired. It does not mean those tasks are held for their owners. The PHP
+  runtime's `capacity_pressure_tasks` currently reports that same count.
+- Low expected-hit rate can result from another worker claiming tasks, TTL
+  expiry, worker replacement or cache eviction. Compare claimant IDs and
+  worker-reported cache metrics before changing TTL or capacity.
 - High miss rate or high forced cold replay means correctness is protected, but
   sticky execution is not improving replay cost.
-- Capacity pressure means workers are near or above their reported sticky-cache
-  capacity and may evict warm runs.
+- Worker cache-capacity pressure reports workers near or above their advertised
+  cache capacity. It is distinct from free workflow execution slots and from
+  the ready-task count.
 
 ## Replay-Safe Code
 
