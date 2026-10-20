@@ -53,17 +53,11 @@ manifiestos del servidor y controles de CI se validen contra una sola referencia
 - La clase PHP `Workflow\V2\Support\SurfaceStabilityContract`, que es la fuente
   dentro del proceso que el servidor vuelve a exponer.
 
-La admisión de canales de artefactos se rige por separado por
-[`/public-artifact-release-policy.json`](pathname:///public-artifact-release-policy.json).
-Esta política, revisada de forma independiente, controla qué canales 2.0 pueden
-convertirse en la combinación pública de referencia.
-
 Una publicación que cambie una interfaz de las siguientes, su estabilidad,
 sus campos o sus reglas para cambios incompatibles, debe actualizar a la vez
 esta página, la copia JSON, el manifiesto PHP y los documentos de estabilidad de
-paquetes afectados. El CI valida el contrato legible por máquinas, la política
-de fases de publicación de artefactos, los metadatos Rust publicados cuando
-están disponibles y las especificaciones del protocolo de workers. La coherencia
+paquetes afectados. El CI valida el contrato legible por máquinas, los metadatos
+Rust publicados cuando están disponibles y las especificaciones del protocolo de workers. La coherencia
 editorial entre esta página y el manifiesto sigue siendo una responsabilidad
 explícita de la revisión de la publicación.
 

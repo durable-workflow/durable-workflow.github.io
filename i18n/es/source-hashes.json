@@ -49,7 +49,7 @@
   "polyglot/task-queue-admission.md": "a8cd766b03094def66507f42829eee919e12366fd5942ffd7337f0163e1dc831",
   "polyglot/worker-build-id-rollout.md": "88a2ec730ed0b2f58ff5d49aa1041c758ec491aceda4165fe1f3b06fcfee0278",
   "polyglot/worker-compatibility-routing.md": "e2cdfdbe8b295ba511f26345318e847611c1f2e67dafdf51441f09e93cb939ca",
-  "compatibility.md": "0cb61cd6cc06da7c98e81bc29ea72f10020a03f0a9256329bca30e2f7a571f66",
+  "compatibility.md": "28e6e3a55920762b4c9380721710de994335831db573447a60d92b213938d3fb",
   "monitoring.md": "28bc87ab65b4ef8e466f12114cc56dd60f4216f1f163ec84defec1a030ec320e",
   "rolling-upgrades.md": "5cb58386636361a07de5dd1f0438596dc649bcaf6ea493749ad0635eabb5be7f",
   "polyglot/external-execution.md": "410728db1107c328d0cb129cbf0c58f4fa8c6427e0406610d6801dfeb8a2db31",
