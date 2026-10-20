@@ -1,6 +1,6 @@
 ---
 sidebar_position: 1
-description: Durable Workflow Cloud、セルフホスト Server、Laravel 組み込みモードを選び、公式 SDK で最初のワークフローを完了させます。
+description: Durable Workflow Cloud、セルフホストの 2.0 Server、Laravel 組み込みモードを選び、公式 SDK で最初のワークフローを完了させます。
 tags:
   - concepts
   - getting-started
