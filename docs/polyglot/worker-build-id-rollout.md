@@ -18,7 +18,7 @@ for the identity carried by workflow tasks, activities, retries, children and
 continue-as-new. A cohort is scoped to `(namespace, task_queue, build_id)`.
 Registrations without a `build_id` belong to the unversioned, `null` cohort.
 
-## Rollout State The Server Records
+## Rollout State The Server Records {#rollout-state-the-server-records}
 
 | Field | Meaning |
 | --- | --- |
@@ -38,7 +38,7 @@ Registrations without a `build_id` belong to the unversioned, `null` cohort.
 Drain intent survives worker restarts, missing workers and stale heartbeats.
 Resume explicitly clears it. A missing worker is not implicitly resumed.
 
-## Inspect The Rollout
+## Inspect The Rollout {#inspect-the-rollout}
 
 Read the exact namespace and queue before changing capacity:
 
@@ -50,7 +50,7 @@ curl -fsS "$DURABLE_WORKFLOW_SERVER_URL/api/task-queues/orders-critical/build-id
 ```
 
 ```bash
-dw task-queue:build-ids orders-critical --json
+dw task-queue:build-ids orders-critical --namespace orders-prod --json
 ```
 
 ```python
@@ -105,7 +105,7 @@ guarded retirement decision. [Server #534](https://github.com/durable-workflow/s
 tracks the separate scrape/scale-to-zero capability. These are not delivered by
 this checklist, and there is no documented built-in KEDA/HPA trigger here.
 
-## First Cutover: Unversioned To Versioned
+## First Cutover: Unversioned To Versioned {#first-cutover-unversioned-to-versioned}
 
 1. Start the new workers with a stable build id and verify their namespace,
    queue, workflow types and fresh heartbeats.
@@ -114,7 +114,7 @@ this checklist, and there is no documented built-in KEDA/HPA trigger here.
 3. Explicitly promote the new build when new starts should select it:
 
    ```bash
-   dw task-queue:promote orders-critical --build-id orders-v2
+   dw task-queue:promote orders-critical --namespace orders-prod --build-id orders-v2
    ```
 
 4. Keep compatible workers for existing histories. Promotion does not assign
@@ -123,7 +123,7 @@ this checklist, and there is no documented built-in KEDA/HPA trigger here.
    independently. Empty task counts and zero worker registrations are not that
    proof. Keep the build artifact and recovery path while any run can need it.
 
-## Canary A New Build
+## Canary A New Build {#canary-a-new-build}
 
 The Server does not provide a percentage ramp between build cohorts. For new
 starts it selects the most recently promoted cohort that is neither draining
@@ -137,7 +137,7 @@ For an isolated canary, choose a separate queue and explicitly route selected
 application starts there. Keep old-build workers for old pinned runs when
 promoting the new build on the original queue.
 
-## Drain An Older Build
+## Drain An Older Build {#drain-an-older-build}
 
 Draining prevents that cohort's workflow, activity and query polls from claiming
 new work. It does not move those tasks to another build. A poll from a draining
@@ -145,7 +145,7 @@ worker returns HTTP409 with `poll_status: "draining"` and
 `reason: "worker_draining"`. Existing leases retain their original authority.
 
 ```bash
-dw task-queue:drain orders-critical --build-id orders-v1
+dw task-queue:drain orders-critical --namespace orders-prod --build-id orders-v1
 ```
 
 Do not issue this just because the new build can claim its own work. Existing
@@ -153,13 +153,13 @@ old-build runs may remain waiting after the drain. To recover an early drain,
 resume the cohort and restore workers with the required original build:
 
 ```bash
-dw task-queue:resume orders-critical --build-id orders-v1
+dw task-queue:resume orders-critical --namespace orders-prod --build-id orders-v1
 ```
 
 Draining or stopping every worker is not proof that the build artifact is safe
 to remove. There is no guarded retirement decision in this snapshot.
 
-## Roll Back A Bad Build
+## Roll Back A Bad Build {#roll-back-a-bad-build}
 
 Restore known-good workers, resume their cohort if necessary, and promote that
 build for future starts. Then use the deployment rollback action for the bad
@@ -173,7 +173,7 @@ Use a stable build identity for replay-compatible deployments, or finish the
 old chain and start a genuinely new instance under the new-start policy. Do
 not edit stored compatibility fields to force a migration.
 
-## Endpoints And Commands Reference
+## Endpoints And Commands Reference {#endpoints-and-commands-reference}
 
 | Intent | HTTP endpoint | CLI | Python SDK method |
 | --- | --- | --- | --- |
@@ -197,7 +197,7 @@ The separate [Server #521](https://github.com/durable-workflow/server/issues/521
 tracks the incomplete current OpenAPI mirror, not a new runtime implementation
 or a change to frozen schemas.
 
-## Related References
+## Related References {#related-references}
 
 - [Worker Compatibility and Routing](/docs/polyglot/worker-compatibility-routing)
 - [Namespace, Auth, And Worker Registration](/docs/polyglot/namespace-auth-workers)
