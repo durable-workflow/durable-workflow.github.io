@@ -12,6 +12,9 @@ keywords:
   - idempotencia
   - reproducción
   - reentrega
+  - vencimiento de leases
+  - al menos una vez
+  - exactamente una vez
 ---
 
 # Garantías de ejecución e idempotencia {#execution-guarantees-and-idempotency}
@@ -72,7 +75,8 @@ En la práctica:
   tipado para el ID de su comando o paso.
 - El resultado terminal confirmado de un intento se guarda una vez para ese
   `activity_attempt_id`.
-- La reproducción lee esos hechos y reconstruye el estado del workflow.
+- La reproducción lee esos hechos y reconstruye el estado del workflow a partir
+  de ellos, sin volver a ejecutar el trabajo externo.
 
 La distinción esencial es:
 
@@ -137,7 +141,8 @@ final class ChargeCard extends Activity
 
 ## Qué debe ser idempotente en tu aplicación {#what-developers-must-make-idempotent}
 
-El framework se encarga de reproducir el workflow y reconstruir el estado a
+No necesitas hacer idempotente la reproducción del workflow. El framework se
+encarga de reproducir el workflow y reconstruir el estado a
 partir del historial confirmado.
 
 Tu aplicación debe hacer seguros al repetirse los efectos externos, como:
@@ -163,9 +168,11 @@ Al diagnosticar una ejecución en Waterline, el CLI o los registros de Server:
   Comprueba el resultado duradero del intento.
 - El motor resuelve los informes tardíos de finalización o fallo. Su rechazo
   no demuestra que el efecto externo no ocurriera.
-- La reproducción de tareas recupera el workflow dentro de su ejecución.
-- Investiga la ausencia de workers compatibles, las leases atascadas y las
-  reparaciones repetidas antes de volver a ejecutar efectos externos.
+- La reproducción de tareas de workflow es recuperación, no un reintento de
+  todo el workflow.
+- La ausencia de workers compatibles, las leases atascadas y las reparaciones
+  repetidas son señales operativas que debes investigar. No son motivos para
+  suponer que el cuerpo del workflow deba volver a ejecutar efectos externos.
 
 Durante la operación, distingue la **incertidumbre del transporte** del
 **resultado duradero**. Durable Workflow expone ambos para poder investigarlos.
