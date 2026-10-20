@@ -84,6 +84,68 @@ $result->instanceId();  // "order-123"
 - 无契约时，`await('name')` 在无参数时返回 `true`，一个参数时返回该值，多个参数时返回完整参数数组。
 - 未知信号名以 `rejected_unknown_signal` 拒绝；针对已关闭或未启动实例的信号分别以 `rejected_not_active` 或 `rejected_not_started` 拒绝。
 
+## 兼容地演进信号载荷 {#evolve-a-signal-payload}
+
+需要兼容扩展的应用载荷应使用一个已声明的映射参数。本例添加可选的信息性 `note` 时仍保留 `schema_version: 1`。旧发送方省略该字段，新读取方使用 `null`。旧读取方可以忽略它，而不会改变审批决定。需要影响授权或业务行为的变更，不应放在会被忽略的字段中。
+
+```php
+use Workflow\V2\Attributes\Signal;
+use Workflow\V2\Attributes\Type;
+use Workflow\V2\Workflow;
+use function Workflow\V2\await;
+
+#[Type('map-approval')]
+#[Signal('reviewed', [
+    ['name' => 'payload', 'type' => 'array', 'allows_null' => false],
+])]
+final class MapApprovalWorkflow extends Workflow
+{
+    public function handle(): array
+    {
+        $payload = await('reviewed');
+        if (! is_array($payload) || array_is_list($payload)
+            || ($payload['schema_version'] ?? null) !== 1) {
+            return ['status' => 'rejected_payload', 'reason' => 'unsupported_shape_or_version'];
+        }
+        if (! in_array($payload['decision'] ?? null, ['approved', 'rejected'], true)) {
+            return ['status' => 'rejected_payload', 'reason' => 'invalid_decision'];
+        }
+        $note = $payload['note'] ?? null;
+        if ($note !== null && ! is_string($note)) {
+            return ['status' => 'rejected_payload', 'reason' => 'invalid_note'];
+        }
+
+        return ['status' => 'processed', 'decision' => $payload['decision'], 'note' => $note];
+    }
+}
+```
+
+两种发送方都使用同一个已声明的 `payload` 参数：
+
+```php
+use Workflow\V2\WorkflowStub;
+
+$oldPayload = ['schema_version' => 1, 'decision' => 'approved'];
+$newPayload = [...$oldPayload, 'note' => 'review λ'];
+
+$receipt = WorkflowStub::load('review-123')->attemptSignalWithArguments(
+    'reviewed',
+    ['payload' => $newPayload], // An old sender passes $oldPayload here.
+);
+```
+
+声明检查的是外层参数。用标量替代 `payload` 会在准入时被拒绝。`array` 类型既不验证嵌套字段，也不区分 PHP 列表和字符串键映射。工作流会在执行业务操作之前检查这些应用规则。因此，不支持的版本或无效的 `note` 可能先被持久接受，随后产生 `rejected_payload` 工作流结果。这个结果与 `signal_received` 回执不同。
+
+保持必填字段及其含义稳定。明确字段缺失与显式 `null` 是否含义相同，本例中的 `note` 将二者视为相同。保留读取已记录旧值的解码器。不兼容的结构或语义变更需要新的应用版本和明确的兼容计划，而不只是再增加一个可选字段。
+
+运行会保留启动时记录的信号声明和默认值。修改当前处理器的签名或默认值不会重写这个契约。添加一个顶层信号参数，与在现有映射中添加键并不相同。不要假定旧运行会接受该参数或采用新的默认值。新运行可以记录新的声明，旧运行则保留原声明。
+
+这种应用格式独立于固定的 [Avro Value 传输模式](/docs/polyglot/avro-value-protocol)。服务模式下的 PHP、Python 和 Rust 客户端通过各自 SDK 编码所支持的映射、列表及标量值。Python dataclass、PHP 领域对象或 Rust struct 需要相应的显式值适配器。应用版本字段不是模式注册中心。服务模式 API 请参阅 [SDK 参考](/docs/sdk-neutrality)。
+
+载荷兼容也不意味着修改后的工作流定义有权领取现有运行。请保持所需的兼容 worker 或 build 可用。Server 2.9.7 的源代码指纹限制单独跟踪于 [Server #518](https://github.com/durable-workflow/server/issues/518)。本配方不会绕过该限制，也不承诺当前处理器会替换旧运行的代码。在运行时所支持的路由契约内进行可安全重放的代码变更，请使用[工作流版本控制](./versioning.md)。
+
+相同的已记录值边界也适用于活动参数和结果：重试与重放可能读取旧结构。请让相应适配器继续兼容这些值，而不是重写历史或依赖当前模型的默认值。
+
 ## 响应不确定之后 {#after-an-uncertain-response}
 
 超时或响应丢失可能发生在信号已被持久接收之后。后续的运行已关闭或未找到响应描述的是后一次请求，无法证明原信号是否被应用。发送前检查状态也会留下窗口，工作流可能在此期间关闭或继续为新运行。

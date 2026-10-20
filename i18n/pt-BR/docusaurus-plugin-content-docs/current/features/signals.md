@@ -103,6 +103,68 @@ Comportamento dos sinais:
 - Sem contrato, `await('name')` retorna `true` quando nenhum argumento foi enviado, o argumento único quando um foi enviado ou o array completo de argumentos quando vários foram enviados.
 - Nomes de sinal desconhecidos são rejeitados como `rejected_unknown_signal`. Sinais para uma instância encerrada ou ainda não iniciada são rejeitados como `rejected_not_active` ou `rejected_not_started`.
 
+## Evoluir um payload de sinal com compatibilidade {#evolve-a-signal-payload}
+
+Use um único argumento de mapa declarado para um payload da aplicação que precise de acréscimos compatíveis. Este exemplo mantém `schema_version: 1` ao adicionar a `note` opcional e informativa. Um emissor antigo a omite; um leitor mais recente usa `null`. Um leitor anterior pode ignorá-la sem mudar a decisão de aprovação. Não use um campo ignorado para uma alteração que deva afetar a autorização ou o comportamento de negócio.
+
+```php
+use Workflow\V2\Attributes\Signal;
+use Workflow\V2\Attributes\Type;
+use Workflow\V2\Workflow;
+use function Workflow\V2\await;
+
+#[Type('map-approval')]
+#[Signal('reviewed', [
+    ['name' => 'payload', 'type' => 'array', 'allows_null' => false],
+])]
+final class MapApprovalWorkflow extends Workflow
+{
+    public function handle(): array
+    {
+        $payload = await('reviewed');
+        if (! is_array($payload) || array_is_list($payload)
+            || ($payload['schema_version'] ?? null) !== 1) {
+            return ['status' => 'rejected_payload', 'reason' => 'unsupported_shape_or_version'];
+        }
+        if (! in_array($payload['decision'] ?? null, ['approved', 'rejected'], true)) {
+            return ['status' => 'rejected_payload', 'reason' => 'invalid_decision'];
+        }
+        $note = $payload['note'] ?? null;
+        if ($note !== null && ! is_string($note)) {
+            return ['status' => 'rejected_payload', 'reason' => 'invalid_note'];
+        }
+
+        return ['status' => 'processed', 'decision' => $payload['decision'], 'note' => $note];
+    }
+}
+```
+
+Os dois emissores usam o mesmo parâmetro declarado `payload`:
+
+```php
+use Workflow\V2\WorkflowStub;
+
+$oldPayload = ['schema_version' => 1, 'decision' => 'approved'];
+$newPayload = [...$oldPayload, 'note' => 'review λ'];
+
+$receipt = WorkflowStub::load('review-123')->attemptSignalWithArguments(
+    'reviewed',
+    ['payload' => $newPayload], // An old sender passes $oldPayload here.
+);
+```
+
+A declaração verifica o argumento externo. Um escalar no lugar de `payload` é recusado na admissão. O tipo `array` não valida campos aninhados nem distingue uma lista PHP de um mapa com chaves de texto. O workflow verifica essas regras da aplicação antes do trabalho de negócio. Uma versão não suportada ou uma `note` inválida pode, portanto, ser aceita de forma durável e depois produzir `rejected_payload` como resultado do workflow. Esse resultado é distinto do recibo `signal_received`.
+
+Mantenha os campos obrigatórios e seus significados estáveis. Defina se um valor ausente e um `null` explícito significam a mesma coisa; neste exemplo, sim para `note`. Preserve os decodificadores dos valores antigos registrados. Uma mudança incompatível de formato ou significado exige uma nova versão da aplicação e um plano explícito de compatibilidade, não apenas mais um campo opcional.
+
+Uma execução mantém as declarações e os valores padrão de sinais registrados no início. Alterar a assinatura ou um valor padrão do handler atual não reescreve esse contrato. Adicionar outro argumento de sinal no nível superior é diferente de adicionar uma chave ao mapa existente. Não suponha que uma execução antiga o aceite ou adote o novo padrão. Novas execuções podem registrar uma nova declaração enquanto as antigas mantêm a original.
+
+Esse formato da aplicação é separado do [esquema de transporte Avro Value](/docs/polyglot/avro-value-protocol), que é fixo. Clientes PHP, Python e Rust em modo de serviço codificam mapas, listas e escalares suportados por meio de seus SDKs. Uma dataclass Python, um objeto de domínio PHP ou uma struct Rust precisa do adaptador de valores explícito correspondente. Um campo de versão da aplicação não é um registro de esquemas. Consulte as [referências dos SDKs](/docs/sdk-neutrality) para as APIs do modo de serviço.
+
+A compatibilidade de payload também não autoriza uma definição modificada de workflow a assumir uma execução existente. Mantenha disponível o worker ou build compatível necessário. A restrição de impressão digital do código-fonte do Server 2.9.7 é acompanhada separadamente em [Server #518](https://github.com/durable-workflow/server/issues/518). Esta receita não contorna essa restrição nem promete que um handler atual substitua o código da execução antiga. Use [versionamento de workflows](./versioning.md) para alterações de código seguras durante o replay, dentro do contrato de roteamento suportado pelo runtime.
+
+O mesmo limite dos valores registrados se aplica aos argumentos e resultados de atividades: novas tentativas e replay podem encontrar formatos antigos. Mantenha os adaptadores compatíveis com esses valores em vez de reescrever o histórico ou depender dos valores padrão atuais do modelo.
+
 ## Após uma resposta incerta {#after-an-uncertain-response}
 
 Um tempo limite ou uma resposta perdida pode ocorrer depois da admissão

@@ -113,6 +113,68 @@ Signalverhalten:
 - Ohne Vertrag gibt `await('name')` bei fehlenden Argumenten `true`, bei einem Argument dessen Wert und bei mehreren Argumenten das vollständige Argumentarray zurück.
 - Unbekannte Signalnamen werden als `rejected_unknown_signal` abgelehnt. Signale an geschlossene oder nicht gestartete Instanzen werden als `rejected_not_active` beziehungsweise `rejected_not_started` abgelehnt.
 
+## Signalnutzdaten kompatibel weiterentwickeln {#evolve-a-signal-payload}
+
+Verwenden Sie ein einziges deklariertes Map-Argument für Anwendungsdaten, die kompatible Erweiterungen benötigen. Dieses Beispiel behält `schema_version: 1` für die optionale, rein informative `note` bei. Ein alter Sender lässt sie weg; ein neuerer Leser verwendet `null`. Ein älterer Leser kann sie ignorieren, ohne die Freigabeentscheidung zu ändern. Verwenden Sie ein ignoriertes Feld nicht für Änderungen, die Berechtigungen oder Geschäftsverhalten beeinflussen müssen.
+
+```php
+use Workflow\V2\Attributes\Signal;
+use Workflow\V2\Attributes\Type;
+use Workflow\V2\Workflow;
+use function Workflow\V2\await;
+
+#[Type('map-approval')]
+#[Signal('reviewed', [
+    ['name' => 'payload', 'type' => 'array', 'allows_null' => false],
+])]
+final class MapApprovalWorkflow extends Workflow
+{
+    public function handle(): array
+    {
+        $payload = await('reviewed');
+        if (! is_array($payload) || array_is_list($payload)
+            || ($payload['schema_version'] ?? null) !== 1) {
+            return ['status' => 'rejected_payload', 'reason' => 'unsupported_shape_or_version'];
+        }
+        if (! in_array($payload['decision'] ?? null, ['approved', 'rejected'], true)) {
+            return ['status' => 'rejected_payload', 'reason' => 'invalid_decision'];
+        }
+        $note = $payload['note'] ?? null;
+        if ($note !== null && ! is_string($note)) {
+            return ['status' => 'rejected_payload', 'reason' => 'invalid_note'];
+        }
+
+        return ['status' => 'processed', 'decision' => $payload['decision'], 'note' => $note];
+    }
+}
+```
+
+Beide Sender verwenden denselben deklarierten Parameter `payload`:
+
+```php
+use Workflow\V2\WorkflowStub;
+
+$oldPayload = ['schema_version' => 1, 'decision' => 'approved'];
+$newPayload = [...$oldPayload, 'note' => 'review λ'];
+
+$receipt = WorkflowStub::load('review-123')->attemptSignalWithArguments(
+    'reviewed',
+    ['payload' => $newPayload], // An old sender passes $oldPayload here.
+);
+```
+
+Die Deklaration prüft das äußere Argument. Ein skalarer Wert statt `payload` wird bei der Annahme abgelehnt. Der Typ `array` validiert weder verschachtelte Felder noch unterscheidet er eine PHP-Liste von einer Map mit Zeichenkettenschlüsseln. Der Workflow prüft diese Anwendungsregeln vor der Geschäftsverarbeitung. Eine nicht unterstützte Version oder eine ungültige `note` kann daher dauerhaft angenommen werden und anschließend `rejected_payload` als Workflow-Ergebnis liefern. Dieses Ergebnis ist von der Empfangsbestätigung `signal_received` getrennt.
+
+Halten Sie Pflichtfelder und ihre Bedeutung stabil. Legen Sie fest, ob ein fehlender Wert und explizites `null` dasselbe bedeuten; für `note` gilt das hier. Bewahren Sie Decoder für gespeicherte ältere Werte auf. Eine inkompatible Struktur oder Bedeutung erfordert eine neue Anwendungsversion und einen ausdrücklichen Kompatibilitätsplan, nicht nur ein weiteres optionales Feld.
+
+Ein Lauf behält die beim Start gespeicherten Signaldeklarationen und Standardwerte. Eine Änderung der aktuellen Handler-Signatur oder eines Standardwerts schreibt diesen Vertrag nicht um. Ein weiteres Signalargument auf oberster Ebene ist etwas anderes als ein neuer Schlüssel in der bestehenden Map. Gehen Sie nicht davon aus, dass ein alter Lauf es annimmt oder den neuen Standardwert übernimmt. Neue Läufe können eine neue Deklaration speichern, während alte Läufe ihre bisherige behalten.
+
+Dieses Anwendungsformat ist vom festen [Avro-Value-Wire-Schema](/docs/polyglot/avro-value-protocol) getrennt. PHP-, Python- und Rust-Clients im Service-Modus kodieren unterstützte Map-, Listen- und Skalarwerte über ihre SDKs. Eine Python-Dataclass, ein PHP-Domänenobjekt oder ein Rust-Struct benötigt den jeweiligen expliziten Werteadapter. Ein Anwendungsversion-Feld ist keine Schema-Registry. Die APIs für den Service-Modus finden Sie in den [SDK-Referenzen](/docs/sdk-neutrality).
+
+Nutzdatenkompatibilität berechtigt eine geänderte Workflow-Definition außerdem nicht dazu, einen bestehenden Lauf zu übernehmen. Halten Sie den erforderlichen kompatiblen Worker beziehungsweise Build verfügbar. Die Einschränkung für Quellcode-Fingerprints in Server 2.9.7 wird separat in [Server #518](https://github.com/durable-workflow/server/issues/518) verfolgt. Dieses Rezept umgeht sie nicht und verspricht nicht, dass ein aktueller Handler den Code des alten Laufs ersetzt. Verwenden Sie [Workflow-Versionierung](./versioning.md) für replay-sichere Codeänderungen innerhalb des unterstützten Routing-Vertrags der Laufzeit.
+
+Dieselbe Grenze für gespeicherte Werte gilt für Aktivitätsargumente und -ergebnisse: Wiederholungen und Replay können auf ältere Strukturen treffen. Halten Sie deren Adapter mit diesen Werten kompatibel, statt die Historie umzuschreiben oder sich auf aktuelle Modellstandardwerte zu verlassen.
+
 ## Nach einer ungewissen Antwort {#after-an-uncertain-response}
 
 Ein Timeout oder Antwortverlust kann nach dauerhafter Annahme eines Signals
