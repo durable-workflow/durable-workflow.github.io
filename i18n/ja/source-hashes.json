@@ -78,5 +78,9 @@
   "features/versioning.md": "8b7cd077bffc357bd020b70685ea5b45853c3405f48cce42c9338fa0f7322f0b",
   "laravel-adoption.md": "978f2333bf5ce38ebc58619ca3f50a087572a3b0c28d52bc06843bc341010684",
   "polyglot/python.md": "18c872ffee086853f50efc51a3dc193d7953d5eaaad72e44aa36a3a4379d6070",
-  "migration.md": "53659987d64f3fc66c935bed55ec4227689185a23970f31327773fa408f5cf22"
+  "migration.md": "53659987d64f3fc66c935bed55ec4227689185a23970f31327773fa408f5cf22",
+  "features/cancel-and-terminate.md": "c678fc7a0c9b11f0e1bee295aff259de9803219c0aa6769fb801622799e7deb1",
+  "features/child-workflows.md": "2e842089e2e25be0226d927dc9cf4934014178087465ee0223c6e303d128e251",
+  "features/concurrency.md": "a7a3eb2274f7b14faf722494569b7663c07ab48afdf2e9225e58914b84cacbb4",
+  "features/external-payload-storage.md": "1741bcfc944c9d40f1101888b9f172d13e588f54f6cdcb6f84d00df10c878356"
 }
