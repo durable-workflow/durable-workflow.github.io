@@ -24,5 +24,11 @@
   "constraints/constraints-summary.md": "fb48d01502388fc3821eae3790f470ed29cec91545420450f96fc77b84e589f1",
   "constraints/idempotent-vs-deterministic.md": "980c1b6a1075bfedfc32fa785be793a0c5aa3a13a1c4204029eb97127c54a602",
   "constraints/structural-limits.md": "dec64eb7c8261b64a687938072e73dadf519511b132fc7b6542c96f44a8d3037",
-  "defining-workflows/workflow-api.md": "a6150e75302323b49f350159ce3568a51a19701bb81829915615f754592ee79c"
+  "defining-workflows/workflow-api.md": "a6150e75302323b49f350159ce3568a51a19701bb81829915615f754592ee79c",
+  "agent-operating-loop.md": "7b8f9c72f1166d5bb496aaad680e7054d360589b548a2c2a3d23206288bd6500",
+  "agent-tooling-contract.md": "bafa630abb2be2cefc7a0eb5c6962fd92f1193083cd3993e2aa68bc79530c2bf",
+  "ai-agent-workflow-engine.md": "28016466b179adbabdff6467ce351100c9bee48529a8bec9df7ec22c8d786d4d",
+  "ai-assisted-development.md": "b246bb60585fb7a69bc534978f470f3f16e899e1f8f203ba0847d2d11b8a1ec3",
+  "contribute-a-sample.md": "d250d8c63d448e32d3160ff7a2900e7a270dcbd9cda22cf3af46cdf219395ea3",
+  "sponsors.md": "e85e14375743ca8fa50e3a48f894b160e28272573aa88480064f74010ebee98a"
 }
