@@ -109,10 +109,16 @@ and the [runnable Rust example](https://github.com/durable-workflow/sdk-rust/blo
 Server 2.5.10 preserves full replay for PHP SDKs before 2.2.0. Use PHP SDK
 2.2.0 or newer to consume replay hints for histories beginning with StartAccepted.
 
-Sticky routing is an affinity optimization. A forced cold replay is diagnostic
-evidence that the optimization was unavailable; it is not a workflow
-correctness failure. Workflow code must remain deterministic with an empty
-cache.
+Sticky affinity does not reserve ready tasks for the cache owner or give that
+owner matching priority. An eligible worker can claim a task while another
+live worker's affinity is active, including when the owner has no free
+workflow slots. That claim is labelled `forced_cold_replay`. Increasing the
+affinity TTL does not make matching wait for the owner.
+
+A forced cold replay is diagnostic evidence that the cache optimization was
+unavailable. It is not a workflow correctness failure. Workflow code must
+remain deterministic with an empty cache. See the
+[matching and diagnostic rules](/docs/features/sticky-execution#routing-identity).
 
 ## Safe defaults and rolling fleets
 
