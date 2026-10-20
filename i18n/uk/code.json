@@ -496,6 +496,15 @@
   "simulator.query.title": {
     "message": "Симулятор query та signal"
   },
+  "simulator.queryAction": {
+    "message": "🔍 Виконати query:"
+  },
+  "simulator.signalAccepted": {
+    "message": "Прийнято signal {signal}"
+  },
+  "simulator.signalWaitReceived": {
+    "message": "await(): отримано signal"
+  },
   "simulator.runningHourglass": {
     "message": "⏳ Виконується..."
   },
