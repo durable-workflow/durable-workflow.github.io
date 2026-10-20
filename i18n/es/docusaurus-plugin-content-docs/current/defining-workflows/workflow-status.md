@@ -55,8 +55,8 @@ failed
 
 - `reserved`: se ha creado un id de instancia, pero aún no se ha aceptado el primer comando de inicio.
 - `pending`: la ejecución existe y tiene trabajo listo para reclamar.
-- `running`: un worker tiene una concesión activa de una tarea de workflow.
-- `waiting`: la ejecución espera una fuente durable de reanudación, como una actividad, temporizador o señal con nombre.
+- `running`: un worker tiene un lease activo de una tarea de workflow.
+- `waiting`: la ejecución espera una fuente duradera de reanudación, como una actividad, temporizador o señal con nombre.
 - `cancelled`: un comando de cancelación aceptado por el motor cerró la ejecución actual.
 - `terminated`: un comando de terminación aceptado por el motor forzó el cierre de la ejecución actual.
 - `completed`, `failed`, `cancelled` y `terminated` son estados terminales de ejecución.

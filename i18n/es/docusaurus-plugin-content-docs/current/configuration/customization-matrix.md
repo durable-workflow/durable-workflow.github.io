@@ -7,7 +7,7 @@ description: Matriz de soporte fijada para las sustituciones de modelos de Durab
 # Matriz de personalización {#customization-matrix}
 
 Esta página fija el contrato de personalización compatible con Durable Workflow v2.
-Úsala para trasladar los modelos durables v2 a otra conexión, sustituir sus
+Úsala para trasladar los modelos duraderos v2 a otra conexión, sustituir sus
 subclases, reemplazar el repositorio PHP de observabilidad para operadores o
 determinar si una configuración antigua de serializador sigue siendo válida durante la migración.
 
@@ -22,12 +22,12 @@ determinar si una configuración antigua de serializador sigue siendo válida du
 | Sustitución de `OperatorObservabilityRepository` | Compatible mediante vinculación en el contenedor | Vincula tu implementación a `Workflow\V2\Contracts\OperatorObservabilityRepository`. Es un contrato de integración del runtime PHP para Waterline y `WorkflowStub::historyExport()`, no una API estable entre lenguajes. El repositorio recibe objetos de modelo del paquete. |
 | `serializer` | Compatible solo con `avro` y los códecs heredados de vaciado/importación | Las nuevas ejecuciones v2 siempre usan la semántica de Avro. `workflow-serializer-y` y `workflow-serializer-base64` solo siguen siendo válidos para terminar o importar historiales v1 que aún requieran decodificación nativa de PHP. Las clases de serializadores personalizados v1 no son compatibles con v2. |
 | Diagnósticos de salud y doctor | Compatibles | `php artisan workflow:v2:doctor` y la salud/estadísticas de Waterline v2 reflejan las clases de modelo configuradas y señalan los ajustes obsoletos del serializador como deuda de migración. |
-| Migraciones del paquete en una conexión no predeterminada | Compatibles con migraciones publicadas | Las migraciones cargadas automáticamente se ejecutan en la conexión predeterminada de Laravel. Si tus modelos durables usan otra conexión, publica las migraciones y establece explícitamente su `$connection`. |
-| Runtime central de escritura (`WorkflowStub::make()`, `load()`, creación de tareas y resolución de la ejecución actual) | Compatible mediante los modelos durables configurados | El runtime respeta `instance_model`, `run_model` y `task_model` configurados. Mantén las tablas de escritura compatibles con las columnas y claves del paquete. |
+| Migraciones del paquete en una conexión no predeterminada | Compatibles con migraciones publicadas | Las migraciones cargadas automáticamente se ejecutan en la conexión predeterminada de Laravel. Si tus modelos duraderos usan otra conexión, publica las migraciones y establece explícitamente su `$connection`. |
+| Runtime central de escritura (`WorkflowStub::make()`, `load()`, creación de tareas y resolución de la ejecución actual) | Compatible mediante los modelos duraderos configurados | El runtime respeta `instance_model`, `run_model` y `task_model` configurados. Mantén las tablas de escritura compatibles con las columnas y claves del paquete. |
 
 ## Claves exactas de modelos v2 {#exact-v2-model-keys}
 
-La configuración publicada `workflows.php` expone estas claves de modelos durables
+La configuración publicada `workflows.php` expone estas claves de modelos duraderos
 bajo `workflows.v2`:
 
 - `instance_model`
@@ -134,18 +134,18 @@ de dejar que la aplicación use claves inferidas como
   configuración. Este diagnóstico señala los ajustes heredados del serializador
   y otros problemas que impiden arrancar correctamente.
 - Considera la salud y las estadísticas de Waterline v2 como la vista para el
-  operador de esa misma configuración de modelos durables.
+  operador de esa misma configuración de modelos duraderos.
 
 ## Reglas de migración y escritura {#migration-and-write-side-rules}
 
 - El procedimiento habitual usa las migraciones del paquete cargadas automáticamente en la conexión predeterminada.
-- Si tus modelos durables usan otra conexión, publica las migraciones y configura
+- Si tus modelos duraderos usan otra conexión, publica las migraciones y configura
   su `$connection` para que `php artisan migrate` apunte a la misma base de datos
   que las subclases de modelo configuradas.
 - Conserva los nombres de tabla, claves primarias y claves foráneas del paquete
   en cada modelo que participe en la ruta de escritura del runtime.
 - La ruta de escritura no se limita a personalizar lecturas: los inicios, cargas,
-  resolución de la ejecución actual y ejecución de tareas usan los modelos durables configurados.
+  resolución de la ejecución actual y ejecución de tareas usan los modelos duraderos configurados.
 
 ## Guías relacionadas {#related-guides}
 

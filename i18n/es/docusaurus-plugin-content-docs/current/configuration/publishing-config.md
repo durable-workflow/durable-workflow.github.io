@@ -29,7 +29,7 @@ Puedes cambiarla mediante el ajuste `workflows_folder`.
 
 :::note Versión heredada
 
-Estas claves `stored_workflow_*` configuran las clases v1 `Workflow\Models\StoredWorkflow*`. Workflow v2 usa las sustituciones de modelos durables indicadas abajo: `instance_model`, `run_model`, `task_model`, etc. Conserva las claves v1 solo si sigues ejecutando workflows v1 durante la migración.
+Estas claves `stored_workflow_*` configuran las clases v1 `Workflow\Models\StoredWorkflow*`. Workflow v2 usa las sustituciones de modelos duraderos indicadas abajo: `instance_model`, `run_model`, `task_model`, etc. Conserva las claves v1 solo si sigues ejecutando workflows v1 durante la migración.
 
 :::
 
@@ -49,7 +49,7 @@ En el archivo publicado `workflows.php` puedes cambiar las clases de modelo v1 p
 
 ## Usar sustituciones de modelos (v2) {#using-model-overrides-v2}
 
-El runtime también permite sustituir modelos de las tablas durables de instancias, ejecuciones, tareas, historial y proyecciones:
+El runtime también permite sustituir modelos de las tablas duraderas de instancias, ejecuciones, tareas, historial y proyecciones:
 
 ```php
 'v2' => [
@@ -188,11 +188,11 @@ La configuración publicada `workflows.php` asigna esos valores aquí:
 ],
 ```
 
-`completion_timeout_seconds` controla cuánto intentan obtener `attemptUpdate*` y las esperas HTTP un resultado aplicado por un worker antes de devolver un ciclo de vida aceptado, evitando bloquear indefinidamente. `poll_interval_milliseconds` solo ajusta la frecuencia de lectura de la fila durable durante la espera; no cambia el orden de ejecución ni la reproducción. Las métricas de operador de Waterline exponen los valores activos de `update_wait` junto a la política de reparación para mostrar los valores efectivos sin abrir archivos de configuración.
+`completion_timeout_seconds` controla cuánto intentan obtener `attemptUpdate*` y las esperas HTTP un resultado aplicado por un worker antes de devolver un ciclo de vida aceptado, evitando bloquear indefinidamente. `poll_interval_milliseconds` solo ajusta la frecuencia de lectura de la fila duradera durante la espera; no cambia el orden de ejecución ni la reproducción. Las métricas de operador de Waterline exponen los valores activos de `update_wait` junto a la política de reparación para mostrar los valores efectivos sin abrir archivos de configuración.
 
 ## Ocultación de datos en exportaciones de historial {#history-export-redaction}
 
-Las exportaciones de historial incluyen deliberadamente datos almacenados de workflows, comandos, actividades, actualizaciones, tareas y fallos, porque la depuración por reproducción y el traspaso a archivos necesitan hechos durables. Si los artefactos pueden salir de un entorno protegido, configura un ocultador de datos antes de exponer ampliamente el endpoint de exportación o la salida de la CLI.
+Las exportaciones de historial incluyen deliberadamente datos almacenados de workflows, comandos, actividades, actualizaciones, tareas y fallos, porque la depuración por reproducción y el traspaso a archivos necesitan hechos duraderos. Si los artefactos pueden salir de un entorno protegido, configura un ocultador de datos antes de exponer ampliamente el endpoint de exportación o la salida de la CLI.
 
 Crea un ocultador que implemente `Workflow\V2\Contracts\HistoryExportRedactor`:
 

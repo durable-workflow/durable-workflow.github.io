@@ -93,7 +93,7 @@ El método `backoff` devuelve un array de enteros que corresponden al intento ac
 
 ## Espacio de nombres {#namespace}
 
-Los workflows pueden limitarse a un espacio de nombres para aislar varios espacios. El espacio configurado se aplica tanto a la API de inicio del plano de control como a `Workflow\V2\WorkflowStub::make()->start()`. Se guarda en la nueva instancia, ejecución, tareas durables y proyección del resumen de ejecución. Los filtros de consulta de tareas y visibilidad de Waterline pueden restringir los resultados a un espacio. Usa Workflow 2.4.2 o posterior para una asignación coherente en ambas API de inicio PHP.
+Los workflows pueden limitarse a un espacio de nombres para aislar varios espacios. El espacio configurado se aplica tanto a la API de inicio del plano de control como a `Workflow\V2\WorkflowStub::make()->start()`. Se guarda en la nueva instancia, ejecución, tareas duraderas y proyección del resumen de ejecución. Los filtros de consulta de tareas y visibilidad de Waterline pueden restringir los resultados a un espacio. Usa Workflow 2.4.2 o posterior para una asignación coherente en ambas API de inicio PHP.
 
 Los nombres solo pueden contener caracteres alfanuméricos en minúscula, puntos, guiones bajos y guiones (`[a-z0-9._-]+`, máximo 128 caracteres).
 
@@ -181,9 +181,9 @@ $tasks = $bridge->poll('redis', 'default', limit: 10, namespace: 'production');
 
 Si se omite, `poll()` devuelve tareas de todos los espacios, lo que conserva la compatibilidad con instalaciones anteriores a esta función.
 
-## Alias de tipo durables {#durable-type-aliases}
+## Alias de tipo duraderos {#durable-type-aliases}
 
-Las claves de tipo durables de workflows y actividades se guardan al registrarlas en `workflows.v2.types`. Las cargas útiles de fallos pueden usar el mismo patrón para clases de excepción:
+Las claves de tipo duraderas de workflows y actividades se guardan al registrarlas en `workflows.v2.types`. Las cargas útiles de fallos pueden usar el mismo patrón para clases de excepción:
 
 ```php
 'v2' => [
@@ -206,8 +206,8 @@ Las claves de tipo durables de workflows y actividades se guardan al registrarla
 
 Cuando se registra un fallo de actividad, actualización, hijo o workflow con un alias de excepción, el motor lo guarda como `exception_type` en el historial tipado y como `type` en la carga útil del fallo. La reproducción resuelve primero el alias y luego recurre a la clase PHP registrada. Así, mover la clase posteriormente puede conservar la semántica de `catch` mientras el alias apunte a la clase actual del throwable.
 
-Para fallos v1 importados que se registraron antes de existir un alias, `workflows.v2.types.exception_class_aliases` puede asociar el nombre completo de la excepción antigua con la clase actual. Los alias durables de `exceptions` siguen teniendo prioridad. El mapa de alias de clase solo sirve de puente de refactorización para cargas ya registradas sin `type` durable; los nuevos workflows deben usar alias de excepción durables para independizar el historial de los nombres PHP.
+Para fallos v1 importados que se registraron antes de existir un alias, `workflows.v2.types.exception_class_aliases` puede asociar el nombre completo de la excepción antigua con la clase actual. Los alias duraderos de `exceptions` siguen teniendo prioridad. El mapa de alias de clase solo sirve de puente de refactorización para cargas ya registradas sin `type` duradero; los nuevos workflows deben usar alias de excepción duraderos para independizar el historial de los nombres PHP.
 
-La versión final de v2 escribe alias durables al registrar el fallo. Configura alias estables antes de registrar fallos cuyas clases de throwable puedan moverse después.
+La versión final de v2 escribe alias duraderos al registrar el fallo. Configura alias estables antes de registrar fallos cuyas clases de throwable puedan moverse después.
 
-Si un fallo reproducido no puede resolverse con el mapa durable `exceptions`, el mapa de alias de clase ni la clase registrada, el motor no recurre a una excepción genérica dentro del workflow. La reproducción de consultas lanza `UnresolvedWorkflowFailureException`, Waterline marca el fallo con `exception_replay_blocked = true` y una tarea de worker que encuentre el mismo problema queda fallida mientras la ejecución permanece abierta. Corrige el mapa y repara la ejecución en lugar de usar bloques amplios `catch (RuntimeException)` para fallos históricos renombrados.
+Si un fallo reproducido no puede resolverse con el mapa duradero `exceptions`, el mapa de alias de clase ni la clase registrada, el motor no recurre a una excepción genérica dentro del workflow. La reproducción de consultas lanza `UnresolvedWorkflowFailureException`, Waterline marca el fallo con `exception_replay_blocked = true` y una tarea de worker que encuentre el mismo problema queda fallida mientras la ejecución permanece abierta. Corrige el mapa y repara la ejecución en lugar de usar bloques amplios `catch (RuntimeException)` para fallos históricos renombrados.

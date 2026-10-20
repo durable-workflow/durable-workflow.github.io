@@ -7,7 +7,7 @@ tags:
   - activities
   - retries
 keywords:
-  - clase de actividad de workflow durable
+  - clase de actividad de workflow duradero
   - opciones de actividad
   - efectos secundarios no deterministas
 ---
@@ -16,11 +16,11 @@ keywords:
 
 Una actividad es una unidad de trabajo que realiza una tarea u operación concreta (por ejemplo, una solicitud API, procesar datos o enviar un correo) y que puede ejecutar un workflow.
 
-:::note Contrato de ejecución durable
-Las actividades ordinarias v2 se ejecutan como tareas durables en cola. Las
+:::note Contrato de ejecución duradera
+Las actividades ordinarias v2 se ejecutan como tareas duraderas en cola. Las
 actividades locales son una primitiva explícita dentro del mismo proceso para
-trabajos breves que también registran historial durable. Las sesiones de worker
-permiten que varios pasos de actividad durables compartan una concesión de worker.
+trabajos breves que también registran historial duradero. Las sesiones de worker
+permiten que varios pasos de actividad duraderos compartan un lease de worker.
 La ejecución persistente es una optimización de reproducción compatible, no un
 contrato de corrección. Consulta los contratos exactos en [Modelo de ejecución de actividades](/docs/features/activity-execution-model),
 [Actividades locales](/docs/features/local-activities), [Sesiones de worker](/docs/features/worker-sessions)
@@ -51,9 +51,9 @@ class MyActivity extends Activity
 ## Contrato de ejecución {#execution-contract}
 
 Cada llamada `activity(...)` registra un comando de actividad en el historial y
-crea una tarea durable en cola que un worker puede reclamar. Cualquier worker
+crea una tarea duradera en cola que un worker puede reclamar. Cualquier worker
 compatible puede reclamar actividades ordinarias. Las [sesiones de worker](/docs/features/worker-sessions)
-pueden fijar una secuencia de intentos a una concesión de sesión cuando el
+pueden fijar una secuencia de intentos a un lease de sesión cuando el
 workflow elige explícitamente ese contrato.
 
 Si necesitas un valor seguro para la reproducción sin programar trabajo en cola,
@@ -64,13 +64,13 @@ Consulta el modelo completo de ubicación en [Modelo de ejecución de actividade
 y el comportamiento de la caché de reproducción persistente en
 [Ejecución persistente](/docs/features/sticky-execution).
 
-## Idempotencia e identidad durable {#idempotency-and-durable-identity}
+## Idempotencia e identidad duradera {#idempotency-and-durable-identity}
 
 La ejecución de actividades es al menos una vez. Los reintentos, la caducidad de
-concesiones y las entregas repetidas pueden hacer que se observe varias veces la
+leases y las entregas repetidas pueden hacer que se observe varias veces la
 misma actividad lógica. Su efecto secundario o destino remoto debe tolerar repeticiones.
 
-Dentro de la actividad, usa los identificadores durables del runtime para
+Dentro de la actividad, usa los identificadores duraderos del runtime para
 correlacionar o deduplicar en el destino remoto:
 
 - `activityId()` identifica una ejecución lógica de actividad a través de los
@@ -80,9 +80,9 @@ correlacionar o deduplicar en el destino remoto:
 
 Prefiere `activityId()` cuando el sistema remoto deba tratar los reintentos como
 la misma solicitud lógica. Usa `attemptId()` solo si necesita distinguir intentos.
-Si un worker termina el trabajo remoto, pierde su concesión y comunica el
+Si un worker termina el trabajo remoto, pierde su lease y comunica el
 resultado tarde, el motor puede rechazarlo porque otro worker ya ganó la carrera
-durable, aunque el efecto remoto sí se haya producido.
+duradera, aunque el efecto remoto sí se haya producido.
 
 Consulta el modelo operativo de estos identificadores en [Garantías de ejecución e idempotencia](/docs/constraints/execution-guarantees),
 [Latidos](/docs/features/heartbeats) y

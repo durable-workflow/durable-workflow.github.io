@@ -4,7 +4,7 @@ sidebar_position: 4
 
 # Conexión de base de datos {#database-connection}
 
-Estos son los pasos para personalizar la conexión de base de datos de los modelos durables de workflow v2. *Solo* hace falta si quieres usar una conexión distinta de la predeterminada de tu aplicación Laravel.
+Estos son los pasos para personalizar la conexión de base de datos de los modelos duraderos de workflow v2. *Solo* hace falta si quieres usar una conexión distinta de la predeterminada de tu aplicación Laravel.
 
 Consulta la [Matriz de personalización](./customization-matrix.md) para conocer el
 contrato completo de sustituciones v2, incluidas las subclases que cambian de tabla,
@@ -31,7 +31,7 @@ class WorkflowInstance extends BaseWorkflowInstance
 }
 ```
 
-Repite el patrón para cada modelo durable v2 que debas redirigir. Como mínimo:
+Repite el patrón para cada modelo duradero v2 que debas redirigir. Como mínimo:
 
 - `Workflow\V2\Models\WorkflowRun`
 - `Workflow\V2\Models\WorkflowHistoryEvent`

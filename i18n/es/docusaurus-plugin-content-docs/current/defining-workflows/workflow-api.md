@@ -67,7 +67,7 @@ abstract class Workflow
 | `historySize()` | El workflow necesita una señal del presupuesto de historial por bytes. | Tamaño aproximado del historial guardado en bytes. |
 | `shouldContinueAsNew()` | El workflow debe rotar antes de encarecer el historial. | `true` cuando los presupuestos de historial configurados recomiendan rotar. |
 
-## Comandos durables {#durable-commands}
+## Comandos duraderos {#durable-commands}
 
 La fachada estática delega en funciones auxiliares del espacio `Workflow\V2`.
 Ambas formas son equivalentes:
@@ -82,7 +82,7 @@ $resultFromHelper = activity(SendReceipt::class, $orderId);
 
 <span id="durable-command-surface"></span>
 
-| Fachada | Función auxiliar | Firma | Efecto durable |
+| Fachada | Función auxiliar | Firma | Efecto duradero |
 | --- | --- | --- | --- |
 | `Workflow::activity()` | `activity()` | `activity(string $activity, mixed ...$arguments): mixed` | Programa una actividad y espera su resultado. |
 | `Workflow::executeActivity()` | `activity()` | `executeActivity(string $activity, mixed ...$arguments): mixed` | Alias de `activity()`. |
@@ -93,11 +93,11 @@ $resultFromHelper = activity(SendReceipt::class, $orderId);
 | `Workflow::async()` | `async()` | `async(callable $callback): mixed` | Ejecuta un callable como workflow hijo generado automáticamente. |
 | `Workflow::all()` | `all()` | `all(iterable $calls): mixed` | Espera llamadas concurrentes y devuelve resultados en orden de iteración. |
 | `Workflow::parallel()` | `all()` | `parallel(iterable $calls): mixed` | Alias de `all()`. |
-| `Workflow::select()` | `select()` | `select(iterable $calls): SelectionResult` | Inicia llamadas durables independientes y devuelve el primer ganador confirmado junto con referencias estables a cada miembro. |
+| `Workflow::select()` | `select()` | `select(iterable $calls): SelectionResult` | Inicia llamadas duraderas independientes y devuelve el primer ganador confirmado junto con referencias estables a cada miembro. |
 | `Workflow::await()` | `await()` | `await(callable\|string $condition, int\|string\|CarbonInterval\|null $timeout = null, ?string $conditionKey = null): mixed` | Espera una señal con nombre o una condición segura para la reproducción. |
 | `Workflow::awaitWithTimeout()` | `await()` | `awaitWithTimeout(int\|string\|CarbonInterval $timeout, callable\|string $condition, ?string $conditionKey = null): mixed` | Espera una señal o condición con tiempo de espera explícito. |
 | `Workflow::awaitSignal()` | `await()` | `awaitSignal(string $name): mixed` | Espera una señal con nombre. |
-| `Workflow::timer()` | `timer()` | `timer(int\|string\|CarbonInterval $duration): mixed` | Suspende hasta que avance el tiempo durable. |
+| `Workflow::timer()` | `timer()` | `timer(int\|string\|CarbonInterval $duration): mixed` | Suspende hasta que avance el tiempo duradero. |
 | `Workflow::sideEffect()` | `sideEffect()` | `sideEffect(callable $callback): mixed` | Registra un resultado no determinista en el historial y lo reproduce. |
 | `Workflow::uuid4()` | `uuid4()` | `uuid4(): mixed` | Genera un UUIDv4 estable al reproducir. |
 | `Workflow::uuid7()` | `uuid7()` | `uuid7(): mixed` | Genera un UUIDv7 estable al reproducir. |
@@ -109,7 +109,7 @@ $resultFromHelper = activity(SendReceipt::class, $orderId);
 | `Workflow::upsertSearchAttributes()` | `upsertSearchAttributes()` | `upsertSearchAttributes(array $attributes): void` | Actualiza metadatos indexados visibles para el operador. |
 | `Workflow::now()` | `now()` | `now(): CarbonInterface` | Lee el tiempo determinista del workflow. |
 
-`activity()` y `executeActivity()` programan tareas de actividad durables en cola.
+`activity()` y `executeActivity()` programan tareas de actividad duraderas en cola.
 `localActivity()` y `executeLocalActivity()` se ejecutan en el proceso actual del
 worker de workflow y registran historial normal de actividad con el marcador local.
 Usa `sideEffect()` para instantáneas seguras para la reproducción que no deban usar
@@ -152,7 +152,7 @@ código una espera fija del negocio.
 
 **Flujos de mensajes**
 
-Abre flujos de mensajes durables desde la instancia del workflow:
+Abre flujos de mensajes duraderos desde la instancia del workflow:
 
 ```php
 use Workflow\V2\MessageStream;
@@ -191,7 +191,7 @@ final class AssistantWorkflow extends Workflow
 | `$this->inbox()` | `inbox(?string $streamKey = null, ?MessageService $messages = null): MessageStream` | Alias para código de recepción. |
 | `$this->outbox()` | `outbox(?string $streamKey = null, ?MessageService $messages = null): MessageStream` | Alias para código de envío. |
 | `MessageStream::key()` | `key(): string` | Devuelve la clave del flujo. |
-| `MessageStream::cursor()` | `cursor(): int` | Devuelve la posición del cursor durable de esta ejecución. |
+| `MessageStream::cursor()` | `cursor(): int` | Devuelve la posición del cursor duradero de esta ejecución. |
 | `MessageStream::hasPending()` | `hasPending(): bool` | Indica si existen mensajes sin consumir. |
 | `MessageStream::pendingCount()` | `pendingCount(): int` | Devuelve la cantidad de mensajes sin consumir. |
 | `MessageStream::peek()` | `peek(int $limit = 100): Collection` | Lee mensajes pendientes sin consumirlos. |
@@ -241,7 +241,7 @@ final class OrderApprovalWorkflow extends Workflow
 
 | Atributo | Destino | Contrato estable |
 | --- | --- | --- |
-| `#[Type('type-key')]` | Clase de workflow o actividad | Declara la clave de tipo durable independiente del lenguaje. |
+| `#[Type('type-key')]` | Clase de workflow o actividad | Declara la clave de tipo duradera independiente del lenguaje. |
 | `#[Signal('signal-name', [...])]` | Clase de workflow, repetible | Declara los nombres de señal aceptados y contratos opcionales de parámetros ordenados. |
 | `#[QueryMethod('query-name')]` | Método de workflow | Declara un nombre de consulta seguro para la reproducción. Omítelo para usar el nombre del método PHP. |
 | `#[UpdateMethod('update-name')]` | Método de workflow | Declara un nombre de actualización seguro para la reproducción. Omítelo para usar el nombre del método PHP. |
@@ -251,7 +251,7 @@ explícitos para que renombrar métodos PHP no rompa la API.
 
 **Superficie de fallos**
 
-Los fallos de la API de autoría son fallos durables del workflow, salvo que el
+Los fallos de la API de autoría son fallos duraderos del workflow, salvo que el
 comando se rechace antes de ejecutarse:
 
 | Superficie | Fallo habitual | Significado para el operador |
@@ -272,7 +272,7 @@ consulta [Referencia de la API del servidor](../polyglot/server-api-reference.md
 **Reglas de determinismo**
 
 El código del workflow debe ser seguro para la reproducción. Encapsula el trabajo
-irreversible o no determinista en comandos durables:
+irreversible o no determinista en comandos duraderos:
 
 ```php
 use Workflow\V2\Workflow;

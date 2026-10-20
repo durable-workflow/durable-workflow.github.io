@@ -6,7 +6,7 @@ sidebar_position: 6
 
 ## IDs de instancia y de ejecución {#instance-ids-and-run-ids}
 
-Un workflow durable tiene dos identificadores con ciclos de vida distintos:
+Un workflow duradero tiene dos identificadores con ciclos de vida distintos:
 
 - El **id de instancia** (`id()`, `workflowId()`) es la referencia pública estable del workflow. Se genera al iniciarlo por primera vez, o lo proporciona quien llama, y nunca cambia durante su vida, incluidas las cadenas de continuación como nueva ejecución.
 - El **id de ejecución** (`runId()`) identifica una generación concreta de ejecución de ese workflow. Se asigna uno nuevo en cada ejecución, tanto al inicio como al continuar como nueva ejecución.
@@ -34,9 +34,9 @@ Un id de ejecución identifica una generación. Cada generación de workflow v2 
 - Un `start()` nuevo crea la primera ejecución y su id.
 - `continueAsNew(...)` cierra la ejecución actual como `completed` / `continued` e inicia otra con un nuevo id bajo la misma instancia. Consulta [Continuar como nueva ejecución](/docs/features/continue-as-new).
 
-Como el id de ejecución pertenece a una generación, las llamadas que necesiten comportamiento durable entre transiciones deben resolver por id de instancia:
+Como el id de ejecución pertenece a una generación, las llamadas que necesiten comportamiento duradero entre transiciones deben resolver por id de instancia:
 
-- Las señales, consultas, actualizaciones y comandos del operador siempre resuelven la ejecución durable más reciente de la instancia. Quien llama no necesita seguir los ids al continuar como nueva ejecución.
+- Las señales, consultas, actualizaciones y comandos del operador siempre resuelven la ejecución duradera más reciente de la instancia. Quien llama no necesita seguir los ids al continuar como nueva ejecución.
 - Las herramientas que fijan una generación, como el detalle de ejecución de Waterline, una exportación de historial o un depurador de reproducción, aceptan un id explícito para inspeccionar esa ejecución de forma aislada.
 
 El id de ejecución aparece como `runId()` dentro de workflows y actividades, y como `workflow_run_id` / `run_id` en el historial, las proyecciones y las exportaciones. Siempre pertenece a la generación propietaria del evento o fila. No esperes que el id de eventos antiguos coincida con el id actual de la misma instancia.

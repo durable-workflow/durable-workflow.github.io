@@ -9,7 +9,7 @@ tags:
 keywords:
   - iniciar workflow
   - id de instancia de workflow
-  - opciones de inicio de workflow durable
+  - opciones de inicio de workflow duradero
 ---
 
 # Iniciar workflows {#starting-workflows}

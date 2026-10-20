@@ -114,7 +114,7 @@ class MyWorkflow extends Workflow
 La inyección de dependencias no relaja el determinismo del workflow. Puede
 declarar servicios estables, como el contenedor de Laravel o lectores de
 configuración, pero las dependencias que realizan trabajo siguen necesitando
-el límite durable adecuado. Coloca la E/S externa, el acceso a bases de datos,
+el límite duradero adecuado. Coloca la E/S externa, el acceso a bases de datos,
 las llamadas a servicios y cualquier trabajo que pueda fallar o deba reintentarse
 en `activity(...)` o `localActivity(...)`. Usa `sideEffect()` solo para una
 instantánea única y segura para la reproducción que deba quedar fijada en el
