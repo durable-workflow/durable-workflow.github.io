@@ -178,12 +178,19 @@ Jede stabile Komponente folgt semantischer Versionierung. Additive Fähigkeiten 
 
 Übergeordnete Paketversionen wählen die unterstützte Versionslinie. Laufzeit-Protokollmanifeste bieten eine zweite Prüfung mit sicherer Ablehnung:
 
-| Client | Produktlinie | Control Plane | Worker-Protokollanforderung |
-|--------|---------------|---------------|-------------------------|
+| Client | Produktlinie | Control Plane | Standardprotokoll der Worker-Registrierung |
+|--------|---------------|---------------|--------------------------------------------|
 | CLI | `%%artifact.cliVersion%%` | `2` | Nicht anwendbar |
-| PHP-SDK | `%%artifact.phpSdkVersion%%` | `2` | `1.13` |
-| Python-SDK | `%%artifact.pythonSdkVersion%%` | `2` | `1.1` |
-| Rust-SDK | `%%artifact.rustSdkVersion%%` | `2` | `1.2` |
+| PHP-SDK | `%%artifact.phpSdkVersion%%` | `2` | `1.20` |
+| Python-SDK | `%%artifact.pythonSdkVersion%%` | `2` | `1.20` |
+| Rust-SDK | `%%artifact.rustSdkVersion%%` | `2` | `1.20` |
+
+Die SDKs unterstützen außerdem die explizite Auswahl des Worker-Protokolls `1.19`
+für einen kompatiblen älteren Server. Kooperativer Abbruch benötigt `1.20`;
+die Auswahl von `1.19` stellt diese Fähigkeit nicht bereit. Einzelne Operationen
+können ihre dokumentierte Mindestprotokollversion verwenden. Der
+Registrierungsstandard bedeutet daher nicht, dass jede Worker-Anfrage `1.20`
+sendet.
 
 Der aktuell veröffentlichte Server weist die Worker-Protokollversion aus der obigen Tabelle der Autoritätsrollen aus. Er akzeptiert Anfrageheader derselben Hauptversion mit einer Nebenversionsnummer kleiner oder gleich der ausgewiesenen Nebenversionsnummer und gibt dann die ausgewiesene Version zurück. Fehlende oder fehlerhafte Header, andere Hauptversionen und höhere Worker-Nebenversionen als beim Server werden sicher abgelehnt. Die CLI validiert `control_plane.version: "2"`.
 
