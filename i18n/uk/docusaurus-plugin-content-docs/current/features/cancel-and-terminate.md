@@ -2,7 +2,7 @@
 sidebar_position: 16
 ---
 
-# Cancel і Terminate {#cancel-and-terminate}
+# Скасування та примусове завершення {#cancel-and-terminate}
 
 Цей посібник описує вбудований Laravel API `Workflow\V2\WorkflowStub`.
 Для клієнтів і worker у сервісному режимі використовуйте
@@ -48,7 +48,7 @@ $result = $workflow->cancel('Customer requested cancellation');
 $result->reason(); // "Customer requested cancellation"
 ```
 
-Причина зберігається в стійкому записі команди та типізованих подіях історії `CancelRequested` і `WorkflowCancelled`, тому залишається доступною під час replay, експорту та автономного аналізу.
+Причина зберігається в стійкому записі команди та типізованих подіях історії `CancelRequested` і `WorkflowCancelled`, тому залишається доступною під час відтворення, експорту та автономного аналізу.
 
 ### Дія cancel {#what-cancel-does}
 
