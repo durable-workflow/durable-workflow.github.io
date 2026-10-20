@@ -100,6 +100,17 @@ Signal behavior:
 - Without a contract, `await('name')` returns `true` when no arguments were sent, the single argument when one was sent, or the full argument array when several were sent.
 - Unknown signal names reject as `rejected_unknown_signal`; signals against a closed or unstarted instance reject as `rejected_not_active` or `rejected_not_started`.
 
+## Evolve a signal payload {#evolve-a-signal-payload}
+
+Use one declared map argument for an application payload that needs compatible
+additions. Keep its required fields and their meaning stable, give new optional
+fields explicit defaults, and preserve readers for recorded older values.
+This application contract is separate from the fixed Avro Value wire schema.
+
+A run keeps the signal declarations and defaults recorded when it started.
+Changing a current handler signature does not rewrite that contract or authorize
+a different workflow definition to replay the run.
+
 ## After an uncertain response {#after-an-uncertain-response}
 
 A timeout or lost response can happen after a signal has been durably admitted.
