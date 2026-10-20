@@ -85,5 +85,6 @@
   "features/worker-sessions.md": "2b08a0cdaee486970e099ea8bcb91d7f6daf135b0bc98629ed47f3885e64c77d",
   "waterline-operator-api.md": "d858c9fe75b495106157ab11d6f7f2d4ad5aeaa94346342398cb8bafdd069d6d",
   "features/schedules.md": "73dd4d49bfb61d5ecafc0fb799136fc170d8cd33781ff00f40893efe4e0de0d6",
-  "polyglot/rust.md": "b5d3b44c4e68e8b707804001bc46bd5e758b0180eec2a9a2ebdb69a6183dced5"
+  "polyglot/rust.md": "b5d3b44c4e68e8b707804001bc46bd5e758b0180eec2a9a2ebdb69a6183dced5",
+  "migration.md": "53659987d64f3fc66c935bed55ec4227689185a23970f31327773fa408f5cf22"
 }
