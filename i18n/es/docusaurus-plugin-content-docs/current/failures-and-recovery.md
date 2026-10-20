@@ -1,15 +1,15 @@
 ---
 sidebar_position: 11
 title: Fallos y recuperación
-description: Diagnostica fallos de actividades, excepciones permanentes, vencimiento de plazos y acciones de recuperación.
+description: Diagnostica fallos de actividades, excepciones sin reintentos, vencimiento de plazos de ejecución, limpieza de cancelaciones y acciones de recuperación.
 tags:
   - failures
   - recovery
   - operations
 keywords:
-  - workflow failures
-  - non retryable exception
-  - workflow recovery
+  - fallos de workflows
+  - excepción sin reintentos
+  - recuperación de workflows
 ---
 
 # Fallos y recuperación {#failures-and-recovery}
@@ -205,7 +205,9 @@ resultado duradero para saber si el motor aceptó el informe del intento.
 Si la excepción implementa `Workflow\Exceptions\NonRetryableExceptionContract`,
 el motor guarda `non_retryable = true` en `WorkflowFailure` y en el evento
 tipado (`ActivityFailed`, `WorkflowFailed`, `UpdateCompleted`). Esta marca
-duradera comunica un fallo permanente a operadores, workers y herramientas.
+duradera comunica un fallo permanente a operadores, workers externos y
+herramientas: reintentar la misma operación no tendrá éxito. Se registra tanto
+si la excepción procede de una actividad como de un workflow.
 
 La marca aparece en todas las superficies de observación:
 
@@ -215,11 +217,13 @@ La marca aparece en todas las superficies de observación:
 - **Detalle de ejecución:** `non_retryable` en el array de excepciones.
 - **Cronología:** `non_retryable` en los metadatos del fallo.
 - **Exportaciones:** `non_retryable` en `failures[*]`.
-- **Waterline:** una etiqueta de fallo sin reintentos junto a la categoría.
+- **Waterline:** una etiqueta «non-retryable» junto a la categoría del fallo en
+  la tabla de excepciones y en la cronología.
 - **Puente de workers externos:** `complete()` acepta `non_retryable` para
   informar del fallo sin que el proceso anfitrión resuelva la clase de excepción.
 
-Sin ese contrato, `non_retryable` vale `false` por defecto. Decláralo antes de
+Sin ese contrato, `non_retryable` vale `false` por defecto. La versión final de
+v2 registra la marca duradera en el momento del fallo. Declara el contrato antes de
 registrar el fallo para que operadores y SDK puedan distinguir los fallos
 permanentes de los que admiten reintentos.
 

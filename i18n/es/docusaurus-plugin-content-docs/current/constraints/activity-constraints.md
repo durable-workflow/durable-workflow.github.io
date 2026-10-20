@@ -5,10 +5,12 @@ sidebar_position: 3
 # Restricciones de las actividades {#activity-constraints}
 
 Las actividades realizan las operaciones de entrada/salida y los efectos
-externos de un workflow. Su código se ejecuta **al menos una vez**. Los
+externos de un workflow. No se reproducen como el código de workflow. Su código
+se ejecuta **al menos una vez**. Los
 reintentos, el vencimiento de una lease y la reentrega pueden hacer que el
 mismo trabajo lógico se ejecute varias veces.
 
+Este comportamiento forma parte del contrato, no es una ruta de error.
 Si una actividad cobra un pago, envía un correo, escribe en otro sistema o
 modifica un recurso externo, la operación debe ser segura al repetirse.
 
@@ -35,7 +37,7 @@ lo permita, usa la identidad lógica de la actividad:
 
 También puedes:
 
-- Escribir en un recurso externo con un nombre o una clave determinista.
+- Escribir en un recurso externo con un nombre determinista o una clave natural.
 - Usar operaciones upsert o tablas de deduplicación con un identificador duradero.
 - Diseñar la operación para que repetirla no cambie el resultado.
 
