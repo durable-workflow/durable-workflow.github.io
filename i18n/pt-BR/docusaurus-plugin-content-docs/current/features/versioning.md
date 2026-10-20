@@ -8,6 +8,53 @@ Como workflows podem executar por longos períodos, às vezes meses ou anos, é 
 
 O helper `getVersion()` permite introduzir mudanças com segurança em workflows em execução, criando pontos de ramificação versionados.
 
+## Evolução dos argumentos de entrada registrados {#evolving-recorded-entry-arguments}
+
+Uma execução mantém os argumentos registrados quando foi iniciada. Implantar uma nova definição não reescreve essa entrada. No replay, o runtime associa esses valores ao método de entrada atual **antes de executar qualquer código no corpo desse método**. Uma ramificação `getVersion()` ou `patched()` dentro do corpo não consegue recuperar uma assinatura incompatível: primeiro é preciso conseguir entrar no método.
+
+Mantenha os argumentos posicionais existentes na mesma ordem e aceite seus tipos registrados. Um valor padrão do PHP preenche um argumento omitido; não substitui um valor incompatível já registrado naquela posição. Por exemplo, uma execução iniciada com `[7]` continua fornecendo o inteiro `7` após a implantação:
+
+| Mudança na entrada | Efeito sobre a entrada registrada `[7]` |
+| --- | --- |
+| `handle(int $amount)` → `handle(int $amount, string $currency = 'USD')` | O argumento antigo continua compatível; o novo argumento final pode usar o valor padrão. Preserve também a compatibilidade dos comandos reproduzidos. |
+| Adicionar um argumento final obrigatório sem valor padrão | A execução antiga não tem um valor para ele. |
+| Inserir, remover ou reordenar argumentos iniciais | Valores existentes podem ir para o parâmetro errado. Não suponha que nomes de parâmetros iguais corrijam uma entrada posicional. |
+| Mudar `int $amount` para `string $amount` | O inteiro registrado não se tornou uma string. |
+| Mudar `int $amount` para `PaymentRequest $request` | Injeção de dependências não é migração de entrada. Um DTO recém-construído não deve substituir o valor registrado pelos padrões do construtor. |
+| Remover apenas um parâmetro final | O PHP pode aceitar a chamada, mas verifique se descartar seu significado não altera os comandos reproduzidos nem o comportamento de negócio. |
+
+Prefira adicionar um parâmetro final opcional ou criar outro tipo de workflow para um contrato de entrada diferente. Se precisar de um novo DTO internamente, construa-o explicitamente com argumentos registrados compatíveis **dentro** do corpo do workflow e versione ali qualquer mudança nos comandos duráveis. Preserve código capaz de reproduzir cada formato de entrada suportado enquanto essas execuções precisarem dele. Teste as entradas realmente armazenadas contra a nova definição, incluindo um replay a frio após uma espera durável; testar apenas novas execuções não cobre esse limite de implantação.
+
+### Comportamento embarcado publicado {#released-embedded-entry-behavior}
+
+No Workflow **2.7.2**, um erro na quantidade ou no tipo dos argumentos de entrada pode se tornar um evento terminal `WorkflowFailed`. Alguns erros de resolução de dependências deixam a execução aberta com uma tarefa que falha repetidamente. Trocar um escalar por um DTO injetado com valores padrão no construtor pode até executar o workflow com dados errados. Esses são defeitos do produto registrados em [Workflow #866](https://github.com/durable-workflow/workflow/issues/866), não uma estratégia segura de versionamento.
+
+Restaurar código compatível pode recuperar uma execução aberta que possa ser entregue novamente, mas não reabre uma que já ficou terminal. Nem `repair()` nem uma nova ramificação de versão prometem reativar esse original com falha. Primeiro inspecione seu estado e sua falha reais; preserve a entrada e o histórico enquanto decide a recuperação.
+
+### Próxima proteção embarcada — ainda não publicada {#embedded-entry-argument-safeguard}
+
+O candidato em [Workflow #867](https://github.com/durable-workflow/workflow/pull/867) valida os argumentos de entrada antes de entrar no código da aplicação. Uma associação incompatível produz uma `WorkflowEntryArgumentsMismatchException` tipada e uma **tarefa de workflow** com replay bloqueado, com `replay_blocked_reason = workflow_entry_arguments_mismatch`; a **execução permanece não terminal**. Os campos de diagnóstico identificam o workflow, o método de entrada, o parâmetro e os tipos esperado e real sem copiar valores dos argumentos. Um novo DTO injetado que descartaria a entrada registrada também é recusado. Esta seção descreve o candidato não publicado, não uma garantia de uma versão instalada.
+
+Em um runtime que contenha essa proteção qualificada, a recuperação segue esta sequência:
+
+1. Inspecione o diagnóstico da tarefa da execução selecionada e confirme `workflow_entry_arguments_mismatch`, sem presumir que toda falha de tarefa tenha essa causa.
+2. Restaure uma definição que aceite os argumentos originais registrados ou implante um adaptador compatível no corpo do workflow. Preserve identidade, entrada, histórico e prazos originais; não edite o armazenamento para encaixar a nova assinatura.
+3. Use a ação de reparo suportada para essa mesma execução ainda aberta depois que o código compatível estiver disponível. Verifique então se o trabalho original continua e se o resultado terminal é registrado uma única vez. O reparo não estende o prazo original; um prazo já vencido continua valendo.
+
+A proteção **não** reinterpreta exceções lançadas pelo corpo do workflow como incompatibilidades de implantação. Um `TypeError` real da aplicação ou outra falha não tratada no corpo continua seguindo o comportamento normal de falha do workflow. Ela também não fornece a verificação de toda a frota para retirar ramificações legadas, acompanhada em [shared #220](https://github.com/durable-workflow/.github/issues/220).
+
+### Os SDKs em modo de serviço têm limites separados {#service-sdk-entry-boundaries}
+
+Uma correção no Core embarcado não muda o processo SDK que executa o código do workflow em modo de serviço. Estes são os limites publicados verificados no código-fonte; uma validação de entrada recuperável equivalente continua aberta em [shared #221](https://github.com/durable-workflow/.github/issues/221):
+
+| SDK publicado | Comportamento da associação de entrada |
+| --- | --- |
+| [PHP 2.5.3](https://github.com/durable-workflow/sdk-php/tree/43d39bff50ccace0a309de41306cd350751ec575) | Chama o handler registrado com o contexto seguido da entrada posicional registrada. Um `ArgumentCountError` ou `TypeError` na entrada pode seguir o caminho genérico de falha do workflow. |
+| [Python 2.6.1](https://github.com/durable-workflow/sdk-python/tree/150c6f6bc14e3516f75cc615b2f75f093ed84ea1) | Chama `run(ctx, *start_input)`. Uma mudança na quantidade de argumentos pode falhar o workflow; anotações de tipo sozinhas não impõem tipos nem convertem os valores registrados. Erros no corpo do gerador também são falhas da aplicação. |
+| [Rust 3.5.5](https://github.com/durable-workflow/sdk-rust/tree/4d5047ba9da39785512340b0975ce28da09f0cee) | O adaptador tipado desserializa a entrada antes de chamar o handler de assinatura fixa. Mudar o tipo da requisição pode falhar nessa decodificação. Isso difere da associação posicional do PHP/Python; uma recusa incidental por histórico não consumido não é garantia de proteção recuperável de assinaturas. |
+
+Mantenha a compatibilidade de entrada do serviço e a qualificação real do SDK separadas do candidato embarcado. Não capture todo `TypeError` ou todo erro de handler Rust para classificá-lo como seguro para replay: isso ocultaria falhas reais da aplicação.
+
 ## Uso de `getVersion` {#using-getversion}
 
 `getVersion()` é um helper de fluxo sequencial seguro para replay. Cada ponto de mudança registra um marcador durável de versão para a execução na primeira passagem, e todo replay posterior reutiliza esse valor confirmado, em vez de recalcular a ramificação a partir do código atual. Execuções antigas que precedem um ponto de ramificação recém-introduzido recebem `DEFAULT_VERSION` de forma conservadora.
