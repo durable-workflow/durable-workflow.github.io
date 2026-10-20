@@ -6,7 +6,7 @@ sidebar_position: 8
 
 Heartbeat дають тривалій activity змогу повідомляти, що її поточна спроба досі працює.
 
-`heartbeat()` оновлює отриманий worker запис `activity_attempts`, переносить останній heartbeat у поточне виконання activity, поновлює оренду завдання activity й додає типізовану подію історії `ActivityHeartbeatRecorded` для поточної спроби. Детальний перегляд вибраного запуску у Waterline та експорт історії відновлюють стан спроби, ID завдання, worker, heartbeat, оренду, скасування й час закриття насамперед із типізованої історії `ActivityStarted`, `ActivityHeartbeatRecorded`, `ActivityRetryScheduled`, `ActivityCompleted`, `ActivityFailed` та `ActivityCancelled`. Змінювані записи спроб використовуються як запасне джерело або доповнення для старих даних.
+`heartbeat()` оновлює запис `activity_attempts` поточної спроби, яку отримав worker, переносить останній heartbeat у поточне виконання activity, поновлює оренду завдання activity й додає типізовану подію історії `ActivityHeartbeatRecorded` для поточної спроби. Детальний перегляд вибраного запуску у Waterline та експорт історії відновлюють стан спроби, ID завдання, worker, heartbeat, оренду, скасування й час закриття насамперед із типізованої історії `ActivityStarted`, `ActivityHeartbeatRecorded`, `ActivityRetryScheduled`, `ActivityCompleted`, `ActivityFailed` та `ActivityCancelled`. Змінювані записи спроб використовуються як запасне джерело або доповнення для старих даних.
 
 ```php
 use Workflow\V2\Activity;

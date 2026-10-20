@@ -191,7 +191,7 @@ ID артефактів runtime закінчуються версією набо
 `rust_replayed_instance_state_query_after_cold_restart`,
 `completed_run_signal_and_query`,
 `unknown_signal_and_query_errors`,
-`malformed_signal_and_query_payloads`, and
+`malformed_signal_and_query_payloads` і
 `waterline_operator_visibility`.
 
 ID цих сценаріїв та критерії успіху опубліковані як машиночитаний маніфест

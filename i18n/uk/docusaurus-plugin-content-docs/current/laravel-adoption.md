@@ -1,7 +1,7 @@
 ---
 sidebar_position: 4
-title: Інтеграція Laravel та перехід між runtime
-description: Перехід Laravel workflow fleet із v1 до embedded або service mode Durable Workflow 2.0 зі збереженням інтеграції фреймворку та чіткої відповідальності runtime.
+title: Інтеграція Laravel та перехід між середовищами виконання
+description: Перехід застосунків Laravel із v1 до вбудованого або сервісного режиму Durable Workflow 2.0 зі збереженням інтеграції фреймворку та чітких меж відповідальності за виконання.
 tags:
   - laravel
   - migration
@@ -9,17 +9,17 @@ tags:
   - embedded
 keywords:
   - міграція Laravel Durable Workflow
-  - Laravel service mode
+  - сервісний режим Laravel
   - міграція з v1 до v2
-  - embedded to service mode
+  - перехід із вбудованого до сервісного режиму
 ---
 
-# Інтеграція Laravel та перехід між runtime {#laravel-adoption-and-runtime-transition}
+# Інтеграція Laravel та перехід між середовищами виконання {#laravel-adoption-and-runtime-transition}
 
 Laravel-застосунки мають два офіційні режими Durable Workflow 2.0.
-Embedded mode зберігає durable-виконання всередині застосунку.
-Service mode зберігає Laravel як фреймворк застосунку та workers,
-а Cloud або самостійно розгорнутий Server відповідає за durable-стан.
+Вбудований режим зберігає стійке виконання всередині застосунку.
+У сервісному режимі Laravel залишається фреймворком застосунку та worker,
+а Cloud або самостійно розгорнутий Server відповідає за стійкий стан.
 
 Ця сторінка допомагає вибрати та виконати один із трьох переходів:
 
@@ -80,13 +80,13 @@ Cloud та власний Server є альтернативами service mode.
 | Laravel embedded 2.0 | `app(StartOrderFulfillment::class)->start('1001')` | `app(StartOrderFulfillment::class)->start('1001')` |
 | PHP SDK service mode | `app(StartOrderFulfillment::class)->start('1001')` | `app(StartOrderFulfillment::class)->start('1001')` |
 
-Constructor injection Laravel доступний на межі застосунку в кожному режимі.
+Впровадження залежностей через конструктор Laravel доступне на межі застосунку в кожному режимі.
 Стабільний v1 передає залежності activity в `execute()`.
 Embedded v2 і service mode використовують контейнер Laravel для створення
 об'єктів workflow та activity, тому їхні залежності мають звичайні конструктори.
 Усе, що читає workflow під час replay, має бути детермінованим
 і визначеним конфігурацією. База даних, мережа, годинник та інші
-side effects належать activities.
+побічні ефекти належать activity.
 
 ### Стабільний Laravel v1 {#stable-v1-laravel}
 
@@ -217,10 +217,10 @@ return [
 ];
 ```
 
-API написання workflow переходить на `handle()` та більше не yield
-результати activity. Laravel створює обидва об'єкти.
+API написання workflow переходить на `handle()` та більше не використовує yield
+для результатів activity. Laravel створює обидва об'єкти.
 Activity залишається належним місцем для логування та бізнес-подій,
-які представляють side effects:
+які представляють побічні ефекти:
 
 <!-- docs-example id="laravel.adoption.v2-embedded.handlers" -->
 ```php
@@ -300,7 +300,7 @@ php artisan queue:work redis --queue=orders
 ```
 
 Використовуйте embedded fake через ту саму дію застосунку.
-Він inline виконує готові workflow tasks і записує dispatch activities:
+Він безпосередньо виконує готові завдання workflow і записує відправлення activity:
 
 <!-- docs-example id="laravel.adoption.v2-embedded.fake" -->
 ```php
@@ -512,7 +512,7 @@ $workflows->assertResultRequested('order-1001');
 Для тестів команд обробників workflow/activity використовуйте worker test harness
 SDK. Fake клієнта не виконує код віддаленого worker.
 
-## Drain, cutover та rollback {#drain-cut-over-and-roll-back}
+## Завершення поточних запусків, перемикання та відкат {#drain-cut-over-and-roll-back}
 
 Зміна Composer-вимоги не переміщує активний workflow, його історію,
 відкладений timer, retry activity чи готовий/зарезервований queue job.
