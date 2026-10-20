@@ -77,6 +77,8 @@
   "simulator.heartbeat.title": {"message": "心跳模拟器"},
   "simulator.sendSignal": {"message": "📤 发送信号："},
   "simulator.queryAction": {"message": "🔍 查询："},
+  "simulator.signalAccepted": {"message": "信号 {signal} 已被接受"},
+  "simulator.signalWaitReceived": {"message": "await() 已收到信号"},
   "simulator.waitingSignal": {"message": "⏳ 等待信号"},
   "simulator.waitingSignalTimeout": {"message": "⏳ 等待信号或超时"},
   "simulator.signalReceived": {"message": "已收到信号"},
