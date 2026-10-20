@@ -269,12 +269,21 @@ foreach (array_chunk($items, 500) as $chunk) {
 урахуванням поточної інфраструктури. Більшість меж є значеннями налаштувань,
 незалежними від бекенду, але деякі бекенди додають обмеження:
 
-- **Черга SQS**: Amazon SQS обмежує відкладену доставку повідомлень 900 секундами,
-  тож знімок містить `max_single_timer_delay_seconds: 900`. Timer з більшою
-  тривалістю поділяються транспортним рівнем на частини.
+- **Черга SQS**: [окреме повідомлення Standard SQS](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-message-timers.html)
+  можна відкласти щонайбільше на 900 секунд. Довші затримки таймерів, повторних
+  спроб activity і workflow tasks транспортний рівень поділяє на частини.
+  Для сумісності знімок зберігає `max_single_timer_delay_seconds: 900`.
 - **База даних SQLite**: SQLite виконує записи послідовно, тож знімок містить
   `concurrent_write_safety: limited`. Високі кількісні межі очікування можуть
   спричинити конкуренцію за блокування під одночасним навантаженням worker.
+
+Рання доставка SQS ставить у чергу наступне повідомлення з обмеженою затримкою,
+не орендуючи довговічне завдання, не витрачаючи спробу виконання, не записуючи
+історію виконання й не запускаючи користувацький код. Початкове `available_at`
+залишається незмінним. Після настання цього часу діють звичайні правила виконання
+та захисту від повторної доставки. Загальні строки workflow й activity спливають
+і під час очікування, тому backoff має вкладатися в ці бюджети. Драйвери черг без
+межі затримки зберігають точну запитану затримку.
 
 Повний контракт доступний у розділі `structural_limits` відповіді про можливості бекенду:
 
@@ -289,7 +298,7 @@ foreach (array_chunk($items, 500) as $chunk) {
         "component": "structural_limits",
         "severity": "info",
         "code": "queue_max_delay_constraint",
-        "message": "The [sqs] queue driver limits delayed dispatch to 900 seconds; timers exceeding this are chunked by the transport layer."
+        "message": "The [sqs] queue driver limits delayed dispatch to 900 seconds; longer task delays are chunked by the transport layer."
       }
     ]
   }
