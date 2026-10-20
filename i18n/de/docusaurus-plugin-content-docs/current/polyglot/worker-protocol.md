@@ -86,7 +86,7 @@ Für Aktivitätsaffinität über mehrere dauerhafte Schritte siehe
 Worker-Transport ist verteilte Koordination mit Mindestens-einmal-Zustellung,
 keine Genau-einmal-Zustellung:
 
-- Workflow-Task-Replay baut Zustand aus festgeschriebener Historie auf. Er ist
+- Workflow-Task-Replay baut Zustand aus festgeschriebener Historie auf. Es ist
   keine Wiederholung auf Workflow-Ebene.
 - Der Ablauf einer Aktivitäts-Task-Lease kann erneute Zustellung an einen
   anderen Worker auslösen.
@@ -285,7 +285,7 @@ Beispiel einer Fehleranfrage:
 
 Beim Workflow-Task-Abschluss übermittelt der externe Worker eine Liste typisierter Befehle. Je Abschluss ist höchstens ein terminaler Befehl erlaubt.
 
-**Nicht terminale Befehle** (null oder mehr, in Reihenfolge verarbeitet):
+**Nicht terminale Befehle** (keiner oder mehrere, der Reihe nach verarbeitet):
 
 | Typ | Pflichtfelder | Beschreibung |
 |------|----------------|-------------|
