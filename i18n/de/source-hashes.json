@@ -61,5 +61,11 @@
   "polyglot/php.md": "9ab2f2b6cb617475e3873609667f7c40eaeed8512f1f041834d74bb63d1a6040",
   "polyglot/server-role-topology.md": "3d048f0c6b5f179399622508f51e67fff8aa5a6d5b2492533fc720eeec2c27f2",
   "monitoring.md": "28bc87ab65b4ef8e466f12114cc56dd60f4216f1f163ec84defec1a030ec320e",
-  "rolling-upgrades.md": "5cb58386636361a07de5dd1f0438596dc649bcaf6ea493749ad0635eabb5be7f"
+  "rolling-upgrades.md": "5cb58386636361a07de5dd1f0438596dc649bcaf6ea493749ad0635eabb5be7f",
+  "features/events.md": "fcb391862938b5e8cf44ad39f213fc3e55b2ecb7c6edebe6a83a1e58a60bf56e",
+  "features/external-payload-storage.md": "1741bcfc944c9d40f1101888b9f172d13e588f54f6cdcb6f84d00df10c878356",
+  "features/heartbeats.md": "55dc06337706e0b0f62100cddd445055165bc406a1b2e2f6b4fdf8c22f84f3d1",
+  "features/local-activities.md": "05fca8f2104d8f4e7bd8b48040f5615f18d0ee2795922fb65c56f8d3d70ed204",
+  "features/memo.md": "621aa630e37fbef6f84d761c92f99dc3fe8756879008c659cbad0600eb14fd5d",
+  "features/message-streams.md": "3bce915ed750793b31360d2accc94eebf2c7f075b9769e072f8a2d3d034afad0"
 }
