@@ -90,5 +90,6 @@
   "polyglot/cloud-control-plane.md": "d08b280c6d3b3dc209e3c3773e275066fa4a80accb2dcd550ad7a3f52e236b78",
   "polyglot/embedded-to-server.md": "21a7e4c9439a73db3a97fd9b0610749faabf7c449806fe0ad55a0924f50d3b80",
   "polyglot/worker-protocol.md": "007e844b0a7ab284b7cd343e79f01a27a0dabee3fe4cf19064170581bb897b85",
-  "polyglot/server-api-reference.md": "6029fa5573106ebb40d4cf6fc384c4c5aa3ac77d435b3d2c30c4c505cce7ac23"
+  "polyglot/server-api-reference.md": "6029fa5573106ebb40d4cf6fc384c4c5aa3ac77d435b3d2c30c4c505cce7ac23",
+  "platform-conformance.md": "2eec7eba9a65c010e03c4b2eb78afe4dddd6fd8170218b3194c49e3777124c91"
 }

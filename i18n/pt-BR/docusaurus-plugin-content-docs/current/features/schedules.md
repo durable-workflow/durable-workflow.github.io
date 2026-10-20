@@ -462,11 +462,11 @@ O fluxo de auditoria é exposto por todas as interfaces do operador:
   retorna o fluxo com paginação por cursor usando `limit` (1–500, padrão 100)
   e `after_sequence`. A resposta é restrita ao namespace do Waterline, para
   que implantações com vários tenants só vejam as linhas de auditoria do seu tenant.
-- **Interface do Waterline.** A ação **History** em cada linha do registro de
+- **Interface do Waterline.** A ação **Histórico** em cada linha do registro de
   agendamentos abre uma janela modal com o fluxo desse agendamento. Eventos
   são exibidos com sequência, horário registrado, tipo, IDs vinculados de
   instância e execução de workflow e payload formatado. O controle
-  **Load more** avança o cursor em lotes de 100.
+  **Carregar mais** avança o cursor em lotes de 100.
 - **HTTP do servidor independente.** `GET /api/schedules/{scheduleId}/history`
   no servidor independente retorna o mesmo fluxo com o mesmo contrato de
   paginação e as mesmas regras de escopo `X-Namespace`. O histórico permanece
