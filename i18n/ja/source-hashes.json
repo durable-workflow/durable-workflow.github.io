@@ -58,7 +58,7 @@
   "features/activity-execution-model.md": "e8c37520ae46a7efb30438f4fc06bf893c1df430cb1f92c48963697adaf09082",
   "features/local-activities.md": "05fca8f2104d8f4e7bd8b48040f5615f18d0ee2795922fb65c56f8d3d70ed204",
   "features/worker-sessions.md": "2b08a0cdaee486970e099ea8bcb91d7f6daf135b0bc98629ed47f3885e64c77d",
-  "compatibility.md": "0cb61cd6cc06da7c98e81bc29ea72f10020a03f0a9256329bca30e2f7a571f66",
+  "compatibility.md": "28e6e3a55920762b4c9380721710de994335831db573447a60d92b213938d3fb",
   "monitoring.md": "28bc87ab65b4ef8e466f12114cc56dd60f4216f1f163ec84defec1a030ec320e",
   "rolling-upgrades.md": "5cb58386636361a07de5dd1f0438596dc649bcaf6ea493749ad0635eabb5be7f",
   "polyglot/rust.md": "b5d3b44c4e68e8b707804001bc46bd5e758b0180eec2a9a2ebdb69a6183dced5",
