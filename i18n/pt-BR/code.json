@@ -29,6 +29,7 @@
   "navbar.github.repositoryStars": {"message": "{repository} ({count} estrelas)"},
   "navbar.github.starCount": {"message": "Estrelas no GitHub: {count}"},
   "navbar.github.stars": {"message": "Estrelas no GitHub"},
+  "navbar.github.starRepository": {"message": "Dê uma estrela ao Durable Workflow no GitHub"},
   "cliInstall.windowsNote": {"message": "Instala em %USERPROFILE%\\.durable-workflow\\bin e adiciona esse diretório ao PATH."},
   "cliInstall.unixNote": {"message": "Instala em ~/.local/bin. Defina DURABLE_WORKFLOW_INSTALL_DIR para alterar o diretório."},
   "cliInstall.detected": {"message": "{platform} detectado."},
