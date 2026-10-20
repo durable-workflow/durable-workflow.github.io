@@ -40,5 +40,9 @@
   "features/activity-execution-model.md": "50eb43b1b18458ef5509886756041752d30cca4c511a24a74f409f8f87f86c4f",
   "features/heartbeats.md": "55dc06337706e0b0f62100cddd445055165bc406a1b2e2f6b4fdf8c22f84f3d1",
   "features/local-activities.md": "05fca8f2104d8f4e7bd8b48040f5615f18d0ee2795922fb65c56f8d3d70ed204",
-  "features/worker-sessions.md": "2b08a0cdaee486970e099ea8bcb91d7f6daf135b0bc98629ed47f3885e64c77d"
+  "features/worker-sessions.md": "2b08a0cdaee486970e099ea8bcb91d7f6daf135b0bc98629ed47f3885e64c77d",
+  "ai-assisted-development.md": "b246bb60585fb7a69bc534978f470f3f16e899e1f8f203ba0847d2d11b8a1ec3",
+  "ai-agent-workflow-engine.md": "28016466b179adbabdff6467ce351100c9bee48529a8bec9df7ec22c8d786d4d",
+  "agent-operating-loop.md": "7b8f9c72f1166d5bb496aaad680e7054d360589b548a2c2a3d23206288bd6500",
+  "mcp-workflows.md": "1c0b5bb7f2e5c7ca835dfdfa57bbe8f6624172c855f4e225057ac2377abf360e"
 }
