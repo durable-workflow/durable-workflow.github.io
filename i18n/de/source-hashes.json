@@ -82,5 +82,6 @@
   "features/timers.md": "51daf41fede21b6f994bb75851cdb34babdd3117677d00a5fc17189dfe34fa77",
   "features/updates.md": "72da32fa413a3376bea84ab009ce15217238ccc3c57794783789b21b23c7cf18",
   "features/versioning.md": "8b7cd077bffc357bd020b70685ea5b45853c3405f48cce42c9338fa0f7322f0b",
-  "features/worker-sessions.md": "2b08a0cdaee486970e099ea8bcb91d7f6daf135b0bc98629ed47f3885e64c77d"
+  "features/worker-sessions.md": "2b08a0cdaee486970e099ea8bcb91d7f6daf135b0bc98629ed47f3885e64c77d",
+  "waterline-operator-api.md": "d858c9fe75b495106157ab11d6f7f2d4ad5aeaa94346342398cb8bafdd069d6d"
 }
