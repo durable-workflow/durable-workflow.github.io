@@ -53,5 +53,7 @@
   "features/child-workflows.md": "2e842089e2e25be0226d927dc9cf4934014178087465ee0223c6e303d128e251",
   "features/concurrency.md": "a7a3eb2274f7b14faf722494569b7663c07ab48afdf2e9225e58914b84cacbb4",
   "features/condition-waits.md": "451261eda990c9591a0db69839d872184b5c64da6b537a582133095b8d4b599e",
-  "features/continue-as-new.md": "6b3cc8f8c5375726ff0b2544da01e7206e964908b436544e284068ab67aa3dbb"
+  "features/continue-as-new.md": "6b3cc8f8c5375726ff0b2544da01e7206e964908b436544e284068ab67aa3dbb",
+  "capabilities.md": "c11b11db4cffe5ab2cec77e823fa9e7f33094bf7449a3ee29cbd404d48ac1c3c",
+  "compatibility.md": "3af32f6c46f83df39dc74dedf32314a3416ccd40620948bd8f66ace0d914946e"
 }
