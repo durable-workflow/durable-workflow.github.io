@@ -377,16 +377,91 @@ Les routes de planification Waterline offrent visibilité et actions opérateur 
 
 | Méthode | Chemin | Rôle |
 | --- | --- | --- |
-| `GET` | `/waterline/api/v2/schedules` | Lister les planifications visibles dans l'espace de noms courant. |
+| `GET` | `/waterline/api/v2/schedules` | Lister les planifications visibles dans le périmètre courant. |
 | `GET` | `/waterline/api/v2/schedules/{scheduleId}` | Décrire une planification. |
+| `GET` | `/waterline/api/v2/schedules/{scheduleId}/history` | Lire les événements d'audit du cycle de vie de la planification. |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/pause` | Suspendre les futurs déclenchements. |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/resume` | Reprendre une planification suspendue. |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/trigger` | Déclencher immédiatement. |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/backfill` | Rattraper une période. |
 | `DELETE` | `/waterline/api/v2/schedules/{scheduleId}` | Supprimer une planification. |
 
-Les réponses exposent action, état, prochain déclenchement, historique récent,
-politique de chevauchement, note, mémo et attributs de recherche pour l'opérateur.
+Une planification est identifiée par son espace de noms et son `schedule_id`.
+Le même `schedule_id` peut exister dans plusieurs espaces de noms. Chaque route
+propre à une planification accepte un paramètre `namespace` facultatif, en
+paramètre d'URL ou dans le corps de la requête :
+
+- Un Waterline limité à un espace de noms n'agit que sur son propre espace de
+  noms. C'est le cas du Waterline embarqué avec `WATERLINE_NAMESPACE` défini et
+  de tout déploiement en mode service. Une requête pour un autre espace de noms
+  renvoie `404`.
+- Un Waterline embarqué couvrant tout le cluster agit sur l'espace de noms
+  demandé. Sans `namespace`, un `schedule_id` présent dans plusieurs espaces de
+  noms renvoie `409` avec la raison `schedule_namespace_required`. Rien n'est
+  modifié.
+
+```bash
+curl -sS -X POST \
+  "$APP_URL/waterline/api/v2/schedules/nightly-invoice-sync/pause?namespace=billing" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{"note": "Supplier maintenance"}' | jq '.status, .note'
+```
+
+### Lignes de planification {#schedule-rows}
+
+La réponse de liste est paginée avec `data`, `current_page`, `last_page`,
+`per_page`, `total` et `operator_scope`. Chaque ligne de `data` a les mêmes
+champs en mode embarqué et service :
+
+| Champ | Signification |
+| --- | --- |
+| `schedule_id` | Identifiant de la planification. Envoyez-le avec `namespace` à chaque route propre à une planification. |
+| `id` | Même valeur que `schedule_id`, conservée pour les anciens clients. |
+| `namespace` | Espace de noms de la planification. |
+| `workflow_type`, `workflow_class` | Workflow démarré par la planification. Chacun peut valoir `null`. |
+| `status`, `paused` | `active`, `paused` ou `deleted`, et si la planification est suspendue ou non. |
+| `note` | Note de l'opérateur, ou `null`. |
+| `spec` | Cadence : `cron_expressions` (chaînes cron), `intervals` (objets avec des durées ISO 8601 `every` et `offset` facultatif) et `timezone`. |
+| `overlap_policy` | `skip`, `buffer_one`, `buffer_all`, `cancel_other`, `terminate_other` ou `allow_all`. |
+| `next_fire_at`, `last_fired_at` | Horodatages ISO 8601, ou `null`. |
+| `last_outcome` | Résultat du dernier déclenchement enregistré, ou `null` si aucun n'a été enregistré. Il contient `outcome` (par exemple `scheduled`, `drained`, `backfilled`, `skipped` ou `failed`), `at`, `reason`, `workflow_id` et `run_id`. |
+| `fires_count`, `failures_count`, `skipped_trigger_count`, `remaining_actions` | Compteurs, ou `null` quand le backend ne fournit pas ce compteur. |
+| `search_attributes` | Attributs de recherche de la planification, ou `null`. |
+| `created_at`, `updated_at` | Horodatages ISO 8601. |
+
+Une ligne avec `last_fired_at` mais sans `last_outcome` signifie que le backend
+a fourni l'heure du déclenchement sans son résultat.
+
+Les lignes de liste et les réponses de détail, `pause` et `resume` incluent
+aussi `action`, `max_runs`, `jitter_seconds`, `paused_at`, `last_skip_reason`,
+`last_skipped_at`, `latest_workflow_instance_id`, `buffered_actions`, `memo` et
+`recent_actions`. Chaque action récente contient `outcome`, `fired_at`,
+`reason`, `workflow_id`, `run_id` et `occurrence_time`. `latest_instance_id`
+reprend `latest_workflow_instance_id` pour les anciens clients. Un `spec`
+conserve, après ses champs de cadence, toutes les autres clés stockées par le
+backend.
+
+### Résultats du déclenchement et du rattrapage {#trigger-and-backfill-results}
+
+`trigger` accepte un champ `overlap_policy` facultatif. La route renvoie
+`schedule_id`, `namespace`, `outcome` (`triggered`, `buffered`, `buffer_full` ou
+`skipped`), `triggered`, `workflow_id`, `run_id` et `reason`. `triggered` vaut
+`true` uniquement si un workflow a démarré. `instance_id` reprend `workflow_id`
+pour les anciens clients.
+
+`backfill` exige les horodatages ISO 8601 `from` et `to` et accepte un champ
+`overlap_policy` facultatif. La route renvoie `schedule_id`, `namespace`,
+`fires_attempted`, `started_count`, `skipped_count`, `failed_count` et
+`results`. Chaque résultat contient `fire_time`, `workflow_id`, `outcome`
+(`started`, `skipped` ou `failed`) et `reason`. Pour les anciens clients, chaque
+résultat reprend aussi `schedule_id`, et `cron_time`, `instance_id` et `error`
+reprennent `fire_time`, `workflow_id` et le `reason` d'un résultat en échec.
+`backfill` refuse avec `422` et la raison `invalid_time_range` une fenêtre dont
+la fin n'est pas postérieure au début.
+
+Les deux routes refusent une valeur `overlap_policy` inconnue avec `422` et la
+raison `invalid_overlap_policy`.
 
 ## Vues enregistrées et préférences {#saved-views-and-preferences}
 
@@ -415,7 +490,7 @@ Waterline utilise les codes HTTP ordinaires et des détails d'erreur JSON :
 | --- | --- |
 | `400` | Requête mal formée ou charge utile d'action non prise en charge. |
 | `404` | Instance, exécution, mise à jour, planification, vue enregistrée ou interface de préférences introuvable dans l'espace de noms courant. |
-| `409` | L'exécution choisie ne peut effectuer l'action, souvent car elle est historique, fermée, bloquée à la relecture ou sans définition disponible. |
+| `409` | L'exécution choisie ne peut effectuer l'action, souvent car elle est historique, fermée, bloquée à la relecture ou sans définition disponible. Une requête de planification couvrant tout le cluster renvoie aussi `409` quand son `schedule_id` exige un `namespace`. |
 | `422` | Échec de validation, avec erreurs par champ dans la réponse. |
 | `500` | Échec applicatif inattendu. |
 

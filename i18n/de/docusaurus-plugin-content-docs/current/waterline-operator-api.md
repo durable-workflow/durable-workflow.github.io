@@ -277,15 +277,59 @@ Waterline-Zeitplanrouten sind v2-Routen für Sichtbarkeit und Operatoraktionen:
 
 | Methode | Pfad | Zweck |
 | --- | --- | --- |
-| `GET` | `/waterline/api/v2/schedules` | Im aktuellen Namespace sichtbare Zeitpläne auflisten. |
+| `GET` | `/waterline/api/v2/schedules` | Im aktuellen Geltungsbereich sichtbare Zeitpläne auflisten. |
 | `GET` | `/waterline/api/v2/schedules/{scheduleId}` | Einen Zeitplan beschreiben. |
+| `GET` | `/waterline/api/v2/schedules/{scheduleId}/history` | Die Audit-Ereignisse zum Lebenszyklus des Zeitplans lesen. |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/pause` | Künftige Auslösungen pausieren. |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/resume` | Einen pausierten Zeitplan wieder aufnehmen. |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/trigger` | Sofort auslösen. |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/backfill` | Ein Zeitfenster nachträglich ausführen. |
 | `DELETE` | `/waterline/api/v2/schedules/{scheduleId}` | Einen Zeitplan löschen. |
 
-Zeitplanantworten enthalten Aktion, Status, nächste Auslösung, jüngste Auslösungshistorie, Überlappungsrichtlinie, Notiz, Memo und Suchattribute zur Operatorprüfung.
+Ein Zeitplan wird durch seinen Namespace und seine `schedule_id` identifiziert. Dieselbe `schedule_id` kann in mehreren Namespaces vorkommen. Jede Route für einen einzelnen Zeitplan akzeptiert optional `namespace` als Abfrageparameter oder im Anfragetext:
+
+- Ein auf einen Namespace begrenztes Waterline arbeitet nur mit seinem eigenen Namespace. Dazu gehören eingebettetes Waterline mit gesetztem `WATERLINE_NAMESPACE` und jede Bereitstellung im Dienstmodus. Eine Anfrage für einen anderen Namespace liefert `404`.
+- Ein clusterweites eingebettetes Waterline arbeitet mit dem angefragten Namespace. Ohne `namespace` liefert eine `schedule_id`, die in mehreren Namespaces vorkommt, `409` mit dem Grund `schedule_namespace_required`. Dabei ändert sich nichts.
+
+```bash
+curl -sS -X POST \
+  "$APP_URL/waterline/api/v2/schedules/nightly-invoice-sync/pause?namespace=billing" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{"note": "Supplier maintenance"}' | jq '.status, .note'
+```
+
+### Zeitplanzeilen {#schedule-rows}
+
+Die Listenantwort ist paginiert und enthält `data`, `current_page`, `last_page`, `per_page`, `total` und `operator_scope`. Jede Zeile in `data` hat im eingebetteten und im Dienstmodus dieselben Felder:
+
+| Feld | Bedeutung |
+| --- | --- |
+| `schedule_id` | Die ID des Zeitplans. Senden Sie sie zusammen mit `namespace` an jede Route für einen einzelnen Zeitplan. |
+| `id` | Derselbe Wert wie `schedule_id`, für ältere Clients beibehalten. |
+| `namespace` | Der Namespace des Zeitplans. |
+| `workflow_type`, `workflow_class` | Der Workflow, den der Zeitplan startet. Beide Felder können `null` sein. |
+| `status`, `paused` | `active`, `paused` oder `deleted` sowie die Angabe, ob der Zeitplan pausiert ist. |
+| `note` | Die Operatornotiz oder `null`. |
+| `spec` | Der Auslösetakt: `cron_expressions` (Cron-Zeichenfolgen), `intervals` (Objekte mit den ISO-8601-Dauern `every` und optional `offset`) und `timezone`. |
+| `overlap_policy` | `skip`, `buffer_one`, `buffer_all`, `cancel_other`, `terminate_other` oder `allow_all`. |
+| `next_fire_at`, `last_fired_at` | ISO-8601-Zeitstempel oder `null`. |
+| `last_outcome` | Das zuletzt erfasste Ergebnis einer Auslösung oder `null`, wenn keines erfasst wurde. Es enthält `outcome` (zum Beispiel `scheduled`, `drained`, `backfilled`, `skipped` oder `failed`), `at`, `reason`, `workflow_id` und `run_id`. |
+| `fires_count`, `failures_count`, `skipped_trigger_count`, `remaining_actions` | Zähler oder `null`, wenn das Backend den jeweiligen Zähler nicht meldet. |
+| `search_attributes` | Die Suchattribute des Zeitplans oder `null`. |
+| `created_at`, `updated_at` | ISO-8601-Zeitstempel. |
+
+Eine Zeile mit `last_fired_at` und ohne `last_outcome` bedeutet, dass das Backend den Auslösezeitpunkt ohne dessen Ergebnis gemeldet hat.
+
+Listenzeilen sowie die Antworten der Detailroute und der Routen `pause` und `resume` enthalten außerdem `action`, `max_runs`, `jitter_seconds`, `paused_at`, `last_skip_reason`, `last_skipped_at`, `latest_workflow_instance_id`, `buffered_actions`, `memo` und `recent_actions`. Jeder Eintrag in `recent_actions` enthält `outcome`, `fired_at`, `reason`, `workflow_id`, `run_id` und `occurrence_time`. `latest_instance_id` wiederholt `latest_workflow_instance_id` für ältere Clients. Ein `spec` behält nach seinen Feldern für den Auslösetakt alle weiteren Schlüssel, die das Backend gespeichert hat.
+
+### Ergebnisse von Auslösen und Nachholen {#trigger-and-backfill-results}
+
+`trigger` akzeptiert optional `overlap_policy`. Die Route liefert `schedule_id`, `namespace`, `outcome` (`triggered`, `buffered`, `buffer_full` oder `skipped`), `triggered`, `workflow_id`, `run_id` und `reason`. `triggered` ist nur dann `true`, wenn ein Workflow gestartet wurde. `instance_id` wiederholt `workflow_id` für ältere Clients.
+
+`backfill` erfordert die ISO-8601-Zeitstempel `from` und `to` und akzeptiert optional `overlap_policy`. Die Route liefert `schedule_id`, `namespace`, `fires_attempted`, `started_count`, `skipped_count`, `failed_count` und `results`. Jedes Ergebnis enthält `fire_time`, `workflow_id`, `outcome` (`started`, `skipped` oder `failed`) und `reason`. Für ältere Clients wiederholt jedes Ergebnis außerdem `schedule_id`. Ebenso wiederholen `cron_time`, `instance_id` und `error` die Werte `fire_time`, `workflow_id` und den `reason` eines fehlgeschlagenen Ergebnisses. `backfill` lehnt ein Zeitfenster, dessen Ende nicht nach seinem Beginn liegt, mit `422` und dem Grund `invalid_time_range` ab.
+
+Beide Routen lehnen eine unbekannte `overlap_policy` mit `422` und dem Grund `invalid_overlap_policy` ab.
 
 ## Gespeicherte Ansichten und Einstellungen {#saved-views-and-preferences}
 
@@ -311,7 +355,7 @@ Waterline verwendet übliche HTTP-Statuscodes und JSON-Fehlerdetails:
 | --- | --- |
 | `400` | Fehlerhafte Anfrage oder nicht unterstützte Aktionsnutzdaten. |
 | `404` | Workflow-Instanz, Lauf, Update, Zeitplan, gespeicherte Ansicht oder Einstellungsbereich wurde im aktuellen Namespace nicht gefunden. |
-| `409` | Der ausgewählte Lauf kann die Aktion nicht ausführen, häufig weil er historisch, geschlossen, Replay-blockiert oder seine Definition nicht verfügbar ist. |
+| `409` | Der ausgewählte Lauf kann die Aktion nicht ausführen, häufig weil er historisch, geschlossen, Replay-blockiert oder seine Definition nicht verfügbar ist. Eine clusterweite Zeitplananfrage liefert ebenfalls `409`, wenn ihre `schedule_id` einen `namespace` benötigt. |
 | `422` | Validierung fehlgeschlagen; die Antwort enthält feldbezogene Fehler. |
 | `500` | Unerwarteter Anwendungsfehler. |
 

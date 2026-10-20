@@ -369,16 +369,90 @@ Las rutas de programaciones ofrecen visibilidad y acciones de operador v2:
 
 | Método | Ruta | Función |
 | --- | --- | --- |
-| `GET` | `/waterline/api/v2/schedules` | Enumera programaciones visibles en el namespace actual. |
+| `GET` | `/waterline/api/v2/schedules` | Enumera programaciones visibles en el ámbito actual. |
 | `GET` | `/waterline/api/v2/schedules/{scheduleId}` | Describe una programación. |
+| `GET` | `/waterline/api/v2/schedules/{scheduleId}/history` | Lee los eventos de auditoría del ciclo de vida de la programación. |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/pause` | Pausa futuras activaciones. |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/resume` | Reanuda una programación pausada. |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/trigger` | Provoca una activación inmediata. |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/backfill` | Recupera activaciones de un intervalo. |
 | `DELETE` | `/waterline/api/v2/schedules/{scheduleId}` | Elimina una programación. |
 
-Las respuestas exponen acción, estado, siguiente activación, historial reciente,
-política de solapamiento, nota, memo y atributos de búsqueda para el operador.
+Una programación se identifica por su namespace y su `schedule_id`. El mismo
+`schedule_id` puede existir en más de un namespace. Cada ruta de una
+programación concreta acepta `namespace` opcional como parámetro de consulta o
+en el cuerpo de la petición:
+
+- Un Waterline limitado a un namespace solo actúa sobre su propio namespace.
+  Esto incluye Waterline integrado con `WATERLINE_NAMESPACE` configurado y todo
+  despliegue en modo servicio. Una petición para otro namespace devuelve `404`.
+- Un Waterline integrado para todo el clúster actúa sobre el namespace
+  solicitado. Sin `namespace`, un `schedule_id` que existe en más de un
+  namespace devuelve `409` con el motivo `schedule_namespace_required`. No se
+  modifica nada.
+
+```bash
+curl -sS -X POST \
+  "$APP_URL/waterline/api/v2/schedules/nightly-invoice-sync/pause?namespace=billing" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{"note": "Supplier maintenance"}' | jq '.status, .note'
+```
+
+### Filas de programaciones {#schedule-rows}
+
+La respuesta de la lista está paginada con `data`, `current_page`, `last_page`,
+`per_page`, `total` y `operator_scope`. Cada fila de `data` tiene los mismos
+campos en los modos integrado y servicio:
+
+| Campo | Significado |
+| --- | --- |
+| `schedule_id` | ID de la programación. Envíalo con `namespace` a cada ruta de una programación concreta. |
+| `id` | El mismo valor que `schedule_id`, conservado para clientes antiguos. |
+| `namespace` | Namespace de la programación. |
+| `workflow_type`, `workflow_class` | El workflow que inicia la programación. Cualquiera de los dos puede ser `null`. |
+| `status`, `paused` | `active`, `paused` o `deleted`, y si la programación está pausada. |
+| `note` | La nota del operador, o `null`. |
+| `spec` | La cadencia: `cron_expressions` (cadenas cron), `intervals` (objetos con duraciones ISO 8601 `every` y `offset` opcional) y `timezone`. |
+| `overlap_policy` | `skip`, `buffer_one`, `buffer_all`, `cancel_other`, `terminate_other` o `allow_all`. |
+| `next_fire_at`, `last_fired_at` | Marcas de tiempo ISO 8601, o `null`. |
+| `last_outcome` | El resultado de la activación registrada más reciente, o `null` si no se registró ninguno. Contiene `outcome` (por ejemplo `scheduled`, `drained`, `backfilled`, `skipped` o `failed`), `at`, `reason`, `workflow_id` y `run_id`. |
+| `fires_count`, `failures_count`, `skipped_trigger_count`, `remaining_actions` | Contadores, o `null` si el backend no informa ese contador. |
+| `search_attributes` | Los atributos de búsqueda de la programación, o `null`. |
+| `created_at`, `updated_at` | Marcas de tiempo ISO 8601. |
+
+Una fila con `last_fired_at` y sin `last_outcome` indica que el backend informó
+la hora de activación sin su resultado.
+
+Las filas de la lista y las respuestas de detalle, `pause` y `resume` también
+incluyen `action`, `max_runs`, `jitter_seconds`, `paused_at`,
+`last_skip_reason`, `last_skipped_at`, `latest_workflow_instance_id`,
+`buffered_actions`, `memo` y `recent_actions`. Cada acción reciente tiene
+`outcome`, `fired_at`, `reason`, `workflow_id`, `run_id` y `occurrence_time`.
+`latest_instance_id` repite `latest_workflow_instance_id` para clientes
+antiguos. Un `spec` conserva, después de sus campos de cadencia, cualquier otra
+clave que el backend haya guardado.
+
+### Resultados de activación y recuperación {#trigger-and-backfill-results}
+
+`trigger` acepta un `overlap_policy` opcional. Devuelve `schedule_id`,
+`namespace`, `outcome` (`triggered`, `buffered`, `buffer_full` o `skipped`),
+`triggered`, `workflow_id`, `run_id` y `reason`. `triggered` es `true` solo
+cuando se inició un workflow. `instance_id` repite `workflow_id` para clientes
+antiguos.
+
+`backfill` requiere las marcas de tiempo ISO 8601 `from` y `to` y acepta un
+`overlap_policy` opcional. Devuelve `schedule_id`, `namespace`,
+`fires_attempted`, `started_count`, `skipped_count`, `failed_count` y `results`.
+Cada resultado tiene `fire_time`, `workflow_id`, `outcome` (`started`, `skipped`
+o `failed`) y `reason`. Para clientes antiguos, cada resultado también repite
+`schedule_id`, y `cron_time`, `instance_id` y `error` repiten `fire_time`,
+`workflow_id` y el `reason` de un resultado fallido. `backfill` rechaza con
+`422` y el motivo `invalid_time_range` un intervalo cuyo fin no es posterior a
+su inicio.
+
+Ambas rutas rechazan un `overlap_policy` desconocido con `422` y el motivo
+`invalid_overlap_policy`.
 
 ## Vistas guardadas y preferencias {#saved-views-and-preferences}
 
@@ -407,7 +481,7 @@ Waterline usa códigos HTTP habituales y detalles de error JSON:
 | --- | --- |
 | `400` | Petición malformada o carga de acción no admitida. |
 | `404` | No se encontró la instancia, ejecución, actualización, programación, vista o interfaz de preferencias en el namespace actual. |
-| `409` | La ejecución seleccionada no puede realizar la acción, a menudo por ser histórica, estar cerrada, bloqueada para reproducción o sin definición disponible. |
+| `409` | La ejecución seleccionada no puede realizar la acción, a menudo por ser histórica, estar cerrada, bloqueada para reproducción o sin definición disponible. Una petición de programación para todo el clúster también devuelve `409` cuando su `schedule_id` necesita un `namespace`. |
 | `422` | Falló la validación; la respuesta incluye errores por campo. |
 | `500` | Fallo inesperado de la aplicación. |
 

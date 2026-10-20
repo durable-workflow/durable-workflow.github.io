@@ -277,15 +277,59 @@ Waterline 计划路由是 v2 可见性和操作路由：
 
 | 方法 | 路径 | 用途 |
 | --- | --- | --- |
-| `GET` | `/waterline/api/v2/schedules` | 列出当前命名空间内可见的计划。 |
+| `GET` | `/waterline/api/v2/schedules` | 列出当前范围内可见的计划。 |
 | `GET` | `/waterline/api/v2/schedules/{scheduleId}` | 描述一个计划。 |
+| `GET` | `/waterline/api/v2/schedules/{scheduleId}/history` | 读取计划的生命周期审计事件。 |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/pause` | 暂停后续触发。 |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/resume` | 恢复已暂停的计划。 |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/trigger` | 立即触发一次。 |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/backfill` | 补触发某个时间窗口。 |
 | `DELETE` | `/waterline/api/v2/schedules/{scheduleId}` | 删除计划。 |
 
-计划响应公开操作、状态、下次触发、近期触发历史、重叠策略、备注、memo 和搜索属性，供操作人员审查。
+计划由其命名空间和 `schedule_id` 共同标识。同一个 `schedule_id` 可以存在于多个命名空间中。每个针对单个计划的路由都接受可选的 `namespace` 参数，可放在查询字符串或请求体中：
+
+- 限定于命名空间的 Waterline 只操作自己的命名空间。这包括设置了 `WATERLINE_NAMESPACE` 的嵌入式 Waterline，以及所有服务模式部署。请求其他命名空间时返回 `404`。
+- 集群范围的嵌入式 Waterline 操作请求中指定的命名空间。未提供 `namespace` 时，如果 `schedule_id` 存在于多个命名空间，则返回 `409`，原因为 `schedule_namespace_required`。此时不会做任何更改。
+
+```bash
+curl -sS -X POST \
+  "$APP_URL/waterline/api/v2/schedules/nightly-invoice-sync/pause?namespace=billing" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{"note": "Supplier maintenance"}' | jq '.status, .note'
+```
+
+### 计划行 {#schedule-rows}
+
+列表响应采用分页格式，包含 `data`、`current_page`、`last_page`、`per_page`、`total` 和 `operator_scope`。`data` 中的每一行在嵌入模式和服务模式下具有相同字段：
+
+| 字段 | 含义 |
+| --- | --- |
+| `schedule_id` | 计划 ID。调用每个针对单个计划的路由时，将它与 `namespace` 一起发送。 |
+| `id` | 与 `schedule_id` 相同的值，为旧客户端保留。 |
+| `namespace` | 计划所属的命名空间。 |
+| `workflow_type`, `workflow_class` | 计划启动的工作流。两者都可能为 `null`。 |
+| `status`, `paused` | `active`、`paused` 或 `deleted`，以及计划是否已暂停。 |
+| `note` | 操作人员备注，或 `null`。 |
+| `spec` | 触发节奏：`cron_expressions`（cron 字符串）、`intervals`（包含 ISO 8601 时长 `every` 和可选 `offset` 的对象）以及 `timezone`。 |
+| `overlap_policy` | `skip`、`buffer_one`、`buffer_all`、`cancel_other`、`terminate_other` 或 `allow_all`。 |
+| `next_fire_at`, `last_fired_at` | ISO 8601 时间戳，或 `null`。 |
+| `last_outcome` | 最近一次记录的触发结果，没有记录时为 `null`。包含 `outcome`（例如 `scheduled`、`drained`、`backfilled`、`skipped` 或 `failed`）、`at`、`reason`、`workflow_id` 和 `run_id`。 |
+| `fires_count`, `failures_count`, `skipped_trigger_count`, `remaining_actions` | 计数器。后端未报告某个计数器时，该计数器为 `null`。 |
+| `search_attributes` | 计划的搜索属性，或 `null`。 |
+| `created_at`, `updated_at` | ISO 8601 时间戳。 |
+
+带有 `last_fired_at` 但没有 `last_outcome` 的行，表示后端报告了触发时间，但没有报告其结果。
+
+列表行以及详情、`pause` 和 `resume` 响应还包含 `action`、`max_runs`、`jitter_seconds`、`paused_at`、`last_skip_reason`、`last_skipped_at`、`latest_workflow_instance_id`、`buffered_actions`、`memo` 和 `recent_actions`。`recent_actions` 中的每一项包含 `outcome`、`fired_at`、`reason`、`workflow_id`、`run_id` 和 `occurrence_time`。`latest_instance_id` 为旧客户端重复提供 `latest_workflow_instance_id`。`spec` 会在触发节奏字段之后保留后端存储的其他所有键。
+
+### 触发与补触发结果 {#trigger-and-backfill-results}
+
+`trigger` 接受可选的 `overlap_policy`。它返回 `schedule_id`、`namespace`、`outcome`（`triggered`、`buffered`、`buffer_full` 或 `skipped`）、`triggered`、`workflow_id`、`run_id` 和 `reason`。只有工作流已启动时，`triggered` 才为 `true`。`instance_id` 为旧客户端重复提供 `workflow_id`。
+
+`backfill` 要求提供 ISO 8601 时间戳 `from` 和 `to`，并接受可选的 `overlap_policy`。它返回 `schedule_id`、`namespace`、`fires_attempted`、`started_count`、`skipped_count`、`failed_count` 和 `results`。每个结果包含 `fire_time`、`workflow_id`、`outcome`（`started`、`skipped` 或 `failed`）和 `reason`。为兼容旧客户端，每个结果还会重复 `schedule_id`。`cron_time`、`instance_id` 和 `error` 分别重复 `fire_time`、`workflow_id` 以及失败结果的 `reason`。如果时间窗口的结束时间不晚于开始时间，`backfill` 会以 `422` 拒绝，原因为 `invalid_time_range`。
+
+两个路由都会以 `422` 拒绝未知的 `overlap_policy`，原因为 `invalid_overlap_policy`。
 
 ## 已保存视图与偏好 {#saved-views-and-preferences}
 
@@ -311,7 +355,7 @@ Waterline 使用常规 HTTP 状态码和 JSON 错误详情：
 | --- | --- |
 | `400` | 请求格式错误或操作负载不受支持。 |
 | `404` | 当前命名空间内未找到工作流实例、运行实例、更新、计划、已保存视图或偏好界面。 |
-| `409` | 所选运行实例无法执行该操作，通常因为它是历史实例、已关闭、重放被阻止或定义不可用。 |
+| `409` | 所选运行实例无法执行该操作，通常因为它是历史实例、已关闭、重放被阻止或定义不可用。集群范围的计划请求在其 `schedule_id` 需要 `namespace` 时也会返回 `409`。 |
 | `422` | 验证失败；响应包含字段级错误。 |
 | `500` | 意外应用失败。 |
 

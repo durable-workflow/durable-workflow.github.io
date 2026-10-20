@@ -386,16 +386,90 @@ As rotas de agendamento do Waterline são rotas v2 de visibilidade e ações ope
 
 | Método | Caminho | Finalidade |
 | --- | --- | --- |
-| `GET` | `/waterline/api/v2/schedules` | Listar agendamentos visíveis no namespace atual. |
+| `GET` | `/waterline/api/v2/schedules` | Listar agendamentos visíveis no escopo atual. |
 | `GET` | `/waterline/api/v2/schedules/{scheduleId}` | Descrever um agendamento. |
+| `GET` | `/waterline/api/v2/schedules/{scheduleId}/history` | Ler os eventos de auditoria do ciclo de vida do agendamento. |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/pause` | Pausar disparos futuros. |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/resume` | Retomar um agendamento pausado. |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/trigger` | Provocar um disparo imediato. |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/backfill` | Preencher retroativamente uma janela de tempo. |
 | `DELETE` | `/waterline/api/v2/schedules/{scheduleId}` | Excluir um agendamento. |
 
-As respostas expõem ação, status, próximo disparo, histórico recente de
-disparos, política de sobreposição, nota, memo e atributos de busca para revisão operacional.
+Um agendamento é identificado pelo namespace e pelo `schedule_id`. O mesmo
+`schedule_id` pode existir em mais de um namespace. Toda rota de um agendamento
+específico aceita um parâmetro `namespace` opcional na query string ou no corpo
+da requisição:
+
+- Um Waterline limitado a um namespace atua somente no próprio namespace. Isso
+  inclui o Waterline embutido com `WATERLINE_NAMESPACE` definido e toda
+  implantação no modo de serviço. Uma requisição para outro namespace retorna
+  `404`.
+- Um Waterline embutido para todo o cluster atua no namespace solicitado. Sem
+  `namespace`, um `schedule_id` que existe em mais de um namespace retorna `409`
+  com o motivo `schedule_namespace_required`. Nada é alterado.
+
+```bash
+curl -sS -X POST \
+  "$APP_URL/waterline/api/v2/schedules/nightly-invoice-sync/pause?namespace=billing" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{"note": "Supplier maintenance"}' | jq '.status, .note'
+```
+
+### Linhas de agendamento {#schedule-rows}
+
+A resposta da listagem é paginada com `data`, `current_page`, `last_page`,
+`per_page`, `total` e `operator_scope`. Cada linha em `data` tem os mesmos
+campos nos modos embutido e de serviço:
+
+| Campo | Significado |
+| --- | --- |
+| `schedule_id` | O ID do agendamento. Envie-o com `namespace` para toda rota de um agendamento específico. |
+| `id` | O mesmo valor de `schedule_id`, mantido para clientes mais antigos. |
+| `namespace` | O namespace do agendamento. |
+| `workflow_type`, `workflow_class` | O workflow que o agendamento inicia. Qualquer um dos dois pode ser `null`. |
+| `status`, `paused` | `active`, `paused` ou `deleted`, e se o agendamento está pausado. |
+| `note` | A nota do operador, ou `null`. |
+| `spec` | A cadência: `cron_expressions` (strings cron), `intervals` (objetos com durações ISO 8601 `every` e `offset` opcional) e `timezone`. |
+| `overlap_policy` | `skip`, `buffer_one`, `buffer_all`, `cancel_other`, `terminate_other` ou `allow_all`. |
+| `next_fire_at`, `last_fired_at` | Timestamps ISO 8601, ou `null`. |
+| `last_outcome` | O resultado do disparo registrado mais recente, ou `null` quando nenhum foi registrado. Contém `outcome` (por exemplo, `scheduled`, `drained`, `backfilled`, `skipped` ou `failed`), `at`, `reason`, `workflow_id` e `run_id`. |
+| `fires_count`, `failures_count`, `skipped_trigger_count`, `remaining_actions` | Contadores, ou `null` quando o backend não informa o contador. |
+| `search_attributes` | Os atributos de busca do agendamento, ou `null`. |
+| `created_at`, `updated_at` | Timestamps ISO 8601. |
+
+Uma linha com `last_fired_at` e sem `last_outcome` indica que o backend
+informou o horário do disparo sem o resultado.
+
+As linhas da listagem e as respostas de detalhes, `pause` e `resume` também
+incluem `action`, `max_runs`, `jitter_seconds`, `paused_at`,
+`last_skip_reason`, `last_skipped_at`, `latest_workflow_instance_id`,
+`buffered_actions`, `memo` e `recent_actions`. Cada ação recente tem
+`outcome`, `fired_at`, `reason`, `workflow_id`, `run_id` e `occurrence_time`.
+`latest_instance_id` repete `latest_workflow_instance_id` para clientes mais
+antigos. Um `spec` mantém, depois dos campos de cadência, quaisquer outras
+chaves que o backend armazenou.
+
+### Resultados de disparo e preenchimento retroativo {#trigger-and-backfill-results}
+
+`trigger` aceita um `overlap_policy` opcional. A rota retorna `schedule_id`,
+`namespace`, `outcome` (`triggered`, `buffered`, `buffer_full` ou `skipped`),
+`triggered`, `workflow_id`, `run_id` e `reason`. `triggered` é `true` somente
+quando um workflow foi iniciado. `instance_id` repete `workflow_id` para
+clientes mais antigos.
+
+`backfill` exige os timestamps ISO 8601 `from` e `to` e aceita um
+`overlap_policy` opcional. A rota retorna `schedule_id`, `namespace`,
+`fires_attempted`, `started_count`, `skipped_count`, `failed_count` e
+`results`. Cada resultado tem `fire_time`, `workflow_id`, `outcome` (`started`,
+`skipped` ou `failed`) e `reason`. Para clientes mais antigos, cada resultado
+também repete `schedule_id`, e `cron_time`, `instance_id` e `error` repetem
+`fire_time`, `workflow_id` e o `reason` de um resultado com falha. `backfill`
+recusa com `422` e o motivo `invalid_time_range` uma janela cujo fim não é
+posterior ao início.
+
+As duas rotas recusam um `overlap_policy` desconhecido com `422` e o motivo
+`invalid_overlap_policy`.
 
 ## Visualizações salvas e preferências {#saved-views-and-preferences}
 
@@ -426,7 +500,7 @@ O Waterline usa códigos de status HTTP comuns e detalhes de erro JSON:
 | --- | --- |
 | `400` | Requisição malformada ou payload de ação não suportado. |
 | `404` | Instância de workflow, execução, atualização, agendamento, visualização salva ou área de preferências não encontrada no namespace atual. |
-| `409` | A execução selecionada não pode realizar a ação, muitas vezes por ser histórica, encerrada, bloqueada para replay ou com definição indisponível. |
+| `409` | A execução selecionada não pode realizar a ação, muitas vezes por ser histórica, encerrada, bloqueada para replay ou com definição indisponível. Uma requisição de agendamento para todo o cluster também retorna `409` quando seu `schedule_id` precisa de um `namespace`. |
 | `422` | Falha de validação; a resposta inclui erros por campo. |
 | `500` | Falha inesperada da aplicação. |
 
