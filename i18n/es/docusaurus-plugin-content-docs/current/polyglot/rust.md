@@ -364,6 +364,12 @@ fn round_trip() -> Result<()> {
 
 `start_workflow` y `start_workflow_with_options` aplican automáticamente este sobre a sus entradas serializables. Utiliza los auxiliares públicos solo si un programa necesita intercambiar directamente un sobre.
 
-Las actividades de larga duración deben enviar latidos e inspeccionar `should_stop()`. Al cancelar, libera archivos temporales, conexiones y otros recursos locales del proceso y devuelve pronto. El estado duradero rechaza una finalización tardía, que no puede convertir una ejecución cancelada o terminada en éxito; los workers gestionados siguen sondeando tras ese rechazo definitivo y después de reiniciar.
+## Heartbeats de actividad {#activity-heartbeats}
+
+Para actividades remotas, `ActivityContext::heartbeat(...).await` devuelve `Result<ActivityHeartbeatResponse>`. Propague los errores e inspeccione `should_stop()` en una respuesta correcta. Los fallos de peticiones directas incluyen `Error::Transport` y rechazos HTTP tipados como `Error::ActivityTaskRejected`. Una reclamación con supervisión cooperativa puede devolver `Error::ActivityExecutionAbandoned` cuando fallan los heartbeats o las comprobaciones de titularidad. Detenga el trabajo externo al perder autoridad. No suponga que un callback siempre llega al código de limpieza de la aplicación.
+
+La primera ventana de heartbeat empieza al reclamar la actividad en el entorno de ejecución, antes de entregar la tarea. Un heartbeat registrado usa su marca de tiempo del entorno, no la recepción del llamador. Elija una cadencia con margen suficiente dentro del tiempo configurado, limite cada paso de trabajo o E/S y reserve tiempo para pausas, latencia y posibles reintentos de transporte. Siga las [recomendaciones de cadencia](../features/heartbeats.md#heartbeat-cadence-and-receipts). No se promete una programación automática de heartbeats de progreso ni de agrupación.
+
+Al cancelar, libere recursos locales del proceso cuando la ejecución aún lo permita y vuelva con prontitud. El estado duradero rechaza una finalización tardía y no permite convertir una ejecución cancelada o terminada en éxito. Los workers gestionados siguen sondeando tras ese rechazo definitivo y después de reiniciar. Un heartbeat correcto no confirma efectos externos ni ofrece un punto de control reanudable a un intento de reemplazo.
 
 Para imágenes del servidor, autenticación y topología de producción, continúa en la [guía de configuración del servidor](/docs/polyglot/server).

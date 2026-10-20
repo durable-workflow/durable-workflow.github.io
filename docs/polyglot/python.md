@@ -972,6 +972,14 @@ async def long_running_task(items: list) -> dict:
     return {"processed": len(items)}
 ```
 
+### Heartbeat requests {#activity-heartbeat-requests}
+
+For remote activities, call `await ctx.heartbeat(...)` during bounded work, well before `heartbeat_timeout`. Its first window starts at runtime claim, before Python receives the task. Each recorded heartbeat uses the runtime's recording time, not the time its response reaches Python. Pauses, request latency and transport retries consume the budget. Follow the [cadence guidance](../features/heartbeats.md#heartbeat-cadence-and-receipts).
+
+The direct `Client.heartbeat_activity_task()` call uses the configured `TransportRetryPolicy`. After that policy, transport errors can propagate as `httpx.TransportError`, and HTTP refusals become mapped SDK exceptions such as `ServerError`. This is HTTP retry behavior, not another activity attempt or more heartbeat time. `ActivityContext.heartbeat()` can raise `ActivityCancelled` when the worker tells the activity to stop. With the normal cooperatively supervised worker, failed heartbeat or ownership checks can stop or abandon the callback. Do not assume every failure returns to a catch block or that cleanup code always runs.
+
+Do not suppress heartbeat/ownership failures and continue external work or report success. Progress is not an external commit or a resumable-checkpoint receipt. Keep external effects idempotent.
+
 ### Non-Retryable Errors
 
 Raise `NonRetryableError` to fail the activity without retries:

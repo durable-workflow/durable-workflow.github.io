@@ -40,6 +40,18 @@ Dentro da atividade, `activityId()`, `attemptId()` e `attemptCount()` expõem a 
 
 Workers poliglotas podem enviar heartbeats pela ponte HTTP de workers sem instanciar a classe de atividade PHP. Consulte os endpoints no [protocolo de workers](/docs/polyglot/worker-protocol).
 
+## Cadência e confirmações {#heartbeat-cadence-and-receipts}
+
+Para uma atividade em fila, o primeiro prazo de heartbeat começa quando o runtime a reivindica, antes da entrega da tarefa e da execução do código do usuário. Um heartbeat registrado define o próximo prazo como seu horário no runtime mais `heartbeatTimeout`. Enviar a requisição ou receber sua resposta não inicia outra janela completa. Consulte [Tempo limite de heartbeat](./timeouts.md#heartbeat-timeout).
+
+Escolha uma cadência com bastante margem dentro dessa janela e limite o trabalho entre chamadas. Com um tempo limite de 15 segundos, um alvo de cerca de cinco segundos pode ser um ponto de partida somente se a entrega, cada lote ou chamada de E/S, as pausas de execução, a latência da rede e as novas tentativas de transporte couberem no orçamento restante. Meça esses atrasos e deixe margem. É uma orientação de planejamento, não um intervalo seguro garantido. Uma tentativa expirada ou substituída não recupera seu lease enviando um heartbeat atrasado.
+
+Não há agendamento automático de heartbeats de progresso nem garantia de agrupamento pelo SDK. Heartbeats de registro do worker e consultas de posse não publicam progresso da atividade. Cada heartbeat de progresso aceito acrescenta histórico durável. Evite informar cada operação mínima.
+
+No modo embarcado, `Activity::heartbeat()` retorna `void`. Progresso inválido e falhas de armazenamento podem lançar exceções. Um retorno normal não é um objeto de confirmação: uma tentativa encerrada, expirada ou substituída pode retornar sem registrar outro heartbeat. No modo de serviço, o tratamento de erros difere entre chamadas diretas ao cliente e workers supervisionados. Consulte os guias de [PHP](../polyglot/php.md#activity-heartbeats), [Python](../polyglot/python.md#activity-heartbeat-requests) e [Rust](../polyglot/rust.md#activity-heartbeats).
+
+O progresso de heartbeat não confirma atomicamente um lote externo nem impede efeitos de um detentor obsoleto. Um checkpoint de aplicação seguro para novas tentativas precisa de seu próprio commit durável, uma chave lógica de trabalho estável e idempotência ou controle externo de posse. O acesso de uma tentativa substituta a checkpoints confirmados é acompanhado separadamente no [recurso de checkpoints](https://github.com/durable-workflow/.github/issues/218).
+
 ## Instantâneos de progresso {#progress-snapshots}
 
 Tanto `Activity::heartbeat()` quanto `ActivityTaskBridge::heartbeat()` aceitam um instantâneo de progresso opcional com limites definidos:

@@ -88,6 +88,14 @@ SDK 所有のクイックスタートは、空の Composer プロジェクトを
 
 リモート Worker は `registerWorkflow`、`registerActivity`、`registerQuery`、`registerUpdate` でワークフロー、アクティビティ、クエリ、更新のハンドラーを登録します。完全なパラメーターと戻り値の型は、生成された [PHP SDK API リファレンス](https://php.durable-workflow.com/api/)を使ってください。
 
+## アクティビティのハートビート {#activity-heartbeats}
+
+リモートアクティビティでは、上限を設けた処理の途中で、設定されたハートビートのタイムアウトより十分前に `ActivityContext::heartbeat($details)` を呼び出します。最初の期間はランタイムのタスク取得から始まり、PHP がタスクを受信した時点からではありません。リクエストの遅延、中断、通信の再試行も期間を消費します。[送信間隔の指針](../features/heartbeats.md#heartbeat-cadence-and-receipts)に従ってください。
+
+このメソッドは `void` を返します。直接ハンドラーの経路では、停止を求める応答は `ActivityCancelled` を発生させます。`Client::heartbeatActivityTask()` の HTTP や通信の障害は `ServerException` として現れます。協調的な監督下の Worker は、ハートビートや所有権の確認に失敗すると、アクティビティコードに通常の応答を渡さずにコールバックを停止または放棄する場合があります。後始末が必ず実行されると考えたり、権限喪失のエラーを抑制したり、権限を失ってから成功を送信したりしないでください。
+
+呼び出しから戻っても外部処理をコミットしたり、再開可能なチェックポイントを取得したりするわけではありません。外部作用は冪等にし、通信の再試行を新しいハートビート期間として扱わないでください。
+
 ## リモート PHP Worker の実行 {#run-a-remote-php-worker}
 
 ワークフローハンドラーは、管理された Fiber 内で直線的なコードとして実行する通常の callable です。`WorkflowContext::activity()` などの操作を直接呼びます。SDK は永続的な判断で Fiber を中断し、リプレイでは外部アクティビティを繰り返さず記録済みの結果を返します。ワークフローを Generator として宣言したり、`WorkflowContext` コマンドを yield したりしないでください。Generator の結果は拒否されます。管理された Worker はワークフロー型名とアクティビティ型名を登録し、公開 Worker プロトコルをポーリングし、ハートビートし、タスクを完了または失敗させ、`pcntl` が利用可能なら正常終了を処理します。

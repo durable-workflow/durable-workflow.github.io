@@ -40,6 +40,18 @@ Dans l’activité, `activityId()`, `attemptId()` et `attemptCount()` exposent l
 
 Les workers polyglottes peuvent envoyer des battements via la passerelle HTTP des workers sans instancier la classe PHP d’activité. Consultez le [protocole des workers](/docs/polyglot/worker-protocol) pour les points de terminaison.
 
+## Fréquence et confirmations {#heartbeat-cadence-and-receipts}
+
+Pour une activité mise en file d’attente, la première échéance de heartbeat commence lorsque le moteur la réclame, avant la livraison de la tâche et le code applicatif. Un heartbeat enregistré fixe la prochaine échéance à son horodatage du moteur plus `heartbeatTimeout`. Ni l’envoi de la requête ni la réception de sa réponse n’ouvre une nouvelle fenêtre complète. Consultez [Délai de heartbeat](./timeouts.md#heartbeat-timeout).
+
+Choisissez une fréquence avec une marge importante dans cette fenêtre et bornez le travail entre les appels. Avec un délai de 15 secondes, viser environ cinq secondes peut servir de point de départ uniquement si la livraison, chaque lot ou appel d’E/S, les pauses d’exécution, la latence réseau et les nouvelles tentatives de transport tiennent dans le budget restant. Mesurez ces délais et gardez une marge. C’est une aide à la planification, pas un intervalle garanti sûr. Une tentative expirée ou remplacée ne récupère pas son bail en envoyant un heartbeat tardif.
+
+Il n’existe aucune programmation automatique des heartbeats de progression ni garantie de regroupement par le SDK. Les heartbeats d’enregistrement des workers et les lectures de possession ne publient pas de progression d’activité. Chaque heartbeat de progression accepté ajoute de l’historique durable. Évitez donc d’enregistrer chaque opération minuscule.
+
+En mode embarqué, `Activity::heartbeat()` renvoie `void`. Une progression invalide ou une défaillance de stockage peut lever une exception. Un retour normal n’est pas un objet de confirmation : une tentative fermée, expirée ou remplacée peut retourner sans enregistrer un nouveau heartbeat. En mode service, les erreurs diffèrent entre les appels directs au client et les workers supervisés. Consultez les guides [PHP](../polyglot/php.md#activity-heartbeats), [Python](../polyglot/python.md#activity-heartbeat-requests) et [Rust](../polyglot/rust.md#activity-heartbeats).
+
+La progression d’un heartbeat ne valide pas atomiquement un lot externe et ne protège pas ses effets externes contre un ancien détenteur. Un point de reprise applicatif sûr face aux nouvelles tentatives exige sa propre validation durable, une clé logique de travail stable et de l’idempotence ou un contrôle externe de possession. L’accès d’une tentative de remplacement à un point de reprise confirmé est suivi séparément dans [la fonction de points de reprise](https://github.com/durable-workflow/.github/issues/218).
+
 ## Instantanés de progression {#progress-snapshots}
 
 `Activity::heartbeat()` et `ActivityTaskBridge::heartbeat()` acceptent tous deux un instantané facultatif et borné de progression :

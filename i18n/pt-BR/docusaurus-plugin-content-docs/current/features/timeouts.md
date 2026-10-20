@@ -181,7 +181,7 @@ $result = activity(
         scheduleToStartTimeout: 30,     // must be claimed within 30s
         startToCloseTimeout: 300,       // each attempt has 5 minutes
         scheduleToCloseTimeout: 600,    // total 10 minutes across all retries
-        heartbeatTimeout: 15,           // must heartbeat every 15 seconds
+        heartbeatTimeout: 15,           // heartbeat well before this 15-second window expires
         maxAttempts: 3,
     ),
     $input,
@@ -202,7 +202,7 @@ O prazo é calculado uma vez no agendamento e nunca reinicia. Ao vencer, a ativi
 
 ### Tempo limite de heartbeat {#heartbeat-timeout}
 
-O prazo inicial é calculado quando um worker reivindica a tarefa de atividade. Cada chamada bem-sucedida a `$this->heartbeat()` estende o prazo pelo intervalo configurado. Se a atividade não chamar `heartbeat()` antes do vencimento, o motor considera que o worker não responde. Se restarem tentativas, uma nova é agendada com o prazo schedule-to-start reiniciado, se configurado. Caso contrário, um tempo limite terminal é registrado.
+Para uma atividade em fila, o primeiro prazo começa quando o runtime a reivindica, antes da entrega da tarefa e da execução do código do usuário. Cada heartbeat aceito define o prazo como seu horário registrado pelo runtime mais o tempo limite configurado. Ele não soma tempo ao prazo anterior nem abre uma nova janela quando o chamador recebe a resposta. Reserve margem para entrega, trabalho limitado, pausas de execução, latência das requisições e novas tentativas de transporte. Envie heartbeats bem antes de a janela expirar. Uma tentativa expirada ou substituída não recupera autoridade ao enviar um heartbeat atrasado. Se restarem tentativas, uma nova é agendada com o prazo schedule-to-start reiniciado, se configurado. Caso contrário, um tempo limite terminal é registrado.
 
 ```php
 use Workflow\V2\Activity;
