@@ -7,10 +7,10 @@ tags:
   - workflows
 keywords:
   - durable workflow
-  - polyglot workflow engine
-  - AI agent workflow engine
-  - durable orchestration
-  - v2 workflow concepts
+  - багатомовний рушій workflow
+  - рушій workflow для AI-агентів
+  - стійка оркестрація
+  - поняття workflow v2
 ---
 
 import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseLink';
