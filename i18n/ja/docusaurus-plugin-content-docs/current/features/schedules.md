@@ -417,7 +417,7 @@ $schedule = ScheduleManager::create(
 - **Waterline HTTP**: `GET /waterline/api/v2/schedules/{scheduleId}/history` は `limit`（1〜500、既定100）と `after_sequence` カーソルで返します。Waterline の名前空間に限定し、自テナントの行だけを表示します。
 - **Waterline UI**: 登録一覧の **History** でモーダルを開き、シーケンス、時刻、種類、関連インスタンス・実行 ID、整形済みペイロードを表示します。**Load more** は100件ずつ進みます。
 - **独立 Server HTTP**: `GET /api/schedules/{scheduleId}/history` も同じページングと `X-Namespace` を使います。削除した予定の再構築に必要なため、論理削除後も参照可能です。
-- **CLI**: `dw schedule:history <schedule-id>` は `Seq`、`Event`、`Recorded At`、`Workflow Refs` の表と、`has_more` 時の **More events available** を表示します。`--limit` と `--after-sequence` は Server に転送し、`--all` は残りすべてを取得、`--output=json` / `--output=jsonl` は構造化出力です。jsonl はカーソル外枠を省き1行1イベントです。
+- **CLI**: `dw schedule:history <schedule-id>` は `Seq`、`Event`、`Recorded At`、`Workflow Refs` の表と、`has_more` 時の **More events available** を表示します。`--limit` と `--after-sequence` は Server に転送し、`--all` は残りすべてを取得、`--output=json` / `--output=jsonl` は構造化出力です。`jsonl` はカーソル外枠を省き1行1イベントです。
 - **Python SDK**: `Client.get_schedule_history(schedule_id, *, limit=None, after_sequence=None)` は `ScheduleHistoryPage`、`Client.iter_schedule_history(schedule_id, *, limit=None, after_sequence=None)` は同じ引数で全ページをたどる `AsyncIterator[ScheduleHistoryEvent]` です。`ScheduleHandle` にも `.history(...)`、`.iter_history(...)` があります。`limit` は Server で1〜500（既定100）に制限され、`after_sequence` は前ページの `next_cursor` から得る非負カーソルです。
 
 すべて同じ `workflow_schedule_history_events` を読みます。[ペイロード契約の安定性](#payload-contract-stability)は利用経路を問いません。

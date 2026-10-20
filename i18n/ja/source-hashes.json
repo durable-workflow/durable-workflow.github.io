@@ -85,5 +85,7 @@
   "features/external-payload-storage.md": "1741bcfc944c9d40f1101888b9f172d13e588f54f6cdcb6f84d00df10c878356",
   "polyglot/cloud-control-plane.md": "d08b280c6d3b3dc209e3c3773e275066fa4a80accb2dcd550ad7a3f52e236b78",
   "polyglot/cli.mdx": "024a3f73e1c700a7fa142ec64a7edde03303f12507f4eb4a9161e0e944f7431b",
-  "deployment.md": "2eadca4ea3703d0b09bb7e885eaafe84dc2f7eb7c1a9904dc5649f086f629258"
+  "deployment.md": "2eadca4ea3703d0b09bb7e885eaafe84dc2f7eb7c1a9904dc5649f086f629258",
+  "constraints/structural-limits.md": "dec64eb7c8261b64a687938072e73dadf519511b132fc7b6542c96f44a8d3037",
+  "features/schedules.md": "73dd4d49bfb61d5ecafc0fb799136fc170d8cd33781ff00f40893efe4e0de0d6"
 }
