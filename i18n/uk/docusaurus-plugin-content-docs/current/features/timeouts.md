@@ -198,7 +198,7 @@ $result = activity(
         scheduleToStartTimeout: 30,     // must be claimed within 30s
         startToCloseTimeout: 300,       // each attempt has 5 minutes
         scheduleToCloseTimeout: 600,    // total 10 minutes across all retries
-        heartbeatTimeout: 15,           // must heartbeat every 15 seconds
+        heartbeatTimeout: 15,           // heartbeat well before this 15-second window expires
         maxAttempts: 3,
     ),
     $input,
@@ -219,7 +219,7 @@ $result = activity(
 
 ### Тайм-аут heartbeat {#heartbeat-timeout}
 
-Початковий кінцевий термін обчислюється, коли worker отримує завдання activity. Кожен успішний виклик `$this->heartbeat()` продовжує термін на налаштований інтервал. Якщо activity не викличе `heartbeat()` до спливу терміну, рушій вважає, що worker не відповідає. За наявності повторних спроб планується нова спроба з новим кінцевим терміном schedule-to-start, якщо його налаштовано. Інакше записується термінальний тайм-аут.
+Перший кінцевий термін починається, коли runtime отримує завдання activity, ще до доставлення завдання та виконання користувацького коду. Кожен прийнятий heartbeat встановлює термін як свій записаний runtime час плюс налаштований тайм-аут. Він не додає часу до попереднього терміну й не відкриває нового вікна, коли клієнт отримує відповідь. Залишайте запас для доставлення, обмеженого обсягу роботи, пауз виконання, затримки запитів і транспортних повторів. Надсилайте heartbeat задовго до завершення вікна. Прострочена або замінена спроба не відновлює повноваження пізнім heartbeat. Якщо повторні спроби залишилися, планується нова з поновленим терміном schedule-to-start, якщо його налаштовано. Інакше записується термінальний тайм-аут.
 
 ```php
 use Workflow\V2\Activity;

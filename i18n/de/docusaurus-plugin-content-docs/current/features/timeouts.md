@@ -181,7 +181,7 @@ $result = activity(
         scheduleToStartTimeout: 30,     // must be claimed within 30s
         startToCloseTimeout: 300,       // each attempt has 5 minutes
         scheduleToCloseTimeout: 600,    // total 10 minutes across all retries
-        heartbeatTimeout: 15,           // must heartbeat every 15 seconds
+        heartbeatTimeout: 15,           // heartbeat well before this 15-second window expires
         maxAttempts: 3,
     ),
     $input,
@@ -202,7 +202,7 @@ Die Frist wird bei der Planung einmal berechnet und nie zurückgesetzt. Bei ihre
 
 ### Heartbeat-Zeitlimit {#heartbeat-timeout}
 
-Die erste Frist wird bei Beanspruchung der Aktivitätsaufgabe berechnet. Jeder erfolgreiche Aufruf von `$this->heartbeat()` verlängert sie um das konfigurierte Intervall. Ohne `heartbeat()` vor Fristablauf nimmt die Engine an, dass der Worker nicht reagiert. Sind weitere Versuche möglich, wird ein neuer Versuch mit erneuerter Schedule-to-start-Frist, sofern konfiguriert, geplant; andernfalls wird eine terminale Zeitüberschreitung gespeichert.
+Die erste Frist beginnt, wenn die Laufzeit die Aktivität beansprucht, also vor der Aufgabenauslieferung und dem Anwendungscode. Jeder angenommene Heartbeat setzt die Frist auf seinen aufgezeichneten Laufzeitzeitpunkt plus das konfigurierte Zeitlimit. Er addiert keine Zeit zur vorherigen Frist und eröffnet beim Empfang der Antwort kein neues Zeitfenster. Planen Sie Spielraum für Auslieferung, begrenzte Arbeit, Ausführungspausen, Anfragelatenz und Transportwiederholungen ein. Senden Sie Heartbeats deutlich vor Ablauf des Zeitfensters. Ein abgelaufener oder ersetzter Versuch erhält durch einen späten Heartbeat keine Befugnis zurück. Sind weitere Versuche möglich, wird ein neuer Versuch mit erneuerter Schedule-to-start-Frist geplant, sofern sie konfiguriert ist. Andernfalls wird eine terminale Zeitüberschreitung gespeichert.
 
 ```php
 use Workflow\V2\Activity;

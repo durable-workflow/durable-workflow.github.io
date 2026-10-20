@@ -181,7 +181,7 @@ $result = activity(
         scheduleToStartTimeout: 30,     // must be claimed within 30s
         startToCloseTimeout: 300,       // each attempt has 5 minutes
         scheduleToCloseTimeout: 600,    // total 10 minutes across all retries
-        heartbeatTimeout: 15,           // must heartbeat every 15 seconds
+        heartbeatTimeout: 15,           // heartbeat well before this 15-second window expires
         maxAttempts: 3,
     ),
     $input,
@@ -202,7 +202,7 @@ El plazo se calcula una vez al programar y nunca se reinicia. Al vencer, la acti
 
 ### Tiempo de espera de heartbeat {#heartbeat-timeout}
 
-El plazo inicial se calcula cuando un worker reclama la tarea de actividad. Cada llamada correcta a `$this->heartbeat()` extiende el plazo por el intervalo configurado. Si la actividad no llama a `heartbeat()` antes del vencimiento, el motor considera que el worker no responde. Si quedan intentos, se programa uno nuevo con un plazo schedule-to-start restablecido, si está configurado. En caso contrario, se registra un tiempo de espera terminal.
+El primer plazo empieza cuando el entorno de ejecución reclama la actividad, antes de entregar la tarea y ejecutar código de usuario. Cada heartbeat aceptado fija el plazo en su marca de tiempo registrada por el entorno más el tiempo de espera configurado. No añade tiempo al plazo anterior ni abre una ventana nueva cuando el cliente recibe la respuesta. Deje margen para la entrega, el trabajo acotado, las pausas de ejecución, la latencia de las peticiones y los reintentos de transporte. Envíe los heartbeats con suficiente antelación al vencimiento. Un intento vencido o reemplazado no recupera autoridad al enviar un heartbeat tardío. Si quedan intentos, se programa uno nuevo con el plazo schedule-to-start restablecido, si está configurado. En caso contrario, se registra un tiempo de espera terminal.
 
 ```php
 use Workflow\V2\Activity;

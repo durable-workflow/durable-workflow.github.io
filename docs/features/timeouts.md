@@ -197,7 +197,7 @@ $result = activity(
         scheduleToStartTimeout: 30,     // must be claimed within 30s
         startToCloseTimeout: 300,       // each attempt has 5 minutes
         scheduleToCloseTimeout: 600,    // total 10 minutes across all retries
-        heartbeatTimeout: 15,           // must heartbeat every 15 seconds
+        heartbeatTimeout: 15,           // heartbeat well before this 15-second window expires
         maxAttempts: 3,
     ),
     $input,
@@ -218,7 +218,7 @@ The deadline is computed once at scheduling time and never resets. When it expir
 
 ### Heartbeat timeout
 
-The initial deadline is computed when a worker claims the activity task. Each successful `$this->heartbeat()` call extends the deadline by the configured interval. If the activity does not call `heartbeat()` before the deadline expires, the engine assumes the worker is unresponsive. If retry attempts remain, a new attempt is scheduled with a reset schedule-to-start deadline (if configured); otherwise a terminal timeout is recorded.
+The first deadline starts when the runtime claims the activity, before task delivery and user code. Each accepted heartbeat sets the deadline to its recorded runtime timestamp plus the configured timeout. It does not add time to the previous deadline or start a fresh window when the caller receives the response. Leave room for delivery, bounded work, scheduling pauses, request latency and transport retries. Send heartbeats well before the window expires. An expired or replaced attempt cannot regain authority by sending a late heartbeat. If retry attempts remain, a new attempt is scheduled with a reset schedule-to-start deadline (if configured). Otherwise a terminal timeout is recorded.
 
 ```php
 use Workflow\V2\Activity;
