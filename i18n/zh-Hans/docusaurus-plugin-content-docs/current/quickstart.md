@@ -93,7 +93,7 @@ curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
 
 API 仅绑定到本机的回环地址。`dev-token` 只用于这个本地示例。如需远程访问，请使用配置了独立凭据、TLS 和网络访问控制的 [Compose 部署](/docs/polyglot/server/#published-image--compose)。
 
-第二个容器运行 Server 的基础设施队列，即使 SDK Worker 已停止，也会推进持久化计时器。它使用名为 `default` 的 Laravel 队列，与下面的 SDK 任务队列不同。请保持两个容器运行。计划调度和生产维护由 Compose 栈中的其他角色负责。
+第二个容器运行 Server 的基础设施队列，即使 SDK Worker 已停止，也会推进持久定时器。它使用名为 `default` 的 Laravel 队列，与下面的 SDK 任务队列不同。请保持两个容器运行。计划调度和生产维护由 Compose 栈中的其他角色负责。
 
 **预期结果：** 就绪请求成功，集群信息标识出本地独立 Server。完成一种语言的入门路径前，请保持 Server 运行。
 
@@ -104,7 +104,7 @@ API 仅绑定到本机的回环地址。`dev-token` 只用于这个本地示例�
 <Tabs groupId="quickstart-language" className="quickstart-language-tabs">
 <TabItem value="php" label="PHP" default>
 
-要求：PHP 8.1 或更高版本，以及 Composer。这里使用不依赖框架的 `durable-workflow/sdk` 包。
+要求：PHP 8.1 或更高版本，以及 Composer。这里使用不依赖框架的 `durable-workflow/sdk` 包，而非 Laravel 嵌入式引擎。
 
 1. **安装 SDK。**
 

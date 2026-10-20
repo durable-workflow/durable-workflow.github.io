@@ -104,7 +104,7 @@ class MyNonRetryableActivity extends Activity
 
 后台任务 watchdog 也会扫描截止时间已过、没有开放工作流任务的非终态运行，例如正在等待活动或定时器的运行。找到后，它会创建工作流任务，让执行器在下一轮检测并执行超时关闭。
 
-Waterline 在异常表的专用 **Category** 列和时间线失败详情中显示 `failure_category`。历史导出的 `failures[*]` 数组也包含该字段。最终 v2 在记录失败时写入此分类，无法分类的已导入 v1 行仍作为未分类诊断可见。
+Waterline 在异常表的专用**类别（Category）**列和时间线失败详情中显示 `failure_category`。历史导出的 `failures[*]` 数组也包含该字段。最终 v2 在记录失败时写入此分类，无法分类的已导入 v1 行仍作为未分类诊断可见。
 
 ## 活动重试 {#activity-retries}
 
@@ -154,7 +154,7 @@ class ChargeCard extends Activity
 
 ### 不可重试失败标记 {#non-retryable-failure-markers}
 
-活动或工作流抛出实现 `Workflow\Exceptions\NonRetryableExceptionContract` 的异常时，机制在 `WorkflowFailure` 行和类型化历史事件载荷（`ActivityFailed`、`WorkflowFailed`、`UpdateCompleted`）中记录 `non_retryable = true`。这个持久标记告诉运维人员、外部 Worker 和工具：失败是永久性的，重复相同操作不会成功。
+活动或工作流抛出实现 `Workflow\Exceptions\NonRetryableExceptionContract` 的异常时，引擎在 `WorkflowFailure` 行和类型化历史事件载荷（`ActivityFailed`、`WorkflowFailed`、`UpdateCompleted`）中记录 `non_retryable = true`。这个持久标记告诉运维人员、外部 Worker 和工具：失败是永久性的，重复相同操作不会成功。
 
 标记贯穿所有可见性接口：
 
