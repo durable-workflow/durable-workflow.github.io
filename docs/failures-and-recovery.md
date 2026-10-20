@@ -27,7 +27,9 @@ durable outcomes.
 
 ## Handling Exceptions
 
-When an activity throws an exception, the workflow won't immediately be informed. Instead, it waits until the number of `$tries` has been exhausted. The system will keep retrying the activity based on its retry policy. If you want the exception to be immediately sent to the workflow upon a failure, you can set the number of `$tries` to 1.
+`Workflow\V2\Activity` defaults to `$tries = 1`: one attempt, with no automatic retry after an exception. The first activity failure is sent back to the workflow. Workflow code can catch it, as below; if the exception is not handled, the run fails and becomes terminal.
+
+Retries are opt-in. Set `$tries` above `1` to allow more attempts, or `0` for unlimited attempts, and choose a `backoff()` policy. A retryable failure is delivered to workflow code only after the configured attempt or timeout budget is exhausted. A non-retryable failure bypasses the remaining retries.
 
 ```php
 use Exception;
@@ -81,17 +83,23 @@ class MyNonRetryableActivity extends Activity
 
 ## Recovery Process
 
-The general process to fix a failing activity is:
+First inspect the selected run's durable status and activity retry policy. With the default single attempt, an uncaught activity failure has already made the run terminal. Deploying a fix or calling `repair()` does not reopen that failed run.
+
+Fixing code while the original run waits is possible only while the activity still has an eligible retry. Configure `$tries` above `1`, or `0` for unlimited attempts, with `backoff()` before the activity is scheduled. Optionally set `ActivityOptions::$scheduleToCloseTimeout` to bound the total activity duration across retries; workflow deadlines still apply. See [Retries](./configuration/options.md#retries), [Backoff](./configuration/options.md#backoff), and [ActivityOptions](./configuration/options.md#activityoptions). The retry policy is snapshotted when the activity is scheduled, so a later deployment does not extend an existing activity's attempt or timeout budget.
+
+For a run that is still waiting on a retryable activity:
 
 1. Check the logs for the activity that is failing and look for any errors or exceptions that are being thrown.
 2. Identify the source of the error and fix it in the code.
 3. Deploy the fix to the server where the queue is running.
 4. Restart or roll the relevant workers so they pick up the new code and can safely reclaim work.
-5. Wait for the activity to retry or for repair/redelivery to hand the durable task to a healthy worker.
+5. Let the next eligible retry run on a healthy worker. Repair/redelivery can recover lost task transport; it does not grant another business retry after the activity or run has closed.
 6. Verify the durable outcome in Waterline, history export, or the server API instead of assuming that one worker log line is the authority.
-7. If the activity continues to fail, repeat the process until the issue is resolved.
+7. If the activity continues to fail, check the remaining attempt and time budgets before repeating the process.
 
-This allows you to keep the workflow in a running status even while an activity is failing. After you fix the failing activity, the workflow will finish in a completed status. A workflow with a failed status means that all activity `$tries` have been exhausted and the exception wasn't handled.
+A run with an eligible activity retry remains waiting and can continue after the corrected code succeeds, provided its original budgets have not expired. This does not guarantee that every failing workflow can be fixed in place: an unhandled final activity failure, a workflow-code failure, a structural limit, or a workflow timeout can make the run terminal.
+
+For a terminal failed run, preserve its history and reconcile any external side effects before deciding whether the application should start a new workflow. Use application idempotency for repeated business operations. There is no automatic workflow-level retry or terminal-run reopening; see [Workflow-Level Retry](#workflow-level-retry).
 
 ## Workflow Timeout Enforcement
 
@@ -132,6 +140,19 @@ class ChargeCard extends Activity
     }
 }
 ```
+
+From workflow code, bound the total activity time, including queue waits and backoff:
+
+```php
+use Workflow\V2\Support\ActivityOptions;
+use function Workflow\V2\activity;
+
+$result = activity(ChargeCard::class, new ActivityOptions(
+    scheduleToCloseTimeout: 120,
+));
+```
+
+Together these settings permit at most three attempts, with backoffs of 5 and 30 seconds, under the original 120-second schedule-to-close deadline. An earlier workflow deadline still applies. Enable retries only for operations that can safely be repeated, using idempotency guards for external effects.
 
 When a retryable activity throws before `$tries` is exhausted, the engine closes the current `activity_attempts` row as runtime state, returns the `activity_executions` row to `pending`, records a typed `ActivityRetryScheduled` history event for the failed try, and creates a new durable activity task with `available_at` set from the `backoff()` policy. The workflow stays waiting on that same activity execution and is not resumed with the exception until the final retryable attempt fails.
 
