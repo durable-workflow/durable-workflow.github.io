@@ -27,10 +27,9 @@ duráveis.
 
 ## Tratamento de exceções {#handling-exceptions}
 
-Quando uma atividade lança uma exceção, o workflow aguarda o esgotamento das
-tentativas definidas em `$tries`. O sistema continua tentando executar a
-atividade de acordo com sua política. Para entregar a exceção ao workflow
-imediatamente após a primeira falha, defina `$tries` como 1.
+`Workflow\V2\Activity` usa `$tries = 1` por padrão: uma tentativa, sem repetição automática após uma exceção. A primeira falha da atividade é devolvida ao workflow. O código pode capturá-la, como no exemplo; se não tratar a exceção, a execução falha e se torna terminal.
+
+Novas tentativas precisam ser configuradas explicitamente. Defina `$tries` acima de `1` para permitir mais tentativas, ou como `0` para tentativas ilimitadas, e escolha uma política de `backoff()`. Uma falha que permite repetição só é entregue ao código do workflow quando o orçamento configurado de tentativas ou de tempo se esgota. Uma falha não repetível ignora as tentativas restantes.
 
 ```php
 use Exception;
@@ -86,24 +85,23 @@ class MyNonRetryableActivity extends Activity
 
 ## Processo de recuperação {#recovery-process}
 
-Para corrigir uma atividade que está falhando:
+Primeiro, consulte o estado durável da execução selecionada e a política de novas tentativas da atividade. Com a tentativa única padrão, uma falha de atividade não tratada já tornou a execução terminal. Implantar uma correção ou chamar `repair()` não reabre essa execução com falha.
+
+Corrigir o código enquanto a execução original aguarda só é possível se a atividade ainda tiver uma tentativa válida disponível. Configure `$tries` acima de `1`, ou como `0` para tentativas ilimitadas, com `backoff()` antes de agendar a atividade. Opcionalmente, defina `ActivityOptions::$scheduleToCloseTimeout` para limitar a duração total da atividade entre todas as tentativas; os prazos do workflow continuam valendo. Consulte [Novas tentativas](./configuration/options.md#retries), [Intervalo entre tentativas](./configuration/options.md#backoff) e [ActivityOptions](./configuration/options.md#activityoptions). A política é armazenada ao agendar a atividade; uma implantação posterior não amplia seus orçamentos de tentativas ou de tempo.
+
+Para uma execução que ainda aguarda uma atividade que permite novas tentativas:
 
 1. Consulte seus logs e identifique os erros ou exceções.
 2. Encontre a causa e corrija o código.
-3. Implante a correção no servidor que executa a fila.
-4. Reinicie ou substitua gradualmente os workers relevantes para que carreguem
-   o novo código e possam adquirir o trabalho com segurança.
-5. Aguarde a próxima tentativa da atividade ou a entrega da tarefa durável a um
-   worker saudável pelo mecanismo de reparo ou reentrega.
-6. Verifique o resultado durável no Waterline, na exportação do histórico ou na
-   API do Server. Uma linha de log de um worker não é a fonte de verdade.
-7. Se a atividade continuar falhando, repita o processo até resolver a causa.
+3. Implante a correção onde os workers da fila são executados.
+4. Reinicie ou substitua gradualmente os workers relevantes para que carreguem o novo código e adquiram trabalho com segurança.
+5. Deixe um worker saudável executar a próxima tentativa válida. Reparo ou reentrega pode recuperar o transporte de tarefas perdido; não concede outra tentativa de negócio depois que a atividade ou a execução se encerra.
+6. Verifique o resultado durável no Waterline, na exportação do histórico ou na API do Server. Uma linha de log de um worker não é a fonte de verdade.
+7. Se a atividade continuar falhando, confira os orçamentos restantes de tentativas e de tempo antes de repetir o processo.
 
-Durante as novas tentativas de uma atividade, o workflow pode permanecer em
-estado de execução. Ao corrigir a atividade antes que essas tentativas se
-esgotem, o workflow pode concluir normalmente. Se todas as tentativas de
-`$tries` se esgotarem e a exceção não for tratada, o workflow termina em
-estado de falha.
+Uma execução com uma tentativa válida disponível permanece aguardando e pode continuar quando o código corrigido tiver sucesso, desde que seus orçamentos originais não tenham expirado. Isso não garante corrigir todo workflow no mesmo lugar: uma falha final de atividade não tratada, uma falha do código do workflow, um limite estrutural ou um prazo do workflow podem tornar a execução terminal.
+
+Para uma execução terminal com falha, preserve o histórico e reconcilie os efeitos externos antes de decidir se a aplicação deve iniciar outro workflow. Use idempotência na aplicação para operações de negócio repetidas. Não há repetição automática do workflow inteiro nem reabertura de execução terminal; consulte [Novas tentativas no nível do workflow](#workflow-level-retry).
 
 ## Aplicação de timeouts do workflow {#workflow-timeout-enforcement}
 
@@ -161,6 +159,19 @@ class ChargeCard extends Activity
     }
 }
 ```
+
+No código do workflow, limite o tempo total da atividade, incluindo as esperas na fila e entre tentativas:
+
+```php
+use Workflow\V2\Support\ActivityOptions;
+use function Workflow\V2\activity;
+
+$result = activity(ChargeCard::class, new ActivityOptions(
+    scheduleToCloseTimeout: 120,
+));
+```
+
+Juntas, essas configurações permitem no máximo três tentativas, com intervalos de 5 e 30 segundos, dentro do prazo original de 120 segundos de schedule-to-close. Se o prazo do workflow vencer antes, ele também se aplica. Habilite novas tentativas apenas para operações que possam ser repetidas com segurança e proteja os efeitos externos com controles de idempotência.
 
 Quando uma atividade que permite novas tentativas lança uma exceção antes de esgotar
 `$tries`, o mecanismo encerra o registro atual de `activity_attempts` no
