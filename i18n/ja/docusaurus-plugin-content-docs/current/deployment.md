@@ -232,7 +232,7 @@ curl -H "Authorization: Bearer $DW_ADMIN_TOKEN" http://localhost:8080/api/cluste
 
 - **書き込み可能 DB endpoint は常に一つ。** 管理切替は、旧主系が再接続する前にフェンス（書込ユーザー失効、`read_only=on` 降格、複製切断、正常スナップショット復元等）する条件で許容。RDS Proxy、ProxySQL、PgBouncer などの接続プロキシは可能。エンジンが見る接続に対する契約なので保証は変わりません。
 - **Redis endpoint は同時に一つ、昇格経路を文書化。** 管理切替は許容。Redis は高速化層であり正しさの基盤ではないため、切替は遅延事象であって正しさの事象ではありません。
-- **スケジューラー・保守は常に一つ。** オーケストレーター（Compose `deploy.replicas: 1`、ホストリースで保護した systemd、Kubernetes `replicas: 1` と `RollingUpdate.maxSurge: 0`）が再起動中も単一性を維持します。定常重複は契約外です。
+- **スケジューラー・保守は常に一つ。** オーケストレーター（Compose `deploy.replicas: 1`、ホストリースで保護した systemd、Kubernetes `Deployment` の `replicas: 1` と `RollingUpdate.maxSurge: 0`）が再起動中も単一性を維持します。定常重複は契約外です。
 
 ### イベント別の動作と復旧目標 {#per-event-behavior-and-recovery-targets}
 

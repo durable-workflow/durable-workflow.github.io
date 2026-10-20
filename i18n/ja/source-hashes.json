@@ -84,5 +84,6 @@
   "features/concurrency.md": "a7a3eb2274f7b14faf722494569b7663c07ab48afdf2e9225e58914b84cacbb4",
   "features/external-payload-storage.md": "1741bcfc944c9d40f1101888b9f172d13e588f54f6cdcb6f84d00df10c878356",
   "polyglot/cloud-control-plane.md": "d08b280c6d3b3dc209e3c3773e275066fa4a80accb2dcd550ad7a3f52e236b78",
-  "polyglot/cli.mdx": "024a3f73e1c700a7fa142ec64a7edde03303f12507f4eb4a9161e0e944f7431b"
+  "polyglot/cli.mdx": "024a3f73e1c700a7fa142ec64a7edde03303f12507f4eb4a9161e0e944f7431b",
+  "deployment.md": "2eadca4ea3703d0b09bb7e885eaafe84dc2f7eb7c1a9904dc5649f086f629258"
 }
