@@ -37,5 +37,9 @@
   "configuration/microservices.md": "46dc4afa07588b78829a7e3d259177ce0cf40861f0e31b88dbb6de3a83aa5488",
   "configuration/options.md": "f8d746d34d28d03c8e31ab19223864df04742cde9e6a0cc1445501f8fbddf625",
   "configuration/publishing-config.md": "8ed57c1e94ec42ad2dc9a67e2749a93b66143466c4ca07a704b816e3c515a81e",
-  "mcp-workflows.md": "1c0b5bb7f2e5c7ca835dfdfa57bbe8f6624172c855f4e225057ac2377abf360e"
+  "mcp-workflows.md": "1c0b5bb7f2e5c7ca835dfdfa57bbe8f6624172c855f4e225057ac2377abf360e",
+  "polyglot/php.md": "9ab2f2b6cb617475e3873609667f7c40eaeed8512f1f041834d74bb63d1a6040",
+  "polyglot/invocable-php-handler.md": "3b678eb1d69fe32dfcfdc05d36b33e49e01b79d7216bd784f6a61a6f1c3c3a13",
+  "polyglot/prerelease-history-migration.md": "a57f05f492228a8a67791f9152648a1e5f80856325b78777cf63b6ef49b7413c",
+  "polyglot/rust-cloud-quickstart.md": "2303434fc9302a81a8381ad4836423ef9952eb3201a4574c432254e3cb68c5f3"
 }
