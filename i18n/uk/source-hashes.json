@@ -24,7 +24,9 @@
   "introduction.md": "06bf96d164d402d4e376c6308b20f96d324110b2e0cf96c2a1a67b39906072e3",
   "laravel-adoption.md": "978f2333bf5ce38ebc58619ca3f50a087572a3b0c28d52bc06843bc341010684",
   "mcp-workflows.md": "1c0b5bb7f2e5c7ca835dfdfa57bbe8f6624172c855f4e225057ac2377abf360e",
+  "migration.md": "53659987d64f3fc66c935bed55ec4227689185a23970f31327773fa408f5cf22",
   "monitoring.md": "28bc87ab65b4ef8e466f12114cc56dd60f4216f1f163ec84defec1a030ec320e",
+  "platform-conformance.md": "2eec7eba9a65c010e03c4b2eb78afe4dddd6fd8170218b3194c49e3777124c91",
   "platform-protocol-specs.md": "ba9c69adfca7fb4a0dd982464b0ca69dd5a21de1e340edbe23b075ec0fb0c35c",
   "polyglot/avro-value-protocol.md": "602e66c6288c1dd69d2b400c64e4739ad3a0493b5be269cee40f7848b11f260a",
   "polyglot/cancellation.md": "a08aca914d8211d32184fd76f14e4f8bf47d40656e55364923013e3cece3b70d"
