@@ -1,5 +1,6 @@
 {
   "polyglot/cli-python-parity.md": "acf1acbf15ca9cdf069154699c5fbf8c1d1fd3241a32d201ac10b8ec76c038be",
+  "polyglot/cli-reference.md": "b20db162aa91cc85ea64528a061753a99f053b33b6141664ce1194e711c641cc",
   "polyglot/cli.mdx": "024a3f73e1c700a7fa142ec64a7edde03303f12507f4eb4a9161e0e944f7431b",
   "polyglot/cloud-control-plane.md": "d08b280c6d3b3dc209e3c3773e275066fa4a80accb2dcd550ad7a3f52e236b78",
   "polyglot/deployment-modes.md": "ee38a2ca890e6ba5d52fffa1fa0bc65e64a1fc82e47af92463983e523d4e3f49",
@@ -10,6 +11,7 @@
   "polyglot/namespace-auth-workers.md": "2b4078ceb74b849f12cb1975b410ff8e7266cd4345f6cf1d4dd906db12460ffb",
   "polyglot/php.md": "9ab2f2b6cb617475e3873609667f7c40eaeed8512f1f041834d74bb63d1a6040",
   "polyglot/prerelease-history-migration.md": "a57f05f492228a8a67791f9152648a1e5f80856325b78777cf63b6ef49b7413c",
+  "polyglot/python.md": "18c872ffee086853f50efc51a3dc193d7953d5eaaad72e44aa36a3a4379d6070",
   "polyglot/rust-cloud-quickstart.md": "2303434fc9302a81a8381ad4836423ef9952eb3201a4574c432254e3cb68c5f3",
   "polyglot/rust.md": "b5d3b44c4e68e8b707804001bc46bd5e758b0180eec2a9a2ebdb69a6183dced5",
   "polyglot/server-api-reference.md": "6029fa5573106ebb40d4cf6fc384c4c5aa3ac77d435b3d2c30c4c505cce7ac23",
@@ -18,6 +20,7 @@
   "polyglot/task-queue-admission.md": "a8cd766b03094def66507f42829eee919e12366fd5942ffd7337f0163e1dc831",
   "polyglot/worker-build-id-rollout.md": "88a2ec730ed0b2f58ff5d49aa1041c758ec491aceda4165fe1f3b06fcfee0278",
   "polyglot/worker-compatibility-routing.md": "e2cdfdbe8b295ba511f26345318e847611c1f2e67dafdf51441f09e93cb939ca",
+  "polyglot/worker-protocol.md": "007e844b0a7ab284b7cd343e79f01a27a0dabee3fe4cf19064170581bb897b85",
   "polyglot/workflow-streams.md": "5675a8ea1b9d0b1f7223fecb90b3b048d3006670bf505950bc783709287a6432",
   "quickstart.md": "fac182ed61fc3540219e737a0e8166fa798ce0c035a34debac2dad9b85573215",
   "rolling-upgrades.md": "5cb58386636361a07de5dd1f0438596dc649bcaf6ea493749ad0635eabb5be7f",
@@ -25,5 +28,6 @@
   "sdk-neutrality.md": "7b0714c123ade4904591870fc20e9a797da1e5485b2a6c87ca3eaa00c5de6ed6",
   "sponsors.md": "e85e14375743ca8fa50e3a48f894b160e28272573aa88480064f74010ebee98a",
   "support.md": "706807b3902599dda6080f632ec1f893017ea18bbe9585f533dcdbd6d85f4621",
-  "testing.md": "e0e33204c80d777adfc04fe4d4842632c784b4a289ebcf1ef84eccfcd5ba2202"
+  "testing.md": "e0e33204c80d777adfc04fe4d4842632c784b4a289ebcf1ef84eccfcd5ba2202",
+  "waterline-operator-api.md": "d858c9fe75b495106157ab11d6f7f2d4ad5aeaa94346342398cb8bafdd069d6d"
 }
