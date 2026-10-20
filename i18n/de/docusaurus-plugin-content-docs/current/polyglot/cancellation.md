@@ -70,7 +70,7 @@ Idempotenzverhalten.
 
 Die Bereinigung kann einen Abbruchschutz verwenden, um dauerhafte Aktivitäten,
 Timer und Kindaufrufe auszuführen. Der Schutz erhält die ursprüngliche Frist.
-Stirbt ein Worker, gibt ein Ersatz denselben Zustellungspunkt und die bereits
+Fällt ein Worker aus, gibt ein Ersatz denselben Zustellungspunkt und die bereits
 abgeschlossenen Bereinigungsaufrufe wieder, bevor er fortfährt. Fristablauf oder
 Terminierung entziehen die verbleibende Ausführungsberechtigung.
 

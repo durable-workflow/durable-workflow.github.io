@@ -89,7 +89,7 @@ cargo run --release --example avro_value_benchmark -- --enforce
 ```
 
 Die JSON-Ausgabe vergleicht kompaktes JSON, den entfernten JSON-in-Avro-Wrapper
-und das feste typisierte Schema. Sie nennt die Größen des rohen Datums, der
+und das feste typisierte Schema. Sie nennt die Größen des Rohwerts, der
 gerahmten Nutzlast und der tatsächlichen `{codec, blob}`-HTTP-Envelope sowie die
 gesamte Adapter-, Codierungs- und Decodierungslatenz. `AVRO_VALUE_ENCODE_BUDGET_US`
 und `AVRO_VALUE_DECODE_BUDGET_US` können die Standardgrenzen auf einem
