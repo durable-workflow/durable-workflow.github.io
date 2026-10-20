@@ -1,150 +1,142 @@
 ---
 sidebar_position: 7
-title: Worker Build-Id のロールアウト
-description: スタンドアロン Server の build-id ロールアウト状態を使い、実行を取り残さず Worker ビルドのロールアウト、カナリア、ドレイン、ロールバックを行います。
-tags:
-  - worker-protocol
-  - operations
-  - rollouts
-  - build-ids
-  - task-queues
-keywords:
-  - Worker ビルド ID のロールアウト
-  - Worker ビルドのドレイン
-  - Worker ビルドのロールバック
-  - カナリア Worker
-  - バージョンなしからバージョン付きへの切り替え
+title: ワーカーのビルドIDロールアウト
+description: コホートを確認し、新規開始用のビルドを選び、古いビルドに固定された実行の処理能力を維持します。
+tags: [worker-protocol, operations, rollouts, build-ids, task-queues]
+keywords: [ワーカービルド, ドレイン, ロールバック, カナリア, バージョンなしワーカー]
 ---
 
-# Worker Build-Id のロールアウト {#worker-build-id-rollout}
+# ワーカーのビルドIDロールアウト
 
-バージョンなし Worker からビルドタグ付き Worker への切り替え、タスクキューでの新ビルドのカナリア運用、廃止前の旧ビルドのドレイン、不良ビルドのロールバックに、このリファレンスを使います。Server は稼働中の Worker 行とともに運用担当者の意図を記録します。これにより、古い Worker がバックログの処理完了前に消えても、次のポーリング、CLI の describe、`list_task_queue_build_ids` 呼び出しは正確なロールアウト状態を反映します。
+このガイドでは、コホートの確認、新規ワークフロー用ビルドの選択、既存実行に必要な互換ワーカーの維持を説明します。昇格は新規開始の選択を変更し、ドレインは対象コホートの新しいタスク取得を止めます。どちらも既存実行を移行せず、ビルドを削除できる根拠にもなりません。
 
-このガイドはコホート制御を扱います。ルーティング契約全体については、[Worker の互換性とルーティング](/docs/polyglot/worker-compatibility-routing)を参照してください。進行中の処理は互換性のある実行主体に固定し、「互換 Worker が利用できない」状態を明示的な運用状態として扱う規則を説明しています。
+タスク、アクティビティ、再試行、子、continue-as-newが保持する識別情報は[ワーカーの互換性とルーティング](/docs/polyglot/worker-compatibility-routing)を参照してください。コホートの範囲は`(namespace, task_queue, build_id)`です。`build_id`のない登録は、バージョンなしの`null`コホートに属します。
 
-Durable Workflow Server は、1つのタスクキューのロールアウトを **build-id コホート**の集合として表します。コホートは、`POST /api/worker/register` 呼び出し時に同じ `build_id` を報告したすべての Worker 登録をまとめます。`build_id` を省略した Worker は**バージョンなしコホート**を形成します。これはロールアウト前の既定で、最初の切り替え時に移行元となります。
+## サーバーが保存するロールアウト状態 {#rollout-state-the-server-records}
 
-## Server が記録するロールアウト状態 {#rollout-state-the-server-records}
-
-各 `(namespace, task_queue, build_id)` コホートは、Worker 状態の集計（有効、ドレイン中、古い、合計の数）と運用担当者の意図を持ちます。
-
-| フィールド | 用途 |
+| フィールド | 意味 |
 | --- | --- |
-| `build_id` | 登録したビルドの ID。`null` はバージョンなしコホートを示す。 |
-| `rollout_status` | 新しいタスクに対するコホートの動作の集計表示。`active`、`active_with_draining`、`draining`、`stale_only`、`no_workers`。 |
-| `drain_intent` | コホートに対する運用担当者の意図。`active` または `draining`。 |
-| `drained_at` | 初めてドレイン中とマークした時刻。有効なコホートには存在しない。ドレインを繰り返してもこの時刻は変わらない。 |
-| `active_worker_count` | 現在新しいタスクを受け入れる稼働中 Worker 数。 |
-| `draining_worker_count` | 進行中タスクを保持するが、新しい処理をクレームしない稼働中 Worker 数。 |
-| `stale_worker_count` | 最後のハートビートが古いと判断するしきい値より前の Worker 数。 |
-| `total_worker_count` | 3つの Worker 集団の合計。 |
-| `runtimes`, `sdk_versions` | コホート内で観測したランタイムと SDK バージョン文字列の重複なし一覧。 |
-| `last_heartbeat_at`, `first_seen_at` | コホート全体のハートビート期間。削除前に静止したコホートを確認するのに有用。 |
+| `build_id` | 登録されたビルド識別子。`null`はバージョンなしコホートです。 |
+| `rollout_status` | `active`、`active_with_draining`、`draining`、`stale_only`、`no_workers`のいずれかです。 |
+| `drain_intent`, `drained_at` | 永続的なドレイン意図と最初の時刻。再実行しても時刻は変わりません。 |
+| `promoted_at`, `rolled_back_at` | 保存された昇格とロールバックの時刻。 |
+| `new_start_selected` | 明示的な昇格で選択されたコホート。`false`でも、後述の単一コホートへのフォールバックはあり得ます。 |
+| `active_worker_count` | 最新で、ドレイン中でない登録数。空きスロット数でも、全ワークフロー型の対応保証でもありません。 |
+| `draining_worker_count` | 最新かつドレイン指定された登録数。新規取得はできませんが、必ずしもリースを保持しているわけではありません。 |
+| `stale_worker_count` | heartbeatが`stale_after_seconds`より古い登録数。 |
+| `total_worker_count` | アクティブ、ドレイン中、古い登録の合計。 |
+| `runtimes`, `sdk_versions` | 登録で観測したランタイムとSDKの文字列。 |
+| `last_heartbeat_at`, `first_seen_at` | 登録の鮮度と経過時間。残存実行がない証拠ではありません。 |
+| `pending_workflow_tasks` | 以下で説明するワークフロータスク数と診断。 |
 
-`drain_intent` は永続的です。Worker の再起動、全 Worker の停止、コホートの陳腐化によって、黙って `active` に戻ることはありません。明示的な `POST .../build-ids/resume` だけが `drain_intent` と `drained_at` を消去します。これにより、稼働中 Worker がいなくなった後も `rollout_status` は正確です。
+ドレイン意図は再起動、ワーカー不在、古いheartbeatを越えて残ります。明示的な再開でのみ解除され、不在のワーカーが自動再開されることはありません。
 
-## ロールアウトを検査する {#inspect-the-rollout}
+## ロールアウトを確認する {#inspect-the-rollout}
 
-ビルドをドレインまたは削除する前に、キューで引き続き到達可能なコホートを確認します。
+処理能力を変える前に、正確な名前空間とキューを確認してください。
 
 ```bash
-curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/task-queues/orders-critical/build-ids" \
+curl -fsS "$DURABLE_WORKFLOW_SERVER_URL/api/task-queues/orders-critical/build-ids" \
   -H "Authorization: Bearer $DW_OPERATOR_TOKEN" \
   -H "X-Namespace: orders-prod" \
   -H "X-Durable-Workflow-Control-Plane-Version: 2"
 ```
 
-同じスナップショットは運用 CLI と Python SDK でも取得できます。
-
 ```bash
-dw task-queue:build-ids orders-critical --json
+dw task-queue:build-ids orders-critical --namespace orders-prod --json
 ```
 
 ```python
 from durable_workflow import Client
 
-async with Client("https://durable-workflow.example", token=operator_token) as client:
+async with Client("https://durable-workflow.example", token=operator_token,
+                  namespace="orders-prod") as client:
     rollout = await client.list_task_queue_build_ids("orders-critical")
     for cohort in rollout.build_ids:
         print(cohort.build_id, cohort.rollout_status, cohort.total_worker_count)
 ```
 
-## 最初の切り替え: バージョンなしからバージョン付きへ {#first-cutover-unversioned-to-versioned}
+古いSDKの応答モデルにない追加フィールドについては、HTTPスナップショットを基準にします。
 
-常にバージョンなし Worker が処理してきたキューは、`rollout_status: "active"` の単一 `build_id: null` コホートを報告します。最初の切り替えでは、それと並べて新しいビルドタグ付きコホートを導入します。
+## コホート別の未完了ワークフロータスク {#pending-workflow-tasks-by-cohort}
 
-1. 安定した `build_id`（例: `orders-worker-2026-04-22`）を `POST /api/worker/register` で登録する新しい Worker 群をデプロイします。
-2. 両方のコホートが有効なことを確認します。
+`pending_workflow_tasks`は、この名前空間とキューのワークフロータスクだけを数えます。タスクの実効互換性で分類し、未設定なら実行の互換性を使います。アクティビティの滞留、開いた実行数、スループット、プロセス負荷ではありません。
+
+| 子フィールド | 解釈 |
+| --- | --- |
+| `ready_count` | `ready`状態のワークフロータスク行数。 |
+| `leased_count` | `leased`状態の行数。 |
+| `total_count` | `ready_count + leased_count`。 |
+| `status` | 0件なら`idle`。それ以外は`pending`、または非nullビルドにアクティブワーカーがいなければ`no_compatible_worker`。 |
+| `operator_visible_signal`, `message` | 互換ワーカー不在の診断。それ以外ではnullになり得ます。 |
+
+バージョンなしコホートには、このビルド固有の不在診断は付きません。フィールド欠落、要求失敗、古い観測を0件とみなさず、再取得してheartbeatと型の宣言を確認してください。
+
+例えば旧ビルドにreadyが2件、leasedが1件あり、新ビルドには0件の場合があります。キュー合計3件だけでは、どちらのフリートに処理能力が必要か分かりません。旧ビルドのアクティブワーカーが0なら、互換ワーカーを復旧するか、誤ったドレインを明示的に解除します。新ビルドの増員では旧ピンの仕事を消費できません。古い登録しか残らない場合は、利用可能と数える前にプロセスやheartbeatの喪失を調べてください。
+
+コホートを縮小する際は、個別のタスク数、最新ワーカー、宣言型、空きスロット、ドレイン意図を確認します。既存リースと既存実行から将来生じる仕事の処理能力を残してください。シグナル、タイマー、アクティビティ、子を待つ実行は、今のワークフロータスクが0でも後で旧ビルドを必要とします。アクティビティは別の保存済みキューを使う場合もあります。このエンドポイントは、安全な廃止判断や、最後の必要コホートを0へ縮小する権限を提供しません。
+
+保護された廃止判断は[Server #519](https://github.com/durable-workflow/server/issues/519)、別途のスクレイプ／ゼロスケール機能は[Server #534](https://github.com/durable-workflow/server/issues/534)で追跡します。このチェックリストで提供される機能ではなく、組み込みのKEDA/HPAトリガーもここでは規定しません。
+
+## バージョンなしからの初回切り替え {#first-cutover-unversioned-to-versioned}
+
+1. 安定したビルドIDで新ワーカーを起動し、名前空間、キュー、対応型、最新heartbeatを確認します。
+2. 両コホートと元の実行を確認します。新しい名前や登録数で互換性を判断しないでください。
+3. 新規開始で選ぶ時点で、新ビルドを明示的に昇格します。
+
    ```bash
-   dw task-queue:build-ids orders-critical --json
-   ```
-   `null` と新しい `build_id` の両方が `rollout_status: "active"` と非ゼロの `active_worker_count` を報告するはずです。
-3. 新しい Worker が処理を担当し始めたら、バージョンなしコホートのドレインを開始します。
-   ```bash
-   dw task-queue:drain orders-critical --unversioned
-   ```
-   バージョンなしコホートの `drain_intent` は `draining` に変わります。稼働中の Worker は進行中タスクを処理しますが、新しいタスクのクレームを止めます。その後 `build_id` なしで届く Worker 登録やハートビートもドレイン中として扱います。
-4. バージョンなしコホートの `active_worker_count` と `draining_worker_count` が両方とも 0 になるまで待ちます。コホートは `drain_intent: "draining"` で一覧に残るため、切り替えが永続的であることを確認できます。
-
-## 新ビルドをカナリア運用する {#canary-a-new-build}
-
-カナリアは、主ビルドがサービスを続ける間に少量のトラフィックを受ける2つ目のビルドです。各コホートの状態を個別に検査できるよう、別の `build_id` を使います。
-
-1. `build_id: orders-worker-2026-04-22-canary` を持つカナリア Worker をデプロイします。
-2. `list_task_queue_build_ids` を検査し、両方のコホートが `rollout_status: "active"` と期待した Worker 数を報告することを確認します。
-3. 新しい `build_id` の Worker を増やして主ビルドの Worker 数を減らして昇格するか、次のようにドレインしてカナリアを降格します。
-   ```bash
-   dw task-queue:drain orders-critical --build-id orders-worker-2026-04-22-canary
+   dw task-queue:promote orders-critical --namespace orders-prod --build-id orders-v2
    ```
 
-Server はコホート間のタスク配分を制御しません。運用担当者が各コホートの規模を決め、ポーリングの分布でトラフィックの重みを付けます。build-id ロールアウト状態により、どのコホートがまだ処理をクレームできるかを確認し、コホートの停止準備ができたときに明確な引き継ぎを開始できます。
+4. 既存履歴に対応するワーカーを維持します。昇格は旧ピンを変えず、ドレインも移行ではありません。
+5. 残存依存関係を独立に解消してから旧処理能力を廃止します。タスク0件や登録0件だけでは不十分です。必要な実行がある限り、成果物と復旧経路を維持してください。
+
+## 新ビルドのカナリア運用 {#canary-a-new-build}
+
+サーバーはビルド間の割合ランプを提供しません。新規開始には、ドレインもロールバックもされていない直近の昇格コホートを選びます。なければ、要求された型を宣言する唯一のアクティブコホート、次にキュー内の唯一のアクティブコホートを選びます。決まらなければ実行は未固定です。同じ型を扱う複数のアクティブコホートがあっても、昇格なしで重み付き配分にはなりません。
+
+増員は容量を変えるだけで、昇格による新規選択方針は変えません。カナリアを分離するには別キューを使い、アプリケーションから対象の新規開始を明示的に送ります。元キューで昇格するときも、旧ピンの実行用に旧ワーカーを残してください。
 
 ## 旧ビルドをドレインする {#drain-an-older-build}
 
-ドレインは、すでにリースしたタスクを旧ビルドに残し、新しいタスクをキュー上のほかの有効なコホートへ送ります。
+ドレインは対象コホートのworkflow、activity、queryのpollによる新規取得を止めますが、仕事を別ビルドへ移しません。ドレイン中のワーカーのpollは、`poll_status: "draining"`と`reason: "worker_draining"`を含むHTTP409を返します。既存リースの元の権限は維持されます。
 
 ```bash
-dw task-queue:drain orders-critical --build-id orders-worker-2026-04-21-z9
+dw task-queue:drain orders-critical --namespace orders-prod --build-id orders-v1
 ```
 
-Server はコホートに `drain_intent: "draining"` を記録し、その `build_id` で登録したすべての Worker を次のハートビートでドレイン中とマークします。呼び出しは冪等です。再実行しても `drained_at` はリセットされず、自動化から安全に再試行できます。
+新ビルドが自分の仕事を取得できるだけで実行しないでください。旧実行が待ち続けることがあります。早すぎるドレインからは、コホートを再開し元のビルドのワーカーを戻します。
 
-Worker 行が `draining` になると、ワークフロータスク、アクティビティタスク、クエリタスクのポーリングルートはその Worker に新しい処理をリースしません。コホートを再開するまで、ポーリングは HTTP `409`、`poll_status: "draining"`、`reason: "worker_draining"` で失敗します。
+```bash
+dw task-queue:resume orders-critical --namespace orders-prod --build-id orders-v1
+```
 
-`draining` は一般的なポーリングレスポンス契約の一部であり、ドレイン専用の特殊なフィールドではありません。同じ `poll_status` サーフェスを通じて、Worker は通常の `leased` と `empty`、受け入れ制御の `throttled`、ほかのポーリング経路の型付き `unavailable` 調整失敗を観測します。
-
-`list_task_queue_build_ids` をポーリングし、`active_worker_count` と `draining_worker_count` が 0 に下がるのを監視します。その時点で、コホートは Worker 数 0 の `rollout_status: "draining"` を示します。稼働中 Worker は残っておらず、運用担当者の意図は引き続き「ドレイン済み」と記録されています。この時点で Worker プロセスを停止し、ビルド成果物を安全に削除できます。
+全ワーカーのドレインや停止は、ビルド成果物を削除できる証拠ではありません。このスナップショットには保護された廃止判断はありません。
 
 ## 不良ビルドをロールバックする {#roll-back-a-bad-build}
 
-ロールバックは逆の流れです。以前ドレインしたコホートを再開し、新しいトラフィックを戻し、不良ビルドをドレインします。
+既知の正常ワーカーを復旧し、必要ならコホートを再開して、将来の新規開始用に昇格します。その後、不良デプロイをロールバックします。ロールバックは既存ピンを書き換えず、残りの仕事を他ビルドへ渡しません。互換ワーカーを残すか、アプリケーションとして明示的に復旧方針を決めてください。
 
-1. 正常と分かっているコホートを再開します。
-   ```bash
-   dw task-queue:resume orders-critical --build-id orders-worker-2026-04-21-z9
-   ```
-   Server は `drain_intent` と `drained_at` を消去し、その `build_id` で引き続きハートビートしている Worker 行を直ちに `active` に戻します。読み取りエンドポイントはドレイン状態を報告しなくなります。
-2. 不良コホートをドレインします。
-   ```bash
-   dw task-queue:drain orders-critical --build-id orders-worker-2026-04-22
-   ```
-3. 正常なビルドの規模を再び増やすか、すでに Worker を停止している場合は再デプロイします。その `build_id` で登録する Worker は消去済みのドレイン意図を受け取り、`active` として登録されます。
+再試行、子、continue-as-newは元のピンを継承します。無期限に続くチェーンは新たに昇格したビルドへ移行しません。リプレイ互換の更新では識別子を安定させるか、旧チェーンを終了して新方針で本当に新しいインスタンスを開始します。保存済み互換性フィールドの編集で移行を強制しないでください。
 
-再開も冪等です。すでに有効なコホートに再実行しても何も変えないため、自動ロールバックフローでも安全に呼び出せます。
+## エンドポイントとコマンド一覧 {#endpoints-and-commands-reference}
 
-## エンドポイントとコマンドのリファレンス {#endpoints-and-commands-reference}
-
-| 意図 | HTTP エンドポイント | CLI | Python SDK メソッド |
+| 目的 | HTTPエンドポイント | CLI | Python SDKメソッド |
 | --- | --- | --- | --- |
-| コホート状態を検査 | `GET /api/task-queues/{taskQueue}/build-ids` | `dw task-queue:build-ids` | `Client.list_task_queue_build_ids` |
-| コホートをドレイン中とマーク | `POST /api/task-queues/{taskQueue}/build-ids/drain` | `dw task-queue:drain` | `Client.drain_task_queue_build_id` |
-| 以前ドレインしたコホートを再開 | `POST /api/task-queues/{taskQueue}/build-ids/resume` | `dw task-queue:resume` | `Client.resume_task_queue_build_id` |
+| コホート確認 | `GET /api/task-queues/{taskQueue}/build-ids` | `dw task-queue:build-ids` | `Client.list_task_queue_build_ids` |
+| 新規開始用の昇格 | `POST /api/task-queues/{taskQueue}/build-ids/promote` | `dw task-queue:promote` | `Client.promote_task_queue_build_id` |
+| ドレイン | `POST /api/task-queues/{taskQueue}/build-ids/drain` | `dw task-queue:drain` | `Client.drain_task_queue_build_id` |
+| 再開 | `POST /api/task-queues/{taskQueue}/build-ids/resume` | `dw task-queue:resume` | `Client.resume_task_queue_build_id` |
 
-ドレインと再開はともに JSON 本文 `{"build_id": "..."}` を受け取り、バージョンなしコホートでは `{"build_id": null}` を使います。CLI はバージョンなしコホートを `--unversioned`、その他のビルドを `--build-id <value>` で表します。両方を組み合わせると早期に失敗します。
+変更要求は`{"build_id":"orders-v2"}`、またはバージョンなしコホート用の`{"build_id":null}`を受け取ります。CLIでは`--build-id`と`--unversioned`のどちらか一方だけを指定します。
 
-## 関連リファレンス {#related-references}
+完全なライフサイクルには`GET /api/deployments`と`POST /api/deployments/{name}/{promote,drain,resume,rollback}`を使います。返された`orders-prod/orders-critical@orders-v2`のような名前と元の名前空間を使用してください。公開Apache経路では名前の区切りの`/`を保持します。複合名全体を符号化すると、API到達前にApacheのHTML404になる場合があります。拒否は型付き`reason`と`blockages`配列を含むHTTP409です。`expected_resolution`を確認し、拒否を昇格成功として扱わないでください。[Server #521](https://github.com/durable-workflow/server/issues/521)は不完全な現行OpenAPIミラーの課題であり、新実装や凍結スキーマの変更ではありません。
 
-- [名前空間、認証、Worker 登録](/docs/polyglot/namespace-auth-workers): 各 Worker に `build_id` を記録する `POST /api/worker/register` 呼び出し
-- [タスクキューの受け入れ](/docs/polyglot/task-queue-admission): ロールアウト状態と併用する Worker スロットとディスパッチの上限
-- [Server API リファレンス](/docs/polyglot/server-api-reference): コントロールプレーンの全ルート、必要なロール、プロトコルヘッダー
-- [CLI コマンドリファレンス](/docs/polyglot/cli-reference): すべての `dw task-queue:*` サブコマンドの引数とフラグ
+## 関連資料 {#related-references}
+
+- [ワーカーの互換性とルーティング](/docs/polyglot/worker-compatibility-routing)
+- [名前空間、認証、ワーカー登録](/docs/polyglot/namespace-auth-workers)
+- [タスクキューの受付制御](/docs/polyglot/task-queue-admission)
+- [ローリングアップグレード](/docs/rolling-upgrades)
+- [Server APIリファレンス](/docs/polyglot/server-api-reference)
+- [CLIコマンドリファレンス](/docs/polyglot/cli-reference)
