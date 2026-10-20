@@ -69,5 +69,11 @@
   "features/signals.md": "2c27bf3122ac62d2634af5f2c8452399fdb14be34a6e02858c847ff2b4028b9a",
   "features/updates.md": "72da32fa413a3376bea84ab009ce15217238ccc3c57794783789b21b23c7cf18",
   "testing.md": "e0e33204c80d777adfc04fe4d4842632c784b4a289ebcf1ef84eccfcd5ba2202",
-  "waterline-operator-api.md": "d858c9fe75b495106157ab11d6f7f2d4ad5aeaa94346342398cb8bafdd069d6d"
+  "waterline-operator-api.md": "d858c9fe75b495106157ab11d6f7f2d4ad5aeaa94346342398cb8bafdd069d6d",
+  "features/continue-as-new.md": "6b3cc8f8c5375726ff0b2544da01e7206e964908b436544e284068ab67aa3dbb",
+  "features/events.md": "fcb391862938b5e8cf44ad39f213fc3e55b2ecb7c6edebe6a83a1e58a60bf56e",
+  "features/memo.md": "621aa630e37fbef6f84d761c92f99dc3fe8756879008c659cbad0600eb14fd5d",
+  "features/message-streams.md": "3bce915ed750793b31360d2accc94eebf2c7f075b9769e072f8a2d3d034afad0",
+  "features/search-attributes.md": "3d07ea788c7d6753a0751c226554fa36667d4ab7860379c01c171fbe066dff11",
+  "features/versioning.md": "8b7cd077bffc357bd020b70685ea5b45853c3405f48cce42c9338fa0f7322f0b"
 }

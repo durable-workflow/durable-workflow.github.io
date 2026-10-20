@@ -66,9 +66,9 @@ Core 2.7.0 と互換 Server は、実行のコマンド契約にハンドラー�
 
 長期ループは、実行が進むたびに公開 ID を作り直さずに履歴を減らせます。
 
-## 履歴の予算 {#history-budget}
+## 履歴の使用量上限 {#history-budget}
 
-ワークフローコードは明示的なランタイムコンテキストから現在の履歴長と継続推奨フラグを参照できます。長期ループが履歴予算の限界に達する前に、計画的に引き継げます。
+ワークフローコードは明示的なランタイムコンテキストから現在の履歴長と継続推奨フラグを参照できます。長期ループが履歴の使用量上限に達する前に、計画的に引き継げます。
 
 ```php
 use function Workflow\V2\activity;
@@ -96,7 +96,7 @@ class PollingWorkflow extends Workflow
 | --- | --- | --- |
 | `$this->historyLength()` | `int` | 現在の実行の履歴イベント数 |
 | `$this->historySize()` | `int` | 履歴イベントの総バイト数 |
-| `$this->shouldContinueAsNew()` | `bool` | 設定した件数またはバイト数の予算を超えると `true` |
+| `$this->shouldContinueAsNew()` | `bool` | 設定した件数またはバイト数の上限を超えると `true` |
 
 ### 設定 {#configuration}
 
