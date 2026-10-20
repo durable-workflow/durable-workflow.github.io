@@ -280,7 +280,7 @@ public function testReturnExistingActiveStart(): void
 
 両ポリシーとも永続コマンドと履歴イベントを記録するため、詳しい検証には `WorkflowCommand`・`WorkflowHistoryEvent` 行もアサートできます。
 
-### 履歴予算をテストする {#testing-history-budget}
+### 履歴の使用量上限をテストする {#testing-history-budget}
 
 `HistoryBudget` フィールド（`history_event_count`、`history_size_bytes`、`continue_as_new_recommended`）は、実行概要の投影と `RunDetailView` から利用できます。ワークフローコードでは、`Workflow` 基底クラスが `$this->historyLength()`、`$this->historySize()`、`$this->shouldContinueAsNew()` として公開します。
 
@@ -302,7 +302,7 @@ final class LongRunningWorkflow extends Workflow
 }
 ```
 
-履歴予算のしきい値をテストするには、低い値に設定し、推奨が出ることを検証します。
+履歴の使用量上限のしきい値をテストするには、低い値に設定し、推奨が出ることを検証します。
 
 ```php
 public function testHistoryBudgetRecommendsContinueAsNew(): void

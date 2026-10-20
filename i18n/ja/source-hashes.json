@@ -67,5 +67,7 @@
   "features/side-effects.md": "abdccab8d6fc1a12b3eff8a4ccc58730ac36f523559b4ad89c5c2a8d201a3b86",
   "features/signal+timer.md": "65b4a78b9e90a845297b1cb12591dd26a6573f76c75717e1e4ba02211c590822",
   "features/signals.md": "2c27bf3122ac62d2634af5f2c8452399fdb14be34a6e02858c847ff2b4028b9a",
-  "features/updates.md": "72da32fa413a3376bea84ab009ce15217238ccc3c57794783789b21b23c7cf18"
+  "features/updates.md": "72da32fa413a3376bea84ab009ce15217238ccc3c57794783789b21b23c7cf18",
+  "testing.md": "e0e33204c80d777adfc04fe4d4842632c784b4a289ebcf1ef84eccfcd5ba2202",
+  "waterline-operator-api.md": "d858c9fe75b495106157ab11d6f7f2d4ad5aeaa94346342398cb8bafdd069d6d"
 }
