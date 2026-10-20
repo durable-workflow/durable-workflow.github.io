@@ -25,5 +25,8 @@
   "features/signal+timer.md": "65b4a78b9e90a845297b1cb12591dd26a6573f76c75717e1e4ba02211c590822",
   "features/signals.md": "2c27bf3122ac62d2634af5f2c8452399fdb14be34a6e02858c847ff2b4028b9a",
   "features/queries.md": "c66dd9542a062edd8158a46cebc9f1bf926aaf3599dca4a3122bd9860df6e2a2",
-  "features/side-effects.md": "abdccab8d6fc1a12b3eff8a4ccc58730ac36f523559b4ad89c5c2a8d201a3b86"
+  "features/side-effects.md": "abdccab8d6fc1a12b3eff8a4ccc58730ac36f523559b4ad89c5c2a8d201a3b86",
+  "features/cancel-and-terminate.md": "c678fc7a0c9b11f0e1bee295aff259de9803219c0aa6769fb801622799e7deb1",
+  "features/continue-as-new.md": "6b3cc8f8c5375726ff0b2544da01e7206e964908b436544e284068ab67aa3dbb",
+  "features/versioning.md": "8b7cd077bffc357bd020b70685ea5b45853c3405f48cce42c9338fa0f7322f0b"
 }
