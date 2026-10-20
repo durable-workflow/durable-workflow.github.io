@@ -213,11 +213,28 @@ set, control-plane methods use `control_token` and worker-plane methods use
 
 ### External Payload Storage
 
-The SDK exports the same external-payload reference contract used by the server
-and CLI storage APIs. Use it when Python activity handlers or invocable
-carriers need to decode large payload references from workflow history, or when
-a Python process needs to create a language-neutral payload envelope without
-embedding large bytes inline.
+Normal `Client` and `Worker` operations use Server's authenticated runtime
+transport automatically. The SDK discovers namespace policy and transport
+limits through `GET /api/cluster/info`, uploads encoded values above the
+threshold or needed to fit the request, and fetches referenced values before
+decode. Application workflow and activity code receives the decoded value.
+Provider credentials stay on Server. Remote workers do not need boto3, provider
+clients or access to Server's local storage directory.
+
+The runtime reference has schema
+`durable-workflow.v2.runtime-external-payload-reference.v1` and an opaque
+`reference_id`. It has no provider `uri`. Upload/fetch uses the normal role
+credential and namespace, verifies encoded-byte size and SHA-256, and preserves
+task-attempt and lease fencing for worker completion. See the
+[runtime HTTP contract](./server-api-reference.md#runtime-external-payload-transport)
+for routes, limits and typed refusals. SDK support depends on an available
+compatible transport, not merely on a configured storage driver.
+
+The following **direct provider helpers** serve application-managed storage,
+test fixtures and explicitly negotiated self-hosted adapters. They use a
+different provider-URI schema. They are not required for normal Server or Cloud
+clients, and a provider `external_storage` envelope is rejected by Server with
+HTTP `422` and `external_payload_unsupported`.
 
 | API | Role | Failure surface |
 | --- | --- | --- |
@@ -232,7 +249,7 @@ embedding large bytes inline.
 | `fetch_external_payload()` | Fetches referenced bytes, then verifies size and SHA-256 before decode. | `ExternalPayloadIntegrityError` on size/hash mismatch. |
 | `delete_external_payload()` | Deletes the referenced object and evicts any cache entry. | Driver-raised storage errors. |
 | `external_storage_envelope()` | Encodes a value inline until the threshold is crossed, then writes bytes through a driver. | `ValueError` when the threshold is invalid or no driver can resolve a reference. |
-| `external_storage_driver_from_policy()` | Builds the matching driver from a server or Cloud `external_payload_storage` policy, given application-supplied provider clients. | `ValueError` when the policy is disabled, unsupported, or missing the required client/bucket/container. |
+| `external_storage_driver_from_policy()` | Builds a direct driver from an explicitly supplied policy and application-owned provider clients. It does not authorize direct provider access on Server or Cloud. | `ValueError` when the policy is disabled, unsupported, or missing the required client/bucket/container. |
 
 ```python
 from durable_workflow import (
@@ -262,12 +279,13 @@ reference = store_external_payload(
 payload_bytes = fetch_external_payload(storage, reference, cache=cache)
 ```
 
-The reference schema is `EXTERNAL_PAYLOAD_REFERENCE_SCHEMA`
+For these direct helpers, the reference schema is `EXTERNAL_PAYLOAD_REFERENCE_SCHEMA`
 (`durable-workflow.v2.external-payload-reference.v1`). Object-store adapters do
 not add cloud SDK dependencies to `durable-workflow`; applications pass their
 already configured S3, GCS, or Azure clients.
 
-The wire envelope fields are intentionally small and stable:
+Their provider reference has the following fields. This is not the runtime
+reference accepted by Server HTTP routes:
 
 ```json
 {
@@ -282,16 +300,17 @@ The wire envelope fields are intentionally small and stable:
 
 `ExternalPayloadReference.from_dict()` rejects unknown schemas and malformed
 fields. `fetch_external_payload()` verifies `size_bytes` and `sha256` before
-returning bytes, and raises `ExternalPayloadIntegrityError` when the object is
-missing, truncated, or mutated. Worker replay should use `ExternalPayloadCache`
-only after verification, so repeated history reads avoid refetching the same
-blob without weakening integrity checks.
+returning bytes, and raises `ExternalPayloadIntegrityError` on size or hash
+mismatch. Missing objects can also raise the provider driver's error. Use
+`ExternalPayloadCache` for verified bytes only. Cache eviction does not grant
+permission to delete a Server-managed object. `delete_external_payload()` is a
+direct provider operation, not a runtime-reference cleanup API.
 
-When the application has already read the namespace's
-`external_payload_storage` policy from the server or Cloud control plane,
-`external_storage_driver_from_policy()` returns the matching driver. Provider
-SDK clients remain application-owned, so the SDK never adds boto3,
-google-cloud-storage, or azure-storage-blob as runtime dependencies:
+Only use `external_storage_driver_from_policy()` when the deployment explicitly
+permits a direct self-hosted provider adapter and the application owns the
+required client. Reading a namespace policy alone is not that permission.
+Provider clients remain application-owned; these optional adapters do not add
+boto3, google-cloud-storage or azure-storage-blob as runtime dependencies:
 
 ```python
 from durable_workflow.external_storage import external_storage_driver_from_policy
