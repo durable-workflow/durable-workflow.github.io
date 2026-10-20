@@ -605,9 +605,17 @@ class ApprovalWorkflow:
         self.approved_by = by
 
     def run(self, ctx, *args):
-        yield ctx.schedule_activity("wait_for_approval", [])
-        return {"approved": self.approved, "approved_by": self.approved_by}
+        ready = yield ctx.wait_condition(
+            lambda: self.approved, key="approval.approved", timeout=60,
+        )
+        return {
+            "status": "approved" if ready else "timed_out",
+            "approved": self.approved,
+            "approved_by": self.approved_by,
+        }
 ```
+
+Очікування належить workflow, а не activity. Предикат читає стан обробника сигналу, відновлений під час replay; worker не утримує слот activity, доки очікує схвалення. Тайм-аут умови відокремлений від скінченних дедлайнів run і всього виконання workflow. Для завершення зовнішнього завдання використовуйте коротку activity, яка надсилає запит і повертається, та [корельований зворотний виклик](./polling-patterns.md#callback-and-signal-completion).
 
 Декоратори query й update дозволяють класам публікувати сталі назви обробників.
 Worker Python виконують маршрутизовані Server query через replay зафіксованої
@@ -968,6 +976,14 @@ async def long_running_task(items: list) -> dict:
 
     return {"processed": len(items)}
 ```
+
+### Запити heartbeat {#activity-heartbeat-requests}
+
+Для віддалених activities викликайте `await ctx.heartbeat(...)` під час обмеженої роботи activity, задовго до `heartbeat_timeout`. Перше вікно починається під час отримання runtime повноважень на завдання, ще до доставлення в Python. Кожен записаний heartbeat використовує час запису в runtime, а не час отримання відповіді Python. Паузи, затримки запитів і транспортні повтори витрачають бюджет. Дотримуйтеся [порад щодо періодичності](../features/heartbeats.md#heartbeat-cadence-and-receipts).
+
+Прямий виклик `Client.heartbeat_activity_task()` використовує налаштовану `TransportRetryPolicy`. Після цієї політики транспортні помилки можуть поширюватися як `httpx.TransportError`, а відмови HTTP перетворюються на відповідні винятки SDK, зокрема `ServerError`. Це повтори HTTP, а не нова спроба activity чи додатковий час heartbeat. `ActivityContext.heartbeat()` може спричинити `ActivityCancelled`, коли worker наказує activity зупинитися. У звичайному worker із кооперативним наглядом збої heartbeat або перевірки повноважень можуть зупинити чи покинути callback. Не припускайте, що кожен збій повернеться до обробника винятків або що очищення завжди виконається.
+
+Не приховуйте збоїв heartbeat чи повноважень, щоб продовжити зовнішню роботу або повідомити про успіх. Прогрес не є зовнішнім commit або підтвердженням відновлюваної контрольної точки. Зберігайте зовнішні ефекти ідемпотентними.
 
 ### Неповторювані помилки {#non-retryable-errors}
 

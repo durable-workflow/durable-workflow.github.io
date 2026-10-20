@@ -11,6 +11,18 @@ Dieser Befehl erstellt eine Konfigurationsdatei `workflows.php` im Ordner
 php artisan vendor:publish --provider="Workflow\Providers\WorkflowServiceProvider" --tag="config"
 ```
 
+## Lease eines Workflow-Tasks (v2) {#workflow-task-lease-v2}
+
+Konfigurieren Sie die eingebettete Workflow-Task-Lease mit einer positiven ganzen Anzahl von Sekunden:
+
+```env
+DW_V2_WORKFLOW_TASK_LEASE_SECONDS=300
+```
+
+Dies entspricht `workflows.v2.workflow_task_lease_seconds` in `config/workflows.php`; der Standardwert ist `300`. Ansprüche und Task-Erneuerungen lesen die wirksame Konfiguration. Null deaktiviert die Lease nicht. Aktualisieren Sie nach Änderungen an der Bereitstellungskonfiguration den Konfigurationscache und starten Sie langlebige Worker neu.
+
+Server verwendet stattdessen `DW_WORKFLOW_TASK_TIMEOUT` und überträgt diesen Wert auf die Paketeinstellung. Diese Wiederherstellungs-Lease ist von Aktivitäts- und Workflow-Fristen getrennt. Siehe [Workflow-Task-Lease](../features/timeouts.md#workflow-task-lease).
+
 ## Workflow-Ordner ändern {#changing-workflows-folder}
 
 Standardmäßig schreiben die `make`-Befehle in den Ordner `app/Workflows`.

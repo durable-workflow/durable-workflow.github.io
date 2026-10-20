@@ -40,6 +40,18 @@ final class PollRemoteJob extends Activity
 
 多语言 Worker 可通过 HTTP Worker 桥接发送心跳，无需构造 PHP 活动类。端点见 [Worker 协议](/docs/polyglot/worker-protocol)。
 
+## 发送节奏与确认 {#heartbeat-cadence-and-receipts}
+
+对于排队活动，第一个心跳截止时间从运行时领取时开始，早于任务交付和用户代码执行。已记录的心跳将下一个截止时间设为其运行时时间加上 `heartbeatTimeout`。发送请求或收到响应都不会重新开始一个完整窗口。参见[心跳超时](./timeouts.md#heartbeat-timeout)。
+
+发送节奏应在窗口内留足余量，并限制两次调用之间的工作量。超时为 15 秒时，可以先考虑约 5 秒的目标间隔，但前提是交付、每个批次或 I/O 调用、执行暂停、网络延迟和传输重试都能放进剩余预算。请测量这些延迟并留足余量。这是规划建议，不是安全间隔的保证。已过期或被替换的尝试不能通过迟到的心跳恢复租约。
+
+没有自动进度心跳计划，也没有 SDK 批量发送保证。Worker 注册心跳和所有权状态探测不会发布活动进度。每次被接受的进度心跳都会增加持久历史，因此不要报告每个极小操作。
+
+嵌入式 `Activity::heartbeat()` 返回 `void`。无效进度和存储故障可能抛出异常。正常返回不是确认对象：已关闭、过期或被替换的尝试可能直接返回，而不再记录心跳。服务模式下，直接客户端调用与受监督 Worker 的错误行为不同。请参阅 [PHP](../polyglot/php.md#activity-heartbeats)、[Python](../polyglot/python.md#activity-heartbeat-requests) 和 [Rust](../polyglot/rust.md#activity-heartbeats) 指南。
+
+心跳进度不会原子提交外部批次，也不能阻止旧执行者产生外部副作用。可安全重试的应用检查点需要独立的持久提交、稳定的逻辑作业键，以及幂等性或外部权限校验。替代尝试读取已确认检查点的接口由单独的[检查点功能](https://github.com/durable-workflow/.github/issues/218)跟踪。
+
 ## 进度快照 {#progress-snapshots}
 
 `Activity::heartbeat()` 和 `ActivityTaskBridge::heartbeat()` 都接受可选的有界进度快照：

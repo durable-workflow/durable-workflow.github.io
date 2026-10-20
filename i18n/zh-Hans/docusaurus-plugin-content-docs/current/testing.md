@@ -4,6 +4,52 @@ sidebar_position: 9
 
 # 测试 {#testing}
 
+## 部署或回滚前进行重放 {#replay-before-deployment}
+
+为具有代表性的运行中和最近关闭的运行保存指定运行的导出文件。覆盖候选代码可能遇到的活动、重试、信号、更新、子工作流、定时器和版本标记路径，并保留所需的每一代 continue-as-new 运行。使用未经裁剪、原始载荷字节和编解码器均可用的历史。单靠导出标志不能证明完整性。请参阅[保留限制](./configuration/pruning-workflows.md)。
+
+### 嵌入式 PHP {#embedded-php-replay}
+
+从应用拥有的存储导出。将 `WORKFLOW_ID` 和 `RUN_ID` 设为所选实例和运行的准确标识：
+
+```bash
+php artisan workflow:v2:history-export "$WORKFLOW_ID" \
+  --run-id="$RUN_ID" --output=replay-bundles/run.json
+```
+
+在候选应用制品内部运行验证，加载该制品的工作流类和配置。报告应放在导出包目录之外。使用隔离的 CI 环境，不提供能在生产环境产生外部副作用的凭据：
+
+```bash
+php artisan workflow:v2:replay-verify replay-bundles/run.json \
+  --json --output=replay-one.json
+php artisan workflow:v2:replay-simulate replay-bundles \
+  --json --output=replay-report.json
+```
+
+非零退出码会阻止晋升；退出码为零仍可能需要审核。将以下批量报告检查保存为 `gate-replay.php`，并在 CI 中运行 `php gate-replay.php replay-report.json`：
+
+```php
+<?php
+$report = json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR);
+$evidence = $report['evidence'] ?? [];
+$count = $evidence['bundle_count'] ?? 0;
+$allowed = ($report['promotion_decision'] ?? null) === 'safe_to_promote'
+    && $count > 0
+    && ($evidence['missing_bundle_count'] ?? 1) === 0
+    && ($evidence['replay_checked_count'] ?? 0) === $count;
+exit($allowed ? 0 : 1);
+```
+
+`--skip-replay` 只检查完整性。即使结果没有问题，也不能据此授权重放安全的晋升。通过仅覆盖已记录的路径和运行中历史的可见前缀，不覆盖未来分支、业务正确性或网络行为。回滚前，应使用旧制品测试新 Worker 已写入且旧制品可能接收的历史。同时保留单元测试和使用真实运行时的测试。
+
+### 服务模式 SDK {#service-sdk-replay}
+
+**PHP：** 使用 `DurableWorkflow\Worker\Replayer::replay()`，提供应用的编解码器、可调用对象、事件列表、原始输入、队列和记录的任务标识。让 `NonDeterministicWorkflow` 使测试失败，并断言预期命令和结果。请参阅 [PHP 重放测试](https://php.durable-workflow.com/build/testing/)。
+
+**Python：** 对已注册的候选工作流使用 `Replayer.replay()` 或 `verify_replay()`，并断言预期结果。仅返回一个对象不代表断言通过。若事件中省略了输入，应提供原始解码后的 `start_input`：Core 导出将其存储在 `payloads.arguments` 中。保留记录的类型、ID 和编解码器。请参阅 [Python 重放 API](https://python.durable-workflow.com/sdk-reference/#replay-captured-histories)。`--simulate-bundles` 检查完整性，而不执行候选代码；当前与 schema 2 的兼容性由 [Python #173](https://github.com/durable-workflow/sdk-python/issues/173) 跟踪。不要通过改写版本或校验和来绕过拒绝。
+
+**Rust：** 目前还没有公开的离线重放 API。[Rust #105](https://github.com/durable-workflow/sdk-rust/issues/105) 负责该能力。在此期间可针对隔离的运行时测试候选代码，但这并不提供尚缺失的离线保证。
+
 ## `Workflow\V2` {#workflowv2}
 
 `Workflow\V2\WorkflowStub::fake()` 为受支持的 `V2` fake 功能提供确定性的内联测试路径。

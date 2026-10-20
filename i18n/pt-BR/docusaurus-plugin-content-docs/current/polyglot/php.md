@@ -153,6 +153,14 @@ atualização por `registerWorkflow`, `registerActivity`, `registerQuery` e
 `registerUpdate`. Use a [referência gerada da API do SDK PHP](https://php.durable-workflow.com/api/)
 para parâmetros e tipos de retorno completos.
 
+## Heartbeats de atividade {#activity-heartbeats}
+
+Para atividades remotas, chame `ActivityContext::heartbeat($details)` durante trabalho de atividade limitado, bem antes do tempo limite de heartbeat configurado. A primeira janela começa na reivindicação pelo runtime, não quando o PHP recebe a tarefa. Latência das requisições, pausas e novas tentativas de transporte consomem essa janela. Siga as [orientações de cadência](../features/heartbeats.md#heartbeat-cadence-and-receipts).
+
+O método retorna `void`. No caminho direto do handler, uma resposta de parada lança `ActivityCancelled`. Falhas HTTP e de transporte de `Client::heartbeatActivityTask()` aparecem como `ServerException`. Um worker com supervisão cooperativa pode parar ou abandonar seu callback quando um heartbeat ou uma verificação de posse falha, em vez de entregar uma resposta normal ao código da atividade. Não suponha que a limpeza sempre será executada, não suprima um erro de perda de autoridade nem envie sucesso depois de perdê-la.
+
+O retorno da chamada não confirma trabalho externo nem fornece um checkpoint retomável. Mantenha os efeitos externos idempotentes e não trate uma nova tentativa de transporte como uma nova janela de heartbeat.
+
 ## Executar um worker PHP remoto {#run-a-remote-php-worker}
 
 Handlers de workflow são callables comuns executados como código linear

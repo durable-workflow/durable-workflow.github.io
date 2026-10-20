@@ -1,219 +1,146 @@
 ---
 sidebar_position: 7
-title: Оновлення build ID worker
-description: Оновлення, canary, drain і відкат збірок worker без покинутих виконань через стан build ID окремого Server.
-tags:
-  - worker-protocol
-  - operations
-  - rollouts
-  - build-ids
-  - task-queues
-keywords:
-  - оновлення build id worker
-  - drain збірки worker
-  - відкат збірки worker
-  - canary worker
-  - перехід до версійованих worker
+title: Розгортання збірок воркерів
+description: Перевіряйте когорти, обирайте збірку для нових запусків і зберігайте потужність для закріплених виконань.
+tags: [worker-protocol, operations, rollouts, build-ids, task-queues]
+keywords: [збірки воркерів, дренування, відкат, канаркове розгортання, неверсіоновані воркери]
 ---
 
-# Оновлення build ID worker {#worker-build-id-rollout}
+# Розгортання збірок воркерів
 
-Використовуйте цей довідник для переходу від worker без версії до
-worker із позначкою збірки, canary нової збірки в черзі завдань,
-drain старої збірки перед виведенням або відкату невдалої. Server
-записує намір оператора поруч із живими рядками worker, тому наступне
-опитування, опис CLI чи `list_task_queue_build_ids` правдиво показує
-стан оновлення, навіть якщо старі worker зникли до завершення backlog.
+## Replay перед зміною build {#replay-before-changing-builds}
 
-Цей посібник описує керування групами. Повний контракт маршрутизації
-наведено в [сумісності й маршрутизації worker](/docs/polyglot/worker-compatibility-routing):
-незавершена робота має залишатися закріпленою за сумісними виконавцями,
-а відсутність доступного сумісного worker є явним станом оператора.
+Перед promotion кандидата виконайте replay репрезентативних відкритих і нещодавно закритих історій на його точному коді застосунку. Перед відкатом перевірте історії новішого build на старішому артефакті. Дотримуйтесь [перевірки replay](../testing.md#replay-before-deployment); сумісна когорта маршрутизації чи успішна перевірка цілісності самі по собі не доводять replay-сумісність.
 
-Durable Workflow Server представляє оновлення однієї черги як набір
-**груп build ID**. Група об’єднує всі реєстрації worker з однаковим
-`build_id` у `POST /api/worker/register`. Worker без `build_id` утворюють
-**групу без версії**, типову до оновлення, від якої відбувається
-перший перехід.
+Цей посібник допомагає перевіряти когорти, обирати збірку для нових workflow та зберігати сумісних воркерів для наявних виконань. Просування змінює вибір для нових запусків; дренування забороняє когорті брати нові задачі. Жодна дія не переносить наявні виконання й не доводить, що збірку можна видалити.
 
-## Стан оновлення, який записує Server {#rollout-state-the-server-records}
+[Сумісність і маршрутизація воркерів](/docs/polyglot/worker-compatibility-routing) пояснює ідентичність задач, активностей, повторів, дочірніх виконань і continue-as-new. Межі когорти — `(namespace, task_queue, build_id)`. Реєстрації без `build_id` належать до неверсіонованої когорти `null`.
 
-Кожна група `(namespace, task_queue, build_id)` має сукупний стан
-worker — кількості active, draining, stale та загальну — і намір оператора:
+## Стан розгортання, збережений сервером {#rollout-state-the-server-records}
 
-| Поле | Призначення |
+| Поле | Значення |
 | --- | --- |
-| `build_id` | Зареєстрована ідентичність збірки. `null` визначає групу без версії. |
-| `rollout_status` | Сукупний стан прийняття нових завдань: `active`, `active_with_draining`, `draining`, `stale_only` або `no_workers`. |
-| `drain_intent` | Намір оператора для групи: `active` або `draining`. |
-| `drained_at` | Час першої позначки draining. Відсутній для активної групи. Повторні виклики drain не змінюють час. |
-| `active_worker_count` | Живі worker, що зараз приймають нові завдання. |
-| `draining_worker_count` | Живі worker, які ще мають незавершені завдання, але більше не забирають нову роботу. |
-| `stale_worker_count` | Worker з останнім heartbeat раніше за межу застарілості. |
-| `total_worker_count` | Сума трьох кількостей worker групи. |
-| `runtimes`, `sdk_versions` | Унікальні рядки runtime та версій SDK, спостережені в групі. |
-| `last_heartbeat_at`, `first_seen_at` | Вікно heartbeat групи для підтвердження неактивності перед видаленням. |
+| `build_id` | Зареєстрована ідентичність збірки; `null` — неверсіонована когорта. |
+| `rollout_status` | `active`, `active_with_draining`, `draining`, `stale_only` або `no_workers`. |
+| `drain_intent`, `drained_at` | Стійкий намір дренування та його перша часова позначка; повтор не пересуває її. |
+| `promoted_at`, `rolled_back_at` | Збережені часові позначки просування та відкату. |
+| `new_start_selected` | Когорта обрана явним просуванням. `false` не виключає описаний нижче резервний вибір єдиної когорти. |
+| `active_worker_count` | Свіжі реєстрації без дренування; не кількість вільних слотів і не доказ підтримки всіх типів workflow. |
+| `draining_worker_count` | Свіжі реєстрації в дренуванні, що не беруть нових задач; вони не обов'язково мають оренду. |
+| `stale_worker_count` | Реєстрації з heartbeat, старішим за `stale_after_seconds`. |
+| `total_worker_count` | Сума активних, дренованих і застарілих реєстрацій. |
+| `runtimes`, `sdk_versions` | Рядки середовища виконання та SDK із реєстрацій. |
+| `last_heartbeat_at`, `first_seen_at` | Свіжість і вік реєстрації, а не доказ відсутності залежних виконань. |
+| `pending_workflow_tasks` | Лічильники й діагностика задач workflow, описані нижче. |
 
-`drain_intent` стійкий: перезапуск worker, зупинка всіх worker або
-застарівання групи не повертає його приховано до `active`. Лише явний
-`POST .../build-ids/resume` очищає `drain_intent` і `drained_at`.
-Це зберігає правдивий `rollout_status` навіть без живих worker групи.
+Намір дренування переживає перезапуски, відсутність воркерів і застарілі heartbeat. Його скасовує лише явне відновлення; відсутній воркер не відновлюється автоматично.
 
-## Перегляд оновлення {#inspect-the-rollout}
+## Перевірка розгортання {#inspect-the-rollout}
 
-Перед drain чи видаленням збірки підтвердьте ще доступні групи черги:
+Перед зміною потужності перевірте точні простір імен і чергу:
 
 ```bash
-curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/task-queues/orders-critical/build-ids" \
+curl -fsS "$DURABLE_WORKFLOW_SERVER_URL/api/task-queues/orders-critical/build-ids" \
   -H "Authorization: Bearer $DW_OPERATOR_TOKEN" \
   -H "X-Namespace: orders-prod" \
   -H "X-Durable-Workflow-Control-Plane-Version: 2"
 ```
 
-Той самий знімок доступний у CLI оператора та Python SDK:
-
 ```bash
-dw task-queue:build-ids orders-critical --json
+dw task-queue:build-ids orders-critical --namespace orders-prod --json
 ```
 
 ```python
 from durable_workflow import Client
 
-async with Client("https://durable-workflow.example", token=operator_token) as client:
+async with Client("https://durable-workflow.example", token=operator_token,
+                  namespace="orders-prod") as client:
     rollout = await client.list_task_queue_build_ids("orders-critical")
     for cohort in rollout.build_ids:
         print(cohort.build_id, cohort.rollout_status, cohort.total_worker_count)
 ```
 
-## Перший перехід: від worker без версії до версійованих {#first-cutover-unversioned-to-versioned}
+HTTP-знімок є першоджерелом для додаткових полів, яких може не показувати модель відповіді старішого SDK.
 
-Черга, яку завжди обслуговували worker без версії, повідомляє одну
-групу `build_id: null` із `rollout_status: "active"`. Перший перехід
-додає нову групу з позначкою збірки поруч із нею.
+## Незавершені задачі workflow за когортами {#pending-workflow-tasks-by-cohort}
 
-1. Розгорніть новий набір worker зі стабільним `build_id`, наприклад
-   `orders-worker-2026-04-22`, через `POST /api/worker/register`.
-2. Підтвердьте активність обох груп:
+`pending_workflow_tasks` рахує лише задачі workflow цього простору імен і черги, групуючи їх за ефективною сумісністю задачі, а за її відсутності — виконання. Це не черга активностей, кількість відкритих виконань, пропускна здатність чи навантаження процесу.
 
-   ```bash
-   dw task-queue:build-ids orders-critical --json
-   ```
+| Вкладене поле | Тлумачення |
+| --- | --- |
+| `ready_count` | Рядки задач workflow у стані `ready`. |
+| `leased_count` | Рядки у стані `leased`. |
+| `total_count` | `ready_count + leased_count`. |
+| `status` | `idle` без задач; інакше `pending` або `no_compatible_worker` для ненульової збірки без активного воркера. |
+| `operator_visible_signal`, `message` | Діагностика відсутніх сумісних воркерів; інакше значення можуть бути null. |
 
-   Ви маєте побачити `null` і новий `build_id` із
-   `rollout_status: "active"` та ненульовим `active_worker_count` кожного.
-3. Почніть drain групи без версії після початку обробки роботи новими worker:
+Неверсіонована когорта не отримує такої діагностики конкретної збірки. Відсутнє поле, невдала відповідь або застаріле спостереження не означає нуль. Прочитайте знімок знову та перевірте heartbeat і декларації типів.
 
-   ```bash
-   dw task-queue:drain orders-critical --unversioned
-   ```
+Стара збірка може мати дві готові задачі й одну орендовану, а нова — жодної. Загальна кількість три не визначає, якій групі потрібна потужність. Якщо активних воркерів старої збірки немає, відновіть сумісну потужність або явно відновіть когорту після помилкового дренування. Нові воркери іншої збірки не забирають роботу зі старим закріпленням. Якщо залишилися лише застарілі реєстрації, спершу з'ясуйте долю процесів і heartbeat, а не рахуйте їх доступною потужністю.
 
-   `drain_intent` групи без версії стає `draining`. Запущені worker
-   обробляють поточні завдання, але припиняють забирати нові.
-   Майбутні реєстрації чи heartbeat без `build_id` також потрапляють
-   до draining.
-4. Дочекайтеся нуля `active_worker_count` і `draining_worker_count`
-   групи без версії. Вона залишається в списку з
-   `drain_intent: "draining"` для підтвердження постійності переходу.
+Скорочуйте когорту обережно, перевіривши її задачі, свіжих воркерів, типи workflow, вільні слоти та намір дренування. Зберігайте потужність для орендованої та майбутньої роботи наявних виконань. Виконання, що чекає сигналу, таймера, активності чи дитини, зараз може не мати задачі workflow, але потребувати старої збірки пізніше. Активності можуть використовувати інші записані черги. Цей endpoint не визначає безпечного виведення з експлуатації й не дозволяє масштабувати останню потрібну когорту до нуля.
 
-## Canary нової збірки {#canary-a-new-build}
+[Server #519](https://github.com/durable-workflow/server/issues/519) відстежує захищене рішення про виведення збірки; [Server #534](https://github.com/durable-workflow/server/issues/534) — окрему функцію збору показників і масштабування до нуля. Цей список їх не реалізує; вбудований тригер KEDA/HPA тут не задокументований.
 
-Canary — друга збірка, що отримує малу частку трафіку, поки основна
-продовжує обслуговування. Використовуйте окремий `build_id` для
-окремого перегляду стану кожної групи.
+## Перший перехід до версіонованої збірки {#first-cutover-unversioned-to-versioned}
 
-1. Розгорніть worker canary із `build_id: orders-worker-2026-04-22-canary`.
-2. Перегляньте `list_task_queue_build_ids` і підтвердьте
-   `rollout_status: "active"` обох груп із потрібними кількостями worker.
-3. Підвищте нову збірку, додаючи worker нового `build_id` і зменшуючи
-   основну групу, або виведіть canary через drain:
+1. Запустіть нових воркерів зі сталою build ID та перевірте простір імен, чергу, типи й свіжі heartbeat.
+2. Перевірте обидві когорти та початкові виконання. Новіша назва або кількість воркерів не доводить сумісності.
+3. Явно просуньте збірку, коли її мають обирати нові запуски:
 
    ```bash
-   dw task-queue:drain orders-critical --build-id orders-worker-2026-04-22-canary
+   dw task-queue:promote orders-critical --namespace orders-prod --build-id orders-v2
    ```
 
-Server не керує розподілом завдань між групами. Оператори визначають
-розміри груп і покладаються на розподіл опитування для ваги трафіку.
-Стан оновлення build ID дозволяє підтвердити групи, здатні забирати
-роботу, і почати чисте передавання, коли група готова зупинитися.
+4. Збережіть воркерів, сумісних із наявними історіями. Просування не змінює старих закріплень, а дренування не є міграцією.
+5. Прибирайте стару потужність лише після незалежного усунення решти залежностей. Порожні лічильники й нуль реєстрацій цього не доводять. Зберігайте артефакт і шлях відновлення, доки він може знадобитися виконанню.
 
-## Drain старої збірки {#drain-an-older-build}
+## Канаркове розгортання нової збірки {#canary-a-new-build}
 
-Drain залишає вже орендовані завдання на старій збірці, спрямовуючи
-нові до інших активних груп черги:
+Сервер не розподіляє трафік між когортами у відсотках. Нові запуски обирають останню просунуту когорту, яка не дренується й не відкотилася. Без неї — єдину активну когорту із запитаним типом workflow, потім єдину активну когорту черги. Інакше виконання залишається без закріплення. Кілька активних когорт одного типу без просування не означають зваженого розподілу.
+
+Додавання воркерів змінює потужність, а не політику вибору нових запусків. Для ізольованої канарки використайте окрему чергу й явно направте туди обрані запуски застосунку. Під час просування в початковій черзі збережіть старих воркерів для вже закріплених виконань.
+
+## Дренування старої збірки {#drain-an-older-build}
+
+Дренування забороняє workflow-, activity- та query-poll цієї когорти брати нову роботу, але не переносить задачі. Poll дренованого воркера отримує HTTP409 із `poll_status: "draining"` і `reason: "worker_draining"`. Наявні оренди зберігають початкові повноваження.
 
 ```bash
-dw task-queue:drain orders-critical --build-id orders-worker-2026-04-21-z9
+dw task-queue:drain orders-critical --namespace orders-prod --build-id orders-v1
 ```
 
-Server записує `drain_intent: "draining"` групи й позначає кожен
-worker цього `build_id` як draining на наступному heartbeat.
-Виклик ідемпотентний: повторення не скидає `drained_at`, тому
-автоматизація може безпечно його повторювати.
+Не робіть цього лише тому, що нова збірка обробляє власні задачі: старі виконання можуть залишитися чекати. Після передчасного дренування відновіть когорту й воркерів із потрібною початковою збіркою:
 
-Після позначки рядка worker `draining` маршрути опитування завдань
-workflow, activity та query припиняють надавати нові оренди.
-Опитування відмовляють з HTTP `409`, `poll_status: "draining"`
-і `reason: "worker_draining"` до відновлення групи.
+```bash
+dw task-queue:resume orders-critical --namespace orders-prod --build-id orders-v1
+```
 
-`draining` є частиною загального контракту відповіді опитування.
-Той самий `poll_status` показує звичайні `leased` і `empty`,
-результат допуску `throttled` і типізовані помилки координації
-`unavailable` інших шляхів опитування.
-
-Спостерігайте drain через `list_task_queue_build_ids` і зменшення
-`active_worker_count` та `draining_worker_count` до нуля. Тоді група
-показує `rollout_status: "draining"` із нульовими кількостями worker:
-живих worker немає, а намір оператора все ще записує drain. Це
-безпечний момент зупинки процесів worker і видалення артефакту збірки.
+Дренування чи зупинка всіх воркерів не доводить, що артефакт можна видалити. Знімок не містить захищеного рішення про виведення з експлуатації.
 
 ## Відкат невдалої збірки {#roll-back-a-bad-build}
 
-Відкат виконує зворотний шлях: відновлює раніше спорожнену групу,
-повертає до неї новий трафік і переводить невдалу збірку в drain.
+Відновіть відомих справних воркерів, за потреби відновіть їхню когорту та просуньте цю збірку для майбутніх запусків. Потім виконайте rollback невдалого розгортання. Відкат не переписує закріплення й не передає залишкову роботу іншій збірці. Зберігайте сумісних воркерів або ухваліть явне рішення про відновлення на рівні застосунку.
 
-1. Відновіть відому робочу групу:
+Повтори, діти й continue-as-new успадковують початкове закріплення. Нескінченно продовжуваний ланцюг не переходить на щойно просунуту збірку. Для replay-сумісних розгортань зберігайте сталу ідентичність або завершіть старий ланцюг і створіть справді новий екземпляр за новою політикою. Не змінюйте збережені поля сумісності для примусової міграції.
 
-   ```bash
-   dw task-queue:resume orders-critical --build-id orders-worker-2026-04-21-z9
-   ```
+## Довідка endpoint і команд {#endpoints-and-commands-reference}
 
-   Server очищає `drain_intent`, видаляє `drained_at` і негайно
-   повертає до `active` рядки worker цього `build_id`, які ще
-   надсилають heartbeat, щоб endpoint читання припинив показувати draining.
-2. Переведіть невдалу групу в drain:
-
-   ```bash
-   dw task-queue:drain orders-critical --build-id orders-worker-2026-04-22
-   ```
-
-3. Збільште відому робочу збірку або розгорніть її знову, якщо worker
-   уже зупинені. Worker, що реєструються з її `build_id`, отримують
-   очищений намір drain і стають `active`.
-
-Resume також ідемпотентний. Повторення для вже активної групи
-нічого не змінює, тому автоматизований відкат може безпечно його викликати.
-
-## Довідник endpoint і команд {#endpoints-and-commands-reference}
-
-| Намір | Endpoint HTTP | CLI | Метод Python SDK |
+| Намір | HTTP endpoint | CLI | Метод Python SDK |
 | --- | --- | --- | --- |
-| Перегляд стану груп | `GET /api/task-queues/{taskQueue}/build-ids` | `dw task-queue:build-ids` | `Client.list_task_queue_build_ids` |
-| Позначити групу draining | `POST /api/task-queues/{taskQueue}/build-ids/drain` | `dw task-queue:drain` | `Client.drain_task_queue_build_id` |
-| Відновити раніше спорожнену групу | `POST /api/task-queues/{taskQueue}/build-ids/resume` | `dw task-queue:resume` | `Client.resume_task_queue_build_id` |
+| Перевірити когорти | `GET /api/task-queues/{taskQueue}/build-ids` | `dw task-queue:build-ids` | `Client.list_task_queue_build_ids` |
+| Обрати нові запуски | `POST /api/task-queues/{taskQueue}/build-ids/promote` | `dw task-queue:promote` | `Client.promote_task_queue_build_id` |
+| Дренувати | `POST /api/task-queues/{taskQueue}/build-ids/drain` | `dw task-queue:drain` | `Client.drain_task_queue_build_id` |
+| Відновити | `POST /api/task-queues/{taskQueue}/build-ids/resume` | `dw task-queue:resume` | `Client.resume_task_queue_build_id` |
 
-Drain і resume приймають тіло JSON `{"build_id": "..."}` або
-`{"build_id": null}` для групи без версії. CLI позначає її через
-`--unversioned`, а іншу збірку через `--build-id <value>`.
-Поєднання обох одразу відхиляється.
+Мутації приймають `{"build_id":"orders-v2"}` або `{"build_id":null}` для неверсіонованої когорти. CLI використовує `--build-id` або `--unversioned`, не обидва.
 
-## Пов’язані довідники {#related-references}
+Повний життєвий цикл доступний через `GET /api/deployments` і `POST /api/deployments/{name}/{promote,drain,resume,rollback}`. Використовуйте повернену назву, як-от `orders-prod/orders-critical@orders-v2`, і початковий простір імен. На опублікованому Apache-шляху зберігайте роздільний `/`: кодування всієї складеної назви може повернути Apache HTML404 ще до API. Відмови повертають HTTP409 із типізованим `reason` і масивом `blockages`. Перевірте `expected_resolution`; відмова не є успішним просуванням. [Server #521](https://github.com/durable-workflow/server/issues/521) стосується неповного поточного OpenAPI-дзеркала, а не нової реалізації чи зміни заморожених схем.
 
-- [Простори імен, автентифікація та реєстрація worker](/docs/polyglot/namespace-auth-workers)
-  для `POST /api/worker/register`, що записує `build_id` кожного worker.
-- [Допуск черги завдань](/docs/polyglot/task-queue-admission) для
-  бюджетів слотів worker і диспетчеризації, що діють разом зі станом оновлення.
-- [Довідник Server API](/docs/polyglot/server-api-reference) для
-  повного списку маршрутів площини керування, потрібних ролей і
-  заголовків протоколів.
-- [Довідник команд CLI](/docs/polyglot/cli-reference) для форми
-  аргументів і параметрів кожної підкоманди `dw task-queue:*`.
+## Пов'язані матеріали {#related-references}
+
+- [Сумісність і маршрутизація воркерів](/docs/polyglot/worker-compatibility-routing)
+- [Простір імен, автентифікація та реєстрація](/docs/polyglot/namespace-auth-workers)
+- [Допуск у чергу задач](/docs/polyglot/task-queue-admission)
+- [Поступові оновлення](/docs/rolling-upgrades)
+- [Довідка Server API](/docs/polyglot/server-api-reference)
+- [Довідка команд CLI](/docs/polyglot/cli-reference)

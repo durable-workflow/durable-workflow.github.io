@@ -1,212 +1,146 @@
 ---
 sidebar_position: 7
-title: Despliegue de workers por build id
-description: Despliega, prueba con canary, drena y revierte versiones de workers sin bloquear ejecuciones mediante el estado de despliegue por build id del servidor independiente.
-tags:
-  - worker-protocol
-  - operations
-  - rollouts
-  - build-ids
-  - task-queues
-keywords:
-  - despliegue de workers por build id
-  - drenaje de versión de worker
-  - reversión de versión de worker
-  - workers canary
-  - transición de workers sin versión a versionados
+title: Despliegue de identificadores de compilación de workers
+description: Inspecciona cohortes, selecciona la compilación de los nuevos inicios y conserva capacidad para ejecuciones fijadas.
+tags: [worker-protocol, operations, rollouts, build-ids, task-queues]
+keywords: [compilación de workers, drenaje, reversión, canary, workers sin versión]
 ---
 
-# Despliegue de workers por build id {#worker-build-id-rollout}
+# Despliegue de identificadores de compilación de workers
 
-Utiliza esta referencia para pasar de workers sin versión a workers etiquetados,
-probar una nueva versión con canary en una cola, drenar una versión antigua
-antes de retirarla o revertir una defectuosa. El servidor registra la intención
-del operador junto a las filas de workers activos para que el siguiente sondeo,
-describe de la CLI o llamada `list_task_queue_build_ids` refleje fielmente el
-estado del despliegue, incluso si desaparecen los workers antiguos antes de
-drenar su trabajo acumulado.
+## Replay antes de cambiar builds {#replay-before-changing-builds}
 
-Esta guía trata del control de cohortes, no del contrato completo de enrutamiento.
-Consulta [Compatibilidad y enrutamiento de workers](/docs/polyglot/worker-compatibility-routing)
-para la regla que vincula el trabajo en curso a ejecutores compatibles y hace
-de su ausencia un estado explícito para el operador.
+Antes de promover un candidato, reproduzca historiales representativos abiertos y cerrados recientemente con su código exacto. Antes de revertir, reproduzca los historiales escritos por el build nuevo con el artefacto antiguo. Siga la [comprobación de replay](../testing.md#replay-before-deployment); una cohorte de enrutamiento compatible o una comprobación de integridad satisfactoria no demuestra, por sí sola, compatibilidad de replay.
 
-El servidor expresa el despliegue de una cola como un conjunto de **cohortes por
-build id**. Una cohorte agrupa los registros de workers que declararon el mismo
-`build_id` en `POST /api/worker/register`. Los workers que omiten `build_id`
-forman la **cohorte sin versión**, predeterminada antes del despliegue y desde
-la que se realiza la primera transición.
+Usa esta guía para inspeccionar cohortes, elegir la compilación de los nuevos workflows y mantener workers compatibles con las ejecuciones existentes. La promoción cambia la selección de nuevos inicios; el drenaje impide nuevas reclamaciones por esa cohorte. Ninguna operación migra ejecuciones ni demuestra que se pueda eliminar una compilación.
+
+[Compatibilidad y enrutamiento de workers](/docs/polyglot/worker-compatibility-routing) explica la identidad de tareas, actividades, reintentos, hijos y continue-as-new. Una cohorte tiene el ámbito `(namespace, task_queue, build_id)`. Los registros sin `build_id` pertenecen a la cohorte sin versión, `null`.
 
 ## Estado de despliegue registrado por el servidor {#rollout-state-the-server-records}
 
-Cada cohorte `(namespace, task_queue, build_id)` contiene el estado agregado de
-workers (activos, drenando, obsoletos y total) y la intención del operador:
-
-| Campo | Finalidad |
+| Campo | Significado |
 | --- | --- |
-| `build_id` | Identidad de versión registrada. `null` identifica la cohorte sin versión. |
-| `rollout_status` | Vista agregada de lo que hará la cohorte con tareas nuevas: `active`, `active_with_draining`, `draining`, `stale_only` o `no_workers`. |
-| `drain_intent` | Intención del operador para la cohorte: `active` o `draining`. |
-| `drained_at` | Momento en que se marcó por primera vez el drenaje. Ausente mientras está activa. Repetir el drenaje no cambia esta marca de tiempo. |
-| `active_worker_count` | Workers activos que aceptan nuevas tareas. |
-| `draining_worker_count` | Workers activos con tareas en curso que ya no reclaman trabajo nuevo. |
-| `stale_worker_count` | Workers cuyo último latido es anterior al umbral de obsolescencia. |
-| `total_worker_count` | Suma de las tres poblaciones de la cohorte. |
-| `runtimes`, `sdk_versions` | Cadenas distintas de runtime y versión de SDK observadas en la cohorte. |
-| `last_heartbeat_at`, `first_seen_at` | Ventana de latidos de toda la cohorte, útil para confirmar su inactividad antes de eliminarla. |
+| `build_id` | Identidad registrada; `null` es la cohorte sin versión. |
+| `rollout_status` | `active`, `active_with_draining`, `draining`, `stale_only` o `no_workers`. |
+| `drain_intent`, `drained_at` | Intención persistente y primera marca temporal del drenaje; repetirlo no cambia la marca. |
+| `promoted_at`, `rolled_back_at` | Marcas persistentes de promoción y reversión. |
+| `new_start_selected` | Cohorte seleccionada mediante promoción explícita. `false` no descarta la selección alternativa de una única cohorte descrita abajo. |
+| `active_worker_count` | Registros recientes no drenados; no son plazas libres ni garantizan todos los tipos de workflow. |
+| `draining_worker_count` | Registros recientes marcados para drenaje, sin nuevas reclamaciones; no necesariamente conservan una concesión. |
+| `stale_worker_count` | Registros con heartbeat anterior a `stale_after_seconds`. |
+| `total_worker_count` | Suma de registros activos, drenados y obsoletos. |
+| `runtimes`, `sdk_versions` | Cadenas de runtime y SDK observadas en los registros. |
+| `last_heartbeat_at`, `first_seen_at` | Actualidad y antigüedad del registro, no prueba de que no queden ejecuciones. |
+| `pending_workflow_tasks` | Recuentos y diagnóstico de tareas de workflow, explicados abajo. |
 
-`drain_intent` es persistente: reiniciar un worker, detenerlos todos o dejar que
-la cohorte quede obsoleta no la devuelve silenciosamente a `active`. Solo un
-`POST .../build-ids/resume` explícito borra `drain_intent` y `drained_at`.
-Así `rollout_status` sigue siendo fiel incluso cuando no quedan workers activos.
+La intención de drenaje persiste tras reinicios, ausencia de workers y heartbeats obsoletos. Solo la reanudación explícita la elimina; la ausencia no reactiva al worker.
 
 ## Inspeccionar el despliegue {#inspect-the-rollout}
 
-Antes de drenar o eliminar una versión, confirma qué cohortes siguen accesibles
-en la cola:
+Comprueba el namespace y la cola exactos antes de modificar capacidad:
 
 ```bash
-curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/task-queues/orders-critical/build-ids" \
+curl -fsS "$DURABLE_WORKFLOW_SERVER_URL/api/task-queues/orders-critical/build-ids" \
   -H "Authorization: Bearer $DW_OPERATOR_TOKEN" \
   -H "X-Namespace: orders-prod" \
   -H "X-Durable-Workflow-Control-Plane-Version: 2"
 ```
 
-La misma instantánea está disponible en la CLI de operador y el SDK de Python:
-
 ```bash
-dw task-queue:build-ids orders-critical --json
+dw task-queue:build-ids orders-critical --namespace orders-prod --json
 ```
 
 ```python
 from durable_workflow import Client
 
-async with Client("https://durable-workflow.example", token=operator_token) as client:
+async with Client("https://durable-workflow.example", token=operator_token,
+                  namespace="orders-prod") as client:
     rollout = await client.list_task_queue_build_ids("orders-critical")
     for cohort in rollout.build_ids:
         print(cohort.build_id, cohort.rollout_status, cohort.total_worker_count)
 ```
 
-## Primera transición: de sin versión a versionado {#first-cutover-unversioned-to-versioned}
+La instantánea HTTP es la referencia para campos adicionales que el modelo de respuesta de un SDK antiguo podría omitir.
 
-Una cola atendida siempre por workers sin versión muestra una única cohorte
-`build_id: null` con `rollout_status: "active"`. La primera transición incorpora
-una cohorte etiquetada junto a ella.
+## Tareas de workflow pendientes por cohorte {#pending-workflow-tasks-by-cohort}
 
-1. Despliega la nueva flota con un `build_id` estable (por ejemplo,
-   `orders-worker-2026-04-22`) registrado mediante
-   `POST /api/worker/register`.
-2. Confirma que ambas cohortes están activas:
+`pending_workflow_tasks` cuenta únicamente tareas de workflow de este namespace y cola, agrupadas por compatibilidad efectiva de la tarea, recurriendo a la de su ejecución. No es la cola de actividades, el número de ejecuciones abiertas, el rendimiento ni la carga de procesos.
+
+| Subcampo | Interpretación |
+| --- | --- |
+| `ready_count` | Filas de tareas de workflow en estado `ready`. |
+| `leased_count` | Filas en estado `leased`. |
+| `total_count` | `ready_count + leased_count`. |
+| `status` | `idle` sin tareas; en otro caso `pending`, o `no_compatible_worker` para una compilación no nula sin worker activo. |
+| `operator_visible_signal`, `message` | Diagnóstico cuando faltan workers compatibles; en otro caso pueden ser nulos. |
+
+La cohorte sin versión no recibe ese diagnóstico específico de compilación. Un campo ausente, una petición fallida o una observación antigua no equivale a cero. Vuelve a leer la instantánea y comprueba heartbeats y declaraciones de tipos.
+
+La compilación antigua puede tener dos tareas listas y una arrendada mientras la nueva no tiene pendientes. Un total de tres en la cola no identifica qué flota necesita capacidad. Si la antigua no tiene workers activos, restaura su capacidad compatible o reanúdala si se drenó por error. Añadir workers nuevos no consume trabajo fijado a la antigua. Si solo hay registros obsoletos, investiga procesos o heartbeats perdidos antes de contarlos como capacidad disponible.
+
+Reduce cada cohorte con cautela tras revisar sus tareas, workers recientes, tipos declarados, plazas disponibles e intención de drenaje. Conserva capacidad para concesiones y futuras tareas de ejecuciones existentes. Una ejecución que espera señal, temporizador, actividad o hijo puede no tener tareas de workflow ahora y necesitar la compilación antigua después. Las actividades pueden utilizar otras colas registradas. Este endpoint no determina la retirada segura ni autoriza reducir a cero la última cohorte necesaria.
+
+[Server #519](https://github.com/durable-workflow/server/issues/519) sigue la decisión protegida de retirada; [Server #534](https://github.com/durable-workflow/server/issues/534), la capacidad separada de recolección y reducción a cero. Esta lista no entrega esas funciones ni documenta un activador KEDA/HPA integrado.
+
+## Primer cambio de sin versión a versionado {#first-cutover-unversioned-to-versioned}
+
+1. Inicia los nuevos workers con una identidad estable y verifica namespace, cola, tipos y heartbeats recientes.
+2. Inspecciona ambas cohortes y las ejecuciones originales. Un nombre más nuevo o un número de workers no demuestra compatibilidad.
+3. Promueve explícitamente la compilación cuando deban seleccionarla los nuevos inicios:
+
    ```bash
-   dw task-queue:build-ids orders-critical --json
-   ```
-   Debes ver `null` y el nuevo `build_id`, ambos con
-   `rollout_status: "active"` y `active_worker_count` distinto de cero.
-3. Inicia el drenaje de la cohorte sin versión cuando los nuevos workers
-   estén procesando trabajo:
-   ```bash
-   dw task-queue:drain orders-critical --unversioned
-   ```
-   `drain_intent` pasa a `draining` para la cohorte sin versión. Los workers
-   que siguen ejecutándose procesan sus tareas en curso pero dejan de reclamar
-   tareas nuevas. Los futuros registros o latidos sin `build_id` también
-   quedan en drenaje.
-4. Espera a que `active_worker_count` y `draining_worker_count` sean cero en
-   la cohorte sin versión. Seguirá apareciendo con `drain_intent: "draining"`
-   para que puedas confirmar que la transición es permanente.
-
-## Probar una nueva versión con canary {#canary-a-new-build}
-
-Un canary es una segunda versión que recibe una pequeña fracción del tráfico
-mientras la principal sigue atendiendo. Utiliza un `build_id` distinto para
-inspeccionar el estado de cada cohorte de forma independiente.
-
-1. Despliega los workers canary con `build_id: orders-worker-2026-04-22-canary`.
-2. Inspecciona `list_task_queue_build_ids` para confirmar que ambas cohortes
-   muestran `rollout_status: "active"` y los recuentos de workers esperados.
-3. Promueve la versión iniciando más workers con el nuevo `build_id` y
-   reduciendo los de la principal, o retira el canary drenándolo:
-   ```bash
-   dw task-queue:drain orders-critical --build-id orders-worker-2026-04-22-canary
+   dw task-queue:promote orders-critical --namespace orders-prod --build-id orders-v2
    ```
 
-El servidor no controla el reparto de tareas entre cohortes. Los operadores
-dimensionan sus poblaciones y utilizan la distribución del sondeo para ponderar
-el tráfico. El estado de despliegue permite confirmar qué cohortes aún pueden
-reclamar trabajo y efectuar un traspaso limpio cuando una esté lista para detenerse.
+4. Mantén workers compatibles con los historiales existentes. La promoción no modifica fijaciones antiguas; drenar no es migrar.
+5. Retira capacidad antigua solo cuando se hayan resuelto independientemente sus dependencias restantes. Los contadores vacíos o cero registros no bastan. Conserva el artefacto y la recuperación mientras alguna ejecución pueda necesitarlo.
 
-## Drenar una versión antigua {#drain-an-older-build}
+## Canary de una compilación nueva {#canary-a-new-build}
 
-El drenaje mantiene las tareas que ya tienen lease en la versión antigua mientras las
-nuevas pasan a otras cohortes activas de la cola:
+El servidor no ofrece reparto porcentual entre cohortes. Los nuevos inicios seleccionan la cohorte promovida más recientemente que no esté drenada ni revertida. Si no existe, seleccionan la única cohorte activa que declara el tipo solicitado y, después, la única activa de la cola. Si sigue habiendo ambigüedad, la ejecución queda sin fijar. Varias cohortes activas del mismo tipo sin promoción no implican un reparto ponderado.
+
+Añadir workers cambia la capacidad, no la política de selección promovida. Para aislar un canary, usa una cola separada y dirige explícitamente a ella algunos inicios de la aplicación. Al promover en la cola original, conserva workers antiguos para las ejecuciones ya fijadas.
+
+## Drenar una compilación antigua {#drain-an-older-build}
+
+El drenaje impide que los polls de workflow, actividad y query de la cohorte reclamen trabajo nuevo; no traslada tareas. Un poll de un worker drenado recibe HTTP409 con `poll_status: "draining"` y `reason: "worker_draining"`. Las concesiones existentes conservan su autoridad original.
 
 ```bash
-dw task-queue:drain orders-critical --build-id orders-worker-2026-04-21-z9
+dw task-queue:drain orders-critical --namespace orders-prod --build-id orders-v1
 ```
 
-El servidor fija `drain_intent: "draining"` en la cohorte y marca cada worker de
-ese `build_id` como drenando en su siguiente latido. La llamada es idempotente:
-repetirla no restablece `drained_at`, por lo que es seguro reintentar desde una automatización.
+No lo hagas solo porque la nueva compilación pueda reclamar su propio trabajo: las ejecuciones antiguas pueden quedarse esperando. Para recuperar un drenaje prematuro, reanuda la cohorte y restaura workers con la compilación original:
 
-Cuando una fila de worker queda en `draining`, las rutas de sondeo de tareas de
-workflow, actividad y consulta dejan de asignarle trabajo nuevo mediante leases. Los sondeos
-fallan con HTTP `409`, `poll_status: "draining"` y `reason: "worker_draining"`
-hasta que se reanuda la cohorte.
+```bash
+dw task-queue:resume orders-critical --namespace orders-prod --build-id orders-v1
+```
 
-`draining` forma parte del contrato general de respuesta al sondeo, no es un
-campo exclusivo del drenaje. Mediante el mismo `poll_status`, los workers
-observan los sondeos normales `leased` y `empty`, los resultados de admisión
-`throttled` y los fallos tipados de coordinación `unavailable` en otras rutas.
+Drenar o detener todos los workers no demuestra que se pueda eliminar el artefacto. Esta instantánea no incluye una decisión protegida de retirada.
 
-Supervisa el drenaje sondeando `list_task_queue_build_ids` y observando cómo
-`active_worker_count` y `draining_worker_count` bajan a cero. Entonces la cohorte
-muestra `rollout_status: "draining"` sin workers: no quedan workers activos y la
-intención del operador sigue registrando el drenaje. Ese es el momento seguro
-para detener los procesos de worker y eliminar el artefacto de la versión.
+## Revertir una compilación defectuosa {#roll-back-a-bad-build}
 
-## Revertir una versión defectuosa {#roll-back-a-bad-build}
+Restaura workers conocidos como correctos, reanuda su cohorte si hace falta y promueve esa compilación para futuros inicios. Después revierte el despliegue defectuoso. La reversión no reescribe fijaciones ni entrega su trabajo restante a otra compilación. Conserva workers compatibles o toma una decisión explícita de recuperación en la aplicación.
 
-La reversión sigue el flujo inverso: reanuda una cohorte drenada, vuelve a
-dirigirle tráfico nuevo y drena la versión defectuosa.
-
-1. Reanuda la cohorte conocida como válida:
-   ```bash
-   dw task-queue:resume orders-critical --build-id orders-worker-2026-04-21-z9
-   ```
-   El servidor borra `drain_intent` y `drained_at`, y devuelve inmediatamente
-   a `active` las filas de workers que siguen enviando latidos con ese
-   `build_id`, para que el endpoint de lectura deje de mostrar drenaje.
-2. Drena la cohorte defectuosa:
-   ```bash
-   dw task-queue:drain orders-critical --build-id orders-worker-2026-04-22
-   ```
-3. Vuelve a aumentar los workers de la versión válida o redespliégala si ya
-   se detuvieron. Los workers que se registren con su `build_id` recogen la
-   intención de drenaje borrada y quedan como `active`.
-
-La reanudación también es idempotente. Repetirla sobre una cohorte ya activa no
-cambia nada, por lo que los flujos automáticos de reversión pueden utilizarla con seguridad.
+Los reintentos, hijos y continue-as-new heredan la fijación original. Una cadena continuada indefinidamente no migra a la compilación recién promovida. Usa una identidad estable para despliegues compatibles con replay, o termina la cadena antigua y crea una instancia realmente nueva bajo la nueva selección. No edites campos persistidos de compatibilidad para forzar la migración.
 
 ## Referencia de endpoints y comandos {#endpoints-and-commands-reference}
 
-| Intención | Endpoint HTTP | CLI | Método del SDK de Python |
+| Intención | Endpoint HTTP | CLI | Método del SDK Python |
 | --- | --- | --- | --- |
-| Inspeccionar el estado de la cohorte | `GET /api/task-queues/{taskQueue}/build-ids` | `dw task-queue:build-ids` | `Client.list_task_queue_build_ids` |
-| Marcar el drenaje de una cohorte | `POST /api/task-queues/{taskQueue}/build-ids/drain` | `dw task-queue:drain` | `Client.drain_task_queue_build_id` |
-| Reanudar una cohorte drenada | `POST /api/task-queues/{taskQueue}/build-ids/resume` | `dw task-queue:resume` | `Client.resume_task_queue_build_id` |
+| Inspeccionar cohortes | `GET /api/task-queues/{taskQueue}/build-ids` | `dw task-queue:build-ids` | `Client.list_task_queue_build_ids` |
+| Seleccionar nuevos inicios | `POST /api/task-queues/{taskQueue}/build-ids/promote` | `dw task-queue:promote` | `Client.promote_task_queue_build_id` |
+| Drenar | `POST /api/task-queues/{taskQueue}/build-ids/drain` | `dw task-queue:drain` | `Client.drain_task_queue_build_id` |
+| Reanudar | `POST /api/task-queues/{taskQueue}/build-ids/resume` | `dw task-queue:resume` | `Client.resume_task_queue_build_id` |
 
-El drenaje y la reanudación reciben un cuerpo JSON `{"build_id": "..."}`, o
-`{"build_id": null}` para la cohorte sin versión. La CLI utiliza `--unversioned`
-para esta cohorte y `--build-id <value>` para las demás; combinar ambos produce
-un error inmediato.
+Estas mutaciones aceptan `{"build_id":"orders-v2"}` o `{"build_id":null}` para la cohorte sin versión. Los comandos CLI usan `--build-id` o `--unversioned`, nunca ambos.
+
+Para el ciclo completo usa `GET /api/deployments` y `POST /api/deployments/{name}/{promote,drain,resume,rollback}`. Usa el nombre devuelto, por ejemplo `orders-prod/orders-critical@orders-v2`, con su namespace original. En la ruta Apache publicada, conserva la barra separadora: codificar el nombre compuesto completo puede producir una HTML404 de Apache antes de llegar a la API. Las acciones rechazadas devuelven HTTP409 con `reason` tipado y un array `blockages`. Revisa `expected_resolution`; un rechazo no es una promoción correcta. [Server #521](https://github.com/durable-workflow/server/issues/521) sigue el espejo OpenAPI actual incompleto, no una implementación nueva ni un cambio de esquemas congelados.
 
 ## Referencias relacionadas {#related-references}
 
-- [Espacios de nombres, autenticación y registro de workers](/docs/polyglot/namespace-auth-workers)
-  para la llamada `POST /api/worker/register` que fija `build_id` en cada worker.
-- [Admisión en colas de tareas](/docs/polyglot/task-queue-admission) para los
-  presupuestos de slots y despacho aplicables junto al estado del despliegue.
-- [Referencia de la API del servidor](/docs/polyglot/server-api-reference) para
-  todas las rutas del plano de control, sus roles y sus cabeceras de protocolo.
-- [Referencia de comandos de la CLI](/docs/polyglot/cli-reference) para los
-  argumentos y opciones de cada subcomando `dw task-queue:*`.
+- [Compatibilidad y enrutamiento de workers](/docs/polyglot/worker-compatibility-routing)
+- [Namespace, autenticación y registro de workers](/docs/polyglot/namespace-auth-workers)
+- [Admisión de colas de tareas](/docs/polyglot/task-queue-admission)
+- [Actualizaciones graduales](/docs/rolling-upgrades)
+- [Referencia de la API Server](/docs/polyglot/server-api-reference)
+- [Referencia de comandos CLI](/docs/polyglot/cli-reference)

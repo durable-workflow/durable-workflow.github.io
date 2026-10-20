@@ -391,6 +391,8 @@ Use esta secuencia de verificación:
 
 Las rutas correspondientes de exportación y archivo para Waterline figuran en la [referencia de su API de operador](./waterline-operator-api.md).
 
+Las comprobaciones de suma y estructura no demuestran que una exportación contenga todos los eventos originales ni bytes externos independientes. Rechace fuentes ya depuradas: la marca falsa de exportación completa sigue siendo un defecto abierto en [Workflow #856](https://github.com/durable-workflow/workflow/issues/856). Este procedimiento manual tampoco entrega la operación de archivado autosuficiente verificado solicitada en [Server #520](https://github.com/durable-workflow/server/issues/520). Distinga esas carencias del producto de las pruebas de recuperación que su despliegue sí haya superado.
+
 ## Contrato de copia, restauración y recuperación ante desastres {#backup-restore-and-disaster-recovery-contract}
 
 Copias, restauración y recuperación ante desastres forman parte del contrato operativo, no de un procedimiento privado opcional. Publique y ensaye estos datos para cada topología admitida:

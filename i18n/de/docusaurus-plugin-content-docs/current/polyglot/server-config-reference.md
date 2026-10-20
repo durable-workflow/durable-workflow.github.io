@@ -173,8 +173,8 @@ Beispiel einer abweichenden Zulassungsregel:
 | `DW_QUERY_TASK_POLL_MAX_CONCURRENT` | nicht gesetzt; für `PHP_CLI_SERVER_WORKERS` abgeleitet | Optionale Grenze gleichzeitig wartender untätiger Abfrage-Long-Polls auf diesem Knoten. Wartende Aufgaben können vor Beginn der Leerlaufwartezeit weiterhin sofort beansprucht werden. | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT` |
 | `DW_WORKFLOW_TASK_TIMEOUT` | `60` | Standard-Lease-Zeitlimit einer Workflow-Aufgabe in Sekunden. | `WORKFLOW_TASK_TIMEOUT` |
 | `DW_ACTIVITY_TASK_TIMEOUT` | `300` | Standard-Lease-Zeitlimit einer Aktivitätsaufgabe in Sekunden. | `ACTIVITY_TASK_TIMEOUT` |
-| `DW_WORKER_STALE_AFTER_SECONDS` | `max(DW_WORKER_POLL_TIMEOUT * 2, 60)` | Sekunden nach einem Worker-Heartbeat, nach denen die Registrierung als veraltet gilt. | `WORKFLOW_SERVER_WORKER_STALE_AFTER_SECONDS` |
-| `DW_WORKER_HEARTBEAT_INTERVAL_SECONDS` | `60` | Den SDKs bei Registrierung und Heartbeat bestätigtes Intervall in Sekunden. | `WORKFLOW_SERVER_WORKER_HEARTBEAT_INTERVAL_SECONDS` |
+| `DW_WORKER_STALE_AFTER_SECONDS` | `max(DW_WORKER_HEARTBEAT_INTERVAL_SECONDS * 3, 30)` | Sekunden nach einem Worker-Heartbeat, nach denen die Registrierung als veraltet gilt. | `WORKFLOW_SERVER_WORKER_STALE_AFTER_SECONDS` |
+| `DW_WORKER_HEARTBEAT_INTERVAL_SECONDS` | `10` | Den SDKs bei Registrierung und Heartbeat bestätigtes Intervall in Sekunden. | `WORKFLOW_SERVER_WORKER_HEARTBEAT_INTERVAL_SECONDS` |
 
 ## Grenzen, Aufbewahrung und Metriken {#limits-retention-and-metrics}
 

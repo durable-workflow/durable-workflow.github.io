@@ -8,6 +8,13 @@ The current `Workflow\V2` slice supports durable child workflows through straigh
 
 A child run is still a normal workflow run with its own workflow instance id and run id. What makes it a child is the durable linkage back to the parent run plus one stable parent-issued `child_call_id` for that invocation.
 
+## Namespace boundary {#namespace-boundary}
+
+A child and signals sent through its handle stay in the parent's namespace.
+Selecting another workflow type, language or queue does not change that
+namespace. Use a [service operation](./service-operations.md) for a durable
+call to an operation published in another namespace of the same cluster.
+
 ```php
 use function Workflow\V2\child;
 use Workflow\V2\Workflow;

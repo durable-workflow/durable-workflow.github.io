@@ -388,6 +388,8 @@ Utilisez cette séquence de vérification :
 
 Les routes correspondantes figurent dans la [référence API opérateur Waterline](./waterline-operator-api.md).
 
+Les contrôles de somme et de structure ne prouvent pas qu’un export contient tous les événements d’origine ou des octets externes indépendants. Refusez les sources déjà nettoyées : le faux indicateur d’export complet reste un défaut ouvert dans [Workflow #856](https://github.com/durable-workflow/workflow/issues/856). Cette procédure manuelle ne fournit pas non plus l’opération d’archive autonome vérifiée demandée dans [Server #520](https://github.com/durable-workflow/server/issues/520). Distinguez ces lacunes du produit des contrôles de récupération réellement réussis par votre déploiement.
+
 ## Contrat de sauvegarde et de récupération {#backup-restore-and-disaster-recovery-contract}
 
 Sauvegarde, restauration et récupération après sinistre font partie du contrat d’exploitation. Publiez et répétez pour chaque topologie :

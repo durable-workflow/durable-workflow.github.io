@@ -4,6 +4,10 @@ sidebar_position: 15
 
 # Gestion des versions {#versioning}
 
+## Relecture avant un changement de build {#replay-before-changing-builds}
+
+Avant de promouvoir un candidat, relisez des historiques représentatifs ouverts et récemment clôturés avec son code applicatif exact. Avant un retour arrière, relisez les historiques écrits par le nouveau build avec l’ancien artefact. Suivez le [contrôle de relecture](../testing.md#replay-before-deployment) : une cohorte de routage compatible ou une vérification d’intégrité réussie ne prouve pas à elle seule la compatibilité de relecture.
+
 Les workflows pouvant durer des mois, voire des années, il faut souvent modifier leur définition alors que des exécutions sont encore en cours. Sans gestion des versions, une modification du code affectant le chemin d’exécution provoquerait des erreurs de non-déterminisme pendant la relecture.
 
 La fonction `getVersion()` permet de modifier en sécurité des workflows en cours en créant des points de branchement versionnés.

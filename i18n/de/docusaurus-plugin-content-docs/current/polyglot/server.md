@@ -276,6 +276,8 @@ Für längere Nachweise als 1 bis 365 Tage wählen Sie Datenbankerhalt oder unab
 
 Bereinigung entfernt Historie, zugehörige Details und geeignete externe Payloads. Eine spätere Verlängerung stellt sie nicht wieder her. Der [eingebettete Bereinigungsleitfaden](../configuration/pruning-workflows.md) beschreibt einen eigenen anwendungsgesteuerten Vorgang; seine API verwendet nicht Servers Namespace-Regel. Prüfen Sie für andere Laufzeiten deren Verhalten, bevor Sie dieses PHP-Verfahren anwenden.
 
+Aktuelle Historienexporte erhalten externe Referenzen, keine unabhängigen Kopien der Objekte. Der eigenständige, verifizierte Archivierungsablauf wird unter [Server #520](https://github.com/durable-workflow/server/issues/520) gefordert; ein Export mit Prüfsumme liefert ihn nicht. Lehnen Sie auch bereits bereinigte Historie ab, statt ihrem Merkmal `history_complete` zu vertrauen. Der bekannte falsche Vollständigkeitsnachweis bleibt unter [Workflow #856](https://github.com/durable-workflow/workflow/issues/856) offen.
+
 ### Namespaces {#namespaces}
 
 `server-bootstrap` führt Migrationen aus und legt den Namespace `default` an. Mit `DW_DEFAULT_NAMESPACE` ändern Sie den bei fehlendem Namespace-Header verwendeten Namespace:

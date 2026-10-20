@@ -613,9 +613,17 @@ class ApprovalWorkflow:
         self.approved_by = by
 
     def run(self, ctx, *args):
-        yield ctx.schedule_activity("wait_for_approval", [])
-        return {"approved": self.approved, "approved_by": self.approved_by}
+        ready = yield ctx.wait_condition(
+            lambda: self.approved, key="approval.approved", timeout=60,
+        )
+        return {
+            "status": "approved" if ready else "timed_out",
+            "approved": self.approved,
+            "approved_by": self.approved_by,
+        }
 ```
+
+L’attente appartient au workflow, pas à une activité. Son prédicat lit l’état du gestionnaire de signal reconstruit par rejeu ; le worker ne réserve aucun slot d’activité pour cette approbation. Le délai de la condition est distinct des échéances finies de l’exécution individuelle et de l’exécution logique du workflow. Pour terminer un travail externe, utilisez une activité courte qui soumet puis revient, ainsi qu’un [rappel corrélé](./polling-patterns.md#callback-and-signal-completion).
 
 Les décorateurs de réception de requête et de mise à jour permettent de publier
 des noms de gestionnaire stables. Les workers Python exécutent les requêtes
@@ -982,6 +990,14 @@ async def long_running_task(items: list) -> dict:
 
     return {"processed": len(items)}
 ```
+
+### Requêtes de heartbeat {#activity-heartbeat-requests}
+
+Pour les activités distantes, appelez `await ctx.heartbeat(...)` pendant un travail d’activité borné, bien avant `heartbeat_timeout`. La première fenêtre commence lorsque le moteur réclame l’activité, avant que Python reçoive la tâche. Chaque heartbeat enregistré utilise le moment de son enregistrement par le moteur, pas celui où sa réponse atteint Python. Les pauses, la latence et les nouvelles tentatives de transport consomment le budget. Suivez les [conseils de fréquence](../features/heartbeats.md#heartbeat-cadence-and-receipts).
+
+L’appel direct à `Client.heartbeat_activity_task()` utilise la `TransportRetryPolicy` configurée. Après cette politique, les erreurs de transport peuvent se propager comme `httpx.TransportError`, et les refus HTTP deviennent des exceptions du SDK telles que `ServerError`. Il s’agit de nouvelles tentatives HTTP, pas d’une autre tentative d’activité ni de temps supplémentaire pour le heartbeat. `ActivityContext.heartbeat()` peut lever `ActivityCancelled` lorsque le worker demande à l’activité de s’arrêter. Avec le worker normal à supervision coopérative, un échec de heartbeat ou de vérification de possession peut arrêter ou abandonner le callback. Ne supposez pas que chaque échec revient dans un gestionnaire d’exception ou que le nettoyage s’exécute toujours.
+
+Ne masquez pas les échecs de heartbeat ou de possession pour poursuivre le travail externe ou annoncer une réussite. La progression n’est ni une validation externe ni une confirmation de point de reprise. Gardez les effets externes idempotents.
 
 ### Erreurs non réessayables {#non-retryable-errors}
 

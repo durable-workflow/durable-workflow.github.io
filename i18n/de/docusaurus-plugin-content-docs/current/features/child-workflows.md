@@ -17,6 +17,10 @@ Workflow-Instanz-ID und Lauf-ID. Zum Kind wird er durch die dauerhafte
 Verknüpfung zum Elternlauf und eine stabile, vom Elternlauf vergebene
 `child_call_id` für diesen Aufruf.
 
+## Namespace-Grenze {#namespace-boundary}
+
+Ein Kind-Workflow und Signale über dessen Handle bleiben im Namespace des Eltern-Workflows. Ein anderer Workflow-Typ, eine andere Sprache oder Queue ändert diesen Namespace nicht. Verwenden Sie eine [Service-Operation](./service-operations.md) für einen dauerhaften Aufruf einer veröffentlichten Operation in einem anderen Namespace desselben Clusters.
+
 ```php
 use function Workflow\V2\child;
 use Workflow\V2\Workflow;

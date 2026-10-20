@@ -616,9 +616,21 @@ class ApprovalWorkflow:
         self.approved_by = by
 
     def run(self, ctx, *args):
-        yield ctx.schedule_activity("wait_for_approval", [])
-        return {"approved": self.approved, "approved_by": self.approved_by}
+        ready = yield ctx.wait_condition(
+            lambda: self.approved, key="approval.approved", timeout=60,
+        )
+        return {
+            "status": "approved" if ready else "timed_out",
+            "approved": self.approved,
+            "approved_by": self.approved_by,
+        }
 ```
+
+The wait belongs to the workflow, not an activity. Its predicate reads replayed
+signal-handler state; the worker does not hold an activity slot for the approval.
+The condition's timeout is separate from the workflow's finite run and execution
+deadlines. For external-job completion, use a short submit-and-return activity
+and a [correlated callback](./polling-patterns.md#callback-and-signal-completion).
 
 Query and update receiver decorators are available so workflow classes can
 publish stable handler names. Python workers execute server-routed query tasks
@@ -971,6 +983,14 @@ async def long_running_task(items: list) -> dict:
 
     return {"processed": len(items)}
 ```
+
+### Heartbeat requests {#activity-heartbeat-requests}
+
+For remote activities, call `await ctx.heartbeat(...)` during bounded work, well before `heartbeat_timeout`. Its first window starts at runtime claim, before Python receives the task. Each recorded heartbeat uses the runtime's recording time, not the time its response reaches Python. Pauses, request latency and transport retries consume the budget. Follow the [cadence guidance](../features/heartbeats.md#heartbeat-cadence-and-receipts).
+
+The direct `Client.heartbeat_activity_task()` call uses the configured `TransportRetryPolicy`. After that policy, transport errors can propagate as `httpx.TransportError`, and HTTP refusals become mapped SDK exceptions such as `ServerError`. This is HTTP retry behavior, not another activity attempt or more heartbeat time. `ActivityContext.heartbeat()` can raise `ActivityCancelled` when the worker tells the activity to stop. With the normal cooperatively supervised worker, failed heartbeat or ownership checks can stop or abandon the callback. Do not assume every failure returns to a catch block or that cleanup code always runs.
+
+Do not suppress heartbeat/ownership failures and continue external work or report success. Progress is not an external commit or a resumable-checkpoint receipt. Keep external effects idempotent.
 
 ### Non-Retryable Errors
 

@@ -171,6 +171,108 @@ Die nicht unterstützten Grenzen sind explizit: SQLite-Clustering, Mehrknotenbet
 
 Dieser Weg ist selbstständig nutzbar, wenn Ihr Team bereits ein klares Modell für VM, Netzwerk, Datenbank, Cache, Sicherung und Load Balancer hat. Er wird supportbegleitet, sobald Sie Hilfe bei diesen Grenzen, Kapazität, Rolloutreihenfolge oder Wiederherstellungsverfahren benötigen.
 
+## SQL-Verbindungsbudgets {#sql-connection-budgets}
+
+Planen Sie Datenbanksitzungen, bevor Sie API-Replikate hinzufügen oder bei einem
+[Rolling Upgrade](/docs/rolling-upgrades) alte und neue Prozesse überlappen
+lassen. Eine Datenbank kann ihre Verbindungsgrenze erreichen, obwohl noch CPU
+frei ist. Diese Grenze ist unabhängig von Schreib-/Commit-Latenz,
+HTTP-Anfragekapazität und dem Wachstum gespeicherter Daten.
+
+### Alle Prozesse mit SQL-Verbindungen erfassen {#count-every-sql-owning-process}
+
+Die veröffentlichte PHP-Compose-Bereitstellung umfasst diese möglichen SQL-Clients:
+
+| Rolle | Zu berücksichtigen |
+| --- | --- |
+| API | Jeder gleichzeitig aktive PHP-Anfrageprozess, der SQL verwenden kann, einschließlich Bereitschaftsprüfungen, Operatoranfragen und wartender Polls. Die veröffentlichte Apache-Prefork-Konfiguration erlaubt 24 Anfrageprozesse je API-Container. Das ist eine HTTP-Prozessobergrenze, weder ein SQL-Pool noch eine Messung von 24 offenen Sitzungen. |
+| Laravel-Queue-Worker | Jeder Prozess `php artisan queue:work`. Das veröffentlichte Compose-Rezept startet einen; zusätzliche Worker-Container bringen weitere Prozesse mit. Diese Worker sind von externen SDK-Workern zu unterscheiden. |
+| Scheduler/Wartung | Gleichzeitig ausgeführte PHP-Befehle, nicht nur den Scheduler-Container. Der Compose-Scheduler führt Zeitplanauswertung, Reparatur, Aktivitäts-Timeout und Bereinigung nacheinander aus. In seiner normalen Schleife ist daher jeweils ein Befehl aktiv. Halten Sie die Singleton-Regel für den Scheduler ein. |
+| Bootstrap und Betriebswerkzeuge | Migrations-/Bootstrap-Befehle, Projektionsneubauten, Aufbewahrungsjobs, Sicherungen, Überwachung und interaktive SQL-Clients, die sich mit der Bereitstellung überlappen können. Zählen Sie bewusst gleichzeitig ausgeführte Befehle einzeln. |
+| SDK-Clients und -Worker | Normalerweise keine direkten Sitzungen zur Server-Datenbank, weil die PHP-, Python- und Rust-Service-SDKs HTTP verwenden. Addieren Sie Verbindungen nur, wenn Ihr Aktivitätscode oder anderer Anwendungscode diese Datenbank tatsächlich direkt verwendet. |
+
+Zählen Sie **die verschiedenen SQL-Verbindungshandles jedes Prozesses**, nicht
+nur Container oder Hostnamen. Laravels Standardverbindung und
+`workflows.storage.connection` können denselben konfigurierten Verbindungsnamen
+nutzen. Ein anderer Speichername, eine Datenbankverbindung für Queue, Cache oder
+Session oder ein getrenntes Read-/Write-/Direct-Handle kann eine zusätzliche
+Sitzung öffnen, auch zum selben Datenbankendpunkt. Redis-Verbindungen sind keine
+SQL-Sitzungen. Prüfen Sie die wirksame zwischengespeicherte Konfiguration und
+die tatsächlich von jeder Rolle verwendeten Verbindungsnamen.
+
+Bei einer eigenen FPM-Bereitstellung zählen die ausführenden PHP-FPM-Prozesse,
+nicht nginx- oder Apache-Event-Threads. Erfassen Sie bei einer eigenen
+Octane-Bereitstellung Anfrage-Worker, Task-Worker und tatsächliche
+Datenbank-Clients. Übernehmen Sie die Apache-Zahl von 24 Prozessen für keines
+dieser Frontends als Poolgröße. Synchrone Long Polls belegen während des Wartens
+einen ausführenden PHP-Prozess und können eine Datenbanksitzung behalten.
+Setzen Sie einen wartenden HTTP-Poll im SQL-Budget deshalb nicht automatisch
+mit null an.
+
+### Konservatives Beispiel für ein Rolling Upgrade {#a-conservative-rolling-upgrade-example}
+
+Dies ist ein Planungsbeispiel, **keine gemessene Kapazität**. Angenommen, die
+Datenbank erlaubt 120 Client-Sitzungen, zehn entfallen auf andere Anwendungen
+und fünfzehn bleiben für Wiederherstellung und Administration reserviert.
+Damit stehen dieser Bereitstellung 95 zur Verfügung. Queue und Cache verwenden
+Redis; je PHP-Prozess wird höchstens ein SQL-Handle angenommen.
+
+| Maximale Überlappung | Berechnung | Geplante Sitzungen |
+| --- | --- | ---: |
+| API-Replikate einschließlich eines zusätzlichen Rollout-Replikats | `(2 + 1) × 24 × 1` | 72 |
+| Laravel-Queue-Worker | `2 × 1` | 2 |
+| Singleton-Scheduler-/Wartungsbefehl | `1 × 1` | 1 |
+| Bootstrap/Migration | `1 × 1` | 1 |
+| Sicherung, Überwachung und weitere freigegebene Werkzeuge | Explizites Budget | 4 |
+| **Zwischensumme der Bereitstellung** | | **80** |
+| Noch nicht zugeteilte Reserve der Bereitstellung | `95 − 80` | 15 |
+
+Unter diesen Annahmen würde ein viertes API-Replikat die Zwischensumme auf 104
+erhöhen und das Budget von 95 Sitzungen überschreiten. Zwei SQL-Handles je
+API-Prozess würden allein für drei API-Replikate bereits 144 Sitzungen
+benötigen. Berechnen Sie das Budget bei Änderungen der Speicherverbindungen,
+Worker-Zahl oder Rollout-Überlappung neu. Begrenzen Sie Prozesse und Replikate
+oder ersetzen Sie sie schrittweise, statt ausreichende Datenbankreserven
+vorauszusetzen. Auch eine Erhöhung von `max_connections` erfordert eine Prüfung
+des Datenbankspeichers und der Arbeitslast.
+
+### Budget beobachten und durchsetzen {#observe-and-enforce-the-budget}
+
+1. Erfassen Sie die wirksame Verbindungsgrenze, fremde Clients und reservierte
+   Wiederherstellungszugänge. Legen Sie Höchstzahlen für API-Replikate und
+   -Prozesse sowie zusätzliche Rollout-Replikate fest. Berücksichtigen Sie
+   überlappende Queue-Worker-Generationen und Werkzeuge.
+2. Beobachten Sie in einer isolierten Kopie mit Ihrem exakten veröffentlichten
+   Image und Ihrer Konfiguration Sitzungen im Leerlauf, bei wartenden Polls,
+   während echter Arbeit und bei einer begrenzten Alt-/Neu-Überlappung. Zählen
+   Sie inaktive Sitzungen und den Monitor selbst mit. PostgreSQL bietet
+   `pg_stat_activity`, MySQL `information_schema.PROCESSLIST`. Verwenden Sie
+   eine passend eingeschränkte Überwachungsrolle und exportieren Sie keine
+   SQL-Texte oder Nutzdaten.
+3. Vergleichen Sie beobachtete Sitzungen je Anwendungsbenutzer und Datenbank
+   mit dem geplanten Budget pro Prozess. Eine kurze Stichprobe prüft die
+   Annahmen dieser Testumgebung, weder eine Sättigungsgrenze noch eine Garantie
+   für jede Arbeitslast.
+4. Beobachten Sie neben freien Sitzungen auch Verbindungsablehnungen,
+   Transaktions-/Commit-Latenz, Lock-Wartezeiten, wartende HTTP-Anfragen und
+   Speicherwachstum. Bereitschaft allein beweist keine freie Rollout-Kapazität.
+5. Verringern Sie nahe der Grenze die Überlappung oder leeren und beenden Sie
+   eine alte API-/Worker-Gruppe, bevor Sie deren Ersatz starten. Erhalten Sie
+   Wiederherstellungszugänge und führen Sie Bootstrap nur im geplanten
+   Migrationsfenster aus. Passt eine sichere Überlappung nicht, verwenden Sie
+   das dokumentierte Upgrade-Verfahren mit vollständiger Unterbrechung.
+
+[Task-Queue-Zulassung](/docs/polyglot/task-queue-admission) begrenzt ausgewählte
+Dispatch- und Lease-Aktivität. `DW_WORKER_LONG_POLL_MAX_CONCURRENT` und
+`DW_QUERY_TASK_POLL_MAX_CONCURRENT` begrenzen wartende Polls je Knoten. Keine
+dieser Einstellungen begrenzt global SQL-Sitzungen, Datenbankbytes oder
+Commit-Latenz. Halten Sie auch Kapazität für Abschlüsse, Heartbeats,
+Operatoranfragen und Zustandsprüfungen frei.
+
+Verwenden Sie einen direkt erreichbaren beschreibbaren Datenbankendpunkt als Ausgangspunkt. Ein Verbindungsproxy muss mit exakter Server-Version, Poolmodus und Einstellungen für vorbereitete Anweisungen, Transaktionsgrenzen, Sitzungszustand und Sperren qualifiziert werden. **PgBouncer-Transaktionspooling erfordert den korrigierten Server ab Version 2.9.8.** Die [Abnahme der veröffentlichten Version 2.9.8](https://github.com/durable-workflow/server/issues/524#issuecomment-6293185092) qualifiziert PostgreSQL 16.15 mit PgBouncer 1.26.1: direkte PostgreSQL-Verbindung, Sitzungspooling und Transaktionspooling mit `max_prepared_statements=0` oder `max_prepared_statements=200`. Das bezeichnet eine Kompatibilitätsuntergrenze und eine exakt geprüfte Konfiguration, keine Empfehlung zur neuesten Version oder Kapazitätsgarantie; prüfen Sie andere Kombinationen gesondert. Führen Sie vor der Verkehrsfreigabe die normale Initialisierung mit `server-bootstrap` über den gewählten Endpunkt aus.
+
+`GET /api/ready` führt eine Datenbank-Leseabfrage mit gebundenen Parametern (`bound_read_query`) und konfigurierte Bereitschaftsprüfungen aus; die Schreibkapazität bleibt ausdrücklich ungeprüft. Erfolgreiche TCP-Verbindungen, Migrationen oder Bereitschaftsantworten beweisen nicht jede Workflow-SQL-Operation oder die Commit-Kapazität. Lesereplikate dürfen den maßgeblichen Schreiber für Claims und dauerhafte Übergänge nicht ersetzen.
+
 ## Helm-Chart für Kubernetes {#helm-chart-for-kubernetes}
 
 Das Serverrepository verantwortet [Chart-Quellcode und Veröffentlichungshinweise](https://github.com/durable-workflow/server/tree/main/k8s/helm/durable-workflow). Installieren Sie das veröffentlichte Chart aus der OCI-Registry:
@@ -229,7 +331,7 @@ Die Darstellung als selbstständig nutzbar ist erst zulässig, wenn ein Lauf ohn
 
 Der beabsichtigte HA-Vertrag gilt bei passender Kleincluster- oder Rohmanifestform und drei vom Operator erhaltenen Regeln:
 
-- **Immer genau ein beschreibbarer Workflow-Datenbankendpunkt.** Verwaltetes Failover wie RDS Multi-AZ, Aurora, Cloud SQL HA oder Patroni ist zulässig, wenn der vorherige Primärknoten vor Wiederanbindung durch Fencing abgesichert wird: Schreibbenutzer entziehen, mit `read_only=on` herabstufen, Replikation trennen oder aus bekannt guter Momentaufnahme wiederherstellen. Ein Verbindungsproxy wie RDS Proxy, ProxySQL oder PgBouncer zwischen API-/Schedulercontainern und Datenbank ist zulässig und ändert keine Garantie. Der Engine-Vertrag gilt für die von ihr gesehene Verbindung.
+- **Immer genau ein beschreibbarer Workflow-Datenbankendpunkt.** Verwaltetes Failover wie RDS Multi-AZ, Aurora, Cloud SQL HA oder Patroni ist zulässig, wenn der vorherige Primärknoten vor Wiederanbindung durch Fencing abgesichert wird: Schreibbenutzer entziehen, mit `read_only=on` herabstufen, Replikation trennen oder aus bekannt guter Momentaufnahme wiederherstellen. Ein Verbindungsproxy muss die vom Server verwendete Datenbanksemantik erhalten und mit exakter Version, Modus und Einstellungen qualifiziert werden. [SQL-Verbindungsbudgets](#sql-connection-budgets) beschreibt die Versionsanforderungen und geprüften Modi für PgBouncer-Transaktionspooling.
 - **Jeweils ein Redis-Endpunkt mit dokumentiertem Hochstufungspfad.** Verwaltetes Redis-Failover wie Sentinel, Elasticache oder Memorystore HA ist zulässig. Redis ist Beschleunigungsschicht, nicht Korrektheitsgrundlage. Redis-Failover ist daher ein Latenzereignis, niemals ein Korrektheitsereignis.
 - **Immer genau ein Scheduler/Wartungsprozess.** Der Orchestrator, etwa ein Compose-Service mit `deploy.replicas: 1`, eine durch Host-Lease geschützte systemd-Unit oder ein Kubernetes-`Deployment` mit `replicas: 1` und `RollingUpdate.maxSurge: 0`, erhält die Singleton-Invariante beim Neustart. Doppelte Scheduler als Dauertopologie gehören nicht zu diesem Vertrag.
 
@@ -249,7 +351,7 @@ Der beabsichtigte Engine-Vertrag definiert begrenzte Wiederherstellungsziele pro
 
 Der Load Balancer vor den API-Knoten ist der einzige Entscheidungspunkt für Verkehrszulassung während eines Failovers:
 
-- Verbinden Sie ihn mit **`GET /api/ready`**, nicht nur mit `/api/health`. `/api/health` belegt ausschließlich HTTP-Bedienung. `/api/ready` belegt die Nutzbarkeit der dauerhaften Datenbank und meldet gesunde oder beeinträchtigte Redis-Weckbeschleunigung. Bei Datenbankausfall schlägt `/api/ready` korrekt auf jedem Knoten fehl. Der Load Balancer MUSS den Zustand vollständig ausgefallener Knoten tolerieren, statt auf eine veraltete zuletzt gute Liste zurückzufallen.
+- Verbinden Sie ihn mit **`GET /api/ready`**, nicht nur mit `/api/health`. `/api/health` belegt ausschließlich HTTP-Bedienung. `/api/ready` meldet Datenbankverbindung und konfigurierte Bereitschaftsprüfungen einschließlich gesunder oder beeinträchtigter Redis-Weckbeschleunigung. Es testet nicht jede Workflow-SQL-Operation und prüft keine Schreibkapazität. Bei Datenbankausfall schlägt `/api/ready` korrekt auf jedem Knoten fehl. Der Load Balancer MUSS den Zustand vollständig ausgefallener Knoten tolerieren, statt auf eine veraltete zuletzt gute Liste zurückzufallen.
 - Prüfintervall 5–10 Sekunden und Entfernungsschwelle 2–3 aufeinanderfolgende Fehler verwenden.
 - Keine Sticky Sessions verlangen. Der Kleincluster-Funktionstest belegt, dass ein externer Worker auf `server-a` pollen und auf `server-b` abschließen kann.
 - Bei reinem Redis-Failover bleibt die Bereitschaft auf jedem Knoten grün, solange die datenbankgestützten dauerhaften Pfade verfügbar sind. Die Beeinträchtigung der Beschleunigungsschicht erscheint als `checks.cache.status=warning` mit `checks.cache.degraded_capability=long_poll_wake_acceleration`. Konfigurieren Sie keine Knotenentfernung aufgrund dieser Warnung.
@@ -342,7 +444,7 @@ Für Selbsthosting bleiben Aktiv/Passiv und Aktiv/Aktiv über mehrere Regionen, 
 Verwenden Sie Zustands- und Bereitschaftsprüfungen:
 
 - `GET /api/health` belegt HTTP-Bedienung durch den Prozess.
-- `GET /api/ready` belegt die Nutzbarkeit konfigurierter Laufzeitabhängigkeiten einschließlich Migrationen und Standard-Namespace-Bereitschaft.
+- `GET /api/ready` meldet konfigurierte Abhängigkeitsprüfungen einschließlich Datenbankverbindung, Migrationen und Bereitschaft des Standard-Namespace. Es beweist weder jede Workflow-SQL-Operation noch verfügbare Schreibkapazität.
 - `GET /api/cluster/info` belegt, dass ein authentifizierter Client Build-Identität, Control-Plane-Protokoll, Worker-Protokoll, Nutzdaten-Codecs und Serverfähigkeiten ermitteln kann.
 - `POST /api/worker/register` belegt, dass Worker sich im erwarteten Namespace und in der erwarteten Aufgabenwarteschlange authentifizieren können.
 

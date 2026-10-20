@@ -135,6 +135,31 @@ Si necesita limpiar tras un plazo de la aplicación, use un temporizador durader
 
 Las órdenes inmediatas `cancel()` y `terminate()` también cierran la ejecución sin dar tiempo al código de limpieza. La operación cooperativa independiente `requestCancellation()` puede entregar una limpieza acotada a un worker compatible mientras la ejecución siga activa. Un tiempo de espera de workflow no se convierte automáticamente en una solicitud de cancelación cooperativa, y un escudo de cancelación no amplía el plazo completo o individual. Consulte [Cancelar y terminar](./cancel-and-terminate.md) y [Cancelación cooperativa](../polyglot/cancellation.md).
 
+## Lease de una tarea de workflow {#workflow-task-lease}
+
+Una tarea de workflow es un turno de un worker que reproduce el historial confirmado y genera comandos duraderos. No es todo el workflow. Esperar un temporizador duradero, una actividad en cola o una señal duradera no retiene una misma tarea durante toda la espera; una tarea posterior reanuda la ejecución.
+
+| Despliegue | Segundos predeterminados | Ajuste |
+| --- | --- | --- |
+| Laravel embebido | `300` | `DW_V2_WORKFLOW_TASK_LEASE_SECONDS` |
+| Server | `60` | `DW_WORKFLOW_TASK_TIMEOUT` |
+
+El ajuste embebido corresponde a `workflows.v2.workflow_task_lease_seconds`. Server asigna su propio ajuste a esa clave del paquete al arrancar, por lo que debes usar el ajuste de Server en Server. Es configuración del runtime, no una opción de `StartOptions` ni un timeout de actividad por inicio. Consulta [Publicar la configuración](../configuration/publishing-config.md#workflow-task-lease-v2) y la [referencia de configuración de Server](../polyglot/server-config-reference.md#worker-protocol-and-query-transport).
+
+### Heartbeats y ejecución {#workflow-task-heartbeats}
+
+Los workers en modo servicio usan heartbeats de tarea para renovar la reserva de una tarea de workflow en curso. Server valida la tarea, el intento y el propietario de la lease. Una renovación confirmada usa la duración efectiva de la lease, con los límites de limpieza por cancelación que correspondan. No cambia los plazos originales de ejecución/run ni los timeouts de actividades. Los heartbeats de registro mantienen actualizado el registro. Un registro obsoleto puede invalidar una reserva de Server antes de que venza la lease de la tarea. Estos heartbeats no renuevan esa lease. El heartbeat de una actividad en cola informa de su progreso y no sustituye la renovación de una tarea de workflow.
+
+El código síncrono de un workflow embebido no puede renovar periódicamente mientras está bloqueado. Mantén el código determinista y breve; lleva el trabajo largo de E/S o CPU a actividades. La lease no es un límite estricto de ejecución del proceso o la CPU.
+
+Las actividades locales embebidas conservan la tarea de workflow que las aloja. Su `$this->heartbeat()` también puede renovar esa lease mientras el intento de actividad original y la reserva de la tarea de workflow sigan siendo válidos.
+
+### Vencimiento de la lease {#workflow-task-lease-expiry}
+
+Una reserva vencida y sin terminar pasa a ser recuperable. Matching/watchdog o la reparación elimina la reserva vencida y vuelve a despachar el trabajo para que un worker compatible reproduzca el historial confirmado. La recuperación necesita procesos de recuperación activos, una base de datos disponible y un worker elegible. El vencimiento no mata el proceso anterior ni garantiza una nueva entrega inmediata. En Server, una reserva vencida o reemplazada no puede enviar comandos nuevos; una renovación rechazada debe tratarse como pérdida de autoridad.
+
+La reparación no reabre una ejecución cerrada, no concede reintentos de negocio adicionales ni reinicia los plazos originales. En cambio, `startToCloseTimeout` limita un intento de actividad según su política de reintentos registrada. Los timeouts de run y ejecución limitan la vida del workflow; renovar o reproducir una tarea de workflow no los prolonga.
+
 ## Tiempos de espera de las actividades {#activity-timeouts}
 
 Los tiempos de espera de las actividades permiten limitar la duración de cada actividad. Hay cuatro alcances:
@@ -156,7 +181,7 @@ $result = activity(
         scheduleToStartTimeout: 30,     // must be claimed within 30s
         startToCloseTimeout: 300,       // each attempt has 5 minutes
         scheduleToCloseTimeout: 600,    // total 10 minutes across all retries
-        heartbeatTimeout: 15,           // must heartbeat every 15 seconds
+        heartbeatTimeout: 15,           // heartbeat well before this 15-second window expires
         maxAttempts: 3,
     ),
     $input,
@@ -177,7 +202,7 @@ El plazo se calcula una vez al programar y nunca se reinicia. Al vencer, la acti
 
 ### Tiempo de espera de heartbeat {#heartbeat-timeout}
 
-El plazo inicial se calcula cuando un worker reclama la tarea de actividad. Cada llamada correcta a `$this->heartbeat()` extiende el plazo por el intervalo configurado. Si la actividad no llama a `heartbeat()` antes del vencimiento, el motor considera que el worker no responde. Si quedan intentos, se programa uno nuevo con un plazo schedule-to-start restablecido, si está configurado. En caso contrario, se registra un tiempo de espera terminal.
+Para una actividad encolada, el primer plazo empieza cuando el entorno de ejecución la reclama, antes de entregar la tarea y ejecutar código de usuario. Cada heartbeat aceptado fija el plazo en su marca de tiempo registrada por el entorno más el tiempo de espera configurado. No añade tiempo al plazo anterior ni abre una ventana nueva cuando el cliente recibe la respuesta. Deje margen para la entrega, el trabajo acotado, las pausas de ejecución, la latencia de las peticiones y los reintentos de transporte. Envíe los heartbeats con suficiente antelación al vencimiento. Un intento vencido o reemplazado no recupera autoridad al enviar un heartbeat tardío. Si quedan intentos, se programa uno nuevo con el plazo schedule-to-start restablecido, si está configurado. En caso contrario, se registra un tiempo de espera terminal.
 
 ```php
 use Workflow\V2\Activity;

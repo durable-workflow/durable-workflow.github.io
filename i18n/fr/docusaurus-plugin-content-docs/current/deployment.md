@@ -274,6 +274,107 @@ Ce parcours est autonome si votre équipe possède déjà un modèle clair de VM
 réseau, base, cache, sauvegardes et répartiteur. Il devient accompagné si elle
 a besoin d'aide sur ces frontières, la capacité, l'ordre de déploiement ou la reprise.
 
+## Budgets de connexions SQL {#sql-connection-budgets}
+
+Établissez un budget de sessions avant d'ajouter des réplicas API ou de faire
+coexister anciens et nouveaux processus pendant une
+[mise à niveau progressive](/docs/rolling-upgrades). La base peut atteindre sa
+limite de connexions alors que du CPU reste disponible. Cette limite est
+distincte de la latence d'écriture/commit, de la capacité HTTP et de la
+croissance des données conservées.
+
+### Compter chaque processus utilisant SQL {#count-every-sql-owning-process}
+
+Le déploiement PHP Compose publié comporte ces clients SQL possibles :
+
+| Rôle | Éléments à compter |
+| --- | --- |
+| API | Chaque processus PHP traitant simultanément une requête susceptible d'utiliser SQL, y compris les contrôles de disponibilité, les requêtes opérateur et les polls en attente. La configuration Apache prefork publiée autorise 24 processus de requête par conteneur API. C'est un plafond de processus HTTP, pas un pool SQL ni une mesure de 24 sessions ouvertes. |
+| Workers de queue Laravel | Chaque processus `php artisan queue:work`. La recette Compose publiée en lance un ; chaque conteneur worker supplémentaire ajoute des processus. Ils sont distincts des workers SDK externes. |
+| Ordonnanceur/maintenance | Les commandes PHP simultanées, pas uniquement le conteneur ordonnanceur. L'ordonnanceur Compose exécute successivement évaluation des planifications, réparation, expiration des activités et purge. Sa boucle normale n'a donc qu'une commande active à la fois. Conservez la règle d'un ordonnanceur unique. |
+| Initialisation et outils d'exploitation | Commandes de migration/initialisation, reconstruction des projections, rétention, sauvegarde, supervision et clients SQL interactifs pouvant coexister avec le déploiement. Comptez séparément les commandes volontairement simultanées. |
+| Clients et workers SDK | Normalement aucune session directe vers la base du Server : les SDK PHP, Python et Rust en mode service utilisent HTTP. Ajoutez des connexions uniquement si vos activités ou un autre code applicatif accèdent réellement à cette base. |
+
+Comptez **les connexions SQL distinctes utilisées par chaque processus**, pas
+seulement les conteneurs ou noms d'hôtes. La connexion Laravel par défaut et
+`workflows.storage.connection` peuvent utiliser le même nom de connexion
+configuré. Un autre nom pour le stockage, une connexion SQL de queue/cache/session
+ou une connexion de lecture/écriture/directe distincte peut ouvrir une session
+supplémentaire, même vers le même point d'accès. Les connexions Redis ne sont
+pas des sessions SQL. Inspectez la configuration effective mise en cache et
+les noms réellement utilisés par chaque rôle.
+
+Pour un déploiement FPM personnalisé, comptez les processus d'exécution
+PHP-FPM, pas les threads nginx ou Apache event. Pour Octane, inventoriez
+workers de requêtes, workers de tâches et clients réels de la base. Ne
+réutilisez pas le nombre de 24 processus Apache comme taille de pool pour ces
+frontaux. Un long poll synchrone occupe un processus PHP pendant l'attente et
+peut conserver une session SQL. Ne comptez donc pas automatiquement un poll
+HTTP inactif comme une consommation SQL nulle.
+
+### Exemple prudent de mise à niveau progressive {#a-conservative-rolling-upgrade-example}
+
+Ceci est un exemple de planification, **pas une capacité mesurée**. Supposons
+une limite de 120 sessions clientes, dix sessions pour d'autres applications
+et quinze réservées à la reprise et à l'administration. Il reste 95 sessions
+pour ce déploiement. Supposons queue/cache sur Redis et au plus une connexion
+SQL par processus PHP.
+
+| Coexistence maximale | Calcul | Sessions prévues |
+| --- | --- | ---: |
+| Réplicas API, dont un réplica supplémentaire pendant le déploiement | `(2 + 1) × 24 × 1` | 72 |
+| Workers de queue Laravel | `2 × 1` | 2 |
+| Commande unique d'ordonnancement/maintenance | `1 × 1` | 1 |
+| Initialisation/migration | `1 × 1` | 1 |
+| Sauvegarde, supervision et autres outils autorisés | Allocation explicite | 4 |
+| **Sous-total du déploiement** | | **80** |
+| Marge du déploiement non allouée | `95 − 80` | 15 |
+
+Avec ces hypothèses, un quatrième réplica API porterait le sous-total à 104,
+au-delà des 95 sessions allouées. Deux connexions SQL par processus API
+exigeraient déjà 144 sessions pour les trois réplicas API seuls. Recalculez le
+budget lorsque vous modifiez connexions de stockage, nombre de workers ou
+réplicas supplémentaires pendant le déploiement. Réduisez les plafonds ou
+remplacez les groupes par étapes au lieu de supposer que la base absorbera la
+coexistence. Augmenter `max_connections` exige aussi une revue de la mémoire
+de la base et de la charge.
+
+### Observer et faire respecter le budget {#observe-and-enforce-the-budget}
+
+1. Consignez la limite effective de connexions, les autres clients et l'accès
+   réservé à la reprise. Fixez les maxima de réplicas/processus API et le
+   nombre de réplicas supplémentaires pendant le déploiement. Incluez les
+   générations de workers de queue et les outils qui se chevauchent.
+2. Dans une copie isolée utilisant votre image publiée et votre configuration
+   exactes, échantillonnez les sessions au repos, pendant les polls en attente,
+   pendant du travail réel et lors d'une coexistence ancienne/nouvelle bornée.
+   Comptez les sessions inactives et le moniteur lui-même. PostgreSQL expose
+   `pg_stat_activity`, MySQL `information_schema.PROCESSLIST`. Utilisez un rôle
+   de supervision suffisamment restreint et n'exportez ni SQL ni charges utiles.
+3. Comparez les sessions observées par utilisateur applicatif/base à
+   l'allocation par processus. Un court échantillon vérifie les hypothèses de
+   ce montage, pas une limite de saturation ni une garantie pour toute charge.
+4. Suivez la marge de sessions avec les refus de connexion, latences de
+   transaction/commit, attentes de verrou, requêtes HTTP en attente et
+   croissance du stockage. La disponibilité seule ne prouve pas une capacité
+   libre pour le déploiement.
+5. Près de la limite, réduisez la coexistence ou videz et arrêtez un ancien
+   groupe API/worker avant son remplacement. Préservez l'accès de reprise et
+   lancez l'initialisation uniquement dans la fenêtre de migration prévue.
+   Si une coexistence sûre ne tient pas dans le budget, utilisez la procédure
+   documentée avec arrêt complet.
+
+L'[admission des queues de tâches](/docs/polyglot/task-queue-admission) borne
+certaines opérations de dispatch et de lease.
+`DW_WORKER_LONG_POLL_MAX_CONCURRENT` et `DW_QUERY_TASK_POLL_MAX_CONCURRENT`
+bornent les polls en attente par nœud. Aucun ne plafonne globalement sessions
+SQL, octets de la base ou latence de commit. Gardez aussi de la capacité pour
+les complétions, heartbeats, requêtes opérateur et contrôles de santé.
+
+Prenez comme référence un point d’accès direct à la base en écriture. Un proxy doit être qualifié avec la version exacte du Server, son mode de pool et ses réglages de requêtes préparées, frontières transactionnelles, état de session et verrous. **Le pool transactionnel PgBouncer exige le Server corrigé, version 2.9.8 ou ultérieure.** L’[acceptation de la version publiée 2.9.8](https://github.com/durable-workflow/server/issues/524#issuecomment-6293185092) qualifie PostgreSQL 16.15 avec PgBouncer 1.26.1 : PostgreSQL direct, pool de sessions et pool transactionnel avec `max_prepared_statements=0` ou `max_prepared_statements=200`. C’est une version minimale compatible et une configuration précise testée, pas un choix automatique de la dernière version ni une garantie de capacité ; qualifiez séparément les autres combinaisons. Exécutez l’initialisation habituelle `server-bootstrap` sur le point d’accès choisi avant d’admettre du trafic.
+
+`GET /api/ready` exécute une lecture de base avec paramètres liés (`bound_read_query`) et les contrôles de disponibilité configurés ; la capacité d’écriture reste explicitement non vérifiée. Une connexion TCP, une migration ou une réponse de disponibilité réussie ne prouve ni toutes les opérations SQL des workflows ni la capacité de commit. Les réplicas de lecture ne doivent pas remplacer le primaire faisant autorité pour les claims et transitions durables.
+
 ## Chart Helm pour Kubernetes {#helm-chart-for-kubernetes}
 
 Le dépôt Server possède les
@@ -384,9 +485,10 @@ préserve trois règles :
   basculement géré (RDS Multi-AZ, Aurora, Cloud SQL HA, Patroni, etc.) est permis
   si l'ancien primaire est isolé avant rattachement : révoquer l'utilisateur
   d'écriture, rétrograder avec `read_only=on`, couper la réplication ou restaurer
-  un instantané sain. Un proxy (RDS Proxy, ProxySQL, PgBouncer) entre conteneurs
-  API/ordonnanceur et base est permis sans modifier les garanties : le contrat
-  du moteur porte sur la connexion qu'il voit.
+  un instantané sain. Un proxy doit préserver la sémantique de base utilisée
+  par le Server et être qualifié pour sa version exacte, son mode et ses
+  réglages. Voir les [budgets de connexions SQL](#sql-connection-budgets) pour
+  les versions requises et les modes testés du pool transactionnel PgBouncer.
 - **Un point Redis à la fois et une promotion documentée.** Le basculement
   Redis géré (Sentinel, Elasticache, Memorystore HA, etc.) est permis. Redis
   accélère l'exécution sans porter l'exactitude : son basculement affecte la
@@ -418,8 +520,10 @@ Le répartiteur devant les nœuds API est le point de décision unique d'admissi
 pendant un basculement :
 
 - Utilisez **`GET /api/ready`**, au-delà de `/api/health`. Ce dernier prouve
-  seulement HTTP. `/api/ready` prouve l'accès à la base durable et signale
-  l'accélération Redis saine ou dégradée. Pendant une panne de base, il échoue
+  seulement HTTP. `/api/ready` indique la connectivité et les contrôles de
+  disponibilité configurés, dont l'accélération Redis saine ou dégradée.
+  Il ne teste pas toutes les opérations SQL des workflows ni la capacité
+  d'écriture. Pendant une panne de base, il échoue
   correctement partout. Le répartiteur DOIT accepter cet état sans retomber
   sur une ancienne liste de nœuds supposés sains.
 - Utilisez un intervalle de 5 à 10 secondes et un seuil de retrait de 2 à 3
@@ -609,8 +713,10 @@ fournit pas ces garanties multirégion.
 Utilisez santé et disponibilité ensemble :
 
 - `GET /api/health` prouve que le processus sert HTTP.
-- `GET /api/ready` prouve l'accès aux dépendances configurées, y compris
-  migrations et espace de noms par défaut.
+- `GET /api/ready` rapporte les contrôles de dépendances configurés, dont la
+  connectivité, les migrations et la disponibilité de l'espace de noms par
+  défaut. Il ne prouve ni chaque opération SQL de workflow ni la capacité
+  d'écriture disponible.
 - `GET /api/cluster/info` prouve qu'un client authentifié découvre identité du
   build, protocoles du plan de contrôle et worker, codecs et capacités serveur.
 - `POST /api/worker/register` prouve l'authentification worker dans l'espace de

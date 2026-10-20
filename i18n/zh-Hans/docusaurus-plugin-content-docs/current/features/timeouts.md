@@ -133,6 +133,31 @@ $description['run']['run_deadline_at'];       // ISO 8601 timestamp
 
 立即执行的 `cancel()` 和 `terminate()` 也会关闭运行，不提供工作流清理窗口。独立的协作式 `requestCancellation()` 可在运行仍活动时，由兼容 Worker 执行有界清理。工作流超时不会自动转为协作式取消请求，取消屏蔽也不会延长执行或运行截止时间。参阅[取消与终止](./cancel-and-terminate.md)及[协作式取消](../polyglot/cancellation.md)。
 
+## 工作流任务租约 {#workflow-task-lease}
+
+工作流任务是Worker的一轮处理：重放已提交的历史，并生成持久化命令。它不是整个工作流。等待持久定时器、排队活动或信号时，不会在整个等待期间一直持有同一个工作流任务；后续任务会恢复运行。
+
+| 部署方式 | 默认秒数 | 设置 |
+| --- | --- | --- |
+| 嵌入式Laravel | `300` | `DW_V2_WORKFLOW_TASK_LEASE_SECONDS` |
+| Server | `60` | `DW_WORKFLOW_TASK_TIMEOUT` |
+
+嵌入式设置映射到 `workflows.v2.workflow_task_lease_seconds`。Server在启动时将自己的设置映射到这个包配置键，因此在Server上应使用Server设置。这是运行时配置，不是 `StartOptions` 选项或每次启动时的活动超时。参阅[发布配置](../configuration/publishing-config.md#workflow-task-lease-v2)和[Server配置参考](../polyglot/server-config-reference.md#worker-protocol-and-query-transport)。
+
+### 心跳与执行 {#workflow-task-heartbeats}
+
+服务模式Worker通过任务心跳续订正在执行的工作流任务所有权。Server验证任务、尝试编号及租约所有者。确认成功的续订采用当前有效的租约时长，并遵守适用的取消清理边界。它不会修改原始运行期限、执行期限或活动超时。Worker注册心跳保持注册信息的时效性。注册过期可能导致Server上的任务所有权在任务租约到期前就失效。这种心跳不会续订该任务租约。排队活动的心跳报告活动进度，同样不能替代工作流任务续租。
+
+同步执行的嵌入式工作流代码在阻塞时无法定期续租。请保持代码具有确定性且简短，将耗时I/O或CPU工作放到活动中。租约不是强制终止进程或CPU执行的时间限制。
+
+嵌入式本地活动会保留承载它的工作流任务。只要原始活动尝试和工作流任务所有权仍然有效，其 `$this->heartbeat()` 也可以续订该任务租约。
+
+### 租约到期 {#workflow-task-lease-expiry}
+
+到期且未完成的任务所有权会成为可恢复对象。Matching/watchdog或repair清除到期所有权并重新派发工作，使兼容Worker能够重放已提交的历史。恢复需要运行中的恢复进程、可用数据库及符合条件的Worker。到期不会终止旧进程，也不保证立即重新投递。在Server上，到期或已被替换的所有权无法提交新命令；续租被拒绝应视为失去执行权限。
+
+Repair不会重新打开已关闭的运行，不会授予额外的业务重试，也不会重置原始期限。相比之下，活动的 `startToCloseTimeout` 按已记录的重试策略限制一次活动尝试。运行超时和执行超时限制工作流的生命周期，工作流任务续租或重放不会延长它们。
+
 ## 活动超时 {#activity-timeouts}
 
 活动超时限制单个活动执行的时长，共有四种范围：
@@ -154,7 +179,7 @@ $result = activity(
         scheduleToStartTimeout: 30,     // must be claimed within 30s
         startToCloseTimeout: 300,       // each attempt has 5 minutes
         scheduleToCloseTimeout: 600,    // total 10 minutes across all retries
-        heartbeatTimeout: 15,           // must heartbeat every 15 seconds
+        heartbeatTimeout: 15,           // heartbeat well before this 15-second window expires
         maxAttempts: 3,
     ),
     $input,
@@ -175,7 +200,7 @@ Worker 领取活动任务时计算截止时间，每次重试都有新的开始�
 
 ### 心跳超时 {#heartbeat-timeout}
 
-初始截止时间在 Worker 领取任务时计算。每次成功调用 `$this->heartbeat()` 都按配置间隔延长截止时间。若到期前没有调用 `heartbeat()`，引擎认为 Worker 无响应。如果还有重试，则调度新尝试并重置已配置的调度到开始截止时间，否则记录终态超时。
+对于排队活动，第一个截止时间从运行时领取时开始，早于任务交付和用户代码执行。每个被接受的心跳都将截止时间设为运行时记录的该次心跳时间加上配置的超时。它不会在前一个截止时间上累加时长，也不会在调用方收到响应时重新开始计时。请为交付、有界工作、执行暂停、请求延迟和传输重试预留余量。在窗口到期前留足时间发送心跳。已过期或被替换的尝试不能通过迟到的心跳恢复权限。若仍可重试，则调度新尝试，并重置已配置的调度到开始截止时间。否则记录终态超时。
 
 ```php
 use Workflow\V2\Activity;

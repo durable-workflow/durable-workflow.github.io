@@ -1,171 +1,70 @@
 ---
 sidebar_position: 5
 title: Compatibilité et routage des workers
-description: Sécuriser les déploiements de builds de workers en affectant le travail en cours à des exécuteurs compatibles et en rendant explicites les lacunes de déploiement.
-tags:
-  - worker-protocol
-  - compatibility
-  - operations
-  - rollouts
-keywords:
-  - compatibilité des workers
-  - déploiements de builds de workers
-  - marqueurs de compatibilité
-  - routage par build id
-  - retour arrière des workers
+description: Préserver les épinglages d'origine, promouvoir les nouveaux démarrages et inspecter les workers compatibles manquants.
+tags: [worker-protocol, compatibility, operations, rollouts]
+keywords: [compatibilité des workers, déploiement, marqueurs, routage des builds, rollback]
 ---
 
-# Compatibilité et routage des workers {#worker-compatibility-and-routing}
+# Compatibilité et routage des workers
 
-Utilisez ce guide pour déployer un nouveau build de worker, essayer un canari
-sur une file de tâches, revenir sur un build défectueux ou maintenir des
-workflows de longue durée pendant un déploiement de workers. Durable Workflow
-v2 traite la compatibilité des workers comme un contrat de routage, plutôt
-que comme une convention informelle de déploiement.
-
-La règle essentielle est simple : une exécution démarrée dans une famille de
-compatibilité doit continuer à arriver sur des workers capables de la relire
-et de l'exécuter en toute sécurité. Le système doit exposer « aucun worker
-compatible n'est disponible » comme un état opérationnel explicite plutôt que
-de transmettre silencieusement la tâche à un autre build.
+La compatibilité est un contrat de routage. Gardez des workers capables de rejouer les historiques existants pendant le changement de build pour les nouveaux démarrages. Le drainage ne transfère pas les exécutions à un autre build.
 
 ## Deux identités liées {#two-related-identities}
 
-Durable Workflow expose deux interfaces de déploiement liées mais différentes :
+- L'**identifiant de build** est le `build_id` enregistré d'une cohorte du Server autonome, dans un namespace et une file. Promotion, drainage et reprise ciblent cette cohorte.
+- Le **marqueur de compatibilité** est conservé dans le travail durable. PHP embarqué utilise `DW_V2_CURRENT_COMPATIBILITY` et `DW_V2_SUPPORTED_COMPATIBILITIES` ; les builds des workers autonomes fournissent l'identité de routage correspondante.
 
-- Le **build id** est l'identité de cohorte présentée à l'opérateur sur le
-  serveur autonome. C'est la valeur qu'un worker enregistre sous `build_id`,
-  et celle que les API de déploiement de file de tâches drainent ou réactivent.
-- Le **marqueur de compatibilité** est l'identité de routage du travail en
-  cours. Pour les workers PHP embarqués ou hébergés par le serveur, il provient
-  de `DW_V2_CURRENT_COMPATIBILITY` et `DW_V2_SUPPORTED_COMPATIBILITIES`. Sur le
-  serveur autonome, les cohortes de build-id permettent à l'opérateur
-  d'inspecter et de contrôler ces groupes de workers compatibles.
+Traitez ces identités comme des chaînes opaques. Un nom apparemment plus récent ne prouve pas la compatibilité au replay et n'autorise pas à changer le pin d'une exécution existante.
 
-Traitez ces deux valeurs comme des chaînes opaques, par exemple
-`orders-2026-04-28` ou `api-v3`. Durable Workflow n'interprète pas semver, ne
-compare pas les dates et ne suppose pas qu'une chaîne est plus récente qu'une autre.
+## Ce qui est épinglé {#what-gets-pinned}
 
-## Éléments dont la compatibilité est fixée {#what-gets-pinned}
+Le Server autonome sélectionne le pin des nouveaux démarrages par promotion explicite, puis par ses replis sur une seule cohorte active. Une sélection ambiguë peut rester sans pin. Voir [l'ordre de sélection](/docs/polyglot/worker-build-id-rollout#canary-a-new-build).
 
-La compatibilité est attachée au travail durable du workflow, pas seulement
-aux processus worker en cours d'exécution.
-
-- Le **démarrage du workflow** enregistre la famille de compatibilité actuelle
-  sur la nouvelle exécution.
-- Les **tâches de workflow** héritent de cette famille et la conservent lors
-  des nouvelles tentatives, expirations de bail et redistributions.
-- Les **tâches d'activité** héritent de la même famille que leur exécution parente.
-- Les **exécutions de nouvelle tentative** conservent la famille de l'exécution source.
-- **Continue-as-new** conserve la famille de l'exécution actuelle.
-- Les **workflows enfants** héritent de la famille de l'exécution parente.
-
-Un workflow de longue durée ne passe donc pas à une autre famille d'exécuteurs
-simplement parce qu'un déploiement a changé. Les nouveaux builds influent sur
-les nouveaux démarrages, sauf si vous drainez volontairement les anciennes
-cohortes et déplacez le trafic.
+Tâches de workflow et activités héritent de la compatibilité de l'exécution. Reprises de tâches, expiration des baux et redistribution la préservent. Les nouvelles exécutions de reprise, enfants et continue-as-new héritent aussi du pin d'origine. La promotion concerne les nouvelles instances ultérieures ; elle ne déplace pas une chaîne poursuivie.
 
 ## Fonctionnement du routage {#how-routing-works}
 
-Le contrôle de compatibilité intervient à plusieurs niveaux.
+### Filtrage lors du poll {#poll-time-narrowing}
 
-### Restriction lors de l'interrogation {#poll-time-narrowing}
+Les workers demandent un namespace, une file et une cohorte compatible. La sélection du poll évite de proposer du travail incompatible, mais n'est pas l'autorité finale.
 
-Les workers restreignent leurs demandes par file de tâches et cohorte de
-compatibilité/build pour que le serveur ou le moteur embarqué évite de
-proposer d'abord des tâches manifestement incompatibles.
+### Vérification lors de la prise de tâche {#claim-time-enforcement}
 
-Il s'agit d'une indication d'efficacité, pas de la frontière de sûreté finale.
+La prise vérifie la compatibilité d'origine et l'identité du worker. Un worker incompatible n'obtient pas un bail parce qu'un autre build manque. L'expiration d'un bail n'élargit pas la compatibilité.
 
-### Contrôle lors de la prise en charge {#claim-time-enforcement}
+## Configuration opérateur {#what-operators-should-configure}
 
-Le contrôle lors de la prise en charge garantit la correction. Si un worker
-ne peut pas exécuter une tâche en toute sécurité, Durable Workflow rejette
-la prise en charge avec un motif de compatibilité explicite plutôt que de
-réaffecter silencieusement la propriété.
-
-C'est le contrat sur lequel s'appuyer lors des déploiements affectant la compatibilité :
-
-- les tâches ne sont jamais élargies silencieusement à un worker incompatible ;
-- l'expiration du bail et la relivraison conservent la famille de compatibilité d'origine ;
-- l'absence de worker compatible est un état observable, pas un comportement indéfini.
-
-## Configuration à définir par les opérateurs {#what-operators-should-configure}
-
-Utilisez des familles de compatibilité stables et lisibles pour les builds
-capables de relire sans risque les mêmes workflows en cours.
-
-Pour les workers PHP embarqués ou hébergés par le serveur, définissez :
+Pour PHP embarqué, configurez la famille courante et celles explicitement prises en charge :
 
 ```bash
 DW_V2_CURRENT_COMPATIBILITY=orders-2026-04-28
 DW_V2_SUPPORTED_COMPATIBILITIES=orders-2026-04-28,orders-2026-04-21
 ```
 
-`DW_V2_CURRENT_COMPATIBILITY` nomme la famille à laquelle les nouvelles
-exécutions sont affectées. `DW_V2_SUPPORTED_COMPATIBILITIES` nomme les familles
-que ce worker peut encore prendre en charge pendant un déploiement ou un
-retour arrière. N'utilisez `*` que pour les flottes à build unique ou des bancs
-de test ciblés ; ne l'utilisez pas pour masquer une politique de déploiement incertaine.
+La première valeur épingle les nouveaux workflows embarqués ; la seconde autorise les prises pour ces familles. Utilisez `*` seulement avec une politique de compatibilité volontairement vérifiée. Pour les workers autonomes, enregistrez un `build_id` stable et utilisez la promotion et les contrôles de cycle de vie du Server. Gardez la même famille entre reconstructions compatibles au replay ; changer l'étiquette ne rend pas du code incompatible rejouable.
 
-Pour les workers du serveur autonome, enregistrez un `build_id` stable et
-utilisez les API de déploiement build-id pour drainer ou réactiver volontairement
-les cohortes.
+## Schéma de déploiement sûr {#safe-rollout-pattern}
 
-## Séquence de déploiement sûre {#safe-rollout-pattern}
+1. Déployez et inspectez namespace, file, types et inscriptions récentes de la nouvelle cohorte. Gardez l'ancienne disponible.
+2. Promouvez explicitement le build souhaité pour les nouveaux démarrages. Le nombre de workers ne définit pas de pourcentage de trafic.
+3. Conservez la capacité compatible des exécutions épinglées, y compris celles qui attendent passivement timer, signal, activité ou enfant.
+4. Drainez uniquement pour arrêter volontairement les nouvelles prises de cette cohorte. Si cela bloque du travail, reprenez et restaurez le build compatible d'origine.
+5. Pour revenir sur les nouveaux démarrages, restaurez/reprenez et promouvez la cohorte connue comme fonctionnelle, puis révoquez le mauvais déploiement. Les pins existants restent inchangés.
 
-Suivez cette séquence pour les changements de worker affectant la compatibilité :
+Zéro tâche de workflow en attente ne prouve pas un retrait sûr. Conservez l'artefact et la voie de récupération tant qu'une exécution épinglée ou une chaîne héritée peut en dépendre. [Server #519](https://github.com/durable-workflow/server/issues/519) suit cette capacité protégée distincte ; la checklist ne la livre pas.
 
-1. Démarrez la nouvelle cohorte de workers avec un nouveau build id ou marqueur de compatibilité.
-2. Gardez l'ancienne cohorte active jusqu'à confirmation que la nouvelle peut prendre du travail.
-3. Drainez l'ancienne cohorte pour qu'elle cesse de prendre de nouvelles tâches,
-   mais puisse terminer ou libérer celles qu'elle détient déjà sous bail.
-4. Surveillez les interfaces de compatibilité et de files de tâches jusqu'à
-   ce que l'ancienne cohorte ne soit plus nécessaire.
-5. Réactivez l'ancienne cohorte uniquement si un retour arrière est nécessaire.
+## État explicite de worker manquant {#explicit-missing-worker-state}
 
-Conservez la famille de compatibilité lors des reconstructions compatibles
-avec la relecture. Ne la changez que lorsque les nouveaux workers ne doivent
-plus prendre les tâches créées par l'ancienne famille.
+Inspectez ensemble les [tâches en attente par cohorte](/docs/polyglot/worker-build-id-rollout#pending-workflow-tasks-by-cohort), les inscriptions récentes/drainées/périmées et le pin d'origine. `no_compatible_worker` indique du travail de workflow en attente pour un build non nul sans worker actif compatible. Il ne compte ni les files d'activités ni toutes les exécutions passives épinglées. Un champ absent, une requête échouée ou un heartbeat périmé ne signifie pas une flotte vide ou zéro tâche. Restaurez le build attendu ou examinez sa file, son namespace et ses types avant d'ajouter des workers sans rapport.
 
-## État explicite en l'absence de worker {#explicit-missing-worker-state}
+## Lien avec les déploiements par build {#how-this-relates-to-build-id-rollouts}
 
-Lorsqu'aucun worker ne peut satisfaire la famille de compatibilité requise,
-Durable Workflow doit l'indiquer clairement :
-
-- les résumés de flotte indiquent que la compatibilité requise n'est pas couverte ;
-- les interfaces de files de tâches et de déploiement indiquent les cohortes
-  encore actives, en drainage, périmées ou absentes ;
-- les diagnostics de workflow indiquent que l'exécution attend un worker compatible ;
-- la santé opérationnelle et les métriques exposent le travail bloqué par la
-  compatibilité comme une condition nommée.
-
-C'est le signal attendu pendant un déploiement partiel ou un retour arrière
-incomplet. Traitez-le comme une véritable condition opérationnelle à corriger,
-pas comme un aléa transitoire.
-
-## Lien avec les déploiements build-id {#how-this-relates-to-build-id-rollouts}
-
-L'état du déploiement build-id et le routage de compatibilité résolvent des
-problèmes différents :
-
-- Le **déploiement build-id** indique aux opérateurs les cohortes de workers
-  actives et leur permet de les drainer ou de les réactiver volontairement.
-- Le **routage de compatibilité** décide si une tâche précise en cours peut
-  être exécutée sur un worker donné.
-
-On utilise généralement les deux ensemble. Les cohortes build-id indiquent
-quels exécuteurs sont disponibles ; le routage de compatibilité garantit que
-le travail de longue durée n'arrive que sur une cohorte compatible.
+L'état du déploiement décrit la capacité enregistrée et les intentions de nouveaux démarrages/cycle de vie ; la compatibilité détermine la prise d'une tâche d'origine précise. Utilisez les deux. Ni drainage ni rollback ne réécrit la compatibilité durable ou ne prouve qu'un build est supprimable.
 
 ## Références associées {#related-references}
 
-- [Espaces de noms, authentification et inscription des workers](/docs/polyglot/namespace-auth-workers)
-  pour la charge utile d'inscription des workers, y compris `build_id`.
-- [Déploiement des build-id de workers](/docs/polyglot/worker-build-id-rollout)
-  pour le cycle de drainage/réactivation sur une file de tâches.
-- [Référence de configuration de Server](/docs/polyglot/server-config-reference)
-  pour `DW_V2_CURRENT_COMPATIBILITY`, `DW_V2_SUPPORTED_COMPATIBILITIES` et la
-  configuration associée.
-- [Enveloppe d'exploitation](/docs/operator-operating-envelope) pour la santé,
-  les métriques et les diagnostics d'exécution exposant les lacunes de compatibilité.
+- [Namespace, authentification et inscription des workers](/docs/polyglot/namespace-auth-workers)
+- [Déploiement des identifiants de build](/docs/polyglot/worker-build-id-rollout)
+- [Référence de configuration Server](/docs/polyglot/server-config-reference)
+- [Cadre d'exploitation](/docs/operator-operating-envelope)

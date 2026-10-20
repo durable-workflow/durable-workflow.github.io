@@ -363,6 +363,12 @@ fn round_trip() -> Result<()> {
 
 `start_workflow` 和 `start_workflow_with_options` 自动将此封装应用到其可序列化输入。仅在程序需要直接交换封装时使用公开辅助函数。
 
-长时间运行的活动应发送心跳并检查 `should_stop()`。取消时，释放临时文件、连接或其他进程内资源，并及时返回。迟到完成会被持久状态拒绝，不能把已取消或已终止运行变为成功；受管理的 Worker 在该明确拒绝后及重启后继续轮询。
+## 活动心跳 {#activity-heartbeats}
+
+对于远程活动，`ActivityContext::heartbeat(...).await` 返回 `Result<ActivityHeartbeatResponse>`。请传播错误，并在成功响应上检查 `should_stop()`。直接请求故障包括 `Error::Transport` 和类型化 HTTP 拒绝 `Error::ActivityTaskRejected`。协作监督下的任务在心跳或所有权检查失败时，可能返回 `Error::ActivityExecutionAbandoned`。失去权限后请停止外部工作。不要假定回调总能执行到应用清理代码。
+
+第一个心跳窗口从运行时领取任务开始，早于任务交付。已记录心跳使用其运行时时间，而不是调用方的接收时间。选择在配置超时内留足余量的节奏，限制每个工作或 I/O 步骤，并为执行暂停、请求延迟及可能的传输重试预留时间。请遵循[发送节奏建议](../features/heartbeats.md#heartbeat-cadence-and-receipts)。不保证自动进度心跳或批量发送计划。
+
+取消时，如执行条件仍允许，请释放进程内资源并及时返回。持久状态会拒绝迟到的完成，不能将已取消或已终止的运行变为成功。受管理的 Worker 在该明确拒绝后及重启后继续轮询。成功心跳不是外部副作用的提交，也不是替代尝试的可恢复检查点。
 
 Server 镜像、认证及生产拓扑请继续查看 [Server 设置指南](/docs/polyglot/server)。

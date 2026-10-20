@@ -4,6 +4,10 @@ sidebar_position: 15
 
 # Versionado {#versioning}
 
+## Replay antes de cambiar builds {#replay-before-changing-builds}
+
+Antes de promover un candidato, reproduzca historiales representativos abiertos y cerrados recientemente con su código exacto. Antes de revertir, reproduzca los historiales escritos por el build nuevo con el artefacto antiguo. Siga la [comprobación de replay](../testing.md#replay-before-deployment); una cohorte de enrutamiento compatible o una comprobación de integridad satisfactoria no demuestra, por sí sola, compatibilidad de replay.
+
 Los workflows pueden durar meses o años, por lo que es habitual cambiar su definición mientras hay ejecuciones en curso. Sin versionado, modificar código que afecte a la ruta de ejecución produciría errores de no determinismo al reproducir.
 
 `getVersion()` permite introducir cambios con seguridad mediante puntos de bifurcación versionados.

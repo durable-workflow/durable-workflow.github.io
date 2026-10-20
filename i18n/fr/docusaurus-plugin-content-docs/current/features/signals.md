@@ -18,6 +18,10 @@ import SignalSimulator from '@site/src/components/SignalSimulator';
 
 Les signaux permettent de déclencher des événements dans un workflow depuis l’extérieur. Ils servent à réagir à des événements externes, permettre des *interventions humaines* ou signaler la fin d’une tâche externe. Pour des entrées répétées et ordonnées avec progression durable d’un curseur, utilisez les [Flux de messages](./message-streams.md).
 
+## Frontière de l’espace de noms {#namespace-boundary}
+
+Un signal ordinaire cible un workflow dans l’espace de noms du client. Le handle d’un enfant conserve aussi son espace d’origine. Utilisez une [opération de service](./service-operations.md) pour une opération publiée dans un autre espace. Changer un id de workflow ou une file ne confère aucune autorité entre espaces de noms.
+
 ## Acceptation et clôture {#acceptance-and-closure}
 
 `signal_received` confirme l’acceptation durable. Il ne confirme pas que le code
@@ -103,6 +107,68 @@ Comportement des signaux :
 - Avec un contrat de paramètres, l’admission rejette les données invalides avec `rejected_invalid_arguments` et des `validation_errors` lisibles par machine.
 - Sans contrat, `await('name')` renvoie `true` sans argument envoyé, l’argument unique s’il n’y en a qu’un, ou le tableau complet s’il y en a plusieurs.
 - Les noms inconnus sont rejetés avec `rejected_unknown_signal`. Les signaux vers une instance fermée ou non démarrée sont rejetés avec `rejected_not_active` ou `rejected_not_started`.
+
+## Faire évoluer la charge utile d’un signal {#evolve-a-signal-payload}
+
+Utilisez un seul argument map déclaré pour une charge utile applicative nécessitant des ajouts compatibles. Cet exemple conserve `schema_version: 1` pour le champ `note`, facultatif et purement informatif. Un ancien émetteur l’omet ; un lecteur plus récent utilise `null`. Un ancien lecteur peut l’ignorer sans modifier la décision d’approbation. N’utilisez pas un champ ignoré pour une modification qui doit influer sur les autorisations ou le comportement métier.
+
+```php
+use Workflow\V2\Attributes\Signal;
+use Workflow\V2\Attributes\Type;
+use Workflow\V2\Workflow;
+use function Workflow\V2\await;
+
+#[Type('map-approval')]
+#[Signal('reviewed', [
+    ['name' => 'payload', 'type' => 'array', 'allows_null' => false],
+])]
+final class MapApprovalWorkflow extends Workflow
+{
+    public function handle(): array
+    {
+        $payload = await('reviewed');
+        if (! is_array($payload) || array_is_list($payload)
+            || ($payload['schema_version'] ?? null) !== 1) {
+            return ['status' => 'rejected_payload', 'reason' => 'unsupported_shape_or_version'];
+        }
+        if (! in_array($payload['decision'] ?? null, ['approved', 'rejected'], true)) {
+            return ['status' => 'rejected_payload', 'reason' => 'invalid_decision'];
+        }
+        $note = $payload['note'] ?? null;
+        if ($note !== null && ! is_string($note)) {
+            return ['status' => 'rejected_payload', 'reason' => 'invalid_note'];
+        }
+
+        return ['status' => 'processed', 'decision' => $payload['decision'], 'note' => $note];
+    }
+}
+```
+
+Les deux émetteurs utilisent le même paramètre déclaré `payload` :
+
+```php
+use Workflow\V2\WorkflowStub;
+
+$oldPayload = ['schema_version' => 1, 'decision' => 'approved'];
+$newPayload = [...$oldPayload, 'note' => 'review λ'];
+
+$receipt = WorkflowStub::load('review-123')->attemptSignalWithArguments(
+    'reviewed',
+    ['payload' => $newPayload], // An old sender passes $oldPayload here.
+);
+```
+
+La déclaration vérifie l’argument extérieur. Un scalaire à la place de `payload` est refusé à l’admission. Le type `array` ne valide pas les champs imbriqués et ne distingue pas une liste PHP d’une map à clés textuelles. Le workflow vérifie ces règles applicatives avant le traitement métier. Une version non prise en charge ou une `note` invalide peut donc être acceptée durablement, puis produire `rejected_payload` comme résultat du workflow. Ce résultat est distinct de l’accusé de réception `signal_received`.
+
+Conservez les champs obligatoires et leur signification. Définissez si une valeur absente et un `null` explicite ont le même sens ; c’est le cas de `note` ici. Conservez les décodeurs des anciennes valeurs enregistrées. Une structure ou une signification incompatible nécessite une nouvelle version applicative et un plan de compatibilité explicite, et pas simplement un champ facultatif supplémentaire.
+
+Une exécution conserve les déclarations de signaux et les valeurs par défaut enregistrées à son démarrage. Modifier la signature ou une valeur par défaut du handler actuel ne réécrit pas ce contrat. Ajouter un argument de signal de premier niveau est différent d’ajouter une clé dans la map existante. Ne supposez pas qu’une ancienne exécution l’accepte ou adopte la nouvelle valeur par défaut. Les nouvelles exécutions peuvent enregistrer une nouvelle déclaration tandis que les anciennes conservent la leur.
+
+Ce format applicatif est distinct du [schéma de transport Avro Value](/docs/polyglot/avro-value-protocol), qui est fixe. Les clients PHP, Python et Rust en mode service encodent les valeurs map, liste et scalaires prises en charge au moyen de leurs SDK. Une dataclass Python, un objet métier PHP ou une struct Rust nécessite l’adaptateur de valeurs explicite approprié. Un champ de version applicative n’est pas un registre de schémas. Consultez les [références des SDK](/docs/sdk-neutrality) pour les API du mode service.
+
+La compatibilité des charges utiles n’autorise pas non plus une définition de workflow modifiée à prendre une exécution existante. Gardez disponible le worker ou le build compatible requis. La restriction d’empreinte du code source de Server 2.9.7 est suivie séparément dans [Server #518](https://github.com/durable-workflow/server/issues/518). Cette recette ne la contourne pas et ne promet pas qu’un handler actuel remplace le code de l’ancienne exécution. Utilisez le [versionnement des workflows](./versioning.md) pour modifier le code sans compromettre le replay, dans le cadre du contrat de routage pris en charge par le runtime.
+
+La même règle concernant les valeurs enregistrées s’applique aux arguments et aux résultats des activités : les nouvelles tentatives et le replay peuvent rencontrer d’anciennes structures. Maintenez leurs adaptateurs compatibles avec ces valeurs plutôt que de réécrire l’historique ou de dépendre des valeurs par défaut actuelles du modèle.
 
 ## Après une réponse incertaine {#after-an-uncertain-response}
 
@@ -207,5 +273,5 @@ php artisan app:webhook
 
 `App\Workflows\Webhooks\WebhookWorkflow` démarre depuis une entrée webhook HTTP
 et s’arrête sur `await('ready')` jusqu’à l’arrivée du signal correspondant.
-Ouvrez Waterline pendant cette attente : l’événement `WorkflowExecutionSignaled`
+Ouvrez Waterline pendant cette attente : l’événement `SignalReceived`
 apparaît dès l’acceptation du signal.

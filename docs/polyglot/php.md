@@ -148,6 +148,14 @@ Remote workers register workflow, activity, query, and update handlers through
 Use the generated [PHP SDK API reference](https://php.durable-workflow.com/api/)
 for complete parameters and return types.
 
+## Activity heartbeats {#activity-heartbeats}
+
+For remote activities, call `ActivityContext::heartbeat($details)` during bounded work, well before the configured heartbeat timeout. The first window starts at runtime claim, not when PHP receives the task. Request latency, pauses and transport retries consume that window. Follow the [cadence guidance](../features/heartbeats.md#heartbeat-cadence-and-receipts).
+
+The method returns `void`. In the direct handler path, a stop reply raises `ActivityCancelled`. HTTP and transport failures from `Client::heartbeatActivityTask()` surface as `ServerException`. A cooperatively supervised worker can stop or abandon its callback when a heartbeat or ownership check fails instead of delivering a normal response to activity code. Do not assume cleanup code always runs. Do not suppress a failure after losing the claim or submit success after losing authority.
+
+A returned call does not commit external work or provide a resumable checkpoint. Keep external effects idempotent and do not treat a transport retry as a fresh heartbeat window.
+
 ## Run a remote PHP worker
 
 Workflow handlers are ordinary callables that run as straight-line code inside

@@ -574,12 +574,13 @@ fn round_trip() -> Result<()> {
 auf ihre serialisierbare Eingabe an. Verwenden Sie die öffentlichen Hilfsmethoden
 nur, wenn ein Programm direkt eine Envelope austauschen muss.
 
-Lang laufende Aktivitäten sollten Heartbeats senden und `should_stop()` prüfen.
-Geben Sie bei Abbruch temporäre Dateien, Verbindungen und andere prozesslokale
-Ressourcen frei und kehren Sie zeitnah zurück. Dauerhafter Zustand lehnt späten
-Abschluss ab. Er kann einen abgebrochenen oder terminierten Lauf nicht in Erfolg
-verwandeln. Verwaltete Worker fragen nach dieser endgültigen Ablehnung und nach
-Neustart weiter ab.
+## Aktivitäts-Heartbeats {#activity-heartbeats}
+
+Für entfernte Aktivitäten gibt `ActivityContext::heartbeat(...).await` einen `Result<ActivityHeartbeatResponse>` zurück. Geben Sie Fehler weiter und prüfen Sie bei einer erfolgreichen Antwort `should_stop()`. Fehler direkter Anfragen umfassen `Error::Transport` und typisierte HTTP-Ablehnungen als `Error::ActivityTaskRejected`. Eine kooperativ überwachte Beanspruchung kann stattdessen bei fehlgeschlagenen Heartbeat- oder Besitzprüfungen `Error::ActivityExecutionAbandoned` zurückgeben. Stoppen Sie externe Arbeit nach Verlust der Befugnis. Verlassen Sie sich nicht darauf, dass ein Callback immer den Bereinigungscode der Anwendung erreicht.
+
+Das erste Heartbeat-Zeitfenster beginnt bei Beanspruchung durch die Laufzeit, vor der Aufgabenauslieferung. Ein aufgezeichneter Heartbeat verwendet seinen Laufzeitzeitpunkt, nicht den Empfangszeitpunkt beim Aufrufer. Wählen Sie einen Takt deutlich innerhalb des konfigurierten Zeitlimits, begrenzen Sie jeden Arbeits- oder E/A-Schritt und lassen Sie Spielraum für Ausführungspausen, Anfragelatenz und mögliche Transportwiederholungen. Beachten Sie die [Taktempfehlungen](../features/heartbeats.md#heartbeat-cadence-and-receipts). Ein automatischer Fortschritts-Heartbeat-Takt oder Bündelungstakt wird nicht zugesagt.
+
+Geben Sie bei Abbruch prozesslokale Ressourcen frei, soweit die Ausführung dies noch zulässt, und kehren Sie zeitnah zurück. Dauerhafter Zustand lehnt späten Abschluss ab und verhindert, dass ein abgebrochener oder terminierter Lauf erfolgreich wird. Verwaltete Worker fragen nach dieser endgültigen Ablehnung und nach Neustart weiter ab. Ein erfolgreicher Heartbeat ist weder ein Commit externer Effekte noch ein fortsetzbarer Prüfpunkt für einen Ersatzversuch.
 
 Server-Images, Authentifizierung und Produktionstopologie beschreibt der
 [Server-Einrichtungsleitfaden](/docs/polyglot/server).

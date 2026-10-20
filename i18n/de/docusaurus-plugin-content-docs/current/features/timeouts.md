@@ -135,6 +135,31 @@ Wenn nach einer Anwendungsfrist aufgeräumt werden muss, verwenden Sie einen fr�
 
 Auch die unmittelbaren Befehle `cancel()` und `terminate()` schließen den Lauf ohne Aufräumfenster. Der gesonderte kooperative Vorgang `requestCancellation()` kann einem kompatiblen Worker begrenztes Aufräumen ermöglichen, solange der Lauf aktiv ist. Eine Workflow-Zeitüberschreitung wird nicht automatisch zu einer kooperativen Abbruchanfrage; ein Abbruchschutz verlängert weder Gesamt- noch Lauffrist. Siehe [Abbrechen und terminieren](./cancel-and-terminate.md) und [Kooperativer Abbruch](../polyglot/cancellation.md).
 
+## Lease eines Workflow-Tasks {#workflow-task-lease}
+
+Ein Workflow-Task ist ein Verarbeitungsschritt eines Workers, der gespeicherte Historie wiedergibt und dauerhafte Befehle erzeugt. Er ist nicht der gesamte Workflow. Das Warten auf einen dauerhaften Timer, eine über die Queue ausgeführte Aktivität oder ein Signal hält keinen Workflow-Task während der ganzen Wartezeit; ein späterer Task setzt den Lauf fort.
+
+| Bereitstellung | Standard in Sekunden | Einstellung |
+| --- | --- | --- |
+| Eingebettetes Laravel | `300` | `DW_V2_WORKFLOW_TASK_LEASE_SECONDS` |
+| Server | `60` | `DW_WORKFLOW_TASK_TIMEOUT` |
+
+Die eingebettete Einstellung wird auf `workflows.v2.workflow_task_lease_seconds` abgebildet. Server überträgt beim Start seine eigene Einstellung auf diesen Paketschlüssel. Verwenden Sie auf Server deshalb die Server-Einstellung. Dies ist Laufzeitkonfiguration, keine `StartOptions`-Option und kein Aktivitäts-Timeout pro Start. Siehe [Konfiguration veröffentlichen](../configuration/publishing-config.md#workflow-task-lease-v2) und die [Server-Konfigurationsreferenz](../polyglot/server-config-reference.md#worker-protocol-and-query-transport).
+
+### Heartbeats und Ausführung {#workflow-task-heartbeats}
+
+Worker im Service-Modus erneuern einen laufenden Workflow-Task-Anspruch mit Task-Heartbeats. Server prüft Task, Versuch und Lease-Eigentümer. Eine bestätigte Erneuerung verwendet die wirksame Lease-Dauer, begrenzt durch gegebenenfalls geltende Abbruch-Cleanup-Fristen. Sie ändert weder die ursprünglichen Lauf- und Ausführungsfristen noch Aktivitäts-Timeouts. Worker-Registrierungs-Heartbeats halten die Registrierung aktuell. Eine veraltete Registrierung kann einen Server-Anspruch schon vor Ablauf der Task-Lease ungültig machen. Diese Heartbeats erneuern die Task-Lease nicht. Der Heartbeat einer über die Queue ausgeführten Aktivität meldet deren Fortschritt und ersetzt keine Workflow-Task-Erneuerung.
+
+Synchroner eingebetteter Workflow-Code kann während einer Blockierung nicht regelmäßig erneuern. Halten Sie Workflow-Code deterministisch und kurz. Lange E/A- oder CPU-Arbeit gehört in Aktivitäten. Die Lease ist keine harte Prozess- oder CPU-Ausführungsgrenze.
+
+Eingebettete lokale Aktivitäten behalten ihren ausführenden Workflow-Task. Ihr `$this->heartbeat()` kann auch dessen Lease erneuern, solange der ursprüngliche Aktivitätsversuch und der Workflow-Task-Anspruch gültig bleiben.
+
+### Ablauf einer Lease {#workflow-task-lease-expiry}
+
+Ein abgelaufener, unerledigter Anspruch kann wiederhergestellt werden. Matching/Watchdog oder Reparatur löscht den abgelaufenen Anspruch und stellt die Arbeit erneut zu, damit ein kompatibler Worker die gespeicherte Historie wiedergeben kann. Dafür müssen Wiederherstellungsprozesse laufen sowie Datenbank und geeignete Worker verfügbar sein. Der Ablauf beendet den alten Prozess nicht und garantiert keine sofortige erneute Zustellung. Auf Server darf ein abgelaufener oder ersetzter Anspruch keine neuen Befehle einreichen. Eine abgelehnte Erneuerung bedeutet den Verlust der Ausführungsbefugnis.
+
+Reparatur öffnet keinen geschlossenen Lauf erneut, gewährt keine zusätzlichen fachlichen Wiederholungen und setzt ursprüngliche Fristen nicht zurück. `startToCloseTimeout` einer Aktivität begrenzt dagegen einen Aktivitätsversuch gemäß dessen gespeicherter Wiederholungsrichtlinie. Lauf- und Ausführungs-Timeouts begrenzen die Lebensdauer des Workflows. Erneuerung oder Replay eines Workflow-Tasks verlängert sie nicht.
+
 ## Aktivitätszeitlimits {#activity-timeouts}
 
 Aktivitätszeitlimits begrenzen die zulässige Dauer einzelner Aktivitätsausführungen. Es gibt vier Geltungsbereiche:
@@ -156,7 +181,7 @@ $result = activity(
         scheduleToStartTimeout: 30,     // must be claimed within 30s
         startToCloseTimeout: 300,       // each attempt has 5 minutes
         scheduleToCloseTimeout: 600,    // total 10 minutes across all retries
-        heartbeatTimeout: 15,           // must heartbeat every 15 seconds
+        heartbeatTimeout: 15,           // heartbeat well before this 15-second window expires
         maxAttempts: 3,
     ),
     $input,
@@ -177,7 +202,7 @@ Die Frist wird bei der Planung einmal berechnet und nie zurückgesetzt. Bei ihre
 
 ### Heartbeat-Zeitlimit {#heartbeat-timeout}
 
-Die erste Frist wird bei Beanspruchung der Aktivitätsaufgabe berechnet. Jeder erfolgreiche Aufruf von `$this->heartbeat()` verlängert sie um das konfigurierte Intervall. Ohne `heartbeat()` vor Fristablauf nimmt die Engine an, dass der Worker nicht reagiert. Sind weitere Versuche möglich, wird ein neuer Versuch mit erneuerter Schedule-to-start-Frist, sofern konfiguriert, geplant; andernfalls wird eine terminale Zeitüberschreitung gespeichert.
+Bei einer Aktivität in der Warteschlange beginnt die erste Frist, wenn die Laufzeit sie beansprucht, also vor der Aufgabenauslieferung und dem Anwendungscode. Jeder angenommene Heartbeat setzt die Frist auf seinen aufgezeichneten Laufzeitzeitpunkt plus das konfigurierte Zeitlimit. Er addiert keine Zeit zur vorherigen Frist und eröffnet beim Empfang der Antwort kein neues Zeitfenster. Planen Sie Spielraum für Auslieferung, begrenzte Arbeit, Ausführungspausen, Anfragelatenz und Transportwiederholungen ein. Senden Sie Heartbeats deutlich vor Ablauf des Zeitfensters. Ein abgelaufener oder ersetzter Versuch erhält durch einen späten Heartbeat keine Befugnis zurück. Sind weitere Versuche möglich, wird ein neuer Versuch mit erneuerter Schedule-to-start-Frist geplant, sofern sie konfiguriert ist. Andernfalls wird eine terminale Zeitüberschreitung gespeichert.
 
 ```php
 use Workflow\V2\Activity;

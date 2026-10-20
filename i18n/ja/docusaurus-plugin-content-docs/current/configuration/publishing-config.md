@@ -10,6 +10,18 @@ sidebar_position: 1
 php artisan vendor:publish --provider="Workflow\Providers\WorkflowServiceProvider" --tag="config"
 ```
 
+## ワークフロータスクのリース（v2） {#workflow-task-lease-v2}
+
+組み込みワークフロータスクのリースを、正の整数の秒数で設定します。
+
+```env
+DW_V2_WORKFLOW_TASK_LEASE_SECONDS=300
+```
+
+これは `config/workflows.php` の `workflows.v2.workflow_task_lease_seconds` に対応し、デフォルトは `300` です。タスクの取得と更新は有効な設定を参照します。ゼロではリースを無効化できません。デプロイ設定を変更した後は設定キャッシュを更新し、長時間稼働するWorkerを再起動してください。
+
+Serverは代わりに `DW_WORKFLOW_TASK_TIMEOUT` を使い、その値をパッケージ設定へ反映します。この回復用リースは、アクティビティやワークフローの期限とは別です。[ワークフロータスクのリース](../features/timeouts.md#workflow-task-lease)を参照してください。
+
 ## ワークフローフォルダーの変更 {#changing-workflows-folder}
 
 既定では `make` コマンドは `app/Workflows` フォルダーに書き込みます。

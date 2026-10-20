@@ -18,6 +18,10 @@ import SignalSimulator from '@site/src/components/SignalSimulator';
 
 信号允许从工作流外部触发工作流中的事件，适用于响应外部事件、允许*人工参与*干预，或通知外部任务完成。需要重复有序输入及持久游标推进时，请使用[消息流](./message-streams.md)。
 
+## 命名空间边界 {#namespace-boundary}
+
+普通信号以客户端命名空间中的工作流为目标。子工作流句柄也保留原命名空间。对于另一个命名空间发布的操作，请使用[服务操作](./service-operations.md)。更改工作流 id 或队列并不授予跨命名空间权限。
+
 ## 接受与关闭 {#acceptance-and-closure}
 
 `signal_received` 确认持久接受，不确认工作流代码已处理信号。业务操作需要确认时，请检查信号保留的状态和历史。
@@ -83,6 +87,68 @@ $result->instanceId();  // "order-123"
 - 有参数契约时，接收阶段将无效载荷以 `rejected_invalid_arguments` 拒绝，并提供机器可读的 `validation_errors`。
 - 无契约时，`await('name')` 在无参数时返回 `true`，一个参数时返回该值，多个参数时返回完整参数数组。
 - 未知信号名以 `rejected_unknown_signal` 拒绝；针对已关闭或未启动实例的信号分别以 `rejected_not_active` 或 `rejected_not_started` 拒绝。
+
+## 兼容地演进信号载荷 {#evolve-a-signal-payload}
+
+需要兼容扩展的应用载荷应使用一个已声明的映射参数。本例添加可选的信息性 `note` 时仍保留 `schema_version: 1`。旧发送方省略该字段，新读取方使用 `null`。旧读取方可以忽略它，而不会改变审批决定。需要影响授权或业务行为的变更，不应放在会被忽略的字段中。
+
+```php
+use Workflow\V2\Attributes\Signal;
+use Workflow\V2\Attributes\Type;
+use Workflow\V2\Workflow;
+use function Workflow\V2\await;
+
+#[Type('map-approval')]
+#[Signal('reviewed', [
+    ['name' => 'payload', 'type' => 'array', 'allows_null' => false],
+])]
+final class MapApprovalWorkflow extends Workflow
+{
+    public function handle(): array
+    {
+        $payload = await('reviewed');
+        if (! is_array($payload) || array_is_list($payload)
+            || ($payload['schema_version'] ?? null) !== 1) {
+            return ['status' => 'rejected_payload', 'reason' => 'unsupported_shape_or_version'];
+        }
+        if (! in_array($payload['decision'] ?? null, ['approved', 'rejected'], true)) {
+            return ['status' => 'rejected_payload', 'reason' => 'invalid_decision'];
+        }
+        $note = $payload['note'] ?? null;
+        if ($note !== null && ! is_string($note)) {
+            return ['status' => 'rejected_payload', 'reason' => 'invalid_note'];
+        }
+
+        return ['status' => 'processed', 'decision' => $payload['decision'], 'note' => $note];
+    }
+}
+```
+
+两种发送方都使用同一个已声明的 `payload` 参数：
+
+```php
+use Workflow\V2\WorkflowStub;
+
+$oldPayload = ['schema_version' => 1, 'decision' => 'approved'];
+$newPayload = [...$oldPayload, 'note' => 'review λ'];
+
+$receipt = WorkflowStub::load('review-123')->attemptSignalWithArguments(
+    'reviewed',
+    ['payload' => $newPayload], // An old sender passes $oldPayload here.
+);
+```
+
+声明检查的是外层参数。用标量替代 `payload` 会在准入时被拒绝。`array` 类型既不验证嵌套字段，也不区分 PHP 列表和字符串键映射。工作流会在执行业务操作之前检查这些应用规则。因此，不支持的版本或无效的 `note` 可能先被持久接受，随后产生 `rejected_payload` 工作流结果。这个结果与 `signal_received` 回执不同。
+
+保持必填字段及其含义稳定。明确字段缺失与显式 `null` 是否含义相同，本例中的 `note` 将二者视为相同。保留读取已记录旧值的解码器。不兼容的结构或语义变更需要新的应用版本和明确的兼容计划，而不只是再增加一个可选字段。
+
+运行会保留启动时记录的信号声明和默认值。修改当前处理器的签名或默认值不会重写这个契约。添加一个顶层信号参数，与在现有映射中添加键并不相同。不要假定旧运行会接受该参数或采用新的默认值。新运行可以记录新的声明，旧运行则保留原声明。
+
+这种应用格式独立于固定的 [Avro Value 传输模式](/docs/polyglot/avro-value-protocol)。服务模式下的 PHP、Python 和 Rust 客户端通过各自 SDK 编码所支持的映射、列表及标量值。Python dataclass、PHP 领域对象或 Rust struct 需要相应的显式值适配器。应用版本字段不是模式注册中心。服务模式 API 请参阅 [SDK 参考](/docs/sdk-neutrality)。
+
+载荷兼容也不意味着修改后的工作流定义有权领取现有运行。请保持所需的兼容 worker 或 build 可用。Server 2.9.7 的源代码指纹限制单独跟踪于 [Server #518](https://github.com/durable-workflow/server/issues/518)。本配方不会绕过该限制，也不承诺当前处理器会替换旧运行的代码。在运行时所支持的路由契约内进行可安全重放的代码变更，请使用[工作流版本控制](./versioning.md)。
+
+相同的已记录值边界也适用于活动参数和结果：重试与重放可能读取旧结构。请让相应适配器继续兼容这些值，而不是重写历史或依赖当前模型的默认值。
 
 ## 响应不确定之后 {#after-an-uncertain-response}
 
@@ -150,4 +216,4 @@ Route::post('/orders/{order}/approve', function (Request $request, Order $order)
 php artisan app:webhook
 ```
 
-`App\Workflows\Webhooks\WebhookWorkflow` 从 HTTP Webhook 入口启动，并停在 `await('ready')`，直到匹配信号到达。等待期间打开 Waterline，可以在信号被接受时看到 `WorkflowExecutionSignaled` 事件。
+`App\Workflows\Webhooks\WebhookWorkflow` 从 HTTP Webhook 入口启动，并停在 `await('ready')`，直到匹配信号到达。等待期间打开 Waterline，可以在信号被接受时看到 `SignalReceived` 事件。

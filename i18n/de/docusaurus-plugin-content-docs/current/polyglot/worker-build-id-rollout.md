@@ -1,216 +1,146 @@
 ---
 sidebar_position: 7
-title: Worker-Build-ID-Rollout
-description: Worker-Builds auf dem eigenständigen Server mit Build-ID-Rollout-Zustand ausrollen, als Canary testen, leeren und zurücknehmen, ohne Ausführungen stranden zu lassen.
-tags:
-  - worker-protocol
-  - operations
-  - rollouts
-  - build-ids
-  - task-queues
-keywords:
-  - Worker-Build-ID-Rollout
-  - Worker-Build leeren
-  - Worker-Build zurücknehmen
-  - Canary-Worker
-  - Umstellung von unversioniert auf versioniert
+title: Rollout von Worker-Build-IDs
+description: Worker-Kohorten prüfen, den Build für neue Starts auswählen und Kapazität für ältere gepinnte Läufe erhalten.
+tags: [worker-protocol, operations, rollouts, build-ids, task-queues]
+keywords: [Worker-Build-ID, Worker entleeren, Worker-Rollback, Canary, unversionierte Worker]
 ---
 
-# Worker-Build-ID-Rollout {#worker-build-id-rollout}
+# Rollout von Worker-Build-IDs
 
-Nutzen Sie diese Referenz, wenn Sie von unversionierten auf mit Build-IDs
-markierte Worker umstellen, einen neuen Build als Canary auf einer
-Task-Warteschlange testen, einen älteren Build vor der Stilllegung leeren oder
-einen fehlerhaften Build zurücknehmen. Der Server zeichnet die Betriebsabsicht
-neben den aktuellen Worker-Zeilen auf. So spiegeln die nächste Abfrage, die
-CLI-Beschreibung oder `list_task_queue_build_ids` den Rollout-Zustand ehrlich
-wider, selbst wenn alte Worker vor dem Abbau ihres Rückstaus verschwinden.
+## Replay vor einem Build-Wechsel {#replay-before-changing-builds}
 
-Dieser Leitfaden beschreibt die Kohortensteuerung, nicht den vollständigen
-Routing-Vertrag. [Worker-Kompatibilität und Routing](/docs/polyglot/worker-compatibility-routing)
-erklärt, warum laufende Arbeit an kompatible Executors gebunden bleiben muss
-und „kein kompatibler Worker verfügbar“ ein expliziter Betriebszustand ist.
+Prüfen Sie vor der Promotion eines Kandidaten repräsentative offene und kürzlich geschlossene Historien gegen dessen genauen Anwendungscode. Prüfen Sie vor einem Rollback die Historien des neueren Builds gegen das ältere Artefakt. Nutzen Sie die [Replay-Prüfung](../testing.md#replay-before-deployment); eine kompatible Routing-Kohorte oder erfolgreiche Integritätsprüfung allein beweist keine Replay-Kompatibilität.
 
-Durable Workflow Server beschreibt einen Rollout auf einer Task-Warteschlange
-als Menge von **Build-ID-Kohorten**. Eine Kohorte gruppiert alle
-Worker-Registrierungen mit derselben `build_id` bei `POST /api/worker/register`.
-Worker ohne `build_id` bilden die **unversionierte Kohorte**, den Standard vor
-dem Rollout, von dem Sie bei der ersten Umstellung wegmigrieren.
+Prüfen Sie mit diesem Leitfaden Worker-Kohorten und wählen Sie den Build für neue Workflow-Starts. Halten Sie kompatible Worker für bestehende Läufe bereit. Eine Promotion ändert die Auswahl für neue Starts; Drain verhindert neue Claims der Kohorte. Keine dieser Aktionen migriert vorhandene Läufe oder beweist, dass ein Build gelöscht werden kann.
 
-## Vom Server aufgezeichneter Rollout-Zustand {#rollout-state-the-server-records}
+[Worker-Kompatibilität und Routing](/docs/polyglot/worker-compatibility-routing) erklärt die Identität von Workflow-Tasks, Aktivitäten, Wiederholungen, Kindern und Continue-as-new. Eine Kohorte ist durch `(namespace, task_queue, build_id)` abgegrenzt. Registrierungen ohne `build_id` gehören zur unversionierten `null`-Kohorte.
 
-Jede `(namespace, task_queue, build_id)`-Kohorte enthält aggregierten
-Worker-Zustand (Anzahlen aktiver, auslaufender, veralteter und aller Worker)
-sowie die Betriebsabsicht:
+## Vom Server gespeicherter Rollout-Zustand {#rollout-state-the-server-records}
 
-| Feld | Zweck |
+| Feld | Bedeutung |
 | --- | --- |
-| `build_id` | Registrierte Build-Identität. `null` kennzeichnet die unversionierte Kohorte. |
-| `rollout_status` | Aggregierte Sicht darauf, wie die Kohorte mit neuen Tasks umgeht: `active`, `active_with_draining`, `draining`, `stale_only` oder `no_workers`. |
-| `drain_intent` | Betriebsabsicht für die Kohorte: `active` oder `draining`. |
-| `drained_at` | Zeitpunkt der ersten Markierung als auslaufend. Fehlt bei aktiver Kohorte. Wiederholte Leerungsaufrufe verschieben diesen Zeitstempel nicht. |
-| `active_worker_count` | Lebende Worker, die aktuell neue Tasks annehmen. |
-| `draining_worker_count` | Lebende Worker, die noch laufende Tasks halten, aber keine neue Arbeit übernehmen. |
-| `stale_worker_count` | Worker, deren letzter Heartbeat älter als die Veraltungsgrenze ist. |
-| `total_worker_count` | Summe der drei Worker-Gruppen der Kohorte. |
-| `runtimes`, `sdk_versions` | Unterschiedliche in der Kohorte beobachtete Laufzeit- und SDK-Versionszeichenfolgen. |
-| `last_heartbeat_at`, `first_seen_at` | Kohortenweites Heartbeat-Fenster, nützlich zum Bestätigen ruhiger Kohorten vor dem Löschen. |
+| `build_id` | Registrierte Build-Identität; `null` bezeichnet die unversionierte Kohorte. |
+| `rollout_status` | `active`, `active_with_draining`, `draining`, `stale_only` oder `no_workers`. |
+| `drain_intent`, `drained_at` | Dauerhafte Drain-Absicht und erster Zeitstempel; erneutes Drain verschiebt ihn nicht. |
+| `promoted_at`, `rolled_back_at` | Gespeicherte Zeitstempel für Promotion und Rollback. |
+| `new_start_selected` | Diese Kohorte ist die ausgewählte explizite Promotion. `false` schließt den unten beschriebenen Rückfall auf eine einzige Kohorte nicht aus. |
+| `active_worker_count` | Frische, nicht drainende Registrierungen; weder freie Task-Slots noch ein Nachweis aller Workflow-Typen. |
+| `draining_worker_count` | Frische, als drainend markierte Registrierungen ohne neue Claims. Sie müssen keine Lease halten. |
+| `stale_worker_count` | Registrierungen mit einem Heartbeat älter als `stale_after_seconds`. |
+| `total_worker_count` | Summe aktiver, drainender und veralteter Registrierungen. |
+| `runtimes`, `sdk_versions` | In Registrierungen beobachtete Runtime- und SDK-Zeichenfolgen. |
+| `last_heartbeat_at`, `first_seen_at` | Aktualität und Alter der Registrierung; kein Nachweis, dass der Build keine Läufe mehr hat. |
+| `pending_workflow_tasks` | Workflow-Task-Zahlen und die unten erläuterte Diagnose. |
 
-`drain_intent` ist dauerhaft: Worker-Neustarts, das Stoppen aller Worker oder
-Veralten der Kohorte setzen ihn nicht still auf `active` zurück. Nur ein
-explizites `POST .../build-ids/resume` löscht `drain_intent` und `drained_at`.
-So bleibt `rollout_status` auch ohne lebende Worker wahrheitsgetreu.
+Die Drain-Absicht überlebt Worker-Neustarts, fehlende Worker und veraltete Heartbeats. Nur explizites Resume hebt sie auf; ein fehlender Worker wird nicht automatisch fortgesetzt.
 
-## Den Rollout untersuchen {#inspect-the-rollout}
+## Rollout prüfen {#inspect-the-rollout}
 
-Bestätigen Sie vor dem Leeren oder Löschen eines Builds, welche Kohorten auf
-der Warteschlange noch erreichbar sind:
+Prüfen Sie vor Kapazitätsänderungen den genauen Namespace und die Queue:
 
 ```bash
-curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/task-queues/orders-critical/build-ids" \
+curl -fsS "$DURABLE_WORKFLOW_SERVER_URL/api/task-queues/orders-critical/build-ids" \
   -H "Authorization: Bearer $DW_OPERATOR_TOKEN" \
   -H "X-Namespace: orders-prod" \
   -H "X-Durable-Workflow-Control-Plane-Version: 2"
 ```
 
-Derselbe Snapshot ist über die Betriebs-CLI und das Python SDK verfügbar:
-
 ```bash
-dw task-queue:build-ids orders-critical --json
+dw task-queue:build-ids orders-critical --namespace orders-prod --json
 ```
 
 ```python
 from durable_workflow import Client
 
-async with Client("https://durable-workflow.example", token=operator_token) as client:
+async with Client("https://durable-workflow.example", token=operator_token,
+                  namespace="orders-prod") as client:
     rollout = await client.list_task_queue_build_ids("orders-critical")
     for cohort in rollout.build_ids:
         print(cohort.build_id, cohort.rollout_status, cohort.total_worker_count)
 ```
 
-## Erste Umstellung: von unversioniert auf versioniert {#first-cutover-unversioned-to-versioned}
+Für zusätzliche Felder, die das Antwortmodell eines älteren SDKs möglicherweise nicht zeigt, ist der HTTP-Snapshot maßgeblich.
 
-Eine bisher nur von unversionierten Workern bediente Warteschlange meldet eine
-Kohorte mit `build_id: null` und `rollout_status: "active"`. Die erste Umstellung
-führt daneben eine neue Kohorte mit Build-ID ein.
+## Ausstehende Workflow-Tasks je Kohorte {#pending-workflow-tasks-by-cohort}
 
-1. Stellen Sie die neue Worker-Flotte mit einer stabilen `build_id` (etwa
-   `orders-worker-2026-04-22`) bereit, registriert über `POST /api/worker/register`.
-2. Bestätigen Sie, dass beide Kohorten aktiv sind:
+`pending_workflow_tasks` zählt ausschließlich Workflow-Tasks dieses Namespace und dieser Queue, gruppiert nach effektiver Task-Kompatibilität mit der Kompatibilität des Laufs als Rückfall. Es ist weder Aktivitätsrückstand noch Anzahl offener Läufe, Durchsatz oder Prozesslast.
+
+| Unterfeld | Auslegung |
+| --- | --- |
+| `ready_count` | Workflow-Task-Zeilen mit Zustand `ready`. |
+| `leased_count` | Workflow-Task-Zeilen mit Zustand `leased`. |
+| `total_count` | `ready_count + leased_count`. |
+| `status` | Bei null Tasks `idle`, sonst `pending` oder bei einem Nicht-null-Build ohne aktiven Worker `no_compatible_worker`. |
+| `operator_visible_signal`, `message` | Diagnose fehlender kompatibler Worker; andernfalls können diese Werte null sein. |
+
+Die unversionierte Kohorte erhält diese buildbezogene Diagnose nicht. Ein fehlendes Feld, eine fehlgeschlagene Anfrage oder eine veraltete Beobachtung bedeutet nicht null Tasks. Lesen Sie den Snapshot erneut und prüfen Sie Heartbeats und Typdeklarationen.
+
+Beispielsweise kann der alte Build zwei bereite und einen geleasten Task haben, der neue dagegen keinen. Eine Queue-Gesamtsumme von drei zeigt nicht, welche Flotte Kapazität benötigt. Hat der alte Build keine aktiven Worker, stellen Sie dessen kompatible Kapazität wieder her oder setzen Sie ihn bei versehentlichem Drain gezielt fort. Neue Worker eines anderen Builds übernehmen alte Pins nicht. Prüfen Sie bei ausschließlich veralteten Registrierungen verlorene Prozesse oder Heartbeats, bevor Sie diese als Kapazität zählen.
+
+Reduzieren Sie Kohorten vorsichtig und prüfen Sie ihre eigenen Task-Zahlen, frischen Worker, Workflow-Typen, freien Slots und Drain-Absichten. Erhalten Sie Kapazität für geleaste sowie spätere Arbeit bestehender Läufe. Ein auf Signal, Timer, Aktivität oder Kind wartender Lauf kann derzeit keinen Workflow-Task haben und später den alten Build benötigen. Aktivitäten können andere gespeicherte Queues verwenden. Dieser Endpunkt erteilt weder eine sichere Stilllegungsentscheidung noch die Berechtigung, die letzte benötigte Kohorte auf null zu skalieren.
+
+[Server #519](https://github.com/durable-workflow/server/issues/519) verfolgt eine abgesicherte Stilllegungsentscheidung, [Server #534](https://github.com/durable-workflow/server/issues/534) die separate Scrape-/Scale-to-zero-Funktion. Diese Checkliste liefert beides nicht; hier ist kein eingebauter KEDA-/HPA-Trigger dokumentiert.
+
+## Erster Wechsel von unversioniert zu versioniert {#first-cutover-unversioned-to-versioned}
+
+1. Starten Sie neue Worker mit stabiler Build-ID und prüfen Sie Namespace, Queue, Workflow-Typen und frische Heartbeats.
+2. Prüfen Sie beide Kohorten und die ursprünglichen Läufe. Neuere Namen oder Worker-Zahlen beweisen keine Kompatibilität.
+3. Promoten Sie den neuen Build ausdrücklich, wenn neue Starts ihn auswählen sollen:
+
    ```bash
-   dw task-queue:build-ids orders-critical --json
-   ```
-   Sowohl `null` als auch die neue `build_id` sollten `rollout_status: "active"`
-   und eine `active_worker_count` größer als null melden.
-3. Beginnen Sie das Leeren der unversionierten Kohorte, sobald die neuen Worker
-   Arbeit verarbeiten:
-   ```bash
-   dw task-queue:drain orders-critical --unversioned
-   ```
-   `drain_intent` wechselt für die unversionierte Kohorte zu `draining`.
-   Noch laufende Worker verarbeiten ihre laufenden Tasks, übernehmen aber keine
-   neuen. Künftige Registrierungen oder Heartbeats ohne `build_id` werden
-   ebenfalls als auslaufend eingestuft.
-4. Warten Sie, bis `active_worker_count` und `draining_worker_count` der
-   unversionierten Kohorte beide null sind. Die Kohorte bleibt mit
-   `drain_intent: "draining"` aufgelistet, damit Sie die dauerhafte Umstellung
-   bestätigen können.
-
-## Einen neuen Build als Canary testen {#canary-a-new-build}
-
-Ein Canary ist ein zweiter Build, der einen kleinen Anteil des Verkehrs annimmt,
-während der Haupt-Build weiterarbeitet. Verwenden Sie eine eigene `build_id`
-für den Canary, damit der Zustand jeder Kohorte einzeln untersuchbar bleibt.
-
-1. Stellen Sie Canary-Worker mit `build_id: orders-worker-2026-04-22-canary` bereit.
-2. Prüfen Sie mit `list_task_queue_build_ids`, dass beide Kohorten
-   `rollout_status: "active"` und die erwarteten Worker-Anzahlen melden.
-3. Stufen Sie den neuen Build hoch, indem Sie mehr Worker mit der neuen
-   `build_id` starten und die Anzahl im Haupt-Build verringern. Oder stufen Sie
-   den Canary zurück, indem Sie ihn leeren:
-   ```bash
-   dw task-queue:drain orders-critical --build-id orders-worker-2026-04-22-canary
+   dw task-queue:promote orders-critical --namespace orders-prod --build-id orders-v2
    ```
 
-Der Server steuert die Task-Verteilung zwischen Kohorten nicht. Der Betrieb
-bemisst die Kohortengrößen und nutzt die Abfrageverteilung zur Gewichtung des
-Verkehrs. Der Build-ID-Rollout-Zustand erlaubt, noch übernahmefähige Kohorten zu
-bestätigen und eine saubere Übergabe auszulösen, wenn eine Kohorte stoppen soll.
+4. Erhalten Sie kompatible Worker für bestehende Historien. Promotion ändert alte Pins nicht; Drain ist keine Migration.
+5. Entfernen Sie alte Kapazität erst, wenn ihre übrigen Abhängigkeiten unabhängig geklärt sind. Leere Task-Zähler oder null Registrierungen reichen nicht. Erhalten Sie Artefakt und Wiederherstellungsweg, solange ein Lauf den Build benötigen kann.
 
-## Einen älteren Build leeren {#drain-an-older-build}
+## Canary für einen neuen Build {#canary-a-new-build}
 
-Leeren belässt bereits geleaste Tasks auf dem älteren Build, während neue Tasks
-an andere aktive Kohorten der Warteschlange gehen:
+Der Server verteilt keinen prozentualen Traffic zwischen Build-Kohorten. Für neue Starts wählt er die zuletzt promotete Kohorte, sofern sie weder drainend noch zurückgerollt ist. Ohne Promotion folgt die einzige aktive Kohorte mit dem gewünschten Workflow-Typ, dann die einzige aktive Kohorte der Queue. Andernfalls bleibt der Lauf ungepinnt. Mehrere aktive Kohorten desselben Typs ohne Promotion bedeuten also keine gewichtete Verteilung.
+
+Mehr Worker ändern Kapazität, nicht die promotete Startauswahl. Verwenden Sie für einen isolierten Canary eine separate Queue und leiten Sie ausgewählte Anwendungsstarts ausdrücklich dorthin. Bei einer Promotion auf der ursprünglichen Queue bleiben alte Worker für alte gepinnte Läufe notwendig.
+
+## Älteren Build drainen {#drain-an-older-build}
+
+Drain verhindert neue Claims durch Workflow-, Aktivitäts- und Query-Polls dieser Kohorte; es verschiebt keine Tasks. Ein Poll eines drainenden Workers erhält HTTP409 mit `poll_status: "draining"` und `reason: "worker_draining"`. Bestehende Leases behalten ihre ursprüngliche Autorität.
 
 ```bash
-dw task-queue:drain orders-critical --build-id orders-worker-2026-04-21-z9
+dw task-queue:drain orders-critical --namespace orders-prod --build-id orders-v1
 ```
 
-Der Server setzt `drain_intent: "draining"` auf der Kohorte und markiert jeden
-unter dieser `build_id` registrierten Worker bei seinem nächsten Heartbeat als
-auslaufend. Der Aufruf ist idempotent: Wiederholen setzt `drained_at` nicht
-zurück und ist daher für Automatisierung sicher.
+Drainen Sie nicht allein deshalb, weil der neue Build eigene Arbeit übernehmen kann. Alte Läufe können danach warten. Bei verfrühtem Drain setzen Sie die Kohorte fort und stellen Worker mit dem ursprünglichen Build wieder her:
 
-Sobald eine Worker-Zeile als `draining` markiert ist, verleasen die
-Workflow-, Aktivitäts- und Abfrage-Task-Routen keine neue Arbeit an diesen Worker.
-Abfragen scheitern mit HTTP `409`, `poll_status: "draining"` und
-`reason: "worker_draining"`, bis die Kohorte fortgesetzt wird.
+```bash
+dw task-queue:resume orders-critical --namespace orders-prod --build-id orders-v1
+```
 
-`draining` gehört zum allgemeinen Abfrageantwortvertrag und ist kein Sonderfeld
-nur fürs Leeren. Über dieselbe `poll_status`-Oberfläche sehen Worker normale
-`leased`- und `empty`-Abfragen, Zulassungsergebnisse mit `throttled` und
-typisierte `unavailable`-Koordinationsfehler anderer Abfragepfade.
+Drain oder das Stoppen aller Worker beweist nicht, dass das Build-Artefakt gelöscht werden darf. Dieser Snapshot enthält keine abgesicherte Stilllegungsentscheidung.
 
-Beobachten Sie das Leeren mit `list_task_queue_build_ids`, bis
-`active_worker_count` und `draining_worker_count` auf null fallen. Dann zeigt
-die Kohorte `rollout_status: "draining"` mit null Workern. Das bedeutet: Keine
-lebenden Worker sind übrig, und die Betriebsabsicht hält weiterhin „geleert“
-fest. Jetzt können Sie die Worker-Prozesse sicher stoppen und das Build-Artefakt löschen.
+## Fehlerhaften Build zurückrollen {#roll-back-a-bad-build}
 
-## Einen fehlerhaften Build zurücknehmen {#roll-back-a-bad-build}
+Stellen Sie bekannte funktionierende Worker wieder her, setzen Sie deren Kohorte bei Bedarf fort und promoten Sie diesen Build für zukünftige Starts. Rollen Sie danach das fehlerhafte Deployment zurück. Rollback schreibt keine Pins um und liefert verbleibende Arbeit nicht an einen anderen Build. Erhalten Sie kompatible Worker für diese Läufe oder treffen Sie eine ausdrückliche Wiederherstellungsentscheidung auf Anwendungsebene.
 
-Rollback kehrt den Ablauf um: Eine zuvor geleerte Kohorte fortsetzen, neuen
-Verkehr zu ihr zurückleiten und den fehlerhaften Build leeren.
+Wiederholungen, Kinder und Continue-as-new erben den ursprünglichen Pin. Eine unbegrenzt fortgesetzte Kette wechselt nicht zum neu promoteten Build. Nutzen Sie für replaykompatible Deployments eine stabile Build-Identität oder beenden Sie die alte Kette und starten Sie unter der neuen Auswahl eine wirklich neue Instanz. Erzwingen Sie keine Migration durch Änderungen gespeicherter Kompatibilitätsfelder.
 
-1. Setzen Sie die bekannte funktionierende Kohorte fort:
-   ```bash
-   dw task-queue:resume orders-critical --build-id orders-worker-2026-04-21-z9
-   ```
-   Der Server löscht `drain_intent` und `drained_at` und setzt Worker-Zeilen,
-   die unter dieser `build_id` noch Heartbeats senden, sofort auf `active`.
-   So meldet der Leseendpunkt keinen auslaufenden Zustand mehr.
-2. Leeren Sie die fehlerhafte Kohorte:
-   ```bash
-   dw task-queue:drain orders-critical --build-id orders-worker-2026-04-22
-   ```
-3. Skalieren Sie den funktionierenden Build wieder hoch oder stellen Sie ihn
-   erneut bereit, wenn seine Worker bereits gestoppt wurden. Unter seiner
-   `build_id` registrierte Worker übernehmen die gelöschte Leerungsabsicht
-   und werden als `active` eingestuft.
-
-Fortsetzen ist ebenfalls idempotent. Ein erneuter Aufruf für eine bereits
-aktive Kohorte ändert nichts und ist für automatisierte Rollbacks sicher.
-
-## Referenz der Endpunkte und Befehle {#endpoints-and-commands-reference}
+## Endpunkte und Befehle {#endpoints-and-commands-reference}
 
 | Absicht | HTTP-Endpunkt | CLI | Python-SDK-Methode |
 | --- | --- | --- | --- |
-| Kohortenzustand untersuchen | `GET /api/task-queues/{taskQueue}/build-ids` | `dw task-queue:build-ids` | `Client.list_task_queue_build_ids` |
-| Kohorte als auslaufend markieren | `POST /api/task-queues/{taskQueue}/build-ids/drain` | `dw task-queue:drain` | `Client.drain_task_queue_build_id` |
-| Zuvor geleerte Kohorte fortsetzen | `POST /api/task-queues/{taskQueue}/build-ids/resume` | `dw task-queue:resume` | `Client.resume_task_queue_build_id` |
+| Kohorten prüfen | `GET /api/task-queues/{taskQueue}/build-ids` | `dw task-queue:build-ids` | `Client.list_task_queue_build_ids` |
+| Neue Starts auswählen | `POST /api/task-queues/{taskQueue}/build-ids/promote` | `dw task-queue:promote` | `Client.promote_task_queue_build_id` |
+| Drainen | `POST /api/task-queues/{taskQueue}/build-ids/drain` | `dw task-queue:drain` | `Client.drain_task_queue_build_id` |
+| Fortsetzen | `POST /api/task-queues/{taskQueue}/build-ids/resume` | `dw task-queue:resume` | `Client.resume_task_queue_build_id` |
 
-Leeren und Fortsetzen erwarten einen JSON-Inhalt mit `{"build_id": "..."}`
-oder für die unversionierte Kohorte `{"build_id": null}`. Die CLI bezeichnet
-die unversionierte Kohorte mit `--unversioned` und jeden anderen Build mit
-`--build-id <value>`. Die Kombination beider Optionen scheitert sofort.
+Diese Mutationen akzeptieren `{"build_id":"orders-v2"}` oder für die unversionierte Kohorte `{"build_id":null}`. CLI-Mutationen verwenden entweder `--build-id` oder `--unversioned`, niemals beides.
 
-## Verwandte Referenzen {#related-references}
+Den vollständigen Lebenszyklus bieten `GET /api/deployments` und `POST /api/deployments/{name}/{promote,drain,resume,rollback}`. Verwenden Sie den zurückgegebenen Namen, etwa `orders-prod/orders-critical@orders-v2`, im ursprünglichen Namespace. Auf dem veröffentlichten Apache-Pfad muss der Schrägstrich des Namens erhalten bleiben: vollständiges Kodieren des zusammengesetzten Namens kann vor Erreichen der API eine Apache-HTML404 auslösen. Abgelehnte Aktionen liefern HTTP409 mit typisiertem `reason` und `blockages`-Array. Prüfen Sie `expected_resolution`; eine Ablehnung ist keine erfolgreiche Promotion. [Server #521](https://github.com/durable-workflow/server/issues/521) betrifft den unvollständigen aktuellen OpenAPI-Spiegel, keine neue Runtime oder Änderung eingefrorener Schemas.
 
+## Weitere Referenzen {#related-references}
+
+- [Worker-Kompatibilität und Routing](/docs/polyglot/worker-compatibility-routing)
 - [Namespace, Authentifizierung und Worker-Registrierung](/docs/polyglot/namespace-auth-workers)
-  für `POST /api/worker/register`, das jedem Worker eine `build_id` zuordnet.
-- [Task-Warteschlangenzulassung](/docs/polyglot/task-queue-admission) für
-  Worker-Slot- und Zuweisungsbudgets neben dem Rollout-Zustand.
-- [Server-API-Referenz](/docs/polyglot/server-api-reference) für alle
-  Control-Plane-Routen samt erforderlichen Rollen und Protokoll-Headern.
-- [CLI-Befehlsreferenz](/docs/polyglot/cli-reference) für Argumente und Optionen
-  aller `dw task-queue:*`-Unterbefehle.
+- [Task-Queue-Zulassung](/docs/polyglot/task-queue-admission)
+- [Rollierende Upgrades](/docs/rolling-upgrades)
+- [Server-API-Referenz](/docs/polyglot/server-api-reference)
+- [CLI-Befehlsreferenz](/docs/polyglot/cli-reference)

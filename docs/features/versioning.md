@@ -4,6 +4,10 @@ sidebar_position: 15
 
 # Versioning
 
+## Replay before changing builds {#replay-before-changing-builds}
+
+Before promoting a candidate, replay representative open and recently closed histories against its exact application code. Before rollback, replay histories written by the newer build against the older artifact. Follow the [replay testing gate](../testing.md#replay-before-deployment); a compatible routing cohort or successful integrity check alone does not prove replay compatibility.
+
 Since workflows can run for long periods, sometimes months or even years, it's common to need to make changes to a workflow definition while executions are still in progress. Without versioning, modifying workflow code that affects the execution path would cause non-determinism errors during replay.
 
 The `getVersion()` helper function allows you to safely introduce changes to running workflows by creating versioned branch points.
