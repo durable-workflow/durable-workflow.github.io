@@ -1,4 +1,5 @@
 {
   "features/sticky-execution.md": "d54fe85283d633d5cba10a03c716a707bf3b6a4e6d47ec9859e17f5f676a89b8",
-  "polyglot/portable-worker-affinity.md": "40973c6a31a76845b4f95e9a505e68ad76abd5174bbdccf37993cdebc8904959"
+  "polyglot/portable-worker-affinity.md": "40973c6a31a76845b4f95e9a505e68ad76abd5174bbdccf37993cdebc8904959",
+  "polyglot/server-config-reference.md": "75b836b44f56542f5bc950ecb858797f6be9627e3f4d25a50de868ef357b3c76"
 }
