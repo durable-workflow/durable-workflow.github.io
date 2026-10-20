@@ -160,7 +160,7 @@ v2 設定は後方互換です。v1 で公開した `config/workflow.php` も引
 
 レガシーコーデック（`'workflow-serializer-y'`・`'workflow-serializer-base64'`）を保持するのは、Server と PHP 専用 Worker 間で PHP ネイティブ値を共有する v1 実行をドレインする必要がある場合だけです。旧クラス名（`Workflow\Serializers\Y::class` など）は v1 デコード用別名として受け付けます。
 
-**v1 の独自シリアライザークラスは v2 未対応です。** 公開 v2 レジストリは `avro` だけを解決します。旧二種類のリーダーは内部 v1 インポート・ドレイン経路に限定され、新規 v2 実行や SDK ペイロードには選べません。独自実装がある場合は先に v1 をドレインするか、過去ペイロードを `avro` に再エンコードします。独自クラスは参照しません。doctor は他の `workflows.serializer` 値を移行負債として報告します。新規実行で省略すると `avro` です。
+**v1 の独自シリアライザークラスは v2 未対応です。** 公開 v2 レジストリは `avro` だけを解決します。旧 `workflow-serializer-y` と `workflow-serializer-base64` のリーダーは内部 v1 インポート・ドレイン経路に限定され、新規 v2 実行や SDK ペイロードには選べません。独自実装がある場合は先に v1 をドレインするか、過去ペイロードを `avro` に再エンコードします。独自クラスは参照しません。doctor は他の `workflows.serializer` 値を移行負債として報告します。新規実行で省略すると `avro` です。
 
 **独自モデルのサブクラスは、パッケージの列・キー契約を維持する場合だけ対応します。** [カスタマイズマトリクス](/docs/configuration/customization-matrix/)の固定対応表が規範です。v2 のインスタンス、実行、タスク、履歴イベント、投影、スケジュール、アクティビティ、失敗、リンク、メッセージ、メモ、検索属性、子呼び出しモデルは、テーブル名、主キー、外部キーを維持する場合にサブクラス化できます。独自テーブル名と独自外部キー列名は契約外です。Waterline は `Workflow\V2\Contracts\OperatorObservabilityRepository` 経由で投影を読むため、スキーマ互換のサブクラスでは Waterline 変更は不要です。
 
@@ -544,7 +544,7 @@ php artisan workflow:v2:doctor --strict
 - タスク修復ポリシー
 - バックエンド機能チェック
 - 投影再構築
-- 履歴予算とエクスポートの墨消し
+- 履歴の使用量上限とエクスポートの墨消し
 
 ### Waterline {#waterline}
 
@@ -556,7 +556,7 @@ php artisan workflow:v2:doctor --strict
 
 ### Continue-as-new {#continue-as-new}
 
-v2 の履歴予算は、イベント数がしきい値を超えると自動で continue-as-new を起動できます。メタデータ（メモ、検索属性、タイムアウト）は遷移間で引き継ぎます。
+v2 の履歴の使用量上限は、イベント数がしきい値を超えると自動で continue-as-new を起動できます。メタデータ（メモ、検索属性、タイムアウト）は遷移間で引き継ぎます。
 
 ## 既存ワークフロー {#existing-workflows}
 
