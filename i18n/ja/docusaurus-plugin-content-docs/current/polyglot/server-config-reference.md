@@ -265,7 +265,7 @@ Server イメージには `durable-workflow/workflow` が同梱されるため�
 | `DW_V2_FLEET_VALIDATION_MODE` | `warn` | Worker 群の互換性検証モード。`warn` はログ記録、`fail` は互換 Worker がいなければ配信を止めて拒否します。 | `WORKFLOW_V2_FLEET_VALIDATION_MODE` |
 | `DW_SERIALIZER` | `avro` | ペイロードのコーデック診断入力。正式な v2 は新規実行のペイロードに Avro を使用します。 | `WORKFLOW_SERIALIZER` |
 
-**未公開 Server リリースの準備段階です。** Server 2.9.9 では、サービスモードの Worker にフィンガープリントの優先設定が適用されます。固定が有効な場合、記録済み定義を持つ適格な Worker が残っておらず、かつ置き換え Worker が `workflow_entry_arguments_validation` を通知している場合にだけ、変更後の定義へフォールバックできます。固定を無効にするとソースの優先は解除されますが、ビルド固定、名前空間・キュー・型の分離、登録識別情報、厳密なリプレイは維持されます。対応する PHP 2.5.4、Python 2.6.2、Rust 3.5.6 SDK も公開とインストール済み成果物の検証を待っています。古いランタイムの設定に同じキーがあるだけで、この動作を想定しないでください。[定義ルーティング](./worker-compatibility-routing.md#definition-fingerprint-evolution)を参照してください。
+**公開済みのフィンガープリント優先設定です。** Server 2.9.9 では、サービスモードの Worker にフィンガープリントの優先設定が適用されます。固定が有効な場合、記録済み定義を持つ適格な Worker が残っておらず、かつ置き換え Worker が `workflow_entry_arguments_validation` を通知している場合にだけ、変更後の定義へフォールバックできます。固定を無効にするとソースの優先は解除されますが、ビルド固定、名前空間・キュー・型の分離、登録識別情報、厳密なリプレイは維持されます。対応するエントリ保護は PHP SDK 2.5.4、Python SDK 2.6.2、Rust SDK 3.5.6 で導入されました。これらは機能の最小対応バージョンです。セキュリティ修正を含む最新の安定版をインストールしてください。古いランタイムの設定に同じキーがあるだけで、この動作を想定しないでください。[定義ルーティング](./worker-compatibility-routing.md#definition-fingerprint-evolution)を参照してください。
 
 CI とデプロイ用マニフェストには `DW_V2_GUARDRAILS_BOOT` を使用します。旧名 `WORKFLOW_V2_GUARDRAILS_BOOT` が残っているのは、`env:audit` が alpha 時代の運用者に名前の変更を案内するためだけです。Workflow パッケージは、この旧名を実行時のフォールバックとして読み取りません。
 

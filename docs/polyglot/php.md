@@ -200,7 +200,7 @@ past an unmarked cancel request, and if the operation completed first,
 
 ## Entry compatibility and recovery {#entry-compatibility-and-recovery}
 
-**Unpublished release preparation.** The PHP SDK 2.5.4 entry safeguard and Server 2.9.9 routing/recovery support are merged source, pending publication and installed-artifact qualification.
+**Released support.** PHP SDK 2.5.4 introduced the entry safeguard below, with routing and recovery support in Server 2.9.9. These are minimum feature versions; install current stable releases for security fixes.
 
 The managed worker checks the handler's recorded positional input before entering its Fiber. Missing required arguments or incompatible declared PHP types raise `DurableWorkflow\Exception\WorkflowEntryArgumentsMismatch` and report the task reason `workflow_entry_arguments_mismatch`. Optional defaults apply only to omitted input; they never replace an incompatible recorded value. A `TypeError` thrown after successful entry remains an application failure.
 

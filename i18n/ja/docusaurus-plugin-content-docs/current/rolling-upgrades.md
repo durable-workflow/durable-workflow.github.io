@@ -54,10 +54,10 @@ API ノードと Worker は独立して更新します。スケジューラー�
 ### Worker SDK とビルド識別情報 {#worker-sdk-and-build-identity}
 
 - **全 Worker ビルドにタグを付ける。** 更新に参加し得る Worker は、安定した `build_id` で `POST /api/worker/register` に登録しなければなりません。未バージョンの集団（`build_id: null`）は更新前の既定値です。初回切り替えは [Worker ビルド ID ロールアウトガイド](/docs/polyglot/worker-build-id-rollout)を参照してください。
-- **元のルーティングを維持し、変更後の定義を検証する。** 実行はビルド固定と `WorkflowStarted` に記録されたフィンガープリントを保持します。`DW_V2_PIN_TO_RECORDED_FINGERPRINT=true`（既定）の場合、準備中の Server 2.9.9 のルーティング変更は、記録済み定義を持つ適格な Worker を優先します。その Worker が残っていなければ、`workflow_entry_arguments_validation` を持つ置き換え Worker が、元の名前空間、キュー、型、ビルド、リプレイの制約の下で取得できます。SDK は元のエントリ入力を検証し、コミット済みコマンドをリプレイする必要があります。
+- **元のルーティングを維持し、変更後の定義を検証する。** 実行はビルド固定と `WorkflowStarted` に記録されたフィンガープリントを保持します。`DW_V2_PIN_TO_RECORDED_FINGERPRINT=true`（既定）の場合、Server 2.9.9 以降は、記録済み定義を持つ適格な Worker を優先します。その Worker が残っていなければ、`workflow_entry_arguments_validation` を持つ置き換え Worker が、元の名前空間、キュー、型、ビルド、リプレイの制約の下で取得できます。SDK は元のエントリ入力を検証し、コミット済みコマンドをリプレイする必要があります。
 - **ビルド共存時の受付方針。** 開始前に [`DW_V2_FLEET_VALIDATION_MODE`](/docs/polyglot/server-config-reference) を選びます。`warn` は必須互換性マーカーを持つ稼働 Worker がなくても続行します。`fail` はその間の配送をブロックし、準備状態を安全側に不成立とします。明確な切り替えが必要な本番更新では `fail` を使うべきです。
 
-**未公開リリースの準備段階です。** この置き換え経路は、まだ検証待ちの Server 2.9.9 と PHP 2.5.4、Python 2.6.2 または Rust 3.5.6 SDK を必要とします。古いランタイムは、アプリケーションコードに正しいバージョン分岐を追加しても、変更されたフィンガープリントを拒否し続ける場合があります。フィンガープリント固定の無効化は、既定の安全なアップグレード手順ではありません。[定義ルーティング](./polyglot/worker-compatibility-routing.md#definition-fingerprint-evolution)に従って実際の Worker 能力を確認し、新しい経路の検証が完了するまでロールバック成果物を保持してください。バージョン分岐では、ワークフロー本体が始まる前の入力引数の不整合は修正できません。[エントリ互換性](./features/versioning.md#service-sdk-entry-safeguard)を参照してください。
+**公開済みのサポートです。** Server 2.9.9 と PHP SDK 2.5.4、Python SDK 2.6.2、Rust SDK 3.5.6 で、以下のエントリ保護とルーティング・復旧動作が導入されました。これらは機能の最小対応バージョンです。セキュリティ修正を含む最新の安定版をインストールしてください。 古いランタイムは、アプリケーションコードに正しいバージョン分岐を追加しても、変更されたフィンガープリントを拒否し続ける場合があります。フィンガープリント固定の無効化は、既定の安全なアップグレード手順ではありません。[定義ルーティング](./polyglot/worker-compatibility-routing.md#definition-fingerprint-evolution)に従って実際の Worker 能力を確認し、新しい経路の検証が完了するまでロールバック成果物を保持してください。バージョン分岐では、ワークフロー本体が始まる前の入力引数の不整合は修正できません。[エントリ互換性](./features/versioning.md#service-sdk-entry-safeguard)を参照してください。
 
 ## スキーマと bootstrap の順序 {#schemabootstrap-ordering}
 

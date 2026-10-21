@@ -272,7 +272,7 @@ Utiliza `WorkflowContext::get_version(change_id, min_supported, max_supported)` 
 
 ## Compatibilidad de entrada y recuperación {#entry-compatibility-and-recovery}
 
-**Preparación de versiones sin publicar.** La protección de entrada de Rust SDK 3.5.6 y el soporte de enrutamiento/recuperación de Server 2.9.9 están integrados en el código fuente, pendientes de publicación y validación de artefactos instalados.
+**Soporte publicado.** El SDK Rust 3.5.6 incorporó la protección de entrada descrita a continuación, con enrutamiento y recuperación en Server 2.9.9. Son las versiones mínimas para estas funciones; instale las versiones estables actuales para recibir correcciones de seguridad.
 
 `Worker::register_typed_workflow` y los adaptadores tipados con estado deserializan la entrada registrada antes de invocar el manejador de aplicación o su fábrica de estado. Una forma de entrada incompatible comunica el tipo de fallo de tarea `WorkflowEntryArgumentsMismatch` y el motivo `workflow_entry_arguments_mismatch`, sin enviar `fail_workflow`. El error local del SDK es `Error::HandlerType` para entrada de workflow, con el workflow y el tipo Rust esperado en vez del valor registrado. Los manejadores de workflow de bajo nivel no reciben nuevas comprobaciones de firma Rust. Un error devuelto después de entrar correctamente en el manejador de aplicación sigue siendo un fallo normal del workflow, aunque su texto se parezca al diagnóstico de entrada.
 

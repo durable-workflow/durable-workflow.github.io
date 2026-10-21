@@ -100,7 +100,7 @@ Bewahren Sie bei einem terminal fehlgeschlagenen Lauf die Historie auf und gleic
 
 ## Ablehnung am Einstieg im Servicemodus und Wiederherstellung {#service-entry-recovery}
 
-**Vorbereitung einer noch nicht veröffentlichten Version.** Die Schutzmaßnahmen für den Workflow-Einstieg in Server 2.9.9 und den SDKs PHP 2.5.4, Python 2.6.2 und Rust 3.5.6 sind im Quellcode zusammengeführt. Veröffentlichung und Prüfung der tatsächlich installierten Artefakte stehen noch aus.
+**Veröffentlichte Unterstützung.** Server 2.9.9 sowie PHP SDK 2.5.4, Python SDK 2.6.2 und Rust SDK 3.5.6 haben den Einstiegsschutz und das nachfolgend beschriebene Routing-/Wiederherstellungsverhalten eingeführt. Dies sind die Mindestversionen für diese Funktionen. Installieren Sie aktuelle stabile Versionen, um Sicherheitskorrekturen zu erhalten.
 
 Eine Unvereinbarkeit am Einstieg ist eine Bereitstellungs- oder Replay-Ablehnung, bevor Anwendungscode des Workflows ausgeführt wird. Sie ist weder eine Aktivitätswiederholung noch ein terminaler fachlicher Fehler. Der Worker meldet `failure_reason = workflow_entry_arguments_mismatch`, und der Server behält die fehlgeschlagene Workflow-Aufgabe mit `replay_blocked = true`, statt automatisch einen weiteren Versuch anzulegen. Der allgemeine `replay_blocked_reason` lautet `worker_reported_replay_failure`. Der Lauf bleibt nichtterminal; aufgezeichnete Eingabe, Historie und Fristen bleiben erhalten. Das unterscheidet sich von einer Ausnahme im erfolgreich betretenen Workflow-Rumpf, die den Lauf weiterhin fehlschlagen lassen kann.
 

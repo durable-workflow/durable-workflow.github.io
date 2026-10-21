@@ -265,7 +265,7 @@ Server 镜像内置 `durable-workflow/workflow`，因此也提供包级 `DW_V2_*
 | `DW_V2_FLEET_VALIDATION_MODE` | `warn` | Worker 集群兼容性验证模式：`warn` 记录日志；`fail` 在没有兼容 Worker 时阻止分派并安全拒绝。 | `WORKFLOW_V2_FLEET_VALIDATION_MODE` |
 | `DW_SERIALIZER` | `avro` | 载荷编解码器诊断输入；正式 v2 将新运行的载荷解析为 Avro。 | `WORKFLOW_SERIALIZER` |
 
-**尚未发布的 Server 版本准备。** Server 2.9.9 使指纹优先选择对服务模式 Worker 生效。启用固定时，只有不存在符合条件的已记录定义 Worker，且替换 Worker 声明 `workflow_entry_arguments_validation`，才能回退到更改后的定义。禁用固定后，源码优先选择会取消，但构建固定、命名空间/队列/类型隔离、注册标识和严格重放仍然保留。配套的 PHP 2.5.4、Python 2.6.2 和 Rust 3.5.6 SDK 同样尚待发布及已安装制品验证。不要仅因为旧运行时的配置含有同一键，就假定它具有此行为。请参阅[定义路由](./worker-compatibility-routing.md#definition-fingerprint-evolution)。
+**已发布的指纹优先选择。** Server 2.9.9 使指纹优先选择对服务模式 Worker 生效。启用固定时，只有不存在符合条件的已记录定义 Worker，且替换 Worker 声明 `workflow_entry_arguments_validation`，才能回退到更改后的定义。禁用固定后，源码优先选择会取消，但构建固定、命名空间/队列/类型隔离、注册标识和严格重放仍然保留。配套的入口保护已在 PHP SDK 2.5.4、Python SDK 2.6.2 和 Rust SDK 3.5.6 中引入。这些是相应功能的最低支持版本；请安装包含安全修复的当前稳定版本。不要仅因为旧运行时的配置含有同一键，就假定它具有此行为。请参阅[定义路由](./worker-compatibility-routing.md#definition-fingerprint-evolution)。
 
 在 CI 与部署清单中使用 `DW_V2_GUARDRAILS_BOOT`。保留旧名称 `WORKFLOW_V2_GUARDRAILS_BOOT` 只是为了让 `env:audit` 提醒 alpha 时期的用户改名；Workflow 包不再将旧名称作为运行时回退值读取。
 

@@ -97,8 +97,8 @@ window must satisfy every rule in this section.
   explains the first cutover.
 - **Preserve original routing and qualify changed definitions.** A run keeps
   its build pin and the fingerprint recorded at `WorkflowStarted`. With
-  `DW_V2_PIN_TO_RECORDED_FINGERPRINT=true` (the default), the prepared Server
-  2.9.9 routing change prefers eligible recorded-definition workers. If none
+  `DW_V2_PIN_TO_RECORDED_FINGERPRINT=true` (the default), Server 2.9.9 and later
+  prefer eligible recorded-definition workers. If none
   remains, a replacement with `workflow_entry_arguments_validation` may claim
   under the original namespace, queue, type, build and replay guards. The SDK
   must still validate original entry input and replay committed commands.
@@ -109,8 +109,9 @@ window must satisfy every rule in this section.
   dispatch and fails the readiness contract closed during that window.
   Production rollouts that require a clean cutover should be on `fail`.
 
-**Unpublished release preparation.** That replacement path requires the pending
-Server 2.9.9 and PHP 2.5.4, Python 2.6.2 or Rust 3.5.6 SDK qualification.
+**Released support.** That replacement path is available from Server 2.9.9 with
+PHP SDK 2.5.4, Python SDK 2.6.2 or Rust SDK 3.5.6. These are minimum feature
+versions; install current stable releases for security fixes.
 Older runtimes can keep refusing a changed fingerprint even when application
 code adds a valid version branch. Disabling fingerprint pinning is not the
 default safe-upgrade procedure. Follow [definition routing](./polyglot/worker-compatibility-routing.md#definition-fingerprint-evolution),

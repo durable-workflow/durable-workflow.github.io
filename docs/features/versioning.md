@@ -61,7 +61,7 @@ Keep service input compatibility and actual SDK qualification separate from the 
 
 ### Service Entry Safeguard {#service-sdk-entry-safeguard}
 
-**Unpublished release preparation.** Server 2.9.9, PHP SDK 2.5.4, Python SDK 2.6.2 and Rust SDK 3.5.6 have merged source changes, but publication and installed-artifact qualification are pending. This section does not establish released support.
+**Released support.** Server 2.9.9 and PHP SDK 2.5.4, Python SDK 2.6.2 and Rust SDK 3.5.6 introduced the entry safeguards and routing/recovery behavior below. These are minimum feature versions; install current stable releases for security fixes.
 
 The prepared SDKs validate recorded entry input before application workflow code runs. Incompatible input reports `workflow_entry_arguments_mismatch` as a failed, replay-blocked workflow **task**, without issuing `fail_workflow` or closing the business **run**. Input, workflow/run identity, committed history, build pin and original deadlines remain unchanged. PHP validates required positional arguments and declared PHP types. Python uses signature binding for arity and defaults; annotations do not become runtime type checks. Rust's typed adapters validate input decoding before calling the handler or its state factory. Raw Rust handlers remain responsible for their own application input handling.
 

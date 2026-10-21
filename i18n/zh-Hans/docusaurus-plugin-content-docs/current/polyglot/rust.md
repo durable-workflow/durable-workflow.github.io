@@ -271,7 +271,7 @@ Rust SDK 使用 `WorkflowContext::side_effect` 记录小型非确定性值，并
 
 ## 入口兼容性与恢复 {#entry-compatibility-and-recovery}
 
-**尚未发布的版本准备。** Rust SDK 3.5.6 的入口保护和 Server 2.9.9 的路由及恢复支持已合并到源码，但发布和已安装制品的资格验证仍未完成。
+**已发布支持。** Rust SDK 3.5.6 引入了下述入口保护，Server 2.9.9 提供了配套的路由和恢复支持。这些是相应功能的最低支持版本；请安装当前稳定版本以获取安全修复。
 
 `Worker::register_typed_workflow` 和类型化有状态适配器会先反序列化已记录输入，再调用应用处理器或其状态工厂。输入结构不兼容时，会报告任务失败类型 `WorkflowEntryArgumentsMismatch` 和原因 `workflow_entry_arguments_mismatch`，不会提交 `fail_workflow`。SDK 对工作流输入产生的本地错误为 `Error::HandlerType`，包含工作流和预期 Rust 类型，而不是已记录值。原始工作流处理器不会获得新的 Rust 签名检查。成功进入的应用处理器返回的错误仍是普通工作流失败，即使其文本看起来像入口诊断也不例外。
 

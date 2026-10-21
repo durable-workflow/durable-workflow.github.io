@@ -311,14 +311,15 @@ execute the same workflows.
 | `DW_V2_FLEET_VALIDATION_MODE` | `warn` | Fleet-compatibility validation mode: `warn` logs, `fail` blocks dispatch and fails closed when no compatible worker is available. | `WORKFLOW_V2_FLEET_VALIDATION_MODE` |
 | `DW_SERIALIZER` | `avro` | Payload codec diagnostic input; final v2 resolves new-run payloads to Avro. | `WORKFLOW_SERIALIZER` |
 
-**Unpublished Server release preparation.** Server 2.9.9 makes the fingerprint
+**Released fingerprint preference.** Server 2.9.9 makes the fingerprint
 preference effective for service workers. With pinning enabled, a changed
 definition may fall back only when no eligible recorded-definition worker
 remains and the replacement advertises `workflow_entry_arguments_validation`.
 With pinning disabled, the source preference is removed; build pins,
 namespace/queue/type isolation, registration identity and strict replay remain.
-The PHP 2.5.4, Python 2.6.2 and Rust 3.5.6 SDK counterparts are also pending
-publication and installed qualification. Do not assume this behavior on an
+The accompanying entry safeguards are available from PHP SDK 2.5.4, Python SDK
+2.6.2 and Rust SDK 3.5.6. These are minimum feature versions; install current
+stable releases for security fixes. Do not assume this behavior on an
 older runtime merely because its configuration contains the same key. See
 [definition routing](./worker-compatibility-routing.md#definition-fingerprint-evolution).
 

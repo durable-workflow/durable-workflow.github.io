@@ -49,7 +49,7 @@ absent. Lease expiry does not widen that compatibility.
 
 ## Definition fingerprint evolution {#definition-fingerprint-evolution}
 
-**Unpublished release preparation.** The following routing behavior is merged for Server 2.9.9 and the PHP 2.5.4, Python 2.6.2 and Rust 3.5.6 SDKs. Publication and installed-artifact qualification are pending.
+**Released support.** Server 2.9.9 and PHP SDK 2.5.4, Python SDK 2.6.2 and Rust SDK 3.5.6 introduced the entry safeguards and routing/recovery behavior below. These are minimum feature versions; install current stable releases for security fixes.
 
 The original build pin and the definition fingerprint answer different questions. A replay-compatible rebuild can keep the same build family while changing its source fingerprint. By default, the Server prefers an eligible worker with the fingerprint recorded at `WorkflowStarted`. If none remains, a changed definition can claim the original only when its worker advertises `workflow_entry_arguments_validation`. That capability promises pre-entry refusal without failing the business run. It is not inferred from the runtime language or protocol version, and manually adding the string does not make an unsafe worker implementation safe.
 

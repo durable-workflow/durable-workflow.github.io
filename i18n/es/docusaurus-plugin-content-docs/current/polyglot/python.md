@@ -633,7 +633,7 @@ paridad de validación.
 
 ### Ciclo de vida de los manejadores {#handler-lifecycle}
 
-**Cambio de validación sin publicar.** Las protecciones de manejadores descritas a continuación se preparan para Python SDK 2.6.2, pero siguen pendientes la publicación y la validación de artefactos instalados. Las consultas asíncronas y los validadores de actualización enrutados por Server ya están admitidos; este cambio conserva esas rutas. Consulte el alcance corregido en [SDK #177](https://github.com/durable-workflow/sdk-python/issues/177#issuecomment-6296781770).
+**Validación publicada.** El SDK Python 2.6.2 incorporó las protecciones de manejadores descritas a continuación. Las consultas asíncronas y los validadores de actualización enrutados por Server siguen admitidos. Consulte el alcance corregido en [SDK #177](https://github.com/durable-workflow/sdk-python/issues/177#issuecomment-6296781770).
 
 Cada replay construye una nueva instancia del workflow antes de ejecutar `run()`. Las señales ya registradas al inicio se aplican después de que `run()` alcance su primer `yield`, por lo que el constructor y la inicialización anterior al yield se ejecutan primero. Los manejadores de señales y actualizaciones modifican ese estado reconstruido. Las consultas lo inspeccionan sin cambiar el estado durable; los validadores inspeccionan un estado reconstruido desechable antes de aceptar la actualización. Coloque los comandos durables de actividades, temporizadores y workflows hijos en `run()`, no en un manejador.
 
@@ -644,11 +644,11 @@ Cada replay construye una nueva instancia del workflow antes de ejecutar `run()`
 | `@workflow.update_validator` o `@update_method.validator` | Función síncrona o `async def` en el Worker. Una excepción rechaza la actualización antes de aceptarla. |
 | `@workflow.query` | Función síncrona o `async def` en el Worker. Una excepción del manejador hace fallar la consulta, no la ejecución del workflow. |
 
-La validación preparada rechaza funciones de corrutina para señales y actualizaciones, y funciones generadoras o generadoras asíncronas para **todos** los tipos de manejadores decorados, incluidas las consultas y los validadores. Lanza `InvalidWorkflowDefinition` al definir, registrar o reproducir, también para manejadores heredados y herramientas sin conexión. Los envoltorios síncronos de señales y actualizaciones no pueden eludir las protecciones devolviendo valores asíncronos. Devolver valores generadores o generadores asíncronos se rechaza para cualquier tipo de manejador. Estas restricciones no prohíben el generador síncrono de `run()`.
+La validación rechaza funciones de corrutina para señales y actualizaciones, y funciones generadoras o generadoras asíncronas para **todos** los tipos de manejadores decorados, incluidas las consultas y los validadores. Lanza `InvalidWorkflowDefinition` al definir, registrar o reproducir, también para manejadores heredados y herramientas sin conexión. Los envoltorios síncronos de señales y actualizaciones no pueden eludir las protecciones devolviendo valores asíncronos. Devolver valores generadores o generadores asíncronos se rechaza para cualquier tipo de manejador. Estas restricciones no prohíben el generador síncrono de `run()`.
 
 Para una consulta enrutada por Server, el Worker espera explícitamente el resultado asíncrono bajo el plazo original de la consulta y su autoridad de claim/cancelación. Esa espera no concede un nuevo presupuesto ni permite un resultado después de perder la autoridad. Para la validación previa a la aceptación, el Worker también espera el resultado asíncrono del validador sobre un estado reconstruido desechable.
 
-Los helpers locales síncronos no pueden esperar. En la corrección preparada, `workflow.query_state()` rechaza un resultado asíncrono con `QueryFailed`, y `workflow.validate_update()` lo rechaza con `UpdateRejected`. Cierran las corrutinas devueltas en vez de filtrarlas como resultados de las operaciones.
+Los helpers locales síncronos no pueden esperar. `workflow.query_state()` rechaza un resultado asíncrono con `QueryFailed`, y `workflow.validate_update()` lo rechaza con `UpdateRejected`. Cierran las corrutinas devueltas en vez de filtrarlas como resultados de las operaciones.
 
 ### Contexto del workflow {#workflow-context}
 
@@ -673,7 +673,7 @@ Los helpers locales síncronos no pueden esperar. En la corrección preparada, `
 
 ### Compatibilidad de entrada y recuperación {#entry-compatibility-and-recovery}
 
-**Preparación de versiones sin publicar.** La protección de entrada de Python SDK 2.6.2 y el soporte de enrutamiento/recuperación de Server 2.9.9 están integrados en el código fuente, pendientes de publicación y validación de artefactos instalados.
+**Soporte publicado.** El SDK Python 2.6.2 incorporó la protección de entrada descrita a continuación, con enrutamiento y recuperación en Server 2.9.9. Son las versiones mínimas para estas funciones; instale las versiones estables actuales para recibir correcciones de seguridad.
 
 Antes de llamar a `run(ctx, *start_input)`, el worker vincula los argumentos registrados con la firma de entrada. Un argumento obligatorio ausente o una cantidad de argumentos incompatible provoca `WorkflowEntryArgumentsMismatchError` con motivo `workflow_entry_arguments_mismatch` antes de ejecutar el cuerpo. Los valores predeterminados solo rellenan argumentos omitidos. Las anotaciones de Python siguen sin imponerse: cambiar una anotación no valida ni convierte los datos registrados. Un `TypeError` lanzado después de entrar en un cuerpo normal o generador sigue siendo un fallo de aplicación.
 

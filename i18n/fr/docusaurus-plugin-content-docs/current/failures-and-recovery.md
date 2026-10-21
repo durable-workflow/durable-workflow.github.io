@@ -108,7 +108,7 @@ Pour une exécution échouée terminale, conservez son historique et rapprochez 
 
 ## Refus à l’entrée en mode service et récupération {#service-entry-recovery}
 
-**Préparation d’une version non publiée.** Les protections d’entrée de Server 2.9.9 et des SDK PHP 2.5.4, Python 2.6.2 et Rust 3.5.6 sont intégrées au code source. Leur publication et la qualification des artefacts installés restent en attente.
+**Prise en charge publiée.** Server 2.9.9 et les SDK PHP 2.5.4, Python 2.6.2 et Rust 3.5.6 ont introduit les protections d’entrée et le comportement de routage et de récupération décrits ci-dessous. Ce sont les versions minimales pour ces fonctions. Installez les versions stables actuelles pour bénéficier des correctifs de sécurité.
 
 Une incompatibilité à l’entrée est un refus de déploiement ou de relecture, avant l’exécution du code applicatif du workflow. Ce n’est ni une nouvelle tentative d’activité ni un échec métier terminal. Le worker signale `failure_reason = workflow_entry_arguments_mismatch`, et le Server conserve la tâche de workflow en échec avec `replay_blocked = true` au lieu de créer automatiquement une autre tentative. Son `replay_blocked_reason` générique est `worker_reported_replay_failure`. L’exécution reste non terminale et conserve son entrée enregistrée, son historique et ses échéances. Ce cas diffère d’une exception levée après l’entrée réussie dans le corps du workflow, qui peut toujours faire échouer l’exécution.
 

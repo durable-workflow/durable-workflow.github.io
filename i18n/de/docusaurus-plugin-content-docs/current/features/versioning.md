@@ -65,7 +65,7 @@ Halten Sie die Eingabekompatibilität im Dienstmodus und die tatsächliche SDK-Q
 
 ### Schutz am Workflow-Einstieg im Servicemodus {#service-sdk-entry-safeguard}
 
-**Vorbereitung einer noch nicht veröffentlichten Version.** Die Quellcodeänderungen für Server 2.9.9, PHP SDK 2.5.4, Python SDK 2.6.2 und Rust SDK 3.5.6 sind zusammengeführt. Veröffentlichung und Prüfung der installierten Artefakte stehen jedoch noch aus. Dieser Abschnitt belegt keine veröffentlichte Unterstützung.
+**Veröffentlichte Unterstützung.** Server 2.9.9 sowie PHP SDK 2.5.4, Python SDK 2.6.2 und Rust SDK 3.5.6 haben den Einstiegsschutz und das nachfolgend beschriebene Routing-/Wiederherstellungsverhalten eingeführt. Dies sind die Mindestversionen für diese Funktionen. Installieren Sie aktuelle stabile Versionen, um Sicherheitskorrekturen zu erhalten.
 
 Die vorbereiteten SDKs prüfen die aufgezeichnete Einstiegseingabe, bevor Anwendungscode des Workflows ausgeführt wird. Inkompatible Eingaben melden `workflow_entry_arguments_mismatch` als fehlgeschlagene, für Replay blockierte Workflow-**Aufgabe**, ohne `fail_workflow` zu senden oder den fachlichen **Lauf** zu schließen. Eingabe, Workflow-/Laufidentität, bestätigte Historie, Build-Bindung und ursprüngliche Fristen bleiben unverändert. PHP prüft erforderliche positionelle Argumente und deklarierte PHP-Typen. Python bindet die Signatur und prüft so Argumentanzahl und Standardwerte; Annotationen werden nicht zu Laufzeit-Typprüfungen. Die typisierten Rust-Adapter prüfen die Eingabedekodierung vor dem Aufruf des Handlers oder seiner Zustandsfabrik. Rohe Rust-Handler bleiben selbst für die Behandlung ihrer Anwendungseingaben verantwortlich.
 

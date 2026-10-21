@@ -209,7 +209,7 @@ l’opération s’est terminée avant, `await()` retourne toujours ce résultat
 
 ## Compatibilité à l’entrée et récupération {#entry-compatibility-and-recovery}
 
-**Préparation d’une version non publiée.** La protection d’entrée du SDK PHP 2.5.4 et la prise en charge du routage et de la récupération dans Server 2.9.9 sont intégrées au code source. Leur publication et la qualification des artefacts installés restent en attente.
+**Prise en charge publiée.** Le SDK PHP 2.5.4 a introduit la protection d’entrée ci-dessous, avec le routage et la récupération dans Server 2.9.9. Ce sont les versions minimales pour ces fonctions. Installez les versions stables actuelles pour bénéficier des correctifs de sécurité.
 
 Le worker géré vérifie l’entrée positionnelle enregistrée du handler avant d’entrer dans sa Fiber. Un argument obligatoire absent ou un type PHP déclaré incompatible lève `DurableWorkflow\Exception\WorkflowEntryArgumentsMismatch` et signale le motif de tâche `workflow_entry_arguments_mismatch`. Les valeurs par défaut des arguments facultatifs ne s’appliquent qu’aux entrées omises ; elles ne remplacent jamais une valeur enregistrée incompatible. Un `TypeError` levé après une entrée réussie reste un échec applicatif.
 

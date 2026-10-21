@@ -691,7 +691,7 @@ in their workflow contracts rather than claiming validator parity.
 
 ### Handler lifecycle {#handler-lifecycle}
 
-**Unpublished validation change.** The handler guards below are prepared for Python SDK 2.6.2, but publication and installed-artifact qualification are still pending. Server-routed asynchronous queries and update validators are already supported; this change preserves those paths. See [SDK #177](https://github.com/durable-workflow/sdk-python/issues/177#issuecomment-6296781770) for the corrected scope.
+**Released validation.** Python SDK 2.6.2 introduced the handler guards below. Server-routed asynchronous queries and update validators remain supported. See [SDK #177](https://github.com/durable-workflow/sdk-python/issues/177#issuecomment-6296781770) for the corrected scope.
 
 Every replay constructs a fresh workflow instance before executing `run()`. Signals already recorded at workflow start are applied after `run()` reaches its first `yield`, so constructor and pre-yield initialization happen first. Signal and update handlers mutate that replayed state. Queries inspect it without changing durable state; update validators inspect a disposable replayed state before acceptance. Put durable activities, timers and child workflow commands in `run()`, not in a handler.
 
@@ -702,11 +702,11 @@ Every replay constructs a fresh workflow instance before executing `run()`. Sign
 | `@workflow.update_validator` or `@update_method.validator` | Synchronous function or `async def` under the Worker. An exception rejects the update before acceptance. |
 | `@workflow.query` | Synchronous function or `async def` under the Worker. A handler exception fails the query, not the workflow run. |
 
-The prepared validation rejects coroutine functions for signals and updates, and rejects generator or async-generator functions for **all** decorated handler kinds, including queries and validators. It raises `InvalidWorkflowDefinition` at definition, registration or replay, including inherited handlers and offline tools. Synchronous signal and update wrappers cannot bypass the guards by returning asynchronous values. Returning generator or async-generator values is refused for every handler kind. These restrictions do not forbid the synchronous generator used by `run()`.
+The validation rejects coroutine functions for signals and updates, and rejects generator or async-generator functions for **all** decorated handler kinds, including queries and validators. It raises `InvalidWorkflowDefinition` at definition, registration or replay, including inherited handlers and offline tools. Synchronous signal and update wrappers cannot bypass the guards by returning asynchronous values. Returning generator or async-generator values is refused for every handler kind. These restrictions do not forbid the synchronous generator used by `run()`.
 
 For a server-routed query, the Worker explicitly awaits an asynchronous result under the original query deadline and claim/cancellation authority. Awaiting does not grant a fresh budget or permit a result after authority is lost. For pre-accept validation, the Worker also awaits an asynchronous validator result against disposable replayed state.
 
-The local synchronous helpers cannot await. In the prepared fix, `workflow.query_state()` refuses an asynchronous result with `QueryFailed`, and `workflow.validate_update()` refuses it with `UpdateRejected`. They close returned coroutines instead of leaking them as operation results.
+The local synchronous helpers cannot await. `workflow.query_state()` refuses an asynchronous result with `QueryFailed`, and `workflow.validate_update()` refuses it with `UpdateRejected`. They close returned coroutines instead of leaking them as operation results.
 
 ### Workflow Context
 
@@ -731,7 +731,7 @@ The `WorkflowContext` passed to `run` provides deterministic operations:
 
 ### Entry compatibility and recovery {#entry-compatibility-and-recovery}
 
-**Unpublished release preparation.** The Python SDK 2.6.2 entry safeguard and Server 2.9.9 routing/recovery support are merged source, pending publication and installed-artifact qualification.
+**Released support.** Python SDK 2.6.2 introduced the entry safeguard below, with routing and recovery support in Server 2.9.9. These are minimum feature versions; install current stable releases for security fixes.
 
 Before calling `run(ctx, *start_input)`, the worker binds the recorded arguments against the entry signature. A missing required argument or incompatible arity raises `WorkflowEntryArgumentsMismatchError` with reason `workflow_entry_arguments_mismatch` before the body runs. Defaults fill omitted arguments only. Python annotations remain unenforced: changing an annotation does not validate or convert recorded data. A `TypeError` raised by a successfully entered ordinary or generator body remains an application failure.
 

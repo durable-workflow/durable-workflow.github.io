@@ -431,7 +431,7 @@ drained. See [Side Effects](/docs/features/side-effects/) and
 
 ## Entry compatibility and recovery {#entry-compatibility-and-recovery}
 
-**Unpublished release preparation.** The Rust SDK 3.5.6 entry safeguard and Server 2.9.9 routing/recovery support are merged source, pending publication and installed-artifact qualification.
+**Released support.** Rust SDK 3.5.6 introduced the entry safeguard below, with routing and recovery support in Server 2.9.9. These are minimum feature versions; install current stable releases for security fixes.
 
 `Worker::register_typed_workflow` and the typed stateful adapters deserialize recorded input before invoking the application handler or its state factory. An incompatible input shape reports task failure type `WorkflowEntryArgumentsMismatch` and reason `workflow_entry_arguments_mismatch`, without submitting `fail_workflow`. The SDK's local error is `Error::HandlerType` for workflow input, with the workflow and expected Rust type rather than the recorded value. Raw workflow handlers are not given new Rust signature checks. An error returned by a successfully entered application handler remains an ordinary workflow failure, even if its text resembles the entry diagnostic.
 

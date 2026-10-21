@@ -100,7 +100,7 @@ class MyNonRetryableActivity extends Activity
 
 ## 服务模式入口拒绝与恢复 {#service-entry-recovery}
 
-**尚未发布的版本准备。** Server 2.9.9 以及 PHP 2.5.4、Python 2.6.2、Rust 3.5.6 SDK 的入口保护已合并到源码，但发布和已安装制品的资格验证仍未完成。
+**已发布支持。** Server 2.9.9 以及 PHP SDK 2.5.4、Python SDK 2.6.2 和 Rust SDK 3.5.6 引入了下述入口保护、路由和恢复行为。这些是相应功能的最低支持版本；请安装当前稳定版本以获取安全修复。
 
 入口不匹配是在应用工作流代码执行前发生的部署或重放拒绝，不是活动重试，也不是终态业务失败。Worker 报告 `failure_reason = workflow_entry_arguments_mismatch`，Server 保留失败的工作流任务并设置 `replay_blocked = true`，而不是自动创建下一次尝试。通用的 `replay_blocked_reason` 是 `worker_reported_replay_failure`。运行仍处于非终态，已记录的输入、历史和截止时间保持不变。这与成功进入工作流方法体后抛出异常不同，后者仍可能导致整个运行失败。
 

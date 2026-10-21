@@ -433,7 +433,7 @@ drenado. Veja [Efeitos colaterais](/docs/features/side-effects/) e
 
 ## Compatibilidade de entrada e recuperação {#entry-compatibility-and-recovery}
 
-**Preparação de versões ainda não publicadas.** A proteção de entrada do Rust SDK 3.5.6 e o suporte a roteamento/recuperação do Server 2.9.9 foram integrados ao código-fonte, mas ainda aguardam publicação e qualificação dos artefatos instalados.
+**Suporte publicado.** O SDK Rust 3.5.6 introduziu a proteção de entrada abaixo, com roteamento e recuperação no Server 2.9.9. Essas são as versões mínimas para esses recursos; instale as versões estáveis atuais para receber correções de segurança.
 
 `Worker::register_typed_workflow` e os adaptadores tipados com estado desserializam a entrada registrada antes de invocar o handler da aplicação ou sua fábrica de estado. Um formato de entrada incompatível informa o tipo de falha de tarefa `WorkflowEntryArgumentsMismatch` e o motivo `workflow_entry_arguments_mismatch`, sem enviar `fail_workflow`. O erro local do SDK é `Error::HandlerType` para entrada de workflow, com o workflow e o tipo Rust esperado em vez do valor registrado. Handlers de workflow de baixo nível não recebem novas verificações de assinatura Rust. Um erro retornado pelo handler da aplicação após a entrada bem-sucedida continua sendo uma falha normal de workflow, mesmo que o texto se pareça com o diagnóstico de entrada.
 

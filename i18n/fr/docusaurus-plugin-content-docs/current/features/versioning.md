@@ -61,7 +61,7 @@ Séparez la compatibilité des entrées en mode service et la qualification rée
 
 ### Protection d’entrée en mode service {#service-sdk-entry-safeguard}
 
-**Préparation d’une version non publiée.** Les modifications de Server 2.9.9, du SDK PHP 2.5.4, du SDK Python 2.6.2 et du SDK Rust 3.5.6 sont intégrées au code source, mais leur publication et la qualification des artefacts installés restent en attente. Cette section n’établit pas une prise en charge publiée.
+**Prise en charge publiée.** Server 2.9.9 et les SDK PHP 2.5.4, Python 2.6.2 et Rust 3.5.6 ont introduit les protections d’entrée et le comportement de routage et de récupération décrits ci-dessous. Ce sont les versions minimales pour ces fonctions. Installez les versions stables actuelles pour bénéficier des correctifs de sécurité.
 
 Les SDK préparés valident l’entrée enregistrée avant l’exécution du code applicatif du workflow. Une entrée incompatible signale `workflow_entry_arguments_mismatch` sur une **tâche** de workflow en échec et bloquée pour la relecture, sans envoyer `fail_workflow` ni fermer l’**exécution** métier. L’entrée, les identités de workflow et d’exécution, l’historique validé, le build fixé et les échéances d’origine restent inchangés. PHP valide les arguments positionnels obligatoires et les types PHP déclarés. Python lie les arguments à la signature pour vérifier l’arité et appliquer les valeurs par défaut ; les annotations ne deviennent pas des contrôles de type à l’exécution. Les adaptateurs typés Rust valident le décodage de l’entrée avant d’appeler le handler ou sa fabrique d’état. Les handlers Rust bruts restent responsables du traitement de leurs propres entrées applicatives.
 

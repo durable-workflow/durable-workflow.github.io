@@ -123,7 +123,7 @@ if ($selected->key === 'deadline') {
 
 ## エントリの互換性と復旧 {#entry-compatibility-and-recovery}
 
-**未公開リリースの準備段階です。** PHP SDK 2.5.4 のエントリ保護と Server 2.9.9 のルーティング・復旧機能はソースにマージされていますが、公開とインストール済み成果物の検証は未完了です。
+**公開済みのサポートです。** PHP SDK 2.5.4 で以下のエントリ保護が導入され、Server 2.9.9 でルーティングと復旧がサポートされました。これらは機能の最小対応バージョンです。セキュリティ修正を含む最新の安定版をインストールしてください。
 
 管理対象 Worker は、ハンドラーの Fiber に入る前に記録済みの位置引数を確認します。必須引数の不足や宣言された PHP 型との不整合は `DurableWorkflow\Exception\WorkflowEntryArgumentsMismatch` を発生させ、タスク理由 `workflow_entry_arguments_mismatch` を報告します。省略可能な引数の既定値は入力が省略された場合だけ適用され、互換性のない記録済み値を置き換えません。進入に成功した後の `TypeError` は引き続きアプリケーションの失敗です。
 

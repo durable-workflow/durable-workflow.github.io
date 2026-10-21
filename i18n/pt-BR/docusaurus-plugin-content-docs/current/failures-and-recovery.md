@@ -105,7 +105,7 @@ Para uma execução terminal com falha, preserve o histórico e reconcilie os ef
 
 ## Recusa de entrada e recuperação no modo de serviço {#service-entry-recovery}
 
-**Preparação de versões ainda não publicadas.** As proteções de entrada do Server 2.9.9 e dos SDKs PHP 2.5.4, Python 2.6.2 e Rust 3.5.6 foram integradas ao código-fonte, mas ainda aguardam publicação e qualificação dos artefatos instalados.
+**Suporte publicado.** O Server 2.9.9 e os SDKs PHP 2.5.4, Python 2.6.2 e Rust 3.5.6 introduziram as proteções de entrada e o comportamento de roteamento e recuperação descritos abaixo. Essas são as versões mínimas para esses recursos; instale as versões estáveis atuais para receber correções de segurança.
 
 Uma entrada incompatível provoca uma recusa de implantação/replay antes de executar o código de workflow da aplicação, não uma nova tentativa de atividade nem uma falha terminal de negócio. O worker informa `failure_reason = workflow_entry_arguments_mismatch`, e o Server mantém a tarefa de workflow com falha e `replay_blocked = true`, sem criar outra tentativa automaticamente. Seu `replay_blocked_reason` genérico é `worker_reported_replay_failure`. A execução permanece não terminal, com entrada, histórico e prazos registrados intactos. Já uma exceção lançada pelo corpo do workflow após a entrada bem-sucedida ainda pode fazer a execução falhar.
 

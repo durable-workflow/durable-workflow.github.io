@@ -123,7 +123,7 @@ if ($selected->key === 'deadline') {
 
 ## 入口兼容性与恢复 {#entry-compatibility-and-recovery}
 
-**尚未发布的版本准备。** PHP SDK 2.5.4 的入口保护和 Server 2.9.9 的路由及恢复支持已合并到源码，但发布和已安装制品的资格验证仍未完成。
+**已发布支持。** PHP SDK 2.5.4 引入了下述入口保护，Server 2.9.9 提供了配套的路由和恢复支持。这些是相应功能的最低支持版本；请安装当前稳定版本以获取安全修复。
 
 托管 Worker 会在进入处理器的 Fiber 前检查已记录的位置参数。缺少必需参数或声明的 PHP 类型不兼容时，会抛出 `DurableWorkflow\Exception\WorkflowEntryArgumentsMismatch` 并报告任务原因 `workflow_entry_arguments_mismatch`。可选参数的默认值只用于省略的输入，绝不会替换不兼容的已记录值。成功进入后抛出的 `TypeError` 仍属于应用失败。
 

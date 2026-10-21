@@ -103,7 +103,7 @@ For a terminal failed run, preserve its history and reconcile any external side 
 
 ## Service Entry Refusal and Recovery {#service-entry-recovery}
 
-**Unpublished release preparation.** Server 2.9.9 and the PHP 2.5.4, Python 2.6.2 and Rust 3.5.6 SDK entry safeguards are merged source, pending publication and installed-artifact qualification.
+**Released support.** Server 2.9.9 and PHP SDK 2.5.4, Python SDK 2.6.2 and Rust SDK 3.5.6 introduced the entry safeguards and routing/recovery behavior below. These are minimum feature versions; install current stable releases for security fixes.
 
 An entry mismatch is a deployment/replay refusal before application workflow code runs, not an activity retry or a terminal business failure. The worker reports `failure_reason = workflow_entry_arguments_mismatch`, and the Server retains the failed workflow task with `replay_blocked = true` instead of automatically creating another attempt. Its generic `replay_blocked_reason` is `worker_reported_replay_failure`. The run remains nonterminal, with its recorded input, history and deadlines intact. This differs from an exception thrown by a successfully entered workflow body, which can still fail the run.
 

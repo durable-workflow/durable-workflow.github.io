@@ -100,7 +100,7 @@ class MyNonRetryableActivity extends Activity
 
 ## サービスモードのエントリ拒否と復旧 {#service-entry-recovery}
 
-**未公開リリースの準備段階です。** Server 2.9.9 と PHP 2.5.4、Python 2.6.2、Rust 3.5.6 SDK のエントリ保護はソースにマージされていますが、公開とインストール済み成果物の検証はまだ完了していません。
+**公開済みのサポートです。** Server 2.9.9 と PHP SDK 2.5.4、Python SDK 2.6.2、Rust SDK 3.5.6 で、以下のエントリ保護とルーティング・復旧動作が導入されました。これらは機能の最小対応バージョンです。セキュリティ修正を含む最新の安定版をインストールしてください。
 
 エントリ不整合は、アプリケーションのワークフローコードが動く前のデプロイまたはリプレイの拒否です。アクティビティの再試行でも、終端となる業務上の失敗でもありません。Worker は `failure_reason = workflow_entry_arguments_mismatch` を報告し、Server は次の試行を自動作成せず、失敗したワークフロータスクを `replay_blocked = true` の状態で保持します。汎用の `replay_blocked_reason` は `worker_reported_replay_failure` です。実行は非終端のままで、記録済み入力、履歴、期限も維持されます。これは、ワークフロー本体への進入に成功した後に例外が投げられ、実行そのものが失敗する場合とは異なります。
 

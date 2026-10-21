@@ -650,7 +650,7 @@ Validator-Parität zu beanspruchen.
 
 ### Lebenszyklus der Handler {#handler-lifecycle}
 
-**Noch nicht veröffentlichte Validierungsänderung.** Die folgenden Handler-Schutzprüfungen sind für Python SDK 2.6.2 vorbereitet; Veröffentlichung und Prüfung der installierten Artefakte stehen jedoch noch aus. Asynchrone, vom Server geroutete Abfragen und Update-Validatoren werden bereits unterstützt. Diese Änderung erhält diese Pfade. Den korrigierten Umfang beschreibt [SDK #177](https://github.com/durable-workflow/sdk-python/issues/177#issuecomment-6296781770).
+**Veröffentlichte Validierung.** Python SDK 2.6.2 hat die folgenden Handler-Schutzprüfungen eingeführt. Asynchrone, vom Server geroutete Abfragen und Update-Validatoren werden weiterhin unterstützt. Den korrigierten Umfang beschreibt [SDK #177](https://github.com/durable-workflow/sdk-python/issues/177#issuecomment-6296781770).
 
 Jedes Replay erstellt vor der Ausführung von `run()` eine neue Workflow-Instanz. Bereits beim Workflow-Start aufgezeichnete Signale werden angewendet, nachdem `run()` sein erstes `yield` erreicht hat. Konstruktor und Initialisierung vor diesem `yield` laufen daher zuerst. Signal- und Update-Handler verändern diesen durch Replay hergestellten Zustand. Abfragen untersuchen ihn, ohne dauerhaften Zustand zu ändern; Update-Validatoren prüfen vor der Annahme einen anschließend verworfenen Replay-Zustand. Dauerhafte Aktivitäten, Timer und Kind-Workflow-Befehle gehören in `run()`, nicht in einen Handler.
 
@@ -661,11 +661,11 @@ Jedes Replay erstellt vor der Ausführung von `run()` eine neue Workflow-Instanz
 | `@workflow.update_validator` oder `@update_method.validator` | Synchrone Funktion oder `async def` unter dem Worker. Eine Ausnahme lehnt das Update vor seiner Annahme ab. |
 | `@workflow.query` | Synchrone Funktion oder `async def` unter dem Worker. Eine Handler-Ausnahme lässt die Abfrage fehlschlagen, nicht den Workflow-Lauf. |
 
-Die vorbereitete Validierung lehnt Coroutine-Funktionen für Signale und Updates ab. Generator- und asynchrone Generatorfunktionen werden für **alle** Arten dekorierter Handler abgelehnt, einschließlich Abfragen und Validatoren. Sie löst bei Definition, Registrierung oder Replay `InvalidWorkflowDefinition` aus, auch bei geerbten Handlern und in Offline-Werkzeugen. Synchrone Wrapper für Signale und Updates können die Prüfungen nicht durch die Rückgabe asynchroner Werte umgehen. Generatorwerte und asynchrone Generatorwerte werden bei jeder Handler-Art abgelehnt. Diese Einschränkungen verbieten nicht den synchronen Generator von `run()`.
+Die Validierung lehnt Coroutine-Funktionen für Signale und Updates ab. Generator- und asynchrone Generatorfunktionen werden für **alle** Arten dekorierter Handler abgelehnt, einschließlich Abfragen und Validatoren. Sie löst bei Definition, Registrierung oder Replay `InvalidWorkflowDefinition` aus, auch bei geerbten Handlern und in Offline-Werkzeugen. Synchrone Wrapper für Signale und Updates können die Prüfungen nicht durch die Rückgabe asynchroner Werte umgehen. Generatorwerte und asynchrone Generatorwerte werden bei jeder Handler-Art abgelehnt. Diese Einschränkungen verbieten nicht den synchronen Generator von `run()`.
 
 Bei einer vom Server gerouteten Abfrage wartet der Worker ausdrücklich auf ein asynchrones Ergebnis, unter der ursprünglichen Abfragefrist sowie der ursprünglichen Claim- und Abbruchautorität. Dieses Warten gibt weder ein neues Budget noch erlaubt es ein Ergebnis nach Verlust der Autorität. Bei der Prüfung vor Annahme wartet der Worker ebenfalls auf ein asynchrones Validatorergebnis, das anhand eines anschließend verworfenen Replay-Zustands ermittelt wird.
 
-Die lokalen synchronen Hilfsmethoden können nicht asynchron warten. Im vorbereiteten Fix lehnt `workflow.query_state()` ein asynchrones Ergebnis mit `QueryFailed` ab, und `workflow.validate_update()` lehnt es mit `UpdateRejected` ab. Beide schließen zurückgegebene Coroutinen, statt sie als Operationsergebnisse nach außen gelangen zu lassen.
+Die lokalen synchronen Hilfsmethoden können nicht asynchron warten. Dabei lehnt `workflow.query_state()` ein asynchrones Ergebnis mit `QueryFailed` ab, und `workflow.validate_update()` lehnt es mit `UpdateRejected` ab. Beide schließen zurückgegebene Coroutinen, statt sie als Operationsergebnisse nach außen gelangen zu lassen.
 
 ### Workflow-Kontext {#workflow-context}
 
@@ -690,7 +690,7 @@ Der an `run` übergebene `WorkflowContext` bietet deterministische Operationen:
 
 ### Kompatibilität am Einstieg und Wiederherstellung {#entry-compatibility-and-recovery}
 
-**Vorbereitung einer noch nicht veröffentlichten Version.** Der Einstiegsschutz im Python SDK 2.6.2 und die Routing-/Wiederherstellungsunterstützung in Server 2.9.9 sind im Quellcode zusammengeführt. Veröffentlichung und Prüfung der installierten Artefakte stehen noch aus.
+**Veröffentlichte Unterstützung.** Python SDK 2.6.2 hat den nachfolgenden Einstiegsschutz eingeführt, ergänzt durch Routing und Wiederherstellung in Server 2.9.9. Dies sind die Mindestversionen für diese Funktionen. Installieren Sie aktuelle stabile Versionen, um Sicherheitskorrekturen zu erhalten.
 
 Vor dem Aufruf von `run(ctx, *start_input)` bindet der Worker die aufgezeichneten Argumente an die Einstiegssignatur. Ein fehlendes erforderliches Argument oder eine unpassende Argumentanzahl löst vor der Ausführung des Rumpfs `WorkflowEntryArgumentsMismatchError` mit dem Grund `workflow_entry_arguments_mismatch` aus. Standardwerte ergänzen nur ausgelassene Argumente. Python-Annotationen werden weiterhin nicht erzwungen: Eine geänderte Annotation prüft oder konvertiert keine aufgezeichneten Daten. Ein `TypeError` im erfolgreich betretenen normalen Rumpf oder Generatorrumpf bleibt ein Anwendungsfehler.
 

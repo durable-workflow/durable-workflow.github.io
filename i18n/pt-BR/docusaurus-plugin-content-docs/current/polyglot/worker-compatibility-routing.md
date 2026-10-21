@@ -35,7 +35,7 @@ A reivindicação verifica compatibilidade original e identidade do worker. Um w
 
 ## Evolução do fingerprint da definição {#definition-fingerprint-evolution}
 
-**Preparação de versões ainda não publicadas.** O comportamento de roteamento abaixo foi integrado para Server 2.9.9 e os SDKs PHP 2.5.4, Python 2.6.2 e Rust 3.5.6. A publicação e a qualificação dos artefatos instalados continuam pendentes.
+**Suporte publicado.** O Server 2.9.9 e os SDKs PHP 2.5.4, Python 2.6.2 e Rust 3.5.6 introduziram as proteções de entrada e o comportamento de roteamento e recuperação descritos abaixo. Essas são as versões mínimas para esses recursos; instale as versões estáveis atuais para receber correções de segurança.
 
 A fixação original do build e o fingerprint da definição respondem a perguntas diferentes. Uma nova compilação compatível com replay pode manter a família de build enquanto muda o fingerprint do código. Por padrão, o Server prefere um worker elegível com o fingerprint registrado em `WorkflowStarted`. Se não restar nenhum, uma definição alterada só pode reivindicar a tarefa original quando seu worker anuncia `workflow_entry_arguments_validation`. Essa capacidade promete recusar antes da entrada sem fazer a execução de negócio falhar. Ela não é inferida da linguagem do runtime nem da versão do protocolo; adicionar a string manualmente não torna segura uma implementação insegura de worker.
 

@@ -444,7 +444,7 @@ und [Versionierung](/docs/features/versioning/).
 
 ## Kompatibilität am Einstieg und Wiederherstellung {#entry-compatibility-and-recovery}
 
-**Vorbereitung einer noch nicht veröffentlichten Version.** Der Einstiegsschutz im Rust SDK 3.5.6 und die Routing-/Wiederherstellungsunterstützung in Server 2.9.9 sind im Quellcode zusammengeführt. Veröffentlichung und Prüfung der installierten Artefakte stehen noch aus.
+**Veröffentlichte Unterstützung.** Rust SDK 3.5.6 hat den nachfolgenden Einstiegsschutz eingeführt, ergänzt durch Routing und Wiederherstellung in Server 2.9.9. Dies sind die Mindestversionen für diese Funktionen. Installieren Sie aktuelle stabile Versionen, um Sicherheitskorrekturen zu erhalten.
 
 `Worker::register_typed_workflow` und die typisierten zustandsbehafteten Adapter deserialisieren aufgezeichnete Eingaben vor dem Aufruf des Anwendungshandlers oder seiner Zustandsfabrik. Eine inkompatible Eingabestruktur meldet den Aufgabenfehlertyp `WorkflowEntryArgumentsMismatch` und den Grund `workflow_entry_arguments_mismatch`, ohne `fail_workflow` zu senden. Der lokale SDK-Fehler für Workflow-Eingaben lautet `Error::HandlerType`; er enthält den Workflow und den erwarteten Rust-Typ statt des aufgezeichneten Werts. Rohe Workflow-Handler erhalten keine neuen Rust-Signaturprüfungen. Ein Fehler aus einem erfolgreich betretenen Anwendungshandler bleibt ein gewöhnlicher Workflow-Fehler, auch wenn sein Text der Einstiegsdiagnose ähnelt.
 

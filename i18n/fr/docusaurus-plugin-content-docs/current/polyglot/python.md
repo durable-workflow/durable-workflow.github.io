@@ -649,7 +649,7 @@ contrats au lieu de revendiquer la parité.
 
 ### Cycle de vie des handlers {#handler-lifecycle}
 
-**Modification de validation non publiée.** Les contrôles de handlers ci-dessous sont préparés pour le SDK Python 2.6.2, mais leur publication et la qualification des artefacts installés restent en attente. Les requêtes asynchrones et les validateurs d’updates routés par le serveur sont déjà pris en charge ; ce changement préserve ces chemins. Consultez [SDK #177](https://github.com/durable-workflow/sdk-python/issues/177#issuecomment-6296781770) pour le périmètre corrigé.
+**Validation publiée.** Le SDK Python 2.6.2 a introduit les contrôles de handlers ci-dessous. Les requêtes asynchrones et les validateurs d’updates routés par le serveur restent pris en charge. Consultez [SDK #177](https://github.com/durable-workflow/sdk-python/issues/177#issuecomment-6296781770) pour le périmètre corrigé.
 
 Chaque relecture construit une nouvelle instance de workflow avant d’exécuter `run()`. Les signaux déjà enregistrés au démarrage du workflow sont appliqués après que `run()` atteint son premier `yield` ; le constructeur et l’initialisation précédant ce `yield` passent donc en premier. Les handlers de signaux et d’updates modifient cet état reconstitué. Les requêtes l’inspectent sans changer l’état durable ; les validateurs d’updates inspectent avant l’acceptation un état reconstitué qui ne sera pas conservé. Placez les commandes durables d’activités, de timers et de workflows enfants dans `run()`, pas dans un handler.
 
@@ -660,11 +660,11 @@ Chaque relecture construit une nouvelle instance de workflow avant d’exécuter
 | `@workflow.update_validator` ou `@update_method.validator` | Fonction synchrone ou `async def` sous le Worker. Une exception rejette l’update avant son acceptation. |
 | `@workflow.query` | Fonction synchrone ou `async def` sous le Worker. Une exception du handler fait échouer la requête, pas l’exécution du workflow. |
 
-La validation préparée refuse les fonctions coroutine pour les signaux et les updates, ainsi que les fonctions génératrices ou génératrices asynchrones pour **tous** les types de handlers décorés, y compris les requêtes et les validateurs. Elle lève `InvalidWorkflowDefinition` à la définition, à l’enregistrement ou à la relecture, y compris pour les handlers hérités et les outils hors ligne. Les wrappers synchrones de signaux et d’updates ne peuvent pas contourner ces contrôles en renvoyant des valeurs asynchrones. Le renvoi de générateurs ou de générateurs asynchrones est refusé pour chaque type de handler. Ces restrictions n’interdisent pas le générateur synchrone utilisé par `run()`.
+La validation refuse les fonctions coroutine pour les signaux et les updates, ainsi que les fonctions génératrices ou génératrices asynchrones pour **tous** les types de handlers décorés, y compris les requêtes et les validateurs. Elle lève `InvalidWorkflowDefinition` à la définition, à l’enregistrement ou à la relecture, y compris pour les handlers hérités et les outils hors ligne. Les wrappers synchrones de signaux et d’updates ne peuvent pas contourner ces contrôles en renvoyant des valeurs asynchrones. Le renvoi de générateurs ou de générateurs asynchrones est refusé pour chaque type de handler. Ces restrictions n’interdisent pas le générateur synchrone utilisé par `run()`.
 
 Pour une requête routée par le serveur, le Worker attend explicitement le résultat asynchrone sous l’échéance d’origine de la requête et l’autorité de prise de tâche et d’annulation. Cette attente n’accorde pas de nouveau budget et n’autorise pas de résultat après la perte de l’autorité. Pour la validation précédant l’acceptation, le Worker attend aussi le résultat asynchrone d’un validateur travaillant sur un état reconstitué qui ne sera pas conservé.
 
-Les utilitaires locaux synchrones ne peuvent pas attendre de résultat asynchrone. Dans le correctif préparé, `workflow.query_state()` refuse un résultat asynchrone avec `QueryFailed` et `workflow.validate_update()` le refuse avec `UpdateRejected`. Ils ferment les coroutines renvoyées au lieu de les laisser devenir des résultats d’opération.
+Les utilitaires locaux synchrones ne peuvent pas attendre de résultat asynchrone. `workflow.query_state()` refuse un résultat asynchrone avec `QueryFailed` et `workflow.validate_update()` le refuse avec `UpdateRejected`. Ils ferment les coroutines renvoyées au lieu de les laisser devenir des résultats d’opération.
 
 ### Contexte de workflow {#workflow-context}
 
@@ -689,7 +689,7 @@ Le `WorkflowContext` transmis à `run` fournit des opérations déterministes :
 
 ### Compatibilité à l’entrée et récupération {#entry-compatibility-and-recovery}
 
-**Préparation d’une version non publiée.** La protection d’entrée du SDK Python 2.6.2 et la prise en charge du routage et de la récupération dans Server 2.9.9 sont intégrées au code source. Leur publication et la qualification des artefacts installés restent en attente.
+**Prise en charge publiée.** Le SDK Python 2.6.2 a introduit la protection d’entrée ci-dessous, avec le routage et la récupération dans Server 2.9.9. Ce sont les versions minimales pour ces fonctions. Installez les versions stables actuelles pour bénéficier des correctifs de sécurité.
 
 Avant d’appeler `run(ctx, *start_input)`, le worker lie les arguments enregistrés à la signature d’entrée. Un argument obligatoire absent ou une arité incompatible lève `WorkflowEntryArgumentsMismatchError` avec le motif `workflow_entry_arguments_mismatch`, avant l’exécution du corps. Les valeurs par défaut ne complètent que les arguments omis. Les annotations Python ne sont toujours pas imposées : changer une annotation ne valide ni ne convertit les données enregistrées. Un `TypeError` levé dans un corps ordinaire ou générateur après une entrée réussie reste un échec applicatif.
 

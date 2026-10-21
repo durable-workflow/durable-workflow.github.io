@@ -35,7 +35,7 @@ Worker 请求命名空间、队列和兼容构建群组。poll 选择避免提�
 
 ## 定义指纹的演进 {#definition-fingerprint-evolution}
 
-**尚未发布的版本准备。** 以下路由行为已合并到 Server 2.9.9 以及 PHP 2.5.4、Python 2.6.2、Rust 3.5.6 SDK 的源码。发布和已安装制品的资格验证仍未完成。
+**已发布支持。** Server 2.9.9 以及 PHP SDK 2.5.4、Python SDK 2.6.2 和 Rust SDK 3.5.6 引入了下述入口保护、路由和恢复行为。这些是相应功能的最低支持版本；请安装当前稳定版本以获取安全修复。
 
 原构建固定与定义指纹回答不同的问题。与重放兼容的重新构建可以保持相同构建系列，同时改变源码指纹。默认情况下，Server 优先选择指纹与 `WorkflowStarted` 中记录值相同的合格 Worker。如果此类 Worker 已全部离开，只有声明 `workflow_entry_arguments_validation` 的 Worker 才能用更改后的定义领取原任务。此能力承诺在进入前拒绝不兼容输入，而不使业务运行失败。不能根据运行时语言或协议版本推断此能力；手动添加该字符串也不会使不安全的 Worker 实现变得安全。
 

@@ -35,7 +35,7 @@ La prise vérifie la compatibilité d'origine et l'identité du worker. Un worke
 
 ## Évolution de l’empreinte de définition {#definition-fingerprint-evolution}
 
-**Préparation d’une version non publiée.** Le comportement de routage suivant est intégré au code source de Server 2.9.9 et des SDK PHP 2.5.4, Python 2.6.2 et Rust 3.5.6. Sa publication et la qualification des artefacts installés restent en attente.
+**Prise en charge publiée.** Server 2.9.9 et les SDK PHP 2.5.4, Python 2.6.2 et Rust 3.5.6 ont introduit les protections d’entrée et le comportement de routage et de récupération décrits ci-dessous. Ce sont les versions minimales pour ces fonctions. Installez les versions stables actuelles pour bénéficier des correctifs de sécurité.
 
 Le build fixé à l’origine et l’empreinte de définition répondent à des questions différentes. Une reconstruction compatible avec la relecture peut rester dans la même famille de builds tout en changeant l’empreinte du code source. Par défaut, le Server préfère un worker éligible dont l’empreinte correspond à celle enregistrée à `WorkflowStarted`. S’il n’en reste aucun, une définition modifiée ne peut prendre l’original que si son worker annonce `workflow_entry_arguments_validation`. Cette capacité promet un refus avant l’entrée sans faire échouer l’exécution métier. Elle ne se déduit ni du langage du runtime ni de la version du protocole ; ajouter manuellement cette chaîne ne rend pas sûre une implémentation worker qui ne l’est pas.
 

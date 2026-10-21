@@ -206,7 +206,7 @@ zuerst abgeschlossen, liefert `await()` weiterhin dieses Ergebnis.
 
 ## Kompatibilität am Einstieg und Wiederherstellung {#entry-compatibility-and-recovery}
 
-**Vorbereitung einer noch nicht veröffentlichten Version.** Der Einstiegsschutz im PHP SDK 2.5.4 und die Routing-/Wiederherstellungsunterstützung in Server 2.9.9 sind im Quellcode zusammengeführt. Veröffentlichung und Prüfung der installierten Artefakte stehen noch aus.
+**Veröffentlichte Unterstützung.** PHP SDK 2.5.4 hat den nachfolgenden Einstiegsschutz eingeführt, ergänzt durch Routing und Wiederherstellung in Server 2.9.9. Dies sind die Mindestversionen für diese Funktionen. Installieren Sie aktuelle stabile Versionen, um Sicherheitskorrekturen zu erhalten.
 
 Der verwaltete Worker prüft die aufgezeichnete positionelle Eingabe des Handlers vor dem Eintritt in dessen Fiber. Fehlende erforderliche Argumente oder inkompatible deklarierte PHP-Typen lösen `DurableWorkflow\Exception\WorkflowEntryArgumentsMismatch` aus und melden den Aufgabengrund `workflow_entry_arguments_mismatch`. Optionale Standardwerte gelten nur für ausgelassene Eingaben; sie ersetzen niemals einen inkompatiblen aufgezeichneten Wert. Ein `TypeError` nach erfolgreichem Einstieg bleibt ein Anwendungsfehler.
 

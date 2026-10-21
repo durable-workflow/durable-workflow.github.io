@@ -35,7 +35,7 @@ Beim Claim werden ursprüngliche Task-Kompatibilität und Worker-Identität gepr
 
 ## Weiterentwicklung des Definitionsfingerabdrucks {#definition-fingerprint-evolution}
 
-**Vorbereitung einer noch nicht veröffentlichten Version.** Das folgende Routingverhalten ist für Server 2.9.9 und die SDKs PHP 2.5.4, Python 2.6.2 und Rust 3.5.6 im Quellcode zusammengeführt. Veröffentlichung und Prüfung der installierten Artefakte stehen noch aus.
+**Veröffentlichte Unterstützung.** Server 2.9.9 sowie PHP SDK 2.5.4, Python SDK 2.6.2 und Rust SDK 3.5.6 haben den Einstiegsschutz und das nachfolgend beschriebene Routing-/Wiederherstellungsverhalten eingeführt. Dies sind die Mindestversionen für diese Funktionen. Installieren Sie aktuelle stabile Versionen, um Sicherheitskorrekturen zu erhalten.
 
 Die ursprüngliche Build-Bindung und der Definitionsfingerabdruck beantworten unterschiedliche Fragen. Ein Replay-kompatibler neuer Build kann zur selben Build-Familie gehören und trotzdem einen anderen Quellcode-Fingerabdruck haben. Standardmäßig bevorzugt der Server einen geeigneten Worker mit dem bei `WorkflowStarted` aufgezeichneten Fingerabdruck. Ist keiner mehr vorhanden, kann eine geänderte Definition das Original nur übernehmen, wenn ihr Worker `workflow_entry_arguments_validation` ankündigt. Diese Fähigkeit verspricht eine Ablehnung vor dem Einstieg, ohne den fachlichen Lauf fehlschlagen zu lassen. Sie wird weder aus der Laufzeitsprache noch aus der Protokollversion abgeleitet. Das manuelle Ergänzen dieser Zeichenfolge macht eine unsichere Worker-Implementierung nicht sicher.
 

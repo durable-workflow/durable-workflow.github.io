@@ -511,7 +511,7 @@ Python Worker 通过向 Server 返回查询任务结果来完成 Server 路由�
 
 ### 处理器生命周期 {#handler-lifecycle}
 
-**尚未发布的验证变更。** 以下处理器保护已为 Python SDK 2.6.2 准备，但发布和已安装制品的资格验证尚未完成。Server 路由的异步查询和更新验证器已经受支持，此变更会保留这些路径。修正后的范围见 [SDK #177](https://github.com/durable-workflow/sdk-python/issues/177#issuecomment-6296781770)。
+**已发布的验证功能。** Python SDK 2.6.2 引入了以下处理器保护。Server 路由的异步查询和更新验证器仍然受支持。修正后的范围见 [SDK #177](https://github.com/durable-workflow/sdk-python/issues/177#issuecomment-6296781770)。
 
 每次重放都会在执行 `run()` 之前构造一个新的工作流实例。工作流启动时已记录的信号，会在 `run()` 到达第一个 `yield` 后应用，因此构造函数和首个 `yield` 前的初始化先执行。信号和更新处理器修改这份经重放恢复的状态。查询只检查它，不改变持久状态；更新验证器在接受前检查验证后即丢弃的重放状态。持久活动、定时器和子工作流命令应放在 `run()` 中，而不是处理器中。
 
@@ -522,11 +522,11 @@ Python Worker 通过向 Server 返回查询任务结果来完成 Server 路由�
 | `@workflow.update_validator` 或 `@update_method.validator` | Worker 下的同步函数或 `async def`。异常会在接受更新前将其拒绝。 |
 | `@workflow.query` | Worker 下的同步函数或 `async def`。处理器异常会使查询失败，而不是使工作流运行失败。 |
 
-准备中的验证会拒绝信号和更新的协程函数，并拒绝包括查询和验证器在内的**所有**装饰处理器的生成器函数和异步生成器函数。它会在定义、注册或重放时抛出 `InvalidWorkflowDefinition`，继承的处理器和离线工具也包括在内。同步的信号和更新包装函数不能通过返回异步值绕过保护。所有类型的处理器返回生成器或异步生成器值都会被拒绝。这些限制不禁止 `run()` 使用的同步生成器。
+验证会拒绝信号和更新的协程函数，并拒绝包括查询和验证器在内的**所有**装饰处理器的生成器函数和异步生成器函数。它会在定义、注册或重放时抛出 `InvalidWorkflowDefinition`，继承的处理器和离线工具也包括在内。同步的信号和更新包装函数不能通过返回异步值绕过保护。所有类型的处理器返回生成器或异步生成器值都会被拒绝。这些限制不禁止 `run()` 使用的同步生成器。
 
 对于 Server 路由的查询，Worker 会在原查询截止时间以及领取和取消权限约束下，显式等待异步结果。等待不会赋予新的时间预算，也不允许在失去权限后提交结果。对于接受前的验证，Worker 同样会等待异步验证器基于临时重放状态得出的结果，之后该状态会被丢弃。
 
-本地同步辅助方法无法 await。准备中的修复会让 `workflow.query_state()` 以 `QueryFailed` 拒绝异步结果，让 `workflow.validate_update()` 以 `UpdateRejected` 拒绝异步结果。它们会关闭返回的协程，而不是将协程泄漏为操作结果。
+本地同步辅助方法无法 await。SDK 会让 `workflow.query_state()` 以 `QueryFailed` 拒绝异步结果，让 `workflow.validate_update()` 以 `UpdateRejected` 拒绝异步结果。它们会关闭返回的协程，而不是将协程泄漏为操作结果。
 
 ### 工作流上下文 {#workflow-context}
 
@@ -551,7 +551,7 @@ Python Worker 通过向 Server 返回查询任务结果来完成 Server 路由�
 
 ### 入口兼容性与恢复 {#entry-compatibility-and-recovery}
 
-**尚未发布的版本准备。** Python SDK 2.6.2 的入口保护和 Server 2.9.9 的路由及恢复支持已合并到源码，但发布和已安装制品的资格验证仍未完成。
+**已发布支持。** Python SDK 2.6.2 引入了下述入口保护，Server 2.9.9 提供了配套的路由和恢复支持。这些是相应功能的最低支持版本；请安装当前稳定版本以获取安全修复。
 
 Worker 会在调用 `run(ctx, *start_input)` 前，将已记录参数绑定到入口签名。缺少必需参数或参数数量不兼容时，会在方法体执行前抛出 `WorkflowEntryArgumentsMismatchError`，原因为 `workflow_entry_arguments_mismatch`。默认值只补充省略的参数。Python 类型注解仍不强制执行：改变注解不会验证或转换已记录数据。无论普通方法体还是生成器方法体，成功进入后抛出的 `TypeError` 仍属于应用失败。
 

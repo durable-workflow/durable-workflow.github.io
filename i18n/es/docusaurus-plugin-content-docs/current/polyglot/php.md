@@ -204,7 +204,7 @@ ese resultado.
 
 ## Compatibilidad de entrada y recuperación {#entry-compatibility-and-recovery}
 
-**Preparación de versiones sin publicar.** La protección de entrada de PHP SDK 2.5.4 y el soporte de enrutamiento/recuperación de Server 2.9.9 están integrados en el código fuente, pendientes de publicación y validación de artefactos instalados.
+**Soporte publicado.** El SDK PHP 2.5.4 incorporó la protección de entrada descrita a continuación, con enrutamiento y recuperación en Server 2.9.9. Son las versiones mínimas para estas funciones; instale las versiones estables actuales para recibir correcciones de seguridad.
 
 El worker gestionado comprueba la entrada posicional registrada del manejador antes de entrar en su Fiber. La ausencia de argumentos obligatorios o un tipo PHP declarado incompatible provoca `DurableWorkflow\Exception\WorkflowEntryArgumentsMismatch` y el motivo de tarea `workflow_entry_arguments_mismatch`. Los valores predeterminados opcionales solo rellenan entradas omitidas; nunca reemplazan un valor registrado incompatible. Un `TypeError` lanzado después de entrar correctamente sigue siendo un fallo de aplicación.
 
