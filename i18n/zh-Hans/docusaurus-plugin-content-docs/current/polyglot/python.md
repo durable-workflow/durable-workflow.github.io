@@ -791,7 +791,7 @@ async def long_running_task(items: list) -> dict:
 
 对于远程活动，在有界工作期间调用 `await ctx.heartbeat(...)`，并在 `heartbeat_timeout` 到期前留足时间。第一个窗口从运行时领取任务开始，早于 Python 收到任务。每个已记录心跳使用运行时的记录时间，而不是响应到达 Python 的时间。暂停、请求延迟和传输重试都会消耗预算。请遵循[发送节奏建议](../features/heartbeats.md#heartbeat-cadence-and-receipts)。
 
-直接调用 `Client.heartbeat_activity_task()` 会使用配置的 `TransportRetryPolicy`。策略处理后，传输错误可能以 `httpx.TransportError` 传播，HTTP 拒绝会映射为 `ServerError` 等 SDK 异常。这是 HTTP 重试，不是新的活动尝试，也不会增加心跳时间。Worker 要求活动停止时，`ActivityContext.heartbeat()` 可能抛出 `ActivityCancelled`。对于正常的协作监督 Worker，心跳或所有权检查失败可能停止或放弃回调。不要假定每次失败都会回到异常处理块，或清理代码总会执行。
+直接调用 `Client.heartbeat_activity_task()` 会使用配置的 `TransportRetryPolicy`。策略处理后，传输错误可能以 `httpx.TransportError` 传播，HTTP 拒绝会映射为 `ServerError` 等 SDK 异常。这是 HTTP 重试，不是新的活动尝试，也不会增加心跳时间。Worker 要求活动停止时，`ActivityContext.heartbeat()` 可能抛出 `ActivityCancelled`。启用协作式进程监督后，心跳或所有权检查失败可能停止或放弃回调。不要假定每次失败都会回到异常处理块，或清理代码总会执行。
 
 不要忽略心跳或所有权故障后继续执行外部工作或报告成功。进度不是外部提交，也不是可恢复检查点的确认。请保持外部副作用幂等。
 
@@ -808,6 +808,20 @@ async def validate(data: dict) -> dict:
         raise NonRetryableError("Missing required_field")
     return data
 ```
+
+### 同步与异步活动 {#activity-execution}
+
+普通的远程 `def` 活动在专用线程池中执行，线程数受 `max_concurrent_activity_tasks` 限制。
+每个函数都保留自己的活动上下文。函数阻塞时，轮询、工作流任务和 Worker 心跳仍可继续执行。
+`async def` 活动在事件循环中执行，必须使用非阻塞 I/O；异步函数中的阻塞调用仍会阻塞该事件循环。
+
+在同步函数中调用 `activity.context().heartbeat_sync(details)`，即可通过所属的事件循环发送进度，
+同时保留原任务、尝试和 Worker 的身份。异步函数使用 `await activity.context().heartbeat(details)`。
+
+取消等待并不会停止正在运行的 Python 线程。其实际槽位在函数返回前一直被占用，取消后的迟到返回不会提交结果。
+如果函数在 `shutdown_timeout` 后仍在运行，关闭过程会抛出 `RuntimeError` 并保留 Worker 注册。
+请限制下游 I/O 的超时时间，并为 CPU 密集型任务使用单独隔离的 Worker 进程。
+详见 [SDK 执行与关闭参考](https://python.durable-workflow.com/reference/worker/)。
 
 ## Worker {#worker}
 
