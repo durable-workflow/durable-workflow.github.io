@@ -52,6 +52,20 @@ Fähigkeitsmatrix für Laufzeiten und SDKs.
 
 :::
 
+### Tracing im Service-Modus {#service-mode-tracing}
+
+Konfigurieren Sie Provider, Sampling, Propagatoren und begrenzten Export, bevor Sie SDK-Telemetrie aktivieren. Nutzen Sie den [PHP-Leitfaden](https://php.durable-workflow.com/operate/tracing/), den [Python-Leitfaden](https://python.durable-workflow.com/telemetry/) oder die [Rust-API](https://rust.durable-workflow.com/durable_workflow/telemetry/) auf Englisch.
+
+| Runtime | Propagationsgrenze |
+| --- | --- |
+| Eingebettetes Laravel | Die optionale Core-Integration der Anwendung speichert Kontext über ihre Queue-Worker hinweg. |
+| PHP Server | Der [Server-Leitfaden](https://github.com/durable-workflow/server/blob/2.10.0/docs/observability-context.md) erfordert ein Anwendungsimage mit optionaler API, aktiviertem Schalter und tatsächlichem nullable Schema. |
+| PHP-, Python- und Rust-SDKs | Optionale Task-/Versuchs-Spans und begrenzter Log-Kontext. Dauerhafte Aufruferpropagation erfordert die exakt angekündigte Server-Fähigkeit. Fehlt sie oder ist sie fehlerhaft, entstehen unabhängige Task-Traces. |
+| Nativer Rust Server | Diese PHP-Tracing-Version qualifiziert weder native Carrier noch Katalogkonvertierung. |
+| Cloud | Diese Version enthält kein Cloud-Deployment. Prüfen Sie die Unterstützung der verwalteten Runtime. |
+
+Trace-, Run-, Activity-, Versuchs- und Anfrage-IDs bleiben getrennt. Baggage ist auf eine standardmäßig leere Positivliste beschränkt; Links enthalten kein Baggage. Provider und Exporter gehören der Anwendung. Abrupte Beendigung kann Telemetrie verlieren; Replay garantiert keinen genau einmaligen Export. Für Geschäftsergebnisse gilt die dauerhafte History.
+
 ### Dashboard-Ansicht {#dashboard-view}
 
 ![Waterline-Dashboard](https://raw.githubusercontent.com/durable-workflow/waterline/refs/heads/main/docs/screenshots/dashboard.png)

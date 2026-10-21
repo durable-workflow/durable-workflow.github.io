@@ -50,6 +50,20 @@ OpenTelemetry プロバイダーと Laravel ログチャネルを使用します
 
 :::
 
+### サービスモードのトレース {#service-mode-tracing}
+
+SDK のテレメトリーを有効にする前に、アプリケーションの provider、サンプリング、propagator、上限付きのエクスポートを設定してください。[PHP ガイド](https://php.durable-workflow.com/operate/tracing/)、[Python ガイド](https://python.durable-workflow.com/telemetry/)、[Rust API](https://rust.durable-workflow.com/durable_workflow/telemetry/)を参照してください（英語）。
+
+| Runtime | 伝播の範囲 |
+| --- | --- |
+| 組み込み Laravel | 任意の Core 統合が、アプリケーションのキューワーカー間でコンテキストを永続化します。 |
+| PHP Server | [Server ガイド](https://github.com/durable-workflow/server/blob/2.10.0/docs/observability-context.md)に従い、任意の API、有効な設定フラグ、実際の nullable スキーマを備えたアプリケーションイメージが必要です。 |
+| PHP、Python、Rust SDK | 任意のタスク・試行 span とスコープ付きログ相関。呼び出し元コンテキストの永続的な伝播には、Server が通知する正確な capability が必要です。欠落または不正な場合、タスクごとの独立したトレースになります。 |
+| ネイティブ Rust Server | この PHP リリースは、ネイティブ carrier やカタログ変換を認定しません。 |
+| Cloud | このリリースには Cloud へのデプロイを含みません。管理対象 runtime の対応を確認してください。 |
+
+trace、run、activity、attempt、request の ID は別々です。baggage は既定で空の許可リストに制限され、link には含まれません。provider と exporter はアプリケーションが管理します。突然の終了でテレメトリーが失われる場合があり、replay は exactly-once エクスポートを保証しません。業務結果の確認には永続履歴を使用してください。
+
 ### ダッシュボードビュー {#dashboard-view}
 
 ![Waterline ダッシュボード](https://raw.githubusercontent.com/durable-workflow/waterline/refs/heads/main/docs/screenshots/dashboard.png)
