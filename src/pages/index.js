@@ -77,10 +77,16 @@ export default function Home() {
       <main>
         <section className="container" aria-label="Durable Workflow Cloud">
           <ProductPromotion source="docs-homepage">
-            <Translate id="homepage.cloudDescription">
-              Run PHP, Python, or Rust workers against a managed namespace while
-              Durable Workflow operates the orchestration runtime.
-            </Translate>
+            <p>
+              <Translate id="homepage.cloudDescription">
+                Run it managed: Cloud Dev, $0.075/hour, capped at $50/month, no per-workflow charges.
+              </Translate>
+            </p>
+            <p>
+              <Translate id="homepage.cloudTerms">
+                USD per runtime, metered by the minute while provisioned, with a $2 minimum per active month and 5 GB included storage. Dev has no uptime SLA.
+              </Translate>
+            </p>
           </ProductPromotion>
         </section>
         <HomepageFeatures />

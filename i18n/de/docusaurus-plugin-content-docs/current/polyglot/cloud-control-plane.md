@@ -309,9 +309,11 @@ Laufzeitverfügbarkeit getrennt.
 | Mindestens 99.0%, unter 99.9% | 25% |
 | Unter 99.0% | 100% |
 
-Kontogutschriften werden automatisch angewendet. Barauszahlungen erfordern
-Prüfung und Genehmigung. Cloud Dev hat keine SLA-Gutschriften. Verfügbarkeit
-und Abrechnungsbedingungen des Plans stehen unter
+SLA-Pläne erhalten automatisch Servicegutschriften auf das Konto. Die Summe ist
+auf die Gebühren der betroffenen Laufzeitumgebung im jeweiligen Monat begrenzt; für
+Ausfälle gibt es keine Barauszahlungen. Cloud Dev hat keine SLA-Gutschriften.
+Verfügbarkeit und Abrechnungsbedingungen stehen in den
+[Cloud-Nutzungsbedingungen](https://cloud.durable-workflow.com/terms) und unter
 [Cloud-Preise](https://cloud.durable-workflow.com/pricing).
 
 ## Private Vernetzung und Support-Grenze {#private-connectivity-and-support-boundary}

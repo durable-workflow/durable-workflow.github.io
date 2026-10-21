@@ -194,7 +194,12 @@ Los cuatro planes SLA previstos especifican un SLA de disponibilidad del 99.99% 
 | Al menos 99.0% e inferior a 99.9% | 25% |
 | Inferior a 99.0% | 100% |
 
-Los créditos se aplican automáticamente; los reembolsos en efectivo requieren revisión y aprobación. Cloud Dev no tiene créditos SLA. Consulta los [precios de Cloud](https://cloud.durable-workflow.com/pricing) para el alcance de disponibilidad y las condiciones de facturación.
+Los planes con SLA reciben créditos de servicio automáticamente en la cuenta.
+Los créditos nunca superan lo cobrado ese mes por el runtime afectado y no hay
+reembolsos en efectivo por interrupciones. Cloud Dev no tiene créditos SLA.
+Consulta las [condiciones de Cloud](https://cloud.durable-workflow.com/terms) y los
+[precios de Cloud](https://cloud.durable-workflow.com/pricing) para el alcance de
+disponibilidad y las condiciones de facturación.
 
 ## Límites de conectividad privada y soporte {#private-connectivity-and-support-boundary}
 

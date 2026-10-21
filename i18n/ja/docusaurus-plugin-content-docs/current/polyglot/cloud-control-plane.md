@@ -194,7 +194,11 @@ Cloud Dev は以下の復旧境界で利用可能です。HA の境界は、認�
 | 99.0% 以上、99.9% 未満 | 25% |
 | 99.0% 未満 | 100% |
 
-アカウントクレジットは自動適用されます。現金返金には確認と承認が必要です。Cloud Dev に SLA クレジットはありません。プランの可用性範囲と請求条件は [Cloud 料金](https://cloud.durable-workflow.com/pricing)を参照してください。
+SLA プランではサービスクレジットがアカウントに自動適用されます。
+その月の対象ランタイムへの請求額が上限であり、停止に対する現金返金はありません。
+Cloud Dev に SLA クレジットはありません。プランの可用性範囲と請求条件は
+[Cloud 利用規約](https://cloud.durable-workflow.com/terms)と
+[Cloud 料金](https://cloud.durable-workflow.com/pricing)を参照してください。
 
 ## プライベート接続とサポートの境界 {#private-connectivity-and-support-boundary}
 

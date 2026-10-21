@@ -316,10 +316,13 @@ par le client est distincte de celle du runtime géré.
 | Au moins 99,0 %, moins de 99,9 % | 25 % |
 | Moins de 99,0 % | 100 % |
 
-Les crédits s'appliquent automatiquement ; les remboursements en numéraire
-nécessitent examen et approbation. Cloud Dev n'a pas de crédits SLA. Consultez
-les [tarifs Cloud](https://cloud.durable-workflow.com/pricing) pour le
-périmètre de disponibilité et les conditions de facturation de l'offre.
+Les offres avec SLA reçoivent automatiquement des crédits de service sur le
+compte. Ces crédits ne dépassent jamais les frais du mois pour le runtime
+concerné ; les interruptions ne donnent lieu à aucun remboursement en numéraire.
+Cloud Dev n’a pas de crédits SLA. Consultez les
+[conditions Cloud](https://cloud.durable-workflow.com/terms) et les
+[tarifs Cloud](https://cloud.durable-workflow.com/pricing) pour le périmètre de
+disponibilité et les conditions de facturation de l’offre.
 
 ## Connectivité privée et frontière du support {#private-connectivity-and-support-boundary}
 

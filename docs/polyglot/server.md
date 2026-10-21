@@ -79,6 +79,15 @@ domains, or migration path that `GET /api/cluster/info` publishes.
 
 ## Quick Start
 
+:::info Managed alternative
+
+[Run it managed: Cloud Dev, $0.075/hour, capped at $50/month, no per-workflow charges.](https://cloud.durable-workflow.com/pricing)
+The provisioned-hour rate is metered by the minute, with a $2 minimum per active
+month and 5 GB included storage. Prices are in USD per runtime. Dev has no uptime
+SLA. HA plans are planned and not yet available to provision.
+
+:::
+
 ### Published Image + SQLite
 
 The fastest source-free way to run the server is the published Docker image.

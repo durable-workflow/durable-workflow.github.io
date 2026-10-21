@@ -32,6 +32,10 @@
   margin: 0;
 }
 
+.description p + p {
+  margin-top: 0.5rem;
+}
+
 .eyebrow {
   margin: 0;
   color: var(--ifm-color-primary);
