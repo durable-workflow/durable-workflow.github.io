@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const cheerio = require('cheerio');
 const { replaceArtifactTokens } = require('./public-artifact-versions');
 const {
   isLlmDocFile,
@@ -62,8 +63,11 @@ function getPositionForItem(itemPath) {
 }
 
 function stripHtmlTags(value) {
-  return value
-    .replace(/<\/?[A-Za-z][^>]*>/g, '')
+  const parsedText = cheerio.load(value, null, false).root().text();
+  const text = parsedText.trim() === '' ? value : parsedText;
+
+  return text
+    .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
     .replace(/\s+/g, ' ')

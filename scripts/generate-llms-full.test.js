@@ -18,3 +18,11 @@ assert.equal(
   stripHtmlTags('Nested <scr<script>ipt>alert(1)</script> fragment'),
   'Nested ipt&gt;alert(1) fragment',
 );
+assert.equal(
+  stripHtmlTags('&lt;script&gt;alert(1)&lt;/script&gt;'),
+  '&lt;script&gt;alert(1)&lt;/script&gt;',
+);
+assert.equal(
+  stripHtmlTags('<script>alert(1)</script>'),
+  'alert(1)',
+);
