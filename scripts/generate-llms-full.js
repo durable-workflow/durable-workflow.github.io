@@ -62,7 +62,12 @@ function getPositionForItem(itemPath) {
 }
 
 function stripHtmlTags(value) {
-  return value.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+  return value
+    .replace(/<\/?[A-Za-z][^>]*>/g, '')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function cleanContent(content) {
@@ -299,4 +304,8 @@ function main() {
   }
 }
 
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = { stripHtmlTags };
