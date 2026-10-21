@@ -47,6 +47,28 @@ The claim checks the task's original compatibility and worker identity. An
 incompatible worker cannot gain its lease merely because another build is
 absent. Lease expiry does not widen that compatibility.
 
+## Definition fingerprint evolution {#definition-fingerprint-evolution}
+
+**Released support.** Server 2.9.9 and PHP SDK 2.5.4, Python SDK 2.6.2 and Rust SDK 3.5.6 introduced the entry safeguards and routing/recovery behavior below. These are minimum feature versions; install current stable releases for security fixes.
+
+The original build pin and the definition fingerprint answer different questions. A replay-compatible rebuild can keep the same build family while changing its source fingerprint. By default, the Server prefers an eligible worker with the fingerprint recorded at `WorkflowStarted`. If none remains, a changed definition can claim the original only when its worker advertises `workflow_entry_arguments_validation`. That capability promises pre-entry refusal without failing the business run. It is not inferred from the runtime language or protocol version, and manually adding the string does not make an unsafe worker implementation safe.
+
+Fallback still requires the original namespace, task queue, workflow type, build and replay capabilities. The run keeps its recorded fingerprint and admission snapshots. The SDK must validate original entry input and replay committed commands; a source change, version marker or successful registration is not proof that this replay will succeed. Restart changed code with a new worker id, because an active registration cannot change its advertised fingerprint.
+
+Run detail, selected-run debug, repair responses and task-queue detail expose `definition_routing`:
+
+| Status | Meaning and action |
+| --- | --- |
+| `matching_definition_available` / `matching_definition_preferred` | Eligible recorded-definition capacity is available or preferred over the changed worker. |
+| `replay_required` | A capable changed definition may claim. Entry validation and strict replay still have to succeed. This is not a blocked verdict. |
+| `entry_validation_unavailable` | The replacement lacks the entry-validation capability. Upgrade the SDK or restore the recorded definition. |
+| `no_eligible_worker` / `worker_definition_missing` / `recorded_definition_missing` | Inspect missing capacity or fingerprint information while preserving original routing guards. |
+| `pinning_disabled` | The matching-source preference is disabled; other claim and replay guards still apply. |
+
+`blocked = true` describes a due ready workflow task without an eligible definition route. Queue detail samples at most ten runs and reports whether more ready runs exist; it is not a complete count of all passive or blocked runs. Repair cannot manufacture a matching worker or rewrite history. After a genuine entry refusal, follow the [same-original recovery procedure](../failures-and-recovery.md#service-entry-recovery).
+
+`DW_V2_PIN_TO_RECORDED_FINGERPRINT=false` removes the matching-source preference. It does not clear build pins, namespace/queue/type boundaries, registration identity, lease fencing or strict replay checks. It is not a substitute for the safe SDK and default-path upgrade. Older runtimes can silently strand a changed definition or retry an unclassified entry refusal; use the exact qualified runtime/SDK combination.
+
 ## What operators should configure {#what-operators-should-configure}
 
 For embedded PHP, configure the current and explicitly supported families:

@@ -49,7 +49,7 @@ La protección **no** reinterpreta las excepciones lanzadas por el cuerpo del wo
 
 ### Los SDK en modo servicio tienen límites distintos {#service-sdk-entry-boundaries}
 
-Una corrección del Core embebido no cambia el proceso SDK que ejecuta el workflow en modo servicio. Estos son los límites de las versiones publicadas verificados en el código fuente; la validación de entrada recuperable equivalente sigue pendiente en [shared #221](https://github.com/durable-workflow/.github/issues/221):
+Una corrección del Core integrado no cambia el proceso del SDK que ejecuta los workflows en modo servicio. Los SDK publicados anteriores que se muestran a continuación preceden a la protección de entrada de servicio registrada en [la incidencia compartida #221](https://github.com/durable-workflow/.github/issues/221):
 
 | SDK publicado | Comportamiento al vincular la entrada |
 | --- | --- |
@@ -58,6 +58,18 @@ Una corrección del Core embebido no cambia el proceso SDK que ejecuta el workfl
 | [Rust 3.5.5](https://github.com/durable-workflow/sdk-rust/tree/4d5047ba9da39785512340b0975ce28da09f0cee) | El adaptador tipado deserializa la entrada antes de llamar al manejador de firma fija. Cambiar el tipo de solicitud puede hacer fallar esa decodificación. Difiere de la vinculación posicional de PHP/Python; un rechazo incidental por historial no consumido no garantiza una protección recuperable de firmas. |
 
 Mantén separadas la compatibilidad de entrada en modo servicio y la cualificación real del SDK respecto a la versión embebida publicada. No captures todos los `TypeError` ni todos los errores de handlers Rust para etiquetarlos como seguros para reproducción: ocultaría fallos reales de la aplicación.
+
+### Protección de entrada de los SDK de servicio {#service-sdk-entry-safeguard}
+
+**Soporte publicado.** Server 2.9.9 y los SDK PHP 2.5.4, Python 2.6.2 y Rust 3.5.6 incorporaron las protecciones de entrada y el comportamiento de enrutamiento y recuperación descritos a continuación. Son las versiones mínimas para estas funciones; instale las versiones estables actuales para recibir correcciones de seguridad.
+
+Los SDK preparados validan la entrada registrada antes de ejecutar código del workflow de la aplicación. Una entrada incompatible comunica `workflow_entry_arguments_mismatch` como fallo de una **tarea** de workflow bloqueada para replay, sin emitir `fail_workflow` ni cerrar la **ejecución** de negocio. La entrada, la identidad del workflow y la ejecución, el historial confirmado, la asignación de build y los plazos originales no cambian. PHP valida los argumentos posicionales obligatorios y los tipos PHP declarados. Python comprueba la vinculación con la firma, la cantidad de argumentos y los valores predeterminados; las anotaciones no se convierten en comprobaciones de tipos en ejecución. Los adaptadores tipados de Rust validan la decodificación antes de llamar al manejador o a su fábrica de estado. Los manejadores Rust de bajo nivel siguen siendo responsables de procesar la entrada de la aplicación.
+
+El campo específico de la tarea en Server, `failure_reason`, es `workflow_entry_arguments_mismatch`; `replay_blocked_reason` conserva el valor genérico `worker_reported_replay_failure`. Consulte `latest_workflow_task_failure.reason` en la respuesta de depuración de la ejecución seleccionada. No confunda estos campos con el diagnóstico del Core integrado descrito antes. Si el código de aplicación ya ha entrado correctamente y lanza un `TypeError`, devuelve un error desde un manejador Rust o falla de otro modo, se mantiene el comportamiento habitual de fallo de negocio.
+
+Restaure código que acepte la entrada registrada original y siga el [procedimiento admitido de recuperación del mismo original](../failures-and-recovery.md#service-entry-recovery). No sustituya la entrada por valores predeterminados de un DTO, modifique el historial ni reinicie un plazo. Esta protección no reabre un original que un worker anterior ya haya dejado en estado terminal.
+
+El enrutamiento seguro hacia una sustitución también requiere la [capacidad de validación de entrada del worker](../polyglot/worker-compatibility-routing.md#definition-fingerprint-evolution). Un fingerprint diferente no demuestra compatibilidad de replay ni justifica reescribir el fingerprint original de una ejecución. Versione los cambios de comandos durables dentro de un método de entrada compatible y valide el replay en frío antes de promover el build.
 
 ## Usar `getVersion` {#using-getversion}
 

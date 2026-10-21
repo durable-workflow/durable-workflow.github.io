@@ -441,6 +441,16 @@ Rust SDK записує невеликі недетерміновані знач
 Спільну durable-семантику описано в
 [side effects](/docs/features/side-effects/) та [версіюванні](/docs/features/versioning/).
 
+## Сумісність входу та відновлення {#entry-compatibility-and-recovery}
+
+**Підтримка в опублікованих випусках.** SDK Rust 3.5.6 запровадив наведений нижче захист входу, а Server 2.9.9 додав маршрутизацію та відновлення. Це мінімальні версії для цих можливостей. Установлюйте поточні стабільні випуски, щоб отримувати виправлення безпеки.
+
+`Worker::register_typed_workflow` і типізовані адаптери зі станом десеріалізують записаний вхід до виклику handler застосунку або його фабрики стану. Несумісна форма входу повідомляє тип помилки task `WorkflowEntryArgumentsMismatch` і причину `workflow_entry_arguments_mismatch`, не надсилаючи `fail_workflow`. Локальна помилка SDK — `Error::HandlerType` для входу workflow: вона містить workflow й очікуваний Rust-тип, а не записане значення. Низькорівневі handler workflow не отримують нових перевірок Rust-сигнатури. Помилка, повернена handler застосунку після успішного входу, залишається звичайною помилкою workflow, навіть якщо її текст схожий на діагностику входу.
+
+Керований worker автоматично оголошує `workflow_entry_arguments_validation`. Перевірений Server зберігає невдалий task заблокованим для replay і залишає оригінальний run нетермінальним. Старіші runtime можуть натомість повторювати task, тому самого SDK недостатньо для повного контракту відновлення.
+
+Використайте `Client::describe_workflow_run(workflow_id, run_id)` для огляду оригіналу та debug endpoint вибраного run для причини task. Відновіть сумісне декодування входу й код перед HTTP-маршрутом repair вибраного run із [процедури відновлення](../failures-and-recovery.md#service-entry-recovery). У crate немає допоміжного методу `repair_workflow`. Збережіть початкові вхід, історію, namespace, queue, build і дедлайни; версіонуйте зміни durable-команд усередині сумісного handler і перевіряйте холодний replay. Див. [маршрутизацію визначень](./worker-compatibility-routing.md#definition-fingerprint-evolution).
+
 ## Скасування, примусове завершення та термінальні результати {#cancel-terminate-and-handle-terminal-outcomes}
 
 У service mode `cancel_workflow` та `terminate_workflow` закривають run

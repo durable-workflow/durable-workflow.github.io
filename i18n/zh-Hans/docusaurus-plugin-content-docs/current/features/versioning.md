@@ -49,7 +49,7 @@ Workflow **2.7.3** 会在进入应用代码前验证已记录的入口参数。�
 
 ### 服务模式 SDK 具有各自的边界 {#service-sdk-entry-boundaries}
 
-修复嵌入式 Core 不会改变执行服务模式工作流代码的 SDK 进程。下表列出经源码验证的已发布版本边界；等效的可恢复入口验证仍由 [shared #221](https://github.com/durable-workflow/.github/issues/221) 跟踪，尚未完成：
+修复嵌入式 Core 不会改变执行服务模式工作流代码的 SDK 进程。下列较旧的已发布 SDK 早于 [shared #221](https://github.com/durable-workflow/.github/issues/221) 跟踪的服务模式入口保护：
 
 | 已发布 SDK | 入口绑定行为 |
 | --- | --- |
@@ -58,6 +58,18 @@ Workflow **2.7.3** 会在进入应用代码前验证已记录的入口参数。�
 | [Rust 3.5.5](https://github.com/durable-workflow/sdk-rust/tree/4d5047ba9da39785512340b0975ce28da09f0cee) | 类型化适配器会先反序列化输入，再调用签名固定的处理器。请求类型变化可能使该解码步骤失败。这与 PHP/Python 的位置绑定不同；因历史未完全消费而偶然触发的拒绝，不等于承诺提供可恢复的签名保护。 |
 
 请将服务输入兼容性、实际 SDK 资格验证与嵌入式发布版本分别看待。不要捕获所有 `TypeError` 或所有 Rust 处理器错误并标记为可安全重放，这会掩盖真正的应用失败。
+
+### 服务模式入口保护 {#service-sdk-entry-safeguard}
+
+**已发布支持。** Server 2.9.9 以及 PHP SDK 2.5.4、Python SDK 2.6.2 和 Rust SDK 3.5.6 引入了下述入口保护、路由和恢复行为。这些是相应功能的最低支持版本；请安装当前稳定版本以获取安全修复。
+
+准备中的 SDK 会在应用工作流代码执行前验证已记录的入口输入。不兼容输入以 `workflow_entry_arguments_mismatch` 报告为失败且重放受阻的工作流**任务**，不会提交 `fail_workflow`，也不会关闭业务**运行**。输入、工作流和运行标识、已提交历史、构建固定和原截止时间均保持不变。PHP 验证必需的位置参数和声明的 PHP 类型。Python 通过签名绑定处理参数数量与默认值；类型注解不会变成运行时类型检查。Rust 类型化适配器在调用处理器或其状态工厂之前验证输入解码。原始 Rust 处理器仍需自行负责应用输入处理。
+
+Server 任务的具体 `failure_reason` 为 `workflow_entry_arguments_mismatch`；`replay_blocked_reason` 仍是通用值 `worker_reported_replay_failure`。请检查选定运行的调试响应中的 `latest_workflow_task_failure.reason`。不要将这些字段与前文嵌入式 Core 的诊断混淆。成功绑定并进入的应用代码若抛出 `TypeError`、返回 Rust 处理器错误或以其他方式失败，仍遵循正常的业务失败行为。
+
+恢复能够接受原始已记录输入的代码，然后使用[针对同一原运行的受支持恢复流程](../failures-and-recovery.md#service-entry-recovery)。不要用 DTO 默认值替换输入、修改历史或重置截止时间。该保护不会重新打开已被旧 Worker 置为终态的原运行。
+
+安全的替换路由还需要 [Worker 入口验证能力](../polyglot/worker-compatibility-routing.md#definition-fingerprint-evolution)。指纹发生变化既不能证明重放兼容，也不是改写运行原始指纹的理由。请在兼容的入口方法内部对持久命令变更进行版本分支，并在提升构建之前测试冷重放。
 
 ## 使用 `getVersion` {#using-getversion}
 

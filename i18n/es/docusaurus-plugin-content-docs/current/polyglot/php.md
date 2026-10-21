@@ -202,6 +202,16 @@ demuestra que ganó la cancelación; la reproducción avanza más allá de una
 solicitud sin marca y, si la operación terminó primero, `await()` sigue devolviendo
 ese resultado.
 
+## Compatibilidad de entrada y recuperación {#entry-compatibility-and-recovery}
+
+**Soporte publicado.** El SDK PHP 2.5.4 incorporó la protección de entrada descrita a continuación, con enrutamiento y recuperación en Server 2.9.9. Son las versiones mínimas para estas funciones; instale las versiones estables actuales para recibir correcciones de seguridad.
+
+El worker gestionado comprueba la entrada posicional registrada del manejador antes de entrar en su Fiber. La ausencia de argumentos obligatorios o un tipo PHP declarado incompatible provoca `DurableWorkflow\Exception\WorkflowEntryArgumentsMismatch` y el motivo de tarea `workflow_entry_arguments_mismatch`. Los valores predeterminados opcionales solo rellenan entradas omitidas; nunca reemplazan un valor registrado incompatible. Un `TypeError` lanzado después de entrar correctamente sigue siendo un fallo de aplicación.
+
+El worker anuncia `workflow_entry_arguments_validation` automáticamente. Con el soporte correspondiente de Server, la tarea rechazada queda bloqueada para replay y el original permanece no terminal. Un runtime anterior puede reintentar la tarea fallida, por lo que actualizar solo el SDK no establece el contrato completo de recuperación.
+
+Inspeccione el original con `Client::describeWorkflow($workflowId, $runId)` y el endpoint de depuración de la ejecución seleccionada. Restaure código compatible antes de llamar a `Client::repairWorkflow($workflowId, $runId)` y compruebe que esa misma ejecución continúa sin cambiar la entrada, el historial, la identidad de enrutamiento ni los plazos. No capture este fallo dentro del cuerpo del workflow ni repare repetidamente código incompatible. Consulte el [procedimiento de recuperación de servicio](../failures-and-recovery.md#service-entry-recovery) y el [enrutamiento de definiciones](./worker-compatibility-routing.md#definition-fingerprint-evolution).
+
 ## Modo servicio con frameworks y Laravel integrado {#framework-service-mode-and-embedded-laravel}
 
 El mismo paquete incluye puentes oficiales de

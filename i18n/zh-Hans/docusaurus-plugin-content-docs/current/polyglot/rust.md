@@ -269,6 +269,16 @@ Rust SDK 使用 `WorkflowContext::side_effect` 记录小型非确定性值，并
 
 使用 `WorkflowContext::get_version(change_id, min_supported, max_supported)`，在发布期间保持新旧工作流分支重放兼容。新运行记录 `max_supported`；现有运行复用持久标记。`patched(change_id)` 提供布尔形式的发布控制；旧分支排空后，`deprecate_patch(change_id)` 保留标记。共享持久语义见[副作用](/docs/features/side-effects/)和[版本管理](/docs/features/versioning/)。
 
+## 入口兼容性与恢复 {#entry-compatibility-and-recovery}
+
+**已发布支持。** Rust SDK 3.5.6 引入了下述入口保护，Server 2.9.9 提供了配套的路由和恢复支持。这些是相应功能的最低支持版本；请安装当前稳定版本以获取安全修复。
+
+`Worker::register_typed_workflow` 和类型化有状态适配器会先反序列化已记录输入，再调用应用处理器或其状态工厂。输入结构不兼容时，会报告任务失败类型 `WorkflowEntryArgumentsMismatch` 和原因 `workflow_entry_arguments_mismatch`，不会提交 `fail_workflow`。SDK 对工作流输入产生的本地错误为 `Error::HandlerType`，包含工作流和预期 Rust 类型，而不是已记录值。原始工作流处理器不会获得新的 Rust 签名检查。成功进入的应用处理器返回的错误仍是普通工作流失败，即使其文本看起来像入口诊断也不例外。
+
+托管 Worker 会自动声明 `workflow_entry_arguments_validation`。经过验证的 Server 会将失败任务保留为重放受阻状态，并让原运行保持非终态。较旧的运行时可能重试任务，因此仅 SDK 本身不能确立完整恢复契约。
+
+使用 `Client::describe_workflow_run(workflow_id, run_id)` 检查原运行，通过指定运行的调试端点查看任务原因。恢复兼容的输入解码和代码之后，再使用[恢复流程](../failures-and-recovery.md#service-entry-recovery)中指定运行的 HTTP 修复路由。此 crate 不提供 `repair_workflow` 便捷方法。保留原输入、历史、命名空间、队列、构建和截止时间；在兼容处理器内部对持久命令变更进行版本分支，并验证冷重放。请参阅[定义路由](./worker-compatibility-routing.md#definition-fingerprint-evolution)。
+
 ## 取消、终止及处理终态结果 {#cancel-terminate-and-handle-terminal-outcomes}
 
 服务模式的 `cancel_workflow` 和 `terminate_workflow` 都立即关闭运行。两者记录不同终态结果，但都不会要求工作流代码执行清理。需要有时限的工作流清理时，请配合协作 Worker 使用 `request_cancellation()`。操作策略、监督和恢复见[协作式取消指南](/docs/polyglot/cancellation)。

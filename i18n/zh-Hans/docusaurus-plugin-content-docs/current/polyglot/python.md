@@ -427,7 +427,7 @@ Worker 注册表展示 Server 最近见过哪些 Worker，以及每个 Worker �
 
 ## 定义工作流 {#defining-workflows}
 
-工作流是用 `@workflow.defn` 装饰的 Python 类。`run` 方法是向 Server yield 命令的生成器。
+工作流是用 `@workflow.defn` 装饰的 Python 类。`run` 方法可以是普通同步函数，也可以是向 Server yield 持久命令的同步生成器。工作流需要持久执行的操作时，请使用生成器形式；不支持 `async def run`。
 
 ```python
 from durable_workflow import workflow
@@ -509,6 +509,25 @@ class ApprovalWorkflow:
 
 Python Worker 通过向 Server 返回查询任务结果来完成 Server 路由的查询。对于声明的更新验证器，Worker 改为接收专用验证任务，重放权威工作流状态，并仅调用验证器。验证成功之前，Server 不会记录已接受更新，也不会派发更新处理器。除非发现结果公布同步接受前契约，否则带验证器的 Worker 拒绝注册；拒绝、缺失或不兼容 Worker、Worker 丢失、超时，以及被隔离的重复或过时完成，仍是明确的类型化结果。PHP 和 Rust 当前不提供更新验证器编写 API，会在其工作流契约中公布这一缺失，而不是声称验证器对等。
 
+### 处理器生命周期 {#handler-lifecycle}
+
+**已发布的验证功能。** Python SDK 2.6.2 引入了以下处理器保护。Server 路由的异步查询和更新验证器仍然受支持。修正后的范围见 [SDK #177](https://github.com/durable-workflow/sdk-python/issues/177#issuecomment-6296781770)。
+
+每次重放都会在执行 `run()` 之前构造一个新的工作流实例。工作流启动时已记录的信号，会在 `run()` 到达第一个 `yield` 后应用，因此构造函数和首个 `yield` 前的初始化先执行。信号和更新处理器修改这份经重放恢复的状态。查询只检查它，不改变持久状态；更新验证器在接受前检查验证后即丢弃的重放状态。持久活动、定时器和子工作流命令应放在 `run()` 中，而不是处理器中。
+
+| 处理器 | 支持的形式及失败结果 |
+| --- | --- |
+| `@workflow.signal` | 同步函数。重放期间应用信号时抛出异常，会导致工作流运行失败。 |
+| `@workflow.update` | 同步函数。处理器异常会导致该更新失败。 |
+| `@workflow.update_validator` 或 `@update_method.validator` | Worker 下的同步函数或 `async def`。异常会在接受更新前将其拒绝。 |
+| `@workflow.query` | Worker 下的同步函数或 `async def`。处理器异常会使查询失败，而不是使工作流运行失败。 |
+
+验证会拒绝信号和更新的协程函数，并拒绝包括查询和验证器在内的**所有**装饰处理器的生成器函数和异步生成器函数。它会在定义、注册或重放时抛出 `InvalidWorkflowDefinition`，继承的处理器和离线工具也包括在内。同步的信号和更新包装函数不能通过返回异步值绕过保护。所有类型的处理器返回生成器或异步生成器值都会被拒绝。这些限制不禁止 `run()` 使用的同步生成器。
+
+对于 Server 路由的查询，Worker 会在原查询截止时间以及领取和取消权限约束下，显式等待异步结果。等待不会赋予新的时间预算，也不允许在失去权限后提交结果。对于接受前的验证，Worker 同样会等待异步验证器基于临时重放状态得出的结果，之后该状态会被丢弃。
+
+本地同步辅助方法无法 await。SDK 会让 `workflow.query_state()` 以 `QueryFailed` 拒绝异步结果，让 `workflow.validate_update()` 以 `UpdateRejected` 拒绝异步结果。它们会关闭返回的协程，而不是将协程泄漏为操作结果。
+
 ### 工作流上下文 {#workflow-context}
 
 传给 `run` 的 `WorkflowContext` 提供确定性操作：
@@ -529,6 +548,16 @@ Python Worker 通过向 Server 返回查询任务结果来完成 Server 路由�
 | `ctx.random()` | 带种子的随机生成器 |
 | `ctx.uuid4()` | 确定性 UUID |
 | `ctx.logger` | 重放期间保持静默的日志器 |
+
+### 入口兼容性与恢复 {#entry-compatibility-and-recovery}
+
+**已发布支持。** Python SDK 2.6.2 引入了下述入口保护，Server 2.9.9 提供了配套的路由和恢复支持。这些是相应功能的最低支持版本；请安装当前稳定版本以获取安全修复。
+
+Worker 会在调用 `run(ctx, *start_input)` 前，将已记录参数绑定到入口签名。缺少必需参数或参数数量不兼容时，会在方法体执行前抛出 `WorkflowEntryArgumentsMismatchError`，原因为 `workflow_entry_arguments_mismatch`。默认值只补充省略的参数。Python 类型注解仍不强制执行：改变注解不会验证或转换已记录数据。无论普通方法体还是生成器方法体，成功进入后抛出的 `TypeError` 仍属于应用失败。
+
+Worker 会自动声明 `workflow_entry_arguments_validation`。使用经过验证的 Server 时，失败任务的重放会被阻止，而原运行保持非终态。较旧的运行时可能重试该任务；仅 SDK 端的拒绝并不能确立完整恢复契约。
+
+使用 `await client.describe_workflow_run(workflow_id, run_id)` 和指定运行的调试端点检查确切运行。恢复兼容入口方法后，使用[恢复流程](../failures-and-recovery.md#service-entry-recovery)中指定运行的 HTTP 修复路由。相反，`await client.repair_workflow(workflow_id)` 和 `handle.repair()` 会解析实例的当前运行；两者都不接受运行 ID 参数。请保留原输入、历史、命名空间、队列、构建和截止时间。若要改变命令，请将 `ctx.get_version` 放在兼容方法内部，并通过[定义路由](./worker-compatibility-routing.md#definition-fingerprint-evolution)验证冷重放。
 
 ### 工作流时间与持久等待 {#workflow-time-and-durable-waits}
 

@@ -103,6 +103,22 @@ Uma execução com uma tentativa válida disponível permanece aguardando e pode
 
 Para uma execução terminal com falha, preserve o histórico e reconcilie os efeitos externos antes de decidir se a aplicação deve iniciar outro workflow. Use idempotência na aplicação para operações de negócio repetidas. Não há repetição automática do workflow inteiro nem reabertura de execução terminal; consulte [Novas tentativas no nível do workflow](#workflow-level-retry).
 
+## Recusa de entrada e recuperação no modo de serviço {#service-entry-recovery}
+
+**Suporte publicado.** O Server 2.9.9 e os SDKs PHP 2.5.4, Python 2.6.2 e Rust 3.5.6 introduziram as proteções de entrada e o comportamento de roteamento e recuperação descritos abaixo. Essas são as versões mínimas para esses recursos; instale as versões estáveis atuais para receber correções de segurança.
+
+Uma entrada incompatível provoca uma recusa de implantação/replay antes de executar o código de workflow da aplicação, não uma nova tentativa de atividade nem uma falha terminal de negócio. O worker informa `failure_reason = workflow_entry_arguments_mismatch`, e o Server mantém a tarefa de workflow com falha e `replay_blocked = true`, sem criar outra tentativa automaticamente. Seu `replay_blocked_reason` genérico é `worker_reported_replay_failure`. A execução permanece não terminal, com entrada, histórico e prazos registrados intactos. Já uma exceção lançada pelo corpo do workflow após a entrada bem-sucedida ainda pode fazer a execução falhar.
+
+Recupere somente depois de conferir o estado durável real:
+
+1. Inspecione a execução selecionada com `GET /api/workflows/{workflowId}/runs/{runId}/debug`. Confirme que `latest_workflow_task_failure.reason` é `workflow_entry_arguments_mismatch` e que o original continua aberto. Esse procedimento não reabre uma execução terminal.
+2. Implante código que aceite os argumentos posicionais ou a entrada tipada registrados. Preserve os ids originais de workflow e execução, namespace, fila, compatibilidade de build, histórico e prazos. Nunca edite a entrada armazenada nem a substitua por novos valores padrão de DTO.
+3. Confirme no [roteamento de definições](./polyglot/worker-compatibility-routing.md#definition-fingerprint-evolution) que há um worker elegível. Repair não cria um worker nem comprova compatibilidade de replay.
+4. Use `POST /api/workflows/{workflowId}/runs/{runId}/repair` com a credencial normal de operador autorizado e o namespace. A rota da execução selecionada recusa um alvo histórico em vez de reparar silenciosamente uma execução mais recente. PHP também oferece `Client::repairWorkflow($workflowId, $runId)`; `repair_workflow(workflow_id)` do Python aponta para a instância atual, e Rust não tem um método auxiliar de reparo equivalente.
+5. Verifique se o mesmo original continua com a entrada e o prefixo do histórico registrados e confirma o resultado esperado uma única vez. Um prazo original já vencido continua valendo. Se a substituição ainda for incompatível, inspecione a nova recusa em vez de repetir repair continuamente.
+
+Versões antigas do Server podem armazenar o motivo específico do SDK sem classificá-lo como bloqueio de replay; informar a falha, por si só, não garante a ausência de novas tentativas automáticas. Use a combinação qualificada de runtime e SDK. Consulte os limites por linguagem em [Versionamento](./features/versioning.md#service-sdk-entry-safeguard) e as rotas autenticadas de execução selecionada em [Comandos de workflow](./polyglot/server-api-reference.md#workflow-commands).
+
 ## Aplicação de timeouts do workflow {#workflow-timeout-enforcement}
 
 Quando `StartOptions::withExecutionTimeout()` ou

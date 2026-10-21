@@ -33,6 +33,28 @@ Los workers solicitan namespace, cola y cohorte compatible. La selección evita 
 
 La reclamación verifica la compatibilidad original y la identidad del worker. Un worker incompatible no obtiene una concesión porque falte otra compilación. El vencimiento de una concesión tampoco amplía la compatibilidad.
 
+## Evolución del fingerprint de la definición {#definition-fingerprint-evolution}
+
+**Soporte publicado.** Server 2.9.9 y los SDK PHP 2.5.4, Python 2.6.2 y Rust 3.5.6 incorporaron las protecciones de entrada y el comportamiento de enrutamiento y recuperación descritos a continuación. Son las versiones mínimas para estas funciones; instale las versiones estables actuales para recibir correcciones de seguridad.
+
+La asignación original de build y el fingerprint de la definición responden a preguntas diferentes. Una nueva compilación compatible con replay puede mantener la familia de build mientras cambia el fingerprint de su código. Por defecto, Server prefiere un worker elegible con el fingerprint registrado en `WorkflowStarted`. Si no queda ninguno, una definición modificada solo puede reclamar la tarea original cuando su worker anuncia `workflow_entry_arguments_validation`. Esta capacidad promete rechazar antes de entrar sin hacer fallar la ejecución de negocio. No se deduce del lenguaje del runtime ni de la versión del protocolo; añadir manualmente esa cadena no hace segura una implementación de worker insegura.
+
+La alternativa sigue exigiendo el namespace, la task queue, el tipo de workflow, el build y las capacidades de replay originales. La ejecución conserva su fingerprint y sus instantáneas de admisión registrados. El SDK debe validar la entrada original y reproducir los comandos confirmados; un cambio de código, un marcador de versión o una inscripción correcta no demuestra que ese replay vaya a completarse. Reinicie el código modificado con un worker id nuevo, porque una inscripción activa no puede cambiar el fingerprint anunciado.
+
+El detalle de ejecución, su depuración seleccionada, las respuestas de repair y el detalle de task queue exponen `definition_routing`:
+
+| Estado | Significado y acción |
+| --- | --- |
+| `matching_definition_available` / `matching_definition_preferred` | Hay capacidad elegible de la definición registrada o tiene preferencia frente al worker modificado. |
+| `replay_required` | Una definición modificada con la capacidad adecuada puede reclamar. Aún deben completarse la validación de entrada y el replay estricto. No es un diagnóstico de bloqueo. |
+| `entry_validation_unavailable` | La sustitución carece de la capacidad de validación de entrada. Actualice el SDK o restaure la definición registrada. |
+| `no_eligible_worker` / `worker_definition_missing` / `recorded_definition_missing` | Investigue la capacidad o los datos de fingerprint ausentes y conserve las protecciones de enrutamiento originales. |
+| `pinning_disabled` | La preferencia por el código coincidente está desactivada; las demás comprobaciones de claim y replay siguen vigentes. |
+
+`blocked = true` describe una tarea de workflow lista y ya disponible que no tiene una ruta de definición elegible. El detalle de cola muestra como máximo diez ejecuciones e indica si hay más ejecuciones listas; no cuenta todas las ejecuciones pasivas o bloqueadas. Repair no puede fabricar un worker coincidente ni reescribir el historial. Tras un rechazo real de entrada, siga el [procedimiento de recuperación del mismo original](../failures-and-recovery.md#service-entry-recovery).
+
+`DW_V2_PIN_TO_RECORDED_FINGERPRINT=false` elimina la preferencia por el código coincidente. No elimina las asignaciones de build, los límites de namespace/cola/tipo, la identidad de inscripción, el fencing de leases ni el replay estricto. No sustituye al SDK seguro ni a la actualización por la ruta predeterminada. Los runtimes anteriores pueden dejar una definición modificada atascada sin diagnóstico o reintentar un rechazo de entrada sin clasificar; use la combinación exacta de runtime y SDK validada.
+
 ## Qué deben configurar los operadores {#what-operators-should-configure}
 
 En PHP embebido configura la familia actual y las admitidas explícitamente:

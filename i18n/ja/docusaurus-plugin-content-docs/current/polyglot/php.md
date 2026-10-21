@@ -121,6 +121,16 @@ if ($selected->key === 'deadline') {
 
 選択は非勝者をキャンセルしません。最終結果を消費するにはハンドルの `await()`、明示的なキャンセルを記録するには `cancel()` を呼びます。コールド Worker または完了済み履歴のリプレイは、重複や後続の入力・終了イベントが別の順で届いても、記録した勝者を消費します。`cancel()` は void を返し、終了結果を報告しません。キャンセルが勝ったことを証明するのは `SelectionOperationCancelled` 履歴だけです。リプレイは印のないキャンセル要求を越えて進み、操作が先に完了していた場合、`await()` は引き続きその結果を返します。
 
+## エントリの互換性と復旧 {#entry-compatibility-and-recovery}
+
+**公開済みのサポートです。** PHP SDK 2.5.4 で以下のエントリ保護が導入され、Server 2.9.9 でルーティングと復旧がサポートされました。これらは機能の最小対応バージョンです。セキュリティ修正を含む最新の安定版をインストールしてください。
+
+管理対象 Worker は、ハンドラーの Fiber に入る前に記録済みの位置引数を確認します。必須引数の不足や宣言された PHP 型との不整合は `DurableWorkflow\Exception\WorkflowEntryArgumentsMismatch` を発生させ、タスク理由 `workflow_entry_arguments_mismatch` を報告します。省略可能な引数の既定値は入力が省略された場合だけ適用され、互換性のない記録済み値を置き換えません。進入に成功した後の `TypeError` は引き続きアプリケーションの失敗です。
+
+Worker は `workflow_entry_arguments_validation` を自動的に通知します。対応する Server 機能があれば、拒否されたタスクはリプレイがブロックされ、元の実行は非終端のままです。古いランタイムは失敗したタスクを再試行する場合があるため、SDK のアップグレードだけでは復旧契約全体は成立しません。
+
+`Client::describeWorkflow($workflowId, $runId)` と実行指定のデバッグエンドポイントで元の実行を調べます。互換コードに戻してから `Client::repairWorkflow($workflowId, $runId)` を呼び、入力、履歴、ルーティング識別情報、期限を変えずに同じ実行が再開することを確認してください。この失敗をワークフロー本体で捕捉したり、互換性のないコードに対して修復を繰り返したりしてはいけません。[サービスモードの復旧手順](../failures-and-recovery.md#service-entry-recovery)と[定義ルーティング](./worker-compatibility-routing.md#definition-fingerprint-evolution)を参照してください。
+
 ## フレームワークのサービスモードと組み込み Laravel {#framework-service-mode-and-embedded-laravel}
 
 同じパッケージはファーストパーティの [Laravel サービスモード](https://github.com/durable-workflow/sdk-php#laravel-service-mode)と [Symfony サービスモード](https://github.com/durable-workflow/sdk-php#symfony-service-mode)のブリッジを同梱します。Cloud または Server に接続しながら、フレームワークの依存性注入、設定、ログ、コンソール Worker、テスト用 fake を維持します。

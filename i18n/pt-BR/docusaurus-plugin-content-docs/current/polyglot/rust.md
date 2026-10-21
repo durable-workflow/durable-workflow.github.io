@@ -431,6 +431,16 @@ durável. `patched(change_id)` fornece a forma booleana de rollout, e
 drenado. Veja [Efeitos colaterais](/docs/features/side-effects/) e
 [Versionamento](/docs/features/versioning/) para a semântica durável compartilhada.
 
+## Compatibilidade de entrada e recuperação {#entry-compatibility-and-recovery}
+
+**Suporte publicado.** O SDK Rust 3.5.6 introduziu a proteção de entrada abaixo, com roteamento e recuperação no Server 2.9.9. Essas são as versões mínimas para esses recursos; instale as versões estáveis atuais para receber correções de segurança.
+
+`Worker::register_typed_workflow` e os adaptadores tipados com estado desserializam a entrada registrada antes de invocar o handler da aplicação ou sua fábrica de estado. Um formato de entrada incompatível informa o tipo de falha de tarefa `WorkflowEntryArgumentsMismatch` e o motivo `workflow_entry_arguments_mismatch`, sem enviar `fail_workflow`. O erro local do SDK é `Error::HandlerType` para entrada de workflow, com o workflow e o tipo Rust esperado em vez do valor registrado. Handlers de workflow de baixo nível não recebem novas verificações de assinatura Rust. Um erro retornado pelo handler da aplicação após a entrada bem-sucedida continua sendo uma falha normal de workflow, mesmo que o texto se pareça com o diagnóstico de entrada.
+
+O worker gerenciado anuncia `workflow_entry_arguments_validation` automaticamente. Um Server qualificado mantém a tarefa com falha bloqueada para replay e deixa a execução original não terminal. Runtimes antigos podem repetir a tarefa, portanto somente o SDK não estabelece o contrato completo de recuperação.
+
+Use `Client::describe_workflow_run(workflow_id, run_id)` para inspecionar o original e o endpoint de depuração da execução selecionada para consultar o motivo da tarefa. Restaure a decodificação de entrada e o código compatíveis antes de usar a rota HTTP de reparo selecionada no [procedimento de recuperação](../failures-and-recovery.md#service-entry-recovery). Este crate não tem um método auxiliar `repair_workflow`. Mantenha entrada, histórico, namespace, fila, build e prazos originais; versione as alterações de comandos duráveis dentro de um handler compatível e valide o replay a frio. Consulte o [roteamento de definições](./worker-compatibility-routing.md#definition-fingerprint-evolution).
+
 ## Cancelar, terminar e tratar resultados terminais {#cancel-terminate-and-handle-terminal-outcomes}
 
 No modo de serviço, `cancel_workflow` e `terminate_workflow` fecham a execução

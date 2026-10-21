@@ -49,7 +49,7 @@ A proteção **não** reinterpreta exceções lançadas pelo corpo do workflow c
 
 ### Os SDKs em modo de serviço têm limites separados {#service-sdk-entry-boundaries}
 
-Uma correção no Core embarcado não muda o processo SDK que executa o código do workflow em modo de serviço. Estes são os limites publicados verificados no código-fonte; uma validação de entrada recuperável equivalente continua aberta em [shared #221](https://github.com/durable-workflow/.github/issues/221):
+Uma correção no Core integrado não altera o processo do SDK que executa workflows no modo de serviço. Os SDKs publicados mais antigos abaixo são anteriores à proteção de entrada de serviço acompanhada na [issue compartilhada #221](https://github.com/durable-workflow/.github/issues/221):
 
 | SDK publicado | Comportamento da associação de entrada |
 | --- | --- |
@@ -58,6 +58,18 @@ Uma correção no Core embarcado não muda o processo SDK que executa o código 
 | [Rust 3.5.5](https://github.com/durable-workflow/sdk-rust/tree/4d5047ba9da39785512340b0975ce28da09f0cee) | O adaptador tipado desserializa a entrada antes de chamar o handler de assinatura fixa. Mudar o tipo da requisição pode falhar nessa decodificação. Isso difere da associação posicional do PHP/Python; uma recusa incidental por histórico não consumido não é garantia de proteção recuperável de assinaturas. |
 
 Mantenha a compatibilidade de entrada em modo serviço e a qualificação real dos SDKs separadas da versão embutida publicada. Não capture todo `TypeError` ou todo erro de handler Rust para chamá-lo de seguro para replay: isso esconderia falhas reais da aplicação.
+
+### Proteção de entrada dos SDKs de serviço {#service-sdk-entry-safeguard}
+
+**Suporte publicado.** O Server 2.9.9 e os SDKs PHP 2.5.4, Python 2.6.2 e Rust 3.5.6 introduziram as proteções de entrada e o comportamento de roteamento e recuperação descritos abaixo. Essas são as versões mínimas para esses recursos; instale as versões estáveis atuais para receber correções de segurança.
+
+Os SDKs preparados validam a entrada registrada antes de executar o código de workflow da aplicação. Uma entrada incompatível informa `workflow_entry_arguments_mismatch` como falha de uma **tarefa** de workflow bloqueada para replay, sem emitir `fail_workflow` nem encerrar a **execução** de negócio. A entrada, a identidade de workflow e execução, o histórico confirmado, a fixação do build e os prazos originais permanecem inalterados. PHP valida os argumentos posicionais obrigatórios e os tipos PHP declarados. Python faz a vinculação à assinatura para verificar a quantidade de argumentos e os valores padrão; as anotações não passam a impor tipos em tempo de execução. Os adaptadores tipados de Rust validam a decodificação da entrada antes de chamar o handler ou sua fábrica de estado. Handlers Rust de baixo nível continuam responsáveis por tratar a entrada da aplicação.
+
+O campo específico da tarefa no Server, `failure_reason`, é `workflow_entry_arguments_mismatch`; `replay_blocked_reason` continua sendo o genérico `worker_reported_replay_failure`. Inspecione `latest_workflow_task_failure.reason` na resposta de depuração da execução selecionada. Não confunda esses campos com o diagnóstico do Core integrado acima. Se o código da aplicação já tiver iniciado corretamente e lançar um `TypeError`, retornar um erro de handler Rust ou falhar de outra forma, o comportamento normal de falha de negócio continua valendo.
+
+Restaure código que aceite a entrada original registrada e siga o [procedimento suportado de recuperação do mesmo original](../failures-and-recovery.md#service-entry-recovery). Não substitua a entrada por valores padrão de um DTO, altere o histórico ou reinicie um prazo. Essa proteção não reabre um original que um worker antigo já tenha tornado terminal.
+
+O roteamento seguro para uma substituição também exige a [capacidade de validação de entrada do worker](../polyglot/worker-compatibility-routing.md#definition-fingerprint-evolution). Um fingerprint diferente não comprova compatibilidade de replay nem justifica reescrever o fingerprint original de uma execução. Versione as mudanças de comandos duráveis dentro de um método de entrada compatível e valide o replay a frio antes de promover o build.
 
 ## Uso de `getVersion` {#using-getversion}
 

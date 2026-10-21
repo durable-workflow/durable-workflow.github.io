@@ -550,7 +550,7 @@ und sind daher für Cron-Betriebsskripte sicher.
 
 ## Workflows definieren {#defining-workflows}
 
-Workflows sind mit `@workflow.defn` dekorierte Python-Klassen. Die Methode `run` ist ein Generator, der Befehle an den Server ausgibt.
+Workflows sind mit `@workflow.defn` dekorierte Python-Klassen. Die Methode `run` ist eine gewöhnliche synchrone Funktion oder ein synchroner Generator, der dauerhafte Befehle an den Server ausgibt. Verwenden Sie die Generatorform, wenn der Workflow dauerhafte Arbeit ausführen muss; `async def run` wird nicht unterstützt.
 
 ```python
 from durable_workflow import workflow
@@ -648,6 +648,25 @@ Ergebnisse. PHP und Rust bieten derzeit keine APIs zur Update-Validator-Implemen
 und melden diese Abwesenheit in ihren Workflow-Verträgen, statt
 Validator-Parität zu beanspruchen.
 
+### Lebenszyklus der Handler {#handler-lifecycle}
+
+**Veröffentlichte Validierung.** Python SDK 2.6.2 hat die folgenden Handler-Schutzprüfungen eingeführt. Asynchrone, vom Server geroutete Abfragen und Update-Validatoren werden weiterhin unterstützt. Den korrigierten Umfang beschreibt [SDK #177](https://github.com/durable-workflow/sdk-python/issues/177#issuecomment-6296781770).
+
+Jedes Replay erstellt vor der Ausführung von `run()` eine neue Workflow-Instanz. Bereits beim Workflow-Start aufgezeichnete Signale werden angewendet, nachdem `run()` sein erstes `yield` erreicht hat. Konstruktor und Initialisierung vor diesem `yield` laufen daher zuerst. Signal- und Update-Handler verändern diesen durch Replay hergestellten Zustand. Abfragen untersuchen ihn, ohne dauerhaften Zustand zu ändern; Update-Validatoren prüfen vor der Annahme einen anschließend verworfenen Replay-Zustand. Dauerhafte Aktivitäten, Timer und Kind-Workflow-Befehle gehören in `run()`, nicht in einen Handler.
+
+| Handler | Unterstützte Form und Fehlerfolge |
+| --- | --- |
+| `@workflow.signal` | Synchrone Funktion. Eine Ausnahme beim Anwenden des Signals während des Replays lässt den Workflow-Lauf fehlschlagen. |
+| `@workflow.update` | Synchrone Funktion. Eine Handler-Ausnahme lässt dieses Update fehlschlagen. |
+| `@workflow.update_validator` oder `@update_method.validator` | Synchrone Funktion oder `async def` unter dem Worker. Eine Ausnahme lehnt das Update vor seiner Annahme ab. |
+| `@workflow.query` | Synchrone Funktion oder `async def` unter dem Worker. Eine Handler-Ausnahme lässt die Abfrage fehlschlagen, nicht den Workflow-Lauf. |
+
+Die Validierung lehnt Coroutine-Funktionen für Signale und Updates ab. Generator- und asynchrone Generatorfunktionen werden für **alle** Arten dekorierter Handler abgelehnt, einschließlich Abfragen und Validatoren. Sie löst bei Definition, Registrierung oder Replay `InvalidWorkflowDefinition` aus, auch bei geerbten Handlern und in Offline-Werkzeugen. Synchrone Wrapper für Signale und Updates können die Prüfungen nicht durch die Rückgabe asynchroner Werte umgehen. Generatorwerte und asynchrone Generatorwerte werden bei jeder Handler-Art abgelehnt. Diese Einschränkungen verbieten nicht den synchronen Generator von `run()`.
+
+Bei einer vom Server gerouteten Abfrage wartet der Worker ausdrücklich auf ein asynchrones Ergebnis, unter der ursprünglichen Abfragefrist sowie der ursprünglichen Claim- und Abbruchautorität. Dieses Warten gibt weder ein neues Budget noch erlaubt es ein Ergebnis nach Verlust der Autorität. Bei der Prüfung vor Annahme wartet der Worker ebenfalls auf ein asynchrones Validatorergebnis, das anhand eines anschließend verworfenen Replay-Zustands ermittelt wird.
+
+Die lokalen synchronen Hilfsmethoden können nicht asynchron warten. Dabei lehnt `workflow.query_state()` ein asynchrones Ergebnis mit `QueryFailed` ab, und `workflow.validate_update()` lehnt es mit `UpdateRejected` ab. Beide schließen zurückgegebene Coroutinen, statt sie als Operationsergebnisse nach außen gelangen zu lassen.
+
 ### Workflow-Kontext {#workflow-context}
 
 Der an `run` übergebene `WorkflowContext` bietet deterministische Operationen:
@@ -668,6 +687,16 @@ Der an `run` übergebene `WorkflowContext` bietet deterministische Operationen:
 | `ctx.random()` | Zufallsgenerator mit festgelegtem Startwert |
 | `ctx.uuid4()` | Deterministische UUID |
 | `ctx.logger` | Beim Replay stummer Logger |
+
+### Kompatibilität am Einstieg und Wiederherstellung {#entry-compatibility-and-recovery}
+
+**Veröffentlichte Unterstützung.** Python SDK 2.6.2 hat den nachfolgenden Einstiegsschutz eingeführt, ergänzt durch Routing und Wiederherstellung in Server 2.9.9. Dies sind die Mindestversionen für diese Funktionen. Installieren Sie aktuelle stabile Versionen, um Sicherheitskorrekturen zu erhalten.
+
+Vor dem Aufruf von `run(ctx, *start_input)` bindet der Worker die aufgezeichneten Argumente an die Einstiegssignatur. Ein fehlendes erforderliches Argument oder eine unpassende Argumentanzahl löst vor der Ausführung des Rumpfs `WorkflowEntryArgumentsMismatchError` mit dem Grund `workflow_entry_arguments_mismatch` aus. Standardwerte ergänzen nur ausgelassene Argumente. Python-Annotationen werden weiterhin nicht erzwungen: Eine geänderte Annotation prüft oder konvertiert keine aufgezeichneten Daten. Ein `TypeError` im erfolgreich betretenen normalen Rumpf oder Generatorrumpf bleibt ein Anwendungsfehler.
+
+Der Worker kündigt `workflow_entry_arguments_validation` automatisch an. Mit einem qualifizierten Server wird die fehlgeschlagene Aufgabe für Replay blockiert, während der ursprüngliche Lauf nichtterminal bleibt. Ältere Laufzeiten können die Aufgabe stattdessen wiederholen; die SDK-seitige Ablehnung allein belegt nicht den vollständigen Wiederherstellungsvertrag.
+
+Prüfen Sie den genauen Lauf mit `await client.describe_workflow_run(workflow_id, run_id)` und dem Debug-Endpunkt für den ausgewählten Lauf. Verwenden Sie nach Wiederherstellung einer kompatiblen Einstiegsmethode die laufbezogene HTTP-Reparaturroute aus dem [Wiederherstellungsverfahren](../failures-and-recovery.md#service-entry-recovery). `await client.repair_workflow(workflow_id)` und `handle.repair()` ermitteln dagegen den aktuellen Lauf der Instanz; keine der Methoden akzeptiert eine Lauf-ID als Argument. Bewahren Sie ursprüngliche Eingabe, Historie, Namespace, Warteschlange, Build und Fristen. Platzieren Sie bei Befehlsänderungen `ctx.get_version` innerhalb dieser kompatiblen Methode und qualifizieren Sie kaltes Replay anhand des [Routings nach Definition](./worker-compatibility-routing.md#definition-fingerprint-evolution).
 
 ### Workflow-Zeit und dauerhafte Warteoperationen {#workflow-time-and-durable-waits}
 

@@ -204,6 +204,16 @@ Historie `SelectionOperationCancelled` belegt, dass Abbruch gewonnen hat.
 Replay geht über eine unmarkierte Abbruchanfrage hinweg. Wurde die Operation
 zuerst abgeschlossen, liefert `await()` weiterhin dieses Ergebnis.
 
+## Kompatibilität am Einstieg und Wiederherstellung {#entry-compatibility-and-recovery}
+
+**Veröffentlichte Unterstützung.** PHP SDK 2.5.4 hat den nachfolgenden Einstiegsschutz eingeführt, ergänzt durch Routing und Wiederherstellung in Server 2.9.9. Dies sind die Mindestversionen für diese Funktionen. Installieren Sie aktuelle stabile Versionen, um Sicherheitskorrekturen zu erhalten.
+
+Der verwaltete Worker prüft die aufgezeichnete positionelle Eingabe des Handlers vor dem Eintritt in dessen Fiber. Fehlende erforderliche Argumente oder inkompatible deklarierte PHP-Typen lösen `DurableWorkflow\Exception\WorkflowEntryArgumentsMismatch` aus und melden den Aufgabengrund `workflow_entry_arguments_mismatch`. Optionale Standardwerte gelten nur für ausgelassene Eingaben; sie ersetzen niemals einen inkompatiblen aufgezeichneten Wert. Ein `TypeError` nach erfolgreichem Einstieg bleibt ein Anwendungsfehler.
+
+Der Worker kündigt `workflow_entry_arguments_validation` automatisch an. Mit der passenden Serverunterstützung wird eine abgelehnte Aufgabe für Replay blockiert, während der ursprüngliche Lauf nichtterminal bleibt. Eine ältere Laufzeit kann die fehlgeschlagene Aufgabe stattdessen wiederholen; ein SDK-Upgrade allein belegt daher nicht den vollständigen Wiederherstellungsvertrag.
+
+Prüfen Sie das Original mit `Client::describeWorkflow($workflowId, $runId)` und dem Debug-Endpunkt für den ausgewählten Lauf. Stellen Sie kompatiblen Code wieder her, bevor Sie `Client::repairWorkflow($workflowId, $runId)` aufrufen. Prüfen Sie anschließend, dass derselbe Lauf fortgesetzt wird, ohne Eingabe, Historie, Routing-Identität oder Fristen zu ändern. Fangen Sie diesen Fehler nicht im Workflow-Rumpf ab und reparieren Sie inkompatiblen Code nicht immer wieder. Siehe [Wiederherstellung im Servicemodus](../failures-and-recovery.md#service-entry-recovery) und [Routing nach Definition](./worker-compatibility-routing.md#definition-fingerprint-evolution).
+
 ## Framework-Service-Modus und eingebettetes Laravel {#framework-service-mode-and-embedded-laravel}
 
 Dasselbe Paket liefert offizielle Brücken für den

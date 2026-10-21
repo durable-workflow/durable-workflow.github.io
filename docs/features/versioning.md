@@ -49,7 +49,7 @@ The safeguard does **not** reinterpret exceptions thrown by the workflow body as
 
 ### Service SDKs Have Separate Boundaries {#service-sdk-entry-boundaries}
 
-An embedded Core fix does not change the SDK process that executes service-mode workflow code. The following are the source-verified published boundaries; equivalent recoverable entry validation remains open in [shared #221](https://github.com/durable-workflow/.github/issues/221):
+An embedded Core fix does not change the SDK process that executes service-mode workflow code. The following older published SDKs predate the service entry safeguard tracked in [shared #221](https://github.com/durable-workflow/.github/issues/221):
 
 | Published SDK | Entry-binding behavior |
 | --- | --- |
@@ -58,6 +58,18 @@ An embedded Core fix does not change the SDK process that executes service-mode 
 | [Rust 3.5.5](https://github.com/durable-workflow/sdk-rust/tree/4d5047ba9da39785512340b0975ce28da09f0cee) | The typed adapter deserializes input before calling its fixed-signature handler. A changed request type can fail that decoding step. This differs from PHP/Python positional binding; an incidental unconsumed-history refusal is not a promised recoverable signature safeguard. |
 
 Keep service input compatibility and actual SDK qualification separate from the embedded release. Do not catch every `TypeError` or every Rust handler error and label it replay-safe: that would hide real application failures.
+
+### Service Entry Safeguard {#service-sdk-entry-safeguard}
+
+**Released support.** Server 2.9.9 and PHP SDK 2.5.4, Python SDK 2.6.2 and Rust SDK 3.5.6 introduced the entry safeguards and routing/recovery behavior below. These are minimum feature versions; install current stable releases for security fixes.
+
+The prepared SDKs validate recorded entry input before application workflow code runs. Incompatible input reports `workflow_entry_arguments_mismatch` as a failed, replay-blocked workflow **task**, without issuing `fail_workflow` or closing the business **run**. Input, workflow/run identity, committed history, build pin and original deadlines remain unchanged. PHP validates required positional arguments and declared PHP types. Python uses signature binding for arity and defaults; annotations do not become runtime type checks. Rust's typed adapters validate input decoding before calling the handler or its state factory. Raw Rust handlers remain responsible for their own application input handling.
+
+The Server's specific task `failure_reason` is `workflow_entry_arguments_mismatch`; `replay_blocked_reason` remains the generic `worker_reported_replay_failure`. Inspect `latest_workflow_task_failure.reason` in the selected run's debug response. Do not confuse these fields with the embedded Core diagnostic above. Successfully bound application code that throws a `TypeError`, returns a Rust handler error or otherwise fails still follows ordinary business-failure behavior.
+
+Restore code that accepts the original recorded input, then use the [supported same-original recovery procedure](../failures-and-recovery.md#service-entry-recovery). Do not replace input with DTO defaults, alter history or reset a deadline. This safeguard does not reopen an original that an older worker already made terminal.
+
+Safe replacement routing also needs the [entry-validation worker capability](../polyglot/worker-compatibility-routing.md#definition-fingerprint-evolution). A changed fingerprint is neither proof of replay compatibility nor a reason to rewrite a run's original fingerprint. Version durable-command changes inside a compatible entry method and test cold replay before promotion.
 
 ## Using `getVersion`
 

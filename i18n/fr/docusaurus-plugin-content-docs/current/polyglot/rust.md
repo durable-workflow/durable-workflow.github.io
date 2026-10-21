@@ -446,6 +446,16 @@ la forme booléenne de déploiement et `deprecate_patch(change_id)` préserve
 le marqueur après la fin des anciennes branches. Les [effets de bord](/docs/features/side-effects/)
 et la [gestion des versions](/docs/features/versioning/) décrivent ces règles communes.
 
+## Compatibilité à l’entrée et récupération {#entry-compatibility-and-recovery}
+
+**Prise en charge publiée.** Le SDK Rust 3.5.6 a introduit la protection d’entrée ci-dessous, avec le routage et la récupération dans Server 2.9.9. Ce sont les versions minimales pour ces fonctions. Installez les versions stables actuelles pour bénéficier des correctifs de sécurité.
+
+`Worker::register_typed_workflow` et les adaptateurs typés avec état désérialisent l’entrée enregistrée avant d’appeler le handler applicatif ou sa fabrique d’état. Une structure d’entrée incompatible signale le type d’échec de tâche `WorkflowEntryArgumentsMismatch` et le motif `workflow_entry_arguments_mismatch`, sans envoyer `fail_workflow`. L’erreur locale du SDK pour l’entrée d’un workflow est `Error::HandlerType` ; elle indique le workflow et le type Rust attendu plutôt que la valeur enregistrée. Les handlers de workflow bruts ne reçoivent pas de nouveaux contrôles de signature Rust. Une erreur renvoyée par un handler applicatif entré avec succès reste un échec ordinaire de workflow, même si son texte ressemble au diagnostic d’entrée.
+
+Le worker géré annonce automatiquement `workflow_entry_arguments_validation`. Un Server qualifié conserve la tâche en échec comme bloquée pour la relecture et laisse l’exécution d’origine non terminale. Les anciens runtimes peuvent relancer cette tâche ; le SDK seul n’établit donc pas le contrat complet de récupération.
+
+Utilisez `Client::describe_workflow_run(workflow_id, run_id)` pour inspecter l’original et l’endpoint de débogage ciblant l’exécution pour lire le motif de tâche. Restaurez un décodage d’entrée et du code compatibles avant d’utiliser la route HTTP de réparation ciblant l’exécution dans la [procédure de récupération](../failures-and-recovery.md#service-entry-recovery). Cette crate n’a pas de méthode de commodité `repair_workflow`. Préservez l’entrée, l’historique, le namespace, la file, le build et les échéances d’origine ; versionnez les changements de commandes durables dans un handler compatible et qualifiez la relecture à froid. Consultez le [routage des définitions](./worker-compatibility-routing.md#definition-fingerprint-evolution).
+
 ## Annuler, arrêter de force et traiter les résultats terminaux {#cancel-terminate-and-handle-terminal-outcomes}
 
 En mode service, `cancel_workflow` et `terminate_workflow` ferment tous deux

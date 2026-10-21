@@ -33,6 +33,28 @@ Workers solicitam namespace, fila e coorte compatível. A seleção evita oferec
 
 A reivindicação verifica compatibilidade original e identidade do worker. Um worker incompatível não obtém concessão porque outro build está ausente. A expiração também não amplia a compatibilidade.
 
+## Evolução do fingerprint da definição {#definition-fingerprint-evolution}
+
+**Suporte publicado.** O Server 2.9.9 e os SDKs PHP 2.5.4, Python 2.6.2 e Rust 3.5.6 introduziram as proteções de entrada e o comportamento de roteamento e recuperação descritos abaixo. Essas são as versões mínimas para esses recursos; instale as versões estáveis atuais para receber correções de segurança.
+
+A fixação original do build e o fingerprint da definição respondem a perguntas diferentes. Uma nova compilação compatível com replay pode manter a família de build enquanto muda o fingerprint do código. Por padrão, o Server prefere um worker elegível com o fingerprint registrado em `WorkflowStarted`. Se não restar nenhum, uma definição alterada só pode reivindicar a tarefa original quando seu worker anuncia `workflow_entry_arguments_validation`. Essa capacidade promete recusar antes da entrada sem fazer a execução de negócio falhar. Ela não é inferida da linguagem do runtime nem da versão do protocolo; adicionar a string manualmente não torna segura uma implementação insegura de worker.
+
+O caminho alternativo ainda exige namespace, task queue, tipo de workflow, build e capacidades de replay originais. A execução mantém o fingerprint e os snapshots de admissão registrados. O SDK precisa validar a entrada original e reproduzir os comandos confirmados; uma alteração de código, um marcador de versão ou um registro bem-sucedido não comprova que o replay terá sucesso. Reinicie o código alterado com um worker id novo, pois um registro ativo não pode mudar o fingerprint anunciado.
+
+O detalhe da execução, sua depuração selecionada, as respostas de repair e o detalhe da task queue expõem `definition_routing`:
+
+| Status | Significado e ação |
+| --- | --- |
+| `matching_definition_available` / `matching_definition_preferred` | Há capacidade elegível com a definição registrada ou ela tem preferência sobre o worker alterado. |
+| `replay_required` | Uma definição alterada com a capacidade necessária pode reivindicar a tarefa. A validação de entrada e o replay estrito ainda precisam passar. Não é um diagnóstico de bloqueio. |
+| `entry_validation_unavailable` | A substituição não tem a capacidade de validação de entrada. Atualize o SDK ou restaure a definição registrada. |
+| `no_eligible_worker` / `worker_definition_missing` / `recorded_definition_missing` | Investigue a capacidade ou os dados de fingerprint ausentes, preservando as proteções originais de roteamento. |
+| `pinning_disabled` | A preferência pelo código correspondente está desativada; as demais verificações de claim e replay continuam valendo. |
+
+`blocked = true` descreve uma tarefa de workflow pronta e já disponível sem uma rota de definição elegível. O detalhe da fila inclui no máximo dez execuções e informa se existem outras prontas; não é uma contagem completa de todas as execuções passivas ou bloqueadas. Repair não consegue criar um worker correspondente nem reescrever o histórico. Após uma recusa real de entrada, siga o [procedimento de recuperação do mesmo original](../failures-and-recovery.md#service-entry-recovery).
+
+`DW_V2_PIN_TO_RECORDED_FINGERPRINT=false` remove a preferência pelo código correspondente. Não remove fixações de build, limites de namespace/fila/tipo, identidade de registro, fencing de leases nem replay estrito. Não substitui o SDK seguro nem a atualização pelo caminho padrão. Runtimes antigos podem deixar uma definição alterada parada sem diagnóstico ou repetir uma recusa de entrada não classificada; use a combinação exata e qualificada de runtime e SDK.
+
 ## O que os operadores devem configurar {#what-operators-should-configure}
 
 No PHP embutido, configure a família atual e as explicitamente aceitas:

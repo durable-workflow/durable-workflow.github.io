@@ -98,6 +98,22 @@ class MyNonRetryableActivity extends Activity
 
 失敗して終端状態になった実行では、履歴を保持し、外部の副作用を照合してから、アプリケーションが新しいワークフローを開始すべきか判断します。業務処理の繰り返しにはアプリケーション側の冪等性を使ってください。ワークフロー全体の自動再試行や終端実行の再開はありません。[ワークフローレベルの再試行](#workflow-level-retry) を参照してください。
 
+## サービスモードのエントリ拒否と復旧 {#service-entry-recovery}
+
+**公開済みのサポートです。** Server 2.9.9 と PHP SDK 2.5.4、Python SDK 2.6.2、Rust SDK 3.5.6 で、以下のエントリ保護とルーティング・復旧動作が導入されました。これらは機能の最小対応バージョンです。セキュリティ修正を含む最新の安定版をインストールしてください。
+
+エントリ不整合は、アプリケーションのワークフローコードが動く前のデプロイまたはリプレイの拒否です。アクティビティの再試行でも、終端となる業務上の失敗でもありません。Worker は `failure_reason = workflow_entry_arguments_mismatch` を報告し、Server は次の試行を自動作成せず、失敗したワークフロータスクを `replay_blocked = true` の状態で保持します。汎用の `replay_blocked_reason` は `worker_reported_replay_failure` です。実行は非終端のままで、記録済み入力、履歴、期限も維持されます。これは、ワークフロー本体への進入に成功した後に例外が投げられ、実行そのものが失敗する場合とは異なります。
+
+実際の永続状態を確認してから復旧してください。
+
+1. `GET /api/workflows/{workflowId}/runs/{runId}/debug` で対象の実行を調べます。`latest_workflow_task_failure.reason` が `workflow_entry_arguments_mismatch` で、元の実行がまだ開いていることを確認します。この手順で終端済みの実行を再開することはできません。
+2. 記録済みの位置引数または型付き入力を受け入れるコードをデプロイします。元のワークフロー ID と実行 ID、名前空間、キュー、ビルド互換性、履歴、期限を維持してください。保存済み入力を編集したり、DTO の既定値で置き換えたりしてはいけません。
+3. [定義ルーティング](./polyglot/worker-compatibility-routing.md#definition-fingerprint-evolution)で適格な Worker が利用可能であることを確認します。修復は Worker を作成せず、リプレイ互換性を証明するものでもありません。
+4. 通常の認可済み運用者資格情報と名前空間を指定して、`POST /api/workflows/{workflowId}/runs/{runId}/repair` を使います。実行を指定するルートは、古い実行が対象なら拒否し、新しい実行を黙って修復することはありません。PHP には `Client::repairWorkflow($workflowId, $runId)` もあります。Python の `repair_workflow(workflow_id)` は現在のインスタンスを対象とし、Rust には同等の修復用便利メソッドがありません。
+5. 同じ元の実行が記録済み入力と履歴プレフィックスで再開し、期待する結果を一度だけ記録することを確認します。元の期限がすでに過ぎていても、その期限は適用されます。置き換え後も互換性がなければ、修復を繰り返さず、新しい拒否理由を調べてください。
+
+古い Server は SDK の具体的な理由を保存しても、リプレイのブロックとして分類しない場合があります。そのため、失敗の報告だけで自動再試行しない契約が成立するわけではありません。検証済みのランタイムと SDK の組み合わせを使ってください。言語ごとの境界は[バージョニング](./features/versioning.md#service-sdk-entry-safeguard)、認証付きの実行指定ルートは[ワークフローコマンド](./polyglot/server-api-reference.md#workflow-commands)を参照してください。
+
 ## ワークフローのタイムアウト {#workflow-timeout-enforcement}
 
 `StartOptions::withExecutionTimeout()` または `StartOptions::withRunTimeout()` を設定すると、エンジンはワークフロー実行に期限を記録します。execution timeout は continue-as-new の実行を含む論理ワークフロー全体に適用され、run timeout は新しい実行ごとに設定し直されます。

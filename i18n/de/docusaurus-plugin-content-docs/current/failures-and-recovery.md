@@ -98,6 +98,22 @@ Ein Lauf mit einem zulässigen Aktivitätsversuch bleibt wartend und kann nach e
 
 Bewahren Sie bei einem terminal fehlgeschlagenen Lauf die Historie auf und gleichen Sie externe Seiteneffekte ab, bevor die Anwendung über einen neuen Workflow entscheidet. Sichern Sie wiederholte fachliche Operationen durch anwendungsseitige Idempotenz ab. Es gibt weder automatische Workflow-Wiederholungen noch eine Wiederöffnung terminaler Läufe; siehe [Wiederholungen auf Workflow-Ebene](#workflow-level-retry).
 
+## Ablehnung am Einstieg im Servicemodus und Wiederherstellung {#service-entry-recovery}
+
+**Veröffentlichte Unterstützung.** Server 2.9.9 sowie PHP SDK 2.5.4, Python SDK 2.6.2 und Rust SDK 3.5.6 haben den Einstiegsschutz und das nachfolgend beschriebene Routing-/Wiederherstellungsverhalten eingeführt. Dies sind die Mindestversionen für diese Funktionen. Installieren Sie aktuelle stabile Versionen, um Sicherheitskorrekturen zu erhalten.
+
+Eine Unvereinbarkeit am Einstieg ist eine Bereitstellungs- oder Replay-Ablehnung, bevor Anwendungscode des Workflows ausgeführt wird. Sie ist weder eine Aktivitätswiederholung noch ein terminaler fachlicher Fehler. Der Worker meldet `failure_reason = workflow_entry_arguments_mismatch`, und der Server behält die fehlgeschlagene Workflow-Aufgabe mit `replay_blocked = true`, statt automatisch einen weiteren Versuch anzulegen. Der allgemeine `replay_blocked_reason` lautet `worker_reported_replay_failure`. Der Lauf bleibt nichtterminal; aufgezeichnete Eingabe, Historie und Fristen bleiben erhalten. Das unterscheidet sich von einer Ausnahme im erfolgreich betretenen Workflow-Rumpf, die den Lauf weiterhin fehlschlagen lassen kann.
+
+Stellen Sie den Lauf erst nach Prüfung des tatsächlichen dauerhaften Zustands wieder her:
+
+1. Prüfen Sie den ausgewählten Lauf mit `GET /api/workflows/{workflowId}/runs/{runId}/debug`. Bestätigen Sie, dass `latest_workflow_task_failure.reason` den Wert `workflow_entry_arguments_mismatch` hat und der ursprüngliche Lauf noch offen ist. Dieses Verfahren öffnet keinen terminalen Lauf erneut.
+2. Stellen Sie Code bereit, der die aufgezeichneten positionellen Argumente oder die typisierte Eingabe akzeptiert. Bewahren Sie ursprüngliche Workflow-/Lauf-ID, Namespace, Warteschlange, Build-Kompatibilität, Historie und Fristen. Bearbeiten Sie niemals gespeicherte Eingaben und ersetzen Sie diese nicht durch DTO-Standardwerte.
+3. Prüfen Sie über das [Routing nach Definition](./polyglot/worker-compatibility-routing.md#definition-fingerprint-evolution), dass ein geeigneter Worker verfügbar ist. Eine Reparatur erzeugt keinen Worker und beweist keine Replay-Kompatibilität.
+4. Verwenden Sie `POST /api/workflows/{workflowId}/runs/{runId}/repair` mit den üblichen autorisierten Operator-Zugangsdaten und dem Namespace. Die Route für den ausgewählten Lauf lehnt ein historisches Ziel ab, statt stillschweigend einen neueren Lauf zu reparieren. PHP bietet außerdem `Client::repairWorkflow($workflowId, $runId)`; Pythons `repair_workflow(workflow_id)` zielt auf die aktuelle Instanz, und Rust hat keine entsprechende komfortable Reparaturmethode.
+5. Prüfen Sie, dass derselbe ursprüngliche Lauf mit seiner aufgezeichneten Eingabe und seinem Historienpräfix fortgesetzt wird und sein erwartetes Ergebnis einmal aufzeichnet. Eine bereits abgelaufene ursprüngliche Frist gilt weiterhin. Bleibt der Ersatz inkompatibel, untersuchen Sie die neue Ablehnung, statt die Reparatur wiederholt auszulösen.
+
+Ältere Serverversionen können den spezifischen SDK-Grund speichern, ohne ihn als Replay-Blockade einzustufen. Die Fehlermeldung allein belegt daher noch nicht den Vertrag ohne automatische Wiederholung. Verwenden Sie die qualifizierte Kombination aus Laufzeit und SDK. [Versionierung](./features/versioning.md#service-sdk-entry-safeguard) erläutert die Sprachgrenzen; [Workflow-Befehle](./polyglot/server-api-reference.md#workflow-commands) beschreibt die authentifizierten Routen für ausgewählte Läufe.
+
 ## Workflow-Zeitlimits durchsetzen {#workflow-timeout-enforcement}
 
 Mit `StartOptions::withExecutionTimeout()` oder `StartOptions::withRunTimeout()` speichert die Engine eine Frist im Workflow-Lauf. Die Ausführungsfrist gilt für den gesamten logischen Workflow einschließlich Continue-as-new-Läufen. Die Lauffrist beginnt mit jedem neuen Lauf erneut.

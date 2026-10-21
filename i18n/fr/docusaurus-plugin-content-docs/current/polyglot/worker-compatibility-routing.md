@@ -33,6 +33,28 @@ Les workers demandent un namespace, une file et une cohorte compatible. La séle
 
 La prise vérifie la compatibilité d'origine et l'identité du worker. Un worker incompatible n'obtient pas un bail parce qu'un autre build manque. L'expiration d'un bail n'élargit pas la compatibilité.
 
+## Évolution de l’empreinte de définition {#definition-fingerprint-evolution}
+
+**Prise en charge publiée.** Server 2.9.9 et les SDK PHP 2.5.4, Python 2.6.2 et Rust 3.5.6 ont introduit les protections d’entrée et le comportement de routage et de récupération décrits ci-dessous. Ce sont les versions minimales pour ces fonctions. Installez les versions stables actuelles pour bénéficier des correctifs de sécurité.
+
+Le build fixé à l’origine et l’empreinte de définition répondent à des questions différentes. Une reconstruction compatible avec la relecture peut rester dans la même famille de builds tout en changeant l’empreinte du code source. Par défaut, le Server préfère un worker éligible dont l’empreinte correspond à celle enregistrée à `WorkflowStarted`. S’il n’en reste aucun, une définition modifiée ne peut prendre l’original que si son worker annonce `workflow_entry_arguments_validation`. Cette capacité promet un refus avant l’entrée sans faire échouer l’exécution métier. Elle ne se déduit ni du langage du runtime ni de la version du protocole ; ajouter manuellement cette chaîne ne rend pas sûre une implémentation worker qui ne l’est pas.
+
+Le repli exige toujours le namespace, la file de tâches, le type de workflow, le build et les capacités de relecture d’origine. L’exécution conserve son empreinte enregistrée et ses instantanés d’admission. Le SDK doit valider l’entrée d’origine et relire les commandes validées ; une modification du code, un marqueur de version ou un enregistrement réussi ne prouve pas que cette relecture réussira. Redémarrez le code modifié avec un nouvel identifiant de worker, car un enregistrement actif ne peut pas modifier l’empreinte qu’il annonce.
+
+Le détail d’exécution, le débogage ciblant l’exécution, les réponses de réparation et le détail de la file de tâches exposent `definition_routing` :
+
+| Statut | Sens et action |
+| --- | --- |
+| `matching_definition_available` / `matching_definition_preferred` | Une capacité éligible correspondant à la définition enregistrée est disponible ou préférée au worker modifié. |
+| `replay_required` | Une définition modifiée disposant de la capacité requise peut prendre la tâche. La validation d’entrée et la relecture stricte doivent encore réussir. Ce n’est pas un verdict de blocage. |
+| `entry_validation_unavailable` | Le remplacement ne dispose pas de la capacité de validation d’entrée. Mettez le SDK à niveau ou restaurez la définition enregistrée. |
+| `no_eligible_worker` / `worker_definition_missing` / `recorded_definition_missing` | Inspectez les informations de capacité ou d’empreinte manquantes en préservant les contrôles de routage d’origine. |
+| `pinning_disabled` | La préférence pour le code source correspondant est désactivée ; les autres contrôles de prise de tâche et de relecture restent applicables. |
+
+`blocked = true` décrit une tâche de workflow prête et arrivée à échéance de disponibilité, sans route de définition éligible. Le détail de la file échantillonne au plus dix exécutions et indique si d’autres exécutions prêtes existent ; ce n’est pas un décompte complet des exécutions passives ou bloquées. La réparation ne peut ni créer un worker correspondant ni réécrire l’historique. Après un véritable refus à l’entrée, suivez la [procédure de récupération de la même exécution d’origine](../failures-and-recovery.md#service-entry-recovery).
+
+`DW_V2_PIN_TO_RECORDED_FINGERPRINT=false` supprime la préférence pour le code source correspondant. Cela ne supprime ni les builds fixés, ni les limites de namespace/file/type, ni l’identité d’enregistrement, ni le fencing des leases, ni les contrôles stricts de relecture. Ce réglage ne remplace pas le SDK sûr et la mise à niveau par le chemin par défaut. Les anciens runtimes peuvent laisser silencieusement une définition modifiée sans worker utilisable ou relancer un refus d’entrée non classé ; utilisez la combinaison exacte de runtime et de SDK qualifiée.
+
 ## Configuration opérateur {#what-operators-should-configure}
 
 Pour PHP embarqué, configurez la famille courante et celles explicitement prises en charge :

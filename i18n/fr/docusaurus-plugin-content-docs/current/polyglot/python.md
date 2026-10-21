@@ -549,8 +549,7 @@ Elles peuvent être appelées sans risque depuis des scripts cron opérateur.
 
 ## Définir des workflows {#defining-workflows}
 
-Les workflows sont des classes Python décorées avec `@workflow.defn`. La méthode
-`run` est un générateur qui émet des commandes vers le serveur avec yield.
+Les workflows sont des classes Python décorées avec `@workflow.defn`. La méthode `run` est une fonction synchrone ordinaire ou un générateur synchrone qui émet des commandes durables vers le serveur avec yield. Utilisez la forme générateur lorsque le workflow a besoin de travail durable ; `async def run` n’est pas pris en charge.
 
 ```python
 from durable_workflow import workflow
@@ -648,6 +647,25 @@ restent des résultats typés explicites. PHP et Rust n'exposent actuellement
 pas d'API d'écriture de validateurs et annoncent cette absence dans leurs
 contrats au lieu de revendiquer la parité.
 
+### Cycle de vie des handlers {#handler-lifecycle}
+
+**Validation publiée.** Le SDK Python 2.6.2 a introduit les contrôles de handlers ci-dessous. Les requêtes asynchrones et les validateurs d’updates routés par le serveur restent pris en charge. Consultez [SDK #177](https://github.com/durable-workflow/sdk-python/issues/177#issuecomment-6296781770) pour le périmètre corrigé.
+
+Chaque relecture construit une nouvelle instance de workflow avant d’exécuter `run()`. Les signaux déjà enregistrés au démarrage du workflow sont appliqués après que `run()` atteint son premier `yield` ; le constructeur et l’initialisation précédant ce `yield` passent donc en premier. Les handlers de signaux et d’updates modifient cet état reconstitué. Les requêtes l’inspectent sans changer l’état durable ; les validateurs d’updates inspectent avant l’acceptation un état reconstitué qui ne sera pas conservé. Placez les commandes durables d’activités, de timers et de workflows enfants dans `run()`, pas dans un handler.
+
+| Handler | Forme prise en charge et résultat d’un échec |
+| --- | --- |
+| `@workflow.signal` | Fonction synchrone. Une exception lors de l’application du signal pendant la relecture fait échouer l’exécution du workflow. |
+| `@workflow.update` | Fonction synchrone. Une exception du handler fait échouer cet update. |
+| `@workflow.update_validator` ou `@update_method.validator` | Fonction synchrone ou `async def` sous le Worker. Une exception rejette l’update avant son acceptation. |
+| `@workflow.query` | Fonction synchrone ou `async def` sous le Worker. Une exception du handler fait échouer la requête, pas l’exécution du workflow. |
+
+La validation refuse les fonctions coroutine pour les signaux et les updates, ainsi que les fonctions génératrices ou génératrices asynchrones pour **tous** les types de handlers décorés, y compris les requêtes et les validateurs. Elle lève `InvalidWorkflowDefinition` à la définition, à l’enregistrement ou à la relecture, y compris pour les handlers hérités et les outils hors ligne. Les wrappers synchrones de signaux et d’updates ne peuvent pas contourner ces contrôles en renvoyant des valeurs asynchrones. Le renvoi de générateurs ou de générateurs asynchrones est refusé pour chaque type de handler. Ces restrictions n’interdisent pas le générateur synchrone utilisé par `run()`.
+
+Pour une requête routée par le serveur, le Worker attend explicitement le résultat asynchrone sous l’échéance d’origine de la requête et l’autorité de prise de tâche et d’annulation. Cette attente n’accorde pas de nouveau budget et n’autorise pas de résultat après la perte de l’autorité. Pour la validation précédant l’acceptation, le Worker attend aussi le résultat asynchrone d’un validateur travaillant sur un état reconstitué qui ne sera pas conservé.
+
+Les utilitaires locaux synchrones ne peuvent pas attendre de résultat asynchrone. `workflow.query_state()` refuse un résultat asynchrone avec `QueryFailed` et `workflow.validate_update()` le refuse avec `UpdateRejected`. Ils ferment les coroutines renvoyées au lieu de les laisser devenir des résultats d’opération.
+
 ### Contexte de workflow {#workflow-context}
 
 Le `WorkflowContext` transmis à `run` fournit des opérations déterministes :
@@ -668,6 +686,16 @@ Le `WorkflowContext` transmis à `run` fournit des opérations déterministes :
 | `ctx.random()` | Générateur pseudoaléatoire à graine fixée |
 | `ctx.uuid4()` | UUID déterministe |
 | `ctx.logger` | Logger silencieux pendant la relecture |
+
+### Compatibilité à l’entrée et récupération {#entry-compatibility-and-recovery}
+
+**Prise en charge publiée.** Le SDK Python 2.6.2 a introduit la protection d’entrée ci-dessous, avec le routage et la récupération dans Server 2.9.9. Ce sont les versions minimales pour ces fonctions. Installez les versions stables actuelles pour bénéficier des correctifs de sécurité.
+
+Avant d’appeler `run(ctx, *start_input)`, le worker lie les arguments enregistrés à la signature d’entrée. Un argument obligatoire absent ou une arité incompatible lève `WorkflowEntryArgumentsMismatchError` avec le motif `workflow_entry_arguments_mismatch`, avant l’exécution du corps. Les valeurs par défaut ne complètent que les arguments omis. Les annotations Python ne sont toujours pas imposées : changer une annotation ne valide ni ne convertit les données enregistrées. Un `TypeError` levé dans un corps ordinaire ou générateur après une entrée réussie reste un échec applicatif.
+
+Le worker annonce automatiquement `workflow_entry_arguments_validation`. Avec un Server qualifié, la tâche en échec est bloquée pour la relecture et l’exécution d’origine reste non terminale. Les anciens runtimes peuvent relancer cette tâche ; le refus côté SDK seul n’établit pas le contrat complet de récupération.
+
+Inspectez l’exécution exacte avec `await client.describe_workflow_run(workflow_id, run_id)` et l’endpoint de débogage ciblant l’exécution. Après avoir restauré une méthode d’entrée compatible, utilisez la route HTTP de réparation ciblant l’exécution décrite dans la [procédure de récupération](../failures-and-recovery.md#service-entry-recovery). `await client.repair_workflow(workflow_id)` et `handle.repair()` résolvent au contraire l’exécution actuelle de l’instance ; aucun n’accepte d’argument d’identifiant d’exécution. Préservez l’entrée, l’historique, le namespace, la file, le build et les échéances d’origine. Pour les changements de commandes, placez `ctx.get_version` dans cette méthode compatible et qualifiez la relecture à froid avec le [routage des définitions](./worker-compatibility-routing.md#definition-fingerprint-evolution).
 
 ### Temps du workflow et attentes durables {#workflow-time-and-durable-waits}
 

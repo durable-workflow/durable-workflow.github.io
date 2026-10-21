@@ -442,6 +442,16 @@ Marker erneut. `patched(change_id)` bietet die boolesche Rollout-Form.
 Die gemeinsame dauerhafte Semantik beschreiben [Seiteneffekte](/docs/features/side-effects/)
 und [Versionierung](/docs/features/versioning/).
 
+## Kompatibilität am Einstieg und Wiederherstellung {#entry-compatibility-and-recovery}
+
+**Veröffentlichte Unterstützung.** Rust SDK 3.5.6 hat den nachfolgenden Einstiegsschutz eingeführt, ergänzt durch Routing und Wiederherstellung in Server 2.9.9. Dies sind die Mindestversionen für diese Funktionen. Installieren Sie aktuelle stabile Versionen, um Sicherheitskorrekturen zu erhalten.
+
+`Worker::register_typed_workflow` und die typisierten zustandsbehafteten Adapter deserialisieren aufgezeichnete Eingaben vor dem Aufruf des Anwendungshandlers oder seiner Zustandsfabrik. Eine inkompatible Eingabestruktur meldet den Aufgabenfehlertyp `WorkflowEntryArgumentsMismatch` und den Grund `workflow_entry_arguments_mismatch`, ohne `fail_workflow` zu senden. Der lokale SDK-Fehler für Workflow-Eingaben lautet `Error::HandlerType`; er enthält den Workflow und den erwarteten Rust-Typ statt des aufgezeichneten Werts. Rohe Workflow-Handler erhalten keine neuen Rust-Signaturprüfungen. Ein Fehler aus einem erfolgreich betretenen Anwendungshandler bleibt ein gewöhnlicher Workflow-Fehler, auch wenn sein Text der Einstiegsdiagnose ähnelt.
+
+Der verwaltete Worker kündigt `workflow_entry_arguments_validation` automatisch an. Ein qualifizierter Server behält die fehlgeschlagene Aufgabe als für Replay blockiert bei und lässt den ursprünglichen Lauf nichtterminal. Ältere Laufzeiten können die Aufgabe stattdessen wiederholen; das SDK allein belegt daher nicht den vollständigen Wiederherstellungsvertrag.
+
+Prüfen Sie das Original mit `Client::describe_workflow_run(workflow_id, run_id)` und den Aufgabengrund über den Debug-Endpunkt des ausgewählten Laufs. Stellen Sie kompatible Eingabedekodierung und kompatiblen Code wieder her, bevor Sie die laufbezogene HTTP-Reparaturroute aus dem [Wiederherstellungsverfahren](../failures-and-recovery.md#service-entry-recovery) verwenden. Dieses Crate hat keine Komfortmethode `repair_workflow`. Bewahren Sie ursprüngliche Eingabe, Historie, Namespace, Warteschlange, Build und Fristen. Versionieren Sie dauerhafte Befehlsänderungen innerhalb eines kompatiblen Handlers und qualifizieren Sie kaltes Replay. Siehe [Routing nach Definition](./worker-compatibility-routing.md#definition-fingerprint-evolution).
+
 ## Abbrechen, terminieren und terminale Ergebnisse behandeln {#cancel-terminate-and-handle-terminal-outcomes}
 
 Im Service-Modus schließen `cancel_workflow` und `terminate_workflow` den Lauf

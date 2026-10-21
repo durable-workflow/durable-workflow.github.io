@@ -429,6 +429,16 @@ runs record `max_supported`; existing runs reuse the durable marker.
 drained. See [Side Effects](/docs/features/side-effects/) and
 [Versioning](/docs/features/versioning/) for the shared durable semantics.
 
+## Entry compatibility and recovery {#entry-compatibility-and-recovery}
+
+**Released support.** Rust SDK 3.5.6 introduced the entry safeguard below, with routing and recovery support in Server 2.9.9. These are minimum feature versions; install current stable releases for security fixes.
+
+`Worker::register_typed_workflow` and the typed stateful adapters deserialize recorded input before invoking the application handler or its state factory. An incompatible input shape reports task failure type `WorkflowEntryArgumentsMismatch` and reason `workflow_entry_arguments_mismatch`, without submitting `fail_workflow`. The SDK's local error is `Error::HandlerType` for workflow input, with the workflow and expected Rust type rather than the recorded value. Raw workflow handlers are not given new Rust signature checks. An error returned by a successfully entered application handler remains an ordinary workflow failure, even if its text resembles the entry diagnostic.
+
+The managed worker automatically advertises `workflow_entry_arguments_validation`. A qualified Server retains the failed task as replay-blocked and leaves the original run nonterminal. Older runtimes may retry the task instead, so the SDK alone does not establish the complete recovery contract.
+
+Use `Client::describe_workflow_run(workflow_id, run_id)` to inspect the original and the selected-run debug endpoint for the task reason. Restore compatible input decoding and code before using the selected-run HTTP repair route in the [recovery procedure](../failures-and-recovery.md#service-entry-recovery). This crate has no `repair_workflow` convenience method. Keep original input, history, namespace, queue, build and deadlines; version durable-command changes inside a compatible handler and qualify cold replay. See [definition routing](./worker-compatibility-routing.md#definition-fingerprint-evolution).
+
 ## Cancel, terminate, and handle terminal outcomes
 
 Service-mode `cancel_workflow` and `terminate_workflow` both close the run

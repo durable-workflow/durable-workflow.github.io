@@ -280,7 +280,7 @@ execute the same workflows.
 | `DW_V2_SUPPORTED_COMPATIBILITIES` | unset | Comma-separated compatibility markers this worker accepts, or `*`. | `WORKFLOW_V2_SUPPORTED_COMPATIBILITIES` |
 | `DW_V2_COMPATIBILITY_NAMESPACE` | unset | Compatibility namespace for shared workflow databases with independent fleets. | `WORKFLOW_V2_COMPATIBILITY_NAMESPACE` |
 | `DW_V2_COMPATIBILITY_HEARTBEAT_TTL` | `30` | Seconds a worker-compatibility heartbeat remains valid. | `WORKFLOW_V2_COMPATIBILITY_HEARTBEAT_TTL` |
-| `DW_V2_PIN_TO_RECORDED_FINGERPRINT` | `true` | Resolve in-flight runs from the workflow fingerprint recorded at `WorkflowStarted`. | `WORKFLOW_V2_PIN_TO_RECORDED_FINGERPRINT` |
+| `DW_V2_PIN_TO_RECORDED_FINGERPRINT` | `true` | Prefer the recorded workflow definition; see the runtime-specific fallback boundary below. | `WORKFLOW_V2_PIN_TO_RECORDED_FINGERPRINT` |
 | `DW_V2_CONTINUE_AS_NEW_EVENT_THRESHOLD` | `10000` | History event count at which the package asks the workflow author to continue-as-new. | `WORKFLOW_V2_CONTINUE_AS_NEW_EVENT_THRESHOLD` |
 | `DW_V2_CONTINUE_AS_NEW_SIZE_BYTES_THRESHOLD` | `5242880` | Serialized-history byte size at which the package asks for continue-as-new. | `WORKFLOW_V2_CONTINUE_AS_NEW_SIZE_BYTES_THRESHOLD` |
 | `DW_V2_HISTORY_EXPORT_SIGNING_KEY` | unset | Optional HMAC key for authenticating history export archives. | `WORKFLOW_V2_HISTORY_EXPORT_SIGNING_KEY` |
@@ -310,6 +310,18 @@ execute the same workflows.
 | `DW_V2_CACHE_VALIDATION_MODE` | `warn` | Cache-backend validation failure mode: `fail`, `warn`, or `silent`. | `WORKFLOW_V2_CACHE_VALIDATION_MODE` |
 | `DW_V2_FLEET_VALIDATION_MODE` | `warn` | Fleet-compatibility validation mode: `warn` logs, `fail` blocks dispatch and fails closed when no compatible worker is available. | `WORKFLOW_V2_FLEET_VALIDATION_MODE` |
 | `DW_SERIALIZER` | `avro` | Payload codec diagnostic input; final v2 resolves new-run payloads to Avro. | `WORKFLOW_SERIALIZER` |
+
+**Released fingerprint preference.** Server 2.9.9 makes the fingerprint
+preference effective for service workers. With pinning enabled, a changed
+definition may fall back only when no eligible recorded-definition worker
+remains and the replacement advertises `workflow_entry_arguments_validation`.
+With pinning disabled, the source preference is removed; build pins,
+namespace/queue/type isolation, registration identity and strict replay remain.
+The accompanying entry safeguards are available from PHP SDK 2.5.4, Python SDK
+2.6.2 and Rust SDK 3.5.6. These are minimum feature versions; install current
+stable releases for security fixes. Do not assume this behavior on an
+older runtime merely because its configuration contains the same key. See
+[definition routing](./worker-compatibility-routing.md#definition-fingerprint-evolution).
 
 Use `DW_V2_GUARDRAILS_BOOT` in CI and deployment manifests. The older `WORKFLOW_V2_GUARDRAILS_BOOT` name is retained only so `env:audit` can point alpha-era operators at the rename; the workflow package no longer reads it as a runtime fallback.
 

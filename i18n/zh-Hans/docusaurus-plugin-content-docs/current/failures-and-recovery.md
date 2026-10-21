@@ -98,6 +98,22 @@ class MyNonRetryableActivity extends Activity
 
 对于失败终态的运行，应保留历史并核对所有外部副作用，再决定应用是否应启动新工作流。重复业务操作需要应用层幂等性。系统不会自动重试整个工作流，也不会重新打开终态运行；参见[工作流级重试](#workflow-level-retry)。
 
+## 服务模式入口拒绝与恢复 {#service-entry-recovery}
+
+**已发布支持。** Server 2.9.9 以及 PHP SDK 2.5.4、Python SDK 2.6.2 和 Rust SDK 3.5.6 引入了下述入口保护、路由和恢复行为。这些是相应功能的最低支持版本；请安装当前稳定版本以获取安全修复。
+
+入口不匹配是在应用工作流代码执行前发生的部署或重放拒绝，不是活动重试，也不是终态业务失败。Worker 报告 `failure_reason = workflow_entry_arguments_mismatch`，Server 保留失败的工作流任务并设置 `replay_blocked = true`，而不是自动创建下一次尝试。通用的 `replay_blocked_reason` 是 `worker_reported_replay_failure`。运行仍处于非终态，已记录的输入、历史和截止时间保持不变。这与成功进入工作流方法体后抛出异常不同，后者仍可能导致整个运行失败。
+
+请先检查实际持久状态，再进行恢复：
+
+1. 使用 `GET /api/workflows/{workflowId}/runs/{runId}/debug` 检查选定运行。确认 `latest_workflow_task_failure.reason` 为 `workflow_entry_arguments_mismatch`，且原运行仍未关闭。此流程不会重新打开终态运行。
+2. 部署能够接受已记录位置参数或类型化输入的代码。保留原工作流 ID、运行 ID、命名空间、队列、构建兼容性、历史和截止时间。绝不要编辑存储的输入，也不要用 DTO 默认值替换它。
+3. 通过[定义路由](./polyglot/worker-compatibility-routing.md#definition-fingerprint-evolution)确认有符合条件的 Worker 可用。修复操作不会创建 Worker，也不能证明重放兼容性。
+4. 使用通常的已授权操作员凭据和命名空间调用 `POST /api/workflows/{workflowId}/runs/{runId}/repair`。指定运行的路由会拒绝以历史运行为目标的请求，而不是默默修复较新的运行。PHP 还提供 `Client::repairWorkflow($workflowId, $runId)`；Python 的 `repair_workflow(workflow_id)` 面向当前实例，Rust 则没有对应的修复便捷方法。
+5. 确认同一个原运行使用已记录的输入和历史前缀继续执行，然后只记录一次预期结果。即使原截止时间已经过去，它仍然有效。如果替换代码仍不兼容，请检查新的拒绝原因，不要反复发起修复。
+
+较旧的 Server 可能保存 SDK 的具体原因，却不将其归类为重放阻塞，因此仅报告失败并不能确立“不自动重试”的契约。请使用经过验证的运行时与 SDK 组合。各语言边界见[版本管理](./features/versioning.md#service-sdk-entry-safeguard)，需要认证的指定运行路由见[工作流命令](./polyglot/server-api-reference.md#workflow-commands)。
+
 ## 工作流超时执行 {#workflow-timeout-enforcement}
 
 设置 `StartOptions::withExecutionTimeout()` 或 `StartOptions::withRunTimeout()` 时，引擎会在工作流运行上记录截止时间。执行截止时间跨越整个逻辑工作流，包括 continue-as-new 产生的运行。单次运行的截止时间则在新运行开始时重置。

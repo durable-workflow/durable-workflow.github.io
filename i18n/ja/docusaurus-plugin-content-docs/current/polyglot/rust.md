@@ -269,6 +269,16 @@ Rust SDK は `WorkflowContext::side_effect` で小さな非決定的値を記録
 
 ロールアウト中に古いワークフロー分岐と新しい分岐のリプレイ互換性を保つには `WorkflowContext::get_version(change_id, min_supported, max_supported)` を使います。新しい実行は `max_supported` を記録し、既存の実行は永続マーカーを再利用します。`patched(change_id)` は真偽値形式のロールアウトを提供し、`deprecate_patch(change_id)` は古い分岐の処理完了後もマーカーを維持します。共有の永続的意味は[副作用](/docs/features/side-effects/)と[バージョニング](/docs/features/versioning/)を参照してください。
 
+## エントリの互換性と復旧 {#entry-compatibility-and-recovery}
+
+**公開済みのサポートです。** Rust SDK 3.5.6 で以下のエントリ保護が導入され、Server 2.9.9 でルーティングと復旧がサポートされました。これらは機能の最小対応バージョンです。セキュリティ修正を含む最新の安定版をインストールしてください。
+
+`Worker::register_typed_workflow` と型付きの状態保持アダプターは、アプリケーションハンドラーや状態ファクトリーを呼ぶ前に記録済み入力をデシリアライズします。入力構造に互換性がない場合、`fail_workflow` を送らず、タスク失敗型 `WorkflowEntryArgumentsMismatch` と理由 `workflow_entry_arguments_mismatch` を報告します。ワークフロー入力に対する SDK 内のエラーは `Error::HandlerType` であり、記録済みの値ではなくワークフローと期待する Rust 型を示します。生のワークフローハンドラーに、新たな Rust シグネチャ検査が追加されるわけではありません。進入に成功したアプリケーションハンドラーが返すエラーは、その文面がエントリ診断に似ていても、通常のワークフロー失敗として扱われます。
+
+管理対象 Worker は `workflow_entry_arguments_validation` を自動的に通知します。検証済みの Server は失敗したタスクをリプレイブロック状態で保持し、元の実行を非終端のままにします。古いランタイムはタスクを再試行する場合があるため、SDK だけでは復旧契約全体は成立しません。
+
+`Client::describe_workflow_run(workflow_id, run_id)` で元の実行を、実行指定のデバッグエンドポイントでタスク理由を調べます。互換性のある入力デコードとコードを復元してから、[復旧手順](../failures-and-recovery.md#service-entry-recovery)の実行指定 HTTP 修復ルートを使ってください。この crate には `repair_workflow` の便利メソッドはありません。元の入力、履歴、名前空間、キュー、ビルド、期限を維持し、互換ハンドラー内で永続コマンドの変更をバージョン分岐して、コールドリプレイを検証します。[定義ルーティング](./worker-compatibility-routing.md#definition-fingerprint-evolution)も参照してください。
+
 ## キャンセル、終了、終了結果の処理 {#cancel-terminate-and-handle-terminal-outcomes}
 
 サービスモードの `cancel_workflow` と `terminate_workflow` はともに実行を即時に閉じます。異なる終了結果を記録しますが、どちらもワークフローコードにクリーンアップを依頼しません。時間を制限したワークフロークリーンアップには、協調する Worker と `request_cancellation()` を使います。操作ポリシー、監督、復旧は[協調キャンセルガイド](/docs/polyglot/cancellation)を参照してください。

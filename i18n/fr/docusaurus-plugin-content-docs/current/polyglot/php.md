@@ -207,6 +207,16 @@ Seul l’historique `SelectionOperationCancelled` prouve que l’annulation a
 gagné. La relecture dépasse une demande d’annulation sans marqueur et, si
 l’opération s’est terminée avant, `await()` retourne toujours ce résultat.
 
+## Compatibilité à l’entrée et récupération {#entry-compatibility-and-recovery}
+
+**Prise en charge publiée.** Le SDK PHP 2.5.4 a introduit la protection d’entrée ci-dessous, avec le routage et la récupération dans Server 2.9.9. Ce sont les versions minimales pour ces fonctions. Installez les versions stables actuelles pour bénéficier des correctifs de sécurité.
+
+Le worker géré vérifie l’entrée positionnelle enregistrée du handler avant d’entrer dans sa Fiber. Un argument obligatoire absent ou un type PHP déclaré incompatible lève `DurableWorkflow\Exception\WorkflowEntryArgumentsMismatch` et signale le motif de tâche `workflow_entry_arguments_mismatch`. Les valeurs par défaut des arguments facultatifs ne s’appliquent qu’aux entrées omises ; elles ne remplacent jamais une valeur enregistrée incompatible. Un `TypeError` levé après une entrée réussie reste un échec applicatif.
+
+Le worker annonce automatiquement `workflow_entry_arguments_validation`. Avec la prise en charge Server correspondante, une tâche refusée est bloquée pour la relecture et l’exécution d’origine reste non terminale. Un ancien runtime peut au contraire relancer la tâche en échec ; une mise à niveau du SDK seule n’établit donc pas le contrat complet de récupération.
+
+Inspectez l’original avec `Client::describeWorkflow($workflowId, $runId)` et l’endpoint de débogage ciblant l’exécution. Restaurez du code compatible avant d’appeler `Client::repairWorkflow($workflowId, $runId)`, puis vérifiez que cette même exécution reprend sans modifier son entrée, son historique, son identité de routage ou ses échéances. Ne capturez pas cet échec dans le corps du workflow et ne réparez pas en boucle un code incompatible. Consultez la [procédure de récupération en mode service](../failures-and-recovery.md#service-entry-recovery) et le [routage des définitions](./worker-compatibility-routing.md#definition-fingerprint-evolution).
+
 ## Mode service avec framework et Laravel embarqué {#framework-service-mode-and-embedded-laravel}
 
 Le même paquet fournit les ponts officiels

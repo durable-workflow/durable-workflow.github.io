@@ -427,7 +427,7 @@ Worker レジストリは、Server が最近観測した Worker と各 Worker �
 
 ## ワークフローの定義 {#defining-workflows}
 
-ワークフローは `@workflow.defn` でデコレートした Python クラスです。`run` メソッドは Server へコマンドを yield するジェネレーターです。
+ワークフローは `@workflow.defn` でデコレートした Python クラスです。`run` メソッドは通常の同期関数、または永続コマンドを Server に yield する同期ジェネレーターです。永続的な処理が必要な場合はジェネレーター形式を使います。`async def run` はサポートされません。
 
 ```python
 from durable_workflow import workflow
@@ -509,6 +509,25 @@ class ApprovalWorkflow:
 
 Python Worker は Server へクエリタスク結果を返して、ルーティングされたクエリを完了します。宣言済み更新バリデーターの場合は、代わりに専用検証タスクを受け取り、正本のワークフロー状態をリプレイし、バリデーターだけを呼びます。検証に成功するまで、Server は受理済み更新を記録せず、更新ハンドラーもディスパッチしません。バリデーターを持つ Worker は、ディスカバリーが同期事前受理契約を広告しない限り登録を拒否します。拒否、互換 Worker の欠落や不一致、Worker 喪失、タイムアウト、フェンシングされた重複・古い完了は、明示的な型付き結果になります。PHP と Rust は現在更新バリデーター記述 API を公開せず、同等対応を主張するのではなく、その不在をワークフロー契約で広告します。
 
+### ハンドラーのライフサイクル {#handler-lifecycle}
+
+**公開済みの検証機能です。** Python SDK 2.6.2 で以下のハンドラー検査が導入されました。Server がルーティングする非同期クエリと更新バリデーターは引き続きサポートされます。修正された範囲は [SDK #177](https://github.com/durable-workflow/sdk-python/issues/177#issuecomment-6296781770) を参照してください。
+
+リプレイのたびに、`run()` の実行前に新しいワークフローインスタンスが作られます。ワークフロー開始時にすでに記録されているシグナルは、`run()` が最初の `yield` に達した後に適用されます。そのため、コンストラクターと `yield` 前の初期化が先に実行されます。シグナルと更新のハンドラーは、このリプレイ済み状態を変更します。クエリは永続状態を変更せずに調べ、更新バリデーターは受付前に、検証後に破棄されるリプレイ済み状態を調べます。永続的なアクティビティ、タイマー、子ワークフローのコマンドは、ハンドラーではなく `run()` に置いてください。
+
+| ハンドラー | サポートされる形式と失敗時の結果 |
+| --- | --- |
+| `@workflow.signal` | 同期関数。リプレイ中にシグナルを適用して例外が発生すると、ワークフロー実行が失敗します。 |
+| `@workflow.update` | 同期関数。ハンドラーの例外は、その更新を失敗させます。 |
+| `@workflow.update_validator` または `@update_method.validator` | Worker 配下の同期関数または `async def`。例外は受付前に更新を拒否します。 |
+| `@workflow.query` | Worker 配下の同期関数または `async def`。ハンドラーの例外はクエリを失敗させ、ワークフロー実行は失敗させません。 |
+
+検証は、シグナルと更新のコルーチン関数を拒否します。また、クエリとバリデーターを含む**すべて**のデコレート済みハンドラーについて、ジェネレーター関数と非同期ジェネレーター関数を拒否します。定義時、登録時、リプレイ時に `InvalidWorkflowDefinition` を発生させ、継承したハンドラーやオフラインツールも対象となります。シグナルと更新の同期ラッパーが非同期の値を返して検査を回避することはできません。どの種類のハンドラーでも、ジェネレーターや非同期ジェネレーターの値を返すと拒否されます。これらの制約は、`run()` で使う同期ジェネレーターを禁止するものではありません。
+
+Server がルーティングするクエリでは、Worker は元のクエリ期限とタスク取得・キャンセル権限の下で、非同期結果を明示的に await します。待機しても新しい予算は与えられず、権限を失った後の結果送信も許可されません。受付前の検証でも、Worker は検証後に破棄されるリプレイ済み状態に対する非同期バリデーターの結果を await します。
+
+ローカルの同期ヘルパーは await できません。`workflow.query_state()` は非同期結果を `QueryFailed` で拒否し、`workflow.validate_update()` は `UpdateRejected` で拒否します。返されたコルーチンは操作結果として流出させずに閉じます。
+
 ### ワークフローコンテキスト {#workflow-context}
 
 `run` へ渡す `WorkflowContext` は決定的な操作を提供します。
@@ -529,6 +548,16 @@ Python Worker は Server へクエリタスク結果を返して、ルーティ�
 | `ctx.random()` | シード付き乱数生成器 |
 | `ctx.uuid4()` | 決定的な UUID |
 | `ctx.logger` | リプレイ中は出力しないロガー |
+
+### エントリの互換性と復旧 {#entry-compatibility-and-recovery}
+
+**公開済みのサポートです。** Python SDK 2.6.2 で以下のエントリ保護が導入され、Server 2.9.9 でルーティングと復旧がサポートされました。これらは機能の最小対応バージョンです。セキュリティ修正を含む最新の安定版をインストールしてください。
+
+Worker は `run(ctx, *start_input)` を呼ぶ前に、記録済み引数をエントリシグネチャに束縛します。必須引数の不足や引数の個数の不整合は、本体が動く前に `WorkflowEntryArgumentsMismatchError` と理由 `workflow_entry_arguments_mismatch` を発生させます。既定値は省略された引数だけを補います。Python の型注釈は引き続き強制されません。注釈の変更だけで記録済みデータが検証・変換されることはありません。通常の本体でもジェネレーター本体でも、進入に成功した後の `TypeError` はアプリケーションの失敗です。
+
+Worker は `workflow_entry_arguments_validation` を自動的に通知します。検証済みの Server と組み合わせると、失敗したタスクのリプレイがブロックされ、元の実行は非終端のままです。古いランタイムはそのタスクを再試行する場合があり、SDK 側の拒否だけでは復旧契約全体は成立しません。
+
+`await client.describe_workflow_run(workflow_id, run_id)` と実行指定のデバッグエンドポイントで、正確な対象実行を確認します。互換性のあるエントリメソッドに戻してから、[復旧手順](../failures-and-recovery.md#service-entry-recovery)の実行指定 HTTP 修復ルートを使ってください。一方、`await client.repair_workflow(workflow_id)` と `handle.repair()` はインスタンスの現在の実行を解決し、どちらも実行 ID の引数を受け付けません。元の入力、履歴、名前空間、キュー、ビルド、期限を維持します。コマンドを変更する場合は、その互換メソッド内に `ctx.get_version` を配置し、[定義ルーティング](./worker-compatibility-routing.md#definition-fingerprint-evolution)を使ってコールドリプレイを検証してください。
 
 ### ワークフロー時刻と永続的な待機 {#workflow-time-and-durable-waits}
 
