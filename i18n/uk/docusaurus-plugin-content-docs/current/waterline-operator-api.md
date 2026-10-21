@@ -390,17 +390,92 @@ Signals, updates та queries приймають JSON `arguments`.
 
 | Метод | Шлях | Призначення |
 | --- | --- | --- |
-| `GET` | `/waterline/api/v2/schedules` | Список schedules поточного namespace. |
+| `GET` | `/waterline/api/v2/schedules` | Список schedules у поточній області. |
 | `GET` | `/waterline/api/v2/schedules/{scheduleId}` | Опис одного schedule. |
+| `GET` | `/waterline/api/v2/schedules/{scheduleId}/history` | Читання подій аудиту життєвого циклу schedule. |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/pause` | Призупинення майбутніх запусків. |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/resume` | Відновлення призупиненого schedule. |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/trigger` | Негайний запуск. |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/backfill` | Backfill часового вікна. |
 | `DELETE` | `/waterline/api/v2/schedules/{scheduleId}` | Видалення schedule. |
 
-Відповіді schedule показують action, статус, наступний запуск,
-недавню історію запусків, overlap policy, note, memo та search attributes
-для перевірки оператором.
+Schedule визначається своїм namespace і `schedule_id`. Той самий
+`schedule_id` може існувати в кількох namespaces. Кожен маршрут окремого
+schedule приймає необов’язковий параметр `namespace` у query string
+або в тілі запиту:
+
+- Waterline, обмежений одним namespace, діє лише у власному namespace.
+  Це стосується вбудованого Waterline із заданим `WATERLINE_NAMESPACE`
+  і кожного розгортання в service mode. Запит до іншого namespace
+  повертає `404`.
+- Вбудований Waterline для всього кластера діє в запитаному namespace.
+  Якщо `namespace` не задано, а `schedule_id` існує в кількох namespaces,
+  запит повертає `409` з reason `schedule_namespace_required`.
+  Нічого не змінюється.
+
+```bash
+curl -sS -X POST \
+  "$APP_URL/waterline/api/v2/schedules/nightly-invoice-sync/pause?namespace=billing" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{"note": "Supplier maintenance"}' | jq '.status, .note'
+```
+
+### Рядки розкладів {#schedule-rows}
+
+Відповідь списку розбита на сторінки й містить `data`, `current_page`,
+`last_page`, `per_page`, `total` та `operator_scope`. Кожен рядок у `data`
+має однакові поля у вбудованому режимі та service mode:
+
+| Поле | Значення |
+| --- | --- |
+| `schedule_id` | ID schedule. Надсилайте його разом із `namespace` до кожного маршруту окремого schedule. |
+| `id` | Те саме значення, що й `schedule_id`, збережене для старіших клієнтів. |
+| `namespace` | Namespace schedule. |
+| `workflow_type`, `workflow_class` | Workflow, який запускає schedule. Будь-яке з цих полів може бути `null`. |
+| `status`, `paused` | `active`, `paused` або `deleted`, а також ознака того, чи призупинено schedule. |
+| `note` | Примітка оператора або `null`. |
+| `spec` | Періодичність: `cron_expressions` (рядки cron), `intervals` (об’єкти з тривалостями ISO 8601 `every` і необов’язковим `offset`) та `timezone`. |
+| `overlap_policy` | `skip`, `buffer_one`, `buffer_all`, `cancel_other`, `terminate_other` або `allow_all`. |
+| `next_fire_at`, `last_fired_at` | Часові позначки ISO 8601 або `null`. |
+| `last_outcome` | Результат останнього записаного запуску або `null`, якщо результат не записано. Містить `outcome` (наприклад, `scheduled`, `drained`, `backfilled`, `skipped` або `failed`), `at`, `reason`, `workflow_id` і `run_id`. |
+| `fires_count`, `failures_count`, `skipped_trigger_count`, `remaining_actions` | Лічильники або `null`, якщо backend не повідомляє відповідний лічильник. |
+| `search_attributes` | Атрибути пошуку schedule або `null`. |
+| `created_at`, `updated_at` | Часові позначки ISO 8601. |
+
+Рядок із `last_fired_at` без `last_outcome` означає, що backend повідомив
+час запуску без його результату.
+
+Рядки списку та відповіді маршрутів деталей, `pause` і `resume` також містять
+`action`, `max_runs`, `jitter_seconds`, `paused_at`, `last_skip_reason`,
+`last_skipped_at`, `latest_workflow_instance_id`, `buffered_actions`, `memo`
+і `recent_actions`. Кожен елемент `recent_actions` містить `outcome`,
+`fired_at`, `reason`, `workflow_id`, `run_id` і `occurrence_time`.
+`latest_instance_id` повторює `latest_workflow_instance_id` для старіших
+клієнтів. `spec` зберігає після полів періодичності всі інші ключі,
+які записав backend.
+
+### Результати trigger та backfill {#trigger-and-backfill-results}
+
+`trigger` приймає необов’язковий `overlap_policy`. Маршрут повертає
+`schedule_id`, `namespace`, `outcome` (`triggered`, `buffered`, `buffer_full`
+або `skipped`), `triggered`, `workflow_id`, `run_id` і `reason`.
+`triggered` має значення `true`, лише коли workflow розпочато.
+`instance_id` повторює `workflow_id` для старіших клієнтів.
+
+`backfill` вимагає часових позначок ISO 8601 `from` і `to` та приймає
+необов’язковий `overlap_policy`. Маршрут повертає `schedule_id`, `namespace`,
+`fires_attempted`, `started_count`, `skipped_count`, `failed_count`
+і `results`. Кожен результат містить `fire_time`, `workflow_id`,
+`outcome` (`started`, `skipped` або `failed`) і `reason`.
+Для старіших клієнтів кожен результат також повторює `schedule_id`,
+а `cron_time`, `instance_id` і `error` повторюють `fire_time`,
+`workflow_id` і `reason` невдалого результату. `backfill` відхиляє
+з `422` і reason `invalid_time_range` вікно, кінець якого не пізніший
+за початок.
+
+Обидва маршрути відхиляють невідомий `overlap_policy` з `422`
+і reason `invalid_overlap_policy`.
 
 ## Збережені подання та налаштування {#saved-views-and-preferences}
 
@@ -431,7 +506,7 @@ Waterline використовує звичайні HTTP status codes і JSON-д
 | --- | --- |
 | `400` | Некоректний запит або непідтримуваний payload дії. |
 | `404` | Екземпляр workflow, run, update, schedule, збережене подання чи поверхню налаштувань не знайдено в поточному namespace. |
-| `409` | Вибраний run не може виконати дію, часто через історичний чи закритий стан, блокування replay або недоступність визначення. |
+| `409` | Вибраний run не може виконати дію, часто через історичний чи закритий стан, блокування replay або недоступність визначення. Запит schedule для всього кластера також повертає `409`, коли його `schedule_id` потребує `namespace`. |
 | `422` | Перевірка не пройдена. Відповідь містить помилки окремих полів. |
 | `500` | Неочікувана помилка застосунку. |
 

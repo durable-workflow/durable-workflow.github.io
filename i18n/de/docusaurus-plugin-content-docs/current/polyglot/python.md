@@ -1008,7 +1008,7 @@ async def long_running_task(items: list) -> dict:
 
 Rufen Sie bei entfernten Aktivitäten `await ctx.heartbeat(...)` während begrenzter Aktivitätsarbeit deutlich vor `heartbeat_timeout` auf. Das erste Zeitfenster beginnt mit der Beanspruchung durch die Laufzeit, bevor Python die Aufgabe empfängt. Jeder aufgezeichnete Heartbeat verwendet den Aufzeichnungszeitpunkt der Laufzeit, nicht den Empfangszeitpunkt der Antwort in Python. Pausen, Anfragelatenz und Transportwiederholungen verbrauchen das Budget. Beachten Sie die [Taktempfehlungen](../features/heartbeats.md#heartbeat-cadence-and-receipts).
 
-Der direkte Aufruf von `Client.heartbeat_activity_task()` verwendet die konfigurierte `TransportRetryPolicy`. Nach dieser Richtlinie können Transportfehler als `httpx.TransportError` weitergegeben werden. HTTP-Ablehnungen werden zu zugeordneten SDK-Ausnahmen wie `ServerError`. Das ist HTTP-Wiederholungsverhalten, kein neuer Aktivitätsversuch und keine zusätzliche Heartbeat-Zeit. `ActivityContext.heartbeat()` kann `ActivityCancelled` auslösen, wenn der Worker die Aktivität zum Stoppen auffordert. Beim normalen kooperativ überwachten Worker können fehlgeschlagene Heartbeat- oder Besitzprüfungen den Callback stoppen oder aufgeben. Nicht jeder Fehler erreicht einen Ausnahmehandler, und Bereinigungscode läuft nicht immer.
+Der direkte Aufruf von `Client.heartbeat_activity_task()` verwendet die konfigurierte `TransportRetryPolicy`. Nach dieser Richtlinie können Transportfehler als `httpx.TransportError` weitergegeben werden. HTTP-Ablehnungen werden zu zugeordneten SDK-Ausnahmen wie `ServerError`. Das ist HTTP-Wiederholungsverhalten, kein neuer Aktivitätsversuch und keine zusätzliche Heartbeat-Zeit. `ActivityContext.heartbeat()` kann `ActivityCancelled` auslösen, wenn der Worker die Aktivität zum Stoppen auffordert. Wenn die kooperative Prozessüberwachung aktiviert ist, können fehlgeschlagene Heartbeat- oder Besitzprüfungen den Callback stoppen oder aufgeben. Nicht jeder Fehler erreicht einen Ausnahmehandler, und Bereinigungscode läuft nicht immer.
 
 Unterdrücken Sie Heartbeat- oder Besitzfehler nicht, um externe Arbeit fortzusetzen oder Erfolg zu melden. Fortschritt ist weder ein externer Commit noch eine Bestätigung eines fortsetzbaren Prüfpunkts. Halten Sie externe Effekte idempotent.
 
@@ -1025,6 +1025,30 @@ async def validate(data: dict) -> dict:
         raise NonRetryableError("Missing required_field")
     return data
 ```
+
+### Synchrone und asynchrone Aktivitäten {#activity-execution}
+
+Gewöhnliche entfernte `def`-Aktivitäten laufen in einem eigenen Threadpool,
+dessen Größe durch `max_concurrent_activity_tasks` begrenzt ist. Jeder Callback
+behält seinen Aktivitätskontext. Polling, Workflow-Tasks und Worker-Heartbeats
+können weiterlaufen, während ein Callback blockiert. Aktivitäten mit `async def`
+laufen in der Ereignisschleife und müssen nichtblockierende Ein-/Ausgabe verwenden.
+Ein blockierender Aufruf in einer asynchronen Funktion blockiert weiterhin diese Schleife.
+
+Verwenden Sie in einem synchronen Callback
+`activity.context().heartbeat_sync(details)`, um Fortschritt über die zuständige
+Ereignisschleife mit den ursprünglichen Kennungen von Task, Versuch und Worker zu
+melden. Asynchrone Callbacks verwenden
+`await activity.context().heartbeat(details)`.
+
+Das Abbrechen eines Await-Vorgangs stoppt keinen laufenden Python-Thread. Sein
+tatsächlicher Slot bleibt bis zur Rückkehr des Callbacks belegt. Eine verspätete
+Rückkehr übermittelt nach dem Abbruch kein Ergebnis. Läuft ein Callback nach
+`shutdown_timeout` noch, löst das Herunterfahren `RuntimeError` aus und behält
+die Worker-Registrierung bei. Legen Sie Zeitlimits für nachgelagerte
+Ein-/Ausgabe fest und verwenden Sie für rechenintensive Arbeit getrennte, isolierte
+Worker-Prozesse. Siehe die
+[SDK-Referenz zu Ausführung und Herunterfahren](https://python.durable-workflow.com/reference/worker/).
 
 ## Worker {#worker}
 

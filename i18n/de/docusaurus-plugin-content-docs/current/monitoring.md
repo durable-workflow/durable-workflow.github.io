@@ -39,6 +39,48 @@ Die Einrichtung von Workern und Clients bleibt ebenfalls von der Operatoroberfl�
 
 Zeigt Worker-Telemetrie wiederholte Übernahmen, Rennen um verspätete Abschlüsse oder feststeckende Leases, lesen Sie zusätzlich [Ausführungsgarantien und Idempotenz](./constraints/execution-guarantees.md). Dieser Vertrag trennt Unsicherheit des At-least-once-Transports von doppelten dauerhaften Ergebnissen, damit scheinbar doppelte Nachweise nicht zu falschen Betriebsentscheidungen führen.
 
+## OpenTelemetry-Tracing {#opentelemetry-tracing}
+
+Verbinden Sie Anwendungsanfragen, Workflow-Tasks und Aktivitätsversuche über Prozessgrenzen hinweg mit optionalem OpenTelemetry-Tracing. Wählen Sie die Einrichtung für die Runtime, die Ihre Runs verwaltet.
+
+### Eingebettetes Laravel {#embedded-tracing}
+
+Um Anwendungslogs einem Workflow-Lauf und Aktivitätsversuch zuzuordnen, konfigurieren
+Sie die optionale [Tracing-Integration im eingebetteten Modus (Englisch)](https://github.com/durable-workflow/workflow/blob/main/docs/embedded-tracing.md).
+Sie bewahrt den W3C-Kontext über Warteschlangen-Worker, Wiederholungen und
+Wiederherstellung hinweg und nutzt den OpenTelemetry-Provider sowie die
+Laravel-Logkanäle Ihrer Anwendung. Der Leitfaden erklärt, wie Sie Tracing
+aktivieren, den Log-Tap hinzufügen, die Schema-Migrationen ausführen und Exporte
+begrenzen. Prüfen Sie vor dem Rollout das Span-Diagramm und die
+Fähigkeitsmatrix für Laufzeiten und SDKs.
+
+Ordnen Sie in der `config/workflows.php` Ihrer Anwendung eine anwendungseigene Umgebungsvariable der vorhandenen Tracing-Konfiguration zu:
+
+```php
+'tracing' => [
+    'enabled' => (bool) env('DW_TRACING_ENABLED', false),
+    'baggage_allowlist' => [],
+],
+```
+
+Dieses Beispiel überträgt zunächst kein Baggage. Installieren Sie die optionale API und konfigurieren Sie Provider, Log-Tap, Migrationen und begrenzten Exporter wie im verlinkten Leitfaden beschrieben. Starten Sie danach die Worker neu.
+
+### Tracing im Service-Modus {#service-mode-tracing}
+
+Konfigurieren Sie Provider, Sampling, Propagatoren und begrenzten Export, bevor Sie SDK-Telemetrie aktivieren. Nutzen Sie den [PHP-Leitfaden](https://php.durable-workflow.com/operate/tracing/), den [Python-Leitfaden](https://python.durable-workflow.com/telemetry/) oder die [Rust-API](https://rust.durable-workflow.com/durable_workflow/telemetry/) auf Englisch.
+
+| Runtime | Propagationsgrenze |
+| --- | --- |
+| Eingebettetes Laravel | Die optionale Core-Integration der Anwendung speichert Kontext über ihre Queue-Worker hinweg. |
+| PHP Server | Der [Server-Leitfaden](https://github.com/durable-workflow/server/blob/2.10.0/docs/observability-context.md) erfordert ein Anwendungsimage mit optionaler API, aktiviertem Schalter und tatsächlichem nullable Schema. |
+| PHP-, Python- und Rust-SDKs | Optionale Task-/Versuchs-Spans und begrenzter Log-Kontext. Dauerhafte Aufruferpropagation erfordert die exakt angekündigte Server-Fähigkeit. Fehlt sie oder ist sie fehlerhaft, entstehen unabhängige Task-Traces. |
+| Nativer Rust Server | Diese PHP-Tracing-Version qualifiziert weder native Carrier noch Katalogkonvertierung. |
+| Cloud | Diese Version enthält kein Cloud-Deployment. Prüfen Sie die Unterstützung der verwalteten Runtime. |
+
+Trace-, Run-, Activity-, Versuchs- und Anfrage-IDs bleiben getrennt. Baggage ist auf eine standardmäßig leere Positivliste beschränkt; Links enthalten kein Baggage. Provider und Exporter gehören der Anwendung. Abrupte Beendigung kann Telemetrie verlieren; Replay garantiert keinen genau einmaligen Export. Für Geschäftsergebnisse gilt die dauerhafte History.
+
+## Waterline-Ansichten {#waterline-views}
+
 ### Dashboard-Ansicht {#dashboard-view}
 
 ![Waterline-Dashboard](https://raw.githubusercontent.com/durable-workflow/waterline/refs/heads/main/docs/screenshots/dashboard.png)

@@ -301,9 +301,11 @@ Customer-hosted worker availability is separate from managed runtime availabilit
 | At least 99.0%, below 99.9% | 25% |
 | Below 99.0% | 100% |
 
-Account credits apply automatically; cash refunds require review and approval.
-Cloud Dev has no SLA credits. See [Cloud pricing](https://cloud.durable-workflow.com/pricing)
-for the plan's availability scope and billing terms.
+SLA plans receive automatic account service credits. Credits never exceed what
+the affected runtime was charged that month, and there are no cash refunds for
+outages. Cloud Dev has no SLA credits. See the [Cloud Terms](https://cloud.durable-workflow.com/terms)
+and [Cloud pricing](https://cloud.durable-workflow.com/pricing) for the plan's
+availability scope and billing terms.
 
 ## Private Connectivity And Support Boundary
 

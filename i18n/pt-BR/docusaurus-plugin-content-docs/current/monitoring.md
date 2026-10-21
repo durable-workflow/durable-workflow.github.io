@@ -72,6 +72,47 @@ junto deste guia. Esse contrato separa a incerteza do transporte pelo menos
 uma vez de resultados duráveis duplicados, evitando conclusões operacionais
 erradas a partir de evidências que parecem duplicadas.
 
+## Rastreamento com OpenTelemetry {#opentelemetry-tracing}
+
+Conecte requisições da aplicação, tarefas de workflow e tentativas de atividade entre processos com o rastreamento opcional do OpenTelemetry. Escolha a configuração do runtime que gerencia suas execuções.
+
+### Laravel incorporado {#embedded-tracing}
+
+Para relacionar os logs da aplicação a uma execução de workflow e a uma tentativa
+de atividade, configure a [integração opcional de rastreamento no modo embutido (em inglês)](https://github.com/durable-workflow/workflow/blob/main/docs/embedded-tracing.md).
+Ela preserva o contexto W3C entre workers de fila, novas tentativas e recuperação,
+e usa o provedor OpenTelemetry e os canais de log do Laravel da sua aplicação.
+O guia explica como habilitar o rastreamento, adicionar o tap de logs, executar
+as migrações do esquema e limitar as exportações. Consulte o diagrama de spans
+e a matriz de capacidades de runtimes e SDKs antes da implantação.
+
+No arquivo `config/workflows.php` da aplicação, associe uma variável de ambiente controlada pela aplicação à configuração de rastreamento existente:
+
+```php
+'tracing' => [
+    'enabled' => (bool) env('DW_TRACING_ENABLED', false),
+    'baggage_allowlist' => [],
+],
+```
+
+Este exemplo começa sem baggage. Instale a API opcional e configure o provedor, o tap de logs, as migrações e o exportador com limites conforme o guia vinculado. Depois, reinicie os workers.
+
+### Rastreamento no modo serviço {#service-mode-tracing}
+
+Configure o provedor, a amostragem, os propagadores e a exportação limitada antes de ativar a telemetria do SDK. Consulte o [guia PHP](https://php.durable-workflow.com/operate/tracing/), o [guia Python](https://python.durable-workflow.com/telemetry/) ou a [API Rust](https://rust.durable-workflow.com/durable_workflow/telemetry/) em inglês.
+
+| Runtime | Limite de propagação |
+| --- | --- |
+| Laravel embarcado | A integração Core opcional preserva o contexto entre os workers de fila da aplicação. |
+| Servidor PHP | O [guia do servidor](https://github.com/durable-workflow/server/blob/2.10.0/docs/observability-context.md) exige imagem da aplicação com API opcional, opção ativada e esquema nullable real. |
+| SDKs PHP, Python e Rust | Spans opcionais de tarefa/tentativa e correlação de logs com escopo. A propagação durável exige a capacidade exata anunciada pelo servidor. Capacidade ausente ou malformada gera traces de tarefa independentes. |
+| Servidor Rust nativo | Esta versão PHP não qualifica carriers nativos nem conversão de catálogo. |
+| Cloud | Esta versão não inclui implantação no Cloud. Confirme o suporte do runtime gerenciado. |
+
+IDs de trace, run, atividade, tentativa e requisição permanecem distintos. Baggage usa lista permitida, vazia por padrão; links não contêm baggage. Provedores e exportadores pertencem à aplicação. Encerramento abrupto pode perder telemetria; replay não garante exportação exatamente uma vez. Use o histórico durável para resultados de negócio.
+
+## Visualizações do Waterline {#waterline-views}
+
 ### Visão do painel {#dashboard-view}
 
 ![Painel do Waterline](https://raw.githubusercontent.com/durable-workflow/waterline/refs/heads/main/docs/screenshots/dashboard.png)
