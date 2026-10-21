@@ -5,6 +5,7 @@ import Translate from '@docusaurus/Translate';
 import styles from './styles.module.css';
 
 const CLOUD_EARLY_ACCESS_URL = 'https://cloud.durable-workflow.com/early-access';
+const CLOUD_PRICING_URL = 'https://cloud.durable-workflow.com/pricing';
 const PROMOTION_EVENT_URL = `${CLOUD_EARLY_ACCESS_URL}/promotion-events`;
 const PUBLIC_HOSTNAME = 'durable-workflow.com';
 
@@ -62,16 +63,16 @@ export default function ProductPromotion({source, children}) {
       aria-labelledby={titleId}
       data-promotion-source={source}>
       <div className={styles.copy}>
-        <p className={styles.eyebrow}><Translate id="promotion.eyebrow">Managed service · limited cohort</Translate></p>
-        <h2 id={titleId}><Translate id="promotion.title">Durable Workflow Cloud launch cohort</Translate></h2>
+        <p className={styles.eyebrow}><Translate id="promotion.eyebrow">Managed runtime</Translate></p>
+        <h2 id={titleId}><Translate id="promotion.title">Durable Workflow Cloud</Translate></h2>
         <div className={styles.description}>{children}</div>
       </div>
       <Link
         className="button button--primary"
-        data-promotion-action="early-access"
-        to={`${CLOUD_EARLY_ACCESS_URL}#source=${encodeURIComponent(source)}`}
+        data-promotion-action="cloud-pricing"
+        to={CLOUD_PRICING_URL}
         onClick={() => sendPromotionEvent(source, 'click')}>
-        <Translate id="promotion.requestAccess">Request early access</Translate>
+        <Translate id="promotion.pricing">See Cloud Dev pricing</Translate>
       </Link>
     </aside>
   );

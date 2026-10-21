@@ -51,7 +51,10 @@
     "message": "Eine Plattform für dauerhafte Ausführung in PHP, Python und Rust. Verwaltete Cloud, selbst betriebener Server oder Einbettung in Laravel."
   },
   "homepage.cloudDescription": {
-    "message": "Führen Sie PHP-, Python- und Rust-Worker in einem verwalteten Namespace aus. Durable Workflow übernimmt die Orchestrierung und den Betrieb der Laufzeitumgebung."
+    "message": "Verwaltet ausführen: Cloud Dev für $0.075/Stunde, begrenzt auf $50/Monat, ohne Gebühren pro Workflow."
+  },
+  "homepage.cloudTerms": {
+    "message": "Preise in USD pro Laufzeitumgebung, minutengenaue Abrechnung während der Bereitstellung, mindestens $2 pro aktivem Monat und 5 GB Speicher inklusive. Dev hat kein Verfügbarkeits-SLA."
   },
   "homepage.features.languages.title": {
     "message": "Entwickeln Sie mit PHP, Python oder Rust"
@@ -72,13 +75,13 @@
     "message": "Dauerhafte Historie, deterministisches Replay, Timer, Wiederholungsversuche, Signale, Updates, untergeordnete Workflows und Sagas für lang laufende Prozesse."
   },
   "promotion.eyebrow": {
-    "message": "Verwalteter Dienst · begrenzter Zugang"
+    "message": "Verwaltete Laufzeitumgebung"
   },
   "promotion.title": {
-    "message": "Vorabzugang zu Durable Workflow Cloud"
+    "message": "Durable Workflow Cloud"
   },
-  "promotion.requestAccess": {
-    "message": "Zugang anfragen"
+  "promotion.pricing": {
+    "message": "Cloud-Dev-Preise ansehen"
   },
   "navbar.github.repository": {
     "message": "GitHub-Repository"

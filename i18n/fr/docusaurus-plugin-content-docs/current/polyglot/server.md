@@ -46,6 +46,15 @@ Consultez [Topologie des rôles Server](/docs/polyglot/server-role-topology) pou
 
 ## Démarrage rapide {#quick-start}
 
+:::info Alternative gérée
+
+[Exécution gérée : Cloud Dev à $0.075/heure, plafonné à $50/mois, sans frais par workflow.](https://cloud.durable-workflow.com/pricing)
+Le tarif par heure provisionnée est mesuré à la minute, avec un minimum de $2
+par mois actif et 5 Go de stockage inclus. Les prix sont en USD par runtime. Dev n’a pas de
+SLA de disponibilité. Les offres HA sont prévues mais ne sont pas encore disponibles.
+
+:::
+
 ### Image publiée et SQLite {#published-image--sqlite}
 
 Le démarrage sans code source le plus rapide utilise l’image Docker publiée. Cet exemple utilise SQLite, une file en base et un cache fichier dans le conteneur. Montez `/app/database` pour que l’initialisation et l’API partagent le même fichier SQLite :

@@ -51,7 +51,10 @@
     "message": "Une plateforme d’exécution durable indépendante des langages pour PHP, Python et Rust, disponible en Cloud géré, Server auto-hébergé ou runtime Laravel embarqué."
   },
   "homepage.cloudDescription": {
-    "message": "Exécutez vos workers PHP, Python et Rust dans un espace de noms géré. Durable Workflow prend en charge l’orchestration et l’exploitation du runtime."
+    "message": "Exécution gérée : Cloud Dev à $0.075/heure, plafonné à $50/mois, sans frais par workflow."
+  },
+  "homepage.cloudTerms": {
+    "message": "Prix en USD par runtime, facturation à la minute pendant le provisionnement, avec un minimum de $2 par mois actif et 5 Go de stockage inclus. Dev n’a pas de SLA de disponibilité."
   },
   "homepage.features.languages.title": {
     "message": "Développez en PHP, Python ou Rust"
@@ -72,13 +75,13 @@
     "message": "Historique durable, relecture déterministe, temporisateurs, nouvelles tentatives, signaux, mises à jour, workflows enfants et sagas pour vos processus de longue durée."
   },
   "promotion.eyebrow": {
-    "message": "Service géré · cohorte limitée"
+    "message": "Runtime géré"
   },
   "promotion.title": {
-    "message": "Cohorte de lancement de Durable Workflow Cloud"
+    "message": "Durable Workflow Cloud"
   },
-  "promotion.requestAccess": {
-    "message": "Demander un accès anticipé"
+  "promotion.pricing": {
+    "message": "Voir les tarifs Cloud Dev"
   },
   "navbar.github.repository": {
     "message": "Dépôt GitHub"

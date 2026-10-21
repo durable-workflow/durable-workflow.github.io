@@ -46,6 +46,14 @@ keywords:
 
 ## 快速开始 {#quick-start}
 
+:::info 托管方案
+
+[选择托管运行：Cloud Dev 每小时 $0.075，每月最高 $50，不按工作流收费。](https://cloud.durable-workflow.com/pricing)
+配置期间的小时费率按分钟计量，每个使用月份最低 $2，包含 5 GB 存储。
+每个运行时以 USD 计价。Dev 没有可用性 SLA。HA 套餐仍在规划中，尚不可配置。
+
+:::
+
 ### 已发布镜像与 SQLite {#published-image--sqlite}
 
 无需源码运行 Server 的最快方式是已发布的 Docker 镜像。本示例在容器内使用 SQLite、数据库队列与文件缓存。挂载 `/app/database`，让引导过程和 API 共享同一 SQLite 文件：
