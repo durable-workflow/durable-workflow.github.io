@@ -379,16 +379,85 @@ Waterline schedule routes are v2 visibility and operator-action routes:
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/waterline/api/v2/schedules` | List schedules visible in the current namespace. |
+| `GET` | `/waterline/api/v2/schedules` | List schedules visible in the current scope. |
 | `GET` | `/waterline/api/v2/schedules/{scheduleId}` | Describe one schedule. |
+| `GET` | `/waterline/api/v2/schedules/{scheduleId}/history` | Read the schedule's lifecycle audit events. |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/pause` | Pause future fires. |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/resume` | Resume a paused schedule. |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/trigger` | Trigger an immediate fire. |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/backfill` | Backfill a time window. |
 | `DELETE` | `/waterline/api/v2/schedules/{scheduleId}` | Delete a schedule. |
 
-Schedule responses expose action, status, next fire, recent fire history,
-overlap policy, note, memo, and search attributes for operator review.
+A schedule is identified by its namespace and its `schedule_id`. The same
+`schedule_id` can exist in more than one namespace. Every per-schedule route
+accepts an optional `namespace` parameter in the query string or request body:
+
+- A namespace-scoped Waterline acts only on its own namespace. This includes
+  embedded Waterline with `WATERLINE_NAMESPACE` set and every service-mode
+  deployment. A request for another namespace returns `404`.
+- A cluster-wide embedded Waterline acts on the requested namespace. Without
+  `namespace`, a `schedule_id` that exists in more than one namespace returns
+  `409` with reason `schedule_namespace_required`, and nothing changes.
+
+```bash
+curl -sS -X POST \
+  "$APP_URL/waterline/api/v2/schedules/nightly-invoice-sync/pause?namespace=billing" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{"note": "Supplier maintenance"}' | jq '.status, .note'
+```
+
+### Schedule Rows
+
+The list response is paginated with `data`, `current_page`, `last_page`,
+`per_page`, `total` and `operator_scope`. Each row in `data` has the same
+fields in embedded and service mode:
+
+| Field | Meaning |
+| --- | --- |
+| `schedule_id` | The schedule's ID. Send it with `namespace` to every per-schedule route. |
+| `id` | The same value as `schedule_id`, kept for older clients. |
+| `namespace` | The schedule's namespace. |
+| `workflow_type`, `workflow_class` | The workflow the schedule starts. Either can be `null`. |
+| `status`, `paused` | `active`, `paused` or `deleted`, and whether the schedule is paused. |
+| `note` | The operator note, or `null`. |
+| `spec` | The cadence: `cron_expressions` (cron strings), `intervals` (objects with ISO 8601 `every` and optional `offset` durations) and `timezone`. |
+| `overlap_policy` | `skip`, `buffer_one`, `buffer_all`, `cancel_other`, `terminate_other` or `allow_all`. |
+| `next_fire_at`, `last_fired_at` | ISO 8601 timestamps, or `null`. |
+| `last_outcome` | The most recent recorded fire result, or `null` when none was recorded. It has `outcome` (for example `scheduled`, `drained`, `backfilled`, `skipped` or `failed`), `at`, `reason`, `workflow_id` and `run_id`. |
+| `fires_count`, `failures_count`, `skipped_trigger_count`, `remaining_actions` | Counters, or `null` when the backend does not report one. |
+| `search_attributes` | The schedule's search attributes, or `null`. |
+| `created_at`, `updated_at` | ISO 8601 timestamps. |
+
+A row with `last_fired_at` and no `last_outcome` means the backend reported
+the fire time without its result.
+
+List rows and the detail, `pause` and `resume` responses also include
+`action`, `max_runs`, `jitter_seconds`, `paused_at`, `last_skip_reason`,
+`last_skipped_at`, `latest_workflow_instance_id`, `buffered_actions`, `memo`
+and `recent_actions`. Each recent action has `outcome`, `fired_at`, `reason`,
+`workflow_id`, `run_id` and `occurrence_time`. `latest_instance_id` repeats
+`latest_workflow_instance_id` for older clients. A `spec` keeps any other keys
+the backend stored after its cadence fields.
+
+### Trigger And Backfill Results
+
+`trigger` accepts an optional `overlap_policy`. It returns `schedule_id`,
+`namespace`, `outcome` (`triggered`, `buffered`, `buffer_full` or `skipped`),
+`triggered`, `workflow_id`, `run_id` and `reason`. `triggered` is `true` only
+when a workflow started. `instance_id` repeats `workflow_id` for older clients.
+
+`backfill` requires `from` and `to` ISO 8601 timestamps and accepts an optional
+`overlap_policy`. It returns `schedule_id`, `namespace`, `fires_attempted`,
+`started_count`, `skipped_count`, `failed_count` and `results`. Each result has
+`fire_time`, `workflow_id`, `outcome` (`started`, `skipped` or `failed`) and
+`reason`. For older clients, each result also repeats `schedule_id`, and
+`cron_time`, `instance_id` and `error` repeat `fire_time`, `workflow_id` and a
+failed result's `reason`. `backfill` refuses a window whose end is not after
+its start with `422` and reason `invalid_time_range`.
+
+Both routes refuse an unknown `overlap_policy` with `422` and reason
+`invalid_overlap_policy`.
 
 ## Saved Views And Preferences
 
@@ -417,7 +486,7 @@ Waterline uses ordinary HTTP status codes and JSON error details:
 | --- | --- |
 | `400` | Malformed request or unsupported action payload. |
 | `404` | Workflow instance, run, update, schedule, saved view, or preference surface was not found in the current namespace. |
-| `409` | The selected run cannot execute the action, often because it is historical, closed, replay-blocked, or definition-unavailable. |
+| `409` | The selected run cannot execute the action, often because it is historical, closed, replay-blocked, or definition-unavailable. A cluster-wide schedule request also returns `409` when its `schedule_id` needs a `namespace`. |
 | `422` | Validation failed; response includes field-level errors. |
 | `500` | Unexpected application failure. |
 
