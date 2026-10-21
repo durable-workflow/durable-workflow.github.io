@@ -46,6 +46,16 @@ Siehe [Server-Rollentopologie](/docs/polyglot/server-role-topology) für Rollenb
 
 ## Schnellstart {#quick-start}
 
+:::info Verwaltete Alternative
+
+[Verwaltet ausführen: Cloud Dev für $0.075/Stunde, begrenzt auf $50/Monat, ohne Gebühren pro Workflow.](https://cloud.durable-workflow.com/pricing)
+Der Preis pro bereitgestellter Stunde wird minutengenau abgerechnet, mit
+mindestens $2 pro aktivem Monat und 5 GB Speicher inklusive. Die Preise sind in
+USD pro Laufzeitumgebung. Dev hat kein Verfügbarkeits-SLA. HA-Pläne sind geplant
+und noch nicht buchbar.
+
+:::
+
 ### Veröffentlichtes Image und SQLite {#published-image--sqlite}
 
 Der schnellste Start ohne Quellcode verwendet das veröffentlichte Docker-Image. Dieses Beispiel nutzt SQLite, Datenbank-Queues und Dateicache im Container. Binden Sie `/app/database` ein, damit Initialisierung und API dieselbe SQLite-Datei verwenden:

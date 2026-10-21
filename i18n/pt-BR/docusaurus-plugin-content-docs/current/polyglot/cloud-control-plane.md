@@ -305,10 +305,12 @@ separada da disponibilidade do runtime gerenciado.
 | Pelo menos 99.0%, abaixo de 99.9% | 25% |
 | Abaixo de 99.0% | 100% |
 
-Créditos de conta se aplicam automaticamente; reembolsos em dinheiro exigem
-análise e aprovação. Cloud Dev não tem créditos de SLA. Veja os
+Planos com SLA recebem créditos de serviço automaticamente na conta. Os créditos
+nunca excedem o valor cobrado naquele mês pelo runtime afetado, e não há
+reembolso em dinheiro por indisponibilidade. Cloud Dev não tem créditos de SLA.
+Veja os [termos do Cloud](https://cloud.durable-workflow.com/terms) e os
 [preços do Cloud](https://cloud.durable-workflow.com/pricing) para o escopo de
-disponibilidade e termos de cobrança do plano.
+disponibilidade e os termos de cobrança do plano.
 
 ## Conectividade privada e limite do suporte {#private-connectivity-and-support-boundary}
 

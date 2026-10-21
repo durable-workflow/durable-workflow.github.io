@@ -380,7 +380,10 @@
     "message": "Платформа стійкого виконання для PHP, Python та Rust, незалежна від мови клієнта, доступна як керований Cloud, власний Server або вбудоване середовище виконання Laravel."
   },
   "homepage.cloudDescription": {
-    "message": "Запускайте worker на PHP, Python або Rust у керованому просторі імен, а Durable Workflow експлуатуватиме середовище оркестрації."
+    "message": "Керований запуск: Cloud Dev за $0.075/годину, не більше $50/місяць, без плати за окремі workflow."
+  },
+  "homepage.cloudTerms": {
+    "message": "Ціни в USD за середовище виконання, похвилинний облік за час його надання, мінімум $2 за активний місяць та 5 ГБ сховища включено. Dev не має SLA доступності."
   },
   "homepage.features.languages.title": {
     "message": "Розробляйте на PHP, Python або Rust"
@@ -401,13 +404,13 @@
     "message": "Стійка історія, детерміноване відтворення, timer, повторні спроби, signal, update, дочірні workflow та saga забезпечують поступ тривалої роботи."
   },
   "promotion.eyebrow": {
-    "message": "Керований сервіс · обмежена група"
+    "message": "Кероване середовище виконання"
   },
   "promotion.title": {
-    "message": "Група запуску Durable Workflow Cloud"
+    "message": "Durable Workflow Cloud"
   },
-  "promotion.requestAccess": {
-    "message": "Запросити ранній доступ"
+  "promotion.pricing": {
+    "message": "Переглянути ціни Cloud Dev"
   },
   "navbar.github.repository": {
     "message": "Репозиторій GitHub"

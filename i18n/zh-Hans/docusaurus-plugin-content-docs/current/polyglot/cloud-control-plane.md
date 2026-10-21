@@ -194,7 +194,10 @@ Cloud Dev 已可用，其恢复边界如下。HA 边界描述仍待资格验证�
 | 至少 99.0%，低于 99.9% | 25% |
 | 低于 99.0% | 100% |
 
-账户抵扣自动应用；现金退款需要审核批准。Cloud Dev 没有 SLA 抵扣。套餐可用性范围和计费条款见 [Cloud 价格](https://cloud.durable-workflow.com/pricing)。
+SLA 套餐会自动向账户提供服务抵扣，金额不超过该月受影响运行时的实际收费，
+中断不会获得现金退款。Cloud Dev 没有 SLA 抵扣。套餐可用性范围和计费条款见
+[Cloud 条款](https://cloud.durable-workflow.com/terms)和
+[Cloud 价格](https://cloud.durable-workflow.com/pricing)。
 
 ## 私有连接与支持边界 {#private-connectivity-and-support-boundary}
 
