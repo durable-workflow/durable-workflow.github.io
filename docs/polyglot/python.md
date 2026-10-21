@@ -1009,7 +1009,7 @@ async def long_running_task(items: list) -> dict:
 
 For remote activities, call `await ctx.heartbeat(...)` during bounded work, well before `heartbeat_timeout`. Its first window starts at runtime claim, before Python receives the task. Each recorded heartbeat uses the runtime's recording time, not the time its response reaches Python. Pauses, request latency and transport retries consume the budget. Follow the [cadence guidance](../features/heartbeats.md#heartbeat-cadence-and-receipts).
 
-The direct `Client.heartbeat_activity_task()` call uses the configured `TransportRetryPolicy`. After that policy, transport errors can propagate as `httpx.TransportError`, and HTTP refusals become mapped SDK exceptions such as `ServerError`. This is HTTP retry behavior, not another activity attempt or more heartbeat time. `ActivityContext.heartbeat()` can raise `ActivityCancelled` when the worker tells the activity to stop. With the normal cooperatively supervised worker, failed heartbeat or ownership checks can stop or abandon the callback. Do not assume every failure returns to a catch block or that cleanup code always runs.
+The direct `Client.heartbeat_activity_task()` call uses the configured `TransportRetryPolicy`. After that policy, transport errors can propagate as `httpx.TransportError`, and HTTP refusals become mapped SDK exceptions such as `ServerError`. This is HTTP retry behavior, not another activity attempt or more heartbeat time. `ActivityContext.heartbeat()` can raise `ActivityCancelled` when the worker tells the activity to stop. When cooperative process supervision is enabled, failed heartbeat or ownership checks can stop or abandon the callback. Do not assume every failure returns to a catch block or that cleanup code always runs.
 
 Do not suppress heartbeat/ownership failures and continue external work or report success. Progress is not an external commit or a resumable-checkpoint receipt. Keep external effects idempotent.
 
@@ -1026,6 +1026,27 @@ async def validate(data: dict) -> dict:
         raise NonRetryableError("Missing required_field")
     return data
 ```
+
+### Synchronous and asynchronous activities {#activity-execution}
+
+Ordinary `def` remote activities run in a dedicated thread pool bounded by
+`max_concurrent_activity_tasks`. Each callback keeps its activity context.
+Polling, workflow tasks and worker heartbeats can progress while a callback
+blocks. `async def` activities run on the event loop and must use nonblocking
+I/O; a blocking call inside an async function still stalls that loop.
+
+From a synchronous callback, call
+`activity.context().heartbeat_sync(details)` to send progress through the owner
+event loop with the original task, attempt and worker identity. Async callbacks
+use `await activity.context().heartbeat(details)`.
+
+Cancelling an await does not stop a running Python thread. Its physical slot
+stays occupied until the callback returns, and a late return does not submit a
+result after cancellation. If a callback is still running after
+`shutdown_timeout`, shutdown raises `RuntimeError` and retains the worker
+registration. Set timeouts on downstream I/O and use separately isolated worker
+processes for CPU-heavy work. See the SDK's
+[execution and shutdown reference](https://python.durable-workflow.com/reference/worker/).
 
 ## Worker
 

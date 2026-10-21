@@ -802,7 +802,7 @@ async def long_running_task(items: list) -> dict:
 
 リモートアクティビティでは、上限を設けた処理の途中で、`heartbeat_timeout` より十分前に `await ctx.heartbeat(...)` を呼び出します。最初の期間はランタイムのタスク取得から始まり、Python の受信より前です。記録されたハートビートはランタイムでの記録時刻を使い、Python が応答を受信した時刻は使いません。中断、リクエストの遅延、通信の再試行も時間予算を消費します。[送信間隔の指針](../features/heartbeats.md#heartbeat-cadence-and-receipts)に従ってください。
 
-`Client.heartbeat_activity_task()` の直接呼び出しは、設定された `TransportRetryPolicy` を使います。このポリシーの処理後、通信エラーは `httpx.TransportError` として伝播し、HTTP の拒否は `ServerError` などの SDK 例外になります。これは HTTP の再試行であり、新しいアクティビティ試行やハートビートの時間延長ではありません。Worker が停止を求めると、`ActivityContext.heartbeat()` は `ActivityCancelled` を発生させる場合があります。通常の協調的な監督下の Worker では、ハートビートや所有権確認の失敗によってコールバックが停止または放棄される場合があります。すべての失敗が例外処理ブロックに戻ったり、後始末が必ず実行されたりするとは限りません。
+`Client.heartbeat_activity_task()` の直接呼び出しは、設定された `TransportRetryPolicy` を使います。このポリシーの処理後、通信エラーは `httpx.TransportError` として伝播し、HTTP の拒否は `ServerError` などの SDK 例外になります。これは HTTP の再試行であり、新しいアクティビティ試行やハートビートの時間延長ではありません。Worker が停止を求めると、`ActivityContext.heartbeat()` は `ActivityCancelled` を発生させる場合があります。協調的なプロセス監督が有効な場合、ハートビートや所有権確認の失敗によってコールバックが停止または放棄される場合があります。すべての失敗が例外処理ブロックに戻ったり、後始末が必ず実行されたりするとは限りません。
 
 ハートビートや所有権の失敗を抑制して外部処理を続けたり、成功を報告したりしないでください。進捗は外部コミットや再開可能なチェックポイントの確認ではありません。外部作用は冪等にしてください。
 
@@ -819,6 +819,22 @@ async def validate(data: dict) -> dict:
         raise NonRetryableError("Missing required_field")
     return data
 ```
+
+### 同期アクティビティと非同期アクティビティ {#activity-execution}
+
+通常のリモート `def` アクティビティは、`max_concurrent_activity_tasks` で上限を設定した専用のスレッドプールで実行されます。
+各関数は自身のアクティビティコンテキストを保持します。関数がブロックしている間も、ポーリング、ワークフロータスク、ワーカーの heartbeat は進行できます。
+`async def` アクティビティはイベントループで実行されるため、ノンブロッキング I/O を使ってください。
+非同期関数内のブロッキング呼び出しも、そのイベントループを停止させます。
+
+同期関数から進捗を送信するには `activity.context().heartbeat_sync(details)` を呼び出します。
+元のタスク、試行、ワーカーの識別情報を使い、担当するイベントループ経由で送信されます。
+非同期関数では `await activity.context().heartbeat(details)` を使います。
+
+待機をキャンセルしても、実行中の Python スレッドは停止しません。関数が戻るまで物理スロットは使用中のままで、キャンセル後に戻った結果は送信されません。
+`shutdown_timeout` を過ぎても関数が実行中の場合、シャットダウンは `RuntimeError` を発生させ、ワーカー登録を維持します。
+呼び出し先の I/O タイムアウトを制限し、CPU 負荷の高い処理には個別に分離したワーカープロセスを使ってください。
+詳しくは [SDK の実行とシャットダウンのリファレンス](https://python.durable-workflow.com/reference/worker/)を参照してください。
 
 ## Worker {#worker}
 
