@@ -39,6 +39,29 @@ Worker 和客户端的配置也独立于运维界面。将应用客户端和 Wor
 
 如果 Worker 遥测显示重复领取、延迟完成的竞争或卡住的租约，请结合本指南阅读[执行保证与幂等性](./constraints/execution-guarantees.md)。该契约区分至少一次传输的不确定性和重复的持久结果，避免对看似重复的证据作出错误运维判断。
 
+:::tip 嵌入式 Laravel 的追踪关联
+
+要将应用日志关联到工作流运行和活动尝试，请配置可选的[嵌入式追踪集成（英文）](https://github.com/durable-workflow/workflow/blob/main/docs/embedded-tracing.md)。
+它会在队列 Worker、重试和恢复之间保留 W3C 上下文，并使用应用的 OpenTelemetry
+提供程序和 Laravel 日志通道。该指南说明如何启用追踪、添加日志 tap、执行数据库架构迁移
+以及限制导出。上线前，请查看其中的 Span 关系图以及运行时和 SDK 的能力矩阵。
+
+:::
+
+### 服务模式追踪 {#service-mode-tracing}
+
+启用 SDK 遥测前，请配置应用自己的 provider、采样、propagator 和有界导出。参阅 [PHP 指南](https://php.durable-workflow.com/operate/tracing/)、[Python 指南](https://python.durable-workflow.com/telemetry/)或 [Rust API](https://rust.durable-workflow.com/durable_workflow/telemetry/)（英文）。
+
+| Runtime | 传播边界 |
+| --- | --- |
+| 嵌入式 Laravel | 应用的可选 Core 集成在队列 worker 之间持久保存上下文。 |
+| PHP Server | [Server 指南](https://github.com/durable-workflow/server/blob/2.10.0/docs/observability-context.md)要求应用镜像安装可选 API、启用配置开关，并具备实际的 nullable 数据库结构。 |
+| PHP、Python 和 Rust SDK | 可选的任务与尝试 span，以及作用域内日志关联。持久传播调用方上下文需要 Server 明确声明的精确 capability。缺失或格式无效时，使用独立的任务追踪。 |
+| 原生 Rust Server | 此 PHP 追踪版本不代表原生 carrier 支持或目录转换已通过验证。 |
+| Cloud | 此版本不包含 Cloud 部署。请确认托管 runtime 的支持情况。 |
+
+trace、run、activity、attempt 和 request ID 保持独立。baggage 使用默认空的允许列表，link 不携带 baggage。provider 和 exporter 由应用管理。进程突然终止可能丢失遥测，replay 不保证恰好一次导出。请使用持久历史确认业务结果。
+
 ### 仪表板视图 {#dashboard-view}
 
 ![Waterline 仪表板](https://raw.githubusercontent.com/durable-workflow/waterline/refs/heads/main/docs/screenshots/dashboard.png)

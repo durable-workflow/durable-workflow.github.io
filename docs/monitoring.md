@@ -71,6 +71,32 @@ alongside this guide. That contract separates at-least-once transport
 uncertainty from duplicate durable outcomes so duplicate-looking evidence does
 not turn into the wrong operational conclusion.
 
+:::tip Embedded Laravel trace correlation
+
+To correlate application logs with a workflow run and activity attempt, configure
+the optional [embedded tracing integration](https://github.com/durable-workflow/workflow/blob/main/docs/embedded-tracing.md).
+It persists W3C context across queue workers, retries and recovery and uses your
+application's OpenTelemetry provider and Laravel log channels. Follow the guide
+to enable tracing, add the log tap, run the schema migrations and configure
+bounded exports. Review its span diagram and runtime/SDK capability matrix
+before rollout.
+
+:::
+
+### Service-mode tracing
+
+Configure the application's provider, sampling, propagators and bounded exporter before enabling SDK telemetry. Use the [PHP tracing guide](https://php.durable-workflow.com/operate/tracing/), [Python telemetry guide](https://python.durable-workflow.com/telemetry/) or [Rust telemetry API](https://rust.durable-workflow.com/durable_workflow/telemetry/).
+
+| Runtime | Propagation boundary |
+| --- | --- |
+| Embedded Laravel | The application's optional Core integration persists context across its queue workers. |
+| PHP Server | The [Server trace-context guide](https://github.com/durable-workflow/server/blob/2.10.0/docs/observability-context.md) requires an application image with the optional API, enabled flag and actual nullable schema. |
+| PHP, Python and Rust SDKs | Opt-in task/attempt spans and scoped log correlation. Durable caller propagation requires the exact advertised Server capability. Missing or malformed capability uses independent task traces. |
+| Native Rust Server | This PHP tracing release does not qualify native carrier support or catalog conversion. |
+| Cloud | This release includes no Cloud deployment. Confirm support with the managed runtime. |
+
+Trace IDs, durable run/activity/attempt IDs and application request IDs remain distinct. Baggage is allowlisted and empty by default; links carry no baggage. Providers and exporters remain application-owned. Abrupt termination can lose telemetry, and replay does not promise exactly-once export. Use durable history for business outcomes.
+
 ### Dashboard View
 
 ![Waterline dashboard](https://raw.githubusercontent.com/durable-workflow/waterline/refs/heads/main/docs/screenshots/dashboard.png)

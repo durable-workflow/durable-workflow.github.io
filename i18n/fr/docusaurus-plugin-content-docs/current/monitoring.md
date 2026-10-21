@@ -70,6 +70,33 @@ Ce contrat distingue l'incertitude du transport au moins une fois des résultats
 durables dupliqués, pour éviter les mauvaises conclusions face à des preuves
 qui ressemblent à des doublons.
 
+:::tip Corrélation des traces dans Laravel embarqué
+
+Pour relier les logs de l'application à une exécution de workflow et à une
+tentative d'activité, configurez l'[intégration facultative de traçage en mode embarqué (en anglais)](https://github.com/durable-workflow/workflow/blob/main/docs/embedded-tracing.md).
+Elle conserve le contexte W3C entre les workers de file, les nouvelles tentatives
+et la reprise, et utilise le fournisseur OpenTelemetry ainsi que les canaux de
+logs Laravel de votre application. Le guide explique comment activer le traçage,
+ajouter le tap de logs, exécuter les migrations du schéma et borner les exports.
+Consultez le diagramme des spans et la matrice des capacités des runtimes et SDK
+avant le déploiement.
+
+:::
+
+### Traçage en mode service {#service-mode-tracing}
+
+Configurez le fournisseur, l'échantillonnage, les propagateurs et un export borné avant d'activer la télémétrie du SDK. Consultez le [guide PHP](https://php.durable-workflow.com/operate/tracing/), le [guide Python](https://python.durable-workflow.com/telemetry/) ou l'[API Rust](https://rust.durable-workflow.com/durable_workflow/telemetry/) (en anglais).
+
+| Runtime | Limite de propagation |
+| --- | --- |
+| Laravel embarqué | L'intégration Core facultative conserve le contexte entre les workers de l'application. |
+| Serveur PHP | Le [guide du serveur](https://github.com/durable-workflow/server/blob/2.10.0/docs/observability-context.md) exige une image applicative avec l'API facultative, l'option activée et le schéma nullable réel. |
+| SDK PHP, Python et Rust | Spans de tâches/tentatives et corrélation des logs sur activation. La propagation durable exige la capacité exacte annoncée par le serveur. Une capacité absente ou mal formée produit des traces de tâches indépendantes. |
+| Serveur Rust natif | Cette version PHP ne qualifie ni les carriers natifs ni la conversion du catalogue. |
+| Cloud | Cette version ne déploie rien dans Cloud. Vérifiez le support du runtime géré. |
+
+Les identifiants de trace, de run, d'activité, de tentative et de requête restent distincts. Le baggage utilise une liste autorisée, vide par défaut; les liens n'en contiennent pas. L'application possède les fournisseurs et exporteurs. Un arrêt brutal peut perdre la télémétrie; le replay ne garantit pas un export exactement une fois. L'historique durable fait foi pour les résultats métier.
+
 ### Vue du tableau de bord {#dashboard-view}
 
 ![Tableau de bord Waterline](https://raw.githubusercontent.com/durable-workflow/waterline/refs/heads/main/docs/screenshots/dashboard.png)
