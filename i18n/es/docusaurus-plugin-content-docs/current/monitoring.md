@@ -70,7 +70,11 @@ junto con esta guía. Ese contrato distingue la incertidumbre del transporte con
 entrega al menos una vez de los resultados duraderos duplicados, para evitar
 conclusiones operativas incorrectas ante evidencia que parece duplicada.
 
-:::tip Correlación de trazas en Laravel embebido
+## Trazas con OpenTelemetry {#opentelemetry-tracing}
+
+Conecte las solicitudes de la aplicación, las tareas de workflow y los intentos de actividad entre procesos con las trazas opcionales de OpenTelemetry. Elija la configuración del runtime que gestiona sus ejecuciones.
+
+### Laravel embebido {#embedded-tracing}
 
 Para relacionar los logs de la aplicación con una ejecución de workflow y un
 intento de actividad, configura la [integración opcional de trazas del modo embebido (en inglés)](https://github.com/durable-workflow/workflow/blob/main/docs/embedded-tracing.md).
@@ -80,7 +84,16 @@ La guía explica cómo activar las trazas, añadir el tap de logs, ejecutar las
 migraciones del esquema y limitar las exportaciones. Revisa el diagrama de spans
 y la matriz de capacidades de runtimes y SDKs antes del despliegue.
 
-:::
+En el archivo `config/workflows.php` de la aplicación, asocie una variable de entorno propia de la aplicación con la configuración de trazas existente:
+
+```php
+'tracing' => [
+    'enabled' => (bool) env('DW_TRACING_ENABLED', false),
+    'baggage_allowlist' => [],
+],
+```
+
+Este ejemplo comienza sin baggage. Instale la API opcional y configure el proveedor, el tap de logs, las migraciones y el exportador con límites según la guía enlazada. Después, reinicie los workers.
 
 ### Trazas en modo servicio {#service-mode-tracing}
 
@@ -95,6 +108,8 @@ Configure el proveedor, muestreo, propagadores y exportación acotada antes de a
 | Cloud | Esta versión no incluye despliegue en Cloud. Confirme el soporte del runtime gestionado. |
 
 Los identificadores de traza, run, actividad, intento y petición siguen separados. Baggage usa una lista permitida, vacía por defecto; los enlaces no contienen baggage. La aplicación controla proveedores y exportadores. Una terminación abrupta puede perder telemetría; el replay no garantiza exportación exactamente una vez. Use el historial duradero para los resultados de negocio.
+
+## Vistas de Waterline {#waterline-views}
 
 ### Vista del panel {#dashboard-view}
 

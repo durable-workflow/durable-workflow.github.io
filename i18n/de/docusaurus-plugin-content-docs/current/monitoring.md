@@ -39,7 +39,11 @@ Die Einrichtung von Workern und Clients bleibt ebenfalls von der Operatoroberfl�
 
 Zeigt Worker-Telemetrie wiederholte Übernahmen, Rennen um verspätete Abschlüsse oder feststeckende Leases, lesen Sie zusätzlich [Ausführungsgarantien und Idempotenz](./constraints/execution-guarantees.md). Dieser Vertrag trennt Unsicherheit des At-least-once-Transports von doppelten dauerhaften Ergebnissen, damit scheinbar doppelte Nachweise nicht zu falschen Betriebsentscheidungen führen.
 
-:::tip Trace-Korrelation in Embedded Laravel
+## OpenTelemetry-Tracing {#opentelemetry-tracing}
+
+Verbinden Sie Anwendungsanfragen, Workflow-Tasks und Aktivitätsversuche über Prozessgrenzen hinweg mit optionalem OpenTelemetry-Tracing. Wählen Sie die Einrichtung für die Runtime, die Ihre Runs verwaltet.
+
+### Eingebettetes Laravel {#embedded-tracing}
 
 Um Anwendungslogs einem Workflow-Lauf und Aktivitätsversuch zuzuordnen, konfigurieren
 Sie die optionale [Tracing-Integration im eingebetteten Modus (Englisch)](https://github.com/durable-workflow/workflow/blob/main/docs/embedded-tracing.md).
@@ -50,7 +54,16 @@ aktivieren, den Log-Tap hinzufügen, die Schema-Migrationen ausführen und Expor
 begrenzen. Prüfen Sie vor dem Rollout das Span-Diagramm und die
 Fähigkeitsmatrix für Laufzeiten und SDKs.
 
-:::
+Ordnen Sie in der `config/workflows.php` Ihrer Anwendung eine anwendungseigene Umgebungsvariable der vorhandenen Tracing-Konfiguration zu:
+
+```php
+'tracing' => [
+    'enabled' => (bool) env('DW_TRACING_ENABLED', false),
+    'baggage_allowlist' => [],
+],
+```
+
+Dieses Beispiel überträgt zunächst kein Baggage. Installieren Sie die optionale API und konfigurieren Sie Provider, Log-Tap, Migrationen und begrenzten Exporter wie im verlinkten Leitfaden beschrieben. Starten Sie danach die Worker neu.
 
 ### Tracing im Service-Modus {#service-mode-tracing}
 
@@ -65,6 +78,8 @@ Konfigurieren Sie Provider, Sampling, Propagatoren und begrenzten Export, bevor 
 | Cloud | Diese Version enthält kein Cloud-Deployment. Prüfen Sie die Unterstützung der verwalteten Runtime. |
 
 Trace-, Run-, Activity-, Versuchs- und Anfrage-IDs bleiben getrennt. Baggage ist auf eine standardmäßig leere Positivliste beschränkt; Links enthalten kein Baggage. Provider und Exporter gehören der Anwendung. Abrupte Beendigung kann Telemetrie verlieren; Replay garantiert keinen genau einmaligen Export. Für Geschäftsergebnisse gilt die dauerhafte History.
+
+## Waterline-Ansichten {#waterline-views}
 
 ### Dashboard-Ansicht {#dashboard-view}
 

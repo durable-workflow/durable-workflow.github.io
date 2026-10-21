@@ -70,7 +70,11 @@ Ce contrat distingue l'incertitude du transport au moins une fois des résultats
 durables dupliqués, pour éviter les mauvaises conclusions face à des preuves
 qui ressemblent à des doublons.
 
-:::tip Corrélation des traces dans Laravel embarqué
+## Traçage OpenTelemetry {#opentelemetry-tracing}
+
+Reliez les requêtes de l’application, les tâches de workflow et les tentatives d’activité entre processus avec le traçage OpenTelemetry facultatif. Choisissez la configuration du runtime qui gère vos exécutions.
+
+### Laravel embarqué {#embedded-tracing}
 
 Pour relier les logs de l'application à une exécution de workflow et à une
 tentative d'activité, configurez l'[intégration facultative de traçage en mode embarqué (en anglais)](https://github.com/durable-workflow/workflow/blob/main/docs/embedded-tracing.md).
@@ -81,7 +85,16 @@ ajouter le tap de logs, exécuter les migrations du schéma et borner les export
 Consultez le diagramme des spans et la matrice des capacités des runtimes et SDK
 avant le déploiement.
 
-:::
+Dans le fichier `config/workflows.php` de l’application, associez une variable d’environnement propre à l’application à la configuration de traçage existante :
+
+```php
+'tracing' => [
+    'enabled' => (bool) env('DW_TRACING_ENABLED', false),
+    'baggage_allowlist' => [],
+],
+```
+
+Cet exemple ne propage aucun baggage au départ. Installez l’API facultative et configurez le fournisseur, le tap de logs, les migrations et l’exporteur borné selon le guide lié, puis redémarrez les workers.
 
 ### Traçage en mode service {#service-mode-tracing}
 
@@ -96,6 +109,8 @@ Configurez le fournisseur, l'échantillonnage, les propagateurs et un export bor
 | Cloud | Cette version ne déploie rien dans Cloud. Vérifiez le support du runtime géré. |
 
 Les identifiants de trace, de run, d'activité, de tentative et de requête restent distincts. Le baggage utilise une liste autorisée, vide par défaut; les liens n'en contiennent pas. L'application possède les fournisseurs et exporteurs. Un arrêt brutal peut perdre la télémétrie; le replay ne garantit pas un export exactement une fois. L'historique durable fait foi pour les résultats métier.
+
+## Vues Waterline {#waterline-views}
 
 ### Vue du tableau de bord {#dashboard-view}
 
