@@ -958,7 +958,7 @@ async def long_running_task(items: list) -> dict:
 
 Para actividades remotas, llame a `await ctx.heartbeat(...)` durante trabajo de actividad acotado, con suficiente antelación a `heartbeat_timeout`. La primera ventana empieza al reclamar la actividad en el entorno de ejecución, antes de que Python reciba la tarea. Cada heartbeat registrado usa el momento en que lo registra el entorno, no cuando su respuesta llega a Python. Las pausas, la latencia y los reintentos de transporte consumen el presupuesto. Siga las [recomendaciones de cadencia](../features/heartbeats.md#heartbeat-cadence-and-receipts).
 
-La llamada directa a `Client.heartbeat_activity_task()` usa la `TransportRetryPolicy` configurada. Tras esa política, los errores de transporte pueden propagarse como `httpx.TransportError`, y los rechazos HTTP se convierten en excepciones del SDK, como `ServerError`. Son reintentos HTTP, no otro intento de actividad ni más tiempo para el heartbeat. `ActivityContext.heartbeat()` puede lanzar `ActivityCancelled` cuando el worker indica a la actividad que se detenga. Con el worker normal de supervisión cooperativa, los fallos de heartbeat o de titularidad pueden detener o abandonar el callback. No suponga que todos los fallos vuelven a un bloque de captura ni que la limpieza siempre se ejecuta.
+La llamada directa a `Client.heartbeat_activity_task()` usa la `TransportRetryPolicy` configurada. Tras esa política, los errores de transporte pueden propagarse como `httpx.TransportError`, y los rechazos HTTP se convierten en excepciones del SDK, como `ServerError`. Son reintentos HTTP, no otro intento de actividad ni más tiempo para el heartbeat. `ActivityContext.heartbeat()` puede lanzar `ActivityCancelled` cuando el worker indica a la actividad que se detenga. Cuando la supervisión cooperativa de procesos está activada, los fallos de heartbeat o de titularidad pueden detener o abandonar el callback. No suponga que todos los fallos vuelven a un bloque de captura ni que la limpieza siempre se ejecuta.
 
 No suprima fallos de heartbeat o de titularidad para seguir haciendo trabajo externo o informar de éxito. El progreso no es una confirmación externa ni un recibo de punto de control reanudable. Mantenga idempotentes los efectos externos.
 
@@ -975,6 +975,29 @@ async def validate(data: dict) -> dict:
         raise NonRetryableError("Missing required_field")
     return data
 ```
+
+### Actividades síncronas y asíncronas {#activity-execution}
+
+Las actividades remotas normales con `def` se ejecutan en un grupo de hilos
+dedicado, limitado por `max_concurrent_activity_tasks`. Cada función conserva
+su contexto de actividad. El sondeo, las tareas de workflow y los heartbeats del
+worker pueden avanzar mientras una función está bloqueada. Las actividades con
+`async def` se ejecutan en el bucle de eventos y deben usar E/S no bloqueante;
+una llamada bloqueante dentro de una función asíncrona también bloquea ese bucle.
+
+Desde una función síncrona, llame a
+`activity.context().heartbeat_sync(details)` para enviar el progreso mediante
+el bucle de eventos responsable, con la identidad original de la tarea, el
+intento y el worker. Las funciones asíncronas usan
+`await activity.context().heartbeat(details)`.
+
+Cancelar una espera no detiene un hilo de Python que ya está ejecutándose. Su
+slot físico permanece ocupado hasta que la función retorna, y un retorno tardío
+no envía ningún resultado después de la cancelación. Si una función sigue
+ejecutándose tras `shutdown_timeout`, el cierre lanza `RuntimeError` y conserva
+el registro del worker. Limite los tiempos de espera de E/S de los servicios
+invocados y use procesos de worker aislados para trabajo intensivo de CPU.
+Consulte la [referencia de ejecución y cierre del SDK](https://python.durable-workflow.com/reference/worker/).
 
 ## Worker {#worker}
 
