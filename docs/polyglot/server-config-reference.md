@@ -339,11 +339,27 @@ Durable Workflow API knobs.
 | Group | Variables | Use |
 | --- | --- | --- |
 | Application | `APP_NAME`, `APP_ENV`, `APP_KEY`, `APP_DEBUG`, `APP_URL`, `APP_VERSION`, locale, timezone, maintenance, and cipher settings | Laravel application runtime identity and boot behavior. |
-| Logging | `LOG_CHANNEL`, `LOG_LEVEL`, stack, daily, Slack, and Papertrail settings | Laravel logging destinations and retention. |
+| Logging | `LOG_CHANNEL`, `LOG_LEVEL`, `LOG_STDERR_FORMATTER`, stack, daily, Slack, and Papertrail settings | Laravel logging destinations, formatting and retention. |
 | Database | `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `DB_SOCKET`, `DB_URL`, charset, collation, and foreign-key settings | SQL state store for workflow, namespace, worker, and projection tables. |
 | Redis/cache/queue | `REDIS_*`, `QUEUE_CONNECTION`, `QUEUE_FAILED_DRIVER`, `CACHE_STORE`, `CACHE_PREFIX`, `SESSION_*` | Queue workers, cache locks, long-poll signaling, and web/session runtime support. |
 | Filesystems/mail/broadcasting | `FILESYSTEM_DISK`, `MAIL_*`, `BROADCAST_*`, `PUSHER_*`, `AWS_*` | Framework integrations used by deployment-specific features. |
 | Build/runtime | `MYSQL_VERSION`, `REDIS_VERSION`, `PHP_CLI_SERVER_WORKERS`, `VITE_APP_NAME`, `BCRYPT_ROUNDS` | Docker Compose images and framework runtime behavior. |
+
+## Container logs
+
+Set `LOG_CHANNEL=stderr` on API, worker and scheduler containers so `docker logs`
+or `kubectl logs` can collect application logs. Set it explicitly on existing
+releases. Use `LOG_LEVEL` to select the minimum severity. For newline-delimited
+JSON, also set:
+
+```dotenv
+LOG_STDERR_FORMATTER="Monolog\Formatter\JsonFormatter"
+```
+
+Restart persistent roles after changing these settings because configuration is
+cached at startup. An explicit file channel needs its own storage and collection;
+Kubernetes does not collect `storage/logs/laravel.log` automatically.
+`DW_LOG_FORMAT` is not a supported setting.
 
 ## Migration Notes
 

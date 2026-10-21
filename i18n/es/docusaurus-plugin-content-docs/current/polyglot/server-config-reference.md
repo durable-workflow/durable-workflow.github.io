@@ -278,11 +278,27 @@ Las variables de infraestructura de ejecución controlan el framework y sus depe
 | Grupo | Variables | Uso |
 | --- | --- | --- |
 | Aplicación | `APP_NAME`, `APP_ENV`, `APP_KEY`, `APP_DEBUG`, `APP_URL`, `APP_VERSION`, idioma, zona horaria, mantenimiento y cifrado | Identidad y comportamiento de arranque de la aplicación Laravel. |
-| Registros | `LOG_CHANNEL`, `LOG_LEVEL`, opciones de stack, daily, Slack y Papertrail | Destinos y retención de registros de Laravel. |
+| Registros | `LOG_CHANNEL`, `LOG_LEVEL`, `LOG_STDERR_FORMATTER`, opciones de stack, daily, Slack y Papertrail | Destinos, formato y retención de registros de Laravel. |
 | Base de datos | `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `DB_SOCKET`, `DB_URL`, juego de caracteres, cotejamiento y claves foráneas | Almacén SQL de estado para tablas de workflows, namespaces, workers y proyecciones. |
 | Redis/caché/cola | `REDIS_*`, `QUEUE_CONNECTION`, `QUEUE_FAILED_DRIVER`, `CACHE_STORE`, `CACHE_PREFIX`, `SESSION_*` | Workers de cola, bloqueos de caché, señales de long polling y soporte web y de sesiones. |
 | Archivos/correo/difusión | `FILESYSTEM_DISK`, `MAIL_*`, `BROADCAST_*`, `PUSHER_*`, `AWS_*` | Integraciones del framework usadas por funciones propias de cada despliegue. |
 | Compilación/ejecución | `MYSQL_VERSION`, `REDIS_VERSION`, `PHP_CLI_SERVER_WORKERS`, `VITE_APP_NAME`, `BCRYPT_ROUNDS` | Imágenes de Docker Compose y comportamiento de ejecución del framework. |
+
+## Registros de contenedores {#container-logs}
+
+Establece `LOG_CHANNEL=stderr` en los contenedores de API, workers y planificador
+para que `docker logs` o `kubectl logs` recopilen los registros de la aplicación.
+Configúralo explícitamente en las versiones existentes. Usa `LOG_LEVEL` para
+elegir la gravedad mínima. Para JSON con un registro por línea, añade:
+
+```dotenv
+LOG_STDERR_FORMATTER="Monolog\Formatter\JsonFormatter"
+```
+
+Reinicia los procesos persistentes después de cambiar estas opciones, ya que la
+configuración se almacena en caché al arrancar. Un canal de archivo elegido
+explícitamente necesita almacenamiento y recopilación propios; Kubernetes no
+recopila `storage/logs/laravel.log` automáticamente. `DW_LOG_FORMAT` no es una opción admitida.
 
 ## Notas de migración {#migration-notes}
 
