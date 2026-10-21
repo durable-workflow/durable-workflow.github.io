@@ -281,15 +281,59 @@ UI・エージェントが、更新の受理、適用、完了、拒否、待機
 
 | メソッド | パス | 目的 |
 | --- | --- | --- |
-| `GET` | `/waterline/api/v2/schedules` | 現在名前空間で見えるスケジュール一覧。 |
+| `GET` | `/waterline/api/v2/schedules` | 現在の範囲で見えるスケジュール一覧。 |
 | `GET` | `/waterline/api/v2/schedules/{scheduleId}` | 一つの詳細。 |
+| `GET` | `/waterline/api/v2/schedules/{scheduleId}/history` | スケジュールのライフサイクル監査イベントを読む。 |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/pause` | 将来の発火を一時停止。 |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/resume` | 一時停止を再開。 |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/trigger` | 即時発火を要求。 |
 | `POST` | `/waterline/api/v2/schedules/{scheduleId}/backfill` | 指定期間をバックフィル。 |
 | `DELETE` | `/waterline/api/v2/schedules/{scheduleId}` | スケジュールを削除。 |
 
-レスポンスは、アクション、ステータス、次回発火、最近の発火履歴、重複ポリシー、注記、メモ、検索属性を公開します。
+スケジュールは名前空間と `schedule_id` で識別します。同じ `schedule_id` が複数の名前空間に存在することがあります。スケジュール単位のルートはすべて、省略可能な `namespace` パラメーターをクエリ文字列またはリクエスト本文で受け付けます。
+
+- 名前空間単位の Waterline は、自身の名前空間だけを操作します。`WATERLINE_NAMESPACE` を設定した組み込み Waterline と、すべてのサービスモードのデプロイが該当します。他の名前空間へのリクエストは `404` を返します。
+- クラスター全体の組み込み Waterline は、リクエストされた名前空間を操作します。`namespace` がなく、`schedule_id` が複数の名前空間に存在する場合は、理由 `schedule_namespace_required` とともに `409` を返します。何も変更されません。
+
+```bash
+curl -sS -X POST \
+  "$APP_URL/waterline/api/v2/schedules/nightly-invoice-sync/pause?namespace=billing" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{"note": "Supplier maintenance"}' | jq '.status, .note'
+```
+
+### スケジュール行 {#schedule-rows}
+
+一覧レスポンスはページ単位で、`data`、`current_page`、`last_page`、`per_page`、`total`、`operator_scope` を持ちます。`data` の各行は、組み込みモードとサービスモードで同じフィールドを持ちます。
+
+| フィールド | 意味 |
+| --- | --- |
+| `schedule_id` | スケジュールの ID。スケジュール単位のすべてのルートに `namespace` とともに送ります。 |
+| `id` | `schedule_id` と同じ値。古いクライアント向けに残しています。 |
+| `namespace` | スケジュールの名前空間。 |
+| `workflow_type`, `workflow_class` | スケジュールが開始するワークフロー。どちらも `null` の場合があります。 |
+| `status`, `paused` | `active`、`paused`、`deleted` のいずれかと、スケジュールが一時停止中かどうか。 |
+| `note` | 運用者の注記、または `null`。 |
+| `spec` | 発火の周期。`cron_expressions`（cron 文字列）、`intervals`（ISO 8601 期間の `every` と省略可能な `offset` を持つオブジェクト）、`timezone`。 |
+| `overlap_policy` | `skip`、`buffer_one`、`buffer_all`、`cancel_other`、`terminate_other`、`allow_all` のいずれか。 |
+| `next_fire_at`, `last_fired_at` | ISO 8601 タイムスタンプ、または `null`。 |
+| `last_outcome` | 記録された直近の発火結果。記録がない場合は `null`。`outcome`（`scheduled`、`drained`、`backfilled`、`skipped`、`failed` など）、`at`、`reason`、`workflow_id`、`run_id` を持ちます。 |
+| `fires_count`, `failures_count`, `skipped_trigger_count`, `remaining_actions` | カウンター。バックエンドが報告しないカウンターは `null`。 |
+| `search_attributes` | スケジュールの検索属性、または `null`。 |
+| `created_at`, `updated_at` | ISO 8601 タイムスタンプ。 |
+
+`last_fired_at` があり `last_outcome` がない行は、バックエンドが発火時刻だけを報告し、その結果を報告しなかったことを示します。
+
+一覧行と、詳細、`pause`、`resume` の各レスポンスには、`action`、`max_runs`、`jitter_seconds`、`paused_at`、`last_skip_reason`、`last_skipped_at`、`latest_workflow_instance_id`、`buffered_actions`、`memo`、`recent_actions` も含まれます。`recent_actions` の各要素は `outcome`、`fired_at`、`reason`、`workflow_id`、`run_id`、`occurrence_time` を持ちます。`latest_instance_id` は古いクライアント向けに `latest_workflow_instance_id` と同じ値を返します。`spec` は、発火の周期を表すフィールドの後に、バックエンドが保存したその他のキーをすべて保持します。
+
+### 発火とバックフィルの結果 {#trigger-and-backfill-results}
+
+`trigger` は省略可能な `overlap_policy` を受け付けます。`schedule_id`、`namespace`、`outcome`（`triggered`、`buffered`、`buffer_full`、`skipped`）、`triggered`、`workflow_id`、`run_id`、`reason` を返します。`triggered` はワークフローが開始した場合だけ `true` です。`instance_id` は古いクライアント向けに `workflow_id` と同じ値を返します。
+
+`backfill` には ISO 8601 タイムスタンプの `from` と `to` が必須で、省略可能な `overlap_policy` も受け付けます。`schedule_id`、`namespace`、`fires_attempted`、`started_count`、`skipped_count`、`failed_count`、`results` を返します。各結果は `fire_time`、`workflow_id`、`outcome`（`started`、`skipped`、`failed`）、`reason` を持ちます。古いクライアント向けに、各結果は `schedule_id` も繰り返します。また、`cron_time`、`instance_id`、`error` は、それぞれ `fire_time`、`workflow_id`、失敗した結果の `reason` と同じ値を返します。`backfill` は、終了が開始より後でない期間を、理由 `invalid_time_range` とともに `422` で拒否します。
+
+どちらのルートも、不明な `overlap_policy` を理由 `invalid_overlap_policy` とともに `422` で拒否します。
 
 ## 保存済みビューと設定 {#saved-views-and-preferences}
 
@@ -315,7 +359,7 @@ UI・エージェントが、更新の受理、適用、完了、拒否、待機
 | --- | --- |
 | `400` | 不正なリクエストまたは未対応の操作ペイロード。 |
 | `404` | 現在名前空間にインスタンス、実行、更新、スケジュール、保存済みビュー、設定画面が見つからない。 |
-| `409` | 過去、終了済み、リプレイブロック、定義利用不可などにより選択実行が操作を実行できない。 |
+| `409` | 過去、終了済み、リプレイブロック、定義利用不可などにより選択実行が操作を実行できない。クラスター全体のスケジュールリクエストで `schedule_id` に `namespace` が必要な場合も `409` を返す。 |
 | `422` | 検証失敗。フィールド単位のエラーを含む。 |
 | `500` | 予期しないアプリケーション失敗。 |
 
