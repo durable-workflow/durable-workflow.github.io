@@ -72,7 +72,11 @@ junto deste guia. Esse contrato separa a incerteza do transporte pelo menos
 uma vez de resultados duráveis duplicados, evitando conclusões operacionais
 erradas a partir de evidências que parecem duplicadas.
 
-:::tip Correlação de traces no Laravel embutido
+## Rastreamento com OpenTelemetry {#opentelemetry-tracing}
+
+Conecte requisições da aplicação, tarefas de workflow e tentativas de atividade entre processos com o rastreamento opcional do OpenTelemetry. Escolha a configuração do runtime que gerencia suas execuções.
+
+### Laravel incorporado {#embedded-tracing}
 
 Para relacionar os logs da aplicação a uma execução de workflow e a uma tentativa
 de atividade, configure a [integração opcional de rastreamento no modo embutido (em inglês)](https://github.com/durable-workflow/workflow/blob/main/docs/embedded-tracing.md).
@@ -82,7 +86,16 @@ O guia explica como habilitar o rastreamento, adicionar o tap de logs, executar
 as migrações do esquema e limitar as exportações. Consulte o diagrama de spans
 e a matriz de capacidades de runtimes e SDKs antes da implantação.
 
-:::
+No arquivo `config/workflows.php` da aplicação, associe uma variável de ambiente controlada pela aplicação à configuração de rastreamento existente:
+
+```php
+'tracing' => [
+    'enabled' => (bool) env('DW_TRACING_ENABLED', false),
+    'baggage_allowlist' => [],
+],
+```
+
+Este exemplo começa sem baggage. Instale a API opcional e configure o provedor, o tap de logs, as migrações e o exportador com limites conforme o guia vinculado. Depois, reinicie os workers.
 
 ### Rastreamento no modo serviço {#service-mode-tracing}
 
@@ -97,6 +110,8 @@ Configure o provedor, a amostragem, os propagadores e a exportação limitada an
 | Cloud | Esta versão não inclui implantação no Cloud. Confirme o suporte do runtime gerenciado. |
 
 IDs de trace, run, atividade, tentativa e requisição permanecem distintos. Baggage usa lista permitida, vazia por padrão; links não contêm baggage. Provedores e exportadores pertencem à aplicação. Encerramento abrupto pode perder telemetria; replay não garante exportação exatamente uma vez. Use o histórico durável para resultados de negócio.
+
+## Visualizações do Waterline {#waterline-views}
 
 ### Visão do painel {#dashboard-view}
 

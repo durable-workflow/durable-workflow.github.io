@@ -39,7 +39,11 @@ Worker・クライアントの設定も運用インターフェースと別で�
 
 Worker テレメトリに繰り返しの取得、遅延完了の競合、停止したリースがある場合は、このガイドと[実行保証と冪等性](./constraints/execution-guarantees.md)を併読してください。この契約は、少なくとも一回の配送で生じる不確実性と、永続結果の重複を分離し、重複して見える証拠から誤った運用判断をしないようにします。
 
-:::tip 組み込み Laravel のトレース相関
+## OpenTelemetry によるトレース {#opentelemetry-tracing}
+
+任意の OpenTelemetry トレースで、プロセスをまたぐアプリケーションリクエスト、ワークフロータスク、アクティビティ試行を関連付けます。実行を管理するランタイムに合った設定を選んでください。
+
+### 組み込み Laravel {#embedded-tracing}
 
 アプリケーションログをワークフロー実行やアクティビティの試行に関連付けるには、
 任意の[組み込みモードのトレース連携（英語）](https://github.com/durable-workflow/workflow/blob/main/docs/embedded-tracing.md)を設定します。
@@ -48,7 +52,16 @@ OpenTelemetry プロバイダーと Laravel ログチャネルを使用します
 トレースの有効化、ログ tap の追加、スキーマ移行の実行、エクスポートの制限を説明します。
 ロールアウト前に、Span の関係図とランタイム・SDK の機能対応表を確認してください。
 
-:::
+アプリケーションの `config/workflows.php` で、アプリケーションが管理する環境変数を既存のトレース設定に対応付けます。
+
+```php
+'tracing' => [
+    'enabled' => (bool) env('DW_TRACING_ENABLED', false),
+    'baggage_allowlist' => [],
+],
+```
+
+この例では baggage を伝播しません。リンク先のガイドに従って任意の API をインストールし、プロバイダー、ログ tap、マイグレーション、上限付きエクスポーターを設定してから、Worker を再起動してください。
 
 ### サービスモードのトレース {#service-mode-tracing}
 
@@ -63,6 +76,8 @@ SDK のテレメトリーを有効にする前に、アプリケーションの 
 | Cloud | このリリースには Cloud へのデプロイを含みません。管理対象 runtime の対応を確認してください。 |
 
 trace、run、activity、attempt、request の ID は別々です。baggage は既定で空の許可リストに制限され、link には含まれません。provider と exporter はアプリケーションが管理します。突然の終了でテレメトリーが失われる場合があり、replay は exactly-once エクスポートを保証しません。業務結果の確認には永続履歴を使用してください。
+
+## Waterline のビュー {#waterline-views}
 
 ### ダッシュボードビュー {#dashboard-view}
 
