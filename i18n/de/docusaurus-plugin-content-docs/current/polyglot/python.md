@@ -394,6 +394,33 @@ Workflow-Code zu und führt keine Saga-/finally-Bereinigung aus. Verwenden Sie
 Workflow-Bereinigung. [Kooperativer Abbruch](/docs/polyglot/cancellation)
 erklärt Operationsrichtlinien, Überwachung und Wiederherstellung.
 
+### Identität des aktuellen Workflows {#workflow-identity}
+
+Ab Python SDK 2.9.0 kann Workflow-Code die schreibgeschützten Eigenschaften
+`ctx.workflow_id` und `ctx.run_id` lesen. Beide sind Zeichenfolgen aus der
+aktuellen Aufgabe und bleiben bei der Wiederholung identisch. Bei
+continue-as-new bleibt die Workflow-ID erhalten, der Nachfolgelauf bekommt eine
+eigene Run-ID. Ersetzen Sie diese nicht durch eine als Argument übergebene
+ID des Vorgängers.
+
+```python
+from durable_workflow import workflow
+
+@workflow.defn(name="identity")
+class IdentityWorkflow:
+    def run(self, ctx):
+        identity = {"workflow_id": ctx.workflow_id, "run_id": ctx.run_id}
+        yield ctx.schedule_activity("record_identity", [identity])
+        return identity
+```
+
+Diese Eigenschaften lesen die lokale Aufgabenidentität ohne HTTP-Anfrage.
+Außerhalb des Workflow-Codes fragen Sie den Status mit
+`await client.describe_workflow(workflow_id)` ab. Für den Zustand eines
+registrierten Query-Handlers verwenden Sie
+`await client.query_workflow(workflow_id, query_name)`. Die Identität ersetzt
+keine dieser Operationen.
+
 ### Zeitpläne {#schedules}
 
 Zeitpläne verwenden `ScheduleSpec` für Kalender-/Intervallregeln und

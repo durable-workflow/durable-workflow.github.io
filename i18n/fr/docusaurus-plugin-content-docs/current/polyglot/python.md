@@ -397,6 +397,32 @@ code du workflow et n'exécute aucun nettoyage saga/finally. Utilisez
 Le [guide d'annulation coopérative](/docs/polyglot/cancellation) décrit politiques,
 supervision et reprise.
 
+### Identité du workflow courant {#workflow-identity}
+
+Depuis Python SDK 2.9.0, le code du workflow peut lire les propriétés en lecture
+seule `ctx.workflow_id` et `ctx.run_id`. Ce sont des chaînes issues de la tâche
+courante, identiques lors du rejeu. Après continue-as-new, l'identifiant du
+workflow reste le même et le successeur reçoit son propre identifiant de run.
+Ne le remplacez pas par un identifiant du prédécesseur passé en argument.
+
+```python
+from durable_workflow import workflow
+
+@workflow.defn(name="identity")
+class IdentityWorkflow:
+    def run(self, ctx):
+        identity = {"workflow_id": ctx.workflow_id, "run_id": ctx.run_id}
+        yield ctx.schedule_activity("record_identity", [identity])
+        return identity
+```
+
+Ces propriétés lisent l'identité locale de la tâche sans requête HTTP. Pour
+consulter l'état hors du code du workflow, utilisez
+`await client.describe_workflow(workflow_id)`. Utilisez
+`await client.query_workflow(workflow_id, query_name)` pour l'état exposé par un
+gestionnaire de requêtes enregistré. Les propriétés d'identité ne remplacent
+aucune de ces opérations.
+
 ### Planifications {#schedules}
 
 Les planifications utilisent `ScheduleSpec` pour les règles de calendrier ou

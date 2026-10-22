@@ -326,6 +326,31 @@ driver = external_storage_driver_from_policy(
 
 両操作は異なる終了結果で Server 実行を即時に閉じます。`cancel_workflow` はワークフローコードへ協調要求を届けず、Saga や finally のクリーンアップを実行しません。時間を制限したクリーンアップには、協調する Worker と `request_cancellation()` を使います。操作ポリシー、監督、復旧は[協調キャンセルガイド](/docs/polyglot/cancellation)を参照してください。
 
+### 現在のワークフローの識別情報 {#workflow-identity}
+
+Python SDK 2.9.0 以降では、ワークフローコードから読み取り専用の
+`ctx.workflow_id` と `ctx.run_id` を取得できます。どちらも現在のタスクに含まれる
+文字列で、リプレイ中も同じ値です。continue-as-new 後もワークフロー ID は変わらず、
+後続の実行には新しい実行 ID が割り当てられます。引数として渡された前の実行の ID で
+置き換えないでください。
+
+```python
+from durable_workflow import workflow
+
+@workflow.defn(name="identity")
+class IdentityWorkflow:
+    def run(self, ctx):
+        identity = {"workflow_id": ctx.workflow_id, "run_id": ctx.run_id}
+        yield ctx.schedule_activity("record_identity", [identity])
+        return identity
+```
+
+これらのプロパティは HTTP リクエストを送らず、ローカルのタスク識別情報を読みます。
+ワークフローコードの外で状態をポーリングするには
+`await client.describe_workflow(workflow_id)` を使います。登録済みクエリハンドラーが
+公開する状態には `await client.query_workflow(workflow_id, query_name)` を使います。
+識別情報のプロパティは、これらの操作の代わりにはなりません。
+
 ### スケジュール {#schedules}
 
 スケジュールは、カレンダー・間隔規則に `ScheduleSpec`、発火時に出すワークフロー開始要求に `ScheduleAction` を使います。

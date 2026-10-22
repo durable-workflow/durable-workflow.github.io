@@ -397,6 +397,32 @@ ao código do workflow nem executa limpeza de saga/finally. Use
 [guia de cancelamento cooperativo](/docs/polyglot/cancellation) para políticas
 de operações, supervisão e recuperação.
 
+### Identidade do workflow atual {#workflow-identity}
+
+A partir do Python SDK 2.9.0, o código do workflow pode ler as propriedades
+somente leitura `ctx.workflow_id` e `ctx.run_id`. Ambas são strings da tarefa
+atual e mantêm o mesmo valor durante o replay. Após continue-as-new, o ID do
+workflow permanece igual e o sucessor recebe seu próprio ID de execução. Não
+o substitua por um ID do predecessor recebido como argumento.
+
+```python
+from durable_workflow import workflow
+
+@workflow.defn(name="identity")
+class IdentityWorkflow:
+    def run(self, ctx):
+        identity = {"workflow_id": ctx.workflow_id, "run_id": ctx.run_id}
+        yield ctx.schedule_activity("record_identity", [identity])
+        return identity
+```
+
+Essas propriedades leem a identidade local da tarefa sem uma requisição HTTP.
+Para consultar o status fora do código do workflow, use
+`await client.describe_workflow(workflow_id)`. Use
+`await client.query_workflow(workflow_id, query_name)` para o estado exposto por
+um handler de query registrado. As propriedades de identidade não substituem
+nenhuma dessas operações.
+
 ### Agendamentos {#schedules}
 
 Agendamentos usam `ScheduleSpec` para regras de calendário/intervalo e
