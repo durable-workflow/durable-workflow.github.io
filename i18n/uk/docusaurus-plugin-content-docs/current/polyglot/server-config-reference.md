@@ -336,11 +336,27 @@ workers, які виконують ті самі workflows.
 | Група | Змінні | Використання |
 | --- | --- | --- |
 | Застосунок | `APP_NAME`, `APP_ENV`, `APP_KEY`, `APP_DEBUG`, `APP_URL`, `APP_VERSION`, locale, timezone, налаштування maintenance і cipher | Ідентичність runtime Laravel-застосунку та поведінка старту. |
-| Логування | `LOG_CHANNEL`, `LOG_LEVEL`, налаштування stack, daily, Slack та Papertrail | Напрямки логування Laravel та retention. |
+| Логування | `LOG_CHANNEL`, `LOG_LEVEL`, `LOG_STDERR_FORMATTER`, налаштування stack, daily, Slack та Papertrail | Напрямки, формат і термін зберігання журналів Laravel. |
 | База даних | `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `DB_SOCKET`, `DB_URL`, налаштування charset, collation та foreign keys | SQL-сховище стану таблиць workflow, namespace, worker і projections. |
 | Redis/cache/queue | `REDIS_*`, `QUEUE_CONNECTION`, `QUEUE_FAILED_DRIVER`, `CACHE_STORE`, `CACHE_PREFIX`, `SESSION_*` | Queue workers, cache locks, long-poll signals і підтримка web/session runtime. |
 | Файлові системи/пошта/broadcasting | `FILESYSTEM_DISK`, `MAIL_*`, `BROADCAST_*`, `PUSHER_*`, `AWS_*` | Інтеграції фреймворку для особливостей конкретного розгортання. |
 | Build/runtime | `MYSQL_VERSION`, `REDIS_VERSION`, `PHP_CLI_SERVER_WORKERS`, `VITE_APP_NAME`, `BCRYPT_ROUNDS` | Docker Compose images та поведінка runtime фреймворку. |
+
+## Журнали контейнерів {#container-logs}
+
+Задайте `LOG_CHANNEL=stderr` у контейнерах API, воркерів і планувальника, щоб
+`docker logs` або `kubectl logs` збирали журнали застосунку. Для наявних випусків
+задайте це явно. `LOG_LEVEL` визначає мінімальний рівень важливості. Для JSON
+з одним записом у рядку також задайте:
+
+```dotenv
+LOG_STDERR_FORMATTER="Monolog\Formatter\JsonFormatter"
+```
+
+Після змін перезапустіть постійні процеси, оскільки конфігурація кешується під час
+запуску. Явно вибраний файловий канал потребує власного сховища та збору журналів;
+Kubernetes не збирає `storage/logs/laravel.log` автоматично.
+`DW_LOG_FORMAT` не є підтримуваним налаштуванням.
 
 ## Примітки до міграції {#migration-notes}
 

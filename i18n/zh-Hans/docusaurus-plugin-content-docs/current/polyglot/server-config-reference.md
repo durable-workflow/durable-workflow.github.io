@@ -278,11 +278,25 @@ Server 镜像内置 `durable-workflow/workflow`，因此也提供包级 `DW_V2_*
 | 分组 | 变量 | 用途 |
 | --- | --- | --- |
 | 应用 | `APP_NAME`、`APP_ENV`、`APP_KEY`、`APP_DEBUG`、`APP_URL`、`APP_VERSION`、区域、时区、维护及加密设置 | Laravel 应用的运行时标识与启动行为。 |
-| 日志 | `LOG_CHANNEL`、`LOG_LEVEL`、堆栈、每日、Slack 与 Papertrail 设置 | Laravel 日志目的地与保留。 |
+| 日志 | `LOG_CHANNEL`、`LOG_LEVEL`、`LOG_STDERR_FORMATTER`、堆栈、每日、Slack 与 Papertrail 设置 | Laravel 日志输出位置、格式与保留。 |
 | 数据库 | `DB_CONNECTION`、`DB_HOST`、`DB_PORT`、`DB_DATABASE`、`DB_USERNAME`、`DB_PASSWORD`、`DB_SOCKET`、`DB_URL`、字符集、排序规则及外键设置 | 存储工作流、命名空间、Worker 及投影表的 SQL 状态库。 |
 | Redis、缓存与队列 | `REDIS_*`、`QUEUE_CONNECTION`、`QUEUE_FAILED_DRIVER`、`CACHE_STORE`、`CACHE_PREFIX`、`SESSION_*` | 队列 Worker、缓存锁、长轮询信号和 Web/会话运行时支持。 |
 | 文件系统、邮件与广播 | `FILESYSTEM_DISK`、`MAIL_*`、`BROADCAST_*`、`PUSHER_*`、`AWS_*` | 部署特有功能使用的框架集成。 |
 | 构建与运行时 | `MYSQL_VERSION`、`REDIS_VERSION`、`PHP_CLI_SERVER_WORKERS`、`VITE_APP_NAME`、`BCRYPT_ROUNDS` | Docker Compose 镜像及框架运行行为。 |
+
+## 容器日志 {#container-logs}
+
+在 API、worker 和调度器容器中设置 `LOG_CHANNEL=stderr`，让 `docker logs`
+或 `kubectl logs` 收集应用日志。已有发行版需显式设置。使用 `LOG_LEVEL`
+选择最低严重级别。如需每行一条记录的 JSON，还应设置：
+
+```dotenv
+LOG_STDERR_FORMATTER="Monolog\Formatter\JsonFormatter"
+```
+
+配置会在启动时缓存，因此修改后应重启常驻进程。显式选择文件日志通道时，
+需要自行提供存储和收集机制；Kubernetes 不会自动收集
+`storage/logs/laravel.log`。`DW_LOG_FORMAT` 不是受支持的设置。
 
 ## 迁移说明 {#migration-notes}
 
