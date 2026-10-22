@@ -105,6 +105,8 @@ foreach (array_chunk($items, 500) as $chunk) {
 
 执行器侧限制会使运行失败；接收侧限制只拒绝单条命令，不终止工作流。运行保持活动状态，待处理项目处理完毕后，调用方可以重试。
 
+对于带有 `request_id` 的 Server 更新，拒绝结果会按该键保留。即使容量或配置改变，复用同一个键仍会返回原始拒绝。确认拒绝并恢复容量后，应使用新键发起新的接收尝试。响应不确定时则不同：先恢复原始回执，再判断是否可以安全地再次提交。
+
 ```php
 // If 5,000 signals are already pending, this will be rejected:
 $result = $workflow->attemptSignal('process-item', $data);

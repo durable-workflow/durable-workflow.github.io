@@ -105,6 +105,8 @@ Se a contagem estiver no limite configurado ou acima dele, o comando é **rejeit
 
 Ao contrário dos limites do executor (que fazem a execução falhar), os limites de recebimento rejeitam o comando individual sem terminar o workflow. A execução permanece ativa, e o chamador pode tentar novamente depois que os itens pendentes forem processados.
 
+Em uma atualização do Server com `request_id`, a rejeição fica retida sob essa chave. Reutilizá-la retorna a rejeição original mesmo após mudanças de capacidade ou configuração. Depois de confirmar a rejeição e recuperar a capacidade, use uma chave nova para uma nova tentativa de admissão. Uma resposta incerta é diferente: recupere primeiro o recibo original antes de decidir se outra admissão é segura.
+
 ```php
 // If 5,000 signals are already pending, this will be rejected:
 $result = $workflow->attemptSignal('process-item', $data);

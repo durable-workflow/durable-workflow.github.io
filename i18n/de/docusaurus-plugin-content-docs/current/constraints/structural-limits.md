@@ -142,6 +142,13 @@ weisen Grenzen auf Annahmeseite den einzelnen Befehl ab, ohne den Workflow zu
 beenden. Die Ausführung bleibt aktiv. Nach Verarbeitung ausstehender Elemente
 kann der Aufrufer es erneut versuchen.
 
+Bei einem Server-Update mit `request_id` wird die Ablehnung unter diesem Schlüssel
+aufbewahrt. Derselbe Schlüssel liefert auch nach geänderter Kapazität oder
+Konfiguration die ursprüngliche Ablehnung. Verwenden Sie nach bestätigter
+Ablehnung und wiederhergestellter Kapazität einen neuen Schlüssel für einen
+neuen Annahmeversuch. Bei unklarer Antwort müssen Sie zuerst den ursprünglichen
+Beleg wiederfinden, bevor Sie eine weitere Annahme als sicher betrachten.
+
 ```php
 // If 5,000 signals are already pending, this will be rejected:
 $result = $workflow->attemptSignal('process-item', $data);

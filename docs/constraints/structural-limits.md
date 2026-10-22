@@ -105,6 +105,12 @@ If the count is at or above the configured limit, the command is **rejected** wi
 
 Unlike executor-side limits (which fail the run), intake-side limits reject the individual command without terminating the workflow. The run remains active, and the caller can retry once pending items have been processed.
 
+For a Server update with `request_id`, the keyed rejection is retained. Reusing
+that key returns the original rejection even after capacity or settings change.
+After confirming the rejection and restoring capacity, use a new key for a new
+admission attempt. An uncertain response is different: recover its original
+receipt before deciding whether another admission is safe.
+
 ```php
 // If 5,000 signals are already pending, this will be rejected:
 $result = $workflow->attemptSignal('process-item', $data);

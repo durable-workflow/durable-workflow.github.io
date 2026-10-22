@@ -105,6 +105,8 @@ Si ce nombre atteint ou dépasse la limite configurée, la commande est **refus�
 
 Les limites côté exécuteur font échouer l’exécution. Celles côté admission refusent la commande individuelle sans terminer le workflow. L’exécution reste active et l’appelant peut réessayer après le traitement des éléments en attente.
 
+Pour une mise à jour du Server avec `request_id`, le refus est conservé sous cette clé. La réutiliser renvoie le refus initial même si la capacité ou la configuration change. Après confirmation du refus et rétablissement de la capacité, utilisez une nouvelle clé pour une nouvelle admission. Si la réponse est incertaine, retrouvez d’abord le reçu initial avant de décider si une autre admission est sûre.
+
 ```php
 // If 5,000 signals are already pending, this will be rejected:
 $result = $workflow->attemptSignal('process-item', $data);

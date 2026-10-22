@@ -155,14 +155,23 @@ uma chave após continue-as-new pode retornar o resultado da antecessora sem
 admitir uma atualização na sucessora. Um recibo retido associado à chave também
 pode ser retornado após o encerramento, enquanto uma nova atualização é recusada.
 
-Use uma chave para uma operação lógica e preserve sua intenção original. Não
-altere os argumentos, não a reutilize para outro nome de atualização nem
-presuma que ela inicia uma nova operação na próxima execução. O caminho de
-atualização ativa do serviço PHP e a busca embarcada não têm regras idênticas
-de correspondência. Em especial, a reutilização entre nomes de atualizações
-não é uma receita de recuperação suportada. O [registro de qualificação](https://github.com/durable-workflow/durable-workflow.github.io/pull/268)
-identifica o runtime e o SDK PHP publicados e registra os diferentes caminhos.
-O Server nativo e os caminhos de outros SDKs exigem qualificação própria.
+Os webhooks de atualização do Laravel embarcado usam `X-Request-Id` como chave
+do chamador. Preserve esse cabeçalho ao passar por proxies. Nas atualizações
+HTTP do Server independente, a chave vem somente de `request_id` no corpo JSON;
+o cabeçalho `X-Request-Id` serve para correlação. Sem a chave no corpo, a
+atualização não recebe chave de deduplicação, mesmo quando requisições
+compartilham o cabeçalho.
+
+Os caminhos PHP qualificados podem encontrar o mesmo recibo retido entre nomes
+de atualização diferentes na instância. Use uma chave para uma operação lógica
+e preserve sua intenção original. Não altere os argumentos, não a reutilize
+para outro nome nem presuma que ela inicia uma nova operação na próxima execução.
+A [qualificação dos artefatos PHP publicados](https://github.com/durable-workflow/server/issues/505#issuecomment-6287102328)
+verifica chaves independentes dos cabeçalhos do proxy e recibos retidos após o
+encerramento. Esse comportamento não promete detecção portátil de conflito
+entre a mesma chave e uma intenção diferente. Esse contrato mais amplo está na
+[issue compartilhada 216](https://github.com/durable-workflow/.github/issues/216).
+O Server nativo e os demais SDKs exigem qualificação própria.
 
 A recuperação de recibos depende dos registros retidos de comandos,
 atualizações e histórico. Não há aqui uma promessa de prazo de deduplicação

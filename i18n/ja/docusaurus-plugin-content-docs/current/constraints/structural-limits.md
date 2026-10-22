@@ -105,6 +105,8 @@ foreach (array_chunk($items, 500) as $chunk) {
 
 実行器側と異なり、受理側は個別コマンドだけを拒否し、ワークフローを終了しません。実行はアクティブなまま、保留項目の処理後に再試行できます。
 
+`request_id` を指定した Server の更新では、そのキーに対する拒否を保持します。容量や設定が変わっても、同じキーは元の拒否を返します。拒否を確認し容量を回復した後、新たに受理を求める場合は新しいキーを使ってください。応答が不確かな場合は別です。新たな受理が安全か判断する前に、元の記録を取得してください。
+
 ```php
 // If 5,000 signals are already pending, this will be rejected:
 $result = $workflow->attemptSignal('process-item', $data);
