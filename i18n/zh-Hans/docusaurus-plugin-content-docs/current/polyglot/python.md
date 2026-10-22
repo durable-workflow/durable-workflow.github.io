@@ -874,6 +874,19 @@ async def validate(data: dict) -> dict:
 请限制下游 I/O 的超时时间，并为 CPU 密集型任务使用单独隔离的 Worker 进程。
 详见 [SDK 执行与关闭参考](https://python.durable-workflow.com/reference/worker/)。
 
+### 从辅助线程发送心跳 {#heartbeat-helper-thread}
+
+对于长时间的阻塞调用，请在同步活动内部获取 `ctx = activity.context()`，
+再将它传给辅助线程。新线程不会自动继承活动上下文。
+在辅助线程中调用 `ctx.heartbeat_sync(details)`，不要在 Worker 事件循环中调用。
+完整实现见 SDK 参考中的[辅助线程示例](https://python.durable-workflow.com/reference/activity/#heartbeats-during-one-blocking-call)。
+
+调用正常返回或抛出异常时，都要停止辅助线程并通过 `join()` 等待其退出。
+如果心跳抛出 `ActivityCancelled` 或 `ActivityLeaseAuthorityLost`，
+请向阻塞调用发出协作取消信号，并在返回结果前重新抛出原始异常。
+辅助线程中的异常无法强制中断阻塞的库调用。请为该调用设置有限的截止时间和取消机制，
+同时限制心跳请求的超时时间和重试次数。否则，即使实际工作已卡住，辅助线程仍会持续报告存活。
+
 ## Worker {#worker}
 
 `Worker` 向 Server 注册、轮询任务，并派发给你的工作流和活动实现。

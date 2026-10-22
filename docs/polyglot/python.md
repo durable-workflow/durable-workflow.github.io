@@ -1101,6 +1101,22 @@ registration. Set timeouts on downstream I/O and use separately isolated worker
 processes for CPU-heavy work. See the SDK's
 [execution and shutdown reference](https://python.durable-workflow.com/reference/worker/).
 
+### Heartbeating from a helper thread {#heartbeat-helper-thread}
+
+For one long blocking call, capture `ctx = activity.context()` inside the
+synchronous activity and pass it to the helper. A new thread does not
+automatically inherit the activity context. Use `ctx.heartbeat_sync(details)`
+from the helper, never from the worker event loop. See the SDK's
+[complete helper-thread recipe](https://python.durable-workflow.com/reference/activity/#heartbeats-during-one-blocking-call).
+
+Stop and join the helper when the call returns or raises. If a heartbeat raises
+`ActivityCancelled` or `ActivityLeaseAuthorityLost`, signal cooperative
+cancellation to the call and re-raise the original exception before returning
+a result. A helper exception cannot forcibly interrupt a blocked library call.
+Give that call its own finite deadline and cancellation mechanism, and bound
+heartbeat request timeouts and retries. Helper heartbeats can otherwise keep
+reporting liveness while the work is hung.
+
 ## Worker
 
 The `Worker` registers with the server, polls for tasks, and dispatches them to your workflow and activity implementations.

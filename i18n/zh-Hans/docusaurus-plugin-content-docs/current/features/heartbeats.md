@@ -40,6 +40,10 @@ final class PollRemoteJob extends Activity
 
 多语言 Worker 可通过 HTTP Worker 桥接发送心跳，无需构造 PHP 活动类。端点见 [Worker 协议](/docs/polyglot/worker-protocol)。
 
+单个阻塞调用可能需要专门的辅助线程发送心跳。这表示进程仍然存活，不代表工作有进展。
+请为调用设置独立且有限的截止时间，并在调用完成或失去执行权限时停止辅助线程。
+Python Worker 应遵循[上下文捕获与取消示例](../polyglot/python.md#heartbeat-helper-thread)。
+
 ## 发送节奏与确认 {#heartbeat-cadence-and-receipts}
 
 对于排队活动，第一个心跳截止时间从运行时领取时开始，早于任务交付和用户代码执行。已记录的心跳将下一个截止时间设为其运行时时间加上 `heartbeatTimeout`。发送请求或收到响应都不会重新开始一个完整窗口。参见[心跳超时](./timeouts.md#heartbeat-timeout)。

@@ -40,6 +40,11 @@ Dans l’activité, `activityId()`, `attemptId()` et `attemptCount()` exposent l
 
 Les workers polyglottes peuvent envoyer des battements via la passerelle HTTP des workers sans instancier la classe PHP d’activité. Consultez le [protocole des workers](/docs/polyglot/worker-protocol) pour les points de terminaison.
 
+Un appel bloquant peut nécessiter un auxiliaire dédié aux heartbeats. Celui-ci
+signale que le processus vit, pas que le travail avance. Donnez à l’appel son
+propre délai fini et arrêtez l’auxiliaire à la fin ou à la perte d’autorité.
+Pour Python, suivez l’[exemple de capture du contexte et d’annulation](../polyglot/python.md#heartbeat-helper-thread).
+
 ## Fréquence et confirmations {#heartbeat-cadence-and-receipts}
 
 Pour une activité mise en file d’attente, la première échéance de heartbeat commence lorsque le moteur la réclame, avant la livraison de la tâche et le code applicatif. Un heartbeat enregistré fixe la prochaine échéance à son horodatage du moteur plus `heartbeatTimeout`. Ni l’envoi de la requête ni la réception de sa réponse n’ouvre une nouvelle fenêtre complète. Consultez [Délai de heartbeat](./timeouts.md#heartbeat-timeout).
