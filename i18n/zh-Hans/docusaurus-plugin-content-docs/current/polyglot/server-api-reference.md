@@ -303,9 +303,20 @@ curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/workflows" \
     "input": ["order-1001"],
     "memo": {"source": "api-reference"},
     "search_attributes": {"CustomerId": "cust-42"},
-    "duplicate_policy": "reject"
+    "duplicate_policy": "fail"
   }'
 ```
+
+`duplicate_policy` 只接受 `fail` 和 `use-existing`。省略该字段或发送 `null`
+时使用 `fail`。工作流 ID 尚未使用时，两种策略都会创建一次运行。
+
+| 策略 | 已存在活动运行 | 现有运行已关闭 |
+| --- | --- | --- |
+| `fail`（默认） | 拒绝重复启动。 | 拒绝重复启动。 |
+| `use-existing` | 返回现有的 pending、running 或 waiting 状态运行，不再启动新运行。 | 拒绝重复启动。 |
+
+两种策略都不会重新打开已关闭的运行。新的执行应使用新的工作流 ID。
+`reject` 不是有效值，会返回 HTTP 422。
 
 ### 工作流命令 {#workflow-commands}
 

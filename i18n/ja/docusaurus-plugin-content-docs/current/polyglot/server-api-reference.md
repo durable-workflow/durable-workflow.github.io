@@ -303,9 +303,21 @@ curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/workflows" \
     "input": ["order-1001"],
     "memo": {"source": "api-reference"},
     "search_attributes": {"CustomerId": "cust-42"},
-    "duplicate_policy": "reject"
+    "duplicate_policy": "fail"
   }'
 ```
+
+`duplicate_policy` に指定できる値は `fail` と `use-existing` だけです。
+省略するか `null` を送信すると `fail` が選択されます。どちらのポリシーも、
+ワークフロー ID が未使用であれば新しい実行を作成します。
+
+| ポリシー | アクティブな実行がすでに存在する場合 | 既存の実行が終了している場合 |
+| --- | --- | --- |
+| `fail`（デフォルト） | 重複した開始要求を拒否します。 | 重複した開始要求を拒否します。 |
+| `use-existing` | 新たに開始せず、既存の pending、running、waiting 状態の実行を返します。 | 重複した開始要求を拒否します。 |
+
+どちらのポリシーも終了した実行を再開しません。新しい実行には新しい
+ワークフロー ID を使用してください。`reject` は無効な値で、HTTP 422 が返されます。
 
 ### ワークフローコマンド {#workflow-commands}
 
