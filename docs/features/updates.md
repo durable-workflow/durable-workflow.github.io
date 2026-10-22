@@ -144,20 +144,27 @@ intent in your application record. An accepted receipt proves durable admission.
 A completed lifecycle supplies the handler's recorded outcome. Neither proves
 that a separate payment, email or database write happened exactly once.
 
-`request_id` is not a portable, run-scoped Update-ID contract. The verified PHP
+Embedded Laravel update webhooks take the caller key from `X-Request-Id`.
+Preserve that header through proxies. Standalone Server HTTP updates instead
+take the key only from the JSON body's `request_id`; their `X-Request-Id` header
+is correlation context. Omitting the body key leaves an update unkeyed, even
+when requests share that header.
+
+`request_id` is not a portable, run-scoped Update-ID contract. The qualified PHP
 paths can return the first retained update when the same key is submitted with
-different arguments. Embedded lookup also spans update names within that
-instance. Reusing a key after continue-as-new can return a predecessor's result
+different arguments or update names within that instance. Reusing a key after
+continue-as-new can return a predecessor's result
 without admitting an update to the successor. A retained keyed receipt can also
 be returned after closure, while a fresh update is refused.
 
 Use one key for one logical operation and preserve its original intent. Do not
 change the arguments, reuse it for another update name or assume it starts a new
-operation in the next run. The PHP service's active update path and embedded
-lookup do not have identical matching rules. In particular, reuse across update
-names is not a supported recovery recipe. The [qualification record](https://github.com/durable-workflow/durable-workflow.github.io/pull/268)
-names the published PHP runtime and SDK and records the different paths. Native
-Server and other SDK paths require their own qualification.
+operation in the next run. The [published PHP qualification](https://github.com/durable-workflow/server/issues/505#issuecomment-6287102328)
+covers caller keys independently of proxy headers, including retained receipts
+after closure. This recovery behavior does not promise portable same-key,
+different-intent conflict detection. That broader contract is tracked in
+[shared issue 216](https://github.com/durable-workflow/.github/issues/216).
+Native Server and other SDK paths require their own qualification.
 
 Receipt recovery depends on retained command, update and history records. There
 is no application-independent deduplication lifetime promised here. Review

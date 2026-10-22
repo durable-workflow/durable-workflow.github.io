@@ -154,15 +154,23 @@ Réutiliser une clé après continuation peut renvoyer le résultat d’un préd
 sans admettre de mise à jour dans le successeur. Un reçu conservé associé à une
 clé peut aussi être renvoyé après clôture alors qu’une nouvelle mise à jour est refusée.
 
-Utilisez une clé par opération logique et conservez son intention initiale.
-Ne changez pas les arguments, ne réutilisez pas la clé pour un autre nom de mise
-à jour et ne supposez pas qu’elle démarre une nouvelle opération à l’exécution
-suivante. Le chemin actif de mise à jour du service PHP et la recherche intégrée
-n’ont pas les mêmes règles de correspondance. En particulier, réutiliser une
-clé entre noms n’est pas une méthode de récupération prise en charge. Le
-[dossier de qualification](https://github.com/durable-workflow/durable-workflow.github.io/pull/268)
-nomme le runtime et le SDK PHP publiés et documente les différents chemins.
-Les chemins de Server natif et des autres SDK nécessitent leur propre qualification.
+Les webhooks de mise à jour Laravel intégrés lisent la clé de l’appelant dans
+`X-Request-Id`. Préservez cet en-tête lors du passage par un proxy. Pour les
+mises à jour HTTP du Server autonome, seule la propriété `request_id` du corps
+JSON fournit la clé ; l’en-tête `X-Request-Id` sert à la corrélation. Sans clé
+dans le corps, la mise à jour n’a pas de clé de déduplication, même si plusieurs
+requêtes partagent cet en-tête.
+
+Les chemins PHP qualifiés peuvent retrouver le même reçu conservé pour différents
+noms de mises à jour de l’instance. Utilisez une clé par opération logique et
+conservez son intention initiale. Ne changez pas les arguments, ne réutilisez pas
+la clé pour un autre nom et ne supposez pas qu’elle démarre une opération dans
+l’exécution suivante. La [qualification des artefacts PHP publiés](https://github.com/durable-workflow/server/issues/505#issuecomment-6287102328)
+vérifie l’indépendance des clés vis-à-vis des en-têtes du proxy et les reçus conservés
+après clôture. Ce comportement ne garantit pas une détection portable des conflits
+entre une même clé et une intention différente. Ce contrat plus large est suivi
+dans [l’issue 216](https://github.com/durable-workflow/.github/issues/216).
+Server natif et les autres SDK nécessitent leur propre qualification.
 
 La récupération des reçus dépend de la conservation des commandes, mises à jour
 et historiques. Aucune durée de déduplication indépendante de l’application

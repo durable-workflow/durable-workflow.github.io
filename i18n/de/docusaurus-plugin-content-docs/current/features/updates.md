@@ -169,10 +169,17 @@ Annahmebeleg beweist dauerhafte Annahme. Ein abgeschlossener Lebenszyklus
 liefert das aufgezeichnete Handler-Ergebnis. Keiner beweist, dass eine separate
 Zahlung, E-Mail oder Datenbankschreiboperation genau einmal stattfand.
 
+Eingebettete Laravel-Update-Webhooks lesen den Aufruferschlüssel aus
+`X-Request-Id`. Erhalten Sie diesen Header beim Weiterleiten durch Proxys.
+HTTP-Updates des eigenständigen Servers lesen den Schlüssel dagegen nur aus
+`request_id` im JSON-Body; ihr Header `X-Request-Id` dient der Korrelation.
+Ohne Body-Schlüssel hat das Update keinen Deduplizierungsschlüssel, auch wenn
+mehrere Anfragen denselben Header verwenden.
+
 `request_id` ist kein portabler, laufbezogener Update-ID-Vertrag. Die geprüften
-PHP-Pfade können beim Einreichen desselben Schlüssels mit anderen Argumenten
-das erste aufbewahrte Update zurückgeben. Die eingebettete Suche umfasst auch
-verschiedene Updatenamen innerhalb dieser Instanz. Das Wiederverwenden eines
+PHP-Pfade können bei demselben Schlüssel mit anderen Argumenten oder
+Updatenamen innerhalb der Instanz das erste aufbewahrte Update zurückgeben.
+Das Wiederverwenden eines
 Schlüssels nach Continue-as-new kann das Ergebnis eines Vorgängers liefern,
 ohne ein Update am Nachfolger anzunehmen. Ein aufbewahrter schlüsselbezogener
 Beleg kann auch nach Abschluss zurückgegeben werden, während ein neues Update
@@ -181,14 +188,13 @@ abgelehnt wird.
 Verwenden Sie einen Schlüssel für eine logische Operation und erhalten Sie
 deren ursprüngliche Absicht. Ändern Sie nicht die Argumente, verwenden Sie ihn
 nicht für einen anderen Updatenamen und nehmen Sie nicht an, dass er im
-nächsten Lauf eine neue Operation startet. Der aktive Update-Pfad des
-PHP-Dienstes und die eingebettete Suche haben unterschiedliche
-Übereinstimmungsregeln. Insbesondere ist Wiederverwendung über Updatenamen
-hinweg kein unterstütztes Wiederherstellungsverfahren. Der
-[Qualifikationsnachweis](https://github.com/durable-workflow/durable-workflow.github.io/pull/268)
-nennt die veröffentlichte PHP-Laufzeit und das SDK und dokumentiert die
-unterschiedlichen Pfade. Native Server- und andere SDK-Pfade benötigen eine
-eigene Qualifikation.
+nächsten Lauf eine neue Operation startet. Die
+[Prüfung der veröffentlichten PHP-Artefakte](https://github.com/durable-workflow/server/issues/505#issuecomment-6287102328)
+belegt Aufruferschlüssel unabhängig von Proxy-Headern und aufbewahrte Belege
+nach Abschluss. Dieses Wiederherstellungsverhalten garantiert keine portable
+Konflikterkennung bei gleichem Schlüssel und anderer Absicht. Dieser umfassendere
+Vertrag wird in [Issue 216](https://github.com/durable-workflow/.github/issues/216)
+verfolgt. Native Server- und andere SDK-Pfade benötigen eine eigene Qualifikation.
 
 Die Wiederherstellung von Belegen hängt von aufbewahrten Befehls-, Update- und
 Historiendatensätzen ab. Es wird hier keine anwendungsunabhängige

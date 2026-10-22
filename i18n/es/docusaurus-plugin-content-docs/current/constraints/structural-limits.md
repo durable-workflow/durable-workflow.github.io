@@ -105,6 +105,8 @@ Si el recuento es igual o superior al límite configurado, el comando se **recha
 
 A diferencia de los límites del ejecutor, que hacen fallar la ejecución, los límites de admisión rechazan el comando individual sin terminar el workflow. La ejecución sigue activa y quien realiza la llamada puede reintentar una vez procesados los elementos pendientes.
 
+En una actualización del Server con `request_id`, el rechazo queda conservado bajo esa clave. Reutilizarla devuelve el rechazo original incluso si cambian la capacidad o la configuración. Tras confirmar el rechazo y recuperar capacidad, usa una clave nueva para una nueva admisión. Una respuesta incierta es distinta: recupera primero el recibo original antes de decidir si otra admisión es segura.
+
 ```php
 // If 5,000 signals are already pending, this will be rejected:
 $result = $workflow->attemptSignal('process-item', $data);

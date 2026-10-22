@@ -134,7 +134,9 @@ $latest->result(); // Available when that retained update completed.
 
 `request_id` 不是可移植、按运行限定的更新 ID 契约。在已验证的 PHP 路径中，同一键以不同参数提交时，可能返回最先保留的更新。嵌入式查找还会跨该实例内的更新名称匹配。在 continue-as-new 之后复用键，可能返回前一运行的结果，而没有向后继运行接收更新。运行关闭后，也可能返回保留的带键回执，同时拒绝新的更新。
 
-一个键只用于一个逻辑操作，并保留原始意图。不要更改参数、将键复用于其他更新名，或假定它会在下一运行启动新操作。PHP 服务的活动更新路径与嵌入式查找的匹配规则不完全相同，尤其不支持将跨更新名称复用作为恢复方法。[资格验证记录](https://github.com/durable-workflow/durable-workflow.github.io/pull/268)列出了已发布的 PHP 运行时和 SDK，并记录不同路径。原生 Server 和其他 SDK 路径需要单独验证。
+嵌入式 Laravel 更新 webhook 从 `X-Request-Id` 读取调用方键。经过代理时应保留该请求头。独立 Server 的 HTTP 更新只使用 JSON 请求体中的 `request_id` 作为键，`X-Request-Id` 请求头仅用于关联追踪。省略请求体中的键时，即使多次请求使用相同请求头，更新也没有去重键。
+
+已验证的 PHP 路径可能在同一实例的不同更新名之间找到相同的保留回执。一个键只用于一个逻辑操作，并保留原始意图。不要更改参数、将键复用于其他更新名，或假定它会在下一运行启动新操作。[已发布 PHP 成果物的验证](https://github.com/durable-workflow/server/issues/505#issuecomment-6287102328)确认调用方键独立于代理请求头，并可在运行关闭后恢复保留回执。这种恢复行为并不承诺可移植的“同键、不同意图”冲突检测；更广泛的契约见[跨仓库 issue 216](https://github.com/durable-workflow/.github/issues/216)。原生 Server 和其他 SDK 路径需要单独验证。
 
 回执恢复依赖保留的命令、更新和历史记录。本页不承诺独立于应用的去重有效期。请审查[历史保留](../configuration/pruning-workflows.md)，并按应用要求保留业务账本。缺失证据意味着结果仍未知。
 
