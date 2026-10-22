@@ -312,3 +312,19 @@ Eine Worker-Aufgabe mit derselben Lücke bleibt fehlgeschlagen, während die
 Ausführung offen bleibt. Korrigieren Sie die Zuordnung und reparieren Sie die
 Ausführung, statt umbenannte historische Fehler über breite
 `catch (RuntimeException)`-Blöcke behandeln zu wollen.
+
+## Wartezeit bei belegten Sperren für bisherige Workflows {#legacy-overlap-release-delay}
+
+Für Anwendungen mit `Workflow\Workflow` legt `overlapReleaseAfter` die Wartezeit als nichtnegative ganze Zahl in Sekunden fest. Der Standardwert ist `0`. Die Einstellung gilt für Queue-Jobs von Workflows, Aktivitäten, Signalen und Kindworkflow-Ergebnissen, deren Sperre belegt ist. Sie ändert weder die Gültigkeitsdauer der Sperre noch den Backoff nach Aktivitätsausnahmen. `Workflow\V2\Workflow` verwendet Task-Claims und diese Middleware nicht.
+
+```php
+use Workflow\WorkflowOptions;
+use Workflow\WorkflowStub;
+
+$workflow = WorkflowStub::make(MyLegacyWorkflow::class);
+$workflow->start('argument', new WorkflowOptions(overlapReleaseAfter: 5));
+```
+
+`WorkflowOptions::set(['overlapReleaseAfter' => 5])` akzeptiert dieselbe Einstellung. Der Wert wird mit dem Lauf gespeichert. Kindworkflows und continue-as-new übernehmen ihn, wenn kein explizites `WorkflowOptions` übergeben wird. Ein explizites Optionsobjekt ersetzt die geerbten Optionen und setzt diese Wartezeit auf null Sekunden zurück, wenn sie darin fehlt.
+
+Laravel zählt Queue-Reservierungen als Versuche, auch wenn die Middleware den Job vor der Verarbeitung zurückstellt. Eine positive Wartezeit verringert schnelle Wiederholungen, garantiert aber nicht, dass niedrige Grenzwerte für `$tries`, `--tries` oder den Versuchszähler der Datenbank-Queue ausreichen. Wählen Sie Wartezeit und Versuchslimit passend zur erwarteten Dauer der Sperrkonkurrenz.

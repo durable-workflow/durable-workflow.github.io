@@ -215,3 +215,19 @@ Para falhas importadas da v1 que foram registradas antes de existir um alias de 
 A v2 final grava aliases duráveis de exceção quando a falha é registrada. Portanto, configure aliases estáveis antes de registrar falhas cujas classes lançáveis possam mudar de localização depois.
 
 Se uma falha durante o replay não puder ser resolvida pelo mapa durável `exceptions`, pelo mapa de aliases de classe ou pela classe registrada, o mecanismo não recorre a uma exceção genérica de runtime dentro do código do workflow. O replay de consulta lança `UnresolvedWorkflowFailureException`, o Waterline marca a falha com `exception_replay_blocked = true`, e uma tarefa de worker que encontre a mesma lacuna fica com falha enquanto a execução permanece aberta. Corrija o mapeamento e repare a execução em vez de depender de blocos amplos de `catch (RuntimeException)` para tratar falhas históricas renomeadas.
+
+## Espera por bloqueio em workflows da API anterior {#legacy-overlap-release-delay}
+
+Em aplicações que usam `Workflow\Workflow`, defina `overlapReleaseAfter` como um número inteiro de segundos maior ou igual a zero. O padrão é `0`. A configuração se aplica aos jobs de workflow, atividade, sinal e resultado de workflow filho que não conseguem obter o bloqueio. Ela não altera a expiração do bloqueio nem o backoff após exceções de atividade. `Workflow\V2\Workflow` usa reservas de tarefas e não utiliza esse middleware.
+
+```php
+use Workflow\WorkflowOptions;
+use Workflow\WorkflowStub;
+
+$workflow = WorkflowStub::make(MyLegacyWorkflow::class);
+$workflow->start('argument', new WorkflowOptions(overlapReleaseAfter: 5));
+```
+
+`WorkflowOptions::set(['overlapReleaseAfter' => 5])` aceita a mesma configuração. O valor é salvo com a execução e herdado pelos filhos e por continue-as-new quando nenhum `WorkflowOptions` explícito é fornecido. Um objeto de opções explícito substitui as opções herdadas e redefine essa espera para zero se ela for omitida.
+
+O Laravel conta as reservas da fila como tentativas, mesmo quando o middleware devolve o job à fila antes da execução. Uma espera positiva reduz as novas tentativas imediatas, mas não garante que um limite baixo de `$tries`, `--tries` ou do contador de tentativas da fila em banco de dados seja suficiente. Escolha a espera e o limite de tentativas conforme a duração esperada da contenção.

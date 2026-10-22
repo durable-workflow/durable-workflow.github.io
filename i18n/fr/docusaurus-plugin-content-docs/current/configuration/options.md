@@ -215,3 +215,19 @@ Pour les échecs v1 importés et enregistrés avant l’existence d’un alias d
 La version finale v2 écrit les alias d’exception durables lors de l’enregistrement de l’échec. Configurez donc des alias stables avant d’enregistrer des échecs dont les classes d’exception pourraient être déplacées.
 
 Si un échec relu ne peut être résolu ni par la table durable `exceptions`, ni par les alias de classes, ni par la classe enregistrée, le moteur ne le remplace pas par une exception générique dans le code du workflow. La relecture d’une requête de lecture lève `UnresolvedWorkflowFailureException`, Waterline marque l’échec avec `exception_replay_blocked = true`, et une tâche de worker rencontrant la même absence reste en échec tandis que l’exécution reste ouverte. Corrigez l’association et réparez l’exécution au lieu de compter sur des blocs généraux `catch (RuntimeException)` pour traiter les échecs historiques renommés.
+
+## Délai en cas de verrou occupé pour les workflows historiques {#legacy-overlap-release-delay}
+
+Pour les applications utilisant `Workflow\Workflow`, définissez `overlapReleaseAfter` comme un nombre entier positif ou nul de secondes. La valeur par défaut est `0`. Ce réglage s’applique aux tâches de workflow, d’activité, de signal et de résultat enfant dont le verrou est occupé. Il ne modifie ni l’expiration des verrous ni le délai après exception d’une activité. `Workflow\V2\Workflow` utilise des prises en charge de tâches et non ce middleware.
+
+```php
+use Workflow\WorkflowOptions;
+use Workflow\WorkflowStub;
+
+$workflow = WorkflowStub::make(MyLegacyWorkflow::class);
+$workflow->start('argument', new WorkflowOptions(overlapReleaseAfter: 5));
+```
+
+`WorkflowOptions::set(['overlapReleaseAfter' => 5])` accepte le même réglage. La valeur est enregistrée avec l’exécution et transmise aux enfants et à continue-as-new si aucun `WorkflowOptions` explicite n’est fourni. Un objet d’options explicite remplace les options héritées et remet ce délai à zéro s’il est omis.
+
+Laravel compte les réservations dans la file comme des tentatives, même si le middleware libère la tâche avant son traitement. Un délai positif réduit les nouvelles tentatives immédiates, mais ne garantit pas qu’une limite basse de `$tries`, de `--tries` ou du compteur de tentatives de la file en base soit suffisante. Adaptez le délai et le nombre de tentatives à la durée de contention attendue.

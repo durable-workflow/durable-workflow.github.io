@@ -215,3 +215,19 @@ $tasks = $bridge->poll('redis', 'default', limit: 10, namespace: 'production');
 最终版 v2 在记录故障时写入持久异常别名，因此，对以后可能移动可抛出类的故障，应在记录前配置稳定别名。
 
 如果重放的故障无法通过持久 `exceptions` 映射、类别名映射或记录的类解析，引擎不会在工作流代码中回退为通用运行时异常。查询重放会抛出 `UnresolvedWorkflowFailureException`，Waterline 将故障标记为 `exception_replay_blocked = true`，遇到同样缺口的 Worker 任务会保持失败，而运行仍保持打开。请修正映射并修复运行，不要依赖宽泛的 `catch (RuntimeException)` 来处理已重命名的历史故障。
+
+## 旧版工作流的锁竞争重试延迟 {#legacy-overlap-release-delay}
+
+对于使用 `Workflow\Workflow` 的应用，将 `overlapReleaseAfter` 设置为以秒为单位的非负整数，默认值为 `0`。此设置适用于因锁被占用而无法执行的工作流、活动、信号和子工作流结果队列任务。它不会改变锁的过期时间或活动异常后的退避时间。`Workflow\V2\Workflow` 使用任务认领机制，不使用此中间件。
+
+```php
+use Workflow\WorkflowOptions;
+use Workflow\WorkflowStub;
+
+$workflow = WorkflowStub::make(MyLegacyWorkflow::class);
+$workflow->start('argument', new WorkflowOptions(overlapReleaseAfter: 5));
+```
+
+`WorkflowOptions::set(['overlapReleaseAfter' => 5])` 也接受此设置。该值随运行一起持久化；如果没有显式传入 `WorkflowOptions`，子工作流和 continue-as-new 会继承它。显式选项对象会替换继承的选项，如果其中未指定此延迟，则重置为零。
+
+即使中间件在处理程序运行前就将任务放回队列，Laravel 仍会将队列预留计为一次尝试。正延迟可以减少快速重试，但不能保证较低的 `$tries`、`--tries` 或数据库队列尝试次数上限足够。请根据预计的锁竞争持续时间选择延迟和尝试次数预算。
