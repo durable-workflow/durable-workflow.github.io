@@ -215,3 +215,19 @@ Para fallos v1 importados que se registraron antes de existir un alias, `workflo
 La versión final de v2 escribe alias duraderos al registrar el fallo. Configura alias estables antes de registrar fallos cuyas clases de throwable puedan moverse después.
 
 Si un fallo reproducido no puede resolverse con el mapa duradero `exceptions`, el mapa de alias de clase ni la clase registrada, el motor no recurre a una excepción genérica dentro del workflow. La reproducción de consultas lanza `UnresolvedWorkflowFailureException`, Waterline marca el fallo con `exception_replay_blocked = true` y una tarea de worker que encuentre el mismo problema queda fallida mientras la ejecución permanece abierta. Corrige el mapa y repara la ejecución en lugar de usar bloques amplios `catch (RuntimeException)` para fallos históricos renombrados.
+
+## Espera por bloqueo en workflows de la API anterior {#legacy-overlap-release-delay}
+
+En aplicaciones que usan `Workflow\Workflow`, configure `overlapReleaseAfter` con un número entero de segundos mayor o igual que cero. El valor predeterminado es `0`. Se aplica a los trabajos de workflow, actividad, señal y resultado de workflow hijo que no pueden adquirir su bloqueo. No cambia la caducidad del bloqueo ni la espera tras excepciones de actividad. `Workflow\V2\Workflow` usa reservas de tareas y no utiliza este middleware.
+
+```php
+use Workflow\WorkflowOptions;
+use Workflow\WorkflowStub;
+
+$workflow = WorkflowStub::make(MyLegacyWorkflow::class);
+$workflow->start('argument', new WorkflowOptions(overlapReleaseAfter: 5));
+```
+
+`WorkflowOptions::set(['overlapReleaseAfter' => 5])` admite la misma configuración. El valor se guarda con la ejecución y se hereda en los hijos y en continue-as-new cuando no se proporciona un `WorkflowOptions` explícito. Un objeto de opciones explícito sustituye las opciones heredadas y restablece esta espera a cero si se omite.
+
+Laravel cuenta las reservas de la cola como intentos, incluso cuando el middleware devuelve el trabajo a la cola antes de ejecutarlo. Una espera positiva reduce los reintentos rápidos, pero no garantiza que un límite bajo de `$tries`, `--tries` o del contador de intentos de la cola en base de datos sea suficiente. Elija la espera y el límite de intentos según la duración prevista de la contención.

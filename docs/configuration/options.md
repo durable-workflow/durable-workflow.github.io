@@ -215,3 +215,19 @@ For imported v1 failures that were recorded before an exception alias existed, `
 Final v2 writes durable exception aliases when the failure is recorded, so configure stable aliases before recording failures whose throwable classes may move later.
 
 If a replayed failure cannot be resolved through the durable `exceptions` map, the class-alias map, or the recorded class, the engine does not fall back to a generic runtime exception inside workflow code. Query replay raises `UnresolvedWorkflowFailureException`, Waterline marks the failure with `exception_replay_blocked = true`, and a worker task that hits the same gap is left failed while the run stays open. Fix the mapping and repair the run rather than relying on broad `catch (RuntimeException)` blocks to handle renamed historical failures.
+
+## Legacy workflow overlap delay {#legacy-overlap-release-delay}
+
+For applications using `Workflow\Workflow`, set `overlapReleaseAfter` to a nonnegative integer number of seconds. The default is `0`. This setting applies to contended workflow, activity, signal and child-completion queue jobs. It does not change lock expiry or activity exception backoff. `Workflow\V2\Workflow` uses task claims and does not use this middleware.
+
+```php
+use Workflow\WorkflowOptions;
+use Workflow\WorkflowStub;
+
+$workflow = WorkflowStub::make(MyLegacyWorkflow::class);
+$workflow->start('argument', new WorkflowOptions(overlapReleaseAfter: 5));
+```
+
+`WorkflowOptions::set(['overlapReleaseAfter' => 5])` accepts the same setting. The value is persisted with the run and inherited by children and continue-as-new when no explicit `WorkflowOptions` is supplied. An explicit options object replaces inherited options, including resetting this delay to zero if omitted.
+
+Laravel counts queue reservations as attempts even when middleware releases a job before its handler runs. A positive delay reduces rapid retries but cannot guarantee that a low `$tries`, `--tries`, or database queue attempt limit is safe. Choose the delay and retry budget for the expected contention duration.

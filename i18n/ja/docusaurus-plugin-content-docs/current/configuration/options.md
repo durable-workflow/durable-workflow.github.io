@@ -215,3 +215,19 @@ $tasks = $bridge->poll('redis', 'default', limit: 10, namespace: 'production');
 正式版 v2 は失敗記録時に永続的な例外エイリアスを書き込みます。後で throwable クラスを移動する可能性がある失敗を記録する前に、安定したエイリアスを設定してください。
 
 リプレイする失敗を永続的な `exceptions` マップ、クラスエイリアスマップ、記録済みクラスで解決できない場合、エンジンはワークフロー内で汎用ランタイム例外にフォールバックしません。クエリのリプレイは `UnresolvedWorkflowFailureException` を投げ、Waterline は `exception_replay_blocked = true` を表示します。同じ問題に遭遇した Worker タスクは失敗したまま、実行は開いたままになります。名前を変更した過去の失敗を広い `catch (RuntimeException)` に頼って処理せず、マッピングを直して実行を修復してください。
+
+## 旧APIのワークフローでロック競合時の遅延を設定する {#legacy-overlap-release-delay}
+
+`Workflow\Workflow` を使うアプリケーションでは、`overlapReleaseAfter` に秒単位の非負整数を指定します。既定値は `0` です。この設定は、ロックを取得できないワークフロー、アクティビティ、シグナル、子ワークフローの結果通知のキュージョブに適用されます。ロックの有効期限やアクティビティ例外後のバックオフは変わりません。`Workflow\V2\Workflow` はタスクの取得権を使い、このミドルウェアは使用しません。
+
+```php
+use Workflow\WorkflowOptions;
+use Workflow\WorkflowStub;
+
+$workflow = WorkflowStub::make(MyLegacyWorkflow::class);
+$workflow->start('argument', new WorkflowOptions(overlapReleaseAfter: 5));
+```
+
+`WorkflowOptions::set(['overlapReleaseAfter' => 5])` でも同じ設定ができます。この値は実行とともに永続化され、明示的な `WorkflowOptions` を渡さなければ、子ワークフローと continue-as-new に引き継がれます。明示的なオプションオブジェクトは継承した設定を置き換え、この遅延を省略するとゼロに戻します。
+
+Laravel は、ミドルウェアがハンドラーの実行前にジョブをキューへ戻した場合も、キューの予約を試行として数えます。正の遅延は短時間の再試行を減らしますが、小さい `$tries`、`--tries`、またはデータベースキューの試行回数上限で十分とは限りません。想定するロック競合の継続時間に合わせて、遅延と試行回数を設定してください。
