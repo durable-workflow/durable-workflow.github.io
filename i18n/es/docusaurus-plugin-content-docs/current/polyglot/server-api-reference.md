@@ -303,9 +303,21 @@ curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/workflows" \
     "input": ["order-1001"],
     "memo": {"source": "api-reference"},
     "search_attributes": {"CustomerId": "cust-42"},
-    "duplicate_policy": "reject"
+    "duplicate_policy": "fail"
   }'
 ```
+
+`duplicate_policy` solo acepta `fail` y `use-existing`. Si se omite el campo o
+se envía `null`, se aplica `fail`. Ambas políticas crean una ejecución cuando
+el ID del workflow todavía no se ha utilizado.
+
+| Política | Ya existe una ejecución activa | La ejecución existente está cerrada |
+| --- | --- | --- |
+| `fail` (predeterminada) | Rechazar el inicio duplicado. | Rechazar el inicio duplicado. |
+| `use-existing` | Devolver la ejecución existente en estado pending, running o waiting sin iniciar otra. | Rechazar el inicio duplicado. |
+
+Ninguna política reabre una ejecución cerrada. Usa un ID de workflow nuevo para
+una nueva ejecución. `reject` no es un valor aceptado y devuelve HTTP 422.
 
 ### Comandos de workflow {#workflow-commands}
 

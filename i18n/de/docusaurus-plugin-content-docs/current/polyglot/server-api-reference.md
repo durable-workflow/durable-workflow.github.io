@@ -433,9 +433,22 @@ curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/workflows" \
     "input": ["order-1001"],
     "memo": {"source": "api-reference"},
     "search_attributes": {"CustomerId": "cust-42"},
-    "duplicate_policy": "reject"
+    "duplicate_policy": "fail"
   }'
 ```
+
+`duplicate_policy` akzeptiert nur `fail` und `use-existing`. Wird das Feld
+weggelassen oder als `null` gesendet, gilt `fail`. Beide Richtlinien erstellen
+einen Lauf, wenn die Workflow-ID noch nicht verwendet wurde.
+
+| Richtlinie | Ein aktiver Lauf existiert bereits | Der vorhandene Lauf ist geschlossen |
+| --- | --- | --- |
+| `fail` (Standard) | Den doppelten Start ablehnen. | Den doppelten Start ablehnen. |
+| `use-existing` | Den vorhandenen ausstehenden, laufenden oder wartenden Lauf zurückgeben, ohne einen weiteren zu starten. | Den doppelten Start ablehnen. |
+
+Keine der Richtlinien öffnet einen geschlossenen Lauf erneut. Verwenden Sie für
+eine neue Ausführung eine neue Workflow-ID. `reject` ist kein zulässiger Wert
+und führt zu HTTP 422.
 
 ### Workflow-Befehle {#workflow-commands}
 

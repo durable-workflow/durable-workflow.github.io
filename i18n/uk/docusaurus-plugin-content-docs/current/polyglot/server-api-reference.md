@@ -406,9 +406,22 @@ curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/workflows" \
     "input": ["order-1001"],
     "memo": {"source": "api-reference"},
     "search_attributes": {"CustomerId": "cust-42"},
-    "duplicate_policy": "reject"
+    "duplicate_policy": "fail"
   }'
 ```
+
+`duplicate_policy` приймає лише `fail` та `use-existing`. Якщо поле пропущено
+або передано `null`, використовується `fail`. Обидві політики створюють запуск,
+якщо ідентифікатор workflow ще не використовувався.
+
+| Політика | Активний запуск уже існує | Наявний запуск уже закрито |
+| --- | --- | --- |
+| `fail` (типово) | Відхилити повторний старт. | Відхилити повторний старт. |
+| `use-existing` | Повернути наявний запуск у стані pending, running або waiting, не створюючи нового. | Відхилити повторний старт. |
+
+Жодна політика не відкриває закритий запуск повторно. Для нового виконання
+використовуйте новий ідентифікатор workflow. `reject` не є допустимим значенням
+і спричиняє відповідь HTTP 422.
 
 ### Команди workflow {#workflow-commands}
 
