@@ -278,11 +278,27 @@ Infrastrukturvariablen konfigurieren Framework und Abhängigkeiten. Die Server-P
 | Gruppe | Variablen | Verwendung |
 | --- | --- | --- |
 | Anwendung | `APP_NAME`, `APP_ENV`, `APP_KEY`, `APP_DEBUG`, `APP_URL`, `APP_VERSION`, Sprach-, Zeitzonen-, Wartungs- und Verschlüsselungseinstellungen | Identität und Startverhalten der Laravel-Anwendung. |
-| Protokollierung | `LOG_CHANNEL`, `LOG_LEVEL`, Einstellungen für stack, daily, Slack und Papertrail | Ziele und Aufbewahrung der Laravel-Protokolle. |
+| Protokollierung | `LOG_CHANNEL`, `LOG_LEVEL`, `LOG_STDERR_FORMATTER`, Einstellungen für stack, daily, Slack und Papertrail | Ziele, Formatierung und Aufbewahrung der Laravel-Protokolle. |
 | Datenbank | `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `DB_SOCKET`, `DB_URL`, Zeichensatz-, Sortier- und Fremdschlüsseleinstellungen | SQL-Zustandsspeicher für Workflow-, Namespace-, Worker- und Projektionstabellen. |
 | Redis/Cache/Queue | `REDIS_*`, `QUEUE_CONNECTION`, `QUEUE_FAILED_DRIVER`, `CACHE_STORE`, `CACHE_PREFIX`, `SESSION_*` | Queue-Worker, Cache-Sperren, Long-Poll-Signale und Web-/Sitzungsunterstützung. |
 | Dateisysteme/E-Mail/Broadcasting | `FILESYSTEM_DISK`, `MAIL_*`, `BROADCAST_*`, `PUSHER_*`, `AWS_*` | Framework-Integrationen für bereitstellungsspezifische Funktionen. |
 | Build/Laufzeit | `MYSQL_VERSION`, `REDIS_VERSION`, `PHP_CLI_SERVER_WORKERS`, `VITE_APP_NAME`, `BCRYPT_ROUNDS` | Docker-Compose-Images und Laufzeitverhalten des Frameworks. |
+
+## Container-Protokolle {#container-logs}
+
+Setzen Sie `LOG_CHANNEL=stderr` für API-, Worker- und Scheduler-Container, damit
+`docker logs` oder `kubectl logs` die Anwendungsprotokolle erfassen kann. Setzen
+Sie die Variable bei bestehenden Versionen ausdrücklich. Mit `LOG_LEVEL` wählen
+Sie den Mindestschweregrad. Für JSON mit einem Datensatz pro Zeile setzen Sie zusätzlich:
+
+```dotenv
+LOG_STDERR_FORMATTER="Monolog\Formatter\JsonFormatter"
+```
+
+Starten Sie dauerhafte Prozesse nach Änderungen neu, da die Konfiguration beim
+Start zwischengespeichert wird. Ein ausdrücklich gewählter Dateikanal benötigt
+eigene Speicherung und Erfassung; Kubernetes erfasst
+`storage/logs/laravel.log` nicht automatisch. `DW_LOG_FORMAT` wird nicht unterstützt.
 
 ## Hinweise zur Migration {#migration-notes}
 

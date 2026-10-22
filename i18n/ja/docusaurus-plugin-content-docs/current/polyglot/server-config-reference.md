@@ -278,11 +278,27 @@ CI とデプロイ用マニフェストには `DW_V2_GUARDRAILS_BOOT` を使用�
 | 分類 | 変数 | 用途 |
 | --- | --- | --- |
 | アプリケーション | `APP_NAME`、`APP_ENV`、`APP_KEY`、`APP_DEBUG`、`APP_URL`、`APP_VERSION`、ロケール、タイムゾーン、メンテナンス、暗号設定 | Laravel アプリケーションの実行時識別情報と起動動作。 |
-| ログ | `LOG_CHANNEL`、`LOG_LEVEL`、スタック、日次、Slack、Papertrail の設定 | Laravel のログ出力先と保持。 |
+| ログ | `LOG_CHANNEL`、`LOG_LEVEL`、`LOG_STDERR_FORMATTER`、スタック、日次、Slack、Papertrail の設定 | Laravel のログ出力先、形式、保持。 |
 | データベース | `DB_CONNECTION`、`DB_HOST`、`DB_PORT`、`DB_DATABASE`、`DB_USERNAME`、`DB_PASSWORD`、`DB_SOCKET`、`DB_URL`、文字セット、照合順序、外部キーの設定 | ワークフロー、Namespace、Worker、プロジェクションを保存する SQL データベース。 |
 | Redis・キャッシュ・キュー | `REDIS_*`、`QUEUE_CONNECTION`、`QUEUE_FAILED_DRIVER`、`CACHE_STORE`、`CACHE_PREFIX`、`SESSION_*` | キューワーカー、キャッシュロック、ロングポーリング通知、Web・セッションの実行時サポート。 |
 | ファイルシステム・メール・配信 | `FILESYSTEM_DISK`、`MAIL_*`、`BROADCAST_*`、`PUSHER_*`、`AWS_*` | デプロイ固有の機能で使用するフレームワーク連携。 |
 | ビルド・実行環境 | `MYSQL_VERSION`、`REDIS_VERSION`、`PHP_CLI_SERVER_WORKERS`、`VITE_APP_NAME`、`BCRYPT_ROUNDS` | Docker Compose のイメージとフレームワークの実行時動作。 |
+
+## コンテナのログ {#container-logs}
+
+API、ワーカー、スケジューラーの各コンテナで `LOG_CHANNEL=stderr` を設定すると、
+`docker logs` または `kubectl logs` でアプリケーションログを収集できます。
+既存のリリースでは明示的に設定してください。`LOG_LEVEL` で最低重大度を選択します。
+1 行に 1 レコードの JSON を出力するには、次も設定します。
+
+```dotenv
+LOG_STDERR_FORMATTER="Monolog\Formatter\JsonFormatter"
+```
+
+起動時に設定がキャッシュされるため、変更後は常駐プロセスを再起動してください。
+ファイルチャネルを明示的に選ぶ場合は、保存先と収集方法を別途用意する必要があります。
+Kubernetes は `storage/logs/laravel.log` を自動収集しません。
+`DW_LOG_FORMAT` はサポートされる設定ではありません。
 
 ## 移行時の注意事項 {#migration-notes}
 
