@@ -431,6 +431,30 @@ workers for bounded workflow cleanup. See the
 [cooperative cancellation guide](/docs/polyglot/cancellation) for operation
 policies, supervision and recovery.
 
+### Current workflow identity {#workflow-identity}
+
+Python SDK 2.9.0 and later exposes read-only `ctx.workflow_id` and `ctx.run_id`
+inside workflow code. Both are strings from the current task and stay identical
+during replay. After continue-as-new, the workflow ID stays unchanged and the
+successor gets its own run ID. Do not replace that ID with a predecessor ID
+passed as an argument.
+
+```python
+from durable_workflow import workflow
+
+@workflow.defn(name="identity")
+class IdentityWorkflow:
+    def run(self, ctx):
+        identity = {"workflow_id": ctx.workflow_id, "run_id": ctx.run_id}
+        yield ctx.schedule_activity("record_identity", [identity])
+        return identity
+```
+
+These properties read local task identity without an HTTP request. For status
+polling outside workflow code, use `await client.describe_workflow(workflow_id)`.
+Use `await client.query_workflow(workflow_id, query_name)` for state exposed by a
+registered query handler. Identity properties do not replace either operation.
+
 ### Schedules
 
 Schedules use `ScheduleSpec` for calendar/interval rules and `ScheduleAction`

@@ -326,6 +326,28 @@ driver = external_storage_driver_from_policy(
 
 两个操作都立即关闭 Server 运行，并产生不同终态结果。`cancel_workflow` 不向工作流代码交付协作请求，也不运行 saga/finally 清理。有时限的工作流清理应配合协作 Worker 使用 `request_cancellation()`。操作策略、监督和恢复见[协作式取消指南](/docs/polyglot/cancellation)。
 
+### 当前工作流的身份标识 {#workflow-identity}
+
+从 Python SDK 2.9.0 开始，工作流代码可以读取只读属性 `ctx.workflow_id` 和
+`ctx.run_id`。两者都是当前任务中的字符串，重放时保持一致。continue-as-new 后，
+工作流 ID 不变，后继运行会获得自己的运行 ID。不要用通过参数传入的前一运行 ID
+替换当前运行 ID。
+
+```python
+from durable_workflow import workflow
+
+@workflow.defn(name="identity")
+class IdentityWorkflow:
+    def run(self, ctx):
+        identity = {"workflow_id": ctx.workflow_id, "run_id": ctx.run_id}
+        yield ctx.schedule_activity("record_identity", [identity])
+        return identity
+```
+
+这些属性读取任务的本地身份标识，不会发送 HTTP 请求。在工作流代码之外轮询状态时，
+使用 `await client.describe_workflow(workflow_id)`。读取已注册查询处理器公开的状态时，
+使用 `await client.query_workflow(workflow_id, query_name)`。身份属性不能替代这两种操作。
+
 ### 计划 {#schedules}
 
 计划使用 `ScheduleSpec` 表示日历/间隔规则，使用 `ScheduleAction` 表示计划触发时发出的工作流启动请求。

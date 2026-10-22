@@ -392,6 +392,32 @@ cooperantes para limpieza acotada. Consulta la
 [guía de cancelación cooperativa](/docs/polyglot/cancellation) para políticas,
 supervisión y recuperación.
 
+### Identidad del workflow actual {#workflow-identity}
+
+Desde Python SDK 2.9.0, el código del workflow puede leer `ctx.workflow_id` y
+`ctx.run_id`, propiedades de solo lectura. Ambas son cadenas de la tarea actual
+y conservan el mismo valor durante la reproducción. Con continue-as-new, el ID
+del workflow no cambia y el sucesor recibe su propio ID de ejecución. No lo
+sustituya por el ID del predecesor recibido como argumento.
+
+```python
+from durable_workflow import workflow
+
+@workflow.defn(name="identity")
+class IdentityWorkflow:
+    def run(self, ctx):
+        identity = {"workflow_id": ctx.workflow_id, "run_id": ctx.run_id}
+        yield ctx.schedule_activity("record_identity", [identity])
+        return identity
+```
+
+Estas propiedades leen la identidad local de la tarea sin una petición HTTP.
+Para consultar el estado fuera del código del workflow, use
+`await client.describe_workflow(workflow_id)`. Use
+`await client.query_workflow(workflow_id, query_name)` para el estado expuesto
+por un manejador de consultas registrado. Las propiedades de identidad no
+sustituyen ninguna de estas operaciones.
+
 ### Programaciones {#schedules}
 
 Usan `ScheduleSpec` para reglas de calendario/intervalo y `ScheduleAction` para

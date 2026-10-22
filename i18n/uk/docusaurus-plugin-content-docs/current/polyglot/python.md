@@ -393,6 +393,31 @@ workflow й не запускає очищення saga/finally. Для обме
 [Посібник кооперативного скасування](/docs/polyglot/cancellation) описує
 політики операцій, нагляд і відновлення.
 
+### Ідентичність поточного workflow {#workflow-identity}
+
+Починаючи з Python SDK 2.9.0 код workflow може читати властивості
+`ctx.workflow_id` і `ctx.run_id`, доступні лише для читання. Це рядки з поточного
+завдання, які не змінюються під час replay. Після continue-as-new ID workflow
+лишається тим самим, а наступний run отримує власний ID. Не підміняйте його
+ID попереднього run, переданим як аргумент.
+
+```python
+from durable_workflow import workflow
+
+@workflow.defn(name="identity")
+class IdentityWorkflow:
+    def run(self, ctx):
+        identity = {"workflow_id": ctx.workflow_id, "run_id": ctx.run_id}
+        yield ctx.schedule_activity("record_identity", [identity])
+        return identity
+```
+
+Ці властивості читають локальну ідентичність завдання без HTTP-запиту. Для
+опитування стану поза кодом workflow використовуйте
+`await client.describe_workflow(workflow_id)`. Стан, який надає зареєстрований
+query-обробник, читайте через `await client.query_workflow(workflow_id, query_name)`.
+Властивості ідентичності не замінюють жодну з цих операцій.
+
 ### Розклади {#schedules}
 
 Schedule використовують `ScheduleSpec` для календаря/інтервалів і
