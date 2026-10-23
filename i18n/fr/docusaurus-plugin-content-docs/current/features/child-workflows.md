@@ -31,6 +31,14 @@ final class ParentWorkflow extends Workflow
 }
 ```
 
+## Attributs de recherche et memo {#child-metadata-inheritance}
+
+Une nouvelle exécution enfant démarre avec des copies des attributs de recherche et du memo actuels du parent. C’est un instantané à la création de l’enfant, pas un lien actif. L’enfant peut mettre à jour les clés héritées ou ajouter les siennes ; les mises à jour ultérieures du parent ne modifient pas l’enfant et inversement. Les attributs copiés non modifiés portent `inherited_from_parent`.
+
+Par exemple, l’enfant hérite initialement de `customer=customer-42` et de la note memo du parent. Modifier l’étape ou la note de l’enfant laisse les valeurs du parent intactes. Un filtre client peut donc correspondre aux deux tant qu’ils gardent cette valeur ; consultez les [filtres de liste parent/enfant](./search-attributes.md#parent-child-list-filters).
+
+Les [vérifications d’artefacts publiés](https://github.com/durable-workflow/durable-workflow.github.io/issues/368#issuecomment-6362355504) confirment l’instantané et les mises à jour indépendantes dans Workflow 2.10.1 embarqué et en mode service avec le SDK Python 2.9.0 / Server 2.11.0. Ce sont des contrôles de métadonnées sur des versions identifiées, pas un changement de la combinaison d’installation sélectionnée.
+
 ## Comportement actuel {#current-behavior}
 
 - Importez la fonction avec `use function Workflow\V2\child;` et appelez `child(ChildWorkflow::class, ...)`. L’appel suspend le parent, crée une exécution enfant durable et renvoie son résultat à sa clôture.

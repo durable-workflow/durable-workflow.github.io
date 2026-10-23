@@ -148,6 +148,14 @@ Suchattribute erscheinen in:
 - **Historienzeitleiste**: Jedes `SearchAttributesUpserted`-Ereignis erscheint als typisierter Eintrag in der Laufzeitleiste.
 - **Historienexport**: Suchattribute sind in JSON-Historienexporten enthalten.
 
+### Listenfilter für Eltern und Kinder {#parent-child-list-filters}
+
+Kinder [erben Suchattribute und Memo bei der Erstellung](./child-workflows.md#child-metadata-inheritance) und können ihre Werte danach unabhängig ändern. Das Filtern eines geerbten Attributs schließt Kinder nicht automatisch aus. Bei einem registrierten Keyword-Attribut kann die Server-Abfrage `customer = 'customer-42'` den Elternlauf und jedes Kind mit diesem Wert zurückgeben. Memo bleibt nicht indizierte Metadaten und ist kein weiterer Suchattributfilter.
+
+Die qualifizierte Listen-API von Server 2.11.0 hat **kein eingebautes Prädikat nur für Wurzelläufe oder nur für Kinder**. `ParentWorkflowId`, `RootWorkflowId` und `IsChildWorkflow` sind keine automatischen Beziehungsfelder ihrer Abfragesprache; die Prüfungen der veröffentlichten Version weisen diese unregistrierten Namen zurück. Das Registrieren eines gleichnamigen eigenen Attributs trägt keine Eltern-/Kindidentität ein. Ein Workflow-Typfilter wählt einen Typ, nicht alle Wurzeln oder Kinder über mehrere Typen hinweg.
+
+Prüfen Sie die Abstammung des Laufs, wenn Sie seine tatsächliche Eltern-/Kindbeziehung benötigen. Umfassendere gemeinsame Sichtbarkeitsfilter bleiben [Produktarbeit](https://github.com/durable-workflow/.github/issues/224). Diese Einschränkung und eine vom Nutzer definierte Metadatenkonvention liefern diese Fähigkeit nicht. Der [Prüfbericht](https://github.com/durable-workflow/durable-workflow.github.io/issues/368#issuecomment-6362355504) bewahrt das Ergebnis mit Elternlauf und Kind sowie die abgewiesenen Prädikate.
+
 ## Continue-as-new {#continue-as-new}
 
 Bei Continue-as-new werden die aktuellen Suchattribute automatisch in den

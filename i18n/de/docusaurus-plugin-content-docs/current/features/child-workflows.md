@@ -40,6 +40,14 @@ final class ParentWorkflow extends Workflow
 }
 ```
 
+## Suchattribute und Memo {#child-metadata-inheritance}
+
+Ein neuer Kindlauf beginnt mit Kopien der aktuellen Suchattribute und des Memos seines Elternlaufs. Das ist ein Snapshot bei der Erstellung, keine laufende Verbindung. Das Kind kann geerbte Schlüssel ändern oder eigene hinzufügen. Spätere Änderungen des Elternlaufs verändern das Kind nicht und umgekehrt. Unveränderte kopierte Suchattribute sind mit `inherited_from_parent` markiert.
+
+Zum Beispiel erbt das Kind zunächst `customer=customer-42` und die Memo-Notiz des Elternlaufs. Änderungen an Stufe oder Notiz des Kindes lassen die Elternwerte unverändert. Ein Kundenfilter kann daher beide finden, solange sie diesen Wert behalten; siehe [Listenfilter für Eltern und Kinder](./search-attributes.md#parent-child-list-filters).
+
+Die [Prüfungen veröffentlichter Artefakte](https://github.com/durable-workflow/durable-workflow.github.io/issues/368#issuecomment-6362355504) bestätigen Snapshot und unabhängige Änderungen in eingebettetem Workflow 2.10.1 und im Service-Modus mit Python SDK 2.9.0 / Server 2.11.0. Dies sind Metadatenprüfungen bestimmter Versionen, keine Änderung der ausgewählten Installationskombination.
+
 ## Aktuelles Verhalten {#current-behavior}
 
 - Importieren Sie den Helfer mit `use function Workflow\V2\child;` und rufen Sie `child(ChildWorkflow::class, ...)` auf. Der Aufruf unterbricht den Elternlauf, erstellt einen dauerhaften untergeordneten Lauf und liefert dessen Ergebnis, sobald er geschlossen wird.
