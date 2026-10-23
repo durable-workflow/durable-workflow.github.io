@@ -188,6 +188,8 @@ $result = activity(
 );
 ```
 
+Im Service-Modus hält das Schließen eines Activity-Versuchs den SDK-Anwendungscode nicht zwangsweise an. Python SDK 2.9.0 meldet die Ablehnung beim nächsten Heartbeat; Code ohne Heartbeats kann bis zur Rückkehr weiterlaufen, und der physische Thread-Slot bleibt bis zum Ende belegt. Siehe [Heartbeat-Ablehnungen und Callback-Ende in Python](../polyglot/python.md#heartbeat-refusals-and-callback-exit).
+
 ### Zeitlimit von Planung bis Start {#schedule-to-start-timeout}
 
 Die Frist wird bei der Planung der Aktivität berechnet. Beansprucht kein Worker sie rechtzeitig, setzt `TaskWatchdog` das Zeitlimit durch. Sind weitere Versuche möglich, wird eine neue Aufgabe mit der gespeicherten Wartezeit geplant und die Schedule-to-start-Frist relativ zur Verfügbarkeit dieses Versuchs neu berechnet. Jeder Versuch erhält ein neues Fenster. Ohne konfiguriertes `scheduleToStartTimeout` wird die Frist beim Wiederholungsversuch gelöscht. Nach Ausschöpfen aller Versuche wird ein terminales `ActivityTimedOut`-Ereignis gespeichert und der Workflow geweckt.

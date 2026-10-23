@@ -846,6 +846,14 @@ async def long_running_task(items: list) -> dict:
 
 不要忽略心跳或所有权故障后继续执行外部工作或报告成功。进度不是外部提交，也不是可恢复检查点的确认。请保持外部副作用幂等。
 
+### 心跳拒绝与回调退出 {#heartbeat-refusals-and-callback-exit}
+
+在 **Python SDK 2.9.0** 中，当心跳响应包含 `can_continue=false` 时，`ctx.heartbeat()` 和 `ctx.heartbeat_sync()` 会抛出 `ActivityLeaseAuthorityLost`。异常保留 Server 的原始原因，例如 `activity_deadline_elapsed`、`attempt_closed` 或 `run_closed`。取消请求则会抛出 `ActivityCancelled`。参见[已发布 SDK 的验证结果](https://github.com/durable-workflow/sdk-python/issues/186#issuecomment-6361330674)。
+
+收到拒绝的那次心跳是协作退出点。停止外部工作并继续抛出异常；不要捕获异常后返回成功。从不发送心跳的代码可能一直运行到返回。辅助心跳无法强行中断被阻塞的库调用：应设置有限的 I/O 截止时间，并使用调用自身的取消机制。
+
+物理活动槽位会一直占用到回调或线程退出。尝试失去执行权限并不会让该线程可用于其他工作，Worker 也不会为已关闭的尝试发布迟到的结果。运行时执行超时处理与停止应用代码是两个不同的边界。参见[活动超时](../features/timeouts.md#activity-timeouts)和[辅助线程指南](#heartbeat-helper-thread)。
+
 ### 不可重试错误 {#non-retryable-errors}
 
 抛出 `NonRetryableError`，使活动失败且不重试：

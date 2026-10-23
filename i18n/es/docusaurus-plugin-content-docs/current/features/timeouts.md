@@ -188,6 +188,8 @@ $result = activity(
 );
 ```
 
+En modo servicio, cerrar un intento de actividad no detiene por la fuerza el código de la aplicación del SDK. Python SDK 2.9.0 comunica el rechazo en el siguiente heartbeat; el código sin heartbeats puede ejecutarse hasta retornar y la plaza física del hilo permanece ocupada hasta su salida. Consulte [rechazos de heartbeat y salida del callback en Python](../polyglot/python.md#heartbeat-refusals-and-callback-exit).
+
 ### Tiempo de espera de programación a inicio {#schedule-to-start-timeout}
 
 El plazo se calcula al programar la actividad. Si ningún worker la reclama antes, `TaskWatchdog` aplica el tiempo de espera. Si quedan intentos, se programa una nueva tarea de actividad con la espera registrada y el plazo schedule-to-start se recalcula desde el momento en que el nuevo intento esté disponible. Cada intento recibe una ventana nueva. Si no se configuró `scheduleToStartTimeout`, el plazo se borra al reintentar. Si se agotan los intentos, se registra el evento terminal `ActivityTimedOut` y se despierta el workflow.

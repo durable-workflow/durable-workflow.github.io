@@ -1039,6 +1039,14 @@ A chamada direta a `Client.heartbeat_activity_task()` usa a `TransportRetryPolic
 
 Não suprima falhas de heartbeat ou de posse para continuar trabalho externo ou informar sucesso. Progresso não é um commit externo nem uma confirmação de checkpoint retomável. Mantenha os efeitos externos idempotentes.
 
+### Recusas de heartbeat e saída do callback {#heartbeat-refusals-and-callback-exit}
+
+No **Python SDK 2.9.0**, `ctx.heartbeat()` e `ctx.heartbeat_sync()` lançam `ActivityLeaseAuthorityLost` quando uma resposta de heartbeat informa `can_continue=false`. A exceção preserva o motivo original do Server, como `activity_deadline_elapsed`, `attempt_closed` ou `run_closed`. Uma solicitação de cancelamento lança `ActivityCancelled`. Consulte a [qualificação do SDK publicado](https://github.com/durable-workflow/sdk-python/issues/186#issuecomment-6361330674).
+
+O heartbeat que observa a recusa é um ponto de saída cooperativa. Interrompa o trabalho externo e propague a exceção; não a capture para retornar sucesso. Código que nunca envia heartbeats pode continuar executando até retornar. Um heartbeat auxiliar não pode interromper à força uma chamada de biblioteca bloqueada: use prazos finitos de E/S e o mecanismo de cancelamento da própria chamada.
+
+O slot físico da atividade permanece ocupado até a saída do callback/thread. Perder a autoridade da tentativa não libera essa thread para outro trabalho, e o worker não publica um resultado tardio da tentativa encerrada. Aplicar o timeout do runtime e parar o código da aplicação são limites distintos. Consulte os [timeouts de atividade](../features/timeouts.md#activity-timeouts) e a [orientação sobre a thread auxiliar](#heartbeat-helper-thread).
+
 ### Erros que não permitem nova tentativa {#non-retryable-errors}
 
 Lance `NonRetryableError` para falhar a atividade sem novas tentativas:

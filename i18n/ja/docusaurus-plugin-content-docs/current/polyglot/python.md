@@ -860,6 +860,14 @@ async def long_running_task(items: list) -> dict:
 
 ハートビートや所有権の失敗を抑制して外部処理を続けたり、成功を報告したりしないでください。進捗は外部コミットや再開可能なチェックポイントの確認ではありません。外部作用は冪等にしてください。
 
+### ハートビートの拒否とコールバックの終了 {#heartbeat-refusals-and-callback-exit}
+
+**Python SDK 2.9.0** では、ハートビートの応答が `can_continue=false` を示すと、`ctx.heartbeat()` と `ctx.heartbeat_sync()` は `ActivityLeaseAuthorityLost` を送出します。例外には `activity_deadline_elapsed`、`attempt_closed`、`run_closed` など、Server の元の理由が保持されます。キャンセル要求の場合は `ActivityCancelled` を送出します。[公開済み SDK の検証結果](https://github.com/durable-workflow/sdk-python/issues/186#issuecomment-6361330674)を参照してください。
+
+拒否を受け取ったハートビートが、協調的に終了する地点です。外部処理を停止し、例外を再送出してください。例外を捕捉して成功を返してはいけません。ハートビートを一度も送らないコードは、戻るまで実行を続ける可能性があります。補助ハートビートでは、ブロック中のライブラリ呼び出しを強制的に中断できません。有限の I/O 期限と、その呼び出し自体のキャンセル機構を使用してください。
+
+物理アクティビティスロットは、コールバックまたはスレッドが終了するまで占有されます。試行の実行権限を失っても、そのスレッドが別の処理に使えるようにはならず、Worker は終了済みの試行に遅れた結果を送信しません。ランタイムによるタイムアウトの適用と、アプリケーションコードの停止は別の境界です。[アクティビティのタイムアウト](../features/timeouts.md#activity-timeouts)と[補助スレッドのガイド](#heartbeat-helper-thread)を参照してください。
+
 ### 再試行しないエラー {#non-retryable-errors}
 
 再試行せずにアクティビティを失敗させるには `NonRetryableError` を送出します。

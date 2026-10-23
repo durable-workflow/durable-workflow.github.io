@@ -186,6 +186,8 @@ $result = activity(
 );
 ```
 
+在服务模式下，关闭活动尝试不会强制停止 SDK 应用代码。Python SDK 2.9.0 会在下一次心跳时报告拒绝；不发送心跳的代码可能一直运行到返回，而物理线程槽位会一直占用到退出。参见 [Python 心跳拒绝与回调退出](../polyglot/python.md#heartbeat-refusals-and-callback-exit)。
+
 ### 调度到开始超时 {#schedule-to-start-timeout}
 
 截止时间在活动被调度时计算。若没有 Worker 在期限前领取，`TaskWatchdog` 执行超时。如果还可重试，则使用已快照的退避调度新活动任务，并相对于重试的可用时间重新计算调度到开始截止时间，每次重试都有新窗口。若未配置 `scheduleToStartTimeout`，重试时会清除此截止时间。所有尝试用尽后，记录终态 `ActivityTimedOut` 历史事件并唤醒工作流。
