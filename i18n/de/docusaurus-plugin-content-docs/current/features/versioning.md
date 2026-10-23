@@ -75,6 +75,68 @@ Stellen Sie Code wieder her, der die ursprüngliche aufgezeichnete Eingabe akzep
 
 Sicheres Routing zu einem Ersatz benötigt außerdem die [Worker-Fähigkeit zur Einstiegsprüfung](../polyglot/worker-compatibility-routing.md#definition-fingerprint-evolution). Ein geänderter Fingerabdruck beweist weder Replay-Kompatibilität noch rechtfertigt er, den ursprünglichen Fingerabdruck eines Laufs umzuschreiben. Versionieren Sie Änderungen an dauerhaften Befehlen innerhalb einer kompatiblen Einstiegsmethode und testen Sie kaltes Replay vor der Promotion.
 
+## Argumente und Ergebnisse von Aktivitäten weiterentwickeln {#evolving-activity-arguments-and-results}
+
+Eine Aktivität hat zwei gespeicherte Verträge: die beim Einplanen aufgezeichneten Argumente und das beim Abschluss aufgezeichnete Ergebnis. Ein Deployment migriert keines von beiden. Das gilt für eingebettetes PHP und für Service-Worker mit den PHP-, Python- und Rust-SDKs.
+
+Ein ausstehender Versuch oder eine Wiederholung erhält die ursprünglich eingeplanten Argumente. Welche Implementierung ausgeführt wird, bestimmen die Worker-Registrierung und die Routing-Richtlinie für Builds. Dabei kann weiterhin ein älterer Build zum Einsatz kommen. Ein neuer Build garantiert weder, dass jeder Versuch ihn verwendet, noch aktualisiert er Argumente in der Warteschlange.
+
+Beim Replay einer abgeschlossenen Aktivität erhält der aktuelle Workflow-Code das aufgezeichnete Ergebnis, ohne die Aktivität erneut auszuführen. Ein passender Schritt und Aktivitätstyp sind keine Schemaprüfung der Argumente oder des Ergebnisses. Eine geänderte Datenstruktur kann deshalb im Anwendungscode fehlschlagen, ohne einen History-Konflikt auszulösen.
+
+### Optionale Eingaben ergänzen und die Bedeutung alter Werte erhalten {#additive-activity-input}
+
+Behalten Sie vorhandene Positionsargumente und ihre Bedeutung bei. In eingebettetem PHP ermöglicht ein optionaler letzter Parameter, bereits eingeplante Argumente wie `[7]` weiterhin anzunehmen:
+
+```php
+use Workflow\V2\Activity;
+
+final class PriceActivity extends Activity
+{
+    public function handle(int $amount, string $currency = 'USD'): array
+    {
+        return ['amount' => $amount, 'currency' => $currency];
+    }
+}
+```
+
+Der Standardwert füllt ein fehlendes Argument. Er konvertiert weder einen inkompatiblen aufgezeichneten Wert noch korrigiert er eine andere Reihenfolge. Auch externe Auswirkungen müssen kompatibel bleiben: Eine Wiederholung kann nach dem Deployment erfolgen und muss weiterhin idempotent sein.
+
+PHP-Handler im Service-Modus erhalten zuerst den Aktivitätskontext und danach die aufgezeichneten Positionsargumente. Python-Handler erhalten die Positionsargumente direkt. Beide benötigen Standardwerte für ausgelassene Argumente. Python-Typannotationen allein prüfen oder konvertieren keine Werte. Typisierte Rust-Aktivitäten deserialisieren einen einzelnen Anfragewert. Ergänzen Sie ein optionales Feld oder ein Feld mit einem expliziten Serde-Standardwert und behalten Sie die vorhandene Darstellung bei. Ein neues Pflichtfeld kann die Dekodierung bereits vor dem Rust-Handler scheitern lassen. Die Aktivitäts-APIs stehen in den SDK-Anleitungen für [PHP](https://php.durable-workflow.com/), [Python](https://python.durable-workflow.com/) und [Rust](https://rust.durable-workflow.com/).
+
+### Alte Ergebnisse mit einem Ersatzwert lesen {#additive-activity-result}
+
+Wenn ein neues Aktivitätsergebnis `currency` ergänzt, müssen Workflows weiterhin ältere abgeschlossene Ergebnisse annehmen, die nur `amount` enthalten:
+
+```php
+$result = activity(PriceActivity::class, 7);
+$currency = $result['currency'] ?? 'USD';
+```
+
+Wählen Sie einen Ersatzwert, der die bisherige fachliche Bedeutung erhält. Behalten Sie ihn für jede History bei, die erneut abgespielt werden kann, einschließlich Abfragen und Wiederherstellung. Stellen Sie kompatible Leser vor dem Code bereit, der die neue Darstellung schreibt. Prüfen Sie auch die Leser eines Rollbacks mit neu aufgezeichneten Ergebnissen. Ein Standardwert für ein Aktivitätsargument ergänzt kein Feld in einem bereits aufgezeichneten Ergebnis.
+
+### Für einen anderen Vertrag einen neuen Typ verwenden {#incompatible-activity-contract}
+
+Wenn Sie ein Feld umbenennen, seine Darstellung oder seine fachliche Bedeutung ändern, behalten Sie den alten Aktivitätstyp bei und führen Sie einen neuen ein. Verwenden Sie einen `getVersion()`-Zweig im Workflow am Aufruf zur Einplanung, wenn alte Histories ihren bisherigen Aktivitätsschritt behalten und neue Runs den neuen Typ einplanen sollen. Ein Zweig innerhalb der Aktivität kann Argumente nicht reparieren, die schon vor Eintritt in den Funktionsrumpf fehlschlagen. Ein Versionsmarker schreibt auch keine Ergebnisse in der History um.
+
+Prüfen Sie mit den tatsächlich installierten Paketen zwei Deployment-Grenzen in neuen Prozessen: mit altem Code einplanen und mit dem neuen Aktivitätscode ausführen; danach mit alter Aktivität abschließen und mit dem neuen Workflow-Code wiedergeben. Nehmen Sie inkompatible Eingaben und Ergebnisse als Fehlerkontrollen auf. Nehmen Sie nicht an, dass die oben beschriebenen Prüfungen am Workflow-Einstieg auch Aktivitätssignaturen oder den Ergebniszugriff der Anwendung schützen. Der bestätigte DTO-Fehler in eingebetteten Aktivitäten wird in [Workflow #910](https://github.com/durable-workflow/workflow/issues/910) verfolgt.
+
+Prüfen Sie diese Aktivitätsverträge zusammen mit den Regeln für [aufgezeichnete Workflow-Startargumente](#evolving-recorded-entry-arguments) und der [Anleitung zum Weiterentwickeln von Signal-Nutzdaten](signals.md#evolve-a-signal-payload).
+
+### Verifizierte Fehlergrenzen {#activity-compatibility-failures}
+
+Die [Prüfungen veröffentlichter Pakete in #363](https://github.com/durable-workflow/durable-workflow.github.io/issues/363) nutzten neue Prozesse an jeder Deployment-Grenze. Dies sind geprüfte Ausgangsversionen, keine unterstützten Mindestversionen:
+
+| Veröffentlichtes Paket | Inkompatible Aktivitätseingabe | Inkompatibler Ergebnisleser |
+| --- | --- | --- |
+| Eingebetteter Workflow 2.11.2 | Ein fehlendes Pflichtargument erzeugt `ArgumentCountError` und einen Aktivitätsfehler. | Der Zugriff auf ein fehlendes Array-Feld unter Laravels Fehlerbehandlung erzeugt `ErrorException` und einen Workflow-Fehler. |
+| PHP SDK 3.2.0 mit Server 2.11.0 | Ein fehlendes Positionspflichtargument wird im Aktivitätsfehler als `ArgumentCountError` gemeldet. | Ein fehlendes Feld an einen Leser mit erforderlichem String-Argument zu übergeben erzeugt `TypeError` und einen Workflow-Fehler. |
+| Python SDK 2.9.0 mit Server 2.11.0 | Ein fehlendes Positionspflichtargument erzeugt `TypeError` und einen Aktivitätsfehler. | Der Zugriff auf einen fehlenden Ergebnisschlüssel erzeugt `KeyError` und einen Workflow-Fehler. |
+| Rust SDK 4.2.2 mit Server 2.11.0 | Ein neues Pflichtfeld der Anfrage lässt die typisierte Eingabedekodierung vor dem Aktivitätshandler scheitern. | Ein neues Pflichtfeld des Ergebnisses lässt die typisierte Ergebnisdekodierung im Workflow scheitern. |
+
+Die Service-Prüfungen zeichneten `max_attempts = 1` auf. Der unbehandelte Aktivitätsfehler ließ anschließend den Workflow scheitern. Allgemein folgen Aktivitätsfehler ihrer aufgezeichneten Wiederholungs- und Timeout-Richtlinie. Ein Workflow kann einen Aktivitätsfehler nach ausgeschöpften Versuchen behandeln. Ein Fehler beim Ergebnislesen ist ein Anwendungsfehler im Workflow und keine Aufforderung, die abgeschlossene Aktivität zu wiederholen. Alle kompatiblen Erweiterungskontrollen schlossen mit dem ursprünglichen Betrag `7` und der Standardwährung `USD` ab, mit einem Aktivitätsversuch und ohne Reparaturen. Bei den Ergebniskontrollen blieb die abgeschlossene Aktivität abgeschlossen.
+
+Eingebetteter Workflow 2.11.2 akzeptiert außerdem eine Signaturänderung, die den aufgezeichneten Skalar `7` durch ein injiziertes DTO mit Standardbetrag `0` ersetzt, und kann fälschlich mit `0` abschließen. [Workflow #910](https://github.com/durable-workflow/workflow/issues/910) verfolgt diesen Produktfehler. Verwenden Sie Dependency Injection nicht zur Migration von Aktivitätseingaben und nehmen Sie nicht an, dass die Workflow-Einstiegsprüfung diesen Fall abdeckt. Kompatiblen Code wiederherzustellen öffnet keinen bereits terminalen Run. Prüfen Sie den tatsächlichen Zustand und folgen Sie der [Wiederherstellungsanleitung](../failures-and-recovery.md), ohne aufgezeichnete Eingaben, History oder Fristen zu ändern.
+
 ## `getVersion` verwenden {#using-getversion}
 
 `getVersion()` ist ein Replay-sicherer geradliniger Helfer. Jeder Änderungspunkt

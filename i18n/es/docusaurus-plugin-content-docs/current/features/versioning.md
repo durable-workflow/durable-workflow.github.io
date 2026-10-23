@@ -71,6 +71,68 @@ Restaure código que acepte la entrada registrada original y siga el [procedimie
 
 El enrutamiento seguro hacia una sustitución también requiere la [capacidad de validación de entrada del worker](../polyglot/worker-compatibility-routing.md#definition-fingerprint-evolution). Un fingerprint diferente no demuestra compatibilidad de replay ni justifica reescribir el fingerprint original de una ejecución. Versione los cambios de comandos durables dentro de un método de entrada compatible y valide el replay en frío antes de promover el build.
 
+## Evolucionar argumentos y resultados de actividades {#evolving-activity-arguments-and-results}
+
+Una actividad tiene dos contratos almacenados: los argumentos registrados al programarla y el resultado registrado al completarla. Un despliegue no migra ninguno de los dos. Esto se aplica a PHP integrado y a los workers de servicio con los SDK de PHP, Python y Rust.
+
+Un intento pendiente o un reintento recibe los argumentos originales registrados. Ejecuta la implementación que seleccionan el registro del worker y la política de enrutamiento de builds, que puede seguir siendo una build anterior. Desplegar una nueva implementación no garantiza que todos los intentos la usen ni actualiza los argumentos en cola.
+
+Al reproducir una actividad completada, el código actual del workflow recibe el resultado registrado sin volver a ejecutar la actividad. La coincidencia del paso y del tipo de actividad no valida el esquema de sus argumentos ni de su resultado. Un cambio de estructura puede fallar en el código de la aplicación sin producir una discrepancia de historial.
+
+### Añadir entradas opcionales sin reinterpretar los valores anteriores {#additive-activity-input}
+
+Conserve los argumentos posicionales existentes y su significado. En PHP integrado, un parámetro opcional al final permite seguir aceptando argumentos ya programados como `[7]`:
+
+```php
+use Workflow\V2\Activity;
+
+final class PriceActivity extends Activity
+{
+    public function handle(int $amount, string $currency = 'USD'): array
+    {
+        return ['amount' => $amount, 'currency' => $currency];
+    }
+}
+```
+
+El valor predeterminado cubre un argumento ausente. No convierte un valor registrado incompatible ni corrige un cambio de orden. Mantenga también la compatibilidad de los efectos externos: un reintento puede ejecutarse después del despliegue y debe seguir siendo idempotente.
+
+Los handlers de PHP en modo servicio reciben el contexto de actividad seguido de los argumentos posicionales registrados. Los de Python reciben directamente esos argumentos posicionales. Ambos necesitan valores predeterminados para los argumentos omitidos. Las anotaciones de Python por sí solas no validan ni convierten valores. Las actividades tipadas de Rust deserializan un único valor de petición. Añada un campo opcional o un campo con un valor predeterminado explícito de Serde, conservando la representación existente. Un nuevo campo obligatorio puede impedir la decodificación antes de ejecutar el handler de Rust. Consulte las API de actividades en las guías de los SDK de [PHP](https://php.durable-workflow.com/), [Python](https://python.durable-workflow.com/) y [Rust](https://rust.durable-workflow.com/).
+
+### Leer resultados anteriores con un valor de reserva {#additive-activity-result}
+
+Si un nuevo resultado de actividad añade `currency`, los workflows deben seguir aceptando resultados completados anteriormente que solo contienen `amount`:
+
+```php
+$result = activity(PriceActivity::class, 7);
+$currency = $result['currency'] ?? 'USD';
+```
+
+Elija un valor de reserva que conserve el significado de negocio anterior. Manténgalo para todos los historiales que puedan reproducirse, incluidas las consultas y la recuperación. Despliegue lectores compatibles antes de los escritores que generan la nueva representación. Compruebe también los lectores de rollback con los nuevos resultados registrados. Un valor predeterminado de entrada no añade campos a un resultado ya registrado.
+
+### Usar un tipo nuevo para un contrato diferente {#incompatible-activity-contract}
+
+Para renombrar un campo, cambiar su representación o alterar su significado de negocio, mantenga disponible el tipo de actividad anterior e introduzca uno nuevo. Use una rama `getVersion()` en la llamada que programa la actividad cuando los historiales existentes deban conservar su paso anterior y los nuevos runs deban programar el tipo nuevo. Una rama dentro de la actividad no puede corregir argumentos que fallan antes de entrar en su cuerpo. Un marcador de versión tampoco reescribe los resultados del historial.
+
+Pruebe dos límites de despliegue en procesos nuevos con los paquetes realmente instalados: programar con código anterior y ejecutar con la actividad candidata; después, completar con la actividad anterior y reproducir con el workflow candidato. Incluya entradas y resultados incompatibles como controles de fallo. No suponga que las protecciones de entrada del workflow descritas arriba protegen también las firmas de actividad o el acceso de la aplicación a sus resultados. El defecto confirmado de inyección de DTO en actividades integradas se sigue en [Workflow #910](https://github.com/durable-workflow/workflow/issues/910).
+
+Revise junto con estos contratos de actividad las reglas de [argumentos iniciales registrados del workflow](#evolving-recorded-entry-arguments) y la [receta para evolucionar el payload de una señal](signals.md#evolve-a-signal-payload).
+
+### Límites de fallo verificados {#activity-compatibility-failures}
+
+Las [pruebas de paquetes publicados de #363](https://github.com/durable-workflow/durable-workflow.github.io/issues/363) usaron procesos nuevos en cada límite de despliegue. Son versiones verificadas, no versiones mínimas compatibles:
+
+| Paquete publicado | Entrada de actividad incompatible | Lector de resultados incompatible |
+| --- | --- | --- |
+| Workflow integrado 2.11.2 | Un argumento obligatorio ausente produce `ArgumentCountError` y un fallo de actividad. | Acceder a un campo de array ausente con el manejo de errores de Laravel produce `ErrorException` y un fallo del workflow. |
+| PHP SDK 3.2.0 con Server 2.11.0 | Un argumento posicional obligatorio ausente se comunica como `ArgumentCountError` en el fallo de actividad. | Pasar un campo ausente a un lector que exige un string produce `TypeError` y un fallo del workflow. |
+| Python SDK 2.9.0 con Server 2.11.0 | Un argumento posicional obligatorio ausente produce `TypeError` y un fallo de actividad. | Acceder por índice a una clave de resultado ausente produce `KeyError` y un fallo del workflow. |
+| Rust SDK 4.2.2 con Server 2.11.0 | Un nuevo campo obligatorio de petición falla al decodificar la entrada tipada, antes de ejecutar el handler de actividad. | Un nuevo campo obligatorio de resultado falla al decodificar el resultado tipado en el workflow. |
+
+Las pruebas de servicio registraron `max_attempts = 1`; después, el fallo de actividad no capturado hizo fallar el workflow. En general, los fallos de actividad siguen su política registrada de reintentos y timeouts. El workflow puede manejar un fallo de actividad tras agotar sus intentos. Un error del lector de resultados es un fallo del código del workflow, no una petición de repetir la actividad completada. Todos los controles aditivos completaron con la cantidad original `7` y la moneda predeterminada `USD`, con un intento de actividad y sin reparaciones. En los controles de resultados, la actividad completada permaneció completada.
+
+Workflow integrado 2.11.2 también acepta una nueva firma que sustituye el escalar registrado `7` por un DTO inyectado con cantidad predeterminada `0`, y puede completar incorrectamente con `0`. [Workflow #910](https://github.com/durable-workflow/workflow/issues/910) sigue este defecto del producto. No use la inyección de dependencias para migrar entradas de actividad ni suponga que la protección de entrada del workflow cubre este caso. Restaurar código compatible no reabre un run terminal. Inspeccione el estado real y siga la [guía de recuperación](../failures-and-recovery.md) sin cambiar entradas registradas, historial ni plazos.
+
 ## Usar `getVersion` {#using-getversion}
 
 `getVersion()` es un helper secuencial seguro para la reproducción. En la primera ejecución registra un marcador duradero por punto de cambio; las reproducciones posteriores reutilizan el valor confirmado sin recalcular la rama con el código actual. Las ejecuciones anteriores a la nueva bifurcación reciben conservadoramente `DEFAULT_VERSION`.
