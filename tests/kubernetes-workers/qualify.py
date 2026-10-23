@@ -88,7 +88,10 @@ def collect(*, show_logs=False):
                     logs = kubectl('logs', pod['metadata']['name'], '-c', container['name'],
                                    label=pod['metadata']['name'] + '-' + container['name'])
                     if show_logs:
-                        print('Pod ' + pod['metadata']['name'] + ' / ' + container['name'] + ':\n' + logs[-3000:], flush=True)
+                        errors = [line[:3000] for line in logs.splitlines()
+                                  if any(token in line for token in ['ERROR:', 'CRITICAL:', 'SQLSTATE', 'Fatal error', 'Error:'])]
+                        print('Pod ' + pod['metadata']['name'] + ' / ' + container['name'] + ':\n'
+                              + '\n'.join(errors[:4]) + '\n' + logs[-3000:], flush=True)
                 except RuntimeError:
                     pass
     except RuntimeError:
