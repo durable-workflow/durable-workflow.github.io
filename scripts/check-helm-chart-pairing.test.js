@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const source = require('../static/stable-releases.json');
-const {readStableReleases, buildArtifactPins, replaceArtifactTokens} = require('./public-artifact-versions');
+const {readStableReleases, buildArtifactPins, replaceArtifactTokens, artifactVersionRemarkPlugin} = require('./public-artifact-versions');
 
 const versions = readStableReleases(source);
 assert.equal(versions.server, source.helm_chart.app_version);
@@ -17,4 +17,9 @@ assert.throws(() => readStableReleases(unqualified), /Helm app_version must matc
 
 const rendered = replaceArtifactTokens('| Helm | %%artifact.helmChartVersion%% | %%artifact.helmChartInstallIdentity%% | Server %%artifact.helmChartAppVersion%% |');
 assert.equal(rendered, `| Helm | ${versions['helm-chart']} | ${source.helm_chart.repository} --version ${versions['helm-chart']} | Server ${versions.server} |`);
-console.log('Helm metadata rejects mismatched/unqualified pairs; generated chart identity agrees with the selected Server.');
+const link = {type: 'link', url: '%%artifact.helmChartSourceUrl%%', children: []};
+assert.throws(() => decodeURIComponent(link.url), URIError);
+artifactVersionRemarkPlugin()({type: 'root', children: [link]});
+assert.doesNotThrow(() => decodeURIComponent(link.url));
+assert.equal(link.url, buildArtifactPins().helmChartSourceUrl);
+console.log('Helm metadata rejects mismatched/unqualified pairs; generated identity and URLs agree before MDX URI decoding.');
