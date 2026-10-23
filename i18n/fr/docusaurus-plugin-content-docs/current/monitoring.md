@@ -253,6 +253,36 @@ Changer le backend Waterline ne migre ni ne combine les exécutions.
 | Une route de catalogue de services signale `backend_capability_unavailable` | Le mode service ne reproduit pas le catalogue de services interespaces de noms embarqué de Waterline. Utilisez les routes et l'API natives du serveur connecté pour cette capacité. |
 | Une métrique personnalisée manque dans Waterline | Inspectez l'exportateur du worker. Waterline expose les faits durables d'exploitation, pas les métriques arbitraires des processus. |
 
+### Bandeau d’environnement {#waterline-environment-banner}
+
+Distinguez les onglets de production et hors production avec le bandeau Waterline. Ces variables fonctionnent en Laravel embarqué et en mode service autonome :
+
+```dotenv
+WATERLINE_ENV_NAME=production
+WATERLINE_ENV_COLOR="#dc3545"
+```
+
+`WATERLINE_ENV_COLOR` sélectionne une palette fixe compatible avec la CSP :
+
+| Valeur acceptée | Couleur du bandeau |
+| --- | --- |
+| `#0d6efd` ou `#2563eb` | Bleu |
+| `#198754` ou `#28a745` | Vert |
+| `#6f42c1` ou `#7746ec` | Violet |
+| `#dc3545` | Rouge |
+| `#fd7e14` | Orange |
+| `#ffc107` | Jaune |
+
+Les autres valeurs donnent un gris neutre, y compris des couleurs hexadécimales valides comme `#ff0000`. Utilisez une valeur du tableau pour la couleur souhaitée.
+
+En Laravel embarqué, les clés résolues `env_name` et `env_color` de `config/waterline.php` font autorité. La configuration publiée peut remplacer les valeurs issues de l’environnement. Après modification, reconstruisez le cache de configuration de l’application dans son déploiement habituel :
+
+```bash
+php artisan config:cache
+```
+
+Si le bandeau diffère de `.env`, inspectez la configuration résolue de Waterline : le cache reste effectif jusqu’à sa reconstruction. En mode service autonome, mettez à jour l’environnement du déploiement Waterline puis recréez ou redéployez son conteneur pour charger les valeurs. Ce sont des réglages d’affichage Waterline ; appliquez-les au service Waterline décrit plus haut.
+
 ### Cloud Managed Waterline {#cloud-managed-waterline}
 
 Les clients Cloud ouvrent Cloud Managed Waterline depuis l'interface opérateur
