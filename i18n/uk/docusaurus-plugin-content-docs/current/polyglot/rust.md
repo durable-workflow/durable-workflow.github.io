@@ -320,6 +320,27 @@ pub fn register_charge(worker: &mut Worker) {
 
 Див. [методи ідентичності ActivityContext](https://rust.durable-workflow.com/durable_workflow/struct.ActivityContext.html#method.activity_execution_id) та [перевірку звичайного встановлення 4.9.0](https://github.com/durable-workflow/sdk-rust/issues/139#issuecomment-6367230500) з ordinary/cooperative, local і worker-session контролями. Спільний контракт ідемпотентності описано в [гарантіях виконання](../constraints/execution-guarantees.md#service-activity-identity).
 
+## Обмежені звіти про помилки {#bounded-failure-reports}
+
+Ці межі потребують фактично встановленого **Rust SDK 4.10.1 або новішого**. Перевірте `Cargo.lock` worker: новіший client чи checkout не оновлює старіший вибраний worker. Межі стосуються вихідних звітів про помилки, а не вхідної історії чи сторонніх бізнес-payload.
+
+| Поле або envelope | Максимум |
+| --- | --- |
+| UTF-8 message разом із маркером | 62 KiB |
+| Stack, якщо підтримується | 128 KiB |
+| Сумарні серіалізовані необов’язкові details, diagnostics і metadata | 64 KiB |
+| Повне закодоване тіло запиту помилки | 1 MiB |
+
+Ефективна межа message резервує2 KiB від початкових64 KiB для timeline-префіксів опублікованого Server. JSON escaping, маркери, ідентичність claim та всі інші поля входять до закодованого тіла. Нижча відома транспортна межа може додатково зменшити максимуми. Малі звіти зберігають початковий вміст.
+
+Завеликий текст містить видимий маркер. Наявне `diagnostics.sdk_failure_truncation`, якщо схема його підтримує, записує початкові розміри в байтах та пропущені поля. Workflow/query-task схеми без diagnostics та прості повідомлення команд містять цю статистику в маркері message. Avro details лишаються цілим валідним envelope/runtime reference або повністю пропускаються з маркером; base 64 не обрізається до пошкодженого значення.
+
+Початкові тип винятку, рішення про retry та обов’язкова ідентичність claim зберігаються. Низькорівневі consumers можуть використовувати `Client::fail_activity_task_with_failure` і `Client::fail_workflow_task_with_failure` з опублікованою схемою помилки. `Error::FailureReporting` явно відмовляє, якщо обов’язкові дані не вміщаються; він не визначає retry-результат застосунку й не вигадує коротшу ідентичність.
+
+Локальні помилки обмежуються до того, як їх побачить workflow, включно з нормалізацією whitespace/NUL опублікованого Server. Фінальна перевірка запиту не переписує вже побачений локальний message чи інший бізнес-payload; якщо ці незмінні дані не вміщаються, reporting відмовляє.
+
+Ці SDK-межі не доводять виправлення похідного summary-сховища Core, доставку іншого SDK, embedded-поведінку чи оновлення образу Server. Старіші worker усе ще можуть не надіслати завелику помилку. Див. [політику опублікованого source](https://github.com/durable-workflow/sdk-rust/blob/dd58dd146f1337c3be24ad18fe65e3bb31d78b58/README.md#failure-report-limits) та [спільний довідник помилок](../failures-and-recovery.md#rust-failure-report-limits).
+
 ## Локальні activity {#local-activities}
 
 Rust SDK 3.1.0 додає inline local execution на workers із налаштуванням
