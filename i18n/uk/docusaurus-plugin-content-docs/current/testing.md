@@ -48,7 +48,7 @@ exit($allowed ? 0 : 1);
 
 **Python:** використовуйте `Replayer.replay()` або `verify_replay()` із зареєстрованими workflow-кандидатами та перевіряйте очікуваний результат. Сам факт повернення об’єкта не означає успішного тесту. Передавайте оригінальний декодований `start_input`, коли його немає в подіях: Core зберігає його в `payloads.arguments`. Збережіть записані тип, ID та codec. Див. [API replay у Python](https://python.durable-workflow.com/sdk-reference/#replay-captured-histories). `--simulate-bundles` перевіряє цілісність, а не код кандидата; сумісність поточної схеми 2 відстежується в [Python #173](https://github.com/durable-workflow/sdk-python/issues/173). Не переписуйте версію чи checksum для обходу відмови.
 
-**Rust:** публічного API для автономного replay поки немає. Цю можливість відстежує [Rust #105](https://github.com/durable-workflow/sdk-rust/issues/105). Поки що перевіряйте кандидата на ізольованому runtime; це не надає відсутньої гарантії автономного replay.
+**Rust:** SDK **4.5.0 або новіший** надає `testing::WorkflowEnvironment` і `WorkflowHistory` для тестів activity/workflow без Server та replay самодостатніх експортів. Повторно використовуйте реєстрації кандидата, зберігайте початковий вхід/усі сторінки історії й перевіряйте завершення або очікуваний префікс у стані очікування. Розбіжність повертає типізований `Error::NonDeterministicReplay` із durable-послідовністю та очікуваними/фактичними командами. Нові перегони select та інші непідтримувані шляхи виконання потребують інтеграційних тестів. Див. [тести Rust, правила детермінізму та приклади replay](./polyglot/rust.md#offline-testing-and-replay).
 
 ## Швидкі тести із затримками {#keeping-delay-tests-fast}
 

@@ -63,6 +63,8 @@ Traslada esas operaciones a actividades o utiliza un helper de workflow que regi
 
 Consulta [Restricciones de los workflows](./workflow-constraints.md) para conocer las reglas de escritura y [Cómo funciona](../how-it-works.md) para conocer el modelo de reproducción.
 
+Para reglas de Rust sobre `HashMap`, relojes, aleatoriedad y orden de futuros, consulte las [sustituciones duraderas](../polyglot/rust.md#rust-determinism-rules). Rust SDK 4.5.0 añade [pruebas de actividades/workflows sin Server y reproducción del historial registrado](../polyglot/rust.md#offline-testing-and-replay); conserve pruebas de integración para sus límites de ejecución documentados.
+
 ## Por qué las actividades y los efectos externos deben ser idempotentes {#why-activities-and-side-effects-must-be-idempotent}
 
 Las actividades cruzan el límite duradero para acceder a bases de datos, API de pagos, proveedores de correo, almacenamiento de objetos y otros sistemas. Pueden volver a entregarse después de un tiempo de espera agotado, un reintento, un fallo del worker o una lease vencida. Un worker incluso puede completar el cambio externo y fallar antes de que Durable Workflow reciba su informe.

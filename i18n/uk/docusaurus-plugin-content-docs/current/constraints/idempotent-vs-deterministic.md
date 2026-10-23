@@ -84,6 +84,8 @@ activity чи побічного ефекту, замість повторног
 Правила написання наведено в [обмеженнях workflow](./workflow-constraints.md),
 а модель відтворення — у [принципі роботи](../how-it-works.md).
 
+Правила Rust щодо `HashMap`, годинника, випадковості й порядку future див. у [durable-замінах](../polyglot/rust.md#rust-determinism-rules). Rust SDK 4.5.0 додає [тести activity/workflow без Server та replay записаної історії](../polyglot/rust.md#offline-testing-and-replay); зберігайте інтеграційні тести для задокументованих меж виконання.
+
 ## Чому activity та побічні ефекти мають бути ідемпотентними {#why-activities-and-side-effects-must-be-idempotent}
 
 Activity переходять через стійку межу до баз даних, платіжних API, поштових

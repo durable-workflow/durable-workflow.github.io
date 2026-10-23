@@ -48,7 +48,7 @@ exit($allowed ? 0 : 1);
 
 **Python：** 对已注册的候选工作流使用 `Replayer.replay()` 或 `verify_replay()`，并断言预期结果。仅返回一个对象不代表断言通过。若事件中省略了输入，应提供原始解码后的 `start_input`：Core 导出将其存储在 `payloads.arguments` 中。保留记录的类型、ID 和编解码器。请参阅 [Python 重放 API](https://python.durable-workflow.com/sdk-reference/#replay-captured-histories)。`--simulate-bundles` 检查完整性，而不执行候选代码；当前与 schema 2 的兼容性由 [Python #173](https://github.com/durable-workflow/sdk-python/issues/173) 跟踪。不要通过改写版本或校验和来绕过拒绝。
 
-**Rust：** 目前还没有公开的离线重放 API。[Rust #105](https://github.com/durable-workflow/sdk-rust/issues/105) 负责该能力。在此期间可针对隔离的运行时测试候选代码，但这并不提供尚缺失的离线保证。
+**Rust：** SDK **4.5.0 或更新版本**提供 `testing::WorkflowEnvironment` 和 `WorkflowHistory`，用于无需 Server 的活动/工作流测试和自包含导出的重放。复用候选注册，保留原始输入/全部历史分页，并断言完成状态或预期的等待前缀。偏差返回类型化的 `Error::NonDeterministicReplay`，带有持久序列及预期/实际命令。新的 select 竞争和其他不支持的执行路径仍需集成测试。参见 [Rust 测试、确定性规则和重放示例](./polyglot/rust.md#offline-testing-and-replay)。
 
 ## 加快含延迟的测试 {#keeping-delay-tests-fast}
 

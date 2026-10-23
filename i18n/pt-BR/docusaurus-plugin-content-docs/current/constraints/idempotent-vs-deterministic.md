@@ -63,6 +63,8 @@ Mova essas operações para atividades ou use um auxiliar de workflow que regist
 
 Consulte [Restrições dos workflows](./workflow-constraints.md) para conhecer as regras de código e [Como funciona](../how-it-works.md) para conhecer o modelo de replay.
 
+Para regras de Rust sobre `HashMap`, relógios, aleatoriedade e ordem de futures, consulte as [substituições duráveis](../polyglot/rust.md#rust-determinism-rules). Rust SDK 4.5.0 adiciona [testes de atividades/workflows sem Server e replay do histórico registrado](../polyglot/rust.md#offline-testing-and-replay); mantenha testes de integração para seus limites de execução documentados.
+
 ## Por que atividades e efeitos externos devem ser idempotentes {#why-activities-and-side-effects-must-be-idempotent}
 
 As atividades atravessam a fronteira durável para acessar bancos de dados, APIs de pagamento, provedores de e-mail, armazenamento de objetos e outros sistemas. Elas podem ser entregues novamente após um limite de tempo, uma nova tentativa, uma falha de worker ou um lease expirado. Um worker pode até concluir a alteração externa e depois falhar antes que o Durable Workflow receba seu relato.

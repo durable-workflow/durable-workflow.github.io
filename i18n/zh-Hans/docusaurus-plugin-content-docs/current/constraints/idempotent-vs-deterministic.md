@@ -63,6 +63,8 @@ Durable Workflow 通过重放已提交的历史重建编排状态。工作流输
 
 编写规则见[工作流约束](./workflow-constraints.md)，重放模型见[工作原理](../how-it-works.md)。
 
+Rust 的 `HashMap`、时钟、随机数和 future 顺序规则，参见[持久替代方式](../polyglot/rust.md#rust-determinism-rules)。Rust SDK 4.5.0 新增[无需 Server 的活动/工作流测试和已记录历史重放](../polyglot/rust.md#offline-testing-and-replay)；对于文档列出的执行限制，仍应保留集成测试。
+
 ## 活动和副作用为何必须具有幂等性 {#why-activities-and-side-effects-must-be-idempotent}
 
 活动跨越持久边界，访问数据库、支付 API、邮件服务商、对象存储和其他系统。超时、重试、Worker 故障或租约过期后，活动可能被再次投递。Worker 甚至可能完成外部变更后，在 Durable Workflow 收到其报告前发生故障。
