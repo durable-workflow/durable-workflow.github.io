@@ -248,6 +248,40 @@ let mut worker = Worker::new(client.clone(), "payments")
 
 Обробники є async future у Tokio і повинні віддавати керування. Для блокувальної роботи використовуйте `tokio::task::spawn_blocking` або окремий процес із явними межами скасування та завершення. Більша паралельність не ізолює CPU і не робить від’єднаний потік скасовуваним. Перегляньте [Worker API](https://rust.durable-workflow.com/durable_workflow/struct.Worker.html) для встановленої версії SDK.
 
+## Отримані бюджети retries для activity {#activity-retry-info}
+
+Rust SDK **4.8.0 або новіший** надає `ActivityContext::retry_info()` в обробниках service activity. Перевірте встановлений crate у `Cargo.lock`: окремо вибрана версія встановлення вище може бути старішою. Повернений `ActivityRetryInfo` зберігає початковий `attempt_number()` та отриманий JSON `policy()`, включно з невідомими полями. Це незмінний snapshot цього виклику, незалежний від змінюваних полів сумісності контексту.
+
+Використовуйте `attempt_limit()` і `is_last_configured_attempt()` для тлумачення отриманого бюджету:
+
+| Отримана retry policy | `ActivityAttemptLimit` | Остання налаштована спроба |
+| --- | --- | --- |
+| Об’єкт із додатним цілим `max_attempts: n` | `Bounded(n)`, включно з першою спробою | `Some(true)`, коли початкова спроба досягає або перевищує `n`, інакше `Some(false)` |
+| Об’єкт із `max_attempts: null` | `Unlimited` | `Some(false)` |
+| Відсутня policy, кореневий null, відсутнє поле або невалідний ліміт | `Unknown` | `None` |
+
+Helper також повертає `None` для невалідного нульового номера спроби. Типове планування runtime не доводить наявності отриманих метаданих: опублікований контроль Server 2.11.0 без явно заданої policy не містить snapshot, тому повертає `Unknown`, а не виведений `Bounded(1)`. `policy()` відрізняє відсутню policy від отриманого JSON null, не вважаючи жодне з них unlimited. [Перевірка звичайно встановленого пакета](https://github.com/durable-workflow/sdk-rust/issues/135#issuecomment-6366200791) охоплює цей контроль і наведений нижче приклад.
+
+Для fallback останньої налаштованої спроби або сповіщення застосунку зареєструйте обробник у наявному Worker:
+
+```rust
+use durable_workflow::{json, Worker};
+
+pub fn register_charge(worker: &mut Worker) {
+    worker.register_activity("charge", |ctx, _| async move {
+        let retry = ctx.retry_info();
+        if retry.is_last_configured_attempt() == Some(true) {
+            // Select a final-attempt fallback or record an application alert.
+        }
+        Ok(json!({"attempt": retry.attempt_number()}))
+    });
+}
+```
+
+`Some(false)` не обіцяє нового виконання. Non-retryable failure, скасування, закриття workflow і сплив deadlines можуть завершити роботу до вичерпання налаштованого бюджету. Helper не змінює допуск retries і не надає додаткового часу.
+
+Local activities та прямі виклики `testing::WorkflowEnvironment::run_activity` не мають отриманого snapshot сервера й повертають невідому policy. Нові тести `run_workflow` надають змодельований snapshot, записаний у їхній згенерованій історії. Ця семантика тестів не доводить, що розгорнутий Server передає policy. Див. [ActivityRetryInfo](https://rust.durable-workflow.com/durable_workflow/struct.ActivityRetryInfo.html) та [ActivityAttemptLimit](https://rust.durable-workflow.com/durable_workflow/enum.ActivityAttemptLimit.html).
+
 ## Локальні activity {#local-activities}
 
 Rust SDK 3.1.0 додає inline local execution на workers із налаштуванням
