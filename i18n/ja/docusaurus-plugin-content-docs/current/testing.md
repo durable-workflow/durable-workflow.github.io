@@ -10,6 +10,10 @@ sidebar_position: 9
 
 ### 組み込み PHP {#embedded-php-replay}
 
+新しい JSON bundle で整数値の浮動小数点数、入れ子の浮動小数点数、ゼロの符号（`1.0` や `-0.0`）を保つには、`workflow:v2:history-export` に Workflow **2.11.4 以降**を使ってください。実際に `artisan` を実行する成果物の `composer.lock` を確認します。別途選択された構成は旧版を固定している場合があります。[通常インストールの writer 検証](https://github.com/durable-workflow/workflow/issues/912#issuecomment-6364964505)は、待機中/完了済み実行の compact/pretty 出力を、元の checksum を置き換えずに確認しています。これは writer と整合性の検証であり、候補 workflow コードの検証ではありません。
+
+情報を失った旧 JSON は無効なままです。2.11.4 は再解釈や修復をしません。正本のストアと元の payload バイトが利用できる場合、修正済み producer で再エクスポートしてください。生成 bundle は変更せず、数値の変換や checksum/バージョンの書き換えで強制的に通さないでください。引き続き候補の replay と以下の昇格判定を実行します。
+
 アプリケーションが所有するストアからエクスポートします。`WORKFLOW_ID` と `RUN_ID` に、選択したインスタンスとランの正確な ID を設定します。
 
 ```bash
@@ -43,6 +47,8 @@ exit($allowed ? 0 : 1);
 `--skip-replay` は整合性だけを確認します。問題のない結果でも、リプレイ互換な昇格を承認する根拠にはなりません。成功が対象とするのは記録済みの経路と実行中のランの可視プレフィックスだけで、将来の分岐、業務ロジックの正しさ、ネットワーク動作ではありません。ロールバック前には、新しい Worker がすでに書き込み、古いアーティファクトが受け取る可能性のある履歴を、その古いアーティファクトでテストします。ユニットテストと実際のランタイムを使うテストも維持してください。
 
 ### サービス SDK {#service-sdk-replay}
+
+Server イメージ、内蔵 CLI、`dw`/SDK の HTTP エクスポートは、実際の Server producer に依存します。Core 2.11.4 の公開だけでは成果物の更新や検証にはなりません。[Server #692 の独立したパッケージ固定・イメージ・インストール済み transport 検証](https://github.com/durable-workflow/server/issues/692)に従い、Core tag から HTTP 修正を推定しないでください。無効な bundle は引き続き拒否します。
 
 **PHP:** アプリケーションのコーデック、呼び出し可能オブジェクト、イベント一覧、元の入力、キュー、記録されたタスク ID を指定して `DurableWorkflow\Worker\Replayer::replay()` を使います。`NonDeterministicWorkflow` でテストを失敗させ、期待するコマンドと結果を検証してください。[PHP のリプレイテスト](https://php.durable-workflow.com/build/testing/)を参照してください。
 

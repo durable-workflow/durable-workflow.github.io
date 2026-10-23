@@ -10,6 +10,10 @@ Guarde exportações de execuções selecionadas de workflows representativos ab
 
 ### PHP embarcado {#embedded-php-replay}
 
+Use Workflow **2.11.4 ou posterior** em `workflow:v2:history-export` para preservar tipos de ponto flutuante com valor inteiro, valores aninhados e o sinal de zero, como `1.0` e `-0.0`, em novos bundles JSON. Confira `composer.lock` no artefato que realmente executa `artisan`; a combinação de instalação separada pode fixar uma versão anterior. A [aceitação do writer instalado normalmente](https://github.com/durable-workflow/workflow/issues/912#issuecomment-6364964505) cobre saída compact/pretty de execuções aguardando/concluídas sem substituir a checksum original. Isso qualifica o writer e a integridade, não o código candidato do workflow.
+
+O JSON antigo com perda continua inválido: 2.11.4 não o reinterpreta nem repara. Se o armazenamento autoritativo e os bytes originais do payload estiverem disponíveis, exporte novamente com o produtor corrigido. Mantenha o bundle gerado intacto; não converta números nem edite checksum/versão para forçar aceitação. Continue executando replay do candidato e o controle de promoção abaixo.
+
 Exporte do armazenamento pertencente à aplicação. Defina `WORKFLOW_ID` e `RUN_ID` para a instância e a execução exatas selecionadas:
 
 ```bash
@@ -43,6 +47,8 @@ exit($allowed ? 0 : 1);
 `--skip-replay` verifica apenas integridade. Mesmo um resultado sem problemas não autoriza uma promoção segura para replay. A aprovação cobre somente caminhos registrados e o prefixo visível de uma execução aberta, não ramificações futuras, correção de negócio ou comportamento de rede. Antes de reverter, teste o artefato antigo com históricos já escritos por workers novos que ele possa receber. Mantenha também testes unitários e com um runtime real.
 
 ### SDKs em modo serviço {#service-sdk-replay}
+
+Imagens Server, seu CLI incluído e exportações HTTP de `dw`/SDK dependem do produtor Server real. A versão Core 2.11.4 sozinha não atualiza nem qualifica esses artefatos. Siga a [qualificação separada de pin do pacote, imagem e transportes instalados de Server #692](https://github.com/durable-workflow/server/issues/692); não deduza uma correção HTTP pelo tag Core. Bundles inválidos devem continuar recusados.
 
 **PHP:** use `DurableWorkflow\Worker\Replayer::replay()` com o codec da aplicação, o callable, a lista de eventos, a entrada original, a fila e a identidade registrada da tarefa. Deixe `NonDeterministicWorkflow` reprovar o teste e confira os comandos e resultados esperados. Consulte os [testes de replay em PHP](https://php.durable-workflow.com/build/testing/).
 

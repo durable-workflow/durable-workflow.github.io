@@ -10,6 +10,10 @@ sidebar_position: 9
 
 ### 嵌入式 PHP {#embedded-php-replay}
 
+使用 Workflow **2.11.4 或更新版本**运行 `workflow:v2:history-export`，使新的 JSON bundle 保留整数值浮点数、嵌套浮点数及零的符号，例如 `1.0` 和 `-0.0`。请检查实际运行 `artisan` 的产物中的 `composer.lock`；独立选择的安装组合可能固定旧版本。[普通安装的 writer 验收](https://github.com/durable-workflow/workflow/issues/912#issuecomment-6364964505)覆盖等待中/已完成运行的 compact/pretty 输出，未替换原始 checksum。这验证 writer 和完整性检查，不验证你的候选工作流代码。
+
+旧的有损 JSON 仍然无效：2.11.4 不会重新解释或修复它。如果权威存储及原始 payload 字节仍可用，请使用修复后的 producer 重新导出。保持生成的 bundle 原样；不要强制转换数字或修改 checksum/版本来强行通过。仍需执行候选代码 replay，并落实下面的发布门槛。
+
 从应用拥有的存储导出。将 `WORKFLOW_ID` 和 `RUN_ID` 设为所选实例和运行的准确标识：
 
 ```bash
@@ -43,6 +47,8 @@ exit($allowed ? 0 : 1);
 `--skip-replay` 只检查完整性。即使结果没有问题，也不能据此授权重放安全的晋升。通过仅覆盖已记录的路径和运行中历史的可见前缀，不覆盖未来分支、业务正确性或网络行为。回滚前，应使用旧制品测试新 Worker 已写入且旧制品可能接收的历史。同时保留单元测试和使用真实运行时的测试。
 
 ### 服务模式 SDK {#service-sdk-replay}
+
+Server 镜像、镜像内的 CLI 及 `dw`/SDK HTTP 导出依赖实际的 Server producer。单独发布 Core 2.11.4 不会升级或验证这些产物。请遵循 [Server #692 独立的包版本固定、镜像及安装后传输验收](https://github.com/durable-workflow/server/issues/692)，不要从 Core tag 推断 HTTP 已修复。无效 bundle 仍须拒绝。
 
 **PHP：** 使用 `DurableWorkflow\Worker\Replayer::replay()`，提供应用的编解码器、可调用对象、事件列表、原始输入、队列和记录的任务标识。让 `NonDeterministicWorkflow` 使测试失败，并断言预期命令和结果。请参阅 [PHP 重放测试](https://php.durable-workflow.com/build/testing/)。
 

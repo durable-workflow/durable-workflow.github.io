@@ -10,6 +10,10 @@ Keep selected-run exports from representative open and recently closed runs. Inc
 
 ### Embedded PHP {#embedded-php-replay}
 
+Use Workflow **2.11.4 or newer** for `workflow:v2:history-export` to preserve whole/nested floating-point kinds and signed zero, such as `1.0` and `-0.0`, in new JSON bundles. Check `composer.lock` in the artifact that actually runs `artisan`; a separately selected installation pin may be older. The [normal installed writer qualification](https://github.com/durable-workflow/workflow/issues/912#issuecomment-6364964505) covers compact/pretty output for waiting/completed runs with the original checksum untouched. This qualifies the writer and integrity check, not your candidate workflow code.
+
+Older lossy JSON remains invalid: 2.11.4 does not reinterpret or repair it. If the authoritative store and original payload bytes are available, re-export using the fixed producer. Keep the generated bundle unchanged; never coerce numbers or edit a checksum/version to force acceptance. Still run candidate replay and enforce the promotion gate below.
+
 Export from the application's owning store. Set `WORKFLOW_ID` and `RUN_ID` to the exact selected instance and run:
 
 ```bash
@@ -43,6 +47,8 @@ exit($allowed ? 0 : 1);
 `--skip-replay` checks integrity only. Even a clean result cannot authorize replay-safe promotion. A pass covers only recorded paths and the visible prefix of an open run, not future branches, domain correctness or network behavior. Before rollback, test the older artifact against histories already written by newer workers that it could receive. Keep unit and real-runtime tests as well.
 
 ### Service SDKs {#service-sdk-replay}
+
+Server images, their bundled CLI and `dw`/SDK HTTP exports depend on the actual Server producer. The Core 2.11.4 release alone does not upgrade or qualify those artifacts. Follow the separate [Server #692 package-pin, image and installed-transport qualification](https://github.com/durable-workflow/server/issues/692); do not infer an HTTP fix from the Core tag. Keep refusing invalid bundles.
 
 **PHP:** use `DurableWorkflow\Worker\Replayer::replay()` with the application's codec, callable, event list, original input, queue and recorded task identity. Let `NonDeterministicWorkflow` fail the test and assert the expected commands/result. See [PHP replay testing](https://php.durable-workflow.com/build/testing/).
 
