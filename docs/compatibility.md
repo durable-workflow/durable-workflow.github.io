@@ -218,12 +218,15 @@ and image digests used for each completed check.
 | Component | Supported version | Install identity |
 |-----------|-------------------|------------------|
 | Server | `%%artifact.serverVersion%%` | `%%artifact.serverDockerHubImage%%` |
+| Helm chart | `%%artifact.helmChartVersion%%` | `%%artifact.helmChartInstallIdentity%%` |
 | CLI | `%%artifact.cliVersion%%` | `%%artifact.cliInstallerEnv%%` |
 | Workflow engine | `%%artifact.workflowVersion%%` | `%%artifact.workflowComposerPackage%%` |
 | Waterline operator | `%%artifact.waterlineVersion%%` | `%%artifact.waterlineComposerPackage%%` |
 | PHP SDK | `%%artifact.phpSdkVersion%%` | `%%artifact.phpSdkComposerPackage%%` |
 | Python SDK | `%%artifact.pythonSdkVersion%%` | `%%artifact.pythonPackagePin%%` |
 | Rust SDK | `%%artifact.rustSdkVersion%%` | `%%artifact.rustCargoRequirement%%` |
+
+The Helm chart's recorded `appVersion` is `%%artifact.helmChartAppVersion%%`, matching the selected Server. Its [published pairing receipt](%%artifact.helmChartQualificationUrl%%) verifies OCI/package digests and source identity; it is not a fresh cluster-install result. See [chart selection and upgrades](./deployment.md#helm-chart-selection) before installing or overriding the image.
 
 PyPI renders the Python distribution version as
 `%%artifact.pythonRegistryVersion%%`; the documented PEP 440 install spelling

@@ -163,12 +163,16 @@ Durable Workflow 中每个公开接口恰好具有以下一个稳定性级别。
 | 组件 | 支持版本 | 安装身份 |
 |-----------|-------------------|------------------|
 | Server | `%%artifact.serverVersion%%` | `%%artifact.serverDockerHubImage%%` |
+| Helm Chart | `%%artifact.helmChartVersion%%` | `%%artifact.helmChartInstallIdentity%%` |
 | CLI | `%%artifact.cliVersion%%` | `%%artifact.cliInstallerEnv%%` |
 | 工作流引擎 | `%%artifact.workflowVersion%%` | `%%artifact.workflowComposerPackage%%` |
 | Waterline 操作界面 | `%%artifact.waterlineVersion%%` | `%%artifact.waterlineComposerPackage%%` |
 | PHP SDK | `%%artifact.phpSdkVersion%%` | `%%artifact.phpSdkComposerPackage%%` |
 | Python SDK | `%%artifact.pythonSdkVersion%%` | `%%artifact.pythonPackagePin%%` |
 | Rust SDK | `%%artifact.rustSdkVersion%%` | `%%artifact.rustCargoRequirement%%` |
+
+Helm Chart 记录的 `appVersion` 为 `%%artifact.helmChartAppVersion%%`，与所选 Server 一致。[已发布组合的验证记录](%%artifact.helmChartQualificationUrl%%)核实了 OCI/软件包摘要和源码标识，并不代表新完成的集群安装验证。安装或覆盖镜像前，请阅读 [Chart 选择与升级](./deployment.md#helm-chart-selection)。
+
 
 PyPI 将 Python 分发版本显示为 `%%artifact.pythonRegistryVersion%%`；文档中的 PEP 440 安装写法 `%%artifact.pythonSdkVersion%%` 解析到同一发布。这种规范化不产生第二个受支持版本。
 

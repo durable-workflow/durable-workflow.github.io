@@ -4,6 +4,7 @@ const STABLE_RELEASE_SCHEMA = 'durable-workflow.docs.stable-releases';
 const STABLE_VERSION_PATTERN_SOURCE = '\\d+\\.\\d+\\.\\d+';
 const REQUIRED_ARTIFACTS = Object.freeze([
   'cli',
+  'helm-chart',
   'sdk-php',
   'sdk-python',
   'sdk-rust',
@@ -32,10 +33,28 @@ function readStableReleases(source = stableReleaseSource) {
     throw new Error(`stable-releases.json contains unknown artifacts: ${unknown.join(', ')}`);
   }
 
+  const chart = source.helm_chart;
+  if (chart?.app_version !== artifacts.server) {
+    throw new Error('stable-releases.json Helm app_version must match the selected Server version');
+  }
+  if (chart.repository !== 'oci://ghcr.io/durable-workflow/charts/durable-workflow') {
+    throw new Error('stable-releases.json must identify the published Helm OCI repository');
+  }
+  for (const key of ['oci_manifest_digest', 'package_digest']) {
+    if (!/^sha256:[a-f0-9]{64}$/.test(chart[key] || '')) {
+      throw new Error(`stable-releases.json helm_chart.${key} must be a SHA256 digest`);
+    }
+  }
+  if (!/^[a-f0-9]{40}$/.test(chart.source_commit || '')
+      || !/^https:\/\/github\.com\/durable-workflow\/.+/.test(chart.qualification_url || '')) {
+    throw new Error('stable-releases.json Helm pairing needs immutable source and qualification evidence');
+  }
+
   return Object.freeze({...artifacts});
 }
 
 const ARTIFACT_VERSIONS = readStableReleases();
+const HELM_CHART = Object.freeze({...stableReleaseSource.helm_chart});
 const PUBLISHED_ARTIFACT_VERSIONS = ARTIFACT_VERSIONS;
 const ARTIFACT_RELEASE_POLICY = Object.freeze({
   schema: STABLE_RELEASE_SCHEMA,
@@ -112,7 +131,10 @@ function productTrainVersion(versions = ARTIFACT_VERSIONS) {
   return assertStableVersion('Python SDK', versions['sdk-python']);
 }
 
-function buildArtifactPins(versions = ARTIFACT_VERSIONS) {
+function buildArtifactPins(versions = ARTIFACT_VERSIONS, helmChart = HELM_CHART) {
+  if (versions.server !== helmChart.app_version) {
+    throw new Error('Artifact pins require a Helm appVersion paired with the selected Server');
+  }
   const python = buildPythonPackageAuthority(versions);
   const rust = buildRustPackageAuthority(versions);
 
@@ -145,6 +167,13 @@ function buildArtifactPins(versions = ARTIFACT_VERSIONS) {
     rustRepositoryUrl: 'https://github.com/durable-workflow/sdk-rust',
     rustDocumentationUrl: 'https://rust.durable-workflow.com/',
     serverVersion: versions.server,
+    helmChartVersion: versions['helm-chart'],
+    helmChartAppVersion: helmChart.app_version,
+    helmChartRepository: helmChart.repository,
+    helmChartInstallIdentity: `${helmChart.repository} --version ${versions['helm-chart']}`,
+    helmChartSourceUrl: `https://github.com/durable-workflow/server/blob/${helmChart.source_commit}/k8s/helm/durable-workflow/Chart.yaml`,
+    helmChartUpgradeUrl: `https://github.com/durable-workflow/server/blob/${versions.server}/k8s/helm/durable-workflow/docs/UPGRADING.md`,
+    helmChartQualificationUrl: helmChart.qualification_url,
     serverPackageUrl: `https://hub.docker.com/r/durableworkflow/server/tags?name=${versions.server}`,
     serverDockerHubImage: `durableworkflow/server:${versions.server}`,
     serverGhcrImage: `ghcr.io/durable-workflow/server:${versions.server}`,
@@ -189,13 +218,14 @@ const ARTIFACT_PINS = Object.freeze({
 const SERVICE_MODE_SDK_ARTIFACTS = Object.freeze(['sdk-php', 'sdk-python', 'sdk-rust']);
 const QUALIFIED_ARTIFACT_DEPLOYMENT_PATHS = Object.freeze([
   Object.freeze({id: 'cloud_service', label: 'Cloud', required_artifacts: Object.freeze([]), choose_one_artifacts: SERVICE_MODE_SDK_ARTIFACTS, optional_artifacts: Object.freeze([]), provisioned_components: Object.freeze(['server_runtime_values', 'managed_waterline']), separately_deployed_components: Object.freeze([])}),
-  Object.freeze({id: 'self_hosted_service', label: 'Self-hosted service mode', required_artifacts: Object.freeze(['server']), choose_one_artifacts: SERVICE_MODE_SDK_ARTIFACTS, optional_artifacts: Object.freeze(['cli']), provisioned_components: Object.freeze([]), separately_deployed_components: Object.freeze(['waterline_service'])}),
+  Object.freeze({id: 'self_hosted_service', label: 'Self-hosted service mode', required_artifacts: Object.freeze(['server']), choose_one_artifacts: SERVICE_MODE_SDK_ARTIFACTS, optional_artifacts: Object.freeze(['cli', 'helm-chart']), provisioned_components: Object.freeze([]), separately_deployed_components: Object.freeze(['waterline_service'])}),
   Object.freeze({id: 'embedded_laravel', label: 'Embedded Laravel', required_artifacts: Object.freeze(['workflow']), choose_one_artifacts: Object.freeze([]), optional_artifacts: Object.freeze(['waterline']), provisioned_components: Object.freeze([]), separately_deployed_components: Object.freeze([])}),
 ]);
 
 const applicability = (cloud, service, embedded) => Object.freeze({cloud_service: cloud, self_hosted_service: service, embedded_laravel: embedded});
 const QUALIFIED_ARTIFACT_MATRIX = Object.freeze([
   Object.freeze({artifact: 'server', label: 'Server', role: 'service_runtime', identity: ARTIFACT_PINS.serverDockerHubImage, packageUrl: ARTIFACT_PINS.serverPackageUrl, applicability: applicability('provisioned_not_installed', 'required', 'not_used')}),
+  Object.freeze({artifact: 'helm-chart', label: 'Helm chart', role: 'optional_kubernetes_deployment', identity: ARTIFACT_PINS.helmChartInstallIdentity, packageUrl: ARTIFACT_PINS.helmChartSourceUrl, applicability: applicability('not_used', 'optional', 'not_used')}),
   Object.freeze({artifact: 'cli', label: 'CLI', role: 'service_operator_tool', identity: ARTIFACT_PINS.cliInstallerEnv, packageUrl: ARTIFACT_PINS.cliPackageUrl, applicability: applicability('not_in_first_success', 'optional', 'not_used')}),
   Object.freeze({artifact: 'workflow', label: 'Workflow', role: 'embedded_laravel_engine', identity: ARTIFACT_PINS.workflowComposerPackage, packageUrl: ARTIFACT_PINS.workflowPackageUrl, applicability: applicability('not_used', 'not_used', 'required')}),
   Object.freeze({artifact: 'waterline', label: 'Waterline Composer package', role: 'embedded_laravel_operator_ui', identity: ARTIFACT_PINS.waterlineComposerPackage, packageUrl: ARTIFACT_PINS.waterlinePackageUrl, applicability: applicability('managed_not_installed', 'separate_service_identity', 'optional')}),
@@ -224,6 +254,9 @@ function buildArtifactDistributionSurfaces(versions = ARTIFACT_VERSIONS) {
     server: Object.freeze([
       Object.freeze({surface: 'docker_hub_container_image', registry: 'docker_hub', image: 'durableworkflow/server', tag: versions.server, reference: `durableworkflow/server:${versions.server}`}),
       Object.freeze({surface: 'ghcr_container_image', registry: 'ghcr', image: 'ghcr.io/durable-workflow/server', tag: versions.server, reference: `ghcr.io/durable-workflow/server:${versions.server}`}),
+    ]),
+    'helm-chart': Object.freeze([
+      Object.freeze({surface: 'oci_helm_chart', repository: HELM_CHART.repository, version: versions['helm-chart'], app_version: HELM_CHART.app_version, manifest_digest: HELM_CHART.oci_manifest_digest, package_digest: HELM_CHART.package_digest, source_commit: HELM_CHART.source_commit, qualification_url: HELM_CHART.qualification_url}),
     ]),
     'sdk-python': Object.freeze([
       Object.freeze({surface: 'pypi_exact_release', package: python.package, version: python.version, registry_version: python.registryVersion, url: python.exactReleaseUrl, json_url: python.exactReleaseJsonUrl}),

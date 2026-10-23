@@ -436,7 +436,8 @@ Install the published chart from the OCI registry:
 
 ```bash
 helm install durable-workflow \
-  oci://ghcr.io/durable-workflow/charts/durable-workflow \
+  %%artifact.helmChartRepository%% \
+  --version %%artifact.helmChartVersion%% \
   --namespace durable-workflow --create-namespace \
   -f my-values.yaml
 ```
@@ -444,10 +445,18 @@ helm install durable-workflow \
 Your values file must point to an external MySQL/PostgreSQL database and
 external Redis, provide production credentials through existing Kubernetes
 Secrets, and configure ingress/TLS for your environment. The chart does not
-create persistence or provider-managed infrastructure. For reproducible
-production deployments, add `--version <validated-chart-version>` and pin the
-Server image by digest. The Server repository publishes chart versions and
-documents chart upgrades alongside the chart source.
+create persistence or provider-managed infrastructure. Pin the Server image by
+digest for a reproducible deployment.
+
+### Choosing a chart release {#helm-chart-selection}
+
+One chart release records the Server image it was tested against in `Chart.yaml`'s `appVersion`; the chart and Server have independent version numbers. The selected [compatibility tuple](./compatibility.md#last-qualified-reproducible-tuple) pairs chart **%%artifact.helmChartVersion%%** with Server **%%artifact.helmChartAppVersion%%**, from the same release metadata as the table and install command. Its [published OCI/package receipt](%%artifact.helmChartQualificationUrl%%) verifies that pairing, not a fresh Kubernetes installation.
+
+For another Server version, inspect the candidate published chart's `Chart.yaml` (the [selected chart source](%%artifact.helmChartSourceUrl%%) is an example) and select an exact chart version whose `appVersion` matches your intended Server. Read the selected release's [UPGRADING notes](%%artifact.helmChartUpgradeUrl%%), including every chart version crossed. Do not infer a chart version from the Server version or select an unpublished chart from current source.
+
+Overriding `image.tag` changes the image without changing the chart's recorded `appVersion`. That produces a custom chart/image tuple until it receives its own rendered-manifest, bootstrap, rollout and runtime qualification. Keep ordinary database backups and rollback boundaries in the upgrade plan; a successful render alone does not prove the deployment works.
+
+The published history includes an exception: chart 0.2.2 crossed a Server minor under a chart patch number. The later [published correction](https://github.com/durable-workflow/server/blob/2.11.0/k8s/helm/durable-workflow/docs/UPGRADING.md#chart-022--server-210) acknowledges that exception and resumes the stated minor-version policy. Historical versions stay unchanged; this note does not select the later Server/chart tuple.
 
 ## Kubernetes manifests
 

@@ -74,7 +74,7 @@ const config = {
       ({
         docs: {
           sidebarPath: require.resolve('./sidebars.js'),
-          remarkPlugins: [artifactVersionRemarkPlugin],
+          beforeDefaultRemarkPlugins: [artifactVersionRemarkPlugin],
           editUrl:
             'https://github.com/durable-workflow/durable-workflow.github.io/edit/main/',
           editLocalizedFiles: true,
