@@ -3,6 +3,7 @@ name = "website-kubernetes-worker"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.90"
+resolver = "3"
 
 [dependencies]
 durable-workflow = "=4.7.0"

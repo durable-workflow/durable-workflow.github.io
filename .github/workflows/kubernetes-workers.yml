@@ -29,12 +29,12 @@ jobs:
         run: |
           install_dir="${RUNNER_TEMP}/worker-guide-tools"
           mkdir -p "$install_dir"
-          curl -fsSLo "$install_dir/kind" https://kind.sigs.k8s.io/dl/v0.31.0/kind-linux-amd64
-          curl -fsSLo "$install_dir/kind.sha256" https://kind.sigs.k8s.io/dl/v0.31.0/kind-linux-amd64.sha256sum
+          curl --proto '=https' --proto-redir '=https' -fsSLo "$install_dir/kind" https://kind.sigs.k8s.io/dl/v0.31.0/kind-linux-amd64
+          curl --proto '=https' --proto-redir '=https' -fsSLo "$install_dir/kind.sha256" https://kind.sigs.k8s.io/dl/v0.31.0/kind-linux-amd64.sha256sum
           expected="$(cut -d ' ' -f 1 "$install_dir/kind.sha256")"
           printf '%s  %s\n' "$expected" "$install_dir/kind" | sha256sum --check
-          curl -fsSLo "$install_dir/kubectl" https://dl.k8s.io/release/v1.35.0/bin/linux/amd64/kubectl
-          curl -fsSLo "$install_dir/kubectl.sha256" https://dl.k8s.io/release/v1.35.0/bin/linux/amd64/kubectl.sha256
+          curl --proto '=https' --proto-redir '=https' -fsSLo "$install_dir/kubectl" https://dl.k8s.io/release/v1.35.0/bin/linux/amd64/kubectl
+          curl --proto '=https' --proto-redir '=https' -fsSLo "$install_dir/kubectl.sha256" https://dl.k8s.io/release/v1.35.0/bin/linux/amd64/kubectl.sha256
           expected="$(cat "$install_dir/kubectl.sha256")"
           printf '%s  %s\n' "$expected" "$install_dir/kubectl" | sha256sum --check
           chmod +x "$install_dir/kind" "$install_dir/kubectl"
