@@ -165,6 +165,68 @@ A iteração do histórico mantém a identidade original de workflow/execução 
 
 Server 2.11 publicado usa por padrão 50 linhas de lista (máximo 200) e 100 eventos de histórico (máximo 1.000) por página. Os tamanhos seguem sem alteração para validação do Server. Pare quando houver resultados suficientes, escolha tamanho adequado e aplique timeout da aplicação. Paginação não acrescenta isolamento de snapshot diante de mudanças concorrentes. Veja o [exemplo publicado somente leitura](https://github.com/durable-workflow/sdk-rust/blob/4.6.0/examples/workflow_pagination.rs), a [API Client](https://rust.durable-workflow.com/durable_workflow/struct.Client.html) e os [tipos de paginação](https://rust.durable-workflow.com/durable_workflow/pagination/index.html).
 
+## Métricas e exportação Prometheus {#rust-sdk-metrics}
+
+Estas APIs exigem Rust SDK **4.7.0 ou posterior**. Confira `Cargo.lock`: a combinação de instalação acima pode selecionar um crate anterior. A [aceitação instalada normalmente](https://github.com/durable-workflow/sdk-rust/pull/131#issuecomment-6364178456) verifica quatro controles HTTP, as seis métricas de um worker real com Server 2.11.0 publicado e o exemplo de exportação. Esse mínimo não altera a combinação selecionada.
+
+O recorder padrão é **no-op**. Forneça um `Arc<dyn metrics::MetricsRecorder>` com `increment(name, count, tags)` e `record(name, seconds, tags)`. Cliente, clones e novos workers herdam esse recorder. `Worker::metrics_recorder` substitui observações poll/task do worker; requisições mantêm o recorder do cliente. Callbacks devem ser rápidos e tratar falhas do exporter localmente. Pânicos com unwinding são isolados dos resultados do SDK; o hook não corrige exporters bloqueantes ou abortos do processo.
+
+Cada requisição, poll ou despacho de tarefa obtida incrementa um contador em um e registra duração monotônica não negativa em segundos. Os seis nomes estáveis são:
+
+| Contador | Histograma de duração |
+| --- | --- |
+| `durable_workflow_client_requests` | `durable_workflow_client_request_duration_seconds` |
+| `durable_workflow_worker_polls` | `durable_workflow_worker_poll_duration_seconds` |
+| `durable_workflow_worker_tasks` | `durable_workflow_worker_task_duration_seconds` |
+
+As chaves do cliente são exatamente `method`, `route`, `plane`, `status_code`, `outcome`; as do worker, `task_kind`, `task_queue`, `outcome`. Padrões revisados de rotas excluem IDs, consultas, payloads e credenciais; caminhos desconhecidos usam `unknown`. Nomes de fila pertencem à aplicação: use um conjunto limitado, não uma fila por execução.
+
+Resultados do cliente incluem `ok`, `http_error`, `bridge_rejected`, `TransportError`, `TimeoutError`, `SdkError` e `pending` para um future cancelado. `status_code` mantém o status HTTP decimal observado ou `none`. Os nomes de exceções Rust podem diferir de outros SDKs.
+
+Uma observação do cliente inclui repetições internas de transporte/storage admission e tratamento de resposta/payload; chamadas separadas da aplicação/worker são observadas separadamente. Um iterador preguiçoso observa cada página buscada. Polls incluem retry/backoff gerenciados e distinguem `task`, `empty`, `backpressure`, `error`. Resultados `completed`, `failed`, `expired` descrevem o despacho, não o estado terminal do workflow. São observações de processo, não contagens duráveis, unidades de cobrança ou latência schedule-to-start; perda abrupta pode omitir a amostra final.
+
+Para o adaptador oficial Prometheus, habilite o feature Cargo opcional `metrics-prometheus`. O exemplo usa a receita publicada de dependências:
+
+```toml
+[dependencies]
+durable-workflow = { version = "=4.7.0", features = ["metrics-prometheus"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+```
+
+Salve o [exemplo publicado](https://github.com/durable-workflow/sdk-rust/blob/4.7.0/examples/metrics_prometheus.rs) como `examples/metrics_prometheus.rs`. Esses bytes exatos foram compilados e executados na aceitação instalada; o exemplo imprime métricas de uma requisição de saúde:
+
+```rust
+//! Preview application-owned Prometheus export; serve `encode()` from your HTTP metrics route.
+use durable_workflow::{metrics::PrometheusMetrics, Client};
+use std::sync::Arc;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let recorder = Arc::new(PrometheusMetrics::new()?);
+    let client = Client::builder(std::env::var("DURABLE_WORKFLOW_SERVER_URL")?)
+        .token(std::env::var("DURABLE_WORKFLOW_AUTH_TOKEN").ok())
+        .metrics_recorder(recorder.clone())
+        .build()?;
+    client.health().await?;
+    // Workers inherit this client recorder; Worker::metrics_recorder overrides
+    // only worker poll/task observations. Applications own the scrape endpoint.
+    print!("{}", String::from_utf8(recorder.encode()?)?);
+    Ok(())
+}
+```
+
+Execute com seu Server auto-hospedado:
+
+```bash
+DURABLE_WORKFLOW_SERVER_URL=http://localhost:8080 \
+DURABLE_WORKFLOW_AUTH_TOKEN=your-token \
+cargo run --features metrics-prometheus --example metrics_prometheus
+```
+
+`PrometheusMetrics::new()` possui registro dedicado baseado no cliente oficial Prometheus Rust 0.14. Sirva os bytes de `encode()` pela rota de métricas da aplicação com `Content-Type: text/plain; version=0.0.4`. O adaptador não cria listener ou registro global. A aplicação controla acesso/autenticação de scrape, exposição de rede, recursos e encerramento. Contadores acrescentam `_total`; histogramas usam séries bucket/sum/count. `registry()` permite coleta própria e métricas adicionais.
+
+Para métricas OpenTelemetry, implemente o recorder com seu meter existente: contadores de unidade `1` e histogramas em segundos `s`, com nomes/tags exatos. Provider, agregação, rótulos de recursos e ciclo do exporter pertencem à aplicação. É separado do tracing de execução. Veja a [API recorder](https://rust.durable-workflow.com/durable_workflow/metrics/trait.MetricsRecorder.html), [API Prometheus](https://rust.durable-workflow.com/durable_workflow/metrics/struct.PrometheusMetrics.html) e [contrato publicado](https://github.com/durable-workflow/sdk-rust/blob/4.7.0/README.md#client-and-worker-metrics).
+
 ## Concorrência de tarefas do worker {#worker-task-concurrency}
 
 As faixas limitadas descritas aqui exigem Rust SDK **4.3.1 ou posterior**. Confira a versão em `Cargo.lock`: a instalação fixada acima pertence a outra tupla qualificada e pode selecionar um SDK anterior. A [aceitação do pacote publicado](https://github.com/durable-workflow/sdk-rust/issues/107#issuecomment-6360719863) verifica três slots configurados, uma quarta chamada admitida após a liberação de um slot e sete workflows concluídos, incluindo uma falha de atividade tratada. Os requisitos de protocolo do Server descritos acima continuam valendo.
