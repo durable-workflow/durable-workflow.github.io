@@ -293,6 +293,51 @@ modelo claro de VM, rede, banco de dados, cache, backup e balanceador de carga.
 Ele passa a ser conduzido pelo suporte quando você precisa de ajuda para decidir
 esses limites, capacidade, ordem de implantação ou procedimentos de recuperação.
 
+## Orçamentos de timeout para long polls de workers {#worker-long-poll-timeout-budgets}
+
+Um poll saudável pode ficar silencioso até terminar a espera do servidor. Preveja esse silêncio no cliente HTTP do worker, proxy de saída, service mesh, balanceador público, ingress e cada proxy reverso antes da API. Os workers usam o ingress compartilhado da API; uma função de matching separada não evita esses saltos.
+
+| Orçamento | O que limita |
+| --- | --- |
+| Duração do poll no servidor | A espera por trabalho antes de responder sem tarefa. O `timeout_seconds` da requisição prevalece sobre `DW_WORKER_POLL_TIMEOUT`, que é o padrão quando o campo é omitido, não o máximo para os SDKs. O protocolo permite até 60 segundos. |
+| Timeout de conexão / pool do cliente | Estabelecer uma conexão ou obtê-la do pool. Essas fases não precisam durar todo o poll silencioso. |
+| Timeout de leitura / total do cliente | Esperar bytes da resposta ou toda a operação, se o transporte tiver um limite total. Some à espera do servidor uma margem para conexão, agendamento e resposta. Um timeout de leitura pode medir inatividade entre blocos, não a requisição inteira. |
+| Timeout idle / leitura upstream / requisição dos intermediários | Todos os limites de requisições ativas em cada salto devem permitir o poll legítimo e sua resposta. O keepalive da conexão entre requisições é outro limite. |
+| Encerramento / prazo do chamador | O orçamento de encerramento do worker e a autoridade original do chamador ou consulta continuam sendo limites rígidos. Cancele ou drene dentro deles. Não estenda o prazo de uma consulta por causa de proxy ou retry. |
+
+Confira o cálculo do SDK instalado. Na versão de Python verificada abaixo, um poll positivo solicita até 60 segundos ao servidor e recebe pelo menos cinco segundos adicionais por fase HTTP. O poll padrão do Worker é de 35 segundos, normalmente selecionando 40 segundos para essas fases. Um intermediário com limite de leitura de 30 segundos pode interromper um poll legítimo. PHP e Rust têm seus próprios padrões e políticas; nem a margem do Python nem um ajuste de gRPC keepalive é uma regra universal. Consulte os guias de [PHP](https://php.durable-workflow.com/), [Python](https://python.durable-workflow.com/), [Rust](https://rust.durable-workflow.com/) e a [referência de matching](./polyglot/task-matching-dispatch.md).
+
+Chamadas comuns do control plane com `Client` no PHP SDK **3.2.0** não fornecem um prazo HTTP total padrão. Veja a [lacuna verificada em PHP #203](https://github.com/durable-workflow/sdk-php/issues/203). Configure um cliente HTTP com limites para essas chamadas e preserve o prazo original do chamador. O timeout de polling do Worker não limita todas as requisições do SDK.
+
+### Exemplo verificado de poll curto {#verified-poll-timeout-example}
+
+Uma verificação isolada usou Python SDK **2.9.0**, PHP Server **2.11.0** e Nginx **1.30.5** publicados, com uma fila vazia. Ambas as células mantiveram o poll em **3 segundos**, os timeouts connect/read/write/pool do HTTPX em **8 segundos** e o limite externo do chamador em **10 segundos**. Só mudou o timeout de leitura upstream do Nginx:
+
+| Configuração do intermediário | Resposta observada |
+| --- | --- |
+| `proxy_read_timeout 1s` | Nginx retornou HTTP **504** após cerca de um segundo aguardando o cabeçalho upstream. O SDK apresentou `ServerError`. |
+| `proxy_read_timeout 8s` | O poll silencioso terminou após cerca de três segundos com HTTP **200**, `task: null` e `poll_status: empty`. |
+
+O padrão do servidor foi deliberadamente de um segundo nas duas células; a espera explícita de três segundos da requisição continuou valendo. Os retries HTTP foram limitados a uma tentativa para expor a primeira falha. É um exemplo funcional, não um resultado de capacidade ou dimensionamento de produção. A [verificação em #267](https://github.com/durable-workflow/durable-workflow.github.io/issues/267) registra imagens exatas, requisições e logs.
+
+No Nginx, aplique um orçamento upstream adequado ao location existente de polling dos workers. Os oito segundos abaixo pertencem a este exemplo de poll de três segundos:
+
+```nginx
+proxy_connect_timeout 2s;
+proxy_read_timeout 8s;
+```
+
+[O Nginx mede `proxy_read_timeout` entre leituras upstream](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_read_timeout). [HTTPX distingue conexão, leitura, escrita e pool](https://www.python-httpx.org/advanced/timeouts/); oito segundos por fase não são um prazo total de oito segundos. Mantenha um prazo externo explícito quando necessário. Outros proxies e provedores usam nomes e semânticas diferentes. Verifique o caminho completo com o SDK real: aumentar um limite do ingress não corrige outro menor em um salto diferente.
+
+### Diagnosticar a resposta antes de reiniciar workers {#diagnose-poll-disconnects}
+
+- **Poll vazio normal:** o runtime retorna uma resposta bem-sucedida sem tarefa. Na versão verificada, a resposta bruta é `poll_status: empty`. Continue o polling normalmente.
+- **Desconexão do intermediário:** exceção de transporte, reset ou 502/504 do proxy pode ocorrer antes do fim da espera legítima. Correlacione erro e duração com logs do proxy/upstream. Readiness saudável e polling posterior bem-sucedido não descartam configuração incorreta.
+- **Runtime indisponível:** inspecione o motivo estruturado e os checks de readiness de banco, cache e admissão. Uma página HTML do gateway não é uma recusa tipada do runtime.
+- **Recusa de admissão de namespace ou poll:** confira motivo, namespace/fila e atraso de retry, inclusive HTTP 429. Aumentar o timeout idle não concede capacidade nem corrige autorização.
+
+Um worker reconectando não prova que a configuração original do proxy era saudável. Confira se o polling e a conclusão de tarefas realmente continuam; retenha classe da falha, fila, horário e frequência se persistirem. Uma desconexão esporádica não exige reiniciar o processo. O cliente Python também pode sintetizar `poll_status: timeout` após retries de timeout HTTP; isso, por si só, não prova que uma resposta vazia do runtime passou pelo proxy. Separe retries de transporte, retries de atividade, prazos de runs e autoridade de consultas.
+
 ## Orçamentos de conexões SQL {#sql-connection-budgets}
 
 Planeje as sessões do banco antes de adicionar réplicas de API ou sobrepor

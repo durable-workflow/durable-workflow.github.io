@@ -149,7 +149,7 @@ admission caps, and bounded task dispatch budgets.
 
 | Variable | Default | Purpose | Legacy alias |
 | --- | --- | --- | --- |
-| `DW_WORKER_POLL_TIMEOUT` | `30` | Seconds the server holds a poll open waiting for a task. | `WORKFLOW_SERVER_WORKER_POLL_TIMEOUT` |
+| `DW_WORKER_POLL_TIMEOUT` | `30` | Default wait when a poll request omits `timeout_seconds`. SDK-supplied waits override it; this is not their maximum. See [end-to-end timeout budgets](../deployment.md#worker-long-poll-timeout-budgets). | `WORKFLOW_SERVER_WORKER_POLL_TIMEOUT` |
 | `DW_WORKER_POLL_INTERVAL_MS` | `1000` | Milliseconds between internal scans while a poll is held open. | `WORKFLOW_SERVER_WORKER_POLL_INTERVAL_MS` |
 | `DW_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS` | `100` | Milliseconds between wake-signal checks while a poll is held open. | `WORKFLOW_SERVER_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS` |
 | `DW_POLLING_CACHE_PATH` | `storage/framework/cache/server-polling/<APP_ENV>` | Directory for worker-poll coordination state when using file-backed polling cache. | `WORKFLOW_SERVER_POLLING_CACHE_PATH` |

@@ -171,6 +171,51 @@ Server README 的[官方镜像 + Compose](https://github.com/durable-workflow/se
 
 团队已明确 VM、网络、数据库、缓存、备份和负载均衡模型时，此路径可自助执行。需要协助确定这些边界、容量、发布顺序或恢复流程时，则由支持团队指导。
 
+## Worker 长轮询的超时预算 {#worker-long-poll-timeout-budgets}
+
+健康的 Worker 轮询可能一直保持静默，直到服务端等待结束。Worker HTTP 客户端、出口代理、服务网格、公网负载均衡器、ingress 以及 API 前的每一级反向代理，都必须容许这段静默。Worker 轮询经过共享 API ingress；单独部署 matching 角色不会绕过这些节点。
+
+| 预算 | 限制的范围 |
+| --- | --- |
+| 服务端轮询时长 | 等待任务到返回空响应的时间。请求中的 `timeout_seconds` 覆盖 `DW_WORKER_POLL_TIMEOUT`。该变量是省略请求字段时的默认值，不是 SDK 轮询的上限。协议允许最多 60 秒。 |
+| 客户端连接 / 连接池超时 | 建立连接或从连接池获取连接。这些阶段不必持续整个静默轮询时段。 |
+| 客户端读取 / 总超时 | 等待响应字节，或在传输层支持总时限时约束整个操作。应在服务端等待时长之外留出连接、调度和响应余量。读取超时可能只计算数据块之间的静默，而非整个请求。 |
+| 中间节点 idle / upstream read / 请求超时 | 每一跳的所有活动请求限制，都必须容许正常静默轮询及其响应。请求之间的空闲连接 keepalive 是另一种限制。 |
+| 关闭 / 调用方截止时间 | Worker 关闭预算和调用方或查询的原始权限期限仍是硬性边界。在边界内取消或排空，不要因代理或重试延长查询期限。 |
+
+请核对已安装 SDK 的计算方式。下述已验证 Python 版本对正数等待最多请求服务端等待 60 秒，并为 HTTP 各阶段至少增加五秒余量。Worker 默认轮询为 35 秒，通常对应 40 秒的 HTTP 阶段超时。30 秒的中间节点读取限制因此可能中断正常默认轮询。PHP 和 Rust 有各自的默认值和重试策略；Python 的余量或 gRPC keepalive 配置都不是通用规则。参见 [PHP](https://php.durable-workflow.com/)、[Python](https://python.durable-workflow.com/)、[Rust](https://rust.durable-workflow.com/) SDK 指南及[任务 matching 参考](./polyglot/task-matching-dispatch.md)。
+
+PHP SDK **3.2.0** 的普通控制平面 `Client` 调用不提供默认 HTTP 总期限，见[已验证的 PHP #203 超时缺口](https://github.com/durable-workflow/sdk-php/issues/203)。请为这些调用配置有界 HTTP 客户端，并保留调用方原始截止时间。Worker 轮询超时并不限制所有 SDK 请求。
+
+### 已验证的短轮询示例 {#verified-poll-timeout-example}
+
+隔离验证使用已发布的 Python SDK **2.9.0**、PHP Server **2.11.0** 和 Nginx **1.30.5**，任务队列为空。两个验证单元均保持 **3 秒** SDK 轮询、**8 秒** HTTPX connect/read/write/pool 超时，以及 **10 秒**调用方外层期限。仅改变 Nginx 的 upstream 读取超时：
+
+| 中间节点配置 | 实际响应 |
+| --- | --- |
+| `proxy_read_timeout 1s` | Nginx 等待 upstream 响应头约一秒后返回 HTTP **504**，SDK 抛出 `ServerError`。 |
+| `proxy_read_timeout 8s` | 正常静默轮询约三秒后返回 HTTP **200**、`task: null` 和 `poll_status: empty`。 |
+
+两个单元都故意将服务端默认等待设为一秒，请求显式指定的三秒仍然生效。HTTP 重试限制为一次尝试，以暴露首次失败。这是功能性超时示例，不是容量或生产规模测量。[#267 验证记录](https://github.com/durable-workflow/durable-workflow.github.io/issues/267)包含精确镜像、请求和代理日志。
+
+使用 Nginx 时，在现有 Worker 轮询 location 中设置合适的 upstream 读取预算。下面的八秒仅属于这个三秒轮询示例：
+
+```nginx
+proxy_connect_timeout 2s;
+proxy_read_timeout 8s;
+```
+
+[Nginx 在两次 upstream 读取之间计算 `proxy_read_timeout`](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_read_timeout)。[HTTPX 区分连接、读取、写入和连接池超时](https://www.python-httpx.org/advanced/timeouts/)，各阶段八秒并非整个请求八秒。需要总期限时，另设明确的外层期限。其他代理和提供商使用不同名称与语义；请用实际 SDK 验证完整路径。调大一处 ingress 限制，不能修复另一跳更短的限制。
+
+### 重启 Worker 前先诊断响应 {#diagnose-poll-disconnects}
+
+- **正常空轮询：** runtime 成功响应但没有任务。已验证版本的原始响应为 `poll_status: empty`。正常继续轮询。
+- **中间节点断连：** 传输异常、连接重置或代理 502/504，可能在服务端正常等待结束前发生。结合 SDK 错误、耗时与代理/upstream 日志判断。readiness 健康、后续轮询成功，都不排除中间节点配置错误。
+- **runtime 不可用：** 检查结构化原因及数据库、缓存、准入的 readiness 检查。网关 HTML 错误页不是 runtime 的类型化拒绝。
+- **命名空间或轮询准入拒绝：** 检查结构化原因、命名空间/队列及重试延迟，包括 HTTP 429。调大 idle 超时不会增加准入容量，也不会修复授权。
+
+Worker 重连不证明原代理配置健康。确认轮询和任务完成是否实际持续；失败持续时保留错误类别、队列、时间和频率。偶发断连本身不要求重启进程。Python 客户端还可能在 HTTP 超时重试后合成 `poll_status: timeout`；单凭这个值，不能证明 runtime 的空响应穿过了代理。请区分传输重试、活动重试、运行截止时间与查询权限期限。
+
 ## SQL 连接预算 {#sql-connection-budgets}
 
 增加 API 副本或在[滚动升级](/docs/rolling-upgrades)中让新旧进程重叠运行前，先规划数据库会话预算。

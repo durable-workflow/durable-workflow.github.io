@@ -110,7 +110,7 @@ Ces valeurs règlent les délais du long polling, la coordination des réveils, 
 
 | Variable | Valeur par défaut | Rôle | Ancien alias |
 | --- | --- | --- | --- |
-| `DW_WORKER_POLL_TIMEOUT` | `30` | Secondes pendant lesquelles Server maintient un poll ouvert en attendant une tâche. | `WORKFLOW_SERVER_WORKER_POLL_TIMEOUT` |
+| `DW_WORKER_POLL_TIMEOUT` | `30` | Attente par défaut si le poll omet `timeout_seconds`. Le délai envoyé par le SDK prévaut ; ce n’est pas son maximum. Voir les [budgets de bout en bout](../deployment.md#worker-long-poll-timeout-budgets). | `WORKFLOW_SERVER_WORKER_POLL_TIMEOUT` |
 | `DW_WORKER_POLL_INTERVAL_MS` | `1000` | Millisecondes entre les recherches internes pendant un poll maintenu ouvert. | `WORKFLOW_SERVER_WORKER_POLL_INTERVAL_MS` |
 | `DW_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS` | `100` | Millisecondes entre les vérifications des signaux de réveil pendant un poll maintenu ouvert. | `WORKFLOW_SERVER_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS` |
 | `DW_POLLING_CACHE_PATH` | `storage/framework/cache/server-polling/<APP_ENV>` | Répertoire de coordination des polls lorsque le cache de polling utilise des fichiers. | `WORKFLOW_SERVER_POLLING_CACHE_PATH` |

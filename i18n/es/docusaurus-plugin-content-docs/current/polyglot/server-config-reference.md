@@ -110,7 +110,7 @@ Estos valores controlan los plazos de long polling, la coordinación del despert
 
 | Variable | Valor predeterminado | Propósito | Alias antiguo |
 | --- | --- | --- | --- |
-| `DW_WORKER_POLL_TIMEOUT` | `30` | Segundos durante los que Server mantiene abierto un sondeo a la espera de una tarea. | `WORKFLOW_SERVER_WORKER_POLL_TIMEOUT` |
+| `DW_WORKER_POLL_TIMEOUT` | `30` | Espera predeterminada si el poll omite `timeout_seconds`. La espera del SDK prevalece; no es su máximo. Véanse los [presupuestos de timeout completos](../deployment.md#worker-long-poll-timeout-budgets). | `WORKFLOW_SERVER_WORKER_POLL_TIMEOUT` |
 | `DW_WORKER_POLL_INTERVAL_MS` | `1000` | Milisegundos entre búsquedas internas mientras un sondeo permanece abierto. | `WORKFLOW_SERVER_WORKER_POLL_INTERVAL_MS` |
 | `DW_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS` | `100` | Milisegundos entre comprobaciones de señales de despertar mientras un sondeo permanece abierto. | `WORKFLOW_SERVER_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS` |
 | `DW_POLLING_CACHE_PATH` | `storage/framework/cache/server-polling/<APP_ENV>` | Directorio de coordinación del sondeo de workers cuando la caché se almacena en archivos. | `WORKFLOW_SERVER_POLLING_CACHE_PATH` |
