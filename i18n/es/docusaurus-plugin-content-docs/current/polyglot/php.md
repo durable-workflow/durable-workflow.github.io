@@ -255,3 +255,23 @@ del SDK, no de que coincidan los números de versión de paquetes.
 ## Páginas de lista e historial de workflows {#workflow-list-and-history-pages}
 
 Estas llamadas publicadas devuelven **una página**, no una lectura completa automática: `Client::listWorkflows(...)` / `Client::workflowHistory(...)`. Continúe con el token opaco devuelto manteniendo namespace, filtros y workflow/ejecución seleccionados; termine con token nulo/vacío y gestione los errores de página. Una página parcial no es un bundle de reproducción. Use la API de exportación de historial del SDK para reproducción sin servidor. El [cliente publicado PHP 3.2.0](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php) define los parámetros actuales; no se implica un nuevo iterador.
+
+## Informes de error acotados {#bounded-failure-reports}
+
+El SDK de PHP **3.5.0** incorporó informes de error salientes acotados. Los valores predeterminados son **62 KiB UTF-8 para el mensaje**, **128 KiB para la pila**, **64 KiB para los detalles y diagnósticos opcionales serializados en conjunto** y **1 MiB para el cuerpo completo codificado en JSON**. Los marcadores, el escape JSON, la identidad de la concesión y los demás comandos del lote cuentan para ese límite del cuerpo. Tiene prioridad cualquier límite de transporte configurado o declarado por el transporte que sea menor. Se conservan el tipo, la clase y el código del error, la política de reintentos y la identidad de la concesión.
+
+`withFailureReportLimit()` devuelve un nuevo cliente con un presupuesto menor para la solicitud completa, de 1 a 1.048.576 bytes. Usa la instancia devuelta. También se aplica un límite inferior declarado por el transporte.
+
+```php
+<?php
+
+use DurableWorkflow\Client;
+
+$client = (new Client(
+    baseUri: 'https://workflow.example.com',
+    controlToken: 'operator-token',
+    workerToken: 'worker-token',
+))->withFailureReportLimit(512 * 1024);
+```
+
+Un marcador visible de truncamiento y los recuentos originales de bytes identifican los campos recortados. Los detalles Avro se conservan íntegros o se omiten por completo. Si una envoltura obligatoria no puede representarse, se lanza `DurableWorkflow\Exception\FailureReportRefused` antes del envío HTTP. Los errores locales se normalizan antes de que el código del workflow los observe, por lo que la primera ejecución y la reproducción en frío ven el mensaje persistido. Un mensaje local ya observado permanece inmutable durante el ajuste final del lote.

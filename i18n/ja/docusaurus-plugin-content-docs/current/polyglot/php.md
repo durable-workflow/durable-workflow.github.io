@@ -157,3 +157,23 @@ PHP SDK は Laravel パッケージとは独立にバージョン管理します
 ## ワークフロー一覧と履歴のページ {#workflow-list-and-history-pages}
 
 公開されている次の呼び出しは、自動的な全件取得ではなく**1ページ**を返します：`Client::listWorkflows(...)` / `Client::workflowHistory(...)`。返された不透明な token で続け、namespace、フィルター、選択した workflow/run を維持してください。最後の null/空 token で終了し、ページのエラーを明示的に処理します。部分的なページは replay bundle ではありません。オフライン replay には SDK の履歴エクスポート API を使います。[公開 PHP 3.2.0 クライアントのソース](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php)が現在の引数を定義しており、新たな自動イテレーターの提供を意味しません。
+
+## 障害レポートのサイズ制限 {#bounded-failure-reports}
+
+PHP SDK **3.5.0** から、送信する障害レポートにサイズ制限が加わりました。既定値は、**メッセージが UTF-8 で 62 KiB**、**スタックが 128 KiB**、**シリアライズ後の任意の詳細と診断情報が合計 64 KiB**、**JSON でエンコードした本文全体が 1 MiB** です。本文の上限には、マーカー、JSON エスケープ、リースの識別情報、バッチ内のほかのコマンドも含まれます。設定またはトランスポートが宣言した上限がより小さい場合は、その値が優先されます。障害の型、クラス、コード、リトライポリシー、リースの識別情報は保持されます。
+
+`withFailureReportLimit()` は、リクエスト全体の上限を 1〜1,048,576 バイトの範囲で引き下げた新しいクライアントを返します。返されたインスタンスを使用してください。トランスポートがより小さい上限を宣言している場合は、その値も適用されます。
+
+```php
+<?php
+
+use DurableWorkflow\Client;
+
+$client = (new Client(
+    baseUri: 'https://workflow.example.com',
+    controlToken: 'operator-token',
+    workerToken: 'worker-token',
+))->withFailureReportLimit(512 * 1024);
+```
+
+短縮されたフィールドには、見える切り詰めマーカーと元のバイト数が付けられます。Avro の詳細は全体を保持するか、全体を省略します。必須のエンベロープを表現できない場合は、HTTP 送信前に `DurableWorkflow\Exception\FailureReportRefused` が発生します。ローカル障害はワークフローコードが参照する前に正規化されるため、初回実行とコールドリプレイは保存された同じメッセージを参照します。一度参照したローカルメッセージは、最終的なバッチサイズ調整でも変更されません。

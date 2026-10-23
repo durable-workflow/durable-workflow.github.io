@@ -261,3 +261,23 @@ igualdade de números de versão entre pacotes.
 ## Páginas de lista e histórico de workflows {#workflow-list-and-history-pages}
 
 Estas chamadas publicadas retornam **uma página**, não uma leitura completa automática: `Client::listWorkflows(...)` / `Client::workflowHistory(...)`. Continue com o token opaco retornado preservando namespace, filtros e workflow/execução selecionados; encerre no token nulo/vazio e trate erros de página. Uma página parcial não é um bundle de replay. Use a API de exportação de histórico do SDK para replay sem servidor. O [cliente publicado PHP 3.2.0](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php) define os parâmetros atuais; não se afirma um novo iterador.
+
+## Relatórios de falha com limites {#bounded-failure-reports}
+
+O SDK PHP **3.5.0** introduziu limites para os relatórios de falha enviados. Os padrões são **62 KiB UTF-8 para a mensagem**, **128 KiB para a pilha**, **64 KiB para os detalhes e diagnósticos opcionais serializados em conjunto** e **1 MiB para o corpo completo codificado em JSON**. Marcadores, escapes JSON, identidade da concessão e outros comandos do lote contam para esse limite do corpo. Um limite de transporte configurado ou informado pelo transporte menor tem precedência. Tipo, classe e código da falha, política de novas tentativas e identidade da concessão são preservados.
+
+`withFailureReportLimit()` retorna um novo cliente com um limite menor para a requisição completa, de 1 a 1.048.576 bytes. Use a instância retornada. Um limite menor declarado pelo transporte também se aplica.
+
+```php
+<?php
+
+use DurableWorkflow\Client;
+
+$client = (new Client(
+    baseUri: 'https://workflow.example.com',
+    controlToken: 'operator-token',
+    workerToken: 'worker-token',
+))->withFailureReportLimit(512 * 1024);
+```
+
+Um marcador visível de truncamento e as contagens originais de bytes identificam os campos reduzidos. Os detalhes Avro permanecem inteiros ou são omitidos por completo. Um envelope obrigatório que não possa ser representado gera `DurableWorkflow\Exception\FailureReportRefused` antes do envio HTTP. As falhas locais são normalizadas antes que o código do workflow as observe. Assim, a primeira execução e o replay a frio veem a mensagem persistida. Uma mensagem local já observada permanece imutável durante o ajuste final do lote.

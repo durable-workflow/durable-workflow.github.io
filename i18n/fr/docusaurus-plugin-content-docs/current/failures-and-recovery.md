@@ -353,6 +353,10 @@ class RetryableWorkflow extends Workflow
 }
 ```
 
+## Limites des rapports d’échec PHP en mode service {#php-failure-report-limits}
+
+Le SDK PHP **3.5.0 ou ultérieur** borne les rapports d’échec sortants en mode service à des messages UTF-8 de 62 KiB, des piles de 128 KiB, 64 KiB de métadonnées facultatives combinées et un corps complet encodé de 1 MiB, marqueurs compris. Les limites de transport connues plus basses s’appliquent. Le [guide des rapports PHP](./polyglot/php.md#bounded-failure-reports) explique la configuration, les diagnostics d’omission, la sémantique de nouvelle tentative conservée et l’égalité entre première exécution locale et relecture à froid. Ces limites concernent les rapports du SDK. L’enregistrement embarqué et le stockage des résumés du Core gardent leurs contrats distincts.
+
 ## Limites des rapports d’échec Python en mode service {#python-failure-report-limits}
 
 Le SDK Python **2.11.0 ou ultérieur** borne les rapports d’échec sortants en mode service à des messages UTF-8 de 62 KiB, des piles de 128 KiB, 64 KiB de métadonnées facultatives combinées et un corps complet encodé de 1 MiB, marqueurs compris. Les limites de transport connues plus basses s’appliquent. Le [guide des rapports Python](./polyglot/python.md#bounded-failure-reports) explique la configuration, les diagnostics d’omission, la sémantique de nouvelle tentative conservée et l’égalité entre première exécution locale et relecture à froid. Ces limites concernent les rapports du SDK. L’enregistrement embarqué et le stockage des résumés du Core gardent leurs contrats distincts.

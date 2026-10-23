@@ -157,3 +157,23 @@ PHP SDK 独立于 Laravel 包进行版本管理。可运行示例中保留精确
 ## 工作流列表与历史页面 {#workflow-list-and-history-pages}
 
 这些已发布调用每次返回**一页**，不会自动完整读取：`Client::listWorkflows(...)` / `Client::workflowHistory(...)`。继续请求时使用返回的不透明 token，并保持 namespace、筛选条件和所选 workflow/run 不变；最终 null/空 token 表示结束，页面错误必须明确处理。部分页面不是 replay bundle。离线 replay 请使用 SDK 的历史导出 API。[已发布的 PHP 3.2.0 客户端源码](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php)定义当前参数；这里不声称新增自动迭代器。
+
+## 有界失败报告 {#bounded-failure-reports}
+
+PHP SDK **3.5.0** 为发出的失败报告引入了大小限制。默认上限为：**消息使用 UTF-8 编码后 62 KiB**、**堆栈 128 KiB**、**可选详情和诊断信息序列化后合计 64 KiB**，以及 **JSON 编码后的完整请求体 1 MiB**。标记、JSON 转义、租约身份和批次中的其他命令都计入请求体上限。配置或传输实现声明的上限更低时，以较低值为准。失败类型、类、代码、重试策略和租约身份会保留。
+
+`withFailureReportLimit()` 返回一个新客户端，将完整请求的上限降低到 1 至 1,048,576 字节之间。请使用返回的实例。传输实现声明了更低上限时，也会采用该上限。
+
+```php
+<?php
+
+use DurableWorkflow\Client;
+
+$client = (new Client(
+    baseUri: 'https://workflow.example.com',
+    controlToken: 'operator-token',
+    workerToken: 'worker-token',
+))->withFailureReportLimit(512 * 1024);
+```
+
+被缩短的字段带有可见的截断标记和原始字节数。Avro 详情要么完整保留，要么整体省略。无法表示必需的信封时，会在发送 HTTP 请求前抛出 `DurableWorkflow\Exception\FailureReportRefused`。本地失败会在工作流代码读取前规范化，因此首次执行和冷重放读取的是同一条已持久化消息。已经读取的本地消息在最终调整批次大小时保持不变。
