@@ -2004,3 +2004,7 @@ setzen Sie `control_token` auf die Client-Laufzeit-Zugangsdaten und
 `worker_token` auf die Worker-Laufzeit-Zugangsdaten. Cloud stellt den Namespace
 bereit. Setzen Sie keine selbst gehostete Server-Adresse ein. Siehe
 [Verwaltete Cloud-Laufzeitumgebung](/docs/polyglot/cloud-control-plane).
+
+## Seiten für Workflow-Listen und Verlauf {#workflow-list-and-history-pages}
+
+Diese veröffentlichten Aufrufe liefern **eine Seite**, keinen automatischen vollständigen Abruf: `await client.list_workflows(...)` / `await client.get_history(workflow_id, run_id, ...)`. Setzen Sie mit dem zurückgegebenen undurchsichtigen Token fort und behalten Sie Namespace, Filter und Workflow/Lauf bei. Enden Sie beim letzten null/leeren Token und behandeln Sie Seitenfehler ausdrücklich. Eine Teilseite ist kein Replay-Bundle. Nutzen Sie für Offline-Replay die Verlaufsexport-API des SDK. Der [veröffentlichte Client Python 2.9.0](https://github.com/durable-workflow/sdk-python/blob/2.9.0/src/durable_workflow/client.py) definiert aktuelle Parameter; neue automatische Iteratoren werden damit nicht zugesagt.

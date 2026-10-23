@@ -48,7 +48,7 @@ exit($allowed ? 0 : 1);
 
 **Python:** use `Replayer.replay()` or `verify_replay()` against registered candidate workflows and assert the expected outcome. A returned object alone is not a passing assertion. Supply the original decoded `start_input` when events omit it: Core exports store it under `payloads.arguments`. Preserve recorded type, IDs and codec. See [Python replay APIs](https://python.durable-workflow.com/sdk-reference/#replay-captured-histories). `--simulate-bundles` checks integrity, not candidate code; current schema-2 compatibility is tracked in [Python #173](https://github.com/durable-workflow/sdk-python/issues/173). Do not rewrite a version or checksum to bypass refusal.
 
-**Rust:** no public offline replay API is available yet. [Rust #105](https://github.com/durable-workflow/sdk-rust/issues/105) owns that capability. Test the candidate against an isolated runtime meanwhile; this does not supply the missing offline guarantee.
+**Rust:** SDK **4.5.0 or newer** provides `testing::WorkflowEnvironment` and `WorkflowHistory` for Server-free activity/workflow tests and replay of self-contained exports. Reuse candidate registrations, preserve original input/all history pages, and assert completion or the expected pending prefix. Divergence returns typed `Error::NonDeterministicReplay` with its durable sequence and expected/actual commands. New select races and other unsupported execution paths still need integration tests. See the [Rust tests, determinism rules and replay examples](./polyglot/rust.md#offline-testing-and-replay).
 
 ## Keeping delay tests fast
 

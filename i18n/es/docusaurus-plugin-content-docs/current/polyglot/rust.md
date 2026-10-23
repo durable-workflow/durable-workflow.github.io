@@ -65,6 +65,54 @@ Server negocia las cabeceras del protocolo de workers dentro de la versión prin
 
 La negociación rechaza las incompatibilidades. Se rechaza una cabecera ausente o malformada, otra versión principal o una versión menor del worker superior a la anunciada por el servidor. Las versiones del SDK y de Server se gestionan por separado. Sus manifiestos de protocolo en runtime determinan la compatibilidad.
 
+## Listas de workflows e historial completo de una ejecución {#workflow-lists-and-history}
+
+Estas API requieren Rust SDK **4.6.0 o posterior**; revise `Cargo.lock`, pues la combinación de instalación anterior puede seleccionar un crate más antiguo. La [aceptación del paquete instalado normalmente](https://github.com/durable-workflow/sdk-rust/issues/122#issuecomment-6363352910) verifica tres páginas de lista, seis de historial, un payload de 128 KiB, exportación/reproducción y el ejemplo de solo lectura con Server 2.11.0 publicado. Las pruebas sin servidor requieren 4.5.0; estos métodos e iteradores de listas/historial requieren 4.6.0. La combinación seleccionada de Server/SDK no cambia.
+
+`Client::list_workflows(WorkflowListOptions)` y `Client::get_workflow_history(workflow_id, run_id, WorkflowHistoryOptions)` devuelven **una página** cada uno. Continúe manualmente con su `next_page_token` opaco, o use iteradores perezosos para lecturas completas. Conservan validación, filtros y namespace del Server; no añaden campos ni gramática de consulta. Por ejemplo, busque una ejecución abierta con un atributo keyword registrado:
+
+```rust
+use durable_workflow::WorkflowListOptions;
+async fn find(client: durable_workflow::Client) -> durable_workflow::Result<()> {
+let mut matches = client.iter_workflows(
+    WorkflowListOptions::new()
+        .workflow_type("payments")
+        .status("running")
+        .query("OrderRef = 'order-42'")
+        .page_size(2),
+);
+match (matches.next().await?, matches.next().await?) {
+    (Some(run), None) => println!("open run: {} / {}", run.workflow_id, run.run_id),
+    (None, _) => println!("no open run"),
+    _ => println!("multiple open runs; refine the query"),
+}
+Ok(())
+}
+```
+
+El filtro `status=running` del Server selecciona el **grupo de estados** activo, incluidos los estados originales `pending` y `waiting`. `WorkflowSummary` conserva `status`, `status_bucket`, `is_terminal`, atributos de búsqueda y metadatos desconocidos en `raw`. Los atributos no son únicos: el filtro puede encontrar un padre y los hijos que heredaron su valor. Gestione cero, uno y varios resultados como arriba. Cree el cliente con el namespace deseado antes del iterador; namespace y filtros permanecen fijos entre tokens.
+
+Lea toda una ejecución seleccionada sin cargar todas las páginas a la vez:
+
+```rust
+use durable_workflow::WorkflowHistoryOptions;
+async fn audit(client: durable_workflow::Client) -> durable_workflow::Result<()> {
+let mut events = client.iter_workflow_history(
+    "payment-42", "selected-run-id", WorkflowHistoryOptions::new().page_size(100),
+);
+while let Some(event) = events.next().await? {
+    println!("{}", event.event_type);
+}
+Ok(())
+}
+```
+
+`iter_workflows(options)` entrega cada `WorkflowSummary` mediante `next().await`. Ambos iteradores admiten `into_stream()` para `futures_util::TryStreamExt`; fije el stream antes de sondearlo. Construirlo no realiza I/O; obtiene otra página solo al agotar la actual. Un token nulo/vacío termina; una página vacía con token continúa. Los tokens repetidos o cíclicos devuelven `Error::Pagination` con estado acotado. Un fallo de página conserva el error tipado original y después termina ese iterador. Gestione el error: una lectura parcial no es completa. Recopilar un stream almacena todos los elementos recopilados.
+
+El historial mantiene la identidad original de workflow/ejecución y enumera eventos disponibles; no sigue continue-as-new ni se suscribe indefinidamente. Conserva metadatos y sobres de payload. Para reproducción sin servidor use `Client::export_workflow_history` con `testing::WorkflowHistory::from_export`, en lugar de una página parcial. Véase [reproducción sin servidor](#rust-replay-export).
+
+Server 2.11 publicado usa por defecto 50 filas de lista (máximo 200) y 100 eventos de historial (máximo 1.000) por página. Envía los tamaños sin modificar para validación del Server. Deténgase cuando tenga suficientes resultados, elija un tamaño adecuado y aplique un timeout de aplicación. La paginación no añade aislamiento de instantánea ante cambios concurrentes. Véanse el [ejemplo publicado de solo lectura](https://github.com/durable-workflow/sdk-rust/blob/4.6.0/examples/workflow_pagination.rs), [API Client](https://rust.durable-workflow.com/durable_workflow/struct.Client.html) y [tipos de paginación](https://rust.durable-workflow.com/durable_workflow/pagination/index.html).
+
 ## Concurrencia de tareas del worker {#worker-task-concurrency}
 
 Los carriles acotados descritos aquí requieren Rust SDK **4.3.1 o posterior**. Compruebe la versión de `Cargo.lock`: la instalación fijada arriba pertenece a otra tupla cualificada y puede seleccionar un SDK anterior. La [verificación del paquete publicado](https://github.com/durable-workflow/sdk-rust/issues/107#issuecomment-6360719863) confirma tres slots configurados, una cuarta llamada admitida al liberarse uno, y siete workflows completados, incluido un fallo de actividad manejado. Siguen vigentes los requisitos de protocolo del Server descritos arriba.
@@ -289,6 +337,103 @@ Un fallo manejado ejecuta el comando de actividad existente en orden inverso de 
 El SDK de Rust registra valores no deterministas pequeños con `WorkflowContext::side_effect` y deriva UUIDv4 deterministas con `WorkflowContext::uuid_v4`. Una reproducción desde cero decodifica el valor registrado sin volver a invocar el callback; marcadores reordenados, ausentes, duplicados o incompatibles con el códec devuelven `Error::NonDeterministicReplay` tipado.
 
 Utiliza `WorkflowContext::get_version(change_id, min_supported, max_supported)` para mantener compatibles con la reproducción las ramas antiguas y nuevas durante un despliegue. Las ejecuciones nuevas registran `max_supported`; las existentes reutilizan el marcador duradero. `patched(change_id)` ofrece la forma booleana del despliegue y `deprecate_patch(change_id)` conserva el marcador tras finalizar la rama heredada. Consulta [Efectos secundarios](/docs/features/side-effects/) y [Versionado](/docs/features/versioning/) para la semántica duradera compartida.
+
+## Reglas de determinismo de Rust {#rust-determinism-rules}
+
+Una reproducción debe generar los mismos comandos duraderos, en el mismo orden, para la entrada y el historial registrados. Las colecciones, relojes y primitivas de concurrencia normales de Rust no mantienen automáticamente ese contrato:
+
+| Patrón en el código del workflow | Sustitución duradera |
+| --- | --- |
+| Programar mientras se recorre un `HashMap` | Ordene primero las claves o use un `BTreeMap`. |
+| Leer el reloj, `thread_rng` o un UUID nuevo | Registre una instantánea con `ctx.side_effect(...)` o use una actividad. |
+| `tokio::time::sleep` o `std::thread::sleep` | `ctx.sleep(...)` o `ctx.start_timer(...)`. |
+| `tokio::select!` o carreras de futuros normales | `ctx.select(...)` o `ctx.select_keyed(...)`. |
+| Llamadas duraderas concurrentes sin seguimiento | `ctx.parallel(...)` con un orden estable de entrada. |
+| Red, archivos o E/S externa mutable | Una actividad registrada. |
+| Cambiar el orden de comandos existentes al desplegar | Una rama estable de `ctx.get_version(...)`, probada con el historial registrado. |
+
+Los efectos externos de las actividades aún deben ser idempotentes; el determinismo no hace seguro repetir un pago o una escritura. Consulte [idempotencia y determinismo](../constraints/idempotent-vs-deterministic.md).
+
+## Pruebas sin conexión y reproducción {#offline-testing-and-replay}
+
+Estas API requieren Rust SDK **4.5.0 o posterior**. Compruebe `Cargo.lock`: la combinación de instalación independiente anterior puede seleccionar un crate más antiguo sin ellas. La [validación de la instalación normal de 4.5.0](https://github.com/durable-workflow/sdk-rust/issues/105#issuecomment-6362112580) verifica doce controles sin Server, este ejemplo compilado y exportación/reproducción de un Server 2.11.0 real. No promueve una nueva combinación Server/SDK.
+
+### Pruebas unitarias de actividades y workflows {#rust-activity-workflow-tests}
+
+`testing::WorkflowEnvironment` ejecuta workflows y actividades registrados en el proceso actual. Use `from_worker(worker)` para reutilizar los registros de la aplicación o registre callbacks directamente; `worker_mut()` expone las API tipadas habituales de registro. Los mocks son explícitos: los callbacks reales ejecutan su código, así que sustituya deliberadamente los efectos externos.
+
+Use `durable-workflow = "=4.5.0"` para la receta verificada, Tokio con `macros`, `rt-multi-thread` y `time`, y `serde_json = "1"` para el helper de exportación siguiente. Guarde el ejemplo publicado como `examples/workflow_testing.rs` y ejecute `cargo run --example workflow_testing`:
+
+```rust
+//! Run with `cargo run --example workflow_testing`; no Server is required.
+use durable_workflow::{
+    json,
+    testing::{WorkflowEnvironment, WorkflowHistory},
+    Result,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let mut env = WorkflowEnvironment::new()?;
+    env.register_activity("greet", |_, args| async move {
+        Ok(json!(format!(
+            "Hello, {}!",
+            args[0].as_str().unwrap_or("friend")
+        )))
+    });
+    env.register_workflow("hello", |ctx, args| async move {
+        ctx.activity("greet", args).await
+    });
+
+    // An activity unit test executes the real callback and argument adapters.
+    assert_eq!(
+        env.run_activity("greet", "Ada").await?,
+        json!("Hello, Ada!")
+    );
+    // A workflow unit test may replace activity callbacks explicitly.
+    env.mock_activity("greet", |_, args| async move {
+        Ok(json!({"greeting_for":args[0]}))
+    });
+    assert_eq!(
+        env.run_workflow("hello", "Ada").await?,
+        json!({"greeting_for":"Ada"})
+    );
+
+    // Replay executes the same registered workflow without running activities.
+    // In a deployment test, read the JSON produced by dw workflow:history-export
+    // or Client::export_workflow_history instead of this captured test history.
+    let history = WorkflowHistory::from_export(env.last_history().unwrap().export())?;
+    assert!(env.replay(&history)?.completed);
+    println!("activity, workflow and offline replay passed");
+    Ok(())
+}
+```
+
+`run_activity` directo ejecuta un intento. En `run_workflow`, la política de reintentos registrada se aplica antes de entregar un fallo definitivo al workflow. Los fallos reales o simulados de actividades remotas/locales usan `Error::ActivityFailed` tipado, con tipo de excepción, número de intento y marca no reintentable; un error de workflow no capturado conserva su variante Rust original. Los heartbeats se capturan localmente. Use las variantes `*_avro_value` cuando JSON no pueda conservar el valor Avro original.
+
+### Reproducir una ejecución exportada {#rust-replay-export}
+
+Registre el workflow candidato y cargue un bundle JSON completo de `dw workflow:history-export` o `Client::export_workflow_history(workflow_id, run_id).await?`. Añada este helper al ejemplo anterior; usa esos imports y espera un fixture completado:
+
+```rust
+fn replay(env: WorkflowEnvironment) -> std::result::Result<(), Box<dyn std::error::Error>> {
+let export = serde_json::from_slice(&std::fs::read("workflow-history.json")?)?;
+let history = WorkflowHistory::from_export(export)?;
+let report = env.replay(&history)?;
+assert!(report.completed); // A running snapshot can remain durably pending.
+Ok(())
+}
+```
+
+Para el historial sin procesar, combine **todas las páginas** y use `WorkflowHistory::from_history("hello", original_input, response)`, aportando la cola original cuando falte. Conserve la entrada y los resultados registrados; se rechazan payloads podados/redactados, referencias externas sin resolver y tokens de página restantes. El helper de exportación resuelve las referencias al descargar. La reproducción no contacta con Server ni ejecuta callbacks de actividad.
+
+La reproducción usa las rutas del worker para decodificación, efectos laterales, marcadores de versión y resoluciones select registradas. Los comandos cambiados o reordenados devuelven `Error::NonDeterministicReplay(ReplayFailure)` con `sequence`, `expected` y `actual`; el control instalado sobre una exportación real detecta una actividad cambiada en la secuencia 3. Los comandos nuevos más allá de la instantánea también fallan. Una instantánea abierta puede mostrar un prefijo pendiente duradero en vez de completarse: compruebe el resultado esperado y pruebe ramas nuevas con ejecuciones nuevas en el proceso y pruebas de integración. Consulte los [controles publicados de reproducción](https://github.com/durable-workflow/sdk-rust/blob/4.5.0/tests/workflow_testing.rs).
+
+### Límites de ejecución {#rust-test-execution-limits}
+
+Se omiten las esperas de temporizadores y reintentos. Los callbacks paralelos se ejecutan en orden de comandos, así que este entorno no prueba carreras de planificación ni rendimiento. No simula colas, concesiones ni despliegues. Los callbacks deben ceder el control; `max_steps(n)` limita turnos duraderos, comandos e intentos (10 000 por defecto), mientras que `tokio::time::timeout` puede acotar el tiempo de callbacks asíncronos.
+
+La simulación de timeouts de actividad, **nuevas carreras select**, señales, hijos, servicios, sesiones, continue-as-new y cancelación requieren integración; los comandos no soportados devuelven `Error::Testing`. Un ganador select registrado puede reproducirse aunque no se simule una carrera nueva. Mantenga pruebas con runtime real para esos límites. Consulte la [API de pruebas](https://rust.durable-workflow.com/durable_workflow/testing/index.html) y el [contrato de ejecución publicado](https://github.com/durable-workflow/sdk-rust/blob/4.5.0/README.md#testing-without-a-server).
 
 ## Compatibilidad de entrada y recuperación {#entry-compatibility-and-recovery}
 

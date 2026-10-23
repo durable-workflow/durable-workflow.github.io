@@ -2010,3 +2010,7 @@ d'espace de noms fournies par Cloud. Définissez `control_token` sur l'identifia
 runtime client et `worker_token` sur celui du worker. Cloud provisionne
 l'espace. Ne remplacez pas son adresse par un Server auto-hébergé. Consultez le
 [runtime Cloud géré](/docs/polyglot/cloud-control-plane).
+
+## Pages de liste et d’historique des workflows {#workflow-list-and-history-pages}
+
+Ces appels publiés renvoient **une page**, pas une lecture complète automatique : `await client.list_workflows(...)` / `await client.get_history(workflow_id, run_id, ...)`. Continuez avec le token opaque retourné en conservant namespace, filtres et workflow/exécution sélectionnés ; terminez au token nul/vide et traitez explicitement les erreurs de page. Une page partielle n’est pas un bundle de replay. Utilisez l’API d’export d’historique du SDK pour le replay hors ligne. Le [client publié Python 2.9.0](https://github.com/durable-workflow/sdk-python/blob/2.9.0/src/durable_workflow/client.py) définit les paramètres actuels ; aucun nouvel itérateur n’est annoncé.

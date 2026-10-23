@@ -122,6 +122,54 @@ celle annoncée par Server est refusée. Les versions de publication SDK et
 Server sont suivies indépendamment. Leurs manifestes de protocole runtime
 déterminent la compatibilité.
 
+## Listes de workflows et historique complet d’une exécution {#workflow-lists-and-history}
+
+Ces API nécessitent Rust SDK **4.6.0 ou ultérieur** ; vérifiez `Cargo.lock`, car la combinaison d’installation précédente peut choisir un crate plus ancien. L’[acceptation du paquet installé normalement](https://github.com/durable-workflow/sdk-rust/issues/122#issuecomment-6363352910) vérifie trois pages de liste, six d’historique, un payload de 128 KiB, export/replay et l’exemple en lecture seule avec Server 2.11.0 publié. Les outils de test hors ligne nécessitent 4.5.0 ; ces méthodes et itérateurs de liste/historique nécessitent 4.6.0. La combinaison Server/SDK sélectionnée reste inchangée.
+
+`Client::list_workflows(WorkflowListOptions)` et `Client::get_workflow_history(workflow_id, run_id, WorkflowHistoryOptions)` renvoient chacun **une page**. Continuez manuellement avec son `next_page_token` opaque, ou utilisez les itérateurs paresseux pour une lecture complète. Ils préservent validation, filtres et namespace du Server ; ils n’ajoutent ni champ ni grammaire de requête. Par exemple, trouvez une exécution ouverte par un attribut keyword enregistré :
+
+```rust
+use durable_workflow::WorkflowListOptions;
+async fn find(client: durable_workflow::Client) -> durable_workflow::Result<()> {
+let mut matches = client.iter_workflows(
+    WorkflowListOptions::new()
+        .workflow_type("payments")
+        .status("running")
+        .query("OrderRef = 'order-42'")
+        .page_size(2),
+);
+match (matches.next().await?, matches.next().await?) {
+    (Some(run), None) => println!("open run: {} / {}", run.workflow_id, run.run_id),
+    (None, _) => println!("no open run"),
+    _ => println!("multiple open runs; refine the query"),
+}
+Ok(())
+}
+```
+
+Le filtre Server `status=running` sélectionne le **groupe d’états** actif, y compris les états bruts `pending` et `waiting`. `WorkflowSummary` conserve `status`, `status_bucket`, `is_terminal`, les attributs de recherche et les métadonnées inconnues dans `raw`. Ces attributs ne sont pas uniques : le filtre peut trouver un parent et les enfants ayant hérité de sa valeur. Traitez zéro, un et plusieurs résultats comme ci-dessus. Créez le client dans le namespace voulu avant l’itérateur ; namespace et filtres restent fixes entre les tokens.
+
+Lisez toute l’exécution sélectionnée sans charger toutes les pages à la fois :
+
+```rust
+use durable_workflow::WorkflowHistoryOptions;
+async fn audit(client: durable_workflow::Client) -> durable_workflow::Result<()> {
+let mut events = client.iter_workflow_history(
+    "payment-42", "selected-run-id", WorkflowHistoryOptions::new().page_size(100),
+);
+while let Some(event) = events.next().await? {
+    println!("{}", event.event_type);
+}
+Ok(())
+}
+```
+
+`iter_workflows(options)` fournit chaque `WorkflowSummary` via `next().await`. Les deux itérateurs proposent `into_stream()` pour `futures_util::TryStreamExt` ; épinglez le stream avant de le sonder. Leur construction n’effectue aucun I/O ; la page suivante est chargée après épuisement de l’actuelle. Un token nul/vide termine ; une page vide avec token est suivie. Les tokens répétés ou cycliques renvoient `Error::Pagination` avec un état borné. Une page en échec conserve l’erreur typée initiale, puis l’itérateur termine. Traitez l’erreur : une lecture partielle n’est pas complète. Collecter un stream stocke tous les éléments collectés.
+
+L’historique conserve l’identité workflow/exécution d’origine et énumère les événements disponibles ; il ne suit pas continue-as-new et ne s’abonne pas indéfiniment. Métadonnées et enveloppes wire des payloads sont conservées. Pour le replay hors ligne, utilisez `Client::export_workflow_history` avec `testing::WorkflowHistory::from_export` plutôt qu’une page partielle. Voir le [replay hors ligne](#rust-replay-export).
+
+Server 2.11 publié utilise par défaut 50 lignes de liste (maximum 200) et 100 événements d’historique (maximum 1 000) par page. Les tailles sont transmises telles quelles pour validation du Server. Arrêtez-vous dès que les résultats suffisent, choisissez une taille adaptée et un timeout applicatif. La pagination n’ajoute aucune isolation par instantané lorsque les exécutions changent simultanément. Voir l’[exemple publié en lecture seule](https://github.com/durable-workflow/sdk-rust/blob/4.6.0/examples/workflow_pagination.rs), l’[API Client](https://rust.durable-workflow.com/durable_workflow/struct.Client.html) et les [types de pagination](https://rust.durable-workflow.com/durable_workflow/pagination/index.html).
+
 ## Concurrence des tâches du worker {#worker-task-concurrency}
 
 Les voies bornées ci-dessous nécessitent Rust SDK **4.3.1 ou ultérieur**. Vérifiez la version dans `Cargo.lock` : l’installation fixée plus haut appartient à une autre combinaison qualifiée et peut sélectionner un ancien SDK. La [vérification du paquet publié](https://github.com/durable-workflow/sdk-rust/issues/107#issuecomment-6360719863) confirme trois emplacements configurés, un quatrième callback admis après libération d’un emplacement et sept workflows terminés, dont un échec d’activité traité. Les exigences de protocole Server précédentes restent applicables.
@@ -465,6 +513,103 @@ Les anciennes réutilisent le marqueur durable. `patched(change_id)` fournit
 la forme booléenne de déploiement et `deprecate_patch(change_id)` préserve
 le marqueur après la fin des anciennes branches. Les [effets de bord](/docs/features/side-effects/)
 et la [gestion des versions](/docs/features/versioning/) décrivent ces règles communes.
+
+## Règles de déterminisme Rust {#rust-determinism-rules}
+
+Une relecture doit produire les mêmes commandes durables dans le même ordre pour l’entrée et l’historique enregistrés. Les collections, horloges et primitives de concurrence ordinaires de Rust ne préservent pas automatiquement ce contrat :
+
+| Motif dans le code du workflow | Remplacement durable |
+| --- | --- |
+| Planifier en parcourant un `HashMap` | Trier les clés d’abord ou utiliser un `BTreeMap`. |
+| Lire l’horloge, `thread_rng` ou un nouvel UUID | Enregistrer un instantané avec `ctx.side_effect(...)` ou utiliser une activité. |
+| `tokio::time::sleep` ou `std::thread::sleep` | `ctx.sleep(...)` ou `ctx.start_timer(...)`. |
+| `tokio::select!` ou mise en concurrence de futures ordinaires | `ctx.select(...)` ou `ctx.select_keyed(...)`. |
+| Appels durables concurrents non suivis | `ctx.parallel(...)` avec un ordre d’entrée stable. |
+| Réseau, fichiers ou E/S externes mutables | Une activité enregistrée. |
+| Changer l’ordre des commandes existantes au déploiement | Une branche stable `ctx.get_version(...)`, testée sur l’historique enregistré. |
+
+Les effets externes des activités doivent rester idempotents ; le déterminisme ne rend pas sûr un paiement ou une écriture répétés. Consultez [idempotence et déterminisme](../constraints/idempotent-vs-deterministic.md).
+
+## Tests hors connexion et relecture {#offline-testing-and-replay}
+
+Ces API nécessitent le SDK Rust **4.5.0 ou ultérieur**. Vérifiez `Cargo.lock` : la combinaison d’installation distincte ci-dessus peut sélectionner un ancien crate qui ne les propose pas. La [vérification de l’installation normale de 4.5.0](https://github.com/durable-workflow/sdk-rust/issues/105#issuecomment-6362112580) confirme douze contrôles sans Server, cet exemple compilé et l’export/relecture d’un Server 2.11.0 réel. Elle ne promeut pas une nouvelle combinaison Server/SDK.
+
+### Tests unitaires d’activités et de workflows {#rust-activity-workflow-tests}
+
+`testing::WorkflowEnvironment` exécute les workflows et activités enregistrés dans le processus courant. Utilisez `from_worker(worker)` pour reprendre les enregistrements de l’application, ou enregistrez directement les callbacks ; `worker_mut()` expose les API typées habituelles. Les mocks sont explicites : les callbacks réels exécutent leur propre code, donc remplacez délibérément les effets externes.
+
+Utilisez `durable-workflow = "=4.5.0"` pour la recette vérifiée, Tokio avec `macros`, `rt-multi-thread` et `time`, et `serde_json = "1"` pour le helper d’export ci-dessous. Enregistrez l’exemple publié dans `examples/workflow_testing.rs` et lancez `cargo run --example workflow_testing` :
+
+```rust
+//! Run with `cargo run --example workflow_testing`; no Server is required.
+use durable_workflow::{
+    json,
+    testing::{WorkflowEnvironment, WorkflowHistory},
+    Result,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let mut env = WorkflowEnvironment::new()?;
+    env.register_activity("greet", |_, args| async move {
+        Ok(json!(format!(
+            "Hello, {}!",
+            args[0].as_str().unwrap_or("friend")
+        )))
+    });
+    env.register_workflow("hello", |ctx, args| async move {
+        ctx.activity("greet", args).await
+    });
+
+    // An activity unit test executes the real callback and argument adapters.
+    assert_eq!(
+        env.run_activity("greet", "Ada").await?,
+        json!("Hello, Ada!")
+    );
+    // A workflow unit test may replace activity callbacks explicitly.
+    env.mock_activity("greet", |_, args| async move {
+        Ok(json!({"greeting_for":args[0]}))
+    });
+    assert_eq!(
+        env.run_workflow("hello", "Ada").await?,
+        json!({"greeting_for":"Ada"})
+    );
+
+    // Replay executes the same registered workflow without running activities.
+    // In a deployment test, read the JSON produced by dw workflow:history-export
+    // or Client::export_workflow_history instead of this captured test history.
+    let history = WorkflowHistory::from_export(env.last_history().unwrap().export())?;
+    assert!(env.replay(&history)?.completed);
+    println!("activity, workflow and offline replay passed");
+    Ok(())
+}
+```
+
+`run_activity` direct exécute une tentative. Dans `run_workflow`, la politique de tentatives enregistrée s’applique avant de transmettre l’échec terminal au workflow. Les échecs réels ou simulés d’activités distantes/locales utilisent `Error::ActivityFailed` typé, avec type d’exception, numéro de tentative et marqueur non réessayable ; une erreur de workflow non interceptée conserve sa variante Rust initiale. Les heartbeats sont capturés localement. Utilisez les variantes `*_avro_value` si JSON ne préserve pas la valeur Avro initiale.
+
+### Relire une exécution exportée {#rust-replay-export}
+
+Enregistrez le workflow candidat, puis chargez un bundle JSON autonome de `dw workflow:history-export` ou `Client::export_workflow_history(workflow_id, run_id).await?`. Ajoutez ce helper à l’exemple précédent ; il utilise les mêmes imports et attend une exécution de test terminée :
+
+```rust
+fn replay(env: WorkflowEnvironment) -> std::result::Result<(), Box<dyn std::error::Error>> {
+let export = serde_json::from_slice(&std::fs::read("workflow-history.json")?)?;
+let history = WorkflowHistory::from_export(export)?;
+let report = env.replay(&history)?;
+assert!(report.completed); // A running snapshot can remain durably pending.
+Ok(())
+}
+```
+
+Pour l’historique brut, combinez **toutes les pages** et utilisez `WorkflowHistory::from_history("hello", original_input, response)`, en fournissant la file d’origine si elle manque. Gardez l’entrée initiale et les résultats enregistrés ; les payloads élagués/masqués, références externes non résolues et jetons de page restants sont refusés. Le helper d’export résout les références pendant le téléchargement. La relecture elle-même ne contacte aucun Server et n’exécute aucun callback d’activité.
+
+La relecture utilise les chemins du worker pour le décodage, les effets de bord, marqueurs de version et résolutions select enregistrées. Des commandes modifiées ou réordonnées renvoient `Error::NonDeterministicReplay(ReplayFailure)` avec `sequence`, `expected` et `actual` ; le contrôle installé sur un export réel détecte l’activité changée à la séquence 3. Les nouvelles commandes au-delà de l’instantané échouent aussi. Un instantané ouvert peut montrer un préfixe durablement en attente plutôt qu’une fin : affirmez le résultat attendu et testez les nouvelles branches avec une nouvelle exécution dans le processus et des tests d’intégration. Consultez les [contrôles de relecture publiés](https://github.com/durable-workflow/sdk-rust/blob/4.5.0/tests/workflow_testing.rs).
+
+### Limites d’exécution {#rust-test-execution-limits}
+
+Les délais de timers et de tentatives sont sautés. Les callbacks parallèles s’exécutent dans l’ordre des commandes : cet environnement ne teste ni courses d’ordonnancement ni performances. Il ne simule pas les files, baux ou déploiements. Les callbacks doivent céder le contrôle ; `max_steps(n)` borne tours durables, commandes et tentatives (10 000 par défaut), et `tokio::time::timeout` peut borner le temps d’un callback asynchrone.
+
+La simulation de timeouts d’activité, les **nouvelles courses select**, signaux, enfants, services, sessions, continue-as-new et annulation nécessitent l’intégration ; les commandes non prises en charge renvoient `Error::Testing`. Un gagnant select enregistré peut être relu même si une nouvelle course n’est pas simulée. Gardez des tests avec un runtime réel pour ces limites. Consultez l’[API de test](https://rust.durable-workflow.com/durable_workflow/testing/index.html) et le [contrat d’exécution publié](https://github.com/durable-workflow/sdk-rust/blob/4.5.0/README.md#testing-without-a-server).
 
 ## Compatibilité à l’entrée et récupération {#entry-compatibility-and-recovery}
 

@@ -250,3 +250,7 @@ not matching package version numbers.
 - [PHP API reference](https://php.durable-workflow.com/api/)
 - [PHP executable quickstart contract](https://php.durable-workflow.com/quickstart-contract.json)
 - [PHP SDK source](https://github.com/durable-workflow/sdk-php)
+
+## Workflow list and history pages {#workflow-list-and-history-pages}
+
+These published calls return **one page**, not an automatic complete read: `Client::listWorkflows(...)` / `Client::workflowHistory(...)`. Continue with the returned opaque token while keeping namespace, filters and selected workflow/run fixed; stop at the final null/empty token and handle page errors explicitly. A partial page is not a replay bundle. Use the SDK history-export API for offline replay. The [published PHP 3.2.0 client source](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php) defines the current parameters; no new iterator capability is implied.

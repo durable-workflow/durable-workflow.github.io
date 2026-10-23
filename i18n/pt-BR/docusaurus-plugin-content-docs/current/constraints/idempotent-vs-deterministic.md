@@ -4,7 +4,7 @@ title: "Idempotência e determinismo"
 sidebar_label: Idempotente e determinístico
 description: No Durable Workflow 2.0, o determinismo torna a orquestração segura para replay e a idempotência torna seguros os efeitos de atividades repetidas.
 slug: /constraints/idempotent-vs-deterministic
-canonical_path: /docs/constraints/idempotent-vs-deterministic/
+canonical_path: /pt-BR/docs/constraints/idempotent-vs-deterministic/
 image: /img/idempotent-vs-deterministic.png
 tags:
   - constraints
@@ -62,6 +62,8 @@ O Durable Workflow reconstrói o estado da orquestração fazendo replay do hist
 Mova essas operações para atividades ou use um auxiliar de workflow que registre o valor no histórico. O replay então retorna o resultado registrado da atividade ou do efeito, em vez de realizar a operação externa novamente. O determinismo não exige que toda invocação de atividade produza uma resposta universal e atemporal. Ele exige que a orquestração durante o replay tome decisões coerentes com seu histórico registrado.
 
 Consulte [Restrições dos workflows](./workflow-constraints.md) para conhecer as regras de código e [Como funciona](../how-it-works.md) para conhecer o modelo de replay.
+
+Para regras de Rust sobre `HashMap`, relógios, aleatoriedade e ordem de futures, consulte as [substituições duráveis](../polyglot/rust.md#rust-determinism-rules). Rust SDK 4.5.0 adiciona [testes de atividades/workflows sem Server e replay do histórico registrado](../polyglot/rust.md#offline-testing-and-replay); mantenha testes de integração para seus limites de execução documentados.
 
 ## Por que atividades e efeitos externos devem ser idempotentes {#why-activities-and-side-effects-must-be-idempotent}
 

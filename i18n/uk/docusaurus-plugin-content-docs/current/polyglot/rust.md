@@ -118,6 +118,54 @@ Rust SDK 3.5.0 за замовчуванням надсилає
 Версії випусків SDK та Server відстежуються незалежно. Їхня сумісність
 визначається protocol manifests runtime.
 
+## Списки workflow та повна історія запуску {#workflow-lists-and-history}
+
+Ці API потребують Rust SDK **4.6.0 або новішого**. Перевіряйте `Cargo.lock`: окрема комбінація встановлення вище може вибрати старіший crate. [Перевірка звичайного встановлення](https://github.com/durable-workflow/sdk-rust/issues/122#issuecomment-6363352910) підтверджує три сторінки списку, шість сторінок історії, payload 128 KiB, експорт/replay і приклад лише для читання з опублікованим Server 2.11.0. Офлайн-тести потребують 4.5.0; ці методи та ітератори списку/історії — 4.6.0. Вибрана комбінація Server/SDK не змінюється.
+
+`Client::list_workflows(WorkflowListOptions)` і `Client::get_workflow_history(workflow_id, run_id, WorkflowHistoryOptions)` повертають **одну сторінку**. Продовжуйте вручну з її непрозорим `next_page_token` або використовуйте ліниві ітератори для повного читання. Методи зберігають перевірку Server, фільтри й namespace; нових полів чи граматики query немає. Наприклад, знайдіть відкритий запуск за зареєстрованим keyword-атрибутом:
+
+```rust
+use durable_workflow::WorkflowListOptions;
+async fn find(client: durable_workflow::Client) -> durable_workflow::Result<()> {
+let mut matches = client.iter_workflows(
+    WorkflowListOptions::new()
+        .workflow_type("payments")
+        .status("running")
+        .query("OrderRef = 'order-42'")
+        .page_size(2),
+);
+match (matches.next().await?, matches.next().await?) {
+    (Some(run), None) => println!("open run: {} / {}", run.workflow_id, run.run_id),
+    (None, _) => println!("no open run"),
+    _ => println!("multiple open runs; refine the query"),
+}
+Ok(())
+}
+```
+
+Фільтр Server `status=running` вибирає активний **status bucket**, зокрема сирі статуси `pending` і `waiting`. `WorkflowSummary` зберігає `status`, `status_bucket`, `is_terminal`, пошукові атрибути й невідомі метадані в `raw`. Атрибути не унікальні: фільтр може знайти і батька, і дітей, які успадкували значення. Обробляйте нуль, один і кілька результатів, як вище. Створіть клієнт у потрібному namespace до ітератора; namespace і фільтри незмінні між token.
+
+Прочитайте весь вибраний запуск, не завантажуючи всі сторінки разом:
+
+```rust
+use durable_workflow::WorkflowHistoryOptions;
+async fn audit(client: durable_workflow::Client) -> durable_workflow::Result<()> {
+let mut events = client.iter_workflow_history(
+    "payment-42", "selected-run-id", WorkflowHistoryOptions::new().page_size(100),
+);
+while let Some(event) = events.next().await? {
+    println!("{}", event.event_type);
+}
+Ok(())
+}
+```
+
+`iter_workflows(options)` видає `WorkflowSummary` через `next().await`. Обидва ітератори підтримують `into_stream()` для `futures_util::TryStreamExt`; закріпіть stream перед polling. Створення не виконує I/O; наступна сторінка завантажується після вичерпання поточної. Null/порожній token завершує обхід; порожня сторінка з token продовжується. Повторні/циклічні token повертають `Error::Pagination` з обмеженим станом token. Помилка сторінки зберігає початкову типізовану помилку, після чого ітератор завершується. Обробляйте помилку: часткове читання не є повним результатом. Збирання stream усе одно зберігає всі зібрані елементи.
+
+Ітерація історії зберігає початкові workflow/run і перелічує доступні події: не переходить за continue-as-new і не підписується назавжди. Метадані подій і wire-envelope payload зберігаються. Для офлайн-replay використовуйте `Client::export_workflow_history` із `testing::WorkflowHistory::from_export`, а не часткову сторінку. Див. [офлайн-replay](#rust-replay-export).
+
+Опублікований Server 2.11 типово повертає 50 рядків списку (максимум 200) і 100 подій історії (максимум 1 000) на сторінку. Розмір передається незмінним для перевірки Server. Зупиняйтеся, коли результатів достатньо, вибирайте доречний розмір і задавайте таймаут застосунку. Пагінація не додає snapshot isolation під час конкурентних змін. Див. [опублікований приклад читання](https://github.com/durable-workflow/sdk-rust/blob/4.6.0/examples/workflow_pagination.rs), [Client API](https://rust.durable-workflow.com/durable_workflow/struct.Client.html) і [типи пагінації](https://rust.durable-workflow.com/durable_workflow/pagination/index.html).
+
 ## Паралельність завдань worker {#worker-task-concurrency}
 
 Описані нижче обмежені лінії виконання потребують Rust SDK **4.3.1 або новішого**. Перевірте версію в `Cargo.lock`: наведена вище фіксація встановлення належить окремому кваліфікованому набору артефактів і може обирати старіший SDK. [Перевірка опублікованого пакета](https://github.com/durable-workflow/sdk-rust/issues/107#issuecomment-6360719863) підтверджує три налаштовані слоти, допуск четвертого виклику після звільнення слота і сім завершених workflow, зокрема з обробленою помилкою activity. Вимоги протоколу Server вище залишаються чинними.
@@ -460,6 +508,103 @@ Rust SDK записує невеликі недетерміновані знач
 а `deprecate_patch(change_id)` зберігає маркер після завершення старої гілки.
 Спільну durable-семантику описано в
 [side effects](/docs/features/side-effects/) та [версіюванні](/docs/features/versioning/).
+
+## Правила детермінізму Rust {#rust-determinism-rules}
+
+Replay має створювати ті самі durable-команди в тому самому порядку для записаного входу й історії. Звичайні колекції, годинники та примітиви конкурентності Rust не зберігають цей контракт автоматично:
+
+| Шаблон у коді workflow | Durable-заміна |
+| --- | --- |
+| Планування під час обходу `HashMap` | Спочатку сортуйте ключі або використовуйте `BTreeMap`. |
+| Системний годинник, `thread_rng` чи новий UUID | Записуйте знімок через `ctx.side_effect(...)` або використовуйте activity. |
+| `tokio::time::sleep` чи `std::thread::sleep` | `ctx.sleep(...)` або `ctx.start_timer(...)`. |
+| `tokio::select!` чи перегони звичайних future | `ctx.select(...)` або `ctx.select_keyed(...)`. |
+| Невідстежувані конкурентні durable-виклики | `ctx.parallel(...)` зі стабільним порядком входів. |
+| Мережа, файлова система чи змінний зовнішній I/O | Зареєстрована activity. |
+| Зміна порядку наявних команд під час розгортання | Стабільна гілка `ctx.get_version(...)`, перевірена на записаній історії. |
+
+Зовнішні ефекти activity все ще мають бути ідемпотентними; детермінізм не робить повторний платіж чи запис файлу безпечним. Див. [ідемпотентність і детермінізм](../constraints/idempotent-vs-deterministic.md).
+
+## Офлайн-тести й replay {#offline-testing-and-replay}
+
+Ці API потребують Rust SDK **4.5.0 або новішого**. Перевіряйте `Cargo.lock`: окрема комбінація встановлення вище може вибрати старіший crate без цих API. [Перевірка звичайного встановлення 4.5.0](https://github.com/durable-workflow/sdk-rust/issues/105#issuecomment-6362112580) підтверджує дванадцять перевірок без Server, цей скомпільований приклад і експорт/replay із реального Server 2.11.0. Вона не змінює вибрану комбінацію Server/SDK.
+
+### Unit-тести activity і workflow {#rust-activity-workflow-tests}
+
+`testing::WorkflowEnvironment` запускає зареєстровані workflow й activity у поточному процесі. Використовуйте `from_worker(worker)` для реєстрацій застосунку або реєструйте callback безпосередньо; `worker_mut()` надає звичайні типізовані API реєстрації. Mock задається явно: справжні callback activity виконують власний код, тому свідомо замінюйте зовнішні ефекти.
+
+Для перевіреного рецепта використовуйте `durable-workflow = "=4.5.0"`, Tokio з `macros`, `rt-multi-thread` і `time`, а також `serde_json = "1"` для помічника експорту нижче. Збережіть опублікований приклад як `examples/workflow_testing.rs` і запустіть `cargo run --example workflow_testing`:
+
+```rust
+//! Run with `cargo run --example workflow_testing`; no Server is required.
+use durable_workflow::{
+    json,
+    testing::{WorkflowEnvironment, WorkflowHistory},
+    Result,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let mut env = WorkflowEnvironment::new()?;
+    env.register_activity("greet", |_, args| async move {
+        Ok(json!(format!(
+            "Hello, {}!",
+            args[0].as_str().unwrap_or("friend")
+        )))
+    });
+    env.register_workflow("hello", |ctx, args| async move {
+        ctx.activity("greet", args).await
+    });
+
+    // An activity unit test executes the real callback and argument adapters.
+    assert_eq!(
+        env.run_activity("greet", "Ada").await?,
+        json!("Hello, Ada!")
+    );
+    // A workflow unit test may replace activity callbacks explicitly.
+    env.mock_activity("greet", |_, args| async move {
+        Ok(json!({"greeting_for":args[0]}))
+    });
+    assert_eq!(
+        env.run_workflow("hello", "Ada").await?,
+        json!({"greeting_for":"Ada"})
+    );
+
+    // Replay executes the same registered workflow without running activities.
+    // In a deployment test, read the JSON produced by dw workflow:history-export
+    // or Client::export_workflow_history instead of this captured test history.
+    let history = WorkflowHistory::from_export(env.last_history().unwrap().export())?;
+    assert!(env.replay(&history)?.completed);
+    println!("activity, workflow and offline replay passed");
+    Ok(())
+}
+```
+
+Прямий `run_activity` виконує одну спробу. Усередині `run_workflow` записана retry policy застосовується до передавання остаточної помилки коду workflow. Справжні чи mock-помилки віддалених/локальних activity використовують типізований `Error::ActivityFailed` із типом винятку, номером спроби та ознакою non-retryable; необроблена помилка workflow зберігає початковий варіант Rust. Heartbeat збираються локально. Коли JSON не зберігає початкове значення Avro, використовуйте варіанти `*_avro_value`.
+
+### Replay експортованого запуску {#rust-replay-export}
+
+Зареєструйте кандидатний workflow, а потім завантажте самодостатній JSON-bundle з `dw workflow:history-export` або `Client::export_workflow_history(workflow_id, run_id).await?`. Додайте цей помічник до прикладу вище; він використовує ті самі імпорти й очікує завершений fixture:
+
+```rust
+fn replay(env: WorkflowEnvironment) -> std::result::Result<(), Box<dyn std::error::Error>> {
+let export = serde_json::from_slice(&std::fs::read("workflow-history.json")?)?;
+let history = WorkflowHistory::from_export(export)?;
+let report = env.replay(&history)?;
+assert!(report.completed); // A running snapshot can remain durably pending.
+Ok(())
+}
+```
+
+Для сирої історії об’єднайте **всі сторінки** й використовуйте `WorkflowHistory::from_history("hello", original_input, response)`, надавши початкову task queue, якщо її немає. Збережіть початковий вхід і записані результати; видалені/редаговані payload, нерозв’язані зовнішні посилання та залишені page token відхиляються. Помічник експорту SDK завантажує payload за посиланнями. Сам replay не звертається до Server і не виконує callback activity.
+
+Replay використовує декодування worker, side effect, version marker і записані результати select. Змінені чи переставлені команди повертають `Error::NonDeterministicReplay(ReplayFailure)` з `sequence`, `expected` і `actual`; перевірка встановленого пакета на реальному експорті знаходить змінену activity на послідовності 3. Нові команди за межами знімка теж відхиляються. Відкритий знімок може показати durable-очікування префікса замість завершення: перевіряйте очікуваний результат, а нові гілки тестуйте свіжим виконанням у процесі й інтеграційними тестами. Див. [опубліковані replay-тести](https://github.com/durable-workflow/sdk-rust/blob/4.5.0/tests/workflow_testing.rs).
+
+### Межі виконання {#rust-test-execution-limits}
+
+Затримки timer і retry пропускаються. Паралельні callback виконуються в порядку команд, тому середовище не тестує перегони планування чи продуктивність. Воно не моделює черги, lease чи розгортання. Callback activity мають віддавати керування; `max_steps(n)` обмежує durable-переходи, команди й спроби (типово 10 000), а `tokio::time::timeout` може обмежити час асинхронного callback.
+
+Моделювання таймаутів activity, **нові перегони select**, signal, діти, service, session, continue-as-new і скасування потребують інтеграційних тестів; непідтримувані команди повертають `Error::Testing`. Записаний переможець select може відтворюватися, хоча нові перегони select не моделюються. Зберігайте тести на справжньому runtime для цих меж. Див. [testing API](https://rust.durable-workflow.com/durable_workflow/testing/index.html) та [опублікований контракт виконання](https://github.com/durable-workflow/sdk-rust/blob/4.5.0/README.md#testing-without-a-server).
 
 ## Сумісність входу та відновлення {#entry-compatibility-and-recovery}
 

@@ -255,3 +255,7 @@ deklarierten SDK-Vertrag, nicht übereinstimmenden Paketversionsnummern.
 - [PHP-API-Referenz](https://php.durable-workflow.com/api/)
 - [Ausführbarer PHP-Schnellstartvertrag](https://php.durable-workflow.com/quickstart-contract.json)
 - [PHP-SDK-Quellcode](https://github.com/durable-workflow/sdk-php)
+
+## Seiten für Workflow-Listen und Verlauf {#workflow-list-and-history-pages}
+
+Diese veröffentlichten Aufrufe liefern **eine Seite**, keinen automatischen vollständigen Abruf: `Client::listWorkflows(...)` / `Client::workflowHistory(...)`. Setzen Sie mit dem zurückgegebenen undurchsichtigen Token fort und behalten Sie Namespace, Filter und Workflow/Lauf bei. Enden Sie beim letzten null/leeren Token und behandeln Sie Seitenfehler ausdrücklich. Eine Teilseite ist kein Replay-Bundle. Nutzen Sie für Offline-Replay die Verlaufsexport-API des SDK. Der [veröffentlichte Client PHP 3.2.0](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php) definiert aktuelle Parameter; neue automatische Iteratoren werden damit nicht zugesagt.

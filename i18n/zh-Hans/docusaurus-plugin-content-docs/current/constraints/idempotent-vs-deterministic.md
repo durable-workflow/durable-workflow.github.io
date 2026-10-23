@@ -4,7 +4,7 @@ title: "幂等性与确定性"
 sidebar_label: 幂等性与确定性
 description: 在 Durable Workflow 2.0 中，确定性确保编排可安全重放，幂等性确保重试活动的副作用安全。
 slug: /constraints/idempotent-vs-deterministic
-canonical_path: /docs/constraints/idempotent-vs-deterministic/
+canonical_path: /zh-Hans/docs/constraints/idempotent-vs-deterministic/
 image: /img/idempotent-vs-deterministic.png
 tags:
   - constraints
@@ -62,6 +62,8 @@ Durable Workflow 通过重放已提交的历史重建编排状态。工作流输
 将这些操作移入活动，或使用会把值记录到历史中的工作流辅助函数。这样，重放会返回已记录的活动或副作用结果，无需再次执行外部操作。确定性并不要求每次活动调用都给出永远相同的答案，而是要求重放的编排作出的决策与已记录历史一致。
 
 编写规则见[工作流约束](./workflow-constraints.md)，重放模型见[工作原理](../how-it-works.md)。
+
+Rust 的 `HashMap`、时钟、随机数和 future 顺序规则，参见[持久替代方式](../polyglot/rust.md#rust-determinism-rules)。Rust SDK 4.5.0 新增[无需 Server 的活动/工作流测试和已记录历史重放](../polyglot/rust.md#offline-testing-and-replay)；对于文档列出的执行限制，仍应保留集成测试。
 
 ## 活动和副作用为何必须具有幂等性 {#why-activities-and-side-effects-must-be-idempotent}
 

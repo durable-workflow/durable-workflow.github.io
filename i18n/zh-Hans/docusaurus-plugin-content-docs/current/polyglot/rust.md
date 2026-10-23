@@ -65,6 +65,54 @@ Server 在主版本 `1` 内协商 Worker 协议头：公布 `1.N` 的 Server 仅
 
 协商默认拒绝不合规请求。缺失或格式错误的头、不同主版本，或高于 Server 公布次版本的 Worker 次版本都会被拒绝。SDK 和 Server 发布版本独立跟踪，由运行时协议清单决定兼容性。
 
+## 工作流列表与完整运行历史 {#workflow-lists-and-history}
+
+这些 API 要求 Rust SDK **4.6.0 或更新版本**；请检查 `Cargo.lock`，因为上面的独立安装组合可能选择更旧的 crate。[普通安装包验收](https://github.com/durable-workflow/sdk-rust/issues/122#issuecomment-6363352910)已用发布的 Server 2.11.0 验证三页列表、六页历史、128 KiB payload、导出/replay 和只读示例。离线测试辅助 API 要求 4.5.0；这里的列表/历史方法和迭代器要求 4.6.0。这不改变所选 Server/SDK 组合。
+
+`Client::list_workflows(WorkflowListOptions)` 与 `Client::get_workflow_history(workflow_id, run_id, WorkflowHistoryOptions)` 每次返回**一页**。可用不透明的 `next_page_token` 手动继续，也可用惰性迭代器完整读取。这些方法保留 Server 的验证、筛选和 namespace 范围，不增加查询字段或语法。例如，通过已注册的 keyword 属性寻找未结束的运行：
+
+```rust
+use durable_workflow::WorkflowListOptions;
+async fn find(client: durable_workflow::Client) -> durable_workflow::Result<()> {
+let mut matches = client.iter_workflows(
+    WorkflowListOptions::new()
+        .workflow_type("payments")
+        .status("running")
+        .query("OrderRef = 'order-42'")
+        .page_size(2),
+);
+match (matches.next().await?, matches.next().await?) {
+    (Some(run), None) => println!("open run: {} / {}", run.workflow_id, run.run_id),
+    (None, _) => println!("no open run"),
+    _ => println!("multiple open runs; refine the query"),
+}
+Ok(())
+}
+```
+
+Server 的 `status=running` 筛选选择活跃的 **status bucket**，包含原始状态为 `pending` 或 `waiting` 的运行。`WorkflowSummary` 保留 `status`、`status_bucket`、`is_terminal`、搜索属性及 `raw` 中的未知元数据。搜索属性不保证唯一：筛选可能同时返回父运行及继承该值的子运行。请像上例一样处理零个、一个和多个匹配。先用目标 namespace 创建客户端，再构造迭代器；各 token 之间保留相同 namespace 和筛选条件。
+
+无需一次加载所有页面即可读取选定运行的完整历史：
+
+```rust
+use durable_workflow::WorkflowHistoryOptions;
+async fn audit(client: durable_workflow::Client) -> durable_workflow::Result<()> {
+let mut events = client.iter_workflow_history(
+    "payment-42", "selected-run-id", WorkflowHistoryOptions::new().page_size(100),
+);
+while let Some(event) = events.next().await? {
+    println!("{}", event.event_type);
+}
+Ok(())
+}
+```
+
+`iter_workflows(options)` 通过 `next().await` 逐项提供 `WorkflowSummary`。两个迭代器都支持用于 `futures_util::TryStreamExt` 的 `into_stream()`；轮询前需固定返回的 stream。构造时不执行 I/O，当前页耗尽后才请求下一页。null/空 token 表示结束；带 token 的空页会继续。重复或循环 token 返回 `Error::Pagination`，token 状态有界。页面失败保留原始类型化错误，随后该迭代器结束。必须处理错误，不能把部分读取当成完整结果。收集 stream 仍会存储所有收集到的项目。
+
+历史迭代固定原始 workflow/run 身份，枚举可用事件，不追随 continue-as-new，也不无限订阅。事件元数据和 payload 线协议封装保持不变。离线 replay 请用 `Client::export_workflow_history` 与 `testing::WorkflowHistory::from_export`，不要传入部分历史页。参见[离线 replay](#rust-replay-export)。
+
+发布的 Server 2.11 默认每页 50 条列表记录（最多 200）和 100 条历史事件（最多 1,000）。页大小原样传给 Server 验证。结果足够时提前停止，选择适当页大小并设置应用超时。运行并发变化时，分页不增加快照隔离。参见[发布的只读示例](https://github.com/durable-workflow/sdk-rust/blob/4.6.0/examples/workflow_pagination.rs)、[Client API](https://rust.durable-workflow.com/durable_workflow/struct.Client.html) 和[分页类型](https://rust.durable-workflow.com/durable_workflow/pagination/index.html)。
+
 ## Worker 任务并发 {#worker-task-concurrency}
 
 以下有界执行通道需要 Rust SDK **4.3.1 或更高版本**。使用前检查 `Cargo.lock` 中的版本：上方的安装固定版本属于另一组已验证构件，可能选择较旧的 SDK。[已发布包验收](https://github.com/durable-workflow/sdk-rust/issues/107#issuecomment-6360719863)验证了三个配置槽位、释放槽位后第四次回调才被接纳，以及七个完成的工作流，其中包括已处理的活动失败。前述 Server 协议要求仍然适用。
@@ -288,6 +336,103 @@ saga.finish(outcome).await
 Rust SDK 使用 `WorkflowContext::side_effect` 记录小型非确定性值，并使用 `WorkflowContext::uuid_v4` 派生确定性 UUIDv4 值。冷重放解码已记录值，不再次调用回调；标记顺序变化、缺失、重复或编解码器不兼容时返回类型化 `Error::NonDeterministicReplay`。
 
 使用 `WorkflowContext::get_version(change_id, min_supported, max_supported)`，在发布期间保持新旧工作流分支重放兼容。新运行记录 `max_supported`；现有运行复用持久标记。`patched(change_id)` 提供布尔形式的发布控制；旧分支排空后，`deprecate_patch(change_id)` 保留标记。共享持久语义见[副作用](/docs/features/side-effects/)和[版本管理](/docs/features/versioning/)。
+
+## Rust 确定性规则 {#rust-determinism-rules}
+
+对于已记录的输入和历史，重放必须按相同顺序生成相同的持久命令。Rust 常规集合、时钟和并发原语不会自动保持这一约定：
+
+| 工作流代码中的模式 | 持久替代方式 |
+| --- | --- |
+| 遍历 `HashMap` 时调度 | 先对键排序，或使用 `BTreeMap`。 |
+| 读取系统时钟、`thread_rng` 或新 UUID | 用 `ctx.side_effect(...)` 记录快照，或使用活动。 |
+| `tokio::time::sleep` 或 `std::thread::sleep` | `ctx.sleep(...)` 或 `ctx.start_timer(...)`。 |
+| `tokio::select!` 或普通 future 竞争 | `ctx.select(...)` 或 `ctx.select_keyed(...)`。 |
+| 未跟踪的并发持久调用 | 使用输入顺序稳定的 `ctx.parallel(...)`。 |
+| 网络、文件系统或可变外部 I/O | 已注册的活动。 |
+| 部署时更改既有命令顺序 | 使用稳定的 `ctx.get_version(...)` 分支，并用记录的历史测试。 |
+
+活动的外部副作用仍需幂等；确定性不会让重复付款或文件写入变得安全。参见[幂等与确定性](../constraints/idempotent-vs-deterministic.md)。
+
+## 离线测试与重放 {#offline-testing-and-replay}
+
+这些 API 需要 Rust SDK **4.5.0 或更新版本**。请检查 `Cargo.lock`：上方独立的安装组合可能选择没有这些 API 的旧 crate。[4.5.0 常规安装验证](https://github.com/durable-workflow/sdk-rust/issues/105#issuecomment-6362112580)确认了十二项无需 Server 的检查、本编译示例和真实 Server 2.11.0 的导出/重放。它不会提升当前选择的 Server/SDK 组合。
+
+### 活动与工作流单元测试 {#rust-activity-workflow-tests}
+
+`testing::WorkflowEnvironment` 在当前进程执行已注册的工作流和活动。通过 `from_worker(worker)` 复用应用注册，或直接注册回调；`worker_mut()` 提供常规类型化注册 API。Mock 必须显式指定：真实活动回调会执行自己的代码，因此应主动替换外部副作用。
+
+已验证方案使用 `durable-workflow = "=4.5.0"`、启用 `macros`、`rt-multi-thread` 和 `time` 的 Tokio，以及供下方导出辅助函数使用的 `serde_json = "1"`。把发布示例保存为 `examples/workflow_testing.rs`，执行 `cargo run --example workflow_testing`：
+
+```rust
+//! Run with `cargo run --example workflow_testing`; no Server is required.
+use durable_workflow::{
+    json,
+    testing::{WorkflowEnvironment, WorkflowHistory},
+    Result,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let mut env = WorkflowEnvironment::new()?;
+    env.register_activity("greet", |_, args| async move {
+        Ok(json!(format!(
+            "Hello, {}!",
+            args[0].as_str().unwrap_or("friend")
+        )))
+    });
+    env.register_workflow("hello", |ctx, args| async move {
+        ctx.activity("greet", args).await
+    });
+
+    // An activity unit test executes the real callback and argument adapters.
+    assert_eq!(
+        env.run_activity("greet", "Ada").await?,
+        json!("Hello, Ada!")
+    );
+    // A workflow unit test may replace activity callbacks explicitly.
+    env.mock_activity("greet", |_, args| async move {
+        Ok(json!({"greeting_for":args[0]}))
+    });
+    assert_eq!(
+        env.run_workflow("hello", "Ada").await?,
+        json!({"greeting_for":"Ada"})
+    );
+
+    // Replay executes the same registered workflow without running activities.
+    // In a deployment test, read the JSON produced by dw workflow:history-export
+    // or Client::export_workflow_history instead of this captured test history.
+    let history = WorkflowHistory::from_export(env.last_history().unwrap().export())?;
+    assert!(env.replay(&history)?.completed);
+    println!("activity, workflow and offline replay passed");
+    Ok(())
+}
+```
+
+直接调用 `run_activity` 执行一次尝试。在 `run_workflow` 内，已记录的重试策略会在终态失败交给工作流代码之前应用。真实或模拟的远程/本地活动失败使用类型化的 `Error::ActivityFailed`，包含异常类型、尝试编号和不可重试标记；未捕获的工作流错误保留原始 Rust 变体。心跳在本地收集。若 JSON 无法保留原始 Avro 值，应使用 `*_avro_value` 变体。
+
+### 重放导出的运行 {#rust-replay-export}
+
+注册候选工作流，再加载 `dw workflow:history-export` 或 `Client::export_workflow_history(workflow_id, run_id).await?` 生成的自包含 JSON 包。把此辅助函数加入上方示例；它复用那些导入，并期望已完成的测试运行：
+
+```rust
+fn replay(env: WorkflowEnvironment) -> std::result::Result<(), Box<dyn std::error::Error>> {
+let export = serde_json::from_slice(&std::fs::read("workflow-history.json")?)?;
+let history = WorkflowHistory::from_export(export)?;
+let report = env.replay(&history)?;
+assert!(report.completed); // A running snapshot can remain durably pending.
+Ok(())
+}
+```
+
+对于原始历史，应合并**所有分页**，使用 `WorkflowHistory::from_history("hello", original_input, response)`，并在缺失时提供原始任务队列。保留原始输入和已记录结果；被裁剪/隐藏的载荷、未解析的外部引用以及剩余分页令牌会被拒绝。SDK 导出辅助函数会在下载时解析载荷引用。重放本身不会联系 Server，也不会执行活动回调。
+
+重放使用 Worker 的解码、副作用、版本标记和已记录 select 结果处理路径。更改或重排命令会返回 `Error::NonDeterministicReplay(ReplayFailure)`，包含 `sequence`、`expected`、`actual`；已安装包的真实导出检查在序列 3 发现更改的活动。超出快照的新命令也会失败。未结束的快照可能显示持久等待的历史前缀，而不是完成：应断言预期结果，并用新的进程内执行与集成测试覆盖新分支。参见[已发布重放检查](https://github.com/durable-workflow/sdk-rust/blob/4.5.0/tests/workflow_testing.rs)。
+
+### 执行限制 {#rust-test-execution-limits}
+
+定时器和重试等待会被跳过。并行回调按命令顺序执行，因此此环境不能测试调度竞争或性能。它不模拟队列、租约或部署行为。活动回调必须让出执行权；`max_steps(n)` 限制持久执行轮次、命令和尝试次数（默认 10,000），而 `tokio::time::timeout` 可限制异步回调时间。
+
+活动超时模拟、**新的 select 竞争**、信号、子工作流、服务、会话、continue-as-new 和取消需要集成测试；不支持的命令返回 `Error::Testing`。已有记录中的 select 胜出者可以重放，但新的 select 竞争不会被模拟。应保留真实运行时测试来验证这些边界。参见[测试 API](https://rust.durable-workflow.com/durable_workflow/testing/index.html)和[已发布执行约定](https://github.com/durable-workflow/sdk-rust/blob/4.5.0/README.md#testing-without-a-server)。
 
 ## 入口兼容性与恢复 {#entry-compatibility-and-recovery}
 

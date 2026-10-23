@@ -4,7 +4,7 @@ title: "Idempotence et déterminisme"
 sidebar_label: Idempotence et déterminisme
 description: Dans Durable Workflow 2.0, le déterminisme protège la relecture de l’orchestration et l’idempotence rend sûrs les effets des activités réessayées.
 slug: /constraints/idempotent-vs-deterministic
-canonical_path: /docs/constraints/idempotent-vs-deterministic/
+canonical_path: /fr/docs/constraints/idempotent-vs-deterministic/
 image: /img/idempotent-vs-deterministic.png
 tags:
   - constraints
@@ -62,6 +62,8 @@ Durable Workflow reconstruit l’état de l’orchestration en relisant l’hist
 Déplacez ces opérations dans des activités, ou utilisez une fonction de workflow qui enregistre la valeur dans l’historique. La relecture retourne alors le résultat enregistré de l’activité ou de l’effet de bord, sans refaire l’opération externe. Le déterminisme n’exige pas que chaque appel d’activité produise une réponse universelle et intemporelle. Il exige que l’orchestration relue prenne des décisions conformes à son historique enregistré.
 
 Consultez les [contraintes des workflows](./workflow-constraints.md) pour les règles d’écriture et le [fonctionnement interne](../how-it-works.md) pour le modèle de relecture.
+
+Pour les règles Rust sur `HashMap`, l’horloge, l’aléatoire et l’ordre des futures, consultez les [remplacements durables](../polyglot/rust.md#rust-determinism-rules). Le SDK Rust 4.5.0 ajoute les [tests d’activités/workflows sans Server et la relecture d’historiques enregistrés](../polyglot/rust.md#offline-testing-and-replay) ; gardez l’intégration pour ses limites d’exécution documentées.
 
 ## Pourquoi les activités et les effets de bord doivent être idempotents {#why-activities-and-side-effects-must-be-idempotent}
 

@@ -4,7 +4,7 @@ title: "Idempotenz und Determinismus"
 sidebar_label: Idempotent und deterministisch
 description: In Durable Workflow 2.0 hält Determinismus die Orchestrierung Replay-sicher, während Idempotenz die Effekte wiederholter Aktivitäten absichert.
 slug: /constraints/idempotent-vs-deterministic
-canonical_path: /docs/constraints/idempotent-vs-deterministic/
+canonical_path: /de/docs/constraints/idempotent-vs-deterministic/
 image: /img/idempotent-vs-deterministic.png
 tags:
   - constraints
@@ -88,6 +88,8 @@ aufgezeichneten Verlauf übereinstimmen.
 Die Regeln zum Schreiben von Workflows finden Sie unter
 [Workflow-Einschränkungen](./workflow-constraints.md), das Replay-Modell unter
 [Funktionsweise](../how-it-works.md).
+
+Rust-Regeln für `HashMap`, Uhr, Zufall und Future-Reihenfolge stehen bei den [dauerhaften Ersatzmustern](../polyglot/rust.md#rust-determinism-rules). Rust SDK 4.5.0 ergänzt [Activity-/Workflow-Tests ohne Server und Replay aufgezeichneter Historien](../polyglot/rust.md#offline-testing-and-replay). Behalten Sie Integrationstests für die dokumentierten Ausführungsgrenzen bei.
 
 ## Warum Aktivitäten und Seiteneffekte idempotent sein müssen {#why-activities-and-side-effects-must-be-idempotent}
 

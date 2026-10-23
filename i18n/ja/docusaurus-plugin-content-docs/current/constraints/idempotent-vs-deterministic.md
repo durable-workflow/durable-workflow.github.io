@@ -4,7 +4,7 @@ title: "冪等性と決定性"
 sidebar_label: 冪等性と決定性
 description: Durable Workflow 2.0 では、決定性がオーケストレーションの安全なリプレイを支え、冪等性がアクティビティのリトライによる作用を安全にします。
 slug: /constraints/idempotent-vs-deterministic
-canonical_path: /docs/constraints/idempotent-vs-deterministic/
+canonical_path: /ja/docs/constraints/idempotent-vs-deterministic/
 image: /img/idempotent-vs-deterministic.png
 tags:
   - constraints
@@ -62,6 +62,8 @@ Durable Workflow はコミット済みの履歴をリプレイしてオーケス
 これらの操作はアクティビティに移すか、値を履歴に記録するワークフローヘルパーを使ってください。リプレイは外部操作を再び実行せず、記録済みのアクティビティや副作用の結果を返します。決定性は、すべてのアクティビティ呼び出しが時刻を問わず普遍的な答えを返すことを求めません。リプレイされるオーケストレーションが、記録済み履歴と一致する判断をすることを求めます。
 
 記述ルールは[ワークフローの制約](./workflow-constraints.md)、リプレイのモデルは[仕組み](../how-it-works.md)を参照してください。
+
+Rust の `HashMap`、時計、乱数、future の順序については[永続的な代替手段](../polyglot/rust.md#rust-determinism-rules)を参照してください。Rust SDK 4.5.0 は[Server 不要のアクティビティ/ワークフローテストと記録済み履歴のリプレイ](../polyglot/rust.md#offline-testing-and-replay)を追加します。文書化された実行制限には統合テストを残してください。
 
 ## アクティビティと副作用に冪等性が必要な理由 {#why-activities-and-side-effects-must-be-idempotent}
 
