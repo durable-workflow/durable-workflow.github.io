@@ -110,7 +110,7 @@ Diese Werte steuern Long-Poll-Zeitbudgets, die Koordination von Wecksignalen, se
 
 | Variable | Standardwert | Zweck | Alter Alias |
 | --- | --- | --- | --- |
-| `DW_WORKER_POLL_TIMEOUT` | `30` | Sekunden, die Server einen Poll beim Warten auf eine Aufgabe offen hält. | `WORKFLOW_SERVER_WORKER_POLL_TIMEOUT` |
+| `DW_WORKER_POLL_TIMEOUT` | `30` | Standardwartezeit ohne `timeout_seconds` in der Poll-Anfrage. SDK-Werte überschreiben sie; sie ist nicht deren Maximum. Siehe [Timeout-Budgets des gesamten Wegs](../deployment.md#worker-long-poll-timeout-budgets). | `WORKFLOW_SERVER_WORKER_POLL_TIMEOUT` |
 | `DW_WORKER_POLL_INTERVAL_MS` | `1000` | Millisekunden zwischen internen Suchläufen während eines offenen Polls. | `WORKFLOW_SERVER_WORKER_POLL_INTERVAL_MS` |
 | `DW_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS` | `100` | Millisekunden zwischen Prüfungen auf Wecksignale während eines offenen Polls. | `WORKFLOW_SERVER_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS` |
 | `DW_POLLING_CACHE_PATH` | `storage/framework/cache/server-polling/<APP_ENV>` | Verzeichnis für die Worker-Poll-Koordination bei dateibasiertem Polling-Cache. | `WORKFLOW_SERVER_POLLING_CACHE_PATH` |

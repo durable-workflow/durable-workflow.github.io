@@ -152,7 +152,7 @@ principal за відповідним записом токена. Клієнт�
 
 | Змінна | Стандартне значення | Призначення | Застарілий alias |
 | --- | --- | --- | --- |
-| `DW_WORKER_POLL_TIMEOUT` | `30` | Кількість секунд, протягом яких Server тримає poll відкритим в очікуванні task. | `WORKFLOW_SERVER_WORKER_POLL_TIMEOUT` |
+| `DW_WORKER_POLL_TIMEOUT` | `30` | Типове очікування, якщо запит опитування не містить `timeout_seconds`. SDK перевизначає його; це не максимальне очікування. Дивіться [наскрізні бюджети таймаутів](../deployment.md#worker-long-poll-timeout-budgets). | `WORKFLOW_SERVER_WORKER_POLL_TIMEOUT` |
 | `DW_WORKER_POLL_INTERVAL_MS` | `1000` | Мілісекунди між внутрішніми скануваннями під час відкритого poll. | `WORKFLOW_SERVER_WORKER_POLL_INTERVAL_MS` |
 | `DW_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS` | `100` | Мілісекунди між перевірками wake signals під час відкритого poll. | `WORKFLOW_SERVER_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS` |
 | `DW_POLLING_CACHE_PATH` | `storage/framework/cache/server-polling/<APP_ENV>` | Каталог стану координації polling worker за файлового polling cache. | `WORKFLOW_SERVER_POLLING_CACHE_PATH` |

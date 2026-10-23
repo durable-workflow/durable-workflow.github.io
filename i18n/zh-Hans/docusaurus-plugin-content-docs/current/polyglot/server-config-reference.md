@@ -110,7 +110,7 @@ DW_WORKER_TOKEN="${DW_WORKER_TOKEN}"
 
 | 变量 | 默认值 | 用途 | 旧版别名 |
 | --- | --- | --- | --- |
-| `DW_WORKER_POLL_TIMEOUT` | `30` | Server 保持轮询以等待任务的秒数。 | `WORKFLOW_SERVER_WORKER_POLL_TIMEOUT` |
+| `DW_WORKER_POLL_TIMEOUT` | `30` | 省略 `timeout_seconds` 时的默认等待。SDK 指定值会覆盖它，它不是 SDK 的最大等待。参见[完整超时预算](../deployment.md#worker-long-poll-timeout-budgets)。 | `WORKFLOW_SERVER_WORKER_POLL_TIMEOUT` |
 | `DW_WORKER_POLL_INTERVAL_MS` | `1000` | 保持轮询期间内部扫描的间隔，单位为毫秒。 | `WORKFLOW_SERVER_WORKER_POLL_INTERVAL_MS` |
 | `DW_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS` | `100` | 保持轮询期间检查唤醒信号的间隔，单位为毫秒。 | `WORKFLOW_SERVER_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS` |
 | `DW_POLLING_CACHE_PATH` | `storage/framework/cache/server-polling/<APP_ENV>` | 使用文件轮询缓存时，存储 Worker 轮询协调状态的目录。 | `WORKFLOW_SERVER_POLLING_CACHE_PATH` |

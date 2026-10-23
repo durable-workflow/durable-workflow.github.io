@@ -110,7 +110,7 @@ DW_WORKER_TOKEN="${DW_WORKER_TOKEN}"
 
 | 変数 | 既定値 | 用途 | 従来の別名 |
 | --- | --- | --- | --- |
-| `DW_WORKER_POLL_TIMEOUT` | `30` | タスクを待つポーリングを Server が保持する秒数。 | `WORKFLOW_SERVER_WORKER_POLL_TIMEOUT` |
+| `DW_WORKER_POLL_TIMEOUT` | `30` | 要求が `timeout_seconds` を省略した場合の既定待機時間。SDK の指定が優先され、SDK の上限ではありません。[経路全体のタイムアウト予算](../deployment.md#worker-long-poll-timeout-budgets)を参照してください。 | `WORKFLOW_SERVER_WORKER_POLL_TIMEOUT` |
 | `DW_WORKER_POLL_INTERVAL_MS` | `1000` | ポーリングを保持している間の、内部スキャンの間隔（ミリ秒）。 | `WORKFLOW_SERVER_WORKER_POLL_INTERVAL_MS` |
 | `DW_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS` | `100` | ポーリングを保持している間の、起床通知の確認間隔（ミリ秒）。 | `WORKFLOW_SERVER_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS` |
 | `DW_POLLING_CACHE_PATH` | `storage/framework/cache/server-polling/<APP_ENV>` | ファイルベースのポーリングキャッシュで、Worker ポーリングの調整状態を保存するディレクトリ。 | `WORKFLOW_SERVER_POLLING_CACHE_PATH` |
