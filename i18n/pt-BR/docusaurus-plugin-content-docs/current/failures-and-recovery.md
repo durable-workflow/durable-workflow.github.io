@@ -152,6 +152,8 @@ ser classificados continuam visíveis como diagnósticos sem classificação.
 
 ## Novas tentativas de atividades {#activity-retries}
 
+Para um orçamento compartilhado de tentativas entre workflows e filas, combine os limites de repetição com [admission do Server e breaker da aplicação](./polyglot/task-queue-admission.md#retry-load-and-downstream-budgets). Primeiras tentativas e repetições contam; a execução local/integrada tem outros limites.
+
 O padrão de `Workflow\V2\Activity` é `$tries = 1`. Assim, uma falha é
 entregue ao workflow imediatamente, a menos que a atividade configure mais
 tentativas.

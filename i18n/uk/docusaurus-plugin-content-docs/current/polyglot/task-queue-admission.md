@@ -63,6 +63,59 @@ worker. `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` обмежує кількість
 кешу не надає блокування для зміни черги query, повертається
 `query_task_queue_unavailable` з HTTP `503`.
 
+## Навантаження повторів і бюджети downstream {#retry-load-and-downstream-budgets}
+
+**Перші спроби й повтори враховуються однаково** в dispatch-лімітах queue, namespace і budget group. Ліміт охоплює успішно отримані спроби activity-task різних workflow, а не лише повтори. Заповнений ліміт залишає роботу чекати, сам по собі не провалюючи activity. Годинники schedule-to-start, schedule-to-close та строки workflow продовжують іти, тому очікування може вичерпати таймаут.
+
+Dispatch-ліміт вимірює спроби за хвилину, а не частку успіхів чи здоров’я downstream. Він не відкриває circuit breaker. Одна спроба може зробити кілька HTTP-викликів через внутрішні повтори activity чи клієнта; обмежуйте їх окремо. Навіть швидко відхилена спроба витрачає claim без звернення до downstream.
+
+Наприклад, у namespace `production` звичайні activity-черги `payments` і `refunds` ділять бюджет `payment-api` на 20 claim за хвилину. Задайте однаковий груповий ліміт усім чергам-учасникам; сторонні черги не входять до групи. Це межа хвилинного bucket, а не рівномірна швидкість чи зарезервована частка:
+
+```bash
+DW_TASK_QUEUE_ADMISSION_OVERRIDES='{
+  "production:payments": {
+    "activity_tasks": {
+      "dispatch_budget_group": "payment-api",
+      "max_dispatches_per_minute_per_budget_group": 20
+    }
+  },
+  "production:refunds": {
+    "activity_tasks": {
+      "dispatch_budget_group": "payment-api",
+      "max_dispatches_per_minute_per_budget_group": 20
+    }
+  }
+}'
+```
+
+Поєднуйте Server-ліміт з обмеженими спробами й backoff activity. Приклад Python SDK 2.9.0 передбачає, що застосунок надає асинхронний спільний breaker і платіжний клієнт через `myapp.payments`; обмежте I/O й використовуйте стабільну ідемпотентність у клієнті. Зареєструйте `charge` на worker черги `payments` у `production`, а `PaymentWorkflow` — на його workflow worker:
+
+```python
+from durable_workflow import NonRetryableError, activity, workflow
+from myapp.payments import breaker, payment_api
+
+@activity.defn(name="payments.charge")
+async def charge(order):
+    if await breaker.is_open("payment-api"):
+        raise NonRetryableError("payment-api breaker is open")
+    return await payment_api.charge(order, idempotency_key=order["id"])
+
+@workflow.defn(name="payments.order")
+class PaymentWorkflow:
+    def run(self, ctx, order):
+        return (yield ctx.schedule_activity(
+            "payments.charge", [order], queue="payments",
+            retry_policy={"max_attempts": 3, "backoff_seconds": [2, 5]},
+            start_to_close_timeout=10,
+            schedule_to_start_timeout=30,
+            schedule_to_close_timeout=90,
+        ))
+```
+
+Відкритий breaker застосунку піднімає `NonRetryableError` до платежу; звичайні повторювані помилки можуть використати максимум три спроби із заданим backoff. Початкові таймаути можуть сплинути раніше. Workflow може перехопити остаточну помилку activity за бізнес-потреби; неперехоплена остаточна помилка може закрити workflow. Загальний строк workflow задавайте окремо.
+
+Залишайте захищені downstream-виклики у **звичайних queued activity**. Inline local activity не створюють звичайного activity-task, тому queue/namespace/budget-group dispatch-ліміти activity їх не вимірюють. Prepared local claim перевіряє повноваження виконання, а не цей бюджет. Вбудований Laravel не має admission окремого Server; використовуйте власні засоби розгортання. Див. [local activity](../features/local-activities.md).
+
 ## Налаштування Server {#server-configuration}
 
 Задайте глобальні ліміти для однакової стелі кожної черги:

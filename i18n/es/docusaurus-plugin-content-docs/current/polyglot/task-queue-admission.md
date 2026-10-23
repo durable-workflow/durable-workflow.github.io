@@ -39,6 +39,59 @@ Los límites de leases activas y tasa de despacho del servidor son opcionales. C
 
 Las tareas de consulta son diferentes: el plano de control encola una tarea de consulta efímera y espera la respuesta de un worker. `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` limita las tareas de consulta pendientes por espacio de nombres y cola. Si la cola está llena, las nuevas consultas devuelven `query_task_queue_full` con HTTP `429`. Si el almacenamiento de caché no proporciona el bloqueo necesario para modificar la cola de consultas, devuelven `query_task_queue_unavailable` con HTTP `503`.
 
+## Carga de reintentos y presupuestos del servicio dependiente {#retry-load-and-downstream-budgets}
+
+**Tanto los primeros intentos como los reintentos cuentan** en los límites de despacho por cola, namespace y grupo. El límite cubre intentos de tareas de actividad obtenidos correctamente entre workflows, no solo reintentos. Al llenarse, el trabajo espera; eso no hace fallar por sí solo la actividad. Los relojes schedule-to-start, schedule-to-close y los plazos del workflow siguen corriendo, por lo que la espera puede agotar un timeout.
+
+El límite mide intentos por minuto, no proporción de éxitos ni salud del servicio. No abre un circuit breaker. Un intento puede realizar varias llamadas HTTP por reintentos internos de la actividad o cliente; limítelas aparte. Incluso un rechazo rápido consume un claim sin contactar al servicio.
+
+Por ejemplo, en el namespace `production`, las colas de actividad normales `payments` y `refunds` comparten un presupuesto `payment-api` de 20 claims por minuto. Configure el mismo límite de grupo en todas las colas participantes; las demás no se incluyen. Es un techo por bloque de minuto, no una tasa uniforme ni una cuota reservada:
+
+```bash
+DW_TASK_QUEUE_ADMISSION_OVERRIDES='{
+  "production:payments": {
+    "activity_tasks": {
+      "dispatch_budget_group": "payment-api",
+      "max_dispatches_per_minute_per_budget_group": 20
+    }
+  },
+  "production:refunds": {
+    "activity_tasks": {
+      "dispatch_budget_group": "payment-api",
+      "max_dispatches_per_minute_per_budget_group": 20
+    }
+  }
+}'
+```
+
+Combine el límite del Server con intentos y backoff acotados. Este ejemplo de Python SDK 2.9.0 supone que su aplicación proporciona un breaker compartido asíncrono y cliente de pagos mediante `myapp.payments`; configure I/O acotado e idempotencia estable en ese cliente. Registre `charge` en el worker de `payments` de `production`, y `PaymentWorkflow` en su worker de workflows:
+
+```python
+from durable_workflow import NonRetryableError, activity, workflow
+from myapp.payments import breaker, payment_api
+
+@activity.defn(name="payments.charge")
+async def charge(order):
+    if await breaker.is_open("payment-api"):
+        raise NonRetryableError("payment-api breaker is open")
+    return await payment_api.charge(order, idempotency_key=order["id"])
+
+@workflow.defn(name="payments.order")
+class PaymentWorkflow:
+    def run(self, ctx, order):
+        return (yield ctx.schedule_activity(
+            "payments.charge", [order], queue="payments",
+            retry_policy={"max_attempts": 3, "backoff_seconds": [2, 5]},
+            start_to_close_timeout=10,
+            schedule_to_start_timeout=30,
+            schedule_to_close_timeout=90,
+        ))
+```
+
+Un breaker de aplicación abierto lanza `NonRetryableError` antes del pago; fallos de pago reintentables pueden usar como máximo tres intentos con el backoff definido. Los timeouts originales pueden vencer antes. El workflow puede capturar el fallo final según la lógica de negocio; un fallo final sin capturar puede cerrar el workflow. Elija aparte su plazo global.
+
+Mantenga las llamadas protegidas en **actividades normales encoladas**. Las actividades locales inline no crean una tarea de actividad normal y los límites de despacho por cola/namespace/grupo no las miden. Un claim local preparado valida autoridad de ejecución, no este presupuesto. Laravel integrado no tiene admission del Server independiente; use sus controles de despliegue. Véanse [actividades locales](../features/local-activities.md).
+
 ## Configuración del servidor {#server-configuration}
 
 Configura límites globales cuando todas las colas deban tener el mismo techo:

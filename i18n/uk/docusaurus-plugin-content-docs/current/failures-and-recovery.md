@@ -152,6 +152,8 @@ Waterline показує `failure_category` в окремому стовпці *
 
 ## Повторні спроби activity {#activity-retries}
 
+Для спільного бюджету спроб різних workflow і черг поєднуйте авторські retry-ліміти з [Server admission і breaker застосунку](./polyglot/task-queue-admission.md#retry-load-and-downstream-budgets). Перші спроби та повтори враховуються; local/embedded виконання має інші межі.
+
 `Workflow\V2\Activity` має типове `$tries = 1`, тому помилка activity
 одразу повертається workflow, якщо activity явно не вмикає повторні спроби.
 

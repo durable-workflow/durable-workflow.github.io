@@ -36,6 +36,59 @@ Server 側の有効リース数とディスパッチレートの上限は任意�
 
 クエリタスクは異なります。コントロールプレーンは一時的なクエリタスクをキューに入れ、Worker の応答を待ちます。`DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` は、各名前空間とタスクキューに存在できる保留クエリタスク数を制限します。キューが満杯になると、新しいクエリは HTTP `429` と `query_task_queue_full` を返します。クエリタスクキューを変更するためのロックをキャッシュストアが提供できない場合、クエリは HTTP `503` と `query_task_queue_unavailable` を返します。
 
+## 再試行負荷と下流サービスの予算 {#retry-load-and-downstream-budgets}
+
+**初回試行も再試行も**キュー、namespace、予算グループのディスパッチ上限に数えます。上限は複数のワークフローで正常に取得した activity task の試行を対象とし、再試行だけではありません。上限に達するとタスクは待ち、それ自体で activity は失敗しません。schedule-to-start、schedule-to-close、ワークフロー期限は進み続けるため、待機で設定済みタイムアウトを使い切る場合があります。
+
+上限は毎分の試行数を測り、成功率や下流の健全性は測らず、サーキットブレーカーも開きません。activity や HTTP クライアントの内部再試行により、1回の取得で複数の HTTP 呼び出しが生じるため別に制限します。下流に接続せず即時拒否した試行も取得枠を消費します。
+
+例えば `production` namespace の通常の activity キュー `payments` と `refunds` が、毎分20回の取得を許す `payment-api` 予算を共有します。参加するすべてのキューに同じ上限を設定し、無関係のキューは含めません。これは分バケットの上限であり、平滑な速度や各キューの予約枠ではありません。
+
+```bash
+DW_TASK_QUEUE_ADMISSION_OVERRIDES='{
+  "production:payments": {
+    "activity_tasks": {
+      "dispatch_budget_group": "payment-api",
+      "max_dispatches_per_minute_per_budget_group": 20
+    }
+  },
+  "production:refunds": {
+    "activity_tasks": {
+      "dispatch_budget_group": "payment-api",
+      "max_dispatches_per_minute_per_budget_group": 20
+    }
+  }
+}'
+```
+
+Server の上限を有限の試行回数と backoff に組み合わせます。この Python SDK 2.9.0 の例では、アプリが `myapp.payments` から非同期の共有ブレーカーと決済クライアントを提供します。そのクライアントでは I/O を制限し、安定した冪等キーを使ってください。`charge` を `production` の `payments` worker に、`PaymentWorkflow` を対応する workflow worker に登録します。
+
+```python
+from durable_workflow import NonRetryableError, activity, workflow
+from myapp.payments import breaker, payment_api
+
+@activity.defn(name="payments.charge")
+async def charge(order):
+    if await breaker.is_open("payment-api"):
+        raise NonRetryableError("payment-api breaker is open")
+    return await payment_api.charge(order, idempotency_key=order["id"])
+
+@workflow.defn(name="payments.order")
+class PaymentWorkflow:
+    def run(self, ctx, order):
+        return (yield ctx.schedule_activity(
+            "payments.charge", [order], queue="payments",
+            retry_policy={"max_attempts": 3, "backoff_seconds": [2, 5]},
+            start_to_close_timeout=10,
+            schedule_to_start_timeout=30,
+            schedule_to_close_timeout=90,
+        ))
+```
+
+アプリのブレーカーが開いていれば決済前に `NonRetryableError` を送出します。通常の再試行可能な決済エラーは、設定した backoff で最大3回試行します。元のタイムアウトが3回より先に切れる場合もあります。業務上必要なら workflow が最終 activity エラーを捕捉し、未捕捉の最終エラーは workflow を閉じる場合があります。全体の workflow 期限は別に選びます。
+
+保護対象の下流呼び出しは**通常のキューに入る activity** に置いてください。インラインのローカル activity は通常の activity task を作らず、キュー/namespace/グループの activity ディスパッチ上限は計量しません。prepared local claim は実行権限を検証し、この予算は検証しません。組み込み Laravel に独立 Server の admission はなく、独自のデプロイ制御を使います。[ローカル activity](../features/local-activities.md)を参照してください。
+
 ## Server の設定 {#server-configuration}
 
 すべてのキューに同じ上限を適用する場合は、全体の上限を設定します。

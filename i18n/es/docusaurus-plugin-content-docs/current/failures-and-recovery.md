@@ -150,6 +150,8 @@ diagnósticos sin clasificar.
 
 ## Reintentos de actividades {#activity-retries}
 
+Para un presupuesto compartido de intentos entre workflows y colas, combine los límites de reintento con [admission del Server y un breaker de aplicación](./polyglot/task-queue-admission.md#retry-load-and-downstream-budgets). Cuentan los primeros intentos y reintentos; la ejecución local/integrada tiene otros límites.
+
 `Workflow\V2\Activity` usa `$tries = 1` de forma predeterminada. El fallo se
 entrega inmediatamente al workflow, salvo que la actividad configure reintentos.
 

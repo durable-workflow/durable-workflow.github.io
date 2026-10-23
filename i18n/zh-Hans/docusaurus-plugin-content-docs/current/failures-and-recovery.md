@@ -132,6 +132,8 @@ Waterline 在异常表的专用**类别（Category）**列和时间线失败详�
 
 ## 活动重试 {#activity-retries}
 
+要在多个工作流和队列之间共享尝试预算，请将重试限制与 [Server admission 和应用熔断器](./polyglot/task-queue-admission.md#retry-load-and-downstream-budgets)结合。首次尝试和重试都计入上限；本地及嵌入式执行具有不同边界。
+
 `Workflow\V2\Activity` 默认 `$tries = 1`。除非活动主动配置更多尝试，否则失败会立即传回工作流。
 
 ```php

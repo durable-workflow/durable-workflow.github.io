@@ -39,6 +39,59 @@ Os limites de leases ativos e taxa de despacho no servidor são opcionais. Quand
 
 Tarefas de consulta são diferentes: o plano de controle enfileira uma tarefa de consulta efêmera e aguarda a resposta de um worker. `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` limita quantas tarefas de consulta pendentes podem existir para cada namespace e fila. Quando a fila está cheia, novas consultas retornam `query_task_queue_full` com HTTP `429`. Se o armazenamento de cache não puder fornecer o lock necessário para alterar a fila de consultas, elas retornam `query_task_queue_unavailable` com HTTP `503`.
 
+## Carga de tentativas e orçamentos do serviço dependente {#retry-load-and-downstream-budgets}
+
+**Primeiras tentativas e repetições contam igualmente** nos limites de despacho por fila, namespace e grupo. O limite abrange tentativas de tarefas de atividade obtidas com sucesso entre workflows, não apenas repetições. Ao atingir o limite, o trabalho espera; isso não falha a atividade por si só. Os relógios schedule-to-start, schedule-to-close e prazos do workflow continuam correndo, podendo esgotar um timeout.
+
+O limite mede tentativas por minuto, não taxa de sucesso ou saúde do serviço. Não abre um circuit breaker. Uma tentativa pode fazer várias chamadas HTTP por repetições internas da atividade ou cliente; limite-as separadamente. Uma recusa rápida também consome um claim mesmo sem acessar o serviço.
+
+Por exemplo, no namespace `production`, filas de atividade comuns `payments` e `refunds` compartilham o orçamento `payment-api` de 20 claims por minuto. Configure o mesmo limite em todas as filas participantes; outras filas não entram no grupo. É um teto por bloco de minuto, não uma taxa uniforme ou parcela reservada:
+
+```bash
+DW_TASK_QUEUE_ADMISSION_OVERRIDES='{
+  "production:payments": {
+    "activity_tasks": {
+      "dispatch_budget_group": "payment-api",
+      "max_dispatches_per_minute_per_budget_group": 20
+    }
+  },
+  "production:refunds": {
+    "activity_tasks": {
+      "dispatch_budget_group": "payment-api",
+      "max_dispatches_per_minute_per_budget_group": 20
+    }
+  }
+}'
+```
+
+Combine o limite do Server com tentativas e backoff limitados. Este exemplo do Python SDK 2.9.0 pressupõe que o aplicativo fornece breaker compartilhado assíncrono e cliente de pagamentos por `myapp.payments`; configure I/O limitado e idempotência estável nesse cliente. Registre `charge` no worker de `payments` em `production`, e `PaymentWorkflow` em seu worker de workflows:
+
+```python
+from durable_workflow import NonRetryableError, activity, workflow
+from myapp.payments import breaker, payment_api
+
+@activity.defn(name="payments.charge")
+async def charge(order):
+    if await breaker.is_open("payment-api"):
+        raise NonRetryableError("payment-api breaker is open")
+    return await payment_api.charge(order, idempotency_key=order["id"])
+
+@workflow.defn(name="payments.order")
+class PaymentWorkflow:
+    def run(self, ctx, order):
+        return (yield ctx.schedule_activity(
+            "payments.charge", [order], queue="payments",
+            retry_policy={"max_attempts": 3, "backoff_seconds": [2, 5]},
+            start_to_close_timeout=10,
+            schedule_to_start_timeout=30,
+            schedule_to_close_timeout=90,
+        ))
+```
+
+Um breaker aberto gera `NonRetryableError` antes do pagamento; falhas repetíveis podem usar no máximo três tentativas com o backoff definido. Os timeouts originais podem vencer antes. O workflow pode tratar a falha final conforme a regra de negócio; uma falha final não tratada pode encerrá-lo. Escolha o prazo global separadamente.
+
+Mantenha chamadas protegidas em **atividades comuns enfileiradas**. Atividades locais inline não criam tarefa de atividade comum e os limites de despacho por fila/namespace/grupo não as medem. Um claim local preparado valida autoridade, não este orçamento. Laravel integrado não tem admission do Server independente; use seus controles de implantação. Veja [atividades locais](../features/local-activities.md).
+
 ## Configuração do servidor {#server-configuration}
 
 Defina limites globais quando todas as filas devam compartilhar o mesmo teto:
