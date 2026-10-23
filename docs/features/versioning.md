@@ -133,6 +133,14 @@ Embedded Workflow 2.11.2 also accepts a changed activity signature that replaces
 
 Review [recorded workflow start arguments](#evolving-recorded-entry-arguments) and the [signal payload evolution recipe](signals.md#evolve-a-signal-payload) alongside these activity contracts.
 
+### Released embedded activity guard {#embedded-activity-argument-safeguard}
+
+Workflow **2.11.3 is the fixed minimum** for the embedded PHP guard against activity binding that displaces recorded arguments. In queued and local activity paths, replacing recorded scalar `7` with an injected DTO whose default is `0` is refused before the activity body runs, with `ActivityEntryArgumentsMismatchException`. The [published, installed cold-process receipt](https://github.com/durable-workflow/workflow/issues/910#issuecomment-6362080363) verifies refusal and recovery with the original input. The older 2.11.2 behavior above remains affected. This guard does not add fields to older activity results; compatible readers still need their fallback.
+
+The refusal follows the activity's **recorded attempt, backoff and timeout policy**. With one allowed attempt, it exhausts the activity and an unhandled failure fails the workflow. If authored attempts remain and compatible code returns before the permitted retry and deadlines, the same original run/activity can complete with its recorded input. The receipt verifies two authored attempts with zero backoff and output `7`; it does not promise an indefinite hold for a future deployment or grant extra attempts.
+
+Restoring code or installing the package does not reopen terminal originals, reset deadlines or restore consumed attempts. Inspect the actual failure and preserve recorded input/history. Check the Workflow package installed in the embedded application: this library release does not update existing Server images or establish service-worker/native acceptance.
+
 ## Using `getVersion`
 
 `getVersion()` is a replay-safe straight-line helper. Each change point records a durable version marker for the run on first execution, and every later replay reuses that committed value instead of recalculating the branch from today's code. Old runs that predate a newly introduced branch point conservatively receive `DEFAULT_VERSION`.
