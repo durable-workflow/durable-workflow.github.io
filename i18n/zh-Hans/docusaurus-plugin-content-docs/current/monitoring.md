@@ -99,6 +99,42 @@ trace、run、activity、attempt 和 request ID 保持独立。baggage 使用默
 
 嵌入模式使用宿主应用的数据库连接、路由中间件、身份验证 gate 和工作流软件包。应将 Laravel 应用、队列 Worker、调度器、迁移和 Waterline 资源继续作为同一个部署边界运维。[Waterline 操作 API 参考](./waterline-operator-api.md#installation)包含当前 Composer 命令和资源发布步骤。
 
+### 嵌入式操作权限 {#embedded-waterline-operator-permissions}
+
+这些可选控制要求 **Waterline 2.13.0**。保留宿主的 `viewWaterline` 查看 gate：操作 gate 不授予查看权限。默认情况下，能查看嵌入式 Waterline 的用户也能执行操作；新设置需明确启用，未配置时保留现有行为。 请检查 `composer.lock`：此功能的最低版本不改变独立选择的安装组合，其命令仍可能固定不含这些控制的旧版包。
+
+要阻止所有查看者进行操作写入，请在 `config/waterline.php` 中设置 `'read_only' => true`，或在重建配置缓存之前通过宿主配置映射 `WATERLINE_READ_ONLY=true`。查看、历史导出、查询和个人保存的视图/偏好仍使用原有授权。这不会停止宿主的工作流 worker，也不会改变直接使用 SDK/Server 的权限。
+
+要按宿主用户区分权限，请在 service provider 中定义 Laravel gate，并映射所有需要限制的操作组。以下能力名称属于宿主应用自己的策略：
+
+```php
+use Illuminate\Support\Facades\Gate;
+
+Gate::define('waterline-messages', fn ($user) => $user->can('support-workflows'));
+Gate::define('waterline-operations', fn ($user) => $user->can('operate-workflows'));
+```
+
+将此配置合并到 `config/waterline.php`：
+
+```php
+'authorization' => [
+    'gates' => [
+        'messages' => 'waterline-messages',
+        'repair' => 'waterline-operations',
+        'cancel' => 'waterline-operations',
+        'terminate' => 'waterline-operations',
+        'archive' => 'waterline-operations',
+        'schedules' => 'waterline-operations',
+    ],
+],
+```
+
+`messages` 包含 signal 和 update；`schedules` 包含暂停、恢复、触发、回填和删除。每个 gate 接收当前宿主用户，并可选择以 HTTP request 作为第二个参数。省略或 null 映射保留默认操作权限。已配置的 gate 必须存在并授权用户；无效设置会拒绝操作。Laravel 通常的访客规则和 `Gate::before` 仍适用，但全局只读优先于管理员覆盖。任何 gate 都不能绕过 namespace 或 runtime 的操作限制。
+
+部署宿主解析后的配置，并用 `php artisan config:cache` 重建缓存；仅修改环境变量不会更新已缓存或字面量配置。安装经过验证的包，并按普通[安装步骤](./waterline-operator-api.md#installation)发布匹配的 assets。被拒绝的写入返回 HTTP 403，包含 `reason=waterline_action_forbidden` 或 `reason=waterline_read_only` 以及 `capability`。界面隐藏不可用的运行操作，并解释被禁用的操作/调度控件；后端也保护旧版和精确运行的变更 URL。
+
+这些是**嵌入式宿主用户权限控制**。服务模式继续使用 `WATERLINE_ACCESS_MODE=read_only` 和上游 token 权限，而不是宿主 Laravel gate。此功能不改变 SDK/Core 的最低依赖版本，也不配置 Cloud Managed Waterline。
+
 ### Waterline 服务 {#waterline-service}
 
 已发布镜像内含自己的 PHP 和 Laravel 运行时。容器宿主无需安装 PHP、Composer 或工作流软件包，Waterline 也从不连接独立 Server 的数据库。
