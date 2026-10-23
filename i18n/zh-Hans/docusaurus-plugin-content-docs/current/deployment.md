@@ -187,6 +187,8 @@ Server README 的[官方镜像 + Compose](https://github.com/durable-workflow/se
 
 PHP SDK **3.2.0** 的普通控制平面 `Client` 调用不提供默认 HTTP 总期限，见[已验证的 PHP #203 超时缺口](https://github.com/durable-workflow/sdk-php/issues/203)。请为这些调用配置有界 HTTP 客户端，并保留调用方原始截止时间。Worker 轮询超时并不限制所有 SDK 请求。
 
+PHP SDK **3.4.0 或更新版本**为 SDK 自有传输的普通控制 HTTP 请求增加**默认 60 秒总期限**；可用至少 `0.001` 秒的有限数值 `requestTimeoutSeconds` 配置。这些 SDK 自有请求的超时携带 `reason=request_timeout` 和 `status=0`。SDK 只尝试一次：超时的变更可能已经被接受，重发前应检查原始身份及结果。注入的客户端/传输保留自身超时策略，不能与此选项同时使用。每请求的期限不替代 worker 长轮询、payload 传输或工作流/调用方期限。请检查 `composer.lock`：此最低版本不改变所选安装组合。参见 [HTTP 客户端配置](https://php.durable-workflow.com/getting-started/client-setup/) 和[普通安装 3.4.0 验收](https://github.com/durable-workflow/sdk-php/issues/203#issuecomment-6363909756)。
+
 ### 已验证的短轮询示例 {#verified-poll-timeout-example}
 
 隔离验证使用已发布的 Python SDK **2.9.0**、PHP Server **2.11.0** 和 Nginx **1.30.5**，任务队列为空。两个验证单元均保持 **3 秒** SDK 轮询、**8 秒** HTTPX connect/read/write/pool 超时，以及 **10 秒**调用方外层期限。仅改变 Nginx 的 upstream 读取超时：

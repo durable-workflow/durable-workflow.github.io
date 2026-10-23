@@ -308,6 +308,8 @@ Check the installed SDK's arithmetic rather than copying a timeout from another 
 
 PHP SDK **3.2.0** ordinary control-plane `Client` calls do not supply a default total HTTP deadline; see the [verified timeout gap in PHP #203](https://github.com/durable-workflow/sdk-php/issues/203). Configure a bounded HTTP client for those calls and preserve the original caller deadline. A Worker poll timeout is not a general bound on every SDK request.
 
+PHP SDK **3.4.0 or newer** adds a **60-second default total deadline** for SDK-owned ordinary control HTTP requests; configure a finite `requestTimeoutSeconds` value of at least `0.001` seconds. These SDK-owned timeouts carry `reason=request_timeout` and `status=0`. The SDK makes one attempt: a timed-out mutation may already have been accepted, so inspect its original identity/outcome before resubmitting. Injected clients/transports keep their own timeout policy and cannot be combined with this option. This per-request bound does not replace worker long-poll, payload-transfer or workflow/caller deadlines. Check `composer.lock`; this feature minimum does not update the selected installation tuple. See [HTTP client setup](https://php.durable-workflow.com/getting-started/client-setup/) and the [normal installed 3.4.0 receipt](https://github.com/durable-workflow/sdk-php/issues/203#issuecomment-6363909756).
+
 ### Verified short-poll example {#verified-poll-timeout-example}
 
 An isolated test used published Python SDK **2.9.0**, PHP Server **2.11.0** and Nginx **1.30.5**, with an empty task queue. Both cells kept the SDK poll duration at **3 seconds**, HTTPX connect/read/write/pool timeouts at **8 seconds**, and an outer caller bound of **10 seconds**. Only Nginx's upstream read timeout changed:
