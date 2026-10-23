@@ -32,8 +32,8 @@ Cloud Dev está disponible. Los cuatro planes de alta disponibilidad están en c
 | Plan | Capacidad del runtime | Almacenamiento duradero incluido | Disponibilidad | Precio (USD) |
 | --- | --- | --- | --- | --- |
 | Cloud Dev | 1 vCPU, 1 GB RAM | 5 GB | Un host, sin SLA | $0.075/hora, mínimo de $2 por mes activo, máximo de $50/mes |
-| Cloud Standard | 1 vCPU, 2 GB RAM | 25 GB | HA prevista en una región, SLA del 99.99% | $0.45/hora, mínimo de $10 por mes activo, máximo de $300/mes |
-| Cloud Multi-Region | 1 vCPU, 2 GB RAM | 25 GB | HA multirregión prevista, SLA del 99.99% | $0.60/hora, mínimo de $15 por mes activo, máximo de $400/mes |
+| Cloud Standard | 2 vCPU, 4 GB RAM | 25 GB | HA prevista en una región, SLA del 99.99% | $0.45/hora, mínimo de $10 por mes activo, máximo de $300/mes |
+| Cloud Multi-Region | 2 vCPU, 4 GB RAM | 25 GB | HA multirregión prevista, SLA del 99.99% | $0.60/hora, mínimo de $15 por mes activo, máximo de $400/mes |
 | Cloud Business | 4 vCPU, 8 GB RAM | 100 GB | HA prevista en una región, SLA del 99.99% | $2.25/hora, mínimo de $50 por mes activo, máximo de $1,500/mes |
 | Cloud Business Multi-Region | 4 vCPU, 8 GB RAM | 100 GB | HA multirregión prevista, SLA del 99.99% | $3.00/hora, mínimo de $75 por mes activo, máximo de $2,000/mes |
 
