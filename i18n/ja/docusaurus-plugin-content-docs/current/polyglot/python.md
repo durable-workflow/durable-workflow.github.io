@@ -1033,6 +1033,84 @@ worker = Worker(
 
 1フックだけが必要な場合は `PassthroughWorkerInterceptor` を基底クラスにします。型チェッカーですべてのフックの存在を強制したい場合は `WorkerInterceptor` を直接実装します。
 
+### Worker セッション {#worker-sessions}
+
+複数のリモートアクティビティが順番に同じ Worker のローカルリソースを使う場合は、`WorkerSessionOptions` を使用します。この例は Python SDK **2.9.0** と Server **2.11.0** で検証済みです。[ポータブルなアフィニティのバージョン要件](./portable-worker-affinity.md)も参照してください。ワークフローの各実行で一意の `job_id` を使い、新しい実行で終端状態のセッション ID を再利用しないようにします。
+
+以下のキャッシュは破棄可能です。各アクティビティは永続化された業務入力から再構築できるため、交代した保持者が前のプロセスのメモリに依存することはありません。
+
+```python
+from durable_workflow import ActivityFailed, WorkerSessionOptions, activity, workflow
+
+# Disposable process-local state. Rebuild it from durable business input.
+documents = {}
+
+def ensure_document(job_id):
+    rebuilt = job_id not in documents
+    if rebuilt:
+        documents[job_id] = {"text": "document:" + job_id}
+    return documents[job_id], rebuilt
+
+@activity.defn(name="prepare_document")
+async def prepare_document(job_id):
+    document, rebuilt = ensure_document(job_id)
+    return {"holder": activity.context().info.worker_id, "rebuilt": rebuilt}
+
+@activity.defn(name="inspect_document")
+async def inspect_document(job_id):
+    document, rebuilt = ensure_document(job_id)
+    return {"holder": activity.context().info.worker_id,
+            "rebuilt": rebuilt, "text": document["text"]}
+
+@workflow.defn(name="inspect_document_workflow")
+class InspectDocumentWorkflow:
+    def run(self, ctx, job_id):
+        session = WorkerSessionOptions(
+            session_id="documents:" + job_id,
+            requirements=("fs:documents",),
+            lease_seconds=5,
+            ttl_seconds=60,
+            max_concurrent_activities=1,
+            allow_reacquire_after_failure=True,
+        )
+        options = dict(worker_session=session,
+                       start_to_close_timeout=5,
+                       schedule_to_start_timeout=12,
+                       schedule_to_close_timeout=20,
+                       retry_policy={"max_attempts": 1})
+        try:
+            prepared = yield ctx.schedule_activity("prepare_document", [job_id], **options)
+            inspected = yield ctx.schedule_activity("inspect_document", [job_id], **options)
+        except ActivityFailed as error:
+            if error.activity_type not in {"prepare_document", "inspect_document"}:
+                raise
+            return {"status": "resource_unavailable", "job_id": job_id}
+        return {"status": "inspected", "prepared": prepared, "inspected": inspected}
+```
+
+両方のアクティビティを登録し、Worker で必要な capability を宣言します。
+
+```python
+from durable_workflow import Worker
+
+worker = Worker(
+    client,
+    task_queue="documents",
+    workflows=[InspectDocumentWorkflow],
+    activities=[prepare_document, inspect_document],
+    capabilities=["fs:documents"],
+)
+await worker.run()
+```
+
+`documents` タスクキューで、入力を `[job_id]` として `inspect_document_workflow` を開始します。最初のアクティビティが必要に応じてセッションを取得し、リースが有効な間は次のアクティビティも同じ保持者を使います。`max_concurrent_activities=1` は、そのセッション内で同時実行するアクティビティを制限します。キューのルーティングと capability の検査も適用されます。この短いリースとタイムアウトは有限の動作を示すためのものです。実際の作業に合わせて設定し、期限より十分前にハートビートを送信してください。
+
+保持者の喪失やリース切れの後は、`allow_reacquire_after_failure=True` により、条件を満たす別の Worker がセッションを再取得できます。その Worker はローカルリソースを再構築する必要があります。確定済みのアクティビティ結果はリプレイされますが、未確定の副作用は繰り返される可能性があります。永続的なリソース識別子と冪等な外部操作を使用してください。セッションはメモリ、ファイル、開いたハンドルを移行しません。
+
+明示的なクローズと絶対 TTL の満了は、そのセッション ID に対する終端状態です。後続のアクティビティは再度開けず、設定したタイムアウトが適用されるまで実行が許可されない場合があります。[公開済みのデプロイ手順](https://github.com/durable-workflow/server/blob/2.11.0/docker-compose.published.yml)にある Server のスケジューラー/メンテナンスロールを実行してください。API プロセスだけではタイムアウトは適用されません。ワークフローは試行を使い切ったアクティビティの失敗を `ActivityFailed` で処理し、`resource_unavailable` を返します。その後、アプリケーションは新しいセッションを選び、業務入力からリソースを再構築できます。この例は、セッション終了例外の即時送出や終端セッションの自動再開を保証しません。
+
+保持者のライフサイクルを明示的に操作するには、`worker.worker_session(options)` とその `create()`、`renew()`、`close(reason)` を使用します。Worker の正常なシャットダウンでは、保持中のセッションを閉じます。[共通のライフサイクル契約](../features/worker-sessions.md#lifecycle)を参照してください。
+
 ## ログ {#logging}
 
 SDK は構造化したロガー名で Python 標準の `logging` モジュールを使います。
