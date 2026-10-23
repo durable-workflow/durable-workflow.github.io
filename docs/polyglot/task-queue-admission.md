@@ -39,6 +39,59 @@ Server-side active lease and dispatch-rate caps are optional. When configured, t
 
 Query tasks are different: the control plane enqueues an ephemeral query task and waits for a worker response. `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` caps how many pending query tasks can exist for each namespace and task queue. When the queue is full, new queries return `query_task_queue_full` with HTTP `429`. If the cache store cannot provide the lock needed to mutate the query-task queue, queries return `query_task_queue_unavailable` with HTTP `503`.
 
+## Retry load and downstream budgets {#retry-load-and-downstream-budgets}
+
+**First attempts and retries both count** against queue, namespace and budget-group dispatch caps. The cap is a budget for successfully claimed activity-task attempts across workflows, not just retries. A full cap leaves eligible work waiting; it does not itself fail the activity. Schedule-to-start and schedule-to-close clocks keep running, as do workflow deadlines, so waiting can exhaust an authored timeout.
+
+A dispatch cap measures attempts per minute, not success ratio or downstream health. It does not open a circuit breaker. One claim may make several HTTP calls if your activity or HTTP client retries internally; bound those calls separately. A fast-failed attempt also consumes a claim even when it never contacts the downstream.
+
+For example, in namespace `production`, let the ordinary `payments` and `refunds` activity queues share one `payment-api` budget of 20 claims per minute. Set the same group cap on every participating queue; unrelated queues do not join the group. This is a minute-bucket ceiling, not a smooth rate or a reserved share for either queue:
+
+```bash
+DW_TASK_QUEUE_ADMISSION_OVERRIDES='{
+  "production:payments": {
+    "activity_tasks": {
+      "dispatch_budget_group": "payment-api",
+      "max_dispatches_per_minute_per_budget_group": 20
+    }
+  },
+  "production:refunds": {
+    "activity_tasks": {
+      "dispatch_budget_group": "payment-api",
+      "max_dispatches_per_minute_per_budget_group": 20
+    }
+  }
+}'
+```
+
+Combine the Server cap with bounded activity attempts and backoff. This Python SDK 2.9.0 example assumes your application supplies an asynchronous shared breaker and payment client through `myapp.payments`; configure bounded I/O and stable downstream idempotency in that client. Register `charge` on the `payments` worker in `production`, and register `PaymentWorkflow` on its workflow worker:
+
+```python
+from durable_workflow import NonRetryableError, activity, workflow
+from myapp.payments import breaker, payment_api
+
+@activity.defn(name="payments.charge")
+async def charge(order):
+    if await breaker.is_open("payment-api"):
+        raise NonRetryableError("payment-api breaker is open")
+    return await payment_api.charge(order, idempotency_key=order["id"])
+
+@workflow.defn(name="payments.order")
+class PaymentWorkflow:
+    def run(self, ctx, order):
+        return (yield ctx.schedule_activity(
+            "payments.charge", [order], queue="payments",
+            retry_policy={"max_attempts": 3, "backoff_seconds": [2, 5]},
+            start_to_close_timeout=10,
+            schedule_to_start_timeout=30,
+            schedule_to_close_timeout=90,
+        ))
+```
+
+An open application breaker raises `NonRetryableError` before the payment call; ordinary retryable payment failures may use at most three attempts with the authored backoff. The original timeout budgets can expire before all three attempts occur. Workflow code can catch the final activity failure when business logic requires it; an uncaught final failure can close the workflow. Choose an overall workflow deadline separately.
+
+Keep protected downstream calls in **ordinary queued activities**. Inline local activities create no ordinary activity task, so queue, namespace and budget-group activity dispatch caps do not meter them. A prepared local-activity claim validates execution authority, not this dispatch budget. Embedded Laravel mode has no standalone Server admission; use its own deployment controls. See [local activities](../features/local-activities.md).
+
 ## Server Configuration
 
 Set global caps when every queue should share the same ceiling:

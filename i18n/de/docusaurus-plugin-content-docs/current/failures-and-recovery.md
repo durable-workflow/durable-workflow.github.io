@@ -132,6 +132,8 @@ Waterline zeigt `failure_category` in einer eigenen Kategoriespalte der Exceptio
 
 ## Aktivitäts-Wiederholungsversuche {#activity-retries}
 
+Für ein gemeinsames Versuchslimit über Workflows und Queues kombinieren Sie festgelegte Wiederholungen mit [Server-Admission und Anwendungs-Breaker](./polyglot/task-queue-admission.md#retry-load-and-downstream-budgets). Erstversuche und Wiederholungen zählen; lokale/eingebettete Ausführung hat andere Grenzen.
+
 `Workflow\V2\Activity` verwendet standardmäßig `$tries = 1`. Ein Fehler wird deshalb sofort an den Workflow weitergegeben, sofern die Aktivität keine weiteren Versuche konfiguriert.
 
 ```php

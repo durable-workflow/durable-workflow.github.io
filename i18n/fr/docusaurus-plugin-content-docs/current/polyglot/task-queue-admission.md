@@ -62,6 +62,59 @@ nouvelles requêtes `query_task_queue_full` avec HTTP `429`. Si le cache ne peut
 fournir le verrou nécessaire à la modification de la file de requêtes, elles
 renvoient `query_task_queue_unavailable` avec HTTP `503`.
 
+## Charge des nouvelles tentatives et budgets du service dépendant {#retry-load-and-downstream-budgets}
+
+**Premiers essais et nouvelles tentatives comptent tous** dans les plafonds de dispatch par file, namespace et groupe. Le plafond couvre les tentatives de tâches d’activité effectivement acquises entre workflows, pas seulement les réessais. Un plafond plein laisse le travail attendre sans faire échouer l’activité à lui seul. Les délais schedule-to-start, schedule-to-close et ceux du workflow continuent ; l’attente peut donc épuiser un timeout configuré.
+
+Le plafond mesure des tentatives par minute, pas un taux de réussite ni la santé du service. Il n’ouvre aucun circuit breaker. Une acquisition peut produire plusieurs appels HTTP si l’activité ou le client réessaie en interne ; bornez-les séparément. Même un refus rapide sans appel au service consomme une acquisition.
+
+Par exemple, dans le namespace `production`, les files d’activité ordinaires `payments` et `refunds` partagent un budget `payment-api` de 20 acquisitions par minute. Configurez le même plafond sur chaque file participante ; les autres n’y entrent pas. C’est un plafond par tranche d’une minute, pas un débit lissé ni une part réservée :
+
+```bash
+DW_TASK_QUEUE_ADMISSION_OVERRIDES='{
+  "production:payments": {
+    "activity_tasks": {
+      "dispatch_budget_group": "payment-api",
+      "max_dispatches_per_minute_per_budget_group": 20
+    }
+  },
+  "production:refunds": {
+    "activity_tasks": {
+      "dispatch_budget_group": "payment-api",
+      "max_dispatches_per_minute_per_budget_group": 20
+    }
+  }
+}'
+```
+
+Combinez ce plafond Server avec des tentatives et un backoff bornés. Cet exemple Python SDK 2.9.0 suppose que votre application fournit un breaker partagé asynchrone et un client de paiement via `myapp.payments` ; bornez les I/O et utilisez une idempotence stable dans ce client. Enregistrez `charge` sur le worker `payments` de `production`, et `PaymentWorkflow` sur son worker de workflows :
+
+```python
+from durable_workflow import NonRetryableError, activity, workflow
+from myapp.payments import breaker, payment_api
+
+@activity.defn(name="payments.charge")
+async def charge(order):
+    if await breaker.is_open("payment-api"):
+        raise NonRetryableError("payment-api breaker is open")
+    return await payment_api.charge(order, idempotency_key=order["id"])
+
+@workflow.defn(name="payments.order")
+class PaymentWorkflow:
+    def run(self, ctx, order):
+        return (yield ctx.schedule_activity(
+            "payments.charge", [order], queue="payments",
+            retry_policy={"max_attempts": 3, "backoff_seconds": [2, 5]},
+            start_to_close_timeout=10,
+            schedule_to_start_timeout=30,
+            schedule_to_close_timeout=90,
+        ))
+```
+
+Un breaker applicatif ouvert lève `NonRetryableError` avant le paiement ; les erreurs réessayables peuvent utiliser au plus trois tentatives avec le backoff configuré. Les timeouts d’origine peuvent expirer avant. Le workflow peut intercepter l’échec final selon le métier ; un échec final non intercepté peut le fermer. Choisissez séparément le délai global du workflow.
+
+Gardez les appels protégés dans des **activités ordinaires en file**. Les activités locales inline ne créent aucune tâche d’activité ordinaire ; les plafonds de dispatch par file/namespace/groupe ne les mesurent pas. Une acquisition locale préparée valide l’autorité d’exécution, pas ce budget. Laravel embarqué n’a pas l’admission du Server autonome ; utilisez ses propres contrôles de déploiement. Voir les [activités locales](../features/local-activities.md).
+
 ## Configuration du serveur {#server-configuration}
 
 Définissez des plafonds globaux si chaque file doit avoir la même limite :

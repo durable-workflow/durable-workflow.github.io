@@ -135,6 +135,8 @@ Waterline surfaces `failure_category` in the exceptions table as a dedicated **C
 
 ## Activity Retries
 
+For a shared attempt budget across workflows and queues, combine authored retry limits with [Server admission and an application breaker](./polyglot/task-queue-admission.md#retry-load-and-downstream-budgets). First attempts and retries both consume the cap; local/embedded execution has different boundaries.
+
 `Workflow\V2\Activity` defaults to `$tries = 1`, so an activity failure is sent back to the workflow immediately unless the activity opts into retry attempts.
 
 ```php

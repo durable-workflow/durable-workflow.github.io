@@ -36,6 +36,59 @@ Serverseitige Grenzen für aktive Leases und Zuweisungsraten sind optional. Sind
 
 Abfrage-Tasks sind anders: Die Control Plane reiht einen kurzlebigen Abfrage-Task ein und wartet auf die Worker-Antwort. `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` begrenzt ausstehende Abfrage-Tasks je Namespace und Task-Warteschlange. Bei voller Warteschlange liefern neue Abfragen `query_task_queue_full` mit HTTP `429`. Kann der Cache die zum Ändern der Abfrage-Task-Warteschlange nötige Sperre nicht bereitstellen, liefern Abfragen `query_task_queue_unavailable` mit HTTP `503`.
 
+## Wiederholungslast und Budgets für nachgelagerte Dienste {#retry-load-and-downstream-budgets}
+
+**Erstversuche und Wiederholungen zählen gleichermaßen** gegen Dispatch-Obergrenzen von Queue, Namespace und Budgetgruppe. Das Budget zählt erfolgreich bezogene Aktivitätstask-Versuche über Workflows hinweg, nicht nur Wiederholungen. Bei voller Grenze wartet die Arbeit; die Grenze allein lässt die Aktivität nicht scheitern. Schedule-to-start-, Schedule-to-close- und Workflow-Fristen laufen weiter, sodass Warten ein konfiguriertes Zeitlimit aufbrauchen kann.
+
+Die Grenze misst Versuche pro Minute, weder Erfolgsquote noch Dienstzustand. Sie öffnet keinen Circuit Breaker. Ein Claim kann durch interne Wiederholungen der Aktivität oder des HTTP-Clients mehrere HTTP-Aufrufe erzeugen; begrenzen Sie diese separat. Auch ein sofort abgelehnter Versuch ohne Dienstaufruf verbraucht einen Claim.
+
+Beispielsweise teilen sich im Namespace `production` die gewöhnlichen Aktivitätsqueues `payments` und `refunds` ein `payment-api`-Budget von 20 Claims pro Minute. Konfigurieren Sie dieselbe Gruppengrenze für jede beteiligte Queue; andere Queues gehören nicht dazu. Dies ist eine Minutenbucket-Grenze, keine geglättete Rate oder reservierte Quote:
+
+```bash
+DW_TASK_QUEUE_ADMISSION_OVERRIDES='{
+  "production:payments": {
+    "activity_tasks": {
+      "dispatch_budget_group": "payment-api",
+      "max_dispatches_per_minute_per_budget_group": 20
+    }
+  },
+  "production:refunds": {
+    "activity_tasks": {
+      "dispatch_budget_group": "payment-api",
+      "max_dispatches_per_minute_per_budget_group": 20
+    }
+  }
+}'
+```
+
+Kombinieren Sie die Server-Grenze mit begrenzten Aktivitätsversuchen und Backoff. Dieses Python-SDK-2.9.0-Beispiel setzt einen asynchronen gemeinsamen Breaker und Zahlungsclient Ihrer Anwendung aus `myapp.payments` voraus. Begrenzen Sie dort I/O und verwenden stabile Idempotenz. Registrieren Sie `charge` auf dem `payments`-Worker in `production` und `PaymentWorkflow` auf dessen Workflow-Worker:
+
+```python
+from durable_workflow import NonRetryableError, activity, workflow
+from myapp.payments import breaker, payment_api
+
+@activity.defn(name="payments.charge")
+async def charge(order):
+    if await breaker.is_open("payment-api"):
+        raise NonRetryableError("payment-api breaker is open")
+    return await payment_api.charge(order, idempotency_key=order["id"])
+
+@workflow.defn(name="payments.order")
+class PaymentWorkflow:
+    def run(self, ctx, order):
+        return (yield ctx.schedule_activity(
+            "payments.charge", [order], queue="payments",
+            retry_policy={"max_attempts": 3, "backoff_seconds": [2, 5]},
+            start_to_close_timeout=10,
+            schedule_to_start_timeout=30,
+            schedule_to_close_timeout=90,
+        ))
+```
+
+Ein offener Anwendungs-Breaker löst vor der Zahlung `NonRetryableError` aus. Gewöhnliche wiederholbare Zahlungsfehler dürfen höchstens drei Versuche mit festgelegtem Backoff verwenden. Die ursprünglichen Zeitlimits können vorher ablaufen. Bei Bedarf fängt der Workflow den endgültigen Aktivitätsfehler ab; ein unbehandelter endgültiger Fehler kann ihn schließen. Wählen Sie die gesamte Workflow-Frist separat.
+
+Geschützte Dienstaufrufe gehören in **gewöhnliche eingereihte Aktivitäten**. Inline-lokale Aktivitäten erzeugen keinen gewöhnlichen Aktivitätstask; Queue-/Namespace-/Gruppen-Obergrenzen messen sie nicht. Ein vorbereiteter lokaler Claim prüft Ausführungsbefugnis, nicht dieses Budget. Eingebettetes Laravel hat keine Admission des eigenständigen Servers; verwenden Sie eigene Deployment-Kontrollen. Siehe [lokale Aktivitäten](../features/local-activities.md).
+
 ## Server-Konfiguration {#server-configuration}
 
 Setzen Sie globale Grenzen, wenn alle Warteschlangen dieselbe Obergrenze haben sollen:

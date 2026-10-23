@@ -36,6 +36,59 @@ keywords:
 
 查询任务不同：控制平面将临时查询任务入队，并等待 Worker 响应。`DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` 限制每个命名空间与任务队列的待处理查询任务数。队列已满时，新查询以 HTTP `429` 返回 `query_task_queue_full`。如果缓存存储无法提供修改查询任务队列所需的锁，查询以 HTTP `503` 返回 `query_task_queue_unavailable`。
 
+## 重试负载与下游预算 {#retry-load-and-downstream-budgets}
+
+**首次尝试和重试都会计入**队列、namespace 和预算组的调度上限。上限覆盖不同工作流中成功领取的活动任务尝试，而不只是重试。达到上限后任务等待，本身不会让活动失败。schedule-to-start、schedule-to-close 和工作流期限仍在计时，因此等待可能耗尽已配置的超时。
+
+调度上限衡量每分钟尝试数，不衡量成功比例或下游健康，也不会打开熔断器。如果活动或 HTTP 客户端内部重试，一次领取可能产生多次 HTTP 请求，需另行限制。即使快速拒绝且没有访问下游，该次领取仍消耗预算。
+
+例如，在 `production` namespace 中，让普通活动队列 `payments` 和 `refunds` 共享每分钟 20 次领取的 `payment-api` 预算。所有参与队列设置相同组上限；无关队列不加入。这是分钟时间桶上限，不是平滑速率，也不为任何队列保留份额：
+
+```bash
+DW_TASK_QUEUE_ADMISSION_OVERRIDES='{
+  "production:payments": {
+    "activity_tasks": {
+      "dispatch_budget_group": "payment-api",
+      "max_dispatches_per_minute_per_budget_group": 20
+    }
+  },
+  "production:refunds": {
+    "activity_tasks": {
+      "dispatch_budget_group": "payment-api",
+      "max_dispatches_per_minute_per_budget_group": 20
+    }
+  }
+}'
+```
+
+将 Server 上限与有界活动尝试和退避结合。此 Python SDK 2.9.0 示例假设应用通过 `myapp.payments` 提供异步共享熔断器和支付客户端；在该客户端中限制 I/O，并使用稳定的下游幂等键。将 `charge` 注册到 `production` 中的 `payments` worker，将 `PaymentWorkflow` 注册到其工作流 worker：
+
+```python
+from durable_workflow import NonRetryableError, activity, workflow
+from myapp.payments import breaker, payment_api
+
+@activity.defn(name="payments.charge")
+async def charge(order):
+    if await breaker.is_open("payment-api"):
+        raise NonRetryableError("payment-api breaker is open")
+    return await payment_api.charge(order, idempotency_key=order["id"])
+
+@workflow.defn(name="payments.order")
+class PaymentWorkflow:
+    def run(self, ctx, order):
+        return (yield ctx.schedule_activity(
+            "payments.charge", [order], queue="payments",
+            retry_policy={"max_attempts": 3, "backoff_seconds": [2, 5]},
+            start_to_close_timeout=10,
+            schedule_to_start_timeout=30,
+            schedule_to_close_timeout=90,
+        ))
+```
+
+应用熔断器打开时，在支付请求前抛出 `NonRetryableError`；普通可重试支付错误最多按所设退避执行三次尝试。原始超时可能在三次尝试前到期。业务需要时，工作流可以捕获最终活动错误；未捕获的最终错误可能结束工作流。工作流总期限需单独设置。
+
+受保护的下游调用应使用**普通排队活动**。内联本地活动不会创建普通活动任务，因此活动的队列、namespace 和预算组调度上限不会计量它们。prepared 本地活动领取验证执行权限，不检查这项调度预算。嵌入式 Laravel 没有独立 Server 的 admission；请使用其部署控制。参见[本地活动](../features/local-activities.md)。
+
 ## Server 配置 {#server-configuration}
 
 所有队列应采用同一上限时，设置全局上限：

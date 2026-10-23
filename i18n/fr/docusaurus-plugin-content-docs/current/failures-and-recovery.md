@@ -158,6 +158,8 @@ comme diagnostics non classés.
 
 ## Nouvelles tentatives d’activité {#activity-retries}
 
+Pour un budget de tentatives partagé entre workflows et files, combinez les limites de réessai avec [l’admission Server et un breaker applicatif](./polyglot/task-queue-admission.md#retry-load-and-downstream-budgets). Premiers essais et réessais comptent ; l’exécution locale/embarquée a d’autres limites.
+
 `Workflow\V2\Activity` utilise `$tries = 1` par défaut.
 Un échec est donc transmis immédiatement au workflow, sauf si l’activité
 autorise davantage de tentatives.

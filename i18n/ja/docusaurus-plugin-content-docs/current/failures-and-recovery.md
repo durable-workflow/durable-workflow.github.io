@@ -132,6 +132,8 @@ Waterline は、例外テーブルの **Category** 列とタイムラインの�
 
 ## アクティビティの再試行 {#activity-retries}
 
+複数 workflow とキューで試行予算を共有するには、作成時の再試行上限を [Server admission とアプリのブレーカー](./polyglot/task-queue-admission.md#retry-load-and-downstream-budgets)に組み合わせます。初回と再試行の両方を数え、ローカル/組み込み実行の境界は異なります。
+
 `Workflow\V2\Activity` の既定値は `$tries = 1` です。アクティビティで再試行を有効にしない限り、失敗はすぐにワークフローへ返されます。
 
 ```php
