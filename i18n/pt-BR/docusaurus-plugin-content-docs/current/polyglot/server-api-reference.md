@@ -791,6 +791,35 @@ Rotas de agendamento são rotas do plano de controle.
 Nomes e tipos de atributos fazem parte do contrato de busca do namespace.
 Evite atributos de alta cardinalidade em painéis de operação ou rótulos de métricas.
 
+### Filtros e continuação da listagem de agendamentos {#schedule-list-filters}
+
+`GET /api/schedules` lê o namespace da requisição. A [qualificação do PHP Server publicado com instalação normal](https://github.com/durable-workflow/durable-workflow.github.io/issues/402#issuecomment-6370122227) verifica filtros combinados e continuação. Envie os seguintes parâmetros de consulta com a codificação URL habitual:
+
+| Parâmetro | Valor aceito |
+| --- | --- |
+| `status` | `active` ou `paused`. |
+| `workflow_type` | Tipo de workflow não vazio, com até 255 caracteres. Apenas espaços não são válidos. |
+| `query` | Expressão de visibilidade não vazia, com até 2048 caracteres. |
+| `page_size` | Inteiro de 1 a 200, padrão 50. |
+| `next_page_token` | Token opaco não vazio, com até 8192 caracteres. |
+
+Status, tipo de workflow e predicados da consulta se combinam com `AND`. Uma consulta de visibilidade de agendamentos aceita predicados de igualdade unidos por `AND`, como `Region = "eu" AND TaskQueue = "orders"`. Os campos integrados são `ScheduleId`, `Status`, `WorkflowType`, `TaskQueue` e `Note`. Os demais campos precisam ser atributos de busca registrados no namespace da requisição, com literais compatíveis com seus tipos. A igualdade em um atributo `keyword_list` testa a presença do elemento. Operadores como `OR`, `NOT`, `IN`, `LIKE` e comparações de intervalo não são aceitos e retornam `422`.
+
+A resposta inclui `namespace`, `schedules`, `schedule_count` desta página e `next_page_token`. Continue somente quando houver um token. Envie-o sem alterações com o mesmo namespace, status, tipo de workflow e consulta. O token está vinculado à seleção de filtros analisada. A paginação lê dados em alteração, não um snapshot. Um cursor excluído, ou que não corresponde mais aos filtros, exige uma nova travessia sem token.
+
+| HTTP / motivo | Próxima ação |
+| --- | --- |
+| `422` / `unsupported_schedule_list_filter` | Remova os nomes de parâmetros não aceitos. |
+| `422` / `validation_failed` | Corrija os erros de validação dos campos. |
+| `422` / `unsupported_schedule_visibility_field` | Use um campo integrado ou um atributo registrado neste namespace. |
+| `422` / `unsupported_schedule_visibility_predicate` | Use predicados de igualdade unidos por `AND`. |
+| `400` / `malformed_schedule_page_token` | Use o token recebido sem alterações ou reinicie sem ele. |
+| `403` / `schedule_page_token_namespace_mismatch` | Use o namespace original ou reinicie no namespace desejado. |
+| `409` / `schedule_page_token_filter_mismatch` | Reinicie sem token depois de alterar os filtros. |
+| `409` / `stale_schedule_page_token` | Reinicie sem token no conjunto filtrado atual. |
+
+Os [exemplos de filtragem e paginação de agendamentos na CLI](/docs/polyglot/cli-reference#schedule-list-filters) usam o mesmo contrato. Uma recusa de listagem inclui o campo `field` afetado e os detalhes de validação. Confira o motivo antes de tentar novamente.
+
 ## Operações do sistema {#system-operations}
 
 Rotas do sistema exigem admin. São passagens explícitas de operador; prefira

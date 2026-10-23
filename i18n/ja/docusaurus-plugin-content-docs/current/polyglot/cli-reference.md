@@ -213,7 +213,7 @@ HTTP 状態だけから動作を推測せず、ブリッジ結果フィールド
 | コマンド | 用途 | 主なオプション |
 | --- | --- | --- |
 | `dw schedule:create` | スケジュールを作成。 | `--schedule-id`, `--workflow-type`, `--cron`, `--interval`, `--task-queue`, `--timezone`, `--execution-timeout`, `--run-timeout`, `--overlap-policy`, `--jitter`, `--max-runs`, `--paused`, `--note`、入力オプション、`--json` |
-| `dw schedule:list` | スケジュールを一覧。 | グローバル出力オプション |
+| `dw schedule:list` | スケジュールを一覧。 | `--status`, `--type`, `--query`, `--limit`, `--next-page-token`, `--json` |
 | `dw schedule:describe <schedule-id>` | 1スケジュールを説明。 | `--json` |
 | `dw schedule:update <schedule-id>` | スケジュール仕様・入力を更新。 | 作成オプション、入力オプション、`--json` |
 | `dw schedule:pause <schedule-id>` | 一時停止。 | `--note`, `--json` |
@@ -223,6 +223,35 @@ HTTP 状態だけから動作を推測せず、ブリッジ結果フィールド
 | `dw schedule:delete <schedule-id>` | 削除。 | `--json` |
 
 間隔ベースのスケジュールを作るときは `--cron` または `--interval` のどちらかを使います。デプロイ時に登録してもまだ開始したくない場合は `--paused` を使います。
+
+### スケジュールの絞り込みとページ取得 {#schedule-list-filters}
+
+`dw schedule:list` は、解決された名前空間から絞り込み済みの1ページを返します。`--namespace` を省略すると、解決された既定の名前空間だけが対象になり、すべての名前空間は対象になりません。ステータス、ワークフロー型、可視性の条件は `AND` で結合されます。これらのオプションは[通常の公開 CLI と PHP Server の検証](https://github.com/durable-workflow/durable-workflow.github.io/issues/402#issuecomment-6370122227)で確認しています。
+
+| CLI オプション | Server のクエリパラメーター | 意味 |
+| --- | --- | --- |
+| `--status` | `status` | `active` または `paused`。 |
+| `--type` | `workflow_type` | 完全一致のワークフロー型。 |
+| `--query` | `query` | スケジュールの可視性クエリ。 |
+| `--limit` | `page_size` | 1〜200件。既定は50件。 |
+| `--next-page-token` | `next_page_token` | 前のレスポンスから取得した不透明な継続トークン。 |
+
+既存の `production` 名前空間に keyword 属性 `Region` が登録されている場合、リージョン `eu`、タスクキュー `orders` の一時停止中の `orders.rollup` スケジュールを取得します。
+
+```bash
+dw schedule:list --namespace=production --status=paused --type=orders.rollup \
+  --query='Region = "eu" AND TaskQueue = "orders"' --limit=25 --json
+```
+
+JSON レスポンスの `next_page_token` を読み、その値を `NEXT_PAGE_TOKEN` に設定します。次のページでも同じ名前空間とフィルターを指定します。
+
+```bash
+dw schedule:list --namespace=production --status=paused --type=orders.rollup \
+  --query='Region = "eu" AND TaskQueue = "orders"' --limit=25 --json \
+  --next-page-token="$NEXT_PAGE_TOKEN"
+```
+
+トークンは名前空間とフィルターの組み合わせに属します。フィルターを変更した場合や、古いカーソルとして拒否された場合は、トークンなしで最初から取得してください。各呼び出しは現在のページを読み取り、固定スナップショットを読み取るわけではありません。対応するクエリ構文とレスポンスフィールドは、[スケジュール一覧 API の制約と拒否理由](/docs/polyglot/server-api-reference#schedule-list-filters)を参照してください。
 
 ## Worker とタスクキューのコマンド {#worker-and-task-queue-commands}
 

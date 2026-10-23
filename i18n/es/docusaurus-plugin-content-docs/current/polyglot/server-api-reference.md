@@ -610,6 +610,35 @@ Las programaciones son rutas del plano de control.
 
 Los nombres y tipos de atributos forman parte del contrato de búsqueda del espacio. Evita atributos de alta cardinalidad en paneles operativos o etiquetas de métricas.
 
+### Filtros y continuación de listas de programaciones {#schedule-list-filters}
+
+`GET /api/schedules` lee el espacio de nombres de la solicitud. La [verificación de PHP Server publicado mediante instalación normal](https://github.com/durable-workflow/durable-workflow.github.io/issues/402#issuecomment-6370122227) confirma los filtros combinados y la continuación. Envíe estos parámetros de consulta con la codificación URL habitual:
+
+| Parámetro | Valor admitido |
+| --- | --- |
+| `status` | `active` o `paused`. |
+| `workflow_type` | Tipo de workflow no vacío, de hasta 255 caracteres. No puede contener solo espacios. |
+| `query` | Expresión de visibilidad no vacía, de hasta 2048 caracteres. |
+| `page_size` | Entero de 1 a 200, 50 por defecto. |
+| `next_page_token` | Token opaco no vacío, de hasta 8192 caracteres. |
+
+El estado, el tipo de workflow y los predicados de consulta se combinan con `AND`. Una consulta de visibilidad de programaciones admite predicados de igualdad unidos por `AND`, como `Region = "eu" AND TaskQueue = "orders"`. Los campos integrados son `ScheduleId`, `Status`, `WorkflowType`, `TaskQueue` y `Note`. Los demás campos deben ser atributos de búsqueda registrados en el espacio de nombres de la solicitud, con literales que correspondan a sus tipos. La igualdad en un atributo `keyword_list` comprueba la pertenencia. Operadores como `OR`, `NOT`, `IN`, `LIKE` y las comparaciones de rango no se admiten y devuelven `422`.
+
+La respuesta incluye `namespace`, `schedules`, `schedule_count` para esta página y `next_page_token`. Continúe solo si se devuelve un token. Envíelo sin cambios con el mismo espacio de nombres, estado, tipo de workflow y consulta. El token está vinculado a la selección de filtros analizada. La paginación lee datos cambiantes, no una instantánea. Si se elimina el cursor o deja de coincidir con los filtros, inicie un recorrido nuevo sin token.
+
+| HTTP / motivo | Acción siguiente |
+| --- | --- |
+| `422` / `unsupported_schedule_list_filter` | Quite los nombres de parámetros no admitidos. |
+| `422` / `validation_failed` | Corrija los errores de validación de campos. |
+| `422` / `unsupported_schedule_visibility_field` | Use un campo integrado o un atributo registrado en este espacio de nombres. |
+| `422` / `unsupported_schedule_visibility_predicate` | Use predicados de igualdad unidos por `AND`. |
+| `400` / `malformed_schedule_page_token` | Use el token recibido sin cambios o empiece de nuevo sin él. |
+| `403` / `schedule_page_token_namespace_mismatch` | Use el espacio de nombres original o empiece de nuevo en el deseado. |
+| `409` / `schedule_page_token_filter_mismatch` | Empiece de nuevo sin token después de cambiar los filtros. |
+| `409` / `stale_schedule_page_token` | Empiece de nuevo sin token sobre el conjunto filtrado actual. |
+
+Los [ejemplos de filtrado y paginación de programaciones en CLI](/docs/polyglot/cli-reference#schedule-list-filters) usan el mismo contrato. Un rechazo de lista incluye el campo `field` afectado y los detalles de validación. Revise el motivo antes de reintentar.
+
 ## Operaciones del sistema {#system-operations}
 
 Requieren admin. Son pasadas explícitas del operador; en automatización consulta el estado antes de ejecutar una pasada.
