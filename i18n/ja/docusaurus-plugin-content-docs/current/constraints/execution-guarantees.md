@@ -110,6 +110,10 @@ final class ChargeCard extends Activity
 }
 ```
 
+### サービスモードのアクティビティ識別子 {#service-activity-identity}
+
+Rust のサービスモードでは、SDK **4.9.0 以降**の `ActivityContext` から、元の任意フィールド `activity_execution_id()`、`workflow_id()`（インスタンス）、`run_id()` を取得できます。再試行をまたぐ論理アクティビティ ID を使ってください。claim の欠落フィールドは `None` のままで、試行ごとの task/attempt ID は代用になりません。[Rust ハンドラーの例](../polyglot/rust.md#activity-identity)では外部キーを作り、旧 Server、local activity、Server を使わないテストの制限を説明しています。キーには依然として冪等な外部 API または永続的な副作用台帳が必要です。これらのメソッドは再開可能な checkpoint を提供しません。
+
 ## 開発者が冪等にする処理 {#what-developers-must-make-idempotent}
 
 ワークフローのリプレイ自体を冪等にする必要はありません。フレームワークが確定済み履歴から状態を再構築して処理します。

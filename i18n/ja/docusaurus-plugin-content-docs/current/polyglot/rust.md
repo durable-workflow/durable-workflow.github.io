@@ -229,6 +229,44 @@ pub fn register_charge(worker: &mut Worker) {
 
 ローカルアクティビティと `testing::WorkflowEnvironment::run_activity` の直接呼び出しには、受信した Server スナップショットがなく、ポリシーは不明になります。新規の `run_workflow` テストでは、生成した履歴に記録するモデル上のスナップショットを公開します。このテスト仕様は、デプロイ済み Server がポリシーを送信する証明にはなりません。[ActivityRetryInfo](https://rust.durable-workflow.com/durable_workflow/struct.ActivityRetryInfo.html) と [ActivityAttemptLimit](https://rust.durable-workflow.com/durable_workflow/enum.ActivityAttemptLimit.html) を参照してください。
 
+## 安定したアクティビティ識別子と外部処理の冪等性 {#activity-identity}
+
+Rust SDK **4.9.0 以降**では、`ActivityContext` から最初に受信した識別子を取得できます。`Cargo.lock` でインストール済み crate を確認してください。上で独立に選択されているインストール指定は旧版の場合があります。これらのメソッドは、worker session のアクティビティも含め、元の claim から保持した不変の `Option<&str>` 値を返します。
+
+| メソッド | 識別対象と用途 |
+| --- | --- |
+| `activity_execution_id()` | 再試行を通じて同じ論理アクティビティ実行を識別します。外部操作の重複排除に使います。 |
+| `workflow_id()` | 所有元ワークフローの**インスタンス** ID。業務上の関連付けに使います。 |
+| `run_id()` | 所有元ワークフローの **run** ID。その実行を関連付けるために使います。 |
+
+特定の操作用のキーを作り、冪等な外部 API または永続的な副作用台帳へ渡してください。このハンドラーはキーを作るだけで、決済や外部の重複排除は実装しません。アクティビティ識別子がなければ、副作用の前に拒否します。代わりに、アプリケーションが明示的に安定した業務キーを渡すこともできます。
+
+```rust
+use durable_workflow::{json, ActivityError, Worker};
+
+pub fn register_charge(worker: &mut Worker) {
+    worker.register_activity("charge", |ctx, _| async move {
+        let execution_id = ctx.activity_execution_id().ok_or_else(|| {
+            ActivityError::new("MissingActivityIdentity", "Server activity identity is required")
+                .non_retryable(true)
+        })?;
+        // Pass this key to an idempotent downstream API or durable effect ledger.
+        let key = format!("payments:charge:{execution_id}");
+        Ok(json!({
+            "idempotency_key": key,
+            "workflow_id": ctx.workflow_id(),
+            "run_id": ctx.run_id(),
+        }))
+    });
+}
+```
+
+旧 Server がこれらのフィールドを省略した場合、値は `None` のままです。欠けた論理アクティビティ ID を試行ごとの task ID、attempt ID、試行番号で代用しないでください。再試行時にキーが変わってしまいます。インラインの local activity には実際の親 workflow/run ID が渡ることがありますが、Server がコマンドを記録する前には Server の activity execution ID がありません。Server を使わないアクティビティテストにも受信した claim 識別子はありません。
+
+安定したキーで副作用の重複を防げるのは、外部システムがそのキーを尊重する場合だけです。アクティビティ配送は引き続き少なくとも1回です。この API は外部処理の exactly-once、heartbeat 進捗の復元、再開可能なアクティビティ checkpoint を提供しません。
+
+[ActivityContext の識別子メソッド](https://rust.durable-workflow.com/durable_workflow/struct.ActivityContext.html#method.activity_execution_id)と、ordinary/cooperative、local、worker-session の検証を含む[通常インストール 4.9.0 の記録](https://github.com/durable-workflow/sdk-rust/issues/139#issuecomment-6367230500)を参照してください。共通の契約は[実行保証](../constraints/execution-guarantees.md#service-activity-identity)にあります。
+
 ## ローカルアクティビティ {#local-activities}
 
 Rust SDK 3.1.0 は `Worker::local_activities(true)` で設定した Worker にインラインのローカル実行を追加します。通常のアクティビティ登録メソッドでコールバックを登録し、ワークフローコンテキストのローカルアクティビティメソッドを使います。再試行とタイムアウトの設定は[実行可能な例](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs)と [LocalActivityOptions リファレンス](https://rust.durable-workflow.com/durable_workflow/struct.LocalActivityOptions.html)を参照してください。

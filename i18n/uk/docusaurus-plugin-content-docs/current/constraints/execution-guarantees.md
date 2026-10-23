@@ -137,6 +137,10 @@ final class ChargeCard extends Activity
 }
 ```
 
+### Ідентичність activity у service mode {#service-activity-identity}
+
+Для Rust activity у service mode SDK **4.9.0 або новіший** надає початкові необов’язкові `activity_execution_id()`, `workflow_id()` (екземпляр) і `run_id()` через `ActivityContext`. Використовуйте логічний ID activity протягом повторів; відсутні поля claim залишаються `None`, а ID окремого завдання чи спроби їх не замінює. [Приклад обробника Rust](../polyglot/rust.md#activity-identity) створює зовнішній ключ і пояснює обмеження старіших Server, local activities та тестів без Server. Ключ усе одно потребує ідемпотентного зовнішнього API або сталого журналу ефектів; ці методи не надають відновлюваних контрольних точок.
+
 ## Що розробники мають зробити ідемпотентним {#what-developers-must-make-idempotent}
 
 Вам **не** потрібно робити саме відтворення workflow ідемпотентним. Фреймворк

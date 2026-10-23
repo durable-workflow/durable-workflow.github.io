@@ -282,6 +282,44 @@ pub fn register_charge(worker: &mut Worker) {
 
 Lokale Aktivitäten und direkte Aufrufe von `testing::WorkflowEnvironment::run_activity` haben keinen empfangenen Server-Snapshot und melden eine unbekannte Richtlinie. Neue `run_workflow`-Tests zeigen den modellierten Snapshot aus ihrer erzeugten Historie. Diese Testsemantik belegt nicht, dass ein bereitgestellter Server eine Richtlinie sendet. Siehe [ActivityRetryInfo](https://rust.durable-workflow.com/durable_workflow/struct.ActivityRetryInfo.html) und [ActivityAttemptLimit](https://rust.durable-workflow.com/durable_workflow/enum.ActivityAttemptLimit.html).
 
+## Stabile Aktivitätsidentität und Idempotenz externer Effekte {#activity-identity}
+
+Rust SDK **4.9.0 oder neuer** stellt die ursprünglich empfangene Identität über `ActivityContext` bereit. Prüfen Sie den installierten Crate in `Cargo.lock`: Die oben unabhängig gewählte Installationsversion kann älter sein. Die Methoden liefern unveränderliche `Option<&str>`-Werte aus dem ursprünglichen Claim, auch bei Aktivitäten in Worker-Sessions.
+
+| Methode | Identität und Verwendung |
+| --- | --- |
+| `activity_execution_id()` | Eine logische Aktivitätsausführung über Wiederholungsversuche hinweg; zur Deduplizierung einer externen Operation. |
+| `workflow_id()` | ID der zugehörigen Workflow-**Instanz**; zur fachlichen Zuordnung. |
+| `run_id()` | ID des zugehörigen Workflow-**Runs**; zur Zuordnung dieses konkreten Laufs. |
+
+Leiten Sie einen Schlüssel für eine bestimmte Operation ab und übergeben Sie ihn an eine idempotente externe API oder ein dauerhaftes Effektregister. Dieser Handler erzeugt nur den Schlüssel: Er belastet keine Zahlung und implementiert keine externe Deduplizierung. Fehlt die Aktivitätsidentität, lehnt er vor jedem Effekt ab; alternativ kann die Anwendung einen eigenen ausdrücklich stabilen fachlichen Schlüssel liefern.
+
+```rust
+use durable_workflow::{json, ActivityError, Worker};
+
+pub fn register_charge(worker: &mut Worker) {
+    worker.register_activity("charge", |ctx, _| async move {
+        let execution_id = ctx.activity_execution_id().ok_or_else(|| {
+            ActivityError::new("MissingActivityIdentity", "Server activity identity is required")
+                .non_retryable(true)
+        })?;
+        // Pass this key to an idempotent downstream API or durable effect ledger.
+        let key = format!("payments:charge:{execution_id}");
+        Ok(json!({
+            "idempotency_key": key,
+            "workflow_id": ctx.workflow_id(),
+            "run_id": ctx.run_id(),
+        }))
+    });
+}
+```
+
+Lässt ein älterer Server diese Felder aus, bleiben sie `None`. Ersetzen Sie eine fehlende logische Aktivitäts-ID niemals durch eine Task-ID, Versuch-ID oder Versuchsnummer: Der Schlüssel würde sich beim Retry ändern. Inline Local Activities können die tatsächlichen Workflow-/Run-IDs des Eltern-Tasks erhalten, haben aber keine serverseitige Aktivitätsausführungs-ID, bevor der Server ihren Befehl speichert. Serverfreie Aktivitätstests besitzen keine empfangene Claim-Identität.
+
+Ein stabiler Schlüssel ermöglicht die Vermeidung doppelter Effekte nur, wenn das externe System ihn beachtet. Die Zustellung bleibt mindestens einmal; diese API macht externe Effekte nicht genau einmal, stellt keinen Heartbeat-Fortschritt wieder her und implementiert keine fortsetzbaren Aktivitäts-Checkpoints.
+
+Siehe die [Identitätsmethoden von ActivityContext](https://rust.durable-workflow.com/durable_workflow/struct.ActivityContext.html#method.activity_execution_id) und die [Prüfung der normalen Installation 4.9.0](https://github.com/durable-workflow/sdk-rust/issues/139#issuecomment-6367230500) mit Ordinary-/Cooperative-, Local- und Worker-Session-Kontrollen. Der gemeinsame Vertrag steht unter [Ausführungsgarantien](../constraints/execution-guarantees.md#service-activity-identity).
+
 ## Lokale Aktivitäten {#local-activities}
 
 Rust SDK 3.1.0 ergänzt lokale Inline-Ausführung auf Workern mit

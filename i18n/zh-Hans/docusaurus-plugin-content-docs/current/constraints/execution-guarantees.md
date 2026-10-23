@@ -110,6 +110,10 @@ final class ChargeCard extends Activity
 }
 ```
 
+### 服务模式活动标识 {#service-activity-identity}
+
+Rust 服务模式活动可通过 SDK **4.9.0 或更新版本**的 `ActivityContext` 取得原始可选值 `activity_execution_id()`、`workflow_id()`（实例）和 `run_id()`。跨重试使用逻辑活动 ID；claim 缺失字段保持为 `None`，不能用每次尝试的 task/attempt ID 代替。[Rust 处理函数示例](../polyglot/rust.md#activity-identity)生成外部键，并解释旧 Server、本地活动及无 Server 测试的边界。键仍需要支持幂等性的外部 API 或持久化副作用账本；这些方法不提供可恢复检查点。
+
 ## 开发者需要保证哪些操作幂等 {#what-developers-must-make-idempotent}
 
 你无需让工作流重放本身具有幂等性。框架通过已提交历史重建状态，负责处理重放。
