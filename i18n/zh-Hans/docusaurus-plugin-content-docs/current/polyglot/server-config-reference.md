@@ -271,6 +271,70 @@ Server 镜像内置 `durable-workflow/workflow`，因此也提供包级 `DW_V2_*
 
 配置 `DW_V2_MATCHING_ROLE_QUEUE_WAKE` 或专用 `workflow:v2:repair-pass --loop` 守护进程时，请参阅[任务匹配与分派](/docs/polyglot/task-matching-dispatch)。这些设置改变就绪任务的发现位置，而不改变 Worker 协议本身的契约。
 
+## 已发布 PHP Server 的其他配置 {#additional-published-php-controls}
+
+本参考覆盖已发布 **PHP Server 2.11.0** 的配置契约，包括下列设置。请检查实际运行的镜像；独立选择的安装版本可能更旧。`unset` 表示未提供环境变量值，其效果取决于具体设置。默认值和旧别名来自[已发布契约](https://github.com/durable-workflow/server/blob/36d16273604755f3dd0743cab331cc7c62e51d8e/config/dw-contract.php)。文档构建会按此版本化契约快照检查全部语言。本参考不改变选定的安装版本组合。
+
+### 命名空间 HTTP 准入 {#namespace-request-controls}
+
+| 变量 | 默认值 | 用途 | 旧别名 |
+| --- | --- | --- | --- |
+| `DW_NAMESPACE_MAX_REQUESTS_PER_MINUTE` | `unset` | 每个命名空间每分钟控制面请求数的可选上限；未设置即无限制。 | `WORKFLOW_SERVER_NAMESPACE_MAX_REQUESTS_PER_MINUTE` |
+| `DW_NAMESPACE_MAX_CONCURRENT_REQUESTS` | `unset` | 每个命名空间并发控制面请求数的可选上限；未设置即无限制。 | `WORKFLOW_SERVER_NAMESPACE_MAX_CONCURRENT_REQUESTS` |
+| `DW_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` | `unset` | 不可绕过的每分钟请求硬上限，也约束命名空间覆盖值。 | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` |
+| `DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` | `unset` | 不可绕过的并发请求硬上限，也约束命名空间覆盖值。 | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` |
+| `DW_NAMESPACE_ADMISSION_OVERRIDES` | `{}` | 以命名空间为键的 JSON 对象，覆盖请求速率和并发数。 | `WORKFLOW_SERVER_NAMESPACE_ADMISSION_OVERRIDES` |
+
+### 命名空间持久状态配额 {#namespace-durable-controls}
+
+| 变量 | 默认值 | 用途 | 旧别名 |
+| --- | --- | --- | --- |
+| `DW_NAMESPACE_DURABLE_LIMITS` | `{}` | 命名空间持久行数默认配额 JSON。总量与 pending/open 限额相互独立；待处理任务只计算队列 ready 行，活动租约另有限额。空对象不限制。 | `WORKFLOW_SERVER_NAMESPACE_DURABLE_LIMITS` |
+| `DW_NAMESPACE_DURABLE_HARD_LIMITS` | `{}` | 不可绕过的持久行数硬上限 JSON，也约束命名空间覆盖值；空对象不增加运维硬上限。 | `WORKFLOW_SERVER_NAMESPACE_DURABLE_HARD_LIMITS` |
+| `DW_NAMESPACE_DURABLE_OVERRIDES` | `{}` | 按命名空间覆盖持久行数配额的 JSON；硬上限始终有效。 | `WORKFLOW_SERVER_NAMESPACE_DURABLE_OVERRIDES` |
+
+### 外部 payload 配额与 S3 传输 {#external-payload-quotas-and-s3}
+
+| 变量 | 默认值 | 用途 | 旧别名 |
+| --- | --- | --- | --- |
+| `DW_EXTERNAL_PAYLOAD_COMPLETION_MAX_BYTES` | `unset` | 一次持租约完成操作的不可变 upload slots 中不同字节的总量；未设置时使用 `DW_EXTERNAL_PAYLOAD_MAX_BYTES`。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_COMPLETION_MAX_BYTES` |
+| `DW_EXTERNAL_PAYLOAD_MAX_BYTES_PER_NAMESPACE` | `unset` | 每个命名空间外部 payload 累计字节数上限；就绪和进行中对象都计入，未设置即无限制。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_MAX_BYTES_PER_NAMESPACE` |
+| `DW_EXTERNAL_PAYLOAD_MAX_OBJECTS_PER_NAMESPACE` | `unset` | 每个命名空间外部 payload 对象数上限；就绪和进行中对象都计入，未设置即无限制。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_MAX_OBJECTS_PER_NAMESPACE` |
+| `DW_EXTERNAL_PAYLOAD_HARD_MAX_BYTES_PER_NAMESPACE` | `unset` | 不可绕过的命名空间外部 payload 累计字节硬上限，也约束覆盖值。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_HARD_MAX_BYTES_PER_NAMESPACE` |
+| `DW_EXTERNAL_PAYLOAD_HARD_MAX_OBJECTS_PER_NAMESPACE` | `unset` | 不可绕过的命名空间外部 payload 对象数硬上限，也约束覆盖值。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_HARD_MAX_OBJECTS_PER_NAMESPACE` |
+| `DW_EXTERNAL_PAYLOAD_NAMESPACE_OVERRIDES` | `{}` | 以命名空间为键的 JSON 对象，覆盖 `max_bytes` 和 `max_objects` 配额。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_NAMESPACE_OVERRIDES` |
+| `DW_EXTERNAL_PAYLOAD_S3_ACCESS_KEY_ID` | `unset` | 运行时管理的 S3 兼容磁盘的可选 access-key ID；由 workload identity 提供凭据时可省略。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_ACCESS_KEY_ID` |
+| `DW_EXTERNAL_PAYLOAD_S3_SECRET_ACCESS_KEY` | `unset` | 运行时管理的 S3 兼容磁盘的可选 secret access key；须与 access-key ID 一同设置。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_SECRET_ACCESS_KEY` |
+| `DW_EXTERNAL_PAYLOAD_S3_SESSION_TOKEN` | `unset` | 运行时管理的 S3 兼容磁盘临时凭据的可选 session token。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_SESSION_TOKEN` |
+| `DW_EXTERNAL_PAYLOAD_S3_REGION` | `us-east-1` | 运行时管理的 S3 兼容磁盘所用区域。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_REGION` |
+| `DW_EXTERNAL_PAYLOAD_S3_BUCKET` | `unset` | 运行时管理的 S3 兼容磁盘所用 bucket。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_BUCKET` |
+| `DW_EXTERNAL_PAYLOAD_S3_ENDPOINT` | `unset` | 外部 payload S3 兼容服务的可选 HTTPS endpoint。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_ENDPOINT` |
+| `DW_EXTERNAL_PAYLOAD_S3_USE_PATH_STYLE_ENDPOINT` | `false` | 为运行时管理的 S3 兼容服务启用 path-style bucket 寻址。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_USE_PATH_STYLE_ENDPOINT` |
+
+### 调用方命名空间服务边界 {#service-caller-namespace-controls}
+
+| 变量 | 默认值 | 用途 | 旧别名 |
+| --- | --- | --- | --- |
+| `DW_SERVICE_BOUNDARY_NAMESPACE_RATE_LIMIT_PER_MINUTE` | `unset` | 按调用方命名空间汇总、共享的每分钟服务调用数可选上限。 | `WORKFLOW_SERVER_SERVICE_BOUNDARY_NAMESPACE_RATE_LIMIT_PER_MINUTE` |
+| `DW_SERVICE_BOUNDARY_NAMESPACE_MAX_IN_FLIGHT` | `unset` | 按调用方命名空间汇总、共享的进行中服务调用数可选上限。 | `WORKFLOW_SERVER_SERVICE_BOUNDARY_NAMESPACE_MAX_IN_FLIGHT` |
+| `DW_SERVICE_BOUNDARY_HARD_RATE_LIMIT_PER_MINUTE` | `unset` | 不可绕过的每分钟硬上限，约束服务边界及调用方命名空间策略。 | `WORKFLOW_SERVER_SERVICE_BOUNDARY_HARD_RATE_LIMIT_PER_MINUTE` |
+| `DW_SERVICE_BOUNDARY_HARD_MAX_IN_FLIGHT` | `unset` | 不可绕过的进行中调用数硬上限，约束服务边界及调用方命名空间策略。 | `WORKFLOW_SERVER_SERVICE_BOUNDARY_HARD_MAX_IN_FLIGHT` |
+| `DW_SERVICE_BOUNDARY_NAMESPACE_OVERRIDES` | `{}` | 调用方命名空间的服务调用速率及进行中数量覆盖 JSON；硬上限仍有效。 | `WORKFLOW_SERVER_SERVICE_BOUNDARY_NAMESPACE_OVERRIDES` |
+
+### 协调、存储与运行时 {#coordination-storage-and-runtime-controls}
+
+| 变量 | 默认值 | 用途 | 旧别名 |
+| --- | --- | --- | --- |
+| `DW_OBSERVABILITY_CONTEXT_ENABLED` | `false` | 已安装可选 API 和 schema 时，启用受限 trace context 的持久化、传递及能力发现。 | - |
+| `DW_OBSERVABILITY_BAGGAGE_ALLOWLIST` | `[]` | 允许出现在 run 来源中的 baggage 键 JSON 列表，默认为空。link 不携带 baggage。 | - |
+| `DW_STORAGE_ADMISSION_FILE` | `unset` | 可选的本地只读存储压力观测文件；观测无效或过期时拒绝写入。 | - |
+| `DW_STORAGE_ADMISSION_SOURCE` | `unset` | 准入观测中预期的存储资源标识。 | - |
+| `DW_STORAGE_ADMISSION_MAX_AGE_SECONDS` | `15` | 存储观测的最大有效时间，单位秒，范围 1〜300。 | - |
+| `DW_RUNTIME_CREDENTIALS_ENABLED` | `false` | 通过 admin API 启用由数据库持久保存、绑定命名空间的运行时 bearer 凭据。 | `WORKFLOW_SERVER_RUNTIME_CREDENTIALS_ENABLED` |
+| `DW_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | 单个命名空间 workflow/activity 长轮询等待数的每节点上限，不超过全局 worker 等待上限；共享缓存权威状态不可用时拒绝。 | `WORKFLOW_SERVER_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
+| `DW_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | 单个命名空间 query-task 长轮询等待数的每节点上限，不超过全局 query 等待上限；共享缓存权威状态不可用时拒绝。 | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
+| `DW_V1_ENABLED` | `false` | 仅为有意保留 v1 状态而启用 embedded v1 迁移和队列排空；独立 Server 默认仅支持 v2。 | `WORKFLOW_V1_ENABLED` |
+
 ## 运行基础设施变量 {#runtime-infrastructure-variables}
 
 运行基础设施变量属于框架及依赖项控制。Server 审计认识这些变量，因此不会发出警告，但它们不是稳定的 Durable Workflow API 配置项。

@@ -271,6 +271,70 @@ CI とデプロイ用マニフェストには `DW_V2_GUARDRAILS_BOOT` を使用�
 
 `DW_V2_MATCHING_ROLE_QUEUE_WAKE` または専用の `workflow:v2:repair-pass --loop` デーモンを設定する場合は、[タスクのマッチングと配信](/docs/polyglot/task-matching-dispatch)を参照してください。これらの設定は実行可能タスクを検出する場所を変えるものであり、Worker プロトコルの契約自体を変えるものではありません。
 
+## 公開済み PHP Server の追加設定 {#additional-published-php-controls}
+
+このリファレンスは、以下の設定を含む公開済み **PHP Server 2.11.0** の契約を対象にします。実際に使うイメージを確認してください。独立に選ばれたインストール版は旧版の場合があります。`unset` は環境変数の値が未設定であることを示し、その効果は設定ごとに異なります。既定値と旧名は[公開済み契約](https://github.com/durable-workflow/server/blob/36d16273604755f3dd0743cab331cc7c62e51d8e/config/dw-contract.php)に基づきます。ドキュメントのビルドでは、このバージョン付き契約 snapshot を全言語で検査します。選択済みのインストール版の組み合わせは変わりません。
+
+### namespace ごとの HTTP 受付制限 {#namespace-request-controls}
+
+| 変数 | 既定値 | 目的 | 旧名 |
+| --- | --- | --- | --- |
+| `DW_NAMESPACE_MAX_REQUESTS_PER_MINUTE` | `unset` | namespace ごとの1分間の制御プレーン要求数の任意上限。未設定なら無制限です。 | `WORKFLOW_SERVER_NAMESPACE_MAX_REQUESTS_PER_MINUTE` |
+| `DW_NAMESPACE_MAX_CONCURRENT_REQUESTS` | `unset` | namespace ごとの同時制御プレーン要求数の任意上限。未設定なら無制限です。 | `WORKFLOW_SERVER_NAMESPACE_MAX_CONCURRENT_REQUESTS` |
+| `DW_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` | `unset` | namespace の上書きにも適用される、回避できない1分間の要求数上限。 | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` |
+| `DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` | `unset` | namespace の上書きにも適用される、回避できない同時要求数上限。 | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` |
+| `DW_NAMESPACE_ADMISSION_OVERRIDES` | `{}` | namespace をキーに、要求頻度と同時数を上書きする JSON オブジェクト。 | `WORKFLOW_SERVER_NAMESPACE_ADMISSION_OVERRIDES` |
+
+### namespace の永続状態クォータ {#namespace-durable-controls}
+
+| 変数 | 既定値 | 目的 | 旧名 |
+| --- | --- | --- | --- |
+| `DW_NAMESPACE_DURABLE_LIMITS` | `{}` | namespace の永続行数の既定クォータを指定する JSON。総数と pending/open の制限は独立です。pending tasks はキューの ready 行を数え、active lease は別に制限します。空オブジェクトは無制限です。 | `WORKFLOW_SERVER_NAMESPACE_DURABLE_LIMITS` |
+| `DW_NAMESPACE_DURABLE_HARD_LIMITS` | `{}` | 上書きにも適用される、回避できない永続行数の上限を指定する JSON。空オブジェクトは運用者の上限を追加しません。 | `WORKFLOW_SERVER_NAMESPACE_DURABLE_HARD_LIMITS` |
+| `DW_NAMESPACE_DURABLE_OVERRIDES` | `{}` | namespace ごとの永続行数クォータの上書き JSON。hard limit は引き続き適用されます。 | `WORKFLOW_SERVER_NAMESPACE_DURABLE_OVERRIDES` |
+
+### 外部 payload のクォータと S3 転送 {#external-payload-quotas-and-s3}
+
+| 変数 | 既定値 | 目的 | 旧名 |
+| --- | --- | --- | --- |
+| `DW_EXTERNAL_PAYLOAD_COMPLETION_MAX_BYTES` | `unset` | lease 付き completion の不変 upload slots 全体での異なるバイト数。未設定なら `DW_EXTERNAL_PAYLOAD_MAX_BYTES` を使います。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_COMPLETION_MAX_BYTES` |
+| `DW_EXTERNAL_PAYLOAD_MAX_BYTES_PER_NAMESPACE` | `unset` | namespace の外部 payload の累積バイト上限。準備済みと処理中のオブジェクトを数え、未設定なら無制限です。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_MAX_BYTES_PER_NAMESPACE` |
+| `DW_EXTERNAL_PAYLOAD_MAX_OBJECTS_PER_NAMESPACE` | `unset` | namespace の外部 payload のオブジェクト数上限。準備済みと処理中を数え、未設定なら無制限です。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_MAX_OBJECTS_PER_NAMESPACE` |
+| `DW_EXTERNAL_PAYLOAD_HARD_MAX_BYTES_PER_NAMESPACE` | `unset` | namespace の上書きにも適用される、外部 payload の累積バイト数の hard limit。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_HARD_MAX_BYTES_PER_NAMESPACE` |
+| `DW_EXTERNAL_PAYLOAD_HARD_MAX_OBJECTS_PER_NAMESPACE` | `unset` | namespace の上書きにも適用される、外部 payload のオブジェクト数の hard limit。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_HARD_MAX_OBJECTS_PER_NAMESPACE` |
+| `DW_EXTERNAL_PAYLOAD_NAMESPACE_OVERRIDES` | `{}` | namespace をキーに `max_bytes` と `max_objects` のクォータを上書きする JSON。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_NAMESPACE_OVERRIDES` |
+| `DW_EXTERNAL_PAYLOAD_S3_ACCESS_KEY_ID` | `unset` | runtime 管理の S3 互換ディスクの任意 access-key ID。workload identity が認証情報を提供する場合は省略できます。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_ACCESS_KEY_ID` |
+| `DW_EXTERNAL_PAYLOAD_S3_SECRET_ACCESS_KEY` | `unset` | 管理対象 S3 互換ディスクの任意 secret access key。access-key ID と一緒に指定します。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_SECRET_ACCESS_KEY` |
+| `DW_EXTERNAL_PAYLOAD_S3_SESSION_TOKEN` | `unset` | 管理対象 S3 互換ディスクの一時認証情報に使う任意 session token。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_SESSION_TOKEN` |
+| `DW_EXTERNAL_PAYLOAD_S3_REGION` | `us-east-1` | runtime 管理の S3 互換ディスクのリージョン。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_REGION` |
+| `DW_EXTERNAL_PAYLOAD_S3_BUCKET` | `unset` | runtime 管理の S3 互換ディスクの bucket。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_BUCKET` |
+| `DW_EXTERNAL_PAYLOAD_S3_ENDPOINT` | `unset` | 外部 payload の S3 互換サービスに使う任意 HTTPS endpoint。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_ENDPOINT` |
+| `DW_EXTERNAL_PAYLOAD_S3_USE_PATH_STYLE_ENDPOINT` | `false` | 管理対象 S3 互換サービスで bucket の path-style アドレスを使います。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_USE_PATH_STYLE_ENDPOINT` |
+
+### 呼び出し元 namespace のサービス境界 {#service-caller-namespace-controls}
+
+| 変数 | 既定値 | 目的 | 旧名 |
+| --- | --- | --- | --- |
+| `DW_SERVICE_BOUNDARY_NAMESPACE_RATE_LIMIT_PER_MINUTE` | `unset` | 呼び出し元 namespace 全体で集計する、1分間のサービス呼び出し数の任意共有上限。 | `WORKFLOW_SERVER_SERVICE_BOUNDARY_NAMESPACE_RATE_LIMIT_PER_MINUTE` |
+| `DW_SERVICE_BOUNDARY_NAMESPACE_MAX_IN_FLIGHT` | `unset` | 呼び出し元 namespace 全体で集計する、実行中サービス呼び出し数の任意共有上限。 | `WORKFLOW_SERVER_SERVICE_BOUNDARY_NAMESPACE_MAX_IN_FLIGHT` |
+| `DW_SERVICE_BOUNDARY_HARD_RATE_LIMIT_PER_MINUTE` | `unset` | サービス境界と呼び出し元 namespace のポリシーに適用する、回避できない1分間の上限。 | `WORKFLOW_SERVER_SERVICE_BOUNDARY_HARD_RATE_LIMIT_PER_MINUTE` |
+| `DW_SERVICE_BOUNDARY_HARD_MAX_IN_FLIGHT` | `unset` | サービス境界と呼び出し元 namespace のポリシーに適用する、回避できない実行中呼び出し数の上限。 | `WORKFLOW_SERVER_SERVICE_BOUNDARY_HARD_MAX_IN_FLIGHT` |
+| `DW_SERVICE_BOUNDARY_NAMESPACE_OVERRIDES` | `{}` | 呼び出し元 namespace ごとに頻度と実行中呼び出し数を上書きする JSON。hard limit は引き続き適用されます。 | `WORKFLOW_SERVER_SERVICE_BOUNDARY_NAMESPACE_OVERRIDES` |
+
+### 連携、ストレージ、runtime {#coordination-storage-and-runtime-controls}
+
+| 変数 | 既定値 | 目的 | 旧名 |
+| --- | --- | --- | --- |
+| `DW_OBSERVABILITY_CONTEXT_ENABLED` | `false` | 任意の API と schema がインストール済みの場合、制限付き trace context の永続化・配送・discovery を有効にします。 | - |
+| `DW_OBSERVABILITY_BAGGAGE_ALLOWLIST` | `[]` | run の起点に許可する baggage key の JSON 配列。既定は空です。link に baggage は含めません。 | - |
+| `DW_STORAGE_ADMISSION_FILE` | `unset` | ストレージ逼迫の観測を読む任意のローカル読み取り専用ファイル。無効または古い観測は書き込みを拒否します。 | - |
+| `DW_STORAGE_ADMISSION_SOURCE` | `unset` | 受付判断用の観測に含まれるストレージリソースの想定識別子。 | - |
+| `DW_STORAGE_ADMISSION_MAX_AGE_SECONDS` | `15` | ストレージ観測の最大経過秒数。1〜300秒です。 | - |
+| `DW_RUNTIME_CREDENTIALS_ENABLED` | `false` | データベースに永続化され namespace に束縛された runtime bearer 認証情報を admin API で管理できるようにします。 | `WORKFLOW_SERVER_RUNTIME_CREDENTIALS_ENABLED` |
+| `DW_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | 単一 namespace の workflow/activity long-poll 待機数のノード単位上限。全体の worker 上限以下で、共有 cache authority が使えない場合は拒否します。 | `WORKFLOW_SERVER_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
+| `DW_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | 単一 namespace の query-task long-poll 待機数のノード単位上限。全体の query 上限以下で、共有 cache authority が使えない場合は拒否します。 | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
+| `DW_V1_ENABLED` | `false` | v1 状態を意図的に維持する場合のみ embedded v1 の移行とキューの drain を有効にします。standalone Server は既定で v2 専用です。 | `WORKFLOW_V1_ENABLED` |
+
 ## 実行基盤の変数 {#runtime-infrastructure-variables}
 
 実行基盤の変数は、フレームワークや依存ライブラリの設定です。Server の監査はこれらを認識して警告を抑えますが、安定した Durable Workflow API の設定項目ではありません。

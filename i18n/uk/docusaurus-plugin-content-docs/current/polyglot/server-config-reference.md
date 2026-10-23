@@ -327,6 +327,70 @@ workers, які виконують ті самі workflows.
 `workflow:v2:repair-pass --loop`. Ці налаштування змінюють місце пошуку
 готових tasks, зберігаючи той самий контракт worker-протоколу.
 
+## Додаткові параметри опублікованого PHP Server {#additional-published-php-controls}
+
+Цей довідник охоплює контракт опублікованого **PHP Server 2.11.0**, включно з наведеними нижче параметрами. Перевірте фактично запущений образ: незалежно вибрана версія встановлення може бути старішою. `unset` означає відсутність значення змінної; наслідок залежить від параметра. Типові значення й псевдоніми взято з [опублікованого контракту](https://github.com/durable-workflow/server/blob/36d16273604755f3dd0743cab331cc7c62e51d8e/config/dw-contract.php). Під час збірки документації версійний snapshot контракту перевіряється для кожної мови. Вибраний набір версій встановлення не змінюється.
+
+### Допуск HTTP-запитів namespace {#namespace-request-controls}
+
+| Змінна | Типове значення | Призначення | Застарілий псевдонім |
+| --- | --- | --- | --- |
+| `DW_NAMESPACE_MAX_REQUESTS_PER_MINUTE` | `unset` | Необов’язкова кількість запитів control plane за хвилину для namespace; без значення межі немає. | `WORKFLOW_SERVER_NAMESPACE_MAX_REQUESTS_PER_MINUTE` |
+| `DW_NAMESPACE_MAX_CONCURRENT_REQUESTS` | `unset` | Необов’язкова кількість одночасних запитів control plane для namespace; без значення межі немає. | `WORKFLOW_SERVER_NAMESPACE_MAX_CONCURRENT_REQUESTS` |
+| `DW_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` | `unset` | Непереборна верхня межа запитів за хвилину, зокрема для перевизначень namespace. | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` |
+| `DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` | `unset` | Непереборна верхня межа одночасних запитів, зокрема для перевизначень namespace. | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` |
+| `DW_NAMESPACE_ADMISSION_OVERRIDES` | `{}` | JSON-об’єкт за namespace із перевизначеннями частоти та одночасності запитів. | `WORKFLOW_SERVER_NAMESPACE_ADMISSION_OVERRIDES` |
+
+### Квоти сталого стану namespace {#namespace-durable-controls}
+
+| Змінна | Типове значення | Призначення | Застарілий псевдонім |
+| --- | --- | --- | --- |
+| `DW_NAMESPACE_DURABLE_LIMITS` | `{}` | JSON типових квот сталих рядків namespace. Загальні та pending/open-квоти незалежні; pending tasks — готові рядки черги, активні leases обмежуються окремо. Порожній об’єкт не задає меж. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_LIMITS` |
+| `DW_NAMESPACE_DURABLE_HARD_LIMITS` | `{}` | JSON непереборних верхніх меж сталих рядків, зокрема для перевизначень namespace; порожній об’єкт не додає операторських обмежень. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_HARD_LIMITS` |
+| `DW_NAMESPACE_DURABLE_OVERRIDES` | `{}` | JSON перевизначень квот сталих рядків за namespace; жорсткі межі залишаються чинними. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_OVERRIDES` |
+
+### Квоти зовнішніх payload і транспорт S3 {#external-payload-quotas-and-s3}
+
+| Змінна | Типове значення | Призначення | Застарілий псевдонім |
+| --- | --- | --- | --- |
+| `DW_EXTERNAL_PAYLOAD_COMPLETION_MAX_BYTES` | `unset` | Окремі байти в незмінних upload slots одного leased completion; без значення використовується `DW_EXTERNAL_PAYLOAD_MAX_BYTES`. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_COMPLETION_MAX_BYTES` |
+| `DW_EXTERNAL_PAYLOAD_MAX_BYTES_PER_NAMESPACE` | `unset` | Сумарні байти зовнішніх payload namespace. Враховуються готові й незавершені об’єкти; без значення межі немає. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_MAX_BYTES_PER_NAMESPACE` |
+| `DW_EXTERNAL_PAYLOAD_MAX_OBJECTS_PER_NAMESPACE` | `unset` | Кількість зовнішніх payload-об’єктів namespace. Враховуються готові й незавершені об’єкти; без значення межі немає. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_MAX_OBJECTS_PER_NAMESPACE` |
+| `DW_EXTERNAL_PAYLOAD_HARD_MAX_BYTES_PER_NAMESPACE` | `unset` | Непереборна верхня межа сумарних байтів зовнішніх payload namespace, включно з перевизначеннями. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_HARD_MAX_BYTES_PER_NAMESPACE` |
+| `DW_EXTERNAL_PAYLOAD_HARD_MAX_OBJECTS_PER_NAMESPACE` | `unset` | Непереборна верхня межа кількості зовнішніх payload-об’єктів namespace, включно з перевизначеннями. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_HARD_MAX_OBJECTS_PER_NAMESPACE` |
+| `DW_EXTERNAL_PAYLOAD_NAMESPACE_OVERRIDES` | `{}` | JSON за namespace із перевизначеннями квот `max_bytes` і `max_objects`. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_NAMESPACE_OVERRIDES` |
+| `DW_EXTERNAL_PAYLOAD_S3_ACCESS_KEY_ID` | `unset` | Необов’язковий access-key ID керованого runtime S3-сумісного диска; може бути відсутній за workload identity. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_ACCESS_KEY_ID` |
+| `DW_EXTERNAL_PAYLOAD_S3_SECRET_ACCESS_KEY` | `unset` | Необов’язковий секретний ключ керованого S3-сумісного диска; задається разом з access-key ID. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_SECRET_ACCESS_KEY` |
+| `DW_EXTERNAL_PAYLOAD_S3_SESSION_TOKEN` | `unset` | Необов’язковий session token тимчасових облікових даних керованого S3-сумісного диска. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_SESSION_TOKEN` |
+| `DW_EXTERNAL_PAYLOAD_S3_REGION` | `us-east-1` | Регіон керованого runtime S3-сумісного диска. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_REGION` |
+| `DW_EXTERNAL_PAYLOAD_S3_BUCKET` | `unset` | Bucket керованого runtime S3-сумісного диска. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_BUCKET` |
+| `DW_EXTERNAL_PAYLOAD_S3_ENDPOINT` | `unset` | Необов’язковий HTTPS endpoint S3-сумісного сховища зовнішніх payload. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_ENDPOINT` |
+| `DW_EXTERNAL_PAYLOAD_S3_USE_PATH_STYLE_ENDPOINT` | `false` | Використовувати path-style адресацію bucket для керованого S3-сумісного сховища. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_USE_PATH_STYLE_ENDPOINT` |
+
+### Межі сервісних викликів namespace викликача {#service-caller-namespace-controls}
+
+| Змінна | Типове значення | Призначення | Застарілий псевдонім |
+| --- | --- | --- | --- |
+| `DW_SERVICE_BOUNDARY_NAMESPACE_RATE_LIMIT_PER_MINUTE` | `unset` | Спільна необов’язкова кількість сервісних викликів за хвилину в усіх межах namespace викликача. | `WORKFLOW_SERVER_SERVICE_BOUNDARY_NAMESPACE_RATE_LIMIT_PER_MINUTE` |
+| `DW_SERVICE_BOUNDARY_NAMESPACE_MAX_IN_FLIGHT` | `unset` | Спільна необов’язкова кількість одночасних сервісних викликів namespace викликача. | `WORKFLOW_SERVER_SERVICE_BOUNDARY_NAMESPACE_MAX_IN_FLIGHT` |
+| `DW_SERVICE_BOUNDARY_HARD_RATE_LIMIT_PER_MINUTE` | `unset` | Непереборна хвилинна межа політик сервісної межі й namespace викликача. | `WORKFLOW_SERVER_SERVICE_BOUNDARY_HARD_RATE_LIMIT_PER_MINUTE` |
+| `DW_SERVICE_BOUNDARY_HARD_MAX_IN_FLIGHT` | `unset` | Непереборна межа одночасних викликів політик сервісної межі й namespace викликача. | `WORKFLOW_SERVER_SERVICE_BOUNDARY_HARD_MAX_IN_FLIGHT` |
+| `DW_SERVICE_BOUNDARY_NAMESPACE_OVERRIDES` | `{}` | JSON перевизначень частоти й одночасності сервісних викликів за namespace викликача; жорсткі межі чинні. | `WORKFLOW_SERVER_SERVICE_BOUNDARY_NAMESPACE_OVERRIDES` |
+
+### Координація, сховище й runtime {#coordination-storage-and-runtime-controls}
+
+| Змінна | Типове значення | Призначення | Застарілий псевдонім |
+| --- | --- | --- | --- |
+| `DW_OBSERVABILITY_CONTEXT_ENABLED` | `false` | Увімкнути необов’язкове обмежене збереження й передавання trace context та discovery після встановлення відповідних API і схеми. | - |
+| `DW_OBSERVABILITY_BAGGAGE_ALLOWLIST` | `[]` | JSON-список дозволених baggage keys для джерел run; типовий список порожній. Links не несуть baggage. | - |
+| `DW_STORAGE_ADMISSION_FILE` | `unset` | Необов’язковий локальний read-only файл спостереження тиску сховища; невалідні чи застарілі дані блокують записи. | - |
+| `DW_STORAGE_ADMISSION_SOURCE` | `unset` | Очікувана ідентичність ресурсу сховища в спостереженні допуску. | - |
+| `DW_STORAGE_ADMISSION_MAX_AGE_SECONDS` | `15` | Максимальний вік спостереження сховища в секундах, від 1 до 300. | - |
+| `DW_RUNTIME_CREDENTIALS_ENABLED` | `false` | Увімкнути сталі namespace-bound runtime bearer credentials у базі даних, керовані через admin API. | `WORKFLOW_SERVER_RUNTIME_CREDENTIALS_ENABLED` |
+| `DW_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | Межа утримуваних workflow/activity long polls одного namespace на цьому вузлі; не перевищує глобальну worker-межу. Недоступний спільний cache authority спричиняє відмову. | `WORKFLOW_SERVER_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
+| `DW_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | Межа утримуваних query-task long polls одного namespace на цьому вузлі; не перевищує глобальну query-межу. Недоступний спільний cache authority спричиняє відмову. | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
+| `DW_V1_ENABLED` | `false` | Увімкнути міграцію та спорожнення черги embedded v1 лише для свідомого збереження v1-стану; standalone Server типово працює лише з v2. | `WORKFLOW_V1_ENABLED` |
+
 ## Змінні інфраструктури runtime {#runtime-infrastructure-variables}
 
 Інфраструктурні змінні runtime керують фреймворком та залежностями.
