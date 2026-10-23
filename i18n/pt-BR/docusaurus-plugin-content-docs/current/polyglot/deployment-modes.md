@@ -151,6 +151,8 @@ Três regras de migração são obrigatórias:
 
 ## Referências relacionadas {#related-references}
 
+[Mover cargas entre runtimes](/docs/polyglot/runtime-migration/) cobre drenagem e corte entre Server próprios, de Server para Cloud e de Cloud para Server.
+
 - [Instalação](/docs/installation)
 - [Server](/docs/polyglot/server)
 - [SDK PHP](/docs/polyglot/php)

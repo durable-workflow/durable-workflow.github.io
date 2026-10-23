@@ -153,6 +153,8 @@ Waterline. Оператори власного Server можуть викори�
 
 ## Пов’язані довідники {#related-references}
 
+[Перехід між середовищами виконання](/docs/polyglot/runtime-migration/) охоплює завершення запусків і перемикання між власними Server, із власного Server до Cloud і з Cloud до власного Server.
+
 - [Встановлення](/docs/installation)
 - [Server](/docs/polyglot/server)
 - [PHP SDK](/docs/polyglot/php)

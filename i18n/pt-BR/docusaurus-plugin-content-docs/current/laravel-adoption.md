@@ -569,6 +569,8 @@ validada de importação cria estado sob responsabilidade do Server.
 Retirar um pacote, fila, tabela, segredo ou implantação Waterline antiga é a
 última etapa, nunca o mecanismo de transição.
 
+Para mudanças entre runtimes em modo serviço, use [mover cargas entre runtimes](/docs/polyglot/runtime-migration/). Exportar histórico do Server não é importar estado ativo.
+
 ## Continue pelo caminho escolhido {#continue-with-the-chosen-path}
 
 - [Instalação da v1 estável](/docs/1.x/installation/)

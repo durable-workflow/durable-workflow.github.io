@@ -486,6 +486,8 @@ $workflows->assertResultRequested('order-1001');
 
 退役旧软件包、队列、表、密钥或 Waterline 部署是最后一步，绝不是切换机制。
 
+服务模式运行时之间迁移时，请参阅[运行时迁移指南](/docs/polyglot/runtime-migration/)。Server 历史导出不等同于活动状态导入。
+
 ## 按所选路径继续 {#continue-with-the-chosen-path}
 
 - [稳定 v1 安装](/docs/1.x/installation/)

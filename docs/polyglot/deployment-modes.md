@@ -150,6 +150,8 @@ Three migration rules are non-negotiable:
 
 ## Related References
 
+[Moving between runtimes](/docs/polyglot/runtime-migration/) covers self-hosted-to-self-hosted, self-hosted-to-Cloud and Cloud-to-self-hosted drain and cutover.
+
 - [Installation](/docs/installation)
 - [Server](/docs/polyglot/server)
 - [PHP SDK](/docs/polyglot/php)

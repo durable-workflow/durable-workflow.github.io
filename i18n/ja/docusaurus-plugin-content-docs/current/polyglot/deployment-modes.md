@@ -98,6 +98,8 @@ Laravel を使うチームには、[Laravel の導入とランタイム移行ガ
 
 ## 関連リファレンス {#related-references}
 
+[ランタイム間でワークロードを移す](/docs/polyglot/runtime-migration/)は、セルフホスト間、セルフホストから Cloud、Cloud からセルフホストのドレインと切り替えを扱います。
+
 - [インストール](/docs/installation)
 - [Server](/docs/polyglot/server)
 - [PHP SDK](/docs/polyglot/php)

@@ -568,6 +568,8 @@ dasselbe Modell bereitgestellter Zeit mit eigenen Sätzen, Mindest- und
 Höchstbeträgen. Verwenden Sie beim Interpretieren der Nutzung die vom Plan
 zurückgegebenen `billing_terms`. Historische Rechnungen behalten ihre akzeptierten Bedingungen.
 
+Folgen Sie vor der Deprovisionierung [Workloads zwischen Laufzeiten verschieben](/docs/polyglot/runtime-migration/#preserve-evidence): Bewahren Sie geprüfte Verlaufs- und Payload-Nachweise auf und bestätigen Sie den Endzustand aller Quell-Läufe. Kapazitätskosten laufen weiter, solange die Quelle bereitgestellt ist.
+
 Exportieren Sie dieselben Nachweise als CSV oder JSON-Bericht, wenn ein
 nachgelagertes Finanzsystem eine Datei benötigt:
 
