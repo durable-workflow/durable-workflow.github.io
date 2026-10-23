@@ -44,8 +44,8 @@ constituent pas des offres d'achat actuelles.
 | Offre | Capacité du runtime | Stockage durable inclus | Disponibilité | Prix (USD) |
 | --- | --- | --- | --- | --- |
 | Cloud Dev | 1 vCPU, 1 Go RAM | 5 Go | Hôte unique, sans SLA | 0,075 $/heure, minimum de 2 $ par mois actif, plafond de 50 $/mois |
-| Cloud Standard | 1 vCPU, 2 Go RAM | 25 Go | HA monorégion prévue, SLA de 99,99 % | 0,45 $/heure, minimum de 10 $ par mois actif, plafond de 300 $/mois |
-| Cloud Multi-Region | 1 vCPU, 2 Go RAM | 25 Go | HA multirégion prévue, SLA de 99,99 % | 0,60 $/heure, minimum de 15 $ par mois actif, plafond de 400 $/mois |
+| Cloud Standard | 2 vCPU, 4 Go RAM | 25 Go | HA monorégion prévue, SLA de 99,99 % | 0,45 $/heure, minimum de 10 $ par mois actif, plafond de 300 $/mois |
+| Cloud Multi-Region | 2 vCPU, 4 Go RAM | 25 Go | HA multirégion prévue, SLA de 99,99 % | 0,60 $/heure, minimum de 15 $ par mois actif, plafond de 400 $/mois |
 | Cloud Business | 4 vCPU, 8 Go RAM | 100 Go | HA monorégion prévue, SLA de 99,99 % | 2,25 $/heure, minimum de 50 $ par mois actif, plafond de 1 500 $/mois |
 | Cloud Business Multi-Region | 4 vCPU, 8 Go RAM | 100 Go | HA multirégion prévue, SLA de 99,99 % | 3,00 $/heure, minimum de 75 $ par mois actif, plafond de 2 000 $/mois |
 
