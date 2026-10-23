@@ -65,6 +65,26 @@ Server はメジャー `1` 内で Worker プロトコルヘッダーをネゴシ
 
 ネゴシエーションは安全側に失敗します。ヘッダーの欠落・不正、異なるメジャー、Server が広告するマイナーより新しい Worker マイナーは拒否します。SDK と Server のリリースバージョンは独立に管理します。互換性はランタイムのプロトコルマニフェストで決まります。
 
+## Worker タスクの並行実行 {#worker-task-concurrency}
+
+以下の有界実行レーンには Rust SDK **4.3.1 以降**が必要です。`Cargo.lock` のバージョンを確認してください。上の固定インストールは別の検証済み構成に属し、古い SDK を選ぶ場合があります。[公開パッケージの受け入れ検証](https://github.com/durable-workflow/sdk-rust/issues/107#issuecomment-6360719863)では、設定した三つのスロット、解放後に初めて入る四つ目のコールバック、処理済みのアクティビティ失敗を含む七つのワークフロー完了を確認しています。前述の Server プロトコル要件は引き続き適用されます。
+
+`Worker::max_concurrent_workflow_tasks(...)` と `Worker::max_concurrent_activity_tasks(...)` は、それぞれ既定値が **10** です。`run()` と `run_until()` はワークフローとリモートアクティビティで独立した有界レーンを使います。各タスク種別を逐次実行するには **1** を指定します。例えば、アプリケーションのハンドラー登録前に既存のクライアントを設定します。
+
+```rust
+use durable_workflow::Worker;
+
+let mut worker = Worker::new(client.clone(), "payments")
+    .max_concurrent_workflow_tasks(1)
+    .max_concurrent_activity_tasks(1);
+```
+
+ハンドラーを登録し、通常どおり `run()` または `run_until()` を起動してください。両方を一にしても、ワークフロータスク一つとリモートアクティビティタスク一つは同時に実行できます。クエリは別のポーリングレーンを使います。Worker のクローンは同時の `run_once()` 呼び出しを含めて容量を共有します。クローンを作っても独立した追加枠にはなりません。
+
+ハートビートの空き容量は、入力・履歴の読み込み、コールバック実行、結果確定を含む実際の取得済みタスクに従います。空のロングポーリングは空き容量を残します。成功、失敗、拒否、キャンセルでローカルスロットを解放します。インラインのローカルアクティビティは**ワークフロータスク**のスロットを使い、リモートアクティビティプールを通りません。アクティビティ上限は複数ワークフローのインライン実行を別枠で制限しません。
+
+ハンドラーは Tokio の async future であり、他の処理が進むよう実行権を譲る必要があります。ブロックする処理には `tokio::task::spawn_blocking` または別プロセスを使い、キャンセルと終了の境界を明示してください。並行数を増やしても CPU は分離されず、切り離されたスレッドがキャンセル可能になるわけでもありません。インストールした SDK の [Worker API](https://rust.durable-workflow.com/durable_workflow/struct.Worker.html) を参照してください。
+
 ## ローカルアクティビティ {#local-activities}
 
 Rust SDK 3.1.0 は `Worker::local_activities(true)` で設定した Worker にインラインのローカル実行を追加します。通常のアクティビティ登録メソッドでコールバックを登録し、ワークフローコンテキストのローカルアクティビティメソッドを使います。再試行とタイムアウトの設定は[実行可能な例](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs)と [LocalActivityOptions リファレンス](https://rust.durable-workflow.com/durable_workflow/struct.LocalActivityOptions.html)を参照してください。

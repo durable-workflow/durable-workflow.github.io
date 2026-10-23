@@ -120,7 +120,7 @@ protocol manifests determine compatibility.
 
 ## Worker task concurrency {#worker-task-concurrency}
 
-The bounded worker lanes below are qualified in Rust SDK **4.3.1**. Check the crate in `Cargo.lock` before using them: the installation pin above belongs to a separate qualified artifact tuple and may select an older SDK. The [published-package acceptance](https://github.com/durable-workflow/sdk-rust/issues/107#issuecomment-6360719863) verifies three configured slots, a fourth callback admitted after a slot is released, and seven completed workflows including a handled activity failure. This guide does not change the Server protocol requirements above.
+The bounded worker lanes below require Rust SDK **4.3.1 or newer**. Check the crate in `Cargo.lock` before using them: the installation pin above belongs to a separate qualified artifact tuple and may select an older SDK. The [published-package acceptance](https://github.com/durable-workflow/sdk-rust/issues/107#issuecomment-6360719863) verifies three configured slots, a fourth callback admitted after a slot is released, and seven completed workflows including a handled activity failure. This guide does not change the Server protocol requirements above.
 
 `Worker::max_concurrent_workflow_tasks(...)` and `Worker::max_concurrent_activity_tasks(...)` each default to **10**. `run()` and `run_until()` use independent bounded workflow and remote-activity lanes. Set a limit to **1** for serial execution within that task family. For example, configure an existing client before registering your application handlers:
 
