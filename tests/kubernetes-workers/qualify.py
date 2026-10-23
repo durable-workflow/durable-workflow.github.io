@@ -65,7 +65,10 @@ def server():
            'spec': {'replicas': 1, 'selector': {'matchLabels': {'app': 'fixture-server'}},
                     'template': {'metadata': {'labels': {'app': 'fixture-server'}},
                                  'spec': {'initContainers': [{**common, 'name': 'bootstrap',
-                                           'command': ['server-bootstrap']}],
+                                           # EmptyDir masks the image's pre-owned database directory.
+                                           # Apache needs both the file and journal directory writable.
+                                           'command': ['sh', '-ec', 'server-bootstrap && '
+                                                       'chown -R www-data:www-data /data && chmod -R ug+rwX /data']}],
                                           'containers': [api, scheduler],
                                           'volumes': [{'name': 'data', 'emptyDir': {}}]}}}})
     apply({'apiVersion': 'v1', 'kind': 'Service',
