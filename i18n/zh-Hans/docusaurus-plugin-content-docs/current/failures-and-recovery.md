@@ -259,6 +259,10 @@ class RetryableWorkflow extends Workflow
 }
 ```
 
+## Python 服务模式失败报告上限 {#python-failure-report-limits}
+
+Python SDK **2.11.0 或更新版本**将服务模式下发出的失败报告限制为：UTF-8 消息 62 KiB、堆栈 128 KiB、可选元数据合计 64 KiB，以及包含标记的完整编码请求体 1 MiB。已知传输上限更低时，以较低值为准。[Python 报告指南](./polyglot/python.md#bounded-failure-reports)说明了配置、省略诊断信息、保留的重试语义，以及本地首次执行与冷重放的一致性。这些是 SDK 报告的边界。嵌入式记录和 Core 摘要存储遵循各自独立的契约。
+
 ## Rust 服务模式失败报告上限 {#rust-failure-report-limits}
 
 实际运行 Rust SDK **4.10.1 或更新版本**的服务 worker，其发出 UTF-8 message 含标记最多62 KiB，受支持 stack 为128 KiB，可选 metadata 合计序列化结果为64 KiB，完整编码 body 为1 MiB或已知更低传输上限。type、retry 决定和 claim 标识保持不变；必需 envelope 无法容纳时显式拒绝。[Rust 报告指南](./polyglot/rust.md#bounded-failure-reports)说明省略标记、完整 Avro details 和本地结果边界。这不构成对旧 SDK、embedded mode 或独立 Core summary 存储修复的验证。

@@ -212,10 +212,31 @@ async with Client(
 | `payload_size_limit_bytes` | `int` | padrão do SDK | Corresponder ao contrato de bytes máximos de payload do servidor. |
 | `payload_size_warning_threshold_percent` | `int` | padrão do SDK | Avisar antes de um payload atingir o limite configurado. |
 | `payload_size_warnings` | `bool` | `True` | Desabilitar avisos locais de tamanho de payload em testes ou scripts controlados. |
+| `failure_report_limit_bytes` | `int` | `1048576` | Reduzir o limite do relatório de falha totalmente codificado. Veja [relatórios de falha com limites](#bounded-failure-reports). |
 
 `token` é a opção mais simples. Se `control_token` e `worker_token` estiverem
 definidos, métodos do plano de controle usam `control_token`, e métodos do
 plano de workers usam `worker_token`.
+
+### Relatórios de falha com limites {#bounded-failure-reports}
+
+O SDK Python **2.11.0** introduziu limites para os relatórios de falha enviados. Os padrões são **62 KiB UTF-8 para a mensagem**, **128 KiB para a pilha**, **64 KiB para os detalhes e diagnósticos opcionais serializados em conjunto** e **1 MiB para o corpo completo codificado pelo HTTPX**. Marcadores, escapes JSON, identidade da concessão e outros comandos do lote contam para esse limite do corpo. Um limite de transporte configurado ou descoberto menor tem precedência. Tipo, classe e código da falha, política de novas tentativas e identidade da concessão são preservados.
+
+Defina um limite menor para o corpo quando necessário. As configurações de aviso sobre o tamanho da carga continuam sendo apenas informativas.
+
+```python
+from durable_workflow import Client
+
+async with Client(
+    "https://workflow.example.com",
+    worker_token="worker-token",
+    control_token="operator-token",
+    failure_report_limit_bytes=512 * 1024,
+) as client:
+    info = await client.get_cluster_info()
+```
+
+Um marcador visível de truncamento e as contagens originais de bytes identificam os campos reduzidos. Os detalhes Avro permanecem inteiros ou são omitidos por completo. Um envelope obrigatório que não possa ser representado gera `FailureReportTooLarge` antes do envio HTTP. As falhas locais são normalizadas antes que o código do workflow as observe. Assim, a primeira execução e o replay a frio veem a mensagem persistida. Uma mensagem local já observada permanece imutável durante o ajuste final do lote.
 
 ### Armazenamento externo de payloads {#external-payload-storage}
 

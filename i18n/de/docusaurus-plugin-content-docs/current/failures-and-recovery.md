@@ -263,6 +263,10 @@ class RetryableWorkflow extends Workflow
 }
 ```
 
+## Limits für Python-Fehlerberichte im Service-Modus {#python-failure-report-limits}
+
+Das Python SDK **ab 2.11.0** begrenzt ausgehende Fehlerberichte im Service-Modus auf 62 KiB UTF-8 für Meldungen, 128 KiB für Stacks, 64 KiB für optionale Metadaten zusammen und 1 MiB für den vollständigen codierten Body einschließlich Markierungen. Niedrigere bekannte Transportlimits gelten weiterhin. Der [Python-Leitfaden für Fehlerberichte](./polyglot/python.md#bounded-failure-reports) erläutert Konfiguration, Auslassungsdiagnosen, unveränderte Retry-Semantik und identische Beobachtungen bei erster Ausführung und kaltem Replay. Diese Grenzen gelten für SDK-Berichte. Eingebettete Fehleraufzeichnung und Core-Summary-Speicherung haben eigene Verträge.
+
 ## Grenzen für Rust-Fehlerberichte im Service-Modus {#rust-failure-report-limits}
 
 Bei Service-Workern mit tatsächlich laufendem Rust SDK **4.10.1 oder neuer** hat die ausgehende UTF-8-Nachricht höchstens 62 KiB einschließlich Markierung, ein unterstützter Stack 128 KiB, gemeinsam serialisierte optionale Metadaten 64 KiB und der vollständige kodierte Body 1 MiB oder eine bekannte niedrigere Transportgrenze. Typ, Retry-Entscheidung und Identität bleiben erhalten; unmögliche Pflichthüllen werden ausdrücklich abgelehnt. Der [Rust-Leitfaden](./polyglot/rust.md#bounded-failure-reports) erklärt Markierungen, vollständige Avro-Details und lokale Ergebnisse. Ältere SDKs, Embedded-Modus und die separate Core-Speicherkorrektur sind damit nicht qualifiziert.

@@ -209,9 +209,30 @@ async with Client(
 | `payload_size_limit_bytes` | `int` | predeterminado del SDK | Ajustar al contrato máximo de bytes de carga del servidor. |
 | `payload_size_warning_threshold_percent` | `int` | predeterminado del SDK | Avisar antes de alcanzar el límite. |
 | `payload_size_warnings` | `bool` | `True` | Desactivar avisos locales de tamaño en pruebas o scripts controlados. |
+| `failure_report_limit_bytes` | `int` | `1048576` | Reducir el presupuesto del informe de error completamente codificado. Consulta [informes de error acotados](#bounded-failure-reports). |
 
 `token` es lo más sencillo. Si estableces `control_token` y `worker_token`, los
 métodos usan el correspondiente a su plano.
+
+### Informes de error acotados {#bounded-failure-reports}
+
+El SDK de Python **2.11.0** incorporó informes de error salientes acotados. Los valores predeterminados son **62 KiB UTF-8 para el mensaje**, **128 KiB para la pila**, **64 KiB para los detalles y diagnósticos opcionales serializados en conjunto** y **1 MiB para el cuerpo completo codificado por HTTPX**. Los marcadores, el escape JSON, la identidad de la concesión y los demás comandos del lote cuentan para ese límite del cuerpo. Tiene prioridad cualquier límite de transporte configurado o descubierto que sea menor. Se conservan el tipo, la clase y el código del error, la política de reintentos y la identidad de la concesión.
+
+Configura un presupuesto menor para el cuerpo cuando sea necesario. Los ajustes de advertencia sobre el tamaño de la carga siguen siendo informativos.
+
+```python
+from durable_workflow import Client
+
+async with Client(
+    "https://workflow.example.com",
+    worker_token="worker-token",
+    control_token="operator-token",
+    failure_report_limit_bytes=512 * 1024,
+) as client:
+    info = await client.get_cluster_info()
+```
+
+Un marcador visible de truncamiento y los recuentos originales de bytes identifican los campos recortados. Los detalles Avro se conservan íntegros o se omiten por completo. Si una envoltura obligatoria no puede representarse, se lanza `FailureReportTooLarge` antes del envío HTTP. Los errores locales se normalizan antes de que el código del workflow los observe, por lo que la primera ejecución y la reproducción en frío ven el mensaje persistido. Un mensaje local ya observado permanece inmutable durante el ajuste final del lote.
 
 ### Almacenamiento externo de cargas {#external-payload-storage}
 
