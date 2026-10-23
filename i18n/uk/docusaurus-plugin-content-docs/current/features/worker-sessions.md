@@ -80,6 +80,10 @@ $manifest = $session->activity(AssembleManifestActivity::class, $frames['path'])
 }
 ```
 
+## Сервісні worker на Python {#python-service-workers}
+
+[Приклад worker session на Python](../polyglot/python.md#worker-sessions) створює `WorkerSessionOptions`, планує дві послідовні віддалені activity, оголошує capability власника й обробляє остаточну помилку activity. Він також показує відновлення тимчасового локального стану після втрати власника та пояснює, чому явне закриття чи завершення TTL потребує нового ідентифікатора сесії. Рецепт перевірено з опублікованими Python SDK 2.9.0 і Server 2.11.0, включно з роллю scheduler/maintenance Server.
+
 ## Життєвий цикл {#lifecycle}
 
 Сесія створюється ліниво. Шар підбору завдань створює або повторно отримує

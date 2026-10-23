@@ -84,6 +84,10 @@ sous `worker_session`.
 }
 ```
 
+## Workers de service Python {#python-service-workers}
+
+L’[exemple de session de worker Python](../polyglot/python.md#worker-sessions) crée `WorkerSessionOptions`, planifie deux activités distantes séquentielles, déclare la capacité du détenteur et traite un échec définitif d’activité. Il montre aussi comment reconstruire l’état local jetable après la perte du détenteur et explique pourquoi une fermeture explicite ou l’expiration du TTL impose un nouvel identifiant de session. La recette est vérifiée avec les versions publiées du SDK Python 2.9.0 et de Server 2.11.0, y compris le rôle d’ordonnancement/maintenance du Server.
+
 ## Cycle de vie {#lifecycle}
 
 La création de session est différée. La couche d’appariement crée ou réacquiert

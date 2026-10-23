@@ -1254,6 +1254,84 @@ Utilisez `PassthroughWorkerInterceptor` comme base pour un seul hook. Implément
 directement `WorkerInterceptor` si les vérificateurs de types doivent imposer
 la présence de tous les hooks.
 
+### Sessions de worker {#worker-sessions}
+
+Utilisez `WorkerSessionOptions` lorsque des activités distantes séquentielles doivent utiliser une ressource locale du même worker. Cet exemple est vérifié avec le SDK Python **2.9.0** et Server **2.11.0** ; consultez les [versions requises pour l’affinité portable](./portable-worker-affinity.md). Utilisez un `job_id` unique par exécution de workflow afin qu’une nouvelle exécution ne réutilise pas l’identifiant d’une session terminale.
+
+Le cache ci-dessous est jetable. Chaque activité peut le reconstruire à partir de l’entrée métier durable ; le nouveau détenteur ne dépend donc pas de la mémoire du processus précédent :
+
+```python
+from durable_workflow import ActivityFailed, WorkerSessionOptions, activity, workflow
+
+# Disposable process-local state. Rebuild it from durable business input.
+documents = {}
+
+def ensure_document(job_id):
+    rebuilt = job_id not in documents
+    if rebuilt:
+        documents[job_id] = {"text": "document:" + job_id}
+    return documents[job_id], rebuilt
+
+@activity.defn(name="prepare_document")
+async def prepare_document(job_id):
+    document, rebuilt = ensure_document(job_id)
+    return {"holder": activity.context().info.worker_id, "rebuilt": rebuilt}
+
+@activity.defn(name="inspect_document")
+async def inspect_document(job_id):
+    document, rebuilt = ensure_document(job_id)
+    return {"holder": activity.context().info.worker_id,
+            "rebuilt": rebuilt, "text": document["text"]}
+
+@workflow.defn(name="inspect_document_workflow")
+class InspectDocumentWorkflow:
+    def run(self, ctx, job_id):
+        session = WorkerSessionOptions(
+            session_id="documents:" + job_id,
+            requirements=("fs:documents",),
+            lease_seconds=5,
+            ttl_seconds=60,
+            max_concurrent_activities=1,
+            allow_reacquire_after_failure=True,
+        )
+        options = dict(worker_session=session,
+                       start_to_close_timeout=5,
+                       schedule_to_start_timeout=12,
+                       schedule_to_close_timeout=20,
+                       retry_policy={"max_attempts": 1})
+        try:
+            prepared = yield ctx.schedule_activity("prepare_document", [job_id], **options)
+            inspected = yield ctx.schedule_activity("inspect_document", [job_id], **options)
+        except ActivityFailed as error:
+            if error.activity_type not in {"prepare_document", "inspect_document"}:
+                raise
+            return {"status": "resource_unavailable", "job_id": job_id}
+        return {"status": "inspected", "prepared": prepared, "inspected": inspected}
+```
+
+Enregistrez les deux activités et déclarez la capacité requise sur le worker :
+
+```python
+from durable_workflow import Worker
+
+worker = Worker(
+    client,
+    task_queue="documents",
+    workflows=[InspectDocumentWorkflow],
+    activities=[prepare_document, inspect_document],
+    capabilities=["fs:documents"],
+)
+await worker.run()
+```
+
+Démarrez `inspect_document_workflow` dans la file de tâches `documents` avec `[job_id]` en entrée. La première activité acquiert la session à la demande ; la seconde utilise le même détenteur tant que son bail reste valide. `max_concurrent_activities=1` limite les activités simultanées dans cette session. Le routage de file et les contrôles de capacité s’appliquent toujours. Ces baux et timeouts courts illustrent un comportement borné ; dimensionnez-les pour le travail réel et envoyez les heartbeats bien avant l’expiration.
+
+Après la perte du détenteur ou l’expiration du bail, `allow_reacquire_after_failure=True` permet à un autre worker admissible de réacquérir la session. Il doit reconstruire la ressource locale. Les résultats d’activité déjà validés sont relus, mais les effets non validés peuvent se répéter : utilisez des identifiants durables et des opérations externes idempotentes. Une session ne migre ni mémoire, ni fichiers, ni descripteurs ouverts.
+
+La fermeture explicite et l’expiration du TTL absolu sont terminales pour cet identifiant de session. Une activité ultérieure ne peut pas le rouvrir et peut rester sans admission jusqu’à l’application du timeout configuré. Exécutez le rôle d’ordonnancement/maintenance du Server de la [recette de déploiement publiée](https://github.com/durable-workflow/server/blob/2.11.0/docker-compose.published.yml) ; un processus API seul ne suffit pas à appliquer les timeouts. Le workflow traite l’échec définitif d’activité avec `ActivityFailed` et renvoie `resource_unavailable` ; l’application peut ensuite choisir une nouvelle session et reconstruire depuis l’entrée métier. Cet exemple ne promet ni exception immédiate de session fermée, ni réouverture automatique d’une session terminale.
+
+Pour gérer explicitement le cycle de vie du détenteur, utilisez `worker.worker_session(options)` et ses méthodes `create()`, `renew()` et `close(reason)`. L’arrêt normal du worker ferme les sessions qu’il détient. Consultez le [contrat de cycle de vie commun](../features/worker-sessions.md#lifecycle).
+
 ## Journalisation {#logging}
 
 Le SDK utilise le module standard `logging` avec des noms de logger structurés :

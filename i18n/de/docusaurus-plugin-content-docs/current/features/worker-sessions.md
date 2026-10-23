@@ -79,6 +79,10 @@ JSON-Form unter `worker_session` eines Workflow-Aufgabenbefehls
 }
 ```
 
+## Python-Service-Worker {#python-service-workers}
+
+Das [Python-Beispiel für Worker-Sessions](../polyglot/python.md#worker-sessions) erstellt `WorkerSessionOptions`, plant zwei aufeinanderfolgende Remote-Activities, deklariert die Capability des Inhabers und behandelt einen endgültigen Activity-Fehler. Es zeigt außerdem den Neuaufbau verwerfbaren lokalen Zustands nach dem Verlust des Inhabers und erklärt, warum explizites Schließen oder TTL-Ablauf eine neue Session-ID erfordert. Das Rezept wurde mit den veröffentlichten Versionen Python SDK 2.9.0 und Server 2.11.0 einschließlich der Scheduler-/Wartungsrolle des Servers geprüft.
+
 ## Lebenszyklus {#lifecycle}
 
 Sitzungen werden bei Bedarf erstellt. Die Zuordnungsschicht erstellt oder

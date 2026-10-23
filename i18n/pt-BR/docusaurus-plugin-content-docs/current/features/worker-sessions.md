@@ -82,6 +82,10 @@ JSON em `worker_session` de um comando de tarefa de workflow `schedule_activity`
 }
 ```
 
+## Workers de serviço em Python {#python-service-workers}
+
+O [exemplo de sessão de worker em Python](../polyglot/python.md#worker-sessions) cria `WorkerSessionOptions`, agenda duas atividades remotas sequenciais, declara a capacidade do titular e trata uma falha definitiva de atividade. Ele também mostra como reconstruir estado local descartável após a perda do titular e explica por que o fechamento explícito ou a expiração do TTL exigem um identificador de sessão novo. A receita foi verificada com Python SDK 2.9.0 e Server 2.11.0 publicados, incluindo a função de agendamento/manutenção do Server.
+
 ## Ciclo de vida {#lifecycle}
 
 A criação da sessão é adiada. A camada de correspondência cria ou readquire
