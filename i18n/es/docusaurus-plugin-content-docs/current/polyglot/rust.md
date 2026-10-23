@@ -65,6 +65,26 @@ Server negocia las cabeceras del protocolo de workers dentro de la versión prin
 
 La negociación rechaza las incompatibilidades. Se rechaza una cabecera ausente o malformada, otra versión principal o una versión menor del worker superior a la anunciada por el servidor. Las versiones del SDK y de Server se gestionan por separado. Sus manifiestos de protocolo en runtime determinan la compatibilidad.
 
+## Concurrencia de tareas del worker {#worker-task-concurrency}
+
+Los carriles acotados descritos aquí requieren Rust SDK **4.3.1 o posterior**. Compruebe la versión de `Cargo.lock`: la instalación fijada arriba pertenece a otra tupla cualificada y puede seleccionar un SDK anterior. La [verificación del paquete publicado](https://github.com/durable-workflow/sdk-rust/issues/107#issuecomment-6360719863) confirma tres slots configurados, una cuarta llamada admitida al liberarse uno, y siete workflows completados, incluido un fallo de actividad manejado. Siguen vigentes los requisitos de protocolo del Server descritos arriba.
+
+`Worker::max_concurrent_workflow_tasks(...)` y `Worker::max_concurrent_activity_tasks(...)` tienen un valor predeterminado de **10** cada uno. `run()` y `run_until()` usan carriles independientes y acotados para workflow y actividad remota. Configure **1** para ejecución secuencial dentro de esa familia de tareas. Por ejemplo, configure un cliente existente antes de registrar sus handlers:
+
+```rust
+use durable_workflow::Worker;
+
+let mut worker = Worker::new(client.clone(), "payments")
+    .max_concurrent_workflow_tasks(1)
+    .max_concurrent_activity_tasks(1);
+```
+
+Registre los handlers y después inicie `run()` o `run_until()` normalmente. Dos límites de uno aún permiten ejecutar simultáneamente una tarea de workflow y una actividad remota. Las consultas mantienen su carril de polling separado. Los clones comparten la capacidad configurada, incluso entre llamadas simultáneas a `run_once()`; clonar no crea otro cupo independiente.
+
+La disponibilidad anunciada en heartbeats sigue las tareas realmente reclamadas, incluida la carga de entrada/historial, la ejecución y la confirmación. Un long poll vacío deja capacidad disponible. Éxito, fallo, negativa y cancelación liberan el slot local. Las actividades locales inline ocupan su slot de **tarea de workflow** y evitan el pool remoto; el límite de actividades no acota por separado la ejecución inline entre workflows.
+
+Los handlers son futures async de Tokio y deben ceder el control. Use `tokio::task::spawn_blocking` o un proceso separado para trabajo bloqueante, con límites explícitos de cancelación y apagado. Aumentar concurrencia no aísla CPU ni hace cancelable un thread desacoplado. Consulte la [API de Worker](https://rust.durable-workflow.com/durable_workflow/struct.Worker.html) del SDK instalado.
+
 ## Actividades locales {#local-activities}
 
 El SDK de Rust 3.1.0 añade ejecución local en el propio worker con `Worker::local_activities(true)`. Registra callbacks con los métodos ordinarios de registro de actividades y utiliza los métodos de actividad local del contexto de workflow. Consulta el [ejemplo ejecutable](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs) y la [referencia de LocalActivityOptions](https://rust.durable-workflow.com/durable_workflow/struct.LocalActivityOptions.html) para configurar reintentos y tiempos de espera.

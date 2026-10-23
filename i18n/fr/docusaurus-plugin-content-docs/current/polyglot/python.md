@@ -1053,6 +1053,42 @@ async def validate(data: dict) -> dict:
     return data
 ```
 
+### Erreurs métier terminales {#terminal-business-errors}
+
+`non_retryable_error_types` correspond exactement au nom court (`exception_type`) ou au nom de classe qualifié (`exception_class`) de l’exception **extérieure**. Par exemple, `ValidationError` ne correspond pas à `SpecificValidationError`, même si c’est une sous-classe. Un nom qualifié comme `app.errors.ValidationError` doit correspondre à la classe enregistrée. La politique ne parcourt ni les sous-classes ni les causes. `raise RuntimeError(...) from NonRetryableError(...)` signale le `RuntimeError` extérieur et peut encore être retenté.
+
+Pour convertir une exception métier connue, levez `NonRetryableError` comme exception extérieure et conservez la cause Python d’origine avec `cause=error`. L’échec de l’activité devient non réessayable sans liste de noms. Cela ne fait pas automatiquement échouer tout le workflow : son code reçoit `ActivityFailed` quand l’activité n’a plus de tentatives, soit parce que l’erreur est non réessayable, soit parce que le budget est épuisé.
+
+```python
+from durable_workflow import ActivityFailed, NonRetryableError, activity, workflow
+
+@activity.defn(name="validate_order")
+async def validate_order(order: dict) -> dict:
+    try:
+        if order.get("amount", 0) <= 0:
+            raise ValueError("amount must be positive")
+    except ValueError as error:
+        raise NonRetryableError("Order validation failed", cause=error) from error
+    return order
+
+@workflow.defn(name="place_order")
+class PlaceOrderWorkflow:
+    def run(self, ctx, order: dict):
+        try:
+            yield ctx.schedule_activity("validate_order", [order])
+        except ActivityFailed as failure:
+            if (
+                failure.activity_type != "validate_order"
+                or failure.exception_type != "NonRetryableError"
+                or not failure.non_retryable
+            ):
+                raise
+            return {"order_id": order["id"], "status": "rejected"}
+        return {"order_id": order["id"], "status": "accepted"}
+```
+
+Pour l’entrée `{"id": "order-123", "amount": 0}`, l’activité échoue une fois et le workflow termine normalement avec `status: rejected`. Traitez seulement l’échec métier prévu ; l’exemple relance les autres. Poursuivez avec d’autres étapes durables si le parcours métier l’exige. Un `ActivityFailed` non intercepté fait échouer le workflow. Conserver une cause Python ne signifie ni que la politique inspecte cette chaîne ni que tous les SDK exposent le même objet de cause.
+
 ### Activités synchrones et asynchrones {#activity-execution}
 
 Les activités distantes ordinaires définies avec `def` s’exécutent dans un pool

@@ -122,6 +122,26 @@ celle annoncée par Server est refusée. Les versions de publication SDK et
 Server sont suivies indépendamment. Leurs manifestes de protocole runtime
 déterminent la compatibilité.
 
+## Concurrence des tâches du worker {#worker-task-concurrency}
+
+Les voies bornées ci-dessous nécessitent Rust SDK **4.3.1 ou ultérieur**. Vérifiez la version dans `Cargo.lock` : l’installation fixée plus haut appartient à une autre combinaison qualifiée et peut sélectionner un ancien SDK. La [vérification du paquet publié](https://github.com/durable-workflow/sdk-rust/issues/107#issuecomment-6360719863) confirme trois emplacements configurés, un quatrième callback admis après libération d’un emplacement et sept workflows terminés, dont un échec d’activité traité. Les exigences de protocole Server précédentes restent applicables.
+
+`Worker::max_concurrent_workflow_tasks(...)` et `Worker::max_concurrent_activity_tasks(...)` valent chacun **10** par défaut. `run()` et `run_until()` utilisent des voies bornées indépendantes pour workflow et activité distante. Choisissez **1** pour une exécution séquentielle au sein de cette famille de tâches. Par exemple, configurez un client existant avant d’enregistrer les handlers applicatifs :
+
+```rust
+use durable_workflow::Worker;
+
+let mut worker = Worker::new(client.clone(), "payments")
+    .max_concurrent_workflow_tasks(1)
+    .max_concurrent_activity_tasks(1);
+```
+
+Enregistrez les handlers, puis lancez `run()` ou `run_until()` normalement. Deux limites à un permettent encore une tâche de workflow et une tâche d’activité distante simultanées. Les requêtes de lecture gardent leur propre voie de polling. Les clones partagent la capacité configurée, y compris entre appels simultanés à `run_once()` ; cloner ne crée pas de quota indépendant supplémentaire.
+
+La disponibilité des heartbeats suit les tâches réellement réclamées : chargement d’entrée/historique, exécution et confirmation. Un long poll vide laisse la capacité disponible. Succès, échec, refus et annulation libèrent l’emplacement local. Les activités locales inline occupent leur emplacement de **tâche de workflow** et contournent le pool distant ; la limite d’activité ne borne donc pas séparément l’exécution inline entre workflows.
+
+Les handlers sont des futures async Tokio et doivent céder la main. Utilisez `tokio::task::spawn_blocking` ou un processus séparé pour le travail bloquant, avec une limite explicite d’annulation et d’arrêt. Augmenter la concurrence n’isole pas le CPU et ne rend pas un thread détaché annulable. Voir l’[API Worker](https://rust.durable-workflow.com/durable_workflow/struct.Worker.html) du SDK installé.
+
 ## Activités locales {#local-activities}
 
 Le SDK Rust 3.1.0 ajoute l’exécution locale en ligne sur les workers configurés

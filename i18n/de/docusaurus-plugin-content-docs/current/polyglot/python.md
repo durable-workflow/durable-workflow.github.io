@@ -1053,6 +1053,42 @@ async def validate(data: dict) -> dict:
     return data
 ```
 
+### Terminale fachliche Fehler {#terminal-business-errors}
+
+`non_retryable_error_types` vergleicht den kurzen Namen (`exception_type`) oder vollständig qualifizierten Klassennamen (`exception_class`) der **äußersten** Ausnahme exakt. `ValidationError` passt beispielsweise nicht zu `SpecificValidationError`, auch wenn diese Klasse davon erbt. Ein qualifizierter Eintrag wie `app.errors.ValidationError` muss dem aufgezeichneten Klassennamen entsprechen. Die Richtlinie durchsucht weder Unterklassen noch Ursachen. `raise RuntimeError(...) from NonRetryableError(...)` meldet den äußeren `RuntimeError` und kann weiterhin wiederholt werden.
+
+Wenn Sie eine bekannte fachliche Ausnahme umwandeln, lösen Sie `NonRetryableError` als äußere Ausnahme aus und erhalten Sie die ursprüngliche Python-Ursache mit `cause=error`. Dadurch wird der Aktivitätsfehler ohne Namensliste als nicht wiederholbar markiert. Das lässt nicht automatisch den ganzen Workflow scheitern: Er erhält `ActivityFailed`, wenn keine Aktivitätsversuche verbleiben, entweder wegen eines nicht wiederholbaren Fehlers oder wegen ausgeschöpften Budgets.
+
+```python
+from durable_workflow import ActivityFailed, NonRetryableError, activity, workflow
+
+@activity.defn(name="validate_order")
+async def validate_order(order: dict) -> dict:
+    try:
+        if order.get("amount", 0) <= 0:
+            raise ValueError("amount must be positive")
+    except ValueError as error:
+        raise NonRetryableError("Order validation failed", cause=error) from error
+    return order
+
+@workflow.defn(name="place_order")
+class PlaceOrderWorkflow:
+    def run(self, ctx, order: dict):
+        try:
+            yield ctx.schedule_activity("validate_order", [order])
+        except ActivityFailed as failure:
+            if (
+                failure.activity_type != "validate_order"
+                or failure.exception_type != "NonRetryableError"
+                or not failure.non_retryable
+            ):
+                raise
+            return {"order_id": order["id"], "status": "rejected"}
+        return {"order_id": order["id"], "status": "accepted"}
+```
+
+Bei der Eingabe `{"id": "order-123", "amount": 0}` schlägt die Aktivität einmal fehl und der Workflow schließt normal mit `status: rejected` ab. Behandeln Sie nur den vorgesehenen fachlichen Fehler; das Beispiel löst andere Fehler erneut aus. Fahren Sie mit weiteren dauerhaften Schritten fort, wenn der Geschäftsablauf es erfordert. Ein unbehandelter `ActivityFailed` lässt den Workflow scheitern. Eine erhaltene Python-Ursache bedeutet weder, dass die Wiederholungsrichtlinie die Kette prüft, noch dass jedes SDK dasselbe Ursachenobjekt bereitstellt.
+
 ### Synchrone und asynchrone Aktivitäten {#activity-execution}
 
 Gewöhnliche entfernte `def`-Aktivitäten laufen in einem eigenen Threadpool,
