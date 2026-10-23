@@ -282,6 +282,44 @@ pub fn register_charge(worker: &mut Worker) {
 
 Local activities та прямі виклики `testing::WorkflowEnvironment::run_activity` не мають отриманого snapshot сервера й повертають невідому policy. Нові тести `run_workflow` надають змодельований snapshot, записаний у їхній згенерованій історії. Ця семантика тестів не доводить, що розгорнутий Server передає policy. Див. [ActivityRetryInfo](https://rust.durable-workflow.com/durable_workflow/struct.ActivityRetryInfo.html) та [ActivityAttemptLimit](https://rust.durable-workflow.com/durable_workflow/enum.ActivityAttemptLimit.html).
 
+## Стала ідентичність activity та ідемпотентність зовнішніх операцій {#activity-identity}
+
+Rust SDK **4.9.0 або новіший** надає початкові отримані ідентифікатори через `ActivityContext`. Перевірте встановлений crate у `Cargo.lock`: окремо вибрана вище версія встановлення може бути старішою. Ці методи повертають незмінні значення `Option<&str>`, збережені з початкового claim, зокрема для activity у worker session.
+
+| Метод | Ідентичність і застосування |
+| --- | --- |
+| `activity_execution_id()` | Одне логічне виконання activity протягом повторних спроб; використовуйте для дедуплікації зовнішньої операції. |
+| `workflow_id()` | ID **екземпляра** workflow-власника для бізнес-кореляції. |
+| `run_id()` | ID конкретного **run** workflow-власника для кореляції цього запуску. |
+
+Сформуйте ключ для конкретної операції та передайте його ідемпотентному зовнішньому API або сталому журналу ефектів. Цей обробник лише створює ключ: він не списує платіж і не реалізує зовнішню дедуплікацію. Якщо ID activity відсутній, обробник відмовляє до будь-якого ефекту; застосунок натомість може надати власний явно сталий бізнес-ключ.
+
+```rust
+use durable_workflow::{json, ActivityError, Worker};
+
+pub fn register_charge(worker: &mut Worker) {
+    worker.register_activity("charge", |ctx, _| async move {
+        let execution_id = ctx.activity_execution_id().ok_or_else(|| {
+            ActivityError::new("MissingActivityIdentity", "Server activity identity is required")
+                .non_retryable(true)
+        })?;
+        // Pass this key to an idempotent downstream API or durable effect ledger.
+        let key = format!("payments:charge:{execution_id}");
+        Ok(json!({
+            "idempotency_key": key,
+            "workflow_id": ctx.workflow_id(),
+            "run_id": ctx.run_id(),
+        }))
+    });
+}
+```
+
+Якщо старіший Server не передає ці поля, вони залишаються `None`. Не замінюйте відсутній логічний ID activity ідентифікатором завдання чи спроби або номером спроби: під час повтору ключ зміниться. Inline local activities можуть отримувати справжні ID батьківських workflow/run, але не мають серверного ID виконання activity до запису команди сервером. Тести activity без Server не мають отриманої ідентичності claim.
+
+Сталий ключ запобігає дублюванню ефектів лише тоді, коли зовнішня система його враховує. Доставка activity залишається at-least-once; цей API не робить зовнішню роботу exactly-once, не відновлює прогрес heartbeat і не реалізує відновлювані контрольні точки activity.
+
+Див. [методи ідентичності ActivityContext](https://rust.durable-workflow.com/durable_workflow/struct.ActivityContext.html#method.activity_execution_id) та [перевірку звичайного встановлення 4.9.0](https://github.com/durable-workflow/sdk-rust/issues/139#issuecomment-6367230500) з ordinary/cooperative, local і worker-session контролями. Спільний контракт ідемпотентності описано в [гарантіях виконання](../constraints/execution-guarantees.md#service-activity-identity).
+
 ## Локальні activity {#local-activities}
 
 Rust SDK 3.1.0 додає inline local execution на workers із налаштуванням
