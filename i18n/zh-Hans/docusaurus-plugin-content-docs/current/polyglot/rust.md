@@ -65,6 +65,26 @@ Server 在主版本 `1` 内协商 Worker 协议头：公布 `1.N` 的 Server 仅
 
 协商默认拒绝不合规请求。缺失或格式错误的头、不同主版本，或高于 Server 公布次版本的 Worker 次版本都会被拒绝。SDK 和 Server 发布版本独立跟踪，由运行时协议清单决定兼容性。
 
+## Worker 任务并发 {#worker-task-concurrency}
+
+以下有界执行通道需要 Rust SDK **4.3.1 或更高版本**。使用前检查 `Cargo.lock` 中的版本：上方的安装固定版本属于另一组已验证构件，可能选择较旧的 SDK。[已发布包验收](https://github.com/durable-workflow/sdk-rust/issues/107#issuecomment-6360719863)验证了三个配置槽位、释放槽位后第四次回调才被接纳，以及七个完成的工作流，其中包括已处理的活动失败。前述 Server 协议要求仍然适用。
+
+`Worker::max_concurrent_workflow_tasks(...)` 和 `Worker::max_concurrent_activity_tasks(...)` 的默认值各为 **10**。`run()` 和 `run_until()` 为工作流与远程活动使用独立的有界通道。设为 **1** 可使该类任务串行执行。例如，在注册应用处理函数前配置现有客户端：
+
+```rust
+use durable_workflow::Worker;
+
+let mut worker = Worker::new(client.clone(), "payments")
+    .max_concurrent_workflow_tasks(1)
+    .max_concurrent_activity_tasks(1);
+```
+
+注册工作流和活动处理函数后，照常启动 `run()` 或 `run_until()`。两个限制都设为一时，仍允许一个工作流任务与一个远程活动任务同时执行。查询保留独立轮询通道。Worker 克隆共享配置容量，包括同时调用 `run_once()`；克隆不会创建另一份独立配额。
+
+心跳报告的可用容量以实际已领取任务为准，包括输入/历史加载、回调执行和结果确认。空长轮询保留可用容量。成功、失败、拒绝和取消都会释放本地槽位。内联本地活动占用其**工作流任务**槽位，不经过远程活动池，因此活动限制不会单独约束跨工作流的内联执行。
+
+处理函数作为 Tokio async future 执行，必须让出执行权。阻塞工作应使用 `tokio::task::spawn_blocking` 或独立进程，并设置明确的取消和关闭边界。提高并发不会隔离 CPU，也不会使脱离管理的线程可取消。参见已安装 SDK 的 [Worker API](https://rust.durable-workflow.com/durable_workflow/struct.Worker.html)。
+
 ## 本地活动 {#local-activities}
 
 Rust SDK 3.1.0 在配置了 `Worker::local_activities(true)` 的 Worker 上增加内联本地执行。使用普通活动注册方法注册回调，然后使用工作流上下文的本地活动方法。重试和超时配置见[可运行示例](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs)及 [LocalActivityOptions 参考](https://rust.durable-workflow.com/durable_workflow/struct.LocalActivityOptions.html)。
