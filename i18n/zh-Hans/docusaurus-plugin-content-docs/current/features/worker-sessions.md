@@ -71,6 +71,10 @@ $manifest = $session->activity(AssembleManifestActivity::class, $frames['path'])
 }
 ```
 
+## Python 服务 Worker {#python-service-workers}
+
+[Python Worker 会话示例](../polyglot/python.md#worker-sessions)创建 `WorkerSessionOptions`，安排两个顺序执行的远程活动，声明持有者能力，并处理重试耗尽后的活动失败。它还展示了持有者丢失后如何重建可丢弃的 Worker 本地状态，并解释为何显式关闭或 TTL 到期后需要新会话 ID。该方案已使用发布的 Python SDK 2.9.0 和 Server 2.11.0 验证，包括 Server 调度器/维护角色。
+
 ## 生命周期 {#lifecycle}
 
 会话按需创建。首个会话内活动任务被具备所需能力的 Worker 接纳时，匹配层创建或重新获取会话。Worker 也可以在轮询前调用 `POST /api/worker/sessions` 显式创建会话。

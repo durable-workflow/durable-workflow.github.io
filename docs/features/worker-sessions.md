@@ -81,6 +81,10 @@ on a `schedule_activity` workflow-task command under `worker_session`.
 }
 ```
 
+## Python service workers {#python-service-workers}
+
+The [Python worker-session example](../polyglot/python.md#worker-sessions) creates `WorkerSessionOptions`, schedules two sequential remote activities, declares the holder capability and handles an exhausted activity failure. It also shows rebuilding disposable worker-local state after holder loss and explains why explicit close or TTL expiry needs a fresh session id. The recipe is checked with published Python SDK 2.9.0 and Server 2.11.0, including the Server's scheduler/maintenance role.
+
 ## Lifecycle
 
 Session creation is lazy. The matching layer creates or reacquires a session

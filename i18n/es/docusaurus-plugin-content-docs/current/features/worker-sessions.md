@@ -71,6 +71,10 @@ La instantánea de opciones guarda el mismo contrato en `activity_options.worker
 }
 ```
 
+## Workers de servicio en Python {#python-service-workers}
+
+El [ejemplo de sesiones de worker en Python](../polyglot/python.md#worker-sessions) crea `WorkerSessionOptions`, programa dos actividades remotas secuenciales, declara la capacidad del titular y maneja el fallo definitivo de actividad. También muestra cómo reconstruir el estado local desechable tras perder al titular y explica por qué el cierre explícito o la expiración del TTL requieren un identificador de sesión nuevo. La receta se ha comprobado con Python SDK 2.9.0 y Server 2.11.0 publicados, incluido el rol de planificador/mantenimiento del Server.
+
 ## Ciclo de vida {#lifecycle}
 
 La creación es diferida. La capa de asignación crea o readquiere la sesión cuando la primera tarea de actividad de la sesión se admite en un worker capaz. Un worker también puede crearla explícitamente antes de consultar tareas mediante `POST /api/worker/sessions`.
