@@ -207,10 +207,31 @@ async with Client(
 | `payload_size_limit_bytes` | `int` | SDK-Standard | Vertrag des Servers zur maximalen Nutzlastgröße abbilden. |
 | `payload_size_warning_threshold_percent` | `int` | SDK-Standard | Vor Erreichen der konfigurierten Nutzlastgrenze warnen. |
 | `payload_size_warnings` | `bool` | `True` | Lokale Nutzlastgrößenwarnungen in Tests oder kontrollierten Skripten deaktivieren. |
+| `failure_report_limit_bytes` | `int` | `1048576` | Das Budget für den vollständig codierten Fehlerbericht verringern. Siehe [begrenzte Fehlerberichte](#bounded-failure-reports). |
 
 `token` ist die einfachste Option. Sind `control_token` und `worker_token`
 gesetzt, verwenden Control-Plane-Methoden `control_token` und
 Worker-Plane-Methoden `worker_token`.
+
+### Begrenzte Fehlerberichte {#bounded-failure-reports}
+
+Das Python SDK **2.11.0** führte begrenzte ausgehende Fehlerberichte ein. Standardmäßig gelten **62 KiB UTF-8 für die Meldung**, **128 KiB für den Stack**, **64 KiB für gemeinsam serialisierte optionale Details und Diagnosen** und **1 MiB für den vollständigen HTTPX-codierten Body**. Markierungen, JSON-Escaping, die Claim-Identität und weitere Befehle im Batch zählen zum Body-Limit. Ein niedrigeres konfiguriertes oder erkanntes Transportlimit hat Vorrang. Fehlertyp, Klasse, Code, Retry-Regeln und Claim-Identität bleiben erhalten.
+
+Bei Bedarf lässt sich das Body-Budget verkleinern. Einstellungen für Warnungen zur Payload-Größe bleiben reine Hinweise.
+
+```python
+from durable_workflow import Client
+
+async with Client(
+    "https://workflow.example.com",
+    worker_token="worker-token",
+    control_token="operator-token",
+    failure_report_limit_bytes=512 * 1024,
+) as client:
+    info = await client.get_cluster_info()
+```
+
+Eine sichtbare Kürzungsmarkierung und die ursprünglichen Byte-Anzahlen kennzeichnen gekürzte Felder. Avro-Details bleiben vollständig erhalten oder werden als Ganzes weggelassen. Ein nicht darstellbarer erforderlicher Umschlag löst vor der HTTP-Übertragung `FailureReportTooLarge` aus. Lokale Fehler werden normalisiert, bevor der Workflow-Code sie beobachtet. Dadurch sehen die erste Ausführung und ein kalter Replay dieselbe gespeicherte Meldung. Eine bereits beobachtete lokale Meldung bleibt bei der abschließenden Größenanpassung des Batches unveränderlich.
 
 ### Externer Nutzlastspeicher {#external-payload-storage}
 

@@ -261,6 +261,10 @@ class RetryableWorkflow extends Workflow
 }
 ```
 
+## サービスモードの Python 障害レポートの上限 {#python-failure-report-limits}
+
+Python SDK **2.11.0 以降**では、サービスモードで送信する障害レポートの上限は、UTF-8 メッセージが 62 KiB、スタックが 128 KiB、任意のメタデータの合計が 64 KiB、マーカーを含むエンコード済み本文全体が 1 MiB です。既知の転送上限がより小さい場合は、その値が適用されます。[Python のレポートガイド](./polyglot/python.md#bounded-failure-reports)では、設定、省略の診断情報、維持されるリトライの意味、ローカルの初回実行とコールドリプレイの一致を説明しています。これは SDK のレポート上限です。組み込み実行での記録と Core の要約保存には、それぞれ別の契約があります。
+
 ## サービスモード Rust の失敗レポート上限 {#rust-failure-report-limits}
 
 実際に Rust SDK **4.10.1 以降**を動かすサービス worker では、送信 UTF-8 message はマーカー込み62 KiB、対応する stack は128 KiB、任意 metadata の合計シリアライズ結果は64 KiB、完全なエンコード済み body は1 MiBまたはそれより低い既知の輸送上限です。type、retry 判断、claim 識別情報を保ち、必須 envelope が入らなければ明示的に拒否します。[Rust ガイド](./polyglot/rust.md#bounded-failure-reports)に省略マーカー、完全な Avro details、ローカル結果の境界を説明しています。旧 SDK、embedded mode、別の Core summary 保存修正を検証したものではありません。

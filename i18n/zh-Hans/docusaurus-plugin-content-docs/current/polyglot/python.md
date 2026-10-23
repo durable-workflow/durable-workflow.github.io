@@ -172,8 +172,29 @@ async with Client(
 | `payload_size_limit_bytes` | `int` | SDK 默认值 | 匹配 Server 最大负载字节契约。 |
 | `payload_size_warning_threshold_percent` | `int` | SDK 默认值 | 在负载达到配置上限前警告。 |
 | `payload_size_warnings` | `bool` | `True` | 在测试或受控脚本中禁用本地负载大小警告。 |
+| `failure_report_limit_bytes` | `int` | `1048576` | 降低完整编码后失败报告的大小上限。请参阅[有界失败报告](#bounded-failure-reports)。 |
 
 `token` 是最简单的选项。如果同时设置 `control_token` 和 `worker_token`，控制平面方法使用 `control_token`，Worker 平面方法使用 `worker_token`。
+
+### 有界失败报告 {#bounded-failure-reports}
+
+Python SDK **2.11.0** 为发出的失败报告引入了大小限制。默认上限为：**消息使用 UTF-8 编码后 62 KiB**、**堆栈 128 KiB**、**可选详情和诊断信息序列化后合计 64 KiB**，以及 **HTTPX 编码后的完整请求体 1 MiB**。标记、JSON 转义、租约身份和批次中的其他命令都计入请求体上限。配置或发现的传输上限更低时，以较低值为准。失败类型、类、代码、重试策略和租约身份会保留。
+
+需要时可降低请求体上限。载荷大小警告设置仍然只提供提示。
+
+```python
+from durable_workflow import Client
+
+async with Client(
+    "https://workflow.example.com",
+    worker_token="worker-token",
+    control_token="operator-token",
+    failure_report_limit_bytes=512 * 1024,
+) as client:
+    info = await client.get_cluster_info()
+```
+
+被缩短的字段带有可见的截断标记和原始字节数。Avro 详情要么完整保留，要么整体省略。无法表示必需的信封时，会在发送 HTTP 请求前抛出 `FailureReportTooLarge`。本地失败会在工作流代码读取前规范化，因此首次执行和冷重放读取的是同一条已持久化消息。已经读取的本地消息在最终调整批次大小时保持不变。
 
 ### 外部负载存储 {#external-payload-storage}
 

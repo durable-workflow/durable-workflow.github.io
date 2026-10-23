@@ -206,10 +206,31 @@ async with Client(
 | `payload_size_limit_bytes` | `int` | SDK default | Match the server's max payload-byte contract. |
 | `payload_size_warning_threshold_percent` | `int` | SDK default | Warn before a payload reaches the configured limit. |
 | `payload_size_warnings` | `bool` | `True` | Disable local payload-size warnings in tests or controlled scripts. |
+| `failure_report_limit_bytes` | `int` | `1048576` | Lower the complete encoded failure-report budget. See [bounded failure reports](#bounded-failure-reports). |
 
 `token` is the simplest option. If both `control_token` and `worker_token` are
 set, control-plane methods use `control_token` and worker-plane methods use
 `worker_token`.
+
+### Bounded failure reports {#bounded-failure-reports}
+
+Python SDK **2.11.0** introduced bounded outgoing failure reports. Defaults are **62 KiB UTF-8 for the message**, **128 KiB for the stack**, **64 KiB for combined serialized optional details and diagnostics**, and **1 MiB for the complete HTTPX-encoded body**. Markers, JSON escaping, claim identity and other commands in the batch count toward that body limit. A lower configured or discovered transport limit takes precedence. Failure type, class, code, retry policy and claim identity are preserved.
+
+Set a smaller body budget when needed. Payload-size warning settings remain advisory.
+
+```python
+from durable_workflow import Client
+
+async with Client(
+    "https://workflow.example.com",
+    worker_token="worker-token",
+    control_token="operator-token",
+    failure_report_limit_bytes=512 * 1024,
+) as client:
+    info = await client.get_cluster_info()
+```
+
+A visible truncation marker and original byte counts identify shortened fields. Avro details remain intact or are omitted whole. An unrepresentable required envelope raises `FailureReportTooLarge` before HTTP submission. Local failures are normalized before workflow code observes them, so first execution and cold replay see the persisted message. An already observed local message remains immutable during final batch fitting.
 
 ### External Payload Storage
 

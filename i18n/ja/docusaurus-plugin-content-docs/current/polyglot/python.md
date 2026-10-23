@@ -172,8 +172,29 @@ async with Client(
 | `payload_size_limit_bytes` | `int` | SDK 既定値 | Server の最大ペイロードバイト数契約に合わせる。 |
 | `payload_size_warning_threshold_percent` | `int` | SDK 既定値 | 設定した上限に達する前に警告する。 |
 | `payload_size_warnings` | `bool` | `True` | テストや管理されたスクリプトでローカルのサイズ警告を無効にする。 |
+| `failure_report_limit_bytes` | `int` | `1048576` | エンコード済みの障害レポート全体の上限を引き下げます。[障害レポートのサイズ制限](#bounded-failure-reports)を参照してください。 |
 
 `token` が最も単純な選択肢です。`control_token` と `worker_token` の両方を設定すると、コントロールプレーンのメソッドは `control_token`、Worker プレーンのメソッドは `worker_token` を使います。
+
+### 障害レポートのサイズ制限 {#bounded-failure-reports}
+
+Python SDK **2.11.0** から、送信する障害レポートにサイズ制限が加わりました。既定値は、**メッセージが UTF-8 で 62 KiB**、**スタックが 128 KiB**、**シリアライズ後の任意の詳細と診断情報が合計 64 KiB**、**HTTPX でエンコードした本文全体が 1 MiB** です。本文の上限には、マーカー、JSON エスケープ、リースの識別情報、バッチ内のほかのコマンドも含まれます。設定または検出された転送上限がより小さい場合は、その値が優先されます。障害の型、クラス、コード、リトライポリシー、リースの識別情報は保持されます。
+
+必要に応じて本文の上限を引き下げます。ペイロードサイズの警告設定は引き続き助言として扱われます。
+
+```python
+from durable_workflow import Client
+
+async with Client(
+    "https://workflow.example.com",
+    worker_token="worker-token",
+    control_token="operator-token",
+    failure_report_limit_bytes=512 * 1024,
+) as client:
+    info = await client.get_cluster_info()
+```
+
+短縮されたフィールドには、見える切り詰めマーカーと元のバイト数が付けられます。Avro の詳細は全体を保持するか、全体を省略します。必須のエンベロープを表現できない場合は、HTTP 送信前に `FailureReportTooLarge` が発生します。ローカル障害はワークフローコードが参照する前に正規化されるため、初回実行とコールドリプレイは保存された同じメッセージを参照します。一度参照したローカルメッセージは、最終的なバッチサイズ調整でも変更されません。
 
 ### 外部ペイロードストレージ {#external-payload-storage}
 

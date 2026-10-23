@@ -213,10 +213,31 @@ async with Client(
 | `payload_size_limit_bytes` | `int` | défaut SDK | Respecter le contrat maximal d'octets du serveur. |
 | `payload_size_warning_threshold_percent` | `int` | défaut SDK | Avertir avant d'atteindre la limite configurée. |
 | `payload_size_warnings` | `bool` | `True` | Désactiver les avertissements locaux de taille dans les tests ou scripts contrôlés. |
+| `failure_report_limit_bytes` | `int` | `1048576` | Réduire la taille maximale du rapport d’échec entièrement encodé. Voir les [rapports d’échec bornés](#bounded-failure-reports). |
 
 `token` est l'option la plus simple. Si `control_token` et `worker_token` sont
 tous deux définis, les méthodes du plan de contrôle utilisent `control_token`
 et celles du plan worker utilisent `worker_token`.
+
+### Rapports d’échec bornés {#bounded-failure-reports}
+
+Le SDK Python **2.11.0** a introduit des rapports d’échec sortants bornés. Les limites par défaut sont de **62 KiB UTF-8 pour le message**, **128 KiB pour la pile**, **64 KiB pour l’ensemble des détails et diagnostics facultatifs sérialisés** et **1 MiB pour le corps complet encodé par HTTPX**. Les marqueurs, l’échappement JSON, l’identité du bail et les autres commandes du lot comptent dans cette limite du corps. Une limite de transport configurée ou découverte plus basse est prioritaire. Le type, la classe et le code de l’échec, la politique de nouvelle tentative et l’identité du bail sont conservés.
+
+Configurez un budget plus faible pour le corps si nécessaire. Les paramètres d’avertissement sur la taille des données restent indicatifs.
+
+```python
+from durable_workflow import Client
+
+async with Client(
+    "https://workflow.example.com",
+    worker_token="worker-token",
+    control_token="operator-token",
+    failure_report_limit_bytes=512 * 1024,
+) as client:
+    info = await client.get_cluster_info()
+```
+
+Un marqueur de troncature visible et les tailles originales en octets identifient les champs raccourcis. Les détails Avro sont conservés intégralement ou omis en entier. Une enveloppe obligatoire impossible à représenter déclenche `FailureReportTooLarge` avant l’envoi HTTP. Les échecs locaux sont normalisés avant que le code du workflow les observe. La première exécution et la relecture à froid voient donc le même message persistant. Un message local déjà observé reste immuable lors de l’ajustement final du lot.
 
 ### Stockage externe des charges utiles {#external-payload-storage}
 

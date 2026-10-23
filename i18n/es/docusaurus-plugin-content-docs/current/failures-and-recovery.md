@@ -320,6 +320,10 @@ class RetryableWorkflow extends Workflow
 }
 ```
 
+## Límites de los informes de error de Python en modo servicio {#python-failure-report-limits}
+
+El SDK de Python **2.11.0 o posterior** limita los informes de error salientes en modo servicio a mensajes UTF-8 de 62 KiB, pilas de 128 KiB, 64 KiB de metadatos opcionales combinados y un cuerpo completo codificado de 1 MiB, incluidos los marcadores. Se aplican los límites de transporte conocidos que sean menores. La [guía de informes de Python](./polyglot/python.md#bounded-failure-reports) explica la configuración, los diagnósticos de omisión, la semántica de reintentos conservada y la igualdad entre la primera ejecución local y la reproducción en frío. Estos límites corresponden a los informes del SDK. El registro integrado y el almacenamiento de resúmenes del Core mantienen sus propios contratos.
+
 ## Límites de informes de fallo Rust en modo servicio {#rust-failure-report-limits}
 
 En workers de servicio que realmente ejecutan Rust SDK **4.10.1 o posterior**, el mensaje saliente admite hasta 62 KiB UTF-8 con marcador, stack 128 KiB si existe, metadata opcional serializada combinada 64 KiB y cuerpo completo codificado 1 MiB o un límite de transporte conocido menor. Se conservan tipo, retry e identidad; un envelope obligatorio imposible se rechaza. La [guía Rust](./polyglot/rust.md#bounded-failure-reports) explica marcadores, details Avro íntegros y resultados locales. No cualifica SDK antiguos, modo embedded ni la corrección separada del almacenamiento de resúmenes Core.
