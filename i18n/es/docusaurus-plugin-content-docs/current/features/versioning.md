@@ -133,6 +133,14 @@ Las pruebas de servicio registraron `max_attempts = 1`; después, el fallo de ac
 
 Workflow integrado 2.11.2 también acepta una nueva firma que sustituye el escalar registrado `7` por un DTO inyectado con cantidad predeterminada `0`, y puede completar incorrectamente con `0`. [Workflow #910](https://github.com/durable-workflow/workflow/issues/910) sigue este defecto del producto. No use la inyección de dependencias para migrar entradas de actividad ni suponga que la protección de entrada del workflow cubre este caso. Restaurar código compatible no reabre un run terminal. Inspeccione el estado real y siga la [guía de recuperación](../failures-and-recovery.md) sin cambiar entradas registradas, historial ni plazos.
 
+### Protección publicada para actividades embebidas {#embedded-activity-argument-safeguard}
+
+Workflow **2.11.3 es la versión mínima corregida** de la protección PHP embebida contra una vinculación de actividad que desplaza argumentos registrados. En las rutas de actividad en cola y local, sustituir el escalar registrado `7` por un DTO inyectado cuyo valor predeterminado es `0` se rechaza antes de ejecutar el cuerpo, con `ActivityEntryArgumentsMismatchException`. La [validación del paquete publicado e instalado en procesos nuevos](https://github.com/durable-workflow/workflow/issues/910#issuecomment-6362080363) verifica el rechazo y la recuperación con la entrada original. La versión 2.11.2 descrita arriba sigue afectada. Esta protección no añade campos a resultados antiguos; los lectores compatibles aún necesitan su valor de respaldo.
+
+El rechazo sigue la **política registrada de intentos, espera entre reintentos y timeouts** de la actividad. Con un solo intento permitido, la actividad agota sus intentos y un fallo no manejado hace fallar el workflow. Si quedan intentos definidos por el autor y vuelve el código compatible antes del reintento permitido y los plazos, la misma ejecución/actividad original puede completarse con su entrada registrada. La validación verifica dos intentos definidos por el autor, sin espera, y el resultado `7`; no promete esperar indefinidamente a un despliegue futuro ni concede intentos adicionales.
+
+Restaurar el código o instalar el paquete no reabre originales terminales, reinicia plazos ni recupera intentos consumidos. Inspeccione el fallo real y conserve la entrada y el historial registrados. Compruebe el paquete Workflow instalado en la aplicación embebida: esta versión de biblioteca no actualiza imágenes existentes del Server ni establece aceptación para workers de servicio o nativos.
+
 ## Usar `getVersion` {#using-getversion}
 
 `getVersion()` es un helper secuencial seguro para la reproducción. En la primera ejecución registra un marcador duradero por punto de cambio; las reproducciones posteriores reutilizan el valor confirmado sin recalcular la rama con el código actual. Las ejecuciones anteriores a la nueva bifurcación reciben conservadoramente `DEFAULT_VERSION`.
