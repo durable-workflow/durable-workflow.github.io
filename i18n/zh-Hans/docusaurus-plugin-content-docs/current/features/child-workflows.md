@@ -31,6 +31,14 @@ final class ParentWorkflow extends Workflow
 }
 ```
 
+## 搜索属性与 memo {#child-metadata-inheritance}
+
+新的子运行会复制父运行当前的搜索属性和 memo。这是创建子运行时的快照，而不是实时关联。子运行可以更新继承的键或添加自己的键；父运行后续的更新不会改变子运行，子运行的更新也不会改变父运行。未改动的复制搜索属性带有 `inherited_from_parent` 标记。
+
+例如，子运行最初会继承 `customer=customer-42` 和父运行 memo 中的备注。修改子运行的阶段或备注不会改变父运行的值。因此，只要双方仍保留该客户值，按客户筛选就可能同时匹配父与子；参见[父子运行列表筛选](./search-attributes.md#parent-child-list-filters)。
+
+[已发布构件的验证](https://github.com/durable-workflow/durable-workflow.github.io/issues/368#issuecomment-6362355504)确认了嵌入式 Workflow 2.10.1，以及 Python SDK 2.9.0 / Server 2.11.0 服务模式中的快照和独立更新行为。这些是针对明确版本的元数据检查，不会更改当前选择的安装组合。
+
 ## 当前行为 {#current-behavior}
 
 - 通过 `use function Workflow\V2\child;` 导入辅助函数，并调用 `child(ChildWorkflow::class, ...)`。调用暂停父工作流，创建持久子运行，并在子工作流关闭时返回其结果。

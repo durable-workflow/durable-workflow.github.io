@@ -129,6 +129,14 @@ upsertSearchAttributes(['temporary_flag' => null]);
 - **履歴タイムライン**: 各 `SearchAttributesUpserted` を型付き項目として表示。
 - **履歴エクスポート**: JSON 履歴に含む。
 
+### 親子の一覧フィルター {#parent-child-list-filters}
+
+子は[作成時に検索属性と memo を継承](./child-workflows.md#child-metadata-inheritance)し、その後は独立して値を更新できます。継承属性でフィルターしても、子が自動的に除外されることはありません。登録済み keyword 属性の Server クエリ `customer = 'customer-42'` は、親と、その値を保持するすべての子を返す場合があります。Memo は引き続きインデックスのないメタデータであり、検索属性のフィルターではありません。
+
+検証した Server 2.11.0 の一覧 API には、**ルートのみ、または子のみを選ぶ組み込み述語はありません**。`ParentWorkflowId`、`RootWorkflowId`、`IsChildWorkflow` はクエリ言語の自動的な関係フィールドではなく、公開版の検証では未登録名として拒否されます。同名のカスタム属性を登録しても、親子の識別情報は自動で入りません。ワークフロー型フィルターが選ぶのは型であり、型を横断したすべてのルートや子ではありません。
+
+実際の親子関係が必要なときは、実行の系譜を確認してください。より広い共通の可視性フィルターは引き続き[製品側の作業](https://github.com/durable-workflow/.github/issues/224)です。この制限の説明や利用者独自のメタデータ規約が、その機能の提供に代わるものではありません。[検証記録](https://github.com/durable-workflow/durable-workflow.github.io/issues/368#issuecomment-6362355504)には、親子の両方が返る結果と拒否された述語を残しています。
+
 ## 新しい実行への継続 {#continue-as-new}
 
 continue-as-new 時、現在の検索属性は自動で引き継がれます。新しい実行は前の結合済みマップ全体で開始し、引き続き upsert できます。
