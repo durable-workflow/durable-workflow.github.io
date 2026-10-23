@@ -1715,3 +1715,7 @@ client = Client(
 `namespace` 引数を、共有 Server がチーム用にプロビジョニングしたテナント名前空間に設定し、その名前空間用に発行された認証情報を使います。名前空間作成は Server の運用担当者が管理します。詳細は [Server ガイド](/docs/polyglot/server)を参照してください。
 
 同じコンストラクターは Cloud 管理ランタイムにも対応します。Cloud が提供した名前空間のランタイム URL と名前空間値を使い、`control_token` にクライアントランタイム認証情報、`worker_token` に Worker ランタイム認証情報を設定します。名前空間は Cloud がプロビジョニングします。セルフホスト Server アドレスへ置き換えないでください。[Cloud 管理ランタイム](/docs/polyglot/cloud-control-plane)を参照してください。
+
+## ワークフロー一覧と履歴のページ {#workflow-list-and-history-pages}
+
+公開されている次の呼び出しは、自動的な全件取得ではなく**1ページ**を返します：`await client.list_workflows(...)` / `await client.get_history(workflow_id, run_id, ...)`。返された不透明な token で続け、namespace、フィルター、選択した workflow/run を維持してください。最後の null/空 token で終了し、ページのエラーを明示的に処理します。部分的なページは replay bundle ではありません。オフライン replay には SDK の履歴エクスポート API を使います。[公開 Python 2.9.0 クライアントのソース](https://github.com/durable-workflow/sdk-python/blob/2.9.0/src/durable_workflow/client.py)が現在の引数を定義しており、新たな自動イテレーターの提供を意味しません。

@@ -2021,3 +2021,7 @@ client runtime credential, and set `worker_token` to the worker runtime
 credential. Cloud provisions the namespace; do not substitute a self-hosted
 Server address. See
 [Cloud Managed Runtime](/docs/polyglot/cloud-control-plane).
+
+## Workflow list and history pages {#workflow-list-and-history-pages}
+
+These published calls return **one page**, not an automatic complete read: `await client.list_workflows(...)` / `await client.get_history(workflow_id, run_id, ...)`. Continue with the returned opaque token while keeping namespace, filters and selected workflow/run fixed; stop at the final null/empty token and handle page errors explicitly. A partial page is not a replay bundle. Use the SDK history-export API for offline replay. The [published Python 2.9.0 client source](https://github.com/durable-workflow/sdk-python/blob/2.9.0/src/durable_workflow/client.py) defines the current parameters; no new iterator capability is implied.

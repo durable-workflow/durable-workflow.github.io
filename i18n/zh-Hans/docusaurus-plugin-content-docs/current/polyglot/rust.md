@@ -65,6 +65,54 @@ Server 在主版本 `1` 内协商 Worker 协议头：公布 `1.N` 的 Server 仅
 
 协商默认拒绝不合规请求。缺失或格式错误的头、不同主版本，或高于 Server 公布次版本的 Worker 次版本都会被拒绝。SDK 和 Server 发布版本独立跟踪，由运行时协议清单决定兼容性。
 
+## 工作流列表与完整运行历史 {#workflow-lists-and-history}
+
+这些 API 要求 Rust SDK **4.6.0 或更新版本**；请检查 `Cargo.lock`，因为上面的独立安装组合可能选择更旧的 crate。[普通安装包验收](https://github.com/durable-workflow/sdk-rust/issues/122#issuecomment-6363352910)已用发布的 Server 2.11.0 验证三页列表、六页历史、128 KiB payload、导出/replay 和只读示例。离线测试辅助 API 要求 4.5.0；这里的列表/历史方法和迭代器要求 4.6.0。这不改变所选 Server/SDK 组合。
+
+`Client::list_workflows(WorkflowListOptions)` 与 `Client::get_workflow_history(workflow_id, run_id, WorkflowHistoryOptions)` 每次返回**一页**。可用不透明的 `next_page_token` 手动继续，也可用惰性迭代器完整读取。这些方法保留 Server 的验证、筛选和 namespace 范围，不增加查询字段或语法。例如，通过已注册的 keyword 属性寻找未结束的运行：
+
+```rust
+use durable_workflow::WorkflowListOptions;
+async fn find(client: durable_workflow::Client) -> durable_workflow::Result<()> {
+let mut matches = client.iter_workflows(
+    WorkflowListOptions::new()
+        .workflow_type("payments")
+        .status("running")
+        .query("OrderRef = 'order-42'")
+        .page_size(2),
+);
+match (matches.next().await?, matches.next().await?) {
+    (Some(run), None) => println!("open run: {} / {}", run.workflow_id, run.run_id),
+    (None, _) => println!("no open run"),
+    _ => println!("multiple open runs; refine the query"),
+}
+Ok(())
+}
+```
+
+Server 的 `status=running` 筛选选择活跃的 **status bucket**，包含原始状态为 `pending` 或 `waiting` 的运行。`WorkflowSummary` 保留 `status`、`status_bucket`、`is_terminal`、搜索属性及 `raw` 中的未知元数据。搜索属性不保证唯一：筛选可能同时返回父运行及继承该值的子运行。请像上例一样处理零个、一个和多个匹配。先用目标 namespace 创建客户端，再构造迭代器；各 token 之间保留相同 namespace 和筛选条件。
+
+无需一次加载所有页面即可读取选定运行的完整历史：
+
+```rust
+use durable_workflow::WorkflowHistoryOptions;
+async fn audit(client: durable_workflow::Client) -> durable_workflow::Result<()> {
+let mut events = client.iter_workflow_history(
+    "payment-42", "selected-run-id", WorkflowHistoryOptions::new().page_size(100),
+);
+while let Some(event) = events.next().await? {
+    println!("{}", event.event_type);
+}
+Ok(())
+}
+```
+
+`iter_workflows(options)` 通过 `next().await` 逐项提供 `WorkflowSummary`。两个迭代器都支持用于 `futures_util::TryStreamExt` 的 `into_stream()`；轮询前需固定返回的 stream。构造时不执行 I/O，当前页耗尽后才请求下一页。null/空 token 表示结束；带 token 的空页会继续。重复或循环 token 返回 `Error::Pagination`，token 状态有界。页面失败保留原始类型化错误，随后该迭代器结束。必须处理错误，不能把部分读取当成完整结果。收集 stream 仍会存储所有收集到的项目。
+
+历史迭代固定原始 workflow/run 身份，枚举可用事件，不追随 continue-as-new，也不无限订阅。事件元数据和 payload 线协议封装保持不变。离线 replay 请用 `Client::export_workflow_history` 与 `testing::WorkflowHistory::from_export`，不要传入部分历史页。参见[离线 replay](#rust-replay-export)。
+
+发布的 Server 2.11 默认每页 50 条列表记录（最多 200）和 100 条历史事件（最多 1,000）。页大小原样传给 Server 验证。结果足够时提前停止，选择适当页大小并设置应用超时。运行并发变化时，分页不增加快照隔离。参见[发布的只读示例](https://github.com/durable-workflow/sdk-rust/blob/4.6.0/examples/workflow_pagination.rs)、[Client API](https://rust.durable-workflow.com/durable_workflow/struct.Client.html) 和[分页类型](https://rust.durable-workflow.com/durable_workflow/pagination/index.html)。
+
 ## Worker 任务并发 {#worker-task-concurrency}
 
 以下有界执行通道需要 Rust SDK **4.3.1 或更高版本**。使用前检查 `Cargo.lock` 中的版本：上方的安装固定版本属于另一组已验证构件，可能选择较旧的 SDK。[已发布包验收](https://github.com/durable-workflow/sdk-rust/issues/107#issuecomment-6360719863)验证了三个配置槽位、释放槽位后第四次回调才被接纳，以及七个完成的工作流，其中包括已处理的活动失败。前述 Server 协议要求仍然适用。

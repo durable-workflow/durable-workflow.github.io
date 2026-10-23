@@ -153,3 +153,7 @@ PHP SDK 独立于 Laravel 包进行版本管理。可运行示例中保留精确
 - [PHP API 参考](https://php.durable-workflow.com/api/)
 - [PHP 可执行快速入门契约](https://php.durable-workflow.com/quickstart-contract.json)
 - [PHP SDK 源码](https://github.com/durable-workflow/sdk-php)
+
+## 工作流列表与历史页面 {#workflow-list-and-history-pages}
+
+这些已发布调用每次返回**一页**，不会自动完整读取：`Client::listWorkflows(...)` / `Client::workflowHistory(...)`。继续请求时使用返回的不透明 token，并保持 namespace、筛选条件和所选 workflow/run 不变；最终 null/空 token 表示结束，页面错误必须明确处理。部分页面不是 replay bundle。离线 replay 请使用 SDK 的历史导出 API。[已发布的 PHP 3.2.0 客户端源码](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php)定义当前参数；这里不声称新增自动迭代器。

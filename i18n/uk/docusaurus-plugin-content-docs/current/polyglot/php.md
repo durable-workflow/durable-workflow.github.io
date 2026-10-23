@@ -254,3 +254,7 @@ SDK. Сумісність визначає оголошений контракт
 - [Довідник PHP API](https://php.durable-workflow.com/api/)
 - [Виконуваний PHP quickstart-контракт](https://php.durable-workflow.com/quickstart-contract.json)
 - [Вихідний код PHP SDK](https://github.com/durable-workflow/sdk-php)
+
+## Сторінки списку workflow та історії {#workflow-list-and-history-pages}
+
+Ці опубліковані виклики повертають **одну сторінку**, а не автоматично повний результат: `Client::listWorkflows(...)` / `Client::workflowHistory(...)`. Продовжуйте з повернутим непрозорим token, зберігаючи namespace, фільтри та вибрані workflow/run; зупиняйтеся на null/порожньому token й явно обробляйте помилки сторінок. Часткова сторінка не є replay-bundle. Для офлайн-replay використовуйте API експорту історії SDK. [Опублікований клієнт PHP 3.2.0](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php) визначає поточні параметри; нові ітератори не заявляються.
