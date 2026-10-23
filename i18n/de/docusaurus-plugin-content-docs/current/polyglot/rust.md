@@ -318,7 +318,7 @@ Lässt ein älterer Server diese Felder aus, bleiben sie `None`. Ersetzen Sie ei
 
 Ein stabiler Schlüssel ermöglicht die Vermeidung doppelter Effekte nur, wenn das externe System ihn beachtet. Die Zustellung bleibt mindestens einmal; diese API macht externe Effekte nicht genau einmal, stellt keinen Heartbeat-Fortschritt wieder her und implementiert keine fortsetzbaren Aktivitäts-Checkpoints.
 
-Siehe die [Identitätsmethoden von ActivityContext](https://rust.durable-workflow.com/durable_workflow/struct.ActivityContext.html#method.activity_execution_id) und die [Prüfung der normalen Installation4.9.0](https://github.com/durable-workflow/sdk-rust/issues/139#issuecomment-6367230500) mit Ordinary-/Cooperative-, Local- und Worker-Session-Kontrollen. Der gemeinsame Vertrag steht unter [Ausführungsgarantien](../constraints/execution-guarantees.md#service-activity-identity).
+Siehe die [Identitätsmethoden von ActivityContext](https://rust.durable-workflow.com/durable_workflow/struct.ActivityContext.html#method.activity_execution_id) und die [Prüfung der normalen Installation 4.9.0](https://github.com/durable-workflow/sdk-rust/issues/139#issuecomment-6367230500) mit Ordinary-/Cooperative-, Local- und Worker-Session-Kontrollen. Der gemeinsame Vertrag steht unter [Ausführungsgarantien](../constraints/execution-guarantees.md#service-activity-identity).
 
 ## Lokale Aktivitäten {#local-activities}
 
