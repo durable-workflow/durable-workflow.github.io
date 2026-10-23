@@ -137,6 +137,35 @@ upsertSearchAttributes(['temporary_flag' => null]);
 
 Переглядайте lineage запуску, коли потрібен його фактичний батьківський/дочірній зв’язок. Ширша спільна фільтрація видимості залишається [продуктовою роботою](https://github.com/durable-workflow/.github/issues/224); опис обмеження чи власна домовленість про метадані не реалізують цю можливість. [Перевірка](https://github.com/durable-workflow/durable-workflow.github.io/issues/368#issuecomment-6362355504) зберігає результат із батьком і дитиною та відхилені предикати.
 
+## Виправлення datetime search attributes {#repair-datetime-search-attributes}
+
+Команда відновлення з історії потребує фактично встановленого **Workflow 2.12.0 або новішого**. Перевірте `composer.lock` і `php artisan help workflow:v2:repair-search-datetimes` у Laravel-застосунку, що виконуватиме її. Checkout вихідного коду чи обмеження Composer самі по собі не доводять наявності встановленої команди.
+
+Datetime-проєкції зберігають UTC-моменти з мікросекундами: `2026-10-08T12:34:56.123456+02:00` — це `2026-10-08T10:34:56.123456Z`. Старіші writers могли записати локальний час offset, зберігши сам offset у типізованій історії. Оновлення запобігає новим помилкам writer, але не визначає й не переписує старі рядки. Не вгадуйте початковий часовий пояс зі збереженого локального часу.
+
+Спершу оновіть усі writers проєкцій і створіть резервну копію workflow-БД. Використовуйте точний **ID run**, а не екземпляра workflow. Почніть із preview:
+
+```sh
+php artisan workflow:v2:repair-search-datetimes RUN_ID --namespace=production --json
+php artisan workflow:v2:repair-search-datetimes RUN_ID --namespace=production --key=SubmittedAt --json
+```
+
+`--namespace=production` перевіряє точну рівність; вкажіть справжній namespace run. Пропускайте параметр лише коли достатньо точного ID run, зокрема для старих null namespace; явне порожнє значення відхиляється. Без `--key` вибираються datetime-атрибути цього run. Повторюйте параметр для відомих ключів: `--key=SubmittedAt --key=ApprovedAt`.
+
+Типово виконується preview. Перегляньте `examined`, `would_repair` та точну вибірку run/ключів, перш ніж явно застосувати ту саму вибірку:
+
+```sh
+php artisan workflow:v2:repair-search-datetimes RUN_ID --namespace=production --key=SubmittedAt --apply --json
+```
+
+Повторно прочитайте вибрані атрибути та summary run, потім знову виконайте preview. За незмінних доказів і вже правильних значень повторний apply повідомляє нуль виправлень. Виправлена підмножина не доводить правильності невибраних ключів.
+
+Потрібна остання збережена явно типізована подія `SearchAttributesUpserted` для кожного ключа з початковою логічною послідовністю команди, що збігається з проєкцією. Pruned history, відсутні/застарілі докази, неоднозначний часовий пояс, неправильний namespace і ключі, що більше не збережені як datetime, спричиняють відмову. Один недоведений ключ відхиляє всю вибірку; дослідіть історію й вибирайте лише доведені ключі, не вгадуйте offset.
+
+Команда блокує та перевіряє всю вибірку перед оновленням похідних атрибутів і summary в одній транзакції сховища. Авторитетна історія, бізнес-команди, ідентичність run/task та leases не змінюються. JSON відрізняє `refused` від `unverified`: після неочікуваної помилки сховища перевірте рядки до повтору, бо невизначений commit не гарантує rollback.
+
+Виправляються похідні search attributes та summary; pruned history не відновлюється й авторитетний input не змінюється. Окремий шлях binding visibility-запитів Server та його образ потребують власної кваліфікованої доставки; тег Core не доводить виправлення HTTP. Див. [канонічну процедуру відновлення](https://github.com/durable-workflow/workflow/blob/b3bbfdb5258c68546ae38ca1fde52818e4b05d12/docs/architecture/projection-timestamp-storage.md#datetime-search-attributes).
+
 ## Continue-as-New {#continue-as-new}
 
 Під час continue-as-new поточні атрибути пошуку автоматично переносяться до нового запуску. Новий запуск починається з повної об’єднаної мапи атрибутів попереднього запуску й може продовжувати її оновлення.

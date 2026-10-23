@@ -137,6 +137,35 @@ The qualified Server 2.11.0 list API has **no built-in roots-only or children-on
 
 Inspect the run's lineage when you need its actual parent/child relationship. Broader shared visibility filtering remains [product work](https://github.com/durable-workflow/.github/issues/224); this limitation and a user-authored metadata convention do not deliver that capability. The [verification receipt](https://github.com/durable-workflow/durable-workflow.github.io/issues/368#issuecomment-6362355504) preserves the observed parent-and-child result and rejected predicates.
 
+## Repairing datetime search attributes {#repair-datetime-search-attributes}
+
+The history-backed repair command requires an actually installed **Workflow 2.12.0 or newer**. Check `composer.lock` and `php artisan help workflow:v2:repair-search-datetimes` in the Laravel application that will run it. A source checkout or Composer constraint alone does not establish the installed command.
+
+Datetime projections store UTC instants with microsecond precision: `2026-10-08T12:34:56.123456+02:00` is `2026-10-08T10:34:56.123456Z`. Earlier writers could persist the offset’s local wall time while retaining its offset in typed history. Upgrading prevents new writer errors but does not identify or rewrite old rows. Never infer an original timezone from the stored wall time.
+
+Upgrade every projection writer and back up the workflow database first. Use the exact **run ID**, not a workflow instance ID. Start with a preview:
+
+```sh
+php artisan workflow:v2:repair-search-datetimes RUN_ID --namespace=production --json
+php artisan workflow:v2:repair-search-datetimes RUN_ID --namespace=production --key=SubmittedAt --json
+```
+
+`--namespace=production` is an exact equality guard; use the run’s actual namespace. Omit it only when the exact run ID is sufficient, including legacy null namespaces; an empty explicit namespace is refused. Without `--key`, the selection covers that run’s datetime attributes. Repeat the option for known keys, such as `--key=SubmittedAt --key=ApprovedAt`.
+
+Preview is the default. Review `examined`, `would_repair` and the exact run/key selection before explicitly applying the same selection:
+
+```sh
+php artisan workflow:v2:repair-search-datetimes RUN_ID --namespace=production --key=SubmittedAt --apply --json
+```
+
+Read the selected attributes and run summary back, then preview again. With unchanged evidence and already-correct values, a repeat apply reports zero repairs. A repaired subset does not establish that unselected keys are correct.
+
+Repair requires the latest retained, explicitly typed `SearchAttributesUpserted` evidence for each key, with its original logical command sequence matching the projection. Pruned history, missing/stale evidence, timezone-ambiguous values, wrong namespace and selected keys no longer retained as datetime attributes refuse the operation. One unprovable key refuses the entire selection; inspect the history and select only proven keys instead of guessing an offset.
+
+The command locks and validates the complete selection before updating derived attributes and their summary in one storage transaction. Authoritative history, business commands, run/task identities and leases remain unchanged. JSON failures distinguish `refused` from `unverified`: after an unexpected storage error, inspect the rows before retrying because an uncertain commit is not a guaranteed rollback.
+
+This repairs derived search attributes and their summary; it does not restore pruned history or change authoritative input. The separate Server visibility-query binding path and Server image adoption require their own qualified delivery; a Core package tag does not establish an HTTP fix. See the [canonical recovery procedure](https://github.com/durable-workflow/workflow/blob/b3bbfdb5258c68546ae38ca1fde52818e4b05d12/docs/architecture/projection-timestamp-storage.md#datetime-search-attributes).
+
 ## Continue-as-New
 
 When a workflow continues as new, the current search attributes are carried forward to the new run automatically. The new run starts with the full merged attribute map from the previous run and can continue upserting from there.

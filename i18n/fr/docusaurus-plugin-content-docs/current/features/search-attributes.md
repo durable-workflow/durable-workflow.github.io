@@ -137,6 +137,35 @@ L’API de liste qualifiée de Server 2.11.0 **n’a pas de prédicat intégré 
 
 Examinez la filiation de l’exécution pour connaître sa relation parent/enfant réelle. Le filtrage partagé plus large reste un [travail produit](https://github.com/durable-workflow/.github/issues/224) ; cette limitation et une convention de métadonnées définie par l’utilisateur ne livrent pas cette capacité. La [vérification](https://github.com/durable-workflow/durable-workflow.github.io/issues/368#issuecomment-6362355504) conserve le résultat contenant parent et enfant ainsi que les prédicats refusés.
 
+## Réparer les attributs de recherche datetime {#repair-datetime-search-attributes}
+
+La commande de réparation fondée sur l’historique exige **Workflow 2.12.0 ou ultérieur réellement installé**. Vérifiez `composer.lock` et `php artisan help workflow:v2:repair-search-datetimes` dans l’application Laravel qui l’exécutera. Un checkout des sources ou une contrainte Composer ne prouve pas que la commande est installée.
+
+Les projections datetime stockent des instants UTC avec microsecondes : `2026-10-08T12:34:56.123456+02:00` représente `2026-10-08T10:34:56.123456Z`. Les anciens writers pouvaient enregistrer l’heure locale du décalage tout en conservant celui-ci dans l’historique typé. La mise à niveau évite de nouvelles erreurs du writer, mais n’identifie ni ne réécrit les anciennes lignes. Ne déduisez jamais le fuseau initial de l’heure stockée.
+
+Mettez d’abord à niveau tous les writers de projections et sauvegardez la base du workflow. Utilisez l’**ID exact du run**, pas celui de l’instance de workflow. Commencez par un aperçu :
+
+```sh
+php artisan workflow:v2:repair-search-datetimes RUN_ID --namespace=production --json
+php artisan workflow:v2:repair-search-datetimes RUN_ID --namespace=production --key=SubmittedAt --json
+```
+
+`--namespace=production` impose une égalité exacte ; indiquez le vrai namespace du run. Omettez-le seulement lorsque l’ID exact suffit, y compris pour les anciens namespaces null ; une valeur explicite vide est refusée. Sans `--key`, la sélection couvre les attributs datetime du run. Répétez l’option pour les clés connues, comme `--key=SubmittedAt --key=ApprovedAt`.
+
+L’aperçu est le mode par défaut. Examinez `examined`, `would_repair` et la sélection exacte run/clés avant d’appliquer explicitement cette même sélection :
+
+```sh
+php artisan workflow:v2:repair-search-datetimes RUN_ID --namespace=production --key=SubmittedAt --apply --json
+```
+
+Relisez les attributs sélectionnés et le résumé du run, puis relancez l’aperçu. Si les preuves sont inchangées et les valeurs correctes, répéter apply indique zéro réparation. Un sous-ensemble réparé ne prouve pas que les clés non sélectionnées sont correctes.
+
+Chaque clé nécessite le dernier upsert conservé et explicitement typé `SearchAttributesUpserted`, dont la séquence logique initiale de commande correspond à la projection. Historique purgé, preuves absentes/périmées, fuseau ambigu, mauvais namespace ou clés qui ne sont plus conservées comme datetime entraînent un refus. Une seule clé non démontrable refuse toute la sélection ; inspectez l’historique et sélectionnez uniquement les clés prouvées, sans deviner de décalage.
+
+La commande verrouille et valide toute la sélection avant de mettre à jour les attributs dérivés et leur résumé dans une transaction de stockage. Historique faisant autorité, commandes métier, identités run/tâche et leases restent inchangés. Les échecs JSON distinguent `refused` et `unverified` : après une erreur de stockage inattendue, inspectez les lignes avant de réessayer, car un commit incertain ne garantit pas un rollback.
+
+Cette procédure répare les attributs dérivés et leur résumé ; elle ne restaure pas l’historique purgé et ne modifie pas l’input faisant autorité. Le binding des requêtes de visibilité du Server et l’adoption dans son image exigent leur propre livraison qualifiée ; un tag Core ne prouve pas une correction HTTP. Consultez la [procédure canonique](https://github.com/durable-workflow/workflow/blob/b3bbfdb5258c68546ae38ca1fde52818e4b05d12/docs/architecture/projection-timestamp-storage.md#datetime-search-attributes).
+
 ## Continuation dans une nouvelle exécution {#continue-as-new}
 
 Lors d’une continuation, les attributs courants sont automatiquement transmis à la nouvelle exécution. Celle-ci démarre avec la table fusionnée complète de la précédente et peut continuer à la modifier.

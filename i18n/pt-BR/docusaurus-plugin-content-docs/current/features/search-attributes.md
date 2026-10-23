@@ -137,6 +137,35 @@ A API de listagem do Server 2.11.0 qualificada **não tem um predicado nativo pa
 
 Inspecione a linhagem da execução quando precisar da relação real pai/filho. A filtragem compartilhada mais ampla continua sendo [trabalho de produto](https://github.com/durable-workflow/.github/issues/224); esta limitação e uma convenção de metadados criada pelo usuário não entregam essa capacidade. A [verificação](https://github.com/durable-workflow/durable-workflow.github.io/issues/368#issuecomment-6362355504) preserva o resultado com pai e filho e os predicados recusados.
 
+## Reparar atributos de busca datetime {#repair-datetime-search-attributes}
+
+O comando de reparo baseado no histórico exige **Workflow 2.12.0 ou posterior realmente instalado**. Confira `composer.lock` e `php artisan help workflow:v2:repair-search-datetimes` na aplicação Laravel que o executará. Checkout de fontes ou restrição Composer não comprovam que o comando está instalado.
+
+Projeções datetime armazenam instantes UTC com microssegundos: `2026-10-08T12:34:56.123456+02:00` equivale a `2026-10-08T10:34:56.123456Z`. Writers antigos podiam gravar a hora local do offset, preservando esse offset no histórico tipado. Atualizar evita novos erros do writer, mas não identifica nem reescreve linhas antigas. Nunca deduza o fuso original da hora armazenada.
+
+Atualize todos os writers de projeções e faça backup do banco do workflow primeiro. Use o **ID exato do run**, não o da instância de workflow. Comece pela prévia:
+
+```sh
+php artisan workflow:v2:repair-search-datetimes RUN_ID --namespace=production --json
+php artisan workflow:v2:repair-search-datetimes RUN_ID --namespace=production --key=SubmittedAt --json
+```
+
+`--namespace=production` verifica igualdade exata; use o namespace real do run. Omita apenas quando o ID exato bastar, inclusive para namespaces null legados; valor explícito vazio é recusado. Sem `--key`, a seleção abrange os atributos datetime desse run. Repita a opção para chaves conhecidas, como `--key=SubmittedAt --key=ApprovedAt`.
+
+A prévia é o padrão. Revise `examined`, `would_repair` e a seleção exata de run/chaves antes de aplicar explicitamente a mesma seleção:
+
+```sh
+php artisan workflow:v2:repair-search-datetimes RUN_ID --namespace=production --key=SubmittedAt --apply --json
+```
+
+Leia novamente os atributos selecionados e o resumo do run; depois repita a prévia. Com evidências inalteradas e valores corretos, repetir apply informa zero reparos. Reparar um subconjunto não comprova que as chaves não selecionadas estejam corretas.
+
+Cada chave exige o último upsert retido e explicitamente tipado `SearchAttributesUpserted`, com a sequência lógica original do comando correspondendo à projeção. Histórico podado, evidência ausente/obsoleta, fuso ambíguo, namespace incorreto ou chaves não mais retidas como datetime recusam a operação. Uma chave sem prova recusa toda a seleção; inspecione o histórico e selecione só chaves comprovadas, sem adivinhar offsets.
+
+O comando bloqueia e valida toda a seleção antes de atualizar atributos derivados e seu resumo em uma transação de armazenamento. Histórico autoritativo, comandos de negócio, identidades de run/tarefa e leases não mudam. Falhas JSON distinguem `refused` e `unverified`: após erro inesperado de armazenamento, inspecione as linhas antes de repetir, pois commit incerto não garante rollback.
+
+O reparo cobre atributos derivados e seu resumo; não restaura histórico podado nem altera input autoritativo. O binding de consultas de visibilidade do Server e a adoção na imagem exigem entrega qualificada própria; um tag Core não comprova correção HTTP. Veja o [procedimento canônico](https://github.com/durable-workflow/workflow/blob/b3bbfdb5258c68546ae38ca1fde52818e4b05d12/docs/architecture/projection-timestamp-storage.md#datetime-search-attributes).
+
 ## Continuar como novo {#continue-as-new}
 
 Quando um workflow continua como novo, os atributos de busca atuais são transferidos automaticamente para a nova execução. Ela inicia com o mapa mesclado completo da execução anterior e pode continuar inserindo e atualizando atributos a partir dele.
