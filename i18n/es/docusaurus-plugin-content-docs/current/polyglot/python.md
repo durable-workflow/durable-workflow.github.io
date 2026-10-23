@@ -1030,6 +1030,42 @@ async def validate(data: dict) -> dict:
     return data
 ```
 
+### Errores de negocio terminales {#terminal-business-errors}
+
+`non_retryable_error_types` compara exactamente el nombre corto (`exception_type`) o el nombre de clase cualificado (`exception_class`) de la excepción **exterior**. Por ejemplo, `ValidationError` no coincide con `SpecificValidationError`, aunque sea una subclase. Una entrada cualificada como `app.errors.ValidationError` debe coincidir con la clase registrada. La política no recorre subclases ni causas. `raise RuntimeError(...) from NonRetryableError(...)` comunica el `RuntimeError` exterior y puede seguir reintentándose.
+
+Al convertir una excepción de negocio conocida, lance `NonRetryableError` como excepción exterior y conserve la causa original de Python mediante `cause=error`. Esto marca el fallo de actividad como no reintentable sin depender de una lista de nombres. No hace fallar automáticamente el workflow completo: este recibe `ActivityFailed` cuando no quedan reintentos, por una negativa no reintentable o por agotar el presupuesto de intentos.
+
+```python
+from durable_workflow import ActivityFailed, NonRetryableError, activity, workflow
+
+@activity.defn(name="validate_order")
+async def validate_order(order: dict) -> dict:
+    try:
+        if order.get("amount", 0) <= 0:
+            raise ValueError("amount must be positive")
+    except ValueError as error:
+        raise NonRetryableError("Order validation failed", cause=error) from error
+    return order
+
+@workflow.defn(name="place_order")
+class PlaceOrderWorkflow:
+    def run(self, ctx, order: dict):
+        try:
+            yield ctx.schedule_activity("validate_order", [order])
+        except ActivityFailed as failure:
+            if (
+                failure.activity_type != "validate_order"
+                or failure.exception_type != "NonRetryableError"
+                or not failure.non_retryable
+            ):
+                raise
+            return {"order_id": order["id"], "status": "rejected"}
+        return {"order_id": order["id"], "status": "accepted"}
+```
+
+Con la entrada `{"id": "order-123", "amount": 0}`, la actividad falla una vez y el workflow completa normalmente con `status: rejected`. Maneje solo el fallo de negocio previsto; el ejemplo vuelve a lanzar los demás. Continúe con otros pasos durables si lo requiere su flujo. Un `ActivityFailed` no capturado hace fallar el workflow. Conservar la causa Python no significa que la política examine esa cadena ni que todos los SDK expongan un objeto de causa idéntico.
+
 ### Actividades síncronas y asíncronas {#activity-execution}
 
 Las actividades remotas normales con `def` se ejecutan en un grupo de hilos

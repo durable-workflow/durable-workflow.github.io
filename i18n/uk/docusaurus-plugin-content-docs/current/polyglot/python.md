@@ -1038,6 +1038,42 @@ async def validate(data: dict) -> dict:
     return data
 ```
 
+### Термінальні бізнесові помилки {#terminal-business-errors}
+
+`non_retryable_error_types` точно зіставляє коротку назву (`exception_type`) або повну назву класу (`exception_class`) **зовнішнього** винятку. Наприклад, `ValidationError` не відповідає `SpecificValidationError`, навіть якщо це підклас. Повна назва на кшталт `app.errors.ValidationError` має точно збігатися із записаним класом. Політика не обходить підкласи чи причини винятків. `raise RuntimeError(...) from NonRetryableError(...)` повідомляє зовнішній `RuntimeError`, тому спроба може повторюватися.
+
+Перетворюючи відомий бізнесовий виняток, піднімайте `NonRetryableError` як зовнішній виняток і зберігайте початкову причину Python через `cause=error`. Це позначає помилку activity як неповторювану без списку назв. Сам workflow не завершується з помилкою автоматично: він отримує `ActivityFailed`, коли повторів activity більше не буде через неповторювану помилку або вичерпаний бюджет спроб.
+
+```python
+from durable_workflow import ActivityFailed, NonRetryableError, activity, workflow
+
+@activity.defn(name="validate_order")
+async def validate_order(order: dict) -> dict:
+    try:
+        if order.get("amount", 0) <= 0:
+            raise ValueError("amount must be positive")
+    except ValueError as error:
+        raise NonRetryableError("Order validation failed", cause=error) from error
+    return order
+
+@workflow.defn(name="place_order")
+class PlaceOrderWorkflow:
+    def run(self, ctx, order: dict):
+        try:
+            yield ctx.schedule_activity("validate_order", [order])
+        except ActivityFailed as failure:
+            if (
+                failure.activity_type != "validate_order"
+                or failure.exception_type != "NonRetryableError"
+                or not failure.non_retryable
+            ):
+                raise
+            return {"order_id": order["id"], "status": "rejected"}
+        return {"order_id": order["id"], "status": "accepted"}
+```
+
+Для аргументу `{"id": "order-123", "amount": 0}` activity помиляється один раз, а workflow нормально завершується зі `status: rejected`. Обробляйте лише потрібну бізнесову помилку; приклад повторно піднімає інші помилки. За потреби продовжуйте іншими довговічними кроками. Необроблений `ActivityFailed` завершує workflow з помилкою. Збереження причини Python не означає, що політика повторів аналізує цей ланцюжок або що кожний SDK надає однаковий об’єкт причини.
+
 ### Синхронні та асинхронні активності {#activity-execution}
 
 Звичайні віддалені активності з `def` виконуються в окремому пулі потоків,
