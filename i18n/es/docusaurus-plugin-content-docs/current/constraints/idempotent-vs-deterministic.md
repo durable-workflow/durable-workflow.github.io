@@ -4,7 +4,7 @@ title: "Idempotencia y determinismo"
 sidebar_label: Idempotente y determinista
 description: En Durable Workflow 2.0, el determinismo permite reproducir la orquestación con seguridad y la idempotencia hace seguros los efectos de las actividades que se reintentan.
 slug: /constraints/idempotent-vs-deterministic
-canonical_path: /docs/constraints/idempotent-vs-deterministic/
+canonical_path: /es/docs/constraints/idempotent-vs-deterministic/
 image: /img/idempotent-vs-deterministic.png
 tags:
   - constraints

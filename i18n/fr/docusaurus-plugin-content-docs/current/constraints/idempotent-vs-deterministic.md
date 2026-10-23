@@ -4,7 +4,7 @@ title: "Idempotence et déterminisme"
 sidebar_label: Idempotence et déterminisme
 description: Dans Durable Workflow 2.0, le déterminisme protège la relecture de l’orchestration et l’idempotence rend sûrs les effets des activités réessayées.
 slug: /constraints/idempotent-vs-deterministic
-canonical_path: /docs/constraints/idempotent-vs-deterministic/
+canonical_path: /fr/docs/constraints/idempotent-vs-deterministic/
 image: /img/idempotent-vs-deterministic.png
 tags:
   - constraints
