@@ -137,6 +137,35 @@ upsertSearchAttributes(['temporary_flag' => null]);
 
 需要实际父子关系时，请检查运行的谱系。更广泛的共享可见性筛选仍属于[产品工作](https://github.com/durable-workflow/.github/issues/224)；说明此限制或采用用户自定义元数据约定并不等于交付该能力。[验证记录](https://github.com/durable-workflow/durable-workflow.github.io/issues/368#issuecomment-6362355504)保留了同时返回父子运行的结果和被拒绝的谓词。
 
+## 修复 datetime 搜索属性 {#repair-datetime-search-attributes}
+
+基于历史的修复命令要求**实际安装 Workflow 2.12.0 或更新版本**。请在将执行命令的 Laravel 应用中检查 `composer.lock` 和 `php artisan help workflow:v2:repair-search-datetimes`。源码 checkout 或 Composer 约束本身不能证明已安装该命令。
+
+datetime 投影以微秒精度保存 UTC 时刻：`2026-10-08T12:34:56.123456+02:00` 表示 `2026-10-08T10:34:56.123456Z`。旧 writer 可能保存偏移量对应的本地时间，同时在有类型历史中保留偏移量。升级可以阻止新的 writer 错误，但不会识别或重写旧行。不要从已存储的本地时间猜测原始时区。
+
+先升级所有投影 writer，并备份工作流数据库。使用**精确的 run ID**，而不是工作流实例 ID。先预览：
+
+```sh
+php artisan workflow:v2:repair-search-datetimes RUN_ID --namespace=production --json
+php artisan workflow:v2:repair-search-datetimes RUN_ID --namespace=production --key=SubmittedAt --json
+```
+
+`--namespace=production` 是精确相等检查，应使用 run 的实际命名空间。仅当精确 run ID 已足够时才省略，包括旧的 null 命名空间；显式空命名空间会被拒绝。不传 `--key` 时选择该 run 的 datetime 属性。可重复选项选择已知键，例如 `--key=SubmittedAt --key=ApprovedAt`。
+
+默认为预览。检查 `examined`、`would_repair` 和精确的 run/键选择后，再显式应用同一选择：
+
+```sh
+php artisan workflow:v2:repair-search-datetimes RUN_ID --namespace=production --key=SubmittedAt --apply --json
+```
+
+重新读取所选属性和 run summary，再次预览。证据未变且值已正确时，重复 apply 会报告零修复。修复一个子集并不能证明未选键也正确。
+
+每个键都需要最新保留的、显式有类型的 `SearchAttributesUpserted` 证据，其原始逻辑命令序号必须与投影一致。历史已清理、证据缺失或过期、时区不明确、命名空间错误、键不再作为 datetime 属性保留时，操作会被拒绝。任一键无法证明就拒绝整个选择；应检查历史并只选择可证明的键，不要猜测偏移量。
+
+命令先锁定并验证整个选择，再在一个存储事务中更新派生属性及其 summary。权威历史、业务命令、run/task 标识和 lease 均不改变。JSON 失败区分 `refused` 与 `unverified`：出现意外存储错误后，应先检查行再重试，因为结果不确定的 commit 不保证已 rollback。
+
+此命令修复派生搜索属性及其 summary，不恢复已清理历史，也不改变权威 input。Server 独立的可见性查询绑定路径和镜像采用都需要各自经过验证的交付；Core tag 本身不能证明 HTTP 已修复。请参阅[规范恢复流程](https://github.com/durable-workflow/workflow/blob/b3bbfdb5258c68546ae38ca1fde52818e4b05d12/docs/architecture/projection-timestamp-storage.md#datetime-search-attributes)。
+
 ## 继续为新运行 {#continue-as-new}
 
 工作流继续为新运行时，当前搜索属性自动继承到新运行。新运行从上一运行的完整合并属性映射开始，可继续插入或更新。

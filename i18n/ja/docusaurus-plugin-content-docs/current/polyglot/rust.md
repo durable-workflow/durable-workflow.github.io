@@ -267,6 +267,27 @@ pub fn register_charge(worker: &mut Worker) {
 
 [ActivityContext の識別子メソッド](https://rust.durable-workflow.com/durable_workflow/struct.ActivityContext.html#method.activity_execution_id)と、ordinary/cooperative、local、worker-session の検証を含む[通常インストール 4.9.0 の記録](https://github.com/durable-workflow/sdk-rust/issues/139#issuecomment-6367230500)を参照してください。共通の契約は[実行保証](../constraints/execution-guarantees.md#service-activity-identity)にあります。
 
+## 上限付きの失敗レポート {#bounded-failure-reports}
+
+この上限には、**実際にインストールされた Rust SDK 4.10.1 以降**が必要です。worker の `Cargo.lock` を確認してください。新しい client や checkout だけでは、旧 worker は更新されません。対象は送信する失敗レポートであり、受信した履歴や他の業務 payload ではありません。
+
+| フィールドまたは envelope | 上限 |
+| --- | --- |
+| マーカーを含む UTF-8 message | 62 KiB |
+| サポートされる stack | 128 KiB |
+| 任意の details・diagnostics・metadata を合わせたシリアライズ結果 | 64 KiB |
+| 失敗リクエストの完全なエンコード済み body | 1 MiB |
+
+実効 message 上限は、公開 Server の timeline 接頭辞用に元の64 KiBから2 KiBを予約します。JSON escape、マーカー、claim の識別情報、その他すべてのフィールドを body に含めて数えます。既知の輸送上限が低ければ、さらに小さくなります。小さなレポートの元の内容は保持します。
+
+大きすぎるテキストには見えるマーカーが付きます。schema が対応する場合、既存の `diagnostics.sdk_failure_truncation` に元のバイト数と省略フィールドを記録します。diagnostics のない workflow/query-task schema や単純な command message では、統計を message のマーカーに含めます。Avro details は完全な有効 envelope/runtime reference のまま残すか、全体を省略してマークします。base64 を途中で切って壊しません。
+
+元の例外 type、retry の判断、必須の claim 識別情報は保持します。低レベル consumer は公開された failure schema と `Client::fail_activity_task_with_failure`、`Client::fail_workflow_task_with_failure` を使えます。必須データが入らなければ `Error::FailureReporting` が明示的に拒否します。アプリの retry 結果を決めたり、小さい識別情報を捏造したりはしません。
+
+ローカル失敗は、公開 Server の空白/NUL 正規化も含め、workflow コードが観測する前に制限します。最終リクエスト検査では、観測済みのローカル message や別の業務 payload を書き換えません。固定された入力が入らなければ reporting を拒否します。
+
+この SDK 上限は、Core の派生 summary 保存修正、他 SDK、embedded 動作、Server イメージ採用の提供を証明しません。旧 worker では大きすぎる失敗を報告できない場合があります。[公開 source の方針](https://github.com/durable-workflow/sdk-rust/blob/dd58dd146f1337c3be24ad18fe65e3bb31d78b58/README.md#failure-report-limits)と[共通の失敗ガイド](../failures-and-recovery.md#rust-failure-report-limits)を参照してください。
+
 ## ローカルアクティビティ {#local-activities}
 
 Rust SDK 3.1.0 は `Worker::local_activities(true)` で設定した Worker にインラインのローカル実行を追加します。通常のアクティビティ登録メソッドでコールバックを登録し、ワークフローコンテキストのローカルアクティビティメソッドを使います。再試行とタイムアウトの設定は[実行可能な例](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs)と [LocalActivityOptions リファレンス](https://rust.durable-workflow.com/durable_workflow/struct.LocalActivityOptions.html)を参照してください。

@@ -259,6 +259,10 @@ class RetryableWorkflow extends Workflow
 }
 ```
 
+## Rust 服务模式失败报告上限 {#rust-failure-report-limits}
+
+实际运行 Rust SDK **4.10.1 或更新版本**的服务 worker，其发出 UTF-8 message 含标记最多62 KiB，受支持 stack 为128 KiB，可选 metadata 合计序列化结果为64 KiB，完整编码 body 为1 MiB或已知更低传输上限。type、retry 决定和 claim 标识保持不变；必需 envelope 无法容纳时显式拒绝。[Rust 报告指南](./polyglot/rust.md#bounded-failure-reports)说明省略标记、完整 Avro details 和本地结果边界。这不构成对旧 SDK、embedded mode 或独立 Core summary 存储修复的验证。
+
 ## 相关指南 {#related-guides}
 
 - [执行保证与幂等性](./constraints/execution-guarantees.md)介绍影响本页所有恢复路径的重放、重试、租约过期和重新投递契约。

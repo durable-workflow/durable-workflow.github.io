@@ -137,6 +137,35 @@ La API de listado del Server 2.11.0 verificada **no tiene un predicado integrado
 
 Inspeccione el linaje de la ejecución cuando necesite la relación real padre/hijo. La filtración compartida más amplia sigue siendo [trabajo de producto](https://github.com/durable-workflow/.github/issues/224); esta limitación y una convención de metadatos del usuario no entregan esa capacidad. La [verificación](https://github.com/durable-workflow/durable-workflow.github.io/issues/368#issuecomment-6362355504) conserva el resultado con padre e hijo y los predicados rechazados.
 
+## Reparar atributos de búsqueda datetime {#repair-datetime-search-attributes}
+
+El comando de reparación basado en historial exige **Workflow 2.12.0 o posterior realmente instalado**. Comprueba `composer.lock` y `php artisan help workflow:v2:repair-search-datetimes` en la aplicación Laravel que lo ejecutará. Un checkout de fuentes o una restricción Composer no demuestra que el comando esté instalado.
+
+Las proyecciones datetime guardan instantes UTC con microsegundos: `2026-10-08T12:34:56.123456+02:00` equivale a `2026-10-08T10:34:56.123456Z`. Los writers anteriores podían guardar la hora local del offset y conservar ese offset en el historial tipado. Actualizar evita nuevos errores del writer, pero no identifica ni reescribe filas antiguas. Nunca deduzcas la zona original de la hora almacenada.
+
+Actualiza primero todos los writers de proyecciones y respalda la base de datos del workflow. Usa el **ID exacto del run**, no el de la instancia de workflow. Empieza con una vista previa:
+
+```sh
+php artisan workflow:v2:repair-search-datetimes RUN_ID --namespace=production --json
+php artisan workflow:v2:repair-search-datetimes RUN_ID --namespace=production --key=SubmittedAt --json
+```
+
+`--namespace=production` es una comprobación de igualdad exacta; usa el namespace real del run. Omítelo solo si basta el ID exacto, incluidos namespaces null antiguos; un valor explícito vacío se rechaza. Sin `--key`, se seleccionan los atributos datetime de ese run. Repite la opción para claves conocidas, como `--key=SubmittedAt --key=ApprovedAt`.
+
+La vista previa es el modo predeterminado. Revisa `examined`, `would_repair` y la selección exacta de run/claves antes de aplicar explícitamente esa misma selección:
+
+```sh
+php artisan workflow:v2:repair-search-datetimes RUN_ID --namespace=production --key=SubmittedAt --apply --json
+```
+
+Vuelve a leer los atributos seleccionados y el resumen del run; repite después la vista previa. Con evidencia sin cambios y valores correctos, repetir apply informa cero reparaciones. Reparar un subconjunto no demuestra que las claves no seleccionadas sean correctas.
+
+Cada clave exige el último upsert retenido y explícitamente tipado `SearchAttributesUpserted`, cuya secuencia lógica original del comando coincida con la proyección. Historial podado, evidencia ausente/obsoleta, zona horaria ambigua, namespace incorrecto o claves que ya no se conservan como datetime rechazan la operación. Una clave sin prueba rechaza toda la selección; inspecciona el historial y selecciona solo claves demostrables, sin adivinar un offset.
+
+El comando bloquea y valida toda la selección antes de actualizar atributos derivados y su resumen en una transacción de almacenamiento. No cambia historial autoritativo, comandos de negocio, identidades de run/tarea ni leases. Los fallos JSON distinguen `refused` y `unverified`: tras un error inesperado de almacenamiento, inspecciona las filas antes de reintentar porque un commit incierto no garantiza rollback.
+
+Repara atributos derivados y su resumen; no restaura historial podado ni cambia input autoritativo. El binding de consultas de visibilidad del Server y la adopción en su imagen requieren su propia entrega cualificada; un tag Core no demuestra una corrección HTTP. Consulta el [procedimiento canónico](https://github.com/durable-workflow/workflow/blob/b3bbfdb5258c68546ae38ca1fde52818e4b05d12/docs/architecture/projection-timestamp-storage.md#datetime-search-attributes).
+
 ## Continuar como nueva ejecución {#continue-as-new}
 
 Los atributos actuales pasan automáticamente a la nueva ejecución. Esta comienza con el mapa combinado completo de la anterior y puede seguir actualizándolo.
