@@ -1271,6 +1271,84 @@ Use `PassthroughWorkerInterceptor` as a base class when you only need one
 hook. Implement `WorkerInterceptor` directly when you want type checkers to
 force all hooks to be present.
 
+### Worker sessions {#worker-sessions}
+
+Use `WorkerSessionOptions` when sequential remote activities need one worker's local resource. This example is checked with Python SDK **2.9.0** and Server **2.11.0**; see the [portable affinity version requirements](./portable-worker-affinity.md). Use a unique `job_id` for each workflow run so a new run does not reuse a terminal session id.
+
+The cache below is disposable. Each activity can rebuild it from the durable business input, so a replacement holder does not depend on a previous process's memory:
+
+```python
+from durable_workflow import ActivityFailed, WorkerSessionOptions, activity, workflow
+
+# Disposable process-local state. Rebuild it from durable business input.
+documents = {}
+
+def ensure_document(job_id):
+    rebuilt = job_id not in documents
+    if rebuilt:
+        documents[job_id] = {"text": "document:" + job_id}
+    return documents[job_id], rebuilt
+
+@activity.defn(name="prepare_document")
+async def prepare_document(job_id):
+    document, rebuilt = ensure_document(job_id)
+    return {"holder": activity.context().info.worker_id, "rebuilt": rebuilt}
+
+@activity.defn(name="inspect_document")
+async def inspect_document(job_id):
+    document, rebuilt = ensure_document(job_id)
+    return {"holder": activity.context().info.worker_id,
+            "rebuilt": rebuilt, "text": document["text"]}
+
+@workflow.defn(name="inspect_document_workflow")
+class InspectDocumentWorkflow:
+    def run(self, ctx, job_id):
+        session = WorkerSessionOptions(
+            session_id="documents:" + job_id,
+            requirements=("fs:documents",),
+            lease_seconds=5,
+            ttl_seconds=60,
+            max_concurrent_activities=1,
+            allow_reacquire_after_failure=True,
+        )
+        options = dict(worker_session=session,
+                       start_to_close_timeout=5,
+                       schedule_to_start_timeout=12,
+                       schedule_to_close_timeout=20,
+                       retry_policy={"max_attempts": 1})
+        try:
+            prepared = yield ctx.schedule_activity("prepare_document", [job_id], **options)
+            inspected = yield ctx.schedule_activity("inspect_document", [job_id], **options)
+        except ActivityFailed as error:
+            if error.activity_type not in {"prepare_document", "inspect_document"}:
+                raise
+            return {"status": "resource_unavailable", "job_id": job_id}
+        return {"status": "inspected", "prepared": prepared, "inspected": inspected}
+```
+
+Register both activities and declare the required capability on the worker:
+
+```python
+from durable_workflow import Worker
+
+worker = Worker(
+    client,
+    task_queue="documents",
+    workflows=[InspectDocumentWorkflow],
+    activities=[prepare_document, inspect_document],
+    capabilities=["fs:documents"],
+)
+await worker.run()
+```
+
+Start `inspect_document_workflow` on the `documents` task queue with `[job_id]` as input. The first activity lazily acquires the session; the second uses the same holder while its lease remains valid. `max_concurrent_activities=1` bounds simultaneous activities in that session. Queue routing and capability checks still apply. These short leases/timeouts demonstrate bounded behavior; size them for your real work and heartbeat well before expiry.
+
+After holder loss or lease expiry, `allow_reacquire_after_failure=True` permits another eligible worker to reacquire the session. Its local resource must be rebuilt. Already committed activity results replay, while uncommitted effects can repeat: use durable resource identifiers and idempotent external operations. A session does not migrate memory, files or open handles.
+
+Explicit close and absolute TTL expiry are terminal for that session id. A later activity cannot reopen it and can remain unadmitted until its configured timeout is enforced. Run the Server's scheduler/maintenance role from the [published deployment recipe](https://github.com/durable-workflow/server/blob/2.11.0/docker-compose.published.yml); an API-only process is insufficient for timeout enforcement. The workflow handles exhausted activity failure with `ActivityFailed` and returns `resource_unavailable`; the application can then choose a fresh session and rebuild from the business input. This example does not promise an immediate session-closed exception or automatically reopen a terminal session.
+
+For explicit holder lifecycle operations, use `worker.worker_session(options)` and its `create()`, `renew()` and `close(reason)` methods. Graceful worker shutdown closes its held sessions. See the [shared lifecycle contract](../features/worker-sessions.md#lifecycle).
+
 ## Logging
 
 The SDK uses Python's standard `logging` module with structured logger names:
