@@ -271,6 +271,74 @@ Use `DW_V2_GUARDRAILS_BOOT` en CI y en los manifiestos de despliegue. El nombre 
 
 Consulte [Asignación y despacho de tareas](/docs/polyglot/task-matching-dispatch) al configurar `DW_V2_MATCHING_ROLE_QUEUE_WAKE` o un daemon dedicado de `workflow:v2:repair-pass --loop`. Estas opciones cambian dónde se descubren las tareas listas, no el contrato del protocolo de workers.
 
+## Controles adicionales del PHP Server publicado {#additional-published-php-controls}
+
+Esta referencia cubre el contrato publicado de **PHP Server 2.11.0**, incluidos los controles siguientes. Comprueba la imagen que ejecutas: la versión de instalación seleccionada por separado puede ser anterior. `unset` indica que no se proporciona un valor de entorno; su efecto depende del control. Los valores predeterminados y alias proceden del [contrato publicado](https://github.com/durable-workflow/server/blob/36d16273604755f3dd0743cab331cc7c62e51d8e/config/dw-contract.php). La compilación comprueba su snapshot versionado en todos los idiomas. Esta referencia no cambia el conjunto de versiones seleccionado.
+
+### Admisión HTTP por namespace {#namespace-request-controls}
+
+| Variable | Valor predeterminado | Propósito | Alias anterior |
+| --- | --- | --- | --- |
+| `DW_NAMESPACE_MAX_REQUESTS_PER_MINUTE` | `unset` | Límite opcional de peticiones de control por minuto y namespace; sin valor no hay límite. | `WORKFLOW_SERVER_NAMESPACE_MAX_REQUESTS_PER_MINUTE` |
+| `DW_NAMESPACE_MAX_CONCURRENT_REQUESTS` | `unset` | Límite opcional de peticiones de control simultáneas por namespace; sin valor no hay límite. | `WORKFLOW_SERVER_NAMESPACE_MAX_CONCURRENT_REQUESTS` |
+| `DW_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` | `unset` | Techo obligatorio de peticiones por minuto, incluidas las excepciones por namespace. | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` |
+| `DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` | `unset` | Techo obligatorio de peticiones simultáneas, incluidas las excepciones por namespace. | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` |
+| `DW_NAMESPACE_ADMISSION_OVERRIDES` | `{}` | Objeto JSON por namespace con excepciones de frecuencia y concurrencia de peticiones. | `WORKFLOW_SERVER_NAMESPACE_ADMISSION_OVERRIDES` |
+
+[Admisión de peticiones por namespace](./task-queue-admission.md#namespace-request-admission).
+
+### Cuotas de estado duradero por namespace {#namespace-durable-controls}
+
+| Variable | Valor predeterminado | Propósito | Alias anterior |
+| --- | --- | --- | --- |
+| `DW_NAMESPACE_DURABLE_LIMITS` | `{}` | JSON de cuotas de filas duraderas por namespace. Los totales y límites pending/open son independientes; las tareas pendientes son filas ready en cola, con leases activos limitados aparte. Un objeto vacío no limita. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_LIMITS` |
+| `DW_NAMESPACE_DURABLE_HARD_LIMITS` | `{}` | JSON de techos obligatorios de filas duraderas, incluidas excepciones; un objeto vacío no añade techos del operador. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_HARD_LIMITS` |
+| `DW_NAMESPACE_DURABLE_OVERRIDES` | `{}` | JSON de excepciones de cuotas duraderas por namespace; los techos obligatorios siguen vigentes. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_OVERRIDES` |
+
+[Cuotas de estado duradero por namespace](./task-queue-admission.md#namespace-durable-state).
+
+### Cuotas de payload externo y transporte S3 {#external-payload-quotas-and-s3}
+
+| Variable | Valor predeterminado | Propósito | Alias anterior |
+| --- | --- | --- | --- |
+| `DW_EXTERNAL_PAYLOAD_COMPLETION_MAX_BYTES` | `unset` | Bytes distintos entre upload slots inmutables de un completion con lease; sin valor usa `DW_EXTERNAL_PAYLOAD_MAX_BYTES`. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_COMPLETION_MAX_BYTES` |
+| `DW_EXTERNAL_PAYLOAD_MAX_BYTES_PER_NAMESPACE` | `unset` | Bytes acumulados de payloads externos por namespace. Cuenta objetos listos y en curso; sin valor no limita. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_MAX_BYTES_PER_NAMESPACE` |
+| `DW_EXTERNAL_PAYLOAD_MAX_OBJECTS_PER_NAMESPACE` | `unset` | Cantidad de objetos de payload externo por namespace. Cuenta objetos listos y en curso; sin valor no limita. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_MAX_OBJECTS_PER_NAMESPACE` |
+| `DW_EXTERNAL_PAYLOAD_HARD_MAX_BYTES_PER_NAMESPACE` | `unset` | Techo obligatorio de bytes acumulados de payload externo por namespace, incluidas excepciones. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_HARD_MAX_BYTES_PER_NAMESPACE` |
+| `DW_EXTERNAL_PAYLOAD_HARD_MAX_OBJECTS_PER_NAMESPACE` | `unset` | Techo obligatorio de objetos de payload externo por namespace, incluidas excepciones. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_HARD_MAX_OBJECTS_PER_NAMESPACE` |
+| `DW_EXTERNAL_PAYLOAD_NAMESPACE_OVERRIDES` | `{}` | Objeto JSON por namespace con excepciones de cuota `max_bytes` y `max_objects`. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_NAMESPACE_OVERRIDES` |
+| `DW_EXTERNAL_PAYLOAD_S3_ACCESS_KEY_ID` | `unset` | Access-key ID opcional del disco S3 compatible gestionado por el runtime; puede omitirse con workload identity. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_ACCESS_KEY_ID` |
+| `DW_EXTERNAL_PAYLOAD_S3_SECRET_ACCESS_KEY` | `unset` | Clave secreta opcional del disco S3 compatible gestionado; debe configurarse junto al access-key ID. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_SECRET_ACCESS_KEY` |
+| `DW_EXTERNAL_PAYLOAD_S3_SESSION_TOKEN` | `unset` | Session token opcional de credenciales temporales del disco S3 compatible gestionado. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_SESSION_TOKEN` |
+| `DW_EXTERNAL_PAYLOAD_S3_REGION` | `us-east-1` | Región del disco S3 compatible gestionado por el runtime. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_REGION` |
+| `DW_EXTERNAL_PAYLOAD_S3_BUCKET` | `unset` | Bucket del disco S3 compatible gestionado por el runtime. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_BUCKET` |
+| `DW_EXTERNAL_PAYLOAD_S3_ENDPOINT` | `unset` | Endpoint HTTPS opcional del servicio S3 compatible de payloads externos. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_ENDPOINT` |
+| `DW_EXTERNAL_PAYLOAD_S3_USE_PATH_STYLE_ENDPOINT` | `false` | Usar direccionamiento de bucket path-style para el servicio S3 compatible gestionado. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_S3_USE_PATH_STYLE_ENDPOINT` |
+
+### Límites de servicio por namespace llamador {#service-caller-namespace-controls}
+
+| Variable | Valor predeterminado | Propósito | Alias anterior |
+| --- | --- | --- | --- |
+| `DW_SERVICE_BOUNDARY_NAMESPACE_RATE_LIMIT_PER_MINUTE` | `unset` | Límite compartido opcional por minuto de llamadas de servicio, agregado por namespace llamador. | `WORKFLOW_SERVER_SERVICE_BOUNDARY_NAMESPACE_RATE_LIMIT_PER_MINUTE` |
+| `DW_SERVICE_BOUNDARY_NAMESPACE_MAX_IN_FLIGHT` | `unset` | Límite compartido opcional de llamadas de servicio en curso, agregado por namespace llamador. | `WORKFLOW_SERVER_SERVICE_BOUNDARY_NAMESPACE_MAX_IN_FLIGHT` |
+| `DW_SERVICE_BOUNDARY_HARD_RATE_LIMIT_PER_MINUTE` | `unset` | Techo obligatorio por minuto para políticas de límite de servicio y de namespace llamador. | `WORKFLOW_SERVER_SERVICE_BOUNDARY_HARD_RATE_LIMIT_PER_MINUTE` |
+| `DW_SERVICE_BOUNDARY_HARD_MAX_IN_FLIGHT` | `unset` | Techo obligatorio de llamadas en curso para políticas de límite de servicio y de namespace llamador. | `WORKFLOW_SERVER_SERVICE_BOUNDARY_HARD_MAX_IN_FLIGHT` |
+| `DW_SERVICE_BOUNDARY_NAMESPACE_OVERRIDES` | `{}` | JSON de excepciones de frecuencia y llamadas en curso por namespace llamador; siguen aplicándose los techos. | `WORKFLOW_SERVER_SERVICE_BOUNDARY_NAMESPACE_OVERRIDES` |
+
+### Coordinación, almacenamiento y runtime {#coordination-storage-and-runtime-controls}
+
+| Variable | Valor predeterminado | Propósito | Alias anterior |
+| --- | --- | --- | --- |
+| `DW_OBSERVABILITY_CONTEXT_ENABLED` | `false` | Activar persistencia y entrega acotadas de trace context y descubrimiento cuando estén instaladas su API y su esquema opcionales. | - |
+| `DW_OBSERVABILITY_BAGGAGE_ALLOWLIST` | `[]` | Lista JSON de claves baggage permitidas en los orígenes del run; vacía por defecto. Los links nunca llevan baggage. | - |
+| `DW_STORAGE_ADMISSION_FILE` | `unset` | Archivo local opcional de observación de presión de almacenamiento, de solo lectura; observaciones inválidas o antiguas bloquean escrituras. | - |
+| `DW_STORAGE_ADMISSION_SOURCE` | `unset` | Identidad esperada del recurso de almacenamiento en la observación de admisión. | - |
+| `DW_STORAGE_ADMISSION_MAX_AGE_SECONDS` | `15` | Edad máxima de la observación de almacenamiento en segundos, entre 1 y 300. | - |
+| `DW_RUNTIME_CREDENTIALS_ENABLED` | `false` | Activar credenciales bearer de runtime duraderas, ligadas al namespace y respaldadas por base de datos, mediante la API admin. | `WORKFLOW_SERVER_RUNTIME_CREDENTIALS_ENABLED` |
+| `DW_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | Límite por nodo de esperas long-poll workflow/activity de un namespace; no supera el límite global de workers. Rechaza si no hay autoridad de caché compartida. | `WORKFLOW_SERVER_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
+| `DW_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | Límite por nodo de esperas long-poll query-task de un namespace; no supera el límite global de queries. Rechaza si no hay autoridad de caché compartida. | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
+| `DW_V1_ENABLED` | `false` | Activar migración y vaciado de cola embedded v1 solo para conservar deliberadamente su estado; Server independiente usa únicamente v2 por defecto. | `WORKFLOW_V1_ENABLED` |
+
 ## Variables de infraestructura de ejecución {#runtime-infrastructure-variables}
 
 Las variables de infraestructura de ejecución controlan el framework y sus dependencias. La auditoría de Server las reconoce para no emitir advertencias, pero no son controles estables de la API de Durable Workflow.

@@ -116,6 +116,67 @@ class PaymentWorkflow:
 
 Залишайте захищені downstream-виклики у **звичайних queued activity**. Inline local activity не створюють звичайного activity-task, тому queue/namespace/budget-group dispatch-ліміти activity їх не вимірюють. Prepared local claim перевіряє повноваження виконання, а не цей бюджет. Вбудований Laravel не має admission окремого Server; використовуйте власні засоби розгортання. Див. [local activity](../features/local-activities.md).
 
+## Допуск запитів namespace {#namespace-request-admission}
+
+Цей контракт стосується опублікованого **PHP Server 2.11.0**. Перевірте фактичний образ і [версійний довідник конфігурації](./server-config-reference.md#additional-published-php-controls). HTTP-бюджети namespace відокремлені від слотів worker, dispatch завдань, утримуваних worker polls і квот сталого стану. Бюджет належить namespace запиту, визначеному через `Durable-Workflow-Namespace` або `DW_DEFAULT_NAMESPACE`, навіть коли шлях адміністративного запиту називає інший namespace.
+
+Автентифіковані запити, які дійшли до допуску namespace, враховуються для таких груп маршрутів control plane та керування, включно з вкладеними шляхами: `/api/namespaces`, `/api/storage`, `/api/workflows`, `/api/activities`, `/api/bridge-adapters`, `/api/workers`, `/api/worker-sessions`, `/api/task-queues`, `/api/deployments`, `/api/schedules`, `/api/search-attributes`, `/api/service-endpoints`, `/api/service-catalog`. Адміністративні маршрути у множині `/api/workers` враховуються.
+
+Маршрути реєстрації, polling та результатів в однині `/api/worker/*` не використовують цей HTTP-бюджет. Health/readiness, `/api/cluster/info`, адміністративні `/api/system/*`, runtime credentials і транспорт зовнішніх payload також не проходять цей gate; їхні власні перевірки авторизації, місткості й сховища залишаються чинними. Відмови автентифікації, протоколу чи визначення namespace до цього middleware не збільшують лічильник.
+
+Частота обмежується фіксованими хвилинними bucket за годинником Server, а не плавним чи рухомим вікном. Бюджет N може пропустити N запитів перед межею та ще N після неї. Подальші помилки запиту не скасовують облік; частота перевіряється перед одночасністю, тож відмова через одночасність може витратити хвилинний бюджет. Слот одночасності утримується до завершення запиту й cleanup; він не рахує запущені workflow.
+
+Між API-репліками потрібні спільний Redis store/key prefix, синхронізований час і однакова завантажена конфігурація. Додавання реплік не множить спільний бюджет namespace. Локальний file cache координує лише процеси із сумісним доступом до запису файлів; це не базова конфігурація кількох вузлів. Обмеження утримуваних worker/query polls на вузол окремі. [Перезапускайте відповідні ролі після зміни середовища](./server-config-reference.md#how-changes-take-effect).
+
+```dotenv
+DW_NAMESPACE_MAX_REQUESTS_PER_MINUTE=100
+DW_NAMESPACE_MAX_CONCURRENT_REQUESTS=8
+DW_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE=150
+DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS=10
+DW_NAMESPACE_ADMISSION_OVERRIDES='{"payments":{"max_requests_per_minute":200,"max_concurrent_requests":12},"reports":{"max_requests_per_minute":40,"max_concurrent_requests":3}}'
+```
+
+Для наявних namespace приклад дає `payments` 150 запитів/хвилину та 10 одночасних, `reports` — 40/3, іншим — 100/8. Перевизначення можуть підвищувати чи знижувати типові значення, але жорсткі межі 150/10 залишаються чинними. Конфігурація не створює namespace і не резервує пропускну здатність.
+
+Для HTTP-параметрів відсутність значення не задає відповідної межі; жорстка межа сама по собі все одно може обмежувати. Перевизначення null повертає типове значення. Потрібні додатні цілі числа: нуль невалідний. Межі реалізації PHP — 10000000 запитів/хвилину та 1024 одночасних запити, незалежно від фактичної місткості HTTP-пулу. Опублікований PHP 2.11.0 мовчки трактує невалідний JSON `DW_NAMESPACE_ADMISSION_OVERRIDES` як порожні перевизначення й повертається до глобальних типових значень. Перевіряйте JSON до розгортання; якщо типові та жорсткі межі відсутні, задумана межа namespace зникає. Ця [підтверджена прогалина продукту](https://github.com/durable-workflow/durable-workflow.github.io/issues/335#issuecomment-6369150521) не закривається оновленням документації.
+
+| Причина | HTTP | Підказка повтору, секунди |
+| --- | --- | --- |
+| `namespace_request_rate_exhausted` | `429` | До наступної хвилини, 1–60 |
+| `namespace_request_concurrency_exhausted` | `429` | 1 |
+| `namespace_request_admission_unavailable` | `503` | 1 |
+
+JSON-поле `retry_after_seconds` узгоджене із заголовком `Retry-After`. Недоступність налаштованої координації чи невалідні числові межі дає закриту відмову 503. Адміністративні метрики namespace доступні й за вичерпаного бюджету звичайних запитів; `dw_namespace_request_admission_rejections` показує скінченний перелік причин. Використовуйте обмежені caller retry/backoff та ідемпотентність; невизначений транспортний результат не дозволяє автоматично повторювати запис. Див. [бюджети часу](../deployment.md#worker-long-poll-timeout-budgets).
+
+## Квоти сталого стану namespace {#namespace-durable-state}
+
+`DW_NAMESPACE_DURABLE_LIMITS` задає типові межі збережених рядків, `DW_NAMESPACE_DURABLE_OVERRIDES` змінює їх за namespace, а `DW_NAMESPACE_DURABLE_HARD_LIMITS` додає непереборні стелі. Порожні об’єкти не додають меж. Перевизначення можуть підвищувати чи знижувати типове значення; null повертає типове. На відміну від HTTP-допуску, нульова стала квота валідна та забороняє нові виділення. Тут наявний `payments` може мати 250 відкритих run, інші namespace — 100, за жорсткої межі 500.
+
+```dotenv
+DW_NAMESPACE_DURABLE_LIMITS='{"max_open_workflow_runs":100,"max_open_workflow_run_waits":200,"max_pending_workflow_timers":200}'
+DW_NAMESPACE_DURABLE_HARD_LIMITS='{"max_open_workflow_runs":500}'
+DW_NAMESPACE_DURABLE_OVERRIDES='{"payments":{"max_open_workflow_runs":250}}'
+```
+
+Використовуйте поля `max_<resource>` для наведених ресурсів. Рядки належать namespace-власнику або namespace пов’язаного workflow/run. Загальна кількість збережених рядків і відкриті/очікувані підмножини мають незалежні квоти. Перевірка читає авторитетні дані БД і серіалізує зміни блокуванням рядка namespace.
+
+| Ресурс | Що враховується |
+| --- | --- |
+| `workflow_instances`, `workflow_runs` | Усі збережені рядки екземплярів/run workflow, включно з термінальними run. |
+| `open_workflow_runs` | Run зі статусом `pending`, `running` або `waiting`. |
+| `workflow_history_events`, `workflow_commands`, `workflow_tasks` | Збережені рядки історії, команд і завдань workflow. |
+| `pending_workflow_tasks` | Готові рядки workflow tasks зі статусом `ready` у черзі; активні leases мають окремі обмеження. |
+| `workflow_timers`, `pending_workflow_timers` | Усі збережені таймери та підмножина `pending` відповідно. |
+| `workflow_run_waits`, `open_workflow_run_waits` | Усі збережені очікування run та підмножина `open` відповідно. |
+| `schedules`, `schedule_history_events`, `worker_registrations` | Збережені schedules, їхня історія та реєстрації worker; застарілі реєстрації рахуються до видалення. |
+| `workflow_streams`, `workflow_stream_items` | Рядки durable та inbound streams і рядки їхніх елементів. |
+
+Батьківський workflow, що чекає child або service call, далі займає відкритий run у власному namespace. Child додає власний run; в одному namespace враховуйте обидва відкриті run та їхні очікування/таймери. Сервісна операція, що створює workflow, споживає рядки в його namespace; signal/update на наявному run не створює другий run автоматично. Межі сервісних викликів і зовнішніх payload — окремі параметри.
+
+Вичерпання дає 429 `namespace_<resource>_exhausted`. Перевіряйте `retryable`: деякі квоти не допускають повтору та не мають підказки; повторювані сталі відмови вказують 60 секунд, не обіцяючи вільної місткості тоді. Неможливість оцінити налаштовану квоту дає 503 `namespace_durable_state_quota_unavailable` із підказкою в одну секунду. Тиск збережених рядків може вимагати retention або зміни місткості/конфігурації, а не швидкого циклу повторів.
+
+Обирайте namespace заголовком запиту адміністративних метрик. `dw_namespace_durable_state_usage` і JSON-поля `limits`, `usage`, `remaining`, `configuration_status`, `measurement_status` показують цю область; namespace — контекст запиту, а не необмежена мітка метрик. Недоступні вимірювання не означають нульове використання чи необмежену місткість. Див. [повний довідник конфігурації](./server-config-reference.md#namespace-durable-controls).
+
 ## Налаштування Server {#server-configuration}
 
 Задайте глобальні ліміти для однакової стелі кожної черги:

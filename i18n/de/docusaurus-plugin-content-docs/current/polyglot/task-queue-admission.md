@@ -89,6 +89,67 @@ Ein offener Anwendungs-Breaker löst vor der Zahlung `NonRetryableError` aus. Ge
 
 Geschützte Dienstaufrufe gehören in **gewöhnliche eingereihte Aktivitäten**. Inline-lokale Aktivitäten erzeugen keinen gewöhnlichen Aktivitätstask; Queue-/Namespace-/Gruppen-Obergrenzen messen sie nicht. Ein vorbereiteter lokaler Claim prüft Ausführungsbefugnis, nicht dieses Budget. Eingebettetes Laravel hat keine Admission des eigenständigen Servers; verwenden Sie eigene Deployment-Kontrollen. Siehe [lokale Aktivitäten](../features/local-activities.md).
 
+## Anfragezulassung pro Namespace {#namespace-request-admission}
+
+Dieser Vertrag gilt für den veröffentlichten **PHP Server 2.11.0**. Prüfen Sie Ihr Image und die [versionierte Konfigurationsreferenz](./server-config-reference.md#additional-published-php-controls). HTTP-Budgets sind von Worker-Slots, Task-Dispatch, gehaltenen Polls und dauerhaften Kontingenten getrennt. Das Budget gehört zum durch `Durable-Workflow-Namespace` oder `DW_DEFAULT_NAMESPACE` aufgelösten Namespace, auch wenn ein Verwaltungspfad einen anderen Namespace nennt.
+
+Authentifizierte Anfragen, die die Zulassung erreichen, zählen in diesen Control- und Verwaltungsroutenfamilien einschließlich Unterpfaden: `/api/namespaces`, `/api/storage`, `/api/workflows`, `/api/activities`, `/api/bridge-adapters`, `/api/workers`, `/api/worker-sessions`, `/api/task-queues`, `/api/deployments`, `/api/schedules`, `/api/search-attributes`, `/api/service-endpoints`, `/api/service-catalog`. Verwaltungsrouten im Plural `/api/workers` zählen.
+
+Die singulären `/api/worker/*`-Routen für Registrierung, Polling und Ergebnisse verwenden dieses HTTP-Budget nicht. Health/Readiness, `/api/cluster/info`, Admin-Routen `/api/system/*`, Runtime-Zugangsdaten und externer Payload-Transport bleiben ebenfalls außerhalb; ihre eigenen Zugriffs-, Kapazitäts- und Speicherprüfungen gelten weiterhin. Frühere Ablehnungen durch Authentifizierung, Protokoll oder Namespace-Auflösung erreichen den Zähler nicht.
+
+Die Rate verwendet feste Minuten-Buckets der Serveruhr, keine geglättete oder gleitende Rate. Ein Budget N kann N Anfragen kurz vor der Grenze und weitere N danach zulassen. Später fehlschlagende Anfragen zählen weiter; die Ratenprüfung erfolgt vor der Gleichzeitigkeit, sodass eine Parallelitätsablehnung Minutenbudget verbrauchen kann. Der Parallelitätsslot bleibt bis zum Ende und zur Bereinigung der Anfrage belegt; er zählt keine laufenden Workflows.
+
+API-Replikate benötigen denselben gemeinsamen Redis-Speicher/Schlüsselpräfix, synchronisierte Uhren und konsistent geladene Konfiguration. Weitere Replikate multiplizieren das gemeinsame Budget nicht. Ein lokaler Dateicache koordiniert nur Prozesse mit kompatiblem Schreibzugriff; er ist nicht die Mehrknoten-Baseline. Knotenspezifische Grenzen gehaltener Worker-/Query-Polls gelten separat. [Starten Sie betroffene Rollen nach Umgebungsänderungen neu](./server-config-reference.md#how-changes-take-effect).
+
+```dotenv
+DW_NAMESPACE_MAX_REQUESTS_PER_MINUTE=100
+DW_NAMESPACE_MAX_CONCURRENT_REQUESTS=8
+DW_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE=150
+DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS=10
+DW_NAMESPACE_ADMISSION_OVERRIDES='{"payments":{"max_requests_per_minute":200,"max_concurrent_requests":12},"reports":{"max_requests_per_minute":40,"max_concurrent_requests":3}}'
+```
+
+Für vorhandene Namespaces ergibt das Beispiel bei `payments` 150 Anfragen/Minute und 10 gleichzeitige, bei `reports` 40/3, sonst 100/8. Overrides dürfen Vorgaben erhöhen oder senken, aber die harten Grenzen 150/10 bleiben bestehen. Die Konfiguration erzeugt keine Namespaces und reserviert keinen Durchsatz.
+
+Bei diesen HTTP-Kontrollen setzt ein fehlender Wert keine entsprechende Grenze; eine harte Obergrenze allein kann dennoch begrenzen. Ein `null`-Override fällt auf die Vorgabe zurück. Werte müssen positive ganze Zahlen sein: `0` ist ungültig. PHP-Obergrenzen sind 10000000 Anfragen/Minute und 1024 gleichzeitige Anfragen, unabhängig von der realen HTTP-Pool-Kapazität. Veröffentlichtes PHP 2.11.0 behandelt fehlerhaftes `DW_NAMESPACE_ADMISSION_OVERRIDES`-JSON stillschweigend als leere Overrides und nutzt globale Vorgaben. Validieren Sie JSON vor dem Deployment; ohne globale Vorgaben/harten Grenzen geht die beabsichtigte Namespace-Grenze verloren. Diese [bestätigte Produktlücke](https://github.com/durable-workflow/durable-workflow.github.io/issues/335#issuecomment-6369150521) wird durch Dokumentation nicht behoben.
+
+| Grund | HTTP | Wiederholhinweis in Sekunden |
+| --- | --- | --- |
+| `namespace_request_rate_exhausted` | `429` | Bis zur nächsten Minute, 1–60 |
+| `namespace_request_concurrency_exhausted` | `429` | 1 |
+| `namespace_request_admission_unavailable` | `503` | 1 |
+
+JSON `retry_after_seconds` und Header `Retry-After` stimmen überein. Nicht verfügbare konfigurierte Koordination oder ungültige numerische Grenzen führen zu 503. Namespace-bezogene Admin-Metriken bleiben auch bei erschöpften normalen Anfragen verfügbar; `dw_namespace_request_admission_rejections` meldet die begrenzten Gründe. Nutzen Sie begrenzte Caller-Retry-/Backoff-Richtlinien und Idempotenz; ein unsicherer Transportausgang erlaubt kein automatisches Wiederholen von Schreibvorgängen. Siehe [Timeout-Budgets](../deployment.md#worker-long-poll-timeout-budgets).
+
+## Kontingente für dauerhaften Namespace-Zustand {#namespace-durable-state}
+
+`DW_NAMESPACE_DURABLE_LIMITS` setzt Vorgaben für erhaltene Zeilen, `DW_NAMESPACE_DURABLE_OVERRIDES` ändert sie pro Namespace und `DW_NAMESPACE_DURABLE_HARD_LIMITS` ergänzt unübergehbare Obergrenzen. Leere Objekte fügen keine Grenzen hinzu. Overrides dürfen Vorgaben erhöhen oder senken; null fällt auf die Vorgabe zurück. Anders als bei HTTP ist ein dauerhaftes Kontingent 0 gültig und verhindert neue Belegungen. Hier kann vorhandenes `payments` 250 offene Runs halten, andere Namespaces 100, bei harter Grenze 500.
+
+```dotenv
+DW_NAMESPACE_DURABLE_LIMITS='{"max_open_workflow_runs":100,"max_open_workflow_run_waits":200,"max_pending_workflow_timers":200}'
+DW_NAMESPACE_DURABLE_HARD_LIMITS='{"max_open_workflow_runs":500}'
+DW_NAMESPACE_DURABLE_OVERRIDES='{"payments":{"max_open_workflow_runs":250}}'
+```
+
+Verwenden Sie `max_<resource>` für folgende Ressourcen. Zeilen zählen im eigenen Namespace oder dem des verknüpften Workflows/Runs. Erhaltene Gesamtzahlen und offene/ausstehende Teilmengen werden unabhängig begrenzt. Maßgeblich sind Datenbankzählungen; Mutationen werden über die Namespace-Zeile serialisiert.
+
+| Ressource | Gezählte Zeilen |
+| --- | --- |
+| `workflow_instances`, `workflow_runs` | Alle erhaltenen Workflow-Instanz-/Run-Zeilen einschließlich terminaler Runs. |
+| `open_workflow_runs` | Runs mit Status `pending`, `running` oder `waiting`. |
+| `workflow_history_events`, `workflow_commands`, `workflow_tasks` | Erhaltene Historien-, Befehls- und Workflow-Task-Zeilen. |
+| `pending_workflow_tasks` | Workflow-Task-Zeilen in der Queue mit Status `ready`; aktive Leases haben eigene Zulassungskontrollen. |
+| `workflow_timers`, `pending_workflow_timers` | Alle erhaltenen Timer beziehungsweise die Teilmenge `pending`. |
+| `workflow_run_waits`, `open_workflow_run_waits` | Alle erhaltenen Run-Wartezeilen beziehungsweise die Teilmenge `open`. |
+| `schedules`, `schedule_history_events`, `worker_registrations` | Erhaltene Schedules, Schedule-Historie und Worker-Registrierungen; veraltete Registrierungen zählen bis zur Löschung. |
+| `workflow_streams`, `workflow_stream_items` | Zeilen dauerhafter und eingehender Streams sowie ihrer Elemente. |
+
+Ein auf Kind oder Service-Aufruf wartender Elternworkflow belegt weiter einen offenen Run im eigenen Namespace. Das Kind ergänzt seinen Run; im selben Namespace müssen beide offenen Runs und ihre Wartezeiten/Timer eingeplant werden. Eine Service-Operation, die einen Workflow erzeugt, verbraucht Zeilen in dessen Namespace; Signal/Update auf einem bestehenden Run erzeugt nicht automatisch einen zweiten Run. Service-Aufruf- und externe Payload-Kontingente gelten separat.
+
+Erschöpfung liefert 429 `namespace_<resource>_exhausted`. Prüfen Sie `retryable`: Manche Kontingente sind nicht wiederholbar und liefern keinen Wartehinweis; wiederholbare dauerhafte Ablehnungen nennen 60 Sekunden, ohne spätere Kapazität zu garantieren. Eine nicht auswertbare konfigurierte Quote liefert 503 `namespace_durable_state_quota_unavailable` mit einer Sekunde Wartehinweis. Erhaltene Zeilen können Retention oder eine Kapazitäts-/Konfigurationsänderung erfordern, keine enge Retry-Schleife.
+
+Wählen Sie beim Abruf von Admin-Metriken den Namespace per Header. `dw_namespace_durable_state_usage` und JSON-Felder `limits`, `usage`, `remaining`, `configuration_status`, `measurement_status` zeigen diesen Bereich; Namespace ist Anfragekontext statt unbegrenztes Metriklabel. Nicht verfügbare Messwerte bedeuten weder Nullnutzung noch unbegrenzte Kapazität. Siehe die [vollständige Referenz](./server-config-reference.md#namespace-durable-controls).
+
 ## Server-Konfiguration {#server-configuration}
 
 Setzen Sie globale Grenzen, wenn alle Warteschlangen dieselbe Obergrenze haben sollen:
