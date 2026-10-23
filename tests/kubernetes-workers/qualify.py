@@ -101,6 +101,33 @@ def collect(*, show_logs=False):
                     pass
     except RuntimeError:
         pass
+    try:
+        # Read only synthetic fixture state. Keep queue/status identity, not
+        # credentials, serialized callbacks or complete payload bodies.
+        audit = r'''$db = new PDO('sqlite:/data/database.sqlite');
+$db->exec('PRAGMA query_only=ON');
+$known = ['workflow_instances','workflow_runs','workflow_tasks','workflow_history_events',
+          'activity_executions','activity_attempts','activity_tasks','jobs','failed_jobs'];
+$allowed = ['id','workflow_id','workflow_instance_id','workflow_run_id','task_queue','queue',
+            'type','status','attempt_count','repair_count','activity_type','activity_execution_id',
+            'activity_attempt_id','failure_reason','exception_class','exception_message',
+            'sequence','event_type','command_type','command_id','namespace','worker_id',
+            'lease_owner','available_at','created_at','started_at','completed_at','last_error'];
+$result = [];
+foreach ($known as $table) {
+    $columns = $db->query('PRAGMA table_info("'.$table.'")')->fetchAll(PDO::FETCH_ASSOC);
+    $selected = array_values(array_intersect(array_column($columns, 'name'), $allowed));
+    if ($selected !== []) {
+        $result[$table] = $db->query('SELECT "'.implode('","', $selected).'" FROM "'.$table.'" LIMIT 20')->fetchAll(PDO::FETCH_ASSOC);
+    }
+}
+echo json_encode($result, JSON_THROW_ON_ERROR);'''
+        state = kubectl('exec', 'deployment/durable-workflow-server', '-c', 'scheduler', '--',
+                        'php', '-r', audit, label='durable-state', timeout=20)
+        if show_logs:
+            print('Synthetic durable state: ' + state, flush=True)
+    except RuntimeError:
+        pass
 
 
 def main():
