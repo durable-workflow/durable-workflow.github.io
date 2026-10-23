@@ -26,8 +26,7 @@ function validateSnapshot(contract) {
   }
 }
 
-function checkReference(markdown, contract = snapshot, locale = 'en') {
-  validateSnapshot(contract);
+function referenceRows(markdown, locale) {
   const rows = new Map();
   for (const line of markdown.split('\n')) {
     const match = /^\|\s*`(DW_[A-Z0-9_]+)`\s*\|/.exec(line);
@@ -36,21 +35,30 @@ function checkReference(markdown, contract = snapshot, locale = 'en') {
     if (rows.has(name)) throw new Error(`${locale}: duplicate configuration row ${name}`);
     rows.set(name, line.split(/(?<!\\)\|/).slice(1, -1).map(cell => cell.trim()));
   }
+  return rows;
+}
+
+function checkRow(name, cells, entry, locale) {
+  if (cells.length !== 4 || cells.some(cell => !cell)) {
+    throw new Error(`${locale}: ${name} needs variable, default, purpose and legacy-alias columns`);
+  }
+  if (cells[1] === '-' || cells[2] === '-') {
+    throw new Error(`${locale}: ${name} needs a documented default and purpose`);
+  }
+  const aliases = [...cells[3].matchAll(/`([A-Z][A-Z0-9_]+)`/g)].map(match => match[1]);
+  const expected = entry.legacy === undefined ? [] : [entry.legacy];
+  if (JSON.stringify(aliases) !== JSON.stringify(expected)) {
+    throw new Error(`${locale}: ${name} legacy alias must match the published contract: ${expected.join(', ') || '(none)'}`);
+  }
+}
+
+function checkReference(markdown, contract = snapshot, locale = 'en') {
+  validateSnapshot(contract);
+  const rows = referenceRows(markdown, locale);
   const missing = Object.keys(contract.vars).filter(name => !rows.has(name));
   if (missing.length) throw new Error(`${locale}: missing published Server configuration rows: ${missing.join(', ')}`);
   for (const [name, entry] of Object.entries(contract.vars)) {
-    const cells = rows.get(name);
-    if (cells.length !== 4 || cells.some(cell => !cell)) {
-      throw new Error(`${locale}: ${name} needs variable, default, purpose and legacy-alias columns`);
-    }
-    if (cells[1] === '-' || cells[2] === '-') {
-      throw new Error(`${locale}: ${name} needs a documented default and purpose`);
-    }
-    const aliases = [...cells[3].matchAll(/`([A-Z][A-Z0-9_]+)`/g)].map(match => match[1]);
-    const expected = entry.legacy === undefined ? [] : [entry.legacy];
-    if (JSON.stringify(aliases) !== JSON.stringify(expected)) {
-      throw new Error(`${locale}: ${name} legacy alias must match the published contract: ${expected.join(', ') || '(none)'}`);
-    }
+    checkRow(name, rows.get(name), entry, locale);
   }
   for (const name of rows.keys()) {
     if (!Object.hasOwn(contract.vars, name)) throw new Error(`${locale}: ${name} is outside the published PHP configuration snapshot`);
