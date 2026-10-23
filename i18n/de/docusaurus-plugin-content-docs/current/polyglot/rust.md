@@ -320,6 +320,27 @@ Ein stabiler Schlüssel ermöglicht die Vermeidung doppelter Effekte nur, wenn d
 
 Siehe die [Identitätsmethoden von ActivityContext](https://rust.durable-workflow.com/durable_workflow/struct.ActivityContext.html#method.activity_execution_id) und die [Prüfung der normalen Installation 4.9.0](https://github.com/durable-workflow/sdk-rust/issues/139#issuecomment-6367230500) mit Ordinary-/Cooperative-, Local- und Worker-Session-Kontrollen. Der gemeinsame Vertrag steht unter [Ausführungsgarantien](../constraints/execution-guarantees.md#service-activity-identity).
 
+## Begrenzte Fehlerberichte {#bounded-failure-reports}
+
+Diese Grenzen benötigen **tatsächlich installiertes Rust SDK 4.10.1 oder neuer**. Prüfen Sie die `Cargo.lock` des Workers: Ein neuer Client oder Quellcheckout aktualisiert keinen älteren Worker. Die Grenzen gelten für ausgehende Fehlerberichte, nicht für eingehende Historie oder andere fachliche Payloads.
+
+| Feld oder Hülle | Maximum |
+| --- | --- |
+| UTF-8-Nachricht einschließlich Markierung | 62 KiB |
+| Stack, sofern unterstützt | 128 KiB |
+| Gemeinsam serialisierte optionale Details, Diagnostics und Metadaten | 64 KiB |
+| Vollständiger kodierter Fehleranfrage-Body | 1 MiB |
+
+Die effektive Nachrichtengrenze reserviert 2 KiB unter dem ursprünglichen 64-KiB-Budget für Timeline-Präfixe veröffentlichter Server. JSON-Escaping, Markierungen, Claim-Identität und alle weiteren Felder zählen zum kodierten Body. Eine bekannte niedrigere Transportgrenze kann die Maxima weiter senken. Kleine Berichte behalten den ursprünglichen Inhalt.
+
+Zu großer Text trägt eine sichtbare Markierung. Das vorhandene `diagnostics.sdk_failure_truncation` hält, sofern vom Schema unterstützt, ursprüngliche Bytezahlen und ausgelassene Felder fest. Workflow-/Query-Task-Schemas ohne Diagnostics und einfache Befehlsnachrichten tragen die Statistik in der Nachrichtenmarkierung. Avro-Details bleiben vollständige gültige Hüllen/Runtime-Referenzen oder werden ganz ausgelassen und markiert; Base 64 wird nie zu einem beschädigten Wert abgeschnitten.
+
+Ursprünglicher Ausnahmetyp, Retry-Entscheidung und erforderliche Claim-Identität bleiben erhalten. Low-Level-Consumer können `Client::fail_activity_task_with_failure` und `Client::fail_workflow_task_with_failure` mit dem veröffentlichten Fehlerschema nutzen. `Error::FailureReporting` lehnt einen Bericht ausdrücklich ab, wenn Pflichtdaten nicht hineinpassen; er entscheidet keinen fachlichen Retry und erfindet keine kürzere Identität.
+
+Lokale Fehler werden vor der Beobachtung durch Workflow-Code begrenzt, einschließlich der Leerzeichen-/NUL-Normalisierung des veröffentlichten Servers. Die Endprüfung schreibt weder bereits beobachtete lokale Nachrichten noch andere fachliche Payloads um; passen feste Eingaben nicht hinein, wird abgelehnt.
+
+Diese SDK-Grenzen belegen keine Core-Korrektur abgeleiteter Zusammenfassungen, Lieferung anderer SDKs, Embedded-Verhalten oder Server-Image-Übernahme. Ältere Worker können übergroße Fehler weiterhin nicht melden. Siehe die [Richtlinie im veröffentlichten Source](https://github.com/durable-workflow/sdk-rust/blob/dd58dd146f1337c3be24ad18fe65e3bb31d78b58/README.md#failure-report-limits) und den [gemeinsamen Leitfaden](../failures-and-recovery.md#rust-failure-report-limits).
+
 ## Lokale Aktivitäten {#local-activities}
 
 Rust SDK 3.1.0 ergänzt lokale Inline-Ausführung auf Workern mit

@@ -324,6 +324,27 @@ Une clé stable ne permet d’éviter les effets en double que si le système ex
 
 Consultez les [méthodes d’identité d’ActivityContext](https://rust.durable-workflow.com/durable_workflow/struct.ActivityContext.html#method.activity_execution_id) et la [vérification d’installation normale 4.9.0](https://github.com/durable-workflow/sdk-rust/issues/139#issuecomment-6367230500) avec les contrôles ordinary/cooperative, locaux et de sessions de worker. Le contrat commun figure dans les [garanties d’exécution](../constraints/execution-guarantees.md#service-activity-identity).
 
+## Rapports d’échec bornés {#bounded-failure-reports}
+
+Ces limites nécessitent **Rust SDK 4.10.1 ou ultérieur réellement installé**. Vérifiez le `Cargo.lock` du worker : un nouveau client ou checkout ne met pas à jour un ancien worker. Elles concernent les rapports sortants, pas l’historique reçu ni les autres payloads métier.
+
+| Champ ou enveloppe | Maximum |
+| --- | --- |
+| Message UTF-8, marqueur compris | 62 KiB |
+| Stack lorsque pris en charge | 128 KiB |
+| Total sérialisé des details, diagnostics et métadonnées facultatifs | 64 KiB |
+| Corps complet encodé de la requête d’échec | 1 MiB |
+
+La limite effective réserve 2 KiB sous le budget initial 64 KiB pour les préfixes de timeline du Server publié. Échappement JSON, marqueurs, identité du claim et tous les autres champs comptent dans le corps encodé. Une limite de transport connue plus basse peut encore réduire ces maxima. Les petits rapports conservent leur contenu initial.
+
+Le texte excessif porte un marqueur visible. Le champ existant `diagnostics.sdk_failure_truncation`, lorsque le schéma le permet, indique tailles initiales et champs omis. Les schémas workflow/query-task sans diagnostics et les messages de commande simples portent ces statistiques dans le marqueur. Les details Avro restent une enveloppe/référence runtime complète valide ou sont entièrement omis et marqués ; le base 64 n’est jamais coupé en une valeur corrompue.
+
+Le type initial d’exception, la décision de retry et l’identité obligatoire du claim sont préservés. Les consommateurs bas niveau peuvent utiliser `Client::fail_activity_task_with_failure` et `Client::fail_workflow_task_with_failure` avec le schéma publié. `Error::FailureReporting` refuse explicitement un rapport dont les données obligatoires ne tiennent pas ; il ne décide pas du retry métier et n’invente pas une identité plus courte.
+
+Les échecs locaux sont bornés avant leur observation par le workflow, normalisation des espaces/NUL du Server publié comprise. Le contrôle final ne réécrit ni message local déjà observé ni autre payload métier ; il refuse si ces données fixes ne tiennent pas.
+
+Ces limites SDK ne prouvent pas une correction du stockage des résumés Core, la livraison d’un autre SDK, le mode embedded ou l’adoption dans une image Server. Les anciens workers peuvent encore ne pas transmettre un échec excessif. Voir la [politique du source publié](https://github.com/durable-workflow/sdk-rust/blob/dd58dd146f1337c3be24ad18fe65e3bb31d78b58/README.md#failure-report-limits) et le [guide commun](../failures-and-recovery.md#rust-failure-report-limits).
+
 ## Activités locales {#local-activities}
 
 Le SDK Rust 3.1.0 ajoute l’exécution locale en ligne sur les workers configurés

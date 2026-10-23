@@ -319,6 +319,27 @@ Uma chave estável só permite impedir efeitos duplicados quando o sistema exter
 
 Consulte os [métodos de identidade de ActivityContext](https://rust.durable-workflow.com/durable_workflow/struct.ActivityContext.html#method.activity_execution_id) e a [verificação da instalação normal 4.9.0](https://github.com/durable-workflow/sdk-rust/issues/139#issuecomment-6367230500) com controles ordinary/cooperative, locais e de sessões de worker. O contrato compartilhado está em [garantias de execução](../constraints/execution-guarantees.md#service-activity-identity).
 
+## Relatórios de falha com limites {#bounded-failure-reports}
+
+Estes limites exigem **Rust SDK 4.10.1 ou posterior realmente instalado**. Confira o `Cargo.lock` do worker: cliente novo ou checkout não atualiza worker antigo. Valem para relatos de falha enviados, não para histórico recebido nem outros payloads de negócio.
+
+| Campo ou envelope | Máximo |
+| --- | --- |
+| Mensagem UTF-8, incluindo marcador | 62 KiB |
+| Stack quando suportado | 128 KiB |
+| Total serializado de details, diagnostics e metadata opcionais | 64 KiB |
+| Corpo completo codificado da requisição de falha | 1 MiB |
+
+O limite efetivo reserva 2 KiB dos 64 KiB originais para prefixos do timeline do Server publicado. Escapes JSON, marcadores, identidade do claim e todos os campos contam no corpo codificado. Um limite de transporte conhecido menor pode reduzir os máximos. Relatos pequenos preservam o conteúdo original.
+
+Texto excessivo recebe marcador visível. O campo existente `diagnostics.sdk_failure_truncation`, quando suportado pelo schema, registra tamanhos originais e campos omitidos. Schemas workflow/query-task sem diagnostics e mensagens simples de comando levam as estatísticas no marcador. Details Avro permanecem envelope/referência runtime completo e válido ou são omitidos inteiros com marcador; base 64 nunca é cortado e corrompido.
+
+Tipo original da exceção, decisão de retry e identidade obrigatória do claim são preservados. Consumidores de baixo nível podem usar `Client::fail_activity_task_with_failure` e `Client::fail_workflow_task_with_failure` com o schema publicado. `Error::FailureReporting` recusa explicitamente relato cujos dados obrigatórios não cabem; não decide o retry da aplicação nem inventa identidade menor.
+
+Falhas locais são limitadas antes da observação pelo workflow, incluindo a normalização de espaços/NUL do Server publicado. A verificação final não reescreve mensagem local já observada nem outro payload de negócio; recusa se esses dados fixos não couberem.
+
+Estes limites SDK não comprovam correção de armazenamento de resumo Core, entrega de outro SDK, comportamento embedded ou adoção em imagem Server. Workers antigos ainda podem não enviar uma falha excessiva. Veja a [política no source publicado](https://github.com/durable-workflow/sdk-rust/blob/dd58dd146f1337c3be24ad18fe65e3bb31d78b58/README.md#failure-report-limits) e a [orientação comum](../failures-and-recovery.md#rust-failure-report-limits).
+
 ## Atividades locais {#local-activities}
 
 O SDK Rust 3.1.0 adiciona execução local inline em workers configurados com

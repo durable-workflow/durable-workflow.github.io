@@ -263,6 +263,10 @@ class RetryableWorkflow extends Workflow
 }
 ```
 
+## Grenzen für Rust-Fehlerberichte im Service-Modus {#rust-failure-report-limits}
+
+Bei Service-Workern mit tatsächlich laufendem Rust SDK **4.10.1 oder neuer** hat die ausgehende UTF-8-Nachricht höchstens 62 KiB einschließlich Markierung, ein unterstützter Stack 128 KiB, gemeinsam serialisierte optionale Metadaten 64 KiB und der vollständige kodierte Body 1 MiB oder eine bekannte niedrigere Transportgrenze. Typ, Retry-Entscheidung und Identität bleiben erhalten; unmögliche Pflichthüllen werden ausdrücklich abgelehnt. Der [Rust-Leitfaden](./polyglot/rust.md#bounded-failure-reports) erklärt Markierungen, vollständige Avro-Details und lokale Ergebnisse. Ältere SDKs, Embedded-Modus und die separate Core-Speicherkorrektur sind damit nicht qualifiziert.
+
 ## Weitere Leitfäden {#related-guides}
 
 - [Ausführungsgarantien und Idempotenz](./constraints/execution-guarantees.md) erklärt Replay, Wiederholungsversuche, Lease-Ablauf und erneute Zustellung.
