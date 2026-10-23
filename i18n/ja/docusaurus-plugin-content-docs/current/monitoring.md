@@ -39,6 +39,8 @@ Worker・クライアントの設定も運用インターフェースと別で�
 
 Worker テレメトリに繰り返しの取得、遅延完了の競合、停止したリースがある場合は、このガイドと[実行保証と冪等性](./constraints/execution-guarantees.md)を併読してください。この契約は、少なくとも一回の配送で生じる不確実性と、永続結果の重複を分離し、重複して見える証拠から誤った運用判断をしないようにします。
 
+Rust SDK **4.7.0 以降**は交換可能なメトリクス recorder と任意の `metrics-prometheus` adapter を提供します。既定は no-op で、scrape endpoint と exporter のライフサイクルはアプリが管理します。[Rust の設定と公開例](./polyglot/rust.md#rust-sdk-metrics)に正確な名前、有界のタグ、プロセス観測の範囲を示しています。Server や Cloud のメトリクスを設定するものではありません。
+
 ## OpenTelemetry によるトレース {#opentelemetry-tracing}
 
 任意の OpenTelemetry トレースで、プロセスをまたぐアプリケーションリクエスト、ワークフロータスク、アクティビティ試行を関連付けます。実行を管理するランタイムに合った設定を選んでください。

@@ -113,6 +113,68 @@ Ok(())
 
 公開 Server 2.11 は既定で一覧50件（最大200）、履歴100イベント（最大1,000）を1ページに返します。ページサイズは変更せず Server の検証に渡します。必要な結果が得られたら止め、適切なサイズとアプリのタイムアウトを選んでください。同時に実行が変わる場合、ページ分割はスナップショット分離を追加しません。[公開された読み取り専用の例](https://github.com/durable-workflow/sdk-rust/blob/4.6.0/examples/workflow_pagination.rs)、[Client API](https://rust.durable-workflow.com/durable_workflow/struct.Client.html)、[ページ分割の型](https://rust.durable-workflow.com/durable_workflow/pagination/index.html)を参照してください。
 
+## メトリクスと Prometheus エクスポート {#rust-sdk-metrics}
+
+この API は Rust SDK **4.7.0 以降**が必要です。上の独立した構成が旧 crate を選ぶ場合があるため、`Cargo.lock` を確認してください。[通常インストールの受け入れ検証](https://github.com/durable-workflow/sdk-rust/pull/131#issuecomment-6364178456)では、HTTP4項目、公開 Server 2.11.0 と実際の worker による6メトリクス、公開エクスポート例を確認しています。この最低バージョンは選択済み構成を変えません。
+
+既定の recorder は **no-op** です。`increment(name, count, tags)` と `record(name, seconds, tags)` を実装する `Arc<dyn metrics::MetricsRecorder>` を渡します。クライアント、クローン、新しく作る worker が継承します。`Worker::metrics_recorder` は worker の poll/task 観測を上書きし、要求の観測はクライアントの recorder を使います。コールバックは高速にし、exporter の失敗は内部で処理します。unwinding する recorder の panic は SDK 結果から分離しますが、ブロックする exporter やプロセス abort をこの hook で修復できません。
+
+クライアント要求、worker poll、取得済み task の処理ごとに、カウンターを1増やし、非負の単調な経過時間を秒で1回記録します。安定した6つの名前は次のとおりです。
+
+| カウンター | 時間ヒストグラム |
+| --- | --- |
+| `durable_workflow_client_requests` | `durable_workflow_client_request_duration_seconds` |
+| `durable_workflow_worker_polls` | `durable_workflow_worker_poll_duration_seconds` |
+| `durable_workflow_worker_tasks` | `durable_workflow_worker_task_duration_seconds` |
+
+クライアントのタグキーは `method`、`route`、`plane`、`status_code`、`outcome`、worker は `task_kind`、`task_queue`、`outcome` のみです。検証済みルートのプレースホルダーは ID、クエリ文字列、payload、資格情報を含まず、不明なパスは `unknown` です。キュー名はアプリが制御し、実行ごとに作らず有限の集合にします。
+
+クライアントの outcome は `ok`、`http_error`、`bridge_rejected`、`TransportError`、`TimeoutError`、`SdkError` と、キャンセルされた future の `pending` を含みます。`status_code` は観測した10進 HTTP 状態を保持し、なければ `none` です。Rust の例外名は他 SDK と同じとは限りません。
+
+クライアントの1観測には内部 transport/storage admission の再試行と応答/payload 処理を含み、アプリや worker が管理する別呼び出しは別観測です。遅延イテレーターは取得ページごとに観測します。worker poll は管理された retry/backoff を含み、`task`、`empty`、`backpressure`、`error` を区別します。task 結果の `completed`、`failed`、`expired` は処理結果であり workflow の終端状態ではありません。これはプロセス観測で、永続カウント、課金単位、schedule-to-start 遅延ではなく、突然のプロセス喪失で最後のサンプルが失われる場合があります。
+
+公式 Prometheus adapter には任意の Cargo feature `metrics-prometheus` を有効にします。この例は公開済みの依存関係設定を使います。
+
+```toml
+[dependencies]
+durable-workflow = { version = "=4.7.0", features = ["metrics-prometheus"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+```
+
+[公開された例](https://github.com/durable-workflow/sdk-rust/blob/4.7.0/examples/metrics_prometheus.rs)を `examples/metrics_prometheus.rs` に保存します。これと同じソースバイトが通常インストールでコンパイル・実行済みで、health 要求のメトリクスを出力します。
+
+```rust
+//! Preview application-owned Prometheus export; serve `encode()` from your HTTP metrics route.
+use durable_workflow::{metrics::PrometheusMetrics, Client};
+use std::sync::Arc;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let recorder = Arc::new(PrometheusMetrics::new()?);
+    let client = Client::builder(std::env::var("DURABLE_WORKFLOW_SERVER_URL")?)
+        .token(std::env::var("DURABLE_WORKFLOW_AUTH_TOKEN").ok())
+        .metrics_recorder(recorder.clone())
+        .build()?;
+    client.health().await?;
+    // Workers inherit this client recorder; Worker::metrics_recorder overrides
+    // only worker poll/task observations. Applications own the scrape endpoint.
+    print!("{}", String::from_utf8(recorder.encode()?)?);
+    Ok(())
+}
+```
+
+セルフホスト Server に対して実行します。
+
+```bash
+DURABLE_WORKFLOW_SERVER_URL=http://localhost:8080 \
+DURABLE_WORKFLOW_AUTH_TOKEN=your-token \
+cargo run --features metrics-prometheus --example metrics_prometheus
+```
+
+`PrometheusMetrics::new()` は公式 Prometheus Rust client 0.14 に基づく専用 registry を持ちます。アプリのメトリクスルートから `encode()` のバイトを `Content-Type: text/plain; version=0.0.4` で返します。adapter は listener やグローバル registry を作りません。scrape のアクセス/認証、ネットワーク公開、リソース、終了はアプリが管理します。カウンターには `_total` が付き、ヒストグラムは標準 bucket/sum/count 系列です。`registry()` でアプリ独自の収集や追加メトリクスを扱えます。
+
+OpenTelemetry のメトリクスには既存 meter で recorder を実装し、単位 `1` のカウンターと秒 `s` のヒストグラムを上の名前/タグで作ります。provider、集約、resource label、exporter のライフサイクルはアプリが管理し、実行 tracing とは別です。[recorder API](https://rust.durable-workflow.com/durable_workflow/metrics/trait.MetricsRecorder.html)、[Prometheus API](https://rust.durable-workflow.com/durable_workflow/metrics/struct.PrometheusMetrics.html)、[公開契約](https://github.com/durable-workflow/sdk-rust/blob/4.7.0/README.md#client-and-worker-metrics)を参照してください。
+
 ## Worker タスクの並行実行 {#worker-task-concurrency}
 
 以下の有界実行レーンには Rust SDK **4.3.1 以降**が必要です。`Cargo.lock` のバージョンを確認してください。上の固定インストールは別の検証済み構成に属し、古い SDK を選ぶ場合があります。[公開パッケージの受け入れ検証](https://github.com/durable-workflow/sdk-rust/issues/107#issuecomment-6360719863)では、設定した三つのスロット、解放後に初めて入る四つ目のコールバック、処理済みのアクティビティ失敗を含む七つのワークフロー完了を確認しています。前述の Server プロトコル要件は引き続き適用されます。

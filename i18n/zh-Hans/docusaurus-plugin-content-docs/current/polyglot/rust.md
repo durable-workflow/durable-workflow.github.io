@@ -113,6 +113,68 @@ Ok(())
 
 发布的 Server 2.11 默认每页 50 条列表记录（最多 200）和 100 条历史事件（最多 1,000）。页大小原样传给 Server 验证。结果足够时提前停止，选择适当页大小并设置应用超时。运行并发变化时，分页不增加快照隔离。参见[发布的只读示例](https://github.com/durable-workflow/sdk-rust/blob/4.6.0/examples/workflow_pagination.rs)、[Client API](https://rust.durable-workflow.com/durable_workflow/struct.Client.html) 和[分页类型](https://rust.durable-workflow.com/durable_workflow/pagination/index.html)。
 
+## 指标与 Prometheus 导出 {#rust-sdk-metrics}
+
+这些 API 要求 Rust SDK **4.7.0 或更新版本**。请检查 `Cargo.lock`：上方独立安装组合可能选择旧 crate。[普通安装验收](https://github.com/durable-workflow/sdk-rust/pull/131#issuecomment-6364178456)已验证四项 HTTP 控制、真实 worker 与发布的 Server 2.11.0 产生的全部六项指标，以及导出示例。此最低版本不改变所选组合。
+
+默认 recorder 是 **no-op**。提供实现 `increment(name, count, tags)` 和 `record(name, seconds, tags)` 的 `Arc<dyn metrics::MetricsRecorder>`。客户端、其克隆以及新建 worker 继承该 recorder。`Worker::metrics_recorder` 覆盖 worker 的 poll/task 观测，客户端请求仍使用客户端 recorder。回调必须快速，并在本地处理 exporter 故障。采用 unwinding 的 recorder panic 与 SDK 结果隔离；此 hook 无法修复阻塞 exporter 或进程中止。
+
+每次观测客户端请求、worker poll 或已领取任务的处理时，计数器加一，并记录一次以秒为单位、非负的单调时长。六个稳定名称如下：
+
+| 计数器 | 时长直方图 |
+| --- | --- |
+| `durable_workflow_client_requests` | `durable_workflow_client_request_duration_seconds` |
+| `durable_workflow_worker_polls` | `durable_workflow_worker_poll_duration_seconds` |
+| `durable_workflow_worker_tasks` | `durable_workflow_worker_task_duration_seconds` |
+
+客户端标签键恰为 `method`、`route`、`plane`、`status_code`、`outcome`；worker 键为 `task_kind`、`task_queue`、`outcome`。经审查的路由占位符不含 ID、查询串、payload 或凭据；未知路径使用 `unknown`。队列名由应用控制，应使用有限集合，不要为每次运行创建队列名。
+
+客户端结果包括 `ok`、`http_error`、`bridge_rejected`、`TransportError`、`TimeoutError`、`SdkError`，取消的 future 使用 `pending`。`status_code` 保留观测到的十进制 HTTP 状态，否则为 `none`。Rust 异常结果名称不必与其他 SDK 相同。
+
+一次客户端观测包含内部传输/storage admission 重试及响应/payload 处理；应用或 worker 管理的独立调用分别计量。惰性迭代器按所请求的每页观测。worker poll 包含管理的 retry/backoff，区分 `task`、`empty`、`backpressure`、`error`。任务结果 `completed`、`failed`、`expired` 描述任务处理，不表示工作流终态。这是进程观测，不是持久计数、计费单位或 schedule-to-start 延迟；进程突然丢失可能遗漏最终样本。
+
+使用官方 Prometheus 适配器时，启用可选 Cargo feature `metrics-prometheus`。示例采用已发布的依赖配置：
+
+```toml
+[dependencies]
+durable-workflow = { version = "=4.7.0", features = ["metrics-prometheus"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+```
+
+将[已发布示例](https://github.com/durable-workflow/sdk-rust/blob/4.7.0/examples/metrics_prometheus.rs)保存为 `examples/metrics_prometheus.rs`。这些完全相同的源码字节已通过普通安装编译和运行验收；示例打印健康请求的指标：
+
+```rust
+//! Preview application-owned Prometheus export; serve `encode()` from your HTTP metrics route.
+use durable_workflow::{metrics::PrometheusMetrics, Client};
+use std::sync::Arc;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let recorder = Arc::new(PrometheusMetrics::new()?);
+    let client = Client::builder(std::env::var("DURABLE_WORKFLOW_SERVER_URL")?)
+        .token(std::env::var("DURABLE_WORKFLOW_AUTH_TOKEN").ok())
+        .metrics_recorder(recorder.clone())
+        .build()?;
+    client.health().await?;
+    // Workers inherit this client recorder; Worker::metrics_recorder overrides
+    // only worker poll/task observations. Applications own the scrape endpoint.
+    print!("{}", String::from_utf8(recorder.encode()?)?);
+    Ok(())
+}
+```
+
+针对自托管 Server 运行：
+
+```bash
+DURABLE_WORKFLOW_SERVER_URL=http://localhost:8080 \
+DURABLE_WORKFLOW_AUTH_TOKEN=your-token \
+cargo run --features metrics-prometheus --example metrics_prometheus
+```
+
+`PrometheusMetrics::new()` 拥有基于官方 Prometheus Rust client 0.14 的专用 registry。由应用的指标路由返回 `encode()` 字节，设置 `Content-Type: text/plain; version=0.0.4`。适配器不创建监听器或全局 registry。应用负责 scrape 访问/认证、网络暴露、资源和关闭。计数器导出附加 `_total`，直方图使用标准 bucket/sum/count 序列。`registry()` 支持应用自行采集及添加指标。
+
+使用 OpenTelemetry 指标时，通过现有 meter 实现 recorder：计数器单位为 `1`，直方图单位为秒 `s`，名称和标签严格使用上述值。provider、聚合、资源标签及 exporter 生命周期由应用负责。它与执行 tracing 独立。参见 [recorder API](https://rust.durable-workflow.com/durable_workflow/metrics/trait.MetricsRecorder.html)、[Prometheus API](https://rust.durable-workflow.com/durable_workflow/metrics/struct.PrometheusMetrics.html) 和[发布的指标契约](https://github.com/durable-workflow/sdk-rust/blob/4.7.0/README.md#client-and-worker-metrics)。
+
 ## Worker 任务并发 {#worker-task-concurrency}
 
 以下有界执行通道需要 Rust SDK **4.3.1 或更高版本**。使用前检查 `Cargo.lock` 中的版本：上方的安装固定版本属于另一组已验证构件，可能选择较旧的 SDK。[已发布包验收](https://github.com/durable-workflow/sdk-rust/issues/107#issuecomment-6360719863)验证了三个配置槽位、释放槽位后第四次回调才被接纳，以及七个完成的工作流，其中包括已处理的活动失败。前述 Server 协议要求仍然适用。

@@ -39,6 +39,8 @@ Worker 和客户端的配置也独立于运维界面。将应用客户端和 Wor
 
 如果 Worker 遥测显示重复领取、延迟完成的竞争或卡住的租约，请结合本指南阅读[执行保证与幂等性](./constraints/execution-guarantees.md)。该契约区分至少一次传输的不确定性和重复的持久结果，避免对看似重复的证据作出错误运维判断。
 
+Rust SDK **4.7.0 或更新版本**提供可插拔指标 recorder 和可选 `metrics-prometheus` 适配器。默认 no-op，scrape 端点和 exporter 生命周期由应用负责。参见 [Rust 指标配置及发布示例](./polyglot/rust.md#rust-sdk-metrics)，了解准确名称、有界标签和进程观测边界。它不会配置 Server 或 Cloud 指标。
+
 ## OpenTelemetry 追踪 {#opentelemetry-tracing}
 
 通过可选的 OpenTelemetry 追踪，将跨进程的应用请求、工作流任务和活动尝试关联起来。请选择管理这些运行的运行时所对应的配置。

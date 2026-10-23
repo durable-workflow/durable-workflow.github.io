@@ -70,6 +70,8 @@ junto con esta guía. Ese contrato distingue la incertidumbre del transporte con
 entrega al menos una vez de los resultados duraderos duplicados, para evitar
 conclusiones operativas incorrectas ante evidencia que parece duplicada.
 
+Rust SDK **4.7.0 o posterior** ofrece recorders de métricas intercambiables y el adaptador opcional `metrics-prometheus`. El valor predeterminado es no-op; la aplicación controla el endpoint scrape y el ciclo del exporter. Véanse la [configuración Rust y el ejemplo publicado](./polyglot/rust.md#rust-sdk-metrics) para nombres, tags acotados y límites de observación. No configura métricas del Server ni Cloud.
+
 ## Trazas con OpenTelemetry {#opentelemetry-tracing}
 
 Conecte las solicitudes de la aplicación, las tareas de workflow y los intentos de actividad entre procesos con las trazas opcionales de OpenTelemetry. Elija la configuración del runtime que gestiona sus ejecuciones.
