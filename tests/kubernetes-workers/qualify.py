@@ -43,7 +43,9 @@ def server():
         'APP_ENV': 'testing', 'APP_DEBUG': 'false', 'APP_VERSION': ARTIFACTS['server_version'],
         'LOG_CHANNEL': 'stderr', 'LOG_LEVEL': 'warning',
         'DB_CONNECTION': 'sqlite', 'DB_DATABASE': '/data/database.sqlite',
-        'QUEUE_CONNECTION': 'sync', 'CACHE_STORE': 'array', 'SESSION_DRIVER': 'array',
+        # Match the image's shared file cache. A process-local array cache cannot
+        # coordinate long-poll wait slots across Apache workers.
+        'QUEUE_CONNECTION': 'sync', 'CACHE_STORE': 'file', 'SESSION_DRIVER': 'array',
         'DW_AUTH_DRIVER': 'token', 'DW_AUTH_BACKWARD_COMPATIBLE': 'false',
         'DW_ADMIN_TOKEN': 'website336-control', 'DW_WORKER_TOKEN': 'website336-worker',
         'DW_TASK_DISPATCH_MODE': 'poll',
