@@ -195,6 +195,40 @@ let mut worker = Worker::new(client.clone(), "payments")
 
 处理函数作为 Tokio async future 执行，必须让出执行权。阻塞工作应使用 `tokio::task::spawn_blocking` 或独立进程，并设置明确的取消和关闭边界。提高并发不会隔离 CPU，也不会使脱离管理的线程可取消。参见已安装 SDK 的 [Worker API](https://rust.durable-workflow.com/durable_workflow/struct.Worker.html)。
 
+## 活动收到的重试预算 {#activity-retry-info}
+
+Rust SDK **4.8.0 或更新版本**在服务模式活动处理函数中提供 `ActivityContext::retry_info()`。请检查 `Cargo.lock` 中实际安装的 crate：上方独立选择的安装版本可能更旧。返回的 `ActivityRetryInfo` 保留原始 `attempt_number()` 和收到的 `policy()` JSON，包括未知字段。这是本次调用的不可变快照，不受上下文中可变兼容字段影响。
+
+使用 `attempt_limit()` 和 `is_last_configured_attempt()` 解释收到的预算：
+
+| 收到的重试策略 | `ActivityAttemptLimit` | 配置的最后一次尝试 |
+| --- | --- | --- |
+| 含正整数 `max_attempts: n` 的对象 | `Bounded(n)`，包括首次尝试 | 原始尝试编号达到或超过 `n` 时为 `Some(true)`，否则为 `Some(false)` |
+| 含 `max_attempts: null` 的对象 | `Unlimited` | `Some(false)` |
+| 策略省略、根 null、字段缺失或无效上限 | `Unknown` | `None` |
+
+对于无效的零尝试编号，辅助方法也返回 `None`。运行时的调度默认值不能证明收到的元数据：已发布 Server 2.11.0 的未编写策略对照会省略快照，因此报告 `Unknown`，而非推断为 `Bounded(1)`。`policy()` 区分策略省略与收到 JSON null，但不会将任一情况视为无限重试。
+
+若要在配置的最后一次尝试中选择回退或记录应用告警，请在现有 Worker 上注册处理函数：
+
+```rust
+use durable_workflow::{json, Worker};
+
+pub fn register_charge(worker: &mut Worker) {
+    worker.register_activity("charge", |ctx, _| async move {
+        let retry = ctx.retry_info();
+        if retry.is_last_configured_attempt() == Some(true) {
+            // Select a final-attempt fallback or record an application alert.
+        }
+        Ok(json!({"attempt": retry.attempt_number()}))
+    });
+}
+```
+
+`Some(false)` 不保证还有下一次执行。不可重试失败、取消、工作流关闭或期限耗尽都可能在用完配置预算前结束工作。该辅助方法不会改变重试准入，也不会额外延长期限。
+
+本地活动和直接调用 `testing::WorkflowEnvironment::run_activity` 没有收到的 Server 快照，会报告未知策略。新的 `run_workflow` 测试公开其生成历史中记录的模型快照。这些测试语义不能证明已部署 Server 会发送策略。参见 [ActivityRetryInfo](https://rust.durable-workflow.com/durable_workflow/struct.ActivityRetryInfo.html) 和 [ActivityAttemptLimit](https://rust.durable-workflow.com/durable_workflow/enum.ActivityAttemptLimit.html)。
+
 ## 本地活动 {#local-activities}
 
 Rust SDK 3.1.0 在配置了 `Worker::local_activities(true)` 的 Worker 上增加内联本地执行。使用普通活动注册方法注册回调，然后使用工作流上下文的本地活动方法。重试和超时配置见[可运行示例](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs)及 [LocalActivityOptions 参考](https://rust.durable-workflow.com/durable_workflow/struct.LocalActivityOptions.html)。

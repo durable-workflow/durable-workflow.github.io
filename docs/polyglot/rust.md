@@ -248,6 +248,40 @@ Heartbeat availability follows actual claimed tasks, including input/history loa
 
 Handlers are async futures on Tokio and must yield for other work to progress. Use `tokio::task::spawn_blocking` or a separate process for blocking work, with an explicit cancellation and shutdown boundary. Raising concurrency does not provide CPU isolation or make a detached thread cancellable. See the [Worker API](https://rust.durable-workflow.com/durable_workflow/struct.Worker.html) for the installed SDK's controls.
 
+## Received activity retry budgets {#activity-retry-info}
+
+Rust SDK **4.8.0 or newer** exposes `ActivityContext::retry_info()` in service activity handlers. Check the installed crate in `Cargo.lock`: the separately selected installation pin above can be older. The returned `ActivityRetryInfo` preserves the original `attempt_number()` and received `policy()` JSON, including unknown fields. It is an immutable snapshot of this invocation, independent of mutable compatibility fields on the context.
+
+Use `attempt_limit()` and `is_last_configured_attempt()` to interpret the received budget:
+
+| Received retry policy | `ActivityAttemptLimit` | Final configured attempt |
+| --- | --- | --- |
+| Object with positive integer `max_attempts: n` | `Bounded(n)`, including the first attempt | `Some(true)` once the original attempt reaches or exceeds `n`, otherwise `Some(false)` |
+| Object with `max_attempts: null` | `Unlimited` | `Some(false)` |
+| Omitted policy, root null, missing field or invalid limit | `Unknown` | `None` |
+
+The helper also returns `None` for an invalid zero attempt number. A runtime's scheduling default does not establish received metadata: the published Server 2.11.0 no-authored-policy control omits the snapshot and therefore reports `Unknown`, not an inferred `Bounded(1)`. `policy()` distinguishes an omitted policy from a received JSON null without treating either as unlimited.
+
+For a final-configured-attempt fallback or application alert, register a handler on your existing Worker:
+
+```rust
+use durable_workflow::{json, Worker};
+
+pub fn register_charge(worker: &mut Worker) {
+    worker.register_activity("charge", |ctx, _| async move {
+        let retry = ctx.retry_info();
+        if retry.is_last_configured_attempt() == Some(true) {
+            // Select a final-attempt fallback or record an application alert.
+        }
+        Ok(json!({"attempt": retry.attempt_number()}))
+    });
+}
+```
+
+`Some(false)` is not a promise of another execution. Non-retryable failure, cancellation, workflow closure and elapsed deadlines can end work before its configured budget is used. The helper does not change retry admission or grant extra time.
+
+Local activities and direct `testing::WorkflowEnvironment::run_activity` calls have no received Server snapshot and report unknown policy. Fresh `run_workflow` tests expose the modeled snapshot recorded in their generated history. These test semantics do not prove a deployed Server sends a policy. See [ActivityRetryInfo](https://rust.durable-workflow.com/durable_workflow/struct.ActivityRetryInfo.html) and [ActivityAttemptLimit](https://rust.durable-workflow.com/durable_workflow/enum.ActivityAttemptLimit.html).
+
 ## Local activities
 
 Rust SDK 3.1.0 adds inline local execution on workers configured with

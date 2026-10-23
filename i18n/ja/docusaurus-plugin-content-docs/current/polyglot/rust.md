@@ -195,6 +195,40 @@ let mut worker = Worker::new(client.clone(), "payments")
 
 ハンドラーは Tokio の async future であり、他の処理が進むよう実行権を譲る必要があります。ブロックする処理には `tokio::task::spawn_blocking` または別プロセスを使い、キャンセルと終了の境界を明示してください。並行数を増やしても CPU は分離されず、切り離されたスレッドがキャンセル可能になるわけでもありません。インストールした SDK の [Worker API](https://rust.durable-workflow.com/durable_workflow/struct.Worker.html) を参照してください。
 
+## 受信したアクティビティのリトライ予算 {#activity-retry-info}
+
+Rust SDK **4.8.0 以降**では、サービスモードのアクティビティハンドラーで `ActivityContext::retry_info()` を使えます。`Cargo.lock` でインストール済み crate を確認してください。上の独立したインストール指定は旧版の場合があります。返される `ActivityRetryInfo` は、元の `attempt_number()` と受信した `policy()` JSON を未知のフィールドも含めて保持します。この呼び出しの変更不能なスナップショットであり、コンテキストの変更可能な互換性フィールドには依存しません。
+
+受信した予算は `attempt_limit()` と `is_last_configured_attempt()` で解釈します。
+
+| 受信したリトライポリシー | `ActivityAttemptLimit` | 設定上の最終試行 |
+| --- | --- | --- |
+| 正の整数 `max_attempts: n` を持つオブジェクト | 初回を含む `Bounded(n)` | 元の試行番号が `n` 以上なら `Some(true)`、それ以外は `Some(false)` |
+| `max_attempts: null` を持つオブジェクト | `Unlimited` | `Some(false)` |
+| ポリシー省略、ルートの null、フィールド欠落、不正な上限 | `Unknown` | `None` |
+
+試行番号が不正なゼロの場合も、ヘルパーは `None` を返します。ランタイムのスケジュール既定値は受信メタデータの証明にはなりません。公開済み Server 2.11.0 の明示的なポリシーなしの対照実行では、スナップショットが省略されるため、`Bounded(1)` を推定せず `Unknown` を返します。`policy()` はポリシー省略と受信した JSON null を区別しますが、どちらも無制限とは扱いません。
+
+設定上の最終試行でフォールバックを選ぶ、またはアプリケーションのアラートを記録するには、既存の Worker にハンドラーを登録します。
+
+```rust
+use durable_workflow::{json, Worker};
+
+pub fn register_charge(worker: &mut Worker) {
+    worker.register_activity("charge", |ctx, _| async move {
+        let retry = ctx.retry_info();
+        if retry.is_last_configured_attempt() == Some(true) {
+            // Select a final-attempt fallback or record an application alert.
+        }
+        Ok(json!({"attempt": retry.attempt_number()}))
+    });
+}
+```
+
+`Some(false)` は次の実行を保証しません。再試行不可の失敗、キャンセル、ワークフローの終了、期限切れにより、設定した予算を使い切る前に処理が終わることがあります。このヘルパーはリトライの受け入れを変更せず、追加時間も与えません。
+
+ローカルアクティビティと `testing::WorkflowEnvironment::run_activity` の直接呼び出しには、受信した Server スナップショットがなく、ポリシーは不明になります。新規の `run_workflow` テストでは、生成した履歴に記録するモデル上のスナップショットを公開します。このテスト仕様は、デプロイ済み Server がポリシーを送信する証明にはなりません。[ActivityRetryInfo](https://rust.durable-workflow.com/durable_workflow/struct.ActivityRetryInfo.html) と [ActivityAttemptLimit](https://rust.durable-workflow.com/durable_workflow/enum.ActivityAttemptLimit.html) を参照してください。
+
 ## ローカルアクティビティ {#local-activities}
 
 Rust SDK 3.1.0 は `Worker::local_activities(true)` で設定した Worker にインラインのローカル実行を追加します。通常のアクティビティ登録メソッドでコールバックを登録し、ワークフローコンテキストのローカルアクティビティメソッドを使います。再試行とタイムアウトの設定は[実行可能な例](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs)と [LocalActivityOptions リファレンス](https://rust.durable-workflow.com/durable_workflow/struct.LocalActivityOptions.html)を参照してください。

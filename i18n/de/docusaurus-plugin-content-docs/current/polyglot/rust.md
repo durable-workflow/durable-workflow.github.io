@@ -248,6 +248,40 @@ Die Heartbeat-Verfügbarkeit folgt tatsächlich beanspruchten Tasks einschließl
 
 Handler sind async Futures auf Tokio und müssen Ausführungszeit abgeben. Verwenden Sie für blockierende Arbeit `tokio::task::spawn_blocking` oder einen separaten Prozess mit ausdrücklicher Abbruch- und Shutdown-Grenze. Mehr Parallelität isoliert keine CPU und macht einen abgetrennten Thread nicht abbrechbar. Siehe die [Worker-API](https://rust.durable-workflow.com/durable_workflow/struct.Worker.html) des installierten SDKs.
 
+## Empfangene Wiederholungsbudgets für Aktivitäten {#activity-retry-info}
+
+Rust SDK **4.8.0 oder neuer** stellt `ActivityContext::retry_info()` in Aktivitätshandlern im Service-Modus bereit. Prüfen Sie das installierte Crate in `Cargo.lock`: Die oben separat gewählte Installationsversion kann älter sein. Der zurückgegebene `ActivityRetryInfo` bewahrt die ursprüngliche `attempt_number()` und das empfangene `policy()`-JSON einschließlich unbekannter Felder. Dieser unveränderliche Snapshot des Aufrufs ist von veränderbaren Kompatibilitätsfeldern des Kontexts unabhängig.
+
+Verwenden Sie `attempt_limit()` und `is_last_configured_attempt()`, um das empfangene Budget auszuwerten:
+
+| Empfangene Wiederholungsrichtlinie | `ActivityAttemptLimit` | Letzter konfigurierter Versuch |
+| --- | --- | --- |
+| Objekt mit positiver Ganzzahl `max_attempts: n` | `Bounded(n)` einschließlich des ersten Versuchs | `Some(true)`, sobald der ursprüngliche Versuch `n` erreicht oder überschreitet, andernfalls `Some(false)` |
+| Objekt mit `max_attempts: null` | `Unlimited` | `Some(false)` |
+| Fehlende Richtlinie, null auf oberster Ebene, fehlendes Feld oder ungültige Grenze | `Unknown` | `None` |
+
+Der Helper gibt auch bei einer ungültigen Versuchsnummer null `None` zurück. Ein Planungsstandard des Runtimes belegt keine empfangenen Metadaten: Der veröffentlichte Server-2.11.0-Kontrollfall ohne ausdrücklich verfasste Richtlinie lässt den Snapshot aus und meldet daher `Unknown` statt eines abgeleiteten `Bounded(1)`. `policy()` unterscheidet eine fehlende Richtlinie von empfangenem JSON null, ohne eines davon als unbegrenzt zu behandeln.
+
+Registrieren Sie für einen Fallback oder Anwendungsalarm beim letzten konfigurierten Versuch einen Handler an Ihrem vorhandenen Worker:
+
+```rust
+use durable_workflow::{json, Worker};
+
+pub fn register_charge(worker: &mut Worker) {
+    worker.register_activity("charge", |ctx, _| async move {
+        let retry = ctx.retry_info();
+        if retry.is_last_configured_attempt() == Some(true) {
+            // Select a final-attempt fallback or record an application alert.
+        }
+        Ok(json!({"attempt": retry.attempt_number()}))
+    });
+}
+```
+
+`Some(false)` verspricht keine weitere Ausführung. Ein nicht wiederholbarer Fehler, Abbruch, Workflow-Abschluss oder abgelaufene Fristen können die Arbeit beenden, bevor das konfigurierte Budget ausgeschöpft ist. Der Helper ändert weder die Zulassung von Wiederholungen noch gewährt er zusätzliche Zeit.
+
+Lokale Aktivitäten und direkte Aufrufe von `testing::WorkflowEnvironment::run_activity` haben keinen empfangenen Server-Snapshot und melden eine unbekannte Richtlinie. Neue `run_workflow`-Tests zeigen den modellierten Snapshot aus ihrer erzeugten Historie. Diese Testsemantik belegt nicht, dass ein bereitgestellter Server eine Richtlinie sendet. Siehe [ActivityRetryInfo](https://rust.durable-workflow.com/durable_workflow/struct.ActivityRetryInfo.html) und [ActivityAttemptLimit](https://rust.durable-workflow.com/durable_workflow/enum.ActivityAttemptLimit.html).
+
 ## Lokale Aktivitäten {#local-activities}
 
 Rust SDK 3.1.0 ergänzt lokale Inline-Ausführung auf Workern mit
