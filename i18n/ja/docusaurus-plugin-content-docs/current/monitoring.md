@@ -103,7 +103,7 @@ Workflow パッケージとともに Laravel アプリケーションへ Waterli
 
 ### 組み込みモードの操作権限 {#embedded-waterline-operator-permissions}
 
-この任意の制御には **Waterline 2.13.0** が必要です。ホストの閲覧 gate `viewWaterline` を維持してください。操作 gate は閲覧権限を付与しません。既定では組み込み Waterline を閲覧できるユーザーは操作も実行でき、新設定を省略した場合はその動作を保ちます。
+この任意の制御には **Waterline 2.13.0** が必要です。ホストの閲覧 gate `viewWaterline` を維持してください。操作 gate は閲覧権限を付与しません。既定では組み込み Waterline を閲覧できるユーザーは操作も実行でき、新設定を省略した場合はその動作を保ちます。 `composer.lock` を確認してください。この機能の最低バージョンは別途選択されたインストール構成を更新せず、そのコマンドは制御を含まない旧パッケージを固定している場合があります。
 
 すべての閲覧者による操作の書き込みを禁止するには、`config/waterline.php` に `'read_only' => true` を設定するか、キャッシュ再構築前にホスト設定を通じて `WATERLINE_READ_ONLY=true` を対応付けます。閲覧、履歴エクスポート、クエリ、個人の保存済みビューや設定には既存の認可が適用されます。ホストの workflow worker は停止せず、SDK/Server の直接利用権限も変わりません。
 

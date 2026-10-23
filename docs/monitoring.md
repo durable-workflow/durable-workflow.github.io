@@ -152,7 +152,7 @@ includes the current Composer command and asset-publishing step.
 
 ### Embedded operator permissions {#embedded-waterline-operator-permissions}
 
-These optional controls require **Waterline 2.13.0**. Keep the host's `viewWaterline` viewing gate: action gates grant no viewing access. By default, users who can view embedded Waterline can use its operator actions; the new settings are opt-in and preserve that behavior when unset.
+These optional controls require **Waterline 2.13.0**. Keep the host's `viewWaterline` viewing gate: action gates grant no viewing access. By default, users who can view embedded Waterline can use its operator actions; the new settings are opt-in and preserve that behavior when unset. Check `composer.lock`: this feature minimum does not update the separately selected installation tuple, whose commands may still pin an older package without these controls.
 
 To block operator writes for every viewer, set `'read_only' => true` in `config/waterline.php`, or map `WATERLINE_READ_ONLY=true` through the host configuration before rebuilding its cache. Viewing, history exports, queries and personal saved views/preferences keep their existing authorization. This does not stop the host's workflow workers or change direct SDK/Server permissions.
 

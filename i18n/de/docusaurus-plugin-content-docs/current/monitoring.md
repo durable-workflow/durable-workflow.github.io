@@ -105,7 +105,7 @@ Der eingebettete Modus verwendet Datenbankverbindung, Routen-Middleware, Authent
 
 ### Bedienrechte im eingebetteten Modus {#embedded-waterline-operator-permissions}
 
-Diese optionalen Kontrollen benötigen **Waterline 2.13.0**. Behalten Sie das Anzeige-Gate `viewWaterline` des Hosts bei: Aktions-Gates gewähren keinen Lesezugriff. Standardmäßig dürfen Benutzer, die das eingebettete Waterline sehen können, dessen Bedienaktionen ausführen. Die neuen Einstellungen sind optional und erhalten ohne Konfiguration dieses Verhalten.
+Diese optionalen Kontrollen benötigen **Waterline 2.13.0**. Behalten Sie das Anzeige-Gate `viewWaterline` des Hosts bei: Aktions-Gates gewähren keinen Lesezugriff. Standardmäßig dürfen Benutzer, die das eingebettete Waterline sehen können, dessen Bedienaktionen ausführen. Die neuen Einstellungen sind optional und erhalten ohne Konfiguration dieses Verhalten. Prüfen Sie `composer.lock`: Diese Funktions-Mindestversion aktualisiert nicht die separat gewählte Installationskombination, deren Befehle noch ein älteres Paket ohne diese Kontrollen festlegen können.
 
 Um Bedien-Schreibzugriffe für alle Betrachter zu sperren, setzen Sie `'read_only' => true` in `config/waterline.php` oder binden `WATERLINE_READ_ONLY=true` vor dem Neuaufbau des Caches über die Host-Konfiguration ein. Anzeigen, Verlaufsexporte, Abfragen und persönliche gespeicherte Ansichten/Einstellungen behalten ihre bestehende Autorisierung. Dies stoppt keine Workflow-Worker des Hosts und ändert keine direkten SDK/Server-Rechte.
 

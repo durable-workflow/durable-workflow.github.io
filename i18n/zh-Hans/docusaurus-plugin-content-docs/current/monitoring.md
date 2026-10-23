@@ -101,7 +101,7 @@ trace、run、activity、attempt 和 request ID 保持独立。baggage 使用默
 
 ### 嵌入式操作权限 {#embedded-waterline-operator-permissions}
 
-这些可选控制要求 **Waterline 2.13.0**。保留宿主的 `viewWaterline` 查看 gate：操作 gate 不授予查看权限。默认情况下，能查看嵌入式 Waterline 的用户也能执行操作；新设置需明确启用，未配置时保留现有行为。
+这些可选控制要求 **Waterline 2.13.0**。保留宿主的 `viewWaterline` 查看 gate：操作 gate 不授予查看权限。默认情况下，能查看嵌入式 Waterline 的用户也能执行操作；新设置需明确启用，未配置时保留现有行为。 请检查 `composer.lock`：此功能的最低版本不改变独立选择的安装组合，其命令仍可能固定不含这些控制的旧版包。
 
 要阻止所有查看者进行操作写入，请在 `config/waterline.php` 中设置 `'read_only' => true`，或在重建配置缓存之前通过宿主配置映射 `WATERLINE_READ_ONLY=true`。查看、历史导出、查询和个人保存的视图/偏好仍使用原有授权。这不会停止宿主的工作流 worker，也不会改变直接使用 SDK/Server 的权限。
 

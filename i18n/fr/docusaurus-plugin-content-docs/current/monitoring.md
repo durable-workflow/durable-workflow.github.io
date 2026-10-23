@@ -151,7 +151,7 @@ contient la commande Composer actuelle et la publication des ressources.
 
 ### Permissions des opérateurs en mode embarqué {#embedded-waterline-operator-permissions}
 
-Ces contrôles facultatifs nécessitent **Waterline 2.13.0**. Conservez le gate de consultation `viewWaterline` : les gates d’action n’accordent aucun accès en lecture. Par défaut, les utilisateurs pouvant consulter Waterline embarqué peuvent effectuer les actions opérateur ; les nouveaux réglages sont explicites et préservent ce comportement lorsqu’ils sont absents.
+Ces contrôles facultatifs nécessitent **Waterline 2.13.0**. Conservez le gate de consultation `viewWaterline` : les gates d’action n’accordent aucun accès en lecture. Par défaut, les utilisateurs pouvant consulter Waterline embarqué peuvent effectuer les actions opérateur ; les nouveaux réglages sont explicites et préservent ce comportement lorsqu’ils sont absents. Vérifiez `composer.lock` : ce minimum fonctionnel ne met pas à jour la combinaison d’installation sélectionnée séparément, dont les commandes peuvent encore fixer un ancien paquet sans ces contrôles.
 
 Pour bloquer les écritures opérateur pour tous, définissez `'read_only' => true` dans `config/waterline.php`, ou reliez `WATERLINE_READ_ONLY=true` à la configuration hôte avant de reconstruire son cache. Consultation, exports d’historique, requêtes et vues/préférences personnelles gardent leur autorisation existante. Cela n’arrête pas les workers de l’hôte et ne modifie pas les permissions d’accès direct au SDK/Server.
 

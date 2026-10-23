@@ -149,7 +149,7 @@ incluye el comando Composer actual y el paso de publicación de recursos.
 
 ### Permisos de operadores en modo integrado {#embedded-waterline-operator-permissions}
 
-Estos controles opcionales requieren **Waterline 2.13.0**. Mantenga el gate de visualización `viewWaterline`: los gates de acciones no conceden acceso de lectura. De forma predeterminada, quienes pueden ver Waterline integrado pueden usar sus acciones de operador; los ajustes son opcionales y conservan ese comportamiento cuando no se configuran.
+Estos controles opcionales requieren **Waterline 2.13.0**. Mantenga el gate de visualización `viewWaterline`: los gates de acciones no conceden acceso de lectura. De forma predeterminada, quienes pueden ver Waterline integrado pueden usar sus acciones de operador; los ajustes son opcionales y conservan ese comportamiento cuando no se configuran. Revise `composer.lock`: este mínimo de la función no actualiza la combinación de instalación seleccionada por separado, cuyos comandos pueden fijar un paquete anterior sin estos controles.
 
 Para impedir escrituras de operador a todos los usuarios, establezca `'read_only' => true` en `config/waterline.php`, o vincule `WATERLINE_READ_ONLY=true` mediante la configuración del host antes de reconstruir la caché. La visualización, exportación de historial, consultas y vistas/preferencias personales conservan su autorización existente. Esto no detiene los workers del host ni cambia los permisos directos del SDK/Server.
 
