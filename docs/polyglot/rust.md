@@ -524,15 +524,15 @@ Direct `run_activity` executes one attempt. Within `run_workflow`, recorded retr
 
 ### Replay an exported run {#rust-replay-export}
 
-Register the candidate workflow, then load a self-contained JSON bundle from `dw workflow:history-export` or `Client::export_workflow_history(workflow_id, run_id).await?`. This helper expects a completed fixture:
+Register the candidate workflow, then load a self-contained JSON bundle from `dw workflow:history-export` or `Client::export_workflow_history(workflow_id, run_id).await?`. Add this helper to the example above; it uses those imports and expects a completed fixture:
 
 ```rust
-use durable_workflow::Client;
-fn client() -> Result<Client, Box<dyn std::error::Error>> {
-let client = Client::builder("https://workflow.internal")
-    .additional_root_certificates_pem(std::fs::read("company-ca.pem")?)?
-    .build()?;
-Ok(client)
+fn replay(env: WorkflowEnvironment) -> std::result::Result<(), Box<dyn std::error::Error>> {
+let export = serde_json::from_slice(&std::fs::read("workflow-history.json")?)?;
+let history = WorkflowHistory::from_export(export)?;
+let report = env.replay(&history)?;
+assert!(report.completed); // A running snapshot can remain durably pending.
+Ok(())
 }
 ```
 
