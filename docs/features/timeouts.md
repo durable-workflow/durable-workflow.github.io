@@ -204,6 +204,8 @@ $result = activity(
 );
 ```
 
+In service mode, closing an activity attempt does not forcibly stop SDK application code. Python SDK 2.9.0 reports a refusal at the next heartbeat; code that never heartbeats can run until it returns, and a physical thread slot remains occupied until exit. See [Python heartbeat refusals and callback exit](../polyglot/python.md#heartbeat-refusals-and-callback-exit).
+
 ### Schedule-to-start timeout
 
 The deadline is computed when the activity is scheduled. If no worker claims the activity before the deadline, the `TaskWatchdog` enforces the timeout. If retry attempts remain, a new activity task is scheduled with the snapped backoff and the schedule-to-start deadline is recomputed relative to the retry's available-at time — each retry gets a fresh window. If no `scheduleToStartTimeout` was configured, the deadline is cleared on retry. If all attempts are exhausted, a terminal `ActivityTimedOut` history event is recorded and the workflow is woken.
