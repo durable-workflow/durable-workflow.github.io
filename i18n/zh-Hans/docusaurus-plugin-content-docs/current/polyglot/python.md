@@ -1022,6 +1022,84 @@ worker = Worker(
 
 仅需一个钩子时，将 `PassthroughWorkerInterceptor` 作为基类。希望类型检查器强制提供全部钩子时，直接实现 `WorkerInterceptor`。
 
+### Worker 会话 {#worker-sessions}
+
+当多个顺序执行的远程活动需要同一个 Worker 的本地资源时，使用 `WorkerSessionOptions`。本示例已使用 Python SDK **2.9.0** 和 Server **2.11.0** 验证；参见[可移植亲和性的版本要求](./portable-worker-affinity.md)。每次工作流运行应使用唯一的 `job_id`，避免新运行重复使用已终止的会话 ID。
+
+下方缓存是可丢弃的。每个活动都能根据持久保存的业务输入重建缓存，因此替代持有者不依赖上一个进程的内存：
+
+```python
+from durable_workflow import ActivityFailed, WorkerSessionOptions, activity, workflow
+
+# Disposable process-local state. Rebuild it from durable business input.
+documents = {}
+
+def ensure_document(job_id):
+    rebuilt = job_id not in documents
+    if rebuilt:
+        documents[job_id] = {"text": "document:" + job_id}
+    return documents[job_id], rebuilt
+
+@activity.defn(name="prepare_document")
+async def prepare_document(job_id):
+    document, rebuilt = ensure_document(job_id)
+    return {"holder": activity.context().info.worker_id, "rebuilt": rebuilt}
+
+@activity.defn(name="inspect_document")
+async def inspect_document(job_id):
+    document, rebuilt = ensure_document(job_id)
+    return {"holder": activity.context().info.worker_id,
+            "rebuilt": rebuilt, "text": document["text"]}
+
+@workflow.defn(name="inspect_document_workflow")
+class InspectDocumentWorkflow:
+    def run(self, ctx, job_id):
+        session = WorkerSessionOptions(
+            session_id="documents:" + job_id,
+            requirements=("fs:documents",),
+            lease_seconds=5,
+            ttl_seconds=60,
+            max_concurrent_activities=1,
+            allow_reacquire_after_failure=True,
+        )
+        options = dict(worker_session=session,
+                       start_to_close_timeout=5,
+                       schedule_to_start_timeout=12,
+                       schedule_to_close_timeout=20,
+                       retry_policy={"max_attempts": 1})
+        try:
+            prepared = yield ctx.schedule_activity("prepare_document", [job_id], **options)
+            inspected = yield ctx.schedule_activity("inspect_document", [job_id], **options)
+        except ActivityFailed as error:
+            if error.activity_type not in {"prepare_document", "inspect_document"}:
+                raise
+            return {"status": "resource_unavailable", "job_id": job_id}
+        return {"status": "inspected", "prepared": prepared, "inspected": inspected}
+```
+
+注册两个活动，并在 Worker 上声明所需能力：
+
+```python
+from durable_workflow import Worker
+
+worker = Worker(
+    client,
+    task_queue="documents",
+    workflows=[InspectDocumentWorkflow],
+    activities=[prepare_document, inspect_document],
+    capabilities=["fs:documents"],
+)
+await worker.run()
+```
+
+在 `documents` 任务队列启动 `inspect_document_workflow`，输入为 `[job_id]`。第一个活动按需获取会话；只要租约有效，第二个活动就使用同一持有者。`max_concurrent_activities=1` 限制该会话内同时执行的活动数。队列路由和能力检查仍然生效。这些较短的租约与超时用于演示有界行为；请按实际工作调整，并在到期之前留出充足时间发送心跳。
+
+持有者丢失或租约到期后，`allow_reacquire_after_failure=True` 允许另一个符合条件的 Worker 重新获取会话。它必须重建本地资源。已提交的活动结果会被重放，而未提交的副作用可能重复：请使用持久资源标识和幂等的外部操作。会话不会迁移内存、文件或已打开的句柄。
+
+显式关闭和绝对 TTL 到期对该会话 ID 都是终态。后续活动无法重新打开它，可能一直无法获准执行，直到运行时处理已配置的超时。请运行[已发布部署方案](https://github.com/durable-workflow/server/blob/2.11.0/docker-compose.published.yml)中的 Server 调度器/维护角色；仅有 API 进程不足以执行超时处理。工作流通过 `ActivityFailed` 处理重试耗尽后的活动失败，并返回 `resource_unavailable`；应用随后可以选择新会话，根据业务输入重建资源。本示例不承诺立即抛出会话已关闭异常，也不会自动重新打开终态会话。
+
+需要显式管理持有者生命周期时，使用 `worker.worker_session(options)` 及其 `create()`、`renew()`、`close(reason)` 方法。Worker 正常关闭时会关闭其持有的会话。参见[共享生命周期约定](../features/worker-sessions.md#lifecycle)。
+
 ## 日志 {#logging}
 
 SDK 使用 Python 标准 `logging` 模块及结构化日志器名称：

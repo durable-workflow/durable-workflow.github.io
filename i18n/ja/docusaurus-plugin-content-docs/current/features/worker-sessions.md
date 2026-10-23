@@ -71,6 +71,10 @@ $manifest = $session->activity(AssembleManifestActivity::class, $frames['path'])
 }
 ```
 
+## Python のサービス Worker {#python-service-workers}
+
+[Python の Worker セッション例](../polyglot/python.md#worker-sessions)では、`WorkerSessionOptions` を作成し、2 つのリモートアクティビティを順番にスケジュールし、保持者の capability を宣言して、試行を使い切ったアクティビティの失敗を処理します。保持者の喪失後に破棄可能な Worker ローカル状態を再構築する方法と、明示的なクローズや TTL 満了後に新しいセッション ID が必要な理由も説明します。この手順は公開済みの Python SDK 2.9.0 と Server 2.11.0 で検証済みで、Server のスケジューラー/メンテナンスロールも含みます。
+
 ## ライフサイクル {#lifecycle}
 
 セッションは遅延作成されます。最初のセッション内タスクが要件を満たす Worker に受け入れられると、マッチング層が作成または再取得します。Worker はポーリング前に `POST /api/worker/sessions` で明示的に作成することもできます。
