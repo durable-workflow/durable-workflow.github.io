@@ -1984,3 +1984,7 @@ client = Client(
 даними клієнта runtime, а `worker_token` обліковими даними worker.
 Cloud створює namespace. Не заміняйте URL адресою самостійного Server.
 Див. [керований runtime Cloud](/docs/polyglot/cloud-control-plane).
+
+## Сторінки списку workflow та історії {#workflow-list-and-history-pages}
+
+Ці опубліковані виклики повертають **одну сторінку**, а не автоматично повний результат: `await client.list_workflows(...)` / `await client.get_history(workflow_id, run_id, ...)`. Продовжуйте з повернутим непрозорим token, зберігаючи namespace, фільтри та вибрані workflow/run; зупиняйтеся на null/порожньому token й явно обробляйте помилки сторінок. Часткова сторінка не є replay-bundle. Для офлайн-replay використовуйте API експорту історії SDK. [Опублікований клієнт Python 2.9.0](https://github.com/durable-workflow/sdk-python/blob/2.9.0/src/durable_workflow/client.py) визначає поточні параметри; нові ітератори не заявляються.

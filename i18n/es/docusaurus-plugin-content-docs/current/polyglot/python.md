@@ -1961,3 +1961,7 @@ El mismo constructor sirve para Cloud. Usa su URL y namespace, `control_token`
 con la credencial de cliente y `worker_token` con la de worker. Cloud provisiona
 el namespace: no sustituyas por una dirección autogestionada. Consulta
 [Entorno gestionado de Cloud](/docs/polyglot/cloud-control-plane).
+
+## Páginas de lista e historial de workflows {#workflow-list-and-history-pages}
+
+Estas llamadas publicadas devuelven **una página**, no una lectura completa automática: `await client.list_workflows(...)` / `await client.get_history(workflow_id, run_id, ...)`. Continúe con el token opaco devuelto manteniendo namespace, filtros y workflow/ejecución seleccionados; termine con token nulo/vacío y gestione los errores de página. Una página parcial no es un bundle de reproducción. Use la API de exportación de historial del SDK para reproducción sin servidor. El [cliente publicado Python 2.9.0](https://github.com/durable-workflow/sdk-python/blob/2.9.0/src/durable_workflow/client.py) define los parámetros actuales; no se implica un nuevo iterador.

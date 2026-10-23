@@ -257,3 +257,7 @@ déclaré, sans dépendre de l’égalité des numéros de version des paquets.
 - [Référence d’API PHP](https://php.durable-workflow.com/api/)
 - [Contrat de démarrage rapide PHP exécutable](https://php.durable-workflow.com/quickstart-contract.json)
 - [Code source du SDK PHP](https://github.com/durable-workflow/sdk-php)
+
+## Pages de liste et d’historique des workflows {#workflow-list-and-history-pages}
+
+Ces appels publiés renvoient **une page**, pas une lecture complète automatique : `Client::listWorkflows(...)` / `Client::workflowHistory(...)`. Continuez avec le token opaque retourné en conservant namespace, filtres et workflow/exécution sélectionnés ; terminez au token nul/vide et traitez explicitement les erreurs de page. Une page partielle n’est pas un bundle de replay. Utilisez l’API d’export d’historique du SDK pour le replay hors ligne. Le [client publié PHP 3.2.0](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php) définit les paramètres actuels ; aucun nouvel itérateur n’est annoncé.

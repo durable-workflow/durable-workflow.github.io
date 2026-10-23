@@ -118,6 +118,54 @@ Rust SDK 3.5.0 за замовчуванням надсилає
 Версії випусків SDK та Server відстежуються незалежно. Їхня сумісність
 визначається protocol manifests runtime.
 
+## Списки workflow та повна історія запуску {#workflow-lists-and-history}
+
+Ці API потребують Rust SDK **4.6.0 або новішого**. Перевіряйте `Cargo.lock`: окрема комбінація встановлення вище може вибрати старіший crate. [Перевірка звичайного встановлення](https://github.com/durable-workflow/sdk-rust/issues/122#issuecomment-6363352910) підтверджує три сторінки списку, шість сторінок історії, payload 128 KiB, експорт/replay і приклад лише для читання з опублікованим Server 2.11.0. Офлайн-тести потребують 4.5.0; ці методи та ітератори списку/історії — 4.6.0. Вибрана комбінація Server/SDK не змінюється.
+
+`Client::list_workflows(WorkflowListOptions)` і `Client::get_workflow_history(workflow_id, run_id, WorkflowHistoryOptions)` повертають **одну сторінку**. Продовжуйте вручну з її непрозорим `next_page_token` або використовуйте ліниві ітератори для повного читання. Методи зберігають перевірку Server, фільтри й namespace; нових полів чи граматики query немає. Наприклад, знайдіть відкритий запуск за зареєстрованим keyword-атрибутом:
+
+```rust
+use durable_workflow::WorkflowListOptions;
+async fn find(client: durable_workflow::Client) -> durable_workflow::Result<()> {
+let mut matches = client.iter_workflows(
+    WorkflowListOptions::new()
+        .workflow_type("payments")
+        .status("running")
+        .query("OrderRef = 'order-42'")
+        .page_size(2),
+);
+match (matches.next().await?, matches.next().await?) {
+    (Some(run), None) => println!("open run: {} / {}", run.workflow_id, run.run_id),
+    (None, _) => println!("no open run"),
+    _ => println!("multiple open runs; refine the query"),
+}
+Ok(())
+}
+```
+
+Фільтр Server `status=running` вибирає активний **status bucket**, зокрема сирі статуси `pending` і `waiting`. `WorkflowSummary` зберігає `status`, `status_bucket`, `is_terminal`, пошукові атрибути й невідомі метадані в `raw`. Атрибути не унікальні: фільтр може знайти і батька, і дітей, які успадкували значення. Обробляйте нуль, один і кілька результатів, як вище. Створіть клієнт у потрібному namespace до ітератора; namespace і фільтри незмінні між token.
+
+Прочитайте весь вибраний запуск, не завантажуючи всі сторінки разом:
+
+```rust
+use durable_workflow::WorkflowHistoryOptions;
+async fn audit(client: durable_workflow::Client) -> durable_workflow::Result<()> {
+let mut events = client.iter_workflow_history(
+    "payment-42", "selected-run-id", WorkflowHistoryOptions::new().page_size(100),
+);
+while let Some(event) = events.next().await? {
+    println!("{}", event.event_type);
+}
+Ok(())
+}
+```
+
+`iter_workflows(options)` видає `WorkflowSummary` через `next().await`. Обидва ітератори підтримують `into_stream()` для `futures_util::TryStreamExt`; закріпіть stream перед polling. Створення не виконує I/O; наступна сторінка завантажується після вичерпання поточної. Null/порожній token завершує обхід; порожня сторінка з token продовжується. Повторні/циклічні token повертають `Error::Pagination` з обмеженим станом token. Помилка сторінки зберігає початкову типізовану помилку, після чого ітератор завершується. Обробляйте помилку: часткове читання не є повним результатом. Збирання stream усе одно зберігає всі зібрані елементи.
+
+Ітерація історії зберігає початкові workflow/run і перелічує доступні події: не переходить за continue-as-new і не підписується назавжди. Метадані подій і wire-envelope payload зберігаються. Для офлайн-replay використовуйте `Client::export_workflow_history` із `testing::WorkflowHistory::from_export`, а не часткову сторінку. Див. [офлайн-replay](#rust-replay-export).
+
+Опублікований Server 2.11 типово повертає 50 рядків списку (максимум 200) і 100 подій історії (максимум 1 000) на сторінку. Розмір передається незмінним для перевірки Server. Зупиняйтеся, коли результатів достатньо, вибирайте доречний розмір і задавайте таймаут застосунку. Пагінація не додає snapshot isolation під час конкурентних змін. Див. [опублікований приклад читання](https://github.com/durable-workflow/sdk-rust/blob/4.6.0/examples/workflow_pagination.rs), [Client API](https://rust.durable-workflow.com/durable_workflow/struct.Client.html) і [типи пагінації](https://rust.durable-workflow.com/durable_workflow/pagination/index.html).
+
 ## Паралельність завдань worker {#worker-task-concurrency}
 
 Описані нижче обмежені лінії виконання потребують Rust SDK **4.3.1 або новішого**. Перевірте версію в `Cargo.lock`: наведена вище фіксація встановлення належить окремому кваліфікованому набору артефактів і може обирати старіший SDK. [Перевірка опублікованого пакета](https://github.com/durable-workflow/sdk-rust/issues/107#issuecomment-6360719863) підтверджує три налаштовані слоти, допуск четвертого виклику після звільнення слота і сім завершених workflow, зокрема з обробленою помилкою activity. Вимоги протоколу Server вище залишаються чинними.

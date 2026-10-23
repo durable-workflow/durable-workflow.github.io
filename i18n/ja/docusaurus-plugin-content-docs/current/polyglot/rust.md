@@ -65,6 +65,54 @@ Server はメジャー `1` 内で Worker プロトコルヘッダーをネゴシ
 
 ネゴシエーションは安全側に失敗します。ヘッダーの欠落・不正、異なるメジャー、Server が広告するマイナーより新しい Worker マイナーは拒否します。SDK と Server のリリースバージョンは独立に管理します。互換性はランタイムのプロトコルマニフェストで決まります。
 
+## ワークフロー一覧と実行の全履歴 {#workflow-lists-and-history}
+
+この API には Rust SDK **4.6.0 以降**が必要です。上の独立したインストール構成は古い crate を選ぶ場合があるため、`Cargo.lock` を確認してください。[通常インストールしたパッケージの受け入れ検証](https://github.com/durable-workflow/sdk-rust/issues/122#issuecomment-6363352910)では、公開 Server 2.11.0 に対して一覧3ページ、履歴6ページ、128 KiB payload、エクスポート/replay、読み取り専用の例を確認しています。オフラインテストの補助 API は4.5.0、ここで扱う一覧/履歴メソッドとイテレーターは4.6.0が必要です。選択済み Server/SDK 構成は変えません。
+
+`Client::list_workflows(WorkflowListOptions)` と `Client::get_workflow_history(workflow_id, run_id, WorkflowHistoryOptions)` はそれぞれ**1ページ**を返します。不透明な `next_page_token` で手動継続するか、遅延イテレーターで全件を読みます。Server の検証、フィルター、namespace の範囲を維持し、新たなクエリフィールドや構文は追加しません。例えば、登録済み keyword 属性で未終了の実行を探します。
+
+```rust
+use durable_workflow::WorkflowListOptions;
+async fn find(client: durable_workflow::Client) -> durable_workflow::Result<()> {
+let mut matches = client.iter_workflows(
+    WorkflowListOptions::new()
+        .workflow_type("payments")
+        .status("running")
+        .query("OrderRef = 'order-42'")
+        .page_size(2),
+);
+match (matches.next().await?, matches.next().await?) {
+    (Some(run), None) => println!("open run: {} / {}", run.workflow_id, run.run_id),
+    (None, _) => println!("no open run"),
+    _ => println!("multiple open runs; refine the query"),
+}
+Ok(())
+}
+```
+
+Server の `status=running` フィルターはアクティブな **status bucket** を選び、元の状態が `pending` や `waiting` の実行も含みます。`WorkflowSummary` は `status`、`status_bucket`、`is_terminal`、検索属性と、`raw` 内の未知のメタデータを保持します。検索属性は一意ではなく、親と値を継承した子の両方が一致する場合があります。上のように0件、1件、複数件を処理してください。目的の namespace でクライアントを作成してからイテレーターを構築し、各 token 間で namespace とフィルターを維持します。
+
+全ページを同時に読み込まず、選択した実行の全履歴を読みます。
+
+```rust
+use durable_workflow::WorkflowHistoryOptions;
+async fn audit(client: durable_workflow::Client) -> durable_workflow::Result<()> {
+let mut events = client.iter_workflow_history(
+    "payment-42", "selected-run-id", WorkflowHistoryOptions::new().page_size(100),
+);
+while let Some(event) = events.next().await? {
+    println!("{}", event.event_type);
+}
+Ok(())
+}
+```
+
+`iter_workflows(options)` は `next().await` で各 `WorkflowSummary` を返します。両イテレーターは `futures_util::TryStreamExt` 用の `into_stream()` に対応し、ポーリング前に返された stream を固定します。構築時に I/O は行わず、現在のページを使い切ると次を取得します。null/空 token で終了し、token 付きの空ページは継続します。重複/循環 token は有界の token 状態を使って `Error::Pagination` を返します。ページの失敗は元の型付きエラーを保持し、その後イテレーターは終了します。部分的な読み取りを完全な結果として扱わず、エラーを処理してください。stream を収集すると、収集した項目すべてを保存します。
+
+履歴の反復は元の workflow/run を維持して利用可能なイベントを列挙し、continue-as-new を追跡せず、無期限の購読もしません。イベントのメタデータと payload の wire envelope を保持します。オフライン replay には履歴の一部ではなく、`Client::export_workflow_history` と `testing::WorkflowHistory::from_export` を使います。[オフライン replay](#rust-replay-export)を参照してください。
+
+公開 Server 2.11 は既定で一覧50件（最大200）、履歴100イベント（最大1,000）を1ページに返します。ページサイズは変更せず Server の検証に渡します。必要な結果が得られたら止め、適切なサイズとアプリのタイムアウトを選んでください。同時に実行が変わる場合、ページ分割はスナップショット分離を追加しません。[公開された読み取り専用の例](https://github.com/durable-workflow/sdk-rust/blob/4.6.0/examples/workflow_pagination.rs)、[Client API](https://rust.durable-workflow.com/durable_workflow/struct.Client.html)、[ページ分割の型](https://rust.durable-workflow.com/durable_workflow/pagination/index.html)を参照してください。
+
 ## Worker タスクの並行実行 {#worker-task-concurrency}
 
 以下の有界実行レーンには Rust SDK **4.3.1 以降**が必要です。`Cargo.lock` のバージョンを確認してください。上の固定インストールは別の検証済み構成に属し、古い SDK を選ぶ場合があります。[公開パッケージの受け入れ検証](https://github.com/durable-workflow/sdk-rust/issues/107#issuecomment-6360719863)では、設定した三つのスロット、解放後に初めて入る四つ目のコールバック、処理済みのアクティビティ失敗を含む七つのワークフロー完了を確認しています。前述の Server プロトコル要件は引き続き適用されます。

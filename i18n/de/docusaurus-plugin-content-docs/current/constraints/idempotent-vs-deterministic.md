@@ -4,7 +4,7 @@ title: "Idempotenz und Determinismus"
 sidebar_label: Idempotent und deterministisch
 description: In Durable Workflow 2.0 hält Determinismus die Orchestrierung Replay-sicher, während Idempotenz die Effekte wiederholter Aktivitäten absichert.
 slug: /constraints/idempotent-vs-deterministic
-canonical_path: /docs/constraints/idempotent-vs-deterministic/
+canonical_path: /de/docs/constraints/idempotent-vs-deterministic/
 image: /img/idempotent-vs-deterministic.png
 tags:
   - constraints
