@@ -71,6 +71,68 @@ Restaurez un code acceptant l’entrée d’origine enregistrée, puis suivez la
 
 Le routage sûr vers un remplacement exige aussi la [capacité worker de validation de l’entrée](../polyglot/worker-compatibility-routing.md#definition-fingerprint-evolution). Une empreinte différente ne prouve pas la compatibilité de relecture et ne justifie pas de réécrire l’empreinte d’origine d’une exécution. Versionnez les changements de commandes durables dans une méthode d’entrée compatible et testez une relecture à froid avant la promotion.
 
+## Faire évoluer les arguments et les résultats des activités {#evolving-activity-arguments-and-results}
+
+Une activité possède deux contrats enregistrés : ses arguments lors de sa planification et son résultat lors de son achèvement. Un déploiement ne migre ni les uns ni l’autre. Cela vaut pour PHP embarqué et les workers en mode service utilisant les SDK PHP, Python et Rust.
+
+Une tentative en attente ou relancée reçoit les arguments initialement enregistrés. Elle exécute l’implémentation sélectionnée par l’enregistrement du worker et la politique de routage des builds, qui peut encore être une ancienne build. Déployer une nouvelle implémentation ne garantit pas que toutes les tentatives l’utilisent et ne modifie pas les arguments en file.
+
+Lors de la relecture d’une activité terminée, le code actuel du workflow reçoit le résultat enregistré sans réexécuter l’activité. La correspondance de l’étape et du type d’activité ne valide pas le schéma des arguments ou du résultat. Une modification de structure peut donc faire échouer le code applicatif sans provoquer de divergence d’historique.
+
+### Ajouter une entrée facultative sans réinterpréter les anciennes valeurs {#additive-activity-input}
+
+Conservez les arguments positionnels existants et leur sens. En PHP embarqué, un paramètre facultatif ajouté à la fin permet de toujours accepter des arguments déjà planifiés tels que `[7]` :
+
+```php
+use Workflow\V2\Activity;
+
+final class PriceActivity extends Activity
+{
+    public function handle(int $amount, string $currency = 'USD'): array
+    {
+        return ['amount' => $amount, 'currency' => $currency];
+    }
+}
+```
+
+La valeur par défaut remplit un argument absent. Elle ne convertit pas une valeur enregistrée incompatible et ne corrige pas un changement d’ordre. Préservez aussi la compatibilité des effets externes : une nouvelle tentative peut survenir après le déploiement et doit rester idempotente.
+
+Les handlers PHP en mode service reçoivent le contexte d’activité, puis les arguments positionnels enregistrés. Les handlers Python reçoivent directement ces arguments positionnels. Tous deux ont besoin de valeurs par défaut pour les arguments omis. Les annotations Python ne valident ni ne convertissent les valeurs à elles seules. Les activités typées Rust désérialisent une valeur de requête unique. Ajoutez un champ facultatif ou un champ avec une valeur par défaut Serde explicite, en préservant la représentation existante. Un nouveau champ obligatoire peut faire échouer le décodage avant l’exécution du handler Rust. Les API d’activité figurent dans les guides des SDK [PHP](https://php.durable-workflow.com/), [Python](https://python.durable-workflow.com/) et [Rust](https://rust.durable-workflow.com/).
+
+### Lire les anciens résultats avec une valeur de repli {#additive-activity-result}
+
+Lorsqu’un nouveau résultat d’activité ajoute `currency`, les workflows doivent toujours accepter les résultats déjà terminés qui ne contiennent que `amount` :
+
+```php
+$result = activity(PriceActivity::class, 7);
+$currency = $result['currency'] ?? 'USD';
+```
+
+Choisissez une valeur de repli qui conserve le sens métier précédent. Gardez-la pour tous les historiques susceptibles d’être relus, y compris pour les requêtes de lecture et la récupération. Déployez les lecteurs compatibles avant le code qui écrit la nouvelle représentation. Vérifiez aussi les lecteurs de retour arrière avec les nouveaux résultats enregistrés. Une valeur par défaut en entrée de l’activité n’ajoute aucun champ à un résultat déjà enregistré.
+
+### Utiliser un nouveau type pour un contrat différent {#incompatible-activity-contract}
+
+Pour renommer un champ, changer sa représentation ou son sens métier, gardez l’ancien type d’activité disponible et introduisez-en un nouveau. Placez une branche `getVersion()` du workflow à l’appel de planification si les anciens historiques doivent conserver leur étape d’activité et les nouveaux runs doivent planifier le nouveau type. Une branche dans l’activité ne corrige pas des arguments qui échouent avant l’entrée dans son corps. Un marqueur de version ne réécrit pas non plus les résultats de l’historique.
+
+Vérifiez deux frontières de déploiement dans de nouveaux processus avec les paquets réellement installés : planifier avec l’ancien code et exécuter avec l’activité candidate ; puis terminer avec l’ancienne activité et relire avec le workflow candidat. Incluez des entrées et des résultats incompatibles comme témoins d’échec. Ne supposez pas que les protections d’entrée du workflow décrites plus haut protègent aussi les signatures d’activité ou la lecture des résultats par l’application. Le défaut confirmé d’injection de DTO dans les activités embarquées est suivi dans [Workflow #910](https://github.com/durable-workflow/workflow/issues/910).
+
+Examinez ces contrats avec les règles des [arguments de démarrage enregistrés du workflow](#evolving-recorded-entry-arguments) et la [recette d’évolution des données d’un signal](signals.md#evolve-a-signal-payload).
+
+### Frontières d’échec vérifiées {#activity-compatibility-failures}
+
+Les [vérifications des paquets publiés de #363](https://github.com/durable-workflow/durable-workflow.github.io/issues/363) ont utilisé de nouveaux processus à chaque frontière de déploiement. Ce sont des versions vérifiées, pas des versions minimales prises en charge :
+
+| Paquet publié | Entrée d’activité incompatible | Lecture de résultat incompatible |
+| --- | --- | --- |
+| Workflow embarqué 2.11.2 | Un argument obligatoire absent produit `ArgumentCountError` et un échec d’activité. | Lire un champ de tableau absent avec la gestion d’erreurs Laravel produit `ErrorException` et un échec du workflow. |
+| PHP SDK 3.2.0 avec Server 2.11.0 | Un argument positionnel obligatoire absent est signalé comme `ArgumentCountError` dans l’échec d’activité. | Passer un champ absent à un lecteur exigeant une chaîne produit `TypeError` et un échec du workflow. |
+| Python SDK 2.9.0 avec Server 2.11.0 | Un argument positionnel obligatoire absent produit `TypeError` et un échec d’activité. | Accéder à une clé de résultat absente produit `KeyError` et un échec du workflow. |
+| Rust SDK 4.2.2 avec Server 2.11.0 | Un nouveau champ de requête obligatoire fait échouer le décodage d’entrée typée avant le handler d’activité. | Un nouveau champ de résultat obligatoire fait échouer le décodage du résultat typé dans le workflow. |
+
+Les vérifications en mode service ont enregistré `max_attempts = 1` ; l’échec d’activité non intercepté a ensuite fait échouer le workflow. En général, les échecs d’activité suivent leur politique enregistrée de tentatives et de délais. Un workflow peut traiter l’échec d’une activité dont les tentatives sont épuisées. Une erreur de lecture de résultat est un échec applicatif du workflow, pas une demande de réexécuter l’activité terminée. Tous les témoins additifs ont terminé avec le montant original `7` et la devise par défaut `USD`, avec une seule tentative d’activité et aucune réparation. Dans les témoins de résultat, l’activité terminée est restée terminée.
+
+Workflow embarqué 2.11.2 accepte aussi une modification de signature qui remplace le scalaire enregistré `7` par un DTO injecté dont le montant par défaut est `0`, et peut terminer à tort avec `0`. [Workflow #910](https://github.com/durable-workflow/workflow/issues/910) suit ce défaut du produit. N’utilisez pas l’injection de dépendances comme migration d’entrée d’activité et ne supposez pas que la protection d’entrée du workflow couvre ce cas. Restaurer un code compatible ne rouvre pas un run déjà terminal. Inspectez son état réel et suivez le [guide de récupération](../failures-and-recovery.md) sans modifier les entrées enregistrées, l’historique ou les échéances.
+
 ## Utiliser `getVersion` {#using-getversion}
 
 `getVersion()` est une fonction séquentielle sûre à relire. Chaque point de changement enregistre un marqueur durable de version lors de la première exécution. Les relectures réutilisent cette valeur validée au lieu de recalculer la branche d’après le code actuel. Par prudence, les exécutions antérieures à un nouveau point de branchement reçoivent `DEFAULT_VERSION`.

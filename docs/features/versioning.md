@@ -97,7 +97,7 @@ final class PriceActivity extends Activity
 
 The default fills a missing argument. It does not convert an incompatible recorded value or repair a reordered argument. Keep the activity's external effects compatible too: a retry can happen after the deployment and must remain idempotent.
 
-PHP and Python service handlers also need defaults for omitted positional arguments, after their activity context parameter. Python annotations alone do not validate or convert values. Rust typed activities deserialize one request value; add an optional field or a field with an explicit Serde default while preserving the existing representation. A newly required field can fail decoding before the Rust handler runs. See the [PHP](https://php.durable-workflow.com/), [Python](https://python.durable-workflow.com/) and [Rust](https://rust.durable-workflow.com/) SDK guides for their activity APIs.
+PHP service handlers receive their activity context followed by recorded positional arguments. Python handlers receive the recorded positional arguments directly. Both need defaults for omitted arguments. Python annotations alone do not validate or convert values. Rust typed activities deserialize one request value; add an optional field or a field with an explicit Serde default while preserving the existing representation. A newly required field can fail decoding before the Rust handler runs. See the [PHP](https://php.durable-workflow.com/), [Python](https://python.durable-workflow.com/) and [Rust](https://rust.durable-workflow.com/) SDK guides for their activity APIs.
 
 ### Read Older Results With a Fallback {#additive-activity-result}
 
@@ -116,7 +116,22 @@ For a renamed field, a different representation or a changed business meaning, k
 
 Test two cold deployment boundaries against the actual installed packages: schedule with old code and execute with candidate activity code; then complete with old activity code and replay with candidate workflow code. Include incompatible inputs and results as failure controls. Do not assume the workflow-entry safeguards above also protect activity signatures or application result access. The confirmed embedded activity DTO defect is tracked in [Workflow #910](https://github.com/durable-workflow/workflow/issues/910).
 
-Review [recorded workflow start arguments](#evolving-recorded-entry-arguments) and the [signal payload evolution recipe](signals.md#evolving-signal-payloads) alongside these activity contracts.
+### Verified Failure Boundaries {#activity-compatibility-failures}
+
+The [published-package checks in #363](https://github.com/durable-workflow/durable-workflow.github.io/issues/363) used fresh processes across each deployment boundary. These are observed baselines, not minimum supported versions:
+
+| Published package | Incompatible activity input | Incompatible result reader |
+| --- | --- | --- |
+| Embedded Workflow 2.11.2 | A missing required argument produces `ArgumentCountError` and an activity failure. | Accessing a missing array field under Laravel error handling produces `ErrorException` and workflow failure. |
+| PHP SDK 3.2.0 with Server 2.11.0 | A missing required positional argument is reported as `ArgumentCountError` in the activity failure. | Passing a missing field to a required string reader produces `TypeError` and workflow failure. |
+| Python SDK 2.9.0 with Server 2.11.0 | A missing required positional argument produces `TypeError` and an activity failure. | Indexing a missing result key produces `KeyError` and workflow failure. |
+| Rust SDK 4.2.2 with Server 2.11.0 | A newly required request field fails typed input decoding before the activity handler runs. | A newly required result field fails typed result decoding in the workflow. |
+
+The service checks recorded `max_attempts = 1`; the unhandled activity failure then failed the workflow. In general, activity failures follow their recorded retry and timeout policy. A workflow can handle an exhausted activity failure. A result-reader error is an application workflow failure, not a request to rerun the completed activity. All additive controls completed with the original amount `7` and default currency `USD`, with one activity attempt and no repairs. In result controls, the completed activity stayed completed.
+
+Embedded Workflow 2.11.2 also accepts a changed activity signature that replaces recorded scalar `7` with an injected DTO whose default amount is `0`, and can incorrectly complete with `0`. [Workflow #910](https://github.com/durable-workflow/workflow/issues/910) tracks that product defect. Do not use dependency injection as an activity-input migration or assume the workflow-entry safeguard covers it. Restoring compatible code does not reopen an already terminal run; inspect the actual run and follow the [recovery guide](../failures-and-recovery.md) without changing recorded input, history or deadlines.
+
+Review [recorded workflow start arguments](#evolving-recorded-entry-arguments) and the [signal payload evolution recipe](signals.md#evolve-a-signal-payload) alongside these activity contracts.
 
 ## Using `getVersion`
 

@@ -71,6 +71,68 @@ Restaure código que aceite a entrada original registrada e siga o [procedimento
 
 O roteamento seguro para uma substituição também exige a [capacidade de validação de entrada do worker](../polyglot/worker-compatibility-routing.md#definition-fingerprint-evolution). Um fingerprint diferente não comprova compatibilidade de replay nem justifica reescrever o fingerprint original de uma execução. Versione as mudanças de comandos duráveis dentro de um método de entrada compatível e valide o replay a frio antes de promover o build.
 
+## Evoluir argumentos e resultados de atividades {#evolving-activity-arguments-and-results}
+
+Uma atividade tem dois contratos armazenados: os argumentos registrados no agendamento e o resultado registrado na conclusão. Um deploy não migra nenhum deles. Isso vale para PHP incorporado e para workers em modo serviço com os SDKs de PHP, Python e Rust.
+
+Uma tentativa pendente ou repetida recebe os argumentos originais registrados. Ela executa a implementação selecionada pelo registro do worker e pela política de roteamento de builds, que ainda pode ser uma build anterior. Publicar uma nova implementação não garante que todas as tentativas a utilizem nem atualiza os argumentos na fila.
+
+No replay de uma atividade concluída, o código atual do workflow recebe o resultado registrado sem executar a atividade novamente. A correspondência do passo e do tipo da atividade não valida o esquema dos argumentos ou do resultado. Uma mudança de estrutura pode causar falha no código da aplicação sem uma divergência de histórico.
+
+### Adicionar entrada opcional sem reinterpretar valores antigos {#additive-activity-input}
+
+Preserve os argumentos posicionais existentes e seu significado. No PHP incorporado, um parâmetro opcional no final permite continuar aceitando argumentos já agendados como `[7]`:
+
+```php
+use Workflow\V2\Activity;
+
+final class PriceActivity extends Activity
+{
+    public function handle(int $amount, string $currency = 'USD'): array
+    {
+        return ['amount' => $amount, 'currency' => $currency];
+    }
+}
+```
+
+O valor padrão preenche um argumento ausente. Ele não converte um valor registrado incompatível nem corrige argumentos reordenados. Preserve também a compatibilidade dos efeitos externos: uma nova tentativa pode ocorrer depois do deploy e deve continuar idempotente.
+
+Handlers de PHP em modo serviço recebem o contexto da atividade seguido dos argumentos posicionais registrados. Handlers de Python recebem esses argumentos posicionais diretamente. Ambos precisam de valores padrão para argumentos omitidos. As anotações de Python, por si só, não validam nem convertem valores. Atividades tipadas de Rust desserializam um único valor de requisição. Adicione um campo opcional ou um campo com padrão explícito do Serde, preservando a representação existente. Um novo campo obrigatório pode causar falha de decodificação antes da execução do handler Rust. Consulte as APIs de atividades nos guias dos SDKs de [PHP](https://php.durable-workflow.com/), [Python](https://python.durable-workflow.com/) e [Rust](https://rust.durable-workflow.com/).
+
+### Ler resultados antigos com um valor de fallback {#additive-activity-result}
+
+Quando um novo resultado de atividade adiciona `currency`, os workflows ainda devem aceitar resultados antigos concluídos que contêm apenas `amount`:
+
+```php
+$result = activity(PriceActivity::class, 7);
+$currency = $result['currency'] ?? 'USD';
+```
+
+Escolha um fallback que preserve o significado de negócio anterior. Mantenha-o para todo histórico que possa passar por replay, inclusive consultas e recuperação. Faça o deploy de leitores compatíveis antes do código que grava a nova representação. Verifique também os leitores de rollback com os resultados novos já registrados. Um padrão no argumento da atividade não adiciona um campo a um resultado já registrado.
+
+### Usar um novo tipo para um contrato diferente {#incompatible-activity-contract}
+
+Para renomear um campo, mudar sua representação ou alterar seu significado de negócio, mantenha disponível o tipo anterior da atividade e introduza um novo. Use uma ramificação `getVersion()` na chamada de agendamento quando os históricos antigos precisarem manter seu passo anterior e os novos runs precisarem agendar o novo tipo. Uma ramificação dentro da atividade não corrige argumentos que falham antes da entrada no corpo. Um marcador de versão também não reescreve resultados no histórico.
+
+Teste dois limites de deploy em processos novos com os pacotes realmente instalados: agendar com o código antigo e executar com a atividade candidata; depois, concluir com a atividade antiga e fazer replay com o workflow candidato. Inclua entradas e resultados incompatíveis como controles de falha. Não suponha que as proteções de entrada do workflow descritas acima também protejam assinaturas de atividades ou o acesso da aplicação aos resultados. O defeito confirmado de injeção de DTO nas atividades incorporadas está em [Workflow #910](https://github.com/durable-workflow/workflow/issues/910).
+
+Revise, junto com estes contratos de atividade, as regras de [argumentos iniciais registrados do workflow](#evolving-recorded-entry-arguments) e a [receita de evolução do payload de sinais](signals.md#evolve-a-signal-payload).
+
+### Limites de falha verificados {#activity-compatibility-failures}
+
+As [verificações de pacotes publicados em #363](https://github.com/durable-workflow/durable-workflow.github.io/issues/363) usaram processos novos em cada limite de deploy. São versões verificadas, não versões mínimas compatíveis:
+
+| Pacote publicado | Entrada de atividade incompatível | Leitura de resultado incompatível |
+| --- | --- | --- |
+| Workflow incorporado 2.11.2 | Um argumento obrigatório ausente produz `ArgumentCountError` e falha da atividade. | Acessar um campo ausente de array com o tratamento de erros do Laravel produz `ErrorException` e falha do workflow. |
+| PHP SDK 3.2.0 com Server 2.11.0 | Um argumento posicional obrigatório ausente é informado como `ArgumentCountError` na falha da atividade. | Passar um campo ausente a um leitor que exige uma string produz `TypeError` e falha do workflow. |
+| Python SDK 2.9.0 com Server 2.11.0 | Um argumento posicional obrigatório ausente produz `TypeError` e falha da atividade. | Acessar uma chave de resultado ausente produz `KeyError` e falha do workflow. |
+| Rust SDK 4.2.2 com Server 2.11.0 | Um novo campo obrigatório da requisição causa falha de decodificação da entrada tipada antes do handler da atividade. | Um novo campo obrigatório do resultado causa falha de decodificação do resultado tipado no workflow. |
+
+As verificações de serviço registraram `max_attempts = 1`; depois, a falha de atividade não tratada fez o workflow falhar. Em geral, falhas de atividade seguem sua política registrada de tentativas e timeouts. Um workflow pode tratar a falha após o esgotamento das tentativas da atividade. Um erro na leitura do resultado é uma falha da aplicação no workflow, não um pedido para repetir a atividade concluída. Todos os controles aditivos concluíram com o valor original `7` e a moeda padrão `USD`, com uma tentativa de atividade e sem reparos. Nos controles de resultado, a atividade concluída permaneceu concluída.
+
+Workflow incorporado 2.11.2 também aceita uma mudança de assinatura que substitui o escalar registrado `7` por um DTO injetado com valor padrão `0`, e pode concluir incorretamente com `0`. [Workflow #910](https://github.com/durable-workflow/workflow/issues/910) acompanha esse defeito do produto. Não use injeção de dependências como migração de entrada da atividade nem suponha que a proteção de entrada do workflow cubra esse caso. Restaurar código compatível não reabre um run terminal. Inspecione o estado real e siga o [guia de recuperação](../failures-and-recovery.md) sem alterar entradas registradas, histórico ou prazos.
+
 ## Uso de `getVersion` {#using-getversion}
 
 `getVersion()` é um helper de fluxo sequencial seguro para replay. Cada ponto de mudança registra um marcador durável de versão para a execução na primeira passagem, e todo replay posterior reutiliza esse valor confirmado, em vez de recalcular a ramificação a partir do código atual. Execuções antigas que precedem um ponto de ramificação recém-introduzido recebem `DEFAULT_VERSION` de forma conservadora.
