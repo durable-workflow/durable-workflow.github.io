@@ -279,10 +279,48 @@ Les variables d’infrastructure règlent le framework et ses dépendances. L’
 | --- | --- | --- |
 | Application | `APP_NAME`, `APP_ENV`, `APP_KEY`, `APP_DEBUG`, `APP_URL`, `APP_VERSION`, langue, fuseau horaire, maintenance et chiffrement | Identité et comportement de démarrage de l’application Laravel. |
 | Journaux | `LOG_CHANNEL`, `LOG_LEVEL`, `LOG_STDERR_FORMATTER`, paramètres stack, daily, Slack et Papertrail | Destinations, format et conservation des journaux Laravel. |
-| Base de données | `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `DB_SOCKET`, `DB_URL`, jeu de caractères, collation et clés étrangères | Stockage SQL des tables de workflows, namespaces, workers et projections. |
+| Base de données | `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `DB_SOCKET`, `DB_URL`, `DB_SSLMODE` (`DB_SSL_MODE`), `DB_SSLROOTCERT` (`DB_SSL_ROOT_CERT`), `MYSQL_ATTR_SSL_CA`, jeu de caractères, collation et clés étrangères | Stockage SQL des tables de workflows, namespaces, workers et projections. Voir [TLS de la base de données](#database-tls). |
 | Redis/cache/file | `REDIS_*`, `QUEUE_CONNECTION`, `QUEUE_FAILED_DRIVER`, `CACHE_STORE`, `CACHE_PREFIX`, `SESSION_*` | Workers de file, verrous du cache, signaux long poll et prise en charge du web et des sessions. |
 | Systèmes de fichiers/courrier/diffusion | `FILESYSTEM_DISK`, `MAIL_*`, `BROADCAST_*`, `PUSHER_*`, `AWS_*` | Intégrations du framework utilisées par les fonctions propres au déploiement. |
 | Construction/exécution | `MYSQL_VERSION`, `REDIS_VERSION`, `PHP_CLI_SERVER_WORKERS`, `VITE_APP_NAME`, `BCRYPT_ROUNDS` | Images Docker Compose et comportement d’exécution du framework. |
+
+## TLS de la base de données {#database-tls}
+
+Appliquez les mêmes réglages TLS au serveur API, au worker de file, au job
+d'initialisation/migration et à l'ordonnanceur. PostgreSQL utilise `prefer` par
+défaut ; MySQL/MariaDB conservent leurs réglages de connexion sans mode explicite.
+Aucun de ces défauts ne garantit une connexion chiffrée et authentifiée.
+
+| `DB_SSLMODE` | PostgreSQL | MySQL / MariaDB |
+| --- | --- | --- |
+| `disable` | Sans TLS. | Sans TLS ; les options TLS contradictoires sont refusées. |
+| `allow`, `prefer` | TLS opportuniste sans garantie de chiffrement ni d'identité. | Refusés. |
+| `require` | Chiffrement obligatoire. | Chiffrement obligatoire avec mysqlnd et OpenSSL. |
+| `verify-ca` | Chiffrement et chaîne de certificats de confiance obligatoires. | Refusé : PDO mysqlnd ne peut pas vérifier la chaîne indépendamment du nom d'hôte. |
+| `verify-full` | Chiffrement, chaîne de confiance et nom d'hôte correspondant obligatoires. | Chiffrement, chaîne de confiance et nom d'hôte correspondant obligatoires. |
+
+`DB_SSL_MODE` est un alias de `DB_SSLMODE` ; `DB_SSL_ROOT_CERT`, de
+`DB_SSLROOTCERT`. Pour vérifier les certificats, montez un fichier CA lisible au
+chemin configuré dans **chaque rôle**, migrations comprises. `MYSQL_ATTR_SSL_CA`
+peut fournir la CA pour un `verify-full` explicite sur MySQL/MariaDB. Les
+contradictions entre réglages canoniques, alias ou URL empêchent le démarrage.
+TLS obligatoire exige un nom d'hôte TCP explicite ; les sockets Unix sont
+refusés. Les modes TLS explicites de MySQL/MariaDB nécessitent PDO MySQL avec
+mysqlnd et OpenSSL.
+
+```dotenv
+DB_CONNECTION=pgsql
+DB_HOST=database.example.com
+DB_SSLMODE=verify-full
+DB_SSLROOTCERT=/run/database-ca/ca.pem
+```
+
+Utilisez le nom DNS du certificat. Avec Helm, configurez
+`externalDatabase.sslMode` et `externalDatabase.tls.existingSecret` / `caKey`.
+Créez le Secret avant l'installation ou la mise à niveau ; le chart monte sa
+CA dans les quatre rôles, hook d'initialisation compris. Redémarrez les rôles
+persistants après modification de l'environnement : la configuration est mise
+en cache au démarrage.
 
 ## Journaux des conteneurs {#container-logs}
 

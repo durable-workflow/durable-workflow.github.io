@@ -279,10 +279,46 @@ CI とデプロイ用マニフェストには `DW_V2_GUARDRAILS_BOOT` を使用�
 | --- | --- | --- |
 | アプリケーション | `APP_NAME`、`APP_ENV`、`APP_KEY`、`APP_DEBUG`、`APP_URL`、`APP_VERSION`、ロケール、タイムゾーン、メンテナンス、暗号設定 | Laravel アプリケーションの実行時識別情報と起動動作。 |
 | ログ | `LOG_CHANNEL`、`LOG_LEVEL`、`LOG_STDERR_FORMATTER`、スタック、日次、Slack、Papertrail の設定 | Laravel のログ出力先、形式、保持。 |
-| データベース | `DB_CONNECTION`、`DB_HOST`、`DB_PORT`、`DB_DATABASE`、`DB_USERNAME`、`DB_PASSWORD`、`DB_SOCKET`、`DB_URL`、文字セット、照合順序、外部キーの設定 | ワークフロー、Namespace、Worker、プロジェクションを保存する SQL データベース。 |
+| データベース | `DB_CONNECTION`、`DB_HOST`、`DB_PORT`、`DB_DATABASE`、`DB_USERNAME`、`DB_PASSWORD`、`DB_SOCKET`、`DB_URL`、`DB_SSLMODE`（`DB_SSL_MODE`）、`DB_SSLROOTCERT`（`DB_SSL_ROOT_CERT`）、`MYSQL_ATTR_SSL_CA`、文字セット、照合順序、外部キーの設定 | ワークフロー、Namespace、Worker、プロジェクションを保存する SQL データベース。[データベース TLS](#database-tls) を参照。 |
 | Redis・キャッシュ・キュー | `REDIS_*`、`QUEUE_CONNECTION`、`QUEUE_FAILED_DRIVER`、`CACHE_STORE`、`CACHE_PREFIX`、`SESSION_*` | キューワーカー、キャッシュロック、ロングポーリング通知、Web・セッションの実行時サポート。 |
 | ファイルシステム・メール・配信 | `FILESYSTEM_DISK`、`MAIL_*`、`BROADCAST_*`、`PUSHER_*`、`AWS_*` | デプロイ固有の機能で使用するフレームワーク連携。 |
 | ビルド・実行環境 | `MYSQL_VERSION`、`REDIS_VERSION`、`PHP_CLI_SERVER_WORKERS`、`VITE_APP_NAME`、`BCRYPT_ROUNDS` | Docker Compose のイメージとフレームワークの実行時動作。 |
+
+## データベース TLS {#database-tls}
+
+API サーバー、キューワーカー、初期化・マイグレーションジョブ、スケジューラーに
+同じ TLS 設定を適用してください。PostgreSQL の既定値は `prefer` です。
+MySQL/MariaDB はモード未指定時に従来の接続設定を使います。いずれの既定値も、
+認証された暗号化接続を保証しません。
+
+| `DB_SSLMODE` | PostgreSQL | MySQL / MariaDB |
+| --- | --- | --- |
+| `disable` | TLS なし。 | TLS なし。矛盾する TLS オプションは拒否。 |
+| `allow`, `prefer` | 暗号化・接続先の識別を保証しない日和見的 TLS。 | 拒否。 |
+| `require` | 暗号化必須。 | mysqlnd と OpenSSL による暗号化必須。 |
+| `verify-ca` | 暗号化と信頼できる証明書チェーンが必須。 | 拒否。PDO mysqlnd はホスト名の検証と独立してチェーンだけを検証できない。 |
+| `verify-full` | 暗号化、信頼できるチェーン、ホスト名の一致が必須。 | 暗号化、信頼できるチェーン、ホスト名の一致が必須。 |
+
+`DB_SSL_MODE` は `DB_SSLMODE`、`DB_SSL_ROOT_CERT` は `DB_SSLROOTCERT` の
+別名です。証明書を検証する場合、マイグレーションも含む **すべてのロール** に、
+指定パスで読み取れる CA バンドルをマウントしてください。MySQL/MariaDB の明示的な
+`verify-full` では `MYSQL_ATTR_SSL_CA` も CA を指定できます。正規名・別名・URL の
+設定が矛盾すると起動を拒否します。必須 TLS は明示的な TCP ホスト名を必要とし、
+Unix ソケットは拒否されます。MySQL/MariaDB の明示的 TLS モードには mysqlnd と
+OpenSSL を備えた PDO MySQL が必要です。
+
+```dotenv
+DB_CONNECTION=pgsql
+DB_HOST=database.example.com
+DB_SSLMODE=verify-full
+DB_SSLROOTCERT=/run/database-ca/ca.pem
+```
+
+証明書の DNS ホスト名を使ってください。Helm では `externalDatabase.sslMode` と
+`externalDatabase.tls.existingSecret` / `caKey` を設定します。インストール・
+アップグレード前に Secret を作成してください。チャートが初期化フックを含む
+全 4 ロールに CA をマウントします。起動時に設定がキャッシュされるため、
+環境設定を変更したら常駐ロールを再起動してください。
 
 ## コンテナのログ {#container-logs}
 

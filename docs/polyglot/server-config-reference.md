@@ -340,10 +340,46 @@ Durable Workflow API knobs.
 | --- | --- | --- |
 | Application | `APP_NAME`, `APP_ENV`, `APP_KEY`, `APP_DEBUG`, `APP_URL`, `APP_VERSION`, locale, timezone, maintenance, and cipher settings | Laravel application runtime identity and boot behavior. |
 | Logging | `LOG_CHANNEL`, `LOG_LEVEL`, `LOG_STDERR_FORMATTER`, stack, daily, Slack, and Papertrail settings | Laravel logging destinations, formatting and retention. |
-| Database | `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `DB_SOCKET`, `DB_URL`, charset, collation, and foreign-key settings | SQL state store for workflow, namespace, worker, and projection tables. |
+| Database | `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `DB_SOCKET`, `DB_URL`, `DB_SSLMODE` (`DB_SSL_MODE`), `DB_SSLROOTCERT` (`DB_SSL_ROOT_CERT`), `MYSQL_ATTR_SSL_CA`, charset, collation, and foreign-key settings | SQL state store for workflow, namespace, worker, and projection tables. See [database TLS](#database-tls). |
 | Redis/cache/queue | `REDIS_*`, `QUEUE_CONNECTION`, `QUEUE_FAILED_DRIVER`, `CACHE_STORE`, `CACHE_PREFIX`, `SESSION_*` | Queue workers, cache locks, long-poll signaling, and web/session runtime support. |
 | Filesystems/mail/broadcasting | `FILESYSTEM_DISK`, `MAIL_*`, `BROADCAST_*`, `PUSHER_*`, `AWS_*` | Framework integrations used by deployment-specific features. |
 | Build/runtime | `MYSQL_VERSION`, `REDIS_VERSION`, `PHP_CLI_SERVER_WORKERS`, `VITE_APP_NAME`, `BCRYPT_ROUNDS` | Docker Compose images and framework runtime behavior. |
+
+## Database TLS {#database-tls}
+
+Set the same TLS settings on the API server, queue worker, bootstrap/migration
+job and scheduler. PostgreSQL defaults to `prefer`; MySQL/MariaDB keep their
+connection defaults when no mode is set. Neither default guarantees an
+authenticated encrypted connection.
+
+| `DB_SSLMODE` | PostgreSQL | MySQL / MariaDB |
+| --- | --- | --- |
+| `disable` | No TLS. | No TLS; conflicting TLS options are refused. |
+| `allow`, `prefer` | Opportunistic TLS without an encryption or identity guarantee. | Refused. |
+| `require` | Encryption required. | Encryption required with mysqlnd and OpenSSL. |
+| `verify-ca` | Encryption and a trusted certificate chain required. | Refused: PDO mysqlnd cannot verify only the chain independently of the hostname. |
+| `verify-full` | Encryption, trusted chain and matching hostname required. | Encryption, trusted chain and matching hostname required. |
+
+`DB_SSL_MODE` aliases `DB_SSLMODE`; `DB_SSL_ROOT_CERT` aliases
+`DB_SSLROOTCERT`. For certificate verification, mount a readable CA bundle at
+the configured path in **every role**, including migrations. `MYSQL_ATTR_SSL_CA`
+can supply the CA for explicit MySQL/MariaDB `verify-full`. Conflicting
+canonical, alias or URL settings refuse startup. Required TLS needs an explicit
+TCP hostname; Unix sockets are refused. Explicit MySQL/MariaDB TLS modes need
+PDO MySQL with mysqlnd and OpenSSL.
+
+```dotenv
+DB_CONNECTION=pgsql
+DB_HOST=database.example.com
+DB_SSLMODE=verify-full
+DB_SSLROOTCERT=/run/database-ca/ca.pem
+```
+
+Use the certificate's DNS hostname. With Helm, configure
+`externalDatabase.sslMode` and `externalDatabase.tls.existingSecret` / `caKey`.
+Create the Secret before installation or upgrade; the chart mounts its CA in
+all four roles, including the bootstrap hook. Restart persistent roles after
+changing environment settings because configuration is cached at startup.
 
 ## Container logs
 
