@@ -317,7 +317,7 @@ Duplikate, fehlende Routing-Ziele, ungültige Nutzlasten und angenommene Überga
 | Befehl | Zweck | Wichtige Optionen |
 | --- | --- | --- |
 | `dw schedule:create` | Zeitplan erstellen. | `--schedule-id`, `--workflow-type`, `--cron`, `--interval`, `--task-queue`, `--timezone`, `--execution-timeout`, `--run-timeout`, `--overlap-policy`, `--jitter`, `--max-runs`, `--paused`, `--note`, Eingabeoptionen, `--json` |
-| `dw schedule:list` | Zeitpläne auflisten. | globale Ausgabeoptionen |
+| `dw schedule:list` | Zeitpläne auflisten. | `--status`, `--type`, `--query`, `--limit`, `--next-page-token`, `--json` |
 | `dw schedule:describe <schedule-id>` | Einen Zeitplan beschreiben. | `--json` |
 | `dw schedule:update <schedule-id>` | Zeitplanspezifikation oder Workflow-Eingabe aktualisieren. | Optionen zum Erstellen, Eingabeoptionen, `--json` |
 | `dw schedule:pause <schedule-id>` | Zeitplan pausieren. | `--note`, `--json` |
@@ -329,6 +329,35 @@ Duplikate, fehlende Routing-Ziele, ungültige Nutzlasten und angenommene Überga
 Verwenden Sie beim Erstellen intervallbasierter Zeitpläne entweder `--cron`
 oder `--interval`. Verwenden Sie `--paused` für Registrierungen bei der
 Bereitstellung, die noch keine Arbeit starten sollen.
+
+### Zeitpläne filtern und seitenweise abrufen {#schedule-list-filters}
+
+`dw schedule:list` liefert eine gefilterte Seite im aufgelösten Namespace. Ohne `--namespace` wird nur der aufgelöste Standard-Namespace ausgewählt, nicht jeder Namespace. Status, Workflow-Typ und Sichtbarkeitsprädikate werden mit `AND` verknüpft. Die [Prüfung der regulär veröffentlichten CLI- und PHP-Server-Artefakte](https://github.com/durable-workflow/durable-workflow.github.io/issues/402#issuecomment-6370122227) bestätigt diese Optionen.
+
+| CLI-Option | Server-Abfrageparameter | Bedeutung |
+| --- | --- | --- |
+| `--status` | `status` | `active` oder `paused`. |
+| `--type` | `workflow_type` | Exakter Workflow-Typ. |
+| `--query` | `query` | Ausdruck für die Sichtbarkeit von Zeitplänen. |
+| `--limit` | `page_size` | Seitengröße von 1 bis 200, Standard 50. |
+| `--next-page-token` | `next_page_token` | Opakes Fortsetzungstoken aus der vorherigen Antwort. |
+
+Listen Sie im vorhandenen Namespace `production` mit dem registrierten Keyword-Attribut `Region` die pausierten Zeitpläne von `orders.rollup` für Region `eu` und Task Queue `orders` auf:
+
+```bash
+dw schedule:list --namespace=production --status=paused --type=orders.rollup \
+  --query='Region = "eu" AND TaskQueue = "orders"' --limit=25 --json
+```
+
+Lesen Sie `next_page_token` aus der JSON-Antwort und setzen Sie `NEXT_PAGE_TOKEN` auf diesen Wert. Verwenden Sie für die nächste Seite denselben Namespace und dieselben Filter:
+
+```bash
+dw schedule:list --namespace=production --status=paused --type=orders.rollup \
+  --query='Region = "eu" AND TaskQueue = "orders"' --limit=25 --json \
+  --next-page-token="$NEXT_PAGE_TOKEN"
+```
+
+Tokens gehören zum Namespace und zur Filterauswahl. Beginnen Sie nach einer Filteränderung oder einer Ablehnung wegen eines veralteten Cursors erneut ohne Token. Jeder Aufruf liest eine aktuelle Seite, keinen unveränderlichen Snapshot. Die unterstützte Abfragesyntax und die Antwortfelder stehen unter [API-Grenzen und Ablehnungsgründen für Zeitplanlisten](/docs/polyglot/server-api-reference#schedule-list-filters).
 
 ## Worker- und Task-Warteschlangenbefehle {#worker-and-task-queue-commands}
 

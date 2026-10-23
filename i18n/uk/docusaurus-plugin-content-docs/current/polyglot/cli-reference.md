@@ -307,7 +307,7 @@ dw bridge:webhook pagerduty \
 | Команда | Призначення | Важливі параметри |
 | --- | --- | --- |
 | `dw schedule:create` | Створити schedule. | `--schedule-id`, `--workflow-type`, `--cron`, `--interval`, `--task-queue`, `--timezone`, `--execution-timeout`, `--run-timeout`, `--overlap-policy`, `--jitter`, `--max-runs`, `--paused`, `--note`, параметри вводу, `--json` |
-| `dw schedule:list` | Показати schedule. | глобальні параметри виводу |
+| `dw schedule:list` | Показати schedule. | `--status`, `--type`, `--query`, `--limit`, `--next-page-token`, `--json` |
 | `dw schedule:describe <schedule-id>` | Описати один schedule. | `--json` |
 | `dw schedule:update <schedule-id>` | Оновити специфікацію schedule чи ввід workflow. | параметри створення schedule, параметри вводу, `--json` |
 | `dw schedule:pause <schedule-id>` | Призупинити schedule. | `--note`, `--json` |
@@ -318,6 +318,35 @@ dw bridge:webhook pagerduty \
 
 Під час створення schedule використовуйте `--cron` або `--interval`.
 `--paused` дозволяє зареєструвати schedule під час розгортання без запуску роботи.
+
+### Фільтрування та сторінки розкладів {#schedule-list-filters}
+
+`dw schedule:list` повертає одну відфільтровану сторінку у визначеному просторі імен. Без `--namespace` вибирається визначений простір імен за замовчуванням, а не всі простори. Статус, тип workflow і предикати видимості поєднуються через `AND`. Ці параметри перевірено на [звичайних опублікованих артефактах CLI та PHP Server](https://github.com/durable-workflow/durable-workflow.github.io/issues/402#issuecomment-6370122227).
+
+| Параметр CLI | Параметр запиту Server | Значення |
+| --- | --- | --- |
+| `--status` | `status` | `active` або `paused`. |
+| `--type` | `workflow_type` | Точний тип workflow. |
+| `--query` | `query` | Вираз видимості розкладів. |
+| `--limit` | `page_size` | Розмір сторінки від 1 до 200, за замовчуванням 50. |
+| `--next-page-token` | `next_page_token` | Непрозорий токен продовження з попередньої відповіді. |
+
+Для наявного простору імен `production` із зареєстрованим атрибутом типу keyword `Region` виведіть призупинені розклади `orders.rollup` регіону `eu` у черзі завдань `orders`:
+
+```bash
+dw schedule:list --namespace=production --status=paused --type=orders.rollup \
+  --query='Region = "eu" AND TaskQueue = "orders"' --limit=25 --json
+```
+
+Прочитайте `next_page_token` із JSON-відповіді та запишіть це значення в `NEXT_PAGE_TOKEN`. Для наступної сторінки повторіть той самий простір імен і фільтри:
+
+```bash
+dw schedule:list --namespace=production --status=paused --type=orders.rollup \
+  --query='Region = "eu" AND TaskQueue = "orders"' --limit=25 --json \
+  --next-page-token="$NEXT_PAGE_TOKEN"
+```
+
+Токен належить простору імен і набору фільтрів. Після зміни фільтрів або відмови через застарілий курсор почніть знову без токена. Кожен виклик читає поточну сторінку, а не незмінний знімок. Підтримувану граматику запитів і поля відповіді наведено в [обмеженнях API списку розкладів і причинах відмов](/docs/polyglot/server-api-reference#schedule-list-filters).
 
 ## Команди worker і черг завдань {#worker-and-task-queue-commands}
 

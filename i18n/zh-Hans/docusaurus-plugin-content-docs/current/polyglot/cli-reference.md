@@ -213,7 +213,7 @@ dw bridge:webhook pagerduty \
 | 命令 | 用途 | 重要选项 |
 | --- | --- | --- |
 | `dw schedule:create` | 创建计划。 | `--schedule-id`, `--workflow-type`, `--cron`, `--interval`, `--task-queue`, `--timezone`, `--execution-timeout`, `--run-timeout`, `--overlap-policy`, `--jitter`, `--max-runs`, `--paused`, `--note`, 输入选项, `--json` |
-| `dw schedule:list` | 列出计划。 | 全局输出选项 |
+| `dw schedule:list` | 列出计划。 | `--status`, `--type`, `--query`, `--limit`, `--next-page-token`, `--json` |
 | `dw schedule:describe <schedule-id>` | 描述一个计划。 | `--json` |
 | `dw schedule:update <schedule-id>` | 更新计划规范或工作流输入。 | 计划创建选项, 输入选项, `--json` |
 | `dw schedule:pause <schedule-id>` | 暂停计划。 | `--note`, `--json` |
@@ -223,6 +223,35 @@ dw bridge:webhook pagerduty \
 | `dw schedule:delete <schedule-id>` | 删除计划。 | `--json` |
 
 创建基于时间间隔的计划时，使用 `--cron` 或 `--interval` 之一。部署时注册但暂不启动工作时，使用 `--paused`。
+
+### 筛选计划并分页读取 {#schedule-list-filters}
+
+`dw schedule:list` 在解析后的命名空间中返回一页筛选结果。省略 `--namespace` 时，只查询解析后的默认命名空间，不会查询所有命名空间。状态、工作流类型和可见性条件通过 `AND` 组合。这些选项已通过[常规发布 CLI 和 PHP Server 的验证](https://github.com/durable-workflow/durable-workflow.github.io/issues/402#issuecomment-6370122227)。
+
+| CLI 选项 | Server 查询参数 | 含义 |
+| --- | --- | --- |
+| `--status` | `status` | `active` 或 `paused`。 |
+| `--type` | `workflow_type` | 精确匹配的工作流类型。 |
+| `--query` | `query` | 计划可见性表达式。 |
+| `--limit` | `page_size` | 每页1至200条，默认50条。 |
+| `--next-page-token` | `next_page_token` | 上一次响应返回的不透明继续令牌。 |
+
+对于已存在且已注册 keyword 属性 `Region` 的 `production` 命名空间，列出区域为 `eu`、任务队列为 `orders`、已暂停的 `orders.rollup` 计划：
+
+```bash
+dw schedule:list --namespace=production --status=paused --type=orders.rollup \
+  --query='Region = "eu" AND TaskQueue = "orders"' --limit=25 --json
+```
+
+读取 JSON 响应中的 `next_page_token`，将其值赋给 `NEXT_PAGE_TOKEN`。下一页继续使用相同的命名空间和筛选条件：
+
+```bash
+dw schedule:list --namespace=production --status=paused --type=orders.rollup \
+  --query='Region = "eu" AND TaskQueue = "orders"' --limit=25 --json \
+  --next-page-token="$NEXT_PAGE_TOKEN"
+```
+
+令牌属于特定命名空间和筛选条件。更改筛选条件或收到游标过期拒绝后，应不带令牌重新遍历。每次调用读取当前页面，并非固定快照。支持的查询语法和响应字段见[计划列表 API 约束与拒绝原因](/docs/polyglot/server-api-reference#schedule-list-filters)。
 
 ## Worker 与任务队列命令 {#worker-and-task-queue-commands}
 

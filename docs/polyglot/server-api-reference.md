@@ -848,6 +848,35 @@ Search attribute names and types are part of the namespace search contract.
 Avoid using high-cardinality attributes for operator dashboards or metric
 labels.
 
+### Schedule list filters and continuation {#schedule-list-filters}
+
+`GET /api/schedules` reads the request namespace. The [normal published PHP Server qualification](https://github.com/durable-workflow/durable-workflow.github.io/issues/402#issuecomment-6370122227) verifies combined filters and continuation. Send the following query parameters, with normal URL encoding:
+
+| Parameter | Accepted value |
+| --- | --- |
+| `status` | `active` or `paused`. |
+| `workflow_type` | Nonempty workflow type, at most 255 characters. Whitespace alone is invalid. |
+| `query` | Nonempty visibility expression, at most 2048 characters. |
+| `page_size` | Integer from 1 to 200, default 50. |
+| `next_page_token` | Nonempty opaque token, at most 8192 characters. |
+
+Status, workflow type and query predicates combine with `AND`. A schedule visibility query accepts equality predicates joined by `AND`, such as `Region = "eu" AND TaskQueue = "orders"`. Built-in fields are `ScheduleId`, `Status`, `WorkflowType`, `TaskQueue` and `Note`. Other fields must be registered search attributes in the request namespace, with literals matching their types. Equality on a `keyword_list` attribute tests membership. Operators such as `OR`, `NOT`, `IN`, `LIKE` and range comparisons are unsupported and return `422`.
+
+The response includes `namespace`, `schedules`, `schedule_count` for this page and `next_page_token`. Continue only when a token is returned. Pass it back unchanged with the same namespace, status, workflow type and query. The token is bound to the parsed filter selection. Pagination reads changing data rather than a snapshot. A deleted cursor, or one that no longer matches the filters, requires a fresh traversal without the token.
+
+| HTTP / reason | Next action |
+| --- | --- |
+| `422` / `unsupported_schedule_list_filter` | Remove unsupported parameter names. |
+| `422` / `validation_failed` | Correct the field validation errors. |
+| `422` / `unsupported_schedule_visibility_field` | Use a built-in field or a registered attribute in this namespace. |
+| `422` / `unsupported_schedule_visibility_predicate` | Use equality predicates joined by `AND`. |
+| `400` / `malformed_schedule_page_token` | Use the returned token unchanged or restart without one. |
+| `403` / `schedule_page_token_namespace_mismatch` | Use the original namespace or restart in the intended namespace. |
+| `409` / `schedule_page_token_filter_mismatch` | Restart without a token after changing filters. |
+| `409` / `stale_schedule_page_token` | Restart without a token against the current filtered set. |
+
+[CLI schedule filtering and pagination examples](/docs/polyglot/cli-reference#schedule-list-filters) use the same contract. A list refusal includes the affected `field` and validation details. Inspect its reason before retrying.
+
 ## System Operations
 
 System routes require admin role. They are explicit operator passes; prefer
