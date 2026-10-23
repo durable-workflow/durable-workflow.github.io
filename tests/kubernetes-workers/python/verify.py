@@ -28,12 +28,17 @@ async def main():
         receipts = []
         worker_ids = []
         for sdk in ["php", "python", "rust"]:
-            async with asyncio.timeout(40):
-                while True:
-                    roster = await client.list_workers(task_queue="orders-" + sdk)
-                    if len(roster.workers) == 2:
-                        break
-                    await asyncio.sleep(0.2)
+            observed = []
+            try:
+                async with asyncio.timeout(40):
+                    while True:
+                        roster = await client.list_workers(task_queue="orders-" + sdk)
+                        observed = [worker.worker_id for worker in roster.workers]
+                        if len(observed) == 2:
+                            break
+                        await asyncio.sleep(0.2)
+            except TimeoutError as error:
+                raise AssertionError(f'{sdk}: expected two registered Pod workers, observed {observed}') from error
             ids = [worker.worker_id for worker in roster.workers]
             assert len(set(ids)) == 2, ids
             worker_ids.extend(ids)

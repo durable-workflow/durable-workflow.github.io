@@ -73,7 +73,7 @@ def server():
                     'ports': [{'port': 8080, 'targetPort': 8080}]}})
 
 
-def collect():
+def collect(*, show_logs=False):
     for kind in ['pods', 'deployments', 'events']:
         try:
             kubectl('get', kind, '-o', 'json', label=kind)
@@ -84,8 +84,10 @@ def collect():
         for pod in pods:
             for container in pod['spec'].get('initContainers', []) + pod['spec']['containers']:
                 try:
-                    kubectl('logs', pod['metadata']['name'], '-c', container['name'],
-                            label=pod['metadata']['name'] + '-' + container['name'])
+                    logs = kubectl('logs', pod['metadata']['name'], '-c', container['name'],
+                                   label=pod['metadata']['name'] + '-' + container['name'])
+                    if show_logs:
+                        print('Pod ' + pod['metadata']['name'] + ' / ' + container['name'] + ':\n' + logs[-3000:], flush=True)
                 except RuntimeError:
                     pass
     except RuntimeError:
@@ -112,6 +114,7 @@ def main():
     python_sdk = next(item for item in python_report['install'] if item['metadata']['name'] == 'durable-workflow')
     assert python_sdk['metadata']['version'] == ARTIFACTS['python_sdk']
     created = False
+    complete = False
     try:
         created = True
         run(['kind', 'create', 'cluster', '--name', CLUSTER, '--image', ARTIFACTS['kind_node'],
@@ -169,9 +172,10 @@ def main():
         receipt['documented_manifest_sha256'] = hashlib.sha256(manifest.encode()).hexdigest()
         (OUTPUT / 'receipt.json').write_text(json.dumps(receipt, indent=2) + '\n')
         print(json.dumps(receipt))
+        complete = True
     finally:
         if created:
-            collect()
+            collect(show_logs=not complete)
             run(['kind', 'delete', 'cluster', '--name', CLUSTER], label='kind-delete', timeout=120)
 
 
