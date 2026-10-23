@@ -1024,6 +1024,14 @@ async def long_running_task(items: list) -> dict:
 
 Не приховуйте збоїв heartbeat чи повноважень, щоб продовжити зовнішню роботу або повідомити про успіх. Прогрес не є зовнішнім commit або підтвердженням відновлюваної контрольної точки. Зберігайте зовнішні ефекти ідемпотентними.
 
+### Відмова heartbeat і завершення callback {#heartbeat-refusals-and-callback-exit}
+
+У **Python SDK 2.9.0** `ctx.heartbeat()` і `ctx.heartbeat_sync()` піднімають `ActivityLeaseAuthorityLost`, коли відповідь heartbeat містить `can_continue=false`. Виняток зберігає початкову причину Server, наприклад `activity_deadline_elapsed`, `attempt_closed` або `run_closed`. Натомість запит скасування піднімає `ActivityCancelled`. Див. [кваліфікацію опублікованого SDK](https://github.com/durable-workflow/sdk-python/issues/186#issuecomment-6361330674).
+
+Heartbeat, який отримав відмову, є точкою кооперативного завершення. Припиніть зовнішню роботу й передайте виняток далі; не перехоплюйте його, щоб повернути успіх. Код без heartbeat може працювати до свого повернення. Допоміжний heartbeat не може примусово перервати заблокований виклик бібліотеки: задавайте скінченні дедлайни I/O та використовуйте механізм скасування самого виклику.
+
+Фізичний слот activity зайнятий до завершення callback/потоку. Втрата повноважень спроби не звільняє цей потік для іншої роботи, а worker не публікує запізнілий результат закритої спроби. Застосування таймауту runtime й зупинка прикладного коду — окремі межі. Див. [таймаути activity](../features/timeouts.md#activity-timeouts) і [поради щодо допоміжного потоку](#heartbeat-helper-thread).
+
 ### Неповторювані помилки {#non-retryable-errors}
 
 Підніміть `NonRetryableError`, щоб завершити activity помилкою без retry:

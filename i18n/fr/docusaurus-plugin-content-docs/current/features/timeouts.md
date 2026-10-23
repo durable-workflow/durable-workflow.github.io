@@ -188,6 +188,8 @@ $result = activity(
 );
 ```
 
+En mode service, fermer une tentative d’activité n’arrête pas de force le code applicatif du SDK. Le SDK Python 2.9.0 signale le refus au prochain heartbeat ; le code sans heartbeat peut s’exécuter jusqu’à son retour et le créneau physique du thread reste occupé jusqu’à sa sortie. Consultez les [refus de heartbeat et la sortie du callback en Python](../polyglot/python.md#heartbeat-refusals-and-callback-exit).
+
 ### Délai entre planification et démarrage {#schedule-to-start-timeout}
 
 L’échéance est calculée à la planification de l’activité. Si aucun worker ne l’a réclamée à temps, `TaskWatchdog` applique le délai. S’il reste des tentatives, une nouvelle tâche est planifiée avec le recul enregistré et l’échéance schedule-to-start est recalculée depuis la disponibilité du nouvel essai. Chaque tentative reçoit une nouvelle fenêtre. Sans `scheduleToStartTimeout` configuré, l’échéance est effacée lors du nouvel essai. Une fois toutes les tentatives épuisées, un événement terminal `ActivityTimedOut` est enregistré et le workflow est réveillé.

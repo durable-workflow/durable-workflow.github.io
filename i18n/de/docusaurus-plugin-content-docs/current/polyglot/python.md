@@ -1039,6 +1039,14 @@ Der direkte Aufruf von `Client.heartbeat_activity_task()` verwendet die konfigur
 
 Unterdrücken Sie Heartbeat- oder Besitzfehler nicht, um externe Arbeit fortzusetzen oder Erfolg zu melden. Fortschritt ist weder ein externer Commit noch eine Bestätigung eines fortsetzbaren Prüfpunkts. Halten Sie externe Effekte idempotent.
 
+### Heartbeat-Ablehnung und Ende des Callbacks {#heartbeat-refusals-and-callback-exit}
+
+Im **Python SDK 2.9.0** lösen `ctx.heartbeat()` und `ctx.heartbeat_sync()` einen `ActivityLeaseAuthorityLost` aus, wenn eine Heartbeat-Antwort `can_continue=false` enthält. Die Ausnahme bewahrt den ursprünglichen Server-Grund, etwa `activity_deadline_elapsed`, `attempt_closed` oder `run_closed`. Eine Abbruchanforderung löst dagegen `ActivityCancelled` aus. Siehe die [Qualifikation des veröffentlichten SDK](https://github.com/durable-workflow/sdk-python/issues/186#issuecomment-6361330674).
+
+Der Heartbeat, der die Ablehnung empfängt, ist ein kooperativer Ausstiegspunkt. Beenden Sie externe Arbeit und reichen Sie die Ausnahme weiter; fangen Sie sie nicht ab, um Erfolg zurückzugeben. Code ohne Heartbeats kann bis zur Rückkehr weiterlaufen. Ein Hilfs-Heartbeat kann einen blockierten Bibliotheksaufruf nicht zwangsweise unterbrechen: Verwenden Sie endliche E/A-Fristen und den eigenen Abbruchmechanismus des Aufrufs.
+
+Der physische Activity-Slot bleibt bis zum Ende des Callbacks/Threads belegt. Der Verlust der Ausführungsberechtigung gibt diesen Thread nicht für andere Arbeit frei, und der Worker veröffentlicht kein verspätetes Ergebnis für den geschlossenen Versuch. Die Durchsetzung eines Runtime-Timeouts und das Anhalten von Anwendungscode sind getrennte Grenzen. Siehe [Activity-Timeouts](../features/timeouts.md#activity-timeouts) und die [Hinweise zum Hilfsthread](#heartbeat-helper-thread).
+
 ### Nicht wiederholbare Fehler {#non-retryable-errors}
 
 Lösen Sie `NonRetryableError` aus, um eine Aktivität ohne Wiederholungen scheitern zu lassen:
