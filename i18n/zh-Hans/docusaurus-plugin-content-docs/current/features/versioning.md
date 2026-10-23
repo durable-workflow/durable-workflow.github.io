@@ -71,6 +71,68 @@ Server 任务的具体 `failure_reason` 为 `workflow_entry_arguments_mismatch`�
 
 安全的替换路由还需要 [Worker 入口验证能力](../polyglot/worker-compatibility-routing.md#definition-fingerprint-evolution)。指纹发生变化既不能证明重放兼容，也不是改写运行原始指纹的理由。请在兼容的入口方法内部对持久命令变更进行版本分支，并在提升构建之前测试冷重放。
 
+## 演进活动参数和结果 {#evolving-activity-arguments-and-results}
+
+活动有两个已存储的契约：调度时记录的参数，以及完成时记录的结果。部署不会迁移其中任何一项。这同样适用于嵌入式 PHP，以及使用 PHP、Python 和 Rust SDK 的服务模式 Worker。
+
+尚未执行的尝试或重试会收到最初调度时记录的参数。实际执行的活动实现由 Worker 注册和构建路由策略决定，也可能仍是旧构建。部署新实现既不保证每次尝试都使用它，也不会更新队列中的参数。
+
+重放已完成的活动时，当前工作流代码会收到已记录的结果，而不会再次执行活动。活动步骤和类型匹配，并不代表参数或结果通过了模式校验。因此，数据结构变化可能导致应用代码失败，却不产生历史不匹配错误。
+
+### 添加可选输入时保留旧值的含义 {#additive-activity-input}
+
+保留现有位置参数的顺序和含义。在嵌入式 PHP 中，末尾添加可选参数，可继续接受已调度的旧参数，例如 `[7]`：
+
+```php
+use Workflow\V2\Activity;
+
+final class PriceActivity extends Activity
+{
+    public function handle(int $amount, string $currency = 'USD'): array
+    {
+        return ['amount' => $amount, 'currency' => $currency];
+    }
+}
+```
+
+默认值只填补缺失的参数，不会转换不兼容的已记录值，也不会修复参数顺序变化。活动的外部副作用也必须保持兼容：重试可能发生在部署之后，并且仍须满足幂等性要求。
+
+PHP 服务模式处理函数先接收活动上下文，再接收已记录的位置参数。Python 处理函数直接接收已记录的位置参数。两者都需要为省略的参数提供默认值。Python 类型注解本身不会校验或转换值。Rust 类型化活动反序列化一个请求值；添加可选字段或具有明确 Serde 默认值的字段，同时保留原有表示。新增必填字段可能在 Rust 处理函数运行前就导致解码失败。活动 API 参见 [PHP](https://php.durable-workflow.com/)、[Python](https://python.durable-workflow.com/) 和 [Rust](https://rust.durable-workflow.com/) SDK 指南。
+
+### 使用回退值读取旧结果 {#additive-activity-result}
+
+新的活动结果添加 `currency` 时，工作流仍须接受仅含 `amount` 的旧完成结果：
+
+```php
+$result = activity(PriceActivity::class, 7);
+$currency = $result['currency'] ?? 'USD';
+```
+
+选择能保留原有业务含义的回退值，并为所有可能被重放的历史保留它，包括查询和恢复。先部署兼容的读取代码，再部署写入新表示的代码；回滚前也要用新记录的结果验证旧读取代码。活动输入参数的默认值不会为已记录的结果补充字段。
+
+### 契约不同时使用新类型 {#incompatible-activity-contract}
+
+重命名字段、改变表示或改变业务含义时，应保留旧活动类型并引入新类型。如果旧历史必须保留原来的活动步骤，而新运行应调度新类型，请在调度调用处使用工作流 `getVersion()` 分支。活动内部的分支无法修复进入函数体之前就绑定失败的参数。版本标记也不会重写历史中已有的结果。
+
+使用实际安装的包，在新进程中验证两个部署边界：先用旧代码调度、用候选活动代码执行，再用旧活动代码完成、用候选工作流代码重放。加入不兼容输入和结果作为失败对照。不要假定上文的工作流入口保护也会保护活动签名或应用代码对结果的访问。已确认的嵌入式活动 DTO 缺陷见 [Workflow #910](https://github.com/durable-workflow/workflow/issues/910)。
+
+请将这些活动契约与[已记录的工作流启动参数规则](#evolving-recorded-entry-arguments)和[信号载荷演进方法](signals.md#evolve-a-signal-payload)一起检查。
+
+### 已验证的失败边界 {#activity-compatibility-failures}
+
+[#363 的已发布包验证](https://github.com/durable-workflow/durable-workflow.github.io/issues/363)在每个部署边界使用新进程。以下是实际验证的基线，并非最低支持版本：
+
+| 已发布包 | 不兼容的活动输入 | 不兼容的结果读取 |
+| --- | --- | --- |
+| 嵌入式 Workflow 2.11.2 | 缺少必需参数产生 `ArgumentCountError`，活动失败。 | 在 Laravel 错误处理下访问缺失的数组字段产生 `ErrorException`，工作流失败。 |
+| PHP SDK 3.2.0 与 Server 2.11.0 | 缺少必需的位置参数，在活动失败中报告为 `ArgumentCountError`。 | 将缺失字段传给要求字符串的读取函数产生 `TypeError`，工作流失败。 |
+| Python SDK 2.9.0 与 Server 2.11.0 | 缺少必需的位置参数产生 `TypeError`，活动失败。 | 按键访问结果中不存在的字段产生 `KeyError`，工作流失败。 |
+| Rust SDK 4.2.2 与 Server 2.11.0 | 新增必填请求字段在活动处理函数运行前导致类型化输入解码失败。 | 新增必填结果字段导致工作流中的类型化结果解码失败。 |
+
+服务模式验证记录了 `max_attempts = 1`；随后，未处理的活动失败使工作流失败。一般情况下，活动失败遵循已记录的重试和超时策略。工作流可以处理重试次数耗尽后的活动失败。结果读取错误属于应用工作流失败，并不要求重跑已完成的活动。所有增量兼容对照都以原始金额 `7` 和默认货币 `USD` 完成，活动仅尝试一次，未进行修复。在结果对照中，已完成的活动始终保持完成状态。
+
+嵌入式 Workflow 2.11.2 还会接受一种签名变化：以默认金额为 `0` 的注入式 DTO 替换已记录的标量 `7`，并可能错误地以 `0` 完成。[Workflow #910](https://github.com/durable-workflow/workflow/issues/910) 跟踪此产品缺陷。不要将依赖注入当作活动输入迁移，也不要假定工作流入口保护覆盖此情况。恢复兼容代码不会重新打开已终结的运行；请检查实际状态，并按照[恢复指南](../failures-and-recovery.md)操作，不要修改已记录的输入、历史或截止时间。
+
 ## 使用 `getVersion` {#using-getversion}
 
 `getVersion()` 是可安全重放、按顺序编写的辅助函数。每个变更点在首次执行时为运行记录持久版本标记，后续每次重放都复用该已提交值，不会根据当前代码重新计算分支。早于新引入分支点的旧运行会保守地获得 `DEFAULT_VERSION`。
