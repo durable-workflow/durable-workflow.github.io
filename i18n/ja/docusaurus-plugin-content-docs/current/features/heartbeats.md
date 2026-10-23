@@ -40,6 +40,11 @@ final class PollRemoteJob extends Activity
 
 多言語 Worker は PHP のアクティビティクラスを構築せずに HTTP Worker ブリッジでハートビートを送信できます。エンドポイントは [Worker プロトコル](/docs/polyglot/worker-protocol)を参照してください。
 
+単一のブロッキング呼び出しには、ハートビート用の補助処理が必要な場合があります。
+これは進捗ではなく生存の通知です。呼び出し自体に有限の期限を設定し、
+完了時や実行権限を失った時は補助処理を停止してください。
+Python では[コンテキストの取得とキャンセルの実装例](../polyglot/python.md#heartbeat-helper-thread)に従ってください。
+
 ## 送信間隔と確認 {#heartbeat-cadence-and-receipts}
 
 キューに入ったアクティビティでは、最初のハートビート期限はランタイムの取得時点から始まり、タスクの配信やユーザーコードの実行より前です。記録されたハートビートは、ランタイムの時刻に `heartbeatTimeout` を加えて次の期限を設定します。リクエストの送信時や応答の受信時に、期間が最初から始まるわけではありません。[ハートビートのタイムアウト](./timeouts.md#heartbeat-timeout)を参照してください。

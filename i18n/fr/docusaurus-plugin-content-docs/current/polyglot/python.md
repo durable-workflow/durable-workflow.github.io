@@ -1077,6 +1077,24 @@ l’enregistrement du worker. Fixez des délais pour les E/S vers les services a
 et utilisez des processus de worker isolés pour les calculs intensifs.
 Consultez la [référence du SDK sur l’exécution et l’arrêt](https://python.durable-workflow.com/reference/worker/).
 
+### Heartbeats depuis un thread auxiliaire {#heartbeat-helper-thread}
+
+Pour un long appel bloquant, capturez `ctx = activity.context()` dans
+l’activité synchrone, puis transmettez ce contexte au thread auxiliaire. Un
+nouveau thread n’hérite pas automatiquement du contexte d’activité. Appelez
+`ctx.heartbeat_sync(details)` depuis ce thread, jamais depuis la boucle
+événementielle du worker. Consultez l’[exemple complet](https://python.durable-workflow.com/reference/activity/#heartbeats-during-one-blocking-call)
+dans la référence du SDK.
+
+Arrêtez le thread et attendez sa fin avec `join()` quand l’appel retourne ou
+lève une exception. Si un heartbeat lève `ActivityCancelled` ou
+`ActivityLeaseAuthorityLost`, signalez l’annulation coopérative à l’appel et
+relancez l’exception d’origine avant de retourner un résultat. Une exception
+dans le thread auxiliaire ne peut pas interrompre de force un appel bloqué.
+Prévoyez un délai fini et un mécanisme d’annulation pour cet appel, et bornez
+les délais et tentatives des requêtes de heartbeat. Sinon, le thread peut
+continuer à signaler que le processus vit alors que le travail est bloqué.
+
 ## Worker {#worker}
 
 `Worker` s'enregistre auprès du serveur, interroge les tâches et les transmet

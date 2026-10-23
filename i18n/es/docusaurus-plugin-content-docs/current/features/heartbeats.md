@@ -40,6 +40,11 @@ Dentro de la actividad, `activityId()`, `attemptId()` y `attemptCount()` exponen
 
 Los workers políglotas pueden enviar latidos mediante el puente HTTP sin construir la clase PHP de actividad. Consulta los endpoints en el [protocolo de workers](/docs/polyglot/worker-protocol).
 
+Una llamada bloqueante puede necesitar un auxiliar dedicado a enviar heartbeats.
+Este indica que el proceso sigue vivo, no que avance. Pon un plazo finito a la
+llamada y detén el auxiliar cuando termine o pierda la autoridad. En Python,
+sigue la [receta de captura de contexto y cancelación](../polyglot/python.md#heartbeat-helper-thread).
+
 ## Cadencia y confirmaciones {#heartbeat-cadence-and-receipts}
 
 Para una actividad encolada, el primer plazo de heartbeat empieza cuando el entorno de ejecución la reclama, antes de entregar la tarea y ejecutar código de usuario. Un heartbeat registrado fija el siguiente plazo en su marca de tiempo del entorno más `heartbeatTimeout`. Ni enviar la petición ni recibir su respuesta abre otra ventana completa. Consulte [Tiempo de espera de heartbeat](./timeouts.md#heartbeat-timeout).

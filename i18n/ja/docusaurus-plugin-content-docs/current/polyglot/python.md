@@ -890,6 +890,22 @@ async def validate(data: dict) -> dict:
 呼び出し先の I/O タイムアウトを制限し、CPU 負荷の高い処理には個別に分離したワーカープロセスを使ってください。
 詳しくは [SDK の実行とシャットダウンのリファレンス](https://python.durable-workflow.com/reference/worker/)を参照してください。
 
+### 補助スレッドからのハートビート {#heartbeat-helper-thread}
+
+長時間のブロッキング呼び出しでは、同期アクティビティ内で
+`ctx = activity.context()` を取得し、補助スレッドに渡してください。
+新しいスレッドにはアクティビティのコンテキストが自動では引き継がれません。
+補助スレッドでは `ctx.heartbeat_sync(details)` を使い、ワーカーのイベントループ上では
+呼び出さないでください。SDK リファレンスの[完全な実装例](https://python.durable-workflow.com/reference/activity/#heartbeats-during-one-blocking-call)を参照してください。
+
+呼び出しが正常終了した場合も例外を送出した場合も、補助スレッドを停止して
+`join()` で終了を待ちます。ハートビートが `ActivityCancelled` または
+`ActivityLeaseAuthorityLost` を送出したら、呼び出しに協調的なキャンセルを通知し、
+結果を返す前に元の例外を再送出してください。補助スレッドの例外では、
+ブロック中のライブラリ呼び出しを強制的に中断できません。呼び出し自体に有限の期限と
+キャンセル手段を設け、ハートビート要求のタイムアウトと再試行も制限してください。
+そうしないと、処理が停止していても補助スレッドが生存を通知し続けます。
+
 ## Worker {#worker}
 
 `Worker` は Server に登録し、タスクをポーリングして、ワークフローとアクティビティの実装へディスパッチします。

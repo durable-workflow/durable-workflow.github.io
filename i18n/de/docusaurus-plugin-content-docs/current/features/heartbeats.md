@@ -58,6 +58,11 @@ Polyglotte Worker können Heartbeats über die HTTP-Worker-Brücke senden, ohne
 die PHP-Aktivitätsklasse zu erzeugen. Die Endpunkte beschreibt das
 [Worker-Protokoll](/docs/polyglot/worker-protocol).
 
+Ein einzelner blockierender Aufruf kann einen eigenen Heartbeat-Hilfsthread
+benötigen. Dieser meldet Lebenszeichen, keinen Fortschritt. Setzen Sie dem
+Aufruf eine eigene endliche Frist und beenden Sie den Hilfsthread bei Abschluss
+oder Autoritätsverlust. Python-Worker sollten die [Anleitung für erfassten Kontext und Abbruch](../polyglot/python.md#heartbeat-helper-thread) befolgen.
+
 ## Takt und Bestätigungen {#heartbeat-cadence-and-receipts}
 
 Bei einer Aktivität in der Warteschlange beginnt die erste Heartbeat-Frist, wenn die Laufzeit sie beansprucht, also vor der Aufgabenauslieferung und dem Anwendungscode. Ein aufgezeichneter Heartbeat setzt die nächste Frist auf seinen Laufzeitzeitpunkt plus `heartbeatTimeout`. Weder das Senden der Anfrage noch der Empfang ihrer Antwort eröffnet ein weiteres vollständiges Zeitfenster. Siehe [Heartbeat-Zeitlimit](./timeouts.md#heartbeat-timeout).

@@ -40,6 +40,11 @@ Inside the activity, `activityId()`, `attemptId()`, and `attemptCount()` expose 
 
 Polyglot workers can heartbeat via the HTTP worker bridge without constructing the PHP activity class — see the [worker protocol](/docs/polyglot/worker-protocol) for the endpoints.
 
+A single blocking call may need a separate heartbeat helper. This reports
+liveness, not progress: give the call its own finite deadline and stop the
+helper when the call finishes or loses authority. Python workers should follow
+the [captured-context and cancellation recipe](../polyglot/python.md#heartbeat-helper-thread).
+
 ## Cadence and receipts {#heartbeat-cadence-and-receipts}
 
 For a queued activity, the first heartbeat deadline starts when the runtime claims it, before task delivery and user code. A recorded heartbeat sets the next deadline to its runtime timestamp plus `heartbeatTimeout`. Sending the request or receiving its response does not start another full window. See [Heartbeat timeout](./timeouts.md#heartbeat-timeout).

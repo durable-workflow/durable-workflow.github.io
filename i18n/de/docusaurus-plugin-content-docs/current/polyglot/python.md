@@ -1077,6 +1077,24 @@ Ein-/Ausgabe fest und verwenden Sie für rechenintensive Arbeit getrennte, isoli
 Worker-Prozesse. Siehe die
 [SDK-Referenz zu Ausführung und Herunterfahren](https://python.durable-workflow.com/reference/worker/).
 
+### Heartbeats aus einem Hilfsthread {#heartbeat-helper-thread}
+
+Erfassen Sie bei einem langen blockierenden Aufruf `ctx = activity.context()`
+innerhalb der synchronen Aktivität und übergeben Sie den Kontext an den
+Hilfsthread. Ein neuer Thread erbt den Aktivitätskontext nicht automatisch.
+Verwenden Sie dort `ctx.heartbeat_sync(details)`, niemals in der Ereignisschleife
+des Workers. Die [vollständige Anleitung](https://python.durable-workflow.com/reference/activity/#heartbeats-during-one-blocking-call)
+steht in der SDK-Referenz.
+
+Beenden Sie den Hilfsthread bei Rückkehr oder Fehler des Aufrufs und warten Sie
+mit `join()` auf sein Ende. Löst ein Heartbeat `ActivityCancelled` oder
+`ActivityLeaseAuthorityLost` aus, signalisieren Sie dem Aufruf den kooperativen
+Abbruch und lösen Sie vor der Ergebnisrückgabe die ursprüngliche Ausnahme erneut
+aus. Eine Ausnahme im Hilfsthread kann einen blockierten Bibliotheksaufruf nicht
+gewaltsam unterbrechen. Geben Sie diesem eine eigene endliche Frist und einen
+Abbruchmechanismus. Begrenzen Sie auch Heartbeat-Anfragen und Wiederholungen.
+Andernfalls meldet der Hilfsthread weiter Lebenszeichen, obwohl die Arbeit hängt.
+
 ## Worker {#worker}
 
 Der `Worker` registriert sich beim Server, fragt Tasks ab und übergibt sie an Ihre Workflow- und Aktivitätsimplementierungen.
