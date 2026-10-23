@@ -211,6 +211,19 @@ tempo e informam as contagens de novas tentativas em
 novas tentativas. Uma exceção que implementa esse contrato faz a atividade
 falhar imediatamente e retoma o workflow com a exceção.
 
+### Resolução do atraso entre tentativas {#retry-delay-resolution}
+
+Os valores de `backoff()` de uma atividade são segundos inteiros. Os intervalos
+de novas tentativas duráveis têm resolução de um segundo. Não use uma fração como
+`0.1` para pedir uma nova tentativa em 100 ms. As APIs dos SDKs que geram intervalos
+a partir de valores fracionários os arredondam para cima, até o próximo segundo
+inteiro. As referências dos SDKs Python e Rust descrevem os tipos de parâmetros
+aceitos e suas conversões.
+
+A próxima tentativa fica apta a começar após o atraso, mas a latência da fila e a
+carga dos workers podem adiá-la ainda mais. Para testes rápidos, use
+[tempo controlado ou casos limitados com atraso zero](./testing.md#keeping-delay-tests-fast).
+
 ### Identidade e idempotência da atividade {#activity-execution-identity-and-idempotency}
 
 Uma nova tentativa não é o único motivo para observar a mesma atividade lógica

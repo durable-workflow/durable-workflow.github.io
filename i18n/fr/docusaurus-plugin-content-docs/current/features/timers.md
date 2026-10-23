@@ -37,6 +37,20 @@ class MyWorkflow extends Workflow
 
 <TimerSimulator />
 
+## Résolution des délais {#delay-resolution}
+
+Les délais des temporisateurs durables sont exprimés en secondes entières.
+Passez un nombre entier de secondes, par exemple `timer(1)`. Avec une chaîne
+d’intervalle PHP ou `CarbonInterval`, une durée positive comportant une fraction
+de seconde est arrondie à la seconde entière supérieure. Ainsi, 100 ms deviennent
+une seconde. `timer(0)` se déclenche toujours dans la tâche courante.
+
+Un temporisateur arrivé à échéance peut être traité. La latence de la file et la
+charge des workers peuvent retarder son traitement. Cette résolution ne garantit
+donc pas un instant de reprise exact et ne réduit pas la précision des horodatages
+enregistrés. Consultez les [tests](../testing.md#keeping-delay-tests-fast) pour
+éviter les attentes réelles.
+
 Comportement des temporisateurs :
 
 - chaque appel à `timer()` crée une ligne durable et des événements d’historique typés `TimerScheduled`, `TimerFired` et, en cas de remplacement, `TimerCancelled`

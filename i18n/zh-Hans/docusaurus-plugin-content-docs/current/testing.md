@@ -50,6 +50,16 @@ exit($allowed ? 0 : 1);
 
 **Rust：** 目前还没有公开的离线重放 API。[Rust #105](https://github.com/durable-workflow/sdk-rust/issues/105) 负责该能力。在此期间可针对隔离的运行时测试候选代码，但这并不提供尚缺失的离线保证。
 
+## 加快含延迟的测试 {#keeping-delay-tests-fast}
+
+定时器延迟和持久重试退避使用整数秒。如果某个 SDK API 接受小数值并向上取整，
+100 ms 就会变成 1 秒。因此，使用亚秒数值不能加快重试较多的测试。
+
+在嵌入式测试中，使用 `WorkflowStub::fake()` 模拟活动结果，并将 Laravel 的测试时钟
+向前推进配置的延迟时长。然后调用 `WorkflowStub::runReadyTasks()` 处理已到期任务。
+保持尝试次数有限。测试专用的零秒退避可以验证次数有限的重试结果，无需等待真实时间。
+请保留单独验证实际退避计划的测试。修改本地测试时钟不会推进远程 Server 的时钟。
+
 ## `Workflow\V2` {#workflowv2}
 
 `Workflow\V2\WorkflowStub::fake()` 为受支持的 `V2` fake 功能提供确定性的内联测试路径。

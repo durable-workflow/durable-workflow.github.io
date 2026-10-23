@@ -173,6 +173,15 @@ $result = activity(ChargeCard::class, new ActivityOptions(
 
 `Workflow\Exceptions\NonRetryableExceptionContract` 会立即中止重试策略。抛出不可重试异常会使活动执行立即失败，并将异常传回工作流。
 
+### 重试延迟分辨率 {#retry-delay-resolution}
+
+活动的 `backoff()` 值以整数秒表示。持久重试间隔的分辨率为 1 秒。请勿使用 `0.1`
+这样的数值来请求 100 ms 后重试。接受小数值并据此生成间隔的 SDK API 会向上取整到
+下一整秒。Python 和 Rust SDK 参考文档说明了支持的参数类型及转换规则。
+
+延迟结束后，下一次尝试才可以开始，但队列延迟和 Worker 负载可能使其更晚执行。要加快
+测试，请使用[受控时间或次数有限的零延迟用例](./testing.md#keeping-delay-tests-fast)。
+
 ### 活动执行标识与幂等性 {#activity-execution-identity-and-idempotency}
 
 同一逻辑活动被多次观察的原因包括重试、租约过期、Worker 丢失、完成报告延迟和重新投递。这些情况可能产生另一次尝试，或同一持久活动执行的过期完成报告。

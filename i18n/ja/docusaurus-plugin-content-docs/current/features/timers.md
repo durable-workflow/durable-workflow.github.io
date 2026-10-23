@@ -37,6 +37,18 @@ class MyWorkflow extends Workflow
 
 <TimerSimulator />
 
+## 遅延の分解能 {#delay-resolution}
+
+永続タイマーの遅延は整数秒で表されます。`timer(1)` のように整数秒を渡してください。
+PHP の間隔文字列または `CarbonInterval` を使う場合、正の秒未満の端数は次の整数秒に
+切り上げられます。そのため 100 ms は 1 秒になります。`timer(0)` は引き続き現在の
+タスク内で発火します。
+
+期限に達するとタイマーを処理できるようになります。キューの遅延や Worker の負荷により
+処理が遅れる場合があるため、この分解能は正確な再開時刻を保証しません。記録される
+タイムスタンプの精度を下げるものでもありません。実時間の待機を避ける方法は
+[テスト](../testing.md#keeping-delay-tests-fast)を参照してください。
+
 タイマーの動作:
 
 - `timer()` の呼び出しごとに永続タイマー行と、型付きの `TimerScheduled`、`TimerFired`、および無効化時の `TimerCancelled` 履歴イベントを作成します。

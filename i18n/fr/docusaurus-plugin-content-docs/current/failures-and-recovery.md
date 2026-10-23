@@ -219,6 +219,19 @@ Les métriques exposent les activités en cours de nouvelle tentative via
 toujours cette politique : une exception non réessayable fait immédiatement
 échouer l’exécution d’activité et reprend le workflow avec l’exception.
 
+### Résolution du délai entre tentatives {#retry-delay-resolution}
+
+Les valeurs de `backoff()` d’une activité sont des secondes entières. Les
+intervalles de nouvelle tentative durables ont une résolution d’une seconde.
+N’utilisez pas une fraction comme `0.1` pour demander une nouvelle tentative après
+100 ms. Les API des SDK qui génèrent des intervalles à partir de valeurs
+fractionnaires les arrondissent à la seconde entière supérieure. Les références
+des SDK Python et Rust précisent les types de paramètres acceptés et leurs conversions.
+
+Une nouvelle tentative peut commencer une fois le délai écoulé, mais la latence
+de la file et la charge des workers peuvent la retarder davantage. Pour des tests
+rapides, utilisez [une horloge contrôlée ou des cas bornés sans délai](./testing.md#keeping-delay-tests-fast).
+
 ### Identité de l’exécution d’activité et idempotence {#activity-execution-identity-and-idempotency}
 
 Les nouvelles tentatives ne sont pas la seule raison d’observer plusieurs

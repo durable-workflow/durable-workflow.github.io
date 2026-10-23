@@ -50,6 +50,20 @@ exit($allowed ? 0 : 1);
 
 **Rust:** ainda não existe uma API pública de replay offline. [Rust #105](https://github.com/durable-workflow/sdk-rust/issues/105) acompanha essa capacidade. Enquanto isso, teste o candidato contra um runtime isolado; isso não fornece a garantia offline ausente.
 
+## Testes rápidos com atrasos {#keeping-delay-tests-fast}
+
+Atrasos de temporizadores e backoff de novas tentativas duráveis usam segundos
+inteiros. Se uma API do SDK aceita frações e as arredonda para cima, 100 ms se
+tornam um segundo. Esses valores não aceleram testes com muitas tentativas.
+
+Em testes embutidos, use `WorkflowStub::fake()`, simule os resultados das atividades
+e avance o relógio de testes do Laravel pelo atraso configurado. Depois chame
+`WorkflowStub::runReadyTasks()` para executar o trabalho já vencido. Limite o número
+de tentativas. Um backoff de zero segundos específico do teste permite verificar
+novas tentativas limitadas sem espera real. Mantenha um teste separado do
+cronograma real de backoff. Alterar o relógio local de testes não avança o relógio
+de um Server remoto.
+
 ## `Workflow\V2` {#workflowv2}
 
 `Workflow\V2\WorkflowStub::fake()` oferece um caminho determinístico de testes com execução imediata no mesmo processo para os recursos suportados pelo modo fake da `V2`.

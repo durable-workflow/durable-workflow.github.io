@@ -173,6 +173,17 @@ $result = activity(ChargeCard::class, new ActivityOptions(
 
 `Workflow\Exceptions\NonRetryableExceptionContract` は再試行ポリシーより優先されます。再試行不可の例外を投げると、アクティビティ実行はすぐに失敗し、ワークフローはその例外を受け取って再開します。
 
+### リトライ遅延の分解能 {#retry-delay-resolution}
+
+アクティビティの `backoff()` の値は整数秒です。永続リトライ間隔の分解能は 1 秒です。
+100 ms 後のリトライを要求するために `0.1` のような小数値を使わないでください。
+小数値から間隔を生成する SDK API は、次の整数秒に切り上げます。受け付けるパラメーター型と
+変換については、Python SDK と Rust SDK のリファレンスを参照してください。
+
+遅延が経過すると次の試行を開始できるようになりますが、キューの遅延や Worker の負荷により
+さらに遅れる場合があります。高速なテストには、
+[制御した時刻または回数を制限したゼロ遅延のケース](./testing.md#keeping-delay-tests-fast)を使ってください。
+
 ### アクティビティ実行の識別子と冪等性 {#activity-execution-identity-and-idempotency}
 
 同じ論理アクティビティが複数回観測される原因は、再試行だけではありません。リースの期限切れ、Worker の停止、完了報告の遅延、再配信でも、同じ永続アクティビティ実行に対して別の試行や古い完了報告が発生します。

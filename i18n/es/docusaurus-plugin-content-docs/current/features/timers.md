@@ -37,6 +37,20 @@ class MyWorkflow extends Workflow
 
 <TimerSimulator />
 
+## Resolución de los retrasos {#delay-resolution}
+
+Los retrasos de los temporizadores duraderos se expresan en segundos enteros.
+Pase segundos enteros, como `timer(1)`. Al usar una cadena de intervalo de PHP
+o `CarbonInterval`, una duración positiva con fracciones de segundo se redondea
+hacia arriba al siguiente segundo entero. Por tanto, 100 ms se convierten en un
+segundo. `timer(0)` sigue resolviéndose dentro de la tarea actual.
+
+Que un temporizador venza permite procesarlo. La latencia de la cola y la carga
+de los workers pueden retrasar su ejecución, por lo que esta resolución no
+garantiza un instante exacto de reanudación ni reduce la precisión de las marcas
+de tiempo almacenadas. Consulte las [pruebas](../testing.md#keeping-delay-tests-fast)
+para evitar esperas reales.
+
 Comportamiento de los temporizadores:
 
 - cada llamada `timer()` crea una fila duradera y eventos tipados `TimerScheduled`, `TimerFired` y, al quedar sustituido, `TimerCancelled`;

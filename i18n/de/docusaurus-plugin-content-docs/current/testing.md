@@ -50,6 +50,20 @@ exit($allowed ? 0 : 1);
 
 **Rust:** eine öffentliche Offline-Replay-API fehlt noch. [Rust #105](https://github.com/durable-workflow/sdk-rust/issues/105) verfolgt diese Funktion. Testen Sie den Kandidaten bis dahin gegen eine isolierte Laufzeitumgebung; das bietet nicht die fehlende Offline-Garantie.
 
+## Tests mit Verzögerungen schnell halten {#keeping-delay-tests-fast}
+
+Timer-Verzögerungen und dauerhafter Retry-Backoff verwenden ganze Sekunden. Akzeptiert
+eine SDK-API Sekundenbruchteile und rundet sie auf, wird aus 100 ms eine Sekunde.
+Solche Werte beschleunigen Tests mit vielen Wiederholungen daher nicht.
+
+Verwenden Sie für eingebettete Tests `WorkflowStub::fake()`, simulieren Sie die
+Ergebnisse von Aktivitäten und stellen Sie Laravels Testuhr um die konfigurierte
+Verzögerung vor. Rufen Sie anschließend `WorkflowStub::runReadyTasks()` auf, um
+fällige Arbeit auszuführen. Begrenzen Sie die Anzahl der Versuche. Ein Backoff von
+null Sekunden nur im Test prüft begrenzte Wiederholungen ohne reale Wartezeit.
+Behalten Sie einen separaten Test des tatsächlichen Backoff-Zeitplans bei.
+Eine lokale Testuhr stellt die Uhr eines entfernten Servers nicht vor.
+
 ## `Workflow\V2` {#workflowv2}
 
 `Workflow\V2\WorkflowStub::fake()` bietet einen deterministischen Inline-Testpfad für den unterstützten Funktionsumfang des `V2`-Fakes.

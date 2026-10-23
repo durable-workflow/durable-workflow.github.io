@@ -50,6 +50,21 @@ exit($allowed ? 0 : 1);
 
 **Rust :** aucune API publique de relecture hors ligne n’est encore disponible. [Rust #105](https://github.com/durable-workflow/sdk-rust/issues/105) porte cette capacité. Testez entre-temps le candidat contre un moteur isolé ; cela ne fournit pas la garantie hors ligne manquante.
 
+## Garder les tests avec délais rapides {#keeping-delay-tests-fast}
+
+Les délais des temporisateurs et le backoff des nouvelles tentatives durables
+utilisent des secondes entières. Si une API de SDK accepte les fractions et les
+arrondit vers le haut, 100 ms deviennent une seconde. Ces valeurs n’accélèrent
+donc pas les tests comportant de nombreuses tentatives.
+
+Pour les tests intégrés, utilisez `WorkflowStub::fake()`, simulez les résultats des
+activités et avancez l’horloge de test Laravel du délai configuré. Appelez ensuite
+`WorkflowStub::runReadyTasks()` pour traiter les tâches arrivées à échéance. Gardez
+un nombre fini de tentatives. Un backoff de zéro seconde propre au test permet
+de vérifier des tentatives bornées sans attendre réellement. Conservez un test
+distinct du calendrier réel de backoff. Modifier l’horloge locale de test n’avance
+pas celle d’un Server distant.
+
 ## `Workflow\V2` {#workflowv2}
 
 `Workflow\V2\WorkflowStub::fake()` fournit un parcours de test déterministe dans
