@@ -216,12 +216,16 @@ forward compatibility в документах стабільності паке�
 | Компонент | Підтримувана версія | Ідентичність установлення |
 |-----------|-------------------|------------------|
 | Server | `%%artifact.serverVersion%%` | `%%artifact.serverDockerHubImage%%` |
+| Чарт Helm | `%%artifact.helmChartVersion%%` | `%%artifact.helmChartInstallIdentity%%` |
 | CLI | `%%artifact.cliVersion%%` | `%%artifact.cliInstallerEnv%%` |
 | Рушій Workflow | `%%artifact.workflowVersion%%` | `%%artifact.workflowComposerPackage%%` |
 | Операторський Waterline | `%%artifact.waterlineVersion%%` | `%%artifact.waterlineComposerPackage%%` |
 | PHP SDK | `%%artifact.phpSdkVersion%%` | `%%artifact.phpSdkComposerPackage%%` |
 | Python SDK | `%%artifact.pythonSdkVersion%%` | `%%artifact.pythonPackagePin%%` |
 | Rust SDK | `%%artifact.rustSdkVersion%%` | `%%artifact.rustCargoRequirement%%` |
+
+Записаний `appVersion` чарту Helm — `%%artifact.helmChartAppVersion%%`, що відповідає вибраному Server. [Підтвердження опублікованої пари](%%artifact.helmChartQualificationUrl%%) перевіряє OCI/package digests та ідентичність джерела; це не нова перевірка встановлення кластера. Перед встановленням або перевизначенням образу див. [вибір і оновлення чарту](./deployment.md#helm-chart-selection).
+
 
 PyPI показує версію Python distribution як
 `%%artifact.pythonRegistryVersion%%`. Документоване позначення встановлення

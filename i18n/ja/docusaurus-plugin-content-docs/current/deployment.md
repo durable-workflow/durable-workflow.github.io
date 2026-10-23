@@ -302,12 +302,23 @@ Server リポジトリが[チャートソースとリリース手順](https://gi
 
 ```bash
 helm install durable-workflow \
-  oci://ghcr.io/durable-workflow/charts/durable-workflow \
+  %%artifact.helmChartRepository%% \
+  --version %%artifact.helmChartVersion%% \
   --namespace durable-workflow --create-namespace \
   -f my-values.yaml
 ```
 
-values は外部 MySQL/PostgreSQL・Redis を指し、既存 Kubernetes Secrets で本番認証情報を提供し、環境の ingress・TLS を設定します。永続化・プロバイダー管理インフラは作りません。再現可能な本番では `--version <validated-chart-version>` を加え、Server をダイジェスト固定します。チャート版と更新手順はソースとともに公開します。
+values ファイルでは、外部の MySQL/PostgreSQL と Redis、既存の Kubernetes Secret による本番認証情報、環境に合った ingress/TLS を指定してください。チャートは永続ストレージやプロバイダー管理のインフラを作成しません。再現可能なデプロイのため、Server イメージをダイジェストで固定してください。
+
+### チャートのリリースを選ぶ {#helm-chart-selection}
+
+各チャートリリースは、テスト対象の Server イメージを `Chart.yaml` の `appVersion` に記録します。チャートと Server のバージョン番号は独立しています。選択した[互換な組み合わせ](./compatibility.md#last-qualified-reproducible-tuple)は、チャート **%%artifact.helmChartVersion%%** と Server **%%artifact.helmChartAppVersion%%** で、表やインストールコマンドと同じリリースメタデータに基づきます。[公開済み OCI/パッケージの検証記録](%%artifact.helmChartQualificationUrl%%)が確認するのはその組み合わせであり、新たな Kubernetes インストールではありません。
+
+別の Server バージョンでは、候補の公開済みチャートの `Chart.yaml` を調べ（[選択済みチャートのソース](%%artifact.helmChartSourceUrl%%)を例として参照）、`appVersion` が目的の Server と一致するチャートの正確なバージョンを選んでください。選択したリリースの [UPGRADING ノート](%%artifact.helmChartUpgradeUrl%%)を、途中で通過するすべてのチャートバージョンについて確認してください。Server のバージョンからチャートのバージョンを推測したり、現在のソースから未公開チャートを選んだりしないでください。
+
+`image.tag` の上書きはイメージを変更しますが、チャートに記録された `appVersion` は変わりません。その組み合わせ自体のレンダリング済みマニフェスト、bootstrap、ロールアウト、ランタイムを検証するまでは、カスタムのチャート/イメージ構成です。通常のデータベースバックアップとロールバック境界をアップグレード計画に含めてください。レンダリングの成功だけではデプロイの動作を証明できません。
+
+公開履歴には例外があります。チャート 0.2.2 は、チャートのパッチ番号で Server のマイナーバージョンを跨ぎました。後の[公開済み訂正](https://github.com/durable-workflow/server/blob/2.11.0/k8s/helm/durable-workflow/docs/UPGRADING.md#chart-022--server-210)はこの例外を認め、明示されたマイナーバージョンの方針に戻しています。過去のバージョンは変更されません。この注記は後の Server/チャート構成を選択するものではありません。
 
 ## Kubernetes マニフェスト {#kubernetes-manifests}
 

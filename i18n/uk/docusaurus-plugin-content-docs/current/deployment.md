@@ -429,18 +429,23 @@ SQL-з’єднання.
 
 ```bash
 helm install durable-workflow \
-  oci://ghcr.io/durable-workflow/charts/durable-workflow \
+  %%artifact.helmChartRepository%% \
+  --version %%artifact.helmChartVersion%% \
   --namespace durable-workflow --create-namespace \
   -f my-values.yaml
 ```
 
-Ваш файл значень має вказувати зовнішні MySQL/PostgreSQL і Redis, надавати
-виробничі облікові дані через наявні Kubernetes Secrets та налаштовувати
-вхід до кластера й TLS для вашого середовища. Чарт не створює сховище чи
-інфраструктуру під керуванням провайдера. Для відтворюваних виробничих
-розгортань додайте `--version <validated-chart-version>` і закріпіть образ
-Server за дайджестом. Репозиторій Server публікує версії чарта та документує
-оновлення поруч із його кодом.
+Файл values має вказувати на зовнішні MySQL/PostgreSQL і Redis, отримувати production-облікові дані з наявних Kubernetes Secrets та налаштовувати ingress/TLS для вашого середовища. Чарт не створює сховище чи керовану провайдером інфраструктуру. Для відтворюваного розгортання закріпіть образ Server за digest.
+
+### Вибір випуску чарту {#helm-chart-selection}
+
+Кожен випуск чарту записує образ Server, з яким його перевіряли, у `appVersion` файлу `Chart.yaml`; номери версій чарту й Server незалежні. Вибрана [сумісна комбінація](./compatibility.md#last-qualified-reproducible-tuple) поєднує чарт **%%artifact.helmChartVersion%%** із Server **%%artifact.helmChartAppVersion%%**, використовуючи ті самі метадані випусків, що й таблиця та команда встановлення. [Підтвердження опублікованих OCI/package](%%artifact.helmChartQualificationUrl%%) перевіряє цю пару, а не нове встановлення Kubernetes.
+
+Для іншої версії Server перевірте `Chart.yaml` потрібного опублікованого чарту ([джерело вибраного чарту](%%artifact.helmChartSourceUrl%%) є прикладом) й виберіть точну версію, чий `appVersion` відповідає потрібному Server. Прочитайте [нотатки UPGRADING](%%artifact.helmChartUpgradeUrl%%) вибраного випуску для кожної версії чарту, через яку переходите. Не виводьте версію чарту з версії Server і не вибирайте неопублікований чарт із поточного джерела.
+
+Перевизначення `image.tag` змінює образ, але не записаний `appVersion` чарту. Це власна комбінація чарту й образу, доки вона не пройде перевірку згенерованих маніфестів, bootstrap, rollout і runtime. Включайте звичайні резервні копії бази та межі відкату до плану оновлення; саме успішне генерування маніфестів не доводить працездатність розгортання.
+
+В опублікованій історії є виняток: чарт 0.2.2 перейшов на нову мінорну версію Server під patch-номером чарту. Пізніше [опубліковане виправлення пояснення](https://github.com/durable-workflow/server/blob/2.11.0/k8s/helm/durable-workflow/docs/UPGRADING.md#chart-022--server-210) визнає цей виняток і повертає заявлену політику мінорних версій. Історичні версії незмінні; ця примітка не вибирає новішу комбінацію Server/чарту.
 
 ## Маніфести Kubernetes {#kubernetes-manifests}
 

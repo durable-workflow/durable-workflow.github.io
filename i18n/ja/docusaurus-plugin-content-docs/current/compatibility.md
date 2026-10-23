@@ -163,12 +163,16 @@ Durable Workflow の各公開インターフェースは、次の安定性レベ
 | コンポーネント | サポートするバージョン | インストール識別情報 |
 |-----------|-------------------|------------------|
 | Server | `%%artifact.serverVersion%%` | `%%artifact.serverDockerHubImage%%` |
+| Helm チャート | `%%artifact.helmChartVersion%%` | `%%artifact.helmChartInstallIdentity%%` |
 | CLI | `%%artifact.cliVersion%%` | `%%artifact.cliInstallerEnv%%` |
 | Workflow エンジン | `%%artifact.workflowVersion%%` | `%%artifact.workflowComposerPackage%%` |
 | Waterline 運用ツール | `%%artifact.waterlineVersion%%` | `%%artifact.waterlineComposerPackage%%` |
 | PHP SDK | `%%artifact.phpSdkVersion%%` | `%%artifact.phpSdkComposerPackage%%` |
 | Python SDK | `%%artifact.pythonSdkVersion%%` | `%%artifact.pythonPackagePin%%` |
 | Rust SDK | `%%artifact.rustSdkVersion%%` | `%%artifact.rustCargoRequirement%%` |
+
+Helm チャートに記録された `appVersion` は `%%artifact.helmChartAppVersion%%` で、選択した Server と一致します。[公開済みの組み合わせの検証記録](%%artifact.helmChartQualificationUrl%%)は OCI/パッケージのダイジェストとソース識別子を確認したもので、新たなクラスターインストールの結果ではありません。インストールやイメージの上書き前に、[チャートの選択とアップグレード](./deployment.md#helm-chart-selection)を確認してください。
+
 
 PyPI は Python 配布版を `%%artifact.pythonRegistryVersion%%` と表示します。文書化した PEP 440 のインストール表記 `%%artifact.pythonSdkVersion%%` は、同じリリースに解決します。この正規化が別のサポート対象バージョンを作ることはありません。
 

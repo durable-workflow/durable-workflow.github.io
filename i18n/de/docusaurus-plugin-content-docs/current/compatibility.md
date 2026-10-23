@@ -157,12 +157,16 @@ Die Tabelle zeigt die für diese Dokumentation geprüfte stabile Kombination aus
 | Komponente | Unterstützte Version | Installationsidentität |
 |-----------|-------------------|------------------|
 | Server | `%%artifact.serverVersion%%` | `%%artifact.serverDockerHubImage%%` |
+| Helm-Chart | `%%artifact.helmChartVersion%%` | `%%artifact.helmChartInstallIdentity%%` |
 | CLI | `%%artifact.cliVersion%%` | `%%artifact.cliInstallerEnv%%` |
 | Workflow-Engine | `%%artifact.workflowVersion%%` | `%%artifact.workflowComposerPackage%%` |
 | Waterline-Operator | `%%artifact.waterlineVersion%%` | `%%artifact.waterlineComposerPackage%%` |
 | PHP-SDK | `%%artifact.phpSdkVersion%%` | `%%artifact.phpSdkComposerPackage%%` |
 | Python-SDK | `%%artifact.pythonSdkVersion%%` | `%%artifact.pythonPackagePin%%` |
 | Rust-SDK | `%%artifact.rustSdkVersion%%` | `%%artifact.rustCargoRequirement%%` |
+
+Die aufgezeichnete `appVersion` des Helm-Charts ist `%%artifact.helmChartAppVersion%%` und entspricht dem ausgewählten Server. Der [Prüfbericht zur veröffentlichten Kombination](%%artifact.helmChartQualificationUrl%%) bestätigt OCI-/Paket-Digests und die Quellidentität; er belegt keine neue Clusterinstallation. Lesen Sie vor der Installation oder einem Image-Override die [Chart-Auswahl und Upgrade-Hinweise](./deployment.md#helm-chart-selection).
+
 
 PyPI stellt die Python-Distributionsversion als `%%artifact.pythonRegistryVersion%%` dar. Die dokumentierte PEP-440-Installationsschreibweise `%%artifact.pythonSdkVersion%%` löst dieselbe Veröffentlichung auf. Diese Normalisierung erzeugt keine zweite unterstützte Version.
 
