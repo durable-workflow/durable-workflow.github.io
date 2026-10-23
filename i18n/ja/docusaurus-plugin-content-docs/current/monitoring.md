@@ -167,6 +167,36 @@ Waterline が表示するのは、設定した名前空間と接続先 Server �
 | サービスカタログルートが `backend_capability_unavailable` を報告する | サービスモードは組み込みの名前空間横断サービスカタログを複製しません。接続先 Server のネイティブサービスエンドポイントと API を使います。 |
 | Waterline にカスタムメトリクスがない | Worker のメトリクスエクスポーターを調査。Waterline は永続的な運用の事実を報告し、任意のプロセスメトリクスは扱いません。 |
 
+### 環境バナー {#waterline-environment-banner}
+
+Waterline の環境バナーで本番と非本番のタブを区別できます。以下の変数は組み込み Laravel と独立したサービスモードの両方で使えます。
+
+```dotenv
+WATERLINE_ENV_NAME=production
+WATERLINE_ENV_COLOR="#dc3545"
+```
+
+`WATERLINE_ENV_COLOR` は CSP に対応した固定パレットから色を選びます。
+
+| 受け付ける値 | バナーの色 |
+| --- | --- |
+| `#0d6efd` または `#2563eb` | 青 |
+| `#198754` または `#28a745` | 緑 |
+| `#6f42c1` または `#7746ec` | 紫 |
+| `#dc3545` | 赤 |
+| `#fd7e14` | オレンジ |
+| `#ffc107` | 黄 |
+
+それ以外の値は、`#ff0000` のような有効な十六進数色も含めてニュートラルな灰色になります。目的の色には表の値を使ってください。
+
+組み込み Laravel では `config/waterline.php` の解決済み `env_name` と `env_color` が優先されます。公開済みの設定は環境変数に基づく値を上書きできます。環境に基づく設定を変更したら、アプリケーションの通常のデプロイ手順で設定キャッシュを再構築してください。
+
+```bash
+php artisan config:cache
+```
+
+バナーが `.env` と異なる場合は Waterline の解決済み設定を確認します。再構築までキャッシュ値が適用されます。独立サービスモードでは Waterline のデプロイ環境を更新し、コンテナーを再作成または再デプロイして新しい値を読み込ませます。これらは Waterline の表示設定なので、前述の Waterline サービスに適用してください。
+
 ### Cloud Managed Waterline {#cloud-managed-waterline}
 
 Cloud 顧客は、名前空間単位のマネージド運用インターフェースから Cloud Managed Waterline を開きます。Waterline、Server、PHP、内部エンドポイントをデプロイ・設定せず、二つ目の Waterline ログインも管理しません。上記のセルフホストイメージ、`WATERLINE_*` 設定、Server トークン、データベース、入口認証の手順は適用されません。

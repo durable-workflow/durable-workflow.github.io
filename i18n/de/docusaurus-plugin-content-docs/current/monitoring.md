@@ -169,6 +169,36 @@ Waterline zeigt nur den konfigurierten Namespace und die vom verbundenen Server 
 | Eine Dienstkatalogroute meldet `backend_capability_unavailable` | Der Dienstmodus spiegelt Waterlines eingebetteten Namespace-übergreifenden Dienstkatalog nicht. Verwenden Sie dafür native Dienstendpunkte und API des verbundenen Servers. |
 | Eine eigene Metrik fehlt in Waterline | Den Metrikexporter des Workers prüfen. Waterline meldet dauerhafte Operatorfakten, keine beliebigen Prozessmetriken. |
 
+### Umgebungsbanner {#waterline-environment-banner}
+
+Kennzeichnen Sie Produktions- und Nichtproduktions-Tabs mit dem Waterline-Umgebungsbanner. Diese Variablen funktionieren in eingebettetem Laravel und im eigenständigen Service-Modus:
+
+```dotenv
+WATERLINE_ENV_NAME=production
+WATERLINE_ENV_COLOR="#dc3545"
+```
+
+`WATERLINE_ENV_COLOR` wählt aus einer festen CSP-kompatiblen Palette:
+
+| Akzeptierter Wert | Bannerfarbe |
+| --- | --- |
+| `#0d6efd` oder `#2563eb` | Blau |
+| `#198754` oder `#28a745` | Grün |
+| `#6f42c1` oder `#7746ec` | Violett |
+| `#dc3545` | Rot |
+| `#fd7e14` | Orange |
+| `#ffc107` | Gelb |
+
+Andere Werte erscheinen neutral grau, auch gültige Hexfarben wie `#ff0000`. Verwenden Sie einen Tabellenwert für die gewünschte Farbe.
+
+In eingebettetem Laravel sind die aufgelösten Schlüssel `env_name` und `env_color` in `config/waterline.php` maßgeblich. Eine veröffentlichte Konfiguration kann umgebungsbasierte Werte überschreiben. Erstellen Sie nach Änderungen den Konfigurationscache der Anwendung im normalen Deployment neu:
+
+```bash
+php artisan config:cache
+```
+
+Wenn das Banner von `.env` abweicht, prüfen Sie die aufgelöste Waterline-Konfiguration. Der Cache bleibt bis zur Neuerstellung wirksam. Aktualisieren Sie im eigenständigen Service-Modus die Waterline-Deployment-Umgebung und erstellen oder deployen Sie den Waterline-Container neu, damit er die Werte lädt. Dies sind Waterline-Anzeigeeinstellungen; wenden Sie sie auf den oben beschriebenen Waterline-Service an.
+
 ### Cloud Managed Waterline {#cloud-managed-waterline}
 
 Cloud-Kunden öffnen Cloud Managed Waterline über die Namespace-bezogene verwaltete Operatoroberfläche. Sie stellen Waterline, Server, PHP oder interne Endpunkte weder bereit noch konfigurieren sie diese und pflegen keine zweite Waterline-Anmeldung. Die obigen Anweisungen zu selbst gehostetem Image, `WATERLINE_*`, Servertoken, Datenbank und äußerer Authentifizierung gelten für diesen Weg nicht.
