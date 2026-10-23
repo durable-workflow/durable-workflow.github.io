@@ -63,6 +63,8 @@ Déplacez ces opérations dans des activités, ou utilisez une fonction de workf
 
 Consultez les [contraintes des workflows](./workflow-constraints.md) pour les règles d’écriture et le [fonctionnement interne](../how-it-works.md) pour le modèle de relecture.
 
+Pour les règles Rust sur `HashMap`, l’horloge, l’aléatoire et l’ordre des futures, consultez les [remplacements durables](../polyglot/rust.md#rust-determinism-rules). Le SDK Rust 4.5.0 ajoute les [tests d’activités/workflows sans Server et la relecture d’historiques enregistrés](../polyglot/rust.md#offline-testing-and-replay) ; gardez l’intégration pour ses limites d’exécution documentées.
+
 ## Pourquoi les activités et les effets de bord doivent être idempotents {#why-activities-and-side-effects-must-be-idempotent}
 
 Les activités franchissent la frontière de persistance vers les bases de données, API de paiement, fournisseurs d’e-mail, stockages objet et autres systèmes. Elles peuvent être livrées de nouveau après une expiration, une nouvelle tentative, une défaillance de worker ou l’expiration d’un bail. Un worker peut même terminer la modification externe puis échouer avant que Durable Workflow reçoive son compte rendu.

@@ -63,6 +63,8 @@ Durable Workflow はコミット済みの履歴をリプレイしてオーケス
 
 記述ルールは[ワークフローの制約](./workflow-constraints.md)、リプレイのモデルは[仕組み](../how-it-works.md)を参照してください。
 
+Rust の `HashMap`、時計、乱数、future の順序については[永続的な代替手段](../polyglot/rust.md#rust-determinism-rules)を参照してください。Rust SDK 4.5.0 は[Server 不要のアクティビティ/ワークフローテストと記録済み履歴のリプレイ](../polyglot/rust.md#offline-testing-and-replay)を追加します。文書化された実行制限には統合テストを残してください。
+
 ## アクティビティと副作用に冪等性が必要な理由 {#why-activities-and-side-effects-must-be-idempotent}
 
 アクティビティは永続化の境界を越え、データベース、決済 API、メールプロバイダー、オブジェクトストレージなどのシステムを操作します。タイムアウト、リトライ、Worker 障害、リース失効後に再配信されることがあります。外部の変更が完了しても、その報告を Durable Workflow が受け取る前に Worker が失敗する場合もあります。

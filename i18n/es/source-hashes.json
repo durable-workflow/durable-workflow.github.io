@@ -15,7 +15,7 @@
   "constraints/activity-constraints.md": "5a953d0e95e750b6c02d1c72b72199fb3ff4687540cebc56aa3b216cf667bb05",
   "constraints/constraints-summary.md": "fb48d01502388fc3821eae3790f470ed29cec91545420450f96fc77b84e589f1",
   "constraints/execution-guarantees.md": "e0903f1d6d7461191f2190453f9f96ce9bdcf6811e7e99c7d51f81e2f58ef27d",
-  "constraints/idempotent-vs-deterministic.md": "980c1b6a1075bfedfc32fa785be793a0c5aa3a13a1c4204029eb97127c54a602",
+  "constraints/idempotent-vs-deterministic.md": "f7396f01a4111ce187e751b009c1efb96f5538e8a602006eed24f7b1d8f44adf",
   "constraints/overview.md": "fd6c842c6c22d6f0df37a52de15ca74b34664f5ecd78af0c08b1e0cdb9a2be1f",
   "constraints/structural-limits.md": "3dfeac3620285f5271653c31392e26e5111fe814ece08fc44367b5786d99c47d",
   "constraints/workflow-constraints.md": "a69c8a118dc790a5d7b6c91806cb7ceca3015004a0fe549aee3094b09cbf17ad",
@@ -84,7 +84,7 @@
   "polyglot/prerelease-history-migration.md": "a57f05f492228a8a67791f9152648a1e5f80856325b78777cf63b6ef49b7413c",
   "polyglot/python.md": "b0cddc8757690c94087f1d91b0edf2820e2673b834d43e8fcbbc1cf5bd6ea028",
   "polyglot/rust-cloud-quickstart.md": "2303434fc9302a81a8381ad4836423ef9952eb3201a4574c432254e3cb68c5f3",
-  "polyglot/rust.md": "0bb9929cafe2751e1fde615ee033e127c5f6c6eaa8d4bbae941b4e1e86b06d58",
+  "polyglot/rust.md": "db805e1b3919eb4a249e4924f498ee86f30f79a0b5ff4b780f128628331d7f0c",
   "polyglot/server-api-reference.md": "e94af77a13b341d6fdc9941d4ee94e5053ab932d2e77069b238eb33351414e83",
   "polyglot/server-config-reference.md": "edb4cf00b9df2c9946b32a81c6bb2c4db6eaee89794b85286c61c235a4846414",
   "polyglot/server-role-topology.md": "3d048f0c6b5f179399622508f51e67fff8aa5a6d5b2492533fc720eeec2c27f2",
@@ -102,6 +102,6 @@
   "sdk-neutrality.md": "7b0714c123ade4904591870fc20e9a797da1e5485b2a6c87ca3eaa00c5de6ed6",
   "sponsors.md": "e85e14375743ca8fa50e3a48f894b160e28272573aa88480064f74010ebee98a",
   "support.md": "706807b3902599dda6080f632ec1f893017ea18bbe9585f533dcdbd6d85f4621",
-  "testing.md": "d101eac666cf25c79229378212d01d548c8179cb313ff59768e4036374648be1",
+  "testing.md": "c26048b42e1589d9e8db4a7b48ac8862808d25ca74fb389c41bac73456a87ecc",
   "waterline-operator-api.md": "2aca03b2c14100060b40be0bb033a82525ba924908834e9060ec746ead26f36d"
 }

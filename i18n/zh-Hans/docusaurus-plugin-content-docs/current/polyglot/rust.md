@@ -289,6 +289,103 @@ Rust SDK 使用 `WorkflowContext::side_effect` 记录小型非确定性值，并
 
 使用 `WorkflowContext::get_version(change_id, min_supported, max_supported)`，在发布期间保持新旧工作流分支重放兼容。新运行记录 `max_supported`；现有运行复用持久标记。`patched(change_id)` 提供布尔形式的发布控制；旧分支排空后，`deprecate_patch(change_id)` 保留标记。共享持久语义见[副作用](/docs/features/side-effects/)和[版本管理](/docs/features/versioning/)。
 
+## Rust 确定性规则 {#rust-determinism-rules}
+
+对于已记录的输入和历史，重放必须按相同顺序生成相同的持久命令。Rust 常规集合、时钟和并发原语不会自动保持这一约定：
+
+| 工作流代码中的模式 | 持久替代方式 |
+| --- | --- |
+| 遍历 `HashMap` 时调度 | 先对键排序，或使用 `BTreeMap`。 |
+| 读取系统时钟、`thread_rng` 或新 UUID | 用 `ctx.side_effect(...)` 记录快照，或使用活动。 |
+| `tokio::time::sleep` 或 `std::thread::sleep` | `ctx.sleep(...)` 或 `ctx.start_timer(...)`。 |
+| `tokio::select!` 或普通 future 竞争 | `ctx.select(...)` 或 `ctx.select_keyed(...)`。 |
+| 未跟踪的并发持久调用 | 使用输入顺序稳定的 `ctx.parallel(...)`。 |
+| 网络、文件系统或可变外部 I/O | 已注册的活动。 |
+| 部署时更改既有命令顺序 | 使用稳定的 `ctx.get_version(...)` 分支，并用记录的历史测试。 |
+
+活动的外部副作用仍需幂等；确定性不会让重复付款或文件写入变得安全。参见[幂等与确定性](../constraints/idempotent-vs-deterministic.md)。
+
+## 离线测试与重放 {#offline-testing-and-replay}
+
+这些 API 需要 Rust SDK **4.5.0 或更新版本**。请检查 `Cargo.lock`：上方独立的安装组合可能选择没有这些 API 的旧 crate。[4.5.0 常规安装验证](https://github.com/durable-workflow/sdk-rust/issues/105#issuecomment-6362112580)确认了十二项无需 Server 的检查、本编译示例和真实 Server 2.11.0 的导出/重放。它不会提升当前选择的 Server/SDK 组合。
+
+### 活动与工作流单元测试 {#rust-activity-workflow-tests}
+
+`testing::WorkflowEnvironment` 在当前进程执行已注册的工作流和活动。通过 `from_worker(worker)` 复用应用注册，或直接注册回调；`worker_mut()` 提供常规类型化注册 API。Mock 必须显式指定：真实活动回调会执行自己的代码，因此应主动替换外部副作用。
+
+已验证方案使用 `durable-workflow = "=4.5.0"`、启用 `macros`、`rt-multi-thread` 和 `time` 的 Tokio，以及供下方导出辅助函数使用的 `serde_json = "1"`。把发布示例保存为 `examples/workflow_testing.rs`，执行 `cargo run --example workflow_testing`：
+
+```rust
+//! Run with `cargo run --example workflow_testing`; no Server is required.
+use durable_workflow::{
+    json,
+    testing::{WorkflowEnvironment, WorkflowHistory},
+    Result,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let mut env = WorkflowEnvironment::new()?;
+    env.register_activity("greet", |_, args| async move {
+        Ok(json!(format!(
+            "Hello, {}!",
+            args[0].as_str().unwrap_or("friend")
+        )))
+    });
+    env.register_workflow("hello", |ctx, args| async move {
+        ctx.activity("greet", args).await
+    });
+
+    // An activity unit test executes the real callback and argument adapters.
+    assert_eq!(
+        env.run_activity("greet", "Ada").await?,
+        json!("Hello, Ada!")
+    );
+    // A workflow unit test may replace activity callbacks explicitly.
+    env.mock_activity("greet", |_, args| async move {
+        Ok(json!({"greeting_for":args[0]}))
+    });
+    assert_eq!(
+        env.run_workflow("hello", "Ada").await?,
+        json!({"greeting_for":"Ada"})
+    );
+
+    // Replay executes the same registered workflow without running activities.
+    // In a deployment test, read the JSON produced by dw workflow:history-export
+    // or Client::export_workflow_history instead of this captured test history.
+    let history = WorkflowHistory::from_export(env.last_history().unwrap().export())?;
+    assert!(env.replay(&history)?.completed);
+    println!("activity, workflow and offline replay passed");
+    Ok(())
+}
+```
+
+直接调用 `run_activity` 执行一次尝试。在 `run_workflow` 内，已记录的重试策略会在终态失败交给工作流代码之前应用。真实或模拟的远程/本地活动失败使用类型化的 `Error::ActivityFailed`，包含异常类型、尝试编号和不可重试标记；未捕获的工作流错误保留原始 Rust 变体。心跳在本地收集。若 JSON 无法保留原始 Avro 值，应使用 `*_avro_value` 变体。
+
+### 重放导出的运行 {#rust-replay-export}
+
+注册候选工作流，再加载 `dw workflow:history-export` 或 `Client::export_workflow_history(workflow_id, run_id).await?` 生成的自包含 JSON 包。把此辅助函数加入上方示例；它复用那些导入，并期望已完成的测试运行：
+
+```rust
+fn replay(env: WorkflowEnvironment) -> std::result::Result<(), Box<dyn std::error::Error>> {
+let export = serde_json::from_slice(&std::fs::read("workflow-history.json")?)?;
+let history = WorkflowHistory::from_export(export)?;
+let report = env.replay(&history)?;
+assert!(report.completed); // A running snapshot can remain durably pending.
+Ok(())
+}
+```
+
+对于原始历史，应合并**所有分页**，使用 `WorkflowHistory::from_history("hello", original_input, response)`，并在缺失时提供原始任务队列。保留原始输入和已记录结果；被裁剪/隐藏的载荷、未解析的外部引用以及剩余分页令牌会被拒绝。SDK 导出辅助函数会在下载时解析载荷引用。重放本身不会联系 Server，也不会执行活动回调。
+
+重放使用 Worker 的解码、副作用、版本标记和已记录 select 结果处理路径。更改或重排命令会返回 `Error::NonDeterministicReplay(ReplayFailure)`，包含 `sequence`、`expected`、`actual`；已安装包的真实导出检查在序列 3 发现更改的活动。超出快照的新命令也会失败。未结束的快照可能显示持久等待的历史前缀，而不是完成：应断言预期结果，并用新的进程内执行与集成测试覆盖新分支。参见[已发布重放检查](https://github.com/durable-workflow/sdk-rust/blob/4.5.0/tests/workflow_testing.rs)。
+
+### 执行限制 {#rust-test-execution-limits}
+
+定时器和重试等待会被跳过。并行回调按命令顺序执行，因此此环境不能测试调度竞争或性能。它不模拟队列、租约或部署行为。活动回调必须让出执行权；`max_steps(n)` 限制持久执行轮次、命令和尝试次数（默认 10,000），而 `tokio::time::timeout` 可限制异步回调时间。
+
+活动超时模拟、**新的 select 竞争**、信号、子工作流、服务、会话、continue-as-new 和取消需要集成测试；不支持的命令返回 `Error::Testing`。已有记录中的 select 胜出者可以重放，但新的 select 竞争不会被模拟。应保留真实运行时测试来验证这些边界。参见[测试 API](https://rust.durable-workflow.com/durable_workflow/testing/index.html)和[已发布执行约定](https://github.com/durable-workflow/sdk-rust/blob/4.5.0/README.md#testing-without-a-server)。
+
 ## 入口兼容性与恢复 {#entry-compatibility-and-recovery}
 
 **已发布支持。** Rust SDK 3.5.6 引入了下述入口保护，Server 2.9.9 提供了配套的路由和恢复支持。这些是相应功能的最低支持版本；请安装当前稳定版本以获取安全修复。

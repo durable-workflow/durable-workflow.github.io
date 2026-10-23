@@ -462,6 +462,103 @@ Marker erneut. `patched(change_id)` bietet die boolesche Rollout-Form.
 Die gemeinsame dauerhafte Semantik beschreiben [Seiteneffekte](/docs/features/side-effects/)
 und [Versionierung](/docs/features/versioning/).
 
+## Rust-Regeln für Determinismus {#rust-determinism-rules}
+
+Ein Replay muss für aufgezeichnete Eingabe und Historie dieselben dauerhaften Befehle in derselben Reihenfolge erzeugen. Gewöhnliche Rust-Sammlungen, Uhren und Nebenläufigkeitsprimitive erhalten diesen Vertrag nicht automatisch:
+
+| Muster im Workflow-Code | Dauerhafter Ersatz |
+| --- | --- |
+| Beim Durchlaufen einer `HashMap` planen | Schlüssel vorher sortieren oder eine `BTreeMap` verwenden. |
+| Systemzeit, `thread_rng` oder neue UUID lesen | Snapshot mit `ctx.side_effect(...)` aufzeichnen oder eine Activity verwenden. |
+| `tokio::time::sleep` oder `std::thread::sleep` | `ctx.sleep(...)` oder `ctx.start_timer(...)`. |
+| `tokio::select!` oder gewöhnliche Futures gegeneinander starten | `ctx.select(...)` oder `ctx.select_keyed(...)`. |
+| Nicht verfolgte parallele dauerhafte Aufrufe | `ctx.parallel(...)` mit stabiler Eingabereihenfolge. |
+| Netzwerk, Dateisystem oder veränderliche externe E/A | Eine registrierte Activity. |
+| Bestehende Befehlsreihenfolge beim Deployment ändern | Stabilen `ctx.get_version(...)`-Zweig anhand aufgezeichneter Historie testen. |
+
+Externe Activity-Effekte müssen weiterhin idempotent sein. Determinismus macht eine wiederholte Zahlung oder Dateiänderung nicht sicher. Siehe [Idempotenz und Determinismus](../constraints/idempotent-vs-deterministic.md).
+
+## Offline-Tests und Replay {#offline-testing-and-replay}
+
+Diese APIs benötigen Rust SDK **4.5.0 oder neuer**. Prüfen Sie `Cargo.lock`: Die gesonderte Installationskombination oben kann eine ältere Crate ohne diese APIs wählen. Der [Prüfbericht zur normalen Installation von 4.5.0](https://github.com/durable-workflow/sdk-rust/issues/105#issuecomment-6362112580) bestätigt zwölf Kontrollen ohne Server, dieses kompilierte Beispiel und Export/Replay eines echten Server 2.11.0. Er wählt keine neue Server-/SDK-Kombination aus.
+
+### Unit-Tests für Activities und Workflows {#rust-activity-workflow-tests}
+
+`testing::WorkflowEnvironment` führt registrierte Workflows und Activities im aktuellen Prozess aus. Nutzen Sie `from_worker(worker)` für Anwendungsregistrierungen oder registrieren Sie Callbacks direkt. `worker_mut()` stellt die normalen typisierten Registrierungs-APIs bereit. Mocks sind explizit: Reale Activity-Callbacks führen ihren eigenen Code aus; ersetzen Sie externe Effekte daher bewusst.
+
+Verwenden Sie für das geprüfte Rezept `durable-workflow = "=4.5.0"`, Tokio mit `macros`, `rt-multi-thread` und `time` sowie `serde_json = "1"` für den Export-Helfer unten. Speichern Sie das veröffentlichte Beispiel als `examples/workflow_testing.rs` und starten Sie `cargo run --example workflow_testing`:
+
+```rust
+//! Run with `cargo run --example workflow_testing`; no Server is required.
+use durable_workflow::{
+    json,
+    testing::{WorkflowEnvironment, WorkflowHistory},
+    Result,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let mut env = WorkflowEnvironment::new()?;
+    env.register_activity("greet", |_, args| async move {
+        Ok(json!(format!(
+            "Hello, {}!",
+            args[0].as_str().unwrap_or("friend")
+        )))
+    });
+    env.register_workflow("hello", |ctx, args| async move {
+        ctx.activity("greet", args).await
+    });
+
+    // An activity unit test executes the real callback and argument adapters.
+    assert_eq!(
+        env.run_activity("greet", "Ada").await?,
+        json!("Hello, Ada!")
+    );
+    // A workflow unit test may replace activity callbacks explicitly.
+    env.mock_activity("greet", |_, args| async move {
+        Ok(json!({"greeting_for":args[0]}))
+    });
+    assert_eq!(
+        env.run_workflow("hello", "Ada").await?,
+        json!({"greeting_for":"Ada"})
+    );
+
+    // Replay executes the same registered workflow without running activities.
+    // In a deployment test, read the JSON produced by dw workflow:history-export
+    // or Client::export_workflow_history instead of this captured test history.
+    let history = WorkflowHistory::from_export(env.last_history().unwrap().export())?;
+    assert!(env.replay(&history)?.completed);
+    println!("activity, workflow and offline replay passed");
+    Ok(())
+}
+```
+
+Direktes `run_activity` führt einen Versuch aus. In `run_workflow` gilt die aufgezeichnete Retry-Richtlinie, bevor ein endgültiger Fehler den Workflow erreicht. Reale oder simulierte Fehler entfernter/lokaler Activities werden zu typisiertem `Error::ActivityFailed` mit Ausnahmetyp, Versuchsnummer und Nicht-wiederholbar-Markierung. Ein nicht abgefangener Workflow-Fehler behält seine ursprüngliche Rust-Variante. Heartbeats werden lokal erfasst. Nutzen Sie `*_avro_value`-Varianten, wenn JSON den ursprünglichen Avro-Wert nicht bewahrt.
+
+### Einen exportierten Lauf wiedergeben {#rust-replay-export}
+
+Registrieren Sie den Kandidaten-Workflow und laden Sie ein vollständiges JSON-Bundle aus `dw workflow:history-export` oder `Client::export_workflow_history(workflow_id, run_id).await?`. Ergänzen Sie das obige Beispiel um diesen Helfer; er verwendet dessen Imports und erwartet einen abgeschlossenen Testlauf:
+
+```rust
+fn replay(env: WorkflowEnvironment) -> std::result::Result<(), Box<dyn std::error::Error>> {
+let export = serde_json::from_slice(&std::fs::read("workflow-history.json")?)?;
+let history = WorkflowHistory::from_export(export)?;
+let report = env.replay(&history)?;
+assert!(report.completed); // A running snapshot can remain durably pending.
+Ok(())
+}
+```
+
+Für rohe Historie kombinieren Sie **alle Seiten** und verwenden `WorkflowHistory::from_history("hello", original_input, response)`. Geben Sie die ursprüngliche Task-Queue an, falls sie fehlt. Bewahren Sie Eingabe und aufgezeichnete Ergebnisse: beschnittene/geschwärzte Payloads, ungelöste externe Referenzen und verbleibende Seitentoken werden abgewiesen. Der SDK-Export-Helfer löst Payload-Referenzen beim Herunterladen auf. Replay selbst kontaktiert keinen Server und führt keine Activity-Callbacks aus.
+
+Replay nutzt die Worker-Pfade für Dekodierung, Side Effects, Versionsmarker und aufgezeichnete Select-Auflösungen. Geänderte oder umgeordnete Befehle liefern `Error::NonDeterministicReplay(ReplayFailure)` mit `sequence`, `expected` und `actual`; die installierte Kontrolle mit echtem Export findet eine geänderte Activity bei Sequenz 3. Neue Befehle jenseits des Snapshots schlagen ebenfalls fehl. Ein offener Snapshot kann statt Abschluss einen dauerhaft wartenden Präfix melden. Prüfen Sie das erwartete Ergebnis und testen Sie neue Zweige mit frischer Ausführung im Prozess sowie Integrationstests. Siehe die [veröffentlichten Replay-Kontrollen](https://github.com/durable-workflow/sdk-rust/blob/4.5.0/tests/workflow_testing.rs).
+
+### Ausführungsgrenzen {#rust-test-execution-limits}
+
+Timer- und Retry-Wartezeiten werden übersprungen. Parallele Callbacks laufen in Befehlsreihenfolge; diese Umgebung prüft keine Scheduling-Rennen oder Leistung. Sie simuliert keine Queues, Leases oder Deployments. Callbacks müssen Kontrolle abgeben. `max_steps(n)` begrenzt dauerhafte Schritte, Befehle und Versuche (Standard 10.000); `tokio::time::timeout` kann asynchrone Callback-Zeit begrenzen.
+
+Activity-Timeout-Simulation, **neue Select-Rennen**, Signale, Kinder, Services, Sessions, Continue-as-new und Abbruch brauchen Integrationstests. Nicht unterstützte Befehle liefern `Error::Testing`. Ein aufgezeichneter Select-Gewinner kann wiedergegeben werden, obwohl kein neues Rennen simuliert wird. Behalten Sie Tests mit echtem Runtime-Betrieb für diese Grenzen bei. Siehe die [Test-API](https://rust.durable-workflow.com/durable_workflow/testing/index.html) und den [veröffentlichten Ausführungsvertrag](https://github.com/durable-workflow/sdk-rust/blob/4.5.0/README.md#testing-without-a-server).
+
 ## Kompatibilität am Einstieg und Wiederherstellung {#entry-compatibility-and-recovery}
 
 **Veröffentlichte Unterstützung.** Rust SDK 3.5.6 hat den nachfolgenden Einstiegsschutz eingeführt, ergänzt durch Routing und Wiederherstellung in Server 2.9.9. Dies sind die Mindestversionen für diese Funktionen. Installieren Sie aktuelle stabile Versionen, um Sicherheitskorrekturen zu erhalten.

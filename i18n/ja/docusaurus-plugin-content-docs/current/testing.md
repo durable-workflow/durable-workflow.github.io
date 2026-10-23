@@ -48,7 +48,7 @@ exit($allowed ? 0 : 1);
 
 **Python:** 登録した候補ワークフローに対して `Replayer.replay()` または `verify_replay()` を使い、期待する結果を検証します。オブジェクトが返るだけではテストの成功になりません。イベントに入力が含まれない場合は、デコードした元の `start_input` を渡してください。Core のエクスポートでは `payloads.arguments` に保存されます。記録された型、ID、コーデックを維持します。[Python のリプレイ API](https://python.durable-workflow.com/sdk-reference/#replay-captured-histories)を参照してください。`--simulate-bundles` が確認するのは整合性であり、候補コードではありません。現行スキーマ 2 との互換性は [Python #173](https://github.com/durable-workflow/sdk-python/issues/173) で管理しています。拒否を回避するためにバージョンやチェックサムを書き換えないでください。
 
-**Rust:** 公開されたオフラインリプレイ API はまだありません。この機能は [Rust #105](https://github.com/durable-workflow/sdk-rust/issues/105) が担当します。当面は隔離したランタイムに対して候補をテストしてください。それによって不足しているオフラインの保証が得られるわけではありません。
+**Rust:** SDK **4.5.0 以降**の `testing::WorkflowEnvironment` と `WorkflowHistory` で、Server 不要のアクティビティ/ワークフローテストと自己完結したエクスポートのリプレイができます。候補の登録を再利用し、元の入力/全履歴ページを保持して、完了または期待する待機プレフィックスをアサートしてください。不一致は永続シーケンスと期待/実際のコマンドを持つ型付き `Error::NonDeterministicReplay` になります。新しい select 競合など未対応の実行経路には統合テストが必要です。[Rust テスト、決定性ルール、リプレイ例](./polyglot/rust.md#offline-testing-and-replay)を参照してください。
 
 ## 遅延を含むテストを高速に保つ {#keeping-delay-tests-fast}
 

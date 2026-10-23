@@ -449,6 +449,103 @@ runs record `max_supported`; existing runs reuse the durable marker.
 drained. See [Side Effects](/docs/features/side-effects/) and
 [Versioning](/docs/features/versioning/) for the shared durable semantics.
 
+## Rust determinism rules {#rust-determinism-rules}
+
+A replay must produce the same durable commands in the same order for the recorded input and history. Rust's ordinary collections, clocks and concurrency primitives do not automatically preserve that contract:
+
+| Pattern in workflow code | Durable replacement |
+| --- | --- |
+| Scheduling while iterating a `HashMap` | Sort keys first or use a `BTreeMap`. |
+| System-clock reads, `thread_rng` or a new UUID | Record a snapshot with `ctx.side_effect(...)`, or use an activity. |
+| `tokio::time::sleep` or `std::thread::sleep` | `ctx.sleep(...)` or `ctx.start_timer(...)`. |
+| `tokio::select!` or racing ordinary futures | `ctx.select(...)` or `ctx.select_keyed(...)`. |
+| Untracked concurrent durable calls | `ctx.parallel(...)` with stable input ordering. |
+| Network, filesystem or mutable external I/O | A registered activity. |
+| Changing existing command order on deployment | A stable `ctx.get_version(...)` branch, tested against recorded history. |
+
+Activities still need idempotent external effects; determinism does not make a repeated payment or file write safe. See [idempotency versus determinism](../constraints/idempotent-vs-deterministic.md).
+
+## Offline tests and replay {#offline-testing-and-replay}
+
+These APIs require Rust SDK **4.5.0 or newer**. Check `Cargo.lock`: the separate installation tuple above may select an older crate without them. The [normal installed 4.5.0 receipt](https://github.com/durable-workflow/sdk-rust/issues/105#issuecomment-6362112580) verifies twelve Server-free controls, this compiled example and a real Server 2.11.0 export/replay. It does not promote a new Server/SDK tuple.
+
+### Activity and workflow unit tests {#rust-activity-workflow-tests}
+
+`testing::WorkflowEnvironment` runs registered workflows and activities in the current process. Use `from_worker(worker)` to reuse the application's registrations, or register callbacks directly; `worker_mut()` exposes the normal typed registration APIs. Mocks are explicit: real activity callbacks execute their own code, so replace external effects deliberately.
+
+Use `durable-workflow = "=4.5.0"` for the qualified recipe, Tokio with `macros`, `rt-multi-thread` and `time`, and `serde_json = "1"` for the export helper below. Save the released example as `examples/workflow_testing.rs` and run `cargo run --example workflow_testing`:
+
+```rust
+//! Run with `cargo run --example workflow_testing`; no Server is required.
+use durable_workflow::{
+    json,
+    testing::{WorkflowEnvironment, WorkflowHistory},
+    Result,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let mut env = WorkflowEnvironment::new()?;
+    env.register_activity("greet", |_, args| async move {
+        Ok(json!(format!(
+            "Hello, {}!",
+            args[0].as_str().unwrap_or("friend")
+        )))
+    });
+    env.register_workflow("hello", |ctx, args| async move {
+        ctx.activity("greet", args).await
+    });
+
+    // An activity unit test executes the real callback and argument adapters.
+    assert_eq!(
+        env.run_activity("greet", "Ada").await?,
+        json!("Hello, Ada!")
+    );
+    // A workflow unit test may replace activity callbacks explicitly.
+    env.mock_activity("greet", |_, args| async move {
+        Ok(json!({"greeting_for":args[0]}))
+    });
+    assert_eq!(
+        env.run_workflow("hello", "Ada").await?,
+        json!({"greeting_for":"Ada"})
+    );
+
+    // Replay executes the same registered workflow without running activities.
+    // In a deployment test, read the JSON produced by dw workflow:history-export
+    // or Client::export_workflow_history instead of this captured test history.
+    let history = WorkflowHistory::from_export(env.last_history().unwrap().export())?;
+    assert!(env.replay(&history)?.completed);
+    println!("activity, workflow and offline replay passed");
+    Ok(())
+}
+```
+
+Direct `run_activity` executes one attempt. Within `run_workflow`, recorded retry policy applies before a terminal failure reaches workflow code. Real or mocked remote/local activity failures use typed `Error::ActivityFailed`, with exception type, attempt number and non-retryable metadata; an uncaught workflow error keeps its original Rust variant. Heartbeats are captured locally. Use the `*_avro_value` variants when JSON cannot preserve the original Avro value.
+
+### Replay an exported run {#rust-replay-export}
+
+Register the candidate workflow, then load a self-contained JSON bundle from `dw workflow:history-export` or `Client::export_workflow_history(workflow_id, run_id).await?`. Add this helper to the example above; it uses those imports and expects a completed fixture:
+
+```rust
+fn replay(env: WorkflowEnvironment) -> std::result::Result<(), Box<dyn std::error::Error>> {
+let export = serde_json::from_slice(&std::fs::read("workflow-history.json")?)?;
+let history = WorkflowHistory::from_export(export)?;
+let report = env.replay(&history)?;
+assert!(report.completed); // A running snapshot can remain durably pending.
+Ok(())
+}
+```
+
+For raw history, combine **all pages** and use `WorkflowHistory::from_history("hello", original_input, response)`, supplying the original task queue when absent. Keep original input and recorded results; pruned/redacted payloads, unresolved external references and remaining page tokens are refused. The SDK export helper resolves payload references while downloading. Replay itself contacts no Server and runs no activity callbacks.
+
+Replay uses the worker's decoding, side-effect, version-marker and recorded select-resolution paths. Changed or reordered commands return `Error::NonDeterministicReplay(ReplayFailure)` with `sequence`, `expected` and `actual`; the installed real-export control finds a changed activity at sequence 3. New commands beyond the snapshot also fail. An open snapshot may report a durably pending prefix rather than completion: assert the expected outcome, and use fresh in-process execution plus integration tests for new branches. See the [released replay controls](https://github.com/durable-workflow/sdk-rust/blob/4.5.0/tests/workflow_testing.rs).
+
+### Execution limits {#rust-test-execution-limits}
+
+Timer and retry delays are skipped. Parallel callbacks run in command order, so this environment does not test scheduling races or performance. It does not simulate queues, leases or deployment behavior. Activity callbacks must yield; `max_steps(n)` bounds durable turns, commands and attempts (default 10,000), while `tokio::time::timeout` can bound asynchronous callback time.
+
+Activity-timeout simulation, **new select races**, signals, children, services, sessions, continue-as-new and cancellation need integration tests; unsupported commands return `Error::Testing`. A recorded select winner can replay even though a new select race is not simulated. Keep live-runtime tests for those boundaries. See the [testing API](https://rust.durable-workflow.com/durable_workflow/testing/index.html) and [released execution contract](https://github.com/durable-workflow/sdk-rust/blob/4.5.0/README.md#testing-without-a-server).
+
 ## Entry compatibility and recovery {#entry-compatibility-and-recovery}
 
 **Released support.** Rust SDK 3.5.6 introduced the entry safeguard below, with routing and recovery support in Server 2.9.9. These are minimum feature versions; install current stable releases for security fixes.
