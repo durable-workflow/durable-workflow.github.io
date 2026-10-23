@@ -1,0 +1,10 @@
+{
+  "server": "durableworkflow/server@sha256:b29157eb2cf844916debbbb3c01b3257672e0dece778a9c6fa539043a3038f02",
+  "server_version": "2.11.0",
+  "php_sdk": "3.4.1",
+  "php_source": "cb1d11e57767e20e1fdb8081024f67057ff66714",
+  "python_sdk": "2.9.0",
+  "rust_sdk": "4.7.0",
+  "rust_checksum": "dc6c0353e940a068f4a71eef8dc516d920c88be34f9c68e205f05ec10c34e65b",
+  "kind_node": "kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f"
+}

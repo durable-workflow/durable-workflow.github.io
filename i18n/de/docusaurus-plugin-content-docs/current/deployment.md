@@ -373,6 +373,92 @@ curl -H "Authorization: Bearer $DW_ADMIN_TOKEN" http://localhost:8080/api/cluste
 
 Einregionen-HA-Failover mit verwalteter Datenbank, verwaltetem Redis, API-Knotenverlust, Worker-Verlust und Schedulerneustart bleibt auf dem Rohmanifestweg ebenso wie im kleinen Cluster supportbegleitet, solange die Veröffentlichungsnachweisprüfung geschlossen ist. Der beabsichtigte Vertrag erfordert die Regeln für Bereitschaft, Singleton-Scheduler und gemeinsame Basissysteme unter [Hochverfügbarkeit und Failover in einer Region](#single-region-high-availability-and-failover). Providerspezifische Load Balancer, Speicherklassen, Netzwerkrichtlinien, Aktiv/Aktiv über mehrere Regionen und selbst gehostetes bedienungsfreies regionales Failover bleiben supportbegleitet oder werden separat vom Rohmanifestvertrag verfolgt. Verwenden Sie den separat versionierten Helm-Weg oben für Helm-verwaltete Installation und Upgrades.
 
+## SDK-Worker auf Kubernetes ausführen {#sdk-workers-on-kubernetes}
+
+Stellen Sie die Worker Ihrer Anwendung getrennt vom Laravel-Queue-Worker des Servers bereit. Bauen Sie ein Image mit Ihren registrierten PHP-, Python- oder Rust-Handlern und den im Lockfile festgelegten SDK-Abhängigkeiten. Verwenden Sie einen Entrypoint in Exec-Form, damit der Worker-Prozess `SIGTERM` erhält. Ersetzen Sie das folgende Image durch den unveränderlichen Digest dieses Builds.
+
+Verwenden Sie für Worker im selben Cluster den tatsächlichen Namen, Namespace und Port des Server-Service. Die unbearbeiteten Manifeste stellen `http://durable-workflow-server.durable-workflow.svc.cluster.local:8080` bereit. Ein Helm-Release kann einen anderen Service-Namen verwenden. Worker außerhalb des Clusters benötigen die erreichbare HTTPS-URL des Ingress oder Load Balancers mit normaler Zertifikatsprüfung. Stimmen Sie Long-Poll- und Transportbudgets mit den [Timeout-Hinweisen](#worker-long-poll-timeout-budgets) ab.
+
+Erstellen Sie im Kubernetes-Namespace des Worker-Pods ein Secret aus dessen vorhandenen Zugangsdaten. Halten Sie den Token aus Manifest und Image heraus. Der Server-Namespace ist eine eigene Produktgrenze und vom Kubernetes-Namespace getrennt.
+
+```bash
+kubectl -n durable-workflow create secret generic orders-worker-auth --from-literal=token="$DW_WORKER_TOKEN"
+```
+
+Speichern Sie dies als `orders-worker.yaml`. Diese Umgebungsvariablen sind Anwendungskonfiguration: Ihr Entrypoint muss sie an SDK-Client und Worker übergeben. Geben Sie jedem gleichzeitig laufenden Prozess eine eigene Worker-ID und registrieren Sie die Handler für die konfigurierte Queue.
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders-worker
+  namespace: durable-workflow
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: orders-worker
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: orders-worker
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 75
+      containers:
+        - name: worker
+          image: registry.example.com/acme/orders-worker:release-id
+          env:
+            - name: DW_SERVER_URL
+              value: http://durable-workflow-server.durable-workflow.svc.cluster.local:8080
+            - name: DW_NAMESPACE
+              value: default
+            - name: DW_TASK_QUEUE
+              value: orders
+            - name: DW_WORKER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+            - name: DW_WORKER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: orders-worker-auth
+                  key: token
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+```
+
+Wenden Sie das Deployment an und warten Sie auf den Rollout:
+
+```bash
+kubectl apply -f orders-worker.yaml
+kubectl -n durable-workflow rollout status deployment/orders-worker
+```
+
+Replikazahlen und Ressourcen sind Ausgangsbeispiele, keine Kapazitätsgarantien. Passen Sie sie an tatsächliche Task-Dauer, Speicherbedarf, Grenzen nachgelagerter Dienste und die [Worker-Zulassungsbudgets](./polyglot/task-queue-admission.md) an. Ein verfügbares Deployment belegt weder die SDK-Registrierung noch erfolgreiche Arbeit. Prüfen Sie aktuelle Worker-Registrierungen sowie erwarteten Build und Queue und starten und beenden Sie anschließend einen repräsentativen Workflow. Ein SDK-Worker erhält durch Kubernetes nicht automatisch einen HTTP-Health-Endpunkt. Verwenden Sie eine anwendungseigene Probe, falls vorhanden, und nicht die Server-Gesundheit als Liveness-Prüfung des Workers.
+
+### SIGTERM zustellen und die Bereinigung abwarten {#sdk-worker-pod-shutdown}
+
+| SDK | Beenden des Worker-Prozesses |
+| --- | --- |
+| PHP | Verwenden Sie die verwaltete Schleife `Worker::run()` mit installiertem `pcntl`. Ihr Signal-Handler fordert das Herunterfahren an. Der aktive synchrone Task erreicht danach eine Grenze vor der verwalteten Bereinigung und Deregistrierung. Eine eigene Schleife um `tick()` stellt diesen Lebenszyklus nicht bereit. Siehe [geordnetes Herunterfahren in PHP](https://php.durable-workflow.com/operate/graceful-shutdown/). |
+| Python | Verbinden Sie `SIGTERM` mit dem Shutdown-Pfad desselben Workers und warten Sie sowohl auf `Worker.stop()` als auch auf dessen Run-Task. Setzen Sie `shutdown_timeout` ausdrücklich. Angenommene Arbeit teilt sich diese Frist zum Leeren. Das Abbrechen eines Await kann keinen laufenden synchronen Thread zwangsweise stoppen. Ein unbestätigter Stopp bleibt ein Fehler. Verwenden Sie das [Beispiel mit getrennten Prozessen und Signalbehandlung](https://python.durable-workflow.com/guides/separate-workers/) und den [Lebenszyklusvertrag](https://python.durable-workflow.com/reference/worker/). |
+| Rust | Übergeben Sie `Worker::run_until(...)` ein Future, das bei Unix-`SIGTERM` abgeschlossen wird, und warten Sie auf dessen Ergebnis. Ein Future nur für Strg+C behandelt das Beendigungssignal des Pods nicht. Asynchrone Handler müssen Kontrolle abgeben; begrenzen Sie blockierende Arbeit gesondert. Siehe [Worker::run_until](https://rust.durable-workflow.com/durable_workflow/struct.Worker.html#method.run_until). |
+
+Planen Sie in `terminationGracePeriodSeconds` genug Zeit für Polling, das Beenden angenommener Tasks und die HTTP-, Session- und Registrierungsbereinigung des installierten SDKs ein. Prüfen Sie die 75 Sekunden des Beispiels gegen die tatsächlichen Grenzen Ihrer Anwendung. Kubernetes rechnet jeden `preStop`-Hook auf dieselbe Frist an und beendet verbleibende Prozesse danach zwangsweise. Ein reiner Sleep-Hook fordert weder das Leeren laufender Arbeit an noch verlängert er die SDK-Frist. Siehe den [Ablauf der Pod-Beendigung in Kubernetes](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination-flow).
+
+Erproben Sie die Beendigung im Leerlauf und während zeitlich begrenzter Arbeit. Behandeln Sie Bereinigungsfehler, eine verbleibende Registrierung oder erzwungenes Beenden als unvollständiges Herunterfahren. Ein Ersatz-Worker setzt dauerhafte Arbeit gemäß den aufgezeichneten Leases, Wiederholungen und Fristen fort. Das Stoppen eines Pods bricht keinen Workflow ab und macht keinen externen Seiteneffekt rückgängig. Folgen Sie vor einem Build-Wechsel dem [Rollout nach Worker-Build-ID](./polyglot/worker-build-id-rollout.md) und behalten Sie dessen Kompatibilitäts-, Replay- und Rollback-Prüfungen bei.
+
 ## Hochverfügbarkeit und Failover in einer Region {#single-region-high-availability-and-failover}
 
 Einregionen-HA-Failover ist derzeit ein **unverifizierter, supportbegleiteter** Vertragskandidat auf Basis des kleinen Clusters und der unveränderten Kubernetes-Form. Er zielt auf Fehlermodi, für deren Überstehen die Engine **innerhalb einer Region** ausgelegt ist: Failover verwalteter Datenbanken wie RDS Multi-AZ, Aurora-Cluster, Cloud SQL HA oder Patroni-Hochstufung; Failover verwalteten Redis wie Sentinel, Elasticache-Replikationsgruppen oder Memorystore HA; API-Knotenverlust, Worker-Verlust und Neustart des Schedulers/Wartungsprozesses. Regionsübergreifende Aktiv/Passiv-Wiederherstellung ist eine andere supportbegleitete Evaluierung. Siehe [Aktiv/Passiv über mehrere Regionen](#activepassive-multi-region).

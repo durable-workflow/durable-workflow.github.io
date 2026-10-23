@@ -339,6 +339,92 @@ curl -H "Authorization: Bearer $DW_ADMIN_TOKEN" http://localhost:8080/api/cluste
 
 发布证据门槛关闭时，单区域高可用故障转移在原始清单路径上与小型集群路径一样，仍由支持团队指导。预期契约要求遵循下方[单区域高可用与故障转移](#single-region-high-availability-and-failover)中的就绪、单实例调度器和共享基础层规则。提供商特定负载均衡器、存储类、网络策略、双活多区域和自托管无人值守区域故障转移，仍由支持团队指导或在原始清单契约之外单独跟踪。需要 Helm 管理安装与升级时，使用上方独立版本化的 Helm 路径。
 
+## 在 Kubernetes 上运行 SDK Worker {#sdk-workers-on-kubernetes}
+
+将应用的 Worker 与 Server 的 Laravel 队列 Worker 分开部署。构建包含已注册 PHP、Python 或 Rust 处理函数及锁定 SDK 依赖的镜像。使用 exec 形式的 entrypoint，让 Worker 进程能够接收 `SIGTERM`。将下方镜像替换为该构建不可变的 digest。
+
+对于同一集群内的 Worker，使用 Server Service 的实际名称、命名空间和端口。原始清单公开 `http://durable-workflow-server.durable-workflow.svc.cluster.local:8080`。Helm 发布可能使用不同的 Service 名称。集群外的 Worker 需要可访问的 ingress 或负载均衡器 HTTPS URL，并正常验证证书。按[超时指南](#worker-long-poll-timeout-budgets)协调长轮询和传输时间预算。
+
+使用现有 Worker 凭据，在 Worker Pod 所属的 Kubernetes 命名空间中创建 Secret。不要把令牌写入清单或镜像。Server 命名空间是产品中的独立边界，与 Kubernetes 命名空间不同。
+
+```bash
+kubectl -n durable-workflow create secret generic orders-worker-auth --from-literal=token="$DW_WORKER_TOKEN"
+```
+
+将其保存为 `orders-worker.yaml`。这些环境变量名属于应用配置：entrypoint 必须将值传给 SDK 客户端和 Worker。为每个同时运行的进程分配独立 worker ID，并注册所配置队列的处理函数。
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders-worker
+  namespace: durable-workflow
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: orders-worker
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: orders-worker
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 75
+      containers:
+        - name: worker
+          image: registry.example.com/acme/orders-worker:release-id
+          env:
+            - name: DW_SERVER_URL
+              value: http://durable-workflow-server.durable-workflow.svc.cluster.local:8080
+            - name: DW_NAMESPACE
+              value: default
+            - name: DW_TASK_QUEUE
+              value: orders
+            - name: DW_WORKER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+            - name: DW_WORKER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: orders-worker-auth
+                  key: token
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+```
+
+应用 Deployment 并等待发布完成：
+
+```bash
+kubectl apply -f orders-worker.yaml
+kubectl -n durable-workflow rollout status deployment/orders-worker
+```
+
+副本数和资源值只是起始示例，不保证容量。根据实际任务时长、内存使用、下游限制和 [Worker 准入预算](./polyglot/task-queue-admission.md)调整。Deployment 可用并不能证明 SDK 已注册或已完成有效工作。先验证新鲜的 Worker 注册、预期构建和队列，再启动并完成一个有代表性的工作流。仅在 Kubernetes 中运行不会自动为 SDK Worker 提供 HTTP 健康端点。如果应用有自己的探针，应使用该探针，不要把 Server 健康状态用作 Worker 存活检查。
+
+### 传递 SIGTERM 并等待清理 {#sdk-worker-pod-shutdown}
+
+| SDK | Worker 进程关闭 |
+| --- | --- |
+| PHP | 安装 `pcntl` 并使用受管理的 `Worker::run()` 循环。信号处理函数请求关闭，活动同步任务到达边界后才执行受管理的清理和注销。围绕 `tick()` 的自定义循环不提供该生命周期。参见 [PHP 优雅关闭](https://php.durable-workflow.com/operate/graceful-shutdown/)。 |
+| Python | 将 `SIGTERM` 接到同一 Worker 的关闭路径，同时 await `Worker.stop()` 及其运行任务。显式设置 `shutdown_timeout`。已接受工作共享该排空期限。取消 await 无法强制停止正在运行的同步线程，未确认停止仍是错误。使用[独立进程与信号连接示例](https://python.durable-workflow.com/guides/separate-workers/)和[生命周期契约](https://python.durable-workflow.com/reference/worker/)。 |
+| Rust | 向 `Worker::run_until(...)` 传入一个在收到 Unix `SIGTERM` 时完成的 future，并 await 其结果。只等待 Ctrl-C 的 future 无法处理 Pod 终止信号。异步处理函数必须让出执行权，并单独限制阻塞工作。参见 [Worker::run_until](https://rust.durable-workflow.com/durable_workflow/struct.Worker.html#method.run_until)。 |
+
+在 `terminationGracePeriodSeconds` 中，为已安装 SDK 的轮询、已接受任务的关闭，以及 HTTP、会话和注销清理留出足够时间。必须根据应用的实际上限核对示例中的 75 秒。Kubernetes 将任何 `preStop` hook 计入同一宽限期，并在期限结束后强制停止剩余进程。仅执行 sleep 的 hook 不会要求 SDK 排空工作，也不会延长其期限。参见 [Kubernetes Pod 终止流程](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination-flow)。
+
+在空闲时和执行有时间上限的工作时演练终止。将清理错误、保留的注册或强制结束视为未完成关闭。替代 Worker 根据已记录的租约、重试和期限继续持久工作。停止 Pod 不会取消工作流，也不会撤销外部副作用。更换构建前，请遵循 [Worker build ID 发布流程](./polyglot/worker-build-id-rollout.md)，保留其中的兼容性、重放和回滚检查。
+
 ## 单区域高可用与故障转移 {#single-region-high-availability-and-failover}
 
 单区域高可用故障转移当前是在小型集群和原始 Kubernetes 形态之上叠加的**尚未验证、由支持团队指导**的候选契约。它面向引擎设计上能在**单一区域内**承受的故障模式：托管数据库故障转移（RDS Multi-AZ、Aurora 集群故障转移、Cloud SQL HA、Patroni 提升等）、托管 Redis 故障转移（Sentinel、Elasticache 复制组故障转移、Memorystore HA 等）、API 节点丢失、Worker 丢失，以及调度器/维护运行器重启。跨区域主备恢复是另一种由支持团队指导的评估，参见下方[主备多区域](#activepassive-multi-region)。
