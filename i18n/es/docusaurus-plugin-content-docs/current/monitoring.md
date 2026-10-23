@@ -147,6 +147,42 @@ Waterline como una sola unidad de despliegue. La
 [referencia de la API de operadores de Waterline](./waterline-operator-api.md#installation)
 incluye el comando Composer actual y el paso de publicación de recursos.
 
+### Permisos de operadores en modo integrado {#embedded-waterline-operator-permissions}
+
+Estos controles opcionales requieren **Waterline 2.13.0**. Mantenga el gate de visualización `viewWaterline`: los gates de acciones no conceden acceso de lectura. De forma predeterminada, quienes pueden ver Waterline integrado pueden usar sus acciones de operador; los ajustes son opcionales y conservan ese comportamiento cuando no se configuran.
+
+Para impedir escrituras de operador a todos los usuarios, establezca `'read_only' => true` en `config/waterline.php`, o vincule `WATERLINE_READ_ONLY=true` mediante la configuración del host antes de reconstruir la caché. La visualización, exportación de historial, consultas y vistas/preferencias personales conservan su autorización existente. Esto no detiene los workers del host ni cambia los permisos directos del SDK/Server.
+
+Para separar los permisos por usuario, defina gates de Laravel en un service provider y asigne cada grupo de acciones que quiera restringir. Los nombres de permisos siguientes pertenecen a la política de su aplicación:
+
+```php
+use Illuminate\Support\Facades\Gate;
+
+Gate::define('waterline-messages', fn ($user) => $user->can('support-workflows'));
+Gate::define('waterline-operations', fn ($user) => $user->can('operate-workflows'));
+```
+
+Incorpore esta configuración a `config/waterline.php`:
+
+```php
+'authorization' => [
+    'gates' => [
+        'messages' => 'waterline-messages',
+        'repair' => 'waterline-operations',
+        'cancel' => 'waterline-operations',
+        'terminate' => 'waterline-operations',
+        'archive' => 'waterline-operations',
+        'schedules' => 'waterline-operations',
+    ],
+],
+```
+
+`messages` abarca señales y actualizaciones; `schedules` abarca pausa, reanudación, activación, backfill y eliminación. Cada gate recibe el usuario actual del host y, opcionalmente, la petición HTTP como segundo argumento. Una asignación nula u omitida conserva el acceso predeterminado. Un gate configurado debe existir y autorizar al usuario; una configuración inválida rechaza la acción. Se aplican las reglas normales de invitados y `Gate::before`, pero el modo global de solo lectura prevalece incluso sobre excepciones de administrador. Ningún gate evita las restricciones del namespace o runtime.
+
+Despliegue la configuración resuelta del host y reconstruya su caché con `php artisan config:cache`; cambiar solo el entorno no actualiza ajustes en caché o literales. Instale el paquete cualificado y publique sus assets correspondientes mediante los [pasos de instalación](./waterline-operator-api.md#installation). Las escrituras denegadas devuelven HTTP 403 con `reason=waterline_action_forbidden` o `reason=waterline_read_only` y una `capability`. La interfaz oculta controles de ejecución no disponibles y explica las acciones/controles de programación deshabilitados; el backend también protege las URL de mutación antiguas y de ejecución exacta.
+
+Son **controles de usuarios del host integrado**. El modo servicio mantiene `WATERLINE_ACCESS_MODE=read_only` y los permisos del token upstream en lugar de gates Laravel del host. Esta función no cambia los mínimos de dependencias SDK/Core ni configura Cloud Managed Waterline.
+
 ### Servicio Waterline {#waterline-service}
 
 La imagen publicada contiene su propio entorno PHP y Laravel. No requiere PHP,

@@ -101,6 +101,42 @@ Workflow パッケージとともに Laravel アプリケーションへ Waterli
 
 組み込みモードは、ホストアプリのデータベース接続、ルートミドルウェア、認証ゲート、Workflow パッケージを使います。Laravel アプリ、そのキュー Worker、スケジューラー、マイグレーション、Waterline アセットを一つのデプロイ境界として運用します。[Waterline 運用者 API リファレンス](./waterline-operator-api.md#installation)に、現在の Composer コマンドとアセット公開手順があります。
 
+### 組み込みモードの操作権限 {#embedded-waterline-operator-permissions}
+
+この任意の制御には **Waterline 2.13.0** が必要です。ホストの閲覧 gate `viewWaterline` を維持してください。操作 gate は閲覧権限を付与しません。既定では組み込み Waterline を閲覧できるユーザーは操作も実行でき、新設定を省略した場合はその動作を保ちます。
+
+すべての閲覧者による操作の書き込みを禁止するには、`config/waterline.php` に `'read_only' => true` を設定するか、キャッシュ再構築前にホスト設定を通じて `WATERLINE_READ_ONLY=true` を対応付けます。閲覧、履歴エクスポート、クエリ、個人の保存済みビューや設定には既存の認可が適用されます。ホストの workflow worker は停止せず、SDK/Server の直接利用権限も変わりません。
+
+ホストユーザーごとに権限を分けるには、service provider で Laravel gate を定義し、制限する操作グループをすべて対応付けます。以下の能力名はホストアプリ独自のポリシーです。
+
+```php
+use Illuminate\Support\Facades\Gate;
+
+Gate::define('waterline-messages', fn ($user) => $user->can('support-workflows'));
+Gate::define('waterline-operations', fn ($user) => $user->can('operate-workflows'));
+```
+
+次の設定を `config/waterline.php` に統合します。
+
+```php
+'authorization' => [
+    'gates' => [
+        'messages' => 'waterline-messages',
+        'repair' => 'waterline-operations',
+        'cancel' => 'waterline-operations',
+        'terminate' => 'waterline-operations',
+        'archive' => 'waterline-operations',
+        'schedules' => 'waterline-operations',
+    ],
+],
+```
+
+`messages` は signal と update、`schedules` は pause、resume、trigger、backfill、delete を対象とします。各 gate は現在のホストユーザーを受け取り、必要に応じて第二引数に HTTP request を受け取ります。null または省略した対応付けは既定の操作権限を維持します。設定済み gate は存在し、ユーザーを認可する必要があり、不正な設定は操作を拒否します。通常の Laravel のゲスト規則と `Gate::before` が適用されますが、全体の読み取り専用設定は管理者の例外より優先されます。namespace や runtime の操作制限を gate で回避できません。
+
+ホストの解決済み設定をデプロイし、`php artisan config:cache` でキャッシュを再構築してください。環境変数だけの変更では、キャッシュ済み設定やリテラル設定は更新されません。検証済みパッケージをインストールし、通常の[インストール手順](./waterline-operator-api.md#installation)で対応する assets を公開します。拒否された書き込みは HTTP 403 と `reason=waterline_action_forbidden` または `reason=waterline_read_only`、`capability` を返します。UI は使用不可の実行操作を隠し、無効な操作やスケジュール操作を説明します。バックエンドは旧 URL と実行を厳密に指定する変更 URL も保護します。
+
+これは**組み込みホストのユーザー権限制御**です。サービスモードではホスト Laravel gate の代わりに `WATERLINE_ACCESS_MODE=read_only` と上流 token の権限を引き続き使います。SDK/Core の最低依存バージョンは変更せず、Cloud Managed Waterline を設定する機能でもありません。
+
 ### Waterline サービス {#waterline-service}
 
 公開イメージは独自の PHP・Laravel ランタイムを含みます。コンテナホストに PHP、Composer、Workflow パッケージは不要で、スタンドアロン Server のデータベースには接続しません。

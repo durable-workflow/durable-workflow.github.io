@@ -103,6 +103,42 @@ Installieren Sie Waterline neben dem Workflow-Paket in Ihrer Laravel-Anwendung u
 
 Der eingebettete Modus verwendet Datenbankverbindung, Routen-Middleware, Authentifizierungs-Gate und Workflow-Paket der Hostanwendung. Betreiben Sie Laravel-Anwendung, Warteschlangen-Worker, Scheduler, Migrationen und Waterline-Assets weiterhin als gemeinsame Bereitstellungsgrenze. Die [Waterline-Operator-API-Referenz](./waterline-operator-api.md#installation) enthält den aktuellen Composer-Befehl und den Schritt zur Veröffentlichung der Assets.
 
+### Bedienrechte im eingebetteten Modus {#embedded-waterline-operator-permissions}
+
+Diese optionalen Kontrollen benötigen **Waterline 2.13.0**. Behalten Sie das Anzeige-Gate `viewWaterline` des Hosts bei: Aktions-Gates gewähren keinen Lesezugriff. Standardmäßig dürfen Benutzer, die das eingebettete Waterline sehen können, dessen Bedienaktionen ausführen. Die neuen Einstellungen sind optional und erhalten ohne Konfiguration dieses Verhalten.
+
+Um Bedien-Schreibzugriffe für alle Betrachter zu sperren, setzen Sie `'read_only' => true` in `config/waterline.php` oder binden `WATERLINE_READ_ONLY=true` vor dem Neuaufbau des Caches über die Host-Konfiguration ein. Anzeigen, Verlaufsexporte, Abfragen und persönliche gespeicherte Ansichten/Einstellungen behalten ihre bestehende Autorisierung. Dies stoppt keine Workflow-Worker des Hosts und ändert keine direkten SDK/Server-Rechte.
+
+Für getrennte Benutzerrechte definieren Sie Laravel-Gates in einem Service Provider und ordnen jede einzuschränkende Aktionsgruppe zu. Die folgenden Berechtigungsnamen gehören zur Richtlinie Ihrer Anwendung:
+
+```php
+use Illuminate\Support\Facades\Gate;
+
+Gate::define('waterline-messages', fn ($user) => $user->can('support-workflows'));
+Gate::define('waterline-operations', fn ($user) => $user->can('operate-workflows'));
+```
+
+Führen Sie diese Konfiguration mit `config/waterline.php` zusammen:
+
+```php
+'authorization' => [
+    'gates' => [
+        'messages' => 'waterline-messages',
+        'repair' => 'waterline-operations',
+        'cancel' => 'waterline-operations',
+        'terminate' => 'waterline-operations',
+        'archive' => 'waterline-operations',
+        'schedules' => 'waterline-operations',
+    ],
+],
+```
+
+`messages` umfasst Signale und Updates; `schedules` umfasst Pause, Fortsetzen, Auslösen, Backfill und Löschen. Jedes Gate erhält den aktuellen Host-Benutzer und optional den HTTP-Request als zweites Argument. Eine fehlende oder null-Zuordnung erhält den Standardzugriff. Ein konfiguriertes Gate muss existieren und den Benutzer autorisieren; ungültige Einstellungen verweigern die Aktion. Die üblichen Laravel-Regeln für Gäste und `Gate::before` gelten, doch globaler Nur-Lese-Modus hat selbst vor Administrator-Ausnahmen Vorrang. Kein Gate umgeht Namespace- oder Runtime-Beschränkungen.
+
+Stellen Sie die aufgelöste Host-Konfiguration bereit und bauen Sie den Cache mit `php artisan config:cache` neu auf. Allein eine Umgebungsänderung aktualisiert keine zwischengespeicherten oder wörtlich gesetzten Werte. Installieren Sie das qualifizierte Paket und veröffentlichen Sie passende Assets nach den üblichen [Installationsschritten](./waterline-operator-api.md#installation). Verweigerte Schreibzugriffe liefern HTTP 403 mit `reason=waterline_action_forbidden` oder `reason=waterline_read_only` und einer `capability`. Die Oberfläche verbirgt nicht verfügbare Laufaktionen und erläutert deaktivierte Aktionen/Zeitplan-Steuerelemente; das Backend schützt auch alte und laufgenaue Änderungs-URLs.
+
+Dies sind **Benutzerkontrollen des eingebetteten Hosts**. Der Servicemodus verwendet weiterhin `WATERLINE_ACCESS_MODE=read_only` und die Rechte des Upstream-Tokens statt Laravel-Gates des Hosts. Die Funktion ändert keine SDK/Core-Mindestabhängigkeit und konfiguriert Cloud Managed Waterline nicht.
+
 ### Waterline-Dienst {#waterline-service}
 
 Das veröffentlichte Image enthält eine eigene PHP- und Laravel-Laufzeit. Es benötigt weder PHP noch Composer oder das Workflow-Paket auf dem Containerhost und verbindet sich nie mit der Datenbank des eigenständigen Servers.
