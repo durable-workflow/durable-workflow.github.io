@@ -63,6 +63,8 @@ Move those operations into activities, or use a workflow helper that records the
 
 See [Workflow Constraints](./workflow-constraints.md) for the authoring rules and [How It Works](../how-it-works.md) for the replay model.
 
+For Rust-specific `HashMap`, clock, randomness and future-ordering rules, see the [durable replacements](../polyglot/rust.md#rust-determinism-rules). Rust SDK 4.5.0 adds [Server-free activity/workflow tests and recorded-history replay](../polyglot/rust.md#offline-testing-and-replay); retain integration tests for its documented execution limits.
+
 ## Why Activities and Side Effects Must Be Idempotent
 
 Activities cross the durable boundary into databases, payment APIs, email providers, object storage, and other systems. They can be delivered again after a timeout, retry, worker failure, or expired lease. A worker may even complete the external change and then fail before Durable Workflow receives its report.
