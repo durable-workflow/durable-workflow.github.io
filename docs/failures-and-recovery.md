@@ -176,6 +176,18 @@ The retry task records `retry_of_task_id`, `retry_after_attempt_id`, `retry_afte
 
 `Workflow\Exceptions\NonRetryableExceptionContract` still short-circuits the retry policy: throwing a non-retryable exception fails the activity execution immediately and resumes the workflow with the exception.
 
+### Retry delay resolution
+
+Activity `backoff()` values are integer seconds. Durable retry intervals have
+whole-second resolution. Do not use a fractional value such as `0.1` to request
+a 100 ms retry. SDK APIs that generate intervals from fractional values round
+them up to the next second. The Python and Rust SDK references describe their
+accepted parameter types and conversions.
+
+A retry becomes eligible after its delay, but queue latency and worker load can
+make the next attempt start later. For fast tests, use
+[controlled time or bounded zero-delay fixtures](./testing.md#keeping-delay-tests-fast).
+
 ### Activity execution identity and idempotency
 
 Retry is not the only reason the same logical activity can be observed more than once. Lease expiry, worker loss, delayed completion reporting, and redelivery can all produce another attempt or a stale completion report for the same durable activity execution.

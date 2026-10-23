@@ -37,6 +37,18 @@ class MyWorkflow extends Workflow
 
 <TimerSimulator />
 
+## Delay resolution
+
+Durable timer delays resolve to whole seconds. Pass integer seconds such as
+`timer(1)`. When using a PHP interval string or `CarbonInterval`, a positive
+fractional duration is rounded up to the next second. A 100 ms interval therefore
+becomes one second. `timer(0)` still fires inline.
+
+Becoming due makes a timer eligible to fire. Queue latency and worker load can
+delay its actual processing, so this resolution is not an exact wake-up guarantee.
+It does not reduce the precision of recorded timestamps. See
+[testing](../testing.md#keeping-delay-tests-fast) for tests that avoid real waits.
+
 Timer behavior:
 
 - each `timer()` call creates a durable timer row plus typed `TimerScheduled`, `TimerFired`, and, when superseded, `TimerCancelled` history events

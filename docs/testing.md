@@ -50,6 +50,19 @@ exit($allowed ? 0 : 1);
 
 **Rust:** no public offline replay API is available yet. [Rust #105](https://github.com/durable-workflow/sdk-rust/issues/105) owns that capability. Test the candidate against an isolated runtime meanwhile; this does not supply the missing offline guarantee.
 
+## Keeping delay tests fast
+
+Timer delays and durable retry backoff use whole seconds. A 100 ms fractional
+interval accepted by a rounding SDK API becomes one second, so sub-second
+values are not a way to speed up retry-heavy tests.
+
+For embedded tests, use `WorkflowStub::fake()`, mock activity outcomes and
+advance Laravel's test clock by the configured delay. Then call
+`WorkflowStub::runReadyTasks()` to drain work that is due. Keep the retry budget
+finite. A test-specific zero-second backoff can exercise bounded retry outcomes
+without a wall-clock wait; retain a separate test of the real backoff schedule.
+Changing a local test clock does not advance a remote Server's clock.
+
 ## `Workflow\V2`
 
 `Workflow\V2\WorkflowStub::fake()` provides a deterministic inline test path for the supported `V2` fake surface.

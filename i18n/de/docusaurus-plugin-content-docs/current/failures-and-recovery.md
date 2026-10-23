@@ -173,6 +173,19 @@ Der Payload der Wiederholungsaufgabe enthält `retry_of_task_id`, `retry_after_a
 
 `Workflow\Exceptions\NonRetryableExceptionContract` beendet die Wiederholungsrichtlinie sofort. Eine solche Exception lässt die Aktivitätsausführung unmittelbar fehlschlagen und setzt den Workflow mit der Exception fort.
 
+### Auflösung der Wiederholungsverzögerung {#retry-delay-resolution}
+
+Die Werte von `backoff()` einer Aktivität sind ganze Sekunden. Dauerhafte
+Wiederholungsintervalle haben eine Auflösung von einer Sekunde. Verwenden Sie keinen
+Bruchteil wie `0.1`, um eine Wiederholung nach 100 ms anzufordern. SDK-APIs, die
+Intervalle aus Sekundenbruchteilen erzeugen, runden auf die nächste volle Sekunde
+auf. Die Python- und Rust-SDK-Referenzen beschreiben die zulässigen Parametertypen
+und Umrechnungen.
+
+Nach Ablauf der Verzögerung darf der nächste Versuch starten. Queue-Latenz und
+Worker-Auslastung können ihn weiter verzögern. Für schnelle Tests eignen sich
+[kontrollierte Zeit oder begrenzte Testfälle ohne Verzögerung](./testing.md#keeping-delay-tests-fast).
+
 ### Aktivitätskennung und Idempotenz {#activity-execution-identity-and-idempotency}
 
 Wiederholungsversuche sind nicht die einzige Ursache mehrfacher Aktivitätsausführung. Abgelaufene Leases, Worker-Verlust, verspätete Berichte und erneute Zustellung können einen weiteren Versuch oder einen veralteten Abschlussbericht erzeugen.

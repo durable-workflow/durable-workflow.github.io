@@ -205,6 +205,19 @@ El detalle de la ejecución reconstruye el intento fallido en
 una excepción permanente falla la actividad y reanuda el workflow con la
 excepción inmediatamente.
 
+### Resolución del retraso entre reintentos {#retry-delay-resolution}
+
+Los valores de `backoff()` de una actividad son segundos enteros. Los intervalos
+de reintento duraderos tienen una resolución de un segundo. No use una fracción
+como `0.1` para pedir un reintento en 100 ms. Las API de los SDK que generan
+intervalos a partir de valores fraccionarios los redondean hacia arriba al
+siguiente segundo entero. Las referencias de los SDK de Python y Rust explican
+los tipos de parámetros admitidos y sus conversiones.
+
+El siguiente intento puede comenzar al cumplirse el retraso, pero la latencia
+de la cola y la carga de los workers pueden demorarlo más. Para pruebas rápidas,
+use [tiempo controlado o casos acotados con retraso cero](./testing.md#keeping-delay-tests-fast).
+
 ### Identidad de la actividad e idempotencia {#activity-execution-identity-and-idempotency}
 
 El vencimiento de una lease, la pérdida del worker, un informe de finalización

@@ -40,6 +40,18 @@ class MyWorkflow extends Workflow
 
 <TimerSimulator />
 
+## Auflösung der Verzögerung {#delay-resolution}
+
+Dauerhafte Timer-Verzögerungen werden in ganzen Sekunden angegeben. Übergeben Sie
+ganze Sekunden, etwa `timer(1)`. Bei einem PHP-Intervallstring oder `CarbonInterval`
+wird eine positive Dauer mit Sekundenbruchteilen auf die nächste volle Sekunde
+aufgerundet. Aus 100 ms wird daher eine Sekunde. `timer(0)` wird weiterhin inline ausgelöst.
+
+Ein fälliger Timer darf ausgeführt werden. Queue-Latenz und Worker-Auslastung können
+die Verarbeitung verzögern. Die Auflösung garantiert daher keinen exakten Aufwachzeitpunkt
+und verringert nicht die Genauigkeit gespeicherter Zeitstempel. Unter
+[Tests](../testing.md#keeping-delay-tests-fast) finden Sie Beispiele ohne reale Wartezeiten.
+
 Timer-Verhalten:
 
 - Jeder `timer()`-Aufruf erstellt eine dauerhafte Timer-Zeile und typisierte Historienereignisse `TimerScheduled`, `TimerFired` und bei Ablösung `TimerCancelled`.

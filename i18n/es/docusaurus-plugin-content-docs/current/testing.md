@@ -50,6 +50,21 @@ exit($allowed ? 0 : 1);
 
 **Rust:** todavía no existe una API pública de replay sin conexión. [Rust #105](https://github.com/durable-workflow/sdk-rust/issues/105) cubre esa capacidad. Mientras tanto, pruebe el candidato contra un runtime aislado; eso no aporta la garantía sin conexión que falta.
 
+## Pruebas rápidas con retrasos {#keeping-delay-tests-fast}
+
+Los retrasos de los temporizadores y el backoff de reintentos duraderos usan
+segundos enteros. Si una API del SDK admite fracciones y las redondea hacia
+arriba, 100 ms se convierten en un segundo. Esos valores no aceleran las pruebas
+con muchos reintentos.
+
+En pruebas embebidas, use `WorkflowStub::fake()`, simule los resultados de las
+actividades y avance el reloj de pruebas de Laravel según el retraso configurado.
+Después llame a `WorkflowStub::runReadyTasks()` para procesar el trabajo ya vencido.
+Limite el número de intentos. Un backoff de cero segundos específico de la prueba
+permite comprobar reintentos acotados sin esperar tiempo real. Conserve una prueba
+separada del calendario de backoff real. Cambiar el reloj local de pruebas no
+adelanta el reloj de un Server remoto.
+
 ## `Workflow\V2` {#workflowv2}
 
 `Workflow\V2\WorkflowStub::fake()` ofrece una ruta de prueba determinista con ejecución inmediata para las funciones admitidas por el modo simulado de `V2`.

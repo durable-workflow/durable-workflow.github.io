@@ -37,6 +37,16 @@ class MyWorkflow extends Workflow
 
 <TimerSimulator />
 
+## 延迟分辨率 {#delay-resolution}
+
+持久定时器的延迟以整数秒表示。请传入整数秒，例如 `timer(1)`。使用 PHP 间隔字符串或
+`CarbonInterval` 时，正数时长中的小数秒会向上取整到下一整秒。因此，100 ms 会变成
+1 秒。`timer(0)` 仍会在当前任务内触发。
+
+到期只表示定时器可以被处理。队列延迟和 Worker 负载可能推迟实际处理，因此这种分辨率
+并不保证精确的恢复时刻，也不会降低已记录时间戳的精度。要避免真实等待，请参阅
+[测试指南](../testing.md#keeping-delay-tests-fast)。
+
 定时器行为：
 
 - 每次 `timer()` 调用都会创建持久定时器行及类型化 `TimerScheduled`、`TimerFired` 历史事件；被取代时还会记录 `TimerCancelled`
