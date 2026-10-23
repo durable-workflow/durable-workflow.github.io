@@ -137,6 +137,35 @@ upsertSearchAttributes(['temporary_flag' => null]);
 
 実際の親子関係が必要なときは、実行の系譜を確認してください。より広い共通の可視性フィルターは引き続き[製品側の作業](https://github.com/durable-workflow/.github/issues/224)です。この制限の説明や利用者独自のメタデータ規約が、その機能の提供に代わるものではありません。[検証記録](https://github.com/durable-workflow/durable-workflow.github.io/issues/368#issuecomment-6362355504)には、親子の両方が返る結果と拒否された述語を残しています。
 
+## datetime 検索属性の修復 {#repair-datetime-search-attributes}
+
+履歴に基づく修復コマンドには、**実際にインストールされた Workflow 2.12.0 以降**が必要です。実行する Laravel アプリケーションで `composer.lock` と `php artisan help workflow:v2:repair-search-datetimes` を確認してください。ソースの checkout や Composer の制約だけでは、コマンドがインストール済みとは確認できません。
+
+datetime の projection は、マイクロ秒精度の UTC 時点を保存します。`2026-10-08T12:34:56.123456+02:00` は `2026-10-08T10:34:56.123456Z` です。旧 writer は型付き履歴に offset を残しながら、offset のローカル時刻を保存することがありました。更新は新たな writer の誤りを防ぎますが、既存行を特定したり書き換えたりはしません。保存済み時刻から元のタイムゾーンを推測しないでください。
+
+先にすべての projection writer を更新し、workflow のデータベースをバックアップしてください。ワークフローのインスタンス ID ではなく、**正確な run ID** を使います。まずプレビューします。
+
+```sh
+php artisan workflow:v2:repair-search-datetimes RUN_ID --namespace=production --json
+php artisan workflow:v2:repair-search-datetimes RUN_ID --namespace=production --key=SubmittedAt --json
+```
+
+`--namespace=production` は完全一致のガードです。run の実際の namespace を指定してください。旧来の null namespace も含め、正確な run ID だけで十分な場合に限って省略します。明示的な空 namespace は拒否されます。`--key` を省略すると、その run の datetime 属性が対象です。既知のキーを複数選ぶ場合は `--key=SubmittedAt --key=ApprovedAt` のように繰り返します。
+
+既定はプレビューです。`examined`、`would_repair`、正確な run とキーの選択を確認してから、同じ選択を明示的に適用します。
+
+```sh
+php artisan workflow:v2:repair-search-datetimes RUN_ID --namespace=production --key=SubmittedAt --apply --json
+```
+
+選択した属性と run summary を読み直し、再びプレビューしてください。根拠が変わらず値が正しければ、apply を繰り返しても修復数はゼロです。一部を修復できても、未選択のキーが正しいとは限りません。
+
+各キーについて、保持されている最新の明示的に型付けされた `SearchAttributesUpserted` が必要で、その元の論理コマンドシーケンスが projection と一致しなければなりません。履歴の削除、根拠の欠落・古さ、曖昧なタイムゾーン、namespace の不一致、datetime 属性として残っていないキーは拒否されます。1つでも証明できないキーがあれば選択全体を拒否します。offset を推測せず、履歴を調べ、証明できるキーだけを選んでください。
+
+コマンドは選択全体をロックして検証した後、派生属性と summary を1つのストレージトランザクションで更新します。正本の履歴、業務コマンド、run/task の識別子、lease は変更しません。JSON の失敗は `refused` と `unverified` を区別します。予期しないストレージエラー後は、再試行前に行を確認してください。不確かな commit は rollback を保証しません。
+
+修復対象は派生検索属性と summary です。削除された履歴は復元せず、正本の input も変えません。Server の別の visibility query binding 処理とイメージへの採用には、それぞれ検証済みの提供が必要です。Core の tag だけでは HTTP の修正を確認できません。[正規の復旧手順](https://github.com/durable-workflow/workflow/blob/b3bbfdb5258c68546ae38ca1fde52818e4b05d12/docs/architecture/projection-timestamp-storage.md#datetime-search-attributes)を参照してください。
+
 ## 新しい実行への継続 {#continue-as-new}
 
 continue-as-new 時、現在の検索属性は自動で引き継がれます。新しい実行は前の結合済みマップ全体で開始し、引き続き upsert できます。
