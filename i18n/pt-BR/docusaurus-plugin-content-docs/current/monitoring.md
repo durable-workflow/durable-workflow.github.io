@@ -259,6 +259,36 @@ Mudar o backend do Waterline não migra nem combina execuções.
 | Uma rota de catálogo de serviços informa `backend_capability_unavailable` | O modo de serviço não replica o catálogo de serviços entre namespaces do Waterline embutido. Use os endpoints e a API nativos de serviços do servidor conectado para essa capacidade. |
 | Uma métrica personalizada não aparece no Waterline | Inspecione o exportador de métricas do worker. O Waterline informa fatos duráveis de operação, não métricas arbitrárias de processo. |
 
+### Banner de ambiente {#waterline-environment-banner}
+
+Identifique abas de produção e de outros ambientes com o banner do Waterline. Estas variáveis funcionam no Laravel incorporado e no modo serviço independente:
+
+```dotenv
+WATERLINE_ENV_NAME=production
+WATERLINE_ENV_COLOR="#dc3545"
+```
+
+`WATERLINE_ENV_COLOR` seleciona uma paleta fixa compatível com CSP:
+
+| Valor aceito | Cor do banner |
+| --- | --- |
+| `#0d6efd` ou `#2563eb` | Azul |
+| `#198754` ou `#28a745` | Verde |
+| `#6f42c1` ou `#7746ec` | Roxo |
+| `#dc3545` | Vermelho |
+| `#fd7e14` | Laranja |
+| `#ffc107` | Amarelo |
+
+Os demais valores aparecem em cinza neutro, inclusive cores hex válidas como `#ff0000`. Use um valor listado para obter a cor pretendida.
+
+No Laravel incorporado, os valores resolvidos de `env_name` e `env_color` em `config/waterline.php` são a fonte efetiva. A configuração publicada pode substituir os valores baseados no ambiente. Depois de alterá-los, reconstrua o cache de configuração da aplicação pelo processo normal de deploy:
+
+```bash
+php artisan config:cache
+```
+
+Se o banner diferir de `.env`, inspecione a configuração resolvida do Waterline. O cache continua valendo até ser reconstruído. No modo serviço independente, atualize o ambiente do deploy do Waterline e recrie ou faça novo deploy do contêiner para carregar os valores. São configurações visuais do Waterline; aplique-as ao serviço Waterline descrito acima.
+
 ### Cloud Managed Waterline {#cloud-managed-waterline}
 
 Clientes Cloud abrem Cloud Managed Waterline pela interface gerenciada de

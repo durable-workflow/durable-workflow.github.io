@@ -165,6 +165,36 @@ Waterline 只显示配置的命名空间和所连接 Server 拥有的运行实�
 | 服务目录路由报告 `backend_capability_unavailable` | 服务模式不镜像 Waterline 的嵌入式跨命名空间服务目录。请通过所连接 Server 的原生服务端点和 API 使用此能力。 |
 | Waterline 中缺少自定义指标 | 检查 Worker 的指标导出器。Waterline 报告持久操作事实，不报告任意进程指标。 |
 
+### 环境横幅 {#waterline-environment-banner}
+
+使用 Waterline 环境横幅区分生产环境与非生产环境的标签页。以下变量同时适用于嵌入式 Laravel 和独立服务模式：
+
+```dotenv
+WATERLINE_ENV_NAME=production
+WATERLINE_ENV_COLOR="#dc3545"
+```
+
+`WATERLINE_ENV_COLOR` 从兼容 CSP 的固定调色板中选择颜色：
+
+| 接受的值 | 横幅颜色 |
+| --- | --- |
+| `#0d6efd` 或 `#2563eb` | 蓝色 |
+| `#198754` 或 `#28a745` | 绿色 |
+| `#6f42c1` 或 `#7746ec` | 紫色 |
+| `#dc3545` | 红色 |
+| `#fd7e14` | 橙色 |
+| `#ffc107` | 黄色 |
+
+其他值显示为中性灰色，包括 `#ff0000` 这样有效的十六进制颜色。请使用表中列出的值来获得预期颜色。
+
+在嵌入式 Laravel 中，以 `config/waterline.php` 最终解析的 `env_name` 和 `env_color` 为准。已发布配置可以覆盖环境变量提供的值。修改基于环境的配置后，通过应用正常部署流程重建配置缓存：
+
+```bash
+php artisan config:cache
+```
+
+横幅与 `.env` 不一致时，检查 Waterline 最终解析的配置；重建前仍会使用缓存值。在独立服务模式中，更新 Waterline 部署环境并重新创建或重新部署其容器，使新值生效。这些是 Waterline 显示设置，应配置在上文的 Waterline 服务中。
+
 ### Cloud 中的 Managed Waterline {#cloud-managed-waterline}
 
 Cloud 客户从命名空间级托管操作界面打开 Cloud Managed Waterline。他们无需部署或配置 Waterline、Server、PHP 或内部端点，也无需维护第二套 Waterline 登录。上述自托管镜像、`WATERLINE_*` 设置、Server 令牌、数据库和入口身份验证说明不适用于此路径。

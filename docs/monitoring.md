@@ -254,6 +254,36 @@ backend does not migrate or combine runs.
 | A service-catalog route reports `backend_capability_unavailable` | Service mode does not mirror Waterline's embedded cross-namespace service catalog. Use the connected server's native service endpoints and API for that capability. |
 | A custom metric is missing from Waterline | Inspect the worker's metrics exporter. Waterline reports durable operator facts, not arbitrary process metrics. |
 
+### Environment banner {#waterline-environment-banner}
+
+Label production and non-production Waterline tabs with the environment banner. These variables work in embedded Laravel and standalone service mode:
+
+```dotenv
+WATERLINE_ENV_NAME=production
+WATERLINE_ENV_COLOR="#dc3545"
+```
+
+`WATERLINE_ENV_COLOR` selects a fixed CSP-compatible palette:
+
+| Accepted value | Banner color |
+| --- | --- |
+| `#0d6efd` or `#2563eb` | Blue |
+| `#198754` or `#28a745` | Green |
+| `#6f42c1` or `#7746ec` | Purple |
+| `#dc3545` | Red |
+| `#fd7e14` | Orange |
+| `#ffc107` | Yellow |
+
+Other values render neutral gray, including valid hex colors such as `#ff0000`. Use a listed palette value for the intended color.
+
+In embedded Laravel, the resolved `env_name` and `env_color` keys in `config/waterline.php` are authoritative. A published configuration can override the environment-based values. After changing environment-based configuration, rebuild the host application's configuration cache through its normal deployment:
+
+```bash
+php artisan config:cache
+```
+
+Inspect the resolved Waterline configuration when the banner differs from `.env`; cached configuration remains in effect until rebuilt. In standalone service mode, update the Waterline deployment environment and recreate or redeploy the Waterline container so it loads the new values. These are Waterline display settings; apply them to the Waterline service described above.
+
 ### Cloud Managed Waterline
 
 Cloud customers open Cloud Managed Waterline from the namespace-scoped managed
