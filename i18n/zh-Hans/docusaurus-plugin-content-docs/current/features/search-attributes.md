@@ -129,6 +129,14 @@ upsertSearchAttributes(['temporary_flag' => null]);
 - **历史时间线**：每个 `SearchAttributesUpserted` 事件作为类型化条目展示
 - **历史导出**：JSON 历史导出包含搜索属性
 
+### 父子运行列表筛选 {#parent-child-list-filters}
+
+子运行[在创建时继承搜索属性和 memo](./child-workflows.md#child-metadata-inheritance)，随后可以独立更新自己的值。按继承属性筛选不会自动排除子运行。对于已注册的 keyword 属性，Server 查询 `customer = 'customer-42'` 可能返回父运行及所有仍保留该值的子运行。Memo 仍是未索引的元数据，不是另一种搜索属性筛选条件。
+
+经过验证的 Server 2.11.0 列表 API **没有内置的仅根运行或仅子运行谓词**。`ParentWorkflowId`、`RootWorkflowId`、`IsChildWorkflow` 不是其查询语言中的自动关系字段；已发布版本的检查会拒绝这些未注册名称。注册同名自定义属性也不会自动填入父子身份。工作流类型筛选选择的是某个类型，而不是跨类型的所有根运行或子运行。
+
+需要实际父子关系时，请检查运行的谱系。更广泛的共享可见性筛选仍属于[产品工作](https://github.com/durable-workflow/.github/issues/224)；说明此限制或采用用户自定义元数据约定并不等于交付该能力。[验证记录](https://github.com/durable-workflow/durable-workflow.github.io/issues/368#issuecomment-6362355504)保留了同时返回父子运行的结果和被拒绝的谓词。
+
 ## 继续为新运行 {#continue-as-new}
 
 工作流继续为新运行时，当前搜索属性自动继承到新运行。新运行从上一运行的完整合并属性映射开始，可继续插入或更新。

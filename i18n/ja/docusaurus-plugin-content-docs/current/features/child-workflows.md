@@ -31,6 +31,14 @@ final class ParentWorkflow extends Workflow
 }
 ```
 
+## 検索属性と memo {#child-metadata-inheritance}
+
+新しい子実行は、親の現在の検索属性と memo のコピーで開始します。これは子の作成時点のスナップショットであり、常時連動するリンクではありません。子は継承したキーを更新したり独自のキーを追加したりできます。後から親を更新しても子は変わらず、子を更新しても親は変わりません。変更していないコピー済み検索属性には `inherited_from_parent` が付いています。
+
+たとえば、子は最初に `customer=customer-42` と親の memo のノートを継承します。子のステージやノートを変えても、親の値はそのままです。両者が同じ顧客値を保持する間、顧客フィルターは親と子の両方に一致します。[親子の一覧フィルター](./search-attributes.md#parent-child-list-filters)を参照してください。
+
+[公開済み成果物の検証](https://github.com/durable-workflow/durable-workflow.github.io/issues/368#issuecomment-6362355504)では、組み込み Workflow 2.10.1 と、Python SDK 2.9.0 / Server 2.11.0 のサービスモードで、スナップショットと独立した更新を確認しています。これは明示したバージョンのメタデータ検証であり、選択済みのインストール構成を変更するものではありません。
+
 ## 現在の動作 {#current-behavior}
 
 - `use function Workflow\V2\child;` をインポートし `child(ChildWorkflow::class, ...)` を呼びます。親を中断して永続子実行を作り、子が閉じると結果を返します。

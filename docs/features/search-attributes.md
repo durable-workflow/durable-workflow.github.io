@@ -129,6 +129,14 @@ Search attributes appear in:
 - **History timeline** — each `SearchAttributesUpserted` event appears as a typed entry in the run timeline
 - **History export** — search attributes are included in JSON history exports
 
+### Parent and child list filters {#parent-child-list-filters}
+
+Children [inherit search attributes and memo at creation](./child-workflows.md#child-metadata-inheritance), then can upsert their own values independently. Filtering an inherited attribute does not implicitly exclude children. For a registered keyword attribute, the Server query `customer = 'customer-42'` can return the parent and every child still carrying that value. Memo remains unindexed metadata; it is not another search-attribute filter.
+
+The qualified Server 2.11.0 list API has **no built-in roots-only or children-only predicate**. `ParentWorkflowId`, `RootWorkflowId` and `IsChildWorkflow` are not automatic relationship fields in its query language; the published checks reject those unregistered names. Registering a custom attribute with such a name does not populate parent/child identity. A workflow-type filter selects a type, not every root or child across types.
+
+Inspect the run's lineage when you need its actual parent/child relationship. Broader shared visibility filtering remains [product work](https://github.com/durable-workflow/.github/issues/224); this limitation and a user-authored metadata convention do not deliver that capability. The [verification receipt](https://github.com/durable-workflow/durable-workflow.github.io/issues/368#issuecomment-6362355504) preserves the observed parent-and-child result and rejected predicates.
+
 ## Continue-as-New
 
 When a workflow continues as new, the current search attributes are carried forward to the new run automatically. The new run starts with the full merged attribute map from the previous run and can continue upserting from there.
