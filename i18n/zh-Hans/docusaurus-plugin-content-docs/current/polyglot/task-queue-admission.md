@@ -89,6 +89,67 @@ class PaymentWorkflow:
 
 受保护的下游调用应使用**普通排队活动**。内联本地活动不会创建普通活动任务，因此活动的队列、namespace 和预算组调度上限不会计量它们。prepared 本地活动领取验证执行权限，不检查这项调度预算。嵌入式 Laravel 没有独立 Server 的 admission；请使用其部署控制。参见[本地活动](../features/local-activities.md)。
 
+## 命名空间请求准入 {#namespace-request-admission}
+
+以下契约针对已发布的 **PHP Server 2.11.0**。请检查实际镜像及[版本化配置参考](./server-config-reference.md#additional-published-php-controls)。HTTP 预算独立于 worker slot、任务派发、保持中的轮询和持久状态配额。预算属于通过 `Durable-Workflow-Namespace` 或 `DW_DEFAULT_NAMESPACE` 解析出的请求命名空间，即使管理路径指向另一个命名空间也是如此。
+
+经过认证并到达命名空间准入的请求，会在下列控制和管理路由族及其子路径上计数：`/api/namespaces`, `/api/storage`, `/api/workflows`, `/api/activities`, `/api/bridge-adapters`, `/api/workers`, `/api/worker-sessions`, `/api/task-queues`, `/api/deployments`, `/api/schedules`, `/api/search-attributes`, `/api/service-endpoints`, `/api/service-catalog`。复数形式的 `/api/workers` 管理请求也计数。
+
+单数形式 `/api/worker/*` 的注册、轮询及结果上报不使用此 HTTP 预算。health/readiness、`/api/cluster/info`、管理员 `/api/system/*`、运行时凭据和外部 payload 传输也在此 gate 之外，但各自的认证、容量和存储检查仍有效。更早被认证、协议或命名空间解析拒绝的请求不会到达此计数器。
+
+速率按 Server 时钟的固定分钟桶计算，不是平滑速率或滚动窗口。预算 N 可能在边界前接受 N 个请求、边界后再接受 N 个。后续失败仍计数；速率准入先于并发检查，所以并发拒绝也可能消耗分钟预算。并发 slot 一直保持到请求结束并清理释放，不计算运行中的工作流数量。
+
+多个 API 副本须使用同一共享 Redis store/key prefix、同步时钟和一致的已加载配置。增加副本不会扩大共享预算。本地文件缓存只协调具有兼容写权限的进程，不是多节点基准配置。每节点的 worker/query 保持轮询上限是独立控制。[环境变更后应重启相关角色](./server-config-reference.md#how-changes-take-effect)。
+
+```dotenv
+DW_NAMESPACE_MAX_REQUESTS_PER_MINUTE=100
+DW_NAMESPACE_MAX_CONCURRENT_REQUESTS=8
+DW_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE=150
+DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS=10
+DW_NAMESPACE_ADMISSION_OVERRIDES='{"payments":{"max_requests_per_minute":200,"max_concurrent_requests":12},"reports":{"max_requests_per_minute":40,"max_concurrent_requests":3}}'
+```
+
+对已有命名空间，示例使 `payments` 的有效值为每分钟150个、并发10个，`reports` 为40/3，其他为100/8。覆盖值可提高或降低默认值，但150/10硬上限仍有效。此配置不创建命名空间，也不预留吞吐量。
+
+这些 HTTP 控制未设置时不增加对应限制，但单独设置硬上限仍可限制。null 覆盖值退回默认值。值必须是正整数，0无效。PHP 实现上限为每分钟10000000个请求、并发1024个，与实际 HTTP pool 容量无关。已发布 PHP2.11.0 会将格式错误的 `DW_NAMESPACE_ADMISSION_OVERRIDES` JSON 静默当成空覆盖表，退回全局默认值。部署前应验证 JSON；全局默认值和硬上限都未设置时，预期的命名空间上限会丢失。这一[已确认产品缺陷](https://github.com/durable-workflow/durable-workflow.github.io/issues/335#issuecomment-6369150521)不会由文档更新修复。
+
+| 原因 | HTTP | 重试提示（秒） |
+| --- | --- | --- |
+| `namespace_request_rate_exhausted` | `429` | 距下一分钟，1〜60 |
+| `namespace_request_concurrency_exhausted` | `429` | 1 |
+| `namespace_request_admission_unavailable` | `503` | 1 |
+
+JSON `retry_after_seconds` 与 `Retry-After` 头一致。已配置协调不可用或数值上限无效时，以503拒绝。普通请求耗尽后仍可读取命名空间管理员指标；`dw_namespace_request_admission_rejections` 报告有限的原因集合。调用方应使用有限重试/backoff 并保持幂等；传输结果不确定不意味着可以自动重发写请求。另见[超时预算](../deployment.md#worker-long-poll-timeout-budgets)。
+
+## 命名空间持久状态配额 {#namespace-durable-state}
+
+`DW_NAMESPACE_DURABLE_LIMITS` 设置保留行数默认限制，`DW_NAMESPACE_DURABLE_OVERRIDES` 按命名空间覆盖，`DW_NAMESPACE_DURABLE_HARD_LIMITS` 增加不可绕过的硬上限。空对象不增加限制。覆盖值可提高或降低默认值，null 退回默认值。与 HTTP 准入不同，持久配额0有效，会阻止新分配。此例中已有 `payments` 可持有250个开放 run，其他命名空间为100，硬上限为500。
+
+```dotenv
+DW_NAMESPACE_DURABLE_LIMITS='{"max_open_workflow_runs":100,"max_open_workflow_run_waits":200,"max_pending_workflow_timers":200}'
+DW_NAMESPACE_DURABLE_HARD_LIMITS='{"max_open_workflow_runs":500}'
+DW_NAMESPACE_DURABLE_OVERRIDES='{"payments":{"max_open_workflow_runs":250}}'
+```
+
+对下列资源使用 `max_<resource>` 字段。行计入自身所属命名空间，或关联工作流/run 的命名空间。保留总数与开放/待处理子集各有独立限制。执行时在命名空间行上串行化变更，以数据库权威计数为准。
+
+| 资源 | 计数范围 |
+| --- | --- |
+| `workflow_instances`, `workflow_runs` | 所有保留的工作流实例/run 行，包括终态 run。 |
+| `open_workflow_runs` | 状态为 `pending`、`running` 或 `waiting` 的 run。 |
+| `workflow_history_events`, `workflow_commands`, `workflow_tasks` | 保留的历史、命令和工作流任务行。 |
+| `pending_workflow_tasks` | 队列中状态为 `ready` 的工作流任务行；活动租约另有准入控制。 |
+| `workflow_timers`, `pending_workflow_timers` | 所有保留 timer，及其中 `pending` 子集。 |
+| `workflow_run_waits`, `open_workflow_run_waits` | 所有保留 run wait，及其中 `open` 子集。 |
+| `schedules`, `schedule_history_events`, `worker_registrations` | 保留的 schedule、schedule history 和 worker 注册行；过期注册在删除前仍计数。 |
+| `workflow_streams`, `workflow_stream_items` | 持久和入站 stream 行及其 item 行。 |
+
+等待子工作流或服务调用的父工作流仍占用自身命名空间的开放 run。子工作流增加自己的 run；同一命名空间应规划两个开放 run 及其 wait/timer。创建工作流的服务操作会在该工作流命名空间消耗行；对已有 run 的 signal/update 不会自动创建第二个 run。服务调用边界和外部 payload 配额是独立控制。
+
+耗尽时返回429 `namespace_<resource>_exhausted`。应读取 `retryable`：部分配额不可重试且不提供等待提示；可重试持久拒绝提示60秒，但不保证届时有容量。无法评估已配置配额时返回503 `namespace_durable_state_quota_unavailable`，提示1秒。保留行数压力可能需要 retention 或容量/配置变更，而不是紧密重试循环。
+
+读取管理员指标时，用请求头选择命名空间。`dw_namespace_durable_state_usage` 及 JSON 字段 `limits`、`usage`、`remaining`、`configuration_status`、`measurement_status` 显示该范围；命名空间是请求范围，而非无界指标标签。测量不可用不表示使用量为0或容量无限。另见[完整配置参考](./server-config-reference.md#namespace-durable-controls)。
+
 ## Server 配置 {#server-configuration}
 
 所有队列应采用同一上限时，设置全局上限：

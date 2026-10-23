@@ -344,6 +344,8 @@ This reference covers the published **PHP Server 2.11.0** contract, including th
 | `DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` | `unset` | Non-bypassable ceiling for concurrent namespace control-plane requests, including namespace overrides. | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` |
 | `DW_NAMESPACE_ADMISSION_OVERRIDES` | `{}` | JSON object keyed by namespace with optional request-rate and concurrent-request overrides. | `WORKFLOW_SERVER_NAMESPACE_ADMISSION_OVERRIDES` |
 
+[Namespace request admission](./task-queue-admission.md#namespace-request-admission).
+
 ### Namespace durable-state quotas {#namespace-durable-controls}
 
 | Variable | Default | Purpose | Legacy alias |
@@ -351,6 +353,8 @@ This reference covers the published **PHP Server 2.11.0** contract, including th
 | `DW_NAMESPACE_DURABLE_LIMITS` | `{}` | JSON object of default per-namespace durable row limits across workflow instances, runs, history, tasks, timers, waits, commands, schedules, workers, and streams. Lifetime and pending/open limits are independent; pending workflow tasks count queued ready rows because active leases have separate admission limits. An empty object is unlimited. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_LIMITS` |
 | `DW_NAMESPACE_DURABLE_HARD_LIMITS` | `{}` | JSON object of non-bypassable ceilings for the namespace durable row limit fields, including per-namespace overrides. An empty object adds no operator hard ceilings. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_HARD_LIMITS` |
 | `DW_NAMESPACE_DURABLE_OVERRIDES` | `{}` | JSON object keyed by namespace with optional namespace durable row limit overrides. Hard limits remain authoritative. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_OVERRIDES` |
+
+[Namespace durable-state quotas](./task-queue-admission.md#namespace-durable-state).
 
 ### External payload quotas and S3 transport {#external-payload-quotas-and-s3}
 

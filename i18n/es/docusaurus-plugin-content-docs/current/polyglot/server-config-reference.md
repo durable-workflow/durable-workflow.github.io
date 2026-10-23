@@ -285,6 +285,8 @@ Esta referencia cubre el contrato publicado de **PHP Server 2.11.0**, incluidos 
 | `DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` | `unset` | Techo obligatorio de peticiones simultáneas, incluidas las excepciones por namespace. | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` |
 | `DW_NAMESPACE_ADMISSION_OVERRIDES` | `{}` | Objeto JSON por namespace con excepciones de frecuencia y concurrencia de peticiones. | `WORKFLOW_SERVER_NAMESPACE_ADMISSION_OVERRIDES` |
 
+[Admisión de peticiones por namespace](./task-queue-admission.md#namespace-request-admission).
+
 ### Cuotas de estado duradero por namespace {#namespace-durable-controls}
 
 | Variable | Valor predeterminado | Propósito | Alias anterior |
@@ -292,6 +294,8 @@ Esta referencia cubre el contrato publicado de **PHP Server 2.11.0**, incluidos 
 | `DW_NAMESPACE_DURABLE_LIMITS` | `{}` | JSON de cuotas de filas duraderas por namespace. Los totales y límites pending/open son independientes; las tareas pendientes son filas ready en cola, con leases activos limitados aparte. Un objeto vacío no limita. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_LIMITS` |
 | `DW_NAMESPACE_DURABLE_HARD_LIMITS` | `{}` | JSON de techos obligatorios de filas duraderas, incluidas excepciones; un objeto vacío no añade techos del operador. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_HARD_LIMITS` |
 | `DW_NAMESPACE_DURABLE_OVERRIDES` | `{}` | JSON de excepciones de cuotas duraderas por namespace; los techos obligatorios siguen vigentes. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_OVERRIDES` |
+
+[Cuotas de estado duradero por namespace](./task-queue-admission.md#namespace-durable-state).
 
 ### Cuotas de payload externo y transporte S3 {#external-payload-quotas-and-s3}
 

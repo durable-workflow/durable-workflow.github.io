@@ -285,6 +285,8 @@ Esta referência cobre o contrato publicado do **PHP Server 2.11.0**, incluindo 
 | `DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` | `unset` | Teto obrigatório de requisições simultâneas, incluindo overrides de namespace. | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` |
 | `DW_NAMESPACE_ADMISSION_OVERRIDES` | `{}` | Objeto JSON por namespace com overrides de frequência e concorrência de requisições. | `WORKFLOW_SERVER_NAMESPACE_ADMISSION_OVERRIDES` |
 
+[Admissão de requisições por namespace](./task-queue-admission.md#namespace-request-admission).
+
 ### Cotas de estado durável por namespace {#namespace-durable-controls}
 
 | Variável | Padrão | Finalidade | Alias antigo |
@@ -292,6 +294,8 @@ Esta referência cobre o contrato publicado do **PHP Server 2.11.0**, incluindo 
 | `DW_NAMESPACE_DURABLE_LIMITS` | `{}` | JSON de cotas padrão de linhas duráveis por namespace. Totais e limites pending/open são independentes; tarefas pendentes são linhas ready na fila, com leases ativos limitados à parte. Objeto vazio não limita. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_LIMITS` |
 | `DW_NAMESPACE_DURABLE_HARD_LIMITS` | `{}` | JSON de tetos obrigatórios de linhas duráveis, incluindo overrides; objeto vazio não acrescenta tetos do operador. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_HARD_LIMITS` |
 | `DW_NAMESPACE_DURABLE_OVERRIDES` | `{}` | JSON de overrides de cotas duráveis por namespace; tetos obrigatórios continuam valendo. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_OVERRIDES` |
+
+[Cotas de estado durável por namespace](./task-queue-admission.md#namespace-durable-state).
 
 ### Cotas de payload externo e transporte S3 {#external-payload-quotas-and-s3}
 

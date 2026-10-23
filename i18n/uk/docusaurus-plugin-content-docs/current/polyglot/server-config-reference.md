@@ -341,6 +341,8 @@ workers, які виконують ті самі workflows.
 | `DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` | `unset` | Непереборна верхня межа одночасних запитів, зокрема для перевизначень namespace. | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` |
 | `DW_NAMESPACE_ADMISSION_OVERRIDES` | `{}` | JSON-об’єкт за namespace із перевизначеннями частоти та одночасності запитів. | `WORKFLOW_SERVER_NAMESPACE_ADMISSION_OVERRIDES` |
 
+[Допуск запитів namespace](./task-queue-admission.md#namespace-request-admission).
+
 ### Квоти сталого стану namespace {#namespace-durable-controls}
 
 | Змінна | Типове значення | Призначення | Застарілий псевдонім |
@@ -348,6 +350,8 @@ workers, які виконують ті самі workflows.
 | `DW_NAMESPACE_DURABLE_LIMITS` | `{}` | JSON типових квот сталих рядків namespace. Загальні та pending/open-квоти незалежні; pending tasks — готові рядки черги, активні leases обмежуються окремо. Порожній об’єкт не задає меж. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_LIMITS` |
 | `DW_NAMESPACE_DURABLE_HARD_LIMITS` | `{}` | JSON непереборних верхніх меж сталих рядків, зокрема для перевизначень namespace; порожній об’єкт не додає операторських обмежень. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_HARD_LIMITS` |
 | `DW_NAMESPACE_DURABLE_OVERRIDES` | `{}` | JSON перевизначень квот сталих рядків за namespace; жорсткі межі залишаються чинними. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_OVERRIDES` |
+
+[Квоти сталого стану namespace](./task-queue-admission.md#namespace-durable-state).
 
 ### Квоти зовнішніх payload і транспорт S3 {#external-payload-quotas-and-s3}
 

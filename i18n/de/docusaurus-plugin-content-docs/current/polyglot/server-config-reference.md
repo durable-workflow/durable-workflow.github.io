@@ -285,6 +285,8 @@ Diese Referenz beschreibt den veröffentlichten Vertrag von **PHP Server 2.11.0*
 | `DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` | `unset` | Unübergehbare Obergrenze gleichzeitiger Anfragen, auch bei Namespace-Overrides. | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` |
 | `DW_NAMESPACE_ADMISSION_OVERRIDES` | `{}` | JSON-Objekt nach Namespace mit Overrides für Anfragerate und Gleichzeitigkeit. | `WORKFLOW_SERVER_NAMESPACE_ADMISSION_OVERRIDES` |
 
+[Anfragezulassung pro Namespace](./task-queue-admission.md#namespace-request-admission).
+
 ### Kontingente für dauerhaften Namespace-Zustand {#namespace-durable-controls}
 
 | Variable | Vorgabe | Zweck | Alter Alias |
@@ -292,6 +294,8 @@ Diese Referenz beschreibt den veröffentlichten Vertrag von **PHP Server 2.11.0*
 | `DW_NAMESPACE_DURABLE_LIMITS` | `{}` | JSON mit Standardkontingenten dauerhafter Zeilen pro Namespace. Gesamt- und Pending/Open-Grenzen gelten unabhängig; ausstehende Tasks sind Ready-Zeilen in der Queue, aktive Leases werden separat begrenzt. Ein leeres Objekt begrenzt nicht. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_LIMITS` |
 | `DW_NAMESPACE_DURABLE_HARD_LIMITS` | `{}` | JSON mit unübergehbaren Obergrenzen dauerhafter Zeilen einschließlich Overrides; ein leeres Objekt fügt keine Betreiberobergrenzen hinzu. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_HARD_LIMITS` |
 | `DW_NAMESPACE_DURABLE_OVERRIDES` | `{}` | JSON mit Overrides dauerhafter Zeilenkontingente pro Namespace; harte Obergrenzen gelten weiterhin. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_OVERRIDES` |
+
+[Kontingente für dauerhaften Namespace-Zustand](./task-queue-admission.md#namespace-durable-state).
 
 ### Externe Payload-Kontingente und S3-Transport {#external-payload-quotas-and-s3}
 

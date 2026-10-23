@@ -285,6 +285,8 @@ Cette référence couvre le contrat publié de **PHP Server 2.11.0**, dont les c
 | `DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` | `unset` | Plafond impératif des requêtes simultanées, y compris les exceptions par namespace. | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` |
 | `DW_NAMESPACE_ADMISSION_OVERRIDES` | `{}` | Objet JSON par namespace avec exceptions de fréquence et de concurrence des requêtes. | `WORKFLOW_SERVER_NAMESPACE_ADMISSION_OVERRIDES` |
 
+[Admission des requêtes par namespace](./task-queue-admission.md#namespace-request-admission).
+
 ### Quotas d’état durable par namespace {#namespace-durable-controls}
 
 | Variable | Valeur par défaut | Rôle | Ancien alias |
@@ -292,6 +294,8 @@ Cette référence couvre le contrat publié de **PHP Server 2.11.0**, dont les c
 | `DW_NAMESPACE_DURABLE_LIMITS` | `{}` | JSON des quotas de lignes durables par namespace. Totaux et limites pending/open sont indépendants ; les tâches en attente sont les lignes ready en file, les leases actifs étant limités séparément. Un objet vide ne limite pas. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_LIMITS` |
 | `DW_NAMESPACE_DURABLE_HARD_LIMITS` | `{}` | JSON des plafonds impératifs de lignes durables, exceptions comprises ; un objet vide n’ajoute aucun plafond opérateur. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_HARD_LIMITS` |
 | `DW_NAMESPACE_DURABLE_OVERRIDES` | `{}` | JSON des exceptions de quotas durables par namespace ; les plafonds impératifs restent applicables. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_OVERRIDES` |
+
+[Quotas d’état durable par namespace](./task-queue-admission.md#namespace-durable-state).
 
 ### Quotas de payload externe et transport S3 {#external-payload-quotas-and-s3}
 

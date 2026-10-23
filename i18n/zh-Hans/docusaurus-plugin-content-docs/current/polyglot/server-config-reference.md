@@ -285,6 +285,8 @@ Server 镜像内置 `durable-workflow/workflow`，因此也提供包级 `DW_V2_*
 | `DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` | `unset` | 不可绕过的并发请求硬上限，也约束命名空间覆盖值。 | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` |
 | `DW_NAMESPACE_ADMISSION_OVERRIDES` | `{}` | 以命名空间为键的 JSON 对象，覆盖请求速率和并发数。 | `WORKFLOW_SERVER_NAMESPACE_ADMISSION_OVERRIDES` |
 
+[命名空间请求准入](./task-queue-admission.md#namespace-request-admission).
+
 ### 命名空间持久状态配额 {#namespace-durable-controls}
 
 | 变量 | 默认值 | 用途 | 旧别名 |
@@ -292,6 +294,8 @@ Server 镜像内置 `durable-workflow/workflow`，因此也提供包级 `DW_V2_*
 | `DW_NAMESPACE_DURABLE_LIMITS` | `{}` | 命名空间持久行数默认配额 JSON。总量与 pending/open 限额相互独立；待处理任务只计算队列 ready 行，活动租约另有限额。空对象不限制。 | `WORKFLOW_SERVER_NAMESPACE_DURABLE_LIMITS` |
 | `DW_NAMESPACE_DURABLE_HARD_LIMITS` | `{}` | 不可绕过的持久行数硬上限 JSON，也约束命名空间覆盖值；空对象不增加运维硬上限。 | `WORKFLOW_SERVER_NAMESPACE_DURABLE_HARD_LIMITS` |
 | `DW_NAMESPACE_DURABLE_OVERRIDES` | `{}` | 按命名空间覆盖持久行数配额的 JSON；硬上限始终有效。 | `WORKFLOW_SERVER_NAMESPACE_DURABLE_OVERRIDES` |
+
+[命名空间持久状态配额](./task-queue-admission.md#namespace-durable-state).
 
 ### 外部 payload 配额与 S3 传输 {#external-payload-quotas-and-s3}
 

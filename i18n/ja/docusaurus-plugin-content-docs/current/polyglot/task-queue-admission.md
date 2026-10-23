@@ -89,6 +89,67 @@ class PaymentWorkflow:
 
 保護対象の下流呼び出しは**通常のキューに入る activity** に置いてください。インラインのローカル activity は通常の activity task を作らず、キュー/namespace/グループの activity ディスパッチ上限は計量しません。prepared local claim は実行権限を検証し、この予算は検証しません。組み込み Laravel に独立 Server の admission はなく、独自のデプロイ制御を使います。[ローカル activity](../features/local-activities.md)を参照してください。
 
+## namespace ごとのリクエスト受付制限 {#namespace-request-admission}
+
+以下は公開済み **PHP Server 2.11.0** の契約です。実際のイメージと[バージョン付き設定リファレンス](./server-config-reference.md#additional-published-php-controls)を確認してください。HTTP 予算は、worker slot、task dispatch、保留中の poll、永続状態クォータとは別です。予算は `Durable-Workflow-Namespace` または `DW_DEFAULT_NAMESPACE` で解決されたリクエストの namespace に属し、管理 URL が別の namespace を指す場合も同じです。
+
+認証後に namespace の受付制限へ到達したリクエストは、次の制御・管理ルート群とその配下で計上されます。`/api/namespaces`, `/api/storage`, `/api/workflows`, `/api/activities`, `/api/bridge-adapters`, `/api/workers`, `/api/worker-sessions`, `/api/task-queues`, `/api/deployments`, `/api/schedules`, `/api/search-attributes`, `/api/service-endpoints`, `/api/service-catalog`。複数形の `/api/workers` 管理ルートも対象です。
+
+単数形の `/api/worker/*` の登録、polling、結果報告は、この HTTP 予算を使いません。health/readiness、`/api/cluster/info`、管理用 `/api/system/*`、runtime 認証情報、外部 payload 転送もこの gate の対象外ですが、それぞれのアクセス・容量・ストレージ検査は適用されます。認証、プロトコル、namespace 解決で先に拒否されたリクエストは、このカウンターまで到達しません。
+
+頻度制限は Server の時計による固定の分単位 bucket です。平滑化されたレートや移動窓ではありません。予算 N では、境界の直前に N 件、直後にさらに N 件を受け付ける場合があります。後段で失敗しても計上されます。頻度の判定は同時数の前なので、同時数による拒否も分予算を消費する場合があります。同時数 slot はリクエスト終了と cleanup まで保持され、実行中 workflow 数を数えるものではありません。
+
+複数 API replica では、同じ共有 Redis store/key prefix、同期した時計、一貫した読み込み済み設定が必要です。replica を増やしても共有 namespace 予算は増えません。ローカル file cache は、互換性のある書き込み権限を持つプロセス間だけを調整し、複数ノード用の基準構成ではありません。ノード単位の worker/query poll 待機数上限は別です。[環境変数変更後は対象 role を再起動](./server-config-reference.md#how-changes-take-effect)してください。
+
+```dotenv
+DW_NAMESPACE_MAX_REQUESTS_PER_MINUTE=100
+DW_NAMESPACE_MAX_CONCURRENT_REQUESTS=8
+DW_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE=150
+DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS=10
+DW_NAMESPACE_ADMISSION_OVERRIDES='{"payments":{"max_requests_per_minute":200,"max_concurrent_requests":12},"reports":{"max_requests_per_minute":40,"max_concurrent_requests":3}}'
+```
+
+既存 namespace では、例の実効値は `payments` が毎分150件・同時10件、`reports` が40/3、その他が100/8です。override は既定値を増減できますが、hard cap の150/10は適用されます。この設定は namespace を作成せず、スループットを予約しません。
+
+これらの HTTP 設定は未設定なら対応する上限を追加しませんが、hard cap だけでも上限になります。null override は既定値へ戻ります。値は正の整数が必要で、0は無効です。PHP 実装上限は毎分10000000件・同時1024件で、実際の HTTP pool 容量とは別です。公開 PHP2.11.0 は不正な `DW_NAMESPACE_ADMISSION_OVERRIDES` JSON を空の override として黙って扱い、全体の既定値へ戻します。デプロイ前に JSON を検証してください。既定値と hard cap がなければ意図した namespace 上限が失われます。この[確認済み製品不具合](https://github.com/durable-workflow/durable-workflow.github.io/issues/335#issuecomment-6369150521)はドキュメント更新では修正されません。
+
+| 理由 | HTTP | 再試行の目安（秒） |
+| --- | --- | --- |
+| `namespace_request_rate_exhausted` | `429` | 次の分まで、1〜60 |
+| `namespace_request_concurrency_exhausted` | `429` | 1 |
+| `namespace_request_admission_unavailable` | `503` | 1 |
+
+JSON の `retry_after_seconds` と `Retry-After` ヘッダーは一致します。設定済みの調整機構が利用不能、または数値上限が無効な場合は503で拒否します。通常リクエストの予算を使い切っても namespace の管理メトリクスを確認できます。`dw_namespace_request_admission_rejections` が有限の理由を報告します。呼び出し側の retry/backoff を制限し、冪等性を保ってください。通信結果が不確かな場合、書き込みを自動再送してよいことにはなりません。[タイムアウト予算](../deployment.md#worker-long-poll-timeout-budgets)も参照してください。
+
+## namespace の永続状態クォータ {#namespace-durable-state}
+
+`DW_NAMESPACE_DURABLE_LIMITS` は保持行数の既定上限、`DW_NAMESPACE_DURABLE_OVERRIDES` は namespace ごとの上書き、`DW_NAMESPACE_DURABLE_HARD_LIMITS` は回避できない hard cap です。空オブジェクトは上限を追加しません。override は既定値を増減でき、null は既定値へ戻ります。HTTP 制限と異なり、永続クォータの0は有効で、新規割り当てを防ぎます。例では既存 `payments` は open run を250、その他は100まで保持でき、hard cap は500です。
+
+```dotenv
+DW_NAMESPACE_DURABLE_LIMITS='{"max_open_workflow_runs":100,"max_open_workflow_run_waits":200,"max_pending_workflow_timers":200}'
+DW_NAMESPACE_DURABLE_HARD_LIMITS='{"max_open_workflow_runs":500}'
+DW_NAMESPACE_DURABLE_OVERRIDES='{"payments":{"max_open_workflow_runs":250}}'
+```
+
+以下のリソースに `max_<resource>` フィールドを使います。各行は、その所有 namespace、または関連する workflow/run の namespace で計上されます。保持総数と open/pending の部分集合は独立した上限です。namespace 行で変更を直列化し、データベースの正本の件数で判断します。
+
+| リソース | 計上対象 |
+| --- | --- |
+| `workflow_instances`, `workflow_runs` | 終了済み run も含む、保持中の全 workflow instance/run 行。 |
+| `open_workflow_runs` | 状態が `pending`、`running`、`waiting` の run。 |
+| `workflow_history_events`, `workflow_commands`, `workflow_tasks` | 保持中の履歴、command、workflow task 行。 |
+| `pending_workflow_tasks` | キュー内で状態が `ready` の workflow task 行。active lease には別の受付制限があります。 |
+| `workflow_timers`, `pending_workflow_timers` | 保持中の全 timer と、その `pending` 部分集合。 |
+| `workflow_run_waits`, `open_workflow_run_waits` | 保持中の全 run wait と、その `open` 部分集合。 |
+| `schedules`, `schedule_history_events`, `worker_registrations` | 保持中の schedule、schedule history、worker 登録行。古い登録も削除まで計上されます。 |
+| `workflow_streams`, `workflow_stream_items` | durable stream と inbound stream、およびその item 行。 |
+
+子や service call を待つ親も、自分の namespace で open run を使い続けます。子は自分の run を追加します。同じ namespace なら両方の open run と wait/timer を計画してください。workflow を作成する service operation は、その workflow の namespace に行を消費します。既存 run への signal/update が自動的に2つ目の run を作るわけではありません。サービス呼び出し境界と外部 payload のクォータは別です。
+
+枯渇時は429 `namespace_<resource>_exhausted` を返します。`retryable` を確認してください。再試行不可で待機目安を持たないクォータもあり、再試行可能な永続クォータ拒否は60秒を提示しますが、その後の空きを保証しません。設定済みクォータを評価できない場合は503 `namespace_durable_state_quota_unavailable` と1秒の目安です。保持行数の逼迫には、短い retry loop ではなく retention や容量・設定変更が必要な場合があります。
+
+管理メトリクスではリクエストヘッダーで namespace を選びます。`dw_namespace_durable_state_usage` と JSON の `limits`、`usage`、`remaining`、`configuration_status`、`measurement_status` がその範囲を示します。namespace はリクエストの範囲であり、無制限な metric label ではありません。計測不能は使用量0や無制限容量を意味しません。[完全な設定リファレンス](./server-config-reference.md#namespace-durable-controls)を参照してください。
+
 ## Server の設定 {#server-configuration}
 
 すべてのキューに同じ上限を適用する場合は、全体の上限を設定します。

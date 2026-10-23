@@ -285,6 +285,8 @@ CI とデプロイ用マニフェストには `DW_V2_GUARDRAILS_BOOT` を使用�
 | `DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` | `unset` | namespace の上書きにも適用される、回避できない同時要求数上限。 | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` |
 | `DW_NAMESPACE_ADMISSION_OVERRIDES` | `{}` | namespace をキーに、要求頻度と同時数を上書きする JSON オブジェクト。 | `WORKFLOW_SERVER_NAMESPACE_ADMISSION_OVERRIDES` |
 
+[namespace ごとのリクエスト受付制限](./task-queue-admission.md#namespace-request-admission).
+
 ### namespace の永続状態クォータ {#namespace-durable-controls}
 
 | 変数 | 既定値 | 目的 | 旧名 |
@@ -292,6 +294,8 @@ CI とデプロイ用マニフェストには `DW_V2_GUARDRAILS_BOOT` を使用�
 | `DW_NAMESPACE_DURABLE_LIMITS` | `{}` | namespace の永続行数の既定クォータを指定する JSON。総数と pending/open の制限は独立です。pending tasks はキューの ready 行を数え、active lease は別に制限します。空オブジェクトは無制限です。 | `WORKFLOW_SERVER_NAMESPACE_DURABLE_LIMITS` |
 | `DW_NAMESPACE_DURABLE_HARD_LIMITS` | `{}` | 上書きにも適用される、回避できない永続行数の上限を指定する JSON。空オブジェクトは運用者の上限を追加しません。 | `WORKFLOW_SERVER_NAMESPACE_DURABLE_HARD_LIMITS` |
 | `DW_NAMESPACE_DURABLE_OVERRIDES` | `{}` | namespace ごとの永続行数クォータの上書き JSON。hard limit は引き続き適用されます。 | `WORKFLOW_SERVER_NAMESPACE_DURABLE_OVERRIDES` |
+
+[namespace の永続状態クォータ](./task-queue-admission.md#namespace-durable-state).
 
 ### 外部 payload のクォータと S3 転送 {#external-payload-quotas-and-s3}
 
