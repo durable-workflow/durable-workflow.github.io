@@ -4,7 +4,7 @@ title: "幂等性与确定性"
 sidebar_label: 幂等性与确定性
 description: 在 Durable Workflow 2.0 中，确定性确保编排可安全重放，幂等性确保重试活动的副作用安全。
 slug: /constraints/idempotent-vs-deterministic
-canonical_path: /docs/constraints/idempotent-vs-deterministic/
+canonical_path: /zh-Hans/docs/constraints/idempotent-vs-deterministic/
 image: /img/idempotent-vs-deterministic.png
 tags:
   - constraints

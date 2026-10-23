@@ -4,7 +4,7 @@ title: "冪等性と決定性"
 sidebar_label: 冪等性と決定性
 description: Durable Workflow 2.0 では、決定性がオーケストレーションの安全なリプレイを支え、冪等性がアクティビティのリトライによる作用を安全にします。
 slug: /constraints/idempotent-vs-deterministic
-canonical_path: /docs/constraints/idempotent-vs-deterministic/
+canonical_path: /ja/docs/constraints/idempotent-vs-deterministic/
 image: /img/idempotent-vs-deterministic.png
 tags:
   - constraints

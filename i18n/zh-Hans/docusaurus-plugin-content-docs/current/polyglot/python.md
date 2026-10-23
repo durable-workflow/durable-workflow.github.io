@@ -1694,3 +1694,7 @@ client = Client(
 将 `namespace` 参数设为共享 Server 为团队配置的租户命名空间，并使用为该命名空间签发的凭据。Server 运维人员管理命名空间创建；详情见 [Server 指南](/docs/polyglot/server)。
 
 同一构造函数也支持 Cloud 托管运行时。使用 Cloud 为命名空间提供的运行时 URL 和命名空间值，将 `control_token` 设为客户端运行时凭据，将 `worker_token` 设为 Worker 运行时凭据。Cloud 负责配置命名空间；不要替换为自托管 Server 地址。参见 [Cloud 托管运行时](/docs/polyglot/cloud-control-plane)。
+
+## 工作流列表与历史页面 {#workflow-list-and-history-pages}
+
+这些已发布调用每次返回**一页**，不会自动完整读取：`await client.list_workflows(...)` / `await client.get_history(workflow_id, run_id, ...)`。继续请求时使用返回的不透明 token，并保持 namespace、筛选条件和所选 workflow/run 不变；最终 null/空 token 表示结束，页面错误必须明确处理。部分页面不是 replay bundle。离线 replay 请使用 SDK 的历史导出 API。[已发布的 Python 2.9.0 客户端源码](https://github.com/durable-workflow/sdk-python/blob/2.9.0/src/durable_workflow/client.py)定义当前参数；这里不声称新增自动迭代器。
