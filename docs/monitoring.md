@@ -71,6 +71,8 @@ alongside this guide. That contract separates at-least-once transport
 uncertainty from duplicate durable outcomes so duplicate-looking evidence does
 not turn into the wrong operational conclusion.
 
+Rust SDK **4.7.0 or later** provides pluggable metrics recorders and an optional `metrics-prometheus` adapter. The default is no-op; applications own the scrape endpoint and exporter lifecycle. See [Rust metrics setup and the released example](./polyglot/rust.md#rust-sdk-metrics) for exact names, bounded tags and process-observation limits. This does not configure Server or Cloud metrics.
+
 ## OpenTelemetry tracing {#opentelemetry-tracing}
 
 Connect application requests, workflow tasks and activity attempts across processes with optional OpenTelemetry tracing. Choose the setup for the runtime that owns your runs.

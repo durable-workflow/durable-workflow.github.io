@@ -39,6 +39,8 @@ Die Einrichtung von Workern und Clients bleibt ebenfalls von der Operatoroberfl�
 
 Zeigt Worker-Telemetrie wiederholte Übernahmen, Rennen um verspätete Abschlüsse oder feststeckende Leases, lesen Sie zusätzlich [Ausführungsgarantien und Idempotenz](./constraints/execution-guarantees.md). Dieser Vertrag trennt Unsicherheit des At-least-once-Transports von doppelten dauerhaften Ergebnissen, damit scheinbar doppelte Nachweise nicht zu falschen Betriebsentscheidungen führen.
 
+Rust SDK **4.7.0 oder neuer** bietet austauschbare Recorder und den optionalen Adapter `metrics-prometheus`. Standard ist no-op; Scrape-Endpunkt und Exporter-Lebenszyklus gehören der Anwendung. Siehe [Rust-Einrichtung und veröffentlichtes Beispiel](./polyglot/rust.md#rust-sdk-metrics) für genaue Namen, begrenzte Tags und Beobachtungsgrenzen. Server- oder Cloud-Metriken werden dadurch nicht konfiguriert.
+
 ## OpenTelemetry-Tracing {#opentelemetry-tracing}
 
 Verbinden Sie Anwendungsanfragen, Workflow-Tasks und Aktivitätsversuche über Prozessgrenzen hinweg mit optionalem OpenTelemetry-Tracing. Wählen Sie die Einrichtung für die Runtime, die Ihre Runs verwaltet.
