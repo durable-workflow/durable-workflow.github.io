@@ -1,0 +1,64 @@
+{
+  "schema": "durable-workflow.v2.workflow-stream-capabilities",
+  "version": 1,
+  "contract": "durable-workflow.v2.workflow-streams.contract@1",
+  "delivery": "at-least-once",
+  "offset_origin": 0,
+  "max_wait_seconds": 60,
+  "max_items_per_page": 500,
+  "workflow_authoring": {
+    "command_boundary": "record_side_effect.workflow_stream",
+    "idempotency_derivation": "workflow_command_id+command_ordinal+item_index",
+    "transactionality": "stream_mutation_and_side_effect_history_commit_together"
+  },
+  "sdk_support": {
+    "php": {
+      "package": "durable-workflow/sdk",
+      "operations": ["list", "describe", "subscribe", "append", "close", "error"],
+      "workflow_authoring": true,
+      "cancellation": "callback_between_bounded_polls",
+      "external_payload_references": "opaque-reference"
+    },
+    "python": {
+      "package": "durable-workflow",
+      "operations": ["list", "describe", "subscribe", "append", "close", "error"],
+      "workflow_authoring": true,
+      "cancellation": "task_or_event_cancels_in_flight_poll",
+      "external_payload_references": "read-write-with-configured-driver"
+    },
+    "rust": {
+      "package": "durable-workflow",
+      "operations": ["list", "describe", "subscribe", "append", "close", "error"],
+      "workflow_authoring": true,
+      "cancellation": "dropping_future_cancels_in_flight_poll",
+      "external_payload_references": "opaque-reference"
+    }
+  },
+  "waterline": {
+    "shared_fields": ["mode", "stream_name", "status", "last_offset", "run_cursor_offset", "pending_items", "error_reason"],
+    "service_mode": {
+      "direction": "workflow_output",
+      "offset_origin": 0,
+      "inbound_workflow_messaging": false,
+      "continue_as_new_cursor_transfer": false
+    },
+    "embedded_mode": {
+      "direction": "workflow_inbox_and_outbox",
+      "offset_origin": 1,
+      "inbound_workflow_messaging": true,
+      "continue_as_new_cursor_transfer": true
+    }
+  },
+  "conformance": {
+    "scenario_manifest": "https://durable-workflow.github.io/platform-conformance/workflow-stream-runtime-scenarios.json",
+    "required_before_artifact_promotion": true,
+    "required_scenarios": [
+      "php_producer_python_consumer",
+      "php_producer_rust_consumer",
+      "producer_worker_restart",
+      "consumer_reconnect",
+      "lifecycle_backpressure_and_cancellation",
+      "external_payload_reference_matrix"
+    ]
+  }
+}

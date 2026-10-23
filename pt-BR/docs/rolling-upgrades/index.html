@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="pt-BR" dir="ltr" class="docs-wrapper plugin-docs plugin-id-default docs-version-current docs-doc-page docs-doc-id-rolling-upgrades" data-has-hydrated="false">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="Docusaurus v3.10.2">
+<title data-rh="true">Atualizações graduais | Durable Workflow</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://durable-workflow.com/pt-BR/img/durable-workflow-2.0.png"><meta data-rh="true" name="twitter:image" content="https://durable-workflow.com/pt-BR/img/durable-workflow-2.0.png"><meta data-rh="true" property="og:url" content="https://durable-workflow.com/pt-BR/docs/rolling-upgrades/"><meta data-rh="true" property="og:locale" content="pt_BR"><meta data-rh="true" property="og:locale:alternate" content="en"><meta data-rh="true" property="og:locale:alternate" content="de"><meta data-rh="true" property="og:locale:alternate" content="es"><meta data-rh="true" property="og:locale:alternate" content="fr"><meta data-rh="true" property="og:locale:alternate" content="uk"><meta data-rh="true" property="og:locale:alternate" content="ja"><meta data-rh="true" property="og:locale:alternate" content="zh_Hans"><meta data-rh="true" name="docusaurus_locale" content="pt-BR"><meta data-rh="true" name="docsearch:language" content="pt-BR"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Atualizações graduais | Durable Workflow"><meta data-rh="true" name="description" content="Faça uma atualização gradual por conta própria nos nós de API, workers e agendador do Durable Workflow Server sem interromper o tráfego ativo."><meta data-rh="true" property="og:description" content="Faça uma atualização gradual por conta própria nos nós de API, workers e agendador do Durable Workflow Server sem interromper o tráfego ativo."><meta data-rh="true" name="keywords" content="atualização gradual,segurança de atualização gradual,drenagem de workers,proteção de esquema,contrato de prontidão,workflow de reversão"><meta data-rh="true" name="twitter:title" content="Atualizações graduais | Durable Workflow"><meta data-rh="true" name="twitter:description" content="Faça uma atualização gradual por conta própria nos nós de API, workers e agendador do Durable Workflow Server sem interromper o tráfego ativo."><link data-rh="true" rel="icon" href="/pt-BR/img/favicon.ico"><link data-rh="true" rel="canonical" href="https://durable-workflow.com/pt-BR/docs/rolling-upgrades/"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/docs/rolling-upgrades/" hreflang="en"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/de/docs/rolling-upgrades/" hreflang="de"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/es/docs/rolling-upgrades/" hreflang="es"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/fr/docs/rolling-upgrades/" hreflang="fr"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/pt-BR/docs/rolling-upgrades/" hreflang="pt-BR"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/uk/docs/rolling-upgrades/" hreflang="uk"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/ja/docs/rolling-upgrades/" hreflang="ja"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/zh-Hans/docs/rolling-upgrades/" hreflang="zh-Hans"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/docs/rolling-upgrades/" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Execução e operação","item":"https://durable-workflow.com/pt-BR/docs/category/run-and-operate"},{"@type":"ListItem","position":2,"name":"Atualizações graduais","item":"https://durable-workflow.com/pt-BR/docs/rolling-upgrades"}]}</script><link rel="alternate" type="application/rss+xml" href="/pt-BR/blog/rss.xml" title="Durable Workflow RSS Feed">
+<link rel="alternate" type="application/atom+xml" href="/pt-BR/blog/atom.xml" title="Durable Workflow Atom Feed">
+
+
+
+
+
+
+
+<script src="/analytics/cloudflare-web-analytics.js" type="module" data-cloudflare-web-analytics-token="a1296466c4e5487ca6ffd230a694b933"></script><link rel="stylesheet" href="/pt-BR/assets/css/styles.50a34b27.css">
+<script src="/pt-BR/assets/js/runtime~main.e9902377.js" defer="defer"></script>
+<script src="/pt-BR/assets/js/main.f7a0b26a.js" defer="defer"></script>
+</head>
+<body>
+<svg style="display: none;"><defs>
+<symbol id="theme-svg-external-link" viewBox="0 0 24 24"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"/></symbol>
+</defs></svg>
+<script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||"dark"),document.documentElement.setAttribute("data-theme-choice",t||"dark")}(),function(){try{const c=new URLSearchParams(window.location.search).entries();for(var[t,e]of c)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id="__docusaurus"><link rel="preload" as="image" href="/pt-BR/img/logo.svg"><div role="region" aria-label="Pular para o conteúdo principal"><a class="skipToContent_fXgn" href="#__docusaurus_skipToContent_fallback">Pular para o conteúdo principal</a></div><nav aria-label="Navegação principal" class="theme-layout-navbar navbar navbar--fixed-top"><div class="navbar__inner"><div class="theme-layout-navbar-left navbar__items"><button aria-label="Alternar painel de navegação" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/pt-BR/"><div class="navbar__logo"><img src="/pt-BR/img/logo.svg" alt="Logotipo do Durable Workflow" class="themedComponent_mlkZ themedComponent--light_NVdE"><img src="/pt-BR/img/logo.svg" alt="Logotipo do Durable Workflow" class="themedComponent_mlkZ themedComponent--dark_xIcU"></div><b class="navbar__title text--truncate">Durable Workflow</b></a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/pt-BR/docs/introduction/">Documentação</a><div class="navbar__item dropdown dropdown--hoverable"><a class="navbar__link" aria-haspopup="true" aria-expanded="false" role="button" href="/pt-BR/docs/rolling-upgrades/">2.x</a><ul class="dropdown__menu"><li><a aria-current="page" class="dropdown__link dropdown__link--active" href="/pt-BR/docs/rolling-upgrades/">2.x</a></li><li><a class="dropdown__link" href="/pt-BR/docs/1.x/introduction/">1.x</a></li></ul></div><a class="navbar__item navbar__link" href="/pt-BR/blog/">Blog (em inglês)</a></div><div class="theme-layout-navbar-right navbar__items navbar__items--right"><div class="navbar__item dropdown dropdown--hoverable dropdown--right"><a href="#" aria-haspopup="true" aria-expanded="false" role="button" class="navbar__link"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" class="iconLanguage_nlXk"><path fill="currentColor" d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"></path></svg>Português (Brasil)</a><ul class="dropdown__menu"><li><a href="/docs/rolling-upgrades/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="en">English</a></li><li><a href="/de/docs/rolling-upgrades/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="de">Deutsch</a></li><li><a href="/es/docs/rolling-upgrades/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="es">Español</a></li><li><a href="/fr/docs/rolling-upgrades/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="fr">Français</a></li><li><a href="/pt-BR/docs/rolling-upgrades/" target="_self" rel="noopener noreferrer" class="dropdown__link dropdown__link--active" lang="pt-BR">Português (Brasil)</a></li><li><a href="/uk/docs/rolling-upgrades/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="uk">Українська</a></li><li><a href="/ja/docs/rolling-upgrades/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="ja">日本語</a></li><li><a href="/zh-Hans/docs/rolling-upgrades/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="zh-Hans">简体中文</a></li></ul></div><a href="https://github.com/durable-workflow/workflow" target="_blank" rel="noopener noreferrer" aria-label="Dê uma estrela ao Durable Workflow no GitHub" class="navbar-github-star-link navbar__item navbar__link" label="Apoie o projeto no GitHub"><svg aria-hidden="true" class="navbar-github-star-link__icon" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8a8.01 8.01 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.56 7.56 0 0 1 8 4.76c.68 0 1.36.09 2 .27 1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"></path></svg><span class="navbar-github-star-link__count" title="Estrelas no GitHub">1.3K</span></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type="button" disabled="" title="modo do sistema" aria-label="Mudar entre modo claro e escuro (modo do sistema está ativo)"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP lightToggleIcon_pyhR"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP darkToggleIcon_wfgR"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP systemToggleIcon_QzmC"><path fill="currentColor" d="m12 21c4.971 0 9-4.029 9-9s-4.029-9-9-9-9 4.029-9 9 4.029 9 9 9zm4.95-13.95c1.313 1.313 2.05 3.093 2.05 4.95s-0.738 3.637-2.05 4.95c-1.313 1.313-3.093 2.05-4.95 2.05v-14c1.857 0 3.637 0.737 4.95 2.05z"></path></svg></button></div><div class="navbarSearchContainer_Bca1"><div class="navbar__search searchBarContainer_NW3z" dir="ltr"><svg aria-hidden="true" class="searchIcon_T3tP" focusable="false" viewBox="0 0 16 16"><path fill="currentColor" d="M6.02945 10.20327a4.17382 4.17382 0 1 1 4.17382-4.17382 4.15609 4.15609 0 0 1-4.17382 4.17382Zm9.69195 4.2199-4.8225-4.82338A5.88021 5.88021 0 0 0 12.058 6.02856 6.00467 6.00467 0 1 0 9.59979 10.8989l4.82338 4.82338a.89729.89729 0 0 0 1.29912 0 .89749.89749 0 0 0-.00087-1.29909Z"></path></svg><input placeholder="Buscar" aria-label="Buscar" class="navbar__search-input searchInput_YFbd" value=""><div class="loadingRing_RJI3 searchBarLoadingRing_YnHq"><div></div><div></div><div></div><div></div></div></div></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="__docusaurus_skipToContent_fallback" class="theme-layout-main main-wrapper mainWrapper_z2l0"><div class="docsWrapper_hBAB"><button aria-label="Voltar para o topo" class="clean-btn theme-back-to-top-button backToTopButton_sjWU" type="button"></button><div class="docRoot_UBD9"><aside class="theme-doc-sidebar-container docSidebarContainer_YfHR"><div class="sidebarViewport_aRkj"><div class="sidebar_njMd"><nav aria-label="Painel lateral de documentos" class="menu thin-scrollbar menu_SIkG"><ul class="theme-doc-sidebar-menu menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/pt-BR/docs/introduction/"><span class="linkLabel_WmDU">Introdução</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/pt-BR/docs/quickstart/"><span class="linkLabel_WmDU">Primeiros passos com Durable Workflow 2.0</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/pt-BR/docs/capabilities/"><span class="linkLabel_WmDU">Índice de capacidades 2.0</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/pt-BR/docs/laravel-adoption/"><span class="linkLabel_WmDU">Adoção no Laravel e transição de runtime</span></a></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/pt-BR/docs/category/service-mode/"><span class="categoryLinkLabel_W154">Modo de serviço</span></a><button aria-label="Expandir a categoria &#x27;Modo de serviço&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/pt-BR/docs/category/embedded/"><span class="categoryLinkLabel_W154">Modo integrado</span></a><button aria-label="Expandir a categoria &#x27;Modo integrado&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--active" href="/pt-BR/docs/category/run-and-operate/"><span class="categoryLinkLabel_W154">Execução e operação</span></a><button aria-label="Recolher a categoria &#x27;Execução e operação&#x27;" aria-expanded="true" type="button" class="clean-btn menu__caret"></button></div><ul class="menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/pt-BR/docs/deployment/"><span class="linkLabel_WmDU">Implantações sob sua administração</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link menu__link--active" aria-current="page" tabindex="0" href="/pt-BR/docs/rolling-upgrades/"><span class="linkLabel_WmDU">Atualizações graduais</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/pt-BR/docs/monitoring/"><span class="linkLabel_WmDU">Monitoramento</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/pt-BR/docs/operator-operating-envelope/"><span class="linkLabel_WmDU">Escopo operacional do operador</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/pt-BR/docs/waterline-operator-api/"><span class="linkLabel_WmDU">Referência da API do operador Waterline</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/pt-BR/docs/compatibility/"><span class="linkLabel_WmDU">Compatibilidade de versões</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/pt-BR/docs/platform-protocol-specs/"><span class="linkLabel_WmDU">Especificações de protocolos da plataforma</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/pt-BR/docs/platform-conformance/"><span class="linkLabel_WmDU">Suíte de conformidade da plataforma</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/pt-BR/docs/sdk-neutrality/"><span class="linkLabel_WmDU">Neutralidade dos SDKs</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/pt-BR/docs/support/"><span class="linkLabel_WmDU">Suporte</span></a></li></ul></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/pt-BR/docs/category/external-execution-and-ingress/"><span class="categoryLinkLabel_W154">Execução externa e entrada de solicitações</span></a><button aria-label="Expandir a categoria &#x27;Execução externa e entrada de solicitações&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/pt-BR/docs/category/ai-and-automation/"><span class="categoryLinkLabel_W154">IA e automação</span></a><button aria-label="Expandir a categoria &#x27;IA e automação&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/pt-BR/docs/sponsors/"><span class="linkLabel_WmDU">Patrocinadores</span></a></li></ul></nav></div></div></aside><main class="docMainContainer_TBSr"><div class="container padding-top--md padding-bottom--lg"><div class="row"><div class="col docItemCol_VOVn"><div class="docItemContainer_Djhp"><article><nav class="theme-doc-breadcrumbs breadcrumbsContainer_Z_bl" aria-label="Trilha"><ul class="breadcrumbs"><li class="breadcrumbs__item"><a aria-label="Página Inicial" class="breadcrumbs__link" href="/pt-BR/"><svg viewBox="0 0 24 24" class="breadcrumbHomeIcon_YNFT"><path d="M10 19v-5h4v5c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-7h1.7c.46 0 .68-.57.33-.87L12.67 3.6c-.38-.34-.96-.34-1.34 0l-8.36 7.53c-.34.3-.13.87.33.87H5v7c0 .55.45 1 1 1h3c.55 0 1-.45 1-1z" fill="currentColor"></path></svg></a></li><li class="breadcrumbs__item"><a class="breadcrumbs__link" href="/pt-BR/docs/category/run-and-operate/"><span>Execução e operação</span></a></li><li class="breadcrumbs__item breadcrumbs__item--active"><span class="breadcrumbs__link">Atualizações graduais</span></li></ul></nav><span class="theme-doc-version-badge badge badge--secondary">Versão: 2.x</span><div class="tocCollapsible_ETCw theme-doc-toc-mobile tocMobile_ITEo"><button type="button" class="clean-btn tocCollapsibleButton_TO0P">Nesta página</button></div><div lang="pt-BR"><div class="theme-doc-markdown markdown"><header><h1>Atualizações graduais</h1></header>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="replay-before-changing-builds">Replay antes de trocar builds<a href="#replay-before-changing-builds" class="hash-link" aria-label="Link direto para Replay antes de trocar builds" title="Link direto para Replay antes de trocar builds" translate="no">​</a></h2>
+<p>Antes de promover um candidato, reproduza históricos representativos abertos e encerrados recentemente usando seu código exato. Antes de reverter, reproduza os históricos escritos pelo build novo com o artefato antigo. Siga a <a class="" href="/pt-BR/docs/testing/#replay-before-deployment">verificação de replay</a>; uma coorte de roteamento compatível ou uma verificação de integridade aprovada não comprova, por si só, compatibilidade de replay.</p>
+<p>Faça uma atualização gradual quando quiser substituir nós de API, workers ou o
+agendador sem tirar a implantação do ar. Este contrato abrange a topologia de
+cluster pequeno do guia de <a class="" href="/pt-BR/docs/deployment/">implantações sob sua administração</a>:
+dois ou três nós de API atrás de um balanceador de carga, MySQL ou PostgreSQL
+externo compartilhado, Redis compartilhado, workers escalados de forma
+independente e exatamente um agendador ou executor de manutenção.</p>
+<p>Uma atualização gradual é suportada quando todas as garantias desta página são
+atendidas. Fora desses limites, use o fluxo com parada total documentado no
+guia de implantação.</p>
+<p>O vocabulário de papéis e o manifesto de topologias por trás deste contrato estão
+documentados em <a class="" href="/pt-BR/docs/polyglot/server-role-topology/">Topologia de papéis do Server</a>.
+Este guia se concentra em como as classes de processo atuais de
+<code>standalone_server</code> são substituídas gradualmente no lugar.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="what-rolling-upgrade-means-here">O que significa atualização gradual aqui<a href="#what-rolling-upgrade-means-here" class="hash-link" aria-label="Link direto para O que significa atualização gradual aqui" title="Link direto para O que significa atualização gradual aqui" translate="no">​</a></h2>
+<p>Uma <strong>atualização gradual</strong> substitui os processos um por vez, drenando cada um
+antes de pará-lo, enquanto o restante da frota continua atendendo ao tráfego.
+O resultado é ausência de indisponibilidade para a implantação como um todo e
+uma janela limitada de sobreposição na qual processos antigos e novos coexistem.</p>
+<p>O contrato distingue quatro classes de processo na topologia atual
+<code>standalone_server</code>, cada uma com sua própria estratégia de implantação:</p>
+<ul>
+<li class=""><strong>Nós HTTP/API</strong>: processos de servidor sem estado que atendem ao tráfego HTTP
+e atualmente hospedam os papéis <code>api_ingress</code>, <code>control_plane</code>, <code>matching</code>
+e <code>history_projection</code>.</li>
+<li class=""><strong>Workers</strong>: processos de SDK que consultam o plano de workers e executam
+tarefas de atividade e workflow como <code>execution_plane</code>.</li>
+<li class=""><strong>Agendador / executor de manutenção</strong>: o processo único que dispara
+agendamentos e conduz limites de tempo de atividades e retenção de histórico
+no papel <code>scheduler</code>.</li>
+<li class=""><strong>Bootstrap</strong>: o processo de execução única que roda migrações do banco de
+dados e o preenchimento inicial do namespace padrão.</li>
+</ul>
+<p>Nós de API e workers são atualizados de forma independente. O agendador é um
+processo único. Você para o antigo antes de iniciar o novo, mas o restante da
+implantação continua atendendo ao tráfego durante esse intervalo.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="compatible-version-skew-rules">Regras para diferenças compatíveis de versão<a href="#compatible-version-skew-rules" class="hash-link" aria-label="Link direto para Regras para diferenças compatíveis de versão" title="Link direto para Regras para diferenças compatíveis de versão" translate="no">​</a></h2>
+<p>A janela de sobreposição da atualização gradual é o período em que mais de uma
+imagem de servidor, versão do pacote Workflow ou versão de SDK de worker está
+ativa. Essa janela deve atender a todas as regras desta seção.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="server-image-and-workflow-package">Imagem do Server e pacote Workflow<a href="#server-image-and-workflow-package" class="hash-link" aria-label="Link direto para Imagem do Server e pacote Workflow" title="Link direto para Imagem do Server e pacote Workflow" translate="no">​</a></h3>
+<ul>
+<li class=""><strong>Somente versões adjacentes.</strong> Durante uma atualização gradual, cada nó de
+API e outro processo do Server deve executar uma imagem de servidor cuja
+versão do pacote Workflow tenha a mesma versão major do pacote anterior do
+cluster e esteja a no máximo uma versão minor de todos os outros processos
+ativos. Pular uma versão major exige uma atualização com parada total.</li>
+<li class=""><strong>Migrações aditivas para a frente.</strong> Toda alteração de esquema do Durable
+Workflow v2 é aditiva dentro de uma versão major. Novos nós não devem exigir
+uma coluna ou tabela cuja migração ainda não tenha sido aplicada. Nós antigos
+não devem quebrar quando houver uma coluna nova que eles não leem. As
+<a href="#schemabootstrap-ordering" class="">regras de ordem das migrações</a> abaixo garantem isso.</li>
+<li class=""><strong>Versões adjacentes do plano de controle e do protocolo de workers.</strong> Cada nó
+publica os intervalos suportados de <code>control_plane.version</code> e
+<code>worker_protocol.version</code> em <code>GET /api/cluster/info</code>. Durante uma atualização
+gradual, o intervalo suportado da nova imagem deve se sobrepor ao intervalo
+de todos os nós antigos ativos. Descubra o intervalo antes da implantação
+e aborte se não houver sobreposição.</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="worker-sdk-and-build-identity">SDK de worker e identidade do build<a href="#worker-sdk-and-build-identity" class="hash-link" aria-label="Link direto para SDK de worker e identidade do build" title="Link direto para SDK de worker e identidade do build" translate="no">​</a></h3>
+<ul>
+<li class=""><strong>Workers identificam cada build.</strong> Todo worker que possa participar de uma
+atualização gradual deve se registrar por <code>POST /api/worker/register</code> com um
+<code>build_id</code> estável. O grupo sem versão (<code>build_id: null</code>) é o padrão anterior
+à implantação. O <a class="" href="/pt-BR/docs/polyglot/worker-build-id-rollout/">guia de implantação por build ID de worker</a>
+explica a primeira transição.</li>
+<li class=""><strong>Preserve o roteamento original e qualifique as definições alteradas.</strong> A execução mantém sua fixação de build e o fingerprint registrado em <code>WorkflowStarted</code>. Com <code>DW_V2_PIN_TO_RECORDED_FINGERPRINT=true</code> (padrão), o Server 2.9.9 e as versões posteriores preferem workers elegíveis com a definição registrada. Se não restar nenhum, uma substituição com <code>workflow_entry_arguments_validation</code> pode reivindicar a tarefa sob as proteções originais de namespace, fila, tipo, build e replay. O SDK ainda precisa validar a entrada original e reproduzir os comandos confirmados.</li>
+<li class=""><strong>Estratégia de admissão de builds sobrepostos.</strong> Escolha a estratégia de
+<a class="" href="/pt-BR/docs/polyglot/server-config-reference/"><code>DW_V2_FLEET_VALIDATION_MODE</code></a> antes
+de começar. <code>warn</code> permite continuar a implantação mesmo quando não há worker
+ativo com o marcador de compatibilidade necessário. <code>fail</code> bloqueia o despacho
+e faz o contrato de prontidão negar a admissão durante essa janela.
+Implantações de produção que exijam uma transição limpa devem usar <code>fail</code>.</li>
+</ul>
+<p><strong>Suporte publicado.</strong> O Server 2.9.9 e os SDKs PHP 2.5.4, Python 2.6.2 e Rust 3.5.6 introduziram as proteções de entrada e o comportamento de roteamento e recuperação descritos abaixo. Essas são as versões mínimas para esses recursos; instale as versões estáveis atuais para receber correções de segurança. Runtimes antigos podem continuar recusando um fingerprint alterado mesmo quando o código da aplicação adiciona uma ramificação de versão válida. Desativar a fixação de fingerprint não é o procedimento padrão de atualização segura. Siga o <a class="" href="/pt-BR/docs/polyglot/worker-compatibility-routing/#definition-fingerprint-evolution">roteamento de definições</a>, confira a capacidade real do worker e mantenha os artefatos de rollback até qualificar o novo caminho. Uma ramificação de versão não corrige argumentos de entrada incompatíveis antes de entrar no corpo do workflow; consulte <a class="" href="/pt-BR/docs/features/versioning/#service-sdk-entry-safeguard">compatibilidade de entrada</a>.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="schemabootstrap-ordering">Ordem do esquema e bootstrap<a href="#schemabootstrap-ordering" class="hash-link" aria-label="Link direto para Ordem do esquema e bootstrap" title="Link direto para Ordem do esquema e bootstrap" translate="no">​</a></h2>
+<p>As alterações de esquema são aplicadas em uma única passagem de bootstrap. A ordem importa.</p>
+<ol>
+<li class=""><strong>Execute o bootstrap primeiro, exatamente uma vez.</strong> Execute <code>php artisan server:bootstrap --force</code> (ou o equivalente da imagem publicada) em um
+contêiner antes de iniciar qualquer novo nó de API, worker ou agendador.
+O bootstrap executa <code>migrate</code> e o preenchimento inicial do namespace padrão.
+Ele adota as migrações do pacote Workflow cujas tabelas já existam na conexão.</li>
+<li class=""><strong>O novo esquema deve ser compatível com o código antigo.</strong> Toda migração
+da v2 neste caminho de release é aditiva (novas tabelas, colunas e índices).
+Nós de API e workers antigos continuam executando com o novo esquema.</li>
+<li class=""><strong>Não inicie código novo antes de concluir o bootstrap.</strong> Implante a nova
+imagem do servidor somente depois que o bootstrap terminar com sucesso.
+Novos nós de API e workers podem depender das tabelas recém-migradas, e
+iniciá-los antes de concluir o bootstrap é a causa mais comum de um aumento
+de erros 5xx durante a transição.</li>
+<li class=""><strong>O bootstrap é idempotente.</strong> É seguro executá-lo novamente. Se falhar no
+meio, corrija o erro subjacente e repita. O registro de migrações retoma de
+onde parou, e o preenchimento do namespace não altera nada se o registro já existe.</li>
+</ol>
+<p>Uma migração aplicada em um servidor antes de outro NÃO DEVE corromper a
+interface de prontidão. Se descobrir uma alteração não aditiva no planejamento,
+reserve uma janela de atualização com parada total para essa release e retorne
+às atualizações graduais na próxima.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="drain-and-admission-during-the-overlap-window">Drenagem e admissão durante a janela de sobreposição<a href="#drain-and-admission-during-the-overlap-window" class="hash-link" aria-label="Link direto para Drenagem e admissão durante a janela de sobreposição" title="Link direto para Drenagem e admissão durante a janela de sobreposição" translate="no">​</a></h2>
+<p>Três interfaces de admissão garantem automaticamente a segurança da janela de sobreposição:</p>
+<ul>
+<li class=""><strong>Admissão na inicialização.</strong> Todo processo de servidor carrega
+<code>BackendCapabilities</code>, <code>LongPollCacheValidator</code>, <code>WorkflowModeGuard</code> e o
+contrato de prontidão ao iniciar. Um processo cujo backend ou cache não
+consiga atender ao contrato da v2 se recusa a marcar-se como pronto.</li>
+<li class=""><strong>Compatibilidade de workers.</strong> Quando <code>DW_V2_FLEET_VALIDATION_MODE=fail</code> e
+nenhum worker ativo anuncia o marcador de compatibilidade necessário para
+o escopo de conexão e fila de uma tarefa, o papel de matching bloqueia o
+despacho e a verificação de integridade <code>worker_compatibility</code> passa de
+<code>warning</code> para <code>error</code>. As tarefas permanecem prontas e visíveis, nunca são
+descartadas, e o contrato de prontidão retorna 503 nesse nó para que o
+balanceador o retire da rotação.</li>
+<li class=""><strong>Segurança de roteamento.</strong> Uma tarefa pronta cuja compatibilidade exigida
+não tenha worker ativo é preservada e contabilizada na métrica de backlog
+<code>compatibility_blocked_runs</code>. A segurança de roteamento nunca resulta
+silenciosamente em perda de tarefas. A garantia de execução pelo menos uma
+vez continua válida após uma drenagem de roteamento.</li>
+</ul>
+<p>Para manter curta a janela de sobreposição de workers, drene os grupos antigos
+à medida que novos workers entrarem em operação. Use o fluxo de
+<a class="" href="/pt-BR/docs/polyglot/worker-build-id-rollout/">implantação por build ID de worker</a>:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">dw task-queue:drain orders-critical --build-id orders-worker-2026-04-21-z9</span><br></div></code></pre></div></div>
+<p>O <code>drain_intent</code> do grupo passa a <code>draining</code>. Os workers desse build continuam
+concluindo o trabalho em andamento, mas deixam de assumir novas tarefas. Aguarde
+<code>active_worker_count</code> e <code>draining_worker_count</code> do grupo chegarem a zero antes
+de parar os processos antigos de workers.</p>
+<p>O agendador não executa uma fila de tarefas de longa duração, então não precisa
+de drenagem de worker. Pare o contêiner do agendador antigo, execute o bootstrap
+se ainda não tiver sido executado e inicie o novo. A janela entre os dois é
+limitada ao tempo de inicialização do novo contêiner. O disparo de agendamentos
+retoma a partir do estado persistido no próximo ciclo.</p>
+<p>Se a implantação também introduzir um papel de matching dedicado, explicite essa
+mudança de topologia em vez de presumir que cada nó de execução continuará
+fazendo varreduras amplas de tarefas prontas. Consulte
+<a class="" href="/pt-BR/docs/polyglot/task-matching-dispatch/">Matching e despacho de tarefas</a> para a
+topologia documentada de <code>workflow:v2:repair-pass --loop</code> com
+<code>DW_V2_MATCHING_ROLE_QUEUE_WAKE=0</code>. Verifique o contrato do nó ativo em
+<code>GET /api/cluster/info</code>: <code>topology.current_shape</code> deve continuar correspondendo
+à implantação em transição, <code>topology.current_roles</code> deve corresponder ao
+conjunto documentado de papéis desse nó, e
+<code>topology.matching_role.queue_wake_enabled</code>,
+<code>topology.matching_role.shape</code> e <code>topology.matching_role.wake_owner</code> devem
+mostrar o responsável esperado pela varredura ampla de tarefas prontas. A
+topologia padrão informa <code>queue_wake_enabled: true</code>, <code>shape: &quot;in_worker&quot;</code> e
+<code>wake_owner: &quot;worker_loop&quot;</code>. Implantações com matching dedicado mudam os nós de
+execução para <code>queue_wake_enabled: false</code>, <code>shape: &quot;dedicated&quot;</code> e
+<code>wake_owner: &quot;dedicated_repair_pass&quot;</code>.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="readiness-and-cutover">Prontidão e transição<a href="#readiness-and-cutover" class="hash-link" aria-label="Link direto para Prontidão e transição" title="Link direto para Prontidão e transição" translate="no">​</a></h2>
+<p>Use o contrato de prontidão, além da verificação de atividade, para decidir
+quando direcionar tráfego a um nó.</p>
+<ul>
+<li class=""><code>GET /api/health</code> comprova que o processo está atendendo HTTP.</li>
+<li class=""><code>GET /api/ready</code> comprova que o processo consegue usar suas dependências
+configuradas de runtime, incluindo migrações, namespace padrão e, com
+<code>DW_V2_FLEET_VALIDATION_MODE=fail</code>, a verificação de admissão por
+compatibilidade de workers.</li>
+<li class=""><code>GET /api/cluster/info</code> comprova que um cliente autenticado consegue descobrir
+a identidade do build, os protocolos do plano de controle e de workers, os
+codecs de payload e as capacidades do servidor.</li>
+<li class=""><code>POST /api/worker/register</code> comprova que workers conseguem se autenticar no
+namespace e na fila de tarefas esperados.</li>
+</ul>
+<p>Sequência de transição para um nó de API:</p>
+<ol>
+<li class="">Retire o nó da rotação do balanceador de carga. O caminho mais simples é
+fazer a verificação de prontidão do balanceador falhar parando o hook de
+pré-inicialização da nova imagem antes de iniciar o novo contêiner.</li>
+<li class="">Drene as requisições HTTP em andamento. A maioria dos clientes tenta novamente
+quando a conexão é reiniciada. Conexões de longa duração (long-polls de
+workers) se reconectam ao restante da frota.</li>
+<li class="">Pare o contêiner antigo e inicie o novo.</li>
+<li class="">Aguarde <code>GET /api/ready</code> retornar 200 e <code>GET /api/cluster/info</code> anunciar a
+identidade do novo build. Quando a implantação alterar a topologia de
+matching, confirme também que
+<code>topology.matching_role.task_dispatch_mode</code>,
+<code>topology.matching_role.queue_wake_enabled</code>,
+<code>topology.matching_role.shape</code>, <code>topology.matching_role.wake_owner</code>,
+<code>topology.matching_role.partition_primitives</code> e
+<code>topology.matching_role.backpressure_model</code> correspondem à implantação
+pretendida antes de devolver tráfego ao nó. Use <code>/api/system/operator-metrics</code>
+quando quiser o mesmo contrato do papel de matching local ao nó junto com
+contadores ativos de backlog, reparo e workers do processo que responde.</li>
+<li class="">Devolva o nó à rotação.</li>
+</ol>
+<p>Repita um nó por vez. Não atualize o próximo até que o anterior esteja de volta
+à rotação e atendendo ao tráfego sem problemas.</p>
+<p>Para workers, a transição ocorre por grupo:</p>
+<ol>
+<li class="">Coloque o novo grupo de workers em operação com um novo <code>build_id</code>.</li>
+<li class="">Confirme que os dois grupos informam <code>rollout_status: &quot;active&quot;</code> e
+<code>active_worker_count</code> maior que zero em <code>dw task-queue:build-ids &lt;queue&gt; --json</code>.</li>
+<li class="">Drene o grupo antigo com <code>dw task-queue:drain</code>.</li>
+<li class="">Aguarde <code>active_worker_count</code> e <code>draining_worker_count</code> do grupo antigo
+chegarem a zero.</li>
+<li class="">Pare os processos antigos de workers.</li>
+</ol>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="rollback">Reversão<a href="#rollback" class="hash-link" aria-label="Link direto para Reversão" title="Link direto para Reversão" translate="no">​</a></h2>
+<p>Todas as etapas são reversíveis. Planeje a reversão antes de começar.</p>
+<ul>
+<li class="">
+<p><strong>Reversão do bootstrap.</strong> Migrações da v2 são reversíveis pelo caminho padrão
+<code>down()</code> do Laravel. Uma reversão que desfaça uma migração da qual a nova imagem
+dependa exige parar todos os novos nós primeiro. Caso contrário, o novo código
+encontra uma coluna ausente e o contrato de prontidão retorna 503 nesses nós.
+A maioria das reversões não precisa desfazer migrações porque as alterações
+de esquema são aditivas.</p>
+</li>
+<li class="">
+<p><strong>Reversão de nó de API.</strong> Pare o novo contêiner e reinicie o antigo no mesmo
+nó. Retire o nó da rotação durante a inicialização e devolva-o quando
+<code>GET /api/ready</code> indicar sucesso. Repita nos demais nós de API atualizados.
+O código antigo continua lendo o novo esquema sem problemas porque a
+alteração de esquema foi aditiva.</p>
+</li>
+<li class="">
+<p><strong>Reversão de workers.</strong> Retome o grupo drenado anteriormente, drene o grupo
+com problema e volte a escalar o build comprovadamente funcional:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">dw task-queue:resume orders-critical --build-id orders-worker-2026-04-21-z9</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">dw task-queue:drain  orders-critical --build-id orders-worker-2026-04-22</span><br></div></code></pre></div></div>
+<p>A retomada limpa <code>drain_intent</code> e <code>drained_at</code>, e qualquer worker que envie
+heartbeats com o <code>build_id</code> retomado volta a <code>active</code> na próxima consulta.
+As duas chamadas são idempotentes.</p>
+</li>
+</ul>
+<p>Se a implantação expuser um problema de esquema não aditivo, reserve uma janela
+de atualização com parada total para reverter, execute as migrações corretivas
+e refaça o planejamento.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="operator-verification">Verificação pelo operador<a href="#operator-verification" class="hash-link" aria-label="Link direto para Verificação pelo operador" title="Link direto para Verificação pelo operador" translate="no">​</a></h2>
+<p>Verifique cada fase da implantação pelas interfaces do operador, não pelos logs.</p>
+<table><thead><tr><th>Pergunta</th><th>Interface</th></tr></thead><tbody><tr><td>O bootstrap terminou?</td><td><code>php artisan server:bootstrap --force</code> termina com código 0. <code>migrate:status</code> mostra que todas as migrações foram executadas.</td></tr><tr><td>O novo nó está pronto?</td><td><code>GET /api/ready</code> retorna 200. <code>GET /api/cluster/info</code> informa o novo build.</td></tr><tr><td>A admissão por compatibilidade está saudável?</td><td>Em <code>GET /api/system/operator-metrics</code>, <code>workers.fleet</code>, <code>workers.active_workers</code> e <code>workers.active_workers_supporting_required</code> concordam em uma contagem maior que zero de workers compatíveis para cada marcador exigido.</td></tr><tr><td>A drenagem dos workers está avançando?</td><td><code>dw task-queue:build-ids &lt;queue&gt; --json</code> mostra <code>active_worker_count</code> e <code>draining_worker_count</code> diminuindo no grupo em drenagem.</td></tr><tr><td>O roteamento está seguro?</td><td>Em <code>GET /api/system/operator-metrics</code>, <code>backlog.compatibility_blocked_runs</code> e <code>backlog.max_compatibility_blocked_age_ms</code> permanecem próximos de zero. A verificação de integridade <code>worker_compatibility</code> não está em <code>error</code>.</td></tr><tr><td>O agendador está em dia?</td><td>Em <code>GET /api/system/operator-metrics</code>, <code>schedules.missed</code> é zero e <code>schedules.oldest_overdue_at</code> é null.</td></tr><tr><td>Execuções presas estão se acumulando?</td><td>Em <code>GET /api/system/operator-metrics</code>, <code>runs.repair_needed</code> e <code>runs.max_repair_needed_age_ms</code> permanecem próximos dos valores de referência anteriores à implantação.</td></tr></tbody></table>
+<p><code>dw system:operator-metrics --json</code> expõe no console o mesmo snapshot de métricas
+do operador para a frota de servidores independentes, para que operadores possam
+escolher a interface que se encaixa no seu fluxo de trabalho. Um serviço
+Waterline implantado separadamente pode ler o mesmo estado de implantação
+mantido pelo servidor por meio do SDK PHP em <code>/waterline/api/v2/health</code> e
+<code>/waterline/api/stats</code>. Mantenha seu endpoint, namespace e token de servidor
+alinhados à frota em atualização. Implantações Laravel integradas expõem essas
+rotas do Waterline pelo pacote no mesmo processo. A API do servidor e a CLI
+continuam disponíveis em ambos os casos, conforme documentado nos
+<a class="" href="/pt-BR/docs/operator-operating-envelope/">Limites operacionais do operador</a>.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="failure-modes-and-what-to-do">Modos de falha e ações recomendadas<a href="#failure-modes-and-what-to-do" class="hash-link" aria-label="Link direto para Modos de falha e ações recomendadas" title="Link direto para Modos de falha e ações recomendadas" translate="no">​</a></h2>
+<table><thead><tr><th>Sintoma</th><th>Causa provável</th><th>Ação</th></tr></thead><tbody><tr><td>Novo nó de API falha em <code>GET /api/ready</code> após iniciar</td><td>O bootstrap não terminou, ou <code>DW_V2_FLEET_VALIDATION_MODE=fail</code> e ainda não há worker compatível ativo</td><td>Execute o bootstrap novamente. Coloque um grupo de workers compatíveis em operação antes de devolver o nó de API à rotação.</td></tr><tr><td>A verificação de integridade <code>worker_compatibility</code> passa a <code>error</code> no meio da implantação</td><td>O marcador de compatibilidade exigido não tem worker ativo que o suporte</td><td>Coloque mais workers em operação com um <code>build_id</code> compatível. Retome um grupo drenado anteriormente se a reversão for a decisão correta.</td></tr><tr><td><code>backlog.compatibility_blocked_runs</code> aumenta e <code>max_compatibility_blocked_age_ms</code> cresce</td><td>Há tarefas enfileiradas para um marcador que nenhum worker ativo suporta</td><td>Faça o mesmo acima. As tarefas são preservadas e serão redespachadas automaticamente assim que um worker compatível enviar heartbeat.</td></tr><tr><td><code>dw task-queue:drain</code> retorna sucesso, mas workers continuam assumindo tarefas</td><td>O processo de worker não enviou heartbeat após a drenagem</td><td>Aguarde um ciclo de heartbeat. Se o grupo continuar ativo, reinicie o processo de worker para que ele reconheça a intenção de drenagem.</td></tr><tr><td>Os disparos de agendamentos param após reiniciar o agendador</td><td>Os agendadores antigo e novo estão ambos parados</td><td>Inicie o contêiner do novo agendador. Verifique se <code>schedules.missed</code> volta a zero na próxima coleta de métricas do operador.</td></tr></tbody></table>
+<p>Se um sintoma não estiver nesta lista, considere que a implantação falhou: pare
+de adicionar processos, drene os novos grupos que iniciou e restaure o build
+anterior antes de continuar a depuração.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="related-references">Referências relacionadas<a href="#related-references" class="hash-link" aria-label="Link direto para Referências relacionadas" title="Link direto para Referências relacionadas" translate="no">​</a></h2>
+<ul>
+<li class=""><a class="" href="/pt-BR/docs/deployment/">Implantações sob sua administração</a> para as topologias
+de implantação pressupostas por este contrato.</li>
+<li class=""><a class="" href="/pt-BR/docs/polyglot/worker-build-id-rollout/">Implantação por build ID de worker</a>
+para as chamadas de drenagem e retomada por grupo.</li>
+<li class=""><a class="" href="/pt-BR/docs/operator-operating-envelope/">Limites operacionais do operador</a>
+para o contrato de diagnóstico, filas e reconstrução que operadores consultam
+junto com os sinais da implantação.</li>
+<li class=""><a class="" href="/pt-BR/docs/polyglot/server-config-reference/">Referência de configuração do Server</a>
+para as variáveis de ambiente de segurança de implantação (<code>DW_V2_FLEET_VALIDATION_MODE</code>,
+<code>DW_V2_PIN_TO_RECORDED_FINGERPRINT</code>, <code>DW_V2_GUARDRAILS_BOOT</code>,
+<code>DW_V2_CACHE_VALIDATION_MODE</code>, <code>DW_V2_MULTI_NODE</code>,
+<code>DW_V2_VALIDATE_CACHE_BACKEND</code>, <code>DW_V2_TASK_REPAIR_*</code>).</li>
+<li class=""><a class="" href="/pt-BR/docs/polyglot/server-api-reference/">Referência da API do Server</a> para os
+endpoints de prontidão, informações do cluster e métricas do operador usados
+para verificar cada fase da implantação.</li>
+</ul></div></div><footer class="theme-doc-footer docusaurus-mt-lg"><div class="row margin-top--sm theme-doc-footer-tags-row"><div class="col"><b>Etiquetas:</b><ul class="tags_jXut padding--none margin-left--sm"><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/pt-BR/docs/tags/operations/">operations</a></li><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/pt-BR/docs/tags/upgrades/">upgrades</a></li><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/pt-BR/docs/tags/rollouts/">rollouts</a></li><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/pt-BR/docs/tags/rollback/">rollback</a></li></ul></div></div><div class="row margin-top--sm theme-doc-footer-edit-meta-row"><div class="col noPrint_WFHX"><a href="https://github.com/durable-workflow/durable-workflow.github.io/edit/main/i18n/pt-BR/docusaurus-plugin-content-docs/current/rolling-upgrades.md" target="_blank" rel="noopener noreferrer" class="theme-edit-this-page"><svg fill="currentColor" height="20" width="20" viewBox="0 0 40 40" class="iconEdit_Z9Sw" aria-hidden="true"><g><path d="m34.5 11.7l-3 3.1-6.3-6.3 3.1-3q0.5-0.5 1.2-0.5t1.1 0.5l3.9 3.9q0.5 0.4 0.5 1.1t-0.5 1.2z m-29.5 17.1l18.4-18.5 6.3 6.3-18.4 18.4h-6.3v-6.2z"></path></g></svg>Editar esta página</a></div><div class="col lastUpdated_JAkA"></div></div></footer></article><nav class="docusaurus-mt-lg pagination-nav" aria-label="Páginas de documento"><a class="pagination-nav__link pagination-nav__link--prev" href="/pt-BR/docs/deployment/"><div class="pagination-nav__sublabel">Anterior</div><div class="pagination-nav__label">Implantações sob sua administração</div></a><a class="pagination-nav__link pagination-nav__link--next" href="/pt-BR/docs/monitoring/"><div class="pagination-nav__sublabel">Próxima</div><div class="pagination-nav__label">Monitoramento</div></a></nav></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#replay-before-changing-builds" class="table-of-contents__link toc-highlight">Replay antes de trocar builds</a></li><li><a href="#what-rolling-upgrade-means-here" class="table-of-contents__link toc-highlight">O que significa atualização gradual aqui</a></li><li><a href="#compatible-version-skew-rules" class="table-of-contents__link toc-highlight">Regras para diferenças compatíveis de versão</a><ul><li><a href="#server-image-and-workflow-package" class="table-of-contents__link toc-highlight">Imagem do Server e pacote Workflow</a></li><li><a href="#worker-sdk-and-build-identity" class="table-of-contents__link toc-highlight">SDK de worker e identidade do build</a></li></ul></li><li><a href="#schemabootstrap-ordering" class="table-of-contents__link toc-highlight">Ordem do esquema e bootstrap</a></li><li><a href="#drain-and-admission-during-the-overlap-window" class="table-of-contents__link toc-highlight">Drenagem e admissão durante a janela de sobreposição</a></li><li><a href="#readiness-and-cutover" class="table-of-contents__link toc-highlight">Prontidão e transição</a></li><li><a href="#rollback" class="table-of-contents__link toc-highlight">Reversão</a></li><li><a href="#operator-verification" class="table-of-contents__link toc-highlight">Verificação pelo operador</a></li><li><a href="#failure-modes-and-what-to-do" class="table-of-contents__link toc-highlight">Modos de falha e ações recomendadas</a></li><li><a href="#related-references" class="table-of-contents__link toc-highlight">Referências relacionadas</a></li></ul></div></div></div></div></main></div></div></div><div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="row footer__links"><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Documentação</div><ul class="footer__items clean-list"><li class="footer__item"><a class="footer__link-item" href="/pt-BR/docs/introduction/">Introdução</a></li><li class="footer__item"><a class="footer__link-item" href="/pt-BR/docs/installation/">Instalação</a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Comunidade</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://discord.gg/xu5aDDpqVy" target="_blank" rel="noopener noreferrer" class="footer__link-item">Discord<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://x.com/DurableWorkflow" target="_blank" rel="noopener noreferrer" class="footer__link-item">X<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Mais recursos</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://durable-workflow.com/llms-full.txt" target="_blank" rel="noopener noreferrer" class="footer__link-item">Documentação para LLMs<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://packagist.org/packages/durable-workflow/workflow" target="_blank" rel="noopener noreferrer" class="footer__link-item">Packagist<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div></div><div class="footer__bottom text--center"><div class="footer__copyright">Copyright © 2026 <a href="https://durable-workflow.com">Durable Workflow</a>.</div></div></div></footer></div></div>
+</body>
+</html>
