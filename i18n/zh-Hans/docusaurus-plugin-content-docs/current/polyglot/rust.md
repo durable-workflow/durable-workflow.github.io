@@ -267,6 +267,27 @@ pub fn register_charge(worker: &mut Worker) {
 
 请参阅 [ActivityContext 标识方法](https://rust.durable-workflow.com/durable_workflow/struct.ActivityContext.html#method.activity_execution_id)及包含 ordinary/cooperative、本地和 worker-session 验证的[正常安装 4.9.0 记录](https://github.com/durable-workflow/sdk-rust/issues/139#issuecomment-6367230500)。共享幂等性契约见[执行保证](../constraints/execution-guarantees.md#service-activity-identity)。
 
+## 有界失败报告 {#bounded-failure-reports}
+
+这些报告上限要求**实际安装 Rust SDK 4.10.1 或更新版本**。应检查 worker 的 `Cargo.lock`；新 client 或源码 checkout 不会更新旧 worker。限制针对发出的失败报告，不针对收到的历史或其他业务 payload。
+
+| 字段或 envelope | 最大值 |
+| --- | --- |
+| 包含标记的 UTF-8 message | 62 KiB |
+| 受支持的 stack | 128 KiB |
+| 可选 details、diagnostics、metadata 合计序列化结果 | 64 KiB |
+| 完整编码后的失败请求 body | 1 MiB |
+
+有效 message 上限从原64 KiB预算中预留2 KiB，供已发布 Server 的 timeline 前缀使用。JSON 转义、截断标记、claim 标识和所有其他字段均计入编码后的 body。已知更低的传输上限可进一步降低这些最大值。小报告保留原始内容。
+
+过大的文本带可见标记。schema 支持时，已有 `diagnostics.sdk_failure_truncation` 记录原始字节数和省略字段。没有 diagnostics 的 workflow/query-task schema 及普通命令 message 将这些统计放在 message 标记中。Avro details 保持为完整有效 envelope/runtime reference，或整体省略并标记，不会把 base64 切成损坏值。
+
+原异常 type、retry 决定和必需 claim 标识保持不变。低层 consumer 可使用已发布 failure schema 及 `Client::fail_activity_task_with_failure`、`Client::fail_workflow_task_with_failure`。必需数据放不下时，`Error::FailureReporting` 显式拒绝；它不决定应用的重试结果，也不伪造更短的标识。
+
+本地失败在 workflow 代码观察前受到限制，包括已发布 Server 的空白/NUL 规范化。最终请求检查不重写已经观察到的本地 message 或其他业务 payload；这些固定输入放不下时，报告会被拒绝。
+
+这些 SDK 限制不能证明 Core 派生 summary 存储已修复、其他 SDK 已交付、embedded 行为已验证或 Server 镜像已采用。旧 worker 仍可能无法报告过大的失败。请参阅[已发布源码策略](https://github.com/durable-workflow/sdk-rust/blob/dd58dd146f1337c3be24ad18fe65e3bb31d78b58/README.md#failure-report-limits)和[共享失败指南](../failures-and-recovery.md#rust-failure-report-limits)。
+
 ## 本地活动 {#local-activities}
 
 Rust SDK 3.1.0 在配置了 `Worker::local_activities(true)` 的 Worker 上增加内联本地执行。使用普通活动注册方法注册回调，然后使用工作流上下文的本地活动方法。重试和超时配置见[可运行示例](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs)及 [LocalActivityOptions 参考](https://rust.durable-workflow.com/durable_workflow/struct.LocalActivityOptions.html)。

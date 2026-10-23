@@ -270,6 +270,10 @@ class RetryableWorkflow extends Workflow
 }
 ```
 
+## Rust service-mode failure report limits {#rust-failure-report-limits}
+
+For service-mode workers actually running Rust SDK **4.10.1 or newer**, outgoing failure messages are at most 62 KiB UTF-8 including marker, stacks 128 KiB where supported, combined serialized optional metadata 64 KiB, and the full encoded body 1 MiB or a lower known transport cap. Original type, retry decision and claim identity stay intact; impossible mandatory envelopes refuse explicitly. The [Rust reporting guide](./polyglot/rust.md#bounded-failure-reports) explains omission markers, whole Avro details and local-result boundaries. These limits do not qualify old SDKs, embedded mode or the separate Core summary-storage correction.
+
 ## Related Guides
 
 - [Execution Guarantees and Idempotency](./constraints/execution-guarantees.md)

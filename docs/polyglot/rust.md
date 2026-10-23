@@ -320,6 +320,27 @@ A stable key makes duplicate effects preventable only when the downstream system
 
 See [ActivityContext identity accessors](https://rust.durable-workflow.com/durable_workflow/struct.ActivityContext.html#method.activity_execution_id) and the [normal installed 4.9.0 receipt](https://github.com/durable-workflow/sdk-rust/issues/139#issuecomment-6367230500) for ordinary/cooperative, local and worker-session controls. See [execution guarantees](../constraints/execution-guarantees.md#service-activity-identity) for the shared idempotency contract.
 
+## Bounded failure reports {#bounded-failure-reports}
+
+These reporting limits require an actually installed **Rust SDK 4.10.1 or newer**. Check the worker’s `Cargo.lock`; a newer client or source checkout does not update an older selected worker. The limits apply to outgoing failure reporting, not incoming history or unrelated business payloads.
+
+| Field or envelope | Maximum |
+| --- | --- |
+| UTF-8 message, including its marker | 62 KiB |
+| Stack where supported | 128 KiB |
+| Combined serialized optional details, diagnostics and metadata | 64 KiB |
+| Complete encoded failure request body | 1 MiB |
+
+The effective message cap reserves 2 KiB below the original 64 KiB budget for published Server timeline prefixes. JSON escaping, truncation markers, claim identity and all other fields count toward the encoded body. A lower known transport cap can reduce these maxima further. Small reports retain their original content.
+
+Oversized text carries a visible marker. Existing `diagnostics.sdk_failure_truncation`, where the schema supports it, records original byte sizes and omitted fields. Workflow/query-task schemas without diagnostics and plain command messages carry those statistics in the message marker. Avro details remain a complete valid envelope/runtime reference or are omitted whole and marked; base 64 is never cut into a corrupt value.
+
+The original exception type, retry decision and required claim identity are preserved. Low-level consumers can use `Client::fail_activity_task_with_failure` and `Client::fail_workflow_task_with_failure` with the published failure schema. `Error::FailureReporting` explicitly refuses a report whose mandatory data cannot fit; it does not decide the application’s retry outcome or fabricate a smaller identity.
+
+Local failures are bounded before workflow code observes them, including the published Server’s whitespace/NUL normalization. The final request check does not rewrite an already observed local message or another business payload; reporting refuses if those fixed inputs cannot fit.
+
+These SDK reporting bounds do not establish a Core derived-summary storage fix, another SDK’s delivery, embedded behavior or Server image adoption. Older workers can still fail to report an oversized failure. See the [published-source policy](https://github.com/durable-workflow/sdk-rust/blob/dd58dd146f1337c3be24ad18fe65e3bb31d78b58/README.md#failure-report-limits) and [shared failure guidance](../failures-and-recovery.md#rust-failure-report-limits).
+
 ## Local activities
 
 Rust SDK 3.1.0 adds inline local execution on workers configured with
