@@ -557,6 +557,13 @@ spec:
               memory: 512Mi
 ```
 
+Застосуйте Deployment і перевірте його розгортання:
+
+```bash
+kubectl apply -f orders-worker.yaml
+kubectl -n durable-workflow rollout status deployment/orders-worker
+```
+
 Кількість реплік і ресурси — початкові приклади, а не гарантії місткості. Налаштуйте їх за фактичною тривалістю завдань, використанням пам’яті, лімітами залежних сервісів і [бюджетами допуску worker](./polyglot/task-queue-admission.md). Доступність Deployment не доводить реєстрацію SDK чи корисну роботу. Перевірте свіжі реєстрації workers та очікувані збірку й чергу, потім запустіть і завершіть показовий workflow. Запуск у Kubernetes сам собою не створює HTTP endpoint здоров’я для SDK worker. Використовуйте probe застосунку, якщо він існує, і не використовуйте здоров’я сервера як liveness-перевірку worker.
 
 ### Передавання SIGTERM і очікування очищення {#sdk-worker-pod-shutdown}

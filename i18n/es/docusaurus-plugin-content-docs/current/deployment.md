@@ -543,6 +543,13 @@ spec:
               memory: 512Mi
 ```
 
+Aplica el Deployment y espera a que termine el despliegue:
+
+```bash
+kubectl apply -f orders-worker.yaml
+kubectl -n durable-workflow rollout status deployment/orders-worker
+```
+
 Las réplicas y los recursos son ejemplos iniciales, no garantías de capacidad. Ajústalos según la duración real de las tareas, la memoria, los límites de servicios dependientes y los [presupuestos de admisión del worker](./polyglot/task-queue-admission.md). Un Deployment disponible no demuestra que el SDK se haya registrado ni que procese trabajo útil. Comprueba registros recientes y la compilación y cola esperadas; después inicia y completa un workflow representativo. Ejecutarse en Kubernetes no proporciona automáticamente un endpoint HTTP de salud al worker del SDK. Usa una sonda de la aplicación cuando exista y no uses la salud del Server como sonda de actividad del worker.
 
 ### Entregar SIGTERM y esperar la limpieza {#sdk-worker-pod-shutdown}

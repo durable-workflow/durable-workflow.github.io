@@ -416,6 +416,13 @@ spec:
               memory: 512Mi
 ```
 
+Deployment を適用し、ロールアウトの完了を待ちます。
+
+```bash
+kubectl apply -f orders-worker.yaml
+kubectl -n durable-workflow rollout status deployment/orders-worker
+```
+
 レプリカ数とリソース値は出発点となる例であり、処理能力の保証ではありません。実際のタスク時間、メモリー使用量、下流サービスの制限、[Worker の受け入れ予算](./polyglot/task-queue-admission.md)に合わせて調整します。Deployment が利用可能になっても、SDK の登録や有用な処理の証明にはなりません。新鮮な Worker 登録と想定するビルド、キューを確認し、代表的なワークフローを開始して完了させてください。Kubernetes で実行するだけでは、SDK Worker に HTTP ヘルスエンドポイントは追加されません。アプリケーションに probe がある場合はそれを使い、Server のヘルスを Worker の liveness 検査に使わないでください。
 
 ### SIGTERM を届けて後処理を待つ {#sdk-worker-pod-shutdown}

@@ -404,6 +404,13 @@ spec:
               memory: 512Mi
 ```
 
+应用 Deployment 并等待发布完成：
+
+```bash
+kubectl apply -f orders-worker.yaml
+kubectl -n durable-workflow rollout status deployment/orders-worker
+```
+
 副本数和资源值只是起始示例，不保证容量。根据实际任务时长、内存使用、下游限制和 [Worker 准入预算](./polyglot/task-queue-admission.md)调整。Deployment 可用并不能证明 SDK 已注册或已完成有效工作。先验证新鲜的 Worker 注册、预期构建和队列，再启动并完成一个有代表性的工作流。仅在 Kubernetes 中运行不会自动为 SDK Worker 提供 HTTP 健康端点。如果应用有自己的探针，应使用该探针，不要把 Server 健康状态用作 Worker 存活检查。
 
 ### 传递 SIGTERM 并等待清理 {#sdk-worker-pod-shutdown}
