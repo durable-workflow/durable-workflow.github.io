@@ -292,6 +292,49 @@ database, cache, backup, and load-balancer model. It becomes support-led when
 you need help deciding those boundaries, capacity, rollout order, or recovery
 procedures.
 
+## Worker long-poll timeout budgets {#worker-long-poll-timeout-budgets}
+
+A healthy worker poll can be silent until its server wait ends. Budget for that silence across the worker's HTTP client, outbound proxy, service mesh, public load balancer, ingress and any reverse proxy before the API. Worker polling uses the shared API ingress. A separate matching role does not bypass those hops.
+
+| Budget | What it limits |
+| --- | --- |
+| Server poll duration | How long the runtime waits for work before returning an empty response. A request's `timeout_seconds` overrides `DW_WORKER_POLL_TIMEOUT`; the variable is the fallback when the request omits it, not a cap on SDK polls. The protocol permits up to 60 seconds. |
+| Client connect / pool timeout | Establishing a connection or acquiring one from the client pool. These need not last for the whole quiet poll. |
+| Client read / total timeout | Waiting for response bytes, or the complete operation if the transport has a total limit. Allow the server wait plus connection, scheduling and response margin. A read timeout alone may measure inactivity between chunks, not the whole request. |
+| Intermediary idle / upstream read / request timeout | Every active-request limit on every hop must permit a legitimate quiet poll and its response. An idle connection keepalive setting between requests is a different limit. |
+| Shutdown / caller deadline | The worker's shutdown budget and any original caller or query authority remain hard bounds. Cancel or drain within those bounds; do not extend a query deadline to accommodate a proxy or a retry. |
+
+Check the installed SDK's arithmetic rather than copying a timeout from another engine. In the verified Python SDK baseline below, a positive poll requests at most 60 seconds on the Server and gets at least five additional seconds of HTTP phase timeout. Its default Worker poll is 35 seconds, which normally selects 40 seconds for those HTTP phases. A 30-second intermediary read limit can therefore interrupt a legitimate default poll. PHP and Rust have their own defaults and retry policies; neither Python's margin nor a gRPC keepalive setting is a portable rule for all SDKs. See the [SDK guides](./sdk-compatibility.md) and [task matching reference](./polyglot/task-matching-dispatch.md).
+
+### Verified short-poll example {#verified-poll-timeout-example}
+
+An isolated test used published Python SDK **2.9.0**, PHP Server **2.11.0** and Nginx **1.30.5**, with an empty task queue. Both cells kept the SDK poll duration at **3 seconds**, HTTPX connect/read/write/pool timeouts at **8 seconds**, and an outer caller bound of **10 seconds**. Only Nginx's upstream read timeout changed:
+
+| Intermediary setting | Observed response |
+| --- | --- |
+| `proxy_read_timeout 1s` | Nginx returned HTTP **504** after about one second while waiting for the upstream response header. The SDK surfaced `ServerError`. |
+| `proxy_read_timeout 8s` | The same legitimate quiet poll completed after about three seconds with HTTP **200**, `task: null` and `poll_status: empty`. |
+
+The Server fallback was deliberately one second in both cells; the request's explicit three-second wait still applied. HTTP retries were limited to one attempt to expose the first failure. This is a functional timeout example, not a capacity or production sizing result. The [qualification in #267](https://github.com/durable-workflow/durable-workflow.github.io/issues/267) records the exact images, requests and proxy logs.
+
+For Nginx deployments, apply an appropriate upstream read budget to the existing worker-poll location. The eight-second value below belongs to this three-second example:
+
+```nginx
+proxy_connect_timeout 2s;
+proxy_read_timeout 8s;
+```
+
+[Nginx measures `proxy_read_timeout` between upstream reads](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_read_timeout). [HTTPX also distinguishes connect, read, write and pool timeouts](https://www.python-httpx.org/advanced/timeouts/); the eight-second phase settings above are not an eight-second total deadline. Keep an explicit outer deadline where required. Other proxies and providers use different names and semantics. Verify their active-request limits and the complete path with the actual SDK. Increasing one ingress limit does not fix a shorter limit elsewhere.
+
+### Diagnose the response before restarting workers {#diagnose-poll-disconnects}
+
+- **Normal empty poll:** the runtime returns a successful response with no task. In the verified baseline, the raw response is `poll_status: empty`. Poll again normally.
+- **Intermediary disconnect:** a transport exception, connection reset, or proxy-generated 502/504 may occur before the legitimate server wait finishes. Correlate the SDK error and elapsed time with proxy/upstream logs. A healthy readiness check and later successful polling can coexist with a misconfigured intermediary.
+- **Runtime unavailable:** inspect the runtime's structured reason and readiness checks for database, cache or admission failures. A gateway's HTML error page is not the runtime's typed refusal.
+- **Namespace or poll admission refusal:** inspect the structured reason, namespace/queue and any retry delay, including HTTP 429. Raising an idle timeout does not grant admission capacity or fix authorization.
+
+A worker retrying its connection does not prove the original proxy configuration was healthy. Check whether polling and task completion actually continue, and retain the failure class, queue, time and frequency when failures persist. A sporadic disconnect alone is not a reason to restart the process. The Python client can also synthesize `poll_status: timeout` after its HTTP timeout retries; that value alone is not proof that a runtime empty response traversed the proxy. Keep transport retries separate from activity retries, run deadlines and query authority.
+
 ## SQL connection budgets {#sql-connection-budgets}
 
 Budget database sessions before adding API replicas or overlapping old and new
