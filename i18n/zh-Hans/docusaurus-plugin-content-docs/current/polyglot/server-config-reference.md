@@ -279,10 +279,43 @@ Server 镜像内置 `durable-workflow/workflow`，因此也提供包级 `DW_V2_*
 | --- | --- | --- |
 | 应用 | `APP_NAME`、`APP_ENV`、`APP_KEY`、`APP_DEBUG`、`APP_URL`、`APP_VERSION`、区域、时区、维护及加密设置 | Laravel 应用的运行时标识与启动行为。 |
 | 日志 | `LOG_CHANNEL`、`LOG_LEVEL`、`LOG_STDERR_FORMATTER`、堆栈、每日、Slack 与 Papertrail 设置 | Laravel 日志输出位置、格式与保留。 |
-| 数据库 | `DB_CONNECTION`、`DB_HOST`、`DB_PORT`、`DB_DATABASE`、`DB_USERNAME`、`DB_PASSWORD`、`DB_SOCKET`、`DB_URL`、字符集、排序规则及外键设置 | 存储工作流、命名空间、Worker 及投影表的 SQL 状态库。 |
+| 数据库 | `DB_CONNECTION`、`DB_HOST`、`DB_PORT`、`DB_DATABASE`、`DB_USERNAME`、`DB_PASSWORD`、`DB_SOCKET`、`DB_URL`、`DB_SSLMODE`（`DB_SSL_MODE`）、`DB_SSLROOTCERT`（`DB_SSL_ROOT_CERT`）、`MYSQL_ATTR_SSL_CA`、字符集、排序规则及外键设置 | 存储工作流、命名空间、Worker 及投影表的 SQL 状态库。参见[数据库 TLS](#database-tls)。 |
 | Redis、缓存与队列 | `REDIS_*`、`QUEUE_CONNECTION`、`QUEUE_FAILED_DRIVER`、`CACHE_STORE`、`CACHE_PREFIX`、`SESSION_*` | 队列 Worker、缓存锁、长轮询信号和 Web/会话运行时支持。 |
 | 文件系统、邮件与广播 | `FILESYSTEM_DISK`、`MAIL_*`、`BROADCAST_*`、`PUSHER_*`、`AWS_*` | 部署特有功能使用的框架集成。 |
 | 构建与运行时 | `MYSQL_VERSION`、`REDIS_VERSION`、`PHP_CLI_SERVER_WORKERS`、`VITE_APP_NAME`、`BCRYPT_ROUNDS` | Docker Compose 镜像及框架运行行为。 |
+
+## 数据库 TLS {#database-tls}
+
+为 API 服务器、队列 Worker、初始化/迁移任务和调度器配置相同的 TLS 设置。
+PostgreSQL 默认为 `prefer`；MySQL/MariaDB 未指定模式时保留原有连接默认值。
+这些默认值都不能保证经过身份验证的加密连接。
+
+| `DB_SSLMODE` | PostgreSQL | MySQL / MariaDB |
+| --- | --- | --- |
+| `disable` | 不使用 TLS。 | 不使用 TLS；拒绝冲突的 TLS 选项。 |
+| `allow`, `prefer` | 机会式 TLS，不保证加密或身份验证。 | 拒绝。 |
+| `require` | 必须加密。 | 必须通过 mysqlnd 和 OpenSSL 加密。 |
+| `verify-ca` | 必须加密并验证受信任的证书链。 | 拒绝：PDO mysqlnd 无法脱离主机名验证而单独验证证书链。 |
+| `verify-full` | 必须加密、验证受信任的证书链并匹配主机名。 | 必须加密、验证受信任的证书链并匹配主机名。 |
+
+`DB_SSL_MODE` 是 `DB_SSLMODE` 的别名，`DB_SSL_ROOT_CERT` 是 `DB_SSLROOTCERT`
+的别名。验证证书时，应在 **每个角色**（包括迁移任务）中，将可读的 CA 文件挂载到
+配置的路径。MySQL/MariaDB 显式使用 `verify-full` 时，也可用 `MYSQL_ATTR_SSL_CA`
+提供 CA。规范变量、别名或 URL 设置冲突会阻止启动。必须使用 TLS 时，需要明确的
+TCP 主机名，不能使用 Unix 套接字。MySQL/MariaDB 的显式 TLS 模式需要带有 mysqlnd
+和 OpenSSL 的 PDO MySQL。
+
+```dotenv
+DB_CONNECTION=pgsql
+DB_HOST=database.example.com
+DB_SSLMODE=verify-full
+DB_SSLROOTCERT=/run/database-ca/ca.pem
+```
+
+使用证书中的 DNS 主机名。Helm 部署应配置 `externalDatabase.sslMode` 和
+`externalDatabase.tls.existingSecret` / `caKey`。安装或升级前先创建 Secret；
+chart 会将其 CA 挂载到全部四个角色，包括初始化钩子。
+环境设置更改后应重启常驻角色，因为启动时会缓存配置。
 
 ## 容器日志 {#container-logs}
 

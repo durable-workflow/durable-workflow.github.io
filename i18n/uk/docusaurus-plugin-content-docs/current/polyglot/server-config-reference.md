@@ -337,10 +337,47 @@ workers, які виконують ті самі workflows.
 | --- | --- | --- |
 | Застосунок | `APP_NAME`, `APP_ENV`, `APP_KEY`, `APP_DEBUG`, `APP_URL`, `APP_VERSION`, locale, timezone, налаштування maintenance і cipher | Ідентичність runtime Laravel-застосунку та поведінка старту. |
 | Логування | `LOG_CHANNEL`, `LOG_LEVEL`, `LOG_STDERR_FORMATTER`, налаштування stack, daily, Slack та Papertrail | Напрямки, формат і термін зберігання журналів Laravel. |
-| База даних | `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `DB_SOCKET`, `DB_URL`, налаштування charset, collation та foreign keys | SQL-сховище стану таблиць workflow, namespace, worker і projections. |
+| База даних | `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `DB_SOCKET`, `DB_URL`, `DB_SSLMODE` (`DB_SSL_MODE`), `DB_SSLROOTCERT` (`DB_SSL_ROOT_CERT`), `MYSQL_ATTR_SSL_CA`, налаштування charset, collation та foreign keys | SQL-сховище стану таблиць workflow, namespace, worker і projections. Див. [TLS бази даних](#database-tls). |
 | Redis/cache/queue | `REDIS_*`, `QUEUE_CONNECTION`, `QUEUE_FAILED_DRIVER`, `CACHE_STORE`, `CACHE_PREFIX`, `SESSION_*` | Queue workers, cache locks, long-poll signals і підтримка web/session runtime. |
 | Файлові системи/пошта/broadcasting | `FILESYSTEM_DISK`, `MAIL_*`, `BROADCAST_*`, `PUSHER_*`, `AWS_*` | Інтеграції фреймворку для особливостей конкретного розгортання. |
 | Build/runtime | `MYSQL_VERSION`, `REDIS_VERSION`, `PHP_CLI_SERVER_WORKERS`, `VITE_APP_NAME`, `BCRYPT_ROUNDS` | Docker Compose images та поведінка runtime фреймворку. |
+
+## TLS бази даних {#database-tls}
+
+Задайте однакові параметри TLS для API-сервера, воркера черги, завдання
+початкового налаштування/міграції та планувальника. PostgreSQL за замовчуванням
+використовує `prefer`; MySQL/MariaDB без явного режиму зберігають стандартні
+налаштування з'єднання. Жоден із цих варіантів не гарантує автентифіковане
+зашифроване з'єднання.
+
+| `DB_SSLMODE` | PostgreSQL | MySQL / MariaDB |
+| --- | --- | --- |
+| `disable` | Без TLS. | Без TLS; суперечливі параметри TLS відхиляються. |
+| `allow`, `prefer` | Опортуністичний TLS без гарантії шифрування чи ідентичності. | Відхиляються. |
+| `require` | Шифрування обов'язкове. | Шифрування з mysqlnd та OpenSSL обов'язкове. |
+| `verify-ca` | Обов'язкові шифрування та довірений ланцюжок сертифікатів. | Відхиляється: PDO mysqlnd не перевіряє лише ланцюжок незалежно від імені хоста. |
+| `verify-full` | Обов'язкові шифрування, довірений ланцюжок та відповідність імені хоста. | Обов'язкові шифрування, довірений ланцюжок та відповідність імені хоста. |
+
+`DB_SSL_MODE` є псевдонімом `DB_SSLMODE`, а `DB_SSL_ROOT_CERT` —
+`DB_SSLROOTCERT`. Для перевірки сертифікатів змонтуйте доступний для читання
+CA-файл за налаштованим шляхом у **кожній ролі**, включно з міграціями.
+`MYSQL_ATTR_SSL_CA` може задавати CA для явного `verify-full` у MySQL/MariaDB.
+Суперечності між основними параметрами, псевдонімами або URL зупиняють запуск.
+Обов'язковий TLS потребує явного TCP-імені хоста; Unix-сокети відхиляються.
+Явні TLS-режими MySQL/MariaDB потребують PDO MySQL із mysqlnd та OpenSSL.
+
+```dotenv
+DB_CONNECTION=pgsql
+DB_HOST=database.example.com
+DB_SSLMODE=verify-full
+DB_SSLROOTCERT=/run/database-ca/ca.pem
+```
+
+Використовуйте DNS-ім'я із сертифіката. У Helm налаштуйте
+`externalDatabase.sslMode` та `externalDatabase.tls.existingSecret` / `caKey`.
+Створіть Secret до встановлення чи оновлення; чарт монтує CA в усіх чотирьох
+ролях, включно з хуком початкового налаштування. Після змін середовища перезапустіть
+постійні ролі: конфігурація кешується під час запуску.
 
 ## Журнали контейнерів {#container-logs}
 
