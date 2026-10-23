@@ -129,6 +129,14 @@ Atributos de busca aparecem em:
 - **Linha do tempo do histórico**: cada evento `SearchAttributesUpserted` aparece como entrada tipada na linha do tempo da execução
 - **Exportação de histórico**: os atributos de busca são incluídos nas exportações de histórico em JSON
 
+### Filtros de lista de pais e filhos {#parent-child-list-filters}
+
+Filhos [herdam atributos de busca e memo na criação](./child-workflows.md#child-metadata-inheritance) e depois podem atualizar os valores de forma independente. Filtrar um atributo herdado não exclui filhos implicitamente. Para um atributo keyword registrado, a consulta do Server `customer = 'customer-42'` pode retornar o pai e cada filho que ainda mantenha esse valor. Memo continua sendo metadado não indexado, não outro filtro de atributos de busca.
+
+A API de listagem do Server 2.11.0 qualificada **não tem um predicado nativo para apenas raízes ou apenas filhos**. `ParentWorkflowId`, `RootWorkflowId` e `IsChildWorkflow` não são campos automáticos de relacionamento em sua linguagem de consulta; as verificações publicadas rejeitam esses nomes não registrados. Registrar um atributo personalizado com tal nome não preenche a identidade pai/filho. Um filtro de tipo de workflow seleciona um tipo, não todas as raízes ou filhos de vários tipos.
+
+Inspecione a linhagem da execução quando precisar da relação real pai/filho. A filtragem compartilhada mais ampla continua sendo [trabalho de produto](https://github.com/durable-workflow/.github/issues/224); esta limitação e uma convenção de metadados criada pelo usuário não entregam essa capacidade. A [verificação](https://github.com/durable-workflow/durable-workflow.github.io/issues/368#issuecomment-6362355504) preserva o resultado com pai e filho e os predicados recusados.
+
 ## Continuar como novo {#continue-as-new}
 
 Quando um workflow continua como novo, os atributos de busca atuais são transferidos automaticamente para a nova execução. Ela inicia com o mapa mesclado completo da execução anterior e pode continuar inserindo e atualizando atributos a partir dele.

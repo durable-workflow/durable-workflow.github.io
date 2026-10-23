@@ -34,6 +34,14 @@ final class ParentWorkflow extends Workflow
 }
 ```
 
+## Search attributes and memo {#child-metadata-inheritance}
+
+A new child run starts with copies of its parent's current search attributes and memo. This is a snapshot at child creation, not a live link. The child can upsert inherited keys or add its own; later parent upserts do not change the child, and child upserts do not change the parent. Untouched copied search attributes are marked `inherited_from_parent`.
+
+For example, a child initially inherits `customer=customer-42` and the parent's memo note. Changing the child's stage or note leaves the parent's values intact. A customer filter can therefore match both parent and child while both retain that customer value; see [parent/child list filters](./search-attributes.md#parent-child-list-filters).
+
+The [published-artifact checks](https://github.com/durable-workflow/durable-workflow.github.io/issues/368#issuecomment-6362355504) verify the snapshot and independent upserts in embedded Workflow 2.10.1 and in service mode with Python SDK 2.9.0 / Server 2.11.0. These are named metadata checks, not a change to the selected installation tuple.
+
 ## Current Behavior
 
 - Import the helper with `use function Workflow\V2\child;` and call `child(ChildWorkflow::class, ...)`. The call suspends the parent, creates a durable child run, and returns the child's result when the child closes.

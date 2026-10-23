@@ -31,6 +31,14 @@ final class ParentWorkflow extends Workflow
 }
 ```
 
+## Atributos de busca e memo {#child-metadata-inheritance}
+
+Uma nova execução filha começa com cópias dos atributos de busca e do memo atuais do pai. É um snapshot na criação da filha, não um vínculo ativo. A filha pode atualizar chaves herdadas ou adicionar as próprias; atualizações posteriores do pai não mudam a filha e vice-versa. Atributos copiados sem alteração recebem a marca `inherited_from_parent`.
+
+Por exemplo, a filha herda inicialmente `customer=customer-42` e a nota de memo do pai. Alterar seu estágio ou nota mantém intactos os valores do pai. Assim, um filtro por cliente pode encontrar ambos enquanto conservarem esse valor; consulte os [filtros de lista de pais/filhos](./search-attributes.md#parent-child-list-filters).
+
+As [verificações de artefatos publicados](https://github.com/durable-workflow/durable-workflow.github.io/issues/368#issuecomment-6362355504) comprovam o snapshot e as atualizações independentes em Workflow 2.10.1 embutido e no modo serviço com Python SDK 2.9.0 / Server 2.11.0. São verificações de metadados de versões identificadas, não uma alteração da combinação de instalação selecionada.
+
 ## Comportamento atual {#current-behavior}
 
 - Importe o helper com `use function Workflow\V2\child;` e chame `child(ChildWorkflow::class, ...)`. A chamada suspende o pai, cria uma execução filha durável e retorna o resultado dela quando é encerrada.

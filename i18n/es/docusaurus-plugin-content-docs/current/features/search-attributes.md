@@ -129,6 +129,14 @@ Los atributos aparecen en:
 - **Cronología de historial**: cada `SearchAttributesUpserted` aparece como entrada tipada.
 - **Exportación del historial**: se incluyen en las exportaciones JSON.
 
+### Filtros de lista de padres e hijos {#parent-child-list-filters}
+
+Los hijos [heredan atributos de búsqueda y memo al crearse](./child-workflows.md#child-metadata-inheritance) y luego pueden actualizar sus valores de forma independiente. Filtrar un atributo heredado no excluye implícitamente a los hijos. Para un atributo keyword registrado, la consulta del Server `customer = 'customer-42'` puede devolver al padre y a cada hijo que aún conserve ese valor. El memo sigue siendo metadatos sin índice; no es otro filtro de atributos de búsqueda.
+
+La API de listado del Server 2.11.0 verificada **no tiene un predicado integrado para solo raíces o solo hijos**. `ParentWorkflowId`, `RootWorkflowId` e `IsChildWorkflow` no son campos automáticos de relación en su lenguaje de consultas; las comprobaciones publicadas rechazan esos nombres sin registrar. Registrar un atributo personalizado con uno de esos nombres no rellena la identidad padre/hijo. Un filtro por tipo de workflow selecciona un tipo, no todas las raíces o hijos de distintos tipos.
+
+Inspeccione el linaje de la ejecución cuando necesite la relación real padre/hijo. La filtración compartida más amplia sigue siendo [trabajo de producto](https://github.com/durable-workflow/.github/issues/224); esta limitación y una convención de metadatos del usuario no entregan esa capacidad. La [verificación](https://github.com/durable-workflow/durable-workflow.github.io/issues/368#issuecomment-6362355504) conserva el resultado con padre e hijo y los predicados rechazados.
+
 ## Continuar como nueva ejecución {#continue-as-new}
 
 Los atributos actuales pasan automáticamente a la nueva ejecución. Esta comienza con el mapa combinado completo de la anterior y puede seguir actualizándolo.

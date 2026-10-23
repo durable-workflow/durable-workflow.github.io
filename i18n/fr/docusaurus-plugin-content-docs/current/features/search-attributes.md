@@ -129,6 +129,14 @@ Les attributs apparaissent dans :
 - la **chronologie d’historique** : chaque `SearchAttributesUpserted` apparaît comme une entrée typée
 - l’**export d’historique** : les attributs sont inclus dans les exports JSON
 
+### Filtres de liste parent/enfant {#parent-child-list-filters}
+
+Les enfants [héritent des attributs de recherche et du memo à la création](./child-workflows.md#child-metadata-inheritance), puis peuvent modifier leurs valeurs indépendamment. Filtrer un attribut hérité n’exclut pas implicitement les enfants. Pour un attribut keyword enregistré, la requête Server `customer = 'customer-42'` peut renvoyer le parent et tous les enfants conservant cette valeur. Le memo reste une métadonnée non indexée, pas un autre filtre d’attribut de recherche.
+
+L’API de liste qualifiée de Server 2.11.0 **n’a pas de prédicat intégré pour les seules racines ou les seuls enfants**. `ParentWorkflowId`, `RootWorkflowId` et `IsChildWorkflow` ne sont pas des champs de relation automatiques de son langage de requête ; les vérifications publiées rejettent ces noms non enregistrés. Déclarer un attribut personnalisé de ce nom ne renseigne pas l’identité parent/enfant. Un filtre de type de workflow sélectionne un type, pas toutes les racines ou tous les enfants de types différents.
+
+Examinez la filiation de l’exécution pour connaître sa relation parent/enfant réelle. Le filtrage partagé plus large reste un [travail produit](https://github.com/durable-workflow/.github/issues/224) ; cette limitation et une convention de métadonnées définie par l’utilisateur ne livrent pas cette capacité. La [vérification](https://github.com/durable-workflow/durable-workflow.github.io/issues/368#issuecomment-6362355504) conserve le résultat contenant parent et enfant ainsi que les prédicats refusés.
+
 ## Continuation dans une nouvelle exécution {#continue-as-new}
 
 Lors d’une continuation, les attributs courants sont automatiquement transmis à la nouvelle exécution. Celle-ci démarre avec la table fusionnée complète de la précédente et peut continuer à la modifier.
