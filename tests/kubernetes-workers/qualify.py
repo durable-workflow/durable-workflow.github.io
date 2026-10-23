@@ -41,6 +41,7 @@ def apply(document):
 def server():
     environment = {
         'APP_ENV': 'testing', 'APP_DEBUG': 'false', 'APP_VERSION': ARTIFACTS['server_version'],
+        'LOG_CHANNEL': 'stderr', 'LOG_LEVEL': 'warning',
         'DB_CONNECTION': 'sqlite', 'DB_DATABASE': '/data/database.sqlite',
         'QUEUE_CONNECTION': 'sync', 'CACHE_STORE': 'array', 'SESSION_DRIVER': 'array',
         'DW_AUTH_DRIVER': 'token', 'DW_AUTH_BACKWARD_COMPATIBLE': 'false',
