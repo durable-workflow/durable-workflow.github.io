@@ -6,6 +6,8 @@ description: Choisir un parcours d'auto-hébergement Durable Workflow v2 pris en
 
 # Déploiements auto-hébergés {#self-hosting-deployments}
 
+Pour changer de runtime autohébergé ou Cloud, suivez [déplacer les charges entre runtimes](/docs/polyglot/runtime-migration/). Les exécutions existantes restent à la source pendant que les nouveaux démarrages changent de destination.
+
 Durable Workflow v2 prend en charge plusieurs topologies auto-hébergées.
 Choisissez la plus petite adaptée à votre environnement, puis explicitez les
 contrats d'image, de base, de cache, d'authentification, de disponibilité et de

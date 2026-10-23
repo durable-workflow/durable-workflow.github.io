@@ -556,6 +556,8 @@ de pausar/retomar. Termos SLA planejados usam o mesmo modelo de tempo
 provisionado com suas próprias taxas, mínimos e tetos. Use os `billing_terms`
 retornados pelo plano ao interpretar o uso; faturas históricas mantêm os termos aceitos.
 
+Antes de desprovisionar, siga [mover cargas entre runtimes](/docs/polyglot/runtime-migration/#preserve-evidence): retenha evidências verificadas de histórico e payloads e confirme que todas as execuções da origem são terminais. A cobrança de capacidade continua enquanto a origem estiver provisionada.
+
 Exporte as mesmas evidências como CSV ou relatório JSON quando um sistema
 financeiro downstream precisar de um arquivo:
 

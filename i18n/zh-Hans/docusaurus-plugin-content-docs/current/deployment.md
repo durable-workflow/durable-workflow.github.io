@@ -6,6 +6,8 @@ description: 选择受支持的 Durable Workflow v2 自托管路径及起始产�
 
 # 自托管部署 {#self-hosting-deployments}
 
+在自托管与 Cloud 运行时之间迁移时，请遵循[运行时迁移指南](/docs/polyglot/runtime-migration/)。新启动切换期间，现有运行仍保留在来源端。
+
 Durable Workflow v2 支持多种自托管形态。选择与你运维环境相符的最小路径，然后明确镜像、数据库、缓存、身份验证、就绪和升级契约。
 
 本指南涵盖独立 Server 发行版。如果将 Laravel 软件包嵌入自己的应用中运行，请改用软件包安装和配置页面。Durable Workflow Cloud 是独立的托管服务选择，由 Cloud 运维运行时、持久化、放置和恢复；自托管 Server 绝不会接入 Cloud。参见 [Cloud 托管运行时](/docs/polyglot/cloud-control-plane)。当前 Cloud 契约是单区域托管运行时和恢复边界，不承诺多区域复制、自动区域故障转移或故障回切。

@@ -562,6 +562,8 @@ de diagnostic. Seule cette opération explicite et validée crée l'état Server
 Le retrait d'un ancien paquet, file, table, secret ou déploiement Waterline est
 la dernière étape, jamais le mécanisme de transition.
 
+Pour changer de runtime en mode service, consultez [déplacer les charges entre runtimes](/docs/polyglot/runtime-migration/). Un export d’historique Server n’est pas un import d’état actif.
+
 ## Continuer le parcours choisi {#continue-with-the-chosen-path}
 
 - [Installation v1 stable](/docs/1.x/installation/)

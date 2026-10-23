@@ -6,6 +6,8 @@ description: Einen unterstützten Selbsthosting-Weg für Durable Workflow v2 und
 
 # Selbsthosting-Bereitstellungen {#self-hosting-deployments}
 
+Für den Wechsel zwischen selbst gehosteten Laufzeiten und Cloud folgen Sie [Workloads zwischen Laufzeiten verschieben](/docs/polyglot/runtime-migration/). Bestehende Läufe bleiben auf der Quelle, während neue Starts verlagert werden.
+
 Durable Workflow v2 unterstützt mehrere selbst gehostete Formen. Wählen Sie den kleinsten Weg, der zu Ihrer Betriebsumgebung passt, und halten Sie Verträge für Image, Datenbank, Cache, Authentifizierung, Bereitschaft und Upgrades explizit.
 
 Dieser Leitfaden behandelt die eigenständige Serverdistribution. Betreiben Sie das Laravel-Paket eingebettet in Ihrer Anwendung, verwenden Sie stattdessen die Seiten zu Paketinstallation und -konfiguration. Durable Workflow Cloud ist eine separate verwaltete Dienstoption, bei der Cloud Laufzeit, Persistenz, Platzierung und Wiederherstellung betreibt. Ein selbst gehosteter Server wird niemals an Cloud angebunden. Siehe [Verwaltete Cloud-Laufzeit](/docs/polyglot/cloud-control-plane). Der aktuelle Cloud-Vertrag umfasst eine verwaltete Laufzeit und Wiederherstellungsgrenze in einer einzelnen Region. Er verspricht keine regionsübergreifende Replikation, automatisches regionales Failover oder Failback.

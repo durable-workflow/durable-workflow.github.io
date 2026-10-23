@@ -98,6 +98,8 @@ Laravel 团队可以阅读专门的 [Laravel 采用与运行时迁移指南](/do
 
 ## 相关参考 {#related-references}
 
+[运行时迁移指南](/docs/polyglot/runtime-migration/)涵盖自托管之间、自托管到 Cloud，以及 Cloud 到自托管的排空与切换。
+
 - [安装](/docs/installation)
 - [Server](/docs/polyglot/server)
 - [PHP SDK](/docs/polyglot/php)

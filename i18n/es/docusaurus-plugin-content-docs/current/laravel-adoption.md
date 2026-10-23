@@ -554,6 +554,8 @@ auditoría/depuración. Solo esa importación explícita validada crea estado de
 Retirar un paquete, cola, tabla, secreto o Waterline antiguo es el último paso,
 nunca el mecanismo de transición.
 
+Para traslados entre runtimes de modo servicio, use [trasladar cargas entre runtimes](/docs/polyglot/runtime-migration/). Exportar historial de Server no es importar estado activo.
+
 ## Continúa por la opción elegida {#continue-with-the-chosen-path}
 
 - [Instalación v1 estable](/docs/1.x/installation/)

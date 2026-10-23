@@ -6,6 +6,8 @@ description: サポートする Durable Workflow v2 のセルフホスト経路�
 
 # セルフホストのデプロイ {#self-hosting-deployments}
 
+セルフホストと Cloud のランタイム変更には、[ランタイム間でワークロードを移す](/docs/polyglot/runtime-migration/)を参照してください。新規開始を切り替える間も、既存の実行は移行元に残します。
+
 Durable Workflow v2 は複数のセルフホスト構成に対応します。運用環境に合う最小の経路を選び、イメージ、DB、キャッシュ、認証、準備状態、アップグレードの契約を明示してください。
 
 このガイドはスタンドアロン Server の配布を扱います。Laravel アプリに組み込む場合は、パッケージのインストール・設定ページを使います。Durable Workflow Cloud は、ランタイム、永続化、配置、復旧を Cloud が運用する別のマネージドサービスです。セルフホスト Server を Cloud に接続することはありません。[Cloud マネージドランタイム](/docs/polyglot/cloud-control-plane)を参照してください。現在の契約は単一リージョンのランタイム・復旧境界であり、マルチリージョン複製、自動リージョンフェイルオーバー、フェイルバックを約束しません。

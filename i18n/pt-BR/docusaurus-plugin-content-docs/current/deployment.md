@@ -6,6 +6,8 @@ description: Escolha um caminho suportado de implantação do Durable Workflow v
 
 # Implantações sob sua administração {#self-hosting-deployments}
 
+Para mudanças entre runtimes próprios ou Cloud, siga [mover cargas entre runtimes](/docs/polyglot/runtime-migration/). As execuções existentes ficam na origem enquanto novos inícios mudam.
+
 O Durable Workflow v2 suporta várias topologias sob sua administração. Escolha
 o menor caminho que corresponda ao ambiente que você opera e mantenha explícito
 o contrato de imagem, banco de dados, cache, autenticação, prontidão e atualização.

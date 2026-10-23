@@ -98,6 +98,8 @@ Drei Regeln sind verbindlich:
 
 ## Weitere Referenzen {#related-references}
 
+[Workloads zwischen Laufzeiten verschieben](/docs/polyglot/runtime-migration/) beschreibt das Auslaufen und Umschalten zwischen selbst gehosteten Servern, von Server zu Cloud und von Cloud zu Server.
+
 - [Installation](/docs/installation)
 - [Server](/docs/polyglot/server)
 - [PHP-SDK](/docs/polyglot/php)
