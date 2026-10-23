@@ -215,12 +215,16 @@ pour chaque vérification terminée.
 | Composant | Version prise en charge | Identité d'installation |
 |-----------|-------------------|------------------|
 | Server | `%%artifact.serverVersion%%` | `%%artifact.serverDockerHubImage%%` |
+| Chart Helm | `%%artifact.helmChartVersion%%` | `%%artifact.helmChartInstallIdentity%%` |
 | CLI | `%%artifact.cliVersion%%` | `%%artifact.cliInstallerEnv%%` |
 | Moteur Workflow | `%%artifact.workflowVersion%%` | `%%artifact.workflowComposerPackage%%` |
 | Opérateur Waterline | `%%artifact.waterlineVersion%%` | `%%artifact.waterlineComposerPackage%%` |
 | SDK PHP | `%%artifact.phpSdkVersion%%` | `%%artifact.phpSdkComposerPackage%%` |
 | SDK Python | `%%artifact.pythonSdkVersion%%` | `%%artifact.pythonPackagePin%%` |
 | SDK Rust | `%%artifact.rustSdkVersion%%` | `%%artifact.rustCargoRequirement%%` |
+
+L’`appVersion` enregistré du chart Helm est `%%artifact.helmChartAppVersion%%`, correspondant au Server sélectionné. La [vérification de la paire publiée](%%artifact.helmChartQualificationUrl%%) contrôle les digests OCI/du paquet et l’identité source ; ce n’est pas le résultat d’une nouvelle installation de cluster. Consultez le [choix et la mise à niveau du chart](./deployment.md#helm-chart-selection) avant d’installer ou de remplacer l’image.
+
 
 PyPI affiche la version de distribution Python sous
 `%%artifact.pythonRegistryVersion%%`. La forme d'installation PEP 440 documentée

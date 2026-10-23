@@ -290,12 +290,23 @@ Server 仓库负责 [chart 源码和发布指南](https://github.com/durable-wor
 
 ```bash
 helm install durable-workflow \
-  oci://ghcr.io/durable-workflow/charts/durable-workflow \
+  %%artifact.helmChartRepository%% \
+  --version %%artifact.helmChartVersion%% \
   --namespace durable-workflow --create-namespace \
   -f my-values.yaml
 ```
 
-Values 文件必须指向外部 MySQL/PostgreSQL 和外部 Redis，通过现有 Kubernetes Secret 提供生产凭据，并针对环境配置 ingress/TLS。Chart 不创建持久化或提供商托管基础设施。为使生产部署可复现，添加 `--version <validated-chart-version>`，并按摘要固定 Server 镜像。Server 仓库发布 chart 版本，并在 chart 源码旁记录升级方法。
+values 文件必须指向外部 MySQL/PostgreSQL 和 Redis，通过已有 Kubernetes Secret 提供生产凭据，并为环境配置 ingress/TLS。Chart 不会创建持久化存储或提供商托管基础设施。为了可复现部署，请按摘要固定 Server 镜像。
+
+### 选择 Chart 版本 {#helm-chart-selection}
+
+每个 Chart 发布版都会在 `Chart.yaml` 的 `appVersion` 中记录其测试过的 Server 镜像；Chart 与 Server 的版本号彼此独立。所选[兼容组合](./compatibility.md#last-qualified-reproducible-tuple)使用 Chart **%%artifact.helmChartVersion%%** 和 Server **%%artifact.helmChartAppVersion%%**，与表格和安装命令共享同一份发布元数据。[已发布 OCI/软件包的验证记录](%%artifact.helmChartQualificationUrl%%)核实的是这个组合，并非一次新的 Kubernetes 安装。
+
+对于其他 Server 版本，请检查候选已发布 Chart 的 `Chart.yaml`（[当前所选 Chart 源码](%%artifact.helmChartSourceUrl%%)可作为示例），选择 `appVersion` 与目标 Server 一致的确切 Chart 版本。阅读所选版本的 [UPGRADING 说明](%%artifact.helmChartUpgradeUrl%%)，包括升级跨越的每个 Chart 版本。不要根据 Server 版本推算 Chart 版本，也不要从当前源码选择尚未发布的 Chart。
+
+覆盖 `image.tag` 会更换镜像，却不会改变 Chart 记录的 `appVersion`。这会形成一个自定义 Chart/镜像组合，直到该组合单独完成渲染清单、初始化、滚动部署和运行时验证。升级计划应包含常规数据库备份和回滚边界；成功渲染清单并不能证明部署可用。
+
+已发布历史中存在一个例外：Chart 0.2.2 在 Chart 补丁版本号下跨越了 Server 的次版本。后续[已发布的更正说明](https://github.com/durable-workflow/server/blob/2.11.0/k8s/helm/durable-workflow/docs/UPGRADING.md#chart-022--server-210)承认了该例外，并恢复所述的次版本策略。历史版本保持不变；这条说明不会选择后续 Server/Chart 组合。
 
 ## Kubernetes 清单 {#kubernetes-manifests}
 

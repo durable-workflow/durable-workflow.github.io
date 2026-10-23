@@ -324,12 +324,23 @@ Das Serverrepository verantwortet [Chart-Quellcode und Veröffentlichungshinweis
 
 ```bash
 helm install durable-workflow \
-  oci://ghcr.io/durable-workflow/charts/durable-workflow \
+  %%artifact.helmChartRepository%% \
+  --version %%artifact.helmChartVersion%% \
   --namespace durable-workflow --create-namespace \
   -f my-values.yaml
 ```
 
-Ihre Values-Datei muss eine externe MySQL-/PostgreSQL-Datenbank und externes Redis angeben, Produktionszugangsdaten über bestehende Kubernetes-Secrets liefern und Ingress/TLS für Ihre Umgebung konfigurieren. Das Chart erstellt weder Persistenz noch providerverwaltete Infrastruktur. Ergänzen Sie für reproduzierbare Produktion `--version <validated-chart-version>` und legen Sie das Serverimage per Digest fest. Das Serverrepository veröffentlicht Chartversionen und dokumentiert Chart-Upgrades neben dem Chart-Quellcode.
+Ihre Values-Datei muss auf externes MySQL/PostgreSQL und Redis verweisen, Produktionszugangsdaten über vorhandene Kubernetes Secrets bereitstellen und ingress/TLS für Ihre Umgebung konfigurieren. Das Chart erstellt weder Persistenz noch vom Anbieter verwaltete Infrastruktur. Fixieren Sie das Server-Image für ein reproduzierbares Deployment per Digest.
+
+### Einen Chart-Release auswählen {#helm-chart-selection}
+
+Jeder Chart-Release hält das getestete Server-Image in der `appVersion` der `Chart.yaml` fest; Chart und Server haben unabhängige Versionsnummern. Die ausgewählte [kompatible Kombination](./compatibility.md#last-qualified-reproducible-tuple) verbindet Chart **%%artifact.helmChartVersion%%** mit Server **%%artifact.helmChartAppVersion%%** aus denselben Release-Metadaten wie Tabelle und Installationsbefehl. Der [Prüfbericht zu OCI/veröffentlichtem Paket](%%artifact.helmChartQualificationUrl%%) bestätigt diese Kombination, keine neue Kubernetes-Installation.
+
+Prüfen Sie für eine andere Server-Version die `Chart.yaml` des vorgesehenen veröffentlichten Charts (die [ausgewählte Chart-Quelle](%%artifact.helmChartSourceUrl%%) dient als Beispiel) und wählen Sie eine exakte Chart-Version, deren `appVersion` dem gewünschten Server entspricht. Lesen Sie die [UPGRADING-Hinweise](%%artifact.helmChartUpgradeUrl%%) des ausgewählten Releases einschließlich jeder übersprungenen Chart-Version. Leiten Sie die Chart-Version nicht aus der Server-Version ab und wählen Sie kein unveröffentlichtes Chart aus dem aktuellen Quellstand.
+
+Ein Override von `image.tag` ändert das Image, ohne die aufgezeichnete `appVersion` des Charts zu ändern. Damit entsteht eine eigene Chart-/Image-Kombination, bis gerenderte Manifeste, Bootstrap, Rollout und Runtime gesondert qualifiziert wurden. Behalten Sie übliche Datenbanksicherungen und Rollback-Grenzen im Upgrade-Plan bei; erfolgreiches Rendern allein belegt kein funktionierendes Deployment.
+
+Die veröffentlichte Historie enthält eine Ausnahme: Chart 0.2.2 wechselte unter einer Chart-Patchnummer auf eine neue Server-Minor-Version. Die spätere [veröffentlichte Korrektur](https://github.com/durable-workflow/server/blob/2.11.0/k8s/helm/durable-workflow/docs/UPGRADING.md#chart-022--server-210) erkennt die Ausnahme an und kehrt zur erklärten Minor-Versionspolitik zurück. Historische Versionen bleiben unverändert; dieser Hinweis wählt keine spätere Server-/Chart-Kombination aus.
 
 ## Kubernetes-Manifeste {#kubernetes-manifests}
 
