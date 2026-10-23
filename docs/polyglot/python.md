@@ -1066,6 +1066,14 @@ The direct `Client.heartbeat_activity_task()` call uses the configured `Transpor
 
 Do not suppress heartbeat/ownership failures and continue external work or report success. Progress is not an external commit or a resumable-checkpoint receipt. Keep external effects idempotent.
 
+### Heartbeat refusals and callback exit {#heartbeat-refusals-and-callback-exit}
+
+In **Python SDK 2.9.0**, `ctx.heartbeat()` and `ctx.heartbeat_sync()` raise `ActivityLeaseAuthorityLost` when a heartbeat response says `can_continue=false`. The exception retains the original Server reason, such as `activity_deadline_elapsed`, `attempt_closed` or `run_closed`. A cancellation request instead raises `ActivityCancelled`. See the [published SDK qualification](https://github.com/durable-workflow/sdk-python/issues/186#issuecomment-6361330674).
+
+The heartbeat that observes the refusal is a cooperative exit point. Stop external work and propagate the exception; do not catch it and return success. Code that never heartbeats can keep running until it returns. A helper heartbeat cannot forcibly interrupt a blocked library call: use finite I/O deadlines and the call's own cancellation mechanism.
+
+The physical activity slot stays occupied until the callback/thread exits. Losing attempt authority does not make that thread available for replacement work, and the worker does not publish a late result for the closed attempt. Runtime timeout enforcement and stopping application code are separate boundaries. See [activity timeouts](../features/timeouts.md#activity-timeouts) and the [helper-thread guidance](#heartbeat-helper-thread).
+
 ### Non-Retryable Errors
 
 Raise `NonRetryableError` to fail the activity without retries:
