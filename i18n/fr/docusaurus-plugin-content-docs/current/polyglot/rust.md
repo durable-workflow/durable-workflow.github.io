@@ -264,7 +264,7 @@ Utilisez `attempt_limit()` et `is_last_configured_attempt()` pour interpréter l
 | Objet avec `max_attempts: null` | `Unlimited` | `Some(false)` |
 | Politique omise, null à la racine, champ absent ou limite invalide | `Unknown` | `None` |
 
-Le helper renvoie aussi `None` pour un numéro de tentative nul invalide. Le comportement de planification par défaut du runtime ne prouve pas les métadonnées reçues : le contrôle publié sur Server 2.11.0 sans politique définie par l’auteur omet l’instantané et indique donc `Unknown`, sans déduire `Bounded(1)`. `policy()` distingue une politique omise d’un JSON null reçu sans considérer l’un ou l’autre comme illimité.
+Le helper renvoie aussi `None` pour un numéro de tentative nul invalide. Le comportement de planification par défaut du runtime ne prouve pas les métadonnées reçues : le contrôle publié sur Server 2.11.0 sans politique définie par l’auteur omet l’instantané et indique donc `Unknown`, sans déduire `Bounded(1)`. `policy()` distingue une politique omise d’un JSON null reçu sans considérer l’un ou l’autre comme illimité. L’[acceptation avec installation normale](https://github.com/durable-workflow/sdk-rust/issues/135#issuecomment-6366200791) comprend ce contrôle et l’exemple ci-dessous.
 
 Pour choisir une solution de repli ou enregistrer une alerte applicative lors de la dernière tentative configurée, enregistrez un gestionnaire sur votre Worker existant :
 

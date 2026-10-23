@@ -260,7 +260,7 @@ Use `attempt_limit()` and `is_last_configured_attempt()` to interpret the receiv
 | Object with `max_attempts: null` | `Unlimited` | `Some(false)` |
 | Omitted policy, root null, missing field or invalid limit | `Unknown` | `None` |
 
-The helper also returns `None` for an invalid zero attempt number. A runtime's scheduling default does not establish received metadata: the published Server 2.11.0 no-authored-policy control omits the snapshot and therefore reports `Unknown`, not an inferred `Bounded(1)`. `policy()` distinguishes an omitted policy from a received JSON null without treating either as unlimited.
+The helper also returns `None` for an invalid zero attempt number. A runtime's scheduling default does not establish received metadata: the published Server 2.11.0 no-authored-policy control omits the snapshot and therefore reports `Unknown`, not an inferred `Bounded(1)`. `policy()` distinguishes an omitted policy from a received JSON null without treating either as unlimited. The [normal installed acceptance](https://github.com/durable-workflow/sdk-rust/issues/135#issuecomment-6366200791) includes this control and the recipe below.
 
 For a final-configured-attempt fallback or application alert, register a handler on your existing Worker:
 

@@ -260,7 +260,7 @@ Verwenden Sie `attempt_limit()` und `is_last_configured_attempt()`, um das empfa
 | Objekt mit `max_attempts: null` | `Unlimited` | `Some(false)` |
 | Fehlende Richtlinie, null auf oberster Ebene, fehlendes Feld oder ungültige Grenze | `Unknown` | `None` |
 
-Der Helper gibt auch bei einer ungültigen Versuchsnummer null `None` zurück. Ein Planungsstandard des Runtimes belegt keine empfangenen Metadaten: Der veröffentlichte Server-2.11.0-Kontrollfall ohne ausdrücklich verfasste Richtlinie lässt den Snapshot aus und meldet daher `Unknown` statt eines abgeleiteten `Bounded(1)`. `policy()` unterscheidet eine fehlende Richtlinie von empfangenem JSON null, ohne eines davon als unbegrenzt zu behandeln.
+Der Helper gibt auch bei einer ungültigen Versuchsnummer null `None` zurück. Ein Planungsstandard des Runtimes belegt keine empfangenen Metadaten: Der veröffentlichte Server-2.11.0-Kontrollfall ohne ausdrücklich verfasste Richtlinie lässt den Snapshot aus und meldet daher `Unknown` statt eines abgeleiteten `Bounded(1)`. `policy()` unterscheidet eine fehlende Richtlinie von empfangenem JSON null, ohne eines davon als unbegrenzt zu behandeln. Die [Abnahme mit normal installiertem Paket](https://github.com/durable-workflow/sdk-rust/issues/135#issuecomment-6366200791) umfasst diesen Kontrollfall und das folgende Beispiel.
 
 Registrieren Sie für einen Fallback oder Anwendungsalarm beim letzten konfigurierten Versuch einen Handler an Ihrem vorhandenen Worker:
 

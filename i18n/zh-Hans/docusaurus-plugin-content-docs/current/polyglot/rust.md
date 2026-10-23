@@ -207,7 +207,7 @@ Rust SDK **4.8.0 或更新版本**在服务模式活动处理函数中提供 `Ac
 | 含 `max_attempts: null` 的对象 | `Unlimited` | `Some(false)` |
 | 策略省略、根 null、字段缺失或无效上限 | `Unknown` | `None` |
 
-对于无效的零尝试编号，辅助方法也返回 `None`。运行时的调度默认值不能证明收到的元数据：已发布 Server 2.11.0 的未编写策略对照会省略快照，因此报告 `Unknown`，而非推断为 `Bounded(1)`。`policy()` 区分策略省略与收到 JSON null，但不会将任一情况视为无限重试。
+对于无效的零尝试编号，辅助方法也返回 `None`。运行时的调度默认值不能证明收到的元数据：已发布 Server 2.11.0 的未编写策略对照会省略快照，因此报告 `Unknown`，而非推断为 `Bounded(1)`。`policy()` 区分策略省略与收到 JSON null，但不会将任一情况视为无限重试。 [正常安装验收](https://github.com/durable-workflow/sdk-rust/issues/135#issuecomment-6366200791)包含此对照和下方示例。
 
 若要在配置的最后一次尝试中选择回退或记录应用告警，请在现有 Worker 上注册处理函数：
 

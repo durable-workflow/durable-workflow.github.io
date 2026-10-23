@@ -259,7 +259,7 @@ Use `attempt_limit()` e `is_last_configured_attempt()` para interpretar o orçam
 | Objeto com `max_attempts: null` | `Unlimited` | `Some(false)` |
 | Política omitida, null na raiz, campo ausente ou limite inválido | `Unknown` | `None` |
 
-O helper também retorna `None` para um número de tentativa zero inválido. O padrão de agendamento do runtime não comprova os metadados recebidos: o controle publicado do Server 2.11.0 sem política definida pelo autor omite o snapshot e informa `Unknown`, sem inferir `Bounded(1)`. `policy()` distingue uma política omitida de um JSON null recebido sem tratar nenhum deles como ilimitado.
+O helper também retorna `None` para um número de tentativa zero inválido. O padrão de agendamento do runtime não comprova os metadados recebidos: o controle publicado do Server 2.11.0 sem política definida pelo autor omite o snapshot e informa `Unknown`, sem inferir `Bounded(1)`. `policy()` distingue uma política omitida de um JSON null recebido sem tratar nenhum deles como ilimitado. A [aceitação com instalação normal](https://github.com/durable-workflow/sdk-rust/issues/135#issuecomment-6366200791) inclui esse controle e a receita abaixo.
 
 Para escolher um fallback ou registrar um alerta da aplicação na última tentativa configurada, registre um handler no Worker existente:
 
