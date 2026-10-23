@@ -188,6 +188,8 @@ VM、網、DB、キャッシュ、バックアップ、LB のモデルが明確�
 
 PHP SDK **3.2.0** の通常の制御プレーン `Client` 呼び出しには、既定の HTTP 全体期限がありません。[PHP #203 の検証済みの制限](https://github.com/durable-workflow/sdk-php/issues/203)を参照し、有界の HTTP クライアントを設定して、呼び出し元の元の期限を保ってください。Worker のポーリングタイムアウトは、SDK のすべての要求の期限ではありません。
 
+PHP SDK **3.4.0 以降**は SDK 所有のトランスポートによる通常の制御 HTTP 要求に**既定60秒の全体期限**を設けます。正の秒数を `requestTimeoutSeconds` で設定できます。タイムアウトは `reason=request_timeout` と `status=0` を持ちます。SDK は1回だけ試行します。応答がタイムアウトしても変更は受理済みの可能性があるため、再送前に元の識別子と結果を確認してください。注入したクライアント/トランスポートは独自の方針を保ち、このオプションと併用できません。要求単位の制限は worker long-poll、payload 転送、workflow/呼び出し元の期限を置き換えません。`composer.lock` を確認してください。この最低バージョンは選択済みインストール構成を更新しません。[HTTP 設定](https://php.durable-workflow.com/getting-started/client-setup/)と[3.4.0 の通常インストール検証](https://github.com/durable-workflow/sdk-php/issues/203#issuecomment-6363909756)を参照してください。
+
 ### 検証済みの短いポーリング例 {#verified-poll-timeout-example}
 
 独立した検証で、公開済み Python SDK **2.9.0**、PHP Server **2.11.0**、Nginx **1.30.5** と空のタスクキューを使いました。両ケースとも SDK の待機は **3 秒**、HTTPX の connect/read/write/pool は **8 秒**、呼び出し元の外側の期限は **10 秒**で固定しました。変更したのは Nginx の upstream 読み取りタイムアウトだけです。
