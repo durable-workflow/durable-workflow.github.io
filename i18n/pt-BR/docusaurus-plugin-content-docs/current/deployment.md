@@ -505,6 +505,85 @@ intervenção sob sua administração continuam conduzidos pelo suporte ou trata
 separadamente do contrato de manifestos diretos. Use o caminho Helm com versão
 independente acima quando quiser instalação e atualizações gerenciadas pelo Helm.
 
+## Executar workers dos SDKs no Kubernetes {#sdk-workers-on-kubernetes}
+
+Implante os workers da aplicação separadamente do worker de filas Laravel do Server. Crie uma imagem com seus handlers PHP, Python ou Rust registrados e as dependências do SDK fixadas no arquivo de lock. Use um entrypoint no formato exec para que o processo worker receba `SIGTERM`. Substitua a imagem abaixo pelo digest imutável dessa build.
+
+Para workers no mesmo cluster, use o nome, namespace e porta reais do Service do Server. Os manifestos brutos expõem `http://durable-workflow-server.durable-workflow.svc.cluster.local:8080`. Uma release Helm pode usar outro nome de Service. Workers fora do cluster precisam da URL HTTPS acessível do ingress ou balanceador, com verificação normal do certificado. Alinhe os orçamentos de long poll e transporte com [as orientações de timeout](#worker-long-poll-timeout-budgets).
+
+Crie um Secret no namespace Kubernetes do Pod do worker usando sua credencial existente. Mantenha o token fora do manifesto e da imagem. O namespace do Server é um limite do produto distinto do namespace Kubernetes.
+
+```bash
+kubectl -n durable-workflow create secret generic orders-worker-auth --from-literal=token="$DW_WORKER_TOKEN"
+```
+
+Salve como `orders-worker.yaml`. Esses nomes de variáveis de ambiente são configuração da aplicação: o entrypoint deve passá-los ao cliente do SDK e ao Worker. Dê a cada processo ativo seu próprio worker ID e registre os handlers da fila configurada.
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders-worker
+  namespace: durable-workflow
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: orders-worker
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: orders-worker
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 75
+      containers:
+        - name: worker
+          image: registry.example.com/acme/orders-worker:release-id
+          env:
+            - name: DW_SERVER_URL
+              value: http://durable-workflow-server.durable-workflow.svc.cluster.local:8080
+            - name: DW_NAMESPACE
+              value: default
+            - name: DW_TASK_QUEUE
+              value: orders
+            - name: DW_WORKER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+            - name: DW_WORKER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: orders-worker-auth
+                  key: token
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+```
+
+Réplicas e recursos são exemplos iniciais, não garantias de capacidade. Ajuste-os conforme a duração real das tarefas, o uso de memória, os limites dos serviços dependentes e os [orçamentos de admissão do worker](./polyglot/task-queue-admission.md). Um Deployment disponível não comprova o registro do SDK nem trabalho útil. Verifique registros recentes e a build e fila esperadas; depois inicie e conclua um workflow representativo. Executar no Kubernetes não fornece automaticamente um endpoint HTTP de saúde ao worker do SDK. Use uma probe da aplicação quando houver uma e não use a saúde do Server como liveness do worker.
+
+### Entregar SIGTERM e aguardar a limpeza {#sdk-worker-pod-shutdown}
+
+| SDK | Encerramento do processo worker |
+| --- | --- |
+| PHP | Use o loop gerenciado `Worker::run()` com `pcntl` instalado. Seu handler de sinais solicita a parada; a tarefa síncrona ativa chega a um ponto de parada antes da limpeza e remoção do registro gerenciadas. Um loop próprio em torno de `tick()` não fornece esse ciclo de vida. Veja o [encerramento gracioso do PHP](https://php.durable-workflow.com/operate/graceful-shutdown/). |
+| Python | Conecte `SIGTERM` ao encerramento do mesmo Worker e aguarde tanto `Worker.stop()` quanto sua tarefa de execução. Defina `shutdown_timeout` explicitamente. O trabalho aceito compartilha esse prazo de drenagem. Cancelar um await não força a parada de uma thread síncrona ativa; uma parada não confirmada continua sendo um erro. Use o [exemplo de processos separados e sinais](https://python.durable-workflow.com/guides/separate-workers/) e o [contrato do ciclo de vida](https://python.durable-workflow.com/reference/worker/). |
+| Rust | Passe a `Worker::run_until(...)` um future que resolva com Unix `SIGTERM` e aguarde seu resultado. Um future que trate apenas Ctrl-C não processa o sinal de término do Pod. Os handlers assíncronos devem ceder o controle; limite o trabalho bloqueante separadamente. Veja [Worker::run_until](https://rust.durable-workflow.com/durable_workflow/struct.Worker.html#method.run_until). |
+
+Reserve em `terminationGracePeriodSeconds` tempo suficiente para o poll, o encerramento das tarefas aceitas e a limpeza de HTTP, sessões e registro do SDK instalado. Confira os 75 segundos do exemplo contra os limites reais da aplicação. O Kubernetes inclui qualquer hook `preStop` nesse mesmo período de tolerância e força a parada dos processos restantes após seu término. Um hook que apenas dorme não solicita drenagem ao SDK nem estende seu prazo. Veja o [fluxo de término de Pods do Kubernetes](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination-flow).
+
+Ensaie o término em estado ocioso e durante trabalho com duração limitada. Trate erros de limpeza, registro retido ou encerramento forçado como parada incompleta. Um worker substituto continua o trabalho durável conforme seus leases, tentativas e prazos registrados. Parar um Pod não cancela um workflow nem desfaz um efeito externo. Antes de mudar de build, siga o [rollout por build ID do worker](./polyglot/worker-build-id-rollout.md) e mantenha suas verificações de compatibilidade, replay e rollback.
+
 ## Alta disponibilidade e failover em região única {#single-region-high-availability-and-failover}
 
 O failover de alta disponibilidade em região única é atualmente um contrato

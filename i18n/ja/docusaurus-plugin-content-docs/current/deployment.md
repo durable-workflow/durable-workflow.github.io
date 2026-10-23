@@ -351,6 +351,85 @@ curl -H "Authorization: Bearer $DW_ADMIN_TOKEN" http://localhost:8080/api/cluste
 
 単一リージョン HA は、証拠ゲート閉鎖中は小規模クラスター同様サポート主導です。[以下の HA](#single-region-high-availability-and-failover)にある準備状態、単一スケジューラー、共有基盤のルールが必要です。プロバイダー固有 LB、storage class、network policy、アクティブ/アクティブ複数リージョン、無人切替はサポート主導または別追跡です。Helm 管理の導入・更新には、独立バージョンの Helm 経路を使います。
 
+## Kubernetes で SDK Worker を実行する {#sdk-workers-on-kubernetes}
+
+アプリケーションの Worker は、Server の Laravel キュー Worker と分けてデプロイします。登録済みの PHP、Python、Rust ハンドラーと、ロックした SDK 依存関係を含むイメージをビルドしてください。Worker プロセスが `SIGTERM` を受け取れるよう、exec 形式の entrypoint を使います。以下のイメージを、そのビルドの変更不能な digest に置き換えてください。
+
+同じクラスター内の Worker では、Server Service の実際の名前、名前空間、ポートを使います。生のマニフェストは `http://durable-workflow-server.durable-workflow.svc.cluster.local:8080` を公開します。Helm リリースでは Service 名が異なる場合があります。クラスター外の Worker には、到達可能な ingress またはロードバランサーの HTTPS URL と、通常の証明書検証が必要です。long poll とトランスポートの時間枠は[タイムアウトの説明](#worker-long-poll-timeout-budgets)に合わせてください。
+
+既存の Worker 認証情報から、Worker Pod の Kubernetes 名前空間に Secret を作成します。トークンはマニフェストやイメージに含めないでください。Server の名前空間は製品上の別の境界であり、Kubernetes の名前空間とは異なります。
+
+```bash
+kubectl -n durable-workflow create secret generic orders-worker-auth --from-literal=token="$DW_WORKER_TOKEN"
+```
+
+これを `orders-worker.yaml` として保存します。これらの環境変数名はアプリケーションの設定です。entrypoint から SDK クライアントと Worker に渡す必要があります。同時に動作する各プロセスに固有の worker ID を与え、設定したキューのハンドラーを登録してください。
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders-worker
+  namespace: durable-workflow
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: orders-worker
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: orders-worker
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 75
+      containers:
+        - name: worker
+          image: registry.example.com/acme/orders-worker:release-id
+          env:
+            - name: DW_SERVER_URL
+              value: http://durable-workflow-server.durable-workflow.svc.cluster.local:8080
+            - name: DW_NAMESPACE
+              value: default
+            - name: DW_TASK_QUEUE
+              value: orders
+            - name: DW_WORKER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+            - name: DW_WORKER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: orders-worker-auth
+                  key: token
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+```
+
+レプリカ数とリソース値は出発点となる例であり、処理能力の保証ではありません。実際のタスク時間、メモリー使用量、下流サービスの制限、[Worker の受け入れ予算](./polyglot/task-queue-admission.md)に合わせて調整します。Deployment が利用可能になっても、SDK の登録や有用な処理の証明にはなりません。新鮮な Worker 登録と想定するビルド、キューを確認し、代表的なワークフローを開始して完了させてください。Kubernetes で実行するだけでは、SDK Worker に HTTP ヘルスエンドポイントは追加されません。アプリケーションに probe がある場合はそれを使い、Server のヘルスを Worker の liveness 検査に使わないでください。
+
+### SIGTERM を届けて後処理を待つ {#sdk-worker-pod-shutdown}
+
+| SDK | Worker プロセスの終了 |
+| --- | --- |
+| PHP | `pcntl` をインストールし、管理対象の `Worker::run()` ループを使います。シグナルハンドラーが終了を要求し、実行中の同期タスクが区切りに達してから、管理対象の後処理と登録解除を行います。`tick()` を呼ぶ独自ループには、このライフサイクルはありません。[PHP の正常終了](https://php.durable-workflow.com/operate/graceful-shutdown/)を参照してください。 |
+| Python | `SIGTERM` を同じ Worker の終了処理につなぎ、`Worker.stop()` と実行タスクの両方を await します。`shutdown_timeout` を明示的に設定してください。受け入れ済み処理は、この共通ドレイン期限を使います。await のキャンセルでは、実行中の同期スレッドを強制停止できません。停止を確認できない場合はエラーのままです。[プロセス分離とシグナル設定の例](https://python.durable-workflow.com/guides/separate-workers/)と[ライフサイクル契約](https://python.durable-workflow.com/reference/worker/)を使ってください。 |
+| Rust | Unix の `SIGTERM` で完了する future を `Worker::run_until(...)` に渡し、その結果を await します。Ctrl-C だけを待つ future は Pod の終了シグナルを扱いません。非同期ハンドラーは実行権を譲る必要があり、ブロッキング処理には別の上限を設けます。[Worker::run_until](https://rust.durable-workflow.com/durable_workflow/struct.Worker.html#method.run_until)を参照してください。 |
+
+`terminationGracePeriodSeconds` には、インストール済み SDK の poll、受け入れ済みタスクの終了、HTTP、セッション、登録の後処理に十分な時間を確保します。例の 75 秒は、アプリケーションの実際の上限に照らして確認してください。Kubernetes は `preStop` hook も同じ猶予時間に含め、期限後に残ったプロセスを強制停止します。sleep だけの hook は SDK にドレインを要求せず、期限も延長しません。[Kubernetes の Pod 終了フロー](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination-flow)を参照してください。
+
+アイドル時と、所要時間を制限した処理の実行中に終了をリハーサルしてください。後処理エラー、残った登録、強制終了は、不完全な停止として扱います。代替 Worker は、記録済みのリース、リトライ、期限に従って永続処理を続行します。Pod の停止はワークフローのキャンセルや外部副作用の取り消しにはなりません。ビルドを変更する前に、[Worker の build ID ロールアウト](./polyglot/worker-build-id-rollout.md)に従い、互換性、リプレイ、ロールバックの確認を維持してください。
+
 ## 単一リージョンの高可用性とフェイルオーバー {#single-region-high-availability-and-failover}
 
 現在は、小規模クラスター・生 Kubernetes 上に重ねる**未検証のサポート主導**契約候補です。**一つのリージョン内**で、管理 DB（RDS Multi-AZ、Aurora、Cloud SQL HA、Patroni 昇格等）・管理 Redis（Sentinel、Elasticache replication-group、Memorystore HA 等）の切替、API・Worker 喪失、スケジューラー・保守再起動への耐性を目標にします。リージョン間アクティブ/パッシブは別の[評価](#activepassive-multi-region)です。

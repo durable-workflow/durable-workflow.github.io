@@ -492,6 +492,85 @@ curl -H "Authorization: Bearer $DW_ADMIN_TOKEN" http://localhost:8080/api/cluste
 підтримки або відстежуються окремо від контракту маніфестів. Для встановлення
 й оновлень під керуванням Helm використовуйте окремо версійований шлях вище.
 
+## Запуск SDK workers у Kubernetes {#sdk-workers-on-kubernetes}
+
+Розгортайте workers вашого застосунку окремо від Laravel queue worker сервера. Зберіть образ із зареєстрованими обробниками PHP, Python або Rust і зафіксованими залежностями SDK. Використовуйте entrypoint у формі exec, щоб процес worker отримував `SIGTERM`. Замініть наведений образ незмінним digest цієї збірки.
+
+Для workers у тому самому кластері використовуйте фактичні назву, namespace і порт Service сервера. Сирі маніфести надають `http://durable-workflow-server.durable-workflow.svc.cluster.local:8080`. Випуск Helm може мати іншу назву Service. Workers поза кластером потребують доступної HTTPS-адреси ingress або балансувальника з нормальною перевіркою сертифіката. Узгодьте бюджети long poll і транспорту з [рекомендаціями щодо таймаутів](#worker-long-poll-timeout-budgets).
+
+Створіть Secret у Kubernetes namespace Pod worker, використовуючи наявні облікові дані worker. Не додавайте токен до маніфесту чи образу. Namespace сервера — окрема межа продукту, відмінна від namespace Kubernetes.
+
+```bash
+kubectl -n durable-workflow create secret generic orders-worker-auth --from-literal=token="$DW_WORKER_TOKEN"
+```
+
+Збережіть це як `orders-worker.yaml`. Ці назви змінних середовища є конфігурацією застосунку: entrypoint має передати їх клієнту SDK і Worker. Надайте кожному одночасно активному процесу власний worker ID і зареєструйте обробники для налаштованої черги.
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders-worker
+  namespace: durable-workflow
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: orders-worker
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: orders-worker
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 75
+      containers:
+        - name: worker
+          image: registry.example.com/acme/orders-worker:release-id
+          env:
+            - name: DW_SERVER_URL
+              value: http://durable-workflow-server.durable-workflow.svc.cluster.local:8080
+            - name: DW_NAMESPACE
+              value: default
+            - name: DW_TASK_QUEUE
+              value: orders
+            - name: DW_WORKER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+            - name: DW_WORKER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: orders-worker-auth
+                  key: token
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+```
+
+Кількість реплік і ресурси — початкові приклади, а не гарантії місткості. Налаштуйте їх за фактичною тривалістю завдань, використанням пам’яті, лімітами залежних сервісів і [бюджетами допуску worker](./polyglot/task-queue-admission.md). Доступність Deployment не доводить реєстрацію SDK чи корисну роботу. Перевірте свіжі реєстрації workers та очікувані збірку й чергу, потім запустіть і завершіть показовий workflow. Запуск у Kubernetes сам собою не створює HTTP endpoint здоров’я для SDK worker. Використовуйте probe застосунку, якщо він існує, і не використовуйте здоров’я сервера як liveness-перевірку worker.
+
+### Передавання SIGTERM і очікування очищення {#sdk-worker-pod-shutdown}
+
+| SDK | Завершення процесу worker |
+| --- | --- |
+| PHP | Використовуйте керований цикл `Worker::run()` зі встановленим `pcntl`. Його signal handler запитує завершення, після чого активне синхронне завдання доходить до межі перед керованим очищенням і зняттям реєстрації. Власний цикл навколо `tick()` не надає цього lifecycle. Див. [коректне завершення PHP](https://php.durable-workflow.com/operate/graceful-shutdown/). |
+| Python | Під’єднайте `SIGTERM` до шляху завершення того самого Worker та дочекайтеся і `Worker.stop()`, і його run task. Явно задайте `shutdown_timeout`. Прийняті завдання поділяють цей deadline спорожнення. Скасування await не може примусово зупинити активний синхронний потік, а непідтверджена зупинка залишається помилкою. Використовуйте [приклад окремих процесів і signal wiring](https://python.durable-workflow.com/guides/separate-workers/) та [контракт lifecycle](https://python.durable-workflow.com/reference/worker/). |
+| Rust | Передайте до `Worker::run_until(...)` future, який завершується за Unix `SIGTERM`, і дочекайтеся результату. Future лише для Ctrl-C не обробляє signal завершення Pod. Асинхронні обробники мають віддавати керування, а блокувальну роботу потрібно обмежувати окремо. Див. [Worker::run_until](https://rust.durable-workflow.com/durable_workflow/struct.Worker.html#method.run_until). |
+
+Виділіть у `terminationGracePeriodSeconds` достатньо часу для poll, завершення прийнятих завдань і очищення HTTP/session/реєстрації у встановленому SDK. Приклад із 75 секундами потрібно звірити з фактичними межами вашого застосунку. Kubernetes зараховує будь-який hook `preStop` у той самий пільговий період і примусово зупиняє процеси, що залишилися після його спливу. Hook лише зі sleep не просить SDK спорожнити роботу й не подовжує його deadline. Див. [процес завершення Pod у Kubernetes](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination-flow).
+
+Відрепетируйте завершення під час простою й обмеженої за часом роботи. Вважайте помилки очищення, збережену реєстрацію або примусове завершення неповним вимкненням. Worker на заміну продовжує durable-роботу за її записаними leases, retries і deadlines. Зупинка Pod не скасовує workflow і не відкочує зовнішній побічний ефект. Перед зміною збірок дотримуйтеся [розгортання за build ID worker](./polyglot/worker-build-id-rollout.md) і зберігайте його перевірки сумісності, replay та rollback.
+
 ## Висока доступність і перемикання в одному регіоні {#single-region-high-availability-and-failover}
 
 Висока доступність і перемикання в одному регіоні наразі є **неперевіреним

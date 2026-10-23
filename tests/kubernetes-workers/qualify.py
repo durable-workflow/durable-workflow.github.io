@@ -6,6 +6,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import time
+import tomllib
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -18,6 +19,8 @@ NAMESPACE = 'durable-workflow'
 
 
 def run(args, *, label=None, timeout=180, stdin=None):
+    if label:
+        print(label + ': running', flush=True)
     result = subprocess.run(args, input=stdin, text=True, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, timeout=timeout, check=False)
     if label:
@@ -100,9 +103,14 @@ def main():
     php_sdk = next(item for item in php_lock['packages'] if item['name'] == 'durable-workflow/sdk')
     assert php_sdk['source']['reference'] == ARTIFACTS['php_source']
     assert php_sdk['dist']['reference'] == ARTIFACTS['php_source']
+    assert php_sdk['version'].lstrip('v') == ARTIFACTS['php_sdk']
     rust_lock = run(['docker', 'run', '--rm', '--entrypoint', 'cat', images['rust'], '/app/Cargo.lock'], label='rust-lock')
-    assert ARTIFACTS['rust_checksum'] in rust_lock
-    run(['docker', 'run', '--rm', '--entrypoint', 'cat', images['python'], '/app/install-report.json'], label='python-install-report')
+    rust_sdk = next(item for item in tomllib.loads(rust_lock)['package'] if item['name'] == 'durable-workflow')
+    assert rust_sdk['version'] == ARTIFACTS['rust_sdk']
+    assert rust_sdk['checksum'] == ARTIFACTS['rust_checksum']
+    python_report = json.loads(run(['docker', 'run', '--rm', '--entrypoint', 'cat', images['python'], '/app/install-report.json'], label='python-install-report'))
+    python_sdk = next(item for item in python_report['install'] if item['metadata']['name'] == 'durable-workflow')
+    assert python_sdk['metadata']['version'] == ARTIFACTS['python_sdk']
     created = False
     try:
         created = True
