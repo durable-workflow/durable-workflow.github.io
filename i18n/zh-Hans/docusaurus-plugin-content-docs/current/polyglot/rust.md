@@ -229,6 +229,44 @@ pub fn register_charge(worker: &mut Worker) {
 
 本地活动和直接调用 `testing::WorkflowEnvironment::run_activity` 没有收到的 Server 快照，会报告未知策略。新的 `run_workflow` 测试公开其生成历史中记录的模型快照。这些测试语义不能证明已部署 Server 会发送策略。参见 [ActivityRetryInfo](https://rust.durable-workflow.com/durable_workflow/struct.ActivityRetryInfo.html) 和 [ActivityAttemptLimit](https://rust.durable-workflow.com/durable_workflow/enum.ActivityAttemptLimit.html)。
 
+## 稳定的活动标识与外部操作幂等性 {#activity-identity}
+
+Rust SDK **4.9.0 或更新版本**通过 `ActivityContext` 提供最初收到的标识。请检查 `Cargo.lock` 中实际安装的 crate；上方独立选择的安装版本可能更旧。这些方法返回从原始 claim 保存的不可变 `Option<&str>`，也适用于 worker session 活动。
+
+| 方法 | 标识及用途 |
+| --- | --- |
+| `activity_execution_id()` | 跨重试保持同一逻辑活动执行的标识；用于外部操作去重。 |
+| `workflow_id()` | 所属工作流的**实例** ID；用于业务关联。 |
+| `run_id()` | 所属工作流的 **run** ID；用于关联这一次运行。 |
+
+为特定操作生成键，并传给支持幂等性的外部 API 或持久化副作用账本。此处理函数只生成键，不执行扣款，也不实现外部去重。如果缺少活动标识，它会在任何副作用发生前拒绝；应用也可以显式提供自己的稳定业务键。
+
+```rust
+use durable_workflow::{json, ActivityError, Worker};
+
+pub fn register_charge(worker: &mut Worker) {
+    worker.register_activity("charge", |ctx, _| async move {
+        let execution_id = ctx.activity_execution_id().ok_or_else(|| {
+            ActivityError::new("MissingActivityIdentity", "Server activity identity is required")
+                .non_retryable(true)
+        })?;
+        // Pass this key to an idempotent downstream API or durable effect ledger.
+        let key = format!("payments:charge:{execution_id}");
+        Ok(json!({
+            "idempotency_key": key,
+            "workflow_id": ctx.workflow_id(),
+            "run_id": ctx.run_id(),
+        }))
+    });
+}
+```
+
+旧 Server 省略这些字段时，它们保持为 `None`。不要用每次尝试的 task ID、attempt ID 或尝试次数代替缺失的逻辑活动 ID，否则重试时键会改变。内联本地活动可以收到真实的父工作流/run ID，但在 Server 记录其命令前，没有 Server 活动执行 ID。不使用 Server 的活动测试也没有收到的 claim 标识。
+
+只有外部系统遵守此键时，稳定键才能用于防止重复副作用。活动仍是至少一次投递；此 API 不会使外部操作恰好一次，不会恢复 heartbeat 进度，也不提供可恢复的活动检查点。
+
+请参阅 [ActivityContext 标识方法](https://rust.durable-workflow.com/durable_workflow/struct.ActivityContext.html#method.activity_execution_id)及包含 ordinary/cooperative、本地和 worker-session 验证的[正常安装 4.9.0 记录](https://github.com/durable-workflow/sdk-rust/issues/139#issuecomment-6367230500)。共享幂等性契约见[执行保证](../constraints/execution-guarantees.md#service-activity-identity)。
+
 ## 本地活动 {#local-activities}
 
 Rust SDK 3.1.0 在配置了 `Worker::local_activities(true)` 的 Worker 上增加内联本地执行。使用普通活动注册方法注册回调，然后使用工作流上下文的本地活动方法。重试和超时配置见[可运行示例](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs)及 [LocalActivityOptions 参考](https://rust.durable-workflow.com/durable_workflow/struct.LocalActivityOptions.html)。

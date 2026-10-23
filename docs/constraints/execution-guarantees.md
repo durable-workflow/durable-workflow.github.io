@@ -138,6 +138,10 @@ final class ChargeCard extends Activity
 }
 ```
 
+### Service-mode activity identity {#service-activity-identity}
+
+For Rust service-mode activities, SDK **4.9.0 or newer** exposes the original optional `activity_execution_id()`, `workflow_id()` (instance) and `run_id()` through `ActivityContext`. Use the logical activity ID across retries; missing claim fields stay `None`, and a per-attempt task/attempt ID is not a replacement. The [Rust handler recipe](../polyglot/rust.md#activity-identity) derives a downstream key and explains older-Server, local-activity and Server-free-test limits. A key still needs an idempotent downstream API or durable effect ledger; these accessors do not provide resumable checkpoints.
+
 ## What Developers Must Make Idempotent
 
 You do **not** need to make workflow replay itself idempotent. The framework

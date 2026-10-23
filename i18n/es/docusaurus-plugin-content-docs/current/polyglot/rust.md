@@ -229,6 +229,44 @@ pub fn register_charge(worker: &mut Worker) {
 
 Las actividades locales y las llamadas directas a `testing::WorkflowEnvironment::run_activity` no tienen una instantánea recibida del Server y devuelven política desconocida. Las pruebas nuevas con `run_workflow` exponen la instantánea modelada que registran en su historial generado. Esta semántica de pruebas no demuestra que un Server desplegado envíe una política. Consulta [ActivityRetryInfo](https://rust.durable-workflow.com/durable_workflow/struct.ActivityRetryInfo.html) y [ActivityAttemptLimit](https://rust.durable-workflow.com/durable_workflow/enum.ActivityAttemptLimit.html).
 
+## Identidad estable de actividad e idempotencia externa {#activity-identity}
+
+Rust SDK **4.9.0 o posterior** expone la identidad recibida originalmente mediante `ActivityContext`. Comprueba el crate instalado en `Cargo.lock`: la versión de instalación seleccionada arriba por separado puede ser anterior. Estos métodos devuelven valores inmutables `Option<&str>` capturados del claim original, también para actividades de sesiones de worker.
+
+| Método | Identidad y uso |
+| --- | --- |
+| `activity_execution_id()` | Una ejecución lógica de actividad a través de sus reintentos; úsala para deduplicar una operación externa. |
+| `workflow_id()` | ID de la **instancia** del workflow propietario; úsalo para correlación de negocio. |
+| `run_id()` | ID del **run** del workflow propietario; úsalo para correlacionar esa ejecución concreta. |
+
+Deriva una clave para una operación concreta y pásala a una API externa idempotente o a un registro duradero de efectos. Este handler solo construye la clave: no cobra un pago ni implementa la deduplicación externa. Rechaza la ausencia de identidad antes de cualquier efecto; la aplicación puede proporcionar en su lugar una clave de negocio explícitamente estable.
+
+```rust
+use durable_workflow::{json, ActivityError, Worker};
+
+pub fn register_charge(worker: &mut Worker) {
+    worker.register_activity("charge", |ctx, _| async move {
+        let execution_id = ctx.activity_execution_id().ok_or_else(|| {
+            ActivityError::new("MissingActivityIdentity", "Server activity identity is required")
+                .non_retryable(true)
+        })?;
+        // Pass this key to an idempotent downstream API or durable effect ledger.
+        let key = format!("payments:charge:{execution_id}");
+        Ok(json!({
+            "idempotency_key": key,
+            "workflow_id": ctx.workflow_id(),
+            "run_id": ctx.run_id(),
+        }))
+    });
+}
+```
+
+Si un Server anterior omite estos campos, permanecen en `None`. Nunca sustituyas el ID lógico ausente por un ID de tarea, ID de intento o número de intento: la clave cambiaría en cada reintento. Las actividades locales inline pueden recibir los ID reales del workflow/run padre, pero no tienen ID de ejecución de actividad del Server antes de que este registre su comando. Las pruebas de actividad sin Server no tienen identidad de claim recibida.
+
+Una clave estable solo permite evitar efectos duplicados si el sistema externo respeta esa clave. La entrega sigue siendo al menos una vez; esta API no convierte los efectos externos en exactamente una vez, no restaura el progreso del heartbeat ni implementa checkpoints reanudables de actividad.
+
+Consulta los [métodos de identidad de ActivityContext](https://rust.durable-workflow.com/durable_workflow/struct.ActivityContext.html#method.activity_execution_id) y la [verificación de instalación normal 4.9.0](https://github.com/durable-workflow/sdk-rust/issues/139#issuecomment-6367230500) con controles ordinary/cooperative, locales y de sesiones de worker. El contrato común está en [garantías de ejecución](../constraints/execution-guarantees.md#service-activity-identity).
+
 ## Actividades locales {#local-activities}
 
 El SDK de Rust 3.1.0 añade ejecución local en el propio worker con `Worker::local_activities(true)`. Registra callbacks con los métodos ordinarios de registro de actividades y utiliza los métodos de actividad local del contexto de workflow. Consulta el [ejemplo ejecutable](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs) y la [referencia de LocalActivityOptions](https://rust.durable-workflow.com/durable_workflow/struct.LocalActivityOptions.html) para configurar reintentos y tiempos de espera.

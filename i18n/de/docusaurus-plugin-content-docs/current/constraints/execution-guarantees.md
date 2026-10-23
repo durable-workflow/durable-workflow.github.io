@@ -110,6 +110,10 @@ final class ChargeCard extends Activity
 }
 ```
 
+### Aktivitätsidentität im Service-Modus {#service-activity-identity}
+
+Für Rust-Aktivitäten im Service-Modus liefert SDK **4.9.0 oder neuer** die ursprünglichen optionalen Werte `activity_execution_id()`, `workflow_id()` (Instanz) und `run_id()` über `ActivityContext`. Nutzen Sie die logische Aktivitäts-ID über Retries hinweg; fehlende Claim-Felder bleiben `None`, und eine Task- oder Versuch-ID ist kein Ersatz. Das [Rust-Handler-Beispiel](../polyglot/rust.md#activity-identity) leitet einen externen Schlüssel ab und erläutert Grenzen älterer Server, lokaler Aktivitäten und serverfreier Tests. Der Schlüssel benötigt weiterhin eine idempotente externe API oder ein dauerhaftes Effektregister; diese Methoden liefern keine fortsetzbaren Checkpoints.
+
 ## Was die Anwendung idempotent machen muss {#what-developers-must-make-idempotent}
 
 Workflow-Replay selbst müssen Sie nicht idempotent machen. Das Framework rekonstruiert den Zustand aus der festgeschriebenen Historie.
