@@ -505,6 +505,85 @@ support-led or tracked separately from the raw-manifest contract. Use the
 separately versioned Helm path above when you want Helm-managed installation
 and upgrades.
 
+## Running SDK workers on Kubernetes {#sdk-workers-on-kubernetes}
+
+Deploy your application workers separately from the Server's Laravel queue worker. Build an image containing your registered PHP, Python or Rust handlers and its locked SDK dependencies. Use an exec-form entrypoint so the worker process receives `SIGTERM`. Replace the image below with that build's immutable digest.
+
+For workers in the same cluster, use the Server Service's actual name, namespace and port. The raw manifests expose `http://durable-workflow-server.durable-workflow.svc.cluster.local:8080`. A Helm release can use a different Service name. Workers outside the cluster need the reachable ingress or load balancer's HTTPS URL and normal certificate verification. Keep long-poll and transport budgets aligned with [the timeout guidance](#worker-long-poll-timeout-budgets).
+
+Create a Secret in the worker Pod's Kubernetes namespace from your existing worker credential. Keep the token out of the manifest and image. The Server namespace is a separate product boundary from the Kubernetes namespace.
+
+```bash
+kubectl -n durable-workflow create secret generic orders-worker-auth --from-literal=token="$DW_WORKER_TOKEN"
+```
+
+Save this as `orders-worker.yaml`. These environment names are application configuration: your entrypoint must pass them to the SDK client and Worker. Give each live process its own worker ID and register the handlers for the configured queue.
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders-worker
+  namespace: durable-workflow
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: orders-worker
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: orders-worker
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 75
+      containers:
+        - name: worker
+          image: registry.example.com/acme/orders-worker:release-id
+          env:
+            - name: DW_SERVER_URL
+              value: http://durable-workflow-server.durable-workflow.svc.cluster.local:8080
+            - name: DW_NAMESPACE
+              value: default
+            - name: DW_TASK_QUEUE
+              value: orders
+            - name: DW_WORKER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+            - name: DW_WORKER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: orders-worker-auth
+                  key: token
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+```
+
+Replica and resource values are starting examples, not capacity guarantees. Tune them with actual task duration, memory use, downstream limits and [worker admission budgets](./polyglot/task-queue-admission.md). A Deployment becoming available does not prove SDK registration or useful work. Verify fresh worker registrations and the expected build/queue, then start and complete a representative workflow. An SDK worker does not acquire an HTTP health endpoint merely by running in Kubernetes. Use an application-owned probe when you have one, and do not use Server health as a worker liveness check.
+
+### Delivering SIGTERM and waiting for cleanup {#sdk-worker-pod-shutdown}
+
+| SDK | Worker process shutdown |
+| --- | --- |
+| PHP | Use the managed `Worker::run()` loop with `pcntl` installed. Its signal handler requests shutdown, then the active synchronous task reaches a boundary before managed cleanup and deregistration. A custom loop around `tick()` does not supply that lifecycle. See [PHP graceful shutdown](https://php.durable-workflow.com/operate/graceful-shutdown/). |
+| Python | Wire `SIGTERM` to the same Worker's shutdown path and await both `Worker.stop()` and its run task. Set an explicit `shutdown_timeout`. Accepted work shares that drain deadline. A running synchronous thread cannot be forcibly stopped by cancelling its await, and an unconfirmed stop remains an error. Use the [separate-process example and signal wiring](https://python.durable-workflow.com/guides/separate-workers/) and [lifecycle contract](https://python.durable-workflow.com/reference/worker/). |
+| Rust | Pass a future that resolves on Unix `SIGTERM` to `Worker::run_until(...)` and await its result. A Ctrl-C-only future does not handle the Pod's termination signal. Keep asynchronous handlers yielding and bound blocking work separately. See [Worker::run_until](https://rust.durable-workflow.com/durable_workflow/struct.Worker.html#method.run_until). |
+
+Give `terminationGracePeriodSeconds` enough time for the installed SDK's poll, accepted-task shutdown and HTTP/session/deregistration cleanup. The example's 75 seconds must be checked against your application's actual bounds. Kubernetes counts any `preStop` hook within that same grace period and force-stops remaining processes after expiry. A sleep hook alone neither asks the SDK to drain nor extends its deadline. See the [Kubernetes Pod termination flow](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination-flow).
+
+Rehearse termination while idle and during bounded work. Treat cleanup errors, a retained registration or a forced kill as incomplete shutdown. A replacement worker continues durable work according to its recorded leases, retries and deadlines. Stopping a Pod does not cancel a workflow or undo an external side effect. Before changing builds, follow [worker build-ID rollout](./polyglot/worker-build-id-rollout.md) and retain its compatibility, replay and rollback checks.
+
 ## Single-region high availability and failover
 
 Single-region HA failover is currently an **unverified, support-led** contract
