@@ -115,6 +115,67 @@ Un breaker applicatif ouvert lève `NonRetryableError` avant le paiement ; les e
 
 Gardez les appels protégés dans des **activités ordinaires en file**. Les activités locales inline ne créent aucune tâche d’activité ordinaire ; les plafonds de dispatch par file/namespace/groupe ne les mesurent pas. Une acquisition locale préparée valide l’autorité d’exécution, pas ce budget. Laravel embarqué n’a pas l’admission du Server autonome ; utilisez ses propres contrôles de déploiement. Voir les [activités locales](../features/local-activities.md).
 
+## Admission des requêtes par namespace {#namespace-request-admission}
+
+Ce contrat concerne le **PHP Server 2.11.0** publié. Vérifiez votre image et la [référence de configuration versionnée](./server-config-reference.md#additional-published-php-controls). Les budgets HTTP sont distincts des slots de worker, du dispatch, des polls retenus et des quotas durables. Le budget appartient au namespace résolu par `Durable-Workflow-Namespace` ou `DW_DEFAULT_NAMESPACE`, même si une route administrative désigne un autre namespace.
+
+Les requêtes authentifiées atteignant l’admission sont comptées pour ces familles de routes de contrôle et de gestion, descendants compris : `/api/namespaces`, `/api/storage`, `/api/workflows`, `/api/activities`, `/api/bridge-adapters`, `/api/workers`, `/api/worker-sessions`, `/api/task-queues`, `/api/deployments`, `/api/schedules`, `/api/search-attributes`, `/api/service-endpoints`, `/api/service-catalog`. Les routes de gestion au pluriel `/api/workers` comptent.
+
+Les routes au singulier `/api/worker/*` d’enregistrement, polling et résultats n’utilisent pas ce budget HTTP. Health/readiness, `/api/cluster/info`, les routes admin `/api/system/*`, les identifiants runtime et le transport de payload externe restent aussi hors de ce contrôle ; leurs propres vérifications d’accès, capacité et stockage demeurent. Les refus antérieurs d’authentification, protocole ou résolution de namespace n’atteignent pas le compteur.
+
+La fréquence utilise des buckets de minutes fixes selon l’horloge du Server, pas un débit lissé ou une fenêtre glissante. Un budget N peut admettre N requêtes juste avant la limite et N autres après. Les erreurs ultérieures restent comptées ; la fréquence est admise avant la concurrence, donc un refus de concurrence peut consommer le budget de la minute. Le slot simultané reste occupé jusqu’à la fin et au nettoyage de la requête ; il ne compte pas les workflows actifs.
+
+Entre réplicas API, utilisez le même Redis partagé et préfixe de clés, des horloges synchronisées et une configuration chargée cohérente. Ajouter des réplicas ne multiplie pas le budget partagé. Un cache de fichiers local ne coordonne que les processus ayant un accès en écriture compatible ; ce n’est pas la configuration multinœud de référence. Les limites par nœud de polls worker/query retenus restent distinctes. [Redémarrez les rôles concernés après un changement d’environnement](./server-config-reference.md#how-changes-take-effect).
+
+```dotenv
+DW_NAMESPACE_MAX_REQUESTS_PER_MINUTE=100
+DW_NAMESPACE_MAX_CONCURRENT_REQUESTS=8
+DW_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE=150
+DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS=10
+DW_NAMESPACE_ADMISSION_OVERRIDES='{"payments":{"max_requests_per_minute":200,"max_concurrent_requests":12},"reports":{"max_requests_per_minute":40,"max_concurrent_requests":3}}'
+```
+
+Pour des namespaces existants, cet exemple donne à `payments` 150 requêtes/minute et 10 simultanées, à `reports` 40/3 et aux autres 100/8. Les exceptions peuvent relever ou abaisser les valeurs par défaut, mais les plafonds 150/10 restent applicables. Cette configuration ne crée pas de namespace et ne réserve aucun débit.
+
+Pour ces contrôles HTTP, une valeur absente n’ajoute pas cette limite ; un plafond impératif seul peut toutefois la fixer. Une exception null revient à la valeur par défaut. Les valeurs doivent être des entiers positifs : zéro est invalide. Les plafonds PHP sont 10000000 requêtes/minute et 1024 simultanées, indépendamment de la capacité réelle du pool HTTP. PHP 2.11.0 publié traite silencieusement un JSON mal formé de `DW_NAMESPACE_ADMISSION_OVERRIDES` comme des exceptions vides, revenant aux valeurs globales. Validez le JSON avant déploiement ; sans valeurs globales ni plafonds, la limite prévue disparaît. Cette [lacune produit confirmée](https://github.com/durable-workflow/durable-workflow.github.io/issues/335#issuecomment-6369150521) reste distincte de la documentation.
+
+| Motif | HTTP | Attente suggérée en secondes |
+| --- | --- | --- |
+| `namespace_request_rate_exhausted` | `429` | Jusqu’à la prochaine minute, 1–60 |
+| `namespace_request_concurrency_exhausted` | `429` | 1 |
+| `namespace_request_admission_unavailable` | `503` | 1 |
+
+Le JSON `retry_after_seconds` correspond à l’en-tête `Retry-After`. Une coordination configurée indisponible ou des limites numériques invalides provoquent un refus 503. Les métriques admin du namespace restent consultables après épuisement des requêtes ordinaires ; `dw_namespace_request_admission_rejections` expose les motifs bornés. Appliquez un retry/backoff borné côté appelant et l’idempotence ; un résultat de transport incertain ne permet pas de renvoyer une écriture automatiquement. Voir les [budgets de timeout](../deployment.md#worker-long-poll-timeout-budgets).
+
+## Quotas d’état durable par namespace {#namespace-durable-state}
+
+`DW_NAMESPACE_DURABLE_LIMITS` définit les limites par défaut des lignes conservées, `DW_NAMESPACE_DURABLE_OVERRIDES` les modifie par namespace et `DW_NAMESPACE_DURABLE_HARD_LIMITS` ajoute des plafonds impératifs. Les objets vides n’ajoutent aucune limite. Les exceptions peuvent augmenter ou réduire les valeurs ; null revient au défaut. Contrairement à l’admission HTTP, zéro est un quota durable valide et empêche de nouvelles allocations. Ici, `payments` existant peut conserver 250 runs ouverts, les autres namespaces 100, sous un plafond 500.
+
+```dotenv
+DW_NAMESPACE_DURABLE_LIMITS='{"max_open_workflow_runs":100,"max_open_workflow_run_waits":200,"max_pending_workflow_timers":200}'
+DW_NAMESPACE_DURABLE_HARD_LIMITS='{"max_open_workflow_runs":500}'
+DW_NAMESPACE_DURABLE_OVERRIDES='{"payments":{"max_open_workflow_runs":250}}'
+```
+
+Utilisez les champs `max_<resource>` pour les ressources suivantes. Les lignes comptent dans leur namespace propriétaire ou celui du workflow/run associé. Totaux conservés et sous-ensembles ouverts/en attente ont des limites indépendantes. L’application utilise les comptes faisant autorité en base, avec sérialisation des mutations sur la ligne du namespace.
+
+| Ressource | Éléments comptés |
+| --- | --- |
+| `workflow_instances`, `workflow_runs` | Toutes les lignes conservées d’instances/runs de workflow, runs terminaux compris. |
+| `open_workflow_runs` | Runs à l’état `pending`, `running` ou `waiting`. |
+| `workflow_history_events`, `workflow_commands`, `workflow_tasks` | Lignes conservées d’historique, commandes et tâches de workflow. |
+| `pending_workflow_tasks` | Lignes de tâches de workflow en file à l’état `ready` ; les leases actifs ont des contrôles distincts. |
+| `workflow_timers`, `pending_workflow_timers` | Tous les timers conservés et leur sous-ensemble `pending`, respectivement. |
+| `workflow_run_waits`, `open_workflow_run_waits` | Toutes les attentes de run conservées et leur sous-ensemble `open`, respectivement. |
+| `schedules`, `schedule_history_events`, `worker_registrations` | Schedules, historique et enregistrements de workers conservés ; les enregistrements obsolètes comptent jusqu’à suppression. |
+| `workflow_streams`, `workflow_stream_items` | Lignes des streams durables et entrants, et de leurs éléments. |
+
+Un parent attendant un enfant ou un appel de service consomme toujours un run ouvert dans son namespace. L’enfant ajoute son run ; dans un même namespace, prévoyez les deux runs ouverts et leurs attentes/timers. Une opération de service créant un workflow consomme des lignes dans son namespace ; signal/update sur un run existant ne crée pas automatiquement un second run. Les quotas d’appels de service et de payload externe sont distincts.
+
+L’épuisement renvoie 429 `namespace_<resource>_exhausted`. Lisez `retryable` : certains quotas ne sont pas réessayables et n’indiquent pas d’attente ; les refus durables réessayables annoncent 60 secondes sans promettre de capacité ensuite. L’évaluation impossible d’un quota configuré renvoie 503 `namespace_durable_state_quota_unavailable`, avec une seconde d’attente. La pression des lignes conservées peut nécessiter rétention ou changement de capacité/configuration, pas une boucle de retries.
+
+Choisissez le namespace par l’en-tête lors des lectures de métriques admin. `dw_namespace_durable_state_usage` et les champs JSON `limits`, `usage`, `remaining`, `configuration_status` et `measurement_status` exposent ce périmètre ; le namespace relève de la requête et n’est pas un label illimité. Une mesure indisponible ne signifie ni usage nul ni capacité illimitée. Voir la [référence complète](./server-config-reference.md#namespace-durable-controls).
+
 ## Configuration du serveur {#server-configuration}
 
 Définissez des plafonds globaux si chaque file doit avoir la même limite :
