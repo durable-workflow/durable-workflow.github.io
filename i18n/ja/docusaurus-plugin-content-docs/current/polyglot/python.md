@@ -874,6 +874,42 @@ async def validate(data: dict) -> dict:
     return data
 ```
 
+### 終端となる業務エラー {#terminal-business-errors}
+
+`non_retryable_error_types` は、**最も外側の**例外の短い名前（`exception_type`）または完全修飾クラス名（`exception_class`）に完全一致します。例えば `ValidationError` は、サブクラスであっても `SpecificValidationError` には一致しません。`app.errors.ValidationError` のような修飾名は、記録されたクラス名に一致する必要があります。ポリシーはサブクラスや例外の原因をたどりません。`raise RuntimeError(...) from NonRetryableError(...)` は外側の `RuntimeError` を報告するため、再試行される場合があります。
+
+既知の業務例外を変換するときは、`NonRetryableError` を外側の例外として送出し、`cause=error` で元の Python の原因を保持してください。名前の一覧に依存せず、アクティビティの失敗を再試行不可にします。これだけでワークフロー全体が自動的に失敗するわけではありません。再試行不可の失敗、または試行予算の消費によって再試行がなくなると、ワークフローコードは `ActivityFailed` を受け取ります。
+
+```python
+from durable_workflow import ActivityFailed, NonRetryableError, activity, workflow
+
+@activity.defn(name="validate_order")
+async def validate_order(order: dict) -> dict:
+    try:
+        if order.get("amount", 0) <= 0:
+            raise ValueError("amount must be positive")
+    except ValueError as error:
+        raise NonRetryableError("Order validation failed", cause=error) from error
+    return order
+
+@workflow.defn(name="place_order")
+class PlaceOrderWorkflow:
+    def run(self, ctx, order: dict):
+        try:
+            yield ctx.schedule_activity("validate_order", [order])
+        except ActivityFailed as failure:
+            if (
+                failure.activity_type != "validate_order"
+                or failure.exception_type != "NonRetryableError"
+                or not failure.non_retryable
+            ):
+                raise
+            return {"order_id": order["id"], "status": "rejected"}
+        return {"order_id": order["id"], "status": "accepted"}
+```
+
+入力が `{"id": "order-123", "amount": 0}` の場合、アクティビティは一回失敗し、ワークフローは `status: rejected` で正常に完了します。意図した業務失敗だけを処理してください。この例は他の失敗を再送出します。業務フローに必要なら後続の永続ステップへ進めます。未処理の `ActivityFailed` はワークフローを失敗させます。Python の原因を保持しても、再試行ポリシーがその連鎖を検査することや、すべての SDK が同じ原因オブジェクトを提供することを意味しません。
+
 ### 同期アクティビティと非同期アクティビティ {#activity-execution}
 
 通常のリモート `def` アクティビティは、`max_concurrent_activity_tasks` で上限を設定した専用のスレッドプールで実行されます。

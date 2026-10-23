@@ -860,6 +860,42 @@ async def validate(data: dict) -> dict:
     return data
 ```
 
+### 终结的业务错误 {#terminal-business-errors}
+
+`non_retryable_error_types` 精确匹配**最外层**异常的短名称（`exception_type`）或完全限定类名（`exception_class`）。例如，即使 `SpecificValidationError` 是子类，`ValidationError` 也不会匹配它。`app.errors.ValidationError` 这样的限定名称必须与已记录的类名一致。策略不会遍历子类或异常原因。`raise RuntimeError(...) from NonRetryableError(...)` 报告的是外层 `RuntimeError`，因此仍可能重试。
+
+转换已知业务异常时，应将 `NonRetryableError` 作为最外层异常，并使用 `cause=error` 保留原始 Python 原因。这无需名称列表就能将活动失败标记为不可重试，但不会自动使整个工作流失败。活动因不可重试错误或重试预算耗尽而不再重试时，工作流代码会收到 `ActivityFailed`。
+
+```python
+from durable_workflow import ActivityFailed, NonRetryableError, activity, workflow
+
+@activity.defn(name="validate_order")
+async def validate_order(order: dict) -> dict:
+    try:
+        if order.get("amount", 0) <= 0:
+            raise ValueError("amount must be positive")
+    except ValueError as error:
+        raise NonRetryableError("Order validation failed", cause=error) from error
+    return order
+
+@workflow.defn(name="place_order")
+class PlaceOrderWorkflow:
+    def run(self, ctx, order: dict):
+        try:
+            yield ctx.schedule_activity("validate_order", [order])
+        except ActivityFailed as failure:
+            if (
+                failure.activity_type != "validate_order"
+                or failure.exception_type != "NonRetryableError"
+                or not failure.non_retryable
+            ):
+                raise
+            return {"order_id": order["id"], "status": "rejected"}
+        return {"order_id": order["id"], "status": "accepted"}
+```
+
+输入 `{"id": "order-123", "amount": 0}` 时，活动失败一次，工作流随后以 `status: rejected` 正常完成。只处理预期的业务失败；示例会重新抛出其他失败。业务流程需要时，可以继续执行后续持久步骤。未捕获的 `ActivityFailed` 会使工作流失败。保留 Python 原因不代表重试策略会检查该异常链，也不代表所有 SDK 都暴露完全相同的原因对象。
+
 ### 同步与异步活动 {#activity-execution}
 
 普通的远程 `def` 活动在专用线程池中执行，线程数受 `max_concurrent_activity_tasks` 限制。

@@ -32,8 +32,8 @@ Cloud Dev 现已可用。四种 HA 套餐仍在资格验证中，尚不能购买
 | 套餐 | 运行时容量 | 包含的持久存储 | 可用性 | 价格（美元） |
 | --- | --- | --- | --- | --- |
 | Cloud Dev | 1 vCPU，1 GB RAM | 5 GB | 单主机，无 SLA | $0.075/小时，活跃月最低 $2，每月上限 $50 |
-| Cloud Standard | 1 vCPU，2 GB RAM | 25 GB | 计划提供单区域 HA，99.99% SLA | $0.45/小时，活跃月最低 $10，每月上限 $300 |
-| Cloud Multi-Region | 1 vCPU，2 GB RAM | 25 GB | 计划提供多区域 HA，99.99% SLA | $0.60/小时，活跃月最低 $15，每月上限 $400 |
+| Cloud Standard | 2 vCPU，4 GB RAM | 25 GB | 计划提供单区域 HA，99.99% SLA | $0.45/小时，活跃月最低 $10，每月上限 $300 |
+| Cloud Multi-Region | 2 vCPU，4 GB RAM | 25 GB | 计划提供多区域 HA，99.99% SLA | $0.60/小时，活跃月最低 $15，每月上限 $400 |
 | Cloud Business | 4 vCPU，8 GB RAM | 100 GB | 计划提供单区域 HA，99.99% SLA | $2.25/小时，活跃月最低 $50，每月上限 $1,500 |
 | Cloud Business Multi-Region | 4 vCPU，8 GB RAM | 100 GB | 计划提供多区域 HA，99.99% SLA | $3.00/小时，活跃月最低 $75，每月上限 $2,000 |
 
