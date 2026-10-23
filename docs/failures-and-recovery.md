@@ -270,6 +270,10 @@ class RetryableWorkflow extends Workflow
 }
 ```
 
+## PHP service-mode failure report limits {#php-failure-report-limits}
+
+PHP SDK **3.5.0 or newer** bounds outgoing service-mode failure reports to 62 KiB UTF-8 messages, 128 KiB stacks, 64 KiB combined optional metadata and a 1 MiB complete encoded body, including markers. Lower known transport limits apply. The [PHP reporting guide](./polyglot/php.md#bounded-failure-reports) explains configuration, omission diagnostics, preserved retry semantics and local first-execution/cold-replay equality. These are SDK-specific reporting bounds; embedded recording and Core summary storage retain their separate contracts.
+
 ## Python service-mode failure report limits {#python-failure-report-limits}
 
 Python SDK **2.11.0 or newer** bounds outgoing service-mode failure reports to 62 KiB UTF-8 messages, 128 KiB stacks, 64 KiB combined optional metadata and a 1 MiB complete encoded body, including markers. Lower known transport limits apply. The [Python reporting guide](./polyglot/python.md#bounded-failure-reports) explains configuration, omission diagnostics, preserved retry semantics and the same local observation during first execution and cold replay. These limits apply to SDK reporting. Embedded recording and Core summary storage retain their separate contracts.

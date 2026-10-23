@@ -320,6 +320,10 @@ class RetryableWorkflow extends Workflow
 }
 ```
 
+## Límites de los informes de error de PHP en modo servicio {#php-failure-report-limits}
+
+El SDK de PHP **3.5.0 o posterior** limita los informes de error salientes en modo servicio a mensajes UTF-8 de 62 KiB, pilas de 128 KiB, 64 KiB de metadatos opcionales combinados y un cuerpo completo codificado de 1 MiB, incluidos los marcadores. Se aplican los límites de transporte conocidos que sean menores. La [guía de informes de PHP](./polyglot/php.md#bounded-failure-reports) explica la configuración, los diagnósticos de omisión, la semántica de reintentos conservada y la igualdad entre la primera ejecución local y la reproducción en frío. Estos límites corresponden a los informes del SDK. El registro integrado y el almacenamiento de resúmenes del Core mantienen sus propios contratos.
+
 ## Límites de los informes de error de Python en modo servicio {#python-failure-report-limits}
 
 El SDK de Python **2.11.0 o posterior** limita los informes de error salientes en modo servicio a mensajes UTF-8 de 62 KiB, pilas de 128 KiB, 64 KiB de metadatos opcionales combinados y un cuerpo completo codificado de 1 MiB, incluidos los marcadores. Se aplican los límites de transporte conocidos que sean menores. La [guía de informes de Python](./polyglot/python.md#bounded-failure-reports) explica la configuración, los diagnósticos de omisión, la semántica de reintentos conservada y la igualdad entre la primera ejecución local y la reproducción en frío. Estos límites corresponden a los informes del SDK. El registro integrado y el almacenamiento de resúmenes del Core mantienen sus propios contratos.

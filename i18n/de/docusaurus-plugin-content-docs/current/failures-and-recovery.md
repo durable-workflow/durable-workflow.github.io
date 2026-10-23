@@ -263,6 +263,10 @@ class RetryableWorkflow extends Workflow
 }
 ```
 
+## Limits für PHP-Fehlerberichte im Service-Modus {#php-failure-report-limits}
+
+Das PHP SDK **ab 3.5.0** begrenzt ausgehende Fehlerberichte im Service-Modus auf 62 KiB UTF-8 für Meldungen, 128 KiB für Stacks, 64 KiB für optionale Metadaten zusammen und 1 MiB für den vollständigen codierten Body einschließlich Markierungen. Niedrigere bekannte Transportlimits gelten weiterhin. Der [PHP-Leitfaden für Fehlerberichte](./polyglot/php.md#bounded-failure-reports) erläutert Konfiguration, Auslassungsdiagnosen, unveränderte Retry-Semantik und identische Beobachtungen bei erster Ausführung und kaltem Replay. Diese Grenzen gelten für SDK-Berichte. Eingebettete Fehleraufzeichnung und Core-Summary-Speicherung haben eigene Verträge.
+
 ## Limits für Python-Fehlerberichte im Service-Modus {#python-failure-report-limits}
 
 Das Python SDK **ab 2.11.0** begrenzt ausgehende Fehlerberichte im Service-Modus auf 62 KiB UTF-8 für Meldungen, 128 KiB für Stacks, 64 KiB für optionale Metadaten zusammen und 1 MiB für den vollständigen codierten Body einschließlich Markierungen. Niedrigere bekannte Transportlimits gelten weiterhin. Der [Python-Leitfaden für Fehlerberichte](./polyglot/python.md#bounded-failure-reports) erläutert Konfiguration, Auslassungsdiagnosen, unveränderte Retry-Semantik und identische Beobachtungen bei erster Ausführung und kaltem Replay. Diese Grenzen gelten für SDK-Berichte. Eingebettete Fehleraufzeichnung und Core-Summary-Speicherung haben eigene Verträge.

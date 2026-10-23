@@ -259,3 +259,23 @@ deklarierten SDK-Vertrag, nicht übereinstimmenden Paketversionsnummern.
 ## Seiten für Workflow-Listen und Verlauf {#workflow-list-and-history-pages}
 
 Diese veröffentlichten Aufrufe liefern **eine Seite**, keinen automatischen vollständigen Abruf: `Client::listWorkflows(...)` / `Client::workflowHistory(...)`. Setzen Sie mit dem zurückgegebenen undurchsichtigen Token fort und behalten Sie Namespace, Filter und Workflow/Lauf bei. Enden Sie beim letzten null/leeren Token und behandeln Sie Seitenfehler ausdrücklich. Eine Teilseite ist kein Replay-Bundle. Nutzen Sie für Offline-Replay die Verlaufsexport-API des SDK. Der [veröffentlichte Client PHP 3.2.0](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php) definiert aktuelle Parameter; neue automatische Iteratoren werden damit nicht zugesagt.
+
+## Begrenzte Fehlerberichte {#bounded-failure-reports}
+
+Das PHP SDK **3.5.0** führte begrenzte ausgehende Fehlerberichte ein. Standardmäßig gelten **62 KiB UTF-8 für die Meldung**, **128 KiB für den Stack**, **64 KiB für gemeinsam serialisierte optionale Details und Diagnosen** und **1 MiB für den vollständigen JSON-codierten Body**. Markierungen, JSON-Escaping, die Claim-Identität und weitere Befehle im Batch zählen zum Body-Limit. Ein niedrigeres konfiguriertes oder vom Transport gemeldetes Limit hat Vorrang. Fehlertyp, Klasse, Code, Retry-Regeln und Claim-Identität bleiben erhalten.
+
+`withFailureReportLimit()` gibt einen neuen Client mit einem kleineren Budget für die gesamte Anfrage zurück, von 1 bis 1.048.576 Bytes. Verwenden Sie die zurückgegebene Instanz. Ein vom Transport gemeldetes niedrigeres Limit gilt ebenfalls.
+
+```php
+<?php
+
+use DurableWorkflow\Client;
+
+$client = (new Client(
+    baseUri: 'https://workflow.example.com',
+    controlToken: 'operator-token',
+    workerToken: 'worker-token',
+))->withFailureReportLimit(512 * 1024);
+```
+
+Eine sichtbare Kürzungsmarkierung und die ursprünglichen Byte-Anzahlen kennzeichnen gekürzte Felder. Avro-Details bleiben vollständig erhalten oder werden als Ganzes weggelassen. Ein nicht darstellbarer erforderlicher Umschlag löst vor der HTTP-Übertragung `DurableWorkflow\Exception\FailureReportRefused` aus. Lokale Fehler werden normalisiert, bevor der Workflow-Code sie beobachtet. Dadurch sehen die erste Ausführung und ein kalter Replay dieselbe gespeicherte Meldung. Eine bereits beobachtete lokale Meldung bleibt bei der abschließenden Größenanpassung des Batches unveränderlich.

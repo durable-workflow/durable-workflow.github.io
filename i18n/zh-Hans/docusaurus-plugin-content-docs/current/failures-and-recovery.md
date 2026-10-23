@@ -259,6 +259,10 @@ class RetryableWorkflow extends Workflow
 }
 ```
 
+## PHP 服务模式失败报告上限 {#php-failure-report-limits}
+
+PHP SDK **3.5.0 或更新版本**将服务模式下发出的失败报告限制为：UTF-8 消息 62 KiB、堆栈 128 KiB、可选元数据合计 64 KiB，以及包含标记的完整编码请求体 1 MiB。已知传输上限更低时，以较低值为准。[PHP 报告指南](./polyglot/php.md#bounded-failure-reports)说明了配置、省略诊断信息、保留的重试语义，以及本地首次执行与冷重放的一致性。这些是 SDK 报告的边界。嵌入式记录和 Core 摘要存储遵循各自独立的契约。
+
 ## Python 服务模式失败报告上限 {#python-failure-report-limits}
 
 Python SDK **2.11.0 或更新版本**将服务模式下发出的失败报告限制为：UTF-8 消息 62 KiB、堆栈 128 KiB、可选元数据合计 64 KiB，以及包含标记的完整编码请求体 1 MiB。已知传输上限更低时，以较低值为准。[Python 报告指南](./polyglot/python.md#bounded-failure-reports)说明了配置、省略诊断信息、保留的重试语义，以及本地首次执行与冷重放的一致性。这些是 SDK 报告的边界。嵌入式记录和 Core 摘要存储遵循各自独立的契约。

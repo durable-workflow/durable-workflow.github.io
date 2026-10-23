@@ -254,3 +254,23 @@ not matching package version numbers.
 ## Workflow list and history pages {#workflow-list-and-history-pages}
 
 These published calls return **one page**, not an automatic complete read: `Client::listWorkflows(...)` / `Client::workflowHistory(...)`. Continue with the returned opaque token while keeping namespace, filters and selected workflow/run fixed; stop at the final null/empty token and handle page errors explicitly. A partial page is not a replay bundle. Use the SDK history-export API for offline replay. The [published PHP 3.2.0 client source](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php) defines the current parameters; no new iterator capability is implied.
+
+## Bounded failure reports {#bounded-failure-reports}
+
+PHP SDK **3.5.0** introduced bounded outgoing failure reports. Defaults are **62 KiB UTF-8 for the message**, **128 KiB for the stack**, **64 KiB for combined serialized optional details and diagnostics**, and **1 MiB for the complete JSON-encoded body**. Markers, JSON escaping, claim identity and other commands in the batch count toward that body limit. A lower configured or transport-declared limit takes precedence. Failure type, class, code, retry policy and claim identity are preserved.
+
+`withFailureReportLimit()` returns a new client with a smaller whole-request budget, from 1 to 1,048,576 bytes. Use the returned instance. A lower transport-declared cap also applies.
+
+```php
+<?php
+
+use DurableWorkflow\Client;
+
+$client = (new Client(
+    baseUri: 'https://workflow.example.com',
+    controlToken: 'operator-token',
+    workerToken: 'worker-token',
+))->withFailureReportLimit(512 * 1024);
+```
+
+A visible truncation marker and original byte counts identify shortened fields. Avro details remain intact or are omitted whole. An unrepresentable required envelope raises `DurableWorkflow\Exception\FailureReportRefused` before HTTP submission. Local failures are normalized before workflow code observes them, so first execution and cold replay see the persisted message. An already observed local message remains immutable during final batch fitting.

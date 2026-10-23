@@ -338,6 +338,10 @@ class RetryableWorkflow extends Workflow
 }
 ```
 
+## Limites de relatórios de falha PHP no modo de serviço {#php-failure-report-limits}
+
+O SDK PHP **3.5.0 ou posterior** limita os relatórios de falha enviados no modo de serviço a mensagens UTF-8 de 62 KiB, pilhas de 128 KiB, 64 KiB de metadados opcionais combinados e um corpo completo codificado de 1 MiB, incluindo os marcadores. Limites de transporte conhecidos menores são respeitados. O [guia de relatórios PHP](./polyglot/php.md#bounded-failure-reports) explica a configuração, os diagnósticos de omissão, a semântica de novas tentativas preservada e a igualdade entre a primeira execução local e o replay a frio. Esses limites se aplicam aos relatórios do SDK. O registro embarcado e o armazenamento de resumos do Core mantêm contratos separados.
+
 ## Limites de relatórios de falha Python no modo de serviço {#python-failure-report-limits}
 
 O SDK Python **2.11.0 ou posterior** limita os relatórios de falha enviados no modo de serviço a mensagens UTF-8 de 62 KiB, pilhas de 128 KiB, 64 KiB de metadados opcionais combinados e um corpo completo codificado de 1 MiB, incluindo os marcadores. Limites de transporte conhecidos menores são respeitados. O [guia de relatórios Python](./polyglot/python.md#bounded-failure-reports) explica a configuração, os diagnósticos de omissão, a semântica de novas tentativas preservada e a igualdade entre a primeira execução local e o replay a frio. Esses limites se aplicam aos relatórios do SDK. O registro embarcado e o armazenamento de resumos do Core mantêm contratos separados.
