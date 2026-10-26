@@ -9,10 +9,7 @@ Aktivitätsausführung ausgelöst, um Ihre Anwendung über Fortschritt, Abschlus
 oder Fehler zu informieren. Es sind normale Laravel-Ereignisse. Registrieren
 Sie Listener im `EventServiceProvider` oder mit `Event::listen()`.
 
-Alle V2-Lebenszyklusereignisse werden **nach dem Festschreiben des dauerhaften
-Zustands** in der Datenbank ausgelöst. Listener sehen dadurch nur Ereignisse,
-die durch festgeschriebene Fakten belegt sind. Wird eine Transaktion
-zurückgerollt, wird kein Ereignis ausgelöst.
+`WorkflowCancelled` und `WorkflowTerminated` warten auf den Commit der Transaktion auf der Speicherverbindung des Laufs. Abgelehnte Befehle und zurückgerollte Schreibvorgänge lösen keines dieser Ereignisse aus. Weitere Lücken bei Engine-Transaktionen und der Reihenfolge von Lebenszyklusereignissen werden in [workflow#893](https://github.com/durable-workflow/workflow/issues/893) verfolgt. Eine Transaktion auf einer separaten Anwendungsdatenbank macht Schreibvorgänge im Workflow-Speicher nicht atomar.
 
 ## Ereignisidentität {#event-identity}
 
@@ -24,7 +21,7 @@ Jedes V2-Ereignis enthält dauerhafte Identitätsfelder:
 | `runId` | Die ID des konkreten Laufs. |
 | `workflowType` | Der über `#[Type('...')]` registrierte dauerhafte Typschlüssel. |
 | `workflowClass` | Der PHP-Klassenname des Workflows. |
-| `committedAt` | ISO-8601-Zeitstempel des Festschreibens des dauerhaften Datensatzes, als reale Commit-Zeit. |
+| `committedAt` | ISO-8601-Zeitstempel der realen Uhrzeit, erfasst beim Vorbereiten der Lebenszyklusbenachrichtigung. |
 
 Aktivitätsereignisse enthalten zusätzlich:
 
@@ -77,6 +74,8 @@ Event::listen(WorkflowCompleted::class, function (WorkflowCompleted $event) {
 
 Wird ausgelöst, wenn ein Workflow-Lauf endgültig fehlschlägt.
 
+Bei Überschreitung des Zeitlimits eines Laufs wird ebenfalls `WorkflowFailed` ausgelöst. Läuft dagegen die Bereinigungsfrist einer kooperativen Stornierung ab, wird `WorkflowCancelled` ausgelöst.
+
 Zusätzliche Felder:
 - `exceptionClass`: Der PHP-Klassenname der Ausnahme.
 - `message`: Die Ausnahmemeldung.
@@ -92,6 +91,49 @@ Event::listen(WorkflowFailed::class, function (WorkflowFailed $event) {
     ]);
 });
 ```
+
+### WorkflowCancelled {#workflowcancelled}
+
+Wird ausgelöst, wenn eine sofortige Stornierung einen Lauf schließt oder eine kooperative Stornierung ihn nach abgeschlossener Bereinigung beziehungsweise Ablauf der Bereinigungsfrist schließt. Die Stornierungsanfrage allein löst dieses Ereignis nicht aus.
+
+Zusätzlich zu den gemeinsamen Identitätsfeldern:
+
+| Feld | Beschreibung |
+|---|---|
+| `reason` | Der ursprüngliche Grund des Stornierungsbefehls oder `null`. Meldungen zum Abschluss oder Fristablauf der Bereinigung ersetzen ihn nicht. |
+| `closedAt` | Der gespeicherte Abschlusszeitpunkt des Laufs als UTC-ISO-8601-Zeichenkette. |
+
+```php
+use Workflow\V2\Events\WorkflowCancelled;
+
+Event::listen(WorkflowCancelled::class, function (WorkflowCancelled $event) {
+    Log::info('Workflow cancelled', [
+        'instance_id' => $event->instanceId,
+        'run_id' => $event->runId,
+        'reason' => $event->reason,
+        'closed_at' => $event->closedAt,
+    ]);
+});
+```
+
+### WorkflowTerminated {#workflowterminated}
+
+Wird ausgelöst, wenn eine erzwungene Beendigung einen Lauf schließt. Es enthält dieselben Identitätsfelder sowie `reason` und `closedAt`, wobei der Grund aus dem Beendigungsbefehl stammt. Bei der erzwungenen Beendigung wird kein Bereinigungscode des Workflows ausgeführt.
+
+```php
+use Workflow\V2\Events\WorkflowTerminated;
+
+Event::listen(WorkflowTerminated::class, function (WorkflowTerminated $event) {
+    Log::info('Workflow terminated', [
+        'instance_id' => $event->instanceId,
+        'run_id' => $event->runId,
+        'reason' => $event->reason,
+        'closed_at' => $event->closedAt,
+    ]);
+});
+```
+
+Dies sind prozessinterne Laravel-Benachrichtigungen. Ein Listener-Fehler kann einen festgeschriebenen Abschluss nicht rückgängig machen. Die Ereignisse berechtigen nicht zur Fortsetzung eines geschlossenen Laufs und garantieren keine dauerhafte Zustellung an ein externes System.
 
 ## Aktivitätsereignisse {#activity-events}
 
@@ -179,17 +221,13 @@ Event::listen(FailureRecorded::class, function (FailureRecorded $event) {
 
 ## Zeitstempelsemantik {#timestamp-semantics}
 
-Das Feld `committedAt` aller Ereignisse bezeichnet die **Commit-Zeit**:
-die reale Uhrzeit, zu der der dauerhafte Datensatz (Historienereignis oder
-Fehlerdatensatz) in die Datenbank geschrieben wurde. Dies unterscheidet sich
-von:
+Die Engine erfasst `committedAt` beim Vorbereiten einer Lebenszyklusbenachrichtigung. Dieser Zeitstempel der realen Uhrzeit unterscheidet sich von:
 
 - **Virtueller Workflow-Zeit**: der logischen Zeit innerhalb der Workflow-Ausführung, die von Timern verwendet wird.
 - **Versuchszeit**: dem Start- oder Abschlusszeitpunkt eines bestimmten Aktivitätsversuchs.
 - **Fortsetzungslatenz**: der Zeit zwischen Fälligkeit eines Timers und tatsächlicher Fortsetzung des Workflows.
 
-Für externe Integrationen ist die Commit-Zeit der nützlichste Zeitstempel,
-weil sie angibt, wann der Zustand dauerhaft und beobachtbar wurde.
+Bei Stornierung und erzwungener Beendigung ist `closedAt` der gespeicherte Abschlusszeitpunkt in UTC. Eine umschließende Speichertransaktion kann erst nach dem Erfassen der Ereignisfelder festgeschrieben werden. Erfassen Sie den Empfangszeitpunkt im Listener separat, wenn Sie die Zustelllatenz messen.
 
 ## Lebenszyklus {#lifecycle}
 
@@ -211,6 +249,22 @@ Workflow\V2\Events\ActivityFailed
 Workflow\V2\Events\FailureRecorded    (source: activity_execution)
 Workflow\V2\Events\WorkflowFailed
 Workflow\V2\Events\FailureRecorded    (source: workflow_run)
+```
+
+Ein stornierter Lauf endet mit:
+
+```
+Workflow\V2\Events\WorkflowStarted
+Workflow\V2\Events\WorkflowCancelled
+```
+
+Bei kooperativer Bereinigung können zwischen diesen beiden Benachrichtigungen Aktivitätsereignisse auftreten.
+
+Ein erzwungen beendeter Lauf endet mit:
+
+```
+Workflow\V2\Events\WorkflowStarted
+Workflow\V2\Events\WorkflowTerminated
 ```
 
 ## Ereignis-Namespace {#event-namespace}

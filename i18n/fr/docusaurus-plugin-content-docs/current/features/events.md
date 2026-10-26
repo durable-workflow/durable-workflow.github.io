@@ -6,7 +6,7 @@ sidebar_position: 12
 
 Les événements de cycle de vie sont émis aux étapes clés des workflows et activités pour informer votre application de la progression, de l’achèvement ou des échecs. Ce sont des événements Laravel standards. Enregistrez des écouteurs dans votre `EventServiceProvider` ou avec `Event::listen()`.
 
-Tous les événements de cycle de vie v2 sont émis **après validation de l’état durable** en base. Les écouteurs n’observent donc que des événements fondés sur des faits validés. Si une transaction est annulée, aucun événement n’est émis.
+`WorkflowCancelled` et `WorkflowTerminated` attendent la validation de la transaction sur la connexion de stockage de l’exécution. Les commandes refusées et les écritures annulées n’émettent aucun de ces deux événements. Les autres limites des transactions du moteur et de l’ordre des événements sont suivies dans [workflow#893](https://github.com/durable-workflow/workflow/issues/893). Une transaction sur une base distincte de l’application ne rend pas atomiques les écritures dans le stockage du workflow.
 
 ## Identité des événements {#event-identity}
 
@@ -18,7 +18,7 @@ Chaque événement v2 porte des champs d’identité durable :
 | `runId` | Identifiant de l’exécution précise. |
 | `workflowType` | Clé de type durable enregistrée via `#[Type('...')]`. |
 | `workflowClass` | Nom de la classe PHP du workflow. |
-| `committedAt` | Horodatage ISO 8601 de validation de l’enregistrement durable, selon l’horloge réelle. |
+| `committedAt` | Horodatage ISO 8601 de l’horloge réelle, relevé lors de la préparation de la notification de cycle de vie. |
 
 Les événements d’activité incluent aussi :
 
@@ -69,6 +69,8 @@ Event::listen(WorkflowCompleted::class, function (WorkflowCompleted $event) {
 
 Émis lorsqu’une exécution de workflow échoue de façon terminale.
 
+L’expiration du délai d’exécution émet également `WorkflowFailed`. L’expiration du délai de nettoyage d’une annulation coopérative émet en revanche `WorkflowCancelled`.
+
 Champs supplémentaires :
 - `exceptionClass` : nom de la classe d’exception PHP.
 - `message` : message de l’exception.
@@ -84,6 +86,49 @@ Event::listen(WorkflowFailed::class, function (WorkflowFailed $event) {
     ]);
 });
 ```
+
+### WorkflowCancelled {#workflowcancelled}
+
+Émis lorsqu’une annulation immédiate clôt l’exécution, ou lorsqu’une annulation coopérative la clôt après la fin du nettoyage ou l’expiration de son délai. La seule demande d’annulation n’émet pas cet événement.
+
+En plus des champs d’identité communs :
+
+| Champ | Description |
+|---|---|
+| `reason` | Motif d’origine de la commande d’annulation, ou `null`. Les messages de fin de nettoyage ou d’expiration du délai ne le remplacent pas. |
+| `closedAt` | Heure de clôture persistée de l’exécution, sous forme de chaîne ISO 8601 en UTC. |
+
+```php
+use Workflow\V2\Events\WorkflowCancelled;
+
+Event::listen(WorkflowCancelled::class, function (WorkflowCancelled $event) {
+    Log::info('Workflow cancelled', [
+        'instance_id' => $event->instanceId,
+        'run_id' => $event->runId,
+        'reason' => $event->reason,
+        'closed_at' => $event->closedAt,
+    ]);
+});
+```
+
+### WorkflowTerminated {#workflowterminated}
+
+Émis lorsqu’une terminaison forcée clôt l’exécution. Il contient les mêmes champs d’identité, `reason` et `closedAt`, avec le motif de la commande de terminaison. La terminaison forcée n’exécute pas le code de nettoyage du workflow.
+
+```php
+use Workflow\V2\Events\WorkflowTerminated;
+
+Event::listen(WorkflowTerminated::class, function (WorkflowTerminated $event) {
+    Log::info('Workflow terminated', [
+        'instance_id' => $event->instanceId,
+        'run_id' => $event->runId,
+        'reason' => $event->reason,
+        'closed_at' => $event->closedAt,
+    ]);
+});
+```
+
+Ce sont des notifications Laravel internes au processus. Un échec d’écouteur ne peut pas annuler une clôture validée. Les événements ne donnent aucune autorisation de reprendre une exécution close et ne garantissent pas une livraison durable à un système externe.
 
 ## Événements d’activité {#activity-events}
 
@@ -165,13 +210,13 @@ Event::listen(FailureRecorded::class, function (FailureRecorded $event) {
 
 ## Sémantique des horodatages {#timestamp-semantics}
 
-Le champ `committedAt` de chaque événement représente **l’heure de validation**, soit l’heure réelle à laquelle l’enregistrement durable (événement d’historique ou échec) a été écrit en base. Elle est distincte de :
+Le moteur relève `committedAt` lors de la préparation d’une notification de cycle de vie. Cet horodatage de l’horloge réelle est distinct de :
 
 - **L’heure virtuelle du workflow** : temps logique de son exécution, utilisé par les temporisateurs.
 - **L’heure de tentative** : début ou fin d’une tentative d’activité précise.
 - **La latence de reprise** : délai entre l’échéance d’un temporisateur et la reprise réelle du workflow.
 
-L’heure de validation est la plus utile aux intégrations externes, car elle indique quand l’état est devenu durable et observable.
+Pour une annulation ou une terminaison forcée, `closedAt` est l’horodatage de clôture persisté en UTC. Une transaction de stockage englobante peut être validée après le relevé des champs de l’événement. Pour mesurer la latence de livraison, consignez séparément l’heure de réception par l’écouteur.
 
 ## Cycle de vie {#lifecycle}
 
@@ -193,6 +238,22 @@ Workflow\V2\Events\ActivityFailed
 Workflow\V2\Events\FailureRecorded    (source: activity_execution)
 Workflow\V2\Events\WorkflowFailed
 Workflow\V2\Events\FailureRecorded    (source: workflow_run)
+```
+
+Une exécution annulée se termine par :
+
+```
+Workflow\V2\Events\WorkflowStarted
+Workflow\V2\Events\WorkflowCancelled
+```
+
+Le nettoyage coopératif peut émettre des événements d’activité entre ces deux notifications.
+
+Une exécution terminée de force se termine par :
+
+```
+Workflow\V2\Events\WorkflowStarted
+Workflow\V2\Events\WorkflowTerminated
 ```
 
 ## Espace de noms des événements {#event-namespace}
