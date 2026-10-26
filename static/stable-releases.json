@@ -1,7 +1,7 @@
 {
   "schema": "durable-workflow.docs.stable-releases",
   "schema_version": 1,
-  "updated_at": "2026-10-23",
+  "updated_at": "2026-10-26",
   "artifacts": {
     "cli": "2.3.0",
     "helm-chart": "0.2.3",
@@ -10,7 +10,7 @@
     "sdk-rust": "4.2.0",
     "server": "2.10.1",
     "waterline": "2.12.1",
-    "workflow": "2.11.0"
+    "workflow": "2.15.0"
   },
   "helm_chart": {
     "app_version": "2.10.1",
