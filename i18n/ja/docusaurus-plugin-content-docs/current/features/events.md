@@ -6,7 +6,7 @@ sidebar_position: 12
 
 ライフサイクルイベントは実行の重要な段階で発行され、進捗、完了、失敗をアプリに通知します。標準の Laravel イベントなので、`EventServiceProvider` または `Event::listen()` にリスナーを登録します。
 
-v2 の全イベントは、**永続状態をデータベースにコミットした後**に発行します。リスナーが見るのはコミット済み事実に裏付けられたイベントだけです。トランザクションがロールバックすれば発行しません。
+`WorkflowCancelled` と `WorkflowTerminated` は、実行の保存先接続上のトランザクションがコミットされるまで待ちます。拒否されたコマンドやロールバックされた書き込みからは、どちらのイベントも発行されません。エンジンのトランザクションやライフサイクルイベントの順序に関するその他の問題は [workflow#893](https://github.com/durable-workflow/workflow/issues/893) で追跡しています。別のアプリケーション用データベース上のトランザクションは、ワークフローの保存先への書き込みをアトミックにはしません。
 
 ## イベントの識別情報 {#event-identity}
 
@@ -18,7 +18,7 @@ v2 の全イベントは、**永続状態をデータベースにコミットし
 | `runId` | 特定の実行 ID。 |
 | `workflowType` | `#[Type('...')]` で登録した永続型キー。 |
 | `workflowClass` | ワークフローの PHP クラス名。 |
-| `committedAt` | 永続記録のコミット時刻の ISO 8601 タイムスタンプ（実時計）。 |
+| `committedAt` | ライフサイクル通知の準備時に記録した、実時計による ISO 8601 タイムスタンプ。 |
 
 アクティビティイベントはさらに次を含みます。
 
@@ -69,6 +69,8 @@ Event::listen(WorkflowCompleted::class, function (WorkflowCompleted $event) {
 
 実行が終端の失敗に至ったときに発行します。
 
+実行のタイムアウトでも `WorkflowFailed` を発行します。一方、協調キャンセルのクリーンアップ期限が切れた場合は `WorkflowCancelled` を発行します。
+
 追加フィールド:
 - `exceptionClass`: PHP 例外クラス名。
 - `message`: 例外メッセージ。
@@ -84,6 +86,49 @@ Event::listen(WorkflowFailed::class, function (WorkflowFailed $event) {
     ]);
 });
 ```
+
+### WorkflowCancelled {#workflowcancelled}
+
+即時キャンセルで実行を閉じたとき、または協調キャンセルでクリーンアップが完了するか期限が切れて実行を閉じたときに発行します。キャンセル要求だけではこのイベントを発行しません。
+
+共通の識別フィールドに加えて、次を含みます。
+
+| フィールド | 説明 |
+|---|---|
+| `reason` | キャンセルコマンドの元の理由、または `null`。クリーンアップ完了や期限切れのメッセージで置き換えません。 |
+| `closedAt` | 永続化した実行の終了時刻を表す UTC の ISO 8601 文字列。 |
+
+```php
+use Workflow\V2\Events\WorkflowCancelled;
+
+Event::listen(WorkflowCancelled::class, function (WorkflowCancelled $event) {
+    Log::info('Workflow cancelled', [
+        'instance_id' => $event->instanceId,
+        'run_id' => $event->runId,
+        'reason' => $event->reason,
+        'closed_at' => $event->closedAt,
+    ]);
+});
+```
+
+### WorkflowTerminated {#workflowterminated}
+
+強制終了で実行を閉じたときに発行します。同じ識別フィールドと `reason`、`closedAt` を持ち、理由には強制終了コマンドの値を使います。強制終了ではワークフローのクリーンアップコードを実行しません。
+
+```php
+use Workflow\V2\Events\WorkflowTerminated;
+
+Event::listen(WorkflowTerminated::class, function (WorkflowTerminated $event) {
+    Log::info('Workflow terminated', [
+        'instance_id' => $event->instanceId,
+        'run_id' => $event->runId,
+        'reason' => $event->reason,
+        'closed_at' => $event->closedAt,
+    ]);
+});
+```
+
+これらはプロセス内の Laravel 通知です。リスナーの失敗によって、コミット済みの終了を取り消すことはできません。イベントは閉じた実行を再開する権限を与えず、外部システムへの永続的な配信も保証しません。
 
 ## アクティビティイベント {#activity-events}
 
@@ -165,13 +210,13 @@ Event::listen(FailureRecorded::class, function (FailureRecorded $event) {
 
 ## タイムスタンプの意味 {#timestamp-semantics}
 
-全イベントの `committedAt` は**コミット時刻**、つまり永続記録（履歴イベントや失敗記録）をデータベースに書き込んだ実時計の時刻です。次とは異なります。
+エンジンはライフサイクル通知の準備時に `committedAt` を記録します。これは実時計のタイムスタンプで、次とは異なります。
 
 - **ワークフローの仮想時刻**: 実行内の論理時刻（タイマーで使用）。
 - **試行時刻**: 特定の試行の開始・終了時刻。
 - **再開レイテンシ**: タイマー期限から実際の再開までの時間。
 
-コミット時刻は状態が永続化され観測可能になった時点を示すため、外部統合で最も役立つ時刻です。
+キャンセルと強制終了では、`closedAt` は永続化した実行の終了時刻を UTC で表します。外側のストレージトランザクションは、イベントの各フィールドを記録した後にコミットされる場合があります。配信レイテンシを測る際は、リスナーの受信時刻を別途記録してください。
 
 ## ライフサイクル {#lifecycle}
 
@@ -193,6 +238,22 @@ Workflow\V2\Events\ActivityFailed
 Workflow\V2\Events\FailureRecorded    (source: activity_execution)
 Workflow\V2\Events\WorkflowFailed
 Workflow\V2\Events\FailureRecorded    (source: workflow_run)
+```
+
+キャンセルされた実行は次のイベントで終わります。
+
+```
+Workflow\V2\Events\WorkflowStarted
+Workflow\V2\Events\WorkflowCancelled
+```
+
+協調クリーンアップでは、この二つの通知の間にアクティビティイベントを発行する場合があります。
+
+強制終了された実行は次のイベントで終わります。
+
+```
+Workflow\V2\Events\WorkflowStarted
+Workflow\V2\Events\WorkflowTerminated
 ```
 
 ## イベントの名前空間 {#event-namespace}
