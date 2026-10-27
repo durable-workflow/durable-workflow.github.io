@@ -154,6 +154,18 @@ requêtes de lecture et mises à jour via `registerWorkflow`,
 La [référence d’API générée du SDK PHP](https://php.durable-workflow.com/api/)
 donne tous les paramètres et types de retour.
 
+## Contexte de reprise et exécution propriétaire d’une activité {#activity-retry-context}
+
+Le SDK PHP **3.6.1 ou ultérieur** expose `$context->retryInfo`, `$context->workflowId` et `$context->runId` dans les activités en mode service. Vérifiez `$context->retryInfo->isLastConfiguredAttempt() === true` pour reconnaître la dernière tentative configurée d’une politique limitée. `attemptNumber` conserve le numéro de tentative reçu à l’origine.
+
+L’instantané distingue trois états : `policyProvided === false` indique que la politique est absente de la tâche attribuée ; une valeur racine `null` fournie représente une ancienne politique inconnue ; un objet contenant explicitement `max_attempts: null` signifie des tentatives illimitées. Un retour `null` de `maxAttempts()` ne suffit pas à établir ce caractère illimité. Le SDK n’invente aucun budget par défaut. L’annulation, un échec non réessayable, la fermeture du workflow et l’expiration des délais peuvent arrêter l’exécution avant épuisement du budget.
+
+Les identifiants du workflow et de l’exécution désignent l’exécution propriétaire d’origine. Une identité absente des anciennes tâches reste `null`. Les activités locales conservent les identifiants connus du parent sans hériter d’une politique de reprise distante. Pour signaler le workflow propriétaire, exigez les deux identifiants, ciblez `runId` et réutilisez un identifiant de requête stable lié à l’événement métier entre les tentatives.
+
+Traitez les signaux de manière idempotente pour l’événement métier. Un identifiant de requête stable ne garantit pas à lui seul une admission unique du signal.
+
+Consultez les [exemples complets de dernière tentative et de signal à sa propre exécution](https://php.durable-workflow.com/build/workflows-activities/) dans le guide du SDK PHP.
+
 ## Heartbeats d’activité {#activity-heartbeats}
 
 Pour les activités distantes, appelez `ActivityContext::heartbeat($details)` pendant un travail d’activité borné, bien avant le délai de heartbeat configuré. La première fenêtre commence lorsque le moteur réclame l’activité, pas lorsque PHP reçoit la tâche. La latence des requêtes, les pauses et les nouvelles tentatives de transport consomment cette fenêtre. Suivez les [conseils de fréquence](../features/heartbeats.md#heartbeat-cadence-and-receipts).

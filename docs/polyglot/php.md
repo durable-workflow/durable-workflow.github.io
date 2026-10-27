@@ -148,6 +148,18 @@ Remote workers register workflow, activity, query, and update handlers through
 Use the generated [PHP SDK API reference](https://php.durable-workflow.com/api/)
 for complete parameters and return types.
 
+## Activity retry context and owning run {#activity-retry-context}
+
+PHP SDK **3.6.1 or later** exposes `$context->retryInfo`, `$context->workflowId` and `$context->runId` in service-mode activities. Check `$context->retryInfo->isLastConfiguredAttempt() === true` for the final configured attempt of a bounded policy. `attemptNumber` preserves the original received attempt number.
+
+The retry snapshot preserves three distinct states: `policyProvided === false` means the claim omitted the policy; a provided root `null` is unknown legacy policy; an object with explicit `max_attempts: null` means unlimited. `maxAttempts()` returning `null` alone does not establish unlimited retries. The SDK does not invent a default budget. Cancellation, non-retryable failure, workflow closure and elapsed deadlines can end execution before the budget is exhausted.
+
+The workflow and run IDs identify the original owning run. Missing legacy identity stays `null`. Local activities retain known parent IDs without inheriting a remote retry policy. To signal the owning workflow, require both IDs, pin the signal to `runId` and reuse a stable business-event request ID across retries.
+
+Keep signal processing idempotent for the business event. A stable request ID alone does not establish once-only signal admission.
+
+See the [complete final-attempt and own-run signal examples](https://php.durable-workflow.com/build/workflows-activities/) in the PHP SDK guide.
+
 ## Activity heartbeats {#activity-heartbeats}
 
 For remote activities, call `ActivityContext::heartbeat($details)` during bounded work, well before the configured heartbeat timeout. The first window starts at runtime claim, not when PHP receives the task. Request latency, pauses and transport retries consume that window. Follow the [cadence guidance](../features/heartbeats.md#heartbeat-cadence-and-receipts).

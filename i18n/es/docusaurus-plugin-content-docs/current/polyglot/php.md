@@ -149,6 +149,18 @@ actualización mediante `registerWorkflow`, `registerActivity`, `registerQuery`
 y `registerUpdate`. Consulta la [referencia generada del SDK de PHP](https://php.durable-workflow.com/api/)
 para los parámetros y tipos de retorno completos.
 
+## Contexto de reintentos y ejecución propietaria de una actividad {#activity-retry-context}
+
+El SDK de PHP **3.6.1 o posterior** expone `$context->retryInfo`, `$context->workflowId` y `$context->runId` en las actividades en modo servicio. Compruebe `$context->retryInfo->isLastConfiguredAttempt() === true` para detectar el último intento configurado de una política limitada. `attemptNumber` conserva el número de intento recibido originalmente.
+
+La instantánea distingue tres estados: `policyProvided === false` indica que la reclamación omitió la política; un valor raíz `null` recibido representa una política heredada desconocida; un objeto con `max_attempts: null` explícito significa intentos ilimitados. Que `maxAttempts()` devuelva `null` no basta para afirmar que los reintentos son ilimitados. El SDK no inventa un límite predeterminado. La cancelación, los fallos no reintentables, el cierre del workflow y los plazos vencidos pueden terminar la ejecución antes de agotar el límite.
+
+Los ID del workflow y de la ejecución identifican la ejecución propietaria original. Las identidades heredadas ausentes permanecen en `null`. Las actividades locales conservan los ID conocidos del padre sin heredar una política de reintentos remota. Para enviar una señal al workflow propietario, exija ambos ID, dirija la señal a `runId` y reutilice un ID de solicitud estable del evento de negocio entre reintentos.
+
+Procese las señales de forma idempotente para el evento de negocio. Un ID de solicitud estable por sí solo no garantiza la admisión única de la señal.
+
+Consulte los [ejemplos completos del último intento y de señales a la ejecución propia](https://php.durable-workflow.com/build/workflows-activities/) en la guía del SDK de PHP.
+
 ## Heartbeats de actividad {#activity-heartbeats}
 
 Para actividades remotas, llame a `ActivityContext::heartbeat($details)` durante trabajo de actividad acotado, con suficiente antelación al tiempo de espera de heartbeat. La primera ventana empieza al reclamar la actividad en el entorno de ejecución, no cuando PHP recibe la tarea. La latencia de las peticiones, las pausas y los reintentos de transporte consumen esa ventana. Siga las [recomendaciones de cadencia](../features/heartbeats.md#heartbeat-cadence-and-receipts).
