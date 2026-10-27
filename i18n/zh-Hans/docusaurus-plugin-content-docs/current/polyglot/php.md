@@ -98,7 +98,7 @@ PHP SDK **3.6.1 及以上版本**在服务模式活动中提供 `$context->retry
 
 业务事件的信号处理必须保持幂等。仅有稳定的请求 ID 并不能保证信号只被接收一次。
 
-请参阅 PHP SDK 指南中的[最后一次尝试检查与向自身运行发送信号的完整示例](https://php.durable-workflow.com/build/workflows-activities/#inspect-retry-budget-and-the-owning-workflow)。
+请参阅 PHP SDK 指南中的[最后一次尝试检查与向自身运行发送信号的完整示例](https://php.durable-workflow.com/build/workflows-activities/)。
 
 ## 活动心跳 {#activity-heartbeats}
 

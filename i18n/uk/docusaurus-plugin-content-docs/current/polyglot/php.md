@@ -161,7 +161,7 @@ PHP SDK **3.6.1 або новіший** надає `$context->retryInfo`, `$cont
 
 Обробляйте сигнали ідемпотентно для відповідної бізнес-події. Самого стабільного ID запиту недостатньо для гарантії одноразового прийняття сигналу.
 
-Дивіться [повні приклади перевірки останньої спроби та сигналу власному запуску](https://php.durable-workflow.com/build/workflows-activities/#inspect-retry-budget-and-the-owning-workflow) у посібнику PHP SDK.
+Дивіться [повні приклади перевірки останньої спроби та сигналу власному запуску](https://php.durable-workflow.com/build/workflows-activities/) у посібнику PHP SDK.
 
 ## Heartbeat activity {#activity-heartbeats}
 

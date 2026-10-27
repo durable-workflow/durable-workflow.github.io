@@ -159,7 +159,7 @@ Los ID del workflow y de la ejecución identifican la ejecución propietaria ori
 
 Procese las señales de forma idempotente para el evento de negocio. Un ID de solicitud estable por sí solo no garantiza la admisión única de la señal.
 
-Consulte los [ejemplos completos del último intento y de señales a la ejecución propia](https://php.durable-workflow.com/build/workflows-activities/#inspect-retry-budget-and-the-owning-workflow) en la guía del SDK de PHP.
+Consulte los [ejemplos completos del último intento y de señales a la ejecución propia](https://php.durable-workflow.com/build/workflows-activities/) en la guía del SDK de PHP.
 
 ## Heartbeats de actividad {#activity-heartbeats}
 

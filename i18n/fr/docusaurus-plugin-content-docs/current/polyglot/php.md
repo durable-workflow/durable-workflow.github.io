@@ -164,7 +164,7 @@ Les identifiants du workflow et de l’exécution désignent l’exécution prop
 
 Traitez les signaux de manière idempotente pour l’événement métier. Un identifiant de requête stable ne garantit pas à lui seul une admission unique du signal.
 
-Consultez les [exemples complets de dernière tentative et de signal à sa propre exécution](https://php.durable-workflow.com/build/workflows-activities/#inspect-retry-budget-and-the-owning-workflow) dans le guide du SDK PHP.
+Consultez les [exemples complets de dernière tentative et de signal à sa propre exécution](https://php.durable-workflow.com/build/workflows-activities/) dans le guide du SDK PHP.
 
 ## Heartbeats d’activité {#activity-heartbeats}
 

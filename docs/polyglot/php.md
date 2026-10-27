@@ -158,7 +158,7 @@ The workflow and run IDs identify the original owning run. Missing legacy identi
 
 Keep signal processing idempotent for the business event. A stable request ID alone does not establish once-only signal admission.
 
-See the [complete final-attempt and own-run signal examples](https://php.durable-workflow.com/build/workflows-activities/#inspect-retry-budget-and-the-owning-workflow) in the PHP SDK guide.
+See the [complete final-attempt and own-run signal examples](https://php.durable-workflow.com/build/workflows-activities/) in the PHP SDK guide.
 
 ## Activity heartbeats {#activity-heartbeats}
 

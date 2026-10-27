@@ -161,7 +161,7 @@ Workflow- und Lauf-ID bezeichnen den ursprünglichen zugehörigen Lauf. Fehlende
 
 Verarbeiten Sie Signale für das Geschäftsereignis idempotent. Eine stabile Request-ID allein garantiert keine einmalige Signalannahme.
 
-Die [vollständigen Beispiele zum letzten Versuch und zum Signal an den eigenen Lauf](https://php.durable-workflow.com/build/workflows-activities/#inspect-retry-budget-and-the-owning-workflow) stehen im PHP-SDK-Leitfaden.
+Die [vollständigen Beispiele zum letzten Versuch und zum Signal an den eigenen Lauf](https://php.durable-workflow.com/build/workflows-activities/) stehen im PHP-SDK-Leitfaden.
 
 ## Aktivitäts-Heartbeats {#activity-heartbeats}
 

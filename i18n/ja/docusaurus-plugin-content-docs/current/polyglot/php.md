@@ -98,7 +98,7 @@ PHP SDK **3.6.1 以降**では、サービスモードのアクティビティ�
 
 業務イベントに対するシグナル処理は冪等にしてください。安定したリクエスト ID だけでは、シグナルが一度だけ受け付けられる保証にはなりません。
 
-PHP SDK ガイドの[最終試行の判定と自身の実行へのシグナル送信の完全な例](https://php.durable-workflow.com/build/workflows-activities/#inspect-retry-budget-and-the-owning-workflow)を参照してください。
+PHP SDK ガイドの[最終試行の判定と自身の実行へのシグナル送信の完全な例](https://php.durable-workflow.com/build/workflows-activities/)を参照してください。
 
 ## アクティビティのハートビート {#activity-heartbeats}
 

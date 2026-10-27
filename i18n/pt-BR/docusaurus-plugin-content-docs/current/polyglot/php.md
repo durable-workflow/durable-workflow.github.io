@@ -163,7 +163,7 @@ Os IDs do workflow e da execução identificam a execução proprietária origin
 
 Processe os sinais de forma idempotente para o evento de negócio. Um ID de requisição estável, por si só, não garante a admissão única do sinal.
 
-Consulte os [exemplos completos da última tentativa e do sinal para a própria execução](https://php.durable-workflow.com/build/workflows-activities/#inspect-retry-budget-and-the-owning-workflow) no guia do SDK PHP.
+Consulte os [exemplos completos da última tentativa e do sinal para a própria execução](https://php.durable-workflow.com/build/workflows-activities/) no guia do SDK PHP.
 
 ## Heartbeats de atividade {#activity-heartbeats}
 
