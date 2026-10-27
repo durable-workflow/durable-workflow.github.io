@@ -151,6 +151,18 @@ Entfernte Worker registrieren Workflow-, Aktivitäts-, Abfrage- und Update-Handl
 Vollständige Parameter und Rückgabetypen stehen in der generierten
 [PHP-SDK-API-Referenz](https://php.durable-workflow.com/api/).
 
+## Wiederholungskontext und zugehöriger Lauf einer Aktivität {#activity-retry-context}
+
+Das PHP SDK **ab 3.6.1** stellt `$context->retryInfo`, `$context->workflowId` und `$context->runId` in Aktivitäten im Service-Modus bereit. Mit `$context->retryInfo->isLastConfiguredAttempt() === true` erkennen Sie den letzten konfigurierten Versuch einer begrenzten Richtlinie. `attemptNumber` bewahrt die ursprünglich empfangene Versuchsnummer.
+
+Der Snapshot unterscheidet drei Zustände: `policyProvided === false` bedeutet, dass die Richtlinie im Claim fehlt. Ein übergebener Wurzelwert `null` bezeichnet eine unbekannte ältere Richtlinie. Ein Objekt mit explizitem `max_attempts: null` bedeutet unbegrenzte Versuche. Ein Rückgabewert `null` von `maxAttempts()` allein belegt keine unbegrenzten Wiederholungen. Das SDK erfindet kein Standardbudget. Abbruch, nicht wiederholbare Fehler, das Ende des Workflows und abgelaufene Fristen können die Ausführung vor Ausschöpfung des Budgets beenden.
+
+Workflow- und Lauf-ID bezeichnen den ursprünglichen zugehörigen Lauf. Fehlende ältere Identitäten bleiben `null`. Lokale Aktivitäten behalten bekannte Eltern-IDs, ohne eine Richtlinie für entfernte Aktivitäten zu erben. Prüfen Sie vor einem Signal an den zugehörigen Workflow beide IDs, binden Sie das Signal an `runId` und verwenden Sie über Wiederholungen hinweg dieselbe stabile Request-ID des Geschäftsereignisses.
+
+Verarbeiten Sie Signale für das Geschäftsereignis idempotent. Eine stabile Request-ID allein garantiert keine einmalige Signalannahme.
+
+Die [vollständigen Beispiele zum letzten Versuch und zum Signal an den eigenen Lauf](https://php.durable-workflow.com/build/workflows-activities/#inspect-retry-budget-and-the-owning-workflow) stehen im PHP-SDK-Leitfaden.
+
 ## Aktivitäts-Heartbeats {#activity-heartbeats}
 
 Rufen Sie bei entfernten Aktivitäten `ActivityContext::heartbeat($details)` während begrenzter Aktivitätsarbeit deutlich vor dem konfigurierten Heartbeat-Zeitlimit auf. Das erste Zeitfenster beginnt mit der Beanspruchung durch die Laufzeit, nicht beim Empfang der Aufgabe in PHP. Anfragelatenz, Pausen und Transportwiederholungen verbrauchen dieses Zeitfenster. Beachten Sie die [Taktempfehlungen](../features/heartbeats.md#heartbeat-cadence-and-receipts).

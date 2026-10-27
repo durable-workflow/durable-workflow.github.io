@@ -88,6 +88,18 @@ SDK 维护的快速入门创建干净的 Composer 项目，定义带特性的工
 
 远程 Worker 通过 `registerWorkflow`、`registerActivity`、`registerQuery` 和 `registerUpdate` 注册工作流、活动、查询及更新处理器。完整参数及返回类型见生成的 [PHP SDK API 参考](https://php.durable-workflow.com/api/)。
 
+## 活动重试上下文与所属运行 {#activity-retry-context}
+
+PHP SDK **3.6.1 及以上版本**在服务模式活动中提供 `$context->retryInfo`、`$context->workflowId` 和 `$context->runId`。对于有次数上限的策略，使用 `$context->retryInfo->isLastConfiguredAttempt() === true` 判断是否已到达配置的最后一次尝试。`attemptNumber` 保留最初收到的尝试编号。
+
+重试快照区分三种状态：`policyProvided === false` 表示领取的任务未提供策略；提供的根值 `null` 表示未知的旧版策略；对象中显式设置的 `max_attempts: null` 才表示无限次尝试。仅凭 `maxAttempts()` 返回 `null` 不能认定重试次数无限。SDK 不会自行补充默认次数上限。取消、不可重试的失败、工作流关闭和期限届满都可能在次数用尽之前终止执行。
+
+工作流 ID 和运行 ID 标识活动最初所属的运行。旧版任务中缺失的身份仍为 `null`。本地活动保留已知的父级 ID，但不会继承远程活动的重试策略。向所属工作流发送信号时，必须具备这两个 ID，用 `runId` 固定目标运行，并在各次重试中复用同一个业务事件的稳定请求 ID。
+
+业务事件的信号处理必须保持幂等。仅有稳定的请求 ID 并不能保证信号只被接收一次。
+
+请参阅 PHP SDK 指南中的[最后一次尝试检查与向自身运行发送信号的完整示例](https://php.durable-workflow.com/build/workflows-activities/#inspect-retry-budget-and-the-owning-workflow)。
+
 ## 活动心跳 {#activity-heartbeats}
 
 对于远程活动，在有界工作期间调用 `ActivityContext::heartbeat($details)`，并在配置的心跳超时到期前留足时间。第一个窗口从运行时领取任务开始，而不是 PHP 收到任务时开始。请求延迟、暂停和传输重试都会消耗该窗口。请遵循[发送节奏建议](../features/heartbeats.md#heartbeat-cadence-and-receipts)。
