@@ -1052,6 +1052,55 @@ async def long_running_task(items: list) -> dict:
     return {"processed": len(items)}
 ```
 
+#### Política de tentativas recebida e tentativa original {#activity-retry-metadata}
+
+Requer Python SDK **2.12.0 ou posterior**. `info = activity.context().info`
+expõe o `attempt_number` original e um snapshot imutável `retry_info`.
+`info.retry_info.policy()` retorna uma nova cópia, incluindo campos desconhecidos.
+
+Uma política ausente e `retry_policy: null` na raiz têm limite desconhecido.
+`policy_provided` distingue os casos (`False` e `True`).
+Um objeto de política recebido com `max_attempts: null` indica explicitamente
+tentativas ilimitadas: `is_unlimited()` retorna `True`, enquanto
+`max_attempts()` permanece `None`. Para um limite inteiro positivo,
+`max_attempts()` retorna esse limite e `is_last_configured_attempt()` o compara
+com a tentativa original. Um limite desconhecido retorna `None` nessa verificação.
+
+A verificação descreve o orçamento recebido. Cancelamentos, prazos, encerramento
+do workflow e falhas não repetíveis podem encerrar a execução antes desse limite.
+Callbacks remotos comuns e supervisionados recebem o snapshot original.
+Callbacks locais inline e preparados não herdam a política remota do pai.
+
+#### Enviar um sinal ao run original {#signal-originating-run}
+
+`info.workflow_id` e `info.run_id` preservam as identidades originais recebidas
+e podem ser `None`. Callbacks locais herdam apenas identidades conhecidas do pai.
+O SDK nunca as substitui por um ID de tarefa. Passe um cliente autorizado da
+aplicação para este helper; o handle fica vinculado ao run original:
+
+```python
+from durable_workflow import Client, activity
+
+
+async def signal_originating_run(client: Client, business_event_id: str) -> dict:
+    info = activity.context().info
+    if info.workflow_id is None or info.run_id is None:
+        raise RuntimeError("This activity has no known originating workflow run")
+    handle = client.get_workflow_handle(info.workflow_id, run_id=info.run_id)
+    return await handle.signal(
+        "payment_recorded",
+        [business_event_id],
+        request_id=f"payment-recorded:{business_event_id}",
+    )
+```
+
+Mantenha `business_event_id` estável entre tentativas e dentro do limite de
+comprimento de chaves de comando do Server. O Server publicado atualmente não
+retém essas chaves em todos os caminhos de sinal. Processe eventos de negócio
+de forma idempotente e reconcilie entregas incertas. Consulte a
+[referência canônica de atividades](https://python.durable-workflow.com/reference/activity/)
+e o [requisito de retenção de recibos de sinal](https://github.com/durable-workflow/.github/issues/216).
+
 ### Requisições de heartbeat {#activity-heartbeat-requests}
 
 Para atividades remotas, chame `await ctx.heartbeat(...)` durante trabalho de atividade limitado, bem antes de `heartbeat_timeout`. A primeira janela começa na reivindicação pelo runtime, antes de o Python receber a tarefa. Cada heartbeat registrado usa o horário em que o runtime o registra, não quando a resposta chega ao Python. Pausas, latência das requisições e novas tentativas de transporte consomem o orçamento. Siga as [orientações de cadência](../features/heartbeats.md#heartbeat-cadence-and-receipts).

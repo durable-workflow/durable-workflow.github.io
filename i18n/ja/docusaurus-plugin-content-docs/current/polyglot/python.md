@@ -873,6 +873,54 @@ async def long_running_task(items: list) -> dict:
     return {"processed": len(items)}
 ```
 
+#### 受信した再試行ポリシーと元の試行回数 {#activity-retry-metadata}
+
+Python SDK **2.12.0 以降**が必要です。`info = activity.context().info` は
+元の `attempt_number` と不変の `retry_info` スナップショットを提供します。
+`info.retry_info.policy()` は未知のフィールドも含む新しいコピーを返します。
+
+ポリシーがない場合も、ルートの `retry_policy: null` の場合も、試行上限は不明です。
+`policy_provided` は両者を `False` と `True` で区別します。
+受信したポリシーオブジェクトの `max_attempts: null` は、明示的に無制限を意味します。
+この場合、`is_unlimited()` は `True`、`max_attempts()` は `None` です。
+正の整数の上限があれば、`max_attempts()` はその値を返し、
+`is_last_configured_attempt()` は元の試行回数と比較します。
+上限が不明な場合、最後の試行かどうかの判定は `None` を返します。
+
+この判定は受信した再試行予算を表します。キャンセル、期限、ワークフローの終了、
+再試行できない失敗により、上限より前に実行が終わる場合があります。
+通常および監視付きのリモートコールバックは元のスナップショットを受け取ります。
+インラインおよび準備済みローカルコールバックは、親のリモート再試行ポリシーを継承しません。
+
+#### 元の実行にシグナルを送る {#signal-originating-run}
+
+`info.workflow_id` と `info.run_id` は受信した元の識別子を保持し、
+`None` の場合もあります。ローカルコールバックは既知の親識別子だけを継承します。
+SDK がタスク ID で代用することはありません。認可済みのアプリケーションクライアントを
+このヘルパーに渡してください。ハンドルは元の実行に固定されます。
+
+```python
+from durable_workflow import Client, activity
+
+
+async def signal_originating_run(client: Client, business_event_id: str) -> dict:
+    info = activity.context().info
+    if info.workflow_id is None or info.run_id is None:
+        raise RuntimeError("This activity has no known originating workflow run")
+    handle = client.get_workflow_handle(info.workflow_id, run_id=info.run_id)
+    return await handle.signal(
+        "payment_recorded",
+        [business_event_id],
+        request_id=f"payment-recorded:{business_event_id}",
+    )
+```
+
+`business_event_id` は再試行の間で一定に保ち、Server のコマンドキーの長さ制限に
+収めてください。現在公開されている Server は、すべてのシグナル経路でこれらのキーを
+保持するわけではありません。ビジネスイベントの処理を冪等にし、配信結果が不確かな場合は
+照合してください。[アクティビティの正式なリファレンス](https://python.durable-workflow.com/reference/activity/)
+と[シグナル受領記録の保持要件](https://github.com/durable-workflow/.github/issues/216)を参照してください。
+
 ### ハートビートのリクエスト {#activity-heartbeat-requests}
 
 リモートアクティビティでは、上限を設けた処理の途中で、`heartbeat_timeout` より十分前に `await ctx.heartbeat(...)` を呼び出します。最初の期間はランタイムのタスク取得から始まり、Python の受信より前です。記録されたハートビートはランタイムでの記録時刻を使い、Python が応答を受信した時刻は使いません。中断、リクエストの遅延、通信の再試行も時間予算を消費します。[送信間隔の指針](../features/heartbeats.md#heartbeat-cadence-and-receipts)に従ってください。

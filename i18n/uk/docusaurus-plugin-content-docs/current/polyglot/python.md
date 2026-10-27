@@ -1037,6 +1037,55 @@ async def long_running_task(items: list) -> dict:
     return {"processed": len(items)}
 ```
 
+#### Отримана retry policy та початкова спроба {#activity-retry-metadata}
+
+Потрібен Python SDK **2.12.0 або новіший**. `info = activity.context().info`
+надає початковий `attempt_number` і незмінний знімок `retry_info`.
+`info.retry_info.policy()` повертає нову копію, включно з невідомими полями.
+
+Відсутня policy та кореневе `retry_policy: null` мають невідомий ліміт
+спроб. `policy_provided` розрізняє їх (`False` і `True`).
+Отриманий об’єкт policy з `max_attempts: null` явно означає необмежені спроби:
+`is_unlimited()` повертає `True`, а `max_attempts()` залишається `None`.
+Для додатного цілого ліміту `max_attempts()` повертає цей ліміт, а
+`is_last_configured_attempt()` порівнює його з початковим номером спроби.
+Для невідомого ліміту перевірка останньої спроби повертає `None`.
+
+Перевірка описує отриманий бюджет. Скасування, строки, закриття workflow та
+помилки без повторних спроб можуть завершити виконання раніше. Звичайні й
+supervised віддалені callback отримують початковий знімок. Локальні inline
+та prepared callback не успадковують віддалену retry policy батьківського workflow.
+
+#### Надіслати signal до початкового run {#signal-originating-run}
+
+`info.workflow_id` і `info.run_id` зберігають початкові отримані ідентифікатори
+й можуть бути `None`. Локальні callback успадковують лише відомі ідентифікатори
+батьківського workflow. SDK ніколи не підставляє task ID. Передайте до helper
+авторизований клієнт застосунку. Handle прив’язаний до початкового run:
+
+```python
+from durable_workflow import Client, activity
+
+
+async def signal_originating_run(client: Client, business_event_id: str) -> dict:
+    info = activity.context().info
+    if info.workflow_id is None or info.run_id is None:
+        raise RuntimeError("This activity has no known originating workflow run")
+    handle = client.get_workflow_handle(info.workflow_id, run_id=info.run_id)
+    return await handle.signal(
+        "payment_recorded",
+        [business_event_id],
+        request_id=f"payment-recorded:{business_event_id}",
+    )
+```
+
+Зберігайте `business_event_id` незмінним між спробами та в межах ліміту довжини
+command key Server. Поточний опублікований Server зберігає ці ключі не для всіх
+шляхів signal. Обробляйте бізнес-події ідемпотентно й узгоджуйте невизначені
+результати доставки. Див.
+[основний довідник activity](https://python.durable-workflow.com/reference/activity/)
+і [вимогу збереження квитанцій signal](https://github.com/durable-workflow/.github/issues/216).
+
 ### Запити heartbeat {#activity-heartbeat-requests}
 
 Для віддалених activities викликайте `await ctx.heartbeat(...)` під час обмеженої роботи activity, задовго до `heartbeat_timeout`. Перше вікно починається під час отримання runtime повноважень на завдання, ще до доставлення в Python. Кожен записаний heartbeat використовує час запису в runtime, а не час отримання відповіді Python. Паузи, затримки запитів і транспортні повтори витрачають бюджет. Дотримуйтеся [порад щодо періодичності](../features/heartbeats.md#heartbeat-cadence-and-receipts).

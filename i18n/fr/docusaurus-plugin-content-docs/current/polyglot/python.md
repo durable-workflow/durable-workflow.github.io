@@ -1052,6 +1052,56 @@ async def long_running_task(items: list) -> dict:
     return {"processed": len(items)}
 ```
 
+#### Politique de reprise reçue et tentative initiale {#activity-retry-metadata}
+
+Nécessite Python SDK **2.12.0 ou ultérieur**. `info = activity.context().info`
+expose le `attempt_number` initial et un instantané immuable `retry_info`.
+`info.retry_info.policy()` renvoie une nouvelle copie, y compris les champs inconnus.
+
+Une politique absente et `retry_policy: null` à la racine ont une limite inconnue.
+`policy_provided` distingue les deux cas (`False` et `True`).
+Un objet de politique reçu avec `max_attempts: null` signifie explicitement
+des tentatives illimitées : `is_unlimited()` renvoie `True`, tandis que
+`max_attempts()` reste `None`. Pour une limite entière positive,
+`max_attempts()` renvoie cette limite et `is_last_configured_attempt()` la
+compare à la tentative initiale. Si la limite est inconnue, ce dernier test
+renvoie `None`.
+
+Ce test décrit le budget reçu. Une annulation, une échéance, la fermeture du
+workflow ou un échec sans reprise peuvent arrêter l'exécution plus tôt.
+Les callbacks distants ordinaires et supervisés reçoivent l'instantané initial.
+Les callbacks locaux inline et préparés n'héritent pas de la politique distante du parent.
+
+#### Envoyer un signal à l'exécution initiale {#signal-originating-run}
+
+`info.workflow_id` et `info.run_id` conservent les identités initiales reçues
+et peuvent valoir `None`. Les callbacks locaux héritent uniquement des identités
+parentes connues. Le SDK ne les remplace jamais par un ID de tâche.
+Passez un client applicatif autorisé à cet utilitaire. Le handle reste lié au run initial :
+
+```python
+from durable_workflow import Client, activity
+
+
+async def signal_originating_run(client: Client, business_event_id: str) -> dict:
+    info = activity.context().info
+    if info.workflow_id is None or info.run_id is None:
+        raise RuntimeError("This activity has no known originating workflow run")
+    handle = client.get_workflow_handle(info.workflow_id, run_id=info.run_id)
+    return await handle.signal(
+        "payment_recorded",
+        [business_event_id],
+        request_id=f"payment-recorded:{business_event_id}",
+    )
+```
+
+Gardez `business_event_id` stable entre les tentatives et respectez la limite
+de longueur des clés de commande du Server. Le Server actuellement publié ne
+conserve pas ces clés pour tous les chemins de signal. Traitez les événements
+métier de façon idempotente et réconciliez les livraisons incertaines. Consultez
+[la référence canonique des activités](https://python.durable-workflow.com/reference/activity/)
+et [l'exigence de conservation des reçus de signal](https://github.com/durable-workflow/.github/issues/216).
+
 ### Requêtes de heartbeat {#activity-heartbeat-requests}
 
 Pour les activités distantes, appelez `await ctx.heartbeat(...)` pendant un travail d’activité borné, bien avant `heartbeat_timeout`. La première fenêtre commence lorsque le moteur réclame l’activité, avant que Python reçoive la tâche. Chaque heartbeat enregistré utilise le moment de son enregistrement par le moteur, pas celui où sa réponse atteint Python. Les pauses, la latence et les nouvelles tentatives de transport consomment le budget. Suivez les [conseils de fréquence](../features/heartbeats.md#heartbeat-cadence-and-receipts).
