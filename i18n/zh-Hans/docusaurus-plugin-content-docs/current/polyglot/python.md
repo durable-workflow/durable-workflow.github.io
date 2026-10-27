@@ -859,6 +859,66 @@ async def long_running_task(items: list) -> dict:
     return {"processed": len(items)}
 ```
 
+#### 收到的重试策略与原始尝试次数 {#activity-retry-metadata}
+
+需要 Python SDK **2.12.0 或更高版本**。`info = activity.context().info`
+提供原始 `attempt_number` 和不可变的 `retry_info` 快照。
+`info.retry_info.policy()` 返回新的副本，并保留未知字段。
+
+缺少策略与根级 `retry_policy: null` 都表示重试上限未知；
+`policy_provided` 用 `False` 和 `True` 区分这两种情况。
+收到的策略对象中 `max_attempts: null` 明确表示无限重试：
+`is_unlimited()` 为 `True`，而 `max_attempts()` 仍为 `None`。
+对于正整数上限，`max_attempts()` 返回该上限，
+`is_last_configured_attempt()` 将其与原始尝试次数比较。
+上限未知时，最后一次尝试检查返回 `None`。
+
+此检查只描述收到的重试预算。取消、截止时间、工作流关闭或不可重试的失败
+都可能提前结束执行。普通和受监督的远程回调收到相同的原始快照。
+内联和预备本地回调不会继承父工作流的远程重试策略。
+
+```python
+from durable_workflow import activity
+
+
+@activity.defn(name="inspect_retry_budget")
+async def inspect_retry_budget() -> dict:
+    retry = activity.context().info.retry_info
+    return {
+        "attempt": retry.attempt_number,
+        "max_attempts": retry.max_attempts(),
+        "last_configured_attempt": retry.is_last_configured_attempt(),
+    }
+```
+
+#### 向原始运行发送信号 {#signal-originating-run}
+
+`info.workflow_id` 和 `info.run_id` 保留收到的原始标识，也可能为 `None`。
+本地回调只继承已知的父级标识。SDK 不会使用任务 ID 代替缺失标识。
+将获得授权的应用客户端传给此辅助函数，句柄会固定到原始运行：
+
+```python
+from durable_workflow import Client, activity
+
+
+async def signal_originating_run(client: Client, business_event_id: str) -> dict:
+    info = activity.context().info
+    if info.workflow_id is None or info.run_id is None:
+        raise RuntimeError("This activity has no known originating workflow run")
+    handle = client.get_workflow_handle(info.workflow_id, run_id=info.run_id)
+    return await handle.signal(
+        "payment_recorded",
+        [business_event_id],
+        request_id=f"payment-recorded:{business_event_id}",
+    )
+```
+
+重试时保持 `business_event_id` 不变，并遵守 Server 命令键的长度限制。
+当前已发布的 Server 不会在所有信号路径上保留这些键。
+业务事件处理应具有幂等性，并对结果不确定的投递进行核对。参阅
+[活动的权威参考文档](https://python.durable-workflow.com/reference/activity/)
+和[信号回执保留要求](https://github.com/durable-workflow/.github/issues/216)。
+
 ### 心跳请求 {#activity-heartbeat-requests}
 
 对于远程活动，在有界工作期间调用 `await ctx.heartbeat(...)`，并在 `heartbeat_timeout` 到期前留足时间。第一个窗口从运行时领取任务开始，早于 Python 收到任务。每个已记录心跳使用运行时的记录时间，而不是响应到达 Python 的时间。暂停、请求延迟和传输重试都会消耗预算。请遵循[发送节奏建议](../features/heartbeats.md#heartbeat-cadence-and-receipts)。
