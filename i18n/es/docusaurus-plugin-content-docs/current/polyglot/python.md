@@ -1048,6 +1048,20 @@ el cierre del workflow y los errores no reintentables pueden terminar antes.
 Los callbacks remotos ordinarios y supervisados reciben la instantánea original.
 Los callbacks locales inline y preparados no heredan la política remota del padre.
 
+```python
+from durable_workflow import activity
+
+
+@activity.defn(name="inspect_retry_budget")
+async def inspect_retry_budget() -> dict:
+    retry = activity.context().info.retry_info
+    return {
+        "attempt": retry.attempt_number,
+        "max_attempts": retry.max_attempts(),
+        "last_configured_attempt": retry.is_last_configured_attempt(),
+    }
+```
+
 #### Enviar una señal a la ejecución original {#signal-originating-run}
 
 `info.workflow_id` e `info.run_id` conservan las identidades originales recibidas

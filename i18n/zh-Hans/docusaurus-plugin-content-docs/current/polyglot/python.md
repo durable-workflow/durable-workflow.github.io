@@ -877,6 +877,20 @@ async def long_running_task(items: list) -> dict:
 都可能提前结束执行。普通和受监督的远程回调收到相同的原始快照。
 内联和预备本地回调不会继承父工作流的远程重试策略。
 
+```python
+from durable_workflow import activity
+
+
+@activity.defn(name="inspect_retry_budget")
+async def inspect_retry_budget() -> dict:
+    retry = activity.context().info.retry_info
+    return {
+        "attempt": retry.attempt_number,
+        "max_attempts": retry.max_attempts(),
+        "last_configured_attempt": retry.is_last_configured_attempt(),
+    }
+```
+
 #### 向原始运行发送信号 {#signal-originating-run}
 
 `info.workflow_id` 和 `info.run_id` 保留收到的原始标识，也可能为 `None`。

@@ -1072,6 +1072,20 @@ workflow ou un échec sans reprise peuvent arrêter l'exécution plus tôt.
 Les callbacks distants ordinaires et supervisés reçoivent l'instantané initial.
 Les callbacks locaux inline et préparés n'héritent pas de la politique distante du parent.
 
+```python
+from durable_workflow import activity
+
+
+@activity.defn(name="inspect_retry_budget")
+async def inspect_retry_budget() -> dict:
+    retry = activity.context().info.retry_info
+    return {
+        "attempt": retry.attempt_number,
+        "max_attempts": retry.max_attempts(),
+        "last_configured_attempt": retry.is_last_configured_attempt(),
+    }
+```
+
 #### Envoyer un signal à l'exécution initiale {#signal-originating-run}
 
 `info.workflow_id` et `info.run_id` conservent les identités initiales reçues

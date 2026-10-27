@@ -892,6 +892,20 @@ Python SDK **2.12.0 以降**が必要です。`info = activity.context().info` �
 通常および監視付きのリモートコールバックは元のスナップショットを受け取ります。
 インラインおよび準備済みローカルコールバックは、親のリモート再試行ポリシーを継承しません。
 
+```python
+from durable_workflow import activity
+
+
+@activity.defn(name="inspect_retry_budget")
+async def inspect_retry_budget() -> dict:
+    retry = activity.context().info.retry_info
+    return {
+        "attempt": retry.attempt_number,
+        "max_attempts": retry.max_attempts(),
+        "last_configured_attempt": retry.is_last_configured_attempt(),
+    }
+```
+
 #### 元の実行にシグナルを送る {#signal-originating-run}
 
 `info.workflow_id` と `info.run_id` は受信した元の識別子を保持し、

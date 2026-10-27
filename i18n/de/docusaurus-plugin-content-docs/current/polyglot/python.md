@@ -1073,6 +1073,20 @@ des Workflows und nicht wiederholbare Fehler können die Ausführung früher bee
 Normale und überwachte Remote-Callbacks erhalten den ursprünglichen Snapshot.
 Lokale Inline- und vorbereitete Callbacks erben die Remote-Richtlinie des Eltern-Workflows nicht.
 
+```python
+from durable_workflow import activity
+
+
+@activity.defn(name="inspect_retry_budget")
+async def inspect_retry_budget() -> dict:
+    retry = activity.context().info.retry_info
+    return {
+        "attempt": retry.attempt_number,
+        "max_attempts": retry.max_attempts(),
+        "last_configured_attempt": retry.is_last_configured_attempt(),
+    }
+```
+
 #### Ein Signal an den ursprünglichen Run senden {#signal-originating-run}
 
 `info.workflow_id` und `info.run_id` bewahren die ursprünglich empfangenen

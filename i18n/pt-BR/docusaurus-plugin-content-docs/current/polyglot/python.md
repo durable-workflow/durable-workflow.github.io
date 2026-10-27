@@ -1071,6 +1071,20 @@ do workflow e falhas não repetíveis podem encerrar a execução antes desse li
 Callbacks remotos comuns e supervisionados recebem o snapshot original.
 Callbacks locais inline e preparados não herdam a política remota do pai.
 
+```python
+from durable_workflow import activity
+
+
+@activity.defn(name="inspect_retry_budget")
+async def inspect_retry_budget() -> dict:
+    retry = activity.context().info.retry_info
+    return {
+        "attempt": retry.attempt_number,
+        "max_attempts": retry.max_attempts(),
+        "last_configured_attempt": retry.is_last_configured_attempt(),
+    }
+```
+
 #### Enviar um sinal ao run original {#signal-originating-run}
 
 `info.workflow_id` e `info.run_id` preservam as identidades originais recebidas

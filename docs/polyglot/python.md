@@ -1098,6 +1098,20 @@ closure and non-retryable failures can end execution earlier. Ordinary and
 supervised remote callbacks receive the original snapshot. Inline and prepared
 local callbacks do not inherit the parent's remote retry policy.
 
+```python
+from durable_workflow import activity
+
+
+@activity.defn(name="inspect_retry_budget")
+async def inspect_retry_budget() -> dict:
+    retry = activity.context().info.retry_info
+    return {
+        "attempt": retry.attempt_number,
+        "max_attempts": retry.max_attempts(),
+        "last_configured_attempt": retry.is_last_configured_attempt(),
+    }
+```
+
 #### Signal the originating run {#signal-originating-run}
 
 `info.workflow_id` and `info.run_id` preserve the original received identities
