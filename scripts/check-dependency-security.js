@@ -54,7 +54,9 @@ function lockedEntries(packageName, lockfile = lockfileManifest) {
 
 function dependencyParents(packageName, lockfile = lockfileManifest) {
   return Object.entries(lockfile.packages ?? {})
-    .filter(([, entry]) => entry.dependencies?.[packageName] !== undefined)
+    .filter(([, entry]) => [
+      "dependencies", "devDependencies", "optionalDependencies", "peerDependencies",
+    ].some((field) => entry[field]?.[packageName] !== undefined))
     .map(([lockedPath]) => lockedPath)
     .sort();
 }
