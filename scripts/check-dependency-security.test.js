@@ -63,6 +63,32 @@ assert.doesNotThrow(
   () => assertMinimumLockedVersion("http-cache-semantics", "4.3.0", cacheLock("4.3.0")),
 );
 
+for (const vulnerableVersion of ["7.4.2", "8.4.2", "10.2.0"]) {
+  assert.throws(
+    () => assertMinimumLockedVersion("open", "11.0.0", {
+      packages: {"node_modules/open": {version: vulnerableVersion}},
+    }),
+    /node_modules\/open must be at least 11\.0\.0/,
+  );
+  assert.throws(
+    () => assertMinimumLockedVersion("open", "11.0.0", {
+      packages: {
+        "node_modules/open": {version: "11.0.2"},
+        "node_modules/patch-package/node_modules/open": {version: vulnerableVersion},
+      },
+    }),
+    /patch-package\/node_modules\/open must be at least 11\.0\.0/,
+  );
+}
+assert.doesNotThrow(
+  () => assertMinimumLockedVersion("open", "11.0.0", {
+    packages: {
+      "node_modules/open": {version: "11.0.2"},
+      "node_modules/nested/node_modules/open": {version: "11.0.0"},
+    },
+  }),
+);
+
 function staleCacheReuse(vary) {
   const originalNow = Date.now;
   let clock = Date.parse("2026-10-19T12:00:00Z");

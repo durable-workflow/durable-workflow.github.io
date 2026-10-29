@@ -115,6 +115,11 @@ map and preserves strict missing-link checks and version boundaries. The
 build exercises both directions. Recheck and remove the patch when upgrading
 Docusaurus if the upstream resolver handles these cases.
 
+The browser-launcher patch uses `open`'s named app aliases to preserve custom
+browsers and browser shortcuts with the fixed v11 dependency. Remove it when
+Docusaurus supports that API directly; dependency checks exercise the installed
+launcher with captured child processes.
+
 `plugins/local-search.js` selects the existing search plugin's Chinese word
 segmentation for `zh-Hans` and Japanese segmentation for `ja`, combined with
 English stemming for API terms and fallback pages. French combines the existing

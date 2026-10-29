@@ -14,7 +14,7 @@
     "start": "docusaurus start",
     "build": "npm run check:dependency-security && npm run check:node-toolchain && node scripts/check-helm-chart-pairing.test.js && node scripts/check-server-config-reference.test.js && node scripts/check-server-config-reference.js && node scripts/check-local-search.test.js && node scripts/check-doc-translation-updates.test.js && node scripts/check-doc-translations.js && node scripts/check-localized-links.test.js && docusaurus build && node scripts/generate-llms.js && node scripts/generate-llms-full.js",
     "check:node-toolchain": "node scripts/check-node-toolchain.js && node scripts/check-node-toolchain.test.js",
-    "check:dependency-security": "node scripts/check-dependency-security.js && node scripts/check-dependency-security.test.js",
+    "check:dependency-security": "node scripts/check-dependency-security.js && node scripts/check-dependency-security.test.js && node scripts/check-open-browser.test.js",
     "check:platform-protocol-specs": "node scripts/check-platform-protocol-specs.js",
     "test:platform-protocol-specs": "node scripts/check-platform-protocol-specs.test.js",
     "test:worker-openapi-version": "node scripts/check-worker-openapi-version.test.js",
@@ -52,6 +52,7 @@
   "overrides": {
     "brace-expansion": "5.0.12",
     "minimatch": "10.2.5",
+    "open": "11.0.2",
     "qs": "6.16.0",
     "postcss-selector-parser": "7.1.6",
     "serialize-javascript": "7.0.7",
