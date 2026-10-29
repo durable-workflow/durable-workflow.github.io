@@ -3,6 +3,7 @@
 const assert = require("node:assert/strict");
 const childProcess = require("node:child_process");
 const {EventEmitter} = require("node:events");
+const {test} = require("node:test");
 const {apps} = require("open");
 
 const browserModule = require.resolve(
@@ -61,14 +62,12 @@ async function checkBrowser(browser, expectedApplication) {
   }
 }
 
-async function main() {
+test("Docusaurus opens a custom browser with its arguments", async () => {
   await checkBrowser("docs-test-browser", "docs-test-browser");
+});
+test("Docusaurus resolves a named browser alias", async () => {
   await checkBrowser("chrome", [apps.chrome].flat()[0]);
+});
+test("Docusaurus opens the default browser", async () => {
   await checkBrowser(undefined);
-  console.log("Real Docusaurus/open custom-browser, alias and default launch controls pass.");
-}
-
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
 });
