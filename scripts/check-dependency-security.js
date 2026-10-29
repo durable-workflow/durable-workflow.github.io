@@ -2,6 +2,7 @@
 
 const assert = require("node:assert/strict");
 const childProcess = require("node:child_process");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const semver = require("semver");
@@ -15,7 +16,11 @@ const securityPolicy = require("./dependency-security-policy.json");
 
 const EXPECTED_IMAGE_SIZE_VERSION = "2.0.4";
 const EXPECTED_IMAGE_SIZE_PARENT = "node_modules/@docusaurus/mdx-loader";
-const EXPECTED_ADVISORIES = ["GHSA-5p2g-fcmc-qvqq", "GHSA-w3rx-r6r6-pgpr"];
+const EXPECTED_DEEPMERGE_VERSION = "4.3.1";
+const EXPECTED_DEEPMERGE_PARENT = "node_modules/@svgr/plugin-svgo";
+const EXPECTED_ADVISORIES = [
+  "GHSA-5p2g-fcmc-qvqq", "GHSA-gcqx-w48m-w2h4", "GHSA-w3rx-r6r6-pgpr",
+];
 const VULNERABLE_IMAGE_EXTENSIONS = new Set([
   ".avif",
   ".heic",
@@ -49,7 +54,9 @@ function lockedEntries(packageName, lockfile = lockfileManifest) {
 
 function dependencyParents(packageName, lockfile = lockfileManifest) {
   return Object.entries(lockfile.packages ?? {})
-    .filter(([, entry]) => entry.dependencies?.[packageName] !== undefined)
+    .filter(([, entry]) => [
+      "dependencies", "devDependencies", "optionalDependencies", "peerDependencies",
+    ].some((field) => entry[field]?.[packageName] !== undefined))
     .map(([lockedPath]) => lockedPath)
     .sort();
 }
@@ -147,36 +154,44 @@ function checkTrackedBuildAssets(root = repositoryRoot) {
   );
 }
 
-function checkDependencyGraph() {
-  assertMinimumLockedVersion(
-    "js-yaml",
-    securityPolicy.minimum_versions["js-yaml"],
-  );
-  assertMinimumLockedVersion("nanoid", securityPolicy.minimum_versions.nanoid);
-  assertMinimumLockedVersion(
-    "http-cache-semantics",
-    securityPolicy.minimum_versions["http-cache-semantics"],
-  );
-  assertMinimumLockedVersion("open", securityPolicy.minimum_versions.open);
+function checkDependencyGraph(lockfile = lockfileManifest) {
+  for (const name of [
+    "js-yaml", "nanoid", "http-cache-semantics", "open", "undici",
+    "body-parser", "fast-uri", "qs", "serialize-javascript",
+  ]) {
+    assertMinimumLockedVersion(name, securityPolicy.minimum_versions[name], lockfile);
+  }
   assert.deepEqual(
-    lockedEntries("image-size").map(({ entry }) => entry.version),
+    lockedEntries("image-size", lockfile).map(({ entry }) => entry.version),
     [EXPECTED_IMAGE_SIZE_VERSION],
     "the image-size advisory disposition must be reviewed when its locked version changes",
   );
-  assert.deepEqual(dependencyParents("image-size"), [
+  assert.deepEqual(dependencyParents("image-size", lockfile), [
     EXPECTED_IMAGE_SIZE_PARENT,
   ]);
   assert.equal(packageManifest.dependencies?.["image-size"], undefined);
+  assert.deepEqual(
+    lockedEntries("deepmerge", lockfile).map(({entry}) => entry.version),
+    [EXPECTED_DEEPMERGE_VERSION],
+    "the deepmerge disposition requires review when its version or copy count changes",
+  );
+  assert.deepEqual(
+    dependencyParents("deepmerge", lockfile),
+    [EXPECTED_DEEPMERGE_PARENT],
+    "the deepmerge disposition requires review when its consumers change",
+  );
 }
 
-function checkRecordedDispositions() {
-  const dispositions = securityPolicy.advisory_dispositions;
+function checkRecordedDispositions(policy = securityPolicy) {
+  const dispositions = policy.advisory_dispositions;
   assert.deepEqual(
     dispositions.map(({ advisory }) => advisory).sort(),
     EXPECTED_ADVISORIES,
   );
 
-  for (const disposition of dispositions) {
+  const imageDispositions = dispositions.filter(({dependency}) => dependency === "image-size");
+  assert.equal(imageDispositions.length, 2);
+  for (const disposition of imageDispositions) {
     assert.equal(disposition.dependency, "image-size");
     assert.equal(disposition.locked_version, EXPECTED_IMAGE_SIZE_VERSION);
     assert.equal(disposition.disposition, "outside_affected_range");
@@ -187,6 +202,33 @@ function checkRecordedDispositions() {
     );
     assert.ok(disposition.review_when.length > 0);
   }
+  const deepmerge = dispositions.find(({dependency}) => dependency === "deepmerge");
+  assert.ok(deepmerge, "the unpatched deepmerge disposition must be recorded");
+  assert.equal(deepmerge.advisory, "GHSA-gcqx-w48m-w2h4");
+  assert.equal(deepmerge.locked_version, EXPECTED_DEEPMERGE_VERSION);
+  assert.equal(deepmerge.disposition, "accepted_unused_build_dependency");
+  assert.equal(deepmerge.github_dismissal_reason, undefined);
+  assert.deepEqual(deepmerge.dependency_parents, [EXPECTED_DEEPMERGE_PARENT]);
+  assert.equal(deepmerge.reviewed_source.path, `${EXPECTED_DEEPMERGE_PARENT}/dist/index.js`);
+  assert.match(deepmerge.reviewed_source.sha256, /^[a-f0-9]{64}$/);
+  assert.deepEqual(deepmerge.input_sources, [
+    "repository_svg_assets", "maintainer_selected_svgo_configuration",
+  ]);
+  assert.equal(deepmerge.published_site_node_runtime, false);
+  assert.ok(deepmerge.justification.length > 0);
+  assert.ok(deepmerge.review_when.length > 0);
+}
+
+function checkReviewedDeepmergeSource(source) {
+  const {reviewed_source: reviewedSource} = securityPolicy.advisory_dispositions.find(
+    ({dependency}) => dependency === "deepmerge",
+  );
+  const content = source ?? fs.readFileSync(path.join(repositoryRoot, reviewedSource.path));
+  assert.equal(
+    crypto.createHash("sha256").update(content).digest("hex"),
+    reviewedSource.sha256,
+    "the deepmerge disposition requires review when the installed SVG plugin entrypoint changes",
+  );
 }
 
 function checkBuildEntryPoints() {
@@ -210,6 +252,7 @@ function checkBuildEntryPoints() {
 function main() {
   checkDependencyGraph();
   checkRecordedDispositions();
+  checkReviewedDeepmergeSource();
   checkBuildEntryPoints();
   checkTrackedBuildAssets();
   console.log(
@@ -230,5 +273,8 @@ module.exports = {
   HEIF_BRANDS,
   VULNERABLE_IMAGE_EXTENSIONS,
   assertMinimumLockedVersion,
+  checkDependencyGraph,
+  checkRecordedDispositions,
+  checkReviewedDeepmergeSource,
   vulnerableImageParser,
 };
