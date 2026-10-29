@@ -5,7 +5,12 @@
     "js-yaml": "4.3.1",
     "nanoid": "3.3.17",
     "http-cache-semantics": "4.3.0",
-    "open": "11.0.0"
+    "open": "11.0.0",
+    "undici": "7.30.1",
+    "body-parser": "1.20.9",
+    "fast-uri": "3.1.9",
+    "qs": "6.16.1",
+    "serialize-javascript": "7.1.3"
   },
   "advisory_dispositions": [
     {
@@ -36,6 +41,29 @@
         "the locked image-size version changes",
         "Docusaurus changes the image-size dependency or image processing path",
         "the site adds runtime or user-supplied image processing"
+      ]
+    },
+    {
+      "advisory": "GHSA-gcqx-w48m-w2h4",
+      "dependency": "deepmerge",
+      "affected_versions": ">=4.2.0 <=4.3.1",
+      "locked_version": "4.3.1",
+      "disposition": "accepted_unused_build_dependency",
+      "dependency_parents": ["node_modules/@svgr/plugin-svgo"],
+      "reviewed_source": {
+        "path": "node_modules/@svgr/plugin-svgo/dist/index.js",
+        "sha256": "4a9a9511fdeee0ecf9ed25837b44f1c8b82b3a069bd9a34247077ff5034b9078"
+      },
+      "input_sources": ["repository_svg_assets", "maintainer_selected_svgo_configuration"],
+      "published_site_node_runtime": false,
+      "dependency_path": "@docusaurus/preset-classic -> @docusaurus/plugin-svgr -> @svgr/webpack -> @svgr/plugin-svgo -> deepmerge",
+      "justification": "The sole declaring package's reviewed published entrypoint does not import or call deepmerge. It selects SVGO configuration and calls svgo.optimize. SVG assets and configuration come from reviewed repository source; the published site is static with no request-time Node execution. Retaining the unused build dependency is accepted until an upstream fix or dependency removal is available. The affected version is not fixed and the audit is not clean.",
+      "review_when": [
+        "a fixed upstream deepmerge release becomes available",
+        "the locked deepmerge version or dependency consumer graph changes",
+        "the reviewed SVG plugin entrypoint changes or starts using deepmerge",
+        "SVG compilation accepts untrusted SVGO configuration",
+        "the published site adds request-time Node processing"
       ]
     }
   ]

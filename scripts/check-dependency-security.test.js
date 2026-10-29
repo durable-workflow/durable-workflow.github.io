@@ -1,9 +1,15 @@
 #!/usr/bin/env node
 
 const assert = require("node:assert/strict");
+const {test} = require("node:test");
 const CachePolicy = require("http-cache-semantics");
+const lockfile = require("../package-lock.json");
+const policy = require("./dependency-security-policy.json");
 const {
   assertMinimumLockedVersion,
+  checkDependencyGraph,
+  checkRecordedDispositions,
+  checkReviewedDeepmergeSource,
   vulnerableImageParser,
 } = require("./check-dependency-security");
 
@@ -128,3 +134,42 @@ for (const [vary, expectedReuse] of [
 }
 
 console.log("Dependency floors, blocked image formats and stale wildcard cache controls pass.");
+
+for (const [name, oldVersion] of [
+  ["undici", "7.29.1"], ["body-parser", "1.20.6"], ["fast-uri", "3.1.8"],
+  ["qs", "6.16.0"], ["serialize-javascript", "7.0.7"],
+]) {
+  test(`the dependency preflight rejects old root ${name}`, () => {
+    const fixture = structuredClone(lockfile);
+    fixture.packages[`node_modules/${name}`].version = oldVersion;
+    assert.throws(() => checkDependencyGraph(fixture), new RegExp(`${name} must be at least`));
+  });
+  test(`the dependency preflight rejects old nested ${name}`, () => {
+    const fixture = structuredClone(lockfile);
+    fixture.packages[`node_modules/review-fixture/node_modules/${name}`] = {version: oldVersion};
+    assert.throws(() => checkDependencyGraph(fixture), new RegExp(`${name} must be at least`));
+  });
+}
+test("the deepmerge version requires renewed review", () => {
+  const fixture = structuredClone(lockfile);
+  fixture.packages["node_modules/deepmerge"].version = "4.3.2";
+  assert.throws(() => checkDependencyGraph(fixture), /deepmerge disposition requires review/);
+});
+test("an additional deepmerge consumer requires renewed review", () => {
+  const fixture = structuredClone(lockfile);
+  fixture.packages["node_modules/review-fixture"] = {dependencies: {deepmerge: "^4.3.1"}};
+  assert.throws(() => checkDependencyGraph(fixture), /deepmerge disposition requires review/);
+});
+test("the unpatched disposition cannot disappear silently", () => {
+  const fixture = structuredClone(policy);
+  fixture.advisory_dispositions = fixture.advisory_dispositions.filter(
+    ({dependency}) => dependency !== "deepmerge",
+  );
+  assert.throws(() => checkRecordedDispositions(fixture));
+});
+test("changed installed SVG plugin code requires renewed review", () => {
+  assert.throws(
+    () => checkReviewedDeepmergeSource(Buffer.from('require("deepmerge")')),
+    /deepmerge disposition requires review/,
+  );
+});
