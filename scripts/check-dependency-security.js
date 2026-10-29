@@ -157,6 +157,7 @@ function checkDependencyGraph() {
     "http-cache-semantics",
     securityPolicy.minimum_versions["http-cache-semantics"],
   );
+  assertMinimumLockedVersion("open", securityPolicy.minimum_versions.open);
   assert.deepEqual(
     lockedEntries("image-size").map(({ entry }) => entry.version),
     [EXPECTED_IMAGE_SIZE_VERSION],
@@ -192,7 +193,7 @@ function checkBuildEntryPoints() {
   const command = "node scripts/check-dependency-security.js";
   assert.equal(
     packageManifest.scripts["check:dependency-security"],
-    `${command} && node scripts/check-dependency-security.test.js`,
+    `${command} && node scripts/check-dependency-security.test.js && node scripts/check-open-browser.test.js`,
   );
   assert.equal(packageManifest.scripts.predocusaurus, command);
   assert.equal(packageManifest.scripts.prestart, command);
