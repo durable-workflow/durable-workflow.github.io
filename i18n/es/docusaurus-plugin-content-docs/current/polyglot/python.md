@@ -858,6 +858,20 @@ no deterministas:
 
 Todo no determinismo debe pasar por el contexto o capturarse con `ctx.side_effect()`.
 
+#### Bloques finally y gestores de contexto {#workflow-cleanup}
+
+**SDK 2.12.2 y posteriores.** Una suspensión no equivale a salir del workflow.
+Al descartar una reproducción suspendida, Python puede ejecutar los bloques
+`finally` y las salidas de `with`. El SDK descarta los comandos duraderos y los
+mensajes de `ctx.logger` producidos únicamente por ese descarte; las consultas
+observan el estado en el comando pendiente. La finalización real, un fallo o
+la cancelación cooperativa ejecutan la limpieza mediante el historial normal;
+la reproducción en frío utiliza los resultados registrados.
+
+Evita operaciones de E/S directas en esos bloques. Programa la limpieza externa
+como una actividad con `yield ctx.schedule_activity(...)` y envuélvela en
+`with ctx.cancellation_shield():` si debe terminar tras la cancelación cooperativa.
+
 ### Ejecución en paralelo {#fan-out}
 
 Produce una lista de comandos para ejecutarlos concurrentemente:

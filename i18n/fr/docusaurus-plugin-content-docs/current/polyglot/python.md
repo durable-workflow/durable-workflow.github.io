@@ -877,6 +877,20 @@ opération non déterministe directement :
 
 Tout non-déterminisme doit passer par le contexte ou être capturé avec `ctx.side_effect()`.
 
+#### Blocs finally et gestionnaires de contexte {#workflow-cleanup}
+
+**SDK 2.12.2 et versions ultérieures.** Une suspension n'est pas une sortie du
+workflow. Lors de la libération d'une relecture suspendue, Python peut exécuter
+les blocs `finally` et les sorties de `with`. Le SDK ignore les commandes
+durables et les messages de `ctx.logger` produits uniquement par cette
+libération ; les requêtes de lecture observent l'état au niveau de la commande
+en attente. Une fin, un échec ou une annulation coopérative réels exécutent le
+nettoyage via l'historique normal ; la relecture à froid utilise les résultats enregistrés.
+
+Évitez les E/S directes dans ces blocs. Planifiez le nettoyage externe comme
+une activité avec `yield ctx.schedule_activity(...)` et encadrez cette activité
+par `with ctx.cancellation_shield():` si elle doit se terminer après l'annulation coopérative.
+
 ### Distribution parallèle {#fan-out}
 
 Émettez une liste de commandes avec yield pour les exécuter simultanément :
