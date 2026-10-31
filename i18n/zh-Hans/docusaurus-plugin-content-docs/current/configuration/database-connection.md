@@ -4,9 +4,21 @@ sidebar_position: 4
 
 # 数据库连接 {#database-connection}
 
-以下步骤用于自定义工作流 v2 持久模型的数据库连接。*只有*在需要使用不同于 Laravel 应用默认连接的数据库连接时，才需要执行这些步骤。
+Workflow 默认使用 Laravel 应用的默认数据库连接，除非你为持久存储选择了其他连接。
+
+要将工作流存储放到 `config/database.php` 中定义的连接上，请在环境变量中设置连接名：
+
+```dotenv
+DW_STORAGE_CONNECTION=workflows
+```
+
+Workflow 的模型、事务、行锁和提交后回调都使用此连接。所有工作流持久化表都应使用同一个 Laravel 连接。队列传输通过 Laravel 的队列配置单独设置。
+
+你也可以按下文所示，通过自定义模型类选择连接。配置的 V2 `run_model` 为未显式指定模型连接的 V2 元数据提供存储连接。显式指定的模型连接应与它保持一致。`DW_STORAGE_CONNECTION` 优先于模型的连接属性。
 
 完整的 v2 覆盖契约见[定制支持矩阵](./customization-matrix.md)，包括更换表的子类、序列化规则、仓库替换、健康诊断和迁移要求。
+
+## 自定义模型连接 {#custom-model-connections}
 
 1. 在应用模型目录中创建类，继承 v2 模型基类
 2. 在每个类中设置所需的 `$connection`
@@ -68,4 +80,28 @@ class WorkflowInstance extends BaseWorkflowInstance
 
 ## 迁移 {#migrations}
 
-工作流迁移从包中自动加载（`WorkflowServiceProvider::loadMigrationsFrom`），并在默认数据库连接上运行。v2 表使用非默认连接时，请通过 `php artisan vendor:publish --tag=migrations` 发布迁移，并在每个发布的迁移类中设置 `protected $connection = 'mysql';`，使 `php artisan migrate` 在正确的数据库上执行。
+Workflow 迁移会自动从包中加载，并遵循 `DW_STORAGE_CONNECTION`。应用迁移仍使用各自配置的连接。
+
+如果你使用自定义模型连接而没有设置 `DW_STORAGE_CONNECTION`，请为相应的已发布工作流迁移指定相同的 `$connection`。只运行这些工作流迁移时，也可以通过 Laravel 的 `--database` 选项选择目标。应用迁移应继续使用应用连接。
+
+## 事务边界 {#transaction-boundaries}
+
+当应用数据和工作流存储使用同一个 Laravel 连接时，在事务内启动的工作流会加入该事务。回滚会撤销事务内的工作流写入。引擎在最外层存储事务提交后，才把工作流任务发布到队列并发送生命周期事件。回滚会丢弃这些回调。
+
+例如，设置 `DW_STORAGE_CONNECTION=workflows` 后：
+
+```php
+use App\Workflows\OrderWorkflow;
+use Illuminate\Support\Facades\DB;
+use Workflow\V2\WorkflowStub;
+
+DB::connection('workflows')->transaction(function () {
+    WorkflowStub::make(OrderWorkflow::class, 'order-123')->start('order-123');
+});
+```
+
+如果应用模型的更改必须与这次启动原子提交，这些模型也必须使用 `workflows` 连接。
+
+不同 Laravel 连接上的事务会独立提交，即使连接名指向同一个物理数据库也是如此。应用默认连接上的事务无法回滚已在其他存储连接上提交的工作流。请把需要原子性的更改放到同一个连接上，并纳入该连接的事务。
+
+提交后发布保护的是工作流存储边界。队列使用的独立数据库或消息代理具有自己的事务和投递行为。
