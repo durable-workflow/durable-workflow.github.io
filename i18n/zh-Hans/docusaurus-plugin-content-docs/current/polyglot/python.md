@@ -711,6 +711,17 @@ receipt = yield ctx.schedule_activity(
 
 所有非确定性必须通过上下文或用 `ctx.side_effect()` 捕获。
 
+#### finally 代码块与上下文管理器 {#workflow-cleanup}
+
+**SDK 2.12.2 及更高版本。** 暂停并不表示工作流已经退出。丢弃已暂停的重放时，
+Python 仍可能执行 `finally` 代码块和 `with` 的退出逻辑。SDK 会丢弃仅由这次清理
+产生的持久化命令和 `ctx.logger` 日志；查询看到的是等待中的命令所在位置的状态。
+真正的完成、失败或协作式取消会按正常历史执行清理；冷重放会使用已记录的结果。
+
+不要在这些代码块中直接执行 I/O。通过 `yield ctx.schedule_activity(...)` 将外部清理
+安排为活动；若该活动必须在协作式取消后完成，请用 `with ctx.cancellation_shield():`
+包裹它。
+
 ### 扇出 {#fan-out}
 
 yield 命令列表以并发运行：

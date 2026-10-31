@@ -878,6 +878,19 @@ operações não determinísticas:
 
 Todo não determinismo deve passar pelo contexto ou ser capturado com `ctx.side_effect()`.
 
+#### Blocos finally e gerenciadores de contexto {#workflow-cleanup}
+
+**SDK 2.12.2 e posteriores.** Uma suspensão não é uma saída do workflow. Durante
+o descarte de um replay suspenso, o Python pode executar blocos `finally` e as
+saídas de `with`. O SDK descarta comandos duráveis e mensagens de `ctx.logger`
+gerados apenas por esse descarte; as consultas veem o estado no comando
+pendente. A conclusão, a falha ou o cancelamento cooperativo reais executam a
+limpeza pelo histórico normal; o replay a frio utiliza os resultados registrados.
+
+Evite E/S direta nesses blocos. Agende a limpeza externa como uma atividade com
+`yield ctx.schedule_activity(...)` e envolva essa atividade em
+`with ctx.cancellation_shield():` se ela precisar terminar após o cancelamento cooperativo.
+
 ### Fan-out {#fan-out}
 
 Produza uma lista de comandos com yield para executá-los concorrentemente:

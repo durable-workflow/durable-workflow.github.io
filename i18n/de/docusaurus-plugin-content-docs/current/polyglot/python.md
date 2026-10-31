@@ -879,6 +879,21 @@ Workflow-Code wird aus der Historie wiedergegeben. Er darf keine nicht determini
 
 Jeder Nichtdeterminismus muss über den Kontext laufen oder mit `ctx.side_effect()` erfasst werden.
 
+#### Finally-Blöcke und Kontextmanager {#workflow-cleanup}
+
+**SDK 2.12.2 und höher.** Eine Unterbrechung ist kein Verlassen des Workflows.
+Beim Freigeben eines angehaltenen Replays kann Python `finally`-Blöcke und
+`with`-Austritte ausführen. Das SDK verwirft dauerhafte Befehle und Meldungen von
+`ctx.logger`, die nur durch dieses Freigeben entstehen; Abfragen sehen den
+Zustand am wartenden Befehl. Ein tatsächlicher Abschluss, Fehler oder
+kooperativer Abbruch führt die Bereinigung über die normale Historie aus;
+ein kaltes Replay nutzt die aufgezeichneten Ergebnisse.
+
+Führen Sie in diesen Blöcken keine direkte E/A aus. Planen Sie externe
+Bereinigung als Aktivität mit `yield ctx.schedule_activity(...)` und umschließen
+Sie diese Aktivität mit `with ctx.cancellation_shield():`, wenn sie nach einem
+kooperativen Abbruch abgeschlossen werden muss.
+
 ### Auffächerung {#fan-out}
 
 Geben Sie eine Liste von Befehlen aus, um sie nebenläufig auszuführen:

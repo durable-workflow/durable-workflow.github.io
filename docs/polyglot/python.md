@@ -909,6 +909,19 @@ Workflow code is replayed from history. It must not perform any non-deterministi
 
 All non-determinism must flow through the context or be captured with `ctx.side_effect()`.
 
+#### Finally blocks and context managers {#workflow-cleanup}
+
+**SDK 2.12.2 and later.** A suspension is not a workflow exit. Python may execute
+`finally` blocks and `with` exits while disposing of a suspended replay. The SDK
+discards durable commands and `ctx.logger` messages produced only by disposal;
+queries see the state at the pending command. Actual completion, failure or
+cooperative cancellation runs cleanup through the normal history, and cold
+replay uses its recorded results.
+
+Keep direct I/O out of these hooks. Schedule external cleanup as an Activity
+with `yield ctx.schedule_activity(...)`, and wrap that Activity in
+`with ctx.cancellation_shield():` if it must finish after cooperative cancellation.
+
 ### Fan-Out
 
 Yield a list of commands to run them concurrently:
